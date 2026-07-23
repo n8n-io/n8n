@@ -39,13 +39,13 @@ describe('useAgentTelemetry', () => {
 			skills: [],
 			tasks: [],
 			triggers: [],
+			vector_stores: [],
 			memory: null,
 			model: 'gpt-4',
 			config_version: 'v1',
 		};
 		useAgentTelemetry().trackSubmittedMessage({
 			agentId: 'ag-1',
-			mode: 'test',
 			status: 'draft',
 			agentConfig: fingerprint,
 		});

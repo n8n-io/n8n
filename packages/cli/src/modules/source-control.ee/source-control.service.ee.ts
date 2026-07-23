@@ -557,6 +557,15 @@ export class SourceControlService {
 			await this.sourceControlImportService.importFoldersFromWorkFolder(user, foldersToBeImported);
 		}
 
+		// IMPORTANT: Import credentials before workflows so that workflow publishing
+		// validates against the freshly imported credential state (e.g. a credential's
+		// resolvable/private status), instead of the stale local state.
+		const credentialsToBeImported = getNonDeletedResources(statusResult, 'credential');
+		await this.sourceControlImportService.importCredentialsFromWorkFolder(
+			credentialsToBeImported,
+			user.id,
+		);
+
 		const workflowsToBeImported = getNonDeletedResources(statusResult, 'workflow');
 		const workflowImportResults =
 			await this.sourceControlImportService.importWorkflowFromWorkFolder(
@@ -585,11 +594,6 @@ export class SourceControlService {
 			workflowsToBeDeleted,
 		);
 
-		const credentialsToBeImported = getNonDeletedResources(statusResult, 'credential');
-		await this.sourceControlImportService.importCredentialsFromWorkFolder(
-			credentialsToBeImported,
-			user.id,
-		);
 		const credentialsToBeDeleted = getDeletedResources(statusResult, 'credential');
 		await this.sourceControlImportService.deleteCredentialsNotInWorkfolder(
 			user,
@@ -612,10 +616,21 @@ export class SourceControlService {
 
 		const dataTableCandidates = getNonDeletedResources(statusResult, 'datatable');
 		if (dataTableCandidates.length > 0) {
-			await this.sourceControlImportService.importDataTablesFromWorkFolder(
-				dataTableCandidates,
-				user.id,
-			);
+			const dataTableImportResult =
+				await this.sourceControlImportService.importDataTablesFromWorkFolder(
+					dataTableCandidates,
+					user.id,
+				);
+
+			// Surface reconciliation failures as conflicts on the pull result, not
+			// just in the logs
+			for (const failure of dataTableImportResult?.reconciliationFailures ?? []) {
+				for (const item of statusResult) {
+					if (item.type === 'datatable' && item.id === failure.id) {
+						item.conflict = true;
+					}
+				}
+			}
 		}
 		const dataTablesToBeDeleted = getDeletedResources(statusResult, 'datatable');
 		await this.sourceControlImportService.deleteDataTablesNotInWorkFolder(dataTablesToBeDeleted);

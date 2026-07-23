@@ -3,6 +3,7 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 import { ActionToggle } from './components/ActionToggle';
 import { AddResource } from './components/AddResource';
+import { ProjectHeader } from './components/ProjectHeader';
 import { ResourceCards } from './components/ResourceCards';
 import { ResourceMoveModal } from './components/ResourceMoveModal';
 
@@ -15,6 +16,7 @@ export class WorkflowsPage extends BasePage {
 	readonly cards = new ResourceCards(this.page);
 	readonly actionToggle = new ActionToggle(this.page);
 	readonly resourceMoveModal = new ResourceMoveModal(this.page);
+	readonly projectHeader = new ProjectHeader(this.page);
 
 	private async openWorkflowCardActions(workflowItem: Locator) {
 		await workflowItem.getByTestId('workflow-card-actions').getByRole('button').click();
@@ -37,7 +39,7 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	getProjectName() {
-		return this.page.getByTestId('project-name');
+		return this.projectHeader.getProjectName();
 	}
 
 	getSearchBar() {

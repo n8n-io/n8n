@@ -21,6 +21,7 @@ import type {
 	RelatedExecution,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { runDataAttemptedDynamicCredentials, runDataUsedDynamicCredentials } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -45,6 +46,7 @@ import {
 	updateExistingExecution,
 	updateExistingExecutionMetadata,
 } from './shared/shared-hook-functions';
+
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
 
 @Service()
@@ -137,6 +139,7 @@ type HooksSetupParameters = {
 	pushRef?: string;
 	retryOf?: string;
 	parentExecution?: RelatedExecution;
+	source?: IWorkflowExecutionDataProcess['source'];
 };
 
 function hookFunctionsWorkflowEvents(
@@ -277,6 +280,15 @@ function hookFunctionsPush(
 		return resolvedUser;
 	}
 
+	// Monotonic counter over this execution segment's node-event pushes so the UI
+	// can order events that arrive late or out of order (e.g. after a suspended
+	// background tab resumes) and render only the latest node as executing
+	// (CAT-2895). Assigned in engine order here on the instance running the
+	// workflow; it rides the worker→main pubsub relay unchanged. Scoped to a
+	// segment: this closure is per run, so a waiting-execution (Wait/Form node)
+	// resume rebuilds the hooks and restarts the counter at 0.
+	let nodeEventSequence = 0;
+
 	hooks.addHandler('nodeExecuteBefore', function (nodeName, data) {
 		const { executionId } = this;
 		// Push data to session which started workflow before each
@@ -288,7 +300,10 @@ function hookFunctionsPush(
 		});
 
 		pushInstance.send(
-			{ type: 'nodeExecuteBefore', data: { executionId, nodeName, data } },
+			{
+				type: 'nodeExecuteBefore',
+				data: { executionId, nodeName, sequenceNumber: nodeEventSequence++, data },
+			},
 			pushRef,
 		);
 	});
@@ -307,7 +322,13 @@ function hookFunctionsPush(
 		pushInstance.send(
 			{
 				type: 'nodeExecuteAfter',
-				data: { executionId, nodeName, itemCountByConnectionType, data: taskData },
+				data: {
+					executionId,
+					nodeName,
+					sequenceNumber: nodeEventSequence++,
+					itemCountByConnectionType,
+					data: taskData,
+				},
 			},
 			pushRef,
 		);
@@ -483,10 +504,13 @@ function hookFunctionsFinalizeExecutionStatus(hooks: ExecutionLifecycleHooks) {
 	});
 }
 
-function hookFunctionsStatistics(hooks: ExecutionLifecycleHooks) {
+function hookFunctionsStatistics(
+	hooks: ExecutionLifecycleHooks,
+	source?: IWorkflowExecutionDataProcess['source'],
+) {
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
 	hooks.addHandler('nodeFetchedData', (workflowId, node) => {
-		workflowStatisticsService.emit('nodeFetchedData', { workflowId, node });
+		workflowStatisticsService.emit('nodeFetchedData', { workflowId, node, source });
 	});
 }
 
@@ -517,7 +541,7 @@ async function duplicateBinaryDataToParent(
  */
 function hookFunctionsSave(
 	hooks: ExecutionLifecycleHooks,
-	{ pushRef, retryOf, saveSettings, parentExecution }: HooksSetupParameters,
+	{ pushRef, retryOf, saveSettings, parentExecution, source }: HooksSetupParameters,
 ) {
 	const logger = Container.get(Logger);
 	const errorReporter = Container.get(ErrorReporter);
@@ -603,6 +627,11 @@ function hookFunctionsSave(
 				fullExecutionData.data.pushRef = pushRef;
 			}
 
+			const resultRunData = fullRunData.data?.resultData?.runData;
+			fullExecutionData.usedPrivateCredentials =
+				runDataUsedDynamicCredentials(resultRunData) ||
+				runDataAttemptedDynamicCredentials(resultRunData);
+
 			await updateExistingExecution({
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
@@ -626,10 +655,13 @@ function hookFunctionsSave(
 			workflowStatisticsService.emit('workflowExecutionCompleted', {
 				workflowData: this.workflowData,
 				fullRunData,
+				source,
 			});
 		}
 	});
 }
+
+const DISCARDABLE_DATA_MODES: WorkflowExecuteMode[] = ['trigger', 'cli', 'error', 'internal'];
 
 /**
  * Returns hook functions to save workflow execution and call error workflow
@@ -638,7 +670,7 @@ function hookFunctionsSave(
  */
 function hookFunctionsSaveWorker(
 	hooks: ExecutionLifecycleHooks,
-	{ pushRef, retryOf }: HooksSetupParameters,
+	{ pushRef, retryOf, saveSettings, source }: HooksSetupParameters,
 ) {
 	const logger = Container.get(Logger);
 	const errorReporter = Container.get(ErrorReporter);
@@ -685,17 +717,35 @@ function hookFunctionsSaveWorker(
 				fullExecutionData.data.pushRef = pushRef;
 			}
 
+			const resultRunData = fullRunData.data?.resultData?.runData;
+			fullExecutionData.usedPrivateCredentials =
+				runDataUsedDynamicCredentials(resultRunData) ||
+				runDataAttemptedDynamicCredentials(resultRunData);
+
+			const mainWillDiscardData =
+				process.env.N8N_SKIP_UNSAVED_EXECUTION_DATA_WRITES === 'true' &&
+				fullRunData.status === 'success' &&
+				!saveSettings.success &&
+				!fullRunData.waitTill &&
+				DISCARDABLE_DATA_MODES.includes(this.mode) &&
+				!Container.get(ExternalHooks).hasHook('workflow.postExecute');
+
+			const executionData = mainWillDiscardData
+				? { ...fullExecutionData, data: undefined, workflowData: undefined }
+				: fullExecutionData;
+
 			// In scaling mode, worker saves execution without metadata
 			// Main process will save metadata after deletion decisions to avoid FK violations
 			await updateExistingExecution({
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
-				executionData: fullExecutionData,
+				executionData,
 			});
 		} finally {
 			workflowStatisticsService.emit('workflowExecutionCompleted', {
 				workflowData: this.workflowData,
 				fullRunData,
+				source,
 			});
 		}
 	});
@@ -734,7 +784,7 @@ export function getLifecycleHooksForScalingWorker(
 	data: IWorkflowExecutionDataProcess,
 	executionId: string,
 ): ExecutionLifecycleHooks {
-	const { pushRef, retryOf, executionMode, workflowData } = data;
+	const { pushRef, retryOf, executionMode, workflowData, source } = data;
 	const hooks = new ExecutionLifecycleHooks(
 		executionMode,
 		executionId,
@@ -742,12 +792,12 @@ export function getLifecycleHooksForScalingWorker(
 		retryOf ?? undefined,
 	);
 	const saveSettings = toSaveSettings(workflowData.settings);
-	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
+	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings, source };
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSaveWorker(hooks, optionalParameters);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
-	hookFunctionsStatistics(hooks);
+	hookFunctionsStatistics(hooks, source);
 	hookFunctionsExternalHooks(hooks);
 
 	if (executionMode === 'manual' && Container.get(InstanceSettings).isWorker) {
@@ -872,14 +922,14 @@ export function getLifecycleHooksForRegularMain(
 		retryOf ?? undefined,
 	);
 	const saveSettings = toSaveSettings(workflowData.settings);
-	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
+	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings, source };
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, source, telemetryMetadata);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSave(hooks, optionalParameters);
 	hookFunctionsPush(hooks, optionalParameters, userId, source);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
-	hookFunctionsStatistics(hooks);
+	hookFunctionsStatistics(hooks, source);
 	hookFunctionsExternalHooks(hooks);
 	Container.get(ModulesHooksRegistry).addHooks(hooks);
 	return hooks;

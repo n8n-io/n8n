@@ -33,6 +33,12 @@ import type {
 	ToolCategory,
 } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
+import {
+	BROWSER_USE_CONNECTION_TYPE,
+	COMPUTER_USE_CONNECTION_TYPE,
+	type BrowserUseConnectionType,
+	type ComputerUseConnectionType,
+} from './constants';
 
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
 	const rootStore = useRootStore();
@@ -271,7 +277,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	type ConnectionStatus = 'connected' | 'waiting' | 'disconnected';
 
 	interface SidebarConnection {
-		type: 'computer-use' | 'browser-use';
+		type: ComputerUseConnectionType | BrowserUseConnectionType;
 		name: string;
 		subtitle: string;
 		status: ConnectionStatus;
@@ -292,7 +298,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 
 		if (!isLocalGatewayDisabled.value) {
 			result.push({
-				type: 'computer-use',
+				type: COMPUTER_USE_CONNECTION_TYPE,
 				name: gatewayDirectory.value ?? i18n.baseText('instanceAi.connections.add.computerUse'),
 				subtitle: gatewayConnected.value
 					? i18n.baseText('instanceAi.connections.types.computerUse.subtitle')
@@ -303,7 +309,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 
 		if (isBrowserUseEnabledByAdmin.value) {
 			result.push({
-				type: 'browser-use',
+				type: BROWSER_USE_CONNECTION_TYPE,
 				name: isBrowserUseConnected.value
 					? 'Google Chrome'
 					: i18n.baseText('instanceAi.connections.add.browserUse'),

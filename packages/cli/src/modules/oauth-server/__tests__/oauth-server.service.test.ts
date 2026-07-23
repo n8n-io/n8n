@@ -9,9 +9,6 @@ import { GlobalConfig } from '@n8n/config';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
@@ -20,6 +17,13 @@ import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.servi
 import { OAuthServerService } from '../oauth-server.service';
 import { OAuthSessionService } from '../oauth-session.service';
 import { OAuthTokenService } from '../oauth-token.service';
+import type { EventService } from '@/events/event.service';
+import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
+import type { McpConfig } from '@/modules/mcp/mcp.config';
+import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import type { UrlService } from '@/services/url.service';
+import { UserManagementMailer } from '@/user-management/email';
 
 const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
 const TEST_RESOURCE_URL = 'https://n8n.example.com/mcp-server/http';
@@ -31,6 +35,7 @@ let tokenService: Mocked<OAuthTokenService>;
 let authorizationCodeService: Mocked<OAuthAuthorizationCodeService>;
 let service: OAuthServerService;
 let userConsentRepository: Mocked<UserConsentRepository>;
+let mailer: Mocked<UserManagementMailer>;
 let getAllowedRedirectUris: Mock<() => Promise<string[]>>;
 let eventService: Mocked<EventService>;
 
@@ -42,6 +47,7 @@ describe('OAuthServerService', () => {
 		tokenService = mockInstance(OAuthTokenService);
 		authorizationCodeService = mockInstance(OAuthAuthorizationCodeService);
 		userConsentRepository = mockInstance(UserConsentRepository);
+		mailer = mockInstance(UserManagementMailer);
 		getAllowedRedirectUris = vi.fn<(...args: []) => Promise<string[]>>().mockResolvedValue([]);
 		eventService = mock<EventService>();
 
@@ -53,6 +59,7 @@ describe('OAuthServerService', () => {
 			scopes: SUPPORTED_SCOPES,
 			isDefault: true,
 			getAllowedRedirectUris,
+			authorize: async () => true,
 		});
 
 		service = new OAuthServerService(
@@ -64,6 +71,7 @@ describe('OAuthServerService', () => {
 			authorizationCodeService,
 			userConsentRepository,
 			resourceRegistry,
+			mailer,
 			eventService,
 		);
 	});
@@ -612,6 +620,7 @@ describe('OAuthServerService', () => {
 				userId: 'user-456',
 				clientId: 'client-123',
 				resource: 'https://n8n.example.com/mcp-server/http',
+				scope: ['workflow:read'],
 			} as AuthorizationCode;
 
 			authorizationCodeService.findAuthorizationCode.mockResolvedValue(authRecord);
@@ -641,18 +650,21 @@ describe('OAuthServerService', () => {
 				'user-456',
 				'client-123',
 				'https://n8n.example.com/mcp-server/http',
+				['workflow:read'],
 			);
 			expect(tokenService.saveTokenPair).toHaveBeenCalledWith(
 				'access-token-123',
 				'refresh-token-456',
 				'client-123',
 				'user-456',
+				['workflow:read'],
 			);
 			expect(result).toEqual({
 				access_token: 'access-token-123',
 				token_type: 'Bearer',
 				expires_in: 3600,
 				refresh_token: 'refresh-token-456',
+				scope: 'workflow:read',
 			});
 			expect(eventService.emit).toHaveBeenCalledWith('mcp-oauth-completed', {
 				userId: 'user-456',
@@ -678,6 +690,7 @@ describe('OAuthServerService', () => {
 				userId: 'user-456',
 				clientId: 'client-123',
 				resource: null,
+				scope: ['workflow:read'],
 			} as AuthorizationCode;
 
 			authorizationCodeService.findAuthorizationCode.mockResolvedValue(authRecord);
@@ -700,6 +713,7 @@ describe('OAuthServerService', () => {
 				'user-456',
 				'client-123',
 				undefined,
+				['workflow:read'],
 			);
 		});
 
@@ -883,22 +897,114 @@ describe('OAuthServerService', () => {
 	});
 
 	describe('deleteClient', () => {
-		it('should delete client when user has consent', async () => {
+		// The GC step deletes the client through a single conditional query
+		// (`DELETE ... WHERE id = :clientId AND NOT EXISTS (<remaining consents>)`),
+		// so both repositories are driven via query builders rather than the
+		// repository `delete()` shortcut. `affected` decides whether the client
+		// row was actually removed.
+		const mockGarbageCollect = (affected: number) => {
+			(userConsentRepository as any).metadata = { tableName: 'oauth_user_consents' };
+			const execute = vi.fn().mockResolvedValue({ affected });
+			(oauthClientRepository.createQueryBuilder as unknown as Mock).mockReturnValue({
+				delete: () => ({ from: () => ({ where: () => ({ execute }) }) }),
+			});
+			return execute;
+		};
+
+		it("should revoke only the user's grant and keep the client while other consents remain", async () => {
 			const client = {
 				id: 'client-123',
 				name: 'Test Client',
 			} as OAuthClient;
 
 			oauthClientRepository.findOne.mockResolvedValue(client);
-			userConsentRepository.findOneBy.mockResolvedValue({
+			userConsentRepository.findOne.mockResolvedValue({
 				userId: 'user-456',
 				clientId: 'client-123',
+				user: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
 			} as any);
-			oauthClientRepository.delete.mockResolvedValue({} as any);
+			const execute = mockGarbageCollect(0);
 
 			await service.deleteClient('client-123', 'user-456');
 
-			expect(oauthClientRepository.delete).toHaveBeenCalledWith({ id: 'client-123' });
+			expect(tokenService.revokeAllTokensForGrant).toHaveBeenCalledWith('client-123', 'user-456');
+			expect(authorizationCodeService.deleteForGrant).toHaveBeenCalledWith(
+				'client-123',
+				'user-456',
+			);
+			expect(userConsentRepository.delete).toHaveBeenCalledWith({
+				clientId: 'client-123',
+				userId: 'user-456',
+			});
+			expect(execute).toHaveBeenCalled();
+		});
+
+		it('should garbage-collect the client when the last consent is revoked', async () => {
+			const client = {
+				id: 'client-123',
+				name: 'Test Client',
+			} as OAuthClient;
+
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			userConsentRepository.findOne.mockResolvedValue({
+				userId: 'user-456',
+				clientId: 'client-123',
+				user: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
+			} as any);
+			const execute = mockGarbageCollect(1);
+
+			await service.deleteClient('client-123', 'user-456');
+
+			expect(userConsentRepository.delete).toHaveBeenCalledWith({
+				clientId: 'client-123',
+				userId: 'user-456',
+			});
+			expect(execute).toHaveBeenCalled();
+		});
+
+		it('should notify the grant owner by email when someone else revokes their client', async () => {
+			const client = {
+				id: 'client-123',
+				name: 'Test Client',
+			} as OAuthClient;
+
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			userConsentRepository.findOne.mockResolvedValue({
+				userId: 'user-456',
+				clientId: 'client-123',
+				user: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
+			} as any);
+			userConsentRepository.countBy.mockResolvedValue(1);
+			mailer.notifyMcpClientRevoked.mockResolvedValue({ emailSent: true });
+
+			const revoker = { id: 'admin-1', email: 'admin@n8n.io' } as any;
+			await service.deleteClient('client-123', 'user-456', revoker);
+
+			expect(mailer.notifyMcpClientRevoked).toHaveBeenCalledWith({
+				clientName: 'Test Client',
+				owner: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
+				revoker,
+			});
+		});
+
+		it('should not send an email when users revoke their own client', async () => {
+			const client = {
+				id: 'client-123',
+				name: 'Test Client',
+			} as OAuthClient;
+
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			userConsentRepository.findOne.mockResolvedValue({
+				userId: 'user-456',
+				clientId: 'client-123',
+				user: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
+			} as any);
+			userConsentRepository.countBy.mockResolvedValue(1);
+
+			const revoker = { id: 'user-456', email: 'owner@n8n.io' } as any;
+			await service.deleteClient('client-123', 'user-456', revoker);
+
+			expect(mailer.notifyMcpClientRevoked).not.toHaveBeenCalled();
 		});
 
 		it('should throw when client does not exist', async () => {
@@ -918,7 +1024,7 @@ describe('OAuthServerService', () => {
 			} as OAuthClient;
 
 			oauthClientRepository.findOne.mockResolvedValue(client);
-			userConsentRepository.findOneBy.mockResolvedValue(null);
+			userConsentRepository.findOne.mockResolvedValue(null);
 
 			await expect(service.deleteClient('client-123', 'other-user')).rejects.toThrow(
 				'OAuth client with ID client-123 not found',
@@ -1059,6 +1165,7 @@ describe('OAuthServerService', () => {
 				getAudiences: () => [TEST_RESOURCE_URL, 'mcp-server-api'],
 				scopes: SUPPORTED_SCOPES,
 				isDefault: true,
+				authorize: async () => true,
 			});
 			const secondResourceUrl = 'https://n8n.example.com/webhook/wf-1/mcp';
 			multiRegistry.register({
@@ -1066,6 +1173,7 @@ describe('OAuthServerService', () => {
 				getResourceUrl: () => secondResourceUrl,
 				getAudiences: () => [secondResourceUrl],
 				scopes: [],
+				authorize: async () => true,
 			});
 
 			const multiResourceService = new OAuthServerService(
@@ -1077,6 +1185,7 @@ describe('OAuthServerService', () => {
 				authorizationCodeService,
 				userConsentRepository,
 				multiRegistry,
+				mailer,
 				mock<EventService>(),
 			);
 
@@ -1089,6 +1198,67 @@ describe('OAuthServerService', () => {
 			await expect(
 				(multiResourceService as any).resolveAndValidateResourceIndicator(
 					'https://n8n.example.com/webhook/wf-2/mcp',
+				),
+			).rejects.toThrow(InvalidTargetError);
+		});
+	});
+
+	// Chain test with the real MCP protected resource: the resource generated
+	// from the configured MCP base URL must pass indicator validation.
+	describe('resource indicator validation with a configured MCP base URL', () => {
+		const makeConfiguredService = () => {
+			const urlService = mock<UrlService>();
+			urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
+			const mcpConfig = mock<McpConfig>();
+			mcpConfig.baseUrl = 'https://n8n-mcp.example.com';
+			const mcpResource = new McpProtectedResource(
+				urlService,
+				mock<McpSettingsService>(),
+				mcpConfig,
+				mock<GlobalConfig>(),
+			);
+			expect(mcpResource.getResourceUrl()).toBe('https://n8n-mcp.example.com/mcp-server/http');
+
+			const configuredRegistry = new ProtectedResourceRegistry(mock<Logger>());
+			configuredRegistry.register(mcpResource);
+
+			return new OAuthServerService(
+				logger,
+				mockInstance(GlobalConfig),
+				oauthSessionService,
+				oauthClientRepository,
+				tokenService,
+				authorizationCodeService,
+				userConsentRepository,
+				configuredRegistry,
+				mailer,
+				mock<EventService>(),
+			);
+		};
+
+		it('should accept the resource generated from the configured base URL', async () => {
+			const configuredService = makeConfiguredService();
+			expect(
+				await (configuredService as any).resolveAndValidateResourceIndicator(
+					'https://n8n-mcp.example.com/mcp-server/http',
+				),
+			).toBe('https://n8n-mcp.example.com/mcp-server/http');
+		});
+
+		it('should keep accepting the instance-base-URL-derived resource', async () => {
+			const configuredService = makeConfiguredService();
+			expect(
+				await (configuredService as any).resolveAndValidateResourceIndicator(
+					'https://n8n.example.com/mcp-server/http',
+				),
+			).toBe('https://n8n.example.com/mcp-server/http');
+		});
+
+		it('should reject resources on hosts that are not configured', async () => {
+			const configuredService = makeConfiguredService();
+			await expect(
+				(configuredService as any).resolveAndValidateResourceIndicator(
+					'https://other.example.com/mcp-server/http',
 				),
 			).rejects.toThrow(InvalidTargetError);
 		});

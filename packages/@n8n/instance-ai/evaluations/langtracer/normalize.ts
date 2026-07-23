@@ -1,4 +1,4 @@
-import { WORKFLOW_TEST_CASE_KEYS } from '../data/workflows/schema';
+import { WORKFLOW_TEST_CASE_KEYS } from '../harness/schema';
 
 /** Keys n8n's `.strict()` case schema accepts — anything else must be stripped. */
 const ALLOWED_KEYS = new Set(WORKFLOW_TEST_CASE_KEYS);

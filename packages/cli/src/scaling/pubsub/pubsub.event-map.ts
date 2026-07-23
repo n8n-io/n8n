@@ -1,8 +1,10 @@
 import type {
 	AgentIntegrationConfig,
 	ChatHubMessageStatus,
+	InstanceAiEvent,
 	PushMessage,
 	WorkerStatus,
+	WorkflowPublicationStatusMessage,
 } from '@n8n/api-types';
 import type { IWorkflowBase, WorkflowActivateMode } from 'n8n-workflow';
 
@@ -112,6 +114,10 @@ export type PubSubCommandMap = {
 		nodeId?: string;
 	};
 
+	/** Relay a publication status push from the leader (which drains the publication
+	 * outbox) to the other mains, so clients connected to followers get the push too. */
+	'display-workflow-publication-status': WorkflowPublicationStatusMessage;
+
 	'relay-execution-lifecycle-event': PushMessage & {
 		pushRef: string;
 		asBinary: boolean;
@@ -148,6 +154,39 @@ export type PubSubCommandMap = {
 			status?: ChatHubMessageStatus;
 			error?: string;
 		};
+	};
+
+	/**
+	 * Relay an Instance AI stream event to sibling mains.
+	 *
+	 * The agent runs on whichever main received `POST /chat/:threadId` and emits
+	 * events into that main's in-process bus, but the client's `GET /events/:threadId`
+	 * SSE connection may be held by a different main. The producing main relays each
+	 * event; the main holding the SSE subscription re-emits it locally to its client.
+	 */
+	'relay-instance-ai-event': {
+		threadId: string;
+		/**
+		 * Producer-assigned stored event. The id comes from the shared per-thread
+		 * sequence, so every main stores and serves identical event ids and the
+		 * frontend's replay cursor is valid against any main. With the durable
+		 * log enabled ids are DB-assigned seqs and ephemeral events (deltas,
+		 * status) carry no id at all: they are live-only.
+		 */
+		storedEvent: { id?: number; event: InstanceAiEvent };
+	};
+
+	/**
+	 * Relay an Instance AI task-control action (correction / cancel / clear) to
+	 * sibling mains. The action may target a background task or run held
+	 * in another main's in-memory state. Broadcast + local-gate: every main applies
+	 * it only to its own local slice of the thread.
+	 */
+	'relay-instance-ai-task-control': {
+		threadId: string;
+		taskId?: string;
+		action: 'correct' | 'cancel-task' | 'cancel-thread' | 'clear-thread';
+		correction?: string;
 	};
 
 	/**

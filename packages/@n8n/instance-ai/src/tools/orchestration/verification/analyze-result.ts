@@ -12,6 +12,8 @@ import type {
 	WorkflowLoopState,
 } from '../../../workflow-loop/workflow-loop-state';
 
+type ExecutionNodeError = NonNullable<ExecutionRunResult['nodeErrors']>[number];
+
 const CREDENTIAL_FAILURE_KEYWORDS = [
 	'credential',
 	'unauthorized',
@@ -241,6 +243,18 @@ function buildCoverageNote(
 	);
 }
 
+function buildNodeErrorMessage(nodeErrors: ExecutionNodeError[]): string | undefined {
+	if (nodeErrors.length === 0) return undefined;
+
+	return nodeErrors
+		.map((nodeError) =>
+			nodeError.message
+				? `${nodeError.nodeName}: ${nodeError.message}`
+				: `${nodeError.nodeName}: node execution failed`,
+		)
+		.join('; ');
+}
+
 export function namesOrDataKeys(
 	reachedNames: Set<string>,
 	data: Record<string, unknown> | undefined,
@@ -258,6 +272,8 @@ export interface VerificationAnalysis {
 	nodesExecuted?: string[];
 	simulationNote?: string;
 	coverageNote?: string;
+	errorMessage?: string;
+	nodeErrors: ExecutionNodeError[];
 }
 
 export function analyzeVerificationResult(args: {
@@ -268,6 +284,7 @@ export function analyzeVerificationResult(args: {
 	runId: string;
 }): VerificationAnalysis {
 	const { result, buildOutcome, simulatedNodes, stateBefore, runId } = args;
+	const nodeErrors = result.nodeErrors ?? [];
 	const reachedNames = new Set(
 		result.executedNodeNames ?? (result.data ? Object.keys(result.data) : []),
 	);
@@ -277,12 +294,19 @@ export function analyzeVerificationResult(args: {
 		.filter((name) => !reachedNames.has(name));
 	const hasSimulationPlan = (buildOutcome.nodeSimulationPlan?.length ?? 0) > 0;
 	const hasOutput = result.data ? Object.keys(result.data).length > 0 : false;
+	const errorMessage = result.error ?? buildNodeErrorMessage(nodeErrors);
 	const success =
-		result.status === 'success' ||
-		(!hasSimulationPlan && result.status === 'waiting' && !result.error && hasOutput);
+		nodeErrors.length === 0 &&
+		(result.status === 'success' ||
+			(!hasSimulationPlan && result.status === 'waiting' && !errorMessage && hasOutput));
 	const failureRemediation = success
 		? undefined
-		: classifyVerificationFailure(result.error, result.status, buildOutcome);
+		: classifyVerificationFailure(
+				errorMessage,
+				// Only escalate a clean status; 'waiting' must keep its needs_setup routing.
+				nodeErrors.length > 0 && result.status === 'success' ? 'error' : result.status,
+				buildOutcome,
+			);
 	const budgetRemediation =
 		failureRemediation?.shouldEdit === true
 			? terminalRemediationFromState(stateBefore, runId)
@@ -298,5 +322,7 @@ export function analyzeVerificationResult(args: {
 		nodesExecuted: namesOrDataKeys(reachedNames, result.data),
 		simulationNote: buildSimulationNote(reachedSimulatedNodes, false),
 		coverageNote: buildCoverageNote(nodesNotReached, result, success),
+		errorMessage,
+		nodeErrors,
 	};
 }

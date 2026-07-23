@@ -22,9 +22,9 @@ import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
+import { createResultError } from '@n8n/utils/result';
 import {
 	type IRunExecutionData,
-	createResultError,
 	type NodeConnectionType,
 	NodeConnectionTypes,
 	type IConnectedNode,
@@ -632,7 +632,7 @@ const onDragEnd = (el: HTMLElement) => {
 											:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
 											telemetry-source="inputs"
 											size="small"
-											type="secondary"
+											variant="subtle"
 											hide-icon
 											execution-mode="exclusive"
 										/>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nLink, N8nPreviewTag, N8nText, N8nTooltip } from '@n8n/design-system';
+import { END_USER_CREDENTIALS_DOCS_URL } from '@/app/constants';
 
 const props = defineProps<{
 	// `true` = end-user (private) credential, `false` = fixed (static) credential.
@@ -8,9 +9,6 @@ const props = defineProps<{
 	modelValue: boolean;
 	// Explainer shown in the help tooltip next to the "Credential type" label.
 	infoTip?: string;
-	// End-user can be disabled when the credential is already shared (mutually exclusive).
-	endUserDisabled?: boolean;
-	endUserDisabledTooltip?: string;
 }>();
 
 // Controlled component: the parent owns the value and may veto a change (confirm
@@ -23,7 +21,6 @@ const i18n = useI18n();
 
 function select(value: boolean): void {
 	if (value === props.modelValue) return;
-	if (value && props.endUserDisabled) return;
 	emit('update:modelValue', value);
 }
 </script>
@@ -34,9 +31,15 @@ function select(value: boolean): void {
 			<N8nText size="medium" :bold="true">
 				{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.title') }}
 			</N8nText>
+			<N8nPreviewTag size="small" />
 			<N8nTooltip v-if="infoTip" placement="top">
 				<template #content>
-					<div>{{ infoTip }}</div>
+					<div>
+						{{ infoTip }}
+						<N8nLink bold :to="END_USER_CREDENTIALS_DOCS_URL" size="small">
+							{{ i18n.baseText('generic.learnMore') }}
+						</N8nLink>
+					</div>
 				</template>
 				<N8nIcon icon="circle-help" size="small" color="text-light" />
 			</N8nTooltip>
@@ -46,41 +49,6 @@ function select(value: boolean): void {
 			:aria-label="i18n.baseText('credentialEdit.credentialConfig.credentialType.title')"
 			:class="$style.cards"
 		>
-			<N8nTooltip placement="top" as-child :disabled="!endUserDisabled || !endUserDisabledTooltip">
-				<template #content>
-					<div>{{ endUserDisabledTooltip }}</div>
-				</template>
-				<button
-					type="button"
-					role="radio"
-					:aria-checked="modelValue"
-					:aria-disabled="endUserDisabled && !modelValue"
-					data-test-id="credential-type-card-end-user"
-					:class="[
-						$style.card,
-						modelValue ? $style.cardSelected : $style.cardIdle,
-						endUserDisabled && !modelValue && $style.cardDisabled,
-					]"
-					@click="select(true)"
-				>
-					<span :class="$style.cardTop">
-						<span :class="$style.cardLabel">
-							<N8nIcon icon="user-round" size="small" />
-							<N8nText size="medium" :bold="true">
-								{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.endUser.title') }}
-							</N8nText>
-						</span>
-						<span
-							:class="[$style.radioOuter, modelValue && $style.radioOuterOn]"
-							aria-hidden="true"
-						/>
-					</span>
-					<N8nText size="xsmall" color="text-light" :class="$style.subtitle">
-						{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.endUser.subtitle') }}
-					</N8nText>
-				</button>
-			</N8nTooltip>
-
 			<button
 				type="button"
 				role="radio"
@@ -101,8 +69,33 @@ function select(value: boolean): void {
 						aria-hidden="true"
 					/>
 				</span>
-				<N8nText size="xsmall" color="text-light" :class="$style.subtitle">
+				<N8nText size="small" color="text-light" :class="$style.subtitle">
 					{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.fixed.subtitle') }}
+				</N8nText>
+			</button>
+
+			<button
+				type="button"
+				role="radio"
+				:aria-checked="modelValue"
+				data-test-id="credential-type-card-end-user"
+				:class="[$style.card, modelValue ? $style.cardSelected : $style.cardIdle]"
+				@click="select(true)"
+			>
+				<span :class="$style.cardTop">
+					<span :class="$style.cardLabel">
+						<N8nIcon icon="user-round" size="small" />
+						<N8nText size="medium" :bold="true">
+							{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.endUser.title') }}
+						</N8nText>
+					</span>
+					<span
+						:class="[$style.radioOuter, modelValue && $style.radioOuterOn]"
+						aria-hidden="true"
+					/>
+				</span>
+				<N8nText size="small" color="text-light" :class="$style.subtitle">
+					{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.endUser.subtitle') }}
 				</N8nText>
 			</button>
 		</div>
@@ -152,17 +145,12 @@ function select(value: boolean): void {
 	}
 }
 
-.cardDisabled {
-	cursor: not-allowed;
-	opacity: 0.6;
-}
-
 .cardSelected {
 	border-color: var(--color--primary);
 	background-color: color-mix(in srgb, var(--color--primary) 6%, transparent);
 }
 
-.cardIdle:not(.cardDisabled) {
+.cardIdle {
 	&:hover {
 		border-color: var(--color--foreground--shade-1);
 	}

@@ -2,8 +2,9 @@ import type { Mock } from 'vitest';
 import type { Agent as RuntimeAgent } from '@n8n/agents';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
+import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -16,7 +17,6 @@ import type { ToolRegistry } from '../tool-registry';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
-const userId = 'user-1';
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
@@ -75,8 +75,8 @@ describe('AgentRuntimeCacheService', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
 
-		const first = await service.getRuntime({ agentId, projectId, n8nUserId: userId });
-		const second = await service.getRuntime({ agentId, projectId, n8nUserId: userId });
+		const first = await service.getRuntime({ agentId, projectId });
+		const second = await service.getRuntime({ agentId, projectId });
 
 		expect(first).toBe(second);
 		expect(first.telemetryConfiguration).toEqual(
@@ -89,7 +89,7 @@ describe('AgentRuntimeCacheService', () => {
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledWith(
 			agent,
 			expect.anything(),
-			userId,
+			undefined,
 			undefined,
 		);
 	});
@@ -105,11 +105,10 @@ describe('AgentRuntimeCacheService', () => {
 			.mockResolvedValueOnce(chatRuntime)
 			.mockResolvedValueOnce(n8nChatRuntime);
 
-		const first = await service.getRuntime({ agentId, projectId, n8nUserId: userId });
+		const first = await service.getRuntime({ agentId, projectId });
 		const second = await service.getRuntime({
 			agentId,
 			projectId,
-			n8nUserId: userId,
 			integrationType: 'n8n_chat',
 		});
 
@@ -120,8 +119,45 @@ describe('AgentRuntimeCacheService', () => {
 			2,
 			agent,
 			expect.anything(),
-			userId,
 			'n8n_chat',
+			undefined,
+		);
+	});
+
+	it('keys draft runtimes by user id so different users get separate runtimes, reused per user', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const userARuntime = makeRuntime();
+		const userBRuntime = makeRuntime();
+		const userA = mock<User>({ id: 'user-a' });
+		const userB = mock<User>({ id: 'user-b' });
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(userARuntime)
+			.mockResolvedValueOnce(userBRuntime);
+
+		const forUserA = await service.getRuntime({ agentId, projectId, user: userA });
+		const forUserAAgain = await service.getRuntime({ agentId, projectId, user: userA });
+		const forUserB = await service.getRuntime({ agentId, projectId, user: userB });
+
+		expect(forUserA.agent).toBe(userARuntime.agent);
+		expect(forUserAAgain.agent).toBe(userARuntime.agent);
+		expect(forUserB.agent).toBe(userBRuntime.agent);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
+			1,
+			agent,
+			expect.anything(),
+			undefined,
+			userA,
+		);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
+			2,
+			agent,
+			expect.anything(),
+			undefined,
+			userB,
 		);
 	});
 
@@ -137,8 +173,8 @@ describe('AgentRuntimeCacheService', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		reconstructionService.reconstructFromAgentEntity.mockReturnValue(pendingRuntime);
 
-		const first = service.getRuntime({ agentId, projectId, n8nUserId: userId });
-		const second = service.getRuntime({ agentId, projectId, n8nUserId: userId });
+		const first = service.getRuntime({ agentId, projectId });
+		const second = service.getRuntime({ agentId, projectId });
 
 		await Promise.resolve();
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(1);
@@ -162,12 +198,12 @@ describe('AgentRuntimeCacheService', () => {
 
 		await expect(
 			Promise.all([
-				service.getRuntime({ agentId, projectId, n8nUserId: userId }),
-				service.getRuntime({ agentId, projectId, n8nUserId: userId }),
+				service.getRuntime({ agentId, projectId }),
+				service.getRuntime({ agentId, projectId }),
 			]),
 		).rejects.toThrow('compile failed');
 
-		await expect(service.getRuntime({ agentId, projectId, n8nUserId: userId })).resolves.toEqual(
+		await expect(service.getRuntime({ agentId, projectId })).resolves.toEqual(
 			expect.objectContaining({ agent: runtime.agent }),
 		);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
@@ -188,12 +224,12 @@ describe('AgentRuntimeCacheService', () => {
 			.mockReturnValueOnce(staleRuntimeInitialization)
 			.mockResolvedValueOnce(freshRuntime);
 
-		const staleRequest = service.getRuntime({ agentId, projectId, n8nUserId: userId });
+		const staleRequest = service.getRuntime({ agentId, projectId });
 		await Promise.resolve();
 
 		service.clearRuntimes(agentId);
 
-		await expect(service.getRuntime({ agentId, projectId, n8nUserId: userId })).resolves.toEqual(
+		await expect(service.getRuntime({ agentId, projectId })).resolves.toEqual(
 			expect.objectContaining({ agent: freshRuntime.agent }),
 		);
 
@@ -202,13 +238,13 @@ describe('AgentRuntimeCacheService', () => {
 			`Agent ${agentId} runtime initialization was invalidated`,
 		);
 		expect(staleRuntime.agent.close).toHaveBeenCalled();
-		await expect(service.getRuntime({ agentId, projectId, n8nUserId: userId })).resolves.toEqual(
+		await expect(service.getRuntime({ agentId, projectId })).resolves.toEqual(
 			expect.objectContaining({ agent: freshRuntime.agent }),
 		);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
 	});
 
-	it('loads published snapshot data and publishedById when running a published runtime', async () => {
+	it('loads published snapshot data when running a published runtime', async () => {
 		const { service, agentRepository, reconstructionService } = makeService();
 		const activeVersion = {
 			schema: {
@@ -243,21 +279,20 @@ describe('AgentRuntimeCacheService', () => {
 				skills: activeVersion.skills,
 			}),
 			expect.anything(),
-			'publisher-1',
 			'slack',
+			undefined,
 		);
 	});
 
-	it('rejects missing agents, missing runtime owners, and unpublished runtime requests', async () => {
+	it('rejects missing agents and unpublished runtime requests', async () => {
 		const { service, agentRepository } = makeService();
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
-		await expect(service.getRuntime({ agentId, projectId, n8nUserId: userId })).rejects.toThrow(
+		await expect(service.getRuntime({ agentId, projectId })).rejects.toThrow(
 			`Agent ${agentId} not found`,
 		);
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
-		await expect(service.getRuntime({ agentId, projectId })).rejects.toThrow(UserError);
 		await expect(
 			service.getRuntime({ agentId, projectId, usePublishedVersion: true }),
 		).rejects.toThrow(OperationalError);
@@ -271,7 +306,7 @@ describe('AgentRuntimeCacheService', () => {
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
-		await service.getRuntime({ agentId, projectId, n8nUserId: userId });
+		await service.getRuntime({ agentId, projectId });
 
 		service.clearRuntimes(agentId);
 

@@ -18,6 +18,7 @@ const props = withDefaults(
 		buttonLabel?: string;
 		// Send button turns active only while focused with text (default: follows canSubmit).
 		activeRequiresFocus?: boolean;
+		maxLength?: number;
 	}>(),
 	{
 		placeholder: undefined,
@@ -25,6 +26,7 @@ const props = withDefaults(
 		autosize: () => ({ minRows: 2, maxRows: 6 }),
 		buttonLabel: undefined,
 		activeRequiresFocus: false,
+		maxLength: undefined,
 	},
 );
 
@@ -159,6 +161,7 @@ defineExpose({
 			stop-button-test-id="instance-ai-stop-button"
 			:autosize="autosize"
 			:layout="autosize === false ? 'single-line' : 'multiline'"
+			:max-length="maxLength"
 			@update:model-value="emit('update:modelValue', $event)"
 			@submit="handleSubmit"
 			@stop="emit('stop')"

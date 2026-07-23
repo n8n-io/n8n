@@ -4,10 +4,14 @@ import type { MainPanelType, NodePanelType } from '../ndv.types';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { IRunData, NodeConnectionType } from 'n8n-workflow';
 import { jsonParse, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, ref, useTemplateRef, watch } from 'vue';
 
 import NDVHeader from '../../panel/components/NDVHeader.vue';
 import NodeSettings from '@/features/ndv/settings/components/NodeSettings.vue';
+import {
+	useNdvAgentConfig,
+	NdvAgentConfigKey,
+} from '@/features/ndv/agents/composables/useNdvAgentConfig';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useKeybindings } from '@/app/composables/useKeybindings';
@@ -68,6 +72,11 @@ const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
 const activeNode = computed(() => ndvStore.value.activeNode);
 const pinnedData = usePinnedData(activeNode);
+
+// The AI Agent node's NDV data facade (referenced summary + inline editing).
+// Owned here (the stable container) so it survives node switches. No-ops for
+// other nodes.
+provide(NdvAgentConfigKey, useNdvAgentConfig(activeNode));
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();

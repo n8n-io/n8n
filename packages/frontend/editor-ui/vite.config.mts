@@ -52,8 +52,16 @@ const alias = [
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'composables', 'src$1'),
 	},
 	{
+		find: /^@n8n\/frontend-module-sdk$/,
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'frontend-module-sdk', 'src/index.ts'),
+	},
+	{
 		find: /^@n8n\/constants(.+)$/,
 		replacement: resolve(packagesDir, '@n8n', 'constants', 'src$1'),
+	},
+	{
+		find: /^@n8n\/design-system$/,
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src/index.ts'),
 	},
 	{
 		find: /^@n8n\/design-system(.+)$/,

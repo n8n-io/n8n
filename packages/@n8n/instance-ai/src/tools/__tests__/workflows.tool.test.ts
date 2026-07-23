@@ -1,4 +1,5 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
+import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
@@ -8,6 +9,11 @@ import {
 	applyNodeChanges,
 	buildCompletedReport,
 } from '../workflows/setup-workflow.service';
+import { STRUCTURE_ONLY_NOTE } from '../workflows/summarize-workflow';
+import {
+	getWorkflowSourceFileBinding,
+	saveWorkflowSourceFileBinding,
+} from '../workflows/workflow-file-bindings';
 import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
 
 // Mock the setup-workflow.service module to avoid pulling in heavy dependencies
@@ -174,7 +180,6 @@ describe('workflows tool', () => {
 				},
 			],
 			[{ action: 'list-versions', workflowId: 'w1' }],
-			[{ action: 'get-version', workflowId: 'w1', versionId: 'v1' }],
 			[{ action: 'restore-version', workflowId: 'w1', versionId: 'v1' }],
 			[{ action: 'update-version', workflowId: 'w1', versionId: 'v1', name: 'v1' }],
 		])('should reject action %p when it is not explicitly allowed', (input) => {
@@ -411,18 +416,43 @@ describe('workflows tool', () => {
 	});
 
 	describe('get action', () => {
-		it('should call workflowService.get with workflowId', async () => {
-			const detail = {
-				id: 'wf1',
-				name: 'Test WF',
-				nodes: [],
-				connections: {},
-				versionId: 'v1',
-				activeVersionId: null,
-				isArchived: false,
-				createdAt: '2024-01-01',
-				updatedAt: '2024-01-01',
-			};
+		const detail = {
+			id: 'wf1',
+			name: 'Test WF',
+			nodes: [
+				{
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					parameters: { path: 'x', big: 'x'.repeat(5000) },
+					position: [0, 0],
+				},
+				{
+					name: 'IF',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2.2,
+					parameters: { conditions: {} },
+					position: [1, 0],
+				},
+				{ name: 'Set', type: 'n8n-nodes-base.set', parameters: {}, position: [2, 0] },
+			],
+			connections: {
+				Webhook: { main: [[{ node: 'IF', type: 'main', index: 0 }]] },
+				IF: {
+					main: [
+						[{ node: 'Set', type: 'main', index: 0 }],
+						[{ node: 'Webhook', type: 'main', index: 0 }],
+					],
+				},
+			},
+			versionId: 'v1',
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: '2024-01-01',
+			updatedAt: '2024-01-01',
+		};
+
+		it('should return the structure as SDK code for large workflows', async () => {
 			const context = createMockContext();
 			(context.workflowService.get as Mock).mockResolvedValue(detail);
 
@@ -430,7 +460,135 @@ describe('workflows tool', () => {
 			const result = await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
 
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
+			expect(result).toEqual({
+				id: 'wf1',
+				name: 'Test WF',
+				versionId: 'v1',
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				nodeCount: 3,
+				structure: '// generated code',
+				note: STRUCTURE_ONLY_NOTE,
+			});
+			const codegenInput = vi.mocked(generateWorkflowCode).mock.calls[0][0];
+			expect(codegenInput).toMatchObject({ name: 'Test WF' });
+			expect(JSON.stringify(codegenInput)).not.toContain('conditions');
+		});
+
+		it('should return the complete payload when full is true', async () => {
+			const context = createMockContext();
+			(context.workflowService.get as Mock).mockResolvedValue(detail);
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'get', workflowId: 'wf1', full: true },
+				{} as never,
+			);
+
 			expect(result).toEqual(detail);
+		});
+
+		it('should include parameters inline for small workflows', async () => {
+			const small = {
+				...detail,
+				nodes: [
+					{
+						name: 'Webhook',
+						type: 'n8n-nodes-base.webhook',
+						parameters: { path: 'x' },
+						position: [0, 0],
+					},
+				],
+			};
+			const context = createMockContext();
+			(context.workflowService.get as Mock).mockResolvedValue(small);
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
+
+			expect(result).toEqual(small);
+		});
+
+		it('should fall back to a plain structure listing when codegen fails', async () => {
+			const context = createMockContext();
+			(context.workflowService.get as Mock).mockResolvedValue(detail);
+			vi.mocked(generateWorkflowCode).mockImplementationOnce(() => {
+				throw new Error('unsupported graph');
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
+
+			const structure = (result as { structure: string }).structure;
+			expect(structure).toContain('- Webhook (n8n-nodes-base.webhook)');
+			expect(structure).toContain('- IF [1]→ Webhook');
+			expect(structure).not.toContain('conditions');
+		});
+
+		it('should return a version structure summary when versionId is provided', async () => {
+			const context = createMockContext();
+			context.workflowService.getVersion = vi.fn().mockResolvedValue({
+				versionId: 'v1',
+				name: 'Checkpoint',
+				description: null,
+				authors: 'me',
+				createdAt: '2024-01-01',
+				autosaved: false,
+				isActive: false,
+				isCurrentDraft: false,
+				nodes: [
+					{
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						parameters: { big: 'blob'.repeat(2000) },
+						position: [0, 0],
+					},
+				],
+				connections: {},
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'get', workflowId: 'wf1', versionId: 'v1' },
+				{} as never,
+			);
+
+			expect(context.workflowService.getVersion).toHaveBeenCalledWith('wf1', 'v1');
+			expect(result).toEqual({
+				workflowId: 'wf1',
+				versionId: 'v1',
+				name: 'Checkpoint',
+				description: null,
+				authors: 'me',
+				createdAt: '2024-01-01',
+				autosaved: false,
+				isActive: false,
+				isCurrentDraft: false,
+				nodeCount: 1,
+				structure: '// generated code',
+				note: STRUCTURE_ONLY_NOTE,
+			});
+		});
+
+		it('should explain when versionId is passed but version history is unavailable', async () => {
+			const context = createMockContext();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'get', workflowId: 'wf1', versionId: 'v1' },
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				workflowId: 'wf1',
+				versionId: 'v1',
+				error: 'Workflow version history is not available on this instance',
+			});
 		});
 	});
 
@@ -463,8 +621,141 @@ describe('workflows tool', () => {
 				{} as never,
 			);
 
-			expect(context.workflowService.getAsWorkflowJSON).toHaveBeenCalledWith('wf1');
+			expect(context.workflowService.getAsWorkflowJSON).toHaveBeenCalledWith('wf1', undefined);
 			expect(result).toEqual(workflow);
+		});
+
+		it('should forward versionId to the full fetches', async () => {
+			const context = createMockContext();
+			const tool = createWorkflowsTool(context, 'full');
+
+			await executeTool(
+				tool,
+				{ action: 'get-json', workflowId: 'wf1', versionId: 'v7' },
+				{} as never,
+			);
+			await executeTool(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1', versionId: 'v7' },
+				{} as never,
+			);
+
+			expect((context.workflowService.getAsWorkflowJSON as Mock).mock.calls).toEqual([
+				['wf1', 'v7'],
+				['wf1', 'v7'],
+			]);
+		});
+	});
+
+	describe('workflow source binding refresh', () => {
+		it('refreshes bound checksum after current-version get-as-code', async () => {
+			const context = createMockContext();
+			(context.workflowService.get as Mock).mockResolvedValue({
+				id: 'wf1',
+				name: 'Test WF',
+				versionId: 'v-current',
+				checksum: 'checksum-current',
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				nodes: [],
+				connections: {},
+			});
+
+			await saveWorkflowSourceFileBinding(context, {
+				filePath: 'src/workflows/main.workflow.ts',
+				workflowId: 'wf1',
+				workflowVersionId: 'v-stale',
+				workflowChecksum: 'checksum-stale',
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'get-as-code', workflowId: 'wf1' }, {} as never);
+
+			await expect(
+				getWorkflowSourceFileBinding(context, 'src/workflows/main.workflow.ts'),
+			).resolves.toMatchObject({
+				workflowId: 'wf1',
+				workflowVersionId: 'v-current',
+				workflowChecksum: 'checksum-current',
+			});
+		});
+
+		it('does not refresh bound checksum for historical get-as-code reads', async () => {
+			const context = createMockContext();
+
+			await saveWorkflowSourceFileBinding(context, {
+				filePath: 'src/workflows/main.workflow.ts',
+				workflowId: 'wf1',
+				workflowVersionId: 'v-stale',
+				workflowChecksum: 'checksum-stale',
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1', versionId: 'v7' },
+				{} as never,
+			);
+
+			expect(context.workflowService.get).not.toHaveBeenCalled();
+			await expect(
+				getWorkflowSourceFileBinding(context, 'src/workflows/main.workflow.ts'),
+			).resolves.toMatchObject({
+				workflowId: 'wf1',
+				workflowVersionId: 'v-stale',
+				workflowChecksum: 'checksum-stale',
+			});
+		});
+
+		it('refreshes bound checksum after update', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'always_allow' },
+			});
+			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+				id: 'wf1',
+				versionId: 'v-updated',
+				checksum: 'checksum-updated',
+			});
+			(context.workflowService.get as Mock).mockResolvedValue({
+				id: 'wf1',
+				name: 'Test WF',
+				versionId: 'v-updated',
+				checksum: 'checksum-updated',
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				nodes: [],
+				connections: {},
+			});
+
+			await saveWorkflowSourceFileBinding(context, {
+				filePath: 'src/workflows/main.workflow.ts',
+				workflowId: 'wf1',
+				workflowVersionId: 'v-stale',
+				workflowChecksum: 'checksum-stale',
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(
+				tool,
+				{
+					action: 'update',
+					workflowId: 'wf1',
+					workflow: { name: 'Updated WF', nodes: [], connections: {} },
+				},
+				{ resumeData: { approved: true } } as never,
+			);
+
+			await expect(
+				getWorkflowSourceFileBinding(context, 'src/workflows/main.workflow.ts'),
+			).resolves.toMatchObject({
+				workflowId: 'wf1',
+				workflowVersionId: 'v-updated',
+				workflowChecksum: 'checksum-updated',
+			});
 		});
 	});
 
@@ -746,6 +1037,7 @@ describe('workflows tool', () => {
 				id: workflowId,
 				name: workflowId,
 				versionId: `${workflowId}-draft`,
+				checksum: `${workflowId}-checksum`,
 				activeVersionId: workflowId === 'sub-a' ? 'sub-a-previous' : null,
 				isArchived: false,
 				createdAt: '2024-01-01',
@@ -756,6 +1048,19 @@ describe('workflows tool', () => {
 			(context.workflowService.publish as Mock).mockImplementation((workflowId: string) => {
 				if (workflowId === 'wf1') throw new Error('Main publish failed');
 				return { activeVersionId: `${workflowId}-active` };
+			});
+
+			await saveWorkflowSourceFileBinding(context, {
+				filePath: 'src/workflows/sub-a.workflow.ts',
+				workflowId: 'sub-a',
+				workflowVersionId: 'sub-a-previous',
+				workflowChecksum: 'sub-a-previous-checksum',
+			});
+			await saveWorkflowSourceFileBinding(context, {
+				filePath: 'src/workflows/sub-b.workflow.ts',
+				workflowId: 'sub-b',
+				workflowVersionId: 'sub-b-previous',
+				workflowChecksum: 'sub-b-previous-checksum',
 			});
 
 			const tool = createWorkflowsTool(context, 'full');
@@ -776,6 +1081,20 @@ describe('workflows tool', () => {
 				success: false,
 				error: 'Main publish failed',
 				rolledBackWorkflowIds: ['sub-b', 'sub-a'],
+			});
+			await expect(
+				getWorkflowSourceFileBinding(context, 'src/workflows/sub-a.workflow.ts'),
+			).resolves.toMatchObject({
+				workflowId: 'sub-a',
+				workflowVersionId: 'sub-a-draft',
+				workflowChecksum: 'sub-a-checksum',
+			});
+			await expect(
+				getWorkflowSourceFileBinding(context, 'src/workflows/sub-b.workflow.ts'),
+			).resolves.toMatchObject({
+				workflowId: 'sub-b',
+				workflowVersionId: 'sub-b-draft',
+				workflowChecksum: 'sub-b-checksum',
 			});
 		});
 

@@ -11,7 +11,7 @@ export const useConsentStore = defineStore(STORES.CONSENT, () => {
 	const consentDetails = ref<ConsentDetails | null>(null);
 	const isLoading = ref(false);
 	const error = ref<string | null>(null);
-	const errorCode: Ref<'resource_unavailable' | null> = ref(null);
+	const errorCode: Ref<'resource_unavailable' | 'forbidden' | null> = ref(null);
 
 	const rootStore = useRootStore();
 
@@ -26,6 +26,8 @@ export const useConsentStore = defineStore(STORES.CONSENT, () => {
 		} catch (err) {
 			if (err instanceof ResponseError && err.httpStatusCode === 422) {
 				errorCode.value = 'resource_unavailable';
+			} else if (err instanceof ResponseError && err.httpStatusCode === 403) {
+				errorCode.value = 'forbidden';
 			}
 			error.value = err instanceof Error ? err.message : 'Failed to load consent details';
 			throw err;
@@ -34,12 +36,12 @@ export const useConsentStore = defineStore(STORES.CONSENT, () => {
 		}
 	};
 
-	const approveConsent = async (approved: boolean) => {
+	const approveConsent = async (approved: boolean, scopes?: string[]) => {
 		isLoading.value = true;
 		error.value = null;
 
 		try {
-			const response = await consentApi.approveConsent(rootStore.restApiContext, approved);
+			const response = await consentApi.approveConsent(rootStore.restApiContext, approved, scopes);
 			return response;
 		} catch (err) {
 			error.value = err instanceof Error ? err.message : 'Failed to process consent';

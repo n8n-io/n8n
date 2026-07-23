@@ -10,6 +10,8 @@ export interface SuspensionInfo {
 	toolCallId: string;
 	requestId: string;
 	toolName?: string;
+	/** Run id of the (sub-)agent run that suspended, from the `tool-call-suspended` chunk. */
+	runId?: string;
 	/** The raw suspend payload as passed to `ctx.suspend()` by the inner tool. */
 	suspendPayload: Record<string, unknown>;
 }
@@ -26,9 +28,10 @@ export function parseSuspension(chunk: unknown): SuspensionInfo | null {
 			? suspPayload.requestId
 			: tcId;
 	const toolName = typeof sp.toolName === 'string' ? sp.toolName : undefined;
+	const runId = typeof sp.runId === 'string' ? sp.runId : undefined;
 
 	if (!reqId || !tcId) return null;
-	return { toolCallId: tcId, requestId: reqId, toolName, suspendPayload: suspPayload };
+	return { toolCallId: tcId, requestId: reqId, toolName, runId, suspendPayload: suspPayload };
 }
 
 export interface Resumable {

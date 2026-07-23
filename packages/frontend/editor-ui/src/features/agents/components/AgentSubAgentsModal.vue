@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nButton,
+	N8nCallout,
 	N8nIcon,
 	N8nHeading,
 	N8nInput,
@@ -33,6 +34,8 @@ type AddSubAgentModalData = {
 type EditSubAgentModalData = {
 	selectedAgent: AgentSubAgentOption;
 	useWhen?: string;
+	/** Reasons this sub-agent is flagged invalid (e.g. unpublished, deleted) — same strings as the capability chip's tooltip. */
+	invalidReasons?: string[];
 	onConfirm: (payload: AgentSubAgentsModalConfirmPayload) => void;
 	onRemove?: (agentId: string) => void;
 };
@@ -60,6 +63,9 @@ const filteredAgents = computed(() =>
 );
 const hasMatchingAgents = computed(() => filteredAgents.value.length > 0);
 const isEditing = computed(() => Boolean(props.data.selectedAgent));
+const invalidReasons = computed(() =>
+	'invalidReasons' in props.data ? (props.data.invalidReasons ?? []) : [],
+);
 const selectedAgent = ref<AgentSubAgentOption | null>(props.data.selectedAgent ?? null);
 const useWhen = ref(('useWhen' in props.data ? props.data.useWhen : '') ?? '');
 const useWhenTrimmed = computed(() => useWhen.value.trim());
@@ -168,7 +174,7 @@ function onConfirm() {
 					</div>
 				</N8nScrollArea>
 
-				<N8nActionBox
+				<N8nEmptyState
 					v-else-if="hasAgents && !hasMatchingAgents"
 					:icon="{ type: 'icon', value: 'bot' }"
 					:heading="i18n.baseText('agents.builder.subAgents.modal.noResults.title')"
@@ -176,7 +182,7 @@ function onConfirm() {
 					data-testid="agent-sub-agents-modal-no-results"
 				/>
 
-				<N8nActionBox
+				<N8nEmptyState
 					v-else
 					:icon="{ type: 'icon', value: 'bot' }"
 					:heading="i18n.baseText('agents.builder.subAgents.modal.empty.title')"
@@ -186,6 +192,13 @@ function onConfirm() {
 			</div>
 
 			<div v-else :class="[$style.content, $style.configureContent]">
+				<N8nCallout
+					v-if="invalidReasons.length > 0"
+					theme="danger"
+					data-testid="agent-sub-agents-modal-invalid-callout"
+				>
+					<div v-for="reason in invalidReasons" :key="reason">{{ reason }}</div>
+				</N8nCallout>
 				<div :class="$style.field">
 					<label :class="$style.label">
 						<N8nText size="small" :bold="true">

@@ -5,6 +5,7 @@ export * from './instance';
 export * from './execution';
 export * from './logstreaming';
 export * from './nodes';
+export * from './scheduler';
 
 export const LICENSE_FEATURES = {
 	SHARING: 'feat:sharing',
@@ -49,6 +50,7 @@ export const LICENSE_FEATURES = {
 	TOKEN_EXCHANGE: 'feat:tokenExchange',
 	DATA_REDACTION: 'feat:dataRedaction',
 	OTEL_CUSTOM_SPAN_ATTRIBUTES: 'feat:otel:customSpanAttributes',
+	WORKFLOW_REVIEWS: 'feat:workflowReviews',
 } as const;
 
 export const LICENSE_QUOTAS = {
@@ -133,6 +135,9 @@ export { Time } from './time';
 export const MIN_PASSWORD_CHAR_LENGTH = 8;
 
 export const MAX_PASSWORD_CHAR_LENGTH = 64;
+
+/** Largest value a signed 32-bit integer can hold. */
+export const MAX_INTEGER_32BITS_SIGNED = 2 ** 31 - 1;
 
 /**
  * Character set used for generating nanoid IDs across n8n.

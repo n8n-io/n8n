@@ -6,6 +6,7 @@ import {
 	DRAG_EVENT_DATA_KEY,
 	HITL_SUBCATEGORY,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 } from '@/app/constants';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/features/settings/communityNodes/communityNodes.constants';
 import { computed, ref } from 'vue';
@@ -80,8 +81,16 @@ const showActionArrow = computed(() => {
 		return true;
 	}
 
+	// Clicking opens the agent picker sub-panel; the arrow signals that and
+	// `!showActionArrow` disables dragging, so the picker can't be bypassed.
+	if (opensAgentSubPanel.value) {
+		return true;
+	}
+
 	return hasActions.value && !isSendAndWaitCategory.value;
 });
+
+const opensAgentSubPanel = computed(() => props.nodeType.name === MESSAGE_AN_AGENT_NODE_TYPE);
 const isSendAndWaitCategory = computed(
 	() =>
 		activeViewStack.subcategory === HITL_SUBCATEGORY ||

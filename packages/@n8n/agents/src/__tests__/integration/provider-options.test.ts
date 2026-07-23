@@ -58,6 +58,35 @@ describe('prompt caching via instruction providerOptions', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Prompt caching — Agent.promptCaching() end-to-end
+// ---------------------------------------------------------------------------
+
+describe('prompt caching via Agent.promptCaching()', () => {
+	it('reports cache activity across two calls when promptCaching() is enabled', async () => {
+		// Exercises the full .promptCaching() path: generated Anthropic cacheControl
+		// on instructions plus runtime breakpoints, all the way to real cache tokens.
+		const agent = new Agent('prompt-caching-api-test')
+			.model('anthropic/claude-haiku-4-5')
+			.promptCaching()
+			.instructions(LONG_SYSTEM_PROMPT);
+
+		const result1 = await agent.generate('Say hello', {
+			persistence: { resourceId: 'user1', threadId: 'thread1' },
+		});
+		expect(result1.finishReason).toBe('stop');
+
+		const result2 = await agent.generate('Say goodbye', {
+			persistence: { resourceId: 'user1', threadId: 'thread2' },
+		});
+		expect(result2.finishReason).toBe('stop');
+
+		const write1 = result1.usage?.inputTokenDetails?.cacheWrite ?? 0;
+		const read2 = result2.usage?.inputTokenDetails?.cacheRead ?? 0;
+		expect(write1 + read2).toBeGreaterThan(0);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Prompt caching — call-level providerOptions
 // ---------------------------------------------------------------------------
 

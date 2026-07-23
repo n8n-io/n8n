@@ -17,7 +17,7 @@ export type DataTableRowOperation =
  * Data Table table operations
  * Used by the Data Table node for table-level management operations
  */
-export type DataTableTableOperation = 'create' | 'delete' | 'list' | 'update';
+export type DataTableTableOperation = 'create' | 'delete' | 'list' | 'update' | 'clear';
 
 export type DataTableColumn = {
 	id: string;
@@ -213,4 +213,6 @@ export interface IDataTableProjectService {
 	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[]>;
 
 	deleteRows(options: DeleteDataTableRowsOptions): Promise<DataTableRowReturn[]>;
+
+	clearRows(): Promise<{ deletedCount: number }>;
 }

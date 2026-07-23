@@ -4,11 +4,14 @@ import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	formatWorkflowStructureIssuePath,
+	GROUP_DESCRIPTION_MAX_LENGTH,
 	isSafeObjectProperty,
+	normalizeGroupDescription,
 	resolveNodeWebhookId,
 	resolveVariables,
 	safeParseWorkflowStructure,
-	validateNodeSelectionForGrouping,
+	summarizeDynamicCredentialsUsage,
+	validateWorkflowGroups,
 	type IDataObject,
 	type INode,
 	type INodeCredentialsDetails,
@@ -17,9 +20,7 @@ import {
 	type IRun,
 	type ITaskData,
 	type IWorkflowBase,
-	type IWorkflowGroup,
 	type IWorkflowSettings,
-	type NodeGroupValidationResult,
 	type RelatedExecution,
 	type WorkflowStructureIssue,
 } from 'n8n-workflow';
@@ -166,51 +167,14 @@ export function makeGetNodeTypeForGrouping(nodeTypes: INodeTypes): GetNodeTypeFo
 }
 
 /**
- * Maps a failed `validateNodeSelectionForGrouping` result to an actionable
- * `BadRequestError` that names the offending group and the rule it broke.
- */
-function nodeGroupValidationError(
-	group: IWorkflowGroup,
-	result: Extract<NodeGroupValidationResult, { valid: false }>,
-): BadRequestError {
-	const label = `Node group "${group.name}" (${group.id})`;
-	switch (result.reason) {
-		case 'trigger-selected':
-			return new BadRequestError(
-				`${label} cannot contain trigger nodes: ${result.triggers.join(', ')}.`,
-			);
-		case 'invalid-subgraph':
-			return new BadRequestError(
-				`${label} must form a single connected subgraph with a single entry and exit.`,
-			);
-		case 'multiple-input-branches':
-			return new BadRequestError(`${label} has multiple input branches at node "${result.node}".`);
-		case 'multiple-output-branches':
-			return new BadRequestError(`${label} has multiple output branches at node "${result.node}".`);
-		case 'node-already-grouped':
-			return new BadRequestError(
-				`${label} contains nodes that already belong to another group: ${result.nodeIds.join(', ')}.`,
-			);
-		case 'non-main-boundary':
-			return new BadRequestError(
-				`${label} cannot cross the "${result.connection.type}" connection between "${result.connection.source}" and "${result.connection.target}".`,
-			);
-	}
-}
-
-/**
- * Validates nodeGroups.
+ * Validates nodeGroups on the save path, rejecting with a `BadRequestError`.
  *
- * Basic checks (always run): unique group IDs, unique group names, all referenced
- * node IDs exist, and each node belongs to at most one group.
- *
- * Full checks (run only when `getNodeType` is non-null): each group must satisfy
- * the same grouping rules the canvas enforces — no triggers, a single connected
- * subgraph, and no non-main connection crossing the group boundary — validated
- * against the other groups as existing groups. Pass the `getNodeType` callback to
- * run the full checks (on create, and on an update that changed the graph or the
- * groups); pass `null` to run basic checks only (e.g. a git import, so
- * legacy-invalid groups don't block the import).
+ * The rules and messages live in `validateWorkflowGroups` (n8n-workflow), the
+ * single source of truth shared with validate-time surfaces; this wrapper throws
+ * the first violation, preserving the historical throw-on-first behavior. See
+ * that function for the basic-vs-full checks contract (`getNodeType: null` runs
+ * basic checks only, e.g. a git import, so legacy-invalid groups don't block
+ * the import).
  *
  * Note for frontend: Must be called after `addNodeIds` since nodes created via the API
  * may not have IDs until that step assigns them.
@@ -221,62 +185,51 @@ export function validateWorkflowNodeGroups(
 	},
 	getNodeType: GetNodeTypeForGrouping | null,
 ) {
-	const { nodeGroups, nodes } = workflow;
-	if (!nodeGroups || nodeGroups.length === 0) return;
+	const result = validateWorkflowGroups({
+		nodes: workflow.nodes,
+		connectionsBySourceNode: workflow.connections,
+		nodeGroups: workflow.nodeGroups,
+		getNodeType,
+	});
+	if (!result.valid) {
+		throw new BadRequestError(result.violations[0].message);
+	}
+}
 
-	const nodeIds = new Set(nodes.map((n) => n.id).filter(Boolean));
-	const seenGroupIds = new Set<string>();
-	const seenGroupNames = new Set<string>();
-	const nodeToGroup = new Map<string, string>();
+/**
+ * Normalizes group descriptions on import, mutating in place.
+ *
+ * Authoring paths (internal REST + public API) reject invalid or over-cap
+ * descriptions via their DTOs. Import paths accept arbitrary JSON, so instead of
+ * rejecting they drop non-string descriptions and truncate over-long ones —
+ * keeping the import lenient while honouring the plain-text, capped contract.
+ * Returns a warning per adjusted group so callers can surface it.
+ */
+export function sanitizeNodeGroupDescriptions(
+	workflow: Pick<IWorkflowBase, 'nodeGroups'>,
+): string[] {
+	const warnings: string[] = [];
+	for (const group of workflow.nodeGroups ?? []) {
+		// Imported JSON is untyped at runtime despite the `string` contract.
+		const original: unknown = group.description;
+		if (original === undefined) continue;
 
-	for (const group of nodeGroups) {
-		// Unique group IDs
-		if (seenGroupIds.has(group.id)) {
-			throw new BadRequestError(`Duplicate node group ID "${group.id}".`);
-		}
-		seenGroupIds.add(group.id);
+		const normalized = normalizeGroupDescription(original);
+		if (normalized === original) continue;
 
-		// Unique group names
-		if (seenGroupNames.has(group.name)) {
-			throw new BadRequestError(`Duplicate node group name "${group.name}".`);
-		}
-		seenGroupNames.add(group.name);
-
-		for (const nodeId of group.nodeIds) {
-			// All referenced nodes must exist
-			if (!nodeIds.has(nodeId)) {
-				throw new BadRequestError(
-					`Group "${group.name}" references node ID "${nodeId}" that does not exist in the workflow.`,
-				);
+		if (normalized === undefined) {
+			delete group.description;
+			if (typeof original !== 'string') {
+				warnings.push(`Group "${group.name}" description was not plain text and was removed.`);
 			}
-			// A node can only belong to one group
-			const existingGroup = nodeToGroup.get(nodeId);
-			if (existingGroup) {
-				throw new BadRequestError(
-					`Node "${nodeId}" belongs to multiple groups: "${existingGroup}" and "${group.name}".`,
-				);
-			}
-			nodeToGroup.set(nodeId, group.name);
+		} else {
+			group.description = normalized;
+			warnings.push(
+				`Group "${group.name}" description exceeded ${GROUP_DESCRIPTION_MAX_LENGTH} characters and was truncated.`,
+			);
 		}
 	}
-
-	if (!getNodeType) return;
-
-	const nodeById = new Map(nodes.map((node) => [node.id, node]));
-	const connectionsBySourceNode = workflow.connections ?? {};
-
-	for (const group of nodeGroups) {
-		const groupNodes = group.nodeIds.flatMap((id) => nodeById.get(id) ?? []);
-		const result = validateNodeSelectionForGrouping({
-			nodes: groupNodes,
-			connectionsBySourceNode,
-			getNodeType,
-			existingNodeGroups: nodeGroups.filter((other) => other.id !== group.id),
-		});
-		if (!result.valid) {
-			throw nodeGroupValidationError(group, result);
-		}
-	}
+	return warnings;
 }
 
 /**
@@ -558,6 +511,46 @@ export async function updateParentExecutionWithChildResults(
 	const nodeExecutionStack = parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack;
 	if (!nodeExecutionStack || nodeExecutionStack?.length === 0) {
 		return;
+	}
+
+	// On resume the parent's flagged 'waiting' task is popped and the node re-runs disabled
+	// (never calling `executeWorkflow` again), so the child's private-credential usage must
+	// ride on the stack entry to reach the freshly stamped task (see `WorkflowExecute`).
+	const dynamicCredentialsUsage = summarizeDynamicCredentialsUsage(subworkflowResults.data);
+	if (Object.keys(dynamicCredentialsUsage).length > 0) {
+		// Union with a sibling child's earlier report ("run once for each item" spawns several
+		// children per wait) — flags only ever accumulate, like every other flag writer.
+		nodeExecutionStack[0].metadata = {
+			...nodeExecutionStack[0].metadata,
+			dynamicCredentialsUsage: {
+				...nodeExecutionStack[0].metadata?.dynamicCredentialsUsage,
+				...dynamicCredentialsUsage,
+			},
+		};
+
+		// Also stamp the parent's waiting task and runtime data right away: the parent may sit
+		// in 'waiting' for a long time with the child's output already embedded in its data,
+		// and redaction scans runData task flags. The resume pops this task; the stash above
+		// restores the flags onto its replacement.
+		const waitingTasks =
+			parentWithSubWorkflowResults.data.resultData?.runData?.[nodeExecutionStack[0].node.name];
+		const waitingTask = waitingTasks?.[waitingTasks.length - 1];
+		if (waitingTask) {
+			if (dynamicCredentialsUsage.usedDynamicCredentials) {
+				waitingTask.usedDynamicCredentials = true;
+			}
+			if (dynamicCredentialsUsage.attemptedDynamicCredentials) {
+				waitingTask.attemptedDynamicCredentials = true;
+			}
+		}
+		const { runtimeData } = parentWithSubWorkflowResults.data.executionData ?? {};
+		if (
+			dynamicCredentialsUsage.usedDynamicCredentials &&
+			dynamicCredentialsUsage.dynamicCredentialsResolvedUserId &&
+			runtimeData
+		) {
+			runtimeData.executedByUserId = dynamicCredentialsUsage.dynamicCredentialsResolvedUserId;
+		}
 	}
 
 	if (subworkflowError) {

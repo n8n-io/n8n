@@ -32,6 +32,9 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 			if (key === 'instanceAi.credential.setupTitle' && opts?.interpolate?.name) {
 				return `Set up ${opts.interpolate.name}`;
 			}
+			if (key === 'instanceAi.workflowSetup.configureNode' && opts?.interpolate?.name) {
+				return `Configure '${opts.interpolate.name}'`;
+			}
 			return key;
 		},
 	}),
@@ -127,7 +130,7 @@ describe('WorkflowSetupCard', () => {
 			props: { section },
 		});
 
-		expect(getByText('HTTP Request')).toBeInTheDocument();
+		expect(getByText("Configure 'HTTP Request'")).toBeInTheDocument();
 		expect(queryByText('Set up Header Auth')).not.toBeInTheDocument();
 		expect(getByTestId('node-icon')).toBeInTheDocument();
 		expect(queryByTestId('credential-icon')).not.toBeInTheDocument();

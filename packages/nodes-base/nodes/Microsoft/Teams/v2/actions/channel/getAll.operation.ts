@@ -4,7 +4,7 @@ import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { teamRLC } from '../../descriptions';
-import { microsoftApiRequestAllItems } from '../../transport';
+import { buildTeamsPath, microsoftApiRequestAllItems } from '../../transport';
 
 const properties: INodeProperties[] = [teamRLC, ...returnAllOrLimit];
 
@@ -22,22 +22,12 @@ export async function execute(this: IExecuteFunctions, i: number) {
 
 	const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
 	const returnAll = this.getNodeParameter('returnAll', i);
+	const endpoint = buildTeamsPath.call(this, ['/v1.0/teams/', { id: teamId }, '/channels']);
 	if (returnAll) {
-		return await microsoftApiRequestAllItems.call(
-			this,
-			'value',
-			'GET',
-			`/v1.0/teams/${teamId}/channels`,
-		);
+		return await microsoftApiRequestAllItems.call(this, 'value', 'GET', endpoint);
 	} else {
 		const limit = this.getNodeParameter('limit', i);
-		const responseData = await microsoftApiRequestAllItems.call(
-			this,
-			'value',
-			'GET',
-			`/v1.0/teams/${teamId}/channels`,
-			{},
-		);
+		const responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', endpoint, {});
 		return responseData.splice(0, limit);
 	}
 }

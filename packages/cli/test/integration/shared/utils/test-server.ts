@@ -160,7 +160,7 @@ export const setupTestServer = ({
 
 		const enablePublicAPI = endpointGroups?.includes('publicApi');
 		if (enablePublicAPI) {
-			const { loadPublicApiVersions } = await import('@/public-api');
+			const { loadPublicApiVersions } = await import('@/public-api/index.js');
 			const { apiRouters } = await loadPublicApiVersions(PUBLIC_API_REST_PATH_SEGMENT);
 			app.use(...apiRouters);
 		}
@@ -180,190 +180,201 @@ export const setupTestServer = ({
 			for (const group of endpointGroups) {
 				switch (group) {
 					case 'annotationTags':
-						await import('@/controllers/annotation-tags.controller.ee');
+						await import('@/controllers/annotation-tags.controller.ee.js');
 						break;
 
 					case 'credentials':
-						await import('@/credentials/credentials.controller');
+						await import('@/credentials/credentials.controller.js');
 						break;
 
 					case 'workflows':
-						await import('@/workflows/workflows.controller');
+						await import('@/workflows/workflows.controller.js');
 						break;
 
 					case 'workflowDependencies':
-						await import('@/modules/workflow-index/workflow-dependency.controller');
+						await import('@/modules/workflow-index/workflow-dependency.controller.js');
 						break;
 
 					case 'executions':
-						await import('@/executions/executions.controller');
+						await import('@/executions/executions.controller.js');
 						break;
 
 					case 'variables':
-						await import('@/environments.ee/variables/variables.controller.ee');
+						await import('@/environments.ee/variables/variables.controller.ee.js');
 						break;
 
 					case 'license':
-						await import('@/license/license.controller');
+						await import('@/license/license.controller.js');
 						break;
 
 					case 'metrics': {
 						// CacheService must be initialized before PrometheusMetricsService
 						// because cache-metrics.service calls isRedis() during init, which
 						// reads this.cache.kind — only set after CacheService.init() resolves.
-						const { CacheService } = await import('@/services/cache/cache.service');
+						const { CacheService } = await import('@/services/cache/cache.service.js');
 						await Container.get(CacheService).init();
-						const { PrometheusMetricsService } = await import('@/metrics/prometheus');
+						const { PrometheusMetricsService } = await import('@/metrics/prometheus/index.js');
 						Container.get(PrometheusMetricsService).init(app);
 						break;
 					}
 
 					case 'eventBus':
-						await import('@/modules/log-streaming.ee/log-streaming.controller');
+						await import('@/modules/log-streaming.ee/log-streaming.controller.js');
 						break;
 
 					case 'auth':
-						await import('@/controllers/auth.controller');
+						await import('@/controllers/auth.controller.js');
 						break;
 
 					case 'oauth1':
-						await import('@/controllers/oauth/oauth1-credential.controller');
+						await import('@/controllers/oauth/oauth1-credential.controller.js');
 						break;
 
 					case 'oauth2':
-						await import('@/controllers/oauth/oauth2-credential.controller');
+						await import('@/controllers/oauth/oauth2-credential.controller.js');
 						break;
 
 					case 'mfa':
-						await import('@/controllers/mfa.controller');
+						await import('@/controllers/mfa.controller.js');
 						break;
 
 					case 'ldap': {
-						const { LdapService } = await import('@/modules/ldap.ee/ldap.service.ee');
-						await import('@/modules/ldap.ee/ldap.controller.ee');
+						const { LdapService } = await import('@/modules/ldap.ee/ldap.service.ee.js');
+						await import('@/modules/ldap.ee/ldap.controller.ee.js');
 						testServer.license.enable('feat:ldap');
 						await Container.get(LdapService).init();
 						break;
 					}
 
 					case 'saml': {
-						const { SamlService } = await import('@/modules/sso-saml/saml.service.ee');
+						const { SamlService } = await import('@/modules/sso-saml/saml.service.ee.js');
 						await Container.get(SamlService).init();
-						await import('@/modules/sso-saml/saml.controller.ee');
-						const { setSamlLoginEnabled } = await import('@/modules/sso-saml/saml-helpers');
+						await import('@/modules/sso-saml/saml.controller.ee.js');
+						const { setSamlLoginEnabled } = await import('@/modules/sso-saml/saml-helpers.js');
 						await setSamlLoginEnabled(true);
 						break;
 					}
 
+					case 'otel': {
+						const { OtelService } = await import('@/modules/otel/otel.service.js');
+						await Container.get(OtelService).init();
+						await import('@/modules/otel/otel-settings.controller.js');
+						break;
+					}
+
 					case 'sourceControl':
-						await import('@/modules/source-control.ee/source-control.controller.ee');
+						await import('@/modules/source-control.ee/source-control.controller.ee.js');
 						break;
 
 					case 'community-packages':
-						await import('@/modules/community-packages/community-packages.controller');
+						await import('@/modules/community-packages/community-packages.controller.js');
 						break;
 
 					case 'me':
-						await import('@/controllers/me.controller');
+						await import('@/controllers/me.controller.js');
 						break;
 
 					case 'passwordReset':
-						await import('@/controllers/password-reset.controller');
+						await import('@/controllers/password-reset.controller.js');
 						break;
 
 					case 'owner':
-						await import('@/controllers/owner.controller');
+						await import('@/controllers/owner.controller.js');
 						break;
 
 					case 'users':
-						await import('@/controllers/users.controller');
+						await import('@/controllers/users.controller.js');
 						break;
 
 					case 'invitations':
-						await import('@/controllers/invitation.controller');
+						await import('@/controllers/invitation.controller.js');
 						break;
 
 					case 'tags':
-						await import('@/controllers/tags.controller');
+						await import('@/controllers/tags.controller.js');
 						break;
 
 					case 'workflowHistory':
-						await import('@/workflows/workflow-history/workflow-history.controller');
+						await import('@/workflows/workflow-history/workflow-history.controller.js');
 						break;
 
 					case 'binaryData':
-						await import('@/controllers/binary-data.controller');
+						await import('@/controllers/binary-data.controller.js');
 						break;
 
 					case 'debug':
-						await import('@/controllers/debug.controller');
+						await import('@/controllers/debug.controller.js');
 						break;
 
 					case 'project':
-						await import('@/controllers/project.controller');
+						await import('@/controllers/project.controller.js');
 						break;
 
 					case 'role':
-						await import('@/controllers/role.controller');
+						await import('@/controllers/role.controller.js');
 						break;
 
 					case 'roleMappingRule':
-						await import('@/modules/provisioning.ee/role-mapping-rule.controller.ee');
+						await import('@/modules/provisioning.ee/role-mapping-rule.controller.ee.js');
 						break;
 
 					case 'dynamic-node-parameters':
-						await import('@/controllers/dynamic-node-parameters.controller');
+						await import('@/controllers/dynamic-node-parameters.controller.js');
 						break;
 
 					case 'apiKeys':
-						await import('@/controllers/api-keys.controller');
+						await import('@/controllers/api-keys.controller.js');
 						break;
 
 					case 'evaluation':
-						await import('@/evaluation.ee/test-runs.controller.ee');
+						await import('@/evaluation.ee/test-runs.controller.ee.js');
 						break;
 
 					case 'ai':
-						await import('@/controllers/ai.controller');
+						await import('@/controllers/ai.controller.js');
 						break;
 					case 'folder':
-						await import('@/controllers/folder.controller');
+						await import('@/controllers/folder.controller.js');
 						break;
 
 					case 'externalSecrets':
-						await import('@/modules/external-secrets.ee/external-secrets.module');
+						await import('@/modules/external-secrets.ee/external-secrets.module.js');
 						break;
 
 					case 'insights':
-						await import('@/modules/insights/insights.module');
+						await import('@/modules/insights/insights.module.js');
 						break;
 
 					case 'data-table':
-						await import('@/modules/data-table/data-table.module');
+						await import('@/modules/data-table/data-table.module.js');
+						break;
+
+					case 'workflow-reviews':
+						await import('@/modules/workflow-reviews.ee/workflow-reviews.module.js');
 						break;
 
 					case 'mcp':
-						await import('@/modules/mcp/mcp.module');
+						await import('@/modules/mcp/mcp.module.js');
 						break;
 
 					case 'module-settings':
-						await import('@/controllers/module-settings.controller');
+						await import('@/controllers/module-settings.controller.js');
 						break;
 
 					case 'security-settings':
-						await import('@/controllers/security-settings.controller');
+						await import('@/controllers/security-settings.controller.js');
 						break;
 
 					case 'third-party-licenses':
-						await import('@/controllers/third-party-licenses.controller');
+						await import('@/controllers/third-party-licenses.controller.js');
 						break;
 
 					case 'encryption-keys':
-						await import('@/modules/encryption-key-manager/encryption-key.controller');
+						await import('@/modules/encryption-key-manager/encryption-key.controller.js');
 						break;
 
 					case 'test-webhooks':
-						await import('@/webhooks/test-webhooks.controller');
+						await import('@/webhooks/test-webhooks.controller.js');
 						break;
 				}
 			}
@@ -379,8 +390,8 @@ export const setupTestServer = ({
 		// Close the HTTP server first so any in-flight requests can't reach the
 		// DI container after testDb.terminate() resets it. Await the close so
 		// pending handlers drain before the next file's beforeAll runs in
-		// persistent Jest workers — otherwise stale handlers call
-		// Container.get(Logger), construct a fresh Logger, and trip Jest's
+		// persistent Vitest workers — otherwise stale handlers call
+		// Container.get(Logger), construct a fresh Logger, and trip Vitest's
 		// "environment torn down" guard when winston is imported.
 		// Skip when the server never started listening (some suites bail in
 		// beforeAll); calling close() on a non-listening server throws

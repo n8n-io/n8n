@@ -140,7 +140,6 @@ const skillLoadOutputSchema = z.object({
 	hash: z.string().optional(),
 	category: z.string().optional(),
 	content: z.string().optional(),
-	instructions: z.string().optional(),
 	filePath: z.string().optional(),
 	bytes: z.number().optional(),
 	sha256: z.string().optional(),
@@ -150,7 +149,17 @@ const skillLoadOutputSchema = z.object({
 	availableSkills: z.array(z.string()).optional(),
 });
 
+const skillLoadContentOutputSchema = z.object({
+	type: z.literal('content'),
+	value: z.array(z.object({ type: z.literal('text'), text: z.string() })),
+});
+
+const skillLoadResultSchema = z.union([skillLoadContentOutputSchema, skillLoadOutputSchema]);
+
 type SkillLoadOutput = z.infer<typeof skillLoadOutputSchema>;
+
+/** Main-skill success result; passed through as a text tool_result without JSON escaping. */
+type SkillLoadContentOutput = z.infer<typeof skillLoadContentOutputSchema>;
 
 export function createRuntimeSkillTools(source: RuntimeSkillSource): BuiltTool[] {
 	return [createListSkillsTool(source), createSkillLoadTool(source)];
@@ -187,7 +196,7 @@ export function createSkillLoadTool(source: RuntimeSkillSource): BuiltTool {
 				'Load a skill by skillId or name. This source does not support linked files, so do not pass filePath.',
 			)
 			.input(skillLoadInputSchema)
-			.output(skillLoadOutputSchema)
+			.output(skillLoadResultSchema)
 			.handler(async ({ skillId, name }) => await loadSkill(source, { skillId, name }))
 			.build();
 	}
@@ -198,7 +207,7 @@ export function createSkillLoadTool(source: RuntimeSkillSource): BuiltTool {
 			'Load a skill by skillId or name. Omit filePath to load the main skill instructions; use filePath only for a linked file path returned in linkedFiles.',
 		)
 		.input(skillLoadInputWithFilesSchema)
-		.output(skillLoadOutputSchema)
+		.output(skillLoadResultSchema)
 		.handler(
 			async ({ skillId, name, filePath }) =>
 				await loadSkill(source, { skillId, name, filePath, loadFile }),
@@ -214,7 +223,7 @@ async function loadSkill(
 		filePath?: string;
 		loadFile?: NonNullable<RuntimeSkillSource['loadFile']>;
 	},
-): Promise<SkillLoadOutput> {
+): Promise<SkillLoadOutput | SkillLoadContentOutput> {
 	const { skillId, name, filePath, loadFile } = input;
 	await source.prepare?.();
 	const skillEntry = findSkillEntry(source.registry, { skillId, name });
@@ -297,20 +306,20 @@ async function loadSkill(
 	}
 
 	const content = cap(skill.instructions);
+	const linkedFilePaths = LINKED_FILE_GROUPS.flatMap((group) => skillEntry.linkedFiles[group]).map(
+		(file) => file.path,
+	);
+	const header = [
+		activationEnvelope(skillEntry),
+		...(linkedFilePaths.length > 0
+			? [
+					`[Linked files — load via load_skill with filePath: ${linkedFilePaths.map(envelopeValue).join(', ')}]`,
+				]
+			: []),
+	];
 	return {
-		ok: true,
-		success: true,
-		skillId: skillEntry.id,
-		name: skillEntry.name,
-		description: skill.description,
-		path: skillEntry.path ?? skillEntry.sourcePath,
-		skillDir: skillEntry.directory,
-		hash: skillEntry.hash,
-		category: skillEntry.category,
-		content,
-		instructions: content,
-		activation: activationEnvelope(skillEntry),
-		linkedFiles: skillEntry.linkedFiles,
+		type: 'content',
+		value: [{ type: 'text', text: `${header.join('\n')}\n\n${content}` }],
 	};
 }
 

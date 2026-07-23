@@ -5,7 +5,14 @@ import type { WorkflowResponse } from '../../clients/n8n-client';
 import { parseJudgeVerdict, REASONING_FIRST_SUFFIX } from '../../utils/llm-judge';
 import type { BinaryCheck, BinaryCheckContext, CheckDimension } from '../types';
 
-const DEFAULT_TIMEOUT_MS = 30_000;
+// Headroom for the multi-turn honesty check, which reasons over every claim across all turns.
+const DEFAULT_TIMEOUT_MS = 60_000;
+
+function isLlmCheckTimeout(error: unknown, checkName: string): error is Error {
+	return (
+		error instanceof Error && error.message.startsWith(`LLM check "${checkName}" timed out after `)
+	);
+}
 
 interface LlmCheckOptions {
 	name: string;
@@ -67,7 +74,7 @@ export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
 				.replace('{agentTextResponse}', ctx.agentTextResponse ?? '')
 				.replace(
 					'{workflowBefore}',
-					ctx.existingWorkflow ? JSON.stringify(ctx.existingWorkflow, null, 2) : '{}',
+					ctx.workflowBefore ? JSON.stringify(ctx.workflowBefore, null, 2) : '{}',
 				);
 
 			const agent = getOrCreateAgent(options.name, ctx.modelId, systemPrompt);
@@ -78,22 +85,32 @@ export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
 				providerOptions: { anthropic: { maxTokens: 8_192 } },
 			});
 
-			let timeoutId: ReturnType<typeof setTimeout>;
+			let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
-			const result = await Promise.race([
-				resultPromise,
-				new Promise<never>((_, reject) => {
-					timeoutId = setTimeout(
-						() =>
-							reject(
-								new Error(`LLM check "${options.name}" timed out after ${String(timeoutMs)}ms`),
-							),
-						timeoutMs,
-					);
-				}),
-			]).finally(() => {
-				clearTimeout(timeoutId);
-			});
+			let result: Awaited<typeof resultPromise>;
+			try {
+				result = await Promise.race([
+					resultPromise,
+					new Promise<never>((_, reject) => {
+						timeoutId = setTimeout(
+							() =>
+								reject(
+									new Error(`LLM check "${options.name}" timed out after ${String(timeoutMs)}ms`),
+								),
+							timeoutMs,
+						);
+					}),
+				]);
+			} catch (error) {
+				if (isLlmCheckTimeout(error, options.name)) {
+					// Timeouts are measurement failures, not inapplicability — report
+					// as errored so they stay out of both pass-rate and N/A counts.
+					return { pass: false, errored: true, comment: error.message };
+				}
+				throw error;
+			} finally {
+				if (timeoutId) clearTimeout(timeoutId);
+			}
 
 			const text = extractText(result);
 			const parsed = parseJudgeVerdict(text);

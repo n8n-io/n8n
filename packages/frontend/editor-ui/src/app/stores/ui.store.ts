@@ -103,7 +103,7 @@ import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import identity from 'lodash/identity';
-import * as modalRegistry from '@/app/moduleInitializer/modalRegistry';
+import { modalRegistry } from '@n8n/frontend-module-sdk';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
 let savedTheme: ThemeOption = 'system';

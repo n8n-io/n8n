@@ -140,7 +140,7 @@ export async function terminate() {
 	}
 
 	// Clear all cached DI singletons (DbConnection, DataSource, GlobalConfig,
-	// AuthRolesService, …). With persistent Jest workers (no per-file process
+	// AuthRolesService, …). With persistent Vitest workers (no per-file process
 	// recycling), the next test file's testDb.init() would otherwise reuse the
 	// DbConnection instance whose DataSource we just destroyed — and try to
 	// .initialize() it again, which hangs. Resetting forces the next get() to
@@ -172,7 +172,8 @@ type EntityName =
 	| 'DynamicCredentialUserEntry'
 	| 'TokenExchangeJti'
 	| 'TrustedKeySourceEntity'
-	| 'TrustedKeyEntity';
+	| 'TrustedKeyEntity'
+	| 'WorkflowStatisticsDelta';
 
 /**
  * Truncate specific DB tables in a test DB.
@@ -204,6 +205,16 @@ export async function truncate(entities: EntityName[]) {
 	}
 
 	for (const name of entities) {
+		// `workflow_statistics_delta` is a raw-SQL, Postgres-only table with no TypeORM entity, so it
+		// can't go through the repository, so we clear it directly.
+		if (name === 'WorkflowStatisticsDelta') {
+			const { type, tablePrefix } = Container.get(GlobalConfig).database;
+			if (type === 'postgresdb') {
+				const table = connection.driver.escape(`${tablePrefix}workflow_statistics_delta`);
+				await connection.query(`DELETE FROM ${table}`);
+			}
+			continue;
+		}
 		await connection.getRepository(name).delete({});
 	}
 }

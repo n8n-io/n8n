@@ -9,6 +9,7 @@ const resourceA: ProtectedResource = {
 	getResourceUrl: () => 'https://n8n.example.com/mcp-server/http',
 	getAudiences: () => ['https://n8n.example.com/mcp-server/http', 'mcp-server-api'],
 	scopes: ['tool:listWorkflows', 'tool:getWorkflowDetails'],
+	authorize: async () => true,
 	isDefault: true,
 };
 
@@ -16,6 +17,7 @@ const resourceB: ProtectedResource = {
 	id: 'workflow-trigger',
 	getResourceUrl: () => 'https://n8n.example.com/webhook/wf-1/mcp',
 	getAudiences: () => ['https://n8n.example.com/webhook/wf-1/mcp'],
+	authorize: async () => true,
 	scopes: ['tool:listWorkflows', 'workflow:execute'],
 };
 
@@ -33,6 +35,36 @@ describe('ProtectedResourceRegistry', () => {
 			expect(registry.getById('instance-mcp')).toBe(resourceA);
 			expect(registry.getById('workflow-trigger')).toBe(resourceB);
 			expect(registry.getById('unknown')).toBeUndefined();
+		});
+
+		it('should resolve a resource by any of its declared resource URLs', async () => {
+			const multiUrlResource: ProtectedResource = {
+				id: 'instance-mcp-multi',
+				getResourceUrl: () => 'https://n8n-mcp.example.com/mcp-server/http',
+				getResourceUrls: () => [
+					'https://n8n-mcp.example.com/mcp-server/http',
+					'https://n8n.example.com/mcp-server/http',
+				],
+				getAudiences: () => [
+					'https://n8n-mcp.example.com/mcp-server/http',
+					'https://n8n.example.com/mcp-server/http',
+				],
+				authorize: async () => true,
+				scopes: [],
+			};
+			const multiRegistry = new ProtectedResourceRegistry(mock<Logger>());
+			multiRegistry.register(multiUrlResource);
+
+			expect(
+				await multiRegistry.getByResourceUrl('https://n8n-mcp.example.com/mcp-server/http'),
+			).toBe(multiUrlResource);
+			expect(await multiRegistry.getByResourceUrl('https://n8n.example.com/mcp-server/http/')).toBe(
+				multiUrlResource,
+			);
+			expect(
+				await multiRegistry.getByResourceUrl('https://other.example.com/mcp-server/http'),
+			).toBeUndefined();
+			expect(await multiRegistry.getByResourcePath('/mcp-server/http')).toBe(multiUrlResource);
 		});
 
 		it('should resolve resources by resource URL, ignoring trailing slashes', async () => {

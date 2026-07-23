@@ -9,7 +9,7 @@ import type {
 } from '@n8n/backend-network';
 import { OutboundHttp } from '@n8n/backend-network';
 import { mock } from 'vitest-mock-extended';
-import { createResultError, createResultOk } from 'n8n-workflow';
+import { createResultError, createResultOk } from '@n8n/utils/result';
 import dns from 'node:dns';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo, LookupFunction } from 'node:net';

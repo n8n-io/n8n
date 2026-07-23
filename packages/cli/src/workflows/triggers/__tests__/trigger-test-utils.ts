@@ -46,6 +46,20 @@ export function createNodeTypes() {
 		if (type === 'webhook') {
 			return { description: { ...description, name: 'webhook' }, webhook: vi.fn() } as never;
 		}
+		if (type === 'poll-webhook') {
+			return {
+				description: { ...description, name: 'poll-webhook' },
+				poll: vi.fn(),
+				webhook: vi.fn(),
+			} as never;
+		}
+		if (type === 'trigger-webhook') {
+			return {
+				description: { ...description, name: 'trigger-webhook' },
+				trigger: vi.fn(),
+				webhook: vi.fn(),
+			} as never;
+		}
 
 		return { description: { ...description, name: type } } as never;
 	});

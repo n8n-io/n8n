@@ -93,7 +93,7 @@ test.describe(
 			await n8n.ndv.outputPanel.switchDisplayMode('table');
 
 			// Default hover state should have first item from input node highlighted
-			const hoveringItem = n8n.page.locator('[data-test-id="hovering-item"]');
+			const hoveringItem = n8n.ndv.inputPanel.getHoveringItems();
 			await expect(hoveringItem).toContainText('1111');
 			await expect(n8n.ndv.getParameterExpressionPreviewValue()).toContainText('1111');
 

@@ -2,6 +2,7 @@ export interface PreviewWorkflowNodeIcon {
 	type: 'icon' | 'file';
 	name?: string;
 	src?: string;
+	lightInvert?: boolean;
 }
 
 export interface PreviewWorkflowNode {

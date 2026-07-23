@@ -3,7 +3,6 @@ import type { CredentialsEntity, User } from '@n8n/db';
 import { Project, SharedCredentials, SharedCredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
@@ -15,6 +14,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
+import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
 import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { validateAccessToReferencedSecretProviders } from './validation';
@@ -31,6 +31,7 @@ export class EnterpriseCredentialsService {
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
 		private readonly licenseState: LicenseState,
+		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
 	) {}
 
 	async shareWithProjects(
@@ -209,6 +210,12 @@ export class EnterpriseCredentialsService {
 			);
 		}
 
+		// Transferring an end-user credential into a project is equivalent to creating
+		// one there, so it must clear the same createEndUser gate.
+		if (credential.isResolvable) {
+			await this.credentialsService.ensureCanManageEndUserCredential(user, destinationProject.id);
+		}
+
 		// 6. validate that the destination project has access to all external secret providers
 		if (
 			this.licenseState.isExternalSecretsLicensed() &&
@@ -223,8 +230,11 @@ export class EnterpriseCredentialsService {
 			);
 		}
 
+		// 7. projects losing access — the move drops all their sharings
+		const affectedProjectIds = [...new Set(credential.shared.map((s) => s.projectId))];
+
 		await this.sharedCredentialsRepository.manager.transaction(async (trx) => {
-			// 7. transfer the credential
+			// 8. transfer the credential
 			// remove all sharings
 			await trx.remove(credential.shared);
 
@@ -235,6 +245,13 @@ export class EnterpriseCredentialsService {
 					projectId: destinationProject.id,
 					role: 'credential:owner',
 				}),
+			);
+
+			// 9. drop connections for members who lost access in the new project
+			await this.connectionStatusProxy.cleanupOrphanedEntriesForProjects(
+				credential.id,
+				affectedProjectIds,
+				trx,
 			);
 		});
 	}

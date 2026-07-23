@@ -238,6 +238,8 @@ interface PathResolutionResult {
 	error?: string;
 	requiresDiscriminators?: boolean;
 	availableDiscriminators?: { resources?: string[]; modes?: string[] };
+	/** All mode variants, returned when a mode-split node is requested without a mode. */
+	modeVariants?: Array<{ mode: string; filePath: string }>;
 }
 
 /**
@@ -251,8 +253,21 @@ function resolveResourceOperationPath(
 	discriminators?: { resource?: string; operation?: string },
 ): PathResolutionResult {
 	if (!discriminators?.resource || !discriminators?.operation) {
+		// Full resource-to-operations map so the retry succeeds in one shot.
+		const index = (available.resources ?? [])
+			.map((resource) => {
+				try {
+					const ops = readdirSync(join(nodeDir, targetVersion, `resource_${toSnakeCase(resource)}`))
+						.filter((f) => f.startsWith('operation_') && f.endsWith('.ts'))
+						.map((f) => f.replace('operation_', '').replace('.ts', ''));
+					return `${resource} (${ops.join(', ')})`;
+				} catch {
+					return resource;
+				}
+			})
+			.join('; ');
 		return {
-			error: `Error: Node '${nodeId}' requires resource and operation discriminators. Available resources: ${available.resources?.join(', ')}. Use search_nodes to see all options.`,
+			error: `Error: Node '${nodeId}' requires resource and operation discriminators. Available resource (operations): ${index}.`,
 			requiresDiscriminators: true,
 			availableDiscriminators: available,
 		};
@@ -319,8 +334,21 @@ function resolveModePath(
 	mode?: string,
 ): PathResolutionResult {
 	if (!mode) {
+		// All variants instead of an error: mode-split nodes have few, small variants.
+		const variants = (available.modes ?? [])
+			.filter((m) => isValidPathComponent(m))
+			.sort()
+			.map((m) => ({
+				mode: m,
+				filePath: join(nodeDir, targetVersion, `mode_${toSnakeCase(m)}.ts`),
+			}))
+			.filter(
+				(variant) =>
+					validatePathWithinBase(variant.filePath, nodeDir) && existsSync(variant.filePath),
+			);
+		if (variants.length > 0) return { modeVariants: variants };
 		return {
-			error: `Error: Node '${nodeId}' requires mode discriminator. Available modes: ${available.modes?.join(', ')}. Use search_nodes to see all options.`,
+			error: `Error: Node '${nodeId}' requires mode discriminator. Available modes: ${available.modes?.join(', ')}.`,
 			requiresDiscriminators: true,
 			availableDiscriminators: available,
 		};
@@ -458,7 +486,7 @@ function getNodeFilePath(
 /**
  * Get the type definition for a single node ID, optionally for a specific version and discriminators
  */
-function getNodeTypeDefinition(
+export function getNodeTypeDefinition(
 	nodeId: string,
 	version?: string,
 	nodeDefinitionDirs?: string[],
@@ -495,6 +523,24 @@ function getNodeTypeDefinition(
 			availableVersions: availableVersions.length > 0 ? availableVersions : undefined,
 			error: pathResult.error,
 		};
+	}
+
+	if (pathResult.modeVariants) {
+		try {
+			const sections = pathResult.modeVariants.map(
+				(variant) => `// ── mode: ${variant.mode} ──\n${readFileSync(variant.filePath, 'utf-8')}`,
+			);
+			const header = `// No mode discriminator was given — definitions for all ${String(pathResult.modeVariants.length)} modes of '${nodeId}' follow (pass \`mode\` to fetch a single one).`;
+			const actualVersion = pathResult.modeVariants[0].filePath.match(/\/(v\d+)(?:\/|\.ts)/)?.[1];
+			return { nodeId, version: actualVersion, content: [header, ...sections].join('\n\n') };
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+			return {
+				nodeId,
+				content: '',
+				error: `Error reading node definition for '${nodeId}': ${errorMessage}`,
+			};
+		}
 	}
 
 	if (!pathResult.filePath) {

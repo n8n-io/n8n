@@ -8,23 +8,23 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 @BackendModule({ name: 'mcp-registry' })
 export class McpRegistryModule implements ModuleInterface {
 	async init() {
-		const { McpRegistryService } = await import('./registry/mcp-registry.service');
+		const { McpRegistryService } = await import('./registry/mcp-registry.service.js');
 		await Container.get(McpRegistryService).init();
 
-		await import('./mcp-registry.controller');
+		await import('./mcp-registry.controller.js');
 
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
-			await import('./mcp-registry-test.controller');
+			await import('./mcp-registry-test.controller.js');
 		}
 	}
 
 	async entities() {
-		const { McpRegistryServerEntity } = await import('./registry/mcp-registry-server.entity');
+		const { McpRegistryServerEntity } = await import('./registry/mcp-registry-server.entity.js');
 		return [McpRegistryServerEntity];
 	}
 
 	async nodeLoaders() {
-		const { McpRegistryNodeLoader } = await import('./mcp-registry-node-loader');
+		const { McpRegistryNodeLoader } = await import('./mcp-registry-node-loader.js');
 
 		return [
 			new McpRegistryNodeLoader(Container.get(LoadNodesAndCredentials), Container.get(Logger)),

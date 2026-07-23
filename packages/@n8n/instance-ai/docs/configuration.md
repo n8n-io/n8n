@@ -8,11 +8,10 @@ All Instance AI configuration is done via environment variables.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-4-8` | LLM model in `provider/model` format. Must be set for the module to enable. |
+| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-4-8` | LLM model in `provider/model` format for built-in providers, or a bare model name when `N8N_INSTANCE_AI_MODEL_URL` is set. Must be set for the module to enable. |
 | `N8N_INSTANCE_AI_MODEL_URL` | string | `''` | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:1234/v1` for LM Studio). When set, model requests go to this URL instead of the built-in provider. |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | string | `''` | API key for the custom model endpoint. Optional — some local servers don't require one. |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
-| `N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS` | number | `100` | Maximum LLM reasoning steps for sub-agents spawned via delegate tool |
 | `N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED` | boolean | `false` | Disable the local gateway (filesystem, shell, browser) for all users |
 
 ### Tracing
@@ -29,6 +28,7 @@ All Instance AI configuration is done via environment variables.
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED` | boolean | `false` | Capture orchestrator LLM steps and workflow code snapshots for the dev debug panel and eval LLM debug reports. |
+| `N8N_INSTANCE_AI_EVAL_TIMING` | boolean | `false` | When `true`, logs a per-execution `[EvalMock][timing]` phase breakdown (hints / bypass-pin / http-mock / ai-turn) for the eval mock-execution path, to attribute mocked-execution latency. A no-op otherwise. |
 
 ### Memory
 
@@ -97,7 +97,7 @@ Observer and Reflector use the same model as the orchestrator agent (see `@n8n/a
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_THREAD_TTL_DAYS` | number | `90` | Conversation thread TTL in days. Threads older than this are auto-expired. 0 = no expiration. |
+| `N8N_INSTANCE_AI_THREAD_TTL_DAYS` | number | `30` | Conversation thread TTL in days. Threads older than this are auto-expired. 0 = no expiration. |
 | `N8N_INSTANCE_AI_PRUNE_INTERVAL` | number | `3600000` | Interval in ms between scheduled pruning runs on the leader. Prunes stale checkpoints, expired pending confirmations, and expired conversation threads. 0 = disabled. |
 | `N8N_INSTANCE_AI_SNAPSHOT_RETENTION` | number | `86400000` | Retention period in ms for orphaned workflow snapshots before pruning. |
 | `N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT` | number | `86400000` | Timeout in ms for HITL confirmation requests. 0 = no timeout. |
@@ -106,7 +106,7 @@ Observer and Reflector use the same model as the orchestrator agent (see `@n8n/a
 
 Agent output is scanned for secrets/PII and redacted before it reaches the user.
 The scan covers streamed assistant text, reasoning, and tool results/errors, for
-both the orchestrator and delegated sub-agents. A filtering event (categories
+both the orchestrator and eval-setup background tasks. A filtering event (categories
 and counts only — never the values) is logged whenever a redaction occurs.
 
 | Variable | Type | Default | Description |
@@ -145,8 +145,7 @@ N8N_INSTANCE_AI_MCP_SERVERS="github=https://mcp.github.com/sse,database=https://
 ```
 
 Each MCP server's tools are merged with the native tools and made available to
-the orchestrator agent. Sub-agents currently do not receive MCP tools — only
-native tools specified in the `delegate` call.
+the orchestrator agent. Sub-agents currently do not receive MCP tools.
 
 ## Storage
 
@@ -167,7 +166,16 @@ The event bus transport is selected automatically:
 - **Single instance**: In-process `EventEmitter` — zero infrastructure
 - **Queue mode**: Redis Pub/Sub — uses n8n's existing Redis connection
 
-Event persistence always uses thread storage regardless of transport.
+Event persistence is controlled by `N8N_INSTANCE_AI_DURABLE_LOG` (default
+`true` since Gate A of the durable-log rollout; pre-existing runs are
+backfilled by migration). On, coalesced step-level facts (completed
+text/reasoning blocks, tool calls and results, run lifecycle) are appended to
+the `instance_ai_events` table and replay reads the database; token deltas
+are never persisted. Rows cascade-delete with their thread
+(`N8N_INSTANCE_AI_THREAD_TTL_DAYS`). Setting it to `false` is the rollback
+switch until the legacy paths sunset at Gate B: events then live only in a
+bounded in-memory buffer per thread (500 events / 2 MB, FIFO-evicted; ids
+reset on restart, so replay does not survive a restart).
 
 Runtime behavior:
 - One active run per thread. Additional `POST /instance-ai/chat/:threadId`
@@ -209,6 +217,7 @@ N8N_INSTANCE_AI_GATEWAY_API_KEY=my-secret-key
 # User runs: npx @n8n/computer-use
 
 # With custom OpenAI-compatible endpoint (e.g. LM Studio, Ollama)
+N8N_INSTANCE_AI_MODEL=your-tool-capable-model
 N8N_INSTANCE_AI_MODEL_URL=http://localhost:1234/v1
 
 # Output filtering — secrets + email only, with a custom placeholder

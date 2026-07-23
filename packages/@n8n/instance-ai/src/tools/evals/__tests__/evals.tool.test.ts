@@ -219,7 +219,11 @@ function makeCtx(
 		userId: 'u1',
 		workflowService: {
 			getAsWorkflowJSON: vi.fn().mockResolvedValue(wf),
-			updateFromWorkflowJSON: vi.fn().mockResolvedValue(undefined),
+			updateFromWorkflowJSON: vi.fn().mockResolvedValue({
+				id: 'w1',
+				versionId: 'v-1',
+				checksum: 'checksum-1',
+			}),
 		},
 		dataTableService: {
 			create: vi.fn().mockResolvedValue({

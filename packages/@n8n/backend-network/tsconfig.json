@@ -1,5 +1,5 @@
 {
-	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"extends": "@n8n/typescript-config/tsconfig.common.go.json",
 	"compilerOptions": {
 		"types": ["node", "vitest/globals"],
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",

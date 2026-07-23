@@ -9,14 +9,6 @@ describe('toPackagesError', () => {
 		expect(toPackagesError(error)).toBe(error);
 	});
 
-	it('adds a beta-enablement hint for a 404', () => {
-		const result = toPackagesError(new ApiError(404, 'Not Found'));
-
-		expect(result).toBeInstanceOf(ApiError);
-		expect((result as ApiError).statusCode).toBe(404);
-		expect((result as ApiError).hint).toContain('N8N_PUBLIC_API_PACKAGES_ENABLED=true');
-	});
-
 	it('lists workflow-conflict issues for a 409', () => {
 		const result = toPackagesError(
 			new ApiError(409, 'Import blocked', undefined, {
@@ -53,6 +45,24 @@ describe('toPackagesError', () => {
 
 		const hint = (result as ApiError).hint ?? '';
 		expect(hint).toContain('credential c1 unresolved (not_found)');
+		expect(hint).toContain('w1, w2');
+	});
+
+	it('lists variable-unresolved issues for a 422', () => {
+		const result = toPackagesError(
+			new ApiError(422, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'variable-unresolved',
+						name: 'var1',
+						usedByWorkflows: ['w1', 'w2'],
+					},
+				],
+			}),
+		);
+
+		const hint = (result as ApiError).hint ?? '';
+		expect(hint).toContain('variable "var1" unresolved');
 		expect(hint).toContain('w1, w2');
 	});
 

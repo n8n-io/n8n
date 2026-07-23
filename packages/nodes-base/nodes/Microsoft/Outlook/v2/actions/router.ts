@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, JsonObject } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import * as calendar from './calendar';
 import * as contact from './contact';
@@ -11,6 +11,7 @@ import * as message from './message';
 import * as messageAttachment from './messageAttachment';
 import type { MicrosoftOutlook } from './node.type';
 import { configureWaitTillDate } from '../../../../../utils/sendAndWait/configureWaitTillDate.util';
+import { stampItemIndexOnError } from '../../../GenericFunctions';
 
 export async function router(this: IExecuteFunctions) {
 	const items = this.getInputData();
@@ -90,14 +91,8 @@ export async function router(this: IExecuteFunctions) {
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			//NodeApiError will be missing the itemIndex, add it
-			if (error instanceof NodeApiError && error?.context?.itemIndex === undefined) {
-				if (error.context === undefined) {
-					error.context = {};
-				}
-				error.context.itemIndex = i;
-			}
-			throw error;
+			// A NodeError from the transport may be missing the itemIndex, add it
+			throw stampItemIndexOnError(error, i);
 		}
 	}
 	return [returnData];

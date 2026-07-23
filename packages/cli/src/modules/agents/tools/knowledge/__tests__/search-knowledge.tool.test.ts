@@ -6,16 +6,14 @@ import { createKnowledgeRetrievalTools } from '../search-knowledge.tool';
 
 const projectId = 'project-1';
 const agentId = 'agent-1';
-const userId = 'user-1';
 
 function buildTool(
 	sandboxService: AgentKnowledgeSandboxService,
-	toolName: 'search_text' | 'read_file',
+	toolName: 'find_file' | 'search_text' | 'read_file',
 ): BuiltTool {
 	const tool = createKnowledgeRetrievalTools({
 		projectId,
 		agentId,
-		userId,
 		sandboxService,
 	})
 		.map((builder) => builder.build())
@@ -35,7 +33,25 @@ function getToolHandler(tool: BuiltTool): NonNullable<BuiltTool['handler']> {
 }
 
 describe('createKnowledgeRetrievalTools', () => {
-	it('searches knowledge with the user-scoped sandbox even when memory uses an integration resource', async () => {
+	it('finds files with the project-scoped sandbox using a catch-all pattern', async () => {
+		const sandboxService = mock<AgentKnowledgeSandboxService>();
+		sandboxService.globKnowledgeFiles.mockResolvedValue({
+			files: [],
+			limit: 20,
+			offset: 0,
+			hasMore: false,
+		});
+		const tool = buildTool(sandboxService, 'find_file');
+		const input = { pattern: '*' };
+
+		await getToolHandler(tool)(input, {
+			persistence: { threadId: 'thread-1', resourceId: 'integration:slack:U123' },
+		});
+
+		expect(sandboxService.globKnowledgeFiles).toHaveBeenCalledWith(projectId, agentId, input);
+	});
+
+	it('searches knowledge with the project-scoped sandbox even when memory uses an integration resource', async () => {
 		const sandboxService = mock<AgentKnowledgeSandboxService>();
 		sandboxService.searchKnowledge.mockResolvedValue({
 			outputMode: 'content',
@@ -51,10 +67,10 @@ describe('createKnowledgeRetrievalTools', () => {
 			persistence: { threadId: 'thread-1', resourceId: 'integration:slack:U123' },
 		});
 
-		expect(sandboxService.searchKnowledge).toHaveBeenCalledWith(projectId, agentId, userId, input);
+		expect(sandboxService.searchKnowledge).toHaveBeenCalledWith(projectId, agentId, input);
 	});
 
-	it('reads knowledge with the user-scoped sandbox even when memory uses an integration resource', async () => {
+	it('reads knowledge with the project-scoped sandbox even when memory uses an integration resource', async () => {
 		const sandboxService = mock<AgentKnowledgeSandboxService>();
 		sandboxService.readKnowledge.mockResolvedValue({
 			file: 'notes.txt',
@@ -70,6 +86,6 @@ describe('createKnowledgeRetrievalTools', () => {
 			persistence: { threadId: 'thread-1', resourceId: 'integration:slack:U123' },
 		});
 
-		expect(sandboxService.readKnowledge).toHaveBeenCalledWith(projectId, agentId, userId, input);
+		expect(sandboxService.readKnowledge).toHaveBeenCalledWith(projectId, agentId, input);
 	});
 });

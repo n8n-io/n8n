@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { within } from '@testing-library/vue';
-import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import ProjectRolesView from './ProjectRolesView.vue';
@@ -114,26 +114,6 @@ describe('ProjectRolesView', () => {
 		settingsStore.isCustomRolesFeatureEnabled = true;
 	});
 
-	it('should render the page heading and Add Role button', () => {
-		rolesStore.processedProjectRoles = [...mockSystemRoles, ...mockCustomRoles];
-
-		const { getByText, getByRole } = renderComponent();
-
-		expect(getByText('Project roles')).toBeInTheDocument();
-		expect(getByRole('button', { name: 'Add role' })).toBeInTheDocument();
-	});
-
-	it('should navigate to new role page when Add Role button is clicked', async () => {
-		rolesStore.processedProjectRoles = [];
-
-		const { getByRole } = renderComponent();
-		const addButton = getByRole('button', { name: 'Add role' });
-
-		await userEvent.click(addButton);
-
-		expect(mockPush).toHaveBeenCalledWith({ name: VIEWS.PROJECT_NEW_ROLE });
-	});
-
 	it('should render data table with correct headers', () => {
 		rolesStore.processedProjectRoles = [];
 
@@ -216,11 +196,7 @@ describe('ProjectRolesView', () => {
 	it('should render empty state when no roles are present', () => {
 		rolesStore.processedProjectRoles = [];
 
-		const { getByText, getByRole } = renderComponent();
-
-		// Should still show the heading and add button
-		expect(getByText('Project roles')).toBeInTheDocument();
-		expect(getByRole('button', { name: 'Add role' })).toBeInTheDocument();
+		const { getByText } = renderComponent();
 
 		// Data table should be present but empty
 		expect(getByText('Name')).toBeInTheDocument();
@@ -350,7 +326,7 @@ describe('ProjectRolesView', () => {
 				},
 			);
 
-			expect(rolesStore.deleteRole).toHaveBeenCalledWith(mockRole.slug);
+			expect(rolesStore.deleteRole).toHaveBeenCalledWith(mockRole.slug, undefined);
 			expect(rolesStore.roles.project).not.toContain(mockRole);
 			expect(mockShowMessage).toHaveBeenCalledWith({ title: 'Role deleted', type: 'success' });
 		});
@@ -395,7 +371,7 @@ describe('ProjectRolesView', () => {
 			const deleteButton = getByTestId('action-delete');
 			await userEvent.click(deleteButton);
 
-			expect(rolesStore.deleteRole).toHaveBeenCalledWith(mockRole.slug);
+			expect(rolesStore.deleteRole).toHaveBeenCalledWith(mockRole.slug, undefined);
 			expect(mockShowError).toHaveBeenCalledWith(error, 'Error deleting role');
 			expect(rolesStore.roles.project).toHaveLength(1);
 			expect(rolesStore.roles.project[0]).toStrictEqual(mockRole);
@@ -421,7 +397,7 @@ describe('ProjectRolesView', () => {
 			const deleteButton = getByTestId('action-delete');
 			await userEvent.click(deleteButton);
 
-			expect(rolesStore.deleteRole).toHaveBeenCalledWith('non-existent-role');
+			expect(rolesStore.deleteRole).toHaveBeenCalledWith('non-existent-role', undefined);
 			expect(mockShowMessage).toHaveBeenCalledWith({ title: 'Role deleted', type: 'success' });
 			// Store should remain unchanged since role wasn't found
 			expect(rolesStore.roles.project).toHaveLength(1);

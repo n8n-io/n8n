@@ -102,6 +102,22 @@ describe('Agent isolated runtimes', () => {
 		await internals.cleanupRuntime(active);
 	});
 
+	it('merges default and per-run providerOptions by provider instead of overwriting', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('ok'));
+		const agent = new Agent('agent')
+			.model('openai/gpt-4o-mini')
+			.instructions('test')
+			.configuration({ providerOptions: { openai: { promptCacheRetention: '24h' } } });
+
+		await agent.generate('hello', { providerOptions: { openai: { promptCacheKey: 'k' } } });
+
+		const callArgs = generateText.mock.calls[0][0] as { providerOptions: Record<string, unknown> };
+		expect(callArgs.providerOptions.openai).toEqual({
+			promptCacheRetention: '24h',
+			promptCacheKey: 'k',
+		});
+	});
+
 	it('cleans up the active runtime when a wrapped stream is cancelled', async () => {
 		const agent = new Agent('agent').model('openai/gpt-4o-mini').instructions('test');
 		const internals = agent as unknown as AgentInternals;

@@ -110,7 +110,7 @@ import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/compon
 import CanvasStopWaitingForWebhookButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/app/components/NodeViewUnfinishedWorkflowMessage.vue';
@@ -130,11 +130,9 @@ import { useLogsStore } from '@/app/stores/logs.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import CanvasChatButton from '@/features/workflows/canvas/components/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
-import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
 import { useEvaluationsWizardSidepanelStore } from '@/features/ai/evaluation.ee/wizardSidepanel.store';
 import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
 import EvaluationsCanvasInfoCard from '@/features/ai/evaluation.ee/components/EvaluationsCanvasInfoCard/EvaluationsCanvasInfoCard.vue';
-import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
@@ -215,8 +213,6 @@ const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const collaborationStore = useCollaborationStore();
-const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
-const chatPanelStore = useChatPanelStore();
 const chatHubPanelStore = useChatHubPanelStore();
 const workflowHelpers = useWorkflowHelpers();
 
@@ -306,7 +302,15 @@ const isNDVV2 = computed(() => true);
 
 // Per-editor host overrides (AI features + read-only). The artifact host marks
 // the canvas read-only while a workflow-builder agent mutates the workflow.
-const { readOnly: externalReadOnly, expandGroups: externalExpandGroups } = useEditorContext();
+const {
+	readOnly: externalReadOnly,
+	expandGroups: externalExpandGroups,
+	executionButtonType,
+} = useEditorContext();
+
+const runWorkflowButtonType = computed(() =>
+	isDemoRoute.value ? 'secondary' : executionButtonType.value,
+);
 
 const isCanvasReadOnly = computed(() => {
 	return (
@@ -375,6 +379,18 @@ function initializeRoute() {
 		evaluationsWizardSidepanelStore.open(0);
 	}
 
+	// A test case seeded from the executions page hands off a pending execution
+	// via the wizard store, then navigates here. Open the Tests panel from the
+	// editor route — the only route that renders the focus panel — so the handoff
+	// doesn't depend on focus-panel state set before navigation.
+	if (
+		evaluationsWizardSidepanelStore.pendingSeedExecution &&
+		isEvaluationsWizardSidepanelEnabled.value
+	) {
+		focusPanelStore.setSelectedTab('evaluations');
+		focusPanelStore.openFocusPanel();
+	}
+
 	// Handle debug mode event binding (data loading is handled by WorkflowLayout)
 	// Always remove first to prevent duplicate listeners, then add only if on debug route
 	canvasEventBus.off('saved:workflow', onSaveFromWithinExecutionDebug);
@@ -393,6 +409,29 @@ function updateNodesIssues() {
 	nodeHelpers.updateNodesCredentialsIssues();
 	nodeHelpers.updateNodesParameterIssues();
 }
+
+// End-user credential validity depends on workflow-wide state — the resolver and
+// the enabled trigger set — yet credential issues are cached per node. Recompute
+// all nodes' credential issues whenever that dependency changes so a stale message
+// can't linger after switching the resolver or changing/toggling/adding a trigger.
+watch(
+	() => {
+		const doc = workflowDocumentStore?.value;
+		const triggerSignature = (doc?.workflowTriggerNodes ?? [])
+			.filter((trigger) => !trigger.disabled)
+			.map((trigger) => `${trigger.type}:${JSON.stringify(trigger.parameters ?? {})}`)
+			.join('|');
+		return `${doc?.settings?.credentialResolverId ?? ''}#${triggerSignature}`;
+	},
+	() => {
+		// The load path already computes credential issues once after the workflow
+		// loads (updateNodesIssues). Skip while still loading so this doesn't churn
+		// node issues during the document store's transient setup window, where
+		// NDV-dependent render code can still throw.
+		if (isLoading.value) return;
+		nodeHelpers.updateNodesCredentialsIssues();
+	},
+);
 
 /**
  * Workflow
@@ -1008,9 +1047,9 @@ function onCreateSticky() {
 
 function onClickConnectionAdd(connection: Connection) {
 	const { type, mode } = parseCanvasConnectionHandleString(connection.sourceHandle);
-	const isAddBetwenTool =
+	const isAddBetweenTool =
 		type === NodeConnectionTypes.AiTool && mode === CanvasConnectionMode.Output;
-	if (isAddBetwenTool) {
+	if (isAddBetweenTool) {
 		nodeCreatorStore.openNodeCreatorForConnectingNode({
 			workflowId: workflowId.value,
 			connection,
@@ -1666,18 +1705,6 @@ function showAddFirstStepIfEnabled() {
 	}
 }
 
-async function handlePendingBuilderPrompt() {
-	const pendingPrompt = emptyStateBuilderPromptStore.consumePendingPrompt();
-	if (pendingPrompt) {
-		await chatPanelStore.open({ mode: 'builder', showCoachmark: false });
-		await builderStore.sendChatMessage({
-			text: pendingPrompt,
-			initialGeneration: true,
-			source: 'empty-state',
-		});
-	}
-}
-
 /**
  * Routing
  */
@@ -1932,9 +1959,6 @@ onMounted(async () => {
 				updateNodeRoute(routeNodeId.value);
 			}
 		}, 500);
-
-		// Check for pending builder prompt from empty state experiment
-		void handlePendingBuilderPrompt();
 	}
 
 	void usersStore.showPersonalizationSurvey();
@@ -2000,6 +2024,7 @@ onBeforeUnmount(() => {
 			@update:logs:input-open="logsStore.toggleInputOpen"
 			@update:logs:output-open="logsStore.toggleOutputOpen"
 			@update:has-range-selection="canvasStore.setHasRangeSelection"
+			@update:selected-group="canvasStore.setSelectedGroupId"
 			@open:sub-workflow="onOpenSubWorkflow"
 			@click:node="onClickNode"
 			@click:node:add="onClickNodeAdd"
@@ -2048,7 +2073,7 @@ onBeforeUnmount(() => {
 					:trigger-nodes="triggerNodes"
 					:get-node-type="nodeTypesStore.getNodeType"
 					:selected-trigger-node-name="workflowExecutionState.selectedTriggerNodeName"
-					:embedded="isDemoRoute"
+					:type="runWorkflowButtonType"
 					@mouseenter="onRunWorkflowButtonMouseEnter"
 					@mouseleave="onRunWorkflowButtonMouseLeave"
 					@execute="runEntireWorkflow('main')"

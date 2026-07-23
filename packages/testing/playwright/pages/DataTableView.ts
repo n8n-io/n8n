@@ -13,7 +13,7 @@ export class DataTableView extends BasePage {
 	readonly actionToggle = new ActionToggle(this.page);
 
 	getEmptyStateActionBox() {
-		return this.page.getByTestId('empty-data-table-action-box');
+		return this.getResourcesListEmptyState();
 	}
 
 	getEmptyStateActionBoxButton() {

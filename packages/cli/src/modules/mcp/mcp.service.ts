@@ -1,5 +1,10 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { MCP_APPS_FLAG, MCP_APPS_VARIANT_CONTROL, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
+import {
+	MCP_APPS_FLAG,
+	MCP_APPS_VARIANT_CONTROL,
+	MCP_APPS_VARIANT_ENABLED,
+	MCP_CANVAS_GROUPS_FLAG,
+} from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
@@ -16,13 +21,10 @@ import {
 	WORKFLOW_PREVIEW_APP_URI,
 	type McpAppTelemetryConfig,
 } from '@n8n/mcp-apps/server';
+import { lazyImport } from '@n8n/utils/lazy-import';
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceSettings } from 'n8n-core';
-import {
-	createDeferredPromise,
-	ManualExecutionCancelledError,
-	type IDeferredPromise,
-	type IRun,
-} from 'n8n-workflow';
+import { ManualExecutionCancelledError, type FeatureFlags, type IRun } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
@@ -30,14 +32,17 @@ import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
 
+import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
 import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
+import { createListN8nConnectServicesTool } from './tools/list-n8n-connect-services.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
@@ -45,6 +50,7 @@ import { createSearchFoldersTool } from './tools/search-folders.tool';
 import { createSearchProjectsTool } from './tools/search-projects.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
+import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL } from './tools/workflow-builder/constants';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
 import { createExploreNodeResourcesTool } from './tools/workflow-builder/explore-node-resources.tool';
@@ -61,6 +67,7 @@ import { createValidateWorkflowCodeTool } from './tools/workflow-builder/validat
 
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -73,9 +80,10 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
+
 import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
-import type { McpAppsTelemetryVariant, McpClientInfo } from './mcp.types';
+import { getAllowedToolNames } from './mcp-scopes';
+import type { McpAppsTelemetryVariant, McpClientInfo, RegisterToolFn } from './mcp.types';
 import {
 	createAddDataTableColumnTool,
 	createAddDataTableRowsTool,
@@ -85,7 +93,6 @@ import {
 	createRenameDataTableTool,
 	createSearchDataTablesTool,
 } from './tools/data-table';
-import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
 import { createTestWorkflowTool } from './tools/test-workflow.tool';
 
@@ -101,6 +108,13 @@ interface PendingMcpResponse {
 export type McpAppsResolution = {
 	enabled: boolean;
 	variant: McpAppsTelemetryVariant;
+};
+
+/** Per-user resolution of every PostHog-gated MCP feature. */
+export type McpFeatureFlags = {
+	mcpApps: McpAppsResolution;
+	/** Canvas node-group support in the workflow-builder tools. */
+	canvasGroupsEnabled: boolean;
 };
 
 type McpAppTelemetryResolution = {
@@ -148,17 +162,35 @@ export class McpService {
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
+		private readonly aiGatewayService: AiGatewayService,
 		private readonly eventService: EventService,
 	) {}
 
-	async resolveMcpAppsVariant(user: User): Promise<McpAppsResolution> {
-		if (this.globalConfig.endpoints.mcpAppsEnabled) {
-			return { enabled: true, variant: 'env_override' };
-		}
+	/**
+	 * Resolves every PostHog-gated MCP feature for a user with a single flags
+	 * lookup. Env overrides are force-enable-only and take precedence over
+	 * PostHog; the lookup is skipped entirely when every feature is overridden.
+	 */
+	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
+		const { mcpAppsEnabled, mcpCanvasGroupsEnabled } = this.globalConfig.endpoints;
 
 		// `PostHogClient.getFeatureFlags` swallows PostHog errors internally and
-		// returns `{}`, so a transient outage surfaces here as `unassigned`.
-		const flags = await this.postHogClient.getFeatureFlags(user);
+		// returns `{}`, so a transient outage fails closed (feature off, MCP Apps
+		// surfacing as `unassigned`).
+		const flags =
+			mcpAppsEnabled && mcpCanvasGroupsEnabled
+				? undefined
+				: await this.postHogClient.getFeatureFlags(user);
+
+		return {
+			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
+			canvasGroupsEnabled: mcpCanvasGroupsEnabled || flags?.[MCP_CANVAS_GROUPS_FLAG] === true,
+		};
+	}
+
+	private resolveMcpApps(envOverride: boolean, flags?: FeatureFlags): McpAppsResolution {
+		if (envOverride) return { enabled: true, variant: 'env_override' };
+
 		const raw = flags?.[MCP_APPS_FLAG];
 		if (raw === MCP_APPS_VARIANT_ENABLED) return { enabled: true, variant: 'variant' };
 		if (raw === MCP_APPS_VARIANT_CONTROL) return { enabled: false, variant: 'control' };
@@ -265,16 +297,44 @@ export class McpService {
 		};
 	}
 
-	async getServer(user: User, mcpAppsEnabled: boolean, clientInfo?: McpClientInfo) {
-		const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
+	/**
+	 * Builds a per-request MCP server exposing only the tools covered by the
+	 * token's granted scopes. `grantedScopes: undefined` (API keys, legacy
+	 * tokens) exposes all tools. Filtering registration is sufficient
+	 * enforcement: the server is rebuilt per request, so an unregistered tool
+	 * is neither listed nor callable.
+	 *
+	 * `featureFlags` is the caller's per-request resolution (see
+	 * `resolveFeatureFlags`); this method trusts it and never queries PostHog.
+	 */
+	async getServer(
+		user: User,
+		featureFlags: McpFeatureFlags,
+		clientInfo?: McpClientInfo,
+		grantedScopes?: string[],
+	) {
+		const { McpServer } = await lazyImport<
+			typeof import('@modelcontextprotocol/sdk/server/mcp.js')
+		>(async () => await import('@modelcontextprotocol/sdk/server/mcp.js'));
+
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
+		const n8nConnectAvailable = builderEnabled
+			? (await this.aiGatewayService.isAvailable()).available
+			: false;
+		const allowedToolNames = getAllowedToolNames(grantedScopes);
+		// The builder walkthrough is only useful when the grant can actually
+		// create workflows; a read-only grant gets the plain intro instead of
+		// steps referencing tools it cannot call.
+		const builderInstructionsEnabled =
+			builderEnabled &&
+			(allowedToolNames?.has(MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName) ?? true);
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',
 				version: builderEnabled ? '1.1.0' : '1.0.0',
 			},
 			{
-				instructions: getMcpInstructions(builderEnabled),
+				instructions: getMcpInstructions(builderInstructionsEnabled, n8nConnectAvailable),
 			},
 		);
 
@@ -282,17 +342,18 @@ export class McpService {
 		// which tool was called, against which workflow, and whether it succeeded.
 		this.instrumentToolUsage(server, user, clientInfo);
 
+		const registerIfAllowed: RegisterToolFn = (tool) => {
+			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;
+			server.registerTool(tool.name, tool.config, tool.handler);
+		};
+
 		// Existing tools
 		const workflowSearchTool = createSearchWorkflowsTool(
 			user,
 			this.workflowService,
 			this.telemetry,
 		);
-		server.registerTool(
-			workflowSearchTool.name,
-			workflowSearchTool.config,
-			workflowSearchTool.handler,
-		);
+		registerIfAllowed(workflowSearchTool);
 
 		const executeWorkflowTool = createExecuteWorkflowTool(
 			user,
@@ -303,11 +364,7 @@ export class McpService {
 			this.workflowsConfig,
 			this.workflowPublishedDataService,
 		);
-		server.registerTool(
-			executeWorkflowTool.name,
-			executeWorkflowTool.config,
-			executeWorkflowTool.handler,
-		);
+		registerIfAllowed(executeWorkflowTool);
 
 		const getExecutionTool = createGetExecutionTool(
 			user,
@@ -315,7 +372,7 @@ export class McpService {
 			this.workflowFinderService,
 			this.telemetry,
 		);
-		server.registerTool(getExecutionTool.name, getExecutionTool.config, getExecutionTool.handler);
+		registerIfAllowed(getExecutionTool);
 
 		const searchExecutionsTool = createSearchExecutionsTool(
 			user,
@@ -323,11 +380,7 @@ export class McpService {
 			this.workflowFinderService,
 			this.telemetry,
 		);
-		server.registerTool(
-			searchExecutionsTool.name,
-			searchExecutionsTool.config,
-			searchExecutionsTool.handler,
-		);
+		registerIfAllowed(searchExecutionsTool);
 
 		const workflowDetailsTool = createWorkflowDetailsTool(
 			user,
@@ -341,12 +394,9 @@ export class McpService {
 			this.telemetry,
 			this.roleService,
 			this.projectService,
+			this.urlService.getTestWebhookBaseUrl(),
 		);
-		server.registerTool(
-			workflowDetailsTool.name,
-			workflowDetailsTool.config,
-			workflowDetailsTool.handler,
-		);
+		registerIfAllowed(workflowDetailsTool);
 
 		const workflowHistoryTool = createGetWorkflowHistoryTool(
 			user,
@@ -354,11 +404,7 @@ export class McpService {
 			this.workflowHistoryService,
 			this.telemetry,
 		);
-		server.registerTool(
-			workflowHistoryTool.name,
-			workflowHistoryTool.config,
-			workflowHistoryTool.handler,
-		);
+		registerIfAllowed(workflowHistoryTool);
 
 		const workflowVersionTool = createGetWorkflowVersionTool(
 			user,
@@ -366,11 +412,7 @@ export class McpService {
 			this.workflowHistoryService,
 			this.telemetry,
 		);
-		server.registerTool(
-			workflowVersionTool.name,
-			workflowVersionTool.config,
-			workflowVersionTool.handler,
-		);
+		registerIfAllowed(workflowVersionTool);
 
 		const publishWorkflowTool = createPublishWorkflowTool(
 			user,
@@ -379,11 +421,7 @@ export class McpService {
 			this.telemetry,
 			this.collaborationService,
 		);
-		server.registerTool(
-			publishWorkflowTool.name,
-			publishWorkflowTool.config,
-			publishWorkflowTool.handler,
-		);
+		registerIfAllowed(publishWorkflowTool);
 
 		const unpublishWorkflowTool = createUnpublishWorkflowTool(
 			user,
@@ -392,11 +430,7 @@ export class McpService {
 			this.telemetry,
 			this.collaborationService,
 		);
-		server.registerTool(
-			unpublishWorkflowTool.name,
-			unpublishWorkflowTool.config,
-			unpublishWorkflowTool.handler,
-		);
+		registerIfAllowed(unpublishWorkflowTool);
 
 		const prepareTestPinDataTool = createPrepareTestPinDataTool(
 			user,
@@ -406,11 +440,7 @@ export class McpService {
 			this.telemetry,
 			this.logger,
 		);
-		server.registerTool(
-			prepareTestPinDataTool.name,
-			prepareTestPinDataTool.config,
-			prepareTestPinDataTool.handler,
-		);
+		registerIfAllowed(prepareTestPinDataTool);
 
 		const testWorkflowTool = createTestWorkflowTool(
 			user,
@@ -421,87 +451,71 @@ export class McpService {
 			this.telemetry,
 			this,
 		);
-		server.registerTool(testWorkflowTool.name, testWorkflowTool.config, testWorkflowTool.handler);
+		registerIfAllowed(testWorkflowTool);
 
 		const listCredentialsTool = createListCredentialsTool(
 			user,
 			this.credentialsService,
 			this.telemetry,
+			this.aiGatewayService,
 		);
-		server.registerTool(
-			listCredentialsTool.name,
-			listCredentialsTool.config,
-			listCredentialsTool.handler,
+
+		const listN8nConnectServicesTool = createListN8nConnectServicesTool(
+			user,
+			this.aiGatewayService,
+			this.telemetry,
 		);
+		registerIfAllowed(listCredentialsTool);
+		registerIfAllowed(listN8nConnectServicesTool);
 
 		if (!this.globalConfig.tags.disabled) {
 			const listTagsTool = createListTagsTool(user, this.tagService, this.telemetry);
-			server.registerTool(listTagsTool.name, listTagsTool.config, listTagsTool.handler);
+			registerIfAllowed(listTagsTool);
 		}
 
 		// Data table tools
 		const dataTableOps = this.dataTableProxyService.makeDataTableOperationsForUser(user);
 
 		const searchDataTablesTool = createSearchDataTablesTool(user, dataTableOps, this.telemetry);
-		server.registerTool(
-			searchDataTablesTool.name,
-			searchDataTablesTool.config,
-			searchDataTablesTool.handler,
-		);
+		registerIfAllowed(searchDataTablesTool);
 
 		const createDataTableTool = createCreateDataTableTool(user, dataTableOps, this.telemetry);
-		server.registerTool(
-			createDataTableTool.name,
-			createDataTableTool.config,
-			createDataTableTool.handler,
-		);
+		registerIfAllowed(createDataTableTool);
 
 		const renameDataTableTool = createRenameDataTableTool(user, dataTableOps, this.telemetry);
-		server.registerTool(
-			renameDataTableTool.name,
-			renameDataTableTool.config,
-			renameDataTableTool.handler,
-		);
+		registerIfAllowed(renameDataTableTool);
 
 		const addDataTableColumnTool = createAddDataTableColumnTool(user, dataTableOps, this.telemetry);
-		server.registerTool(
-			addDataTableColumnTool.name,
-			addDataTableColumnTool.config,
-			addDataTableColumnTool.handler,
-		);
+		registerIfAllowed(addDataTableColumnTool);
 
 		const deleteDataTableColumnTool = createDeleteDataTableColumnTool(
 			user,
 			dataTableOps,
 			this.telemetry,
 		);
-		server.registerTool(
-			deleteDataTableColumnTool.name,
-			deleteDataTableColumnTool.config,
-			deleteDataTableColumnTool.handler,
-		);
+		registerIfAllowed(deleteDataTableColumnTool);
 
 		const renameDataTableColumnTool = createRenameDataTableColumnTool(
 			user,
 			dataTableOps,
 			this.telemetry,
 		);
-		server.registerTool(
-			renameDataTableColumnTool.name,
-			renameDataTableColumnTool.config,
-			renameDataTableColumnTool.handler,
-		);
+		registerIfAllowed(renameDataTableColumnTool);
 
 		const addDataTableRowsTool = createAddDataTableRowsTool(user, dataTableOps, this.telemetry);
-		server.registerTool(
-			addDataTableRowsTool.name,
-			addDataTableRowsTool.config,
-			addDataTableRowsTool.handler,
-		);
+		registerIfAllowed(addDataTableRowsTool);
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
-			await this.registerBuilderTools(server, user, dataTableOps, mcpAppsEnabled, clientInfo);
+			await this.registerBuilderTools(
+				server,
+				user,
+				dataTableOps,
+				featureFlags,
+				registerIfAllowed,
+				allowedToolNames,
+				clientInfo,
+			);
 		}
 
 		return server;
@@ -511,7 +525,9 @@ export class McpService {
 		server: InstanceType<typeof McpServer>,
 		user: User,
 		dataTableOps: ReturnType<DataTableProxyService['makeDataTableOperationsForUser']>,
-		mcpAppsEnabled: boolean,
+		featureFlags: McpFeatureFlags,
+		registerIfAllowed: RegisterToolFn,
+		allowedToolNames: Set<string> | undefined,
 		clientInfo?: McpClientInfo,
 	) {
 		await this.nodeCatalogService.initialize();
@@ -520,39 +536,35 @@ export class McpService {
 			user,
 			this.nodeCatalogService,
 			this.telemetry,
+			this.aiGatewayService,
 		);
-		server.registerTool(searchNodesTool.name, searchNodesTool.config, searchNodesTool.handler);
+		registerIfAllowed(searchNodesTool);
 
 		const getNodeTypesTool = createGetWorkflowNodeTypesTool(
 			user,
 			this.nodeCatalogService,
 			this.telemetry,
+			this.aiGatewayService,
 		);
-		server.registerTool(getNodeTypesTool.name, getNodeTypesTool.config, getNodeTypesTool.handler);
+		registerIfAllowed(getNodeTypesTool);
 
 		const bestPracticesTool = createGetWorkflowBestPracticesTool(user, this.telemetry);
-		server.registerTool(
-			bestPracticesTool.name,
-			bestPracticesTool.config,
-			bestPracticesTool.handler,
-		);
+		registerIfAllowed(bestPracticesTool);
 
 		const exploreNodeResourcesTool = createExploreNodeResourcesTool(
 			user,
 			this.nodeResourceExplorerService,
 			this.telemetry,
 		);
-		server.registerTool(
-			exploreNodeResourcesTool.name,
-			exploreNodeResourcesTool.config,
-			exploreNodeResourcesTool.handler,
-		);
+		registerIfAllowed(exploreNodeResourcesTool);
 
-		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes);
-		server.registerTool(validateTool.name, validateTool.config, validateTool.handler);
+		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes, {
+			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
+		});
+		registerIfAllowed(validateTool);
 
 		const validateNodeTool = createValidateNodeTool(user, this.telemetry);
-		server.registerTool(validateNodeTool.name, validateNodeTool.config, validateNodeTool.handler);
+		registerIfAllowed(validateNodeTool);
 
 		const createTool = createCreateWorkflowFromCodeTool(
 			user,
@@ -564,9 +576,14 @@ export class McpService {
 			this.credentialsService,
 			this.projectRepository,
 			dataTableOps,
+			this.aiGatewayService,
+			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
 		);
 
-		if (mcpAppsEnabled) {
+		// The preview app only accompanies the create tool, so both are gated
+		// together by the granted scopes.
+		const createToolAllowed = !allowedToolNames || allowedToolNames.has(createTool.name);
+		if (featureFlags.mcpApps.enabled && createToolAllowed) {
 			const appTelemetry = this.buildMcpAppTelemetryConfig();
 			registerWorkflowPreviewApp(server, {
 				instanceOrigin: appTelemetry.instanceOrigin,
@@ -593,7 +610,7 @@ export class McpService {
 				createTool.handler,
 			);
 		} else {
-			server.registerTool(createTool.name, createTool.config, createTool.handler);
+			registerIfAllowed(createTool);
 		}
 
 		const searchProjectsTool = createSearchProjectsTool(
@@ -602,11 +619,7 @@ export class McpService {
 			this.licenseState,
 			this.telemetry,
 		);
-		server.registerTool(
-			searchProjectsTool.name,
-			searchProjectsTool.config,
-			searchProjectsTool.handler,
-		);
+		registerIfAllowed(searchProjectsTool);
 
 		const searchFoldersTool = createSearchFoldersTool(
 			user,
@@ -614,11 +627,7 @@ export class McpService {
 			this.projectService,
 			this.telemetry,
 		);
-		server.registerTool(
-			searchFoldersTool.name,
-			searchFoldersTool.config,
-			searchFoldersTool.handler,
-		);
+		registerIfAllowed(searchFoldersTool);
 
 		const archiveTool = createArchiveWorkflowTool(
 			user,
@@ -627,7 +636,7 @@ export class McpService {
 			this.telemetry,
 			this.collaborationService,
 		);
-		server.registerTool(archiveTool.name, archiveTool.config, archiveTool.handler);
+		registerIfAllowed(archiveTool);
 
 		const updateTool = createUpdateWorkflowTool(
 			user,
@@ -644,8 +653,9 @@ export class McpService {
 			this.globalConfig,
 			this.subworkflowPolicyChecker,
 			this.workflowPublishedDataService,
+			this.aiGatewayService,
 		);
-		server.registerTool(updateTool.name, updateTool.config, updateTool.handler);
+		registerIfAllowed(updateTool);
 
 		const restoreVersionTool = createRestoreWorkflowVersionTool(
 			user,
@@ -655,11 +665,7 @@ export class McpService {
 			this.telemetry,
 			this.collaborationService,
 		);
-		server.registerTool(
-			restoreVersionTool.name,
-			restoreVersionTool.config,
-			restoreVersionTool.handler,
-		);
+		registerIfAllowed(restoreVersionTool);
 
 		// SDK reference as MCP resource — for clients that support resources.
 		server.resource(
@@ -683,7 +689,7 @@ export class McpService {
 		// SDK reference tool — always registered alongside the MCP resource above,
 		// so all clients can access the SDK reference regardless of resource support.
 		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry);
-		server.registerTool(sdkRefTool.name, sdkRefTool.config, sdkRefTool.handler);
+		registerIfAllowed(sdkRefTool);
 	}
 
 	// #region Queue Mode Support

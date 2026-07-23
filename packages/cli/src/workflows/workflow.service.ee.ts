@@ -19,11 +19,17 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
 import omit from 'lodash/omit';
-import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
-import { NodeOperationError, PROJECT_ROOT, UserError, WorkflowActivationError } from 'n8n-workflow';
+import type { INode, IWorkflowBase, WorkflowId } from 'n8n-workflow';
+import {
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	jsonParse,
+	NodeOperationError,
+	PROJECT_ROOT,
+	UserError,
+	WorkflowActivationError,
+} from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -263,15 +269,60 @@ export class EnterpriseWorkflowService {
 			return [];
 		}
 		return workflow.nodes.filter((node) => {
-			if (!node.credentials) return false;
-
-			const allUsedCredentials = Object.values(node.credentials);
-
-			const allUsedCredentialIds = allUsedCredentials.map((nodeCred) => nodeCred.id?.toString());
-			return allUsedCredentialIds.some(
-				(nodeCredId) => nodeCredId && !userCredIds.includes(nodeCredId),
-			);
+			const usedCredentialIds = this.getCredentialIdsUsedByNode(node);
+			return usedCredentialIds.some((credId) => !userCredIds.includes(credId));
 		});
+	}
+
+	/**
+	 * Collect every credential id a node references. Besides the node's own
+	 * `credentials`, an Execute Sub-workflow node with an inline source embeds a
+	 * whole workflow — including its nodes' credentials — inside a single string
+	 * parameter, so those references are parsed out and returned as well.
+	 */
+	private getCredentialIdsUsedByNode(node: INode): string[] {
+		const credentialIds: string[] = [];
+
+		if (node.credentials) {
+			for (const nodeCred of Object.values(node.credentials)) {
+				const id = nodeCred.id?.toString();
+				if (id) credentialIds.push(id);
+			}
+		}
+
+		if (node.type === EXECUTE_WORKFLOW_NODE_TYPE) {
+			credentialIds.push(...this.getCredentialIdsFromInlineWorkflow(node.parameters?.workflowJson));
+		}
+
+		return credentialIds;
+	}
+
+	/**
+	 * Extract the credential ids referenced by the nodes of an inline sub-workflow
+	 * passed as the `workflowJson` parameter of an Execute Sub-workflow node.
+	 * Non-string or unparseable values reference no resolvable credentials and are
+	 * ignored (the node would fail at run time).
+	 */
+	private getCredentialIdsFromInlineWorkflow(workflowJson: unknown): string[] {
+		if (typeof workflowJson !== 'string') return [];
+
+		let parsed: Partial<IWorkflowBase>;
+		try {
+			parsed = jsonParse<Partial<IWorkflowBase>>(workflowJson);
+		} catch {
+			return [];
+		}
+		if (!parsed || !Array.isArray(parsed.nodes)) return [];
+
+		const credentialIds: string[] = [];
+		for (const subNode of parsed.nodes) {
+			if (!subNode?.credentials) continue;
+			for (const nodeCred of Object.values(subNode.credentials)) {
+				const id = nodeCred?.id?.toString();
+				if (id) credentialIds.push(id);
+			}
+		}
+		return credentialIds;
 	}
 
 	/**
@@ -554,6 +605,19 @@ export class EnterpriseWorkflowService {
 
 			return;
 		} catch (error) {
+			// Reactivation may have failed partway with triggers already registered,
+			// in memory and as durable schedule jobs. Tear them down before the
+			// rollback below so the active version is still resolvable, or they
+			// keep firing a workflow marked inactive.
+			try {
+				await this.activeWorkflowManager.remove(workflowId);
+			} catch (cleanupError) {
+				this.logger.error(`Failed to roll back partial reactivation of workflow "${workflowId}"`, {
+					workflowId,
+					error: cleanupError,
+				});
+			}
+
 			await this.workflowRepository.updateActiveState(workflowId, false);
 
 			// If reactivation failed we track deactivation of the workflow

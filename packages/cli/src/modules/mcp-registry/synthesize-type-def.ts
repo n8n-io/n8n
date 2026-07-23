@@ -16,9 +16,10 @@ import type { INodeTypeDescription } from 'n8n-workflow';
  * before generation so the agent's schema only surfaces parameters it is
  * meant to set.
  *
- * Throws when the description cannot be expressed as an SDK type (e.g. nodes
- * with expression-computed inputs/outputs). Callers batching multiple nodes
- * should catch and degrade gracefully rather than failing the whole request.
+ * Throws when the description is malformed (non-array group/properties,
+ * unexpected connection or credential shapes). Callers batching multiple
+ * nodes should catch and degrade gracefully rather than failing the whole
+ * request.
  */
 export function synthesizeNodeTypeDef(description: INodeTypeDescription): string {
 	const visibleDescription = {
@@ -39,8 +40,6 @@ function isSdkNodeTypeDescription(
 	return (
 		Array.isArray(description.group) &&
 		Array.isArray(description.properties) &&
-		typeof description.inputs !== 'string' &&
-		typeof description.outputs !== 'string' &&
 		hasSdkConnections(description.inputs) &&
 		hasSdkConnections(description.outputs) &&
 		hasSdkCredentials(description.credentials)
@@ -51,6 +50,11 @@ function hasSdkConnections(
 	connections: INodeTypeDescription['inputs'] | INodeTypeDescription['outputs'],
 ): connections is (INodeTypeDescription['inputs'] | INodeTypeDescription['outputs']) &
 	SdkNodeTypeDescription['inputs'] {
+	// Expression strings (dynamic connections, e.g. the AI Agent's
+	// parameter-dependent inputs) are handled lexically by the generator —
+	// the same way built-in node defs are produced at build time.
+	if (typeof connections === 'string') return true;
+
 	return (
 		Array.isArray(connections) &&
 		connections.every(

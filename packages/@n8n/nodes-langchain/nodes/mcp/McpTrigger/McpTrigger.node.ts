@@ -114,6 +114,15 @@ export class McpTrigger extends Node {
 				},
 			},
 			{
+				displayName: 'Require Workflow Execute Permission',
+				name: 'requireExecuteAccess',
+				type: 'boolean',
+				default: true,
+				displayOptions: { show: { authentication: ['n8nOAuth2'] } }, // n8nOAuth2 is v2+ only
+				description:
+					'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
+			},
+			{
 				displayName: 'Path',
 				name: 'path',
 				type: 'string',

@@ -3,8 +3,8 @@ import type * as SharedSandboxMod from '@n8n/agents/sandbox';
 
 import './source-map-filter';
 
+import type * as ApplyAgentThinkingMod from './agent/apply-agent-thinking';
 import type * as InstanceAgentMod from './agent/instance-agent';
-import type * as SubAgentFactoryMod from './agent/sub-agent-factory';
 import type * as SystemPromptMod from './agent/system-prompt';
 import type * as DomainAccessMod from './domain-access';
 import type * as McpClientManagerMod from './mcp/mcp-client-manager';
@@ -23,9 +23,9 @@ import type * as MaterializeRuntimeSkillsMod from './skills/materialize-runtime-
 import type * as RuntimeSkillsMod from './skills/runtime-skills';
 import type * as StorageMod from './storage';
 import type * as MapChunkMod from './stream/map-chunk';
+import type * as UsageAccumulatorMod from './stream/usage-accumulator';
 import type * as ToolsMod from './tools';
 import type * as AgentPersistenceMod from './tools/orchestration/agent-persistence';
-import type * as DelegateToolMod from './tools/orchestration/delegate.tool';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
 import type * as TraceReplayMod from './tracing/trace-replay';
@@ -91,18 +91,15 @@ const loadTraceReplay = lazyModule(
 const loadInstanceAgent = lazyModule(
 	() => require('./agent/instance-agent') as typeof InstanceAgentMod,
 );
-const loadDomainAccess = lazyModule(() => require('./domain-access') as typeof DomainAccessMod);
-const loadSubAgentFactory = lazyModule(
-	() => require('./agent/sub-agent-factory') as typeof SubAgentFactoryMod,
+const loadApplyAgentThinking = lazyModule(
+	() => require('./agent/apply-agent-thinking') as typeof ApplyAgentThinkingMod,
 );
+const loadDomainAccess = lazyModule(() => require('./domain-access') as typeof DomainAccessMod);
 const loadSystemPrompt = lazyModule(
 	() => require('./agent/system-prompt') as typeof SystemPromptMod,
 );
 const loadSanitizeWebContent = lazyModule(
 	() => require('./tools/web-research/sanitize-web-content') as typeof SanitizeWebContentMod,
-);
-const loadDelegateTool = lazyModule(
-	() => require('./tools/orchestration/delegate.tool') as typeof DelegateToolMod,
 );
 const loadTools = lazyModule(() => require('./tools') as typeof ToolsMod);
 const loadAgentPersistence = lazyModule(
@@ -117,6 +114,9 @@ const loadStreamHelpers = lazyModule(
 );
 const loadStorage = lazyModule(() => require('./storage') as typeof StorageMod);
 const loadMapChunk = lazyModule(() => require('./stream/map-chunk') as typeof MapChunkMod);
+const loadUsageAccumulator = lazyModule(
+	() => require('./stream/usage-accumulator') as typeof UsageAccumulatorMod,
+);
 const loadRuntimeSkills = lazyModule(
 	() => require('./skills/runtime-skills') as typeof RuntimeSkillsMod,
 );
@@ -182,6 +182,21 @@ const loadValidateAttachments = lazyModule(
 );
 
 export { MAX_STEPS } from './constants/max-steps';
+export { WorkflowSaveConflictError } from './errors/workflow-save-conflict.error';
+export {
+	LEGACY_PLANNED_TASK_KINDS,
+	PLANNED_TASK_KINDS,
+	STORED_PLANNED_TASK_KINDS,
+} from './types';
+export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
+export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
+export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
+export { saveAgentBuilderTarget } from './tools/orchestration/agent-target-binding';
+export {
+	resolveAgentPreviewSession,
+	saveAgentPreviewSession,
+} from './tools/orchestration/agent-preview-session-binding';
+
 export type {
 	AgentDbMessage,
 	AgentMessage,
@@ -201,13 +216,6 @@ export const createDomainAccessTracker: typeof DomainAccessMod.createDomainAcces
 export type { DomainAccessTracker } from './domain-access';
 export type { SubmitLangsmithUserFeedbackOptions } from './tracing/langsmith-tracing';
 
-export const appendGeneratedWorkflowIdToRootMetadata: typeof LangsmithTracingMod.appendGeneratedWorkflowIdToRootMetadata =
-	lazyFunction(() => loadLangsmithTracing().appendGeneratedWorkflowIdToRootMetadata);
-
-export const appendRootRunMetadata: typeof LangsmithTracingMod.appendRootRunMetadata = lazyFunction(
-	() => loadLangsmithTracing().appendRootRunMetadata,
-);
-
 export const createInstanceAiTraceContext: typeof LangsmithTracingMod.createInstanceAiTraceContext =
 	lazyFunction(() => loadLangsmithTracing().createInstanceAiTraceContext);
 
@@ -224,12 +232,12 @@ export const releaseTraceClient: typeof LangsmithTracingMod.releaseTraceClient =
 	() => loadLangsmithTracing().releaseTraceClient,
 );
 
+export const shutdownProductTelemetryProviders: typeof LangsmithTracingMod.shutdownProductTelemetryProviders =
+	lazyFunction(() => loadLangsmithTracing().shutdownProductTelemetryProviders);
+
 export const submitLangsmithUserFeedback: typeof LangsmithTracingMod.submitLangsmithUserFeedback =
 	lazyFunction(() => loadLangsmithTracing().submitLangsmithUserFeedback);
 
-export const withCurrentTraceSpan: typeof LangsmithTracingMod.withCurrentTraceSpan = lazyFunction(
-	() => loadLangsmithTracing().withCurrentTraceSpan,
-);
 export type IdRemapper = TraceReplayMod.IdRemapper;
 export const IdRemapper: typeof TraceReplayMod.IdRemapper = lazyClass(
 	() => loadTraceReplay().IdRemapper,
@@ -242,9 +250,6 @@ export type TraceWriter = TraceReplayMod.TraceWriter;
 export const TraceWriter: typeof TraceReplayMod.TraceWriter = lazyClass(
 	() => loadTraceReplay().TraceWriter,
 );
-export const parseTraceJsonl: typeof TraceReplayMod.parseTraceJsonl = lazyFunction(
-	() => loadTraceReplay().parseTraceJsonl,
-);
 export declare const PURE_REPLAY_TOOLS: typeof TraceReplayMod.PURE_REPLAY_TOOLS;
 export type {
 	TraceEvent,
@@ -255,19 +260,15 @@ export type {
 } from './tracing/trace-replay';
 export type { SubAgentOptions } from './agent/sub-agent-factory';
 export declare const INSTANCE_AI_SKILLS_DIR: typeof RuntimeSkillsMod.INSTANCE_AI_SKILLS_DIR;
-export const hasRuntimeSkills: typeof RuntimeSkillsMod.hasRuntimeSkills = lazyFunction(
-	() => loadRuntimeSkills().hasRuntimeSkills,
-);
 export const loadInstanceAiRuntimeSkillSource: typeof RuntimeSkillsMod.loadInstanceAiRuntimeSkillSource =
 	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSource);
 export const createLazyWorkspaceRuntimeSkillSource: typeof MaterializeRuntimeSkillsMod.createLazyWorkspaceRuntimeSkillSource =
 	lazyFunction(() => loadMaterializeRuntimeSkills().createLazyWorkspaceRuntimeSkillSource);
-export const buildRuntimeSkillWorkspaceBundle: typeof MaterializeRuntimeSkillsMod.buildRuntimeSkillWorkspaceBundle =
-	lazyFunction(() => loadMaterializeRuntimeSkills().buildRuntimeSkillWorkspaceBundle);
-export const materializeRuntimeSkillsIntoWorkspace: typeof MaterializeRuntimeSkillsMod.materializeRuntimeSkillsIntoWorkspace =
-	lazyFunction(() => loadMaterializeRuntimeSkills().materializeRuntimeSkillsIntoWorkspace);
-export const loadPrebakedRuntimeSkillsBundle: typeof MaterializeRuntimeSkillsMod.loadPrebakedRuntimeSkillsBundle =
-	lazyFunction(() => loadMaterializeRuntimeSkills().loadPrebakedRuntimeSkillsBundle);
+export {
+	CONFIG_EVALS_SKILL_ID,
+	disabledInstanceAiSkillIds,
+	type InstanceAiSkillFlags,
+} from './skills/skill-gates';
 export declare const SANDBOX_RUNTIME_SKILLS_DIR: typeof MaterializeRuntimeSkillsMod.SANDBOX_RUNTIME_SKILLS_DIR;
 export declare const SANDBOX_RUNTIME_SKILL_REGISTRY_FILE: typeof MaterializeRuntimeSkillsMod.SANDBOX_RUNTIME_SKILL_REGISTRY_FILE;
 export declare const RUNTIME_SKILL_MANIFEST_FILE: typeof MaterializeRuntimeSkillsMod.RUNTIME_SKILL_MANIFEST_FILE;
@@ -286,26 +287,20 @@ export const createInstanceAgent: typeof InstanceAgentMod.createInstanceAgent = 
 	() => loadInstanceAgent().createInstanceAgent,
 );
 
-export const createSubAgent: typeof SubAgentFactoryMod.createSubAgent = lazyFunction(
-	() => loadSubAgentFactory().createSubAgent,
+export const applyAgentThinking: typeof ApplyAgentThinkingMod.applyAgentThinking = lazyFunction(
+	() => loadApplyAgentThinking().applyAgentThinking,
 );
+
 export const getDateTimeSection: typeof SystemPromptMod.getDateTimeSection = lazyFunction(
 	() => loadSystemPrompt().getDateTimeSection,
 );
 export const createAllTools: typeof ToolsMod.createAllTools = lazyFunction(
 	() => loadTools().createAllTools,
 );
-export const createOrchestrationTools: typeof ToolsMod.createOrchestrationTools = lazyFunction(
-	() => loadTools().createOrchestrationTools,
-);
-export const createSubAgentResourceId: typeof AgentPersistenceMod.createSubAgentResourceId =
-	lazyFunction(() => loadAgentPersistence().createSubAgentResourceId);
 export const createSubAgentResourceIdPrefix: typeof AgentPersistenceMod.createSubAgentResourceIdPrefix =
 	lazyFunction(() => loadAgentPersistence().createSubAgentResourceIdPrefix);
 export declare const SUB_AGENT_RESOURCE_PREFIX: typeof AgentPersistenceMod.SUB_AGENT_RESOURCE_PREFIX;
 
-export const startDetachedDelegateTask: typeof DelegateToolMod.startDetachedDelegateTask =
-	lazyFunction(() => loadDelegateTool().startDetachedDelegateTask);
 export declare const iterationEntrySchema: typeof StorageMod.iterationEntrySchema;
 export const formatPreviousAttempts: typeof StorageMod.formatPreviousAttempts = lazyFunction(
 	() => loadStorage().formatPreviousAttempts,
@@ -357,6 +352,9 @@ export const McpClientManager: typeof McpClientManagerMod.McpClientManager = laz
 export const mapAgentChunkToEvent: typeof MapChunkMod.mapAgentChunkToEvent = lazyFunction(
 	() => loadMapChunk().mapAgentChunkToEvent,
 );
+export const isQuotaExhaustedError: typeof MapChunkMod.isQuotaExhaustedError = lazyFunction(
+	() => loadMapChunk().isQuotaExhaustedError,
+);
 export const parseSuspension: typeof StreamHelpersMod.parseSuspension = lazyFunction(
 	() => loadStreamHelpers().parseSuspension,
 );
@@ -371,10 +369,6 @@ export const extractText: typeof EvalAgentsMod.extractText = lazyFunction(
 );
 export type Tool = EvalAgentsMod.Tool;
 export const Tool: typeof EvalAgentsMod.Tool = lazyClass(() => loadEvalAgents().Tool);
-export declare const SONNET_MODEL: typeof EvalAgentsMod.SONNET_MODEL;
-export declare const HAIKU_MODEL: typeof EvalAgentsMod.HAIKU_MODEL;
-defineLazyExport('SONNET_MODEL', () => loadEvalAgents().SONNET_MODEL);
-defineLazyExport('HAIKU_MODEL', () => loadEvalAgents().HAIKU_MODEL);
 defineLazyExport('PURE_REPLAY_TOOLS', () => loadTraceReplay().PURE_REPLAY_TOOLS);
 defineLazyExport(
 	'SUB_AGENT_RESOURCE_PREFIX',
@@ -437,6 +431,10 @@ export const getWorkspaceRoot: typeof SharedSandboxMod.getWorkspaceRoot = lazyFu
 export const getPromptWorkspaceRoot: typeof SharedSandboxMod.getPromptWorkspaceRoot = lazyFunction(
 	() => loadSharedSandbox().getPromptWorkspaceRoot,
 );
+export const getPromptSandboxInstructions: typeof SharedSandboxMod.getPromptSandboxInstructions =
+	lazyFunction(() => loadSharedSandbox().getPromptSandboxInstructions);
+export const getPromptFilesystemInstructions: typeof SharedSandboxMod.getPromptFilesystemInstructions =
+	lazyFunction(() => loadSharedSandbox().getPromptFilesystemInstructions);
 export const setupSandboxWorkspace: typeof SandboxSetupMod.setupSandboxWorkspace = lazyFunction(
 	() => loadSandboxSetup().setupSandboxWorkspace,
 );
@@ -519,6 +517,8 @@ export type {
 } from './runtime/resumable-stream-executor';
 export type { WorkSummary } from './stream/work-summary-accumulator';
 export type { RunTokenUsage, BuilderUsageItem } from './stream/usage-accumulator';
+export const tokenUsageToBuilderUsageItems: typeof UsageAccumulatorMod.tokenUsageToBuilderUsageItems =
+	lazyFunction(() => loadUsageAccumulator().tokenUsageToBuilderUsageItems);
 export const resumeAgentRun: typeof StreamRunnerMod.resumeAgentRun = lazyFunction(
 	() => loadStreamRunner().resumeAgentRun,
 );
@@ -543,19 +543,6 @@ export type {
 	StreamRunOptions,
 	StreamRunResult,
 } from './runtime/stream-runner';
-export const createWorkItem: typeof WorkflowLoopMod.createWorkItem = lazyFunction(
-	() => loadWorkflowLoop().createWorkItem,
-);
-export const formatWorkflowLoopGuidance: typeof WorkflowLoopMod.formatWorkflowLoopGuidance =
-	lazyFunction(() => loadWorkflowLoop().formatWorkflowLoopGuidance);
-export const handleBuildOutcome: typeof WorkflowLoopMod.handleBuildOutcome = lazyFunction(
-	() => loadWorkflowLoop().handleBuildOutcome,
-);
-export const handleVerificationVerdict: typeof WorkflowLoopMod.handleVerificationVerdict =
-	lazyFunction(() => loadWorkflowLoop().handleVerificationVerdict);
-export const formatAttemptHistory: typeof WorkflowLoopMod.formatAttemptHistory = lazyFunction(
-	() => loadWorkflowLoop().formatAttemptHistory,
-);
 export type WorkflowTaskCoordinator = WorkflowLoopMod.WorkflowTaskCoordinator;
 export const WorkflowTaskCoordinator: typeof WorkflowLoopMod.WorkflowTaskCoordinator = lazyClass(
 	() => loadWorkflowLoop().WorkflowTaskCoordinator,
@@ -608,6 +595,12 @@ export type {
 	DataTableSummary,
 	DataTableColumnInfo,
 	DataTableFilterInput,
+	InstanceAiEvaluationConfigService,
+	EvaluationConfigSummary,
+	EvaluationConfigDetail,
+	EvaluationConfigMetricInput,
+	EvaluationConfigMetricPreset,
+	UpsertEvaluationConfigInput,
 	LocalMcpServer,
 	McpServerConfig,
 	ModelConfig,
@@ -616,6 +609,7 @@ export type {
 	TaskStorage,
 	PlannedTask,
 	PlannedTaskKind,
+	StoredPlannedTaskKind,
 	PlannedTaskStatus,
 	PlannedTaskRecord,
 	PlannedTaskGraph,
@@ -649,9 +643,11 @@ export type {
 	CredentialSummary,
 	CredentialDetail,
 	CredentialTypeSearchResult,
+	CredentialHostInfo,
 	NodeSummary,
 	NodeDescription,
 	SearchableNodeDescription,
+	AiGatewayNodeMeta,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
 	FetchedPage,
@@ -659,9 +655,15 @@ export type {
 	WebSearchResponse,
 	InstanceAiWebResearchService,
 	InstanceAiWorkspaceService,
+	InstanceAiWorkflowTemplateService,
 	ProjectSummary,
 	FolderSummary,
 	ServiceProxyConfig,
+	InstanceAiBuilderDelegate,
+	BuilderDelegateSession,
+	BuilderTurnStream,
+	BuilderOpenSuspension,
+	SessionWorkflowRef,
 } from './types';
 export type {
 	OrchestratorRunHandoffReason,
@@ -670,7 +672,6 @@ export type {
 } from './runtime/orchestrator-run-control';
 export { createOrchestratorRunControl } from './runtime/orchestrator-run-control';
 export { createOrchestratorRunControlForState } from './runtime/orchestrator-run-control';
-export type { DetachedDelegateTaskResult } from './tools/orchestration/delegate.tool';
 export const classifyAttachments: typeof StructuredFileParserMod.classifyAttachments = lazyFunction(
 	() => loadStructuredFileParser().classifyAttachments,
 );

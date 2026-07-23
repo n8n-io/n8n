@@ -4,10 +4,8 @@ import type { ApiKeyScope, Scope, ScopeInformation } from './types.ee';
 function buildResourceScopes() {
 	const resourceScopes = Object.entries(RESOURCES).flatMap(([resource, operations]) => [
 		...operations.map((op) => `${resource}:${op}` as const),
-		`${resource}:*` as const,
 	]) as Scope[];
 
-	resourceScopes.push('*' as const); // Global wildcard
 	return resourceScopes;
 }
 
@@ -88,16 +86,41 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Import Workflow',
 		description: 'Allows importing workflows from a portable package into the project.',
 	},
+	'project:export': {
+		displayName: 'Export Project',
+		description: 'Allows including projects in a portable package export.',
+	},
 	'credential:unshare': {
 		displayName: 'Unshare Credential',
 		description: 'Allows removing credential shares.',
 	},
 	'credential:connect': {
-		displayName: 'Connect Credential',
-		description: 'Allows connecting an own account to a private credential.',
+		displayName: 'Connect End-User Credential',
+		description: 'Allows connecting an own account to an end-user credential.',
+	},
+	'credential:createEndUser': {
+		displayName: 'Manage End-User Credential',
+		description:
+			"Allows creating, deleting, and changing the type of end-user credentials, which resolve to each user's own connection.",
 	},
 	'insights:read': {
 		displayName: 'Read Insights',
 		description: 'Allows reading insights data.',
+	},
+	'testRun:read': {
+		displayName: 'Read Test Run',
+		description: 'Allows reading evaluation test runs and their per-case results.',
+	},
+	'testRun:list': {
+		displayName: 'List Test Runs',
+		description: 'Allows listing evaluation test runs for a workflow.',
+	},
+	'workflow:execute-chat': {
+		displayName: 'Execute Workflow in Chat',
+		description: 'Allows executing workflows in chat.',
+	},
+	'role:manageProject': {
+		displayName: 'Manage project roles',
+		description: 'Allows creating, editing, and deleting project role definitions.',
 	},
 };

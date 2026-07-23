@@ -1,0 +1,82 @@
+import type { OccurrencePlan } from './plan';
+import type { ScheduledJob } from '../types';
+
+export interface PlannedJob {
+	job: ScheduledJob;
+	plan: OccurrencePlan;
+}
+
+export interface NewOccurrence {
+	jobId: number;
+	taskType: string;
+	payload: Record<string, unknown>;
+	scheduledFor: Date;
+	runAt: Date;
+	maxAttempts: number;
+}
+
+/** Identity of a row {@link MaterializerTransaction.recordOccurrences} just created. */
+export interface RecordedOccurrence {
+	id: string;
+	jobId: number;
+	taskType: string;
+}
+
+export interface RecordOccurrencesResult {
+	/** How many occurrences were actually recorded (skipped duplicates excluded). */
+	recorded: number;
+	/**
+	 * The newly created rows' identity, for per-row tracing. Storage layers that
+	 * can't return inserted rows (e.g. SQLite) leave this empty; `recorded` is
+	 * still accurate either way.
+	 */
+	created: RecordedOccurrence[];
+}
+
+export interface DueJobs {
+	/**
+	 * The clock's current time at the moment of claiming.
+	 * The materializer plans occurrences relative to this, never an instance's own clock,
+	 * so every instance agrees on "now".
+	 */
+	now: Date;
+
+	/** The claimed jobs, earliest next run first. */
+	jobs: ScheduledJob[];
+}
+
+/**
+ * The operations one materialization pass performs, all bound to one transaction.
+ */
+export interface MaterializerTransaction {
+	/**
+	 * @param lookaheadMs claim a job up to this far before its `nextRunAt`, not only
+	 * once it's already due, so a fixed-interval poll doesn't add a full tick of its
+	 * own on top of the job's schedule (see `MaterializerOptions.lookaheadSeconds`).
+	 * @returns up to `limit` enabled jobs whose next run is due (within `lookaheadMs`),
+	 * oldest first, locking them so a concurrent pass claims different jobs, with the
+	 * database time they were judged due at; `undefined` when nothing is due.
+	 */
+	claimDueJobs(limit: number, lookaheadMs: number): Promise<DueJobs | undefined>;
+
+	/**
+	 * Record every planned occurrence across all jobs in one batch,
+	 * skipping any that already exist (identity is the job and its instant).
+	 * This is the idempotent step: recording the same occurrence twice is a no-op.
+	 * @returns how many occurrences were recorded, and the identity of any
+	 * newly created rows (see {@link RecordOccurrencesResult})
+	 */
+	recordOccurrences(occurrences: NewOccurrence[]): Promise<RecordOccurrencesResult>;
+
+	/**
+	 * Advance every job's next-run and last-fired time in one batch.
+	 */
+	advanceJobs(planned: PlannedJob[]): Promise<void>;
+}
+
+/**
+ * Runs one unit of materialization work inside a single transaction,
+ * handing it a {@link MaterializerTransaction} bound to that transaction.
+ * The storage layer supplies the real implementation.
+ */
+export type RunInTransaction = <T>(work: (tx: MaterializerTransaction) => Promise<T>) => Promise<T>;

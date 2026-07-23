@@ -1,4 +1,5 @@
 import type { SerializableAgentState } from '@n8n/instance-ai';
+import { LessThan } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -67,6 +68,7 @@ describe('TypeORMAgentCheckpointStore', () => {
 		expect(checkpointRepo.create).toHaveBeenCalledWith({
 			key: 'checkpoint:run-1',
 			runId: 'run-1',
+			hostRunId: null,
 			threadId: 'thread-1',
 			resourceId: 'user-1',
 			state,
@@ -159,6 +161,15 @@ describe('TypeORMAgentCheckpointStore', () => {
 
 		await expect(store.deleteOlderThan(new Date(0))).resolves.toBe(7);
 		expect(spy).toHaveBeenCalledTimes(1);
+	});
+
+	it('hard-deletes tombstones expired before the GC horizon', async () => {
+		checkpointRepo.delete.mockResolvedValueOnce({ affected: 3, raw: {} });
+
+		const olderThan = new Date('2026-05-01T00:00:00.000Z');
+		await expect(store.hardDeleteExpiredOlderThan(olderThan)).resolves.toBe(3);
+
+		expect(checkpointRepo.delete).toHaveBeenCalledWith({ expiredAt: LessThan(olderThan) });
 	});
 
 	describe('findSuspendedSubAgentResumeInfo', () => {

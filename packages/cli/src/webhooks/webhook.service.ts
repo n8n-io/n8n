@@ -3,8 +3,8 @@ import type { WebhookEntity } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { HookContext, WebhookContext } from 'n8n-core';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
-	ensureError,
 	isNodeClassInstance,
 	NodeHelpers,
 	UnexpectedError,

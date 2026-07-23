@@ -2,16 +2,23 @@ import { Logger } from '@n8n/backend-common';
 import { DatabaseConfig } from '@n8n/config';
 import { Memoized } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, MigrationExecutor } from '@n8n/typeorm';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ErrorReporter } from 'n8n-core';
-import { DbConnectionTimeoutError, ensureError } from 'n8n-workflow';
+import { DbConnectionTimeoutError } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
+import { setTimeout as setTimeoutP } from 'timers/promises';
 
+import { computeBackoff } from './backoff';
 import { DbConnectionMetrics } from './db-connection-metrics';
 import { DbConnectionMonitor } from './db-connection-monitor';
 import { DbConnectionOptions } from './db-connection-options';
 import { readPoolStats, type DbPoolStats } from './db-pool-stats';
 import { wrapMigration } from '../migrations/migration-helpers';
 import type { Migration } from '../migrations/migration-types';
+import { DbLock, DbLockService } from '../services/db-lock.service';
+import { TransactionRunner } from '../services/transaction';
+import { TypeOrmTransactionRunner } from '../services/typeorm-transaction';
 
 type ConnectionState = {
 	connected: boolean;
@@ -38,6 +45,9 @@ export class DbConnection {
 	) {
 		this.dataSource = new DataSource(this.options);
 		Container.set(DataSource, this.dataSource);
+		// Bind the TransactionRunner port to its TypeORM implementation so business logic
+		// can inject the abstract port without knowing the adapter.
+		Container.set(TransactionRunner, Container.get(TypeOrmTransactionRunner));
 	}
 
 	@Memoized
@@ -50,7 +60,7 @@ export class DbConnection {
 	}
 
 	async init(): Promise<void> {
-		const { connectionState, options } = this;
+		const { connectionState } = this;
 		if (connectionState.connected) return;
 
 		// TODO(CAT-3314): Remove N8N_DB_PING_TIMEOUT fallback in v3.
@@ -60,21 +70,7 @@ export class DbConnection {
 			);
 		}
 
-		try {
-			await this.dataSource.initialize();
-		} catch (e) {
-			let error = ensureError(e);
-			if (
-				options.type === 'postgres' &&
-				error.message === 'Connection terminated due to connection timeout'
-			) {
-				error = new DbConnectionTimeoutError({
-					cause: error,
-					configuredTimeoutInMs: options.connectTimeoutMS!,
-				});
-			}
-			throw error;
-		}
+		await this.connectWithRetry();
 
 		connectionState.connected = true;
 		this.monitor = new DbConnectionMonitor(
@@ -90,10 +86,50 @@ export class DbConnection {
 	}
 
 	async migrate() {
-		const { dataSource, connectionState } = this;
+		const { dataSource, connectionState, options } = this;
 		(dataSource.options.migrations as Migration[]).forEach(wrapMigration);
-		await dataSource.runMigrations({ transaction: 'each' });
+		if (options.type === 'postgres') {
+			await this.migrateWithAdvisoryLock(options);
+		} else {
+			// SQLite is single-instance, so concurrent migrations aren't possible.
+			await dataSource.runMigrations({ transaction: 'each' });
+		}
 		connectionState.migrated = true;
+	}
+
+	/**
+	 * Runs all pending migrations while holding a Postgres advisory lock, so
+	 * concurrently starting instances migrate one at a time. The migrations run
+	 * on the lock transaction's own connection, which keeps
+	 * `DB_POSTGRESDB_POOL_SIZE=1` working; the trade-off is that they commit or
+	 * roll back as one unit.
+	 */
+	private async migrateWithAdvisoryLock(options: {
+		schema?: string;
+		entityPrefix?: string;
+		statementTimeout?: number;
+	}) {
+		const { dataSource } = this;
+		// Scoped by schema+prefix so co-hosted tenants in one database don't block each other.
+		const subKey = createHash('sha256')
+			.update(`${options.schema ?? 'public'}:${options.entityPrefix ?? ''}`)
+			.digest()
+			.readInt32BE(0);
+		this.logger.info('Acquiring database migration lock...');
+		await Container.get(DbLockService).withLock(
+			DbLock.MIGRATIONS,
+			async (tx) => {
+				if (options.statementTimeout) {
+					// Restore the driver's per-statement cap for the migration statements
+					await tx.query(`SET LOCAL statement_timeout = ${Number(options.statementTimeout)}`);
+				}
+				const migrationExecutor = new MigrationExecutor(dataSource, tx.queryRunner);
+				// 'none': the executor manages no transactions and runs inside the lock's
+				migrationExecutor.transaction = 'none';
+				await migrationExecutor.executePendingMigrations();
+			},
+			{ subKey, waitIndefinitely: true },
+		);
 	}
 
 	async close() {
@@ -103,6 +139,41 @@ export class DbConnection {
 		if (this.dataSource.isInitialized) {
 			await this.dataSource.destroy();
 			this.connectionState.connected = false;
+		}
+	}
+
+	/**
+	 * Opens the initial connection, retrying transient failures with exponential
+	 * backoff before giving up. Throws once `startupConnectMaxRetries` is exhausted.
+	 */
+	private async connectWithRetry(): Promise<void> {
+		const { options } = this;
+		const { minRecoveryBackoffMs, maxRecoveryBackoffMs, startupConnectMaxRetries } =
+			this.databaseConfig;
+		const maxAttempts = startupConnectMaxRetries + 1;
+		for (let attempt = 1; ; attempt++) {
+			try {
+				await this.dataSource.initialize();
+				return;
+			} catch (e) {
+				let error = ensureError(e);
+				if (
+					options.type === 'postgres' &&
+					error.message === 'Connection terminated due to connection timeout'
+				) {
+					error = new DbConnectionTimeoutError({
+						cause: error,
+						configuredTimeoutInMs: options.connectTimeoutMS!,
+					});
+				}
+				if (attempt >= maxAttempts) throw error;
+
+				const backoff = computeBackoff(attempt, minRecoveryBackoffMs, maxRecoveryBackoffMs);
+				this.logger.warn(
+					`Initial database connection attempt ${attempt} failed: ${error.message}. Retrying in ${backoff}ms`,
+				);
+				await setTimeoutP(backoff);
+			}
 		}
 	}
 }

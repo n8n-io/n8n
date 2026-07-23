@@ -157,6 +157,7 @@ export class JsTaskRunner extends TaskRunner {
 		this.requireResolver = createRequireResolver({
 			allowedBuiltInModules,
 			allowedExternalModules,
+			secureModules: this.mode === 'secure',
 		});
 
 		if (this.mode === 'secure') this.preventPrototypePollution(allowedExternalModules);
@@ -189,7 +190,7 @@ export class JsTaskRunner extends TaskRunner {
 		Buffer.allocUnsafe = safeAlloc as typeof Buffer.allocUnsafe;
 		Buffer.allocUnsafeSlow = safeAlloc as typeof Buffer.allocUnsafeSlow;
 
-		// Freeze globals, except in tests because Jest needs to be able to mutate prototypes
+		// Freeze globals, except in tests because Vitest needs to be able to mutate prototypes
 		if (process.env.NODE_ENV !== 'test') {
 			Object.getOwnPropertyNames(globalThis)
 				.map((name) => Reflect.get(globalThis, name) as unknown)

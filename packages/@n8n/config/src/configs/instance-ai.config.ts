@@ -4,7 +4,7 @@ import { Config, Env } from '../decorators';
 
 @Config
 export class InstanceAiConfig {
-	/** LLM model in provider/model format (e.g. "anthropic/claude-opus-4-8"). */
+	/** LLM model in provider/model format, or a bare model name for a custom endpoint. */
 	@Env('N8N_INSTANCE_AI_MODEL')
 	model: string = 'anthropic/claude-opus-4-8';
 
@@ -27,10 +27,6 @@ export class InstanceAiConfig {
 	/** Token threshold for Reflector to condense observations. */
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
 	reflectorObservationTokens: number = 40_000;
-
-	/** Maximum LLM reasoning steps for sub-agents spawned via delegate tool. */
-	@Env('N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS')
-	subAgentMaxSteps: number = 100;
 
 	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
 	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
@@ -138,7 +134,7 @@ export class InstanceAiConfig {
 
 	/** Conversation thread TTL in days. Threads older than this are auto-expired. 0 = no expiration. */
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
-	threadTtlDays: number = 90;
+	threadTtlDays: number = 30;
 
 	/** Interval in milliseconds between scheduled pruning runs on the leader. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_PRUNE_INTERVAL')
@@ -147,6 +143,10 @@ export class InstanceAiConfig {
 	/** Retention period in milliseconds for stale native persistence checkpoints before pruning. */
 	@Env('N8N_INSTANCE_AI_SNAPSHOT_RETENTION')
 	snapshotRetention: number = 24 * Time.hours.toMilliseconds;
+
+	/** Retention period in milliseconds for expired checkpoint tombstones before they are hard-deleted. Must exceed snapshotRetention. 0 = never hard-delete. */
+	@Env('N8N_INSTANCE_AI_CHECKPOINT_GC_RETENTION')
+	checkpointGcRetention: number = 7 * Time.days.toMilliseconds;
 
 	/** Timeout in milliseconds for HITL confirmation requests. 0 = no timeout. */
 	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
@@ -171,6 +171,17 @@ export class InstanceAiConfig {
 	/** Capture orchestrator LLM steps and workflow code snapshots for the dev debug panel. */
 	@Env('N8N_INSTANCE_AI_RUN_DEBUG_ENABLED')
 	runDebugEnabled: boolean = false;
+
+	/**
+	 * Persist Instance AI events to a durable DB log (`instance_ai_events`)
+	 * and serve SSE replay + history from it. Default on since Gate A of the
+	 * durable-log rollout (pre-existing runs are backfilled by migration);
+	 * `false` restores the legacy in-memory bus + stored-snapshot history as
+	 * an off switch until the legacy paths sunset at Gate B. See RFC:
+	 * instance-ai durable event log.
+	 */
+	@Env('N8N_INSTANCE_AI_DURABLE_LOG')
+	durableLog: boolean = true;
 
 	/** Enable extended thinking / reasoning for the orchestrator agent. */
 	@Env('N8N_INSTANCE_AI_THINKING_ENABLED')

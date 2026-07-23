@@ -4,10 +4,6 @@ import { Container } from '@n8n/di';
 import { DataSource as Connection } from '@n8n/typeorm';
 import nock from 'nock';
 
-/**
- * Vitest global setup. Runs once in the main process before any test file.
- * Mirrors the former Jest `globalSetup`/`globalTeardown` pair.
- */
 export async function setup() {
 	nock.disableNetConnect();
 	nock.enableNetConnect('127.0.0.1');

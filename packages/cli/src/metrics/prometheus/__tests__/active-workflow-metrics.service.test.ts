@@ -62,14 +62,14 @@ describe('PrometheusActiveWorkflowMetricsService', () => {
 			return vi.mocked(promClient.Gauge).mock.calls[0][0].collect!;
 		};
 
-		it('should use cached value when cache returns a valid number string', async () => {
-			cacheService.get.mockResolvedValue('42');
+		it('should use cached value when cache hits', async () => {
+			cacheService.get.mockResolvedValue(42);
 			const collectFn = extractCollectFn();
 			const mockGauge = { set: vi.fn() };
 
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
-			expect(cacheService.get.mock.calls[0]).toEqual(['metrics:active-workflow-count']);
+			expect(cacheService.get.mock.calls[0]).toEqual(['metrics:active-workflow-count:v2']);
 			expect(workflowRepository.getActiveCount.mock.calls).toHaveLength(0);
 			expect(mockGauge.set).toHaveBeenCalledWith(42);
 		});
@@ -84,23 +84,11 @@ describe('PrometheusActiveWorkflowMetricsService', () => {
 
 			expect(workflowRepository.getActiveCount.mock.calls).toHaveLength(1);
 			expect(cacheService.set.mock.calls[0]).toEqual([
-				'metrics:active-workflow-count',
-				'15',
+				'metrics:active-workflow-count:v2',
+				15,
 				30 * 1000,
 			]);
 			expect(mockGauge.set).toHaveBeenCalledWith(15);
-		});
-
-		it('should call DB when cached value is not a finite number', async () => {
-			cacheService.get.mockResolvedValue('not-a-number');
-			workflowRepository.getActiveCount.mockResolvedValue(7);
-			const collectFn = extractCollectFn();
-			const mockGauge = { set: vi.fn() };
-
-			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
-
-			expect(workflowRepository.getActiveCount.mock.calls).toHaveLength(1);
-			expect(mockGauge.set).toHaveBeenCalledWith(7);
 		});
 
 		it('should use the configured interval for the cache TTL', async () => {
@@ -113,8 +101,8 @@ describe('PrometheusActiveWorkflowMetricsService', () => {
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
 			expect(cacheService.set.mock.calls[0]).toEqual([
-				'metrics:active-workflow-count',
-				'5',
+				'metrics:active-workflow-count:v2',
+				5,
 				120 * 1000,
 			]);
 		});

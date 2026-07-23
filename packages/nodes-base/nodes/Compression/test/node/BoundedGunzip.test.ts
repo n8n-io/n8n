@@ -38,7 +38,9 @@ describe('boundedGunzip', () => {
 		expect(result.length).toBe(0);
 	});
 
-	it('should reject empty gzip input', async () => {
-		await expect(boundedGunzip(Buffer.alloc(0), 1024)).rejects.toThrow('invalid gzip data');
+	it('should reject invalid gzip data', async () => {
+		await expect(boundedGunzip(Buffer.from('invalid gzip data'), 1024)).rejects.toThrow(
+			'invalid gzip data',
+		);
 	});
 });

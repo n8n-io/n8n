@@ -31,12 +31,10 @@ const props = withDefaults(
 		filters: ExecutionFilterType;
 		total?: number;
 		concurrentTotal?: number;
-		estimated?: boolean;
 	}>(),
 	{
 		total: 0,
 		concurrentTotal: 0,
-		estimated: false,
 	},
 );
 
@@ -352,6 +350,8 @@ const goToUpgrade = () => {
 				:running-executions-count="concurrentTotal"
 				:concurrency-cap="settingsStore.concurrency"
 				:is-cloud-deployment="settingsStore.isCloudDeployment"
+				:executions="props.executions"
+				:is-initial-load="!executionsStore.initialLoadComplete"
 				@go-to-upgrade="goToUpgrade"
 			/>
 			<N8nCheckbox
@@ -452,7 +452,7 @@ const goToUpgrade = () => {
 										{{ i18n.baseText('executionsList.empty') }}
 									</span>
 								</template>
-								<template v-else-if="total > executions.length || estimated">
+								<template v-else-if="executionsStore.hasMoreExecutions">
 									<N8nButton
 										ref="loadMoreButton"
 										icon="refresh-cw"

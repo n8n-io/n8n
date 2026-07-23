@@ -369,7 +369,7 @@ describe('userHasScopes', () => {
 			]);
 
 			const user = { id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
-			const scopes = ['*' as const] as Scope[]; // Use wildcard scope for testing
+			const scopes = ['credential:read' as const] as Scope[];
 
 			const result = await userHasScopes(user, scopes, false, { credentialId });
 

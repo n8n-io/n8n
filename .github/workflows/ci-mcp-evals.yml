@@ -1,43 +1,38 @@
 name: 'CI: MCP Workflow Evals'
 
-# MCP workflow evals are manual only (workflow_dispatch). The build phase drives
-# the `claude` CLI (Anthropic cost + rate limits), so there is no per-PR or
-# scheduled run in this first version. Dispatch from the Actions tab (or `gh
-# workflow run ci-mcp-evals.yml`); set experiment-name=mcp-baseline to refresh
-# the LangSmith baseline, or filter=<slug> to run a single case.
+# Runs the MCP workflow evals: builds workflows through the instance MCP server
+# with Claude, then scores them. Manual only (Actions tab → "Run workflow"),
+# because each run spends Anthropic credits.
+#
+# This is the simple entry point. For power options (parallelism/lane tuning,
+# refreshing the comparison baseline, swapping the verifier), dispatch
+# "Test: MCP Workflow Evals" (test-evals-mcp.yml) instead.
 on:
   workflow_dispatch:
     inputs:
-      branch:
-        description: 'Git ref to test. Defaults to the dispatched ref (--ref); override with -f branch=<ref>.'
-        required: false
-        default: ''
       tier:
-        description: 'Test-case dataset to build + eval (e.g. `mcp`, `full`)'
+        description: 'Which set of tests to run. "mcp" = the standard MCP suite (recommended); "full" = every test case (much slower).'
         required: false
-        default: 'mcp'
-      filter:
-        description: 'Only build + eval test cases whose slug matches (comma-separated; empty = whole tier)'
-        required: false
-        default: ''
+        type: choice
+        options:
+          - mcp
+          - full
+        default: mcp
       iterations:
-        description: 'Builds per test case (-n) and verifier iterations (use 10 for a baseline)'
+        description: 'How many times each test is built and scored. More is more reliable but slower and costlier. 3 = normal check; 5 = high-confidence.'
         required: false
+        type: choice
+        options:
+          - '1'
+          - '3'
+          - '5'
         default: '3'
-      build-concurrency:
-        description: 'Parallel claude build processes (-j)'
+      build-model:
+        description: 'Which Anthropic model builds the workflows. Change it to compare models; otherwise leave as-is.'
         required: false
-        default: '3'
-      eval-concurrency:
-        description: 'Concurrent scenario executions in the verifier'
-        required: false
-        default: '6'
-      model:
-        description: 'Anthropic model id for the claude build step'
-        required: false
-        default: 'claude-sonnet-4-6'
-      experiment-name:
-        description: 'LangSmith experiment name (set to mcp-baseline to refresh the baseline)'
+        default: 'claude-opus-4-8'
+      filter:
+        description: 'Optional: run only specific tests. Enter test names separated by commas (e.g. "contact-form-automation, weather-alert"). Leave empty to run the whole set.'
         required: false
         default: ''
 
@@ -55,14 +50,17 @@ jobs:
     if: github.repository == 'n8n-io/n8n'
     uses: ./.github/workflows/test-evals-mcp.yml
     with:
-      branch: ${{ inputs.branch || github.sha }}
+      branch: ${{ github.sha }}
       tier: ${{ inputs.tier || 'mcp' }}
       filter: ${{ inputs.filter || '' }}
       iterations: ${{ inputs.iterations || '3' }}
-      build-concurrency: ${{ inputs.build-concurrency || '3' }}
-      eval-concurrency: ${{ inputs.eval-concurrency || '6' }}
-      model: ${{ inputs.model || 'claude-sonnet-4-6' }}
-      experiment-name: ${{ inputs.experiment-name || '' }}
+      build-model: ${{ inputs.build-model || 'claude-opus-4-8' }}
+      # Fixed to a stable single-runner value. Non-engineers don't tune this;
+      # for more parallelism (or a baseline refresh) dispatch test-evals-mcp.yml,
+      # which still exposes lanes / eval-concurrency / experiment-name.
+      lanes: '4'
+      # Omitted → the reusable workflow auto-sets concurrency to lanes * 2, and
+      # leaves experiment-name empty so a routine run can't overwrite the baseline.
     # Pass only the secrets the reusable workflow needs (not `secrets: inherit`).
     secrets:
       EVALS_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
@@ -71,3 +69,5 @@ jobs:
       N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
       EVALS_LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
       EVALS_LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
+      EVALS_LANGTRACER_URL: ${{ secrets.EVALS_LANGTRACER_URL }}
+      LANGTRACER_API_KEY: ${{ secrets.LANGTRACER_API_KEY }}

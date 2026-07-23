@@ -13,7 +13,10 @@ describe('DeprecationService', () => {
 		nodes: { exclude: [] },
 		executions: { mode: 'regular' },
 	});
-	const instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main' });
+	const instanceSettings = mockInstance(InstanceSettings, {
+		instanceType: 'main',
+		isDocker: true,
+	});
 	const deprecationService = new DeprecationService(logger, globalConfig, instanceSettings);
 
 	beforeEach(() => {
@@ -61,6 +64,9 @@ describe('DeprecationService', () => {
 		['N8N_CONFIG_FILES', '1', true],
 		['N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN', '1', true],
 		['N8N_RUNNERS_ENABLED', '1', true],
+		['WEBHOOK_URL', 'https://example.com/', true],
+		['N8N_DEFAULT_BINARY_DATA_MODE', 'default', true],
+		['N8N_DEFAULT_BINARY_DATA_MODE', 'filesystem', false],
 	])('should detect when %s is `%s`', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
 	});
@@ -80,10 +86,10 @@ describe('DeprecationService', () => {
 					const service = new DeprecationService(
 						logger,
 						globalConfig,
-						mock<InstanceSettings>({ instanceType }),
+						mock<InstanceSettings>({ instanceType, isDocker: true }),
 					);
 					service.warn();
-					expect(logger.warn).not.toHaveBeenCalled();
+					expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(envVar);
 				},
 			);
 		});
@@ -103,10 +109,10 @@ describe('DeprecationService', () => {
 					const service = new DeprecationService(
 						logger,
 						globalConfig,
-						mock<InstanceSettings>({ instanceType: 'worker' }),
+						mock<InstanceSettings>({ instanceType: 'worker', isDocker: true }),
 					);
 					service.warn();
-					expect(logger.warn).not.toHaveBeenCalled();
+					expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(envVar);
 				});
 			});
 
@@ -119,10 +125,10 @@ describe('DeprecationService', () => {
 					const service = new DeprecationService(
 						logger,
 						globalConfig,
-						mock<InstanceSettings>({ instanceType: 'webhook' }),
+						mock<InstanceSettings>({ instanceType: 'webhook', isDocker: true }),
 					);
 					service.warn();
-					expect(logger.warn).not.toHaveBeenCalled();
+					expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(envVar);
 				});
 			});
 
@@ -134,7 +140,7 @@ describe('DeprecationService', () => {
 					process.env[envVar] = envValue;
 					const service = new DeprecationService(logger, globalConfig, instanceSettings);
 					service.warn();
-					expect(logger.warn).toHaveBeenCalled();
+					expect(logger.warn.mock.lastCall?.[0] ?? '').toContain(envVar);
 				});
 
 				test('should not warn when OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS is true', () => {
@@ -143,7 +149,7 @@ describe('DeprecationService', () => {
 					const service = new DeprecationService(logger, globalConfig, instanceSettings);
 					service.warn();
 
-					expect(logger.warn).not.toHaveBeenCalled();
+					expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(envVar);
 				});
 
 				test('should warn when OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS is undefined', () => {
@@ -157,6 +163,54 @@ describe('DeprecationService', () => {
 					expect(warningMessage).toContain(envVar);
 				});
 			});
+		});
+	});
+
+	describe('default-flip warnings', () => {
+		test.each([
+			'N8N_UNVERIFIED_PACKAGES_ENABLED',
+			'N8N_RUNNERS_TASK_TIMEOUT',
+			'N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES',
+			'N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES',
+		])('should warn when %s is unset', (envVar) => {
+			delete process.env[envVar];
+			deprecationService.warn();
+			expect(logger.warn.mock.lastCall?.[0] ?? '').toContain(envVar);
+		});
+
+		test.each([
+			['N8N_UNVERIFIED_PACKAGES_ENABLED', 'false'],
+			['N8N_RUNNERS_TASK_TIMEOUT', '120'],
+			['N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES', '1048576'],
+			['N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES', '100'],
+		])('should not warn when %s is set explicitly', (envVar, value) => {
+			process.env[envVar] = value;
+			deprecationService.warn();
+			expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(envVar);
+		});
+	});
+
+	describe('running outside a container', () => {
+		const message = 'Running n8n outside a container is deprecated';
+
+		test('should warn when not running in a container', () => {
+			const service = new DeprecationService(
+				logger,
+				globalConfig,
+				mock<InstanceSettings>({ instanceType: 'main', isDocker: false }),
+			);
+			service.warn();
+			expect(logger.warn.mock.lastCall?.[0] ?? '').toContain(message);
+		});
+
+		test('should not warn when running in a container', () => {
+			const service = new DeprecationService(
+				logger,
+				globalConfig,
+				mock<InstanceSettings>({ instanceType: 'main', isDocker: true }),
+			);
+			service.warn();
+			expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(message);
 		});
 	});
 });

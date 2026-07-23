@@ -118,6 +118,36 @@ SchemaDriven.args = {
 	],
 };
 
+export const SchemaDrivenSmallTags = SchemaDrivenTemplate.bind({});
+SchemaDrivenSmallTags.args = {
+	columnView: true,
+	tagSize: 'small',
+	inputs: [
+		{
+			name: 'automationGoal',
+			properties: {
+				type: 'multi-select',
+				label: 'What are you looking to automate?',
+				options: [
+					{
+						label: 'Marketing',
+						value: 'marketing',
+					},
+					{
+						label: 'Sales',
+						value: 'sales',
+					},
+					{
+						label: 'Other',
+						value: 'other',
+					},
+				],
+			},
+			initialValue: ['marketing', 'other'],
+		},
+	],
+};
+
 const FramedFormTemplate: StoryFn = (args) => ({
 	setup: () => ({ args }),
 	components: {

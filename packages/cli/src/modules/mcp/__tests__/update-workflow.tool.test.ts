@@ -8,12 +8,14 @@ import {
 	type INode,
 } from 'n8n-workflow';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { NodeTypes } from '@/node-types';
 import { TagService } from '@/services/tag.service';
@@ -26,10 +28,12 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
 
 const mockAutoPopulateNodeCredentials = vi.fn();
+const mockTrackAutoassignOutcomes = vi.fn();
 vi.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
 	autoPopulateNodeCredentials: (...args: unknown[]) =>
 		mockAutoPopulateNodeCredentials(...args) as unknown,
 	stripNullCredentialStubs: vi.fn(),
+	trackAutoassignOutcomes: (...args: unknown[]) => mockTrackAutoassignOutcomes(...args) as unknown,
 }));
 
 const mockValidateJSON = vi.fn().mockReturnValue([]);
@@ -145,7 +149,11 @@ describe('update-workflow MCP tool', () => {
 			ensureWorkflowEditable: vi.fn().mockResolvedValue(undefined),
 			broadcastWorkflowUpdate: vi.fn().mockResolvedValue(undefined),
 		});
-		mockAutoPopulateNodeCredentials.mockResolvedValue({ assignments: [], skippedHttpNodes: [] });
+		mockAutoPopulateNodeCredentials.mockResolvedValue({
+			assignments: [],
+			skippedHttpNodes: [],
+			outcomes: [],
+		});
 		mockValidateJSON.mockReturnValue([]);
 
 		dataTableOps = {
@@ -174,6 +182,9 @@ describe('update-workflow MCP tool', () => {
 		});
 	});
 
+	const aiGatewayService = mock<AiGatewayService>();
+	aiGatewayService.isAvailable.mockResolvedValue({ available: false });
+
 	const createTool = () =>
 		createUpdateWorkflowTool(
 			user,
@@ -190,10 +201,17 @@ describe('update-workflow MCP tool', () => {
 			globalConfig,
 			subworkflowPolicyChecker,
 			workflowPublishedDataService,
+			aiGatewayService,
 		);
 
 	const callHandler = async (
-		input: { workflowId: string; skillsUsed?: string[]; operations: unknown[] },
+		input: {
+			workflowId: string;
+			skillsUsed?: string[];
+			operations: unknown[];
+			versionName?: string;
+			versionDescription?: string;
+		},
 		tool = createTool(),
 	) =>
 		await tool.handler(
@@ -201,6 +219,8 @@ describe('update-workflow MCP tool', () => {
 				workflowId: input.workflowId,
 				skillsUsed: input.skillsUsed,
 				operations: input.operations as never,
+				versionName: input.versionName as string,
+				versionDescription: input.versionDescription as string,
 			},
 			{} as never,
 		);
@@ -279,6 +299,42 @@ describe('update-workflow MCP tool', () => {
 
 			expect(result.isError).toBeUndefined();
 			expect(() => buildStrictOutputSchema(tool).parse(result.structuredContent)).not.toThrow();
+		});
+	});
+
+	describe('version metadata', () => {
+		test('passes client-provided versionName and versionDescription to the update', async () => {
+			await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+				],
+				versionName: 'Pointed B at the new API',
+				versionDescription: 'Switched the request URL after the API migration',
+			});
+
+			expect(updateMock.mock.calls[0][3]).toEqual(
+				expect.objectContaining({
+					versionName: 'Pointed B at the new API',
+					versionDescription: 'Switched the request URL after the API migration',
+				}),
+			);
+		});
+
+		test('falls back to diff-based version metadata when the client omits it', async () => {
+			await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+				],
+			});
+
+			expect(updateMock.mock.calls[0][3]).toEqual(
+				expect.objectContaining({
+					versionName: 'Updated B',
+					versionDescription: 'Updated nodes: B',
+				}),
+			);
 		});
 	});
 
@@ -798,6 +854,7 @@ describe('update-workflow MCP tool', () => {
 					globalConfig,
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
+					aiGatewayService,
 				);
 				findWorkflowMock.mockImplementation(async (id: string) =>
 					id === 'wf-1'
@@ -878,7 +935,7 @@ describe('update-workflow MCP tool', () => {
 				user,
 				expect.any(WorkflowEntity),
 				'wf-1',
-				{ aiBuilderAssisted: true, source: 'n8n-mcp' },
+				expect.objectContaining({ aiBuilderAssisted: true, source: 'n8n-mcp' }),
 			);
 			expect(updateMock.mock.calls[0][1].name).toBe('Renamed');
 			expect(updateMock.mock.calls[0][1].meta).toEqual(
@@ -930,10 +987,25 @@ describe('update-workflow MCP tool', () => {
 
 		test('reports auto-assigned credentials in the response', async () => {
 			mockAutoPopulateNodeCredentials.mockResolvedValue({
-				assignments: [{ nodeName: 'C', credentialName: 'My Slack', credentialType: 'slackApi' }],
+				assignments: [
+					{
+						nodeName: 'C',
+						credentialName: 'My Slack',
+						credentialType: 'slackApi',
+						source: 'user',
+					},
+					{
+						nodeName: 'D',
+						credentialName: 'n8n credits',
+						credentialType: 'openAiApi',
+						source: 'aiGateway',
+					},
+				],
 				skippedHttpNodes: [],
+				outcomes: [],
 			});
 
+			const tool = createTool();
 			const result = await callHandler({
 				workflowId: 'wf-1',
 				operations: [
@@ -946,14 +1018,92 @@ describe('update-workflow MCP tool', () => {
 
 			const response = parseResult(result);
 			expect(response.autoAssignedCredentials).toEqual([
-				{ nodeName: 'C', credentialName: 'My Slack', credentialType: 'slackApi' },
+				{ nodeName: 'C', credentialName: 'My Slack', credentialType: 'slackApi', source: 'user' },
+				{
+					nodeName: 'D',
+					credentialName: 'n8n credits',
+					credentialType: 'openAiApi',
+					source: 'aiGateway',
+				},
 			]);
+
+			// The `source` field must be declared in the item schema; validate items
+			// strictly so a returned key missing from the schema fails the test
+			// (MCP publishes the schema with additionalProperties: false).
+			const itemsField = (
+				tool.config.outputSchema as {
+					autoAssignedCredentials: z.ZodOptional<z.ZodArray<z.ZodObject<z.ZodRawShape>>>;
+				}
+			).autoAssignedCredentials.unwrap();
+			expect(() =>
+				z.array(itemsField.element.strict()).parse(response.autoAssignedCredentials),
+			).not.toThrow();
+		});
+
+		test('tracks auto-assign outcomes with the persisted workflow id after update', async () => {
+			mockAutoPopulateNodeCredentials.mockResolvedValue({
+				assignments: [],
+				skippedHttpNodes: [],
+				outcomes: [
+					{
+						nodeName: 'C',
+						credentialType: 'openAiApi',
+						source: 'aiGateway',
+						hadUserCredential: false,
+						aiGatewayAvailable: true,
+					},
+				],
+			});
+
+			await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'addNode', node: { name: 'C', type: 'n8n-nodes-base.slack', typeVersion: 1 } },
+				],
+			});
+
+			expect(mockTrackAutoassignOutcomes).toHaveBeenCalledTimes(1);
+			const trackArgs = mockTrackAutoassignOutcomes.mock.calls[0];
+			expect(trackArgs[2]).toBe('update_workflow');
+			expect(trackArgs[5]).toBe('wf-1');
+			// Tracking runs only after the update persists.
+			expect(updateMock.mock.invocationCallOrder[0]).toBeLessThan(
+				mockTrackAutoassignOutcomes.mock.invocationCallOrder[0],
+			);
+		});
+
+		test('does not track auto-assign outcomes when the update fails to persist', async () => {
+			mockAutoPopulateNodeCredentials.mockResolvedValue({
+				assignments: [],
+				skippedHttpNodes: [],
+				outcomes: [
+					{
+						nodeName: 'C',
+						credentialType: 'openAiApi',
+						source: 'aiGateway',
+						hadUserCredential: false,
+						aiGatewayAvailable: true,
+					},
+				],
+			});
+			updateMock.mockRejectedValueOnce(new Error('update failed'));
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'addNode', node: { name: 'C', type: 'n8n-nodes-base.slack', typeVersion: 1 } },
+				],
+			});
+
+			expect(result.isError).toBe(true);
+			expect(mockTrackAutoassignOutcomes).not.toHaveBeenCalled();
 		});
 
 		test('reports skipped HTTP nodes in the note', async () => {
 			mockAutoPopulateNodeCredentials.mockResolvedValue({
 				assignments: [],
 				skippedHttpNodes: ['HTTP Request'],
+				outcomes: [],
 			});
 
 			const result = await callHandler({
@@ -1976,6 +2126,7 @@ describe('update-workflow MCP tool', () => {
 					globalConfig,
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
+					aiGatewayService,
 				);
 
 				await callHandler(
@@ -2012,6 +2163,7 @@ describe('update-workflow MCP tool', () => {
 					globalConfig,
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
+					aiGatewayService,
 				);
 
 				const result = await callHandler(

@@ -38,7 +38,7 @@ type Overrides = {
 
 function createSandboxService(overrides: Overrides = {}) {
 	const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
-	const errorReporter = { error: vi.fn() } as unknown as ErrorReporter;
+	const errorReporter = { error: vi.fn(), warn: vi.fn() } as unknown as ErrorReporter;
 	const runState: InstanceAiSandboxRunState = {
 		getActiveRunId: vi.fn(() => undefined),
 		hasSuspendedRun: vi.fn(() => false),
@@ -68,7 +68,7 @@ function createSandboxService(overrides: Overrides = {}) {
 		aiService,
 	};
 	const service = new InstanceAiSandboxService(options);
-	return { service, logger, runState, backgroundTasks, settingsService, aiService };
+	return { service, logger, errorReporter, runState, backgroundTasks, settingsService, aiService };
 }
 
 describe('InstanceAiSandboxService', () => {
@@ -113,11 +113,11 @@ describe('InstanceAiSandboxService', () => {
 		});
 
 		it('routes Daytona traffic through the assistant proxy when enabled', async () => {
-			const getBuilderApiProxyToken = vi.fn(async () => ({ accessToken: 'token-1' }));
+			const getInstanceAiApiProxyToken = vi.fn(async () => ({ accessToken: 'token-1' }));
 			const client = {
 				getSandboxProxyConfig: vi.fn(async () => ({ image: 'proxy-image' })),
 				getSandboxProxyBaseUrl: vi.fn(() => 'https://proxy.base'),
-				getBuilderApiProxyToken,
+				getInstanceAiApiProxyToken,
 			};
 			const { service } = createSandboxService({
 				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
@@ -138,7 +138,7 @@ describe('InstanceAiSandboxService', () => {
 			if (config.enabled && config.provider === 'daytona') {
 				const token = await config.getAuthToken?.();
 				expect(token).toBe('token-1');
-				expect(getBuilderApiProxyToken).toHaveBeenCalledWith(
+				expect(getInstanceAiApiProxyToken).toHaveBeenCalledWith(
 					{ id: fakeUser.id },
 					expect.objectContaining({ userMessageId: expect.any(String) }),
 				);
@@ -167,6 +167,116 @@ describe('InstanceAiSandboxService', () => {
 				serviceUrl: 'https://admin.sandbox',
 				apiKey: 'admin-key',
 			});
+		});
+	});
+
+	describe('AI service transient failures', () => {
+		function createProxyService(client: {
+			getSandboxProxyConfig: Mock;
+			getInstanceAiApiProxyToken?: Mock;
+		}) {
+			return createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+				aiService: {
+					isProxyEnabled: vi.fn(() => true),
+					getClient: vi.fn(async () => ({
+						getSandboxProxyBaseUrl: vi.fn(() => 'https://proxy.base'),
+						getInstanceAiApiProxyToken:
+							client.getInstanceAiApiProxyToken ?? vi.fn(async () => ({ accessToken: 'token-1' })),
+						getSandboxProxyConfig: client.getSandboxProxyConfig,
+					})),
+				},
+			});
+		}
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('retries the proxy config fetch on transient 5xx errors', async () => {
+			vi.useFakeTimers();
+			const transient = Object.assign(new Error('Service Unavailable'), { statusCode: 503 });
+			const getSandboxProxyConfig = vi
+				.fn()
+				.mockRejectedValueOnce(transient)
+				.mockRejectedValueOnce(transient)
+				.mockResolvedValue({ image: 'proxy-image' });
+			const { service } = createProxyService({ getSandboxProxyConfig });
+
+			const promise = service.resolveSandboxConfig(fakeUser);
+			await vi.runAllTimersAsync();
+
+			await expect(promise).resolves.toMatchObject({ image: 'proxy-image' });
+			expect(getSandboxProxyConfig).toHaveBeenCalledTimes(3);
+		});
+
+		it('treats errors without a status code as transient', async () => {
+			vi.useFakeTimers();
+			const getSandboxProxyConfig = vi
+				.fn()
+				.mockRejectedValueOnce(new SyntaxError("Unexpected token '<'"))
+				.mockResolvedValue({ image: 'proxy-image' });
+			const { service } = createProxyService({ getSandboxProxyConfig });
+
+			const promise = service.resolveSandboxConfig(fakeUser);
+			await vi.runAllTimersAsync();
+
+			await expect(promise).resolves.toMatchObject({ image: 'proxy-image' });
+			expect(getSandboxProxyConfig).toHaveBeenCalledTimes(2);
+		});
+
+		it('surfaces an OperationalError after exhausting retries', async () => {
+			vi.useFakeTimers();
+			const transient = Object.assign(new Error('Bad Gateway'), { statusCode: 502 });
+			const getSandboxProxyConfig = vi.fn().mockRejectedValue(transient);
+			const { service, errorReporter } = createProxyService({ getSandboxProxyConfig });
+
+			const promise = service.resolveSandboxConfig(fakeUser);
+			const assertion = expect(promise).rejects.toThrow(
+				'The AI assistant service is temporarily unavailable',
+			);
+			await vi.runAllTimersAsync();
+
+			await assertion;
+			expect(getSandboxProxyConfig).toHaveBeenCalledTimes(3);
+			expect(errorReporter.warn).toHaveBeenCalledTimes(1);
+			expect(errorReporter.warn).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Sandbox proxy config fetch failed after 3 attempts',
+					cause: transient,
+				}),
+			);
+		});
+
+		it('does not retry definite client errors', async () => {
+			const unauthorized = Object.assign(new Error('Unauthorized'), { statusCode: 401 });
+			const getSandboxProxyConfig = vi.fn().mockRejectedValue(unauthorized);
+			const { service } = createProxyService({ getSandboxProxyConfig });
+
+			await expect(service.resolveSandboxConfig(fakeUser)).rejects.toBe(unauthorized);
+			expect(getSandboxProxyConfig).toHaveBeenCalledTimes(1);
+		});
+
+		it('retries transient failures when minting proxy auth tokens', async () => {
+			vi.useFakeTimers();
+			const transient = Object.assign(new Error('Service Unavailable'), { statusCode: 503 });
+			const getInstanceAiApiProxyToken = vi
+				.fn()
+				.mockRejectedValueOnce(transient)
+				.mockResolvedValue({ accessToken: 'token-2' });
+			const { service } = createProxyService({
+				getSandboxProxyConfig: vi.fn(async () => ({ image: 'proxy-image' })),
+				getInstanceAiApiProxyToken,
+			});
+
+			const config = await service.resolveSandboxConfig(fakeUser);
+			if (!config.enabled || config.provider !== 'daytona') throw new Error('unexpected config');
+
+			const tokenPromise = config.getAuthToken?.();
+			await vi.runAllTimersAsync();
+
+			await expect(tokenPromise).resolves.toBe('token-2');
+			expect(getInstanceAiApiProxyToken).toHaveBeenCalledTimes(2);
 		});
 	});
 

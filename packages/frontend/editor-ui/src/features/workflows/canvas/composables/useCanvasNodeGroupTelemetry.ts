@@ -6,8 +6,11 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 
 export type CanvasNodeGroupEventSource =
 	| 'group-toolbar'
+	| 'group-header'
 	| 'keyboard-shortcut'
-	| 'update-blocked-toast';
+	| 'context-menu'
+	| 'update-blocked-toast'
+	| 'sub-workflow-extraction';
 
 /**
  * Telemetry for canvas node groups: capturing how users

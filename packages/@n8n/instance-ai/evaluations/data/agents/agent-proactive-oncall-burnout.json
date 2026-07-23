@@ -1,0 +1,25 @@
+{
+	"description": "Gold: {anchor: agent, embedsOther: false or true} — proactive/heartbeat-driven: wakes on its own, checks paging state, decides whether and whom to reach out to. The agent-axes bucket the suite previously did not cover.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Have an agent proactively monitor our on-call rotation for burnout signs — who's been paged, when, how often — and suggest coverage shifts before it becomes a problem. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "medium",
+	"tags": ["intent-resolution", "proactive", "heartbeat"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent proposes an agent-anchored design — an n8n Agent that monitors paging state and decides when to intervene — rather than a fixed scheduled report workflow.",
+		"The proposal grounds the agent choice in the proactive, judgment-driven nature of the task (spotting burnout patterns and deciding when suggestions are warranted), not merely in the word 'agent' appearing in the request."
+	]
+}

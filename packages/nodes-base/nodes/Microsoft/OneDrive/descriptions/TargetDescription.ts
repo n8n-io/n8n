@@ -44,6 +44,8 @@ export const userTargetRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'id', value: '' },
 	required: true,
+	// Shared with the trigger: the action node evaluates this per input item; the
+	// trigger resolves it once per poll.
 	modes: [
 		{
 			displayName: 'By ID',
@@ -53,7 +55,8 @@ export const userTargetRLC: INodeProperties = {
 			hint: 'The user principal name (UPN) or object ID of the user whose OneDrive to use',
 		},
 	],
-	description: 'The user whose OneDrive the Service Principal should act on',
+	description:
+		'The user whose OneDrive the Service Principal should act on. Evaluated per input item, so an expression can target a different user for each item.',
 	displayOptions: {
 		show: {
 			authentication: ['microsoftEntraServicePrincipalApi'],
@@ -68,6 +71,8 @@ export const driveTargetRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'id', value: '' },
 	required: true,
+	// Shared with the trigger: the action node evaluates this per input item; the
+	// trigger resolves it once per poll.
 	modes: [
 		{
 			displayName: 'By ID',
@@ -77,7 +82,8 @@ export const driveTargetRLC: INodeProperties = {
 			hint: "The drive's own ID (looks like `b!…`), not a file or folder ID. Get it from `GET /users/{upn}/drive` (the `id` field).",
 		},
 	],
-	description: 'The drive the Service Principal should act on',
+	description:
+		'The drive the Service Principal should act on. Evaluated per input item, so an expression can target a different drive for each item.',
 	displayOptions: {
 		show: {
 			authentication: ['microsoftEntraServicePrincipalApi'],
@@ -86,9 +92,26 @@ export const driveTargetRLC: INodeProperties = {
 	},
 };
 
-/** The full set of app-only target params, spread into both node + trigger. */
+/** The full set of app-only target params, spread into the action node. */
 export const targetDescription: INodeProperties[] = [
 	resourceTargetParam,
 	userTargetRLC,
 	driveTargetRLC,
+];
+
+/**
+ * Trigger variant: same params, poll-appropriate copy — a poll has no input items,
+ * so the per-item wording of the action node would be wrong there.
+ */
+export const triggerTargetDescription: INodeProperties[] = [
+	resourceTargetParam,
+	{
+		...userTargetRLC,
+		description:
+			'The user whose OneDrive the Service Principal should act on. Resolved once per poll.',
+	},
+	{
+		...driveTargetRLC,
+		description: 'The drive the Service Principal should act on. Resolved once per poll.',
+	},
 ];

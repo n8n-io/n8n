@@ -1,3 +1,4 @@
+import FormData from 'form-data';
 import { DateTime } from 'luxon';
 import type {
 	IExecuteFunctions,
@@ -7,6 +8,7 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
+	IN8nHttpFullResponse,
 	IRequestOptions,
 	IPollFunctions,
 } from 'n8n-workflow';
@@ -65,6 +67,20 @@ function assignOptions(options: IRequestOptions | IHttpRequestOptions, option: I
 	Object.assign(options, rest);
 }
 
+/** Builds a `FormData` instance from the legacy `formData` option shape. */
+function toFormData(fields: IDataObject): FormData {
+	const form = new FormData();
+	for (const [key, field] of Object.entries(fields)) {
+		if (typeof field === 'object' && field !== null && 'value' in field) {
+			const { value, options } = field as { value: unknown; options?: FormData.AppendOptions };
+			form.append(key, value, options);
+		} else {
+			form.append(key, field);
+		}
+	}
+	return form;
+}
+
 export async function salesforceApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
@@ -83,6 +99,7 @@ export async function salesforceApiRequest(
 			// across requests; the credential's authenticate hook attaches the Bearer
 			// header and resolves the relative URL against the cached instance URL.
 			const credentialsType = 'salesforceJwtApi';
+			const { formData, ...restOption } = option;
 			const options: IHttpRequestOptions = {
 				headers: {
 					'Content-Type': 'application/json',
@@ -92,17 +109,46 @@ export async function salesforceApiRequest(
 				qs,
 				url: `/services/data/${SALESFORCE_API_VERSION}${uri || endpoint}`,
 				json: true,
+				// Return the full response and let non-401 error statuses through, so the
+				// Salesforce error body is available here instead of being discarded when the
+				// authenticated helper wraps the Axios error. 401 still throws so the
+				// credential's token refresh runs.
+				returnFullResponse: true,
+				ignoreHttpStatusErrors: { ignore: true, except: [401] },
 			};
 
-			if (!Object.keys(options.body as IDataObject).length) {
+			if (formData) {
+				// The authenticated helper only understands a FormData body, not the legacy option.
+				options.body = toFormData(formData as IDataObject);
+			} else if (!Object.keys(options.body as IDataObject).length) {
 				delete options.body;
 			}
 
-			assignOptions(options, option);
+			assignOptions(options, restOption);
+
+			if (formData) {
+				// Drop the JSON Content-Type after merging caller options so form-data can
+				// set the multipart boundary itself.
+				delete options.headers!['Content-Type'];
+			}
+
 			this.logger.debug(
 				`Authentication for "Salesforce" node is using "jwt". Invoking URI ${options.url}`,
 			);
-			return await this.helpers.httpRequestWithAuthentication.call(this, credentialsType, options);
+			const response = (await this.helpers.httpRequestWithAuthentication.call(
+				this,
+				credentialsType,
+				options,
+			)) as IN8nHttpFullResponse;
+
+			if (response.statusCode >= 300) {
+				throw Object.assign(
+					new Error(`${response.statusCode} - ${JSON.stringify(response.body)}`),
+					{ statusCode: response.statusCode, error: response.body },
+				);
+			}
+
+			return response.body;
 		} else {
 			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_web_server_flow.htm&type=5
 			const credentialsType = 'salesforceOAuth2Api';
@@ -129,9 +175,9 @@ export async function salesforceApiRequest(
 			cause?: { response?: { data?: unknown } };
 		};
 
-		// Salesforce REST errors arrive as an array on `error.error` (OAuth2 path via the
-		// legacy request helper) or on the wrapped Axios error's response data under
-		// `error.cause` (JWT path via the authenticated request helper).
+		// Salesforce REST errors arrive as an array on `error.error` — set by the OAuth2
+		// legacy helper and by the JWT error reshaping above. `error.cause.response.data`
+		// is a fallback for an Axios error still wrapped by the authenticated helper.
 		const responseData = salesforceError.cause?.response?.data;
 		const sfErrors: SalesforceApiError[] = Array.isArray(salesforceError.error)
 			? salesforceError.error
@@ -337,9 +383,9 @@ const SALESFORCE_DATE_LITERALS = new Set([
 ]);
 
 // Salesforce node typeVersion at which numeric-looking strings stopped being
-// auto-coerced to unquoted SOQL numbers. See NODE-5116: string-typed Salesforce
-// fields (e.g. external IDs) need quoted literals regardless of content. Older
-// typeVersions keep the legacy coercion for backwards compatibility.
+// auto-coerced to unquoted SOQL numbers. String-typed Salesforce fields (e.g.
+// external IDs) need quoted literals regardless of content. Older typeVersions
+// keep the legacy coercion for backwards compatibility.
 const NUMERIC_STRING_QUOTING_VERSION = 1.1;
 
 export function getValue(value: any, nodeVersion = 1): string | number | boolean {
@@ -418,7 +464,7 @@ export function getValue(value: any, nodeVersion = 1): string | number | boolean
 
 		// Legacy behavior (typeVersion < 1.1): auto-coerce numeric strings to unquoted
 		// SOQL numbers. Kept for existing workflows that rely on it for numeric SF fields
-		// (e.g. `AnnualRevenue > '0'`). Fixed in typeVersion 1.1 — see NODE-5116.
+		// (e.g. `AnnualRevenue > '0'`). Fixed in typeVersion 1.1.
 		if (nodeVersion < NUMERIC_STRING_QUOTING_VERSION && /^-?(0|[1-9]\d*)(\.\d+)?$/.test(value)) {
 			const numericValue = Number(value);
 			if (Number.isFinite(numericValue)) {

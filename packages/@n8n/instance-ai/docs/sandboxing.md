@@ -226,6 +226,8 @@ graph LR
 
 If any step fails, the agent reads the error output, fixes the code, and retries. This loop runs entirely inside the sandbox — the n8n host is never involved until the final save.
 
+Agent building does not go through the sandbox at all. The `build-agent` orchestration tool delegates each turn to the agents-module builder (`AgentsBuilderService`), which runs host-side as a sub-agent — there are no agent-config files in the workspace, and no sandbox is required for agent building.
+
 ## Boundaries
 
 **Sandboxing is not the filesystem service.** The sandbox gives the agent a private workspace for building workflows. The filesystem service (and gateway) gives the agent access to the user's project files on their machine. These are separate systems with different security models and do not overlap.

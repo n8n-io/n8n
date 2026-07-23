@@ -14,6 +14,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ProjectService } from '@/services/project.service.ee';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
@@ -32,6 +33,7 @@ describe('WorkflowCreationService', () => {
 	let projectRepositoryMock: MockProxy<ProjectRepository>;
 	let workflowValidationServiceMock: MockProxy<WorkflowValidationService>;
 	let instanceRedactionEnforcementServiceMock: MockProxy<InstanceRedactionEnforcementService>;
+	let workflowHistoryServiceMock: MockProxy<WorkflowHistoryService>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -43,6 +45,7 @@ describe('WorkflowCreationService', () => {
 		projectRepositoryMock = mock<ProjectRepository>();
 		workflowValidationServiceMock = mock<WorkflowValidationService>();
 		instanceRedactionEnforcementServiceMock = mock<InstanceRedactionEnforcementService>();
+		workflowHistoryServiceMock = mock<WorkflowHistoryService>();
 		workflowValidationServiceMock.validateCredentialNodeRestrictions.mockReturnValue({
 			isValid: true,
 		});
@@ -54,7 +57,7 @@ describe('WorkflowCreationService', () => {
 			mock(), // logger
 			mock(), // sharedWorkflowRepository
 			mock(), // tagService
-			mock(), // workflowHistoryService
+			workflowHistoryServiceMock,
 			mock(), // externalHooks
 			projectServiceMock,
 			mock(), // eventService
@@ -116,6 +119,43 @@ describe('WorkflowCreationService', () => {
 			await expect(
 				workflowCreationService.createWorkflow(user, newWorkflow, { projectId: 'project-1' }),
 			).rejects.toThrow('Workflow structure is invalid.');
+		});
+
+		it('passes source and version metadata to the initial history version', async () => {
+			licenseStateMock.isSharingLicensed.mockReturnValue(false);
+			licenseStateMock.isDataRedactionLicensed.mockReturnValue(false);
+			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			const { transactionManager } = setupTransactionMocks();
+			transactionManager.save.mockImplementation(async (entity: unknown) => entity);
+			workflowHistoryServiceMock.saveVersion.mockRejectedValue(new Error('Stopping for test'));
+
+			const user = mock<User>();
+			const newWorkflow = new WorkflowEntity();
+			newWorkflow.name = 'Test';
+			newWorkflow.nodes = [];
+			newWorkflow.connections = {};
+
+			await expect(
+				workflowCreationService.createWorkflow(user, newWorkflow, {
+					projectId: 'project-1',
+					source: 'n8n-mcp',
+					versionName: 'Initial Slack alert workflow',
+					versionDescription: 'Posts to #ops when the webhook fires',
+				}),
+			).rejects.toThrow('Stopping for test');
+
+			expect(workflowHistoryServiceMock.saveVersion).toHaveBeenCalledWith(
+				user,
+				newWorkflow,
+				newWorkflow.id,
+				false,
+				'n8n-mcp',
+				transactionManager,
+				{
+					name: 'Initial Slack alert workflow',
+					description: 'Posts to #ops when the webhook fires',
+				},
+			);
 		});
 
 		describe('credential retrieval', () => {

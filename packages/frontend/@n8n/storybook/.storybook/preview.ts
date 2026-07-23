@@ -83,6 +83,7 @@ export const parameters = {
 				'Docs',
 				'Styleguide',
 				'Core',
+				'Instance Settings',
 				'Assistant',
 				'Chat',
 				'Tables',

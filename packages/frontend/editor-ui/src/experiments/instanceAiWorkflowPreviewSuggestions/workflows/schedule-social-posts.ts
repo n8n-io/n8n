@@ -48,7 +48,7 @@ export const scheduleSocialPostsWorkflow: PreviewWorkflow = {
 		{
 			id: 'post-x',
 			label: 'Post to X',
-			icon: { type: 'file', src: X_ICON_SVG },
+			icon: { type: 'file', src: X_ICON_SVG, lightInvert: true },
 			position: { x: 880, y: 10 },
 		},
 		{
@@ -80,6 +80,7 @@ export const scheduleSocialPostsWorkflow: PreviewWorkflow = {
 				icon: X_ICON_SVG,
 				title: 'Scheduled to X',
 				subtitle: 'Mon 9:00am',
+				lightInvert: true,
 			},
 		},
 		{

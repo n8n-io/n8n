@@ -3,6 +3,7 @@ export {
 	validateWorkflow,
 	ValidationError,
 	ValidationWarning,
+	getSchemaBaseDirs,
 	setSchemaBaseDirs,
 	type ValidationResult,
 	type ValidationOptions,

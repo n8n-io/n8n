@@ -38,6 +38,32 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 		return await this.save(testCaseExecution);
 	}
 
+	/**
+	 * Paginated fetch of a run's test cases. Unlike the unbounded `find()` the
+	 * internal controller uses (which loads every row and would OOM on large CI
+	 * datasets), this bounds the result. Ordered by `runIndex` (the seeded
+	 * per-case sequence) with `id` as a stable tiebreaker.
+	 */
+	async getManyByTestRunId(
+		testRunId: string,
+		{ skip, take }: { skip?: number; take?: number } = {},
+	) {
+		return await this.find({
+			where: { testRun: { id: testRunId } },
+			order: { runIndex: 'ASC', id: 'ASC' },
+			skip,
+			take,
+		});
+	}
+
+	/**
+	 * Count a run's test cases. Used by the public API to compute the
+	 * pagination cursor without loading rows.
+	 */
+	async countByTestRunId(testRunId: string) {
+		return await this.countBy({ testRun: { id: testRunId } });
+	}
+
 	async createBatch(testRunId: string, testCases: string[]) {
 		const mappings = this.create(
 			testCases.map<DeepPartial<TestCaseExecution>>(() => ({
@@ -52,12 +78,16 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 	}
 
 	/**
-	 * Seeds N pending test case rows for a run, indexed sequentially. Used at
-	 * the start of `runTest` so the FE can render a placeholder card per case
-	 * before any actual evaluation has happened.
+	 * Seeds pending test case rows for a run, one per entry in `runIndices`.
+	 * Each row's `runIndex` is set to the corresponding value from the list so
+	 * it always reflects the original dataset position — even for filtered runs
+	 * where only a subset of rows is executed. The FE maps results back by
+	 * `runIndex`, so preserving the original index is critical.
+	 *
+	 * For a full run (all rows), pass `[0, 1, 2, …, N-1]`.
 	 */
-	async createPendingBatch(testRunId: string, count: number): Promise<TestCaseExecution[]> {
-		const rows = Array.from({ length: count }, (_, runIndex) =>
+	async createPendingBatch(testRunId: string, runIndices: number[]): Promise<TestCaseExecution[]> {
+		const rows = runIndices.map((runIndex) =>
 			this.create({
 				testRun: { id: testRunId },
 				status: 'new',

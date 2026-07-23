@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { stampItemIndexOnError } from '../GenericFunctions';
 import { targetDescription } from './descriptions/TargetDescription';
 import { fileFields, fileOperations } from './FileDescription';
 import { folderFields, folderOperations } from './FolderDescription';
@@ -125,18 +126,19 @@ export class MicrosoftOneDrive implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
-		// The target (user/drive) is per-node, not per-item, so resolve the app-only
-		// scope root once before the loop. `undefined` for OAuth2 (uses /me).
+		// The credential/auth selectors are `noDataExpression` (per-node); the target id
+		// itself is resolved per item inside the loop below.
 		const credentialType = getOneDriveCredentialType.call(this);
 		const isServicePrincipal = credentialType === 'microsoftEntraServicePrincipalApi';
-		const driveScopeRoot = resolveDriveScopeRoot.call(this, false);
 
 		// Copy/Move under app-only need the destination drive. Resolving it can cost a
-		// `GET /<root>/drive?$select=id`, so resolve lazily and cache for the whole run.
-		let resolvedDestinationDriveId: string | undefined;
+		// `GET /<root>/drive?$select=id`, so resolve lazily and cache per scope root —
+		// with per-item targets, user A's default drive must not be reused for user B.
+		const resolvedDestinationDriveIds = new Map<string, string>();
 		const resolveDestinationDriveId = async (
 			providedDriveId: string,
 			itemIndex: number,
+			driveScopeRoot: string | undefined,
 		): Promise<string | undefined> => {
 			// Explicit destination drive (any auth) wins — supports cross-drive moves.
 			if (providedDriveId) return providedDriveId;
@@ -150,8 +152,9 @@ export class MicrosoftOneDrive implements INodeType {
 					extractValue: true,
 				}) as string;
 			}
-			// SP + user: resolve the default drive once and cache it.
-			if (resolvedDestinationDriveId === undefined) {
+			// SP + user: resolve the default drive once per distinct scope root.
+			let resolvedDriveId = resolvedDestinationDriveIds.get(driveScopeRoot);
+			if (resolvedDriveId === undefined) {
 				const drive = (await microsoftApiRequest.call(
 					this,
 					'GET',
@@ -175,13 +178,19 @@ export class MicrosoftOneDrive implements INodeType {
 						},
 					);
 				}
-				resolvedDestinationDriveId = driveId;
+				resolvedDestinationDriveIds.set(driveScopeRoot, driveId);
+				resolvedDriveId = driveId;
 			}
-			return resolvedDestinationDriveId;
+			return resolvedDriveId;
 		};
 
 		for (let i = 0; i < length; i++) {
 			try {
+				// The target RLC accepts expressions, so resolve the app-only scope root per
+				// item — each item may address a different user/drive. `undefined` for OAuth2
+				// (uses /me). Resolving inside the try means a bad target on item N fails
+				// item N (continueOnFail emits an error item) instead of aborting the run.
+				const driveScopeRoot = resolveDriveScopeRoot.call(this, false, i);
 				if (resource === 'file') {
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_copy?view=odsp-graph-online
 					if (operation === 'copy') {
@@ -199,7 +208,11 @@ export class MicrosoftOneDrive implements INodeType {
 						if (isServicePrincipal) {
 							const providedDriveId =
 								typeof parentReference?.driveId === 'string' ? parentReference.driveId : '';
-							const destinationDriveId = await resolveDestinationDriveId(providedDriveId, i);
+							const destinationDriveId = await resolveDestinationDriveId(
+								providedDriveId,
+								i,
+								driveScopeRoot,
+							);
 							if (destinationDriveId) {
 								body.parentReference = {
 									...(body.parentReference as IDataObject),
@@ -612,7 +625,7 @@ export class MicrosoftOneDrive implements INodeType {
 						// user can't pick a destination drive. For app-only we still inject the
 						// scope drive id so a same-drive move resolves to the right drive; OAuth2
 						// resolves to `undefined` (same `/me` drive) — unchanged behaviour.
-						const destinationDriveId = await resolveDestinationDriveId('', i);
+						const destinationDriveId = await resolveDestinationDriveId('', i, driveScopeRoot);
 						if (destinationDriveId) {
 							moveParentReference.driveId = destinationDriveId;
 						}
@@ -653,7 +666,8 @@ export class MicrosoftOneDrive implements INodeType {
 					}
 					continue;
 				}
-				throw error;
+				// A NodeError from the transport may be missing the itemIndex, add it
+				throw stampItemIndexOnError(error, i);
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray(responseData as IDataObject),

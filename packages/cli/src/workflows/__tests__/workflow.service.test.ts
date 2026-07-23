@@ -2,7 +2,6 @@ import type { Mock } from 'vitest';
 import type { LicenseState } from '@n8n/backend-common';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
-	ExecutionRepository,
 	Project,
 	User,
 	WorkflowRepository,
@@ -17,6 +16,8 @@ import { mock } from 'vitest-mock-extended';
 import type { IConnections, INode } from 'n8n-workflow';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
@@ -69,7 +70,6 @@ describe('WorkflowService', () => {
 				mock(), // sharedWorkflowRepository
 				workflowRepositoryMock as never, // workflowRepository
 				mock(), // workflowTagMappingRepository
-				mock(), // binaryDataService
 				mock(), // ownershipService
 				mock(), // tagService
 				mock(), // workflowHistoryService
@@ -77,7 +77,7 @@ describe('WorkflowService', () => {
 				mock(), // activeWorkflowManager
 				roleServiceMock, // roleService
 				mock(), // projectService
-				mock(), // executionRepository
+				mock(), // executionPersistence
 				mock(), // eventService
 				mock(), // globalConfig
 				mock(), // folderRepository
@@ -92,6 +92,8 @@ describe('WorkflowService', () => {
 				mock(), // licenseState
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
+				mock(), // workflowPublicationNotifier
+				mock(), // scheduleTriggerJobRegistrar
 			);
 		});
 
@@ -329,7 +331,6 @@ describe('WorkflowService', () => {
 				mock(), // sharedWorkflowRepository
 				workflowRepositoryMock as never, // workflowRepository
 				mock(), // workflowTagMappingRepository
-				mock(), // binaryDataService
 				ownershipServiceMock, // ownershipService
 				mock(), // tagService
 				workflowHistoryServiceMock, // workflowHistoryService
@@ -337,7 +338,7 @@ describe('WorkflowService', () => {
 				mock(), // activeWorkflowManager
 				mock(), // roleService
 				mock(), // projectService
-				mock(), // executionRepository
+				mock(), // executionPersistence
 				mock(), // eventService
 				mock(), // globalConfig
 				mock(), // folderRepository
@@ -352,6 +353,8 @@ describe('WorkflowService', () => {
 				licenseStateMock, // licenseState
 				mock(), // projectRepository
 				redactionEnforcementServiceMock, // redactionEnforcementService
+				mock(), // workflowPublicationNotifier
+				mock(), // scheduleTriggerJobRegistrar
 			);
 
 			vi.clearAllMocks();
@@ -509,6 +512,8 @@ describe('WorkflowService', () => {
 				'workflow-1',
 				false,
 				'ui',
+				undefined,
+				undefined,
 			);
 		});
 
@@ -973,6 +978,7 @@ describe('WorkflowService', () => {
 		let activeWorkflowManagerMock: MockProxy<ActiveWorkflowManager>;
 		let externalHooksMock: MockProxy<ExternalHooks>;
 		let eventServiceMock: MockProxy<EventService>;
+		let scheduleTriggerJobRegistrarMock: MockProxy<ScheduleTriggerJobRegistrar>;
 
 		const WORKFLOW_ID = 'workflow-1';
 		const PREVIOUS_VERSION_ID = 'v1';
@@ -1014,6 +1020,7 @@ describe('WorkflowService', () => {
 			activeWorkflowManagerMock = mock();
 			externalHooksMock = mock<ExternalHooks>();
 			eventServiceMock = mock<EventService>();
+			scheduleTriggerJobRegistrarMock = mock();
 
 			workflowRepositoryMock.create.mockImplementation(
 				(data) => Object.assign(new WorkflowEntity(), data) as WorkflowEntity,
@@ -1024,7 +1031,6 @@ describe('WorkflowService', () => {
 				mock(), // sharedWorkflowRepository
 				workflowRepositoryMock, // workflowRepository
 				mock(), // workflowTagMappingRepository
-				mock(), // binaryDataService
 				mock(), // ownershipService
 				mock(), // tagService
 				workflowHistoryServiceMock, // workflowHistoryService
@@ -1032,7 +1038,7 @@ describe('WorkflowService', () => {
 				activeWorkflowManagerMock, // activeWorkflowManager
 				mock(), // roleService
 				mock(), // projectService
-				mock(), // executionRepository
+				mock(), // executionPersistence
 				eventServiceMock, // eventService
 				globalConfigMock, // globalConfig
 				mock(), // folderRepository
@@ -1047,6 +1053,8 @@ describe('WorkflowService', () => {
 				mock(), // licenseState
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
+				mock(), // workflowPublicationNotifier
+				scheduleTriggerJobRegistrarMock, // scheduleTriggerJobRegistrar
 			);
 
 			// Bypass validation internals
@@ -1215,13 +1223,48 @@ describe('WorkflowService', () => {
 			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
 			expect(workflowRepositoryMock.update).not.toHaveBeenCalled();
 		});
+
+		test('deactivating through the outbox removes the durable schedule jobs in the same transaction, without routing through the leader', async () => {
+			globalConfigMock.workflows.useWorkflowPublicationService = true;
+
+			const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			const trx = mock<EntityManager>();
+			const managerMock = mock<EntityManager>();
+			(managerMock.transaction as unknown as Mock).mockImplementation(
+				async (runInTransaction: (entityManager: EntityManager) => Promise<unknown>) =>
+					await runInTransaction(trx),
+			);
+			Object.defineProperty(workflowRepositoryMock, 'manager', {
+				value: managerMock,
+				configurable: true,
+			});
+
+			const user = mock<User>({ id: 'user-1' });
+
+			await workflowService.deactivateWorkflow(user, WORKFLOW_ID);
+
+			// active=false and the durable-job removal commit in the same transaction
+			expect(trx.update).toHaveBeenCalledWith(
+				WorkflowEntity,
+				{ id: WORKFLOW_ID },
+				expect.objectContaining({ active: false, activeVersionId: null }),
+			);
+			expect(scheduleTriggerJobRegistrarMock.removeWorkflowInTransaction).toHaveBeenCalledWith(
+				trx,
+				WORKFLOW_ID,
+			);
+			// in-memory teardown is left to the leader, not run here
+			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('delete()', () => {
 		let workflowService: WorkflowService;
 		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
 		let workflowRepositoryMock: MockProxy<WorkflowRepository>;
-		let executionRepositoryMock: MockProxy<ExecutionRepository>;
+		let executionPersistenceMock: MockProxy<ExecutionPersistence>;
 		let globalConfigMock: MockProxy<GlobalConfig>;
 		let activeWorkflowManagerMock: MockProxy<ActiveWorkflowManager>;
 
@@ -1241,20 +1284,17 @@ describe('WorkflowService', () => {
 		beforeEach(() => {
 			workflowFinderServiceMock = mock<WorkflowFinderService>();
 			workflowRepositoryMock = mock();
-			executionRepositoryMock = mock();
+			executionPersistenceMock = mock();
 			activeWorkflowManagerMock = mock();
 			globalConfigMock = mock<GlobalConfig>({
 				workflows: mock<WorkflowsConfig>({ useWorkflowPublicationService: true }),
 			});
-
-			executionRepositoryMock.find.mockResolvedValue([]);
 
 			workflowService = new WorkflowService(
 				mock(), // logger
 				mock(), // sharedWorkflowRepository
 				workflowRepositoryMock, // workflowRepository
 				mock(), // workflowTagMappingRepository
-				mock(), // binaryDataService
 				mock(), // ownershipService
 				mock(), // tagService
 				mock(), // workflowHistoryService
@@ -1262,7 +1302,7 @@ describe('WorkflowService', () => {
 				activeWorkflowManagerMock, // activeWorkflowManager
 				mock(), // roleService
 				mock(), // projectService
-				executionRepositoryMock, // executionRepository
+				executionPersistenceMock, // executionPersistence
 				mock(), // eventService
 				globalConfigMock, // globalConfig
 				mock(), // folderRepository
@@ -1275,6 +1315,8 @@ describe('WorkflowService', () => {
 				mock(), // licenseState
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
+				mock(), // workflowPublicationNotifier
+				mock(), // scheduleTriggerJobRegistrar
 			);
 		});
 
@@ -1307,6 +1349,18 @@ describe('WorkflowService', () => {
 			await workflowService.delete(mock<User>(), WORKFLOW_ID, true);
 
 			expect(workflowRepositoryMock.delete).toHaveBeenCalledWith(WORKFLOW_ID);
+		});
+
+		test('deletes the workflow executions before the workflow itself', async () => {
+			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			await workflowService.delete(mock<User>(), WORKFLOW_ID, true);
+
+			expect(executionPersistenceMock.hardDeleteByWorkflowId).toHaveBeenCalledWith(WORKFLOW_ID);
+			expect(
+				executionPersistenceMock.hardDeleteByWorkflowId.mock.invocationCallOrder[0],
+			).toBeLessThan(workflowRepositoryMock.delete.mock.invocationCallOrder[0]);
 		});
 	});
 });

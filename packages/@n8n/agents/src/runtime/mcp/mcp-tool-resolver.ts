@@ -23,10 +23,12 @@ export class McpToolResolver {
 
 		const handler = async (
 			input: unknown,
-			_ctx: ToolContext | InterruptibleToolContext,
+			ctx: ToolContext | InterruptibleToolContext,
 		): Promise<unknown> => {
 			const args = (input ?? {}) as Record<string, unknown>;
-			return await connection.callTool(originalName, args);
+			return await connection.callTool(originalName, args, {
+				abortSignal: ctx.abortSignal,
+			});
 		};
 
 		const toMessage = (output: unknown): AgentMessage | undefined => {

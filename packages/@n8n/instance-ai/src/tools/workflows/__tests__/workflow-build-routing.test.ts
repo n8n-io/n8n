@@ -22,6 +22,41 @@ describe('withDeterministicRouting', () => {
 		expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
 	});
 
+	it('marks non-deterministic-trigger workflows as ready (trigger gets a simulated fixture)', () => {
+		const outcome = withDeterministicRouting(
+			makeOutcome({
+				triggerNodes: [{ nodeName: 'On New Email', nodeType: 'n8n-nodes-base.gmailTrigger' }],
+			}),
+		);
+
+		expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
+	});
+
+	it('marks suffix-less trigger types (webhook, cron) as ready', () => {
+		for (const nodeType of ['n8n-nodes-base.webhook', 'n8n-nodes-base.cron']) {
+			const outcome = withDeterministicRouting(
+				makeOutcome({ triggerNodes: [{ nodeName: 'Entry', nodeType }] }),
+			);
+
+			expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
+		}
+	});
+
+	it('marks workflows without any trigger node as not verifiable', () => {
+		for (const triggerNodes of [
+			[],
+			undefined,
+			[{ nodeName: 'Set', nodeType: 'n8n-nodes-base.set' }],
+		]) {
+			const outcome = withDeterministicRouting(makeOutcome({ triggerNodes }));
+
+			expect(outcome.verificationReadiness).toMatchObject({
+				status: 'not_verifiable',
+				reason: 'no-trigger-node',
+			});
+		}
+	});
+
 	it('keeps workflows with unresolved placeholders ready for verification', () => {
 		const outcome = withDeterministicRouting(
 			makeOutcome({

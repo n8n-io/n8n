@@ -1,9 +1,12 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
-import type { WorkflowEntity } from '@n8n/db';
+import type { Project, WorkflowEntity } from '@n8n/db';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
-import { createDeferredPromise, sleep, UnexpectedError } from 'n8n-workflow';
+import { sleep, UnexpectedError } from 'n8n-workflow';
 import type {
+	Cron,
+	CronExpression,
 	ExecutionError,
 	IConnections,
 	INode,
@@ -22,6 +25,11 @@ import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import type { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import type { ExecutionService } from '@/executions/execution.service';
+import type {
+	ScheduleTriggerCollectionSession,
+	ScheduleTriggerJobRegistrar,
+} from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import type { OwnershipService } from '@/services/ownership.service';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type {
 	PublishedWorkflowDataForExecution,
@@ -44,6 +52,9 @@ describe('TriggerExecutionContextFactory', () => {
 	const activeExecutions = mock<ActiveExecutions>();
 	const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
 	const storageConfig = mock<StorageConfig>({ modeTag: 'db' }) as unknown as StorageConfig;
+	const scheduleTriggerJobRegistrar = mock<ScheduleTriggerJobRegistrar>();
+	const scheduleCollectionSession = mock<ScheduleTriggerCollectionSession>();
+	const ownershipService = mock<OwnershipService>();
 
 	let factory: TriggerExecutionContextFactory;
 
@@ -52,7 +63,11 @@ describe('TriggerExecutionContextFactory', () => {
 		workflowStaticDataService.saveStaticData.mockResolvedValue(undefined);
 		workflowExecutionService.runWorkflow.mockResolvedValue('exec-123');
 		executionService.createErrorExecution.mockResolvedValue(undefined);
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-1', name: 'Test Project' }),
+		);
 
+		scheduleTriggerJobRegistrar.interceptsNode.mockReturnValue(false);
 		const scopedLogger = mock<Logger>();
 		const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
@@ -66,6 +81,8 @@ describe('TriggerExecutionContextFactory', () => {
 			workflowExecutionService,
 			storageConfig,
 			workflowPublishedDataService,
+			scheduleTriggerJobRegistrar,
+			ownershipService,
 		);
 	});
 
@@ -87,6 +104,7 @@ describe('TriggerExecutionContextFactory', () => {
 					activation,
 					async () => workflowData,
 					vi.fn(),
+					scheduleCollectionSession,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -107,6 +125,8 @@ describe('TriggerExecutionContextFactory', () => {
 					workflowId: workflowData.id,
 					workflowName: workflowData.name,
 					executionId: 'exec-123',
+					projectId: 'project-1',
+					projectName: 'Test Project',
 					source: 'trigger',
 				});
 			});
@@ -126,6 +146,7 @@ describe('TriggerExecutionContextFactory', () => {
 					activation,
 					async () => workflowData,
 					vi.fn(),
+					scheduleCollectionSession,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -160,6 +181,7 @@ describe('TriggerExecutionContextFactory', () => {
 					activation,
 					async () => workflowData,
 					vi.fn(),
+					scheduleCollectionSession,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 				const donePromise = createDeferredPromise<IRun>();
@@ -190,6 +212,7 @@ describe('TriggerExecutionContextFactory', () => {
 					activation,
 					async () => workflowData,
 					vi.fn(),
+					scheduleCollectionSession,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -218,6 +241,7 @@ describe('TriggerExecutionContextFactory', () => {
 					activation,
 					async () => workflowData,
 					vi.fn(),
+					scheduleCollectionSession,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 				const donePromise = createDeferredPromise<IRun>();
@@ -246,6 +270,7 @@ describe('TriggerExecutionContextFactory', () => {
 					activation,
 					async () => workflowData,
 					onTriggerFailure,
+					scheduleCollectionSession,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -259,6 +284,68 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					activation,
 				});
+			});
+		});
+
+		describe('schedule trigger interception', () => {
+			test('hands the registrar collector to the trigger context of an intercepted node', () => {
+				scheduleTriggerJobRegistrar.interceptsNode.mockReturnValue(true);
+				const registerCron = vi.fn();
+				scheduleCollectionSession.createCollector.mockReturnValue({ registerCron });
+
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const mode: WorkflowExecuteMode = 'trigger';
+				const activation: WorkflowActivateMode = 'activate';
+				const workflow = mock<Workflow>({ name: 'Test Workflow' });
+				const node = mock<INode>({ name: 'Schedule Trigger Node' });
+
+				const getTriggerFunctions = factory.getExecuteTriggerFunctions(
+					workflowData,
+					additionalData,
+					mode,
+					activation,
+					async () => workflowData,
+					vi.fn(),
+					scheduleCollectionSession,
+				);
+				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
+
+				expect(scheduleTriggerJobRegistrar.interceptsNode).toHaveBeenCalledWith(node);
+				expect(scheduleCollectionSession.createCollector).toHaveBeenCalledWith(workflow, node);
+
+				// The node's registerCron calls must reach the collector, not the
+				// in-memory scheduler.
+				const cron: Cron = { expression: '0 0 9 * * *' as CronExpression };
+				const onTick = vi.fn();
+				context.helpers.registerCron(cron, onTick);
+
+				expect(registerCron).toHaveBeenCalledWith(cron, onTick);
+			});
+
+			test('keeps the in-memory scheduling functions for a non-intercepted node', () => {
+				// interceptsNode returns false by default in this suite.
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const mode: WorkflowExecuteMode = 'trigger';
+				const activation: WorkflowActivateMode = 'activate';
+				const workflow = mock<Workflow>({ name: 'Test Workflow' });
+				const node = mock<INode>({ name: 'Trigger Node' });
+
+				const getTriggerFunctions = factory.getExecuteTriggerFunctions(
+					workflowData,
+					additionalData,
+					mode,
+					activation,
+					async () => workflowData,
+					vi.fn(),
+					scheduleCollectionSession,
+				);
+				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
+
+				expect(scheduleCollectionSession.createCollector).not.toHaveBeenCalled();
+				// The context still exposes the default in-memory scheduling helper.
+				expect(typeof context.helpers.registerCron).toBe('function');
 			});
 		});
 
@@ -282,6 +369,7 @@ describe('TriggerExecutionContextFactory', () => {
 					activation,
 					async () => workflowData,
 					vi.fn(),
+					scheduleCollectionSession,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 				const executionError = mock<ExecutionError>();

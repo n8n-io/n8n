@@ -12,6 +12,7 @@ import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentPublish } from '../composables/useAgentPublish';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 
 const props = defineProps<{
 	agent: AgentResource;
@@ -35,6 +36,9 @@ const { canUpdate, canDelete, canPublish, canUnpublish } = useAgentPermissions(
 
 const isPublished = computed(() => props.agent.activeVersionId !== null);
 
+const favoriteStore = useFavoritesStore();
+const isFavorite = computed(() => favoriteStore.isFavorite(props.agent.id, 'agent'));
+
 const actions = computed(() => {
 	const items: Array<{ value: string; label: string; divided?: boolean }> = [];
 
@@ -43,6 +47,11 @@ const actions = computed(() => {
 	} else if (!isPublished.value && canPublish.value) {
 		items.push({ value: 'publish', label: locale.baseText('agents.list.actions.publish') });
 	}
+
+	items.push({
+		value: 'toggleFavorite',
+		label: locale.baseText(isFavorite.value ? 'favorites.remove' : 'favorites.add'),
+	});
 
 	if (canDelete.value) {
 		items.push({
@@ -73,6 +82,8 @@ async function onAction(action: string) {
 	} else if (action === 'unpublish') {
 		const updated = await unpublish(props.projectId, props.agent.id, props.agent.name);
 		if (updated) emit('unpublished', updated);
+	} else if (action === 'toggleFavorite') {
+		await favoriteStore.toggleFavorite(props.agent.id, 'agent');
 	} else if (action === 'delete') {
 		const confirmed = await openAgentConfirmationModal({
 			title: locale.baseText('agents.delete.modal.title', {
@@ -87,6 +98,7 @@ async function onAction(action: string) {
 		if (confirmed !== MODAL_CONFIRM) return;
 		await deleteAgent(rootStore.restApiContext, props.projectId, props.agent.id);
 		removeProjectAgentFromListCache(props.projectId, props.agent.id);
+		favoriteStore.removeFavoriteLocally(props.agent.id, 'agent');
 		emit('deleted', props.agent.id);
 	}
 }

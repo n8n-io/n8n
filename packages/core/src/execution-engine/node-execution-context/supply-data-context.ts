@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import get from 'lodash/get';
 import type {
 	AINodeConnectionType,
@@ -19,7 +20,7 @@ import type {
 	ISourceData,
 	NodeExecutionHint,
 } from 'n8n-workflow';
-import { createDeferredPromise, jsonParse, NodeConnectionTypes } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes } from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -48,6 +49,17 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	readonly parentNode?: INode;
 
 	readonly hints: NodeExecutionHint[] = [];
+
+	/**
+	 * The `additionalData` credential flags at 'input' time, per run index. The flags are
+	 * execution-shared and only reset per top-level engine node, so a sibling sub-node's
+	 * earlier resolution would otherwise be stamped onto this run's task too — stamping
+	 * only flags raised between 'input' and 'output' attributes usage to the right task.
+	 */
+	private readonly dynamicCredentialsFlagsAtInput = new Map<
+		number,
+		{ used: boolean; attempted: boolean }
+	>();
 
 	constructor(
 		workflow: Workflow,
@@ -271,6 +283,10 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			: [];
 
 		if (type === 'input') {
+			this.dynamicCredentialsFlagsAtInput.set(currentNodeRunIndex, {
+				used: additionalData.currentNodeUsedDynamicCredentials === true,
+				attempted: additionalData.currentNodeAttemptedDynamicCredentials === true,
+			});
 			taskData = {
 				startTime: Date.now(),
 				executionTime: 0,
@@ -309,6 +325,10 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			taskData.data = {
 				[connectionType]: data,
 			} as ITaskDataConnections;
+		}
+
+		if (type === 'output') {
+			this.stampDynamicCredentialsUsage(taskData, currentNodeRunIndex);
 		}
 
 		if (type === 'input') {
@@ -361,6 +381,41 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				node: nodeName,
 				runIndex: currentNodeRunIndex,
 			});
+		}
+	}
+
+	/**
+	 * Sub-node executions can run during a trigger's webhook phase (e.g. MCP Trigger tool
+	 * calls), where no engine loop stamps the per-node credential flags onto task data —
+	 * stamp them here so the persisted execution still gets redacted. Engine-phase nodes
+	 * are stamped by `WorkflowExecute` from the same `additionalData` flags. Only flags
+	 * raised since this run's 'input' write are stamped, so a sibling sub-node's earlier
+	 * resolution is not attributed to this task.
+	 */
+	private stampDynamicCredentialsUsage(taskData: ITaskData, currentNodeRunIndex: number) {
+		const { additionalData, runExecutionData } = this;
+		const atInput = this.dynamicCredentialsFlagsAtInput.get(currentNodeRunIndex) ?? {
+			used: false,
+			attempted: false,
+		};
+		this.dynamicCredentialsFlagsAtInput.delete(currentNodeRunIndex);
+
+		const used = additionalData.currentNodeUsedDynamicCredentials === true && !atInput.used;
+		if (used) {
+			taskData.usedDynamicCredentials = true;
+		}
+		if (additionalData.currentNodeAttemptedDynamicCredentials === true && !atInput.attempted) {
+			taskData.attemptedDynamicCredentials = true;
+		}
+		if (
+			used &&
+			additionalData.dynamicCredentialsResolvedUserId &&
+			runExecutionData.executionData?.runtimeData
+		) {
+			// Record the resolved user like the engine loop does, so the redaction layer can
+			// grant that user access to their own data (identity is execution-scoped).
+			runExecutionData.executionData.runtimeData.executedByUserId =
+				additionalData.dynamicCredentialsResolvedUserId;
 		}
 	}
 

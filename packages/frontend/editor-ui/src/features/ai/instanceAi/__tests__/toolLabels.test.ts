@@ -53,8 +53,8 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('complete-checkpoint')).toBe('circle-check');
 	});
 
-	test('returns share for delegate', () => {
-		expect(getToolIcon('delegate')).toBe('share');
+	test('returns default icon for removed delegate tool', () => {
+		expect(getToolIcon('delegate')).toBe('wrench');
 	});
 
 	test('returns share for tools ending with -with-agent', () => {
@@ -84,7 +84,7 @@ describe('getToolIcon', () => {
 	});
 
 	test('treats removed plan tool as an ordinary unknown icon', () => {
-		expect(getToolIcon('plan')).toBe('settings');
+		expect(getToolIcon('plan')).toBe('wrench');
 	});
 
 	test('returns key-round for credential tools', () => {
@@ -110,8 +110,8 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('n8n-docs')).toBe('book-open');
 	});
 
-	test('returns settings as default', () => {
-		expect(getToolIcon('unknown-tool')).toBe('settings');
+	test('returns wrench as default', () => {
+		expect(getToolIcon('unknown-tool')).toBe('wrench');
 	});
 });
 
@@ -170,9 +170,9 @@ describe('useToolLabel', () => {
 		expect(getToggleLabel(makeToolCall({ toolName: 'workflows' }))).toBe('Show data');
 	});
 
-	test('getToggleLabel returns show brief for delegate', () => {
+	test('getToggleLabel returns show data for removed delegate tool', () => {
 		const { getToggleLabel } = useToolLabel();
-		expect(getToggleLabel(makeToolCall({ toolName: 'delegate' }))).toBe('Show brief');
+		expect(getToggleLabel(makeToolCall({ toolName: 'delegate' }))).toBe('Show data');
 	});
 
 	test('getToggleLabel returns undefined for no-toggle tools', () => {
@@ -191,9 +191,9 @@ describe('useToolLabel', () => {
 		expect(getHideLabel(makeToolCall({ toolName: 'workflows' }))).toBe('Hide data');
 	});
 
-	test('getHideLabel returns hide brief for delegate', () => {
+	test('getHideLabel returns hide data for removed delegate tool', () => {
 		const { getHideLabel } = useToolLabel();
-		expect(getHideLabel(makeToolCall({ toolName: 'delegate' }))).toBe('Hide brief');
+		expect(getHideLabel(makeToolCall({ toolName: 'delegate' }))).toBe('Hide data');
 	});
 
 	test('getHideLabel returns undefined for no-toggle tools', () => {

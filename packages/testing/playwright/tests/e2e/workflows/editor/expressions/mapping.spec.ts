@@ -115,7 +115,7 @@ test.describe(
 			await expect(valueParameterInput).toBeVisible();
 
 			await n8n.interactions.precisionDragToTarget(
-				schemaItem.locator('span'),
+				n8n.ndv.inputPanel.getSchemaItemPill('count'),
 				valueParameterInput,
 				'top',
 			);

@@ -13,6 +13,7 @@ import type { WorkflowBuilder, WorkflowJSON } from '../types/base';
 import { containsPlaceholderMarker } from '../workflow-builder/string-utils';
 
 export {
+	getSchemaBaseDirs,
 	setSchemaBaseDirs,
 	validateNodeConfig,
 	type SchemaValidationResult,

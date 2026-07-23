@@ -7,12 +7,14 @@ import {
 	type LatestNodeInfo,
 	type LogEntry,
 	type LogDetailsPanelState,
+	isGroupLog,
+	isNodeLog,
 } from '@/features/execution/logs/logs.types';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import LogsViewNodeName from '@/features/execution/logs/components/LogsViewNodeName.vue';
-import { computed, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import {
 	getSubtreeTotalConsumedTokens,
@@ -26,7 +28,14 @@ import { useExecutionRedaction } from '@/features/execution/executions/composabl
 import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants/modals';
 import RedactedDataState from '@/features/ndv/panel/components/RedactedDataState.vue';
-import { N8nButton, N8nIcon, N8nResizeWrapper, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nOption,
+	N8nResizeWrapper,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 import { useMessageAgentSessionLink } from '@/features/agents/composables/useMessageAgentSessionLink';
 const MIN_IO_PANEL_WIDTH = 200;
 
@@ -67,7 +76,29 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const uiStore = useUIStore();
 const { isRedacted, canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
 
-const type = computed(() => nodeTypeStore.getNodeType(logEntry.node.type));
+const nodeEntry = computed(() => (isNodeLog(logEntry) ? logEntry : undefined));
+const groupEntry = computed(() => (isGroupLog(logEntry) ? logEntry : undefined));
+const displayName = computed(() =>
+	groupEntry.value
+		? groupEntry.value.group.name
+		: (latestInfo?.name ?? nodeEntry.value?.node.name ?? ''),
+);
+const type = computed(() =>
+	nodeEntry.value ? nodeTypeStore.getNodeType(nodeEntry.value.node.type) : null,
+);
+
+// Group IO delegates to a chosen boundary member entry, defaulting to execution order
+const selectedInputIndex = ref(0);
+const selectedOutputIndex = ref(0);
+watch(
+	() => logEntry.id,
+	() => {
+		selectedInputIndex.value = 0;
+		selectedOutputIndex.value = 0;
+	},
+);
+const groupInput = computed(() => groupEntry.value?.boundaries.inputs[selectedInputIndex.value]);
+const groupOutput = computed(() => groupEntry.value?.boundaries.outputs[selectedOutputIndex.value]);
 const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry, false));
 const isTriggerNode = computed(() => type.value?.group.includes('trigger'));
 const { link: messageAgentSessionLink } = useMessageAgentSessionLink(computed(() => logEntry));
@@ -112,18 +143,15 @@ function handleResizeEnd() {
 		>
 			<template #title>
 				<div :class="$style.title">
-					<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
-					<LogsViewNodeName
-						:name="latestInfo?.name ?? logEntry.node.name"
-						:is-deleted="latestInfo?.deleted ?? false"
-					/>
+					<NodeIcon v-if="!groupEntry" :node-type="type" :size="16" :class="$style.icon" />
+					<LogsViewNodeName :name="displayName" :is-deleted="latestInfo?.deleted ?? false" />
 					<LogsViewExecutionSummary
-						v-if="isOpen && logEntry.runData !== undefined"
+						v-if="isOpen && nodeEntry?.runData !== undefined"
 						:class="$style.executionSummary"
-						:status="logEntry.runData.executionStatus ?? 'unknown'"
+						:status="nodeEntry.runData.executionStatus ?? 'unknown'"
 						:consumed-tokens="consumedTokens"
-						:start-time="logEntry.runData.startTime"
-						:time-took="logEntry.runData.executionTime"
+						:start-time="nodeEntry.runData.startTime"
+						:time-took="nodeEntry.runData.executionTime"
 					/>
 				</div>
 			</template>
@@ -175,7 +203,7 @@ function handleResizeEnd() {
 					{{ locale.baseText('ndv.output.runNodeHint') }}
 				</N8nText>
 			</div>
-			<template v-else>
+			<template v-else-if="nodeEntry">
 				<N8nResizeWrapper
 					v-if="!isTriggerNode && panels !== LOG_DETAILS_PANEL_STATE.OUTPUT"
 					:class="{
@@ -195,7 +223,7 @@ function handleResizeEnd() {
 						data-test-id="log-details-input"
 						pane-type="input"
 						:title="locale.baseText('logs.details.header.actions.input')"
-						:log-entry="logEntry"
+						:log-entry="nodeEntry"
 						:collapsing-table-column-name="collapsingInputTableColumnName"
 						:search-shortcut="searchShortcutPriorityPanel === 'input' ? 'ctrl+f' : undefined"
 						:show-redacted-overlay="panels !== LOG_DETAILS_PANEL_STATE.BOTH"
@@ -208,12 +236,100 @@ function handleResizeEnd() {
 					pane-type="output"
 					:class="$style.outputPanel"
 					:title="locale.baseText('logs.details.header.actions.output')"
-					:log-entry="logEntry"
+					:log-entry="nodeEntry"
 					:collapsing-table-column-name="collapsingOutputTableColumnName"
 					:search-shortcut="searchShortcutPriorityPanel === 'output' ? 'ctrl+f' : undefined"
 					:show-redacted-overlay="panels !== LOG_DETAILS_PANEL_STATE.BOTH"
 					@collapsing-table-column-changed="emit('collapsingOutputTableColumnChanged', $event)"
 				/>
+				<div
+					v-if="isRedacted && panels === LOG_DETAILS_PANEL_STATE.BOTH"
+					:class="$style.redactedOverlay"
+				>
+					<RedactedDataState
+						:title="locale.baseText('ndv.output.redacted.title')"
+						:is-dynamic-credentials="isDynamicCredentials"
+						:can-reveal="canReveal"
+						wide
+						@open-settings="uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY)"
+						@reveal="revealData"
+					/>
+				</div>
+			</template>
+			<template v-else-if="groupEntry">
+				<N8nResizeWrapper
+					v-if="groupInput && panels !== LOG_DETAILS_PANEL_STATE.OUTPUT"
+					:class="{
+						[$style.inputResizer]: true,
+						[$style.collapsed]: resizer.isCollapsed.value,
+						[$style.full]: resizer.isFullSize.value,
+					}"
+					:width="resizer.size.value"
+					:style="shouldResize ? { width: `${resizer.size.value ?? 0}px` } : undefined"
+					:supported-directions="['right']"
+					:is-resizing-enabled="shouldResize"
+					:window="window"
+					@resize="resizer.onResize"
+					@resizeend="handleResizeEnd"
+				>
+					<div :class="$style.groupPane">
+						<N8nSelect
+							v-if="groupEntry.boundaries.inputs.length > 1"
+							v-model="selectedInputIndex"
+							:class="$style.boundarySelect"
+							size="small"
+							data-test-id="log-details-group-input-select"
+						>
+							<N8nOption
+								v-for="(boundary, index) in groupEntry.boundaries.inputs"
+								:key="boundary.id"
+								:value="index"
+								:label="boundary.label"
+							/>
+						</N8nSelect>
+						<LogsViewRunData
+							data-test-id="log-details-input"
+							pane-type="input"
+							:class="$style.groupRunData"
+							:title="locale.baseText('logs.details.header.actions.input')"
+							:log-entry="groupInput.entry"
+							:source-index="groupInput.sourceIndex"
+							:collapsing-table-column-name="null"
+							:search-shortcut="searchShortcutPriorityPanel === 'input' ? 'ctrl+f' : undefined"
+							:show-redacted-overlay="panels !== LOG_DETAILS_PANEL_STATE.BOTH"
+						/>
+					</div>
+				</N8nResizeWrapper>
+				<div
+					v-if="groupOutput && panels !== LOG_DETAILS_PANEL_STATE.INPUT"
+					:class="[$style.outputPanel, $style.groupPane]"
+				>
+					<N8nSelect
+						v-if="groupEntry.boundaries.outputs.length > 1"
+						v-model="selectedOutputIndex"
+						:class="$style.boundarySelect"
+						size="small"
+						data-test-id="log-details-group-output-select"
+					>
+						<N8nOption
+							v-for="(boundary, index) in groupEntry.boundaries.outputs"
+							:key="boundary.id"
+							:value="index"
+							:label="boundary.label"
+						/>
+					</N8nSelect>
+					<LogsViewRunData
+						data-test-id="log-details-output"
+						pane-type="output"
+						:class="$style.groupRunData"
+						:title="locale.baseText('logs.details.header.actions.output')"
+						:log-entry="groupOutput.entry"
+						:override-outputs="groupOutput.overrideOutputs"
+						:collapsing-table-column-name="null"
+						:search-shortcut="searchShortcutPriorityPanel === 'output' ? 'ctrl+f' : undefined"
+						:show-redacted-overlay="panels !== LOG_DETAILS_PANEL_STATE.BOTH"
+					/>
+				</div>
 				<div
 					v-if="isRedacted && panels === LOG_DETAILS_PANEL_STATE.BOTH"
 					:class="$style.redactedOverlay"
@@ -316,5 +432,24 @@ function handleResizeEnd() {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+}
+
+.groupPane {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	overflow: hidden;
+	height: 100%;
+	width: 100%;
+}
+
+.boundarySelect {
+	flex-shrink: 0;
+	padding: var(--spacing--2xs);
+}
+
+.groupRunData {
+	flex-grow: 1;
+	overflow: hidden;
 }
 </style>

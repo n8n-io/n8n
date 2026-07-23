@@ -13,6 +13,21 @@ export function getComputerUsePrompt({
 	if (localGateway && localGateway.status !== 'disabledGlobally') {
 		const promptParts: string[] = [];
 
+		// Not connected: cover only what CU is and how to connect, not the operational rules.
+		if (localGateway.status === 'disconnected' || localGateway.status === 'disabled') {
+			const setupPath =
+				localGateway.status === 'disconnected'
+					? 'click the "..." button next to "Computer Use", click "Connect"'
+					: 'click on "Setup computer use"';
+			return `
+## Computer Use
+This instance supports "Computer Use": connecting to the user's computer with the capabilities *filesystem* (read/write local files), *shell* (run local commands), *browser* (automate the user's real browser session; requires the "n8n Browser Use" Chrome extension: ${BROWSER_USE_EXTENSION_URL}), and *screenshot*/*mouse-keyboard* (never advertise or use unless explicitly requested). Users choose which capabilities to enable and can reconnect with a different set.
+
+Computer Use is NOT currently connected — do NOT attempt to use Computer Use tools. Proactively suggest connecting when the user needs: credential/OAuth/API-key setup through a service's web portal (*browser*); a local file (PDF, CSV, spec) as context, or docs/exports written to files (*filesystem*); authenticated web research or form/frontend testing (*browser*); local commands or debugging (*shell*); or migration from Make/Zapier or similar (*browser* + *filesystem*).
+
+To connect, the user should open the right sidebar and either: for browser automation only, click the "..." button next to "Browser Use", click "Connect", and follow the dialog to install and connect the extension; or for filesystem/shell/other capabilities, ${setupPath} and follow the instructions in the dialog.`;
+		}
+
 		promptParts.push(`
 ## Computer Use
 This instance support "Computer Use", which allows connecting to user's computer and execute following functionality:
@@ -98,20 +113,6 @@ Browser tools are not enabled in the user's Computer Use configuration. If the u
 					);
 				}
 
-				break;
-			case 'disconnected':
-				promptParts.push(
-					`Computer Use is not connected. Do NOT attempt to use Computer Use tools — they are not available. You can provide these instructions to establish a connection:
-- For browser automation only (no other software needed): open the right sidebar, click the "..." button next to "Browser Use", click "Connect", and follow the dialog to install the n8n Browser Use Chrome extension and connect it.
-- For filesystem/shell/other capabilities: open the right sidebar, click the "..." button next to "Computer Use", click "Connect", and follow the instructions in the dialog.`,
-				);
-				break;
-			case 'disabled':
-				promptParts.push(
-					`Computer Use is not connected and not set-up. Do NOT attempt to use Computer Use tools — they are not available. You can provide these instructions to establish a connection:
-- For browser automation only (no other software needed): open the right sidebar, click the "..." button next to "Browser Use", click "Connect", and follow the dialog to install the n8n Browser Use Chrome extension and connect it.
-- For filesystem/shell/other capabilities: open the right sidebar, click on "Setup computer use", and follow the instructions in the dialog.`,
-				);
 				break;
 			default:
 		}

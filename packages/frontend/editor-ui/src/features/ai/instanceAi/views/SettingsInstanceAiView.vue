@@ -11,10 +11,6 @@ import type { InstanceAiPermissions, InstanceAiPermissionMode } from '@n8n/api-t
 import type { BaseTextKey } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import ModelSection from '../components/settings/ModelSection.vue';
-import SandboxSection from '../components/settings/SandboxSection.vue';
-import SearchSection from '../components/settings/SearchSection.vue';
-import AdvancedSection from '../components/settings/AdvancedSection.vue';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -274,32 +270,6 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 									:label="i18n.baseText(PERMISSION_OPTION_LABEL[option])"
 								/>
 							</N8nSelect>
-						</div>
-					</div>
-				</template>
-
-				<div v-if="!store.isProxyEnabled && !store.isCloudManaged" :class="$style.card">
-					<div :class="$style.sectionBlock">
-						<ModelSection />
-					</div>
-				</div>
-
-				<template v-if="isAdmin">
-					<div v-if="!store.isProxyEnabled && !store.isCloudManaged" :class="$style.card">
-						<div :class="$style.sectionBlock">
-							<SandboxSection />
-						</div>
-					</div>
-
-					<div v-if="!store.isProxyEnabled" :class="$style.card">
-						<div :class="$style.sectionBlock">
-							<SearchSection />
-						</div>
-					</div>
-
-					<div v-if="!store.isCloudManaged" :class="$style.card">
-						<div :class="$style.sectionBlock">
-							<AdvancedSection />
 						</div>
 					</div>
 				</template>

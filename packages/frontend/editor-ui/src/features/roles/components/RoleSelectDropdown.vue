@@ -32,7 +32,7 @@ const props = withDefaults(
 		customRoles: Role[];
 		currentRole: string;
 		hasCustomRolesLicense: boolean;
-		isAdminOrOwner: boolean;
+		canManageRoles: boolean;
 		addCustomRoleRouteName: string;
 		loading?: boolean;
 		testId?: string;
@@ -160,7 +160,7 @@ const onAddCustomRoleClick = () => {
 	closeDropdown();
 	if (!props.hasCustomRolesLicense) {
 		upgradeModalVisible.value = true;
-	} else if (!props.isAdminOrOwner) {
+	} else if (!props.canManageRoles) {
 		contactAdminModalVisible.value = true;
 	} else {
 		void router.push({ name: props.addCustomRoleRouteName });
@@ -190,9 +190,10 @@ const isUnavailableRoleItem = (item: SelectItemProps) => item.requiresUpgrade ==
 					:content="selectedRole?.displayName"
 					:disabled="!selectedRole || dropdownOpen"
 					placement="top"
+					as-child
 				>
 					<span :class="$style.triggerContent">
-						{{ selectedRole?.displayName }}
+						<span :class="$style.triggerLabel">{{ selectedRole?.displayName }}</span>
 						<N8nIcon v-if="loading" icon="spinner" spin size="small" />
 					</span>
 				</N8nTooltip>
@@ -293,7 +294,9 @@ const isUnavailableRoleItem = (item: SelectItemProps) => item.requiresUpgrade ==
 
 <style lang="scss" module>
 .container {
-	display: inline-block;
+	display: inline-flex;
+	min-width: 0;
+	overflow: hidden;
 }
 
 .searchContainer {
@@ -313,6 +316,7 @@ const isUnavailableRoleItem = (item: SelectItemProps) => item.requiresUpgrade ==
 	background-color: transparent;
 	min-height: auto;
 	max-width: 200px;
+	overflow: hidden;
 
 	&:not([data-disabled]):hover {
 		background-color: transparent;
@@ -324,10 +328,15 @@ const isUnavailableRoleItem = (item: SelectItemProps) => item.requiresUpgrade ==
 	align-items: center;
 	gap: var(--spacing--3xs);
 	font-size: var(--font-size--sm);
+	min-width: 0;
+	overflow: hidden;
+}
+
+.triggerLabel {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	max-width: 180px;
+	min-width: 0;
 }
 
 .itemLabel {

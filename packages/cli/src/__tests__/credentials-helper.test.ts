@@ -229,6 +229,64 @@ describe('CredentialsHelper', () => {
 				),
 			).rejects.toThrow('save workflow to view');
 		});
+
+		test('preserves PKCE flag negotiated by dynamic client registration', async () => {
+			const credentialType: ICredentialType = {
+				name: 'mcpOAuth2Api',
+				displayName: 'MCP OAuth2 API',
+				properties: [
+					{
+						displayName: 'Use Dynamic Client Registration',
+						name: 'useDynamicClientRegistration',
+						type: 'boolean',
+						default: true,
+					},
+				],
+			};
+			mockNodesAndCredentials.getCredential.calledWith(credentialType.name).mockReturnValue({
+				type: credentialType,
+				sourcePath: '',
+			});
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+			const helper = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				credentialsOverwrites,
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+			);
+
+			const result = await helper.applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{
+					useDynamicClientRegistration: true,
+					clientId: 'registered-client-id',
+					clientSecret: 'registered-secret',
+					authUrl: 'https://auth.example.com/authorize',
+					accessTokenUrl: 'https://auth.example.com/token',
+					grantType: 'authorizationCode',
+					authentication: 'body',
+					usePkce: true,
+				},
+				credentialType.name,
+				'internal',
+			);
+
+			expect(result).toMatchObject({
+				useDynamicClientRegistration: true,
+				clientId: 'registered-client-id',
+				clientSecret: 'registered-secret',
+				authUrl: 'https://auth.example.com/authorize',
+				accessTokenUrl: 'https://auth.example.com/token',
+				grantType: 'authorizationCode',
+				authentication: 'body',
+				usePkce: true,
+			});
+		});
 	});
 
 	describe('authenticate', () => {
@@ -1281,7 +1339,7 @@ describe('CredentialsHelper', () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 
 			const { CredentialResolutionError } = await import(
-				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error'
+				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error.js'
 			);
 
 			const resolvableCredentialEntity = {
@@ -1293,7 +1351,7 @@ describe('CredentialsHelper', () => {
 			credentialsRepository.findOneByOrFail.mockResolvedValue(resolvableCredentialEntity);
 			mockCredentialResolutionProvider.resolveIfNeeded.mockRejectedValue(
 				new CredentialResolutionError(
-					'Cannot resolve dynamic credentials without execution context for "Test Credentials"',
+					"This node uses an end-user credential, but no user could be identified for this run, so the credential for it couldn't be resolved",
 				),
 			);
 
@@ -1315,7 +1373,7 @@ describe('CredentialsHelper', () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 
 			const { CredentialResolutionError } = await import(
-				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error'
+				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error.js'
 			);
 
 			const resolvableCredentialEntity = {
@@ -1327,7 +1385,7 @@ describe('CredentialsHelper', () => {
 			credentialsRepository.findOneByOrFail.mockResolvedValue(resolvableCredentialEntity);
 			mockCredentialResolutionProvider.resolveIfNeeded.mockRejectedValue(
 				new CredentialResolutionError(
-					'Cannot resolve dynamic credentials without execution context for "Test Credentials"',
+					"This node uses an end-user credential, but no user could be identified for this run, so the credential for it couldn't be resolved",
 				),
 			);
 

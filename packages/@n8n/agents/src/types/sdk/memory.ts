@@ -342,15 +342,16 @@ export interface CheckpointStore {
 	/** Persist a snapshot. Overwrites any existing snapshot for the same key. */
 	save(key: string, state: SerializableAgentState): Promise<void>;
 	/**
-	 * Load a snapshot by key. Returns `undefined` if not found.
-	 *
-	 * Multi-process implementations MUST guarantee that concurrent load+delete
-	 * calls for the same key are atomic (only one caller receives the state).
-	 * Use a compare-and-delete primitive (e.g. Redis SET NX, SQL SELECT FOR UPDATE)
-	 * to prevent double-execution when two processes race to resume the same run.
-	 * For single-process use the MemoryCheckpointStore in RunStateManager provides this guarantee.
+	 * Load a snapshot by key. Returns `undefined` if not found. This must be read-only:
+	 * resume validation happens after load and before claimForResume.
 	 */
 	load(key: string): Promise<SerializableAgentState | undefined>;
+	/**
+	 * Atomically mark a suspended snapshot as running before a validated resume starts.
+	 * Multi-process stores should compare against the loaded suspended state and return
+	 * false when another process has already claimed or changed the snapshot.
+	 */
+	claimForResume?(key: string, state: SerializableAgentState): Promise<boolean>;
 	/** Delete a snapshot by key. */
 	delete(key: string): Promise<void>;
 }

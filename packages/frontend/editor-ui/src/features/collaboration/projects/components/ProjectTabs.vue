@@ -6,7 +6,8 @@ import { VIEWS } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { TabOptions } from '@n8n/design-system';
-import { processDynamicTabs, type DynamicTabOptions } from '@/app/utils/modules/tabUtils';
+import type { DynamicTabOptions } from '@n8n/frontend-module-sdk';
+import { processDynamicTabs } from '@/app/utils/modules/tabUtils';
 
 import { N8nTabs } from '@n8n/design-system';
 import { useProjectsStore } from '../projects.store';
@@ -41,10 +42,7 @@ const projectId = computed(() => {
 		: route?.params?.projectId;
 });
 
-const isTeamProject = computed(() => projectStore.currentProject?.type === ProjectTypes.Team);
-const isPersonalProject = computed(
-	() => projectStore.currentProject?.type === ProjectTypes.Personal,
-);
+const isPublicProject = computed(() => projectStore.currentProject?.type === ProjectTypes.Public);
 
 const getRouteConfigs = () => {
 	// For project pages
@@ -113,7 +111,9 @@ const options = computed<Array<TabOptions<string>>>(() => {
 		tabs.push(createTab('mainSidebar.executions', 'executions', routes));
 	}
 
-	if (props.pageType === 'overview' || isTeamProject.value || isPersonalProject.value) {
+	// Optimistic while currentProject loads — hiding the tab until the fetch
+	// resolves would shift the tab strip on every overview → project navigation
+	if (props.pageType === 'overview' || (props.pageType === 'project' && !isPublicProject.value)) {
 		tabs.push(createTab('mainSidebar.variables', 'variables', routes));
 	}
 

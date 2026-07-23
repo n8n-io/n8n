@@ -69,7 +69,6 @@ beforeAll(async () => {
 		Container.get(SharedWorkflowRepository),
 		workflowRepository,
 		mock(),
-		mock(),
 		Container.get(OwnershipService), // ownershipService
 		mock(),
 		workflowHistoryService,
@@ -77,7 +76,7 @@ beforeAll(async () => {
 		activeWorkflowManager,
 		Container.get(RoleService), // roleService
 		Container.get(ProjectService), // projectService
-		mock(), // executionRepository
+		mock(), // executionPersistence
 		mock(), // eventService
 		globalConfig,
 		mock(),
@@ -90,6 +89,8 @@ beforeAll(async () => {
 		mock(), // licenseState
 		Container.get(ProjectRepository), // projectRepository
 		mock(), // redactionEnforcementService
+		mock(), // workflowPublicationNotifier
+		mock(), // scheduleTriggerJobRegistrar
 	);
 });
 

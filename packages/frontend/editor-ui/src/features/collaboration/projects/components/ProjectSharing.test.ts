@@ -77,6 +77,31 @@ describe('ProjectSharing', () => {
 		expect(queryByTestId('project-sharing-owner')).not.toBeInTheDocument();
 	});
 
+	it('should hide the dropdown chevron by default (remote + filterable select)', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				searchFn: createTestSearchFn([]),
+				modelValue: null,
+			},
+		});
+
+		expect(getByTestId('project-sharing-select').querySelector('.el-select__caret')).toBeNull();
+	});
+
+	it('should show the dropdown chevron when showSuffix is set', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				searchFn: createTestSearchFn([]),
+				modelValue: null,
+				showSuffix: true,
+			},
+		});
+
+		expect(
+			getByTestId('project-sharing-select').querySelector('.el-select__caret'),
+		).toBeInTheDocument();
+	});
+
 	it('should filter, add and remove projects', async () => {
 		const { getByTestId, getAllByTestId, queryAllByTestId, emitted } = renderComponent({
 			props: {

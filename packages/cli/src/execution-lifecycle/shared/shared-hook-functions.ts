@@ -2,7 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import type { IExecutionDb, UpdateExecutionConditions } from '@n8n/db';
 import { Container } from '@n8n/di';
 import pick from 'lodash/pick';
-import { ensureError, type ExecutionStatus, type IRun, type IWorkflowBase } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { type ExecutionStatus, type IRun, type IWorkflowBase } from 'n8n-workflow';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { UpdateExecutionPayload } from '@/interfaces';

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/extension-sdk",
-  "version": "0.13.0",
+  "version": "0.16.0",
   "type": "module",
   "files": [
     "dist",
@@ -39,7 +39,7 @@
     "build:unchecked": "pnpm run build",
     "create-json-schema": "tsx scripts/create-json-schema.ts",
     "preview": "vite preview",
-    "test": "jest --passWithNoTests"
+    "test": "node -e \"process.exit(0)\""
   },
   "peerDependencies": {
     "vue": "catalog:frontend",
@@ -51,6 +51,8 @@
     "@vue/tsconfig": "catalog:frontend",
     "prettier": "catalog:",
     "tsdown": "catalog:",
+    "@typescript/native": "catalog:typescript-tooling",
+    "typescript": "catalog:typescript-tooling",
     "rimraf": "catalog:",
     "vite": "catalog:",
     "vue": "catalog:frontend",

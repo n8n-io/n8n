@@ -269,17 +269,17 @@ describe('getConnectedTools', () => {
 			{
 				name: 'tool1',
 				description: 'desc1',
-				metadata: { isFromToolkit: false, sourceNodeName: undefined },
+				metadata: { isFromToolkit: false, sourceNodeName: 'tool1' },
 			},
 			{
 				name: 'toolkitTool1',
 				description: 'toolkitToolDesc1',
-				metadata: { isFromToolkit: true, sourceNodeName: undefined },
+				metadata: { isFromToolkit: true, sourceNodeName: 'toolkitTool1' },
 			},
 			{
 				name: 'toolkitTool2',
 				description: 'toolkitToolDesc2',
-				metadata: { isFromToolkit: true, sourceNodeName: undefined },
+				metadata: { isFromToolkit: true, sourceNodeName: 'toolkitTool2' },
 			},
 		]);
 	});
@@ -339,6 +339,84 @@ describe('getConnectedTools', () => {
 			customField: 'value',
 			isFromToolkit: true,
 			sourceNodeName: 'MCP Client Tool',
+		});
+	});
+
+	describe('toolkit detection across duplicated n8n-core copies', () => {
+		class ForeignStructuredToolkit {
+			constructor(readonly tools: Tool[]) {}
+
+			getTools(): Tool[] {
+				return this.tools;
+			}
+		}
+
+		it('should flatten a toolkit whose class identity differs from the local StructuredToolkit', async () => {
+			const gatedTool = { name: 'gmail_send', description: 'Send an email' } as Tool;
+
+			mockExecuteFunctions.getInputConnectionData = vi
+				.fn()
+				.mockResolvedValue([new ForeignStructuredToolkit([gatedTool])]);
+			mockExecuteFunctions.getParentNodes = vi.fn().mockReturnValue([{ name: 'Gmail HITL' }]);
+
+			const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+			expect(tools).toHaveLength(1);
+			expect(tools[0].name).toBe('gmail_send');
+			expect(tools[0].metadata).toEqual({
+				isFromToolkit: true,
+				sourceNodeName: 'Gmail HITL',
+			});
+		});
+
+		it('should keep plain tools untouched when connected alongside a foreign-identity toolkit', async () => {
+			const directTool = { name: 'direct_tool', description: 'Direct tool' } as Tool;
+			const gatedTool1 = { name: 'gated_tool_1', description: 'Gated tool 1' } as Tool;
+			const gatedTool2 = { name: 'gated_tool_2', description: 'Gated tool 2' } as Tool;
+
+			mockExecuteFunctions.getInputConnectionData = vi
+				.fn()
+				.mockResolvedValue([directTool, new ForeignStructuredToolkit([gatedTool1, gatedTool2])]);
+			mockExecuteFunctions.getParentNodes = vi
+				.fn()
+				.mockReturnValue([{ name: 'Direct Tool' }, { name: 'Gmail HITL' }]);
+
+			const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+			expect(tools.map((tool) => tool.name)).toEqual([
+				'direct_tool',
+				'gated_tool_1',
+				'gated_tool_2',
+			]);
+			expect(tools[0].metadata).toEqual({
+				isFromToolkit: false,
+				sourceNodeName: 'Direct Tool',
+			});
+			expect(tools[1].metadata).toEqual({
+				isFromToolkit: true,
+				sourceNodeName: 'Gmail HITL',
+			});
+			expect(tools[2].metadata).toEqual({
+				isFromToolkit: true,
+				sourceNodeName: 'Gmail HITL',
+			});
+		});
+
+		it('should fall back to the tool name when no parent node is found for a toolkit', async () => {
+			const gatedTool = { name: 'gmail_send', description: 'Send an email' } as Tool;
+
+			mockExecuteFunctions.getInputConnectionData = vi
+				.fn()
+				.mockResolvedValue([new ForeignStructuredToolkit([gatedTool])]);
+			mockExecuteFunctions.getParentNodes = vi.fn().mockReturnValue([]);
+
+			const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+			expect(tools).toHaveLength(1);
+			expect(tools[0].metadata).toEqual({
+				isFromToolkit: true,
+				sourceNodeName: 'gmail_send',
+			});
 		});
 	});
 

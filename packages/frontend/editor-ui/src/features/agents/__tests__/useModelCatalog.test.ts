@@ -3,6 +3,7 @@ import type { AgentModelOption } from '../model-providers';
 
 const mocks = vi.hoisted(() => ({
 	getModelCatalog: vi.fn(),
+	getProviderModels: vi.fn(),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -13,6 +14,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 vi.mock('../composables/useAgentApi', () => ({
 	getModelCatalog: mocks.getModelCatalog,
+	getProviderModels: mocks.getProviderModels,
 }));
 
 function model(id: string, name = id) {
@@ -36,10 +38,17 @@ function modelIds(models: AgentModelOption[]) {
 	return models.map((entry) => entry.model);
 }
 
+async function flushAsync() {
+	await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 describe('useModelCatalog', () => {
 	beforeEach(() => {
 		vi.resetModules();
 		mocks.getModelCatalog.mockReset();
+		mocks.getProviderModels.mockReset();
+		// Default: no live verification available — fall back to the catalog.
+		mocks.getProviderModels.mockRejectedValue(new Error('not available'));
 	});
 
 	it('returns models for the agent providers that have selected credentials', async () => {
@@ -90,5 +99,96 @@ describe('useModelCatalog', () => {
 			'nvidia/llama-3.3-nemotron-super-49b-v1',
 		]);
 		expect(result.anthropic?.models).toEqual([]);
+	});
+
+	it('prefers the provider-verified model list over the static catalog', async () => {
+		mocks.getModelCatalog.mockResolvedValue({
+			anthropic: provider('anthropic', {
+				'claude-sonnet-4-6': model('claude-sonnet-4-6', 'Claude Sonnet 4.6'),
+				'claude-opus-4-0': model('claude-opus-4-0', 'Claude Opus 4'),
+			}),
+		});
+		mocks.getProviderModels.mockResolvedValue({
+			provider: 'anthropic',
+			verified: true,
+			models: [model('claude-sonnet-4-6', 'Claude Sonnet 4.6')],
+		});
+
+		const { useModelCatalog } = await import('../composables/useModelCatalog');
+		const { ensureLoaded, getModelsForPicker } = useModelCatalog();
+		await ensureLoaded('project-1');
+		const credentials = { anthropic: 'anthropic-credential-id' };
+
+		// First read triggers the verification fetch; once it lands, only the
+		// provider-confirmed models remain.
+		getModelsForPicker(credentials);
+		await flushAsync();
+
+		expect(modelIds(getModelsForPicker(credentials).anthropic?.models ?? [])).toEqual([
+			'claude-sonnet-4-6',
+		]);
+		expect(mocks.getProviderModels).toHaveBeenCalledWith(
+			{},
+			'project-1',
+			'anthropic',
+			'anthropic-credential-id',
+		);
+	});
+
+	it('fetches the verified list only once per provider and credential', async () => {
+		mocks.getModelCatalog.mockResolvedValue({
+			anthropic: provider('anthropic', {
+				'claude-sonnet-4-6': model('claude-sonnet-4-6'),
+			}),
+		});
+		mocks.getProviderModels.mockResolvedValue({
+			provider: 'anthropic',
+			verified: true,
+			models: [model('claude-sonnet-4-6')],
+		});
+
+		const { useModelCatalog } = await import('../composables/useModelCatalog');
+		const { ensureLoaded, getModelsForPicker } = useModelCatalog();
+		await ensureLoaded('project-1');
+		const credentials = { anthropic: 'anthropic-credential-id' };
+
+		getModelsForPicker(credentials);
+		getModelsForPicker(credentials);
+		await flushAsync();
+		getModelsForPicker(credentials);
+		await flushAsync();
+
+		expect(mocks.getProviderModels).toHaveBeenCalledTimes(1);
+	});
+
+	it('falls back to the catalog list when verification fails or is unverified', async () => {
+		mocks.getModelCatalog.mockResolvedValue({
+			anthropic: provider('anthropic', {
+				'claude-sonnet-4-6': model('claude-sonnet-4-6'),
+				'claude-opus-4-0': model('claude-opus-4-0'),
+			}),
+			openai: provider('openai', {
+				'gpt-5': model('gpt-5'),
+			}),
+		});
+		mocks.getProviderModels.mockImplementation(async (_ctx, _projectId, providerId) => {
+			if (providerId === 'anthropic') throw new Error('provider is down');
+			return { provider: providerId, verified: false, models: [model('gpt-5')] };
+		});
+
+		const { useModelCatalog } = await import('../composables/useModelCatalog');
+		const { ensureLoaded, getModelsForPicker } = useModelCatalog();
+		await ensureLoaded('project-1');
+		const credentials = { anthropic: 'anthropic-cred', openai: 'openai-cred' };
+
+		getModelsForPicker(credentials);
+		await flushAsync();
+
+		const result = getModelsForPicker(credentials);
+		expect(modelIds(result.anthropic?.models ?? []).sort()).toEqual([
+			'claude-opus-4-0',
+			'claude-sonnet-4-6',
+		]);
+		expect(modelIds(result.openai?.models ?? [])).toEqual(['gpt-5']);
 	});
 });

@@ -17,6 +17,8 @@ import {
 import {
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
+	GROUP_NODE_Z_INDEX_COLLAPSED,
+	GROUP_NODE_Z_INDEX_EXPANDED,
 	GROUP_PADDING_X,
 	GROUP_PADDING_Y_BOTTOM,
 	GROUP_PADDING_Y_TOP,
@@ -229,11 +231,21 @@ export function mapGroupsToVueFlowNodes({
 
 		const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById, getNodeDisplaySize);
 		const collapsed = isGroupCollapsed(group.id);
+		const memberNodes = group.nodeIds
+			.map(getNodeById)
+			.filter((node): node is INodeUi => node !== undefined);
+		// Stickies can't be disabled, so the deactivated state is driven by
+		// connectable members only — the length guard keeps a sticky-only group
+		// (possible after its last connectable node is deleted) from reading as
+		// deactivated vacuously.
+		const connectableMembers = memberNodes.filter((node) => node.type !== STICKY_NODE_TYPE);
 		const data: CanvasGroupNodeData = {
 			group,
 			nodesRect,
 			isCollapsed: collapsed,
 			executionStatus: aggregateGroupExecution(group.nodeIds, getNodeExecutionSnapshot),
+			allNodesDisabled:
+				connectableMembers.length > 0 && connectableMembers.every((node) => node.disabled === true),
 		};
 
 		const id = createCanvasGroupNodeId(group.id);
@@ -246,12 +258,13 @@ export function mapGroupsToVueFlowNodes({
 			width: titleBar.width,
 			height: GROUP_HEADER_HEIGHT,
 			draggable: !readOnly,
-			// Selectable only when the title bar represents
-			// the whole group as a single visual surface
-			selectable: collapsed,
+			// The title bar stands in for the whole group: selecting it selects
+			// every member node (see useCanvasNodeGroupSelection).
+			selectable: true,
 			connectable: false,
-			// Behind the group's nodes so the expanded frame doesn't overlap them.
-			zIndex: -1,
+			// Below member nodes and (when expanded) below stickies — see the
+			// stacking contract in canvasNodeGroups.constants.ts.
+			zIndex: collapsed ? GROUP_NODE_Z_INDEX_COLLAPSED : GROUP_NODE_Z_INDEX_EXPANDED,
 			data,
 		});
 	}

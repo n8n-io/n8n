@@ -1,7 +1,7 @@
 export const AGENTS_LIST_VIEW = 'AgentsListView';
+export const NEW_AGENT_VIEW = 'NewAgentView';
 export const AGENT_BUILDER_VIEW = 'AgentBuilderView';
 export const AGENT_PREVIEW_VIEW = 'AgentPreviewView';
-export const NEW_AGENT_VIEW = 'NewAgentView';
 export const AGENT_VIEW = 'AgentView';
 export const AGENT_SESSIONS_LIST_VIEW = 'AgentSessionsListView';
 export const AGENT_SESSION_DETAIL_VIEW = 'AgentSessionDetailView';
@@ -15,7 +15,9 @@ export const AGENT_TOOL_CONFIG_MODAL_KEY = 'agentToolConfigModal';
 export const AGENT_SKILL_MODAL_KEY = 'agentSkillModal';
 export const AGENT_TASK_MODAL_KEY = 'agentTaskModal';
 export const AGENT_SUB_AGENTS_MODAL_KEY = 'agentSubAgentsModal';
-export const AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY = 'agentEpisodicMemoryCredentialModal';
+export const AGENT_VECTOR_STORES_MODAL_KEY = 'agentVectorStoresModal';
+export const AGENT_JSON_IMPORT_MODAL_KEY = 'agentJsonImportModal';
+export const AGENT_MODEL_CREDENTIAL_MODAL_KEY = 'agentModelCredentialModal';
 export const AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE = 'openAiApi';
 
 /** Synthetic tree key for the combined "Agent" panel (name/model/credential/instructions). */

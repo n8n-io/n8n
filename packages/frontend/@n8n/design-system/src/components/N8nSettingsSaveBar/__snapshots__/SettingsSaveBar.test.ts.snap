@@ -1,0 +1,15 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`N8nSettingsSaveBar > matches snapshot 1`] = `
+"<transition-stub name="n8n-settings-save-bar" appear="false" persisted="false" css="true">
+  <div class="bar" role="region" aria-label="Unsaved changes" aria-live="polite" data-test-id="settings-save-bar">
+    <div class="status" data-test-id="settings-save-bar-status"><span class="statusIcon" aria-hidden="true"><n8n-icon-stub icon="triangle-alert" size="medium" spin="false"></n8n-icon-stub></span>
+      <n8n-text-stub color="text-dark" bold="false" size="medium" compact="false" tag="span"></n8n-text-stub>
+    </div>
+    <div class="actions">
+      <n8n-button-stub label="Discard changes" variant="outline" size="medium" loading="false" icononly="false" disabled="false" class="" data-test-id="settings-save-bar-discard"></n8n-button-stub>
+      <n8n-button-stub label="Save settings" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" data-test-id="settings-save-bar-save"></n8n-button-stub>
+    </div>
+  </div>
+</transition-stub>"
+`;

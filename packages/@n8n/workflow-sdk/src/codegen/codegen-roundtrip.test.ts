@@ -319,6 +319,7 @@ describe('parseWorkflowCode', () => {
 			connections: {},
 			settings: {
 				timezone: 'America/New_York',
+				errorWorkflow: 'error-handler-123',
 				executionOrder: 'v1',
 			},
 		};
@@ -327,6 +328,7 @@ describe('parseWorkflowCode', () => {
 		const parsedJson = parseWorkflowCode(code);
 
 		expect(parsedJson.settings?.timezone).toBe('America/New_York');
+		expect(parsedJson.settings?.errorWorkflow).toBe('error-handler-123');
 		expect(parsedJson.settings?.executionOrder).toBe('v1');
 	});
 

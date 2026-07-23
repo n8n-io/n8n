@@ -6,25 +6,26 @@ import {
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
-import type { StreamEvent } from '@langchain/core/dist/tracers/event_stream';
-import type { IterableReadableStream } from '@langchain/core/dist/utils/stream';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
+import type { StreamEvent } from '@langchain/core/types/stream';
+import type { IterableReadableStream } from '@langchain/core/utils/stream';
 import { ChatOpenAI } from '@langchain/openai';
-import { loadMemory } from '@utils/agent-execution';
-import { getPromptInputByType } from '@utils/helpers';
-import {
-	getOptionalOutputParser,
-	type N8nOutputParser,
-} from '@utils/output_parsers/N8nOutputParser';
-import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
-import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 import omit from 'lodash/omit';
 import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
 import assert from 'node:assert';
+
+import { loadMemory } from '@utils/agent-execution';
+import { getPromptInputByType } from '@utils/helpers';
+import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
+import {
+	getOptionalOutputParser,
+	type N8nOutputParser,
+} from '@utils/output_parsers/N8nOutputParser';
+import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 
 import { isExecuteFunctions } from '../../utils';
 import {

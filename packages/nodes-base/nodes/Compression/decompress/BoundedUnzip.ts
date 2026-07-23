@@ -1,5 +1,6 @@
 import * as fflate from 'fflate';
-import { ensureError, UserError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { UserError } from 'n8n-workflow';
 
 import { DecompressedSizeExceededError } from './DecompressedSizeExceededError';
 

@@ -3,7 +3,7 @@ import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import * as secretsProviderApi from '@n8n/rest-api-client';
 
 export function useSecretsProvidersList() {

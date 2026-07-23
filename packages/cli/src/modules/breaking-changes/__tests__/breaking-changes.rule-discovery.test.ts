@@ -5,9 +5,13 @@ import '../rules';
 import type { IBreakingChangeRule } from '../types';
 
 describe('Breaking change rules auto-discovery', () => {
-	it('should register all 16 v2 rules', () => {
+	it('should register all rules grouped by version', () => {
 		const metadata = Container.get(BreakingChangeRuleMetadata);
-		expect(metadata.getEntries()).toHaveLength(16);
+		const entries = metadata.getEntries();
+
+		expect(entries.filter((entry) => entry.version === 'v2')).toHaveLength(16);
+		expect(entries.filter((entry) => entry.version === 'v3').length).toBeGreaterThanOrEqual(35);
+		expect(entries.length).toBeGreaterThanOrEqual(50);
 	});
 
 	it('should resolve all registered rules with valid metadata from the DI container', () => {

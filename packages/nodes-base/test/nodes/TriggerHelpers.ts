@@ -1,4 +1,5 @@
 import type { SsrfBridge } from '@n8n/backend-network';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type * as express from 'express';
 import { type IncomingHttpHeaders } from 'http';
 import get from 'lodash/get';
@@ -7,7 +8,6 @@ import set from 'lodash/set';
 import { PollContext, returnJsonArray, ScheduledTaskManager } from 'n8n-core';
 import type { InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
 import {
-	createDeferredPromise,
 	type IBinaryData,
 	type ICredentialDataDecryptedObject,
 	type IDataObject,

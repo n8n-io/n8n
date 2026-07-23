@@ -1,12 +1,34 @@
 {
 	"extends": [
-		"@n8n/typescript-config/tsconfig.common.json",
-		"@n8n/typescript-config/tsconfig.backend.json"
+		"@n8n/typescript-config/tsconfig.common.go.json",
+		"@n8n/typescript-config/tsconfig.backend.go.json"
 	],
 	"compilerOptions": {
 		"paths": {
 			"@utils/*": ["./utils/*"],
-			"@nodes-testing/*": ["../../core/nodes-testing/*"]
+			"@nodes-testing/*": ["../../core/nodes-testing/*"],
+
+			// Type-only deep import of a type LangChain doesn't re-export publicly.
+			// exports-map-aware resolution can't reach dist/, so map straight to the
+			// declaration file. Safe as `.d.cts` because these are `import type`
+			// (erased at runtime — never resolved by Node or a paths-honoring loader).
+			"@langchain/classic/dist/experimental/openai_assistant/schema": [
+				"./node_modules/@langchain/classic/dist/experimental/openai_assistant/schema.d.cts"
+			],
+			"@langchain/openai/dist/utils/tools": [
+				"./node_modules/@langchain/openai/dist/utils/tools.d.cts"
+			],
+			"@langchain/core/dist/load/map_keys": [
+				"./node_modules/@langchain/core/dist/load/map_keys.d.cts"
+			],
+
+			// @oracle/langchain-oracledb is ESM-only (type: module), so its types
+			// reach @langchain/core through the import condition (.d.ts). This
+			// package resolves core via require (.d.cts); pin the subpath it shares
+			// with Oracle to .d.cts so both agree on a single VectorStore identity.
+			// Must stay `.d.cts` (not extensionless): the base resolves to the ESM
+			// `.d.ts` and reintroduces the "two unrelated VectorStore types" error.
+			"@langchain/core/vectorstores": ["./node_modules/@langchain/core/dist/vectorstores.d.cts"]
 		},
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
@@ -28,6 +50,6 @@
 		{ "path": "../ai-utilities/tsconfig.build.cjs.json" },
 		{ "path": "../../core/tsconfig.build.json" },
 		{ "path": "../../nodes-base/tsconfig.build.cjs.json" },
-		{ "path": "../../workflow/tsconfig.build.esm.json" }
+		{ "path": "../../workflow/tsconfig.build.cjs.json" }
 	]
 }

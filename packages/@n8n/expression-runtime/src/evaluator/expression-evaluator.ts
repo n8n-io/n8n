@@ -83,8 +83,14 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		await this.pool.initialize();
 	}
 
-	async acquire(caller: object): Promise<void> {
-		if (this.bridgesByCaller.has(caller)) return;
+	/**
+	 * Acquire a bridge for the caller. Returns whether a bridge was newly
+	 * acquired: `false` means the caller already held one, so the current
+	 * scope must not release it (release is not reference-counted and would
+	 * return the caller's bridge to the pool mid-use).
+	 */
+	async acquire(caller: object): Promise<boolean> {
+		if (this.bridgesByCaller.has(caller)) return false;
 		let bridge: RuntimeBridge;
 		try {
 			bridge = this.pool.acquire();
@@ -95,6 +101,7 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		}
 		this.config.observability?.metrics.counter(EXPRESSION_METRICS.poolAcquired.name, 1);
 		this.bridgesByCaller.set(caller, bridge);
+		return true;
 	}
 
 	evaluate(

@@ -304,7 +304,7 @@ describe('GET /workflows/:workflowId/execution-status - CORS Integration', () =>
 	test('should set CORS headers on GET request', async () => {
 		// Mock the workflow status service to return a valid response
 		const { CredentialResolverWorkflowService } = await import(
-			'../services/credential-resolver-workflow.service'
+			'../services/credential-resolver-workflow.service.js'
 		);
 		const workflowService = Container.get(CredentialResolverWorkflowService);
 		vi.spyOn(workflowService, 'getWorkflowStatus').mockResolvedValue([

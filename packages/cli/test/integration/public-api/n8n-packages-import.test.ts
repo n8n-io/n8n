@@ -1,19 +1,20 @@
-import { mockInstance, testDb } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
+import { createTeamProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import { CredentialTypes } from '@/credential-types';
+import { EventService } from '@/events/event.service';
 import {
 	buildImportPackageBuffer,
+	serializedWorkflow,
 	serializedWorkflowWithCredential,
 } from '@/modules/n8n-packages/__tests__/fixtures/package-fixtures';
 import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
 import { Telemetry } from '@/telemetry';
 
-import { createOwnerWithApiKey } from '../shared/db/users';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -28,6 +29,9 @@ let authOwnerAgent: SuperAgentTest;
 beforeAll(async () => {
 	const credentialTypesMock = mockInstance(CredentialTypes);
 	credentialTypesMock.recognizes.mockReturnValue(true);
+
+	// Register node types so imports pass the default fail-on-missing-node-type check.
+	await utils.initNodeTypes();
 
 	owner = await createOwnerWithApiKey();
 	Container.get(InstanceSettings).markAsLeader();
@@ -44,11 +48,6 @@ beforeEach(async () => {
 		'SharedCredentials',
 	]);
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
-	Container.get(GlobalConfig).publicApi.packagesEnabled = true;
-});
-
-afterEach(() => {
-	Container.get(GlobalConfig).publicApi.packagesEnabled = false;
 });
 
 const testWithAPIKey = (method: 'post', url: string, apiKey: string | null) => async () => {
@@ -125,6 +124,77 @@ describe('POST /n8n-packages/import', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
+	test('rejects import when the API key lacks workflow:import scope', async () => {
+		const limitedOwner = await createOwnerWithApiKey({ scopes: ['workflow:export'] });
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const tarBuffer = await buildImportPackage();
+
+		const response = await testServer
+			.publicApiAgentFor(limitedOwner)
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(403);
+		expect(emitSpy).toHaveBeenCalledWith(
+			'n8n-package-import-failed',
+			expect.objectContaining({ reason: 'access-denied' }),
+		);
+	});
+
+	test('rejects import into a project the caller has no access to', async () => {
+		const projectOwner = await createOwnerWithApiKey();
+		const project = await createTeamProject('Someone else project', projectOwner);
+		const outsider = await createMemberWithApiKey();
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const tarBuffer = await buildImportPackage();
+
+		const response = await testServer
+			.publicApiAgentFor(outsider)
+			.post('/n8n-packages/import')
+			.field('projectId', project.id)
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(403);
+		expect(emitSpy).toHaveBeenCalledWith(
+			'n8n-package-import-failed',
+			expect.objectContaining({ reason: 'access-denied', projectId: project.id }),
+		);
+	});
+
+	test('rejects import when the projectId does not exist', async () => {
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const tarBuffer = await buildImportPackage();
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('projectId', 'does-not-exist')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(404);
+		expect(emitSpy).toHaveBeenCalledWith(
+			'n8n-package-import-failed',
+			expect.objectContaining({ reason: 'entity-not-found', projectId: 'does-not-exist' }),
+		);
+	});
+
+	test('rejects bindings keyed by an unsupported entity type', async () => {
+		const tarBuffer = await buildImportPackage();
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			// "credential" (no trailing s) is a plausible typo that must error, not silently no-op.
+			.field('bindings', '{"credential":{"source":"target"}}')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Unrecognized key');
+		expect(response.body.message).toContain('credential');
+	});
+
 	test('imports a package and returns the rich ImportResult', async () => {
 		const tarBuffer = await buildImportPackage();
 
@@ -152,6 +222,8 @@ describe('POST /n8n-packages/import', () => {
 					status: 'created',
 				},
 			],
+			folders: [],
+			projects: [],
 			bindings: {
 				workflows: { 'wf-http-source': expect.any(String) },
 				credentials: {},
@@ -159,6 +231,10 @@ describe('POST /n8n-packages/import', () => {
 			credentials: {
 				matched: [],
 				stubbed: [],
+			},
+			variables: {
+				matched: [],
+				missing: [],
 			},
 		});
 
@@ -174,13 +250,30 @@ describe('POST /n8n-packages/import', () => {
 			.field('folderId', '')
 			.field('credentialMatchingMode', 'id-only')
 			.field('credentialMissingMode', 'must-preexist')
-			.field('credentialBindings', '{}')
+			.field('bindings', '{}')
 			.field('workflowConflictPolicy', 'fail')
 			.field('workflowIdPolicy', 'new')
+			.field('missingNodeTypeMode', 'fail')
+			.field('dataTableMatchingMode', 'by-id')
+			.field('dataTableMissingMode', 'must-preexist')
+			.field('dataTableSchemaConflictPolicy', 'fail')
+			.field('variableMissingMode', 'do-nothing')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
+	});
+
+	test('rejects an unsupported dataTableMissingMode value', async () => {
+		const tarBuffer = await buildImportPackage();
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.field('dataTableMissingMode', 'recreate')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('returns 409 with conflict metadata when a workflow already exists under fail policy', async () => {
@@ -195,6 +288,7 @@ describe('POST /n8n-packages/import', () => {
 		expect(first.statusCode).toBe(200);
 		const existingWorkflowId = first.body.workflows[0].localId;
 
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 		const secondBuffer = await buildImportPackage();
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
@@ -215,6 +309,10 @@ describe('POST /n8n-packages/import', () => {
 				},
 			],
 		});
+		expect(emitSpy).toHaveBeenCalledWith(
+			'n8n-package-import-failed',
+			expect.objectContaining({ reason: 'blocked' }),
+		);
 	});
 
 	test('returns 422 when credential references cannot be resolved under must-preexist', async () => {
@@ -247,6 +345,71 @@ describe('POST /n8n-packages/import', () => {
 				}),
 			],
 		});
+	});
+
+	const unknownNodeTypePackage = async (sourceId: string) =>
+		await buildImportPackageBuffer(
+			[
+				serializedWorkflow({
+					id: 'wf-unknown-node',
+					name: 'Unknown Node Type',
+					// Published in the source, so a publish-intent policy would publish it.
+					isPublished: true,
+					nodes: [
+						{
+							id: 'unknown-node',
+							name: 'Unknown Node',
+							type: 'n8n-nodes-community.chatBot',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+				}),
+			],
+			{ sourceId },
+		);
+
+	test('returns 422 by default when a workflow uses an unknown node type', async () => {
+		const tarBuffer = await unknownNodeTypePackage('http-integration-missing-node-type-fail');
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body).toMatchObject({
+			message: expect.stringContaining('Import blocked'),
+			issues: [
+				{
+					type: 'missing-node-type',
+					nodeType: 'n8n-nodes-community.chatBot',
+					typeVersion: 1,
+					usedByWorkflows: ['wf-unknown-node'],
+				},
+			],
+		});
+	});
+
+	test('honors missingNodeTypeMode=import-anyway for a package with an unknown node type', async () => {
+		const tarBuffer = await unknownNodeTypePackage('http-integration-missing-node-type-anyway');
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.field('missingNodeTypeMode', 'import-anyway')
+			.field('workflowPublishingPolicy', 'match-source')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.workflows).toHaveLength(1);
+		// match-source wanted to publish it, but the missing node type blocks that.
+		expect(response.body.workflows[0].publishing).toEqual({
+			state: 'blocked',
+			blockedReason: 'missing-node-type',
+		});
+		expect(response.body.workflows[0].activeVersionId).toBeNull();
 	});
 
 	test('creates stub credentials by default when references are missing', async () => {

@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import type { AddDataTableColumnDto, CreateDataTableColumnDto } from '@n8n/api-types';
+import type {
+	AddDataTableColumnDto,
+	CreateDataTableColumnDto,
+	ListDataTableContentQueryDto,
+} from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -1004,6 +1008,45 @@ describe('dataTable', () => {
 				expect(filtered2.count).toBe(1);
 				expect(filtered2.data[0].name).toBe('dataTable2');
 			});
+		});
+	});
+
+	describe('getManyQuery ordering', () => {
+		// The node paginates rows with skip/take, which only stays consistent if every page query
+		// orders identically. The listing query must always end with a unique `id` tiebreaker.
+		async function buildListSql(sortBy?: [string, 'ASC' | 'DESC']) {
+			const { id: dataTableId, columns } = await dataTableService.createDataTable(project1.id, {
+				name: 'orderingTable',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+			const em = dataTableRowsRepository['dataSource'].manager;
+			const [, query] = dataTableRowsRepository['getManyQuery'](
+				dataTableId,
+				{ sortBy } as ListDataTableContentQueryDto,
+				columns,
+				em,
+			);
+			return query.select('*').getQuery();
+		}
+
+		it('orders by id when no sortBy is given', async () => {
+			const sql = await buildListSql();
+			expect(sql).toContain('ORDER BY "dataTable"."id" ASC');
+		});
+
+		it('appends id as a tiebreaker after the sort column', async () => {
+			const sql = await buildListSql(['name', 'ASC']);
+			expect(sql).toContain('"dataTable"."name" ASC');
+			expect(sql).toContain('"dataTable"."id" ASC');
+			expect(sql.indexOf('"dataTable"."name" ASC')).toBeLessThan(
+				sql.indexOf('"dataTable"."id" ASC'),
+			);
+		});
+
+		it('does not append a redundant tiebreaker when already sorting by id', async () => {
+			const sql = await buildListSql(['id', 'DESC']);
+			expect(sql).toContain('"dataTable"."id" DESC');
+			expect(sql).not.toContain('"dataTable"."id" ASC');
 		});
 	});
 
@@ -2464,6 +2507,97 @@ describe('dataTable', () => {
 			expect(finalData).toEqual([
 				{ id: 2, createdAt: expect.any(Date), updatedAt: expect.any(Date) },
 			]);
+		});
+	});
+
+	describe('clearRows', () => {
+		it('should delete all rows while retaining the table structure', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+				],
+			});
+
+			await dataTableService.insertRows(
+				dataTableId,
+				project1.id,
+				[
+					{ name: 'Alice', age: 30 },
+					{ name: 'Bob', age: 25 },
+					{ name: 'Charlie', age: 35 },
+				],
+				'id',
+			);
+
+			// ACT
+			const result = await dataTableService.clearRows(dataTableId, project1.id);
+
+			// ASSERT
+			expect(result).toEqual({ deletedCount: 3 });
+
+			const { count, data } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				{},
+			);
+			expect(count).toEqual(0);
+			expect(data).toEqual([]);
+
+			// Table structure (columns) is retained
+			await expect(dataTableService.getColumns(dataTableId, project1.id)).resolves.toEqual([
+				expect.objectContaining({ name: 'name', type: 'string' }),
+				expect.objectContaining({ name: 'age', type: 'number' }),
+			]);
+		});
+
+		it('should return a deletedCount of 0 when the table is already empty', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+
+			// ACT
+			const result = await dataTableService.clearRows(dataTableId, project1.id);
+
+			// ASSERT
+			expect(result).toEqual({ deletedCount: 0 });
+		});
+
+		it('should update the data table updatedAt timestamp', async () => {
+			// ARRANGE
+			const { id: dataTableId, updatedAt } = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+
+			await dataTableService.insertRows(dataTableId, project1.id, [{ name: 'Alice' }], 'id');
+
+			// ACT
+			await dataTableService.clearRows(dataTableId, project1.id);
+
+			// ASSERT
+			const { data } = await dataTableService.getManyAndCount({
+				filter: { projectId: project1.id, id: dataTableId },
+			});
+			expect(data[0].updatedAt.getTime()).toBeGreaterThanOrEqual(updatedAt.getTime());
+		});
+
+		it('should not clear rows of a data table in another project', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+
+			// ACT
+			const result = dataTableService.clearRows(dataTableId, project2.id);
+
+			// ASSERT
+			await expect(result).rejects.toThrow(DataTableNotFoundError);
 		});
 	});
 

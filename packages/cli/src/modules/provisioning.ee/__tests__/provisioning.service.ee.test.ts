@@ -261,6 +261,19 @@ describe('ProvisioningService', () => {
 
 		it('should provision the instance role for the user', async () => {
 			const user = mock<User>({ role: { slug: 'global:member' } });
+			const roleSlug = 'global:admin';
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:admin', roleType: 'global' }),
+			);
+			provisioningService['isInstanceRoleProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
+
+			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
+
+			expect(userService.changeUserRole).toHaveBeenCalledWith(user, { newRoleName: roleSlug });
+		});
+
+		it('should not promote a non-owner user to global:owner', async () => {
+			const user = mock<User>({ role: { slug: 'global:member' } });
 			const roleSlug = 'global:owner';
 			roleRepository.findOneOrFail.mockResolvedValue(
 				mock<Role>({ slug: 'global:owner', roleType: 'global' }),
@@ -269,7 +282,12 @@ describe('ProvisioningService', () => {
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 
-			expect(userService.changeUserRole).toHaveBeenCalledWith(user, { newRoleName: roleSlug });
+			expect(userService.changeUserRole).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('global:owner'), {
+				userId: user.id,
+				roleSlug: 'global:owner',
+			});
 		});
 
 		it('should do nothing if the role has not changed', async () => {
@@ -306,10 +324,10 @@ describe('ProvisioningService', () => {
 
 		it('sends telemetry event', async () => {
 			const user = mock<User>({ id: 'user-123', role: { slug: 'global:member' } });
-			const roleSlug = 'global:owner';
+			const roleSlug = 'global:admin';
 
 			roleRepository.findOneOrFail.mockResolvedValue(
-				mock<Role>({ slug: 'global:owner', roleType: 'global' }),
+				mock<Role>({ slug: 'global:admin', roleType: 'global' }),
 			);
 
 			provisioningService['isInstanceRoleProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
@@ -914,6 +932,8 @@ describe('ProvisioningService', () => {
 				projectRoleRules: [],
 				fallbackInstanceRole: 'global:member',
 			});
+			// Default: both scopes have mapping rules (the common expression-mapping case).
+			roleMappingRuleRepository.count.mockResolvedValue(1);
 			// Mock getPreviousProjectRoles — no existing project access
 			projectRepository.find.mockResolvedValue([]);
 		});
@@ -970,6 +990,31 @@ describe('ProvisioningService', () => {
 				],
 				removedProjectIds: [],
 			});
+		});
+
+		it('should not promote a non-owner user to global:owner via expression mapping', async () => {
+			roleResolverService.resolveRoles.mockResolvedValue({
+				instanceRole: {
+					role: 'global:owner',
+					matchedRuleId: 'rule-1',
+					expression: '{{ true }}',
+					isFallback: false,
+				},
+				projectRoles: new Map(),
+			});
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:owner', roleType: 'global' }),
+			);
+
+			const context = { $claims: { role: 'owner' }, $provider: 'oidc' as const };
+
+			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+
+			expect(userService.changeUserRole).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('global:owner'),
+				expect.objectContaining({ userId: user.id }),
+			);
 		});
 
 		it('should not emit when expression mapping is disabled', async () => {
@@ -1053,6 +1098,149 @@ describe('ProvisioningService', () => {
 					}),
 				}),
 			);
+		});
+
+		it('preserves manually-assigned project access when only instance rules exist', async () => {
+			roleMappingRuleRepository.count.mockImplementation(async (options) => {
+				const type = (options as { where?: { type?: string } } | undefined)?.where?.type;
+				return type === 'project' ? 0 : 1;
+			});
+
+			const manuallyAddedProject = mock<Project>({
+				id: 'proj-manual',
+				projectRelations: [
+					mock<ProjectRelation>({ userId: 'user-1', role: mock<Role>({ slug: 'project:editor' }) }),
+				],
+			});
+			projectRepository.find.mockResolvedValue([manuallyAddedProject]);
+			roleResolverService.resolveRoles.mockResolvedValue({
+				instanceRole: {
+					role: 'global:member',
+					matchedRuleId: null,
+					expression: null,
+					isFallback: true,
+				},
+				projectRoles: new Map(),
+			});
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:member', roleType: 'global' }),
+			);
+
+			const context = { $claims: {}, $provider: 'oidc' as const };
+			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+
+			// No project rules => project roles are not managed => manual access must survive.
+			expect(entityManager.delete).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'expression-mapping-roles-resolved',
+				expect.objectContaining({ projectRoles: [], removedProjectIds: [] }),
+			);
+		});
+
+		it('preserves manually-assigned instance role when only project rules exist', async () => {
+			roleMappingRuleRepository.count.mockImplementation(async (options) => {
+				const type = (options as { where?: { type?: string } } | undefined)?.where?.type;
+				return type === 'project' ? 1 : 0;
+			});
+			projectRepository.find.mockResolvedValue([]);
+			roleResolverService.resolveRoles.mockResolvedValue({
+				instanceRole: {
+					role: 'global:admin',
+					matchedRuleId: null,
+					expression: null,
+					isFallback: true,
+				},
+				projectRoles: new Map(),
+			});
+			// Resolved role (global:admin) differs from the user's current role, so an ungated engine
+			// would apply it — the gate must prevent that.
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:admin', roleType: 'global' }),
+			);
+
+			const context = { $claims: {}, $provider: 'oidc' as const };
+			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+
+			// No instance rules => instance role is not managed => manual role must survive.
+			expect(userService.changeUserRole).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'expression-mapping-roles-resolved',
+				expect.objectContaining({ instanceRole: expect.objectContaining({ changed: false }) }),
+			);
+		});
+	});
+
+	describe('managed role checks', () => {
+		// Stub the leaf config getters directly: other suites in this file replace these private
+		// methods with persistent mocks and the file uses clearAllMocks (which doesn't restore them),
+		// so relying on getConfig here would inherit their state.
+		const setEnabled = ({
+			instanceProvisioning = false,
+			projectProvisioning = false,
+			expressionMapping = false,
+		}: {
+			instanceProvisioning?: boolean;
+			projectProvisioning?: boolean;
+			expressionMapping?: boolean;
+		}) => {
+			provisioningService['isInstanceRoleProvisioningEnabled'] = vi
+				.fn()
+				.mockResolvedValue(instanceProvisioning);
+			provisioningService['isProjectRolesProvisioningEnabled'] = vi
+				.fn()
+				.mockResolvedValue(projectProvisioning);
+			provisioningService.isExpressionMappingEnabled = vi.fn().mockResolvedValue(expressionMapping);
+		};
+
+		const setRules = ({ instance = 0, project = 0 }: { instance?: number; project?: number }) => {
+			roleMappingRuleRepository.count.mockImplementation(async (options) => {
+				const type = (options as { where?: { type?: string } } | undefined)?.where?.type;
+				return type === 'project' ? project : instance;
+			});
+		};
+
+		describe('isProjectRoleManaged', () => {
+			it('is managed when project role claim provisioning is enabled', async () => {
+				setEnabled({ projectProvisioning: true });
+				expect(await provisioningService.isProjectRoleManaged()).toBe(true);
+			});
+
+			it('is managed when expression mapping is enabled and project rules exist', async () => {
+				setEnabled({ expressionMapping: true });
+				setRules({ project: 1 });
+				expect(await provisioningService.isProjectRoleManaged()).toBe(true);
+			});
+
+			it('is not managed when expression mapping is enabled but only instance rules exist', async () => {
+				setEnabled({ expressionMapping: true });
+				setRules({ instance: 2, project: 0 });
+				expect(await provisioningService.isProjectRoleManaged()).toBe(false);
+			});
+
+			it('is not managed when nothing is enabled', async () => {
+				setEnabled({});
+				setRules({});
+				expect(await provisioningService.isProjectRoleManaged()).toBe(false);
+			});
+		});
+
+		describe('isInstanceRoleManaged', () => {
+			it('is managed when instance role claim provisioning is enabled', async () => {
+				setEnabled({ instanceProvisioning: true });
+				expect(await provisioningService.isInstanceRoleManaged()).toBe(true);
+			});
+
+			it('is managed when expression mapping is enabled and instance rules exist', async () => {
+				setEnabled({ expressionMapping: true });
+				setRules({ instance: 1 });
+				expect(await provisioningService.isInstanceRoleManaged()).toBe(true);
+			});
+
+			it('is not managed when expression mapping is enabled but only project rules exist', async () => {
+				setEnabled({ expressionMapping: true });
+				setRules({ instance: 0, project: 3 });
+				expect(await provisioningService.isInstanceRoleManaged()).toBe(false);
+			});
 		});
 	});
 });

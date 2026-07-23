@@ -24,6 +24,11 @@ vi.mock('./lucideIconData', () => ({
 			categories: ['design'],
 		},
 		// Blocklisted icon — should be filtered out by ICON_PICKER_BLOCKLIST
+		bot: {
+			keywords: ['bot', 'robot', 'ai', 'assistant'],
+			categories: ['development'],
+		},
+		// Blocklisted icon — should be filtered out by ICON_PICKER_BLOCKLIST
 		settings: {
 			keywords: ['settings', 'gear', 'preferences'],
 			categories: ['development'],
@@ -135,7 +140,41 @@ describe('IconPicker', () => {
 
 		// Wait for data to load and icons to render
 		const icons = await findAllByTestId('icon-picker-icon');
-		expect(icons).toHaveLength(4); // smile, star, heart, layers from mock
+		expect(icons).toHaveLength(4); // smile, star, heart, palette from mock
+	});
+
+	it('can hide emoji controls without narrowing icon results', async () => {
+		const { getByTestId, queryByTestId, findAllByTestId, queryByText } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+				iconsOnly: true,
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nButton', 'N8nIcon'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+
+		expect(getByTestId('icon-picker-popup').className).toContain('iconsOnly');
+		expect(queryByTestId('icon-picker-tabs')).toBeNull();
+		expect(queryByTestId('tab-emojis')).toBeNull();
+		expect(queryByText('Emojis')).toBeNull();
+		expect(queryByTestId('emoji-skin-tone-trigger')).toBeNull();
+
+		const icons = await findAllByTestId('icon-picker-icon');
+		expect(icons).toHaveLength(4);
+
+		const iconLabels = icons.map((el) => el.getAttribute('aria-label'));
+		expect(iconLabels).toContain('Smile');
+		expect(iconLabels).toContain('Star');
+		expect(iconLabels).toContain('Palette');
+		expect(iconLabels).toContain('Heart');
+		expect(iconLabels).not.toContain('Bot');
+		expect(iconLabels).not.toContain('Settings');
 	});
 
 	it('renders icon picker with custom icon and tooltip', async () => {
@@ -532,13 +571,14 @@ describe('IconPicker', () => {
 
 		await fireEvent.click(getByTestId('icon-picker-button'));
 
-		// Mock has 5 icons (smile, star, heart, palette, settings)
-		// but 'settings' is blocklisted, so only 4 should render
+		// Mock has 6 icons (smile, star, heart, palette, bot, settings)
+		// but 'bot' and 'settings' are blocklisted, so only 4 should render
 		const icons = await findAllByTestId('icon-picker-icon');
 		expect(icons).toHaveLength(4);
 
 		// Verify the blocklisted icon is not present via aria-label
 		const iconLabels = icons.map((el) => el.getAttribute('aria-label'));
+		expect(iconLabels).not.toContain('Bot');
 		expect(iconLabels).not.toContain('Settings');
 		expect(iconLabels).toContain('Smile');
 		expect(iconLabels).toContain('Star');
@@ -562,7 +602,6 @@ describe('IconPicker', () => {
 		await fireEvent.click(getByTestId('icon-picker-button'));
 		await findAllByTestId('icon-picker-icon');
 
-		// Search for a blocklisted icon by its exact name
 		const searchInput = getByTestId('icon-picker-search');
 		await fireEvent.update(searchInput, 'settings');
 

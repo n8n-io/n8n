@@ -1,6 +1,10 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { InstanceAiMcpConnectionResponse, McpRegistryServerResponse } from '@n8n/api-types';
+import type {
+	InstanceAiMcpConnectionResponse,
+	InstanceAiMcpConnectionToolResponse,
+	McpRegistryServerResponse,
+} from '@n8n/api-types';
 
 export interface CreateMcpConnectionBody {
 	serverSlug: string;
@@ -24,6 +28,17 @@ export async function fetchMcpConnections(
 	context: IRestApiContext,
 ): Promise<InstanceAiMcpConnectionResponse[]> {
 	return await makeRestApiRequest(context, 'GET', '/instance-ai/mcp/connections');
+}
+
+export async function fetchMcpConnectionTools(
+	context: IRestApiContext,
+	id: string,
+): Promise<InstanceAiMcpConnectionToolResponse[]> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/instance-ai/mcp/connections/${encodeURIComponent(id)}/tools`,
+	);
 }
 
 export async function createMcpConnection(

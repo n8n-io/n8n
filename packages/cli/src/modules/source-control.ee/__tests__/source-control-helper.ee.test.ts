@@ -22,6 +22,7 @@ import {
 	getTrackingInformationFromPullResult,
 	hasOwnerChanged,
 	isWorkflowModified,
+	mapInBatches,
 	mergeRemoteCrendetialDataIntoLocalCredentialData,
 	sanitizeCredentialData,
 	sourceControlFoldersExistCheck,
@@ -242,6 +243,56 @@ describe('Source Control Helper', () => {
 			expect(getRepoType('git@github.com:n8ntest/n8n_testrepo.git')).toBe('github');
 			expect(getRepoType('git@gitlab.com:n8ntest/n8n_testrepo.git')).toBe('gitlab');
 			expect(getRepoType('git@mygitea.io:n8ntest/n8n_testrepo.git')).toBe('other');
+		});
+	});
+
+	describe('mapInBatches', () => {
+		it('should preserve input order and length', async () => {
+			const items = Array.from({ length: 45 }, (_, i) => i);
+
+			// Resolve items out of order within each batch to prove order is preserved
+			const result = await mapInBatches(items, 20, async (item) => {
+				await new Promise((resolve) => setTimeout(resolve, item % 3));
+				return item * 2;
+			});
+
+			expect(result).toEqual(items.map((item) => item * 2));
+		});
+
+		it('should never run more than batchSize items concurrently', async () => {
+			let inFlight = 0;
+			let maxInFlight = 0;
+
+			await mapInBatches(
+				Array.from({ length: 45 }, (_, i) => i),
+				20,
+				async (item) => {
+					inFlight++;
+					maxInFlight = Math.max(maxInFlight, inFlight);
+					await new Promise((resolve) => setImmediate(resolve));
+					inFlight--;
+					return item;
+				},
+			);
+
+			expect(maxInFlight).toBeLessThanOrEqual(20);
+			expect(maxInFlight).toBeGreaterThan(1);
+		});
+
+		it('should reject when an item fails', async () => {
+			await expect(
+				mapInBatches([1, 2, 3], 2, async (item) => {
+					await Promise.resolve();
+					if (item === 2) throw new Error('boom');
+					return item;
+				}),
+			).rejects.toThrow('boom');
+		});
+
+		it('should return an empty array for empty input', async () => {
+			const fn = vi.fn();
+			await expect(mapInBatches([], 20, fn)).resolves.toEqual([]);
+			expect(fn).not.toHaveBeenCalled();
 		});
 	});
 
@@ -474,7 +525,7 @@ describe('Source Control Helper', () => {
 			const filePath = 'invalid/path/tags-and-mappings.json';
 			// Import the function after resetting modules
 			const { readTagAndMappingsFromSourceControlFile } = await import(
-				'@/modules/source-control.ee/source-control-helper.ee'
+				'@/modules/source-control.ee/source-control-helper.ee.js'
 			);
 			const result = await readTagAndMappingsFromSourceControlFile(filePath);
 			expect(result).toEqual({
@@ -495,7 +546,7 @@ describe('Source Control Helper', () => {
 			const filePath = 'invalid/path/folders.json';
 			// Import the function after resetting modules
 			const { readFoldersFromSourceControlFile } = await import(
-				'@/modules/source-control.ee/source-control-helper.ee'
+				'@/modules/source-control.ee/source-control-helper.ee.js'
 			);
 			const result = await readFoldersFromSourceControlFile(filePath);
 			expect(result).toEqual({
@@ -515,7 +566,7 @@ describe('Source Control Helper', () => {
 			const filePath = 'invalid/path/data_tables.json';
 			// Import the function after resetting modules
 			const { readDataTablesFromSourceControlFile } = await import(
-				'@/modules/source-control.ee/source-control-helper.ee'
+				'@/modules/source-control.ee/source-control-helper.ee.js'
 			);
 			const result = await readDataTablesFromSourceControlFile(filePath);
 			expect(result).toEqual([]);
@@ -543,7 +594,7 @@ describe('Source Control Helper', () => {
 
 			// Import the function after mocking
 			const { readDataTablesFromSourceControlFile } = await import(
-				'@/modules/source-control.ee/source-control-helper.ee'
+				'@/modules/source-control.ee/source-control-helper.ee.js'
 			);
 
 			const result = await readDataTablesFromSourceControlFile('valid/path/data_tables.json');
@@ -656,6 +707,27 @@ describe('Source Control Helper', () => {
 			const creds2 = mockCredential({ isGlobal: true });
 
 			expect(areSameCredentials(creds1, creds2)).toBe(false);
+		});
+
+		it('should return false when isResolvable differs', () => {
+			const creds1 = mockCredential();
+			const creds2 = mockCredential({ isResolvable: true });
+
+			expect(areSameCredentials(creds1, creds2)).toBe(false);
+		});
+
+		it('should return false when resolvableAllowFallback differs', () => {
+			const creds1 = mockCredential();
+			const creds2 = mockCredential({ resolvableAllowFallback: true });
+
+			expect(areSameCredentials(creds1, creds2)).toBe(false);
+		});
+
+		it('should treat undefined and false resolver fields as equal', () => {
+			const creds1 = mockCredential();
+			const creds2 = mockCredential({ isResolvable: false, resolvableAllowFallback: false });
+
+			expect(areSameCredentials(creds1, creds2)).toBe(true);
 		});
 
 		it('should return true when both have undefined data', () => {
@@ -1116,7 +1188,7 @@ describe('Source Control Helper', () => {
 			expect(result.port).toBe(5000); // Number from remote
 		});
 
-		it('should only include fields present in remote', () => {
+		it('should keep local fields that are absent from remote', () => {
 			const local = {
 				apiKey: 'secret',
 				port: 3000,
@@ -1125,14 +1197,32 @@ describe('Source Control Helper', () => {
 			const remote = {
 				port: 8080,
 				apiKey: '', // Plain string sanitized to empty
-				// extraField is NOT in remote, so won't be in result
+				// extraField is NOT in remote (e.g. left at its default when pushed)
 			};
 
 			const result = mergeRemoteCrendetialDataIntoLocalCredentialData({ local, remote });
 
 			expect(result.apiKey).toBe('secret'); // Local preserved (empty skipped)
 			expect(result.port).toBe(8080); // Merged from remote
-			expect(result.extraField).toBeUndefined(); // Not in remote, not in result
+			expect(result.extraField).toBe('local-only'); // Absent from remote, local retained
+		});
+
+		it('should not reset a locally selected option field the remote stub omits', () => {
+			// A stub pushed from an instance where the option was left at its default
+			// omits that field entirely. Pulling it must not reset a different local selection.
+			const local = {
+				apikey: 'prod-secret',
+				environment: 'https://api.example.com', // non-default selection on this instance
+			};
+			const remote = {
+				apikey: '', // secret blanked in the stub
+				// environment omitted because the pushing instance used the default
+			} as ICredentialDataDecryptedObject;
+
+			const result = mergeRemoteCrendetialDataIntoLocalCredentialData({ local, remote });
+
+			expect(result.apikey).toBe('prod-secret');
+			expect(result.environment).toBe('https://api.example.com');
 		});
 
 		it('should handle empty local object', () => {
@@ -1157,8 +1247,8 @@ describe('Source Control Helper', () => {
 
 			const result = mergeRemoteCrendetialDataIntoLocalCredentialData({ local, remote });
 
-			// Remote is empty, so result is empty (remote is source of truth for which fields exist)
-			expect(result).toEqual({});
+			// Remote carries no fields, so every local field is retained rather than wiped
+			expect(result).toEqual({ apiKey: 'secret', port: 3000 });
 		});
 
 		it('should handle both empty objects', () => {

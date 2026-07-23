@@ -8,6 +8,7 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type express from 'express';
 import merge from 'lodash/merge';
 import {
@@ -19,7 +20,6 @@ import {
 import type {
 	IBinaryData,
 	IDataObject,
-	IDeferredPromise,
 	IExecuteData,
 	IExecuteResponsePromiseData,
 	IN8nHttpFullResponse,
@@ -31,6 +31,7 @@ import type {
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
 	WebhookResponseMode,
+	OAuth2FailureReason,
 	Workflow,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
@@ -40,7 +41,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
-	createDeferredPromise,
 	createRunExecutionData,
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
@@ -462,7 +462,7 @@ export async function executeWebhook(
 		additionalKeys,
 	);
 
-	let project: Project | undefined = undefined;
+	let project: Project;
 	try {
 		project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
 	} catch (error) {
@@ -523,6 +523,18 @@ export async function executeWebhook(
 		};
 	};
 
+	const translateAuthFailureReason = (reason?: AuthFailureReason): OAuth2FailureReason => {
+		switch (reason) {
+			case 'verifier_not_registered':
+			case 'unknown_error':
+				return 'verifier_unavailable';
+			case 'insufficient_scope':
+				return 'insufficient_scope';
+			default:
+				return 'invalid_token';
+		}
+	};
+
 	additionalData.validateN8nOAuth2Token = async (token: string, resourceUrl: string) => {
 		const oauthTokenVerifierProxy = Container.get(OAuthTokenVerifierProxy);
 		const result = await oauthTokenVerifierProxy.verifyOAuthAccessToken(token, resourceUrl);
@@ -537,16 +549,10 @@ export async function executeWebhook(
 				},
 			};
 		}
-		const VERIFIER_UNAVAILABLE_REASONS: AuthFailureReason[] = [
-			'verifier_not_registered',
-			'unknown_error',
-		];
+
 		return {
 			valid: false,
-			reason:
-				result.context?.reason && VERIFIER_UNAVAILABLE_REASONS.includes(result.context.reason)
-					? 'verifier_unavailable'
-					: 'invalid_token',
+			reason: translateAuthFailureReason(result.context?.reason),
 		};
 	};
 
@@ -772,7 +778,7 @@ export async function executeWebhook(
 			const mcpListToolsRelayValue =
 				firstItem && 'json' in firstItem ? firstItem.json?.mcpListToolsRelay : null;
 			if (isMcpListToolsRelay(mcpListToolsRelayValue)) {
-				const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+				const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 				const publisher = Container.get(Publisher);
 				await publisher.publishMcpRelay({
 					sessionId: mcpListToolsRelayValue.sessionId,
@@ -865,6 +871,8 @@ export async function executeWebhook(
 			workflowId: workflowData.id,
 			workflowName: workflowData.name,
 			executionId,
+			projectId: project.id,
+			projectName: project.name,
 			source: 'webhook',
 		});
 

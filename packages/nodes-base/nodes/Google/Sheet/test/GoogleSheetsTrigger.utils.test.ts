@@ -1,6 +1,7 @@
+import * as XLSX from '@e965/xlsx';
 import type { IPollFunctions } from 'n8n-workflow';
-import * as XLSX from 'xlsx';
 
+import type { Mock } from 'vitest';
 import {
 	BINARY_MIME_TYPE,
 	arrayOfArraysToJson,
@@ -9,7 +10,6 @@ import {
 	sheetBinaryToArrayOfArrays,
 } from '../GoogleSheetsTrigger.utils';
 import { apiRequest } from '../v2/transport';
-import type { Mock } from 'vitest';
 
 vi.mock('../v2/transport', () => ({
 	apiRequest: {
@@ -17,7 +17,7 @@ vi.mock('../v2/transport', () => ({
 	},
 }));
 
-vi.mock('xlsx', () => ({
+vi.mock('@e965/xlsx', () => ({
 	read: vi.fn(),
 	utils: {
 		sheet_to_json: vi.fn(),

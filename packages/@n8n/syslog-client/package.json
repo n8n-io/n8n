@@ -1,6 +1,6 @@
 {
   "name": "@n8n/syslog-client",
-  "version": "1.6.0",
+  "version": "1.9.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -29,6 +29,8 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:typescript",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
     "get-port": "^7.1.0"

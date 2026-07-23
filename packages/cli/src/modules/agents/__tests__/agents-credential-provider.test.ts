@@ -148,4 +148,51 @@ describe('AgentsCredentialProvider', () => {
 			'Credential "unknown-cred" not found or not accessible',
 		);
 	});
+
+	it('resolves a credential the user can access when a request user is provided', async () => {
+		const credentialsService = mock<CredentialsService>();
+		const user = { id: 'user-1' } as User;
+		const projectCred = credential({ id: 'allowed', name: 'Slack' });
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{
+				...listItem({ id: 'allowed' }),
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
+				scopes: [],
+				isManaged: false,
+				isGlobal: false,
+				isResolvable: true,
+				currentUserHasAccess: true,
+				homeProject: null,
+				sharedWithProjects: [],
+			},
+		]);
+		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([projectCred]);
+		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+		credentialsService.decrypt.mockResolvedValue({ apiKey: 'secret' });
+
+		const provider = new AgentsCredentialProvider(credentialsService, 'project-1', user);
+
+		await expect(provider.resolve('allowed')).resolves.toEqual({ apiKey: 'secret' });
+		expect(credentialsService.decrypt).toHaveBeenCalledWith(projectCred, true);
+	});
+
+	it('rejects resolve for a credential accessible to the project but not to the request user', async () => {
+		const credentialsService = mock<CredentialsService>();
+		const user = { id: 'user-1' } as User;
+		// The user has no accessible credentials, but the project itself can
+		// see `forbidden-cred` — this must not be resolvable/decryptable by the user.
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
+			credential({ id: 'forbidden-cred' }),
+		]);
+		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+
+		const provider = new AgentsCredentialProvider(credentialsService, 'project-1', user);
+
+		await expect(provider.resolve('forbidden-cred')).rejects.toThrow(
+			'Credential "forbidden-cred" not found or not accessible',
+		);
+		expect(credentialsService.decrypt).not.toHaveBeenCalled();
+	});
 });

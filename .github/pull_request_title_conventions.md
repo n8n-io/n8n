@@ -39,7 +39,7 @@ Must be one of the following:
 | `test` | Adding missing tests or correcting existing tests | ❌ |
 | `docs` | Documentation only changes | ❌ |
 | `refactor` | A behavior-neutral code change that neither fixes a bug nor adds a feature | ❌ |
-| `build` | Changes that affect the build system or external dependencies (TypeScript, Jest, pnpm, etc.) | ❌ |
+| `build` | Changes that affect the build system or external dependencies (TypeScript, Vitest, pnpm, etc.) | ❌ |
 | `ci` | Changes to CI configuration files and scripts (e.g. Github actions) | ❌ |
 | `chore` | Routine tasks, maintenance, and minor updates not covered by other types | ❌ |
 

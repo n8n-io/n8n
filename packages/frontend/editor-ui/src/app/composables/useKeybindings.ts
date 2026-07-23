@@ -1,4 +1,4 @@
-import { PopOutWindowKey } from '@/app/constants';
+import { PopOutWindowKey } from '@n8n/composables/injectionKeys';
 import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useActiveElement, useEventListener } from '@vueuse/core';

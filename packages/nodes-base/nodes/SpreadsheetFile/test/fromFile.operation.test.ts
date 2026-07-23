@@ -3,14 +3,14 @@ import type { IBinaryData, IExecuteFunctions, INode, INodeExecutionData } from '
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 import { Readable } from 'stream';
 
-vi.mock('xlsx', () => ({
+vi.mock('@e965/xlsx', () => ({
 	read: vi.fn(),
 	utils: {
 		sheet_to_json: vi.fn(),
 	},
 }));
 
-import { read as xlsxRead, utils as xlsxUtils } from 'xlsx';
+import { read as xlsxRead, utils as xlsxUtils } from '@e965/xlsx';
 
 import { execute } from '../v2/fromFile.operation';
 import type { Mock } from 'vitest';

@@ -526,7 +526,7 @@ export class OidcService {
 
 	private async broadcastReloadOIDCConfigurationCommand(): Promise<void> {
 		if (this.instanceSettings.isMultiMain) {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 			await Container.get(Publisher).publishCommand({ command: 'reload-oidc-config' });
 		}
 	}

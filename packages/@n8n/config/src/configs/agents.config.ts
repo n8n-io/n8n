@@ -39,6 +39,31 @@ export class AgentsConfig {
 	checkpointTtlSeconds: number = 96 * Time.hours.toSeconds;
 
 	/**
+	 * Whether agent runs emit OpenTelemetry spans. Rides along with the OTel
+	 * module (endpoint, headers, sampling and transport are inherited from
+	 * `N8N_OTEL_*`) — spans go nowhere when no OTel provider is registered,
+	 * since the tracer falls back to OTel's no-op implementation, but the
+	 * runtime still does the work of building span attributes either way.
+	 * Lets operators run workflow OTel without agent spans.
+	 */
+	@Env('N8N_AGENTS_TRACING_ENABLED')
+	tracingEnabled: boolean = true;
+
+	/**
+	 * Whether agent tracing records inputs (prompts, tool arguments).
+	 * Defaults to true. Set to false to exclude sensitive input data from traces.
+	 */
+	@Env('N8N_AGENTS_TRACING_RECORD_INPUTS')
+	tracingRecordInputs: boolean = true;
+
+	/**
+	 * Whether agent tracing records outputs (responses, tool results).
+	 * Defaults to true. Set to false to exclude sensitive output data from traces.
+	 */
+	@Env('N8N_AGENTS_TRACING_RECORD_OUTPUTS')
+	tracingRecordOutputs: boolean = true;
+
+	/**
 	 * Comma-separated list of agent sub-feature modules to enable. Each entry
 	 * gates a specific frontend/runtime capability inside the agents module.
 	 * Add supported module tokens to `AGENTS_MODULE_NAMES`.
@@ -69,10 +94,6 @@ export class AgentsConfig {
 	/** When true, Daytona deletes the knowledge sandbox when it stops. */
 	@Env('N8N_AGENTS_AI_SANDBOX_EPHEMERAL')
 	sandboxEphemeral: boolean = false;
-
-	/** Daytona volume ID for the agent knowledge base. */
-	@Env('N8N_AGENTS_AI_SANDBOX_DAYTONA_VOLUME_ID')
-	daytonaVolumeId: string = '';
 
 	/** Daytona API URL (e.g. "https://app.daytona.io/api"). */
 	@Env('DAYTONA_API_URL')

@@ -15,6 +15,8 @@ import {
 	FolderRepository,
 	ProjectRelationRepository,
 	ProjectRepository,
+	RoleMappingRuleRepository,
+	RoleRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 } from '@n8n/db';
@@ -357,9 +359,10 @@ describe('Project members endpoints', () => {
 			savedConfig = { ...provisioningService.provisioningConfig };
 		});
 
-		afterEach(() => {
+		afterEach(async () => {
 			// @ts-expect-error - provisioningConfig is private
 			provisioningService.provisioningConfig = { ...savedConfig };
+			await Container.get(RoleMappingRuleRepository).delete({});
 		});
 
 		test('should return 403 when SSO provider controls project roles', async () => {
@@ -386,6 +389,20 @@ describe('Project members endpoints', () => {
 			const member = await createUser();
 			const project = await createTeamProject('Team Project', owner);
 			await linkUserToProject(member, project, 'project:viewer');
+
+			// Expression mapping only manages project roles when project-type rules exist.
+			const editorRole = await Container.get(RoleRepository).findOneOrFail({
+				where: { slug: 'project:editor' },
+			});
+			const ruleRepository = Container.get(RoleMappingRuleRepository);
+			const rule = ruleRepository.create({
+				expression: '{{ true }}',
+				role: editorRole,
+				type: 'project',
+				order: 0,
+			});
+			rule.projects = [project];
+			await ruleRepository.save(rule);
 
 			const ownerAgent = testServer.authAgentFor(owner);
 			await ownerAgent

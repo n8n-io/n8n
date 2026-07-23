@@ -7,6 +7,8 @@ export interface CheckCounts {
 	passes: number;
 	fails: number;
 	nA: number;
+	/** Checks that could not be measured (judge timeout/crash) — kept separate from N/A. */
+	errors: number;
 }
 
 export interface WorkflowChecksAggregate {
@@ -37,9 +39,11 @@ export function aggregateWorkflowChecks(
 					passes: 0,
 					fails: 0,
 					nA: 0,
+					errors: 0,
 				};
 				if (outcome.status === 'pass') entry.passes++;
 				else if (outcome.status === 'fail') entry.fails++;
+				else if (outcome.status === 'error') entry.errors++;
 				else entry.nA++;
 				perCheck[outcome.name] = entry;
 			}

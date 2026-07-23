@@ -12,6 +12,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import InstanceRolesView from './instance/InstanceRolesView.vue';
 import ProjectRolesView from './project/ProjectRolesView.vue';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 
 type RolesTab = 'instance' | 'project';
 const DEFAULT_TAB: RolesTab = 'instance';
@@ -22,10 +23,13 @@ const i18n = useI18n();
 const rolesStore = useRolesStore();
 const settingsStore = useSettingsStore();
 const { showError } = useToast();
+const rbacStore = useRBACStore();
 
 function normalizeTab(value: unknown): RolesTab {
-	return value === 'project' ? 'project' : DEFAULT_TAB;
+	return value === 'project' || !rbacStore.hasScope('role:manage') ? 'project' : DEFAULT_TAB;
 }
+
+const canManageInstanceRoles = computed(() => rbacStore.hasScope('role:manage'));
 
 const activeTab = ref<RolesTab>(normalizeTab(route.query.tab));
 
@@ -35,10 +39,20 @@ function addRole() {
 	});
 }
 
-const tabOptions = computed<Array<TabOptions<RolesTab>>>(() => [
-	{ label: i18n.baseText('roles.tab.instance'), value: 'instance' },
-	{ label: i18n.baseText('roles.tab.project'), value: 'project' },
-]);
+// Reflect the active tab in the button, mirroring the resource-scoped labels used
+// on the workflows and credentials lists.
+const addRoleLabel = computed(() =>
+	i18n.baseText(activeTab.value === 'project' ? 'roles.addRole.project' : 'roles.addRole.instance'),
+);
+
+const tabOptions = computed<Array<TabOptions<RolesTab>>>(() =>
+	canManageInstanceRoles.value
+		? [
+				{ label: i18n.baseText('roles.tab.instance'), value: 'instance' },
+				{ label: i18n.baseText('roles.tab.project'), value: 'project' },
+			]
+		: [{ label: i18n.baseText('roles.tab.project'), value: 'project' }],
+);
 
 // Reflect tab selection in the URL (replace keeps history clean / back-button safe).
 watch(activeTab, (tab) => {
@@ -89,12 +103,12 @@ onMounted(async () => {
 				icon="plus"
 				@click="addRole"
 			>
-				{{ i18n.baseText('roles.addRole') }}
+				{{ addRoleLabel }}
 			</N8nButton>
 		</div>
 
-		<InstanceRolesView v-if="activeTab === 'instance'" />
-		<ProjectRolesView v-else embedded />
+		<InstanceRolesView v-if="activeTab === 'instance' && canManageInstanceRoles" />
+		<ProjectRolesView v-else />
 	</div>
 </template>
 

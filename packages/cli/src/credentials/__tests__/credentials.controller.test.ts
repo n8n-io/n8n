@@ -35,6 +35,7 @@ describe('CredentialsController', () => {
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
 	const licenseState = mock<LicenseState>();
+	const credentialsOverwrites = mock<ConstructorParameters<typeof CredentialsController>[12]>();
 
 	// Mock the credentialsRepository with a working create method
 	const credentialsRepository = mock<CredentialsRepository>();
@@ -69,6 +70,7 @@ describe('CredentialsController', () => {
 	let getCredentialScopesSpy: MockInstance;
 	let updateSpy: MockInstance;
 	let createUnmanagedCredentialSpy: MockInstance;
+	let ensureCanManageEndUserCredentialSpy: MockInstance;
 	let findCredentialOwningProjectSpy: MockInstance;
 	let emitSpy: MockInstance;
 
@@ -85,6 +87,7 @@ describe('CredentialsController', () => {
 		eventService,
 		credentialsFinderService,
 		mock(), // connectionStatusProxy
+		credentialsOverwrites,
 	);
 
 	let req: AuthenticatedRequest;
@@ -100,6 +103,10 @@ describe('CredentialsController', () => {
 		getCredentialScopesSpy = vi.spyOn(credentialsService, 'getCredentialScopes');
 		updateSpy = vi.spyOn(credentialsService, 'update');
 		createUnmanagedCredentialSpy = vi.spyOn(credentialsService, 'createUnmanagedCredential');
+		// stubbed by default: the scope check needs real role/project data that unit tests don't wire up
+		ensureCanManageEndUserCredentialSpy = vi
+			.spyOn(credentialsService, 'ensureCanManageEndUserCredential')
+			.mockResolvedValue(undefined);
 		findCredentialOwningProjectSpy = sharedCredentialsRepository.findCredentialOwningProject;
 		emitSpy = eventService.emit;
 		// Set up credentialsRepository.create to return the input data
@@ -173,6 +180,30 @@ describe('CredentialsController', () => {
 			const [eventName, eventPayload] = emitSpy.mock.calls[0];
 			expect(eventName).toBe('credentials-created');
 			expect(eventPayload).toMatchObject({ jweEnabled: true });
+		});
+
+		it('should emit "credentials-created" with managed-auth flags derived from overwrites', async () => {
+			const newCredentialsPayload = createNewCredentialsPayload();
+			req.body = newCredentialsPayload;
+			const { data, ...payloadWithoutData } = newCredentialsPayload;
+			const createdCredentials = createdCredentialsWithScopes(payloadWithoutData);
+
+			createUnmanagedCredentialSpy.mockResolvedValue(createdCredentials);
+			findCredentialOwningProjectSpy.mockResolvedValue(mock<Project>());
+			credentialsOverwrites.supportsManagedAuth.mockReturnValue(true);
+			credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
+
+			await credentialsController.createCredentials(req, res, newCredentialsPayload);
+
+			expect(credentialsOverwrites.supportsManagedAuth).toHaveBeenCalledWith(
+				createdCredentials.type,
+			);
+			expect(credentialsOverwrites.usesManagedAuth).toHaveBeenCalledWith(
+				createdCredentials.type,
+				newCredentialsPayload.data,
+			);
+			const [, eventPayload] = emitSpy.mock.calls[0];
+			expect(eventPayload).toMatchObject({ supportsManagedAuth: true, usesManagedAuth: true });
 		});
 
 		it('should emit "private-credential-created" when credential is created as resolvable', async () => {
@@ -350,6 +381,33 @@ describe('CredentialsController', () => {
 			);
 		});
 
+		it('should emit "credentials-updated" with managed-auth flags derived from overwrites', async () => {
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'oAuth2Api',
+					data: { clientId: 'cid' },
+				},
+			} as unknown as CredentialRequest.Update;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
+			updateSpy.mockResolvedValue({ ...existingCredential, name: 'Updated Credential' });
+			credentialsOverwrites.supportsManagedAuth.mockReturnValue(true);
+			credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(credentialsOverwrites.supportsManagedAuth).toHaveBeenCalledWith(
+				existingCredential.type,
+			);
+			expect(emitSpy).toHaveBeenCalledWith(
+				'credentials-updated',
+				expect.objectContaining({ supportsManagedAuth: true, usesManagedAuth: true }),
+			);
+		});
+
 		it('should allow owner to set isGlobal to false if licensed', async () => {
 			// ARRANGE
 			const globalCredential = mock<CredentialsEntity>({
@@ -510,6 +568,7 @@ describe('CredentialsController', () => {
 			await credentialsController.updateCredentials(ownerReq);
 
 			// ASSERT
+			expect(ensureCanManageEndUserCredentialSpy).toHaveBeenCalledTimes(1);
 			expect(updateSpy).toHaveBeenCalledWith(
 				credentialId,
 				expect.objectContaining({
@@ -675,6 +734,89 @@ describe('CredentialsController', () => {
 			});
 			const emittedEventNames = emitSpy.mock.calls.map((call) => call[0]);
 			expect(emittedEventNames).not.toContain('private-credential-toggled-to-private');
+		});
+
+		it('should delete user entries and emit "private-credential-connections-cleared" when a shared field changes on a private credential', async () => {
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: { data: { clientId: 'new-client-id' }, isResolvable: true },
+			} as unknown as CredentialRequest.Update;
+
+			const privateCredential = mock<CredentialsEntity>({
+				...existingCredential,
+				isResolvable: true,
+			});
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(privateCredential);
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(true));
+			updateSpy.mockResolvedValue({ ...privateCredential, isResolvable: true });
+			const getChangedSharedFieldsSpy = vi
+				.spyOn(credentialsService, 'getChangedSharedFields')
+				.mockResolvedValue(['clientId']);
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(getChangedSharedFieldsSpy).toHaveBeenCalled();
+			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object), {
+				deleteUserEntries: true,
+			});
+			expect(emitSpy).toHaveBeenCalledWith('private-credential-connections-cleared', {
+				user: ownerReq.user,
+				credentialType: privateCredential.type,
+				credentialId: privateCredential.id,
+			});
+		});
+
+		it('should not delete user entries when no shared field changed on a private credential', async () => {
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: { data: { clientId: 'same' }, isResolvable: true },
+			} as unknown as CredentialRequest.Update;
+
+			const privateCredential = mock<CredentialsEntity>({
+				...existingCredential,
+				isResolvable: true,
+			});
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(privateCredential);
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(true));
+			updateSpy.mockResolvedValue({ ...privateCredential, isResolvable: true });
+			vi.spyOn(credentialsService, 'getChangedSharedFields').mockResolvedValue([]);
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object), {
+				deleteUserEntries: false,
+			});
+			const emittedEventNames = emitSpy.mock.calls.map((call) => call[0]);
+			expect(emittedEventNames).not.toContain('private-credential-connections-cleared');
+		});
+
+		it('should not check shared fields when toggling private to static (entries deleted by toggle)', async () => {
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: { data: { clientId: 'new-client-id' }, isResolvable: false },
+			} as unknown as CredentialRequest.Update;
+
+			const privateCredential = mock<CredentialsEntity>({
+				...existingCredential,
+				isResolvable: true,
+			});
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(privateCredential);
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(false));
+			updateSpy.mockResolvedValue({ ...privateCredential, isResolvable: false });
+			const getChangedSharedFieldsSpy = vi.spyOn(credentialsService, 'getChangedSharedFields');
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(getChangedSharedFieldsSpy).not.toHaveBeenCalled();
+			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object), {
+				deleteUserEntries: true,
+			});
 		});
 
 		it('should not emit toggle events when resolvable state is unchanged', async () => {

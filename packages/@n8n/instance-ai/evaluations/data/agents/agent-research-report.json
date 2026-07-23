@@ -1,0 +1,25 @@
+{
+	"description": "Tolerance case: gold accepts {anchor: agent, embedsOther: true} or {anchor: wf, embedsOther: true} — reasoning drives paper selection while report compilation is deterministic.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "A research agent that finds recent papers on a topic, reads the abstracts, decides which are worth summarizing, and compiles a report. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "complex",
+	"tags": ["intent-resolution", "reasoning-dominated", "tolerance"],
+	"datasets": ["agents", "agents-tolerance"],
+	"processExpectations": [
+		"The agent proposes an agent primitive for the open-ended research in one of two accepted shapes: an n8n Agent owning the flow, or a workflow whose paper-selection step is an embedded agent; a fully fixed pipeline with no open-ended selection step is wrong.",
+		"The proposed design pairs the open-ended part with the deterministic part explicitly: judgment-driven paper selection on one side, and fixed compilation/report steps on the other — either as workflow tools of an n8n Agent or as the fixed shell around an embedded agent step."
+	]
+}

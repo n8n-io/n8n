@@ -10,7 +10,9 @@ import {
 import type { ExecutionEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { type ExecutionStatus } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
 
+import { ActiveExecutions } from '@/active-executions';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
@@ -491,14 +493,24 @@ describe('GET /executions', () => {
 	});
 
 	describe('with query status', () => {
-		type AllowedQueryStatus = 'canceled' | 'error' | 'running' | 'success' | 'waiting';
+		type AllowedQueryStatus =
+			| 'canceled'
+			| 'crashed'
+			| 'error'
+			| 'new'
+			| 'running'
+			| 'success'
+			| 'unknown'
+			| 'waiting';
 		test.each`
 			queryStatus   | entityStatus
 			${'canceled'} | ${'canceled'}
+			${'crashed'}  | ${'crashed'}
 			${'error'}    | ${'error'}
-			${'error'}    | ${'crashed'}
+			${'new'}      | ${'new'}
 			${'running'}  | ${'running'}
 			${'success'}  | ${'success'}
+			${'unknown'}  | ${'unknown'}
 			${'waiting'}  | ${'waiting'}
 		`(
 			'should retrieve all $queryStatus executions',
@@ -530,6 +542,102 @@ describe('GET /executions', () => {
 				expect(status).toBe(expectedExecution.status);
 			},
 		);
+	});
+
+	describe('with executions held in the active-executions map', () => {
+		// Mirrors a running instance: a `waiting` execution is persisted in the DB
+		// and its id is also held in the in-process active-executions map.
+		let activeExecutionsSpy: MockInstance | undefined;
+
+		const holdInActiveExecutions = (
+			stubs: Array<{ executionId: string; workflowId: string; status: ExecutionStatus }>,
+		) => {
+			activeExecutionsSpy = vi
+				.spyOn(Container.get(ActiveExecutions), 'getActiveExecutions')
+				.mockReturnValue(
+					stubs.map(({ executionId, workflowId, status }) => ({
+						id: executionId,
+						retryOf: undefined,
+						startedAt: new Date(),
+						mode: 'manual',
+						workflowId,
+						status,
+					})),
+				);
+		};
+
+		afterEach(() => {
+			activeExecutionsSpy?.mockRestore();
+			activeExecutionsSpy = undefined;
+		});
+
+		test.each`
+			query                    | description
+			${undefined}             | ${'in the default list'}
+			${{ status: 'waiting' }} | ${'when filtering by status=waiting'}
+		`(
+			'should return a held waiting execution $description',
+			async ({ query }: { query?: { status: string } }) => {
+				const workflow = await createWorkflow({}, owner);
+				const waitingExecution = await createdExecutionWithStatus(workflow, 'waiting');
+				holdInActiveExecutions([
+					{ executionId: waitingExecution.id, workflowId: workflow.id, status: 'waiting' },
+				]);
+
+				const response = await authOwnerAgent.get('/executions').query(query ?? {});
+
+				expect(response.statusCode).toBe(200);
+				expect(response.body.data.map((e: { id: string }) => e.id)).toContain(waitingExecution.id);
+			},
+		);
+
+		test('should return both a held waiting execution and a finished one in the default list', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const finishedExecution = await createdExecutionWithStatus(workflow, 'success');
+			const waitingExecution = await createdExecutionWithStatus(workflow, 'waiting');
+			holdInActiveExecutions([
+				{ executionId: waitingExecution.id, workflowId: workflow.id, status: 'waiting' },
+			]);
+
+			const response = await authOwnerAgent.get('/executions');
+
+			expect(response.statusCode).toBe(200);
+			const ids = response.body.data.map((e: { id: string }) => e.id);
+			expect(ids).toContain(finishedExecution.id);
+			expect(ids).toContain(waitingExecution.id);
+		});
+
+		test('should still exclude a genuinely running execution from the default list', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const runningExecution = await createdExecutionWithStatus(workflow, 'running');
+			holdInActiveExecutions([
+				{ executionId: runningExecution.id, workflowId: workflow.id, status: 'running' },
+			]);
+
+			const response = await authOwnerAgent.get('/executions');
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.map((e: { id: string }) => e.id)).not.toContain(
+				runningExecution.id,
+			);
+		});
+
+		test('should return a held waiting execution and exclude a held running execution when both are active', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const waitingExecution = await createdExecutionWithStatus(workflow, 'waiting');
+			const runningExecution = await createdExecutionWithStatus(workflow, 'running');
+			holdInActiveExecutions([
+				{ executionId: waitingExecution.id, workflowId: workflow.id, status: 'waiting' },
+				{ executionId: runningExecution.id, workflowId: workflow.id, status: 'running' },
+			]);
+
+			const response = await authOwnerAgent.get('/executions');
+
+			expect(response.statusCode).toBe(200);
+			const ids = response.body.data.map((e: { id: string }) => e.id);
+			expect(ids).toContain(waitingExecution.id);
+			expect(ids).not.toContain(runningExecution.id);
+		});
 	});
 
 	test('should retrieve all executions of specific workflow', async () => {

@@ -1,16 +1,15 @@
-import { mock } from 'vitest-mock-extended';
-import type { IBinaryData, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { BINARY_ENCODING } from 'n8n-workflow';
-import { type WorkSheet, utils as xlsxUtils, write as xlsxWrite } from 'xlsx';
-
+import { type WorkSheet, utils as xlsxUtils, write as xlsxWrite } from '@e965/xlsx';
 import {
 	convertJsonToSpreadsheetBinary,
 	extractDataFromPDF,
 	prepareBinariesDataList,
 } from '@utils/binary';
+import type { IBinaryData, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { BINARY_ENCODING } from 'n8n-workflow';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-vi.mock('xlsx', () => ({
+vi.mock('@e965/xlsx', () => ({
 	utils: {
 		json_to_sheet: vi.fn(),
 	},

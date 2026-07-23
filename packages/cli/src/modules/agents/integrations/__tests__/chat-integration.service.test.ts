@@ -3,13 +3,11 @@ import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { CredentialsEntity } from '@n8n/db';
-import { ProjectRelationRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { StateAdapter } from 'chat';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { UrlService } from '@/services/url.service';
@@ -68,28 +66,46 @@ const slackIntegration: AgentIntegrationConfig = {
 	credentialId: 'cred-1',
 };
 
+const linearIntegration: AgentIntegrationConfig = {
+	type: 'linear',
+	credentialId: 'cred-2',
+};
+
+const telegramIntegration: AgentIntegrationConfig = {
+	type: 'telegram',
+	credentialId: 'cred-3',
+	settings: {
+		accessMode: 'public',
+		allowedUsers: [],
+	},
+};
+
+/** Configures a CredentialsService mock so `decryptCredentialForProject` finds `cred`. */
+function mockProjectCredential(
+	credentialsService: ReturnType<typeof mock<CredentialsService>>,
+	cred: CredentialsEntity,
+) {
+	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([cred]);
+	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+	credentialsService.decrypt.mockResolvedValue({});
+}
+
 function buildServiceWith(
 	opts: {
 		isLeader?: boolean;
 		multiMainEnabled?: boolean;
 		registry?: ChatIntegrationRegistry;
 		agentRepository?: ReturnType<typeof mock<AgentRepository>>;
-		credentialsFinderService?: ReturnType<typeof mock<CredentialsFinderService>>;
 		credentialsService?: ReturnType<typeof mock<CredentialsService>>;
 		publisher?: ReturnType<typeof mock<Publisher>>;
-		projectRelationRepository?: ReturnType<typeof mock<ProjectRelationRepository>>;
 		urlService?: ReturnType<typeof mock<UrlService>>;
 		chatSubscriptionStateService?: ReturnType<typeof mock<AgentChatSubscriptionStateService>>;
 	} = {},
 ) {
 	const registry = opts.registry ?? new ChatIntegrationRegistry();
 	const agentRepository = opts.agentRepository ?? mock<AgentRepository>();
-	const credentialsFinderService =
-		opts.credentialsFinderService ?? mock<CredentialsFinderService>();
 	const credentialsService = opts.credentialsService ?? mock<CredentialsService>();
 	const publisher = opts.publisher ?? mock<Publisher>();
-	const projectRelationRepository =
-		opts.projectRelationRepository ?? mock<ProjectRelationRepository>();
 	const urlService = opts.urlService ?? mock<UrlService>();
 	const chatSubscriptionStateService =
 		opts.chatSubscriptionStateService ?? mock<AgentChatSubscriptionStateService>();
@@ -98,13 +114,10 @@ function buildServiceWith(
 		multiMainSetup: { enabled: opts.multiMainEnabled ?? false },
 	} as Partial<GlobalConfig>);
 
-	Container.set(ProjectRelationRepository, projectRelationRepository);
-
 	const service = new ChatIntegrationService(
 		mockLogger(),
 		agentRepository,
 		credentialsService,
-		credentialsFinderService,
 		urlService,
 		registry,
 		instanceSettings,
@@ -117,10 +130,8 @@ function buildServiceWith(
 		service,
 		registry,
 		agentRepository,
-		credentialsFinderService,
 		credentialsService,
 		publisher,
-		projectRelationRepository,
 		urlService,
 		chatSubscriptionStateService,
 	};
@@ -128,16 +139,17 @@ function buildServiceWith(
 
 describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 	let service: ChatIntegrationService;
-	let projectRelationRepository: ReturnType<typeof mock<ProjectRelationRepository>>;
 	let chatSubscriptionStateService: ReturnType<typeof mock<AgentChatSubscriptionStateService>>;
 	let connectSpy: MockInstance;
 	let disconnectSpy: MockInstance;
+	let broadcastSpy: MockInstance;
 
 	beforeEach(() => {
 		Container.reset();
-		({ service, projectRelationRepository, chatSubscriptionStateService } = buildServiceWith());
+		({ service, chatSubscriptionStateService } = buildServiceWith());
 		connectSpy = vi.spyOn(service, 'connect').mockResolvedValue();
 		disconnectSpy = vi.spyOn(service, 'disconnect').mockResolvedValue();
+		broadcastSpy = vi.spyOn(service, 'broadcastIntegrationChange').mockResolvedValue();
 	});
 
 	it('skips connect when the agent is not published', async () => {
@@ -168,9 +180,45 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 		);
 	});
 
+	it('removes only the requested integration from a mixed channel list', async () => {
+		const agent = makeAgent({ activeVersionId: 'published-version-1' });
+
+		await service.syncToConfig(
+			agent,
+			[slackIntegration, linearIntegration, telegramIntegration],
+			[slackIntegration, telegramIntegration],
+		);
+
+		expect(disconnectSpy).toHaveBeenCalledTimes(1);
+		expect(disconnectSpy).toHaveBeenCalledWith('agent-1', linearIntegration);
+		expect(chatSubscriptionStateService.deleteSubscriptionsForIntegration).toHaveBeenCalledTimes(1);
+		expect(chatSubscriptionStateService.deleteSubscriptionsForIntegration).toHaveBeenCalledWith(
+			'agent-1',
+			linearIntegration,
+		);
+	});
+
+	it('disconnects a channel everywhere and removes persisted subscriptions', async () => {
+		await service.disconnectChannel('agent-1', slackIntegration);
+
+		expect(disconnectSpy).toHaveBeenCalledWith('agent-1', slackIntegration);
+		expect(broadcastSpy).toHaveBeenCalledWith('agent-1', slackIntegration, 'disconnect');
+		expect(chatSubscriptionStateService.deleteSubscriptionsForIntegration).toHaveBeenCalledWith(
+			'agent-1',
+			slackIntegration,
+		);
+	});
+
+	it('can disconnect a channel while preserving persisted subscriptions', async () => {
+		await service.disconnectChannel('agent-1', slackIntegration, { deleteSubscriptions: false });
+
+		expect(disconnectSpy).toHaveBeenCalledWith('agent-1', slackIntegration);
+		expect(broadcastSpy).toHaveBeenCalledWith('agent-1', slackIntegration, 'disconnect');
+		expect(chatSubscriptionStateService.deleteSubscriptionsForIntegration).not.toHaveBeenCalled();
+	});
+
 	it('does not reconnect an already-live integration when republishing', async () => {
 		const agent = makeAgent({ activeVersionId: 'published-version-1' });
-		projectRelationRepository.findUserIdsByProjectId.mockResolvedValue(['user-1']);
 		const internal = service as unknown as { connections: Map<string, unknown> };
 		internal.connections.set('agent-1:slack:cred-1', {});
 
@@ -190,7 +238,6 @@ describe('ChatIntegrationService', () => {
 			mock(),
 			mock(),
 			mock(),
-			mock(),
 			mock<InstanceSettings>({ isLeader: true }),
 			mock(),
 			mock<GlobalConfig>({ multiMainSetup: { enabled: false } } as Partial<GlobalConfig>),
@@ -205,17 +252,8 @@ describe('ChatIntegrationService', () => {
 		const registry = new ChatIntegrationRegistry();
 		registry.register(integration);
 
-		Container.set(
-			UserRepository,
-			mock<UserRepository>({
-				findOne: vi.fn().mockResolvedValue({ id: 'user-1' }),
-			}),
-		);
-
-		const credentialsFinderService = mock<CredentialsFinderService>();
-		credentialsFinderService.findCredentialForUser.mockResolvedValue({} as CredentialsEntity);
 		const credentialsService = mock<CredentialsService>();
-		credentialsService.decrypt.mockResolvedValue({});
+		mockProjectCredential(credentialsService, { id: 'cred-1' } as CredentialsEntity);
 		const urlService = mock<UrlService>();
 		urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.test/');
 
@@ -236,15 +274,14 @@ describe('ChatIntegrationService', () => {
 		try {
 			const { service } = buildServiceWith({
 				registry,
-				credentialsFinderService,
 				credentialsService,
 				urlService,
 				chatSubscriptionStateService,
 			});
 
-			await expect(
-				service.connect('agent-1', slackIntegration, 'user-1', 'project-1'),
-			).rejects.toThrow('chat construction failed');
+			await expect(service.connect('agent-1', slackIntegration, 'project-1')).rejects.toThrow(
+				'chat construction failed',
+			);
 
 			expect(chatSubscriptionStateService.createStateAdapter).toHaveBeenCalledTimes(1);
 			expect(state.disconnect).toHaveBeenCalledTimes(1);
@@ -252,6 +289,79 @@ describe('ChatIntegrationService', () => {
 			loadMemoryStateSpy.mockRestore();
 			loadChatSdkSpy.mockRestore();
 		}
+	});
+
+	describe('connect — project-scoped credential resolution', () => {
+		it('connects using a project-accessible credential without any user', async () => {
+			const createAdapter = vi.fn().mockResolvedValue({ name: 'slack' });
+			const integration = new FakeIntegration('slack', false);
+			(integration as unknown as { createAdapter: typeof createAdapter }).createAdapter =
+				createAdapter;
+			const registry = new ChatIntegrationRegistry();
+			registry.register(integration);
+
+			const cred = { id: 'cred-1' } as CredentialsEntity;
+			const credentialsService = mock<CredentialsService>();
+			mockProjectCredential(credentialsService, cred);
+			const urlService = mock<UrlService>();
+			urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.test/');
+
+			const state = mock<StateAdapter>();
+			state.disconnect.mockResolvedValue(undefined);
+			const chatSubscriptionStateService = mock<AgentChatSubscriptionStateService>();
+			chatSubscriptionStateService.createStateAdapter.mockReturnValue(state);
+
+			const loadMemoryStateSpy = vi.spyOn(esmLoader, 'loadMemoryState').mockResolvedValue({
+				createMemoryState: vi.fn(() => mock<StateAdapter>()),
+			} as never);
+			// Chat construction is unrelated to credential resolution — fail fast
+			// here so the test doesn't need to stand up the full bridge/orchestrator.
+			const loadChatSdkSpy = vi.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue({
+				Chat: vi.fn(() => {
+					throw new Error('chat construction failed');
+				}),
+			} as never);
+
+			try {
+				const { service } = buildServiceWith({
+					registry,
+					credentialsService,
+					urlService,
+					chatSubscriptionStateService,
+				});
+
+				await expect(service.connect('agent-1', slackIntegration, 'project-1')).rejects.toThrow(
+					'chat construction failed',
+				);
+
+				expect(credentialsService.findAllCredentialIdsForProject).toHaveBeenCalledWith('project-1');
+				expect(credentialsService.decrypt).toHaveBeenCalledWith(cred, true);
+			} finally {
+				loadMemoryStateSpy.mockRestore();
+				loadChatSdkSpy.mockRestore();
+			}
+		});
+
+		it('fails to connect when the credential is not accessible to the project', async () => {
+			const createAdapter = vi.fn();
+			const integration = new FakeIntegration('slack', false);
+			(integration as unknown as { createAdapter: typeof createAdapter }).createAdapter =
+				createAdapter;
+			const registry = new ChatIntegrationRegistry();
+			registry.register(integration);
+
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
+			credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+
+			const { service } = buildServiceWith({ registry, credentialsService });
+
+			await expect(service.connect('agent-1', slackIntegration, 'project-1')).rejects.toThrow(
+				'not accessible to project',
+			);
+
+			expect(createAdapter).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('disconnectAll', () => {
@@ -506,14 +616,10 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 				}),
 			]);
 
-			const projectRelationRepository = mock<ProjectRelationRepository>();
-			projectRelationRepository.findUserIdsByProjectId.mockResolvedValue(['u1']);
-
 			const { service } = buildServiceWith({
 				isLeader: false,
 				registry,
 				agentRepository,
-				projectRelationRepository,
 			});
 
 			const connectSpy = vi.spyOn(service, 'connect').mockResolvedValue();
@@ -526,7 +632,6 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			expect(connectSpy).toHaveBeenCalledWith(
 				'agent-1',
 				{ type: 'linear', credentialId: 'c2' },
-				'u1',
 				'project-1',
 				{ skipExternalHooks: true },
 			);
@@ -547,14 +652,10 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 				}),
 			]);
 
-			const projectRelationRepository = mock<ProjectRelationRepository>();
-			projectRelationRepository.findUserIdsByProjectId.mockResolvedValue(['u1']);
-
 			const { service } = buildServiceWith({
 				isLeader: true,
 				registry,
 				agentRepository,
-				projectRelationRepository,
 			});
 
 			const connectSpy = vi.spyOn(service, 'connect').mockResolvedValue();
@@ -563,7 +664,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			expect(connectSpy).toHaveBeenCalledTimes(2);
 			for (const call of connectSpy.mock.calls) {
-				expect(call[4]).toEqual({ skipExternalHooks: false });
+				expect(call[3]).toEqual({ skipExternalHooks: false });
 			}
 		});
 
@@ -578,14 +679,10 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 				}),
 			]);
 
-			const projectRelationRepository = mock<ProjectRelationRepository>();
-			projectRelationRepository.findUserIdsByProjectId.mockResolvedValue(['u1']);
-
 			const { service } = buildServiceWith({
 				isLeader: true,
 				registry,
 				agentRepository,
-				projectRelationRepository,
 			});
 
 			// Pretend this integration is already connected (e.g. leader-takeover
@@ -680,14 +777,10 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			const agentRepository = mock<AgentRepository>();
 			agentRepository.findOne.mockResolvedValue(makeAgent({ id: 'a1', projectId: 'p1' }));
 
-			const projectRelationRepository = mock<ProjectRelationRepository>();
-			projectRelationRepository.findUserIdsByProjectId.mockResolvedValue(['u1']);
-
 			const { service } = buildServiceWith({
 				isLeader: false,
 				registry,
 				agentRepository,
-				projectRelationRepository,
 			});
 
 			const connectSpy = vi.spyOn(service, 'connect').mockResolvedValue();
@@ -700,59 +793,32 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			// External hooks already ran on the originator. The peer must skip them
 			// to avoid duplicate external side effects.
-			expect(connectSpy).toHaveBeenCalledWith(
-				'a1',
-				{ type: 'linear', credentialId: 'c1' },
-				'u1',
-				'p1',
-				{
-					skipExternalHooks: true,
-				},
-			);
+			expect(connectSpy).toHaveBeenCalledWith('a1', { type: 'linear', credentialId: 'c1' }, 'p1', {
+				skipExternalHooks: true,
+			});
 		});
 
-		it('falls through user list until one succeeds', async () => {
+		it('logs and does not throw when the credential is not accessible to the project', async () => {
 			const registry = new ChatIntegrationRegistry();
 			registry.register(new FakeIntegration('linear', false));
 
 			const agentRepository = mock<AgentRepository>();
 			agentRepository.findOne.mockResolvedValue(makeAgent({ id: 'a1', projectId: 'p1' }));
 
-			const projectRelationRepository = mock<ProjectRelationRepository>();
-			projectRelationRepository.findUserIdsByProjectId.mockResolvedValue([
-				'u-no-access',
-				'u-with-access',
-			]);
-
 			const { service } = buildServiceWith({
 				registry,
 				agentRepository,
-				projectRelationRepository,
 			});
 
-			const connectSpy = vi
-				.spyOn(service, 'connect')
-				.mockImplementationOnce(async () => {
-					throw new Error('no access');
-				})
-				.mockImplementationOnce(async () => undefined);
+			vi.spyOn(service, 'connect').mockRejectedValue(new Error('not accessible to project'));
 
-			await service.handleIntegrationChanged({
-				agentId: 'a1',
-				integration: { type: 'linear', credentialId: 'c1' },
-				action: 'connect',
-			});
-
-			expect(connectSpy).toHaveBeenCalledTimes(2);
-			expect(connectSpy).toHaveBeenLastCalledWith(
-				'a1',
-				{ type: 'linear', credentialId: 'c1' },
-				'u-with-access',
-				'p1',
-				{
-					skipExternalHooks: true,
-				},
-			);
+			await expect(
+				service.handleIntegrationChanged({
+					agentId: 'a1',
+					integration: { type: 'linear', credentialId: 'c1' },
+					action: 'connect',
+				}),
+			).resolves.toBeUndefined();
 		});
 
 		it('no-ops when the agent has been deleted', async () => {

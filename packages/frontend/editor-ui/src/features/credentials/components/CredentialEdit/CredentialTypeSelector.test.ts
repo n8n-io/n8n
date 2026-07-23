@@ -56,18 +56,4 @@ describe('CredentialTypeSelector', () => {
 
 		expect(emitted()['update:modelValue']).toBeUndefined();
 	});
-
-	it('does not emit when selecting a disabled end-user card', async () => {
-		const { emitted } = renderComponent({
-			props: { modelValue: false, endUserDisabled: true },
-		});
-
-		await userEvent.click(screen.getByTestId('credential-type-card-end-user'));
-
-		expect(screen.getByTestId('credential-type-card-end-user')).toHaveAttribute(
-			'aria-disabled',
-			'true',
-		);
-		expect(emitted()['update:modelValue']).toBeUndefined();
-	});
 });

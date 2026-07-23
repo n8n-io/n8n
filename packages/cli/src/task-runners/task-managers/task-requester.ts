@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import type { TaskResultData, RequesterMessage, BrokerMessage, TaskData } from '@n8n/task-runner';
 import { AVAILABLE_RPC_METHODS } from '@n8n/task-runner';
 import { isSerializedBuffer, toBuffer, ErrorReporter } from 'n8n-core';
-import { createResultOk, createResultError } from 'n8n-workflow';
+import { createResultOk, createResultError, type Result } from '@n8n/utils/result';
 import type {
 	EnvProviderState,
 	IExecuteFunctions,
@@ -17,7 +17,6 @@ import type {
 	IExecuteData,
 	IDataObject,
 	IWorkflowExecuteAdditionalData,
-	Result,
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 

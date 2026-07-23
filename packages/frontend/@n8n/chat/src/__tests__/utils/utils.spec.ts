@@ -12,6 +12,34 @@ describe('utils', () => {
 			});
 		});
 
+		it('should render a message frame as plain text', () => {
+			const message = parseBotChatMessageContent(JSON.stringify({ type: 'message', text: 'hi' }));
+			expect(message).toEqual({
+				id: expect.any(String),
+				sender: 'bot',
+				text: 'hi',
+			});
+		});
+
+		it('should render a message frame text verbatim even when it is JSON', () => {
+			const messageText = JSON.stringify({
+				type: 'with-buttons',
+				text: 'Click',
+				blockUserInput: false,
+				buttons: [{ text: 'Go', link: 'https://example.com/action', type: 'primary' }],
+			});
+
+			const message = parseBotChatMessageContent(
+				JSON.stringify({ type: 'message', text: messageText }),
+			);
+
+			expect(message).toEqual({
+				id: expect.any(String),
+				sender: 'bot',
+				text: messageText,
+			});
+		});
+
 		it('should parse a message with buttons', () => {
 			const jsonMessage = {
 				type: 'with-buttons',

@@ -237,7 +237,7 @@ export class Ldap implements INodeType {
 		const nodeDebug = this.getNodeParameter('nodeDebug', 0) as boolean;
 
 		const items = this.getInputData();
-		const returnItems: INodeExecutionData[] = [];
+		let returnItems: INodeExecutionData[] = [];
 
 		if (nodeDebug) {
 			this.logger.info(
@@ -428,8 +428,9 @@ export class Ldap implements INodeType {
 					}
 					resolveBinaryAttributes(results.searchEntries);
 
-					returnItems.push.apply(
-						returnItems,
+					// Use `concat` instead of `push.apply`/spread to avoid
+					// "Maximum call stack size exceeded" on large result sets (NODE-5326).
+					returnItems = returnItems.concat(
 						results.searchEntries.map((result) => ({
 							json: result,
 							pairedItem: { item: itemIndex },

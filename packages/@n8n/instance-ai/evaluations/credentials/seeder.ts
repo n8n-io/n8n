@@ -39,9 +39,22 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 		envVar: 'EVAL_GITHUB_ACCESS_TOKEN',
 		buildData: (token) => ({ accessToken: token }),
 	},
-	gmailOAuth2Api: {
+	gmailOAuth2: {
 		defaultName: '[eval] Gmail',
 		envVar: 'EVAL_GMAIL_ACCESS_TOKEN',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	// MCP-registry-synthesized credential types (agent MCP servers). Creating
+	// them requires the backend to run with the `mcp-registry` module enabled;
+	// placeholder tokens are fine — agent eval runs mock the MCP wire.
+	linearMcpOAuth2Api: {
+		defaultName: '[eval] Linear MCP',
+		envVar: 'EVAL_LINEAR_MCP_ACCESS_TOKEN',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	notionMcpOAuth2Api: {
+		defaultName: '[eval] Notion MCP',
+		envVar: 'EVAL_NOTION_MCP_ACCESS_TOKEN',
 		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
 	},
 	microsoftTeamsOAuth2Api: {
@@ -56,6 +69,14 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 		defaultName: '[eval] WhatsApp OAuth account',
 		buildData: () => ({ clientId: 'eval-client-id', clientSecret: 'eval-client-secret' }),
 	},
+	googlePalmApi: {
+		defaultName: '[eval] Google Gemini',
+		envVar: 'EVAL_GEMINI_API_KEY',
+		buildData: (key) => ({
+			host: 'https://generativelanguage.googleapis.com',
+			apiKey: key,
+		}),
+	},
 	httpHeaderAuth: {
 		defaultName: '[eval] HTTP Header',
 		buildData: () => ({ name: 'Authorization', value: 'Bearer eval-placeholder' }),
@@ -63,6 +84,11 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 	httpBasicAuth: {
 		defaultName: '[eval] HTTP Basic',
 		buildData: () => ({ user: 'eval-user', password: 'eval-pass' }),
+	},
+	openAiApi: {
+		defaultName: '[eval] OpenAI',
+		envVar: 'EVAL_OPENAI_API_KEY',
+		buildData: (key) => ({ apiKey: key }),
 	},
 };
 

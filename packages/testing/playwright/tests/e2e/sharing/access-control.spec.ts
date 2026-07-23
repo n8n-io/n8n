@@ -106,7 +106,7 @@ test.describe(
 			});
 
 			const memberApi = await api.createApiForUser(member);
-			const response = await memberApi.request.get(`/rest/workflows/${workflow.id}`);
+			const response = await memberApi.workflows.getWorkflowRaw(workflow.id);
 			expect(response.status()).toBe(403);
 		});
 

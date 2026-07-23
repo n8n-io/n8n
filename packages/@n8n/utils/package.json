@@ -1,7 +1,7 @@
 {
   "name": "@n8n/utils",
   "type": "module",
-  "version": "1.37.0",
+  "version": "1.40.0",
   "files": [
     "dist"
   ],
@@ -49,8 +49,8 @@
     "@n8n/vitest-config": "workspace:*",
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/user-event": "catalog:frontend",
-    "tsdown": "catalog:",
-    "typescript": "catalog:",
+    "tsdown": "catalog:typescript",
+    "typescript": "catalog:typescript",
     "vite": "catalog:",
     "vitest": "catalog:"
   },

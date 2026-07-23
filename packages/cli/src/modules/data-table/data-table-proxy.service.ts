@@ -22,6 +22,7 @@ import {
 	UpdateDataTableRowOptions,
 	UpsertDataTableRowOptions,
 	Workflow,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -31,6 +32,7 @@ import { OwnershipService } from '@/services/ownership.service';
 
 import { DataTableAggregateService } from './data-table-aggregate.service';
 import { DataTableService } from './data-table.service';
+import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 
 const ALLOWED_NODES = [
 	'n8n-nodes-base.dataTable',
@@ -96,6 +98,22 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	): Promise<IDataTableProjectService> {
 		this.validateRequest(node);
 		projectId = projectId ?? (await this.getProjectId(workflow));
+
+		try {
+			await this.dataTableService.validateDataTableExists(dataTableId, projectId);
+		} catch (error) {
+			if (error instanceof DataTableNotFoundError) {
+				throw new NodeOperationError(
+					node,
+					`Data table with ID '${dataTableId}' could not be found in this project`,
+					{
+						description:
+							'It may have been deleted, or skipped when the workflow was imported. Choose an existing data table in the node.',
+					},
+				);
+			}
+			throw error;
+		}
 
 		return this.makeDataTableOperations(projectId, dataTableId);
 	}
@@ -223,6 +241,12 @@ export class DataTableProxyService implements DataTableProxyProvider {
 					options.dryRun,
 				);
 			},
+
+			async clearRows(dataTableId: string, projectId: string) {
+				checkInstanceWriteAccess();
+				await requireScope('dataTable:writeRow', projectId);
+				return await dataTableService.clearRows(dataTableId, projectId);
+			},
 		};
 	}
 
@@ -324,6 +348,10 @@ export class DataTableProxyService implements DataTableProxyProvider {
 					true,
 					options.dryRun,
 				);
+			},
+
+			async clearRows() {
+				return await dataTableService.clearRows(dataTableId, projectId);
 			},
 		};
 	}

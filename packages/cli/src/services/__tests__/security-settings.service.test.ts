@@ -10,6 +10,8 @@ import {
 	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
 
+import { EventService } from '@/events/event.service';
+import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { RoleService } from '@/services/role.service';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 
@@ -19,13 +21,25 @@ describe('SecuritySettingsService', () => {
 	const workflowRepository = mockInstance(WorkflowRepository);
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 	const sharedCredentialsRepository = mockInstance(SharedCredentialsRepository);
+	const instanceRedactionEnforcementService = mockInstance(InstanceRedactionEnforcementService);
+	const eventService = mockInstance(EventService);
 	const securitySettingsService = new SecuritySettingsService(
 		settingsRepository,
 		roleService,
 		workflowRepository,
 		sharedWorkflowRepository,
 		sharedCredentialsRepository,
+		instanceRedactionEnforcementService,
+		eventService,
 	);
+
+	const actor = {
+		id: 'user-1',
+		email: 'admin@n8n.io',
+		firstName: 'Admin',
+		lastName: 'User',
+		role: { slug: 'global:owner' },
+	};
 
 	const PERSONAL_OWNER_ROLE_SLUG = 'project:personalOwner';
 
@@ -258,6 +272,166 @@ describe('SecuritySettingsService', () => {
 			const result = await securitySettingsService.getSharedPersonalCredentialsCount();
 
 			expect(result).toBe(0);
+		});
+	});
+
+	describe('getSecuritySettings', () => {
+		test('assembles personal-space settings, counts and redaction floor', async () => {
+			settingsRepository.findByKeys.mockResolvedValue([
+				{ key: PERSONAL_SPACE_PUBLISHING_SETTING.key, value: 'true' },
+				{ key: PERSONAL_SPACE_SHARING_SETTING.key, value: 'false' },
+			] as never);
+			workflowRepository.getPublishedPersonalWorkflowsCount.mockResolvedValue(5);
+			sharedWorkflowRepository.getSharedPersonalWorkflowsCount.mockResolvedValue(12);
+			sharedCredentialsRepository.getSharedPersonalCredentialsCount.mockResolvedValue(3);
+			instanceRedactionEnforcementService.get.mockResolvedValue('production');
+
+			const result = await securitySettingsService.getSecuritySettings();
+
+			expect(result).toEqual({
+				personalSpacePublishing: true,
+				personalSpaceSharing: false,
+				publishedPersonalWorkflowsCount: 5,
+				sharedPersonalWorkflowsCount: 12,
+				sharedPersonalCredentialsCount: 3,
+				redactionEnforcement: { floor: 'production' },
+			});
+		});
+	});
+
+	describe('updateSecuritySettings', () => {
+		test('updates only personalSpacePublishing and emits its policy event', async () => {
+			const result = await securitySettingsService.updateSecuritySettings(
+				{ personalSpacePublishing: false },
+				actor,
+			);
+
+			expect(result).toEqual({ personalSpacePublishing: false });
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				{ key: PERSONAL_SPACE_PUBLISHING_SETTING.key, value: 'false', loadOnStartup: true },
+				['key'],
+			);
+			expect(eventService.emit).toHaveBeenCalledWith('instance-policies-updated', {
+				user: actor,
+				settingName: 'workflow_publishing',
+				value: false,
+			});
+		});
+
+		test('updates only personalSpaceSharing and emits its policy event', async () => {
+			const result = await securitySettingsService.updateSecuritySettings(
+				{ personalSpaceSharing: true },
+				actor,
+			);
+
+			expect(result).toEqual({ personalSpaceSharing: true });
+			expect(eventService.emit).toHaveBeenCalledWith('instance-policies-updated', {
+				user: actor,
+				settingName: 'workflow_sharing',
+				value: true,
+			});
+		});
+
+		test('does nothing and emits nothing when no fields are provided', async () => {
+			const result = await securitySettingsService.updateSecuritySettings({}, actor);
+
+			expect(result).toEqual({});
+			expect(settingsRepository.upsert).not.toHaveBeenCalled();
+			expect(instanceRedactionEnforcementService.set).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		test('normalizes the actor to the minimal audit envelope', async () => {
+			await securitySettingsService.updateSecuritySettings({ personalSpacePublishing: true }, {
+				id: 'user-1',
+				email: 'admin@n8n.io',
+				firstName: 'Admin',
+				lastName: 'User',
+				role: { slug: 'global:owner' },
+				password: 'secret-hash',
+			} as never);
+
+			const [, payload] = eventService.emit.mock.calls[0];
+			expect(payload).not.toHaveProperty('user.password');
+			expect(payload).toMatchObject({
+				user: {
+					id: 'user-1',
+					email: 'admin@n8n.io',
+					firstName: 'Admin',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+			});
+		});
+
+		describe('redaction enforcement', () => {
+			test('persists the floor and emits both events when it changes', async () => {
+				instanceRedactionEnforcementService.get.mockResolvedValue('off');
+
+				const result = await securitySettingsService.updateSecuritySettings(
+					{ redactionEnforcement: { floor: 'all' } },
+					actor,
+				);
+
+				expect(result).toEqual({ redactionEnforcement: { floor: 'all' } });
+				expect(instanceRedactionEnforcementService.set).toHaveBeenCalledWith('all');
+				expect(eventService.emit).toHaveBeenCalledWith('redaction-enforcement-updated', {
+					user: actor,
+					before: 'off',
+					after: 'all',
+				});
+				expect(eventService.emit).toHaveBeenCalledWith('instance-policies-updated', {
+					user: actor,
+					settingName: 'data_redaction_enforcement_floor',
+					value: 'all',
+				});
+			});
+
+			test('reports the production-only floor as `production`', async () => {
+				instanceRedactionEnforcementService.get.mockResolvedValue('off');
+
+				await securitySettingsService.updateSecuritySettings(
+					{ redactionEnforcement: { floor: 'production' } },
+					actor,
+				);
+
+				expect(instanceRedactionEnforcementService.set).toHaveBeenCalledWith('production');
+				expect(eventService.emit).toHaveBeenCalledWith('instance-policies-updated', {
+					user: actor,
+					settingName: 'data_redaction_enforcement_floor',
+					value: 'production',
+				});
+			});
+
+			test('does not persist or emit when the floor is unchanged', async () => {
+				instanceRedactionEnforcementService.get.mockResolvedValue('all');
+
+				const result = await securitySettingsService.updateSecuritySettings(
+					{ redactionEnforcement: { floor: 'all' } },
+					actor,
+				);
+
+				expect(instanceRedactionEnforcementService.set).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalled();
+				// The applied subset still echoes the requested floor.
+				expect(result.redactionEnforcement).toEqual({ floor: 'all' });
+			});
+		});
+
+		test('applies personal-space and redaction changes together', async () => {
+			instanceRedactionEnforcementService.get.mockResolvedValue('off');
+
+			const result = await securitySettingsService.updateSecuritySettings(
+				{ personalSpacePublishing: true, redactionEnforcement: { floor: 'production' } },
+				actor,
+			);
+
+			expect(result).toEqual({
+				personalSpacePublishing: true,
+				redactionEnforcement: { floor: 'production' },
+			});
+			expect(settingsRepository.upsert).toHaveBeenCalledTimes(1);
+			expect(instanceRedactionEnforcementService.set).toHaveBeenCalledTimes(1);
 		});
 	});
 });

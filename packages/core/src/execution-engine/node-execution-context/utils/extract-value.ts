@@ -23,48 +23,16 @@ function findPropertyFromParameterName(
 	node: INode,
 	nodeParameters: INodeParameters,
 ): INodePropertyOptions | INodeProperties | INodePropertyCollection {
-	let property: INodePropertyOptions | INodeProperties | INodePropertyCollection | undefined;
-	const paramParts = parameterName.split('.');
-	let currentParamPath = '';
-
-	const findProp = (
-		name: string,
-		options: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
-	): INodePropertyOptions | INodeProperties | INodePropertyCollection | undefined => {
-		return options.find(
-			(i) =>
-				i.name === name &&
-				NodeHelpers.displayParameterPath(
-					nodeParameters,
-					i,
-					currentParamPath,
-					node,
-					nodeType.description,
-				),
-		);
-	};
-
-	for (const p of paramParts) {
-		const param = p.split('[')[0];
-		if (!property) {
-			property = findProp(param, nodeType.description.properties);
-		} else if ('options' in property && property.options) {
-			property = findProp(param, property.options);
-			currentParamPath += `.${param}`;
-		} else if ('values' in property) {
-			property = findProp(param, property.values);
-			currentParamPath += `.${param}`;
-		} else {
-			throw new UserError('Could not find property', { extra: { parameterName } });
-		}
-		if (!property) {
-			throw new UserError('Could not find property', { extra: { parameterName } });
-		}
-	}
+	const property = NodeHelpers.findDisplayedProperty(
+		parameterName,
+		nodeType.description.properties,
+		nodeParameters,
+		node,
+		nodeType.description,
+	);
 	if (!property) {
 		throw new UserError('Could not find property', { extra: { parameterName } });
 	}
-
 	return property;
 }
 

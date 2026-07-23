@@ -58,7 +58,7 @@ export interface IAbstractEventMessage {
 // ===============================
 
 // Circuit Breaker Options Schema
-const circuitBreakerSchema = z
+export const circuitBreakerSchema = z
 	.object({
 		maxFailures: z.number().int().positive().optional(),
 		maxDuration: z.number().int().positive().optional(),
@@ -79,7 +79,7 @@ const webhookParameterItemSchema = z.object({
 });
 
 // Webhook Parameter Options Schema
-const webhookParameterOptionsSchema = z
+export const webhookParameterOptionsSchema = z
 	.object({
 		batch: z
 			.object({

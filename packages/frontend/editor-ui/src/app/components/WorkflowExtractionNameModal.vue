@@ -38,10 +38,10 @@ const onSubmit = async () => {
 	if (initiatedExtraction.value) return;
 
 	initiatedExtraction.value = true;
-	const { selection, subGraph } = props.data;
+	const { selection: extractionBoundary, subGraph } = props.data;
 	try {
 		await workflowExtraction.extractNodesIntoSubworkflow(
-			selection,
+			extractionBoundary,
 			subGraph,
 			workflowNameOrDefault.value,
 		);

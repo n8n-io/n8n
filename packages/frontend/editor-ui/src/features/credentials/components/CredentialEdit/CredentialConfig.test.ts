@@ -305,6 +305,7 @@ describe('CredentialConfig', () => {
 					isResolvable: false,
 					credentialPermissions: {
 						create: true,
+						createEndUser: true,
 						update: false,
 						read: true,
 						delete: false,
@@ -333,6 +334,7 @@ describe('CredentialConfig', () => {
 					isResolvable: false,
 					credentialPermissions: {
 						create: false,
+						createEndUser: true,
 						update: true,
 						read: true,
 						delete: false,
@@ -347,7 +349,7 @@ describe('CredentialConfig', () => {
 			expect(screen.getByTestId('credential-type-card-end-user')).toBeInTheDocument();
 		});
 
-		it('should disable the end-user credential card when the credential is already shared', async () => {
+		it('should keep the end-user credential card enabled when the credential is already shared', async () => {
 			renderComponent({
 				props: {
 					isManaged: false,
@@ -359,9 +361,9 @@ describe('CredentialConfig', () => {
 					isOAuthType: true,
 					isNewCredential: false,
 					isResolvable: false,
-					isShared: true,
 					credentialPermissions: {
 						create: false,
+						createEndUser: true,
 						update: true,
 						read: true,
 						delete: false,
@@ -372,10 +374,94 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.getByTestId('credential-type-card-end-user')).toHaveAttribute(
+			expect(screen.getByTestId('credential-type-card-end-user')).not.toHaveAttribute(
 				'aria-disabled',
 				'true',
 			);
+		});
+
+		it('should hide the type selector when the user cannot create end-user credentials', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: false,
+					credentialPermissions: {
+						create: false,
+						createEndUser: false,
+						update: true,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
+		});
+
+		it('should hide the type selector for an end-user credential without the createEndUser permission', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: true,
+					credentialPermissions: {
+						create: false,
+						createEndUser: false,
+						update: true,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
+		});
+
+		it('should show the type selector for an end-user credential with the createEndUser permission', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: true,
+					credentialPermissions: {
+						create: false,
+						createEndUser: true,
+						update: true,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
 		});
 	});
 
@@ -467,6 +553,43 @@ describe('CredentialConfig', () => {
 
 			await screen.getByTestId('oauth-disconnect-button').click();
 			expect(emitted().disconnect).toBeTruthy();
+		});
+	});
+
+	describe('Connect banner gating for private credentials', () => {
+		const notConnectedProps = {
+			isManaged: false,
+			mode: 'edit' as const,
+			credentialType: mockCredentialType,
+			credentialProperties: [],
+			credentialData: {} as ICredentialDataDecryptedObject,
+			isOAuthType: true,
+			isOAuthConnected: false,
+			requiredPropertiesFilled: true,
+			isPrivateCredentialsEnabled: true,
+			isResolvable: true,
+		};
+
+		it('shows the connect button when the user has the connect scope but cannot edit', () => {
+			renderComponent({
+				props: {
+					...notConnectedProps,
+					credentialPermissions: { read: true, connect: true },
+				},
+			});
+
+			expect(screen.getByTestId('quick-connect-button')).toBeInTheDocument();
+		});
+
+		it('hides the connect button when the user lacks the connect scope', () => {
+			renderComponent({
+				props: {
+					...notConnectedProps,
+					credentialPermissions: { read: true },
+				},
+			});
+
+			expect(screen.queryByTestId('quick-connect-button')).not.toBeInTheDocument();
 		});
 	});
 

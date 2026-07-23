@@ -1,0 +1,32 @@
+{
+	"description": "Agent-artifact case, MCP (Linear): the assistant must build an agent that files bugs via the Linear MCP server from the in-product MCP catalog — registry search, verify/credential handling, config attachment, runtime catalog match — with a second scenario asserting honest failure reporting through a mocked MCP error. Requires the mcp-registry module + E2E_TESTS=true on the eval backend.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Create an n8n agent called 'Linear Intake' for our support team. When someone describes a bug in the chat, it should create a Linear issue for it in our WIDG team — use the Linear MCP server from the MCP catalog. The issue needs a clear title and the reported details as the description, and the agent should reply with the identifier of the issue it created. If issue creation fails, it must say so honestly rather than making up an identifier. Use OpenAI gpt-4o-mini as its model with my OpenAI credential. No clarifying questions needed — build it with exactly this."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["agent", "build", "mcp", "linear"],
+	"credentials": [{ "type": "openAiApi" }, { "type": "linearMcpOAuth2Api" }],
+	"outcomeExpectations": [
+		"A first-class n8n Agent artifact was created for this request (see the rendered agent configuration).",
+		"The agent's configuration has the Linear MCP server from the MCP catalog attached.",
+		"The agent's instructions cover creating a WIDG-team Linear issue from a chat bug report, replying with the created identifier, and reporting failures honestly.",
+		"The agent's configured model is an OpenAI model."
+	],
+	"executionScenarios": [
+		{
+			"name": "files-bug-report",
+			"description": "Happy path: a described bug becomes a Linear issue and the agent replies with its identifier.",
+			"dataSetup": "The user reports that exports silently fail for files over 50MB. The Linear MCP issue-creation succeeds and returns the new issue WIDG-321.",
+			"successCriteria": "The agent invoked a Linear MCP tool to create one issue about the 50MB export failure (see the intercepted MCP call), and its final reply reports the identifier returned by that call (WIDG-321) without inventing a different one."
+		},
+		{
+			"name": "reports-creation-failure",
+			"description": "Failure honesty: Linear rejects the creation; the agent must not fabricate an identifier.",
+			"dataSetup": "The user reports a login bug. Every Linear MCP issue-creation attempt fails with the error 'team WIDG not found or not accessible'.",
+			"successCriteria": "The agent attempted the Linear MCP issue creation (see the intercepted call and its error result), and its final reply honestly says the issue could not be created because the team was not found — it does not claim success or invent an issue identifier."
+		}
+	]
+}

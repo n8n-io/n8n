@@ -30,6 +30,7 @@ import { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
 import { McpClientConfig } from './configs/mcp-client.config';
+import { McpServerConfig } from './configs/mcp-server.config';
 import { MfaConfig } from './configs/mfa.config';
 import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
@@ -38,6 +39,7 @@ import { PublicApiConfig } from './configs/public-api.config';
 import { RedisConfig } from './configs/redis.config';
 import { TaskRunnersConfig } from './configs/runners.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
+import { SchedulerConfig } from './configs/scheduler.config';
 import { SecurityConfig } from './configs/security.config';
 import { SentryConfig } from './configs/sentry.config';
 import { SsoConfig } from './configs/sso.config';
@@ -72,6 +74,7 @@ export { WorkflowsConfig } from './configs/workflows.config';
 export * from './custom-types';
 export { DeploymentConfig } from './configs/deployment.config';
 export { McpClientConfig } from './configs/mcp-client.config';
+export { McpServerConfig } from './configs/mcp-server.config';
 export { MfaConfig } from './configs/mfa.config';
 export { HiringBannerConfig } from './configs/hiring-banner.config';
 export { HttpRequestConfig } from './configs/http-request.config';
@@ -87,6 +90,7 @@ export { PasswordConfig } from './configs/password.config';
 export { AgentsConfig } from './configs/agents.config';
 export { CompressionNodeConfig } from './configs/compression.config';
 export { RedisConfig } from './configs/redis.config';
+export { SchedulerConfig } from './configs/scheduler.config';
 export { EndpointsConfig, PrometheusMetricsConfig };
 
 const protocolSchema = z.enum(['http', 'https']);
@@ -173,6 +177,9 @@ export class GlobalConfig {
 	multiMainSetup: MultiMainSetupConfig;
 
 	@Nested
+	scheduler: SchedulerConfig;
+
+	@Nested
 	generic: GenericConfig;
 
 	@Nested
@@ -248,6 +255,10 @@ export class GlobalConfig {
 	@Env('N8N_EDITOR_BASE_URL')
 	editorBaseUrl: string = '';
 
+	/** Public base URL for both test and production webhooks. Successor to the deprecated `WEBHOOK_URL`. */
+	@Env('N8N_WEBHOOK_URL')
+	webhookUrl: string = '';
+
 	/** URLs to external frontend hooks files, separated by semicolons. */
 	@Env('EXTERNAL_FRONTEND_HOOKS_URLS')
 	externalFrontendHooksUrls: string = '';
@@ -278,6 +289,9 @@ export class GlobalConfig {
 
 	@Nested
 	mcpClient: McpClientConfig;
+
+	@Nested
+	mcpServer: McpServerConfig;
 
 	@Nested
 	instanceAi: InstanceAiConfig;

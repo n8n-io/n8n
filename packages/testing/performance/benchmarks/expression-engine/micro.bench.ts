@@ -18,6 +18,8 @@ import {
 	ThisSanitizer,
 } from 'n8n-workflow/expression-sandboxing';
 
+import { BENCH_OPTIONS } from '../bench-options';
+
 // Top-level await — vitest bench doesn't support beforeAll
 const evaluator = new ExpressionEvaluator({
 	createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
@@ -38,14 +40,22 @@ const testData: Record<string, unknown> = {
 };
 
 // Script Compilation
-bench('vm micro: Script Compilation - cache hit (repeated expression)', () => {
-	evaluator.evaluate('$json.id', testData, caller);
-});
+bench(
+	'vm micro: Script Compilation - cache hit (repeated expression)',
+	() => {
+		evaluator.evaluate('$json.id', testData, caller);
+	},
+	BENCH_OPTIONS,
+);
 
 let counter = 0;
-bench('vm micro: Script Compilation - cache miss (unique expressions)', () => {
-	evaluator.evaluate(`$json.id + ${counter++}`, testData, caller);
-});
+bench(
+	'vm micro: Script Compilation - cache miss (unique expressions)',
+	() => {
+		evaluator.evaluate(`$json.id + ${counter++}`, testData, caller);
+	},
+	BENCH_OPTIONS,
+);
 
 // Data Complexity
 const shallowData: Record<string, unknown> = {
@@ -56,13 +66,21 @@ const deepData: Record<string, unknown> = {
 	$json: { a: { b: { c: { d: { e: { value: 42 } } } } } },
 };
 
-bench('vm micro: Data Complexity - shallow access (depth 1)', () => {
-	evaluator.evaluate('$json.value', shallowData, caller);
-});
+bench(
+	'vm micro: Data Complexity - shallow access (depth 1)',
+	() => {
+		evaluator.evaluate('$json.value', shallowData, caller);
+	},
+	BENCH_OPTIONS,
+);
 
-bench('vm micro: Data Complexity - deep access (depth 6)', () => {
-	evaluator.evaluate('$json.a.b.c.d.e.value', deepData, caller);
-});
+bench(
+	'vm micro: Data Complexity - deep access (depth 6)',
+	() => {
+		evaluator.evaluate('$json.a.b.c.d.e.value', deepData, caller);
+	},
+	BENCH_OPTIONS,
+);
 
 // Array Element Access
 const arrayData: Record<string, unknown> = {
@@ -71,10 +89,18 @@ const arrayData: Record<string, unknown> = {
 	},
 };
 
-bench('vm micro: Array Element Access - single element', () => {
-	evaluator.evaluate('$json.items[0].id', arrayData, caller);
-});
+bench(
+	'vm micro: Array Element Access - single element',
+	() => {
+		evaluator.evaluate('$json.items[0].id', arrayData, caller);
+	},
+	BENCH_OPTIONS,
+);
 
-bench('vm micro: Array Element Access - map 100 elements', () => {
-	evaluator.evaluate('$json.items.map(i => i.id)', arrayData, caller);
-});
+bench(
+	'vm micro: Array Element Access - map 100 elements',
+	() => {
+		evaluator.evaluate('$json.items.map(i => i.id)', arrayData, caller);
+	},
+	BENCH_OPTIONS,
+);

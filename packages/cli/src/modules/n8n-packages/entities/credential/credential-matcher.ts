@@ -1,7 +1,7 @@
-import type { SharedCredentialsRepository, User } from '@n8n/db';
+import type { User } from '@n8n/db';
 
 import type { CredentialTypes } from '@/credential-types';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
 
 import {
 	createFailure,
@@ -16,6 +16,11 @@ export interface CredentialMatcherContext {
 	user: User;
 	credentialBindings?: ImportBindingMap;
 }
+
+/** A credential the importing user can use in the target project, as returned by `CredentialsService`. */
+export type UsableCredential = Awaited<
+	ReturnType<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>
+>[number];
 
 /**
  * A target-project credential a matcher located for a package reference, before
@@ -32,9 +37,8 @@ export interface ResolvedCredentialMatch {
 
 export abstract class CredentialMatcher {
 	constructor(
-		protected readonly credentialsFinderService: CredentialsFinderService,
-		protected readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		protected readonly credentialTypes: CredentialTypes,
+		protected readonly credentialsService: CredentialsService,
 	) {}
 
 	async match(
@@ -43,8 +47,19 @@ export abstract class CredentialMatcher {
 	): Promise<CredentialResolution> {
 		const orphanFailures = orphanBindingFailures(context.credentialBindings, requirements);
 		const { known, unknownTypeFailures } = partitionByKnownType(requirements, this.credentialTypes);
+		const { bound, unbound } = partitionByExplicitBinding(known, context.credentialBindings);
 
-		const located = await this.resolve(known, context);
+		const usableCredentials =
+			known.length === 0
+				? []
+				: await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(context.user, {
+						projectId: context.projectId,
+					});
+		const usableTypesById = new Map(usableCredentials.map((c) => [c.id, c.type]));
+
+		const boundLocated = resolveExplicitBindings(bound, usableTypesById);
+		const resolvedLocated = this.resolve(unbound, usableCredentials, context);
+		const located = new Map([...boundLocated, ...resolvedLocated]);
 
 		const successes: ImportBindingMap = new Map();
 		const notFoundFailures: CredentialResolutionFailure[] = [];
@@ -75,14 +90,52 @@ export abstract class CredentialMatcher {
 	}
 
 	/**
-	 * Locates the target-project credential each known reference points at, keyed by
-	 * the reference's source id. Returns only references that resolve to a reachable,
+	 * Locates the target-project credential each reference points at, keyed by the
+	 * reference's source id. Returns only references that resolve to a reachable,
 	 * usable credential; type compatibility is enforced by {@link match}, not here.
 	 */
 	protected abstract resolve(
-		known: PackageCredentialRequirement[],
+		unbound: PackageCredentialRequirement[],
+		usableCredentials: UsableCredential[],
 		context: CredentialMatcherContext,
-	): Promise<Map<string, ResolvedCredentialMatch>>;
+	): Map<string, ResolvedCredentialMatch>;
+}
+
+interface BoundReference {
+	reference: PackageCredentialRequirement;
+	targetId: string;
+}
+
+function partitionByExplicitBinding(
+	known: PackageCredentialRequirement[],
+	bindings: ImportBindingMap | undefined,
+): { bound: BoundReference[]; unbound: PackageCredentialRequirement[] } {
+	const bound: BoundReference[] = [];
+	const unbound: PackageCredentialRequirement[] = [];
+
+	for (const reference of known) {
+		const targetId = bindings?.get(reference.id);
+		if (targetId === undefined) {
+			unbound.push(reference);
+		} else {
+			bound.push({ reference, targetId });
+		}
+	}
+
+	return { bound, unbound };
+}
+
+function resolveExplicitBindings(
+	bound: BoundReference[],
+	usableTypesById: Map<string, string>,
+): Map<string, ResolvedCredentialMatch> {
+	return new Map(
+		bound.flatMap(({ reference, targetId }) => {
+			const targetType = usableTypesById.get(targetId);
+			if (targetType === undefined) return [];
+			return [[reference.id, { targetId, targetType }] as const];
+		}),
+	);
 }
 
 function partitionByKnownType(

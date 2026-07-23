@@ -13,6 +13,7 @@ import path from 'path';
 
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
+import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
@@ -34,6 +35,7 @@ import {
 
 import { AiUsageService } from './ai-usage.service';
 import { UrlService } from './url.service';
+import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
 const DYNAMIC_BANNER_FILTERS_CACHE_TTL = 30 * Time.seconds.toMilliseconds;
 
@@ -138,12 +140,13 @@ export class FrontendService {
 		private readonly ownershipService: OwnershipService,
 		private readonly aiUsageService: AiUsageService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
 		// @TODO: Move to community-packages module
 		if (Container.get(CommunityPackagesConfig).enabled) {
-			void import('@/modules/community-packages/community-packages.service').then(
+			void import('@/modules/community-packages/community-packages.service.js').then(
 				({ CommunityPackagesService }) => {
 					this.communityPackagesService = Container.get(CommunityPackagesService);
 				},
@@ -219,6 +222,7 @@ export class FrontendService {
 			timezone: this.globalConfig.generic.timezone,
 			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,
+			urlBaseWebhookTest: this.urlService.getTestWebhookBaseUrl(),
 			binaryDataMode: this.binaryDataConfig.mode,
 			nodeJsVersion: process.version.replace(/^v/, ''),
 			nodeEnv: process.env.NODE_ENV,
@@ -304,6 +308,7 @@ export class FrontendService {
 			},
 			workflowTagsDisabled: this.globalConfig.tags.disabled,
 			workflowsAutosaveDisabled: this.globalConfig.workflows.autosaveDisabled,
+			useWorkflowPublicationService: this.globalConfig.workflows.useWorkflowPublicationService,
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
@@ -361,6 +366,7 @@ export class FrontendService {
 				personalSpacePolicy: false,
 				dataRedaction: false,
 				otelCustomSpanAttributes: false,
+				workflowReviews: false,
 			},
 			mfa: {
 				enabled: false,
@@ -413,6 +419,9 @@ export class FrontendService {
 			},
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
+				collectionsEnabled: this.globalConfig.evaluation.collectionsEnabled,
+				configEvalsEnabled: this.globalConfig.evaluation.configEvalsEnabled,
+				agentEvalsEnabled: this.globalConfig.evaluation.agentEvalsEnabled,
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
 			canvasOnly: this.globalConfig.canvasOnly,
@@ -446,6 +455,7 @@ export class FrontendService {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		this.settings.urlBaseWebhook = this.urlService.getWebhookBaseUrl();
 		this.settings.urlBaseEditor = instanceBaseUrl;
+		this.settings.urlBaseWebhookTest = this.urlService.getTestWebhookBaseUrl();
 		this.settings.oauthCallbackUrls = {
 			oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
 			oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
@@ -525,6 +535,7 @@ export class FrontendService {
 			personalSpacePolicy: this.licenseState.isPersonalSpacePolicyLicensed(),
 			dataRedaction: this.licenseState.isDataRedactionLicensed(),
 			otelCustomSpanAttributes: this.licenseState.isOtelCustomSpanAttributesLicensed(),
+			workflowReviews: this.licenseState.isWorkflowReviewsLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {
@@ -590,6 +601,12 @@ export class FrontendService {
 
 		// TODO: read from settings
 		this.settings.mfa.enforced = await this.mfaService.isMFAEnforced();
+
+		if (isWorkflowReviewsFeatureAvailable(this.licenseState.isWorkflowReviewsLicensed())) {
+			this.settings.workflowReviews = await this.workflowReviewPolicyService.get();
+		} else {
+			delete this.settings.workflowReviews;
+		}
 
 		this.settings.executionMode = this.globalConfig.executions.mode;
 

@@ -1,6 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { AGENT_TASK_OBJECTIVE_MAX_LENGTH, type AgentTaskDto } from '@n8n/api-types';
 import { configure, fireEvent, waitFor } from '@testing-library/vue';
+import { defineComponent, h, onMounted, watch } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -54,6 +55,62 @@ vi.mock('../composables/useAgentConfirmationModal', () => ({
 
 const MODAL_NAME = 'AgentTaskModal';
 
+interface FormInputStubValidator {
+	validate: (value: unknown, config?: unknown) => false | { message?: string; messageKey?: string };
+}
+
+// Real N8nFormInput renders its error text inside an internal wrapper, not on
+// the element carrying `data-testid` — this stub forwards `data-testid` (and
+// other attrs) straight onto the input and replicates just enough validation
+// (required + the caller's custom validators) to drive `@validate` for real.
+const N8nFormInputStub = defineComponent({
+	name: 'N8nFormInput',
+	inheritAttrs: false,
+	props: [
+		'modelValue',
+		'label',
+		'required',
+		'showValidationWarnings',
+		'validationRules',
+		'validators',
+	],
+	emits: ['update:modelValue', 'validate'],
+	setup(props, { emit, attrs }) {
+		function computeError(): string | null {
+			const value = typeof props.modelValue === 'string' ? props.modelValue : '';
+			if (props.required && !value.trim()) return 'This field is required';
+			for (const rule of (props.validationRules ?? []) as Array<{
+				name: string;
+				config?: unknown;
+			}>) {
+				const validator = (
+					props.validators as Record<string, FormInputStubValidator> | undefined
+				)?.[rule.name];
+				const result = validator?.validate(value, rule.config);
+				if (result) return result.message ?? result.messageKey ?? 'Invalid';
+			}
+			return null;
+		}
+		function emitValidity() {
+			emit('validate', computeError() === null);
+		}
+		onMounted(emitValidity);
+		watch(() => props.modelValue, emitValidity);
+		return () => {
+			const error = computeError();
+			return h('div', [
+				h('input', {
+					...attrs,
+					value: props.modelValue,
+					onInput: (event: Event) =>
+						emit('update:modelValue', (event.target as HTMLInputElement).value),
+				}),
+				props.showValidationWarnings && error ? h('span', error) : null,
+			]);
+		};
+	},
+});
+
 // Modal + Select/Option use filename-inferred names (no N8n prefix).
 const stubs = {
 	Modal: {
@@ -79,6 +136,8 @@ const stubs = {
 		template:
 			'<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
 	},
+	// N8nFormInput uses a filename-inferred name (no N8n prefix), same as MarkdownEditor/Select below.
+	FormInput: N8nFormInputStub,
 	// N8nMarkdownEditor uses a filename-inferred name (no N8n prefix).
 	MarkdownEditor: {
 		props: ['modelValue'],
@@ -193,6 +252,30 @@ describe('AgentTaskModal', () => {
 
 		expect(createAgentTaskSpy).not.toHaveBeenCalled();
 		expect(getByText('agents.builder.tasks.validation.objectiveMaxLength')).toBeInTheDocument();
+	});
+
+	it('shows the cron error immediately when opening a task with an invalid schedule', async () => {
+		const { getByTestId, getByText } = renderModal({
+			task: makeTask({ cronExpression: 'not a cron expression' }),
+		});
+
+		expect(getByTestId('agent-task-schedule-cron')).toBeInTheDocument();
+		expect(getByText('agents.builder.tasks.validation.cronInvalid')).toBeInTheDocument();
+
+		await fireEvent.click(getByTestId('agent-task-save'));
+
+		expect(updateAgentTaskSpy).not.toHaveBeenCalled();
+	});
+
+	it('blocks saving when a valid custom schedule is edited into an invalid one', async () => {
+		// A stepped cron isn't one of the builder's presets, so it opens in
+		// custom mode already, without tripping the initial-invalid state.
+		const { getByTestId } = renderModal({ task: makeTask({ cronExpression: '*/15 * * * *' }) });
+
+		await fireEvent.update(getByTestId('agent-task-schedule-cron'), '99 99 * * *');
+		await fireEvent.click(getByTestId('agent-task-save'));
+
+		expect(updateAgentTaskSpy).not.toHaveBeenCalled();
 	});
 
 	it('updates an existing task without changing enabled', async () => {

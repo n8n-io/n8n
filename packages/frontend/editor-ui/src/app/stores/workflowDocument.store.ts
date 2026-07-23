@@ -31,6 +31,7 @@ import { useWorkflowDocumentWorkflowObject } from './workflowDocument/useWorkflo
 import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
 import { useWorkflowDocumentNodesIssues } from './workflowDocument/useWorkflowDocumentNodesIssues';
 import { useWorkflowDocumentNodeGroups } from './workflowDocument/useWorkflowDocumentNodeGroups';
+import { useWorkflowDocumentPublicationStatus } from './workflowDocument/useWorkflowDocumentPublicationStatus';
 import { CHANGE_ACTION } from './workflowDocument/types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -185,6 +186,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			syncWorkflowObject: (name) => workflowDocumentWorkflowObject.syncWorkflowObjectName(name),
 		});
 		const workflowDocumentActive = useWorkflowDocumentActive();
+		const workflowDocumentPublicationStatus = useWorkflowDocumentPublicationStatus();
 		const workflowDocumentHomeProject = useWorkflowDocumentHomeProject();
 		const workflowDocumentSharedWithProjects = useWorkflowDocumentSharedWithProjects();
 		const workflowDocumentChecksum = useWorkflowDocumentChecksum();
@@ -352,6 +354,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentName.setName('');
 			workflowDocumentDescription.setDescription('');
 			workflowDocumentActive.setActiveState({ activeVersionId: null, activeVersion: null });
+			workflowDocumentPublicationStatus.setPublicationStatus({ status: 'idle' });
 			workflowDocumentIsArchived.setIsArchived(false);
 			workflowDocumentHomeProject.setHomeProject(null);
 			workflowDocumentSharedWithProjects.setSharedWithProjects([]);
@@ -439,6 +442,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowVersion,
 			...workflowDocumentName,
 			...workflowDocumentActive,
+			...workflowDocumentPublicationStatus,
 			...workflowDocumentHomeProject,
 			...workflowDocumentSharedWithProjects,
 			...workflowDocumentChecksum,

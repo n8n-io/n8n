@@ -123,6 +123,9 @@ describe('SourceControlImportService', () => {
 			mock(),
 			mock(),
 			mock(), // redactionEnforcementService
+			mock(), // dataTableSizeValidator
+			mock(), // activeWorkflowManager
+			mock(), // executionPersistence
 		);
 	});
 
@@ -761,6 +764,41 @@ describe('SourceControlImportService', () => {
 
 			expect(cred).toBeDefined();
 			expect(cred?.isGlobal).toBe(false);
+		});
+
+		it('should include resolvable fields in returned credentials', async () => {
+			const resolvableCredential = await createCredentials(
+				{
+					name: 'resolvable-credential',
+					data: '',
+					type: 'test',
+					isResolvable: true,
+					resolvableAllowFallback: true,
+				},
+				teamProjectA,
+			);
+
+			const staticCredential = await createCredentials(
+				{
+					name: 'static-credential',
+					data: '',
+					type: 'test',
+				},
+				teamProjectA,
+			);
+
+			const credentials = await service.getLocalCredentialsFromDb(
+				await sourceControlContextFactory.createContext(instanceOwner),
+			);
+
+			const resolvableCred = credentials.find((c) => c.id === resolvableCredential.id);
+			const staticCred = credentials.find((c) => c.id === staticCredential.id);
+
+			expect(resolvableCred?.isResolvable).toBe(true);
+			expect(resolvableCred?.resolvableAllowFallback).toBe(true);
+
+			expect(staticCred?.isResolvable).toBe(false);
+			expect(staticCred?.resolvableAllowFallback).toBe(false);
 		});
 
 		it('should include required properties in returned credentials', async () => {

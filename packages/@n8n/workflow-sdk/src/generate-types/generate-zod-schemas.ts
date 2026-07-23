@@ -57,8 +57,8 @@ const ICON_ZOD_SCHEMA =
 	"z.object({ type: z.union([z.literal('icon'), z.literal('emoji')]), value: z.string() })";
 
 /**
- * Runtime shape for `type: 'workflowSelector'` properties.
- * The UI hardcodes two modes (`list` and `id`). Stored as an
+ * Runtime shape for `type: 'workflowSelector'` and `type: 'agentSelector'` properties.
+ * Both hardcode two modes (`list` and `id`). Stored as an
  * `INodeParameterResourceLocator` object, or as an `={{...}}` expression
  * string when the user enters an expression.
  */
@@ -538,6 +538,7 @@ function mapNestedPropertyToZodSchemaInner(prop: NodeProperty, allowExpression: 
 			return ICON_ZOD_SCHEMA;
 
 		case 'workflowSelector':
+		case 'agentSelector':
 			return WORKFLOW_SELECTOR_ZOD_SCHEMA;
 
 		case 'hidden':
@@ -761,6 +762,7 @@ function mapPropertyToZodSchemaInner(prop: NodeProperty, allowExpression: boolea
 			return ICON_ZOD_SCHEMA;
 
 		case 'workflowSelector':
+		case 'agentSelector':
 			return WORKFLOW_SELECTOR_ZOD_SCHEMA;
 
 		case 'hidden':

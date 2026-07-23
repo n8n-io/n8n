@@ -194,6 +194,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 			this,
 			'POST',
 			`/messages/${messageId}/move`,
+			index,
 			body,
 		);
 
@@ -215,7 +216,14 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		throw new NodeOperationError(this.getNode(), 'No fields to update got specified');
 	}
 
-	responseData = await microsoftApiRequest.call(this, 'PATCH', `/messages/${messageId}`, body, {});
+	responseData = await microsoftApiRequest.call(
+		this,
+		'PATCH',
+		`/messages/${messageId}`,
+		index,
+		body,
+		{},
+	);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray(responseData as IDataObject),

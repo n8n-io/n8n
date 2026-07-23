@@ -815,9 +815,9 @@ describe('WorkflowBuilderService - node type loading', () => {
 	let packageDir: string;
 
 	// LazyPackageDirectoryLoader lives in the externalized `n8n-core` dist and reads
-	// from disk through its own `fs` binding, which Vitest module mocks can't reach
-	// (unlike Jest's global module registry). So write a real fixture package and let
-	// the loader exercise the full path against the real filesystem.
+	// from disk through its own `fs` binding, which Vitest module mocks can't reach.
+	// So write a real fixture package and let the loader
+	// exercise the full path against the real filesystem.
 	beforeAll(() => {
 		tmpRoot = mkdtempSync(join(tmpdir(), 'n8n-ai-builder-nodes-'));
 		packageDir = join(tmpRoot, 'nodes-base');

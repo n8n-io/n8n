@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import { RoutingNode, UnrecognizedNodeTypeError } from 'n8n-core';
 import type {
 	LoadedClass,
@@ -11,9 +12,10 @@ import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 
 describe('NodeTypes', () => {
+	const logger = mock<Logger>();
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 
-	const nodeTypes: NodeTypes = new NodeTypes(loadNodesAndCredentials);
+	const nodeTypes: NodeTypes = new NodeTypes(logger, loadNodesAndCredentials);
 
 	const nonVersionedNode: LoadedClass<INodeType> = {
 		sourcePath: '',
@@ -84,6 +86,106 @@ describe('NodeTypes', () => {
 			supplyData: undefined,
 		},
 	};
+	// Plain object, not a mock proxy: a proxy hides the prototype/serialization
+	// behavior that the synthetic-tool test needs to exercise.
+	const plainToolSupportingNode: LoadedClass<INodeType> = {
+		sourcePath: '',
+		type: {
+			description: {
+				name: 'n8n-nodes-base.plainToolNode',
+				displayName: 'Plain Tool Node',
+				description: 'A plain tool node',
+				group: ['transform'],
+				version: 1,
+				defaults: { name: 'Plain Tool Node' },
+				usableAsTool: true,
+				properties: [{ displayName: 'Field', name: 'field', type: 'string', default: '' }],
+			} as unknown as INodeTypeDescription,
+			supplyData: undefined,
+		},
+	};
+	// Versioned node whose v1 cannot be used as a tool while v2 can. Plain-object
+	// descriptions (not mock proxies) so `usableAsTool` reads are real.
+	const partiallyToolCapableNode: LoadedClass<IVersionedNodeType> = {
+		sourcePath: '',
+		type: {
+			description: {
+				name: 'n8n-nodes-base.partiallyToolCapable',
+				displayName: 'Partially Tool Capable',
+			} as unknown as INodeTypeDescription,
+			currentVersion: 2,
+			nodeVersions: {
+				1: {
+					description: {
+						name: 'n8n-nodes-base.partiallyToolCapable',
+						version: 1,
+						properties: [],
+					},
+				} as unknown as INodeType,
+				2: {
+					description: {
+						name: 'n8n-nodes-base.partiallyToolCapable',
+						version: 2,
+						usableAsTool: true,
+						properties: [],
+					},
+				} as unknown as INodeType,
+			},
+			getNodeType(version) {
+				return this.nodeVersions[version === 1 ? 1 : 2];
+			},
+		},
+	};
+	const multiVersionNode: LoadedClass<INodeType> = {
+		sourcePath: '',
+		type: {
+			description: {
+				name: 'n8n-nodes-base.multiVersion',
+				displayName: 'Multi Version Node',
+				version: [1, 1.1, 2],
+				properties: [],
+			} as unknown as INodeTypeDescription,
+			supplyData: undefined,
+		},
+	};
+	const hitlSupportingNode: LoadedClass<INodeType> = {
+		sourcePath: '',
+		type: {
+			description: {
+				name: 'n8n-nodes-base.hitlNode',
+				displayName: 'Hitl Node',
+				version: 1,
+				properties: [{ displayName: 'Operation', name: 'operation', type: 'string', default: '' }],
+			} as unknown as INodeTypeDescription,
+			supplyData: undefined,
+		},
+	};
+	const realToolNode: LoadedClass<INodeType> = {
+		sourcePath: '',
+		type: {
+			description: {
+				name: 'n8n-nodes-base.realTool',
+				displayName: 'Real Tool',
+				version: 1,
+				properties: [],
+			} as unknown as INodeTypeDescription,
+			supplyData: undefined,
+		},
+	};
+	const replacementToolNode: LoadedClass<INodeType> = {
+		sourcePath: '',
+		type: {
+			description: {
+				name: 'n8n-nodes-base.replacementToolNode',
+				displayName: 'Replacement Tool Node',
+				description: 'Original description',
+				version: 1,
+				usableAsTool: { replacements: { description: 'Replaced via replacements' } },
+				properties: [],
+			} as unknown as INodeTypeDescription,
+			supplyData: undefined,
+		},
+	};
 	const communityNode: LoadedClass<INodeType> = {
 		sourcePath: '',
 		type: {
@@ -105,9 +207,19 @@ describe('NodeTypes', () => {
 			if (nodeType === 'testNode') return toolSupportingNode;
 			if (nodeType === 'declarativeNode') return declarativeNode;
 			if (nodeType === 'toolNode') return toolNode;
+			if (nodeType === 'plainToolNode') return plainToolSupportingNode;
+			if (nodeType === 'partiallyToolCapable') return partiallyToolCapableNode;
+			if (nodeType === 'multiVersion') return multiVersionNode;
+			if (nodeType === 'hitlNode') return hitlSupportingNode;
+			if (nodeType === 'realTool') return realToolNode;
+			if (nodeType === 'replacementToolNode') return replacementToolNode;
 		} else if (fullNodeType === 'n8n-nodes-community.testNode') return communityNode;
 		throw new UnrecognizedNodeTypeError(packageName, nodeType);
 	});
+
+	loadNodesAndCredentials.recognizesNode.mockImplementation(
+		(name) => name === 'n8n-nodes-base.realTool',
+	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -202,6 +314,80 @@ describe('NodeTypes', () => {
 		});
 	});
 
+	describe('getSupportedVersions', () => {
+		it('should return the single version of a plain node type', () => {
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.hitlNode')).toEqual([1]);
+		});
+
+		it('should return every version of a plain node type with a version array', () => {
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.multiVersion')).toEqual([1, 1.1, 2]);
+		});
+
+		it('should return the nodeVersions keys of a versioned node type', () => {
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.versioned')).toEqual([1, 2]);
+		});
+
+		it('should return undefined for an unknown node type', () => {
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.unknownNode')).toBeUndefined();
+			expect(nodeTypes.getSupportedVersions('invalid-package.unknownNode')).toBeUndefined();
+		});
+
+		it('should resolve a Tool-suffixed name against its base node', () => {
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.plainToolNodeTool')).toEqual([1]);
+		});
+
+		it('should not count versions that cannot be used as a tool for a Tool-suffixed name', () => {
+			// The base node exists at version 1 but is not usableAsTool, so no
+			// version can satisfy the synthetic tool wrapper …
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.hitlNodeTool')).toEqual([]);
+			// … while HitlTool wrappers have no usability requirement.
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.hitlNodeHitlTool')).toEqual([1]);
+		});
+
+		it('should keep only tool-capable versions of a versioned node for a Tool-suffixed name', () => {
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.partiallyToolCapableTool')).toEqual([
+				2,
+			]);
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.partiallyToolCapable')).toEqual([1, 2]);
+		});
+
+		it('should warn and return undefined when the node fails to load for another reason', () => {
+			loadNodesAndCredentials.getNode.mockImplementationOnce(() => {
+				throw new TypeError('boom');
+			});
+
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.hitlNode')).toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to resolve node type while listing supported versions',
+				{ nodeType: 'n8n-nodes-base.hitlNode', error: 'boom' },
+			);
+		});
+
+		it('should warn and return undefined when name resolution surfaces a non-node value', () => {
+			// A hostile name can make `getNode` return a prototype-chain value
+			// instead of throwing; the reads after it must still fail closed.
+			loadNodesAndCredentials.getNode.mockReturnValueOnce(Object as never);
+
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.poisoned')).toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to resolve node type while listing supported versions',
+				expect.objectContaining({ nodeType: 'n8n-nodes-base.poisoned' }),
+			);
+		});
+
+		it('should warn and return undefined when the tool-name check itself throws', () => {
+			loadNodesAndCredentials.recognizesNode.mockImplementationOnce(() => {
+				throw new TypeError('boom');
+			});
+
+			expect(nodeTypes.getSupportedVersions('constructor.anythingTool')).toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to resolve node type while listing supported versions',
+				{ nodeType: 'constructor.anythingTool', error: 'boom' },
+			);
+		});
+	});
+
 	describe('getWithSourcePath', () => {
 		it('should return description and source path for existing node', () => {
 			const result = nodeTypes.getWithSourcePath('n8n-nodes-base.nonVersioned', 1);
@@ -240,6 +426,48 @@ describe('NodeTypes', () => {
 			expect(() =>
 				nodeTypes.getNodeTypeDescriptions([{ name: 'n8n-nodes-base.nonExistent', version: 1 }]),
 			).toThrow('Unrecognized node type: n8n-nodes-base.nonExistent');
+		});
+
+		it('should resolve a synthetic tool node type into a complete, serializable description', () => {
+			const [result] = nodeTypes.getNodeTypeDescriptions([
+				{ name: 'n8n-nodes-base.plainToolNodeTool', version: 1 },
+			]);
+
+			expect(result.name).toBe('n8n-nodes-base.plainToolNodeTool');
+			expect(result.outputs).toEqual(['ai_tool']);
+			// Base fields must survive: the runner can't build the node without them.
+			expect(result.version).toBe(1);
+			expect(result.group).toEqual(['transform']);
+			expect(Array.isArray(result.properties)).toBe(true);
+			expect(result.properties.some((p) => p.name === 'field')).toBe(true);
+		});
+
+		it('should resolve a synthetic HITL tool node type', () => {
+			const [result] = nodeTypes.getNodeTypeDescriptions([
+				{ name: 'n8n-nodes-base.hitlNodeHitlTool', version: 1 },
+			]);
+
+			expect(result.name).toBe('n8n-nodes-base.hitlNodeHitlTool');
+			expect(result.version).toBe(1);
+			expect(Array.isArray(result.properties)).toBe(true);
+		});
+
+		it('should apply object-form usableAsTool replacements when building a synthetic tool', () => {
+			const [result] = nodeTypes.getNodeTypeDescriptions([
+				{ name: 'n8n-nodes-base.replacementToolNodeTool', version: 1 },
+			]);
+
+			expect(result.name).toBe('n8n-nodes-base.replacementToolNodeTool');
+			expect(result.description).toBe('Replaced via replacements');
+		});
+
+		it('should not convert a real on-disk node whose type ends in Tool', () => {
+			const [result] = nodeTypes.getNodeTypeDescriptions([
+				{ name: 'n8n-nodes-base.realTool', version: 1 },
+			]);
+
+			expect(result.name).toBe('n8n-nodes-base.realTool');
+			expect(result.outputs).toBeUndefined();
 		});
 	});
 });

@@ -1,7 +1,7 @@
 /**
  * Model identifier helpers. The canonical storage format is `"<provider>/<name>"`.
- * Centralised here because three callers (Agent panel, Advanced panel, AskLlm
- * card) used to roll their own and drifted on naming + edge cases.
+ * Centralised here because multiple callers (Agent info panel, memory panel,
+ * sub-agents panel) used to roll their own and drifted on naming + edge cases.
  */
 
 export interface ParsedModel {

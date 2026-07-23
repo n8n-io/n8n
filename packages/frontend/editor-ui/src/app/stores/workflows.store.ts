@@ -26,7 +26,7 @@ import { i18n } from '@n8n/i18n';
 
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { ExecutionRedactionQueryDto } from '@n8n/api-types';
+import type { ExecutionRedactionQueryDto, WorkflowPublicationStatus } from '@n8n/api-types';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
@@ -382,6 +382,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return updatedWorkflow;
 	}
 
+	async function fetchPublicationStatus(id: string): Promise<WorkflowPublicationStatus> {
+		return await makeRestApiRequest<WorkflowPublicationStatus>(
+			rootStore.restApiContext,
+			'GET',
+			`/workflows/${id}/publication-status`,
+		);
+	}
+
 	async function deactivateWorkflow(id: string, expectedChecksum?: string): Promise<IWorkflowDb> {
 		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
 			rootStore.restApiContext,
@@ -536,6 +544,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		createNewWorkflow,
 		updateWorkflow,
 		publishWorkflow,
+		fetchPublicationStatus,
 		deactivateWorkflow,
 		updateWorkflowSetting,
 		runWorkflow,

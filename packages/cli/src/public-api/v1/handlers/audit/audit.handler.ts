@@ -13,7 +13,7 @@ const auditHandlers: AuditHandlers = {
 	generateAudit: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'securityAudit:generate' }),
 		async (req, res) => {
-			const { SecurityAuditService } = await import('@/security-audit/security-audit.service');
+			const { SecurityAuditService } = await import('@/security-audit/security-audit.service.js');
 			const result = await Container.get(SecurityAuditService).run(
 				req.body?.additionalOptions?.categories,
 				req.body?.additionalOptions?.daysAbandonedWorkflow,

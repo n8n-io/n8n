@@ -2,12 +2,12 @@ import { PrometheusMetricsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { jsonParse } from 'n8n-workflow';
 import promClient from 'prom-client';
 
 import { CacheService } from '@/services/cache/cache.service';
 
 import type { PrometheusMetricsCollector } from './base';
+import { CachedMetricQuery } from './cached-metric-query';
 
 /**
  * Exposes a gauge (`n8n_workflow_info`) that maps workflow IDs to their human-readable
@@ -28,10 +28,13 @@ export class PrometheusWorkflowInfoMetricsService implements PrometheusMetricsCo
 	}
 
 	init() {
-		const workflowRepository = this.workflowRepository;
-		const cacheService = this.cacheService;
-		const cacheKey = 'metrics:workflow-info';
 		const cacheTtl = this.config.workflowInfoMetricInterval * Time.seconds.toMilliseconds;
+		const query = new CachedMetricQuery<Array<{ id: string; name: string }>>({
+			cacheService: this.cacheService,
+			cacheKey: 'metrics:workflow-info:v2',
+			ttlMs: cacheTtl,
+			query: async () => await this.workflowRepository.find({ select: ['id', 'name'] }),
+		});
 
 		new promClient.Gauge({
 			name: `${this.config.prefix}workflow_info`,
@@ -40,17 +43,7 @@ export class PrometheusWorkflowInfoMetricsService implements PrometheusMetricsCo
 			async collect() {
 				this.reset();
 
-				const cachedValue = await cacheService.get<string>(cacheKey);
-
-				let workflows: Array<{ id: string; name: string }>;
-
-				if (cachedValue !== undefined) {
-					workflows = jsonParse(String(cachedValue), { fallbackValue: [] });
-				} else {
-					workflows = await workflowRepository.find({ select: ['id', 'name'] });
-					await cacheService.set(cacheKey, JSON.stringify(workflows), cacheTtl);
-				}
-
+				const workflows = await query.get();
 				for (const { id, name } of workflows) {
 					this.labels({ workflow_id: id, workflow_name: name }).set(1);
 				}

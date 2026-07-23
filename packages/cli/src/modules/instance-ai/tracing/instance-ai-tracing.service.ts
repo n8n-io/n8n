@@ -466,7 +466,7 @@ export class InstanceAiTracingService {
 				const baseUrl = client.getApiProxyBaseUrl();
 				const manager = new ProxyTokenManager(
 					async () =>
-						await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() }),
+						await client.getInstanceAiApiProxyToken({ id: user.id }, { userMessageId: nanoid() }),
 				);
 				tracingProxyConfig = {
 					apiUrl: baseUrl + '/langsmith',

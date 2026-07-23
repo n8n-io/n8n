@@ -21,29 +21,29 @@ export class OAuthServerModule implements ModuleInterface {
 	async init() {
 		// Only import controllers in the main process, since the webhook/worker processes don't run an HTTP server and don't need them.
 		if (Container.get(InstanceSettings).instanceType === 'main') {
-			await import('./oauth.controller');
-			await import('./oauth-consent.controller');
-			await import('./oauth-clients.controller');
+			await import('./oauth.controller.js');
+			await import('./oauth-consent.controller.js');
+			await import('./oauth-clients.controller.js');
 		}
 
 		// Register the token service as the OAuth token verifier provider, so
 		// protected-resource modules verify bearer tokens through the core
 		// `OAuthTokenVerifierProxy` instead of importing this module.
 		const { OAuthTokenVerifierProxy } = await import(
-			'@/services/oauth-token-verifier-proxy.service'
+			'@/services/oauth-token-verifier-proxy.service.js'
 		);
-		const { OAuthTokenService } = await import('./oauth-token.service');
+		const { OAuthTokenService } = await import('./oauth-token.service.js');
 		Container.get(OAuthTokenVerifierProxy).registerProvider(Container.get(OAuthTokenService));
 
 		const { WorkflowMcpTriggerResourceResolver } = await import(
-			'./protected-resource-resolvers/workflow-mcp-trigger-resource.resolver'
+			'./protected-resource-resolvers/workflow-mcp-trigger-resource.resolver.js'
 		);
 		Container.get(ProtectedResourceRegistry).registerResolver(
 			Container.get(WorkflowMcpTriggerResourceResolver),
 		);
 
 		const { WorkflowMcpTestTriggerResourceResolver } = await import(
-			'./protected-resource-resolvers/workflow-mcp-test-trigger-resource.resolver'
+			'./protected-resource-resolvers/workflow-mcp-test-trigger-resource.resolver.js'
 		);
 		Container.get(ProtectedResourceRegistry).registerResolver(
 			Container.get(WorkflowMcpTestTriggerResourceResolver),
@@ -51,13 +51,13 @@ export class OAuthServerModule implements ModuleInterface {
 	}
 
 	async entities() {
-		const { OAuthClient } = await import('./database/entities/oauth-client.entity');
+		const { OAuthClient } = await import('./database/entities/oauth-client.entity.js');
 		const { AuthorizationCode } = await import(
-			'./database/entities/oauth-authorization-code.entity'
+			'./database/entities/oauth-authorization-code.entity.js'
 		);
-		const { AccessToken } = await import('./database/entities/oauth-access-token.entity');
-		const { RefreshToken } = await import('./database/entities/oauth-refresh-token.entity');
-		const { UserConsent } = await import('./database/entities/oauth-user-consent.entity');
+		const { AccessToken } = await import('./database/entities/oauth-access-token.entity.js');
+		const { RefreshToken } = await import('./database/entities/oauth-refresh-token.entity.js');
+		const { UserConsent } = await import('./database/entities/oauth-user-consent.entity.js');
 
 		return [OAuthClient, AuthorizationCode, AccessToken, RefreshToken, UserConsent] as never;
 	}

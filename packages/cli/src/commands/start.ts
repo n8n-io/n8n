@@ -36,11 +36,13 @@ import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
+import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -282,7 +284,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
 		// Initialize auth handler registry after modules are loaded
-		const { AuthHandlerRegistry } = await import('@/auth/auth-handler.registry');
+		const { AuthHandlerRegistry } = await import('@/auth/auth-handler.registry.js');
 		await Container.get(AuthHandlerRegistry).init();
 
 		if (this.instanceSettings.isMultiMain) {
@@ -295,7 +297,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	private async initInstanceSettingsLoader(): Promise<void> {
 		const { InstanceSettingsLoaderService } = await import(
-			'@/instance-settings-loader/instance-settings-loader.service'
+			'@/instance-settings-loader/instance-settings-loader.service.js'
 		);
 		await Container.get(InstanceSettingsLoaderService).init();
 	}
@@ -398,7 +400,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(ExecutionsPruningService).init();
 		Container.get(WorkflowHistoryCompactionService).init();
+		Container.get(WorkflowStatisticsRollupService).init();
 		Container.get(N8NCheckpointStorage).init();
+		Container.get(DurableScheduler).start();
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			await this.runEnqueuedExecutions();
@@ -407,18 +411,26 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// Start to get active workflows and run their triggers
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			const { PublishedWorkflowEnqueuer } = await import(
-				'@/workflows/publication/published-workflow-enqueuer'
+				'@/workflows/publication/published-workflow-enqueuer.js'
 			);
 			const { WorkflowPublicationOutboxConsumer } = await import(
-				'@/workflows/publication/workflow-publication-outbox-consumer'
+				'@/workflows/publication/workflow-publication-outbox-consumer.js'
 			);
 			const { WorkflowPublicationOutboxCleanupService } = await import(
-				'@/workflows/publication/workflow-publication-outbox-cleanup.service'
+				'@/workflows/publication/workflow-publication-outbox-cleanup.service.js'
+			);
+			const { WorkflowPublicationReconciler } = await import(
+				'@/workflows/publication/workflow-publication-reconciler.service.js'
 			);
 
 			// Import for its side effect: registering the trigger deactivator's
 			// @OnLeaderStepdown and @OnShutdown handlers. Nothing else loads this module.
-			await import('@/workflows/publication/published-workflow-trigger-deactivator');
+			await import('@/workflows/publication/published-workflow-trigger-deactivator.js');
+
+			// The modules above register @OnPubSubEvent handlers (e.g. the outbox
+			// wake-up) after the earlier PubSubRegistry.init() calls already wired
+			// listeners, so rewire to pick them up.
+			Container.get(PubSubRegistry).init();
 
 			// Enqueue needs to happen before outbox consumer init, so it can activate
 			// everything on the first drain
@@ -435,6 +447,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				});
 
 			Container.get(WorkflowPublicationOutboxCleanupService).init();
+			Container.get(WorkflowPublicationReconciler).init();
 		} else {
 			await this.activeWorkflowManager.init();
 		}

@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { CUSTOM_API_CALL_KEY, EnterpriseEditionFeature } from '@/app/constants';
 
@@ -415,18 +416,43 @@ export function useNodeHelpers() {
 		return null;
 	}
 
-	function workflowHasIncompatibleTrigger(): boolean {
+	// Returns the trigger that blocks end-user credentials — a trigger to name in
+	// the incompatibility issue — together with which resolver kind is in effect, or
+	// null when the workflow is compatible. Mirror the backend publish check: the
+	// effective resolver decides which identity every enabled trigger must establish,
+	// so a single incompatible trigger blocks publish even when a compatible one
+	// (e.g. a manual trigger) is also present. The system resolver (self-connect)
+	// keys on the n8n user identity; a custom resolver keys on an external identity
+	// extracted from the trigger data.
+	//
+	// A workflow with no triggers is left un-warned: it's a transient state while
+	// building. The backend still catches it at publish time.
+	function getBlockingTrigger(): { trigger: INodeUi; isSystemResolver: boolean } | null {
 		const triggers = workflowDocumentStore.value.workflowTriggerNodes.filter(
 			(trigger) => !trigger.disabled,
 		);
-		if (triggers.length === 0) return false;
+		if (triggers.length === 0) return null;
 
-		// Private (self-connected) credentials resolve via the system resolver, which
-		// keys on the n8n user identity. Mirror the backend publish check: the workflow
-		// is compatible as long as at least one trigger establishes that identity.
-		return !triggers.some(
-			(trigger) => classifyTriggerIdentity(trigger.type, trigger.parameters).providesN8nIdentity,
-		);
+		const resolverId = workflowDocumentStore.value.settings?.credentialResolverId;
+		const isSystemResolver = !resolverId || resolverId === SYSTEM_RESOLVER_ID;
+
+		// Return the first trigger that can't establish the required identity, to name in the issue.
+		const trigger = triggers.find((t) => {
+			const { providesN8nIdentity, providesExternalIdentity } = classifyTriggerIdentity(
+				t.type,
+				t.parameters,
+			);
+			return isSystemResolver ? !providesN8nIdentity : !providesExternalIdentity;
+		});
+
+		return trigger ? { trigger, isSystemResolver } : null;
+	}
+
+	function getTriggerDisplayName(trigger: INodeUi): string {
+		const displayName =
+			nodeTypesStore.getNodeType(trigger.type, trigger.typeVersion)?.displayName ?? trigger.name;
+		// Drop a trailing "Trigger" so the sentence doesn't read "the Schedule Trigger trigger".
+		return displayName.replace(/\s*trigger$/i, '').trim() || displayName;
 	}
 
 	function collectPrivateCredentialIssues(
@@ -435,7 +461,7 @@ export function useNodeHelpers() {
 	): void {
 		if (!isPrivateCredentialsEnabled.value) return;
 
-		const incompatibleTrigger = workflowHasIncompatibleTrigger();
+		const blockingTrigger = getBlockingTrigger();
 
 		for (const [credTypeName, details] of Object.entries(node.credentials ?? {})) {
 			if (foundIssues[credTypeName]?.length) continue;
@@ -444,12 +470,20 @@ export function useNodeHelpers() {
 			const credential = credentialsStore.getCredentialById(details.id);
 			if (!credential?.isResolvable) continue;
 
-			// An unconnected private credential is a missing setup step, not a hard
-			// error — it's surfaced as a warning via the credential callout/banner in
-			// the UI rather than a node issue, so we don't add it here.
-			if (credential.connectedByMe && incompatibleTrigger) {
+			// Mirror the backend publish check: trigger incompatibility blocks publish
+			// regardless of who connected the credential, so warn on it here too. A
+			// merely-not-yet-connected credential is surfaced via the callout/banner.
+			// The message depends on the resolver: the system resolver needs a trigger
+			// that establishes the n8n user identity, a custom resolver needs one that
+			// extracts an external identity.
+			if (blockingTrigger) {
+				const messageKey = blockingTrigger.isSystemResolver
+					? 'nodeIssues.credentials.privateRequiresManualTrigger'
+					: 'nodeIssues.credentials.privateRequiresIdentityExtractor';
 				foundIssues[credTypeName] = [
-					i18n.baseText('nodeIssues.credentials.privateRequiresManualTrigger'),
+					i18n.baseText(messageKey, {
+						interpolate: { triggerName: getTriggerDisplayName(blockingTrigger.trigger) },
+					}),
 				];
 			}
 		}

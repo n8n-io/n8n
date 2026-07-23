@@ -7,7 +7,7 @@ import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
 import type { PushPayload } from '@n8n/api-types';
-import { computed, ref, watch } from 'vue';
+import { computed, onScopeDispose, ref, watch } from 'vue';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -46,6 +46,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const route = useRoute();
 	const streaming = ref<boolean>();
 	const streamingAbortController = ref<AbortController | null>(null);
+	// Handle for the timer that clears `lastUnread` after streaming completes.
+	// Tracked so it can be cancelled and never fire after the store is disposed.
+	const clearLastUnreadTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 	const locale = useI18n();
 	const telemetry = useTelemetry();
 	const assistantHelpers = useAIAssistantHelpers();
@@ -220,6 +223,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			streamingAbortController.value.abort();
 			streamingAbortController.value = null;
 		}
+		if (clearLastUnreadTimeout.value) {
+			clearTimeout(clearLastUnreadTimeout.value);
+			clearLastUnreadTimeout.value = null;
+		}
 	}
 
 	function abortStreaming() {
@@ -299,7 +306,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(msg) =>
 				msg.id === id && !msg.read && msg.role === 'assistant' && READABLE_TYPES.includes(msg.type),
 		);
-		setTimeout(() => {
+		clearLastUnreadTimeout.value = setTimeout(() => {
+			clearLastUnreadTimeout.value = null;
 			if (lastUnread.value?.id === id) {
 				lastUnread.value = undefined;
 			}
@@ -751,6 +759,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		},
 		{ immediate: true },
 	);
+
+	// Ensure the pending timer can never fire after the store's scope is torn down.
+	onScopeDispose(() => {
+		if (clearLastUnreadTimeout.value) {
+			clearTimeout(clearLastUnreadTimeout.value);
+			clearLastUnreadTimeout.value = null;
+		}
+	});
 
 	return {
 		isAssistantEnabled,

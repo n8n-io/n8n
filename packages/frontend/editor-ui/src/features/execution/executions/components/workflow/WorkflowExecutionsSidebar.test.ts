@@ -47,6 +47,7 @@ const renderComponent = createComponentRenderer(WorkflowExecutionsSidebar, {
 		initialState: {
 			[STORES.EXECUTIONS]: {
 				executions: [],
+				initialLoadComplete: true,
 			},
 			[STORES.SETTINGS]: {
 				settings: merge(SETTINGS_STORE_DEFAULT_STATE.settings, {
