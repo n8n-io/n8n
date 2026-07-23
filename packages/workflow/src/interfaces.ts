@@ -3589,6 +3589,8 @@ export interface IWorkflowExecuteAdditionalData {
 	 * data consistently across the entire execution tree.
 	 */
 	rootExecutionMode?: WorkflowExecuteMode;
+	langsmithConfig?: LangSmithConfig;
+	langsmithConfigError?: string;
 	/** Parent evaluation TestRun.id, exposed to expressions as `$evaluation.runId`. */
 	evaluationRunId?: string;
 	startRunnerTask<T, E = unknown>(
@@ -3675,6 +3677,13 @@ export interface IWorkflowSettings {
 	credentialResolverId?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
 	customTelemetryTags?: ICustomTelemetryTag[];
+	langsmithCredentialId?: string;
+	langsmithProject?: string;
+}
+
+export interface LangSmithConfig {
+	apiKey: string;
+	project?: string;
 }
 
 export interface WorkflowFEMeta {
