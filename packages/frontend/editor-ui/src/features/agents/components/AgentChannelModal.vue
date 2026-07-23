@@ -207,9 +207,9 @@ async function setupSlackApp(appConfigurationToken: string): Promise<boolean> {
 }
 
 async function handleDisconnected(channelType: string) {
-	const credentialId = connectedCredentials.value[channelType];
-	if (!credentialId) return;
-
+	// Draft channels (configured but missing a credential) have no connected
+	// credential — send '' so the backend removes the draft entry by type.
+	const credentialId = connectedCredentials.value[channelType] ?? '';
 	await disconnect(channelType, credentialId);
 	emit('channel-disconnected', channelType);
 	emit('agent-changed');
