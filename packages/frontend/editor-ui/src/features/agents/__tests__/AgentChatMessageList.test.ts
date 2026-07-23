@@ -32,7 +32,12 @@ vi.mock('@/features/ai/chatHub/components/ChatTypingIndicator.vue', () => ({
 }));
 
 vi.mock('@/features/agents/components/AgentChatToolSteps.vue', () => ({
-	default: { template: '<div />', props: ['toolCalls', 'projectId'] },
+	default: {
+		name: 'AgentChatToolSteps',
+		template: '<button data-test-id="tool-steps-fix-stub" @click="$emit(\'fixWithAssistant\')" />',
+		props: ['toolCalls', 'projectId', 'canFixWithAssistant', 'executionId'],
+		emits: ['fixWithAssistant'],
+	},
 }));
 
 vi.mock('@/features/agents/components/interactive/InteractiveCard.vue', () => ({
@@ -107,6 +112,7 @@ describe('AgentChatMessageList', () => {
 						id: 'assistant-1',
 						role: 'assistant',
 						content: 'Agent reply',
+						executionId: 'exec-should-not-forward',
 						status: 'success',
 					} satisfies ChatMessage,
 				],
@@ -123,7 +129,44 @@ describe('AgentChatMessageList', () => {
 
 		await wrapper.find('[data-test-id="agent-chat-message-send-to-assistant"]').trigger('click');
 
-		expect(wrapper.emitted('sendToAssistant')).toHaveLength(1);
+		// Whole-session share must not forward message executionId.
+		expect(wrapper.emitted('sendToAssistant')).toEqual([[]]);
+	});
+
+	it('forwards Fix with Assistant with toolRun executionId', async () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-1',
+						role: 'assistant',
+						content: '',
+						executionId: 'exec-turn-1',
+						toolCalls: [
+							{
+								tool: 'http_request',
+								toolCallId: 'tc-1',
+								state: 'error',
+								output: 'boom',
+							},
+						],
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+				agentId: 'agent-1',
+				sessionId: 'thread-1',
+				canSendToAssistant: true,
+			},
+		});
+
+		const toolSteps = wrapper.findComponent({ name: 'AgentChatToolSteps' });
+		expect(toolSteps.props('canFixWithAssistant')).toBe(true);
+		expect(toolSteps.props('executionId')).toBe('exec-turn-1');
+
+		await wrapper.find('[data-test-id="tool-steps-fix-stub"]').trigger('click');
+
+		expect(wrapper.emitted('sendToAssistant')).toEqual([['exec-turn-1']]);
 	});
 
 	it('does not render actions for user text messages', () => {

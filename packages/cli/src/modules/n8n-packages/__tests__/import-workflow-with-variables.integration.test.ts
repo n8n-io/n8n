@@ -8,6 +8,7 @@ import { VariablesService } from '@/environments.ee/variables/variables.service.
 import { createOwner } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
 import { LicenseMocker } from '@test-integration/license';
+import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import type { ImportPackageRequest } from '../n8n-packages.types';
@@ -24,6 +25,7 @@ const licenseMocker = new LicenseMocker();
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages']);
 	await testDb.init();
+	await initNodeTypes();
 	licenseMocker.mockLicenseState(Container.get(LicenseState));
 	service = Container.get(N8nPackagesService);
 	variablesRepository = Container.get(VariablesRepository);
@@ -62,6 +64,7 @@ async function importPackage(params: ImportParams) {
 		dataTableMissingMode: 'create',
 		dataTableSchemaConflictPolicy: 'keep-existing',
 		variableMissingMode: 'do-nothing',
+		missingNodeTypeMode: 'fail',
 		...params,
 	});
 }
