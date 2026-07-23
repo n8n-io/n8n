@@ -68,11 +68,11 @@ describe('ScheduleTriggerJobRegistrar deviations', () => {
 
 	/** Collect one rule and return the row view the reconciliation would persist. */
 	const collect = async (mode: 'legacy' | 'new', cron: Cron): Promise<PersistedRow> => {
-		jobProvisioner.provisionForNode.mockClear();
+		jobProvisioner.provision.mockClear();
 		const session = makeRegistrar(mode).createSession();
 		session.createCollector(workflow, scheduleNode).registerCron(cron, vi.fn());
 		await session.commit(WORKFLOW_ID, NODE_ID);
-		const desired = jobProvisioner.provisionForNode.mock.calls.at(-1)![4][0];
+		const desired = jobProvisioner.provision.mock.calls.at(-1)![4][0];
 		return { ...flatten(desired.schedule), nextRunAt: desired.firstRunAt };
 	};
 
@@ -118,7 +118,7 @@ describe('ScheduleTriggerJobRegistrar deviations', () => {
 		vi.clearAllMocks();
 		vi.useFakeTimers();
 		vi.setSystemTime(NOW);
-		jobProvisioner.provisionForNode.mockResolvedValue({
+		jobProvisioner.provision.mockResolvedValue({
 			inserted: [],
 			redefined: [],
 			unchanged: [],

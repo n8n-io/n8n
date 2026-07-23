@@ -32,21 +32,21 @@ describe('ScheduleTrigger', () => {
 			expect(emit).toHaveBeenCalledTimes(1);
 
 			// Filler second/minute are derived deterministically from
-			// `${workflowId ?? ''}:${nodeId}`. The default test helper leaves the
-			// workflow id empty, so the seed is `:1`, resolving to second=30 / minute=10.
+			// `${workflowId ?? ''}:${nodeId}`. The default test helper uses
+			// `workflow-1:1`, which resolves to second=13 / minute=47.
 			const firstTriggerData = emit.mock.calls[0][0][0][0];
 			expect(firstTriggerData.json).toEqual({
 				'Day of month': '28',
 				'Day of week': 'Thursday',
 				Hour: '15',
-				Minute: '10',
+				Minute: '47',
 				Month: 'December',
-				'Readable date': 'December 28th 2023, 3:10:30 pm',
-				'Readable time': '3:10:30 pm',
-				Second: '30',
+				'Readable date': 'December 28th 2023, 3:47:13 pm',
+				'Readable time': '3:47:13 pm',
+				Second: '13',
 				Timezone: 'Europe/Berlin (UTC+01:00)',
 				Year: '2023',
-				timestamp: '2023-12-28T15:10:30.000+01:00',
+				timestamp: '2023-12-28T15:47:13.000+01:00',
 			});
 
 			vi.setSystemTime(new Date(firstTriggerData.json.timestamp as string));

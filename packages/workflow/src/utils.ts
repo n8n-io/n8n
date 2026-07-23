@@ -348,33 +348,6 @@ export function randomInt(min: number, max?: number): number {
 	return min + (crypto.getRandomValues(new Uint32Array(1))[0] % (max - min));
 }
 
-/**
- * Deterministic integer in `[min, max)`, derived from `seed` and `label`.
- *
- * Fills in the otherwise-unspecified parts of a cron expression (e.g. the
- * second within a minute) in a way that's stable across calls and across
- * instances: two mains computing the same schedule for the same node produce
- * identical values, so a durable job's cron string, fire times, and identity
- * stay put across re-activation. Different seeds spread values apart, keeping
- * the load-spreading the original randomization provided.
- *
- * A plain FNV-1a hash, not a cryptographic one: this package is bundled for the
- * browser and must not pull in the node `crypto` module, and the value only
- * needs to be well-distributed, not unpredictable.
- *
- * @param seed - Stable identity of the entity being filled in (e.g. `${workflowId}:${nodeId}`).
- * @param label - Distinguishes multiple values derived from the same seed (e.g. `'second'` vs `'minute'`).
- */
-export function stableInt(seed: string, label: string, min: number, max: number): number {
-	const bytes = new TextEncoder().encode(`${seed}:${label}`);
-	let hash = 2166136261;
-	for (const byte of bytes) {
-		hash ^= byte;
-		hash = Math.imul(hash, 16777619);
-	}
-	return min + ((hash >>> 0) % (max - min));
-}
-
 export function randomString(length: number): string;
 export function randomString(minLength: number, maxLength: number): string;
 /**

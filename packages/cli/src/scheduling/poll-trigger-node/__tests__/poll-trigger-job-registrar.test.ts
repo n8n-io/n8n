@@ -24,6 +24,9 @@ const TIMEZONE = 'UTC';
 const DAILY_AT_NINE: TriggerTime = { mode: 'custom', cronExpression: '0 0 9 * * *' };
 const DAILY_AT_TEN: TriggerTime = { mode: 'custom', cronExpression: '0 0 10 * * *' };
 
+/** `<workflowId>:<nodeId>:<definition fingerprint>:<occurrence>` */
+const jobNamePattern = new RegExp(`^${WORKFLOW_ID}:${NODE_ID}:[0-9a-f]{16}:\\d+$`);
+
 const pollNode = mock<INode>({ id: NODE_ID, type: 'n8n-nodes-base.rssFeedReadTrigger' });
 
 describe('PollTriggerJobRegistrar', () => {
@@ -33,27 +36,25 @@ describe('PollTriggerJobRegistrar', () => {
 		schedulerEnabled = true,
 		publicationEnabled = true,
 		durablePollTriggers = true,
-		// The Schedule Trigger's own mode flag; poll gating must not depend on it.
-		triggerNodeMode = 'legacy' as 'legacy' | 'new',
 	} = {}) =>
 		new PollTriggerJobRegistrar(
 			mockLogger(),
 			mock<GlobalConfig>({
-				scheduler: { enabled: schedulerEnabled, durablePollTriggers, triggerNodeMode },
+				scheduler: { enabled: schedulerEnabled, durablePollTriggers },
 				generic: { timezone: TIMEZONE },
 			}),
 			mock<WorkflowsConfig>({ useWorkflowPublicationService: publicationEnabled }),
 			jobProvisioner,
 		);
 
-	/** The `schedules` argument of the most recent `provisionForNode` call. */
-	const lastSchedules = () => jobProvisioner.provisionForNode.mock.calls.at(-1)![4];
+	/** The desired jobs of the most recent `provision` call. */
+	const lastDesired = () => jobProvisioner.provision.mock.calls.at(-1)![4];
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.useFakeTimers();
 		vi.setSystemTime(NOW);
-		jobProvisioner.provisionForNode.mockResolvedValue({
+		jobProvisioner.provision.mockResolvedValue({
 			inserted: [],
 			redefined: [],
 			unchanged: [],
@@ -71,69 +72,38 @@ describe('PollTriggerJobRegistrar', () => {
 				schedulerEnabled: true,
 				publicationEnabled: true,
 				durablePollTriggers: true,
-				triggerNodeMode: 'new',
 				expected: true,
 			},
 			{
 				schedulerEnabled: false,
 				publicationEnabled: true,
 				durablePollTriggers: true,
-				triggerNodeMode: 'new',
 				expected: false,
 			},
 			{
 				schedulerEnabled: true,
 				publicationEnabled: false,
 				durablePollTriggers: true,
-				triggerNodeMode: 'new',
 				expected: false,
 			},
 			{
 				schedulerEnabled: true,
 				publicationEnabled: true,
 				durablePollTriggers: false,
-				triggerNodeMode: 'legacy',
-				expected: false,
-			},
-			// Poll gating is independent of the Schedule Trigger's own mode flag:
-			// poll on + schedule off stays active, poll off + schedule on stays inactive.
-			{
-				schedulerEnabled: true,
-				publicationEnabled: true,
-				durablePollTriggers: true,
-				triggerNodeMode: 'legacy',
-				expected: true,
-			},
-			{
-				schedulerEnabled: true,
-				publicationEnabled: true,
-				durablePollTriggers: false,
-				triggerNodeMode: 'new',
 				expected: false,
 			},
 		] as const)(
-			'is $expected for scheduler=$schedulerEnabled publication=$publicationEnabled durablePoll=$durablePollTriggers scheduleMode=$triggerNodeMode',
-			({
-				schedulerEnabled,
-				publicationEnabled,
-				durablePollTriggers,
-				triggerNodeMode,
-				expected,
-			}) => {
+			'is $expected for scheduler=$schedulerEnabled publication=$publicationEnabled durablePoll=$durablePollTriggers',
+			({ schedulerEnabled, publicationEnabled, durablePollTriggers, expected }) => {
 				expect(
-					makeRegistrar({
-						schedulerEnabled,
-						publicationEnabled,
-						durablePollTriggers,
-						triggerNodeMode,
-					}).isActive(),
+					makeRegistrar({ schedulerEnabled, publicationEnabled, durablePollTriggers }).isActive(),
 				).toBe(expected);
 			},
 		);
 	});
 
 	describe('register', () => {
-		it('provisions one schedule per poll time, with the first fire planned', async () => {
+		it('provisions one durable job per poll time, named by its definition, with the first fire planned', async () => {
 			await makeRegistrar().register(
 				WORKFLOW_ID,
 				pollNode,
@@ -141,17 +111,19 @@ describe('PollTriggerJobRegistrar', () => {
 				TIMEZONE,
 			);
 
-			expect(jobProvisioner.provisionForNode).toHaveBeenCalledWith(
+			expect(jobProvisioner.provision).toHaveBeenCalledWith(
 				WORKFLOW_ID,
 				NODE_ID,
 				POLL_TRIGGER_TASK_TYPE,
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				[
 					{
+						name: expect.stringMatching(jobNamePattern),
 						schedule: { kind: 'cron', cronExpression: '0 0 9 * * *', timezone: TIMEZONE },
 						firstRunAt: NEXT_NINE,
 					},
 					{
+						name: expect.stringMatching(jobNamePattern),
 						schedule: { kind: 'cron', cronExpression: '0 0 10 * * *', timezone: TIMEZONE },
 						firstRunAt: NEXT_TEN,
 					},
@@ -159,8 +131,30 @@ describe('PollTriggerJobRegistrar', () => {
 			);
 		});
 
+		it('seeds a generated cadence deterministically, so re-activation keeps the same job identity', async () => {
+			// The B1 fix: the seconds field is derived from `${workflowId}:${nodeId}`,
+			// not randomised per activation, so a re-activation produces the identical
+			// cron (hence the identical job name), not a new row with a fresh clock.
+			const registrar = makeRegistrar();
+
+			await registrar.register(WORKFLOW_ID, pollNode, [{ mode: 'everyMinute' }], TIMEZONE);
+			const first = lastDesired()[0];
+
+			await registrar.register(WORKFLOW_ID, pollNode, [{ mode: 'everyMinute' }], TIMEZONE);
+			const second = lastDesired()[0];
+
+			expect(second.name).toBe(first.name);
+			expect((second.schedule as CronDefinition).cronExpression).toBe(
+				(first.schedule as CronDefinition).cronExpression,
+			);
+			// A minute cadence with a fixed (not wildcard) seconds field: never sub-minute.
+			expect((first.schedule as CronDefinition).cronExpression).toMatch(
+				/^[0-9]{1,2} \* \* \* \* \*$/,
+			);
+		});
+
 		it('reports whether a job was newly inserted, so the caller can seed a fresh node once', async () => {
-			jobProvisioner.provisionForNode.mockResolvedValueOnce({
+			jobProvisioner.provision.mockResolvedValueOnce({
 				inserted: [{ id: 1, name: 'wf-1:node-1:abc:0' }],
 				redefined: [],
 				unchanged: [],
@@ -176,62 +170,49 @@ describe('PollTriggerJobRegistrar', () => {
 			).resolves.toEqual({ inserted: false });
 		});
 
-		it('maps a fixed-minute cadence to an interval schedule in `new` mode', async () => {
-			await makeRegistrar({ triggerNodeMode: 'new' }).register(
-				WORKFLOW_ID,
-				pollNode,
-				[{ mode: 'everyX', unit: 'minutes', value: 5 }],
-				TIMEZONE,
-			);
+		it("keeps each job's name stable when poll times are inserted before it or reordered", async () => {
+			const registrar = makeRegistrar();
 
-			const [{ schedule }] = lastSchedules();
-			expect(schedule).toEqual({ kind: 'interval', intervalSeconds: 300 });
+			await registrar.register(WORKFLOW_ID, pollNode, [DAILY_AT_NINE], TIMEZONE);
+			const firstNames = lastDesired().map((job) => job.name);
+
+			await registrar.register(WORKFLOW_ID, pollNode, [DAILY_AT_TEN, DAILY_AT_NINE], TIMEZONE);
+			const secondNames = lastDesired().map((job) => job.name);
+
+			// DAILY_AT_NINE moved from index 0 to index 1, but its name is unchanged.
+			expect(secondNames[1]).toBe(firstNames[0]);
+			expect(secondNames[0]).not.toBe(firstNames[0]);
 		});
 
-		it('maps every-N-hours to a recurring_cron schedule', async () => {
+		it('gives identical duplicate poll times distinct names, stable by occurrence', async () => {
 			await makeRegistrar().register(
 				WORKFLOW_ID,
 				pollNode,
-				[{ mode: 'everyX', unit: 'hours', value: 3 }],
+				[DAILY_AT_NINE, DAILY_AT_NINE],
 				TIMEZONE,
 			);
 
-			const [{ schedule }] = lastSchedules();
-			expect(schedule).toMatchObject({
-				kind: 'recurring_cron',
-				recurrenceUnit: 'hours',
-				recurrenceSize: 3,
-			});
-		});
-
-		it('derives a stable schedule across re-activation for a generated cadence', async () => {
-			// The B1 fix: the seconds field is seeded deterministically from
-			// `${workflowId}:${nodeId}`, so re-activation produces the identical
-			// schedule (hence the identical durable job identity), not a new one.
-			const registrar = makeRegistrar();
-
-			await registrar.register(WORKFLOW_ID, pollNode, [{ mode: 'everyMinute' }], TIMEZONE);
-			const first = lastSchedules()[0].schedule;
-
-			await registrar.register(WORKFLOW_ID, pollNode, [{ mode: 'everyMinute' }], TIMEZONE);
-			const second = lastSchedules()[0].schedule;
-
-			expect(second).toEqual(first);
+			const [first, second] = lastDesired().map((job) => job.name);
+			expect(first).not.toBe(second);
+			// Same definition, so same fingerprint: only the occurrence ordinal differs.
+			expect(first.replace(/:\d+$/, '')).toBe(second.replace(/:\d+$/, ''));
+			expect(first.endsWith(':0')).toBe(true);
+			expect(second.endsWith(':1')).toBe(true);
 		});
 
 		it('fires the crons in the workflow timezone', async () => {
 			// 09:00 Berlin is 08:00 UTC in January; a wrong timezone would move the fire.
 			await makeRegistrar().register(WORKFLOW_ID, pollNode, [DAILY_AT_NINE], 'Europe/Berlin');
 
-			const [{ schedule, firstRunAt }] = lastSchedules();
+			const [{ schedule, firstRunAt }] = lastDesired();
 			expect((schedule as CronDefinition).timezone).toBe('Europe/Berlin');
 			expect(firstRunAt).toEqual(new Date('2026-01-05T08:00:00.000Z'));
 		});
 
-		it('provisions an empty schedule set for a node with no poll times', async () => {
+		it('provisions an empty desired set for a node with no poll times', async () => {
 			await makeRegistrar().register(WORKFLOW_ID, pollNode, [], TIMEZONE);
 
-			expect(jobProvisioner.provisionForNode).toHaveBeenCalledWith(
+			expect(jobProvisioner.provision).toHaveBeenCalledWith(
 				WORKFLOW_ID,
 				NODE_ID,
 				POLL_TRIGGER_TASK_TYPE,
@@ -256,7 +237,7 @@ describe('PollTriggerJobRegistrar', () => {
 			async (sentinel) => {
 				await makeRegistrar().register(WORKFLOW_ID, pollNode, [DAILY_AT_NINE], sentinel);
 
-				const [{ schedule, firstRunAt }] = lastSchedules();
+				const [{ schedule, firstRunAt }] = lastDesired();
 				// TIMEZONE is the instance default (globalConfig.generic.timezone), so the
 				// stored zone must be the resolved value, never the sentinel.
 				expect((schedule as CronDefinition).timezone).toBe(TIMEZONE);
@@ -274,11 +255,9 @@ describe('PollTriggerJobRegistrar', () => {
 				TIMEZONE,
 			);
 
-			const [{ schedule, firstRunAt }] = lastSchedules();
+			const [{ schedule, firstRunAt }] = lastDesired();
 			expect((schedule as CronDefinition).cronExpression).toBe('0 */5 * * * *');
 			expect(firstRunAt).toEqual(new Date('2026-01-05T00:05:00.000Z'));
-			// 6-field passthrough is proven by the first `register` test above, which
-			// asserts the stored cronExpression is the untouched 6-field custom cron.
 		});
 	});
 

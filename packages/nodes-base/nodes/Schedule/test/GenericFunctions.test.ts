@@ -66,7 +66,7 @@ describe('toCronExpression', () => {
 	});
 
 	it('should return cron expression for minutes interval', () => {
-		// sec=35 is filler; */30 comes from `minutesInterval`.
+		// sec=56 is filler; */30 comes from `minutesInterval`.
 		const result = toCronExpression(
 			{
 				field: 'minutes',
@@ -74,11 +74,11 @@ describe('toCronExpression', () => {
 			},
 			TEST_SEED,
 		);
-		expect(result).toEqual('35 */30 * * * *');
+		expect(result).toEqual('56 */30 * * * *');
 	});
 
 	it('should return cron expression for hours interval', () => {
-		// sec=35 is filler; min=22 from `triggerAtMinute`; */3 from `hoursInterval`.
+		// sec=56 is filler; min=22 from `triggerAtMinute`; */3 from `hoursInterval`.
 		const result = toCronExpression(
 			{
 				field: 'hours',
@@ -87,9 +87,9 @@ describe('toCronExpression', () => {
 			},
 			TEST_SEED,
 		);
-		expect(result).toEqual('35 22 */3 * * *');
+		expect(result).toEqual('56 22 */3 * * *');
 
-		// No `triggerAtMinute`, so min=43 is also filler.
+		// No `triggerAtMinute`, so min=19 is also filler.
 		const result1 = toCronExpression(
 			{
 				field: 'hours',
@@ -97,7 +97,7 @@ describe('toCronExpression', () => {
 			},
 			TEST_SEED,
 		);
-		expect(result1).toEqual('35 43 */3 * * *');
+		expect(result1).toEqual('56 19 */3 * * *');
 
 		const result2 = toCronExpression(
 			{
@@ -106,11 +106,11 @@ describe('toCronExpression', () => {
 			},
 			TEST_SEED,
 		);
-		expect(result2).toEqual('35 43 * * * *');
+		expect(result2).toEqual('56 19 * * * *');
 	});
 
 	it('should return cron expression for days interval', () => {
-		// sec=35 is filler; min=30 and hr=10 from `triggerAtMinute`/`triggerAtHour`.
+		// sec=56 is filler; min=30 and hr=10 from `triggerAtMinute`/`triggerAtHour`.
 		const result = toCronExpression(
 			{
 				field: 'days',
@@ -120,9 +120,9 @@ describe('toCronExpression', () => {
 			},
 			TEST_SEED,
 		);
-		expect(result).toEqual('35 30 10 * * *');
+		expect(result).toEqual('56 30 10 * * *');
 
-		// Nothing pinned, so sec=35 / min=43 / hr=1 are all filler.
+		// Nothing pinned, so sec=56 / min=19 / hr=14 are all filler.
 		const result1 = toCronExpression(
 			{
 				field: 'days',
@@ -130,11 +130,11 @@ describe('toCronExpression', () => {
 			},
 			TEST_SEED,
 		);
-		expect(result1).toEqual('35 43 1 * * *');
+		expect(result1).toEqual('56 19 14 * * *');
 	});
 
 	it('should return cron expression for weeks interval', () => {
-		// sec=35 is filler; the rest come from `triggerAtMinute`/`triggerAtHour`/`triggerAtDay`.
+		// sec=56 is filler; the rest come from `triggerAtMinute`/`triggerAtHour`/`triggerAtDay`.
 		const result = toCronExpression(
 			{
 				field: 'weeks',
@@ -145,8 +145,8 @@ describe('toCronExpression', () => {
 			},
 			TEST_SEED,
 		);
-		expect(result).toEqual('35 0 9 * * 1,3,5');
-		// Only `triggerAtDay` pinned, so sec=35 / min=43 / hr=1 are all filler.
+		expect(result).toEqual('56 0 9 * * 1,3,5');
+		// Only `triggerAtDay` pinned, so sec=56 / min=19 / hr=14 are all filler.
 		const result1 = toCronExpression(
 			{
 				field: 'weeks',
@@ -155,11 +155,11 @@ describe('toCronExpression', () => {
 			},
 			TEST_SEED,
 		);
-		expect(result1).toEqual('35 43 1 * * 1,3,5');
+		expect(result1).toEqual('56 19 14 * * 1,3,5');
 	});
 
 	it('should return cron expression for months interval', () => {
-		// sec=35 is filler; min/hr/dom come from triggerAt*.
+		// sec=56 is filler; min/hr/dom come from triggerAt*.
 		const result = toCronExpression(
 			{
 				field: 'months',
@@ -170,8 +170,8 @@ describe('toCronExpression', () => {
 			},
 			TEST_SEED,
 		);
-		expect(result).toEqual('35 0 0 1 */3 *');
-		// Nothing pinned, so sec=35 / min=43 / hr=1 / dom=13 are all filler.
+		expect(result).toEqual('56 0 0 1 */3 *');
+		// Nothing pinned, so sec=56 / min=19 / hr=14 / dom=22 are all filler.
 		const result1 = toCronExpression(
 			{
 				field: 'months',
@@ -179,20 +179,20 @@ describe('toCronExpression', () => {
 			},
 			TEST_SEED,
 		);
-		expect(result1).toEqual('35 43 1 13 */3 *');
+		expect(result1).toEqual('56 19 14 22 */3 *');
 	});
 
 	it('should keep `*/N` for month intervals that divide 12, and fire monthly otherwise', () => {
 		// Divisors of 12 keep their calendar-anchored cron unchanged.
 		for (const months of [1, 2, 3, 4, 6, 12]) {
 			expect(toCronExpression({ field: 'months', monthsInterval: months }, TEST_SEED)).toEqual(
-				`35 43 1 13 */${months} *`,
+				`56 19 14 22 */${months} *`,
 			);
 		}
 		// Non-divisors fire every month; recurrenceCheck enforces the elapsed-months gap.
 		for (const months of [5, 7, 8, 13, 24]) {
 			expect(toCronExpression({ field: 'months', monthsInterval: months }, TEST_SEED)).toEqual(
-				'35 43 1 13 * *',
+				'56 19 14 22 * *',
 			);
 		}
 	});

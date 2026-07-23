@@ -19,6 +19,9 @@ const NEXT_NINE = new Date('2026-01-05T09:00:00.000Z');
 const WORKFLOW_ID = 'wf-1';
 const NODE_ID = 'node-1';
 
+/** `<workflowId>:<nodeId>:<definition fingerprint>:<occurrence>` */
+const jobNamePattern = new RegExp(`^${WORKFLOW_ID}:${NODE_ID}:[0-9a-f]{16}:\\d+$`);
+
 const workflow = { id: WORKFLOW_ID, settings: {} } as unknown as Workflow;
 const scheduleNode = mock<INode>({ id: NODE_ID, type: SCHEDULE_TRIGGER_NODE_TYPE });
 
@@ -53,7 +56,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 		vi.clearAllMocks();
 		vi.useFakeTimers();
 		vi.setSystemTime(NOW);
-		jobProvisioner.provisionForNode.mockResolvedValue({
+		jobProvisioner.provision.mockResolvedValue({
 			inserted: [],
 			redefined: [],
 			unchanged: [],
@@ -118,9 +121,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 	});
 
 	describe('collect and commit', () => {
-		it('provisions one schedule per rule, with the first fire planned', async () => {
-			// Job naming (definition-stable, occurrence-disambiguated) is the shared
-			// provisioner's job; see DurableJobProvisioner's `provisionForNode` tests.
+		it('provisions one desired job per rule, named by its definition, with the first fire planned', async () => {
 			const session = makeRegistrar().createSession();
 			const collector = session.createCollector(workflow, scheduleNode);
 			collector.registerCron(dailyAtNine, vi.fn());
@@ -128,17 +129,19 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.provisionForNode).toHaveBeenCalledWith(
+			expect(jobProvisioner.provision).toHaveBeenCalledWith(
 				WORKFLOW_ID,
 				NODE_ID,
 				SCHEDULE_TRIGGER_TASK_TYPE,
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				[
 					{
+						name: expect.stringMatching(jobNamePattern),
 						schedule: { kind: 'cron', cronExpression: '0 0 9 * * *', timezone: null },
 						firstRunAt: NEXT_NINE,
 					},
 					{
+						name: expect.stringMatching(jobNamePattern),
 						schedule: {
 							kind: 'recurring_cron',
 							cronExpression: '0 0 9 * * 1',
@@ -153,6 +156,42 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			);
 		});
 
+		it('a rule keeps its name when rules are inserted before it or reordered', async () => {
+			// A positional name would shift here and needlessly redefine the job,
+			// restarting its clock; the definition-derived name must not move.
+			const session = makeRegistrar().createSession();
+			session.createCollector(workflow, scheduleNode).registerCron(dailyAtNine, vi.fn());
+			await session.commit(WORKFLOW_ID, NODE_ID);
+			const firstNames = jobProvisioner.provision.mock.calls.at(-1)![4].map((job) => job.name);
+
+			const reordered = session.createCollector(workflow, scheduleNode);
+			reordered.registerCron(everyThreeWeeksMonday, vi.fn());
+			reordered.registerCron(dailyAtNine, vi.fn());
+			await session.commit(WORKFLOW_ID, NODE_ID);
+			const secondNames = jobProvisioner.provision.mock.calls.at(-1)![4].map((job) => job.name);
+
+			// dailyAtNine moved from index 0 to index 1, but its name is unchanged.
+			expect(secondNames[1]).toBe(firstNames[0]);
+			expect(secondNames[0]).not.toBe(firstNames[0]);
+		});
+
+		it('identical duplicate rules get distinct names, stable by occurrence', async () => {
+			const session = makeRegistrar().createSession();
+			const collector = session.createCollector(workflow, scheduleNode);
+			collector.registerCron(dailyAtNine, vi.fn());
+			collector.registerCron(dailyAtNine, vi.fn());
+
+			await session.commit(WORKFLOW_ID, NODE_ID);
+
+			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
+			const [first, second] = desired.map((job) => job.name);
+			expect(first).not.toBe(second);
+			// Same definition, so same fingerprint: only the occurrence ordinal differs.
+			expect(first.replace(/:\d+$/, '')).toBe(second.replace(/:\d+$/, ''));
+			expect(first.endsWith(':0')).toBe(true);
+			expect(second.endsWith(':1')).toBe(true);
+		});
+
 		it("passes the workflow's own timezone, and null for the instance default", async () => {
 			const session = makeRegistrar().createSession();
 			const zoned = {
@@ -164,7 +203,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			const desired = jobProvisioner.provisionForNode.mock.calls.at(-1)![4];
+			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
 			expect((desired[0].schedule as CronDefinition).timezone).toBe('Europe/Berlin');
 			// 09:00 Berlin (UTC+1 in January).
 			expect(desired[0].firstRunAt).toEqual(new Date('2026-01-05T08:00:00.000Z'));
@@ -181,7 +220,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			const desired = jobProvisioner.provisionForNode.mock.calls.at(-1)![4];
+			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
 			expect((desired[0].schedule as CronDefinition).timezone).toBeNull();
 		});
 
@@ -203,7 +242,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			const desired = jobProvisioner.provisionForNode.mock.calls.at(-1)![4];
+			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
 			expect((desired[0].schedule as CronDefinition).timezone).toBeNull();
 			// 09:00 Berlin (UTC+1 in January) — would be 09:00 UTC if the default
 			// weren't resolved.
@@ -250,7 +289,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			const desired = jobProvisioner.provisionForNode.mock.calls.at(-1)![4];
+			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
 			expect(desired[0].firstRunAt).toBeNull();
 			expect((desired[0].schedule as CronDefinition).kind).toBe('cron');
 		});
@@ -268,7 +307,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			const desired = jobProvisioner.provisionForNode.mock.calls.at(-1)![4];
+			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
 			// Legacy fires a negative-stride rule on every candidate tick, so it must
 			// stay a live plain-cron job with a real first run, not a clock-dead row.
 			expect((desired[0].schedule as CronDefinition).kind).toBe('cron');
@@ -278,7 +317,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 		it('is a no-op for a node that collected nothing', async () => {
 			await makeRegistrar().createSession().commit(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.provisionForNode).not.toHaveBeenCalled();
+			expect(jobProvisioner.provision).not.toHaveBeenCalled();
 		});
 
 		it('provisions a node with no rules left as an empty desired set', async () => {
@@ -287,7 +326,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.provisionForNode).toHaveBeenCalledWith(
+			expect(jobProvisioner.provision).toHaveBeenCalledWith(
 				WORKFLOW_ID,
 				NODE_ID,
 				SCHEDULE_TRIGGER_TASK_TYPE,
@@ -304,7 +343,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			await session.commit(WORKFLOW_ID, NODE_ID);
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.provisionForNode).toHaveBeenCalledTimes(1);
+			expect(jobProvisioner.provision).toHaveBeenCalledTimes(1);
 		});
 
 		it('discard drops collected rules so a failed activation persists nothing', async () => {
@@ -315,7 +354,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			session.discard(WORKFLOW_ID, NODE_ID);
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.provisionForNode).not.toHaveBeenCalled();
+			expect(jobProvisioner.provision).not.toHaveBeenCalled();
 		});
 
 		it('a fresh collector replaces the rules of a previous failed attempt', async () => {
@@ -327,7 +366,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			const desired = jobProvisioner.provisionForNode.mock.calls.at(-1)![4];
+			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
 			expect(desired).toHaveLength(1);
 			expect((desired[0].schedule as CronDefinition).cronExpression).toBe('0 0 9 * * 1');
 		});
@@ -343,12 +382,12 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			attemptB.createCollector(workflow, scheduleNode).registerCron(everyThreeWeeksMonday, vi.fn());
 
 			await attemptA.commit(WORKFLOW_ID, NODE_ID);
-			const fromA = jobProvisioner.provisionForNode.mock.calls.at(-1)![4];
+			const fromA = jobProvisioner.provision.mock.calls.at(-1)![4];
 			expect(fromA).toHaveLength(1);
 			expect((fromA[0].schedule as CronDefinition).cronExpression).toBe('0 0 9 * * *');
 
 			await attemptB.commit(WORKFLOW_ID, NODE_ID);
-			const fromB = jobProvisioner.provisionForNode.mock.calls.at(-1)![4];
+			const fromB = jobProvisioner.provision.mock.calls.at(-1)![4];
 			expect(fromB).toHaveLength(1);
 			expect((fromB[0].schedule as CronDefinition).cronExpression).toBe('0 0 9 * * 1');
 		});

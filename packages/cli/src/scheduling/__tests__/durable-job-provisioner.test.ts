@@ -188,65 +188,6 @@ describe('DurableJobProvisioner', () => {
 		});
 	});
 
-	describe('provisionForNode', () => {
-		const scheduleA: ScheduleDefinition = {
-			kind: 'cron',
-			cronExpression: '0 0 9 * * *',
-			timezone: 'UTC',
-		};
-		const scheduleB: ScheduleDefinition = {
-			kind: 'cron',
-			cronExpression: '0 0 10 * * *',
-			timezone: 'UTC',
-		};
-
-		/** Names of the rows the most recent provision passed to `insertMany`. */
-		const insertedNames = () => jobs.insertMany.mock.calls.at(-1)![1].map((row) => row.name);
-
-		it('derives a definition-stable, occurrence-suffixed name per schedule', async () => {
-			await provisioner.provisionForNode('wf', 'node', 'schedule-trigger', {}, [
-				{ schedule: scheduleA, firstRunAt: CLOCK },
-				{ schedule: scheduleB, firstRunAt: CLOCK },
-			]);
-
-			const names = insertedNames();
-			expect(names).toHaveLength(2);
-			for (const name of names) expect(name).toMatch(/^wf:node:[0-9a-f]{16}:\d+$/);
-			// Different definitions fingerprint differently.
-			expect(names[0]).not.toBe(names[1]);
-		});
-
-		it('disambiguates identical schedules by occurrence, keeping the fingerprint', async () => {
-			await provisioner.provisionForNode('wf', 'node', 'schedule-trigger', {}, [
-				{ schedule: scheduleA, firstRunAt: CLOCK },
-				{ schedule: scheduleA, firstRunAt: CLOCK },
-			]);
-
-			const [first, second] = insertedNames();
-			expect(first.replace(/:\d+$/, '')).toBe(second.replace(/:\d+$/, ''));
-			expect(first.endsWith(':0')).toBe(true);
-			expect(second.endsWith(':1')).toBe(true);
-		});
-
-		it("keeps a schedule's name stable when reordered across calls", async () => {
-			// A definition-derived name must not shift with position; a positional name
-			// would redefine the job and restart its clock on re-activation.
-			await provisioner.provisionForNode('wf', 'node', 'schedule-trigger', {}, [
-				{ schedule: scheduleA, firstRunAt: CLOCK },
-			]);
-			const [aAlone] = insertedNames();
-
-			await provisioner.provisionForNode('wf', 'node', 'schedule-trigger', {}, [
-				{ schedule: scheduleB, firstRunAt: CLOCK },
-				{ schedule: scheduleA, firstRunAt: CLOCK },
-			]);
-			const names = insertedNames();
-
-			expect(names[1]).toBe(aAlone);
-			expect(names[0]).not.toBe(aAlone);
-		});
-	});
-
 	describe('seeding a freshly provisioned job', () => {
 		const SEED_NOW = new Date('2026-01-05T00:00:00.000Z');
 		const at = (seconds: number) => new Date(SEED_NOW.getTime() + seconds * 1000);
