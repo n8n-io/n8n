@@ -224,8 +224,18 @@ function buildCoverageNote(
 	nodesNotReached: string[],
 	result: ExecutionRunResult,
 	success: boolean,
+	reachedHaltedGates: string[],
 ): string | undefined {
 	if (nodesNotReached.length === 0) return undefined;
+	if (success && reachedHaltedGates.length > 0) {
+		return (
+			`Verification halted at send-and-wait gate(s) ${reachedHaltedGates.join(', ')}: continuing needs a ` +
+			`human decision, so ${nodesNotReached.length} downstream node(s) were not executed and remain ` +
+			`unverified: ${nodesNotReached.join(', ')}. This is expected for approval loops — do not edit the ` +
+			'workflow or re-run verification to force coverage. Report that the approval path needs a manual ' +
+			'end-to-end test.'
+		);
+	}
 	const ending = result.lastNodeExecuted
 		? `. Execution ended at "${result.lastNodeExecuted}"${success ? ' because it produced no output items (empty item lists stop downstream nodes)' : ''}.`
 		: '.';
@@ -280,10 +290,12 @@ export function analyzeVerificationResult(args: {
 	result: ExecutionRunResult;
 	buildOutcome: WorkflowBuildOutcome;
 	simulatedNodes: Array<{ nodeName: string; reason: string }>;
+	/** Wait-gate nodes pinned with zero items — the run is expected to stop at these. */
+	haltedGateNames?: string[];
 	stateBefore: WorkflowLoopState | undefined;
 	runId: string;
 }): VerificationAnalysis {
-	const { result, buildOutcome, simulatedNodes, stateBefore, runId } = args;
+	const { result, buildOutcome, simulatedNodes, haltedGateNames, stateBefore, runId } = args;
 	const nodeErrors = result.nodeErrors ?? [];
 	const reachedNames = new Set(
 		result.executedNodeNames ?? (result.data ? Object.keys(result.data) : []),
@@ -321,7 +333,12 @@ export function analyzeVerificationResult(args: {
 		remediation,
 		nodesExecuted: namesOrDataKeys(reachedNames, result.data),
 		simulationNote: buildSimulationNote(reachedSimulatedNodes, false),
-		coverageNote: buildCoverageNote(nodesNotReached, result, success),
+		coverageNote: buildCoverageNote(
+			nodesNotReached,
+			result,
+			success,
+			(haltedGateNames ?? []).filter((name) => reachedNames.has(name)),
+		),
 		errorMessage,
 		nodeErrors,
 	};

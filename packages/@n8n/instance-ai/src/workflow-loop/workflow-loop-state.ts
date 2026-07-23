@@ -242,6 +242,13 @@ export const nodeSimulationVerdictSchema = z.object({
 	reason: z.string(),
 	confidence: z.enum(['high', 'low']),
 	source: z.enum(['deterministic', 'llm', 'fallback']),
+	/**
+	 * Verification pins this node with ZERO items so the branch halts there.
+	 * Set for wait-gate nodes that can loop back into themselves: a pinned gate
+	 * cannot pause, so a fixture would re-run the loop with the same canned
+	 * response forever. Fixtures and overrides never apply to these nodes.
+	 */
+	haltBranch: z.boolean().optional(),
 });
 
 export type NodeSimulationVerdict = z.infer<typeof nodeSimulationVerdictSchema>;

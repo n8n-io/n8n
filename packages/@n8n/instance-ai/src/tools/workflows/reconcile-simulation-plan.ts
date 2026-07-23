@@ -18,6 +18,7 @@ import { isAiGatewayManagedCredential } from './credential-utils';
 import {
 	CREDENTIALLESS_AI_ROOT_SIMULATION_REASON,
 	findCredentiallessAiRoots,
+	withWaitGateHaltVerdicts,
 } from './plan-verification-simulation';
 import type { CredentialMap } from './resolve-credentials';
 import type { ModelConfig } from '../../types';
@@ -143,7 +144,7 @@ export async function reconcileSimulationPlan(args: {
 	// flow) keeps its stored verdict — losing coverage is worse than an extra
 	// simulation. Restored AI roots are deterministically safe by type, so
 	// flipping straight to execute matches what a rebuild would classify.
-	const nodeSimulationPlan = buildOutcome.nodeSimulationPlan?.map((verdict) => {
+	const reconciledPlan = buildOutcome.nodeSimulationPlan?.map((verdict) => {
 		if (satisfiedNames.has(verdict.nodeName)) {
 			return freshVerdictByName.get(verdict.nodeName) ?? verdict;
 		}
@@ -158,6 +159,9 @@ export async function reconcileSimulationPlan(args: {
 		}
 		return verdict;
 	});
+	// Fresh verdicts from re-classification drop `haltBranch`; re-derive it so a
+	// wait gate that stays simulated keeps halting instead of looping.
+	const nodeSimulationPlan = reconciledPlan && withWaitGateHaltVerdicts(reconciledPlan, workflow);
 
 	const retainedFixtureEntries = Object.entries(buildOutcome.simulationFixtures ?? {}).filter(
 		([nodeName]) =>

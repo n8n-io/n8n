@@ -171,6 +171,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				result,
 				buildOutcome,
 				simulatedNodes: prepared.simulatedNodes,
+				haltedGateNames: prepared.haltedGateNames,
 				stateBefore: target.stateBefore,
 				runId: context.runId,
 			});
