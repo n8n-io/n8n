@@ -451,7 +451,6 @@ defineExpose({ focus, blur, select });
 	flex-shrink: 0;
 	color: var(--color--text--shade-1);
 	opacity: 0.7;
-	font-size: var(--input--font-size, var(--font-size--sm));
 
 	svg {
 		width: var(--spacing--sm);
@@ -488,8 +487,6 @@ defineExpose({ focus, blur, select });
 	flex-shrink: 0;
 	background-color: light-dark(var(--color--neutral-150), var(--color--neutral-800));
 	padding: 0 var(--spacing--xs);
-	font-size: var(--input--font-size, var(--font-size--sm));
-	min-height: var(--input--height);
 }
 
 .prepend {
