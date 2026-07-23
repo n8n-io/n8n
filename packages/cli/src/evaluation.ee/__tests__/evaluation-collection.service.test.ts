@@ -127,24 +127,18 @@ describe('EvaluationCollectionService', () => {
 		logger = mock<Logger>();
 		databaseConfig = mock<DatabaseConfig>();
 		tx = mock<EntityManager>();
-		// `.manager` isn't deep-mocked; point it at `tx` so `manager.transaction(cb)`
-		// runs the callback with our mock EntityManager. (`manager` is readonly on
-		// the repo type, so assign through a cast in this test-only wiring.)
+		// `.manager` isn't deep-mocked; point it at `tx` so the Postgres re-run path's
+		// `manager.transaction(cb)` runs the callback with our mock EntityManager.
+		// (`manager` is readonly on the repo type, so assign through a cast here.)
 		(collectionRepo as unknown as { manager: EntityManager }).manager = tx;
+		tx.transaction.mockImplementation(
+			(async (runInTx: (m: EntityManager) => Promise<unknown>) => await runInTx(tx)) as never,
+		);
+		tx.query.mockResolvedValue([] as never); // pg_advisory_xact_lock is a no-op in tests
 
 		// Async no-op cleanup paths used by rerun rollback.
 		collectionRepo.removeRunsFromCollection.mockResolvedValue(undefined);
 		testRunnerService.cancelTestRun.mockResolvedValue(undefined);
-
-		// rerunCollection runs inside a locked transaction and reads the collection +
-		// runs off the tx. Feed those from the same fixture the tests configure on
-		// getDetailByIdAndWorkflowId, so the rerun tests keep setting one mock.
-		tx.transaction.mockImplementation((async (runInTx: (m: EntityManager) => Promise<unknown>) => {
-			const detail = await collectionRepo.getDetailByIdAndWorkflowId('', '');
-			tx.findOne.mockResolvedValue((detail?.collection ?? null) as never);
-			tx.find.mockResolvedValue((detail?.runs ?? []) as never);
-			return await runInTx(tx);
-		}) as never);
 
 		service = new EvaluationCollectionService(
 			collectionRepo,
@@ -356,26 +350,30 @@ describe('EvaluationCollectionService', () => {
 				finished: Promise.resolve(),
 			});
 
-		it('takes a pessimistic row lock to re-check in-flight runs under Postgres', async () => {
+		it('serializes re-runs with a transaction-scoped advisory lock under Postgres', async () => {
 			databaseConfig.type = 'postgresdb';
 			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce(singleCompletedRun());
 			freshRunStarts();
 
 			await service.rerunCollection(user, 'wf-1', 'col-1');
 
-			const opts = tx.findOne.mock.calls[0]?.[1];
-			expect(opts).toMatchObject({ where: { id: 'col-1', workflowId: 'wf-1' } });
-			expect(opts?.lock).toEqual({ mode: 'pessimistic_write' });
+			// Advisory lock (not a row lock — that deadlocks against the child insert's
+			// FK lock), keyed by the collection id, taken inside the transaction.
+			expect(tx.transaction).toHaveBeenCalledTimes(1);
+			expect(tx.query).toHaveBeenCalledWith(expect.stringContaining('pg_advisory_xact_lock'), [
+				'col-1',
+			]);
 		});
 
-		it('skips the row lock under SQLite (relies on its own write serialization)', async () => {
+		it('runs without a transaction or advisory lock under SQLite', async () => {
 			databaseConfig.type = 'sqlite';
 			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce(singleCompletedRun());
 			freshRunStarts();
 
 			await service.rerunCollection(user, 'wf-1', 'col-1');
 
-			expect(tx.findOne.mock.calls[0]?.[1]?.lock).toBeUndefined();
+			expect(tx.transaction).not.toHaveBeenCalled();
+			expect(tx.query).not.toHaveBeenCalled();
 		});
 
 		it('re-runs every version with fresh runs and unlinks the old runs', async () => {
@@ -797,7 +795,7 @@ describe('EvaluationCollectionService', () => {
 			// The config was edited after the run: "Quality" is now an expression
 			// (unit), but the run scored it 1–5 under its snapshot. It must normalize
 			// on the snapshot scale (oneToFive), not the current config's — otherwise 5
-			// falls outside [0,1] and is dropped (the TRUST-316 failure, across an edit).
+			// falls outside [0,1] and is dropped (the score-model failure, across an edit).
 			evalConfigRepo.findByIdAndWorkflowId.mockResolvedValue(
 				makeConfig({
 					metrics: [

@@ -11,12 +11,10 @@ import type {
 import { metricScalesFromConfig, normalizeMetricScore } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { DatabaseConfig } from '@n8n/config';
-import type { EvaluationConfig, User } from '@n8n/db';
+import type { EvaluationConfig, TestRun, User } from '@n8n/db';
 import {
-	EvaluationCollection,
 	EvaluationCollectionRepository,
 	EvaluationConfigRepository,
-	TestRun,
 	TestRunRepository,
 	WorkflowHistoryRepository,
 	WorkflowPublishedVersionRepository,
@@ -206,29 +204,16 @@ export class EvaluationCollectionService {
 		collectionId: string,
 	): Promise<{ record: EvaluationCollectionRecord; runsStartedIds: string[] }> {
 		// Serialize concurrent re-runs of the same collection so two tabs can't each
-		// launch a wave: hold a write lock on the collection row across the in-flight
-		// re-check + kickoff, so a second caller waits, then sees the first's fresh
-		// runs and bails. Postgres gets a real row lock; SQLite serializes write
-		// transactions on its own, so the lock is Postgres-only (mirrors the pattern
-		// in ExecutionPersistence).
-		return await this.collectionRepo.manager.transaction(async (tx) => {
-			const lock =
-				this.databaseConfig.type === 'postgresdb'
-					? ({ mode: 'pessimistic_write' } as const)
-					: undefined;
-			const collection = await tx.findOne(EvaluationCollection, {
-				where: { id: collectionId, workflowId },
-				lock,
-			});
-			if (!collection) throw new NotFoundError('Collection not found');
+		// launch a wave: a second caller waits on the re-run lock, then sees the
+		// first's fresh runs below and bails.
+		return await this.withRerunLock(collectionId, async () => {
+			const detail = await this.collectionRepo.getDetailByIdAndWorkflowId(collectionId, workflowId);
+			if (!detail) throw new NotFoundError('Collection not found');
+			const { collection, runs } = detail;
 
-			// Re-checked inside the lock: a concurrent re-run that already started has
-			// committed its fresh (new/running) runs by now, so this sees them and a
-			// second wave never launches.
-			const runs = await tx.find(TestRun, {
-				where: { collectionId },
-				order: { createdAt: 'ASC' },
-			});
+			// Re-checked while holding the re-run lock: a concurrent re-run that already
+			// started has committed its fresh (new/running) runs by now, so this sees
+			// them and a second wave never launches.
 			if (runs.some((r) => r.status === 'new' || r.status === 'running')) {
 				throw new BadRequestError('Collection run already in progress');
 			}
@@ -323,6 +308,25 @@ export class EvaluationCollectionService {
 
 			const record = this.toRecord(collection, runsStartedIds.length);
 			return { record, runsStartedIds };
+		});
+	}
+
+	/**
+	 * Runs `fn` under a per-collection re-run lock so two concurrent re-runs can't
+	 * each launch a wave. On Postgres this is a transaction-scoped advisory lock —
+	 * deliberately NOT a row lock: a `FOR UPDATE` on the collection row would
+	 * deadlock against the FK KEY-SHARE lock the child `test_run` inserts take on
+	 * that row. Other databases (SQLite) run `fn` directly, so the in-flight
+	 * re-check is best-effort there (single-instance deployments only).
+	 */
+	private async withRerunLock<T>(collectionId: string, fn: () => Promise<T>): Promise<T> {
+		if (this.databaseConfig.type !== 'postgresdb') {
+			return await fn();
+		}
+		return await this.collectionRepo.manager.transaction(async (tx) => {
+			// Advisory lock is released on commit; `hashtext` maps the id to the key.
+			await tx.query('SELECT pg_advisory_xact_lock(hashtext($1)::bigint)', [collectionId]);
+			return await fn();
 		});
 	}
 

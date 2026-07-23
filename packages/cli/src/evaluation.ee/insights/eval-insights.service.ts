@@ -75,10 +75,6 @@ export class EvalInsightsService {
 			});
 		}
 
-		// Labels (A/B/C) map to each run's index in the *full* collection
-		// (`detail.runs` is `createdAt ASC`), and the FE labels by the same
-		// position — so keep filtered-out runs on their original index or the
-		// winner/regression gets attributed to the wrong version.
 		// Collection-wide scales from the current config — the default for runs with
 		// no snapshot. Each run further resolves its own scales from its frozen
 		// snapshot so a later config edit can't misnormalize an old run's values.
@@ -88,6 +84,10 @@ export class EvalInsightsService {
 			workflowId,
 		);
 
+		// Labels (A/B/C) map to each run's index in the *full* collection
+		// (`detail.runs` is `createdAt ASC`), and the FE labels by the same
+		// position — so keep filtered-out runs on their original index or the
+		// winner/regression gets attributed to the wrong version.
 		const summaries: RunSummary[] = [];
 		detail.runs.forEach((run, originalIndex) => {
 			if (run.status === 'completed' && run.metrics) {
@@ -173,10 +173,6 @@ export class EvalInsightsService {
 		return out;
 	}
 
-	/**
-	 * Maps each metric name to its scale. Returns an empty map (name-based
-	 * fallback in `normalizeMetricScore`) when the config can't be found.
-	 */
 	/**
 	 * Deferred: throws to signal "no LLM available" so callers fall back to the
 	 * deterministic envelope. Replace the body with a real LLM call; the rest of
