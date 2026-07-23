@@ -18,11 +18,11 @@ import { mergeRequirements } from './entities/requirements.types';
 import { VariableExporter } from './entities/variable/variable.exporter';
 import { collectNodeTypeUsage } from './entities/workflow/node-type-usage';
 import { assertStaticSubWorkflowsIncluded } from './entities/workflow/static-sub-workflow-requirements';
-import { StaticWorkflowDependencyResolver } from './entities/workflow/static-workflow-dependency-resolver';
+import { AutoIncludedWorkflowResolver } from './entities/workflow/auto-included-workflow-resolver';
 import {
-	StaticWorkflowDependencyExporter,
-	type StaticWorkflowDependencyExportResult,
-} from './entities/workflow/static-workflow-dependency.exporter';
+	AutoIncludedWorkflowExporter,
+	type AutoIncludedWorkflowExportResult,
+} from './entities/workflow/auto-included-workflow.exporter';
 import { WorkflowDependencyResolver } from './entities/workflow/workflow-dependency-resolver';
 import { WorkflowRequirementExporter } from './entities/workflow/workflow-requirement.exporter';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
@@ -60,8 +60,8 @@ export class N8nPackagesService {
 		private readonly eventService: EventService,
 		private readonly workflowRequirementExporter: WorkflowRequirementExporter,
 		private readonly workflowDependencyResolver: WorkflowDependencyResolver,
-		private readonly staticWorkflowDependencyResolver: StaticWorkflowDependencyResolver,
-		private readonly staticWorkflowDependencyExporter: StaticWorkflowDependencyExporter,
+		private readonly autoIncludedWorkflowResolver: AutoIncludedWorkflowResolver,
+		private readonly autoIncludedWorkflowExporter: AutoIncludedWorkflowExporter,
 	) {}
 
 	async exportPackage(request: ExportPackageRequest): Promise<Readable> {
@@ -110,12 +110,12 @@ export class N8nPackagesService {
 					})
 				: undefined;
 
-		const allFoldersBeforeAutoAdd = [
+		const allFoldersBeforeAutoInclude = [
 			...(folderExportResult?.entries ?? []),
 			...(projectExportResult?.folderEntries ?? []),
 		];
-		const allProjectsBeforeAutoAdd = [...(projectExportResult?.entries ?? [])];
-		const allWorkflowsBeforeAutoAdd = [
+		const allProjectsBeforeAutoInclude = [...(projectExportResult?.entries ?? [])];
+		const allWorkflowsBeforeAutoInclude = [
 			...(workflowExportResult?.entries ?? []),
 			...(folderExportResult?.workflowEntries ?? []),
 			...(projectExportResult?.workflowEntries ?? []),
@@ -123,13 +123,13 @@ export class N8nPackagesService {
 
 		const workflowRequirements = await this.workflowDependencyResolver.resolve({
 			user: request.user,
-			workflowIds: allWorkflowsBeforeAutoAdd.map(({ id }) => id),
+			workflowIds: allWorkflowsBeforeAutoInclude.map(({ id }) => id),
 		});
 
-		let autoAddExportResult: StaticWorkflowDependencyExportResult | undefined;
+		let autoIncludedExportResult: AutoIncludedWorkflowExportResult | undefined;
 
 		if (missingWorkflowDependencyPolicy === MissingWorkflowDependencyPolicy.IncludeInPackage) {
-			const autoAddWorkflowRequirements = await this.staticWorkflowDependencyResolver.resolve({
+			const autoIncludedWorkflowResolution = await this.autoIncludedWorkflowResolver.resolve({
 				user: request.user,
 				requirements: workflowRequirements,
 				topLevelWorkflowIds: workflowExportResult?.entries.map(({ id }) => id) ?? [],
@@ -137,12 +137,12 @@ export class N8nPackagesService {
 				projectWorkflowIds: projectExportResult?.workflowEntries.map(({ id }) => id) ?? [],
 			});
 
-			autoAddExportResult = this.staticWorkflowDependencyExporter.export({
+			autoIncludedExportResult = this.autoIncludedWorkflowExporter.export({
 				writer,
-				dependencies: autoAddWorkflowRequirements.autoAddedWorkflows,
-				existingWorkflowEntries: allWorkflowsBeforeAutoAdd,
-				existingFolderEntries: allFoldersBeforeAutoAdd,
-				existingProjectEntries: allProjectsBeforeAutoAdd,
+				workflows: autoIncludedWorkflowResolution.autoIncludedWorkflows,
+				existingWorkflowEntries: allWorkflowsBeforeAutoInclude,
+				existingFolderEntries: allFoldersBeforeAutoInclude,
+				existingProjectEntries: allProjectsBeforeAutoInclude,
 				projectTargetsById: projectExportResult?.projectTargetsById,
 			});
 		}
@@ -151,7 +151,7 @@ export class N8nPackagesService {
 			workflowExportResult?.requirements,
 			folderExportResult?.requirements,
 			projectExportResult?.requirements,
-			autoAddExportResult?.requirements,
+			autoIncludedExportResult?.requirements,
 		);
 
 		const includeVariableValues = request.includeVariableValues ?? true;
@@ -166,16 +166,16 @@ export class N8nPackagesService {
 		}
 
 		const allFolders = this.dedupeManifestEntries([
-			...allFoldersBeforeAutoAdd,
-			...(autoAddExportResult?.folderEntries ?? []),
+			...allFoldersBeforeAutoInclude,
+			...(autoIncludedExportResult?.folderEntries ?? []),
 		]);
 		const allProjects = this.dedupeManifestEntries([
-			...allProjectsBeforeAutoAdd,
-			...(autoAddExportResult?.projectEntries ?? []),
+			...allProjectsBeforeAutoInclude,
+			...(autoIncludedExportResult?.projectEntries ?? []),
 		]);
 		const allWorkflowsInPackage = this.dedupeManifestEntries([
-			...allWorkflowsBeforeAutoAdd,
-			...(autoAddExportResult?.workflowEntries ?? []),
+			...allWorkflowsBeforeAutoInclude,
+			...(autoIncludedExportResult?.workflowEntries ?? []),
 		]);
 
 		assertStaticSubWorkflowsIncluded(
@@ -183,10 +183,10 @@ export class N8nPackagesService {
 			new Set(allWorkflowsInPackage.map(({ id }) => id)),
 		);
 
-		// The auto-add's projectTargetsById is a superset of the project targets from the project export result
+		// The auto-include's projectTargetsById is a superset of the project targets from the project export result
 		// that's why it takes precedence when both are present.
 		const projectTargetsById =
-			autoAddExportResult?.projectTargetsById ?? projectExportResult?.projectTargetsById;
+			autoIncludedExportResult?.projectTargetsById ?? projectExportResult?.projectTargetsById;
 
 		const credentialExportResult = await this.credentialExporter.export({
 			user: request.user,

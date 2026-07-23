@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
 import type { WorkflowNodeTypeSource } from './node-type-usage';
-import type { StaticWorkflowDependency } from './static-workflow-dependency-resolver';
+import type { AutoIncludedWorkflow } from './auto-included-workflow-resolver';
 import { WorkflowSerializer } from './workflow.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
@@ -18,16 +18,16 @@ import type { WorkflowExportRequirements } from '../requirements.types';
 import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
 import type { WorkflowVariableRequirement } from '../variable/variable.types';
 
-export interface StaticWorkflowDependencyExportRequest {
+export interface AutoIncludedWorkflowExportRequest {
 	writer: PackageWriter;
-	dependencies: StaticWorkflowDependency[];
+	workflows: AutoIncludedWorkflow[];
 	existingWorkflowEntries: ManifestEntry[];
 	existingFolderEntries: ManifestEntry[];
 	existingProjectEntries: ManifestEntry[];
 	projectTargetsById?: Map<string, string>;
 }
 
-export interface StaticWorkflowDependencyExportResult {
+export interface AutoIncludedWorkflowExportResult {
 	workflowEntries: ManifestEntry[];
 	folderEntries: ManifestEntry[];
 	projectEntries: ManifestEntry[];
@@ -41,8 +41,12 @@ interface ExportAllocators {
 	project: UniqueFilenameAllocator;
 }
 
+/**
+ * Exports auto-included workflows, materializing any folder/project shells
+ * needed for their placement.
+ */
 @Service()
-export class StaticWorkflowDependencyExporter {
+export class AutoIncludedWorkflowExporter {
 	constructor(
 		private readonly workflowSerializer: WorkflowSerializer,
 		private readonly folderSerializer: FolderSerializer,
@@ -52,7 +56,7 @@ export class StaticWorkflowDependencyExporter {
 		private readonly variableRequirementsExtractor: VariableRequirementsExtractor,
 	) {}
 
-	export(request: StaticWorkflowDependencyExportRequest): StaticWorkflowDependencyExportResult {
+	export(request: AutoIncludedWorkflowExportRequest): AutoIncludedWorkflowExportResult {
 		const allocators: ExportAllocators = {
 			workflows: new Map(),
 			folders: new Map(),
@@ -91,11 +95,11 @@ export class StaticWorkflowDependencyExporter {
 		const variables: WorkflowVariableRequirement[] = [];
 		const nodeTypes: WorkflowNodeTypeSource[] = [];
 
-		for (const dependency of request.dependencies) {
-			if (workflowEntriesById.has(dependency.workflow.id)) continue;
+		for (const included of request.workflows) {
+			if (workflowEntriesById.has(included.workflow.id)) continue;
 
 			const baseDir = this.resolveWorkflowBaseDir({
-				dependency,
+				included,
 				writer: request.writer,
 				folderEntriesById,
 				projectEntriesById,
@@ -105,19 +109,19 @@ export class StaticWorkflowDependencyExporter {
 				allocators,
 			});
 			const entry = this.writeWorkflow(
-				dependency.workflow,
+				included.workflow,
 				baseDir,
 				request.writer,
 				allocators.workflows,
 			);
 			workflowEntries.push(entry);
 			workflowEntriesById.set(entry.id, entry);
-			credentials.push(...this.credentialRequirementsExtractor.extract(dependency.workflow));
-			dataTables.push(...this.dataTableRequirementsExtractor.extract(dependency.workflow));
-			variables.push(...this.variableRequirementsExtractor.extract(dependency.workflow));
+			credentials.push(...this.credentialRequirementsExtractor.extract(included.workflow));
+			dataTables.push(...this.dataTableRequirementsExtractor.extract(included.workflow));
+			variables.push(...this.variableRequirementsExtractor.extract(included.workflow));
 			nodeTypes.push({
-				workflowId: dependency.workflow.id,
-				nodes: dependency.workflow.nodes ?? [],
+				workflowId: included.workflow.id,
+				nodes: included.workflow.nodes ?? [],
 			});
 		}
 
@@ -131,7 +135,7 @@ export class StaticWorkflowDependencyExporter {
 	}
 
 	private resolveWorkflowBaseDir(options: {
-		dependency: StaticWorkflowDependency;
+		included: AutoIncludedWorkflow;
 		writer: PackageWriter;
 		folderEntriesById: Map<string, ManifestEntry>;
 		projectEntriesById: Map<string, ManifestEntry>;
@@ -140,10 +144,10 @@ export class StaticWorkflowDependencyExporter {
 		projectEntries: ManifestEntry[];
 		allocators: ExportAllocators;
 	}): string {
-		const { dependency } = options;
-		if (dependency.placement === 'project') {
+		const { included } = options;
+		if (included.placement === 'project') {
 			const projectTarget = this.ensureProjectShell({
-				project: dependency.ownerProject,
+				project: included.ownerProject,
 				writer: options.writer,
 				projectEntriesById: options.projectEntriesById,
 				projectTargetsById: options.projectTargetsById,
@@ -151,12 +155,12 @@ export class StaticWorkflowDependencyExporter {
 				allocator: options.allocators.project,
 			});
 
-			if (dependency.folderChain.length === 0) {
+			if (included.folderChain.length === 0) {
 				return `${projectTarget}/workflows`;
 			}
 
 			const folderTarget = this.ensureFolderChain({
-				chain: dependency.folderChain,
+				chain: included.folderChain,
 				baseDir: `${projectTarget}/folders`,
 				writer: options.writer,
 				folderEntriesById: options.folderEntriesById,
@@ -166,9 +170,9 @@ export class StaticWorkflowDependencyExporter {
 			return `${folderTarget}/workflows`;
 		}
 
-		if (dependency.placement === 'folder' && dependency.folderChain.length > 0) {
+		if (included.placement === 'folder' && included.folderChain.length > 0) {
 			const folderTarget = this.ensureFolderChain({
-				chain: dependency.folderChain,
+				chain: included.folderChain,
 				baseDir: 'folders',
 				writer: options.writer,
 				folderEntriesById: options.folderEntriesById,

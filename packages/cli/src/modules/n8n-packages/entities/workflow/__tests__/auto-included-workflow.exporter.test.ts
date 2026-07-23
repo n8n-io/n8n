@@ -10,8 +10,8 @@ import { DataTableRequirementsExtractor } from '../../data-table/data-table-requ
 import { FolderSerializer } from '../../folder/folder.serializer';
 import { ProjectSerializer } from '../../project/project.serializer';
 import { VariableRequirementsExtractor } from '../../variable/variable-requirements.extractor';
-import type { StaticWorkflowDependency } from '../static-workflow-dependency-resolver';
-import { StaticWorkflowDependencyExporter } from '../static-workflow-dependency.exporter';
+import type { AutoIncludedWorkflow } from '../auto-included-workflow-resolver';
+import { AutoIncludedWorkflowExporter } from '../auto-included-workflow.exporter';
 import { WorkflowSerializer } from '../workflow.serializer';
 
 function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
@@ -37,7 +37,7 @@ function makeProject(id: string, name: string): Project {
 	return { id, name, description: null, icon: null } as Project;
 }
 
-function dependency(overrides: Partial<StaticWorkflowDependency> = {}): StaticWorkflowDependency {
+function includedWorkflow(overrides: Partial<AutoIncludedWorkflow> = {}): AutoIncludedWorkflow {
 	return {
 		workflow: makeWorkflow(),
 		placement: 'top-level',
@@ -52,7 +52,7 @@ function makeExporter(
 	dataTableExtractor?: DataTableRequirementsExtractor,
 	variableExtractor?: VariableRequirementsExtractor,
 ) {
-	return new StaticWorkflowDependencyExporter(
+	return new AutoIncludedWorkflowExporter(
 		new WorkflowSerializer(),
 		new FolderSerializer(),
 		new ProjectSerializer(),
@@ -62,24 +62,24 @@ function makeExporter(
 	);
 }
 
-function emptyRequest(writer: CapturingWriter, dependencies: StaticWorkflowDependency[]) {
+function emptyRequest(writer: CapturingWriter, workflows: AutoIncludedWorkflow[]) {
 	return {
 		writer,
-		dependencies,
+		workflows,
 		existingWorkflowEntries: [] as ManifestEntry[],
 		existingFolderEntries: [] as ManifestEntry[],
 		existingProjectEntries: [] as ManifestEntry[],
 	};
 }
 
-describe('StaticWorkflowDependencyExporter', () => {
-	it('writes a top-level dependency under workflows/', () => {
+describe('AutoIncludedWorkflowExporter', () => {
+	it('writes a top-level workflow under workflows/', () => {
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
 		const workflow = makeWorkflow({ id: 'wf-triage', name: 'Triage' });
 
 		const result = exporter.export(
-			emptyRequest(writer, [dependency({ workflow, placement: 'top-level' })]),
+			emptyRequest(writer, [includedWorkflow({ workflow, placement: 'top-level' })]),
 		);
 
 		expect(result.workflowEntries).toEqual([
@@ -88,13 +88,13 @@ describe('StaticWorkflowDependencyExporter', () => {
 		expect(writer.files.map((f) => f.path)).toContain('workflows/triage/workflow.json');
 	});
 
-	it('skips a dependency already present in the existing workflow entries', () => {
+	it('skips a workflow already present in the existing workflow entries', () => {
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
 		const workflow = makeWorkflow({ id: 'wf-dup', name: 'Already Here' });
 
 		const result = exporter.export({
-			...emptyRequest(writer, [dependency({ workflow })]),
+			...emptyRequest(writer, [includedWorkflow({ workflow })]),
 			existingWorkflowEntries: [
 				{ id: 'wf-dup', name: 'Already Here', target: 'workflows/already-here' },
 			],
@@ -104,13 +104,13 @@ describe('StaticWorkflowDependencyExporter', () => {
 		expect(writer.files).toEqual([]);
 	});
 
-	it('disambiguates a dependency target that collides with an existing entry', () => {
+	it('disambiguates a workflow target that collides with an existing entry', () => {
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
 		const workflow = makeWorkflow({ id: 'wf-new', name: 'Same Name' });
 
 		const result = exporter.export({
-			...emptyRequest(writer, [dependency({ workflow })]),
+			...emptyRequest(writer, [includedWorkflow({ workflow })]),
 			// a different workflow already occupies workflows/same-name
 			existingWorkflowEntries: [
 				{ id: 'wf-existing', name: 'Same Name', target: 'workflows/same-name' },
@@ -120,14 +120,16 @@ describe('StaticWorkflowDependencyExporter', () => {
 		expect(result.workflowEntries[0].target).toBe('workflows/same-name-2');
 	});
 
-	it('places a folder dependency under its serialized folder chain', () => {
+	it('places a folder workflow under its serialized folder chain', () => {
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
 		const workflow = makeWorkflow({ id: 'wf-nested', name: 'Nested' });
 		const chain = [makeFolder('f-root', 'Root'), makeFolder('f-child', 'Child')];
 
 		const result = exporter.export(
-			emptyRequest(writer, [dependency({ workflow, placement: 'folder', folderChain: chain })]),
+			emptyRequest(writer, [
+				includedWorkflow({ workflow, placement: 'folder', folderChain: chain }),
+			]),
 		);
 
 		expect(result.workflowEntries[0].target).toBe('folders/root/child/workflows/nested');
@@ -149,7 +151,9 @@ describe('StaticWorkflowDependencyExporter', () => {
 		const chain = [makeFolder('f-root', 'Root')];
 
 		const result = exporter.export({
-			...emptyRequest(writer, [dependency({ workflow, placement: 'folder', folderChain: chain })]),
+			...emptyRequest(writer, [
+				includedWorkflow({ workflow, placement: 'folder', folderChain: chain }),
+			]),
 			existingFolderEntries: [{ id: 'f-root', name: 'Root', target: 'folders/root' }],
 		});
 
@@ -158,7 +162,7 @@ describe('StaticWorkflowDependencyExporter', () => {
 		expect(writer.files.some((f) => f.path === 'folders/root/folder.json')).toBe(false);
 	});
 
-	it('creates a project shell for a project dependency and reports its target', () => {
+	it('creates a project shell for a project workflow and reports its target', () => {
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
 		const workflow = makeWorkflow({ id: 'wf-p', name: 'In Project' });
@@ -166,7 +170,12 @@ describe('StaticWorkflowDependencyExporter', () => {
 
 		const result = exporter.export(
 			emptyRequest(writer, [
-				dependency({ workflow, placement: 'project', ownerProject: project, folderChain: [] }),
+				includedWorkflow({
+					workflow,
+					placement: 'project',
+					ownerProject: project,
+					folderChain: [],
+				}),
 			]),
 		);
 
@@ -178,7 +187,7 @@ describe('StaticWorkflowDependencyExporter', () => {
 		expect(writer.files.some((f) => f.path === 'projects/marketing/project.json')).toBe(true);
 	});
 
-	it('nests a project dependency with a folder chain under the project folders/', () => {
+	it('nests a project workflow with a folder chain under the project folders/', () => {
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
 		const workflow = makeWorkflow({ id: 'wf-pf', name: 'Deep' });
@@ -187,7 +196,12 @@ describe('StaticWorkflowDependencyExporter', () => {
 
 		const result = exporter.export(
 			emptyRequest(writer, [
-				dependency({ workflow, placement: 'project', ownerProject: project, folderChain: chain }),
+				includedWorkflow({
+					workflow,
+					placement: 'project',
+					ownerProject: project,
+					folderChain: chain,
+				}),
 			]),
 		);
 
@@ -204,7 +218,12 @@ describe('StaticWorkflowDependencyExporter', () => {
 
 		const result = exporter.export({
 			...emptyRequest(writer, [
-				dependency({ workflow, placement: 'project', ownerProject: project, folderChain: [] }),
+				includedWorkflow({
+					workflow,
+					placement: 'project',
+					ownerProject: project,
+					folderChain: [],
+				}),
 			]),
 			existingProjectEntries: [{ id: 'proj-9', name: 'Marketing', target: 'projects/marketing' }],
 		});
@@ -215,7 +234,7 @@ describe('StaticWorkflowDependencyExporter', () => {
 		expect(writer.files.some((f) => f.path === 'projects/marketing/project.json')).toBe(false);
 	});
 
-	it('extracts credential, data-table, and variable requirements from each dependency', () => {
+	it('extracts credential, data-table, and variable requirements from each workflow', () => {
 		const credentialExtractor = mock<CredentialRequirementsExtractor>();
 		credentialExtractor.extract.mockReturnValue([
 			{
@@ -233,7 +252,7 @@ describe('StaticWorkflowDependencyExporter', () => {
 		const exporter = makeExporter(credentialExtractor, dataTableExtractor, variableExtractor);
 		const writer = new CapturingWriter();
 
-		const result = exporter.export(emptyRequest(writer, [dependency()]));
+		const result = exporter.export(emptyRequest(writer, [includedWorkflow()]));
 
 		expect(result.requirements.credentials).toEqual([
 			{
@@ -249,7 +268,7 @@ describe('StaticWorkflowDependencyExporter', () => {
 		]);
 	});
 
-	it('collects each dependency node list into requirements.nodeTypes', () => {
+	it('collects each workflow node list into requirements.nodeTypes', () => {
 		const nodeA = {
 			id: 'n1',
 			name: 'HTTP',
@@ -264,7 +283,7 @@ describe('StaticWorkflowDependencyExporter', () => {
 		const writer = new CapturingWriter();
 
 		const result = exporter.export(
-			emptyRequest(writer, [dependency({ workflow: a }), dependency({ workflow: b })]),
+			emptyRequest(writer, [includedWorkflow({ workflow: a }), includedWorkflow({ workflow: b })]),
 		);
 
 		expect(result.requirements.nodeTypes).toEqual([
@@ -273,7 +292,7 @@ describe('StaticWorkflowDependencyExporter', () => {
 		]);
 	});
 
-	it('does not extract requirements from a skipped (already-exported) dependency', () => {
+	it('does not extract requirements from a skipped (already-exported) workflow', () => {
 		const credentialExtractor = mock<CredentialRequirementsExtractor>();
 		credentialExtractor.extract.mockReturnValue([]);
 		const exporter = makeExporter(credentialExtractor);
@@ -281,7 +300,7 @@ describe('StaticWorkflowDependencyExporter', () => {
 		const workflow = makeWorkflow({ id: 'wf-dup', name: 'Already Here' });
 
 		const result = exporter.export({
-			...emptyRequest(writer, [dependency({ workflow })]),
+			...emptyRequest(writer, [includedWorkflow({ workflow })]),
 			existingWorkflowEntries: [
 				{ id: 'wf-dup', name: 'Already Here', target: 'workflows/already-here' },
 			],
@@ -300,13 +319,13 @@ describe('StaticWorkflowDependencyExporter', () => {
 		const result = exporter.export(
 			emptyRequest(writer, [
 				// A workflow placed directly in Root → folders/root/workflows/alpha
-				dependency({
+				includedWorkflow({
 					workflow: makeWorkflow({ id: 'wf-a', name: 'Alpha' }),
 					placement: 'folder',
 					folderChain: [root],
 				}),
 				// A workflow nested under Root's child folder literally named "Workflows"
-				dependency({
+				includedWorkflow({
 					workflow: makeWorkflow({ id: 'wf-b', name: 'Beta' }),
 					placement: 'folder',
 					folderChain: [root, wfFolder],
@@ -324,19 +343,19 @@ describe('StaticWorkflowDependencyExporter', () => {
 		expect(nestedWorkflow?.target).toBe('folders/root/workflows-2/workflows/beta');
 	});
 
-	it('shares one folder shell between two dependencies in the same folder', () => {
+	it('shares one folder shell between two workflows in the same folder', () => {
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
 		const chain = [makeFolder('f-root', 'Root')];
 
 		const result = exporter.export(
 			emptyRequest(writer, [
-				dependency({
+				includedWorkflow({
 					workflow: makeWorkflow({ id: 'wf-a', name: 'Alpha' }),
 					placement: 'folder',
 					folderChain: chain,
 				}),
-				dependency({
+				includedWorkflow({
 					workflow: makeWorkflow({ id: 'wf-b', name: 'Beta' }),
 					placement: 'folder',
 					folderChain: chain,

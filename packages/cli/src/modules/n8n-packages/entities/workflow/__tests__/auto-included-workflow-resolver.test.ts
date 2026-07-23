@@ -10,7 +10,7 @@ import {
 	PackageEntityNotFoundError,
 	PackageExportBlockedError,
 } from '../../package-export.errors';
-import { StaticWorkflowDependencyResolver } from '../static-workflow-dependency-resolver';
+import { AutoIncludedWorkflowResolver } from '../auto-included-workflow-resolver';
 import type { WorkflowSubWorkflowRequirement } from '../workflow.types';
 
 const user = mock<User>({ id: 'user-1' });
@@ -75,7 +75,7 @@ function makeResolver(options: {
 		new Map(Object.entries(options.owners ?? {})),
 	);
 
-	const resolver = new StaticWorkflowDependencyResolver(
+	const resolver = new AutoIncludedWorkflowResolver(
 		workflowFinder,
 		folderFinder,
 		projectService,
@@ -107,39 +107,39 @@ function resolveInput(options: {
 	};
 }
 
-describe('StaticWorkflowDependencyResolver', () => {
+describe('AutoIncludedWorkflowResolver', () => {
 	it('returns nothing to add when every requirement points back at a seed', async () => {
 		const { resolver } = makeResolver({
 			workflows: [makeWorkflow('a'), makeWorkflow('b')],
 		});
 
-		const { autoAddedWorkflows } = await resolver.resolve(
+		const { autoIncludedWorkflows } = await resolver.resolve(
 			resolveInput({
 				topLevelWorkflowIds: ['a', 'b'],
 				requirements: [requirement('a', 'b')],
 			}),
 		);
 
-		expect(autoAddedWorkflows).toEqual([]);
+		expect(autoIncludedWorkflows).toEqual([]);
 	});
 
-	it('auto-adds transitively reachable sub-workflows carrying the seed placement', async () => {
+	it('auto-includes transitively reachable sub-workflows carrying the seed placement', async () => {
 		// seed a → b → c, only a is exported
 		const { resolver } = makeResolver({
 			workflows: [makeWorkflow('a'), makeWorkflow('b'), makeWorkflow('c')],
 			owners: { b: makeProject('p1'), c: makeProject('p1') },
 		});
 
-		const { autoAddedWorkflows } = await resolver.resolve(
+		const { autoIncludedWorkflows } = await resolver.resolve(
 			resolveInput({
 				topLevelWorkflowIds: ['a'],
 				requirements: [requirement('a', 'b'), requirement('b', 'c')],
 			}),
 		);
 
-		expect(autoAddedWorkflows.map((d) => d.workflow.id)).toEqual(['b', 'c']);
-		expect(autoAddedWorkflows.every((d) => d.placement === 'top-level')).toBe(true);
-		expect(autoAddedWorkflows.every((d) => d.folderChain.length === 0)).toBe(true);
+		expect(autoIncludedWorkflows.map((d) => d.workflow.id)).toEqual(['b', 'c']);
+		expect(autoIncludedWorkflows.every((d) => d.placement === 'top-level')).toBe(true);
+		expect(autoIncludedWorkflows.every((d) => d.folderChain.length === 0)).toBe(true);
 	});
 
 	it('prefers folder over top-level when a workflow is reached from both a folder and a top-level seed', async () => {
@@ -152,7 +152,7 @@ describe('StaticWorkflowDependencyResolver', () => {
 			folderChains: { root: chain },
 		});
 
-		const { autoAddedWorkflows } = await resolver.resolve(
+		const { autoIncludedWorkflows } = await resolver.resolve(
 			resolveInput({
 				topLevelWorkflowIds: ['topSeed'],
 				folderWorkflowIds: ['folderSeed'],
@@ -160,8 +160,8 @@ describe('StaticWorkflowDependencyResolver', () => {
 			}),
 		);
 
-		expect(autoAddedWorkflows).toHaveLength(1);
-		expect(autoAddedWorkflows[0].placement).toBe('folder');
+		expect(autoIncludedWorkflows).toHaveLength(1);
+		expect(autoIncludedWorkflows[0].placement).toBe('folder');
 	});
 
 	it('prefers the richest placement (project > folder > top-level) when origins converge', async () => {
@@ -174,7 +174,7 @@ describe('StaticWorkflowDependencyResolver', () => {
 			projects: [project],
 		});
 
-		const { autoAddedWorkflows } = await resolver.resolve(
+		const { autoIncludedWorkflows } = await resolver.resolve(
 			resolveInput({
 				folderWorkflowIds: ['folderSeed'],
 				projectWorkflowIds: ['projectSeed'],
@@ -182,9 +182,9 @@ describe('StaticWorkflowDependencyResolver', () => {
 			}),
 		);
 
-		expect(autoAddedWorkflows).toHaveLength(1);
-		expect(autoAddedWorkflows[0].placement).toBe('project');
-		expect(autoAddedWorkflows[0].ownerProject).toBe(project);
+		expect(autoIncludedWorkflows).toHaveLength(1);
+		expect(autoIncludedWorkflows[0].placement).toBe('project');
+		expect(autoIncludedWorkflows[0].ownerProject).toBe(project);
 	});
 
 	it('resolves the folder chain for a folder-placed dependency with a parent folder', async () => {
@@ -195,15 +195,15 @@ describe('StaticWorkflowDependencyResolver', () => {
 			folderChains: { child: chain },
 		});
 
-		const { autoAddedWorkflows } = await resolver.resolve(
+		const { autoIncludedWorkflows } = await resolver.resolve(
 			resolveInput({
 				folderWorkflowIds: ['seed'],
 				requirements: [requirement('seed', 'b')],
 			}),
 		);
 
-		expect(autoAddedWorkflows[0].placement).toBe('folder');
-		expect(autoAddedWorkflows[0].folderChain).toEqual(chain);
+		expect(autoIncludedWorkflows[0].placement).toBe('folder');
+		expect(autoIncludedWorkflows[0].folderChain).toEqual(chain);
 		expect(folderFinder.findFolderAncestorChainsForUser).toHaveBeenCalledWith(['child'], user, [
 			'folder:read',
 		]);
@@ -215,32 +215,32 @@ describe('StaticWorkflowDependencyResolver', () => {
 			owners: { b: makeProject('p1') },
 		});
 
-		const { autoAddedWorkflows } = await resolver.resolve(
+		const { autoIncludedWorkflows } = await resolver.resolve(
 			resolveInput({
 				folderWorkflowIds: ['seed'],
 				requirements: [requirement('seed', 'b')],
 			}),
 		);
 
-		expect(autoAddedWorkflows[0].placement).toBe('top-level');
-		expect(autoAddedWorkflows[0].folderChain).toEqual([]);
+		expect(autoIncludedWorkflows[0].placement).toBe('top-level');
+		expect(autoIncludedWorkflows[0].folderChain).toEqual([]);
 	});
 
-	it('auto-adds each workflow once when sub-workflow references are circular', async () => {
+	it('auto-includes each workflow once when sub-workflow references are circular', async () => {
 		// seed → b → c → b (cycle); b and c added exactly once.
 		const { resolver } = makeResolver({
 			workflows: [makeWorkflow('seed'), makeWorkflow('b'), makeWorkflow('c')],
 			owners: { b: makeProject('p1'), c: makeProject('p1') },
 		});
 
-		const { autoAddedWorkflows } = await resolver.resolve(
+		const { autoIncludedWorkflows } = await resolver.resolve(
 			resolveInput({
 				topLevelWorkflowIds: ['seed'],
 				requirements: [requirement('seed', 'b'), requirement('b', 'c'), requirement('c', 'b')],
 			}),
 		);
 
-		expect(autoAddedWorkflows.map((d) => d.workflow.id).sort()).toEqual(['b', 'c']);
+		expect(autoIncludedWorkflows.map((d) => d.workflow.id).sort()).toEqual(['b', 'c']);
 	});
 
 	it('merges the same workflow listed in multiple origin buckets before resolving placement', async () => {
@@ -253,7 +253,7 @@ describe('StaticWorkflowDependencyResolver', () => {
 			projects: [project],
 		});
 
-		const { autoAddedWorkflows } = await resolver.resolve(
+		const { autoIncludedWorkflows } = await resolver.resolve(
 			resolveInput({
 				folderWorkflowIds: ['seed'],
 				projectWorkflowIds: ['seed'],
@@ -261,7 +261,7 @@ describe('StaticWorkflowDependencyResolver', () => {
 			}),
 		);
 
-		expect(autoAddedWorkflows[0].placement).toBe('project');
+		expect(autoIncludedWorkflows[0].placement).toBe('project');
 	});
 
 	it('throws PackageExportBlockedError when a dependency has no owner project', async () => {
@@ -280,7 +280,7 @@ describe('StaticWorkflowDependencyResolver', () => {
 		).rejects.toThrow(PackageExportBlockedError);
 	});
 
-	it('throws PackageEntityNotFoundError when an auto-added sub-workflow does not exist at all', async () => {
+	it('throws PackageEntityNotFoundError when an auto-included sub-workflow does not exist at all', async () => {
 		// `seed` references `b`, but `b` is absent from the finder pool and the
 		// existence re-check finds nothing either, so it is genuinely deleted.
 		const { resolver } = makeResolver({
@@ -297,7 +297,7 @@ describe('StaticWorkflowDependencyResolver', () => {
 		).rejects.toBeInstanceOf(PackageEntityNotFoundError);
 	});
 
-	it('throws PackageEntityAccessDeniedError when an auto-added sub-workflow exists but is inaccessible', async () => {
+	it('throws PackageEntityAccessDeniedError when an auto-included sub-workflow exists but is inaccessible', async () => {
 		// `b` is missing from the caller-scoped finder pool, but the existence
 		// re-check (which bypasses access control) still returns it — so the
 		// caller simply lacks access rather than the workflow being deleted.

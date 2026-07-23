@@ -12,21 +12,21 @@ import {
 } from '../package-export.errors';
 import type { WorkflowSubWorkflowRequirement } from './workflow.types';
 
-export type WorkflowDependencyOrigin = 'top-level' | 'folder' | 'project';
+export type WorkflowExportOrigin = 'top-level' | 'folder' | 'project';
 
-export interface StaticWorkflowDependency {
+export interface AutoIncludedWorkflow {
 	workflow: WorkflowEntity;
-	placement: WorkflowDependencyOrigin;
+	placement: WorkflowExportOrigin;
 	ownerProject: Project;
 	folderChain: Folder[];
 }
 
-export interface StaticWorkflowDependencyResolution {
-	autoAddedWorkflows: StaticWorkflowDependency[];
+export interface AutoIncludedWorkflowResolution {
+	autoIncludedWorkflows: AutoIncludedWorkflow[];
 }
 
 @Service()
-export class StaticWorkflowDependencyResolver {
+export class AutoIncludedWorkflowResolver {
 	constructor(
 		private readonly workflowFinder: WorkflowFinderService,
 		private readonly folderFinder: FolderFinderService,
@@ -40,7 +40,7 @@ export class StaticWorkflowDependencyResolver {
 		topLevelWorkflowIds: string[];
 		folderWorkflowIds: string[];
 		projectWorkflowIds: string[];
-	}): Promise<StaticWorkflowDependencyResolution> {
+	}): Promise<AutoIncludedWorkflowResolution> {
 		const originsByWorkflowId = this.seedExportedOrigins({
 			topLevelWorkflowIds: options.topLevelWorkflowIds,
 			folderWorkflowIds: options.folderWorkflowIds,
@@ -50,17 +50,17 @@ export class StaticWorkflowDependencyResolver {
 
 		this.propagateOrigins(originsByWorkflowId, options.requirements);
 
-		const autoAddedWorkflowIds = [...originsByWorkflowId.keys()].filter(
+		const autoIncludedWorkflowIds = [...originsByWorkflowId.keys()].filter(
 			(workflowId) => !exportedWorkflowIds.has(workflowId),
 		);
 
-		const autoAddedWorkflows = await this.buildAutoAddedWorkflows({
+		const autoIncludedWorkflows = await this.buildAutoIncludedWorkflows({
 			user: options.user,
-			workflowIds: autoAddedWorkflowIds,
+			workflowIds: autoIncludedWorkflowIds,
 			originsByWorkflowId,
 		});
 
-		return { autoAddedWorkflows };
+		return { autoIncludedWorkflows };
 	}
 
 	/**
@@ -72,12 +72,12 @@ export class StaticWorkflowDependencyResolver {
 		topLevelWorkflowIds: string[];
 		folderWorkflowIds: string[];
 		projectWorkflowIds: string[];
-	}): Map<string, Set<WorkflowDependencyOrigin>> {
-		const originsByWorkflowId = new Map<string, Set<WorkflowDependencyOrigin>>();
+	}): Map<string, Set<WorkflowExportOrigin>> {
+		const originsByWorkflowId = new Map<string, Set<WorkflowExportOrigin>>();
 
-		const add = (workflowIds: string[], origin: WorkflowDependencyOrigin) => {
+		const add = (workflowIds: string[], origin: WorkflowExportOrigin) => {
 			for (const workflowId of workflowIds) {
-				const origins = originsByWorkflowId.get(workflowId) ?? new Set<WorkflowDependencyOrigin>();
+				const origins = originsByWorkflowId.get(workflowId) ?? new Set<WorkflowExportOrigin>();
 				origins.add(origin);
 				originsByWorkflowId.set(workflowId, origins);
 			}
@@ -98,7 +98,7 @@ export class StaticWorkflowDependencyResolver {
 	 * the id is already queued; the live map is read on dequeue.
 	 */
 	private propagateOrigins(
-		originsByWorkflowId: Map<string, Set<WorkflowDependencyOrigin>>,
+		originsByWorkflowId: Map<string, Set<WorkflowExportOrigin>>,
 		requirements: WorkflowSubWorkflowRequirement[],
 	): void {
 		const requirementsByWorkflowId = new Map<string, WorkflowSubWorkflowRequirement[]>();
@@ -122,7 +122,7 @@ export class StaticWorkflowDependencyResolver {
 
 			for (const { referencedWorkflowId } of requirementsByWorkflowId.get(workflowId) ?? []) {
 				const childOrigins =
-					originsByWorkflowId.get(referencedWorkflowId) ?? new Set<WorkflowDependencyOrigin>();
+					originsByWorkflowId.get(referencedWorkflowId) ?? new Set<WorkflowExportOrigin>();
 
 				// merge parent origins into child origins, so that the child inherits the parent's origins.
 				let changed = false;
@@ -141,11 +141,11 @@ export class StaticWorkflowDependencyResolver {
 		}
 	}
 
-	private async buildAutoAddedWorkflows(options: {
+	private async buildAutoIncludedWorkflows(options: {
 		user: User;
 		workflowIds: string[];
-		originsByWorkflowId: Map<string, Set<WorkflowDependencyOrigin>>;
-	}): Promise<StaticWorkflowDependency[]> {
+		originsByWorkflowId: Map<string, Set<WorkflowExportOrigin>>;
+	}): Promise<AutoIncludedWorkflow[]> {
 		if (options.workflowIds.length === 0) return [];
 
 		const workflows = await this.findExportableWorkflows(options.user, options.workflowIds);
@@ -212,9 +212,7 @@ export class StaticWorkflowDependencyResolver {
 		});
 	}
 
-	private choosePlacement(
-		origins: Set<WorkflowDependencyOrigin> | undefined,
-	): WorkflowDependencyOrigin {
+	private choosePlacement(origins: Set<WorkflowExportOrigin> | undefined): WorkflowExportOrigin {
 		if (origins?.has('project')) return 'project';
 		if (origins?.has('folder')) return 'folder';
 		return 'top-level';
