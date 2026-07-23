@@ -1,3 +1,11 @@
+## [2.32.3](https://github.com/n8n-io/n8n/compare/n8n@2.32.2...n8n@2.32.3) (2026-07-23)
+
+
+### Bug Fixes
+
+* **editor:** Restore agent channel credential setup ([#34757](https://github.com/n8n-io/n8n/issues/34757)) ([53e48ee](https://github.com/n8n-io/n8n/commit/53e48ee8b0ed802277fc94ee9a77e331a4e36788))
+
+
 ## [2.32.2](https://github.com/n8n-io/n8n/compare/n8n@2.32.1...n8n@2.32.2) (2026-07-22)
 
 
