@@ -679,8 +679,16 @@ export class InstanceAiController {
 		@Body payload: InstanceAiAdminSettingsUpdateRequest,
 	) {
 		const result = await this.settingsService.updateAdminSettings(payload, req.user);
-		await this.applyAdminSettingsSideEffects(result);
-		await this.publisher.publishCommand({ command: 'reload-instance-ai-settings' });
+		const [publishResult] = await Promise.allSettled([
+			this.publisher.publishCommand({ command: 'reload-instance-ai-settings' }),
+			this.applyAdminSettingsSideEffects(result),
+		]);
+
+		if (publishResult.status === 'rejected') {
+			this.instanceAiErrorReporter.report(publishResult.reason, {
+				component: 'settings-publish',
+			});
+		}
 
 		return result;
 	}
@@ -688,32 +696,53 @@ export class InstanceAiController {
 	@OnPubSubEvent('reload-instance-ai-settings', { instanceType: 'main' })
 	async reloadAdminSettings() {
 		await this.settingsService.reloadFromDb();
-		await this.applyAdminSettingsSideEffects(await this.settingsService.getAdminSettings());
+		await this.applyAdminSettingsSideEffects({
+			enabled: this.settingsService.isInstanceAiEnabled(),
+			browserUseEnabled: this.settingsService.isBrowserUseEnabled(),
+			localGatewayDisabled: this.settingsService.isLocalGatewayDisabled(),
+		});
 	}
 
-	private async applyAdminSettingsSideEffects(settings: InstanceAiAdminSettingsResponse) {
-		await this.moduleRegistry.refreshModuleSettings('instance-ai');
-
+	private async applyAdminSettingsSideEffects(
+		settings: Pick<
+			InstanceAiAdminSettingsResponse,
+			'enabled' | 'browserUseEnabled' | 'localGatewayDisabled'
+		>,
+	) {
+		const sideEffects: Array<() => Promise<void> | void> = [
+			async () => await this.moduleRegistry.refreshModuleSettings('instance-ai'),
+		];
 		if (!settings.enabled || !settings.browserUseEnabled) {
-			await this.browserSessionService.shutdown();
+			sideEffects.push(async () => await this.browserSessionService.shutdown());
 		}
 
-		if (settings.enabled && !settings.localGatewayDisabled) return;
+		if (!settings.enabled || settings.localGatewayDisabled) {
+			sideEffects.push(() => {
+				const disconnectedUserIds = this.gatewayService.disconnectAllGateways();
+				if (disconnectedUserIds.length === 0) return;
+				this.push.sendToUsers(
+					{
+						type: 'instanceAiGatewayStateChanged',
+						data: {
+							connected: false,
+							directory: null,
+							hostIdentifier: null,
+							toolCategories: [],
+						},
+					},
+					disconnectedUserIds,
+				);
+			});
+		}
 
-		const disconnectedUserIds = this.gatewayService.disconnectAllGateways();
-		if (disconnectedUserIds.length === 0) return;
-		this.push.sendToUsers(
-			{
-				type: 'instanceAiGatewayStateChanged',
-				data: {
-					connected: false,
-					directory: null,
-					hostIdentifier: null,
-					toolCategories: [],
-				},
-			},
-			disconnectedUserIds,
-		);
+		const results = await Promise.allSettled(sideEffects.map(async (apply) => await apply()));
+		for (const result of results) {
+			if (result.status === 'rejected') {
+				this.instanceAiErrorReporter.report(result.reason, {
+					component: 'settings-side-effects',
+				});
+			}
+		}
 	}
 
 	// ── User preferences (per-user, self-service) ──────────────────────────

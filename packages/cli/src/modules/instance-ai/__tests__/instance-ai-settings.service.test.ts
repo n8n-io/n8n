@@ -52,7 +52,7 @@ describe('InstanceAiSettingsService', () => {
 		} as unknown as InstanceAiConfig,
 		deployment: { type: 'default' },
 	});
-	const operationContext = mock<CredentialOperationContext>();
+	const operationContext: CredentialOperationContext = {};
 	const dbLockService = mock<DbLockService>();
 	const settingsRepository = mock<SettingsRepository>();
 	const userRepository = mock<UserRepository>();
@@ -65,9 +65,11 @@ describe('InstanceAiSettingsService', () => {
 	const logger = mock<Logger>();
 
 	let service: InstanceAiSettingsService;
+	let persistedSettingsValue: string | undefined;
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		persistedSettingsValue = undefined;
 		logger.scoped.mockReturnValue(logger);
 		Container.set(Logger, logger);
 		Object.assign(globalConfig.instanceAi, {
@@ -95,11 +97,21 @@ describe('InstanceAiSettingsService', () => {
 				data: 'encrypted',
 			} as never;
 		});
+		settingsRepository.findByKey.mockImplementation(async () =>
+			persistedSettingsValue === undefined
+				? null
+				: ({
+						key: 'instanceAi.settings',
+						value: persistedSettingsValue,
+						loadOnStartup: true,
+					} as never),
+		);
 		settingsRepository.findByKeyInContext.mockImplementation(
 			async (key) => await settingsRepository.findByKey(key),
 		);
 		settingsRepository.upsertByKey.mockImplementation(async (key, value, loadOnStartup) => {
 			await settingsRepository.upsert({ key, value, loadOnStartup }, ['key']);
+			persistedSettingsValue = value;
 		});
 		dbLockService.withLockContext.mockImplementation(async (_lockId, fn) => {
 			return await fn(operationContext);
@@ -291,7 +303,7 @@ describe('InstanceAiSettingsService', () => {
 					adminUser,
 				);
 
-				expect(order).toEqual(['hooks', 'transaction']);
+				expect(order.slice(0, 2)).toEqual(['hooks', 'transaction']);
 				expect(credentialsService.runInstanceCredentialHooks).toHaveBeenCalledWith('create', {
 					id: null,
 					name: 'AI Assistant model',
@@ -367,6 +379,61 @@ describe('InstanceAiSettingsService', () => {
 				await expect(
 					service.updateAdminSettings(
 						{ modelConnection: { type: 'openAiApi', data: { apiKey: 'k3' } }, modelName: 'gpt-5' },
+						adminUser,
+					),
+				).rejects.toThrow('Provider connection changed; retry');
+				expect(credentialsService.updateInstanceCredential).not.toHaveBeenCalled();
+			});
+
+			it('should reject when the assigned connection is renamed while its hook runs', async () => {
+				instanceCredentialBroker.resolveForUse
+					.mockResolvedValueOnce({
+						id: 'cred-1',
+						name: 'AI Assistant model',
+						type: 'openAiApi',
+						data: { apiKey: 'saved-key' },
+					})
+					.mockResolvedValueOnce({
+						id: 'cred-1',
+						name: 'Renamed model',
+						type: 'openAiApi',
+						data: { apiKey: 'saved-key' },
+					});
+
+				await expect(
+					service.updateAdminSettings(
+						{
+							modelConnection: { type: 'openAiApi', data: { apiKey: 'next-key' } },
+							modelName: 'gpt-5',
+						},
+						adminUser,
+					),
+				).rejects.toThrow('Provider connection changed; retry');
+				expect(credentialsService.updateInstanceCredential).not.toHaveBeenCalled();
+			});
+
+			it('should reject when the assigned connection data changes while its hook runs', async () => {
+				instanceCredentialBroker.resolveForUse
+					.mockResolvedValueOnce({
+						id: 'cred-1',
+						name: 'AI Assistant model',
+						type: 'openAiApi',
+						data: { apiKey: 'old-key' },
+					})
+					.mockResolvedValueOnce({
+						id: 'cred-1',
+						name: 'AI Assistant model',
+						type: 'openAiApi',
+						data: { apiKey: 'new-key' },
+					});
+				credentialsService.unredact.mockReturnValue({ apiKey: 'old-key' });
+
+				await expect(
+					service.updateAdminSettings(
+						{
+							modelConnection: { type: 'openAiApi', data: { apiKey: '__redacted__' } },
+							modelName: 'gpt-5',
+						},
 						adminUser,
 					),
 				).rejects.toThrow('Provider connection changed; retry');
@@ -497,6 +564,20 @@ describe('InstanceAiSettingsService', () => {
 				const result = await service.updateAdminSettings({ sandboxConnection: null }, adminUser);
 
 				expect(result.sandboxProvider).toBe('n8n-sandbox');
+				expect(settingsRepository.upsert).toHaveBeenLastCalledWith(
+					expect.objectContaining({ value: expect.not.stringContaining('sandboxProvider') }),
+					['key'],
+				);
+			});
+
+			it('should clear the provider override when the remaining sandbox slot is cleared', async () => {
+				instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (policy) =>
+					policy.id === 'instance-ai:sandbox:daytona' ? 'daytona-cred' : null,
+				);
+				await service.updateAdminSettings({ sandboxProvider: 'daytona' });
+
+				await service.updateAdminSettings({ daytonaCredentialId: null });
+
 				expect(settingsRepository.upsert).toHaveBeenLastCalledWith(
 					expect.objectContaining({ value: expect.not.stringContaining('sandboxProvider') }),
 					['key'],
@@ -840,6 +921,29 @@ describe('InstanceAiSettingsService', () => {
 			);
 		});
 
+		it('should ignore persisted sandbox providers when proxy routing is enabled', async () => {
+			aiService.isProxyEnabled.mockReturnValue(true);
+			settingsRepository.findByKey.mockResolvedValueOnce({
+				key: 'instanceAi.settings',
+				value: JSON.stringify({ sandboxProvider: 'n8n-sandbox' }),
+				loadOnStartup: true,
+			} as never);
+
+			await service.loadFromDb();
+
+			await expect(service.getAdminSettings()).resolves.toMatchObject({
+				sandboxProvider: 'daytona',
+			});
+		});
+
+		it('should switch sandbox status to Daytona when proxy routing activates', () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			expect(service.getSandboxStatus().provider).toBe('n8n-sandbox');
+
+			aiService.isProxyEnabled.mockReturnValue(true);
+			expect(service.getSandboxStatus().provider).toBe('daytona');
+		});
+
 		it('should persist a sandbox provider override on self-hosted', async () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 			settingsRepository.upsert.mockResolvedValue(undefined as never);
@@ -967,6 +1071,20 @@ describe('InstanceAiSettingsService', () => {
 
 			expect((await service.getAdminSettings()).mcpAccessEnabled).toBe(true);
 		});
+
+		it('returns a committed update without re-reading admin settings', async () => {
+			const getAdminSettings = vi
+				.spyOn(service, 'getAdminSettings')
+				.mockRejectedValue(new Error('read failed'));
+
+			await expect(service.updateAdminSettings({ mcpAccessEnabled: false })).resolves.toMatchObject(
+				{
+					mcpAccessEnabled: false,
+				},
+			);
+			expect(getAdminSettings).not.toHaveBeenCalled();
+			getAdminSettings.mockRestore();
+		});
 	});
 
 	describe('instance model credential', () => {
@@ -1030,7 +1148,7 @@ describe('InstanceAiSettingsService', () => {
 			instanceCredentialBroker.getAssignedCredentialId
 				.mockResolvedValueOnce('cred-1')
 				.mockResolvedValue(null);
-			settingsRepository.findByKey.mockResolvedValue({
+			settingsRepository.findByKey.mockResolvedValueOnce({
 				key: 'instanceAi.settings',
 				value: JSON.stringify({ modelName: 'gpt-4' }),
 				loadOnStartup: true,
@@ -1102,11 +1220,42 @@ describe('InstanceAiSettingsService', () => {
 			});
 			expect(instanceCredentialBroker.resolveForUse).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'instance-ai:model' }),
+				operationContext,
 			);
 			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
 			expect(settingsRepository.upsert).toHaveBeenCalledWith(
 				expect.objectContaining({ value: expect.not.stringContaining('modelCredentialId') }),
 				['key'],
+			);
+		});
+
+		it('reads the admin model name and same-id credential update in one locked snapshot', async () => {
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'credential-a',
+				name: 'Admin model',
+				type: 'openAiApi',
+				data: { apiKey: 'key-a' },
+			});
+			await service.updateAdminSettings({
+				modelCredentialId: 'credential-a',
+				modelName: 'model-x',
+			});
+			persistedSettingsValue = JSON.stringify({ modelName: 'model-y' });
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'credential-a',
+				name: 'Admin model',
+				type: 'openAiApi',
+				data: { apiKey: 'updated-key' },
+			});
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				id: 'openai/model-y',
+				url: '',
+				apiKey: 'updated-key',
+			});
+			expect(instanceCredentialBroker.resolveForUse).toHaveBeenLastCalledWith(
+				expect.objectContaining({ id: 'instance-ai:model' }),
+				operationContext,
 			);
 		});
 
@@ -1245,11 +1394,11 @@ describe('InstanceAiSettingsService', () => {
 			});
 		});
 
-		it('reports a dangling assignment without a model name as unconfigured', async () => {
+		it('exposes a dangling assignment so it can be cleared', async () => {
 			instanceCredentialBroker.getAssignedCredentialId.mockResolvedValue('cred-1');
 
 			await expect(service.getAdminSettings()).resolves.toMatchObject({
-				modelCredentialId: null,
+				modelCredentialId: 'cred-1',
 				modelName: null,
 			});
 		});
@@ -1654,6 +1803,17 @@ describe('InstanceAiSettingsService', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
 				mcpSettingsChanged: false,
+			});
+		});
+
+		it('does not fail a committed update when a local event listener throws', async () => {
+			eventService.emit.mockImplementationOnce(() => {
+				throw new Error('listener failed');
+			});
+
+			await expect(service.updateAdminSettings({ mcpAccessEnabled: false })).resolves.toBeDefined();
+			expect(logger.warn).toHaveBeenCalledWith('Failed to apply local settings event', {
+				error: 'listener failed',
 			});
 		});
 	});
