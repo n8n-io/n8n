@@ -20,7 +20,7 @@ export const BUILDER_PLANNER_TODOS_SYSTEM_INSTRUCTION = [
 	'- Write concrete, self-contained tasks; mark the first active task in_progress immediately.',
 	'- Mark a task blocked when it cannot proceed without user input, and state exactly what input is missing in the task content.',
 	'- Marking a task blocked IS the action for now. Do not ask the user about it while any non-blocked task remains; continue with unblocked tasks.',
-	'- When only blocked tasks remain, end your turn with a summary of what is missing; unblock and finish them in later turns as the user provides input.',
+	'- When only blocked tasks remain: during an initial build, follow the Initial Build rules (call finish_setup); otherwise end your turn with a summary of what is missing, and unblock and finish the tasks in later turns as the user provides input.',
 	'- Update task status as soon as work completes; do not batch completions at the end.',
 	'- Do not call write_todos multiple times in parallel; send one full list update at a time.',
 ].join('\n');

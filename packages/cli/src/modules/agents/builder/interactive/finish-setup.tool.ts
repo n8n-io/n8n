@@ -438,12 +438,16 @@ export function buildFinishSetupTool(deps: FinishSetupToolDeps): BuiltTool {
 				'questions (including the model choice), credential slots, and chat-channel ' +
 				'connections. Call it at most once, only in the trailing step of an initial build ' +
 				'when only blocked tasks remain, and never together with another interactive tool. ' +
-				'It shows the setup cards back-to-back without returning control between them — ' +
-				'questions first, then credentials, then one card per requested channel (always ' +
-				'last, since connecting a channel needs credentials to already be resolved). Pass ' +
+				'It shows the question and credential cards back-to-back without returning control ' +
+				'between them, then one card per requested channel (always last, since connecting a ' +
+				'channel needs credentials to already be resolved) — but a channel card shows ' +
+				'in-chain only when the agent is already publishable when its phase is reached. Pass ' +
 				'`channels` with a returned `type` from list_integration_types, one entry per channel ' +
-				'to connect; do not infer channel names. Connecting a channel publishes the agent, so ' +
-				'if the agent still has other unresolved issues once a channel phase is reached, that ' +
+				'to connect; do not infer channel names. Connecting a channel publishes the agent, ' +
+				'and answers/credentials collected by this call are NOT applied to the config ' +
+				'mid-flow — so if the agent still has publish-blocking issues once a channel phase ' +
+				'is reached (expected whenever this same call is still collecting the model or a ' +
+				'required credential), that ' +
 				'phase\'s card is never shown — its outcome is `"blocked"` instead of `"connected"`/' +
 				'`"skipped"`, and the result carries `publishBlockedIssues`. Resolve those issues first ' +
 				'(patch in the credentials/model this same call already collected), then call ' +

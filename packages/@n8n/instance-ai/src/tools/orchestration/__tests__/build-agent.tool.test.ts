@@ -1028,6 +1028,53 @@ describe('build-agent tool', () => {
 				modelConfig: context.modelId,
 			});
 		});
+
+		it('creates a fresh agent instead of switching back when createNew is set and the name matches a session agent', async () => {
+			const { context, delegate } = makeContext();
+			const boundTarget: AgentBuilderTarget = {
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Platform Cycle Tracker',
+			};
+			context.domainContext!.agentBuilderTarget = boundTarget;
+			vi.mocked(findSessionAgentByName).mockResolvedValue(boundTarget);
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-3',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Created it.'));
+
+			await runTool(context, {
+				message: 'Build another tracker',
+				name: 'Platform Cycle Tracker',
+				createNew: true,
+			});
+
+			expect(findSessionAgentByName).not.toHaveBeenCalled();
+			expect(delegate.createAgent).toHaveBeenCalledWith('Platform Cycle Tracker');
+			expect(delegate.streamBuild).toHaveBeenCalledWith(
+				'agent-3',
+				'Build another tracker',
+				expect.objectContaining({ threadId: 'ia-builder:thread-1:agent-3' }),
+			);
+		});
+
+		it.each([
+			{ agentId: 'agent-1', createNew: true, message: 'Build it' },
+			{ createNew: true, message: 'Build it' },
+		])('rejects createNew when combined with agentId or missing name', async (input) => {
+			const { context, delegate } = makeContext();
+
+			const result = await runTool(context, input);
+
+			expect(result).toEqual({
+				ok: false,
+				error:
+					'createNew requires `name` and cannot be combined with `agentId` — pass `name` only to create a new agent.',
+			});
+			expect(delegate.createAgent).not.toHaveBeenCalled();
+			expect(delegate.streamBuild).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('interactive suspension cascade', () => {

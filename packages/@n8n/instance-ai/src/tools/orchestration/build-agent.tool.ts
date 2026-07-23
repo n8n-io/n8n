@@ -158,7 +158,17 @@ const buildAgentInputSchema = z.object({
 		.describe(
 			'Agent name. A name matching an agent already built in this conversation switches back ' +
 				'to that agent; a new name creates a new agent and makes it the active target. Omit on ' +
-				'follow-up calls for the current agent.',
+				'follow-up calls for the current agent. Combine with `createNew: true` to force creating ' +
+				'a fresh agent when the name matches one built earlier this conversation.',
+		),
+	createNew: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set true when the user asks to create a brand-new agent. Bypasses the same-name ' +
+				'switch-back: with createNew, `name` always creates a fresh agent even if that name ' +
+				'matches one built earlier in this conversation. Requires `name`; never combine with ' +
+				'`agentId`. Omit for edits, follow-ups, and switch-backs.',
 		),
 	agentId: z
 		.string()
@@ -621,6 +631,8 @@ type TargetResolution =
 	| { ok: false; error: string };
 
 const NO_TARGET_INPUT_ERROR = 'Pass name to create a new agent or agentId to edit an existing one.';
+const CREATE_NEW_INPUT_ERROR =
+	'createNew requires `name` and cannot be combined with `agentId` — pass `name` only to create a new agent.';
 const AGENT_ID_NEEDS_PROJECT_ERROR =
 	'Cannot bind to agentId without an active project context. Start this conversation from within a project.';
 
@@ -664,6 +676,10 @@ async function resolveTargetForCall(
 	input: z.infer<typeof buildAgentInputSchema>,
 	boundTarget: AgentBuilderTarget | undefined,
 ): Promise<TargetResolution> {
+	if (input.createNew && (input.agentId || !input.name)) {
+		return { ok: false, error: CREATE_NEW_INPUT_ERROR };
+	}
+
 	if (input.agentId) {
 		if (boundTarget && input.agentId === boundTarget.agentId) {
 			const mismatch = rejectAgentTargetNameMismatch(input.agentId, boundTarget.name, input.name);
@@ -695,19 +711,21 @@ async function resolveTargetForCall(
 	}
 
 	if (input.name) {
-		// Guards against the orchestrator redundantly repeating `name` on a
-		// follow-up call for the agent already being built.
-		if (boundTarget && agentNamesMatch(input.name, boundTarget.name)) {
-			return { ok: true, target: boundTarget, bindAfterTurn: false };
-		}
-		// A name matching an agent already built/targeted this conversation is a
-		// switch-back, not a creation — the duplicate-agent failure mode this
-		// registry exists to prevent. Deferred persist like the agentId path: the
-		// agent may have been deleted since, and a failed turn must not clobber
-		// the current binding.
-		const sessionAgent = await findSessionAgentByName(domainContext, input.name);
-		if (sessionAgent) {
-			return { ok: true, target: sessionAgent, bindAfterTurn: true };
+		if (!input.createNew) {
+			// Guards against the orchestrator redundantly repeating `name` on a
+			// follow-up call for the agent already being built.
+			if (boundTarget && agentNamesMatch(input.name, boundTarget.name)) {
+				return { ok: true, target: boundTarget, bindAfterTurn: false };
+			}
+			// A name matching an agent already built/targeted this conversation is a
+			// switch-back, not a creation — the duplicate-agent failure mode this
+			// registry exists to prevent. Deferred persist like the agentId path: the
+			// agent may have been deleted since, and a failed turn must not clobber
+			// the current binding.
+			const sessionAgent = await findSessionAgentByName(domainContext, input.name);
+			if (sessionAgent) {
+				return { ok: true, target: sessionAgent, bindAfterTurn: true };
+			}
 		}
 		const created = await delegate.createAgent(input.name);
 		const target: AgentBuilderTarget = {
@@ -731,10 +749,10 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				'Pass `name` to start a new agent or `agentId` to edit an existing one; calls ' +
 				'without either keep editing the current agent. Create vs. edit follows user ' +
 				'intent, not name collisions: a request to build a NEW agent always passes `name` ' +
-				'only — never `agentId` — even when a same-named agent already exists in the ' +
+				'plus `createNew: true` — never `agentId` — even when a same-named agent already exists in the ' +
 				'project. To build ANOTHER agent in the same ' +
 				'conversation, pass its `name` or `agentId` — a name matching an agent already built ' +
-				'in this conversation switches back to it; an unmatched name creates a new agent and ' +
+				'in this conversation switches back to it (unless `createNew: true` is passed); an unmatched name creates a new agent and ' +
 				'switches the active target. The builder can also publish or unpublish the target ' +
 				'agent when the user asks to publish, activate, make it live/usable, or unpublish — ' +
 				'forward that intent in `message`; never tell the user to open the agent editor and ' +
