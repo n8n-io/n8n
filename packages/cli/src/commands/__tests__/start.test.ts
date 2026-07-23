@@ -26,6 +26,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import { JwtService } from '@/services/jwt.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
@@ -132,6 +133,9 @@ describe('Start - AuthRolesService initialization', () => {
 			BinaryDataConfig,
 			mockInstance(BinaryDataConfig, { initialize: vi.fn().mockResolvedValue(undefined) }),
 		);
+		// `Start.init` binds the concrete `PollJobManager`, which would otherwise pull
+		// the full durable-scheduler DB chain (ScheduledJobRepository) at construction.
+		Container.set(PollTriggerJobRegistrar, mockInstance(PollTriggerJobRegistrar));
 
 		start = new Start();
 		// @ts-expect-error - Accessing protected property for testing
