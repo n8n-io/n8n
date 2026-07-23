@@ -33,14 +33,14 @@ export interface StaticWorkflowDependencyExportResult {
 	projectTargetsById: Map<string, string>;
 }
 
+interface ExportAllocators {
+	workflows: Map<string, UniqueFilenameAllocator>;
+	folders: Map<string, UniqueFilenameAllocator>;
+	project: UniqueFilenameAllocator;
+}
+
 @Service()
 export class StaticWorkflowDependencyExporter {
-	private workflowAllocators = new Map<string, UniqueFilenameAllocator>();
-
-	private folderAllocators = new Map<string, UniqueFilenameAllocator>();
-
-	private projectAllocator?: UniqueFilenameAllocator;
-
 	constructor(
 		private readonly workflowSerializer: WorkflowSerializer,
 		private readonly folderSerializer: FolderSerializer,
@@ -51,7 +51,11 @@ export class StaticWorkflowDependencyExporter {
 	) {}
 
 	export(request: StaticWorkflowDependencyExportRequest): StaticWorkflowDependencyExportResult {
-		this.resetAllocators();
+		const allocators: ExportAllocators = {
+			workflows: new Map(),
+			folders: new Map(),
+			project: new UniqueFilenameAllocator('projects', 'project'),
+		};
 
 		const workflowEntriesById = new Map(
 			request.existingWorkflowEntries.map((entry) => [entry.id, entry]),
@@ -65,13 +69,15 @@ export class StaticWorkflowDependencyExporter {
 		const projectTargetsById = new Map(request.projectTargetsById);
 
 		for (const entry of request.existingWorkflowEntries) {
-			this.workflowAllocator(parentDir(entry.target)).reservePath(entry.target);
+			allocatorFor(allocators.workflows, parentDir(entry.target), 'workflow').reservePath(
+				entry.target,
+			);
 		}
 		for (const entry of request.existingFolderEntries) {
-			this.folderAllocator(parentDir(entry.target)).reservePath(entry.target);
+			allocatorFor(allocators.folders, parentDir(entry.target), 'folder').reservePath(entry.target);
 		}
 		for (const entry of request.existingProjectEntries) {
-			this.projectPathAllocator().reservePath(entry.target);
+			allocators.project.reservePath(entry.target);
 			projectTargetsById.set(entry.id, entry.target);
 		}
 
@@ -93,8 +99,14 @@ export class StaticWorkflowDependencyExporter {
 				projectTargetsById,
 				folderEntries,
 				projectEntries,
+				allocators,
 			});
-			const entry = this.writeWorkflow(dependency.workflow, baseDir, request.writer);
+			const entry = this.writeWorkflow(
+				dependency.workflow,
+				baseDir,
+				request.writer,
+				allocators.workflows,
+			);
 			workflowEntries.push(entry);
 			workflowEntriesById.set(entry.id, entry);
 			credentials.push(...this.credentialRequirementsExtractor.extract(dependency.workflow));
@@ -119,6 +131,7 @@ export class StaticWorkflowDependencyExporter {
 		projectTargetsById: Map<string, string>;
 		folderEntries: ManifestEntry[];
 		projectEntries: ManifestEntry[];
+		allocators: ExportAllocators;
 	}): string {
 		const { dependency } = options;
 		if (dependency.placement === 'project') {
@@ -128,6 +141,7 @@ export class StaticWorkflowDependencyExporter {
 				projectEntriesById: options.projectEntriesById,
 				projectTargetsById: options.projectTargetsById,
 				projectEntries: options.projectEntries,
+				allocator: options.allocators.project,
 			});
 
 			if (dependency.folderChain.length === 0) {
@@ -140,6 +154,7 @@ export class StaticWorkflowDependencyExporter {
 				writer: options.writer,
 				folderEntriesById: options.folderEntriesById,
 				folderEntries: options.folderEntries,
+				allocators: options.allocators.folders,
 			});
 			return `${folderTarget}/workflows`;
 		}
@@ -151,6 +166,7 @@ export class StaticWorkflowDependencyExporter {
 				writer: options.writer,
 				folderEntriesById: options.folderEntriesById,
 				folderEntries: options.folderEntries,
+				allocators: options.allocators.folders,
 			});
 			return `${folderTarget}/workflows`;
 		}
@@ -164,11 +180,12 @@ export class StaticWorkflowDependencyExporter {
 		projectEntriesById: Map<string, ManifestEntry>;
 		projectTargetsById: Map<string, string>;
 		projectEntries: ManifestEntry[];
+		allocator: UniqueFilenameAllocator;
 	}): string {
 		const existing = options.projectEntriesById.get(options.project.id);
 		if (existing) return existing.target;
 
-		const target = this.projectPathAllocator().allocate(options.project.name);
+		const target = options.allocator.allocate(options.project.name);
 		const serialized = this.projectSerializer.serialize(options.project);
 		options.writer.writeDirectory(target);
 		options.writer.writeFile(`${target}/project.json`, JSON.stringify(serialized, null, '\t'));
@@ -186,6 +203,7 @@ export class StaticWorkflowDependencyExporter {
 		writer: PackageWriter;
 		folderEntriesById: Map<string, ManifestEntry>;
 		folderEntries: ManifestEntry[];
+		allocators: Map<string, UniqueFilenameAllocator>;
 	}): string {
 		let parentTarget: string | undefined;
 		let effectiveParentId: string | null = null;
@@ -198,7 +216,7 @@ export class StaticWorkflowDependencyExporter {
 				continue;
 			}
 
-			const allocator = this.folderAllocator(parentTarget ?? options.baseDir);
+			const allocator = allocatorFor(options.allocators, parentTarget ?? options.baseDir, 'folder');
 			// A folder's directly-contained workflows are written under `<folder>/workflows`,
 			// so reserve that segment before placing child folders — otherwise a child folder
 			// named "workflows" would collide with its parent's workflow directory.
@@ -226,47 +244,29 @@ export class StaticWorkflowDependencyExporter {
 		workflow: WorkflowEntity,
 		baseDir: string,
 		writer: PackageWriter,
+		allocators: Map<string, UniqueFilenameAllocator>,
 	): ManifestEntry {
-		const target = this.workflowAllocator(baseDir).allocate(workflow.name);
+		const target = allocatorFor(allocators, baseDir, 'workflow').allocate(workflow.name);
 		const serialized = this.workflowSerializer.serialize(workflow);
 		writer.writeDirectory(target);
 		writer.writeFile(`${target}/workflow.json`, JSON.stringify(serialized, null, '\t'));
 		return { id: workflow.id, name: workflow.name, target };
 	}
-
-	private workflowAllocator(baseDir: string): UniqueFilenameAllocator {
-		return this.allocator(this.workflowAllocators, baseDir, 'workflow');
-	}
-
-	private folderAllocator(baseDir: string): UniqueFilenameAllocator {
-		return this.allocator(this.folderAllocators, baseDir, 'folder');
-	}
-
-	private projectPathAllocator(): UniqueFilenameAllocator {
-		this.projectAllocator ??= new UniqueFilenameAllocator('projects', 'project');
-		return this.projectAllocator;
-	}
-
-	private allocator(
-		allocators: Map<string, UniqueFilenameAllocator>,
-		baseDir: string,
-		fallback: string,
-	): UniqueFilenameAllocator {
-		const existing = allocators.get(baseDir);
-		if (existing) return existing;
-
-		const allocator = new UniqueFilenameAllocator(baseDir, fallback);
-		allocators.set(baseDir, allocator);
-		return allocator;
-	}
-
-	private resetAllocators() {
-		this.workflowAllocators = new Map();
-		this.folderAllocators = new Map();
-		this.projectAllocator = undefined;
-	}
 }
 
 function parentDir(path: string): string {
 	return path.split('/').slice(0, -1).join('/');
+}
+
+function allocatorFor(
+	allocators: Map<string, UniqueFilenameAllocator>,
+	baseDir: string,
+	fallback: string,
+): UniqueFilenameAllocator {
+	const existing = allocators.get(baseDir);
+	if (existing) return existing;
+
+	const allocator = new UniqueFilenameAllocator(baseDir, fallback);
+	allocators.set(baseDir, allocator);
+	return allocator;
 }
