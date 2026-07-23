@@ -64,8 +64,8 @@ const evalResultsSchema = z.object({
 	testCases: z.array(testCaseSchema),
 });
 
-type EvalResults = z.infer<typeof evalResultsSchema>;
-type ReportTestCase = z.infer<typeof testCaseSchema>;
+export type EvalResults = z.infer<typeof evalResultsSchema>;
+export type ReportTestCase = z.infer<typeof testCaseSchema>;
 
 // ---------------------------------------------------------------------------
 // LangSmith REST (raw fetch + zod — keeps cost fields typed without SDK casts)
@@ -145,13 +145,17 @@ interface ThreadCost {
 	turns: number;
 }
 
+const RUNS_QUERY_LIMIT = 100;
+
 /** Sum a thread's root runs (one per turn); roots aggregate their children,
- *  so this is the thread's whole backend LLM spend. */
-async function sumThreadCost(
+ *  so this is the thread's whole backend LLM spend. Null when the thread has
+ *  no runs in the project — an unknown cost, not a $0 build (wrong
+ *  --trace-project, or the trace hasn't landed yet). */
+export async function sumThreadCost(
 	ls: LangSmithConfig,
 	projectId: string,
 	threadId: string,
-): Promise<ThreadCost> {
+): Promise<ThreadCost | null> {
 	const res = await lsFetch(`${ls.apiUrl}/api/v1/runs/query`, {
 		method: 'POST',
 		headers: ls.headers,
@@ -159,7 +163,7 @@ async function sumThreadCost(
 			session: [projectId],
 			is_root: true,
 			filter: `eq(thread_id, "${threadId}")`,
-			limit: 100,
+			limit: RUNS_QUERY_LIMIT,
 			select: ['id', 'total_cost', 'total_tokens'],
 		}),
 	});
@@ -167,6 +171,12 @@ async function sumThreadCost(
 		throw new Error(`LangSmith runs/query failed: ${res.status} ${await res.text()}`);
 	}
 	const { runs } = lsRunsQuerySchema.parse(await res.json());
+	if (runs.length === 0) return null;
+	if (runs.length === RUNS_QUERY_LIMIT) {
+		console.warn(
+			`thread ${threadId}: hit the runs/query page limit (${RUNS_QUERY_LIMIT}) — cost may be undercounted`,
+		);
+	}
 	return {
 		costUsd: runs.reduce((sum, r) => sum + (r.total_cost ?? 0), 0),
 		tokens: runs.reduce((sum, r) => sum + (r.total_tokens ?? 0), 0),
@@ -178,9 +188,9 @@ async function sumThreadCost(
 // Per-case aggregation
 // ---------------------------------------------------------------------------
 
-interface CaseCost {
+export interface CaseCost {
 	slug: string;
-	/** Build cost per iteration; null when unknown (no thread / no spend recorded). */
+	/** Build cost per iteration; null when unknown (no thread, unresolved thread, or no spend recorded). */
 	costPerIteration: Array<number | null>;
 	/** MCP: `claude` turns; AIA: root runs (build turns). Mean over known iterations. */
 	meanTurns?: number;
@@ -196,7 +206,7 @@ function caseSlug(tc: ReportTestCase): string {
 
 /** An iteration is green when every evaluated unit of it passed (scenario runs
  *  plus build-expectation verdicts; incomplete units don't count either way). */
-function greenStats(tc: ReportTestCase): { green: number; evaluated: number } {
+export function greenStats(tc: ReportTestCase): { green: number; evaluated: number } {
 	let green = 0;
 	let evaluated = 0;
 	for (let i = 0; i < tc.totalRuns; i++) {
@@ -228,7 +238,7 @@ function median(values: number[]): number | undefined {
 }
 
 /** Arm whose cost the harness persisted per case (`--build-via-mcp` runs). */
-function persistedSpendCosts(results: EvalResults): CaseCost[] {
+export function persistedSpendCosts(results: EvalResults): CaseCost[] {
 	return results.testCases.map((tc) => {
 		const { green, evaluated } = greenStats(tc);
 		const turns = (tc.buildTurnsPerRun ?? []).filter((t): t is number => t !== null);
@@ -244,7 +254,7 @@ function persistedSpendCosts(results: EvalResults): CaseCost[] {
 
 /** Arm whose builder ran in the n8n backend (AIA): sum each case's build
  *  threads from the LangSmith trace project. */
-async function threadJoinCosts(
+export async function threadJoinCosts(
 	results: EvalResults,
 	ls: LangSmithConfig,
 	projectId: string,
@@ -265,7 +275,14 @@ async function threadJoinCosts(
 		const resolved = await Promise.all(
 			batch.map(async (l) => ({ l, cost: await sumThreadCost(ls, projectId, l.threadId) })),
 		);
-		for (const { l, cost } of resolved) costs.set(`${l.caseIndex}:${l.iteration}`, cost);
+		for (const { l, cost } of resolved) {
+			if (cost) costs.set(`${l.caseIndex}:${l.iteration}`, cost);
+			else {
+				console.warn(
+					`thread ${l.threadId}: no runs in the trace project — wrong --trace-project or trace not landed; cost recorded as unknown`,
+				);
+			}
+		}
 	}
 
 	return results.testCases.map((tc, caseIndex) => {
@@ -292,7 +309,7 @@ async function threadJoinCosts(
 // Rendering
 // ---------------------------------------------------------------------------
 
-interface ArmSummary {
+export interface ArmSummary {
 	label: string;
 	/** Where this arm's dollars came from — rendered so mixed-source tables stay honest. */
 	source: string;
@@ -327,7 +344,7 @@ function armTotals(arm: ArmSummary): string[] {
 	];
 }
 
-function renderMarkdown(arms: ArmSummary[]): string {
+export function renderMarkdown(arms: ArmSummary[]): string {
 	const lines: string[] = ['# Build-cost report — builder arms compared', ''];
 	for (const arm of arms) {
 		lines.push(`- **${arm.label}** (${arm.source}): ${armTotals(arm).join(', ')}`);
@@ -408,13 +425,17 @@ function loadResults(path: string): EvalResults {
 async function main(): Promise<void> {
 	const flags = parseFlags(process.argv.slice(2));
 	const traceProject = single(flags, 'trace-project') ?? 'instance-ai-evals';
-	const concurrency = Number(single(flags, 'concurrency') ?? '3');
+	const concurrency = Math.max(1, Math.floor(Number(single(flags, 'concurrency'))) || 3);
 
 	const probeThread = single(flags, 'probe-thread');
 	if (probeThread) {
 		const ls = await langsmithConfig();
 		const projectId = await resolveTraceProjectId(ls, traceProject);
 		const cost = await sumThreadCost(ls, projectId, probeThread);
+		if (!cost) {
+			console.log(`thread ${probeThread}: no runs found in trace project "${traceProject}"`);
+			return;
+		}
 		console.log(
 			`thread ${probeThread}: ${cost.turns} turns, ${cost.tokens.toLocaleString()} tokens, ${fmtUsd(cost.costUsd)}`,
 		);
@@ -465,7 +486,9 @@ async function main(): Promise<void> {
 	console.log(`Report written to ${outPath}`);
 }
 
-main().catch((error: unknown) => {
-	console.error(error instanceof Error ? error.message : String(error));
-	process.exitCode = 1;
-});
+if (require.main === module) {
+	main().catch((error: unknown) => {
+		console.error(error instanceof Error ? error.message : String(error));
+		process.exitCode = 1;
+	});
+}
