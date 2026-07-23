@@ -1,9 +1,7 @@
 import { LicenseState } from '@n8n/backend-common';
 import { mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import { WorkflowRepository } from '@n8n/db';
-import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { isResourceLocatorValue } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { createOwner } from '@test-integration/db/users';
@@ -26,6 +24,7 @@ import {
 	buildImportPackageBuffer,
 	serializedWorkflow,
 	serializedWorkflowWithSubWorkflow,
+	subWorkflowRefOf,
 	workflowRequirementsFromWorkflows,
 } from './fixtures/package-fixtures';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
@@ -56,17 +55,6 @@ async function buildSubWorkflowPackage(workflows: SerializedWorkflow[]) {
 			requirements: { workflows: workflowRequirementsFromWorkflows(workflows) },
 		},
 	});
-}
-
-/** Returns the id the workflow's Execute Sub-workflow node points at. */
-function subWorkflowRefOf(workflow: WorkflowEntity): string | undefined {
-	for (const node of workflow.nodes) {
-		const workflowId = node.parameters.workflowId;
-		if (isResourceLocatorValue(workflowId) && typeof workflowId.value === 'string') {
-			return workflowId.value;
-		}
-	}
-	return undefined;
 }
 
 const licenseMocker = new LicenseMocker();

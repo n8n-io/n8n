@@ -19,20 +19,19 @@ export function orderBySubWorkflowDependencies<T extends { sourceWorkflowId: str
 	const workflowsById = new Map(workflows.map((workflow) => [workflow.sourceWorkflowId, workflow]));
 
 	const ordered: T[] = [];
-	const state = new Map<string, 'visiting' | 'done'>();
+	// Ids already seen: either placed in `ordered`, or still on the recursion stack.
+	// Re-entering one on the stack means a cycle — skipping it breaks the loop.
+	const seen = new Set<string>();
 
 	const visit = (workflow: T): void => {
 		const id = workflow.sourceWorkflowId;
-		// 'visiting' means we re-entered a workflow still on the stack (a cycle) —
-		// skip to break it; 'done' means it is already placed.
-		if (state.has(id)) return;
+		if (seen.has(id)) return;
+		seen.add(id);
 
-		state.set(id, 'visiting');
 		for (const dependencyId of dependenciesByWorkflowId.get(id) ?? []) {
 			const dependency = workflowsById.get(dependencyId);
 			if (dependency) visit(dependency);
 		}
-		state.set(id, 'done');
 		ordered.push(workflow);
 	};
 

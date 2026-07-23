@@ -8,9 +8,8 @@ import {
 	VariablesRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { isResourceLocatorValue } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -31,19 +30,9 @@ import {
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
 	serializedWorkflowWithSubWorkflow,
+	subWorkflowRefOf,
 	workflowRequirementsFromWorkflows,
 } from './fixtures/package-fixtures';
-
-/** Returns the id the workflow's Execute Sub-workflow node points at. */
-function subWorkflowRefOf(workflow: WorkflowEntity): string | undefined {
-	for (const node of workflow.nodes) {
-		const workflowId = node.parameters.workflowId;
-		if (isResourceLocatorValue(workflowId) && typeof workflowId.value === 'string') {
-			return workflowId.value;
-		}
-	}
-	return undefined;
-}
 
 async function importProjects(
 	user: User,

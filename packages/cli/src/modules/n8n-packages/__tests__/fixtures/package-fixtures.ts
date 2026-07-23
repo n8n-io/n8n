@@ -1,4 +1,5 @@
 import { randomCredentialPayload, type CredentialPayload } from '@n8n/backend-test-utils';
+import type { WorkflowEntity } from '@n8n/db';
 import { EXECUTE_WORKFLOW_NODE_TYPE, getSubworkflowId, type INode } from 'n8n-workflow';
 
 import { TarPackageWriter } from '../../io/tar/tar-package-writer';
@@ -148,6 +149,15 @@ export function workflowRequirementsFromWorkflows(
 	}
 
 	return [...byId.values()];
+}
+
+/** Returns the id the workflow's Execute Sub-workflow node points at. */
+export function subWorkflowRefOf(workflow: WorkflowEntity): string | undefined {
+	for (const node of workflow.nodes) {
+		const referencedId = getSubworkflowId(node);
+		if (referencedId) return referencedId;
+	}
+	return undefined;
 }
 
 /** Builds manifest credential requirements from workflow node refs (simulates export). */
