@@ -253,6 +253,24 @@ export class SchedulerConfig {
 	triggerNodeMode: 'legacy' | 'new' = 'legacy';
 
 	/**
+	 * Temporary escape hatch for the durable-scheduler rollout (preview to GA).
+	 * Off by default; intended to be removed once the durable scheduler is GA.
+	 *
+	 * When on, the Schedule Trigger node shows a "Skip Durable Scheduler" toggle; a
+	 * trigger with it checked keeps using the in-memory scheduler even while
+	 * {@link enabled} is on, so an operator can move an individual schedule back
+	 * while testing. When off, the toggle is hidden and every schedule follows
+	 * {@link enabled}.
+	 *
+	 * Named with the `N8N_ENV_FEAT_` prefix so the frontend picks it up through the
+	 * env-feature-flag channel that gates the node property's visibility. Only has
+	 * an effect while {@link enabled} is on: with the durable scheduler off, every
+	 * schedule already runs in memory.
+	 */
+	@Env('N8N_ENV_FEAT_SKIP_DURABLE_SCHEDULER')
+	allowSkipDurableScheduler: boolean = false;
+
+	/**
 	 * How many times a scheduled run may be reclaimed (for example after a crash)
 	 * or retried on error before it's given up on and dead-lettered. Defaults to
 	 * 5. Raise it on infrastructure prone to instance restarts or transient

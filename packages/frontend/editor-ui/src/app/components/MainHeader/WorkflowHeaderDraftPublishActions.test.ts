@@ -22,13 +22,17 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
+import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import {
 	LOCAL_STORAGE_WORKFLOW_REVIEW_PUBLISH_CHOICE_HIDDEN,
 	LOCAL_STORAGE_WORKFLOW_REVIEW_REQUIRED_BY_WORKFLOW,
 	LOCAL_STORAGE_WORKFLOW_REVIEW_SUBMITTED_DIALOG_HIDDEN,
 } from '@/app/constants/localStorage';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { createWorkflowReviewRequest } from '@/features/workflow-reviews/workflowReviews.api';
+import {
+	createWorkflowReviewRequest,
+	fetchWorkflowReviewRequests,
+} from '@/features/workflow-reviews/workflowReviews.api';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -76,6 +80,7 @@ vi.mock('@/app/composables/useWorkflowPublicationStatusSync', () => ({
 
 vi.mock('@/features/workflow-reviews/workflowReviews.api', () => ({
 	createWorkflowReviewRequest: vi.fn(),
+	fetchWorkflowReviewRequests: vi.fn(),
 }));
 
 const initialState = {
@@ -195,6 +200,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		localStorage.removeItem(LOCAL_STORAGE_WORKFLOW_REVIEW_PUBLISH_CHOICE_HIDDEN('user-1'));
 		localStorage.removeItem(LOCAL_STORAGE_WORKFLOW_REVIEW_SUBMITTED_DIALOG_HIDDEN('user-1'));
 		useReviewRequiredStore().setReviewRequired(defaultWorkflowProps.id, false);
+		useWorkflowReviewStatusStore().clearStatus(defaultWorkflowProps.id);
+		vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({ count: 0, data: [] });
 
 		const nodeTypesStore = useNodeTypesStore();
 		nodeTypesStore.setNodeTypes([
@@ -218,6 +225,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			id: 'review-1',
 			state: 'open',
 			decision: 'pending',
+			createdAt: '2024-01-01T00:00:00.000Z',
+			updatedAt: '2024-01-01T00:00:00.000Z',
 		});
 	});
 
@@ -515,6 +524,37 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(
 				queryByRole('dialog', { name: 'New: Submit for review before publishing' }),
 			).not.toBeInTheDocument();
+		});
+
+		it('opens submit for review directly for an open review even with the local preference off', async () => {
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+			setWorkflowReviewGates();
+			setupEnabledPublishButton();
+			expect(useReviewRequiredStore().isReviewRequired(defaultWorkflowProps.id)).toBe(false);
+			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+				count: 1,
+				data: [
+					{
+						id: 'req-1',
+						state: 'open',
+						decision: 'pending',
+						createdAt: '2026-07-20T10:00:00.000Z',
+						updatedAt: '2026-07-20T10:00:00.000Z',
+					},
+				],
+			});
+
+			const { getByTestId, findByRole, queryByRole } = renderComponent();
+			await waitFor(() =>
+				expect(useWorkflowReviewStatusStore().hasOpenReview(defaultWorkflowProps.id)).toBe(true),
+			);
+			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
+
+			expect(await findByRole('dialog', { name: 'Submit for review' })).toBeInTheDocument();
+			expect(
+				queryByRole('dialog', { name: 'New: Submit for review before publishing' }),
+			).not.toBeInTheDocument();
+			expect(openModalSpy).not.toHaveBeenCalled();
 		});
 
 		it('skips the review choice when the user dismissed it', async () => {

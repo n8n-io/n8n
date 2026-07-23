@@ -1010,26 +1010,30 @@ describe('DELETE /workflows/:id', () => {
 	});
 });
 
-describe('POST /workflows/:id/activate', () => {
-	test('should fail due to missing API Key', testWithAPIKey('post', '/workflows/2/activate', null));
+// `/publish` is a canonical alias of `/activate` sharing the exact same handler
+describe.each(['activate', 'publish'])('POST /workflows/:id/%s', (action) => {
+	test(
+		'should fail due to missing API Key',
+		testWithAPIKey('post', `/workflows/2/${action}`, null),
+	);
 
 	test(
 		'should fail due to invalid API Key',
-		testWithAPIKey('post', '/workflows/2/activate', 'abcXYZ'),
+		testWithAPIKey('post', `/workflows/2/${action}`, 'abcXYZ'),
 	);
 
 	test('should fail due to non-existing workflow', async () => {
-		const response = await authOwnerAgent.post('/workflows/2/activate');
+		const response = await authOwnerAgent.post(`/workflows/2/${action}`);
 		expect(response.statusCode).toBe(404);
 	});
 
-	test('should fail due to trying to activate a workflow without any nodes', async () => {
+	test('should fail when the workflow has no nodes', async () => {
 		const workflow = await createWorkflowWithHistory({ nodes: [] }, owner);
-		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`);
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/${action}`);
 		expect(response.statusCode).toBe(400);
 	});
 
-	test('should fail due to trying to activate a workflow without a trigger', async () => {
+	test('should fail when the workflow has no trigger', async () => {
 		const workflow = await createWorkflowWithHistory(
 			{
 				nodes: [
@@ -1045,14 +1049,14 @@ describe('POST /workflows/:id/activate', () => {
 			},
 			owner,
 		);
-		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`);
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/${action}`);
 		expect(response.statusCode).toBe(400);
 	});
 
 	test('should set workflow as active', async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
-		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
 
 		expect(response.statusCode).toBe(200);
 
@@ -1095,10 +1099,10 @@ describe('POST /workflows/:id/activate', () => {
 		expect(await workflowRepository.isActive(workflow.id)).toBe(true);
 	});
 
-	test('should set activeVersionId when activating workflow', async () => {
+	test('should set activeVersionId', async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
-		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.active).toBe(true);
@@ -1121,7 +1125,7 @@ describe('POST /workflows/:id/activate', () => {
 	test('should set non-owned workflow as active when owner', async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
-		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`).expect(200);
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`).expect(200);
 
 		const {
 			id,
@@ -1184,7 +1188,7 @@ describe('POST /workflows/:id/activate', () => {
 
 		const workflow = await createWorkflowWithTriggerAndHistory({}, teamProject);
 
-		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
 
 		expect(response.statusCode).toBe(403);
 
@@ -1194,29 +1198,30 @@ describe('POST /workflows/:id/activate', () => {
 	});
 });
 
-describe('POST /workflows/:id/deactivate', () => {
+// `/unpublish` is a canonical alias of `/deactivate` sharing the exact same handler
+describe.each(['deactivate', 'unpublish'])('POST /workflows/:id/%s', (action) => {
 	test(
 		'should fail due to missing API Key',
-		testWithAPIKey('post', '/workflows/2/deactivate', null),
+		testWithAPIKey('post', `/workflows/2/${action}`, null),
 	);
 
 	test(
 		'should fail due to invalid API Key',
-		testWithAPIKey('post', '/workflows/2/deactivate', 'abcXYZ'),
+		testWithAPIKey('post', `/workflows/2/${action}`, 'abcXYZ'),
 	);
 
 	test('should fail due to non-existing workflow', async () => {
-		const response = await authOwnerAgent.post('/workflows/2/deactivate');
+		const response = await authOwnerAgent.post(`/workflows/2/${action}`);
 		expect(response.statusCode).toBe(404);
 	});
 
-	test('should deactivate workflow', async () => {
+	test(`should ${action} workflow`, async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
 		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 
 		const workflowDeactivationResponse = await authMemberAgent.post(
-			`/workflows/${workflow.id}/deactivate`,
+			`/workflows/${workflow.id}/${action}`,
 		);
 
 		const {
@@ -1272,7 +1277,7 @@ describe('POST /workflows/:id/deactivate', () => {
 
 		expect(sharedWorkflow?.workflow.activeVersionId).toBe(workflow.versionId);
 
-		const deactivateResponse = await authMemberAgent.post(`/workflows/${workflow.id}/deactivate`);
+		const deactivateResponse = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
 
 		expect(deactivateResponse.statusCode).toBe(200);
 		expect(deactivateResponse.body.active).toBe(false);
@@ -1302,7 +1307,7 @@ describe('POST /workflows/:id/deactivate', () => {
 
 		const workflow = await createActiveWorkflow({}, teamProject);
 
-		const response = await authMemberAgent.post(`/workflows/${workflow.id}/deactivate`);
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
 
 		expect(response.statusCode).toBe(403);
 
@@ -1317,7 +1322,7 @@ describe('POST /workflows/:id/deactivate', () => {
 		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 
 		const workflowDeactivationResponse = await authMemberAgent.post(
-			`/workflows/${workflow.id}/deactivate`,
+			`/workflows/${workflow.id}/${action}`,
 		);
 
 		const {
@@ -1621,6 +1626,28 @@ describe('POST /workflows', () => {
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
 	});
 
+	test.each([
+		{ key: 'binaryMode', value: 'combined' },
+		{ key: 'credentialResolverId', value: 'some-resolver-id' },
+	] as const)('should ignore $key when creating a workflow', async ({ key, value }) => {
+		const payload = {
+			...mockPostWorkflowPayload(),
+			settings: {
+				executionOrder: 'v1',
+				[key]: value,
+			},
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings[key]).toBeUndefined();
+
+		const workflow = await workflowRepository.findOneBy({ id: response.body.id });
+
+		expect(workflow?.settings?.[key]).toBeUndefined();
+	});
+
 	test('should create workflow with node groups', async () => {
 		const payload = {
 			name: 'grouped',
@@ -1706,6 +1733,7 @@ describe('POST /workflows', () => {
 				saveDataSuccessExecution: 'all',
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
+				timeSavedMode: 'dynamic',
 			},
 		};
 
@@ -2284,6 +2312,42 @@ describe('PUT /workflows/:id', () => {
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 	});
 
+	test.each([
+		{ key: 'binaryMode', original: 'combined', attempted: 'separate' },
+		{
+			key: 'credentialResolverId',
+			original: 'original-resolver-id',
+			attempted: 'attempted-new-resolver-id',
+		},
+	] as const)(
+		'should ignore $key when updating a workflow',
+		async ({ key, original, attempted }) => {
+			const workflow = await createWorkflowWithHistory(
+				{ settings: { executionOrder: 'v1', [key]: original } },
+				member,
+			);
+
+			const payload = {
+				name: workflow.name,
+				nodes: workflow.nodes,
+				connections: workflow.connections,
+				settings: {
+					executionOrder: 'v1',
+					[key]: attempted,
+				},
+			};
+
+			const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.settings[key]).toBe(original);
+
+			const workflowAfter = await workflowRepository.findOneBy({ id: workflow.id });
+
+			expect(workflowAfter?.settings?.[key]).toBe(original);
+		},
+	);
+
 	test('should update non-owned workflow if owner', async () => {
 		const workflow = await createWorkflowWithHistory({}, member);
 
@@ -2316,6 +2380,7 @@ describe('PUT /workflows/:id', () => {
 				saveDataSuccessExecution: 'all',
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
+				timeSavedMode: 'dynamic',
 				callerPolicy: 'workflowsFromSameOwner',
 				availableInMCP: false,
 			},

@@ -162,6 +162,29 @@ describe('SettingsPersonalView', () => {
 		});
 	});
 
+	describe('when signed in via LDAP', () => {
+		beforeEach(() => {
+			vi.spyOn(ssoStore, 'isEnterpriseLdapEnabled', 'get').mockReturnValue(true);
+			vi.spyOn(settingsStore, 'isMfaFeatureEnabled', 'get').mockReturnValue(true);
+			usersStore.usersById[currentUser.id] = { ...currentUser, signInType: 'ldap' };
+		});
+
+		it('should let a member configure MFA while hiding password change', async () => {
+			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(false);
+
+			const { queryByTestId, getAllByRole } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			// LDAP has no native 2FA, so n8n's own MFA stays configurable...
+			expect(queryByTestId('mfa-section')).toBeInTheDocument();
+			// ...but password/email remain managed externally.
+			expect(queryByTestId('change-password-link')).not.toBeInTheDocument();
+			expect(
+				getAllByRole('textbox').find((el) => el.getAttribute('type') === 'email'),
+			).toBeDisabled();
+		});
+	});
+
 	test.each([
 		['Default', ROLE.Default, false, 'Default role for new users'],
 		['Member', ROLE.Member, false, 'Create and manage own workflows and credentials'],

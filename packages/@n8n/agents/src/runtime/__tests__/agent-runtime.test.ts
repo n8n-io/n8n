@@ -5716,17 +5716,20 @@ describe('AgentRuntime — telemetry propagation', () => {
 		expect(tracer.startActiveSpan).toHaveBeenCalledWith(
 			'test-agent.generate',
 			{
+				root: true,
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				attributes: expect.objectContaining<Record<string, string>>({
-					'langsmith.traceable': 'true',
-					'langsmith.trace.name': 'test-agent.generate',
-					'langsmith.span.kind': 'chain',
-					'langsmith.metadata.agent_name': 'telemetry-root-test',
-					'langsmith.metadata.env': 'test',
+					'gen_ai.operation.name': 'invoke_agent',
+					'gen_ai.agent.name': 'telemetry-root-test',
 				}),
 			},
 			expect.any(Function),
 		);
+		// A plain (non-LangSmith) tracer must not get langsmith.* attributes —
+		// they'd be noise on a generic OTLP backend.
+		const [, options] = tracer.startActiveSpan.mock.calls[0];
+		const attributes = (options as { attributes: Record<string, unknown> }).attributes;
+		expect(Object.keys(attributes).some((key) => key.startsWith('langsmith.'))).toBe(false);
 		expect(span.end).toHaveBeenCalledTimes(1);
 	});
 
@@ -5786,6 +5789,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 				langsmith_trace_id: 'trace-1',
 				langsmith_actor_run_id: 'actor-run-1',
 			},
+			isLangSmith: true,
 			tracer,
 		};
 		const tool = new ToolBuilder('lookup')
@@ -6017,7 +6021,9 @@ describe('AgentRuntime — telemetry propagation', () => {
 
 		await runtime.generate('test');
 
-		const toolCallSpan = tracer.startActiveSpan.mock.calls.find(([name]) => name === 'ai.toolCall');
+		const toolCallSpan = tracer.startActiveSpan.mock.calls.find(
+			([name]) => name === 'execute_tool spy',
+		);
 		expect(toolCallSpan).toBeDefined();
 		expect(toolCallSpan?.[1]).toEqual({
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -6027,14 +6033,20 @@ describe('AgentRuntime — telemetry propagation', () => {
 				'ai.operationId': 'ai.toolCall',
 				'ai.telemetry.functionId': 'test-agent',
 				'ai.telemetry.metadata.env': 'test',
+				'gen_ai.operation.name': 'execute_tool',
+				'gen_ai.tool.name': 'spy',
+				'gen_ai.tool.call.id': 'tc1',
+				'gen_ai.agent.name': 'tool-telemetry-test',
+				'gen_ai.tool.call.arguments': '{"x":"test"}',
 				'ai.toolCall.name': 'spy',
 				'ai.toolCall.id': 'tc1',
 				'ai.toolCall.args': '{"x":"test"}',
 			}),
 		});
-		const toolSpan = spans.find((span) => span.name === 'ai.toolCall')?.span;
+		const toolSpan = spans.find((span) => span.name === 'execute_tool spy')?.span;
 		expect(toolSpan?.setAttributes).toHaveBeenCalledWith({
 			'ai.toolCall.result': '{"ok":true}',
+			'gen_ai.tool.call.result': '{"ok":true}',
 		});
 		expect(toolSpan?.end).toHaveBeenCalledTimes(1);
 	});

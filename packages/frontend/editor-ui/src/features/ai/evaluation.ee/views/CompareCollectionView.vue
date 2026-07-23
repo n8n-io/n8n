@@ -19,6 +19,7 @@ import { useCompareCases } from '../composables/useCompareCases';
 import { useEvalCollectionsFlag } from '../composables/useEvalCollectionsFlag';
 import { useEvalCollectionsStore } from '../evalCollections.store';
 import { useEvaluationStore } from '../evaluation.store';
+import { deriveRunsStatus } from '../evaluation.utils';
 
 const props = defineProps<{
 	workflowId: string;
@@ -79,6 +80,14 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// Insights need the runs settled with ≥2 completed; polling flips this true when
+// the last run lands, which drives auto-generation in AiInsightsCard.
+const insightsReady = computed(() => {
+	const versions = compareData.value?.versions ?? [];
+	if (deriveRunsStatus(versions) === 'running') return false;
+	return versions.filter((version) => version.status === 'completed').length >= 2;
+});
 
 const loading = computed(() => store.loadingDetail[props.collectionId] ?? false);
 // Set only on a genuine 404 so a deleted collection stops rendering stale cached metrics;
@@ -197,7 +206,12 @@ onBeforeUnmount(() => {
 				:metric-prompts="metricPrompts"
 			/>
 			<!-- Key by collection so navigating remounts the card and re-runs its fetch-on-mount. -->
-			<AiInsightsCard :key="collectionId" :workflow-id="workflowId" :collection-id="collectionId" />
+			<AiInsightsCard
+				:key="collectionId"
+				:workflow-id="workflowId"
+				:collection-id="collectionId"
+				:ready="insightsReady"
+			/>
 			<CompareTabs
 				:versions="compareData.versions"
 				:metric-groups="compareData.metricGroups"
