@@ -7,7 +7,9 @@ import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { ExternalHooks } from '@/external-hooks';
-import { AgentExecutionService } from './agent-execution.service';
+import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
+import { Telemetry } from '@/telemetry';
+import { AgentExecutionService, type RecordMessageParams } from './agent-execution.service';
 import { AgentRunTracingService, modelIdFromSnapshot } from './agent-run-tracing.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { ExecutionRecorder } from './execution-recorder';
@@ -17,9 +19,6 @@ import type { ToolRegistry } from './tool-registry';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { streamAgentChunks } from './utils/agent-stream';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
-
-import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
-import { Telemetry } from '@/telemetry';
 
 export interface AgentMemoryScope {
 	threadId: string;
@@ -39,6 +38,8 @@ export interface ExecuteForChatConfig {
 	user: User;
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
+	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
+	onExecutionRecorded?: (executionId: string) => void;
 }
 
 export interface ExecuteForChatPublishedConfig {
@@ -78,6 +79,8 @@ export interface ResumeForChatConfig {
 	 * persisted tool call references a tool the rebuilt runtime doesn't know.
 	 */
 	integrationType?: string;
+	/** Fired after the resumed turn is persisted; used to attach `executionId` to SSE `done`. */
+	onExecutionRecorded?: (executionId: string) => void;
 }
 
 export interface ExecuteForTaskPublishedConfig {
@@ -129,6 +132,8 @@ export interface StreamChatResponseConfig {
 		runType: AgentRunTelemetryType;
 		configuration: IAgentConfigurationTelemetryProperties;
 	};
+	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
+	onExecutionRecorded?: (executionId: string) => void;
 }
 
 function getMaxIterationsChunks(): StreamChunk[] {
@@ -197,6 +202,7 @@ export class AgentExecutionOrchestratorService {
 			integrationType,
 			user,
 			usePublishedVersion = true,
+			onExecutionRecorded,
 		} = config;
 
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
@@ -275,8 +281,10 @@ export class AgentExecutionOrchestratorService {
 			// or fail while streaming. Don't repeat the original user message — the
 			// pre-suspension execution already has it.
 			const messageRecord = recorder.getMessageRecord();
-			void this.agentExecutionService
-				.recordMessage({
+			await this.persistRecordedExecution({
+				onExecutionRecorded,
+				failureMessage: 'Failed to record resumed agent execution',
+				params: {
 					threadId,
 					agentId,
 					agentName: agentInstance.name,
@@ -288,14 +296,8 @@ export class AgentExecutionOrchestratorService {
 						runType,
 						configuration: runtime.telemetryConfiguration,
 					},
-				})
-				.catch((error) => {
-					this.logger.warn('Failed to record resumed agent execution', {
-						agentId,
-						threadId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				});
+				},
+			});
 		}
 	}
 
@@ -303,7 +305,7 @@ export class AgentExecutionOrchestratorService {
 	 * Execute an agent for the in-app test chat and yield stream chunks.
 	 */
 	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, message, user, memory } = config;
+		const { agentId, projectId, message, user, memory, onExecutionRecorded } = config;
 
 		// `user` is always set (see ExecuteForChatConfig) — this builds/reuses a
 		// runtime scoped to this specific user's tool access.
@@ -334,6 +336,7 @@ export class AgentExecutionOrchestratorService {
 				runType: 'test',
 				configuration: runtime.telemetryConfiguration,
 			},
+			onExecutionRecorded,
 		});
 	}
 
@@ -459,6 +462,7 @@ export class AgentExecutionOrchestratorService {
 			taskId,
 			taskVersionId,
 			telemetry,
+			onExecutionRecorded,
 		} = config;
 		const { threadId, resourceId } = memory;
 
@@ -505,8 +509,10 @@ export class AgentExecutionOrchestratorService {
 			// Always record — even if suspended or failed, the pre-suspension/error
 			// response text and tool calls are valuable.
 			const messageRecord = recorder.getMessageRecord();
-			void this.agentExecutionService
-				.recordMessage({
+			await this.persistRecordedExecution({
+				onExecutionRecorded,
+				failureMessage: 'Failed to record agent execution',
+				params: {
 					threadId,
 					agentId,
 					agentName: agentInstance.name,
@@ -518,14 +524,40 @@ export class AgentExecutionOrchestratorService {
 					taskId,
 					taskVersionId,
 					telemetry,
-				})
-				.catch((error) => {
-					this.logger.warn('Failed to record agent execution', {
-						agentId,
-						threadId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				});
+				},
+			});
+		}
+	}
+
+	/**
+	 * Persist a streamed turn. Awaits when `onExecutionRecorded` is set so SSE
+	 * `done` can carry executionId; otherwise fire-and-forget.
+	 */
+	private async persistRecordedExecution(args: {
+		onExecutionRecorded?: (executionId: string) => void;
+		params: RecordMessageParams;
+		failureMessage: string;
+	}): Promise<void> {
+		const { onExecutionRecorded, params, failureMessage } = args;
+		const persist = async () => {
+			const executionId = await this.agentExecutionService.recordMessage(params);
+			onExecutionRecorded?.(executionId);
+		};
+		const logFailure = (error: unknown) => {
+			this.logger.warn(failureMessage, {
+				agentId: params.agentId,
+				threadId: params.threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		};
+		if (onExecutionRecorded) {
+			try {
+				await persist();
+			} catch (error) {
+				logFailure(error);
+			}
+		} else {
+			void persist().catch(logFailure);
 		}
 	}
 }

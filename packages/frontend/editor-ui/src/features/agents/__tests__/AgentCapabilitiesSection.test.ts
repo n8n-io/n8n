@@ -638,15 +638,101 @@ describe('AgentCapabilitiesSection', () => {
 		expect(wrapper.emitted('tasks-changed')).toEqual([[]]);
 	});
 
-	it('hides the add-tool and add-skill buttons when disabled (read-only host)', async () => {
-		const wrapper = mountSection([]);
+	it('disables the add-tool and add-skill buttons when disabled (read-only host)', async () => {
+		const wrapper = mountSection(
+			[],
+			{},
+			configWithMcpServers([
+				{
+					name: 'github',
+					url: 'https://mcp.github.com',
+					transport: 'streamableHttp',
+					authentication: 'none',
+				},
+			]),
+			[],
+			[],
+			{
+				skills: [
+					{
+						id: 'skill-1',
+						skill: { name: 'Refund policy', description: '', instructions: '' },
+					},
+				],
+			},
+		);
+		await flushPromises();
+
 		expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(true);
+		expect(
+			wrapper.find('[data-testid="agent-capabilities-add-tool"]').attributes('disabled'),
+		).toBeUndefined();
+		expect(
+			wrapper.find('[data-testid="agent-capabilities-add-skill"]').attributes('disabled'),
+		).toBeUndefined();
 
 		await wrapper.setProps({ disabled: true });
 
-		expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(true);
+		expect(
+			wrapper.find('[data-testid="agent-capabilities-add-tool"]').attributes('disabled'),
+		).toBeDefined();
+		expect(
+			wrapper.find('[data-testid="agent-capabilities-add-skill"]').attributes('disabled'),
+		).toBeDefined();
+
+		const toolChip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
+		const skillChip = wrapper.find('[data-testid="agent-capabilities-skill-row"]');
+		expect(toolChip.attributes('disabled')).toBeDefined();
+		expect(skillChip.attributes('disabled')).toBeDefined();
+
+		await toolChip.trigger('click');
+		await skillChip.trigger('click');
+
+		expect(wrapper.emitted('open-tool')).toBeUndefined();
+		expect(wrapper.emitted('open-skill')).toBeUndefined();
+	});
+
+	it('disables the grouped-tool dropdown menu when disabled (read-only host)', async () => {
+		getNodeType.mockImplementation((type: string) => {
+			if (type === 'n8n-nodes-base.gmailTool') {
+				return createNodeType('n8n-nodes-base.gmailTool', 'Gmail Tool');
+			}
+
+			return null;
+		});
+
+		const wrapper = mountSection([
+			{
+				type: 'node',
+				name: 'inbox_triage',
+				node: {
+					nodeType: 'n8n-nodes-base.gmailTool',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+				},
+			},
+			{
+				type: 'node',
+				name: 'send_follow_up',
+				node: {
+					nodeType: 'n8n-nodes-base.gmailTool',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+				},
+			},
+		]);
+
+		// Reka's DropdownMenuTrigger — not the read-only chip inside it — is what
+		// actually gates opening the menu, so assert its own disabled state.
+		const trigger = wrapper.find('[aria-haspopup="menu"]');
+		expect(trigger.attributes('disabled')).toBe('false');
+
+		await wrapper.setProps({ disabled: true });
+
+		expect(wrapper.find('[aria-haspopup="menu"]').attributes('disabled')).toBe('true');
 	});
 
 	describe('channel modal', () => {

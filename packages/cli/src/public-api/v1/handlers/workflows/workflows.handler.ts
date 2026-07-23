@@ -24,6 +24,7 @@ import {
 	publicApiScope,
 	projectScope,
 	validCursor,
+	deprecated,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
@@ -48,6 +49,8 @@ type WorkflowHandlers = {
 	getWorkflowVersion: PublicAPIEndpoint<WorkflowRequest.GetVersion>;
 	getWorkflows: PublicAPIEndpoint<WorkflowRequest.GetAll>;
 	updateWorkflow: PublicAPIEndpoint<WorkflowRequest.Update>;
+	publishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
+	unpublishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	activateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	deactivateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	getWorkflowTags: PublicAPIEndpoint<WorkflowRequest.GetTags>;
@@ -55,6 +58,46 @@ type WorkflowHandlers = {
 	archiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 	unarchiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 };
+
+const publishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate> = [
+	publicApiScope('workflow:activate'),
+	projectScope('workflow:publish', 'workflow'),
+	async (req, res) => {
+		const { id } = req.params;
+		const { versionId, name, description } = req.body;
+
+		try {
+			const workflow = await Container.get(WorkflowService).activateWorkflow(req.user, id, {
+				versionId,
+				name,
+				description,
+				source: 'api',
+			});
+
+			return res.json(workflow);
+		} catch (error) {
+			return handleError(error);
+		}
+	},
+];
+
+const unpublishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate> = [
+	publicApiScope('workflow:deactivate'),
+	projectScope('workflow:unpublish', 'workflow'),
+	async (req, res) => {
+		const { id } = req.params;
+
+		try {
+			const workflow = await Container.get(WorkflowService).deactivateWorkflow(req.user, id, {
+				source: 'api',
+			});
+
+			return res.json(workflow);
+		} catch (error) {
+			return handleError(error);
+		}
+	},
+];
 
 const workflowHandlers: WorkflowHandlers = {
 	createWorkflow: [
@@ -342,43 +385,12 @@ const workflowHandlers: WorkflowHandlers = {
 			}
 		},
 	],
-	activateWorkflow: [
-		publicApiScope('workflow:activate'),
-		projectScope('workflow:publish', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-			const { versionId, name, description } = req.body;
-
-			try {
-				const workflow = await Container.get(WorkflowService).activateWorkflow(req.user, id, {
-					versionId,
-					name,
-					description,
-					source: 'api',
-				});
-
-				return res.json(workflow);
-			} catch (error) {
-				return handleError(error);
-			}
-		},
-	],
+	publishWorkflow,
+	unpublishWorkflow,
+	activateWorkflow: [deprecated({ since: new Date('2026-07-23T00:00:00Z') }), ...publishWorkflow],
 	deactivateWorkflow: [
-		publicApiScope('workflow:deactivate'),
-		projectScope('workflow:unpublish', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-
-			try {
-				const workflow = await Container.get(WorkflowService).deactivateWorkflow(req.user, id, {
-					source: 'api',
-				});
-
-				return res.json(workflow);
-			} catch (error) {
-				return handleError(error);
-			}
-		},
+		deprecated({ since: new Date('2026-07-23T00:00:00Z') }),
+		...unpublishWorkflow,
 	],
 	getWorkflowTags: [
 		publicApiScope('workflowTags:list'),

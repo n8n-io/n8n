@@ -65,3 +65,18 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 		defaultModel: 'anthropic/claude-sonnet-4.6',
 	},
 };
+
+/** Order in which resolve_llm auto-picks a provider when credentials span multiple providers. */
+export const LLM_PROVIDER_PRIORITY: string[] = [
+	'anthropic',
+	'openai',
+	'google',
+	'mistral',
+	'xai',
+	'groq',
+	'deepseek',
+	'cohere',
+	'openrouter',
+	'nvidia',
+	'vercel',
+];

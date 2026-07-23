@@ -32,6 +32,7 @@ import {
 	executeScenario,
 	workflowExpectedForCase,
 	type BuildResult,
+	type ScenarioSeedContext,
 } from '../harness/runner';
 import type {
 	BuildExpectationResult,
@@ -161,6 +162,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 					workflowJsons: BuildResult['workflowJsons'];
 					buildTrace?: BuildResult['buildTrace'];
 					timeoutMs: number;
+					seedContext?: ScenarioSeedContext;
 				}) =>
 					await executeScenario(
 						lane.client,
@@ -172,6 +174,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						undefined,
 						execArgs.buildTrace,
 						args.pinAiRoots,
+						execArgs.seedContext,
 					),
 			),
 			tracedExecuteAgent: wrap(
