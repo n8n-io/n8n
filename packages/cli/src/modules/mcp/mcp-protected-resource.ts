@@ -65,7 +65,8 @@ export class McpProtectedResource implements ProtectedResource {
 				scope,
 				tools.filter(
 					(tool) =>
-						(builderEnabled || !BUILDER_TOOLS.has(tool)) && (!tagsDisabled || tool !== 'list_tags'),
+						(builderEnabled || !BUILDER_TOOLS.has(tool)) &&
+						(!tagsDisabled || tool !== 'list_workflow_tags'),
 				),
 			]),
 		);
