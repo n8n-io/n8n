@@ -135,7 +135,9 @@ function environmentConfigured(): boolean {
 function getAssignedId(): string | null {
 	if (props.kind === 'model') return store.settings?.modelCredentialId ?? null;
 	if (props.kind === 'sandbox') {
-		return store.settings?.daytonaCredentialId ?? store.settings?.n8nSandboxCredentialId ?? null;
+		return store.settings?.sandboxProvider === 'daytona'
+			? (store.settings?.daytonaCredentialId ?? null)
+			: (store.settings?.n8nSandboxCredentialId ?? null);
 	}
 	return store.settings?.searchCredentialId ?? null;
 }
@@ -399,9 +401,9 @@ const isComplete = computed(() => {
 	return newConnectionIsComplete(selection.value);
 });
 const isChanged = computed(() => snapshot() !== hydratedSnapshot);
+const isBusy = computed(() => store.isSaving || isTestingCredential.value || isLoading.value);
 const primaryDisabled = computed(() => {
-	if (store.isSaving || isTestingCredential.value || isLoading.value || !isComplete.value)
-		return true;
+	if (isBusy.value || !isComplete.value) return true;
 	if (props.setup) return !isChanged.value && !hasSelection.value;
 	return !isChanged.value && !credentialTestError.value;
 });
@@ -419,6 +421,7 @@ async function handlePrimary() {
 		}))
 	)
 		return;
+	if (!open.value) return;
 
 	// Pre-test a selected existing connection instead of relying on backend validation alone.
 	// Read-only callers cannot fetch credential data, so the backend stays their safety net.
@@ -426,6 +429,7 @@ async function handlePrimary() {
 		const credential = existingOptions.value.find(({ id }) => id === selectedCredentialId.value);
 		if (credential && !(await testSavedCredential(credential.id, credential.name, credential.type)))
 			return;
+		if (!open.value) return;
 	}
 
 	if (isChanged.value) {
@@ -441,8 +445,18 @@ async function handlePrimary() {
 }
 
 function handleBack() {
+	if (store.isSaving || isTestingCredential.value) return;
 	emit('back');
 	open.value = false;
+}
+
+function handleOpenChange(value: boolean) {
+	if (!value && (store.isSaving || isTestingCredential.value)) return;
+	open.value = value;
+}
+
+function handleClose() {
+	handleOpenChange(false);
 }
 
 const title = computed(() => i18n.baseText(props.setup ? copy.setupTitleKey : copy.titleKey));
@@ -461,7 +475,13 @@ const primaryLabel = computed(() => {
 </script>
 
 <template>
-	<N8nDialog v-model:open="open" size="medium" :data-test-id="`${copy.idPrefix}-dialog`">
+	<N8nDialog
+		:open="open"
+		size="medium"
+		:show-close-button="!store.isSaving && !isTestingCredential"
+		:data-test-id="`${copy.idPrefix}-dialog`"
+		@update:open="handleOpenChange"
+	>
 		<N8nDialogHeader>
 			<N8nText
 				v-if="setup"
@@ -484,7 +504,7 @@ const primaryLabel = computed(() => {
 					v-if="readOnly"
 					:model-value="selectedCredentialId"
 					size="medium"
-					:disabled="store.isSaving || isLoading"
+					:disabled="isBusy"
 					:placeholder="copy.placeholderKey ? i18n.baseText(copy.placeholderKey) : undefined"
 					:data-test-id="`${copy.idPrefix}-provider-select`"
 					@update:model-value="selectCredential(String($event ?? ''))"
@@ -501,7 +521,7 @@ const primaryLabel = computed(() => {
 					v-else
 					:model-value="selectingExistingCredential ? selectedCredentialId : selection"
 					size="medium"
-					:disabled="store.isSaving || isLoading"
+					:disabled="isBusy"
 					:placeholder="copy.placeholderKey ? i18n.baseText(copy.placeholderKey) : undefined"
 					:data-test-id="`${copy.idPrefix}-provider-select`"
 					@update:model-value="selectOption(String($event ?? ''))"
@@ -540,6 +560,7 @@ const primaryLabel = computed(() => {
 				"
 				:credential-type="credentialTypeFor(selection)"
 				:data="fieldsData"
+				:disabled="isBusy"
 				:data-test-id="`${copy.idPrefix}-connection-fields`"
 				@update="setFieldValue"
 			/>
@@ -552,7 +573,7 @@ const primaryLabel = computed(() => {
 					:model-value="extraValue"
 					type="text"
 					size="medium"
-					:disabled="store.isSaving || isLoading"
+					:disabled="isBusy"
 					autocomplete="off"
 					:spellcheck="false"
 					:placeholder="i18n.baseText('settings.n8nAgent.modelName.placeholder')"
@@ -568,7 +589,7 @@ const primaryLabel = computed(() => {
 					:model-value="extraValue"
 					type="password"
 					size="medium"
-					:disabled="store.isSaving || isLoading"
+					:disabled="isBusy"
 					autocomplete="off"
 					:spellcheck="false"
 					data-test-id="n8n-agent-sandbox-api-key-input"
@@ -600,6 +621,7 @@ const primaryLabel = computed(() => {
 				variant="outline"
 				size="medium"
 				:label="i18n.baseText('generic.back')"
+				:disabled="store.isSaving || isTestingCredential"
 				:data-test-id="`${copy.idPrefix}-dialog-back`"
 				@click="handleBack"
 			/>
@@ -608,16 +630,18 @@ const primaryLabel = computed(() => {
 				variant="outline"
 				size="medium"
 				:label="i18n.baseText('settings.n8nAgent.setup.skip')"
+				:disabled="store.isSaving || isTestingCredential"
 				:data-test-id="`${copy.idPrefix}-dialog-skip`"
-				@click="open = false"
+				@click="handleClose"
 			/>
 			<N8nButton
 				v-if="showCancel"
 				variant="outline"
 				size="medium"
 				:label="i18n.baseText('generic.cancel')"
+				:disabled="store.isSaving || isTestingCredential"
 				:data-test-id="`${copy.idPrefix}-dialog-cancel`"
-				@click="open = false"
+				@click="handleClose"
 			/>
 			<N8nButton
 				variant="solid"

@@ -6,6 +6,7 @@ import {
 	SettingsRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
@@ -135,6 +136,31 @@ describe('InstanceAiSettingsService (integration)', () => {
 		await expect(
 			assignmentRepository.findAssignedCredentialId(INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id),
 		).resolves.toBe(credentialId);
+	});
+
+	it('keeps stored secrets when updating a redacted connection', async () => {
+		const created = await service.updateAdminSettings(modelUpdate, owner);
+
+		const updated = await service.updateAdminSettings(
+			{
+				modelConnection: {
+					type: 'openAiApi',
+					data: { apiKey: CREDENTIAL_BLANKING_VALUE },
+				},
+				modelName: 'gpt-5.1',
+			},
+			owner,
+		);
+
+		expect(updated.modelCredentialId).toBe(created.modelCredentialId);
+		const credential = await credentialsRepository.findOneByOrFail({
+			id: created.modelCredentialId!,
+		});
+		await expect(
+			Container.get(CredentialsService).decrypt(credential, true),
+		).resolves.toMatchObject({
+			apiKey: 'test-key',
+		});
 	});
 
 	it('does not update workflow credentials through the instance-scoped repository update', async () => {

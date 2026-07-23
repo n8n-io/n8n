@@ -16,6 +16,7 @@ const HIDDEN_FIELDS = new Set([
 const props = defineProps<{
 	credentialType: string;
 	data: ICredentialDataDecryptedObject;
+	disabled?: boolean;
 }>();
 
 const emit = defineEmits<{ update: [name: string, value: IUpdateInformation['value']] }>();
@@ -34,10 +35,20 @@ function onUpdate(parameterData: IUpdateInformation) {
 </script>
 
 <template>
-	<CredentialInputs
-		:credential-properties="properties"
-		:credential-data="data"
-		:documentation-url="type?.documentationUrl ?? ''"
-		@update="onUpdate"
-	/>
+	<fieldset v-if="properties.length" :disabled="disabled" :class="$style.fieldset">
+		<CredentialInputs
+			:credential-properties="properties"
+			:credential-data="data"
+			:documentation-url="type?.documentationUrl ?? ''"
+			@update="onUpdate"
+		/>
+	</fieldset>
 </template>
+
+<style module>
+.fieldset {
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+</style>

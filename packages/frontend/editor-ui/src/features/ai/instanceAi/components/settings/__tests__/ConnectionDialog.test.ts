@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import type { ICredentialType } from 'n8n-workflow';
+import type { ICredentialType, INodeCredentialTestResult } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ConnectionDialog from '../ConnectionDialog.vue';
@@ -16,11 +16,16 @@ vi.mock('@/features/ndv/parameters/components/ParameterInputExpanded.vue', async
 		default: defineComponent({
 			props: { parameter: { type: Object, required: true }, value: { default: '' } },
 			emits: ['update'],
-			setup(props) {
+			setup(props, { emit }) {
 				return () =>
 					h('input', {
 						'data-test-id': `param-${(props.parameter as { name: string }).name}`,
 						value: String(props.value ?? ''),
+						onInput: (event: Event) =>
+							emit('update', {
+								name: (props.parameter as { name: string }).name,
+								value: (event.target as HTMLInputElement).value,
+							}),
 					});
 			},
 		}),
@@ -70,6 +75,7 @@ const DAYTONA_TYPE: ICredentialType = {
 			default: '',
 		},
 	],
+	test: { request: { url: '/test' } },
 };
 
 describe('ConnectionDialog (real connection fields)', () => {
@@ -123,5 +129,37 @@ describe('ConnectionDialog (real connection fields)', () => {
 		await findByTestId('n8n-agent-sandbox-provider-select');
 		expect(queryByTestId('n8n-agent-sandbox-connection-fields')).toBeNull();
 		expect(queryAllByTestId('credential-connection-parameter')).toHaveLength(0);
+	});
+
+	it('keeps the dialog and fields locked while testing a connection', async () => {
+		useCredentialsStore().setCredentialTypes([DAYTONA_TYPE]);
+		const credentialsStore = useCredentialsStore();
+		let finishTest = (_result: INodeCredentialTestResult) => {};
+		vi.mocked(credentialsStore.testCredential).mockImplementation(
+			async () =>
+				await new Promise<INodeCredentialTestResult>((resolve) => {
+					finishTest = resolve;
+				}),
+		);
+		vi.mocked(store.save).mockResolvedValue(true);
+
+		const { findByTestId, getByTestId } = renderDialog({
+			props: { kind: 'sandbox', open: true },
+		});
+		const apiKeyInput = await findByTestId('param-apiKey');
+		await fireEvent.update(apiKeyInput, 'secret');
+		const saveButton = getByTestId('n8n-agent-sandbox-dialog-save');
+		await waitFor(() => expect(saveButton).not.toBeDisabled());
+
+		await fireEvent.click(saveButton);
+
+		const cancelButton = getByTestId('n8n-agent-sandbox-dialog-cancel');
+		await waitFor(() => expect(cancelButton).toBeDisabled());
+		expect(apiKeyInput).toBeDisabled();
+		await fireEvent.click(cancelButton);
+		expect(getByTestId('n8n-agent-sandbox-dialog-cancel')).toBeDisabled();
+
+		finishTest({ status: 'OK', message: '' });
+		await waitFor(() => expect(store.save).toHaveBeenCalled());
 	});
 });

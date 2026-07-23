@@ -24,7 +24,7 @@ import type { ModelConfig } from '@n8n/instance-ai';
 import { hasGlobalScope } from '@n8n/permissions';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -205,6 +205,8 @@ function validateInstanceAiCredential(
 	} else if (policy === INSTANCE_AI_SEARCH_CREDENTIAL_POLICY) {
 		if (type === 'searXngApi') requireHttpUrl(type, data, 'apiUrl');
 		else requireConnectionValue(type, data, 'apiKey');
+	} else {
+		throw new UnexpectedError(`Unknown instance AI credential policy "${policy.id}"`);
 	}
 }
 
@@ -411,7 +413,11 @@ export class InstanceAiSettingsService {
 				throw new ForbiddenError('You do not have permission to manage provider connections');
 			}
 		}
-		if (modelConnection && (settingsUpdate.modelName ?? this.adminModelName) === null) {
+		if (
+			modelConnection &&
+			(settingsUpdate.modelName !== undefined ? settingsUpdate.modelName : this.adminModelName) ===
+				null
+		) {
 			throw new UnprocessableRequestError('modelName must be set together with modelCredentialId');
 		}
 		const [modelPrepared, searchPrepared, sandboxPrepared] = user
@@ -429,6 +435,17 @@ export class InstanceAiSettingsService {
 					this.prepareSandboxConnection(sandboxConnection),
 				])
 			: [undefined, undefined, undefined];
+		this.validateAdminSettingsUpdate(
+			update,
+			this.snapshotAdminSettings(),
+			sandboxConnection === null
+				? this.environmentSandboxProvider
+				: sandboxConnection?.type === 'daytonaApi'
+					? 'daytona'
+					: sandboxConnection?.type === 'httpHeaderAuth'
+						? 'n8n-sandbox'
+						: settingsUpdate.sandboxProvider,
+		);
 		await this.runConnectionHooks([modelPrepared, searchPrepared, sandboxPrepared]);
 		const { previous, next } = await this.dbLockService.withLockContext(
 			DbLock.INSTANCE_AI_SETTINGS,
@@ -595,7 +612,9 @@ export class InstanceAiSettingsService {
 		prepared?: PreparedConnection,
 	): Promise<string | null> {
 		if (connection === null) return null;
-		if (!prepared?.encryptedData) throw new ConflictError('Provider connection changed; retry');
+		if (!prepared?.encryptedData) {
+			throw new UnexpectedError('Prepared provider connection is missing encrypted data');
+		}
 
 		// A current assignment outside the allowed types (legacy data) is replaced, not fatal.
 		let current: ResolvedInstanceCredential | null;
@@ -655,7 +674,14 @@ export class InstanceAiSettingsService {
 			current = null;
 		}
 
-		const data = connection.data as ICredentialDataDecryptedObject;
+		const data =
+			current?.type === connection.type
+				? this.credentialsService.unredact(
+						connection.data as ICredentialDataDecryptedObject,
+						current.data,
+						this.credentialsService.getCredentialTypeProperties(connection.type),
+					)
+				: (connection.data as ICredentialDataDecryptedObject);
 		validateInstanceAiCredential(policy, { type: connection.type, data });
 		const existing =
 			current?.type === connection.type ? { id: current.id, name: current.name } : null;

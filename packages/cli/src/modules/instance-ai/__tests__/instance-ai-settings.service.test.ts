@@ -82,6 +82,8 @@ describe('InstanceAiSettingsService', () => {
 		globalConfig.deployment.type = 'default';
 		instanceCredentialBroker.listForUse.mockResolvedValue([]);
 		instanceCredentialBroker.getAssignedCredentialId.mockResolvedValue(null);
+		credentialsService.getCredentialTypeProperties.mockReturnValue([]);
+		credentialsService.unredact.mockImplementation((data) => data);
 		credentialsService.runInstanceCredentialHooks.mockImplementation(async (_event, credential) => {
 			return {
 				id: credential.id ?? '',
@@ -314,6 +316,34 @@ describe('InstanceAiSettingsService', () => {
 					type: 'openAiApi',
 					data: { apiKey: 'k2' },
 				});
+			});
+
+			it('should unredact updates before running credential hooks', async () => {
+				instanceCredentialBroker.resolveForUse.mockResolvedValue({
+					id: 'cred-1',
+					name: 'AI Assistant model',
+					type: 'openAiApi',
+					data: { apiKey: 'saved-key' },
+				});
+				credentialsService.unredact.mockReturnValue({ apiKey: 'saved-key' });
+
+				await service.updateAdminSettings(
+					{
+						modelConnection: { type: 'openAiApi', data: { apiKey: '__redacted__' } },
+						modelName: 'gpt-5',
+					},
+					adminUser,
+				);
+
+				expect(credentialsService.unredact).toHaveBeenCalledWith(
+					{ apiKey: '__redacted__' },
+					{ apiKey: 'saved-key' },
+					expect.any(Array),
+				);
+				expect(credentialsService.runInstanceCredentialHooks).toHaveBeenCalledWith(
+					'update',
+					expect.objectContaining({ data: { apiKey: 'saved-key' } }),
+				);
 			});
 
 			it('should reject when the assigned connection changes while its hook runs', async () => {
@@ -599,6 +629,39 @@ describe('InstanceAiSettingsService', () => {
 				expect(credentialsService.runInstanceCredentialHooks).not.toHaveBeenCalled();
 			});
 
+			it('should reject clearing the model name before running connection hooks', async () => {
+				await service.updateAdminSettings({ modelCredentialId: 'cred-1', modelName: 'gpt-5' });
+				credentialsService.runInstanceCredentialHooks.mockClear();
+
+				await expect(
+					service.updateAdminSettings(
+						{
+							modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } },
+							modelName: null,
+						},
+						adminUser,
+					),
+				).rejects.toThrow('modelName must be set together with modelCredentialId');
+				expect(credentialsService.runInstanceCredentialHooks).not.toHaveBeenCalled();
+			});
+
+			it('should validate sandbox settings before running connection hooks', async () => {
+				globalConfig.instanceAi.sandboxEnabled = true;
+				globalConfig.instanceAi.n8nSandboxServiceUrl = '';
+
+				await expect(
+					service.updateAdminSettings(
+						{
+							modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } },
+							modelName: 'gpt-5',
+							sandboxProvider: 'n8n-sandbox',
+						},
+						adminUser,
+					),
+				).rejects.toThrow(/N8N_SANDBOX_SERVICE_URL/);
+				expect(credentialsService.runInstanceCredentialHooks).not.toHaveBeenCalled();
+			});
+
 			it('should allow selecting existing credential ids without the manage scope', async () => {
 				await expect(
 					service.updateAdminSettings({ searchCredentialId: 'search-cred' }, memberUser),
@@ -618,6 +681,25 @@ describe('InstanceAiSettingsService', () => {
 					),
 				).rejects.toThrow('You do not have permission to manage provider connections');
 			});
+
+			it.each(['cloud', 'proxy'] as const)(
+				'should reject connection payloads on %s deployments',
+				async (deployment) => {
+					globalConfig.deployment.type = deployment === 'cloud' ? 'cloud' : 'default';
+					aiService.isProxyEnabled.mockReturnValue(deployment === 'proxy');
+
+					await expect(
+						service.updateAdminSettings(
+							{
+								modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } },
+								modelName: 'gpt-5',
+							},
+							adminUser,
+						),
+					).rejects.toThrow(UnprocessableRequestError);
+					expect(credentialsService.runInstanceCredentialHooks).not.toHaveBeenCalled();
+				},
+			);
 
 			it('should reject a connection payload combined with a credential id', async () => {
 				await expect(
@@ -1335,7 +1417,8 @@ describe('InstanceAiSettingsService', () => {
 	});
 
 	describe('n8n sandbox credential', () => {
-		it('uses the resolved api key with the environment service url', async () => {
+		it('uses the resolved api key instead of the environment api key', async () => {
+			globalConfig.instanceAi.n8nSandboxServiceApiKey = 'env-key';
 			instanceCredentialBroker.resolveForUse.mockResolvedValue({
 				id: 'sandbox-credential',
 				name: 'Sandbox',
