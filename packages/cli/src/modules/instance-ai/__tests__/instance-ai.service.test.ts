@@ -4069,53 +4069,6 @@ describe('createAgentMemoryOptions', () => {
 		expect(service.creditService.claimRunUsage).toHaveBeenCalledTimes(1);
 	});
 });
-<<<<<<< HEAD
-=======
-
-describe('InstanceAiService — routeCancelRun zombie fallback', () => {
-	function createCancelService() {
-		const service = Object.create(InstanceAiService.prototype) as unknown as {
-			runState: { hasLiveRun: Mock };
-			eventLog: { flush: Mock };
-			interruptedRunSweeper: { cancelUnfinishedRuns: Mock };
-			routeTaskControl: Mock;
-			routeCancelRun: (threadId: string) => Promise<void>;
-		};
-		service.runState = { hasLiveRun: vi.fn(() => false) };
-		service.eventLog = { flush: vi.fn(async () => {}) };
-		service.interruptedRunSweeper = { cancelUnfinishedRuns: vi.fn(async () => 0) };
-		service.routeTaskControl = vi.fn(async () => {});
-		return service;
-	}
-
-	it('terminalizes dead runs after broadcasting when nothing is live locally', async () => {
-		const service = createCancelService();
-
-		await service.routeCancelRun('thread-a');
-
-		expect(service.routeTaskControl).toHaveBeenCalledWith({
-			threadId: 'thread-a',
-			action: 'cancel-thread',
-		});
-		// Drain settles first so a just-finished run cannot be double-terminaled.
-		expect(service.eventLog.flush).toHaveBeenCalledWith('thread-a');
-		expect(service.interruptedRunSweeper.cancelUnfinishedRuns).toHaveBeenCalledWith('thread-a');
-		expect(service.routeTaskControl.mock.invocationCallOrder[0]).toBeLessThan(
-			service.interruptedRunSweeper.cancelUnfinishedRuns.mock.invocationCallOrder[0],
-		);
-	});
-
-	it('skips the fallback when a local run is live (its abort emits the terminal fact)', async () => {
-		const service = createCancelService();
-		service.runState.hasLiveRun = vi.fn(() => true);
-
-		await service.routeCancelRun('thread-a');
-
-		expect(service.routeTaskControl).toHaveBeenCalled();
-		expect(service.eventLog.flush).not.toHaveBeenCalled();
-		expect(service.interruptedRunSweeper.cancelUnfinishedRuns).not.toHaveBeenCalled();
-	});
-});
 
 type FollowUpStreakServiceInternals = {
 	failedInternalFollowUpStreaks: Map<string, number>;
@@ -4239,4 +4192,3 @@ describe('InstanceAiService — internal follow-up failure streak', () => {
 		});
 	});
 });
->>>>>>> 5aac66d8 (fix(core): Stop Instance AI follow-up runs from looping when they keep failing before the agent starts (#34767))
