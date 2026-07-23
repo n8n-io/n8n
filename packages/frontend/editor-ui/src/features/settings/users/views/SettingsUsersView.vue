@@ -9,12 +9,8 @@ import {
 } from '@n8n/api-types';
 import type { UserAction } from '@n8n/design-system';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
-import {
-	DEBOUNCE_TIME,
-	EnterpriseEditionFeature,
-	getDebounceTime,
-	MODAL_CONFIRM,
-} from '@/app/constants';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME, EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { DELETE_USER_MODAL_KEY, INVITE_USER_MODAL_KEY } from '../users.constants';
 import type { InvitableRoleName } from '../users.types';
 import type { IUser } from '@n8n/rest-api-client/api/users';

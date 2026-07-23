@@ -11,7 +11,7 @@ import {
 	DEFAULT_DATA_TABLE_PAGE_SIZE,
 	PROJECT_DATA_TABLES,
 } from '@/features/core/dataTable/constants';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import debounce from 'lodash/debounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
@@ -26,7 +26,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmptyState.vue';
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+import { DEBOUNCE_TIME } from '@/app/constants';
 import { useDependencies } from '@/app/composables/useDependencies';
 
 const i18n = useI18n();

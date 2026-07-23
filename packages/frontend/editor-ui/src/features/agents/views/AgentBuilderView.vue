@@ -66,7 +66,7 @@ import {
 	CONTINUE_SESSION_ID_PARAM,
 	PROJECT_AGENTS,
 } from '../constants';
-import { getDebounceTime } from '@/app/constants/durations';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderPreviewHeader from '../components/AgentBuilderPreviewHeader.vue';

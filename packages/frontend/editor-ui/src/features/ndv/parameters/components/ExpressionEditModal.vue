@@ -17,7 +17,7 @@ import ExpressionOutput from '@/features/shared/editors/components/InlineExpress
 import VirtualSchema from '@/features/ndv/runData/components/VirtualSchema.vue';
 import OutputItemSelect from '@/features/shared/editors/components/InlineExpressionEditor/OutputItemSelect.vue';
 import { useI18n } from '@n8n/i18n';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import { dropInExpressionEditor } from '@/features/shared/editors/plugins/codemirror/dragAndDrop';
 
