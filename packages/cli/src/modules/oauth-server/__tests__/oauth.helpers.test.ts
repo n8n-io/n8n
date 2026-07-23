@@ -185,15 +185,15 @@ describe('OAuthHelpers', () => {
 		});
 	});
 
-	describe('appendIssuerParam', () => {
-		it('should append iss to an absolute URL without one', () => {
-			const result = OAuthHelpers.appendIssuerParam('https://example.com/callback', issuer);
+	describe('setIssuerParam', () => {
+		it('should set iss on an absolute URL without one', () => {
+			const result = OAuthHelpers.setIssuerParam('https://example.com/callback', issuer);
 
 			expect(new URL(result).searchParams.get('iss')).toBe(issuer);
 		});
 
 		it('should preserve existing query parameters', () => {
-			const result = OAuthHelpers.appendIssuerParam(
+			const result = OAuthHelpers.setIssuerParam(
 				'https://example.com/callback?error=invalid_request&state=state-xyz',
 				issuer,
 			);
@@ -204,17 +204,18 @@ describe('OAuthHelpers', () => {
 			expect(url.searchParams.get('iss')).toBe(issuer);
 		});
 
-		it('should not overwrite an existing iss parameter', () => {
-			const result = OAuthHelpers.appendIssuerParam(
+		it('should replace a pre-existing iss parameter with the server issuer', () => {
+			const result = OAuthHelpers.setIssuerParam(
 				'https://example.com/callback?iss=https%3A%2F%2Fother.example.com',
 				issuer,
 			);
 
-			expect(new URL(result).searchParams.get('iss')).toBe('https://other.example.com');
+			expect(new URL(result).searchParams.get('iss')).toBe(issuer);
+			expect(new URL(result).searchParams.getAll('iss')).toHaveLength(1);
 		});
 
 		it('should return relative URLs unchanged', () => {
-			expect(OAuthHelpers.appendIssuerParam('/oauth/consent', issuer)).toBe('/oauth/consent');
+			expect(OAuthHelpers.setIssuerParam('/oauth/consent', issuer)).toBe('/oauth/consent');
 		});
 	});
 });

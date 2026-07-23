@@ -49,17 +49,17 @@ export class OAuthHelpers {
 	}
 
 	/**
-	 * Append the RFC 9207 `iss` parameter to an absolute redirect URL when
-	 * missing. Relative URLs (internal redirects, e.g. to the consent screen)
-	 * are returned unchanged.
+	 * Set the RFC 9207 `iss` parameter on an absolute redirect URL, replacing
+	 * any pre-existing value (e.g. one baked into the client's registered
+	 * redirect URI) so the response always asserts this server's identity.
+	 * Relative URLs (internal redirects, e.g. to the consent screen) are
+	 * returned unchanged.
 	 */
-	static appendIssuerParam(url: string, issuer: string): string {
+	static setIssuerParam(url: string, issuer: string): string {
 		if (!URL.canParse(url)) return url;
 
 		const targetUrl = new URL(url);
-		if (!targetUrl.searchParams.has('iss')) {
-			targetUrl.searchParams.set('iss', issuer);
-		}
+		targetUrl.searchParams.set('iss', issuer);
 		return targetUrl.toString();
 	}
 }

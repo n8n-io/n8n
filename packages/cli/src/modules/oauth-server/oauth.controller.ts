@@ -71,7 +71,7 @@ const oauthClientLimitGuard: RequestHandler = async (_req, res, next) => {
 const rfc9207IssuerParam: RequestHandler = (_req, res, next) => {
 	const originalLocation = res.location.bind(res);
 	res.location = (url: string) =>
-		originalLocation(OAuthHelpers.appendIssuerParam(url, urlService.getInstanceBaseUrl()));
+		originalLocation(OAuthHelpers.setIssuerParam(url, urlService.getInstanceBaseUrl()));
 	next();
 };
 
