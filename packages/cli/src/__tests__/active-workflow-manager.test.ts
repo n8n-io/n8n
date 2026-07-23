@@ -988,6 +988,20 @@ describe('ActiveWorkflowManager', () => {
 			// In-memory cron was still stopped, and the failure was reported.
 			expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-durable-fail'))).toBe(false);
 			expect(errorReporter.error).toHaveBeenCalledWith(deprovisionError);
+			// The two removals share one try/catch: a schedule-registrar failure skips
+			// the poll-registrar call entirely rather than running it independently.
+			expect(pollTriggerJobRegistrar.removeWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('should not let a poll-registrar deprovision failure abort deactivation', async () => {
+			const deprovisionError = new Error('durable poll delete failed');
+			pollTriggerJobRegistrar.removeWorkflow.mockRejectedValueOnce(deprovisionError);
+
+			await expect(
+				activeWorkflowManager.removeNonWebhookTriggers('wf-durable-poll-fail'),
+			).resolves.not.toThrow();
+
+			expect(errorReporter.error).toHaveBeenCalledWith(deprovisionError);
 		});
 
 		it('should stop a stranded cron on leader stepdown / shutdown', async () => {
@@ -1108,6 +1122,22 @@ describe('ActiveWorkflowManager', () => {
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'remove-triggers-and-pollers',
 				payload: { workflowId: 'wf-mm-fail' },
+			});
+			// The two removals share one try/catch: a schedule-registrar failure skips
+			// the poll-registrar call entirely rather than running it independently.
+			expect(pollTriggerJobRegistrar.removeWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('still forwards the teardown command when the poll-registrar deprovision fails', async () => {
+			pollTriggerJobRegistrar.removeWorkflow.mockRejectedValueOnce(
+				new Error('durable poll delete failed'),
+			);
+
+			await expect(makeManager().remove('wf-mm-poll-fail')).resolves.not.toThrow();
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'remove-triggers-and-pollers',
+				payload: { workflowId: 'wf-mm-poll-fail' },
 			});
 		});
 	});

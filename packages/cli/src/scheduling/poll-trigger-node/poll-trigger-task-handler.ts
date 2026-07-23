@@ -15,11 +15,14 @@ import {
 } from './poll-trigger-task';
 
 /**
- * Runs a due poll occurrence's `poll()` once and hands off only when it returns
- * new data. Reuses the poll execution context the activation path builds, so the
- * cursor and `__emit` run path are unchanged. A null result means no new data,
- * so nothing is dispatched. No dedup key: two polls at the same instant can
- * legitimately differ.
+ * Runs a due poll occurrence's `poll()` once and dispatches only when it
+ * returns new data.
+ *
+ * Carries no `deduplicationKey`, so it forgoes the execution-level duplicate
+ * backstop: under the scheduler's at-least-once contract, a poll occurrence
+ * can run twice and race the fire-and-forget cursor save. Accepted: two polls
+ * at the same instant can legitimately return different data anyway, so a
+ * repeated poll is tolerable.
  */
 @Service()
 export class PollTriggerTaskHandler implements TaskHandler {
@@ -34,22 +37,21 @@ export class PollTriggerTaskHandler implements TaskHandler {
 	}
 
 	async execute(task: ClaimedTask, report: DispatchReporter): Promise<DispatchDecision> {
+		// A setup failure here retries to N8N_SCHEDULER_MAX_ATTEMPTS then dead-letters,
+		// unlike a `poll()` runtime failure below, which routes to the error workflow instead.
 		const { workflowId, nodeId } = this.parsePayload(task);
-		// bypassCache: the poll cursor in staticData must be read live, not from the
-		// publish-time cache (see loadPublishedWorkflowData).
+		// bypassCache: the poll cursor in staticData must be read live, not from the publish-time cache.
 		const workflowData = await this.triggerExecutionContextFactory.loadPublishedWorkflowData(
 			workflowId,
 			{ bypassCache: true },
 		);
 		const node = this.resolveTriggerNode(workflowData, nodeId, task);
 
-		// Factory assembles the poll context, identical to the activation path.
 		const { workflow, pollFunctions } =
 			await this.triggerExecutionContextFactory.createPollExecutionContext(workflowData, node);
 
-		// Scheduled polls fire outside the activation path's isolate window, so acquire
-		// and release per tick (see PollTriggerExecutor); the finally releases even when
-		// poll() throws, so the isolate is not leaked to the next occurrence.
+		// Scheduled polls run outside any activation isolate window, so acquire and
+		// release one per tick; the finally releases even when poll() throws.
 		await workflow.expression.acquireIsolate();
 		try {
 			const pollResponse = await this.triggersAndPollers.runPollFunction(
@@ -59,8 +61,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			);
 
 			if (pollResponse !== null) {
-				// Fire-and-forget, matching the in-memory poll path: __emit saves the
-				// cursor and kicks off the run without us awaiting it.
+				// __emit saves the cursor and starts the run without waiting on it.
 				pollFunctions.__emit(pollResponse);
 				this.logger.debug('Poll returned new data; handed off to a new execution', {
 					taskId: task.id,
@@ -79,11 +80,9 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			});
 			return report.notDispatched();
 		} catch (error) {
-			// A runtime poll() failure goes to the error workflow via __emitError. We
-			// don't rethrow: that would retry to N8N_SCHEDULER_MAX_ATTEMPTS and
-			// dead-letter, skipping the error workflow. __emitError skips
-			// saveStaticData, so the cursor holds and the next tick re-fetches the
-			// same window once the source recovers.
+			// Routed to the error workflow instead of rethrown, which would retry and
+			// dead-letter without ever running it. __emitError skips saveStaticData, so
+			// the cursor holds and the next tick retries the same window.
 			pollFunctions.__emitError(ensureError(error));
 			this.logger.debug('Poll failed at runtime; routed to the error workflow', {
 				taskId: task.id,

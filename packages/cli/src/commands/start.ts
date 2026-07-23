@@ -215,7 +215,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(DeprecationService).warn();
 
-		// Must be before `ActiveWorkflowManager`
+		// Resolved lazily at activation time, so this only needs to run before the
+		// first workflow activation.
 		Container.set(PollJobManager, Container.get(PollTriggerJobRegistrar));
 
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);

@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	INode,
@@ -22,7 +23,7 @@ import { Tracing } from '@/observability';
 import { ActiveWorkflowTriggers } from '../active-workflow-triggers';
 import type { IGetExecuteTriggerFunctions } from '../interfaces';
 import type { PollContext } from '../node-execution-context';
-import type { PollJobManager } from '../poll-job-manager';
+import { PollJobManager } from '../poll-job-manager';
 import { PollTriggerExecutor } from '../poll-trigger-executor';
 import { ScheduledTaskManager } from '../scheduled-task-manager';
 import type { TriggersAndPollers } from '../triggers-and-pollers';
@@ -1356,15 +1357,37 @@ describe('ActiveWorkflowTriggers', () => {
 	describe('poll triggers via the durable scheduler', () => {
 		const customCron = '0 * * * *' as CronExpression;
 
-		const buildTriggers = (pollJobManager?: PollJobManager) =>
-			new ActiveWorkflowTriggers(
+		// Spy on the container rather than `Container.set`: setting an abstract
+		// token pollutes it for the rest of the file, since its metadata never clears.
+		let currentPollJobManager: PollJobManager | undefined;
+
+		beforeEach(() => {
+			currentPollJobManager = undefined;
+			const realHas = Container.has.bind(Container);
+			const realGet = Container.get.bind(Container);
+			vi.spyOn(Container, 'has').mockImplementation((token) =>
+				token === PollJobManager ? currentPollJobManager !== undefined : realHas(token),
+			);
+			vi.spyOn(Container, 'get').mockImplementation((token) =>
+				token === PollJobManager ? currentPollJobManager : realGet(token),
+			);
+		});
+
+		afterEach(() => {
+			vi.mocked(Container.has).mockRestore();
+			vi.mocked(Container.get).mockRestore();
+		});
+
+		const buildTriggers = (pollJobManager?: PollJobManager) => {
+			currentPollJobManager = pollJobManager;
+			return new ActiveWorkflowTriggers(
 				logger,
 				scheduledTaskManager,
 				triggersAndPollers,
 				errorReporter,
 				new PollTriggerExecutor(logger, triggersAndPollers, tracing),
-				pollJobManager,
 			);
+		};
 
 		const buildPollJobManager = (active: boolean, inserted = false) => {
 			const pollJobManager = mock<PollJobManager>();
@@ -1397,79 +1420,71 @@ describe('ActiveWorkflowTriggers', () => {
 			);
 		};
 
-		it('registers an in-memory cron and polls once when no durable manager is bound', async () => {
-			const triggers = buildTriggers(undefined);
+		it.each([
+			{
+				name: 'no durable manager bound: registers an in-memory cron and polls once',
+				buildManager: undefined,
+				expectRegisterCalled: false,
+				expectRunPollCalls: 1,
+				expectCronRegistered: true,
+			},
+			{
+				name: 'manager active and freshly inserted: provisions the durable job, skips the cron, polls once inline to seed the cursor',
+				buildManager: () => buildPollJobManager(true, true),
+				expectRegisterCalled: true,
+				expectRunPollCalls: 1,
+				expectCronRegistered: false,
+			},
+			{
+				name: 'manager active and a pure reconcile: provisions the durable job, skips the cron, does not re-poll',
+				buildManager: () => buildPollJobManager(true, false),
+				expectRegisterCalled: true,
+				expectRunPollCalls: 0,
+				expectCronRegistered: false,
+			},
+			{
+				name: 'manager bound but inactive: falls back to the in-memory cron',
+				buildManager: () => buildPollJobManager(false),
+				expectRegisterCalled: false,
+				expectRunPollCalls: 1,
+				expectCronRegistered: true,
+			},
+		])(
+			'$name',
+			async ({ buildManager, expectRegisterCalled, expectRunPollCalls, expectCronRegistered }) => {
+				const pollJobManager = buildManager?.();
+				const triggers = buildTriggers(pollJobManager);
 
-			await activatePoll(triggers);
+				await activatePoll(triggers);
 
-			expect(scheduledTaskManager.register).toHaveBeenCalledWith(
-				{
-					group: workflowGroup(),
-					targetId: pollNode.id,
-					timezone: workflow.timezone,
-					expression: customCron,
-				},
-				expect.any(Function),
-			);
-			// The legacy path polls once at activation to prove the node works.
-			expect(triggersAndPollers.runPollFunction).toHaveBeenCalled();
-		});
+				if (expectRegisterCalled) {
+					expect(pollJobManager!.register).toHaveBeenCalledWith(
+						workflowId,
+						pollNode,
+						[{ mode: 'custom', cronExpression: customCron }],
+						workflow.timezone,
+					);
+				} else if (pollJobManager) {
+					expect(pollJobManager.register).not.toHaveBeenCalled();
+				}
 
-		it('provisions a durable job and skips the in-memory cron when the manager is active', async () => {
-			const pollJobManager = buildPollJobManager(true, true);
-			const triggers = buildTriggers(pollJobManager);
+				expect(triggersAndPollers.runPollFunction).toHaveBeenCalledTimes(expectRunPollCalls);
 
-			await activatePoll(triggers);
-
-			expect(pollJobManager.register).toHaveBeenCalledWith(
-				workflowId,
-				pollNode,
-				[{ mode: 'custom', cronExpression: customCron }],
-				workflow.timezone,
-			);
-			expect(scheduledTaskManager.register).not.toHaveBeenCalled();
-		});
-
-		it('polls once inline when a durable job is newly inserted, to seed the cursor', async () => {
-			const pollJobManager = buildPollJobManager(true, true);
-			const triggers = buildTriggers(pollJobManager);
-
-			await activatePoll(triggers);
-
-			// Same inline first poll the legacy path runs, so the seeded occurrence
-			// delivers only the next window rather than re-delivering the first.
-			expect(triggersAndPollers.runPollFunction).toHaveBeenCalledTimes(1);
-			expect(scheduledTaskManager.register).not.toHaveBeenCalled();
-		});
-
-		it('does not poll inline when the provision only reconciles existing jobs', async () => {
-			// A re-activation (e.g. takeover) where nothing is newly inserted must not
-			// re-poll: that would disturb the cursor a running job already advances.
-			const pollJobManager = buildPollJobManager(true, false);
-			const triggers = buildTriggers(pollJobManager);
-
-			await activatePoll(triggers);
-
-			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
-		});
-
-		it('falls back to the in-memory cron when the manager is bound but inactive', async () => {
-			const pollJobManager = buildPollJobManager(false);
-			const triggers = buildTriggers(pollJobManager);
-
-			await activatePoll(triggers);
-
-			expect(pollJobManager.register).not.toHaveBeenCalled();
-			expect(scheduledTaskManager.register).toHaveBeenCalledWith(
-				{
-					group: workflowGroup(),
-					targetId: pollNode.id,
-					timezone: workflow.timezone,
-					expression: customCron,
-				},
-				expect.any(Function),
-			);
-		});
+				if (expectCronRegistered) {
+					expect(scheduledTaskManager.register).toHaveBeenCalledWith(
+						{
+							group: workflowGroup(),
+							targetId: pollNode.id,
+							timezone: workflow.timezone,
+							expression: customCron,
+						},
+						expect.any(Function),
+					);
+				} else {
+					expect(scheduledTaskManager.register).not.toHaveBeenCalled();
+				}
+			},
+		);
 
 		it('provisions nothing when the sub-minute guard fails activation', async () => {
 			// The guard rejects before the branch, so a rejected activation creates
@@ -1487,21 +1502,24 @@ describe('ActiveWorkflowTriggers', () => {
 			expect(scheduledTaskManager.register).not.toHaveBeenCalled();
 		});
 
-		// Durable rows track the workflow's published state and are torn down by the
-		// cli lifecycle (deactivate/delete/republish), not this in-memory teardown; so
-		// removeTriggers only clears the legacy cron and never touches the durable
-		// manager (which is why the manager exposes no teardown method here).
-		it('removeTriggers clears only the legacy cron for a removed poll node', async () => {
+		// Durable job rows are torn down elsewhere (deactivate/delete/republish), not
+		// by this in-memory teardown, so removeTriggers never touches the manager.
+		it('removeTriggers clears only the legacy cron for a removed poll node, without touching the durable manager', async () => {
 			const pollJobManager = buildPollJobManager(true);
 			const triggers = buildTriggers(pollJobManager);
 
 			await activatePoll(triggers);
+			pollJobManager.register.mockClear();
+			pollJobManager.isActive.mockClear();
+
 			await triggers.removeTriggers(workflowId, new Set([pollNode.id]));
 
 			expect(scheduledTaskManager.deregisterTarget).toHaveBeenCalledWith(
 				workflowGroup(),
 				pollNode.id,
 			);
+			expect(pollJobManager.register).not.toHaveBeenCalled();
+			expect(pollJobManager.isActive).not.toHaveBeenCalled();
 		});
 	});
 });

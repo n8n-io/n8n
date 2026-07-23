@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type {
 	INode,
@@ -51,12 +51,17 @@ export class ActiveWorkflowTriggers {
 		private readonly triggersAndPollers: TriggersAndPollers,
 		private readonly errorReporter: ErrorReporter,
 		private readonly pollTriggerExecutor: PollTriggerExecutor,
-		// Optional port: `@n8n/di` injects `undefined` when no concrete `PollJobManager`
-		// is registered, so an unbound instance falls through to the legacy in-memory
-		// cron path below. When bound, the concrete self-gates via `isActive()`.
-		private readonly pollJobManager?: PollJobManager,
 	) {
 		this.logger = logger.scoped('workflow-publication');
+	}
+
+	/**
+	 * Resolved lazily rather than via constructor injection, so this doesn't
+	 * depend on DI construction order. Unbound falls back to the legacy
+	 * in-memory cron path.
+	 */
+	private getPollJobManager(): PollJobManager | undefined {
+		return Container.has(PollJobManager) ? Container.get(PollJobManager) : undefined;
 	}
 
 	private activeTriggersByWorkflowId = new Map<string, WorkflowActiveTriggersState>();
@@ -361,7 +366,6 @@ export class ActiveWorkflowTriggers {
 
 		const triggerTimes = pollTimes.item || [];
 
-		// Get all the trigger times
 		const cronExpressions = triggerTimes.map(toCronExpression);
 
 		// Reject sub-minute polling up front, so both paths are guarded.
@@ -382,18 +386,18 @@ export class ActiveWorkflowTriggers {
 			isCurrent,
 		);
 
-		if (this.pollJobManager?.isActive()) {
+		const pollJobManager = this.getPollJobManager();
+		if (pollJobManager?.isActive()) {
 			// Provision a scheduler job instead of an in-memory cron; recurring fires
 			// run as the job's occurrences, with no in-memory timer.
-			const { inserted } = await this.pollJobManager.register(
+			const { inserted } = await pollJobManager.register(
 				workflowId,
 				node,
 				triggerTimes,
 				workflow.timezone,
 			);
-			// A freshly provisioned node polls once inline to seed the cursor and fail
-			// activation loudly on a broken source. A pure reconcile (all jobs
-			// unchanged) skips it, leaving the cursor undisturbed.
+			// A newly provisioned node polls once inline, to seed the cursor and fail
+			// loudly on a broken source; a pure reconcile (nothing inserted) skips it.
 			if (inserted) await executePollTrigger(true);
 			return;
 		}

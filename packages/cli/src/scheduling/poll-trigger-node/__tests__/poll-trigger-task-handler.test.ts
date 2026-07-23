@@ -90,6 +90,10 @@ describe('PollTriggerTaskHandler', () => {
 	let acquireIsolate: MockInstance<WorkflowExpression['acquireIsolate']>;
 	let releaseIsolate: MockInstance<WorkflowExpression['releaseIsolate']>;
 
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 
@@ -121,24 +125,10 @@ describe('PollTriggerTaskHandler', () => {
 
 	describe('handoff', () => {
 		test('runs poll() against the poll context the factory assembles for the node', async () => {
-			const workflowData = buildWorkflowData();
-			workflow = buildWorkflow(workflowData);
-			triggerExecutionContextFactory.loadPublishedWorkflowData.mockResolvedValue(workflowData);
-			triggerExecutionContextFactory.createPollExecutionContext.mockResolvedValue({
-				workflow,
-				pollFunctions,
-			});
-
 			await handler.execute(buildTask(), report);
 
-			expect(triggerExecutionContextFactory.loadPublishedWorkflowData).toHaveBeenCalledWith(
-				'wf-1',
-				{
-					bypassCache: true,
-				},
-			);
 			expect(triggerExecutionContextFactory.createPollExecutionContext).toHaveBeenCalledWith(
-				workflowData,
+				buildWorkflowData(),
 				triggerNode,
 			);
 			expect(triggersAndPollers.runPollFunction).toHaveBeenCalledWith(
@@ -173,6 +163,8 @@ describe('PollTriggerTaskHandler', () => {
 
 			expect(pollFunctions.__emit).not.toHaveBeenCalled();
 			expect(onDispatch).not.toHaveBeenCalled();
+			// The isolate is released on this path too, not just the happy path.
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -186,8 +178,16 @@ describe('PollTriggerTaskHandler', () => {
 				releaseIsolate.mock.invocationCallOrder[0],
 			);
 		});
-		// Release on the null-return and poll()-throws paths runs through the same
-		// `finally`; the throws case is asserted by the error-routing test below.
+		test('does not release the isolate when acquiring it throws', async () => {
+			// acquireIsolate runs before the try/finally, so a failed acquire leaves
+			// nothing to release and propagates out for the executor to retry.
+			acquireIsolate.mockRejectedValue(new Error('isolate unavailable'));
+
+			await expect(handler.execute(buildTask(), report)).rejects.toThrow('isolate unavailable');
+
+			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
+			expect(releaseIsolate).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('runtime poll failures', () => {
@@ -213,7 +213,9 @@ describe('PollTriggerTaskHandler', () => {
 		test('rejects a task whose payload is missing workflowId or nodeId', async () => {
 			const task = buildTask({ payload: { nodeId: 'node-1' } });
 
-			await expect(handler.execute(task, report)).rejects.toThrow(UnexpectedError);
+			await expect(handler.execute(task, report)).rejects.toThrow(
+				'Poll-trigger task payload is missing workflowId or nodeId',
+			);
 			expect(triggerExecutionContextFactory.loadPublishedWorkflowData).not.toHaveBeenCalled();
 			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
 		});

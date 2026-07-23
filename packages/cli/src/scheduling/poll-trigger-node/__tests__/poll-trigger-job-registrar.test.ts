@@ -135,14 +135,12 @@ describe('PollTriggerJobRegistrar', () => {
 
 		it('seeds a generated cadence deterministically, so re-activation keeps the same job identity', async () => {
 			// The seconds field is derived from `${workflowId}:${nodeId}`, not
-			// randomised per activation, so a re-activation produces the identical
-			// cron (hence the identical job name), not a new row with a fresh clock.
-			const registrar = makeRegistrar();
-
-			await registrar.register(WORKFLOW_ID, pollNode, [{ mode: 'everyMinute' }], TIMEZONE);
+			// randomised, so re-activation reproduces the same cron. Two separate
+			// instances stand in for a fresh-process re-activation.
+			await makeRegistrar().register(WORKFLOW_ID, pollNode, [{ mode: 'everyMinute' }], TIMEZONE);
 			const first = lastDesired()[0];
 
-			await registrar.register(WORKFLOW_ID, pollNode, [{ mode: 'everyMinute' }], TIMEZONE);
+			await makeRegistrar().register(WORKFLOW_ID, pollNode, [{ mode: 'everyMinute' }], TIMEZONE);
 			const second = lastDesired()[0];
 
 			expect(second.name).toBe(first.name);
@@ -155,20 +153,57 @@ describe('PollTriggerJobRegistrar', () => {
 			);
 		});
 
-		it('reports whether a job was newly inserted, so the caller can seed a fresh node once', async () => {
-			jobProvisioner.provision.mockResolvedValueOnce({
-				inserted: [{ id: 1, name: 'wf-1:node-1:abc:0' }],
-				redefined: [],
-				unchanged: [],
-				removed: [],
-			});
-			await expect(
-				makeRegistrar().register(WORKFLOW_ID, pollNode, [DAILY_AT_NINE], TIMEZONE),
-			).resolves.toEqual({ inserted: true });
+		// Locks the field order and per-mode mapping. The node-seeded fields are
+		// matched loosely (`\d{1,2}`); every other field must map to the poll time
+		// verbatim.
+		it.each([
+			[{ mode: 'everyHour', minute: 11 }, /^\d{1,2} 11 \* \* \* \*$/],
+			[{ mode: 'everyX', unit: 'minutes', value: 5 }, /^\d{1,2} \*\/5 \* \* \* \*$/],
+			[{ mode: 'everyX', unit: 'hours', value: 3 }, /^\d{1,2} \d{1,2} \*\/3 \* \* \*$/],
+			[{ mode: 'everyDay', hour: 13, minute: 17 }, /^\d{1,2} 17 13 \* \* \*$/],
+			[{ mode: 'everyWeek', hour: 13, minute: 17, weekday: 4 }, /^\d{1,2} 17 13 \* \* 4$/],
+			[{ mode: 'everyMonth', hour: 13, minute: 17, dayOfMonth: 12 }, /^\d{1,2} 17 13 12 \* \*$/],
+		] as Array<[TriggerTime, RegExp]>)(
+			'maps a %o poll time to its cron fields',
+			async (pollTime, pattern) => {
+				await makeRegistrar().register(WORKFLOW_ID, pollNode, [pollTime], TIMEZONE);
 
-			await expect(
-				makeRegistrar().register(WORKFLOW_ID, pollNode, [DAILY_AT_NINE], TIMEZONE),
-			).resolves.toEqual({ inserted: false });
+				expect((lastDesired()[0].schedule as CronDefinition).cronExpression).toMatch(pattern);
+			},
+		);
+
+		it.each([
+			{ inserted: [{ id: 1, name: 'wf-1:node-1:abc:0' }], expected: true },
+			{ inserted: [], expected: false },
+		])(
+			'reports {inserted: $expected} when the provisioner inserted $inserted.length row(s)',
+			async ({ inserted, expected }) => {
+				jobProvisioner.provision.mockResolvedValueOnce({
+					inserted,
+					redefined: [],
+					unchanged: [],
+					removed: [],
+				});
+
+				await expect(
+					makeRegistrar().register(WORKFLOW_ID, pollNode, [DAILY_AT_NINE], TIMEZONE),
+				).resolves.toEqual({ inserted: expected });
+			},
+		);
+
+		it("spreads a generated cadence's seeded seconds across different nodes, to avoid a thundering herd", async () => {
+			const registrar = makeRegistrar();
+
+			await registrar.register(WORKFLOW_ID, pollNode, [{ mode: 'everyMinute' }], TIMEZONE);
+			const first = lastDesired()[0];
+
+			const otherNode = mock<INode>({ id: 'node-2', type: pollNode.type });
+			await registrar.register(WORKFLOW_ID, otherNode, [{ mode: 'everyMinute' }], TIMEZONE);
+			const second = lastDesired()[0];
+
+			expect((second.schedule as CronDefinition).cronExpression).not.toBe(
+				(first.schedule as CronDefinition).cronExpression,
+			);
 		});
 
 		it("keeps each job's name stable when poll times are inserted before it or reordered", async () => {
@@ -309,24 +344,25 @@ describe('PollTriggerJobRegistrar', () => {
 			return scopedLogger;
 		};
 
-		it('warns when the durable scheduler is enabled but the publication service is off', () => {
-			const logger = construct({ schedulerEnabled: true, publicationEnabled: false });
+		it.each([
+			{
+				schedulerEnabled: true,
+				publicationEnabled: false,
+				warnSubstring: 'workflow publication service is disabled',
+			},
+			{ schedulerEnabled: true, publicationEnabled: true, warnSubstring: null },
+			{ schedulerEnabled: false, publicationEnabled: false, warnSubstring: null },
+		])(
+			'scheduler=$schedulerEnabled publication=$publicationEnabled',
+			({ schedulerEnabled, publicationEnabled, warnSubstring }) => {
+				const logger = construct({ schedulerEnabled, publicationEnabled });
 
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('workflow publication service is disabled'),
-			);
-		});
-
-		it('does not warn when both the durable scheduler and the publication service are on', () => {
-			const logger = construct({ schedulerEnabled: true, publicationEnabled: true });
-
-			expect(logger.warn).not.toHaveBeenCalled();
-		});
-
-		it('does not warn when the durable scheduler is off', () => {
-			const logger = construct({ schedulerEnabled: false, publicationEnabled: false });
-
-			expect(logger.warn).not.toHaveBeenCalled();
-		});
+				if (warnSubstring) {
+					expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(warnSubstring));
+				} else {
+					expect(logger.warn).not.toHaveBeenCalled();
+				}
+			},
+		);
 	});
 });

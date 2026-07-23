@@ -308,8 +308,7 @@ export class TriggerExecutionContextFactory {
 			'update',
 			resolveWorkflowData,
 		);
-		// The factory already closed over additionalData/mode/activation, but its
-		// signature still requires them, so pass them again.
+		// getPollFunctions already closed over these; its signature still requires them.
 		const pollFunctions = getPollFunctions(workflow, node, additionalData, 'trigger', 'update');
 
 		return { workflow, pollFunctions };
@@ -343,10 +342,8 @@ export class TriggerExecutionContextFactory {
 	 * published data. `pinData` and `meta` are deliberately left out: they are
 	 * irrelevant to a production trigger execution.
 	 *
-	 * Pass `bypassCache` on the poll path: pollers mutate `staticData` (the poll
-	 * cursor) every tick via `saveStaticData`, a write that does not refresh the
-	 * cache (only the publication applier does), so a cached read would serve a
-	 * stale cursor. Read it live.  explain what the flag does, not why
+	 * Pass `bypassCache` on the poll path: `saveStaticData` writes the poll cursor
+	 * into `staticData` without refreshing the cache, so a cached read would be stale.
 	 *
 	 * TODO: Add error handling / fallback strategy for transient DB failures.
 	 */

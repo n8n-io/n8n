@@ -78,8 +78,15 @@ describe('Cron', () => {
 		test.each([
 			['* * * * * *', true],
 			['*/30 * * * * *', true],
+			// A step without a wildcard is still sub-minute (`0/15` == `*/15`).
+			['0/15 * * * * *', true],
+			// A range or list in the seconds field fires several times a minute.
+			['0-30 * * * * *', true],
+			['0,30 * * * * *', true],
 			['0 * * * * *', false],
 			['30 * * * * *', false],
+			// A fixed seconds field with other fields set is still minute-granular.
+			['30 15 * * * *', false],
 			// 5-field standard crons are minute-granular, so never sub-minute.
 			['* * * * *', false],
 			// Tolerates surrounding and repeated whitespace.

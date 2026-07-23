@@ -606,28 +606,37 @@ describe('TriggerExecutionContextFactory', () => {
 		});
 	});
 
+	const buildPublishedWorkflowData = (
+		overrides: Partial<PublishedWorkflowDataForExecution> = {},
+	): PublishedWorkflowDataForExecution => ({
+		id: 'wf-1',
+		name: 'My workflow',
+		description: null,
+		active: true,
+		isArchived: false,
+		createdAt: new Date('2026-01-01T00:00:00.000Z'),
+		updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+		settings: { timezone: 'Europe/Berlin' },
+		staticData: { foo: 'bar' },
+		activeVersionId: 'published-version',
+		versionCounter: 3,
+		versionId: 'published-version',
+		nodes: [{ id: 'n1' } as INode],
+		connections: {} as IConnections,
+		nodeGroups: [],
+		...overrides,
+	});
+
 	describe('loadPublishedWorkflowData', () => {
 		test('sources nodes/connections/versionId from the published version and other fields from the workflow projection', async () => {
 			const publishedNodes: INode[] = [{ id: 'n1' } as INode];
 			const publishedConnections: IConnections = {};
 			const publishedNodeGroups = [{ id: 'g1', name: 'Group', nodeIds: ['n1'] }];
-			const workflowData = {
-				id: 'wf-1',
-				name: 'My workflow',
-				description: null,
-				active: true,
-				isArchived: false,
-				createdAt: new Date('2026-01-01T00:00:00.000Z'),
-				updatedAt: new Date('2026-01-02T00:00:00.000Z'),
-				settings: { timezone: 'Europe/Berlin' },
-				staticData: { foo: 'bar' },
-				activeVersionId: 'published-version',
-				versionCounter: 3,
-				versionId: 'published-version',
+			const workflowData = buildPublishedWorkflowData({
 				nodes: publishedNodes,
 				connections: publishedConnections,
 				nodeGroups: publishedNodeGroups,
-			} satisfies PublishedWorkflowDataForExecution;
+			});
 
 			workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution.mockResolvedValue(
 				workflowData,
@@ -655,35 +664,8 @@ describe('TriggerExecutionContextFactory', () => {
 			expect(result.meta).toBeUndefined();
 		});
 
-		test('throws UnexpectedError when the service returns null', async () => {
-			workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution.mockResolvedValue(
-				null,
-			);
-
-			await expect(factory.loadPublishedWorkflowData('wf-1')).rejects.toThrow(UnexpectedError);
-		});
-	});
-
-	describe('loadPublishedWorkflowData with bypassCache', () => {
-		test('bypasses the cache and reads fresh from the database', async () => {
-			const workflowData = {
-				id: 'wf-1',
-				name: 'My workflow',
-				description: null,
-				active: true,
-				isArchived: false,
-				createdAt: new Date('2026-01-01T00:00:00.000Z'),
-				updatedAt: new Date('2026-01-02T00:00:00.000Z'),
-				settings: { timezone: 'Europe/Berlin' },
-				staticData: { foo: 'bar' },
-				activeVersionId: 'published-version',
-				versionCounter: 3,
-				versionId: 'published-version',
-				nodes: [{ id: 'n1' } as INode],
-				connections: {} as IConnections,
-				nodeGroups: [],
-			} satisfies PublishedWorkflowDataForExecution;
-
+		test('bypasses the cache and reads fresh from the database when bypassCache is true', async () => {
+			const workflowData = buildPublishedWorkflowData();
 			workflowPublishedDataService.getPublishedWorkflowDataForExecution.mockResolvedValue(
 				workflowData,
 			);
@@ -700,12 +682,32 @@ describe('TriggerExecutionContextFactory', () => {
 			).not.toHaveBeenCalled();
 		});
 
-		test('throws UnexpectedError when the service returns null', async () => {
-			workflowPublishedDataService.getPublishedWorkflowDataForExecution.mockResolvedValue(null);
+		it.each([
+			{
+				description: 'default (cached) path',
+				options: undefined,
+				calledMethod: 'getCachedPublishedWorkflowDataForExecution' as const,
+				skippedMethod: 'getPublishedWorkflowDataForExecution' as const,
+			},
+			{
+				description: 'bypassCache path',
+				options: { bypassCache: true },
+				calledMethod: 'getPublishedWorkflowDataForExecution' as const,
+				skippedMethod: 'getCachedPublishedWorkflowDataForExecution' as const,
+			},
+		])(
+			'throws UnexpectedError when the service returns null ($description)',
+			async ({ options, calledMethod, skippedMethod }) => {
+				workflowPublishedDataService[calledMethod].mockResolvedValue(null);
 
-			await expect(
-				factory.loadPublishedWorkflowData('wf-1', { bypassCache: true }),
-			).rejects.toThrow(UnexpectedError);
-		});
+				await expect(factory.loadPublishedWorkflowData('wf-1', options)).rejects.toThrow(
+					UnexpectedError,
+				);
+				// Confirms the null came back from the branch bypassCache actually
+				// selects, not merely that some unmocked call returned undefined.
+				expect(workflowPublishedDataService[calledMethod]).toHaveBeenCalledWith('wf-1');
+				expect(workflowPublishedDataService[skippedMethod]).not.toHaveBeenCalled();
+			},
+		);
 	});
 });
