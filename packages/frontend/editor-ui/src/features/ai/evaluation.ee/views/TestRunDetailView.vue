@@ -217,6 +217,7 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 			:previous-metrics="previousRun?.metrics"
 			:metric-sources="metricSources"
 			:metric-scales="run?.metricScales"
+			:previous-metric-scales="previousRun?.metricScales"
 			:case-values-by-key="caseValuesByKey"
 			class="mb-m"
 		/>

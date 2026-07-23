@@ -214,7 +214,6 @@ export function useCompareCases(
 		() => (detail.value ? (detail.value.runs ?? []).map((run) => run.testRunId).join(',') : null),
 		async (key) => {
 			if (key === null) return;
-			wasRunning = false;
 			terminalFetched.clear();
 			await load();
 			// The full load above already fetched every run, so runs that are already
@@ -222,6 +221,10 @@ export function useCompareCases(
 			for (const run of detail.value?.runs ?? []) {
 				if (!isInFlight(run.status)) terminalFetched.add(run.testRunId);
 			}
+			// Seed `wasRunning` from the loaded state (not `false`): if the collection is
+			// running now, a later tick that observes it terminal must still fire the
+			// final refetch — even if the run finishes before the first poll tick.
+			wasRunning = (detail.value?.runs ?? []).some((run) => isInFlight(run.status));
 		},
 		{ immediate: true },
 	);

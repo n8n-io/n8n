@@ -225,6 +225,31 @@ describe('useCompareCases', () => {
 		expect(fetchedRunIds).not.toContain('run-a');
 	});
 
+	it('runs the final refetch when a run finishes before the first poll tick', async () => {
+		const fetchSpy = vi.fn(async (_params: { workflowId: string; runId: string }) => []);
+		store.fetchTestCaseExecutions = fetchSpy as unknown as typeof store.fetchTestCaseExecutions;
+
+		// In-flight at initial load, so the initial (full) load captures a partial snapshot.
+		const detail = ref<EvaluationCollectionDetail | null>({
+			...detailWith(['run-a']),
+			runs: [{ ...run('run-a'), status: 'running' as const }],
+		});
+		const { casesLoaded } = useCompareCases(detail, ref('wf-1'));
+
+		const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
+		await flush(); // initial load; `wasRunning` is seeded true from the running state
+		expect(casesLoaded.value).toBe(true);
+		fetchSpy.mockClear();
+
+		// The very first poll tick already sees the run terminal (it finished between
+		// the initial load and this tick). The seeded `wasRunning` must still trigger
+		// the final refetch — without the seed the watcher would early-return here.
+		detail.value = { ...detailWith(['run-a']), runs: [run('run-a')] };
+		await flush();
+
+		expect(fetchSpy).toHaveBeenCalledWith({ workflowId: 'wf-1', runId: 'run-a' });
+	});
+
 	it('flags casesError when a run fetch rejects (not a real mismatch)', async () => {
 		store.fetchTestCaseExecutions = vi.fn(async ({ runId }: { runId: string }) => {
 			if (runId === 'run-b') throw new Error('network');

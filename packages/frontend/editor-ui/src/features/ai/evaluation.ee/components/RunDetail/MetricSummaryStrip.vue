@@ -2,8 +2,8 @@
 import { computed } from 'vue';
 import { ElScrollbar } from 'element-plus';
 import type { MetricScale } from '@n8n/api-types';
+import { normalizeMetricScore } from '@n8n/api-types';
 import {
-	computeDelta,
 	getUserDefinedMetricNames,
 	normalizeMetricValue,
 	type MetricSource,
@@ -17,11 +17,27 @@ const props = defineProps<{
 	// Per-metric scale from the run's config snapshot — drives scale-correct
 	// score formatting (a 1–5 metric → 100%, not 5%).
 	metricScales?: Record<string, MetricScale>;
+	// The previous run's scales, so the delta normalizes each side on its own
+	// frozen scale rather than subtracting raw values across a scale change.
+	previousMetricScales?: Record<string, MetricScale>;
 	// Per-case raw values per metric — surfaces "sum/count" tooltips on each card.
 	caseValuesByKey?: Record<string, Array<number | undefined>>;
 }>();
 
 const metricNames = computed(() => getUserDefinedMetricNames(props.currentMetrics));
+
+// Delta as the difference of the two runs' normalized [0, 1] scores, each on its
+// own scale — so a metric whose scale changed between runs isn't compared raw.
+// The result is already in score space, rendered directly as percentage points.
+function scoreDelta(name: string): number | undefined {
+	const current = normalizeMetricValue(props.currentMetrics?.[name]);
+	const previous = normalizeMetricValue(props.previousMetrics?.[name]);
+	if (current === undefined || previous === undefined) return undefined;
+	const currentScore = normalizeMetricScore(name, current, props.metricScales?.[name]);
+	const previousScore = normalizeMetricScore(name, previous, props.previousMetricScales?.[name]);
+	if (currentScore === null || previousScore === null) return undefined;
+	return currentScore - previousScore;
+}
 
 const cards = computed(() =>
 	metricNames.value.map((name) => {
@@ -29,7 +45,7 @@ const cards = computed(() =>
 		return {
 			name,
 			currentValue: normalizeMetricValue(props.currentMetrics?.[name]),
-			delta: computeDelta(props.currentMetrics?.[name], props.previousMetrics?.[name]),
+			delta: scoreDelta(name),
 			category: source?.category,
 			scale: props.metricScales?.[name],
 			sourceNodeName: source?.nodeName,

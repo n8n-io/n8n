@@ -68,6 +68,10 @@ type RunSummary = {
 	// Per-metric scores normalized to [0, 1] (operational metrics excluded), so
 	// winner/regression comparisons reflect quality rather than token totals.
 	scores: Record<string, number>;
+	// This run's own metric scales (its frozen snapshot), so per-case scores in the
+	// LLM context normalize on the same scales as the aggregate — not the current
+	// config, which may have changed since the run.
+	metricScales: Record<string, MetricScale>;
 };
 
 /**
@@ -161,7 +165,6 @@ export class EvalInsightsService {
 				config,
 				summaries,
 				winner,
-				scaleByMetric,
 			});
 			response = {
 				generatedAt: new Date().toISOString(),
@@ -217,6 +220,7 @@ export class EvalInsightsService {
 			workflowVersionId: run.workflowVersionId,
 			avgScore: averageNormalizedScore(run.metrics, scaleByMetric),
 			scores: normalizedScores(run.metrics, scaleByMetric),
+			metricScales: scaleByMetric,
 		};
 	}
 
@@ -243,18 +247,9 @@ export class EvalInsightsService {
 		config: EvaluationConfig | null;
 		summaries: RunSummary[];
 		winner: RunSummary;
-		scaleByMetric: Record<string, MetricScale>;
 	}): Promise<{ payload: AiInsightsPayload; modelId: string }> {
-		const {
-			user,
-			workflowId,
-			collectionName,
-			evaluationConfigId,
-			config,
-			summaries,
-			winner,
-			scaleByMetric,
-		} = params;
+		const { user, workflowId, collectionName, evaluationConfigId, config, summaries, winner } =
+			params;
 
 		const resolved = await this.modelResolver.resolve(user, workflowId, evaluationConfigId, config);
 		if (!resolved) {
@@ -264,7 +259,6 @@ export class EvalInsightsService {
 		const context = await this.contextBuilder.build(workflowId, {
 			collectionName,
 			winnerLabel: winner.versionLabel,
-			scaleByMetric,
 			versions: summaries.map(
 				(summary): InsightsContextVersion => ({
 					testRunId: summary.testRunId,
@@ -272,6 +266,7 @@ export class EvalInsightsService {
 					versionLabel: summary.versionLabel,
 					avgScore: summary.avgScore,
 					scores: summary.scores,
+					metricScales: summary.metricScales,
 				}),
 			),
 		});

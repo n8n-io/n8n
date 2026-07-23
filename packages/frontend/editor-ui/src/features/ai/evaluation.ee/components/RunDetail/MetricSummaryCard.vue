@@ -52,7 +52,7 @@ const valueTooltip = computed(() =>
 				<span :class="[$style.value, $style[`tone-${tone}`]]">{{ formattedValue }}</span>
 			</N8nTooltip>
 			<span v-else :class="[$style.value, $style[`tone-${tone}`]]">{{ formattedValue }}</span>
-			<TrendDeltaBadge :delta="delta" :category="category" :scale="scale" />
+			<TrendDeltaBadge :delta="delta" />
 		</div>
 	</div>
 </template>
