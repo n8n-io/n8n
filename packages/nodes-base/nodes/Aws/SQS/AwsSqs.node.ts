@@ -24,7 +24,7 @@ export class AwsSqs implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"]}}',
-		description: 'Sends messages to AWS SQS',
+		description: 'Send and receive messages from AWS SQS',
 		defaults: {
 			name: 'AWS SQS',
 		},
@@ -39,6 +39,12 @@ export class AwsSqs implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				options: [
+					{
+						name: 'Receive Message',
+						value: 'receiveMessage',
+						description: 'Receive messages from a queue',
+						action: 'Receive messages from a queue',
+					},
 					{
 						name: 'Send Message',
 						value: 'sendMessage',
@@ -57,19 +63,80 @@ export class AwsSqs implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: ['sendMessage'],
+						operation: ['sendMessage', 'receiveMessage'],
 					},
 				},
 				options: [],
 				default: '',
 				required: true,
 				description:
-					'Queue to send a message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Queue to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'Options',
+				name: 'receiveOptions',
+				type: 'collection',
+				placeholder: 'Add Option',
+				displayOptions: {
+					show: {
+						operation: ['receiveMessage'],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Max Number of Messages',
+						name: 'maxNumberOfMessages',
+						type: 'number',
+						typeOptions: {
+							minValue: 1,
+							maxValue: 10,
+						},
+						default: 1,
+						description: 'Maximum number of messages to retrieve (1-10)',
+					},
+					{
+						displayName: 'Wait Time Seconds',
+						name: 'waitTimeSeconds',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+							maxValue: 20,
+						},
+						default: 0,
+						description:
+							'Long polling wait time in seconds (0-20). Use higher values to reduce empty responses.',
+					},
+					{
+						displayName: 'Visibility Timeout',
+						name: 'visibilityTimeout',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+							maxValue: 43200,
+						},
+						default: 30,
+						description: 'How long (in seconds) the message is hidden from other consumers',
+					},
+					{
+						displayName: 'Delete After Receive',
+						name: 'deleteAfterReceive',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to automatically delete messages after receiving them. Use with caution!.',
+					},
+				],
 			},
 			{
 				displayName: 'Queue Type',
 				name: 'queueType',
 				type: 'options',
+				displayOptions: {
+					show: {
+						operation: ['sendMessage'],
+					},
+				},
 				options: [
 					{
 						name: 'FIFO',
@@ -283,6 +350,84 @@ export class AwsSqs implements INodeType {
 
 		const operation = this.getNodeParameter('operation', 0);
 
+		if (operation === 'receiveMessage') {
+			// Receive message operation
+			for (let i = 0; i < items.length; i++) {
+				try {
+					const queueUrl = this.getNodeParameter('queue', i) as string;
+					const queuePath = new URL(queueUrl).pathname;
+
+					const receiveOptions = this.getNodeParameter('receiveOptions', i, {}) as IDataObject;
+
+					const params = [
+						'Version=2012-11-05',
+						'Action=ReceiveMessage',
+						`MaxNumberOfMessages=${receiveOptions.maxNumberOfMessages || 1}`,
+						`WaitTimeSeconds=${receiveOptions.waitTimeSeconds || 0}`,
+						`VisibilityTimeout=${receiveOptions.visibilityTimeout ?? 30}`,
+						'AttributeName.1=All',
+						'MessageAttributeName.1=All',
+					];
+
+					let responseData;
+					try {
+						responseData = await awsApiRequestSOAP.call(
+							this,
+							'sqs',
+							'GET',
+							`${queuePath}?${params.join('&')}`,
+						);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error as JsonObject);
+					}
+
+					const messages = responseData?.ReceiveMessageResponse?.ReceiveMessageResult?.Message;
+
+					if (messages) {
+						// Ensure messages is an array
+						const messageArray = Array.isArray(messages) ? messages : [messages];
+
+						for (const message of messageArray) {
+							const formattedMessage = formatMessage(message);
+							returnData.push(formattedMessage);
+
+							// Delete message if configured
+							if (receiveOptions.deleteAfterReceive && message.ReceiptHandle) {
+								const deleteParams = [
+									'Version=2012-11-05',
+									'Action=DeleteMessage',
+									`ReceiptHandle=${encodeURIComponent(message.ReceiptHandle)}`,
+								];
+
+								try {
+									await awsApiRequestSOAP.call(
+										this,
+										'sqs',
+										'GET',
+										`${queuePath}?${deleteParams.join('&')}`,
+									);
+								} catch (error) {
+									// Log but don't fail if delete fails
+									this.logger.warn('Failed to delete message after receive', {
+										error: (error as Error).message,
+									});
+								}
+							}
+						}
+					}
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: (error as Error).message });
+						continue;
+					}
+					throw error;
+				}
+			}
+
+			return [this.helpers.returnJsonArray(returnData)];
+		}
+
+		// Send message operation
 		for (let i = 0; i < items.length; i++) {
 			try {
 				const queueUrl = this.getNodeParameter('queue', i) as string;
@@ -385,4 +530,69 @@ export class AwsSqs implements INodeType {
 
 		return [this.helpers.returnJsonArray(returnData)];
 	}
+}
+
+// Type guard to check if value is a valid attribute object
+function isValidAttribute(
+	attr: unknown,
+): attr is { Name: string; Value: string | number | boolean | IDataObject } {
+	return (
+		typeof attr === 'object' &&
+		attr !== null &&
+		'Name' in attr &&
+		'Value' in attr &&
+		typeof (attr as { Name: unknown }).Name === 'string'
+	);
+}
+
+// Type guard to check if value is a valid message attribute value object
+function isValidMessageAttributeValue(
+	value: unknown,
+): value is { StringValue?: string; BinaryValue?: string } {
+	return typeof value === 'object' && value !== null;
+}
+
+function formatMessage(message: IDataObject): IDataObject {
+	const formattedMessage: IDataObject = {
+		messageId: message.MessageId,
+		receiptHandle: message.ReceiptHandle,
+		body: message.Body,
+		md5OfBody: message.MD5OfBody,
+	};
+
+	if (message.Attribute) {
+		const attributes: IDataObject = {};
+		const attrs = Array.isArray(message.Attribute) ? message.Attribute : [message.Attribute];
+		for (const attr of attrs) {
+			if (isValidAttribute(attr)) {
+				attributes[attr.Name] = attr.Value;
+			}
+		}
+		formattedMessage.attributes = attributes;
+	}
+
+	if (message.MessageAttribute) {
+		const attrs: IDataObject = {};
+		const msgAttrs = Array.isArray(message.MessageAttribute)
+			? message.MessageAttribute
+			: [message.MessageAttribute];
+		for (const attr of msgAttrs) {
+			if (isValidAttribute(attr) && isValidMessageAttributeValue(attr.Value)) {
+				const value = attr.Value;
+				attrs[attr.Name] = value.StringValue ?? value.BinaryValue ?? value;
+			}
+		}
+		formattedMessage.messageAttributes = attrs;
+	}
+
+	// Try to parse body as JSON
+	if (message.Body && typeof message.Body === 'string') {
+		try {
+			formattedMessage.bodyJson = JSON.parse(message.Body);
+		} catch {
+			// Body is not JSON, keep as string
+		}
+	}
+
+	return formattedMessage;
 }
