@@ -34,7 +34,7 @@ export default {
 	'pagination.previousPage': 'Previous page',
 	'pagination.nextPage': 'Next page',
 	'pagination.total': 'Total {total}',
-	'pagination.pageSize': '{size} / page',
+	'pagination.pageSize': 'Page size',
 	'codeDiff.couldNotReplace': 'Could not replace code',
 	'codeDiff.codeReplaced': 'Code replaced',
 	'codeDiff.replaceMyCode': 'Replace my code',

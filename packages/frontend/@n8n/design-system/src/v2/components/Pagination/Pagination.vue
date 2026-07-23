@@ -179,7 +179,7 @@ const isNextDisabled = computed(() => props.disabled || (page.value ?? 1) >= pag
 const pageSizeItems = computed(() =>
 	props.pageSizes.map((s) => ({
 		value: String(s),
-		label: t('pagination.pageSize', { size: s }),
+		label: String(s),
 	})),
 );
 
@@ -264,9 +264,12 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 				:items="pageSizeItems"
 				:size="size"
 				:disabled="disabled"
+				:aria-label="t('pagination.pageSize')"
 				data-test-id="pagination-sizes"
 				@update:model-value="handlePageSizeUpdate"
-			/>
+			>
+				<template #prefix>{{ t('pagination.pageSize') }}</template>
+			</N8nSelect>
 
 			<PaginationRoot
 				v-else-if="part === 'pager-group'"
@@ -443,6 +446,7 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 
 .total {
 	color: var(--text-color--subtler);
+	white-space: nowrap;
 }
 
 .paginationList {
@@ -479,6 +483,7 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 	flex-shrink: 0;
 	color: var(--text-color--subtler);
 	white-space: nowrap;
+	translate: 0 -1px;
 }
 
 .jumperInput {

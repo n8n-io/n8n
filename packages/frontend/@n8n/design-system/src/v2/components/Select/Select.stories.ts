@@ -44,6 +44,39 @@ export const Items = {
 	},
 } satisfies Story;
 
+export const WithPrefix = {
+	name: 'With prefix / suffix',
+	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
+	render: (args) => ({
+		components: { Select },
+		setup() {
+			const value = ref(args.modelValue ?? '10');
+			return { args, value };
+		},
+		template: `
+		<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 16px; padding: 40px;">
+			<Select v-bind="args" v-model="value">
+				<template #prefix>Page size</template>
+			</Select>
+			<Select v-bind="args" v-model="value">
+				<template #prefix>Show</template>
+				<template #suffix>per page</template>
+			</Select>
+		</div>
+		`,
+	}),
+	args: {
+		items: [
+			{ label: '10', value: '10' },
+			{ label: '20', value: '20' },
+			{ label: '50', value: '50' },
+			{ label: '100', value: '100' },
+		],
+		modelValue: '10',
+		size: 'medium',
+	},
+} satisfies Story;
+
 export const ItemsObjectArray = {
 	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({

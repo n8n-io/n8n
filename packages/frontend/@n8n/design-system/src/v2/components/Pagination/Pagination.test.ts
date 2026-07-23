@@ -252,7 +252,7 @@ describe('v2/components/Pagination', () => {
 
 			// Wait for dropdown to open and click an option
 			await waitFor(async () => {
-				const option20 = wrapper.getByText('20 / page');
+				const option20 = wrapper.getByRole('option', { name: '20' });
 				await userEvent.click(option20);
 			});
 
@@ -278,7 +278,7 @@ describe('v2/components/Pagination', () => {
 			await userEvent.click(select!);
 
 			await waitFor(async () => {
-				const option20 = wrapper.getByText('20 / page');
+				const option20 = wrapper.getByRole('option', { name: '20' });
 				await userEvent.click(option20);
 			});
 
