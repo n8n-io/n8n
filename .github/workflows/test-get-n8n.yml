@@ -1,0 +1,40 @@
+name: 'Test get-n8n.sh installer'
+
+# Lints and end-to-end tests the get.n8n.io install script:
+# fresh install boots the full stack, re-runs are no-ops, --upgrade only
+# bumps N8N_VERSION, and all failure modes exit cleanly.
+
+on:
+  pull_request:
+    paths:
+      - 'docker/get-n8n.sh'
+      - 'docker/test-get-n8n.sh'
+      - '.github/workflows/test-get-n8n.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-get-n8n-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: 'Lint (shellcheck + POSIX)'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: shellcheck
+        run: shellcheck docker/get-n8n.sh docker/test-get-n8n.sh
+      - name: POSIX syntax check (dash)
+        run: dash -n docker/get-n8n.sh && dash -n docker/test-get-n8n.sh
+
+  e2e:
+    name: 'Install, boot, upgrade'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run test harness
+        run: sh docker/test-get-n8n.sh --e2e
