@@ -59,6 +59,28 @@ describe('ResourceMapper.vue', () => {
 		).toBe(MAPPING_COLUMNS_RESPONSE.fields.length);
 	});
 
+	it('renders an input for url fields', async () => {
+		fetchFieldsSpy.mockResolvedValueOnce({
+			fields: [
+				...MAPPING_COLUMNS_RESPONSE.fields,
+				{
+					id: 'Website',
+					displayName: 'Website',
+					required: false,
+					defaultMatch: false,
+					display: true,
+					type: 'url',
+					canBeUsedToMatch: false,
+				},
+			],
+		});
+		const { getByTestId } = renderComponent();
+		await waitAllPromises();
+		expect(
+			getByTestId('mapping-fields-container').querySelectorAll('.parameter-input input').length,
+		).toBe(MAPPING_COLUMNS_RESPONSE.fields.length + 1);
+	});
+
 	it('renders correctly in read only mode', async () => {
 		const { getByTestId } = renderComponent({ props: { isReadOnly: true } });
 		await waitAllPromises();
