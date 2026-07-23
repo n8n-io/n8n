@@ -50,11 +50,11 @@ describe('useAgentConfigAutosave', () => {
 		let rejectFirstSave: (error: Error) => void = () => {};
 		const save = vi.fn((snapshot: { value: string }) => {
 			if (snapshot.value === 'old') {
-				return new Promise<void>((_resolve, reject) => {
+				return new Promise<'skipped' | undefined>((_resolve, reject) => {
 					rejectFirstSave = reject;
 				});
 			}
-			return Promise.resolve();
+			return Promise.resolve(undefined);
 		});
 		const autosave = useAgentConfigAutosave<{ value: string }>({
 			save,
@@ -91,5 +91,24 @@ describe('useAgentConfigAutosave', () => {
 		await autosave.flushAutosave();
 
 		expect(save).not.toHaveBeenCalled();
+	});
+
+	it('keeps saveStatus idle and skips onSaved when save resolves "skipped"', async () => {
+		vi.useFakeTimers();
+		const save = vi.fn().mockResolvedValue('skipped' as const);
+		const onSaved = vi.fn();
+		const autosave = useAgentConfigAutosave<{ value: string }>({
+			save,
+			onSaved,
+			debounceMs: 500,
+		});
+
+		autosave.scheduleAutosave({ value: 'latest' });
+		await vi.advanceTimersByTimeAsync(500);
+		await autosave.settleAutosave();
+
+		expect(save).toHaveBeenCalledTimes(1);
+		expect(onSaved).not.toHaveBeenCalled();
+		expect(autosave.saveStatus.value).toBe('idle');
 	});
 });

@@ -15,6 +15,8 @@ import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
+import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
@@ -123,6 +125,15 @@ const instanceAi = computed<IMenuItem>(() => ({
 	preview: true,
 }));
 
+const { isWorkflowReviewsEnabled: isWorkflowReviewsNavVisible } = useWorkflowReviewsFeature();
+
+const workflowReviews = computed<IMenuItem>(() => ({
+	id: 'workflow-reviews',
+	icon: 'message-square-text',
+	label: locale.baseText('workflowReviews.menu.title'),
+	route: { to: { name: WORKFLOW_REVIEW_REQUESTS_VIEW } },
+	preview: true,
+}));
 const chat = computed<IMenuItem>(() => ({
 	id: 'chat',
 	icon: 'message-circle',
@@ -179,6 +190,13 @@ onBeforeUnmount(() => {
 				:compact="props.collapsed"
 				:active="activeTabId === 'shared'"
 				data-test-id="project-shared-menu-item"
+			/>
+			<N8nMenuItem
+				v-if="isWorkflowReviewsNavVisible"
+				:item="workflowReviews"
+				:compact="props.collapsed"
+				:active="activeTabId === 'workflow-reviews'"
+				data-test-id="project-workflow-reviews-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="isChatLinkAvailable"

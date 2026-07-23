@@ -5,7 +5,10 @@ post:
   tags:
     - Workflow
   summary: Publish a workflow
-  description: Publish a workflow. In n8n v1, this action was termed activating a workflow.
+  description: >-
+    Deprecated: use POST /workflows/{id}/publish instead. Publish a workflow. In n8n v1, this
+    action was termed activating a workflow.
+  deprecated: true
   parameters:
     - $ref: '../schemas/parameters/workflowId.yml'
   requestBody:

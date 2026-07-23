@@ -6,6 +6,7 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { useCanvasPreview } from '../useCanvasPreview';
+import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import type { ResourceEntry } from '../useResourceRegistry';
 
 // ---------------------------------------------------------------------------
@@ -757,160 +758,56 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeTabId.value).toBeUndefined();
 			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
+	});
 
-		test('auto-opens agent artifact when build-agent creates a new agent', async () => {
-			const ctx = setup();
-			ctx.thread.isStreaming = true;
-			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
-
-			ctx.thread.messages = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						children: [
-							makeAgentNode({
-								agentId: 'agent-builder-child',
-								role: 'agent-builder',
-								kind: 'builder',
-								targetResource: {
-									type: 'agent',
-									id: 'agent-1',
-									projectId: 'project-1',
-									name: 'SEO Auditor',
-								},
-							}),
-						],
-						toolCalls: [
-							makeToolCall({
-								toolCallId: 'tc-create-agent',
-								toolName: 'build-agent',
-								args: { message: 'build me an SEO auditor', name: 'SEO Auditor' },
-								result: { ok: true, builderReply: 'Created the agent.' },
-							}),
-						],
+	describe('signal agent config mutations on the event bus', () => {
+		function makeAgentConfigMutationTree(toolCallId: string) {
+			return makeAgentNode({
+				toolCalls: [
+					makeToolCall({
+						toolCallId,
+						toolName: 'patch_config',
+						isLoading: false,
+						result: { ok: true, configMutated: true, agentId: 'agent-1' },
 					}),
-				}),
-			];
+				],
+			});
+		}
+
+		test('emits agentUpdated for each new config mutation', async () => {
+			const emitSpy = vi.spyOn(agentsEventBus, 'emit');
+			const ctx = setup();
+
+			ctx.thread.messages = [makeMessage({ agentTree: makeAgentConfigMutationTree('tc-1') })];
 			await nextTick();
 
-			expect(ctx.activeAgentId.value).toBe('agent-1');
-			expect(ctx.activeAgentProjectId.value).toBe('project-1');
-			expect(ctx.isPreviewVisible.value).toBe(true);
+			expect(emitSpy).toHaveBeenCalledWith('agentUpdated', {
+				agentId: 'agent-1',
+				source: 'instance-ai',
+			});
+
+			ctx.thread.messages = [makeMessage({ agentTree: makeAgentConfigMutationTree('tc-2') })];
+			await nextTick();
+
+			expect(emitSpy).toHaveBeenLastCalledWith('agentUpdated', {
+				agentId: 'agent-1',
+				source: 'instance-ai',
+			});
+			expect(emitSpy).toHaveBeenCalledTimes(2);
+
+			emitSpy.mockRestore();
 		});
 
-		test('does not auto-open agent artifact while hydrating', async () => {
+		test('does not emit while hydrating the thread', async () => {
+			const emitSpy = vi.spyOn(agentsEventBus, 'emit');
 			const ctx = setup();
 			ctx.thread.isHydratingThread = true;
-			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
 
-			ctx.thread.messages = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						children: [
-							makeAgentNode({
-								agentId: 'agent-builder-child',
-								role: 'agent-builder',
-								kind: 'builder',
-								targetResource: {
-									type: 'agent',
-									id: 'agent-1',
-									projectId: 'project-1',
-									name: 'SEO Auditor',
-								},
-							}),
-						],
-						toolCalls: [
-							makeToolCall({
-								toolCallId: 'tc-create-agent',
-								toolName: 'build-agent',
-								args: { message: 'build me an SEO auditor', name: 'SEO Auditor' },
-								result: { ok: true, builderReply: 'Created the agent.' },
-							}),
-						],
-					}),
-				}),
-			];
+			ctx.thread.messages = [makeMessage({ agentTree: makeAgentConfigMutationTree('tc-1') })];
 			await nextTick();
 
-			expect(ctx.activeAgentId.value).toBeNull();
-			expect(ctx.isPreviewVisible.value).toBe(false);
-		});
-
-		test('increments agentRefreshKey when active agent is mutated', async () => {
-			const ctx = setup();
-			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
-			ctx.openAgentPreview('agent-1', 'project-1');
-			const initialKey = ctx.agentRefreshKey.value;
-
-			ctx.thread.messages = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
-						toolCalls: [
-							makeToolCall({
-								toolCallId: 'tc-build-agent',
-								toolName: 'build-agent',
-								args: { message: 'add a skill' },
-								result: { ok: true, configUpdated: true },
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(ctx.agentRefreshKey.value).toBe(initialKey + 1);
-			expect(ctx.activeAgentId.value).toBe('agent-1');
-		});
-
-		test('increments agentRefreshKey for active agent mutations without targetResource', async () => {
-			const ctx = setup();
-			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
-			ctx.openAgentPreview('agent-1', 'project-1');
-			const initialKey = ctx.agentRefreshKey.value;
-
-			ctx.thread.messages = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						toolCalls: [
-							makeToolCall({
-								toolCallId: 'tc-build-agent',
-								toolName: 'build-agent',
-								args: { message: 'add a skill' },
-								result: { ok: true, configUpdated: true },
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(ctx.agentRefreshKey.value).toBe(initialKey + 1);
-			expect(ctx.activeAgentId.value).toBe('agent-1');
-		});
-
-		test('does not open or refresh on a reply-only turn (no name, no configUpdated)', async () => {
-			const ctx = setup();
-			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
-			ctx.openAgentPreview('agent-1', 'project-1');
-			const initialKey = ctx.agentRefreshKey.value;
-
-			ctx.thread.messages = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						toolCalls: [
-							makeToolCall({
-								toolCallId: 'tc-build-agent-reply',
-								toolName: 'build-agent',
-								args: { message: 'what does this agent do?' },
-								result: { ok: true, builderReply: 'It triages your inbox.' },
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(ctx.agentRefreshKey.value).toBe(initialKey);
+			expect(emitSpy).not.toHaveBeenCalled();
+			emitSpy.mockRestore();
 		});
 	});
 
