@@ -24,8 +24,10 @@ import type {
 import { FolderImporter } from '../entities/folder/folder-importer';
 import { VariableImporter } from '../entities/variable/variable-importer';
 import type {
+	VariableApplyResult,
 	VariableImportPlan,
 	VariableImportRequest,
+	VariableLimitFailure,
 } from '../entities/variable/variable.types';
 import {
 	collectMissingNodeTypes,
@@ -62,6 +64,11 @@ export interface ImportOrchestrationInput {
 	options: ImportWorkflowProperties & ImportFolderProperties;
 	/** The target project does not exist yet and will be created by this import (project packages). */
 	projectPendingCreation?: boolean;
+	/**
+	 * Whether the variable importer runs its per-scope quota preflight (default true).
+	 * Project packages disable it and run one aggregate check across every scope instead.
+	 */
+	checkQuota?: boolean;
 }
 
 export interface ImportOrchestrationResult {
@@ -71,6 +78,7 @@ export interface ImportOrchestrationResult {
 	credentialResult: CredentialApplyResult;
 	dataTablePlan: DataTableImportPlan;
 	variablePlan: VariableImportPlan;
+	variableResult: VariableApplyResult;
 }
 
 export interface ImportPlan {
@@ -129,7 +137,10 @@ export class ImportOrchestrator {
 
 		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
 		const dataTablePlan = await this.dataTableImporter.plan(context, dataTableRequest);
-		const variablePlan = await this.variableImporter.plan(context, variableRequest);
+		const variablePlan = await this.variableImporter.plan(context, variableRequest, {
+			projectPendingCreation: input.projectPendingCreation,
+			checkQuota: input.checkQuota,
+		});
 		const workflowPlan = await this.workflowImporter.plan(context, workflows, options);
 		const folderContext = { ...context, folderConflictPolicy: options.folderConflictPolicy };
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
@@ -186,6 +197,7 @@ export class ImportOrchestrator {
 		);
 
 		await this.dataTableImporter.apply(context, dataTablePlan);
+		const variableResult = await this.variableImporter.apply(context, variablePlan);
 		const publishBlocked = new Map<string, WorkflowPublishingBlockedReason>();
 		for (const sourceWorkflowId of workflowsBlockedFromPublish(
 			credentialRequest.requirements,
@@ -215,6 +227,7 @@ export class ImportOrchestrator {
 			credentialResult,
 			dataTablePlan,
 			variablePlan,
+			variableResult,
 		};
 	}
 
@@ -261,6 +274,7 @@ export class ImportOrchestrator {
 			...this.variableImporter
 				.blockingFailures(variableRequest, variablePlan)
 				.map((failure): BlockingIssue => ({ type: 'variable-unresolved', ...failure })),
+			...(variablePlan.limitFailure ? [toVariableLimitIssue(variablePlan.limitFailure)] : []),
 			...missingNodeTypeBlockingFailures(missingNodeTypeMode, missingNodeTypes).map(
 				({ type, typeVersion, usedByWorkflows }): BlockingIssue => ({
 					type: 'missing-node-type',
@@ -271,6 +285,10 @@ export class ImportOrchestrator {
 			),
 		];
 	}
+}
+
+function toVariableLimitIssue(limitFailure: VariableLimitFailure): BlockingIssue {
+	return { type: 'variable-limit-exceeded', ...limitFailure };
 }
 
 function toCredentialBlockingIssue(failure: CredentialResolutionFailure): BlockingIssue {

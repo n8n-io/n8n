@@ -10,9 +10,9 @@ post:
 
     Imports a gzip-compressed tar package (`.n8np`) into the target project. Send the
     archive as the multipart field `package`. Optional routing uses form fields
-    `projectId` and `folderId` (omit or send empty for defaults). The optional
-    `credentialMatchingMode`, `credentialMissingMode`, `bindings`,
-    `workflowIdPolicy`, and `workflowPublishingPolicy` fields take their defaults when omitted. The required
+    `projectId` and `folderId` (omit or send empty for defaults). Every optional
+    mode/policy field (credential, workflow, folder, data table, and variable) takes
+    its default when omitted. The required
     `workflowConflictPolicy` field controls what happens when a package workflow
     matches an existing workflow by source id in the target project. Maximum upload
     size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
@@ -204,16 +204,37 @@ post:
               enum:
                 - do-nothing
                 - must-preexist
+                - create-stub
               default: do-nothing
               description: >
                 Controls what happens when a variable referenced by the package's
                 workflows is absent from the target project and the global scope
                 (lookup order: project, then global). `do-nothing` (default)
                 imports the workflows without creating the missing variable and
-                lists its name under `variables.missing` in the response so the
-                caller can fill it in afterwards. `must-preexist` rejects the
-                import unless every referenced variable already resolves. Neither
-                mode ever creates a variable.
+                lists its name under `variables.missing`. `must-preexist` rejects
+                the import unless every referenced variable already resolves.
+                `create-stub` creates each missing variable with an empty value at
+                the placement scope (see `variableParentPolicy`) and lists the
+                created names under `variables.stubbed`. Any `create-stub` import
+                that has variable requirements needs an API key carrying the
+                `variable:create` scope (owner/admin keys only) — this applies to
+                project placement too, not only `variableParentPolicy=global`.
+            variableParentPolicy:
+              type: string
+              enum:
+                - project
+                - global
+              default: project
+              description: >
+                Where `create-stub` creates missing variables for workflow/folder
+                packages. `project` (default) creates them in the import target
+                project (`projectId`, else the caller's personal project). `global`
+                creates them at the global scope. The `variable:create` API key
+                scope requirement described under `variableMissingMode` applies to
+                both placements. Ignored for project packages, where placement
+                follows the package layout (a variable bundled under a project is
+                created in that project; one bundled at the top level is created
+                globally).
   responses:
     '200':
       description: Import succeeded; the listed workflows were written to the target project.
@@ -419,12 +440,15 @@ post:
                 type: object
                 description: >
                   Resolution of the package's variable requirements. Names only —
-                  values never travel in the response. For project packages,
-                  resolution runs per project, so a name that resolves in some
-                  projects but not others appears in both lists.
+                  values never travel in the response. For project packages these
+                  arrays are package-level unions of per-destination outcomes and may
+                  overlap (a name matched in one project and stubbed in another appears
+                  in both `matched` and `stubbed`); classification under concurrent
+                  external writes is best-effort.
                 required:
                   - matched
                   - missing
+                  - stubbed
                 properties:
                   matched:
                     type: array
@@ -438,9 +462,17 @@ post:
                     items:
                       type: string
                     description: >
-                      Variable names that did not resolve. Under
-                      `variableMissingMode=do-nothing` these are warnings —
-                      the import still succeeds and nothing is created.
+                      Variable names still unresolved after import. Under
+                      `variableMissingMode=do-nothing` these are warnings — the import
+                      still succeeds and nothing is created. A successful `create-stub`
+                      import normally leaves this empty.
+                  stubbed:
+                    type: array
+                    items:
+                      type: string
+                    description: >
+                      Variable names created with an empty value by this import under
+                      `variableMissingMode=create-stub`. Empty for other modes.
               bindings:
                 type: object
                 description: >
@@ -484,8 +516,9 @@ post:
     '422':
       description: >
         Import blocked by non-conflict issues only (e.g. unresolved credentials or
-        variables, or node types this instance does not have under
-        `missingNodeTypeMode=fail`).
+        variables, node types this instance does not have under
+        `missingNodeTypeMode=fail`, or variable stubs whose creation would exceed
+        the instance variable quota).
       content:
         application/json:
           schema:

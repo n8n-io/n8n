@@ -82,9 +82,15 @@ export default class PackageImport extends BaseCommand {
 		}),
 		variableMissingMode: Flags.string({
 			description:
-				'What to do when a referenced variable is absent from the target project and the global scope (default on the instance: do-nothing). do-nothing imports the workflows and lists unresolved names as warnings without creating anything; must-preexist rejects the import unless every referenced variable already resolves',
-			options: ['do-nothing', 'must-preexist'],
+				'What to do when a referenced variable is absent from the target project and the global scope (default on the instance: do-nothing). do-nothing imports the workflows and lists unresolved names as warnings without creating anything; must-preexist rejects the import unless every referenced variable already resolves; create-stub creates each missing variable with an empty value (see variable-parent-policy) and needs an API key with the variable:create scope',
+			options: ['do-nothing', 'must-preexist', 'create-stub'],
 			aliases: ['variable-missing-mode'],
+		}),
+		variableParentPolicy: Flags.string({
+			description:
+				'Where create-stub creates missing variables for workflow/folder packages (default: project): project creates them in the target project; global creates them at global scope and needs an API key with the variable:create scope. Ignored for project packages, where placement follows the package layout',
+			options: ['project', 'global'],
+			aliases: ['variable-parent-policy'],
 		}),
 		bindings: Flags.string({
 			description:
@@ -120,6 +126,7 @@ export default class PackageImport extends BaseCommand {
 						dataTableMissingMode: flags.dataTableMissingMode,
 						dataTableSchemaConflictPolicy: flags.dataTableSchemaConflictPolicy,
 						variableMissingMode: flags.variableMissingMode,
+						variableParentPolicy: flags.variableParentPolicy,
 						bindings: flags.bindings,
 					},
 				);
