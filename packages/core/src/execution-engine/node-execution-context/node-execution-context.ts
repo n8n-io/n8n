@@ -323,14 +323,13 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	): Promise<T> {
 		const { workflow, node, additionalData, mode, runExecutionData, runIndex } = this;
 
-		// Eval-mode bypass: only mock when the node is fully unconfigured, so
-		// nodes that probe multiple auth types still get production's throw.
-		// Delegates to the credentials helper with a null-id `INodeCredentialsDetails`;
-		// `EvalMockedCredentialsHelper` catches the resulting `CredentialNotFoundError`
-		// and schema-synthesizes (and applies the wire-server URL rewrite). Production
-		// helpers don't catch — but production never reaches this branch because
-		// `evalLlmMockHandler` is only set in eval mode.
-		if (mode === 'evaluation' && additionalData.evalLlmMockHandler && !node.credentials?.[type]) {
+		// Eval bypass: only mock when the node is fully unconfigured, so nodes
+		// probing multiple auth types still get production's throw. Handler
+		// presence (not execution mode) gates it — `evalLlmMockHandler` is set
+		// only by eval execution services, and eval agent tools run in modes
+		// other than 'evaluation'. `EvalMockedCredentialsHelper` catches the
+		// null-id `CredentialNotFoundError` and schema-synthesizes.
+		if (additionalData.evalLlmMockHandler && !node.credentials?.[type]) {
 			const hasOtherCreds = !!node.credentials && Object.keys(node.credentials).length > 0;
 			if (!hasOtherCreds) {
 				return (await additionalData.credentialsHelper.getDecrypted(

@@ -88,39 +88,38 @@ modalBus.on('opened', () => {
 		:event-bus="modalBus"
 		:name="WHATS_NEW_MODAL_KEY"
 		:center="true"
-		:show-close="false"
 	>
 		<template #header>
 			<div :class="$style.header">
-				<div :class="$style.row">
-					<N8nIcon :icon="'bell'" :color="'primary'" :size="'large'" />
-					<div :class="$style.column">
+				<div :class="$style.column">
+					<div :class="$style.row">
+						<N8nIcon :icon="'bell'" :color="'primary'" :size="'large'" />
 						<N8nHeading size="xlarge">
 							{{ versionsStore.whatsNew.title }}
 						</N8nHeading>
+					</div>
 
-						<div :class="$style.row">
-							<N8nHeading size="medium" color="text-light">{{
-								dateformat(versionsStore.latestVersion.createdAt, `d mmmm, yyyy`)
-							}}</N8nHeading>
-							<template v-if="versionsStore.hasVersionUpdates">
-								<N8nText :size="'medium'" :class="$style.text" :color="'text-base'">•</N8nText>
-								<N8nLink
-									size="medium"
-									theme="primary"
-									data-test-id="whats-new-modal-next-versions-link"
-									@click="openUpdatesPanel"
-								>
-									{{
-										i18n.baseText('whatsNew.versionsBehind', {
-											interpolate: {
-												count: nextVersions.length > 99 ? '99+' : nextVersions.length,
-											},
-										})
-									}}
-								</N8nLink>
-							</template>
-						</div>
+					<div :class="$style.row">
+						<N8nHeading size="medium" color="text-light">{{
+							dateformat(versionsStore.latestVersion.createdAt, `d mmmm, yyyy`)
+						}}</N8nHeading>
+						<template v-if="versionsStore.hasVersionUpdates">
+							<N8nText :size="'medium'" :class="$style.text" :color="'text-base'">•</N8nText>
+							<N8nLink
+								size="medium"
+								theme="primary"
+								data-test-id="whats-new-modal-next-versions-link"
+								@click="openUpdatesPanel"
+							>
+								{{
+									i18n.baseText('whatsNew.versionsBehind', {
+										interpolate: {
+											count: nextVersions.length > 99 ? '99+' : nextVersions.length,
+										},
+									})
+								}}
+							</N8nLink>
+						</template>
 					</div>
 				</div>
 
@@ -211,6 +210,7 @@ modalBus.on('opened', () => {
 					/>
 				</div>
 				<N8nMarkdown
+					v-if="versionsStore.whatsNew.footer"
 					:content="versionsStore.whatsNew.footer"
 					:class="$style.markdown"
 					:options="{
@@ -247,6 +247,7 @@ modalBus.on('opened', () => {
 	align-items: center;
 	border-bottom: var(--border);
 	padding-bottom: var(--spacing--sm);
+	padding-right: var(--spacing--xl);
 }
 
 :global(.el-dialog__header) {
@@ -267,7 +268,17 @@ modalBus.on('opened', () => {
 }
 
 .container {
-	margin-bottom: var(--spacing--lg);
+	margin-bottom: 0;
+
+	// Collapse the trailing spacing of the last block (article or footer) and its innermost element
+	> :last-child {
+		margin-bottom: 0;
+		padding-bottom: 0;
+
+		:last-child {
+			margin-bottom: 0;
+		}
+	}
 }
 
 .article {
@@ -289,6 +300,10 @@ modalBus.on('opened', () => {
 
 	hr {
 		margin-bottom: var(--spacing--sm);
+	}
+
+	img {
+		margin: var(--spacing--sm) 0;
 	}
 }
 </style>

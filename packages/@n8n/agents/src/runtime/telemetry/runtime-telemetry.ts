@@ -1,9 +1,11 @@
 import type { TelemetrySettings } from 'ai';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
+import { buildExperimentalTelemetry } from './telemetry-options';
 import { Telemetry } from '../../sdk/telemetry';
 import type { AttributeValue, BuiltProviderTool, BuiltTelemetry, BuiltTool } from '../../types';
 import type { ExecutionOptions } from '../../types/sdk/agent';
+import type { OpaqueSpanLink } from '../../types/telemetry';
 import type { JSONValue } from '../../types/utils/json';
 import { isZodSchema } from '../../utils/zod';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
@@ -18,7 +20,11 @@ interface TelemetrySpan {
 interface ActiveSpanTracer {
 	startActiveSpan<T>(
 		name: string,
-		options: { attributes?: Record<string, AttributeValue> },
+		options: {
+			attributes?: Record<string, AttributeValue>;
+			root?: boolean;
+			links?: OpaqueSpanLink[];
+		},
 		fn: (span: TelemetrySpan) => T,
 	): T;
 }
@@ -69,23 +75,51 @@ function summarizeProviderToolForTelemetry(tool: BuiltProviderTool): Record<stri
 	};
 }
 
+/** Generic (backend-agnostic) root-span input attributes: the gen_ai.prompt summary. */
 function buildAgentRootInputAttributes(config: AgentRuntimeConfig): Record<string, AttributeValue> {
-	const localTools = (config.tools ?? []).map(summarizeToolForTelemetry);
-	const providerTools = (config.providerTools ?? []).map(summarizeProviderToolForTelemetry);
-	const tools = [...localTools, ...providerTools];
-	const toolNames = tools
-		.map((tool) => (typeof tool.name === 'string' ? tool.name : undefined))
-		.filter((name): name is string => name !== undefined);
-
+	const tools = buildAgentToolSummary(config);
 	const serialized = stringifyTelemetryValue({
 		agent: config.name,
 		tool_count: tools.length,
 		tools,
 	});
 
+	return serialized ? { 'gen_ai.prompt': serialized } : {};
+}
+
+function buildAgentToolSummary(config: AgentRuntimeConfig): Array<Record<string, unknown>> {
+	const localTools = (config.tools ?? []).map(summarizeToolForTelemetry);
+	const providerTools = (config.providerTools ?? []).map(summarizeProviderToolForTelemetry);
+	return [...localTools, ...providerTools];
+}
+
+/** LangSmith-specific tool catalog attribute — only emitted for LangSmith telemetry. */
+function buildLangSmithToolCatalogAttributes(
+	config: AgentRuntimeConfig,
+): Record<string, AttributeValue> {
+	const toolNames = buildAgentToolSummary(config)
+		.map((tool) => (typeof tool.name === 'string' ? tool.name : undefined))
+		.filter((name): name is string => name !== undefined);
+
+	return toolNames.length > 0 ? { 'langsmith.metadata.available_tools': toolNames } : {};
+}
+
+/**
+ * Generic OTel GenAI semantic-convention attributes for the root
+ * `invoke_agent` span, readable on any plain OTLP backend — not
+ * LangSmith-specific.
+ */
+function buildGenAiRootAttributes(
+	config: AgentRuntimeConfig,
+	t: BuiltTelemetry,
+): Record<string, AttributeValue> {
+	const modelId = t.metadata?.model_id;
+	const threadId = t.metadata?.thread_id;
 	return {
-		...(toolNames.length > 0 ? { 'langsmith.metadata.available_tools': toolNames } : {}),
-		...(serialized ? { 'gen_ai.prompt': serialized } : {}),
+		'gen_ai.operation.name': 'invoke_agent',
+		'gen_ai.agent.name': config.name,
+		...(typeof modelId === 'string' ? { 'gen_ai.request.model': modelId } : {}),
+		...(typeof threadId === 'string' ? { 'gen_ai.conversation.id': threadId } : {}),
 	};
 }
 
@@ -101,9 +135,17 @@ function buildAgentRootInputAttributes(config: AgentRuntimeConfig): Record<strin
 export class RuntimeTelemetry {
 	constructor(private readonly config: AgentRuntimeConfig) {}
 
-	/** Resolve telemetry: own config wins, then inherited from options, then nothing. */
+	/**
+	 * Resolve telemetry: own config wins, then inherited from options, then nothing.
+	 * Own telemetry without an explicit `functionId` is stamped with the runtime's
+	 * name, so auxiliary calls scheduled off this runtime (e.g. memory tasks) can
+	 * suffix under the same base instead of falling back to a generic label.
+	 */
 	resolve(options?: ExecutionOptions): BuiltTelemetry | undefined {
-		if (this.config.telemetry) return this.config.telemetry;
+		const own = this.config.telemetry;
+		if (own) {
+			return own.functionId ? own : { ...own, functionId: this.config.name };
+		}
 		const inherited = options?.telemetry;
 		if (!inherited) return undefined;
 		return { ...inherited, functionId: this.config.name };
@@ -118,21 +160,9 @@ export class RuntimeTelemetry {
 	buildTelemetryOptions(options?: ExecutionOptions): {
 		experimental_telemetry?: TelemetrySettings;
 	} {
-		const t = this.resolve(options);
-		if (!t?.enabled) return {};
-
-		return {
-			experimental_telemetry: {
-				isEnabled: true,
-				functionId: t.functionId ?? this.config.name,
-				metadata: t.metadata,
-				recordInputs: t.recordInputs,
-				recordOutputs: t.recordOutputs,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
-				tracer: t.tracer as any,
-				integrations: t.integrations.length > 0 ? t.integrations : undefined,
-			},
-		};
+		return buildExperimentalTelemetry(this.resolve(options), {
+			fallbackFunctionId: this.config.name,
+		});
 	}
 
 	async withRootSpan<T>(
@@ -140,6 +170,9 @@ export class RuntimeTelemetry {
 		options: ExecutionOptions | undefined,
 		runId: string,
 		fn: () => Promise<T>,
+		// Seam for TRUST-308 (nesting delegated sub-agent spans under the parent
+		// agent trace) — unused today, every root span is self-contained.
+		links?: OpaqueSpanLink[],
 	): Promise<T> {
 		const t = this.resolve(options);
 		if (!t?.enabled || t.runtimeRootSpanEnabled === false || !isActiveSpanTracer(t.tracer)) {
@@ -149,7 +182,13 @@ export class RuntimeTelemetry {
 		const spanName = `${t.functionId ?? this.config.name}.${operation}`;
 		return await t.tracer.startActiveSpan(
 			spanName,
-			{ attributes: this.buildTelemetryRootAttributes(t, spanName, runId) },
+			{
+				// Self-contained trace regardless of ambient context, so the span
+				// tree's shape is identical no matter how the agent was invoked.
+				root: true,
+				...(links?.length ? { links } : {}),
+				attributes: this.buildTelemetryRootAttributes(t, spanName, runId),
+			},
 			async (span) => {
 				try {
 					return await fn();
@@ -179,13 +218,20 @@ export class RuntimeTelemetry {
 		const inputValue = shouldRecordInputs ? stringifyTelemetryValue(input) : undefined;
 
 		return await t.tracer.startActiveSpan(
-			'ai.toolCall',
+			// OTel GenAI semconv span-name convention: `execute_tool {tool name}`.
+			`execute_tool ${toolName}`,
 			{
 				attributes: {
 					...this.buildAiSdkOperationAttributes('ai.toolCall', t),
+					'gen_ai.operation.name': 'execute_tool',
+					'gen_ai.tool.name': toolName,
+					'gen_ai.tool.call.id': toolCallId,
+					'gen_ai.agent.name': this.config.name,
 					'ai.toolCall.name': toolName,
 					'ai.toolCall.id': toolCallId,
-					...(inputValue !== undefined ? { 'ai.toolCall.args': inputValue } : {}),
+					...(inputValue !== undefined
+						? { 'ai.toolCall.args': inputValue, 'gen_ai.tool.call.arguments': inputValue }
+						: {}),
 				},
 			},
 			async (span) => {
@@ -194,7 +240,10 @@ export class RuntimeTelemetry {
 					const shouldRecordOutputs = t.recordOutputs ?? true;
 					const outputValue = shouldRecordOutputs ? stringifyTelemetryValue(result) : undefined;
 					if (outputValue !== undefined) {
-						span.setAttributes?.({ 'ai.toolCall.result': outputValue });
+						span.setAttributes?.({
+							'ai.toolCall.result': outputValue,
+							'gen_ai.tool.call.result': outputValue,
+						});
 					}
 					return result;
 				} catch (error) {
@@ -213,15 +262,34 @@ export class RuntimeTelemetry {
 		spanName: string,
 		runId: string,
 	): Record<string, AttributeValue> {
-		const metadataAttributes = this.buildTelemetryMetadataAttributes(t, 'langsmith.metadata');
+		// Only tag spans with LangSmith-specific descriptors when the telemetry
+		// was actually built for LangSmith — otherwise a plain OTLP backend would
+		// see langsmith.* as the only descriptors on the span, which defeats the
+		// point of the generic gen_ai.* attributes below.
+		const isLangSmith = t.isLangSmith === true;
+		const langSmithMetadataAttributes = this.buildTelemetryMetadataAttributes(
+			t,
+			'langsmith.metadata',
+		);
+		const genericMetadataAttributes = this.buildTelemetryMetadataAttributes(
+			t,
+			'ai.telemetry.metadata',
+		);
 
 		return {
-			'langsmith.traceable': 'true',
-			'langsmith.trace.name': spanName,
-			'langsmith.span.kind': 'chain',
-			'langsmith.metadata.agent_name': this.config.name,
-			'langsmith.metadata.agent_run_id': runId,
-			...metadataAttributes,
+			...buildGenAiRootAttributes(this.config, t),
+			...(isLangSmith
+				? {
+						'langsmith.traceable': 'true',
+						'langsmith.trace.name': spanName,
+						'langsmith.span.kind': 'chain',
+						'langsmith.metadata.agent_name': this.config.name,
+						'langsmith.metadata.agent_run_id': runId,
+						...langSmithMetadataAttributes,
+						...buildLangSmithToolCatalogAttributes(this.config),
+					}
+				: {}),
+			...genericMetadataAttributes,
 			...buildAgentRootInputAttributes(this.config),
 		};
 	}

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
+
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Logger, isObjectLiteral } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
@@ -35,13 +35,13 @@ import {
 	createEmptyRunExecutionData,
 } from 'n8n-workflow';
 
-import { RESPONSE_ERROR_MESSAGES } from '../constants';
-import { getExternalSecretExpressionPaths } from '../credentials/external-secrets.utils';
-import { CredentialsHelper } from '../credentials-helper';
-
 import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+
+import { RESPONSE_ERROR_MESSAGES } from '../constants';
+import { getExternalSecretExpressionPaths } from '../credentials/external-secrets.utils';
+import { CredentialsHelper } from '../credentials-helper';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 

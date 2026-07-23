@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 
-import { dialogCloseIconIn } from './dialogLocators';
+import { closeDialogIfOpen } from './dialogLocators';
 import { FloatingUiHelper } from './FloatingUiHelper';
 
 /**
@@ -23,13 +23,18 @@ export class BaseModal extends FloatingUiHelper {
 		return this.container.getByRole('button', { name: /close/i });
 	}
 
-	/** Element Plus close (X) icon (`.el-dialog__close`) inside this modal's container. */
-	getDialogCloseIcon(): Locator {
-		return dialogCloseIconIn(this.container);
-	}
-
 	async waitForModal() {
 		await this.container.waitFor({ state: 'visible' });
+	}
+
+	/** Close the modal via its Element Plus close (X) icon, if it's currently visible. */
+	async close(): Promise<void> {
+		await closeDialogIfOpen(this.container);
+	}
+
+	/** A text element visible inside this modal's container (e.g. a validation error). */
+	getText(text: string | RegExp, options?: { exact?: boolean }): Locator {
+		return this.container.getByText(text, options);
 	}
 
 	async fillInput(text: string) {

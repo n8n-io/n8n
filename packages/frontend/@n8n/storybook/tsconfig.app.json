@@ -26,6 +26,7 @@
 		"src/**/*.ts",
 		"src/**/*.tsx",
 		"src/**/*.vue",
+		".storybook/**/*.ts",
 		"../chat/src/**/*.stories.ts",
 		"../design-system/src/**/*.stories.ts",
 		"../../editor-ui/src/**/*.stories.ts"

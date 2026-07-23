@@ -61,12 +61,12 @@ test.describe(
 			await n8n.canvas.tagsManagerModal.addTag();
 			await n8n.canvas.tagsManagerModal.getTagInputInModal().fill(tag1);
 			await n8n.canvas.pressEnterToCreateTag();
-			await n8n.canvas.tagsManagerModal.getTable().getByText(tag1).waitFor();
+			await n8n.canvas.tagsManagerModal.getTagByName(tag1).waitFor();
 
 			await n8n.canvas.tagsManagerModal.addTag();
 			await n8n.canvas.tagsManagerModal.getTagInputInModal().fill(tag2);
 			await n8n.canvas.pressEnterToCreateTag();
-			await n8n.canvas.tagsManagerModal.getTable().getByText(tag2).waitFor();
+			await n8n.canvas.tagsManagerModal.getTagByName(tag2).waitFor();
 
 			await n8n.canvas.tagsManagerModal.clickDoneButton();
 
@@ -212,7 +212,7 @@ test.describe('Workflow tags - Tag operations', () => {
 		await n8n.canvas.clickWorkflowTagsArea();
 		await n8n.canvas.typeInTagInput(nonExisting);
 
-		const dropdownItems = n8n.canvas.getVisibleDropdown().locator('li');
+		const dropdownItems = n8n.canvas.getTagDropdownItems();
 
 		await expect(dropdownItems).toHaveCount(2);
 		await expect(n8n.canvas.getTagItemsInDropdown()).toHaveCount(0);

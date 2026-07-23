@@ -1,22 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nButton, N8nCard, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nCard, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
 import { useSurfaceMcpEmptyState } from '@/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpEmptyState';
-import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
 import { useCredentialsAppSelectionStore } from '@/experiments/credentialsAppSelection/stores/credentialsAppSelection.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
-import RecommendedTemplatesSection from '@/features/workflows/templates/recommendations/components/RecommendedTemplatesSection.vue';
-import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
-import EmptyStateBuilderPrompt from '@/experiments/emptyStateBuilderPrompt/components/EmptyStateBuilderPrompt.vue';
 import AppSelectionPage from '@/experiments/credentialsAppSelection/components/AppSelectionPage.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { NEW_AGENT_VIEW } from '@/features/agents/constants';
+import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import SurfaceMcpEmptyStateReminder from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpEmptyStateReminder.vue';
@@ -32,27 +28,17 @@ const router = useRouter();
 const bannersStore = useBannersStore();
 const projectsStore = useProjectsStore();
 const projectPages = useProjectPages();
-const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 const credentialsAppSelectionStore = useCredentialsAppSelectionStore();
 const readyToRunStore = useReadyToRunStore();
 const settingsStore = useSettingsStore();
 const agentTelemetry = useAgentTelemetry();
 
-const {
-	showAppSelection,
-	showBuilderPrompt,
-	showRecommendedTemplatesInline,
-	builderHeading,
-	emptyStateHeading,
-	emptyStateDescription,
-	canCreateWorkflow,
-} = useWorkflowsEmptyState();
+const { showAppSelection, emptyStateHeading, emptyStateDescription, canCreateWorkflow } =
+	useWorkflowsEmptyState();
 
 const { showTile: showMcpTile, showReminder: showMcpReminder } = useSurfaceMcpEmptyState({
 	canCreateWorkflow: computed(() => Boolean(canCreateWorkflow.value)),
 	showAppSelection: computed(() => Boolean(showAppSelection.value)),
-	showBuilderPrompt: computed(() => Boolean(showBuilderPrompt.value)),
-	showRecommendedTemplatesInline: computed(() => Boolean(showRecommendedTemplatesInline.value)),
 });
 
 const addWorkflow = () => {
@@ -89,12 +75,9 @@ const handleReadyToRunClick = async () => {
 
 const handleBuildAgentClick = () => {
 	agentTelemetry.trackClickedNewAgent('card');
-	void router.push({
-		name: NEW_AGENT_VIEW,
-		query: {
-			projectId: builderProjectId.value,
-		},
-	});
+	void router.push(
+		instanceAiCreateAgentRoute(builderProjectId.value ?? projectsStore.personalProject?.id ?? ''),
+	);
 };
 
 const containerStyle = computed(() => ({
@@ -102,14 +85,6 @@ const containerStyle = computed(() => ({
 }));
 
 const builderParentFolderId = computed(() => route.params.folderId as string | undefined);
-
-const handleBuilderPromptSubmit = async (prompt: string) => {
-	await emptyStateBuilderPromptStore.createWorkflowWithPrompt(
-		prompt,
-		builderProjectId.value,
-		builderParentFolderId.value,
-	);
-};
 
 const handleAppSelectionContinue = () => {
 	credentialsAppSelectionStore.dismiss();
@@ -121,78 +96,19 @@ const handleAppSelectionContinue = () => {
 		:class="[
 			$style.emptyStateLayout,
 			{
-				[$style.noTemplatesContent]:
-					!showRecommendedTemplatesInline && !showBuilderPrompt && !showAppSelection,
-				[$style.builderLayout]: showBuilderPrompt || showAppSelection,
+				[$style.noTemplatesContent]: !showAppSelection,
+				[$style.builderLayout]: showAppSelection,
 			},
 		]"
 		:style="containerStyle"
 	>
-		<div :class="[$style.content, { [$style.builderContent]: showBuilderPrompt }]">
+		<div :class="$style.content">
 			<!-- State 0: App Selection -->
 			<template v-if="showAppSelection">
 				<AppSelectionPage @continue="handleAppSelectionContinue" />
 			</template>
 
-			<!-- State 1: AI Builder -->
-			<template v-else-if="showBuilderPrompt">
-				<div :class="$style.welcomeBuilder">
-					<N8nHeading tag="h1" size="xlarge">
-						{{ builderHeading }}
-					</N8nHeading>
-				</div>
-				<EmptyStateBuilderPrompt
-					data-test-id="empty-state-builder-prompt"
-					:project-id="builderProjectId"
-					:parent-folder-id="builderParentFolderId"
-					:show-build-agent-button="showBuildAgentCard"
-					@submit="handleBuilderPromptSubmit"
-					@start-from-scratch="addWorkflow"
-					@build-agent="handleBuildAgentClick"
-				/>
-			</template>
-
-			<!-- State 2: Recommended Templates -->
-			<template v-else-if="showRecommendedTemplatesInline">
-				<N8nHeading tag="h1" size="2xlarge" bold :class="$style.welcomeTitle">
-					{{ emptyStateHeading }}
-				</N8nHeading>
-
-				<div :class="$style.templatesSection">
-					<RecommendedTemplatesSection />
-
-					<div :class="$style.orDivider">
-						<N8nText size="large">
-							{{ i18n.baseText('generic.or') }}
-						</N8nText>
-					</div>
-
-					<div :class="$style.actionButtons">
-						<ReadyToRunButton type="secondary" size="large" />
-						<N8nButton
-							v-if="showBuildAgentCard"
-							variant="subtle"
-							icon="robot"
-							size="large"
-							data-test-id="build-agent-button"
-							@click="handleBuildAgentClick"
-						>
-							{{ i18n.baseText('workflows.empty.buildAgent') }}
-						</N8nButton>
-						<N8nButton
-							variant="subtle"
-							icon="workflow"
-							size="large"
-							data-test-id="start-from-scratch-button"
-							@click="addWorkflow"
-						>
-							{{ i18n.baseText('workflows.empty.buildWorkflow') }}
-						</N8nButton>
-					</div>
-				</div>
-			</template>
-
-			<!-- State 3: Fallback (Baseline) -->
+			<!-- State 1: Fallback (Baseline) -->
 			<template v-else>
 				<N8nHeading
 					tag="h1"
@@ -331,21 +247,8 @@ const handleAppSelectionContinue = () => {
 	width: 100%;
 }
 
-.builderContent {
-	max-width: 1024px;
-	text-align: center;
-}
-
-.welcomeBuilder {
-	margin-bottom: var(--spacing--sm);
-}
-
 .welcomeTitle {
 	margin-bottom: var(--spacing--sm);
-}
-
-.templatesSection {
-	width: 100%;
 }
 
 .fallbackContent {
@@ -475,17 +378,5 @@ const handleAppSelectionContinue = () => {
 	svg {
 		transition: color 0.3s ease;
 	}
-}
-
-.orDivider {
-	margin-top: var(--spacing--lg);
-	text-align: center;
-}
-
-.actionButtons {
-	display: flex;
-	justify-content: center;
-	gap: var(--spacing--xs);
-	margin: var(--spacing--lg) 0;
 }
 </style>

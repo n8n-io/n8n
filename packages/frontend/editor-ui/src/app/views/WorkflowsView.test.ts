@@ -1,3 +1,4 @@
+import { nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import * as usersApi from '@n8n/rest-api-client/api/users';
@@ -18,7 +19,7 @@ import WorkflowsView from '@/app/views/WorkflowsView.vue';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 
@@ -129,19 +130,35 @@ describe('WorkflowsView', () => {
 
 	describe('should show empty state', () => {
 		it('for non setup user', async () => {
-			const { getByText } = renderComponent({ pinia });
+			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
-			expect(getByText('What do you want to build?')).toBeVisible();
+
+			const emptyState = getByTestId('empty-resources-list');
+			expect(within(emptyState).getByText('Create your first automation')).toBeVisible();
+			expect(within(emptyState).getByRole('button', { name: 'Create workflow' })).toBeVisible();
 		});
 
-		it('for currentUser user', async () => {
+		it('should render empty state card regardless of user name', async () => {
 			const userStore = mockedStore(useUsersStore);
 			userStore.currentUser = { firstName: 'John' } as IUser;
 
-			const { getByText } = renderComponent({ pinia });
+			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(getByText('What do you want to build, John')).toBeVisible();
+			const emptyState = getByTestId('empty-resources-list');
+			expect(within(emptyState).getByText('Create your first automation')).toBeVisible();
+		});
+
+		it('with the archived hint when all workflows are archived', async () => {
+			foldersStore.totalWorkflowCount = 3;
+			foldersStore.fetchTotalWorkflowsAndFoldersCount.mockResolvedValue(3);
+
+			const { getByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(getByTestId('show-archived-link')).toBeVisible();
+			const emptyState = getByTestId('empty-resources-list');
+			expect(within(emptyState).getByText('Create your first automation')).toBeVisible();
 		});
 
 		describe('when onboardingExperiment -> False', () => {
@@ -149,17 +166,24 @@ describe('WorkflowsView', () => {
 				const sourceControl = mockedStore(useSourceControlStore);
 				sourceControl.preferences.branchReadOnly = true;
 
-				const { getByText } = renderComponent({ pinia });
+				const { getByTestId } = renderComponent({ pinia });
 				await waitAllPromises();
 
-				expect(getByText('No workflows here yet')).toBeInTheDocument();
+				const button = within(getByTestId('empty-resources-list')).getByRole('button', {
+					name: 'Create workflow',
+				});
+				expect(button).toBeDisabled();
 				sourceControl.preferences.branchReadOnly = false;
 			});
 
 			it('for noPermission', async () => {
-				const { getByText } = renderComponent({ pinia });
+				const { getByTestId } = renderComponent({ pinia });
 				await waitAllPromises();
-				expect(getByText('There are currently no workflows to view')).toBeInTheDocument();
+
+				const button = within(getByTestId('empty-resources-list')).getByRole('button', {
+					name: 'Create workflow',
+				});
+				expect(button).toBeDisabled();
 			});
 
 			it('does not repeat generic prompt in fallback empty state', async () => {
@@ -169,16 +193,18 @@ describe('WorkflowsView', () => {
 				const { getAllByText } = renderComponent({ pinia });
 				await waitAllPromises();
 
-				expect(getAllByText('What do you want to build?')).toHaveLength(1);
+				expect(getAllByText('Create your first automation')).toHaveLength(1);
 			});
 
 			it('for user with create scope', async () => {
 				const projectsStore = mockedStore(useProjectsStore);
 				projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
 
-				const { getByRole } = renderComponent({ pinia });
+				const { getByTestId } = renderComponent({ pinia });
 				await waitAllPromises();
-				expect(getByRole('heading', { name: 'What do you want to build?' })).toBeInTheDocument();
+				expect(
+					within(getByTestId('empty-resources-list')).getByText('Create your first automation'),
+				).toBeInTheDocument();
 			});
 		});
 	});
@@ -563,6 +589,7 @@ describe('Folders', () => {
 
 describe('Simplified Layout', () => {
 	beforeEach(async () => {
+		localStorage.clear();
 		await router.push('/');
 		await router.isReady();
 		pinia = createTestingPinia({ initialState });
@@ -614,9 +641,7 @@ describe('Simplified Layout', () => {
 		const { queryByTestId } = renderComponent({ pinia });
 		await waitAllPromises();
 
-		// ResourcesListLayout should be rendered (look for list-empty-state as indicator)
-		// EmptyStateLayout cards should NOT be rendered when using regular layout
-		expect(queryByTestId('list-empty-state')).toBeInTheDocument();
+		expect(queryByTestId('empty-resources-list')).toBeInTheDocument();
 	});
 
 	it('fetches credentials for empty-state detection when there are no workflows', async () => {
@@ -644,7 +669,7 @@ describe('Simplified Layout', () => {
 		expect(mockShowError).toHaveBeenCalled();
 	});
 
-	it('skips the empty-state resource fetches when workflows already exist', async () => {
+	it('skips the empty-state resource fetches when stores already show workflows exist', async () => {
 		const credentialsStore = mockedStore(useCredentialsStore);
 		projectPages = useProjectPages();
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
@@ -686,5 +711,60 @@ describe('Simplified Layout', () => {
 		// The computed should be called with the current route and loading state
 		const lastCall = getSimplifiedLayoutVisibility.mock.calls[initialCallCount - 1];
 		expect(lastCall[0]).toHaveProperty('params'); // route object
+	});
+});
+
+describe('onboarding loading state', () => {
+	beforeEach(async () => {
+		localStorage.clear();
+		await router.push('/');
+		await router.isReady();
+		pinia = createTestingPinia({ initialState });
+		foldersStore = mockedStore(useFoldersStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
+
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
+		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
+		foldersStore.totalWorkflowCount = 0;
+		foldersStore.fetchTotalWorkflowsAndFoldersCount.mockResolvedValue(0);
+
+		const readyToRunStore = mockedStore(useReadyToRunStore);
+		vi.spyOn(readyToRunStore, 'getSimplifiedLayoutVisibility').mockReturnValue(false);
+
+		projectPages = useProjectPages();
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+	});
+
+	it('shows neutral loading instead of list chrome on overview while instance content is unknown', async () => {
+		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+
+		expect(getByTestId('workflows-onboarding-loading')).toBeInTheDocument();
+		expect(queryByTestId('add-resource-buttons')).not.toBeInTheDocument();
+
+		await waitAllPromises();
+	});
+
+	it('keeps list chrome during load when stores already show instance content', async () => {
+		foldersStore.totalWorkflowCount = 5;
+		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+
+		expect(queryByTestId('workflows-onboarding-loading')).not.toBeInTheDocument();
+		expect(getByTestId('add-resource-buttons')).toBeInTheDocument();
+
+		await waitAllPromises();
+	});
+
+	it('re-arms the deferred loading state when navigating between surfaces', async () => {
+		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+		expect(queryByTestId('workflows-onboarding-loading')).not.toBeInTheDocument();
+
+		await router.push('/some-project');
+		await nextTick();
+
+		expect(getByTestId('workflows-onboarding-loading')).toBeInTheDocument();
+
+		await waitAllPromises();
+		expect(queryByTestId('workflows-onboarding-loading')).not.toBeInTheDocument();
 	});
 });

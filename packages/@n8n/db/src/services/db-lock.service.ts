@@ -12,6 +12,8 @@ import { OperationalError } from 'n8n-workflow';
 export const enum DbLock {
 	AUTH_ROLES_SYNC = 1001,
 	TRUSTED_KEY_REFRESH = 1002,
+	WORKFLOW_STATISTICS_ROLLUP = 1003,
+	WORKFLOW_REVIEW_REQUEST_CREATE = 1004,
 	/** Reserved for integration tests — never use in production code */
 	TEST = 9999,
 }

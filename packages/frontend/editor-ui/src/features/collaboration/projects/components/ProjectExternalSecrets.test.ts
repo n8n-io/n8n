@@ -10,7 +10,7 @@ import { useProjectsStore } from '../projects.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { ROLE } from '@n8n/api-types';
 import { SECRETS_PROVIDER_CONNECTION_MODAL_KEY } from '@/app/constants';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 
 // Mock vue-router
 const mockRouterPush = vi.fn();
@@ -380,6 +380,7 @@ describe('ProjectExternalSecrets', () => {
 				createdAt: '',
 				updatedAt: '',
 				relations: [],
+				rolesManaged: false,
 			});
 			const { queryByTestId } = renderComponent();
 			await vi.waitFor(() => {

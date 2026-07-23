@@ -65,18 +65,24 @@ export type {
 	RetrievedEpisodicMemoryEntry,
 	ResumeOptions,
 	McpServerConfig,
+	McpToolCallSettledEvent,
 	McpVerifyResult,
 	ModelConfig,
 	ExecutionOptions,
 	SmoothStreamOptions,
+	TokenUsage,
 	AgentExecutionCounter,
 	PersistedExecutionOptions,
+	AnthropicPromptCachingConfig,
+	OpenAIPromptCachingConfig,
+	PromptCachingConfig,
 	BuiltTelemetry,
 	AttributeValue,
 	ObservationCursor,
 	ObservationalMemoryConfig,
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
+	MemoryTaskUsageReport,
 	NewObservationLogEntry,
 	ObservationLogEntry,
 	ObservationLogMarker,
@@ -101,8 +107,22 @@ export {
 
 export { createCancellation, isCancellation, CANCELLATION_TYPE } from './sdk/cancellation';
 export type { Cancellation } from './sdk/cancellation';
-export { Tool, wrapToolForApproval } from './sdk/tool';
+export {
+	createAbortError,
+	isAbortError,
+	raceWithAbort,
+	throwIfAborted,
+} from './sdk/abort';
+export { Tool, wrapToolForApproval, sanitizeToolName } from './sdk/tool';
 export { Memory } from './sdk/memory';
+export { VectorStore } from './sdk/vector-store';
+export {
+	FILTER_OPERATORS,
+	normalizeFilterInput,
+	assertValidFilter,
+	buildFilterInputSchema,
+} from './sdk/vector-store-filter';
+export type { VectorFilterInput } from './sdk/vector-store-filter';
 export { Guardrail } from './sdk/guardrail';
 export {
 	redactText,
@@ -137,6 +157,7 @@ export {
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
 	createSkillLoadTool,
+	filterRuntimeSkillSource,
 	formatSkillValidationErrors,
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillsFromDirectory,
@@ -153,6 +174,7 @@ export {
 	validateRuntimeSkill,
 } from './skills';
 export type {
+	LoadRuntimeSkillSourceFromDirectoryOptions,
 	RenderSkillCatalogOptions,
 	RuntimeSkill,
 	RuntimeSkillContent,
@@ -203,8 +225,6 @@ export {
 	isLlmMessage,
 } from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';
-export { providerCapabilities } from './sdk/provider-capabilities';
-export type { ProviderCapability } from './sdk/provider-capabilities';
 export type {
 	ProviderCatalog,
 	ProviderInfo,
@@ -213,10 +233,21 @@ export type {
 	ModelLimits,
 } from './sdk/catalog';
 export { BaseMemory } from './storage/base-memory';
+export { BaseVectorStore } from './storage/base-vector-store';
 export type { ToolDescriptor } from './types/sdk/tool-descriptor';
+export type {
+	BuiltVectorStoreBackend,
+	VectorDocument,
+	VectorRecord,
+	VectorQueryResult,
+	FilterOperator,
+	FilterValue,
+	FilterCondition,
+	VectorFilter,
+} from './types';
 
 export { createModel } from './runtime/model/model-factory';
-export type { FetchFn } from './runtime/model/model-factory';
+export type { FetchFn, EmbeddingProviderOptions } from './runtime/model/model-factory';
 export {
 	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	ROOT_SUB_AGENT_TASK_PATH,
@@ -235,6 +266,7 @@ export {
 	failedDelegatedChildSuspendOutput,
 	generateResultToDelegateSubAgentOutput,
 	getInlineDelegateSubAgentToolOptions,
+	isDelegateSubAgentTool,
 	renderDelegateSubAgentPrompt,
 } from './runtime/tools/delegate-sub-agent-tool';
 export type {
@@ -249,6 +281,7 @@ export type {
 	SubAgentTaskDifficulty,
 } from './runtime/tools/delegate-sub-agent-tool';
 export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/tools/write-todos-tool';
+export type { CreateWriteTodosToolOptions } from './runtime/tools/write-todos-tool';
 export { createEmbeddingModel } from './runtime/model/model-factory';
 export { generateTitleFromMessage } from './runtime/memory/title-generation';
 export {
@@ -369,11 +402,14 @@ export type {
 	FileContent,
 	FileStat,
 	FileEntry,
+	AbortableOptions,
+	AppendOptions,
 	ReadOptions,
 	WriteOptions,
 	ListOptions,
 	RemoveOptions,
 	CopyOptions,
+	MkdirOptions,
 	ProviderStatus,
 	SandboxInfo,
 	LocalFilesystemOptions,

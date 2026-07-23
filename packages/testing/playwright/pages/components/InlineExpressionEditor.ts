@@ -43,6 +43,16 @@ export class InlineExpressionEditor {
 		return this.getInput().locator('.cm-content');
 	}
 
+	/** CodeMirror rendered lines within the in-NDV editor content. */
+	getLines(): Locator {
+		return this.getContent().locator('.cm-line');
+	}
+
+	/** A single rendered CodeMirror line by zero-based index. */
+	getLine(index: number): Locator {
+		return this.getLines().nth(index);
+	}
+
 	/** Teleported preview popover (same test id as the output). */
 	getPreview(): Locator {
 		return this.page.getByTestId('inline-expression-editor-output');
@@ -64,11 +74,18 @@ export class InlineExpressionEditor {
 		return this.page.getByTestId('inline-expression-editor-item-next');
 	}
 
+	// Park the cursor away from run-data rows; hovering one disables the item next/prev buttons.
+	async moveMouseAway(): Promise<void> {
+		await this.page.mouse.move(0, 0);
+	}
+
 	async selectNextItem(): Promise<void> {
+		await this.moveMouseAway();
 		await this.getItemNextButton().click();
 	}
 
 	async selectPrevItem(): Promise<void> {
+		await this.moveMouseAway();
 		await this.getItemPrevButton().click();
 	}
 

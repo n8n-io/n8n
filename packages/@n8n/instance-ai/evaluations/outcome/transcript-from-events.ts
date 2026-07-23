@@ -7,7 +7,7 @@
  */
 
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import { redactSecrets, redactSecretsInText } from '../harness/redact';
 import type {

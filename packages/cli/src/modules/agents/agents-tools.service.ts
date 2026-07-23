@@ -1,20 +1,22 @@
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
+import type { CodeBuilderSearchResult } from '@n8n/ai-utilities/node-catalog';
 import {
 	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
 	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { validateNodeConfig } from '@n8n/workflow-sdk';
 import { isToolType, isTriggerNodeType } from 'n8n-workflow';
-import type { IDataObject, INodeParameters } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform';
-
 import { NodeCatalogService } from '@/node-catalog';
-import { EphemeralNodeExecutor, isAgentProviderNode } from '@/node-execution';
+import {
+	isAgentProviderNode,
+	isUnsupportedEphemeralNodeOperation,
+	unsupportedEphemeralNodeOperationMessage,
+} from '@/node-execution';
+
+import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform';
 
 type NodeRequest =
 	| string
@@ -73,7 +75,11 @@ const searchNodesInputSchema = z.object({
 	queries: z.array(z.string()).min(1).describe('Search queries (e.g., ["gmail", "slack", "http"])'),
 });
 
-const nodeVersionSchema = z.number().describe('Tool node type version from search_nodes');
+const nodeVersionSchema = z
+	.number()
+	.describe(
+		'Tool node type version from node discovery results (search_nodes or resolve_integration kind: "node")',
+	);
 
 const getNodeTypesInputSchema = z.object({
 	nodeIds: z
@@ -90,7 +96,9 @@ const getNodeTypesInputSchema = z.object({
 			]),
 		)
 		.min(1)
-		.describe('Tool node IDs from search_nodes (e.g., ["n8n-nodes-base.gmailTool"])'),
+		.describe(
+			'Tool node IDs from node discovery results (search_nodes or resolve_integration kind: "node"; e.g., ["n8n-nodes-base.gmailTool"])',
+		),
 });
 
 const listCredentialsInputSchema = z.object({
@@ -104,39 +112,13 @@ const listCredentialsInputSchema = z.object({
 		),
 });
 
-const runNodeInputSchema = z.object({
-	nodeType: z.string().describe('Tool node type identifier from search_nodes'),
-	nodeTypeVersion: nodeVersionSchema,
-	nodeParameters: z
-		.record(z.unknown())
-		.optional()
-		.describe(
-			'Static node config. Use expressions like ={{ $json.url }} to reference inputData fields.',
-		),
-	credentials: z
-		.record(z.object({ id: z.string(), name: z.string() }))
-		.optional()
-		.describe('Credential slot → { id, name }. Copy from list_credentials results.'),
-	inputData: z
-		.record(z.unknown())
-		.optional()
-		.describe('Runtime input, available as $json inside nodeParameters expressions.'),
-});
-
 @Service()
 export class AgentsToolsService {
-	constructor(
-		private readonly logger: Logger,
-		private readonly nodeCatalogService: NodeCatalogService,
-		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
-	) {}
+	constructor(private readonly nodeCatalogService: NodeCatalogService) {}
 
 	/**
-	 * Tools usable from both the builder and the agent runtime.
-	 *
-	 * `listCredentialsUsageHint` lets each caller tailor the `list_credentials`
-	 * description to its flow — the runtime points at `run_node_tool`, while the
-	 * builder points at code generation.
+	 * Tools usable by the builder while configuring node-backed tools.
+	 * `listCredentialsUsageHint` lets callers tailor the credential guidance.
 	 */
 	getSharedTools(
 		credentialProvider: CredentialProvider,
@@ -149,15 +131,11 @@ export class AgentsToolsService {
 		];
 	}
 
-	/** Shared tools plus the runtime-only `run_node_tool` which binds to a project. */
-	getRuntimeTools(credentialProvider: CredentialProvider, projectId: string): BuiltTool[] {
-		return [
-			...this.getSharedTools(
-				credentialProvider,
-				'Call this before run_node_tool to know which credential to pass.',
-			),
-			this.buildRunNodeTool(projectId),
-		];
+	async searchAgentToolNodes(queries: string[]): Promise<CodeBuilderSearchResult> {
+		await this.nodeCatalogService.initialize();
+		return await this.nodeCatalogService.searchNodes(queries, {
+			nodeFilter: isAgentToolNodeType,
+		});
 	}
 
 	private buildSearchNodesTool(): BuiltTool {
@@ -169,10 +147,7 @@ export class AgentsToolsService {
 			)
 			.input(searchNodesInputSchema)
 			.handler(async ({ queries }: { queries: string[] }) => {
-				await this.nodeCatalogService.initialize();
-				const { results } = await this.nodeCatalogService.searchNodes(queries, {
-					nodeFilter: isAgentToolNodeType,
-				});
+				const { results } = await this.searchAgentToolNodes(queries);
 				return { results };
 			})
 			.build();
@@ -181,13 +156,31 @@ export class AgentsToolsService {
 	private buildGetNodeTypesTool(): BuiltTool {
 		return new Tool('get_node_types')
 			.description(
-				'Get detailed parameter schema for specific n8n nodes. Use the node IDs returned ' +
-					'by search_nodes. Returns parameter definitions needed to configure a node for execution. ' +
-					'Use the tool node IDs from search_nodes. ' +
-					'You can optionally filter by resource/operation/mode.',
+				'Get detailed parameter schema for specific n8n nodes. Use the node IDs from node ' +
+					'discovery results (search_nodes or resolve_integration kind: "node"). Returns ' +
+					'parameter definitions needed to configure a node for execution. Use the tool node ' +
+					'IDs from discovery, usually ending in Tool. You can optionally filter by ' +
+					'resource/operation/mode.',
 			)
 			.input(getNodeTypesInputSchema)
 			.handler(async ({ nodeIds }: { nodeIds: NodeRequest[] }) => {
+				const unsupportedOperations = nodeIds.flatMap((request) => {
+					if (
+						typeof request === 'string' ||
+						!isUnsupportedEphemeralNodeOperation(request.operation)
+					) {
+						return [];
+					}
+
+					return [
+						`Node "${request.nodeId}": ${unsupportedEphemeralNodeOperationMessage(request.operation)}`,
+					];
+				});
+
+				if (unsupportedOperations.length > 0) {
+					return { results: `# Errors\n\n${unsupportedOperations.join('\n')}` };
+				}
+
 				await this.nodeCatalogService.initialize();
 				const results = await this.nodeCatalogService.getNodeTypes(
 					nodeIds.map(normalizeNodeRequestForCatalog),
@@ -216,70 +209,11 @@ export class AgentsToolsService {
 			})
 			.build();
 	}
-
-	private buildRunNodeTool(projectId: string): BuiltTool {
-		return new Tool('run_node_tool')
-			.description(
-				'Execute an n8n node for the current request. ' +
-					'Use the tool nodeType and nodeTypeVersion from search_nodes. ' +
-					'Call get_node_types first to understand what nodeParameters the node accepts. ' +
-					'nodeParameters holds static node config; use n8n expressions like ={{ $json.url }} to map inputData fields. ' +
-					'credentials maps slot names to { id, name } — copy from the list_credentials results. ' +
-					'inputData is the runtime payload available as $json inside expressions. ' +
-					'Parameters are validated against the node schema before execution.',
-			)
-			.input(runNodeInputSchema)
-			.handler(async ({ nodeType, nodeTypeVersion, nodeParameters, credentials, inputData }) => {
-				if (!isExecutableNodeType(nodeType)) {
-					return {
-						status: 'error',
-						message: `Node type "${nodeType}" cannot be executed directly — trigger nodes are not supported here.`,
-					};
-				}
-
-				if (nodeParameters) {
-					const { valid, errors } = validateNodeConfig(
-						nodeType,
-						nodeTypeVersion,
-						{
-							parameters: nodeParameters,
-						},
-						{ isToolNode: true },
-					);
-					if (!valid) {
-						return {
-							status: 'error',
-							message: `Invalid nodeParameters: ${errors.map((e) => e.message).join('; ')}`,
-						};
-					}
-				}
-
-				try {
-					return await this.ephemeralNodeExecutor.executeInline({
-						nodeType,
-						nodeTypeVersion,
-						nodeParameters: (nodeParameters ?? {}) as INodeParameters,
-						credentialDetails: credentials,
-						inputData: [{ json: (inputData ?? {}) as IDataObject }],
-						projectId,
-					});
-				} catch (error) {
-					const message = error instanceof Error ? error.message : String(error);
-					this.logger.warn('run_node_tool execution failed', { nodeType, error });
-					return {
-						status: 'error',
-						message: `Node execution failed: ${message}`,
-					};
-				}
-			})
-			.build();
-	}
 }
 
 /**
  * The catalog's `getNodeTypes` signature expects `version` as a string (matching the
- * code-builder tool's wire format). Our public schema uses `number` for consistency
- * with `run_node_tool`; adapt at the boundary.
+ * builder tool's wire format); adapt at the boundary.
  */
 function normalizeNodeRequestForCatalog(req: NodeRequest):
 	| string

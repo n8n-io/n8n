@@ -18,6 +18,7 @@ import type { LogTreeCreationContext } from '../logs.types';
 export function createTestLogTreeCreationContext(
 	workflow: Workflow,
 	runData: IRunData,
+	nodeGroups: LogTreeCreationContext['nodeGroups'] = [],
 ): LogTreeCreationContext {
 	return {
 		parent: undefined,
@@ -32,6 +33,8 @@ export function createTestLogTreeCreationContext(
 			},
 		}),
 		isSubExecution: false,
+		nodeGroups,
+		subWorkflowNodeGroups: {},
 	};
 }
 

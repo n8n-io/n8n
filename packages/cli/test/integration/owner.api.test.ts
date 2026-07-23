@@ -7,9 +7,10 @@ import {
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
-import { OwnershipService } from '@/services/ownership.service';
 import { Container } from '@n8n/di';
 import validator from 'validator';
+
+import { OwnershipService } from '@/services/ownership.service';
 
 import { createUserShell } from './shared/db/users';
 import * as utils from './shared/utils/';

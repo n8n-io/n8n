@@ -1,11 +1,12 @@
 // LLM-backed user simulator for multi-turn workflow evals.
 
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 
 import { createUserProxyAgent, type UserProxyAgent } from './agent';
 import { tryDeterministicConfirmationResponse } from './deterministic';
 import { buildConfirmationPrompt, buildFollowUpPrompt } from './prompts';
-import { encodeConfirmationDecision, type Decision } from './tools';
+import { encodeConfirmationDecision, type Decision, type SetupWizardParseContext } from './tools';
 import { buildAutoApprovePayload } from '../../harness/chat-loop';
 import type { NextMessageDecision } from '../../harness/chat-loop';
 import type { EvalLogger } from '../../harness/logger';
@@ -142,17 +143,20 @@ export class UserProxyLlm {
 		}
 
 		const prompt = buildConfirmationPrompt(this.promptContext(), event);
-		const decision = await this.agent.decide(prompt);
+		const decision = await this.agent.decide(prompt, 'confirmation');
 		if (!decision) {
 			this.logger?.warn(`[user-proxy] no decision; event=${summarizeEvent(event)}`);
 			this.bumpStat('fallback-no-decision');
 			return this.rememberResponse(requestId, this.fallbackConfirmationResponse(event));
 		}
 
-		const encoded = encodeConfirmationDecision(decision, (raw, parseError) =>
-			this.logger?.warn(
-				`[user-proxy] nodeParametersJson failed to parse (${String(parseError)}); raw=${raw.slice(0, 200)}`,
-			),
+		const encoded = encodeConfirmationDecision(
+			decision,
+			(raw, parseError) =>
+				this.logger?.warn(
+					`[user-proxy] nodeParametersJson failed to parse (${String(parseError)}); raw=${raw.slice(0, 200)}`,
+				),
+			extractSetupWizardParseContext(event),
 		);
 		if (!encoded) {
 			this.logger?.warn(
@@ -199,10 +203,15 @@ export class UserProxyLlm {
 		}
 
 		const prompt = buildFollowUpPrompt(this.promptContext());
-		const decision = await this.agent.decide(prompt);
+		const decision = await this.agent.decide(prompt, 'user-turn');
 		if (!decision) {
 			const [next] = this.remainingUserScriptTurns();
-			if (!next || hasStageDirection(next.text)) return { kind: 'done' };
+			if (!next || hasStageDirection(next.text)) {
+				this.logger?.warn(
+					'[user-proxy] no user-turn decision and no plain scripted turn to fall back to — ending conversation',
+				);
+				return { kind: 'done' };
+			}
 			const scriptedMessage = this.consumeNextRemainingUserScriptTurn();
 			if (!scriptedMessage) return { kind: 'done' };
 			this.messagesSent++;
@@ -215,6 +224,13 @@ export class UserProxyLlm {
 			this.messagesSent++;
 			this.actualTranscript.push({ role: 'user', text: message });
 			return { kind: 'followUp', message };
+		}
+		if (decision.action !== 'declare_done') {
+			// The user-turn schema offers only the two actions above, so this only
+			// fires for injected test agents or schema drift — never drop it silently.
+			this.logger?.warn(
+				`[user-proxy] user-turn decision returned confirmation-only action=${decision.action} — treating as done`,
+			);
 		}
 		return { kind: 'done' };
 	}
@@ -328,6 +344,50 @@ function extractRequestId(event: CapturedEvent): string | undefined {
 		if (id) return id;
 	}
 	return getString(event.data, 'requestId');
+}
+
+function extractSetupWizardParseContext(event: CapturedEvent): SetupWizardParseContext | undefined {
+	const payload = getEventPayload(event);
+	if (!Array.isArray(payload.setupRequests)) return undefined;
+
+	const nodes = payload.setupRequests.flatMap((item) => {
+		if (!isRecord(item)) return [];
+		const node = isRecord(item.node) ? item.node : undefined;
+		const nodeName = (node ? getString(node, 'name') : undefined) ?? getString(item, 'nodeName');
+		if (!nodeName) return [];
+
+		const nodeId = (node ? getString(node, 'id') : undefined) ?? getString(item, 'nodeId');
+		const parameterNames = [
+			...extractParameterNames(item, 'editableParameters'),
+			...extractParameterNames(item, 'parameterRequests'),
+			...extractParameterIssueNames(item),
+		];
+
+		return [
+			{
+				...(nodeId ? { nodeId } : {}),
+				nodeName,
+				parameterNames: [...new Set(parameterNames)],
+			},
+		];
+	});
+
+	return nodes.length > 0 ? { nodes } : undefined;
+}
+
+function extractParameterNames(item: Record<string, unknown>, key: string): string[] {
+	const parameters = item[key];
+	if (!Array.isArray(parameters)) return [];
+	return parameters.flatMap((parameter) =>
+		isRecord(parameter)
+			? [getString(parameter, 'name')].filter((name): name is string => !!name)
+			: [],
+	);
+}
+
+function extractParameterIssueNames(item: Record<string, unknown>): string[] {
+	const parameterIssues = item.parameterIssues;
+	return isRecord(parameterIssues) ? Object.keys(parameterIssues) : [];
 }
 
 /** Compact JSON of the event payload, truncated for log readability. */

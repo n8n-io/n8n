@@ -8,7 +8,7 @@ import { useAvailableProjectSearch } from '@/features/collaboration/projects/pro
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import type { DateValue } from '@internationalized/date';
-import { getLocalTimeZone, today } from '@internationalized/date';
+import { getLocalTimeZone, parseDate, today } from '@internationalized/date';
 import type { InsightsSummaryType } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -24,6 +24,7 @@ import { useRoute } from 'vue-router';
 import { INSIGHT_TYPES } from '../insights.constants';
 import { getAdjustedDateRange, getTimeRangeLabels, timeRangeMappings } from '../insights.utils';
 import InsightsDataRangePicker from './InsightsDataRangePicker.vue';
+import InsightsDateRangeAlert from './InsightsDateRangeAlert.vue';
 
 import { N8nHeading, N8nSpinner } from '@n8n/design-system';
 const InsightsPaywall = defineAsyncComponent(
@@ -114,11 +115,21 @@ const minimumValue = shallowRef(
 	maxDate.copy().subtract({ days: timeRangeMappings[maxLicensedDate] }),
 );
 
+function getDefaultRangeStart(): DateValue {
+	const sevenDaysAgo = maxDate.copy().subtract({ days: 7 });
+	if (insightsStore.earliestDataDate) {
+		const earliestDate = parseDate(insightsStore.earliestDataDate.substring(0, 10));
+		// If data only starts within the last 7 days, begin from first data point
+		return earliestDate.compare(sevenDaysAgo) > 0 ? earliestDate : sevenDaysAgo;
+	}
+	return sevenDaysAgo;
+}
+
 const range = shallowRef<{
 	start: DateValue;
 	end: DateValue;
 }>({
-	start: maxDate.copy().subtract({ days: 7 }),
+	start: getDefaultRangeStart(),
 	end: maxDate.copy(),
 });
 
@@ -235,6 +246,14 @@ onBeforeMount(async () => {
 					:presets
 				/>
 			</div>
+
+			<InsightsDateRangeAlert
+				:key="range.start.toString()"
+				class="mt-s"
+				:earliest-data-date="insightsStore.earliestDataDate"
+				:range-start="range.start"
+				:range-end="range.end"
+			/>
 
 			<InsightsSummary
 				v-if="insightsStore.isSummaryEnabled"

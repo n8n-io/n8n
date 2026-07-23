@@ -1,6 +1,6 @@
 {
   "name": "@n8n/decorators",
-  "version": "1.28.0",
+  "version": "1.32.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -27,6 +27,7 @@
     "@n8n/vitest-config": "workspace:*",
     "@types/express": "catalog:",
     "@types/lodash": "catalog:",
+    "typescript": "catalog:typescript",
     "vitest": "catalog:",
     "zod": "catalog:"
   },

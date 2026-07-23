@@ -10,7 +10,6 @@ import type {
 	ListQueryDb,
 } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
 import {
 	CREDENTIAL_BLANKING_VALUE,
@@ -20,18 +19,17 @@ import {
 	type ICredentialType,
 	type INodeProperties,
 } from 'n8n-workflow';
-
-import { mockExistingCredential } from './credentials.test-data';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
-import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
 import type { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy';
+import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import * as validation from '@/credentials/validation';
 import type { CredentialsHelper } from '@/credentials-helper';
-import type { ExternalHooks } from '@/external-hooks';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import type { ExternalHooks } from '@/external-hooks';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import * as checkAccess from '@/permissions.ee/check-access';
@@ -39,6 +37,8 @@ import type { CredentialsTester } from '@/services/credentials-tester.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { RoleService } from '@/services/role.service';
+
+import { mockExistingCredential } from './credentials.test-data';
 
 const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
 const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
@@ -103,7 +103,7 @@ describe('CredentialsService', () => {
 	);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		credentialDependencyService.resolveExternalSecretsStoreDependencyFilter.mockResolvedValue(
 			undefined,
 		);
@@ -135,9 +135,9 @@ describe('CredentialsService', () => {
 
 		// @ts-expect-error - Mocking manager for testing
 		credentialsRepository.manager = {
-			transaction: jest.fn().mockImplementation(async (callback) => {
+			transaction: vi.fn().mockImplementation(async (callback) => {
 				const mockManager = {
-					save: jest.fn().mockImplementation(async (entity) => {
+					save: vi.fn().mockImplementation(async (entity) => {
 						if (onSave) {
 							onSave(entity);
 						}
@@ -778,7 +778,7 @@ describe('CredentialsService', () => {
 
 		it('should redact sensitive values by default', async () => {
 			// ARRANGE
-			jest.spyOn(Credentials.prototype, 'getData').mockResolvedValueOnce(data);
+			vi.spyOn(Credentials.prototype, 'getData').mockResolvedValueOnce(data);
 
 			// ACT
 			const redactedData = await service.decrypt(credentialEntity);
@@ -795,7 +795,7 @@ describe('CredentialsService', () => {
 
 		it('should return sensitive values if `includeRawData` is true', async () => {
 			// ARRANGE
-			jest.spyOn(Credentials.prototype, 'getData').mockResolvedValueOnce(data);
+			vi.spyOn(Credentials.prototype, 'getData').mockResolvedValueOnce(data);
 
 			// ACT
 			const redactedData = await service.decrypt(credentialEntity, true);
@@ -810,7 +810,7 @@ describe('CredentialsService', () => {
 				credentials,
 				CREDENTIAL_ERRORS.DECRYPTION_FAILED,
 			);
-			jest.spyOn(Credentials.prototype, 'getData').mockRejectedValueOnce(decryptionError);
+			vi.spyOn(Credentials.prototype, 'getData').mockRejectedValueOnce(decryptionError);
 
 			// ACT
 			const redactedData = await service.decrypt(credentialEntity, true);
@@ -847,7 +847,7 @@ describe('CredentialsService', () => {
 
 			credentialsFinderService.findCredentialById.mockResolvedValue(storedCredential);
 			credentialsTester.testCredentials.mockResolvedValue(testResult);
-			jest.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
+			vi.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
 
 			const result = await service.testById(ownerUser.id, storedCredential.id);
 
@@ -893,10 +893,10 @@ describe('CredentialsService', () => {
 			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;
 
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
-			jest.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
-			jest.spyOn(service, 'replaceCredentialContentsForSharee').mockResolvedValue(undefined);
-			jest.spyOn(service, 'getCredentialTypeProperties').mockReturnValue([]);
-			jest.spyOn(service, 'unredact').mockReturnValue(unredactedData);
+			vi.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
+			vi.spyOn(service, 'replaceCredentialContentsForSharee').mockResolvedValue(undefined);
+			vi.spyOn(service, 'getCredentialTypeProperties').mockReturnValue([]);
+			vi.spyOn(service, 'unredact').mockReturnValue(unredactedData);
 			credentialsTester.testCredentials.mockResolvedValue(testResult);
 
 			const payload = {
@@ -1064,7 +1064,7 @@ describe('CredentialsService', () => {
 			describe('with includeData', () => {
 				beforeEach(() => {
 					projectService.getProjectRelationsForUser.mockResolvedValue([]);
-					jest.spyOn(Credentials.prototype, 'getData').mockResolvedValue({
+					vi.spyOn(Credentials.prototype, 'getData').mockResolvedValue({
 						apiKey: 'secret-key',
 						oauthTokenData: { token: 'secret-token' },
 					});
@@ -1127,7 +1127,7 @@ describe('CredentialsService', () => {
 					roleService.addScopes.mockImplementation(
 						(c) => ({ ...c, scopes: ['credential:update'] }) as any,
 					);
-					jest.spyOn(Credentials.prototype, 'getData').mockResolvedValue({
+					vi.spyOn(Credentials.prototype, 'getData').mockResolvedValue({
 						apiKey: 'secret-key',
 						oauthTokenData: { token: 'secret-token' },
 					});
@@ -1324,7 +1324,7 @@ describe('CredentialsService', () => {
 			describe('with includeData', () => {
 				beforeEach(() => {
 					projectService.getProjectRelationsForUser.mockResolvedValue([]);
-					jest.spyOn(Credentials.prototype, 'getData').mockResolvedValue({
+					vi.spyOn(Credentials.prototype, 'getData').mockResolvedValue({
 						apiKey: 'secret-key',
 					});
 					credentialTypes.getByName.mockReturnValue(credType);
@@ -2115,7 +2115,7 @@ describe('CredentialsService', () => {
 			} as any);
 			projectService.getProjectRelationsForUser.mockResolvedValue([]);
 			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
-			jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 		});
 
 		it('should allow owner to create global credential', async () => {
@@ -2206,9 +2206,9 @@ describe('CredentialsService', () => {
 
 			// @ts-expect-error - Mocking manager for testing
 			credentialsRepository.manager = {
-				transaction: jest.fn().mockImplementation(async (callback) => {
+				transaction: vi.fn().mockImplementation(async (callback) => {
 					const mockManager = {
-						save: jest.fn().mockImplementation(async (entity) => {
+						save: vi.fn().mockImplementation(async (entity) => {
 							return { ...entity, id: 'new-cred-id' };
 						}),
 					};
@@ -2248,7 +2248,7 @@ describe('CredentialsService', () => {
 
 		describe('external secrets', () => {
 			it('should prevent use of external secret expression when required permission is missing', async () => {
-				jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
 				const payload = {
 					name: 'Test Credential',
@@ -2379,7 +2379,7 @@ describe('CredentialsService', () => {
 					displayOptions: {},
 				},
 			] as never);
-			const checkCredentialDataSpy = jest.spyOn(service, 'checkCredentialData');
+			const checkCredentialDataSpy = vi.spyOn(service, 'checkCredentialData');
 
 			let credentialEntityInput: unknown;
 			const savedEntities: unknown[] = [];
@@ -2425,10 +2425,10 @@ describe('CredentialsService', () => {
 			projectService.getProjectWithScope.mockResolvedValue(null);
 			// @ts-expect-error - Mocking manager for testing
 			credentialsRepository.manager = {
-				transaction: jest.fn().mockImplementation(async (callback) => {
+				transaction: vi.fn().mockImplementation(async (callback) => {
 					const mockManager = {
-						existsBy: jest.fn().mockResolvedValue(true),
-						save: jest.fn(),
+						existsBy: vi.fn().mockResolvedValue(true),
+						save: vi.fn(),
 					};
 					return await callback(mockManager);
 				}),
@@ -2524,8 +2524,8 @@ describe('CredentialsService', () => {
 	describe('prepareUpdateData', () => {
 		describe('external secrets', () => {
 			beforeEach(() => {
-				jest.spyOn(service, 'decrypt').mockResolvedValue({});
-				jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+				vi.spyOn(service, 'decrypt').mockResolvedValue({});
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			});
 
 			it('should list all unavailable external secret providers in error message', async () => {
@@ -2803,8 +2803,8 @@ describe('CredentialsService', () => {
 		const testProjectId = 'test-project-id';
 
 		beforeEach(() => {
-			jest.clearAllMocks();
-			jest.spyOn(validation, 'validateExternalSecretsPermissions').mockResolvedValue();
+			vi.clearAllMocks();
+			vi.spyOn(validation, 'validateExternalSecretsPermissions').mockResolvedValue();
 		});
 
 		it('should pass when all required fields are provided', async () => {
@@ -2876,7 +2876,7 @@ describe('CredentialsService', () => {
 
 		it('should call validateExternalSecretsPermissions', async () => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
-			const validateSpy = jest
+			const validateSpy = vi
 				.spyOn(validation, 'validateExternalSecretsPermissions')
 				.mockResolvedValue();
 
@@ -3044,7 +3044,7 @@ describe('CredentialsService', () => {
 
 		beforeEach(() => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
-			jest.spyOn(validation, 'validateExternalSecretsPermissions').mockResolvedValue();
+			vi.spyOn(validation, 'validateExternalSecretsPermissions').mockResolvedValue();
 		});
 
 		it('should reject an invalid OAuth2 URL', async () => {

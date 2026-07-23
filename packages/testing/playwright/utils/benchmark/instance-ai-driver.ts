@@ -98,13 +98,13 @@ export class InstanceAiDriver {
 				const ai = tab.instanceAi;
 
 				// Navigate and wait for UI ready
-				await page.goto('/instance-ai');
+				await page.goto('/assistant');
 				await ai.getContainer().waitFor({ state: 'visible', timeout: 15_000 });
 				await ai.getChatInput().waitFor({ state: 'visible', timeout: 10_000 });
 
 				// Create thread (click new chat, wait for URL)
 				await ai.sidebar.getNewThreadButton().click();
-				await page.waitForURL(/\/instance-ai\/[0-9a-f-]+/, { timeout: 10_000 });
+				await page.waitForURL(/\/assistant\/[0-9a-f-]+/, { timeout: 10_000 });
 				const threadId = this.extractThreadId(page);
 				this.createdThreadIds.push(threadId);
 
@@ -285,7 +285,7 @@ export class InstanceAiDriver {
 
 	private extractThreadId(page: Page): string {
 		const url = new URL(page.url());
-		const match = url.pathname.match(/\/instance-ai\/([0-9a-f-]+)/);
+		const match = url.pathname.match(/\/assistant\/([0-9a-f-]+)/);
 		if (!match) {
 			throw new Error(`No thread ID in URL: ${page.url()}`);
 		}

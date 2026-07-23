@@ -1,7 +1,6 @@
 import type {
 	AgentBuilderAdminSettingsResponse,
 	AgentBuilderAdminSettingsUpdateRequest,
-	AgentBuilderStatusResponse,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -23,8 +22,3 @@ export const updateAgentBuilderSettings = async (
 		`${BASE}/settings`,
 		payload as unknown as Record<string, unknown>,
 	);
-
-export const getAgentBuilderStatus = async (
-	context: IRestApiContext,
-): Promise<AgentBuilderStatusResponse> =>
-	await makeRestApiRequest<AgentBuilderStatusResponse>(context, 'GET', `${BASE}/status`);

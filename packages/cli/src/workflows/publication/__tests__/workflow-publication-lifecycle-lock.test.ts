@@ -135,7 +135,7 @@ describe('WorkflowPublicationLifecycleLock', () => {
 		});
 
 		test('falls through and runs the function unlocked when the holder never releases', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			try {
 				const lock = new WorkflowPublicationLifecycleLock();
 
@@ -151,14 +151,14 @@ describe('WorkflowPublicationLifecycleLock', () => {
 					30_000,
 				);
 
-				jest.advanceTimersByTime(30_000);
+				vi.advanceTimersByTime(30_000);
 
 				await expect(resultPromise).resolves.toEqual({ timedOut: true });
 				expect(ran).toBe(true);
 
 				void holder;
 			} finally {
-				jest.useRealTimers();
+				vi.useRealTimers();
 			}
 		});
 	});

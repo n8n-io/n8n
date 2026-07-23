@@ -128,6 +128,20 @@ function makePublicApiScopeEnforcementMiddleware(endpointScope: ApiKeyScope) {
 export const publicApiScope = (apiKeyScope: ApiKeyScope) =>
 	tagMiddleware(makePublicApiScopeEnforcementMiddleware(apiKeyScope), apiKeyScope);
 
+/**
+ * Tags an endpoint with a composite `x-required-scope` value (comma-separated).
+ * Actual scope enforcement is deferred to the handler, which picks the required
+ * scope based on the request payload.
+ */
+export function publicApiCompositeScope(requiredScopes: string): ScopeTaggedMiddleware {
+	return Object.assign(
+		(_req: Request, _res: Response, next: NextFunction) => {
+			next();
+		},
+		{ __apiKeyScope: requiredScopes as ApiKeyScope },
+	);
+}
+
 export const apiKeyHasScopeWithGlobalScopeFallback = (
 	config: { scope: ApiKeyScope & Scope } | { apiKeyScope: ApiKeyScope; globalScope: Scope },
 ) => {

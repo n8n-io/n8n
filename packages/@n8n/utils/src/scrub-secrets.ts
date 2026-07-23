@@ -37,29 +37,48 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	/\bgithub_pat_[A-Za-z0-9_]{22,}/g,
 	// AWS access key id
 	/\bAKIA[0-9A-Z]{16}\b/g,
+	// Telegram bot token (`<bot id>:<35-char secret>`, also inside `/bot…/` URLs)
+	/\b(?:bot)?\d{8,10}:[A-Za-z0-9_-]{35}\b/g,
 	// Credentials embedded in a URL: `scheme://user:password@` — redact the userinfo.
 	/(?<=:\/\/)[^\s:/@]+:[^\s:/@]+(?=@)/g,
 	// JSON-shaped `"key": "value"` — matches the quoted field as a whole.
 	// Run before the loose pattern so nested objects like
 	// `{"credentials": {"apiKey": "..."}}` don't have the outer key consume
 	// the inner key on its way to a non-quoted (object) value. The value
-	// body uses the standard JSON-string idiom `(?:\\.|[^"\r\n])*` so an
-	// escaped quote inside the value (`"abc\"def"`) doesn't end the match
-	// early and leak the rest of the secret. The negative lookahead skips
-	// values that are already a `[redacted]` / `[REDACTED]` placeholder so
-	// this stays idempotent when chained behind upstream object-walking
-	// redaction (e.g. langsmith trace payloads).
+	// body uses the unrolled JSON-string idiom `(?:[^"\\\r\n]|\\.)*`: the
+	// negated class excludes the backslash so a backslash can only be consumed
+	// by the `\\.` escape branch. Keep the two alternatives disjoint (don't
+	// fold `\\` back into the negated class) — that keeps every run of
+	// backslashes to a single, unambiguous parse, so matching stays fast on any
+	// input. An escaped quote inside the value (`"abc\"def"`) still doesn't end
+	// the match early, via the escape branch. The negative lookahead skips
+	// values that are already a `[redacted]` / `[REDACTED]` / typed
+	// `[REDACTED:<type>:<index>]` placeholder so this stays idempotent when
+	// chained behind upstream object-walking redaction (langsmith trace
+	// payloads, mcp-browser markers).
 	new RegExp(
-		`"(?:${SECRET_KEYS})"\\s*:\\s*"(?!\\[(?:redacted|REDACTED)\\]")(?:\\\\.|[^"\\r\\n])*"`,
+		`"(?:${SECRET_KEYS})"\\s*:\\s*"(?!\\[(?:redacted|REDACTED)(?::[^"\\]]*)?\\]")(?:[^"\\\\\\r\\n]|\\\\.)*"`,
 		'gi',
 	),
 	// JS-object-shaped `'key': 'value'`
 	new RegExp(
-		`'(?:${SECRET_KEYS})'\\s*:\\s*'(?!\\[(?:redacted|REDACTED)\\]')(?:\\\\.|[^'\\r\\n])*'`,
+		`'(?:${SECRET_KEYS})'\\s*:\\s*'(?!\\[(?:redacted|REDACTED)(?::[^'\\]]*)?\\]')(?:[^'\\\\\\r\\n]|\\\\.)*'`,
 		'gi',
 	),
-	// Generic `password=...` / `api_key=...` / `secret=...` style assignments
-	new RegExp(`\\b(?:${SECRET_KEYS})\\s*[:=]\\s*\\S+`, 'gi'),
+	// Generic `password=...` / `api_key=...` / `secret=...` style assignments.
+	// The negative lookbehind skips a keyword sitting at the `<type>` position of
+	// an upstream `[REDACTED:<type>:<index>]` marker (e.g. mcp-browser output), so
+	// the `secret:1]` tail isn't re-matched into a nested `[REDACTED:[REDACTED]`.
+	// Checking only the `[REDACTED:` prefix suffices: inside a marker a keyword can
+	// only start a `\b` match right after that prefix — every other keyword-shaped
+	// substring is preceded by `_` (snake_case type slug) or a digit, so no word
+	// boundary opens there. The value lookahead skips values that are already a
+	// redaction placeholder (bracketed, typed, or URL-safe bare form) — the same
+	// idempotency convention as the quoted forms.
+	new RegExp(
+		`(?<!\\[(?:redacted|REDACTED):)\\b(?:${SECRET_KEYS})\\s*[:=]\\s*(?!\\[?(?:redacted|REDACTED)\\b)\\S+`,
+		'gi',
+	),
 ];
 
 export function scrubSecretsInText(input: string): string {

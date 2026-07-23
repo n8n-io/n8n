@@ -1,5 +1,6 @@
 import { setActivePinia } from 'pinia';
 import { useLogsExecutionData } from './useLogsExecutionData';
+import type { NodeLogEntry } from '../logs.types';
 import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
@@ -123,9 +124,10 @@ describe(useLogsExecutionData, () => {
 			await waitFor(() => {
 				expect(entries.value).toHaveLength(2);
 				expect(entries.value[1].children).toHaveLength(1);
-				expect(entries.value[1].children[0].node.name).toBe('C');
-				expect(entries.value[1].children[0].workflow.id).toBe('w1');
-				expect(entries.value[1].children[0].executionId).toBe('e1');
+				const childEntry = entries.value[1].children[0] as NodeLogEntry;
+				expect(childEntry.node.name).toBe('C');
+				expect(childEntry.workflow.id).toBe('w1');
+				expect(childEntry.executionId).toBe('e1');
 			});
 		});
 

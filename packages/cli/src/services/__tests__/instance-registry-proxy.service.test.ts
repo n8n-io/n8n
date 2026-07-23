@@ -1,5 +1,5 @@
 import type { InstanceRegistration } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceRegistryProvider } from '../instance-registry-proxy.service';
 import { InstanceRegistryProxyService } from '../instance-registry-proxy.service';

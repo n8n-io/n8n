@@ -98,7 +98,7 @@ export class Webhook extends BaseCommand {
 	}
 
 	async run() {
-		const { ScalingService } = await import('@/scaling/scaling.service');
+		const { ScalingService } = await import('@/scaling/scaling.service.js');
 		await Container.get(ScalingService).setupQueue();
 		await this.server.start();
 		this.server.markAsReady();

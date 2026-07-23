@@ -43,6 +43,16 @@ export class NotificationsPage {
 	}
 
 	/**
+	 * Gets an action element (e.g. a link/button) within a notification matched by title or content.
+	 * @param text The text or regular expression to find the notification.
+	 * @param actionLabel The text or regular expression of the action element inside the notification.
+	 * @returns A Locator for the action element.
+	 */
+	getNotificationAction(text: string | RegExp, actionLabel: string | RegExp): Locator {
+		return this.getNotificationByTitleOrContent(text).getByText(actionLabel);
+	}
+
+	/**
 	 * Clicks the close button on the FIRST notification matching the text.
 	 * Fast execution with short timeouts for snappy notifications.
 	 * @param text The text of the notification to close.

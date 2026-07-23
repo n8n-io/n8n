@@ -37,12 +37,14 @@ describe('InstanceAiMarkdown', () => {
 		thread = {
 			id: 'thread-1',
 			resourceNameIndex: new Map<string, ResourceEntry>(),
+			linkableResourceNameIndex: new Map<string, ResourceEntry>(),
 		} as unknown as ThreadRuntime;
 	});
 
 	function getProcessedContent(content: string, registry?: Map<string, ResourceEntry>): string {
 		if (registry) {
 			thread.resourceNameIndex = registry;
+			thread.linkableResourceNameIndex = registry;
 		}
 		const { getByTestId } = renderComponent({ props: { content } });
 		return getByTestId('markdown-output').textContent ?? '';
@@ -57,6 +59,15 @@ describe('InstanceAiMarkdown', () => {
 		const registry = makeRegistry([{ type: 'workflow', id: 'wf-1', name: 'My Workflow' }]);
 		const result = getProcessedContent('Check out My Workflow please', registry);
 		expect(result).toContain('[My Workflow](n8n-resource://workflow/wf-1)');
+	});
+
+	it('should not replace resource names that are only in the metadata index', () => {
+		thread.resourceNameIndex = makeRegistry([{ type: 'data-table', id: 'dt-1', name: 'table' }]);
+		thread.linkableResourceNameIndex = new Map<string, ResourceEntry>();
+
+		const result = getProcessedContent('Now let me set up the data table for evals');
+
+		expect(result).toBe('Now let me set up the data table for evals');
 	});
 
 	it('should NOT replace names shorter than 3 characters', () => {
@@ -155,14 +166,14 @@ describe('InstanceAiMarkdown', () => {
 		const content = 'Check out My Workflow please';
 
 		it('should render raw content without decoration while streaming', () => {
-			thread.resourceNameIndex = registry();
+			thread.linkableResourceNameIndex = registry();
 			const { getByTestId } = renderComponent({ props: { content, streaming: true } });
 
 			expect(getByTestId('markdown-output').textContent).toBe(content);
 		});
 
 		it('should apply decoration when the block settles (streaming flips false)', async () => {
-			thread.resourceNameIndex = registry();
+			thread.linkableResourceNameIndex = registry();
 			const { getByTestId, rerender } = renderComponent({ props: { content, streaming: true } });
 
 			expect(getByTestId('markdown-output').textContent).not.toContain('n8n-resource://');
@@ -175,7 +186,7 @@ describe('InstanceAiMarkdown', () => {
 		});
 
 		it('should decorate immediately when streaming is not set (history-loaded messages)', () => {
-			thread.resourceNameIndex = registry();
+			thread.linkableResourceNameIndex = registry();
 			const { getByTestId } = renderComponent({ props: { content } });
 
 			expect(getByTestId('markdown-output').textContent).toContain(
@@ -189,11 +200,25 @@ describe('InstanceAiMarkdown', () => {
 		// the empty registry keeps decorateResourceNames a no-op so the rendered
 		// HTML is stable across re-renders.
 		const content = '<a href="n8n-resource://workflow/wf-1">Invoice Processing Pipeline</a>';
+		const agentContent = '<a href="n8n-resource://agent/agent-1">Artifact Agent Test</a>';
 
 		function renderWithPreview(openWorkflowPreview: (id: string) => boolean) {
 			const utils = renderComponent({
 				props: { content },
 				global: { provide: { openWorkflowPreview } },
+			});
+			const link = utils.getByTestId('markdown-output').querySelector('a');
+			if (!link) throw new Error('expected enhanced anchor');
+			return { ...utils, link };
+		}
+
+		function renderAgentWithPreview(openAgentPreview: (id: string, projectId: string) => boolean) {
+			thread.resourceNameIndex = makeRegistry([
+				{ type: 'agent', id: 'agent-1', name: 'Artifact Agent Test', projectId: 'project-1' },
+			]);
+			const utils = renderComponent({
+				props: { content: agentContent },
+				global: { provide: { openAgentPreview } },
 			});
 			const link = utils.getByTestId('markdown-output').querySelector('a');
 			if (!link) throw new Error('expected enhanced anchor');
@@ -252,6 +277,26 @@ describe('InstanceAiMarkdown', () => {
 			link.dispatchEvent(clickEvent({ metaKey: true }));
 
 			expect(openWorkflowPreview).not.toHaveBeenCalled();
+		});
+
+		it('should enhance agent links into project-scoped resource chips', () => {
+			const { link } = renderAgentWithPreview(vi.fn(() => true));
+
+			expect(link.dataset.resourceChip).toBe('agent');
+			expect(link.dataset.resourceId).toBe('agent-1');
+			expect(link.getAttribute('href')).toBe('/projects/project-1/agents/agent-1');
+			expect(link.target).toBe('_blank');
+		});
+
+		it('should open the agent preview on left-click and suppress navigation', () => {
+			const openAgentPreview = vi.fn(() => true);
+			const { link } = renderAgentWithPreview(openAgentPreview);
+
+			const event = clickEvent();
+			link.dispatchEvent(event);
+
+			expect(openAgentPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'project-1');
+			expect(event.defaultPrevented).toBe(true);
 		});
 	});
 });

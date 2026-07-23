@@ -16,8 +16,8 @@
  *    recoverable; running a destructive operation against user data is not.
  */
 
-import { isRecord } from '@n8n/utils';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { isRecord } from '@n8n/utils/is-record';
+import { isAiRootNodeType, type WorkflowJSON } from '@n8n/workflow-sdk';
 import type { IConnections } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -65,15 +65,19 @@ const SAFE_NODE_TYPES = new Set([
 	'n8n-nodes-base.stopAndError',
 	// Responds to the workflow's own caller — part of the trigger contract.
 	'n8n-nodes-base.respondToWebhook',
-	// AI processing nodes: they call an LLM (read-only towards user systems).
-	// Write operations living as agent *tools* are a known gap — see spec.
-	'@n8n/n8n-nodes-langchain.agent',
-	'@n8n/n8n-nodes-langchain.chainLlm',
-	'@n8n/n8n-nodes-langchain.chainSummarization',
-	'@n8n/n8n-nodes-langchain.informationExtractor',
-	'@n8n/n8n-nodes-langchain.textClassifier',
-	'@n8n/n8n-nodes-langchain.sentimentAnalysis',
 ]);
+
+/**
+ * AI roots (agent/chain/extractor/classifier nodes) call an LLM but are
+ * read-only towards user systems, so they classify as safe — the set lives in
+ * `@n8n/workflow-sdk` (`isAiRootNodeType`), shared with fixture shaping. Write
+ * operations living as agent *tools* are a known gap. Roots whose LLM
+ * sub-node has no usable credentials are overridden to `simulate` later, in
+ * `plan-verification-simulation.ts`.
+ */
+function isSafeNodeType(nodeType: string): boolean {
+	return SAFE_NODE_TYPES.has(nodeType) || isAiRootNodeType(nodeType);
+}
 
 /** Node types that are destructive by their very type (no operation param needed). */
 const DESTRUCTIVE_NODE_TYPES = new Map<string, string>([
@@ -214,7 +218,7 @@ function deterministicVerdict(
 		return deterministic(node.name, 'simulate', 'Credentials are not configured for this node');
 	}
 
-	if (SAFE_NODE_TYPES.has(node.type)) {
+	if (isSafeNodeType(node.type)) {
 		return deterministic(node.name, 'execute', 'Transforms data without touching external systems');
 	}
 

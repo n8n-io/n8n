@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { LLM_JUDGE_PROVIDER_NODE_TYPES } from './llm-judge-providers';
+
 export const metricOutputTypeSchema = z.enum(['numeric', 'boolean']);
 
 export const expressionMetricConfigSchema = z.object({
@@ -22,7 +24,11 @@ export const llmJudgeMetricConfigSchema = z
 		// back to the per-preset canned prompt declared in
 		// `nodes-base/Evaluation/Description.node.ts` (`promptFieldForMetric`).
 		prompt: z.string().min(1).optional(),
-		provider: z.string().min(1),
+		// The chat-model node type of the LLM judge (e.g.
+		// `@n8n/n8n-nodes-langchain.lmChatOpenAi`). Callers that only know the
+		// credential can omit it upstream and have it derived; by the time a config
+		// reaches this schema the provider is always resolved.
+		provider: z.enum(LLM_JUDGE_PROVIDER_NODE_TYPES),
 		credentialId: z.string().min(1),
 		model: z.string().min(1),
 		outputType: metricOutputTypeSchema,

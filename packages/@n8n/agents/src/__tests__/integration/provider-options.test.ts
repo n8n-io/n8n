@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 
 import { collectStreamChunks, chunksOfType, describeIf } from './helpers';
+import { IS_REPLAY_MODE } from './vcr';
 import { Agent } from '../../index';
 
 const describe = describeIf('anthropic');
@@ -50,6 +51,35 @@ describe('prompt caching via instruction providerOptions', () => {
 		expect(result2.finishReason).toBe('stop');
 
 		// At least one of the two calls should show cache activity (write or read)
+		const write1 = result1.usage?.inputTokenDetails?.cacheWrite ?? 0;
+		const read2 = result2.usage?.inputTokenDetails?.cacheRead ?? 0;
+		expect(write1 + read2).toBeGreaterThan(0);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Prompt caching — Agent.promptCaching() end-to-end
+// ---------------------------------------------------------------------------
+
+describe('prompt caching via Agent.promptCaching()', () => {
+	it('reports cache activity across two calls when promptCaching() is enabled', async () => {
+		// Exercises the full .promptCaching() path: generated Anthropic cacheControl
+		// on instructions plus runtime breakpoints, all the way to real cache tokens.
+		const agent = new Agent('prompt-caching-api-test')
+			.model('anthropic/claude-haiku-4-5')
+			.promptCaching()
+			.instructions(LONG_SYSTEM_PROMPT);
+
+		const result1 = await agent.generate('Say hello', {
+			persistence: { resourceId: 'user1', threadId: 'thread1' },
+		});
+		expect(result1.finishReason).toBe('stop');
+
+		const result2 = await agent.generate('Say goodbye', {
+			persistence: { resourceId: 'user1', threadId: 'thread2' },
+		});
+		expect(result2.finishReason).toBe('stop');
+
 		const write1 = result1.usage?.inputTokenDetails?.cacheWrite ?? 0;
 		const read2 = result2.usage?.inputTokenDetails?.cacheRead ?? 0;
 		expect(write1 + read2).toBeGreaterThan(0);
@@ -167,9 +197,9 @@ describe('thinking + cacheControl coexistence', () => {
 // ---------------------------------------------------------------------------
 // External abort signal
 // ---------------------------------------------------------------------------
-
+// TODO: mock aborted requests
 describe('external abort signal', () => {
-	it('cancels a generate() call via external AbortSignal', async () => {
+	it.skipIf(IS_REPLAY_MODE)('cancels a generate() call via external AbortSignal', async () => {
 		const agent = new Agent('abort-signal-test')
 			.model('anthropic/claude-haiku-4-5')
 			.instructions('You are a helpful assistant. Tell me a very long story.');
@@ -186,7 +216,7 @@ describe('external abort signal', () => {
 		expect(result.getState().status).toBe('cancelled');
 	});
 
-	it('cancels a stream() call via external AbortSignal', async () => {
+	it.skipIf(IS_REPLAY_MODE)('cancels a stream() call via external AbortSignal', async () => {
 		const agent = new Agent('abort-stream-signal-test')
 			.model('anthropic/claude-haiku-4-5')
 			.instructions('You are a helpful assistant. Tell me a very long story.');

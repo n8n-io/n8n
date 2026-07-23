@@ -1,12 +1,17 @@
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { InstanceAiMcpConnectionResponse, McpRegistryServerResponse } from '@n8n/api-types';
+import type {
+	InstanceAiMcpConnectionResponse,
+	InstanceAiMcpConnectionToolResponse,
+	McpRegistryServerResponse,
+} from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
 import { i18n } from '@n8n/i18n';
 import {
 	createMcpConnection,
 	deleteMcpConnection,
+	fetchMcpConnectionTools,
 	fetchMcpConnections,
 	fetchMcpRegistryServers,
 	updateMcpConnection,
@@ -20,8 +25,13 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 
 	const connections = ref<InstanceAiMcpConnectionResponse[]>([]);
 	const catalog = ref<McpRegistryServerResponse[] | null>(null);
+	const connectionToolsById = reactive(new Map<string, InstanceAiMcpConnectionToolResponse[]>());
 	const isLoadingConnections = ref(false);
 	const isLoadingCatalog = ref(false);
+	const inFlightConnectionToolsById = new Map<
+		string,
+		Promise<InstanceAiMcpConnectionToolResponse[]>
+	>();
 
 	const connectionsByServerSlug = computed(() => {
 		const map = new Map<string, InstanceAiMcpConnectionResponse[]>();
@@ -56,6 +66,39 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		}
 	}
 
+	function clearConnectionTools(id: string): void {
+		connectionToolsById.delete(id);
+		inFlightConnectionToolsById.delete(id);
+	}
+
+	async function fetchConnectionToolsLazy(id: string): Promise<void> {
+		if (connectionToolsById.has(id)) return;
+
+		const inFlight = inFlightConnectionToolsById.get(id);
+		if (inFlight) {
+			await inFlight.catch(() => undefined);
+			return;
+		}
+
+		const promise = fetchMcpConnectionTools(rootStore.restApiContext, id);
+		const isCurrent = () => inFlightConnectionToolsById.get(id) === promise;
+		inFlightConnectionToolsById.set(id, promise);
+		try {
+			const tools = await promise;
+			if (isCurrent()) {
+				connectionToolsById.set(id, tools);
+			}
+		} catch (error) {
+			if (isCurrent()) {
+				toast.showError(error, i18n.baseText('instanceAi.mcp.error.fetchTools'));
+			}
+		} finally {
+			if (isCurrent()) {
+				inFlightConnectionToolsById.delete(id);
+			}
+		}
+	}
+
 	async function connect(
 		body: CreateMcpConnectionBody,
 	): Promise<InstanceAiMcpConnectionResponse | null> {
@@ -76,6 +119,10 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		try {
 			const updated = await updateMcpConnection(rootStore.restApiContext, id, body);
 			connections.value = connections.value.map((c) => (c.id === id ? updated : c));
+			if (body.credentialId) {
+				clearConnectionTools(id);
+				void fetchConnectionToolsLazy(id);
+			}
 			return updated;
 		} catch (error) {
 			toast.showError(error, i18n.baseText('instanceAi.mcp.error.updateSettings'));
@@ -87,6 +134,7 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		try {
 			await deleteMcpConnection(rootStore.restApiContext, id);
 			connections.value = connections.value.filter((c) => c.id !== id);
+			clearConnectionTools(id);
 			return true;
 		} catch (error) {
 			toast.showError(error, i18n.baseText('instanceAi.mcp.error.disconnect'));
@@ -97,16 +145,20 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 	function reset(): void {
 		connections.value = [];
 		catalog.value = null;
+		connectionToolsById.clear();
+		inFlightConnectionToolsById.clear();
 	}
 
 	return {
 		connections,
 		catalog,
+		connectionToolsById,
 		isLoadingConnections,
 		isLoadingCatalog,
 		connectionsByServerSlug,
 		fetchConnections,
 		fetchCatalogLazy,
+		fetchConnectionToolsLazy,
 		connect,
 		updateConnection,
 		disconnect,

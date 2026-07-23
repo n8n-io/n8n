@@ -36,9 +36,9 @@ const ROLE_NAMES: Record<AllRoleTypes, string> = {
 
 const ROLE_DESCRIPTIONS: Record<AllRoleTypes, string> = {
 	'global:owner': 'Owner',
-	'global:admin': 'Admin',
-	'global:member': 'Member',
-	'global:chatUser': 'Chat User',
+	'global:admin': 'Full control of the instance, including all workflows and credentials',
+	'global:member': 'Can create and use their own workflows and credentials',
+	'global:chatUser': 'Can only use workflows through the chat interface, not build them',
 	[PROJECT_OWNER_ROLE_SLUG]: 'Project Owner',
 	[PROJECT_ADMIN_ROLE_SLUG]:
 		'Full control of settings, members, workflows, credentials and executions',

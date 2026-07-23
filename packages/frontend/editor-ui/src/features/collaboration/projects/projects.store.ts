@@ -322,7 +322,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 				setCurrentProject(null);
 			}
 
-			if (newRoute?.path?.includes('instance-ai')) {
+			if (newRoute?.path?.includes('assistant')) {
 				projectNavActiveId.value = 'instance-ai';
 				setCurrentProject(null);
 			}

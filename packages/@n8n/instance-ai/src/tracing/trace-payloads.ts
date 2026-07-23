@@ -5,7 +5,7 @@ import {
 	type RedactionOptions,
 	type RuntimeSkillRegistry,
 } from '@n8n/agents';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'node:crypto';
 
 import {
@@ -20,6 +20,9 @@ import { formatAgentRoleLabel, formatTraceLabel } from './trace-labels';
 const MAX_TRACE_DEPTH = 4;
 const MAX_PROMPT_SCHEMA_TRACE_DEPTH = 12;
 const MAX_TOOL_IO_TRACE_DEPTH = 8;
+/** Recursion bound for raw machine payloads (compiled-workflow event) — far
+ *  beyond real workflow nesting; scrubbing still applies at every level. */
+const MAX_RAW_PAYLOAD_TRACE_DEPTH = 64;
 const MAX_TRACE_STRING_LENGTH = 2_000;
 const MAX_TOOL_ACTION_DISPLAY_LENGTH = 64;
 const MAX_TRACE_ARRAY_ITEMS = 20;
@@ -61,10 +64,13 @@ function isStructuralTelemetryIdKey(key: string): boolean {
 /**
  * Telemetry/tracing redaction policy. Deliberately stricter than the
  * user-facing output policy `DEFAULT_OUTPUT_REDACTION_OPTIONS`.
+ * `preserveUrlStructure`: whole-URL redaction destroyed traced workflow
+ * definitions without adding protection (secrets in URLs are caught first).
  */
 export const DEFAULT_TELEMETRY_REDACTION_OPTIONS: RedactionOptions = {
 	secrets: true,
 	detect: SUPPORTED_PII_CATEGORIES,
+	preserveUrlStructure: true,
 };
 
 /** Redact secrets + all PII from a free-text telemetry value before it egresses. */
@@ -217,7 +223,7 @@ function maxRedactionDepthForAttribute(key: string): number {
 	return MAX_TRACE_DEPTH;
 }
 
-function redactTelemetryAttribute(key: string, value: unknown): unknown {
+function redactTelemetryAttribute(key: string, value: unknown, completionDepth?: number): unknown {
 	// Structural run/trace/span identifiers must pass through untouched — scrubbing
 	// them corrupts the IDs, breaking LangSmith ingestion (422) and run correlation.
 	if (isStructuralTelemetryIdKey(key)) {
@@ -228,7 +234,10 @@ function redactTelemetryAttribute(key: string, value: unknown): unknown {
 		return '[redacted]';
 	}
 
-	const maxDepth = maxRedactionDepthForAttribute(key);
+	const maxDepth =
+		key === GEN_AI_COMPLETION && completionDepth !== undefined
+			? completionDepth
+			: maxRedactionDepthForAttribute(key);
 
 	if (typeof value !== 'string') {
 		return redactTelemetryJsonValue(value, key, 0, maxDepth);
@@ -816,6 +825,17 @@ function inferNativeLlmRole(attributes: Record<string, unknown>): string | undef
 }
 
 function displayNameForNativeLlmSpan(attributes: Record<string, unknown>): string {
+	// Memory-task LLM calls inherit the host run's agent_role metadata (e.g.
+	// 'orchestrator'), so the functionId suffix — not the role — is what
+	// distinguishes them; check it first so they don't render as their host
+	// agent's own loop calls.
+	const suffixedFunctionId = readStringAttribute(attributes, [
+		'ai.telemetry.functionId',
+		'resource.name',
+	]);
+	if (suffixedFunctionId?.endsWith('.memory-observer')) return 'llm: memory observer';
+	if (suffixedFunctionId?.endsWith('.memory-reflector')) return 'llm: memory reflector';
+
 	const role = inferNativeLlmRole(attributes);
 	if (role === 'thread_title') {
 		return 'llm: title';
@@ -991,9 +1011,18 @@ export function redactLangSmithTelemetrySpan(span: unknown): unknown {
 		return span;
 	}
 
+	// Raw machine payloads (compiled-workflow event) need lossless structure —
+	// lift the structural depth cap on the completion attribute. Keyed on the
+	// producer-set metadata flag, not the span name, which any tool could claim.
+	// Scrubbing still applies throughout.
+	const completionDepth =
+		span.attributes['langsmith.metadata.raw_trace_payload'] === true
+			? MAX_RAW_PAYLOAD_TRACE_DEPTH
+			: undefined;
+
 	const attributes: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(span.attributes)) {
-		attributes[key] = redactTelemetryAttribute(key, value);
+		attributes[key] = redactTelemetryAttribute(key, value, completionDepth);
 	}
 	enrichLangSmithPromptAttribute(attributes);
 	normalizeUsageForLangSmith(attributes);
@@ -1296,6 +1325,20 @@ export function sanitizeTracePayload(value: unknown): Record<string, unknown> {
 	}
 
 	return { value: sanitizeTraceValue(value) };
+}
+
+/** Shape a payload like {@link sanitizeTracePayload} but WITHOUT structural
+ *  sanitization — for pre-bounded machine payloads (compiled-workflow event). */
+export function rawTracePayload(value: unknown): Record<string, unknown> {
+	if (isRecord(value)) {
+		return value;
+	}
+
+	if (value === undefined) {
+		return {};
+	}
+
+	return { value };
 }
 
 export function serializeModelIdForTrace(modelId: unknown): unknown {

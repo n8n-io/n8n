@@ -10,7 +10,7 @@ describe('TaskRunnerProcess', () => {
 	// Restarting the runner spawns a fresh `node` child process and waits for the
 	// full WebSocket handshake. Under CI load this can take longer than the default
 	// per-test timeout, so give this spawn-heavy suite extra headroom.
-	jest.setTimeout(30_000);
+	vi.setConfig({ testTimeout: 30_000 });
 
 	// Every `start()` spawns a `node` child process and waits for the WebSocket
 	// handshake to complete. Under CI load that can comfortably exceed the default
@@ -24,7 +24,13 @@ describe('TaskRunnerProcess', () => {
 	const taskBroker = Container.get(TaskBroker);
 	const taskRunnerService = Container.get(TaskBrokerWsServer);
 
+	// This suite stops the runner with a bare signal, without the broker drain that
+	// happens during a real n8n shutdown. With a non-zero grace, the runner would
+	// keep serving for the whole period before draining, so drain immediately here.
+	const originalGracefulShutdownTimeout = process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT;
+
 	beforeAll(async () => {
+		process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT = '0';
 		await taskRunnerServer.start();
 		// Set the port to the actually used port
 		config.port = taskRunnerServer.port;
@@ -32,6 +38,11 @@ describe('TaskRunnerProcess', () => {
 
 	afterAll(async () => {
 		await taskRunnerServer.stop();
+		if (originalGracefulShutdownTimeout === undefined) {
+			delete process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT;
+		} else {
+			process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT = originalGracefulShutdownTimeout;
+		}
 	});
 
 	afterEach(async () => {

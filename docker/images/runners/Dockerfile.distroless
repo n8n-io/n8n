@@ -24,7 +24,17 @@ COPY ./dist/task-runner-javascript /app/task-runner-javascript
 
 WORKDIR /app/task-runner-javascript
 
-RUN corepack enable pnpm
+# Pin pnpm to the repo's packageManager version. `pnpm deploy` drops the
+# packageManager field from the deployed package.json, so a bare
+# `corepack enable pnpm` resolves to corepack's bundled latest (pnpm 11.x).
+# pnpm 11 defaults minimumReleaseAge to 1440 (24h), so the `pnpm add` below
+# re-resolves the deployed graph and rejects any dependency published less
+# than a day ago — e.g. a first-party @n8n_io/ai-assistant-sdk bump landed
+# within hours of its npm publish. This container step only re-resolves an
+# already-vetted, already-pinned dependency set; the real supply-chain age
+# policy is enforced by the host install (pnpm-workspace.yaml + SafeChain).
+ARG PNPM_VERSION=10.32.1
+RUN corepack enable pnpm && corepack prepare "pnpm@${PNPM_VERSION}" --activate
 
 # Remove `catalog` and `workspace` references from package.json to allow `pnpm add`
 RUN node -e "const pkg = require('./package.json'); \

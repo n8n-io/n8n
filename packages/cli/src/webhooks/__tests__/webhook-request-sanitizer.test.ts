@@ -1,5 +1,5 @@
 import type { Request } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { sanitizeWebhookRequest } from '@/webhooks/webhook-request-sanitizer';
 

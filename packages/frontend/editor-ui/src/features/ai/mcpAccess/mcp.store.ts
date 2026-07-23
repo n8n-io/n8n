@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { MCP_STORE } from './mcp.constants';
+import { MCP_ENDPOINT, MCP_STORE } from './mcp.constants';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
 	useWorkflowDocumentStore,
@@ -23,6 +23,10 @@ import {
 } from '@/features/ai/mcpAccess/mcp.api';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import {
+	EMPTY_OAUTH_CLIENT_FILTERS,
+	type OAuthClientFilters,
+} from '@/features/ai/mcpAccess/clients.utils';
 import { isWorkflowListItem } from '@/app/utils/typeGuards';
 import type {
 	ApiKey,
@@ -39,12 +43,31 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 	const currentUserMCPKey = ref<ApiKey | null>(null);
 	const oauthClients = ref<OAuthClientResponseDto[]>([]);
+	const oauthClientScopeTools = ref<Record<string, string[]> | undefined>(undefined);
+	const oauthClientsOwnership = ref<'mine' | 'all'>('mine');
+	const oauthClientTotals = ref<{ mine: number; all?: number }>({ mine: 0 });
+	const oauthClientsPage = ref(0);
+	const oauthClientsPageSize = ref(10);
+	const oauthClientsFilters = ref<OAuthClientFilters>({ ...EMPTY_OAUTH_CLIENT_FILTERS });
+	/** Total rows matching the filters (across all pages) for the current ownership. */
+	const oauthClientsCount = ref(0);
+	/** Distinct consent owners for the "Connected by" filter (managers only). */
+	const oauthClientOwners = ref<Array<NonNullable<OAuthClientResponseDto['owner']>>>([]);
+	/** Monotonic token so a slow in-flight list fetch can't overwrite a newer one. */
+	let oauthClientsRequestSeq = 0;
 	const allowedRedirectUris = ref<string[]>([]);
 	const instanceClientStats = ref<InstanceMcpClientStatsResponseDto | null>(null);
 	const connectPopoverOpen = ref(false);
 
 	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
 	const mcpManagedByEnv = computed(() => !!settingsStore.moduleSettings.mcp?.mcpManagedByEnv);
+
+	// Backend-provided canonical URL, so a configured dedicated MCP base URL is
+	// reflected; the editor-base fallback covers settings not yet loaded.
+	const serverUrl = computed(
+		() =>
+			settingsStore.moduleSettings.mcp?.serverUrl ?? `${rootStore.urlBaseEditor}${MCP_ENDPOINT}`,
+	);
 
 	async function fetchWorkflowsAvailableForMCP(
 		page = 1,
@@ -161,9 +184,58 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	}
 
 	async function getAllOAuthClients(): Promise<OAuthClientResponseDto[]> {
-		const response = await fetchOAuthClients(rootStore.restApiContext);
+		const seq = ++oauthClientsRequestSeq;
+		const filters = oauthClientsFilters.value;
+		const response = await fetchOAuthClients(rootStore.restApiContext, {
+			ownership: oauthClientsOwnership.value,
+			skip: oauthClientsPage.value * oauthClientsPageSize.value,
+			take: oauthClientsPageSize.value,
+			name: filters.search.trim() || undefined,
+			ownerId: filters.ownerId ?? undefined,
+			type: filters.type ?? undefined,
+			connected: filters.connected ?? undefined,
+		});
+
+		// A newer request (tab switch, search, pagination) superseded this one
+		// while it was in flight; drop the stale response so it can't overwrite
+		// the current selection.
+		if (seq !== oauthClientsRequestSeq) return response.data;
+
+		// Clamp to the last page when the requested one shrank away (e.g. after a revoke)
+		if (response.data.length === 0 && response.count > 0 && oauthClientsPage.value > 0) {
+			oauthClientsPage.value = Math.max(
+				0,
+				Math.ceil(response.count / oauthClientsPageSize.value) - 1,
+			);
+			return await getAllOAuthClients();
+		}
+
 		oauthClients.value = response.data;
+		oauthClientScopeTools.value = response.scopeTools;
+		oauthClientTotals.value = response.totals;
+		oauthClientsCount.value = response.count;
+		oauthClientOwners.value = response.owners ?? [];
 		return response.data;
+	}
+
+	async function setOAuthClientsOwnership(ownership: 'mine' | 'all'): Promise<void> {
+		oauthClientsOwnership.value = ownership;
+		oauthClientsPage.value = 0;
+		oauthClientsFilters.value = { ...EMPTY_OAUTH_CLIENT_FILTERS };
+		await getAllOAuthClients();
+	}
+
+	async function setOAuthClientsFilters(filters: OAuthClientFilters): Promise<void> {
+		oauthClientsFilters.value = filters;
+		oauthClientsPage.value = 0;
+		await getAllOAuthClients();
+	}
+
+	async function setOAuthClientsPagination(page: number, pageSize: number): Promise<void> {
+		// A page-size change restarts from the first page
+		oauthClientsPage.value = pageSize === oauthClientsPageSize.value ? page : 0;
+		oauthClientsPageSize.value = pageSize;
+		await getAllOAuthClients();
 	}
 
 	async function getInstanceClientStats(): Promise<InstanceMcpClientStatsResponseDto | null> {
@@ -179,10 +251,19 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		}
 	}
 
-	async function removeOAuthClient(clientId: string): Promise<DeleteOAuthClientResponseDto> {
-		const response = await deleteOAuthClient(rootStore.restApiContext, clientId);
-		// Remove the client from the local store
-		oauthClients.value = oauthClients.value.filter((client) => client.id !== clientId);
+	async function removeOAuthClient(
+		clientId: string,
+		userId?: string,
+	): Promise<DeleteOAuthClientResponseDto> {
+		const response = await deleteOAuthClient(rootStore.restApiContext, clientId, userId);
+		// Refetch instead of splicing locally so the tab totals stay accurate. The
+		// revoke already succeeded, so keep the refresh best-effort: a failed
+		// refetch must not turn a successful revoke into a reported error.
+		try {
+			await getAllOAuthClients();
+		} catch {
+			// Stale list/totals are acceptable; the next interaction refetches.
+		}
 		return response;
 	}
 
@@ -216,6 +297,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	return {
 		mcpAccessEnabled,
 		mcpManagedByEnv,
+		serverUrl,
 		fetchWorkflowsAvailableForMCP,
 		setMcpAccessEnabled,
 		toggleWorkflowMcpAccess,
@@ -225,8 +307,19 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		generateNewApiKey,
 		resetCurrentUserMCPKey,
 		oauthClients,
+		oauthClientsOwnership,
+		oauthClientTotals,
+		oauthClientOwners,
+		oauthClientsPage,
+		oauthClientsPageSize,
+		oauthClientsFilters,
+		oauthClientsCount,
+		setOAuthClientsOwnership,
+		setOAuthClientsFilters,
+		setOAuthClientsPagination,
 		instanceClientStats,
 		getAllOAuthClients,
+		oauthClientScopeTools,
 		getInstanceClientStats,
 		removeOAuthClient,
 		getMcpEligibleWorkflows,

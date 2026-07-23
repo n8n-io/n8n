@@ -56,8 +56,8 @@ let member3Agent: SuperAgentTest;
 describe('Built-in Role Matrix Testing', () => {
 	beforeAll(async () => {
 		mockInstance(UserManagementMailer, {
-			invite: jest.fn(),
-			passwordReset: jest.fn(),
+			invite: vi.fn(),
+			passwordReset: vi.fn(),
 		});
 
 		await utils.initCredentialsTypes();

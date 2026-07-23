@@ -1,7 +1,30 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
+import type { IWorkflowBase } from 'n8n-workflow';
 
 import { WorkflowPublishedVersion } from '../entities';
+
+export type PublishedWorkflowDataForExecution = Pick<
+	IWorkflowBase,
+	| 'id'
+	| 'name'
+	| 'description'
+	| 'active'
+	| 'isArchived'
+	| 'createdAt'
+	| 'updatedAt'
+	| 'settings'
+	| 'staticData'
+	| 'activeVersionId'
+	| 'versionCounter'
+	| 'nodes'
+	| 'connections'
+	// We don't need this during workflow execution, but execution persistence
+	// snapshots this into the execution's workflowData, and the UI uses it when
+	// browsing workflow's execution history.
+	| 'nodeGroups'
+	| 'versionId'
+>;
 
 @Service()
 export class WorkflowPublishedVersionRepository extends Repository<WorkflowPublishedVersion> {
@@ -40,5 +63,58 @@ export class WorkflowPublishedVersionRepository extends Repository<WorkflowPubli
 				publishedVersion: true,
 			},
 		});
+	}
+
+	async getPublishedVersionForExecution(
+		workflowId: string,
+	): Promise<PublishedWorkflowDataForExecution | null> {
+		const record = await this.createQueryBuilder('mapping')
+			.innerJoinAndSelect('mapping.workflow', 'workflow')
+			.innerJoinAndSelect('mapping.publishedVersion', 'publishedVersion')
+			.select([
+				'mapping.workflowId',
+				'mapping.publishedVersionId',
+				'workflow.id',
+				'workflow.name',
+				'workflow.description',
+				'workflow.active',
+				'workflow.isArchived',
+				'workflow.createdAt',
+				'workflow.updatedAt',
+				'workflow.settings',
+				'workflow.staticData',
+				'workflow.activeVersionId',
+				'workflow.versionCounter',
+				'publishedVersion.versionId',
+				'publishedVersion.nodes',
+				'publishedVersion.connections',
+				'publishedVersion.nodeGroups',
+			])
+			.where('mapping.workflowId = :workflowId', { workflowId })
+			.getOne();
+
+		if (!record?.publishedVersion || !record.workflow) {
+			return null;
+		}
+
+		const { workflow, publishedVersion } = record;
+
+		return {
+			id: workflow.id,
+			name: workflow.name,
+			description: workflow.description,
+			active: workflow.active,
+			isArchived: workflow.isArchived,
+			createdAt: workflow.createdAt,
+			updatedAt: workflow.updatedAt,
+			settings: workflow.settings,
+			staticData: workflow.staticData,
+			activeVersionId: workflow.activeVersionId,
+			versionCounter: workflow.versionCounter,
+			nodes: publishedVersion.nodes,
+			connections: publishedVersion.connections,
+			nodeGroups: publishedVersion.nodeGroups,
+			versionId: publishedVersion.versionId,
+		};
 	}
 }

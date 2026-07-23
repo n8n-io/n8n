@@ -39,6 +39,9 @@ export class AnthropicApi implements ICredentialType {
 			displayName: 'Header Name',
 			name: 'headerName',
 			type: 'string',
+			typeOptions: {
+				ignoreCredentialExpressionResolveError: true,
+			},
 			displayOptions: {
 				show: {
 					header: [true],
@@ -51,6 +54,7 @@ export class AnthropicApi implements ICredentialType {
 			name: 'headerValue',
 			type: 'string',
 			typeOptions: {
+				ignoreCredentialExpressionResolveError: true,
 				password: true,
 			},
 			displayOptions: {

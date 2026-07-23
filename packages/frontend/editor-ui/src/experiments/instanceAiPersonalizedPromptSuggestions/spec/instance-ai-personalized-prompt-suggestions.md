@@ -19,7 +19,7 @@ Use a new PostHog multivariant experiment flag:
 
 ```ts
 export const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT = createExperiment(
-	'090_instance_ai_personalized_prompt_suggestions',
+	'093_instance_ai_personalized_prompt_suggestions',
 	{
 		control: 'control',
 		variantCards: 'variant-cards',
@@ -218,6 +218,7 @@ Treatment behavior:
 - Clicking a suggestion does not auto-send.
 - Focus the composer after insertion.
 - Hover/focus preview uses the full `builderPrompt` as the ghost placeholder, matching current v2 behavior.
+- When no suggestion hover/focus preview is active, use the experiment placeholder `Tip: Ask me for suggestions if you're not sure what to build`.
 - Suggestions are hidden once the composer is dirty, busy, gated by setup, or unavailable, matching the current input behavior.
 - Show a `See more` CTA above the suggestions, aligned to the right, only when the initial suggestion source is `matrix`, `role_default`, or `global_top_performers`.
 - The `See more` label stays `See more` in both states.
@@ -240,10 +241,19 @@ Treatment behavior:
 
 Reuse existing event names:
 
+- `Instance AI personalized prompt suggestions exposed`
 - `Instance AI prompt suggestions shown`
 - `Instance AI prompt suggestion selected`
 - `Instance AI prompt suggestion submitted`
 - `Instance AI prompt suggestions cycled` for each `See more` toggle in either direction.
+
+Use `Instance AI personalized prompt suggestions exposed` as the custom PostHog exposure
+event. Fire it when the user reaches the normal Instance AI empty-state surface and has
+an assigned `control`, `variant-cards`, or `variant-list` variant. Do not fire it while
+the proactive starter (082) or split empty state (089) owns the surface, or while the
+workflow builder is unavailable; in that state the chat input is disabled, so the user
+cannot send a prompt. Include `$feature/093_instance_ai_personalized_prompt_suggestions`
+and `variant` on every exposure event, including `control`.
 
 When this experiment is active, add these properties to the relevant existing events:
 
@@ -266,7 +276,11 @@ For `Instance AI prompt suggestions cycled`, include `visible_suggestion_ids`, `
 
 Primary metric:
 
-- Percentage of new users exposed to Instance AI who send a prompt on the same day.
+- Percentage of new users exposed to Instance AI who send a prompt. Baseline: 40%.
+
+Leading metric:
+
+- Percentage of prompt senders who result in a workflow being built. Baseline: not set.
 
 Secondary/diagnostic metrics:
 
@@ -274,10 +288,25 @@ Secondary/diagnostic metrics:
 - Prompt suggestion selected rate.
 - Prompt suggestion submitted rate.
 - `See more` toggle rate.
-- Percentage of prompt senders who result in a workflow being built.
 - Matrix/default coverage: share of treatment users with recognized role/use-case metadata.
 - Source performance split by `suggestion_source`.
 - Cards vs list performance split by `suggestion_format`.
+
+## Feedback Follow-up
+
+Source: Notion feedback from 2026-06-22.
+
+Must change:
+
+- [x] Align card content to the top instead of vertically centering it.
+- [x] Make the card variant feel more clickable.
+
+Nice to have:
+
+- [x] Replace `Suggested for you` with `Start from an example`.
+- [x] Add helper copy under the header: `Picked for you. Change anything.`
+- [x] Use the experiment placeholder: `Tip: Ask me for suggestions if you're not sure what to build`.
+- [x] Add an `AI Assistant` pill near the top so users recognize the feature/icon faster.
 
 ## Implementation TODO
 

@@ -9,7 +9,7 @@ import {
 	PrimaryColumn,
 	UpdateDateColumn,
 } from '@n8n/typeorm';
-import { generateNanoId } from '@n8n/utils';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { Class } from 'n8n-core';
 
 export const { type: dbType } = Container.get(GlobalConfig).database;

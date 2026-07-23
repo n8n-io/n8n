@@ -1,13 +1,16 @@
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { IHttpRequestOptions, MessageEventBusDestinationWebhookOptions } from 'n8n-workflow';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
-import { MessageEventBusDestinationWebhook } from '../message-event-bus-destination-webhook.ee';
+import {
+	MessageEventBusDestinationWebhook,
+	isMessageEventBusDestinationWebhookOptions,
+} from '../message-event-bus-destination-webhook.ee';
 
 const mockEventBus = {} as MessageEventBus;
 
@@ -27,8 +30,8 @@ const createMessage = () =>
 const mockOutboundHttp = (
 	response: { statusCode: number; body: unknown } = { statusCode: 200, body: {} },
 ) => {
-	const request = jest.fn().mockResolvedValue(response);
-	const requests = jest.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
+	const request = vi.fn().mockResolvedValue(response);
+	const requests = vi.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
 	const outboundHttp = mock<OutboundHttp>({ requests });
 	return { outboundHttp, requests, request };
 };
@@ -43,7 +46,7 @@ const sendThroughDestination = async (options: MessageEventBusDestinationWebhook
 	const destination = new MessageEventBusDestinationWebhook(mockEventBus, options, outboundHttp);
 	await destination.receiveFromEventBus({
 		msg: createMessage(),
-		confirmCallback: jest.fn(),
+		confirmCallback: vi.fn(),
 	} as any);
 
 	return {
@@ -54,17 +57,13 @@ const sendThroughDestination = async (options: MessageEventBusDestinationWebhook
 };
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 	mockInstance(CredentialsHelper);
 });
 
 describe('MessageEventBusDestinationWebhook', () => {
 	describe('isMessageEventBusDestinationWebhookOptions', () => {
 		it('should identify valid webhook options', () => {
-			const {
-				isMessageEventBusDestinationWebhookOptions,
-			} = require('../message-event-bus-destination-webhook.ee');
-
 			const validOptions: MessageEventBusDestinationWebhookOptions = {
 				__type: MessageEventBusDestinationTypeNames.webhook,
 				url: 'https://example.com/webhook',
@@ -80,10 +79,6 @@ describe('MessageEventBusDestinationWebhook', () => {
 		});
 
 		it('should reject invalid options', () => {
-			const {
-				isMessageEventBusDestinationWebhookOptions,
-			} = require('../message-event-bus-destination-webhook.ee');
-
 			expect(isMessageEventBusDestinationWebhookOptions({})).toBe(false);
 			expect(isMessageEventBusDestinationWebhookOptions(null)).toBe(false);
 			expect(isMessageEventBusDestinationWebhookOptions({ label: 'test' })).toBe(false);
@@ -137,7 +132,7 @@ describe('MessageEventBusDestinationWebhook', () => {
 		});
 
 		it('should confirm only when the response status matches the expected code', async () => {
-			const confirmCallback = jest.fn();
+			const confirmCallback = vi.fn();
 			const { outboundHttp } = mockOutboundHttp({ statusCode: 418, body: {} });
 
 			const destination = new MessageEventBusDestinationWebhook(

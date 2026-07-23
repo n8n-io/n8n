@@ -42,6 +42,7 @@ function makeSeed(): ConversationSeed {
 			},
 		],
 		workflows: [{ id: WF_ID, name: 'Daily digest', nodes: [], connections: {} }],
+		dataTables: [],
 	};
 }
 
@@ -216,6 +217,37 @@ describe('transcriptPrefixFromSeed', () => {
 				kind: 'setup-card',
 				requests: [{ nodeName: 'Slack', credentialType: 'slackApi', params: undefined }],
 				outcome: 'pending',
+			},
+		]);
+	});
+
+	it('renders a seeded confirmation block (not ask-user/setup) as a confirmation step', () => {
+		const turns = transcriptPrefixFromSeed([
+			{
+				id: 'a1',
+				type: 'llm',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'workflows',
+						state: 'resolved',
+						// Resume block re-states the request in input, decision in output.
+						input: { resumeReason: 'resource-decision', message: 'Which credential?' },
+						output: { approved: false, feedback: 'use the prod one' },
+					},
+				],
+				createdAt: '2026-01-01T00:00:00Z',
+			},
+		]);
+		expect(turns[0].steps).toEqual([
+			{
+				kind: 'confirmation',
+				toolName: 'workflows',
+				resumeReason: 'resource-decision',
+				approved: false,
+				message: 'Which credential?',
+				feedback: 'use the prod one',
 			},
 		]);
 	});

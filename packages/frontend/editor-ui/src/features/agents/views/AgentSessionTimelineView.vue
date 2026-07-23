@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { truncate } from '@n8n/utils';
+import { truncate } from '@n8n/utils/string/truncate';
 import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
@@ -340,6 +340,19 @@ function formatDate(fullDate: string): string {
 }
 
 function closeTimeline() {
+	/**
+	 * Get the last visited route from Vue router so we return to the correct starting point (e.g Preview)
+	 * If no state is available, it's most likey because the link was visited directly.
+	 * Here we fallback to default Agents view.
+	 */
+	const previousRoute = router.options.history.state.back;
+	const resolvedPreviousRoute =
+		typeof previousRoute === 'string' ? router.resolve(previousRoute) : null;
+
+	if (resolvedPreviousRoute?.matched.length) {
+		router.back();
+		return;
+	}
 	void router.push(agentExecutionsRoute.value);
 }
 

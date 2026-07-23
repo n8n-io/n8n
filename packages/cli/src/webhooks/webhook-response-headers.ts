@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { getHtmlSandboxCSP, isWebhookHtmlSandboxingDisabled } from 'n8n-core';
 import { validateHeaderName, validateHeaderValue } from 'node:http';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 /**
  * The headers object that node's `responseHeaders` property can return

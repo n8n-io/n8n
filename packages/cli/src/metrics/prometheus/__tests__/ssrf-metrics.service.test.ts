@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import type { SsrfProtectionService } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig, SsrfProtectionConfig } from '@n8n/config';
@@ -5,7 +6,7 @@ import promClient from 'prom-client';
 
 import { PrometheusSsrfMetricsService } from '../ssrf-metrics.service';
 
-jest.mock('prom-client');
+vi.mock('prom-client');
 
 describe('PrometheusSsrfMetricsService', () => {
 	const config = mockInstance(PrometheusMetricsConfig, {
@@ -17,27 +18,27 @@ describe('PrometheusSsrfMetricsService', () => {
 		enabled: true,
 	});
 
-	const ssrfEvents = { on: jest.fn() };
+	const ssrfEvents = { on: vi.fn() };
 	const ssrfProtectionService = {
 		events: ssrfEvents,
 	} as unknown as SsrfProtectionService;
 
 	let service: PrometheusSsrfMetricsService;
-	let mockCounterInc: jest.Mock;
-	let mockHistogramObserve: jest.Mock;
+	let mockCounterInc: Mock;
+	let mockHistogramObserve: Mock;
 
 	beforeEach(() => {
 		Object.assign(config, { prefix: 'n8n_', includeSsrfMetrics: true });
 		Object.assign(ssrfConfig, { enabled: true });
 		service = new PrometheusSsrfMetricsService(ssrfProtectionService, config, ssrfConfig);
-		mockCounterInc = jest.fn();
-		mockHistogramObserve = jest.fn();
+		mockCounterInc = vi.fn();
+		mockHistogramObserve = vi.fn();
 		promClient.Counter.prototype.inc = mockCounterInc;
 		promClient.Histogram.prototype.observe = mockHistogramObserve;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	function getEventsHandler(eventName: string) {

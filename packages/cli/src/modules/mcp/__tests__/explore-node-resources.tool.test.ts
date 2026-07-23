@@ -1,5 +1,6 @@
+import type { Mocked } from 'vitest';
 import { User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createExploreNodeResourcesTool } from '../tools/workflow-builder/explore-node-resources.tool';
@@ -7,7 +8,7 @@ import { createExploreNodeResourcesTool } from '../tools/workflow-builder/explor
 import type { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import type { Telemetry } from '@/telemetry';
 
-jest.mock('@n8n/ai-workflow-builder', () => ({
+vi.mock('@n8n/ai-workflow-builder', () => ({
 	CODE_BUILDER_SEARCH_NODES_TOOL: { toolName: 'search_nodes', displayTitle: 'Search' },
 	CODE_BUILDER_GET_NODE_TYPES_TOOL: { toolName: 'get_node_types', displayTitle: 'Get' },
 	CODE_BUILDER_GET_SUGGESTED_NODES_TOOL: { toolName: 'get_suggested', displayTitle: 'Suggest' },
@@ -24,11 +25,11 @@ jest.mock('@n8n/ai-workflow-builder', () => ({
 
 describe('explore-node-resources MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
-	let nodeResourceExplorerService: jest.Mocked<NodeResourceExplorerService>;
-	let telemetry: jest.Mocked<Telemetry>;
+	let nodeResourceExplorerService: Mocked<NodeResourceExplorerService>;
+	let telemetry: Mocked<Telemetry>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		nodeResourceExplorerService = mock<NodeResourceExplorerService>();
 		telemetry = mock<Telemetry>();
 	});

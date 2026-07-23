@@ -1,5 +1,5 @@
-import type { AgentIntegrationConfig, AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import type { ToolDescriptor } from '@n8n/agents';
+import type { AgentIntegrationConfig, AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import { JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, type Relation } from '@n8n/typeorm';
 
@@ -9,9 +9,6 @@ import type { AgentHistory } from './agent-history.entity';
 export class Agent extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 128 })
 	name: string;
-
-	@Column({ type: 'varchar', length: 512, nullable: true })
-	description: string | null;
 
 	@ManyToOne(() => Project, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'projectId' })

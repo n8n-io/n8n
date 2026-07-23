@@ -29,6 +29,118 @@ describe('sanitizeUnknownAgentCredentials', () => {
 		expect(result).toEqual({ credential: 'known-cred', name: 'Agent' });
 	});
 
+	it('preserves managed proxy credential tokens only for episodic memory embeddings', () => {
+		const result = sanitizeUnknownAgentCredentials(
+			{
+				memory: {
+					episodicMemory: {
+						enabled: true,
+						credential: 'managed',
+					},
+				},
+			},
+			accessibleCredentialIds,
+		);
+
+		expect(result).toEqual({
+			memory: {
+				episodicMemory: {
+					enabled: true,
+					credential: 'managed',
+				},
+			},
+		});
+	});
+
+	it('clears managed proxy credential tokens outside episodic memory embeddings', () => {
+		const result = sanitizeUnknownAgentCredentials(
+			{
+				credential: 'managed',
+				config: {
+					webSearch: {
+						enabled: true,
+						provider: 'brave',
+						credential: 'managed',
+					},
+				},
+				integrations: [{ type: 'slack', credentialId: 'managed' }],
+				mcpServers: [
+					{
+						name: 'github',
+						url: 'https://example.com/mcp',
+						transport: 'streamableHttp',
+						authentication: 'bearerAuth',
+						credential: 'managed',
+					},
+				],
+				memory: {
+					observationalMemory: {
+						observerModel: { model: 'openai/gpt-4o-mini', credential: 'managed' },
+					},
+					episodicMemory: {
+						enabled: true,
+						credential: 'managed',
+						extractorModel: { model: 'openai/gpt-4o-mini', credential: 'managed' },
+					},
+				},
+				tools: [
+					{
+						type: 'node',
+						name: 'Slack',
+						node: {
+							nodeType: 'n8n-nodes-base.slack',
+							nodeTypeVersion: 1,
+							credentials: { slackApi: { id: 'managed', name: 'Managed by n8n' } },
+						},
+					},
+				],
+			},
+			accessibleCredentialIds,
+		);
+
+		expect(result).toEqual({
+			credential: '',
+			config: {
+				webSearch: {
+					enabled: true,
+					provider: 'brave',
+					credential: '',
+				},
+			},
+			integrations: [{ type: 'slack', credentialId: '' }],
+			mcpServers: [
+				{
+					name: 'github',
+					url: 'https://example.com/mcp',
+					transport: 'streamableHttp',
+					authentication: 'bearerAuth',
+					credential: '',
+				},
+			],
+			memory: {
+				observationalMemory: {
+					observerModel: { model: 'openai/gpt-4o-mini', credential: '' },
+				},
+				episodicMemory: {
+					enabled: true,
+					credential: 'managed',
+					extractorModel: { model: 'openai/gpt-4o-mini', credential: '' },
+				},
+			},
+			tools: [
+				{
+					type: 'node',
+					name: 'Slack',
+					node: {
+						nodeType: 'n8n-nodes-base.slack',
+						nodeTypeVersion: 1,
+						credentials: { slackApi: { id: '', name: 'Managed by n8n' } },
+					},
+				},
+			],
+		});
+	});
+
 	it('clears unknown credentialId fields at arbitrary nesting depth', () => {
 		const result = sanitizeUnknownAgentCredentials(
 			{
@@ -68,6 +180,53 @@ describe('sanitizeUnknownAgentCredentials', () => {
 		expect(result).toEqual({
 			tools: [{ type: 'custom', id: 'tool-1', credentials: { openAiApi: { id: '' } } }],
 			tasks: [{ type: 'task', id: 'task-1', enabled: true }],
+		});
+	});
+
+	it('clears unknown credentials on vector store connections, including the nested embedding credential', () => {
+		const result = sanitizeUnknownAgentCredentials(
+			{
+				vectorStores: [
+					{
+						provider: 'qdrant',
+						name: 'product_docs',
+						credential: 'unknown-cred',
+						useWhen: 'Search product docs',
+						embedding: { model: 'openai/text-embedding-3-small', credential: 'unknown-cred' },
+						collectionName: 'docs',
+					},
+					{
+						provider: 'postgres',
+						name: 'faq',
+						credential: 'known-cred',
+						useWhen: 'Search FAQ',
+						embedding: { model: 'openai/text-embedding-3-small', credential: 'nested-cred' },
+						tableName: 'faq',
+					},
+				],
+			},
+			accessibleCredentialIds,
+		);
+
+		expect(result).toEqual({
+			vectorStores: [
+				{
+					provider: 'qdrant',
+					name: 'product_docs',
+					credential: '',
+					useWhen: 'Search product docs',
+					embedding: { model: 'openai/text-embedding-3-small', credential: '' },
+					collectionName: 'docs',
+				},
+				{
+					provider: 'postgres',
+					name: 'faq',
+					credential: 'known-cred',
+					useWhen: 'Search FAQ',
+					embedding: { model: 'openai/text-embedding-3-small', credential: 'nested-cred' },
+					tableName: 'faq',
+				},
+			],
 		});
 	});
 

@@ -1,7 +1,7 @@
-import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients';
+import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients.js';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Request, Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type {
 	ProtectedResource,
@@ -22,7 +22,7 @@ beforeAll(async () => {
 	// The SDK's `clientRegistrationHandler` validates `clientsStore.registerClient`
 	// when the module builds its routers, so the mock needs a real store.
 	mockInstance(OAuthServerService, { clientsStore: mock<OAuthRegisteredClientsStore>() });
-	({ OAuthController } = await import('../oauth.controller'));
+	({ OAuthController } = await import('../oauth.controller.js'));
 });
 
 const urlService = mock<UrlService>();
@@ -44,11 +44,12 @@ const resource = (scopes: string[]): ProtectedResource => ({
 	id: 'instance-mcp',
 	getResourceUrl: () => 'https://n8n.test/mcp-server/http',
 	getAudiences: () => ['https://n8n.test/mcp-server/http'],
+	authorize: async () => true,
 	scopes,
 });
 
 beforeEach(() => {
-	jest.resetAllMocks();
+	vi.resetAllMocks();
 	urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.test');
 	controller = new OAuthController(urlService, registry);
 });

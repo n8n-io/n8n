@@ -1,7 +1,12 @@
-import { In, SharedCredentialsRepository, UserRepository, type User } from '@n8n/db';
+import {
+	In,
+	ProjectRelationRepository,
+	SharedCredentialsRepository,
+	UserRepository,
+	type User,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 
 import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
@@ -13,7 +18,9 @@ import { DynamicCredentialUserEntryRepository } from '../database/repositories/d
 
 type CredentialUserPair = { credentialId: string; userId: string };
 
-const CREDENTIAL_RETAIN_SCOPE = 'credential:update' as const;
+// A per-user connection is retained while the user can still connect their own
+// account — `credential:connect`, not `credential:update` (see oauth.service.ts).
+const CREDENTIAL_RETAIN_SCOPE = 'credential:connect' as const;
 
 const keyOf = (pair: CredentialUserPair) => `${pair.credentialId}|${pair.userId}`;
 
@@ -36,6 +43,7 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 		private readonly userRepository: UserRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly roleService: RoleService,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
 
 	async findConnectedCredentialIds(userId: string, credentialIds: string[]): Promise<Set<string>> {
@@ -77,14 +85,20 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 		await manager.delete(DynamicCredentialUserEntry, { credentialId });
 	}
 
-	async cleanupOrphanedEntriesForUsers(userIds: string[], em?: EntityManager): Promise<void> {
+	async cleanupOrphanedEntriesForUsers(
+		userIds: string[],
+		em?: EntityManager,
+		credentialId?: string,
+	): Promise<void> {
 		if (userIds.length === 0) return;
 
 		const manager = em ?? this.repository.manager;
 
+		// When a credentialId is given, scope the scan to that credential so a
+		// single-credential event never re-evaluates unrelated connections.
 		const entries = await manager.find(DynamicCredentialUserEntry, {
 			select: ['credentialId', 'userId'],
-			where: { userId: In(userIds) },
+			where: { userId: In(userIds), ...(credentialId ? { credentialId } : {}) },
 		});
 
 		if (entries.length === 0) return;
@@ -94,8 +108,29 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 	}
 
 	/**
+	 * Re-evaluates the given credential's connections for members of the given
+	 * projects, deleting those who no longer retain access. Used when an event
+	 * changes who can see one credential (unshare, move to another project).
+	 */
+	async cleanupOrphanedEntriesForProjects(
+		credentialId: string,
+		projectIds: string[],
+		em?: EntityManager,
+	): Promise<void> {
+		if (projectIds.length === 0) return;
+
+		const manager = em ?? this.repository.manager;
+		const members = await manager.findBy(this.projectRelationRepository.target, {
+			projectId: In(projectIds),
+		});
+		const userIds = [...new Set(members.map((m) => m.userId))];
+
+		await this.cleanupOrphanedEntriesForUsers(userIds, em, credentialId);
+	}
+
+	/**
 	 * Deletes ALL per-user entries (across all resolvers) for each
-	 * (credentialId, userId) pair whose user no longer holds `credential:update`
+	 * (credentialId, userId) pair whose user no longer holds `credential:connect`
 	 * on the credential.
 	 */
 	private async deleteOrphanedPairs(pairs: CredentialUserPair[], em: EntityManager): Promise<void> {
@@ -103,7 +138,9 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 
 		const uniquePairs = [...new Map(pairs.map((p) => [keyOf(p), p])).values()];
 
-		const users = await this.userRepository.find({
+		// All reads use `em` so a caller's transaction never has to acquire a
+		// second pooled connection (which deadlocks at pool size 1).
+		const users = await em.find(this.userRepository.target, {
 			where: { id: In(uniquePairs.map((p) => p.userId)) },
 			relations: { role: { scopes: true } },
 		});
@@ -113,10 +150,11 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 
 		let projectRetainedKeys = new Set<string>();
 		if (pairsToCheck.length > 0) {
-			// Credential roles that carry credential:update — served from the role
+			// Credential roles that carry credential:connect — served from the role
 			const validCredRoles = await this.roleService.rolesWithScope(
 				'credential',
 				CREDENTIAL_RETAIN_SCOPE,
+				em,
 			);
 			const projectRetained = await this.sharedCredentialsRepository.findPairsWithCredentialAccess(
 				pairsToCheck,
@@ -134,7 +172,7 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 	}
 
 	/**
-	 * A pair is orphaned unless the user retains `credential:update`.
+	 * A pair is orphaned unless the user retains `credential:connect`.
 	 */
 	private selectOrphanedPairs(
 		pairs: CredentialUserPair[],

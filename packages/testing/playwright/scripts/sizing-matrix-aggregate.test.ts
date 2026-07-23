@@ -1,10 +1,12 @@
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, cpSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { extractInlineRunReports } from './sizing-matrix-aggregate';
+import { extractInlineRunReports, findRunReports, loadReport } from './sizing-matrix-aggregate';
+import { DEFAULT_MAPPING } from './sizing-matrix-topologies';
 import { RunReportBuilder } from '../utils/benchmark/run-report';
+import { aggregate, type HardwareInfo } from '../utils/benchmark/sizing-matrix';
 
 function makeReport(spec: string) {
 	return new RunReportBuilder(
@@ -125,5 +127,51 @@ describe('extractInlineRunReports', () => {
 		writeFileSync(join(root, 'test-results.json'), '{ not valid json');
 
 		expect(extractInlineRunReports(root)).toBe(0);
+	});
+});
+
+// Uses a REAL captured artifact, not RunReportBuilder mocks: mocks set
+// scenario.spec to a spec path so they always map — the real harness emits a
+// human title, and only the extracted filename's spec stem routes it to a cell.
+describe('sizing-matrix aggregation over a real captured fixture (DEVP-531)', () => {
+	const FIXTURE_DIR = resolve(__dirname, '__fixtures__/sizing-matrix');
+	const HARDWARE: HardwareInfo = { runner: 'test', vcpu: 8, ramGb: 16 };
+
+	it('routes real run-reports to cells and emits a populated matrix with concurrency', () => {
+		// Copy out of the repo: extraction writes loose files next to the source.
+		const tmp = mkdtempSync(join(tmpdir(), 'sizing-fixture-'));
+		cpSync(FIXTURE_DIR, tmp, { recursive: true });
+
+		const extracted = extractInlineRunReports(tmp);
+		expect(extracted).toBeGreaterThan(0);
+
+		const reports = findRunReports(tmp)
+			.map(loadReport)
+			.filter((r): r is Exclude<typeof r, undefined> => r !== undefined);
+		expect(reports.length).toBeGreaterThan(0);
+
+		const matrix = aggregate({
+			reports,
+			mapping: DEFAULT_MAPPING,
+			hardware: HARDWARE,
+			n8nVersion: 'test',
+			commitSha: 'deadbeef',
+			runDate: '2026-01-01T00:00:00.000Z',
+		});
+
+		expect(matrix.cells.length).toBeGreaterThan(0);
+
+		for (const cell of matrix.cells) {
+			expect(typeof cell.topology.concurrency).toBe('number');
+			for (const shape of Object.values(cell.shapes)) {
+				if (!shape) continue;
+				expect(shape.greenSustainedExecPerSec).toBeLessThanOrEqual(shape.ceilingExecPerSec.p50);
+				for (const source of shape.sourceRuns) {
+					expect(source.commitSha).toBe('deadbeef');
+				}
+			}
+		}
+
+		expect(matrix.cells.map((c) => c.scale)).toContain('S1');
 	});
 });

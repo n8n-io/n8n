@@ -21,7 +21,7 @@ export const inputTheme = ({ rows, isReadOnly } = { rows: 5, isReadOnly: false }
 		...commonThemeProps(isReadOnly),
 		'&': {
 			maxHeight: `${maxHeight}px`,
-			minHeight: '30px',
+			minHeight: 'var(--height--md)',
 			width: '100%',
 			fontSize: 'var(--font-size--2xs)',
 			padding: '0 0 0 var(--spacing--2xs)',

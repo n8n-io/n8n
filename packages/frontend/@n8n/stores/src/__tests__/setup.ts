@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom/vitest';
 import { configure } from '@testing-library/vue';
 
 // Avoid tests failing because of difference between local and GitHub actions timezone

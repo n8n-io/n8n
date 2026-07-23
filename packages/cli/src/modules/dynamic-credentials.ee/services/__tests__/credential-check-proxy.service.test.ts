@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import type { GlobalConfig } from '@n8n/config';
 import type { IExecutionContext, PlaintextExecutionContext } from 'n8n-workflow';
 
@@ -9,6 +10,7 @@ import { CredentialsEntity } from '@n8n/db';
 import type { AuthorizeIntentService } from '../authorize-intent.service';
 import type { CredentialResolverWorkflowService } from '../credential-resolver-workflow.service';
 import { CredentialCheckProxyService } from '../credential-check-proxy.service';
+import type { DynamicCredentialService } from '../dynamic-credential.service';
 
 const createMockCredentialEntity = (
 	overrides: Partial<CredentialsEntity> = {},
@@ -32,11 +34,12 @@ const createMockCredentialEntity = (
 
 describe('CredentialCheckProxyService', () => {
 	let service: CredentialCheckProxyService;
-	let mockCredentialResolverWorkflowService: jest.Mocked<CredentialResolverWorkflowService>;
-	let mockExecutionContextService: jest.Mocked<ExecutionContextService>;
-	let mockEnterpriseCredentialsService: jest.Mocked<EnterpriseCredentialsService>;
-	let mockAuthorizeIntentService: jest.Mocked<AuthorizeIntentService>;
-	let mockUrlService: jest.Mocked<UrlService>;
+	let mockCredentialResolverWorkflowService: Mocked<CredentialResolverWorkflowService>;
+	let mockExecutionContextService: Mocked<ExecutionContextService>;
+	let mockEnterpriseCredentialsService: Mocked<EnterpriseCredentialsService>;
+	let mockAuthorizeIntentService: Mocked<AuthorizeIntentService>;
+	let mockDynamicCredentialService: Mocked<DynamicCredentialService>;
+	let mockUrlService: Mocked<UrlService>;
 
 	const executionContext: IExecutionContext = {
 		version: 1,
@@ -57,27 +60,31 @@ describe('CredentialCheckProxyService', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockCredentialResolverWorkflowService = {
-			getWorkflowStatus: jest.fn(),
-		} as unknown as jest.Mocked<CredentialResolverWorkflowService>;
+			getWorkflowStatus: vi.fn(),
+		} as unknown as Mocked<CredentialResolverWorkflowService>;
 
 		mockExecutionContextService = {
-			decryptExecutionContext: jest.fn().mockResolvedValue(plaintextContext),
-		} as unknown as jest.Mocked<ExecutionContextService>;
+			decryptExecutionContext: vi.fn().mockResolvedValue(plaintextContext),
+		} as unknown as Mocked<ExecutionContextService>;
 
 		mockEnterpriseCredentialsService = {
-			getOne: jest.fn(),
-		} as unknown as jest.Mocked<EnterpriseCredentialsService>;
+			getOne: vi.fn(),
+		} as unknown as Mocked<EnterpriseCredentialsService>;
 
 		mockAuthorizeIntentService = {
-			create: jest.fn().mockResolvedValue('intent-token'),
-		} as unknown as jest.Mocked<AuthorizeIntentService>;
+			create: vi.fn().mockResolvedValue('intent-token'),
+		} as unknown as Mocked<AuthorizeIntentService>;
+
+		mockDynamicCredentialService = {
+			resolveOwningUserIdForAuthorization: vi.fn().mockResolvedValue({ status: 'unbound' }),
+		} as unknown as Mocked<DynamicCredentialService>;
 
 		mockUrlService = {
-			getInstanceBaseUrl: jest.fn().mockReturnValue('http://localhost:5678'),
-		} as unknown as jest.Mocked<UrlService>;
+			getInstanceBaseUrl: vi.fn().mockReturnValue('http://localhost:5678'),
+		} as unknown as Mocked<UrlService>;
 
 		const globalConfig = { endpoints: { rest: 'rest' } } as unknown as GlobalConfig;
 
@@ -86,6 +93,7 @@ describe('CredentialCheckProxyService', () => {
 			mockExecutionContextService,
 			mockEnterpriseCredentialsService,
 			mockAuthorizeIntentService,
+			mockDynamicCredentialService,
 			mockUrlService,
 			globalConfig,
 		);
@@ -284,6 +292,81 @@ describe('CredentialCheckProxyService', () => {
 
 			expect(result.credentials[0].authorizationUrl).toBeUndefined();
 			expect(mockAuthorizeIntentService.create).not.toHaveBeenCalled();
+		});
+
+		it('should bind the intent to the resolved user when the resolver names one', async () => {
+			mockDynamicCredentialService.resolveOwningUserIdForAuthorization.mockResolvedValue({
+				status: 'bound',
+				userId: 'user-1',
+			});
+			mockCredentialResolverWorkflowService.getWorkflowStatus.mockResolvedValue([
+				{
+					credentialId: 'cred-1',
+					credentialName: 'OAuth2 API',
+					credentialType: 'oauth2Api',
+					resolverId: 'resolver-1',
+					status: 'missing',
+				},
+			]);
+			mockEnterpriseCredentialsService.getOne.mockResolvedValue(
+				createMockCredentialEntity({ id: 'cred-1', type: 'oauth2Api' }),
+			);
+
+			await service.checkCredentialStatus('workflow-1', executionContext);
+
+			expect(mockAuthorizeIntentService.create).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: 'user-1' }),
+			);
+		});
+
+		it('should not issue a link when the owning user cannot be resolved', async () => {
+			mockDynamicCredentialService.resolveOwningUserIdForAuthorization.mockResolvedValue({
+				status: 'unresolved',
+			});
+			mockCredentialResolverWorkflowService.getWorkflowStatus.mockResolvedValue([
+				{
+					credentialId: 'cred-1',
+					credentialName: 'OAuth2 API',
+					credentialType: 'oauth2Api',
+					resolverId: 'resolver-1',
+					status: 'missing',
+				},
+			]);
+			mockEnterpriseCredentialsService.getOne.mockResolvedValue(
+				createMockCredentialEntity({ id: 'cred-1', type: 'oauth2Api' }),
+			);
+
+			const result = await service.checkCredentialStatus('workflow-1', executionContext);
+
+			expect(result.credentials[0].authorizationUrl).toBeUndefined();
+			expect(mockAuthorizeIntentService.create).not.toHaveBeenCalled();
+		});
+
+		it('should issue an unbound link when the resolver does not map to a user', async () => {
+			mockDynamicCredentialService.resolveOwningUserIdForAuthorization.mockResolvedValue({
+				status: 'unbound',
+			});
+			mockCredentialResolverWorkflowService.getWorkflowStatus.mockResolvedValue([
+				{
+					credentialId: 'cred-1',
+					credentialName: 'OAuth2 API',
+					credentialType: 'oauth2Api',
+					resolverId: 'resolver-1',
+					status: 'missing',
+				},
+			]);
+			mockEnterpriseCredentialsService.getOne.mockResolvedValue(
+				createMockCredentialEntity({ id: 'cred-1', type: 'oauth2Api' }),
+			);
+
+			const result = await service.checkCredentialStatus('workflow-1', executionContext);
+
+			expect(result.credentials[0].authorizationUrl).toBe(
+				'http://localhost:5678/rest/credentials/cred-1/authorize?token=intent-token',
+			);
+			expect(mockAuthorizeIntentService.create).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: undefined }),
+			);
 		});
 
 		it('should return readyToExecute:true for empty credentials list', async () => {

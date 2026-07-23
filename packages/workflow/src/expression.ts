@@ -279,8 +279,10 @@ export class Expression {
 		}
 	}
 
-	async acquireIsolate(): Promise<void> {
-		if (Expression.vmEvaluator) await Expression.vmEvaluator.acquire(this);
+	/** Returns whether an isolate was newly acquired; `false` means this caller already held one and must not release it. */
+	async acquireIsolate(): Promise<boolean> {
+		if (Expression.vmEvaluator) return await Expression.vmEvaluator.acquire(this);
+		return false;
 	}
 
 	async releaseIsolate(): Promise<void> {

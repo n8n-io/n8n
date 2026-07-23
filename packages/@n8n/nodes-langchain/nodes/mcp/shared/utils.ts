@@ -1,24 +1,18 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { fetchFollowingRedirects, proxyFetch } from '@n8n/ai-utilities';
 import type { ClientOAuth2TokenData } from '@n8n/client-oauth2';
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import type {
 	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INode,
 	ISupplyDataFunctions,
-	Result,
+	NodeEgressFilter,
 } from 'n8n-workflow';
-import {
-	assertCredentialAllowsUrl,
-	assertUrlAllowed,
-	createResultError,
-	createResultOk,
-	NodeOperationError,
-} from 'n8n-workflow';
-
-import { fetchFollowingRedirects, proxyFetch } from '@n8n/ai-utilities';
+import { assertCredentialAllowsUrl, assertUrlAllowed, NodeOperationError } from 'n8n-workflow';
 
 import {
 	isMcpOAuth2Authentication,
@@ -144,6 +138,7 @@ export async function connectMcpClient({
 	onUnauthorized,
 	signal,
 	allowedDomains,
+	secureEgressFilter,
 }: {
 	serverTransport: McpServerTransport;
 	endpointUrl: string;
@@ -157,6 +152,12 @@ export async function connectMcpClient({
 	 * (including redirect hops) is validated against it via `assertUrlAllowed`.
 	 */
 	allowedDomains?: string;
+	/**
+	 * Instance egress filter. When set, every request (including redirect hops)
+	 * is validated against the configured egress policy, and the connection is
+	 * pinned to the validated address.
+	 */
+	secureEgressFilter?: NodeEgressFilter;
 }): Promise<Result<Client, ConnectMcpClientError>> {
 	const endpoint = normalizeAndValidateUrl(endpointUrl);
 
@@ -164,7 +165,7 @@ export async function connectMcpClient({
 		return createResultError({ type: 'invalid_url', error: endpoint.error });
 	}
 
-	const authFetch = createAuthFetch(headers, onUnauthorized, allowedDomains);
+	const authFetch = createAuthFetch(headers, onUnauthorized, allowedDomains, secureEgressFilter);
 	const client = new Client({ name, version: version.toString() }, { capabilities: {} });
 
 	let onAbort: (() => void) | undefined;
@@ -206,13 +207,13 @@ export async function connectMcpClient({
 			await client.connect(transport);
 			return createResultOk(client);
 		} catch (error) {
-			const err = error instanceof Error ? error : new Error(String(error));
-			if ((signal && err.name === 'AbortError') || signal?.aborted) {
+			const connectionError = error instanceof Error ? error : new Error(String(error));
+			if ((signal && connectionError.name === 'AbortError') || signal?.aborted) {
 				if (onAbort && signal) {
 					signal.removeEventListener('abort', onAbort);
 					onAbort = undefined;
 				}
-				return createResultError({ type: 'cancelled', error: err });
+				return createResultError({ type: 'cancelled', error: connectionError });
 			}
 
 			// Clean up the abort listener so a failed client doesn't stay pinned to the execution signal
@@ -247,13 +248,13 @@ export async function connectMcpClient({
 		await client.connect(sseTransport);
 		return createResultOk(client);
 	} catch (error) {
-		const err = error instanceof Error ? error : new Error(String(error));
-		if ((signal && err.name === 'AbortError') || signal?.aborted) {
+		const connectionError = error instanceof Error ? error : new Error(String(error));
+		if ((signal && connectionError.name === 'AbortError') || signal?.aborted) {
 			if (onAbort && signal) {
 				signal.removeEventListener('abort', onAbort);
 				onAbort = undefined;
 			}
-			return createResultError({ type: 'cancelled', error: err });
+			return createResultError({ type: 'cancelled', error: connectionError });
 		}
 
 		// Clean up the abort listener so a failed client doesn't stay pinned to the execution signal
@@ -283,23 +284,30 @@ function headersToRecord(headers: HeadersInit | undefined): Record<string, strin
  *   - injects auth headers into every request,
  *   - retries once on 401 after refreshing the token via onUnauthorized,
  *   - validates the initial URL and every redirect hop against `allowedDomains`
- *     so credentials are never sent to a host the credential doesn't allow.
+ *     so credentials are never sent to a host the credential doesn't allow,
+ *   - validates the initial URL and every redirect hop against the instance
+ *     `secureEgressFilter`, and pins the connection to the validated address.
  */
 function createAuthFetch(
 	initialHeaders: Record<string, string> | undefined,
 	onUnauthorized?: OnUnauthorizedHandler,
 	allowedDomains?: string,
+	secureEgressFilter?: NodeEgressFilter,
 ): typeof fetch {
 	let headers = initialHeaders;
 
+	const secureLookup = secureEgressFilter?.createSecureLookup();
+
+	const doFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> =>
+		await proxyFetch(
+			input,
+			{ ...init, headers: { ...headersToRecord(init?.headers), ...headers } },
+			undefined,
+			secureLookup,
+		);
+
 	const authedFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-		const response = await proxyFetch(input, {
-			...init,
-			headers: {
-				...headersToRecord(init?.headers),
-				...headers,
-			},
-		});
+		const response = await doFetch(input, init);
 
 		if (response.status !== 401 || !onUnauthorized) {
 			return response;
@@ -311,13 +319,7 @@ function createAuthFetch(
 		}
 
 		headers = refreshedHeaders;
-		return await proxyFetch(input, {
-			...init,
-			headers: {
-				...headersToRecord(init?.headers),
-				...headers,
-			},
-		});
+		return await doFetch(input, init);
 	};
 
 	return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -325,7 +327,13 @@ function createAuthFetch(
 		// unwrapped to their URL so the redirect loop can carry a stable input.
 		const startUrl = input instanceof Request ? input.url : input;
 		return await fetchFollowingRedirects(authedFetch, startUrl, init, {
-			onBeforeHop: (hopUrl) => assertUrlAllowed({ url: hopUrl, allowedDomains }),
+			onBeforeHop: async (hopUrl) => {
+				assertUrlAllowed({ url: hopUrl, allowedDomains });
+				if (secureEgressFilter) {
+					const result = await secureEgressFilter.validateUrl(hopUrl);
+					if (!result.ok) throw result.error;
+				}
+			},
 		});
 	};
 }
@@ -339,10 +347,14 @@ export async function getAuthHeaders(
 }> {
 	if (isMcpOAuth2Authentication(authentication)) {
 		const credentials = await ctx
-			.getCredentials<{ oauthTokenData: { access_token: string } }>(authentication)
+			.getCredentials<{ oauthTokenData?: { access_token?: string } }>(authentication)
 			.catch(() => null);
 
 		if (!credentials) return {};
+
+		if (!credentials.oauthTokenData?.access_token) {
+			return { credentials };
+		}
 
 		return {
 			headers: { Authorization: `Bearer ${credentials.oauthTokenData.access_token}` },
@@ -377,9 +389,9 @@ export async function getAuthHeaders(
 		}
 		case 'multipleHeadersAuth': {
 			const credentials = await ctx
-				.getCredentials<{ headers: { values: Array<{ name: string; value: string }> } }>(
-					'httpMultipleHeadersAuth',
-				)
+				.getCredentials<{
+					headers: { values: Array<{ name: string; value: string }> };
+				}>('httpMultipleHeadersAuth')
 				.catch(() => null);
 
 			if (!credentials) return {};
@@ -476,6 +488,7 @@ export async function connectMcpClientForCredential(
 		endpointUrl: config.endpointUrl,
 		headers,
 		allowedDomains,
+		secureEgressFilter: ctx.helpers.getSecureEgressFilter?.(),
 		name: node.type,
 		version: node.typeVersion,
 		onUnauthorized: async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h),

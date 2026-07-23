@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactiveOmit, reactivePick } from '@vueuse/core';
+import { reactivePick } from '@vueuse/core';
 import { Label, Primitive, SwitchRoot, SwitchThumb, useForwardProps } from 'reka-ui';
 import { computed, useAttrs, useId } from 'vue';
 
@@ -18,19 +18,22 @@ const rootProps = useForwardProps(reactivePick(props, 'required', 'value', 'defa
 const modelValue = defineModel<boolean>({ default: undefined });
 
 const attrs = useAttrs();
-const primitiveClass = computed(() => attrs.class);
-const rootAttrs = computed(() => reactiveOmit(attrs, ['class']));
+const getRootAttrs = () => {
+	const rootAttrs = { ...attrs };
+	delete rootAttrs.class;
+	return rootAttrs;
+};
 </script>
 
 <template>
 	<Primitive
 		:as
-		:class="[$style.switch, $style[size], primitiveClass]"
+		:class="[$style.switch, $style[size], attrs.class]"
 		:data-disabled="disabled ? '' : undefined"
 	>
 		<SwitchRoot
 			:id="uuid"
-			v-bind="{ ...rootProps, ...rootAttrs }"
+			v-bind="{ ...rootProps, ...getRootAttrs() }"
 			v-model="modelValue"
 			:name="name"
 			:disabled="disabled"
@@ -99,11 +102,18 @@ const rootAttrs = computed(() => reactiveOmit(attrs, ['class']));
 	transform: translateY(-50%);
 	display: block;
 	background-color: var(--switch--toggle--color);
-	border-radius: 50%;
-	transition: left 0.15s ease;
-	will-change: left;
+	transition:
+		left var(--duration--snappy) var(--easing--ease-out),
+		width var(--duration--snappy) var(--easing--ease-out);
+	will-change: left, width;
 	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
+
+/*
+ * Hover/press stretch: the thumb elongates by 2px along the track. Unchecked is anchored
+ * left (grows inward to the right), checked is anchored right (left shifts in sync so it
+ * grows inward to the left). Disabled switches don't stretch.
+ */
 
 .label {
 	flex: 1;
@@ -130,10 +140,23 @@ const rootAttrs = computed(() => reactiveOmit(attrs, ['class']));
 .small .switchThumb {
 	width: 12px;
 	height: 12px;
+
+	/* Fixed half-height radius (not 50%) so the thumb reads as a pill while stretched. */
+	border-radius: var(--radius--2xs);
 }
 
 .small .switchRoot[data-state='checked'] .switchThumb {
 	left: calc(100% - 14px);
+}
+
+.small .switchRoot:not([data-disabled]):hover .switchThumb,
+.small .switchRoot:not([data-disabled]):active .switchThumb {
+	width: 14px;
+}
+
+.small .switchRoot[data-state='checked']:not([data-disabled]):hover .switchThumb,
+.small .switchRoot[data-state='checked']:not([data-disabled]):active .switchThumb {
+	left: calc(100% - 16px);
 }
 
 .small .label {
@@ -150,9 +173,22 @@ const rootAttrs = computed(() => reactiveOmit(attrs, ['class']));
 .large .switchThumb {
 	width: 16px;
 	height: 16px;
+
+	/* Fixed half-height radius (not 50%) so the thumb reads as a pill while stretched. */
+	border-radius: var(--radius--xs);
 }
 
 .large .switchRoot[data-state='checked'] .switchThumb {
 	left: calc(100% - 18px);
+}
+
+.large .switchRoot:not([data-disabled]):hover .switchThumb,
+.large .switchRoot:not([data-disabled]):active .switchThumb {
+	width: 18px;
+}
+
+.large .switchRoot[data-state='checked']:not([data-disabled]):hover .switchThumb,
+.large .switchRoot[data-state='checked']:not([data-disabled]):active .switchThumb {
+	left: calc(100% - 20px);
 }
 </style>

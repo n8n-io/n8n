@@ -120,16 +120,11 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let getNodeTypeSpy: Mock;
 let getCredentialsByTypeSpy: Mock;
 
-const apiSpy = vi.spyOn(chatAPI, 'chatWithBuilder');
+// `restoreMocks` restores spies before each test, so these are (re)established
+// in beforeEach rather than once at module scope.
+let apiSpy: MockInstance;
 
 const track = vi.fn();
-const spy = vi.spyOn(telemetryModule, 'useTelemetry');
-spy.mockImplementation(
-	() =>
-		({
-			track,
-		}) as unknown as Telemetry,
-);
 
 const currentRouteName = ENABLED_VIEWS[0];
 vi.mock('vue-router', () => ({
@@ -177,6 +172,11 @@ describe('AI Builder store', () => {
 		posthogStore = usePostHog();
 		posthogStore.init();
 		track.mockReset();
+
+		apiSpy = vi.spyOn(chatAPI, 'chatWithBuilder');
+		vi.spyOn(telemetryModule, 'useTelemetry').mockImplementation(
+			() => ({ track }) as unknown as Telemetry,
+		);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -1307,10 +1307,11 @@ describe('AI Builder store', () => {
 	});
 
 	describe('fetchBuilderCredits', () => {
-		const mockGetBuilderCredits = vi.spyOn(chatAPI, 'getBuilderCredits');
+		// `restoreMocks` restores this spy before each test, so re-create it here.
+		let mockGetBuilderCredits: MockInstance;
 
 		beforeEach(() => {
-			mockGetBuilderCredits.mockClear();
+			mockGetBuilderCredits = vi.spyOn(chatAPI, 'getBuilderCredits');
 		});
 
 		it('should fetch and update credits when AI builder is enabled', async () => {

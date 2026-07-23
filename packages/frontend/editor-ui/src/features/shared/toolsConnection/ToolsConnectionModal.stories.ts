@@ -95,6 +95,9 @@ function renderWithTrigger(
 				openNewCredential: (authType) => {
 					console.log('[story] would open credential editor for', authType);
 				},
+				openExistingCredential: (credentialId) => {
+					console.log('[story] would open existing credential editor for', credentialId);
+				},
 			};
 			provide(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, fakeAdapter);
 

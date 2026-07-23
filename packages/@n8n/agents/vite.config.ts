@@ -52,9 +52,6 @@ function rewriteSourceRequire(): Plugin {
 
 export default mergeConfig(
 	createVitestConfig({
-		// The n8n root jest.config sets `restoreMocks: true`, and test files silently rely on
-		// it — omit this and mocks bleed between tests.
-		restoreMocks: true,
 		// Integration tests run via vitest.integration.config.mjs (real providers, long timeouts).
 		exclude: [...configDefaults.exclude, '**/__tests__/integration/**'],
 	}),

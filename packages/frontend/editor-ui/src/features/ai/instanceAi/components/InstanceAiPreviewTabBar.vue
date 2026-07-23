@@ -12,7 +12,7 @@ import {
 	TabsTrigger,
 } from 'reka-ui';
 import { computed, nextTick, ref, watch } from 'vue';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@/app/composables/useToast';
 import type { ArtifactTab } from '../useCanvasPreview';
 
@@ -169,12 +169,6 @@ async function handleCopyLink(tab: ArtifactTab) {
 </template>
 
 <style lang="scss" module>
-@property --left--fade {
-	syntax: '<length>';
-	inherits: false;
-	initial-value: 0;
-}
-
 @property --right--fade {
 	syntax: '<length>';
 	inherits: false;
@@ -182,13 +176,6 @@ async function handleCopyLink(tab: ArtifactTab) {
 }
 
 @keyframes scrollfade {
-	0.1% {
-		--left--fade: 0;
-	}
-	10%,
-	100% {
-		--left--fade: 3rem;
-	}
 	0%,
 	90% {
 		--right--fade: 3rem;
@@ -216,15 +203,14 @@ async function handleCopyLink(tab: ArtifactTab) {
 	overflow-x: auto;
 	scrollbar-width: none;
 	position: relative;
-	mask: linear-gradient(
-		to right,
-		#0000,
-		#ffff var(--left--fade) calc(100% - var(--right--fade)),
-		#0000
-	);
-	animation: scrollfade;
-	animation-timeline: --scrollfade;
-	scroll-timeline: --scrollfade x;
+
+	// Scroll-driven right edge fade only where supported.
+	@supports (animation-timeline: scroll()) {
+		mask: linear-gradient(to right, #ffff 0 calc(100% - var(--right--fade)), #0000);
+		animation: scrollfade;
+		animation-timeline: --scrollfade;
+		scroll-timeline: --scrollfade x;
+	}
 }
 
 .tab {

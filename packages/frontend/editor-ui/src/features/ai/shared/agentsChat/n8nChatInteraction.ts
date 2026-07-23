@@ -44,7 +44,7 @@ const INTERACTIVE_COMPONENT_TYPES = new Set<RichCardComponent['type']>([
 /**
  * Mirrors the backend's shouldAwaitResponse: explicit flag or interactive components.
  *
- * @see shouldAwaitResponse in packages/cli/src/modules/agents/integrations/integration-tools.ts
+ * @see shouldAwaitResponse in packages/cli/src/modules/agents/integrations/integration-tool-execution.ts
  */
 export function isAwaitingCard(card: N8nChatCard): boolean {
 	if (card.awaitResponse === true) return true;

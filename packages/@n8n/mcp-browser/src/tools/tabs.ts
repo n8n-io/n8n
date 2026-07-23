@@ -95,7 +95,7 @@ function tabFocus(connection: BrowserConnection): ToolDefinition {
 			const pages = await state.adapter.listTabs();
 			const target = pages.find((p) => p.id === input.pageId);
 			if (!target) {
-				const { PageNotFoundError } = await import('../errors');
+				const { PageNotFoundError } = await import('../errors.js');
 				throw new PageNotFoundError(input.pageId);
 			}
 			await state.adapter.focusPage(input.pageId);

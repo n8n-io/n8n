@@ -23,6 +23,9 @@ const mockedGetVariant = vi.fn(() => 'control');
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: vi.fn(() => ({
 		getVariant: mockedGetVariant,
+		// Read by ParameterInputList's per-node experiment gating (e.g. Telegram HITL),
+		// which every parameter type mounts through, including this fixedCollection one.
+		isFeatureEnabled: vi.fn(() => false),
 	})),
 }));
 
@@ -97,6 +100,7 @@ describe('FixedCollectionParameter.vue (Wrapper)', () => {
 		const mockPostHog = vi.mocked(usePostHog);
 		mockPostHog.mockReturnValue({
 			getVariant: vi.fn().mockReturnValue(COLLECTION_OVERHAUL_EXPERIMENT.variant),
+			isFeatureEnabled: vi.fn(() => false),
 		} as Partial<PosthogStore> as PosthogStore);
 
 		const { container } = renderComponent();

@@ -1,4 +1,4 @@
-import FileType from 'file-type';
+import { fileTypeFromBuffer } from 'file-type';
 
 import { synthesizeBinaryFixture } from '../eval-mock-fixtures';
 
@@ -22,7 +22,7 @@ describe('eval-mock-fixtures', () => {
 		});
 
 		describe('per-MIME magic bytes (file-type sniffing)', () => {
-			// Each row: contentType → expected { mime, ext } that FileType.fromBuffer must return.
+			// Each row: contentType → expected { mime, ext } that fileTypeFromBuffer must return.
 			// Validates that the fixture lib actually round-trips through prepareBinaryData's
 			// detector (binary-helper-functions.ts:303) so downstream nodes derive the right
 			// fileType / fileExtension.
@@ -35,8 +35,8 @@ describe('eval-mock-fixtures', () => {
 				{ contentType: 'application/zip', expect: { mime: 'application/zip', ext: 'zip' } },
 				{ contentType: 'application/gzip', expect: { mime: 'application/gzip', ext: 'gz' } },
 				{ contentType: 'audio/mpeg', expect: { mime: 'audio/mpeg', ext: 'mp3' } },
-				{ contentType: 'audio/wav', expect: { mime: 'audio/vnd.wave', ext: 'wav' } },
-				{ contentType: 'audio/ogg', expect: { mime: 'audio/opus', ext: 'opus' } },
+				{ contentType: 'audio/wav', expect: { mime: 'audio/wav', ext: 'wav' } },
+				{ contentType: 'audio/ogg', expect: { mime: 'audio/ogg; codecs=opus', ext: 'opus' } },
 				{ contentType: 'video/mp4', expect: { mime: 'video/mp4', ext: 'mp4' } },
 			];
 
@@ -44,7 +44,7 @@ describe('eval-mock-fixtures', () => {
 				'should produce a $contentType fixture that file-type sniffs as $expect.mime',
 				async ({ contentType, expect: expected }) => {
 					const buf = synthesizeBinaryFixture(contentType, `sample.${expected.ext}`);
-					const sniffed = await FileType.fromBuffer(buf);
+					const sniffed = await fileTypeFromBuffer(buf);
 					expect(sniffed).toBeDefined();
 					expect(sniffed?.mime).toBe(expected.mime);
 					expect(sniffed?.ext).toBe(expected.ext);
@@ -126,14 +126,14 @@ describe('eval-mock-fixtures', () => {
 			it('should pad PDF tails for sizeHint=medium without breaking mime-sniff', async () => {
 				const buf = synthesizeBinaryFixture('application/pdf', 'big.pdf', { sizeHint: 'medium' });
 				expect(buf.length).toBeGreaterThanOrEqual(64 * 1024);
-				const sniffed = await FileType.fromBuffer(buf);
+				const sniffed = await fileTypeFromBuffer(buf);
 				expect(sniffed?.mime).toBe('application/pdf');
 			});
 
 			it('should pad image/png tails for sizeHint=large without breaking mime-sniff', async () => {
 				const buf = synthesizeBinaryFixture('image/png', 'big.png', { sizeHint: 'large' });
 				expect(buf.length).toBeGreaterThanOrEqual(1024 * 1024);
-				const sniffed = await FileType.fromBuffer(buf);
+				const sniffed = await fileTypeFromBuffer(buf);
 				expect(sniffed?.mime).toBe('image/png');
 			});
 
@@ -203,7 +203,7 @@ describe('eval-mock-fixtures', () => {
 					'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 					'doc.docx',
 				);
-				const sniffed = await FileType.fromBuffer(buf);
+				const sniffed = await fileTypeFromBuffer(buf);
 				expect(sniffed?.mime).toBe('application/zip');
 			});
 		});

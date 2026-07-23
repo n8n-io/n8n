@@ -1,5 +1,8 @@
+import type { Mocked } from 'vitest';
 import type { InstanceRegistration } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
+import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
+import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
 
 import type { CheckService } from '../checks/check.service';
 import { InstanceRegistryController } from '../instance-registry.controller';
@@ -19,8 +22,8 @@ const makeRegistration = (overrides: Partial<InstanceRegistration> = {}): Instan
 
 describe('InstanceRegistryController', () => {
 	let controller: InstanceRegistryController;
-	let service: jest.Mocked<InstanceRegistryService>;
-	let checkService: jest.Mocked<CheckService>;
+	let service: Mocked<InstanceRegistryService>;
+	let checkService: Mocked<CheckService>;
 
 	beforeEach(() => {
 		service = mock<InstanceRegistryService>();
@@ -105,6 +108,18 @@ describe('InstanceRegistryController', () => {
 						severity: 'warning',
 					},
 				],
+			});
+		});
+	});
+
+	describe('route access scopes', () => {
+		it('gates getClusterInfo behind the orchestration:read global scope', () => {
+			const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
+				InstanceRegistryController as Controller,
+			);
+			expect(metadata.routes.get('getClusterInfo')?.accessScope).toEqual({
+				scope: 'orchestration:read',
+				globalOnly: true,
 			});
 		});
 	});

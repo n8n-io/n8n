@@ -11,11 +11,12 @@ import {
 import { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
 
-jest.mock('@n8n/mcp-apps/server', () => ({
+vi.mock('@n8n/mcp-apps/server', () => ({
 	WORKFLOW_PREVIEW_APP_URI: 'ui://workflow-preview/workflow-preview.html',
-	registerWorkflowPreviewApp: jest.fn(),
-	registerMcpAppTool: jest.fn(
+	registerWorkflowPreviewApp: vi.fn(),
+	registerMcpAppTool: vi.fn(
 		(server: { registerTool: (...args: unknown[]) => unknown }, name, config, handler) =>
 			server.registerTool(name, config, handler),
 	),
@@ -26,20 +27,18 @@ import {
 	registerWorkflowPreviewApp,
 	WORKFLOW_PREVIEW_APP_URI,
 } from '@n8n/mcp-apps/server';
-
 import { MCP_APPS_FLAG, MCP_APPS_VARIANT_CONTROL, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
 
 import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
-import { McpService } from '../mcp.service';
-import { NodeCatalogService } from '@/node-catalog';
-
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -49,8 +48,17 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { WorkflowService } from '@/workflows/workflow.service';
+
+import { McpService } from '../mcp.service';
+
+const mockAiGatewayService = () =>
+	mockInstance(AiGatewayService, {
+		isAvailable: vi.fn().mockResolvedValue({ available: false }),
+	});
 
 describe('McpService', () => {
 	let mcpService: McpService;
@@ -100,8 +108,11 @@ describe('McpService', () => {
 			mockInstance(TagService),
 			mockInstance(LicenseState),
 			mockInstance(PostHogClient),
+			mockInstance(WorkflowHistoryService),
 			mockInstance(WorkflowsConfig),
 			mockInstance(WorkflowPublishedDataService),
+			mockInstance(SubworkflowPolicyChecker),
+			mockAiGatewayService(),
 		);
 	});
 
@@ -146,8 +157,11 @@ describe('McpService', () => {
 				mockInstance(TagService),
 				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
+				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
+				mockInstance(SubworkflowPolicyChecker),
+				mockAiGatewayService(),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -259,7 +273,7 @@ describe('McpService', () => {
 			it('should attempt to stop active execution', async () => {
 				const executionId = 'exec-active';
 				const deferred = mcpService.createPendingResponse(executionId);
-				(activeExecutions.has as jest.Mock).mockReturnValue(true);
+				(activeExecutions.has as Mock).mockReturnValue(true);
 
 				// Attach error handler to prevent unhandled rejection
 				deferred.promise.catch(() => {});
@@ -308,7 +322,7 @@ describe('McpService', () => {
 
 	describe('resolveMcpAppsVariant', () => {
 		const buildResolutionService = (opts: {
-			postHogClient: jest.Mocked<PostHogClient>;
+			postHogClient: Mocked<PostHogClient>;
 			mcpAppsEnabled?: boolean;
 		}) =>
 			new McpService(
@@ -345,8 +359,11 @@ describe('McpService', () => {
 				mockInstance(TagService),
 				mockInstance(LicenseState),
 				opts.postHogClient,
+				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
+				mockInstance(SubworkflowPolicyChecker),
+				mockAiGatewayService(),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1' });
@@ -452,8 +469,11 @@ describe('McpService', () => {
 				mockInstance(TagService),
 				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
+				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
+				mockInstance(SubworkflowPolicyChecker),
+				mockAiGatewayService(),
 			);
 
 			const server = await service.getServer(user, false);
@@ -500,8 +520,11 @@ describe('McpService', () => {
 				mockInstance(TagService),
 				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
+				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
+				mockInstance(SubworkflowPolicyChecker),
+				mockAiGatewayService(),
 			);
 
 			const server = await service.getServer(user, false);
@@ -519,8 +542,8 @@ describe('McpService', () => {
 				builderEnabled?: boolean;
 				diagnosticsEnabled?: boolean;
 				instanceBaseUrl?: string;
-				postHogClient?: jest.Mocked<PostHogClient>;
-				telemetry?: jest.Mocked<Telemetry>;
+				postHogClient?: Mocked<PostHogClient>;
+				telemetry?: Mocked<Telemetry>;
 			};
 
 			const buildService = ({
@@ -531,7 +554,7 @@ describe('McpService', () => {
 				telemetry = mockInstance(Telemetry),
 			}: BuildServiceOpts = {}) => {
 				const urlService = mockInstance(UrlService);
-				(urlService.getInstanceBaseUrl as jest.Mock).mockReturnValue(instanceBaseUrl);
+				(urlService.getInstanceBaseUrl as Mock).mockReturnValue(instanceBaseUrl);
 
 				return new McpService(
 					mockLogger(),
@@ -572,14 +595,17 @@ describe('McpService', () => {
 					mockInstance(TagService),
 					mockInstance(LicenseState),
 					postHogClient,
+					mockInstance(WorkflowHistoryService),
 					mockInstance(WorkflowsConfig),
 					mockInstance(WorkflowPublishedDataService),
+					mockInstance(SubworkflowPolicyChecker),
+					mockAiGatewayService(),
 				);
 			};
 
 			beforeEach(() => {
-				(registerWorkflowPreviewApp as jest.Mock).mockClear();
-				(registerMcpAppTool as jest.Mock).mockClear();
+				(registerWorkflowPreviewApp as Mock).mockClear();
+				(registerMcpAppTool as Mock).mockClear();
 			});
 
 			it('registers the workflow preview app and wires it to the create-workflow tool when `mcpAppsEnabled` is true', async () => {
@@ -593,7 +619,7 @@ describe('McpService', () => {
 				expect(registerWorkflowPreviewApp).toHaveBeenCalledTimes(1);
 				expect(registerMcpAppTool).toHaveBeenCalledTimes(1);
 
-				const [, appOptions] = (registerWorkflowPreviewApp as jest.Mock).mock.calls[0] as [
+				const [, appOptions] = (registerWorkflowPreviewApp as Mock).mock.calls[0] as [
 					unknown,
 					{
 						instanceOrigin: string;
@@ -619,7 +645,7 @@ describe('McpService', () => {
 					}),
 				);
 
-				const [, toolName, toolConfig] = (registerMcpAppTool as jest.Mock).mock.calls[0];
+				const [, toolName, toolConfig] = (registerMcpAppTool as Mock).mock.calls[0];
 				expect(typeof toolName).toBe('string');
 				const meta = (toolConfig as { _meta: { ui: { resourceUri: string } } })._meta;
 				expect(meta.ui.resourceUri).toBe(WORKFLOW_PREVIEW_APP_URI);
@@ -634,7 +660,7 @@ describe('McpService', () => {
 
 				await service.getServer(user, true);
 
-				const [, appOptions] = (registerWorkflowPreviewApp as jest.Mock).mock.calls[0] as [
+				const [, appOptions] = (registerWorkflowPreviewApp as Mock).mock.calls[0] as [
 					unknown,
 					{
 						instanceOrigin?: string;
@@ -663,7 +689,7 @@ describe('McpService', () => {
 
 				await expect(service.getServer(user, true)).resolves.toBeDefined();
 
-				const [, appOptions] = (registerWorkflowPreviewApp as jest.Mock).mock.calls[0] as [
+				const [, appOptions] = (registerWorkflowPreviewApp as Mock).mock.calls[0] as [
 					unknown,
 					{
 						instanceOrigin?: string;
@@ -693,7 +719,7 @@ describe('McpService', () => {
 				const service = buildService({ telemetry });
 				await service.getServer(user, true, { name: 'Claude Desktop', version: '1.2.3' });
 
-				const [, appOptions] = (registerWorkflowPreviewApp as jest.Mock).mock.calls[0] as [
+				const [, appOptions] = (registerWorkflowPreviewApp as Mock).mock.calls[0] as [
 					unknown,
 					{ onResourceRead: () => void },
 				];

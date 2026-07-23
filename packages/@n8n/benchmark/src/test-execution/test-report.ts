@@ -3,6 +3,8 @@ import { nanoid } from 'nanoid';
 import { PrometheusMetricsParser } from '@/test-execution/prometheus-metrics-parser';
 import type { Scenario } from '@/types/scenario';
 
+import type { K6Check, K6CounterMetric, K6EndOfTestSummary, K6TrendMetric } from './k6-summary';
+
 export type K6Tag = {
 	name: string;
 	value: string;

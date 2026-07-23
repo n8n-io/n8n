@@ -22,10 +22,9 @@ type StubWorkflowNode = { type: string; name: string };
 type StubWorkflow = { nodes: StubWorkflowNode[] };
 type StubBuildResult = { workflow: StubWorkflow; tokensUsed: number; durationMs: number };
 
-const FIXTURE_PATH = join(
-	__dirname,
-	'../../../../../@n8n/instance-ai/evaluations/data/workflows/weather-alert.json',
-);
+// Local snapshot of the weather-alert case (the corpus lives in LangTracer;
+// this smoke spec only needs a stable fixture shape, not the live case).
+const FIXTURE_PATH = join(__dirname, 'fixtures/weather-alert.json');
 
 function loadFixture(): EvalFixture {
 	return JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as EvalFixture;

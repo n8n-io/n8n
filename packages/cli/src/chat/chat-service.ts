@@ -1,16 +1,11 @@
 import { Logger } from '@n8n/backend-common';
-import { timingSafeEqual } from 'crypto';
 import { IExecutionResponse } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { timingSafeEqual } from 'crypto';
 import { ErrorReporter } from 'n8n-core';
-import {
-	jsonParse,
-	UnexpectedError,
-	ensureError,
-	CHAT_NODE_TYPE,
-	CHAT_TOOL_NODE_TYPE,
-} from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { jsonParse, UnexpectedError, CHAT_NODE_TYPE, CHAT_TOOL_NODE_TYPE } from 'n8n-workflow';
 import { type RawData, WebSocket } from 'ws';
 import { z } from 'zod';
 

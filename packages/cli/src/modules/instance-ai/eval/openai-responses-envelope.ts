@@ -221,6 +221,123 @@ export function forwardTranslateToResponsesSseEvents(
 	return events;
 }
 
+/** True for the OpenAI Responses endpoint the openAi node calls directly over the wire. */
+export function isOpenAiResponsesUrl(url: string): boolean {
+	try {
+		const parsed = new URL(url);
+		return parsed.hostname === 'api.openai.com' && /^\/v\d+\/responses\/?$/.test(parsed.pathname);
+	} catch {
+		return false;
+	}
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Coerce one content part to `{ type: 'output_text', text, annotations }`. */
+function normalizeContentPart(part: unknown): Record<string, unknown> | undefined {
+	if (typeof part === 'string') return { type: 'output_text', text: part, annotations: [] };
+	if (!isPlainRecord(part)) return undefined;
+	const text = part.text;
+	if (typeof text !== 'string') return undefined;
+	return {
+		...part,
+		type: 'output_text',
+		text,
+		annotations: Array.isArray(part.annotations) ? part.annotations : [],
+	};
+}
+
+/**
+ * Canonicalize one output item. Responses-native `function_call` items are
+ * preserved (only missing ids filled); content-bearing items are coerced to a
+ * canonical assistant message; other typed items pass through untouched.
+ * Returns undefined for unsalvageable entries.
+ */
+function normalizeOutputItem(item: unknown, index: number): Record<string, unknown> | undefined {
+	if (!isPlainRecord(item)) return undefined;
+	if (item.type === 'function_call') {
+		if (typeof item.name !== 'string' || typeof item.arguments !== 'string') return undefined;
+		return {
+			...item,
+			id: typeof item.id === 'string' ? item.id : `fc_norm_${String(index)}`,
+			call_id: typeof item.call_id === 'string' ? item.call_id : `call_norm_${String(index)}`,
+		};
+	}
+	const content = item.content;
+	if (Array.isArray(content)) {
+		const parts = content
+			.map(normalizeContentPart)
+			.filter((part): part is Record<string, unknown> => part !== undefined);
+		if (parts.length === 0) return undefined;
+		return {
+			id: typeof item.id === 'string' ? item.id : `msg_norm_${String(index)}`,
+			type: 'message',
+			role: 'assistant',
+			status: 'completed',
+			content: parts,
+		};
+	}
+	// Unknown-but-typed items (e.g. reasoning): keep verbatim — the node ignores them.
+	if (typeof item.type === 'string') return { ...item };
+	return undefined;
+}
+
+/**
+ * Coerce a freeform LLM-generated mock body into the canonical Responses
+ * envelope. The openAi node's `response` operation is wire-intercepted (no
+ * protocol adapter runs), and generated bodies routinely miss the strict item
+ * shape (`type: 'message'`, `content[].type: 'output_text'`) the node's parser
+ * filters on — collapsing `output` to `[]`.
+ *
+ * Structure-preserving: bodies with an `output` array are fixed item-by-item so
+ * Responses-native tool calls survive; only shapeless bodies go through the
+ * full text-extraction rebuild. Error bodies pass through untouched (the real
+ * envelope carries `error: null`, so only a NON-null error marks a failure).
+ */
+export function normalizeOpenAiResponsesMockResponse(
+	mockResponse: EvalMockHttpResponse,
+	model: string,
+): EvalMockHttpResponse {
+	const body = mockResponse.body;
+	if (
+		isPlainRecord(body) &&
+		('_evalMockError' in body || (body.error !== null && body.error !== undefined))
+	) {
+		return mockResponse;
+	}
+
+	if (isPlainRecord(body) && Array.isArray(body.output)) {
+		const output = body.output
+			.map(normalizeOutputItem)
+			.filter((item): item is Record<string, unknown> => item !== undefined);
+		if (output.length > 0) {
+			return {
+				...mockResponse,
+				body: {
+					...body,
+					id:
+						typeof body.id === 'string'
+							? body.id
+							: `resp_${randomUUID().replace(/-/g, '').slice(0, 32)}`,
+					object: 'response',
+					status: 'completed',
+					model: typeof body.model === 'string' && body.model.length > 0 ? body.model : model,
+					created_at:
+						typeof body.created_at === 'number' ? body.created_at : Math.floor(Date.now() / 1000),
+					output,
+					usage: isPlainRecord(body.usage)
+						? body.usage
+						: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
+				},
+			};
+		}
+	}
+
+	return { ...mockResponse, body: forwardTranslateToResponsesEnvelope(mockResponse, model) };
+}
+
 /** Responses API uses the same error envelope as chat-completions, with `error.type` describing the failure. */
 export function buildResponsesErrorEnvelope(message: string): Record<string, unknown> {
 	return {

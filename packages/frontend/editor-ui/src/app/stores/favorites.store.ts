@@ -29,6 +29,10 @@ export const useFavoritesStore = defineStore(STORES.FAVORITES, () => {
 		favorites.value.filter((f) => f.resourceType === 'folder').map((f) => f.resourceId),
 	);
 
+	const agentFavoriteIds = computed(() =>
+		favorites.value.filter((f) => f.resourceType === 'agent').map((f) => f.resourceId),
+	);
+
 	async function fetchFavorites() {
 		if (initialized.value) return;
 		const currentPushRef = rootStore.restApiContext.pushRef;
@@ -96,6 +100,7 @@ export const useFavoritesStore = defineStore(STORES.FAVORITES, () => {
 		projectFavoriteIds,
 		dataTableFavoriteIds,
 		folderFavoriteIds,
+		agentFavoriteIds,
 		fetchFavorites,
 		isFavorite,
 		renameFavorite,

@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiRunSnapshot } from '../../entities/instance-ai-run-snapshot.entity';
 import type { InstanceAiRunSnapshotRepository } from '../../repositories/instance-ai-run-snapshot.repository';
@@ -26,7 +26,7 @@ describe('DbSnapshotStorage', () => {
 	const storage = new DbSnapshotStorage(repo);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('findLangsmithAnchor', () => {

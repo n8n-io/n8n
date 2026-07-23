@@ -30,6 +30,11 @@ export interface ToolExecutionContext {
 	abortSignal?: AbortSignal;
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: AgentExecutionCounter;
+	/**
+	 * Checkpointed suspend payload for a resumed interruptible tool call,
+	 * restored from persistence. Only set when the tool is being resumed.
+	 */
+	suspendPayload?: unknown;
 }
 
 export interface ToolContext {
@@ -74,6 +79,8 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	abortSignal?: ToolExecutionContext['abortSignal'];
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: ToolExecutionContext['executionCounter'];
+	/** The payload this tool passed to `suspend()` when it suspended, restored from the checkpoint. Only set when the tool is being resumed. */
+	suspendPayload?: S;
 }
 
 export interface BuiltTool {

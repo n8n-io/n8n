@@ -2,12 +2,13 @@ import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { createExecution } from '@test-integration/db/executions';
-import { createOwner } from '@test-integration/db/users';
 import { stringify, parse } from 'flatted';
 import { DateTime } from 'luxon';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { createEmptyRunExecutionData, createRunExecutionData } from 'n8n-workflow';
+
+import { createExecution } from '@test-integration/db/executions';
+import { createOwner } from '@test-integration/db/users';
 
 describe('UserRepository', () => {
 	let executionRepository: ExecutionRepository;

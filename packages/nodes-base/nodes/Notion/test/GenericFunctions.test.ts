@@ -18,6 +18,7 @@ import {
 	getPageId,
 	notionApiRequest,
 	notionApiRequestAllItems,
+	simplifyObjects,
 } from '../shared/GenericFunctions';
 import { versionDescription as versionDescriptionV1 } from '../v1/VersionDescription';
 import { versionDescription as versionDescriptionV2 } from '../v2/VersionDescription';
@@ -545,5 +546,84 @@ describe('Test Notion, notionApiRequestAllItems', () => {
 
 		expect(result).toEqual([{ id: '1' }, { id: '2' }]);
 		expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('Test Notion, simplifyObjects', () => {
+	const richText = (text: string) => ({
+		type: 'rich_text',
+		rich_text: [{ type: 'text', plain_text: text }],
+	});
+
+	const page = (properties: Record<string, unknown>) => ({
+		object: 'page',
+		id: 'page-id',
+		url: 'https://www.notion.so/page-id',
+		properties: {
+			Name: { type: 'title', title: [{ type: 'text', plain_text: 'Roadmap' }] },
+			...properties,
+		},
+	});
+
+	describe('v3 keeps change-case v5 Unicode-aware keys', () => {
+		it('preserves non-ASCII characters in simplified property keys', () => {
+			const result = simplifyObjects([page({ Prénom: richText('Jean') })], false, 3);
+
+			expect(result[0]).toMatchObject({ property_prénom: 'Jean' });
+		});
+
+		it.each([
+			['naïve', 'property_naïve'],
+			['café', 'property_café'],
+			['Mädchen', 'property_mädchen'],
+			['Köln', 'property_köln'],
+			['Prüfung', 'property_prüfung'],
+			['Straße', 'property_straße'],
+		])('keeps %s as %s', (propertyName, expectedKey) => {
+			const result = simplifyObjects([page({ [propertyName]: richText('x') })], false, 3);
+
+			expect(result[0]).toHaveProperty(expectedKey, 'x');
+		});
+	});
+
+	describe('earlier versions fold to the pre-v5 ASCII shape', () => {
+		it('folds non-ASCII characters in simplified property keys', () => {
+			const result = simplifyObjects([page({ Prénom: richText('Jean') })], false, 2);
+
+			expect(result[0]).toMatchObject({ property_pr_nom: 'Jean' });
+			expect(result[0]).not.toHaveProperty('property_prénom');
+		});
+
+		it('snake-cases ASCII property keys without folding', () => {
+			const result = simplifyObjects([page({ 'First Name': richText('Jean') })], false, 2);
+
+			expect(result[0]).toMatchObject({
+				property_name: 'Roadmap',
+				property_first_name: 'Jean',
+			});
+		});
+
+		// Decomposed input (base letter + combining mark) must fold like change-case v4,
+		// which kept the ASCII base letter — i.e. no NFC normalization first.
+		it('folds decomposed accents without normalizing', () => {
+			const decomposedPrenom = 'Pre\u0301nom'; // e + combining acute, not the composed é
+			const result = simplifyObjects([page({ [decomposedPrenom]: richText('Jean') })], false, 2);
+
+			expect(result[0]).toMatchObject({ property_pre_nom: 'Jean' });
+		});
+
+		it.each([
+			['naïve', 'property_na_ve'],
+			['café', 'property_caf'],
+			['Prix (€)', 'property_prix'],
+			['Mädchen', 'property_m_dchen'],
+			['Köln', 'property_k_ln'],
+			['Prüfung', 'property_pr_fung'],
+			['Straße', 'property_stra_e'],
+		])('folds %s to %s', (propertyName, expectedKey) => {
+			const result = simplifyObjects([page({ [propertyName]: richText('x') })], false, 2);
+
+			expect(result[0]).toHaveProperty(expectedKey, 'x');
+		});
 	});
 });

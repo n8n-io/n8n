@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 import { DataSource, In, LessThan, Repository } from '@n8n/typeorm';
 import { DiffMetaData, DiffRule, groupWorkflows, SKIP_RULES } from 'n8n-workflow';
 
-import { WorkflowHistory, WorkflowEntity } from '../entities';
+import { WorkflowHistory, WorkflowEntity, WorkflowPublishedVersion } from '../entities';
 import { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 
 @Service()
@@ -39,13 +39,23 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 			.where('w.activeVersionId IS NOT NULL')
 			.getQuery();
 
+		// Published versions carry an ON DELETE RESTRICT FK; deleting one aborts the
+		// whole statement, so they must be excluded like current and active versions.
+		const publishedVersionIdsSubquery = this.manager
+			.createQueryBuilder()
+			.subQuery()
+			.select('wpv.publishedVersionId')
+			.from(WorkflowPublishedVersion, 'wpv')
+			.getQuery();
+
 		const query = this.manager
 			.createQueryBuilder()
 			.delete()
 			.from(WorkflowHistory)
 			.where('createdAt < :date', { date })
 			.andWhere(`versionId NOT IN (${currentVersionIdsSubquery})`)
-			.andWhere(`versionId NOT IN (${activeVersionIdsSubquery})`);
+			.andWhere(`versionId NOT IN (${activeVersionIdsSubquery})`)
+			.andWhere(`versionId NOT IN (${publishedVersionIdsSubquery})`);
 
 		if (preserveNamedVersions) {
 			query.andWhere('name IS NULL');

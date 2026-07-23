@@ -1,4 +1,5 @@
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -14,8 +15,8 @@ function makeController({
 	agentTaskService = mock<AgentTaskService>(),
 	agentRepository = mock<AgentRepository>(),
 }: {
-	agentTaskService?: jest.Mocked<AgentTaskService>;
-	agentRepository?: jest.Mocked<AgentRepository>;
+	agentTaskService?: Mocked<AgentTaskService>;
+	agentRepository?: Mocked<AgentRepository>;
 } = {}) {
 	return {
 		controller: new AgentTasksController(agentTaskService, agentRepository),
@@ -130,7 +131,7 @@ describe('AgentTasksController tasks', () => {
 
 		const result = await controller.runTaskNow(runReq, undefined as never, 'agent-1', 'task-1');
 
-		expect(agentTaskService.runNow).toHaveBeenCalledWith('agent-1', 'task-1', 'user-1');
+		expect(agentTaskService.runNow).toHaveBeenCalledWith('agent-1', 'task-1', { id: 'user-1' });
 		expect(result).toEqual({ success: true });
 	});
 

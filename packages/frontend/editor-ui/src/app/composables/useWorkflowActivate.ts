@@ -8,6 +8,7 @@ import {
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -127,6 +128,10 @@ export function useWorkflowActivate() {
 				activeVersionId: updatedWorkflow.activeVersion.versionId,
 				activeVersion: updatedWorkflow.activeVersion,
 			});
+
+			if (useSettingsStore().isWorkflowPublicationServiceEnabled) {
+				workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
+			}
 
 			if (workflowId === currentWorkflowId.value) {
 				workflowDocumentStore.setVersionData({

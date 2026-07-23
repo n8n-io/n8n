@@ -1,0 +1,21 @@
+{
+	"name": "Photo",
+	"table": {
+		"name": "photo"
+	},
+	"columns": {
+		"id": {
+			"type": "int",
+			"primary": true,
+			"generated": true
+		},
+		"description": {
+			"type": "varchar",
+			"nullable": false
+		},
+		"url": {
+			"type": "varchar",
+			"nullable": false
+		}
+	}
+}

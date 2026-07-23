@@ -1,4 +1,4 @@
-import { findPlaceholderDetails } from '@n8n/utils';
+import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 import type { INodeUi } from '@/Interface';
 import type { INodeParameters, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';

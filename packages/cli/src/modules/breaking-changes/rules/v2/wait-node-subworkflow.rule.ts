@@ -4,10 +4,10 @@ import type {
 	BreakingChangeWorkflowIssue,
 } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
+import { BreakingChangeRule } from '@n8n/decorators';
 import type { INode, INodeParameters } from 'n8n-workflow';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
-import { BreakingChangeRule } from '@n8n/decorators';
 import type {
 	BatchWorkflowDetectionReport,
 	BreakingChangeRuleMetadata,

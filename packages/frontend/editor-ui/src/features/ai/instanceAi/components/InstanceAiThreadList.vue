@@ -294,10 +294,16 @@ function handleThreadAction(action: string, threadId: string) {
 	border-radius: var(--radius);
 	transition: background-color 0.1s ease;
 
-	&:hover,
 	&:focus-within,
 	&:has([aria-expanded='true']) {
 		background-color: var(--color--background--light-1);
+	}
+
+	// Gate hover to hover-capable devices so touch doesn't need a first tap to clear sticky hover
+	@media (hover: hover) {
+		&:hover {
+			background-color: var(--color--background--light-1);
+		}
 	}
 
 	&.active {

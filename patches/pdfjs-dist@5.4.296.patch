@@ -1,0 +1,27 @@
+diff --git a/legacy/build/pdf.mjs b/legacy/build/pdf.mjs
+index d0c1864edb1d3a042468fd3f8ca98f9b52b67a1b..e26bc47c11e5ce612a7f6f4fead34e04473e68f1 100644
+--- a/legacy/build/pdf.mjs
++++ b/legacy/build/pdf.mjs
+@@ -14336,9 +14336,9 @@ class AnnotationEditor {
+ if (isNodeJS) {
+   let canvas;
+   try {
+-    const require = process.getBuiltinModule("module").createRequire(import.meta.url);
++    const _require = process.getBuiltinModule("module").createRequire(import.meta.url);
+     try {
+-      canvas = require("@napi-rs/canvas");
++      canvas = _require("@napi-rs/canvas");
+     } catch (ex) {
+       warn(`Cannot load "@napi-rs/canvas" package: "${ex}".`);
+     }
+@@ -14382,8 +14382,8 @@ async function node_utils_fetchData(url) {
+ class NodeFilterFactory extends BaseFilterFactory {}
+ class NodeCanvasFactory extends BaseCanvasFactory {
+   _createCanvas(width, height) {
+-    const require = process.getBuiltinModule("module").createRequire(import.meta.url);
+-    const canvas = require("@napi-rs/canvas");
++    const _require = process.getBuiltinModule("module").createRequire(import.meta.url);
++    const canvas = _require("@napi-rs/canvas");
+     return canvas.createCanvas(width, height);
+   }
+ }

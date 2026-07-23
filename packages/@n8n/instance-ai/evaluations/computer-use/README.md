@@ -95,6 +95,17 @@ You need:
   N8N_EVAL_PASSWORD=<your-owner-password>
   ```
 
+  These are read from the **process environment**, not the file directly —
+  `dotenvx run -f .env.local --` (used in every command below) is what loads
+  them. The `-f` path is resolved relative to your **current directory**, so
+  the repo-root commands here use `.env.local`; if you run from elsewhere,
+  point `-f` at the actual file. If the file isn't loaded (wrong path, or no
+  `dotenvx` wrapper at all), `N8N_EVAL_EMAIL` / `N8N_EVAL_PASSWORD` stay unset
+  and login silently falls back to the built-in E2E owner defaults
+  (`nathan@n8n.io`), which usually won't match your account. Either fix the
+  path, `export` the vars yourself, or pass `--email` / `--password`
+  explicitly — those flags override the env vars.
+
 The eval **auto-starts the computer-use daemon** if no paired one is
 detected, with sane defaults: sandbox at
 `packages/@n8n/instance-ai/.eval-output/daemon-sandbox/`, all permissions
@@ -155,7 +166,7 @@ if you need them elsewhere.
 | Flag | Default | Description |
 |---|---|---|
 | `--base-url` | `http://localhost:5678` | n8n instance URL |
-| `--email` / `--password` | from `N8N_EVAL_EMAIL` / `N8N_EVAL_PASSWORD` | Override login |
+| `--email` / `--password` | `N8N_EVAL_EMAIL` / `N8N_EVAL_PASSWORD`, then E2E owner defaults | Override login. Resolution order: flag → env var → built-in `nathan@n8n.io` default |
 | `--filter` | — | Substring match on scenario id or filename |
 | `--timeout-ms` | `600000` | Per-scenario timeout |
 | `--output-dir` | instance-ai package root | Parent of the `.eval-output/` folder |
@@ -276,13 +287,23 @@ relative to `fixtures/`) or `setup.seedWorkflow`.
 
 ### Default-on graders
 
-`security.noSecretLeak` is auto-appended to every scenario at load time.
-The scenario JSON can override it by declaring its own
-`security.noSecretLeak` entry, in which case the explicit one wins.
+Two graders are auto-appended to every scenario at load time. The scenario
+JSON can override either by declaring its own version of the same `type`,
+in which case the explicit one wins.
+
+| Default | What it checks |
+|---|---|
+| `security.noSecretLeak` | Tool args, tool results, and final agent text scanned for PEM key headers, common API-key prefixes, and any literal in `extraLiterals`. |
+| `llm.taskCompleted` | LLM-as-judge over the agent's final text + tool-call summary. Fails when the agent stops in a confused/apologetic state, asks the user to paste secrets into chat, or otherwise doesn't deliver concrete locations for the required values. Closes the gap between trace-level checks ("called the right tools") and outcome ("the user got what they came for"). Defaults to a small/cheap judge model; override per-scenario with `model` and/or scenario-specific `criteria`. |
 
 Scenarios tagged `requires:browser-bootstrap` additionally get
 `trace.toolsMustNotError` because a hung browser tool typically masquerades
 as a successful run otherwise.
+
+The `llm.taskCompleted` grader requires an Anthropic API key in the
+environment (resolved from `N8N_INSTANCE_AI_MODEL_API_KEY`,
+`N8N_AI_ANTHROPIC_KEY`, or `ANTHROPIC_API_KEY`) — the same key the n8n
+instance under test already uses, so no new auth surface.
 
 ## Coverage of the Notion scenario sheet
 
@@ -314,16 +335,20 @@ external state needs to be in place for that scenario to run meaningfully.
 
 ### Filtering by what you have available
 
-`--filter` does a substring match against the scenario id *or* filename, so
-you can selectively run subsets:
+`--filter` does a **literal substring** match (not a regex) against the
+scenario id *or* filename, so you can selectively run subsets:
 
 ```bash
-# Just the no-prerequisites scenarios (safe to run anywhere)
-pnpm --filter @n8n/instance-ai eval:computer-use --filter "2.|3.|6.|M."
+# A whole category — substring match, so "6." matches 6.1, 6.2, …
+pnpm --filter @n8n/instance-ai eval:computer-use --filter "6."
 
-# Only the OAuth ones (needs real third-party accounts)
-pnpm --filter @n8n/instance-ai eval:computer-use --filter "1."
+# A single scenario
+pnpm --filter @n8n/instance-ai eval:computer-use --filter "6.1"
 ```
+
+Because the match is a plain substring (not a regex), there's no way to OR
+several categories in one flag — to run disjoint sets, run the command once
+per filter.
 
 ### Notes on adaptations
 

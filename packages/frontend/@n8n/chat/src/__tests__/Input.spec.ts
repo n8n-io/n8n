@@ -155,4 +155,110 @@ describe('ChatInput', () => {
 
 		expect(wrapper.vm.isSubmitting).toBe(false);
 	});
+
+	describe('WebSocket frame handling (backward compatible)', () => {
+		// The shared vi.fn WebSocket mock doesn't return its object from `new`, so
+		// use a class that returns a captured instance we can drive directly.
+		let ws: { send: ReturnType<typeof vi.fn>; onmessage: ((e: { data: string }) => void) | null };
+		const emit = (data: string) => ws.onmessage?.({ data });
+
+		beforeEach(() => {
+			ws = { send: vi.fn(), onmessage: null };
+			class FakeWebSocket {
+				constructor() {
+					return ws;
+				}
+			}
+			// @ts-expect-error - mock WebSocket
+			global.WebSocket = FakeWebSocket;
+			wrapper = mount(Input);
+			wrapper.vm.setupWebsocketConnection('exec-123');
+		});
+
+		it('acks a legacy string heartbeat with the legacy ack', () => {
+			emit('n8n|heartbeat');
+
+			expect(ws.send).toHaveBeenCalledWith('n8n|heartbeat-ack');
+			expect(wrapper.vm.chatStore.messages.value).toHaveLength(0);
+		});
+
+		it('acks a JSON heartbeat frame with a JSON ack', () => {
+			emit(JSON.stringify({ type: 'heartbeat' }));
+
+			expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ type: 'heartbeat-ack' }));
+			expect(wrapper.vm.chatStore.messages.value).toHaveLength(0);
+		});
+
+		it('treats a legacy continue frame as control, not a message', () => {
+			emit('n8n|heartbeat'); // locks legacy mode
+			emit('n8n|continue');
+
+			expect(wrapper.vm.chatStore.messages.value).toHaveLength(0);
+			expect(wrapper.vm.chatStore.waitingForResponse.value).toBe(true);
+		});
+
+		it('treats a JSON continue frame as control once JSON mode is established', () => {
+			emit(JSON.stringify({ type: 'heartbeat' })); // locks JSON mode
+			emit(JSON.stringify({ type: 'continue' }));
+
+			expect(wrapper.vm.chatStore.messages.value).toHaveLength(0);
+			expect(wrapper.vm.chatStore.waitingForResponse.value).toBe(true);
+		});
+
+		it('renders JSON that looks like a control frame as a message when the server is legacy', () => {
+			emit('n8n|heartbeat'); // locks legacy mode (single legacy ack)
+			emit(JSON.stringify({ type: 'continue' }));
+			emit(JSON.stringify({ type: 'heartbeat' }));
+
+			// Both are rendered as text, not swallowed or acked as control frames
+			expect(wrapper.vm.chatStore.messages.value).toHaveLength(2);
+			expect(wrapper.vm.chatStore.messages.value[0]).toMatchObject({
+				sender: 'bot',
+				text: JSON.stringify({ type: 'continue' }),
+			});
+			expect(wrapper.vm.chatStore.messages.value[1]).toMatchObject({
+				sender: 'bot',
+				text: JSON.stringify({ type: 'heartbeat' }),
+			});
+			expect(ws.send).toHaveBeenCalledTimes(1);
+			expect(ws.send).toHaveBeenCalledWith('n8n|heartbeat-ack');
+		});
+
+		it('keeps JSON mode when a stray legacy heartbeat arrives later', () => {
+			emit(JSON.stringify({ type: 'heartbeat' })); // locks JSON mode
+			emit('n8n|heartbeat'); // stray legacy frame — must NOT flip the mode
+			emit(JSON.stringify({ type: 'continue' }));
+
+			// the stray legacy heartbeat renders as a message; JSON control still works
+			expect(wrapper.vm.chatStore.messages.value).toHaveLength(1);
+			expect(wrapper.vm.chatStore.messages.value[0]).toMatchObject({
+				sender: 'bot',
+				text: 'n8n|heartbeat',
+			});
+			expect(wrapper.vm.chatStore.waitingForResponse.value).toBe(true);
+			// only the JSON ack from the real heartbeat — no legacy ack for the stray
+			expect(ws.send).toHaveBeenCalledTimes(1);
+			expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ type: 'heartbeat-ack' }));
+		});
+
+		it('renders a JSON message frame as bot text', () => {
+			emit(JSON.stringify({ type: 'message', text: 'Hello' }));
+
+			expect(wrapper.vm.chatStore.messages.value).toHaveLength(1);
+			expect(wrapper.vm.chatStore.messages.value[0]).toMatchObject({
+				sender: 'bot',
+				text: 'Hello',
+			});
+		});
+
+		it('renders a legacy raw-string message as bot text', () => {
+			emit('Just some text');
+
+			expect(wrapper.vm.chatStore.messages.value).toHaveLength(1);
+			expect(wrapper.vm.chatStore.messages.value[0]).toMatchObject({
+				sender: 'bot',
+				text: 'Just some text',
+			});
+		});
+	});
 });

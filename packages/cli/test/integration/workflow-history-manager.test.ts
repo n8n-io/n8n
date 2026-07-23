@@ -30,7 +30,7 @@ describe('Workflow History Manager', () => {
 
 	beforeEach(async () => {
 		await testDb.truncate(['WorkflowEntity', 'WorkflowHistory', 'WorkflowPublishHistory']);
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		globalConfig.workflowHistory.pruneTime = -1;
 
@@ -42,21 +42,21 @@ describe('Workflow History Manager', () => {
 	});
 
 	test('should prune on interval', () => {
-		const pruneSpy = jest.spyOn(manager, 'prune');
+		const pruneSpy = vi.spyOn(manager, 'prune');
 		const currentCount = pruneSpy.mock.calls.length;
 
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 		manager.init();
 
-		jest.runOnlyPendingTimers();
+		vi.runOnlyPendingTimers();
 		expect(pruneSpy).toBeCalledTimes(currentCount + 1);
 
-		jest.runOnlyPendingTimers();
+		vi.runOnlyPendingTimers();
 		expect(pruneSpy).toBeCalledTimes(currentCount + 2);
 
 		manager.shutdown();
-		jest.clearAllTimers();
-		jest.useRealTimers();
+		vi.clearAllTimers();
+		vi.useRealTimers();
 		pruneSpy.mockRestore();
 	});
 
@@ -233,7 +233,7 @@ describe('Workflow History Manager', () => {
 	const pruneAndAssertCount = async (finalCount = 10, initialCount = 10) => {
 		expect(await repo.count()).toBe(initialCount);
 
-		const deleteSpy = jest.spyOn(repo, 'deleteEarlierThanExceptCurrentAndActive');
+		const deleteSpy = vi.spyOn(repo, 'deleteEarlierThanExceptCurrentAndActive');
 		await manager.prune();
 
 		if (initialCount === finalCount) {

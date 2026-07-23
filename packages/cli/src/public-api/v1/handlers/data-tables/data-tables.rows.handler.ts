@@ -52,6 +52,7 @@ type DataTableRowsHandlers = {
 	insertDataTableRows: PublicAPIEndpoint<DataTableRequest.InsertRows>;
 	updateDataTableRows: PublicAPIEndpoint<DataTableRequest.UpdateRows>;
 	upsertDataTableRow: PublicAPIEndpoint<DataTableRequest.UpsertRow>;
+	clearDataTableRows: PublicAPIEndpoint<DataTableRequest.Clear>;
 	deleteDataTableRows: PublicAPIEndpoint<DataTableRequest.DeleteRows>;
 };
 
@@ -183,6 +184,25 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 					: returnData
 						? await service.upsertRow(dataTableId, projectId, params, true, false)
 						: await service.upsertRow(dataTableId, projectId, params, false, false);
+
+				return res.json(result);
+			} catch (error) {
+				return handleError(error);
+			}
+		},
+	],
+
+	clearDataTableRows: [
+		publicApiScope('dataTableRow:delete'),
+		projectScope('dataTable:writeRow', 'dataTable'),
+		async (req, res) => {
+			try {
+				const { dataTableId } = req.params;
+
+				const projectId =
+					await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
+
+				const result = await Container.get(DataTableService).clearRows(dataTableId, projectId);
 
 				return res.json(result);
 			} catch (error) {

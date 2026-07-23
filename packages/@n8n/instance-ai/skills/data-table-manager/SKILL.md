@@ -16,8 +16,8 @@ platforms:
 # Data Table Manager
 
 Use this skill to build and maintain n8n Data Tables in the current turn with
-`data-tables` and, for attachments, `parse-file`. Do not delegate, spawn a
-sub-agent, or create a background plan for data-table-only work.
+`data-tables` and, for attachments, `parse-file`. Do not spawn another agent or
+create a background plan for data-table-only work.
 
 Also load this skill before planning or building a workflow whose trigger,
 processing steps, or outputs create, inspect, or write Data Table records, then
@@ -40,7 +40,7 @@ can target rows with narrow filters.
 4. Inspect schema before writes, deletes, column changes, imports into an
    existing table, and workflow-facing summaries.
 5. Execute the smallest direct tool sequence. Prefer read -> decide -> write;
-   never use create-tasks or delegate for standalone table work.
+   never use create-tasks for standalone table work.
 6. Close with facts: table name, table ID when available, project if relevant,
    columns changed, row counts inserted/updated/deleted, skipped rows, and any
    approval or permission blocker.

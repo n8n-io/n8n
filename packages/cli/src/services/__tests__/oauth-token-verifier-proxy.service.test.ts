@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { OAuthTokenVerifier } from '../oauth-token-verifier-proxy.service';
 import { OAuthTokenVerifierProxy } from '../oauth-token-verifier-proxy.service';

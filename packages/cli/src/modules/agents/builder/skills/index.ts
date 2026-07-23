@@ -1,16 +1,22 @@
 import type { RuntimeSkill } from '@n8n/agents';
 
+import { customToolsSkill } from './custom-tools.skill';
 import { integrationsSkill } from './integrations.skill';
 import { mcpSkill } from './mcp.skill';
+import { memorySkill } from './memory.skill';
+import { nodeToolsSkill } from './node-tools.skill';
 import { resourceLocatorsSkill } from './resource-locators.skill';
 import { subAgentsSkill } from './sub-agents.skill';
 import { targetSkillsSkill } from './target-skills.skill';
 import { targetTasksSkill } from './target-tasks.skill';
 
 export function getBuilderRuntimeSkills(): RuntimeSkill[] {
-	const skills: RuntimeSkill[] = [
+	return [
+		customToolsSkill(),
 		integrationsSkill(),
 		mcpSkill(),
+		memorySkill(),
+		nodeToolsSkill(),
 		resourceLocatorsSkill(),
 		subAgentsSkill(),
 		targetSkillsSkill(),
@@ -20,6 +26,4 @@ export function getBuilderRuntimeSkills(): RuntimeSkill[] {
 		// instead of merely loading instructions that tell it to research.
 		// researchSkill(),
 	];
-
-	return skills;
 }

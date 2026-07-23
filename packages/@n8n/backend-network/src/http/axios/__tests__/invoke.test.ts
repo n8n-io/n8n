@@ -49,9 +49,9 @@ describe('invokeAxios', () => {
 	});
 
 	it('should handle digest auth when receiving 401 with nonce', async () => {
-		nock(baseUrl)
+		// The first request must stay unauthenticated so the server issues its challenge.
+		nock(baseUrl, { badheaders: ['authorization'] })
 			.get('/test')
-			.matchHeader('authorization', 'Basic dXNlcjpwYXNz')
 			.once()
 			.reply(401, {}, { 'www-authenticate': 'Digest realm="test", nonce="abc123", qop="auth"' });
 
@@ -73,6 +73,21 @@ describe('invokeAxios', () => {
 			},
 			false,
 		);
+
+		expect(response.status).toBe(200);
+		expect(response.data).toEqual({ success: true });
+	});
+
+	it('should send credentials on the first request when authSendImmediately is not false', async () => {
+		nock(baseUrl)
+			.get('/test')
+			.matchHeader('authorization', 'Basic dXNlcjpwYXNz')
+			.reply(200, { success: true });
+
+		const response = await invokeAxios({
+			url: `${baseUrl}/test`,
+			auth: { username: 'user', password: 'pass' },
+		});
 
 		expect(response.status).toBe(200);
 		expect(response.data).toEqual({ success: true });

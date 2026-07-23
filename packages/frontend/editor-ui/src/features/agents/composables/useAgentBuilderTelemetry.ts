@@ -46,8 +46,9 @@ const TRACKED_CONFIG_KEYS = [
 	'memory',
 	'tools',
 	'skills',
+	'subAgents',
 	'name',
-	'description',
+	'vectorStores',
 ] as const satisfies ReadonlyArray<keyof AgentJsonConfig & AgentConfigPart>;
 
 /**

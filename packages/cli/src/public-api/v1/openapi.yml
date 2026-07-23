@@ -1,5 +1,6 @@
 ---
 openapi: 3.0.0
+x-enable-proxy: false
 info:
   title: n8n Public API
   description: n8n Public API
@@ -15,41 +16,65 @@ externalDocs:
   url: https://docs.n8n.io/api/
 servers:
   - url: /api/v1
+    description: Current n8n instance (self-hosted built-in playground)
+  - url: '{url}/api/v1'
+    description: Self-hosted n8n instance
+    variables:
+      url:
+        default: https://example.com
 tags:
-  - name: User
-    description: Operations about users
   - name: Audit
     description: Operations about security audit
-  - name: Execution
-    description: Operations about executions
-  - name: Workflow
-    description: Operations about workflows
-  - name: Credential
-    description: Operations about credentials
-  - name: Tags
-    description: Operations about tags
-  - name: SourceControl
-    description: Operations about source control
-  - name: Variables
-    description: Operations about variables
-  - name: DataTable
-    description: Operations about data tables and their rows
-  - name: Projects
-    description: Operations about projects
   - name: CommunityPackage
     description: Operations about community packages
+  - name: Credential
+    description: Operations about credentials
+  - name: DataTable
+    description: Operations about data tables and their rows
   - name: Discover
     description: API capability discovery
-  - name: Insights
-    description: Operations about insights
+  - name: Evaluation
+    description: Operations about evaluation test runs
+  - name: Execution
+    description: Operations about executions
   - name: Folders
     description: Operations about folders
+  - name: Insights
+    description: Operations about insights
+  - name: LogStreaming
+    description: Operations about log streaming destinations
   - name: N8nPackage
-    description: Beta — operations about n8n packages. Disabled by default; enable with `N8N_PUBLIC_API_PACKAGES_ENABLED=true`.
+    description: Beta — breaking changes may still occur without major version bump.
+  - name: Projects
+    description: Operations about projects
+  - name: SecurityPolicy
+    description: Operations about the instance security policy settings
+  - name: SettingsOtel
+    description: Operations about OpenTelemetry settings
+  - name: SettingsSsoSaml
+    description: Operations about SAML SSO settings
+  - name: SourceControl
+    description: Operations about source control
+  - name: Tags
+    description: Operations about tags
+  - name: User
+    description: Operations about users
+  - name: Variables
+    description: Operations about variables
+  - name: Workflow
+    description: Operations about workflows
 
 paths:
   /audit:
     $ref: './handlers/audit/spec/paths/audit.yml'
+  /settings/security-policy:
+    $ref: './handlers/security-policy/spec/paths/security-policy.yml'
+  /settings/otel:
+    $ref: './handlers/otel/spec/paths/settings.otel.yml'
+  /settings/otel/test-trace:
+    $ref: './handlers/otel/spec/paths/settings.otel.test-trace.yml'
+  /settings/sso/saml:
+    $ref: './handlers/sso-saml/spec/paths/settings.sso.saml.yml'
   /credentials:
     $ref: './handlers/credentials/spec/paths/credentials.yml'
   /credentials/{id}:
@@ -94,6 +119,14 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.id.transfer.yml'
   /workflows/{id}/tags:
     $ref: './handlers/workflows/spec/paths/workflows.id.tags.yml'
+  /workflows/{id}/test-runs:
+    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.yml'
+  /workflows/{id}/test-runs/{runId}:
+    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.yml'
+  /workflows/{id}/test-runs/{runId}/cancel:
+    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.cancel.yml'
+  /workflows/{id}/test-runs/{runId}/test-cases:
+    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.test-cases.yml'
   /users:
     $ref: './handlers/users/spec/paths/users.yml'
   /users/{id}:
@@ -116,6 +149,8 @@ paths:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.update.yml'
   /data-tables/{dataTableId}/rows/upsert:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.upsert.yml'
+  /data-tables/{dataTableId}/rows/clear:
+    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.clear.yml'
   /data-tables/{dataTableId}/rows/delete:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.delete.yml'
   /data-tables/{dataTableId}/columns:
@@ -146,6 +181,14 @@ paths:
     $ref: './handlers/n8n-packages/spec/paths/n8n-packages.export.yml'
   /n8n-packages/import:
     $ref: './handlers/n8n-packages/spec/paths/n8n-packages.import.yml'
+  /settings/log-streaming/event-types:
+    $ref: './handlers/log-streaming/spec/paths/event-types.yml'
+  /settings/log-streaming/destinations:
+    $ref: './handlers/log-streaming/spec/paths/destinations.yml'
+  /settings/log-streaming/destinations/{id}/test:
+    $ref: './handlers/log-streaming/spec/paths/destinations.id.test.yml'
+  /settings/log-streaming/destinations/{id}:
+    $ref: './handlers/log-streaming/spec/paths/destinations.id.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'

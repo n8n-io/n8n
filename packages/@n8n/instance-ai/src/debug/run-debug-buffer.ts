@@ -1,4 +1,4 @@
-import { scrubSecretsInText } from '@n8n/utils';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import type { OnStepFinishEvent, OnStepStartEvent } from 'ai';
 
 import type { Logger } from '../logger';

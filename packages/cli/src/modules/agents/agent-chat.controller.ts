@@ -91,7 +91,7 @@ export class AgentChatController {
 					agentId,
 					projectId,
 					message,
-					userId: req.user.id,
+					user: req.user,
 					memory: {
 						threadId,
 						resourceId: draftChatMemoryResourceId(req.user.id),
@@ -130,7 +130,7 @@ export class AgentChatController {
 					runId,
 					toolCallId,
 					resumeData,
-					userId: req.user.id,
+					user: req.user,
 					usePublishedVersion: false,
 					integrationType: N8N_CHAT_INTEGRATION_TYPE,
 				}),

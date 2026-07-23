@@ -1,12 +1,4 @@
 import { test, expect } from '../../../fixtures/base';
-import type { n8nPage } from '../../../pages/n8nPage';
-
-// Helper functions for common operations
-async function waitForWorkflowSuccess(n8n: n8nPage, timeout = 10000) {
-	await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
-		timeout,
-	});
-}
 
 test.use({ capability: 'proxy' });
 test.describe(
@@ -30,7 +22,10 @@ test.describe(
 				await n8n.canvas.deselectAll();
 
 				await n8n.canvas.executeNode('Populate VS');
-				await waitForWorkflowSuccess(n8n);
+				await expect(n8n.canvas.getNodeSuccessStatusIndicator('Populate VS')).toBeVisible({
+					timeout: 30_000,
+				});
+				await n8n.notifications.quickCloseAll();
 
 				const assertInputOutputTextExists = async (text: string) => {
 					await expect(n8n.ndv.getOutputPanel()).toContainText(text);
@@ -85,13 +80,13 @@ test.describe(
 				await n8n.canvas.clickZoomToFitButton();
 
 				// Check that chat modal is not initially visible
-				await expect(n8n.canvas.getManualChatModal().getByTestId('canvas-chat-body')).toBeHidden();
+				await expect(n8n.canvas.manualChat.getBody()).toBeHidden();
 
 				// Open Node 1 and execute it
 				await n8n.canvas.openNode('Node 1');
 				await n8n.ndv.execute();
 				// Chat modal should now be visible
-				await expect(n8n.canvas.getManualChatModal().getByTestId('canvas-chat-body')).toBeVisible();
+				await expect(n8n.canvas.manualChat.getBody()).toBeVisible();
 
 				// Send first message
 				await n8n.canvas.logsPanel.sendManualChatMessage('Test');

@@ -15,6 +15,8 @@ import {
 	FolderRepository,
 	ProjectRelationRepository,
 	ProjectRepository,
+	RoleMappingRuleRepository,
+	RoleRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 } from '@n8n/db';
@@ -27,6 +29,10 @@ import {
 	type Scope,
 } from '@n8n/permissions';
 import { EntityNotFoundError } from '@n8n/typeorm';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
 import { createFolder } from '@test-integration/db/folders';
 
 import {
@@ -36,10 +42,6 @@ import {
 } from './shared/db/credentials';
 import { createChatUser, createMember, createOwner, createUser } from './shared/db/users';
 import * as utils from './shared/utils/';
-
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
@@ -54,7 +56,7 @@ const testServer = utils.setupTestServer({
 	},
 });
 
-// The `ActiveWorkflowRunner` keeps the event loop alive, which in turn leads to jest not shutting down cleanly.
+// The `ActiveWorkflowRunner` keeps the event loop alive, which in turn leads to vi not shutting down cleanly.
 // We don't need it for the tests here, so we can mock it and make the tests exit cleanly.
 mockInstance(ActiveWorkflowManager);
 
@@ -357,9 +359,10 @@ describe('Project members endpoints', () => {
 			savedConfig = { ...provisioningService.provisioningConfig };
 		});
 
-		afterEach(() => {
+		afterEach(async () => {
 			// @ts-expect-error - provisioningConfig is private
 			provisioningService.provisioningConfig = { ...savedConfig };
+			await Container.get(RoleMappingRuleRepository).delete({});
 		});
 
 		test('should return 403 when SSO provider controls project roles', async () => {
@@ -386,6 +389,20 @@ describe('Project members endpoints', () => {
 			const member = await createUser();
 			const project = await createTeamProject('Team Project', owner);
 			await linkUserToProject(member, project, 'project:viewer');
+
+			// Expression mapping only manages project roles when project-type rules exist.
+			const editorRole = await Container.get(RoleRepository).findOneOrFail({
+				where: { slug: 'project:editor' },
+			});
+			const ruleRepository = Container.get(RoleMappingRuleRepository);
+			const rule = ruleRepository.create({
+				expression: '{{ true }}',
+				role: editorRole,
+				type: 'project',
+				order: 0,
+			});
+			rule.projects = [project];
+			await ruleRepository.save(rule);
 
 			const ownerAgent = testServer.authAgentFor(owner);
 			await ownerAgent

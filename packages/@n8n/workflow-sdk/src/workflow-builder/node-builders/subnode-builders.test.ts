@@ -20,7 +20,7 @@ describe('subnode factories', () => {
 
 	beforeAll(async () => {
 		try {
-			subnodeBuilders = await import('./subnode-builders');
+			subnodeBuilders = await import('./subnode-builders.js');
 		} catch {
 			// Module doesn't exist yet - tests will fail as expected in TDD
 		}
@@ -224,7 +224,7 @@ describe('SubnodeConfig type safety', () => {
 
 	beforeAll(async () => {
 		try {
-			subnodeBuilders = await import('./subnode-builders');
+			subnodeBuilders = await import('./subnode-builders.js');
 		} catch {
 			// Module doesn't exist yet
 		}
@@ -287,8 +287,8 @@ describe('subnode integration with node builder', () => {
 
 	beforeAll(async () => {
 		try {
-			subnodeBuilders = await import('./subnode-builders');
-			nodeBuilders = await import('./node-builder');
+			subnodeBuilders = await import('./subnode-builders.js');
+			nodeBuilders = await import('./node-builder.js');
 		} catch {
 			// Modules don't exist yet
 		}
@@ -355,7 +355,7 @@ describe('tool() with fromAi() support', () => {
 
 	beforeAll(async () => {
 		try {
-			subnodeBuilders = await import('./subnode-builders');
+			subnodeBuilders = await import('./subnode-builders.js');
 		} catch {
 			// Module doesn't exist yet
 		}
@@ -527,9 +527,9 @@ describe('subnode reuse across multiple parents', () => {
 	let workflowBuilders: typeof WorkflowBuilderModule;
 
 	beforeAll(async () => {
-		subnodeBuilders = await import('./subnode-builders');
-		nodeBuilders = await import('./node-builder');
-		workflowBuilders = await import('../../workflow-builder');
+		subnodeBuilders = await import('./subnode-builders.js');
+		nodeBuilders = await import('./node-builder.js');
+		workflowBuilders = await import('../../workflow-builder.js');
 	});
 
 	it('should connect same embedding to multiple parent nodes', () => {

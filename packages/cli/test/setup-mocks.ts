@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import axios from 'axios';
 
 // Clear proxy env vars so axios doesn't create HttpsProxyAgent for outbound requests.
 // Nock 14 uses @mswjs/interceptors which cannot intercept requests routed through a
@@ -16,10 +17,14 @@ for (const key of [
 	delete process.env[key];
 }
 
-jest.mock('@sentry/node');
-jest.mock('@n8n_io/license-sdk');
-jest.mock('@/telemetry');
-jest.mock('@/eventbus/message-event-bus/message-event-bus');
-jest.mock('@/push');
-jest.mock('node:fs');
-jest.mock('node:fs/promises');
+// Mirror the global axios default that n8n-core sets at import time
+// (`axios.defaults.proxy = false`). Under Vitest, core's axios-config side effect
+// is not loaded into every test's module graph, so reproduce it here to keep the
+// proxy-disabled-by-default behavior consistent with production.
+axios.defaults.proxy = false;
+
+vi.mock('@sentry/node');
+vi.mock('@n8n_io/license-sdk');
+vi.mock('@/telemetry');
+vi.mock('@/eventbus/message-event-bus/message-event-bus');
+vi.mock('@/push');

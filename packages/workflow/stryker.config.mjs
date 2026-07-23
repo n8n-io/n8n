@@ -8,14 +8,21 @@ export default {
 	vitest: {
 		configFile: 'vitest.stryker.config.ts',
 	},
-	reporters: ['progress', 'clear-text', 'html', 'json'],
+	// No `progress` reporter: these runs are non-interactive, nobody watches the stream.
+	reporters: ['clear-text', 'json'],
 	coverageAnalysis: 'perTest',
+	// Cache mutant results so the property-testing edit/re-run loop only re-tests
+	// mutants whose covering tests changed. Keep the cache under the gitignored reports/mutation/.
+	incremental: true,
+	incrementalFile: 'reports/mutation/stryker-incremental.json',
+	// Skip module-level (static) mutants — each forces a full re-instrument.
+	ignoreStatic: true,
 	// Default empty — the `mutate` npm script always passes --mutate <file>.
 	// Direct invocation with no --mutate will fail fast (allowEmpty: false).
 	mutate: [],
-	htmlReporter: { fileName: 'reports/mutation/raw.html' },
 	jsonReporter: { fileName: 'reports/mutation/raw.json' },
-	timeoutMS: 60_000,
+	// Cap low: a string/utils mutant running 15s+ is a spinning loop-condition mutant; fail it fast.
+	timeoutMS: 15_000,
 	// Each Stryker worker spawns vitest with one project (vm-engine, via
 	// vitest.stryker.config.ts). Default 4 is fine on CI runners; lower
 	// locally if you hit OOM during the initial dry run via

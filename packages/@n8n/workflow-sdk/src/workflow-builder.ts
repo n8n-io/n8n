@@ -345,8 +345,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				}
 			}
 
-			this._currentNode = headName;
-			this._currentOutput = 0;
+			const continuation = thenHandler.handleThen?.(nodeOrComposite, headName, 0, ctx);
+			this._currentNode = continuation?.currentNode ?? headName;
+			this._currentOutput = continuation?.currentOutput ?? 0;
 			return this;
 		}
 

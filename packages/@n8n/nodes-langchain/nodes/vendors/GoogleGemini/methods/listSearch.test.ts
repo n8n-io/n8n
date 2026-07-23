@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import {
@@ -53,10 +54,11 @@ const mockResponse = {
 
 describe('GoogleGemini -> listSearch', () => {
 	const mockExecuteFunctions = mock<ILoadOptionsFunctions>();
-	const apiRequestMock = vi.spyOn(transport, 'apiRequest');
+	let apiRequestMock: MockInstance;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		apiRequestMock = vi.spyOn(transport, 'apiRequest');
 	});
 
 	describe('modelSearch', () => {

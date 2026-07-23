@@ -4,44 +4,45 @@ import {
 	CredentialResolverValidationError,
 } from '@n8n/decorators';
 import type { Cipher } from 'n8n-core';
+import type { Mocked } from 'vitest';
 
 import type { N8NIdentifier } from '../identifiers/n8n-identifier';
 import { N8NCredentialResolver } from '../n8n-credential-resolver';
-import type { DynamicCredentialUserEntryStorage } from '../storage/dynamic-credential-user-entry-storage';
 import { testCredentialResolverContract, testHelpers } from './resolver-contract-tests';
+import type { DynamicCredentialUserEntryStorage } from '../storage/dynamic-credential-user-entry-storage';
 
 describe('N8NCredentialResolver', () => {
-	let mockLogger: jest.Mocked<Logger>;
-	let mockIdentifier: jest.Mocked<N8NIdentifier>;
-	let mockStorage: jest.Mocked<DynamicCredentialUserEntryStorage>;
-	let mockCipher: jest.Mocked<Cipher>;
+	let mockLogger: Mocked<Logger>;
+	let mockIdentifier: Mocked<N8NIdentifier>;
+	let mockStorage: Mocked<DynamicCredentialUserEntryStorage>;
+	let mockCipher: Mocked<Cipher>;
 
 	beforeEach(() => {
 		mockLogger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-		} as unknown as jest.Mocked<Logger>;
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+		} as unknown as Mocked<Logger>;
 
 		mockIdentifier = {
-			resolve: jest.fn(),
-			validateOptions: jest.fn(),
-		} as unknown as jest.Mocked<N8NIdentifier>;
+			resolve: vi.fn(),
+			validateOptions: vi.fn(),
+		} as unknown as Mocked<N8NIdentifier>;
 
 		mockStorage = {
-			getCredentialData: jest.fn(),
-			setCredentialData: jest.fn(),
-			deleteCredentialData: jest.fn(),
-			deleteAllCredentialData: jest.fn(),
-		} as unknown as jest.Mocked<DynamicCredentialUserEntryStorage>;
+			getCredentialData: vi.fn(),
+			setCredentialData: vi.fn(),
+			deleteCredentialData: vi.fn(),
+			deleteAllCredentialData: vi.fn(),
+		} as unknown as Mocked<DynamicCredentialUserEntryStorage>;
 
 		mockCipher = {
-			encrypt: jest.fn(),
-			decrypt: jest.fn(),
-			encryptV2: jest.fn(),
-			decryptV2: jest.fn(),
-		} as unknown as jest.Mocked<Cipher>;
+			encrypt: vi.fn(),
+			decrypt: vi.fn(),
+			encryptV2: vi.fn(),
+			decryptV2: vi.fn(),
+		} as unknown as Mocked<Cipher>;
 	});
 
 	// Run the standard contract tests

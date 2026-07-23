@@ -1,0 +1,25 @@
+{
+	"description": "False friend: says 'workflow', behavior is chat-based Q&A. Gold: agent-anchored, either embeds value. NOTE: a chat-trigger workflow with an AI Agent node is n8n's long-established pattern for this request — if real builds consistently go that way while the taxonomy classifies it agent-anchored, that divergence is a finding about the taxonomy vs the product, not noise.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Set up a simple workflow that chats with our customers and answers their product questions. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"complexity": "medium",
+	"tags": ["intent-resolution", "false-friend", "surface-vocab"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"Despite the request saying 'workflow', the agent proposes creating an n8n Agent — a conversational assistant handling open-ended customer product questions — rather than a fixed workflow pipeline.",
+		"The proposal grounds the agent choice in the chat-based, open-ended Q&A shape of the task, not in the request's 'workflow' vocabulary."
+	],
+	"messageBudget": 4
+}

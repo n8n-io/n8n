@@ -6,7 +6,7 @@ import type { IRunExecutionData } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { IExecutionPushResponse } from '@/features/execution/executions/executions.types';
 import type { RunWorkflowChatPayload } from '../composables/useChatMessaging';
-import { vi } from 'vitest';
+import { Mock, vi } from 'vitest';
 import type { ChatMessage } from '@n8n/chat/types';
 
 vi.mock('../logs.utils', () => {
@@ -97,7 +97,7 @@ describe('useChatMessaging', () => {
 			parameters: { options: {} },
 		} as unknown as INodeUi;
 
-		(onRunChatWorkflow as jest.Mock).mockResolvedValue({
+		(onRunChatWorkflow as Mock).mockResolvedValue({
 			executionId: 'execution-id',
 		} as IExecutionPushResponse);
 
@@ -125,7 +125,7 @@ describe('useChatMessaging', () => {
 			parameters: { options: { responseMode: 'responseNodes' } },
 		} as unknown as INodeUi;
 
-		(onRunChatWorkflow as jest.Mock).mockResolvedValue({
+		(onRunChatWorkflow as Mock).mockResolvedValue({
 			executionId: 'execution-id',
 		} as IExecutionPushResponse);
 

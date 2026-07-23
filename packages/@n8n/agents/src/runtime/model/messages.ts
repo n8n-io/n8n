@@ -1,5 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	FilePart,
 	ModelMessage,
@@ -12,6 +12,7 @@ import type {
 	FinishReason as AiFinishReason,
 } from 'ai';
 
+import { getProviderQuirks, PROVIDER_QUIRKS } from './provider-quirks';
 import type { FinishReason } from '../../types';
 import type {
 	AgentMessage,
@@ -106,6 +107,22 @@ function getRecord(value: unknown): Record<string, unknown> | undefined {
 	return isRecord(value) ? value : undefined;
 }
 
+function hasEntries(value: Record<string, unknown>): boolean {
+	return Object.keys(value).length > 0;
+}
+
+function hasReplayableReasoningProviderOptions(
+	providerOptions: ProviderOptions | undefined,
+): boolean {
+	if (!providerOptions) return false;
+
+	return Object.entries(providerOptions).some(([provider, options]) => {
+		const replayKeys = getProviderQuirks(provider).reasoningReplayKeys;
+		if (replayKeys) return replayKeys.some((key) => typeof options[key] === 'string');
+		return hasEntries(options);
+	});
+}
+
 type ContentToolResultOutput = Extract<ToolResultPart['output'], { type: 'content' }>;
 
 function isContentToolResultOutput(value: JSONValue): value is ContentToolResultOutput {
@@ -113,27 +130,31 @@ function isContentToolResultOutput(value: JSONValue): value is ContentToolResult
 }
 
 /**
- * Anthropic replays reasoning from `providerOptions`, but the AI SDK exposes the
- * replay `signature`/`redactedData` in `providerMetadata`. Copy them across so
- * the next request can replay the reasoning block. Existing `providerOptions`
- * values win.
+ * Providers replay reasoning from `providerOptions`, but the AI SDK exposes the
+ * replay data in `providerMetadata` (see `PROVIDER_QUIRKS[provider].reasoningReplayKeys`).
+ * Copy it across so the next request can replay the reasoning block. Existing
+ * `providerOptions` values win.
  */
 function toReasoningProviderOptions(block: ContentReasoning): ProviderOptions | undefined {
-	const metadata = getRecord(block.providerMetadata?.anthropic);
-	const signature = metadata?.signature;
-	const redactedData = metadata?.redactedData;
-	if (typeof signature !== 'string' && typeof redactedData !== 'string') {
-		return block.providerOptions;
+	const additions: Record<string, JSONObject> = {};
+
+	for (const [provider, quirks] of Object.entries(PROVIDER_QUIRKS)) {
+		const replayKeys = quirks.reasoningReplayKeys;
+		if (!replayKeys) continue;
+
+		const metadata = getRecord(block.providerMetadata?.[provider]);
+		const replayed: JSONObject = {};
+		for (const key of replayKeys) {
+			if (typeof metadata?.[key] === 'string') replayed[key] = metadata[key];
+		}
+		if (hasEntries(replayed)) {
+			additions[provider] = { ...replayed, ...block.providerOptions?.[provider] };
+		}
 	}
 
-	return {
-		...block.providerOptions,
-		anthropic: {
-			...(typeof signature === 'string' && { signature }),
-			...(typeof redactedData === 'string' && { redactedData }),
-			...getRecord(block.providerOptions?.anthropic),
-		},
-	};
+	if (!hasEntries(additions)) return block.providerOptions;
+
+	return { ...block.providerOptions, ...additions };
 }
 
 /** Convert a single n8n MessageContent block to an AI SDK content part. */
@@ -166,6 +187,9 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 		const providerOptions = isReasoning(block)
 			? toReasoningProviderOptions(block)
 			: block.providerOptions;
+		if (isReasoning(block) && !hasReplayableReasoningProviderOptions(providerOptions)) {
+			return undefined;
+		}
 
 		return {
 			...base,

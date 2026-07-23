@@ -49,7 +49,6 @@ erDiagram
 "public.agents" {
   varchar_36_ activeVersionId FK
   timestamp_3__with_time_zone createdAt
-  varchar_512_ description
   varchar_36_ id
   json integrations
   varchar_128_ name

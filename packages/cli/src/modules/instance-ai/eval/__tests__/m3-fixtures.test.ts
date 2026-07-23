@@ -13,10 +13,10 @@ import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper';
 import { type InterceptedTurn, LlmWireServer } from '../llm-wire-server';
 
 const mockLogger = {
-	info: jest.fn(),
-	warn: jest.fn(),
-	error: jest.fn(),
-	debug: jest.fn(),
+	info: vi.fn(),
+	warn: vi.fn(),
+	error: vi.fn(),
+	debug: vi.fn(),
 } as never;
 
 /**
@@ -56,16 +56,16 @@ describe('M3 fixtures — Agent + Chat Model + HTTP tool + MemoryBufferWindow', 
 
 	function makeInnerHelper(credentials: ICredentialDataDecryptedObject): ICredentialsHelper {
 		return {
-			getParentTypes: jest.fn().mockReturnValue([]),
-			authenticate: jest.fn(),
-			preAuthentication: jest.fn(),
-			runPreAuthentication: jest.fn(),
-			getCredentials: jest.fn(),
-			getDecrypted: jest.fn().mockResolvedValue(credentials),
-			updateCredentials: jest.fn(),
-			updateCredentialsOauthTokenData: jest.fn(),
-			getCredentialsProperties: jest.fn().mockReturnValue([]),
-			isCredentialUsableByNode: jest.fn().mockReturnValue(true),
+			getParentTypes: vi.fn().mockReturnValue([]),
+			authenticate: vi.fn(),
+			preAuthentication: vi.fn(),
+			runPreAuthentication: vi.fn(),
+			getCredentials: vi.fn(),
+			getDecrypted: vi.fn().mockResolvedValue(credentials),
+			updateCredentials: vi.fn(),
+			updateCredentialsOauthTokenData: vi.fn(),
+			getCredentialsProperties: vi.fn().mockReturnValue([]),
+			isCredentialUsableByNode: vi.fn().mockReturnValue(true),
 		} as ICredentialsHelper;
 	}
 
@@ -114,8 +114,8 @@ describe('M3 fixtures — Agent + Chat Model + HTTP tool + MemoryBufferWindow', 
 		// case feeds it a single "plain content" return that lacks the
 		// tool-shaped output the grader looks for.
 		const scriptedResponses: EvalMockHttpResponse[] = [];
-		const mockHandler = jest
-			.fn<Promise<EvalMockHttpResponse>, Parameters<EvalLlmMockHandler>>()
+		const mockHandler = vi
+			.fn<(...args: Parameters<EvalLlmMockHandler>) => Promise<EvalMockHttpResponse>>()
 			.mockImplementation(async () => {
 				const next = scriptedResponses.shift();
 				if (!next) {

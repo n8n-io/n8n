@@ -46,9 +46,11 @@
 
 	@include mixins.e(title) {
 		padding-left: 0;
+		padding-right: var(--spacing--lg);
+		overflow-wrap: anywhere;
 		margin-bottom: 0;
 		font-size: var.$messagebox-font-size;
-		line-height: 1;
+		line-height: var(--line-height--md);
 		color: var.$messagebox-title-color;
 	}
 
@@ -143,6 +145,10 @@
 			line-height: var(--line-height--lg);
 		}
 
+		& .el-message-box__message__structured {
+			margin-bottom: var(--spacing--xs);
+		}
+
 		& .el-message-box__message__structured p {
 			margin-bottom: var(--spacing--sm);
 		}
@@ -152,7 +158,7 @@
 		color: var(--color--danger);
 		font-size: var.$messagebox-error-font-size;
 		min-height: 18px;
-		margin-top: 2px;
+		margin-top: var(--spacing--2xs);
 	}
 
 	@include mixins.e(btns) {

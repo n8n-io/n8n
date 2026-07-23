@@ -39,7 +39,7 @@ const hasMetadata = computed(
 			data-test-id="tools-connection-detail-metadata"
 		>
 			<div v-if="item.publisher" :class="$style.metadataCell">
-				<N8nText :class="$style.metadataLabel" size="small" color="text-light" bold>
+				<N8nText :class="$style.metadataLabel" size="small">
 					{{ i18n.baseText('tools.connection.detail.publisher') }}
 				</N8nText>
 				<a
@@ -51,16 +51,16 @@ const hasMetadata = computed(
 				>
 					{{ item.publisher.name }}
 				</a>
-				<N8nText v-else>{{ item.publisher.name }}</N8nText>
+				<N8nText v-else size="small" color="text-light">{{ item.publisher.name }}</N8nText>
 			</div>
 			<div v-if="item.version" :class="$style.metadataCell">
-				<N8nText :class="$style.metadataLabel" size="small" color="text-light" bold>
+				<N8nText :class="$style.metadataLabel" size="small">
 					{{ i18n.baseText('tools.connection.detail.version') }}
 				</N8nText>
-				<N8nText>{{ item.version }}</N8nText>
+				<N8nText size="small" color="text-light">{{ item.version }}</N8nText>
 			</div>
 			<div v-if="item.docsUrl" :class="$style.metadataCell">
-				<N8nText :class="$style.metadataLabel" size="small" color="text-light" bold>
+				<N8nText :class="$style.metadataLabel" size="small">
 					{{ i18n.baseText('tools.connection.detail.moreInfo') }}
 				</N8nText>
 				<a
@@ -139,12 +139,12 @@ const hasMetadata = computed(
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--md);
+	gap: var(--spacing--sm);
 }
 
 .description {
 	margin: 0;
-	color: var(--color--text);
+	color: var(--text-color--subtler);
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--md);
 }
@@ -168,7 +168,7 @@ const hasMetadata = computed(
 }
 
 .metadataLink {
-	color: var(--color--text);
+	color: var(--text-color--subtler);
 	text-decoration: underline;
 	font-size: var(--font-size--2xs);
 
@@ -179,7 +179,7 @@ const hasMetadata = computed(
 
 .divider {
 	height: 1px;
-	background: var(--color--foreground);
+	background: var(--color--foreground--shade-1);
 }
 
 .toolsSection {
@@ -191,7 +191,7 @@ const hasMetadata = computed(
 .toolsHeader {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--3xs);
+	gap: var(--spacing--2xs);
 }
 
 .toolsLabel {
@@ -208,23 +208,23 @@ const hasMetadata = computed(
 	height: 18px;
 	padding: 0 var(--spacing--4xs);
 	border-radius: 9px;
-	background: var(--color--background--light-2);
+	background: var(--color--foreground--shade-1);
 	color: var(--color--text--tint-1);
-	font-size: 11px;
+	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--medium);
 }
 
 .chipList {
 	display: flex;
 	flex-wrap: wrap;
-	gap: var(--spacing--3xs);
+	gap: var(--spacing--2xs);
 }
 
 .chip {
 	display: inline-flex;
 	align-items: center;
-	padding: var(--spacing--4xs) var(--spacing--xs);
-	border-radius: var(--border-radius--base);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border-radius: var(--radius--3xs);
 	font-size: var(--font-size--2xs);
 	color: var(--color--text);
 	background: var(--color--background--light-2);

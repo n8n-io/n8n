@@ -83,6 +83,15 @@ class PostgresConfig {
 	@Env('DB_POSTGRESDB_CONNECTION_TIMEOUT')
 	connectionTimeoutMs: number = 20_000;
 
+	/**
+	 * Timeout for tearing down the Postgres pool during connection recovery.
+	 * `pool.end()` waits for every connection to drain, so one frozen against an
+	 * unreachable backend would block recovery forever; past this window the pool's
+	 * sockets are force-closed so recovery can reconnect. `0` waits indefinitely.
+	 */
+	@Env('DB_POSTGRESDB_DESTROY_TIMEOUT_MS', z.coerce.number().int().gte(0))
+	destroyTimeoutMs: number = 10 * Time.seconds.toMilliseconds;
+
 	/** Time in milliseconds after which an idle connection in the pool is closed. */
 	@Env('DB_POSTGRESDB_IDLE_CONNECTION_TIMEOUT')
 	idleTimeoutMs: number = 30_000;
@@ -176,6 +185,10 @@ export class DatabaseConfig {
 	 * connection is considered lost and the DataSource is torn down and
 	 * reinitialized (full pool recovery).
 	 *
+	 * Postgres-only: sqlite never runs pool recovery (a failed ping on a local
+	 * file means a busy pool, not a lost connection), so this has no effect there.
+	 * (Postgres-only environment variables should ideally move to `PostgresConfig`)
+	 *
 	 * Recovery is disruptive (it destroys and recreates the connection pool),
 	 * so this guards against a single transient blip triggering it. With the
 	 * default `DB_PING_INTERVAL_SECONDS=2`, the default of 3 means recovery
@@ -229,6 +242,20 @@ export class DatabaseConfig {
 	 */
 	@Env('DB_CONNECTION_ACQUISITION_TIMEOUT_MS', z.coerce.number().int().gte(0))
 	connectionAcquisitionTimeoutMs: number = 30 * Time.seconds.toMilliseconds;
+
+	/**
+	 * Number of times to retry the *initial* database connection on startup
+	 * before giving up and crashing. Each retry waits with the same exponential
+	 * backoff as connection recovery
+	 * (`DB_RECOVERY_BACKOFF_MIN_MS` .. `DB_RECOVERY_BACKOFF_MAX_MS`).
+	 *
+	 * A transient DNS/network blip at boot self-heals; a genuinely unreachable or
+	 * misconfigured database still fails loudly once the retries are exhausted.
+	 *
+	 * Must be >= 0 (0 keeps the legacy single-attempt behavior).
+	 */
+	@Env('DB_STARTUP_CONNECT_MAX_RETRIES', z.coerce.number().int().gte(0))
+	startupConnectMaxRetries: number = 5;
 
 	@Nested
 	logging: LoggingConfig;

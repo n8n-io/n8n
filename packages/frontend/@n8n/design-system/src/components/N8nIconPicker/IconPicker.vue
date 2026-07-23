@@ -42,11 +42,14 @@ defineOptions({ name: 'N8nIconPicker' });
 
 const SKIN_TONE_STORAGE_KEY = 'n8n-emoji-skin-tone';
 const VIRTUAL_ROW_SIZE = 32;
+const VIRTUAL_ROW_STYLE = { minHeight: 'var(--height--md)' };
 
 type Props = {
 	buttonTooltip: string;
 	buttonSize?: 'small' | 'large' | 'xlarge';
 	isReadOnly?: boolean;
+	/** Hide emoji controls and keep the picker on icons. */
+	iconsOnly?: boolean;
 	/** Show the icon color picker. Only enable for consumers that persist and render the color. */
 	showColorPicker?: boolean;
 	/** Additional CSS class(es) for the outer container element */
@@ -59,6 +62,7 @@ const { t } = useI18n();
 
 const props = withDefaults(defineProps<Props>(), {
 	buttonSize: 'large',
+	iconsOnly: false,
 	showColorPicker: false,
 });
 
@@ -106,11 +110,11 @@ async function loadData() {
 
 // --- UI state ---
 const popupVisible = ref(false);
-const tabs: Array<{ value: string; label: string }> = [
+const tabs = computed<Array<{ value: string; label: string }>>(() => [
 	{ value: 'icons', label: t('iconPicker.tabs.icons') },
-	{ value: 'emojis', label: t('iconPicker.tabs.emojis') },
-];
-const selectedTab = ref<string>(tabs[0].value);
+	...(props.iconsOnly ? [] : [{ value: 'emojis', label: t('iconPicker.tabs.emojis') }]),
+]);
+const selectedTab = ref<string>('icons');
 const searchQuery = ref('');
 const selectedCategory = ref<string | null>(null);
 const selectedColor = ref<string | undefined>(
@@ -162,7 +166,7 @@ const selectIcon = (value: IconOrEmoji) => {
 const togglePopup = async () => {
 	popupVisible.value = !popupVisible.value;
 	if (popupVisible.value) {
-		selectedTab.value = model.value.type === 'emoji' ? 'emojis' : 'icons';
+		selectedTab.value = !props.iconsOnly && model.value.type === 'emoji' ? 'emojis' : 'icons';
 		searchQuery.value = '';
 		selectedCategory.value = null;
 		// Initialize color from current model value (only when the color picker is enabled)
@@ -265,8 +269,12 @@ function humanizeIconName(name: string): string {
 				</N8nButton>
 			</N8nTooltip>
 		</div>
-		<div v-if="popupVisible" :class="$style.popup" data-test-id="icon-picker-popup">
-			<div :class="$style.tabs">
+		<div
+			v-if="popupVisible"
+			:class="[$style.popup, { [$style.iconsOnly]: props.iconsOnly }]"
+			data-test-id="icon-picker-popup"
+		>
+			<div v-if="!props.iconsOnly" :class="$style.tabs">
 				<N8nTabs v-model="selectedTab" :options="tabs" data-test-id="icon-picker-tabs" />
 			</div>
 
@@ -300,7 +308,7 @@ function humanizeIconName(name: string): string {
 					/>
 				</N8nTooltip>
 				<N8nTooltip
-					v-if="selectedTab === 'emojis'"
+					v-if="!props.iconsOnly && selectedTab === 'emojis'"
 					placement="top"
 					:disabled="skinTonePickerRef?.isOpen"
 					:teleported="false"
@@ -351,7 +359,11 @@ function humanizeIconName(name: string): string {
 								{{ t(item.labelKey) }}
 							</div>
 						</div>
-						<div v-else-if="item.type === 'icon-row'" :class="$style.iconGridRow">
+						<div
+							v-else-if="item.type === 'icon-row'"
+							:class="$style.iconGridRow"
+							:style="VIRTUAL_ROW_STYLE"
+						>
 							<button
 								v-for="name in item.iconNames"
 								:key="name"
@@ -374,7 +386,10 @@ function humanizeIconName(name: string): string {
 			</div>
 
 			<!-- Emojis tab -->
-			<div v-else-if="selectedTab === 'emojis' && dataLoaded" :class="$style.content">
+			<div
+				v-else-if="!props.iconsOnly && selectedTab === 'emojis' && dataLoaded"
+				:class="$style.content"
+			>
 				<N8nRecycleScroller
 					v-if="emojiRows.length > 0"
 					:items="emojiRows"
@@ -387,7 +402,11 @@ function humanizeIconName(name: string): string {
 								{{ t(item.labelKey) }}
 							</div>
 						</div>
-						<div v-else-if="item.type === 'emoji-row'" :class="$style.emojiGridRow">
+						<div
+							v-else-if="item.type === 'emoji-row'"
+							:class="$style.emojiGridRow"
+							:style="VIRTUAL_ROW_STYLE"
+						>
 							<button
 								v-for="emoji in item.emojis"
 								:key="emoji.u"
@@ -487,6 +506,12 @@ function humanizeIconName(name: string): string {
 		> :first-child {
 			flex: 1;
 			min-width: 0;
+		}
+	}
+
+	&.iconsOnly {
+		.searchRow {
+			padding-top: var(--spacing--2xs);
 		}
 	}
 

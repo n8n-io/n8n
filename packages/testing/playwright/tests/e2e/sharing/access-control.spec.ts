@@ -80,7 +80,7 @@ test.describe(
 			// Personal projects show "Name (Personal space)" instead of email
 			const adminName = `${admin.firstName} ${admin.lastName}`;
 			await expect(
-				adminN8n.credentials.credentialModal.getVisibleDropdown().getByText(adminName),
+				adminN8n.credentials.credentialModal.getVisibleDropdownOption(adminName),
 			).toBeVisible();
 		});
 
@@ -106,7 +106,7 @@ test.describe(
 			});
 
 			const memberApi = await api.createApiForUser(member);
-			const response = await memberApi.request.get(`/rest/workflows/${workflow.id}`);
+			const response = await memberApi.workflows.getWorkflowRaw(workflow.id);
 			expect(response.status()).toBe(403);
 		});
 

@@ -27,12 +27,12 @@ import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registr
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
-import { WebhookResponse } from './webhook-response';
 
 import { authAllowlistedNodes } from './constants';
 import { matchesExpectedNodeType } from './node-type-matcher';
 import type { ExpectedWebhookNodeType } from './node-type-matcher';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
+import { WebhookResponse } from './webhook-response';
 import { WebhookService } from './webhook.service';
 import type {
 	IWebhookResponseCallbackData,
@@ -186,7 +186,11 @@ export class TestWebhooks implements IWebhookManager {
 							pushRef,
 						);
 					}
-				} catch {}
+				} catch (error) {
+					// Settle the Promise to prevent hanging the request.
+					// No return to ensure test-webhook cleanup.
+					reject(error as Error);
+				}
 
 				/**
 				 * Multi-main setup: In a manual webhook execution, the main process that
@@ -199,6 +203,9 @@ export class TestWebhooks implements IWebhookManager {
 						command: 'clear-test-webhooks',
 						payload: { webhookKey: key, workflowEntity, pushRef },
 					});
+					// Response (if any) was already sent via WebhookHelpers.executeWebhook's
+					// callback; resolve to settle promise to be safe and avoid hanging.
+					resolve({ noWebhookResponse: true });
 					return;
 				}
 

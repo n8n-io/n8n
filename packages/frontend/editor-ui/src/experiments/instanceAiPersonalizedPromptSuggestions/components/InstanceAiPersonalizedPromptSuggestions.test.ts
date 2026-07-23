@@ -81,6 +81,8 @@ describe('InstanceAiPersonalizedPromptSuggestions', () => {
 	it('renders cards with titles and descriptions', () => {
 		const { getByText } = renderComponent();
 
+		expect(getByText('Start from an example')).toBeVisible();
+		expect(getByText('Picked for you. Change anything.')).toBeVisible();
 		expect(getByText('Qualify hot leads')).toBeVisible();
 		expect(getByText('Score new form submissions and assign the best ones')).toBeVisible();
 	});

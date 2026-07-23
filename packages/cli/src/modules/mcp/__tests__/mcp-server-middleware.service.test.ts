@@ -1,7 +1,8 @@
+import type { Mocked } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { Request, Response, NextFunction } from 'express';
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@/services/jwt.service';
@@ -25,21 +26,17 @@ const mockReqWith = (authHeader: string | undefined, body?: any) => {
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());
 
-let mcpServerApiKeyService: jest.Mocked<McpServerApiKeyService>;
-let oauthTokenVerifier: jest.Mocked<OAuthTokenVerifierProxy>;
-let mcpProtectedResource: jest.Mocked<McpProtectedResource>;
-let telemetry: jest.Mocked<Telemetry>;
+let mcpServerApiKeyService: Mocked<McpServerApiKeyService>;
+let oauthTokenVerifier: Mocked<OAuthTokenVerifierProxy>;
+let mcpProtectedResource: Mocked<McpProtectedResource>;
+let telemetry: Mocked<Telemetry>;
 let service: McpServerMiddlewareService;
 
 describe('McpServerMiddlewareService', () => {
 	beforeAll(() => {
-		mcpServerApiKeyService = mockInstance(
-			McpServerApiKeyService,
-		) as jest.Mocked<McpServerApiKeyService>;
-		oauthTokenVerifier = mockInstance(
-			OAuthTokenVerifierProxy,
-		) as jest.Mocked<OAuthTokenVerifierProxy>;
-		mcpProtectedResource = mockInstance(McpProtectedResource) as jest.Mocked<McpProtectedResource>;
+		mcpServerApiKeyService = mockInstance(McpServerApiKeyService) as Mocked<McpServerApiKeyService>;
+		oauthTokenVerifier = mockInstance(OAuthTokenVerifierProxy) as Mocked<OAuthTokenVerifierProxy>;
+		mcpProtectedResource = mockInstance(McpProtectedResource) as Mocked<McpProtectedResource>;
 		telemetry = mockInstance(Telemetry);
 
 		service = new McpServerMiddlewareService(
@@ -52,8 +49,11 @@ describe('McpServerMiddlewareService', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mcpProtectedResource.getResourceUrl.mockReturnValue('https://n8n.example.com/mcp-server/http');
+		mcpProtectedResource.getProtectedResourceMetadataUrl.mockReturnValue(
+			'https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http',
+		);
 	});
 
 	describe('getUserForToken', () => {
@@ -155,13 +155,16 @@ describe('McpServerMiddlewareService', () => {
 			res.status.mockReturnThis();
 			res.send.mockReturnThis();
 			res.header.mockReturnThis();
-			const next = jest.fn() as NextFunction;
+			const next = vi.fn() as NextFunction;
 
 			const middleware = service.getAuthMiddleware();
 
 			await middleware(req, res, next);
 
-			expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+			expect(res.header).toHaveBeenCalledWith(
+				'WWW-Authenticate',
+				'Bearer realm="n8n MCP Server", resource_metadata="https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http"',
+			);
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.send).toHaveBeenCalledWith({
 				message: 'Unauthorized: Authorization header not sent',
@@ -182,13 +185,16 @@ describe('McpServerMiddlewareService', () => {
 			const req = mockReqWith('Basic sometoken');
 			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
-			const next = jest.fn() as NextFunction;
+			const next = vi.fn() as NextFunction;
 
 			const middleware = service.getAuthMiddleware();
 
 			await middleware(req, res, next);
 
-			expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+			expect(res.header).toHaveBeenCalledWith(
+				'WWW-Authenticate',
+				'Bearer realm="n8n MCP Server", resource_metadata="https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http"',
+			);
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.send).toHaveBeenCalledWith({
 				message: 'Unauthorized: Invalid authorization header format - Missing Bearer prefix',
@@ -209,13 +215,16 @@ describe('McpServerMiddlewareService', () => {
 			const req = mockReqWith('Bearer');
 			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
-			const next = jest.fn() as NextFunction;
+			const next = vi.fn() as NextFunction;
 
 			const middleware = service.getAuthMiddleware();
 
 			await middleware(req, res, next);
 
-			expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+			expect(res.header).toHaveBeenCalledWith(
+				'WWW-Authenticate',
+				'Bearer realm="n8n MCP Server", resource_metadata="https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http"',
+			);
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.send).toHaveBeenCalledWith({
 				message: 'Unauthorized: Invalid authorization header format - Malformed Bearer token',
@@ -242,7 +251,7 @@ describe('McpServerMiddlewareService', () => {
 
 			const req = mockReqWith(`Bearer ${oauthToken}`);
 			const res = mockDeep<Response>();
-			const next = jest.fn() as NextFunction;
+			const next = vi.fn() as NextFunction;
 
 			oauthTokenVerifier.verifyOAuthAccessToken.mockResolvedValue({ user, authType: 'oauth' });
 
@@ -257,6 +266,31 @@ describe('McpServerMiddlewareService', () => {
 			expect(res.status).not.toHaveBeenCalled();
 		});
 
+		it('should attach the OAuth token scopes to the request', async () => {
+			const user = mock<User>({ id: 'user-123' });
+			const oauthToken = jwtService.sign({
+				sub: 'user-123',
+				aud: 'mcp-server-api',
+				meta: { isOAuth: true },
+			});
+
+			const req = mockReqWith(`Bearer ${oauthToken}`);
+			const res = mockDeep<Response>();
+			const next = vi.fn() as NextFunction;
+
+			oauthTokenVerifier.verifyOAuthAccessToken.mockResolvedValue({
+				user,
+				authType: 'oauth',
+				scopes: ['workflow:read'],
+			});
+
+			await service.getAuthMiddleware()(req, res, next);
+			const authenticatedReq = req as Request & { mcpScopes?: string[] };
+
+			expect(authenticatedReq.mcpScopes).toEqual(['workflow:read']);
+			expect(next).toHaveBeenCalled();
+		});
+
 		it('should authenticate with valid API key and call next', async () => {
 			const user = mock<User>({ id: 'user-123' });
 			const apiKeyToken = jwtService.sign({
@@ -266,17 +300,23 @@ describe('McpServerMiddlewareService', () => {
 
 			const req = mockReqWith(`Bearer ${apiKeyToken}`);
 			const res = mockDeep<Response>();
-			const next = jest.fn() as NextFunction;
+			const next = vi.fn() as NextFunction;
 
 			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user, authType: 'api_key' });
 
 			const middleware = service.getAuthMiddleware();
 
 			await middleware(req, res, next);
-			const authenticatedReq = req as Request & { user?: User; mcpAuthType?: 'api_key' };
+			const authenticatedReq = req as Request & {
+				user?: User;
+				mcpAuthType?: 'api_key';
+				mcpScopes?: string[];
+			};
 
 			expect(authenticatedReq.user).toEqual(user);
 			expect(authenticatedReq.mcpAuthType).toBe('api_key');
+			// API keys are not scope-bearing: undefined means full tool access
+			expect(authenticatedReq.mcpScopes).toBeUndefined();
 			expect(next).toHaveBeenCalled();
 			expect(res.status).not.toHaveBeenCalled();
 		});
@@ -292,7 +332,7 @@ describe('McpServerMiddlewareService', () => {
 
 			const req = mockReqWith(`Bearer ${scopedJwt}`);
 			const res = mockDeep<Response>();
-			const next = jest.fn() as NextFunction;
+			const next = vi.fn() as NextFunction;
 
 			// verifyApiKey returns the acting principal as `user` and keeps the actor field populated.
 			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user: actor, actor });
@@ -321,7 +361,7 @@ describe('McpServerMiddlewareService', () => {
 			res.status.mockReturnThis();
 			res.send.mockReturnThis();
 			res.header.mockReturnThis();
-			const next = jest.fn() as NextFunction;
+			const next = vi.fn() as NextFunction;
 
 			oauthTokenVerifier.verifyOAuthAccessToken.mockResolvedValue({ user: null });
 
@@ -329,7 +369,10 @@ describe('McpServerMiddlewareService', () => {
 
 			await middleware(req, res, next);
 
-			expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+			expect(res.header).toHaveBeenCalledWith(
+				'WWW-Authenticate',
+				'Bearer realm="n8n MCP Server", resource_metadata="https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http"',
+			);
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.send).toHaveBeenCalledWith({ message: 'Unauthorized' });
 			expect(next).not.toHaveBeenCalled();
@@ -348,13 +391,16 @@ describe('McpServerMiddlewareService', () => {
 			res.status.mockReturnThis();
 			res.send.mockReturnThis();
 			res.header.mockReturnThis();
-			const next = jest.fn() as NextFunction;
+			const next = vi.fn() as NextFunction;
 
 			const middleware = service.getAuthMiddleware();
 
 			await middleware(req, res, next);
 
-			expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+			expect(res.header).toHaveBeenCalledWith(
+				'WWW-Authenticate',
+				'Bearer realm="n8n MCP Server", resource_metadata="https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http"',
+			);
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.send).toHaveBeenCalledWith({
 				message: 'Unauthorized: Authorization header not sent',
@@ -376,7 +422,7 @@ describe('McpServerMiddlewareService', () => {
 			res.status.mockReturnThis();
 			res.send.mockReturnThis();
 			res.header.mockReturnThis();
-			const next = jest.fn() as NextFunction;
+			const next = vi.fn() as NextFunction;
 
 			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user: null });
 
@@ -384,7 +430,10 @@ describe('McpServerMiddlewareService', () => {
 
 			await middleware(req, res, next);
 
-			expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+			expect(res.header).toHaveBeenCalledWith(
+				'WWW-Authenticate',
+				'Bearer realm="n8n MCP Server", resource_metadata="https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http"',
+			);
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.send).toHaveBeenCalledWith({ message: 'Unauthorized' });
 			expect(next).not.toHaveBeenCalled();

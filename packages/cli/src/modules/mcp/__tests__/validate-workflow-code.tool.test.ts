@@ -2,18 +2,22 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { createValidateWorkflowCodeTool } from '../tools/workflow-builder/validate-workflow-code.tool';
-
 import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
 
-const mockParseAndValidate = jest.fn();
-const mockStripImportStatements = jest.fn((code: string) => code);
+import { createValidateWorkflowCodeTool } from '../tools/workflow-builder/validate-workflow-code.tool';
 
-jest.mock('@n8n/ai-workflow-builder', () => ({
-	ParseValidateHandler: jest.fn().mockImplementation(() => ({
-		parseAndValidate: mockParseAndValidate,
-	})),
+// Mocks referenced inside vi.mock factories must come from vi.hoisted.
+const { mockParseAndValidate, mockStripImportStatements } = vi.hoisted(() => ({
+	mockParseAndValidate: vi.fn(),
+	mockStripImportStatements: vi.fn((code: string) => code),
+}));
+
+vi.mock('@n8n/ai-workflow-builder', () => ({
+	// `new ParseValidateHandler()` — use a constructable function, not an arrow.
+	ParseValidateHandler: vi.fn(function () {
+		return { parseAndValidate: mockParseAndValidate };
+	}),
 	stripImportStatements: (code: string) => mockStripImportStatements(code),
 	CODE_BUILDER_VALIDATE_TOOL: {
 		toolName: 'validate_workflow_code',
@@ -40,10 +44,10 @@ describe('validate-workflow-code MCP tool', () => {
 	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		telemetry = mockInstance(Telemetry, {
-			track: jest.fn(),
+			track: vi.fn(),
 		});
 		nodeTypes = mockInstance(NodeTypes);
 		nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {

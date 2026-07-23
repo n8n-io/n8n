@@ -6,7 +6,8 @@ import {
 	type ModelConfig,
 } from '@n8n/agents';
 import type { SubAgentSource } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	createN8nDelegateSubAgentTool,
@@ -18,7 +19,6 @@ import type {
 } from '../sub-agent-foreground-runner';
 
 const projectId = 'project-1';
-const userId = 'user-1';
 
 const source: SubAgentSource = {
 	agentId: 'agent-2',
@@ -56,23 +56,22 @@ const foregroundResult: SubAgentForegroundResult = {
 };
 
 describe('createN8nDelegateSubAgentTool', () => {
-	let runner: jest.Mocked<SubAgentForegroundRunner>;
-	let credentialProvider: jest.Mocked<CredentialProvider>;
+	let runner: Mocked<SubAgentForegroundRunner>;
+	let credentialProvider: Mocked<CredentialProvider>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		runner = mock<SubAgentForegroundRunner>();
 		runner.runForeground.mockResolvedValue(foregroundResult);
 		credentialProvider = mock<CredentialProvider>();
 	});
 
 	it('forwards resolveInlineSubAgentProviderTools into delegate tool metadata', () => {
-		const resolveInlineSubAgentProviderTools = jest.fn().mockReturnValue([]);
+		const resolveInlineSubAgentProviderTools = vi.fn().mockReturnValue([]);
 		const tool = createN8nDelegateSubAgentTool({
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
 			resolveInlineSubAgentProviderTools,
 		});
@@ -93,7 +92,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
 			inlineSubAgentModelsByDifficulty,
 		});
@@ -108,7 +106,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
 			policy: { maxChildren: 2 },
 		});
@@ -147,7 +144,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			},
 			expect.objectContaining({
 				projectId,
-				userId,
 				credentialProvider,
 			}),
 		);
@@ -158,7 +154,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
 		});
 
@@ -186,9 +181,14 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: {
 				'agent-2': selectedSource,
 			},
-			availableSubAgents: [{ id: 'agent-2', name: 'Research Agent' }],
+			availableSubAgents: [
+				{
+					id: 'agent-2',
+					name: 'Research Agent',
+					useWhen: 'Use for research tasks.',
+				},
+			],
 			projectId,
-			userId,
 			credentialProvider,
 		});
 
@@ -211,7 +211,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
 		});
 
@@ -229,7 +228,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 	});
 
 	it('routes inline subAgentId through runInlineSubAgent helpers instead of the foreground runner', async () => {
-		const runInlineSubAgent = jest.fn().mockResolvedValue({
+		const runInlineSubAgent = vi.fn().mockResolvedValue({
 			status: 'completed',
 			taskPath: '/root/research_api_0',
 			runId: 'inline-run-1',
@@ -239,7 +238,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
 		});
 		const runSubAgent = getInlineDelegateSubAgentToolOptions(tool)?.runSubAgent;
@@ -276,7 +274,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
 		});
 

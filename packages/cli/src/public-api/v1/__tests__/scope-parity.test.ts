@@ -1,10 +1,12 @@
 import RefParser from '@apidevtools/json-schema-ref-parser';
 import { API_KEY_RESOURCES, type ApiKeyScope } from '@n8n/permissions';
+import fs from 'node:fs';
 import path from 'node:path';
+import yaml from 'yaml';
 
 import type { ScopeTaggedMiddleware } from '../shared/middlewares/global.middleware';
 
-jest.unmock('node:fs');
+vi.unmock('node:fs');
 
 const PUBLIC_API_ROOT = path.resolve(__dirname, '..', '..');
 const OPENAPI_SPEC_PATH = path.join(PUBLIC_API_ROOT, 'v1', 'openapi.yml');
@@ -47,10 +49,17 @@ async function loadOperations(): Promise<Operation[]> {
 	return ops;
 }
 
-function loadHandlerScope(handlerPath: string, operationId: string): ApiKeyScope | undefined {
+async function loadHandlerScope(
+	handlerPath: string,
+	operationId: string,
+): Promise<ApiKeyScope | undefined> {
 	const resolved = path.join(PUBLIC_API_ROOT, `${handlerPath}.ts`);
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const mod = require(resolved) as Record<string, unknown[]>;
+	// Vitest can't `require()` a `.ts` handler (its `export =` form fails Node's
+	// strip-only loader); import it and unwrap the CJS-interop default.
+	const imported = (await import(resolved)) as {
+		default?: Record<string, unknown[]>;
+	} & Record<string, unknown[]>;
+	const mod = imported.default ?? imported;
 	const middlewares = mod[operationId];
 	if (!Array.isArray(middlewares)) return undefined;
 	for (const mw of middlewares) {
@@ -68,16 +77,25 @@ describe('Public API scope parity', () => {
 		ops = await loadOperations();
 	});
 
+	test('openapi.yml tags are sorted alphabetically by name', () => {
+		const spec = yaml.parse(fs.readFileSync(OPENAPI_SPEC_PATH, 'utf8')) as {
+			tags?: Array<{ name: string }>;
+		};
+		const tagNames = (spec.tags ?? []).map((tag) => tag.name);
+		const sorted = [...tagNames].sort((a, b) => (a < b ? -1 : 1));
+		expect(tagNames).toEqual(sorted);
+	});
+
 	test('every operation declares x-required-scope', () => {
 		const missing = ops.filter((op) => op.requiredScope === null);
 		expect(missing.map((m) => `${m.method.toUpperCase()} ${m.pathStr}`)).toEqual([]);
 	});
 
-	test('every x-required-scope matches the handler middleware __apiKeyScope', () => {
+	test('every x-required-scope matches the handler middleware __apiKeyScope', async () => {
 		const mismatches: string[] = [];
 		for (const op of ops) {
 			if (op.requiredScope === null) continue;
-			const handlerScope = loadHandlerScope(op.handlerPath, op.operationId);
+			const handlerScope = await loadHandlerScope(op.handlerPath, op.operationId);
 			const expected = op.requiredScope === 'none' ? undefined : op.requiredScope;
 			if (handlerScope !== expected) {
 				mismatches.push(
@@ -88,11 +106,14 @@ describe('Public API scope parity', () => {
 			}
 		}
 		expect(mismatches).toEqual([]);
-	});
+	}, 30_000);
 
 	test('every API key scope in API_KEY_RESOURCES is consumed by at least one endpoint', () => {
 		const consumed = new Set(
-			ops.map((op) => op.requiredScope).filter((s): s is string => s !== null && s !== 'none'),
+			ops.flatMap((op) => {
+				if (op.requiredScope === null || op.requiredScope === 'none') return [];
+				return op.requiredScope.split(',').map((scope) => scope.trim());
+			}),
 		);
 		const declared = new Set<string>();
 		for (const [resource, operations] of Object.entries(API_KEY_RESOURCES)) {

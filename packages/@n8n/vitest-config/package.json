@@ -1,6 +1,6 @@
 {
   "name": "@n8n/vitest-config",
-  "version": "1.15.0",
+  "version": "1.19.0",
   "type": "module",
   "peerDependencies": {
     "vite": "catalog:",
@@ -9,6 +9,7 @@
   "dependencies": {},
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
+    "typescript": "catalog:typescript",
     "vite": "catalog:",
     "vitest": "catalog:"
   },

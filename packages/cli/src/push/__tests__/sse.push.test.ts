@@ -1,11 +1,11 @@
 import { type PushMessage } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
 import EventEmitter from 'node:events';
+import { mock } from 'vitest-mock-extended';
 
 import { SSEPush } from '@/push/sse.push';
 import type { PushRequest, PushResponse } from '@/push/types';
 
-jest.useFakeTimers();
+vi.useFakeTimers();
 
 const createMockConnection = () => {
 	const req = mock(new EventEmitter() as PushRequest);
@@ -31,7 +31,7 @@ describe('SSEPush', () => {
 	let ssePush: SSEPush;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		ssePush = new SSEPush(mock(), mock());
 		ssePush.add(pushRef, userId, connection);
 		ssePush.add(pushRef2, userId, connection2);
@@ -95,7 +95,7 @@ describe('SSEPush', () => {
 	});
 
 	describe('sends data', () => {
-		beforeEach(() => jest.clearAllMocks());
+		beforeEach(() => vi.clearAllMocks());
 
 		it('to one connection', () => {
 			ssePush.sendToOne(pushMessage, pushRef);
@@ -125,7 +125,7 @@ describe('SSEPush', () => {
 	});
 
 	it('pings all connections', () => {
-		jest.runOnlyPendingTimers();
+		vi.runOnlyPendingTimers();
 
 		expect(connection.res.write).toHaveBeenCalledWith(':ping\n\n');
 		expect(connection.res.flush).toHaveBeenCalled();

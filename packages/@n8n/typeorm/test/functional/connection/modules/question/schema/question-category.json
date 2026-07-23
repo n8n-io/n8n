@@ -1,0 +1,17 @@
+{
+	"name": "QuestionCategory",
+	"table": {
+		"name": "question_category"
+	},
+	"columns": {
+		"id": {
+			"type": "int",
+			"primary": true,
+			"generated": true
+		},
+		"name": {
+			"type": "varchar",
+			"nullable": false
+		}
+	}
+}

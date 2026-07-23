@@ -41,8 +41,7 @@ test.describe(
 			await expect(n8n.canvas.getNodeCreatorPlusButton()).not.toBeAttached();
 
 			// Try to click on the canvas where plus button would be - should not open node creator
-			const canvasPlusButtonArea = n8n.page.getByTestId('node-creator-plus-button');
-			await expect(canvasPlusButtonArea).not.toBeAttached();
+			await expect(n8n.canvas.getNodeCreatorPlusButton()).not.toBeAttached();
 
 			// Try to interact with a node - clicking should not allow editing
 			const scheduleNode = n8n.canvas.nodeByName('Schedule Trigger');
@@ -52,9 +51,9 @@ test.describe(
 			await scheduleNode.click();
 
 			// Node toolbar action buttons should not be present in read-only mode
-			await expect(n8n.page.getByTestId('execute-node-button')).not.toBeAttached();
-			await expect(n8n.page.getByTestId('delete-node-button')).not.toBeAttached();
-			await expect(n8n.page.getByTestId('disable-node-button')).not.toBeAttached();
+			await expect(n8n.canvas.nodeExecuteButton('Schedule Trigger')).not.toBeAttached();
+			await expect(n8n.canvas.nodeDeleteButton('Schedule Trigger')).not.toBeAttached();
+			await expect(n8n.canvas.nodeDisableButton('Schedule Trigger')).not.toBeAttached();
 
 			// Try to drag a node - this should not work in read-only mode
 			const nodeBox = await scheduleNode.boundingBox();

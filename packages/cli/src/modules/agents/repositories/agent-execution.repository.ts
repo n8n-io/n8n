@@ -19,7 +19,7 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	 * sessions list to render a preview before the LLM-generated title is
 	 * available.
 	 *
-	 * Excludes resumed runs (empty `userMessage`). Returns one row per thread
+	 * Excludes resumed runs (null `userMessage`). Returns one row per thread
 	 * containing the userMessage from that thread's earliest matching run.
 	 */
 	async findFirstUserMessageByThreadIds(threadIds: string[]): Promise<Map<string, string>> {
@@ -33,10 +33,12 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		const rows = await this.createQueryBuilder('e')
 			.select(['e."threadId" AS "threadId"', 'e."userMessage" AS "userMessage"'])
 			.where('e."threadId" IN (:...threadIds)', { threadIds })
+			.andWhere('e."userMessage" IS NOT NULL')
 			.andWhere('e."userMessage" != \'\'')
 			.andWhere(
 				`e."createdAt" = (SELECT MIN(e2."createdAt") FROM ${tableName} e2 ` +
-					'WHERE e2."threadId" = e."threadId" AND e2."userMessage" != \'\')',
+					'WHERE e2."threadId" = e."threadId" AND e2."userMessage" IS NOT NULL ' +
+					'AND e2."userMessage" != \'\')',
 			)
 			.getRawMany<{ threadId: string; userMessage: string }>();
 
@@ -51,6 +53,19 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	async findSuspendedWithoutModel(threadId: string): Promise<AgentExecution[]> {
 		return await this.find({
 			where: { threadId, hitlStatus: 'suspended', model: IsNull() },
+		});
+	}
+
+	/**
+	 * The most recently suspended execution in a thread — used to recover the
+	 * original run's `source` when resuming a HITL tool call. A resume request
+	 * carries no `source` of its own; it belongs to the suspended run being
+	 * resumed.
+	 */
+	async findLatestSuspendedByThreadId(threadId: string): Promise<AgentExecution | null> {
+		return await this.findOne({
+			where: { threadId, hitlStatus: 'suspended' },
+			order: { createdAt: 'DESC' },
 		});
 	}
 

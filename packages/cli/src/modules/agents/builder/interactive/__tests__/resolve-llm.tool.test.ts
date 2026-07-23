@@ -1,25 +1,26 @@
 import type { CredentialListItem, CredentialProvider } from '@n8n/agents';
+import type { Mock } from 'vitest';
 
 import type { ModelLookup } from '../resolve-llm.tool';
 import { buildResolveLlmTool } from '../resolve-llm.tool';
 
 function makeProvider(creds: CredentialListItem[]): CredentialProvider {
 	return {
-		list: jest.fn(async () => creds),
-		resolve: jest.fn(async () => ({})),
+		list: vi.fn(async () => creds),
+		resolve: vi.fn(async () => ({})),
 	};
 }
 
-function makeModelLookup(impl?: ModelLookup['list']): ModelLookup & { list: jest.Mock } {
+function makeModelLookup(impl?: ModelLookup['list']): ModelLookup & { list: Mock } {
 	return {
-		list: jest.fn(impl ?? (async () => [])),
+		list: vi.fn(impl ?? (async () => [])),
 	};
 }
 
 describe('resolve_llm tool', () => {
 	it('auto-resolves when exactly one LLM-provider credential exists', async () => {
 		const credentialProvider = makeProvider([
-			{ id: 'c1', name: 'My Anthropic', type: 'anthropicApi' },
+			{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' },
 			{ id: 'c2', name: 'My Slack', type: 'slackApi' },
 		]);
 		const modelLookup = makeModelLookup();
@@ -28,10 +29,10 @@ describe('resolve_llm tool', () => {
 
 		expect(result).toEqual({
 			ok: true,
-			provider: 'anthropic',
-			model: 'claude-sonnet-4-6',
+			provider: 'openai',
+			model: 'gpt-5-mini',
 			credentialId: 'c1',
-			credentialName: 'My Anthropic',
+			credentialName: 'My OpenAI',
 		});
 		expect(modelLookup.list).not.toHaveBeenCalled();
 	});
@@ -56,7 +57,10 @@ describe('resolve_llm tool', () => {
 
 	it('uses the requested model for the requested provider', async () => {
 		const credentialProvider = makeProvider([{ id: 'c1', name: 'My xAI', type: 'xAiApi' }]);
-		const modelLookup = makeModelLookup();
+		const modelLookup = makeModelLookup(async () => [
+			{ name: 'Grok 4 Fast', value: 'grok-4-fast' },
+			{ name: 'Grok 4', value: 'grok-4' },
+		]);
 		const tool = buildResolveLlmTool({ credentialProvider, modelLookup });
 		const result = await tool.handler!({ provider: 'xai', model: 'grok-4-fast' }, {});
 
@@ -145,20 +149,23 @@ describe('resolve_llm tool', () => {
 			expect(modelLookup.list).not.toHaveBeenCalled();
 		});
 
-		it('skips lookup for providers without modelLookup configured (e.g. Cohere)', async () => {
+		it('validates the requested model against the lookup for Cohere', async () => {
 			const credentialProvider = makeProvider([{ id: 'c1', name: 'My Cohere', type: 'cohereApi' }]);
-			const modelLookup = makeModelLookup();
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'Command R+', value: 'command-r-plus' },
+				{ name: 'Command R', value: 'command-r' },
+			]);
 			const tool = buildResolveLlmTool({ credentialProvider, modelLookup });
-			const result = await tool.handler!({ provider: 'cohere', model: 'command-x-plus' }, {});
+			const result = await tool.handler!({ provider: 'cohere', model: 'command-r-plus' }, {});
 
 			expect(result).toEqual({
 				ok: true,
 				provider: 'cohere',
-				model: 'command-x-plus',
+				model: 'command-r-plus',
 				credentialId: 'c1',
 				credentialName: 'My Cohere',
 			});
-			expect(modelLookup.list).not.toHaveBeenCalled();
+			expect(modelLookup.list).toHaveBeenCalledWith('c1', 'cohereApi', 'cohere');
 		});
 
 		it('returns the canonical model id when the requested model matches the lookup', async () => {
@@ -182,11 +189,7 @@ describe('resolve_llm tool', () => {
 				credentialId: 'c1',
 				credentialName: 'My Anthropic',
 			});
-			expect(modelLookup.list).toHaveBeenCalledWith(
-				'c1',
-				'anthropicApi',
-				expect.objectContaining({ kind: 'listSearch', methodName: 'searchModels' }),
-			);
+			expect(modelLookup.list).toHaveBeenCalledWith('c1', 'anthropicApi', 'anthropic');
 		});
 
 		it('uniquely-substring-matches a partial requested model id', async () => {

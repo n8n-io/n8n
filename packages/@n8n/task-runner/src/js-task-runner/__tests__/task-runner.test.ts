@@ -23,6 +23,8 @@ describe('TestRunner', () => {
 			taskBrokerUri: 'http://localhost:8080',
 			timezone: 'America/New_York',
 			taskTimeout: 60,
+			gracefulShutdownTimeout: 30,
+			shutdownForceKillMargin: 10,
 			healthcheckServer: {
 				enabled: false,
 				host: 'localhost',
@@ -88,6 +90,7 @@ describe('TestRunner', () => {
 
 		afterEach(() => {
 			vi.clearAllTimers();
+			vi.useRealTimers();
 		});
 
 		it('should not send offers if canSendOffers is false', () => {
@@ -341,7 +344,7 @@ describe('TestRunner', () => {
 	});
 
 	describe('offerAccepted during shutdown', () => {
-		it('should reject task offer when runner is shutting down', () => {
+		it('should reject task offer once the runner has committed to draining', () => {
 			runner = newTestRunner({ maxConcurrency: 2 });
 			runner.onMessage({ type: 'broker:runnerregistered' });
 
@@ -349,6 +352,8 @@ describe('TestRunner', () => {
 			const offerId = [...runner.openOffers.keys()][0];
 
 			void runner.stop();
+			// Broker signals it is draining -> the runner commits to draining.
+			runner.onMessage({ type: 'broker:drain' });
 
 			const sendSpy = vi.spyOn(runner, 'send');
 
@@ -362,14 +367,33 @@ describe('TestRunner', () => {
 			expect(runner.runningTasks.size).toBe(0);
 		});
 
-		it('should clear open offers on stop', () => {
-			runner = newTestRunner({ maxConcurrency: 2 });
+		it('should still accept a task during the grace period before the broker drains', () => {
+			runner = newTestRunner({ maxConcurrency: 2, gracefulShutdownTimeout: 30 });
+			runner.onMessage({ type: 'broker:runnerregistered' });
+
+			runner.sendOffers();
+			const offerId = [...runner.openOffers.keys()][0];
+
+			// During the grace window (shutdown begun, broker not yet draining) tasks are accepted.
+			void runner.stop();
+
+			const sendSpy = vi.spyOn(runner, 'send');
+
+			runner.offerAccepted(offerId, 'task-1');
+
+			expect(sendSpy).toHaveBeenCalledWith({ type: 'runner:taskaccepted', taskId: 'task-1' });
+			expect(runner.runningTasks.size).toBe(1);
+		});
+
+		it('should clear open offers promptly on stop when the grace period is disabled', async () => {
+			runner = newTestRunner({ maxConcurrency: 2, gracefulShutdownTimeout: 0 });
 			runner.onMessage({ type: 'broker:runnerregistered' });
 
 			runner.sendOffers();
 			expect(runner.openOffers.size).toBeGreaterThan(0);
 
 			void runner.stop();
+			await Promise.resolve();
 
 			expect(runner.openOffers.size).toBe(0);
 		});
@@ -385,6 +409,116 @@ describe('TestRunner', () => {
 
 			expect(runner.canSendOffers).toBe(false);
 		});
+
+		it('should keep offering after stop() until the broker drains', async () => {
+			vi.useRealTimers();
+			runner = newTestRunner({ maxConcurrency: 2, gracefulShutdownTimeout: 30 });
+			runner.onMessage({ type: 'broker:runnerregistered' });
+			runner.sendOffers();
+			expect(runner.openOffers.size).toBeGreaterThan(0);
+
+			void runner.stop();
+			await Promise.resolve();
+
+			// Still offering during the grace window, before the broker drains.
+			expect(runner.canSendOffers).toBe(true);
+			expect(runner.openOffers.size).toBeGreaterThan(0);
+
+			// Once the broker signals it is draining, the runner stops offering and
+			// clears its open offers.
+			runner.onMessage({ type: 'broker:drain' });
+			expect(runner.canSendOffers).toBe(false);
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(runner.openOffers.size).toBe(0);
+		});
+
+		it('should commit to draining once the grace period elapses without a broker:drain', async () => {
+			vi.useFakeTimers();
+			try {
+				runner = newTestRunner({ maxConcurrency: 2, gracefulShutdownTimeout: 30 });
+				runner.onMessage({ type: 'broker:runnerregistered' });
+				runner.sendOffers();
+				expect(runner.openOffers.size).toBeGreaterThan(0);
+
+				void runner.stop();
+				await Promise.resolve();
+
+				// During the grace period the runner keeps offering, even though no
+				// broker:drain ever arrives (e.g. only the runner is being restarted).
+				expect(runner.canSendOffers).toBe(true);
+
+				// When the grace period elapses the runner commits to draining anyway, so
+				// it can never hang waiting for a drain message that will not come.
+				await vi.advanceTimersByTimeAsync(30_000);
+				expect(runner.canSendOffers).toBe(false);
+				expect(runner.openOffers.size).toBe(0);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should wait for an in-flight task before closing the connection', async () => {
+			vi.useFakeTimers();
+			try {
+				runner = newTestRunner({ maxConcurrency: 2, gracefulShutdownTimeout: 30 });
+				runner.onMessage({ type: 'broker:runnerregistered' });
+				const closeSpy = vi.spyOn(runner.ws, 'close');
+
+				// A task is running when shutdown begins.
+				runner.runningTasks.set('task-1', newTaskState('task-1'));
+
+				void runner.stop();
+				runner.onMessage({ type: 'broker:drain' });
+				await vi.advanceTimersByTimeAsync(500);
+
+				// The runner must not close while the task is still running.
+				expect(closeSpy).not.toHaveBeenCalled();
+
+				// Once the task finishes, the runner closes the connection.
+				runner.runningTasks.delete('task-1');
+				await vi.advanceTimersByTimeAsync(200);
+				expect(closeSpy).toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should abandon an unfinished task after the grace period but still close the connection', async () => {
+			vi.useFakeTimers();
+			try {
+				runner = newTestRunner({ gracefulShutdownTimeout: 1 });
+				runner.onMessage({ type: 'broker:runnerregistered' });
+				const closeSpy = vi.spyOn(runner.ws, 'close');
+
+				// A task that never finishes.
+				runner.runningTasks.set('task-1', newTaskState('task-1'));
+
+				void runner.stop();
+				runner.onMessage({ type: 'broker:drain' }); // skip the keep-offering wait
+
+				// Once the grace period elapses the task is abandoned (the broker will fail
+				// it), but the runner still closes the connection cleanly rather than hang.
+				await vi.advanceTimersByTimeAsync(1500);
+				expect(closeSpy).toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should commit to draining immediately when deferToBrokerDrain is false', async () => {
+			runner = newTestRunner({ gracefulShutdownTimeout: 30 });
+			runner.onMessage({ type: 'broker:runnerregistered' });
+			runner.sendOffers();
+			expect(runner.openOffers.size).toBeGreaterThan(0);
+
+			// The idle-timeout exit drains immediately: no execution is waiting on this
+			// runner, so it should not keep offering for the grace period.
+			void runner.stop({ deferToBrokerDrain: false });
+			await new Promise((resolve) => setImmediate(resolve));
+
+			expect(runner.canSendOffers).toBe(false);
+			expect(runner.openOffers.size).toBe(0);
+		});
 	});
 
 	describe('connection close', () => {
@@ -396,6 +530,21 @@ describe('TestRunner', () => {
 
 		afterEach(() => {
 			processExitSpy.mockRestore();
+		});
+
+		it('should exit cleanly when the connection closes after the broker drained it', () => {
+			runner = newTestRunner();
+			runner.onMessage({ type: 'broker:runnerregistered' });
+			// Broker signalled drain (broker:drain) but the runner never got its own
+			// SIGTERM (e.g. a runner launched to serve a task during instance shutdown).
+			runner.onMessage({ type: 'broker:drain' });
+
+			const closeHandler = (runner.ws.addEventListener as unknown as Mock).mock.calls.find(
+				([event]: unknown[]) => event === 'close',
+			)?.[1] as () => void;
+			closeHandler();
+
+			expect(processExitSpy).toHaveBeenCalledWith(0);
 		});
 
 		it('should exit process on unexpected close', () => {
@@ -429,6 +578,28 @@ describe('TestRunner', () => {
 			closeHandler();
 
 			expect(processExitSpy).not.toHaveBeenCalled();
+		});
+
+		it('should release the grace-period wait when the connection closes during shutdown', async () => {
+			runner = newTestRunner({ gracefulShutdownTimeout: 30 });
+			runner.onMessage({ type: 'broker:runnerregistered' });
+			runner.sendOffers();
+			expect(runner.openOffers.size).toBeGreaterThan(0);
+
+			const closeHandler = (runner.ws.addEventListener as unknown as Mock).mock.calls.find(
+				([event]: unknown[]) => event === 'close',
+			)?.[1] as () => void;
+
+			void runner.stop();
+			await Promise.resolve();
+			expect(runner.canSendOffers).toBe(true); // still in the grace wait
+
+			// The broker connection drops without sending broker:drain. The runner must
+			// not block for the full grace period waiting for a drain that cannot arrive.
+			closeHandler();
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(runner.canSendOffers).toBe(false);
+			expect(runner.openOffers.size).toBe(0);
 		});
 	});
 });

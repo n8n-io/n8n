@@ -2,11 +2,15 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { round2 } from './creditFormatting';
 
 const props = defineProps<{
 	creditsRemaining?: number;
 	creditsQuota?: number;
+	// 'attached' fuses onto the chat input below (used in the assistant sidebar);
+	// 'standalone' is a self-contained card that sits above a detached input.
+	variant?: 'attached' | 'standalone';
 }>();
 
 const emit = defineEmits<{
@@ -15,9 +19,13 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const cloudPlanStore = useCloudPlanStore();
 
 const bannerText = computed(() => {
-	return i18n.baseText('aiAssistant.builder.creditBanner.text', {
+	const key = cloudPlanStore.userIsTrialing
+		? 'aiAssistant.builder.creditBanner.trialText'
+		: 'aiAssistant.builder.creditBanner.text';
+	return i18n.baseText(key, {
 		interpolate: {
 			remaining: String(round2(props.creditsRemaining ?? 0)),
 			total: String(round2(props.creditsQuota ?? 0)),
@@ -41,7 +49,10 @@ const tooltipContent = computed(() => {
 </script>
 
 <template>
-	<div :class="$style.banner" data-test-id="credit-warning-banner">
+	<div
+		:class="[$style.banner, { [$style.standalone]: props.variant === 'standalone' }]"
+		data-test-id="credit-warning-banner"
+	>
 		<div :class="$style.content">
 			<span :class="$style.text">{{ bannerText }}</span>
 			<N8nTooltip :content="tooltipContent" placement="top" :show-after="300">
@@ -78,6 +89,13 @@ const tooltipContent = computed(() => {
 	border-bottom: none;
 	margin: 0 var(--spacing--2xs);
 	line-height: var(--line-height--xl);
+}
+
+.standalone {
+	// Full card so it reads as its own element above a detached, rounded input.
+	border-radius: var(--radius--lg);
+	border-bottom: var(--border);
+	margin: 0;
 }
 
 .content {

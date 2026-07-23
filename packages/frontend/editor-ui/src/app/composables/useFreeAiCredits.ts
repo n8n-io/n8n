@@ -1,5 +1,6 @@
-import { computed, ref } from 'vue';
+import { computed, ref, toValue, type MaybeRefOrGetter } from 'vue';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -10,7 +11,17 @@ import { useI18n } from '@n8n/i18n';
 
 const showSuccessCallout = ref(false);
 
-export function useFreeAiCredits() {
+type UseFreeAiCreditsOptions = {
+	hasOpenAiCredential?: MaybeRefOrGetter<boolean>;
+};
+
+export type FreeAiCreditsClaimSource =
+	| 'chatHubAutoClaim'
+	| 'freeAiCreditsCallout'
+	| 'instanceAiWorkflowSetup'
+	| 'agentBuilderModelSelector';
+
+export function useFreeAiCredits(options: UseFreeAiCreditsOptions = {}) {
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
 	const settingsStore = useSettingsStore();
@@ -25,11 +36,15 @@ export function useFreeAiCredits() {
 
 	const aiCreditsQuota = computed(() => settingsStore.aiCreditsQuota);
 
-	const userHasOpenAiCredentialAlready = computed(() =>
-		credentialsStore.allCredentials.some(
+	const userHasOpenAiCredentialAlready = computed(() => {
+		if (options.hasOpenAiCredential !== undefined) {
+			return toValue(options.hasOpenAiCredential);
+		}
+
+		return credentialsStore.allCredentials.some(
 			(credential) => credential.type === OPEN_AI_API_CREDENTIAL_TYPE,
-		),
-	);
+		);
+	});
 
 	const userHasClaimedAiCreditsAlready = computed(
 		() => !!usersStore.currentUser?.settings?.userClaimedAiCredits,
@@ -43,17 +58,18 @@ export function useFreeAiCredits() {
 			!userHasClaimedAiCreditsAlready.value,
 	);
 
-	async function claimCredits(
-		source: 'chatHubAutoClaim' | 'freeAiCreditsCallout' | 'instanceAiWorkflowSetup',
-	): Promise<boolean> {
+	async function claimCreditsAndGetCredential(
+		source: FreeAiCreditsClaimSource,
+		projectId = projectsStore.currentProject?.id,
+	): Promise<ICredentialsResponse | null> {
 		if (!userCanClaimOpenAiCredits.value) {
-			return false;
+			return null;
 		}
 
 		claimingCredits.value = true;
 
 		try {
-			await credentialsStore.claimFreeAiCredits(projectsStore.currentProject?.id);
+			const credential = await credentialsStore.claimFreeAiCredits(projectId);
 
 			if (usersStore?.currentUser?.settings) {
 				usersStore.currentUser.settings.userClaimedAiCredits = true;
@@ -62,15 +78,19 @@ export function useFreeAiCredits() {
 			showSuccessCallout.value = true;
 			telemetry.track('User claimed OpenAI credits', { source });
 
-			return true;
+			return credential;
 		} catch (e) {
 			toast.showError(e, i18n.baseText('freeAi.credits.showError.claim.title'), {
 				message: i18n.baseText('freeAi.credits.showError.claim.message'),
 			});
-			return false;
+			return null;
 		} finally {
 			claimingCredits.value = false;
 		}
+	}
+
+	async function claimCredits(source: FreeAiCreditsClaimSource): Promise<boolean> {
+		return (await claimCreditsAndGetCredential(source)) !== null;
 	}
 
 	return {
@@ -80,5 +100,6 @@ export function useFreeAiCredits() {
 		claimingCredits,
 		showSuccessCallout,
 		claimCredits,
+		claimCreditsAndGetCredential,
 	};
 }

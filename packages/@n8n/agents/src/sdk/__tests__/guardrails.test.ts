@@ -151,6 +151,105 @@ describe('redactText', () => {
 		});
 	});
 
+	describe('preserveUrlStructure', () => {
+		const opts = { detect: ['url', 'email'] as const, preserveUrlStructure: true };
+		// Webhook-shaped fixtures are assembled at runtime so the source never
+		// carries a contiguous URL matching vendor secret-scanning fingerprints
+		// (GitHub push protection blocks them).
+		const slackWebhook = [
+			'https://hooks.slack.com/services/',
+			'T0001A2B3/B0004C5D6/a1B2c3D4e5F6g7H8i9J0k1L2',
+		].join('');
+		const telegramBotUrl = [
+			'https://api.telegram.org/bot',
+			'123456789:AAEabcDEFghiJKLmnoPQRstuVWXyz012345/sendMessage',
+		].join('');
+
+		it('keeps origin + path + query names, redacts query values and fragment', () => {
+			const { text, matches } = redactText(
+				'see https://internal.example.com/admin?token=abc123&page=2#frag ok',
+				opts,
+			);
+			expect(text).toBe('see https://internal.example.com/admin?token=REDACTED&page=REDACTED ok');
+			expect(matches).toEqual([{ category: 'url' }]);
+		});
+
+		it('leaves a bare origin+path URL intact and records no match', () => {
+			const input = 'fetch https://api.example.com/v1/posts now';
+			const { text, matches } = redactText(input, opts);
+			expect(text).toBe(input);
+			expect(matches).toEqual([]);
+		});
+
+		it('drops userinfo via origin (url pass runs first)', () => {
+			const { text } = redactText('see https://user:pass@example.com/x ok', opts);
+			expect(text).toBe('see https://example.com/x ok');
+		});
+
+		it('redacts token-like path segments (Slack webhook secret) but keeps short ids', () => {
+			const { text } = redactText(`post to ${slackWebhook} now`, opts);
+			expect(text).toBe(
+				'post to https://hooks.slack.com/services/T0001A2B3/B0004C5D6/REDACTED now',
+			);
+		});
+
+		it('redacts a Telegram bot token path segment', () => {
+			const { text } = redactText(telegramBotUrl, opts);
+			expect(text).toBe('https://api.telegram.org/REDACTED/sendMessage');
+		});
+
+		it('redacts a long letters-only opaque path segment, keeping readable slugs', () => {
+			const { text } = redactText(
+				'https://hooks.example.com/services/abcdefghijklmnopqrstuvwxyz/keep-this-slug',
+				opts,
+			);
+			expect(text).toBe('https://hooks.example.com/services/REDACTED/keep-this-slug');
+		});
+
+		it('redacts every query value even when another pattern also matches inside the URL', () => {
+			// email runs after url; before the reorder it planted `[REDACTED]` whose
+			// `]` clipped the url match and let `sig` leak in cleartext.
+			const { text } = redactText('https://x.com/unsub?email=jo@x.com&sig=8f3k2j9d', opts);
+			expect(text).toBe('https://x.com/unsub?email=REDACTED&sig=REDACTED');
+		});
+
+		it('redacts pre-signed S3 query values (credential + signature)', () => {
+			const { text } = redactText(
+				'https://b.s3.amazonaws.com/key?X-Amz-Credential=AKIAIOSFODNN7EXAMPLE&X-Amz-Signature=abc123def456',
+				opts,
+			);
+			expect(text).toBe(
+				'https://b.s3.amazonaws.com/key?X-Amz-Credential=REDACTED&X-Amz-Signature=REDACTED',
+			);
+			expect(text).not.toContain('AKIA');
+		});
+
+		it('still redacts with a short custom placeholder', () => {
+			const { text } = redactText('https://x.com/a?k=secret1', { ...opts, placeholder: 'x' });
+			expect(text).toBe('https://x.com/a?k=x');
+		});
+
+		it('re-encodes query names so the rebuilt URL stays parseable', () => {
+			const { text } = redactText('https://x.com/a?a%20b=1', opts);
+			expect(text).toBe('https://x.com/a?a%20b=REDACTED');
+		});
+
+		it('fully redacts an unparseable URL', () => {
+			const { text } = redactText('see https://% ok', opts);
+			expect(text).toBe('see [REDACTED] ok');
+		});
+
+		it('is idempotent, including over token-redacted paths', () => {
+			const input = `see https://x.example.com/a?k=v and ${slackWebhook} ok`;
+			const once = redactText(input, opts).text;
+			expect(once).toBe(
+				'see https://x.example.com/a?k=REDACTED and https://hooks.slack.com/services/T0001A2B3/B0004C5D6/REDACTED ok',
+			);
+			const twice = redactText(once, opts).text;
+			expect(twice).toBe(once);
+		});
+	});
+
 	describe('redactionOptionsFromGuardrail', () => {
 		it('maps a pii guardrail to detect types without secrets', () => {
 			const guardrail = new Guardrail('pii')

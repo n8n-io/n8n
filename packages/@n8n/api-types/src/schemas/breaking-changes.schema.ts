@@ -6,7 +6,7 @@ export type BreakingChangeRuleSeverity = z.infer<typeof breakingChangeRuleSeveri
 
 export const breakingChangeIssueLevelSchema = z.enum(['info', 'warning', 'error']);
 
-const breakingChangeVersionSchema = z.enum(['v2']);
+export const breakingChangeVersionSchema = z.enum(['v2', 'v3']);
 export type BreakingChangeVersion = z.infer<typeof breakingChangeVersionSchema>;
 
 /**

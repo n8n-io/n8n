@@ -1,6 +1,6 @@
-jest.mock('../npm-utils', () => ({
-	...jest.requireActual('../npm-utils'),
-	executeNpmCommand: jest.fn(),
+vi.mock('../npm-utils', async () => ({
+	...(await vi.importActual<typeof import('../npm-utils')>('../npm-utils')),
+	executeNpmCommand: vi.fn(),
 }));
 
 import { mockInstance } from '@n8n/backend-test-utils';
@@ -25,7 +25,7 @@ import {
 const communityPackagesService = mockInstance(CommunityPackagesService, {
 	hasMissingPackages: false,
 });
-const mockedExecuteNpmCommand = jest.mocked(executeNpmCommand);
+const mockedExecuteNpmCommand = vi.mocked(executeNpmCommand);
 mockInstance(LoadNodesAndCredentials);
 
 const testServer = setupTestServer({
@@ -53,7 +53,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-	jest.resetAllMocks();
+	vi.resetAllMocks();
 });
 
 describe('GET /community-packages', () => {

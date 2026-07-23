@@ -28,6 +28,21 @@ describe('applyAgentThinking', () => {
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', { mode: 'adaptive' });
 	});
 
+	it('enables adaptive thinking for dotted Anthropic provider IDs', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'anthropic.messages/claude-opus-4-8');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', { mode: 'adaptive' });
+	});
+
+	it('enables adaptive thinking for AI SDK Anthropic model objects', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, {
+			modelId: 'claude-opus-4-8',
+			config: { provider: 'anthropic.messages' },
+		} as unknown as Parameters<typeof applyAgentThinking>[1]);
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', { mode: 'adaptive' });
+	});
+
 	it('enables OpenAI reasoning for supported models', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'openai/gpt-5.5');

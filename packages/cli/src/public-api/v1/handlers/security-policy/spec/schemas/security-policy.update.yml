@@ -1,0 +1,42 @@
+type: object
+additionalProperties: false
+description: Full security policy. All writable fields must be provided; partial updates are not supported.
+required:
+  - personalSpacePublishing
+  - personalSpaceSharing
+  - redactionEnforcement
+properties:
+  personalSpacePublishing:
+    type: boolean
+    description: Whether members may publish workflows and agents from their personal space.
+    example: false
+  personalSpaceSharing:
+    type: boolean
+    description: Whether members may share workflows and credentials from their personal space.
+    example: false
+  redactionEnforcement:
+    type: object
+    additionalProperties: false
+    required:
+      - floor
+    properties:
+      floor:
+        type: string
+        enum: [off, production, all]
+        description: Minimum execution-data redaction level enforced across the instance.
+        example: production
+  publishedPersonalWorkflowsCount:
+    type: integer
+    description: >
+      Read-only usage count returned by GET. Ignored on write so a GET response can be
+      sent back as a PUT body.
+  sharedPersonalWorkflowsCount:
+    type: integer
+    description: >
+      Read-only usage count returned by GET. Ignored on write so a GET response can be
+      sent back as a PUT body.
+  sharedPersonalCredentialsCount:
+    type: integer
+    description: >
+      Read-only usage count returned by GET. Ignored on write so a GET response can be
+      sent back as a PUT body.

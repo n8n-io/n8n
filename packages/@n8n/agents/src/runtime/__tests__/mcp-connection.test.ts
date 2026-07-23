@@ -13,11 +13,13 @@ const clientListTools = vi.fn().mockResolvedValue({
 		{ name: 'subtract', description: '', inputSchema: { type: 'object' } },
 	],
 });
+const clientCallTool = vi.fn().mockResolvedValue({ content: [] });
 const clientClose = vi.fn().mockResolvedValue(undefined);
 
 class FakeClient {
 	connect = clientConnect;
 	listTools = clientListTools;
+	callTool = clientCallTool;
 	close = clientClose;
 }
 
@@ -145,6 +147,50 @@ describe('McpClient — connection error formatting', () => {
 		await expect(client.listTools()).rejects.toThrow(
 			'MCP connection failed:\n\tcustom_mcp: fetch failed. The request was blocked because it resolves to a restricted IP address',
 		);
+	});
+});
+
+describe('McpConnection - tool call settled callback', () => {
+	beforeEach(() => {
+		clientConnect.mockReset().mockResolvedValue(undefined);
+		clientCallTool.mockReset();
+	});
+
+	it('reports completed MCP tool calls', async () => {
+		const onToolCallSettled = vi.fn();
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+			onToolCallSettled,
+		});
+		await conn.connect();
+
+		clientCallTool
+			.mockResolvedValueOnce({ content: [] })
+			.mockResolvedValueOnce({ content: [], isError: true });
+
+		await conn.callTool('echo', { message: 'ok' });
+		await conn.callTool('echo', { message: 'bad' });
+
+		expect(onToolCallSettled).toHaveBeenNthCalledWith(1, { toolName: 'echo', success: true });
+		expect(onToolCallSettled).toHaveBeenNthCalledWith(2, { toolName: 'echo', success: false });
+	});
+
+	it('reports failed MCP tool calls', async () => {
+		const onToolCallSettled = vi.fn();
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+			onToolCallSettled,
+		});
+		await conn.connect();
+		clientCallTool.mockRejectedValueOnce(new Error('boom'));
+
+		await expect(conn.callTool('echo', { message: 'bad' })).rejects.toThrow('boom');
+
+		expect(onToolCallSettled).toHaveBeenCalledWith({ toolName: 'echo', success: false });
 	});
 });
 

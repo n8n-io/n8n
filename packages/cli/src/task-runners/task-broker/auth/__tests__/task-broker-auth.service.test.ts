@@ -30,7 +30,7 @@ describe('TaskBrokerAuthService', () => {
 	const authService = new TaskBrokerAuthService(globalConfig.taskRunners, cacheService);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('isValidAuthToken', () => {
@@ -50,7 +50,7 @@ describe('TaskBrokerAuthService', () => {
 
 		it('should store the generated token in cache', async () => {
 			// Arrange
-			const cacheSetSpy = jest.spyOn(cacheService, 'set');
+			const cacheSetSpy = vi.spyOn(cacheService, 'set');
 
 			// Act
 			const token = await authService.createGrantToken();

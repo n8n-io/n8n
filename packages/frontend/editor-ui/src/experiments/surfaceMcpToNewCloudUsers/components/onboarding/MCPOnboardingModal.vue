@@ -5,12 +5,11 @@ import SurfaceMcpBridgeGraphic from '@/experiments/surfaceMcpToNewCloudUsers/com
 import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
 import MCPAccessToggle from '@/features/ai/mcpAccess/components/header/McpAccessToggle.vue';
-import { MCP_ENDPOINT, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
@@ -35,7 +34,6 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const toast = useToast();
-const rootStore = useRootStore();
 const mcpStore = useMCPStore();
 const experimentStore = useSurfaceMcpToNewCloudUsersStore();
 const modalBus = createEventBus();
@@ -81,7 +79,7 @@ const clientOptions = computed<MCPOnboardingClientOption[]>(() => [
 	},
 ]);
 
-const serverUrl = computed(() => `${rootStore.urlBaseEditor}${MCP_ENDPOINT}`);
+const serverUrl = computed(() => mcpStore.serverUrl);
 const isChatGptClient = computed(() => activeClient.value === 'chatgpt');
 const showServerUrlStep = computed(() => activeClient.value === 'claude');
 const showRestartStep = computed(

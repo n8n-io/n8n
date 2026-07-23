@@ -1,8 +1,8 @@
 import type { RedactionFloor } from '@n8n/api-types';
 import type { ContextEstablishmentOptions } from '@n8n/decorators';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
 import type { Workflow, WorkflowSettings } from 'n8n-workflow';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
 import { RedactionContextHook } from '../redaction-context-hook';

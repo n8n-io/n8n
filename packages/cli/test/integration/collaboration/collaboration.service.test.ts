@@ -6,8 +6,9 @@ import {
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { createMember, createOwner } from '@test-integration/db/users';
 import type { IWorkflowBase } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type {
 	WorkflowClosedMessage,
@@ -15,11 +16,10 @@ import type {
 	WriteAccessRequestedMessage,
 	WriteAccessReleaseRequestedMessage,
 } from '@/collaboration/collaboration.message';
-import { CollaborationState } from '@/collaboration/collaboration.state';
 import { CollaborationService } from '@/collaboration/collaboration.service';
+import { CollaborationState } from '@/collaboration/collaboration.state';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
-import { createMember, createOwner } from '@test-integration/db/users';
 
 describe('CollaborationService', () => {
 	mockInstance(Push, new Push(mock(), mock(), mock(), mock(), mock()));
@@ -52,7 +52,7 @@ describe('CollaborationService', () => {
 	});
 
 	afterEach(async () => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		await cacheService.reset();
 	});
 
@@ -111,7 +111,7 @@ describe('CollaborationService', () => {
 	describe('workflow opened message', () => {
 		it('should emit collaboratorsChanged after workflowOpened', async () => {
 			// Arrange
-			const sendToUsersSpy = jest.spyOn(pushService, 'sendToUsers');
+			const sendToUsersSpy = pushService.sendToUsers;
 
 			// Act
 			await sendWorkflowOpenedMessage(workflow.id, owner.id, 'owner-client-id');
@@ -161,7 +161,7 @@ describe('CollaborationService', () => {
 		});
 
 		it("should not emit collaboratorsChanged if user don't have access to the workflow", async () => {
-			const sendToUsersSpy = jest.spyOn(pushService, 'sendToUsers');
+			const sendToUsersSpy = pushService.sendToUsers;
 
 			// Act
 			await sendWorkflowOpenedMessage(workflow.id, memberWithoutAccess.id);
@@ -174,9 +174,9 @@ describe('CollaborationService', () => {
 	describe('workflow closed message', () => {
 		it('should not emit collaboratorsChanged after workflowClosed when there are no active users', async () => {
 			// Arrange
-			const sendToUsersSpy = jest.spyOn(pushService, 'sendToUsers');
+			const sendToUsersSpy = pushService.sendToUsers;
 			await sendWorkflowOpenedMessage(workflow.id, owner.id);
-			sendToUsersSpy.mockClear();
+			vi.mocked(sendToUsersSpy).mockClear();
 
 			// Act
 			await sendWorkflowClosedMessage(workflow.id, owner.id);
@@ -187,10 +187,10 @@ describe('CollaborationService', () => {
 
 		it('should emit collaboratorsChanged after workflowClosed when there are active users', async () => {
 			// Arrange
-			const sendToUsersSpy = jest.spyOn(pushService, 'sendToUsers');
+			const sendToUsersSpy = pushService.sendToUsers;
 			await sendWorkflowOpenedMessage(workflow.id, owner.id, 'owner-client-id');
 			await sendWorkflowOpenedMessage(workflow.id, memberWithAccess.id, 'member-client-id');
-			sendToUsersSpy.mockClear();
+			vi.mocked(sendToUsersSpy).mockClear();
 
 			// Act
 			await sendWorkflowClosedMessage(workflow.id, owner.id, 'owner-client-id');
@@ -217,9 +217,9 @@ describe('CollaborationService', () => {
 
 		it("should not emit collaboratorsChanged if user don't have access to the workflow", async () => {
 			// Arrange
-			const sendToUsersSpy = jest.spyOn(pushService, 'sendToUsers');
+			const sendToUsersSpy = pushService.sendToUsers;
 			await sendWorkflowOpenedMessage(workflow.id, owner.id);
-			sendToUsersSpy.mockClear();
+			vi.mocked(sendToUsersSpy).mockClear();
 
 			// Act
 			await sendWorkflowClosedMessage(workflow.id, memberWithoutAccess.id);
@@ -232,9 +232,9 @@ describe('CollaborationService', () => {
 	describe('write lock acquisition', () => {
 		it('should grant write lock to first user', async () => {
 			// Arrange
-			const sendToUsersSpy = jest.spyOn(pushService, 'sendToUsers');
+			const sendToUsersSpy = pushService.sendToUsers;
 			await sendWorkflowOpenedMessage(workflow.id, owner.id);
-			sendToUsersSpy.mockClear();
+			vi.mocked(sendToUsersSpy).mockClear();
 
 			// Act
 			await sendWriteAccessRequestedMessage(workflow.id, owner.id);
@@ -255,13 +255,13 @@ describe('CollaborationService', () => {
 
 		it('should deny write lock if another user holds it', async () => {
 			// Arrange
-			const sendToUsersSpy = jest.spyOn(pushService, 'sendToUsers');
+			const sendToUsersSpy = pushService.sendToUsers;
 			await sendWorkflowOpenedMessage(workflow.id, owner.id, 'owner-client-id');
 			await sendWorkflowOpenedMessage(workflow.id, memberWithAccess.id, 'member-client-id');
 
 			// Owner acquires the lock first
 			await sendWriteAccessRequestedMessage(workflow.id, owner.id, 'owner-client-id');
-			sendToUsersSpy.mockClear();
+			vi.mocked(sendToUsersSpy).mockClear();
 
 			// Act - Member tries to acquire the lock
 			await sendWriteAccessRequestedMessage(workflow.id, memberWithAccess.id, 'member-client-id');
@@ -272,7 +272,7 @@ describe('CollaborationService', () => {
 
 		it('should allow lock acquisition after release', async () => {
 			// Arrange
-			const sendToUsersSpy = jest.spyOn(pushService, 'sendToUsers');
+			const sendToUsersSpy = pushService.sendToUsers;
 			await sendWorkflowOpenedMessage(workflow.id, owner.id, 'owner-client-id');
 			await sendWorkflowOpenedMessage(workflow.id, memberWithAccess.id, 'member-client-id');
 
@@ -281,7 +281,7 @@ describe('CollaborationService', () => {
 
 			// Owner releases the lock
 			await sendWriteAccessReleaseRequestedMessage(workflow.id, owner.id, 'owner-client-id');
-			sendToUsersSpy.mockClear();
+			vi.mocked(sendToUsersSpy).mockClear();
 
 			// Act - Member tries to acquire the lock
 			await sendWriteAccessRequestedMessage(workflow.id, memberWithAccess.id, 'member-client-id');
@@ -302,12 +302,12 @@ describe('CollaborationService', () => {
 
 		it('should allow same user to re-acquire lock they already hold', async () => {
 			// Arrange
-			const sendToUsersSpy = jest.spyOn(pushService, 'sendToUsers');
+			const sendToUsersSpy = pushService.sendToUsers;
 			await sendWorkflowOpenedMessage(workflow.id, owner.id);
 
 			// Owner acquires the lock
 			await sendWriteAccessRequestedMessage(workflow.id, owner.id);
-			sendToUsersSpy.mockClear();
+			vi.mocked(sendToUsersSpy).mockClear();
 
 			// Act - Owner tries to acquire the lock again
 			await sendWriteAccessRequestedMessage(workflow.id, owner.id);
@@ -328,9 +328,9 @@ describe('CollaborationService', () => {
 
 		it('should not grant write lock to user without write access', async () => {
 			// Arrange
-			const sendToUsersSpy = jest.spyOn(pushService, 'sendToUsers');
+			const sendToUsersSpy = pushService.sendToUsers;
 			await sendWorkflowOpenedMessage(workflow.id, memberWithoutAccess.id);
-			sendToUsersSpy.mockClear();
+			vi.mocked(sendToUsersSpy).mockClear();
 
 			// Act - User without access tries to acquire lock
 			await sendWriteAccessRequestedMessage(workflow.id, memberWithoutAccess.id);
@@ -380,9 +380,38 @@ describe('CollaborationService', () => {
 		});
 	});
 
+	describe('broadcastWorkflowReviewStateChanged', () => {
+		it('should send the invalidation message to exactly the current collaborators', async () => {
+			const sendToUsersSpy = pushService.sendToUsers;
+			await sendWorkflowOpenedMessage(workflow.id, owner.id, 'owner-client-id');
+			await sendWorkflowOpenedMessage(workflow.id, memberWithAccess.id, 'member-client-id');
+			vi.mocked(sendToUsersSpy).mockClear();
+
+			await collaborationService.broadcastWorkflowReviewStateChanged(workflow.id);
+
+			expect(sendToUsersSpy).toHaveBeenCalledTimes(1);
+			expect(sendToUsersSpy).toHaveBeenCalledWith(
+				{
+					type: 'workflowReviewStateChanged',
+					data: { workflowId: workflow.id },
+				},
+				expect.arrayContaining([owner.id, memberWithAccess.id]),
+			);
+			expect(vi.mocked(sendToUsersSpy).mock.calls[0][1]).toHaveLength(2);
+		});
+
+		it('should not send anything when there are no collaborators', async () => {
+			const sendToUsersSpy = pushService.sendToUsers;
+
+			await collaborationService.broadcastWorkflowReviewStateChanged(workflow.id);
+
+			expect(sendToUsersSpy).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('filterOpenWorkflowIds', () => {
 		it('should skip failed collaborator lookups and return resolved open workflows', async () => {
-			jest.spyOn(collaborationState, 'getCollaborators').mockImplementation(async (workflowId) => {
+			vi.spyOn(collaborationState, 'getCollaborators').mockImplementation(async (workflowId) => {
 				if (workflowId === 'workflow-failing') throw new Error('cache down');
 				if (workflowId === 'workflow-open') {
 					return [

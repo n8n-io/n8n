@@ -401,7 +401,10 @@ onBeforeMount(() => {
 				</div>
 			</div>
 			<template v-else>
-				<div :class="[$style.chatMessage, { [$style.errorMessage]: message.status === 'error' }]">
+				<div
+					data-test-id="chat-message-content"
+					:class="[$style.chatMessage, { [$style.errorMessage]: message.status === 'error' }]"
+				>
 					<div v-if="attachments.length > 0" :class="$style.attachments">
 						<ChatFile
 							v-for="(attachment, index) in attachments"

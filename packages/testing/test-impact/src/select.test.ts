@@ -147,6 +147,22 @@ describe('selectTests — fail-open contract', () => {
 		expect(result.specs).toEqual([...ALL_SPECS].sort());
 	});
 
+	// Credential definitions are declarative metadata absent from the runtime map;
+	// without forcing broad they'd be declared uncovered and skip their specs.
+	it('credential definition change → broad, never declared uncovered', () => {
+		const map: ImpactMap = { 'packages/cli/src/x.ts': { '10': ['tests/e2e/a.spec.ts'] } };
+		const mapPath = path.join(tempDir, 'map-cred.json');
+		fs.writeFileSync(mapPath, JSON.stringify(map));
+		const result = selectTests({
+			changedFiles: ['packages/nodes-base/credentials/MicrosoftOAuth2Api.credentials.ts'],
+			mapFile: mapPath,
+			allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
+		});
+		expect(result.mode).toBe('broad');
+		expect(result.specs).toEqual([...ALL_SPECS].sort());
+		expect(result.uncovered).toBeUndefined();
+	});
+
 	it('package.json change with NO dependency change (version) → uncovered, not broad', () => {
 		const map: ImpactMap = { 'packages/cli/src/x.ts': { '10': ['tests/e2e/a.spec.ts'] } };
 		const mapPath = path.join(tempDir, 'map-ver.json');
@@ -198,6 +214,64 @@ describe('selectTests — fail-open contract', () => {
 			},
 		});
 		expect(result.mode).toBe('broad');
+	});
+
+	// A stray `paths` entry re-points every spec's imports — the regression this guards.
+	it('tsconfig resolution-key change (paths) → broad, never declared uncovered', () => {
+		const map: ImpactMap = { 'packages/cli/src/x.ts': { '10': ['tests/e2e/a.spec.ts'] } };
+		const mapPath = path.join(tempDir, 'map-tsconfig-paths.json');
+		fs.writeFileSync(mapPath, JSON.stringify(map));
+		const result = selectTests({
+			changedFiles: ['packages/workflow/tsconfig.json'],
+			mapFile: mapPath,
+			allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
+			tsconfigs: {
+				'packages/workflow/tsconfig.json': {
+					before: JSON.stringify({ compilerOptions: { paths: { 'esprima-next': ['./x'] } } }),
+					after: JSON.stringify({
+						compilerOptions: {
+							paths: { 'n8n-workflow': ['./src/index.ts'], 'esprima-next': ['./x'] },
+						},
+					}),
+				},
+			},
+		});
+		expect(result.mode).toBe('broad');
+		expect(result.specs).toEqual([...ALL_SPECS].sort());
+		expect(result.uncovered).toBeUndefined();
+	});
+
+	it('tsconfig resolution-neutral change (strict) → dropped, source still scopes', () => {
+		const map: ImpactMap = { 'packages/cli/src/x.ts': { '10': ['tests/e2e/a.spec.ts'] } };
+		const mapPath = path.join(tempDir, 'map-tsconfig-neutral.json');
+		fs.writeFileSync(mapPath, JSON.stringify(map));
+		const result = selectTests({
+			changedFiles: ['packages/cli/tsconfig.json', 'packages/cli/src/x.ts'],
+			mapFile: mapPath,
+			allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
+			tsconfigs: {
+				'packages/cli/tsconfig.json': {
+					before: JSON.stringify({ compilerOptions: { strict: true } }),
+					after: JSON.stringify({ compilerOptions: { strict: false } }),
+				},
+			},
+		});
+		expect(result.mode).toBe('scoped');
+		expect(result.specs).toEqual(['tests/e2e/a.spec.ts']);
+		expect(result.uncovered).toBeUndefined();
+	});
+
+	it('tsconfig change with no diff metadata → broad (cannot classify)', () => {
+		const map: ImpactMap = { 'packages/cli/src/x.ts': { '10': ['tests/e2e/a.spec.ts'] } };
+		const mapPath = path.join(tempDir, 'map-tsconfig-nometa.json');
+		fs.writeFileSync(mapPath, JSON.stringify(map));
+		const result = selectTests({
+			changedFiles: ['packages/workflow/tsconfig.json'],
+			mapFile: mapPath,
+			allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
+		});
+		expect(result.mode).toBe('broad');
+		expect(result.specs).toEqual([...ALL_SPECS].sort());
 	});
 
 	describe('--all-specs parsing', () => {

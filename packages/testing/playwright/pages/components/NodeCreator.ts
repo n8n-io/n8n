@@ -24,7 +24,9 @@ export class NodeCreator {
 	}
 
 	getNodeItems(): Locator {
-		return this.page.getByTestId('item-iterator-item');
+		// Scope to the node creator root so items from a panel that is still
+		// sliding out during a view transition don't leak into the count.
+		return this.getRoot().getByTestId('item-iterator-item');
 	}
 
 	getCategoryItems(): Locator {

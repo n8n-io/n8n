@@ -138,16 +138,30 @@ describe('useAutosizeTextarea', () => {
 			expect(textarea.style.overflowY).toBe('');
 		});
 
-		it('keeps the focused textarea scrolled to the bottom after recalculation', async () => {
+		it('keeps the focused textarea scrolled to the bottom when the caret is at the end', async () => {
 			const wrapper = mount(TestComponent, { attachTo: document.body });
 			const textarea = wrapper.vm.textarea as HTMLTextAreaElement;
 			textarea.focus();
+			textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
 			textarea.scrollTop = 0;
 
 			wrapper.vm.calculateTextareaHeight();
 			await nextTick();
 
 			expect(textarea.scrollTop).toBe(textarea.scrollHeight);
+		});
+
+		it('preserves the scroll position when the caret is mid-content', async () => {
+			const wrapper = mount(TestComponent, { attachTo: document.body });
+			const textarea = wrapper.vm.textarea as HTMLTextAreaElement;
+			textarea.focus();
+			textarea.selectionStart = textarea.selectionEnd = 4;
+			textarea.scrollTop = 5;
+
+			wrapper.vm.calculateTextareaHeight();
+			await nextTick();
+
+			expect(textarea.scrollTop).toBe(5);
 		});
 
 		it('does not calculate styles when disabled', () => {

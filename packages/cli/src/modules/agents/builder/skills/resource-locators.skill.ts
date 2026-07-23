@@ -6,6 +6,24 @@ export function resourceLocatorsSkill(): RuntimeSkill {
 		name: 'Agent Builder Resource Locators',
 		description:
 			'Use when adding or changing node tools with stable dynamic selector fields: resourceLocator, loadOptionsMethod, loadOptions routing, "Name or ID" parameters, teamId, channelId, projectId, calendarId, databaseId, tableId, model selectors, or when write_config/patch_config rejects $fromAI on a dynamic selector.',
+		recommendedTools: [
+			'search_nodes',
+			'get_node_types',
+			'ask_credential',
+			'get_resource_locator_options',
+			'read_config',
+			'patch_config',
+		],
+		allowedTools: [
+			'search_nodes',
+			'get_node_types',
+			'ask_credential',
+			'get_resource_locator_options',
+			'ask_questions',
+			'read_config',
+			'patch_config',
+			'write_config',
+		],
 		instructions: `\
 ## Purpose
 
@@ -44,7 +62,7 @@ locator values that the target agent cannot reliably guess at runtime.
    - current \`nodeParameters\`
    - returned \`credentials\`, when available
    - \`filter\` when the user named a specific team, channel, project, or object
-6. If results are ambiguous, use \`ask_question\` with the returned option names.
+6. If results are ambiguous, use \`ask_questions\` with the returned option names.
    If there are many pages, retry with \`paginationToken\` or a narrower
    \`filter\`.
 7. Write the selected result's \`parameterValue\` exactly into

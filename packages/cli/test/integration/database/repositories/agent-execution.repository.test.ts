@@ -66,8 +66,7 @@ describe('AgentExecutionRepository', () => {
 		const execution = repository.create({
 			id: uuid(),
 			status: 'success',
-			userMessage: '',
-			assistantResponse: '',
+			userMessage: null,
 			...overrides,
 		} as Partial<AgentExecution>);
 		return await repository.save(execution);
@@ -104,12 +103,12 @@ describe('AgentExecutionRepository', () => {
 			expect(result.size).toBe(2);
 		});
 
-		it('skips executions with empty user messages when picking the earliest', async () => {
+		it('skips executions with null user messages when picking the earliest', async () => {
 			const thread = await createThread();
 
 			await createExecution({
 				threadId: thread.id,
-				userMessage: '',
+				userMessage: null,
 				createdAt: new Date('2024-01-01T00:00:00Z'),
 			});
 			await createExecution({
@@ -129,12 +128,12 @@ describe('AgentExecutionRepository', () => {
 			expect(result.size).toBe(0);
 		});
 
-		it('omits threads that contain only empty user messages', async () => {
+		it('omits threads that contain only null user messages', async () => {
 			const thread = await createThread();
 
 			await createExecution({
 				threadId: thread.id,
-				userMessage: '',
+				userMessage: null,
 				createdAt: new Date('2024-01-01T00:00:00Z'),
 			});
 

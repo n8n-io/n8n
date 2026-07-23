@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 
-import { EventRelay } from '@/events/relays/event-relay';
 import { EventService } from '@/events/event.service';
+import { EventRelay } from '@/events/relays/event-relay';
 
 import { FavoritesService } from './favorites.service';
 
@@ -22,9 +22,10 @@ export class FavoritesEventRelay extends EventRelay {
 				await this.favoritesService.deleteByResource(dataTableId, 'dataTable'),
 			'folder-deleted': async ({ folderId }) =>
 				await this.favoritesService.deleteByResource(folderId, 'folder'),
-			'team-project-deleted': async ({ projectId }) => {
-				await this.favoritesService.deleteByResource(projectId, 'project');
-			},
+			'team-project-deleted': async ({ projectId }) =>
+				await this.favoritesService.deleteByResource(projectId, 'project'),
+			'agent-deleted': async ({ agentId }) =>
+				await this.favoritesService.deleteByResource(agentId, 'agent'),
 		});
 	}
 }

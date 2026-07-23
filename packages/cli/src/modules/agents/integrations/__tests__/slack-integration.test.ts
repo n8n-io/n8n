@@ -1,4 +1,5 @@
 import { SlackIntegration } from '../platforms/slack-integration';
+import type { ChatInstance } from '../chat-integration.service';
 
 describe('SlackIntegration', () => {
 	let integration: SlackIntegration;
@@ -18,6 +19,41 @@ describe('SlackIntegration', () => {
 
 	it('only advertises Slack bot token credentials for agent integrations', () => {
 		expect(integration.credentialTypes).toEqual(['slackApi']);
+	});
+
+	it('extracts the Slack bot user ID for bridge message context', () => {
+		const chat = {
+			getAdapter: vi.fn().mockReturnValue({ botUserId: 'U_BOT' }),
+		} as unknown as ChatInstance;
+
+		expect(integration.getPlatformAgentContext(chat)).toEqual({ agentUserId: 'U_BOT' });
+		expect(chat.getAdapter).toHaveBeenCalledWith('slack');
+	});
+
+	it('strips Slack bot self-mentions before handing text to the agent', () => {
+		expect(integration.prepareInboundText('<@U_BOT> hello', { agentUserId: 'U_BOT' })).toBe(
+			'hello',
+		);
+		expect(integration.prepareInboundText('@U_BOT hello', { agentUserId: 'U_BOT' })).toBe('hello');
+	});
+
+	it('sets a thinking status and buffers resume responses for Slack actions', async () => {
+		const thread = {
+			startTyping: vi.fn().mockResolvedValue(undefined),
+		};
+
+		const context = await integration.createResumeExecutionContext({
+			chat: {
+				getAdapter: vi.fn().mockReturnValue(undefined),
+			} as unknown as ChatInstance,
+			thread: thread as never,
+			logger: { warn: vi.fn() } as never,
+			agentId: 'agent-1',
+		});
+
+		expect(context.forceBuffered).toBe(true);
+		expect(context.statusHandle).toBeUndefined();
+		expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
 	});
 
 	describe('handleUnauthenticatedWebhook', () => {

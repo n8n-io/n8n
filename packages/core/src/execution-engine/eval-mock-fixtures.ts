@@ -1,7 +1,7 @@
 /**
  * Minimal-valid binary fixtures for the eval mock layer.
  *
- * Each fixture is the smallest byte sequence that `FileType.fromBuffer`
+ * Each fixture is the smallest byte sequence that `fileTypeFromBuffer`
  * recognizes as its declared MIME, so downstream node logic that derives
  * `fileExtension` / `fileType` from mime-sniffing behaves identically to a
  * real HTTP download.
@@ -23,7 +23,7 @@ export interface SynthesizeBinaryFixtureOptions {
 }
 
 // ---------------------------------------------------------------------------
-// Base fixtures — minimum byte sequences that `FileType.fromBuffer` recognizes.
+// Base fixtures — minimum byte sequences that `fileTypeFromBuffer` recognizes.
 // ---------------------------------------------------------------------------
 
 /** 1×1 transparent PNG — 67 bytes. Magic: 89 50 4E 47 0D 0A 1A 0A */
@@ -64,7 +64,7 @@ const GZIP_EMPTY = Buffer.from([
 
 /**
  * MPEG-1 Layer III frame — 128 kbps, 44.1 kHz, mono. 417 bytes (one full frame).
- * file-type v16 sniffs the FF FB sync word as audio/mpeg.
+ * file-type sniffs the FF FB sync word as audio/mpeg.
  */
 const MP3_FRAME = Buffer.concat([
 	// Frame header: 0xFFFB9064

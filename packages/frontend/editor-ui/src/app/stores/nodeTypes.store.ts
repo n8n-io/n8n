@@ -31,7 +31,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as utils from '@/app/utils/credentialOnlyNodes';
 import { groupNodeTypesByNameAndType } from '@/app/utils/nodeTypes/nodeTypeTransforms';
-import { computed, ref } from 'vue';
+import { computed, shallowRef } from 'vue';
 import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -41,9 +41,11 @@ import type { WorkflowObjectAccessors } from '../types';
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
 export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
-	const nodeTypes = ref<NodeTypesByTypeNameAndVersion>({});
+	// The catalog is immutable and only ever wholesale-replaced, so skip deep
+	// reactivity to avoid proxying thousands of nested schema objects.
+	const nodeTypes = shallowRef<NodeTypesByTypeNameAndVersion>({});
 
-	const vettedCommunityNodeTypes = ref<Map<string, CommunityNodeType>>(new Map());
+	const vettedCommunityNodeTypes = shallowRef<Map<string, CommunityNodeType>>(new Map());
 
 	const rootStore = useRootStore();
 

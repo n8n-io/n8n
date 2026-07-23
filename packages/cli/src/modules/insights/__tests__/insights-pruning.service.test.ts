@@ -1,6 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { Time } from '@n8n/constants';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsPruningService } from '../insights-pruning.service';
@@ -25,15 +25,15 @@ describe('InsightsPruningService', () => {
 
 	describe('pruning scheduling', () => {
 		beforeEach(() => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			insightsPruningService.startPruningTimer();
 		});
 
 		afterEach(() => {
-			jest.useRealTimers();
+			vi.useRealTimers();
 			insightsPruningService.stopPruningTimer();
-			jest.restoreAllMocks();
-			jest.clearAllMocks();
+			vi.restoreAllMocks();
+			vi.clearAllMocks();
 		});
 
 		test('pruning timeout is scheduled on start and rescheduled after each run', async () => {
@@ -47,13 +47,13 @@ describe('InsightsPruningService', () => {
 				insightsConfig,
 				mockLogger(),
 			);
-			const pruneSpy = jest.spyOn(insightsPruningService, 'pruneInsights');
-			const scheduleNextPruneSpy = jest.spyOn(insightsPruningService as any, 'scheduleNextPrune');
+			const pruneSpy = vi.spyOn(insightsPruningService, 'pruneInsights');
+			const scheduleNextPruneSpy = vi.spyOn(insightsPruningService as any, 'scheduleNextPrune');
 
 			insightsPruningService.startPruningTimer();
 
 			// Wait for pruning timer promise to resolve
-			await jest.advanceTimersToNextTimerAsync();
+			await vi.advanceTimersToNextTimerAsync();
 
 			expect(pruneSpy).toHaveBeenCalledTimes(1);
 			expect(scheduleNextPruneSpy).toHaveBeenCalledTimes(2);
@@ -72,7 +72,7 @@ describe('InsightsPruningService', () => {
 			);
 
 			let resolvePrune!: () => void;
-			const pruneInsightsMock = jest
+			const pruneInsightsMock = vi
 				.spyOn(insightsPruningService, 'pruneInsights')
 				.mockImplementation(
 					async () =>
@@ -84,27 +84,27 @@ describe('InsightsPruningService', () => {
 			insightsConfig.pruneCheckIntervalHours = 1;
 
 			insightsPruningService.startPruningTimer();
-			jest.advanceTimersByTime(Time.hours.toMilliseconds + 1); // 1h + 1min
+			vi.advanceTimersByTime(Time.hours.toMilliseconds + 1); // 1h + 1min
 
 			// Immediately stop while pruning is "in progress"
 			insightsPruningService.stopPruningTimer();
 			resolvePrune(); // Now allow the fake pruning to complete
 
 			// Wait for pruning timer promise and reschedule to resolve
-			await jest.runOnlyPendingTimersAsync();
+			await vi.runOnlyPendingTimersAsync();
 
 			expect(pruneInsightsMock).toHaveBeenCalledTimes(1); // Only from start, not re-scheduled
 		});
 
 		test('pruneInsights is retried up when failing', async () => {
-			const pruneOldDataSpy = jest
-				.spyOn(insightsByPeriodRepository, 'pruneOldData')
+			const pruneOldDataSpy = vi
+				.mocked(insightsByPeriodRepository.pruneOldData)
 				.mockRejectedValueOnce(new Error('Fail 1'))
 				.mockRejectedValueOnce(new Error('Fail 2'))
 				.mockResolvedValueOnce({ affected: 0 });
 
 			await insightsPruningService.pruneInsights();
-			await jest.advanceTimersByTimeAsync(Time.seconds.toMilliseconds * 2 + 1);
+			await vi.advanceTimersByTimeAsync(Time.seconds.toMilliseconds * 2 + 1);
 
 			expect(pruneOldDataSpy).toHaveBeenCalledTimes(3);
 		});

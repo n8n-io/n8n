@@ -10,22 +10,22 @@ mockInstance(MessageEventBus);
 
 export const setupTestCommand = <T extends CommandClass>(Command: T) => {
 	// mock SIGINT/SIGTERM registration
-	process.once = jest.fn();
-	process.exit = jest.fn() as never;
+	process.once = vi.fn();
+	process.exit = vi.fn() as never;
 
 	beforeAll(async () => {
 		await testDb.init();
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockInstance(TelemetryEventRelay);
 	});
 
 	afterAll(async () => {
 		await testDb.terminate();
 
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	const run = async (argv: string[] = []) => {

@@ -24,6 +24,12 @@ const props = withDefaults(
 		errorMessage?: string;
 		errorIsConflict?: boolean;
 		connectedDescription?: string;
+		/**
+		 * Force creating a NEW credential instead of picking an existing one: hides
+		 * the credential dropdown and offers only "Create new credential". Used by
+		 * the AIA channel-setup flow so a new agent always gets its own credential.
+		 */
+		forceNewCredential?: boolean;
 	}>(),
 	{
 		modelValue: undefined,
@@ -38,6 +44,7 @@ const props = withDefaults(
 		errorMessage: '',
 		errorIsConflict: false,
 		connectedDescription: '',
+		forceNewCredential: false,
 	},
 );
 
@@ -52,6 +59,9 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const canEdit = computed(() => props.showEditButton && !props.connected && !!props.modelValue);
+const selectedCredentialName = computed(
+	() => props.credentials.find((c) => c.id === props.modelValue)?.name ?? '',
+);
 const connectDisabled = computed(
 	() => !props.modelValue || props.loading || props.publishing || props.disabled,
 );
@@ -74,7 +84,29 @@ const connectDisabled = computed(
 			{{ connectedDescription }}
 		</N8nText>
 		<div :class="$style.selectRow">
+			<!-- Force-new: no existing-credential dropdown, only create-new (AIA channel setup). -->
+			<N8nButton
+				v-if="forceNewCredential && !modelValue"
+				variant="outline"
+				size="large"
+				:class="$style.select"
+				:disabled="disabled"
+				:data-testid="`${integrationType}-create-credential-button`"
+				@click="emit('create')"
+			>
+				<template #prefix><N8nIcon icon="plus" size="xsmall" /></template>
+				{{ i18n.baseText('agents.builder.addTrigger.newCredential') }}
+			</N8nButton>
+			<N8nText
+				v-else-if="forceNewCredential"
+				:class="$style.select"
+				size="large"
+				:data-testid="`${integrationType}-created-credential-name`"
+			>
+				{{ selectedCredentialName }}
+			</N8nText>
 			<AgentCredentialSelect
+				v-else
 				:model-value="modelValue"
 				:class="$style.select"
 				size="large"

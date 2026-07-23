@@ -8,23 +8,23 @@ import path from 'node:path';
 @BackendModule({ name: 'community-packages' })
 export class CommunityPackagesModule implements ModuleInterface {
 	async init() {
-		await import('./community-packages.controller');
-		await import('./community-node-types.controller');
+		await import('./community-packages.controller.js');
+		await import('./community-node-types.controller.js');
 	}
 
 	async commands() {
-		await import('./community-node.command');
+		await import('./community-node.command.js');
 	}
 
 	async entities() {
-		const { InstalledNodes } = await import('./installed-nodes.entity');
-		const { InstalledPackages } = await import('./installed-packages.entity');
+		const { InstalledNodes } = await import('./installed-nodes.entity.js');
+		const { InstalledPackages } = await import('./installed-packages.entity.js');
 
 		return [InstalledNodes, InstalledPackages] as EntityClass[];
 	}
 
 	async settings() {
-		const { CommunityPackagesConfig } = await import('./community-packages.config');
+		const { CommunityPackagesConfig } = await import('./community-packages.config.js');
 
 		return {
 			communityNodesEnabled: Container.get(CommunityPackagesConfig).enabled,
@@ -33,7 +33,7 @@ export class CommunityPackagesModule implements ModuleInterface {
 	}
 
 	async nodeLoaders() {
-		const { CommunityPackagesConfig } = await import('./community-packages.config');
+		const { CommunityPackagesConfig } = await import('./community-packages.config.js');
 		if (Container.get(CommunityPackagesConfig).preventLoading) return [];
 
 		const dir = path.join(Container.get(InstanceSettings).nodesDownloadDir, 'node_modules');

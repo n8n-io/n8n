@@ -1,7 +1,8 @@
+import type { Mocked } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import type { ContextEstablishmentOptions } from '@n8n/decorators';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 import type { ICredentialContext, INode, IRunExecutionData } from 'n8n-workflow';
 
@@ -15,7 +16,7 @@ import { N8nOAuthIdentitySeeder } from '../n8n-oauth-seeder';
 const TOKEN = 'super-secret-oauth-token';
 const RESOURCE = 'https://host/mcp/workflow-a';
 
-const scopedLogger = (): jest.Mocked<Logger> => {
+const scopedLogger = (): Mocked<Logger> => {
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 	return logger;
@@ -24,7 +25,7 @@ const scopedLogger = (): jest.Mocked<Logger> => {
 // Faithful in-memory stand-in for Cipher: encryptV2 returns an opaque handle (never the
 // plaintext), decryptV2 resolves it back — so round-trips work while the raw token never
 // appears in the serialized run data.
-const createVaultCipher = (): jest.Mocked<Cipher> => {
+const createVaultCipher = (): Mocked<Cipher> => {
 	const vault = new Map<string, string>();
 	let counter = 0;
 	const cipher = mock<Cipher>();

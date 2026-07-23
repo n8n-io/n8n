@@ -1,6 +1,5 @@
 import type { EmbeddingsInterface } from '@langchain/core/embeddings';
-import { RedisVectorStore } from '@langchain/redis';
-import type { RedisVectorStoreConfig } from '@langchain/redis/dist/vectorstores';
+import { RedisVectorStore, type RedisVectorStoreConfig } from '@langchain/redis';
 import {
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,

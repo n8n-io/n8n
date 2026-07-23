@@ -4,14 +4,15 @@ import {
 	TechniqueDescription,
 	WorkflowTechnique,
 } from '@n8n/workflow-sdk/prompts/best-practices';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createGetWorkflowBestPracticesTool } from '../tools/workflow-builder/get-workflow-best-practices.tool';
 
-jest.mock('@n8n/ai-workflow-builder', () => ({
+vi.mock('@n8n/ai-workflow-builder', () => ({
 	MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL: {
 		toolName: 'get_workflow_best_practices',
 		displayTitle: 'Getting workflow best practices',
@@ -20,10 +21,10 @@ jest.mock('@n8n/ai-workflow-builder', () => ({
 
 describe('get-workflow-best-practices MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
-	let telemetry: jest.Mocked<Telemetry>;
+	let telemetry: Mocked<Telemetry>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		telemetry = mock<Telemetry>();
 	});
 

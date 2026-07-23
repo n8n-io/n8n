@@ -1,0 +1,26 @@
+{
+	"description": "Compound coupled via data, per part: ingestion is {anchor: wf, embedsOther: false}; the SDR part tolerates {anchor: agent, embedsOther: true} or {anchor: wf, embedsOther: true}. Harder than compound-weather-and-support-assistant: no numbering, the parts share the leads data, and only 'and separately' marks the split.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Ingest new leads from the website form to our CRM, and separately have an SDR agent that qualifies and reaches out. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[If the assistant asks whether to handle both or which first, say: both, in whatever order.",
+				"Do not approve any plan, setup card, or build confirmation.",
+				"Once it has laid out its approach for both automations, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["intent-resolution", "compound", "coupled-via-data", "tolerance"],
+	"datasets": ["agents", "agents-tolerance"],
+	"processExpectations": [
+		"The agent treats the request as two automations with separate lifecycles — form-to-CRM ingestion, and SDR qualification/outreach — rather than merging them into one design.",
+		"The lead ingestion is proposed as a workflow of fixed steps (form trigger to CRM), with no agent step involved.",
+		"The SDR part is proposed with an agent primitive in one of two accepted shapes: an n8n Agent (possibly invoking workflows as tools), or a workflow whose qualification/outreach step is an embedded agent; a fully fixed SDR pipeline with no open-ended judgment step is wrong."
+	]
+}

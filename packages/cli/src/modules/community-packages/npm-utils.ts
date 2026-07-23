@@ -2,11 +2,11 @@ import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { jsonParse, UnexpectedError, LoggerProxy } from 'n8n-workflow';
-import { valid } from 'semver';
 import { execFile } from 'node:child_process';
 import { access } from 'node:fs/promises';
 import { dirname, isAbsolute, join } from 'node:path';
 import { promisify } from 'node:util';
+import { valid } from 'semver';
 
 import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 
@@ -326,11 +326,11 @@ export async function verifyIntegrity(
 		} catch (cliError) {
 			if (isDnsError(cliError) || isNpmError(cliError)) {
 				throw new UnexpectedError(
-					'Checksum verification failed. Please check your network connection and try again.',
+					'Failed to verify package checksum: The registry is temporarily unreachable. Please try again later.',
 				);
 			}
 			throw new UnexpectedError(
-				'Checksum verification failed. Try restarting n8n and attempting the installation again.',
+				'Failed to verify package checksum. Try restarting n8n and attempting the installation again.',
 			);
 		}
 	}

@@ -535,16 +535,15 @@ export function createEpisodicMemoryExtractFn(
 	options: CreateEpisodicMemoryExtractFnOptions = {},
 ): EpisodicMemoryExtractFn {
 	return async (input): Promise<EpisodicMemoryExtraction> => {
-		const { generateObject } = await import('ai');
-		const { object, usage } = await generateObject({
+		const { generateText, Output } = await import('ai');
+		const response = await generateText({
 			model: createModel(model),
 			system: options.extractionPrompt ?? DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
 			prompt: buildEpisodicMemoryExtractorPrompt(input),
-			schema: EpisodicMemoryExtractionSchema,
+			output: Output.object({ schema: EpisodicMemoryExtractionSchema }),
 		});
-		incrementTokenCountFromUsage(input.executionCounter, usage);
-
-		return object;
+		incrementTokenCountFromUsage(input.executionCounter, response.usage);
+		return response.output;
 	};
 }
 
@@ -562,16 +561,16 @@ export function createEpisodicMemoryReflectFn(
 	options: CreateEpisodicMemoryReflectFnOptions = {},
 ): EpisodicMemoryReflectFn {
 	return async (input): Promise<EpisodicMemoryReflection> => {
-		const { generateObject } = await import('ai');
-		const { object, usage } = await generateObject({
+		const { generateText, Output } = await import('ai');
+		const response = await generateText({
 			model: createModel(model),
 			system: options.reflectionPrompt ?? DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
 			prompt: buildEpisodicMemoryReflectorPrompt(input),
-			schema: EpisodicMemoryReflectionSchema,
+			output: Output.object({ schema: EpisodicMemoryReflectionSchema }),
 		});
-		incrementTokenCountFromUsage(input.executionCounter, usage);
+		incrementTokenCountFromUsage(input.executionCounter, response.usage);
 
-		return object;
+		return response.output;
 	};
 }
 

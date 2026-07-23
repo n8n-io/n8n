@@ -3,8 +3,8 @@ import type { WebhookEntity } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { HookContext, WebhookContext } from 'n8n-core';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
-	ensureError,
 	isNodeClassInstance,
 	NodeHelpers,
 	UnexpectedError,
@@ -190,6 +190,11 @@ export class WebhookService {
 		return this.webhookRepository.create(data);
 	}
 
+	/** The webhooks currently registered (stored locally) for a workflow. */
+	async getRegisteredWebhooks(workflowId: string) {
+		return await this.webhookRepository.findBy({ workflowId });
+	}
+
 	async deleteWorkflowWebhooks(workflowId: string) {
 		const webhooks = await this.webhookRepository.findBy({ workflowId });
 
@@ -245,7 +250,7 @@ export class WebhookService {
 	}
 
 	/**
-	 * Returns all the webhooks which should be created for the give node
+	 * Returns all the webhooks which should be created for the given node.
 	 */
 	getNodeWebhooks(
 		workflow: Workflow,
@@ -287,7 +292,7 @@ export class WebhookService {
 				continue;
 			}
 
-			nodeWebhookPath = nodeWebhookPath.toString();
+			nodeWebhookPath = nodeWebhookPath.toString().trim();
 
 			if (nodeWebhookPath.startsWith('/')) {
 				nodeWebhookPath = nodeWebhookPath.slice(1);

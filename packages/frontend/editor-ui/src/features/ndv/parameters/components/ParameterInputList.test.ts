@@ -6,12 +6,13 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { flushPromises } from '@vue/test-utils';
-import { nextTick, shallowRef } from 'vue';
+import { nextTick, ref, shallowRef } from 'vue';
 import {
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -61,10 +62,16 @@ import {
 	FIXED_COLLECTION_PARAMETERS,
 } from './ParameterInputList.test.constants';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
-import type { INodeProperties } from 'n8n-workflow';
+import type { INode, INodeProperties } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { MockInstance } from 'vitest';
-import { WAIT_NODE_TYPE } from '@/app/constants';
+import {
+	WAIT_NODE_TYPE,
+	AGENT_NODE_TYPE,
+	TELEGRAM_NODE_TYPE,
+	SLACK_NODE_TYPE,
+	GOOGLE_GMAIL_NODE_TYPE,
+} from '@/app/constants';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 
 const mockConfirm = vi.fn();
@@ -85,6 +92,8 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 		isEnabled: { value: false },
 		isCredentialTypeSupported: vi.fn(() => false),
 		isActionSupported: vi.fn(() => true),
+		isActionOptionVisible: vi.fn(() => true),
+		isNodePropertyHidden: vi.fn(() => false),
 		balance: { value: undefined },
 		budget: { value: undefined },
 		fetchError: { value: null },
@@ -117,6 +126,7 @@ const workflowDocumentStoreMock = {
 	getParentNodes: vi.fn().mockReturnValue([]),
 	getParentNodesByDepth: vi.fn().mockReturnValue([]),
 	getNodeByName: vi.fn().mockReturnValue(undefined),
+	checkIfNodeHasChatOrManualChatParent: vi.fn().mockReturnValue(false),
 	name: '',
 	settings: {},
 	getPinDataSnapshot: vi.fn().mockReturnValue({}),
@@ -146,6 +156,7 @@ describe('ParameterInputList', () => {
 		workflowDocumentStoreMock.getParentNodes.mockReturnValue([]);
 		workflowDocumentStoreMock.getParentNodesByDepth.mockReturnValue([]);
 		workflowDocumentStoreMock.getNodeByName.mockReturnValue(undefined);
+		workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockReturnValue(false);
 		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
 			shallowRef(workflowDocumentStoreMock) as unknown as ReturnType<
 				typeof injectWorkflowDocumentStore
@@ -1179,6 +1190,143 @@ describe('ParameterInputList', () => {
 	});
 
 	/**
+	 * Tests special parameter handling for Agent v3+ nodes.
+	 * Validates that the 'auto' promptType option stays visible and toggles disabled state
+	 * based on chat-trigger ancestry (Chat Trigger or Manual Chat Trigger).
+	 */
+	describe('updateAgentParameters', () => {
+		const agentParameters: INodeProperties[] = [
+			{
+				displayName: 'Source for Prompt (User Message)',
+				name: 'promptType',
+				type: 'options',
+				default: 'auto',
+				options: [
+					{ name: 'Connected Chat Trigger Node', value: 'auto' },
+					{ name: 'Define below', value: 'define' },
+				],
+			},
+		];
+
+		const optionsListStub = {
+			props: ['parameter'],
+			template:
+				'<div data-test-id="param-options"><span v-for="o in parameter.options" :key="o.value" :data-test-id="`param-option-${o.value}`" :data-disabled="String(o.disabled === true)" :data-description="o.description ?? \'\'">{{ o.name }}</span></div>',
+		};
+
+		const agentNode = (typeVersion: number) =>
+			({
+				id: 'agent-123',
+				name: 'AI Agent',
+				type: AGENT_NODE_TYPE,
+				typeVersion,
+				position: [100, 200],
+				parameters: {},
+			}) as INodeUi;
+
+		it('should keep the auto option visible but disabled when no chat trigger is connected', async () => {
+			ndvStore.activeNode = agentNode(3.1);
+			workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockReturnValue(false);
+
+			const { findByText, getByTestId } = renderComponent({
+				props: {
+					parameters: agentParameters,
+					nodeValues: {},
+				},
+				global: {
+					stubs: {
+						ParameterInputFull: optionsListStub,
+						Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
+					},
+				},
+			});
+
+			// 'Define below' remains available
+			expect(await findByText('Define below')).toBeInTheDocument();
+			// 'auto' remains visible but disabled when there is no chat trigger ancestor
+			expect(await findByText('Connected Chat Trigger Node')).toBeInTheDocument();
+			expect(getByTestId('param-option-auto')).toHaveAttribute('data-disabled', 'true');
+			expect(getByTestId('param-option-auto')).toHaveAttribute(
+				'data-description',
+				'parameterInputList.autoRequiresChatTriggerDescription',
+			);
+		});
+
+		it('should keep the auto option when a chat trigger is connected', async () => {
+			ndvStore.activeNode = agentNode(3.1);
+			workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockReturnValue(true);
+
+			const { findByText, getByTestId } = renderComponent({
+				props: {
+					parameters: agentParameters,
+					nodeValues: {},
+				},
+				global: {
+					stubs: {
+						ParameterInputFull: optionsListStub,
+						Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
+					},
+				},
+			});
+
+			expect(await findByText('Connected Chat Trigger Node')).toBeInTheDocument();
+			expect(await findByText('Define below')).toBeInTheDocument();
+			expect(getByTestId('param-option-auto')).toHaveAttribute('data-disabled', 'false');
+		});
+
+		it('should toggle auto option disabled state when chat-trigger ancestry changes live', async () => {
+			// Drive the ancestry check from a reactive ref so toggling it mimics wiring/removing a
+			// chat trigger upstream while the Agent NDV is open. The computed watch source must pick
+			// up the change and re-run the parameter transform without a full re-render.
+			vi.useFakeTimers();
+			try {
+				const hasChatParent = ref(false);
+				workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockImplementation(
+					() => hasChatParent.value,
+				);
+
+				ndvStore.activeNode = agentNode(3.1);
+
+				const { findByText, getByTestId } = renderComponent({
+					props: {
+						parameters: agentParameters,
+						nodeValues: {},
+					},
+					global: {
+						stubs: {
+							ParameterInputFull: optionsListStub,
+							Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
+						},
+					},
+				});
+
+				// Initially no chat-trigger ancestry: 'auto' is disabled.
+				expect(await findByText('Define below')).toBeInTheDocument();
+				expect(await findByText('Connected Chat Trigger Node')).toBeInTheDocument();
+				expect(getByTestId('param-option-auto')).toHaveAttribute('data-disabled', 'true');
+
+				// Wire a chat trigger upstream (ancestry flips to true): 'auto' is enabled.
+				hasChatParent.value = true;
+				await nextTick();
+				await vi.advanceTimersByTimeAsync(250);
+				await flushPromises();
+
+				expect(getByTestId('param-option-auto')).toHaveAttribute('data-disabled', 'false');
+
+				// Remove the chat trigger upstream (ancestry flips back to false): 'auto' is disabled again.
+				hasChatParent.value = false;
+				await nextTick();
+				await vi.advanceTimersByTimeAsync(250);
+				await flushPromises();
+
+				expect(getByTestId('param-option-auto')).toHaveAttribute('data-disabled', 'true');
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
+	/**
 	 * Validates error/warning display for parameters with issues.
 	 * Tests issue icons, tooltips, and hiddenIssuesInputs functionality.
 	 */
@@ -1748,6 +1896,8 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
+				isActionOptionVisible: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
 				fetchError: { value: null } as never,
@@ -1782,6 +1932,8 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
+				isActionOptionVisible: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
 				fetchError: { value: null } as never,
@@ -1830,6 +1982,100 @@ describe('ParameterInputList', () => {
 			const paramInputs = container.querySelectorAll('[data-test-id="parameter-input"]');
 			expect(paramInputs.length).toBe(3);
 		});
+
+		it('should hide a managed-hidden parameter that is not a model parameter when a managed credential is active', async () => {
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: { value: true } as never,
+				isCredentialTypeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => true),
+				isActionOptionVisible: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(
+					(_node: INode | null, param: string) => param === 'modelSource',
+				),
+				balance: { value: undefined } as never,
+				budget: { value: undefined } as never,
+				fetchError: { value: null } as never,
+				fetchConfig: vi.fn(),
+				fetchWallet: vi.fn(),
+				saveAfterToggle: vi.fn(),
+			});
+
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			};
+
+			const modelSourceParameter: INodeProperties = {
+				displayName: 'Model Source',
+				name: 'modelSource',
+				type: 'string',
+				default: '',
+			};
+
+			const { container } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationParameter, modelSourceParameter],
+					nodeValues: {
+						parameters: { resource: 'text', operation: 'message', modelSource: '' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			const paramInputs = container.querySelectorAll('[data-test-id="parameter-input"]');
+			expect(paramInputs.length).toBe(2);
+		});
+
+		it('should not hide a managed-hidden parameter when the credential is not gateway-managed', async () => {
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: { value: true } as never,
+				isCredentialTypeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => true),
+				isActionOptionVisible: vi.fn(() => true),
+				// Mirror the real store: only hidden when a gateway-managed credential is present
+				isNodePropertyHidden: vi.fn(
+					(node: INode | null, param: string) =>
+						Object.values(node?.credentials ?? {}).some(
+							(cred) => cred.__aiGatewayManaged === true,
+						) && param === 'modelSource',
+				),
+				balance: { value: undefined } as never,
+				budget: { value: undefined } as never,
+				fetchError: { value: null } as never,
+				fetchConfig: vi.fn(),
+				fetchWallet: vi.fn(),
+				saveAfterToggle: vi.fn(),
+			});
+
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: 'cred-1', name: 'My Key' } },
+			};
+
+			const modelSourceParameter: INodeProperties = {
+				displayName: 'Model Source',
+				name: 'modelSource',
+				type: 'string',
+				default: '',
+			};
+
+			const { container } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationParameter, modelSourceParameter],
+					nodeValues: {
+						parameters: { resource: 'text', operation: 'message', modelSource: '' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			const paramInputs = container.querySelectorAll('[data-test-id="parameter-input"]');
+			expect(paramInputs.length).toBe(3);
+		});
 	});
 
 	describe('AI Gateway unsupported action notice', () => {
@@ -1861,6 +2107,8 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
+				isActionOptionVisible: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
 				fetchError: { value: null } as never,
@@ -1894,6 +2142,8 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
+				isActionOptionVisible: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
 				fetchError: { value: null } as never,
@@ -1921,6 +2171,94 @@ describe('ParameterInputList', () => {
 			expect(
 				container.querySelector('[data-test-id="ai-gateway-unsupported-action-notice"]'),
 			).not.toBeInTheDocument();
+		});
+
+		it('should show the unsupported action notice only once when multiple properties are named "operation"', async () => {
+			// Some community nodes expose more than one visible property named `operation`
+			// (e.g. the selector plus a routing notice), which previously rendered the notice twice.
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: { value: true } as never,
+				isCredentialTypeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => false),
+				isActionOptionVisible: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
+				balance: { value: undefined } as never,
+				budget: { value: undefined } as never,
+				fetchError: { value: null } as never,
+				fetchConfig: vi.fn(),
+				fetchWallet: vi.fn(),
+				saveAfterToggle: vi.fn(),
+			});
+
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			};
+
+			const operationRoutingNotice: INodeProperties = {
+				displayName: 'GET /teamCreditUsage',
+				name: 'operation',
+				type: 'notice',
+				default: '',
+			};
+
+			const { queryAllByTestId } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationParameter, operationRoutingNotice],
+					nodeValues: {
+						parameters: { resource: 'audio', operation: 'transcribe' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			expect(queryAllByTestId('ai-gateway-unsupported-action-notice')).toHaveLength(1);
+		});
+
+		it('should anchor the notice to the first "operation" property when there is no options selector', async () => {
+			// Fallback path: a node whose only `operation` property is not an options selector
+			// (e.g. a routing notice). The notice must still render exactly once, on that property.
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: { value: true } as never,
+				isCredentialTypeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => false),
+				isActionOptionVisible: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
+				balance: { value: undefined } as never,
+				budget: { value: undefined } as never,
+				fetchError: { value: null } as never,
+				fetchConfig: vi.fn(),
+				fetchWallet: vi.fn(),
+				saveAfterToggle: vi.fn(),
+			});
+
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			};
+
+			const operationRoutingNotice: INodeProperties = {
+				displayName: 'GET /teamCreditUsage',
+				name: 'operation',
+				type: 'notice',
+				default: '',
+			};
+
+			const { queryAllByTestId } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationRoutingNotice],
+					nodeValues: {
+						parameters: { resource: 'audio', operation: 'transcribe' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			expect(queryAllByTestId('ai-gateway-unsupported-action-notice')).toHaveLength(1);
 		});
 
 		it('should not show unsupported action notice when credential is not gateway-managed', async () => {
@@ -1986,6 +2324,317 @@ describe('ParameterInputList', () => {
 				// Note: actual parameters rendered depend on node-type specific transformations
 				expect(container.querySelector('.parameter-input-list-wrapper')).toBeInTheDocument();
 			});
+		});
+	});
+
+	describe('Telegram HITL parameter gating', () => {
+		const telegramNode = {
+			...TEST_NODE_NO_ISSUES,
+			type: TELEGRAM_NODE_TYPE,
+		};
+
+		// All three are simple types that route through the stubbed ParameterInputFull,
+		// which forwards its `path` prop as a DOM attribute, so presence/absence can be
+		// asserted without needing each parameter's real (unstubbed) rendering.
+		const telegramParameters: INodeProperties[] = [
+			{ displayName: 'Chat ID', name: 'chatId', type: 'string', default: '' },
+			{ displayName: 'Approve Within Chat', name: 'chatApproval', type: 'boolean', default: false },
+			{
+				displayName: 'Chat Approval Options',
+				name: 'chatApprovalOptions',
+				type: 'string',
+				default: '',
+			},
+		];
+
+		it('hides the advanced HITL parameters when the experiment is off', async () => {
+			ndvStore.activeNode = telegramNode;
+			const { container } = renderComponent({
+				props: {
+					parameters: telegramParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="chatId"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="chatApproval"]')).not.toBeInTheDocument();
+			expect(container.querySelector('[path="chatApprovalOptions"]')).not.toBeInTheDocument();
+		});
+
+		it('shows the advanced HITL parameters when the experiment is on', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+			ndvStore.activeNode = telegramNode;
+			const { container } = renderComponent({
+				props: {
+					parameters: telegramParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="chatId"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="chatApproval"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="chatApprovalOptions"]')).toBeInTheDocument();
+		});
+
+		it('does not filter parameters for other node types', async () => {
+			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+			const { container } = renderComponent({
+				props: {
+					parameters: telegramParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="chatApproval"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="chatApprovalOptions"]')).toBeInTheDocument();
+		});
+
+		it('reveals the advanced HITL parameters once the flag resolves after mount', async () => {
+			// PostHog flags resolve asynchronously after the app boots, so the NDV can
+			// mount before the real flag value is known. The parameter list must pick
+			// up the flag turning on afterwards, not just at initial render.
+			vi.useFakeTimers();
+			try {
+				const flagEnabled = ref(false);
+				mockedStore(usePostHog).isFeatureEnabled.mockImplementation(() => flagEnabled.value);
+				ndvStore.activeNode = telegramNode;
+
+				const { container } = renderComponent({
+					props: {
+						parameters: telegramParameters,
+						nodeValues: TEST_NODE_VALUES,
+					},
+				});
+				await flushPromises();
+
+				expect(container.querySelector('[path="chatApproval"]')).not.toBeInTheDocument();
+
+				flagEnabled.value = true;
+				await nextTick();
+				await vi.advanceTimersByTimeAsync(250);
+				await flushPromises();
+
+				expect(container.querySelector('[path="chatApproval"]')).toBeInTheDocument();
+				expect(container.querySelector('[path="chatApprovalOptions"]')).toBeInTheDocument();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
+	describe('Slack HITL parameter gating', () => {
+		const slackNode = {
+			...TEST_NODE_NO_ISSUES,
+			type: SLACK_NODE_TYPE,
+		};
+
+		// captureResponder/approvers are simple types that route through the stubbed
+		// ParameterInputFull (which forwards its `path` prop as a DOM attribute), so
+		// presence/absence can be asserted without their real rendering.
+		const slackParameters: INodeProperties[] = [
+			{ displayName: 'Channel', name: 'channelId', type: 'string', default: '' },
+			{
+				displayName: 'Capture Who Responded',
+				name: 'captureResponder',
+				type: 'boolean',
+				default: false,
+			},
+			{ displayName: 'Approvers', name: 'approvers', type: 'string', default: '' },
+		];
+
+		it('hides the advanced HITL parameters when the experiment is off', async () => {
+			ndvStore.activeNode = slackNode;
+			const { container } = renderComponent({
+				props: {
+					parameters: slackParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="channelId"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="captureResponder"]')).not.toBeInTheDocument();
+			expect(container.querySelector('[path="approvers"]')).not.toBeInTheDocument();
+		});
+
+		it('shows the advanced HITL parameters when the experiment is on', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+			ndvStore.activeNode = slackNode;
+			const { container } = renderComponent({
+				props: {
+					parameters: slackParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="channelId"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="captureResponder"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="approvers"]')).toBeInTheDocument();
+		});
+
+		it('gates the Slack tool variant too', async () => {
+			ndvStore.activeNode = { ...slackNode, type: `${SLACK_NODE_TYPE}Tool` };
+			const { container } = renderComponent({
+				props: {
+					parameters: slackParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="captureResponder"]')).not.toBeInTheDocument();
+			expect(container.querySelector('[path="approvers"]')).not.toBeInTheDocument();
+		});
+
+		it('does not filter parameters for other node types', async () => {
+			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+			const { container } = renderComponent({
+				props: {
+					parameters: slackParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="captureResponder"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="approvers"]')).toBeInTheDocument();
+		});
+	});
+
+	describe('Gmail HITL parameter gating', () => {
+		const gmailNode = {
+			...TEST_NODE_NO_ISSUES,
+			type: GOOGLE_GMAIL_NODE_TYPE,
+		};
+
+		// Simple types that route through the stubbed ParameterInputFull, which
+		// forwards its `path` prop as a DOM attribute (see the Telegram suite above).
+		const gmailParameters: INodeProperties[] = [
+			{ displayName: 'To', name: 'sendTo', type: 'string', default: '' },
+			{
+				displayName: 'Advanced Email Options',
+				name: 'advancedEmail',
+				type: 'boolean',
+				default: false,
+			},
+			{ displayName: 'Email Options', name: 'advancedEmailOptions', type: 'string', default: '' },
+			{
+				displayName: 'Show Confirmation Page',
+				name: 'confirmationPage',
+				type: 'boolean',
+				default: false,
+			},
+		];
+
+		it('hides the advanced HITL parameters when the experiment is off', async () => {
+			ndvStore.activeNode = gmailNode;
+			const { container } = renderComponent({
+				props: {
+					parameters: gmailParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="sendTo"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="advancedEmail"]')).not.toBeInTheDocument();
+			expect(container.querySelector('[path="advancedEmailOptions"]')).not.toBeInTheDocument();
+			expect(container.querySelector('[path="confirmationPage"]')).not.toBeInTheDocument();
+		});
+
+		it('hides the advanced HITL parameters on the tool variant when the experiment is off', async () => {
+			ndvStore.activeNode = { ...gmailNode, type: `${GOOGLE_GMAIL_NODE_TYPE}Tool` };
+			const { container } = renderComponent({
+				props: {
+					parameters: gmailParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="sendTo"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="advancedEmail"]')).not.toBeInTheDocument();
+			expect(container.querySelector('[path="advancedEmailOptions"]')).not.toBeInTheDocument();
+			expect(container.querySelector('[path="confirmationPage"]')).not.toBeInTheDocument();
+		});
+
+		it('shows the advanced HITL parameters on the tool variant when the experiment is on', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+			ndvStore.activeNode = { ...gmailNode, type: `${GOOGLE_GMAIL_NODE_TYPE}Tool` };
+			const { container } = renderComponent({
+				props: {
+					parameters: gmailParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="advancedEmail"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="confirmationPage"]')).toBeInTheDocument();
+		});
+
+		it('shows the advanced HITL parameters when the experiment is on', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+			ndvStore.activeNode = gmailNode;
+			const { container } = renderComponent({
+				props: {
+					parameters: gmailParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="sendTo"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="advancedEmail"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="advancedEmailOptions"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="confirmationPage"]')).toBeInTheDocument();
+		});
+
+		it('does not filter parameters for other node types', async () => {
+			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+			const { container } = renderComponent({
+				props: {
+					parameters: gmailParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="advancedEmail"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="confirmationPage"]')).toBeInTheDocument();
+		});
+
+		it('reveals the advanced HITL parameters once the flag resolves after mount', async () => {
+			vi.useFakeTimers();
+			try {
+				const flagEnabled = ref(false);
+				mockedStore(usePostHog).isFeatureEnabled.mockImplementation(() => flagEnabled.value);
+				ndvStore.activeNode = gmailNode;
+
+				const { container } = renderComponent({
+					props: {
+						parameters: gmailParameters,
+						nodeValues: TEST_NODE_VALUES,
+					},
+				});
+				await flushPromises();
+
+				expect(container.querySelector('[path="advancedEmail"]')).not.toBeInTheDocument();
+
+				flagEnabled.value = true;
+				await nextTick();
+				await vi.advanceTimersByTimeAsync(250);
+				await flushPromises();
+
+				expect(container.querySelector('[path="advancedEmail"]')).toBeInTheDocument();
+				expect(container.querySelector('[path="confirmationPage"]')).toBeInTheDocument();
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 });

@@ -15,7 +15,7 @@ import type { IExecutionResponse } from '@/features/execution/executions/executi
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import { useEvaluationStore } from '../../evaluation.store';
 import {
-	extractAnswerText,
+	extractCaseAnswer,
 	formatMetricAverage,
 	formatMetricLabel,
 	formatMetricPercent,
@@ -33,6 +33,7 @@ import {
 	type CannedMetricKey,
 } from '../../evaluation.constants';
 import { useSliceInputs } from '../../composables/useSliceInputs';
+import { useUserExecutions } from '../../composables/useUserExecutions';
 import { useAiRootNodes } from '../../composables/useAiRootNodes';
 import { useRunEvalWorkflow } from '../../composables/useRunEvalWorkflow';
 import { useDefaultJudgeSelection } from '../../composables/useDefaultJudgeSelection';
@@ -53,6 +54,7 @@ const telemetry = useTelemetry();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
+const { fetchLatestUserExecution } = useUserExecutions();
 const evaluationStore = useEvaluationStore();
 
 const {
@@ -85,8 +87,23 @@ const moreCheckMetrics = computed(() =>
 	CANNED_METRICS.filter((m) => BUILTIN_MORE_CHECK_KEYS.includes(m.key)),
 );
 const visibleCheckMetrics = computed(() => {
-	const primary = primaryCheckMetric.value ? [primaryCheckMetric.value] : [];
-	return showMoreChecks.value ? [...primary, ...moreCheckMetrics.value] : primary;
+	// Order-preserving, de-duped by key.
+	const shown = new Map<CannedMetricKey, (typeof CANNED_METRICS)[number]>();
+	if (primaryCheckMetric.value) shown.set(primaryCheckMetric.value.key, primaryCheckMetric.value);
+	if (showMoreChecks.value) {
+		for (const m of moreCheckMetrics.value) shown.set(m.key, m);
+	}
+	// Any selected canned metric must be visible even when it is outside the
+	// curated primary/more lists — e.g. a `helpfulness` or `stringSimilarity`
+	// config created by the agent/API or hydrated from a saved eval. Without
+	// this the selection lives in the store but has no card, so the step looks
+	// unconfigured.
+	for (const key of selectedMetricKeys.value) {
+		if (shown.has(key)) continue;
+		const metric = CANNED_METRICS.find((m) => m.key === key);
+		if (metric) shown.set(key, metric);
+	}
+	return [...shown.values()];
 });
 watch(
 	[selectedMetricKeys, customChecks],
@@ -117,6 +134,11 @@ watch(
 // Gate (ticket "Step 0"): the wizard is blocked until the workflow has had at
 // least one successful, non-evaluation execution. `probeComplete` guards against
 // flashing the gate before the execution lookup resolves.
+// Declared before the probe watcher (which runs immediately): the probe writes
+// to `fallbackUserExecution` during setup, so it must exist by then.
+const fallbackUserExecution = ref<IExecutionResponse | null>(null);
+const sliceInputs = useSliceInputs({ fallbackExecution: fallbackUserExecution });
+
 const probeComplete = ref(false);
 
 async function runExecutionProbe() {
@@ -160,27 +182,13 @@ const showProbeLoading = computed(
 // Skip evaluation runs — after a few wizard sessions, lastSuccessfulExecution
 // would always be the compiled eval workflow, not the user's graph.
 async function loadFallbackUserExecution() {
-	const workflowId = workflowDocumentStore.value?.workflowId;
-	if (!workflowId) return;
 	try {
-		const list = await executionsStore.fetchExecutions({
-			status: ['success'],
-			workflowId,
-		});
-		const candidate = list.results.find((e) => e.mode !== 'evaluation' && typeof e.id === 'string');
-		if (!candidate?.id) {
-			fallbackUserExecution.value = null;
-			return;
-		}
-		const full = await executionsStore.fetchExecution(candidate.id);
-		fallbackUserExecution.value = full ?? null;
+		fallbackUserExecution.value = await fetchLatestUserExecution();
 	} catch {
 		fallbackUserExecution.value = null;
 	}
 }
 
-const fallbackUserExecution = ref<IExecutionResponse | null>(null);
-const sliceInputs = useSliceInputs({ fallbackExecution: fallbackUserExecution });
 const expectedFields = computed(() => getExpectedFieldsForMetrics(selectedMetricKeys.value));
 
 watch(
@@ -271,9 +279,7 @@ const resultChecks = computed<ResultCheck[]>(() => {
 	});
 });
 
-const sliceEndNodeName = computed(
-	() => (wizardStore.isSliceMode ? wizardStore.endNodeName : wizardStore.aiNodeName) || '',
-);
+const sliceEndNodeName = computed(() => wizardStore.answerNodeName);
 
 // The expected-output values for a case, taken from the dataset row at the
 // case's `runIndex` (rows are seeded one-per-row in order). Falls back to the
@@ -289,14 +295,11 @@ const executionsByCaseId = ref<Record<string, IExecutionResponse | null>>({});
 // stripped of its JSON envelope (output > text > response > …). Falls back to
 // the case's persisted `outputs` only when the execution isn't loaded.
 function caseAnswer(testCase: TestCaseExecutionRecord): string {
-	const execution = executionsByCaseId.value[testCase.id];
-	const endName = sliceEndNodeName.value;
-	if (execution && endName) {
-		const firstItem =
-			execution.data?.resultData?.runData?.[endName]?.[0]?.data?.main?.[0]?.[0]?.json;
-		if (firstItem !== undefined) return extractAnswerText(firstItem);
-	}
-	return extractAnswerText(testCase.outputs);
+	return extractCaseAnswer(
+		executionsByCaseId.value[testCase.id],
+		sliceEndNodeName.value,
+		testCase.outputs,
+	);
 }
 
 async function loadExecutionForCase(caseId: string, executionId: string) {

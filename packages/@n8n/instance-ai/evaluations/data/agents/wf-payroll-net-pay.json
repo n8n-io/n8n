@@ -1,0 +1,26 @@
+{
+	"description": "Gold: {anchor: wf, embedsOther: false} — deterministic per-row calculation where auditability requires reproducibility; no AI step belongs in the design at all.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "For each employee row, compute net pay from hours and rate, and write it back to the sheet. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "simple",
+	"tags": ["intent-resolution", "batch", "deterministic"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent proposes a workflow that iterates the employee rows, computes net pay, and writes results back — and does not propose creating an n8n Agent.",
+		"In the proposed design the pay computation is deterministic (expression, code, or calculation step) — no LLM step, AI Agent node, or open-ended agent step is involved in computing pay.",
+		"The proposal grounds the workflow choice in the deterministic, reproducible nature of a payroll calculation, rather than in vague or incorrect justifications."
+	]
+}

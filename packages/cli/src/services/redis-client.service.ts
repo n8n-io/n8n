@@ -154,6 +154,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 			password,
 			db,
 			tls,
+			tlsConfig,
 			dualStack,
 			keepAlive,
 			keepAliveDelay,
@@ -183,7 +184,11 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		if (dualStack) options.family = 0;
 
-		if (tls) options.tls = {}; // enable TLS with default Node.js settings
+		if (tls)
+			options.tls = {
+				servername: tlsConfig.serverName || undefined, // empty string → undefined so ioredis defaults to host-based SNI
+				rejectUnauthorized: tlsConfig.rejectUnauthorized,
+			};
 
 		// Add keep-alive configuration
 		if (keepAlive) {

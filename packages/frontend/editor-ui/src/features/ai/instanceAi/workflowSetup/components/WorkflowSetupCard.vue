@@ -35,7 +35,11 @@ const isCredentialOnlySection = computed(
 
 const displayName = computed(() => {
 	const credentialTypeName = credentialType.value;
-	if (!isCredentialOnlySection.value || !credentialTypeName) return props.section.node.name;
+	if (!isCredentialOnlySection.value || !credentialTypeName) {
+		return i18n.baseText('instanceAi.workflowSetup.configureNode', {
+			interpolate: { name: props.section.node.name },
+		});
+	}
 	const raw =
 		credentialsStore.getCredentialTypeByName(credentialTypeName)?.displayName ?? credentialTypeName;
 	const appName = getAppNameFromCredType(raw);
@@ -91,8 +95,8 @@ const displayName = computed(() => {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding-top: var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--radius);
+	border: 2px solid var(--color--primary);
+	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
 }
 

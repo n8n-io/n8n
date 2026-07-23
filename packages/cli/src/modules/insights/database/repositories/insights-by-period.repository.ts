@@ -436,4 +436,11 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 
 		return { affected: result.affected };
 	}
+
+	async getEarliestDataDate(): Promise<Date | null> {
+		const result = await this.createQueryBuilder('ibp')
+			.select('MIN(ibp.periodStart)', 'minDate')
+			.getRawOne<{ minDate: Date | string | null }>();
+		return result?.minDate ? new Date(result.minDate) : null;
+	}
 }

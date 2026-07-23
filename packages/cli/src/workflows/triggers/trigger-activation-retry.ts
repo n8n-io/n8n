@@ -1,4 +1,5 @@
-import { WebhookPathTakenError, ensureError, sleep } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { WebhookPathTakenError, sleep } from 'n8n-workflow';
 
 import { WORKFLOW_REACTIVATE_INITIAL_TIMEOUT, WORKFLOW_REACTIVATE_MAX_TIMEOUT } from '@/constants';
 

@@ -1,0 +1,26 @@
+{
+	"description": "Gold: {anchor: agent, embedsOther: false} — cross-session memory plus chat interaction should route to the agent-builder path, not a workflow build.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "A tutor that helps me learn Python over multiple sessions, remembering what we covered. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "chat", "stateful", "memory"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent proposes creating an n8n Agent — an ongoing conversational tutor with cross-session memory — rather than building a workflow.",
+		"The proposed design is a self-contained conversational agent with memory — the tutor is not embedded as a step inside a workflow.",
+		"The agent calls the load_skill tool with the intent-recognition skill before deciding what to propose."
+	],
+	"messageBudget": 4
+}

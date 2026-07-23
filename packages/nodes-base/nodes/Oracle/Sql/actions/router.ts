@@ -1,11 +1,12 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type oracledb from 'oracledb';
 
 import * as database from './database/Database.resource';
 import type { OracleDBType } from './node.type';
 import { isOracleDBOperation } from './node.type';
 import type { OracleDBNodeCredentials, OracleDBNodeOptions } from '../helpers/interfaces';
-import { configureQueryRunner } from '../helpers/utils';
+import { configureQueryRunner, prepareErrorItem } from '../helpers/utils';
 import { configureOracleDB } from '../transport';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -29,8 +30,24 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	options.operation = operation;
 	options.autoCommit = options.autoCommit ?? true;
 
-	const pool = await configureOracleDB.call(this, credentials, options);
-	const runQueries = configureQueryRunner.call(this, this.getNode(), this.continueOnFail(), pool);
+	const continueOnFail = this.continueOnFail();
+
+	let pool: oracledb.Pool;
+	try {
+		pool = await configureOracleDB.call(this, credentials, options);
+	} catch (error) {
+		if (!continueOnFail) throw error;
+
+		const errorItems =
+			items.length > 0
+				? items.map((_item, index) => prepareErrorItem(error as Error, index))
+				: [prepareErrorItem(error as Error, 0)];
+
+		return [errorItems];
+	}
+
+	const runQueries = configureQueryRunner.call(this, node, continueOnFail, pool);
+
 	const oracleDBNodeData: OracleDBType = {
 		resource,
 		operation,

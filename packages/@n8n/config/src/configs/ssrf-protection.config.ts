@@ -63,11 +63,14 @@ const blockedIpRangesSchema = z.string().transform(parseBlockedIpRanges);
  * The one exception is {@link enabled}, which high-risk call sites read to decide
  * whether to switch protection on for user-controlled URLs.
  *
- * Validation precedence inside the service: allowed hostname → allowed IP range
- * → blocked IP range → allow.
- * Allow-list matches short-circuit the remaining checks.
+ * Validation precedence inside the service: allowed hostname → blocked hostname
+ * → allowed IP range → blocked IP range → allow.
+ * Allow-list matches short-circuit the remaining checks, so an explicit allowed
+ * hostname wins over a blocked-hostname match and lets an operator carve an
+ * exception out of a broad deny.
  *
- * Checks run at multiple phases (pre-flight DNS, connect time, and every edirect hop) to defeat DNS-rebinding (TOCTOU).
+ * Checks run at multiple phases (pre-flight DNS, connect time, and every
+ * redirect hop) to defeat DNS-rebinding (TOCTOU).
  */
 @Config
 export class SsrfProtectionConfig {
@@ -121,6 +124,27 @@ export class SsrfProtectionConfig {
 	 */
 	@Env('N8N_SSRF_ALLOWED_HOSTNAMES')
 	allowedHostnames: CommaSeparatedStringArray<string> = [];
+
+	/**
+	 * The hostnames that guarded requests are denied from reaching, by name,
+	 * before DNS resolution runs. Comma-separated, empty by default. A leading
+	 * wildcard matches subdomains: `*.example.com` blocks any subdomain but not
+	 * the bare `example.com`.
+	 *
+	 * Use this for egress governance — denying a destination by name even when it
+	 * resolves to a public IP you otherwise allow. An entry in
+	 * {@link allowedHostnames} always wins, so you can carve an exception out of a
+	 * broad deny. Internationalized hostnames must be supplied in their ASCII
+	 * (punycode, `xn--`) form, since that is how they are compared at runtime.
+	 *
+	 * This is a governance control, not SSRF hardening: it is bypassable by an
+	 * attacker who controls the URL (IP-literal targets, alias hostnames that
+	 * resolve to the same IP, or DNS rebinding). The robust SSRF guarantees stay
+	 * IP-based and post-resolution. To block a destination reliably, use
+	 * {@link blockedIpRanges}.
+	 */
+	@Env('N8N_SSRF_BLOCKED_HOSTNAMES')
+	blockedHostnames: CommaSeparatedStringArray<string> = [];
 
 	/**
 	 * The maximum size, in bytes, of the internal cache that remembers recent

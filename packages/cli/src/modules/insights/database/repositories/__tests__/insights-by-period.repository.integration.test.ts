@@ -34,19 +34,19 @@ describe('InsightsByPeriodRepository', () => {
 				const mockResult = [{ periodStart, runTime: 0, succeeded: 0, failed: 0, timeSaved: 0 }];
 
 				const queryBuilderMock = {
-					addCommonTableExpression: jest.fn().mockReturnThis(),
-					select: jest.fn().mockReturnThis(),
-					innerJoin: jest.fn().mockReturnThis(),
-					where: jest.fn().mockReturnThis(),
-					andWhere: jest.fn().mockReturnThis(),
-					groupBy: jest.fn().mockReturnThis(),
-					orderBy: jest.fn().mockReturnThis(),
-					getRawMany: jest.fn().mockResolvedValue(mockResult),
+					addCommonTableExpression: vi.fn().mockReturnThis(),
+					select: vi.fn().mockReturnThis(),
+					innerJoin: vi.fn().mockReturnThis(),
+					where: vi.fn().mockReturnThis(),
+					andWhere: vi.fn().mockReturnThis(),
+					groupBy: vi.fn().mockReturnThis(),
+					orderBy: vi.fn().mockReturnThis(),
+					getRawMany: vi.fn().mockResolvedValue(mockResult),
 				};
 
-				jest
-					.spyOn(insightsByPeriodRepository.manager, 'createQueryBuilder')
-					.mockReturnValueOnce(queryBuilderMock as any);
+				vi.spyOn(insightsByPeriodRepository.manager, 'createQueryBuilder').mockReturnValueOnce(
+					queryBuilderMock as any,
+				);
 
 				const result = await insightsByPeriodRepository.getInsightsByTime({
 					startDate: new Date('2023-10-01T00:00:00Z'),
@@ -83,7 +83,7 @@ describe('InsightsByPeriodRepository', () => {
 			// ARRANGE
 			const insightsConfig = Container.get(InsightsConfig);
 			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-			const transactionSpy = jest.spyOn(insightsByPeriodRepository.manager, 'transaction');
+			const transactionSpy = vi.spyOn(insightsByPeriodRepository.manager, 'transaction');
 			const project = await createTeamProject();
 			const workflow = await createWorkflow({ nodes: [] }, project);
 			await createMetadata(workflow);

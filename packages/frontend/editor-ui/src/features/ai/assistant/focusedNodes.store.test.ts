@@ -18,12 +18,6 @@ import type { INodeUi } from '@/Interface';
 
 // Mock telemetry
 const track = vi.fn();
-vi.spyOn(telemetryModule, 'useTelemetry').mockImplementation(
-	() =>
-		({
-			track,
-		}) as unknown as Telemetry,
-);
 
 // Mock posthog
 let featureEnabled = true;
@@ -65,6 +59,10 @@ describe('useFocusedNodesStore', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// `restoreMocks` restores this spy before each test, so re-establish it here.
+		vi.spyOn(telemetryModule, 'useTelemetry').mockImplementation(
+			() => ({ track }) as unknown as Telemetry,
+		);
 		featureEnabled = true;
 
 		setActivePinia(

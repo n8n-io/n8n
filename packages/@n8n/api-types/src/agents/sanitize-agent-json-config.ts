@@ -1,6 +1,7 @@
 import { z, type ZodDiscriminatedUnionOption } from 'zod';
 
 import { AgentJsonConfigSchema } from './agent-json-config.schema';
+import { agentSkillSchema } from './agent-skill.schema';
 
 const TYPED_ARRAY_CONFIG_KEYS = ['integrations', 'tools', 'skills', 'tasks'] as const;
 
@@ -217,4 +218,22 @@ export function sanitizeAgentJsonConfig(raw: unknown): unknown {
 	}
 
 	return sanitized;
+}
+
+/**
+ * Strip unknown fields from embedded skill bodies before strict Zod
+ * validation, so persisted bodies degrade gracefully as `agentSkillSchema`
+ * evolves — the skills counterpart of `sanitizeAgentJsonConfig`. Record keys
+ * are preserved verbatim (the record's key schema validates them), and
+ * non-record values pass through for validation to reject.
+ */
+export function sanitizeAgentSkillBodies(raw: unknown): unknown {
+	if (!isRecord(raw)) return raw;
+
+	return Object.fromEntries(
+		Object.entries(raw).map(([skillId, body]) => [
+			skillId,
+			stripUnknownSchemaFields(body, agentSkillSchema),
+		]),
+	);
 }

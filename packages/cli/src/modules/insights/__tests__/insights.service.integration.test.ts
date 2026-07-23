@@ -7,13 +7,16 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import type { InstanceType } from '@n8n/constants';
-import type { IWorkflowDb, Project, WorkflowEntity } from '@n8n/db';
+import type { IWorkflowDb, Project, User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
+import type { MockInstance, Mocked } from 'vitest';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
+
+import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-utils';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
@@ -49,8 +52,8 @@ describe('InsightsService (Integration)', () => {
 		let pruningService: InsightsPruningService;
 		let instanceSettings: MockProxy<InstanceSettings>;
 		let realCollectionService: InsightsCollectionService;
-		let initSpy: jest.SpyInstance;
-		let shutdownSpy: jest.SpyInstance;
+		let initSpy: MockInstance;
+		let shutdownSpy: MockInstance;
 
 		beforeEach(() => {
 			compactionService = mock<InsightsCompactionService>();
@@ -65,14 +68,15 @@ describe('InsightsService (Integration)', () => {
 				mock<LicenseState>(),
 				instanceSettings,
 				mockLogger(),
+				mock<WorkflowSharingService>(),
 			);
 
 			// Get the real service from the container and spy on it
 			realCollectionService = Container.get(InsightsCollectionService);
-			initSpy = jest.spyOn(realCollectionService, 'init');
-			shutdownSpy = jest.spyOn(realCollectionService, 'shutdown');
+			initSpy = vi.spyOn(realCollectionService, 'init');
+			shutdownSpy = vi.spyOn(realCollectionService, 'shutdown');
 
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		afterEach(async () => {
@@ -86,7 +90,7 @@ describe('InsightsService (Integration)', () => {
 		const setupMocks = (instanceType: InstanceType, isLeader: boolean = false) => {
 			(instanceSettings as any).instanceType = instanceType;
 			Object.defineProperty(instanceSettings, 'isLeader', {
-				get: jest.fn(() => isLeader),
+				get: vi.fn(() => isLeader),
 			});
 		};
 
@@ -309,6 +313,9 @@ describe('InsightsService (Integration)', () => {
 	describe('getInsightsByWorkflow', () => {
 		let insightsService: InsightsService;
 
+		// Owner-like user with the global `workflow:read` scope, so every workflow is accessible
+		const owner = { role: { scopes: [{ slug: 'workflow:read' }] } } as unknown as User;
+
 		beforeAll(() => {
 			insightsService = Container.get(InsightsService);
 		});
@@ -408,6 +415,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: owner,
 				startDate,
 				endDate,
 			});
@@ -474,6 +482,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: owner,
 				startDate,
 				endDate: now.toJSDate(),
 				sortBy: 'runTime:desc',
@@ -501,6 +510,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: owner,
 				startDate,
 				endDate: now.toJSDate(),
 				sortBy: 'succeeded:desc',
@@ -528,6 +538,7 @@ describe('InsightsService (Integration)', () => {
 			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: owner,
 				startDate,
 				endDate: now.toJSDate(),
 				skip: 10,
@@ -597,6 +608,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: owner,
 				startDate,
 				endDate: now.toJSDate(),
 				projectId: project.id,
@@ -643,6 +655,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: owner,
 				startDate,
 				endDate: now.toJSDate(),
 			});
@@ -975,7 +988,7 @@ describe('InsightsService (Integration)', () => {
 	});
 
 	describe('validateDateFiltersLicense', () => {
-		let licenseStateMock: jest.Mocked<LicenseState>;
+		let licenseStateMock: Mocked<LicenseState>;
 		let insightsService: InsightsService;
 
 		beforeEach(() => {
@@ -987,6 +1000,7 @@ describe('InsightsService (Integration)', () => {
 				licenseStateMock,
 				mock<InstanceSettings>(),
 				mockLogger(),
+				mock<WorkflowSharingService>(),
 			);
 		});
 
@@ -1080,11 +1094,11 @@ describe('InsightsService (Integration)', () => {
 		let insightsService: InsightsService;
 
 		const mockCompactionService = mock<InsightsCompactionService>({
-			stopCompactionTimer: jest.fn(),
+			stopCompactionTimer: vi.fn(),
 		});
 
 		const mockPruningService = mock<InsightsPruningService>({
-			stopPruningTimer: jest.fn(),
+			stopPruningTimer: vi.fn(),
 		});
 
 		beforeAll(() => {
@@ -1095,14 +1109,22 @@ describe('InsightsService (Integration)', () => {
 				mock<LicenseState>(),
 				mock<InstanceSettings>({ instanceType: 'main' }),
 				mockLogger(),
+				mock<WorkflowSharingService>(),
 			);
+		});
+
+		beforeEach(() => {
+			mockCompactionService.stopCompactionTimer.mockReset();
+			mockCompactionService.stopCompactionTimer.mockResolvedValue(undefined);
+			mockPruningService.stopPruningTimer.mockReset();
+			mockPruningService.stopPruningTimer.mockReturnValue(undefined);
 		});
 
 		test('shutdown stops timers and shuts down services', async () => {
 			// ARRANGE
 			// Get the real service from the container and spy on it
 			const realCollectionService = Container.get(InsightsCollectionService);
-			const shutdownSpy = jest.spyOn(realCollectionService, 'shutdown');
+			const shutdownSpy = vi.spyOn(realCollectionService, 'shutdown');
 
 			// ACT
 			await insightsService.shutdown();
@@ -1111,6 +1133,31 @@ describe('InsightsService (Integration)', () => {
 			expect(shutdownSpy).toHaveBeenCalled();
 			expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
 			expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
+		});
+
+		test('stops pruning before waiting for compaction to finish', async () => {
+			// ARRANGE
+			const callOrder: string[] = [];
+			let resolveCompaction!: () => void;
+			mockCompactionService.stopCompactionTimer.mockImplementation(async () => {
+				callOrder.push('compaction');
+				await new Promise<void>((resolve) => {
+					resolveCompaction = resolve;
+				});
+			});
+			mockPruningService.stopPruningTimer.mockImplementation(() => {
+				callOrder.push('pruning');
+			});
+
+			// ACT
+			const stopPromise = insightsService.stopCompactionAndPruningTimers();
+			await Promise.resolve();
+
+			// ASSERT
+			expect(callOrder).toEqual(['pruning', 'compaction']);
+
+			resolveCompaction();
+			await stopPromise;
 		});
 	});
 });

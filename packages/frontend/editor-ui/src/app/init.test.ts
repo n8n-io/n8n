@@ -1,7 +1,7 @@
 import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { initializeAuthenticatedFeatures, initializeCore, state } from '@/app/init';
-import { UserManagementAuthenticationMethod } from '@/Interface';
+import { AuthenticationMethod } from '@n8n/api-types';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -34,6 +34,7 @@ vi.mock('@/features/settings/users/users.store', () => ({
 		initialize: vi.fn(),
 		registerLoginHook: vi.fn(),
 		registerLogoutHook: vi.fn(),
+		registerModalOpener: vi.fn(),
 		setUserQuota: vi.fn(),
 	}),
 }));
@@ -144,7 +145,7 @@ describe('Init', () => {
 				callbackUrl: 'http://localhost:5678/rest/sso/oidc/callback',
 			};
 
-			settingsStore.userManagement.authenticationMethod = UserManagementAuthenticationMethod.Oidc;
+			settingsStore.userManagement.authenticationMethod = AuthenticationMethod.Oidc;
 			settingsStore.settings.sso = { managedByEnv: false, saml, ldap, oidc };
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc] = true;
 
@@ -158,7 +159,7 @@ describe('Init', () => {
 			// once during initializeCore and once during the login hook
 			expect(ssoStore.initialize).toHaveBeenCalledTimes(2);
 			expect(ssoStore.initialize).toHaveBeenLastCalledWith({
-				authenticationMethod: UserManagementAuthenticationMethod.Oidc,
+				authenticationMethod: AuthenticationMethod.Oidc,
 				managedByEnv: false,
 				config: { managedByEnv: false, saml, ldap, oidc },
 				features: {
@@ -174,14 +175,14 @@ describe('Init', () => {
 			const ldap = { loginEnabled: false, loginLabel: '' };
 			const oidc = { loginEnabled: false, loginUrl: '', callbackUrl: '' };
 
-			settingsStore.userManagement.authenticationMethod = UserManagementAuthenticationMethod.Saml;
+			settingsStore.userManagement.authenticationMethod = AuthenticationMethod.Saml;
 			settingsStore.settings.sso = { managedByEnv: false, saml, ldap, oidc };
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml] = true;
 
 			await initializeCore();
 
 			expect(ssoStore.initialize).toHaveBeenCalledWith({
-				authenticationMethod: UserManagementAuthenticationMethod.Saml,
+				authenticationMethod: AuthenticationMethod.Saml,
 				managedByEnv: false,
 				config: { managedByEnv: false, saml, ldap, oidc },
 				features: {
@@ -239,7 +240,7 @@ describe('Init', () => {
 			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
 			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
 			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
-			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
 
 			await initializeAuthenticatedFeatures(false);
 
@@ -248,6 +249,9 @@ describe('Init', () => {
 			expect(nodeTranslationSpy).toHaveBeenCalled();
 			expect(versionsSpy).toHaveBeenCalled();
 			expect(usersStore.setUserQuota).toHaveBeenCalled();
+			// Modal openers are provided to the decoupled stores at bootstrap.
+			expect(usersStore.registerModalOpener).toHaveBeenCalled();
+			expect(versionsStore.registerModalOpeners).toHaveBeenCalled();
 
 			await initializeAuthenticatedFeatures();
 
@@ -261,7 +265,7 @@ describe('Init', () => {
 			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
 			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
 			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
-			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
 
 			await initializeAuthenticatedFeatures(false);
 
@@ -278,7 +282,7 @@ describe('Init', () => {
 			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
 			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
 			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
-			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
 
 			await initializeAuthenticatedFeatures(false);
 
@@ -290,7 +294,7 @@ describe('Init', () => {
 
 		it('should handle source control initialization error', async () => {
 			vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValue();
-			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
 			vi.spyOn(sourceControlStore, 'getPreferences').mockRejectedValueOnce(
 				new AxiosError('Something went wrong', '404'),
 			);
@@ -308,7 +312,7 @@ describe('Init', () => {
 			settingsStore.settings.banners = { dismissed: [] };
 			settingsStore.settings.versionCli = '1.2.3';
 			settingsStore.isCloudDeployment = false;
-			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
 
 			const pushBannerSpy = vi.spyOn(bannersStore, 'pushBannerToStack');
 

@@ -5,6 +5,12 @@
 			"status": "covered",
 			"nodeOperation": "audit:generate"
 		},
+		"GET /settings/security-policy": {
+			"status": "gap"
+		},
+		"PUT /settings/security-policy": {
+			"status": "gap"
+		},
 		"GET /credentials": {
 			"status": "gap"
 		},
@@ -142,6 +148,21 @@
 		"PUT /workflows/{id}/tags": {
 			"status": "gap"
 		},
+		"GET /workflows/{id}/test-runs": {
+			"status": "gap"
+		},
+		"POST /workflows/{id}/test-runs": {
+			"status": "gap"
+		},
+		"GET /workflows/{id}/test-runs/{runId}": {
+			"status": "gap"
+		},
+		"POST /workflows/{id}/test-runs/{runId}/cancel": {
+			"status": "gap"
+		},
+		"GET /workflows/{id}/test-runs/{runId}/test-cases": {
+			"status": "gap"
+		},
 		"GET /users": {
 			"status": "gap"
 		},
@@ -158,6 +179,39 @@
 			"status": "gap"
 		},
 		"POST /source-control/pull": {
+			"status": "gap"
+		},
+		"GET /settings/security-policy": {
+			"status": "gap"
+		},
+		"PUT /settings/security-policy": {
+			"status": "gap"
+		},
+		"GET /settings/sso/saml": {
+			"status": "gap"
+		},
+		"PUT /settings/sso/saml": {
+			"status": "gap"
+		},
+		"GET /settings/log-streaming/event-types": {
+			"status": "gap"
+		},
+		"GET /settings/log-streaming/destinations": {
+			"status": "gap"
+		},
+		"POST /settings/log-streaming/destinations": {
+			"status": "gap"
+		},
+		"GET /settings/log-streaming/destinations/{id}": {
+			"status": "gap"
+		},
+		"PUT /settings/log-streaming/destinations/{id}": {
+			"status": "gap"
+		},
+		"DELETE /settings/log-streaming/destinations/{id}": {
+			"status": "gap"
+		},
+		"POST /settings/log-streaming/destinations/{id}/test": {
 			"status": "gap"
 		},
 		"POST /variables": {
@@ -200,6 +254,9 @@
 			"status": "gap"
 		},
 		"DELETE /data-tables/{dataTableId}/rows/delete": {
+			"status": "gap"
+		},
+		"DELETE /data-tables/{dataTableId}/rows/clear": {
 			"status": "gap"
 		},
 		"GET /data-tables/{dataTableId}/columns": {

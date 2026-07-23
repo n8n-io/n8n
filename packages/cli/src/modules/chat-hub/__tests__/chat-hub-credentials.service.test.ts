@@ -6,8 +6,8 @@ import type {
 	User,
 } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import type { INodeCredentials } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -36,7 +36,7 @@ describe('ChatHubCredentialsService', () => {
 	const mockTrx = mock<EntityManager>();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('ensureCredentialAccess', () => {

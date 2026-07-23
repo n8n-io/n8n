@@ -10,7 +10,7 @@ import type {
 	ValidationResult,
 } from '../interfaces';
 import * as LoggerProxy from '../logger-proxy';
-import type { Result } from '../result';
+import type { Result } from '@n8n/utils/result';
 import { validateFieldType } from '../type-validation';
 
 type FilterConditionMetadata = {

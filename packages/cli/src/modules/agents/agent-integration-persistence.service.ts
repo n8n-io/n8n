@@ -17,6 +17,10 @@ export interface SaveCredentialIntegrationOptions {
 	broadcast?: boolean;
 }
 
+export interface RemoveCredentialIntegrationOptions {
+	broadcast?: boolean;
+}
+
 @Service()
 export class AgentIntegrationPersistenceService {
 	constructor(
@@ -97,6 +101,7 @@ export class AgentIntegrationPersistenceService {
 		agent: Agent,
 		type: string,
 		credentialId: string,
+		options: RemoveCredentialIntegrationOptions = {},
 	): Promise<Agent> {
 		if (!agent.integrations?.length) return agent;
 		const integration = agent.integrations.find(
@@ -108,11 +113,13 @@ export class AgentIntegrationPersistenceService {
 		markAgentDraftDirty(agent);
 		this.runtimeCacheService.clearRuntimes(agent.id);
 		const result = await this.agentRepository.save(agent);
-		await this.chatIntegrationService.broadcastIntegrationChange(
-			agent.id,
-			integration,
-			'disconnect',
-		);
+		if (options.broadcast !== false) {
+			await this.chatIntegrationService.broadcastIntegrationChange(
+				agent.id,
+				integration,
+				'disconnect',
+			);
+		}
 		return result;
 	}
 }

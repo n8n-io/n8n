@@ -10,11 +10,11 @@
 // What's tested: the orchestrator's first dispatch decision. Tools are NOT
 // stubbed — when the orchestrator loads a runtime skill or reaches for a
 // Computer Use browser tool, the tool-call event fires before any downstream
-// failure, so the discovery check still sees the dispatch intent. maxSteps caps
-// the loop so an erroring tool can't drive API spend.
+// failure, so the discovery check still sees the dispatch intent. The wall-clock
+// timeout bounds the loop so an erroring tool can't drive API spend; scenarios
+// or --max-steps can additionally opt into an iteration cap.
 // ---------------------------------------------------------------------------
 
-import { Memory } from '@n8n/agents';
 import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
@@ -76,7 +76,10 @@ export async function runDiscoveryScenario(
 	options: DiscoveryRunOptions,
 ): Promise<DiscoveryRunResult> {
 	const started = Date.now();
-	const maxSteps = options.maxSteps ?? 5;
+	// Uncapped by default, matching live behavior: today's orchestrator legitimately
+	// explores past any small fixed cap (data-table-workflow needs >8 iterations), and
+	// the wall-clock timeout below bounds runaway runs. Scenarios/CLI opt in to a cap.
+	const maxSteps = options.scenario?.maxSteps ?? options.maxSteps;
 	const timeoutMs = options.timeoutMs ?? 60_000;
 	const nodesJsonPath = options.nodesJsonPath ?? defaultNodesJsonPath();
 
@@ -93,7 +96,6 @@ export async function runDiscoveryScenario(
 		const context = applyInstanceState(services.context, options.scenario);
 
 		const mcpManager = new McpClientManager();
-		const memory = new Memory().build();
 		const threadId = 'discovery-thread-' + nanoid(6);
 		const runId = 'discovery-run-' + nanoid(6);
 
@@ -111,9 +113,9 @@ export async function runDiscoveryScenario(
 		});
 
 		// `OrchestrationContext` is required for the orchestrator to receive tools like
-		// `delegate`, `create-tasks`, and runtime skills. We provide stubs for the heavy fields:
-		// discovery scenarios measure first-step tool-call decisions, not background
-		// execution.
+		// `create-tasks`, `eval-setup-with-agent`, and runtime skills. We provide stubs
+		// for the heavy fields: discovery scenarios measure first-step tool-call
+		// decisions, not background execution.
 		const orchestrationContext = createStubOrchestrationContext({
 			context,
 			modelId: options.modelId,
@@ -128,7 +130,7 @@ export async function runDiscoveryScenario(
 			context,
 			orchestrationContext,
 			mcpManager,
-			memory,
+			// No memory: discovery measures stateless first-step tool dispatch.
 			memoryConfig: {},
 			// Eager tool loading — discovery measures dispatch given the full toolset,
 			// not whether the orchestrator can find a tool through search.
@@ -138,7 +140,7 @@ export async function runDiscoveryScenario(
 
 		const streamSource = normalizeStreamSource(
 			await agent.stream(options.scenario.userMessage, {
-				maxSteps,
+				maxIterations: maxSteps,
 				abortSignal: abortController.signal,
 				providerOptions: {
 					anthropic: { cacheControl: { type: 'ephemeral' as const } },
@@ -251,11 +253,11 @@ interface StubOrchestrationContextOptions {
 function createStubOrchestrationContext(
 	opts: StubOrchestrationContextOptions,
 ): OrchestrationContext {
-	// Domain tools are passed to spawned sub-agents (delegate).
-	// Discovery scenarios measure the orchestrator's first-step dispatch decision; sub-agent
-	// execution is out of scope. We still populate domainTools faithfully so any sub-agent
-	// that does spawn has a coherent toolset (avoids hitting "no tools" errors that would
-	// confuse the diagnostic comment).
+	// Domain tools are passed to background agents such as eval-setup.
+	// Discovery scenarios measure the orchestrator's first-step dispatch decision;
+	// background execution is out of scope. We still populate domainTools faithfully
+	// so any background agent that does spawn has a coherent toolset (avoids hitting
+	// "no tools" errors that would confuse the diagnostic comment).
 	const domainTools: InstanceAiToolRegistry = createAllTools(opts.context);
 
 	const taskStorage: TaskStorage = {
@@ -271,7 +273,6 @@ function createStubOrchestrationContext(
 		userId: opts.context.userId,
 		orchestratorAgentId: 'n8n-instance-agent',
 		modelId: opts.modelId,
-		subAgentMaxSteps: 10,
 		eventBus: opts.eventBus,
 		logger: silentLogger(),
 		domainTools,
@@ -280,13 +281,13 @@ function createStubOrchestrationContext(
 		taskStorage,
 		// Discovery evals assert first-dispatch intent only. Production starts a
 		// detached background task here; the harness accepts the spawn so the tool
-		// can publish its `agent-spawned` event without executing the sub-agent.
+		// can publish its `agent-spawned` event without executing the background agent.
 		spawnBackgroundTask: ({ taskId, agentId }) => ({ status: 'started', taskId, agentId }),
 		// Surface the localMcpServer so Computer Use browser tools are available to the
 		// orchestrator.
 		...(opts.context.localMcpServer ? { localMcpServer: opts.context.localMcpServer } : {}),
-		// Used for the orchestrator's untrusted-content doctrine and other domain references
-		// inside sub-agent tools. Provide the same context the orchestrator sees.
+		// Used for the orchestrator's untrusted-content doctrine and other domain references.
+		// Provide the same context the orchestrator sees.
 		domainContext: opts.context,
 	};
 }

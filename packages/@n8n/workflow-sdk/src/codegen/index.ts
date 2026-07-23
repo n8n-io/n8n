@@ -55,7 +55,11 @@ export { buildSemanticGraph } from './semantic-graph';
 export { annotateGraph } from './graph-annotator';
 export { buildCompositeTree } from './composite-builder';
 export { generateCode } from './code-generator';
-export { emitInstanceAi, type EmitInstanceAiOptions } from './emit-instance-ai';
+export {
+	emitInstanceAi,
+	SDK_IMPORTABLE_FUNCTIONS,
+	type EmitInstanceAiOptions,
+} from './emit-instance-ai';
 export {
 	getOutputName,
 	getInputName,

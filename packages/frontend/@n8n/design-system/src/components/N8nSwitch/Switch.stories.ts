@@ -93,6 +93,14 @@ export const States = {
 		</div>
 		`,
 	}),
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'All visual states. Hovering a non-disabled switch stretches the thumb slightly along the track, anchored to its side. Disabled switches do not react to hover.',
+			},
+		},
+	},
 } satisfies Story;
 
 export const WithCustomLabel = {

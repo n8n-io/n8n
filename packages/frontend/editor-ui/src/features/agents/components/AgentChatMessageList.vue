@@ -7,13 +7,14 @@ import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteracti
 import { useI18n } from '@n8n/i18n';
 import {
 	buildDisplayGroups,
-	getMessageInteractives,
-	isRecord,
-	type ChatMessage,
 	type DisplayGroup,
-	type InteractivePayload,
-	type ToolCall,
-} from '../composables/agentChatMessages';
+} from '@/features/ai/shared/agentsChat/displayGroups';
+import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
+import type {
+	ChatMessage,
+	InteractivePayload,
+	ToolCall,
+} from '@/features/ai/shared/agentsChat/types';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
@@ -27,13 +28,19 @@ const props = defineProps<{
 	messagingState: 'idle' | 'waitingFirstChunk' | 'receiving';
 	projectId?: string;
 	agentId?: string;
+	sessionId?: string;
+	canSendToAssistant?: boolean;
 }>();
 
 const emit = defineEmits<{
 	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
+	sendToAssistant: [];
 }>();
 
 const i18n = useI18n();
+const canSendToAssistant = computed(() =>
+	Boolean(props.canSendToAssistant && props.agentId && props.sessionId),
+);
 
 function onInteractiveSubmit(payload: InteractivePayload, resumeData: unknown) {
 	// Cards without a runId are disabled at the card level (see InteractiveCard).
@@ -49,10 +56,9 @@ function isIntegrationActionSuspend(value: unknown): value is { type: 'integrati
 /**
  * Returns a display name for the external platform a tool call is waiting on,
  * or `undefined` when the tool call either isn't suspended or renders its own
- * interactive card. Builder tools never match (their suspend payload is their
- * renderable input, not an integration_action sidecar); n8n_chat_action DOES
- * carry the sidecar but is excluded explicitly because it renders its own
- * interactive card in the chat.
+ * interactive card. n8n_chat_action carries the integration_action sidecar
+ * but is excluded explicitly because it renders its own interactive card in
+ * the chat.
  */
 function externalWaitPlatform(tc: ToolCall): string | undefined {
 	if (tc.state !== TOOL_CALL_STATE.SUSPENDED) return undefined;
@@ -64,10 +70,9 @@ function externalWaitPlatform(tc: ToolCall): string | undefined {
 
 /**
  * Open cards always render. Once resolved, answered interactive cards clear
- * from the chat (builder cards collapse into their tool-step summary; n8n
- * chat cards leave the picked answer there too) — but display-only n8n chat
- * cards persist: they are content, and being born resolved they would
- * otherwise never render at all.
+ * from the chat (both approval and n8n chat cards collapse into their
+ * tool-step summary) — but display-only n8n chat cards persist: they are
+ * content, and being born resolved they would otherwise never render at all.
  */
 function shouldRenderInteractive(payload: InteractivePayload): boolean {
 	if (!payload.resolvedAt) return !!payload.runId;
@@ -436,8 +441,6 @@ onBeforeUnmount(() => {
 							v-for="payload in group.interactives.filter(shouldRenderInteractive)"
 							:key="payload.toolCallId"
 							:payload="payload"
-							:project-id="projectId"
-							:agent-id="agentId"
 							@submit="onInteractiveSubmit(payload, $event)"
 						/>
 					</div>
@@ -468,7 +471,9 @@ onBeforeUnmount(() => {
 							:content="getAssistantRunContent(group.id)"
 							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
 							:is-speaking="isSpeakingMessage(group.id)"
+							:can-send-to-assistant="canSendToAssistant"
 							@read-aloud="toggleReadAloud(group.id)"
+							@send-to-assistant="emit('sendToAssistant')"
 						/>
 					</div>
 					<AgentTypingIndicator
@@ -535,8 +540,6 @@ onBeforeUnmount(() => {
 							<div v-else :class="$style.interactives">
 								<InteractiveCard
 									:payload="item.payload"
-									:project-id="projectId"
-									:agent-id="agentId"
 									@submit="onInteractiveSubmit(item.payload, $event)"
 								/>
 							</div>
@@ -554,7 +557,9 @@ onBeforeUnmount(() => {
 							:content="getAssistantRunContent(group.id)"
 							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
 							:is-speaking="isSpeakingMessage(group.id)"
+							:can-send-to-assistant="canSendToAssistant"
 							@read-aloud="toggleReadAloud(group.id)"
+							@send-to-assistant="emit('sendToAssistant')"
 						/>
 						<AgentChatMemoryUsed
 							:memories="getMemoriesUsedInAssistantRun(group.id)"

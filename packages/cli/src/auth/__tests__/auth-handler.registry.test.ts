@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import { User } from '@n8n/db';
 import type { IPasswordAuthHandler, AuthHandlerEntryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 
@@ -32,8 +32,8 @@ describe('AuthHandlerRegistry', () => {
 				}
 			}
 
-			jest.spyOn(mockMetadata, 'getClasses').mockReturnValue([MockHandlerClass as any]);
-			jest.spyOn(Container, 'get').mockReturnValue(mockHandler);
+			vi.mocked(mockMetadata.getClasses).mockReturnValue([MockHandlerClass as any]);
+			vi.spyOn(Container, 'get').mockReturnValue(mockHandler);
 
 			await registry.init();
 
@@ -45,13 +45,13 @@ describe('AuthHandlerRegistry', () => {
 			const mockHandler = mock<IPasswordAuthHandler<User>>({
 				metadata: { name: 'ldap', type: 'password' },
 				userClass: User,
-				init: jest.fn().mockResolvedValue(undefined),
+				init: vi.fn().mockResolvedValue(undefined),
 			});
 
 			class MockHandlerClass {}
 
-			jest.spyOn(mockMetadata, 'getClasses').mockReturnValue([MockHandlerClass as any]);
-			jest.spyOn(Container, 'get').mockReturnValue(mockHandler);
+			vi.mocked(mockMetadata.getClasses).mockReturnValue([MockHandlerClass as any]);
+			vi.spyOn(Container, 'get').mockReturnValue(mockHandler);
 
 			await registry.init();
 
@@ -61,8 +61,8 @@ describe('AuthHandlerRegistry', () => {
 		it('should skip handler on instantiation error', async () => {
 			class MockHandlerClass {}
 
-			jest.spyOn(mockMetadata, 'getClasses').mockReturnValue([MockHandlerClass as any]);
-			jest.spyOn(Container, 'get').mockImplementation(() => {
+			vi.mocked(mockMetadata.getClasses).mockReturnValue([MockHandlerClass as any]);
+			vi.spyOn(Container, 'get').mockImplementation(() => {
 				throw new Error('Instantiation failed');
 			});
 
@@ -78,13 +78,13 @@ describe('AuthHandlerRegistry', () => {
 			const mockHandler = mock<IPasswordAuthHandler<User>>({
 				metadata: { name: 'ldap', type: 'password' },
 				userClass: User,
-				init: jest.fn().mockRejectedValue(new Error('Init failed')),
+				init: vi.fn().mockRejectedValue(new Error('Init failed')),
 			});
 
 			class MockHandlerClass {}
 
-			jest.spyOn(mockMetadata, 'getClasses').mockReturnValue([MockHandlerClass as any]);
-			jest.spyOn(Container, 'get').mockReturnValue(mockHandler);
+			vi.mocked(mockMetadata.getClasses).mockReturnValue([MockHandlerClass as any]);
+			vi.spyOn(Container, 'get').mockReturnValue(mockHandler);
 
 			await registry.init();
 
@@ -108,10 +108,11 @@ describe('AuthHandlerRegistry', () => {
 			class MockHandlerClass1 {}
 			class MockHandlerClass2 {}
 
-			jest
-				.spyOn(mockMetadata, 'getClasses')
-				.mockReturnValue([MockHandlerClass1 as any, MockHandlerClass2 as any]);
-			jest.spyOn(Container, 'get').mockReturnValueOnce(handler1).mockReturnValueOnce(handler2);
+			vi.mocked(mockMetadata.getClasses).mockReturnValue([
+				MockHandlerClass1 as any,
+				MockHandlerClass2 as any,
+			]);
+			vi.spyOn(Container, 'get').mockReturnValueOnce(handler1).mockReturnValueOnce(handler2);
 
 			await registry.init();
 

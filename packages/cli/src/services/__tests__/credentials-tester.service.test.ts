@@ -1,5 +1,6 @@
-import mock from 'jest-mock-extended/lib/Mock';
 import type { ICredentialType, INodeType, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsHelper } from '@/credentials-helper';
@@ -20,7 +21,7 @@ describe('CredentialsTester', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should find the OAuth2 credential test for a generic OAuth2 API credential', () => {
@@ -35,16 +36,16 @@ describe('CredentialsTester', () => {
 
 		const testFn = credentialsTester.getCredentialTestFunction('oAuth2Api');
 
-		if (typeof testFn !== 'function') fail();
+		if (typeof testFn !== 'function') expect.fail();
 
 		expect(testFn.name).toBe('oauth2CredTest');
 	});
 
 	describe('testCredentials', () => {
-		let mockTestFunction: jest.Mock;
+		let mockTestFunction: Mock;
 
 		beforeEach(() => {
-			mockTestFunction = jest.fn();
+			mockTestFunction = vi.fn();
 			credentialTypes.getByName.mockReturnValue(mock<ICredentialType>({ test: undefined }));
 			credentialTypes.getSupportedNodes.mockReturnValue(['testCredentials']);
 			credentialTypes.getParentTypes.mockReturnValue([]);
@@ -60,9 +61,9 @@ describe('CredentialsTester', () => {
 					},
 				}),
 			);
-			jest
-				.spyOn(WorkflowExecuteAdditionalData, 'getBase')
-				.mockResolvedValue({} as IWorkflowExecuteAdditionalData);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				{} as IWorkflowExecuteAdditionalData,
+			);
 		});
 
 		it('should redact secrets in error messages', async () => {

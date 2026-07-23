@@ -41,6 +41,11 @@ const credentialSelectionConfirmSchema = z.object({
 	credentials: credentialIdByTypeSchema,
 });
 
+const credentialAutoSetupConfirmSchema = z.object({
+	kind: z.literal('credentialAutoSetup'),
+	credentialType: z.string(),
+});
+
 /** Domain-access approval — `domainAccessAction` carries which scope the user picked. */
 const domainAccessApproveSchema = z.object({
 	kind: z.literal('domainAccessApprove'),
@@ -90,6 +95,7 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	approvalConfirmSchema,
 	questionsConfirmSchema,
 	credentialSelectionConfirmSchema,
+	credentialAutoSetupConfirmSchema,
 	domainAccessApproveSchema,
 	domainAccessDenySchema,
 	planDenySchema,

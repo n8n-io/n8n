@@ -11,6 +11,7 @@ import {
 } from '../../__tests__/utils';
 import ItemsRenderer from './ItemsRenderer.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 
 const renderComponent = createComponentRenderer(ItemsRenderer);
 
@@ -65,6 +66,46 @@ describe('ItemsRenderer', () => {
 		expect(subCategories.length).toBe(2);
 	});
 
+	it('should render the wallet balance on sections with the creditsBalance trailing element', async () => {
+		const pinia = createTestingPinia();
+		const aiGatewayStore = useAiGatewayStore(pinia);
+		aiGatewayStore.balance = 5;
+
+		const { getByTestId } = renderComponent({
+			pinia,
+			props: {
+				elements: [mockSectionCreateElement({ trailing: 'creditsBalance' })],
+			},
+			global: {
+				stubs: ['N8nLoading'],
+			},
+		});
+
+		await nextTick();
+
+		expect(getByTestId('node-creator-credits-balance').textContent).toContain('$5.00 remaining');
+	});
+
+	it('should render "No credits" when the balance is depleted', async () => {
+		const pinia = createTestingPinia();
+		const aiGatewayStore = useAiGatewayStore(pinia);
+		aiGatewayStore.balance = 0;
+
+		const { getByTestId } = renderComponent({
+			pinia,
+			props: {
+				elements: [mockSectionCreateElement({ trailing: 'creditsBalance' })],
+			},
+			global: {
+				stubs: ['N8nLoading'],
+			},
+		});
+
+		await nextTick();
+
+		expect(getByTestId('node-creator-credits-balance').textContent).toContain('No credits');
+	});
+
 	it('should fire selected events on click', async () => {
 		const items = [
 			mockSubcategoryCreateElement(),
@@ -100,7 +141,7 @@ describe('ItemsRenderer', () => {
 				) {
 					expect(emittedEvent[0].type).toBe(itemType);
 				} else {
-					fail('Emitted event is not an array or does not have a type property');
+					expect.fail('Emitted event is not an array or does not have a type property');
 				}
 			}
 		}

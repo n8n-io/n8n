@@ -67,6 +67,34 @@ describe('run debug report', () => {
 		expect(getTestCaseAnchorId(result, 0)).toBe('tc-slack-notifier');
 	});
 
+	it('labels a seedThread case (no authored conversation) without throwing', () => {
+		const seedCase: WorkflowTestCase = {
+			complexity: 'simple',
+			tags: ['seeded'],
+			executionScenarios: [{ name: 's', description: 'd', dataSetup: '', successCriteria: 'ok' }],
+			datasets: ['seeded'],
+			seedThread: { threadId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' },
+		};
+		const html = generateRunDebugReport([
+			resultWithRunDebug(
+				[
+					{
+						threadId: 'thread-1',
+						runId: 'run-1',
+						startedAt: 1_700_000_000_000,
+						label: 'live turn',
+						steps: [],
+						workflowCode: [],
+					},
+				],
+				{ testCase: seedCase, fileSlug: undefined },
+			),
+		]);
+
+		// Falls back to the seeded label instead of crashing on `conversation[0]`.
+		expect(html).toContain('[seeded] thread aaaaaaaa');
+	});
+
 	it('renders an empty-state stub when no debug was captured', () => {
 		const html = generateRunDebugReport([
 			{

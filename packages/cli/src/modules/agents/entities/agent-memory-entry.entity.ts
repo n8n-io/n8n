@@ -1,6 +1,6 @@
+import type { JSONObject } from '@n8n/agents';
 import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index } from '@n8n/typeorm';
-import type { JSONObject } from '@n8n/agents';
 
 export type MemoryEntryStatus = 'active' | 'superseded' | 'dropped';
 

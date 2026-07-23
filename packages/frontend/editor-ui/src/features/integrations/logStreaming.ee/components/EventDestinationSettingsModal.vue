@@ -9,9 +9,6 @@ import type {
 	MessageEventBusDestinationOptions,
 	INodeParameters,
 	NodeParameterValueType,
-	MessageEventBusDestinationSentryOptions,
-	MessageEventBusDestinationSyslogOptions,
-	MessageEventBusDestinationWebhookOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 import {
@@ -38,7 +35,7 @@ import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
 import { useUIStore } from '@/app/stores/ui.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { destinationToFakeINodeUi } from '../logStreaming.utils';
+import { destinationToFakeINodeUi, isDestinationComplete } from '../logStreaming.utils';
 import type { BaseTextKey } from '@n8n/i18n';
 import SaveButton from '@/app/components/SaveButton.vue';
 import EventSelection from './EventSelection.vue';
@@ -362,31 +359,10 @@ async function saveDestination() {
 			.replace('$MessageEventBusDestination', '')
 			.toLowerCase();
 
-		const isComplete = () => {
-			if (isTypeWebhook.value) {
-				const webhookDestination = destination as MessageEventBusDestinationWebhookOptions;
-				return webhookDestination.url !== '';
-			} else if (isTypeSentry.value) {
-				const sentryDestination = destination as MessageEventBusDestinationSentryOptions;
-				return sentryDestination.dsn !== '';
-			} else if (isTypeSyslog.value) {
-				const syslogDestination = destination as MessageEventBusDestinationSyslogOptions;
-				return (
-					syslogDestination.host !== '' &&
-					syslogDestination.port !== undefined &&
-					// @ts-expect-error TODO: fix this typing
-					syslogDestination.protocol !== '' &&
-					syslogDestination.facility !== undefined &&
-					syslogDestination.app_name !== ''
-				);
-			}
-			return false;
-		};
-
 		telemetry.track('User updated log streaming destination', {
 			instance_id: useRootStore().instanceId,
 			destination_type: destinationType,
-			is_complete: isComplete(),
+			is_complete: isDestinationComplete(nodeParameters.value),
 			is_active: destination.enabled,
 		});
 	}

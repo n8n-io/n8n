@@ -2,15 +2,7 @@ import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from './agent-runtime';
-import type {
-	AgentExecutionCounter,
-	AnthropicThinkingConfig,
-	BuiltTool,
-	GoogleThinkingConfig,
-	JSONObject,
-	OpenAIThinkingConfig,
-	XaiThinkingConfig,
-} from '../../types';
+import type { AgentExecutionCounter, BuiltTool, JSONObject } from '../../types';
 import type { AgentPersistenceOptions, ExecutionOptions, ModelConfig } from '../../types/sdk/agent';
 import { lockAdditionalProperties } from '../../utils/json-schema';
 import { isZodSchema } from '../../utils/zod';
@@ -24,8 +16,20 @@ import {
 import { loadAi } from '../model/lazy-ai';
 import type { AgentMessageList } from '../model/message-list';
 import { createModel } from '../model/model-factory';
+import { buildCallPromptCacheOptions, mergeProviderOptions } from '../model/prompt-cache';
+import {
+	getProviderQuirks,
+	PROVIDER_QUIRKS,
+	providerIdFromModelId,
+} from '../model/provider-quirks';
 import type { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
+
+/** Wrap tool-instruction fragments in a `<built_in_rules>` block, or `undefined` when there are none. */
+function wrapBuiltInRules(fragments: string[]): string | undefined {
+	if (fragments.length === 0) return undefined;
+	return `<built_in_rules>\n${fragments.map((f) => `- ${f}`).join('\n')}\n</built_in_rules>`;
+}
 
 /** Resolve a model config to its canonical `provider/model` id string. */
 export function getModelIdString(model: ModelConfig): string {
@@ -109,14 +113,29 @@ export class RuntimeContextBuilder {
 		const allTools = { ...aiTools, ...aiProviderTools };
 		const aiToolCount = Object.keys(allTools).length;
 		const toolMap = buildToolMap(allUserTools);
-		const effectiveInstructions = this.composeEffectiveInstructions(allUserTools);
+		const { instructions: effectiveInstructions, volatileInstructions } =
+			this.composeEffectiveInstructions(allUserTools);
 
 		return {
 			toolMap,
 			aiTools: allTools,
 			hasTools: aiToolCount > 0,
 			effectiveInstructions,
+			volatileInstructions,
+			staticToolCacheName: this.getStaticToolCacheName(allUserTools),
 		};
+	}
+
+	/**
+	 * Name of the tool eligible for an Anthropic tool-definitions cache
+	 * breakpoint, or `undefined` if the tool set isn't fully static. Deferred
+	 * (controller/loaded) tools can appear mid-conversation via `load_tool`, so
+	 * they disqualify caching — marking a tool block that later changes would
+	 * invalidate the cache.
+	 */
+	private getStaticToolCacheName(allUserTools: BuiltTool[]): string | undefined {
+		if (this.deferredToolManager?.hasTools) return undefined;
+		return allUserTools.at(-1)?.name;
 	}
 
 	getCurrentTools(
@@ -163,7 +182,8 @@ export class RuntimeContextBuilder {
 		if (!isRawJsonSchemaOutput) return providerOptions;
 
 		const result: Record<string, Record<string, unknown>> = { ...providerOptions };
-		for (const provider of ['openai', 'groq']) {
+		for (const [provider, quirks] of Object.entries(PROVIDER_QUIRKS)) {
+			if (!quirks.relaxStrictJsonSchemaForRawOutput) continue;
 			// Keep any caller-provided value (spread last so it wins).
 			result[provider] = { strictJsonSchema: false, ...result[provider] };
 		}
@@ -196,93 +216,76 @@ export class RuntimeContextBuilder {
 
 	/**
 	 * Merge tool-attached `systemInstruction` fragments into the agent's
-	 * configured instructions. Fragments are wrapped in a single
-	 * `<built_in_rules>` block, prepended above the user's instructions so
-	 * the user's text remains the dominant tail of the prompt and can still
-	 * override defaults if needed.
+	 * configured instructions, split by stability:
+	 *
+	 * - `instructions`: fragments from tools present for the life of the run
+	 *   (base tools, deferred-tool controllers, the recall tool) plus the
+	 *   user's instructions. Sent as the cached system message.
+	 * - `volatileInstructions`: fragments from deferred tools loaded mid-
+	 *   conversation via `load_tool`. Kept out of the cached message —
+	 *   growing it the moment a tool loads would invalidate the whole
+	 *   prefix (OpenAI's automatic cache, and the Anthropic breakpoint) for
+	 *   the rest of the conversation. Sent as the uncached system message
+	 *   instead (see `buildSystemMessages`).
 	 */
-	private composeEffectiveInstructions(tools: BuiltTool[]): string {
-		const fragments = tools
-			.map((t) => t.systemInstruction)
-			.filter((s): s is string => typeof s === 'string' && s.trim().length > 0);
+	private composeEffectiveInstructions(tools: BuiltTool[]): {
+		instructions: string;
+		volatileInstructions: string | undefined;
+	} {
+		const loadedToolNames = new Set(
+			this.deferredToolManager?.getLoadedTools().map((t) => t.name) ?? [],
+		);
+		const stableFragments: string[] = [];
+		const volatileFragments: string[] = [];
+		for (const tool of tools) {
+			if (
+				typeof tool.systemInstruction !== 'string' ||
+				tool.systemInstruction.trim().length === 0
+			) {
+				continue;
+			}
+			(loadedToolNames.has(tool.name) ? volatileFragments : stableFragments).push(
+				tool.systemInstruction,
+			);
+		}
 
 		const userInstructions = this.config.instructions;
-		if (fragments.length === 0) return userInstructions;
+		const stableBlock = wrapBuiltInRules(stableFragments);
+		const instructions = stableBlock
+			? userInstructions
+				? `${stableBlock}\n\n${userInstructions}`
+				: stableBlock
+			: userInstructions;
 
-		const block = `<built_in_rules>\n${fragments.map((f) => `- ${f}`).join('\n')}\n</built_in_rules>`;
-		return userInstructions ? `${block}\n\n${userInstructions}` : block;
+		return {
+			instructions,
+			volatileInstructions: wrapBuiltInRules(volatileFragments),
+		};
 	}
 
 	/** Build the providerOptions object for thinking/reasoning config. */
 	private buildThinkingProviderOptions(): Record<string, Record<string, unknown>> | undefined {
 		if (!this.config.thinking) return undefined;
 
-		const provider = this.modelId.split('/')[0];
-		const thinking = this.config.thinking;
-
-		switch (provider) {
-			case 'anthropic': {
-				const cfg = thinking as AnthropicThinkingConfig;
-				if (cfg.mode === 'adaptive') {
-					return {
-						anthropic: {
-							thinking: {
-								type: 'adaptive',
-								display: cfg.display ?? 'summarized',
-							},
-						},
-					};
-				}
-				return {
-					anthropic: {
-						thinking: { type: 'enabled', budgetTokens: cfg.budgetTokens ?? 10000 },
-					},
-				};
-			}
-			case 'openai': {
-				const cfg = thinking as OpenAIThinkingConfig;
-				return { openai: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
-			}
-			case 'google': {
-				const cfg = thinking as GoogleThinkingConfig;
-				return {
-					google: {
-						thinkingConfig: {
-							...(cfg.thinkingBudget !== undefined && { thinkingBudget: cfg.thinkingBudget }),
-							...(cfg.thinkingLevel !== undefined && { thinkingLevel: cfg.thinkingLevel }),
-						},
-					},
-				};
-			}
-			case 'xai': {
-				const cfg = thinking as XaiThinkingConfig;
-				return { xai: { reasoningEffort: cfg.reasoningEffort ?? 'high' } };
-			}
-			default:
-				return undefined;
-		}
+		const provider = providerIdFromModelId(this.modelId);
+		return getProviderQuirks(provider).thinkingToProviderOptions?.(this.config.thinking);
 	}
 
 	/**
-	 * Deep-merge thinking providerOptions with caller-supplied providerOptions.
-	 * Per-provider keys are merged shallowly so `.thinking()` + cache control coexist.
+	 * Merge thinking providerOptions, generated OpenAI cache options, and
+	 * caller-supplied providerOptions. Per-provider keys are merged shallowly
+	 * (later wins) so `.thinking()` + prompt caching + caller overrides coexist.
 	 */
 	private buildCallProviderOptions(
 		runProviderOptions?: ProviderOptions,
 	): Record<string, Record<string, unknown>> | undefined {
-		const thinkingOpts = this.buildThinkingProviderOptions();
-		if (!thinkingOpts && !runProviderOptions) return undefined;
-		if (!thinkingOpts) return runProviderOptions as Record<string, Record<string, unknown>>;
-		if (!runProviderOptions) return thinkingOpts;
-
-		const merged: Record<string, Record<string, unknown>> = { ...thinkingOpts };
-		for (const [provider, opts] of Object.entries(runProviderOptions)) {
-			if (provider in merged) {
-				merged[provider] = { ...merged[provider], ...(opts as Record<string, unknown>) };
-			} else {
-				merged[provider] = opts as Record<string, unknown>;
-			}
-		}
-		return merged;
+		const thinkingOpts = this.buildThinkingProviderOptions() as ProviderOptions | undefined;
+		const cacheOpts = buildCallPromptCacheOptions(this.config.promptCaching, this.modelId, {
+			agentName: this.config.name,
+			instructions: this.config.instructions,
+		});
+		return mergeProviderOptions(thinkingOpts, cacheOpts, runProviderOptions) as
+			| Record<string, Record<string, unknown>>
+			| undefined;
 	}
 }

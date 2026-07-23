@@ -11,14 +11,15 @@ import { useUIStore } from './ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from './workflows.store';
 import { useSettingsStore } from './settings.store';
+import { useRouteWorkflowId } from '@/app/composables/useWorkflowId';
 
 export const useWebhooksStore = defineStore(STORES.WEBHOOKS, () => {
-	const workflowsStore = useWorkflowsStore();
+	const routeWorkflowId = useRouteWorkflowId();
 
-	// Reactive lookups: re-evaluate when workflowsStore.workflowId changes,
+	// Reactive lookups: re-evaluate when the route's workflow id changes,
 	// so external consumers always see the current workflow's stores.
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(routeWorkflowId.value)),
 	);
 	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 

@@ -6,6 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { computed } from 'vue';
 import { N8nText } from '@n8n/design-system';
+import { hasCancellableExecutions } from '../executions.utils';
 
 const props = defineProps<{
 	executions: ExecutionSummary[];
@@ -14,9 +15,7 @@ const props = defineProps<{
 const uiStore = useUIStore();
 const i18n = useI18n();
 
-const hasCancellableExecution = computed(() =>
-	props.executions.find((x) => ['new', 'running', 'waiting'].includes(x.status)),
-);
+const hasCancellableExecution = computed(() => hasCancellableExecutions(props.executions));
 
 const telemetry = useTelemetry();
 

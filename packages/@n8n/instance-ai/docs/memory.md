@@ -91,12 +91,12 @@ All memory is thread-scoped (isolated per conversation):
 
 ### Sub-agent memory
 
-Sub-agents are fully stateless — context is passed via the briefing and
-`conversationContext` fields in the `delegate` tool.
+The eval-setup background agent is fully stateless — context is passed via its
+task briefing and optional `conversationContext` on `eval-setup-with-agent`.
 
 Past failed attempts are tracked via the `IterationLog` (stored in thread
-metadata) and appended to sub-agent briefings on retry, providing cross-attempt
-context without persistent memory.
+metadata) and appended to background-agent briefings on retry, providing
+cross-attempt context without persistent memory.
 
 ### Cross-user isolation
 

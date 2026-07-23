@@ -211,7 +211,7 @@ describe('TrustedKeyService (integration)', () => {
 			Object.defineProperty(instanceSettings, 'isLeader', { value: false, configurable: true });
 			config.trustedKeys = JSON.stringify([staticKeyEntry()]);
 
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 
 			try {
 				await service.initialize();
@@ -248,7 +248,7 @@ describe('TrustedKeyService (integration)', () => {
 			config.trustedKeys = JSON.stringify([staticKeyEntry({ kid: 'takeover-key' })]);
 			await service.initialize();
 
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 
 			try {
 				Object.defineProperty(instanceSettings, 'isLeader', { value: true, configurable: true });

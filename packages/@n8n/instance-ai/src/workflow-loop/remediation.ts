@@ -6,6 +6,7 @@ import type {
 
 export const MAX_PRE_SAVE_SUBMIT_FAILURES = 3;
 export const MAX_POST_SUBMIT_REMEDIATION_SUBMITS = 2;
+export const MAX_VERIFY_ATTEMPTS = 20;
 
 export function createRemediation(input: {
 	category: RemediationCategory;

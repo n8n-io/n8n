@@ -6,7 +6,7 @@ import {
 	type RedactionOptions,
 } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { Logger } from '../logger';
 
@@ -50,9 +50,12 @@ interface Channel {
  * Text/reasoning deltas are streamed through a holdback-buffered redactor so a
  * secret split across chunk boundaries is caught. Buffered text is released
  * (with its original `responseId`) whenever a structural event (tool call,
- * result, …) or a new step boundary arrives — secrets never span those
- * boundaries — so event ordering and step grouping are preserved. Tool
- * results/errors are redacted one-shot.
+ * result, …), a new step boundary, or a channel switch (reasoning → text or
+ * back) arrives — secrets never span those boundaries — so cross-channel
+ * event ordering and step grouping are preserved. Without the channel-switch
+ * drain, a reasoning tail held back by the redactor would be published after
+ * the text that followed it, rendering as a stray mid-sentence reasoning
+ * block in the UI. Tool results/errors are redacted one-shot.
  *
  * One instance per run. Call {@link processEvent} on each mapped event; it
  * returns the ordered events to publish. Call {@link flush} when the active
@@ -83,8 +86,10 @@ export class OutputRedactor {
 	/** Redact an outgoing event; returns the ordered events that should be published. */
 	processEvent(event: InstanceAiEvent): InstanceAiEvent[] {
 		if (!this.enabled) return [event];
-		if (event.type === 'text-delta') return this.processDelta(event, this.text);
-		if (event.type === 'reasoning-delta') return this.processDelta(event, this.reasoning);
+		if (event.type === 'text-delta') return this.processDelta(event, this.text, this.reasoning);
+		if (event.type === 'reasoning-delta') {
+			return this.processDelta(event, this.reasoning, this.text);
+		}
 
 		// Structural event: release any buffered text first so ordering is kept.
 		return [
@@ -105,8 +110,14 @@ export class OutputRedactor {
 	private processDelta(
 		event: Extract<InstanceAiEvent, { type: DeltaType }>,
 		channel: Channel,
+		otherChannel: Channel,
 	): InstanceAiEvent[] {
 		const events: InstanceAiEvent[] = [];
+		// Channel switch: release the other channel's held-back tail first so
+		// true chronological order is kept. The model emits one channel at a
+		// time (a switch is a content-block boundary), so a secret never spans
+		// it and the drain is safe.
+		events.push(...this.drainChannel(otherChannel));
 		// A new step: release the previous step's text under its own responseId.
 		if (channel.responseId !== undefined && channel.responseId !== event.responseId) {
 			events.push(...this.drainChannel(channel));

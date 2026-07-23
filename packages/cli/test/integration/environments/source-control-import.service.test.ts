@@ -31,18 +31,19 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import * as fastGlob from 'fast-glob';
-import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import type { InstanceSettings } from 'n8n-core';
 import * as utils from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import fsp from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
+import type { IWorkflowToImport } from '@/interfaces';
 import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory';
+import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
-import type { IWorkflowToImport } from '@/interfaces';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
@@ -50,7 +51,16 @@ import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
 import { createCredentials, saveCredential } from '../shared/db/credentials';
 import { createAdmin, createMember, createOwner, getGlobalOwner } from '../shared/db/users';
 
-jest.mock('fast-glob');
+vi.mock('fast-glob');
+
+// `readFile` must be mocked at the module level: the service imports it as a named binding
+// (`import { readFile } from 'node:fs/promises'`), which `vi.spyOn` on a default/namespace import
+// can't intercept under Vitest. Keep the other fs/promises exports real.
+vi.mock('node:fs/promises', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('node:fs/promises')>();
+	const readFile = vi.fn(actual.readFile);
+	return { ...actual, readFile, default: { ...actual, readFile } };
+});
 
 describe('SourceControlImportService', () => {
 	let credentialsRepository: CredentialsRepository;
@@ -113,6 +123,9 @@ describe('SourceControlImportService', () => {
 			mock(),
 			mock(),
 			mock(), // redactionEnforcementService
+			mock(), // dataTableSizeValidator
+			mock(), // activeWorkflowManager
+			mock(), // executionPersistence
 		);
 	});
 
@@ -128,7 +141,7 @@ describe('SourceControlImportService', () => {
 			'TagEntity',
 		]);
 
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	afterAll(async () => {
@@ -191,8 +204,8 @@ describe('SourceControlImportService', () => {
 			},
 		};
 
-		const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
-		const fsReadFile = jest.spyOn(fsp, 'readFile');
+		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
+		const fsReadFile = vi.mocked(readFile);
 
 		let globalAdmin: User;
 		let globalOwner: User;
@@ -468,8 +481,8 @@ describe('SourceControlImportService', () => {
 			},
 		};
 
-		const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
-		const fsReadFile = jest.spyOn(fsp, 'readFile');
+		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
+		const fsReadFile = vi.mocked(readFile);
 
 		let globalAdmin: User;
 		let globalOwner: User;
@@ -753,6 +766,41 @@ describe('SourceControlImportService', () => {
 			expect(cred?.isGlobal).toBe(false);
 		});
 
+		it('should include resolvable fields in returned credentials', async () => {
+			const resolvableCredential = await createCredentials(
+				{
+					name: 'resolvable-credential',
+					data: '',
+					type: 'test',
+					isResolvable: true,
+					resolvableAllowFallback: true,
+				},
+				teamProjectA,
+			);
+
+			const staticCredential = await createCredentials(
+				{
+					name: 'static-credential',
+					data: '',
+					type: 'test',
+				},
+				teamProjectA,
+			);
+
+			const credentials = await service.getLocalCredentialsFromDb(
+				await sourceControlContextFactory.createContext(instanceOwner),
+			);
+
+			const resolvableCred = credentials.find((c) => c.id === resolvableCredential.id);
+			const staticCred = credentials.find((c) => c.id === staticCredential.id);
+
+			expect(resolvableCred?.isResolvable).toBe(true);
+			expect(resolvableCred?.resolvableAllowFallback).toBe(true);
+
+			expect(staticCred?.isResolvable).toBe(false);
+			expect(staticCred?.resolvableAllowFallback).toBe(false);
+		});
+
 		it('should include required properties in returned credentials', async () => {
 			const credentials = await service.getLocalCredentialsFromDb(
 				await sourceControlContextFactory.createContext(instanceOwner),
@@ -901,8 +949,8 @@ describe('SourceControlImportService', () => {
 			],
 		};
 
-		const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
-		const fsReadFile = jest.spyOn(fsp, 'readFile');
+		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
+		const fsReadFile = vi.mocked(readFile);
 
 		let globalAdmin: User;
 		let globalOwner: User;
@@ -1185,8 +1233,8 @@ describe('SourceControlImportService', () => {
 	});
 
 	describe('importTagsFromWorkFolder()', () => {
-		const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
-		const fsReadFile = jest.spyOn(fsp, 'readFile');
+		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
+		const fsReadFile = vi.mocked(readFile);
 		const mockTagsFile = '/mock/tags.json';
 
 		const standardTags = [
@@ -1311,7 +1359,7 @@ describe('SourceControlImportService', () => {
 			it('should assign credential ownership to original user', async () => {
 				const [importingUser, member] = await Promise.all([getGlobalOwner(), createMember()]);
 
-				jest.spyOn(fsp, 'readFile').mockResolvedValue(Buffer.from('some-content'));
+				vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
 
 				const CREDENTIAL_ID = nanoid();
 
@@ -1323,7 +1371,7 @@ describe('SourceControlImportService', () => {
 					ownedBy: member.email, // user at source instance owns credential
 				};
 
-				jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+				vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
 				cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
@@ -1348,7 +1396,7 @@ describe('SourceControlImportService', () => {
 			it('should assign credential ownership to importing user', async () => {
 				const importingUser = await getGlobalOwner();
 
-				jest.spyOn(fsp, 'readFile').mockResolvedValue(Buffer.from('some-content'));
+				vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
 
 				const CREDENTIAL_ID = nanoid();
 
@@ -1360,7 +1408,7 @@ describe('SourceControlImportService', () => {
 					ownedBy: null,
 				};
 
-				jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+				vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
 				cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
@@ -1385,7 +1433,7 @@ describe('SourceControlImportService', () => {
 			it('should assign credential ownership to importing user', async () => {
 				const importingUser = await getGlobalOwner();
 
-				jest.spyOn(fsp, 'readFile').mockResolvedValue(Buffer.from('some-content'));
+				vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
 
 				const CREDENTIAL_ID = nanoid();
 
@@ -1397,7 +1445,7 @@ describe('SourceControlImportService', () => {
 					ownedBy: 'user@test.com', // user at source instance owns credential
 				};
 
-				jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+				vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
 				cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
@@ -1423,7 +1471,7 @@ describe('SourceControlImportService', () => {
 		it('should assign the credential ownership to the importing user if it was owned by a personal project in the source instance', async () => {
 			const importingUser = await getGlobalOwner();
 
-			jest.spyOn(fsp, 'readFile').mockResolvedValue(Buffer.from('some-content'));
+			vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
 
 			const CREDENTIAL_ID = nanoid();
 
@@ -1438,7 +1486,7 @@ describe('SourceControlImportService', () => {
 				}, // user at source instance owns credential
 			};
 
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
 			cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
@@ -1461,7 +1509,7 @@ describe('SourceControlImportService', () => {
 		it('should create a new team project if the credential was owned by a team project in the source instance', async () => {
 			const importingUser = await getGlobalOwner();
 
-			jest.spyOn(fsp, 'readFile').mockResolvedValue(Buffer.from('some-content'));
+			vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
 
 			const CREDENTIAL_ID = nanoid();
 
@@ -1477,7 +1525,7 @@ describe('SourceControlImportService', () => {
 				}, // user at source instance owns credential
 			};
 
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
 			cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
@@ -1520,7 +1568,7 @@ describe('SourceControlImportService', () => {
 		it('should use the existing team project if credential owning project is found', async () => {
 			const importingUser = await getGlobalOwner();
 
-			jest.spyOn(fsp, 'readFile').mockResolvedValue(Buffer.from('some-content'));
+			vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
 
 			const CREDENTIAL_ID = nanoid();
 
@@ -1538,7 +1586,7 @@ describe('SourceControlImportService', () => {
 				},
 			};
 
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
 			cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
@@ -1561,7 +1609,7 @@ describe('SourceControlImportService', () => {
 
 			const importingUser = await getGlobalOwner();
 
-			jest.spyOn(fsp, 'readFile').mockResolvedValue(Buffer.from('some-content'));
+			vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
 
 			const targetProject = await createTeamProject('Marketing');
 			const credential = await saveCredential(randomCredentialPayload(), {
@@ -1583,7 +1631,7 @@ describe('SourceControlImportService', () => {
 				},
 			};
 
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
 			await service.importCredentialsFromWorkFolder(
 				[mock<SourceControlledFile>({ id: credential.id })],
@@ -1625,7 +1673,7 @@ describe('SourceControlImportService', () => {
 		it('should import global credentials with isGlobal flag set to true', async () => {
 			const importingUser = await getGlobalOwner();
 
-			jest.spyOn(fsp, 'readFile').mockResolvedValue(Buffer.from('some-content'));
+			vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
 
 			const CREDENTIAL_ID = nanoid();
 
@@ -1638,7 +1686,7 @@ describe('SourceControlImportService', () => {
 				isGlobal: true,
 			};
 
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
 			cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
@@ -1660,7 +1708,7 @@ describe('SourceControlImportService', () => {
 		it('should import non-global credentials with isGlobal flag set to false', async () => {
 			const importingUser = await getGlobalOwner();
 
-			jest.spyOn(fsp, 'readFile').mockResolvedValue(Buffer.from('some-content'));
+			vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
 
 			const CREDENTIAL_ID = nanoid();
 
@@ -1673,7 +1721,7 @@ describe('SourceControlImportService', () => {
 				isGlobal: false,
 			};
 
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
 			cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
@@ -1694,8 +1742,8 @@ describe('SourceControlImportService', () => {
 	});
 
 	describe('importWorkflowFromWorkFolder()', () => {
-		const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
-		const fsReadFile = jest.spyOn(fsp, 'readFile');
+		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
+		const fsReadFile = vi.mocked(readFile);
 
 		const putWorkflowFile = (workflowId: string, workflow: IWorkflowToImport) => {
 			const file = `/mock/${workflowId}.json`;

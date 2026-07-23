@@ -5,8 +5,8 @@ import type { Logger } from '@n8n/backend-common';
 import { ExpressionEngineConfig, type GlobalConfig } from '@n8n/config';
 import { EXPRESSION_METRICS } from '@n8n/expression-runtime';
 import { trace } from '@opentelemetry/api';
-import { mock } from 'jest-mock-extended';
 import promClient from 'prom-client';
+import { mock } from 'vitest-mock-extended';
 
 import { ExpressionObservabilityProvider } from '../expression-observability.provider';
 
@@ -31,7 +31,7 @@ function buildGlobalConfig(prefix = 'n8n_'): GlobalConfig {
 
 describe('ExpressionObservabilityProvider', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		promClient.register.clear();
 	});
 
@@ -153,16 +153,16 @@ describe('ExpressionObservabilityProvider', () => {
 	});
 
 	describe('tail sampling', () => {
-		const startSpanMock = jest.fn().mockReturnValue({
-			setStatus: jest.fn(),
-			setAttribute: jest.fn(),
-			recordException: jest.fn(),
-			end: jest.fn(),
+		const startSpanMock = vi.fn().mockReturnValue({
+			setStatus: vi.fn(),
+			setAttribute: vi.fn(),
+			recordException: vi.fn(),
+			end: vi.fn(),
 		});
 
 		beforeEach(() => {
 			startSpanMock.mockClear();
-			jest.spyOn(trace, 'getTracer').mockReturnValue({
+			vi.spyOn(trace, 'getTracer').mockReturnValue({
 				startSpan: startSpanMock,
 			} as unknown as ReturnType<typeof trace.getTracer>);
 		});
