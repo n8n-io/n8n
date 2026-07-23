@@ -381,6 +381,8 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 		emit('scrollToTop');
 	}
 });
+
+console.log('youpi: ', canWrite);
 </script>
 
 <template>
@@ -546,9 +548,9 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 						isPrivateCredentialsEnabled &&
 						// Only OAuth credentials can be dynamic for now, as they are the only ones with the managed authorize endpoint
 						isOAuthType &&
-						// Show it whenever the user can edit the credential, or (disabled) on an
-						// existing end-user credential so the state stays clear for everyone else.
-						(canWrite || isResolvable)
+						// Only users who can manage end-user credentials see the selector at all;
+						// it's disabled for them when they lack edit access to the credential.
+						!!credentialPermissions.createEndUser
 					"
 					:model-value="Boolean(isResolvable)"
 					:disabled="!canSelectEndUserType"
