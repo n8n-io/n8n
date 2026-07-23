@@ -5,8 +5,8 @@
 // Parses args, selects cases, sets up lanes, then hands the run to one of two
 // drivers over the shared session/pipeline in evaluations/run/: the LangSmith
 // driver (evaluate() + experiments) when LANGSMITH_API_KEY is set, else the
-// direct driver (same rows, same pipeline, eval-results.json only — the mode
-// the LangTracer dispatcher invokes).
+// direct driver (same rows, same pipeline and local artifacts, no LangSmith
+// experiment tracking — the mode the LangTracer dispatcher invokes).
 // ---------------------------------------------------------------------------
 
 import { mkdirSync } from 'fs';
@@ -133,18 +133,6 @@ async function main(): Promise<void> {
 		cleanupStagedMcpConfigs();
 	}
 }
-
-// ---------------------------------------------------------------------------
-// LangSmith mode: evaluate() with dataset sync, tracing, experiments
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// eval-results.json output (same shape as CI PR comment expects)
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Comparison vs the pinned baseline experiment
-// ---------------------------------------------------------------------------
 
 // Only auto-run as the CLI entry point. Importing this module (e.g. from a unit
 // test that exercises the exported runEvalAndPersist / writeEvalResults seams)

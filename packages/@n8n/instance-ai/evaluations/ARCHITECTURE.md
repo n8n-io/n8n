@@ -2,7 +2,9 @@
 
 One pipeline, two thin drivers (TRUST-261). Every phase of a run lives behind a
 named seam in `evaluations/run/`; `cli/index.ts` is a ~150-line composition
-root and `cli/` otherwise holds entrypoints and `args.ts` only.
+root, and the rest of `cli/` is the sibling entrypoints (`pairwise`,
+`compare-pairwise`, `report`, `build-mcp-manifest`, `langtracer-push`) plus
+their helpers (`args.ts`, `mcp-builder.ts`).
 
 ```
 cli/index.ts (composition root)
@@ -12,7 +14,8 @@ cli/index.ts (composition root)
       run/langsmith-driver.ts   LANGSMITH_API_KEY set — evaluate(), experiments,
                                 per-run pass metrics, gate/baseline comparison
       run/direct-driver.ts      keyless — the LangTracer dispatcher's mode; same
-                                rows, same pipeline, eval-results.json only
+                                rows, same pipeline, same local artifacts — just
+                                no LangSmith experiments/feedback/comparison
         → run/eval-session.ts   shared assembly: lane wrappers (tracing hook),
                                 work-stealing allocator, orchestrator, pipeline,
                                 side-band resolution, end-of-run artifact drain
