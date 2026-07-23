@@ -3,6 +3,7 @@ import type { LicenseState } from '@n8n/backend-common';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	Project,
+	Role,
 	User,
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
@@ -23,7 +24,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import type { EventService } from '@/events/event.service';
-import type { ExternalHooks } from '@/external-hooks';
+import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks';
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -1122,7 +1123,13 @@ describe('WorkflowService', () => {
 				'_addToActiveWorkflowManager',
 			).mockResolvedValue(undefined);
 
-			const user = mock<User>();
+			const user = mock<User>({
+				id: 'user-1',
+				email: 'actor@example.com',
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+				role: mock<Role>({ slug: 'global:admin' }),
+			});
 
 			await workflowService.activateWorkflow(user, WORKFLOW_ID, {
 				versionId: TARGET_VERSION_ID,
@@ -1131,15 +1138,22 @@ describe('WorkflowService', () => {
 			expect(externalHooksMock.run).toHaveBeenCalledTimes(1);
 			const [hookName, hookArgs] = externalHooksMock.run.mock.calls[0] as [
 				string,
-				[WorkflowEntity],
+				[WorkflowEntity, WorkflowLifecycleHookActor],
 			];
 			expect(hookName).toBe('workflow.activate');
-			const [candidate] = hookArgs;
+			const [candidate, actor] = hookArgs;
 			expect(candidate.active).toBe(true);
 			expect(candidate.activeVersionId).toBe(TARGET_VERSION_ID);
 			expect(candidate.activeVersion).toBe(versionToActivate);
 			expect(candidate.nodes).toBe(workflow.nodes);
 			expect(candidate.connections).toBe(workflow.connections);
+			expect(actor).toEqual({
+				id: 'user-1',
+				email: 'actor@example.com',
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+				role: 'global:admin',
+			});
 		});
 
 		test('with the publication outbox enabled, updates the version, writes history, enqueues and emits events without touching the active workflow manager', async () => {
@@ -1267,6 +1281,7 @@ describe('WorkflowService', () => {
 		let executionPersistenceMock: MockProxy<ExecutionPersistence>;
 		let globalConfigMock: MockProxy<GlobalConfig>;
 		let activeWorkflowManagerMock: MockProxy<ActiveWorkflowManager>;
+		let externalHooksMock: MockProxy<ExternalHooks>;
 
 		const WORKFLOW_ID = 'workflow-1';
 
@@ -1286,6 +1301,7 @@ describe('WorkflowService', () => {
 			workflowRepositoryMock = mock();
 			executionPersistenceMock = mock();
 			activeWorkflowManagerMock = mock();
+			externalHooksMock = mock<ExternalHooks>();
 			globalConfigMock = mock<GlobalConfig>({
 				workflows: mock<WorkflowsConfig>({ useWorkflowPublicationService: true }),
 			});
@@ -1298,7 +1314,7 @@ describe('WorkflowService', () => {
 				mock(), // ownershipService
 				mock(), // tagService
 				mock(), // workflowHistoryService
-				mock(), // externalHooks
+				externalHooksMock, // externalHooks
 				activeWorkflowManagerMock, // activeWorkflowManager
 				mock(), // roleService
 				mock(), // projectService
@@ -1361,6 +1377,37 @@ describe('WorkflowService', () => {
 			expect(
 				executionPersistenceMock.hardDeleteByWorkflowId.mock.invocationCallOrder[0],
 			).toBeLessThan(workflowRepositoryMock.delete.mock.invocationCallOrder[0]);
+		});
+
+		test('forwards the acting user to the delete and afterDelete hooks', async () => {
+			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			const user = mock<User>({
+				id: 'user-1',
+				email: 'actor@example.com',
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+				role: mock<Role>({ slug: 'global:admin' }),
+			});
+
+			await workflowService.delete(user, WORKFLOW_ID, true);
+
+			const expectedActor: WorkflowLifecycleHookActor = {
+				id: 'user-1',
+				email: 'actor@example.com',
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+				role: 'global:admin',
+			};
+			expect(externalHooksMock.run).toHaveBeenCalledWith('workflow.delete', [
+				WORKFLOW_ID,
+				expectedActor,
+			]);
+			expect(externalHooksMock.run).toHaveBeenCalledWith('workflow.afterDelete', [
+				WORKFLOW_ID,
+				expectedActor,
+			]);
 		});
 	});
 });
