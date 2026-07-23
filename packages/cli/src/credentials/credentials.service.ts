@@ -779,6 +779,27 @@ export class CredentialsService {
 	}
 
 	/**
+	 * Clears a credential's stored OAuth token (and its derived account
+	 * identifier), returning it to a disconnected state. The normal update path
+	 * deliberately carries `oauthTokenData` forward, so a "Disconnect" action on a
+	 * fixed OAuth credential needs this dedicated path.
+	 */
+	async clearOauthTokenData(credential: CredentialsEntity): Promise<void> {
+		const decryptedData = await this.decrypt(credential, true);
+		delete decryptedData.oauthTokenData;
+		delete decryptedData.accountIdentifier;
+
+		const newCredentialData = await this.createEncryptedData({
+			id: credential.id,
+			name: credential.name,
+			type: credential.type,
+			data: decryptedData,
+		});
+
+		await this.update(credential.id, newCredentialData, decryptedData);
+	}
+
+	/**
 	 * Decrypts the credentials data and redacts the content by default.
 	 *
 	 * If `includeRawData` is set to true it will not redact the data.

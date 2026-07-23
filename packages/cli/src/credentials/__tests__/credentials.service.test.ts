@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type {
 	CredentialsEntity,
 	CredentialsRepository,
+	ICredentialsDb,
 	SharedCredentialsRepository,
 	ProjectRepository,
 	UserRepository,
@@ -148,6 +149,37 @@ describe('CredentialsService', () => {
 			}),
 		};
 	};
+
+	describe('clearOauthTokenData', () => {
+		it('removes oauthTokenData and accountIdentifier before persisting', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'cred-1',
+				name: 'My OAuth',
+				type: 'gmailOAuth2',
+			});
+
+			vi.spyOn(service, 'decrypt').mockResolvedValue({
+				clientId: 'abc',
+				oauthTokenData: { access_token: 'tok' },
+				accountIdentifier: 'user@example.com',
+			});
+			const createEncryptedDataSpy = vi
+				.spyOn(service, 'createEncryptedData')
+				.mockResolvedValue(mock<ICredentialsDb>());
+			const updateSpy = vi.spyOn(service, 'update').mockResolvedValue(mock<CredentialsEntity>());
+
+			await service.clearOauthTokenData(credential);
+
+			// Uses raw (unredacted) decryption so the real token can be dropped.
+			expect(service.decrypt).toHaveBeenCalledWith(credential, true);
+
+			const passedData = createEncryptedDataSpy.mock.calls[0][0].data;
+			expect(passedData).not.toHaveProperty('oauthTokenData');
+			expect(passedData).not.toHaveProperty('accountIdentifier');
+			expect(passedData).toHaveProperty('clientId', 'abc');
+			expect(updateSpy).toHaveBeenCalledWith(credential.id, expect.anything(), passedData);
+		});
+	});
 
 	describe('redact', () => {
 		it('should redact sensitive values', () => {

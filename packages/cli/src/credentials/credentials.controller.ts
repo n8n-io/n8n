@@ -341,6 +341,36 @@ export class CredentialsController {
 		return { ...rest, scopes };
 	}
 
+	@Delete('/:credentialId/oauth-token')
+	@ProjectScope('credential:update')
+	async disconnectOauthToken(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('credentialId') credentialId: string,
+	) {
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			req.user,
+			['credential:update'],
+		);
+
+		if (!credential) {
+			throw new NotFoundError(
+				'Credential not found. You can only modify credentials you have access to.',
+			);
+		}
+
+		if (credential.isManaged) {
+			throw new BadRequestError('Managed credentials cannot be updated');
+		}
+
+		await this.credentialsService.clearOauthTokenData(credential);
+
+		this.logger.debug('Credential OAuth token cleared', { credentialId });
+
+		return { success: true };
+	}
+
 	@Delete('/:credentialId')
 	@ProjectScope('credential:delete')
 	async deleteCredentials(req: CredentialRequest.Delete) {
