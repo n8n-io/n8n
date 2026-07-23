@@ -179,6 +179,7 @@
       "dist/credentials/GotifyApi.credentials.js",
       "dist/credentials/GoToWebinarOAuth2Api.credentials.js",
       "dist/credentials/GristApi.credentials.js",
+      "dist/credentials/GristOAuth2Api.credentials.js",
       "dist/credentials/GrafanaApi.credentials.js",
       "dist/credentials/GSuiteAdminOAuth2Api.credentials.js",
       "dist/credentials/GumroadApi.credentials.js",
