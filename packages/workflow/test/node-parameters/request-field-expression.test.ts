@@ -120,11 +120,15 @@ describe('resolveRequestFieldPath', () => {
 		['.missing[0].x', undefined],
 		['.body.items[9]', undefined],
 		[".body['']", undefined],
-		// walking through a non-object stops with undefined instead of throwing
-		['.body.flag.nested', undefined],
+		// property access on primitives behaves like plain JS
+		['.headers["x-api-key"].length', 'secret'.length],
+		['.body.items.length', 2],
+		// missing properties of primitives resolve to undefined
 		['.body.count.nested', undefined],
 		['.body.empty.nested', undefined],
-		['.headers["x-api-key"].length', undefined],
+		// nullish segments stop the walk with undefined instead of throwing
+		['.body.flag.nested', undefined],
+		['.body.flag.nested.deeper', undefined],
 	])('should resolve %j to %j', (pathExpr, expected) => {
 		expect(resolveRequestFieldPath(source, pathExpr)).toEqual(expected);
 	});

@@ -23,13 +23,15 @@ export function matchSimpleRequestFieldPath(value: string): string | null {
 /**
  * Resolves a path returned by `matchSimpleRequestFieldPath` against the
  * request data (`{ body, headers, params, query }`). Returns `undefined` for
- * missing segments, like optional chaining would.
+ * nullish segments, like optional chaining would; property access on
+ * primitives (e.g. `.length` on a string) behaves like plain JS so results
+ * match what the expression engine would produce for the same reference.
  */
 export function resolveRequestFieldPath(source: IDataObject, pathExpr: string): unknown {
 	const tokenRe = /\.([A-Za-z_$][\w$]*)|\[\s*(?:'([^']*)'|"([^"]*)"|(\d+))\s*\]/g;
 	let current: unknown = source;
 	for (const match of pathExpr.matchAll(tokenRe)) {
-		if (current === null || typeof current !== 'object') return undefined;
+		if (current === null || current === undefined) return undefined;
 		const key = match[1] ?? match[2] ?? match[3] ?? match[4] ?? '';
 		current = (current as IDataObject)[key];
 	}

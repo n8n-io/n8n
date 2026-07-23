@@ -289,7 +289,7 @@ export const onlyRunIfConditionsProperty: INodeProperties = {
 	},
 	// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
 	description:
-		'Reference request fields with <code>{{ $json.body.field }}</code>, <code>{{ $json.headers[\'name\'] }}</code>, <code>{{ $json.query.param }}</code>. Simple field references like these are checked natively, without running the expression sandbox.',
+		"Reference request fields with <code>{{ $json.body.field }}</code>, <code>{{ $json.headers['name'] }}</code>, <code>{{ $json.query.param }}</code>. Simple field references like these are checked natively, without running the expression sandbox.",
 };
 
 export const onlyRunIfExpressionProperty: INodeProperties = {
