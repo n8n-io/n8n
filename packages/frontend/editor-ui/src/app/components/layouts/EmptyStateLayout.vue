@@ -227,8 +227,9 @@ const handleAppSelectionContinue = () => {
 		padding: var(--spacing--xl) var(--spacing--xs) 0;
 	}
 
+	// Vertical padding must stay symmetric (0/0) so justify-content centers the content
 	&.noTemplatesContent {
-		padding-top: var(--spacing--3xl);
+		padding-top: 0;
 	}
 
 	&.builderLayout {
