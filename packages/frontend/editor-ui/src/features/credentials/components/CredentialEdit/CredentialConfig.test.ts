@@ -378,7 +378,7 @@ describe('CredentialConfig', () => {
 			expect(input).not.toBeDisabled();
 		});
 
-		it('should hide the type selector when the user cannot create end-user credentials', async () => {
+		it('should show the type selector disabled when the user can edit but cannot manage end-user credentials', async () => {
 			renderComponent({
 				props: {
 					isManaged: false,
@@ -394,6 +394,36 @@ describe('CredentialConfig', () => {
 						create: false,
 						createEndUser: false,
 						update: true,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
+			const input = screen.getByTestId('credential-type-select').querySelector('input');
+			expect(input).toBeDisabled();
+		});
+
+		it('should hide the type selector on a fixed credential the user cannot edit', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: false,
+					credentialPermissions: {
+						create: false,
+						createEndUser: true,
+						update: false,
 						read: true,
 						delete: false,
 						share: false,
