@@ -20,9 +20,6 @@ export interface InputProps {
 	clearable?: boolean;
 	rows?: number;
 	maxlength?: number;
-	min?: number | string;
-	max?: number | string;
-	step?: number | string;
 	autosize?: boolean | { minRows?: number; maxRows?: number };
 	autofocus?: boolean;
 	autocomplete?: InputAutocomplete;
