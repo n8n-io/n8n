@@ -11,6 +11,7 @@ import {
 } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { useI18n } from '@n8n/i18n';
+import { FocusScope } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
 import { useAgentChannelSetup } from '../composables/useAgentChannelSetup';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
@@ -245,6 +246,15 @@ watch(
 		@interact-outside="(e) => e.preventDefault()"
 		@update:open="$emit('update:open', $event)"
 	>
+		<FocusScope
+			v-if="credentialModalOpen"
+			as-child
+			@mount-auto-focus.prevent
+			@unmount-auto-focus.prevent
+		>
+			<span hidden aria-hidden="true" />
+		</FocusScope>
+
 		<N8nDialogHeader :class="$style.customHeader">
 			<Transition name="channel-header-fade" mode="out-in">
 				<div v-if="currentView === 'list'" key="list" :class="$style.headerContent">
@@ -277,7 +287,7 @@ watch(
 			</Transition>
 		</N8nDialogHeader>
 
-		<div :class="$style.container">
+		<div data-testid="agent-channel-modal" :class="$style.container">
 			<Transition name="channel-view-fade" mode="out-in">
 				<div v-if="currentView === 'list'" key="list" :class="$style.listView">
 					<ul :class="$style.channelList">
@@ -466,6 +476,13 @@ watch(
 		</Transition>
 	</N8nDialog>
 </template>
+
+<style lang="scss">
+body:has([data-testid='agent-channel-modal'])
+	.el-overlay:has([data-test-id='editCredential-modal']) {
+	pointer-events: auto;
+}
+</style>
 
 <style module lang="scss">
 @use '@n8n/design-system/css/mixins/motion';

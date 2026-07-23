@@ -857,7 +857,7 @@ function handleChannelDisconnected(channelType: string) {
 }
 
 .rowLabel {
-	flex: 0 0 var(--spacing--3xl);
+	flex: 0 0 calc(var(--spacing--3xl) + var(--spacing--sm));
 	line-height: var(--height--lg);
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);

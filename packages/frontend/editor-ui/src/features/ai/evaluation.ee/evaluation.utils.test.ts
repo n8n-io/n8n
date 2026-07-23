@@ -2,8 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
 	applyCachedSortOrder,
 	applyCachedVisibility,
+	averageNormalizedScore,
+	buildScoreShapedMetricGroups,
 	computeDelta,
 	computeDurationMs,
+	countSettledRuns,
 	extractAnswerText,
 	formatDeltaPercent,
 	formatDuration,
@@ -1507,6 +1510,89 @@ describe('utils', () => {
 		});
 		it('JSON.stringifies a single-key value that is itself an object', () => {
 			expect(extractAnswerText({ nested: { x: 1 } })).toBe('{"x":1}');
+		});
+	});
+
+	describe('buildScoreShapedMetricGroups', () => {
+		it('keeps a custom-named 1–5 metric when a scale map marks it oneToFive', () => {
+			// Without the scale map, a value of 5 on a metric not named
+			// correctness/helpfulness falls to the unit branch → 5 ∉ [0,1] → dropped,
+			// so the metric never appears. The scale map fixes that.
+			const runs = [
+				{ metrics: { 'Markdown Formatting': 5 } },
+				{ metrics: { 'Markdown Formatting': 4 } },
+			];
+
+			const withoutScale = buildScoreShapedMetricGroups(runs);
+			expect(withoutScale).toEqual([]);
+
+			const withScale = buildScoreShapedMetricGroups(runs, { 'Markdown Formatting': 'oneToFive' });
+			expect(withScale).toEqual([{ key: 'Markdown Formatting', values: [1, 0.8] }]);
+		});
+
+		it('normalizes boolean-scale metrics and excludes reserved operational metrics', () => {
+			const runs = [
+				{ metrics: { 'Passes Schema': 1, totalTokens: 1200 } },
+				{ metrics: { 'Passes Schema': 0, totalTokens: 900 } },
+			];
+
+			const groups = buildScoreShapedMetricGroups(runs, { 'Passes Schema': 'boolean' });
+
+			expect(groups).toEqual([{ key: 'Passes Schema', values: [1, 0] }]);
+		});
+
+		it('falls back to name-based scaling when no map is provided', () => {
+			const runs = [{ metrics: { correctness: 5, accuracy: 0.9 } }];
+
+			const groups = buildScoreShapedMetricGroups(runs);
+
+			expect(groups).toEqual([
+				{ key: 'correctness', values: [1] },
+				{ key: 'accuracy', values: [0.9] },
+			]);
+		});
+	});
+
+	describe('averageNormalizedScore', () => {
+		it('averages using the per-metric scale map', () => {
+			// 5/5 (oneToFive) = 1 and 0.75 (boolean) → mean 0.875.
+			expect(
+				averageNormalizedScore(
+					{ 'Markdown Formatting': 5, 'Passes Schema': 0.75 },
+					{ 'Markdown Formatting': 'oneToFive', 'Passes Schema': 'boolean' },
+				),
+			).toBeCloseTo(0.875);
+		});
+
+		it('drops a custom 1–5 metric without a scale map (name-based fallback)', () => {
+			// 5 is out of [0,1] on the unit fallback → no qualifying score → null.
+			expect(averageNormalizedScore({ 'Markdown Formatting': 5 })).toBeNull();
+		});
+
+		it('preserves name-based behavior for preset judge metrics', () => {
+			expect(averageNormalizedScore({ correctness: 4 })).toBeCloseTo(0.8);
+		});
+	});
+
+	describe('countSettledRuns', () => {
+		it('counts only runs that have left the queued/executing states', () => {
+			expect(
+				countSettledRuns([
+					{ status: 'completed' },
+					{ status: 'error' },
+					{ status: 'cancelled' },
+					{ status: 'running' },
+					{ status: 'new' },
+				]),
+			).toBe(3);
+		});
+
+		it('returns 0 while every run is still in flight', () => {
+			expect(countSettledRuns([{ status: 'new' }, { status: 'running' }])).toBe(0);
+		});
+
+		it('returns 0 for an empty run set', () => {
+			expect(countSettledRuns([])).toBe(0);
 		});
 	});
 });

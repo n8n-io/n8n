@@ -10,7 +10,11 @@ import { isToolType, isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { NodeCatalogService } from '@/node-catalog';
-import { isAgentProviderNode } from '@/node-execution';
+import {
+	isAgentProviderNode,
+	isUnsupportedEphemeralNodeOperation,
+	unsupportedEphemeralNodeOperationMessage,
+} from '@/node-execution';
 
 import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform';
 
@@ -160,6 +164,23 @@ export class AgentsToolsService {
 			)
 			.input(getNodeTypesInputSchema)
 			.handler(async ({ nodeIds }: { nodeIds: NodeRequest[] }) => {
+				const unsupportedOperations = nodeIds.flatMap((request) => {
+					if (
+						typeof request === 'string' ||
+						!isUnsupportedEphemeralNodeOperation(request.operation)
+					) {
+						return [];
+					}
+
+					return [
+						`Node "${request.nodeId}": ${unsupportedEphemeralNodeOperationMessage(request.operation)}`,
+					];
+				});
+
+				if (unsupportedOperations.length > 0) {
+					return { results: `# Errors\n\n${unsupportedOperations.join('\n')}` };
+				}
+
 				await this.nodeCatalogService.initialize();
 				const results = await this.nodeCatalogService.getNodeTypes(
 					nodeIds.map(normalizeNodeRequestForCatalog),

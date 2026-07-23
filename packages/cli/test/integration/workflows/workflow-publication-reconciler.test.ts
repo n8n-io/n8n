@@ -165,6 +165,80 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
 	});
 
+	test('tears down ghost triggers left by an unpublish another main consumed', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('ghost');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		const record = await outboxRepository.claimNextPendingRecord();
+		await consumer.processRecord(record!);
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
+
+		// A demoted main consumed the unpublish record: workflow deactivated,
+		// mapping removed, trigger-status rows cleared, record completed — but it
+		// tore down the triggers in *its* registry. This leader still has them
+		// registered and firing, and no record is left to fix that.
+		await Container.get(WorkflowRepository).update(workflow.id, { activeVersionId: null });
+		await publishedVersionRepository.removePublishedVersion(workflow.id);
+		await triggerStatusRepository.delete({ workflowId: workflow.id });
+
+		await reconciler.reconcile();
+
+		expect(activeWorkflowTriggers.get(workflow.id)).toBeUndefined();
+		// Repair is local — no outbox round-trip was needed.
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	test('heals ghost triggers and orphaned trigger-status rows together in one pass', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('ghost-orphan');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		const record = await outboxRepository.claimNextPendingRecord();
+		await consumer.processRecord(record!);
+
+		// A re-leased unpublish torn between two mains: mapping removed and the
+		// record completed elsewhere, but this leader's registry AND the
+		// trigger-status rows were left behind.
+		await Container.get(WorkflowRepository).update(workflow.id, { activeVersionId: null });
+		await publishedVersionRepository.removePublishedVersion(workflow.id);
+
+		// One pass converges: surplus teardown first, which lets the leftover rows
+		// read as missing, enqueue, and clear through the unpublish path.
+		await reconciler.reconcile();
+
+		expect(activeWorkflowTriggers.get(workflow.id)).toBeUndefined();
+		expect(await triggerStatusRepository.findByWorkflowId(workflow.id)).toHaveLength(0);
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	test('leaves triggers of a workflow with an in-flight unpublish for that record to tear down', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('in-flight');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		const record = await outboxRepository.claimNextPendingRecord();
+		await consumer.processRecord(record!);
+
+		// Mid-unpublish: activeVersionId already cleared, pending record owns the
+		// teardown. Reconciliation must not race it.
+		await Container.get(WorkflowRepository).update(workflow.id, { activeVersionId: null });
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+
+		await reconciler.reconcile();
+
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
+	});
+
 	test('a pass with nothing missing enqueues no work', async () => {
 		const owner = await createOwner();
 

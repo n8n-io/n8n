@@ -1828,6 +1828,16 @@ type SuspendedRunResumeServiceInternals = {
 		data: {
 			approved: boolean;
 			autoSetup?: { credentialType: string };
+			userInput?: string;
+			credentials?: Record<string, string>;
+			answers?: Array<{
+				questionId: string;
+				selectedOptions: string[];
+				customText?: string;
+				skipped?: boolean;
+			}>;
+			action?: 'apply' | 'test-trigger';
+			resourceDecision?: string;
 		},
 	) => Promise<{ ok: true; runId: string } | null>;
 	revalidateActiveUser: Mock<(...args: [string]) => Promise<User | null>>;
@@ -2442,6 +2452,32 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		expect(result).toEqual({ ok: true, runId: 'run-1' });
 		expect(service.rebuildAgentForAutoSetupResume).not.toHaveBeenCalled();
 	});
+
+	it('includes the substantive user response in the resume trace input', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1', disabled: false } as User);
+
+		await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: true,
+			userInput: 'Use the #alerts channel',
+			credentials: { slackApi: 'cred-1' },
+			answers: [{ questionId: 'q1', selectedOptions: ['Slack'], customText: 'prefer DMs' }],
+		});
+
+		expect(service.tracing.createOrchestratorResumeTraceContext).toHaveBeenCalledTimes(1);
+		const [options] = service.tracing.createOrchestratorResumeTraceContext.mock.calls[0] as [
+			{ input: object },
+		];
+		expect(options.input).toMatchObject({
+			requestId: 'req-1',
+			toolCallId: 'tool-call-1',
+			approved: true,
+			userInput: 'Use the #alerts channel',
+			answers: [{ questionId: 'q1', selectedOptions: ['Slack'], customText: 'prefer DMs' }],
+		});
+		expect(options.input).not.toHaveProperty('credentials');
+		expect((options.input as { resumeFields: string[] }).resumeFields).toContain('credentials');
+	});
 });
 
 describe('InstanceAiService — rebuildAgentForAutoSetupResume', () => {
@@ -2850,6 +2886,60 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			'agent-run-1:req-1',
 			[usageItem],
 			'suspended',
+		);
+	});
+
+	it('surfaces the user-facing suspend message in the suspension trace outputs', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		const abortController = new AbortController();
+		vi.mocked(resumeAgentRun).mockResolvedValueOnce({
+			status: 'suspended',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			suspension: {
+				toolCallId: 'tool-call-1',
+				requestId: 'req-1',
+				toolName: 'ask-user',
+				suspendPayload: { requestId: 'req-1', message: 'Set up the slack channel' },
+			},
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				snapshotStorage: {},
+			},
+		);
+
+		expect(service.tracing.finalizeRunTracing).toHaveBeenCalledWith(
+			'run-1',
+			undefined,
+			expect.objectContaining({
+				status: 'suspended',
+				outputs: expect.objectContaining({
+					message: 'Set up the slack channel',
+					pendingToolCallId: 'tool-call-1',
+					toolName: 'ask-user',
+					requestId: 'req-1',
+				}),
+			}),
+		);
+		expect(service.tracing.maybeFinalizeRunTraceRoot).toHaveBeenCalledWith(
+			'run-1',
+			expect.objectContaining({
+				status: 'suspended',
+				outputs: expect.objectContaining({ message: 'Set up the slack channel' }),
+			}),
 		);
 	});
 
@@ -3721,6 +3811,9 @@ type TaskControlInternals = {
 	publisher: { publishCommand: Mock };
 	backgroundTasks: { getTaskSnapshots: Mock };
 	logger: { error: Mock };
+	runState: { hasLiveRun: Mock };
+	eventLog: { flush: Mock };
+	interruptedRunSweeper: { cancelUnfinishedRuns: Mock };
 	sendCorrectionToTask: Mock;
 	cancelBackgroundTask: Mock;
 	cancelRun: Mock;
@@ -3738,6 +3831,12 @@ function buildTaskControlService(isMultiMain: boolean): TaskControlInternals {
 	service.publisher = { publishCommand: vi.fn().mockResolvedValue(undefined) };
 	service.backgroundTasks = { getTaskSnapshots: vi.fn(() => []) };
 	service.logger = { error: vi.fn() };
+	// Inert cancel-time zombie fallback — its behavior is covered by the
+	// dedicated 'routeCancelRun zombie fallback' suite; these tests are about
+	// routing.
+	service.runState = { hasLiveRun: vi.fn(() => false) };
+	service.eventLog = { flush: vi.fn(async () => {}) };
+	service.interruptedRunSweeper = { cancelUnfinishedRuns: vi.fn(async () => 0) };
 	service.sendCorrectionToTask = vi.fn(() => 'queued');
 	service.cancelBackgroundTask = vi.fn();
 	service.cancelRun = vi.fn();
@@ -4063,5 +4162,50 @@ describe('createAgentMemoryOptions', () => {
 		});
 
 		expect(service.creditService.claimRunUsage).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('InstanceAiService — routeCancelRun zombie fallback', () => {
+	function createCancelService() {
+		const service = Object.create(InstanceAiService.prototype) as unknown as {
+			runState: { hasLiveRun: Mock };
+			eventLog: { flush: Mock };
+			interruptedRunSweeper: { cancelUnfinishedRuns: Mock };
+			routeTaskControl: Mock;
+			routeCancelRun: (threadId: string) => Promise<void>;
+		};
+		service.runState = { hasLiveRun: vi.fn(() => false) };
+		service.eventLog = { flush: vi.fn(async () => {}) };
+		service.interruptedRunSweeper = { cancelUnfinishedRuns: vi.fn(async () => 0) };
+		service.routeTaskControl = vi.fn(async () => {});
+		return service;
+	}
+
+	it('terminalizes dead runs after broadcasting when nothing is live locally', async () => {
+		const service = createCancelService();
+
+		await service.routeCancelRun('thread-a');
+
+		expect(service.routeTaskControl).toHaveBeenCalledWith({
+			threadId: 'thread-a',
+			action: 'cancel-thread',
+		});
+		// Drain settles first so a just-finished run cannot be double-terminaled.
+		expect(service.eventLog.flush).toHaveBeenCalledWith('thread-a');
+		expect(service.interruptedRunSweeper.cancelUnfinishedRuns).toHaveBeenCalledWith('thread-a');
+		expect(service.routeTaskControl.mock.invocationCallOrder[0]).toBeLessThan(
+			service.interruptedRunSweeper.cancelUnfinishedRuns.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('skips the fallback when a local run is live (its abort emits the terminal fact)', async () => {
+		const service = createCancelService();
+		service.runState.hasLiveRun = vi.fn(() => true);
+
+		await service.routeCancelRun('thread-a');
+
+		expect(service.routeTaskControl).toHaveBeenCalled();
+		expect(service.eventLog.flush).not.toHaveBeenCalled();
+		expect(service.interruptedRunSweeper.cancelUnfinishedRuns).not.toHaveBeenCalled();
 	});
 });
