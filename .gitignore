@@ -33,7 +33,7 @@ CHANGELOG-*.md
 *.mdx
 !packages/frontend/@n8n/design-system/**/*.mdx
 build-storybook.log
-build.log
+build*.log
 tcr-dry.log
 .agent-setup/
 .agent-recordings/
