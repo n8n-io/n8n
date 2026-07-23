@@ -138,13 +138,13 @@ export class ClientOAuth2 {
 	/**
 	 * Attempt to parse response body based on the content type.
 	 */
-	private parseResponseBody<T extends object>(response: AxiosResponse<unknown>): T {
-		const contentType = (response.headers['content-type'] as string) ?? '';
-		const body = response.data as string;
+		private parseResponseBody<T extends object>(response: AxiosResponse<unknown>): T {
+			const contentType = (response.headers['content-type'] as string) ?? '';
+			const body = response.data as string;
 
-		if (contentType.startsWith('application/x-www-form-urlencoded')) {
-			return qs.parse(body) as T;
-		}
+			if (contentType.startsWith('application/x-www-form-urlencoded')) {
+				return qs.parse(body) as T;
+			}
 
 		// RFC 6749 §5.1 mandates a JSON body, not a JSON content-type header.
 		// Parse by body shape so providers that mislabel JSON (e.g. text/plain) still work.
