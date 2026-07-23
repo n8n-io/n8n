@@ -77,7 +77,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_ai_thread_grants](instance_ai_thread_grants.md) | 5 |  | table |
 | [instance_ai_threads](instance_ai_threads.md) | 7 |  | table |
 | [instance_ai_workflow_snapshots](instance_ai_workflow_snapshots.md) | 7 |  | table |
-| [instance_credential_assignment](instance_credential_assignment.md) | 2 |  | table |
+| [instance_credential_assignment](instance_credential_assignment.md) | 4 |  | table |
 | [instance_version_history](instance_version_history.md) | 5 |  | table |
 | [invalid_auth_token](invalid_auth_token.md) | 2 |  | table |
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
@@ -990,8 +990,10 @@ erDiagram
   varchar_255_ workflowName PK
 }
 "instance_credential_assignment" {
+  datetime_3_ createdAt
   varchar_36_ credentialId FK
   varchar_128_ credentialUseId PK
+  datetime_3_ updatedAt
 }
 "instance_version_history" {
   datetime_3_ createdAt

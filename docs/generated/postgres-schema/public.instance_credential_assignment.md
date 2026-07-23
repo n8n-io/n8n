@@ -4,8 +4,10 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| credentialId | varchar(36) |  | false |  | [public.credentials_entity](public.credentials_entity.md) | Instance credential assigned to the registered credential use |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| credentialId | varchar(36) |  | false |  | [public.credentials_entity](public.credentials_entity.md) | Credential assigned to the registered use; repositories enforce instance usage scope |
 | credentialUseId | varchar(128) |  | false |  |  | Stable credential use registered with the instance credential broker |
+| updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
 
@@ -13,8 +15,10 @@
 | ---- | ---- | ---------- |
 | FK_instance_credential_assignment_credential | FOREIGN KEY | FOREIGN KEY ("credentialId") REFERENCES credentials_entity(id) ON DELETE RESTRICT |
 | PK_984b0a98726485c9a330cde6b2f | PRIMARY KEY | PRIMARY KEY ("credentialUseId") |
+| instance_credential_assignment_createdAt_not_null | n | NOT NULL "createdAt" |
 | instance_credential_assignment_credentialId_not_null | n | NOT NULL "credentialId" |
 | instance_credential_assignment_credentialUseId_not_null | n | NOT NULL "credentialUseId" |
+| instance_credential_assignment_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
 
@@ -31,8 +35,10 @@ erDiagram
 "public.instance_credential_assignment" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE RESTRICT"
 
 "public.instance_credential_assignment" {
+  timestamp_3__with_time_zone createdAt
   varchar_36_ credentialId FK
   varchar_128_ credentialUseId
+  timestamp_3__with_time_zone updatedAt
 }
 "public.credentials_entity" {
   timestamp_3__with_time_zone createdAt
