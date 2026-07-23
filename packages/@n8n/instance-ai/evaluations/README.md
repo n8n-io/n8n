@@ -1,5 +1,7 @@
 # Workflow evaluation framework
 
+> Module layout, extension points and external contracts: [ARCHITECTURE.md](./ARCHITECTURE.md).
+
 Tests whether workflows built by Instance AI actually work by executing them with LLM-generated mock HTTP responses. No real credentials or external services are involved.
 
 Five harnesses live here:

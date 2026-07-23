@@ -10,6 +10,7 @@ function makeOutcome(opts: {
 		workflowIds: [],
 		executionIds: [],
 		dataTableIds: [],
+		artifactRefs: [],
 		finalText: '',
 		toolCalls: (opts.toolCalls ?? []).map((tc, i) => ({
 			toolCallId: `call-${i}`,

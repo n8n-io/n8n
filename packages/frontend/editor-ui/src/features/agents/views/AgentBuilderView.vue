@@ -96,7 +96,7 @@ const locale = useI18n();
 const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
-const { startThread: startInstanceAiThread } = useInstanceAiHandoff();
+const { openAgentArtifactThread } = useInstanceAiHandoff();
 const instanceAiAvailable = useInstanceAiAvailable();
 const { canSendPreviewToInstanceAi, sendPreviewSessionToInstanceAi } =
 	useInstanceAiAgentPreviewHandoff();
@@ -137,7 +137,7 @@ const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissio
 
 const isVersionHistoryOpen = ref(false);
 
-async function onSendPreviewToAssistant() {
+async function onSendPreviewToAssistant(executionId?: string) {
 	const threadId = effectiveSessionId.value;
 	if (!threadId || !agentId.value || !projectId.value) return;
 
@@ -148,6 +148,7 @@ async function onSendPreviewToAssistant() {
 		agentName: agentName.value || undefined,
 		agentIcon: localConfig.value?.personalisation?.icon,
 		sessionTitle: currentSessionTitle.value || undefined,
+		executionId,
 	});
 }
 
@@ -700,7 +701,7 @@ async function refreshValidationBeforePublish(): Promise<boolean> {
 	return configValidation.value?.status === 'valid';
 }
 
-/** Hand the current agent off to a new Instance AI thread (mirrors the canvas hand-off). */
+/** Open the current agent in Instance AI without sending an opening message. */
 async function onOpenInstanceAi() {
 	// Flush pending edits first so the assistant sees the latest config.
 	await flushAutosave();
@@ -710,14 +711,19 @@ async function onOpenInstanceAi() {
 		workflow_id: null,
 		execution_id: null,
 	});
-	await startInstanceAiThread(projectId.value, '', [
+	await openAgentArtifactThread(
 		{
 			type: 'agent',
 			id: agentId.value,
 			name: agent.value?.name,
 			projectId: projectId.value,
 		},
-	]);
+		{
+			source: 'agent_builder_page',
+			origin: 'internal',
+			sourceContext: { agentId: agentId.value },
+		},
+	);
 }
 
 function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {

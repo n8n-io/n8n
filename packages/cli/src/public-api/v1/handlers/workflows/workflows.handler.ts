@@ -48,6 +48,8 @@ type WorkflowHandlers = {
 	getWorkflowVersion: PublicAPIEndpoint<WorkflowRequest.GetVersion>;
 	getWorkflows: PublicAPIEndpoint<WorkflowRequest.GetAll>;
 	updateWorkflow: PublicAPIEndpoint<WorkflowRequest.Update>;
+	publishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
+	unpublishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	activateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	deactivateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	getWorkflowTags: PublicAPIEndpoint<WorkflowRequest.GetTags>;
@@ -55,6 +57,46 @@ type WorkflowHandlers = {
 	archiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 	unarchiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 };
+
+const publishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate> = [
+	publicApiScope('workflow:activate'),
+	projectScope('workflow:publish', 'workflow'),
+	async (req, res) => {
+		const { id } = req.params;
+		const { versionId, name, description } = req.body;
+
+		try {
+			const workflow = await Container.get(WorkflowService).activateWorkflow(req.user, id, {
+				versionId,
+				name,
+				description,
+				source: 'api',
+			});
+
+			return res.json(workflow);
+		} catch (error) {
+			return handleError(error);
+		}
+	},
+];
+
+const unpublishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate> = [
+	publicApiScope('workflow:deactivate'),
+	projectScope('workflow:unpublish', 'workflow'),
+	async (req, res) => {
+		const { id } = req.params;
+
+		try {
+			const workflow = await Container.get(WorkflowService).deactivateWorkflow(req.user, id, {
+				source: 'api',
+			});
+
+			return res.json(workflow);
+		} catch (error) {
+			return handleError(error);
+		}
+	},
+];
 
 const workflowHandlers: WorkflowHandlers = {
 	createWorkflow: [
@@ -310,6 +352,17 @@ const workflowHandlers: WorkflowHandlers = {
 			// null moves the workflow to the project root, (undefined) leaves the current folder untouched
 			const resolvedParentFolderId = parentFolderId === null ? PROJECT_ROOT : parentFolderId;
 
+			// binaryMode and credentialResolverId are derived, internal settings
+			// rather than something users are expected to control programmatically;
+			// strip them so the settings merge in WorkflowService.update preserves
+			// whatever is already stored.
+			if (updateData.settings?.binaryMode !== undefined) {
+				delete updateData.settings.binaryMode;
+			}
+			if (updateData.settings?.credentialResolverId !== undefined) {
+				delete updateData.settings.credentialResolverId;
+			}
+
 			try {
 				// Credential tamper protection is enforced centrally in WorkflowService.update
 				const updatedWorkflow = await Container.get(WorkflowService).update(
@@ -331,44 +384,11 @@ const workflowHandlers: WorkflowHandlers = {
 			}
 		},
 	],
-	activateWorkflow: [
-		publicApiScope('workflow:activate'),
-		projectScope('workflow:publish', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-			const { versionId, name, description } = req.body;
-
-			try {
-				const workflow = await Container.get(WorkflowService).activateWorkflow(req.user, id, {
-					versionId,
-					name,
-					description,
-					source: 'api',
-				});
-
-				return res.json(workflow);
-			} catch (error) {
-				return handleError(error);
-			}
-		},
-	],
-	deactivateWorkflow: [
-		publicApiScope('workflow:deactivate'),
-		projectScope('workflow:unpublish', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-
-			try {
-				const workflow = await Container.get(WorkflowService).deactivateWorkflow(req.user, id, {
-					source: 'api',
-				});
-
-				return res.json(workflow);
-			} catch (error) {
-				return handleError(error);
-			}
-		},
-	],
+	publishWorkflow,
+	unpublishWorkflow,
+	// `activate`/`deactivate` are legacy aliases; they share the exact same code path.
+	activateWorkflow: publishWorkflow,
+	deactivateWorkflow: unpublishWorkflow,
 	getWorkflowTags: [
 		publicApiScope('workflowTags:list'),
 		projectScope('workflow:read', 'workflow'),

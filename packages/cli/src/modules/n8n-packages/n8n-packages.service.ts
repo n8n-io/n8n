@@ -16,6 +16,7 @@ import { PackageExportBlockedError } from './entities/package-export.errors';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
 import { VariableExporter } from './entities/variable/variable.exporter';
+import { collectNodeTypeUsage } from './entities/workflow/node-type-usage';
 import { assertStaticSubWorkflowsIncluded } from './entities/workflow/static-sub-workflow-requirements';
 import { StaticWorkflowDependencyResolver } from './entities/workflow/static-workflow-dependency-resolver';
 import {
@@ -221,6 +222,7 @@ export class N8nPackagesService {
 			dataTables: dataTableExportResult.requirements,
 			workflows: workflowRequirementExportResult.requirements,
 			variables: variableExportResult.requirements,
+			nodeTypes: collectNodeTypeUsage(requirements.nodeTypes),
 		});
 
 		const manifest = packageManifestSchema.parse({
@@ -295,14 +297,16 @@ export class N8nPackagesService {
 		dataTables: PackageRequirements['dataTables'];
 		workflows: PackageRequirements['workflows'];
 		variables: PackageRequirements['variables'];
+		nodeTypes: PackageRequirements['nodeTypes'];
 	}): PackageRequirements | undefined {
-		const { credentials, dataTables, workflows, variables } = input;
+		const { credentials, dataTables, workflows, variables, nodeTypes } = input;
 
 		const requirements: PackageRequirements = {
 			...(credentials?.length ? { credentials } : {}),
 			...(dataTables?.length ? { dataTables } : {}),
 			...(workflows?.length ? { workflows } : {}),
 			...(variables?.length ? { variables } : {}),
+			...(nodeTypes?.length ? { nodeTypes } : {}),
 		};
 		return Object.keys(requirements).length > 0 ? requirements : undefined;
 	}
