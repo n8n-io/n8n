@@ -423,6 +423,40 @@ describe('validate-workflow-code MCP tool', () => {
 			});
 		});
 
+		test('flag on: connections under unsafe object keys are skipped, not assigned', async () => {
+			// Built via JSON.parse: an object literal with a "__proto__" key would
+			// invoke the prototype setter instead of creating an own property.
+			// Both entries would be boundary-crossing ai_languageModel connections
+			// into the group if their keys were honored; skipping them is the
+			// deliberate trade-off for never writing object-internal keys.
+			const hostileConnections = JSON.parse(
+				'{"__proto__": {"ai_languageModel": [[{"node": "A", "type": "ai_languageModel", "index": 0}]]},' +
+					' "constructor": {"ai_languageModel": [[{"node": "B", "type": "ai_languageModel", "index": 0}]]}}',
+			) as Record<string, unknown>;
+			const workflow = makeGroupedWorkflow([{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }]);
+			mockParseAndValidate.mockResolvedValue({
+				workflow: {
+					...workflow,
+					connections: { ...workflow.connections, ...hostileConnections },
+				},
+				warnings: [],
+			});
+
+			const tool = createTool({ canvasGroupsEnabled: true });
+			const result = await tool.handler({ code: 'const wf = ...' }, {} as never);
+
+			const response = parseResult(result);
+			expect(result.isError).toBeUndefined();
+			expect(response.valid).toBe(true);
+			expect(response).not.toHaveProperty('warnings');
+			expect(trackedData()).toEqual({
+				nodeCount: 3,
+				warningCount: 0,
+				groupCount: 1,
+				groupViolationCount: 0,
+			});
+		});
+
 		test('flag on: workflows without groups report groupCount 0', async () => {
 			mockParseAndValidate.mockResolvedValue({
 				workflow: makeGroupedWorkflow([]),

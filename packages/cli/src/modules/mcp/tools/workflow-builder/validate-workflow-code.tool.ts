@@ -2,6 +2,7 @@ import type { User } from '@n8n/db';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	isNodeConnectionType,
+	isSafeObjectProperty,
 	validateWorkflowGroups,
 	type IConnections,
 	type INode,
@@ -72,12 +73,19 @@ const outputSchema = {
  * `isNodeConnectionType` guard. Serializer output only ever carries known
  * connection types; if an unknown one ever slips through, that connection is
  * skipped here and the save path still rejects the workflow.
+ *
+ * Node names and connection types come from submitted code, so keys that
+ * resolve to object internals (`__proto__`, `constructor`, ...) are skipped —
+ * assigning them onto a plain object would mutate its prototype instead of
+ * creating an own property, silently corrupting the re-keyed connections.
  */
 function toWorkflowConnections(connections: WorkflowJSON['connections']): IConnections {
 	const bySourceNode: IConnections = {};
 	for (const [sourceNode, byType] of Object.entries(connections ?? {})) {
+		if (!isSafeObjectProperty(sourceNode)) continue;
 		const nodeConnections: INodeConnections = {};
 		for (const [connectionType, outputs] of Object.entries(byType)) {
+			if (!isSafeObjectProperty(connectionType)) continue;
 			nodeConnections[connectionType] = outputs.map(
 				(outputConnections) =>
 					outputConnections?.flatMap((connection) =>
