@@ -3,26 +3,48 @@ import { EndpointsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { BinaryDataConfig, BinaryDataService, FileLocation } from 'n8n-core';
 import { BINARY_ENCODING } from 'n8n-workflow';
-import type { IDataObject, IExecuteResponsePromiseData, IN8nHttpFullResponse } from 'n8n-workflow';
+import type {
+	IBinaryData,
+	IDataObject,
+	IExecuteResponsePromiseData,
+	IN8nHttpFullResponse,
+} from 'n8n-workflow';
+import { Readable } from 'node:stream';
 
 /** Sentinel key marking a base64-encoded Buffer body relayed inline through the queue. */
 export const ENCODED_BUFFER_KEY = '__@N8nEncodedBuffer@__';
+
+/** Sentinel key marking an offloaded body's original form, so it can be restored. */
+export const OFFLOADED_BODY_KIND_KEY = '__@N8nOffloadedBodyKind@__';
 
 /** Stores readable by all instances; in-memory and filesystem are local to one host. */
 const SHARED_STORE_MODES: Array<BinaryDataConfig['mode']> = ['database', 's3', 'azure'];
 
 type RelayContext = { workflowId: string; executionId: string };
 
+type OffloadedBodyKind = 'buffer' | 'string' | 'json';
+
+/**
+ * The `content-type` Express would set if a body of this kind were relayed
+ * inline and sent via `res.json`/`res.send`, so a response's headers do not
+ * change with its size. Buffers are sent via `res.end`, which sets none.
+ */
+function inlineContentTypeOf(kind: OffloadedBodyKind): string | undefined {
+	switch (kind) {
+		case 'string':
+			return 'text/html; charset=utf-8';
+		case 'json':
+			return 'application/json; charset=utf-8';
+		case 'buffer':
+			return undefined;
+	}
+}
+
 /** A body's byte size, with the bytes materialized only if offloading happens. */
 type MeasuredBody = {
+	kind: OffloadedBodyKind;
 	sizeInBytes: number;
 	toBuffer: () => Buffer;
-	/**
-	 * The `content-type` Express would set if this body were relayed inline and
-	 * sent via `res.json`/`res.send`, so a response's headers do not change with
-	 * its size. `undefined` for Buffers, which are sent without a `content-type`.
-	 */
-	inlineContentType?: string;
 };
 
 /**
@@ -60,6 +82,11 @@ export class WebhookResponseRelay {
 	 * (`database`, `s3` or `azure` — queue mode defaults to `database`). With
 	 * in-memory or filesystem storage, or when storing fails, the body is
 	 * relayed inline regardless of size, preserving prior behavior.
+	 *
+	 * An offloaded body shares the execution's binary-data lifetime. With
+	 * pruning disabled, an unsaved execution is hard-deleted as soon as it
+	 * finishes, which can remove the body while a slow client is still
+	 * downloading it.
 	 */
 	async prepareResponse(
 		response: IExecuteResponsePromiseData,
@@ -70,19 +97,19 @@ export class WebhookResponseRelay {
 		}
 
 		if (this.offloadingEnabled) {
-			const body = measureBody(response.body);
-			if (body && body.sizeInBytes > this.maxInlineSizeInBytes) {
-				try {
+			try {
+				const body = measureBody(response.body);
+				if (body && body.sizeInBytes > this.maxInlineSizeInBytes) {
 					const offloaded = await this.offloadToBinaryStore(response, body, ctx);
 					if (offloaded) {
 						return response;
 					}
-				} catch (error) {
-					this.logger.warn('Failed to offload large webhook response, relaying it inline', {
-						...ctx,
-						error,
-					});
 				}
+			} catch (error) {
+				this.logger.warn('Failed to offload large webhook response, relaying it inline', {
+					...ctx,
+					error,
+				});
 			}
 		}
 
@@ -116,6 +143,43 @@ export class WebhookResponseRelay {
 	}
 
 	/**
+	 * Reverses an offload: fetches the stored body and restores it to its
+	 * original form (Buffer, string, or parsed JSON). Non-offloaded bodies are
+	 * left untouched. For consumers that need the body itself rather than a
+	 * stream, e.g. a sub-workflow tool reading the response.
+	 *
+	 * @param response Relayed response. Mutated and returned.
+	 * @returns The same `response`, with an offloaded body restored. When
+	 * fetching fails, the reference body is left in place and a warning logged.
+	 */
+	async restoreOffloadedBody(
+		response: IExecuteResponsePromiseData,
+	): Promise<IExecuteResponsePromiseData> {
+		if (!isFullResponse(response)) {
+			return response;
+		}
+
+		const offloaded = asOffloadedBody(response.body);
+		if (!offloaded) {
+			return response;
+		}
+
+		try {
+			const buffer = await this.binaryDataService.getAsBuffer(offloaded.binaryData);
+			response.body =
+				offloaded.kind === 'buffer'
+					? buffer
+					: offloaded.kind === 'string'
+						? buffer.toString('utf8')
+						: (JSON.parse(buffer.toString('utf8')) as IDataObject);
+		} catch (error) {
+			this.logger.warn('Failed to restore offloaded webhook response body', { error });
+		}
+
+		return response;
+	}
+
+	/**
 	 * Stores the body and replaces it with a reference. When the response has no
 	 * `content-type` header, sets the one the body would have received inline,
 	 * keeping headers independent of body size.
@@ -128,7 +192,8 @@ export class WebhookResponseRelay {
 		body: MeasuredBody,
 		ctx: RelayContext,
 	): Promise<boolean> {
-		const contentType = contentTypeOf(response) ?? body.inlineContentType;
+		const inlineContentType = inlineContentTypeOf(body.kind);
+		const contentType = contentTypeOf(response) ?? inlineContentType;
 		const stored = await this.binaryDataService.store(
 			FileLocation.ofExecution(ctx.workflowId, ctx.executionId),
 			body.toBuffer(),
@@ -143,11 +208,11 @@ export class WebhookResponseRelay {
 			return false;
 		}
 
-		if (contentTypeOf(response) === undefined && body.inlineContentType !== undefined) {
+		if (contentTypeOf(response) === undefined && inlineContentType !== undefined) {
 			response.headers ??= {};
-			response.headers['content-type'] = body.inlineContentType;
+			response.headers['content-type'] = inlineContentType;
 		}
-		response.body = { binaryData: stored };
+		response.body = { binaryData: stored, [OFFLOADED_BODY_KIND_KEY]: body.kind };
 		return true;
 	}
 }
@@ -165,6 +230,7 @@ function isFullResponse(response: IExecuteResponsePromiseData): response is IN8n
 function measureBody(body: IN8nHttpFullResponse['body']): MeasuredBody | undefined {
 	if (Buffer.isBuffer(body)) {
 		return {
+			kind: 'buffer',
 			sizeInBytes: body.length,
 			toBuffer: () => body,
 		};
@@ -172,18 +238,22 @@ function measureBody(body: IN8nHttpFullResponse['body']): MeasuredBody | undefin
 
 	if (typeof body === 'string') {
 		return {
+			kind: 'string',
 			sizeInBytes: Buffer.byteLength(body, 'utf8'),
 			toBuffer: () => Buffer.from(body, 'utf8'),
-			inlineContentType: 'text/html; charset=utf-8',
 		};
+	}
+
+	if (body instanceof Readable) {
+		return undefined;
 	}
 
 	if (isJsonBody(body)) {
 		const json = JSON.stringify(body);
 		return {
+			kind: 'json',
 			sizeInBytes: Buffer.byteLength(json, 'utf8'),
 			toBuffer: () => Buffer.from(json, 'utf8'),
-			inlineContentType: 'application/json; charset=utf-8',
 		};
 	}
 
@@ -208,4 +278,23 @@ function isBinaryDataReference(body: unknown): boolean {
 		'binaryData' in body &&
 		typeof (body as { binaryData?: { id?: unknown } }).binaryData?.id === 'string'
 	);
+}
+
+/**
+ * Narrows a body to an offload marker produced by {@link WebhookResponseRelay.prepareResponse}.
+ * A binary-data reference without the kind marker is a genuine binary
+ * response, not an offloaded one, and is never restored.
+ */
+function asOffloadedBody(
+	body: IN8nHttpFullResponse['body'],
+): { binaryData: IBinaryData; kind: OffloadedBodyKind } | undefined {
+	if (!isBinaryDataReference(body)) {
+		return undefined;
+	}
+	const candidate = body as { binaryData: IBinaryData; [OFFLOADED_BODY_KIND_KEY]?: unknown };
+	const kind = candidate[OFFLOADED_BODY_KIND_KEY];
+	if (kind !== 'buffer' && kind !== 'string' && kind !== 'json') {
+		return undefined;
+	}
+	return { binaryData: candidate.binaryData, kind };
 }

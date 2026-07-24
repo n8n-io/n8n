@@ -1,9 +1,15 @@
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { INode, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import type {
+	IExecuteResponsePromiseData,
+	INode,
+	IWorkflowExecutionDataProcess,
+} from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import { executeWorkflow, type WorkflowToolContext } from '../workflow-tool-factory';
@@ -95,5 +101,61 @@ describe('executeWorkflow → eval instrumentation', () => {
 
 		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
 		expect(runData.configureAdditionalData).toBeUndefined();
+	});
+});
+
+describe('executeWorkflow → webhook response', () => {
+	beforeEach(() => {
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi
+				.fn()
+				.mockResolvedValue({ status: 'success', data: { resultData: { runData: {} } } }),
+		} as unknown as ExecutionPersistence);
+	});
+
+	afterEach(() => {
+		Container.reset();
+	});
+
+	it('restores an offloaded response body before embedding it in the result', async () => {
+		const relayedResponse: IExecuteResponsePromiseData = {
+			body: { binaryData: { id: 'database:abc', data: '', mimeType: 'application/json' } },
+			headers: {},
+			statusCode: 200,
+		};
+		const restoredResponse: IExecuteResponsePromiseData = {
+			body: { hello: 'world' },
+			headers: {},
+			statusCode: 200,
+		};
+		const restoreOffloadedBody = vi.fn().mockResolvedValue(restoredResponse);
+		Container.set(WebhookResponseRelay, {
+			restoreOffloadedBody,
+		} as unknown as WebhookResponseRelay);
+
+		const run = vi.fn(
+			(
+				_runData: IWorkflowExecutionDataProcess,
+				_loadStaticData?: boolean,
+				_realtime?: boolean,
+				_restartExecutionId?: string,
+				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+			) => {
+				responsePromise?.resolve(relayedResponse);
+				return 'exec-1';
+			},
+		);
+
+		const result = await executeWorkflow(
+			workflow,
+			triggerNode,
+			'manual',
+			{},
+			buildContext(run),
+			false,
+		);
+
+		expect(restoreOffloadedBody).toHaveBeenCalledWith(relayedResponse);
+		expect(result.data?.response).toEqual(restoredResponse);
 	});
 });

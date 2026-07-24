@@ -1,10 +1,15 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EndpointsConfig } from '@n8n/config';
 import type { BinaryDataConfig, BinaryDataService } from 'n8n-core';
-import type { IBinaryData, IN8nHttpFullResponse } from 'n8n-workflow';
+import type { IBinaryData, IDataObject, IN8nHttpFullResponse } from 'n8n-workflow';
+import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
-import { ENCODED_BUFFER_KEY, WebhookResponseRelay } from '../webhook-response-relay';
+import {
+	ENCODED_BUFFER_KEY,
+	OFFLOADED_BODY_KIND_KEY,
+	WebhookResponseRelay,
+} from '../webhook-response-relay';
 
 describe('WebhookResponseRelay', () => {
 	const ctx = { workflowId: 'wf-1', executionId: 'exec-1' };
@@ -228,6 +233,35 @@ describe('WebhookResponseRelay', () => {
 			expect(binaryDataService.store).not.toHaveBeenCalled();
 			expect(result).toBe(response);
 		});
+
+		it('leaves a stream body untouched without touching the store', async () => {
+			const binaryDataService = persistingStore();
+			const stream = Readable.from(['x'.repeat(maxInlineSizeInBytes + 1)]);
+			const response: IN8nHttpFullResponse = { body: stream, headers: {}, statusCode: 200 };
+
+			const result = (await relayWith(binaryDataService).prepareResponse(
+				response,
+				ctx,
+			)) as IN8nHttpFullResponse;
+
+			expect(binaryDataService.store).not.toHaveBeenCalled();
+			expect(result.body).toBe(stream);
+		});
+
+		it('relays the body inline when measuring it fails', async () => {
+			const binaryDataService = persistingStore();
+			const circular: IDataObject = {};
+			circular.self = circular;
+			const response: IN8nHttpFullResponse = { body: circular, headers: {}, statusCode: 200 };
+
+			const result = (await relayWith(binaryDataService).prepareResponse(
+				response,
+				ctx,
+			)) as IN8nHttpFullResponse;
+
+			expect(binaryDataService.store).not.toHaveBeenCalled();
+			expect(result.body).toBe(circular);
+		});
 	});
 
 	describe('decodeResponse', () => {
@@ -272,6 +306,116 @@ describe('WebhookResponseRelay', () => {
 
 			const result = relay.decodeResponse(response);
 
+			expect(result).toBe(response);
+		});
+	});
+
+	describe('restoreOffloadedBody', () => {
+		const offloadedResponse = (
+			kind: 'buffer' | 'string' | 'json',
+			binaryData: Partial<IBinaryData> = {},
+		): IN8nHttpFullResponse => ({
+			body: {
+				binaryData: {
+					id: 'database:stored-id',
+					data: '',
+					mimeType: 'application/octet-stream',
+					...binaryData,
+				},
+				[OFFLOADED_BODY_KIND_KEY]: kind,
+			},
+			headers: {},
+			statusCode: 200,
+		});
+
+		const fetchingStore = (content: Buffer) => {
+			const binaryDataService = mock<BinaryDataService>();
+			binaryDataService.getAsBuffer.mockResolvedValue(content);
+			return binaryDataService;
+		};
+
+		it('restores an offloaded Buffer body', async () => {
+			const payload = Buffer.from('binary payload');
+			const binaryDataService = fetchingStore(payload);
+
+			const result = (await relayWith(binaryDataService).restoreOffloadedBody(
+				offloadedResponse('buffer'),
+			)) as IN8nHttpFullResponse;
+
+			expect(result.body).toEqual(payload);
+		});
+
+		it('restores an offloaded string body', async () => {
+			const binaryDataService = fetchingStore(Buffer.from('plain text', 'utf8'));
+
+			const result = (await relayWith(binaryDataService).restoreOffloadedBody(
+				offloadedResponse('string'),
+			)) as IN8nHttpFullResponse;
+
+			expect(result.body).toBe('plain text');
+		});
+
+		it('restores an offloaded JSON body', async () => {
+			const body = { hello: 'world' };
+			const binaryDataService = fetchingStore(Buffer.from(JSON.stringify(body), 'utf8'));
+
+			const result = (await relayWith(binaryDataService).restoreOffloadedBody(
+				offloadedResponse('json'),
+			)) as IN8nHttpFullResponse;
+
+			expect(result.body).toEqual(body);
+		});
+
+		it('round-trips a large JSON body through prepareResponse', async () => {
+			const body = { blob: 'x'.repeat(maxInlineSizeInBytes + 1) };
+			const response: IN8nHttpFullResponse = { body, headers: {}, statusCode: 200 };
+			const binaryDataService = persistingStore();
+			const relay = relayWith(binaryDataService);
+
+			const prepared = (await relay.prepareResponse(response, ctx)) as IN8nHttpFullResponse;
+			const storedContent = binaryDataService.store.mock.calls[0][1] as Buffer;
+			binaryDataService.getAsBuffer.mockResolvedValue(storedContent);
+
+			const result = (await relay.restoreOffloadedBody(prepared)) as IN8nHttpFullResponse;
+
+			expect(result.body).toEqual(body);
+		});
+
+		it('leaves a genuine binary-data reference untouched without fetching', async () => {
+			const binaryDataService = mock<BinaryDataService>();
+			const reference = {
+				binaryData: { id: 'database:abc', data: '', mimeType: 'application/pdf' },
+			};
+			const response: IN8nHttpFullResponse = { body: reference, headers: {}, statusCode: 200 };
+
+			const result = (await relayWith(binaryDataService).restoreOffloadedBody(
+				response,
+			)) as IN8nHttpFullResponse;
+
+			expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
+			expect(result.body).toBe(reference);
+		});
+
+		it('leaves the reference in place when fetching fails', async () => {
+			const binaryDataService = mock<BinaryDataService>();
+			binaryDataService.getAsBuffer.mockRejectedValue(new Error('store unavailable'));
+			const response = offloadedResponse('json');
+			const reference = response.body;
+
+			const result = (await relayWith(binaryDataService).restoreOffloadedBody(
+				response,
+			)) as IN8nHttpFullResponse;
+
+			expect(result.body).toBe(reference);
+		});
+
+		it('leaves a response without a body untouched', async () => {
+			const binaryDataService = mock<BinaryDataService>();
+			const response = { foo: 'bar' };
+
+			const result = await relayWith(binaryDataService).restoreOffloadedBody(response);
+
+			expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
 			expect(result).toBe(response);
 		});
 	});
