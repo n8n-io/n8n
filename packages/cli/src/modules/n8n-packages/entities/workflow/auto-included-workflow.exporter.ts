@@ -14,7 +14,9 @@ import { DataTableRequirementsExtractor } from '../data-table/data-table-require
 import type { WorkflowDataTableRequirement } from '../data-table/data-table.types';
 import { FolderSerializer } from '../folder/folder.serializer';
 import { ProjectSerializer } from '../project/project.serializer';
-import type { WorkflowExportRequirements, WorkflowTagUsage } from '../requirements.types';
+import type { WorkflowExportRequirements } from '../requirements.types';
+import { TagRequirementsExtractor } from '../tag/tag-requirements.extractor';
+import type { WorkflowTagUsage } from '../tag/tag.types';
 import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
 import type { WorkflowVariableRequirement } from '../variable/variable.types';
 
@@ -24,6 +26,7 @@ export interface AutoIncludedWorkflowExportRequest {
 	existingWorkflowEntries: ManifestEntry[];
 	existingFolderEntries: ManifestEntry[];
 	existingProjectEntries: ManifestEntry[];
+	includeTags: boolean;
 	projectTargetsById?: Map<string, string>;
 }
 
@@ -54,6 +57,7 @@ export class AutoIncludedWorkflowExporter {
 		private readonly credentialRequirementsExtractor: CredentialRequirementsExtractor,
 		private readonly dataTableRequirementsExtractor: DataTableRequirementsExtractor,
 		private readonly variableRequirementsExtractor: VariableRequirementsExtractor,
+		private readonly tagRequirementsExtractor: TagRequirementsExtractor,
 	) {}
 
 	export(request: AutoIncludedWorkflowExportRequest): AutoIncludedWorkflowExportResult {
@@ -114,18 +118,14 @@ export class AutoIncludedWorkflowExporter {
 				baseDir,
 				request.writer,
 				allocators.workflows,
+				request.includeTags,
 			);
 			workflowEntries.push(entry);
 			workflowEntriesById.set(entry.id, entry);
 			credentials.push(...this.credentialRequirementsExtractor.extract(included.workflow));
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(included.workflow));
 			variables.push(...this.variableRequirementsExtractor.extract(included.workflow));
-			tags.push(
-				...(included.workflow.tags ?? []).map((tag) => ({
-					workflowId: included.workflow.id,
-					tag: { id: tag.id, name: tag.name },
-				})),
-			);
+			tags.push(...this.tagRequirementsExtractor.extract(included.workflow));
 			nodeTypes.push({
 				workflowId: included.workflow.id,
 				nodes: included.workflow.nodes ?? [],
@@ -268,9 +268,10 @@ export class AutoIncludedWorkflowExporter {
 		baseDir: string,
 		writer: PackageWriter,
 		allocators: Map<string, UniqueFilenameAllocator>,
+		includeTags: boolean,
 	): ManifestEntry {
 		const target = allocatorFor(allocators, baseDir, 'workflow').allocate(workflow.name);
-		const serialized = this.workflowSerializer.serialize(workflow);
+		const serialized = this.workflowSerializer.serialize(workflow, { includeTags });
 		writer.writeDirectory(target);
 		writer.writeFile(`${target}/workflow.json`, JSON.stringify(serialized, null, '\t'));
 		return { id: workflow.id, name: workflow.name, target };

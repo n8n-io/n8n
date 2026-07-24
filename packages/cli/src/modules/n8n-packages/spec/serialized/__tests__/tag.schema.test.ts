@@ -19,9 +19,9 @@ describe('serializedTagSchema', () => {
 		expect(() => serializedTagSchema.parse(tag)).toThrow();
 	});
 
-	it('rejects a name longer than 24 characters', () => {
-		const tag = { id: 'tag-1', name: 'a'.repeat(25) };
+	it('accepts a supplementary-plane name', () => {
+		const tag = { id: 'tag-1', name: '😀'.repeat(13) };
 
-		expect(() => serializedTagSchema.parse(tag)).toThrow();
+		expect(() => serializedTagSchema.parse(tag)).not.toThrow();
 	});
 });

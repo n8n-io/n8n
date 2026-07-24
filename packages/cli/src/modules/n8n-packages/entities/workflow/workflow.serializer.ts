@@ -6,6 +6,7 @@ import {
 	serializedWorkflowSchema,
 	type SerializedWorkflow,
 } from '../../spec/serialized/workflow.schema';
+import { compareTagsByName } from '../tag/tag.types';
 
 /** Fields restored from package workflow.json; the target instance assigns the rest. */
 type WorkflowPackageContent = Pick<
@@ -15,13 +16,11 @@ type WorkflowPackageContent = Pick<
 
 @Service()
 export class WorkflowSerializer {
-	serialize(workflow: WorkflowEntity): SerializedWorkflow {
-		// The tags relation is loaded only when the export requested includeTags —
-		// its absence IS the gate. A caller loading tags for any other reason
-		// would leak them into the package.
-		const tags = workflow.tags?.length
-			? [...workflow.tags].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
-			: undefined;
+	serialize(workflow: WorkflowEntity, options: { includeTags: boolean }): SerializedWorkflow {
+		const tags =
+			options.includeTags && workflow.tags?.length
+				? [...workflow.tags].sort(compareTagsByName)
+				: undefined;
 
 		return serializedWorkflowSchema.parse({
 			id: workflow.id,

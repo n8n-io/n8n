@@ -1,7 +1,7 @@
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
 import type { WorkflowDataTableRequirement } from '../data-table/data-table.types';
 import { mergeRequirements } from '../requirements.types';
-import type { WorkflowTagUsage } from '../requirements.types';
+import type { WorkflowTagUsage } from '../tag/tag.types';
 import type { WorkflowVariableRequirement } from '../variable/variable.types';
 import type { WorkflowNodeTypeSource } from '../workflow/node-type-usage';
 

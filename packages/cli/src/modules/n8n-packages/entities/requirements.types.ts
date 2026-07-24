@@ -1,12 +1,8 @@
 import type { WorkflowCredentialRequirement } from './credential/credential.types';
 import type { WorkflowDataTableRequirement } from './data-table/data-table.types';
+import type { WorkflowTagUsage } from './tag/tag.types';
 import type { WorkflowVariableRequirement } from './variable/variable.types';
 import type { WorkflowNodeTypeSource } from './workflow/node-type-usage';
-
-export interface WorkflowTagUsage {
-	workflowId: string;
-	tag: { id: string; name: string };
-}
 
 export interface WorkflowExportRequirements {
 	credentials: WorkflowCredentialRequirement[];

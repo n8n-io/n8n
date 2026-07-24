@@ -5,7 +5,7 @@ import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageTagRequirement } from '../../spec/requirements.schema';
 import { serializedTagSchema } from '../../spec/serialized/tag.schema';
-import type { WorkflowTagUsage } from '../requirements.types';
+import { compareTagsByName, type WorkflowTagUsage } from './tag.types';
 
 export interface TagExportRequest {
 	usages: WorkflowTagUsage[];
@@ -30,9 +30,7 @@ export class TagExporter {
 			tagsById.set(tag.id, grouped);
 		}
 
-		const requirements = [...tagsById.values()].sort(
-			(a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id),
-		);
+		const requirements = [...tagsById.values()].sort(compareTagsByName);
 
 		const allocator = new UniqueFilenameAllocator('tags', 'tag');
 		const entries: ManifestEntry[] = [];

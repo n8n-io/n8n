@@ -13,7 +13,9 @@ import { DataTableRequirementsExtractor } from '../data-table/data-table-require
 import type { WorkflowDataTableRequirement } from '../data-table/data-table.types';
 import type { WorkflowNodeTypeSource } from './node-type-usage';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
-import type { WorkflowExportRequirements, WorkflowTagUsage } from '../requirements.types';
+import type { WorkflowExportRequirements } from '../requirements.types';
+import { TagRequirementsExtractor } from '../tag/tag-requirements.extractor';
+import type { WorkflowTagUsage } from '../tag/tag.types';
 import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
 import type { WorkflowVariableRequirement } from '../variable/variable.types';
 
@@ -40,6 +42,7 @@ export class WorkflowExporter {
 		private readonly credentialRequirementsExtractor: CredentialRequirementsExtractor,
 		private readonly dataTableRequirementsExtractor: DataTableRequirementsExtractor,
 		private readonly variableRequirementsExtractor: VariableRequirementsExtractor,
+		private readonly tagRequirementsExtractor: TagRequirementsExtractor,
 	) {}
 
 	async export(request: WorkflowExportRequest): Promise<WorkflowExportResult> {
@@ -71,7 +74,9 @@ export class WorkflowExporter {
 
 		for (const workflow of workflowsForExport) {
 			const target = fileNames.allocate(workflow.name);
-			const serialized = this.workflowSerializer.serialize(workflow);
+			const serialized = this.workflowSerializer.serialize(workflow, {
+				includeTags: request.includeTags,
+			});
 
 			request.writer.writeDirectory(target);
 			request.writer.writeFile(`${target}/workflow.json`, JSON.stringify(serialized, null, '\t'));
@@ -85,12 +90,7 @@ export class WorkflowExporter {
 			credentials.push(...this.credentialRequirementsExtractor.extract(workflow));
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(workflow));
 			variables.push(...this.variableRequirementsExtractor.extract(workflow));
-			tags.push(
-				...(workflow.tags ?? []).map((tag) => ({
-					workflowId: workflow.id,
-					tag: { id: tag.id, name: tag.name },
-				})),
-			);
+			tags.push(...this.tagRequirementsExtractor.extract(workflow));
 			nodeTypes.push({ workflowId: workflow.id, nodes: workflow.nodes ?? [] });
 		}
 

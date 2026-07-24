@@ -1,10 +1,12 @@
 import { LicenseState } from '@n8n/backend-common';
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { WorkflowTagMappingRepository } from '@n8n/db';
+import { TagRepository, WorkflowTagMappingRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
 import { createOwner } from '@test-integration/db/users';
@@ -62,31 +64,40 @@ describe('workflow package export — with tags', () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Project A', owner);
 		const workflow = await createWorkflow({ name: 'Tagged workflow' }, project);
-		const alpha = await createTag({ name: 'alpha' }, workflow);
+		// Created in reverse of sorted order so the exact-order assertions pin the sort.
 		const beta = await createTag({ name: 'beta' }, workflow);
+		const alpha = await createTag({ name: 'alpha' }, workflow);
 
-		const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
-		const { manifest, entries } = await readExport(stream);
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		try {
+			const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+			const { manifest, entries } = await readExport(stream);
 
-		expect(manifest.tags).toEqual([
-			{ id: alpha.id, name: 'alpha', target: 'tags/alpha' },
-			{ id: beta.id, name: 'beta', target: 'tags/beta' },
-		]);
-		expect(manifest.requirements!.tags).toEqual([
-			{ id: alpha.id, name: 'alpha', usedByWorkflows: [workflow.id] },
-			{ id: beta.id, name: 'beta', usedByWorkflows: [workflow.id] },
-		]);
+			expect(manifest.tags).toEqual([
+				{ id: alpha.id, name: 'alpha', target: 'tags/alpha' },
+				{ id: beta.id, name: 'beta', target: 'tags/beta' },
+			]);
+			expect(manifest.requirements!.tags).toEqual([
+				{ id: alpha.id, name: 'alpha', usedByWorkflows: [workflow.id] },
+				{ id: beta.id, name: 'beta', usedByWorkflows: [workflow.id] },
+			]);
 
-		const serialized = workflowJson(entries, manifest.workflows![0].target);
-		expect(serialized.tagIds).toEqual([alpha.id, beta.id]);
+			const serialized = workflowJson(entries, manifest.workflows![0].target);
+			expect(serialized.tagIds).toEqual([alpha.id, beta.id]);
 
-		for (const entry of manifest.tags!) {
-			const file = entries.find((e) => e.name === `${entry.target}/tag.json`);
-			expect(file).toBeDefined();
-			const parsed = jsonParse<Record<string, unknown>>(file!.content.toString());
-			expect(parsed).toEqual({ id: entry.id, name: entry.name });
-			expect(Object.keys(parsed).sort()).toEqual(['id', 'name']);
-			expect(serialized.tagIds).toContain(entry.id);
+			for (const entry of manifest.tags!) {
+				const file = entries.find((e) => e.name === `${entry.target}/tag.json`);
+				expect(file).toBeDefined();
+				const parsed = jsonParse<Record<string, unknown>>(file!.content.toString());
+				expect(parsed).toEqual({ id: entry.id, name: entry.name });
+			}
+
+			const exportedEvents = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-exported');
+			expect(exportedEvents).toHaveLength(1);
+			const payload = exportedEvents[0][1] as RelayEventMap['n8n-package-exported'];
+			expect(payload.counts.tags).toBe(2);
+		} finally {
+			emitSpy.mockRestore();
 		}
 	});
 
@@ -243,9 +254,10 @@ describe('workflow package export — with tags', () => {
 		expect(result.workflows).toHaveLength(1);
 		expect(result.workflows[0].status).toBe('created');
 
-		// Only the source workflow's mapping remains — the import assigned no tags.
+		// Only the source tag and the source workflow's mapping remain — the import created neither.
 		const mappings = await Container.get(WorkflowTagMappingRepository).find();
 		expect(mappings).toHaveLength(1);
 		expect(mappings[0].workflowId).toBe(workflow.id);
+		expect(await Container.get(TagRepository).count()).toBe(1);
 	});
 });

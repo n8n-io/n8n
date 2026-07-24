@@ -32,6 +32,7 @@ export default class PackageExport extends BaseCommand {
 		'<%= config.bin %> package export --project-id=abc -o project.n8np',
 		'<%= config.bin %> package export -p abc -p def -o projects.n8np',
 		'<%= config.bin %> package export -w abc --include-variable-values=false -o export.n8np',
+		'<%= config.bin %> package export -w abc --include-tags=false -o export.n8np',
 	];
 
 	static override flags = {

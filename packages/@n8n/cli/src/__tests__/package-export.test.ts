@@ -229,7 +229,6 @@ describe('package export command', () => {
 		});
 	});
 
-	// Only `false` may go on the wire — servers that predate the flag reject unknown body properties.
 	it('maps an explicit --include-tags=true to an omitted request field', async () => {
 		const { command, exportPackage } = stubCommand({
 			workflowId: ['wf-1'],
