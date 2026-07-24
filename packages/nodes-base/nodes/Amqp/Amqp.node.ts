@@ -83,7 +83,7 @@ export class Amqp implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'e.g. topic://sourcename.something',
-				description: 'Name of the queue of topic to publish to',
+				description: 'Name of the queue or topic to publish to',
 			},
 			// Header Parameters
 			{
