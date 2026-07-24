@@ -3,8 +3,16 @@ import { Container } from '@n8n/di';
 import type { DataSource } from '@n8n/typeorm';
 
 import { AllowAllAdmittance } from './admittance';
-import { createDataSource } from './database';
+import {
+	createDataSource,
+	TypeOrmExecutionStore,
+	TypeOrmStepStore,
+	WorkflowExecution,
+	WorkflowStepExecution,
+} from './database';
+import { ExecutionStartHandler, OrchestrationWorker } from './execution';
 import { InMemoryWorkQueue } from './queue';
+import type { OrchestrationMessage, StepMessage } from './queue';
 import { createEngineServer } from './server';
 
 async function main(): Promise<void> {
@@ -21,13 +29,24 @@ async function main(): Promise<void> {
 		);
 	}
 
+	// Two logical queues so step floods can't starve orchestration (or vice versa).
+	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
+	const stepQueue = new InMemoryWorkQueue<StepMessage>();
+
+	let worker: OrchestrationWorker | undefined;
+	if (dataSource) {
+		const executionStore = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const stepStore = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		worker = new OrchestrationWorker(
+			orchestrationQueue,
+			new ExecutionStartHandler(executionStore, stepStore, stepQueue),
+		);
+		worker.start();
+	}
+
 	const { app } = createEngineServer(
 		dataSource
-			? {
-					dataSource,
-					admittance: new AllowAllAdmittance(),
-					workQueue: new InMemoryWorkQueue(),
-				}
+			? { dataSource, admittance: new AllowAllAdmittance(), workQueue: orchestrationQueue }
 			: undefined,
 	);
 
@@ -43,6 +62,7 @@ async function main(): Promise<void> {
 		await new Promise<void>((resolve, reject) => {
 			server.close((error) => (error ? reject(error) : resolve()));
 		});
+		if (worker) await worker.stop();
 		if (dataSource?.isInitialized) await dataSource.destroy();
 		process.exit(0);
 	};

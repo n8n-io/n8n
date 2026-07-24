@@ -6,7 +6,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { AllowAllAdmittance } from '../../admittance';
 import { createDataSource, WorkflowExecution } from '../../database';
 import type { WorkflowGraph } from '../../graph';
-import { InMemoryWorkQueue } from '../../queue';
+import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
 import { startEngineServer } from '../../testing/start-engine-server';
 
 const sampleGraph: WorkflowGraph = {
@@ -17,7 +17,7 @@ const sampleGraph: WorkflowGraph = {
 describe('POST /api/workflow-executions (integration)', () => {
 	let container: StartedPostgreSqlContainer;
 	let dataSource: DataSource;
-	let workQueue: InMemoryWorkQueue;
+	let workQueue: InMemoryWorkQueue<OrchestrationMessage>;
 	let url: string;
 	let stop: () => Promise<void>;
 
@@ -29,7 +29,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	}, 120_000);
 
 	beforeEach(async () => {
-		workQueue = new InMemoryWorkQueue();
+		workQueue = new InMemoryWorkQueue<OrchestrationMessage>();
 		({ url, stop } = await startEngineServer({
 			dataSource,
 			admittance: new AllowAllAdmittance(),
