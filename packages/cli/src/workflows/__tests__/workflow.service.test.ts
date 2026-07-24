@@ -1566,4 +1566,101 @@ describe('WorkflowService', () => {
 			expect(afterUpdateCall?.[1]?.[1]).toEqual(expectedActor);
 		});
 	});
+
+	describe('archive() and unarchive() hooks', () => {
+		let workflowService: WorkflowService;
+		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
+		let workflowRepositoryMock: MockProxy<WorkflowRepository>;
+		let externalHooksMock: MockProxy<ExternalHooks>;
+
+		const WORKFLOW_ID = 'workflow-1';
+
+		const expectedActor: WorkflowLifecycleHookActor = {
+			id: 'user-1',
+			email: 'actor@example.com',
+			firstName: 'Ada',
+			lastName: 'Lovelace',
+			role: 'global:admin',
+		};
+
+		function makeActingUser() {
+			return mock<User>({
+				id: 'user-1',
+				email: 'actor@example.com',
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+				role: mock<Role>({ slug: 'global:admin' }),
+			});
+		}
+
+		function makeWorkflowEntity(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
+			const workflow = new WorkflowEntity();
+			workflow.id = WORKFLOW_ID;
+			workflow.name = 'My workflow';
+			workflow.isArchived = false;
+			workflow.active = false;
+			workflow.activeVersionId = null;
+			Object.assign(workflow, overrides);
+			return workflow;
+		}
+
+		beforeEach(() => {
+			workflowFinderServiceMock = mock<WorkflowFinderService>();
+			workflowRepositoryMock = mock();
+			externalHooksMock = mock<ExternalHooks>();
+
+			workflowService = new WorkflowService(
+				mock(), // logger
+				mock(), // sharedWorkflowRepository
+				workflowRepositoryMock, // workflowRepository
+				mock(), // workflowTagMappingRepository
+				mock(), // ownershipService
+				mock(), // tagService
+				mock(), // workflowHistoryService
+				externalHooksMock, // externalHooks
+				mock(), // activeWorkflowManager
+				mock(), // roleService
+				mock(), // projectService
+				mock(), // executionPersistence
+				mock(), // eventService
+				mock(), // globalConfig
+				mock(), // folderRepository
+				workflowFinderServiceMock, // workflowFinderService
+				mock(), // workflowPublishHistoryRepository
+				mock(), // outboxRepository
+				mock(), // workflowValidationService
+				mock(), // nodeTypes
+				mock(), // webhookService
+				mock(), // licenseState
+				mock(), // projectRepository
+				mock(), // redactionEnforcementService
+				mock(), // workflowPublicationNotifier
+				mock(), // scheduleTriggerJobRegistrar
+			);
+		});
+
+		test('forwards the acting user to the afterArchive hook', async () => {
+			const workflow = makeWorkflowEntity({ isArchived: false, activeVersionId: null });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			await workflowService.archive(makeActingUser(), WORKFLOW_ID);
+
+			expect(externalHooksMock.run).toHaveBeenCalledWith('workflow.afterArchive', [
+				WORKFLOW_ID,
+				expectedActor,
+			]);
+		});
+
+		test('forwards the acting user to the afterUnarchive hook', async () => {
+			const workflow = makeWorkflowEntity({ isArchived: true });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			await workflowService.unarchive(makeActingUser(), WORKFLOW_ID);
+
+			expect(externalHooksMock.run).toHaveBeenCalledWith('workflow.afterUnarchive', [
+				WORKFLOW_ID,
+				expectedActor,
+			]);
+		});
+	});
 });
