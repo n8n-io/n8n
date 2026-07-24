@@ -23,6 +23,17 @@ const GROUP_LABELS: Record<Exclude<SdkMethodGroup, 'internal'>, string> = {
 
 const PUBLIC_METHODS = SDK_METHODS.filter((m) => m.public);
 
+function renderRulesLines(): string {
+	return [
+		...Object.values(NODE_GROUPING_RULES).map((r) => `- ${r.sdkReference}`),
+		'- **Unique identity.** Group names and ids must be unique within the workflow.',
+		'- **Non-empty.** A group needs at least one node.',
+		'',
+		'Prefer grouping a linear range of nodes — they read most clearly — but that is a',
+		'readability guideline, not a rule the server enforces.',
+	].join('\n');
+}
+
 function renderMethodLines(): string {
 	return (Object.keys(GROUP_LABELS) as Array<keyof typeof GROUP_LABELS>)
 		.map((group) => {
@@ -94,15 +105,8 @@ an invalid group is rejected on save, so these following rules MUST be followed 
 creating or editing groups.
 
 Rules:
-- ${NODE_GROUPING_RULES.triggerSelected.sdkReference}
-- ${NODE_GROUPING_RULES.invalidSubgraph.sdkReference}
-- ${NODE_GROUPING_RULES.nonMainBoundary.sdkReference}
-- ${NODE_GROUPING_RULES.nodeAlreadyGrouped.sdkReference}
-- **Unique identity.** Group names and ids must be unique within the workflow.
-- **Non-empty.** A group needs at least one node.
-
-Prefer grouping a linear range of nodes — they read most clearly — but that is a
-readability guideline, not a rule the server enforces.`;
+${renderRulesLines()}
+`;
 
 /** Full reference, materialized into the knowledge base for on-demand reading. */
 export const SDK_LANGUAGE_REFERENCE = `# Workflow SDK language reference

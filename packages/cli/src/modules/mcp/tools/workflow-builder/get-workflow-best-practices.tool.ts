@@ -24,8 +24,7 @@ const GROUPING_GUIDANCE = `## Grouping
 
 Organise larger workflows into named node groups — visual frames drawn on the canvas — so the result is readable the first time the user sees it.
 
-- **When to group:** workflows of roughly 6+ nodes that split into clear stages (e.g. ingest → transform → deliver). Give each stage its own group.
-- **When not to group:** small workflows (2-3 nodes); a group there is just noise.
+- **When to group:** larger workflows that split into clear stages (e.g. ingest → transform → deliver). Give each stage its own group. Small workflows don't need groups — a group there is just noise.
 - **Groups vs sub-workflows:** a group is cosmetic organisation *inside* one workflow; a sub-workflow is a separately-executed, reusable unit. Group to make one canvas readable; extract a sub-workflow to reuse logic or isolate execution.
 - **Naming:** short, outcome-first titles ("Fetch new recordings", not "HTTP + Drive").
 - Groups are created collapsed by default, so the name is what the user sees first — make it descriptive.
