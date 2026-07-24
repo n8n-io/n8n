@@ -34,7 +34,11 @@ export const eventNamesRunner = [
 
 export type EventNamesRunnerType = (typeof eventNamesRunner)[number];
 
-export const eventNamesMcp = ['n8n.mcp.oauth.completed', 'n8n.mcp.tool.called'] as const;
+export const eventNamesMcp = [
+	'n8n.mcp.oauth.completed',
+	'n8n.mcp.tool.called',
+	'n8n.mcp.access.updated',
+] as const;
 
 export type EventNamesMcpType = (typeof eventNamesMcp)[number];
 

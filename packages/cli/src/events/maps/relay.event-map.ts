@@ -1150,5 +1150,10 @@ export type RelayEventMap = {
 		clientName?: string;
 	};
 
+	'mcp-access-updated': {
+		user: UserLike;
+		enabled: boolean;
+	};
+
 	// #endregion
 } & AiEventMap;

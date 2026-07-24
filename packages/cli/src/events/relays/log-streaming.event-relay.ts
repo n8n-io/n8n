@@ -144,6 +144,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'role-mapping-rules-bulk-deleted': (event) => this.roleMappingRulesBulkDeleted(event),
 			'mcp-oauth-completed': (event) => this.mcpOauthCompleted(event),
 			'mcp-tool-called': (event) => this.mcpToolCalled(event),
+			'mcp-access-updated': (event) => this.mcpAccessUpdated(event),
 		});
 	}
 
@@ -1311,6 +1312,14 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendMcpEvent({
 			eventName: 'n8n.mcp.tool.called',
 			payload: { ...user, toolName, workflowId, status, errorMessage, clientName },
+		});
+	}
+
+	@Redactable()
+	private mcpAccessUpdated({ user, enabled }: RelayEventMap['mcp-access-updated']) {
+		void this.eventBus.sendMcpEvent({
+			eventName: 'n8n.mcp.access.updated',
+			payload: { ...user, enabled },
 		});
 	}
 

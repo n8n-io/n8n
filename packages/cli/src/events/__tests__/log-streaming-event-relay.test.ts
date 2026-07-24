@@ -3106,5 +3106,32 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it('should log on `mcp-access-updated` event with redacted user', () => {
+			const event: RelayEventMap['mcp-access-updated'] = {
+				user: {
+					id: 'user-mcp-4',
+					email: 'owner@n8n.io',
+					firstName: 'Own',
+					lastName: 'Er',
+					role: { slug: 'global:owner' },
+				},
+				enabled: false,
+			};
+
+			eventService.emit('mcp-access-updated', event);
+
+			expect(eventBus.sendMcpEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.mcp.access.updated',
+				payload: {
+					userId: 'user-mcp-4',
+					_email: 'owner@n8n.io',
+					_firstName: 'Own',
+					_lastName: 'Er',
+					globalRole: 'global:owner',
+					enabled: false,
+				},
+			});
+		});
 	});
 });

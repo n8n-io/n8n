@@ -23,6 +23,7 @@ export interface EventPayloadMcp extends AbstractEventPayload {
 	errorMessage?: string;
 	clientId?: string;
 	clientName?: string;
+	enabled?: boolean;
 }
 
 export interface EventMessageMcpOptions extends AbstractEventMessageOptions {
