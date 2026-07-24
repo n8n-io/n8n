@@ -4,6 +4,10 @@ packages/cli/src/modules/source-control.ee/__tests__/source-control-helper.ee.te
   s_934a382079a856::t_1bfeec441a6212 1191,1200,1207
   s_934a382079a856::t_d7398e3710c26a 1210-1214,1216-1224,1226-1227,1430-1431
   s_934a382079a856::t_13c40f9b04d77a 1250-1251
+packages/cli/src/modules/agents/builder/skills/mcp.skill.ts
+  s_770a4f5233186c::t_8ad2b3903b74bc 98
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_770a4f5233186c::t_a7cff99b8f3cd2 149
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -14,14 +18,28 @@ packages/cli/src/modules/source-control.ee/__tests__/source-control-helper.ee.te
     "h_0d09e42b2cccb8": {
       "author": "kgrhartlage <kai.grosse.hartlage@gmail.com>"
     },
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    },
     "h_760178ed151f13": {
       "author": "Sandra Zollner <sandra.zollner@n8n.io>"
     },
     "h_9c8f56e3400786": {
       "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
     }
   },
   "sessions": {
+    "s_1ef72897374beb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1e495e5d-7657-49d3-9e14-471f81cd06f2",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
     "s_2a235a6e9347be": {
       "agent_id": {
         "tool": "codex",
@@ -46,6 +64,14 @@ packages/cli/src/modules/source-control.ee/__tests__/source-control-helper.ee.te
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
+    "s_63922c16247082": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6b337778-08d5-4266-bf43-54422800dd01",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
     "s_64c8e8b6d24f82": {
       "agent_id": {
         "tool": "claude",
@@ -53,6 +79,30 @@ packages/cli/src/modules/source-control.ee/__tests__/source-control-helper.ee.te
         "model": "claude-opus-4-8"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_744aa7ffad1673": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c708436e-d47a-46c9-8cfa-2a78ec728e0c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_770a4f5233186c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "af98002c-f09b-4489-8374-ebc72894c73f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_813e262a61f3c4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2b40806b-1b79-457f-8546-5d2b9b1d3ad1",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     },
     "s_9006126844c8d5": {
       "agent_id": {
@@ -69,6 +119,22 @@ packages/cli/src/modules/source-control.ee/__tests__/source-control-helper.ee.te
         "model": "claude-opus-4-8"
       },
       "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_b3f23ab76a494c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fd0-bfb4-7092-a515-f61e09438476",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_d8236b8b5400e8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "500e2669-64fc-46e2-9484-cf22ebf66e89",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
     }
   }
 }

@@ -1,0 +1,30 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "94e505a972dc52ff2a7b3fa91e3fc4d95314c2f8",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8cd0fccda07fbe": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "221c458b-a4ea-4437-89f0-0e9180a35658",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_e0cc82d125e08a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b603185d-d59b-4c8d-a5fb-062b299cccc7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
