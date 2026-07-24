@@ -199,16 +199,13 @@ function buildGeminiAdditionalKwargs(
 	hasLeadingTextPart: boolean,
 ): Record<string, unknown> {
 	const signatures = [
-	// Reserve the first position for the leading text part, which has no signature
-	...(hasLeadingTextPart ? [''] : []),
-	// Gemini attaches the thought signature only to the first function call
-	thoughtSignature,
-	// Reserve positions for the remaining unsigned function calls
-	...toolCalls.slice(1).map(() => ''),
-];
-	for (let i = 2; i <= toolCalls.length; i++) {
-		signatures.push('');
-	}
+		// Reserve the first position for the leading text part, which has no signature
+		...(hasLeadingTextPart ? [''] : []),
+		// Gemini attaches the thought signature only to the first function call
+		thoughtSignature,
+		// Reserve positions for the remaining unsigned function calls
+		...toolCalls.slice(1).map(() => ''),
+	];
 
 	return {
 		__gemini_function_call_thought_signatures__: {
