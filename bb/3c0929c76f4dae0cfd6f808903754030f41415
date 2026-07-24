@@ -85,6 +85,8 @@ docs/generated/postgres-schema/public.instance_ai_events.md
   s_44a98ba2784a12::t_e7de892e1b7d06 1-65
 packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
   s_b1ae3677d6bc36::t_f4ecbbe076e13c 46,50
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_b34abcbd386402::t_f65d763798858f 85
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -170,6 +172,14 @@ packages/cli/test/integration/database/repositories/workflow-publication-outbox.
       },
       "human_author": null
     },
+    "s_6638f09b589e97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5e3f01e-f690-4590-9a30-a5e2bd26c393",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
     "s_70e4a16a672757": {
       "agent_id": {
         "tool": "codex",
@@ -218,6 +228,14 @@ packages/cli/test/integration/database/repositories/workflow-publication-outbox.
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
+    "s_94fa4ed7d7b038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d271a69-d48a-40c6-b6a3-5630b148db23",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
     "s_abf81efdb80d12": {
       "agent_id": {
         "tool": "claude",
@@ -233,6 +251,14 @@ packages/cli/test/integration/database/repositories/workflow-publication-outbox.
         "model": "claude-fable-5"
       },
       "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_b34abcbd386402": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dc6fdb7-ff5f-45a8-98bf-0345038d38d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
     },
     "s_b3f23ab76a494c": {
       "agent_id": {
@@ -263,6 +289,14 @@ packages/cli/test/integration/database/repositories/workflow-publication-outbox.
         "tool": "cursor",
         "id": "500e2669-64fc-46e2-9484-cf22ebf66e89",
         "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_e0d6b46d5a1cd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9bef762-10a3-4006-8b74-acefd3594aab",
+        "model": "claude-fable-5"
       },
       "human_author": null
     }
