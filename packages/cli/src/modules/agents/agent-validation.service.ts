@@ -3,6 +3,7 @@ import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { getRequiredNodeCredentialSlots } from '@n8n/ai-utilities/node-catalog';
 import {
 	AgentModelSchema,
+	AI_GATEWAY_MANAGED_TAG,
 	agentTaskSchema,
 	findVectorStoreToolNameCollisions,
 	isDraftAgentConfig,
@@ -22,6 +23,7 @@ import { isMcpOAuth2Authentication, NodeHelpers, type INodeParameters } from 'n8
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { NodeTypes } from '@/node-types';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { LLM_PROVIDER_DEFAULTS } from './llm-provider-defaults';
 import type { AgentHistory } from './entities/agent-history.entity';
@@ -78,7 +80,15 @@ export class AgentValidationService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
+		private readonly aiGatewayService: AiGatewayService,
 	) {}
+
+	/** Whether n8n Connect (AI Gateway) can serve the model's provider. */
+	private async isAiGatewayModelSupported(model: string): Promise<boolean> {
+		const provider = getProviderPrefix(model);
+		if (!provider) return false;
+		return (await this.aiGatewayService.getCredentialTypeForProvider(provider)) !== undefined;
+	}
 
 	/**
 	 * Backward-compatible wrapper over {@link validateAgentConfiguration}.
@@ -337,6 +347,17 @@ export class AgentValidationService {
 		}
 
 		const credentialId = config.credential.trim();
+
+		// n8n Connect managed credential: no stored credential to resolve — it is
+		// valid as long as the gateway can serve the selected model's provider.
+		if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+			const model = config.model?.trim();
+			if (!model || !(await this.isAiGatewayModelSupported(model))) {
+				issues.push(agentIssue('incompatible_credential', 'credential'));
+			}
+			return;
+		}
+
 		const credential = await this.findCredentialSafe(findCredential, credentialId);
 		if (!credential) {
 			issues.push(agentIssue('invalid_credential', 'credential'));

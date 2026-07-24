@@ -1,9 +1,11 @@
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { BuilderModelLiveLookupService } from '../builder-model-live-lookup.service';
 
@@ -22,13 +24,15 @@ function makeService() {
 	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
+	const aiGatewayService = mock<AiGatewayService>();
 
 	const service = new BuilderModelLiveLookupService(
 		credentialsService,
 		credentialsFinderService,
 		outboundHttp,
+		aiGatewayService,
 	);
-	return { service, credentialsService, credentialsFinderService };
+	return { service, credentialsService, credentialsFinderService, aiGatewayService };
 }
 
 function usable(id: string, type: string) {
@@ -104,5 +108,53 @@ describe('BuilderModelLiveLookupService', () => {
 			service.list(user, projectId, 'cred-1', 'anthropicApi', 'anthropic'),
 		).rejects.toThrow('not found or not accessible');
 		expect(listModelsForProvider).not.toHaveBeenCalled();
+	});
+
+	describe('list with the n8n Connect managed tag', () => {
+		it('resolves the synthetic gateway credential and lists its allowlisted models', async () => {
+			const { service, aiGatewayService, credentialsService } = makeService();
+			aiGatewayService.getCredentialTypeForProvider.mockResolvedValue('openAiApi');
+			aiGatewayService.getSyntheticCredential.mockResolvedValue({
+				apiKey: 'gateway-jwt',
+				url: 'https://gw.example/v1/gateway/openai/v1',
+			});
+			listModelsForProvider.mockResolvedValue([{ id: 'gpt-5-mini', name: 'GPT-5 mini' }]);
+
+			const result = await service.list(
+				user,
+				projectId,
+				AI_GATEWAY_MANAGED_TAG,
+				'openAiApi',
+				'openai',
+			);
+
+			expect(result).toEqual([{ name: 'GPT-5 mini', value: 'gpt-5-mini' }]);
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith({
+				credentialType: 'openAiApi',
+				userId: 'user-1',
+				projectId,
+			});
+			// No stored-credential lookup for the managed tag.
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+			// Discovery hits the gateway baseURL → the gateway returns only allowlisted models.
+			expect(listModelsForProvider).toHaveBeenCalledWith(
+				'openai',
+				expect.objectContaining({
+					apiKey: 'gateway-jwt',
+					baseURL: 'https://gw.example/v1/gateway/openai/v1',
+				}),
+			);
+		});
+
+		it('throws when the gateway does not serve the provider', async () => {
+			const { service, aiGatewayService } = makeService();
+			aiGatewayService.getCredentialTypeForProvider.mockResolvedValue(undefined);
+
+			await expect(
+				service.list(user, projectId, AI_GATEWAY_MANAGED_TAG, 'xAiApi', 'xai'),
+			).rejects.toThrow('does not support');
+			expect(aiGatewayService.getSyntheticCredential).not.toHaveBeenCalled();
+			expect(listModelsForProvider).not.toHaveBeenCalled();
+		});
 	});
 });

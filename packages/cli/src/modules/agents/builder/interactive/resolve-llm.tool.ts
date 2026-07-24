@@ -1,6 +1,7 @@
 import type { BuiltTool, CredentialListItem, CredentialProvider } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { BUILDER_TOOLS } from '../builder-tool-names';
@@ -9,6 +10,9 @@ import {
 	LLM_PROVIDER_PRIORITY,
 	type LlmProviderDefault,
 } from '../../llm-provider-defaults';
+
+/** User-facing name written for an n8n Connect (AI Gateway) managed model credential. */
+const N8N_CONNECT_CREDENTIAL_NAME = 'n8n Connect';
 
 export interface ModelLookup {
 	list(
@@ -27,6 +31,12 @@ export interface FreeCreditsProvisioner {
 export interface ResolveLlmToolDeps {
 	credentialProvider: CredentialProvider;
 	modelLookup: ModelLookup;
+	/**
+	 * Whether n8n Connect (AI Gateway) serves the given model provider (e.g.
+	 * `openai`). When provided, the tool offers n8n Connect as an additional
+	 * credential for served providers the user has no own credential for.
+	 */
+	isProviderServedByGateway?(provider: string): Promise<boolean>;
 	freeCredits: FreeCreditsProvisioner;
 }
 
@@ -172,7 +182,27 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				credentialId?: string;
 			}) => {
 				const all = await deps.credentialProvider.list();
-				const llmCredentials = all.filter((credential) => LLM_PROVIDER_DEFAULTS[credential.type]);
+				const ownCredentials = all.filter((credential) => LLM_PROVIDER_DEFAULTS[credential.type]);
+
+				// Offer n8n Connect as an additional credential for each gateway-served
+				// provider the user has no own credential for. It then flows through the same
+				// resolution below as any credential: single → auto-use, several → ask, none →
+				// missing (a legitimate setup prompt, e.g. a provider n8n Connect does not serve).
+				const managedCredentials: CredentialListItem[] = [];
+				for (const [credentialType, defaults] of Object.entries(LLM_PROVIDER_DEFAULTS)) {
+					const hasOwnCredential = ownCredentials.some((c) => c.type === credentialType);
+					if (
+						!hasOwnCredential &&
+						((await deps.isProviderServedByGateway?.(defaults.provider)) ?? false)
+					) {
+						managedCredentials.push({
+							id: AI_GATEWAY_MANAGED_TAG,
+							name: N8N_CONNECT_CREDENTIAL_NAME,
+							type: credentialType,
+						});
+					}
+				}
+				const llmCredentials = [...ownCredentials, ...managedCredentials];
 
 				if (credentialId) {
 					const credential = llmCredentials.find((c) => c.id === credentialId);

@@ -219,8 +219,34 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 	}
 }
 
+/** Find an ai-sdk `responseBody` on the error or its `cause` chain (the API error can arrive wrapped). */
+function readResponseBody(error: unknown): string | undefined {
+	if (typeof error !== 'object' || error === null) return undefined;
+	if ('responseBody' in error && typeof error.responseBody === 'string') return error.responseBody;
+	if ('cause' in error && error.cause !== error) return readResponseBody(error.cause);
+	return undefined;
+}
+
+/**
+ * The actionable message an ai-sdk error carries in its JSON `responseBody` —
+ * e.g. the n8n Connect gateway's "switch to your own credential" guidance. Prefer
+ * this over the bare status text ("Bad Request") so the chat shows what to do.
+ */
+function apiCallErrorMessage(error: unknown): string | undefined {
+	const body = readResponseBody(error);
+	if (!body) return undefined;
+	try {
+		const parsed = JSON.parse(body) as { message?: string; error?: { message?: string } };
+		return parsed?.error?.message ?? parsed?.message ?? undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 function stringifyError(error: unknown): string {
 	try {
+		const gatewayMessage = apiCallErrorMessage(error);
+		if (gatewayMessage) return gatewayMessage;
 		if (error instanceof Error) {
 			return error.message;
 		}

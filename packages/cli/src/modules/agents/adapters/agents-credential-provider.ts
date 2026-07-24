@@ -1,7 +1,12 @@
 import type { CredentialProvider, ResolvedCredential, CredentialListItem } from '@n8n/agents';
 import type { CredentialsEntity, User } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { UserError } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { AiGatewayService } from '@/services/ai-gateway.service';
+
+import type { AiGatewayModelCredentialResolver } from '../json-config/model-config';
 
 function toResolvedCredential(data: unknown): ResolvedCredential {
 	const resolved = data !== null && typeof data === 'object' && !Array.isArray(data) ? data : {};
@@ -18,12 +23,34 @@ function toResolvedCredential(data: unknown): ResolvedCredential {
  * follows the same credential set as the workflow editor for that project.
  * Published runtime execution can omit the user and stays project-scoped.
  */
-export class AgentsCredentialProvider implements CredentialProvider {
+export class AgentsCredentialProvider
+	implements CredentialProvider, AiGatewayModelCredentialResolver
+{
 	constructor(
 		private readonly credentialsService: CredentialsService,
 		private readonly projectId: string,
 		private readonly user?: User,
 	) {}
+
+	/**
+	 * Mint the n8n Connect (AI Gateway) synthetic credential for a model slot
+	 * marked with `AI_GATEWAY_MANAGED_TAG`, keyed by the model's provider prefix
+	 * (e.g. `openai`). The provider → credential-type mapping and support check
+	 * live in `AiGatewayService`, resolved lazily so no gateway wiring leaks into
+	 * this provider's construction sites.
+	 */
+	async resolveAiGatewayModelCredential(provider: string): Promise<ResolvedCredential> {
+		const aiGatewayService = Container.get(AiGatewayService);
+		const credentialType = await aiGatewayService.getCredentialTypeForProvider(provider);
+		if (!credentialType) {
+			throw new UserError(`n8n Connect does not support the "${provider}" model provider.`);
+		}
+		return await aiGatewayService.getSyntheticCredential({
+			credentialType,
+			userId: this.user?.id,
+			projectId: this.projectId,
+		});
+	}
 
 	/**
 	 * Resolve a credential by ID, then decrypt and return the raw data.

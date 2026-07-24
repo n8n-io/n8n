@@ -1,9 +1,11 @@
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { mapCredentialForProvider } from '../json-config/credential-field-mapping';
@@ -23,13 +25,15 @@ export class BuilderModelLiveLookupService {
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly aiGatewayService: AiGatewayService,
 	) {}
 
 	/**
 	 * Returns `{ name, value }` pairs (value = the provider's model id, exactly
-	 * as the provider API expects it). Throws if the credential is not usable by
-	 * the user in the project, its type doesn't match, or the provider has no
-	 * model discovery support.
+	 * as the provider API expects it). For the n8n Connect managed tag, resolves
+	 * the synthetic gateway credential (so discovery hits the gateway's
+	 * allowlisted `/models`); otherwise the credential must be usable by the user
+	 * in the project, its type must match, and the provider must support discovery.
 	 */
 	async list(
 		user: User,
@@ -38,6 +42,12 @@ export class BuilderModelLiveLookupService {
 		credentialType: string,
 		provider: string,
 	): Promise<Array<{ name: string; value: string }>> {
+		// n8n Connect managed slot: there is no stored credential to decrypt —
+		// resolve the synthetic gateway credential instead, then discover as usual.
+		if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+			return await this.listAiGatewayManagedModels(projectId, provider, user);
+		}
+
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			user,
 			{ projectId },
@@ -53,6 +63,39 @@ export class BuilderModelLiveLookupService {
 		}
 		const rawData = await this.credentialsService.decrypt(credential, true);
 
+		return await this.discoverModels(provider, rawData);
+	}
+
+	/**
+	 * Lists the chat models n8n Connect (AI Gateway) allows for a provider, via
+	 * the synthetic gateway credential — discovery hits the gateway's `/models`,
+	 * already filtered to the allowlist. Throws if the gateway does not serve it.
+	 */
+	private async listAiGatewayManagedModels(
+		projectId: string,
+		provider: string,
+		user?: User,
+	): Promise<Array<{ name: string; value: string }>> {
+		const credentialType = await this.aiGatewayService.getCredentialTypeForProvider(provider);
+		if (!credentialType) {
+			throw new Error(`n8n Connect does not support the "${provider}" model provider`);
+		}
+		const raw = await this.aiGatewayService.getSyntheticCredential({
+			credentialType,
+			userId: user?.id,
+			projectId,
+		});
+		return await this.discoverModels(provider, raw);
+	}
+
+	/**
+	 * Runs provider model discovery against a raw credential record (real or the
+	 * gateway synthetic credential), returning `{ name, value }` pairs.
+	 */
+	private async discoverModels(
+		provider: string,
+		rawData: object,
+	): Promise<Array<{ name: string; value: string }>> {
 		const { listModelsForProvider } = await import('@n8n/ai-utilities/model-discovery');
 		const mapped = mapCredentialForProvider(provider, { apiKey: '', ...rawData });
 		const apiKey = typeof mapped.apiKey === 'string' ? mapped.apiKey : '';

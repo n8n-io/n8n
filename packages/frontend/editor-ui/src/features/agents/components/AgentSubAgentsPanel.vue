@@ -5,6 +5,7 @@ import {
 	SUB_AGENT_MAX_CHILDREN_MAX,
 	SUB_AGENT_MAX_CHILDREN_MIN,
 	SUB_AGENT_TASK_DIFFICULTIES,
+	AI_GATEWAY_MANAGED_TAG,
 	type SubAgentTaskDifficulty,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -62,10 +63,50 @@ const toast = useToast();
 const usersStore = useUsersStore();
 const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
 const projectIdRef = computed(() => props.projectId);
-const { credentialsByProvider } = useAgentModelCredentials(
+const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
 	usersStore.currentUserId ?? 'anonymous',
 	projectIdRef,
 );
+
+// A real credential picked before a model has no difficulty mapping to store yet.
+// Keep it here, isolated per-difficulty, so the subsequent model pick uses it
+// instead of the global fallback — without polluting the shared selection.
+const pendingDifficultyCredentials = ref<
+	Partial<Record<SubAgentTaskDifficulty, AgentCredentialsByProvider>>
+>({});
+
+function setPendingDifficultyCredential(
+	difficulty: SubAgentTaskDifficulty,
+	provider: AgentModelProvider,
+	credentialId: string,
+) {
+	pendingDifficultyCredentials.value = {
+		...pendingDifficultyCredentials.value,
+		[difficulty]: {
+			...pendingDifficultyCredentials.value[difficulty],
+			[provider]: credentialId,
+		},
+	};
+}
+
+function clearPendingDifficultyCredential(
+	difficulty: SubAgentTaskDifficulty,
+	provider: AgentModelProvider,
+) {
+	const current = pendingDifficultyCredentials.value[difficulty];
+	if (!current || !(provider in current)) return;
+	const { [provider]: _removed, ...rest } = current;
+	pendingDifficultyCredentials.value = {
+		...pendingDifficultyCredentials.value,
+		[difficulty]: rest,
+	};
+}
+
+function isManagedCredentialForDifficulty(difficulty: SubAgentTaskDifficulty): boolean {
+	return (
+		props.config?.subAgents?.modelsByDifficulty?.[difficulty]?.credential === AI_GATEWAY_MANAGED_TAG
+	);
+}
 const maxChildrenHintInterpolate = {
 	min: String(SUB_AGENT_MAX_CHILDREN_MIN),
 	max: String(SUB_AGENT_MAX_CHILDREN_MAX),
@@ -114,14 +155,20 @@ function credentialsForDifficulty(
 	difficulty: SubAgentTaskDifficulty,
 ): AgentCredentialsByProvider | null {
 	const global = credentialsByProvider.value;
+	// Layer a not-yet-mapped pending credential over the global fallback.
+	const pending = pendingDifficultyCredentials.value[difficulty];
+	const base: AgentCredentialsByProvider | null = pending
+		? { ...(global ?? {}), ...pending }
+		: global;
+
 	const mapping = props.config?.subAgents?.modelsByDifficulty?.[difficulty];
-	if (!mapping?.model) return global;
+	if (!mapping?.model) return base;
 
 	const parsed = parseModelString(mapping.model);
-	if (!parsed || !isAgentModelProvider(parsed.provider)) return global;
+	if (!parsed || !isAgentModelProvider(parsed.provider)) return base;
 
 	return {
-		...(global ?? {}),
+		...(base ?? {}),
 		[parsed.provider]: mapping.credential,
 	};
 }
@@ -225,6 +272,8 @@ function onDifficultyModelChange(
 
 	const model = `${selection.provider}/${sanitizeModelId(selection.provider, selection.model)}`;
 	emitModelsByDifficulty(difficulty, { model, credential: credentialId });
+	// The choice is now persisted in the mapping — drop the transient pending value.
+	clearPendingDifficultyCredential(difficulty, selection.provider);
 }
 
 function onDifficultySelectCredential(
@@ -234,18 +283,37 @@ function onDifficultySelectCredential(
 ) {
 	if (props.disabled) return;
 
+	// The n8n Connect managed tag has no per-difficulty storage until a model is
+	// chosen, so record it in the shared selection to unlock the model list (via
+	// the credentials fallback).
+	if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+		selectCredential(provider, credentialId);
+	}
+
 	const mapping = props.config?.subAgents?.modelsByDifficulty?.[difficulty];
-	if (!mapping?.model || !credentialId) return;
+	const mappingProvider = mapping?.model ? parseModelString(mapping.model)?.provider : undefined;
 
-	const parsed = parseModelString(mapping.model);
-	if (parsed?.provider !== provider) return;
+	// A model is already mapped for this provider → update its credential in place.
+	if (mapping?.model && mappingProvider === provider && credentialId) {
+		clearPendingDifficultyCredential(difficulty, provider);
+		emitModelsByDifficulty(difficulty, { ...mapping, credential: credentialId });
+		return;
+	}
 
-	emitModelsByDifficulty(difficulty, { ...mapping, credential: credentialId });
+	// No model chosen yet: remember a real credential per-difficulty so the next
+	// model pick uses it (the managed tag already flows via the shared selection).
+	if (credentialId && credentialId !== AI_GATEWAY_MANAGED_TAG) {
+		setPendingDifficultyCredential(difficulty, provider, credentialId);
+	}
 }
 
 function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 	if (props.disabled) return;
 
+	pendingDifficultyCredentials.value = {
+		...pendingDifficultyCredentials.value,
+		[difficulty]: {},
+	};
 	emitModelsByDifficulty(difficulty, undefined);
 }
 </script>
@@ -323,6 +391,7 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 							:project-id="projectId"
 							:warn-missing-credentials="true"
 							:disabled="disabled"
+							:is-managed-credential="isManagedCredentialForDifficulty(difficulty)"
 							:data-testid="`agent-sub-agents-difficulty-${difficulty}-model`"
 							@change="(selection) => onDifficultyModelChange(difficulty, selection)"
 							@select-credential="

@@ -532,4 +532,29 @@ describe('mapAgentChunkToEvent', () => {
 			},
 		});
 	});
+
+	it('surfaces the gateway error message from an ai-sdk error wrapped in error.cause', () => {
+		// The n8n Connect gateway returns an actionable message; the ai-sdk APICallError
+		// reaches the stream wrapped, so the details live on error.cause.
+		const responseBody = JSON.stringify({
+			error: {
+				message:
+					"n8n Connect doesn't currently support this operation. Switch to using your own credential to continue.",
+				type: 'ai_gateway_request_error',
+			},
+		});
+		const wrapped = new Error('Bad Request') as Error & { cause?: unknown };
+		wrapped.cause = apiError('Bad Request', 400, responseBody);
+
+		expect(map({ type: 'error', error: wrapped })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: {
+				content:
+					"n8n Connect doesn't currently support this operation. Switch to using your own credential to continue.",
+				technicalDetails: responseBody,
+			},
+		});
+	});
 });

@@ -64,6 +64,41 @@ describe('agent-sse-stream — stringifyError (via pumpChunks error chunk)', () 
 		// null passes the typeof === 'object' branch → JSON.stringify(null) = 'null'
 		expect(events).toEqual([{ type: 'error', message: 'null' }]);
 	});
+
+	it('surfaces the n8n Connect gateway message from an ai-sdk error responseBody', async () => {
+		const responseBody = JSON.stringify({
+			error: {
+				message:
+					"n8n Connect doesn't currently support this operation. Switch to using your own credential to continue.",
+				type: 'ai_gateway_request_error',
+			},
+		});
+		const error = Object.assign(new Error('Bad Request'), { responseBody });
+
+		const events = await collectEvents([{ type: 'error', error }]);
+
+		expect(events).toEqual([
+			{
+				type: 'error',
+				message:
+					"n8n Connect doesn't currently support this operation. Switch to using your own credential to continue.",
+			},
+		]);
+	});
+
+	it('surfaces the gateway message when the ai-sdk error is wrapped in error.cause', async () => {
+		const responseBody = JSON.stringify({
+			error: { message: 'Switch to using your own credential to continue.', type: 'x' },
+		});
+		const inner = Object.assign(new Error('Bad Request'), { responseBody });
+		const wrapped = new Error('Bad Request', { cause: inner });
+
+		const events = await collectEvents([{ type: 'error', error: wrapped }]);
+
+		expect(events).toEqual([
+			{ type: 'error', message: 'Switch to using your own credential to continue.' },
+		]);
+	});
 });
 
 describe('agent-sse-stream — stream completion', () => {

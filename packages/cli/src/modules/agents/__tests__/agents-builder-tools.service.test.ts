@@ -1,4 +1,3 @@
-import type { Mocked } from 'vitest';
 import type { CredentialProvider } from '@n8n/agents';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
@@ -13,12 +12,15 @@ import type {
 } from '@n8n/backend-network';
 import type { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { NodeTypes } from '@/node-types';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
+import type { AiService } from '@/services/ai.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
 import type { Telemetry } from '@/telemetry';
@@ -41,7 +43,6 @@ import type { BuilderModelLiveLookupService } from '../builder/builder-model-liv
 import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import type { AiService } from '@/services/ai.service';
 import * as checkAccess from '@/permissions.ee/check-access';
 
 const ctx = {
@@ -114,6 +115,7 @@ function makeService() {
 		agentTaskService,
 		agentPublishService,
 		aiService,
+		mock<AiGatewayService>(),
 		outboundHttp,
 		dynamicNodeParametersService,
 		nodeTypes,
