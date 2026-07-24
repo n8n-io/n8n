@@ -1129,16 +1129,24 @@ export class ActiveWorkflowManager {
 		// causing all webhooks to break
 		if (['init', 'leadershipChange'].includes(activationMode)) return true;
 
-		return this.instanceSettings.isLeader; // 'update' or 'activate'
+		// In a multi-main setup only the leader may register webhooks, so followers must not.
+		// In a single-main setup this instance is the sole owner of its webhooks regardless of
+		// the `isLeader` flag (which is only meaningful once multi-main is enabled), so it must
+		// register them on `activate`/`update` too. Without this, activating a workflow via the
+		// API in a single-main instance whose role was never set to `leader` would persist the
+		// active flag but leave the production webhook unregistered until a restart.
+		return !this.instanceSettings.isMultiMain || this.instanceSettings.isLeader;
 	}
 
 	/**
 	 * Whether this instance may add active, poll, and schedule triggers to memory.
 	 *
-	 * In both single- and multi-main setup, only the leader is allowed to manage
-	 * non-webhook triggers in memory, to ensure they are not duplicated.
+	 * In a multi-main setup only the leader is allowed to manage non-webhook triggers in
+	 * memory, to ensure they are not duplicated. In a single-main setup this instance always
+	 * owns them, so it must register them on `activate`/`update` even when the `isLeader` flag
+	 * is not set (e.g. queue execution mode without multi-main enabled).
 	 */
 	shouldAddNonWebhookTriggers() {
-		return this.instanceSettings.isLeader;
+		return !this.instanceSettings.isMultiMain || this.instanceSettings.isLeader;
 	}
 }
