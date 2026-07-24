@@ -213,6 +213,32 @@ describe('DbLockService', () => {
 			expect(mockTx.query).not.toHaveBeenCalled();
 			expect(fn).toHaveBeenCalledWith(mockTx);
 		});
+
+		it('should use the two-key try-lock form when subKey is provided', async () => {
+			databaseConfig.type = 'postgresdb';
+			const fn = vi.fn().mockResolvedValue('result');
+			mockTx.query.mockResolvedValueOnce([{ pg_try_advisory_xact_lock: true }]);
+
+			const result = await service.tryWithLock(1006, fn, { subKey: -999 });
+
+			expect(result).toBe('result');
+			expect(mockTx.query).toHaveBeenCalledWith(
+				'SELECT pg_try_advisory_xact_lock($1, $2)',
+				[1006, -999],
+			);
+			expect(fn).toHaveBeenCalledWith(mockTx);
+		});
+
+		it('should include both keys in the already-held error when subKey is provided', async () => {
+			databaseConfig.type = 'postgresdb';
+			const fn = vi.fn();
+			mockTx.query.mockResolvedValueOnce([{ pg_try_advisory_xact_lock: false }]);
+
+			await expect(service.tryWithLock(1006, fn, { subKey: -999 })).rejects.toThrow(
+				/DbLock 1006:-999 is already held/,
+			);
+			expect(fn).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('SQLite in-process mutex', () => {
@@ -285,6 +311,32 @@ describe('DbLockService', () => {
 			resolveFirst();
 			const results = await Promise.all([p1, p2, p3]);
 			expect(results).toEqual(['first', 'second', 'third']);
+		});
+
+		it('should scope tryWithLock by subKey (fail-fast per sub-scope)', async () => {
+			let resolveHold!: () => void;
+			const holding = new Promise<void>((r) => {
+				resolveHold = r;
+			});
+			const holder = vi.fn(async () => {
+				await holding;
+				return 'held';
+			});
+
+			// Hold subKey 1 via a blocking withLock.
+			const p1 = service.withLock(1006, holder, { subKey: 1 });
+			await new Promise((r) => setImmediate(r));
+			expect(holder).toHaveBeenCalled();
+
+			// Same subKey → tryWithLock can't acquire and fails fast.
+			await expect(service.tryWithLock(1006, vi.fn(), { subKey: 1 })).rejects.toThrow(
+				OperationalError,
+			);
+			// Different subKey → acquires immediately.
+			await expect(service.tryWithLock(1006, async () => 'ok', { subKey: 2 })).resolves.toBe('ok');
+
+			resolveHold();
+			await p1;
 		});
 
 		it('should not block different lockIds', async () => {

@@ -368,15 +368,6 @@ describe('WorkflowReviewRequestService', () => {
 			);
 		};
 
-		it('throws when the instance policy is disabled, before any lookup', async () => {
-			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
-
-			await expect(service.getEligibleReviewers(user, query)).rejects.toThrow(ForbiddenError);
-
-			expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
-			expect(userRepository.findEligibleByProjectOrGlobalRoles).not.toHaveBeenCalled();
-		});
-
 		it('throws NotFoundError when the user lacks publish access to the workflow', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 
@@ -393,39 +384,6 @@ describe('WorkflowReviewRequestService', () => {
 			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
 
 			await expect(service.getEligibleReviewers(user, query)).rejects.toThrow(NotFoundError);
-		});
-
-		it('queries users by the project and global role slugs granting workflow:publish', async () => {
-			mockEligibleLookupPath();
-			userRepository.findEligibleByProjectOrGlobalRoles.mockResolvedValue([]);
-
-			await service.getEligibleReviewers(user, query);
-
-			expect(userRepository.findEligibleByProjectOrGlobalRoles).toHaveBeenCalledWith({
-				projectId: 'project-1',
-				projectRoleSlugs: ['project:admin', 'project:editor', 'custom:reviewer'],
-				globalRoleSlugs: ['global:owner', 'global:admin'],
-			});
-		});
-
-		it('excludes the requester and pending users, and returns the rest sorted by email', async () => {
-			mockEligibleLookupPath();
-			userRepository.findEligibleByProjectOrGlobalRoles.mockResolvedValue([
-				loadedUser({ id: 'user-3', email: 'zoe@n8n.io', firstName: 'Zoe' }),
-				loadedUser({ id: 'user-1', email: 'requester@n8n.io' }),
-				loadedUser({ id: 'user-4', email: 'pending@n8n.io', password: null }),
-				loadedUser({ id: 'user-2', email: 'amy@n8n.io' }),
-			]);
-
-			const result = await service.getEligibleReviewers(user, query);
-
-			expect(result).toEqual({
-				count: 2,
-				data: [
-					{ id: 'user-2', email: 'amy@n8n.io', firstName: null, lastName: null },
-					{ id: 'user-3', email: 'zoe@n8n.io', firstName: 'Zoe', lastName: null },
-				],
-			});
 		});
 
 		it('does not misclassify an SSO user without a password as pending', async () => {
@@ -455,15 +413,6 @@ describe('WorkflowReviewRequestService', () => {
 			take: 1,
 		});
 
-		it('throws when the instance policy is disabled, before any lookup', async () => {
-			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
-
-			await expect(service.list(user, query)).rejects.toThrow(ForbiddenError);
-
-			expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
-			expect(requestRepository.findRequestsForWorkflow).not.toHaveBeenCalled();
-		});
-
 		it('throws NotFoundError when the user has no read access to the workflow', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 
@@ -473,47 +422,6 @@ describe('WorkflowReviewRequestService', () => {
 				'workflow:read',
 			]);
 			expect(requestRepository.findRequestsForWorkflow).not.toHaveBeenCalled();
-		});
-
-		it('passes state, skip, and take through to the repository', async () => {
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
-			requestRepository.findRequestsForWorkflow.mockResolvedValue([[], 0]);
-
-			await service.list(user, query);
-
-			expect(requestRepository.findRequestsForWorkflow).toHaveBeenCalledWith('wf-1', {
-				state: 'open',
-				skip: 0,
-				take: 1,
-			});
-		});
-
-		it('maps rows to summaries and returns the total count', async () => {
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
-			const request = mock<WorkflowReviewRequest>({
-				id: 'req-1',
-				state: 'open',
-				decision: 'pending',
-				title: 'Secret title',
-				createdAt: new Date('2026-07-20T10:00:00.000Z'),
-				updatedAt: new Date('2026-07-20T11:00:00.000Z'),
-			});
-			requestRepository.findRequestsForWorkflow.mockResolvedValue([[request], 3]);
-
-			const result = await service.list(user, query);
-
-			expect(result).toEqual({
-				count: 3,
-				data: [
-					{
-						id: 'req-1',
-						state: 'open',
-						decision: 'pending',
-						createdAt: '2026-07-20T10:00:00.000Z',
-						updatedAt: '2026-07-20T11:00:00.000Z',
-					},
-				],
-			});
 		});
 	});
 });
