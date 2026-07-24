@@ -1,13 +1,13 @@
 packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/versionDescription.ts
   s_61d0f858e68120::t_c4cfa68d2f8bd4 82-84,94
   s_61d0f858e68120::t_6e724f25afd8ff 6
-  s_61d0f858e68120::t_27d38b09b600bd 81
+  s_61d0f858e68120::t_18c52658bccb4f 81
 packages/nodes-base/nodes/Microsoft/SharePoint/v2/item/index.ts
   s_61d0f858e68120::t_079ea6bc595776 1-74
 packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/index.ts
   s_61d0f858e68120::t_8b8a501f626794 1-30,32
-  s_61d0f858e68120::t_97325405d6ffcd 31
-  s_61d0f858e68120::t_0a280d20fb80db 33-35
+  s_61d0f858e68120::t_9c44cb345fcd6a 31
+  s_61d0f858e68120::t_70939aa6efb7b9 33-35
 ---
 {
   "schema_version": "authorship/3.0.0",
