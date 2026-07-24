@@ -93,6 +93,7 @@ packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPub
   h_9c8f56e3400786 53,95
   s_b3f23ab76a494c::t_77508911ec9f79 742
   s_b3f23ab76a494c::t_db71fb05e80031 759
+  s_70e4a16a672757::t_bdf6c7bea8e71a 241,241
 packages/frontend/editor-ui/src/features/workflow-reviews/reviewStatus.store.test.ts
   s_b34abcbd386402::t_674eeeb742d79b 87-131
   s_b34abcbd386402::t_5a3475819703ac 1-86,132-175
@@ -385,6 +386,7 @@ packages/frontend/editor-ui/src/app/constants/localStorage.ts
   s_70e4a16a672757::t_489e68614b7d2b 40-41
   s_70e4a16a672757::t_706452e921bce7 42-43
   s_91f67565918eee::t_102841e08fe8e0 42-43
+  s_91f67565918eee::t_7841e24ee9fb32 42-43
 packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowPublishChoiceDialog.test.ts
   s_70e4a16a672757::t_a03d32108719b6 10,13-18,27,42,46-50
   s_70e4a16a672757::t_fb4dc791b159aa 1-9,11-12,19-26,28-41,43-45,51-52
@@ -400,6 +402,11 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowRev
   s_70e4a16a672757::t_960c6985deff23 1-5,7-37,42,44-47,44-47,49,49,51-71,51-71,78,78
   s_70e4a16a672757::t_5e8b00967df401 50
   s_70e4a16a672757::t_e9f6c3ccb75050 39-41
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_a2f2604c6a0758::t_de3019d0aa72db 231-234
+  s_a2f2604c6a0758::t_d8339cbae28916 255
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_b1ae3677d6bc36::t_f4ecbbe076e13c 47,51
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -557,6 +564,22 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowRev
       },
       "human_author": null
     },
+    "s_a2f2604c6a0758": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2eebeab3-c2f8-45bc-a543-37d531da2598",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    },
+    "s_b1ae3677d6bc36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14856d89-b227-4425-adeb-7f31ce9ea7b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
     "s_b34abcbd386402": {
       "agent_id": {
         "tool": "claude",
@@ -588,6 +611,14 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowRev
         "model": "gpt-5.6-sol"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_c7f2eb05574ce2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63ca9479-d174-4a0f-9349-54a47630f906",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
     },
     "s_d7309962fc8352": {
       "agent_id": {

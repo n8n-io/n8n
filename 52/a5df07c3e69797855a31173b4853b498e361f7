@@ -2,7 +2,7 @@ packages/frontend/@n8n/i18n/src/locales/en.json
   s_c7f2eb05574ce2::t_a6579a113c1f1a 4440-4441
 packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.test.ts
   s_c7f2eb05574ce2::t_4430948c597679 108-156
-  s_c7f2eb05574ce2::t_2e03c02acc8062 61-64
+  s_c7f2eb05574ce2::t_2e03c02acc8062 61-64,64
   s_c7f2eb05574ce2::t_e7ddda7579d55a 9-12,23
   s_c7f2eb05574ce2::t_001887b1b6433f 157
 packages/frontend/@n8n/design-system/src/components/N8nUserSelect/UserSelect.vue
@@ -11,7 +11,7 @@ packages/frontend/@n8n/design-system/src/components/N8nUserSelect/UserSelect.vue
 packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
   s_c7f2eb05574ce2::t_f29eef6bcd7e2c 2,16
   s_c7f2eb05574ce2::t_1d0b35dc30ff8c 31-38
-  s_c7f2eb05574ce2::t_79fbbe00c1665e 39-41
+  s_c7f2eb05574ce2::t_79fbbe00c1665e 39-41,41
 packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue
   s_c7f2eb05574ce2::t_dfd9095c7df5d9 2,10,13-14,22-25
   s_c7f2eb05574ce2::t_e9d0a58eeda5e6 130
@@ -27,6 +27,7 @@ packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPub
   h_9c8f56e3400786 121-122
   s_b6381fbb8ddc64::t_ee482984b97cbd 124
   s_b6381fbb8ddc64::t_809d0a0041ae07 7
+  s_b34abcbd386402::t_f65d763798858f 99
 packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
   s_70e4a16a672757::t_1114f6e615019a 81-82,224-227,495-505,507-511,575-576,599-610,612-619
   s_70e4a16a672757::t_40de41d139ecad 563,611
@@ -41,6 +42,9 @@ packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPub
   s_70e4a16a672757::t_e0f8efdf136a81 84-85
   s_70e4a16a672757::t_80ca5ad0b26e03 201
   s_70e4a16a672757::t_9d84826ed0653e 648
+  s_70e4a16a672757::t_baa616d62e6876 84-85
+  s_70e4a16a672757::t_2fcc749fa1c9d5 201
+  s_70e4a16a672757::t_8c8a72da8d37b5 648
 packages/@n8n/db/src/migrations/sqlite/index.ts
   s_44a98ba2784a12::t_d446b22a984aa3 216
   s_44a98ba2784a12::t_29c7d74109de94 437
@@ -114,6 +118,9 @@ docs/generated/postgres-schema/public.instance_ai_checkpoints.md
   s_44a98ba2784a12::t_16f911908620c5 9,49
 packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue
   s_744aa7ffad1673::t_ab502cabe8a978 75
+  s_744aa7ffad1673::t_d74ae10d998849 75
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_b1ae3677d6bc36::t_f4ecbbe076e13c 47,51
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -239,6 +246,38 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowRev
       },
       "human_author": null
     },
+    "s_91f67565918eee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36f4874d-45bc-43d2-bd2d-9c16d23d9c95",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_94fa4ed7d7b038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d271a69-d48a-40c6-b6a3-5630b148db23",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_b1ae3677d6bc36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14856d89-b227-4425-adeb-7f31ce9ea7b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_b34abcbd386402": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dc6fdb7-ff5f-45a8-98bf-0345038d38d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
     "s_b3f23ab76a494c": {
       "agent_id": {
         "tool": "codex",
@@ -268,6 +307,14 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowRev
         "tool": "cursor",
         "id": "500e2669-64fc-46e2-9484-cf22ebf66e89",
         "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_e0d6b46d5a1cd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9bef762-10a3-4006-8b74-acefd3594aab",
+        "model": "claude-fable-5"
       },
       "human_author": null
     }

@@ -1,16 +1,16 @@
 packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
   s_c7f2eb05574ce2::t_cb4a7b6aef8d16 107-137,194
-  s_c7f2eb05574ce2::t_00ea845ffd7ef8 178-193
+  s_c7f2eb05574ce2::t_00ea845ffd7ef8 178-193,182
   s_c7f2eb05574ce2::t_4b711ab798cec7 3,5,14,17,28,44-46,51-72,140
   s_c7f2eb05574ce2::t_19e3557a597412 235-240
   s_c7f2eb05574ce2::t_e2bf4397b2aefa 73
   s_c7f2eb05574ce2::t_22d37d257b0a87 138-139
   s_c7f2eb05574ce2::t_507a95c6fb86ff 141
-  s_c7f2eb05574ce2::t_ddb40a3717c8e5 195
-  s_c7f2eb05574ce2::t_e7e31b99dfb2f4 241
+  s_c7f2eb05574ce2::t_ddb40a3717c8e5 183,195
+  s_c7f2eb05574ce2::t_e7e31b99dfb2f4 195,241
   s_60c9025b151770::t_f47620be23b460 10-13,15-16,18-19,20-22,29-35,37-43,47,49-50,146-149,151-156,158-160,164-167,171-174,176-177,210,252-253,261-262
   s_2a235a6e9347be::t_800b92cfc074ab 24-27,150,157,161-163,168-170,175
-  s_b34abcbd386402::t_7bdead65e3c081 195
+  s_b34abcbd386402::t_7bdead65e3c081 183,195
 packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
   s_c7f2eb05574ce2::t_0759c7a798e271 225-229,231-244,246-252,255-280,282-295
   s_c7f2eb05574ce2::t_4bc3cca47fa98a 281
@@ -340,6 +340,14 @@ packages/frontend/editor-ui/src/features/workflow-reviews/reviewRequired.store.t
     }
   },
   "sessions": {
+    "s_12107b09095a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f36b6843-9b7a-45a5-8d52-4031db7468b2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
     "s_1ef72897374beb": {
       "agent_id": {
         "tool": "cursor",
@@ -361,6 +369,14 @@ packages/frontend/editor-ui/src/features/workflow-reviews/reviewRequired.store.t
         "tool": "codex",
         "id": "019f6650-1132-7ff1-ab94-090605cfc9f7",
         "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_41e37076417c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "480c8620-d708-419e-ac08-fca1f0d2cb0a",
+        "model": "claude-fable-5"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
@@ -395,6 +411,14 @@ packages/frontend/editor-ui/src/features/workflow-reviews/reviewRequired.store.t
         "model": "claude-sonnet-5-thinking-high"
       },
       "human_author": null
+    },
+    "s_6638f09b589e97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5e3f01e-f690-4590-9a30-a5e2bd26c393",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
     "s_70e4a16a672757": {
       "agent_id": {
