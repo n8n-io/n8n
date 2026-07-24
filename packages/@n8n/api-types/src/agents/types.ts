@@ -210,6 +210,8 @@ export interface AgentPersistedMessageDto {
 	id: string;
 	role: 'user' | 'assistant' | (string & {});
 	content: AgentPersistedMessageContentPart[];
+	/** Agent-execution turn id when this message was produced from an execution transcript. */
+	executionId?: string;
 }
 
 export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-6' as const;

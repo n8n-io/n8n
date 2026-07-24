@@ -2,6 +2,7 @@ export const STORES = {
 	COMMUNITY_NODES: 'communityNodes',
 	ROOT: 'root',
 	SETTINGS: 'settings',
+	NOTIFICATIONS: 'notifications',
 	UI: 'ui',
 	USERS: 'users',
 	WORKFLOWS: 'workflows',

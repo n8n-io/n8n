@@ -1,4 +1,9 @@
 import type {
+<<<<<<< HEAD
+=======
+	GetWorkflowReviewInboxSummaryResponse,
+	ListWorkflowReviewInboxResponse,
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 	WorkflowReviewEligibleReviewersList,
 	WorkflowReviewRequestList,
 	WorkflowReviewRequestState,
@@ -16,6 +21,16 @@ export interface CreateWorkflowReviewRequestPayload {
 	reviewerUserIds?: string[];
 }
 
+<<<<<<< HEAD
+=======
+export type FetchWorkflowReviewInboxParams = {
+	state?: WorkflowReviewRequestState;
+	limit?: number;
+	cursor?: string;
+};
+
+/** Workflow-scoped list used by review-required toggle sync. */
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 export async function fetchWorkflowReviewRequests(
 	context: IRestApiContext,
 	query: { workflowId: string; state?: WorkflowReviewRequestState; take?: number; skip?: number },
@@ -51,3 +66,20 @@ export async function createWorkflowReviewRequest(
 		{ ...payload },
 	);
 }
+<<<<<<< HEAD
+=======
+
+export async function fetchWorkflowReviewInboxSummary(
+	context: IRestApiContext,
+): Promise<GetWorkflowReviewInboxSummaryResponse> {
+	return await makeRestApiRequest(context, 'GET', '/workflow-review-requests/summary');
+}
+
+/** Cross-project inbox list. */
+export async function fetchWorkflowReviewInbox(
+	context: IRestApiContext,
+	params: FetchWorkflowReviewInboxParams,
+): Promise<ListWorkflowReviewInboxResponse> {
+	return await makeRestApiRequest(context, 'GET', '/workflow-review-requests/inbox', params);
+}
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa

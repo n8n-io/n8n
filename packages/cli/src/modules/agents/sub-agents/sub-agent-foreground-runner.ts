@@ -1,9 +1,11 @@
 import {
 	assertSubAgentTaskPath,
 	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
+	deriveSubAgentTelemetry,
 	renderDelegateSubAgentPrompt,
 	type AgentExecutionCounter,
 	type AgentMessage,
+	type BuiltTelemetry,
 	type CredentialProvider,
 	type GenerateResult,
 	type SubAgentTaskPath,
@@ -31,6 +33,12 @@ export interface SubAgentForegroundRunContext {
 	executionCounter?: AgentExecutionCounter;
 	/** Parent run's abort signal — cancelling the parent cancels this child. */
 	abortSignal?: AbortSignal;
+	/**
+	 * Parent's live, resolved telemetry, forwarded per-request. Derived (via
+	 * `deriveSubAgentTelemetry`) into the child's own telemetry so it shares the
+	 * parent's tracer and nests under the parent's delegate-tool-call span.
+	 */
+	telemetry?: BuiltTelemetry;
 	/**
 	 * Interactive n8n user of the delegating parent run; used to filter the
 	 * sub-agent's node/workflow tools by their access. Absent when the parent
@@ -115,11 +123,13 @@ export class SubAgentForegroundRunner {
 
 		// Abort the child when the parent run is cancelled.
 		const abortSignal = context.abortSignal;
+		const telemetry = deriveSubAgentTelemetry(context.telemetry);
 
 		const prompt = renderDelegateSubAgentPrompt(request);
 		try {
 			const resultStream = await agent.stream(prompt, {
 				...(abortSignal !== undefined ? { abortSignal } : {}),
+				...(telemetry !== undefined ? { telemetry } : {}),
 				persistence: {
 					resourceId,
 					threadId,

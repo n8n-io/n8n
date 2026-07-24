@@ -5,6 +5,7 @@ import { Container } from '@n8n/di';
 
 import { JwtService } from '@/services/jwt.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { UrlService } from '@/services/url.service';
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -285,6 +286,9 @@ describe('POST /rest/consent/approve', () => {
 		expect(redirectUrl.searchParams.get('code')).toBeTruthy();
 		expect(redirectUrl.searchParams.get('code')?.length).toBeGreaterThan(32);
 		expect(redirectUrl.searchParams.get('state')).toBe('test-state');
+		expect(redirectUrl.searchParams.get('iss')).toBe(
+			Container.get(UrlService).getInstanceBaseUrl(),
+		);
 	});
 
 	test('should handle consent denial and return error redirect URL', async () => {
@@ -304,6 +308,9 @@ describe('POST /rest/consent/approve', () => {
 		expect(redirectUrl.searchParams.get('error')).toBe('access_denied');
 		expect(redirectUrl.searchParams.get('error_description')).toBeTruthy();
 		expect(redirectUrl.searchParams.get('state')).toBe('test-state');
+		expect(redirectUrl.searchParams.get('iss')).toBe(
+			Container.get(UrlService).getInstanceBaseUrl(),
+		);
 	});
 
 	test('should clear session cookie after processing consent', async () => {

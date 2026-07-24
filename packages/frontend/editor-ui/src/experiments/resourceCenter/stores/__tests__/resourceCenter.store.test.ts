@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useResourceCenterStore } from '../resourceCenter.store';
-import { TELEMETRY_EVENTS } from '@/app/constants';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 const mocks = vi.hoisted(() => ({
 	track: vi.fn(),
@@ -98,7 +98,11 @@ describe('resourceCenter.store', () => {
 			useResourceCenterStore();
 
 			expect(mocks.track).not.toHaveBeenCalledWith(
-				TELEMETRY_EVENTS.IS_PART_OF_EXPERIMENT,
+				TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT,
+				expect.anything(),
+			);
+			expect(mocks.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT.name,
 				expect.anything(),
 			);
 		});

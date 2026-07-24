@@ -12,7 +12,11 @@ import { defineStore } from 'pinia';
 import type { NotificationHandle } from 'element-plus';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
+<<<<<<< HEAD
 import type { ModalKey } from '@/Interface';
+=======
+import type { ModalOpeners } from '@/Interface';
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 import { computed, ref } from 'vue';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -73,12 +77,20 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 			);
 		}
 	};
+<<<<<<< HEAD
 	const modalOpeners = ref<VersionsModalOpeners>({
+=======
+	const modalOpeners = ref<ModalOpeners>({
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 		openModal: (name) => warnModalOpenerMissing(`openModal(${String(name)})`),
 		openModalWithData: (payload) =>
 			warnModalOpenerMissing(`openModalWithData(${String(payload.name)})`),
 	});
+<<<<<<< HEAD
 	const registerModalOpeners = (openers: VersionsModalOpeners) => {
+=======
+	const registerModalOpeners = (openers: ModalOpeners) => {
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 		modalOpeners.value = openers;
 	};
 	const readWhatsNewArticlesStorage = useStorage(LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES);

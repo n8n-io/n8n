@@ -3,7 +3,11 @@ import type {
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	ListWorkflowReviewRequestsQueryDto,
 } from '@n8n/api-types';
+<<<<<<< HEAD
 import type { Logger } from '@n8n/backend-common';
+=======
+import type { LicenseState, Logger } from '@n8n/backend-common';
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 import type {
 	AuthIdentity,
 	DbLockService,
@@ -26,6 +30,10 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+<<<<<<< HEAD
+=======
+import type { ProjectService } from '@/services/project.service.ee';
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 import type { RoleService } from '@/services/role.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -59,6 +67,11 @@ describe('WorkflowReviewRequestService', () => {
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const userRepository = mock<UserRepository>();
 	const roleService = mock<RoleService>();
+<<<<<<< HEAD
+=======
+	const projectService = mock<ProjectService>();
+	const licenseState = mock<LicenseState>();
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 	const dbLockService = mock<DbLockService>();
 	const collaborationService = mock<CollaborationService>();
 	const logger = mock<Logger>();
@@ -76,12 +89,19 @@ describe('WorkflowReviewRequestService', () => {
 		reviewerRepository,
 		userRepository,
 		roleService,
+<<<<<<< HEAD
+=======
+		projectService,
+		licenseState,
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 		dbLockService,
 		collaborationService,
 	);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
+		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		// Feature enabled by default; the disabled path is exercised explicitly.
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		// By default, run the critical section against the mocked transaction.

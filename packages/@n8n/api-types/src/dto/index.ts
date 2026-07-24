@@ -295,6 +295,10 @@ export type { EncryptionKeyResponseDto } from './encryption/encryption-key-respo
 export { CreateWorkflowReviewRequestDto } from './workflow-reviews/create-workflow-review-request.dto';
 export { GetWorkflowReviewEligibleReviewersQueryDto } from './workflow-reviews/get-eligible-reviewers-query.dto';
 export { ListWorkflowReviewRequestsQueryDto } from './workflow-reviews/list-workflow-review-requests-query.dto';
+<<<<<<< HEAD
+=======
+export * from './workflow-reviews/list-workflow-review-inbox.dto';
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 
 export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';

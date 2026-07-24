@@ -1451,7 +1451,8 @@ describe('CredentialEdit', () => {
 
 				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
 
-				await userEvent.click(getByTestId('credential-type-card-fixed'));
+				await userEvent.click(getByTestId('credential-type-select'));
+				await userEvent.click(getByTestId('credential-type-option-fixed'));
 
 				await waitFor(() =>
 					expect(screen.getByTestId('credential-type-to-confirm-dialog')).toBeInTheDocument(),
@@ -1481,7 +1482,8 @@ describe('CredentialEdit', () => {
 
 				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
 
-				await userEvent.click(getByTestId('credential-type-card-fixed'));
+				await userEvent.click(getByTestId('credential-type-select'));
+				await userEvent.click(getByTestId('credential-type-option-fixed'));
 
 				expect(screen.queryByTestId('credential-type-to-confirm-dialog')).not.toBeInTheDocument();
 			});
@@ -1511,9 +1513,10 @@ describe('CredentialEdit', () => {
 				});
 
 				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
-				await retry(() => expect(getByTestId('credential-type-card-end-user')).toBeVisible());
+				await retry(() => expect(getByTestId('credential-type-select')).toBeVisible());
 
-				await userEvent.click(getByTestId('credential-type-card-end-user'));
+				await userEvent.click(getByTestId('credential-type-select'));
+				await userEvent.click(getByTestId('credential-type-option-endUser'));
 
 				await retry(() => expect(queryByTestId('oauth-not-connected-banner')).toBeVisible());
 				expect(queryByTestId('oauth-connect-success-banner')).not.toBeVisible();

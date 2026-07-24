@@ -42,6 +42,7 @@ describe('execution-to-message-mapper', () => {
 				id: 'execution-1:user',
 				role: 'user',
 				content: [{ type: 'text', text: 'Hello' }],
+				executionId: 'execution-1',
 			},
 			{
 				id: 'execution-1:assistant',
@@ -60,6 +61,7 @@ describe('execution-to-message-mapper', () => {
 					},
 					{ type: 'text', text: 'Done.' },
 				],
+				executionId: 'execution-1',
 			},
 		]);
 	});
@@ -88,6 +90,7 @@ describe('execution-to-message-mapper', () => {
 				id: 'execution-1:user',
 				role: 'user',
 				content: [{ type: 'text', text: 'Hello' }],
+				executionId: 'execution-1',
 			},
 			{
 				id: 'execution-1:assistant',
@@ -104,6 +107,7 @@ describe('execution-to-message-mapper', () => {
 						error: 'Tool failed',
 					},
 				],
+				executionId: 'execution-1',
 			},
 		]);
 	});
@@ -185,6 +189,7 @@ describe('execution-to-message-mapper', () => {
 				id: 'execution-suspended:user',
 				role: 'user',
 				content: [{ type: 'text', text: 'Show me an action' }],
+				executionId: 'execution-suspended',
 			},
 			{
 				id: 'execution-suspended:assistant',
@@ -212,11 +217,13 @@ describe('execution-to-message-mapper', () => {
 						output: { type: 'button', value: 'approve' },
 					},
 				],
+				executionId: 'execution-suspended',
 			},
 			{
 				id: 'execution-resumed:assistant',
 				role: 'assistant',
 				content: [{ type: 'text', text: 'Approved.' }],
+				executionId: 'execution-resumed',
 			},
 		]);
 	});
