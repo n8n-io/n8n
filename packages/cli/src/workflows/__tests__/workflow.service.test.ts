@@ -1469,4 +1469,101 @@ describe('WorkflowService', () => {
 			]);
 		});
 	});
+
+	describe('update() hook', () => {
+		let workflowService: WorkflowService;
+		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
+		let externalHooksMock: MockProxy<ExternalHooks>;
+		let ownershipServiceMock: MockProxy<OwnershipService>;
+		let licenseStateMock: MockProxy<LicenseState>;
+		let workflowRepositoryMock: MockProxy<{ update: Mock; findOne: Mock }>;
+
+		const WORKFLOW_ID = 'workflow-1';
+
+		beforeEach(() => {
+			workflowFinderServiceMock = mock<WorkflowFinderService>();
+			externalHooksMock = mock<ExternalHooks>();
+			ownershipServiceMock = mock<OwnershipService>();
+			ownershipServiceMock.getWorkflowProjectCached.mockResolvedValue(
+				mock<Project>({ id: 'project-1' }),
+			);
+			licenseStateMock = mock<LicenseState>();
+			licenseStateMock.isSharingLicensed.mockReturnValue(false);
+			workflowRepositoryMock = mock();
+
+			workflowService = new WorkflowService(
+				mock(), // logger
+				mock(), // sharedWorkflowRepository
+				workflowRepositoryMock as never, // workflowRepository
+				mock(), // workflowTagMappingRepository
+				ownershipServiceMock, // ownershipService
+				mock(), // tagService
+				mock(), // workflowHistoryService
+				externalHooksMock, // externalHooks
+				mock(), // activeWorkflowManager
+				mock(), // roleService
+				mock(), // projectService
+				mock(), // executionPersistence
+				mock(), // eventService
+				mock(), // globalConfig
+				mock(), // folderRepository
+				workflowFinderServiceMock, // workflowFinderService
+				mock(), // workflowPublishHistoryRepository
+				mock(), // outboxRepository
+				Object.assign(mock<WorkflowValidationService>(), {
+					validateCredentialNodeRestrictions: () => ({ isValid: true }),
+				}), // workflowValidationService
+				mock(), // nodeTypes
+				mock(), // webhookService
+				licenseStateMock, // licenseState
+				mock(), // projectRepository
+				mock(), // redactionEnforcementService
+				mock(), // workflowPublicationNotifier
+				mock(), // scheduleTriggerJobRegistrar
+			);
+		});
+
+		test('forwards the acting user to the update and afterUpdate hooks', async () => {
+			const workflow = mock<WorkflowEntity>({
+				id: WORKFLOW_ID,
+				isArchived: false,
+				versionId: 'v1',
+				nodes: [],
+				connections: {},
+				settings: {},
+				activeVersionId: undefined as unknown as string,
+				tags: [],
+			});
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+
+			const user = mock<User>({
+				id: 'user-1',
+				email: 'actor@example.com',
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+				role: mock<Role>({ slug: 'global:admin' }),
+			});
+
+			await workflowService.update(
+				user,
+				{ nodes: [], connections: {} } as unknown as WorkflowEntity,
+				WORKFLOW_ID,
+			);
+
+			const expectedActor: WorkflowLifecycleHookActor = {
+				id: 'user-1',
+				email: 'actor@example.com',
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+				role: 'global:admin',
+			};
+			const updateCall = externalHooksMock.run.mock.calls.find((c) => c[0] === 'workflow.update');
+			const afterUpdateCall = externalHooksMock.run.mock.calls.find(
+				(c) => c[0] === 'workflow.afterUpdate',
+			);
+			expect(updateCall?.[1]?.[1]).toEqual(expectedActor);
+			expect(afterUpdateCall?.[1]?.[1]).toEqual(expectedActor);
+		});
+	});
 });

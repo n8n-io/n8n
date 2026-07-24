@@ -517,7 +517,10 @@ export class WorkflowService {
 		}
 
 		// Run external hook after all validation has passed, right before persisting
-		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
+		await this.externalHooks.run('workflow.update', [
+			workflowUpdateData,
+			toWorkflowLifecycleHookActor(user),
+		]);
 
 		const fieldsToUpdate = [
 			'name',
@@ -601,7 +604,10 @@ export class WorkflowService {
 				requestOrder: tagIds,
 			});
 		}
-		await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
+		await this.externalHooks.run('workflow.afterUpdate', [
+			updatedWorkflow,
+			toWorkflowLifecycleHookActor(user),
+		]);
 
 		const settingsChangesDetail = this.calculateSettingsChanges(
 			workflow.settings,

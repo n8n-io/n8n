@@ -104,12 +104,12 @@ type ExternalHooksMap = {
 	'user.password.update': [updatedEmail: string, updatedPassword: string | null];
 	'user.invited': [emails: string[]];
 
-	'workflow.create': [createdWorkflow: IWorkflowBase];
-	'workflow.afterCreate': [createdWorkflow: IWorkflowBase];
+	'workflow.create': [createdWorkflow: IWorkflowBase, actor?: WorkflowLifecycleHookActor];
+	'workflow.afterCreate': [createdWorkflow: IWorkflowBase, actor?: WorkflowLifecycleHookActor];
 	'workflow.activate': [updatedWorkflow: IWorkflowBase, actor?: WorkflowLifecycleHookActor];
 	'workflow.deactivate': [deactivatedWorkflow: IWorkflowBase, actor?: WorkflowLifecycleHookActor];
-	'workflow.update': [updatedWorkflow: IWorkflowBase];
-	'workflow.afterUpdate': [updatedWorkflow: IWorkflowBase];
+	'workflow.update': [updatedWorkflow: IWorkflowBase, actor?: WorkflowLifecycleHookActor];
+	'workflow.afterUpdate': [updatedWorkflow: IWorkflowBase, actor?: WorkflowLifecycleHookActor];
 	'workflow.delete': [workflowId: string, actor?: WorkflowLifecycleHookActor];
 	'workflow.afterDelete': [workflowId: string, actor?: WorkflowLifecycleHookActor];
 	'workflow.afterArchive': [workflowId: string, actor?: WorkflowLifecycleHookActor];
