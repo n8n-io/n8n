@@ -25,6 +25,8 @@ export class Webhook extends BaseCommand {
 
 	override needsCommunityPackages = true;
 
+	override seedsInstanceIdentity = true;
+
 	/**
 	 * Stops n8n in a graceful way.
 	 * Make for example sure that all the webhooks from third party services

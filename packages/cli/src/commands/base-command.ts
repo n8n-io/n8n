@@ -87,6 +87,12 @@ export abstract class BaseCommand<F = never> {
 	/** Whether to init task runner. */
 	protected needsTaskRunner = false;
 
+	/**
+	 * Whether to seed missing `instance.id` / `signing.hmac` deployment-key rows.
+	 * Only server processes hold the encryption key these are derived from.
+	 */
+	protected seedsInstanceIdentity = false;
+
 	async init(): Promise<void> {
 		this.dbConnection = Container.get(DbConnection);
 		this.errorReporter = Container.get(ErrorReporter);
@@ -167,9 +173,19 @@ export abstract class BaseCommand<F = never> {
 					await this.exitWithCrash('There was an error running database migrations', error),
 			);
 
-		// Apply the persisted instance identity so every command (e.g. license:info,
-		// license:clear) sees the same instanceId as the running server.
-		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
+		// Apply the persisted instance identity so every command (e.g. license:info)
+		// sees the same instanceId as the running server. Non-fatal for one-off
+		// commands, which must keep working with restricted DB credentials.
+		try {
+			await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository), {
+				canSeed: this.seedsInstanceIdentity,
+			});
+		} catch (error) {
+			if (this.seedsInstanceIdentity) throw error;
+			this.logger.warn('Could not read the instance identity from the DB, using derived values', {
+				error: ensureError(error),
+			});
+		}
 
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
 

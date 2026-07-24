@@ -28,6 +28,7 @@ import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { WorkflowRunner } from '@/workflow-runner';
 
+import { BaseCommand } from '../base-command';
 import { Execute } from '../execute';
 
 const taskRunnerModule = mockInstance(TaskRunnerModule);
@@ -102,4 +103,23 @@ test('should start a task runner', async () => {
 	// assert
 
 	expect(taskRunnerModule.start).toHaveBeenCalledTimes(1);
+});
+
+test('should not seed the instance identity and should tolerate deployment key read errors', async () => {
+	// arrange
+
+	deploymentKeyRepository.insertOrIgnore.mockClear();
+	deploymentKeyRepository.findActiveByType.mockRejectedValueOnce(new Error('permission denied'));
+
+	// minimal command: Execute.init() chains singletons that cannot init twice per process
+	class ReadOnlyCommand extends BaseCommand {}
+	const cmd = new ReadOnlyCommand();
+
+	// act
+
+	await cmd.init();
+
+	// assert
+
+	expect(deploymentKeyRepository.insertOrIgnore).not.toHaveBeenCalled();
 });

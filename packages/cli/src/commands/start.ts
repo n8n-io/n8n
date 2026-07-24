@@ -71,6 +71,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsTaskRunner = true;
 
+	override seedsInstanceIdentity = true;
+
 	private getEditorUrl = () => Container.get(UrlService).getInstanceBaseUrl();
 
 	/**
