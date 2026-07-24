@@ -642,11 +642,18 @@ export class Expression {
 		// Execute the expression
 		const extendedExpression = extendSyntax(parameterValue);
 		let returnValue;
-		this.evaluationDepth++;
-		try {
+		// Guard the mutation: in the editor this instance is Vue-reactive, and an
+		// unconditional write here self-invalidates the canvas render computed,
+		// looping it forever. Depth is only read inside a trusted scope anyway.
+		if (this.inTrustedTemplateScope) {
+			this.evaluationDepth++;
+			try {
+				returnValue = this.renderExpression(extendedExpression, data, trustedTemplate);
+			} finally {
+				this.evaluationDepth--;
+			}
+		} else {
 			returnValue = this.renderExpression(extendedExpression, data, trustedTemplate);
-		} finally {
-			this.evaluationDepth--;
 		}
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === 'DateTime')
