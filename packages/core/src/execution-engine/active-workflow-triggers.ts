@@ -402,7 +402,15 @@ export class ActiveWorkflowTriggers {
 				try {
 					await executePollTrigger(true);
 				} catch (error) {
-					await pollJobManager.remove(workflowId, node.id);
+					try {
+						await pollJobManager.remove(workflowId, node.id);
+					} catch (removeError) {
+						const reportedError = ensureError(removeError);
+						this.errorReporter.error(reportedError, { extra: { workflowId, nodeId: node.id } });
+						this.logger.error(
+							`Could not deprovision scheduled job of workflow "${workflowId}" node "${node.id}" after failed activation because of error: "${reportedError.message}"`,
+						);
+					}
 					throw error;
 				}
 			}
