@@ -221,6 +221,7 @@ jobs:
               -e EXECUTIONS_DATA_PRUNE=true \
               -e EXECUTIONS_DATA_MAX_AGE=1 \
               -e E2E_TESTS=true \
+              -e NODE_ENV=development \
               -e N8N_ENABLED_MODULES=instance-ai \
               -e N8N_AI_ENABLED=true \
               -e N8N_INSTANCE_AI_MODEL_API_KEY="$EVALS_ANTHROPIC_KEY" \

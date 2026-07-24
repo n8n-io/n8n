@@ -97,6 +97,7 @@ INCLUDE_TEST_CONTROLLER=true pnpm build:docker
 # Start a container (E2E_TESTS=true exposes /rest/e2e/reset)
 docker run -d --name n8n-eval \
   -e E2E_TESTS=true \
+  -e NODE_ENV=development \
   -e N8N_ENABLED_MODULES=instance-ai \
   -e N8N_AI_ENABLED=true \
   -e N8N_INSTANCE_AI_MODEL_API_KEY=your-key \

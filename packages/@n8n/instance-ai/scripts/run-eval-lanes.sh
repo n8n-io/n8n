@@ -346,6 +346,7 @@ for port in "${PORTS[@]}"; do
 		-e EXECUTIONS_DATA_PRUNE=true \
 		-e EXECUTIONS_DATA_MAX_AGE=1 \
 		-e E2E_TESTS=true \
+		-e NODE_ENV=development \
 		-e N8N_USER_FOLDER=/home/node/.n8n \
 		-p "${port}:5678" \
 		"$IMAGE" >/dev/null
