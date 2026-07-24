@@ -10,7 +10,6 @@ import {
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
-import { getEventValidationError } from '@n8n/telemetry';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import type { AxiosRequestConfig } from 'axios';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -566,7 +565,7 @@ export class Telemetry {
 		const eventName = typeof event === 'string' ? event : event.name;
 
 		if (typeof event !== 'string') {
-			const validationError = getEventValidationError(event, properties);
+			const validationError = event.getValidationError(properties);
 			if (validationError) this.logger.warn(validationError);
 		}
 

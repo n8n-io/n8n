@@ -1,7 +1,6 @@
 import type { Plugin } from 'vue';
 import type { ITelemetrySettings } from '@n8n/api-types';
 import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
-import { getEventValidationError } from '@n8n/telemetry';
 import { POSTHOG_EVENTS_BLACKLIST } from '@n8n/telemetry';
 import type { ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
@@ -116,7 +115,7 @@ export class TelemetryService implements Telemetry {
 		const eventName = typeof event === 'string' ? event : event.name;
 
 		if (typeof event !== 'string') {
-			const validationError = getEventValidationError(event, properties);
+			const validationError = event.getValidationError(properties);
 			if (validationError) console.warn(validationError);
 		}
 

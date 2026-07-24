@@ -1,6 +1,6 @@
 import { z } from 'zod/v4';
 
-import type { TelemetryEventDef } from './define';
+import type { TelemetryEventInput } from './define';
 
 type ValidationPath = Array<string | number>;
 type ObjectSchema = z.ZodObject<Record<string, z.ZodType>>;
@@ -128,7 +128,7 @@ function getUnrecognizedPropertyIssues(
 }
 
 export function getEventValidationError(
-	event: TelemetryEventDef,
+	event: TelemetryEventInput,
 	properties: unknown,
 ): string | null {
 	const issues: string[] = [];
