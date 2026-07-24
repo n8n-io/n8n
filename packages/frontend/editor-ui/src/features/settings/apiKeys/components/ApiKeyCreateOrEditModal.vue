@@ -3,7 +3,7 @@ import ApiKeyScopes from './ApiKeyScopes.vue';
 import RevokeApiKeyConfirmModal from './RevokeApiKeyConfirmModal.vue';
 import Modal from '@/app/components/Modal.vue';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -23,7 +23,7 @@ import type { ApiKeyScope } from '@n8n/permissions';
 import { ElDatePicker } from 'element-plus';
 import {
 	N8nButton,
-	N8nIconButton,
+	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
 	N8nOption,
@@ -277,9 +277,22 @@ const apiKeyDisplay = computed(() =>
 	isApiKeyTruncated.value ? `${apiKeyStart.value}...${apiKeyEnd.value}` : rawApiKey.value,
 );
 
+// After a successful copy the button's icon morphs into a check mark for a
+// moment, then morphs back — immediate feedback right where the user clicked.
+const showCopiedFeedback = ref(false);
+const COPIED_FEEDBACK_MS = 2000;
+let copiedFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
+
+onBeforeUnmount(() => clearTimeout(copiedFeedbackTimer));
+
 async function copyApiKey() {
 	if (!rawApiKey.value) return;
 	await clipboard.copy(rawApiKey.value);
+	showCopiedFeedback.value = true;
+	clearTimeout(copiedFeedbackTimer);
+	copiedFeedbackTimer = setTimeout(() => {
+		showCopiedFeedback.value = false;
+	}, COPIED_FEEDBACK_MS);
 	showMessage({
 		title: i18n.baseText('settings.api.view.copy.toast'),
 		type: 'success',
@@ -374,13 +387,36 @@ async function handleEnterKey(event: KeyboardEvent) {
 						data-test-id="copy-input"
 					>
 						<template #append>
-							<N8nIconButton
-								icon="copy"
+							<N8nButton
 								variant="ghost"
 								size="large"
-								:aria-label="i18n.baseText('generic.copy')"
+								icon-only
+								:aria-label="
+									showCopiedFeedback
+										? i18n.baseText('generic.copiedToClipboard')
+										: i18n.baseText('generic.copy')
+								"
+								data-test-id="copy-api-key-button"
 								@click="copyApiKey"
-							/>
+							>
+								<template #icon>
+									<span :class="$style.copyIconSwap">
+										<Transition
+											:enter-active-class="$style.swapEnterActive"
+											:leave-active-class="$style.swapLeaveActive"
+										>
+											<N8nIcon
+												v-if="showCopiedFeedback"
+												key="check"
+												icon="check"
+												size="large"
+												color="success"
+											/>
+											<N8nIcon v-else key="copy" icon="copy" size="large" />
+										</Transition>
+									</span>
+								</template>
+							</N8nButton>
 						</template>
 					</N8nInput>
 				</div>
@@ -521,6 +557,8 @@ async function handleEnterKey(event: KeyboardEvent) {
 	</Modal>
 </template>
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
+
 .notice {
 	margin: 0;
 }
@@ -558,6 +596,30 @@ async function handleEnterKey(event: KeyboardEvent) {
 		margin: 0;
 		padding: 0;
 	}
+}
+
+/*
+ * Copy -> check swap: both icons overlap in the same spot (the leaving one is
+ * absolutely positioned) and crossfade through the design system's blur-swap
+ * motion. The blur is tightened for the 16px glyph — the surface-level 4px
+ * default dissolves an icon this small instead of morphing it.
+ */
+.copyIconSwap {
+	--animation--blur-swap--blur: 2px;
+
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.swapEnterActive {
+	@include motion.blur-swap-in;
+}
+
+.swapLeaveActive {
+	position: absolute;
+	@include motion.blur-swap-out;
 }
 
 .form {

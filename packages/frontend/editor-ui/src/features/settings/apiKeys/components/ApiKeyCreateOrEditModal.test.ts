@@ -5,6 +5,8 @@ import { STORES } from '@n8n/stores';
 import { mockedStore, retry } from '@/__tests__/utils';
 import ApiKeyEditModal from './ApiKeyCreateOrEditModal.vue';
 import userEvent from '@testing-library/user-event';
+import { fireEvent } from '@testing-library/vue';
+import { nextTick } from 'vue';
 
 import { useApiKeysStore } from '../apiKeys.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -19,6 +21,11 @@ vi.mock('@/app/composables/useTelemetry', () => {
 		useTelemetry: () => ({ track }),
 	};
 });
+
+const clipboardCopy = vi.fn();
+vi.mock('@n8n/composables/useClipboard', () => ({
+	useClipboard: () => ({ copy: clipboardCopy }),
+}));
 
 const renderComponent = createComponentRenderer(ApiKeyEditModal, {
 	pinia: createTestingPinia({
@@ -290,6 +297,35 @@ describe('ApiKeyCreateOrEditModal', () => {
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
 		expect(getByDisplayValue('123456')).toBeInTheDocument();
+	});
+
+	test('flips the copy button to a check mark after copying, then back', async () => {
+		vi.useFakeTimers();
+		try {
+			const { getByTestId } = renderComponent({
+				props: {
+					mode: 'new',
+					rotatedApiKey: testApiKey,
+				},
+			});
+			await nextTick();
+
+			const copyButton = getByTestId('copy-api-key-button');
+			expect(copyButton).toHaveAccessibleName('Copy');
+
+			await fireEvent.click(copyButton);
+			await nextTick();
+
+			expect(clipboardCopy).toHaveBeenCalledWith('123456');
+			expect(copyButton).toHaveAccessibleName('Copied to clipboard');
+
+			// The feedback reverts on its own once the timer elapses.
+			await vi.advanceTimersByTimeAsync(2000);
+			await nextTick();
+			expect(copyButton).toHaveAccessibleName('Copy');
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	test('should allow editing API key label', async () => {
