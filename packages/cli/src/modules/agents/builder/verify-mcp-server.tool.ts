@@ -71,8 +71,8 @@ const verifyMcpServerInputSchema = z.object({
 		.string()
 		.min(1)
 		.max(64)
-		.regex(/^[a-zA-Z0-9_-]+$/)
-		.describe('The server name (used as the tool-name prefix)'),
+		.refine((name) => name.trim().length > 0, 'MCP server name cannot be blank')
+		.describe('The user-facing server name; it is normalized for model-facing tool names'),
 	url: z.string().min(1).describe('The MCP server endpoint URL'),
 	transport: z
 		.enum(['sse', 'streamableHttp'])
@@ -108,7 +108,15 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 				'Establishes a temporary connection, lists the available tools, then closes the connection. ' +
 				'Returns { ok: true, tools: [{ name, description }] } on success, or ' +
 				'{ ok: false, error: string } on failure. ' +
+<<<<<<< HEAD
 				'Call this after ask_credential (when authentication is not "none") and before patch_config.',
+=======
+				'Tool names are the original MCP names without the model-facing server prefix. ' +
+				'When a credential is provided and a matching mcpServers entry already exists, ' +
+				'a successful verify also writes the credential into that entry ' +
+				'({ credentialApplied: true, configMutated: true, agentId }) — no read_config/patch_config follow-up. ' +
+				'Call this after ask_credential when authentication is not "none".',
+>>>>>>> 95038922 (fix: Improve MCP tool handling (no-changelog) (#34827))
 		)
 		.input(verifyMcpServerInputSchema)
 		.handler(async (input: VerifyMcpServerInput, ctx: ToolContext) => {
@@ -127,6 +135,35 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 					deps,
 				);
 				const tools = await listToolsWithinDeadline(client, timeoutMs, ctx.abortSignal);
+<<<<<<< HEAD
+=======
+				const mappedTools = tools.map((t) => ({
+					name: t.mcpToolName ?? t.name,
+					description: t.description ?? '',
+				}));
+
+				if (input.credential && deps.applyCredentialToMcpServer) {
+					try {
+						const { applied } = await deps.applyCredentialToMcpServer(input.name, input.credential);
+						if (applied && deps.agentId) {
+							return {
+								ok: true,
+								tools: mappedTools,
+								credentialApplied: true,
+								configMutated: true,
+								agentId: deps.agentId,
+							};
+						}
+					} catch {
+						return {
+							ok: true,
+							tools: mappedTools,
+							credentialApplied: false,
+						};
+					}
+				}
+
+>>>>>>> 95038922 (fix: Improve MCP tool handling (no-changelog) (#34827))
 				return {
 					ok: true,
 					tools: tools.map((t) => ({
