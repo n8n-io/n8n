@@ -50,6 +50,7 @@
       "dist/credentials/AzureAiSearchApi.credentials.js",
       "dist/credentials/AzureOpenAiApi.credentials.js",
       "dist/credentials/AzureEntraCognitiveServicesOAuth2Api.credentials.js",
+      "dist/credentials/BasetenApi.credentials.js",
       "dist/credentials/BraveSearchApi.credentials.js",
       "dist/credentials/ChromaSelfHostedApi.credentials.js",
       "dist/credentials/ChromaCloudApi.credentials.js",
