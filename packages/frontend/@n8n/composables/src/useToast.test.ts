@@ -1,13 +1,18 @@
 import { screen, waitFor, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
+import { ElNotification } from 'element-plus';
 import { h, defineComponent } from 'vue';
-import { useToast } from './useToast';
+import { useToast, setNotify } from './useToast';
+import type { NotificationHandle } from './useToast';
 import { useTelemetry } from './useTelemetry';
 import { useNotificationsStore } from '@n8n/stores/notifications.store';
-import { VIEWS } from '@/app/constants';
+import { VIEWS } from '@n8n/frontend-constants/views';
 import { vi } from 'vitest';
 
 vi.mock('./useTelemetry');
+
+// Register the real element-plus notification function for integration tests.
+setNotify(ElNotification as (opts: Record<string, unknown>) => NotificationHandle);
 
 const route = vi.hoisted(() => ({
 	name: '' as string | symbol,
