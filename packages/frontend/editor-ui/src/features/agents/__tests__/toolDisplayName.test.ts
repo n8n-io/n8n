@@ -4,6 +4,7 @@ import {
 	WEB_SEARCH_TOOL_NAME_KEY,
 	formatToolNameForDisplay,
 	getToolNameTranslationKey,
+	resolveToolNameForDisplay,
 } from '../utils/toolDisplayName';
 
 describe('formatToolNameForDisplay', () => {
@@ -33,8 +34,21 @@ describe('formatToolNameForDisplay', () => {
 		expect(getToolNameTranslationKey('custom_web_search')).toBeUndefined();
 	});
 
+	it('returns translation keys for stable builder tool IDs', () => {
+		expect(getToolNameTranslationKey('resolve_integration')).toBe(
+			'instanceAi.tools.resolve_integration',
+		);
+		expect(getToolNameTranslationKey('get_node_types')).toBe('instanceAi.tools.get_node_types');
+		expect(getToolNameTranslationKey('list_credentials')).toBe('instanceAi.tools.list_credentials');
+		expect(getToolNameTranslationKey('list_workflows')).toBe('instanceAi.tools.list_workflows');
+	});
+
 	it('returns an empty string for missing or blank names', () => {
 		expect(formatToolNameForDisplay(undefined)).toBe('');
 		expect(formatToolNameForDisplay('   ')).toBe('');
+	});
+
+	it('falls back to a humanized tool name when a translation key is missing', () => {
+		expect(resolveToolNameForDisplay('search_nodes', (key) => key)).toBe('Search nodes');
 	});
 });

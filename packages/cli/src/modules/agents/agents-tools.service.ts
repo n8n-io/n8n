@@ -201,7 +201,7 @@ export class AgentsToolsService {
 					usageHint,
 			)
 			.input(listCredentialsInputSchema)
-			.handler(async ({ types }) => {
+			.handler(async ({ types }: { types?: string[] }) => {
 				const creds = await credentialProvider.list();
 				if (!types || types.length === 0) return { credentials: creds };
 				const allowed = new Set(types);

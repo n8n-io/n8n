@@ -1,10 +1,19 @@
 <script lang="ts" setup>
 import { ref, computed, watch, onUnmounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiMessage } from '@n8n/api-types';
+import type {
+	InstanceAiAgentNode,
+	InstanceAiMessage,
+	InstanceAiTimelineEntry,
+	InstanceAiToolCallState,
+} from '@n8n/api-types';
 import { useThread } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
-import { collectActiveBuilderAgents, isActiveBuilderAgent } from '../builderAgents';
+import {
+	collectActiveBuilderAgents,
+	getBuilderRoleLabel,
+	isActiveBuilderAgent,
+} from '../builderAgents';
 
 const thread = useThread();
 const i18n = useI18n();
@@ -12,10 +21,6 @@ const { getToolLabel } = useToolLabel();
 
 const elapsed = ref(0);
 let timer: ReturnType<typeof setInterval> | null = null;
-
-const ROLE_LABELS: Record<string, string> = {
-	'workflow-builder': 'Building workflow',
-};
 
 function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?: string } | null {
 	// Match the still-streaming orchestrator message, or — once it has handed off
@@ -33,10 +38,10 @@ function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?
 	const tree = lastMsg.agentTree;
 
 	// Check active children first (sub-agents)
-	const activeChild = tree.children.find((c) => c.status === 'active');
+	const activeChild = tree.children.find((c: InstanceAiAgentNode) => c.status === 'active');
 	if (activeChild) {
-		const roleLabel = ROLE_LABELS[activeChild.role] ?? activeChild.role;
-		const activeTool = activeChild.toolCalls.find((tc) => tc.isLoading);
+		const roleLabel = activeChild.title ?? getBuilderRoleLabel(activeChild) ?? activeChild.role;
+		const activeTool = activeChild.toolCalls.find((tc: InstanceAiToolCallState) => tc.isLoading);
 		if (activeTool) {
 			const toolLabel = getToolLabel(activeTool.toolName, activeTool.args);
 			return { label: roleLabel, detail: toolLabel };
@@ -45,7 +50,7 @@ function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?
 	}
 
 	// Check root-level active tools
-	const activeTool = tree.toolCalls.find((tc) => tc.isLoading);
+	const activeTool = tree.toolCalls.find((tc: InstanceAiToolCallState) => tc.isLoading);
 	if (activeTool) {
 		const toolLabel = getToolLabel(activeTool.toolName, activeTool.args);
 		return { label: toolLabel };
@@ -72,7 +77,9 @@ function hasActiveThinkingTrace(messages: InstanceAiMessage[]): boolean {
 		if (m.role !== 'assistant' || !m.isStreaming) return false;
 		const root = m.agentTree;
 		if (!root || root.status !== 'active') return false;
-		return root.timeline.some((entry) => entry.type === 'reasoning' || entry.type === 'tool-call');
+		return root.timeline.some(
+			(entry: InstanceAiTimelineEntry) => entry.type === 'reasoning' || entry.type === 'tool-call',
+		);
 	});
 }
 

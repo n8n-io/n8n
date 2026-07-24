@@ -7,9 +7,9 @@ import { truncate } from '@n8n/utils/string/truncate';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import type { TimelineItem } from '../session-timeline.types';
-import { builtinToolLabelKey, isSubAgentTimelineItem } from '../session-timeline.utils';
+import { isSubAgentTimelineItem } from '../session-timeline.utils';
 import { delegateLabel } from '../utils/delegate-tool';
-import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';
 
 const props = defineProps<{
@@ -47,8 +47,7 @@ const infoText = computed((): string => {
 		case 'tool': {
 			if (it.isUserFeedback) return i18n.baseText('agentSessions.timeline.userFeedback');
 			if (isSubAgent.value) return delegateLabel(i18n, it.subAgentName ?? '');
-			const key = builtinToolLabelKey(it.toolName, it.toolOutput);
-			return key ? i18n.baseText(key) : formatToolNameForDisplay(it.toolName);
+			return resolveToolNameForDisplay(it.toolName, i18n.baseText);
 		}
 		case 'workflow':
 			return it.workflowName ?? formatToolNameForDisplay(it.toolName);
