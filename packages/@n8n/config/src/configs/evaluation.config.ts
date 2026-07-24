@@ -24,6 +24,16 @@ export class EvaluationConfig {
 	collectionsEnabled: boolean = false;
 
 	/**
+	 * Force-enable the config-based evals surface (in-editor Tests panel + the
+	 * instance-AI `config-evals` skill and `eval-config` tool). Operator override
+	 * of the `088_config_evaluations` PostHog flag; when `false` (default) PostHog
+	 * remains the source of truth. Like `collectionsEnabled`, this can't
+	 * force-disable — a `false` value just defers to PostHog.
+	 */
+	@Env('N8N_CONFIG_EVALS_ENABLED')
+	configEvalsEnabled: boolean = false;
+
+	/**
 	 * Force-enable the agent-evals feature surface.
 	 *
 	 * Acts as an operator-level override of the `101_agent_evals` PostHog

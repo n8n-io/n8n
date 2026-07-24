@@ -1,6 +1,7 @@
 import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
@@ -29,14 +30,19 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 	const posthogStore = usePostHog();
+	const settingsStore = useSettingsStore();
 	const telemetry = useTelemetry();
 	const chatPanelStateStore = useChatPanelStateStore();
 	const ndvStore = computed(() => useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)));
 
+	// Cloud-only experiment (ADO-5013): the assistant/builder flags and the
+	// PostHog variant can both be true on self-hosted instances, so gate on
+	// deployment type here to cover every entry point (toolbar button, context
+	// menu, keyboard shortcut, chat mentions) in one place.
 	const isFeatureEnabled = computed(() => {
-		return posthogStore.isVariantEnabled(
-			FOCUSED_NODES_EXPERIMENT.name,
-			FOCUSED_NODES_EXPERIMENT.variant,
+		return (
+			settingsStore.isCloudDeployment &&
+			posthogStore.isVariantEnabled(FOCUSED_NODES_EXPERIMENT.name, FOCUSED_NODES_EXPERIMENT.variant)
 		);
 	});
 

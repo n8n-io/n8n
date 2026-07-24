@@ -75,6 +75,7 @@ export function emitPackageImportedEvent(
 			credentialMatchingMode: request.credentialMatchingMode,
 			credentialMissingMode: request.credentialMissingMode,
 			workflowPublishingPolicy: request.workflowPublishingPolicy,
+			missingNodeTypeMode: request.missingNodeTypeMode,
 			dataTableMatchingMode: request.dataTableMatchingMode,
 			dataTableMissingMode: request.dataTableMissingMode,
 			dataTableSchemaConflictPolicy: request.dataTableSchemaConflictPolicy,

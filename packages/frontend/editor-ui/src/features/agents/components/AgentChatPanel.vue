@@ -45,7 +45,7 @@ const emit = defineEmits<{
 	'initial-consumed': [];
 	back: [];
 	'open-build': [];
-	'send-to-assistant': [];
+	'send-to-assistant': [executionId?: string];
 }>();
 
 const locale = useI18n();
@@ -221,7 +221,7 @@ onBeforeUnmount(() => {
 			:session-id="continueSessionId"
 			:can-send-to-assistant="canSendToAssistant"
 			@resume="resume"
-			@send-to-assistant="emit('send-to-assistant')"
+			@send-to-assistant="emit('send-to-assistant', $event)"
 		/>
 
 		<div :class="$style.inputArea">

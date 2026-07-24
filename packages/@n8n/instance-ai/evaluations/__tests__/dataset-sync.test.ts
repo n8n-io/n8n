@@ -5,7 +5,12 @@ import type { Mock } from 'vitest';
 
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import type { EvalLogger } from '../harness/logger';
-import { ARCHIVED_SPLIT, BUILD_ONLY_SCENARIO_NAME, syncDataset } from '../langsmith/dataset-sync';
+import {
+	ARCHIVED_SPLIT,
+	BUILD_ONLY_SCENARIO_NAME,
+	syncDataset,
+	ensureExamplesVisible,
+} from '../langsmith/dataset-sync';
 
 function scenarioFixture(testCaseFile: string, scenarioName: string): WorkflowTestCaseWithFile {
 	return {
@@ -292,5 +297,58 @@ describe('syncDataset', () => {
 		const second = buildClient([survivor]);
 		await syncDataset(second.client, 'ds', logger, [scenarioFixture('foo', 'happy-path')]);
 		expect(second.createExamples).not.toHaveBeenCalled();
+	});
+});
+
+describe('ensureExamplesVisible', () => {
+	const silent = {
+		info: () => {},
+		verbose: () => {},
+		success: () => {},
+		warn: vi.fn(),
+		error: () => {},
+		isVerbose: false,
+	};
+	const caseWithOneScenario = {
+		testCase: {
+			conversation: [{ role: 'user' as const, text: 'build it' }],
+			complexity: 'simple' as const,
+			tags: [],
+			datasets: ['full'],
+			executionScenarios: [{ name: 's1', description: 'd', dataSetup: 's', successCriteria: 'c' }],
+		},
+		fileSlug: 'case-a',
+	};
+
+	function clientListing(counts: number[]): { listExamples: ReturnType<typeof vi.fn> } {
+		let call = 0;
+		return {
+			listExamples: vi.fn().mockImplementation(() => {
+				const n = counts[Math.min(call++, counts.length - 1)];
+				return (async function* () {
+					await Promise.resolve();
+					for (let i = 0; i < n; i++) yield { id: String(i) };
+				})();
+			}),
+		};
+	}
+
+	it('passes once the split-scoped count covers the synced rows', async () => {
+		const client = clientListing([0, 1]);
+		await ensureExamplesVisible(client as never, 'ds', [caseWithOneScenario], silent as never, {
+			baseDelayMs: 1,
+		});
+		expect(client.listExamples).toHaveBeenCalledWith({ datasetName: 'ds', splits: ['case-a'] });
+		expect(client.listExamples).toHaveBeenCalledTimes(2);
+	});
+
+	it('throws loudly instead of running a partial experiment', async () => {
+		const client = clientListing([0]);
+		await expect(
+			ensureExamplesVisible(client as never, 'ds', [caseWithOneScenario], silent as never, {
+				attempts: 2,
+				baseDelayMs: 1,
+			}),
+		).rejects.toThrow(/0\/1 synced example/);
 	});
 });

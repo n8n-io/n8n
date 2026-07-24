@@ -12,6 +12,7 @@ export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
 	'workflowConflictPolicy',
 	'workflowPublishingPolicy',
 	'workflowIdPolicy',
+	'missingNodeTypeMode',
 	'folderConflictPolicy',
 	'dataTableMatchingMode',
 	'dataTableMissingMode',
@@ -71,12 +72,13 @@ export class ImportPackageRequestDto extends Z.class({
 		.default('id-only'),
 	credentialMissingMode: z.enum(['must-preexist', 'create-stub']).optional().default('create-stub'),
 	bindings: bindingsSchema,
-	workflowConflictPolicy: z.enum(['new-version', 'fail', 'skip']),
+	workflowConflictPolicy: z.enum(['new-version', 'fail', 'skip']).optional().default('new-version'),
 	workflowPublishingPolicy: z
 		.enum(['preserve-published-state', 'match-source', 'publish-all', 'unpublish-all'])
 		.optional()
 		.default('preserve-published-state'),
 	workflowIdPolicy: z.enum(['new', 'source']).optional().default('new'),
+	missingNodeTypeMode: z.enum(['fail', 'import-anyway']).optional().default('fail'),
 	folderConflictPolicy: z.enum(['merge', 'fail']).optional().default('merge'),
 	dataTableMatchingMode: z.enum(['by-id']).optional().default('by-id'),
 	dataTableMissingMode: z

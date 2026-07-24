@@ -761,6 +761,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						declaredOutputFixtures: compiled.declaredOutputFixtures,
 						workflowId: saved.id,
 						outputSchemaLookup: context.outputSchemaLookup,
+						fallbackModelConfig: context.modelId,
 						logger: context.logger,
 					});
 					const runId = buildContext?.runId ?? context.runId;

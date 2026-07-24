@@ -1,12 +1,12 @@
 import type { Run } from 'langsmith/schemas';
 
+import type { WorkflowTestCaseWithFile } from '../data/workflows';
+import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 import {
 	parseTargetOutput,
 	reshapeLangSmithRuns,
 	sentinelOutcomeFromVerdicts,
-} from '../cli/reshape';
-import type { WorkflowTestCaseWithFile } from '../data/workflows';
-import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
+} from '../run/reshape';
 import type {
 	BuildExpectationResult,
 	ExecutionScenario,
@@ -133,6 +133,32 @@ describe('reshapeLangSmithRuns', () => {
 		expect(tc.executionScenarioResults).toEqual([]); // no phantom scenario unit
 		expect(tc.workflowBuildSuccess).toBe(false);
 		expect(tc.buildError).toBe('Build failed: agent produced no workflow');
+	});
+
+	it('carries `claude` build spend from any row of the case (first defined wins)', () => {
+		const cases = [withFile('airtable', [scenario('s1'), scenario('s2')])];
+		const rows = [
+			row(
+				{ testCaseFile: 'airtable', scenarioName: 's1', _iteration: 0 },
+				{ buildSuccess: true, passed: true, score: 1, reasoning: 'ok' },
+			),
+			row(
+				{ testCaseFile: 'airtable', scenarioName: 's2', _iteration: 0 },
+				{
+					buildSuccess: true,
+					passed: true,
+					score: 1,
+					reasoning: 'ok',
+					buildCostUsd: 0.37,
+					buildTurns: 6,
+				},
+			),
+		];
+
+		const result = reshapeLangSmithRuns(rows, cases, 1, new Map(), new Map(), undefined);
+
+		expect(result[0][0].buildCostUsd).toBe(0.37);
+		expect(result[0][0].buildTurns).toBe(6);
 	});
 
 	it('attaches build-expectation verdicts by iteration:fileSlug even with no threadId (prebuilt/MCP path)', () => {

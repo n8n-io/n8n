@@ -232,6 +232,10 @@ describe('createBuildWorkflowTool', () => {
 			'Follow the post-build instructions in `instructions` now',
 		);
 		expect(result.postBuildFlow?.instructions).toContain('# Post-Build Flow');
+		// The language reminder in the skill intro must ride along in the inline copy.
+		expect(result.postBuildFlow?.instructions).toContain(
+			"stays in the user's conversation language",
+		);
 		expect(result.postBuildFlow?.instructions).not.toContain('recommended_tools');
 		// Tag-turn-only sections are stripped from the inline copy.
 		expect(result.postBuildFlow?.instructions).not.toContain('## Verification follow-up');

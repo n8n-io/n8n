@@ -1,7 +1,9 @@
 import type { EvaluationMetric } from '../../dto/evaluations/evaluation-config.dto';
 import {
+	averageNormalizedScore,
 	metricScaleFromConfig,
 	metricScalesFromConfig,
+	normalizedScores,
 	normalizeMetricScore,
 	RESERVED_METRIC_KEYS,
 } from '../eval-collections.schema';
@@ -195,5 +197,44 @@ describe('metricScalesFromConfig', () => {
 
 	it('returns an empty map for no metrics', () => {
 		expect(metricScalesFromConfig([])).toEqual({});
+	});
+});
+
+describe('normalizedScores', () => {
+	it('drops operational/unknown-scale metrics and keeps scored ones', () => {
+		const scores = normalizedScores({ correctness: 5, totalTokens: 1234, helpfulness: 4 });
+		// correctness/helpfulness are 1–5 by name → /5; totalTokens is reserved → dropped.
+		expect(scores).toEqual({ correctness: 1, helpfulness: 0.8 });
+	});
+
+	it('coerces booleans to 0/1 before scaling', () => {
+		expect(normalizedScores({ Passed: true }, { Passed: 'boolean' })).toEqual({ Passed: 1 });
+		expect(normalizedScores({ Passed: false }, { Passed: 'boolean' })).toEqual({ Passed: 0 });
+	});
+
+	it('honours an explicit scale over the name heuristic', () => {
+		expect(normalizedScores({ accuracy: 0.9 }, { accuracy: 'unit' })).toEqual({ accuracy: 0.9 });
+	});
+
+	it('returns an empty map for nullish metrics', () => {
+		expect(normalizedScores(null)).toEqual({});
+		expect(normalizedScores(undefined)).toEqual({});
+	});
+});
+
+describe('averageNormalizedScore', () => {
+	it('means the qualifying scores', () => {
+		// correctness 4 → 0.8, helpfulness 2.5 → 0.5; mean 0.65.
+		expect(averageNormalizedScore({ correctness: 4, helpfulness: 2.5 })).toBeCloseTo(0.65);
+	});
+
+	it('ignores dropped metrics when averaging', () => {
+		// totalTokens is reserved → excluded, so the mean is just correctness.
+		expect(averageNormalizedScore({ correctness: 5, totalTokens: 999 })).toBe(1);
+	});
+
+	it('returns null when nothing qualifies', () => {
+		expect(averageNormalizedScore({ totalTokens: 10 })).toBeNull();
+		expect(averageNormalizedScore(null)).toBeNull();
 	});
 });

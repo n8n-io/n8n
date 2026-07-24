@@ -111,6 +111,20 @@ post:
                 existing workflow in the target project (status `updated` or
                 `skipped`) always keep that workflow's current id, regardless
                 of policy.
+            missingNodeTypeMode:
+              type: string
+              enum:
+                - fail
+                - import-anyway
+              default: fail
+              description: >
+                What to do when a workflow in the package uses a node type — or a
+                version of a node type — this instance does not have. `fail`
+                (default) rejects the import before anything is written, listing
+                every missing `(nodeType, typeVersion)` pair and the workflows
+                that use it. `import-anyway` imports the package; workflows
+                containing missing node types are never published by this import,
+                regardless of `workflowPublishingPolicy`.
             workflowPublishingPolicy:
               type: string
               enum:
@@ -285,7 +299,8 @@ post:
                           description: >
                             `blocked` means the imported version could not be published
                             and no version is active (for example because the workflow
-                            uses a stubbed credential). When a prior published version
+                            uses a stubbed credential, or uses a node type this instance
+                            does not have). When a prior published version
                             remains active, `state` is `unchanged` with
                             `skippedPublishReason` instead. `failed` means publish or
                             unpublish was attempted but did not succeed.
@@ -298,6 +313,7 @@ post:
                           type: string
                           enum:
                             - stub-credential
+                            - missing-node-type
                           description: >
                             Present when `state` is `blocked`: the imported version
                             could not be published and no version is active.
@@ -305,6 +321,7 @@ post:
                           type: string
                           enum:
                             - stub-credential
+                            - missing-node-type
                           description: >
                             Present when `state` is `unchanged` but the policy wanted
                             to publish the imported version: a prior published version
@@ -467,7 +484,8 @@ post:
     '422':
       description: >
         Import blocked by non-conflict issues only (e.g. unresolved credentials or
-        variables).
+        variables, or node types this instance does not have under
+        `missingNodeTypeMode=fail`).
       content:
         application/json:
           schema:

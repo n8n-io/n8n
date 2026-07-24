@@ -3,9 +3,9 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { runEvalAndPersist } from '../cli/index';
 import type { EvalLogger } from '../harness/logger';
 import { abortedWorkflowTestCaseResult } from '../harness/runner';
+import { runEvalAndPersist } from '../run/persist';
 import type { ExecutionScenario, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
 
 // ---------------------------------------------------------------------------

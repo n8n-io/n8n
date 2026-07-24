@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { EntityManager } from '@n8n/typeorm';
+import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
 
 import { WorkflowReviewRequestWorkflow } from '../entities/workflow-review-request-workflow.ee';
@@ -8,6 +8,33 @@ import {
 	type WorkflowReviewRequestDecision,
 	type WorkflowReviewRequestState,
 } from '../entities/workflow-review-request.ee';
+
+/**
+ * Keyset pagination boundary. The caller carries `createdAt`/`id` in the cursor
+ * itself so pagination never depends on the anchor row still existing.
+ */
+export type InboxCursor = {
+	createdAt: Date;
+	id: string;
+};
+
+export type FindManyForInboxOptions = {
+	/** `null` means all projects (no filter); `[]` means no publish-scoped projects. */
+	projectIds: string[] | null;
+	/** Requesters always see the reviews they created, regardless of project scope. */
+	requesterId: string;
+	state?: WorkflowReviewRequestState;
+	limit: number;
+	cursor?: InboxCursor;
+};
+
+export type ExistsAnyForInboxOptions = {
+	/** `null` means all projects (no filter); `[]` means no publish-scoped projects. */
+	projectIds: string[] | null;
+	/** Requesters always see the reviews they created, regardless of project scope. */
+	requesterId: string;
+	state?: WorkflowReviewRequestState;
+};
 
 @Service()
 export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRequest> {
@@ -94,5 +121,71 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 			.andWhere('request.state = :state', { state })
 			.orderBy('request.createdAt', 'DESC')
 			.getOne();
+	}
+
+	async findManyForInbox(options: FindManyForInboxOptions): Promise<WorkflowReviewRequest[]> {
+		const { projectIds, requesterId, state, limit, cursor } = options;
+
+		const queryBuilder = this.createQueryBuilder('review')
+			.orderBy('review.createdAt', 'DESC')
+			.addOrderBy('review.id', 'ASC');
+
+		this.applyInboxVisibility(queryBuilder, projectIds, requesterId);
+
+		if (state !== undefined) {
+			queryBuilder.andWhere('review.state = :state', { state });
+		}
+
+		if (cursor) {
+			queryBuilder.andWhere(
+				'(review.createdAt < :createdAt OR (review.createdAt = :createdAt AND review.id > :id))',
+				{ createdAt: cursor.createdAt, id: cursor.id },
+			);
+		}
+
+		queryBuilder.take(limit);
+
+		return await queryBuilder.getMany();
+	}
+
+	async existsAnyForInbox(options: ExistsAnyForInboxOptions): Promise<boolean> {
+		const { projectIds, requesterId, state } = options;
+
+		const queryBuilder = this.createQueryBuilder('review').select('1');
+
+		this.applyInboxVisibility(queryBuilder, projectIds, requesterId);
+
+		if (state !== undefined) {
+			queryBuilder.andWhere('review.state = :state', { state });
+		}
+
+		const row = await queryBuilder.limit(1).getRawOne<Record<string, unknown>>();
+		return row !== undefined;
+	}
+
+	/**
+	 * Inbox visibility: a review is visible if the caller is its requester OR it
+	 * belongs to a project the caller can publish to. `projectIds === null`
+	 * means global scope (no filter). An empty `projectIds` still matches the
+	 * caller's own requests.
+	 */
+	private applyInboxVisibility(
+		queryBuilder: SelectQueryBuilder<WorkflowReviewRequest>,
+		projectIds: string[] | null,
+		requesterId: string,
+	): void {
+		if (projectIds === null) {
+			return;
+		}
+
+		if (projectIds.length === 0) {
+			queryBuilder.where('review.createdById = :requesterId', { requesterId });
+			return;
+		}
+
+		queryBuilder.where(
+			'(review.projectId IN (:...projectIds) OR review.createdById = :requesterId)',
+			{ projectIds, requesterId },
+		);
 	}
 }

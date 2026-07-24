@@ -84,6 +84,18 @@ function buildSigningToken(
 	);
 }
 
+function addExpiresAt(tokenData: ClientOAuth2TokenData): ClientOAuth2TokenData {
+	const expiresInSeconds = Number(tokenData.expires_in);
+	if (!Number.isFinite(expiresInSeconds) || expiresInSeconds <= 0) {
+		return tokenData;
+	}
+
+	return {
+		...tokenData,
+		n8n_expires_at: String(Date.now() + expiresInSeconds * 1000),
+	};
+}
+
 interface RefreshOAuth2TokenContext {
 	credentials: OAuth2CredentialData;
 	token: ClientOAuth2Token;
@@ -228,7 +240,7 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		// Merge old and new token data so fields that the authorization server
 		// does not echo back on refresh (e.g. `resource`) are preserved from the
 		// original token response.
-		const newOAuthTokenData = { ...token.data, ...newToken.data };
+		const newOAuthTokenData = addExpiresAt({ ...token.data, ...newToken.data });
 
 		// If the server doesn't echo the resource back, restore it from the
 		// previous token data to ensure it's not lost on refresh.
@@ -253,7 +265,11 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 			credentials as unknown as ICredentialDataDecryptedObject,
 			credentialsType,
 		);
-		let signingToken = newToken;
+		let signingToken = buildSigningToken(
+			token.client,
+			credentials.oauthTokenData as ClientOAuth2TokenData,
+			oAuth2Options,
+		);
 		if (preAuthData) {
 			Object.assign(credentials, preAuthData);
 			signingToken = buildSigningToken(
