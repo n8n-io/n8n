@@ -53,7 +53,7 @@ const props = withDefaults(
 	{
 		disabled: false,
 		embedded: false,
-		instructionsMaxHeight: 'none',
+		instructionsMaxHeight: '360px',
 		showModel: true,
 		showInstructions: true,
 		showInstructionsToolbar: false,
@@ -242,9 +242,7 @@ function onInstructionsInput(value: string) {
 	opacity: 0.5;
 }
 
-/* Follow the editor's max-height: unbounded hosts (the builder, which passes
-   `instructions-max-height="none"`) grow naturally, while capped hosts (the
-   NDV's 240px) scroll within the cap instead of clipping. */
+/* Follow the editor's configured max-height and scroll within the cap. */
 .instructionsDocument :global(.n8n-markdown) {
 	max-height: var(--markdown-editor-max-height);
 	min-height: calc(var(--spacing--4xl) + var(--spacing--xl));

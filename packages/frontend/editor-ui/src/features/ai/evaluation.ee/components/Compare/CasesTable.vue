@@ -37,6 +37,12 @@ function toggleSort(key: SortKey) {
 	}
 }
 
+// `aria-sort` for a sortable header: the active direction, or 'none' otherwise.
+function ariaSort(key: SortKey): 'ascending' | 'descending' | 'none' {
+	if (sort.value.key !== key) return 'none';
+	return sort.value.dir === 'asc' ? 'ascending' : 'descending';
+}
+
 function bestScore(row: CompareCaseRow): number | null {
 	if (row.bestVersionIndex === null) return null;
 	return row.cells[row.bestVersionIndex].score;
@@ -92,17 +98,39 @@ function deltas(row: CompareCaseRow) {
 	<table :class="$style.table" data-test-id="compare-cases-table">
 		<thead>
 			<tr>
-				<th :class="$style.num" role="button" @click="toggleSort('index')">
+				<th
+					:class="$style.num"
+					role="button"
+					tabindex="0"
+					:aria-sort="ariaSort('index')"
+					@click="toggleSort('index')"
+					@keydown.enter="toggleSort('index')"
+					@keydown.space.prevent="toggleSort('index')"
+				>
 					{{ i18n.baseText('evaluation.compare.cases.col.index') }}
 				</th>
 				<th>{{ i18n.baseText('evaluation.compare.cases.col.input') }}</th>
 				<th v-for="version in versions" :key="version.testRunId" :class="$style.score">
 					{{ version.letter }}
 				</th>
-				<th role="button" @click="toggleSort('best')">
+				<th
+					role="button"
+					tabindex="0"
+					:aria-sort="ariaSort('best')"
+					@click="toggleSort('best')"
+					@keydown.enter="toggleSort('best')"
+					@keydown.space.prevent="toggleSort('best')"
+				>
 					{{ i18n.baseText('evaluation.compare.cases.col.best') }}
 				</th>
-				<th role="button" @click="toggleSort('spread')">
+				<th
+					role="button"
+					tabindex="0"
+					:aria-sort="ariaSort('spread')"
+					@click="toggleSort('spread')"
+					@keydown.enter="toggleSort('spread')"
+					@keydown.space.prevent="toggleSort('spread')"
+				>
 					{{ i18n.baseText('evaluation.compare.cases.col.deltaVsBest') }}
 				</th>
 				<th :class="$style.chevronCol" />

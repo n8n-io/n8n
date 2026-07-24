@@ -105,6 +105,24 @@ describe('useCompareCases', () => {
 		expect(caseRows.value[1].cells[1].score).toBeNull();
 	});
 
+	it('does not flag a mismatch when a run failed before seeding cases', async () => {
+		seed([
+			caseRecord({ id: 'a0', testRunId: 'run-a', runIndex: 0, metrics: { helpfulness: 5 } }),
+			caseRecord({ id: 'a1', testRunId: 'run-a', runIndex: 1, metrics: { helpfulness: 4 } }),
+		]);
+		// run-b errored → zero cases; a failed run must not read as dataset drift.
+		const detail = {
+			...detailWith(['run-a']),
+			runs: [run('run-a'), { ...run('run-b'), status: 'error' as const }],
+		};
+		const { mismatch } = useCompareCases(ref(detail), ref('wf-1'));
+		await nextTick();
+
+		expect(mismatch.value.hasMismatch).toBe(false);
+		// only the completed run's count is compared (the failed run's 0 is excluded).
+		expect(mismatch.value.counts).toEqual([2]);
+	});
+
 	it('fans out fetchTestCaseExecutions once per run and toggles loading', async () => {
 		const fetchSpy = vi.fn(async ({ runId }: { workflowId: string; runId: string }) => {
 			store.$patch((state) => {

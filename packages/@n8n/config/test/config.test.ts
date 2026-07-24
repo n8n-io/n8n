@@ -276,6 +276,7 @@ describe('GlobalConfig', () => {
 			mcp: 'mcp',
 			mcpAppsEnabled: false,
 			mcpBuilderEnabled: true,
+			mcpCanvasGroupsEnabled: false,
 			mcpMaxRegisteredClients: 5000,
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
@@ -468,6 +469,7 @@ describe('GlobalConfig', () => {
 		},
 		evaluation: {
 			collectionsEnabled: false,
+			configEvalsEnabled: false,
 			agentEvalsEnabled: false,
 		},
 		generic: {

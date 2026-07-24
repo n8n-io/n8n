@@ -77,6 +77,25 @@ describe('CasesTable', () => {
 		expect(rows[0].textContent).toContain('2');
 	});
 
+	it('exposes sortable headers to the keyboard (tabindex, aria-sort, Enter)', async () => {
+		const { container } = renderComponent({
+			props: { versions, caseRows: [row(0, [0.9, 0.85], 0), row(1, [0.9, 0.5], 0)] },
+		});
+
+		const sortableHeaders = [...container.querySelectorAll('th[role="button"]')];
+		expect(sortableHeaders.length).toBeGreaterThan(0);
+		for (const th of sortableHeaders) {
+			expect(th.getAttribute('tabindex')).toBe('0');
+			expect(th.getAttribute('aria-sort')).not.toBeNull();
+		}
+
+		// The first sortable header ("#") is inactive by default; Enter sorts by it.
+		const indexHeader = sortableHeaders[0];
+		expect(indexHeader.getAttribute('aria-sort')).toBe('none');
+		await fireEvent.keyDown(indexHeader, { key: 'Enter' });
+		expect(indexHeader.getAttribute('aria-sort')).toBe('ascending');
+	});
+
 	it('emits drilldown with the case index when a row is clicked', async () => {
 		const { container, emitted } = renderComponent({
 			props: { versions, caseRows: [row(3, [0.7, 0.9], 1)] },

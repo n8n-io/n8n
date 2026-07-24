@@ -963,6 +963,13 @@ export interface InstanceAiContext {
 	 */
 	tracing?: InstanceAiTraceContext;
 	projectId?: string;
+	/**
+	 * Host-resolved model for the current run (proxy-managed on cloud). Domain
+	 * tools pass it as the fallback for utility LLM calls (simulation fixtures,
+	 * destructiveness classification), which otherwise resolve an eval model
+	 * from environment API keys that proxy-managed deployments don't have.
+	 */
+	modelId?: ModelConfig;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;

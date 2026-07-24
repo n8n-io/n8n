@@ -4,6 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { nextTick } from 'vue';
 
 import { useFocusedNodesStore } from './focusedNodes.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
@@ -56,6 +57,7 @@ const createMockNode = (id: string, name: string, type = 'n8n-nodes-base.httpReq
 describe('useFocusedNodesStore', () => {
 	let focusedNodesStore: ReturnType<typeof useFocusedNodesStore>;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -71,6 +73,10 @@ describe('useFocusedNodesStore', () => {
 				stubActions: false,
 			}),
 		);
+
+		// The experiment is cloud-only; default to cloud so only the case under test varies.
+		settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isCloudDeployment = true;
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsStore.setWorkflowId('wf-1');
@@ -95,6 +101,27 @@ describe('useFocusedNodesStore', () => {
 
 		it('should initialize with empty canvasSelectedNodeIds', () => {
 			expect(focusedNodesStore.canvasSelectedNodeIds.size).toBe(0);
+		});
+	});
+
+	describe('isFeatureEnabled', () => {
+		it('should be enabled on cloud when the experiment variant is on', () => {
+			expect(focusedNodesStore.isFeatureEnabled).toBe(true);
+		});
+
+		// Regression for ADO-5013: the experiment is cloud-only. AI can be
+		// licensed and the PostHog variant served on self-hosted instances,
+		// so the deployment gate must keep the feature off there.
+		it('should be disabled on self-hosted even when the experiment variant is on', () => {
+			settingsStore.isCloudDeployment = false;
+
+			expect(focusedNodesStore.isFeatureEnabled).toBe(false);
+		});
+
+		it('should be disabled on cloud when the experiment variant is off', () => {
+			featureEnabled = false;
+
+			expect(focusedNodesStore.isFeatureEnabled).toBe(false);
 		});
 	});
 
