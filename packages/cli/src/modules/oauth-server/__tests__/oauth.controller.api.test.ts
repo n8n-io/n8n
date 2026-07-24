@@ -9,6 +9,7 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { SUPPORTED_SCOPES } from '@/modules/mcp/mcp-protected-resource';
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
+import { UrlService } from '@/services/url.service';
 
 import { OAuthServerConfig } from '../oauth-server.config';
 import type { OAuthController as OAuthControllerClass } from '../oauth.controller';
@@ -435,6 +436,33 @@ describe('GET /mcp-oauth/authorize', () => {
 		expect(response.statusCode).not.toBe(403);
 		expect([302, 400, 401]).toContain(response.statusCode);
 	});
+
+	// RFC 9207: `iss` is required on every authorization response — including
+	// the SDK's own request-validation error redirects — because the metadata
+	// advertises `authorization_response_iss_parameter_supported`.
+	test('should include the iss parameter on error redirects', async () => {
+		const registerResponse = await testServer.restlessAgent.post('/mcp-oauth/register').send({
+			client_name: 'Error Redirect Client',
+			redirect_uris: ['https://example.com/callback'],
+			grant_types: ['authorization_code'],
+			token_endpoint_auth_method: 'none',
+		});
+
+		const response = await testServer.restlessAgent.get('/mcp-oauth/authorize').query({
+			client_id: registerResponse.body.client_id,
+			redirect_uri: 'https://example.com/callback',
+			response_type: 'code',
+			// missing code_challenge → SDK redirects back with an error
+		});
+
+		expect(response.statusCode).toBe(302);
+		const redirectUrl = new URL(response.headers.location);
+		expect(redirectUrl.origin + redirectUrl.pathname).toBe('https://example.com/callback');
+		expect(redirectUrl.searchParams.get('error')).toBe('invalid_request');
+		expect(redirectUrl.searchParams.get('iss')).toBe(
+			Container.get(UrlService).getInstanceBaseUrl(),
+		);
+	});
 });
 
 describe('POST /mcp-oauth/token', () => {
@@ -642,6 +670,9 @@ describe('Full authorization-code flow (PKCE)', () => {
 		const code = redirectUrl.searchParams.get('code');
 		expect(code).toBeTruthy();
 		expect(redirectUrl.searchParams.get('state')).toBe('flow-state');
+		expect(redirectUrl.searchParams.get('iss')).toBe(
+			Container.get(UrlService).getInstanceBaseUrl(),
+		);
 
 		// 4. Token exchange
 		const tokenResponse = await testServer.restlessAgent

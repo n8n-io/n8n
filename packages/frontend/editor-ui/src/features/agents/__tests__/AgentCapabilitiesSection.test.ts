@@ -735,36 +735,8 @@ describe('AgentCapabilitiesSection', () => {
 		expect(wrapper.find('[aria-haspopup="menu"]').attributes('disabled')).toBe('true');
 	});
 
-	describe('channel modal', () => {
-		it('opens the channel list view when clicking the add-channel button', async () => {
-			const wrapper = mountSection([]);
-
-			await wrapper.find('[data-testid="agent-capabilities-add-channel"]').trigger('click');
-			await flushPromises();
-
-			const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
-			expect(modal.exists()).toBe(true);
-			expect(modal.attributes('data-view')).toBe('list');
-		});
-
-		it('opens the per-channel edit view when clicking a configured channel chip', async () => {
-			integrationsCatalogRef.value = [{ type: 'linear', label: 'Linear', icon: 'zap' }];
-			const wrapper = mountSection([], {}, null, [], [], {
-				connectedTriggers: ['linear'],
-			});
-
-			await wrapper.find('[data-testid="agent-capabilities-channel-row"]').trigger('click');
-			await flushPromises();
-
-			const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
-			expect(modal.exists()).toBe(true);
-			expect(modal.attributes('data-view')).toBe('linear_edit');
-		});
-	});
-
 	describe('validation issues', () => {
-		it('marks the node-tool, MCP-server, channel, and task chips invalid when a matching issue is present for each', async () => {
-			integrationsCatalogRef.value = [{ type: 'slack', label: 'Slack', icon: 'zap' }];
+		it('marks node-tool, MCP-server, and task chips invalid when matching issues are present', async () => {
 			getAgentTasksSpy.mockResolvedValue([makeTask()]);
 
 			const tools: AgentJsonToolRef[] = [
@@ -793,7 +765,6 @@ describe('AgentCapabilitiesSection', () => {
 				[taskRef('task-1')],
 				[],
 				{
-					connectedTriggers: ['slack'],
 					validationIssues: [
 						{
 							code: 'missing_credential',
@@ -804,11 +775,6 @@ describe('AgentCapabilitiesSection', () => {
 							code: 'missing_credential',
 							path: 'mcpServers.0.credential',
 							capability: { kind: 'mcpServer', id: 'github', index: 0 },
-						},
-						{
-							code: 'missing_credential',
-							path: 'integrations.0.credentialId',
-							capability: { kind: 'channel', id: 'slack', index: 0 },
 						},
 						{
 							code: 'missing_reference',
@@ -829,9 +795,6 @@ describe('AgentCapabilitiesSection', () => {
 			expect(toolChips[0].find('[data-testid="stub-tooltip-content"]').text()).toContain(
 				'agents.builder.validation.issue.missingCredential',
 			);
-
-			const channelChip = wrapper.find('[data-testid="agent-capabilities-channel-row"]');
-			expect(channelChip.classes().some((c) => c.includes('invalid'))).toBe(true);
 
 			const taskChip = wrapper.find('[data-testid="agent-capabilities-task-row"]');
 			expect(taskChip.classes().some((c) => c.includes('invalid'))).toBe(true);
@@ -899,24 +862,22 @@ describe('AgentCapabilitiesSection', () => {
 	});
 
 	describe('sections allowlist', () => {
-		it('renders every section by default', () => {
+		it('renders every capability section by default', () => {
 			const wrapper = mountSection([]);
 
-			expect(wrapper.find('[data-testid="agent-capabilities-add-channel"]').exists()).toBe(true);
 			expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(true);
 			expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(true);
 			expect(wrapper.find('[data-testid="agent-capabilities-add-sub-agent"]').exists()).toBe(true);
 			expect(wrapper.find('[data-testid="agent-capabilities-add-task"]').exists()).toBe(true);
 		});
 
-		it('renders only the allowlisted sections and skips channels + sub-agents', async () => {
+		it('renders only the allowlisted sections and skips sub-agents', async () => {
 			const wrapper = mount(AgentCapabilitiesSection, {
 				props: {
 					config: null,
 					tools: [],
 					customTools: {},
 					skills: [],
-					connectedTriggers: [],
 					projectId: 'project-id',
 					agentId: 'agent-id',
 					isPublished: false,
@@ -933,11 +894,7 @@ describe('AgentCapabilitiesSection', () => {
 						},
 						N8nIcon: { template: '<span />' },
 						N8nText: { template: '<span><slot /></span>' },
-						N8nTooltip: {
-							template:
-								'<span><slot /><span data-testid="stub-tooltip-content"><slot name="content" /></span></span>',
-						},
-						AgentChannelModal: { template: '<div data-testid="agent-channel-modal" />' },
+						N8nTooltip: { template: '<span><slot /></span>' },
 					},
 				},
 			});
@@ -949,10 +906,7 @@ describe('AgentCapabilitiesSection', () => {
 			expect(wrapper.find('[data-testid="agent-capabilities-add-task"]').exists()).toBe(true);
 
 			// Suppressed rows absent.
-			expect(wrapper.find('[data-testid="agent-capabilities-add-channel"]').exists()).toBe(false);
 			expect(wrapper.find('[data-testid="agent-capabilities-add-sub-agent"]').exists()).toBe(false);
-			expect(wrapper.find('[data-testid="agent-capabilities-channel-row"]').exists()).toBe(false);
-			expect(wrapper.find('[data-testid="agent-channel-modal"]').exists()).toBe(false);
 
 			// The project-agents list (only needed for sub-agents) is not fetched.
 			expect(ensureProjectAgentsLoadedSpy).not.toHaveBeenCalled();

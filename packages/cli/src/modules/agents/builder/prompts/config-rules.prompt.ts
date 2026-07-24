@@ -1,4 +1,4 @@
-import { AgentJsonConfigSchema, AgentModelSchema } from '@n8n/api-types';
+import { AgentJsonConfigBaseSchema, AgentModelSchema } from '@n8n/api-types';
 import type { JSONSchema7 } from 'json-schema';
 import type { ZodObject, ZodRawShape } from 'zod';
 import { z } from 'zod';
@@ -41,7 +41,7 @@ const BuilderPromptMemoryConfigSchema = z.object({
 		.optional(),
 });
 
-const BuilderPromptAgentJsonConfigSchema = AgentJsonConfigSchema.extend({
+const BuilderPromptAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 	memory: BuilderPromptMemoryConfigSchema.optional(),
 });
 
