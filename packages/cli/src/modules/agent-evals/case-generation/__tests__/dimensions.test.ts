@@ -49,6 +49,17 @@ describe('sampleDimensionTuples', () => {
 		expect(new Set(tuples.map((t) => t.capability))).toEqual(new Set(caps));
 	});
 
+	it('varies difficulty within each capability (difficulty decorrelated from capability)', () => {
+		// With 2 capabilities and 2 difficulties, naive `i % n` indexing would lock
+		// each capability to a single difficulty; assert both appear per capability.
+		const caps = ['a', 'b'];
+		const tuples = sampleDimensionTuples(caps, 8);
+		for (const cap of caps) {
+			const diffs = new Set(tuples.filter((t) => t.capability === cap).map((t) => t.difficulty));
+			expect(diffs).toEqual(new Set(CASE_DIFFICULTIES));
+		}
+	});
+
 	it('cycles the grid when count exceeds the grid size', () => {
 		// grid = 8; ask for 10 → still 10, cycling back through the grid.
 		const tuples = sampleDimensionTuples([GENERAL_CAPABILITY], 10);

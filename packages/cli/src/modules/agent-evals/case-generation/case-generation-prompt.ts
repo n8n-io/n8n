@@ -16,9 +16,11 @@ export interface AgentEvalDraftCase {
 	whatToCheck: string;
 }
 
+// Structural only: blank/whitespace fields are trimmed and dropped by the
+// service, so a single bad case doesn't invalidate an otherwise-good batch.
 const draftCaseSchema = z.object({
-	input: z.string().min(1),
-	whatToCheck: z.string().min(1),
+	input: z.string(),
+	whatToCheck: z.string(),
 });
 
 /**
@@ -35,6 +37,9 @@ export const generatedCasesSchema = z.object({
 const MAX_INSTRUCTIONS_CHARS = 4000;
 const MAX_TOOLS_IN_PROMPT = 30;
 const MAX_TOOL_DESCRIPTION_CHARS = 200;
+// Tool/skill/capability names are unbounded in the agent config schema; cap each
+// label so a pathologically long name can't blow the prompt's token budget.
+const MAX_LABEL_CHARS = 100;
 
 /** Bounded, prompt-safe view of the agent's config. */
 export interface AgentConfigSummary {
@@ -47,10 +52,10 @@ function truncate(text: string, max: number): string {
 	return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
-/** Human-readable name for a configured tool, by tool kind. */
+/** Human-readable, length-capped name for a configured tool, by tool kind. */
 function toolDisplayName(tool: AgentJsonToolConfig): string {
-	if (tool.type === 'custom') return tool.id;
-	return tool.name ?? tool.type;
+	const name = tool.type === 'custom' ? tool.id : (tool.name ?? tool.type);
+	return truncate(name, MAX_LABEL_CHARS);
 }
 
 export function buildAgentSummary(config: AgentJsonConfig): AgentConfigSummary {
@@ -78,9 +83,9 @@ export function buildAgentSummary(config: AgentJsonConfig): AgentConfigSummary {
 export function deriveCapabilities(config: AgentJsonConfig): string[] {
 	const labels = [
 		...(config.tools ?? []).map(toolDisplayName),
-		...(config.skills ?? []).map((skill) => skill.id),
-		...(config.mcpServers ?? []).map((server) => server.name),
-		...(config.vectorStores ?? []).map((store) => store.name),
+		...(config.skills ?? []).map((skill) => truncate(skill.id, MAX_LABEL_CHARS)),
+		...(config.mcpServers ?? []).map((server) => truncate(server.name, MAX_LABEL_CHARS)),
+		...(config.vectorStores ?? []).map((store) => truncate(store.name, MAX_LABEL_CHARS)),
 	];
 	return [...new Set(labels.filter((label) => label.trim().length > 0))].slice(
 		0,

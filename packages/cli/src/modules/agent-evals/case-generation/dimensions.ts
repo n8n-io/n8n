@@ -67,10 +67,13 @@ export function sampleDimensionTuples(capabilities: string[], count: number): Di
 			continue;
 		}
 
-		// Preferred position: advance each axis independently so a short sample
-		// still touches every capability, difficulty, and flavor.
+		// Preferred position. Capability cycles fastest so a short sample spreads
+		// across capabilities. Difficulty advances once per full capability cycle
+		// (`floor(i / nCaps)`) rather than per step, so it stays decorrelated from
+		// capability — otherwise, e.g., 2 capabilities would each lock to a single
+		// difficulty. Flavor cycles fastest of all.
 		let c = i % nCaps;
-		let d = i % nDiff;
+		let d = Math.floor(i / nCaps) % nDiff;
 		let f = i % nFlavors;
 
 		// If that combination is taken, walk the grid (flavor-fastest) to the next

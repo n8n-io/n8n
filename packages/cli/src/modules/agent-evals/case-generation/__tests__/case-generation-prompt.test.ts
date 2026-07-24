@@ -50,6 +50,16 @@ describe('buildAgentSummary', () => {
 		expect(summary.tools[0].description).toBeUndefined();
 	});
 
+	it('caps very long tool/capability labels', () => {
+		const longName = 'n'.repeat(500);
+		const cfg = config({
+			tools: [{ type: 'node', name: longName, node: {} }] as AgentJsonConfig['tools'],
+		});
+		// 100-char cap + a single ellipsis character.
+		expect(buildAgentSummary(cfg).tools[0].name.length).toBeLessThanOrEqual(101);
+		expect(deriveCapabilities(cfg)[0].length).toBeLessThanOrEqual(101);
+	});
+
 	it('caps the number of tools in the summary', () => {
 		const many = Array.from({ length: 40 }, (_, i) => ({
 			type: 'node' as const,

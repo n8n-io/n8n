@@ -8,7 +8,9 @@ import { Service } from '@n8n/di';
 import { OperationalError, UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { PostHogClient } from '@/posthog';
 
 import { AgentConfigService } from '../agents/agent-config.service';
@@ -89,6 +91,7 @@ export class AgentEvalCaseGenerationService {
 		private readonly dataTableService: DataTableService,
 		private readonly datasetRepository: AgentEvalDatasetRepository,
 		private readonly postHogClient: PostHogClient,
+		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 	) {}
 
 	/**
@@ -104,6 +107,7 @@ export class AgentEvalCaseGenerationService {
 		options: GenerateDraftCasesOptions = {},
 	): Promise<GenerateDraftCasesResult> {
 		await this.assertFeatureEnabled(user);
+		this.assertInstanceWriteAccess();
 
 		const config = await this.agentConfigService.getConfig(agentId, projectId);
 		const modelConfig = await this.resolveAgentModel(config, projectId, user);
@@ -116,6 +120,7 @@ export class AgentEvalCaseGenerationService {
 		const generated = await this.invokeModel(
 			modelConfig,
 			buildCaseGenerationUserPrompt(summary, tuples),
+			tuples.length,
 		);
 		// Cap to the requested count and bound each field: the model output is
 		// untrusted, so a runaway or prompt-injected response can't balloon the
@@ -159,6 +164,19 @@ export class AgentEvalCaseGenerationService {
 	}
 
 	/**
+	 * Block writes on a source-control read-only (protected) instance. This
+	 * service writes a Data Table directly (bypassing the data-table controller),
+	 * so it must mirror the controller's guard.
+	 */
+	private assertInstanceWriteAccess(): void {
+		if (this.sourceControlPreferencesService.getPreferences().branchReadOnly) {
+			throw new ForbiddenError(
+				'Cannot generate eval cases on a protected instance. This instance is in read-only mode.',
+			);
+		}
+	}
+
+	/**
 	 * Resolve the agent's configured model + credential into a ready-to-use model
 	 * config, the same way the agent runtime does. Rejects agents without a usable
 	 * bring-your-own-key model (draft/unset, managed, or unsupported provider),
@@ -186,15 +204,18 @@ export class AgentEvalCaseGenerationService {
 	}
 
 	/**
-	 * Call the model to fill the sampled scenarios with concrete cases. One
-	 * stricter retry on invalid/empty structured output — a real model's JSON can
-	 * drift — then fail rather than persist an empty dataset. Intentionally
-	 * tool-less: the prompt embeds the agent's own (untrusted) instructions, so a
-	 * planted directive can only bias the drafts, never trigger a tool.
+	 * Call the model to fill the sampled scenarios with concrete cases. Trims each
+	 * field and drops blank ones, then requires at least `expectedCount` valid
+	 * cases so a partial (or empty) dataset is never persisted. One stricter retry
+	 * on invalid / underfilled output (a real model's JSON can drift), then fail.
+	 * Intentionally tool-less: the prompt embeds the agent's own (untrusted)
+	 * instructions, so a planted directive can only bias the drafts, never trigger
+	 * a tool.
 	 */
 	private async invokeModel(
 		modelConfig: Awaited<ReturnType<typeof resolveCredentialAwareModelConfig>>,
 		userPrompt: string,
+		expectedCount: number,
 	): Promise<AgentEvalDraftCase[]> {
 		// Lazy-load the agents SDK so it stays out of the boot path for instances
 		// that never generate cases.
@@ -209,19 +230,27 @@ export class AgentEvalCaseGenerationService {
 				abortSignal: AbortSignal.timeout(GENERATE_TIMEOUT_MS),
 			});
 			const parsed = generatedCasesSchema.safeParse(result.structuredOutput);
-			if (!parsed.success || parsed.data.cases.length === 0) return null;
-			return parsed.data.cases;
+			if (!parsed.success) return null;
+			// Trim and drop cases with a blank input or check — a whitespace-only
+			// field would persist an unusable draft row.
+			const cases = parsed.data.cases
+				.map((c) => ({ input: c.input.trim(), whatToCheck: c.whatToCheck.trim() }))
+				.filter((c) => c.input.length > 0 && c.whatToCheck.length > 0);
+			// Require the full requested count so a partial dataset is never persisted.
+			return cases.length >= expectedCount ? cases : null;
 		};
 
 		const first = await attempt(userPrompt);
 		if (first) return first;
 
 		const retry = await attempt(
-			`${userPrompt}\n\nReturn ONLY a JSON object matching the required schema exactly — no extra keys, no prose.`,
+			`${userPrompt}\n\nReturn ONLY a JSON object with exactly ${expectedCount} cases matching the required schema — no extra keys, no prose.`,
 		);
 		if (retry) return retry;
 
-		throw new OperationalError('Case generation returned no valid cases after a retry');
+		throw new OperationalError(
+			'Case generation returned fewer valid cases than requested after a retry',
+		);
 	}
 
 	/**

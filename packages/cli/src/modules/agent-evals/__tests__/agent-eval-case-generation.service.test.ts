@@ -6,7 +6,9 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { PostHogClient } from '@/posthog';
 
 import type { AgentConfigService } from '../../agents/agent-config.service';
@@ -74,6 +76,7 @@ describe('AgentEvalCaseGenerationService', () => {
 	let dataTableService: Mocked<DataTableService>;
 	let datasetRepository: Mocked<AgentEvalDatasetRepository>;
 	let postHogClient: Mocked<PostHogClient>;
+	let sourceControlPreferences: Mocked<SourceControlPreferencesService>;
 
 	beforeEach(() => {
 		logger = mock<Logger>();
@@ -83,6 +86,10 @@ describe('AgentEvalCaseGenerationService', () => {
 		dataTableService = mock<DataTableService>();
 		datasetRepository = mock<AgentEvalDatasetRepository>();
 		postHogClient = mock<PostHogClient>();
+		sourceControlPreferences = mock<SourceControlPreferencesService>();
+		sourceControlPreferences.getPreferences.mockReturnValue({
+			branchReadOnly: false,
+		} as ReturnType<SourceControlPreferencesService['getPreferences']>);
 
 		generateMock.mockReset();
 		resolveModelMock.mockReset();
@@ -101,6 +108,7 @@ describe('AgentEvalCaseGenerationService', () => {
 			dataTableService,
 			datasetRepository,
 			postHogClient,
+			sourceControlPreferences,
 		);
 	});
 
@@ -109,6 +117,17 @@ describe('AgentEvalCaseGenerationService', () => {
 
 		await expect(service.generateDraftCases(user, 'project-1', 'agent-1')).rejects.toThrow(
 			NotFoundError,
+		);
+		expect(agentConfigService.getConfig).not.toHaveBeenCalled();
+	});
+
+	it('rejects on a source-control read-only instance', async () => {
+		sourceControlPreferences.getPreferences.mockReturnValue({
+			branchReadOnly: true,
+		} as ReturnType<SourceControlPreferencesService['getPreferences']>);
+
+		await expect(service.generateDraftCases(user, 'project-1', 'agent-1')).rejects.toThrow(
+			ForbiddenError,
 		);
 		expect(agentConfigService.getConfig).not.toHaveBeenCalled();
 	});
@@ -198,13 +217,59 @@ describe('AgentEvalCaseGenerationService', () => {
 		expect(generateMock).toHaveBeenCalledTimes(2);
 	});
 
-	it('fails without persisting when the model returns no valid cases after a retry', async () => {
+	it('fails without persisting when the model returns no cases after a retry', async () => {
 		generateMock.mockResolvedValue({ structuredOutput: { cases: [] } });
 
 		await expect(service.generateDraftCases(user, 'project-1', 'agent-1')).rejects.toThrow(
-			/no valid cases/,
+			/fewer valid cases than requested/,
 		);
 		expect(dataTableService.createDataTable).not.toHaveBeenCalled();
+	});
+
+	it('fails without persisting when the model returns fewer cases than requested', async () => {
+		// Default count is 6; the model only returns 4 on both attempts.
+		generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(4) } });
+
+		await expect(service.generateDraftCases(user, 'project-1', 'agent-1')).rejects.toThrow(
+			/fewer valid cases than requested/,
+		);
+		expect(generateMock).toHaveBeenCalledTimes(2);
+		expect(dataTableService.createDataTable).not.toHaveBeenCalled();
+	});
+
+	it('retries when the first response is underfilled, then succeeds', async () => {
+		generateMock
+			.mockResolvedValueOnce({ structuredOutput: { cases: makeCases(4) } })
+			.mockResolvedValueOnce({ structuredOutput: { cases: makeCases(6) } });
+
+		await expect(service.generateDraftCases(user, 'project-1', 'agent-1')).resolves.toMatchObject({
+			datasetId: 'ds-1',
+		});
+		expect(generateMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('trims fields and drops blank cases from the model output', async () => {
+		generateMock.mockResolvedValue({
+			structuredOutput: {
+				cases: [
+					{ input: '  needs trimming  ', whatToCheck: '  ok  ' },
+					...makeCases(5),
+					{ input: '   ', whatToCheck: 'blank input dropped' },
+					{ input: 'blank check dropped', whatToCheck: '  ' },
+				],
+			},
+		});
+
+		const result = await service.generateDraftCases(user, 'project-1', 'agent-1');
+
+		// 8 returned, 2 blank dropped → 6 valid, capped at the requested 6.
+		expect(result.cases).toHaveLength(6);
+		expect(result.cases[0]).toEqual({ input: 'needs trimming', whatToCheck: 'ok' });
+		const insertedRows = dataTableService.insertRows.mock.calls[0][2] as Array<{
+			input: string;
+			criteria: string;
+		}>;
+		expect(insertedRows.every((r) => r.input.length > 0 && r.criteria.length > 0)).toBe(true);
 	});
 
 	it('cleans up the Data Table if inserting rows fails', async () => {
