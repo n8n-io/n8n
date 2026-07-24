@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
+import { createResumeMessage } from '@n8n/api-types';
 
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import {
@@ -19,6 +20,7 @@ import {
 	workflowPartiallyActivated,
 	executionFinished,
 	executionRecovered,
+	resumeComplete,
 	workflowActivated,
 	workflowDeactivated,
 	workflowAutoDeactivated,
@@ -26,6 +28,7 @@ import {
 } from '@/app/composables/usePushConnection/handlers';
 import type { PushHandlerOptions } from '@/app/composables/usePushConnection/handlers/types';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { createEventQueue } from '@n8n/utils/create-event-queue';
 import type { useRouter } from 'vue-router';
@@ -41,17 +44,36 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 	const { enqueue } = createEventQueue<PushMessage>(processEvent);
 
 	const removeEventListener = ref<(() => void) | null>(null);
+	const removeConnectedHandler = ref<(() => void) | null>(null);
 
 	function initialize() {
 		removeEventListener.value = pushStore.addEventListener((message) => {
 			enqueue(message);
 		});
+		removeConnectedHandler.value = pushStore.addConnectedHandler(sendResumeHandshake);
 	}
 
 	function terminate() {
 		if (typeof removeEventListener.value === 'function') {
 			removeEventListener.value();
 		}
+		if (typeof removeConnectedHandler.value === 'function') {
+			removeConnectedHandler.value();
+		}
+	}
+
+	/**
+	 * On WebSocket (re)connect, tell the server which execution the canvas still
+	 * shows as running so it can replay a terminal event we may have missed
+	 * while disconnected. Derived from the single tracked execution (0 or 1 id)
+	 * — never from the store's disposal ledger of finished ids, which would
+	 * over-report and trigger false replays.
+	 */
+	function sendResumeHandshake() {
+		const documentId = workflowDocumentStore.value.documentId;
+		const { activeExecutionId } = useWorkflowExecutionStateStore(documentId);
+		const awaiting = typeof activeExecutionId === 'string' ? [activeExecutionId] : [];
+		pushStore.send(createResumeMessage(awaiting));
 	}
 
 	/**
@@ -98,6 +120,8 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				return await executionFinished(event, options);
 			case 'executionRecovered':
 				return await executionRecovered(event, options);
+			case 'resumeComplete':
+				return resumeComplete(event);
 			case 'workflowActivated':
 				return await workflowActivated(event, options);
 			case 'workflowDeactivated':
