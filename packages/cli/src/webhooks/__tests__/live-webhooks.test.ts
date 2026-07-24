@@ -185,6 +185,27 @@ describe('LiveWebhooks', () => {
 			expect(webhookService.getWebhookMethods).not.toHaveBeenCalled();
 		});
 
+		it('should look up allowed methods and include them in the 404 when no webhook is registered', async () => {
+			webhookService.findWebhook.mockResolvedValue(null);
+			webhookService.getWebhookMethods.mockResolvedValue(['POST', 'PUT']);
+
+			const request = mock<WebhookRequest>({
+				method: 'GET',
+				params: { path: WEBHOOK_PATH },
+			});
+
+			const error: unknown = await liveWebhooks
+				.executeWebhook(request, mock<Response>())
+				.then(() => null)
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(WebhookNotFoundError);
+			expect((error as WebhookNotFoundError).message).toBe(
+				'This webhook is not registered for GET requests. Did you mean to make a POST or PUT request?',
+			);
+			expect(webhookService.getWebhookMethods).toHaveBeenCalledWith(WEBHOOK_PATH);
+		});
+
 		it('should pass workflowData with activeVersion nodes/connections to executeWebhook', async () => {
 			const httpMethod: IHttpRequestMethods = 'POST';
 
