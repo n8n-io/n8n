@@ -126,38 +126,64 @@ export function findCycleCutEdge(json: WorkflowJSON, gateName: string): Edge | u
 type Decision = WaitGateScript['decisions'][number];
 
 interface FormField {
-	fieldLabel: string;
+	fieldLabel?: string;
+	fieldName?: string;
 	fieldType?: string;
 	options: string[];
 	multiselect: boolean;
 }
 
+function toFormField(value: unknown): FormField | undefined {
+	if (!isRecord(value)) return undefined;
+	const fieldLabel = typeof value.fieldLabel === 'string' ? value.fieldLabel : undefined;
+	const fieldName = typeof value.fieldName === 'string' ? value.fieldName : undefined;
+	if (!fieldLabel && !fieldName) return undefined;
+	const fieldOptions = isRecord(value.fieldOptions) ? value.fieldOptions : {};
+	const optionValues = Array.isArray(fieldOptions.values) ? fieldOptions.values : [];
+	const options = optionValues
+		.map((option) => (isRecord(option) ? option.option : undefined))
+		.filter((option): option is string => typeof option === 'string');
+	return {
+		fieldLabel,
+		fieldName,
+		fieldType: typeof value.fieldType === 'string' ? value.fieldType : undefined,
+		options,
+		multiselect: value.multiselectDropdown === true || value.multiselect === true,
+	};
+}
+
+/** UI-defined and static-JSON forms parse; JSON with expressions is dynamic → undefined. */
 function parseFormFields(parameters: Record<string, unknown>): FormField[] | undefined {
-	if (parameters.defineForm === 'json') return undefined;
-	const formFields = isRecord(parameters.formFields) ? parameters.formFields : {};
-	const values = Array.isArray(formFields.values) ? formFields.values : [];
-	const fields: FormField[] = [];
-	for (const value of values) {
-		if (!isRecord(value) || typeof value.fieldLabel !== 'string') continue;
-		const fieldOptions = isRecord(value.fieldOptions) ? value.fieldOptions : {};
-		const optionValues = Array.isArray(fieldOptions.values) ? fieldOptions.values : [];
-		const options = optionValues
-			.map((option) => (isRecord(option) ? option.option : undefined))
-			.filter((option): option is string => typeof option === 'string');
-		fields.push({
-			fieldLabel: value.fieldLabel,
-			fieldType: typeof value.fieldType === 'string' ? value.fieldType : undefined,
-			options,
-			multiselect: value.multiselectDropdown === true || value.multiselect === true,
-		});
+	let values: unknown[];
+	if (parameters.defineForm === 'json') {
+		const jsonOutput = parameters.jsonOutput;
+		if (typeof jsonOutput !== 'string' || jsonOutput.includes('{{')) return undefined;
+		try {
+			const parsed: unknown = JSON.parse(jsonOutput);
+			if (!Array.isArray(parsed)) return undefined;
+			values = parsed;
+		} catch {
+			return undefined;
+		}
+	} else {
+		const formFields = isRecord(parameters.formFields) ? parameters.formFields : {};
+		values = Array.isArray(formFields.values) ? formFields.values : [];
 	}
-	return fields;
+	return values.map(toFormField).filter((field): field is FormField => field !== undefined);
+}
+
+/** Mirrors nodes-base `getFieldIdentifier`: v2.4+ prefers `fieldName`, else the label. */
+function fieldKey(field: FormField, typeVersion: number): string | undefined {
+	if (typeVersion >= 2.4 && field.fieldName) return field.fieldName;
+	return field.fieldLabel ?? field.fieldName;
 }
 
 function cannedFieldValue(field: FormField, passLabel: string): unknown {
 	switch (field.fieldType) {
 		case 'dropdown':
 			return field.multiselect ? field.options.slice(0, 1) : (field.options[0] ?? '');
+		case 'radio':
+			return field.options[0] ?? '';
 		case 'number':
 			return 1;
 		case 'date':
@@ -195,18 +221,26 @@ function deriveDecisions(node: WorkflowNode): Decision[] | undefined {
 	if (responseType === 'customForm') {
 		const fields = parseFormFields(parameters);
 		if (!fields || fields.length === 0) return undefined;
-		// The first single-select dropdown with 2+ options drives the decision;
-		// without one the routing condition is free text we cannot enumerate.
+		const typeVersion = typeof node.typeVersion === 'number' ? node.typeVersion : 0;
+		// The first single-select dropdown/radio with 2+ options drives the
+		// decision; without one the routing condition is free text we cannot
+		// enumerate.
 		const driver = fields.find(
-			(field) => field.fieldType === 'dropdown' && !field.multiselect && field.options.length >= 2,
+			(field) =>
+				(field.fieldType === 'dropdown' || field.fieldType === 'radio') &&
+				!field.multiselect &&
+				field.options.length >= 2 &&
+				fieldKey(field, typeVersion) !== undefined,
 		);
 		if (!driver) return undefined;
 
 		const buildPass = (driverValue: string): Decision => {
 			const data: Record<string, unknown> = {};
 			for (const field of fields) {
-				data[field.fieldLabel] =
-					field === driver ? driverValue : cannedFieldValue(field, driverValue);
+				if (field.fieldType === 'html') continue;
+				const key = fieldKey(field, typeVersion);
+				if (!key) continue;
+				data[key] = field === driver ? driverValue : cannedFieldValue(field, driverValue);
 			}
 			data.respondedAt = respondedAt;
 			return { label: driverValue, items: [{ data }] };

@@ -126,3 +126,39 @@ describe('runScriptedGateVerification', () => {
 		expect(analysis.remediation).toBeDefined();
 	});
 });
+
+describe('runScriptedGateVerification — merge consistency', () => {
+	it('normalizes the merged status when a pass fails on node errors despite engine success', async () => {
+		const run = vi
+			.fn()
+			.mockResolvedValueOnce(approvePassResult)
+			.mockResolvedValueOnce({
+				...declinePassResult,
+				status: 'success',
+				nodeErrors: [{ nodeName: 'Revise', message: 'expression error' }],
+			});
+
+		const { result, analysis } = await runScriptedGateVerification(makeArgs(run));
+
+		expect(analysis.success).toBe(false);
+		expect(result.status).toBe('error');
+	});
+
+	it('discloses simulated nodes reached only in an earlier pass', async () => {
+		const run = vi
+			.fn()
+			.mockResolvedValueOnce(approvePassResult)
+			.mockResolvedValueOnce(declinePassResult);
+
+		const args = makeArgs(run);
+		args.prepared = {
+			...prepared,
+			simulatedNodes: [...prepared.simulatedNodes, { nodeName: 'Publish', reason: 'no creds' }],
+		};
+
+		const { analysis } = await runScriptedGateVerification(args);
+
+		// Publish is reached only by the approve pass; the decline pass ran last.
+		expect(analysis.simulationNote).toContain('Publish');
+	});
+});

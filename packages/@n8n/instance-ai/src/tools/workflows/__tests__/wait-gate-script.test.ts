@@ -148,3 +148,91 @@ describe('deriveWaitGateScripts', () => {
 		expect(deriveWaitGateScripts(waitNode, [gateVerdict('Gate')])).toEqual([]);
 	});
 });
+
+describe('deriveWaitGateScripts — field identifiers and JSON forms', () => {
+	const formFields = {
+		values: [
+			{
+				fieldLabel: 'Decision',
+				fieldName: 'decision_key',
+				fieldType: 'dropdown',
+				fieldOptions: { values: [{ option: 'Approve' }, { option: 'Reject' }] },
+			},
+		],
+	};
+
+	it('keys fixtures by fieldName on v2.4+ gates, mirroring getFieldIdentifier', () => {
+		const workflow = approvalLoopWorkflow({
+			operation: 'sendAndWait',
+			responseType: 'customForm',
+			formFields,
+		});
+		workflow.nodes = workflow.nodes.map((node) =>
+			node.name === 'Gate' ? { ...node, typeVersion: 2.4 } : node,
+		);
+
+		const scripts = deriveWaitGateScripts(workflow, [gateVerdict('Gate')]);
+
+		expect(scripts[0]?.decisions[0].items[0]).toMatchObject({
+			data: { decision_key: 'Approve' },
+		});
+	});
+
+	it('keys fixtures by label on pre-2.4 gates even when fieldName is set', () => {
+		const workflow = approvalLoopWorkflow({
+			operation: 'sendAndWait',
+			responseType: 'customForm',
+			formFields,
+		});
+
+		const scripts = deriveWaitGateScripts(workflow, [gateVerdict('Gate')]);
+
+		expect(scripts[0]?.decisions[0].items[0]).toMatchObject({ data: { Decision: 'Approve' } });
+	});
+
+	it('parses static JSON-defined forms and bails on expressions', () => {
+		const staticJson = approvalLoopWorkflow({
+			operation: 'sendAndWait',
+			responseType: 'customForm',
+			defineForm: 'json',
+			jsonOutput: JSON.stringify([
+				{
+					fieldLabel: 'Decision',
+					fieldType: 'dropdown',
+					fieldOptions: { values: [{ option: 'Ship it' }, { option: 'Revise' }] },
+				},
+			]),
+		});
+		expect(
+			deriveWaitGateScripts(staticJson, [gateVerdict('Gate')])[0]?.decisions.map((d) => d.label),
+		).toEqual(['Ship it', 'Revise']);
+
+		const dynamicJson = approvalLoopWorkflow({
+			operation: 'sendAndWait',
+			responseType: 'customForm',
+			defineForm: 'json',
+			jsonOutput: '{{ $json.fields }}',
+		});
+		expect(deriveWaitGateScripts(dynamicJson, [gateVerdict('Gate')])).toEqual([]);
+	});
+
+	it('accepts a radio field as the decision driver', () => {
+		const workflow = approvalLoopWorkflow({
+			operation: 'sendAndWait',
+			responseType: 'customForm',
+			formFields: {
+				values: [
+					{
+						fieldLabel: 'Verdict',
+						fieldType: 'radio',
+						fieldOptions: { values: [{ option: 'Yes' }, { option: 'No' }] },
+					},
+				],
+			},
+		});
+
+		expect(
+			deriveWaitGateScripts(workflow, [gateVerdict('Gate')])[0]?.decisions.map((d) => d.label),
+		).toEqual(['Yes', 'No']);
+	});
+});

@@ -5,7 +5,11 @@
  * analysis — success requires every pass to succeed, coverage is the union.
  */
 
-import { analyzeVerificationResult, type VerificationAnalysis } from './analyze-result';
+import {
+	analyzeVerificationResult,
+	buildSimulationNote,
+	type VerificationAnalysis,
+} from './analyze-result';
 import type { PreparedVerificationRun } from './prepare-run';
 import type { ExecutionRunResult } from './types';
 import type { OrchestrationContext } from '../../../types';
@@ -75,9 +79,17 @@ function mergeResults(passes: DecisionPass[]): ExecutionRunResult {
 		for (const name of pass.analysis.reachedNames) executedNodeNames.add(name);
 	}
 
+	// A pass can fail on node errors while its engine status is still
+	// 'success' — normalize so the merged status never contradicts `success`.
+	const failingStatus = failing
+		? failing.result.status === 'success'
+			? 'error'
+			: failing.result.status
+		: undefined;
+
 	return {
 		...last.result,
-		status: failing ? failing.result.status : last.result.status,
+		status: failingStatus ?? last.result.status,
 		data: Object.keys(data).length > 0 ? data : undefined,
 		executedNodeNames: [...executedNodeNames],
 		error: failing?.result.error ?? failing?.analysis.errorMessage,
@@ -121,16 +133,20 @@ function mergeAnalyses(
 				'branch wiring before editing.'
 			: '');
 
+	// Rebuild the note from the union — a node simulated only in an earlier
+	// pass must still be disclosed.
+	const reachedSimulatedNodes = prepared.simulatedNodes.filter((node) =>
+		reachedNames.has(node.nodeName),
+	);
+
 	return {
 		success: passes.every((pass) => pass.analysis.success),
 		reachedNames,
-		reachedSimulatedNodes: prepared.simulatedNodes.filter((node) =>
-			reachedNames.has(node.nodeName),
-		),
+		reachedSimulatedNodes,
 		nodesNotReached,
 		remediation: failing?.analysis.remediation,
 		nodesExecuted: [...reachedNames],
-		simulationNote: passes[passes.length - 1]?.analysis.simulationNote,
+		simulationNote: buildSimulationNote(reachedSimulatedNodes, false),
 		coverageNote,
 		errorMessage: failing?.analysis.errorMessage,
 		nodeErrors,
