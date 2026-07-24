@@ -129,7 +129,15 @@ describe('GET /community-packages', () => {
 
 		await authAgent.get('/community-packages').expect(200);
 
-		const args = [['outdated', '--json'], { doNotHandleError: true, cwd: expect.any(String) }];
+		const args = [
+			['outdated', '--json'],
+			{
+				doNotHandleError: true,
+				cwd: expect.any(String),
+				registry: 'https://registry.npmjs.org',
+				authToken: undefined,
+			},
+		];
 
 		expect(mockedExecuteNpmCommand).toHaveBeenCalledWith(...args);
 	});
