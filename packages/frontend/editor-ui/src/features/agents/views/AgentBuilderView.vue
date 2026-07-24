@@ -852,7 +852,7 @@ function persistMissingPersonalisationGradient() {
 	replaceConfigAndScheduleSave(nextConfig, false);
 }
 
-async function onConfigUpdated() {
+async function onConfigUpdated(options?: { rebaselineOnly?: boolean }) {
 	// Modal flows (e.g. skill creation) write through their own API calls, not
 	// `saveConfig` — notify other surfaces (canvas agent cards) here too.
 	agentsEventBus.emit('agentUpdated', { agentId: agentId.value, source: 'agent-builder' });
@@ -868,14 +868,23 @@ async function onConfigUpdated() {
 	const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 	if (connected) connectedTriggers.value = connected;
 	tasksReloadKey.value += 1;
-	builderTelemetry.trackToolsAdded();
-	builderTelemetry.trackSkillsAdded();
-	builderTelemetry.trackTasksChanged();
+	if (options?.rebaselineOnly) {
+		// External (e.g. Instance AI builder) writes are tracked by the backend's
+		// "Builder added ..." twins — re-baseline so frontend diffs don't
+		// double-count them, and only frontend-initiated saves emit "User added ...".
+		builderTelemetry.captureToolsBaseline();
+		builderTelemetry.captureSkillsBaseline();
+		builderTelemetry.captureTasksBaseline();
+	} else {
+		builderTelemetry.trackToolsAdded();
+		builderTelemetry.trackSkillsAdded();
+		builderTelemetry.trackTasksChanged();
+	}
 }
 
 async function refreshArtifactShell() {
 	await settleAutosave();
-	await onConfigUpdated();
+	await onConfigUpdated({ rebaselineOnly: true });
 }
 
 function handleArtifactRefreshError(error: unknown) {
@@ -1404,7 +1413,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					@update:connected-triggers="caps.onConnectedTriggersUpdate"
 					@trigger-added="caps.onTriggerAdded"
 					@toggle-task="caps.onToggleTask"
-					@tasks-changed="onConfigUpdated"
+					@tasks-changed="() => onConfigUpdated()"
 					@agent-changed="refreshAgentAfterIntegrationChange"
 				/>
 

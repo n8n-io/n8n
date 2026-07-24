@@ -1,4 +1,5 @@
 import type { Mocked } from 'vitest';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { CredentialProvider } from '@n8n/agents';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
@@ -79,6 +80,7 @@ function makeService() {
 	const mcpRegistryService = mock<McpRegistryService>();
 	const agentTaskService = mock<AgentTaskService>();
 	const agentPublishService = mock<AgentPublishService>();
+	const telemetry = mock<Telemetry>();
 	const agentValidationService = mock<AgentValidationService>();
 	agentValidationService.validateAgentConfiguration.mockResolvedValue({
 		status: 'valid',
@@ -120,7 +122,7 @@ function makeService() {
 		mock<SsrfProtectionConfig>({ enabled: true }),
 		mock<SsrfProtectionService>(),
 		mock<FreeAiCreditsService>(),
-		mock<Telemetry>(),
+		telemetry,
 		agentValidationService,
 	);
 
@@ -134,6 +136,7 @@ function makeService() {
 		agentValidationService,
 		nodeTypes,
 		outboundHttp,
+		telemetry,
 	};
 }
 
@@ -296,8 +299,8 @@ describe('AgentsBuilderToolsService', () => {
 				ok: true,
 				config: { ...baseConfig, integrations: [] },
 				configHash: getAgentConfigHash({ ...baseConfig, integrations: [] }),
-				status: 'draft',
 			});
+			expect(result).not.toHaveProperty('status');
 			expect(result).not.toHaveProperty('configMutated');
 		});
 
@@ -576,6 +579,39 @@ describe('AgentsBuilderToolsService', () => {
 				config: normalizedConfig,
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
+			});
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(updatedConfig),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
+			expect(result).toEqual({ ok: true, configMutated: true, agentId });
+		});
+
+		it('write_config succeeds even when telemetry throws', async () => {
+			const { service, agentsService, telemetry } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [], tools: [] };
+			const updatedConfig: AgentJsonConfig = {
+				...currentConfig,
+				tools: [{ type: 'workflow', workflow: 'wf-1', name: 'My Workflow' }],
+			};
+			const normalizedConfig = {
+				...updatedConfig,
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
+			};
+			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: normalizedConfig,
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+			telemetry.track.mockImplementation(() => {
+				throw new Error('telemetry failed');
 			});
 
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
@@ -1649,6 +1685,34 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getCreateTasksTool(service).handler!({ tasks: [taskOneInput] }, ctx);
 
 			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent "agent-1" not found' }] });
+		});
+
+		it('create_tasks survives a failing post-write snapshot read', async () => {
+			const { service, agentsService, agentTaskService, telemetry } = makeService();
+			agentsService.findById
+				.mockResolvedValueOnce(makeAgent())
+				.mockRejectedValueOnce(new Error('db down'));
+			agentTaskService.createTasks.mockResolvedValue([makeTaskDto()]);
+
+			const result = await getCreateTasksTool(service).handler!({ tasks: [taskOneInput] }, ctx);
+
+			expect(agentTaskService.createTasks).toHaveBeenCalledWith(agentId, projectId, [
+				{ ...taskOneInput, enabled: true },
+			]);
+			expect(result).toEqual({
+				ok: true,
+				configMutated: true,
+				agentId,
+				tasks: [{ id: 'task-1', name: taskOneInput.name, enabled: true }],
+			});
+			for (const entry of [
+				TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TOOLS,
+				TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_SKILLS,
+				TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TASKS,
+				TELEMETRY_EVENT.AGENTS.BUILDER_REMOVED_TASKS,
+			]) {
+				expect(telemetry.track).not.toHaveBeenCalledWith(entry, expect.anything());
+			}
 		});
 	});
 

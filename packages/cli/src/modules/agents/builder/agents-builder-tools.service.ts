@@ -301,7 +301,9 @@ export class AgentsBuilderToolsService {
 			.input(z.object({}))
 			.handler(async () => {
 				try {
-					return { ok: true, ...(await this.getConfigSnapshot(agentId, projectId)) };
+					// `status` is telemetry plumbing — keep it out of the LLM-facing result.
+					const { status: _status, ...snapshot } = await this.getConfigSnapshot(agentId, projectId);
+					return { ok: true, ...snapshot };
 				} catch (e) {
 					return {
 						ok: false,
@@ -904,38 +906,54 @@ export class AgentsBuilderToolsService {
 				}) => {
 					// Each task is already validated against `.input()` (agentTaskSchema
 					// shapes) by the tool runtime before the handler runs.
+					// Snapshot before the write since createTasks writes the task refs into the
+					// config itself — the diff can't be read off its return value. Telemetry-only:
+					// a failed read must not block the mutation.
+					let oldSnapshot: AgentConfigSnapshotWithStatus | null = null;
 					try {
-						// Snapshot before the write since createTasks writes the task refs
-						// into the config itself — the diff can't be read off its return value.
-						const oldSnapshot = await this.getConfigSnapshot(agentId, projectId);
+						oldSnapshot = await this.getConfigSnapshot(agentId, projectId);
+					} catch {
+						// Skip diff telemetry; the mutation below must still run.
+					}
+
+					let created: Awaited<ReturnType<AgentTaskService['createTasks']>>;
+					try {
 						// Adds a `{ type:'task', id, enabled }` ref per task to the agent config
 						// and creates every body in one transaction. Enabled by default; each
 						// task starts running once the agent is (re)published via publish_agent.
-						const created = await this.agentTaskService.createTasks(
+						created = await this.agentTaskService.createTasks(
 							agentId,
 							projectId,
 							tasks.map((task) => ({ ...task, enabled: true })),
 						);
-						const newSnapshot = await this.getConfigSnapshot(agentId, projectId);
-						if (newSnapshot.config) {
-							this.emitConfigDiffTelemetry(
-								oldSnapshot,
-								newSnapshot.config,
-								agentId,
-								user,
-								telemetryContext,
-							);
-						}
-						return {
-							ok: true,
-							tasks: created.map(({ id, name }) => ({ id, name, enabled: true as const })),
-						};
 					} catch (e) {
 						return {
 							ok: false,
 							errors: [{ message: e instanceof Error ? e.message : String(e) }],
 						};
 					}
+
+					if (oldSnapshot) {
+						try {
+							const newSnapshot = await this.getConfigSnapshot(agentId, projectId);
+							if (newSnapshot.config) {
+								this.emitConfigDiffTelemetry(
+									oldSnapshot,
+									newSnapshot.config,
+									agentId,
+									user,
+									telemetryContext,
+								);
+							}
+						} catch {
+							// Telemetry must never fail a mutation that already succeeded.
+						}
+					}
+
+					return {
+						ok: true,
+						tasks: created.map(({ id, name }) => ({ id, name, enabled: true as const })),
+					};
 				},
 			)
 			.build();
@@ -1007,18 +1025,22 @@ export class AgentsBuilderToolsService {
 		user: User,
 		telemetryContext?: BuilderTelemetryContext,
 	): void {
-		for (const { entry, properties } of collectBuilderConfigDiffEvents(
-			oldSnapshot.config,
-			newConfig,
-		)) {
-			this.telemetry.track(entry, {
-				agent_id: agentId,
-				user_id: user.id,
-				status: oldSnapshot.status,
-				...(telemetryContext?.threadId ? { thread_id: telemetryContext.threadId } : {}),
-				...(telemetryContext?.runId ? { run_id: telemetryContext.runId } : {}),
-				...properties,
-			});
+		try {
+			for (const { entry, properties } of collectBuilderConfigDiffEvents(
+				oldSnapshot.config,
+				newConfig,
+			)) {
+				this.telemetry.track(entry, {
+					agent_id: agentId,
+					user_id: user.id,
+					status: oldSnapshot.status,
+					...(telemetryContext?.threadId ? { thread_id: telemetryContext.threadId } : {}),
+					...(telemetryContext?.runId ? { run_id: telemetryContext.runId } : {}),
+					...properties,
+				});
+			}
+		} catch {
+			// Telemetry must never fail a mutation that already succeeded.
 		}
 	}
 

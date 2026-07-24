@@ -15,6 +15,15 @@ const builderSessionIdentity = {
 
 const agentStatus = z.enum(['draft', 'production']);
 
+// The builder config-diff events capture status before the write, so a change
+// to a live agent reports 'production'. The frontend "User added/removed …"
+// twins derive status after the save — which always produces a new draft
+// version — so they effectively always report 'draft'. Warehouse consumers
+// unioning the twins must not group by status across sources.
+const builderPreWriteStatus = agentStatus.describe(
+	"Agent status before the builder's write (frontend twin events report post-save status, effectively always 'draft')",
+);
+
 const sessionId = z.string().describe('Editor push session id (pushRef)');
 
 const agentConfigFingerprint = z.object({
@@ -73,7 +82,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			...builderSessionIdentity,
 			tool_added: z.string().describe('Identifier of the newly added tool'),
 			tools: z.array(z.string()).describe('Full tool identifier list after the save'),
-			status: z.enum(['draft', 'production']),
+			status: builderPreWriteStatus,
 		}),
 	},
 	BUILDER_ADDED_SKILLS: {
@@ -84,7 +93,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			...builderSessionIdentity,
 			skill_added: z.string().describe('Identifier of the newly added skill'),
 			skills: z.array(z.string()).describe('Full skill identifier list after the save'),
-			status: z.enum(['draft', 'production']),
+			status: builderPreWriteStatus,
 		}),
 	},
 	BUILDER_ADDED_TASKS: {
@@ -95,7 +104,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			...builderSessionIdentity,
 			task_added: z.string().describe('Identifier of the newly added task'),
 			tasks: z.array(z.string()).describe('Full task identifier list after the save'),
-			status: z.enum(['draft', 'production']),
+			status: builderPreWriteStatus,
 		}),
 	},
 	BUILDER_REMOVED_TASKS: {
@@ -106,7 +115,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			...builderSessionIdentity,
 			task_removed: z.string().describe('Identifier of the removed task'),
 			tasks: z.array(z.string()).describe('Full task identifier list after the save'),
-			status: z.enum(['draft', 'production']),
+			status: builderPreWriteStatus,
 		}),
 	},
 	BUILDER_ADDED_TRIGGER: {
