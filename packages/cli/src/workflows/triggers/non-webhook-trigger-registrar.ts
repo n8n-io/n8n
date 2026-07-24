@@ -19,6 +19,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import type { TriggerFailureHandler } from '@/workflows/triggers/trigger-execution-context.factory';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
@@ -51,6 +52,7 @@ export class NonWebhookTriggerRegistrar {
 		private readonly activeWorkflowTriggers: ActiveWorkflowTriggers,
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
 		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
+		private readonly pollTriggerJobRegistrar: PollTriggerJobRegistrar,
 		private readonly tracing: Tracing,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
@@ -178,6 +180,7 @@ export class NonWebhookTriggerRegistrar {
 			async (span) => {
 				await this.activeWorkflowTriggers.removeTriggers(workflowId, new Set([nodeId]));
 				await this.scheduleTriggerJobRegistrar.remove(workflowId, nodeId);
+				await this.pollTriggerJobRegistrar.remove(workflowId, nodeId);
 
 				span.setStatus({ code: SpanStatus.ok });
 			},

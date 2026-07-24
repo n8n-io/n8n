@@ -253,6 +253,13 @@ export class SchedulerConfig {
 	triggerNodeMode: 'legacy' | 'new' = 'legacy';
 
 	/**
+	 * Routes poll triggers through the durable scheduler instead of the in-process
+	 * timer, so poller nodes can be rolled onto it on their own timeline.
+	 */
+	@Env('N8N_SCHEDULER_ENABLE_FOR_POLL_TRIGGERS')
+	enabledForPollTriggers: boolean = false;
+
+	/**
 	 * Temporary escape hatch for the durable-scheduler rollout (preview to GA).
 	 * Off by default; intended to be removed once the durable scheduler is GA.
 	 *

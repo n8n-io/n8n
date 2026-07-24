@@ -13,7 +13,7 @@ import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
-import { BinaryDataConfig } from 'n8n-core';
+import { BinaryDataConfig, PollJobManager } from 'n8n-core';
 import { jsonParse, sleep, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import path from 'path';
 import replaceStream from 'replacestream';
@@ -37,6 +37,7 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
+import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -213,6 +214,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await super.init();
 
 		Container.get(DeprecationService).warn();
+
+		// Resolved lazily at activation time, so this only needs to run before the
+		// first workflow activation.
+		Container.set(PollJobManager, Container.get(PollTriggerJobRegistrar));
 
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 

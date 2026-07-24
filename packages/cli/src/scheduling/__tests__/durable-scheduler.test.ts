@@ -9,6 +9,8 @@ import { mock } from 'vitest-mock-extended';
 import type { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
 import { DurableScheduler } from '../durable-scheduler';
+import { POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-node/poll-trigger-task';
+import type { PollTriggerTaskHandler } from '../poll-trigger-node/poll-trigger-task-handler';
 import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-node/schedule-trigger-task';
 import type { ScheduleTriggerTaskHandler } from '../schedule-trigger-node/schedule-trigger-task-handler';
 
@@ -27,6 +29,9 @@ describe('DurableScheduler', () => {
 		const scheduleTriggerTaskHandler = mock<ScheduleTriggerTaskHandler>({
 			taskType: SCHEDULE_TRIGGER_TASK_TYPE,
 		});
+		const pollTriggerTaskHandler = mock<PollTriggerTaskHandler>({
+			taskType: POLL_TRIGGER_TASK_TYPE,
+		});
 		const tracing = mock<Tracing>();
 		const tasks = mock<ScheduledTaskRepository>();
 		tasks.readDbTime.mockResolvedValue(new Date());
@@ -43,6 +48,7 @@ describe('DurableScheduler', () => {
 			}),
 			tracing,
 			scheduleTriggerTaskHandler,
+			pollTriggerTaskHandler,
 			mock<PrometheusSchedulerMetricsService>(),
 		);
 		return { scheduler, inner, logger, tracing, tasks };
@@ -109,6 +115,19 @@ describe('DurableScheduler', () => {
 			scheduler.registerTaskHandler('some-task', handler);
 
 			expect(inner.registerTaskHandler).toHaveBeenCalledWith('some-task', handler);
+		});
+
+		it('registers the schedule- and poll-trigger handlers at construction', () => {
+			const { inner } = makeScheduler();
+
+			expect(inner.registerTaskHandler).toHaveBeenCalledWith(
+				SCHEDULE_TRIGGER_TASK_TYPE,
+				expect.objectContaining({ taskType: SCHEDULE_TRIGGER_TASK_TYPE }),
+			);
+			expect(inner.registerTaskHandler).toHaveBeenCalledWith(
+				POLL_TRIGGER_TASK_TYPE,
+				expect.objectContaining({ taskType: POLL_TRIGGER_TASK_TYPE }),
+			);
 		});
 	});
 

@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ActiveWorkflowTriggers, Span, Tracing } from 'n8n-core';
 import type { IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
+import type { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import type {
 	ScheduleTriggerCollectionSession,
 	ScheduleTriggerJobRegistrar,
@@ -16,6 +17,7 @@ import { createWorkflow, logger, node } from './trigger-test-utils';
 describe('NonWebhookTriggerRegistrar', () => {
 	const tracing = mock<Tracing>();
 	const scheduleTriggerJobRegistrar = mock<ScheduleTriggerJobRegistrar>();
+	const pollTriggerJobRegistrar = mock<PollTriggerJobRegistrar>();
 	const scheduleCollectionSession = mock<ScheduleTriggerCollectionSession>();
 
 	beforeEach(() => {
@@ -31,6 +33,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 			mock<ActiveWorkflowTriggers>(),
 			mock<TriggerExecutionContextFactory>(),
 			scheduleTriggerJobRegistrar,
+			pollTriggerJobRegistrar,
 			tracing,
 		);
 		const workflow = createWorkflow([
@@ -54,6 +57,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 			activeWorkflowTriggers,
 			factory,
 			scheduleTriggerJobRegistrar,
+			pollTriggerJobRegistrar,
 			tracing,
 		);
 		const workflow = createWorkflow([node('trigger-a', 'trigger'), node('poll-a', 'poll')]);
@@ -89,6 +93,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 			activeWorkflowTriggers,
 			mock<TriggerExecutionContextFactory>(),
 			scheduleTriggerJobRegistrar,
+			pollTriggerJobRegistrar,
 			tracing,
 		);
 
@@ -107,6 +112,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 			activeWorkflowTriggers,
 			factory,
 			scheduleTriggerJobRegistrar,
+			pollTriggerJobRegistrar,
 			tracing,
 		);
 		const workflow = createWorkflow([node('trigger-a', 'trigger')]);
@@ -127,7 +133,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 		);
 	});
 
-	describe('durable schedule jobs', () => {
+	describe('durable scheduler jobs', () => {
 		const makeRegistrar = () => {
 			const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
 			const factory = mock<TriggerExecutionContextFactory>();
@@ -138,6 +144,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 				activeWorkflowTriggers,
 				factory,
 				scheduleTriggerJobRegistrar,
+				pollTriggerJobRegistrar,
 				tracing,
 			);
 			const registration = registrar.createRegistrationContext(
@@ -197,6 +204,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 				new Set(['trigger-a']),
 			);
 			expect(scheduleTriggerJobRegistrar.remove).toHaveBeenCalledWith('wf-1', 'trigger-a');
+			expect(pollTriggerJobRegistrar.remove).toHaveBeenCalledWith('wf-1', 'trigger-a');
 		});
 	});
 });
