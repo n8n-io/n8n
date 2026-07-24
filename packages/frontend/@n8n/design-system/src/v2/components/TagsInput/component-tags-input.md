@@ -11,16 +11,17 @@ Freeform tag entry field. Users type values and create tags via delimiter (defau
 
 **Props**
 
-- `modelValue?: TagsInputValue[]` - Controlled tags. Bind with `v-model`
+- `modelValue?: TagsInputValue[]` - Controlled tags. Bind with `v-model`. `TagsInputValue` is `string | number | bigint | Record | null`
 - `defaultValue?: TagsInputValue[]` - Initial tags when uncontrolled
 - `placeholder?: string` - Shown when empty. Default: `'Add a tag...'`
 - `disabled?: boolean` - When `true`, prevents interaction and dims the field. Default: `false`
 - `id?: string` - Applied to the text input
 - `autoFocus?: boolean` - Focus the input on mount
 - `delimiter?: string | RegExp` - Creates a tag from typed input. Default: `','`. Pass `''` to disable delimiter splitting
-- `displayValue?: (value: TagsInputValue) => string` - Label for object tags. Falls back to string value or `value.label`
+- `displayValue?: (value: TagsInputValue) => string` - Label for tags. Falls back to string/number/bigint/`'null'`, or `value.label` for objects
 - `convertValue?: (value: string) => TagsInputValue` - Required when tags are objects
 - `size?: 'mini' | 'small' | 'medium' | 'large' | 'xlarge'` - Sets `--input--height`. Tag height is `height − 2× inset`; inset/gap share `--tags-input--padding`. Default: `'large'`
+- `embedded?: boolean` - When `true`, drops the field chrome so a parent (e.g. Combobox) owns the border/background. Default: `false`
 - `addOnPaste?: boolean` / `addOnBlur?: boolean` / `addOnTab?: boolean` - Extra ways to commit a tag
 - `max?: number` - Max tags. Reka treats `0` as unlimited
 - `duplicate?: boolean` - When `true`, allow duplicate tags. When `false` (default), adding an existing tag moves it to the end of the list
@@ -42,7 +43,7 @@ The draft input grows with typed text (`field-sizing: content`) so it wraps to t
 **Slots**
 
 - `input`: `{ id?, placeholder, autoFocus?, disabled?, class }` - Replace the default text input. Apply `class` so the field keeps TagsInput input styles. Re-exported `TagsInputInput` can be used when composing a custom input.
-- `tag`: `{ value, displayValue, index, disabled, ui }` - Replace tag content inside the item chrome. Keep using `TagsInputItemText` / `TagsInputItemDelete` (re-exported from `@n8n/design-system`) for label + remove a11y. `ui.text` / `ui.delete` are the default class names
+- `tag`: `{ value, displayValue, index, disabled, ui }` - Replace tag content inside the item chrome. Keep using `TagsInputItemText` / `TagsInputItemDelete` (re-exported from `@n8n/design-system`) for label + remove a11y. Put `@mousedown.prevent` on `TagsInputItemDelete` so removing a tag does not steal focus. `ui.text` / `ui.delete` are the default class names
 
 
 ### Template usage example
@@ -99,7 +100,7 @@ const tags = ref([
         }"
       />
       <TagsInputItemText :class="ui.text" />
-      <TagsInputItemDelete :class="ui.delete" :disabled="disabled">
+      <TagsInputItemDelete :class="ui.delete" :disabled="disabled" @mousedown.prevent>
         <N8nIcon icon="x" size="small" />
       </TagsInputItemDelete>
     </template>
