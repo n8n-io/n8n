@@ -66,6 +66,7 @@ describe('DurableJobProvisioner', () => {
 				await run({ setAttribute() {}, setStatus() {} })) as typeof tracing.startSpan,
 		);
 		jobs.findManyByWorkflowNode.mockResolvedValue([]);
+		jobs.findManyByTaskType.mockResolvedValue([]);
 		jobs.findManyByIds.mockResolvedValue([]);
 		jobs.insertMany.mockResolvedValue([]);
 		tasks.insertIgnoringDuplicates.mockImplementation(async (_manager, occurrences) => ({
@@ -185,6 +186,60 @@ describe('DurableJobProvisioner', () => {
 			await provisioner.provision('wf', 'node', 'schedule-trigger', {}, [desiredJob('wf:node:0')]);
 
 			expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('provisionSystemJob', () => {
+		it('inserts a new system job with no owning workflow', async () => {
+			jobs.insertMany.mockResolvedValue([200]);
+
+			const summary = await provisioner.provisionSystemJob('system:poc-heartbeat', {}, [
+				desiredJob('system:poc-heartbeat', { kind: 'interval', intervalSeconds: 30 }),
+			]);
+
+			expect(jobs.findManyByTaskType).toHaveBeenCalledWith(manager, 'system:poc-heartbeat');
+			expect(jobs.findManyByWorkflowNode).not.toHaveBeenCalled();
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				{
+					name: 'system:poc-heartbeat',
+					workflowId: null,
+					nodeId: null,
+					taskType: 'system:poc-heartbeat',
+					payload: {},
+					kind: 'interval',
+					cronExpression: null,
+					timezone: null,
+					recurrenceUnit: null,
+					recurrenceSize: null,
+					intervalSeconds: 30,
+					fireAt: null,
+					nextRunAt: CLOCK,
+					maxAttempts: 5,
+				},
+			]);
+			expect(summary.inserted).toEqual([{ id: 200, name: 'system:poc-heartbeat' }]);
+		});
+
+		it('leaves an unchanged system job untouched, keeping its id', async () => {
+			jobs.findManyByTaskType.mockResolvedValue([
+				jobRow({
+					id: 20,
+					name: 'system:poc-heartbeat',
+					kind: 'interval',
+					cronExpression: null,
+					timezone: null,
+					intervalSeconds: 30,
+					nextRunAt: CLOCK,
+				}),
+			]);
+
+			const summary = await provisioner.provisionSystemJob('system:poc-heartbeat', {}, [
+				desiredJob('system:poc-heartbeat', { kind: 'interval', intervalSeconds: 30 }),
+			]);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, []);
+			expect(jobs.updateDefinition).not.toHaveBeenCalled();
+			expect(summary.unchanged).toEqual([{ id: 20, name: 'system:poc-heartbeat' }]);
 		});
 	});
 

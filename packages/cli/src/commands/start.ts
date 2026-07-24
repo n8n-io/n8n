@@ -36,7 +36,9 @@ import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
+import { POC_HEARTBEAT_TASK_TYPE } from '@/scheduling/system-tasks/poc-heartbeat-task-handler';
 import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -403,6 +405,19 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(WorkflowStatisticsRollupService).init();
 		Container.get(N8NCheckpointStorage).init();
 		Container.get(DurableScheduler).start();
+
+		// PoC only (system-tasks migration design proof): provisions one
+		// name-keyed job with no owning workflow through the generalised
+		// DurableJobProvisioner path. See
+		// notes/builder/durable-scheduler/distributed-scheduler-system-tasks-batch1-spec.md.
+		// No-op when the scheduler is disabled or this row already matches.
+		await Container.get(DurableJobProvisioner).provisionSystemJob(POC_HEARTBEAT_TASK_TYPE, {}, [
+			{
+				name: POC_HEARTBEAT_TASK_TYPE,
+				schedule: { kind: 'interval', intervalSeconds: 30 },
+				firstRunAt: new Date(),
+			},
+		]);
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			await this.runEnqueuedExecutions();
