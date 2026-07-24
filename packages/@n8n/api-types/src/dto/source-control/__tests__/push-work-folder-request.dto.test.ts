@@ -40,6 +40,20 @@ describe('PushWorkFolderRequestDto', () => {
 					],
 				},
 			},
+			{
+				name: 'push request with a valid target branch',
+				request: {
+					fileNames: [],
+					branch: 'feat/my-thing',
+					createBranch: true,
+				},
+			},
+			{
+				name: 'push request omitting branch (backwards compatible)',
+				request: {
+					fileNames: [],
+				},
+			},
 		])('should validate $name', ({ request }) => {
 			const result = PushWorkFolderRequestDto.safeParse(request);
 			expect(result.success).toBe(true);
@@ -99,6 +113,14 @@ describe('PushWorkFolderRequestDto', () => {
 					],
 				},
 				expectedErrorPath: ['force'],
+			},
+			{
+				name: 'invalid branch name',
+				request: {
+					fileNames: [],
+					branch: 'bad branch',
+				},
+				expectedErrorPath: ['branch'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = PushWorkFolderRequestDto.safeParse(request);

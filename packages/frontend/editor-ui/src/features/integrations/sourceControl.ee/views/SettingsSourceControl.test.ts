@@ -178,6 +178,58 @@ describe('SettingsSourceControl', () => {
 		expect(generateKeyPairSpy).toHaveBeenCalledWith('rsa');
 	}, 10000);
 
+	describe('branch label', () => {
+		beforeEach(() => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+		});
+
+		it('shows "Default branch" with a caption when branch selection is enabled', async () => {
+			vi.spyOn(sourceControlStore, 'getPreferences').mockImplementation(async () => {
+				sourceControlStore.setPreferences({
+					connected: true,
+					branchName: 'main',
+					branchColor: '#5296D6',
+					branchReadOnly: false,
+					branchSelectionEnabled: true,
+				});
+			});
+
+			const { getByText, queryByText } = renderComponent({ pinia });
+
+			await waitFor(() => expect(getByText('Default branch')).toBeInTheDocument());
+			expect(
+				queryByText(
+					'(Used for pull. Choose or create the branch for each commit in the push dialog.)',
+				),
+			).toBeInTheDocument();
+			expect(queryByText('Branch connected to this n8n instance')).not.toBeInTheDocument();
+		});
+
+		it('shows the legacy label without a caption when branch selection is disabled', async () => {
+			vi.spyOn(sourceControlStore, 'getPreferences').mockImplementation(async () => {
+				sourceControlStore.setPreferences({
+					connected: true,
+					branchName: 'main',
+					branchColor: '#5296D6',
+					branchReadOnly: false,
+					branchSelectionEnabled: false,
+				});
+			});
+
+			const { getByText, queryByText } = renderComponent({ pinia });
+
+			await waitFor(() =>
+				expect(getByText('Branch connected to this n8n instance')).toBeInTheDocument(),
+			);
+			expect(queryByText('Default branch')).not.toBeInTheDocument();
+			expect(
+				queryByText(
+					'(Used for pull. Choose or create the branch for each commit in the push dialog.)',
+				),
+			).not.toBeInTheDocument();
+		});
+	});
+
 	describe('Protocol Selection', () => {
 		beforeEach(() => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;

@@ -16,6 +16,7 @@ import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlContextFactory } from '../source-control-context.factory';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
+import type { SourceControlConfig } from '../source-control.config';
 import {
 	SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
 	SOURCE_CONTROL_DEFAULT_EMAIL,
@@ -48,12 +49,15 @@ const globalMemberUser = mock<User>({ role: GLOBAL_MEMBER_ROLE });
 const globalMemberUserWithId = mock<User>({ id: 'user-id', role: GLOBAL_MEMBER_ROLE });
 
 describe('SourceControlService', () => {
+	// Defaults to enabled here since most of this suite exercises the branch-selection
+	// feature; tests for the disabled path explicitly flip this to false.
+	const mockSourceControlConfig = mock<SourceControlConfig>({ branchSelectionEnabled: true });
 	const preferencesService = new SourceControlPreferencesService(
 		Container.get(InstanceSettings),
 		mock(),
 		mock(),
 		mock(),
-		mock(),
+		mockSourceControlConfig,
 	);
 	const sourceControlImportService = mock<SourceControlImportService>();
 	const sourceControlExportService = mock<SourceControlExportService>();
@@ -78,6 +82,7 @@ describe('SourceControlService', () => {
 		vi.spyOn(sourceControlService, 'sanityCheck').mockResolvedValue(undefined);
 		// Reset mock implementations
 		mockStatusService.getStatus.mockReset();
+		mockSourceControlConfig.branchSelectionEnabled = true;
 	});
 
 	describe('pushWorkfolder', () => {
@@ -293,6 +298,7 @@ describe('SourceControlService', () => {
 			expect(gitService.push).toHaveBeenCalledWith({
 				branch: 'main', // default branch
 				force: false,
+				setUpstream: false,
 			});
 
 			// The result should include the status and push result
@@ -374,6 +380,7 @@ describe('SourceControlService', () => {
 			expect(gitService.push).toHaveBeenCalledWith({
 				branch: 'main', // default branch
 				force: false,
+				setUpstream: false,
 			});
 			expect(result).toHaveProperty('statusCode', 200);
 		});
@@ -513,6 +520,155 @@ describe('SourceControlService', () => {
 		});
 	});
 
+	describe('pushWorkfolder branch selection', () => {
+		const user = mock<User>();
+
+		beforeEach(() => {
+			// A plain push resolves: empty status, credentials export returns a valid
+			// result, and the push itself succeeds. getBranchName() is the default branch.
+			mockStatusService.getStatus.mockResolvedValue([]);
+			(isContainedWithin as Mock).mockReturnValue(true);
+			gitService.push.mockResolvedValue(mock<PushResult>());
+			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValue({
+				count: 0,
+				missingIds: [],
+				folder: '',
+				files: [],
+			});
+			vi.spyOn(preferencesService, 'getBranchName').mockReturnValue('main');
+		});
+
+		it('creates a new branch off the default before committing', async () => {
+			await sourceControlService.pushWorkfolder(user, {
+				fileNames: [],
+				branch: 'feat/x',
+				createBranch: true,
+				commitMessage: 'msg',
+			});
+
+			expect(gitService.createBranchFrom).toHaveBeenCalledWith('feat/x', 'main');
+			expect(gitService.push).toHaveBeenCalledWith(
+				expect.objectContaining({ branch: 'feat/x', setUpstream: true }),
+			);
+			// The remote must be fetched before branching off it.
+			expect(gitService.fetch.mock.invocationCallOrder[0]).toBeLessThan(
+				gitService.createBranchFrom.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('checks out an existing branch before committing', async () => {
+			await sourceControlService.pushWorkfolder(user, {
+				fileNames: [],
+				branch: 'develop',
+				commitMessage: 'msg',
+			});
+
+			expect(gitService.checkoutExistingBranch).toHaveBeenCalledWith('develop');
+			expect(gitService.push).toHaveBeenCalledWith(
+				expect.objectContaining({ branch: 'develop', setUpstream: false }),
+			);
+			// The remote must be fetched before checking out the target branch.
+			expect(gitService.fetch.mock.invocationCallOrder[0]).toBeLessThan(
+				gitService.checkoutExistingBranch.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('restores the default branch after pushing to a non-default branch', async () => {
+			await sourceControlService.pushWorkfolder(user, {
+				fileNames: [],
+				branch: 'develop',
+				commitMessage: 'msg',
+			});
+
+			// The working clone is checked out onto 'develop' to push, then restored
+			// to the default branch so pull and the next push find HEAD on default.
+			expect(gitService.checkoutExistingBranch).toHaveBeenCalledWith('main');
+			expect(gitService.push.mock.invocationCallOrder[0]).toBeLessThan(
+				gitService.checkoutExistingBranch.mock.invocationCallOrder[1],
+			);
+		});
+
+		it('still restores the default branch when preparing the branch fails', async () => {
+			const prepareError = new Error('checkout failed');
+			gitService.checkoutExistingBranch
+				.mockRejectedValueOnce(prepareError) // checking out the requested branch fails
+				.mockResolvedValueOnce(undefined); // restoring the default branch afterwards succeeds
+
+			await expect(
+				sourceControlService.pushWorkfolder(user, {
+					fileNames: [],
+					branch: 'develop',
+					commitMessage: 'msg',
+				}),
+			).rejects.toThrow(prepareError);
+
+			// Even though branch preparation failed (and no commit/push was attempted), cleanup
+			// still restores the default branch so pull and the next push find HEAD on default.
+			expect(gitService.push).not.toHaveBeenCalled();
+			expect(gitService.checkoutExistingBranch).toHaveBeenCalledWith('main');
+		});
+
+		it('propagates a failure to restore the default branch after a successful push', async () => {
+			const restoreError = new Error('checkout failed');
+			gitService.checkoutExistingBranch
+				.mockResolvedValueOnce(undefined) // checking out 'develop' succeeds
+				.mockRejectedValueOnce(restoreError); // restoring 'main' afterwards fails
+
+			await expect(
+				sourceControlService.pushWorkfolder(user, {
+					fileNames: [],
+					branch: 'develop',
+					commitMessage: 'msg',
+				}),
+			).rejects.toThrow(/restore the default branch/);
+
+			// The push itself went through; only the post-push restore failed. The error from
+			// that failure must still surface instead of returning a false success.
+			expect(gitService.push).toHaveBeenCalled();
+		});
+
+		it('falls back to the default branch when none given', async () => {
+			await sourceControlService.pushWorkfolder(user, { fileNames: [], commitMessage: 'msg' });
+
+			expect(gitService.createBranchFrom).not.toHaveBeenCalled();
+			// A plain default-branch push neither switches branches nor restores one afterwards.
+			expect(gitService.checkoutExistingBranch).not.toHaveBeenCalled();
+			expect(gitService.fetch).not.toHaveBeenCalled();
+			expect(gitService.push).toHaveBeenCalledWith(expect.objectContaining({ branch: 'main' }));
+		});
+
+		describe('when branch selection is disabled', () => {
+			beforeEach(() => {
+				mockSourceControlConfig.branchSelectionEnabled = false;
+			});
+
+			it('ignores a requested branch and pushes the default branch', async () => {
+				await sourceControlService.pushWorkfolder(user, {
+					fileNames: [],
+					branch: 'develop',
+					commitMessage: 'msg',
+				});
+
+				expect(gitService.checkoutExistingBranch).not.toHaveBeenCalled();
+				expect(gitService.fetch).not.toHaveBeenCalled();
+				expect(gitService.push).toHaveBeenCalledWith(expect.objectContaining({ branch: 'main' }));
+			});
+
+			it('ignores a branch-creation request and pushes the default branch', async () => {
+				await sourceControlService.pushWorkfolder(user, {
+					fileNames: [],
+					branch: 'feat/x',
+					createBranch: true,
+					commitMessage: 'msg',
+				});
+
+				expect(gitService.createBranchFrom).not.toHaveBeenCalled();
+				expect(gitService.fetch).not.toHaveBeenCalled();
+				expect(gitService.push).toHaveBeenCalledWith(expect.objectContaining({ branch: 'main' }));
+			});
+		});
+	});
+
 	describe('pullWorkfolder', () => {
 		it('does not filter locally created credentials', async () => {
 			// ARRANGE
@@ -639,6 +795,34 @@ describe('SourceControlService', () => {
 			expect(result.statusCode).toBe(200);
 			const dataTableEntry = result.statusResult.find((f) => f.id === 'dtNew');
 			expect(dataTableEntry?.conflict).toBe(true);
+		});
+
+		it('checks out the default branch first', async () => {
+			// ARRANGE
+			const user = mock<User>();
+			mockStatusService.getStatus.mockResolvedValueOnce([]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+			vi.spyOn(preferencesService, 'getBranchName').mockReturnValue('main');
+
+			// ACT
+			await sourceControlService.pullWorkfolder(user, { force: true, autoPublish: 'none' });
+
+			// ASSERT
+			expect(gitService.checkoutExistingBranch).toHaveBeenCalledWith('main');
+		});
+
+		it('does not check out the default branch when branch selection is disabled', async () => {
+			// ARRANGE
+			mockSourceControlConfig.branchSelectionEnabled = false;
+			const user = mock<User>();
+			mockStatusService.getStatus.mockResolvedValueOnce([]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+
+			// ACT
+			await sourceControlService.pullWorkfolder(user, { force: true, autoPublish: 'none' });
+
+			// ASSERT
+			expect(gitService.checkoutExistingBranch).not.toHaveBeenCalled();
 		});
 	});
 

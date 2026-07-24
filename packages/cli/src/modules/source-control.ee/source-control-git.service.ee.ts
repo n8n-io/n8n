@@ -385,6 +385,29 @@ export class SourceControlGitService {
 		return await this.getBranches();
 	}
 
+	async checkoutExistingBranch(branch: string): Promise<void> {
+		if (!this.git) {
+			throw new UnexpectedError('Git is not initialized (checkoutExistingBranch)');
+		}
+		await this.git.checkout(branch, ['-f']);
+		// Reset to the freshly-fetched remote tip so the subsequent commit builds on
+		// the latest remote state and the force-push cannot silently drop remote commits.
+		await this.git.raw(['reset', '--hard', `${SOURCE_CONTROL_ORIGIN}/${branch}`]);
+		await this.git.branch([`--set-upstream-to=${SOURCE_CONTROL_ORIGIN}/${branch}`, branch]);
+	}
+
+	async createBranchFrom(newBranch: string, baseBranch: string): Promise<void> {
+		if (!this.git) {
+			throw new UnexpectedError('Git is not initialized (createBranchFrom)');
+		}
+		// Start from the latest remote state of the base branch, then branch off it.
+		await this.git.checkout(baseBranch, ['-f']);
+		await this.git.raw(['reset', '--hard', `${SOURCE_CONTROL_ORIGIN}/${baseBranch}`]);
+		// Use `-B` (create-or-reset) so retrying after a failed push is idempotent
+		// even when a stale local branch of the same name still exists.
+		await this.git.checkout(['-B', newBranch, baseBranch]);
+	}
+
 	async getCurrentBranch(): Promise<{ current: string; remote: string }> {
 		if (!this.git) {
 			throw new UnexpectedError('Git is not initialized (getCurrentBranch)');
@@ -425,7 +448,9 @@ export class SourceControlGitService {
 			throw new UnexpectedError('Git is not initialized (fetch)');
 		}
 		await this.setGitCommand();
-		return await this.git.fetch();
+		// Prune stale remote-tracking refs so branches deleted on the remote stop
+		// showing up locally (plain `git fetch` never removes them on its own).
+		return await this.git.fetch(['--prune']);
 	}
 
 	async pull(options: { ffOnly: boolean } = { ffOnly: true }): Promise<PullResult> {
@@ -441,18 +466,21 @@ export class SourceControlGitService {
 	}
 
 	async push(
-		options: { force: boolean; branch: string } = {
+		options: { force: boolean; branch: string; setUpstream?: boolean } = {
 			force: false,
 			branch: SOURCE_CONTROL_DEFAULT_BRANCH,
 		},
 	): Promise<PushResult> {
-		const { force, branch } = options;
+		const { force, branch, setUpstream } = options;
 		if (!this.git) {
-			throw new UnexpectedError('Git is not initialized ({)');
+			throw new UnexpectedError('Git is not initialized (push)');
 		}
 		await this.setGitCommand();
-		if (force) {
-			return await this.git.push(SOURCE_CONTROL_ORIGIN, branch, ['-f']);
+		const flags: string[] = [];
+		if (setUpstream) flags.push('-u');
+		if (force) flags.push('-f');
+		if (flags.length > 0) {
+			return await this.git.push(SOURCE_CONTROL_ORIGIN, branch, flags);
 		}
 		return await this.git.push(SOURCE_CONTROL_ORIGIN, branch);
 	}
