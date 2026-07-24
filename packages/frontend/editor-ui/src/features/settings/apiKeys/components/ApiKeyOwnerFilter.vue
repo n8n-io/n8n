@@ -285,7 +285,9 @@ watch(open, (isOpen, wasOpen) => {
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	width: 100%;
-	height: 36px;
+	// Same height token as N8nInput size="medium" resolves to, so the trigger
+	// lines up exactly with the search input and button beside it.
+	height: var(--height--md);
 	padding: 0 var(--spacing--xs);
 	// Share N8nInput's resting surface, border and radius so the trigger and the
 	// search box are visually identical at rest; coral only appears on open.
