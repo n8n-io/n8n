@@ -10,6 +10,7 @@ import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
 import type { VectorStore } from './vector-store';
 import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/loop/agent-runtime';
+import { ensureUniqueMcpToolNames } from '../runtime/mcp/mcp-tool-resolver';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
 import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
 import type { FetchFn } from '../runtime/model/model-factory';
@@ -907,7 +908,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		// Resolve tools from all MCP clients.
 		const mcpToolLists = await Promise.all(this.mcpClients.map(async (c) => await c.listTools()));
-		const mcpTools = mcpToolLists.flat();
+		const mcpTools = ensureUniqueMcpToolNames(mcpToolLists.flat());
 
 		// Detect collisions between direct, deferred, and MCP tools.
 		const staticCollisions = findDuplicateToolNames(finalStaticTools);
