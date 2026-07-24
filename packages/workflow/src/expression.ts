@@ -286,25 +286,30 @@ export class Expression {
 	}
 
 	/**
-	 * Set when the next evaluated template is trusted (authored by node/n8n
-	 * code, not by a user). Consumed by the first evaluation and NOT inherited
-	 * by nested evaluations (e.g. user expressions resolved through
-	 * `$parameter`), which stay on the sandboxed engine.
+	 * True while inside `runAsTrustedTemplate`. Trust applies only to
+	 * top-level evaluations (depth 0): nested evaluations triggered while
+	 * rendering (e.g. user expressions resolved through `$parameter`) run at
+	 * depth > 0 and stay on the sandboxed engine.
 	 */
-	private trustedTemplateRequested = false;
+	private inTrustedTemplateScope = false;
+
+	/** Re-entrancy depth of template rendering; > 0 during nested evaluations. */
+	private evaluationDepth = 0;
 
 	/**
-	 * Run `fn` marking the first template it evaluates as trusted: it is
-	 * evaluated with the in-process (legacy) engine even when the VM engine is
-	 * enabled, so it needs no isolate. Only use for templates defined in node
-	 * descriptions (e.g. `webhookDescription` fields) — never for user input.
+	 * Run `fn` (synchronous) marking the templates it evaluates directly as
+	 * trusted: they are evaluated with the in-process (legacy) engine even
+	 * when the VM engine is enabled, so they need no isolate. Only use for
+	 * templates defined in node descriptions (e.g. `webhookDescription`
+	 * fields) — never for user input.
 	 */
 	runAsTrustedTemplate<T>(fn: () => T): T {
-		this.trustedTemplateRequested = true;
+		const previous = this.inTrustedTemplateScope;
+		this.inTrustedTemplateScope = true;
 		try {
 			return fn();
 		} finally {
-			this.trustedTemplateRequested = false;
+			this.inTrustedTemplateScope = previous;
 		}
 	}
 
@@ -562,11 +567,10 @@ export class Expression {
 			return parameterValue;
 		}
 
-		// Consume the trusted-template flag at entry so that nested evaluations
-		// triggered while rendering (e.g. user expressions resolved via
-		// `$parameter`) do not inherit it and stay on the sandboxed engine.
-		const trustedTemplate = this.trustedTemplateRequested;
-		this.trustedTemplateRequested = false;
+		// Trust only top-level templates within a trusted scope: nested
+		// evaluations triggered while rendering (e.g. user expressions resolved
+		// via `$parameter`) run at depth > 0 and stay on the sandboxed engine.
+		const trustedTemplate = this.inTrustedTemplateScope && this.evaluationDepth === 0;
 
 		// Is an expression
 
@@ -637,7 +641,13 @@ export class Expression {
 
 		// Execute the expression
 		const extendedExpression = extendSyntax(parameterValue);
-		const returnValue = this.renderExpression(extendedExpression, data, trustedTemplate);
+		let returnValue;
+		this.evaluationDepth++;
+		try {
+			returnValue = this.renderExpression(extendedExpression, data, trustedTemplate);
+		} finally {
+			this.evaluationDepth--;
+		}
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === 'DateTime')
 				throw new UserError('this is a DateTime, please access its methods');

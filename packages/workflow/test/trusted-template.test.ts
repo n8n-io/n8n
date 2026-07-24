@@ -7,9 +7,10 @@ import { Workflow } from '../src/workflow';
 // Trusted templates are node-description-authored (e.g. `webhookDescription`
 // fields such as `={{$parameter["responseMode"]}}`). They are evaluated with
 // the in-process (legacy) engine even when the VM engine is enabled, so they
-// need no isolate. The security invariant is that trust applies to the FIRST
-// rendered template only: user-authored expressions resolved while rendering
-// (via `$parameter`) must still go through the sandboxed VM engine.
+// need no isolate. The security invariant is that trust applies only to
+// top-level templates evaluated within the trusted call: user-authored
+// expressions resolved while rendering (via `$parameter`) run at nested
+// evaluation depth and must still go through the sandboxed VM engine.
 //
 // This file runs under both vitest projects (legacy-engine and vm-engine, see
 // vitest.config.ts). VM-only assertions are gated with `it.runIf(isVm)` —
@@ -99,7 +100,34 @@ describe('trusted template evaluation', () => {
 			expect([null, undefined]).toContain(result);
 		});
 
-		it.runIf(isVm)('trust is consumed by a single call and does not leak to later ones', () => {
+		it('evaluates every template in a trusted complex value, not just the first', () => {
+			const result = expression.getTrustedComplexParameterValue(
+				node,
+				{
+					first: '={{ $parameter["value1"] }}',
+					second: '={{ $parameter["value1"] + "!" }}',
+					list: ['={{ $parameter["value1"] }}'],
+				},
+				'internal',
+				{},
+			);
+			expect(result).toEqual({ first: 'hello', second: 'hello!', list: ['hello'] });
+		});
+
+		it('stays trusted after a template throws mid-evaluation', () => {
+			expect(() =>
+				expression.getTrustedSimpleParameterValue(node, '={{ this is not js }}', 'internal', {}),
+			).toThrow();
+			const result = expression.getTrustedSimpleParameterValue(
+				node,
+				'={{ $parameter["value1"] }}',
+				'internal',
+				{},
+			);
+			expect(result).toBe('hello');
+		});
+
+		it.runIf(isVm)('trust ends with the trusted call and does not leak to later ones', () => {
 			expression.getTrustedSimpleParameterValue(
 				node,
 				'={{ $parameter["value1"] }}',

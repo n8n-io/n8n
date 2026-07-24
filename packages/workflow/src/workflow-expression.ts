@@ -231,7 +231,9 @@ export class WorkflowExpression {
 
 	/**
 	 * Trusted-template variant of `getComplexParameterValue` — see
-	 * `getTrustedSimpleParameterValue`.
+	 * `getTrustedSimpleParameterValue`. Every template in the complex value is
+	 * trusted (they are all node-description-authored); nested user
+	 * expressions are not.
 	 */
 	getTrustedComplexParameterValue(
 		...args: Parameters<WorkflowExpression['getComplexParameterValue']>
