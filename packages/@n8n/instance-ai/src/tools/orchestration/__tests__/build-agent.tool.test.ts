@@ -265,6 +265,18 @@ describe('build-agent tool', () => {
 		vi.mocked(findSessionAgentByName).mockReset().mockResolvedValue(undefined);
 	});
 
+	it('fences the tool to Agent artifacts and away from workflow-anchored work', () => {
+		const { context } = makeContext();
+		const tool = createBuildAgentTool(context);
+
+		expect(tool.description).toContain('**Agent** artifacts only');
+		expect(tool.description).toContain('workflow-anchored');
+		expect(tool.description).toContain('`workflow-builder`');
+		expect(tool.description).toContain('do not call this tool');
+		expect(tool.description).toContain('not to compile custom');
+		expect(tool.description).toContain('do not route around that by calling');
+	});
+
 	it('creates and binds a new agent when name is given, keying the session to the instance thread', async () => {
 		const { context, delegate } = makeContext();
 		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });

@@ -5,6 +5,8 @@ import {
 	ensureWebhookIds,
 	isMockableTriggerNodeType,
 	isTriggerNodeType,
+	isWaitGateNode,
+	nodeCanReachItself,
 	preserveExistingNodeGroupIds,
 	preserveExistingSetupValues,
 } from '../workflow-json-utils';
@@ -737,5 +739,65 @@ describe('preserveExistingSetupValues', () => {
 		await expect(preserveExistingSetupValues(workflow, 'wf-1', context)).rejects.toThrow(
 			'Failed to load existing workflow wf-1 to preserve setup values: Workflow not found',
 		);
+	});
+});
+
+describe('isWaitGateNode', () => {
+	const node = (
+		type: string,
+		parameters: Record<string, unknown> = {},
+	): WorkflowJSON['nodes'][number] =>
+		({
+			id: 'node-1',
+			name: 'Node',
+			type,
+			typeVersion: 1,
+			position: [0, 0],
+			parameters,
+		}) as WorkflowJSON['nodes'][number];
+
+	it('detects send-and-wait operations and pausing node types', () => {
+		expect(isWaitGateNode(node('n8n-nodes-base.gmail', { operation: 'sendAndWait' }))).toBe(true);
+		expect(isWaitGateNode(node('n8n-nodes-base.slack', { operation: 'sendAndWait' }))).toBe(true);
+		expect(isWaitGateNode(node('n8n-nodes-base.wait'))).toBe(true);
+		expect(isWaitGateNode(node('n8n-nodes-base.form'))).toBe(true);
+	});
+
+	it('rejects ordinary operations and node types', () => {
+		expect(isWaitGateNode(node('n8n-nodes-base.gmail', { operation: 'send' }))).toBe(false);
+		expect(isWaitGateNode(node('n8n-nodes-base.set'))).toBe(false);
+	});
+});
+
+describe('nodeCanReachItself', () => {
+	const withConnections = (connections: Record<string, unknown>): WorkflowJSON =>
+		({ name: 'test', nodes: [], connections }) as unknown as WorkflowJSON;
+	const main = (...targets: string[]) => ({
+		main: [targets.map((target) => ({ node: target, type: 'main', index: 0 }))],
+	});
+
+	it('finds nodes on a revision loop and spares the terminal branch', () => {
+		const json = withConnections({
+			Format: main('Email'),
+			Email: main('Approved?'),
+			'Approved?': {
+				main: [
+					[{ node: 'Publish', type: 'main', index: 0 }],
+					[{ node: 'Revise', type: 'main', index: 0 }],
+				],
+			},
+			Revise: main('Format'),
+		});
+
+		expect(nodeCanReachItself(json, 'Email')).toBe(true);
+		expect(nodeCanReachItself(json, 'Revise')).toBe(true);
+		expect(nodeCanReachItself(json, 'Publish')).toBe(false);
+	});
+
+	it('returns false on acyclic graphs and unknown nodes', () => {
+		const json = withConnections({ A: main('B'), B: main('C') });
+
+		expect(nodeCanReachItself(json, 'B')).toBe(false);
+		expect(nodeCanReachItself(json, 'Missing')).toBe(false);
 	});
 });
