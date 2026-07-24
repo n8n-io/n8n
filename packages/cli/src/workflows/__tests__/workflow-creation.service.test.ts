@@ -14,6 +14,7 @@ import type { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ProjectService } from '@/services/project.service.ee';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -38,6 +39,7 @@ describe('WorkflowCreationService', () => {
 	let workflowHistoryServiceMock: MockProxy<WorkflowHistoryService>;
 	let externalHooksMock: MockProxy<ExternalHooks>;
 	let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
+	let workflowHookContextServiceMock: MockProxy<WorkflowHookContextService>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -52,6 +54,7 @@ describe('WorkflowCreationService', () => {
 		workflowHistoryServiceMock = mock<WorkflowHistoryService>();
 		externalHooksMock = mock<ExternalHooks>();
 		workflowFinderServiceMock = mock<WorkflowFinderService>();
+		workflowHookContextServiceMock = mock<WorkflowHookContextService>();
 		workflowValidationServiceMock.validateCredentialNodeRestrictions.mockReturnValue({
 			isValid: true,
 		});
@@ -78,6 +81,7 @@ describe('WorkflowCreationService', () => {
 			mock<NodeTypes>(),
 			workflowValidationServiceMock,
 			instanceRedactionEnforcementServiceMock,
+			workflowHookContextServiceMock,
 		);
 	});
 
@@ -109,6 +113,40 @@ describe('WorkflowCreationService', () => {
 	}
 
 	describe('createWorkflow()', () => {
+		it('forwards the workflow hook context to workflow.create and workflow.afterCreate', async () => {
+			licenseStateMock.isSharingLicensed.mockReturnValue(false);
+			licenseStateMock.isDataRedactionLicensed.mockReturnValue(false);
+			projectServiceMock.getProjectWithScope.mockResolvedValue({
+				id: 'project-1',
+				type: 'personal',
+			} as never);
+			const { transactionManager } = setupTransactionMocks();
+			transactionManager.save.mockImplementation(async (entity: unknown) => entity);
+			workflowHistoryServiceMock.saveVersion.mockResolvedValue(undefined as never);
+			const savedWorkflow = new WorkflowEntity();
+			savedWorkflow.id = 'workflow-1';
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(savedWorkflow);
+
+			const user = mock<User>();
+			const newWorkflow = new WorkflowEntity();
+			newWorkflow.name = 'Test';
+			newWorkflow.nodes = [];
+			newWorkflow.connections = {};
+
+			await workflowCreationService.createWorkflow(user, newWorkflow, { projectId: 'project-1' });
+
+			expect(externalHooksMock.run).toHaveBeenCalledWith('workflow.create', [
+				newWorkflow,
+				workflowHookContextServiceMock,
+				expect.anything(),
+			]);
+			expect(externalHooksMock.run).toHaveBeenCalledWith('workflow.afterCreate', [
+				savedWorkflow,
+				workflowHookContextServiceMock,
+				expect.anything(),
+			]);
+		});
+
 		it('should throw BadRequestError for invalid workflow structure', async () => {
 			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
@@ -259,6 +297,7 @@ describe('WorkflowCreationService', () => {
 
 				expect(externalHooksMock.run).toHaveBeenCalledWith('workflow.create', [
 					newWorkflow,
+					workflowHookContextServiceMock,
 					expectedActor,
 				]);
 			});
@@ -286,6 +325,7 @@ describe('WorkflowCreationService', () => {
 
 				expect(externalHooksMock.run).toHaveBeenCalledWith('workflow.afterCreate', [
 					savedWorkflow,
+					workflowHookContextServiceMock,
 					expectedActor,
 				]);
 			});

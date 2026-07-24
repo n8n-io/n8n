@@ -52,6 +52,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
 import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 import { WorkflowValidationService } from './workflow-validation.service';
 
@@ -92,6 +93,7 @@ export class WorkflowService {
 		private readonly workflowPublicationNotifier: WorkflowPublicationNotifier,
 		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
+		private readonly workflowHookContextService: WorkflowHookContextService,
 	) {}
 
 	async getMany(
@@ -521,6 +523,7 @@ export class WorkflowService {
 		// Run external hook after all validation has passed, right before persisting
 		await this.externalHooks.run('workflow.update', [
 			workflowUpdateData,
+			this.workflowHookContextService,
 			toWorkflowLifecycleHookActor(user),
 		]);
 
@@ -608,6 +611,7 @@ export class WorkflowService {
 		}
 		await this.externalHooks.run('workflow.afterUpdate', [
 			updatedWorkflow,
+			this.workflowHookContextService,
 			toWorkflowLifecycleHookActor(user),
 		]);
 
@@ -830,11 +834,14 @@ export class WorkflowService {
 			active: true,
 			activeVersionId: versionIdToActivate,
 			activeVersion: versionToActivate,
+			nodes: versionToActivate.nodes,
+			connections: versionToActivate.connections,
 		});
 
 		try {
 			await this.externalHooks.run('workflow.activate', [
 				candidateWorkflow,
+				this.workflowHookContextService,
 				toWorkflowLifecycleHookActor(user),
 			]);
 		} catch (error) {
@@ -998,6 +1005,7 @@ export class WorkflowService {
 		try {
 			await this.externalHooks.run('workflow.deactivate', [
 				workflow,
+				this.workflowHookContextService,
 				toWorkflowLifecycleHookActor(user),
 			]);
 		} catch (error) {
