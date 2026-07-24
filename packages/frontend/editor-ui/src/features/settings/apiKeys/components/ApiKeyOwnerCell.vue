@@ -28,9 +28,11 @@ const displayName = computed(() => {
 		<div :class="$style.info">
 			<N8nText size="small" color="text-dark" :class="$style.name">
 				{{ displayName }}
-				<span v-if="isCurrentUser" :class="$style.you">{{
-					i18n.baseText('settings.api.owners.you')
-				}}</span>
+				<!-- text-base: subtler than the name but the lightest DS text color
+				     that still passes WCAG AA contrast on the row background. -->
+				<N8nText v-if="isCurrentUser" size="small" color="text-base">
+					{{ i18n.baseText('settings.api.owners.you') }}
+				</N8nText>
 			</N8nText>
 			<N8nText size="xsmall" color="text-light" :class="$style.email" data-test-id="user-email">
 				{{ owner.email }}
@@ -63,9 +65,5 @@ const displayName = computed(() => {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-.you {
-	color: var(--color--text--tint-2);
 }
 </style>

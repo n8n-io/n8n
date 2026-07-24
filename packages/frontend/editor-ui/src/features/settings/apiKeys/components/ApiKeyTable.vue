@@ -99,6 +99,7 @@ function getRowActions(apiKey: ApiKey): Array<ActionDropdownItem<ApiKeyAction>> 
 		icon: 'trash-2',
 		testId: 'api-key-revoke-action',
 		divided: true,
+		variant: 'destructive',
 	});
 	return actions;
 }
