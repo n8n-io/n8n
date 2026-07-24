@@ -1,4 +1,4 @@
-import { DateTime, Duration, Interval } from 'luxon';
+import { DateTime, Duration, Interval, Settings } from 'luxon';
 
 import * as Helpers from './helpers';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -99,6 +99,50 @@ const getProxyFromFixture = (
 };
 
 describe('WorkflowDataProxy', () => {
+	describe('$now / $today', () => {
+		const fixture = loadFixture('multiple_outputs');
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		test('should create $now on first access and reuse it within the proxy', () => {
+			const nowSpy = vi.spyOn(DateTime, 'now');
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Edit Fields');
+			expect(nowSpy).not.toHaveBeenCalled();
+
+			const first = proxy.$now;
+			const second = proxy.$now;
+			const today = proxy.$today;
+
+			expect(first).toBe(second);
+			expect(nowSpy).toHaveBeenCalledTimes(1);
+			expect(today.hour).toBe(0);
+			expect(today.minute).toBe(0);
+			expect(today.second).toBe(0);
+			expect(today.millisecond).toBe(0);
+		});
+
+		test('should bind $now to the workflow timezone even if the default zone changed after proxy creation', () => {
+			const workflowWithTimezone = {
+				...fixture.workflow,
+				settings: { ...fixture.workflow.settings, timezone: 'Europe/Berlin' },
+			};
+			const proxy = getProxyFromFixture(workflowWithTimezone, fixture.run, 'Edit Fields');
+
+			const previousZone = Settings.defaultZone;
+			// another WorkflowDataProxy construction can change the global default
+			// zone between this proxy's creation and the first $now access
+			Settings.defaultZone = 'America/New_York';
+			try {
+				expect(proxy.$now.zoneName).toBe('Europe/Berlin');
+				expect(proxy.$today.zoneName).toBe('Europe/Berlin');
+			} finally {
+				Settings.defaultZone = previousZone;
+			}
+		});
+	});
+
 	describe('$(If))', () => {
 		const fixture = loadFixture('multiple_outputs');
 		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Edit Fields');
