@@ -122,6 +122,7 @@ export async function executeTool(
 			cancellation: isCancelled ? { message: resumeData.message } : undefined,
 			parentTelemetry,
 			toolCallId,
+			toolName: builtTool.name,
 			runId: executionContext.runId,
 			persistence: executionContext.persistence,
 			emitEvent: executionContext.emitEvent,
@@ -135,6 +136,7 @@ export async function executeTool(
 	const ctx: ToolContext = {
 		parentTelemetry,
 		toolCallId,
+		toolName: builtTool.name,
 		runId: executionContext.runId,
 		persistence: executionContext.persistence,
 		emitEvent: executionContext.emitEvent,

@@ -22,6 +22,7 @@ import {
 	summarizeTools,
 } from '../agent-execution.service';
 import { generateAgentScenarioSeed } from '../agent-scenario-seed';
+import { createMcpMockFetch } from '../mcp-mock-fetch';
 import { createLlmMockHandler } from '../mock-handler';
 
 // The service resolves the agents-module surface lazily; top-level vi.mock
@@ -43,6 +44,7 @@ vi.mock('@/modules/agents/json-config/agent-config-composition', () => ({
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 vi.mock('@/utils/ai-proxy-fetch', () => ({ createAiProxyFetch: vi.fn(() => vi.fn()) }));
 vi.mock('../agent-scenario-seed', () => ({ generateAgentScenarioSeed: vi.fn() }));
+vi.mock('../mcp-mock-fetch', () => ({ createMcpMockFetch: vi.fn(() => vi.fn()) }));
 vi.mock('../mock-handler', () => ({ createLlmMockHandler: vi.fn() }));
 
 const logger = mock<Logger>();
@@ -250,6 +252,151 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		expect(integrationType).toBeUndefined();
 		expect(userArg).toBe(user);
 		expect(instrumentation.modelFetch).toBeDefined();
+	});
+
+	it('attributes MCP calls when the server name requires normalization', async () => {
+		const config = {
+			...baseConfig,
+			mcpServers: [
+				{
+					name: 'Linear Prod',
+					url: 'https://linear.example.com/mcp',
+					transport: 'streamableHttp',
+					authentication: 'none',
+				},
+			],
+		} as unknown as AgentJsonConfig;
+		findByIdAndProjectId.mockResolvedValue(makeEntity(config));
+		const generate = vi.fn().mockImplementation(async () => {
+			const mcpMockOptions = vi.mocked(createMcpMockFetch).mock.calls[0][0];
+			const call = {
+				serverName: 'Linear Prod',
+				toolName: 'list_issues',
+				args: { query: 'bugs' },
+				result: { text: 'Issue list', isError: false },
+			};
+			mcpMockOptions.onToolCall(call);
+			const instrumentation = reconstructFromAgentEntity.mock.calls[0][4] as {
+				onMcpToolCallSettled?: (event: {
+					serverName: string;
+					toolName: string;
+					modelToolName?: string;
+					success: boolean;
+				}) => Promise<void> | void;
+			};
+			await instrumentation.onMcpToolCallSettled?.({
+				serverName: call.serverName,
+				toolName: call.toolName,
+				modelToolName: 'Linear_Prod_list_issues',
+				success: true,
+			});
+			return makeGenerateResult({
+				toolCalls: [
+					{
+						tool: 'Linear_Prod_list_issues',
+						input: { query: 'bugs' },
+						output: { text: 'Issue list' },
+					},
+				],
+			});
+		});
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: { generate, close: vi.fn() },
+			toolRegistry: {},
+		});
+
+		const result = await buildService().executeWithLlmMock('agent-1', user, request);
+
+		expect(result.toolCalls).toHaveLength(1);
+		expect(result.toolCalls[0]).toMatchObject({
+			tool: 'Linear_Prod_list_issues',
+			kind: 'mcp',
+			mocked: true,
+		});
+		expect(result.toolCalls[0].interceptedRequests).toHaveLength(1);
+	});
+
+	it('attributes colliding MCP tools by their exact model-facing names', async () => {
+		const config = {
+			...baseConfig,
+			mcpServers: [
+				{
+					name: 'Linear Prod',
+					url: 'https://linear.example.com/mcp',
+					transport: 'streamableHttp',
+					authentication: 'none',
+				},
+			],
+		} as unknown as AgentJsonConfig;
+		findByIdAndProjectId.mockResolvedValue(makeEntity(config));
+		const firstModelName = 'Linear_Prod_read_file_12345678';
+		const secondModelName = 'Linear_Prod_read_file_87654321';
+		const firstArgs = { path: 'first.txt' };
+		const secondArgs = { path: 'second.txt' };
+		const generate = vi.fn().mockImplementation(async () => {
+			const mcpMockOptions = vi.mocked(createMcpMockFetch).mock.calls[0][0];
+			const instrumentation = reconstructFromAgentEntity.mock.calls[0][4] as {
+				onMcpToolCallSettled?: (event: {
+					serverName: string;
+					toolName: string;
+					modelToolName?: string;
+					success: boolean;
+				}) => Promise<void> | void;
+			};
+			const calls = [
+				{
+					serverName: 'Linear Prod',
+					toolName: 'read file',
+					args: firstArgs,
+					result: { text: 'first', isError: false },
+					modelToolName: firstModelName,
+				},
+				{
+					serverName: 'Linear Prod',
+					toolName: 'read_file',
+					args: secondArgs,
+					result: { text: 'second', isError: false },
+					modelToolName: secondModelName,
+				},
+			];
+			for (const call of calls) {
+				mcpMockOptions.onToolCall(call);
+				await instrumentation.onMcpToolCallSettled?.({
+					serverName: call.serverName,
+					toolName: call.toolName,
+					modelToolName: call.modelToolName,
+					success: true,
+				});
+			}
+			return makeGenerateResult({
+				toolCalls: [
+					{ tool: firstModelName, input: calls[0].args, output: { text: 'first' } },
+					{ tool: secondModelName, input: calls[1].args, output: { text: 'second' } },
+				],
+			});
+		});
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: { generate, close: vi.fn() },
+			toolRegistry: {},
+		});
+
+		const result = await buildService().executeWithLlmMock('agent-1', user, request);
+
+		expect(result.toolCalls).toHaveLength(2);
+		expect(result.toolCalls).toEqual([
+			expect.objectContaining({
+				tool: firstModelName,
+				kind: 'mcp',
+				mocked: true,
+				interceptedRequests: [expect.objectContaining({ requestBody: firstArgs })],
+			}),
+			expect.objectContaining({
+				tool: secondModelName,
+				kind: 'mcp',
+				mocked: true,
+				interceptedRequests: [expect.objectContaining({ requestBody: secondArgs })],
+			}),
+		]);
 	});
 
 	it('prunes unmockable features and reports them', async () => {

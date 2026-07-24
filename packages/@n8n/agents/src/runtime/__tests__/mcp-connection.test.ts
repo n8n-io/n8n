@@ -1,5 +1,6 @@
 import { McpClient } from '../../sdk/mcp-client';
 import { McpConnection } from '../mcp/mcp-connection';
+import { executeTool } from '../tools/tool-adapter';
 
 const sseCtor = vi.fn();
 const streamableHttpCtor = vi.fn();
@@ -220,6 +221,7 @@ describe('McpConnection — tool filtering', () => {
 	beforeEach(() => {
 		clientConnect.mockClear();
 		clientListTools.mockClear();
+		clientCallTool.mockReset().mockResolvedValue({ content: [] });
 		clientListTools.mockResolvedValue({
 			tools: [
 				{ name: 'echo', description: '', inputSchema: { type: 'object' } },
@@ -269,6 +271,7 @@ describe('McpConnection — tool filtering', () => {
 	});
 
 	it('keeps model-facing names unique when tool names normalize identically', async () => {
+		const onToolCallSettled = vi.fn();
 		const rawTools = [
 			{ name: 'read file', description: '', inputSchema: { type: 'object' } },
 			{ name: 'read_file', description: '', inputSchema: { type: 'object' } },
@@ -281,6 +284,7 @@ describe('McpConnection — tool filtering', () => {
 			name: 's1',
 			url: 'https://example.test/mcp',
 			transport: 'streamableHttp',
+			onToolCallSettled,
 		});
 
 		await conn.connect();
@@ -292,6 +296,18 @@ describe('McpConnection — tool filtering', () => {
 			reversedTools[1]?.name,
 			reversedTools[0]?.name,
 		]);
+		await executeTool({}, tools[0]);
+		await executeTool({}, tools[1]);
+		expect(onToolCallSettled).toHaveBeenNthCalledWith(1, {
+			toolName: 'read file',
+			modelToolName: tools[0].name,
+			success: true,
+		});
+		expect(onToolCallSettled).toHaveBeenNthCalledWith(2, {
+			toolName: 'read_file',
+			modelToolName: tools[1].name,
+			success: true,
+		});
 	});
 
 	it('keeps model-facing names unique when truncation removes the differing suffix', async () => {

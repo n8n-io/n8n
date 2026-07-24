@@ -39,6 +39,7 @@ export class McpToolResolver {
 			const args = (input ?? {}) as Record<string, unknown>;
 			return await connection.callTool(originalName, args, {
 				abortSignal: ctx.abortSignal,
+				modelToolName: ctx.toolName ?? prefixedName,
 			});
 		};
 
