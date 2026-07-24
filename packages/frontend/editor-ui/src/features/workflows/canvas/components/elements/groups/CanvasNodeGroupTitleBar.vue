@@ -32,6 +32,7 @@ import {
 } from '../../../canvas.types';
 
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
+const EXTRACT_WORKFLOW_SHORTCUT = { altKey: true, keys: ['X'] };
 
 // Only declare the props this component uses.
 // Extra VueFlow slot props passed via v-bind are ignored.
@@ -44,11 +45,15 @@ const props = withDefaults(
 		dimensions?: { width: number; height: number };
 		selected?: boolean;
 		readOnly?: boolean;
+		/** Whether the group's members form a selection that can be converted
+		 * to a sub-workflow (extraction is stricter than grouping). */
+		canExtract?: boolean;
 	}>(),
 	{
 		autofocusGroupId: null,
 		readOnly: false,
 		selected: false,
+		canExtract: false,
 	},
 );
 
@@ -57,6 +62,7 @@ const emit = defineEmits<{
 	'update:description': [id: string, description: string];
 	'title:focused': [id: string];
 	ungroup: [id: string];
+	extract: [id: string];
 	toggle: [id: string];
 	'open:contextmenu': [id: string, event: MouseEvent];
 }>();
@@ -65,6 +71,7 @@ const i18n = useI18n();
 const $style = useCssModule();
 const titleEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('titleEdit');
 const titleText = useTemplateRef<HTMLElement>('titleText');
+const collapsedTitle = useTemplateRef<HTMLElement>('collapsedTitle');
 
 const group = computed(() => props.data.group);
 const isAutofocusReady = computed(
@@ -112,6 +119,11 @@ const selectionRingStyle = computed(() => {
 const isTitleTruncated = ref(false);
 
 function updateTruncated() {
+	if (isCollapsed.value) {
+		const el = collapsedTitle.value;
+		isTitleTruncated.value = el ? el.scrollHeight > el.clientHeight + 1 : false;
+		return;
+	}
 	const el = titleText.value;
 	if (!el) {
 		isTitleTruncated.value = false;
@@ -141,6 +153,19 @@ function onUngroupClick() {
 	emit('ungroup', group.value.id);
 }
 
+function onExtractClick() {
+	emit('extract', group.value.id);
+}
+
+// Matches the context menu wording for group targets:
+// "Convert group to sub-workflow".
+const extractLabel = computed(() =>
+	i18n.baseText('contextMenu.extract', {
+		adjustToNumber: 2,
+		interpolate: { subject: i18n.baseText('contextMenu.nodeGroup') },
+	}),
+);
+
 function onToggleClick() {
 	emit('toggle', group.value.id);
 }
@@ -155,17 +180,27 @@ function onOpenContextMenu(event: MouseEvent) {
 	emit('open:contextmenu', group.value.id, event);
 }
 
-// Toggle collapse on double clicking
-function onWrapperDblClick(event: MouseEvent) {
+// Plain header clicks toggle collapse — handled at the canvas level
+// (Canvas.onNodeClick), because VueFlow synthesizes node clicks that bypass
+// this DOM tree when the pointer moved a little. Clicks on interactive
+// children (title rename) must not bubble there, or they would select the
+// group and toggle it.
+function onWrapperClick(event: MouseEvent) {
 	const target = event.target as HTMLElement | null;
-	// if happened inside an element with its own click behavior, do nothing
-	if (target?.closest('.nodrag')) return;
-
-	emit('toggle', group.value.id);
+	if (target?.closest('.nodrag')) {
+		event.stopPropagation();
+	}
 }
 
 async function focusTitleEdit() {
-	if (props.autofocusGroupId !== group.value.id || props.readOnly || !isAutofocusReady.value)
+	// Collapsed groups have no inline rename — they rename through the modal
+	// (see Canvas.onOpenGroupRenameModal).
+	if (
+		props.autofocusGroupId !== group.value.id ||
+		props.readOnly ||
+		isCollapsed.value ||
+		!isAutofocusReady.value
+	)
 		return;
 	await nextTick();
 	titleEdit.value?.forceFocus();
@@ -369,7 +404,8 @@ function onWrapperPointerDown(event: PointerEvent) {
 		data-test-id="canvas-node-group"
 		:data-group-id="group.id"
 		@pointerdown="onWrapperPointerDown"
-		@dblclick.stop="onWrapperDblClick"
+		@click="onWrapperClick"
+		@dblclick.stop
 		@contextmenu="onOpenContextMenu"
 		@mouseenter="onGroupMouseEnter"
 		@mouseleave="onGroupMouseLeave"
@@ -410,21 +446,25 @@ function onWrapperPointerDown(event: PointerEvent) {
 							@click.stop="onUngroupClick"
 						/>
 					</KeyboardShortcutTooltip>
+					<KeyboardShortcutTooltip
+						v-if="canExtract"
+						:label="extractLabel"
+						:shortcut="EXTRACT_WORKFLOW_SHORTCUT"
+					>
+						<N8nIconButton
+							class="nodrag"
+							variant="ghost"
+							size="small"
+							icon="workflow"
+							:aria-label="extractLabel"
+							data-test-id="canvas-node-group-extract"
+							@click.stop="onExtractClick"
+						/>
+					</KeyboardShortcutTooltip>
 				</div>
 			</div>
 
 			<div :class="$style.content" data-test-id="canvas-node-group-header">
-				<N8nIconButton
-					class="nodrag"
-					:class="$style.toggle"
-					variant="ghost"
-					size="large"
-					:icon="isCollapsed ? 'chevrons-up-down' : 'chevrons-down-up'"
-					:aria-label="toggleLabel"
-					:aria-expanded="!isCollapsed"
-					data-test-id="canvas-node-group-toggle"
-					@click.stop="onToggleClick"
-				/>
 				<div :class="$style.titleColumn">
 					<div :class="$style.titleRow">
 						<div :class="$style.title" data-test-id="canvas-node-group-title">
@@ -436,6 +476,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 							>
 								<div ref="titleText" :class="$style.titleText">
 									<N8nInlineTextEdit
+										v-if="!isCollapsed"
 										ref="titleEdit"
 										:class="['nodrag', $style.inlineEdit]"
 										:model-value="group.name"
@@ -445,6 +486,14 @@ function onWrapperPointerDown(event: PointerEvent) {
 										:placeholder="i18n.baseText('canvas.nodeGroup.titlePlaceholder')"
 										@update:model-value="onTitleUpdate"
 									/>
+									<div
+										v-else
+										ref="collapsedTitle"
+										:class="$style.collapsedTitle"
+										data-test-id="canvas-node-group-collapsed-title"
+									>
+										{{ group.name }}
+									</div>
 									<div
 										v-if="allNodesDisabled"
 										:class="$style.deactivatedLabel"
@@ -490,20 +539,32 @@ function onWrapperPointerDown(event: PointerEvent) {
 						/>
 					</div>
 				</div>
-				<div
-					v-if="isCollapsed && markStatus"
-					:class="$style.statusIcons"
-					:data-test-id="`canvas-node-group-status-${markStatus}`"
-				>
-					<CanvasNodeStatusMark :status="markStatus" />
-				</div>
-				<div
-					v-else-if="isCollapsed && executionStatus === 'issues'"
-					:class="[$style.statusIcons, $style.issues]"
-					data-test-id="canvas-node-group-status-issues"
-				>
-					<N8nIcon icon="node-validation-error" size="large" />
-				</div>
+				<N8nIconButton
+					class="nodrag"
+					:class="$style.toggle"
+					variant="ghost"
+					size="large"
+					:icon="isCollapsed ? 'chevron-down' : 'chevron-up'"
+					:aria-label="toggleLabel"
+					:aria-expanded="!isCollapsed"
+					data-test-id="canvas-node-group-toggle"
+					@click.stop="onToggleClick"
+				/>
+			</div>
+
+			<div
+				v-if="isCollapsed && markStatus"
+				:class="$style.statusIcons"
+				:data-test-id="`canvas-node-group-status-${markStatus}`"
+			>
+				<CanvasNodeStatusMark :status="markStatus" />
+			</div>
+			<div
+				v-else-if="isCollapsed && executionStatus === 'issues'"
+				:class="[$style.statusIcons, $style.issues]"
+				data-test-id="canvas-node-group-status-issues"
+			>
+				<N8nIcon icon="node-validation-error" size="large" />
 			</div>
 		</div>
 
@@ -710,8 +771,13 @@ function onWrapperPointerDown(event: PointerEvent) {
 }
 
 /*  Don't render the aria-expanded toggle as "pressed" while inactive */
-.toggle[aria-expanded='true']:not(:hover):not(:active) {
+.toggle[aria-expanded='true']:not(:active) {
 	background-color: transparent;
+}
+
+/* Hovering anywhere on the header highlights the toggle */
+.titleBar:hover .toggle:not(:active) {
+	background-color: var(--button--color--background-hover);
 }
 
 // Stacks the title and, when expanded, the description within the header box.
@@ -761,6 +827,19 @@ function onWrapperPointerDown(event: PointerEvent) {
 	max-width: 100%;
 }
 
+.collapsedTitle {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	overflow: hidden;
+	// Names without break opportunities still wrap instead of overflowing
+	overflow-wrap: anywhere;
+	line-height: var(--line-height--md);
+	min-width: 0;
+	max-width: 100%;
+}
+
 // One-line description shown under the title in the header box.
 .description {
 	display: flex;
@@ -784,11 +863,13 @@ function onWrapperPointerDown(event: PointerEvent) {
 	cursor: pointer;
 }
 
+// Overlay the bottom-right corner, matching node status icons (CanvasNodeDefault)
 .statusIcons {
+	position: absolute;
+	bottom: var(--spacing--3xs);
+	right: var(--spacing--3xs);
 	display: flex;
 	align-items: center;
-	margin-left: var(--spacing--xs);
-	flex-shrink: 0;
 }
 
 // Validation issues mirror the single node: red triangle, no status border.
@@ -801,7 +882,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	bottom: 100%;
 	left: 50%;
 	transform: translateX(-50%);
-	padding-bottom: var(--spacing--3xs);
+	padding-bottom: var(--spacing--2xs);
 	pointer-events: auto;
 }
 

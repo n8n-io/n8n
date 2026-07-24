@@ -3,6 +3,7 @@
 	"summary": {
 		"testCases": 2,
 		"built": 1,
+		"notVerified": 0,
 		"scenariosTotal": 2,
 		"passAtK": 0.5,
 		"passHatK": 0.5,
@@ -12,6 +13,7 @@
 	"testCases": [
 		{
 			"name": "build me something",
+			"status": "verified",
 			"buildSuccessCount": 1,
 			"totalRuns": 1,
 			"workflowChecksPerRun": [null],
@@ -40,6 +42,7 @@
 		},
 		{
 			"name": "build me something",
+			"status": "verified",
 			"buildSuccessCount": 0,
 			"totalRuns": 1,
 			"workflowChecksPerRun": [null],

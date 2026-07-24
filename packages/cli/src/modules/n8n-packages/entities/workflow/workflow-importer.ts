@@ -171,7 +171,7 @@ export class WorkflowImporter {
 			item,
 			savedWorkflow,
 			context.publishingPolicy,
-			context.publishBlockedSourceWorkflowIds,
+			context.publishBlocked,
 		);
 
 		// Publish reloads the workflow without parentFolder; restore it for the import summary.

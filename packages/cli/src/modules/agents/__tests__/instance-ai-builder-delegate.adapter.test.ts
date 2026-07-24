@@ -410,6 +410,36 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 		});
 	});
 
+	describe('resolveAgentName', () => {
+		it('returns the agent display name', async () => {
+			const { delegate, agentsService } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue(mock<Agent>({ id: 'agent-1', name: 'Support Bot' }));
+
+			await expect(delegate.resolveAgentName('agent-1')).resolves.toBe('Support Bot');
+			expect(agentsService.findById).toHaveBeenCalledWith('agent-1', 'project-1');
+		});
+
+		it('returns undefined when the agent does not exist', async () => {
+			const { delegate, agentsService } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue(null);
+
+			await expect(delegate.resolveAgentName('agent-missing')).resolves.toBeUndefined();
+		});
+
+		it('rejects when the user lacks agent:read scope', async () => {
+			const { delegate, agentsService, user } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+
+			await expect(delegate.resolveAgentName('agent-1')).rejects.toThrow(ForbiddenError);
+			expect(agentsService.findById).not.toHaveBeenCalled();
+			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, {
+				projectId: 'project-1',
+			});
+		});
+	});
+
 	describe('deleteBuilderSessions', () => {
 		it('deletes messages and thread state for every builder session of the instance thread, scoped per target agent', async () => {
 			const { service, n8nMemory, agentThreadRepository } = setup();

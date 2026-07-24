@@ -63,6 +63,7 @@ import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
 
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
+import type { EvalAgentExecutionService } from '../eval/agent-execution.service';
 import type { EvalExecutionService } from '../eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import type { EvalThreadRestoreService } from '../eval/thread-restore.service';
@@ -123,6 +124,7 @@ describe('InstanceAiController', () => {
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),
+		mock<EvalAgentExecutionService>(),
 		evalCredentialAllowlists,
 		evalThreadRestore,
 		eventBus,
@@ -750,13 +752,41 @@ describe('InstanceAiController', () => {
 				dataTables: [dataTable],
 			} as InstanceAiEvalRestoreThreadRequest);
 
-			expect(evalThreadRestore.restoreDataTables).toHaveBeenCalledWith([dataTable], 'project-1');
+			expect(evalThreadRestore.restoreDataTables).toHaveBeenCalledWith([dataTable], 'project-1', {
+				uniquifyNames: true,
+			});
 			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
 				[seedWorkflow],
 				'project-1',
 				idMap,
 			);
 			expect(result).toMatchObject({ dataTableIds: ['dt-new'] });
+		});
+
+		it('seeds data tables only (no messages) under exact names when uniquifyNames is false (TRUST-311)', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map([['dt-old-1234', 'dt-new']]));
+
+			const dataTable = {
+				id: 'dt-old-1234',
+				name: 'Job Applications',
+				columns: [{ name: 'application_id', type: 'string' as const }],
+				rows: [{ application_id: 'row_001' }],
+			};
+			const result = await controller.restoreEvalThread(req, res, {
+				threadId: THREAD_ID,
+				messages: [],
+				dataTables: [dataTable],
+				uniquifyNames: false,
+			} as InstanceAiEvalRestoreThreadRequest);
+
+			expect(evalThreadRestore.restoreDataTables).toHaveBeenCalledWith([dataTable], 'project-1', {
+				uniquifyNames: false,
+			});
+			// No messages to restore — the message write is skipped.
+			expect(memoryService.restoreThreadMessages).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ restored: 0, dataTableIds: ['dt-new'] });
 		});
 
 		it('should roll back created workflows and data tables when a later step fails', async () => {
@@ -1016,12 +1046,10 @@ describe('InstanceAiController', () => {
 			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			const threadResult = mock<InstanceAiEnsureThreadResponse>();
 			memoryService.ensureThread.mockResolvedValue(threadResult);
-			// Launch fields must be explicitly undefined: the deep mock proxies
-			// absent properties, which would look like a launch to the controller.
 			const payload = mock<InstanceAiEnsureThreadRequest>({
 				threadId: 'custom-id',
 				projectId: 'project-1',
-				source: undefined,
+				source: 'assistant_page',
 				origin: undefined,
 				sourceContext: undefined,
 			});
@@ -1029,12 +1057,11 @@ describe('InstanceAiController', () => {
 			const result = await controller.ensureThread(req, res, payload);
 
 			expect(result).toBe(threadResult);
-			expect(memoryService.ensureThread).toHaveBeenCalledWith(
-				USER_ID,
-				'custom-id',
-				'project-1',
-				undefined,
-			);
+			expect(memoryService.ensureThread).toHaveBeenCalledWith(USER_ID, 'custom-id', 'project-1', {
+				source: 'assistant_page',
+				origin: 'internal',
+				sourceContext: undefined,
+			});
 		});
 
 		it('should generate a UUID when threadId is not provided', async () => {
@@ -1044,7 +1071,7 @@ describe('InstanceAiController', () => {
 			const payload = mock<InstanceAiEnsureThreadRequest>({
 				threadId: undefined,
 				projectId: 'project-1',
-				source: undefined,
+				source: 'assistant_page',
 				origin: undefined,
 				sourceContext: undefined,
 			});
@@ -1056,27 +1083,31 @@ describe('InstanceAiController', () => {
 				USER_ID,
 				expect.any(String),
 				'project-1',
-				undefined,
+				{
+					source: 'assistant_page',
+					origin: 'internal',
+					sourceContext: undefined,
+				},
 			);
 		});
 
-		it('normalizes and forwards launch metadata when a source is provided', async () => {
+		it('forwards launch metadata with the provided source and origin', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
 			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			memoryService.ensureThread.mockResolvedValue(mock<InstanceAiEnsureThreadResponse>());
 			const payload = {
 				threadId: 'custom-id',
 				projectId: 'project-1',
-				source: 'not-a-known-source',
+				source: 'website-template',
+				origin: 'external',
 				sourceContext: { templateId: '6270' },
 			} as InstanceAiEnsureThreadRequest;
 
 			await controller.ensureThread(req, res, payload);
 
-			// Unknown sources normalize to the fallback; origin defaults to internal.
 			expect(memoryService.ensureThread).toHaveBeenCalledWith(USER_ID, 'custom-id', 'project-1', {
-				source: 'unknown',
-				origin: 'internal',
+				source: 'website-template',
+				origin: 'external',
 				sourceContext: { templateId: '6270' },
 			});
 		});
@@ -1089,6 +1120,7 @@ describe('InstanceAiController', () => {
 			const payload = mock<InstanceAiEnsureThreadRequest>({
 				threadId: 'thread-new',
 				projectId: 'project-1',
+				source: 'assistant_page',
 			});
 
 			await expect(controller.ensureThread(req, res, payload)).rejects.toThrow(error);
@@ -1652,6 +1684,7 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),
+		mock<EvalAgentExecutionService>(),
 		new EvalThreadCredentialAllowlistService(),
 		mock<EvalThreadRestoreService>(),
 		eventBus,

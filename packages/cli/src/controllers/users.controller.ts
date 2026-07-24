@@ -136,6 +136,7 @@ export class UsersController {
 						id: pr.projectId,
 						role: pr.role.slug, // normalize role for frontend
 						name: pr.project.name,
+						icon: pr.project.icon,
 					})),
 				};
 			}),

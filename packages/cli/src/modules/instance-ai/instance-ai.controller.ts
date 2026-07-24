@@ -14,9 +14,10 @@ import {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
+	InstanceAiEvalAgentExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
-	normalizeInstanceAiThreadSource,
+	InstanceAiEvalSeedDataTableRowsRequest,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -41,6 +42,7 @@ import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/in
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
+import { EvalAgentExecutionService } from './eval/agent-execution.service';
 import { EvalExecutionService } from './eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { EvalThreadRestoreService } from './eval/thread-restore.service';
@@ -111,6 +113,7 @@ export class InstanceAiController {
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly evalExecutionService: EvalExecutionService,
+		private readonly evalAgentExecutionService: EvalAgentExecutionService,
 		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
 		private readonly evalThreadRestore: EvalThreadRestoreService,
 		private readonly eventBus: InProcessEventBus,
@@ -754,14 +757,11 @@ export class InstanceAiController {
 		const requestedThreadId = payload.threadId ?? randomUUID();
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
 
-		const launchMetadata =
-			payload.source !== undefined || payload.origin !== undefined
-				? {
-						source: normalizeInstanceAiThreadSource(payload.source),
-						origin: payload.origin ?? ('internal' as const),
-						sourceContext: payload.sourceContext,
-					}
-				: undefined;
+		const launchMetadata = {
+			source: payload.source,
+			origin: payload.origin ?? ('internal' as const),
+			sourceContext: payload.sourceContext,
+		};
 
 		try {
 			return await this.memoryService.ensureThread(
@@ -927,6 +927,18 @@ export class InstanceAiController {
 		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
 	}
 
+	// Runs for minutes; same client timeout handling as the workflow variant.
+	@Post('/eval/execute-agent-with-llm-mock/:agentId')
+	@GlobalScope('instanceAi:eval')
+	async executeAgentWithLlmMock(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: InstanceAiEvalAgentExecutionRequest,
+	) {
+		return await this.evalAgentExecutionService.executeWithLlmMock(agentId, req.user, payload);
+	}
+
 	/**
 	 * Pin a build thread's credential view to a declared set. Only narrows:
 	 * `list()` results are intersected with these IDs, so the caller cannot see
@@ -974,11 +986,12 @@ export class InstanceAiController {
 		const idMap = await this.evalThreadRestore.restoreDataTables(
 			payload.dataTables ?? [],
 			projectId,
+			{ uniquifyNames: payload.uniquifyNames ?? true },
 		);
 		const dataTableIds = [...idMap.values()];
 		// Roll back everything we created if a later step fails, so a partial
 		// restore doesn't leak workflows/tables into the shared eval project.
-		let restored: number;
+		let restored = 0;
 		let createdWorkflowIds: string[] = [];
 		try {
 			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
@@ -986,11 +999,14 @@ export class InstanceAiController {
 				projectId,
 				idMap,
 			);
-			({ restored } = await this.memoryService.restoreThreadMessages(
-				req.user.id,
-				payload.threadId,
-				payload.messages,
-			));
+			// A data-table-only seed (TRUST-311) sends no messages — skip the write.
+			if (payload.messages.length > 0) {
+				({ restored } = await this.memoryService.restoreThreadMessages(
+					req.user.id,
+					payload.threadId,
+					payload.messages,
+				));
+			}
 		} catch (error) {
 			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
 			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
@@ -1003,6 +1019,31 @@ export class InstanceAiController {
 			workflowIds: workflows.map((workflow) => workflow.id),
 			dataTableIds,
 		};
+	}
+
+	/**
+	 * Reset an existing data table's rows to exactly the supplied set
+	 * (clear-then-insert). The eval harness pre-creates a case's scenario data
+	 * tables empty before the build turn (so the agent binds the real table id),
+	 * then calls this per scenario to swap in that scenario's rows (TRUST-311
+	 * follow-up). Auth + project scoping mirror restore-thread: the table must be
+	 * in the thread's project.
+	 */
+	@Post('/eval/seed-data-table-rows')
+	@GlobalScope('instanceAi:eval')
+	async seedEvalDataTableRows(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalSeedDataTableRowsRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, payload.threadId);
+		const projectId = await this.memoryService.getThreadProjectId(payload.threadId);
+		if (!projectId) {
+			throw new BadRequestError('Thread is not bound to a project');
+		}
+		await this.evalThreadRestore.reseedDataTableRows(payload.tableId, projectId, payload.rows);
+		return { ok: true, tableId: payload.tableId, rowCount: payload.rows.length };
 	}
 
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────

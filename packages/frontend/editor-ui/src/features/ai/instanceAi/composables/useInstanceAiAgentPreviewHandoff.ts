@@ -13,6 +13,7 @@ interface AgentPreviewHandoffParams {
 	agentName?: string;
 	agentIcon?: string;
 	sessionTitle?: string;
+	executionId?: string;
 }
 
 export function useInstanceAiAgentPreviewHandoff() {
@@ -27,6 +28,7 @@ export function useInstanceAiAgentPreviewHandoff() {
 		agentName,
 		agentIcon,
 		sessionTitle,
+		executionId,
 	}: AgentPreviewHandoffParams): Promise<void> {
 		if (!canSendPreviewToInstanceAi.value || !projectId || !agentId || !threadId) return;
 
@@ -38,7 +40,13 @@ export function useInstanceAiAgentPreviewHandoff() {
 				agentName,
 				agentIcon,
 				sessionTitle,
+				executionId,
 			}),
+			{
+				source: 'agent_preview',
+				origin: 'internal',
+				sourceContext: { agentId, previewThreadId: threadId },
+			},
 			{ newTab: true },
 		);
 		if (!opened) return;
@@ -46,6 +54,7 @@ export function useInstanceAiAgentPreviewHandoff() {
 		telemetry.track('Instance AI opened from agent preview', {
 			agent_id: agentId,
 			preview_thread_id: threadId,
+			...(executionId ? { preview_execution_id: executionId } : {}),
 		});
 	}
 

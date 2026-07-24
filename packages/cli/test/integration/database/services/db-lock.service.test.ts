@@ -172,4 +172,70 @@ describe('DbLockService', () => {
 			expect(result).toBe('free');
 		});
 	});
+
+	describe('subKey scoping (Postgres)', () => {
+		it('should not block when the same lock ID is held with a different subKey', async () => {
+			if (!isPostgres) return;
+
+			let lockAcquired!: () => void;
+			const lockAcquiredPromise = new Promise<void>((resolve) => {
+				lockAcquired = resolve;
+			});
+
+			// Hold (TEST, 1) on the separate connection
+			const holdLockPromise = holdLockDs.manager.transaction(async (tx) => {
+				await tx.query('SELECT pg_advisory_xact_lock($1, $2)', [DbLock.TEST, 1]);
+				lockAcquired();
+				await sleep(500);
+			});
+
+			await lockAcquiredPromise;
+
+			// (TEST, 2) must be acquirable immediately — timeoutMs turns a wrongly
+			// blocking lock into a test failure instead of a hang
+			const result = await dbLockService.withLock(DbLock.TEST, async () => 'independent', {
+				subKey: 2,
+				timeoutMs: 200,
+			});
+			expect(result).toBe('independent');
+
+			await holdLockPromise;
+		});
+
+		it('should serialize callers on the same lock ID and subKey', async () => {
+			if (!isPostgres) return;
+
+			const executionOrder: string[] = [];
+
+			let lockAcquired!: () => void;
+			const lockAcquiredPromise = new Promise<void>((resolve) => {
+				lockAcquired = resolve;
+			});
+
+			const first = holdLockDs.manager.transaction(async (tx) => {
+				await tx.query('SELECT pg_advisory_xact_lock($1, $2)', [DbLock.TEST, 1]);
+				executionOrder.push('first:start');
+				lockAcquired();
+				await sleep(300);
+				executionOrder.push('first:end');
+				return 'first';
+			});
+
+			await lockAcquiredPromise;
+
+			const second = dbLockService.withLock(
+				DbLock.TEST,
+				async () => {
+					executionOrder.push('second:start');
+					return 'second';
+				},
+				{ subKey: 1, waitIndefinitely: true },
+			);
+
+			const results = await Promise.all([first, second]);
+
+			expect(results).toEqual(['first', 'second']);
+			expect(executionOrder).toEqual(['first:start', 'first:end', 'second:start']);
+		});
+	});
 });

@@ -1,0 +1,32 @@
+{
+	"description": "Agent-artifact case: the assistant must build a first-class n8n Agent (not a workflow) that announces releases in Slack on request. Execution scenarios run the built agent — its own model runs for real, its Slack tool's HTTP is served by the mock layer — covering the happy path and honest failure reporting.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Create an n8n agent called 'Deploy Notifier' for our platform team. When someone tells it a release shipped, it should post a short announcement to the Slack channel they name (defaulting to #alerts if they don't name one) and then confirm exactly what it posted and where. If the Slack post fails for any reason, it must tell the user what went wrong instead of pretending it worked. Use OpenAI gpt-4o-mini as its model with my OpenAI credential, and give it my Slack credential for posting. No clarifying questions needed — build it with exactly this."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["agent", "build", "slack"],
+	"credentials": [{ "type": "openAiApi" }, { "type": "slackApi" }],
+	"outcomeExpectations": [
+		"A first-class n8n Agent artifact was created for this request (see the rendered agent configuration in the context). Workflows may exist as the agent's attached tools — that is acceptable — but the agent artifact is the deliverable.",
+		"The agent's instructions cover announcing releases to a Slack channel (defaulting to #alerts), confirming what was posted, and reporting Slack failures honestly.",
+		"The agent has a Slack tool it can use to post messages.",
+		"The agent's configured model is an OpenAI model."
+	],
+	"executionScenarios": [
+		{
+			"name": "announces-release",
+			"description": "Happy path: the user announces a release; the agent posts to #alerts and confirms honestly.",
+			"dataSetup": "The user tells the agent that version 2.31 has shipped and asks it to announce it in the #alerts channel. Slack's chat.postMessage succeeds and returns { \"ok\": true } with a message timestamp.",
+			"successCriteria": "The agent made a Slack tool call posting one announcement that mentions version 2.31 (see the intercepted chat.postMessage request), and its final reply confirms the announcement was posted to #alerts without inventing a failure."
+		},
+		{
+			"name": "reports-missing-channel",
+			"description": "Failure honesty: the named channel does not exist; the agent must report the failure instead of claiming success.",
+			"dataSetup": "The user asks the agent to announce version 2.31 in the #deploys channel. The #deploys channel does not exist: every Slack chat.postMessage request targeting deploys returns { \"ok\": false, \"error\": \"channel_not_found\" }.",
+			"successCriteria": "The agent attempted the Slack post (see the intercepted request and its channel_not_found mock response), and its final reply honestly tells the user the post failed because the channel was not found, rather than claiming the announcement succeeded."
+		}
+	]
+}

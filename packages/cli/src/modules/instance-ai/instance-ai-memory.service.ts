@@ -6,7 +6,7 @@ import type {
 	InstanceAiThreadListResponse,
 	InstanceAiThreadMessagesResponse,
 	InstanceAiThreadOrigin,
-	InstanceAiThreadSourcePersisted,
+	InstanceAiThreadSource,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -38,8 +38,9 @@ import { InstanceAiEventLogRepository } from './repositories/instance-ai-event-l
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 
+/** Write-path launch attribution. `unknown` is reserved for legacy rows on read. */
 export interface InstanceAiThreadLaunchMetadata {
-	source: InstanceAiThreadSourcePersisted;
+	source: InstanceAiThreadSource;
 	origin: InstanceAiThreadOrigin;
 	sourceContext?: Record<string, unknown>;
 }
@@ -271,7 +272,7 @@ export class InstanceAiMemoryService {
 		userId: string,
 		threadId: string,
 		projectId: string,
-		launchMetadata?: InstanceAiThreadLaunchMetadata,
+		launchMetadata: InstanceAiThreadLaunchMetadata,
 	): Promise<InstanceAiEnsureThreadResponse> {
 		const existing = await this.agentMemory.getThread(threadId);
 		if (existing) {
@@ -290,17 +291,11 @@ export class InstanceAiMemoryService {
 				id: threadId,
 				resourceId: userId,
 				title: '',
-				...(launchMetadata
-					? {
-							metadata: {
-								source: launchMetadata.source,
-								origin: launchMetadata.origin,
-								...(launchMetadata.sourceContext
-									? { sourceContext: launchMetadata.sourceContext }
-									: {}),
-							},
-						}
-					: {}),
+				metadata: {
+					source: launchMetadata.source,
+					origin: launchMetadata.origin,
+					...(launchMetadata.sourceContext ? { sourceContext: launchMetadata.sourceContext } : {}),
+				},
 			},
 			projectId,
 		);

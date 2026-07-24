@@ -83,6 +83,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 					...(request.parentAbortSignal !== undefined
 						? { abortSignal: request.parentAbortSignal }
 						: {}),
+					...(request.parentTelemetry !== undefined ? { telemetry: request.parentTelemetry } : {}),
 				},
 			);
 

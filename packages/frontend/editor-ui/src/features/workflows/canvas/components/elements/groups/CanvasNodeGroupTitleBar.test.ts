@@ -65,6 +65,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 			dimensions: { width: number; height: number };
 			readOnly: boolean;
 			selected: boolean;
+			canExtract: boolean;
 		}> = {},
 		descriptionVisibility?: ReturnType<typeof useCanvasNodeGroupDescriptionVisibility>,
 	) {
@@ -81,12 +82,13 @@ describe('CanvasNodeGroupTitleBar', () => {
 				dimensions: props.dimensions,
 				readOnly: props.readOnly ?? false,
 				selected: props.selected ?? false,
+				canExtract: props.canExtract ?? false,
 			},
 		});
 	}
 
 	describe('chevron caption and icon by state', () => {
-		it('renders chevrons-up-down with Expand label when collapsed', () => {
+		it('renders chevron-down with Expand label when collapsed', () => {
 			const wrapper = render({ data: makeData({ isCollapsed: true }) });
 			const toggle = wrapper.getByTestId('canvas-node-group-toggle');
 			expect(toggle.getAttribute('aria-label')).toBe('Expand');
@@ -94,7 +96,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(toggle.querySelector('svg')).toBeTruthy();
 		});
 
-		it('renders chevrons-down-up with Collapse label when expanded', () => {
+		it('renders chevron-up with Collapse label when expanded', () => {
 			const wrapper = render({ data: makeData({ isCollapsed: false }) });
 			const toggle = wrapper.getByTestId('canvas-node-group-toggle');
 			expect(toggle.getAttribute('aria-label')).toBe('Collapse');
@@ -120,40 +122,80 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 
 		it('emits open:contextmenu when right-clicking the title preview', async () => {
-			const wrapper = render();
-			await fireEvent.contextMenu(wrapper.getByTestId('inline-edit-preview'));
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
+			const title = within(wrapper.getByTestId('canvas-node-group-title'));
+			await fireEvent.contextMenu(title.getByTestId('inline-edit-preview'));
+
+			expect(wrapper.emitted()['open:contextmenu']).toHaveLength(1);
+		});
+
+		it('emits open:contextmenu when right-clicking the collapsed title', async () => {
+			const wrapper = render({ data: makeData({ isCollapsed: true }) });
+			await fireEvent.contextMenu(wrapper.getByTestId('canvas-node-group-collapsed-title'));
 
 			expect(wrapper.emitted()['open:contextmenu']).toHaveLength(1);
 		});
 
 		it('does not emit open:contextmenu while the title is being edited', async () => {
-			const wrapper = render();
-			await fireEvent.click(wrapper.getByTestId('inline-edit-preview'));
-			await fireEvent.contextMenu(wrapper.getByTestId('inline-edit-input'));
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
+			const title = within(wrapper.getByTestId('canvas-node-group-title'));
+			await fireEvent.click(title.getByTestId('inline-edit-preview'));
+			await fireEvent.contextMenu(title.getByTestId('inline-edit-input'));
 
 			expect(wrapper.emitted()['open:contextmenu']).toBeUndefined();
 		});
 	});
 
-	describe('double-click to toggle collapse', () => {
-		it('emits toggle when the group body is double-clicked', async () => {
+	describe('double-click does nothing', () => {
+		it('does not emit toggle when the group body is double-clicked', async () => {
 			const wrapper = render();
 			await fireEvent.dblClick(wrapper.getByTestId('canvas-node-group-header'));
-			expect(wrapper.emitted().toggle).toEqual([['g1']]);
-		});
-
-		it('does not emit toggle when the title is double-clicked', async () => {
-			const wrapper = render();
-			const titleArea = wrapper.getByTestId('canvas-node-group-title');
-			const titleEdit = titleArea.querySelector('.nodrag') as HTMLElement;
-			await fireEvent.dblClick(titleEdit);
 			expect(wrapper.emitted().toggle).toBeUndefined();
 		});
 
-		it('does not emit toggle when the ungroup button is double-clicked', async () => {
+		it('stops double-click propagation so the canvas does not zoom', async () => {
 			const wrapper = render();
-			await fireEvent.dblClick(wrapper.getByTestId('canvas-node-group-ungroup'));
-			expect(wrapper.emitted().toggle).toBeUndefined();
+			const outsideListener = vi.fn();
+			wrapper.container.addEventListener('dblclick', outsideListener);
+			await fireEvent.dblClick(wrapper.getByTestId('canvas-node-group-header'));
+			expect(outsideListener).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('click propagation to the VueFlow node wrapper', () => {
+		// Plain clicks must bubble: Canvas.onNodeClick turns them into a
+		// collapse/expand toggle.
+		it('lets plain header clicks bubble', async () => {
+			const wrapper = render();
+			const outsideListener = vi.fn();
+			wrapper.container.addEventListener('click', outsideListener);
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-header'));
+			expect(outsideListener).toHaveBeenCalled();
+		});
+
+		it('stops clicks on the title edit so renaming does not select or toggle the group', async () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
+			const title = within(wrapper.getByTestId('canvas-node-group-title'));
+			const outsideListener = vi.fn();
+			wrapper.container.addEventListener('click', outsideListener);
+			await fireEvent.click(title.getByTestId('inline-edit-preview'));
+			expect(outsideListener).not.toHaveBeenCalled();
+		});
+
+		it('lets title clicks bubble when collapsed, where the title is not editable', async () => {
+			const wrapper = render({ data: makeData({ isCollapsed: true }) });
+			const outsideListener = vi.fn();
+			wrapper.container.addEventListener('click', outsideListener);
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-collapsed-title'));
+			expect(outsideListener).toHaveBeenCalled();
+		});
+
+		it('stops clicks on the chevron toggle button', async () => {
+			const wrapper = render();
+			const outsideListener = vi.fn();
+			wrapper.container.addEventListener('click', outsideListener);
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-toggle'));
+			expect(outsideListener).not.toHaveBeenCalled();
 		});
 	});
 
@@ -182,10 +224,16 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(ungroup.classList.contains('nodrag')).toBe(true);
 		});
 
-		it('title edit carries nodrag', () => {
-			const wrapper = render();
+		it('title edit carries nodrag when expanded', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
 			const titleArea = wrapper.getByTestId('canvas-node-group-title');
 			expect(titleArea.querySelector('.nodrag')).toBeTruthy();
+		});
+
+		it('title is a plain drag surface when collapsed', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: true }) });
+			const titleArea = wrapper.getByTestId('canvas-node-group-title');
+			expect(titleArea.querySelector('.nodrag')).toBeNull();
 		});
 	});
 
@@ -478,14 +526,40 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.emitted().ungroup).toEqual([['g1']]);
 		});
 
+		// The toolbar offers the same actions whether the group is collapsed or
+		// expanded.
+		it.each([{ isCollapsed: true }, { isCollapsed: false }])(
+			'shows the convert-to-sub-workflow button next to Ungroup and emits extract on click (isCollapsed: $isCollapsed)',
+			async ({ isCollapsed }) => {
+				const wrapper = render({ data: makeData({ isCollapsed }), canExtract: true });
+
+				expect(wrapper.getByTestId('canvas-node-group-ungroup')).toBeInTheDocument();
+				const button = wrapper.getByTestId('canvas-node-group-extract');
+				expect(button.getAttribute('aria-label')).toBe('Convert group to sub-workflow');
+				expect(button.classList.contains('nodrag')).toBe(true);
+
+				await fireEvent.click(button);
+				expect(wrapper.emitted().extract).toEqual([['g1']]);
+			},
+		);
+
+		it('hides the convert-to-sub-workflow button when the group cannot be extracted', () => {
+			const wrapper = render({ canExtract: false });
+			expect(wrapper.queryByTestId('canvas-node-group-extract')).toBeNull();
+		});
+
 		it('hides the ungroup toolbar in read-only mode', () => {
 			const wrapper = render({ readOnly: true });
 			expect(wrapper.queryByTestId('canvas-node-group-toolbar')).toBeNull();
 		});
 
 		it('focuses the title when autofocusGroupId matches the group', async () => {
-			const wrapper = render({ autofocusGroupId: 'g1' });
-			const input = wrapper.getByTestId('inline-edit-input') as HTMLInputElement;
+			const wrapper = render({
+				data: makeData({ isCollapsed: false }),
+				autofocusGroupId: 'g1',
+			});
+			const title = within(wrapper.getByTestId('canvas-node-group-title'));
+			const input = title.getByTestId('inline-edit-input') as HTMLInputElement;
 
 			await waitFor(() => {
 				expect(input).toHaveFocus();
@@ -497,10 +571,12 @@ describe('CanvasNodeGroupTitleBar', () => {
 
 		it('waits for VueFlow to initialize node dimensions before focusing the title', async () => {
 			const wrapper = render({
+				data: makeData({ isCollapsed: false }),
 				autofocusGroupId: 'g1',
 				dimensions: { width: 0, height: 0 },
 			});
-			const input = wrapper.getByTestId('inline-edit-input') as HTMLInputElement;
+			const title = within(wrapper.getByTestId('canvas-node-group-title'));
+			const input = title.getByTestId('inline-edit-input') as HTMLInputElement;
 
 			await flushPromises();
 
@@ -508,7 +584,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.emitted()['title:focused']).toBeUndefined();
 
 			await wrapper.rerender({
-				data: makeData(),
+				data: makeData({ isCollapsed: false }),
 				autofocusGroupId: 'g1',
 				dimensions: { width: 500, height: GROUP_HEADER_HEIGHT },
 				readOnly: false,
@@ -520,6 +596,33 @@ describe('CanvasNodeGroupTitleBar', () => {
 				expect(input.selectionEnd).toBe(input.value.length);
 				expect(wrapper.emitted()['title:focused']).toEqual([['g1']]);
 			});
+		});
+
+		// Collapsed groups rename through the modal (Canvas.onOpenGroupRenameModal),
+		// so the inline editor is replaced by a plain, wrappable title while collapsed.
+		it('renders a plain non-editable title instead of the inline editor when collapsed', async () => {
+			const wrapper = render({ data: makeData({ isCollapsed: true }) });
+
+			expect(wrapper.queryByTestId('inline-edit-input')).toBeNull();
+			const title = wrapper.getByTestId('canvas-node-group-collapsed-title');
+			expect(title).toHaveTextContent('My group');
+
+			await fireEvent.click(title);
+			await flushPromises();
+
+			expect(wrapper.emitted()['update:name']).toBeUndefined();
+		});
+
+		it('does not autofocus the title when collapsed', async () => {
+			const wrapper = render({
+				data: makeData({ isCollapsed: true }),
+				autofocusGroupId: 'g1',
+			});
+
+			await flushPromises();
+
+			expect(wrapper.queryByTestId('inline-edit-input')).toBeNull();
+			expect(wrapper.emitted()['title:focused']).toBeUndefined();
 		});
 	});
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { INode } from 'n8n-workflow';
+import { UNSUPPORTED_AGENT_NODE_TOOL_OPERATIONS } from '@n8n/api-types';
 
 import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
 
@@ -44,6 +45,7 @@ defineExpose({
 		:initial-node="props.initialNode"
 		:existing-tool-names="props.existingToolNames"
 		:project-id="props.projectId"
+		:hidden-operations="UNSUPPORTED_AGENT_NODE_TOOL_OPERATIONS"
 		:data-test-id="props.contentTestId"
 		@update:valid="emit('update:valid', $event)"
 		@update:node-name="emit('update:node-name', $event)"

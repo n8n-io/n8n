@@ -1,9 +1,8 @@
 import { SecurityConfig } from '@n8n/config';
-import { CredentialsRepository, MoreThanOrEqual } from '@n8n/db';
+import { CredentialsRepository, ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { CREDENTIALS_REPORT } from '@/security-audit/constants';
 import type { RiskReporter, Risk } from '@/security-audit/types';
 
@@ -11,7 +10,7 @@ import type { RiskReporter, Risk } from '@/security-audit/types';
 export class CredentialsRiskReporter implements RiskReporter {
 	constructor(
 		private readonly credentialsRepository: CredentialsRepository,
-		private readonly executionPersistence: ExecutionPersistence,
+		private readonly executionRepository: ExecutionRepository,
 		private readonly securityConfig: SecurityConfig,
 	) {}
 
@@ -20,7 +19,10 @@ export class CredentialsRiskReporter implements RiskReporter {
 
 		const allExistingCreds = await this.getAllExistingCreds();
 		const { credsInAnyUse, credsInActiveUse } = this.getAllCredsInUse(workflows);
-		const recentlyExecutedCreds = await this.getCredsInRecentlyExecutedWorkflows(days);
+		const recentlyExecutedCreds = await this.getCredentialsInRecentlyExecutedWorkflows(
+			workflows,
+			days,
+		);
 
 		const credsNotInAnyUse = allExistingCreds.filter((c) => !credsInAnyUse.has(c.id));
 		const credsNotInActiveUse = allExistingCreds.filter((c) => !credsInActiveUse.has(c.id));
@@ -113,35 +115,24 @@ export class CredentialsRiskReporter implements RiskReporter {
 		return credentials.map(({ id, name }) => ({ kind: 'credential' as const, id, name }));
 	}
 
-	private async getExecutedWorkflowsInPastDays(days: number): Promise<IWorkflowBase[]> {
+	private async getCredentialsInRecentlyExecutedWorkflows(
+		workflows: IWorkflowBase[],
+		days: number,
+	): Promise<Set<string>> {
 		const date = new Date();
-
 		date.setDate(date.getDate() - days);
 
-		const executions = await this.executionPersistence.findMultipleExecutions(
-			{ where: { startedAt: MoreThanOrEqual(date) } },
-			{ includeData: true, unflattenData: false },
+		const recentlyExecutedWorkflowIds = new Set(
+			await this.executionRepository.getWorkflowIdsWithExecutionsSince(date),
 		);
 
-		return executions.map((execution) => execution.workflowData);
-	}
+		const credentialIds = workflows
+			.filter((workflow) => recentlyExecutedWorkflowIds.has(workflow.id))
+			.flatMap((workflow) => workflow.nodes)
+			.flatMap((node) => Object.values(node.credentials ?? {}))
+			.map((credential) => credential.id)
+			.filter((id): id is string => id !== undefined);
 
-	/**
-	 * Return IDs of credentials in workflows executed in the past n days.
-	 */
-	private async getCredsInRecentlyExecutedWorkflows(days: number) {
-		const executedWorkflows = await this.getExecutedWorkflowsInPastDays(days);
-
-		return executedWorkflows.reduce<Set<string>>((acc, { nodes }) => {
-			nodes.forEach((node) => {
-				if (node.credentials) {
-					Object.values(node.credentials).forEach((c) => {
-						if (c.id) acc.add(c.id);
-					});
-				}
-			});
-
-			return acc;
-		}, new Set());
+		return new Set(credentialIds);
 	}
 }

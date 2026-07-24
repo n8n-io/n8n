@@ -39,6 +39,9 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.reaperTimeoutSeconds).toBe(60);
 			expect(scheduler.retentionTimeoutSeconds).toBe(5 * 60);
 			expect(scheduler.maxConcurrentPasses).toBe(10);
+			expect(scheduler.triggerNodeMode).toBe('legacy');
+			expect(scheduler.allowSkipDurableScheduler).toBe(false);
+			expect(scheduler.maxAttempts).toBe(5);
 		});
 	});
 
@@ -67,6 +70,7 @@ describe('SchedulerConfig', () => {
 			vi.stubEnv('N8N_SCHEDULER_REAPER_TIMEOUT', '45');
 			vi.stubEnv('N8N_SCHEDULER_RETENTION_TIMEOUT', '120');
 			vi.stubEnv('N8N_SCHEDULER_MAX_CONCURRENT_PASSES', '4');
+			vi.stubEnv('N8N_SCHEDULER_MAX_ATTEMPTS', '3');
 
 			const { scheduler } = Container.get(GlobalConfig);
 
@@ -85,6 +89,15 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.reaperTimeoutSeconds).toBe(45);
 			expect(scheduler.retentionTimeoutSeconds).toBe(120);
 			expect(scheduler.maxConcurrentPasses).toBe(4);
+			expect(scheduler.maxAttempts).toBe(3);
+		});
+
+		it('should expose the durable-scheduler skip escape hatch via env', () => {
+			vi.stubEnv('N8N_ENV_FEAT_SKIP_DURABLE_SCHEDULER', 'true');
+
+			const { scheduler } = Container.get(GlobalConfig);
+
+			expect(scheduler.allowSkipDurableScheduler).toBe(true);
 		});
 
 		it('should allow disabling the min-interval clamp with 0', () => {

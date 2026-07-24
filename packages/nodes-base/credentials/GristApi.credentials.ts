@@ -15,54 +15,17 @@ export class GristApi implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 			required: true,
+			description:
+				'In Grist, open the account menu (top right) > Account settings > Developer to create or copy your API key',
 		},
 		{
-			displayName: 'Plan Type',
-			name: 'planType',
-			type: 'options',
-			default: 'free',
-			options: [
-				{
-					name: 'Free',
-					value: 'free',
-				},
-				{
-					name: 'Paid',
-					value: 'paid',
-				},
-				{
-					name: 'Self-Hosted',
-					value: 'selfHosted',
-				},
-			],
-		},
-		{
-			displayName: 'Custom Subdomain',
-			name: 'customSubdomain',
+			displayName: 'Grist URL',
+			name: 'url',
 			type: 'string',
-			default: '',
-			required: true,
-			description: 'Custom subdomain of your team',
-			displayOptions: {
-				show: {
-					planType: ['paid'],
-				},
-			},
-		},
-		{
-			displayName: 'Self-Hosted URL',
-			name: 'selfHostedUrl',
-			type: 'string',
-			default: '',
-			placeholder: 'http://localhost:8484',
+			default: 'https://api.getgrist.com',
 			required: true,
 			description:
-				'URL of your Grist instance. Include http/https without /api and no trailing slash.',
-			displayOptions: {
-				show: {
-					planType: ['selfHosted'],
-				},
-			},
+				'Defaults to hosted Grist. Use https://YOUR_TEAM.getgrist.com for a single team, or your own URL if self-managed. Do not include /api.',
 		},
 	];
 }

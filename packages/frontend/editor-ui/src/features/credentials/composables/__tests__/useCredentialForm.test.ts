@@ -4,6 +4,7 @@ import { setActivePinia } from 'pinia';
 import type { ICredentialType } from 'n8n-workflow';
 
 import { mockedStore } from '@/__tests__/utils';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCredentialsStore } from '../../credentials.store';
 import type { ICredentialsDecryptedResponse } from '../../credentials.types';
 import { useCredentialForm } from '../useCredentialForm';
@@ -74,10 +75,12 @@ const typesByName: Record<string, ICredentialType> = {
 
 describe('useCredentialForm', () => {
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
+	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		credentialsStore = mockedStore(useCredentialsStore);
+		settingsStore = mockedStore(useSettingsStore);
 		// getCredentialTypeByName is a getter returning a function — override the
 		// getter directly (vi.spyOn can't type a getter whose value is a function).
 		Object.defineProperty(credentialsStore, 'getCredentialTypeByName', {
@@ -85,6 +88,30 @@ describe('useCredentialForm', () => {
 			get: () => (name: string) => typesByName[name],
 		});
 		credentialsStore.getNewCredentialName.mockResolvedValue('HTTP Basic Auth account');
+	});
+
+	describe('displayCredentialParameter', () => {
+		const cloudParameter = {
+			displayName: 'Cloud setting',
+			name: 'cloudSetting',
+			type: 'string' as const,
+			default: '',
+			displayOptions: { showOnDeployment: 'cloud' as const },
+		};
+
+		it('hides Cloud-only parameters on hosted deployments', () => {
+			settingsStore.isCloudDeployment = false;
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpBasicAuth' });
+
+			expect(form.displayCredentialParameter(cloudParameter)).toBe(false);
+		});
+
+		it('shows Cloud-only parameters on Cloud deployments', () => {
+			settingsStore.isCloudDeployment = true;
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpBasicAuth' });
+
+			expect(form.displayCredentialParameter(cloudParameter)).toBe(true);
+		});
 	});
 
 	describe('initialize', () => {

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, reactive, ref } from 'vue';
+import { defineComponent, h, reactive, ref, type PropType } from 'vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -17,6 +17,10 @@ import type {
 	InstanceAiAgentNode,
 	InstanceAiMessage,
 } from '@n8n/api-types';
+import {
+	getPendingAgentAttachment,
+	stashPendingAgentAttachment,
+} from '../composables/useInstanceAiHandoff';
 
 const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 },
@@ -184,7 +188,6 @@ const InstanceAiAgentPreviewStub = defineComponent({
 	props: {
 		agentId: { type: String, required: true },
 		projectId: { type: String, required: true },
-		refreshKey: { type: Number, required: true },
 	},
 	setup(props) {
 		return () =>
@@ -192,7 +195,6 @@ const InstanceAiAgentPreviewStub = defineComponent({
 				'data-test-id': 'instance-ai-agent-preview-stub',
 				'data-agent-id': props.agentId,
 				'data-project-id': props.projectId,
-				'data-refresh-key': String(props.refreshKey),
 			});
 	},
 });
@@ -207,6 +209,24 @@ const InstanceAiConfirmationPanelStub = defineComponent({
 	},
 });
 
+const AgentSectionStub = defineComponent({
+	name: 'AgentSectionStub',
+	props: {
+		agentNode: { type: Object as PropType<InstanceAiAgentNode>, required: true },
+	},
+	setup(props) {
+		return () =>
+			h(
+				'div',
+				{
+					'data-test-id': 'agent-section-stub',
+					'data-agent-id': props.agentNode.agentId,
+				},
+				props.agentNode.title ?? props.agentNode.role,
+			);
+	},
+});
+
 const renderView = createComponentRenderer(InstanceAiThreadView, {
 	global: {
 		provide: {
@@ -217,7 +237,7 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 			InstanceAiWorkflowPreview: InstanceAiWorkflowPreviewStub,
 			InstanceAiAgentPreview: InstanceAiAgentPreviewStub,
 			InstanceAiConfirmationPanel: InstanceAiConfirmationPanelStub,
-			AgentSection: { template: '<div data-test-id="agent-section-stub" />' },
+			AgentSection: AgentSectionStub,
 			InstanceAiDataTablePreview: { template: '<div data-test-id="data-table-preview-stub" />' },
 			InstanceAiArtifactsPanel: { template: '<div data-test-id="artifacts-panel-stub" />' },
 		},
@@ -599,6 +619,65 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
+	it('opens a pending agent and attaches it only to the first submitted message', async () => {
+		thread.sseState = 'disconnected';
+		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
+		thread.producedArtifacts = new Map([
+			[
+				'agent-1',
+				{
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'project-1',
+					name: 'New agent',
+				},
+			],
+		]) as typeof thread.producedArtifacts;
+		stashPendingAgentAttachment('thread-1', {
+			type: 'agent',
+			id: 'agent-1',
+			name: 'New agent',
+			projectId: 'project-1',
+		});
+
+		const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		const preview = await findByTestId('instance-ai-agent-preview-stub');
+		expect(preview).toHaveAttribute('data-agent-id', 'agent-1');
+		expect(preview).toHaveAttribute('data-project-id', 'project-1');
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+
+		await userEvent.click(getByTestId('instance-ai-input-submit'));
+
+		expect(thread.sendMessage).toHaveBeenNthCalledWith(
+			1,
+			'Normal message',
+			[
+				{
+					type: 'agent',
+					id: 'agent-1',
+					name: 'New agent',
+					projectId: 'project-1',
+				},
+			],
+			expect.any(String),
+			undefined,
+		);
+		await vi.waitFor(() => {
+			expect(getPendingAgentAttachment('thread-1')).toBeNull();
+		});
+
+		await userEvent.click(getByTestId('instance-ai-input-submit'));
+
+		expect(thread.sendMessage).toHaveBeenNthCalledWith(
+			2,
+			'Normal message',
+			undefined,
+			expect.any(String),
+			undefined,
+		);
+	});
+
 	it('dismisses a pending preview-context chip without sending it', async () => {
 		thread.sseState = 'disconnected';
 		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
@@ -876,7 +955,7 @@ describe('InstanceAiThreadView', () => {
 					{
 						agentId: 'agent-builder-child',
 						role: 'agent-builder',
-						kind: 'builder',
+						kind: 'agent-builder',
 						status: 'completed',
 						textContent: '',
 						reasoning: '',
@@ -907,7 +986,64 @@ describe('InstanceAiThreadView', () => {
 
 		expect(preview).toHaveAttribute('data-agent-id', 'agent-1');
 		expect(preview).toHaveAttribute('data-project-id', 'proj-1');
-		expect(preview).toHaveAttribute('data-refresh-key', '1');
+	});
+
+	it('hoists an active builder section without leaving an empty assistant shell', async () => {
+		const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		thread.messages.push({
+			id: 'msg-active-builder',
+			role: 'assistant',
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			createdAt: '2026-04-01T00:00:00.000Z',
+			agentTree: {
+				agentId: 'orchestrator-1',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				timeline: [
+					{ type: 'tool-call', toolCallId: 'tc-build-agent', responseId: 'r1' },
+					{ type: 'child', agentId: 'agent-builder-child', responseId: 'r1' },
+				],
+				children: [
+					{
+						agentId: 'agent-builder-child',
+						role: 'agent-builder',
+						kind: 'agent-builder',
+						title: 'Building agent',
+						status: 'active',
+						textContent: '',
+						reasoning: '',
+						timeline: [],
+						children: [],
+						toolCalls: [],
+						targetResource: {
+							type: 'agent',
+							id: 'agent-1',
+							projectId: 'proj-1',
+							name: 'SEO Auditor',
+						},
+					},
+				],
+				toolCalls: [
+					{
+						toolCallId: 'tc-build-agent',
+						toolName: 'build-agent',
+						args: { message: 'Build me an SEO auditor', name: 'SEO Auditor' },
+						isLoading: true,
+					},
+				],
+			},
+		} as never);
+
+		const builderSection = await findByTestId('agent-section-stub');
+
+		expect(builderSection).toHaveAttribute('data-agent-id', 'agent-builder-child');
+		expect(builderSection).toHaveTextContent('Building agent');
+		expect(queryByTestId('instance-ai-assistant-message')).not.toBeInTheDocument();
 	});
 
 	it('closes the agent artifact preview from the wrapper toggle', async () => {
@@ -936,7 +1072,7 @@ describe('InstanceAiThreadView', () => {
 					{
 						agentId: 'agent-builder-child',
 						role: 'agent-builder',
-						kind: 'builder',
+						kind: 'agent-builder',
 						status: 'completed',
 						textContent: '',
 						reasoning: '',
