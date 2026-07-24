@@ -1,4 +1,5 @@
 import type { INodeProperties, INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
+import { ONLY_RUN_IF_CONDITIONS_PARAM } from 'n8n-workflow';
 
 import { getResponseCode, getResponseData } from './utils';
 
@@ -277,7 +278,7 @@ export const onlyRunIfModeProperty: INodeProperties = {
 
 export const onlyRunIfConditionsProperty: INodeProperties = {
 	displayName: 'Conditions',
-	name: 'onlyRunIfConditions',
+	name: ONLY_RUN_IF_CONDITIONS_PARAM,
 	type: 'filter',
 	default: {},
 	typeOptions: {

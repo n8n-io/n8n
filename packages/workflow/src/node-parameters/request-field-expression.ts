@@ -8,6 +8,9 @@
 
 import type { IDataObject } from '../interfaces';
 
+/** Shared between the Webhook node and the isolate-skip scan in live-webhooks.ts. */
+export const ONLY_RUN_IF_CONDITIONS_PARAM = 'onlyRunIfConditions';
+
 const SIMPLE_REQUEST_FIELD_RE =
 	/^=\s*\{\{\s*\$json((?:\.[A-Za-z_$][\w$]*|\[\s*(?:'[^']*'|"[^"]*"|\d+)\s*\])+)\s*\}\}\s*$/;
 

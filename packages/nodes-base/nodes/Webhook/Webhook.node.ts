@@ -11,7 +11,12 @@ import type {
 	INodeProperties,
 	FilterValue,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError, Node } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	NodeOperationError,
+	Node,
+	ONLY_RUN_IF_CONDITIONS_PARAM,
+} from 'n8n-workflow';
 import { pipeline } from 'stream/promises';
 import { file as tmpFile } from 'tmp-promise';
 import { v4 as uuid } from 'uuid';
@@ -280,7 +285,9 @@ export class Webhook extends Node {
 			// >= 2.2 the mode is the only filter; the deprecated options.onlyRunIf is ignored
 			const onlyRunIfMode = (node.parameters?.onlyRunIfMode as string) ?? 'all';
 			if (onlyRunIfMode === 'conditions') {
-				const rawConditions = node.parameters?.onlyRunIfConditions as FilterValue | undefined;
+				const rawConditions = node.parameters?.[ONLY_RUN_IF_CONDITIONS_PARAM] as
+					| FilterValue
+					| undefined;
 				if (rawConditions?.conditions?.length) {
 					try {
 						const pass = evaluateOnlyRunIfConditions(context, rawConditions, {

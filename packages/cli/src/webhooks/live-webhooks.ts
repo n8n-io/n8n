@@ -8,6 +8,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	matchSimpleRequestFieldPath,
+	ONLY_RUN_IF_CONDITIONS_PARAM,
 } from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods, IWorkflowBase } from 'n8n-workflow';
 
@@ -55,7 +56,7 @@ function webhookPhaseNeedsIsolate(node: INode): boolean {
 		}
 		if (value !== null && typeof value === 'object') {
 			return Object.entries(value).some(([key, item]) =>
-				scan(item, inNativeConditions || key === 'onlyRunIfConditions'),
+				scan(item, inNativeConditions || key === ONLY_RUN_IF_CONDITIONS_PARAM),
 			);
 		}
 		return false;
