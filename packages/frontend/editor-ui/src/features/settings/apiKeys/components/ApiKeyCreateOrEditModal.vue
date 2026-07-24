@@ -405,13 +405,7 @@ async function handleEnterKey(event: KeyboardEvent) {
 											:enter-active-class="$style.swapEnterActive"
 											:leave-active-class="$style.swapLeaveActive"
 										>
-											<N8nIcon
-												v-if="showCopiedFeedback"
-												key="check"
-												icon="check"
-												size="large"
-												color="success"
-											/>
+											<N8nIcon v-if="showCopiedFeedback" key="check" icon="check" size="large" />
 											<N8nIcon v-else key="copy" icon="copy" size="large" />
 										</Transition>
 									</span>
