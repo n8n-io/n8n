@@ -22,12 +22,19 @@ import type {
 	VariableLimitFailure,
 	VariableResolutionFailure,
 } from './variable.types';
+import { VariableMissingMode } from '../../n8n-packages.types';
 import type { ImportContext } from '../../n8n-packages.types';
 
 @Service()
 export class VariableImporter {
 	constructor(private readonly variablesService: VariablesService) {}
 
+	/**
+	 * Resolves the package's variable requirements against the target project
+	 * (then global), mirroring runtime `$vars` precedence. Under a creating mode it
+	 * additionally derives the variables to create and preflights permission before
+	 * any writes, throwing a `ForbiddenError` when the user may not create them.
+	 */
 	async plan(
 		context: ImportContext,
 		request: VariableImportRequest,
@@ -47,7 +54,7 @@ export class VariableImporter {
 		const matched: string[] = [];
 		const missing: VariableResolutionFailure[] = [];
 		const creations: VariableCreation[] = [];
-		const createStub = variableMissingModeCreates(request.missingMode);
+		const createsMissing = variableMissingModeCreates(request.missingMode);
 
 		for (const requirement of requirements) {
 			const picked = pickVariableForProject(
@@ -60,10 +67,14 @@ export class VariableImporter {
 				continue;
 			}
 			missing.push(createFailure(requirement));
-			if (createStub) {
+			if (createsMissing) {
 				creations.push({
 					name: requirement.name,
 					...(requirement.globalPlacement ? {} : { projectId: context.projectId }),
+					...(request.missingMode === VariableMissingMode.CreateWithValue &&
+					requirement.value !== undefined
+						? { value: requirement.value }
+						: {}),
 					usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
 				});
 			}
@@ -93,7 +104,16 @@ export class VariableImporter {
 		return variableBlockingFailures(request.missingMode, plan);
 	}
 
+	/**
+	 * Creates the planned variables with package values or empty stubs. Re-checks the exact destination
+	 * against a fresh cache before each create so a variable already created by an
+	 * earlier scope of the same import (or an external writer) is skipped rather
+	 * than duplicated. `VariablesService.create` re-enforces permission, license,
+	 * quota, and uniqueness and refreshes the cache, which is what makes the
+	 * cross-scope dedupe work.
+	 */
 	async apply(context: ImportContext, plan: VariableImportPlan): Promise<VariableApplyResult> {
+		const created: string[] = [];
 		const stubbed: string[] = [];
 		const skippedExisting: string[] = [];
 		let createdCount = 0;
@@ -108,10 +128,14 @@ export class VariableImporter {
 				await this.variablesService.create(context.user, {
 					key: creation.name,
 					type: 'string',
-					value: '',
+					value: creation.value ?? '',
 					...(creation.projectId ? { projectId: creation.projectId } : {}),
 				});
-				stubbed.push(creation.name);
+				if (creation.value === undefined) {
+					stubbed.push(creation.name);
+				} else {
+					created.push(creation.name);
+				}
 				createdCount += 1;
 			} catch (error) {
 				// One error type covers both "key taken here" and "quota full" (LIGO-880), so re-check
@@ -128,6 +152,7 @@ export class VariableImporter {
 		}
 
 		return {
+			created: [...new Set(created)],
 			stubbed: [...new Set(stubbed)],
 			skippedExisting: [...new Set(skippedExisting)],
 			createdCount,

@@ -6,9 +6,9 @@ import type { VariablesService } from '@/environments.ee/variables/variables.ser
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import type { ImportContext } from '../../../n8n-packages.types';
 import { VariableImporter } from '../variable-importer';
 import type { PlacedVariableRequirement, VariableImportPlan } from '../variable.types';
-import type { ImportContext } from '../../../n8n-packages.types';
 
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/permissions')>()),
@@ -29,8 +29,9 @@ function req(
 	name: string,
 	usedByWorkflows: string[],
 	globalPlacement = false,
+	value?: string,
 ): PlacedVariableRequirement {
-	return { name, usedByWorkflows, globalPlacement };
+	return { name, usedByWorkflows, globalPlacement, ...(value !== undefined ? { value } : {}) };
 }
 
 function makeVariable(overrides: Partial<Variables> = {}): Variables {
@@ -427,6 +428,45 @@ describe('VariableImporter', () => {
 				usedByWorkflows: ['wf-1'],
 			});
 		});
+
+		describe('create-with-value', () => {
+			it('carries the package value into the creation plan', async () => {
+				const { importer, variablesService } = makeImporter();
+				variablesService.getAllCached.mockResolvedValue([]);
+
+				const plan = await importer.plan(context, {
+					requirements: [req('API_KEY', ['wf-1'], false, 'secret')],
+					missingMode: 'create-with-value',
+				});
+
+				expect(plan).toEqual({
+					matched: [],
+					missing: [{ name: 'API_KEY', usedByWorkflows: ['wf-1'] }],
+					creations: [
+						{
+							name: 'API_KEY',
+							projectId: 'proj-target',
+							value: 'secret',
+							usedByWorkflows: ['wf-1'],
+						},
+					],
+				});
+			});
+
+			it('plans an empty stub when no package value is available', async () => {
+				const { importer, variablesService } = makeImporter();
+				variablesService.getAllCached.mockResolvedValue([]);
+
+				const plan = await importer.plan(context, {
+					requirements: [req('API_KEY', ['wf-1'])],
+					missingMode: 'create-with-value',
+				});
+
+				expect(plan.creations).toEqual([
+					{ name: 'API_KEY', projectId: 'proj-target', usedByWorkflows: ['wf-1'] },
+				]);
+			});
+		});
 	});
 
 	describe('apply', () => {
@@ -445,7 +485,7 @@ describe('VariableImporter', () => {
 				creations: [],
 			});
 
-			expect(result).toEqual({ stubbed: [], skippedExisting: [], createdCount: 0 });
+			expect(result).toEqual({ created: [], stubbed: [], skippedExisting: [], createdCount: 0 });
 			expect(variablesService.create).not.toHaveBeenCalled();
 		});
 
@@ -462,7 +502,34 @@ describe('VariableImporter', () => {
 				projectId: 'proj-target',
 			});
 			expect(result).toEqual({
+				created: [],
 				stubbed: ['API_KEY'],
+				skippedExisting: [],
+				createdCount: 1,
+			});
+		});
+
+		it('creates a variable with the package value', async () => {
+			const { importer, variablesService } = makeImporter();
+			variablesService.getAllCached.mockResolvedValue([]);
+
+			const value = 'package-value';
+			const result = await importer.apply(context, {
+				...projectCreationPlan,
+				creations: [
+					{ name: 'API_KEY', projectId: 'proj-target', value, usedByWorkflows: ['wf-1'] },
+				],
+			});
+
+			expect(variablesService.create).toHaveBeenCalledWith(context.user, {
+				key: 'API_KEY',
+				type: 'string',
+				value,
+				projectId: 'proj-target',
+			});
+			expect(result).toEqual({
+				created: ['API_KEY'],
+				stubbed: [],
 				skippedExisting: [],
 				createdCount: 1,
 			});
@@ -483,7 +550,12 @@ describe('VariableImporter', () => {
 				type: 'string',
 				value: '',
 			});
-			expect(result).toEqual({ stubbed: ['API_KEY'], skippedExisting: [], createdCount: 1 });
+			expect(result).toEqual({
+				created: [],
+				stubbed: ['API_KEY'],
+				skippedExisting: [],
+				createdCount: 1,
+			});
 		});
 
 		it('skips creation when the variable already exists at its destination', async () => {
@@ -500,6 +572,7 @@ describe('VariableImporter', () => {
 
 			expect(variablesService.create).not.toHaveBeenCalled();
 			expect(result).toEqual({
+				created: [],
 				stubbed: [],
 				skippedExisting: ['API_KEY'],
 				createdCount: 0,
@@ -538,6 +611,7 @@ describe('VariableImporter', () => {
 				[context.user, { key: 'GLOBAL_KEY', type: 'string', value: '' }],
 			]);
 			expect(result).toEqual({
+				created: [],
 				stubbed: ['API_KEY', 'GLOBAL_KEY'],
 				skippedExisting: [],
 				createdCount: 2,
@@ -557,9 +631,20 @@ describe('VariableImporter', () => {
 				new VariableCountLimitReachedError('Variables limit reached'),
 			);
 
-			const result = await importer.apply(context, projectCreationPlan);
+			const result = await importer.apply(context, {
+				...projectCreationPlan,
+				creations: [
+					{
+						name: 'API_KEY',
+						projectId: 'proj-target',
+						value: 'package-value',
+						usedByWorkflows: ['wf-1'],
+					},
+				],
+			});
 
 			expect(result).toEqual({
+				created: [],
 				stubbed: [],
 				skippedExisting: ['API_KEY'],
 				createdCount: 0,

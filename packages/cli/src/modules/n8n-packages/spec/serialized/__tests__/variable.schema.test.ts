@@ -1,4 +1,4 @@
-import { serializedVariableSchema } from '../variable.schema';
+import { importedVariableSchema, serializedVariableSchema } from '../variable.schema';
 
 describe('serializedVariableSchema', () => {
 	it('accepts a string variable with a value', () => {
@@ -23,5 +23,27 @@ describe('serializedVariableSchema', () => {
 		const variable = { name: '', type: 'string', value: 'v' };
 
 		expect(() => serializedVariableSchema.parse(variable)).toThrow();
+	});
+});
+
+describe('importedVariableSchema', () => {
+	it('accepts a value-less string variable', () => {
+		expect(() => importedVariableSchema.parse({ name: 'API_URL', type: 'string' })).not.toThrow();
+	});
+
+	it('rejects a missing type', () => {
+		expect(() => importedVariableSchema.parse({ name: 'API_URL', value: 'value' })).toThrow();
+	});
+
+	it('rejects an unsupported type', () => {
+		expect(() =>
+			importedVariableSchema.parse({ name: 'API_URL', type: 'number', value: '1' }),
+		).toThrow();
+	});
+
+	it('rejects an overlong value', () => {
+		expect(() =>
+			importedVariableSchema.parse({ name: 'API_URL', type: 'string', value: 'a'.repeat(1001) }),
+		).toThrow();
 	});
 });

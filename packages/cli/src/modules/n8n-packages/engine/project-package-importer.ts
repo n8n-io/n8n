@@ -7,6 +7,10 @@ import { EventService } from '@/events/event.service';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter } from '../entities/project/project-importer';
+import {
+	pickManifestVariableEntry,
+	validateVariableRequirementValue,
+} from '../entities/variable/variable.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { PackageReader } from '../io/package-reader';
 import type {
@@ -35,6 +39,7 @@ import {
 import { emitPackageImportedEvent, type PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
+import type { ImportedVariable } from '../spec/serialized/variable.schema';
 
 @Service()
 export class ProjectPackageImporter {
@@ -55,6 +60,11 @@ export class ProjectPackageImporter {
 
 		const projects = await this.packageParser.getProjects(reader);
 		const projectPlan = await this.projectImporter.plan(request.user, projects);
+		const packageVariables =
+			(manifest.requirements?.variables?.length ?? 0) > 0 &&
+			request.variableMissingMode === 'create-with-value'
+				? await this.packageParser.getVariables(reader)
+				: undefined;
 		// Projects the user is creating (vs matching an existing one). They will be admin of these,
 		// so publish is always allowed and the project need not exist while its contents are planned.
 		const pendingCreateIds = new Set(
@@ -71,6 +81,7 @@ export class ProjectPackageImporter {
 				manifest,
 				project,
 				pendingCreateIds.has(project.id),
+				packageVariables,
 			);
 			const plan = await this.importOrchestrator.plan(input);
 			planned.push({ project, plan });
@@ -87,6 +98,7 @@ export class ProjectPackageImporter {
 		const stubbed: string[] = [];
 		const variablesMatched: string[] = [];
 		const variablesMissing: string[] = [];
+		const variablesCreated: string[] = [];
 		const variablesStubbed: string[] = [];
 		const variablesSkipped: string[] = [];
 		const scopes: PackageImportScope[] = [];
@@ -100,6 +112,7 @@ export class ProjectPackageImporter {
 			stubbed.push(...imported.credentialResult.stubbed);
 			variablesMatched.push(...imported.variablePlan.matched);
 			variablesMissing.push(...imported.variablePlan.missing.map(({ name }) => name));
+			variablesCreated.push(...imported.variableResult.created);
 			variablesStubbed.push(...imported.variableResult.stubbed);
 			variablesSkipped.push(...imported.variableResult.skippedExisting);
 			scopes.push({
@@ -123,6 +136,7 @@ export class ProjectPackageImporter {
 			variables: reconcileVariableSummary({
 				matched: variablesMatched,
 				missing: variablesMissing,
+				created: variablesCreated,
 				stubbed: variablesStubbed,
 				skipped: variablesSkipped,
 			}),
@@ -135,6 +149,7 @@ export class ProjectPackageImporter {
 		manifest: PackageManifest,
 		project: ManifestEntry,
 		projectPendingCreation: boolean,
+		packageVariables: Map<string, ImportedVariable> | undefined,
 	): Promise<ImportOrchestrationInput> {
 		const basePrefix = `${project.target}/`;
 		const folders = await this.packageParser.getFolders(reader, basePrefix);
@@ -163,11 +178,31 @@ export class ProjectPackageImporter {
 
 		const variableRequest: VariableImportRequest = {
 			requirements: identifyRequirements(manifest.requirements?.variables, workflows)?.map(
-				(requirement) => ({
-					...requirement,
-					globalPlacement:
-						deriveVariableScope(manifest.variables, basePrefix, requirement.name) === 'global',
-				}),
+				(requirement) => {
+					const globalPlacement =
+						deriveVariableScope(manifest.variables, basePrefix, requirement.name) === 'global';
+					if (request.variableMissingMode !== 'create-with-value') {
+						return { ...requirement, globalPlacement };
+					}
+					const entry = pickManifestVariableEntry(
+						manifest.variables,
+						project.target,
+						requirement.name,
+					);
+					const requirementValue = validateVariableRequirementValue(
+						requirement.value,
+						requirement.name,
+					);
+					const value = entry
+						? (packageVariables?.get(entry.target)?.value ?? requirementValue)
+						: requirementValue;
+					return {
+						...requirement,
+						...(value !== undefined ? { value } : {}),
+						globalPlacement,
+					};
+				},
+
 			),
 			missingMode: request.variableMissingMode,
 		};

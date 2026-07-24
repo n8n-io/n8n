@@ -79,6 +79,7 @@ describe('toVariableSummary', () => {
 	});
 
 	const result = (overrides: Partial<VariableApplyResult> = {}): VariableApplyResult => ({
+		created: [],
 		stubbed: [],
 		skippedExisting: [],
 		createdCount: 0,
@@ -89,6 +90,7 @@ describe('toVariableSummary', () => {
 		expect(toVariableSummary(plan(['A'], ['B']), result())).toEqual({
 			matched: ['A'],
 			missing: ['B'],
+			created: [],
 			stubbed: [],
 		});
 	});
@@ -97,6 +99,7 @@ describe('toVariableSummary', () => {
 		expect(toVariableSummary(plan(['A'], ['B', 'C']), result({ stubbed: ['B', 'C'] }))).toEqual({
 			matched: ['A'],
 			missing: [],
+			created: [],
 			stubbed: ['B', 'C'],
 		});
 	});
@@ -106,6 +109,7 @@ describe('toVariableSummary', () => {
 		expect(toVariableSummary(plan(['A'], ['B']), result({ skippedExisting: ['B'] }))).toEqual({
 			matched: ['A', 'B'],
 			missing: [],
+			created: [],
 			stubbed: [],
 		});
 	});
@@ -114,6 +118,7 @@ describe('toVariableSummary', () => {
 		expect(toVariableSummary(plan(['A'], ['B']), result({ skippedExisting: ['A', 'B'] }))).toEqual({
 			matched: ['A', 'B'],
 			missing: [],
+			created: [],
 			stubbed: [],
 		});
 	});
@@ -127,10 +132,11 @@ describe('reconcileVariableSummary', () => {
 			reconcileVariableSummary({
 				matched: [],
 				missing: ['SHARED_URL', 'SHARED_URL'],
+				created: [],
 				stubbed: ['SHARED_URL'],
 				skipped: ['SHARED_URL'],
 			}),
-		).toEqual({ matched: [], missing: [], stubbed: ['SHARED_URL'] });
+		).toEqual({ matched: [], missing: [], created: [], stubbed: ['SHARED_URL'] });
 	});
 
 	it('reports a name as both matched and stubbed when it pre-existed in only some scopes', () => {
@@ -138,10 +144,11 @@ describe('reconcileVariableSummary', () => {
 			reconcileVariableSummary({
 				matched: ['API_URL'],
 				missing: ['API_URL'],
+				created: [],
 				stubbed: ['API_URL'],
 				skipped: [],
 			}),
-		).toEqual({ matched: ['API_URL'], missing: [], stubbed: ['API_URL'] });
+		).toEqual({ matched: ['API_URL'], missing: [], created: [], stubbed: ['API_URL'] });
 	});
 
 	it('counts a skip that no scope stubbed as matched', () => {
@@ -149,10 +156,11 @@ describe('reconcileVariableSummary', () => {
 			reconcileVariableSummary({
 				matched: [],
 				missing: ['API_URL'],
+				created: [],
 				stubbed: [],
 				skipped: ['API_URL'],
 			}),
-		).toEqual({ matched: ['API_URL'], missing: [], stubbed: [] });
+		).toEqual({ matched: ['API_URL'], missing: [], created: [], stubbed: [] });
 	});
 
 	it('deduplicates names repeated across scopes', () => {
@@ -160,9 +168,10 @@ describe('reconcileVariableSummary', () => {
 			reconcileVariableSummary({
 				matched: ['API_URL', 'API_URL'],
 				missing: ['API_KEY', 'API_KEY'],
+				created: [],
 				stubbed: [],
 				skipped: [],
 			}),
-		).toEqual({ matched: ['API_URL'], missing: ['API_KEY'], stubbed: [] });
+		).toEqual({ matched: ['API_URL'], missing: ['API_KEY'], created: [], stubbed: [] });
 	});
 });

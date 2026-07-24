@@ -72,7 +72,7 @@ describe('package import command', () => {
 			dataTableMatchingMode: 'by-id',
 			dataTableMissingMode: 'create',
 			dataTableSchemaConflictPolicy: 'keep-existing',
-			variableMissingMode: 'create-stub',
+			variableMissingMode: 'create-with-value',
 			variableParentPolicy: 'global',
 			bindings: '{}',
 		});
@@ -97,7 +97,7 @@ describe('package import command', () => {
 			dataTableMatchingMode: 'by-id',
 			dataTableMissingMode: 'create',
 			dataTableSchemaConflictPolicy: 'keep-existing',
-			variableMissingMode: 'create-stub',
+			variableMissingMode: 'create-with-value',
 			variableParentPolicy: 'global',
 			bindings: '{}',
 		});

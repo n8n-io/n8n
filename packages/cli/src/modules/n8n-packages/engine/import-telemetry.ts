@@ -67,6 +67,7 @@ export function emitPackageImportedEvent(
 		missing: scopes.flatMap(({ imported }) =>
 			imported.variablePlan.missing.map(({ name }) => name),
 		),
+		created: scopes.flatMap(({ imported }) => imported.variableResult.created),
 		stubbed: scopes.flatMap(({ imported }) => imported.variableResult.stubbed),
 		skipped: scopes.flatMap(({ imported }) => imported.variableResult.skippedExisting),
 	});

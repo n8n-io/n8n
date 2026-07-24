@@ -8,6 +8,7 @@ const ON_MISSING_VARIABLE: Record<VariableMissingMode, MissingVariableEffect> = 
 	[VariableMissingMode.DoNothing]: { creates: false, blocks: false },
 	[VariableMissingMode.MustPreexist]: { creates: false, blocks: true },
 	[VariableMissingMode.CreateStub]: { creates: true, blocks: false },
+	[VariableMissingMode.CreateWithValue]: { creates: true, blocks: false },
 };
 
 /** Whether the mode fills an unresolved requirement by creating the variable. */

@@ -18,6 +18,7 @@ import { serializedDataTableSchema } from '../spec/serialized/data-table.schema'
 import type { SerializedDataTable } from '../spec/serialized/data-table.schema';
 import { serializedFolderSchema, type SerializedFolder } from '../spec/serialized/folder.schema';
 import { serializedProjectSchema, type SerializedProject } from '../spec/serialized/project.schema';
+import { importedVariableSchema, type ImportedVariable } from '../spec/serialized/variable.schema';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 /**
@@ -83,6 +84,18 @@ export class N8nPackageParser {
 			projects.push(await this.readProject(reader, entry));
 		}
 		return projects;
+	}
+
+	/** Reads and validates the package's bundled variables, keyed by manifest target. */
+	async getVariables(reader: PackageReader): Promise<Map<string, ImportedVariable>> {
+		const manifest = await this.getManifest(reader);
+		const variables = new Map<string, ImportedVariable>();
+
+		for (const entry of manifest.variables ?? []) {
+			variables.set(entry.target, await this.readVariable(reader, entry));
+		}
+
+		return variables;
 	}
 
 	private async readWorkflow(
@@ -207,6 +220,34 @@ export class N8nPackageParser {
 				? { customTelemetryTags: project.customTelemetryTags }
 				: {}),
 		};
+	}
+
+	private async readVariable(
+		reader: PackageReader,
+		entry: ManifestEntry,
+	): Promise<ImportedVariable> {
+		const path = `${entry.target}/variable.json`;
+		const wire = await this.readJson(reader, path, 'variable');
+
+		let variable: ImportedVariable;
+		try {
+			variable = importedVariableSchema.parse(wire);
+		} catch (cause) {
+			if (cause instanceof ZodError) {
+				throw new UserError(`Package variable file at ${path} failed schema validation.`, {
+					cause,
+				});
+			}
+			throw cause;
+		}
+
+		if (variable.name !== entry.name) {
+			throw new UserError(
+				`Package variable at ${path} declares name "${variable.name}" but the manifest lists it as "${entry.name}".`,
+			);
+		}
+
+		return variable;
 	}
 
 	private async readJson<T = unknown>(

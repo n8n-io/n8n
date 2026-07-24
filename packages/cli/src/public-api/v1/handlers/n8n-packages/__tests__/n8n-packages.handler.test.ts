@@ -609,7 +609,7 @@ describe('n8n-packages handler', () => {
 				expect.objectContaining({
 					projectId: 'proj-brie',
 					workflowConflictPolicy: 'fail',
-					variableMissingMode: 'do-nothing',
+					variableMissingMode: 'create-with-value',
 					variableParentPolicy: undefined,
 				}),
 			);
@@ -622,7 +622,7 @@ describe('n8n-packages handler', () => {
 			const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Response;
 
 			const caught = await runImport(
-				makeImportRequest({ projectId: 'proj-brie', variableMissingMode: 'create-stub' }, [
+				makeImportRequest({ projectId: 'proj-brie', variableMissingMode: 'create-with-value' }, [
 					'workflow:import',
 				]),
 				res,
@@ -630,7 +630,7 @@ describe('n8n-packages handler', () => {
 
 			expect(caught).toBeUndefined();
 			expect(mockService.importPackage).toHaveBeenCalledWith(
-				expect.objectContaining({ variableMissingMode: 'create-stub' }),
+				expect.objectContaining({ variableMissingMode: 'create-with-value' }),
 			);
 		});
 

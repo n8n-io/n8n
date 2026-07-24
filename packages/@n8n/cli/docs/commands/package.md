@@ -64,15 +64,15 @@ n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --bind
 | `--data-table-matching-mode` | How data tables referenced by the package's workflows are matched on the target instance: `by-id` (default and only mode) matches the target-project table with the same id — imported tables keep their source id — and never falls back to name matching. |
 | `--data-table-missing-mode` | What to do when a referenced data table is absent in the target project. `create` (instance default) creates it from the package schema — keeping the source id, with no rows; `must-preexist` requires it to already exist; `do-nothing` skips creation. Matched tables are always used as-is and schema-validated (all package columns present with the same name and type), even under `do-nothing`. |
 | `--data-table-schema-conflict-policy` | How strictly a matched data table's schema is compared. Every package column must exist on the matched target table with the same name and type — a missing column or a type mismatch always rejects. `keep-existing` (instance default) ignores additional columns the target table has of its own; `fail` is the strict drift-detection choice and rejects those too. Neither policy alters the matched target table — package columns are never added to it. |
-| `--variable-missing-mode` | What to do when a variable referenced by the package's workflows is absent from both the target project and the global scope (lookup order: project, then global): `do-nothing` (instance default) imports the workflows anyway and lists the unresolved variable names in the result, without creating anything; `must-preexist` rejects the import unless every referenced variable already resolves; `create-stub` creates each missing variable with an empty value at the placement scope (see `--variable-parent-policy`) and lists the created names under `variables.stubbed`. Matched variables are always used as-is — the import never overwrites variables. |
-| `--variable-parent-policy` | Where `create-stub` creates missing variables for workflow/folder packages (default `project`): `project` creates them in the target project; `global` creates them at global scope. Ignored for project packages, where placement follows the package layout (a variable bundled under a project is created in that project; one bundled at the top level is created globally). |
+| `--variable-missing-mode` | What to do when a referenced variable is absent from both the target project and global scope: `create-with-value` (instance default) creates it with the package value and reports it under `variables.created`, falling back to an empty stub under `variables.stubbed` when values were excluded; `create-stub` always creates an empty value; `do-nothing` reports unresolved names without creating anything; `must-preexist` rejects the import. Matched variables are never overwritten. |
+| `--variable-parent-policy` | Where `create-with-value` and `create-stub` place missing variables for workflow/folder packages (`project`, the behaviour when omitted, uses the target project; `global` uses global scope). Must be omitted for project packages, which reject it with a 400 — their placement follows the package layout, so a variable bundled under a project is created in that project and one bundled at the top level is created globally. |
 | `--bindings` | Explicit source→target id bindings as a JSON object keyed by entity type, e.g. `{"credentials":{"<sourceId>":"<targetId>"}}`. Only `credentials` is honoured today; these bindings are applied before `--credential-matching-mode` resolution runs. |
 
 Requires the API key to hold:
 
 - `workflow:import` — always
 - `dataTable:create` — when the package references data tables and `--data-table-missing-mode` is `create`
-- `variable:create` — when the package references variables and `--variable-missing-mode` is `create-stub`.
+- `variable:create` — when the package references variables and `--variable-missing-mode` is `create-with-value` (the default) or `create-stub`, even if all references already resolve. Use `do-nothing` to import without this scope.
 
 When the import is blocked, the command exits non-zero and lists the blocking
 issues. Examples:
@@ -83,7 +83,7 @@ issues. Examples:
 - a workflow using a node type this instance does not have under
   `--missing-node-type-mode=fail`
 - an unresolved variable under `--variable-missing-mode=must-preexist`, or a
-  `--variable-missing-mode=create-stub` import whose new variables would exceed
+  creating variable mode whose new variables would exceed
   the instance variable limit
 
 Under the default `--credential-missing-mode=create-stub`, missing credentials

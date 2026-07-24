@@ -1,3 +1,4 @@
+import { TYPE_ENUM, variableValueSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
 export const serializedVariableSchema = z
@@ -9,3 +10,10 @@ export const serializedVariableSchema = z
 	.strict();
 
 export type SerializedVariable = z.infer<typeof serializedVariableSchema>;
+
+export const importedVariableSchema = serializedVariableSchema.extend({
+	type: z.enum(TYPE_ENUM),
+	value: variableValueSchema.optional(),
+});
+
+export type ImportedVariable = z.infer<typeof importedVariableSchema>;

@@ -93,6 +93,8 @@ export const VariableMissingMode = {
 	MustPreexist: 'must-preexist',
 	/** Creates each unresolved variable with an empty value at the placement scope; the response lists the created names under `stubbed`. */
 	CreateStub: 'create-stub',
+	/** Creates each unresolved variable with its package value, falling back to an empty stub when no value was exported. */
+	CreateWithValue: 'create-with-value',
 } as const;
 
 export const VariableParentPolicy = {
@@ -367,6 +369,7 @@ export interface ImportCredentialSummary {
 export interface ImportVariableSummary {
 	matched: string[];
 	missing: string[];
+	created: string[];
 	stubbed: string[];
 }
 

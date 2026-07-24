@@ -236,6 +236,7 @@ describe('POST /n8n-packages/import', () => {
 			variables: {
 				matched: [],
 				missing: [],
+				created: [],
 				stubbed: [],
 			},
 		});
@@ -259,7 +260,7 @@ describe('POST /n8n-packages/import', () => {
 			.field('dataTableMatchingMode', 'by-id')
 			.field('dataTableMissingMode', 'must-preexist')
 			.field('dataTableSchemaConflictPolicy', 'fail')
-			.field('variableMissingMode', 'do-nothing')
+			.field('variableMissingMode', 'create-with-value')
 			.field('variableParentPolicy', 'project')
 			.attach('package', tarBuffer, 'import.n8np');
 

@@ -26,6 +26,7 @@ import type { ImportPackageRequest } from '../n8n-packages.types';
 import {
 	buildEntityPackageBuffer,
 	credentialRequirementsFromWorkflows,
+	type PackageVariableEntry,
 	serializedFolder,
 	serializedProject,
 	serializedWorkflow,
@@ -547,7 +548,8 @@ describe('project shell import', () => {
 		const twoProjectPackage = async (
 			opts: {
 				catalog?: Array<{ id: string; name: string; target: string }>;
-				requirements?: Array<{ name: string; usedByWorkflows: string[] }>;
+				variables?: PackageVariableEntry[];
+				requirements?: Array<{ name: string; value?: string; usedByWorkflows: string[] }>;
 			} = {},
 		) =>
 			await buildEntityPackageBuffer({
@@ -565,6 +567,7 @@ describe('project shell import', () => {
 						workflow: serializedWorkflow({ id: 'WFB', name: 'wfb' }),
 					},
 				],
+				variables: opts.variables,
 				manifestExtras: {
 					...(opts.catalog ? { variables: opts.catalog } : {}),
 					...(opts.requirements ? { requirements: { variables: opts.requirements } } : {}),
@@ -612,6 +615,7 @@ describe('project shell import', () => {
 				expect(result.variables).toEqual({
 					matched: ['GLOBAL_URL'],
 					missing: ['ABSENT_VAR'],
+					created: [],
 					stubbed: [],
 				});
 				// do-nothing mode does not create variables.
@@ -632,6 +636,7 @@ describe('project shell import', () => {
 				expect(result.variables).toEqual({
 					matched: ['API_URL'],
 					missing: ['API_URL'],
+					created: [],
 					stubbed: [],
 				});
 			});
@@ -718,6 +723,7 @@ describe('project shell import', () => {
 				expect(result.variables).toEqual({
 					matched: [],
 					missing: [],
+					created: [],
 					stubbed: expect.arrayContaining(['GLOBAL_VAR', 'PROJECT_VAR']),
 				});
 				expect(result.variables.stubbed).toHaveLength(2);
@@ -745,7 +751,13 @@ describe('project shell import', () => {
 					variableMissingMode: 'create-stub',
 				});
 
-				expect(result.variables).toEqual({ matched: [], missing: [], stubbed: ['GLOBAL_VAR'] });
+				expect(result.variables).toEqual({
+					matched: [],
+					missing: [],
+					created: [],
+					stubbed: ['GLOBAL_VAR'],
+				});
+
 				const created = await Container.get(VariablesRepository).find({
 					relations: { project: true },
 				});
@@ -777,7 +789,12 @@ describe('project shell import', () => {
 				});
 
 				// A name-only requirement (no bundled entry) falls back to each consuming project.
-				expect(result.variables).toEqual({ matched: [], missing: [], stubbed: ['API_URL'] });
+				expect(result.variables).toEqual({
+					matched: [],
+					missing: [],
+					created: [],
+					stubbed: ['API_URL'],
+				});
 				const created = await Container.get(VariablesRepository).find({
 					relations: { project: true },
 				});
@@ -813,7 +830,12 @@ describe('project shell import', () => {
 				});
 
 				// Each project's own entry wins for its own scope, so neither borrows the other's.
-				expect(result.variables).toEqual({ matched: [], missing: [], stubbed: ['API_URL'] });
+				expect(result.variables).toEqual({
+					matched: [],
+					missing: [],
+					created: [],
+					stubbed: ['API_URL'],
+				});
 				const created = await Container.get(VariablesRepository).find({
 					relations: { project: true },
 				});
@@ -857,7 +879,12 @@ describe('project shell import', () => {
 					variableMissingMode: 'create-stub',
 				});
 
-				expect(result.variables).toEqual({ matched: [], missing: [], stubbed: ['THEIRS'] });
+				expect(result.variables).toEqual({
+					matched: [],
+					missing: [],
+					created: [],
+					stubbed: ['THEIRS'],
+				});
 				const created = await Container.get(VariablesRepository).find({
 					relations: { project: true },
 				});
@@ -889,6 +916,7 @@ describe('project shell import', () => {
 				expect(result.variables).toEqual({
 					matched: [],
 					missing: [],
+					created: [],
 					stubbed: expect.arrayContaining(['API_URL', 'SHARED_URL']),
 				});
 				expect(result.variables.stubbed).toHaveLength(2);
@@ -925,6 +953,7 @@ describe('project shell import', () => {
 				expect(result.variables).toEqual({
 					matched: [],
 					missing: [],
+					created: [],
 					stubbed: ['SHARED_URL'],
 				});
 				const created = await Container.get(VariablesRepository).find({
@@ -951,6 +980,7 @@ describe('project shell import', () => {
 				expect(result.variables).toEqual({
 					matched: ['API_URL'],
 					missing: [],
+					created: [],
 					stubbed: ['API_URL'],
 				});
 				const rows = await Container.get(VariablesRepository).find({
@@ -1039,6 +1069,123 @@ describe('project shell import', () => {
 				expect(await findProject('P1')).toBeNull();
 				expect(await findProject('P2')).toBeNull();
 				expect(await Container.get(VariablesRepository).count()).toBe(0);
+			});
+		});
+
+		describe('create-with-value missing mode', () => {
+			beforeEach(() => {
+				licenseMocker.enable('feat:variables');
+			});
+
+			it('preserves different per-project values for the same variable name', async () => {
+				const packageBuffer = await twoProjectPackage({
+					variables: [
+						{
+							id: 'v1',
+							target: 'projects/brie/variables/api_url',
+							variable: { name: 'API_URL', type: 'string', value: 'https://brie.example.com' },
+						},
+						{
+							id: 'v2',
+							target: 'projects/stilton/variables/api_url',
+							variable: { name: 'API_URL', type: 'string', value: 'https://stilton.example.com' },
+						},
+					],
+					requirements: [{ name: 'API_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+				});
+
+				const result = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'create-with-value',
+				});
+
+				expect(result.variables).toEqual({
+					matched: [],
+					missing: [],
+					created: ['API_URL'],
+					stubbed: [],
+				});
+				const rows = await Container.get(VariablesRepository).find({
+					relations: { project: true },
+				});
+				expect(
+					rows.map(({ key, value, project }) => ({ key, value, projectId: project?.id })),
+				).toEqual(
+					expect.arrayContaining([
+						{ key: 'API_URL', value: 'https://brie.example.com', projectId: 'P1' },
+						{ key: 'API_URL', value: 'https://stilton.example.com', projectId: 'P2' },
+					]),
+				);
+				expect(rows).toHaveLength(2);
+			});
+
+			it('creates a top-level bundled variable globally with its value', async () => {
+				const packageBuffer = await twoProjectPackage({
+					variables: [
+						{
+							id: 'v1',
+							target: 'variables/shared_url',
+							variable: { name: 'SHARED_URL', type: 'string', value: 'https://shared.example.com' },
+						},
+					],
+					requirements: [{ name: 'SHARED_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+				});
+
+				const result = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'create-with-value',
+				});
+
+				expect(result.variables.created).toEqual(['SHARED_URL']);
+				const rows = await Container.get(VariablesRepository).find({
+					relations: { project: true },
+				});
+				expect(rows.map(({ key, value, project }) => ({ key, value, project }))).toEqual([
+					{ key: 'SHARED_URL', value: 'https://shared.example.com', project: null },
+				]);
+			});
+
+			it('reports a name as both created and stubbed when only one project carries a value', async () => {
+				const packageBuffer = await twoProjectPackage({
+					variables: [
+						{
+							id: 'v1',
+							target: 'projects/brie/variables/api_url',
+							variable: { name: 'API_URL', type: 'string', value: 'https://brie.example.com' },
+						},
+					],
+					requirements: [{ name: 'API_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+				});
+
+				const result = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'create-with-value',
+				});
+
+				expect(result.variables).toEqual({
+					matched: [],
+					missing: [],
+					created: ['API_URL'],
+					stubbed: ['API_URL'],
+				});
+			});
+
+			it('counts one shared valued global variable once during aggregate quota preflight', async () => {
+				licenseMocker.setQuota('quota:maxVariables', 1);
+				const packageBuffer = await twoProjectPackage({
+					variables: [
+						{
+							id: 'v1',
+							target: 'variables/shared_url',
+							variable: { name: 'SHARED_URL', type: 'string', value: 'shared' },
+						},
+					],
+					requirements: [{ name: 'SHARED_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+				});
+
+				const result = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'create-with-value',
+				});
+
+				expect(result.variables.created).toEqual(['SHARED_URL']);
+				expect(await Container.get(VariablesRepository).count()).toBe(1);
 			});
 		});
 	});

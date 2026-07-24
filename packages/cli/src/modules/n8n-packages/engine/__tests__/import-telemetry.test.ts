@@ -75,6 +75,7 @@ const scope = (input: {
 			})),
 		},
 		variableResult: {
+			created: [],
 			stubbed: stubbedVariableNames,
 			skippedExisting: existingVariableNames,
 			createdCount: createdVariableCount,
