@@ -10,6 +10,7 @@ export class CreateWorkflowStepExecution1785000000000 implements MigrationInterf
 				name: TABLE,
 				columns: [
 					{ name: 'id', type: 'varchar', isPrimary: true },
+					// No foreign key relation yet, we'll add it if we need it.
 					{ name: 'execution_id', type: 'varchar' },
 					{ name: 'node_id', type: 'varchar' },
 					{ name: 'status', type: 'varchar', length: '32' },
@@ -29,6 +30,7 @@ export class CreateWorkflowStepExecution1785000000000 implements MigrationInterf
 			}),
 		);
 
+		// Add an index on execution_id to speed up queries for all steps of a given execution.
 		await queryRunner.createIndices(TABLE, [
 			new TableIndex({
 				name: 'idx_workflow_step_execution_execution_id',
