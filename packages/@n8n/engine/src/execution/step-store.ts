@@ -16,8 +16,7 @@ export interface StepRecord {
 }
 
 /**
- * Persistence port for step records. The core depends on this interface, not on
- * TypeORM; the adapter lives in `database/`.
+ * Persistence port for step records.
  */
 export interface StepStore {
 	/** Persist a new step record; returns its generated id. */
