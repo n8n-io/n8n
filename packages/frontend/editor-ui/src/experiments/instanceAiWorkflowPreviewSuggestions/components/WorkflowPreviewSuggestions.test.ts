@@ -15,6 +15,12 @@ vi.mock('@/features/workflows/templates/templates.store', () => ({
 	useTemplatesStore: () => ({ websiteTemplateRepositoryURL }),
 }));
 
+const trackTemplatesClick = vi.fn();
+vi.mock('@/experiments/utils', () => ({
+	trackTemplatesClick: (source: string) => trackTemplatesClick(source),
+	TemplateClickSource: { instanceAiEmptyState: 'instance_ai_empty_state' },
+}));
+
 const renderComponent = createComponentRenderer(WorkflowPreviewSuggestions, {
 	props: {
 		suggestions,
@@ -25,6 +31,7 @@ const renderComponent = createComponentRenderer(WorkflowPreviewSuggestions, {
 describe('WorkflowPreviewSuggestions', () => {
 	beforeEach(() => {
 		telemetryTrack.mockReset();
+		trackTemplatesClick.mockReset();
 	});
 
 	it('inserts the clicked suggestion without submitting it', async () => {
@@ -59,5 +66,15 @@ describe('WorkflowPreviewSuggestions', () => {
 
 		const link = container.querySelector('a');
 		expect(link).toHaveAttribute('href', websiteTemplateRepositoryURL);
+	});
+
+	it('tracks the templates click when "see all" is clicked', async () => {
+		const { container } = renderComponent();
+
+		const link = container.querySelector('a');
+		expect(link).not.toBeNull();
+		await fireEvent.click(link!);
+
+		expect(trackTemplatesClick).toHaveBeenCalledWith('instance_ai_empty_state');
 	});
 });

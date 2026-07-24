@@ -4,6 +4,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { onUnmounted, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
+import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
 import { type WorkflowPreviewSuggestion } from '../suggestions';
 
 const PREVIEW_HOVER_DELAY_MS = 30;
@@ -81,6 +82,10 @@ function handleSuggestionFocus(suggestion: WorkflowPreviewSuggestion) {
 	emit('workflow-preview', suggestion.workflowFile);
 }
 
+function handleSeeAllClick() {
+	trackTemplatesClick(TemplateClickSource.instanceAiEmptyState);
+}
+
 function handleSuggestionClick(suggestion: WorkflowPreviewSuggestion) {
 	if (props.disabled) return;
 
@@ -129,6 +134,7 @@ onUnmounted(clearPreview);
 				target="_blank"
 				rel="noopener noreferrer"
 				:class="$style.seeAllLink"
+				@click="handleSeeAllClick"
 			>
 				<span>{{
 					i18n.baseText(
