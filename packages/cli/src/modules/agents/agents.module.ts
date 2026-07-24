@@ -34,31 +34,32 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecutionService } = await import('./agent-execution.service.js');
 		Container.get(AgentExecutionService);
 
-		// Register blob backends for agent execution logs. The fs backend is always
-		// available; s3/az reuse the clients base-command already initialized
-		// (initBinaryDataService runs before module init in all commands) and are
-		// only registered when that init succeeded — mirroring ExecutionDataJsonStore,
-		// so a configured-but-unreachable backend degrades instead of throwing.
+		// Register blob backends for agent execution logs and knowledge files.
+		// The fs backend is always available; s3/az reuse the clients base-command
+		// already initialized (initBinaryDataService runs before module init in
+		// all commands) and are only registered when that init succeeded —
+		// mirroring ExecutionDataJsonStore, so a configured-but-unreachable
+		// backend degrades instead of throwing.
 		const { AzureByteStore, S3ByteStore } = await import('@n8n/blob-storage');
 		const { AgentExecutionLogStore } = await import('./execution-log/agent-execution-log-store.js');
+		const { AgentKnowledgeFileStore } = await import('./agent-knowledge-file-store.js');
 		const { ExecutionDataJsonStore } = await import(
 			'@/executions/execution-data/execution-data-json-store.js'
 		);
 		const agentExecutionLogStore = Container.get(AgentExecutionLogStore);
+		const agentKnowledgeFileStore = Container.get(AgentKnowledgeFileStore);
 		const executionDataJsonStore = Container.get(ExecutionDataJsonStore);
 		if (executionDataJsonStore.hasLocation('s3')) {
 			const { ObjectStoreService } = await import('@n8n/blob-storage/object-store');
-			agentExecutionLogStore.registerByteStore(
-				's3',
-				new S3ByteStore(Container.get(ObjectStoreService)),
-			);
+			const s3Store = new S3ByteStore(Container.get(ObjectStoreService));
+			agentExecutionLogStore.registerByteStore('s3', s3Store);
+			agentKnowledgeFileStore.registerByteStore('s3', s3Store);
 		}
 		if (executionDataJsonStore.hasLocation('az')) {
 			const { AzureBlobService } = await import('@n8n/blob-storage/azure-blob');
-			agentExecutionLogStore.registerByteStore(
-				'az',
-				new AzureByteStore(Container.get(AzureBlobService)),
-			);
+			const azStore = new AzureByteStore(Container.get(AzureBlobService));
+			agentExecutionLogStore.registerByteStore('az', azStore);
+			agentKnowledgeFileStore.registerByteStore('az', azStore);
 		}
 
 		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service.js');

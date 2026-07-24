@@ -5,11 +5,10 @@ import {
 } from '@n8n/api-types';
 import { N8nPdfLoader } from '@n8n/ai-utilities';
 import { Logger } from '@n8n/backend-common';
+import type { StorageLocation } from '@n8n/blob-storage';
 import { Service } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
-import { BinaryDataConfig, BinaryDataService } from 'n8n-core';
-import { OperationalError, type IBinaryData } from 'n8n-workflow';
 import { createReadStream } from 'node:fs';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
@@ -17,11 +16,8 @@ import type { Readable } from 'node:stream';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import {
-	buildKnowledgeFileLocation,
-	storageFileNameForOriginalFileName,
-	toAgentFileDto,
-} from './agent-knowledge-storage';
+import { AgentKnowledgeFileStore } from './agent-knowledge-file-store';
+import { storageFileNameForOriginalFileName, toAgentFileDto } from './agent-knowledge-storage';
 import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
 import type { AgentFile } from './entities/agent-file.entity';
 import type { Agent } from './entities/agent.entity';
@@ -52,8 +48,7 @@ export class AgentKnowledgeService {
 		private readonly agentRepository: AgentRepository,
 		private readonly agentFileRepository: AgentFileRepository,
 		private readonly agentKnowledgeSandboxService: AgentKnowledgeSandboxService,
-		private readonly binaryDataService: BinaryDataService,
-		private readonly binaryDataConfig: BinaryDataConfig,
+		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
 		private readonly logger: Logger,
 	) {}
 
@@ -65,11 +60,6 @@ export class AgentKnowledgeService {
 		try {
 			const agent = await this.ensureAgentBelongsToProject(agentId, projectId);
 			this.assertAgentPublished(agent);
-			if (this.binaryDataConfig.mode === 'default') {
-				throw new OperationalError(
-					'Agent knowledge base requires a persisted binary data storage mode',
-				);
-			}
 			this.validateUploadMetadata(files);
 			await this.validateUploadBatch(agentId, files);
 
@@ -113,13 +103,15 @@ export class AgentKnowledgeService {
 		}
 
 		await this.agentFileRepository.delete({ id: fileId, agentId });
-		await this.binaryDataService.deleteManyByBinaryDataId([file.binaryDataId]).catch((error) => {
-			this.logger.warn('Failed to delete knowledge file binary data', {
-				agentId,
-				fileId: file.id,
-				error: error instanceof Error ? error.message : error,
+		await this.agentKnowledgeFileStore
+			.delete([{ agentId, fileId: file.id, storedAt: file.storedAt }])
+			.catch((error) => {
+				this.logger.warn('Failed to delete knowledge file blob', {
+					agentId,
+					fileId: file.id,
+					error: error instanceof Error ? error.message : error,
+				});
 			});
-		});
 		this.agentKnowledgeSandboxService.invalidateMirror(projectId, agentId);
 		this.agentKnowledgeSandboxService.prewarmMirrorInBackground(projectId, agentId);
 	}
@@ -128,10 +120,16 @@ export class AgentKnowledgeService {
 		const files = await this.agentFileRepository.findByAgentId(agentId);
 		await this.agentFileRepository.delete({ agentId });
 		if (files.length > 0) {
-			await this.binaryDataService
-				.deleteManyByBinaryDataId(files.map((file) => file.binaryDataId))
+			await this.agentKnowledgeFileStore
+				.delete(
+					files.map((file) => ({
+						agentId,
+						fileId: file.id,
+						storedAt: file.storedAt,
+					})),
+				)
 				.catch((error) => {
-					this.logger.warn('Failed to delete knowledge files binary data', {
+					this.logger.warn('Failed to delete knowledge file blobs', {
 						agentId,
 						error: error instanceof Error ? error.message : error,
 					});
@@ -145,32 +143,21 @@ export class AgentKnowledgeService {
 		await this.agentKnowledgeSandboxService.destroySandbox(projectId, agentId);
 	}
 
-	/** Stores the file's bytes via BinaryDataService, then reserves its DB row. */
+	/** Stores the file's bytes via AgentKnowledgeFileStore, then reserves its DB row. */
 	private async storeAgentFile(agentId: string, file: Express.Multer.File): Promise<AgentFile> {
 		const fileId = generateNanoId();
 		const storageFileName = storageFileNameForOriginalFileName(file.originalname);
 		const content = await this.prepareUploadContent(file);
 
-		const binaryData: IBinaryData = {
-			data: '',
-			mimeType: file.mimetype,
+		const storedAt = await this.agentKnowledgeFileStore.write({ agentId, fileId }, content, {
 			fileName: storageFileName,
-		};
-		const stored = await this.binaryDataService.store(
-			buildKnowledgeFileLocation(agentId, fileId),
-			content,
-			binaryData,
-		);
-		if (!stored.id) {
-			throw new OperationalError(
-				'Agent knowledge base requires a persisted binary data storage mode',
-			);
-		}
+			mimeType: file.mimetype,
+		});
 
 		try {
-			return await this.saveAgentFile(agentId, fileId, file, stored.id);
+			return await this.saveAgentFile(agentId, fileId, file, storedAt);
 		} catch (error) {
-			await this.binaryDataService.deleteManyByBinaryDataId([stored.id]).catch(() => {});
+			await this.agentKnowledgeFileStore.delete([{ agentId, fileId, storedAt }]).catch(() => {});
 			if (isUniqueConstraintError(error)) {
 				throw this.duplicateFileNameError(file.originalname);
 			}
@@ -182,12 +169,12 @@ export class AgentKnowledgeService {
 		agentId: string,
 		fileId: string,
 		file: Express.Multer.File,
-		binaryDataId: string,
+		storedAt: StorageLocation,
 	): Promise<AgentFile> {
 		const agentFile = this.agentFileRepository.create({
 			id: fileId,
 			agentId,
-			binaryDataId,
+			storedAt,
 			fileName: file.originalname,
 			mimeType: file.mimetype,
 			fileSizeBytes: file.size,
@@ -212,7 +199,9 @@ export class AgentKnowledgeService {
 
 	private async cleanupUploadedFiles(files: AgentFile[]): Promise<void> {
 		for (const file of files) {
-			await this.binaryDataService.deleteManyByBinaryDataId([file.binaryDataId]).catch(() => {});
+			await this.agentKnowledgeFileStore
+				.delete([{ agentId: file.agentId, fileId: file.id, storedAt: file.storedAt }])
+				.catch(() => {});
 			await this.agentFileRepository.delete({ id: file.id, agentId: file.agentId }).catch(() => {});
 		}
 	}

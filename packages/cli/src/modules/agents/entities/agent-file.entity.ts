@@ -1,3 +1,4 @@
+import type { StorageLocation } from '@n8n/blob-storage';
 import { WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
@@ -6,7 +7,6 @@ import { Agent } from './agent.entity';
 @Entity({ name: 'agent_files' })
 @Index(['agentId', 'createdAt'])
 @Index(['agentId', 'fileName'], { unique: true })
-@Index(['agentId', 'binaryDataId'], { unique: true })
 export class AgentFile extends WithTimestampsAndStringId {
 	@ManyToOne(() => Agent, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'agentId' })
@@ -16,17 +16,16 @@ export class AgentFile extends WithTimestampsAndStringId {
 	agentId: string;
 
 	/**
-	 * BinaryDataService id (e.g. `filesystem-v2:agents/<agentId>/knowledge-files/<fileId>/binary_data/<uuid>`).
-	 * Not a DB FK — see `BinaryDataService` in `n8n-core` for how the bytes are resolved from this id.
+	 * Blob-storage location for the file bytes: 'fs', 's3', or 'az'. Never 'db'.
+	 * Bytes are resolved via AgentKnowledgeFileStore.
 	 */
-	@Column({ type: 'text' })
-	binaryDataId: string;
+	@Column({ type: 'varchar', length: 2, nullable: false, default: 'fs' })
+	storedAt: StorageLocation;
 
 	// fileName/mimeType/fileSizeBytes are intentionally denormalized rather than
-	// joined from binary_data: (1) binaryDataId is an opaque storage reference,
-	// not an FK; (2) we keep the original user-facing values, which differ from
-	// the stored binary for converted uploads (a PDF is stored as extracted
-	// text with a different byte size).
+	// joined from storage metadata: we keep the original user-facing values,
+	// which differ from the stored bytes for converted uploads (a PDF is stored
+	// as extracted text with a different byte size).
 	@Column({ type: 'varchar', length: 255 })
 	fileName: string;
 

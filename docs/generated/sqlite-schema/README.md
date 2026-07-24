@@ -428,12 +428,12 @@ erDiagram
 }
 "agent_files" {
   varchar_36_ agentId FK
-  TEXT binaryDataId
   datetime_3_ createdAt
   varchar_255_ fileName
   INTEGER fileSizeBytes
   varchar_16_ id PK
   varchar_255_ mimeType
+  VARCHAR_2_ storedAt
   datetime_3_ updatedAt
 }
 "agent_history" {
