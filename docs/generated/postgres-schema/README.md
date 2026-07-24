@@ -40,7 +40,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.chat_hub_sessions](public.chat_hub_sessions.md) | 13 |  | BASE TABLE |
 | [public.chat_hub_tools](public.chat_hub_tools.md) | 9 |  | BASE TABLE |
 | [public.credential_dependency](public.credential_dependency.md) | 5 |  | BASE TABLE |
-| [public.credentials_entity](public.credentials_entity.md) | 11 |  | BASE TABLE |
+| [public.credentials_entity](public.credentials_entity.md) | 12 |  | BASE TABLE |
 | [public.data_table](public.data_table.md) | 5 |  | BASE TABLE |
 | [public.data_table_column](public.data_table_column.md) | 7 |  | BASE TABLE |
 | [public.deployment_key](public.deployment_key.md) | 7 |  | BASE TABLE |
@@ -77,6 +77,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_ai_thread_grants](public.instance_ai_thread_grants.md) | 5 |  | BASE TABLE |
 | [public.instance_ai_threads](public.instance_ai_threads.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_workflow_snapshots](public.instance_ai_workflow_snapshots.md) | 7 |  | BASE TABLE |
+| [public.instance_credential_assignment](public.instance_credential_assignment.md) | 4 |  | BASE TABLE |
 | [public.instance_version_history](public.instance_version_history.md) | 5 |  | BASE TABLE |
 | [public.invalid_auth_token](public.invalid_auth_token.md) | 2 |  | BASE TABLE |
 | [public.mcp_registry_server](public.mcp_registry_server.md) | 7 |  | BASE TABLE |
@@ -251,6 +252,7 @@ erDiagram
 "public.instance_ai_thread_grants" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.instance_ai_thread_grants" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.instance_credential_assignment" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE RESTRICT"
 "public.oauth_access_tokens" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.oauth_access_tokens" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;clientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
 "public.oauth_authorization_codes" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
@@ -657,6 +659,7 @@ erDiagram
   varchar_16_ resolverId FK
   varchar_128_ type
   timestamp_3__with_time_zone updatedAt
+  varchar_16_ usageScope
 }
 "public.data_table" {
   timestamp_3__with_time_zone createdAt
@@ -997,6 +1000,12 @@ erDiagram
   varchar status
   timestamp_3__with_time_zone updatedAt
   varchar_255_ workflowName
+}
+"public.instance_credential_assignment" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ credentialId FK
+  varchar_128_ credentialUseId
+  timestamp_3__with_time_zone updatedAt
 }
 "public.instance_version_history" {
   timestamp_3__with_time_zone createdAt

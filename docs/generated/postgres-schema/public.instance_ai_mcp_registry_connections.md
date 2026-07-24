@@ -64,6 +64,7 @@ erDiagram
   varchar_16_ resolverId FK
   varchar_128_ type
   timestamp_3__with_time_zone updatedAt
+  varchar_16_ usageScope
 }
 "public.mcp_registry_server" {
   timestamp_3__with_time_zone createdAt

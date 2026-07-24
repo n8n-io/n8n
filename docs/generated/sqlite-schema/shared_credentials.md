@@ -64,6 +64,7 @@ erDiagram
   varchar_16_ resolverId FK
   varchar_32_ type
   datetime_3_ updatedAt
+  VARCHAR_16_ usageScope
 }
 "project" {
   datetime_3_ createdAt
