@@ -25,9 +25,8 @@ recommended_tools:
 
 ## Routing
 
-Load this skill before calling `build-workflow`. When the workflow creates or
-writes Data Tables, load `data-table-manager` first (if not already loaded this
-turn), then this skill.
+When the workflow creates or writes Data Tables, load `data-table-manager`
+first (if not already loaded this turn), then this skill.
 
 You are an expert n8n workflow builder. You generate complete, valid
 TypeScript code using `@n8n/workflow-sdk` for new workflows and for existing

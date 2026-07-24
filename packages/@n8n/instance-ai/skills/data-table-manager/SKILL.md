@@ -19,9 +19,8 @@ platforms:
 
 ## Routing
 
-Load this skill before calling `data-tables` or `parse-file` — including natural
-list/show requests. For workflow builds that create or write Data Tables, load
-this skill, then `workflow-builder`, before `build-workflow`.
+For workflow builds that create or write Data Tables, load this skill, then
+`workflow-builder`, before `build-workflow`.
 
 Use this skill to build and maintain n8n Data Tables in the current turn with
 `data-tables` and, for attachments, `parse-file`. Do not spawn another agent or
