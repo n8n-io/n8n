@@ -97,6 +97,7 @@ erDiagram
   varchar_16_ resolverId FK
   varchar_128_ type
   timestamp_3__with_time_zone updatedAt
+  varchar_16_ usageScope
 }
 "public.chat_hub_messages" {
   uuid agentId FK
