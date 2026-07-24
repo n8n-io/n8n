@@ -227,6 +227,7 @@ export class AgentsBuilderService {
 			projectId,
 			credentialProvider,
 			user,
+			{ threadId: session.hostThreadId, runId: session.runId },
 		);
 
 		const { Agent, Memory } = await import('@n8n/agents');

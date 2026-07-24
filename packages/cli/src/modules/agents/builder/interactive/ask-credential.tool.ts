@@ -11,11 +11,15 @@ import {
 	type CredentialResumeData,
 	type CredentialSuspendPayload,
 } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
+
+import type { BuilderTrackFn } from '../builder-config-telemetry';
 
 export interface AskCredentialToolDeps {
 	credentialProvider: CredentialProvider;
 	isCredentialTypeKnown?: (credentialType: string) => boolean;
+	track: BuilderTrackFn;
 }
 
 export interface AskEmbeddingCredentialToolDeps extends AskCredentialToolDeps {
@@ -59,17 +63,34 @@ async function resolveResume(
 	input: AskCredentialInput,
 	resumeData: CredentialResumeData,
 	credentialProvider: CredentialProvider,
+	track: BuilderTrackFn,
 ): Promise<AskCredentialToolResult> {
-	if (!('credentials' in resumeData)) return { skipped: true };
+	if (!('credentials' in resumeData)) {
+		track(TELEMETRY_EVENT.AGENTS.USER_PROVIDED_CREDENTIAL, {
+			credential_type: input.credentialType,
+			outcome: 'skipped',
+		});
+		return { skipped: true };
+	}
 
 	const credentialId = resumeData.credentials[input.credentialType];
-	if (!credentialId) return { skipped: true };
+	if (!credentialId) {
+		track(TELEMETRY_EVENT.AGENTS.USER_PROVIDED_CREDENTIAL, {
+			credential_type: input.credentialType,
+			outcome: 'skipped',
+		});
+		return { skipped: true };
+	}
 
 	const existingCredentials = await listExistingCredentials(
 		credentialProvider,
 		input.credentialType,
 	);
 	const match = existingCredentials.find((c) => c.id === credentialId);
+	track(TELEMETRY_EVENT.AGENTS.USER_PROVIDED_CREDENTIAL, {
+		credential_type: input.credentialType,
+		outcome: 'provided',
+	});
 	return withNodeCredentialMap(input, credentialId, match?.name ?? credentialId);
 }
 
@@ -79,7 +100,7 @@ async function resolveCredentialSelection(
 	deps: AskCredentialToolDeps,
 ): Promise<AskCredentialToolResult> {
 	if (ctx.resumeData !== undefined && ctx.resumeData !== null) {
-		return await resolveResume(input, ctx.resumeData, deps.credentialProvider);
+		return await resolveResume(input, ctx.resumeData, deps.credentialProvider, deps.track);
 	}
 
 	if (deps.isCredentialTypeKnown && !deps.isCredentialTypeKnown(input.credentialType)) {
@@ -99,6 +120,9 @@ async function resolveCredentialSelection(
 		return withNodeCredentialMap(input, existingCredentials[0].id, existingCredentials[0].name);
 	}
 
+	deps.track(TELEMETRY_EVENT.AGENTS.BUILDER_REQUESTED_CREDENTIAL, {
+		credential_type: input.credentialType,
+	});
 	return await ctx.suspend({
 		requestId: nanoid(),
 		message: input.purpose,

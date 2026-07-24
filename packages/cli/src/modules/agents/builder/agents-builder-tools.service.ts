@@ -36,6 +36,7 @@ import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 
 import { AgentConfigService } from '../agent-config.service';
@@ -47,6 +48,7 @@ import { AgentTaskService } from '../agent-task.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
 import { AttachableWorkflowsService } from '../attachable-workflows.service';
+import { collectBuilderConfigDiffEvents, type BuilderTrackFn } from './builder-config-telemetry';
 import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
 import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
@@ -101,6 +103,16 @@ type CreateSkillInput = z.infer<typeof createSkillInputSchema>;
 interface AgentConfigSnapshot {
 	config: AgentJsonConfig | null;
 	configHash: string | null;
+}
+
+interface AgentConfigSnapshotWithStatus extends AgentConfigSnapshot {
+	status: 'draft' | 'production';
+}
+
+/** Builder-session context threaded through to config-diff telemetry so it's joinable to `instance_ai_agent_build_route`. */
+interface BuilderTelemetryContext {
+	threadId?: string;
+	runId?: string;
 }
 
 function canonicalizeJson(value: unknown): unknown {
@@ -190,6 +202,7 @@ export class AgentsBuilderToolsService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	getTools(
@@ -197,10 +210,11 @@ export class AgentsBuilderToolsService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		user: User,
+		telemetryContext?: BuilderTelemetryContext,
 	): BuilderTools {
 		return {
-			json: this.getJsonTools(agentId, projectId, credentialProvider, user),
-			shared: this.getSharedTools(agentId, projectId, credentialProvider, user),
+			json: this.getJsonTools(agentId, projectId, credentialProvider, user, telemetryContext),
+			shared: this.getSharedTools(agentId, projectId, credentialProvider, user, telemetryContext),
 		};
 	}
 
@@ -209,7 +223,16 @@ export class AgentsBuilderToolsService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		user: User,
+		telemetryContext?: BuilderTelemetryContext,
 	): BuiltTool[] {
+		const track: BuilderTrackFn = (entry, properties) =>
+			this.telemetry.track(entry, {
+				agent_id: agentId,
+				user_id: user.id,
+				...(telemetryContext?.threadId ? { thread_id: telemetryContext.threadId } : {}),
+				...(telemetryContext?.runId ? { run_id: telemetryContext.runId } : {}),
+				...properties,
+			});
 		const readConfigTool = new Tool(BUILDER_TOOLS.READ_CONFIG)
 			.description(
 				'Read the latest persisted agent configuration and its freshness token. ' +
@@ -220,7 +243,9 @@ export class AgentsBuilderToolsService {
 			.input(z.object({}))
 			.handler(async () => {
 				try {
-					return { ok: true, ...(await this.getConfigSnapshot(agentId, projectId)) };
+					// `status` is telemetry plumbing — keep it out of the LLM-facing result.
+					const { status: _status, ...snapshot } = await this.getConfigSnapshot(agentId, projectId);
+					return { ok: true, ...snapshot };
 				} catch (e) {
 					return {
 						ok: false,
@@ -257,7 +282,7 @@ export class AgentsBuilderToolsService {
 					if (!parsed.ok) {
 						return { ok: false, errors: parsed.errors };
 					}
-					let snapshot: AgentConfigSnapshot;
+					let snapshot: AgentConfigSnapshotWithStatus;
 					try {
 						snapshot = await this.getConfigSnapshot(agentId, projectId);
 					} catch (e) {
@@ -303,7 +328,18 @@ export class AgentsBuilderToolsService {
 						applyNativeWebSearchDefaultOn(zodResult.data),
 					);
 					try {
-						await this.agentConfigService.updateConfig(agentId, projectId, configWithDefaults);
+						const { config: persistedConfig } = await this.agentConfigService.updateConfig(
+							agentId,
+							projectId,
+							configWithDefaults,
+						);
+						this.emitConfigDiffTelemetry(
+							snapshot,
+							persistedConfig,
+							agentId,
+							user,
+							telemetryContext,
+						);
 						return { ok: true };
 					} catch (e) {
 						return {
@@ -353,7 +389,7 @@ export class AgentsBuilderToolsService {
 						return { ok: false, stage: 'parse', errors: parsedOps.errors };
 					}
 
-					let snapshot: AgentConfigSnapshot;
+					let snapshot: AgentConfigSnapshotWithStatus;
 					try {
 						snapshot = await this.getConfigSnapshot(agentId, projectId);
 					} catch (e) {
@@ -421,7 +457,18 @@ export class AgentsBuilderToolsService {
 					);
 
 					try {
-						await this.agentConfigService.updateConfig(agentId, projectId, configWithDefaults);
+						const { config: persistedConfig } = await this.agentConfigService.updateConfig(
+							agentId,
+							projectId,
+							configWithDefaults,
+						);
+						this.emitConfigDiffTelemetry(
+							snapshot,
+							persistedConfig,
+							agentId,
+							user,
+							telemetryContext,
+						);
 						return { ok: true };
 					} catch (e) {
 						return {
@@ -500,6 +547,7 @@ export class AgentsBuilderToolsService {
 						agentId,
 						projectId,
 						user,
+						'builder',
 						versionId,
 					);
 					return {
@@ -534,7 +582,7 @@ export class AgentsBuilderToolsService {
 					};
 				}
 				try {
-					await this.agentPublishService.unpublishAgent(agentId, projectId);
+					await this.agentPublishService.unpublishAgent(agentId, projectId, user, 'builder');
 					return { ok: true, agentId, activeVersionId: null };
 				} catch (e) {
 					return {
@@ -568,13 +616,15 @@ export class AgentsBuilderToolsService {
 			buildAskCredentialTool({
 				credentialProvider,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
+				track,
 			}),
 			buildAskEmbeddingCredentialTool({
 				credentialProvider,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 				isAssistantProxyEnabled: () => this.aiService.isProxyEnabled(),
+				track,
 			}),
-			buildAskQuestionsTool(),
+			buildAskQuestionsTool({ track }),
 			buildConfigureChannelTool({
 				agentId,
 				projectId,
@@ -582,6 +632,7 @@ export class AgentsBuilderToolsService {
 					this.agentIntegrationPersistenceService
 						.listChatIntegrations()
 						.map((integration) => integration.type),
+				track,
 			}),
 			buildVerifyMcpServerTool({
 				credentialProvider,
@@ -608,6 +659,7 @@ export class AgentsBuilderToolsService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		user: User,
+		telemetryContext?: BuilderTelemetryContext,
 	): BuiltTool[] {
 		const buildCustomToolTool = new Tool(BUILDER_TOOLS.BUILD_CUSTOM_TOOL)
 			.description(
@@ -744,25 +796,54 @@ export class AgentsBuilderToolsService {
 				}) => {
 					// Each task is already validated against `.input()` (agentTaskSchema
 					// shapes) by the tool runtime before the handler runs.
+					// Snapshot before the write since createTasks writes the task refs into the
+					// config itself — the diff can't be read off its return value. Telemetry-only:
+					// a failed read must not block the mutation.
+					let oldSnapshot: AgentConfigSnapshotWithStatus | null = null;
+					try {
+						oldSnapshot = await this.getConfigSnapshot(agentId, projectId);
+					} catch {
+						// Skip diff telemetry; the mutation below must still run.
+					}
+
+					let created: Awaited<ReturnType<AgentTaskService['createTasks']>>;
 					try {
 						// Adds a `{ type:'task', id, enabled }` ref per task to the agent config
 						// and creates every body in one transaction. Enabled by default; each
 						// task starts running once the agent is (re)published via publish_agent.
-						const created = await this.agentTaskService.createTasks(
+						created = await this.agentTaskService.createTasks(
 							agentId,
 							projectId,
 							tasks.map((task) => ({ ...task, enabled: true })),
 						);
-						return {
-							ok: true,
-							tasks: created.map(({ id, name }) => ({ id, name, enabled: true as const })),
-						};
 					} catch (e) {
 						return {
 							ok: false,
 							errors: [{ message: e instanceof Error ? e.message : String(e) }],
 						};
 					}
+
+					if (oldSnapshot) {
+						try {
+							const newSnapshot = await this.getConfigSnapshot(agentId, projectId);
+							if (newSnapshot.config) {
+								this.emitConfigDiffTelemetry(
+									oldSnapshot,
+									newSnapshot.config,
+									agentId,
+									user,
+									telemetryContext,
+								);
+							}
+						} catch {
+							// Telemetry must never fail a mutation that already succeeded.
+						}
+					}
+
+					return {
+						ok: true,
+						tasks: created.map(({ id, name }) => ({ id, name, enabled: true as const })),
+					};
 				},
 			)
 			.build();
@@ -811,11 +892,45 @@ export class AgentsBuilderToolsService {
 	private async getConfigSnapshot(
 		agentId: string,
 		projectId: string,
-	): Promise<AgentConfigSnapshot> {
+	): Promise<AgentConfigSnapshotWithStatus> {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new Error('Agent not found');
 
 		const config = composeJsonConfig(agent);
-		return snapshotFromConfig(config);
+		const status: 'draft' | 'production' =
+			agent.activeVersionId && agent.versionId === agent.activeVersionId ? 'production' : 'draft';
+		return { ...snapshotFromConfig(config), status };
+	}
+
+	/**
+	 * Diff the config before/after a successful builder mutation and emit one
+	 * `Builder added/removed *` event per changed item, mirroring the
+	 * frontend's diff-on-save telemetry. Never throws — a telemetry failure
+	 * must not fail the tool call that already succeeded.
+	 */
+	private emitConfigDiffTelemetry(
+		oldSnapshot: AgentConfigSnapshotWithStatus,
+		newConfig: AgentJsonConfig,
+		agentId: string,
+		user: User,
+		telemetryContext?: BuilderTelemetryContext,
+	): void {
+		try {
+			for (const { entry, properties } of collectBuilderConfigDiffEvents(
+				oldSnapshot.config,
+				newConfig,
+			)) {
+				this.telemetry.track(entry, {
+					agent_id: agentId,
+					user_id: user.id,
+					status: oldSnapshot.status,
+					...(telemetryContext?.threadId ? { thread_id: telemetryContext.threadId } : {}),
+					...(telemetryContext?.runId ? { run_id: telemetryContext.runId } : {}),
+					...properties,
+				});
+			}
+		} catch {
+			// Telemetry must never fail a mutation that already succeeded.
+		}
 	}
 }

@@ -1,4 +1,5 @@
 import type { Mocked } from 'vitest';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { CredentialProvider } from '@n8n/agents';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
@@ -20,6 +21,7 @@ import type { CredentialTypes } from '@/credential-types';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { NodeTypes } from '@/node-types';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import type { Telemetry } from '@/telemetry';
 
 import type { AgentConfigService } from '../agent-config.service';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
@@ -76,6 +78,7 @@ function makeService() {
 	const mcpRegistryService = mock<McpRegistryService>();
 	const agentTaskService = mock<AgentTaskService>();
 	const agentPublishService = mock<AgentPublishService>();
+	const telemetry = mock<Telemetry>();
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
 	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
@@ -111,6 +114,7 @@ function makeService() {
 		nodeTypes,
 		mock<SsrfProtectionConfig>({ enabled: true }),
 		mock<SsrfProtectionService>(),
+		telemetry,
 	);
 
 	return {
@@ -122,6 +126,7 @@ function makeService() {
 		agentPublishService,
 		nodeTypes,
 		outboundHttp,
+		telemetry,
 	};
 }
 
@@ -276,6 +281,7 @@ describe('AgentsBuilderToolsService', () => {
 				config: { ...baseConfig, integrations: [] },
 				configHash: getAgentConfigHash({ ...baseConfig, integrations: [] }),
 			});
+			expect(result).not.toHaveProperty('status');
 		});
 
 		it('list_integration_types returns builder guidance for integration versus node-tool choice', async () => {
@@ -523,6 +529,93 @@ describe('AgentsBuilderToolsService', () => {
 
 			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
 			expect(result).toEqual({ ok: true });
+		});
+
+		it('write_config succeeds even when telemetry throws', async () => {
+			const { service, agentsService, telemetry } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [], tools: [] };
+			const updatedConfig: AgentJsonConfig = {
+				...currentConfig,
+				tools: [{ type: 'workflow', workflow: 'wf-1', name: 'My Workflow' }],
+			};
+			const normalizedConfig = {
+				...updatedConfig,
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
+			};
+			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: normalizedConfig,
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+			telemetry.track.mockImplementation(() => {
+				throw new Error('telemetry failed');
+			});
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(updatedConfig),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
+			expect(result).toEqual({ ok: true });
+		});
+
+		it('write_config emits config-diff telemetry from the persisted config returned by updateConfig', async () => {
+			const { service, agentsService, telemetry } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [], tools: [] };
+			const updatedConfig: AgentJsonConfig = {
+				...currentConfig,
+				tools: [{ type: 'workflow', workflow: 'wf-1', name: 'My Workflow' }],
+			};
+			const normalizedConfig = {
+				...updatedConfig,
+				tools: [
+					{ type: 'workflow' as const, workflow: 'wf-1', name: 'My Workflow' },
+					{ type: 'workflow' as const, workflow: 'wf-2', name: 'Normalized Tool' },
+				],
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
+			};
+			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: normalizedConfig,
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(updatedConfig),
+				},
+				ctx,
+			);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TOOLS,
+				expect.objectContaining({
+					agent_id: agentId,
+					tool_added: 'My Workflow',
+					tools: ['My Workflow', 'Normalized Tool'],
+				}),
+			);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TOOLS,
+				expect.objectContaining({
+					agent_id: agentId,
+					tool_added: 'Normalized Tool',
+					tools: ['My Workflow', 'Normalized Tool'],
+				}),
+			);
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TOOLS,
+				expect.objectContaining({
+					tools: ['My Workflow'],
+				}),
+			);
 		});
 
 		it('write_config strips legacy schedule integrations before saving', async () => {
@@ -1392,7 +1485,8 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('creates multiple tasks in one call and returns only ids, names, and enabled, not objectives or crons, in order', async () => {
-			const { service, agentTaskService } = makeService();
+			const { service, agentsService, agentTaskService } = makeService();
+			agentsService.findById.mockResolvedValue(makeAgent());
 			agentTaskService.createTasks.mockResolvedValue([
 				makeTaskDto(),
 				makeTaskDto({ id: 'task-2', ...taskTwoInput }),
@@ -1441,7 +1535,8 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('surfaces a service error (e.g. invalid cron) for the whole batch', async () => {
-			const { service, agentTaskService } = makeService();
+			const { service, agentsService, agentTaskService } = makeService();
+			agentsService.findById.mockResolvedValue(makeAgent());
 			agentTaskService.createTasks.mockRejectedValue(new Error('Invalid cron expression'));
 
 			const result = await getCreateTasksTool(service).handler!({ tasks: [taskOneInput] }, ctx);
@@ -1450,12 +1545,39 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('returns an error when the agent is not in the project', async () => {
-			const { service, agentTaskService } = makeService();
+			const { service, agentsService, agentTaskService } = makeService();
+			agentsService.findById.mockResolvedValue(makeAgent());
 			agentTaskService.createTasks.mockRejectedValue(new Error('Agent "agent-1" not found'));
 
 			const result = await getCreateTasksTool(service).handler!({ tasks: [taskOneInput] }, ctx);
 
 			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent "agent-1" not found' }] });
+		});
+
+		it('create_tasks survives a failing post-write snapshot read', async () => {
+			const { service, agentsService, agentTaskService, telemetry } = makeService();
+			agentsService.findById
+				.mockResolvedValueOnce(makeAgent())
+				.mockRejectedValueOnce(new Error('db down'));
+			agentTaskService.createTasks.mockResolvedValue([makeTaskDto()]);
+
+			const result = await getCreateTasksTool(service).handler!({ tasks: [taskOneInput] }, ctx);
+
+			expect(agentTaskService.createTasks).toHaveBeenCalledWith(agentId, projectId, [
+				{ ...taskOneInput, enabled: true },
+			]);
+			expect(result).toEqual({
+				ok: true,
+				tasks: [{ id: 'task-1', name: taskOneInput.name, enabled: true }],
+			});
+			for (const entry of [
+				TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TOOLS,
+				TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_SKILLS,
+				TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TASKS,
+				TELEMETRY_EVENT.AGENTS.BUILDER_REMOVED_TASKS,
+			]) {
+				expect(telemetry.track).not.toHaveBeenCalledWith(entry, expect.anything());
+			}
 		});
 	});
 
@@ -1491,6 +1613,7 @@ describe('AgentsBuilderToolsService', () => {
 				agentId,
 				projectId,
 				user,
+				'builder',
 				undefined,
 			);
 			expect(result).toEqual({
@@ -1517,6 +1640,7 @@ describe('AgentsBuilderToolsService', () => {
 				agentId,
 				projectId,
 				user,
+				'builder',
 				'v-history',
 			);
 			expect(result).toEqual({
@@ -1567,7 +1691,12 @@ describe('AgentsBuilderToolsService', () => {
 			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:unpublish'], false, {
 				projectId,
 			});
-			expect(agentPublishService.unpublishAgent).toHaveBeenCalledWith(agentId, projectId);
+			expect(agentPublishService.unpublishAgent).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				user,
+				'builder',
+			);
 			expect(result).toEqual({ ok: true, agentId, activeVersionId: null });
 		});
 

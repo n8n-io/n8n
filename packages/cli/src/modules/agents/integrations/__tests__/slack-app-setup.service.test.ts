@@ -367,6 +367,7 @@ describe('SlackAppSetupService', () => {
 			'agent-1',
 			'project-1',
 			user,
+			'slack_setup',
 			undefined,
 			{ syncIntegrations: false },
 		);
@@ -428,6 +429,7 @@ describe('SlackAppSetupService', () => {
 			'agent-1',
 			'project-1',
 			user,
+			'slack_setup',
 			undefined,
 			{ syncIntegrations: false },
 		);

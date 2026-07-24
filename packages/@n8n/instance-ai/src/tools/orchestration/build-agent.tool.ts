@@ -612,7 +612,7 @@ async function handleResume(
 }
 
 type TargetResolution =
-	| { ok: true; target: AgentBuilderTarget; bindAfterTurn: boolean }
+	| { ok: true; target: AgentBuilderTarget; bindAfterTurn: boolean; mode: 'create' | 'edit' }
 	| { ok: false; error: string };
 
 const NO_TARGET_INPUT_ERROR = 'Pass name to create a new agent or agentId to edit an existing one.';
@@ -638,7 +638,7 @@ async function resolveTargetForCall(
 ): Promise<TargetResolution> {
 	if (input.agentId) {
 		if (boundTarget && input.agentId === boundTarget.agentId) {
-			return { ok: true, target: boundTarget, bindAfterTurn: false };
+			return { ok: true, target: boundTarget, bindAfterTurn: false, mode: 'edit' };
 		}
 		if (!domainContext.projectId) {
 			return { ok: false, error: AGENT_ID_NEEDS_PROJECT_ERROR };
@@ -659,6 +659,7 @@ async function resolveTargetForCall(
 				...(name ? { name } : {}),
 			},
 			bindAfterTurn: true,
+			mode: 'edit',
 		};
 	}
 
@@ -666,7 +667,7 @@ async function resolveTargetForCall(
 		// Guards against the orchestrator redundantly repeating `name` on a
 		// follow-up call for the agent already being built.
 		if (boundTarget && agentNamesMatch(input.name, boundTarget.name)) {
-			return { ok: true, target: boundTarget, bindAfterTurn: false };
+			return { ok: true, target: boundTarget, bindAfterTurn: false, mode: 'edit' };
 		}
 		// A name matching an agent already built/targeted this conversation is a
 		// switch-back, not a creation — the duplicate-agent failure mode this
@@ -675,7 +676,7 @@ async function resolveTargetForCall(
 		// the current binding.
 		const sessionAgent = await findSessionAgentByName(domainContext, input.name);
 		if (sessionAgent) {
-			return { ok: true, target: sessionAgent, bindAfterTurn: true };
+			return { ok: true, target: sessionAgent, bindAfterTurn: true, mode: 'edit' };
 		}
 		const created = await delegate.createAgent(input.name);
 		const target: AgentBuilderTarget = {
@@ -685,10 +686,12 @@ async function resolveTargetForCall(
 		};
 		domainContext.agentBuilderTarget = target;
 		await saveAgentBuilderTarget(domainContext, target);
-		return { ok: true, target, bindAfterTurn: false };
+		return { ok: true, target, bindAfterTurn: false, mode: 'create' };
 	}
 
-	if (boundTarget) return { ok: true, target: boundTarget, bindAfterTurn: false };
+	if (boundTarget) {
+		return { ok: true, target: boundTarget, bindAfterTurn: false, mode: 'edit' };
+	}
 	return { ok: false, error: NO_TARGET_INPUT_ERROR };
 }
 
@@ -731,8 +734,21 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			const existingTarget = await resolveAgentBuilderTarget(domainContext);
 			const resolution = await resolveTargetForCall(domainContext, delegate, input, existingTarget);
 			if (!resolution.ok) {
+				context.trackTelemetry?.('instance_ai_agent_build_route', {
+					thread_id: context.threadId,
+					run_id: context.runId,
+					user_id: context.userId,
+					mode: 'resolution_failed',
+				});
 				return { ok: false, error: resolution.error };
 			}
+			context.trackTelemetry?.('instance_ai_agent_build_route', {
+				thread_id: context.threadId,
+				run_id: context.runId,
+				user_id: context.userId,
+				mode: resolution.mode,
+				agent_id: resolution.target.agentId,
+			});
 			const boundTarget = resolution.target;
 			const bindAfterTurn = resolution.bindAfterTurn;
 

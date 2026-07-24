@@ -1,5 +1,6 @@
 import type { Plugin } from 'vue';
 import type { ITelemetrySettings } from '@n8n/api-types';
+import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
 import type { ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 
@@ -101,7 +102,16 @@ export class Telemetry {
 		}
 	}
 
-	track(event: string, properties?: ITelemetryTrackProperties) {
+	track<T extends TelemetryEventDef>(event: T, properties: InferTelemetryProps<T>): void;
+	track(event: string, properties?: ITelemetryTrackProperties): void;
+	track(event: string | TelemetryEventDef, properties?: ITelemetryTrackProperties) {
+		const eventName = typeof event === 'string' ? event : event.name;
+
+		if (typeof event !== 'string') {
+			const validationError = event.getValidationError(properties);
+			if (validationError) console.warn(validationError);
+		}
+
 		if (!this.rudderStack) return;
 
 		const posthogSessionId = window.posthog?.get_session_id?.();
@@ -112,15 +122,15 @@ export class Telemetry {
 			posthog_session_id: posthogSessionId,
 		};
 
-		this.rudderStack.track(event, updatedProperties, {
+		this.rudderStack.track(eventName, updatedProperties, {
 			context: {
 				// provide a fake IP address to instruct RudderStack to not use the user's IP address
 				ip: '0.0.0.0',
 			},
 		});
 
-		if (!POSTHOG_EVENTS_BLACKLIST.includes(event)) {
-			usePostHog().capture(event, updatedProperties);
+		if (!POSTHOG_EVENTS_BLACKLIST.includes(eventName)) {
+			usePostHog().capture(eventName, updatedProperties);
 		}
 	}
 

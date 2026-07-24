@@ -7,8 +7,11 @@ import {
 	type ChannelResumeData,
 	type ChannelSuspendPayload,
 } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
+
+import type { BuilderTrackFn } from '../builder-config-telemetry';
 
 const configureChannelInputSchema = z.object({
 	integrationType: z.string().describe('Chat platform type from list_integration_types'),
@@ -21,6 +24,7 @@ export interface ConfigureChannelToolDeps {
 	projectId: string;
 	/** Wraps `AgentIntegrationPersistenceService.listChatIntegrations()`. */
 	listChatIntegrationTypes: () => string[];
+	track: BuilderTrackFn;
 }
 
 export function buildConfigureChannelTool(deps: ConfigureChannelToolDeps): BuiltTool {
@@ -47,6 +51,11 @@ export function buildConfigureChannelTool(deps: ConfigureChannelToolDeps): Built
 				// catalog than the original call, but the setup card already persisted
 				// (or skipped) the connection, so the resume leg only reports the outcome.
 				if (ctx.resumeData !== undefined && ctx.resumeData !== null) {
+					if (ctx.resumeData.approved) {
+						deps.track(TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TRIGGER, {
+							trigger_type: integrationType,
+						});
+					}
 					return { connected: ctx.resumeData.approved };
 				}
 
