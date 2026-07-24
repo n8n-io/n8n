@@ -24,10 +24,8 @@ vi.mock('@n8n/instance-ai', async () => {
 		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
 		createScopedWorkspace: vi.fn((workspace: unknown) => workspace),
 		getPromptWorkspaceRoot: vi.fn(() => '/home/daytona/workspace'),
-		getPromptSandboxInstructions: vi.fn(() => 'Cloud sandbox with isolated execution.'),
-		getPromptFilesystemInstructions: vi.fn(
-			() => 'Filesystem access is scoped to /home/daytona/workspace.',
-		),
+		getPromptSandboxInstructions: vi.fn(() => ''),
+		getPromptFilesystemInstructions: vi.fn(() => ''),
 		getWorkspaceRoot: vi.fn(async () => '/home/daytona/workspace'),
 		setupSandboxWorkspace: vi.fn(),
 		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({

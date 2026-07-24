@@ -17,35 +17,30 @@ export function getPromptWorkspaceRoot(provider: SandboxProvider): string {
 }
 
 /**
- * Stable, cache-safe sandbox description for the agent's system prompt.
+ * Stable, cache-safe sandbox description appended via workspace tools.
  *
- * MUST NOT vary across agent rebuilds/resumes: the orchestrator prompt is
- * rebuilt on every resume, so any change here shifts the cached prompt prefix
- * and busts Anthropic prompt caching for the rest of the thread. The live
- * sandbox's `getInstructions()` is deliberately NOT used here because a
- * lazily-resolved workspace reports different text depending on whether its
- * (per-build, in-memory) handle happens to be resolved yet — the workspace is
- * available regardless. Runtime-varying details (resolution state, live command
- * timeout) are excluded; the workspace root is added to the prompt separately.
+ * Instance AI surfaces sandbox/filesystem guidance in the system prompt's
+ * `## Sandbox workspace` section instead. Returning empty here keeps the
+ * workspace-appended block from duplicating that text while still providing a
+ * byte-stable (empty) value across agent rebuilds/resumes — the live
+ * sandbox's `getInstructions()` must not be used, because a lazily-resolved
+ * workspace reports different text depending on whether its (per-build,
+ * in-memory) handle happens to be resolved yet.
  */
 export function getPromptSandboxInstructions(_provider: SandboxProvider): string {
-	return 'Cloud sandbox with isolated execution (TypeScript runtime).';
+	return '';
 }
 
 /**
- * Stable, cache-safe filesystem description for the agent's system prompt.
+ * Stable, cache-safe filesystem description appended via workspace tools.
  *
- * Same rationale as {@link getPromptSandboxInstructions}: the lazily-resolved
- * (and scoped) filesystem reports different text before vs after its per-build
- * handle resolves, which would shift the cached prompt prefix across resumes.
- * Derived from the (static) workspace root so it matches the resolved scoped
- * filesystem's own instructions while staying byte-stable.
+ * Same rationale as {@link getPromptSandboxInstructions}: content lives in the
+ * system prompt's `## Sandbox workspace` section; this stays empty so the
+ * lazily-resolved (and scoped) filesystem cannot shift the cached prompt
+ * prefix across resumes.
  */
-export function getPromptFilesystemInstructions(provider: SandboxProvider): string {
-	return [
-		`Filesystem access is scoped to ${getPromptWorkspaceRoot(provider)}.`,
-		'Paths are relative to the workspace root unless you pass an absolute path under that root.',
-	].join(' ');
+export function getPromptFilesystemInstructions(_provider: SandboxProvider): string {
+	return '';
 }
 
 export interface SandboxWorkspace extends SandboxCommandTarget {
