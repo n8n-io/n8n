@@ -178,6 +178,7 @@ export function useCanvasMapping({
 					waiting: executionSnapshot.waiting,
 					waitingForNext: executionSnapshot.waitingForNext,
 					running: executionSnapshot.running,
+					subworkflowProgress: rd.subworkflowProgressByNodeId.get(node.id)?.value,
 				},
 				runData: {
 					outputMap: rd.executionRunDataOutputMapByNodeId.get(node.id),

@@ -8,6 +8,7 @@ import {
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { useSubworkflowProgressStore } from '@/app/stores/subworkflowProgress.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
@@ -77,6 +78,7 @@ import type {
 export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocumentId) {
 	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 	const executionStateStore = useWorkflowExecutionStateStore(workflowDocumentId);
+	const subworkflowProgressStore = useSubworkflowProgressStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const i18n = useI18n();
 	const { dirtinessByName } = useNodeDirtiness(workflowDocumentId);
@@ -100,6 +102,9 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 	);
 	const renderTypeByNodeId = shallowReactive(
 		new Map<string, ComputedRef<CanvasNodeData['render']>>(),
+	);
+	const subworkflowProgressByNodeId = shallowReactive(
+		new Map<string, ComputedRef<CanvasNodeData['execution']['subworkflowProgress']>>(),
 	);
 	const entryScopes = new Map<string, () => void>();
 
@@ -249,6 +254,30 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		return workflowDocumentStore.pinnedDataByNodeId.get(nodeId)?.value;
 	}
 
+	// --- subworkflowProgressByNodeId -----------------------------------------
+	// Original: useCanvasMapping `subworkflowProgressByNodeId`. Surfaces live
+	// sub-workflow progress on Execute Sub-workflow nodes while the child runs.
+	// Keyed in the store by `${activeExecutionId}::${nodeName}`, so it only
+	// resolves while an execution is active.
+	function computeSubworkflowProgress(
+		nodeId: string,
+	): CanvasNodeData['execution']['subworkflowProgress'] {
+		const activeExecutionId = executionStateStore.activeExecutionId;
+		if (typeof activeExecutionId !== 'string') return undefined;
+		const node = getNode(nodeId);
+		if (!node) return undefined;
+
+		const progress = subworkflowProgressStore.getFor(activeExecutionId, node.name);
+		if (!progress) return undefined;
+
+		return {
+			currentNodeName: progress.currentNodeName,
+			currentNodeIndex: progress.currentNodeIndex,
+			totalNodes: progress.totalNodes,
+			phase: progress.phase,
+		};
+	}
+
 	// --- renderTypeByNodeId --------------------------------------------------
 	// Original: useCanvasMapping `renderTypeByNodeId` + create*RenderType
 	// helpers. Returns the canvas render type/options the renderer reads.
@@ -389,6 +418,10 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 				nodeId,
 				structuralComputed(() => computeRenderType(nodeId), isEqual),
 			);
+			subworkflowProgressByNodeId.set(
+				nodeId,
+				structuralComputed(() => computeSubworkflowProgress(nodeId), isEqual),
+			);
 		});
 		entryScopes.set(nodeId, () => scope.stop());
 	}
@@ -404,6 +437,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		hasIssuesByNodeId.delete(nodeId);
 		dirtinessByNodeId.delete(nodeId);
 		renderTypeByNodeId.delete(nodeId);
+		subworkflowProgressByNodeId.delete(nodeId);
 	}
 
 	function applyReconcileEntries(nodeIds: string[]) {
@@ -580,6 +614,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		tooltipByNodeId,
 		hasIssuesByNodeId,
 		renderTypeByNodeId,
+		subworkflowProgressByNodeId,
 		additionalPropertiesByNodeId,
 	};
 }

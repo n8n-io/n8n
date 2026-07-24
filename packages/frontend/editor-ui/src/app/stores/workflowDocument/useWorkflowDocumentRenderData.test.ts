@@ -15,6 +15,7 @@ import {
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { useSubworkflowProgressStore } from '@/app/stores/subworkflowProgress.store';
 import { useExecutionDataStore, createExecutionDataId } from '@/app/stores/executionData.store';
 import {
 	CanvasNodeDirtiness,
@@ -375,6 +376,52 @@ describe('useWorkflowDocumentRenderData — hasIssuesByNodeId precedence', () =>
 		const { renderData } = createRenderData(docId);
 
 		expect(renderData.hasIssuesByNodeId.get('a')?.value).toBe(false);
+	});
+});
+
+describe('useWorkflowDocumentRenderData — subworkflowProgressByNodeId', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
+	const alpha = () => createTestNode({ id: 'a', name: 'Alpha' });
+
+	it('returns undefined when there is no active execution', () => {
+		const { docId } = setupWorkflow('wf-subwf-no-exec', [{ id: 'a', name: 'Alpha' }]);
+		const { renderData } = createRenderData(docId);
+
+		expect(renderData.subworkflowProgressByNodeId.get('a')?.value).toBeUndefined();
+	});
+
+	it('returns undefined when the active execution has no progress for the node', () => {
+		const { docId } = setupWorkflow('wf-subwf-empty', [{ id: 'a', name: 'Alpha' }]);
+		setActiveExecution(docId, [alpha()], {});
+		const { renderData } = createRenderData(docId);
+
+		expect(renderData.subworkflowProgressByNodeId.get('a')?.value).toBeUndefined();
+	});
+
+	it('surfaces progress for the node under the active execution', () => {
+		const { docId } = setupWorkflow('wf-subwf-progress', [{ id: 'a', name: 'Alpha' }]);
+		setActiveExecution(docId, [alpha()], {});
+		const { renderData } = createRenderData(docId);
+
+		useSubworkflowProgressStore().updateProgress({
+			parentExecutionId: `exec-${docId}`,
+			parentNodeName: 'Alpha',
+			executionId: 'child-1',
+			currentNodeName: 'Child Node',
+			currentNodeIndex: 2,
+			totalNodes: 5,
+			phase: 'running',
+		});
+
+		expect(renderData.subworkflowProgressByNodeId.get('a')?.value).toEqual({
+			currentNodeName: 'Child Node',
+			currentNodeIndex: 2,
+			totalNodes: 5,
+			phase: 'running',
+		});
 	});
 });
 

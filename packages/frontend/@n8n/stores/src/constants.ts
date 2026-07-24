@@ -59,4 +59,5 @@ export const STORES = {
 	FAVORITES: 'favorites',
 	AI_GATEWAY: 'aiGateway',
 	EVALUATIONS_WIZARD_SIDEPANEL: 'evaluationsWizardSidepanel',
+	SUBWORKFLOW_PROGRESS: 'subworkflowProgress',
 } as const;
