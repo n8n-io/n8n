@@ -25,7 +25,7 @@ packages/@n8n/db/src/entities/index.ts
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.6.14",
-  "base_commit_sha": "fa0abd8ca80205f8fac7862fa674db5d0b4d6387",
+  "base_commit_sha": "edbed4fc01eef9ffac43a0c7901ec678d48f6bb4",
   "prompts": {},
   "sessions": {
     "s_b1ae3677d6bc36": {
