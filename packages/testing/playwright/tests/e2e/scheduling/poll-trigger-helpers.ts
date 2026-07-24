@@ -8,12 +8,8 @@ import type { ApiHelpers } from '../../../services/api-helper';
 
 type PollTriggerWorkflow = ReturnType<typeof makePollTriggerWorkflow>;
 
-// Shared happy-path assertion: program the mocked poll endpoint to return one
-// item, activate the workflow, and assert it produces a successful trigger-mode
-// execution. Programming the expectation before activation means the inline
-// seed poll (which every fresh activation runs) is itself the fire under test.
-// Owns the path (rather than taking a pre-built workflow) so a caller that
-// doesn't need to reuse it afterward is a single call.
+// Programs the mock poll response before activation, so the inline seed poll
+// that every fresh activation runs is itself the fire under test.
 export async function expectPollTriggerFires(
 	api: ApiHelpers,
 	proxy: ProxyServer,

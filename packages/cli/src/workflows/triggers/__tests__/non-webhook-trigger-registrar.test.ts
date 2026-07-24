@@ -133,7 +133,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 		);
 	});
 
-	describe('durable scheduler jobs', () => {
+	describe('durable jobs', () => {
 		const makeRegistrar = () => {
 			const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
 			const factory = mock<TriggerExecutionContextFactory>();

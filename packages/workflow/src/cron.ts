@@ -72,10 +72,10 @@ export const toCronExpression = (item: TriggerTime): CronExpression => {
 };
 
 /**
- * Whether a cron fires more than once a minute. A 6-field expression carries
- * seconds as its first field: a single fixed second fires once a minute, so
+ * Whether a cron fires more than once a minute. A 6-field expression has
+ * seconds as its first field: a single fixed second is minute-granular, but
  * anything else there (wildcard, step, range, or list) is sub-minute. 5-field
- * (standard) crons are minute-granular at minimum and never sub-minute.
+ * crons have no seconds field and are always minute-granular.
  */
 export const isSubMinuteCron = (expression: CronExpression): boolean => {
 	const fields = expression.trim().split(/\s+/);

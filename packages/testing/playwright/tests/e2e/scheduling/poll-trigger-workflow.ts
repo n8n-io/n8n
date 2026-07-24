@@ -25,15 +25,14 @@ const buildWorkflow = (path: string, pollTimesItem: Record<string, unknown>) => 
 	return workflow(nanoid(), `Poll Trigger Test ${nanoid()}`).add(pollTrigger.to(noOp));
 };
 
-// Builds an E2E Test Polling Trigger -> NoOp workflow, polling every minute (the
-// fastest interval `isSubMinuteCron` allows). The trigger polls a URL routed
-// through the proxy capability's MockServer, so the test controls exactly what
-// each poll tick sees by reprogramming the expectation for `path` between
-// ticks, instead of racing real external state.
+// Polls every minute, the fastest interval `isSubMinuteCron` treats as
+// minute-granular. Routed through the proxy capability's MockServer so each
+// poll tick's response is controlled directly, instead of racing real
+// external state.
 export const makePollTriggerWorkflow = (path: string) =>
 	buildWorkflow(path, { mode: 'everyMinute' });
 
-// Same shape but driven by a raw cron expression (the `custom` mode takes a
-// separate provisioning branch from the fixed-interval modes).
+// Same shape, but driven by a raw cron expression: exercises the `custom`
+// mode provisioning branch.
 export const makeCronPollTriggerWorkflow = (path: string, cronExpression = '0 * * * * *') =>
 	buildWorkflow(path, { mode: 'custom', cronExpression });

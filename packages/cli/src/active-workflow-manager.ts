@@ -756,10 +756,10 @@ export class ActiveWorkflowManager {
 			const dbWorkflow = await this.workflowRepository.findById(workflowId);
 
 			// Activation may have failed partway with triggers already registered,
-			// in memory and as durable schedule jobs. Tear them down before the
+			// in memory and as durable jobs. Tear them down before the
 			// deactivation below so the active version is still resolvable, or
 			// they keep firing a workflow marked inactive. Each teardown is caught
-			// on its own so a webhook failure never skips the schedule-job cleanup.
+			// on its own so a webhook failure never skips the durable-job cleanup.
 			try {
 				await this.clearWebhooks(workflowId);
 			} catch (cleanupError) {
@@ -938,8 +938,6 @@ export class ActiveWorkflowManager {
 			// Drop the durable jobs here rather than leaving it to the fire-and-forget
 			// command below: they are DB state, so removal is leader-independent, and a
 			// lost command would otherwise leak them, firing an inactive workflow.
-			// Each call is independently guarded so a failure in one registrar
-			// cannot skip the other and leak its durable jobs.
 			await this.removeDurableJobs(workflowId);
 
 			void this.publisher.publishCommand({
@@ -986,9 +984,8 @@ export class ActiveWorkflowManager {
 	}
 
 	/**
-	 * Remove a workflow's durable schedule and poll jobs. The two registrars are
-	 * called independently so a failure in one cannot skip the other and leak
-	 * its durable jobs.
+	 * Remove a workflow's durable jobs. The registrars run independently so a
+	 * failure in one cannot skip the other and leak its jobs.
 	 */
 	private async removeDurableJobs(workflowId: WorkflowId) {
 		const results = await Promise.allSettled([
@@ -1000,7 +997,7 @@ export class ActiveWorkflowManager {
 			if (result.status === 'rejected') {
 				this.errorReporter.error(result.reason);
 				this.logger.error(
-					`Could not remove durable scheduler jobs of workflow "${workflowId}" because of error: "${ensureError(result.reason).message}"`,
+					`Could not remove durable jobs of workflow "${workflowId}" because of error: "${ensureError(result.reason).message}"`,
 				);
 			}
 		}
@@ -1008,7 +1005,7 @@ export class ActiveWorkflowManager {
 
 	/**
 	 * Stop running active, poll, and schedule triggers for a workflow,
-	 * and drop the durable schedule jobs its activation committed.
+	 * and drop the durable jobs its activation committed.
 	 */
 	async removeNonWebhookTriggers(workflowId: WorkflowId) {
 		// `activeWorkflowTriggers.remove` is idempotent and always deregisters the workflow's
@@ -1018,7 +1015,7 @@ export class ActiveWorkflowManager {
 		// A deactivation through this legacy path must also deprovision the durable
 		// jobs that addNonWebhookTriggers committed, exactly like the publication
 		// path's deregister does. Otherwise the durable scheduler keeps firing the
-		// schedule nodes of a workflow now marked inactive. Keyed by the workflow
+		// trigger nodes of a workflow now marked inactive. Keyed by the workflow
 		// alone, not the node ids registered in memory: those are already gone if
 		// an earlier removal failed here, and a retry must stay idempotent. A no-op
 		// for workflows without durable rows. Leader stepdown/shutdown must NOT

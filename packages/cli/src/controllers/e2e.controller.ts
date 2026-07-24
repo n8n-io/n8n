@@ -250,9 +250,9 @@ export class E2EController {
 	}
 
 	/**
-	 * How many durable scheduler rows exist for a trigger node, so a test can
-	 * assert on removal directly instead of waiting out a real tick to prove a
-	 * job stopped firing.
+	 * Number of scheduled-job rows for a trigger node, so a test can assert on
+	 * removal directly instead of waiting out a real tick to prove a job
+	 * stopped firing.
 	 */
 	@Get('/scheduled-jobs/count', { skipAuth: true })
 	async countScheduledJobs(req: Request<{}, {}, {}, { workflowId: string; nodeId: string }>) {

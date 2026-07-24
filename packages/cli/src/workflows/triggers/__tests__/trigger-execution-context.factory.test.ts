@@ -546,7 +546,6 @@ describe('TriggerExecutionContextFactory', () => {
 				expect.any(Function),
 			);
 
-			// The poll context is bound to the built workflow, the node, and the same modes.
 			expect(getPollFunctions).toHaveBeenCalledWith(
 				result.workflow,
 				pollNode,

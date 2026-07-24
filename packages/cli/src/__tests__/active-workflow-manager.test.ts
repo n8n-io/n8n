@@ -933,7 +933,7 @@ describe('ActiveWorkflowManager', () => {
 			expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-desynced'))).toBe(false);
 		});
 
-		it('should deprovision the durable schedule jobs of the workflow on removal', async () => {
+		it('should deprovision the durable jobs of the workflow on removal', async () => {
 			// A deactivation through the legacy path (e.g. a workflow transfer with the
 			// publication flag on) must delete the durable rows its activation committed,
 			// or the durable scheduler keeps firing a workflow now marked inactive.
@@ -953,7 +953,7 @@ describe('ActiveWorkflowManager', () => {
 			expect(pollTriggerJobRegistrar.removeWorkflow).toHaveBeenCalledWith('wf-durable');
 		});
 
-		it('should deprovision durable schedule jobs even with no in-memory registration', async () => {
+		it('should deprovision durable jobs even with no in-memory registration', async () => {
 			// An earlier removal may have cleared the in-memory registration and then
 			// failed on the durable delete; the retry must still find and drop the rows.
 			expect(realActiveWorkflowTriggers.isActive('wf-retry')).toBe(false);
@@ -988,8 +988,7 @@ describe('ActiveWorkflowManager', () => {
 			// In-memory cron was still stopped, and the failure was reported.
 			expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-durable-fail'))).toBe(false);
 			expect(errorReporter.error).toHaveBeenCalledWith(deprovisionError);
-			// The two removals run independently: a schedule-registrar failure must
-			// not skip the poll-registrar call and leak its durable jobs.
+			// A schedule-registrar failure must not skip the poll-registrar call.
 			expect(pollTriggerJobRegistrar.removeWorkflow).toHaveBeenCalledWith('wf-durable-fail');
 		});
 
@@ -1123,8 +1122,7 @@ describe('ActiveWorkflowManager', () => {
 				command: 'remove-triggers-and-pollers',
 				payload: { workflowId: 'wf-mm-fail' },
 			});
-			// The two removals run independently: a schedule-registrar failure must
-			// not skip the poll-registrar call and leak its durable jobs.
+			// A schedule-registrar failure must not skip the poll-registrar call.
 			expect(pollTriggerJobRegistrar.removeWorkflow).toHaveBeenCalledWith('wf-mm-fail');
 		});
 

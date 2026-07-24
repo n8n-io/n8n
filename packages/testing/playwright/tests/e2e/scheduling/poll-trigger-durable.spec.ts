@@ -2,11 +2,9 @@ import { expectPollTriggerFires } from './poll-trigger-helpers';
 import { makePollTriggerWorkflow, makeCronPollTriggerWorkflow } from './poll-trigger-workflow';
 import { test, expect } from '../../../fixtures/base';
 
-// Durable scheduler path for POLL triggers. Both flags are required: with only
-// `N8N_SCHEDULER_ENABLED` the poll job registrar's `isActive()` gate stays
-// false and activation falls back to the legacy in-memory poll cron. With all
-// three set the registrar intercepts and the poll node's cron fires as
-// `scheduled_job` rows instead.
+// All three scheduler flags are required: with only `N8N_SCHEDULER_ENABLED` set,
+// activation falls back to the legacy in-memory poll cron; with all three, the
+// poll trigger runs as a `scheduled_job` row instead.
 test.use({
 	capability: {
 		services: ['proxy'],
@@ -30,9 +28,8 @@ test.describe(
 			api,
 			services,
 		}) => {
-			// This only proves the seed poll that `activatePollTrigger` runs inline
-			// on a fresh provision; it does not touch the scheduler's claim/dispatch
-			// path. See "should dispatch a scheduled tick" below for that proof.
+			// Only proves the seed poll that runs inline on activation; the durable
+			// claim/dispatch path is exercised separately below.
 			await expectPollTriggerFires(api, services.proxy, makePollTriggerWorkflow);
 		});
 
@@ -48,13 +45,10 @@ test.describe(
 			api,
 			services,
 		}) => {
-			// The seed poll above runs inline during activation, bypassing the
-			// scheduler entirely. This test proves the actual durable path: the
-			// scheduler claims the due job, materialises a task, and
-			// `PollTriggerTaskHandler` runs poll() and hands off to a real
-			// execution. `fireScheduledJobsNow` forces the job's `nextRunAt` to now
-			// so the next 1s sweep claims it — the everyMinute cron's own interval
-			// isn't itself under test here, so there's no reason to wait it out.
+			// The seed poll above runs inline on activation, bypassing the scheduler.
+			// `fireScheduledJobsNow` forces the job's `nextRunAt` to now so the 1s
+			// sweep configured above claims it, instead of waiting out the real
+			// cron interval.
 			const { workflowId, nodeId, path } = await expectPollTriggerFires(
 				api,
 				services.proxy,

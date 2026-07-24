@@ -64,9 +64,8 @@ export class PollTriggerTaskHandler implements TaskHandler {
 
 			if (pollResponse !== null) {
 				// poll() can run for a while (network I/O against the polled source), so
-				// the workflow may have been deactivated while it was in flight. The
-				// legacy path guards this with `isCurrent()`; the durable path has no
-				// in-memory registration to check, so re-read the stored active state.
+				// the workflow may have been deactivated while it was in flight. There is
+				// no in-memory registration to check here, so re-read the stored active state.
 				if (!(await this.workflowRepository.isActive(workflowId))) {
 					this.logger.debug('Workflow deactivated during poll; discarding the result', {
 						taskId: task.id,

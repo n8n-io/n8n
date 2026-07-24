@@ -18,8 +18,8 @@ import { POLL_TRIGGER_TASK_TYPE } from './poll-trigger-task';
  * place by a definition-derived name, so an unchanged poll time keeps its row and
  * clock across re-activation. The payload is just `{ workflowId, nodeId }`; the
  * handler re-runs `poll()` each fire, so there is no per-occurrence dedup key.
- * Whether this is the bound implementation of {@link PollJobManager} is decided
- * by `PollJobProvider`, not by this class.
+ * Whether this is the active implementation of {@link PollJobManager} is
+ * decided by config elsewhere, not by this class.
  */
 @Service()
 export class PollTriggerJobRegistrar extends PollJobManager {
