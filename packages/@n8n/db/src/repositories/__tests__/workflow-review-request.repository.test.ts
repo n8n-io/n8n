@@ -22,10 +22,12 @@ describe('WorkflowReviewRequestRepository', () => {
 		queryBuilder.orderBy.mockReturnThis();
 		queryBuilder.addOrderBy.mockReturnThis();
 		queryBuilder.select.mockReturnThis();
+		queryBuilder.addSelect.mockReturnThis();
+		queryBuilder.groupBy.mockReturnThis();
 		queryBuilder.take.mockReturnThis();
 		queryBuilder.limit.mockReturnThis();
 		queryBuilder.getMany.mockResolvedValue([]);
-		queryBuilder.getRawOne.mockResolvedValue(undefined);
+		queryBuilder.getRawMany.mockResolvedValue([]);
 
 		vi.spyOn(repo, 'createQueryBuilder').mockReturnValue(queryBuilder);
 	});
@@ -222,67 +224,62 @@ describe('WorkflowReviewRequestRepository', () => {
 		});
 	});
 
-	describe('existsAnyForInbox', () => {
-		it('queries by requester only when projectIds is empty', async () => {
-			queryBuilder.getRawOne.mockResolvedValueOnce({ '?column?': 1 });
+	describe('countByStateForInbox', () => {
+		it('groups by state applying the requester-only filter when projectIds is empty', async () => {
+			queryBuilder.getRawMany.mockResolvedValueOnce([{ state: 'open', count: '2' }]);
 
-			const result = await repo.existsAnyForInbox({ projectIds: [], requesterId: 'user-1' });
+			const result = await repo.countByStateForInbox({ projectIds: [], requesterId: 'user-1' });
 
-			expect(result).toBe(true);
+			expect(result).toEqual({ open: 2, closed: 0 });
 			expect(repo.createQueryBuilder).toHaveBeenCalledWith('review');
-			expect(queryBuilder.select).toHaveBeenCalledWith('1');
+			expect(queryBuilder.select).toHaveBeenCalledWith('review.state', 'state');
+			expect(queryBuilder.addSelect).toHaveBeenCalledWith('COUNT(*)', 'count');
+			expect(queryBuilder.groupBy).toHaveBeenCalledWith('review.state');
 			expect(queryBuilder.where).toHaveBeenCalledWith('review.createdById = :requesterId', {
 				requesterId: 'user-1',
 			});
-			expect(queryBuilder.limit).toHaveBeenCalledWith(1);
 		});
 
-		it('skips the projectId filter when projectIds is null', async () => {
-			queryBuilder.getRawOne.mockResolvedValueOnce({ '?column?': 1 });
+		it('skips the projectId filter when projectIds is null (global scope counts all)', async () => {
+			queryBuilder.getRawMany.mockResolvedValueOnce([
+				{ state: 'open', count: '3' },
+				{ state: 'closed', count: '12' },
+			]);
 
-			const result = await repo.existsAnyForInbox({
-				projectIds: null,
-				requesterId: 'user-1',
-				state: 'open',
-			});
+			const result = await repo.countByStateForInbox({ projectIds: null, requesterId: 'user-1' });
 
-			expect(result).toBe(true);
-			expect(repo.createQueryBuilder).toHaveBeenCalledWith('review');
-			expect(queryBuilder.select).toHaveBeenCalledWith('1');
+			expect(result).toEqual({ open: 3, closed: 12 });
 			expect(queryBuilder.where).not.toHaveBeenCalled();
-			expect(queryBuilder.andWhere).toHaveBeenCalledWith('review.state = :state', {
-				state: 'open',
-			});
-			expect(queryBuilder.limit).toHaveBeenCalledWith(1);
+			expect(queryBuilder.groupBy).toHaveBeenCalledWith('review.state');
 		});
 
-		it('returns true when at least one matching row exists', async () => {
-			queryBuilder.getRawOne.mockResolvedValueOnce({ '?column?': 1 });
+		it('matches projects OR the requester', async () => {
+			queryBuilder.getRawMany.mockResolvedValueOnce([
+				{ state: 'open', count: 1 },
+				{ state: 'closed', count: 4 },
+			]);
 
-			const result = await repo.existsAnyForInbox({
-				projectIds: ['proj-1'],
+			const result = await repo.countByStateForInbox({
+				projectIds: ['proj-1', 'proj-2'],
 				requesterId: 'user-1',
-				state: 'open',
 			});
 
-			expect(result).toBe(true);
-			expect(queryBuilder.select).toHaveBeenCalledWith('1');
+			expect(result).toEqual({ open: 1, closed: 4 });
 			expect(queryBuilder.where).toHaveBeenCalledWith(
 				'(review.projectId IN (:...projectIds) OR review.createdById = :requesterId)',
-				{ projectIds: ['proj-1'], requesterId: 'user-1' },
+				{ projectIds: ['proj-1', 'proj-2'], requesterId: 'user-1' },
 			);
-			expect(queryBuilder.andWhere).toHaveBeenCalledWith('review.state = :state', {
-				state: 'open',
-			});
-			expect(queryBuilder.limit).toHaveBeenCalledWith(1);
 		});
 
-		it('returns false when no rows match', async () => {
-			queryBuilder.getRawOne.mockResolvedValueOnce(undefined);
+		it('defaults absent states to zero', async () => {
+			queryBuilder.getRawMany.mockResolvedValueOnce([]);
 
-			await expect(
-				repo.existsAnyForInbox({ projectIds: ['proj-1'], requesterId: 'user-1' }),
-			).resolves.toBe(false);
+			const result = await repo.countByStateForInbox({
+				projectIds: ['proj-1'],
+				requesterId: 'user-1',
+			});
+
+			expect(result).toEqual({ open: 0, closed: 0 });
 		});
 	});
 });
