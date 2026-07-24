@@ -35,5 +35,6 @@ export interface ListWorkflowReviewInboxResponse {
 }
 
 export interface GetWorkflowReviewInboxSummaryResponse {
-	hasAny: boolean;
+	open: number;
+	closed: number;
 }
