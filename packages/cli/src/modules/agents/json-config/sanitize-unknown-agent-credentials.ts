@@ -1,4 +1,8 @@
-import { AI_GATEWAY_MANAGED_TAG, isDraftAgentConfig, MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	isDraftAgentConfig,
+	MANAGED_CREDENTIAL_TOKEN,
+} from '@n8n/api-types';
 
 function clearUnknownCredentialId(
 	credentialId: unknown,

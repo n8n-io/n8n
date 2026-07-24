@@ -182,9 +182,7 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				credentialId?: string;
 			}) => {
 				const all = await deps.credentialProvider.list();
-				const ownCredentials = all.filter(
-					(credential) => LLM_PROVIDER_DEFAULTS[credential.type],
-				);
+				const ownCredentials = all.filter((credential) => LLM_PROVIDER_DEFAULTS[credential.type]);
 
 				// Offer n8n Connect as an additional credential for each gateway-served
 				// provider the user has no own credential for. It then flows through the same

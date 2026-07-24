@@ -571,6 +571,7 @@ describe('resolve_llm tool', () => {
 				credentialProvider: makeProvider([]),
 				modelLookup: makeModelLookup(),
 				isProviderServedByGateway: async (provider) => provider === 'anthropic',
+				freeCredits: makeFreeCredits(),
 			});
 			const result = await tool.handler!({ provider: 'anthropic' }, {});
 
@@ -588,6 +589,7 @@ describe('resolve_llm tool', () => {
 				credentialProvider: makeProvider([]),
 				modelLookup: makeModelLookup(),
 				isProviderServedByGateway: async () => false,
+				freeCredits: makeFreeCredits(),
 			});
 			const result = await tool.handler!({ provider: 'anthropic' }, {});
 
@@ -606,6 +608,7 @@ describe('resolve_llm tool', () => {
 				]),
 				modelLookup: makeModelLookup(),
 				isProviderServedByGateway: async () => true,
+				freeCredits: makeFreeCredits(),
 			});
 			const result = await tool.handler!({ provider: 'anthropic' }, {});
 
@@ -625,11 +628,15 @@ describe('resolve_llm tool', () => {
 			const served = new Set(['openai', 'anthropic', 'google']);
 			const tool = buildResolveLlmTool({
 				credentialProvider: makeProvider([
+					// Two keys for the top-priority provider (anthropic) keep the result
+					// ambiguous, so the full credential list is returned instead of an auto-pick.
 					{ id: 'cred-1', name: 'My Anthropic', type: 'anthropicApi' },
+					{ id: 'cred-1b', name: 'My Anthropic 2', type: 'anthropicApi' },
 					{ id: 'cred-2', name: 'My xAI', type: 'xAiApi' },
 				]),
 				modelLookup: makeModelLookup(),
 				isProviderServedByGateway: async (provider) => served.has(provider),
+				freeCredits: makeFreeCredits(),
 			});
 			const result = (await tool.handler!({}, {})) as {
 				credentials?: Array<{ id: string; name: string; type: string; provider: string }>;
@@ -670,6 +677,7 @@ describe('resolve_llm tool', () => {
 				credentialProvider: makeProvider([]),
 				modelLookup,
 				isProviderServedByGateway: async (provider) => provider === 'openai',
+				freeCredits: makeFreeCredits(),
 			});
 			const result = await tool.handler!({ provider: 'openai', model: 'gpt-5-mini' }, {});
 
