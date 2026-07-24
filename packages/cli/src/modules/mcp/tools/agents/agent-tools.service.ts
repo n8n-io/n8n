@@ -11,6 +11,7 @@ import {
 	AgentIntegrationSchema,
 	AgentJsonConfigBaseSchema,
 	AgentJsonConfigSchema,
+	isDraftAgentConfig,
 	AgentTelegramSettingsSchema,
 	McpAuthenticationSchemaTypes,
 	agentSkillSchema,
@@ -182,6 +183,15 @@ const initialAgentConfigSchema = AgentJsonConfigBaseSchema.omit({
 	// Integrations are managed only through update_agent_integration.
 	integrations: true,
 }).superRefine((config, ctx) => {
+	// Mirrors AgentJsonConfigSchema's own refinement, which is lost by
+	// deriving from the base schema (ZodEffects has no .omit).
+	if (config.credential?.trim() && isDraftAgentConfig(config)) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ['credential'],
+			message: 'A credential requires a model to be set',
+		});
+	}
 	if (config.tools?.some((tool) => tool.type === 'custom')) {
 		ctx.addIssue({
 			code: z.ZodIssueCode.custom,
