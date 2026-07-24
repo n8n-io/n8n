@@ -21,18 +21,253 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSub
   s_c7f2eb05574ce2::t_a87ef4b842896a 252-257
   s_c7f2eb05574ce2::t_3eda1559e2d880 217
   s_c7f2eb05574ce2::t_13fecd1de5c7e0 258
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_70e4a16a672757::t_bdf6c7bea8e71a 55-58,61,96,98,114-116,242-249,251,253-265,269,274-285,774-777,779-781,783-787
+  s_b6381fbb8ddc64::t_626896e5a21e72 118-120,123,125-126
+  h_9c8f56e3400786 121-122
+  s_b6381fbb8ddc64::t_ee482984b97cbd 124
+  s_b6381fbb8ddc64::t_809d0a0041ae07 7
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_70e4a16a672757::t_1114f6e615019a 81-82,224-227,495-505,507-511,575-576,599-610,612-619
+  s_70e4a16a672757::t_40de41d139ecad 563,611
+  s_70e4a16a672757::t_1ef57baf512bc4 230,621,647
+  s_70e4a16a672757::t_99465de0d4547d 26-31,161-182,198-200,467-494,506,512-528,560-562,564-574
+  s_70e4a16a672757::t_548f55dcfa8be1 626
+  s_70e4a16a672757::t_a10c87b65e1123 577-598,646
+  s_70e4a16a672757::t_498ce41e0925d7 6,620,622-625,627-645
+  s_70e4a16a672757::t_054f4386e635c2 84-85
+  s_70e4a16a672757::t_1ed0098a0aec0a 201
+  s_70e4a16a672757::t_69bc31d0031457 648
+  s_70e4a16a672757::t_e0f8efdf136a81 84-85
+  s_70e4a16a672757::t_80ca5ad0b26e03 201
+  s_70e4a16a672757::t_9d84826ed0653e 648
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_44a98ba2784a12::t_d446b22a984aa3 216
+  s_44a98ba2784a12::t_29c7d74109de94 437
+  s_44a98ba2784a12::t_fe94af8470378e 436
+  s_44a98ba2784a12::t_bfa5a9f5ac9def 215
+  s_44a98ba2784a12::t_40ef558442421f 214,214
+  s_44a98ba2784a12::t_e003fa0ab06b5c 435,435
+  s_44a98ba2784a12::t_893c5ef8fdc256 217-218,217-218
+  s_44a98ba2784a12::t_daa8f45a138448 438-439,438-439
+packages/@n8n/db/src/migrations/common/1784000000048-AddTriggerKindToWorkflowPublicationTriggerStatus.ts
+  ai_agent 1-39
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_44a98ba2784a12::t_50f198fd2246d1 224
+  s_44a98ba2784a12::t_6a70a4b32b68f9 455
+  s_44a98ba2784a12::t_aa1e8f3f5a3b38 223
+  s_44a98ba2784a12::t_473e032380eaeb 454
+  s_44a98ba2784a12::t_591d9ac7718227 222,222
+  s_44a98ba2784a12::t_0e1b7d2554975c 453,453
+  s_44a98ba2784a12::t_51812c9029fdb3 456-457,456-457
+  s_44a98ba2784a12::t_d25d8416783ebe 225-226,225-226
+docs/generated/sqlite-schema/oauth_user_consents.md
+  s_44a98ba2784a12::t_c7a37a3d8a1ed7 9,21,51
+docs/generated/sqlite-schema/oauth_clients.md
+  s_44a98ba2784a12::t_c7a37a3d8a1ed7 95
+docs/generated/sqlite-schema/README.md
+  s_44a98ba2784a12::t_c7a37a3d8a1ed7 87,1052
+  s_44a98ba2784a12::t_e7de892e1b7d06 218,832-838
+  s_44a98ba2784a12::t_16f911908620c5 65,97,824,1138
+docs/generated/sqlite-schema/user.md
+  s_44a98ba2784a12::t_c7a37a3d8a1ed7 241
+packages/@n8n/db/src/migrations/common/1784000000047-BackfillPreScopingOAuthGrantScopes.ts
+  s_44a98ba2784a12::t_2b023adf499a11 1-100
+packages/cli/src/modules/agents/builder/skills/mcp.skill.ts
+  s_770a4f5233186c::t_8ad2b3903b74bc 128
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_770a4f5233186c::t_a7cff99b8f3cd2 158
+packages/@n8n/db/src/migrations/common/1784000000046-CreateInstanceAiEventsTable.ts
+  s_44a98ba2784a12::t_ce0caa502ea993 1-36
+docs/generated/postgres-schema/README.md
+  s_44a98ba2784a12::t_e7de892e1b7d06 235,845-851
+  s_44a98ba2784a12::t_16f911908620c5 65,97,837,1151
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_44a98ba2784a12::t_e7de892e1b7d06 19,49,87-93
+  s_44a98ba2784a12::t_16f911908620c5 79
+docs/generated/sqlite-schema/instance_ai_events.md
+  s_44a98ba2784a12::t_e7de892e1b7d06 1-71
+docs/generated/postgres-schema/public.instance_ai_events.md
+  s_44a98ba2784a12::t_e7de892e1b7d06 1-65
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_44a98ba2784a12::t_e7de892e1b7d06 8,43,81-87
+  s_44a98ba2784a12::t_16f911908620c5 73
+docs/generated/postgres-schema/public.scheduled_task.md
+  s_44a98ba2784a12::t_16f911908620c5 10,66
+docs/generated/sqlite-schema/instance_ai_pending_confirmations.md
+  s_44a98ba2784a12::t_16f911908620c5 78
+packages/@n8n/db/src/migrations/common/1784000000050-AddHostRunIdToInstanceAiCheckpoints.ts
+  ai_agent 1-31
+docs/generated/postgres-schema/public.instance_ai_pending_confirmations.md
+  s_44a98ba2784a12::t_16f911908620c5 73
+packages/@n8n/db/src/migrations/common/1784000000049-AddScheduledTaskDispatchedAt.ts
+  ai_agent 1-35
+docs/generated/sqlite-schema/scheduled_job.md
+  s_44a98ba2784a12::t_16f911908620c5 93
+docs/generated/sqlite-schema/scheduled_task.md
+  s_44a98ba2784a12::t_16f911908620c5 9,21,65
+docs/generated/postgres-schema/public.scheduled_job.md
+  s_44a98ba2784a12::t_16f911908620c5 92
+docs/generated/sqlite-schema/instance_ai_checkpoints.md
+  s_44a98ba2784a12::t_16f911908620c5 9,20,57
+docs/generated/postgres-schema/public.instance_ai_checkpoints.md
+  s_44a98ba2784a12::t_16f911908620c5 9,49
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue
+  s_744aa7ffad1673::t_ab502cabe8a978 75
 ---
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.6.15",
   "base_commit_sha": "52a5df07c3e69797855a31173b4853b498e361f7",
   "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    },
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
   "sessions": {
+    "s_12107b09095a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f36b6843-9b7a-45a5-8d52-4031db7468b2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_1ef72897374beb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1e495e5d-7657-49d3-9e14-471f81cd06f2",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_2a235a6e9347be": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6650-1132-7ff1-ab94-090605cfc9f7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_41e37076417c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "480c8620-d708-419e-ac08-fca1f0d2cb0a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_44a98ba2784a12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "83e316a4-3906-40bf-bce2-efffe91f33e5",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_60c9025b151770": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53a03a0f-53be-4095-a000-6d094159abd5",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_63922c16247082": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6b337778-08d5-4266-bf43-54422800dd01",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_6638f09b589e97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5e3f01e-f690-4590-9a30-a5e2bd26c393",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_70e4a16a672757": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f79e6-9f5d-7b91-b07b-a2c76974c292",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_744aa7ffad1673": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c708436e-d47a-46c9-8cfa-2a78ec728e0c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_770a4f5233186c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "af98002c-f09b-4489-8374-ebc72894c73f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_813e262a61f3c4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2b40806b-1b79-457f-8546-5d2b9b1d3ad1",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_9006126844c8d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5b699ae-12d0-405b-9a78-fb4840686602",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_b3f23ab76a494c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fd0-bfb4-7092-a515-f61e09438476",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_b6381fbb8ddc64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7dd02182-97ab-4180-9c8a-8d5054fdd2f7",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
     "s_c7f2eb05574ce2": {
       "agent_id": {
         "tool": "claude",
         "id": "63ca9479-d174-4a0f-9349-54a47630f906",
         "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_d8236b8b5400e8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "500e2669-64fc-46e2-9484-cf22ebf66e89",
+        "model": "claude-sonnet-5-thinking-high"
       },
       "human_author": null
     }

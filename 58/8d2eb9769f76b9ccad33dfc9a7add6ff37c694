@@ -4,6 +4,7 @@ packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPub
   h_9c8f56e3400786 113-114
   s_b6381fbb8ddc64::t_ee482984b97cbd 116
   s_b6381fbb8ddc64::t_809d0a0041ae07 7
+  s_b34abcbd386402::t_f65d763798858f 95
 packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
   s_70e4a16a672757::t_1114f6e615019a 31,77-78,217-220,486-496,498-502,535-536,559-570,572-579
   s_70e4a16a672757::t_40de41d139ecad 523,571
@@ -214,6 +215,22 @@ docs/generated/postgres-schema/public.instance_ai_checkpoints.md
       },
       "human_author": null
     },
+    "s_94fa4ed7d7b038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d271a69-d48a-40c6-b6a3-5630b148db23",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_b34abcbd386402": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dc6fdb7-ff5f-45a8-98bf-0345038d38d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
     "s_b3f23ab76a494c": {
       "agent_id": {
         "tool": "codex",
@@ -235,6 +252,14 @@ docs/generated/postgres-schema/public.instance_ai_checkpoints.md
         "tool": "cursor",
         "id": "500e2669-64fc-46e2-9484-cf22ebf66e89",
         "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_e0d6b46d5a1cd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9bef762-10a3-4006-8b74-acefd3594aab",
+        "model": "claude-fable-5"
       },
       "human_author": null
     }
