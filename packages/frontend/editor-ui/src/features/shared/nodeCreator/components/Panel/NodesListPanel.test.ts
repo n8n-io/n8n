@@ -1,13 +1,13 @@
 import { defineComponent, nextTick, watch } from 'vue';
 import type { PropType } from 'vue';
 import { createPinia } from 'pinia';
-import { screen, fireEvent } from '@testing-library/vue';
+import { screen, fireEvent, waitFor } from '@testing-library/vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import NodesListPanel from './NodesListPanel.vue';
-import { REGULAR_NODE_CREATOR_VIEW } from '@/app/constants';
+import { REGULAR_NODE_CREATOR_VIEW, DEBOUNCE_TIME } from '@/app/constants';
 import type { ActionTypeDescription, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
 
@@ -246,19 +246,16 @@ describe('NodesListPanel', () => {
 			await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
 				target: { value: 'Ninth' },
 			});
-			await nextTick();
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1);
+			await waitFor(() => expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1));
 
 			await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
 				target: { value: 'Non sense' },
 			});
-			await nextTick();
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(0);
+			await waitFor(() => expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(0));
 			expect(screen.queryByText("We didn't make that... yet")).toBeInTheDocument();
 
 			await fireEvent.click(container.querySelector('svg[data-icon=circle-x]')!);
-			await nextTick();
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
+			await waitFor(() => expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9));
 		});
 
 		it('should trim search input before emitting update', async () => {
@@ -269,12 +266,166 @@ describe('NodesListPanel', () => {
 			await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
 				target: { value: '    Node 1' },
 			});
-			await nextTick();
 
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1);
+			await waitFor(() => expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1));
 			expect(screen.queryByText('Node 1')).toBeInTheDocument();
 
 			expect(screen.getByTestId('node-creator-search-bar')).toHaveValue('Node 1');
+		});
+	});
+
+	// Reproduces ADO-5590 (GH #33955): typing in the node-creator search field
+	// runs the fuzzy filter on every keystroke with no debounce, so rapid typing
+	// re-filters and re-renders on each character. AgentsMode debounces its
+	// search (see AgentsMode.vue), but the regular node search does not.
+	describe('should debounce search', () => {
+		const searchNodes = [
+			...[...Array(8).keys()].map(
+				(n) =>
+					mockSimplifiedNodeType({
+						name: `Trigger Node ${n}`,
+						displayName: `Trigger Node ${n}`,
+						group: ['trigger'],
+					}) as INodeTypeDescription,
+			),
+			mockSimplifiedNodeType({
+				name: 'Zephyr',
+				displayName: 'Zephyr',
+				group: ['trigger'],
+			}) as INodeTypeDescription,
+		];
+
+		const wrapperComponent = defineComponent({
+			components: {
+				NodesListPanel,
+			},
+			props: {
+				nodeTypes: {
+					type: Array as PropType<INodeTypeDescription[]>,
+					required: true,
+				},
+			},
+			setup(props) {
+				const { setMergeNodes } = useNodeCreatorStore();
+
+				watch(
+					() => props.nodeTypes,
+					(nodeTypes: INodeTypeDescription[]) => {
+						setMergeNodes([...nodeTypes]);
+					},
+					{ immediate: true },
+				);
+			},
+			template: '<NodesListPanel @nodeTypeSelected="e => $emit(\'nodeTypeSelected\', e)" />',
+		});
+
+		it('should not filter results until the search debounce window elapses', async () => {
+			vi.useFakeTimers();
+			try {
+				const renderComponent = createComponentRenderer(wrapperComponent, {
+					pinia: createPinia(),
+					props: {
+						nodeTypes: searchNodes,
+					},
+				});
+				renderComponent();
+				await nextTick();
+
+				screen.getByText('On app event').click();
+				await nextTick();
+				expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
+
+				await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+					target: { value: 'Zephyr' },
+				});
+				await nextTick();
+
+				// The keystroke should be debounced: filtering must not run yet, so the
+				// full, unfiltered list is still shown immediately after typing.
+				expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
+
+				// Once the debounce window elapses, the search runs and filters.
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.INPUT.SEARCH + 1);
+				await nextTick();
+
+				expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1);
+				expect(screen.queryByText('Zephyr')).toBeInTheDocument();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should reset the list immediately when the search is cleared', async () => {
+			vi.useFakeTimers();
+			try {
+				const renderComponent = createComponentRenderer(wrapperComponent, {
+					pinia: createPinia(),
+					props: {
+						nodeTypes: searchNodes,
+					},
+				});
+				renderComponent();
+				await nextTick();
+
+				screen.getByText('On app event').click();
+				await nextTick();
+
+				await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+					target: { value: 'Zephyr' },
+				});
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.INPUT.SEARCH + 1);
+				await nextTick();
+				expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1);
+
+				// Clearing is not debounced: the full list is back without any
+				// timer advance, and the pending-search window cannot restore the
+				// stale term afterwards.
+				await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+					target: { value: '' },
+				});
+				await nextTick();
+				expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
+
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.INPUT.SEARCH + 1);
+				await nextTick();
+				expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should apply a pending search before keyboard navigation acts on the list', async () => {
+			vi.useFakeTimers();
+			try {
+				const renderComponent = createComponentRenderer(wrapperComponent, {
+					pinia: createPinia(),
+					props: {
+						nodeTypes: searchNodes,
+					},
+				});
+				renderComponent();
+				await nextTick();
+
+				screen.getByText('On app event').click();
+				await nextTick();
+
+				await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+					target: { value: 'Zephyr' },
+				});
+				await nextTick();
+				expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
+
+				// Pressing Enter within the debounce window flushes the search, so
+				// selection happens against the filtered list, not the stale one.
+				await fireEvent.keyDown(screen.getByTestId('node-creator-search-bar'), {
+					key: 'Enter',
+				});
+				await nextTick();
+				expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1);
+				expect(screen.queryByText('Zephyr')).toBeInTheDocument();
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 

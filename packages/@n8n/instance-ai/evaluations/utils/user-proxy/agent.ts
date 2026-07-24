@@ -1,5 +1,12 @@
 import { SYSTEM_PROMPT } from './prompts';
-import { decisionSchema, TOOL_DESCRIPTIONS, type Decision } from './tools';
+import {
+	CONFIRMATION_TOOL_DESCRIPTIONS,
+	confirmationDecisionSchema,
+	USER_TURN_TOOL_DESCRIPTIONS,
+	userTurnDecisionSchema,
+	type Decision,
+	type ProxyDecisionMode,
+} from './tools';
 import { createEvalAgent } from '../../../src/utils/eval-agents';
 import type { EvalLogger } from '../../harness/logger';
 
@@ -9,19 +16,22 @@ export interface UserProxyAgentConfig {
 }
 
 export interface UserProxyAgent {
-	decide(userPrompt: string): Promise<Decision | undefined>;
+	decide(userPrompt: string, mode: ProxyDecisionMode): Promise<Decision | undefined>;
 }
 
 export function createUserProxyAgent(config: UserProxyAgentConfig = {}): UserProxyAgent {
-	const instructions = `${SYSTEM_PROMPT}\n\n${TOOL_DESCRIPTIONS}`;
-
 	return {
-		async decide(userPrompt: string): Promise<Decision | undefined> {
+		async decide(userPrompt: string, mode: ProxyDecisionMode): Promise<Decision | undefined> {
+			// The schema handed to the model is the action menu for this moment in
+			// the conversation — actions that cannot function now are not offered.
+			const schema = mode === 'user-turn' ? userTurnDecisionSchema : confirmationDecisionSchema;
+			const toolDescriptions =
+				mode === 'user-turn' ? USER_TURN_TOOL_DESCRIPTIONS : CONFIRMATION_TOOL_DESCRIPTIONS;
 			const agent = createEvalAgent('eval-user-proxy', {
 				...(config.modelId ? { model: config.modelId } : {}),
-				instructions,
+				instructions: `${SYSTEM_PROMPT}\n\n${toolDescriptions}`,
 				cache: true,
-			}).structuredOutput(decisionSchema);
+			}).structuredOutput(schema);
 
 			try {
 				const result = await agent.generate(userPrompt);

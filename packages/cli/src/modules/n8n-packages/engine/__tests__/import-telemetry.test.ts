@@ -75,7 +75,7 @@ const scope = (input: {
 		}),
 		variableRequest: {
 			requirements: vars.requirements === 0 ? undefined : new Array(vars.requirements),
-			missingPolicy: 'do-nothing',
+			missingMode: 'do-nothing',
 		},
 	};
 };
@@ -87,6 +87,7 @@ const request = mock<ImportPackageRequest>({
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'create-stub',
 	workflowPublishingPolicy: 'preserve-published-state',
+	missingNodeTypeMode: 'fail',
 });
 
 const manifest = mock<PackageManifest>({ sourceId: 'src-1', packageFormatVersion: '1' });

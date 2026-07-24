@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type {
 	CredentialsEntity,
 	CredentialsRepository,
+	ICredentialsDb,
 	SharedCredentialsRepository,
 	ProjectRepository,
 	UserRepository,
@@ -148,6 +149,47 @@ describe('CredentialsService', () => {
 			}),
 		};
 	};
+
+	describe('clearOauthTokenData', () => {
+		it('removes oauthTokenData and accountIdentifier before persisting', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'cred-1',
+				name: 'My OAuth',
+				type: 'gmailOAuth2',
+			});
+
+			// Raw (unredacted) decryption so the real token can be dropped.
+			vi.spyOn(Credentials.prototype, 'getData').mockResolvedValue({
+				clientId: 'abc',
+				oauthTokenData: { access_token: 'tok' },
+				accountIdentifier: 'user@example.com',
+			});
+			const createEncryptedDataSpy = vi
+				.spyOn(service, 'createEncryptedData')
+				.mockResolvedValue(mock<ICredentialsDb>());
+			const updateSpy = vi.spyOn(service, 'update').mockResolvedValue(mock<CredentialsEntity>());
+
+			await service.clearOauthTokenData(credential);
+
+			const passedData = createEncryptedDataSpy.mock.calls[0][0].data;
+			expect(passedData).not.toHaveProperty('oauthTokenData');
+			expect(passedData).not.toHaveProperty('accountIdentifier');
+			expect(passedData).toHaveProperty('clientId', 'abc');
+			expect(updateSpy).toHaveBeenCalledWith(credential.id, expect.anything(), passedData);
+		});
+
+		it('aborts without persisting when the credential cannot be decrypted', async () => {
+			const credential = mock<CredentialsEntity>({ id: 'cred-1', type: 'gmailOAuth2' });
+
+			const decryptionError = new Error('decryption failed');
+			vi.spyOn(Credentials.prototype, 'getData').mockRejectedValueOnce(decryptionError);
+			const updateSpy = vi.spyOn(service, 'update');
+
+			// Must propagate the failure rather than overwrite the credential with empty data.
+			await expect(service.clearOauthTokenData(credential)).rejects.toThrow(decryptionError);
+			expect(updateSpy).not.toHaveBeenCalled();
+		});
+	});
 
 	describe('redact', () => {
 		it('should redact sensitive values', () => {
@@ -3089,6 +3131,27 @@ describe('CredentialsService', () => {
 			await expect(
 				service.checkCredentialData('myOAuth1Cred', data, ownerUser, testProjectId),
 			).resolves.toBeUndefined();
+		});
+	});
+
+	describe('isOAuthCredentialType', () => {
+		it('returns true for the base OAuth1/OAuth2 types', () => {
+			credentialTypes.getParentTypes.mockReturnValue([]);
+
+			expect(service.isOAuthCredentialType('oAuth1Api')).toBe(true);
+			expect(service.isOAuthCredentialType('oAuth2Api')).toBe(true);
+		});
+
+		it('returns true for a type that extends an OAuth type', () => {
+			credentialTypes.getParentTypes.calledWith('gmailOAuth2').mockReturnValue(['oAuth2Api']);
+
+			expect(service.isOAuthCredentialType('gmailOAuth2')).toBe(true);
+		});
+
+		it('returns false for a non-OAuth type', () => {
+			credentialTypes.getParentTypes.calledWith('httpBasicAuth').mockReturnValue([]);
+
+			expect(service.isOAuthCredentialType('httpBasicAuth')).toBe(false);
 		});
 	});
 });

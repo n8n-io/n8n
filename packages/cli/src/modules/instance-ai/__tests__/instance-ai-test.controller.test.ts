@@ -180,6 +180,7 @@ describe('InstanceAiTestController', () => {
 				'user-1',
 				'thread-1',
 				'personal-project-id',
+				{ source: 'playwright', origin: 'internal' },
 			);
 			expect(instanceAiService.startStuckBackgroundTaskForTest).toHaveBeenCalledWith(
 				user,

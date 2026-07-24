@@ -1,5 +1,10 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { MCP_APPS_FLAG, MCP_APPS_VARIANT_CONTROL, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
+import {
+	MCP_APPS_FLAG,
+	MCP_APPS_VARIANT_CONTROL,
+	MCP_APPS_VARIANT_ENABLED,
+	MCP_CANVAS_GROUPS_FLAG,
+} from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
@@ -19,7 +24,7 @@ import {
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceSettings } from 'n8n-core';
-import { ManualExecutionCancelledError, type IRun } from 'n8n-workflow';
+import { ManualExecutionCancelledError, type FeatureFlags, type IRun } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
@@ -104,6 +109,13 @@ export type McpAppsResolution = {
 	variant: McpAppsTelemetryVariant;
 };
 
+/** Per-user resolution of every PostHog-gated MCP feature. */
+export type McpFeatureFlags = {
+	mcpApps: McpAppsResolution;
+	/** Canvas node-group support in the workflow-builder tools. */
+	canvasGroupsEnabled: boolean;
+};
+
 type McpAppTelemetryResolution = {
 	telemetry: McpAppTelemetryConfig;
 	instanceOrigin?: string;
@@ -152,14 +164,31 @@ export class McpService {
 		private readonly aiGatewayService: AiGatewayService,
 	) {}
 
-	async resolveMcpAppsVariant(user: User): Promise<McpAppsResolution> {
-		if (this.globalConfig.endpoints.mcpAppsEnabled) {
-			return { enabled: true, variant: 'env_override' };
-		}
+	/**
+	 * Resolves every PostHog-gated MCP feature for a user with a single flags
+	 * lookup. Env overrides are force-enable-only and take precedence over
+	 * PostHog; the lookup is skipped entirely when every feature is overridden.
+	 */
+	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
+		const { mcpAppsEnabled, mcpCanvasGroupsEnabled } = this.globalConfig.endpoints;
 
 		// `PostHogClient.getFeatureFlags` swallows PostHog errors internally and
-		// returns `{}`, so a transient outage surfaces here as `unassigned`.
-		const flags = await this.postHogClient.getFeatureFlags(user);
+		// returns `{}`, so a transient outage fails closed (feature off, MCP Apps
+		// surfacing as `unassigned`).
+		const flags =
+			mcpAppsEnabled && mcpCanvasGroupsEnabled
+				? undefined
+				: await this.postHogClient.getFeatureFlags(user);
+
+		return {
+			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
+			canvasGroupsEnabled: mcpCanvasGroupsEnabled || flags?.[MCP_CANVAS_GROUPS_FLAG] === true,
+		};
+	}
+
+	private resolveMcpApps(envOverride: boolean, flags?: FeatureFlags): McpAppsResolution {
+		if (envOverride) return { enabled: true, variant: 'env_override' };
+
 		const raw = flags?.[MCP_APPS_FLAG];
 		if (raw === MCP_APPS_VARIANT_ENABLED) return { enabled: true, variant: 'variant' };
 		if (raw === MCP_APPS_VARIANT_CONTROL) return { enabled: false, variant: 'control' };
@@ -216,10 +245,13 @@ export class McpService {
 	 * tokens) exposes all tools. Filtering registration is sufficient
 	 * enforcement: the server is rebuilt per request, so an unregistered tool
 	 * is neither listed nor callable.
+	 *
+	 * `featureFlags` is the caller's per-request resolution (see
+	 * `resolveFeatureFlags`); this method trusts it and never queries PostHog.
 	 */
 	async getServer(
 		user: User,
-		mcpAppsEnabled: boolean,
+		featureFlags: McpFeatureFlags,
 		clientInfo?: McpClientInfo,
 		grantedScopes?: string[],
 	) {
@@ -417,7 +449,7 @@ export class McpService {
 				server,
 				user,
 				dataTableOps,
-				mcpAppsEnabled,
+				featureFlags,
 				registerIfAllowed,
 				allowedToolNames,
 				clientInfo,
@@ -431,7 +463,7 @@ export class McpService {
 		server: InstanceType<typeof McpServer>,
 		user: User,
 		dataTableOps: ReturnType<DataTableProxyService['makeDataTableOperationsForUser']>,
-		mcpAppsEnabled: boolean,
+		featureFlags: McpFeatureFlags,
 		registerIfAllowed: RegisterToolFn,
 		allowedToolNames: Set<string> | undefined,
 		clientInfo?: McpClientInfo,
@@ -464,7 +496,9 @@ export class McpService {
 		);
 		registerIfAllowed(exploreNodeResourcesTool);
 
-		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes);
+		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes, {
+			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
+		});
 		registerIfAllowed(validateTool);
 
 		const validateNodeTool = createValidateNodeTool(user, this.telemetry);
@@ -481,12 +515,13 @@ export class McpService {
 			this.projectRepository,
 			dataTableOps,
 			this.aiGatewayService,
+			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
 		);
 
 		// The preview app only accompanies the create tool, so both are gated
 		// together by the granted scopes.
 		const createToolAllowed = !allowedToolNames || allowedToolNames.has(createTool.name);
-		if (mcpAppsEnabled && createToolAllowed) {
+		if (featureFlags.mcpApps.enabled && createToolAllowed) {
 			const appTelemetry = this.buildMcpAppTelemetryConfig();
 			registerWorkflowPreviewApp(server, {
 				instanceOrigin: appTelemetry.instanceOrigin,

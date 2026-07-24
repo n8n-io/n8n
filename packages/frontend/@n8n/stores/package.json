@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "@n8n/api-types": "workspace:*",
+    "@n8n/frontend-constants": "workspace:*",
     "@n8n/i18n": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/rest-api-client": "workspace:*",

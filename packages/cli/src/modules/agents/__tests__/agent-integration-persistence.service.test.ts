@@ -101,6 +101,23 @@ describe('AgentIntegrationPersistenceService', () => {
 		);
 	});
 
+	it('consumes a same-type draft entry (empty credentialId) when connecting a real credential', async () => {
+		const { service, agentRepository, chatIntegrationService, runtimeCacheService } = makeService();
+		const agent = makeAgent({ integrations: [{ type: 'slack', credentialId: '' }] });
+
+		await service.saveCredentialIntegration(agent, { type: 'slack', credentialId: 'c1' });
+
+		expect(agent.integrations).toEqual([{ type: 'slack', credentialId: 'c1' }]);
+		expect(agent.versionId).not.toBe(agent.activeVersionId);
+		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
+			agentId,
+			{ type: 'slack', credentialId: 'c1' },
+			'connect',
+		);
+	});
+
 	it('appends new credential integrations while preserving existing siblings', async () => {
 		const { service, agentRepository, chatIntegrationService, runtimeCacheService } = makeService();
 		const agent = makeAgent({

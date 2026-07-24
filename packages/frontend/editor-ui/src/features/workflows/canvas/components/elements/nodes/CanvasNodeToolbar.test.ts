@@ -300,8 +300,9 @@ describe('CanvasNodeToolbar', () => {
 	});
 
 	describe('Add to AI button', () => {
-		// The focused-nodes experiment and the instance-wide AI flags gate the
-		// button; enable both so only the per-editor host override varies.
+		// The focused-nodes experiment (cloud-only, gated in the store) and the
+		// instance-wide AI flags gate the button; enable both so only the
+		// per-editor host override varies.
 		const setupAiStores = () => {
 			const testingPinia = createTestingPinia();
 			setActivePinia(testingPinia);
@@ -336,6 +337,26 @@ describe('CanvasNodeToolbar', () => {
 							aiBuilder: false,
 							askAi: false,
 						}),
+					},
+				},
+			});
+
+			expect(queryByTestId('add-to-ai-button')).not.toBeInTheDocument();
+		});
+
+		// Regression for ADO-5013: the focused-nodes experiment is cloud-only —
+		// the store-level gate (see focusedNodes.store.ts) turns the feature off
+		// on self-hosted instances even when AI Assistant is licensed.
+		it('should hide when the focused-nodes feature is off (e.g. self-hosted)', () => {
+			const testingPinia = setupAiStores();
+			mockedStore(useFocusedNodesStore).isFeatureEnabled = false;
+
+			const { queryByTestId } = renderComponent({
+				pinia: testingPinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
 					},
 				},
 			});

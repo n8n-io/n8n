@@ -10,8 +10,13 @@ export interface UseAgentConfigAutosaveParams<TSnapshot> {
 	 * for snapshotting any per-agent context (projectId/agentId/config) so that
 	 * a save scheduled for agent A doesn't accidentally fire against agent B
 	 * after a switch.
+	 *
+	 * Return `'skipped'` when the save was intentionally declined (e.g. a
+	 * write-lock is active) rather than performed — this suppresses `onSaved`
+	 * and keeps `saveStatus` at `'idle'` instead of flashing `'saved'` for an
+	 * edit that was never persisted.
 	 */
-	save: (snapshot: TSnapshot) => Promise<void>;
+	save: (snapshot: TSnapshot) => Promise<'skipped' | undefined>;
 	/** Called after a successful save so the caller can fire telemetry. */
 	onSaved?: (snapshot: TSnapshot) => void;
 	/** Called when the save throws — caller decides how to surface the error. */
@@ -61,7 +66,11 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 			saveStatusResetTimer = null;
 		}
 		try {
-			await params.save(snapshot);
+			const result = await params.save(snapshot);
+			if (result === 'skipped') {
+				saveStatus.value = 'idle';
+				return;
+			}
 			params.onSaved?.(snapshot);
 			saveStatus.value = 'saved';
 			saveStatusResetTimer = setTimeout(() => {
