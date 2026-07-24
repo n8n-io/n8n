@@ -56,6 +56,7 @@ function makeItem(overrides: Partial<WorkflowReviewInboxItem> = {}): WorkflowRev
 		createdAt: '2024-01-01T00:00:00.000Z',
 		updatedAt: '2024-01-01T00:00:00.000Z',
 		...overrides,
+		workflowVersionId: overrides.workflowVersionId ?? null,
 	};
 }
 
