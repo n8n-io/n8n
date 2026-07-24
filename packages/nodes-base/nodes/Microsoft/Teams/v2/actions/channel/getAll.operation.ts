@@ -27,6 +27,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		return await microsoftApiRequestAllItems.call(this, 'value', 'GET', endpoint);
 	} else {
 		const limit = this.getNodeParameter('limit', i);
+		// list-channels doesn't support $top; the limit still stops pagination early
 		return await microsoftApiRequestAllItems.call(this, 'value', 'GET', endpoint, {}, {}, limit);
 	}
 }

@@ -101,6 +101,8 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			);
 		} else {
 			const limit = this.getNodeParameter('limit', i);
+			// Planner endpoints don't support OData query params like $top;
+			// the limit still stops pagination early
 			return await microsoftApiRequestAllItems.call(
 				this,
 				'value',

@@ -339,6 +339,7 @@ export class MicrosoftTeamsV1 implements INodeType {
 							);
 						} else {
 							const limit = this.getNodeParameter('limit', i);
+							// list-channels doesn't support $top; the limit still stops pagination early
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
@@ -578,6 +579,8 @@ export class MicrosoftTeamsV1 implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
+								// Planner endpoints don't support OData query params like $top;
+								// the limit still stops pagination early
 								responseData = await microsoftApiRequestAllItems.call(
 									this,
 									'value',

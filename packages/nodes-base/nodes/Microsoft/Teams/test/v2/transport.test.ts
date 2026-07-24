@@ -2,13 +2,9 @@ import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import { microsoftApiRequestAllItems } from '../../v2/transport';
 
-// Regression coverage for the paginated `getAll` helper: a result limit must stop
-// pagination instead of walking the whole collection, and the returned data must
-// never exceed the requested limit.
 describe('MicrosoftTeamsV2 transport, microsoftApiRequestAllItems', () => {
 	const makeContext = (requestOAuth2: ReturnType<typeof vi.fn>) =>
 		({
-			// authentication unset -> defaults to the Teams OAuth2 credential
 			getNodeParameter: vi.fn().mockReturnValue(undefined),
 			getCredentials: vi.fn().mockResolvedValue({}),
 			getNode: vi.fn().mockReturnValue({ name: 'Microsoft Teams' } as INode),
@@ -35,9 +31,7 @@ describe('MicrosoftTeamsV2 transport, microsoftApiRequestAllItems', () => {
 			2,
 		);
 
-		// trimmed to the requested limit, never the full first page
 		expect(result).toEqual([{ id: '1' }, { id: '2' }]);
-		// stopped early: the nextLink page was never requested
 		expect(requestOAuth2).toHaveBeenCalledTimes(1);
 		expect(optionsOfCall(requestOAuth2, 0).qs).toEqual({ $top: 2 });
 	});
@@ -66,7 +60,6 @@ describe('MicrosoftTeamsV2 transport, microsoftApiRequestAllItems', () => {
 		expect(result).toHaveLength(100);
 		expect(requestOAuth2).toHaveBeenCalledTimes(2);
 		expect(optionsOfCall(requestOAuth2, 0).qs).toEqual({ $top: 100 });
-		// the nextLink already carries the query, so it is not re-sent on the follow-up
 		expect(optionsOfCall(requestOAuth2, 1).qs).toEqual({});
 		expect(optionsOfCall(requestOAuth2, 1).uri).toBe('https://graph.microsoft.com/next-page');
 	});
