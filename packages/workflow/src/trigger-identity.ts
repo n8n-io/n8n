@@ -1,6 +1,7 @@
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPES,
 	MCP_TRIGGER_NODE_TYPE,
 } from './constants';
@@ -55,7 +56,9 @@ export function classifyTriggerIdentity(
 		nodeType === CHAT_TRIGGER_NODE_TYPE && parameters?.availableInChat === true;
 	const isMcpTrigger =
 		nodeType === MCP_TRIGGER_NODE_TYPE && parameters?.authentication === 'n8nOAuth2';
-	if (isSubWorkflowTrigger || isChatHubTrigger || isMcpTrigger) {
+	const isFormTrigger =
+		nodeType === FORM_TRIGGER_NODE_TYPE && parameters?.authentication === 'n8nUserAuth';
+	if (isSubWorkflowTrigger || isChatHubTrigger || isMcpTrigger || isFormTrigger) {
 		return { providesN8nIdentity: true, providesExternalIdentity: true };
 	}
 

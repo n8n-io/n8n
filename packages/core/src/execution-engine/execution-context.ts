@@ -2,9 +2,9 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { type IRunExecutionData, type Workflow, type WorkflowExecuteMode } from 'n8n-workflow';
 
-import { assertExecutionDataExists, type PreExecutionAdditionalData } from '@/utils/assertions';
-
 import { ExecutionContextService } from './execution-context.service';
+
+import { assertExecutionDataExists, type PreExecutionAdditionalData } from '@/utils/assertions';
 
 /**
  * Establishes the execution context for a workflow run.
@@ -126,7 +126,7 @@ export const establishExecutionContext = async (
 		source: mode,
 	};
 
-	if (mode === 'manual' && additionalData?.encryptedRunnerIdentity) {
+	if (additionalData?.encryptedRunnerIdentity) {
 		executionData.runtimeData.credentials = additionalData.encryptedRunnerIdentity;
 	}
 

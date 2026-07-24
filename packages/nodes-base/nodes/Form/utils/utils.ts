@@ -25,6 +25,7 @@ import {
 	tryToParseUrl,
 	BINARY_MODE_COMBINED,
 	tryToParseJsonToFormFields,
+	UnexpectedError,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
@@ -68,6 +69,10 @@ function isFormUserAuthClaims(value: unknown): value is FormUserAuthClaims {
 		typeof c.nid === 'string' &&
 		typeof c.wid === 'string'
 	);
+}
+
+export function isFormOAuth2Enabled(): boolean {
+	return process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2 === 'true';
 }
 
 export function sanitizeHtml(text: string) {
@@ -705,6 +710,10 @@ export function verifyFormUserAuthToken(token: string, node: INode): IUser | nul
 	};
 }
 
+function trimTrailingSlash(url: string): string {
+	return url.endsWith('/') ? url.slice(0, -1) : url;
+}
+
 /**
  * Authenticate an `n8nUserAuth` request via:
  * 1. the `n8n-auth` cookie (sent on top-level GET when the user is logged in), or
@@ -715,22 +724,91 @@ export function verifyFormUserAuthToken(token: string, node: INode): IUser | nul
  * (302 to `/signin` on GET, 401 on POST) and returns `null` — the caller
  * must abort with `noWebhookResponse`.
  */
-async function authenticateFormUserOrRespond(context: IWebhookFunctions): Promise<IUser | null> {
+async function authenticateFormUserOrRespond(
+	context: IWebhookFunctions,
+	oauth2Enabled: boolean = false,
+): Promise<{ user: IUser; token: string | null } | null> {
 	const req = context.getRequestObject();
+
+	if (oauth2Enabled) {
+		const res = context.getResponseObject();
+		const url = context.getNodeWebhookUrl('default');
+		if (!url) {
+			throw new UnexpectedError('Webhook URL not found for the node');
+		}
+		const resourceUrl = trimTrailingSlash(url);
+		if (req.method === 'GET') {
+			const { code, state } = req.query;
+
+			// handle OAuth2 callback from the provider (code + state query params)
+			if (typeof code === 'string' && typeof state === 'string') {
+				try {
+					const authorizationResult = await context.completeN8nOAuth2Flow(code, state);
+					if (authorizationResult.valid) {
+						// TODO: exchange the OAuth2 token to a specficly scoped token.
+						return { user: authorizationResult.user, token: authorizationResult.token };
+					}
+					// We fall through to the redirect below to restart the OAuth2 flow if the callback is invalid.
+					context.logger.warn('Form OAuth2 flow failed, restarting', {
+						reason: authorizationResult.reason,
+					});
+				} catch (error) {
+					// Ignore errors and fall through to the redirect below
+					context.logger.warn('Form OAuth2 flow failed, restarting', {
+						error,
+					});
+				}
+			}
+
+			try {
+				// start authentication flow by redirecting to the OAuth2 provider's authorization URL
+				const authorizationUrl = await context.beginN8nOAuth2Flow(resourceUrl);
+				res.writeHead(302, {
+					Location: authorizationUrl,
+				});
+				res.end();
+			} catch (error) {
+				// Ignore errors and fall through to the redirect below
+				context.logger.warn('Form OAuth2 flow failed', {
+					error,
+				});
+				throw new UnexpectedError('Form OAuth2 flow failed');
+			}
+			return null;
+		} else {
+			// For POST requests, the OAuth2 flow is not applicable. We fall through to the cookie and token checks below.
+			const formToken = req.headers['x-auth-token'];
+			if (typeof formToken === 'string' && formToken) {
+				const validation = await context.validateN8nOAuth2Token(formToken, resourceUrl);
+				if (validation.valid) {
+					await context.establishTriggerIdentity(formToken, resourceUrl); // seeds the run
+					return {
+						user: validation.user,
+						token: null,
+					};
+				}
+			}
+			res.status(401).send();
+			return null;
+		}
+	}
 
 	// Parse the raw Cookie header rather than `req.cookies` because the webhook
 	// path may bypass cookie-parser middleware in some deployments.
 	const cookieMatch = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-auth=([^;]+)/);
 	if (cookieMatch) {
 		try {
-			return await context.validateCookieAuth(cookieMatch[1].trim());
+			return {
+				user: await context.validateCookieAuth(cookieMatch[1].trim()),
+				token: null,
+			};
 		} catch {}
 	}
 
 	const formToken = req.headers['x-auth-token'];
 	if (typeof formToken === 'string' && formToken) {
 		const user = verifyFormUserAuthToken(formToken, context.getNode());
-		if (user) return user;
+		if (user) return { user, token: null };
 	}
 
 	const res = context.getResponseObject();
@@ -758,7 +836,7 @@ export async function validateFormPageAuth(
 	triggerAuthentication: string,
 ): Promise<{ authedUser?: IUser; responded?: boolean }> {
 	if (triggerAuthentication !== 'n8nUserAuth') return {};
-	const user = await authenticateFormUserOrRespond(context);
+	const { user } = (await authenticateFormUserOrRespond(context, false)) ?? {};
 	return user ? { authedUser: user } : { responded: true };
 }
 
@@ -802,11 +880,14 @@ export async function formWebhook(
 
 	const authentication = context.getNodeParameter(authProperty, 'none') as string;
 	let authedUser: IUser | undefined;
+	let oAuth2Token: string | undefined;
 	if (node.typeVersion > 1) {
 		if (authentication === 'n8nUserAuth') {
-			const user = await authenticateFormUserOrRespond(context);
+			const { user, token } =
+				(await authenticateFormUserOrRespond(context, isFormOAuth2Enabled())) ?? {};
 			if (!user) return { noWebhookResponse: true };
 			authedUser = user;
+			oAuth2Token = token ?? undefined;
 		} else {
 			try {
 				await validateWebhookAuthentication(context, authProperty);
@@ -885,10 +966,14 @@ export async function formWebhook(
 		let authToken: string | undefined;
 		if (node.typeVersion > 1) {
 			if (authentication === 'n8nUserAuth' && authedUser) {
-				// Cookies aren't sent on POST from the sandboxed form page
-				// (null origin + SameSite=Lax). Embed an HMAC token so the
-				// POST handler can re-authenticate the user.
-				authToken = generateFormUserAuthToken(node, authedUser);
+				if (!isFormOAuth2Enabled()) {
+					// Cookies aren't sent on POST from the sandboxed form page
+					// (null origin + SameSite=Lax). Embed an HMAC token so the
+					// POST handler can re-authenticate the user.
+					authToken = generateFormUserAuthToken(node, authedUser);
+				} else {
+					authToken = oAuth2Token;
+				}
 			} else {
 				authToken = await generateFormPostBasicAuthToken(context, authProperty);
 			}

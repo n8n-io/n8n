@@ -68,7 +68,7 @@ export class FormTriggerResourceResolver implements ProtectedResourceResolver {
 		if (
 			node.type === FORM_TRIGGER_NODE_TYPE &&
 			!node.disabled &&
-			node.parameters.authentication === 'n8nOAuth2'
+			node.parameters.authentication === 'n8nUserAuth'
 		) {
 			const resourceUrl = `${trimTrailingSlash(this.urlService.getWebhookBaseUrl())}/${this.config.endpoints.form}/${path}`;
 			const requireExecute = node.parameters.requireExecuteAccess !== false;

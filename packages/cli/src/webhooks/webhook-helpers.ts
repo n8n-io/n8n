@@ -15,6 +15,7 @@ import {
 	BinaryDataService,
 	ErrorReporter,
 	establishExecutionContext,
+	ExecutionContextService,
 	WAITING_TOKEN_QUERY_PARAM,
 } from 'n8n-core';
 import type {
@@ -69,7 +70,6 @@ import {
 } from '@/services/oauth-token-verifier-proxy.service';
 import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { TriggerAuthIdentitySeederProxy } from '@/services/trigger-auth-identity-seeder-proxy.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
@@ -564,12 +564,12 @@ export async function executeWebhook(
 	};
 
 	additionalData.establishTriggerIdentity = async (token: string, resource: string) => {
-		if (runExecutionData === undefined) {
-			throw new UnexpectedError('Execution data is not available to establish trigger identity');
+		additionalData.encryptedRunnerIdentity = await Container.get(
+			ExecutionContextService,
+		).buildTriggerIdentityCredentials(token, resource);
+		if (runExecutionData) {
+			await establishExecutionContext(workflow, runExecutionData, additionalData, executionMode);
 		}
-		await Container.get(TriggerAuthIdentitySeederProxy).seed(runExecutionData, token, resource);
-
-		await establishExecutionContext(workflow, runExecutionData, additionalData, executionMode);
 	};
 
 	// Eager pre-execution credential-status gate. Uses the execution context that
@@ -579,10 +579,26 @@ export async function executeWebhook(
 	// established, in which case the caller proceeds to execute normally.
 	additionalData.checkTriggerCredentialStatus = async () => {
 		const credentialCheckProxy = additionalData['dynamic-credentials']?.credentialCheckProxy;
-		const executionContext = runExecutionData?.executionData?.runtimeData;
-		if (!credentialCheckProxy || !workflow.id || !executionContext?.credentials) {
+
+		if (!credentialCheckProxy || !workflow.id) {
 			return undefined;
 		}
+		const executionContext =
+			runExecutionData?.executionData?.runtimeData ??
+			(additionalData.encryptedRunnerIdentity
+				? {
+						credentials: additionalData.encryptedRunnerIdentity,
+					}
+				: undefined);
+
+		if (!executionContext) {
+			return undefined;
+		}
+
+		if (!executionContext.credentials) {
+			return undefined;
+		}
+
 		return await credentialCheckProxy.checkCredentialStatus(workflow.id, executionContext);
 	};
 
@@ -746,6 +762,7 @@ export async function executeWebhook(
 			projectId: project?.id,
 			projectName: project?.name,
 			userId: webhookData.userId,
+			encryptedRunnerIdentity: additionalData.encryptedRunnerIdentity,
 		};
 
 		// When resuming from a wait node, copy over the pushRef from the execution-data
