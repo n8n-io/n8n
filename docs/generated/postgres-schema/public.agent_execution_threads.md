@@ -94,6 +94,7 @@ erDiagram
   varchar_36_ versionId
 }
 "public.agent_execution" {
+  json attachments
   integer completionTokens
   double_precision cost
   timestamp_3__with_time_zone createdAt

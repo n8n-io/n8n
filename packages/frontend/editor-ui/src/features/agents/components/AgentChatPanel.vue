@@ -2,8 +2,16 @@
 import { computed, ref, toRef, watch, onMounted, onBeforeUnmount } from 'vue';
 import { N8nCallout, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { APPROVAL_TOOL_NAME } from '@n8n/api-types';
+import {
+	APPROVAL_TOOL_NAME,
+	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
+	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
+	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
+	PROVIDER_CAPABILITIES,
+} from '@n8n/api-types';
+import { useToast } from '@/app/composables/useToast';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
+import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import { findOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
@@ -50,6 +58,60 @@ const emit = defineEmits<{
 
 const locale = useI18n();
 const agentTelemetry = useAgentTelemetry();
+const toast = useToast();
+
+const attachedFiles = ref<File[]>([]);
+
+const attachmentCapabilities = computed(() => {
+	const provider = props.agentConfig?.model?.split('/')[0];
+	return provider ? PROVIDER_CAPABILITIES[provider]?.attachments : undefined;
+});
+const showAttach = computed(() => {
+	const capabilities = attachmentCapabilities.value;
+	return !!capabilities && (capabilities.image || capabilities.pdf || capabilities.audio);
+});
+const acceptedMimeTypes = computed(() => {
+	const capabilities = attachmentCapabilities.value;
+	if (!capabilities) return undefined;
+	return [
+		capabilities.image ? 'image/*' : null,
+		capabilities.pdf ? 'application/pdf' : null,
+		capabilities.audio ? 'audio/*' : null,
+	]
+		.filter((entry): entry is string => entry !== null)
+		.join(',');
+});
+
+function handleFilesSelected(files: File[]) {
+	for (const file of files) {
+		if (attachedFiles.value.length >= MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE) {
+			toast.showMessage({
+				type: 'error',
+				title: locale.baseText('agents.chat.attachments.tooMany', {
+					interpolate: { limit: String(MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE) },
+				}),
+			});
+			break;
+		}
+		if (file.size > MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES) {
+			toast.showMessage({
+				type: 'error',
+				title: locale.baseText('agents.chat.attachments.tooLarge', {
+					interpolate: {
+						fileName: file.name,
+						limit: String(MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB),
+					},
+				}),
+			});
+			continue;
+		}
+		attachedFiles.value.push(file);
+	}
+}
+
+function handleFileRemove(file: File) {
+	attachedFiles.value = attachedFiles.value.filter((f) => f !== file);
+}
 
 const internalInputText = ref(props.inputDraft ?? '');
 const inputText = computed<string>({
@@ -136,9 +198,12 @@ watch(isStreaming, (v) => emit('update:streaming', v));
 
 async function onSubmit() {
 	const text = inputText.value.trim();
-	if (!text || isStreaming.value || isPreparingToSend.value || hasOpenApproval.value) return;
+	const files = attachedFiles.value;
+	if ((!text && files.length === 0) || isStreaming.value || isPreparingToSend.value) return;
+	if (hasOpenApproval.value) return;
 
 	if (hasOpenInteractiveQuestion.value) {
+		if (!text) return;
 		inputText.value = '';
 		await cancelAndSteer(text);
 		return;
@@ -154,6 +219,7 @@ async function onSubmit() {
 
 	try {
 		inputText.value = '';
+		attachedFiles.value = [];
 
 		const fingerprint = await buildAgentConfigFingerprint(
 			props.agentConfig,
@@ -165,7 +231,7 @@ async function onSubmit() {
 			agentConfig: fingerprint,
 		});
 
-		await sendMessage(text);
+		await sendMessage(text, files.length > 0 ? files : undefined);
 	} finally {
 		isPreparingToSend.value = false;
 	}
@@ -230,8 +296,13 @@ onBeforeUnmount(() => {
 				v-model="inputText"
 				:placeholder="chatPlaceholder"
 				:is-streaming="messagingState === 'receiving'"
+				:show-attach="showAttach"
+				:accepted-mime-types="acceptedMimeTypes"
 				:can-submit="
-					!hasOpenApproval && !isStreaming && !isPreparingToSend && inputText.trim().length > 0
+					!hasOpenApproval &&
+					!isStreaming &&
+					!isPreparingToSend &&
+					(inputText.trim().length > 0 || attachedFiles.length > 0)
 				"
 				:disabled="
 					hasOpenApproval || isPreparingToSend || (isStreaming && messagingState !== 'receiving')
@@ -239,7 +310,19 @@ onBeforeUnmount(() => {
 				data-testid="chat-input"
 				@submit="onSubmit"
 				@stop="stopGenerating"
+				@files-selected="handleFilesSelected"
 			>
+				<template v-if="attachedFiles.length > 0" #attachments>
+					<div :class="$style.attachmentsStrip">
+						<AttachmentPreview
+							v-for="(file, index) in attachedFiles"
+							:key="`${file.name}-${index}`"
+							:file="file"
+							is-removable
+							@remove="handleFileRemove"
+						/>
+					</div>
+				</template>
 				<template #footer-start>
 					<slot name="footer-start" />
 				</template>
@@ -272,6 +355,13 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+
+.attachmentsStrip {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--3xs) var(--spacing--2xs) 0;
 }
 
 .errorBanner {

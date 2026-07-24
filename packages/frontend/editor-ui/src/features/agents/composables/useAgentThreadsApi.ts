@@ -33,6 +33,14 @@ export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
  */
 export type AgentExecutionTimelineEvent = Record<string, unknown> & { type: string };
 
+/** Metadata of a file attached to the user turn; bytes come from the chat attachment download route. */
+export interface AgentExecutionAttachment {
+	id: string;
+	fileName: string;
+	mimeType: string;
+	sizeBytes: number;
+}
+
 export interface AgentExecution {
 	id: string;
 	threadId: string;
@@ -43,6 +51,7 @@ export interface AgentExecution {
 	stoppedAt: string | null;
 	duration: number;
 	userMessage: string | null;
+	attachments: AgentExecutionAttachment[] | null;
 	model: string | null;
 	promptTokens: number | null;
 	completionTokens: number | null;

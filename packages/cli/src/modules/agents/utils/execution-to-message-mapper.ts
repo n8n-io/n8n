@@ -4,7 +4,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { TimelineEvent } from '../execution-recorder';
 
-type ExecutionTranscript = Pick<AgentExecution, 'id' | 'userMessage' | 'timeline'>;
+type ExecutionTranscript = Pick<AgentExecution, 'id' | 'userMessage' | 'timeline' | 'attachments'>;
 
 type ToolCallTimelineEvent = Extract<TimelineEvent, { type: 'tool-call' }>;
 type ToolCallContentPart = AgentPersistedMessageContentPart & {
@@ -15,24 +15,6 @@ type ToolCallContentPart = AgentPersistedMessageContentPart & {
 function textPart(text: string): AgentPersistedMessageContentPart | null {
 	if (!text.trim()) return null;
 	return { type: 'text', text };
-}
-
-function textMessageDto(
-	id: string,
-	role: AgentPersistedMessageDto['role'],
-	text: string | null,
-	executionId: string,
-): AgentPersistedMessageDto | null {
-	if (!text) return null;
-	const contentPart = textPart(text);
-	if (!contentPart) return null;
-
-	return {
-		id,
-		role,
-		content: [contentPart],
-		executionId,
-	};
 }
 
 function toolCallState(event: ToolCallTimelineEvent): 'resolved' | 'rejected' | undefined {
@@ -140,13 +122,26 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 	// Message `id` stays `${execution.id}:role` for stable client keys. Turn
 	// scope for handoff/history is the explicit `executionId` field — do not
 	// make consumers parse it back out of `id`.
-	const userMessage = textMessageDto(
-		`${execution.id}:user`,
-		'user',
-		execution.userMessage,
-		execution.id,
-	);
-	if (userMessage) messages.push(userMessage);
+	const userContent: AgentPersistedMessageContentPart[] = [];
+	const userText = execution.userMessage === null ? null : textPart(execution.userMessage);
+	if (userText) userContent.push(userText);
+	for (const attachment of execution.attachments ?? []) {
+		userContent.push({
+			type: 'file',
+			fileId: attachment.id,
+			fileName: attachment.fileName,
+			mimeType: attachment.mimeType,
+			sizeBytes: attachment.sizeBytes,
+		});
+	}
+	if (userContent.length > 0) {
+		messages.push({
+			id: `${execution.id}:user`,
+			role: 'user',
+			content: userContent,
+			executionId: execution.id,
+		});
+	}
 
 	const assistantContent = assistantContentFromExecution(execution);
 	if (assistantContent.length > 0) {

@@ -81,6 +81,16 @@ export type ChatMessageRenderPart =
 	| { type: 'text'; text: string }
 	| { type: 'interactive'; toolCallId: string };
 
+export interface ChatMessageAttachment {
+	fileName: string;
+	mimeType: string;
+	sizeBytes?: number;
+	/** Server attachment id — set on history-loaded attachments; used to build the download URL. */
+	fileId?: string;
+	/** Local file backing the optimistic echo of a just-sent message (no fileId yet). */
+	file?: File;
+}
+
 export interface AgentsChatMessage {
 	id: string;
 	role: 'user' | 'assistant';
@@ -91,6 +101,7 @@ export interface AgentsChatMessage {
 	status?: ChatMessageStatus;
 	interactives?: InteractivePayload[];
 	interactive?: InteractivePayload;
+	attachments?: ChatMessageAttachment[];
 	/** Persisted agent execution id for this turn (history parse or live SSE `done`). */
 	executionId?: string;
 }

@@ -33,6 +33,7 @@ describe('AuthService', () => {
 	const globalConfig = mock<GlobalConfig>({
 		auth: { cookie: { secure: true, samesite: 'lax' } },
 		userManagement: { jwtSecret: 'random-secret' },
+		endpoints: { rest: 'rest' },
 	});
 	const jwtService = new JwtService(mock(), globalConfig);
 	const urlService = mock<UrlService>();
@@ -677,6 +678,34 @@ describe('AuthService', () => {
 			const result = await authService.resolveJwt(validToken, req, res);
 			expect(result).toEqual([user, { usedMfa: false }]);
 			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it('should skip browserId check for GET requests matching a RegExp skip entry', async () => {
+			userRepository.findOne.mockResolvedValue(user);
+			// Project-scoped routes resolve :projectId into req.baseUrl, so the
+			// skip entry must be a pattern rather than an exact string.
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'GET',
+				baseUrl: '/rest/projects/9xbqXk3hZVlVlPsN/agents/v2',
+				route: { path: '/:agentId/chat/attachments/:attachmentId' },
+			});
+
+			const result = await authService.resolveJwt(validToken, req, res);
+			expect(result).toEqual([user, { usedMfa: false }]);
+			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it('should not skip browserId check for other project-scoped agent routes', async () => {
+			userRepository.findOne.mockResolvedValue(user);
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'GET',
+				baseUrl: '/rest/projects/9xbqXk3hZVlVlPsN/agents/v2',
+				route: { path: '/:agentId/chat/:threadId/messages' },
+			});
+
+			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
 		});
 
 		it('should not skip browserId check for POST requests on skip endpoints', async () => {

@@ -227,6 +227,8 @@ import { AddHostRunIdToInstanceAiCheckpoints1784000000050 } from '../common/1784
 import { BackfillInstanceAiEventLog1784000000051 } from '../common/1784000000051-BackfillInstanceAiEventLog';
 import { CreateWorkflowReviewRequestTables1784000000052 } from '../common/1784000000052-CreateWorkflowReviewRequestTables';
 import { AddStoredAtToAgentExecution1784815940110 } from '../common/1784815940110-AddStoredAtToAgentExecution';
+import { CreateAgentChatAttachmentsTable1784819939398 } from '../common/1784819939398-CreateAgentChatAttachmentsTable';
+import { AddAttachmentsToAgentExecution1784820682891 } from '../common/1784820682891-AddAttachmentsToAgentExecution';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -459,4 +461,6 @@ export const postgresMigrations: Migration[] = [
 	BackfillInstanceAiEventLog1784000000051,
 	CreateWorkflowReviewRequestTables1784000000052,
 	AddStoredAtToAgentExecution1784815940110,
+	CreateAgentChatAttachmentsTable1784819939398,
+	AddAttachmentsToAgentExecution1784820682891,
 ];

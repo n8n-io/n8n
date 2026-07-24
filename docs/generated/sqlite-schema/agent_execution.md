@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(128) NOT NULL, "status" varchar(16) NOT NULL, "startedAt" datetime(3), "stoppedAt" datetime(3), "duration" integer NOT NULL DEFAULT (0), "userMessage" text, "model" varchar(255), "promptTokens" integer, "completionTokens" integer, "totalTokens" integer, "cost" real, "timeline" text, "error" text, "hitlStatus" varchar(16), "source" varchar(32), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "storedAt" VARCHAR(2) NOT NULL DEFAULT 'db' CONSTRAINT "CHK_agent_execution_storedAt" CHECK("storedAt" IN ('db', 'fs', 's3', 'az')), CONSTRAINT "CHK_agent_execution_status" CHECK (((("status" IN ('success', 'error'))))), CONSTRAINT "CHK_agent_execution_hitlStatus" CHECK (((("hitlStatus" IN ('suspended', 'resumed'))))), CONSTRAINT "FK_add2432fb6034cc18b6af299dce" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(128) NOT NULL, "status" varchar(16) NOT NULL, "startedAt" datetime(3), "stoppedAt" datetime(3), "duration" integer NOT NULL DEFAULT (0), "userMessage" text, "model" varchar(255), "promptTokens" integer, "completionTokens" integer, "totalTokens" integer, "cost" real, "timeline" text, "error" text, "hitlStatus" varchar(16), "source" varchar(32), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "storedAt" varchar(2) NOT NULL DEFAULT ('db'), "attachments" text, CONSTRAINT "CHK_agent_execution_storedAt" CHECK (("storedAt" IN ('db', 'fs', 's3', 'az'))), CONSTRAINT "CHK_agent_execution_status" CHECK ((((("status" IN ('success', 'error')))))), CONSTRAINT "CHK_agent_execution_hitlStatus" CHECK ((((("hitlStatus" IN ('suspended', 'resumed')))))), CONSTRAINT "FK_add2432fb6034cc18b6af299dce" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -15,6 +15,7 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| attachments | TEXT |  | true |  |  |  |
 | completionTokens | INTEGER |  | true |  |  |  |
 | cost | REAL |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -28,7 +29,7 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | startedAt | datetime(3) |  | true |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
 | stoppedAt | datetime(3) |  | true |  |  |  |
-| storedAt | VARCHAR(2) | 'db' | false |  |  |  |
+| storedAt | varchar(2) | 'db' | false |  |  |  |
 | threadId | varchar(128) |  | false |  | [agent_execution_threads](agent_execution_threads.md) |  |
 | timeline | TEXT |  | true |  |  |  |
 | totalTokens | INTEGER |  | true |  |  |  |
@@ -39,9 +40,9 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK("storedAt" IN ('db', 'fs', 's3', 'az')) |
-| - | CHECK | CHECK (((("status" IN ('success', 'error'))))) |
-| - | CHECK | CHECK (((("hitlStatus" IN ('suspended', 'resumed'))))) |
+| - | CHECK | CHECK (("storedAt" IN ('db', 'fs', 's3', 'az'))) |
+| - | CHECK | CHECK ((((("status" IN ('success', 'error')))))) |
+| - | CHECK | CHECK ((((("hitlStatus" IN ('suspended', 'resumed')))))) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_agent_execution_1 | PRIMARY KEY | PRIMARY KEY (id) |
@@ -61,6 +62,7 @@ erDiagram
 "agent_execution" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "agent_execution" {
+  TEXT attachments
   INTEGER completionTokens
   REAL cost
   datetime_3_ createdAt
@@ -74,7 +76,7 @@ erDiagram
   datetime_3_ startedAt
   varchar_16_ status
   datetime_3_ stoppedAt
-  VARCHAR_2_ storedAt
+  varchar_2_ storedAt
   varchar_128_ threadId FK
   TEXT timeline
   INTEGER totalTokens

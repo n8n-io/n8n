@@ -12,6 +12,7 @@ import { v4 as uuid } from 'uuid';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentTestChatService } from './agent-test-chat.service';
@@ -28,6 +29,7 @@ export class AgentsService {
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly testChatService: AgentTestChatService,
@@ -204,6 +206,15 @@ export class AgentsService {
 		}
 
 		await this.agentKnowledgeService.destroySandbox(projectId, agentId);
+
+		try {
+			await this.agentChatAttachmentService.deleteByAgent(agentId);
+		} catch (error) {
+			this.logger.warn('Failed to delete chat attachments on agent delete', {
+				agentId,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 
 		const chatIntegrationService = Container.get(ChatIntegrationService);
 		for (const integration of agent.integrations ?? []) {
