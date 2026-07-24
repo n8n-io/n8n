@@ -71,14 +71,15 @@ describe('WebhookResponseRelay', () => {
 
 			expect(binaryDataService.store).toHaveBeenCalledTimes(1);
 			expect((result.body as { binaryData: IBinaryData }).binaryData.id).toBe('database:stored-id');
-			expect(result.headers['content-type']).toBe('application/octet-stream');
+			// Inline Buffers are sent via `res.end`, which sets no content-type.
+			expect(result.headers['content-type']).toBeUndefined();
 		});
 
 		it('preserves an existing content-type header when offloading', async () => {
 			const binaryDataService = persistingStore();
 			const response: IN8nHttpFullResponse = {
-				body: Buffer.alloc(maxInlineSizeInBytes + 1, 1),
-				headers: { 'content-type': 'application/pdf' },
+				body: 'x'.repeat(maxInlineSizeInBytes + 1),
+				headers: { 'content-type': 'application/xml' },
 				statusCode: 200,
 			};
 
@@ -87,7 +88,12 @@ describe('WebhookResponseRelay', () => {
 				ctx,
 			)) as IN8nHttpFullResponse;
 
-			expect(result.headers['content-type']).toBe('application/pdf');
+			expect(result.headers['content-type']).toBe('application/xml');
+			expect(binaryDataService.store).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.objectContaining({ mimeType: 'application/xml' }),
+			);
 		});
 
 		it.each(['default', 'filesystem'] as const)(
@@ -179,7 +185,7 @@ describe('WebhookResponseRelay', () => {
 			expect(result.body).toBe(body);
 		});
 
-		it('offloads a large JSON body and sets a JSON content-type', async () => {
+		it('offloads a large JSON body and sets the content-type it would get inline', async () => {
 			const binaryDataService = persistingStore();
 			const body = { blob: 'x'.repeat(maxInlineSizeInBytes + 1) };
 			const response: IN8nHttpFullResponse = { body, headers: {}, statusCode: 200 };
@@ -191,10 +197,11 @@ describe('WebhookResponseRelay', () => {
 
 			expect(binaryDataService.store).toHaveBeenCalledTimes(1);
 			expect((result.body as { binaryData: IBinaryData }).binaryData.id).toBe('database:stored-id');
-			expect(result.headers['content-type']).toBe('application/json');
+			// Same content-type as `res.json` would set for the inline equivalent.
+			expect(result.headers['content-type']).toBe('application/json; charset=utf-8');
 		});
 
-		it('offloads a large string body and sets a text content-type', async () => {
+		it('offloads a large string body and sets the content-type it would get inline', async () => {
 			const binaryDataService = persistingStore();
 			const response: IN8nHttpFullResponse = {
 				body: 'x'.repeat(maxInlineSizeInBytes + 1),
@@ -208,7 +215,8 @@ describe('WebhookResponseRelay', () => {
 			)) as IN8nHttpFullResponse;
 
 			expect(binaryDataService.store).toHaveBeenCalledTimes(1);
-			expect(result.headers['content-type']).toBe('text/plain; charset=utf-8');
+			// Same content-type as `res.send` would set for the inline equivalent.
+			expect(result.headers['content-type']).toBe('text/html; charset=utf-8');
 		});
 
 		it('leaves a response without a body untouched', async () => {

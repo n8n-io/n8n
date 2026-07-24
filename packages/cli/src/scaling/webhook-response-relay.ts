@@ -17,7 +17,12 @@ type RelayContext = { workflowId: string; executionId: string };
 type MeasuredBody = {
 	sizeInBytes: number;
 	toBuffer: () => Buffer;
-	fallbackMimeType: string;
+	/**
+	 * The `content-type` Express would set if this body were relayed inline and
+	 * sent via `res.json`/`res.send`, so a response's headers do not change with
+	 * its size. `undefined` for Buffers, which are sent without a `content-type`.
+	 */
+	inlineContentType?: string;
 };
 
 /**
@@ -111,8 +116,9 @@ export class WebhookResponseRelay {
 	}
 
 	/**
-	 * Stores the body and replaces it with a reference, setting `content-type`
-	 * to the response's own type or the body's fallback when absent.
+	 * Stores the body and replaces it with a reference. When the response has no
+	 * `content-type` header, sets the one the body would have received inline,
+	 * keeping headers independent of body size.
 	 *
 	 * @returns `true` on success; `false` when no persisted store is available, in
 	 * which case the body is left untouched for the caller to relay inline.
@@ -122,20 +128,24 @@ export class WebhookResponseRelay {
 		body: MeasuredBody,
 		ctx: RelayContext,
 	): Promise<boolean> {
-		const mimeType = contentTypeOf(response) ?? body.fallbackMimeType;
+		const contentType = contentTypeOf(response) ?? body.inlineContentType;
 		const stored = await this.binaryDataService.store(
 			FileLocation.ofExecution(ctx.workflowId, ctx.executionId),
 			body.toBuffer(),
-			{ data: '', mimeType, fileName: 'webhook-response' },
+			{
+				data: '',
+				mimeType: contentType ?? 'application/octet-stream',
+				fileName: 'webhook-response',
+			},
 		);
 
 		if (!stored.id) {
 			return false;
 		}
 
-		response.headers ??= {};
-		if (contentTypeOf(response) === undefined) {
-			response.headers['content-type'] = mimeType;
+		if (contentTypeOf(response) === undefined && body.inlineContentType !== undefined) {
+			response.headers ??= {};
+			response.headers['content-type'] = body.inlineContentType;
 		}
 		response.body = { binaryData: stored };
 		return true;
@@ -157,7 +167,6 @@ function measureBody(body: IN8nHttpFullResponse['body']): MeasuredBody | undefin
 		return {
 			sizeInBytes: body.length,
 			toBuffer: () => body,
-			fallbackMimeType: 'application/octet-stream',
 		};
 	}
 
@@ -165,7 +174,7 @@ function measureBody(body: IN8nHttpFullResponse['body']): MeasuredBody | undefin
 		return {
 			sizeInBytes: Buffer.byteLength(body, 'utf8'),
 			toBuffer: () => Buffer.from(body, 'utf8'),
-			fallbackMimeType: 'text/plain; charset=utf-8',
+			inlineContentType: 'text/html; charset=utf-8',
 		};
 	}
 
@@ -174,7 +183,7 @@ function measureBody(body: IN8nHttpFullResponse['body']): MeasuredBody | undefin
 		return {
 			sizeInBytes: Buffer.byteLength(json, 'utf8'),
 			toBuffer: () => Buffer.from(json, 'utf8'),
-			fallbackMimeType: 'application/json',
+			inlineContentType: 'application/json; charset=utf-8',
 		};
 	}
 
