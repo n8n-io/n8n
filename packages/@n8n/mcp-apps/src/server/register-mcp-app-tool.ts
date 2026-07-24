@@ -4,7 +4,7 @@ import type {
 	RegisteredTool,
 	ServerContext,
 	StandardSchemaWithJSON,
-} from "@modelcontextprotocol/server";
+} from '@modelcontextprotocol/server';
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod/v4';
 
@@ -17,8 +17,14 @@ type ZodShape = Record<string, z.ZodType>;
 // zod/v4 in the pinned zod 3.25.x implements Standard Schema validation but not
 // `~standard.jsonSchema` (added in zod 4.2). Grafting the converter on satisfies the
 // SDK's schema-object contract without bumping zod.
-function asMcpSchema<S extends z.ZodType>(schema: S): StandardSchemaWithJSON<z.input<S>, z.output<S>> {
-	const jsonSchema = (io: 'input' | 'output') => z.toJSONSchema(schema, { io }) as Record<string, unknown>;
+// Duplicated in @n8n/mcp-browser/src/mcp-schema.ts (asMcpSchema) and
+// packages/cli/src/modules/mcp/tools/schemas.ts (toMcpSchema) — no shared package to
+// host a stopgap. Keep in sync; delete all copies once the zod pin reaches >=4.2.
+function asMcpSchema<S extends z.ZodType>(
+	schema: S,
+): StandardSchemaWithJSON<z.input<S>, z.output<S>> {
+	const jsonSchema = (io: 'input' | 'output') =>
+		z.toJSONSchema(schema, { io }) as Record<string, unknown>;
 	return {
 		// eslint-disable-next-line @typescript-eslint/naming-convention -- Standard Schema spec key
 		'~standard': {
