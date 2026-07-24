@@ -1,9 +1,9 @@
+import { UnimplementedError } from '../common';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
 import type { ExecutionStartHandler } from './execution-start-handler';
 
 /**
- * Consumes the orchestration queue and routes each message to its handler. M1
- * handles `execution:enqueued`; more message types arrive with later tickets.
+ * Consumes the orchestration queue and routes each message to its handler.
  */
 export class OrchestrationWorker {
 	constructor(
@@ -17,6 +17,10 @@ export class OrchestrationWorker {
 				case 'execution:enqueued':
 					await this.startHandler.handle(message);
 					break;
+				default:
+					throw new UnimplementedError(
+						`orchestration worker received an unimplemented message type: ${String(message.type)}`,
+					);
 			}
 		});
 	}

@@ -30,8 +30,7 @@ export class ExecutionNotFoundError extends Error {
 }
 
 /**
- * Persistence port for executions. The core depends on this interface, not on
- * TypeORM; the adapter lives in `database/`.
+ * Persistence port for executions.
  */
 export interface ExecutionStore {
 	/** Persist a new execution record; returns its generated id. */
@@ -45,10 +44,4 @@ export interface ExecutionStore {
 	 * the transition, so duplicate/redelivered events are handled idempotently.
 	 */
 	transitionStatus(id: string, from: ExecutionStatus, to: ExecutionStatus): Promise<boolean>;
-
-	/**
-	 * Mark a running execution `failed` and stamp `finishedAt`. CAS on the
-	 * `running` status; returns `true` iff this call performed the transition.
-	 */
-	failExecution(id: string): Promise<boolean>;
 }

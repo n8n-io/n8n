@@ -22,26 +22,11 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	async loadExecution(id: string): Promise<ExecutionRecord> {
 		const row = await this.repo.findOneBy({ id });
 		if (!row) throw new ExecutionNotFoundError(id);
-		return {
-			id: row.id,
-			workflowId: row.workflowId,
-			status: row.status,
-			mode: row.mode,
-			graph: row.graph,
-			triggerPayload: row.triggerPayload,
-		};
+		return row;
 	}
 
 	async transitionStatus(id: string, from: ExecutionStatus, to: ExecutionStatus): Promise<boolean> {
 		const result = await this.repo.update({ id, status: from }, { status: to });
-		return result.affected === 1;
-	}
-
-	async failExecution(id: string): Promise<boolean> {
-		const result = await this.repo.update(
-			{ id, status: 'running' },
-			{ status: 'failed', finishedAt: new Date() },
-		);
 		return result.affected === 1;
 	}
 }

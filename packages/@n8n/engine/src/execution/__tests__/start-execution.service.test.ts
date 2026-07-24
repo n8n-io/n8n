@@ -16,7 +16,6 @@ function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 		createExecution: vi.fn().mockResolvedValue({ id: 'exec-id-1' }),
 		loadExecution: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
-		failExecution: vi.fn().mockResolvedValue(true),
 		...overrides,
 	};
 }

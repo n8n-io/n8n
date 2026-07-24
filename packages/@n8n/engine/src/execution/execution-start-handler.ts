@@ -6,8 +6,7 @@ import type { StepStore } from './step-store';
 /**
  * Handles the `execution:enqueued` orchestration event: claims the execution
  * (`queued → running`), records the trigger as a completed step, and plans the
- * first hop — a queued step record per successor, each enqueued on the step
- * queue. Actually running a step is CAT-2870.
+ * first step(s).
  */
 export class ExecutionStartHandler {
 	constructor(
@@ -30,7 +29,7 @@ export class ExecutionStartHandler {
 		const trigger = findTriggerNode(execution.graph);
 		if (!trigger) {
 			// Malformed graph — no entry point to run.
-			await this.executionStore.failExecution(event.executionId);
+			await this.executionStore.transitionStatus(event.executionId, 'running', 'failed');
 			return;
 		}
 
@@ -42,10 +41,7 @@ export class ExecutionStartHandler {
 			status: 'completed',
 		});
 
-		// Plan only the first hop: a queued step record per successor, enqueued for
-		// execution. Later hops are planned as each step completes (CAT-2871); a
-		// trigger with no successors leaves the execution 'running' until completion
-		// detection lands (CAT-2872).
+		// Plan the successors. Create a step for each and enqueue it for processing.
 		const successorNodeIds = getSuccessorNodeIds(execution.graph, trigger.id);
 		for (const nodeId of successorNodeIds) {
 			const { id: stepId } = await this.stepStore.createStep({

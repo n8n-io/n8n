@@ -11,7 +11,6 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 		createExecution: vi.fn(),
 		loadExecution: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
-		failExecution: vi.fn().mockResolvedValue(true),
 		...overrides,
 	};
 }
@@ -104,7 +103,7 @@ describe('ExecutionStartHandler', () => {
 
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
-		expect(executionStore.failExecution).toHaveBeenCalledWith('exec-1');
+		expect(executionStore.transitionStatus).toHaveBeenCalledWith('exec-1', 'running', 'failed');
 		expect(stepStore.createStep).not.toHaveBeenCalled();
 		expect(stepQueue.messages).toHaveLength(0);
 	});
@@ -124,7 +123,9 @@ describe('ExecutionStartHandler', () => {
 
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
-		expect(executionStore.failExecution).not.toHaveBeenCalled();
+		// claimed (queued -> running) but not failed
+		expect(executionStore.transitionStatus).toHaveBeenCalledWith('exec-1', 'queued', 'running');
+		expect(executionStore.transitionStatus).not.toHaveBeenCalledWith('exec-1', 'running', 'failed');
 		expect(createStep).toHaveBeenCalledTimes(1);
 		expect(createStep).toHaveBeenCalledWith({
 			executionId: 'exec-1',
