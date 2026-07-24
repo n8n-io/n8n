@@ -71,8 +71,8 @@ const verifyMcpServerInputSchema = z.object({
 		.string()
 		.min(1)
 		.max(64)
-		.regex(/^[a-zA-Z0-9_-]+$/)
-		.describe('The server name (used as the tool-name prefix)'),
+		.refine((name) => name.trim().length > 0, 'MCP server name cannot be blank')
+		.describe('The user-facing server name; it is normalized for model-facing tool names'),
 	url: z.string().min(1).describe('The MCP server endpoint URL'),
 	transport: z
 		.enum(['sse', 'streamableHttp'])
@@ -108,6 +108,7 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 				'Establishes a temporary connection, lists the available tools, then closes the connection. ' +
 				'Returns { ok: true, tools: [{ name, description }] } on success, or ' +
 				'{ ok: false, error: string } on failure. ' +
+				'Tool names are the original MCP names without the model-facing server prefix. ' +
 				'Call this after ask_credential (when authentication is not "none") and before patch_config.',
 		)
 		.input(verifyMcpServerInputSchema)
@@ -130,7 +131,7 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 				return {
 					ok: true,
 					tools: tools.map((t) => ({
-						name: t.name,
+						name: t.mcpToolName ?? t.name,
 						description: t.description ?? '',
 					})),
 				};
