@@ -263,23 +263,27 @@ function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, 
 	return touched;
 }
 
-const buildInputSchema = (canvasGroupsEnabled: boolean): z.ZodRawShape => ({
-	workflowId: z.string().describe('The ID of the workflow to update.'),
-	skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
-	operations: z
-		.array(buildOperationInputSchema(canvasGroupsEnabled))
-		.min(1)
-		.max(MAX_OPERATIONS_PER_CALL)
-		.describe(
-			`Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved.`,
+// The concrete return type (not a widened z.ZodRawShape) keeps the tool's
+// generic coupled to the real schema shape, so the handler's argument
+// annotation is compile-checked against it via ToolCallback's parameter types.
+const buildInputSchema = (canvasGroupsEnabled: boolean) =>
+	({
+		workflowId: z.string().describe('The ID of the workflow to update.'),
+		skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
+		operations: z
+			.array(buildOperationInputSchema(canvasGroupsEnabled))
+			.min(1)
+			.max(MAX_OPERATIONS_PER_CALL)
+			.describe(
+				`Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved.`,
+			),
+		versionName: versionNameInputSchema.describe(
+			'Short summary of what this update changes, shown in the workflow\'s version history (e.g. "Added Slack notification after HTTP request"). Always provide it.',
 		),
-	versionName: versionNameInputSchema.describe(
-		'Short summary of what this update changes, shown in the workflow\'s version history (e.g. "Added Slack notification after HTTP request"). Always provide it.',
-	),
-	versionDescription: versionDescriptionInputSchema.describe(
-		'Longer description of what changed and why, shown in the version history alongside the version name.',
-	),
-});
+		versionDescription: versionDescriptionInputSchema.describe(
+			'Longer description of what changed and why, shown in the version history alongside the version name.',
+		),
+	}) satisfies z.ZodRawShape;
 
 // The MCP SDK publishes this schema with `additionalProperties: false` and
 // validates `structuredContent` against it on every response. Success returns
@@ -513,7 +517,7 @@ export const createUpdateWorkflowTool = (
 		 */
 		canvasGroupsEnabled?: boolean;
 	} = {},
-): ToolDefinition<z.ZodRawShape> => ({
+): ToolDefinition<ReturnType<typeof buildInputSchema>> => ({
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
 		description:

@@ -994,12 +994,12 @@ describe('update-workflow MCP tool', () => {
 						: null,
 				);
 
-				const result = await tool.handler(
+				const result = await callHandler(
 					{
 						workflowId: 'wf-1',
 						operations: [{ type: 'setWorkflowSettings', settings: { timezone: 'UTC' } }],
 					},
-					{} as never,
+					tool,
 				);
 
 				expect(result.isError).toBeUndefined();
