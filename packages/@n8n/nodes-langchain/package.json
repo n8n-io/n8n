@@ -161,6 +161,7 @@
       "dist/nodes/output_parser/OutputParserStructured/OutputParserStructured.node.js",
       "dist/nodes/rerankers/RerankerCohere/RerankerCohere.node.js",
       "dist/nodes/retrievers/RetrieverContextualCompression/RetrieverContextualCompression.node.js",
+      "dist/nodes/retrievers/RetrieverBedrockKnowledgeBase/RetrieverBedrockKnowledgeBase.node.js",
       "dist/nodes/retrievers/RetrieverVectorStore/RetrieverVectorStore.node.js",
       "dist/nodes/retrievers/RetrieverMultiQuery/RetrieverMultiQuery.node.js",
       "dist/nodes/retrievers/RetrieverWorkflow/RetrieverWorkflow.node.js",
@@ -235,6 +236,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "3.938.0",
+    "@aws-sdk/client-bedrock-agent-runtime": "3.938.0",
     "@aws-sdk/client-sso-oidc": "3.808.0",
     "@aws-sdk/credential-providers": "3.808.0",
     "@azure/identity": "catalog:",
