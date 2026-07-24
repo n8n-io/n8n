@@ -4,6 +4,7 @@ import { computed } from 'vue';
 
 import type { IUser, UserStackGroups } from '../../types';
 import N8nAvatar from '../N8nAvatar';
+import { AVATAR_SIZES, type AvatarSize } from '../N8nAvatar/avatarSizes';
 import N8nUserInfo from '../N8nUserInfo';
 
 const props = withDefaults(
@@ -12,13 +13,18 @@ const props = withDefaults(
 		currentUserEmail?: string | null;
 		maxAvatars?: number;
 		dropdownTrigger?: 'hover' | 'click';
+		size?: AvatarSize;
 	}>(),
 	{
 		currentUserEmail: '',
 		maxAvatars: 2,
 		dropdownTrigger: 'hover',
+		size: 'small',
 	},
 );
+
+// Keep the overflow badge the same diameter as the avatars.
+const badgeSize = computed(() => `${AVATAR_SIZES[props.size]}px`);
 
 const nonEmptyGroups = computed(() => {
 	const users: UserStackGroups = {};
@@ -76,9 +82,15 @@ const menuHeight = computed(() => {
 					:last-name="user.lastName"
 					:class="$style.avatar"
 					:data-test-id="`user-stack-avatar-${user.id}`"
-					size="small"
+					:size="size"
 				/>
-				<div v-if="hiddenUsersCount > 0" :class="$style.hiddenBadge">+{{ hiddenUsersCount }}</div>
+				<div
+					v-if="hiddenUsersCount > 0"
+					:class="$style.hiddenBadge"
+					:style="{ width: badgeSize, height: badgeSize }"
+				>
+					+{{ hiddenUsersCount }}
+				</div>
 			</div>
 			<template #dropdown>
 				<ElDropdownMenu class="user-stack-list" data-test-id="user-stack-list">
@@ -121,8 +133,6 @@ const menuHeight = computed(() => {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	width: 28px;
-	height: 28px;
 	color: var(--color--text);
 	background-color: var(--color--background--light-3);
 	font-weight: var(--font-weight--bold);
