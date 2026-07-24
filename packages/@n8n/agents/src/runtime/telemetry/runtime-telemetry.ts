@@ -170,8 +170,6 @@ export class RuntimeTelemetry {
 		options: ExecutionOptions | undefined,
 		runId: string,
 		fn: () => Promise<T>,
-		// Seam for TRUST-308 (nesting delegated sub-agent spans under the parent
-		// agent trace) — unused today, every root span is self-contained.
 		links?: OpaqueSpanLink[],
 	): Promise<T> {
 		const t = this.resolve(options);
@@ -183,9 +181,13 @@ export class RuntimeTelemetry {
 		return await t.tracer.startActiveSpan(
 			spanName,
 			{
-				// Self-contained trace regardless of ambient context, so the span
-				// tree's shape is identical no matter how the agent was invoked.
-				root: true,
+				// Self-contained trace regardless of ambient context by default, so
+				// a top-level agent run's span tree is identical no matter how it was
+				// invoked. `rootAnchored: false` (set by `deriveSubAgentTelemetry` for
+				// delegated sub-agent runs) omits `root` instead, so the span nests
+				// under whatever OTel context is already active — the parent's
+				// delegate-tool-call span, when run in-process inside it.
+				...(t.rootAnchored === false ? {} : { root: true }),
 				...(links?.length ? { links } : {}),
 				attributes: this.buildTelemetryRootAttributes(t, spanName, runId),
 			},
