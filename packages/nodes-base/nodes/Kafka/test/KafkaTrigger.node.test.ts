@@ -11,7 +11,7 @@ import {
 	type KafkaMessage,
 	type RecordBatchEntry,
 } from 'kafkajs';
-import { NodeOperationError, type IRun } from 'n8n-workflow';
+import { NodeOperationError, TriggerCloseError, type IRun } from 'n8n-workflow';
 
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
@@ -1252,6 +1252,81 @@ describe('KafkaTrigger Node', () => {
 		// Verify consumer was stopped and disconnected
 		expect(mockConsumerStop).toHaveBeenCalled();
 		expect(mockConsumerDisconnect).toHaveBeenCalled();
+	});
+
+	it('should reject with TriggerCloseError and skip disconnect when consumer.stop() fails on close', async () => {
+		const teardownError = new Error('The group is rebalancing, so a rejoin is needed');
+		const mockConsumerStop = vi.fn().mockRejectedValue(teardownError);
+
+		mockConsumerCreate.mockReturnValueOnce(
+			mock<Consumer>({
+				connect: mockConsumerConnect,
+				subscribe: mockConsumerSubscribe,
+				run: mockConsumerRun,
+				disconnect: mockConsumerDisconnect,
+				stop: mockConsumerStop,
+				on: vi.fn(() => vi.fn()),
+			}),
+		);
+
+		const { close } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		const error = await close().then(
+			() => null,
+			(e: unknown) => e,
+		);
+
+		expect(error).toBeInstanceOf(TriggerCloseError);
+		expect((error as TriggerCloseError).cause).toBe(teardownError);
+		expect((error as TriggerCloseError).level).toBe('warning');
+		// A failed stop() aborts the teardown before the broker connection is closed
+		expect(mockConsumerDisconnect).not.toHaveBeenCalled();
+	});
+
+	it('should reject with TriggerCloseError when consumer.disconnect() fails on close', async () => {
+		const teardownError = new Error('The coordinator is not aware of this member');
+		mockConsumerDisconnect.mockRejectedValueOnce(teardownError);
+
+		const { close } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		const error = await close().then(
+			() => null,
+			(e: unknown) => e,
+		);
+
+		expect(error).toBeInstanceOf(TriggerCloseError);
+		expect((error as TriggerCloseError).cause).toBe(teardownError);
+		expect((error as TriggerCloseError).level).toBe('warning');
 	});
 
 	it('should use default values for consumer config when options are not provided', async () => {
