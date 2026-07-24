@@ -6,6 +6,7 @@ import { CredClassOAuth2NamingRule } from './cred-class-oauth2-naming.js';
 import { CredentialDocumentationUrlRule } from './credential-documentation-url.js';
 import { CredentialPasswordFieldRule } from './credential-password-field.js';
 import { CredentialTestRequiredRule } from './credential-test-required.js';
+import { CredentialUnnecessaryPasswordRule } from './credential-unnecessary-password.js';
 import { IconPreferThemedVariantsRule } from './icon-prefer-themed-variants.js';
 import { IconValidationRule } from './icon-validation.js';
 import { MissingPairedItemRule } from './missing-paired-item.js';
@@ -49,6 +50,7 @@ export const rules = {
 	'node-usable-as-tool': NodeUsableAsToolRule,
 	'package-name-convention': PackageNameConventionRule,
 	'credential-test-required': CredentialTestRequiredRule,
+	'credential-unnecessary-password': CredentialUnnecessaryPasswordRule,
 	'no-credential-reuse': NoCredentialReuseRule,
 	'no-dangerous-functions': NoDangerousFunctionsRule,
 	'no-forbidden-lifecycle-scripts': NoForbiddenLifecycleScriptsRule,
