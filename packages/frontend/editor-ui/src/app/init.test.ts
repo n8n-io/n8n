@@ -1,6 +1,8 @@
 import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { initializeAuthenticatedFeatures, initializeCore, state } from '@/app/init';
+import { registerUpgradeRedirectGuard } from '@/app/composables/usePageRedirectionHelper';
+import { confirmIfBuilderStreaming } from '@/features/ai/assistant/composables/useBuilderStreamingGuard';
 import { AuthenticationMethod } from '@n8n/api-types';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -37,6 +39,14 @@ vi.mock('@/features/settings/users/users.store', () => ({
 		registerModalOpeners: vi.fn(),
 		setUserQuota: vi.fn(),
 	}),
+}));
+
+vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
+	registerUpgradeRedirectGuard: vi.fn(),
+}));
+
+vi.mock('@/features/ai/assistant/composables/useBuilderStreamingGuard', () => ({
+	confirmIfBuilderStreaming: vi.fn(),
 }));
 
 describe('Init', () => {
@@ -252,6 +262,8 @@ describe('Init', () => {
 			// Modal openers are provided to the decoupled stores at bootstrap.
 			expect(usersStore.registerModalOpeners).toHaveBeenCalled();
 			expect(versionsStore.registerModalOpeners).toHaveBeenCalled();
+			// The upgrade-redirect guard is registered so `goToUpgrade` can confirm before leaving.
+			expect(registerUpgradeRedirectGuard).toHaveBeenCalledWith(confirmIfBuilderStreaming);
 
 			await initializeAuthenticatedFeatures();
 

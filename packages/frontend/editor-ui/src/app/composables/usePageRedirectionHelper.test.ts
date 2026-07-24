@@ -1,7 +1,7 @@
 import { ROLE } from '@n8n/api-types';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import merge from 'lodash/merge';
-import { usePageRedirectionHelper } from './usePageRedirectionHelper';
+import { registerUpgradeRedirectGuard, usePageRedirectionHelper } from './usePageRedirectionHelper';
 import { defaultSettings } from '@/__tests__/defaults';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { createPinia, setActivePinia } from 'pinia';
@@ -38,6 +38,8 @@ vi.mock('@/app/composables/useTelemetry', () => {
 describe('usePageRedirectionHelper', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
+		// Reset the module-level guard so registrations do not leak between tests.
+		registerUpgradeRedirectGuard(async () => true);
 	});
 
 	beforeEach(() => {
@@ -242,4 +244,46 @@ describe('usePageRedirectionHelper', () => {
 			expect(location.href).toBe(expectation);
 		},
 	);
+
+	describe('goToUpgrade with a registered upgrade-redirect guard', () => {
+		beforeEach(() => {
+			usersStore.addUsers([{ id: '1', isPending: false, role: ROLE.Owner }]);
+			usersStore.currentUserId = '1';
+
+			settingsStore.setSettings(
+				merge({}, defaultSettings, {
+					deployment: { type: 'cloud' },
+					license: { environment: 'production' },
+				}),
+			);
+		});
+
+		test('aborts the redirect and skips telemetry when the guard resolves false', async () => {
+			const telemetry = useTelemetry();
+			const initialHref = location.href;
+			registerUpgradeRedirectGuard(async () => false);
+
+			await pageRedirectionHelper.goToUpgrade('advanced-permissions', 'upgrade-api', 'redirect');
+
+			expect(location.href).toBe(initialHref);
+			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+
+		test('proceeds with the redirect when the guard resolves true', async () => {
+			const telemetry = useTelemetry();
+			registerUpgradeRedirectGuard(async () => true);
+
+			await pageRedirectionHelper.goToUpgrade('advanced-permissions', 'upgrade-api', 'redirect');
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User clicked upgrade CTA',
+				expect.objectContaining({ source: 'advanced-permissions' }),
+			);
+			expect(location.href).toBe(
+				`https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent(
+					'/account/change-plan',
+				)}&utm_campaign=upgrade-api&source=advanced-permissions`,
+			);
+		});
+	});
 });

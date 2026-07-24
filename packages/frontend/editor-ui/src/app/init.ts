@@ -3,6 +3,7 @@ import SourceControlInitializationErrorMessage from '@/features/integrations/sou
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
+import { registerUpgradeRedirectGuard } from '@/app/composables/usePageRedirectionHelper';
 import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 
@@ -26,6 +27,7 @@ import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useVersionsStore } from '@/app/stores/versions.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
+import { confirmIfBuilderStreaming } from '@/features/ai/assistant/composables/useBuilderStreamingGuard';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { h } from 'vue';
@@ -132,6 +134,10 @@ export async function initializeAuthenticatedFeatures(
 	};
 	usersStore.registerModalOpeners(modalOpeners);
 	versionsStore.registerModalOpeners(modalOpeners);
+
+	// Provide the builder-streaming confirmation to the redirection helper, so it can
+	// guard upgrade redirects without importing the AI builder feature store.
+	registerUpgradeRedirectGuard(confirmIfBuilderStreaming);
 
 	if (!settingsStore.isPreviewMode) {
 		usersStore.setUserQuota(settingsStore.userManagement.quota);

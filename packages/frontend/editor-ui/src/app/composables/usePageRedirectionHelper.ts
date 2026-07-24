@@ -5,7 +5,24 @@ import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { CloudUpdateLinkSourceType, UTMCampaign } from '@/Interface';
 import { N8N_PRICING_PAGE_URL } from '@/app/constants';
-import { confirmIfBuilderStreaming } from '@/features/ai/assistant/composables/useBuilderStreamingGuard';
+
+/**
+ * Guard consulted before an upgrade redirect. Resolves `true` to proceed, `false`
+ * to abort. Lets a consumer confirm before redirecting (e.g. warn while the AI
+ * builder is streaming) without this composable importing that feature store.
+ */
+export type UpgradeRedirectGuard = () => Promise<boolean>;
+
+/**
+ * The active guard, registered at app bootstrap (see app/init.ts). Until then it
+ * proceeds without confirmation — a valid default, not a placeholder — so the
+ * composable never reaches into the AI builder feature. (CAT-3686 / N8N-68)
+ */
+let upgradeRedirectGuard: UpgradeRedirectGuard = async () => true;
+
+export function registerUpgradeRedirectGuard(guard: UpgradeRedirectGuard) {
+	upgradeRedirectGuard = guard;
+}
 
 export function usePageRedirectionHelper() {
 	const usersStore = useUsersStore();
@@ -53,7 +70,7 @@ export function usePageRedirectionHelper() {
 		utm_campaign: UTMCampaign,
 		mode: 'open' | 'redirect' = 'open',
 	) => {
-		const shouldProceed = await confirmIfBuilderStreaming();
+		const shouldProceed = await upgradeRedirectGuard();
 		if (!shouldProceed) return;
 
 		const { usageLeft, trialDaysLeft, userIsTrialing } = cloudPlanStore;
