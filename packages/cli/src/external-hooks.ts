@@ -26,6 +26,27 @@ type Repositories = {
 	Workflow: WorkflowRepository;
 };
 
+/**
+ * Identity of the user performing a workflow lifecycle operation.
+ */
+export type WorkflowLifecycleHookActor = {
+	id: string;
+	email: string;
+	firstName: string;
+	lastName: string;
+	role?: string;
+};
+
+export function toWorkflowLifecycleHookActor(user: User): WorkflowLifecycleHookActor {
+	return {
+		id: user.id,
+		email: user.email,
+		firstName: user.firstName,
+		lastName: user.lastName,
+		role: user.role?.slug,
+	};
+}
+
 type ExternalHooksMap = {
 	'n8n.ready': [server: AbstractServer, config: Config];
 	'n8n.stop': never;
@@ -70,13 +91,13 @@ type ExternalHooksMap = {
 
 	'workflow.create': [createdWorkflow: IWorkflowBase];
 	'workflow.afterCreate': [createdWorkflow: IWorkflowBase];
-	'workflow.activate': [updatedWorkflow: IWorkflowBase];
+	'workflow.activate': [updatedWorkflow: IWorkflowBase, actor?: WorkflowLifecycleHookActor];
 	'workflow.update': [updatedWorkflow: IWorkflowBase];
 	'workflow.afterUpdate': [updatedWorkflow: IWorkflowBase];
-	'workflow.delete': [workflowId: string];
-	'workflow.afterDelete': [workflowId: string];
-	'workflow.afterArchive': [workflowId: string];
-	'workflow.afterUnarchive': [workflowId: string];
+	'workflow.delete': [workflowId: string, actor?: WorkflowLifecycleHookActor];
+	'workflow.afterDelete': [workflowId: string, actor?: WorkflowLifecycleHookActor];
+	'workflow.afterArchive': [workflowId: string, actor?: WorkflowLifecycleHookActor];
+	'workflow.afterUnarchive': [workflowId: string, actor?: WorkflowLifecycleHookActor];
 
 	'workflow.preExecute': [
 		workflow: Workflow,
