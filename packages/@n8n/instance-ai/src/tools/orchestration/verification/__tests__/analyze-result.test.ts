@@ -56,9 +56,13 @@ describe('analyzeVerificationResult — halted wait gates', () => {
 
 		expect(analysis.success).toBe(true);
 		expect(analysis.nodesNotReached).toEqual(['Publish']);
-		expect(analysis.coverageNote).toContain('halted at send-and-wait gate');
-		expect(analysis.coverageNote).toContain('manual');
-		expect(analysis.coverageNote).not.toContain('Seed matching test data');
+		expect(analysis.coverageNote).toContain('pauses at wait gate');
+		expect(analysis.coverageNote).toContain('live end-to-end test');
+		// Gate-agnostic wording: no approval/human-decision claims (the halt also
+		// covers time-based Wait and Form gates), and non-gate dead ends keep the
+		// seed-and-re-run guidance instead of being attributed to the gate.
+		expect(analysis.coverageNote).not.toContain('human decision');
+		expect(analysis.coverageNote).toContain('NOT behind the gate');
 	});
 
 	it('keeps the generic partial-coverage guidance when no gate halted the run', () => {

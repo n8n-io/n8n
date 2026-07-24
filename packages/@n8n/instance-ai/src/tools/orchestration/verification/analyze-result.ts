@@ -229,11 +229,14 @@ function buildCoverageNote(
 	if (nodesNotReached.length === 0) return undefined;
 	if (success && reachedHaltedGates.length > 0) {
 		return (
-			`Verification halted at send-and-wait gate(s) ${reachedHaltedGates.join(', ')}: continuing needs a ` +
-			`human decision, so ${nodesNotReached.length} downstream node(s) were not executed and remain ` +
-			`unverified: ${nodesNotReached.join(', ')}. This is expected for approval loops — do not edit the ` +
-			'workflow or re-run verification to force coverage. Report that the approval path needs a manual ' +
-			'end-to-end test.'
+			`Verification pauses at wait gate(s) ${reachedHaltedGates.join(', ')} — in a live run the ` +
+			'workflow stops there (for a human response or a wait condition), so execution past the ' +
+			`gate is not simulated. ${nodesNotReached.length} planned node(s) were not reached: ` +
+			`${nodesNotReached.join(', ')}. Nodes behind the gate are expected to be unreached — do ` +
+			'not edit the workflow or re-run verification to force coverage there; recommend a live ' +
+			'end-to-end test instead. Any unreached node NOT behind the gate did not receive input ' +
+			'items (usually an empty lookup or query) — seed matching test data and re-run before ' +
+			'treating it as verified.'
 		);
 	}
 	const ending = result.lastNodeExecuted
