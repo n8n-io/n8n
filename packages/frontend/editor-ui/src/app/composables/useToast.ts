@@ -5,7 +5,7 @@ import { setNotify } from '@n8n/composables/useToast';
 // (`@n8n/composables`) can issue notifications without importing element-plus
 // directly. Runs on first import; `editor-ui` imports this module during
 // bootstrap, before any consumer runs.
-setNotify(ElNotification as Parameters<typeof setNotify>[0]);
+setNotify(ElNotification);
 
 /**
  * @deprecated Import from `@n8n/composables/useToast` instead. This re-export
