@@ -132,6 +132,38 @@ const isReadOnly = computed(() => {
 	return apiKey.owner.id !== currentUser.value.id;
 });
 
+// Helper copy under the expiration select. Always present so "Never" explains
+// itself (the key stays active until revoked) instead of silently clearing.
+const expirationHint = computed(() => {
+	if (expirationDaysFromNow.value === EXPIRATION_OPTIONS.NO_EXPIRATION) {
+		return i18n.baseText('settings.api.view.modal.form.expirationText.never');
+	}
+	if (expirationDate.value) {
+		return i18n.baseText('settings.api.view.modal.form.expirationText', {
+			interpolate: { expirationDate: expirationDate.value },
+		});
+	}
+	return '';
+});
+
+// Expiration can't be changed after creation, so edit/view modes surface it as
+// read-only text using the same copy as the create form.
+const editExpirationText = computed(() => {
+	const apiKey = currentApiKey.value;
+	if (!apiKey) return '';
+	if (!apiKey.expiresAt) {
+		return i18n.baseText('settings.api.view.modal.form.expirationText.never');
+	}
+	const date = DateTime.fromSeconds(apiKey.expiresAt).toFormat('ccc, MMM d yyyy');
+	const isExpired = apiKey.expiresAt <= Math.floor(Date.now() / 1000);
+	return i18n.baseText(
+		isExpired
+			? 'settings.api.view.modal.form.expirationText.expired'
+			: 'settings.api.view.modal.form.expirationText',
+		{ interpolate: { expirationDate: date } },
+	);
+});
+
 const isCustomDateInThePast = (date: Date) => Date.now() > date.getTime();
 
 onMounted(() => {
@@ -390,11 +422,6 @@ async function handleEnterKey(event: KeyboardEvent) {
 								</N8nOption>
 							</N8nSelect>
 						</N8nInputLabel>
-						<N8nText v-if="expirationDate" class="mb-xs">{{
-							i18n.baseText('settings.api.view.modal.form.expirationText', {
-								interpolate: { expirationDate },
-							})
-						}}</N8nText>
 						<ElDatePicker
 							v-if="showExpirationDateSelector"
 							v-model="customExpirationDate"
@@ -404,7 +431,24 @@ async function handleEnterKey(event: KeyboardEvent) {
 							value-format="X"
 							:disabled-date="isCustomDateInThePast"
 						/>
+						<N8nText
+							v-if="expirationHint"
+							size="small"
+							color="text-light"
+							data-test-id="api-key-expiration-hint"
+						>
+							{{ expirationHint }}
+						</N8nText>
 					</div>
+					<N8nInputLabel
+						v-else
+						:label="i18n.baseText('settings.api.view.modal.form.expiration')"
+						color="text-dark"
+					>
+						<N8nText size="small" color="text-light" data-test-id="api-key-expiration-readonly">
+							{{ editExpirationText }}
+						</N8nText>
+					</N8nInputLabel>
 					<ApiKeyScopes
 						v-model="selectedScopes"
 						:available-scopes="availableScopes"
@@ -509,9 +553,9 @@ async function handleEnterKey(event: KeyboardEvent) {
 
 .expirationSection {
 	display: flex;
-	flex-direction: row;
-	align-items: flex-end;
-	gap: var(--spacing--xs);
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--spacing--3xs);
 }
 
 .footer {

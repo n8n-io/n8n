@@ -211,6 +211,30 @@ describe('ApiKeyCreateOrEditModal', () => {
 		expect(getByText('123456')).toBeInTheDocument();
 	});
 
+	test('shows the expiration hint for the default option and the "never" copy when Never is selected', async () => {
+		const { getByText, getByTestId } = renderComponent({
+			props: {
+				mode: 'new',
+			},
+		});
+
+		await retry(() => expect(getByText('Create API Key')).toBeInTheDocument());
+
+		// Default is 30 days → the hint spells out the concrete date.
+		const expectedDate = DateTime.now().plus({ days: 30 }).toFormat('ccc, MMM d yyyy');
+		expect(getByTestId('api-key-expiration-hint')).toHaveTextContent(
+			`The API key will expire on ${expectedDate}`,
+		);
+
+		await userEvent.click(getByTestId('expiration-select'));
+		await userEvent.click(getByText('Never'));
+
+		// "Never" must explain itself instead of clearing the hint.
+		expect(getByTestId('api-key-expiration-hint')).toHaveTextContent(
+			'The API key will never expire. It will remain active until it is revoked manually.',
+		);
+	});
+
 	test('should allow creating API key with scopes pre-selected', async () => {
 		apiKeysStore.createApiKey.mockResolvedValue(testApiKey);
 
@@ -304,6 +328,52 @@ describe('ApiKeyCreateOrEditModal', () => {
 		expect(apiKeysStore.updateApiKey).toHaveBeenCalledWith('123', {
 			label: 'updated api key',
 			scopes: ['user:create', 'user:list'],
+		});
+	});
+
+	describe('expiration in edit mode', () => {
+		test('shows the "never" copy read-only for a key without expiry', async () => {
+			apiKeysStore.apiKeys = [testApiKey]; // expiresAt: 0 → no expiry
+
+			const { getByText, getByTestId } = renderComponent({
+				props: { mode: 'edit', activeId: '123' },
+			});
+
+			await retry(() => expect(getByText('Edit API Key')).toBeInTheDocument());
+
+			expect(getByTestId('api-key-expiration-readonly')).toHaveTextContent(
+				'The API key will never expire. It will remain active until it is revoked manually.',
+			);
+		});
+
+		test('shows the expiry date read-only for a key that expires in the future', async () => {
+			const expiresAt = Math.floor(DateTime.now().plus({ days: 10 }).toSeconds());
+			apiKeysStore.apiKeys = [{ ...testApiKey, expiresAt }];
+
+			const { getByText, getByTestId } = renderComponent({
+				props: { mode: 'edit', activeId: '123' },
+			});
+
+			await retry(() => expect(getByText('Edit API Key')).toBeInTheDocument());
+
+			expect(getByTestId('api-key-expiration-readonly')).toHaveTextContent(
+				`The API key will expire on ${DateTime.fromSeconds(expiresAt).toFormat('ccc, MMM d yyyy')}`,
+			);
+		});
+
+		test('uses past-tense copy for an already-expired key', async () => {
+			const expiresAt = Math.floor(DateTime.now().minus({ days: 3 }).toSeconds());
+			apiKeysStore.apiKeys = [{ ...testApiKey, expiresAt }];
+
+			const { getByText, getByTestId } = renderComponent({
+				props: { mode: 'edit', activeId: '123' },
+			});
+
+			await retry(() => expect(getByText('Edit API Key')).toBeInTheDocument());
+
+			expect(getByTestId('api-key-expiration-readonly')).toHaveTextContent(
+				`The API key expired on ${DateTime.fromSeconds(expiresAt).toFormat('ccc, MMM d yyyy')}`,
+			);
 		});
 	});
 
