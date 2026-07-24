@@ -1,13 +1,14 @@
-import { computed } from 'vue';
-import { useRoute } from 'vue-router';
-import type { NotificationOptions } from '@n8n/stores/notifications.store';
-import { sanitizeHtml } from '@n8n/frontend-utils/htmlUtils';
-import { useTelemetry } from './useTelemetry';
-import { useNotificationsStore } from '@n8n/stores/notifications.store';
-import { useI18n } from '@n8n/i18n';
-import { useExternalHooks } from './useExternalHooks';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { APP_Z_INDEXES } from '@n8n/frontend-constants/z-indexes';
+import { sanitizeHtml } from '@n8n/frontend-utils/htmlUtils';
+import { useI18n } from '@n8n/i18n';
+import type { NotificationOptions } from '@n8n/stores/notifications.store';
+import { useNotificationsStore } from '@n8n/stores/notifications.store';
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+
+import { useExternalHooks } from './useExternalHooks';
+import { useTelemetry } from './useTelemetry';
 
 /**
  * Handle returned by the notification function. Declared locally so the DTS
@@ -56,6 +57,12 @@ export function useToast() {
 	const notificationsStore = useNotificationsStore();
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
+
+	function causedByCredential(message: string | undefined) {
+		if (!message || typeof message !== 'string') return false;
+
+		return message.includes('Credentials for') && message.includes('are not set');
+	}
 
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
 		const suppressed = notificationsStore.areNotificationsSuppressed;
@@ -141,14 +148,14 @@ export function useToast() {
 		// eslint-disable-next-line prefer-const
 		let notification: NotificationHandle;
 		if (config.closeOnClick) {
-			const cb = config.onClick;
+			const originalOnClick = config.onClick;
 			config.onClick = () => {
 				if (notification) {
 					notification.close();
 				}
 
-				if (cb) {
-					cb();
+				if (originalOnClick) {
+					originalOnClick();
 				}
 			};
 		}
@@ -185,7 +192,7 @@ export function useToast() {
 	}
 
 	function showError(
-		e: Error | unknown,
+		e: unknown,
 		title: string,
 		options?: { message?: string; description?: string },
 	) {
@@ -221,12 +228,6 @@ export function useToast() {
 		});
 	}
 
-	function causedByCredential(message: string | undefined) {
-		if (!message || typeof message !== 'string') return false;
-
-		return message.includes('Credentials for') && message.includes('are not set');
-	}
-
 	function clearAllStickyNotifications() {
 		stickyNotificationQueue.forEach((notification) => {
 			if (notification) {
@@ -244,7 +245,7 @@ export function useToast() {
 			notifications.push(...(notificationsStore.pendingNotificationsForViews[view] ?? []));
 		});
 		if (notifications.length) {
-			notifications.forEach(async (notification) => {
+			notifications.forEach((notification) => {
 				// Notifications show on top of each other without this timeout
 				setTimeout(() => {
 					showMessage(notification);

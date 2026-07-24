@@ -1,13 +1,14 @@
-import { screen, waitFor, within } from '@testing-library/vue';
-import { createTestingPinia } from '@pinia/testing';
-import { ElNotification } from 'element-plus';
-import { h, defineComponent } from 'vue';
-import { useToast, setNotify } from './useToast';
-import { useTelemetry } from './useTelemetry';
-import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { APP_Z_INDEXES } from '@n8n/frontend-constants/z-indexes';
+import { useNotificationsStore } from '@n8n/stores/notifications.store';
+import { createTestingPinia } from '@pinia/testing';
+import { screen, waitFor, within } from '@testing-library/vue';
+import { ElNotification } from 'element-plus';
 import { vi } from 'vitest';
+import { h, defineComponent } from 'vue';
+
+import { useTelemetry } from './useTelemetry';
+import { useToast, setNotify } from './useToast';
 
 vi.mock('./useTelemetry');
 
@@ -148,7 +149,10 @@ describe('useToast', () => {
 		it('should extract error message from VNode props for telemetry', async () => {
 			const vnode = h(
 				defineComponent({
-					props: ['errorMessage', 'nodeName'],
+					props: {
+						errorMessage: { type: String, required: true },
+						nodeName: { type: String, required: true },
+					},
 					template: '<p>{{ errorMessage }}</p>',
 				}),
 				{
