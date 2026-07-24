@@ -1,5 +1,5 @@
 packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
-  s_70e4a16a672757::t_bdf6c7bea8e71a 55-59,93-94,106-108,229-264,229-236,248,252-264,275-288,275,277-288,783-796,783-786,788-790,792-796
+  s_70e4a16a672757::t_bdf6c7bea8e71a 55-59,55-58,59,93-94,93,94,106-108,229-264,229-236,248,252-264,275-288,275,277-288,783-796,783-786,788-790,792-796
   s_b6381fbb8ddc64::t_626896e5a21e72 110-112,115,117-118
   h_9c8f56e3400786 113-114
   s_b6381fbb8ddc64::t_ee482984b97cbd 116
@@ -9,7 +9,7 @@ packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPub
   s_70e4a16a672757::t_1114f6e615019a 31,77-78,217-220,486-496,498-502,535-536,559-570,572-579
   s_70e4a16a672757::t_40de41d139ecad 523,571
   s_70e4a16a672757::t_1ef57baf512bc4 221,581,607
-  s_70e4a16a672757::t_99465de0d4547d 25-30,156-177,193-195,458-485,497,503-522,524-534
+  s_70e4a16a672757::t_99465de0d4547d 25-30,156-177,193-195,458-485,497,503-522,503-519,520-522,524-534
   s_70e4a16a672757::t_548f55dcfa8be1 586
   s_70e4a16a672757::t_a10c87b65e1123 537-558,606
   s_70e4a16a672757::t_498ce41e0925d7 6,580,582-585,587-605
@@ -93,6 +93,12 @@ docs/generated/sqlite-schema/instance_ai_checkpoints.md
   s_44a98ba2784a12::t_16f911908620c5 9,20,57
 docs/generated/postgres-schema/public.instance_ai_checkpoints.md
   s_44a98ba2784a12::t_16f911908620c5 9,49
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.test.ts
+  s_c7f2eb05574ce2::t_2e03c02acc8062 49
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
+  s_c7f2eb05574ce2::t_79fbbe00c1665e 16
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_b1ae3677d6bc36::t_f4ecbbe076e13c 47,51
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -218,6 +224,14 @@ docs/generated/postgres-schema/public.instance_ai_checkpoints.md
       },
       "human_author": null
     },
+    "s_91f67565918eee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36f4874d-45bc-43d2-bd2d-9c16d23d9c95",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
     "s_94fa4ed7d7b038": {
       "agent_id": {
         "tool": "claude",
@@ -225,6 +239,14 @@ docs/generated/postgres-schema/public.instance_ai_checkpoints.md
         "model": "claude-fable-5"
       },
       "human_author": null
+    },
+    "s_b1ae3677d6bc36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14856d89-b227-4425-adeb-7f31ce9ea7b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
     },
     "s_b34abcbd386402": {
       "agent_id": {
@@ -246,6 +268,14 @@ docs/generated/postgres-schema/public.instance_ai_checkpoints.md
       "agent_id": {
         "tool": "claude",
         "id": "7dd02182-97ab-4180-9c8a-8d5054fdd2f7",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_c7f2eb05574ce2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63ca9479-d174-4a0f-9349-54a47630f906",
         "model": "claude-fable-5"
       },
       "human_author": null

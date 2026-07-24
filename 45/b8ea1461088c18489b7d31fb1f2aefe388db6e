@@ -407,6 +407,9 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowRev
   "base_commit_sha": "45b8ea1461088c18489b7d31fb1f2aefe388db6e",
   "prompts": {},
   "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    },
     "h_760178ed151f13": {
       "author": "Sandra Zollner <sandra.zollner@n8n.io>"
     },
@@ -418,6 +421,14 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowRev
     }
   },
   "sessions": {
+    "s_12107b09095a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f36b6843-9b7a-45a5-8d52-4031db7468b2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
     "s_1ef72897374beb": {
       "agent_id": {
         "tool": "cursor",
@@ -439,6 +450,14 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowRev
         "tool": "codex",
         "id": "019f6650-1132-7ff1-ab94-090605cfc9f7",
         "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_41e37076417c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "480c8620-d708-419e-ac08-fca1f0d2cb0a",
+        "model": "claude-fable-5"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
@@ -487,6 +506,14 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowRev
         "tool": "codex",
         "id": "019f79e6-9f5d-7b91-b07b-a2c76974c292",
         "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_744aa7ffad1673": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c708436e-d47a-46c9-8cfa-2a78ec728e0c",
+        "model": "claude-opus-4-8"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
@@ -559,6 +586,14 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowRev
         "tool": "codex",
         "id": "019f7ea4-b00f-7082-ab26-2894ae42cef2",
         "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_d7309962fc8352": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cde34fb2-171c-4c0e-ba62-dcc55361bc75",
+        "model": "claude-fable-5"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
