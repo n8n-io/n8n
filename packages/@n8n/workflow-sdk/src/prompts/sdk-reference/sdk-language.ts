@@ -87,8 +87,9 @@ creating or editing groups.
 
 Rules:
 - **No trigger nodes.** Trigger nodes cannot be part of a group.
-- **One connected section.** Members must form a single connected chain of the
-  graph, not two unrelated islands with a gap between them.
+- **One connected section.** Connectable members must form a single connected section of the
+  graph, not two unrelated islands with a gap between them; sticky notes may accompany
+  the selection without participating in connectivity, and a sticky-only group is valid.
 - **Keep AI sub-nodes with their Agent.** If an AI Agent is in a group, its
   language-model, tool, and memory sub-nodes belong in the same group — put them
   either all inside the group or all outside it, never split. A model/tool/memory
