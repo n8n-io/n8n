@@ -1429,6 +1429,10 @@ describe('buildSteps', () => {
 			expect(message.additional_kwargs.__gemini_function_call_thought_signatures__).toEqual({
 				call_123: 'gemini_thought_sig_abc123',
 			});
+			// Content is empty, so the function call is the only Gemini request part; the
+			// signatures array must align with the parts or google-common drops it entirely
+			expect(message.content).toEqual([]);
+			expect(message.additional_kwargs.signatures).toEqual(['gemini_thought_sig_abc123']);
 		});
 
 		it('should group parallel tool calls into shared AIMessage with Gemini signature', () => {
