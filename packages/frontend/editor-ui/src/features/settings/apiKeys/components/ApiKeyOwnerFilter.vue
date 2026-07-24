@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from '@n8n/design-system';
-import { N8nAvatar, N8nCheckbox, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
+import { N8nAvatar, N8nCheckbox, N8nIcon, N8nPopover, N8nTag, N8nText } from '@n8n/design-system';
 
 interface ApiKeyOwnerFilterProps {
 	/** Selected owner ids. Empty means "all" (no narrowing). */
@@ -78,8 +78,10 @@ const pillCount = computed(() =>
 	effectiveAll.value ? props.users.length : props.modelValue.length,
 );
 
+// Only a real narrowing shows the person; when the one selected owner is also
+// the only owner (i.e. "all"), the trigger keeps the generic all-owners look.
 const singleSelectedUser = computed(() =>
-	props.modelValue.length === 1
+	!effectiveAll.value && props.modelValue.length === 1
 		? props.users.find((user) => user.id === props.modelValue[0])
 		: undefined,
 );
@@ -157,9 +159,10 @@ watch(open, (isOpen, wasOpen) => {
 					/>
 					<N8nIcon v-else icon="users" :class="$style.triggerIcon" />
 					<span :class="$style.triggerText">{{ triggerLabel }}</span>
+					<!-- Same tag component the tabs use for their counts. -->
+					<N8nTag :text="String(pillCount)" :clickable="false" :class="$style.triggerTag" />
 				</span>
 				<span :class="$style.triggerRight">
-					<span :class="$style.pill">{{ pillCount }}</span>
 					<N8nIcon icon="chevron-down" :class="$style.chevron" />
 				</span>
 			</button>
@@ -327,20 +330,16 @@ watch(open, (isOpen, wasOpen) => {
 	text-overflow: ellipsis;
 }
 
+/* Long owner names truncate; the count tag never shrinks away. */
+.triggerTag {
+	flex-shrink: 0;
+}
+
 .triggerRight {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	flex-shrink: 0;
-}
-
-.pill {
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--primary);
-	background-color: var(--owner-filter--accent-fill);
-	padding: 1px 7px;
-	border-radius: var(--radius--xlarge, 999px);
 }
 
 .chevron {
