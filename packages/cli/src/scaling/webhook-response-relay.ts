@@ -2,17 +2,19 @@ import { EndpointsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { BinaryDataService, FileLocation } from 'n8n-core';
 import { BINARY_ENCODING } from 'n8n-workflow';
-import type {
-	IBinaryData,
-	IDataObject,
-	IExecuteResponsePromiseData,
-	IN8nHttpFullResponse,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteResponsePromiseData, IN8nHttpFullResponse } from 'n8n-workflow';
 
 /** Sentinel key marking a base64-encoded Buffer body relayed inline through the queue. */
 export const ENCODED_BUFFER_KEY = '__@N8nEncodedBuffer@__';
 
 type RelayContext = { workflowId: string; executionId: string };
+
+/** A body's byte size, with the bytes materialized only if offloading happens. */
+type MeasuredBody = {
+	sizeInBytes: number;
+	toBuffer: () => Buffer;
+	fallbackMimeType: string;
+};
 
 /**
  * Moves webhook response bodies between a worker and main in queue mode,
@@ -52,24 +54,17 @@ export class WebhookResponseRelay {
 			return response;
 		}
 
-		const { body } = response;
+		const body = measureBody(response.body);
 
-		if (Buffer.isBuffer(body)) {
-			await this.offloadOrInlineBufferBody(response, body, ctx);
-		} else if (typeof body === 'string') {
-			await this.offloadWhenTooLarge(
-				response,
-				Buffer.from(body, 'utf8'),
-				'text/plain; charset=utf-8',
-				ctx,
-			);
-		} else if (isJsonBody(body)) {
-			await this.offloadWhenTooLarge(
-				response,
-				Buffer.from(JSON.stringify(body)),
-				'application/json',
-				ctx,
-			);
+		if (body && body.sizeInBytes > this.maxInlineSizeInBytes) {
+			const offloaded = await this.offloadToBinaryStore(response, body, ctx);
+			if (offloaded) {
+				return response;
+			}
+		}
+
+		if (Buffer.isBuffer(response.body)) {
+			response.body = { [ENCODED_BUFFER_KEY]: response.body.toString(BINARY_ENCODING) };
 		}
 
 		return response;
@@ -97,51 +92,23 @@ export class WebhookResponseRelay {
 		return response;
 	}
 
-	/** Offloads a large Buffer body, otherwise relays it inline as base64. */
-	private async offloadOrInlineBufferBody(
-		response: IN8nHttpFullResponse,
-		body: Buffer,
-		ctx: RelayContext,
-	): Promise<void> {
-		const offloaded =
-			body.length > this.maxInlineSizeInBytes &&
-			(await this.offloadToBinaryStore(response, body, 'application/octet-stream', ctx));
-
-		if (!offloaded) {
-			response.body = { [ENCODED_BUFFER_KEY]: body.toString(BINARY_ENCODING) };
-		}
-	}
-
-	private async offloadWhenTooLarge(
-		response: IN8nHttpFullResponse,
-		buffer: Buffer,
-		fallbackMimeType: string,
-		ctx: RelayContext,
-	): Promise<void> {
-		if (buffer.length > this.maxInlineSizeInBytes) {
-			await this.offloadToBinaryStore(response, buffer, fallbackMimeType, ctx);
-		}
-	}
-
 	/**
 	 * Stores the body and replaces it with a reference, setting `content-type`
-	 * to the response's own type or `fallbackMimeType` when absent.
+	 * to the response's own type or the body's fallback when absent.
 	 *
 	 * @returns `true` on success; `false` when no persisted store is available, in
 	 * which case the body is left untouched for the caller to relay inline.
 	 */
 	private async offloadToBinaryStore(
 		response: IN8nHttpFullResponse,
-		buffer: Buffer,
-		fallbackMimeType: string,
+		body: MeasuredBody,
 		ctx: RelayContext,
 	): Promise<boolean> {
-		const mimeType = contentTypeOf(response) ?? fallbackMimeType;
-		const binaryData: IBinaryData = { data: '', mimeType, fileName: 'webhook-response' };
+		const mimeType = contentTypeOf(response) ?? body.fallbackMimeType;
 		const stored = await this.binaryDataService.store(
 			FileLocation.ofExecution(ctx.workflowId, ctx.executionId),
-			buffer,
-			binaryData,
+			body.toBuffer(),
+			{ data: '', mimeType, fileName: 'webhook-response' },
 		);
 
 		if (!stored.id) {
@@ -149,19 +116,51 @@ export class WebhookResponseRelay {
 		}
 
 		response.headers ??= {};
-		const hasContentType = Object.keys(response.headers).some(
-			(key) => key.toLowerCase() === 'content-type',
-		);
-		if (!hasContentType) {
+		if (contentTypeOf(response) === undefined) {
 			response.headers['content-type'] = mimeType;
 		}
-		response.body = { binaryData: stored } as unknown as IDataObject;
+		response.body = { binaryData: stored };
 		return true;
 	}
 }
 
 function isFullResponse(response: IExecuteResponsePromiseData): response is IN8nHttpFullResponse {
 	return typeof response === 'object' && response !== null && 'body' in response;
+}
+
+/**
+ * Measures a relayable body without copying it: Buffers and strings report
+ * their byte length directly, JSON bodies are serialized once and reused.
+ * Returns `undefined` for bodies the relay never offloads (streams, existing
+ * binary-data references, null).
+ */
+function measureBody(body: IN8nHttpFullResponse['body']): MeasuredBody | undefined {
+	if (Buffer.isBuffer(body)) {
+		return {
+			sizeInBytes: body.length,
+			toBuffer: () => body,
+			fallbackMimeType: 'application/octet-stream',
+		};
+	}
+
+	if (typeof body === 'string') {
+		return {
+			sizeInBytes: Buffer.byteLength(body, 'utf8'),
+			toBuffer: () => Buffer.from(body, 'utf8'),
+			fallbackMimeType: 'text/plain; charset=utf-8',
+		};
+	}
+
+	if (isJsonBody(body)) {
+		const json = JSON.stringify(body);
+		return {
+			sizeInBytes: Buffer.byteLength(json, 'utf8'),
+			toBuffer: () => Buffer.from(json, 'utf8'),
+			fallbackMimeType: 'application/json',
+		};
+	}
+
+	return undefined;
 }
 
 function contentTypeOf(response: IN8nHttpFullResponse): string | undefined {
@@ -171,7 +170,7 @@ function contentTypeOf(response: IN8nHttpFullResponse): string | undefined {
 	return typeof entry?.[1] === 'string' ? entry[1] : undefined;
 }
 
-function isJsonBody(body: unknown): boolean {
+function isJsonBody(body: unknown): body is IDataObject {
 	return typeof body === 'object' && body !== null && !isBinaryDataReference(body);
 }
 
