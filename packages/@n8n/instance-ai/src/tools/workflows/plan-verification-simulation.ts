@@ -20,7 +20,12 @@ import {
 	generateSimulationFixtures,
 	type SimulationFixtures,
 } from './generate-simulation-fixtures.service';
-import { isMockableTriggerNodeType, isTriggerNodeType } from './workflow-json-utils';
+import {
+	isMockableTriggerNodeType,
+	isTriggerNodeType,
+	isWaitGateNode,
+	nodeCanReachItself,
+} from './workflow-json-utils';
 import type { Logger } from '../../logger';
 import type { ModelConfig } from '../../types';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
@@ -209,6 +214,37 @@ function withSimulatedCredentiallessAiRootVerdicts(
 	return verdicts;
 }
 
+export const WAIT_GATE_HALT_REASON =
+	'Send-and-wait gate on a loop — verification pauses here because continuing needs a human decision';
+
+/**
+ * Halt simulated wait gates that sit on a loop: pin them with zero items
+ * instead of a fixture — a pinned gate cannot pause, so its canned decision
+ * would re-run the loop forever. Live (`execute`) gates pause on their own.
+ * Runs last so it overrides fixtures from every source.
+ */
+export function withWaitGateHaltVerdicts(
+	plan: NodeSimulationVerdict[],
+	workflow: WorkflowJSON,
+): NodeSimulationVerdict[] {
+	const nodesByName = new Map(
+		(workflow.nodes ?? [])
+			.filter((node): node is WorkflowJSON['nodes'][number] & { name: string } =>
+				Boolean(node.name),
+			)
+			.map((node) => [node.name, node] as const),
+	);
+
+	return plan.map((verdict) => {
+		if (verdict.verdict !== 'simulate' || verdict.haltBranch) return verdict;
+		const node = nodesByName.get(verdict.nodeName);
+		if (!node || !isWaitGateNode(node) || !nodeCanReachItself(workflow, verdict.nodeName)) {
+			return verdict;
+		}
+		return { ...verdict, haltBranch: true, reason: WAIT_GATE_HALT_REASON };
+	});
+}
+
 function nonEmptyDeclaredFixtures(
 	fixtures: SimulationFixtures | undefined,
 ): SimulationFixtures | undefined {
@@ -277,10 +313,13 @@ export async function planVerificationSimulation({
 			workflow,
 			new Set(mockedNodeNames ?? []),
 		);
+		nodeSimulationPlan = withWaitGateHaltVerdicts(nodeSimulationPlan, workflow);
 		if (nodeSimulationPlan.length > 0) {
 			const planNeedingGeneratedFixtures = nodeSimulationPlan.filter(
 				(verdict) =>
-					verdict.verdict === 'simulate' && !declaredFixtures?.[verdict.nodeName]?.length,
+					verdict.verdict === 'simulate' &&
+					!verdict.haltBranch &&
+					!declaredFixtures?.[verdict.nodeName]?.length,
 			);
 			const generatedFixtures =
 				planNeedingGeneratedFixtures.length > 0
@@ -322,6 +361,7 @@ export async function planVerificationSimulation({
 				workflow,
 				new Set(mockedNodeNames ?? []),
 			);
+			nodeSimulationPlan = withWaitGateHaltVerdicts(nodeSimulationPlan, workflow);
 			simulationFixtures = declaredFixtures;
 		}
 	}
