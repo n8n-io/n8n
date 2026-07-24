@@ -8,6 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
+import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentTaskService } from '../agent-task.service';
 import type { AgentTestChatService } from '../agent-test-chat.service';
@@ -50,6 +51,7 @@ function makeService() {
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	const subAgentCleanupService = mock<SubAgentCleanupService>();
 	const eventService = mock<EventService>();
+	const agentExecutionService = mock<AgentExecutionService>();
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	agentTaskService.requestReconcile.mockResolvedValue();
@@ -69,6 +71,7 @@ function makeService() {
 		agentTaskRepository,
 		subAgentCleanupService,
 		eventService,
+		agentExecutionService,
 	);
 
 	return {
@@ -82,6 +85,7 @@ function makeService() {
 		chatIntegrationService,
 		subAgentCleanupService,
 		eventService,
+		agentExecutionService,
 	};
 }
 
