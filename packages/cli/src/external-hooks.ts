@@ -45,8 +45,8 @@ export type WorkflowLifecycleHookActor = {
  *
  * @param user The user performing the lifecycle operation, if any.
  * @returns The actor identity, or `undefined` when there is no acting user.
- * @remarks The actor is a loose, optional part of the hook contract: a missing user is
- * accepted on purpose, so callers without an interactive user fit without widening the interface.
+ * @remarks An acting user is almost always present in practice, but the actor is kept
+ * optional to keep the hook contract future-proof across its various callers.
  */
 export function toWorkflowLifecycleHookActor(user?: User): WorkflowLifecycleHookActor | undefined {
 	if (!user) {
