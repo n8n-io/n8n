@@ -1,3 +1,7 @@
+import { AgentEvalDataset, type AgentEvalColumnMapping } from './agent-eval-dataset.ee';
+import { AgentEvalRating, type AgentEvalVote } from './agent-eval-rating.ee';
+import { AgentEvalResult, type AgentEvalResultStatus } from './agent-eval-result.ee';
+import { AgentEvalRun, type AgentEvalRunStatus } from './agent-eval-run.ee';
 import { AiBuilderTemporaryWorkflow } from './ai-builder-temporary-workflow';
 import { AnnotationTagEntity } from './annotation-tag-entity.ee';
 import { AnnotationTagMapping } from './annotation-tag-mapping.ee';
@@ -76,6 +80,14 @@ import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
+	AgentEvalDataset,
+	type AgentEvalColumnMapping,
+	AgentEvalRun,
+	type AgentEvalRunStatus,
+	AgentEvalResult,
+	type AgentEvalResultStatus,
+	AgentEvalRating,
+	type AgentEvalVote,
 	InvalidAuthToken,
 	AiBuilderTemporaryWorkflow,
 	ProcessedData,
@@ -149,6 +161,10 @@ export {
 };
 
 export const entities = {
+	AgentEvalDataset,
+	AgentEvalRun,
+	AgentEvalResult,
+	AgentEvalRating,
 	InvalidAuthToken,
 	AiBuilderTemporaryWorkflow,
 	ProcessedData,

@@ -1,12 +1,13 @@
 ---
 name: workflow-builder
 description: >-
-  Default path for all single-workflow work: new one-off workflows, existing-
-  workflow edits, verification repairs, and workflow-local data tables. Write
-  or edit a workspace source file, then call build-workflow with filePath. Do
-  not load planning or create-tasks first. Load planning only when multiple
-  coordinated workflows or shared cross-task data tables require a
-  dependency-aware task graph.
+  Load before calling build-workflow. Default path for all single-workflow
+  work: new one-off workflows, existing-workflow edits, verification repairs,
+  and workflow-local data tables. Write or edit a workspace source file, then
+  call build-workflow with filePath. When the workflow creates or writes Data
+  Tables, load data-table-manager first, then this skill. Do not load planning
+  or create-tasks first. Load planning only when multiple coordinated workflows
+  or shared cross-task data tables require a dependency-aware task graph.
 recommended_tools:
   - read_file
   - write_file
@@ -21,6 +22,11 @@ recommended_tools:
 ---
 
 # Workflow Builder
+
+## Routing
+
+When the workflow creates or writes Data Tables, load `data-table-manager`
+first (if not already loaded this turn), then this skill.
 
 You are an expert n8n workflow builder. You generate complete, valid
 TypeScript code using `@n8n/workflow-sdk` for new workflows and for existing
@@ -397,10 +403,10 @@ n8n normalizes Data Table column names to snake_case, for example `dayName`
 becomes `day_name`. Always call `data-tables(action="schema")` before using a
 Data Table in workflow code so you use real column names.
 
-When building workflows that create or use tables, use the data table skill
-guidance already loaded by the orchestrator when available. Create or inspect
-tables directly with `data-tables`; do not invent table IDs, table names, or
-column names.
+When building workflows that create or use tables, load `data-table-manager`
+via `load_skill` first (if not already loaded this turn), then follow that
+skill for schema/row guidance. Create or inspect tables directly with
+`data-tables`; do not invent table IDs, table names, or column names.
 
 When the ask is a summary, digest, or report over a period ("weekly summary of
 what was recorded", "digest of this week's rows"), the summary branch must

@@ -3,9 +3,10 @@ name: planning
 description: >-
   ONLY for coordinated multi-artifact work: multiple workflows with dependencies,
   shared data-table schema/migration across tasks, or the user explicitly asked
-  to review a plan first. Do NOT use for new one-off workflows, single-workflow
-  edits, verification-only requests, or standalone data-table ops — use
-  workflow-builder or data-table-manager instead.
+  to review a plan first. Load create-tasks via load_tool before calling it
+  (search "create tasks" if not visible). Do NOT use for new one-off workflows,
+  single-workflow edits, verification-only requests, or standalone data-table
+  ops — use workflow-builder or data-table-manager instead.
 recommended_tools:
   - create-tasks
   - workflows

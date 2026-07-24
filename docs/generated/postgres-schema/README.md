@@ -10,6 +10,10 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | ---- | ------- | ------- | ---- |
 | [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) | 6 |  | BASE TABLE |
 | [public.agent_checkpoints](public.agent_checkpoints.md) | 6 |  | BASE TABLE |
+| [public.agent_eval_dataset](public.agent_eval_dataset.md) | 10 |  | BASE TABLE |
+| [public.agent_eval_rating](public.agent_eval_rating.md) | 8 |  | BASE TABLE |
+| [public.agent_eval_result](public.agent_eval_result.md) | 15 |  | BASE TABLE |
+| [public.agent_eval_run](public.agent_eval_run.md) | 14 |  | BASE TABLE |
 | [public.agent_execution](public.agent_execution.md) | 19 |  | BASE TABLE |
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 17 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 8 |  | BASE TABLE |
@@ -151,6 +155,13 @@ erDiagram
 
 "public.agent_chat_subscriptions" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_checkpoints" }o--o| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_eval_dataset" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.agent_eval_dataset" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_eval_rating" }o--o| "public.user" : "FOREIGN KEY (#quot;ratedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.agent_eval_rating" }o--|| "public.agent_eval_result" : "FOREIGN KEY (#quot;resultId#quot;) REFERENCES agent_eval_result(id) ON DELETE CASCADE"
+"public.agent_eval_result" }o--|| "public.agent_eval_run" : "FOREIGN KEY (#quot;runId#quot;) REFERENCES agent_eval_run(id) ON DELETE CASCADE"
+"public.agent_eval_run" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.agent_eval_run" }o--|| "public.agent_eval_dataset" : "FOREIGN KEY (#quot;datasetId#quot;) REFERENCES agent_eval_dataset(id) ON DELETE CASCADE"
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
@@ -331,6 +342,61 @@ erDiagram
   boolean expired
   varchar_255_ runId
   text state
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agent_eval_dataset" {
+  varchar_36_ agentId FK
+  json columnMapping
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  json datasetRef
+  varchar_32_ datasetSource
+  text description
+  varchar_36_ id
+  varchar_128_ name
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agent_eval_rating" {
+  text comment
+  json correction
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  uuid ratedById FK
+  varchar_36_ resultId FK
+  timestamp_3__with_time_zone updatedAt
+  varchar_8_ vote
+}
+"public.agent_eval_result" {
+  timestamp_3__with_time_zone completedAt
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ errorCode
+  json errorDetails
+  varchar_36_ id
+  json input
+  json metrics
+  json output
+  timestamp_3__with_time_zone runAt
+  varchar_36_ runId FK
+  integer runIndex
+  varchar_255_ sourceRowId
+  varchar status
+  json toolCalls
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agent_eval_run" {
+  varchar_36_ agentVersionId
+  boolean cancelRequested
+  timestamp_3__with_time_zone completedAt
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  varchar_36_ datasetId FK
+  varchar_255_ errorCode
+  json errorDetails
+  varchar_36_ id
+  json metrics
+  timestamp_3__with_time_zone runAt
+  varchar_255_ runningInstanceId
+  varchar status
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_execution" {

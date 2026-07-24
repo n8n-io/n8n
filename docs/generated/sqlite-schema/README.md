@@ -10,6 +10,10 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | ---- | ------- | ------- | ---- |
 | [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
 | [agent_checkpoints](agent_checkpoints.md) | 6 |  | table |
+| [agent_eval_dataset](agent_eval_dataset.md) | 10 |  | table |
+| [agent_eval_rating](agent_eval_rating.md) | 8 |  | table |
+| [agent_eval_result](agent_eval_result.md) | 15 |  | table |
+| [agent_eval_run](agent_eval_run.md) | 14 |  | table |
 | [agent_execution](agent_execution.md) | 19 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
 | [agent_files](agent_files.md) | 8 |  | table |
@@ -134,6 +138,13 @@ erDiagram
 
 "agent_chat_subscriptions" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_checkpoints" }o--o| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_eval_dataset" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_eval_dataset" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_eval_rating" }o--o| "user" : "FOREIGN KEY (ratedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_eval_rating" }o--|| "agent_eval_result" : "FOREIGN KEY (resultId) REFERENCES agent_eval_result (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_eval_result" }o--|| "agent_eval_run" : "FOREIGN KEY (runId) REFERENCES agent_eval_run (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_eval_run" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_eval_run" }o--|| "agent_eval_dataset" : "FOREIGN KEY (datasetId) REFERENCES agent_eval_dataset (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution_threads" }o--o| "agent_history" : "FOREIGN KEY (taskVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_execution_threads" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -318,6 +329,61 @@ erDiagram
   boolean expired
   varchar_255_ runId PK
   TEXT state
+  datetime_3_ updatedAt
+}
+"agent_eval_dataset" {
+  varchar_36_ agentId FK
+  TEXT columnMapping
+  datetime_3_ createdAt
+  varchar createdById FK
+  TEXT datasetRef
+  varchar_32_ datasetSource
+  TEXT description
+  varchar_36_ id PK
+  varchar_128_ name
+  datetime_3_ updatedAt
+}
+"agent_eval_rating" {
+  TEXT comment
+  TEXT correction
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  varchar ratedById FK
+  varchar_36_ resultId FK
+  datetime_3_ updatedAt
+  varchar_8_ vote
+}
+"agent_eval_result" {
+  datetime_3_ completedAt
+  datetime_3_ createdAt
+  varchar_255_ errorCode
+  TEXT errorDetails
+  varchar_36_ id PK
+  TEXT input
+  TEXT metrics
+  TEXT output
+  datetime_3_ runAt
+  varchar_36_ runId FK
+  INTEGER runIndex
+  varchar_255_ sourceRowId
+  varchar status
+  TEXT toolCalls
+  datetime_3_ updatedAt
+}
+"agent_eval_run" {
+  varchar_36_ agentVersionId
+  boolean cancelRequested
+  datetime_3_ completedAt
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_36_ datasetId FK
+  varchar_255_ errorCode
+  TEXT errorDetails
+  varchar_36_ id PK
+  TEXT metrics
+  datetime_3_ runAt
+  varchar_255_ runningInstanceId
+  varchar status
   datetime_3_ updatedAt
 }
 "agent_execution" {
