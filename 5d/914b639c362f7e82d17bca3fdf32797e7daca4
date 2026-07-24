@@ -10,7 +10,7 @@ docs/generated/postgres-schema/public.workflow_review_request_workflow.md
 packages/nodes-base/nodes/N8n/n8n-api-coverage.json
   s_44a98ba2784a12::t_50150ccddc31fc 8-13
 packages/cli/test/migration/1784000000052-create-workflow-review-request-tables.test.ts
-  s_44a98ba2784a12::t_fa25b39e56246d 1-12,14-117,158-161,183-186,197-210,287-288,290,343-344
+  s_44a98ba2784a12::t_fa25b39e56246d 1-12,14-117,14-115,158-161,160-161,183-186,183-184,186,197-210,287-288,290,343-344
   s_44a98ba2784a12::t_a3d1d9fc652366 118-157,162-165,167-170,172-173,177,179-182,187
   s_44a98ba2784a12::t_9100d997b3e449 229-230
   s_44a98ba2784a12::t_46696f806e3c30 284-286,291
@@ -33,12 +33,12 @@ packages/@n8n/db/src/repositories/workflow-review-request-author.repository.ts
 packages/@n8n/db/src/entities/workflow-review-request-author.ee.ts
   s_44a98ba2784a12::t_b68444cb9bf6bd 2-3,6-7,9-10
 packages/@n8n/db/src/entities/workflow-review-request.ee.ts
-  s_44a98ba2784a12::t_243fda83c3ba5d 1-4,16-20,23,25-26,28-31,37,39-50,52-53,55
+  s_44a98ba2784a12::t_243fda83c3ba5d 1-4,2-4,16-20,16-18,23,25-26,28-31,37,39-50,52-53,55
   s_44a98ba2784a12::t_4a86a82b8ef7a5 35
-  s_44a98ba2784a12::t_935930310cd5f0 5-15,21-22,24,32-34,36,51,54
+  s_44a98ba2784a12::t_935930310cd5f0 5-15,5-7,12-15,21-22,24,32-34,32,34,36,51,54
   s_44a98ba2784a12::t_95a1285ac2a8aa 38
 packages/@n8n/db/src/repositories/__tests__/workflow-review-request.repository.test.ts
-  s_44a98ba2784a12::t_dbad7b03bcd5c5 1,2-3,4-5,6-16,18-34,37-40,43-64,65
+  s_44a98ba2784a12::t_dbad7b03bcd5c5 1,2-3,3,4-5,6-16,18-34,37-40,43-64,65
   s_44a98ba2784a12::t_8cf89fd1044fe9 35-36,41,42
   s_44a98ba2784a12::t_177c7f50484c6d 17
 docs/generated/sqlite-schema/README.md
@@ -55,12 +55,12 @@ docs/generated/sqlite-schema/workflow_review_request_workflow.md
   s_44a98ba2784a12::t_cd6f9de0ddc669 38,79,80,83,87
   s_44a98ba2784a12::t_f4ddd4b6a4b050 88
 packages/@n8n/db/src/repositories/workflow-review-request-reviewer.repository.ts
-  s_44a98ba2784a12::t_220caa9d9c1955 1-17,22,26,33,36-40,42-51,53-55
+  s_44a98ba2784a12::t_220caa9d9c1955 1-17,1,2-11,12-17,22,26,33,36-40,42-51,53-55
   s_44a98ba2784a12::t_a3fb61bb232cab 18-21,23-25,27-32,34-35
 packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
   s_44a98ba2784a12::t_4188d7b926ed77 1,3-4,6-7,10-17,32-34,37-40,43,46-50,71
   s_44a98ba2784a12::t_686efdb1f1e86d 8-9,35-36,41,42
-  s_60c9025b151770::t_1b89b2320e2bd7 2,5,18-31,44-45,51-69
+  s_60c9025b151770::t_1b89b2320e2bd7 2,5,18-31,44-45,51-69,51,52-69
   s_60c9025b151770::t_b2234c8e7a704f 70
 packages/@n8n/db/src/entities/workflow-review-request-workflow.ee.ts
   s_44a98ba2784a12::t_d5ee5c3cc41445 2,4-5,15-20,23
@@ -182,18 +182,18 @@ docs/generated/sqlite-schema/instance_ai_checkpoints.md
 docs/generated/postgres-schema/public.instance_ai_checkpoints.md
   s_44a98ba2784a12::t_16f911908620c5 9,49
 packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.env-gate.integration.test.ts
-  s_60c9025b151770::t_1916428f831677 1-4,6-19,22-30,32-35
+  s_60c9025b151770::t_1916428f831677 1-4,6-19,7-19,22-30,32-35
   s_2a235a6e9347be::t_d664c830aa7f1c 5,20-21,31
 packages/cli/test/integration/shared/types.ts
   s_60c9025b151770::t_bc8f2e8a1ae3d0 55,70-71
 packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
-  s_60c9025b151770::t_f47620be23b460 1-13,18-39,41-46,48-50,54-57,61-64,66-73,79-108
+  s_60c9025b151770::t_f47620be23b460 1-13,2-5,6-7,8-9,11-13,18-39,18-24,25-31,32,33-34,36-39,41-46,48-50,54-57,61-64,66-73,66-67,72,79-108,80,103-104,107-108
   s_2a235a6e9347be::t_800b92cfc074ab 14-17,40,47,51-53,58-60,65,74-78
 packages/@n8n/backend-common/src/modules/modules.config.ts
   s_60c9025b151770::t_a4789809c277c5 36
 packages/@n8n/api-types/src/dto/workflow-reviews/create-workflow-review-request.dto.ts
   s_2a235a6e9347be::t_583ae2aa6bbb4b 6-7
-  s_60c9025b151770::t_06db1c98cc7bf7 1-5,8-16
+  s_60c9025b151770::t_06db1c98cc7bf7 1-5,8-16,8-15,16
 packages/@n8n/db/src/services/db-lock.service.ts
   s_60c9025b151770::t_2448a48f4744df 16
 packages/@n8n/db/src/repositories/__tests__/workflow-review-request-author.repository.test.ts
@@ -206,7 +206,7 @@ packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.
   s_2a235a6e9347be::t_583ae2aa6bbb4b 171,177-190
   h_9c8f56e3400786 81
   s_2a235a6e9347be::t_d664c830aa7f1c 397
-  s_60c9025b151770::t_bb9cfd15536241 1-80,82-170,172-176,191-396,398-403
+  s_60c9025b151770::t_bb9cfd15536241 1-80,1-13,14-16,20-23,24-38,39-44,45-80,82-170,82-122,123-170,172-176,191-396,398-403
 packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
   s_9006126844c8d5::t_53a7b1c755ec03 101
   s_9006126844c8d5::t_235bdd463aba3d 66
@@ -216,15 +216,15 @@ packages/cli/src/modules/workflow-reviews.ee/workflow-reviews.module.ts
 packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
   s_2a235a6e9347be::t_a1657bd79d44c0 125,134,144,155
   h_9c8f56e3400786 75,114
-  s_60c9025b151770::t_8a8655a46f6611 1-16,21-68,70-74,76-113,115-116,118-124,126-129,131-133,135-139,141-143,145-150,152-154,156-167,170-176
+  s_60c9025b151770::t_8a8655a46f6611 1-16,2,3-5,7-10,11-12,14-16,21-68,21-28,29-42,43,44-46,47-53,54,55-62,63-65,66-68,70-74,76-113,76-84,86-113,115-116,118-124,126-129,131-133,135-139,141-143,145-150,152-154,156-167,170-176,170-174,175-176
   s_2a235a6e9347be::t_800b92cfc074ab 17-20,69,117,130,140,151,168-169
 packages/@n8n/backend-common/src/modules/module-registry.ts
   s_60c9025b151770::t_078acc951d9093 74
 packages/@n8n/api-types/src/dto/index.ts
-  s_2a235a6e9347be::t_6802c7ddb45108 295-296
+  s_2a235a6e9347be::t_6802c7ddb45108 295-296,295,296
 packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller.ts
   s_2a235a6e9347be::t_800b92cfc074ab 19-21
-  s_60c9025b151770::t_4dc13844903a23 1-18,22-23
+  s_60c9025b151770::t_4dc13844903a23 1-18,2,4-11,12-18,22-23
 packages/frontend/@n8n/design-system/src/components/N8nActionDropdown/ActionDropdown.test.ts
   s_b3f23ab76a494c::t_fe4db0fae50eb3 1-2,108-140
 packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuItem.test.ts
@@ -260,10 +260,10 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowRev
   s_b3f23ab76a494c::t_b351f837029862 22,33-34,55,57-58
   s_b3f23ab76a494c::t_cf554b9b58cae4 3,64
   s_b3f23ab76a494c::t_ed8574baef8748 38,44
-  s_b3f23ab76a494c::t_059fae10ef175c 23-32,37,39-43,45-47,49-51
+  s_b3f23ab76a494c::t_059fae10ef175c 23-32,23-28,29-32,37,39-43,39-40,41-43,45-47,49-51,50-51
   s_b3f23ab76a494c::t_af864b1534c5d0 48,54,56,60
   s_b3f23ab76a494c::t_1975825e8e11ab 62-63
-  s_b3f23ab76a494c::t_872ed66fdfb791 1-2,4-21,35-36,52-53,59,65-66
+  s_b3f23ab76a494c::t_872ed66fdfb791 1-2,4-21,4-6,7-13,14-15,18-21,35-36,52-53,59,65-66
   s_b3f23ab76a494c::t_12d480d8764f49 61
 packages/frontend/editor-ui/src/features/workflow-reviews/reviewRequired.store.test.ts
   s_b3f23ab76a494c::t_fe4db0fae50eb3 1-3,5-6,16-17,21-49,50,59-60
@@ -272,19 +272,21 @@ packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPub
   h_9c8f56e3400786 53,87
   s_b3f23ab76a494c::t_77508911ec9f79 685
   s_b3f23ab76a494c::t_db71fb05e80031 702
+  s_70e4a16a672757::t_bdf6c7bea8e71a 215-218,215-218
+  s_b34abcbd386402::t_f65d763798858f 88
 packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequiredToggle.test.ts
   s_b3f23ab76a494c::t_12d480d8764f49 3-4,11-19,22-23,38,49,52-54,56,90,92
   s_b3f23ab76a494c::t_54c3edd2d2746f 29,31,39-41
   s_b3f23ab76a494c::t_1cc202f5a1a58b 32,44,50,64,89,93
   s_b3f23ab76a494c::t_326ef525bad1c8 63,66,70-82
-  s_b3f23ab76a494c::t_fe4db0fae50eb3 1-2,5-10,20-21,24-25,27-28,30,33-37,42-43,45-48,51,55,57-62,65,67-69,83-88,91,94-98
+  s_b3f23ab76a494c::t_fe4db0fae50eb3 1-2,5-10,5,6-8,9-10,20-21,24-25,27-28,30,33-37,42-43,45-48,51,55,57-62,65,67-69,83-88,91,94-98,94-97,98
 packages/frontend/@n8n/i18n/src/locales/en.json
   s_b3f23ab76a494c::t_872ed66fdfb791 4429-4430
 packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
   s_b3f23ab76a494c::t_22a1eb3cb6c481 813,820,822
   s_b3f23ab76a494c::t_68145028428e67 824-840,842-843
   s_b3f23ab76a494c::t_0f8e77cca0658a 845-846
-  s_b3f23ab76a494c::t_a584ef981bc939 23-24,138,150-159,751-812,814-815,817-819,823,844
+  s_b3f23ab76a494c::t_a584ef981bc939 23-24,23,138,150-159,751-812,751,774-812,814-815,817-819,823,844
   s_b3f23ab76a494c::t_1cc202f5a1a58b 841
   s_b3f23ab76a494c::t_932fc07f1f89ec 821
   s_b3f23ab76a494c::t_8503968d324586 161
@@ -300,8 +302,16 @@ packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflo
 packages/frontend/editor-ui/src/app/constants/localStorage.ts
   s_70e4a16a672757::t_489e68614b7d2b 40-41
   s_70e4a16a672757::t_706452e921bce7 42-43
+  s_91f67565918eee::t_102841e08fe8e0 42-43
+  s_91f67565918eee::t_7841e24ee9fb32 42-43
 packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
-  s_70e4a16a672757::t_489e68614b7d2b 1-28
+  s_70e4a16a672757::t_489e68614b7d2b 1-28,1-9,10-11,16-20,23-28
+  s_c7f2eb05574ce2::t_79fbbe00c1665e 16
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_a2f2604c6a0758::t_de3019d0aa72db 231-234
+  s_a2f2604c6a0758::t_d8339cbae28916 255
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_b1ae3677d6bc36::t_f4ecbbe076e13c 47,51
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -309,6 +319,9 @@ packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
   "base_commit_sha": "5d914b639c362f7e82d17bca3fdf32797e7daca4",
   "prompts": {},
   "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    },
     "h_760178ed151f13": {
       "author": "Sandra Zollner <sandra.zollner@n8n.io>"
     },
@@ -320,6 +333,14 @@ packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
     }
   },
   "sessions": {
+    "s_12107b09095a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f36b6843-9b7a-45a5-8d52-4031db7468b2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
     "s_1ef72897374beb": {
       "agent_id": {
         "tool": "cursor",
@@ -344,6 +365,14 @@ packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
+    "s_41e37076417c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "480c8620-d708-419e-ac08-fca1f0d2cb0a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
     "s_44a98ba2784a12": {
       "agent_id": {
         "tool": "cursor",
@@ -351,6 +380,14 @@ packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
         "model": "default"
       },
       "human_author": null
+    },
+    "s_4e81021c6567f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "013ede52-1858-4647-bc13-cff498ab7a24",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
     "s_60c9025b151770": {
       "agent_id": {
@@ -368,11 +405,27 @@ packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
       },
       "human_author": null
     },
+    "s_6638f09b589e97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5e3f01e-f690-4590-9a30-a5e2bd26c393",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
     "s_70e4a16a672757": {
       "agent_id": {
         "tool": "codex",
         "id": "019f79e6-9f5d-7b91-b07b-a2c76974c292",
         "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_744aa7ffad1673": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c708436e-d47a-46c9-8cfa-2a78ec728e0c",
+        "model": "claude-opus-4-8"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
@@ -400,6 +453,46 @@ packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
       },
       "human_author": null
     },
+    "s_91f67565918eee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36f4874d-45bc-43d2-bd2d-9c16d23d9c95",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_94fa4ed7d7b038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d271a69-d48a-40c6-b6a3-5630b148db23",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_a2f2604c6a0758": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2eebeab3-c2f8-45bc-a543-37d531da2598",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    },
+    "s_b1ae3677d6bc36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14856d89-b227-4425-adeb-7f31ce9ea7b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_b34abcbd386402": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dc6fdb7-ff5f-45a8-98bf-0345038d38d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
     "s_b3f23ab76a494c": {
       "agent_id": {
         "tool": "codex",
@@ -424,11 +517,27 @@ packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
+    "s_c7f2eb05574ce2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63ca9479-d174-4a0f-9349-54a47630f906",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
     "s_d8236b8b5400e8": {
       "agent_id": {
         "tool": "cursor",
         "id": "500e2669-64fc-46e2-9484-cf22ebf66e89",
         "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_e0d6b46d5a1cd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9bef762-10a3-4006-8b74-acefd3594aab",
+        "model": "claude-fable-5"
       },
       "human_author": null
     }

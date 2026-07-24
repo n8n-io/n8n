@@ -1,7 +1,30 @@
 ---
 {
   "schema_version": "authorship/3.0.0",
-  "git_ai_version": "1.5.2",
+  "git_ai_version": "1.6.14",
   "base_commit_sha": "a871e2718fb95edbe28c26b1f871e8bec30aa9a0",
-  "prompts": {}
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_94fa4ed7d7b038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d271a69-d48a-40c6-b6a3-5630b148db23",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_b34abcbd386402": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dc6fdb7-ff5f-45a8-98bf-0345038d38d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
 }
