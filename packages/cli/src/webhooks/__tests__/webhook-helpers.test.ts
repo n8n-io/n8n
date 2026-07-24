@@ -278,10 +278,11 @@ describe('setupResponseNodePromise', () => {
 		responsePromise.resolve({
 			body: { binaryData: { id: 'binary-123' } },
 			headers: { 'content-type': 'image/jpeg' },
-			statusCode: 200,
+			statusCode: 201,
 		});
 		await new Promise(process.nextTick);
 
+		expect(res.status).toHaveBeenCalledWith(201);
 		expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-123');
 		expect(res.setHeaders).toHaveBeenCalledWith(new Map([['content-type', 'image/jpeg']]));
 		expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
@@ -328,10 +329,11 @@ describe('setupResponseNodePromise', () => {
 		responsePromise.resolve({
 			body: buffer,
 			headers: { 'content-type': 'text/plain' },
-			statusCode: 200,
+			statusCode: 202,
 		});
 		await new Promise(process.nextTick);
 
+		expect(res.status).toHaveBeenCalledWith(202);
 		expect(res.setHeaders).toHaveBeenCalledWith(new Map([['content-type', 'text/plain']]));
 		expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 		expect(res.end).toHaveBeenCalledWith(buffer);

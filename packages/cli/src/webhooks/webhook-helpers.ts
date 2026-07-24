@@ -321,6 +321,9 @@ export function setupResponseNodePromise(
 		.then(async (response: IN8nHttpFullResponse) => {
 			const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
 			if (binaryData?.id) {
+				if (response.statusCode) {
+					res.status(response.statusCode);
+				}
 				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
 				applySandboxCSP(res);
 				const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
@@ -328,6 +331,9 @@ export function setupResponseNodePromise(
 				await finished(stream);
 				responseCallback(null, { noWebhookResponse: true });
 			} else if (Buffer.isBuffer(response.body)) {
+				if (response.statusCode) {
+					res.status(response.statusCode);
+				}
 				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
 				applySandboxCSP(res);
 				res.end(response.body);
