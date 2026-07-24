@@ -362,7 +362,7 @@ function toSentenceCase(value: string) {
 		current = current.slice(puncIndex + 1);
 	}
 
-	return buffer;
+	return buffer + current;
 }
 
 function toSnakeCase(value: string) {

@@ -1,37 +1,38 @@
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, NodeParameterValueType } from 'n8n-workflow';
 
 import { GoogleSheet } from '../../Google/Sheet/v2/helpers/GoogleSheet';
 import { EvaluationTrigger } from '../EvaluationTrigger/EvaluationTrigger.node.ee';
 import * as utils from '../utils/evaluationTriggerUtils';
+import type { Mock } from 'vitest';
 
 describe('Evaluation Trigger Node', () => {
 	const sheetName = 'Sheet5';
 	const spreadsheetId = '1oqFpPgEPTGDw7BPkp1SfPXq3Cb3Hyr1SROtf-Ec4zvA';
 
 	let mockExecuteFunctions = mock<IExecuteFunctions>({
-		getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-		getNode: jest.fn().mockReturnValue({ typeVersion: 4.6 }),
+		getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+		getNode: vi.fn().mockReturnValue({ typeVersion: 4.6 }),
 	});
 
-	let mockDataTable: { getManyRowsAndCount: jest.Mock; getColumns: jest.Mock };
+	let mockDataTable: { getManyRowsAndCount: Mock; getColumns: Mock };
 
 	describe('execute', () => {
 		describe('without filters', () => {
 			beforeEach(() => {
-				jest.resetAllMocks();
+				vi.resetAllMocks();
 
 				mockExecuteFunctions = mock<IExecuteFunctions>({
-					getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-					getNode: jest.fn().mockReturnValue({ typeVersion: 4.6 }),
+					getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+					getNode: vi.fn().mockReturnValue({ typeVersion: 4.6 }),
 				});
 
-				jest.spyOn(GoogleSheet.prototype, 'spreadsheetGetSheet').mockImplementation(async () => {
+				vi.spyOn(GoogleSheet.prototype, 'spreadsheetGetSheet').mockImplementation(async () => {
 					return { sheetId: 1, title: sheetName };
 				});
 
 				// Mocks getResults() and getRowsLeft()
-				jest.spyOn(GoogleSheet.prototype, 'getData').mockImplementation(async (range: string) => {
+				vi.spyOn(GoogleSheet.prototype, 'getData').mockImplementation(async (range: string) => {
 					if (range === `${sheetName}!1:1`) {
 						return [['Header1', 'Header2']];
 					} else if (range === `${sheetName}!2:1000`) {
@@ -245,21 +246,20 @@ describe('Evaluation Trigger Node', () => {
 
 		describe('with filters', () => {
 			beforeEach(() => {
-				jest.resetAllMocks();
+				vi.resetAllMocks();
 
 				mockExecuteFunctions = mock<IExecuteFunctions>({
-					getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-					getNode: jest.fn().mockReturnValue({ typeVersion: 4.6 }),
+					getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+					getNode: vi.fn().mockReturnValue({ typeVersion: 4.6 }),
 				});
 
-				jest.spyOn(GoogleSheet.prototype, 'spreadsheetGetSheet').mockImplementation(async () => {
+				vi.spyOn(GoogleSheet.prototype, 'spreadsheetGetSheet').mockImplementation(async () => {
 					return { sheetId: 1, title: sheetName };
 				});
 			});
 
 			test('should return a single row from google sheet using filter', async () => {
-				jest
-					.spyOn(GoogleSheet.prototype, 'getData')
+				vi.spyOn(GoogleSheet.prototype, 'getData')
 					.mockResolvedValueOnce([
 						// operationResult
 						['Header1', 'Header2'],
@@ -293,7 +293,7 @@ describe('Evaluation Trigger Node', () => {
 					},
 				);
 
-				jest.spyOn(utils, 'getRowsLeft').mockResolvedValue(0);
+				vi.spyOn(utils, 'getRowsLeft').mockResolvedValue(0);
 
 				const evaluationTrigger = new EvaluationTrigger();
 
@@ -319,16 +319,16 @@ describe('Evaluation Trigger Node', () => {
 
 		describe('Data tables with filters', () => {
 			beforeEach(() => {
-				jest.resetAllMocks();
+				vi.resetAllMocks();
 				mockDataTable = {
-					getManyRowsAndCount: jest.fn(),
-					getColumns: jest.fn().mockResolvedValue([{ name: 'processed', type: 'number' }]),
+					getManyRowsAndCount: vi.fn(),
+					getColumns: vi.fn().mockResolvedValue([{ name: 'processed', type: 'number' }]),
 				};
 
 				mockExecuteFunctions = mockDeep<IExecuteFunctions>({
-					getNode: jest.fn().mockReturnValue({ typeVersion: 4.7 }),
+					getNode: vi.fn().mockReturnValue({ typeVersion: 4.7 }),
 					helpers: {
-						getDataTableProxy: jest.fn().mockResolvedValue(mockDataTable),
+						getDataTableProxy: vi.fn().mockResolvedValue(mockDataTable),
 					},
 				});
 			});
@@ -457,24 +457,24 @@ describe('Evaluation Trigger Node', () => {
 	describe('customOperations.dataset.getRows', () => {
 		describe('Data tables', () => {
 			beforeEach(() => {
-				jest.resetAllMocks();
+				vi.resetAllMocks();
 				mockDataTable = {
-					getManyRowsAndCount: jest.fn().mockResolvedValue({
+					getManyRowsAndCount: vi.fn().mockResolvedValue({
 						data: [
 							{ id: 1, field1: 'value1', field2: 'value2' },
 							{ id: 2, field1: 'value3', field2: 'value4' },
 						],
 					}),
-					getColumns: jest.fn().mockResolvedValue([
+					getColumns: vi.fn().mockResolvedValue([
 						{ name: 'field1', type: 'string' },
 						{ name: 'field2', type: 'string' },
 					]),
 				};
 
 				mockExecuteFunctions = mockDeep<IExecuteFunctions>({
-					getNode: jest.fn().mockReturnValue({ typeVersion: 4.7 }),
+					getNode: vi.fn().mockReturnValue({ typeVersion: 4.7 }),
 					helpers: {
-						getDataTableProxy: jest.fn().mockResolvedValue(mockDataTable),
+						getDataTableProxy: vi.fn().mockResolvedValue(mockDataTable),
 					},
 				});
 			});
@@ -583,18 +583,18 @@ describe('Evaluation Trigger Node', () => {
 
 		describe('Google Sheets', () => {
 			beforeEach(() => {
-				jest.resetAllMocks();
+				vi.resetAllMocks();
 
 				mockExecuteFunctions = mock<IExecuteFunctions>({
-					getNode: jest.fn().mockReturnValue({ typeVersion: 4.6 }),
+					getNode: vi.fn().mockReturnValue({ typeVersion: 4.6 }),
 				});
 
-				jest.spyOn(GoogleSheet.prototype, 'spreadsheetGetSheet').mockImplementation(async () => {
+				vi.spyOn(GoogleSheet.prototype, 'spreadsheetGetSheet').mockImplementation(async () => {
 					return { sheetId: 1, title: sheetName };
 				});
 
 				// Mocks getResults() and getRowsLeft()
-				jest.spyOn(GoogleSheet.prototype, 'getData').mockImplementation(async (range: string) => {
+				vi.spyOn(GoogleSheet.prototype, 'getData').mockImplementation(async (range: string) => {
 					if (range === `${sheetName}!1:1`) {
 						return [['Header1', 'Header2']];
 					} else if (range === `${sheetName}!2:1000`) {
@@ -672,8 +672,7 @@ describe('Evaluation Trigger Node', () => {
 			test('should return all relevant rows from google sheet using filters', async () => {
 				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
 
-				jest
-					.spyOn(GoogleSheet.prototype, 'getData')
+				vi.spyOn(GoogleSheet.prototype, 'getData')
 					.mockResolvedValueOnce([
 						// operationResult
 						['Header1', 'Header2'],
@@ -707,7 +706,7 @@ describe('Evaluation Trigger Node', () => {
 					},
 				);
 
-				jest.spyOn(utils, 'getRowsLeft').mockResolvedValue(0);
+				vi.spyOn(utils, 'getRowsLeft').mockResolvedValue(0);
 
 				const evaluationTrigger = new EvaluationTrigger();
 

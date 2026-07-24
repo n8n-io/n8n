@@ -1,0 +1,105 @@
+# Syncs the master branch into the long-lived 3.x branch daily.
+#
+# During the v3 development window, master carries normal feature work (behind
+# opt-in flags) and 3.x is "master + breaking-change commits". This workflow
+# fast-forwards 3.x when possible, falls back to a three-way merge when 3.x has
+# diverged, and — when a merge conflict occurs — opens a draft conflict PR and
+# posts to #alerts-v3-sync. No further syncs run until that PR is resolved and merged.
+#
+# See .github/DEVELOPING_V3.md for the full v3 development model.
+
+name: 'Util: Sync master to 3.x'
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+# Serialize syncs — never run two at once.
+concurrency:
+  group: sync-master-to-3x
+  cancel-in-progress: false
+
+# Least privilege by default; each job opts into exactly what it needs.
+permissions: {}
+
+jobs:
+  sync:
+    name: Sync master into 3.x
+    if: github.repository == 'n8n-io/n8n'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      conflict_pr: ${{ steps.sync.outputs.conflict_pr }}
+      conflict_owners: ${{ steps.sync.outputs.conflict_owners }}
+    steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          # Scope the installation token to only what the sync needs.
+          permission-contents: write # push to 3.x / the conflict branch
+          permission-pull-requests: write # open the conflict PR
+          permission-issues: write # create the conflict label
+
+      - name: Checkout 3.x
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: 3.x
+          fetch-depth: 0
+          persist-credentials: false # we push with an explicit token URL instead
+
+      - name: Sync master into 3.x
+        id: sync
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: node .github/scripts/sync-master-to-3x.mjs
+
+  notify-conflict:
+    name: Notify Slack about conflict PR
+    needs: [sync]
+    if: ${{ needs.sync.outputs.conflict_pr != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout the slack scripts
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          PR_URL: ${{ needs.sync.outputs.conflict_pr }}
+          OWNERS_TEXT: ${{ needs.sync.outputs.conflict_owners }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-v3-sync' \
+            --text "<${PR_URL}|master→3.x sync hit a conflict — resolve this PR>. Daily syncs are paused until it is merged. ${OWNERS_TEXT}"
+
+  notify-on-failure:
+    name: Notify Slack on failure
+    needs: [sync]
+    if: ${{ always() && needs.sync.result == 'failure' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout the slack scripts
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-v3-sync' \
+            --text "<${RUN_URL}|master→3.x sync workflow failed unexpectedly>"

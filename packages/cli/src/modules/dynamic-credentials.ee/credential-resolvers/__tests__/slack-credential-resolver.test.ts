@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { Cipher } from 'n8n-core';
+import type { Mocked } from 'vitest';
 
 import { testCredentialResolverContract, testHelpers } from './resolver-contract-tests';
 import type { SlackSignatureIdentifier } from '../identifiers/slack-signature-identifier';
@@ -7,10 +8,10 @@ import { SlackCredentialResolver } from '../slack-credential-resolver';
 import type { DynamicCredentialEntryStorage } from '../storage/dynamic-credential-entry-storage';
 
 describe('SlackCredentialResolver', () => {
-	let mockLogger: jest.Mocked<Logger>;
-	let mockIdentifier: jest.Mocked<SlackSignatureIdentifier>;
-	let mockStorage: jest.Mocked<DynamicCredentialEntryStorage>;
-	let mockCipher: jest.Mocked<Cipher>;
+	let mockLogger: Mocked<Logger>;
+	let mockIdentifier: Mocked<SlackSignatureIdentifier>;
+	let mockStorage: Mocked<DynamicCredentialEntryStorage>;
+	let mockCipher: Mocked<Cipher>;
 
 	const validOptions = {
 		signingSecret: 'test-slack-signing-secret-abc123',
@@ -19,31 +20,31 @@ describe('SlackCredentialResolver', () => {
 
 	beforeEach(() => {
 		mockLogger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-		} as unknown as jest.Mocked<Logger>;
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+		} as unknown as Mocked<Logger>;
 
 		mockIdentifier = {
-			resolve: jest.fn(),
-			resolveKey: jest.fn(),
-			validateOptions: jest.fn(),
-		} as unknown as jest.Mocked<SlackSignatureIdentifier>;
+			resolve: vi.fn(),
+			resolveKey: vi.fn(),
+			validateOptions: vi.fn(),
+		} as unknown as Mocked<SlackSignatureIdentifier>;
 
 		mockStorage = {
-			getCredentialData: jest.fn(),
-			setCredentialData: jest.fn(),
-			deleteCredentialData: jest.fn(),
-			deleteAllCredentialData: jest.fn(),
-		} as unknown as jest.Mocked<DynamicCredentialEntryStorage>;
+			getCredentialData: vi.fn(),
+			setCredentialData: vi.fn(),
+			deleteCredentialData: vi.fn(),
+			deleteAllCredentialData: vi.fn(),
+		} as unknown as Mocked<DynamicCredentialEntryStorage>;
 
 		mockCipher = {
-			encrypt: jest.fn(),
-			decrypt: jest.fn(),
-			encryptV2: jest.fn(),
-			decryptV2: jest.fn(),
-		} as unknown as jest.Mocked<Cipher>;
+			encrypt: vi.fn(),
+			decrypt: vi.fn(),
+			encryptV2: vi.fn(),
+			decryptV2: vi.fn(),
+		} as unknown as Mocked<Cipher>;
 	});
 
 	// Run the standard contract tests

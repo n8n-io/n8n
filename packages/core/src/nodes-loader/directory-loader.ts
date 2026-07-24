@@ -17,8 +17,8 @@ import type {
 	KnownNodesAndCredentials,
 	NodeLoader,
 } from 'n8n-workflow';
-import { ApplicationError, isExpression, isSubNodeType, UnexpectedError } from 'n8n-workflow';
-import { realpathSync } from 'node:fs';
+import { isExpression, isSubNodeType, UnexpectedError, UserError } from 'n8n-workflow';
+import { readdirSync, realpathSync } from 'node:fs';
 import * as path from 'path';
 
 import { UnrecognizedCredentialTypeError } from '@/errors/unrecognized-credential-type.error';
@@ -154,10 +154,9 @@ export abstract class DirectoryLoader implements NodeLoader {
 			return loadClassInIsolation<T>(filePath, className);
 		} catch (error) {
 			throw error instanceof TypeError
-				? new ApplicationError(
-						'Class could not be found. Please check if the class is named correctly.',
-						{ extra: { className } },
-					)
+				? new UserError('Class could not be found. Please check if the class is named correctly.', {
+						extra: { className },
+					})
 				: error;
 		}
 	}
@@ -196,7 +195,7 @@ export abstract class DirectoryLoader implements NodeLoader {
 			nodeVersion = tempNode.currentVersion;
 
 			if (currentVersionNode.hasOwnProperty('executeSingle')) {
-				throw new ApplicationError(
+				throw new UserError(
 					'"executeSingle" has been removed. Please update the code of this node to use "execute" instead.',
 					{ extra: { nodeType } },
 				);
@@ -532,11 +531,82 @@ export abstract class DirectoryLoader implements NodeLoader {
 	}
 
 	private unloadAll() {
+		// Community nodes developed with `n8n-node dev` are symlinked into
+		// `<directory>/node_modules/<pkg>`. Node's require cache keys those files by
+		// their resolved real path (the symlink target), which lives outside
+		// `this.directory`, so we also sweep the resolved roots to pick up rebuilds.
+		const rootsToUnload = [this.directory, ...this.getSymlinkedPackageRoots()];
 		const filesToUnload = Object.keys(require.cache).filter((filePath) =>
-			filePath.startsWith(this.directory),
+			rootsToUnload.some((root) => filePath.startsWith(root)),
 		);
 		filesToUnload.forEach((filePath) => {
 			delete require.cache[filePath];
 		});
+	}
+
+	/** Resolves symlinked packages in `<directory>/node_modules` to their real paths. */
+	private getSymlinkedPackageRoots(): string[] {
+		const nodeModulesDir = path.join(this.directory, 'node_modules');
+
+		let entries;
+		try {
+			entries = readdirSync(nodeModulesDir, { withFileTypes: true });
+		} catch {
+			// No `node_modules` (e.g. lazy-loaded packages) - nothing to resolve.
+			return [];
+		}
+
+		if (!Array.isArray(entries)) return [];
+
+		const roots: string[] = [];
+		for (const entry of entries) {
+			if (entry.name.startsWith('.')) continue;
+			if (!entry.isSymbolicLink() && !entry.isDirectory()) continue;
+
+			const entryPath = path.join(nodeModulesDir, entry.name);
+
+			// Scoped packages (`@scope/pkg`) symlink one level deeper: `@scope` is a
+			// real directory, so descend into it and resolve each scoped package.
+			if (entry.name.startsWith('@') && entry.isDirectory()) {
+				roots.push(...this.resolveSymlinkedRoots(entryPath));
+				continue;
+			}
+
+			this.pushResolvedRoot(roots, entryPath);
+		}
+
+		return roots;
+	}
+
+	/** Resolves symlinked packages directly under `scopeDir` to their real paths. */
+	private resolveSymlinkedRoots(scopeDir: string): string[] {
+		let entries;
+		try {
+			entries = readdirSync(scopeDir, { withFileTypes: true });
+		} catch {
+			return [];
+		}
+
+		if (!Array.isArray(entries)) return [];
+
+		const roots: string[] = [];
+		for (const entry of entries) {
+			if (entry.name.startsWith('.')) continue;
+			if (!entry.isSymbolicLink() && !entry.isDirectory()) continue;
+
+			this.pushResolvedRoot(roots, path.join(scopeDir, entry.name));
+		}
+
+		return roots;
+	}
+
+	/** Adds `entryPath`'s real path to `roots` when it resolves through a symlink. */
+	private pushResolvedRoot(roots: string[], entryPath: string) {
+		try {
+			const realPath = realpathSync(entryPath);
+			if (realPath !== entryPath) roots.push(realPath);
+		} catch {
+			// Broken symlink - skip.
+		}
 	}
 }

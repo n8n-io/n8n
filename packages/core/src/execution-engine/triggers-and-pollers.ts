@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
-import { ApplicationError } from '@n8n/errors';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { UnexpectedError } from 'n8n-workflow';
 import type {
 	Workflow,
 	INode,
@@ -9,7 +10,6 @@ import type {
 	WorkflowExecuteMode,
 	WorkflowActivateMode,
 	ITriggerResponse,
-	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
 	ExecutionError,
@@ -36,7 +36,7 @@ export class TriggersAndPollers {
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		if (!nodeType.trigger) {
-			throw new ApplicationError('Node type does not have a trigger function defined', {
+			throw new UnexpectedError('Node type does not have a trigger function defined', {
 				extra: { nodeName: node.name },
 				tags: { nodeType: node.type },
 			});
@@ -100,7 +100,7 @@ export class TriggersAndPollers {
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		if (!nodeType.poll) {
-			throw new ApplicationError('Node type does not have a poll function defined', {
+			throw new UnexpectedError('Node type does not have a poll function defined', {
 				extra: { nodeName: node.name },
 				tags: { nodeType: node.type },
 			});

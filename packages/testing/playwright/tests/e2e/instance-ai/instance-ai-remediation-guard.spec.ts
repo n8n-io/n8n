@@ -226,7 +226,7 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 test.describe(
 	'Instance AI remediation guard @capability:proxy',
 	{
-		annotation: [{ type: 'owner', description: 'Instance AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test(
@@ -243,25 +243,25 @@ test.describe(
 			async ({ api, n8nContainer, n8n }, testInfo) => {
 				test.setTimeout(600_000);
 				test.skip(!n8nContainer, 'Replay trace assertions require the container proxy harness');
-				test.skip(
-					testInfo.project.name.includes('multi-main'),
-					'Trace replay state is process-local and not stable in multi-main mode',
-				);
 
 				await n8n.navigate.toInstanceAi();
 				await n8n.instanceAi.sendMessage(
 					'Build a workflow named "INS-164 mocked credential guard" with a Manual Trigger ' +
 						'connected to a Slack node that posts a message using a mocked slackApi credential placeholder. ' +
 						'Use the workflow SDK credential placeholder directly; do not call credentials setup or ask for a real Slack credential. ' +
-						'Use the workflow-builder skill, create a build plan for approval, and save it with build-workflow. ' +
+						'Use the workflow-builder skill and save it with build-workflow. ' +
 						'When the build result reports that setup is required before verification, open the workflow setup card with workflows(action="setup") and stop editing.',
 				);
-				await n8n.instanceAi.approveBuildPlan(180_000);
 
-				await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 540_000 });
+				// The skill-opening narration is surfaced transiently in the thinking
+				// trace while the orchestrator loads the workflow-builder skill, then
+				// collapses once the build completes. Assert it while the run is still
+				// in progress — before awaiting the terminal setup card.
 				await expect(
 					n8n.instanceAi.getAssistantMessageText('Opening skill: workflow-builder'),
-				).toBeVisible();
+				).toBeVisible({ timeout: 540_000 });
+
+				await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 540_000 });
 				await expect(n8n.instanceAi.getAssistantMessageText(TERMINAL_FALLBACK_TEXT)).toHaveCount(0);
 
 				const events = getLatestRecordingEvents(await getTraceEvents(api, testInfo));

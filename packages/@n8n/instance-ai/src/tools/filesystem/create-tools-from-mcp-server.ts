@@ -13,6 +13,7 @@ import {
 	type McpToolCallResult,
 } from '@n8n/api-types';
 import type * as McpBrowserCredentialMod from '@n8n/mcp-browser/dist/tools/credential';
+import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { convertJsonSchemaToZod } from 'zod-from-json-schema-v3';
@@ -81,10 +82,6 @@ function isGatewayResourceDecision(
 	option: string,
 ): option is z.infer<typeof gatewayResourceDecisionSchema> {
 	return gatewayResourceDecisionSchema.safeParse(option).success;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isMcpContentBlock(value: unknown): value is McpContentBlock {
@@ -224,9 +221,9 @@ function buildNativeMcpMediaMessage(result: unknown): AgentMessage | undefined {
 
 const LOCAL_GATEWAY_MCP_SOURCE = 'local gateway MCP';
 
-function warnSkippedLocalMcpSchema(logger: Logger | undefined) {
+function warnSkippedLocalMcpSchema(logger: Logger) {
 	return (error: McpSchemaSanitizationError) => {
-		logger?.warn('Skipped local gateway MCP tool with unsupported schema', {
+		logger.warn('Skipped local gateway MCP tool with unsupported schema', {
 			toolName: error.details.toolName,
 			source: LOCAL_GATEWAY_MCP_SOURCE,
 			path: error.details.path,
@@ -239,9 +236,9 @@ function warnSkippedLocalMcpSchema(logger: Logger | undefined) {
 	};
 }
 
-function warnSkippedLocalMcpTool(logger: Logger | undefined) {
+function warnSkippedLocalMcpTool(logger: Logger) {
 	return (error: McpToolNameValidationError) => {
-		logger?.warn('Skipped local gateway MCP tool with unsafe name', {
+		logger.warn('Skipped local gateway MCP tool with unsafe name', {
 			toolName: error.toolName,
 			source: error.source,
 			reason: error.message,
@@ -268,7 +265,7 @@ function warnSkippedLocalMcpTool(logger: Logger | undefined) {
  */
 export function createToolsFromLocalMcpServer(
 	server: LocalMcpServer,
-	logger?: Logger,
+	logger: Logger,
 ): InstanceAiToolRegistry {
 	const tools = createToolRegistry();
 	const claimedToolNames = createClaimedToolNames([]);
@@ -307,10 +304,9 @@ export function createToolsFromLocalMcpServer(
 		try {
 			if (toolName === 'browser_create_credential') {
 				// when converting json schema the `inputSchema` has the correct shape and parsed to correct output
-				// but during execution all unspecified key from `data` and `resolveData` are stripped.
-				// somewhere in mastra core the inputSchema is converted multiple times back and forth and
-				// gets transformed to jsonSchema with `additionalProperties=false`
-				// this does not happen when passing the schema directly
+				// but during execution all unspecified keys from `data` and `resolveData` are stripped,
+				// because the schema is converted back and forth and transformed to jsonSchema with
+				// `additionalProperties=false`. Passing the schema directly avoids this.
 				inputSchema = loadMcpBrowserCredential().browserCreateCredentialSchema;
 			} else {
 				// Convert JSON Schema → Zod (v3) so the LLM sees the actual parameter shapes.
@@ -342,16 +338,22 @@ export function createToolsFromLocalMcpServer(
 						};
 					}
 					// Re-call the daemon with the user's decision
-					return await server.callTool({
-						name: toolName,
-						arguments: { ...args, _confirmation: resumeData.resourceDecision },
-					});
+					return await server.callTool(
+						{
+							name: toolName,
+							arguments: { ...args, _confirmation: resumeData.resourceDecision },
+						},
+						{ abortSignal: ctx.abortSignal },
+					);
 				}
 
 				// First-call path: strip any LLM-provided _confirmation key so the agent
 				// cannot bypass the human confirmation flow by supplying its own token.
 				const { _confirmation: _stripped, ...safeArgs } = args;
-				const result = await server.callTool({ name: toolName, arguments: safeArgs });
+				const result = await server.callTool(
+					{ name: toolName, arguments: safeArgs },
+					{ abortSignal: ctx.abortSignal },
+				);
 
 				// If the daemon requires a resource-access confirmation, suspend the agent
 				if (result.isError) {

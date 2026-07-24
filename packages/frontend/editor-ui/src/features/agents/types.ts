@@ -1,8 +1,8 @@
 import type { BaseResource } from '@/Interface';
-import type { AgentJsonToolConfig, AgentSkill } from '@n8n/api-types';
+import type { AgentJsonToolConfig, AgentSkill, AgentSkillReference } from '@n8n/api-types';
 import type { Agent, ToolDescriptor, CustomToolEntry } from './agent.types';
 
-export type { ToolDescriptor, CustomToolEntry, AgentSkill };
+export type { ToolDescriptor, CustomToolEntry, AgentSkill, AgentSkillReference };
 
 /**
  * Agent resource type definition.
@@ -26,7 +26,6 @@ export interface AgentSchema {
 	model: { provider: string | null; name: string | null; raw?: string };
 	credential: string | null;
 	instructions: string | null;
-	description: string | null;
 	tools: ToolSchema[];
 	providerTools: ProviderToolSchema[];
 	memory: MemorySchema | null;
@@ -122,4 +121,6 @@ export type {
 	AgentJsonConfig as AgentJsonConfigRef,
 	AgentJsonMcpServerConfig,
 	AgentJsonConfig,
+	AgentJsonVectorStoreConfig,
+	AgentVectorStoreProvider,
 } from '@n8n/api-types';

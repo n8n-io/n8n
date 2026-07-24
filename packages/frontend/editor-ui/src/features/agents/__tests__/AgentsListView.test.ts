@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentResource } from '../types';
 
 import AgentsListView from '../views/AgentsListView.vue';
+import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 
 const mocks = vi.hoisted(() => ({
 	listAgentsPage: vi.fn(),
@@ -126,7 +127,7 @@ const mountView = async () => {
 			stubs: {
 				ProjectHeader: { template: '<div><slot /></div>' },
 				InsightsSummary: true,
-				N8nActionBox: { template: '<div />' },
+				N8nEmptyState: { template: '<div />' },
 			},
 		},
 	});
@@ -296,5 +297,23 @@ describe('AgentsListView — overview page', () => {
 			expect.objectContaining({ filter: { query: 'Support' } }),
 		);
 		expect(mocks.listAgentsPage).not.toHaveBeenCalled();
+	});
+});
+
+describe('AgentsListView — create agent', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mocks.routeProjectId = 'project-1';
+	});
+
+	it('routes create-agent clicks to Instance AI with the project context', async () => {
+		mocks.listAgentsPage.mockResolvedValueOnce({ count: 0, data: [] });
+		const wrapper = await mountView();
+
+		const vm = wrapper.vm as unknown as { onCreateAgentClick: () => void };
+		vm.onCreateAgentClick();
+
+		expect(mocks.trackClickedNewAgent).toHaveBeenCalledWith('button');
+		expect(mocks.routerPush).toHaveBeenCalledWith(instanceAiCreateAgentRoute('project-1'));
 	});
 });

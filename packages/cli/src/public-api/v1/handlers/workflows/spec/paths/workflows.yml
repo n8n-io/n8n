@@ -1,5 +1,6 @@
 post:
   x-eov-operation-id: createWorkflow
+  x-required-scope: workflow:create
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler
   tags:
     - Workflow
@@ -29,6 +30,7 @@ post:
       $ref: '../../../../shared/spec/responses/notFound.yml'
 get:
   x-eov-operation-id: getWorkflows
+  x-required-scope: workflow:list
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler
   tags:
     - Workflow

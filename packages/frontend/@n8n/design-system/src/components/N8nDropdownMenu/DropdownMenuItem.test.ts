@@ -109,16 +109,13 @@ describe('N8nDropdownMenuItem', () => {
 		});
 
 		it('should render highlighted item', async () => {
-			renderMenuItem({
+			const wrapper = renderMenuItem({
 				id: 'test',
 				label: 'Highlighted Item',
 				highlighted: true,
 			});
 
-			await waitFor(() => {
-				const item = document.querySelector('[role="menuitem"]');
-				expect(item).toMatchSnapshot();
-			});
+			expect(await wrapper.findByRole('menuitem')).toHaveAttribute('aria-selected', 'true');
 		});
 
 		it('should show title attribute when label is 20+ characters', async () => {
@@ -176,6 +173,34 @@ describe('N8nDropdownMenuItem', () => {
 	});
 
 	describe('select event', () => {
+		it('should render a checkbox item and keep the menu open when selected', async () => {
+			const wrapper = render({
+				components: { DropdownMenuRoot, DropdownMenuContent, DropdownMenuItem },
+				template: `
+					<DropdownMenuRoot :open="true">
+						<DropdownMenuContent>
+							<DropdownMenuItem
+								id="checkbox-item"
+								label="Checkbox item"
+								checkbox
+								:checked="true"
+								:close-on-select="false"
+								@select="$emit('select', $event)"
+							/>
+						</DropdownMenuContent>
+					</DropdownMenuRoot>
+				`,
+			});
+
+			const item = await wrapper.findByRole('menuitemcheckbox', { name: 'Checkbox item' });
+			expect(item).toHaveAttribute('aria-checked', 'true');
+
+			await userEvent.click(item);
+
+			expect(wrapper.emitted('select')?.[0]).toEqual(['checkbox-item']);
+			expect(wrapper.getByRole('menu')).toBeInTheDocument();
+		});
+
 		it('should emit select event when clicked', async () => {
 			const wrapper = render({
 				components: { DropdownMenuRoot, DropdownMenuContent, DropdownMenuItem },

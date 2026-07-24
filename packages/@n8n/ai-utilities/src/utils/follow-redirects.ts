@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 
 const DEFAULT_MAX_REDIRECTS = 20;
 
@@ -45,7 +45,7 @@ export async function fetchFollowingRedirects(
 
 		hops += 1;
 		if (hops > maxRedirects) {
-			throw new ApplicationError(`Too many redirects (max ${maxRedirects})`);
+			throw new OperationalError(`Too many redirects (max ${maxRedirects})`);
 		}
 
 		await response.body?.cancel().catch(() => {});

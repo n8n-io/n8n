@@ -21,6 +21,7 @@ test.describe(
 			await n8n.canvas.addNode('Manual Trigger');
 
 			await n8n.canvas.openShareModal();
+			await expect(n8n.workflowSharingModal.container).toBeVisible();
 			await n8n.workflowSharingModal.addUser(member.email);
 			await n8n.workflowSharingModal.save();
 
@@ -120,7 +121,7 @@ test.describe(
 			});
 
 			const memberApi = await api.createApiForUser(member);
-			const response = await memberApi.request.get(`/rest/workflows/${workflow.id}`);
+			const response = await memberApi.workflows.getWorkflowRaw(workflow.id);
 			// With project features enabled, unauthorized access returns 403 (Forbidden)
 			expect(response.status()).toBe(403);
 		});

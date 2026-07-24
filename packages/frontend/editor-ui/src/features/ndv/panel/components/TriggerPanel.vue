@@ -15,8 +15,7 @@ import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -55,11 +54,8 @@ const emit = defineEmits<{
 const workflowId = useInjectWorkflowId();
 const nodesTypeStore = useNodeTypesStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const workflowExecutionStateStore = computed(() =>
-	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
-);
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const ndvStore = injectNDVStore();
 
 const router = useRouter();
@@ -179,7 +175,7 @@ const isListeningForEvents = computed(() => {
 		return false;
 	}
 
-	const executedNode = workflowsStore.executedNode;
+	const executedNode = workflowExecutionStateStore.value.activeExecutionExecutedNode;
 	const isCurrentNodeExecuted = executedNode === props.nodeName;
 	const isChildNodeExecuted = executedNode
 		? (workflowDocumentStore?.value?.getParentNodes(executedNode).includes(props.nodeName) ?? false)
@@ -191,7 +187,7 @@ const isListeningForEvents = computed(() => {
 const workflowRunning = computed(() => workflowExecutionStateStore.value.isWorkflowRunning);
 
 const isActivelyPolling = computed(() => {
-	const triggeredNode = workflowsStore.executedNode;
+	const triggeredNode = workflowExecutionStateStore.value.activeExecutionExecutedNode;
 
 	return workflowRunning.value && isPollingNode.value && props.nodeName === triggeredNode;
 });

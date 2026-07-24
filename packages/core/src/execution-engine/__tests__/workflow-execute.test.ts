@@ -11,6 +11,7 @@
 // PD denotes that the node has pinned data
 
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import pick from 'lodash/pick';
 import type {
 	ExecutionBaseError,
@@ -25,6 +26,7 @@ import type {
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
+	ITaskMetadata,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	WorkflowTestData,
@@ -34,13 +36,13 @@ import type {
 	IDestinationNode,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
-	createDeferredPromise,
+	UnexpectedError,
 	createRunExecutionData,
 	NodeApiError,
 	NodeConnectionTypes,
 	NodeHelpers,
 	NodeOperationError,
+	UserError,
 	Workflow,
 	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
@@ -144,7 +146,7 @@ describe('WorkflowExecute', () => {
 				// Check if the output data of the nodes is correct
 				for (const nodeName of Object.keys(testData.output.nodeData)) {
 					if (result.data.resultData.runData[nodeName] === undefined) {
-						throw new ApplicationError('Data for node is missing', { extra: { nodeName } });
+						throw new UnexpectedError('Data for node is missing', { extra: { nodeName } });
 					}
 
 					const resultData = result.data.resultData.runData[nodeName].map((nodeData) => {
@@ -217,7 +219,7 @@ describe('WorkflowExecute', () => {
 				// Check if the output data of the nodes is correct
 				for (const nodeName of Object.keys(testData.output.nodeData)) {
 					if (result.data.resultData.runData[nodeName] === undefined) {
-						throw new ApplicationError('Data for node is missing', { extra: { nodeName } });
+						throw new UnexpectedError('Data for node is missing', { extra: { nodeName } });
 					}
 
 					const resultData = result.data.resultData.runData[nodeName].map((nodeData) => {
@@ -1155,6 +1157,124 @@ describe('WorkflowExecute', () => {
 			// ASSERT
 			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
 		});
+
+		//   XX                       ►►
+		// ┌──────────┐1     ┌─────────────┐
+		// │  source  ├─────►│ destination │
+		// └──────────┘      └─────────────┘
+		// `source` is the destination's only parent and it is disabled. The start-node
+		// fallback skips it and finds no enabled parent with run data, so it throws a
+		// UserError. Before the fix the disabled `source` (it has run data) was elected as
+		// the start node and the subgraph search tripped a membership assertion.
+		test('throws a user error when the only resolvable start node is disabled', async () => {
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const source = createNodeData({ name: 'source', disabled: true });
+			const destination = createNodeData({ name: 'destination' });
+			const workflow = new DirectedGraph()
+				.addNodes(source, destination)
+				.addConnections({ from: source, to: destination })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+
+			const runData: IRunData = {
+				[source.name]: [toITaskData([{ data: { name: source.name } }])],
+			};
+
+			// runPartialWorkflow2 is non-async; the user error is thrown synchronously.
+			let error: unknown;
+			try {
+				await workflowExecute.runPartialWorkflow2(workflow, runData, {}, [], {
+					nodeName: destination.name,
+					mode: 'inclusive',
+				});
+			} catch (e) {
+				error = e;
+			}
+			expect(error).toBeInstanceOf(UserError);
+		});
+
+		//   XX PD                            ►►
+		// ┌─────────┐1   ┌────────┐1   ┌─────────────┐
+		// │disabled1├───►│enabled1├───►│ destination │
+		// └─────────┘    └────────┘    └─────────────┘
+		// The fallback skips the disabled parent and walks up to `enabled1`, the closest
+		// enabled parent with run data, so the run still starts from there.
+		test('picks the closest enabled parent with run data, skipping disabled ones', async () => {
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+			const processRunExecutionDataSpy = vi
+				.spyOn(workflowExecute, 'processRunExecutionData')
+				.mockImplementationOnce(vi.fn());
+			const recreateNodeExecutionStackSpy = vi.spyOn(
+				partialExecutionUtils,
+				'recreateNodeExecutionStack',
+			);
+
+			const disabled1 = createNodeData({ name: 'disabled1', disabled: true });
+			const enabled1 = createNodeData({ name: 'enabled1' });
+			const destination = createNodeData({ name: 'destination' });
+			const workflow = new DirectedGraph()
+				.addNodes(disabled1, enabled1, destination)
+				.addConnections({ from: disabled1, to: enabled1 }, { from: enabled1, to: destination })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+
+			const runData: IRunData = {
+				[disabled1.name]: [toITaskData([{ data: { name: disabled1.name } }])],
+				[enabled1.name]: [toITaskData([{ data: { name: enabled1.name } }])],
+			};
+			const pinData: IPinData = {
+				[disabled1.name]: [{ json: { name: disabled1.name } }],
+			};
+
+			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, [], {
+				nodeName: destination.name,
+				mode: 'inclusive',
+			});
+
+			// The subgraph is built from the enabled parent, not the disabled one.
+			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
+			const subgraph = recreateNodeExecutionStackSpy.mock.calls[0][0];
+			expect(subgraph.hasNode(enabled1.name)).toBe(true);
+			expect(subgraph.hasNode(disabled1.name)).toBe(false);
+		});
+
+		//                       ►► XX
+		// ┌─────────────┐1   ┌─────────────┐
+		// │manualTrigger├───►│ destination │
+		// └─────────────┘    └─────────────┘
+		// The destination itself is disabled. The guard detects this before the subgraph
+		// search and throws a UserError; without it the search would trip a membership
+		// assertion on the (filtered-out) destination.
+		test('throws a user error when the destination node is disabled', async () => {
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const destination = createNodeData({ name: 'destination', disabled: true });
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, destination)
+				.addConnections({ from: trigger, to: destination })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { name: trigger.name } }])],
+			};
+
+			let error: unknown;
+			try {
+				await workflowExecute.runPartialWorkflow2(workflow, runData, {}, [], {
+					nodeName: destination.name,
+					mode: 'inclusive',
+				});
+			} catch (e) {
+				error = e;
+			}
+			expect(error).toBeInstanceOf(UserError);
+		});
 	});
 
 	describe('checkReadyForExecution', () => {
@@ -1888,6 +2008,7 @@ describe('WorkflowExecute', () => {
 
 		async function runResumedSubError(
 			nodeOverrides: Partial<INode> = {},
+			metadataExtras: ITaskMetadata = {},
 		): Promise<{ result: IRun; runNodeCalls: number }> {
 			const subNode: INode = {
 				...createNodeData({ name: SUB_NODE, type: 'sub' }),
@@ -1925,6 +2046,7 @@ describe('WorkflowExecute', () => {
 							metadata: {
 								resumeError: { name: 'NodeOperationError', message: SUB_ERROR },
 								subExecution: SUB_EXECUTION,
+								...metadataExtras,
 							},
 						} as unknown as IExecuteData,
 					],
@@ -1995,6 +2117,18 @@ describe('WorkflowExecute', () => {
 				expect(errorItem?.metadata).toEqual({ subExecution: SUB_EXECUTION });
 			},
 		);
+
+		it('should restore a dynamic-credential stash also when the resume carries a sub-workflow error', async () => {
+			const { result } = await runResumedSubError(
+				{ onError: 'continueRegularOutput' },
+				{ dynamicCredentialsUsage: { attemptedDynamicCredentials: true } },
+			);
+
+			expect(result.status).toBe('success');
+			const run = lastRun(result);
+			expect(run.attemptedDynamicCredentials).toBe(true);
+			expect(run.usedDynamicCredentials).toBeUndefined();
+		});
 	});
 
 	describe('prepareWaitingToExecution', () => {
@@ -3236,7 +3370,7 @@ describe('WorkflowExecute', () => {
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			// Spy on convertBinaryData
-			const convertBinaryDataModule = await import('../../utils/convert-binary-data');
+			const convertBinaryDataModule = await import('../../utils/convert-binary-data.js');
 			const convertBinaryDataSpy = vi.spyOn(convertBinaryDataModule, 'convertBinaryData');
 
 			// ACT

@@ -15,10 +15,21 @@ captured when it was defined, not this mapping.
 """
 
 import json
+import sys
 from collections.abc import Callable
 
-from src.constants import BLOCKED_ATTRIBUTES, EXECUTOR_CIRCULAR_REFERENCE_KEY
+from src.constants import (
+    BLOCKED_ATTRIBUTES,
+    EXECUTOR_CIRCULAR_REFERENCE_KEY,
+    EXECUTOR_FILENAMES,
+)
 from src.errors import SecurityViolationError
+
+# Bind the frame helper while ``sys`` is importable (this module drops most of
+# its builtins at end of load). Keep only this function, not all of ``sys``, to
+# limit what user code could reach through this module.
+_get_frame = sys._getframe
+del sys
 
 
 # Sourced from the analyzer's BLOCKED_ATTRIBUTES so the static and runtime
@@ -120,33 +131,139 @@ class _SafePrint(_HardenedCallable):
         return "<built-in function print>"
 
 
+def _import_module_anchor(args, kwargs) -> str | None:
+    """The string anchor of ``import_module(name, package)``, or ``None``.
+
+    ``package`` may be a keyword or the first positional argument. Anything that
+    isn't a string in that slot (notably ``__import__``'s ``globals`` dict) is
+    not an anchor.
+    """
+    # The anchor is a string, passed by keyword or as the first positional arg.
+    package = kwargs.get("package")
+    if isinstance(package, str):
+        return package
+    if args and isinstance(args[0], str):
+        return args[0]
+    # No string in that slot (e.g. ``__import__``'s globals dict): no anchor.
+    return None
+
+
+def _level_relative_target(name, args, kwargs) -> tuple[str, str] | None:
+    """The ``(leading-dot name, anchor)`` for a relative
+    ``__import__(name, globals, .., level)``, or ``None`` if it isn't one.
+
+    A relative ``__import__`` is a bare ``name`` with ``level > 0``; the anchor
+    is the importing module's ``globals["__package__"]``. The dots are rebuilt
+    onto the name so it resolves the same way as the ``import_module`` form.
+    """
+    # Only a string name can be reshaped into a leading-dot form and resolved.
+    if not isinstance(name, str):
+        return None
+    # ``level`` is the dot count, ``__import__``'s 5th arg (keyword or 4th of *args).
+    level = kwargs.get("level")
+    if level is None and len(args) >= 4:
+        level = args[3]
+    # level <= 0 is an absolute import, not a relative one.
+    if not isinstance(level, int) or level <= 0:
+        return None
+    # The anchor lives in the importer's globals (``__import__``'s 2nd arg).
+    importer_globals = kwargs.get("globals")
+    if importer_globals is None and args and isinstance(args[0], dict):
+        importer_globals = args[0]
+    if not isinstance(importer_globals, dict):
+        return None
+    # No usable parent package: let the caller fall through (and fail closed)
+    # rather than guess an anchor.
+    anchor = importer_globals.get("__package__")
+    if not (isinstance(anchor, str) and anchor):
+        return None
+    # Rebuild the leading-dot form, e.g. ("sub", level 1) -> ".sub".
+    return "." * level + name, anchor
+
+
+def _validation_target(name, args, kwargs) -> tuple[str, str | None]:
+    """Return the ``(name, anchor_package)`` the allowlist should check.
+
+    Relative imports arrive in two shapes; both are normalized to a leading-dot
+    name plus a string anchor, which the validator resolves to a top-level
+    package. The real import is performed separately with the original name.
+    """
+    # import_module(".sub", "pkg"): the name already carries its dots.
+    anchor = _import_module_anchor(args, kwargs)
+    if anchor is not None:
+        return name, anchor
+
+    # __import__("sub", globals, .., level): rebuild the dotted name from level.
+    relative = _level_relative_target(name, args, kwargs)
+    if relative is not None:
+        return relative
+
+    # Absolute import (or unrecognized shape): check the name as-is.
+    return name, None
+
+
+def _import_initiated_by_user_code() -> bool:
+    """Whether this import's immediate caller is the user's own code.
+
+    Told apart by the calling frame's filename: user code runs under a fixed
+    sentinel filename, set when the executor compiles it. This is the immediate
+    initiator, not the ultimate one — an import a package makes on the user's
+    behalf counts as package code.
+    """
+    # Frames: 0 here, 1 _GuardedImport.__call__, 2 the import statement / importlib call.
+    try:
+        initiator = _get_frame(2)
+    except ValueError:
+        # No frame to inspect: fail closed and treat it as user code.
+        return True
+    return initiator.f_code.co_filename in EXECUTOR_FILENAMES
+
+
 class _GuardedImport(_HardenedCallable):
     """Hardened wrapper around an import entry point.
 
     Used both for the ``__import__`` injected into user builtins and for the
     in-place replacements on ``importlib.import_module`` / ``importlib.__import__``.
+    Only the importlib entry points are ``trust_eligible``; the user-builtins
+    ``__import__`` always validates, regardless of caller.
     """
 
-    __slots__ = ("_security_config", "_validate_import", "_original")
+    __slots__ = ("_security_config", "_validate_import", "_original", "_trust_eligible")
     _DENY = _INTROSPECTION_DENY | frozenset(
-        {"_security_config", "_validate_import", "_original"}
+        {"_security_config", "_validate_import", "_original", "_trust_eligible"}
     )
 
-    def __init__(self, security_config, validate_import: Callable, original: Callable):
+    def __init__(
+        self,
+        security_config,
+        validate_import: Callable,
+        original: Callable,
+        trust_eligible: bool = False,
+    ):
         object.__setattr__(self, "_security_config", security_config)
         object.__setattr__(self, "_validate_import", validate_import)
         object.__setattr__(self, "_original", original)
+        object.__setattr__(self, "_trust_eligible", trust_eligible)
 
     def __call__(self, name, *args, **kwargs):
-        validate = object.__getattribute__(self, "_validate_import")
         config = object.__getattribute__(self, "_security_config")
-        is_allowed, error_msg = validate(name, config)
-        if not is_allowed:
-            assert error_msg is not None
-            raise SecurityViolationError(
-                message="Security violation detected",
-                description=error_msg,
-            )
+        # When trusted, package-initiated imports skip the allowlist; user
+        # imports are always validated. Applies to all package code.
+        trusted = (
+            object.__getattribute__(self, "_trust_eligible")
+            and config.allow_transitive_imports
+            and not _import_initiated_by_user_code()
+        )
+        if not trusted:
+            validate = object.__getattribute__(self, "_validate_import")
+            check_name, package = _validation_target(name, args, kwargs)
+            is_allowed, error_msg = validate(check_name, config, package)
+            if not is_allowed:
+                assert error_msg is not None
+                raise SecurityViolationError(
+                    message="Security violation detected",
+                    description=error_msg,
+                )
         original = object.__getattribute__(self, "_original")
         return original(name, *args, **kwargs)
 

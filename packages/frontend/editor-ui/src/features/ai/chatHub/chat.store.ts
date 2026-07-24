@@ -29,6 +29,7 @@ import {
 	fetchChatSettingsApi,
 	fetchChatProviderSettingsApi,
 	updateChatSettingsApi,
+	updateChatEnabledApi,
 	fetchToolsApi,
 	createToolApi,
 	updateToolApi,
@@ -1123,6 +1124,12 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		return providerSettings;
 	}
 
+	async function setChatEnabled(enabled: boolean) {
+		await updateChatEnabledApi(rootStore.restApiContext, enabled);
+		// Refresh module settings so isChatFeatureEnabled recomputes app-wide.
+		await settingsStore.getModuleSettings();
+	}
+
 	async function updateProviderSettings(updated: ChatProviderSettingsDto) {
 		if (!updated.enabled) {
 			updated.allowedModels = [];
@@ -1585,6 +1592,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		fetchAllChatSettings,
 		fetchProviderSettings,
 		updateProviderSettings,
+		setChatEnabled,
 		semanticSearchReadiness,
 
 		/**

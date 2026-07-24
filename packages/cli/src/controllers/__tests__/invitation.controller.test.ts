@@ -1,29 +1,29 @@
-import { EventService } from '@/events/event.service';
-import { mockInstance } from '@n8n/backend-test-utils';
-import { PostHogClient } from '@/posthog';
-import { ExternalHooks } from '@/external-hooks';
-import { AuthService } from '@/auth/auth.service';
-import { UserService } from '@/services/user.service';
-import { License } from '@/license';
-import { PasswordUtility } from '@/services/password.utility';
-import type { User, PublicUser } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 import { InvitationController } from '../invitation.controller';
 import type { AcceptInvitationRequestDto } from '@n8n/api-types';
 import { InviteUsersRequestDto } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
+import { mockInstance } from '@n8n/backend-test-utils';
+import { UserRepository } from '@n8n/db';
+import { mock } from 'vitest-mock-extended';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE, GLOBAL_ADMIN_ROLE } from '@n8n/db';
-import type { AuthenticatedRequest } from '@n8n/db';
+import type { User, PublicUser, AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+
 import config from '@/config';
 import type { AuthlessRequest } from '@/requests';
 import { v4 as uuidv4 } from 'uuid';
+import { AuthService } from '@/auth/auth.service';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import { License } from '@/license';
+import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
+import { PasswordUtility } from '@/services/password.utility';
+import { UserService } from '@/services/user.service';
 
 describe('InvitationController', () => {
 	const logger: Logger = mockInstance(Logger);
@@ -54,8 +54,8 @@ describe('InvitationController', () => {
 
 	describe('inviteUser', () => {
 		it('throws a BadRequestError if SSO is enabled', async () => {
-			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
-			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
+			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
+			vi.mocked(ownershipService.hasInstanceOwner).mockReturnValue(Promise.resolve(true));
 
 			const invitationController = defaultInvitationController();
 
@@ -84,9 +84,9 @@ describe('InvitationController', () => {
 		});
 
 		it('throws a ForbiddenError if the user limit quota has been reached', async () => {
-			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
-			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(false);
-			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
+			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			vi.mocked(license.isWithinUsersLimit).mockReturnValue(false);
+			vi.mocked(ownershipService.hasInstanceOwner).mockReturnValue(Promise.resolve(true));
 
 			const invitationController = defaultInvitationController();
 
@@ -109,10 +109,10 @@ describe('InvitationController', () => {
 		});
 
 		it('throws a BadRequestError if the owner account is not set up', async () => {
-			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
-			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
-			jest.spyOn(config, 'getEnv').mockReturnValue(false);
-			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(false));
+			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
+			vi.spyOn(config, 'getEnv').mockReturnValue(false);
+			vi.mocked(ownershipService.hasInstanceOwner).mockReturnValue(Promise.resolve(false));
 
 			const invitationController = defaultInvitationController();
 
@@ -137,11 +137,11 @@ describe('InvitationController', () => {
 		});
 
 		it('throws a ForbiddenError if the user is an admin but advanced permissions is not licensed', async () => {
-			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
-			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
-			jest.spyOn(config, 'getEnv').mockReturnValue(true);
-			jest.spyOn(license, 'isAdvancedPermissionsLicensed').mockReturnValue(false);
-			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
+			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
+			vi.spyOn(config, 'getEnv').mockReturnValue(true);
+			vi.mocked(license.isAdvancedPermissionsLicensed).mockReturnValue(false);
+			vi.mocked(ownershipService.hasInstanceOwner).mockReturnValue(Promise.resolve(true));
 
 			const invitationController = defaultInvitationController();
 
@@ -188,12 +188,12 @@ describe('InvitationController', () => {
 				],
 				usersCreated: ['123'],
 			};
-			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
-			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
-			jest.spyOn(config, 'getEnv').mockReturnValue(true);
-			jest.spyOn(license, 'isAdvancedPermissionsLicensed').mockReturnValue(true);
-			jest.spyOn(userService, 'inviteUsers').mockResolvedValue(inviteUsersResult);
-			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
+			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
+			vi.spyOn(config, 'getEnv').mockReturnValue(true);
+			vi.mocked(license.isAdvancedPermissionsLicensed).mockReturnValue(true);
+			vi.mocked(userService.inviteUsers).mockResolvedValue(inviteUsersResult);
+			vi.mocked(ownershipService.hasInstanceOwner).mockReturnValue(Promise.resolve(true));
 
 			const invitationController = defaultInvitationController();
 
@@ -230,7 +230,7 @@ describe('InvitationController', () => {
 
 	describe('acceptInvitationWithToken', () => {
 		it('throws a BadRequestError if SSO is enabled', async () => {
-			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
+			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
 
 			const invitationController = defaultInvitationController();
 
@@ -254,7 +254,7 @@ describe('InvitationController', () => {
 		});
 
 		it('throws a BadRequestError if token is missing', async () => {
-			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 
 			const invitationController = defaultInvitationController();
 
@@ -275,7 +275,7 @@ describe('InvitationController', () => {
 		});
 
 		it('accepts the invitation successfully with JWT token', async () => {
-			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 
 			const token = 'valid-jwt-token';
 			const inviterId = uuidv4();
@@ -292,17 +292,17 @@ describe('InvitationController', () => {
 				role: GLOBAL_MEMBER_ROLE,
 			});
 
-			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
+			vi.mocked(userService.getInvitationIdsFromPayload).mockResolvedValue({
 				inviterId,
 				inviteeId,
 			});
-			jest.spyOn(userRepository, 'find').mockResolvedValue([inviter, invitee]);
-			jest.spyOn(passwordUtility, 'hash').mockResolvedValue('Password123!');
-			jest.spyOn(userRepository, 'save').mockResolvedValue(invitee);
-			jest.spyOn(authService, 'issueCookie').mockResolvedValue(invitee as never);
-			jest.spyOn(eventService, 'emit').mockResolvedValue(invitee as never);
-			jest.spyOn(userService, 'toPublic').mockResolvedValue(invitee as unknown as PublicUser);
-			jest.spyOn(externalHooks, 'run').mockResolvedValue(invitee as never);
+			vi.mocked(userRepository.find).mockResolvedValue([inviter, invitee]);
+			vi.mocked(passwordUtility.hash).mockResolvedValue('Password123!');
+			vi.mocked(userRepository.save).mockResolvedValue(invitee);
+			vi.mocked(authService.issueCookie).mockResolvedValue(invitee as never);
+			vi.mocked(eventService.emit).mockResolvedValue(invitee as never);
+			vi.mocked(userService.toPublic).mockResolvedValue(invitee as unknown as PublicUser);
+			vi.mocked(externalHooks.run).mockResolvedValue(invitee as never);
 
 			const invitationController = defaultInvitationController();
 
@@ -339,17 +339,17 @@ describe('InvitationController', () => {
 		});
 
 		it('throws a BadRequestError if users are not found', async () => {
-			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 
 			const token = 'valid-jwt-token';
 			const inviterId = uuidv4();
 			const inviteeId = uuidv4();
 
-			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
+			vi.mocked(userService.getInvitationIdsFromPayload).mockResolvedValue({
 				inviterId,
 				inviteeId,
 			});
-			jest.spyOn(userRepository, 'find').mockResolvedValue([]);
+			vi.mocked(userRepository.find).mockResolvedValue([]);
 
 			const invitationController = defaultInvitationController();
 
@@ -371,7 +371,7 @@ describe('InvitationController', () => {
 		});
 
 		it('throws a BadRequestError if invitee already has a password', async () => {
-			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 
 			const token = 'valid-jwt-token';
 			const inviterId = uuidv4();
@@ -388,11 +388,11 @@ describe('InvitationController', () => {
 				role: GLOBAL_MEMBER_ROLE,
 			});
 
-			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
+			vi.mocked(userService.getInvitationIdsFromPayload).mockResolvedValue({
 				inviterId,
 				inviteeId,
 			});
-			jest.spyOn(userRepository, 'find').mockResolvedValue([inviter, invitee]);
+			vi.mocked(userRepository.find).mockResolvedValue([inviter, invitee]);
 
 			const invitationController = defaultInvitationController();
 

@@ -14,18 +14,15 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useIntersectionObserver } from '@vueuse/core';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch, type ComponentPublicInstance } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
 import { useExecutionsStore } from '../../executions.store';
 import type { ExecutionFilterType, ExecutionSummaryWithScopes } from '../../executions.types';
 import { executionRetryMessage } from '../../executions.utils';
 import ConcurrentExecutionsHeader from '../ConcurrentExecutionsHeader.vue';
 import ExecutionsFilter from '../ExecutionsFilter.vue';
 import ExecutionStopAllText from '../ExecutionStopAllText.vue';
-import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
-import AgentSessionsList from './AgentSessionsList.vue';
 import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
 
-import { N8nButton, N8nCheckbox, N8nRadioButtons, N8nTableBase } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nTableBase } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
 const props = withDefaults(
@@ -34,12 +31,10 @@ const props = withDefaults(
 		filters: ExecutionFilterType;
 		total?: number;
 		concurrentTotal?: number;
-		estimated?: boolean;
 	}>(),
 	{
 		total: 0,
 		concurrentTotal: 0,
-		estimated: false,
 	},
 );
 
@@ -52,55 +47,15 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
-const agentSessionsStore = useAgentSessionsStore();
 const settingsStore = useSettingsStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
-const route = useRoute();
-const router = useRouter();
-
-const agentsEnabled = computed(() => settingsStore.isModuleActive('agents'));
-
-type ViewMode = 'workflows' | 'agents';
-const viewMode = computed<ViewMode>(() =>
-	agentsEnabled.value && route.query.view === 'agents' ? 'agents' : 'workflows',
-);
-
-const viewModeOptions = [
-	{ label: i18n.baseText('executionsList.viewMode.workflows'), value: 'workflows' },
-	{ label: i18n.baseText('executionsList.viewMode.agents'), value: 'agents' },
-];
-
-function onViewModeChange(mode: string) {
-	void router.replace({ query: { ...route.query, view: mode === 'workflows' ? undefined : mode } });
-}
-
 const autoRefresh = computed({
-	get: () =>
-		viewMode.value === 'agents' ? agentSessionsStore.autoRefresh : executionsStore.autoRefresh,
+	get: () => executionsStore.autoRefresh,
 	set: (value: boolean) => {
-		if (viewMode.value === 'agents') {
-			agentSessionsStore.autoRefresh = value;
-		} else {
-			executionsStore.autoRefresh = value;
-		}
+		executionsStore.autoRefresh = value;
 	},
 });
-
-watch(
-	viewMode,
-	(mode) => {
-		if (mode === 'agents') {
-			executionsStore.stopAutoRefreshInterval();
-		} else {
-			agentSessionsStore.stopAutoRefresh();
-			if (executionsStore.autoRefresh) {
-				void executionsStore.startAutoRefreshInterval();
-			}
-		}
-	},
-	{ immediate: true },
-);
 
 const allVisibleSelected = ref(false);
 const allExistingSelected = ref(false);
@@ -374,18 +329,10 @@ async function deleteExecution(execution: ExecutionSummary) {
 }
 
 async function onAutoRefreshToggle(value: boolean) {
-	if (viewMode.value === 'agents') {
-		if (value) {
-			agentSessionsStore.startAutoRefresh();
-		} else {
-			agentSessionsStore.stopAutoRefresh();
-		}
+	if (value) {
+		await executionsStore.startAutoRefreshInterval();
 	} else {
-		if (value) {
-			await executionsStore.startAutoRefreshInterval();
-		} else {
-			executionsStore.stopAutoRefreshInterval();
-		}
+		executionsStore.stopAutoRefreshInterval();
 	}
 }
 
@@ -399,10 +346,12 @@ const goToUpgrade = () => {
 		<slot />
 		<div :class="$style.execListHeaderControls">
 			<ConcurrentExecutionsHeader
-				v-if="viewMode === 'workflows' && showConcurrencyHeader"
+				v-if="showConcurrencyHeader"
 				:running-executions-count="concurrentTotal"
 				:concurrency-cap="settingsStore.concurrency"
 				:is-cloud-deployment="settingsStore.isCloudDeployment"
+				:executions="props.executions"
+				:is-initial-load="!executionsStore.initialLoadComplete"
 				@go-to-upgrade="goToUpgrade"
 			/>
 			<N8nCheckbox
@@ -413,25 +362,15 @@ const goToUpgrade = () => {
 				@update:model-value="onAutoRefreshToggle"
 			/>
 			<div :class="$style.execHeaderRight">
-				<template v-if="viewMode === 'workflows'">
-					<ExecutionStopAllText :executions="props.executions" />
-					<ExecutionsFilter
-						:workflows="workflows"
-						class="execFilter"
-						@filter-changed="onFilterChanged"
-					/>
-				</template>
-				<N8nRadioButtons
-					v-if="agentsEnabled"
-					:model-value="viewMode"
-					:options="viewModeOptions"
-					data-test-id="execution-view-mode-select"
-					@update:model-value="onViewModeChange"
+				<ExecutionStopAllText :executions="props.executions" />
+				<ExecutionsFilter
+					:workflows="workflows"
+					class="execFilter"
+					@filter-changed="onFilterChanged"
 				/>
 			</div>
 		</div>
-		<AgentSessionsList v-if="viewMode === 'agents'" />
-		<div v-else :class="$style.execList">
+		<div :class="$style.execList">
 			<div :class="$style.execTable">
 				<N8nTableBase>
 					<thead>
@@ -513,7 +452,7 @@ const goToUpgrade = () => {
 										{{ i18n.baseText('executionsList.empty') }}
 									</span>
 								</template>
-								<template v-else-if="total > executions.length || estimated">
+								<template v-else-if="executionsStore.hasMoreExecutions">
 									<N8nButton
 										ref="loadMoreButton"
 										icon="refresh-cw"

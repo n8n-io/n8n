@@ -1,9 +1,17 @@
 <script lang="ts" setup>
 import type { InstanceAiMessage } from '@n8n/api-types';
 import type { RatingFeedback } from '@n8n/design-system';
-import { N8nCallout, N8nIconButton, N8nMessageRating, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nIcon,
+	N8nIconButton,
+	N8nMessageRating,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import AgentActivityTree from './AgentActivityTree.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
@@ -35,6 +43,26 @@ const errorDetails = computed(() => {
 });
 
 const hasProviderError = computed(() => !!errorDetails.value?.provider);
+
+/** The run failed because the user ran out of AI credits — show a tailored state. */
+const isQuotaExhausted = computed(() => errorDetails.value?.code === 'quota_exhausted');
+
+const { goToUpgrade } = usePageRedirectionHelper();
+
+/** A run the user (or a timeout/shutdown) stopped before it completed. */
+const runCancelled = computed(() => props.message.agentTree?.status === 'cancelled');
+
+/** Attribute the stop to its cause; falls back to the generic label when unknown. */
+const cancelledLabel = computed(() => {
+	switch (props.message.agentTree?.cancellationReason) {
+		case 'user':
+			return i18n.baseText('instanceAi.agentTree.stoppedByUser');
+		case 'timeout':
+			return i18n.baseText('instanceAi.agentTree.timedOut');
+		default:
+			return i18n.baseText('instanceAi.agentTree.cancelled');
+	}
+});
 
 const errorTitle = computed(() => {
 	if (hasProviderError.value) {
@@ -106,14 +134,25 @@ function formatJson(value: unknown): string {
 		<!-- Assistant message -->
 		<div v-else :class="$style.assistantWrapper" data-test-id="instance-ai-assistant-message">
 			<!-- Agent activity tree (handles reasoning, tool calls, sub-agents) -->
-			<AgentActivityTree
-				v-if="props.message.agentTree"
-				:agent-node="props.message.agentTree"
-				:is-root="true"
-			/>
+			<AgentActivityTree v-if="props.message.agentTree" :agent-node="props.message.agentTree" />
+
+			<!-- Out-of-credits (quota exhausted): tailored state, hides raw provider/status noise -->
+			<N8nCallout v-if="isQuotaExhausted" theme="warning" data-test-id="instance-ai-out-of-credits">
+				{{ i18n.baseText('instanceAi.error.outOfCredits.title') }}
+				<template #trailingContent>
+					<N8nButton
+						variant="outline"
+						size="xsmall"
+						data-test-id="instance-ai-out-of-credits-upgrade"
+						@click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+					>
+						{{ i18n.baseText('instanceAi.error.outOfCredits.upgrade') }}
+					</N8nButton>
+				</template>
+			</N8nCallout>
 
 			<!-- Run-level error -->
-			<N8nCallout v-if="runError" theme="danger">
+			<N8nCallout v-else-if="runError" theme="danger">
 				<div :class="$style.runLevelError">
 					<N8nText bold tag="div">{{ errorTitle }}</N8nText>
 					<N8nText v-if="hasProviderError" tag="div">{{ runError }}</N8nText>
@@ -146,6 +185,16 @@ function formatJson(value: unknown): string {
 				v-else-if="isStreaming && !props.message.content && !props.message.agentTree"
 				:class="$style.blinkingCursor"
 			/>
+
+			<!-- Run stopped indicator (survives reload via the persisted cancelled status) -->
+			<div
+				v-if="runCancelled"
+				:class="$style.cancelledIndicator"
+				data-test-id="instance-ai-run-cancelled"
+			>
+				<N8nIcon icon="circle-x" size="small" />
+				<span>{{ cancelledLabel }}</span>
+			</div>
 
 			<!-- Response feedback -->
 			<N8nMessageRating
@@ -233,6 +282,14 @@ function formatJson(value: unknown): string {
 	color: var(--color--text--tint-1);
 	padding: var(--spacing--4xs) 0;
 	animation: status-fade-in 0.2s ease;
+}
+
+.cancelledIndicator {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
 }
 
 .statusDot {

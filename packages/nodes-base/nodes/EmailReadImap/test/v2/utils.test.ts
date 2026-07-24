@@ -1,12 +1,12 @@
 import { type ImapSimple } from '@n8n/imap';
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import { returnJsonArray } from 'n8n-core';
 import type { INode, ITriggerFunctions, IDataObject } from 'n8n-workflow';
 
 import { getNewEmails } from '../../v2/utils';
 
 describe('Test IMap V2 utils', () => {
-	afterEach(() => jest.resetAllMocks());
+	afterEach(() => vi.resetAllMocks());
 
 	describe('getNewEmails', () => {
 		const triggerFunctions = mockDeep<ITriggerFunctions>({
@@ -27,10 +27,10 @@ describe('Test IMap V2 utils', () => {
 		};
 
 		const imapConnection = mock<ImapSimple>({
-			search: jest.fn().mockReturnValue(Promise.resolve([message])),
+			search: vi.fn().mockReturnValue(Promise.resolve([message])),
 		});
-		const getText = jest.fn().mockReturnValue('text');
-		const getAttachment = jest.fn().mockReturnValue(['attachment']);
+		const getText = vi.fn().mockReturnValue('text');
+		const getAttachment = vi.fn().mockReturnValue(['attachment']);
 
 		it('should return new emails', async () => {
 			const expectedResults = [
@@ -82,7 +82,7 @@ describe('Test IMap V2 utils', () => {
 					.mockReturnValue('resolved');
 				triggerFunctions.getWorkflowStaticData.mockReturnValue({});
 
-				const onEmailBatch = jest.fn();
+				const onEmailBatch = vi.fn();
 				await getNewEmails.call(triggerFunctions, {
 					imapConnection,
 					searchCriteria: [],
@@ -97,6 +97,46 @@ describe('Test IMap V2 utils', () => {
 			});
 		});
 
+		const rawEmailWithDate = 'Date: Wed, 01 Jan 2020 12:00:00 +0000\r\nSubject: Hello\r\n\r\nBody';
+
+		const resolveEmailWithDate = async (typeVersion: number) => {
+			const messageWithDate = {
+				attributes: { uuid: 1, uid: 950, struct: {} },
+				parts: [{ which: '', body: rawEmailWithDate }],
+			};
+			const localConnection = mock<ImapSimple>({
+				search: vi.fn().mockResolvedValue([messageWithDate]),
+			});
+
+			triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion }));
+			triggerFunctions.getNodeParameter.calledWith('format').mockReturnValue('resolved');
+			triggerFunctions.getNodeParameter
+				.calledWith('dataPropertyAttachmentsPrefixName')
+				.mockReturnValue('resolved');
+			triggerFunctions.getWorkflowStaticData.mockReturnValue({});
+
+			const onEmailBatch = vi.fn();
+			await getNewEmails.call(triggerFunctions, {
+				imapConnection: localConnection,
+				searchCriteria: [],
+				postProcessAction: '',
+				getText,
+				getAttachment,
+				onEmailBatch,
+			});
+			return onEmailBatch.mock.calls[0][0][0] as { json: { date: unknown } };
+		};
+
+		it('should return the mail date as an ISO string in resolved format on version 2.2', async () => {
+			const item = await resolveEmailWithDate(2.2);
+			expect(item.json.date).toBe('2020-01-01T12:00:00.000Z');
+		});
+
+		it('should keep the mail date as a Date object in resolved format before version 2.2', async () => {
+			const item = await resolveEmailWithDate(2.1);
+			expect(item.json.date).toBeInstanceOf(Date);
+		});
+
 		it('should skip emails with missing HEADER part in simple format', async () => {
 			const messageWithoutHeader = {
 				attributes: { uuid: 1, uid: 900, struct: {} },
@@ -104,7 +144,7 @@ describe('Test IMap V2 utils', () => {
 			};
 
 			const localConnection = mock<ImapSimple>({
-				search: jest.fn().mockResolvedValue([messageWithoutHeader]),
+				search: vi.fn().mockResolvedValue([messageWithoutHeader]),
 			});
 
 			triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
@@ -112,7 +152,7 @@ describe('Test IMap V2 utils', () => {
 			triggerFunctions.getNodeParameter.calledWith('downloadAttachments').mockReturnValue(false);
 			triggerFunctions.getWorkflowStaticData.mockReturnValue({});
 
-			const onEmailBatch = jest.fn();
+			const onEmailBatch = vi.fn();
 			await getNewEmails.call(triggerFunctions, {
 				imapConnection: localConnection,
 				searchCriteria: [],
@@ -155,7 +195,7 @@ describe('Test IMap V2 utils', () => {
 			];
 
 			const localConnection = mock<ImapSimple>({
-				search: jest.fn().mockResolvedValue(messages),
+				search: vi.fn().mockResolvedValue(messages),
 			});
 
 			triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
@@ -163,7 +203,7 @@ describe('Test IMap V2 utils', () => {
 			triggerFunctions.getNodeParameter.calledWith('downloadAttachments').mockReturnValue(false);
 			triggerFunctions.getWorkflowStaticData.mockReturnValue(staticData);
 
-			const onEmailBatch = jest.fn();
+			const onEmailBatch = vi.fn();
 			await getNewEmails.call(triggerFunctions, {
 				imapConnection: localConnection,
 				searchCriteria: [],
@@ -197,7 +237,7 @@ describe('Test IMap V2 utils', () => {
 			];
 
 			const localConnection = mock<ImapSimple>({
-				search: jest.fn().mockResolvedValue(messages),
+				search: vi.fn().mockResolvedValue(messages),
 			});
 
 			triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
@@ -205,7 +245,7 @@ describe('Test IMap V2 utils', () => {
 			triggerFunctions.getNodeParameter.calledWith('downloadAttachments').mockReturnValue(false);
 			triggerFunctions.getWorkflowStaticData.mockReturnValue(staticData);
 
-			const onEmailBatch = jest.fn();
+			const onEmailBatch = vi.fn();
 			await getNewEmails.call(triggerFunctions, {
 				imapConnection: localConnection,
 				searchCriteria: [],
@@ -246,7 +286,7 @@ describe('Test IMap V2 utils', () => {
 			];
 
 			const localConnection = mock<ImapSimple>({
-				search: jest.fn().mockResolvedValueOnce(batch1).mockResolvedValueOnce(batch2),
+				search: vi.fn().mockResolvedValueOnce(batch1).mockResolvedValueOnce(batch2),
 			});
 
 			triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
@@ -255,7 +295,7 @@ describe('Test IMap V2 utils', () => {
 			triggerFunctions.getWorkflowStaticData.mockReturnValue(staticData);
 
 			const allBatchedUids: number[][] = [];
-			const onEmailBatch = jest.fn().mockImplementation((data) => {
+			const onEmailBatch = vi.fn().mockImplementation((data) => {
 				allBatchedUids.push(
 					data.map((item: { json: { attributes: { uid: number } } }) => item.json.attributes.uid),
 				);

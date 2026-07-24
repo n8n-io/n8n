@@ -2,22 +2,26 @@ import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/linkrows/unlink.operation';
 import { apiRequest } from '../../../../v2/transport';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../../../../v2/transport/index';
 
-jest.mock('../../../../v2/transport/index', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport/index');
+vi.mock('../../../../v2/transport/index', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>(
+		'../../../../v2/transport/index',
+	);
 	return {
 		...originalModule,
-		apiRequest: { call: jest.fn() },
-		apiRequestAllItems: { call: jest.fn() },
+		apiRequest: { call: vi.fn() },
+		apiRequestAllItems: { call: vi.fn() },
 	};
 });
 
 describe('NocoDB Linkrows Unlink Node', () => {
-	let mockApiRequest: { call: jest.Mock };
+	let mockApiRequest: { call: Mock };
 	let mockThis: IExecuteFunctions;
 
 	beforeEach(() => {
-		mockApiRequest = apiRequest as unknown as { call: jest.Mock };
+		mockApiRequest = apiRequest as unknown as { call: Mock };
 		mockApiRequest.call.mockClear();
 
 		mockThis = {
@@ -51,8 +55,8 @@ describe('NocoDB Linkrows Unlink Node', () => {
 			},
 			continueOnFail: () => false,
 			helpers: {
-				returnJsonArray: jest.fn((data) => (Array.isArray(data) ? data : [data])),
-				constructExecutionMetaData: jest.fn((items) => items),
+				returnJsonArray: vi.fn((data) => (Array.isArray(data) ? data : [data])),
+				constructExecutionMetaData: vi.fn((items) => items),
 			},
 			getNode: () => ({ name: 'NocoDB', type: 'nocoDb', id: '1', parameters: {} }) as INode,
 		} as unknown as IExecuteFunctions;

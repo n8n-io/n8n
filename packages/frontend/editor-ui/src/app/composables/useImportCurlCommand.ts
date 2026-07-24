@@ -148,7 +148,9 @@ const extractQueries = (queries: JSONOutput['queries'] = {}): HttpNodeQueries =>
 	return {
 		sendQuery: true,
 		queryParameters: {
-			parameters: Object.entries(queries).map(toKeyValueArray),
+			parameters: Object.entries(queries).flatMap(([key, value]) =>
+				Array.isArray(value) ? value.map((v) => ({ name: key, value: v })) : [{ name: key, value }],
+			),
 		},
 	};
 };
@@ -267,7 +269,14 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 	const url = new URL(curlJson.url);
 	const queries = curlJson.queries ?? {};
 	for (const [key, value] of url.searchParams) {
-		queries[key] = value;
+		const existing = queries[key];
+		if (existing === undefined) {
+			queries[key] = value;
+		} else if (Array.isArray(existing)) {
+			queries[key] = [...existing, value];
+		} else {
+			queries[key] = [existing, value];
+		}
 	}
 
 	url.search = '';

@@ -5,6 +5,7 @@ import {
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
+	DEBOUNCE_TIME,
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
@@ -15,7 +16,7 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { getNodeIconSize } from '@/app/utils/nodeIcon';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
 import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
 import { useViewStacks, type ViewStack } from '../../composables/useViewStacks';
@@ -28,6 +29,7 @@ import {
 	type NodeView,
 } from '../../views/viewsData';
 import ActionsRenderer from '../Modes/ActionsMode.vue';
+import AgentsRenderer from '../Modes/AgentsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
 import SearchBar from './SearchBar.vue';
 
@@ -39,7 +41,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 
 import { N8nIcon, N8nNotice } from '@n8n/design-system';
 const i18n = useI18n();
-const { callDebounced } = useDebounce();
+const { callDebounced, debounce } = useDebounce();
 
 const { mergedNodes } = useNodeCreatorStore();
 const { pushViewStack, popViewStack, updateCurrentViewStack } = useViewStacks();
@@ -56,6 +58,8 @@ const viewStacks = computed(() => useViewStacks().viewStacks);
 
 const isActionsMode = computed(() => useViewStacks().activeViewStackMode === 'actions');
 
+const isAgentsMode = computed(() => useViewStacks().activeViewStackMode === 'agents');
+
 const searchPlaceholder = computed(() => {
 	let node = activeViewStack.value?.title as string;
 
@@ -67,6 +71,10 @@ const searchPlaceholder = computed(() => {
 		return i18n.baseText('nodeCreator.actionsCategory.searchActions', {
 			interpolate: { node },
 		});
+	}
+
+	if (isAgentsMode.value) {
+		return i18n.baseText('nodeCreator.agentsPanel.searchPlaceholder');
 	}
 
 	return i18n.baseText('nodeCreator.searchBar.searchNodes');
@@ -102,23 +110,54 @@ function getDefaultActiveIndex(search: string = ''): number {
 	return 0;
 }
 
+function applySearch(value: string) {
+	if (!activeViewStack.value.uuid) return;
+	updateCurrentViewStack({ search: value });
+	void setActiveItemIndex(getDefaultActiveIndex(value));
+	if (value.length) {
+		callDebounced(
+			nodeCreatorStore.onNodeFilterChanged,
+			{ trailing: true, debounceTime: 2000 },
+			{
+				newValue: value,
+				filteredNodes: activeViewStack.value.items ?? [],
+				filterMode: activeViewStack.value.rootView ?? 'Regular',
+				subcategory: activeViewStack.value.subcategory,
+				title: activeViewStack.value.title,
+			},
+		);
+	}
+}
+
+// Debounce the actual filtering so rapid typing doesn't re-run the fuzzy
+// search (and re-render the list) on every keystroke. The view stack search is
+// only written once the user pauses, keeping the input responsive.
+const debouncedApplySearch = debounce(
+	(value: string, scheduledForViewUuid: string | undefined) => {
+		// The user may have navigated to another view (e.g. selected an item)
+		// while the search was pending; the stale term must not leak into it.
+		if (activeViewStack.value.uuid !== scheduledForViewUuid) return;
+		applySearch(value);
+	},
+	{ trailing: true, debounceTime: DEBOUNCE_TIME.INPUT.SEARCH },
+);
+
 function onSearch(value: string) {
-	if (activeViewStack.value.uuid) {
-		updateCurrentViewStack({ search: value });
-		void setActiveItemIndex(getDefaultActiveIndex(value));
-		if (value.length) {
-			callDebounced(
-				nodeCreatorStore.onNodeFilterChanged,
-				{ trailing: true, debounceTime: 2000 },
-				{
-					newValue: value,
-					filteredNodes: activeViewStack.value.items ?? [],
-					filterMode: activeViewStack.value.rootView ?? 'Regular',
-					subcategory: activeViewStack.value.subcategory,
-					title: activeViewStack.value.title,
-				},
-			);
-		}
+	if (value === '') {
+		// Clearing must take effect immediately, and a pending search for the
+		// previous value must not re-filter afterwards.
+		debouncedApplySearch.cancel();
+		applySearch(value);
+		return;
+	}
+	void debouncedApplySearch(value, activeViewStack.value.uuid);
+}
+
+function flushPendingSearchOnNavigation(event: KeyboardEvent) {
+	// Selection keys must act on the filtered list, so a pending search is
+	// applied synchronously before keyboard navigation reads the rendered items.
+	if (['Enter', 'ArrowDown', 'ArrowUp'].includes(event.key)) {
+		void debouncedApplySearch.flush();
 	}
 }
 
@@ -132,11 +171,15 @@ function cleanupopeningContext() {
 }
 
 onMounted(() => {
+	// Registered before attachKeydownEvent so the flush runs first: keyboard
+	// navigation stops propagation of these keys on the same capture target.
+	document.addEventListener('keydown', flushPendingSearchOnNavigation, { capture: true });
 	attachKeydownEvent();
 	void setActiveItemIndex(getDefaultActiveIndex());
 });
 
 onUnmounted(() => {
+	document.removeEventListener('keydown', flushPendingSearchOnNavigation, { capture: true });
 	cleanupopeningContext();
 	detachKeydownEvent();
 });
@@ -274,6 +317,9 @@ function onBackButton() {
 				/>
 				<!-- Actions mode -->
 				<ActionsRenderer v-if="isActionsMode && activeViewStack.subcategory" v-bind="$attrs" />
+
+				<!-- Agents mode -->
+				<AgentsRenderer v-else-if="isAgentsMode" v-bind="$attrs" />
 
 				<!-- Nodes Mode -->
 				<NodesRenderer v-else :root-view="nodeCreatorView" v-bind="$attrs" />

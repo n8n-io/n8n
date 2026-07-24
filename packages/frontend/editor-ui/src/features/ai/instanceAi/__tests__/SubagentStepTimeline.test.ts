@@ -4,17 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import SubagentStepTimeline from '../components/SubagentStepTimeline.vue';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 
-const renderComponent = createThreadComponentRenderer(SubagentStepTimeline, {
-	global: {
-		stubs: {
-			// ToolCallStep is stubbed so we can verify which toolCall was passed
-			ToolCallStep: {
-				template: '<div data-test-id="tool-call-step">{{ toolCall.toolName }}</div>',
-				props: ['toolCall', 'label', 'showConnector'],
-			},
-		},
-	},
-});
+const renderComponent = createThreadComponentRenderer(SubagentStepTimeline);
 
 function makeToolCall(overrides: Partial<InstanceAiToolCallState> = {}): InstanceAiToolCallState {
 	return {
@@ -57,9 +47,9 @@ describe('SubagentStepTimeline', () => {
 		expect(getByText('Analyzing the workflow')).toBeInTheDocument();
 	});
 
-	it('should render tool-call timeline entry via ToolCallStep stub', () => {
+	it('should render tool-call timeline entry', () => {
 		const tc = makeToolCall({ toolCallId: 'tc-42', toolName: 'search-nodes' });
-		const { getByTestId } = renderComponent({
+		const { getByText } = renderComponent({
 			props: {
 				agentNode: makeAgentNode({
 					toolCalls: [tc],
@@ -68,9 +58,7 @@ describe('SubagentStepTimeline', () => {
 			},
 		});
 
-		const step = getByTestId('tool-call-step');
-		expect(step).toBeInTheDocument();
-		expect(step.textContent).toContain('search-nodes');
+		expect(getByText('Searching nodes')).toBeInTheDocument();
 	});
 
 	it('should skip child timeline entries', () => {
@@ -90,7 +78,7 @@ describe('SubagentStepTimeline', () => {
 	});
 
 	it('should skip tool-call entries with no matching toolCall in array', () => {
-		const { queryByTestId } = renderComponent({
+		const { container } = renderComponent({
 			props: {
 				agentNode: makeAgentNode({
 					toolCalls: [], // no tool calls
@@ -99,7 +87,7 @@ describe('SubagentStepTimeline', () => {
 			},
 		});
 
-		expect(queryByTestId('tool-call-step')).not.toBeInTheDocument();
+		expect(container.textContent).toBe('');
 	});
 
 	it('does not render a "Done" badge when status is completed', () => {

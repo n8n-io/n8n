@@ -65,18 +65,24 @@ export type {
 	RetrievedEpisodicMemoryEntry,
 	ResumeOptions,
 	McpServerConfig,
+	McpToolCallSettledEvent,
 	McpVerifyResult,
 	ModelConfig,
 	ExecutionOptions,
 	SmoothStreamOptions,
+	TokenUsage,
 	AgentExecutionCounter,
 	PersistedExecutionOptions,
+	AnthropicPromptCachingConfig,
+	OpenAIPromptCachingConfig,
+	PromptCachingConfig,
 	BuiltTelemetry,
 	AttributeValue,
 	ObservationCursor,
 	ObservationalMemoryConfig,
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
+	MemoryTaskUsageReport,
 	NewObservationLogEntry,
 	ObservationLogEntry,
 	ObservationLogMarker,
@@ -101,8 +107,22 @@ export {
 
 export { createCancellation, isCancellation, CANCELLATION_TYPE } from './sdk/cancellation';
 export type { Cancellation } from './sdk/cancellation';
-export { Tool, wrapToolForApproval } from './sdk/tool';
+export {
+	createAbortError,
+	isAbortError,
+	raceWithAbort,
+	throwIfAborted,
+} from './sdk/abort';
+export { Tool, wrapToolForApproval, sanitizeToolName } from './sdk/tool';
 export { Memory } from './sdk/memory';
+export { VectorStore } from './sdk/vector-store';
+export {
+	FILTER_OPERATORS,
+	normalizeFilterInput,
+	assertValidFilter,
+	buildFilterInputSchema,
+} from './sdk/vector-store-filter';
+export type { VectorFilterInput } from './sdk/vector-store-filter';
 export { Guardrail } from './sdk/guardrail';
 export {
 	redactText,
@@ -126,17 +146,18 @@ export { evaluate } from './sdk/evaluate';
 export type { DatasetRow, EvaluateConfig } from './sdk/evaluate';
 export * as evals from './evals/index';
 export { Telemetry } from './sdk/telemetry';
+export { deriveSubAgentTelemetry } from './runtime/telemetry/sub-agent-telemetry';
 export { LangSmithTelemetry } from './integrations/langsmith';
 export type { LangSmithTelemetryConfig } from './integrations/langsmith';
 export { Agent } from './sdk/agent';
 export type { AgentSnapshot } from './sdk/agent';
 export {
 	appendSkillCatalogToInstructions,
-	createListSkillsTool,
 	createRuntimeSkillRegistry,
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
 	createSkillLoadTool,
+	filterRuntimeSkillSource,
 	formatSkillValidationErrors,
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillsFromDirectory,
@@ -148,11 +169,11 @@ export {
 	RUNTIME_SKILL_LINKED_FILE_GROUPS,
 	RUNTIME_SKILL_NAME_PATTERN,
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
-	LIST_SKILLS_TOOL_NAME,
 	SKILL_LOAD_TOOL_NAME,
 	validateRuntimeSkill,
 } from './skills';
 export type {
+	LoadRuntimeSkillSourceFromDirectoryOptions,
 	RenderSkillCatalogOptions,
 	RuntimeSkill,
 	RuntimeSkillContent,
@@ -203,8 +224,6 @@ export {
 	isLlmMessage,
 } from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';
-export { providerCapabilities } from './sdk/provider-capabilities';
-export type { ProviderCapability } from './sdk/provider-capabilities';
 export type {
 	ProviderCatalog,
 	ProviderInfo,
@@ -213,9 +232,21 @@ export type {
 	ModelLimits,
 } from './sdk/catalog';
 export { BaseMemory } from './storage/base-memory';
+export { BaseVectorStore } from './storage/base-vector-store';
 export type { ToolDescriptor } from './types/sdk/tool-descriptor';
+export type {
+	BuiltVectorStoreBackend,
+	VectorDocument,
+	VectorRecord,
+	VectorQueryResult,
+	FilterOperator,
+	FilterValue,
+	FilterCondition,
+	VectorFilter,
+} from './types';
 
-export { createModel } from './runtime/model-factory';
+export { createModel } from './runtime/model/model-factory';
+export type { FetchFn, EmbeddingProviderOptions } from './runtime/model/model-factory';
 export {
 	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	ROOT_SUB_AGENT_TASK_PATH,
@@ -223,8 +254,8 @@ export {
 	createChildSubAgentTaskPath,
 	isSubAgentTaskPath,
 	sanitizeSubAgentTaskName,
-} from './runtime/sub-agent-task-path';
-export type { SubAgentTaskPath, SubAgentTaskPathPolicy } from './runtime/sub-agent-task-path';
+} from './runtime/tools/sub-agent-task-path';
+export type { SubAgentTaskPath, SubAgentTaskPathPolicy } from './runtime/tools/sub-agent-task-path';
 export {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
@@ -234,8 +265,9 @@ export {
 	failedDelegatedChildSuspendOutput,
 	generateResultToDelegateSubAgentOutput,
 	getInlineDelegateSubAgentToolOptions,
+	isDelegateSubAgentTool,
 	renderDelegateSubAgentPrompt,
-} from './runtime/delegate-sub-agent-tool';
+} from './runtime/tools/delegate-sub-agent-tool';
 export type {
 	CreateDelegateSubAgentToolOptions,
 	DelegateSubAgentInput,
@@ -246,10 +278,13 @@ export type {
 	DelegateSubAgentToolOutput,
 	InlineSubAgentProviderToolsResolver,
 	SubAgentTaskDifficulty,
-} from './runtime/delegate-sub-agent-tool';
-export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/write-todos-tool';
-export { createEmbeddingModel } from './runtime/model-factory';
-export { generateTitleFromMessage } from './runtime/title-generation';
+} from './runtime/tools/delegate-sub-agent-tool';
+export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/tools/write-todos-tool';
+export { createPlannerTodosTool } from './runtime/tools/planner-todos-tool';
+export type { CreatePlannerTodosToolOptions } from './runtime/tools/planner-todos-tool';
+export type { CreateWriteTodosToolOptions } from './runtime/tools/write-todos-tool';
+export { createEmbeddingModel } from './runtime/model/model-factory';
+export { generateTitleFromMessage } from './runtime/memory/title-generation';
 export {
 	activeLifecycleState,
 	droppedLifecycleState,
@@ -259,7 +294,7 @@ export {
 	normalizeFlatReflectionActions,
 	supersededLifecycleState,
 	uniqueStrings,
-} from './runtime/memory-lifecycle';
+} from './runtime/memory/memory-lifecycle';
 export {
 	RECALL_MEMORY_TOOL_NAME,
 	createRecallMemoryTool,
@@ -271,7 +306,7 @@ export {
 	rankEpisodicMemoryEntries,
 	runEpisodicMemoryIndexer,
 	withEpisodicMemoryDefaults,
-} from './runtime/episodic-memory';
+} from './runtime/memory/episodic-memory';
 export {
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
 	DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
@@ -283,24 +318,27 @@ export {
 	buildEpisodicMemoryReflectorPrompt,
 	createEpisodicMemoryExtractFn,
 	createEpisodicMemoryReflectFn,
-} from './runtime/episodic-memory-defaults';
+} from './runtime/memory/episodic-memory-defaults';
 export type {
 	CreateEpisodicMemoryExtractFnOptions,
 	CreateEpisodicMemoryReflectFnOptions,
-} from './runtime/episodic-memory-defaults';
-export type { MemoryLifecycleState, MemoryLifecycleStatus } from './runtime/memory-lifecycle';
+} from './runtime/memory/episodic-memory-defaults';
+export type {
+	MemoryLifecycleState,
+	MemoryLifecycleStatus,
+} from './runtime/memory/memory-lifecycle';
 export {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,
 	runObservationLogObserver,
-} from './runtime/observation-log-observer';
+} from './runtime/memory/observation-log-observer';
 export {
 	normalizeObservationLogReflection,
 	parseObservationLogReflectionJson,
 	renderObservationLogForReflection,
 	runObservationLogReflector,
-} from './runtime/observation-log-reflector';
-export { ScopedMemoryTaskRunner } from './runtime/scoped-memory-task-runner';
+} from './runtime/memory/observation-log-reflector';
+export { ScopedMemoryTaskRunner } from './runtime/memory/scoped-memory-task-runner';
 export {
 	buildObservationLogReflectorPrompt,
 	buildObservationLogObserverPrompt,
@@ -313,11 +351,11 @@ export {
 	DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
 	DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
 	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
-} from './runtime/observation-log-defaults';
+} from './runtime/memory/observation-log-defaults';
 export type {
 	CreateObservationLogObserveFnOptions,
 	CreateObservationLogReflectFnOptions,
-} from './runtime/observation-log-defaults';
+} from './runtime/memory/observation-log-defaults';
 export type {
 	ObservationLogObserveFn,
 	ObservationLogObserverInput,
@@ -327,7 +365,7 @@ export type {
 	RenderObserverTranscriptOptions,
 	RunObservationLogObserverOpts,
 	RunObservationLogObserverResult,
-} from './runtime/observation-log-observer';
+} from './runtime/memory/observation-log-observer';
 export type {
 	ObservationLogReflectFn,
 	ObservationLogReflectorInput,
@@ -335,7 +373,7 @@ export type {
 	ObservationLogReflectorWarning,
 	RunObservationLogReflectorOpts,
 	RunObservationLogReflectorResult,
-} from './runtime/observation-log-reflector';
+} from './runtime/memory/observation-log-reflector';
 export type {
 	ScopedMemoryTaskDescriptor,
 	ScopedMemoryTaskError,
@@ -345,7 +383,7 @@ export type {
 	ScopedMemoryTaskResult,
 	ScopedMemoryTaskRunnerOptions,
 	ScopedMemoryTaskStatus,
-} from './runtime/scoped-memory-task-runner';
+} from './runtime/memory/scoped-memory-task-runner';
 
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';
@@ -365,11 +403,14 @@ export type {
 	FileContent,
 	FileStat,
 	FileEntry,
+	AbortableOptions,
+	AppendOptions,
 	ReadOptions,
 	WriteOptions,
 	ListOptions,
 	RemoveOptions,
 	CopyOptions,
+	MkdirOptions,
 	ProviderStatus,
 	SandboxInfo,
 	LocalFilesystemOptions,

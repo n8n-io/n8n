@@ -1,5 +1,5 @@
 import {
-	ApplicationError,
+	OperationalError,
 	type IHttpRequestMethods,
 	type IDataObject,
 	type IExecuteFunctions,
@@ -45,7 +45,7 @@ export async function lonescaleApiRequest(
 		if (error.response) {
 			const errorMessage =
 				error.response.body.message || error.response.body.description || error.message;
-			throw new ApplicationError(
+			throw new OperationalError(
 				`Autopilot error response [${error.statusCode}]: ${errorMessage}`,
 				{ level: 'warning' },
 			);

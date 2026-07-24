@@ -70,6 +70,24 @@ export function pickPrebuiltWorkflowId(
 }
 
 /**
+ * Split test cases by whether the manifest provides a build for them. Cases with
+ * no workflow in the manifest are skipped (the caller logs them) rather than
+ * silently orchestrator-built, which would mix builders in one result set.
+ */
+export function partitionByPrebuiltCoverage<T extends { fileSlug: string }>(
+	cases: T[],
+	manifest: PrebuiltManifest,
+): { covered: T[]; skipped: T[] } {
+	const covered: T[] = [];
+	const skipped: T[] = [];
+	for (const testCase of cases) {
+		if ((manifest[testCase.fileSlug]?.length ?? 0) > 0) covered.push(testCase);
+		else skipped.push(testCase);
+	}
+	return { covered, skipped };
+}
+
+/**
  * Build a BuildResult for a workflow that already exists in the n8n instance.
  * Used by --prebuilt-workflows mode to skip the orchestrator and verify a
  * workflow built by some other tool (e.g. an MCP-driven session).

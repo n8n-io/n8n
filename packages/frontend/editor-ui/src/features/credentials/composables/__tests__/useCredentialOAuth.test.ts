@@ -3,6 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useCredentialOAuth } from '../useCredentialOAuth';
 import { useCredentialsStore } from '../../credentials.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { mockedStore } from '@/__tests__/utils';
 import type { ICredentialType } from 'n8n-workflow';
 import type { ICredentialsResponse } from '../../credentials.types';
@@ -550,6 +551,106 @@ describe('useCredentialOAuth', () => {
 
 			const result = await promise;
 			expect(result).toBe(false);
+		});
+
+		it('should resolve true when the callback posts success via window.opener from a trusted origin', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			// Embed setup: editor and n8n backend live on different origins, so the
+			// BroadcastChannel never delivers and we rely on window.opener.
+			useRootStore().setUrlBaseEditor('https://integration-app.brevo.com');
+			MockBroadcastChannel.noopEventListener = true;
+
+			const { authorize } = useCredentialOAuth();
+			const promise = authorize(mockCredential);
+
+			// Let the window 'message' listener attach before dispatching.
+			await new Promise((r) => setTimeout(r, 0));
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					data: 'success',
+					origin: 'https://integration-app.brevo.com',
+				}),
+			);
+
+			const result = await promise;
+			expect(result).toBe(true);
+			expect(mockPopup.close).toHaveBeenCalled();
+		});
+
+		it('should resolve false when the callback posts error via window.opener from a trusted origin', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			useRootStore().setUrlBaseEditor('https://integration-app.brevo.com');
+			MockBroadcastChannel.noopEventListener = true;
+
+			const { authorize } = useCredentialOAuth();
+			const promise = authorize(mockCredential);
+
+			await new Promise((r) => setTimeout(r, 0));
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					data: 'error',
+					origin: 'https://integration-app.brevo.com',
+				}),
+			);
+
+			const result = await promise;
+			expect(result).toBe(false);
+			expect(mockPopup.close).toHaveBeenCalled();
+		});
+
+		it('should ignore window messages from untrusted origins', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			useRootStore().setUrlBaseEditor('https://integration-app.brevo.com');
+			MockBroadcastChannel.noopEventListener = true;
+
+			const controller = new AbortController();
+			const { authorize } = useCredentialOAuth();
+			const promise = authorize(mockCredential, controller.signal);
+
+			await new Promise((r) => setTimeout(r, 0));
+			window.dispatchEvent(
+				new MessageEvent('message', { data: 'success', origin: 'https://evil.example.com' }),
+			);
+
+			const race = await Promise.race([
+				promise.then(() => 'resolved'),
+				new Promise<string>((r) => setTimeout(() => r('pending'), 50)),
+			]);
+			expect(race).toBe('pending');
+
+			controller.abort();
+			await promise;
+		});
+
+		it('should ignore unrelated window messages without failing the flow', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			useRootStore().setUrlBaseEditor('https://integration-app.brevo.com');
+			MockBroadcastChannel.noopEventListener = true;
+
+			const controller = new AbortController();
+			const { authorize } = useCredentialOAuth();
+			const promise = authorize(mockCredential, controller.signal);
+
+			await new Promise((r) => setTimeout(r, 0));
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					data: { type: 'unrelated' },
+					origin: 'https://integration-app.brevo.com',
+				}),
+			);
+
+			const race = await Promise.race([
+				promise.then(() => 'resolved'),
+				new Promise<string>((r) => setTimeout(() => r('pending'), 50)),
+			]);
+			expect(race).toBe('pending');
+
+			controller.abort();
+			await promise;
 		});
 	});
 

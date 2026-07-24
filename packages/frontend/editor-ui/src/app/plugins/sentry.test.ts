@@ -26,6 +26,12 @@ describe('beforeSend', () => {
 		expect(beforeSend(event, hint)).toBeNull();
 	});
 
+	it('should return null for missing AI assistant sessions', () => {
+		const event = createErrorEvent();
+		const hint = { originalException: new ResponseError('Session not found') };
+		expect(beforeSend(event, hint)).toBeNull();
+	});
+
 	it('should return null when originalException matches ignoredErrors by instance only', () => {
 		const event = createErrorEvent();
 		const hint = { originalException: new AxiosError() };

@@ -462,6 +462,70 @@ export async function postOrUpdateComment(pullRequestNumber, body, botMarker) {
 }
 
 /**
+ * Request review from the given GitHub teams on a PR.
+ *
+ * Team slugs are the part after the org, e.g. `catalysts` for
+ * `@n8n-io/catalysts`. Re-requesting an already-requested team is a no-op on
+ * GitHub's side, so this is safe to call on every PR update.
+ *
+ * @param { number } pullRequestNumber
+ * @param { string[] } teamSlugs
+ */
+export async function requestTeamReviewers(pullRequestNumber, teamSlugs) {
+	if (teamSlugs.length === 0) return;
+
+	const { octokit, owner, repo } = initGithub();
+
+	await octokit.rest.pulls.requestReviewers({
+		owner,
+		repo,
+		pull_number: pullRequestNumber,
+		team_reviewers: teamSlugs,
+	});
+}
+
+/**
+ * Add a label to a PR (issue). Adding a label that is already present is a
+ * no-op on GitHub's side.
+ *
+ * @param { number } pullRequestNumber
+ * @param { string } label
+ */
+export async function addLabel(pullRequestNumber, label) {
+	const { octokit, owner, repo } = initGithub();
+
+	await octokit.rest.issues.addLabels({
+		owner,
+		repo,
+		issue_number: pullRequestNumber,
+		labels: [label],
+	});
+}
+
+/**
+ * Remove a label from a PR (issue). Removing a label that is not present
+ * returns 404 from GitHub; that case is swallowed so the call is idempotent.
+ *
+ * @param { number } pullRequestNumber
+ * @param { string } label
+ */
+export async function removeLabel(pullRequestNumber, label) {
+	const { octokit, owner, repo } = initGithub();
+
+	try {
+		await octokit.rest.issues.removeLabel({
+			owner,
+			repo,
+			issue_number: pullRequestNumber,
+			name: label,
+		});
+	} catch (ex) {
+		if (ex?.status === 404) return;
+		throw ex;
+	}
+}
+
+/**
  * @param {string} tag
  */
 export async function getExistingRelease(tag) {

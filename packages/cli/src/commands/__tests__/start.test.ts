@@ -4,32 +4,30 @@ import '@/zod-alias-support';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { AuthRolesService, DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, BinaryDataConfig, ErrorReporter } from 'n8n-core';
 
-import { BinaryDataConfig } from 'n8n-core';
-
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { JwtService } from '@/services/jwt.service';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
-import { DeprecationService } from '@/deprecation/deprecation.service';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { License } from '@/license';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Start } from '../start';
 import { WaitTracker } from '@/wait-tracker';
-import { ErrorReporter } from 'n8n-core';
-import { NodeTypes } from '@/node-types';
-import { ShutdownService } from '@/shutdown/shutdown.service';
+import { mock } from 'vitest-mock-extended';
+
 import type { AbstractServer } from '@/abstract-server';
-import { PostHogClient } from '@/posthog';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { DeprecationService } from '@/deprecation/deprecation.service';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { License } from '@/license';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
+import { NodeTypes } from '@/node-types';
+import { PostHogClient } from '@/posthog';
+import { JwtService } from '@/services/jwt.service';
+import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
 const authRolesService = mockInstance(AuthRolesService);
@@ -87,17 +85,17 @@ describe('Start - AuthRolesService initialization', () => {
 		// @ts-expect-error - Read-only property, but needed for testing
 		instanceSettings.instanceType = instanceType;
 		Object.defineProperty(instanceSettings, 'isMultiMain', {
-			get: jest.fn(() => isMultiMain),
+			get: vi.fn(() => isMultiMain),
 			configurable: true,
 		});
 		Object.defineProperty(instanceSettings, 'isLeader', {
-			get: jest.fn(() => isLeader),
+			get: vi.fn(() => isLeader),
 			configurable: true,
 		});
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		Container.reset();
 
 		// Re-register all mocks
@@ -128,11 +126,11 @@ describe('Start - AuthRolesService initialization', () => {
 		Container.set(DeploymentKeyRepository, deploymentKeyRepository);
 		Container.set(
 			JwtService,
-			mockInstance(JwtService, { initialize: jest.fn().mockResolvedValue(undefined) }),
+			mockInstance(JwtService, { initialize: vi.fn().mockResolvedValue(undefined) }),
 		);
 		Container.set(
 			BinaryDataConfig,
-			mockInstance(BinaryDataConfig, { initialize: jest.fn().mockResolvedValue(undefined) }),
+			mockInstance(BinaryDataConfig, { initialize: vi.fn().mockResolvedValue(undefined) }),
 		);
 
 		start = new Start();
@@ -156,27 +154,27 @@ describe('Start - AuthRolesService initialization', () => {
 			workflows: { useWorkflowPublicationService: false },
 		};
 		// @ts-expect-error - Accessing protected method for testing
-		start.initCrashJournal = jest.fn().mockResolvedValue(undefined);
-		start.initLicense = jest.fn().mockResolvedValue(undefined);
-		start.initOrchestration = jest.fn().mockResolvedValue(undefined);
-		start.initBinaryDataService = jest.fn().mockResolvedValue(undefined);
+		start.initCrashJournal = vi.fn().mockResolvedValue(undefined);
+		start.initLicense = vi.fn().mockResolvedValue(undefined);
+		start.initOrchestration = vi.fn().mockResolvedValue(undefined);
+		start.initBinaryDataService = vi.fn().mockResolvedValue(undefined);
 		// @ts-expect-error - Accessing protected method for testing
-		start.initDataDeduplicationService = jest.fn().mockResolvedValue(undefined);
-		start.initExternalHooks = jest.fn().mockResolvedValue(undefined);
-		start.initWorkflowHistory = jest.fn();
+		start.initDataDeduplicationService = vi.fn().mockResolvedValue(undefined);
+		start.initExternalHooks = vi.fn().mockResolvedValue(undefined);
+		start.initWorkflowHistory = vi.fn();
 		// @ts-expect-error - Accessing private method for testing
-		start.initInstanceSettingsLoader = jest.fn().mockResolvedValue(undefined);
-		start.cleanupTestRunner = jest.fn().mockResolvedValue(undefined);
+		start.initInstanceSettingsLoader = vi.fn().mockResolvedValue(undefined);
+		start.cleanupTestRunner = vi.fn().mockResolvedValue(undefined);
 		// @ts-expect-error - Accessing private method for testing
-		start.generateStaticAssets = jest.fn().mockResolvedValue(undefined);
+		start.generateStaticAssets = vi.fn().mockResolvedValue(undefined);
 		// @ts-expect-error - Accessing protected property for testing
-		start.moduleRegistry = { initModules: jest.fn().mockResolvedValue(undefined) };
+		start.moduleRegistry = { initModules: vi.fn().mockResolvedValue(undefined) };
 		// @ts-expect-error - Accessing protected property for testing
-		start.executionContextHookRegistry = { init: jest.fn().mockResolvedValue(undefined) };
+		start.executionContextHookRegistry = { init: vi.fn().mockResolvedValue(undefined) };
 		// @ts-expect-error - Accessing protected property for testing
 		start.license = license;
 		// @ts-expect-error - Accessing protected property for testing
-		start.server = mock<AbstractServer>({ init: jest.fn().mockResolvedValue(undefined) });
+		start.server = mock<AbstractServer>({ init: vi.fn().mockResolvedValue(undefined) });
 	});
 
 	describe('init - conditional initialization based on instance type and leader status', () => {
@@ -292,11 +290,11 @@ describe('Start - AuthRolesService initialization', () => {
 		};
 
 		beforeEach(() => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 		});
 
 		afterEach(() => {
-			jest.useRealTimers();
+			vi.useRealTimers();
 			// Restore original mock so other tests aren't affected
 			license.isMultiMainLicensed = (() => true) as unknown as typeof license.isMultiMainLicensed;
 		});
@@ -307,7 +305,7 @@ describe('Start - AuthRolesService initialization', () => {
 			start.globalConfig = multiMainConfig;
 
 			// First call returns false (no cert yet), second call returns true (leader wrote cert)
-			license.isMultiMainLicensed = jest
+			license.isMultiMainLicensed = vi
 				.fn()
 				.mockReturnValueOnce(false)
 				.mockReturnValue(true) as unknown as typeof license.isMultiMainLicensed;
@@ -315,7 +313,7 @@ describe('Start - AuthRolesService initialization', () => {
 			const initPromise = start.init();
 
 			// Advance past the first retry delay (2s)
-			await jest.advanceTimersByTimeAsync(2_000);
+			await vi.advanceTimersByTimeAsync(2_000);
 
 			await initPromise;
 
@@ -327,7 +325,7 @@ describe('Start - AuthRolesService initialization', () => {
 			// @ts-expect-error - Accessing protected property for testing
 			start.globalConfig = multiMainConfig;
 
-			license.isMultiMainLicensed = jest
+			license.isMultiMainLicensed = vi
 				.fn()
 				.mockReturnValue(false) as unknown as typeof license.isMultiMainLicensed;
 
@@ -337,7 +335,7 @@ describe('Start - AuthRolesService initialization', () => {
 			});
 
 			// Advance past all retry delays: 2s + 4s + 8s + 16s + 32s = 62s
-			await jest.advanceTimersByTimeAsync(62_000);
+			await vi.advanceTimersByTimeAsync(62_000);
 
 			const result = await initPromise;
 			expect(result).toBe('rejected');
@@ -350,7 +348,7 @@ describe('Start - AuthRolesService initialization', () => {
 			// @ts-expect-error - Accessing protected property for testing
 			start.globalConfig = multiMainConfig;
 
-			license.isMultiMainLicensed = jest
+			license.isMultiMainLicensed = vi
 				.fn()
 				.mockReturnValue(false) as unknown as typeof license.isMultiMainLicensed;
 

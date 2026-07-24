@@ -72,13 +72,17 @@ describe('createWorkItem', () => {
 describe('handleBuildOutcome', () => {
 	it('transitions to verifying when submitted and testable', () => {
 		const state = makeState();
-		const outcome = makeOutcome({ workflowId: 'wf_123' });
+		const outcome = makeOutcome({
+			workflowId: 'wf_123',
+			sourceFilePath: 'src/workflows/main.workflow.ts',
+		});
 
 		const { state: next, action, attempt } = handleBuildOutcome(state, [], outcome);
 
 		expect(next.phase).toBe('verifying');
 		expect(next.status).toBe('active');
 		expect(next.workflowId).toBe('wf_123');
+		expect(next.sourceFilePath).toBe('src/workflows/main.workflow.ts');
 		expect(action.type).toBe('verify');
 		if (action.type === 'verify') {
 			expect(action.workflowId).toBe('wf_123');
@@ -105,6 +109,7 @@ describe('handleBuildOutcome', () => {
 		const state = makeState();
 		const outcome = makeOutcome({
 			submitted: false,
+			sourceFilePath: 'src/workflows/main.workflow.ts',
 			failureSignature: 'tsc error',
 		});
 
@@ -112,7 +117,11 @@ describe('handleBuildOutcome', () => {
 
 		expect(next.phase).toBe('building');
 		expect(next.status).toBe('active');
+		expect(next.sourceFilePath).toBe('src/workflows/main.workflow.ts');
 		expect(action.type).toBe('continue_building');
+		if (action.type === 'continue_building') {
+			expect(action.sourceFilePath).toBe('src/workflows/main.workflow.ts');
+		}
 		expect(attempt.result).toBe('failure');
 	});
 
@@ -150,7 +159,7 @@ describe('handleBuildOutcome', () => {
 		expect(attempt.attempt).toBe(2);
 	});
 
-	it('blocks unresolved placeholders as saved-workflow setup', () => {
+	it('blocks legacy unresolved placeholders as saved-workflow setup', () => {
 		const state = makeState();
 		const outcome = makeOutcome({
 			workflowId: 'wf_123',
@@ -178,6 +187,40 @@ describe('handleBuildOutcome', () => {
 			reason: 'mocked_credentials_or_placeholders',
 		});
 		expect(action.type).toBe('blocked');
+	});
+
+	it('verifies submitted workflows before setup when unresolved placeholders remain', () => {
+		const state = makeState();
+		const outcome = makeOutcome({
+			workflowId: 'wf_123',
+			sourceFilePath: 'src/workflows/main.workflow.ts',
+			hasUnresolvedPlaceholders: true,
+			needsUserInput: true,
+			blockingReason: 'Route to setup.',
+			verificationReadiness: { status: 'ready' },
+			setupRequirement: {
+				status: 'required',
+				reason: 'unresolved-placeholders',
+				guidance: 'Route to setup.',
+			},
+			remediation: createRemediation({
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+				guidance: 'Route to setup.',
+			}),
+		});
+
+		const { state: next, action, attempt } = handleBuildOutcome(state, [], outcome);
+
+		expect(next.phase).toBe('verifying');
+		expect(next.status).toBe('active');
+		expect(next.workflowId).toBe('wf_123');
+		expect(next.hasUnresolvedPlaceholders).toBe(true);
+		expect(next.lastRemediation).toBeUndefined();
+		expect(action).toEqual({ type: 'verify', workflowId: 'wf_123' });
+		expect(attempt.result).toBe('success');
+		expect(attempt.remediationCategory).toBeUndefined();
 	});
 
 	it('allows two pre-save submit failures before blocking the third', () => {
@@ -498,7 +541,11 @@ describe('handleVerificationVerdict', () => {
 	});
 
 	it('produces patch action with fallback node name when failedNodeName is missing', () => {
-		const state = makeState({ phase: 'verifying', workflowId: 'wf_123' });
+		const state = makeState({
+			phase: 'verifying',
+			workflowId: 'wf_123',
+			sourceFilePath: 'src/workflows/main.workflow.ts',
+		});
 		const verdict = makeVerdict({
 			verdict: 'needs_patch',
 			failureSignature: 'gmail:error',
@@ -509,11 +556,16 @@ describe('handleVerificationVerdict', () => {
 		expect(action.type).toBe('patch');
 		if (action.type === 'patch') {
 			expect(action.failedNodeName).toBe('unknown');
+			expect(action.sourceFilePath).toBe('src/workflows/main.workflow.ts');
 		}
 	});
 
 	it('transitions to repairing with rebuild on needs_rebuild', () => {
-		const state = makeState({ phase: 'verifying', workflowId: 'wf_123' });
+		const state = makeState({
+			phase: 'verifying',
+			workflowId: 'wf_123',
+			sourceFilePath: 'src/workflows/main.workflow.ts',
+		});
 		const verdict = makeVerdict({
 			verdict: 'needs_rebuild',
 			diagnosis: 'Multiple nodes misconfigured',
@@ -527,6 +579,7 @@ describe('handleVerificationVerdict', () => {
 		expect(next.rebuildAttempts).toBe(1);
 		expect(action.type).toBe('rebuild');
 		if (action.type === 'rebuild') {
+			expect(action.sourceFilePath).toBe('src/workflows/main.workflow.ts');
 			expect(action.failureDetails).toContain(
 				'Workflow inspection: Saved graph has no connection into the final response node.',
 			);

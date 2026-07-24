@@ -466,7 +466,32 @@ describe('LmChatAnthropic', () => {
 			);
 		});
 
-		it('should create failed attempt handler without gateway handler for direct API', async () => {
+		it('should pass the declared header name to N8nLlmTracing', async () => {
+			const mockContext = setupMockContext();
+			mockContext.getCredentials.mockResolvedValue({
+				apiKey: 'test-api-key',
+				header: true,
+				headerName: 'x-custom-header',
+				headerValue: 'secret-value',
+			});
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedN8nLlmTracing).toHaveBeenCalledWith(
+				mockContext,
+				expect.objectContaining({
+					redactedHeaders: ['x-custom-header'],
+				}),
+			);
+		});
+
+		it('should create failed attempt handler for direct API', async () => {
 			const mockContext = setupMockContext();
 
 			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
@@ -477,7 +502,12 @@ describe('LmChatAnthropic', () => {
 
 			await lmChatAnthropic.supplyData.call(mockContext, 0);
 
-			expect(mockedMakeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(mockContext, undefined);
+			// A composed handler is always passed, even without a gateway, since it also
+			// sanitizes the sampling-parameter deprecation error.
+			expect(mockedMakeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(
+				mockContext,
+				expect.any(Function),
+			);
 		});
 
 		it('should create failed attempt handler with gateway handler for custom URL', async () => {
@@ -535,6 +565,36 @@ describe('LmChatAnthropic', () => {
 			);
 
 			// Non-model errors should pass through without throwing
+			expect(() => capturedHandler!(new Error('rate limit exceeded'))).not.toThrow();
+		});
+
+		it('should sanitize the deprecated sampling parameter error into an actionable message', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-opus-4-8';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			let capturedHandler: ((error: unknown) => void) | undefined;
+			mockedMakeN8nLlmFailedAttemptHandler.mockImplementation((_ctx, handler) => {
+				capturedHandler = handler as (error: unknown) => void;
+				return vi.fn();
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(capturedHandler).toBeDefined();
+
+			expect(() =>
+				capturedHandler!(new Error('`temperature` is deprecated for this model.')),
+			).toThrow(NodeOperationError);
+			expect(() =>
+				capturedHandler!(new Error('`temperature` is deprecated for this model.')),
+			).toThrow(/claude-opus-4-8/);
+
+			// Unrelated errors should pass through without throwing
 			expect(() => capturedHandler!(new Error('rate limit exceeded'))).not.toThrow();
 		});
 
@@ -861,6 +921,57 @@ describe('LmChatAnthropic', () => {
 			expect(
 				(nonOpusEffort as { options: Array<{ value: string }> }).options.map((o) => o.value),
 			).toEqual(['low', 'medium', 'high']);
+		});
+	});
+
+	describe('sampling parameter allow-list', () => {
+		it.each([
+			'claude-opus-4-7-20251101',
+			'claude-opus-4-8',
+			'claude-opus-4-8-20260101',
+			'claude-sonnet-5',
+			'claude-fable-5',
+			'claude-mythos-5', // unrecognized future claude-* model: assumed unsupported
+		])('should strip temperature/topK/topP for %s', async (modelName) => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return modelName;
+				if (paramName === 'options') return { temperature: 0.5, topK: 40, topP: 0.9 };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			const callArgs = MockedChatAnthropic.mock.calls[0][0]!;
+			expect(callArgs).not.toHaveProperty('temperature');
+			expect(callArgs).not.toHaveProperty('topK');
+			expect(callArgs).not.toHaveProperty('topP');
+		});
+
+		it.each([
+			'claude-opus-4-20250514',
+			'claude-opus-4-1-20250805',
+			'claude-opus-4-5-20251101',
+			'claude-opus-4-6',
+			'claude-sonnet-4-6',
+			'claude-haiku-4-5-20251001',
+			'claude-3-5-sonnet-20241022',
+			'gpt-4o', // non-Claude gateway model: always passed through
+		])('should send temperature/topK/topP for %s', async (modelName) => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return modelName;
+				if (paramName === 'options') return { temperature: 0.5, topK: 40, topP: 0.9 };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({ temperature: 0.5, topK: 40, topP: 0.9 }),
+			);
 		});
 	});
 

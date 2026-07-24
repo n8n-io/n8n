@@ -1,4 +1,5 @@
 import { BreakingChangeRule } from '@n8n/decorators';
+
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,

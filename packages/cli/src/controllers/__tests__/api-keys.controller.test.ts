@@ -1,7 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest, User, ApiKey } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { EventService } from '@/events/event.service';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
@@ -86,28 +86,68 @@ describe('ApiKeysController', () => {
 		});
 	});
 
+	describe('rotateApiKey', () => {
+		it('rotates the key, returns the redacted and raw values, and emits the event', async () => {
+			const apiKeyData = {
+				id: '123',
+				userId: '123',
+				label: 'My API Key',
+				apiKey: 'rotatedKey456',
+				createdAt: new Date(),
+				scopes: ['user:create'],
+			} as ApiKey;
+
+			const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: '123' }) });
+
+			publicApiKeyService.rotateApiKey.mockResolvedValue(apiKeyData);
+			publicApiKeyService.redactApiKey.mockImplementation(() => '***456');
+			publicApiKeyService.getApiKeyExpiration.mockReturnValue(null);
+
+			const rotatedApiKey = await controller.rotateApiKey(req, mock(), '123');
+
+			expect(publicApiKeyService.rotateApiKey).toHaveBeenCalledWith(req.user, '123');
+			expect(rotatedApiKey).toEqual(
+				expect.objectContaining({
+					id: '123',
+					label: 'My API Key',
+					apiKey: '***456',
+					rawApiKey: 'rotatedKey456',
+					expiresAt: null,
+					scopes: ['user:create'],
+				}),
+			);
+			expect(eventService.emit).toHaveBeenCalledWith('public-api-key-rotated', {
+				user: req.user,
+				publicApi: false,
+			});
+		});
+	});
+
 	describe('getAPIKeys', () => {
-		it('delegates to the service with the authenticated user, pagination, ownership, label, and sortBy', async () => {
+		it('delegates to the service with the authenticated user, pagination, ownership, label, ownerIds, and sortBy', async () => {
 			publicApiKeyService.getRedactedApiKeys.mockResolvedValue({
 				items: [],
 				counts: { mine: 0, all: 0 },
 				totals: { mine: 0, all: 0 },
+				owners: [],
 			});
 			const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: '123' }) });
 
 			await controller.getApiKeys(req, mock(), {
 				take: 10,
 				skip: 5,
-				ownership: 'mine',
+				ownership: 'all',
 				label: 'prod',
+				ownerIds: ['u1', 'u2'],
 				sortBy: 'label:asc',
 			} as never);
 
 			expect(publicApiKeyService.getRedactedApiKeys).toHaveBeenCalledWith(req.user, {
 				take: 10,
 				skip: 5,
-				ownership: 'mine',
+				ownership: 'all',
 				label: 'prod',
+				ownerIds: ['u1', 'u2'],
 				sortBy: 'label:asc',
 			});
 		});

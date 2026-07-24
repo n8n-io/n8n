@@ -10,7 +10,7 @@ import N8nIconButton from '../N8nIconButton';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
 export default {
-	title: 'Chat/ChatInput',
+	title: 'AI/ChatInput',
 	component: N8nChatInput,
 	argTypes: {
 		modelValue: {

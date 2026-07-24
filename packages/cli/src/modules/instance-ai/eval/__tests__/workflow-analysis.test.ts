@@ -1,14 +1,15 @@
-jest.mock('@n8n/instance-ai', () => ({
-	createEvalAgent: jest.fn(),
-	extractText: jest.fn(),
+vi.mock('@n8n/instance-ai', () => ({
+	createEvalAgent: vi.fn(),
+	extractText: vi.fn(),
 }));
 
-jest.mock('../node-config', () => ({
-	extractNodeConfig: jest.fn(),
+vi.mock('../node-config', () => ({
+	extractNodeConfig: vi.fn(),
 }));
 
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import type { IConnections, INode, INodeParameters, IWorkflowBase } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import {
 	buildVendorLlmRouting,
@@ -18,10 +19,9 @@ import {
 	identifyNodesForPinData,
 	partitionAiRoots,
 } from '../workflow-analysis';
-import { UserError } from 'n8n-workflow';
 
-const mockedCreateEvalAgent = jest.mocked(createEvalAgent);
-const mockedExtractText = jest.mocked(extractText);
+const mockedCreateEvalAgent = vi.mocked(createEvalAgent);
+const mockedExtractText = vi.mocked(extractText);
 
 function makeNode(overrides: Partial<INode> & { name: string; type: string }): INode {
 	return {
@@ -839,6 +839,30 @@ describe('detectBinaryDependencies', () => {
 		expect(result?.contentType).toBe('application/pdf');
 	});
 
+	it('detects nested inputDataFieldName on HTTP Request multipart formBinaryData', () => {
+		const nodes = [
+			makeNode({ name: 'Submission Form', type: 'n8n-nodes-base.formTrigger' }),
+			makeNode({
+				name: 'Upload Document',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					method: 'POST',
+					url: 'https://api.example.com/v1/documents',
+					sendBody: true,
+					contentType: 'multipart-form-data',
+					bodyParameters: {
+						parameters: [
+							{ parameterType: 'formBinaryData', name: 'file', inputDataFieldName: 'Document' },
+							{ name: 'title', value: 'Uploaded from form' },
+						],
+					},
+				},
+			}),
+		];
+		const result = detectBinaryDependencies(makeWorkflow(nodes));
+		expect(result?.propertyName).toBe('Document');
+	});
+
 	it('detects literal binaryPropertyName parameters on upload nodes (Slack files.upload)', () => {
 		const nodes = [
 			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
@@ -1003,7 +1027,7 @@ describe('generateMockHints', () => {
 	]);
 
 	function mockAgentResponses(...responses: Array<string | Error>) {
-		const generate = jest.fn();
+		const generate = vi.fn();
 		for (const r of responses) {
 			if (r instanceof Error) generate.mockRejectedValueOnce(r);
 			else generate.mockResolvedValueOnce({ __raw: r });
@@ -1016,7 +1040,7 @@ describe('generateMockHints', () => {
 	}
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should succeed on the first attempt when the LLM returns a well-formed response', async () => {

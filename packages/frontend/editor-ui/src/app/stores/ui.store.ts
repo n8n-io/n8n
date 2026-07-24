@@ -41,8 +41,10 @@ import {
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 	AI_BUILDER_DIFF_MODAL_KEY,
 	INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
+	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 	AI_GATEWAY_TOP_UP_MODAL_KEY,
 	AGENT_CONFIRMATION_MODAL_KEY,
+	ADD_EXECUTION_TO_DATASET_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -83,12 +85,12 @@ import type {
 	Modals,
 	NewCredentialsModal,
 	ThemeOption,
-	NotificationOptions,
 	ModalState,
 	ModalKey,
 	AppliedThemeOption,
 	TabOptions,
 	INodeUi,
+	NodeCreatorOpenSource,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -100,7 +102,7 @@ import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import identity from 'lodash/identity';
-import * as modalRegistry from '@/app/moduleInitializer/modalRegistry';
+import { modalRegistry } from '@n8n/frontend-module-sdk';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
 let savedTheme: ThemeOption = 'system';
@@ -172,6 +174,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 				AI_BUILDER_DIFF_MODAL_KEY,
 				INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
+				INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 				AI_GATEWAY_TOP_UP_MODAL_KEY,
 				AGENT_CONFIRMATION_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
@@ -253,6 +256,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			open: false,
 			data: {},
 		},
+		[ADD_EXECUTION_TO_DATASET_MODAL_KEY]: {
+			open: false,
+			data: {},
+		},
 		[IMPORT_WORKFLOW_URL_MODAL_KEY]: {
 			open: false,
 			data: {
@@ -296,9 +303,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const nodeViewOffsetPosition = ref<[number, number]>([0, 0]);
 	const nodeViewInitialized = ref<boolean>(false);
 	const addFirstStepOnLoad = ref<boolean>(false);
-	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
-	const areNotificationsSuppressed = ref(false);
-	const allowErrorNotificationsWhenSuppressed = ref(false);
+	// Optional source for the auto-opened node creator (e.g. opened from Instance
+	// AI), so the 'User opened nodes panel' event is attributed to its origin.
+	const addFirstStepOnLoadSource = ref<NodeCreatorOpenSource>();
 	const processingExecutionResults = ref<boolean>(false);
 	const isBlankRedirect = ref<boolean>(false);
 
@@ -520,7 +527,14 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(DELETE_USER_MODAL_KEY);
 	};
 
-	const openExistingCredential = (id: string, options: { hideAskAssistant?: boolean } = {}) => {
+	const openExistingCredential = (
+		id: string,
+		options: {
+			hideAskAssistant?: boolean;
+			appendToBody?: boolean;
+			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
+		} = {},
+	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, id);
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'edit');
 		modalsById.value[CREDENTIAL_EDIT_MODAL_KEY] = {
@@ -529,6 +543,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			contextNode: undefined,
 			closeOnSave: false,
 			hideAskAssistant: options.hideAskAssistant,
+			appendToBody: options.appendToBody,
+			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
 		} as NewCredentialsModal;
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
@@ -541,7 +557,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		suggestedName?: string,
 		nodeName?: string,
 		contextNode?: INodeUi,
-		options: { hideAskAssistant?: boolean; closeOnSave?: boolean } = {},
+		options: {
+			hideAskAssistant?: boolean;
+			appendToBody?: boolean;
+			closeOnSave?: boolean;
+			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
+		} = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 		setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
@@ -554,6 +575,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			nodeName,
 			contextNode,
 			hideAskAssistant: options.hideAskAssistant,
+			appendToBody: options.appendToBody,
+			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
 		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
@@ -619,15 +642,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		telemetry.track('User toggled sidebar', {
 			expanded: !sidebarMenuCollapsed.value,
 		});
-	};
-
-	const setNotificationsForView = (view: VIEWS, notifications: NotificationOptions[]) => {
-		pendingNotificationsForViews.value[view] = notifications;
-	};
-
-	const setNotificationsSuppressed = (suppressed: boolean, options?: { allowErrors?: boolean }) => {
-		areNotificationsSuppressed.value = suppressed;
-		allowErrorNotificationsWhenSuppressed.value = suppressed && options?.allowErrors === true;
 	};
 
 	function resetLastInteractedWith() {
@@ -744,15 +758,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		nodeViewOffsetPosition,
 		nodeViewInitialized,
 		addFirstStepOnLoad,
+		addFirstStepOnLoadSource,
 		sidebarMenuCollapsed,
 		sidebarWidth,
 		theme: computed(() => theme.value),
 		modalsById,
 		currentView,
 		isAnyModalOpen,
-		pendingNotificationsForViews,
-		areNotificationsSuppressed,
-		allowErrorNotificationsWhenSuppressed,
 		activeModals,
 		isProcessingExecutionResults,
 		setTheme,
@@ -768,8 +780,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		addActiveAction,
 		removeActiveAction,
 		toggleSidebarMenuCollapse,
-		setNotificationsForView,
-		setNotificationsSuppressed,
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
 		markStateDirty,

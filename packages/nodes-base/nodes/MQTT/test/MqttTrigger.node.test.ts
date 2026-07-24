@@ -1,4 +1,4 @@
-import { captor, mock } from 'jest-mock-extended';
+import { captor, mock } from 'vitest-mock-extended';
 import type { MqttClient, OnMessageCallback } from 'mqtt';
 import { returnJsonArray } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, ITriggerFunctions } from 'n8n-workflow';
@@ -6,10 +6,10 @@ import type { ICredentialDataDecryptedObject, ITriggerFunctions } from 'n8n-work
 import { createClient } from '../GenericFunctions';
 import { MqttTrigger } from '../MqttTrigger.node';
 
-jest.mock('../GenericFunctions', () => {
+vi.mock('../GenericFunctions', () => {
 	const mockMqttClient = mock<MqttClient>();
 	return {
-		createClient: jest.fn().mockResolvedValue(mockMqttClient),
+		createClient: vi.fn().mockResolvedValue(mockMqttClient),
 	};
 });
 
@@ -22,7 +22,7 @@ describe('MQTT Trigger Node', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		triggerFunctions.getCredentials.calledWith('mqtt').mockResolvedValue(credentials);
 		triggerFunctions.getNodeParameter.calledWith('topics').mockReturnValue(topic);

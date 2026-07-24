@@ -1,18 +1,38 @@
 import type { Logger } from '@n8n/backend-common';
 import { QueryFailedError } from '@n8n/typeorm';
 import type { ErrorEvent } from '@sentry/core';
+import { captureException, withIsolationScope } from '@sentry/node';
 import { AxiosError } from 'axios';
-import { ApplicationError, BaseError } from 'n8n-workflow';
+import { ApplicationError, BaseError, ExpressionError, NodeOperationError } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ErrorReporter, normalizeFrameFilename } from '../error-reporter';
 
+const { isolationScopeMock } = vi.hoisted(() => ({
+	isolationScopeMock: {
+		clearBreadcrumbs: vi.fn(),
+		setSDKProcessingMetadata: vi.fn(),
+	},
+}));
+
 vi.mock('@sentry/node', () => ({
 	init: vi.fn(),
 	setTag: vi.fn(),
+	setUser: vi.fn(),
 	captureException: vi.fn(),
+	withIsolationScope: vi.fn((fn: (scope: unknown) => unknown) => fn(isolationScopeMock)),
+	requestDataIntegration: vi.fn(),
+	rewriteFramesIntegration: vi.fn(),
+	httpIntegration: vi.fn(),
 	Integrations: {},
+}));
+
+// `init()` bails in the test env; flip the flag so the Sentry wiring can be exercised.
+vi.mock('@n8n/backend-common', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-common')>()),
+	inTest: false,
 }));
 
 const eventLoopBlockIntegrationMock = vi.fn((opts: unknown) => ({
@@ -249,6 +269,32 @@ describe('ErrorReporter', () => {
 				});
 			});
 		});
+
+		// `ExecutionBaseError` (the base of NodeApiError/NodeOperationError/ExpressionError)
+		// extends `BaseError`, so these errors are classified by the BaseError branch.
+		// Reporting must still be driven by their level, as before the re-parenting.
+		describe('ExecutionBaseError subclasses', () => {
+			const node = mock<INode>();
+
+			it('should drop warning-level node errors', async () => {
+				const originalException = new NodeOperationError(node, 'boom');
+
+				expect(originalException.level).toBe('warning');
+				expect(await errorReporter.beforeSend(event, { originalException })).toEqual(null);
+			});
+
+			it('should keep error-level node errors', async () => {
+				const originalException = new NodeOperationError(node, 'boom', { level: 'error' });
+
+				expect(await errorReporter.beforeSend(event, { originalException })).toEqual(event);
+			});
+
+			it('should drop an ExpressionError', async () => {
+				const originalException = new ExpressionError('bad expression');
+
+				expect(await errorReporter.beforeSend(event, { originalException })).toEqual(null);
+			});
+		});
 	});
 
 	describe('getEventLoopBlockIntegration', () => {
@@ -342,6 +388,53 @@ describe('ErrorReporter', () => {
 			expect(logger.error).toHaveBeenCalledTimes(2);
 			expect(logger.error).toHaveBeenNthCalledWith(1, `outer\n${outer.stack}\n`, undefined);
 			expect(logger.error).toHaveBeenNthCalledWith(2, `root cause\n${cause.stack}\n`, undefined);
+		});
+	});
+
+	describe('error with Sentry initialized', () => {
+		const sentryErrorReporter = new ErrorReporter(mock(), mock());
+
+		beforeAll(async () => {
+			await sentryErrorReporter.init({
+				serverType: 'main',
+				dsn: 'https://fake@sentry.example.com/1',
+				release: '1.0.0',
+				environment: 'test',
+				serverName: 'test-server',
+				withEventLoopBlockDetection: false,
+				tracesSampleRate: 0,
+				profilesSampleRate: 0,
+			});
+		});
+
+		beforeEach(() => {
+			vi.mocked(captureException).mockClear();
+			vi.mocked(withIsolationScope).mockClear();
+			isolationScopeMock.clearBreadcrumbs.mockClear();
+			isolationScopeMock.setSDKProcessingMetadata.mockClear();
+		});
+
+		it('captures on the ambient scope by default', () => {
+			const error = new Error('boom');
+
+			sentryErrorReporter.error(error);
+
+			expect(captureException).toHaveBeenCalledWith(error, undefined);
+			expect(withIsolationScope).not.toHaveBeenCalled();
+		});
+
+		it('captures in a forked isolation scope without request metadata when shouldIsolate is set', () => {
+			const error = new Error('boom');
+
+			sentryErrorReporter.error(error, { shouldIsolate: true });
+
+			expect(withIsolationScope).toHaveBeenCalledTimes(1);
+			expect(isolationScopeMock.clearBreadcrumbs).toHaveBeenCalledTimes(1);
+			expect(isolationScopeMock.setSDKProcessingMetadata).toHaveBeenCalledWith({
+				normalizedRequest: undefined,
+				ipAddress: undefined,
+			});
+			expect(captureException).toHaveBeenCalledWith(error, { shouldIsolate: true });
 		});
 	});
 });

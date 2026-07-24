@@ -19,6 +19,9 @@ import type { Rule, RuleGroup } from '@/Interface';
 import type { EnvironmentVariable } from '../environments.types';
 import { useEnvironmentsStore } from '../environments.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
@@ -26,9 +29,12 @@ const props = withDefaults(
 	defineProps<{
 		mode?: 'new' | 'edit';
 		variable?: EnvironmentVariable;
+		projectId?: string;
 	}>(),
 	{
 		mode: 'new',
+		variable: undefined,
+		projectId: undefined,
 	},
 );
 
@@ -37,6 +43,8 @@ const { showError } = useToast();
 const uiStore = useUIStore();
 const environmentsStore = useEnvironmentsStore();
 const projectsStore = useProjectsStore();
+const usersStore = useUsersStore();
+const sourceControlStore = useSourceControlStore();
 
 const modalBus = createEventBus();
 const loading = ref(false);
@@ -59,6 +67,12 @@ const valueValidationRules: Array<Rule | RuleGroup> = [
 	{ name: 'MAX_LENGTH', config: { maximum: VALUE_MAX_LENGTH } },
 ];
 
+function getInitialProjectId() {
+	if (props.variable) return props.variable.project?.id;
+	if (props.projectId !== undefined) return props.projectId;
+	return projectsStore.currentProjectId;
+}
+
 const form = reactive<{
 	key: string;
 	value: string;
@@ -66,7 +80,7 @@ const form = reactive<{
 }>({
 	key: props.variable?.key || '',
 	value: props.variable?.value || '',
-	projectId: props.variable ? props.variable.project?.id : projectsStore.currentProjectId,
+	projectId: getInitialProjectId(),
 });
 
 const formValidation = reactive<{
@@ -125,42 +139,53 @@ const modalTitle = computed(() =>
 		: i18n.baseText('variables.modal.title.edit'),
 );
 
-const projectOptions = computed<
-	Array<{
-		value: string;
-		label: string;
-		icon: IconOrEmoji;
-	}>
->(() => {
-	const options: Array<{
-		value: string;
-		label: string;
-		icon: IconOrEmoji;
-	}> = [
+type ScopeOption = {
+	value: string;
+	label: string;
+	icon: IconOrEmoji;
+	disabled: boolean;
+};
+
+const projectOptions = computed<ScopeOption[]>(() => {
+	const readOnly = sourceControlStore.preferences.branchReadOnly;
+
+	const options: ScopeOption[] = [
 		{
 			value: '',
 			label: i18n.baseText('variables.modal.scope.global'),
 			icon: { type: 'icon', value: 'database' },
+			disabled:
+				readOnly || !getResourcePermissions(usersStore.currentUser?.globalScopes).variable?.create,
 		},
 	];
 
-	if (projectsStore.availableProjects) {
-		options.push(
-			...projectsStore.availableProjects
-				.filter((project) => project.type !== 'personal')
-				.map((project) => {
-					const icon = (project.icon || {
-						type: 'icon' as const,
-						value: 'layer-group',
-					}) as IconOrEmoji;
-					return {
-						value: project.id,
-						label: project.name ?? project.id,
-						icon,
-					};
-				}),
-		);
+	if (projectsStore.personalProject) {
+		options.push({
+			value: projectsStore.personalProject.id,
+			label: i18n.baseText('projects.menu.personal'),
+			icon: { type: 'icon', value: 'user' },
+			disabled:
+				readOnly ||
+				!getResourcePermissions(projectsStore.personalProject.scopes).projectVariable?.create,
+		});
 	}
+
+	options.push(
+		...projectsStore.myProjects
+			.filter((project) => project.type === 'team')
+			.map((project) => {
+				const icon = (project.icon || {
+					type: 'icon' as const,
+					value: 'layer-group',
+				}) as IconOrEmoji;
+				return {
+					value: project.id,
+					label: project.name ?? project.id,
+					icon,
+					disabled: readOnly || !getResourcePermissions(project.scopes).projectVariable?.create,
+				};
+			}),
+	);
 
 	return options;
 });
@@ -171,8 +196,8 @@ const selectedProjectIcon = computed<IconOrEmoji>(() => {
 });
 
 const showScopeField = computed(() => {
-	// Show scope field only when creating a new variable and not in a project context
-	return props.mode === 'new' && !projectsStore.currentProjectId;
+	// Hidden when the caller already chose a scope (projectId prop) or we're in a project
+	return props.mode === 'new' && props.projectId === undefined && !projectsStore.currentProjectId;
 });
 
 function closeModal() {
@@ -216,6 +241,7 @@ async function handleSubmit() {
 }
 
 onMounted(async () => {
+	void projectsStore.getMyProjects();
 	await nextTick();
 	const input = keyInputRef.value?.inputRef;
 	if (input) {
@@ -316,6 +342,7 @@ onMounted(async () => {
 								:key="option.value || 'global'"
 								:value="option.value"
 								:label="option.label"
+								:disabled="option.disabled"
 								:class="{ [$style.globalOption]: option.value === '' }"
 							>
 								<div :class="$style.optionContent">

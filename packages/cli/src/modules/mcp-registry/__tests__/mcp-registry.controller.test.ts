@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { McpRegistryController } from '../mcp-registry.controller';
 import type { McpRegistryService } from '../registry/mcp-registry.service';
@@ -9,7 +9,7 @@ describe('McpRegistryController', () => {
 	const controller = new McpRegistryController(service);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('listServers', () => {

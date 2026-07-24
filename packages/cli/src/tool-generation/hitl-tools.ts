@@ -225,7 +225,6 @@ export function convertNodeToHitlTool<
 			// This makes the HITL node appear in the Agent's logs panel
 			node.rewireOutputLogTo = NodeConnectionTypes.AiTool;
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return await originalExecute.call(this);
 		};
 	}

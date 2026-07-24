@@ -431,6 +431,19 @@ describe('getPinDataSize', () => {
 			expect(pinData.pinnedDataByNodeName.value.Other).toBeDefined();
 		});
 
+		it('skips cleanup when the deleted node has no pinned data', () => {
+			const { pinData, fire } = createPinDataWithNodesChange();
+			pinData.pinNodeData('Other', [{ json: { y: 2 } }] as INodeExecutionData[]);
+			const hookSpy = vi.fn();
+			pinData.onPinnedDataChange(hookSpy);
+			const before = pinData.pinnedDataByNodeName.value;
+
+			fire({ action: CHANGE_ACTION.DELETE, payload: { id: 'node-id-1', name: 'Target' } });
+
+			expect(hookSpy).not.toHaveBeenCalled();
+			expect(pinData.pinnedDataByNodeName.value).toBe(before);
+		});
+
 		it('does nothing when DELETE has no node name (removeAllNodes)', () => {
 			const { pinData, fire } = createPinDataWithNodesChange();
 			pinData.pinNodeData('Target', [{ json: { x: 1 } }] as INodeExecutionData[]);

@@ -3,7 +3,8 @@ import { z } from 'zod';
 
 import { nodeHasName } from './column-ref-utils';
 import type { ToolRef } from './detect-tool-refs.service';
-import { createEvalAgent, extractText, HAIKU_MODEL } from '../../utils/eval-agents';
+import { HAIKU_MODEL } from '../../utils/eval-agents';
+import { generateValidatedJson } from '../../utils/generate-validated-json';
 
 export type ToolRefPinData = Record<string, Array<{ json: Record<string, unknown> }>>;
 
@@ -100,12 +101,6 @@ function buildUserMessage(contexts: NodeContext[], agentPurpose: string | undefi
 	].join('\n');
 }
 
-function stripMarkdownFences(text: string): string {
-	const trimmed = text.trim();
-	const fencedMatch = /^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(trimmed);
-	return fencedMatch ? fencedMatch[1].trim() : trimmed;
-}
-
 function filterToRequested(parsed: ToolRefPinData, requested: Set<string>): ToolRefPinData {
 	const out: ToolRefPinData = {};
 	for (const [name, items] of Object.entries(parsed)) {
@@ -128,21 +123,13 @@ export async function generateToolRefPinData(
 	const agentPurpose = readAgentPurpose(agent);
 	const userText = buildUserMessage(contexts, agentPurpose);
 
-	try {
-		const llm = createEvalAgent('eval-tool-ref-pin-data', {
-			model: HAIKU_MODEL,
-			instructions: SYSTEM_INSTRUCTIONS,
-		});
-		const result = await llm.generate([
-			{ role: 'user' as const, content: [{ type: 'text' as const, text: userText }] },
-		]);
-		const text = extractText(result);
-		const parsed: unknown = JSON.parse(stripMarkdownFences(text));
-		const validated = PinDataResponseSchema.safeParse(parsed);
-		if (!validated.success) return {};
-		const requested = new Set(contexts.map((c) => c.name));
-		return filterToRequested(validated.data, requested);
-	} catch {
-		return {};
-	}
+	const result = await generateValidatedJson('eval-tool-ref-pin-data', {
+		model: HAIKU_MODEL,
+		instructions: SYSTEM_INSTRUCTIONS,
+		userText,
+		schema: PinDataResponseSchema,
+	});
+	if (!result.ok) return {};
+	const requested = new Set(contexts.map((c) => c.name));
+	return filterToRequested(result.data, requested);
 }

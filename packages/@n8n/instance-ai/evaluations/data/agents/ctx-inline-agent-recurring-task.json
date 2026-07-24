@@ -1,0 +1,25 @@
+{
+	"description": "Paradigm continuity + scheduled tasks: after an agent design is on the table, a recurring-duty follow-up ('every Monday also send me a summary') becomes a scheduled duty (task) of that agent — not a separate scheduled workflow and not a re-anchor. Companion to ctx-inline-agent-add-slack for the recurring-duty direction.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "A support assistant our team chats with — it answers product questions from our docs and escalates to a human when it can't help. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[After the assistant lays out its approach, ask for exactly one addition: every Monday at 9am it should also send me a summary of the past week's escalations.",
+				"Do not approve any plan, setup card, or build confirmation.",
+				"Once the addition is reflected in the approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["intent-resolution", "inline", "paradigm-continuity", "scheduled", "agent-tasks"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The initial proposal is agent-anchored: an n8n Agent — a conversational support assistant that answers product questions and decides when to escalate — not a fixed workflow pipeline.",
+		"The Monday-summary request stays on the proposed agent as a recurring scheduled duty of that same agent (a scheduled task) — the assistant does not propose a separate scheduled workflow for it and does not re-anchor the design to a workflow."
+	]
+}

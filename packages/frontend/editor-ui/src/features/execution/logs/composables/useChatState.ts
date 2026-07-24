@@ -3,7 +3,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { VIEWS } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import MessageWithButtons from '@n8n/chat/components/MessageWithButtons.vue';
@@ -45,9 +45,7 @@ export function useChatState(
 	const locale = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
-	const workflowExecutionState = computed(() =>
-		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
-	);
+	const workflowExecutionState = injectWorkflowExecutionStateStore();
 	const rootStore = useRootStore();
 	const logsStore = useLogsStore();
 	const router = useRouter();
@@ -322,7 +320,7 @@ export function useChatState(
 
 	const restoredChatMessages = computed(() =>
 		restoreChatHistory(
-			workflowsStore.workflowExecutionData,
+			workflowExecutionState.value.activeExecution,
 			locale.baseText('chat.window.chat.response.empty'),
 			locale.baseText('chat.window.chat.response.redacted'),
 		),

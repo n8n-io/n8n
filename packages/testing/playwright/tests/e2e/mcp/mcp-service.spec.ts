@@ -299,7 +299,7 @@ test.describe(
 				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
-				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId);
+				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, 'production');
 
 				expect(result.status).toBe('started');
 				expect(result.executionId).toBeTruthy();
@@ -309,7 +309,11 @@ test.describe(
 				const { apiKey } = await api.rotateMcpApiKey();
 				const fakeWorkflowId = 'nonexistent-workflow-id-12345';
 
-				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, fakeWorkflowId);
+				const result = await api.mcp.internalMcpExecuteWorkflow(
+					apiKey,
+					fakeWorkflowId,
+					'production',
+				);
 
 				expect(result.status).toBe('error');
 				expect(result.error).toBeTruthy();
@@ -322,7 +326,7 @@ test.describe(
 				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
-				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId);
+				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, 'production');
 
 				expect(result.status).toBe('error');
 				expect(result.error).toBeTruthy();
@@ -335,7 +339,7 @@ test.describe(
 				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
-				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, {
+				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, 'production', {
 					type: 'webhook',
 					webhookData: {
 						method: 'POST',
@@ -357,7 +361,11 @@ test.describe(
 
 				const { apiKey } = await api.rotateMcpApiKey();
 
-				const execResult = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId);
+				const execResult = await api.mcp.internalMcpExecuteWorkflow(
+					apiKey,
+					workflowId,
+					'production',
+				);
 				expect(execResult.status).toBe('started');
 				expect(execResult.executionId).toBeTruthy();
 

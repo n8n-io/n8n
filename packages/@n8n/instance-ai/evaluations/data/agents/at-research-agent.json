@@ -1,0 +1,25 @@
+{
+	"description": "Gold: {anchor: agent, embedsOther: true} — reasoning-dominated research assistant with explicitly reusable workflow tools (doc crawl, stats query). Second probe of the agent-side embeds_other=true shape.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "A research assistant that can crawl our docs, query the data warehouse for stats, and generate PDF reports. The doc-crawl and stats-query workflows should be reusable across other automations too. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "medium",
+	"tags": ["intent-resolution", "wf-tools", "reusable-actions", "reasoning-dominated"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent proposes creating an n8n Agent as the top-level design for the research assistant, not a fixed workflow pipeline.",
+		"In the proposed design the doc-crawl and stats-query actions are workflows the n8n Agent invokes as tools — honoring the requirement that they stay reusable across other automations."
+	]
+}

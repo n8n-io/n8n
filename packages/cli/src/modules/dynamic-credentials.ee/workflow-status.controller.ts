@@ -7,7 +7,9 @@ import { Container } from '@n8n/di';
 import { Request, Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UrlService } from '@/services/url.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { DynamicCredentialsConfig } from './dynamic-credentials.config';
 import { CredentialResolverWorkflowService } from './services/credential-resolver-workflow.service';
@@ -25,6 +27,7 @@ export class WorkflowStatusController {
 		private readonly globalConfig: GlobalConfig,
 		private readonly dynamicCredentialCorsService: DynamicCredentialCorsService,
 		private readonly dynamicCredentialWebService: DynamicCredentialWebService,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	/**
@@ -63,7 +66,17 @@ export class WorkflowStatusController {
 			throw new BadRequestError('Workflow ID is missing');
 		}
 
+		// In-app callers carry a user and must have access; token-auth resolver callers don't
 		const user = isAuthenticatedRequest(req) ? req.user : undefined;
+		if (user) {
+			const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+				'workflow:read',
+			]);
+			if (!workflow) {
+				throw new NotFoundError('Workflow not found');
+			}
+		}
+
 		const status = await this.credentialResolverWorkflowService.getWorkflowStatus(
 			workflowId,
 			credentialContext,

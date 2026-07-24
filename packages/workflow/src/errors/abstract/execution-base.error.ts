@@ -1,14 +1,16 @@
-import { ApplicationError, type ReportingOptions } from '@n8n/errors';
-
+import { BaseError, type BaseErrorOptions } from '../base/base.error';
 import type { Functionality, IDataObject, JsonObject } from '../../interfaces';
 
-interface ExecutionBaseErrorOptions extends ReportingOptions {
+interface ExecutionBaseErrorOptions extends BaseErrorOptions {
 	cause?: Error;
 	errorResponse?: JsonObject;
 }
 
-export abstract class ExecutionBaseError extends ApplicationError {
-	description: string | null | undefined;
+export abstract class ExecutionBaseError extends BaseError {
+	// `BaseError.description` is readonly, but subclasses (e.g. NodeApiError,
+	// ExpressionError) reassign it, so redeclare it as writable here. `declare`
+	// avoids re-initializing the field and clobbering the value set by `super`.
+	declare description: string | null | undefined;
 
 	override cause?: Error;
 
@@ -25,7 +27,13 @@ export abstract class ExecutionBaseError extends ApplicationError {
 	constructor(message: string, options: ExecutionBaseErrorOptions = {}) {
 		super(message, options);
 
-		this.name = this.constructor.name;
+		// Defined, not assigned: assignment throws when `Error.prototype` is frozen (task runner secure mode)
+		Object.defineProperty(this, 'name', {
+			value: this.constructor.name,
+			writable: true,
+			enumerable: true,
+			configurable: true,
+		});
 		this.timestamp = Date.now();
 
 		const { cause, errorResponse } = options;

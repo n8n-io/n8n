@@ -314,6 +314,7 @@ export declare namespace ProjectRequest {
 		customTelemetryTags: Array<{ key: string; value: string }>;
 		relations: ProjectRelationResponse[];
 		scopes: Scope[];
+		rolesManaged: boolean;
 	};
 }
 

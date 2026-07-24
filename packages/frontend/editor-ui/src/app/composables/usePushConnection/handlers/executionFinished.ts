@@ -75,10 +75,25 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	// This rejects finishes from other workflows (which would otherwise clear this
 	// document's running state and show a spurious toast) and from concurrent runs
 	// of the same workflow that this document isn't displaying.
-	const { activeExecutionId } = workflowExecutionStateStore;
+	const { activeExecutionId, stoppedExecutionId } = workflowExecutionStateStore;
+	// Stopping a run clears `activeExecutionId` before the (scaling-mode) worker's
+	// `executionFinished` push arrives — the stop endpoint persists `canceled`
+	// first, so the stop poll wins. Accept the finish of the execution this
+	// document just stopped so its trimmed run-data placeholders still get
+	// backfilled. The marker is only set when the local run data is incomplete
+	// (trimmed placeholders), only honored while no other run is tracked
+	// (`undefined`) so a stale marker can never hijack a newer run, and consumed
+	// immediately so a duplicate push cannot re-process the finish.
+	const isFinishOfStoppedExecution =
+		activeExecutionId === undefined && stoppedExecutionId === data.executionId;
 	const belongsToThisDocument =
 		activeExecutionId === data.executionId ||
-		(activeExecutionId === null && data.workflowId === workflowExecutionStateStore.workflowId);
+		(activeExecutionId === null && data.workflowId === workflowExecutionStateStore.workflowId) ||
+		isFinishOfStoppedExecution;
+
+	if (isFinishOfStoppedExecution) {
+		workflowExecutionStateStore.clearStoppedExecutionId();
+	}
 
 	// Clear the per-node spinner queue when this finish is ours, or when this
 	// document isn't tracking any run (`undefined`, e.g. idle or iframe preview)
@@ -247,7 +262,7 @@ export async function fetchExecutionData(
 			workflowData: workflowDocumentStore.getSnapshot(),
 			data: executionResponse.data,
 			status: executionResponse.status,
-			startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,
+			startedAt: useWorkflowExecutionStateStore(documentId).activeExecution?.startedAt as Date,
 			stoppedAt: new Date(),
 		};
 	} catch {
@@ -442,7 +457,6 @@ export function handleExecutionFinishedWithSuccessOrOther(
 	successToastAlreadyShown: boolean,
 	suppressToasts = false,
 ) {
-	const workflowsStore = useWorkflowsStore();
 	const toast = useToast();
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
@@ -452,7 +466,7 @@ export function handleExecutionFinishedWithSuccessOrOther(
 
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 
-	const workflowExecution = workflowsStore.getWorkflowExecution;
+	const workflowExecution = useWorkflowExecutionStateStore(documentId).activeExecution;
 	if (workflowExecution?.executedNode) {
 		const node = workflowDocumentStore.getNodeByName(workflowExecution.executedNode) ?? null;
 		const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
@@ -532,7 +546,7 @@ export function setRunExecutionData(
 		stoppedAt: execution.stoppedAt,
 	});
 	executionDataStore.setExecutionRunData(runExecutionData);
-	workflowExecutionStateStore.setActiveExecutionId(undefined);
+	workflowExecutionStateStore.setDisplayedExecutionId(execution.id);
 
 	// Set the node execution issues on all the nodes which produced an error so that
 	// it can be displayed in the node-view

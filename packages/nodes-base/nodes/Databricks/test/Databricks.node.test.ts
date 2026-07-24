@@ -3,11 +3,11 @@ import type * as nWorkflow from 'n8n-workflow';
 import nock from 'nock';
 
 // Mock sleep from n8n-workflow so polling tests run without real delays
-jest.mock('n8n-workflow', () => {
-	const actual = jest.requireActual<typeof nWorkflow>('n8n-workflow');
+vi.mock('n8n-workflow', async () => {
+	const actual = await vi.importActual<typeof nWorkflow>('n8n-workflow');
 	return {
 		...actual,
-		sleep: jest.fn().mockResolvedValue(undefined),
+		sleep: vi.fn().mockResolvedValue(undefined),
 	};
 });
 

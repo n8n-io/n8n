@@ -31,6 +31,20 @@ function makeOpts(): {
 }
 
 describe('createTemplateTelemetrySession', () => {
+	it('emits a search event when grep targets knowledge-base/templates/', () => {
+		const { opts, calls } = makeOpts();
+		const session = createTemplateTelemetrySession(opts);
+		session.observe(
+			'grep -ri "slack" /home/sandbox/workspace/knowledge-base/templates/',
+			'templates/slack-daily-summary.ts:1: slack\n',
+		);
+
+		const search = calls.find((c) => c.name === 'Builder template search');
+		expect(search).toBeDefined();
+		expect(search!.props.query).toBe('slack');
+		expect(search!.props.result_count).toBe(1);
+	});
+
 	it('emits a search event when grep targets knowledge-base/templates/index.json', () => {
 		const { opts, calls } = makeOpts();
 		const session = createTemplateTelemetrySession(opts);

@@ -1,15 +1,11 @@
 import { Time } from '@n8n/constants';
-import {
-	UnexpectedError,
-	TimeoutExecutionCancelledError,
-	ensureError,
-	type IRun,
-} from 'n8n-workflow';
-
-import { McpExecutionTimeoutError } from '../mcp.errors';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { UnexpectedError, TimeoutExecutionCancelledError, type IRun } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { McpService } from '@/modules/mcp/mcp.service';
+
+import { McpExecutionTimeoutError } from '../mcp.errors';
 
 export const WORKFLOW_EXECUTION_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds;
 

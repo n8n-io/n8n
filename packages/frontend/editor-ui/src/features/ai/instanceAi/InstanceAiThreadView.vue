@@ -6,6 +6,7 @@ import {
 	onUnmounted,
 	provide,
 	ref,
+	shallowReactive,
 	useTemplateRef,
 	watch,
 } from 'vue';
@@ -22,7 +23,11 @@ import {
 } from '@n8n/design-system';
 import { onClickOutside, useElementSize, useScroll, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAttachment } from '@n8n/api-types';
+import type {
+	InstanceAiAgentAttachment,
+	InstanceAiAttachment,
+	InstanceAiHandoffContext,
+} from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
@@ -33,8 +38,20 @@ import { isPendingItemFloating } from './confirmationKinds';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
+import {
+	clearPendingAgentAttachment,
+	consumePendingFirstMessage,
+	consumePendingHandoffContext,
+	getPendingAgentAttachment,
+} from './composables/useInstanceAiHandoff';
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
+import {
+	agentPreviewContextIcon,
+	formatAgentPreviewContextLabel,
+	getDismissedContextKeys,
+	handoffContextKey,
+} from './instanceAi.handoffContext';
 import { useSidebarState } from './instanceAiLayout';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
@@ -54,6 +71,7 @@ import InstanceAiWorkflowPreview, {
 } from './components/InstanceAiWorkflowPreview.vue';
 import { buildFixWithAiPrompt } from './fixWithAi';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
+import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import { TabsRoot } from 'reka-ui';
 
 const props = defineProps<{
@@ -73,6 +91,8 @@ const sidebar = useSidebarState();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const telemetry = useTelemetry();
+const pendingComposerContext = ref<InstanceAiHandoffContext | null>(null);
+const pendingAgentAttachment = ref<InstanceAiAgentAttachment | null>(null);
 
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
@@ -82,7 +102,22 @@ const builderAgents = computed(() => collectActiveBuilderAgents(thread.messages)
 // Assistant messages whose only content has been extracted to the bottom
 // builder section (or which haven't produced anything renderable yet) would
 // otherwise leave an empty wrapper in the list — filter them out.
-const displayedMessages = computed(() => thread.messages.filter(messageHasVisibleContent));
+// Reconciled in place: spliced only when membership changes, so streamed
+// tokens don't re-render the list.
+const displayedMessages = shallowReactive<typeof thread.messages>([]);
+watch(
+	() => thread.messages.filter(messageHasVisibleContent),
+	(next) => {
+		const unchanged =
+			next.length === displayedMessages.length &&
+			next.every((msg, i) => msg === displayedMessages[i]);
+		if (!unchanged) displayedMessages.splice(0, displayedMessages.length, ...next);
+	},
+	{ immediate: true },
+);
+
+// Show the input disclaimer only once the AI has produced a visible response.
+const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
 
 // True when at least one pending confirmation should occupy the chat-input
 // slot (generic approvals + domain/web-search access). Drives the swap
@@ -135,6 +170,8 @@ const preview = useCanvasPreview({
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
+provide('openAgentPreview', preview.openAgentPreview);
+provide('pendingComposerContext', pendingComposerContext);
 
 // Focus the composer when plan-edit mode is entered. The thread runtime
 // owns the activePlanEdit state; this watcher just reacts to the transition.
@@ -188,9 +225,12 @@ function toggleArtifactsPreview() {
 		return;
 	}
 
-	const firstTab = preview.allArtifactTabs.value[0];
-	if (firstTab) {
-		preview.selectTab(firstTab.id);
+	const selectedTab = preview.allArtifactTabs.value.find(
+		(tab) => tab.id === preview.activeTabId.value,
+	);
+	const tabToOpen = selectedTab ?? preview.allArtifactTabs.value[0];
+	if (tabToOpen) {
+		preview.selectTab(tabToOpen.id);
 	}
 }
 
@@ -459,11 +499,71 @@ watch(
 	},
 );
 
+function isCurrentThreadRuntime(): boolean {
+	return store.getRuntime(props.threadId) === thread;
+}
+
+const composerContextChip = computed(() => {
+	if (pendingComposerContext.value?.source === 'agent-preview') {
+		return {
+			key: handoffContextKey(pendingComposerContext.value),
+			label: formatAgentPreviewContextLabel(
+				pendingComposerContext.value,
+				(textKey, options) => i18n.baseText(textKey, options),
+				thread.producedArtifacts.get(pendingComposerContext.value.agentId)?.name,
+			),
+			icon: agentPreviewContextIcon(pendingComposerContext.value.agentIcon),
+			isPending: true,
+		};
+	}
+
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+	for (const message of [...thread.messages].reverse()) {
+		if (message.role !== 'user' || message.context?.source !== 'agent-preview') continue;
+
+		const key = handoffContextKey(message.context);
+		if (dismissedKeys.has(key)) continue;
+
+		return {
+			key,
+			label: formatAgentPreviewContextLabel(
+				message.context,
+				(textKey, options) => i18n.baseText(textKey, options),
+				thread.producedArtifacts.get(message.context.agentId)?.name,
+			),
+			icon: agentPreviewContextIcon(message.context.agentIcon),
+			isPending: false,
+		};
+	}
+
+	return null;
+});
+
 function reconnectThreadAfterHydration(): void {
-	void thread.loadHistoricalMessages().then((hydrationStatus) => {
+	// Apply preview/credential composer context before hydration so a quick first
+	// submit cannot race past attachment while the composer is already enabled.
+	pendingComposerContext.value = consumePendingHandoffContext(props.threadId);
+	const agentAttachment = getPendingAgentAttachment(props.threadId);
+	if (agentAttachment) {
+		pendingAgentAttachment.value = agentAttachment;
+		preview.openAgentPreview(agentAttachment.id, agentAttachment.projectId);
+	}
+	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
-		void thread.loadThreadStatus();
+		await thread.loadThreadStatus();
+		if (!isCurrentThreadRuntime()) return;
 		thread.connectSSE();
+		// Replay an opening message handed off from another tab (e.g. credential help
+		// opened in a new tab) as if typed here, so it shows and streams in this runtime.
+		const pending = consumePendingFirstMessage(props.threadId);
+		if (pending) {
+			void thread.sendMessage(
+				pending.message,
+				pending.attachments,
+				rootStore.pushRef,
+				pending.context,
+			);
+		}
 	});
 }
 
@@ -488,12 +588,23 @@ async function syncRouteToStore() {
 
 onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
+
 	void syncRouteToStore();
+
 	void nextTick(focusChatInputIfFocusIsIdle);
 });
 
 onUnmounted(() => {
-	thread.closeSSE();
+	// This view owns its thread's runtime, so it disposes it here (closes the
+	// SSE, clears state, drops it from the store) — but only once the app has
+	// left this thread's route. Suspense can create a duplicate instance of
+	// this view for the same thread during layout transitions (e.g. an editor
+	// hand-off that loads the AIA chunks) and discard one; that discarded
+	// instance's unmount fires while the route still points at the thread, and
+	// must not tear down the runtime the live instance is rendering.
+	if (router.currentRoute.value.params.threadId !== props.threadId) {
+		store.disposeRuntime(props.threadId);
+	}
 	contentResizeObserver?.disconnect();
 });
 
@@ -546,7 +657,24 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 		return;
 	}
 
-	void thread.sendMessage(message, attachments, rootStore.pushRef);
+	const handoffContext = pendingComposerContext.value ?? undefined;
+	const agentAttachment = pendingAgentAttachment.value;
+	const submittedAttachments = agentAttachment
+		? [...(attachments ?? []), agentAttachment]
+		: attachments;
+
+	void thread
+		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
+		.then((sent) => {
+			if (!sent) return;
+			if (handoffContext && pendingComposerContext.value === handoffContext) {
+				pendingComposerContext.value = null;
+			}
+			if (agentAttachment && pendingAgentAttachment.value === agentAttachment) {
+				clearPendingAgentAttachment(props.threadId);
+				pendingAgentAttachment.value = null;
+			}
+		});
 }
 
 function handleStop() {
@@ -574,6 +702,21 @@ function dismissFixWithAiOffer() {
 
 function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	failedRun.value = report;
+}
+
+async function dismissComposerContextChip() {
+	if (!composerContextChip.value) return;
+
+	if (composerContextChip.value.isPending) {
+		pendingComposerContext.value = null;
+		return;
+	}
+
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+	dismissedKeys.add(composerContextChip.value.key);
+	await store.updateThreadMetadata(thread.id, {
+		dismissedContextKeys: [...dismissedKeys],
+	});
 }
 </script>
 
@@ -746,6 +889,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 										/>
 										<CreditWarningBanner
 											v-if="creditBanner.visible.value"
+											variant="standalone"
 											:credits-remaining="store.creditsRemaining"
 											:credits-quota="store.creditsQuota"
 											@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
@@ -769,13 +913,18 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 													:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 													:current-thread-id="thread.id"
 													:amend-context="thread.amendContext"
+													:context-chip="composerContextChip"
 													:contextual-suggestion="thread.contextualSuggestion"
 													@submit="handleSubmit"
 													@stop="handleStop"
 													@cancel-plan-edit="thread.cancelPlanEdit"
+													@dismiss-context-chip="dismissComposerContextChip"
 												/>
 											</Transition>
 										</div>
+										<p v-if="hasAssistantResponse" :class="$style.disclaimer">
+											{{ i18n.baseText('instanceAi.input.disclaimer') }}
+										</p>
 									</div>
 								</div>
 							</div>
@@ -850,7 +999,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 						/>
 						<div :class="$style.previewContent">
 							<InstanceAiWorkflowPreview
-								v-if="preview.activeWorkflowId.value"
+								v-if="preview.isPreviewVisible.value && preview.activeWorkflowId.value"
 								:key="preview.activeWorkflowId.value"
 								ref="workflowPreview"
 								:class="[
@@ -859,14 +1008,25 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 								]"
 								:workflow-id="preview.activeWorkflowId.value"
 								:refresh-key="preview.workflowRefreshKey.value"
+								:execution-result="preview.activeWorkflowExecutionResult.value"
 								@workflow-failures="handleWorkflowFailures"
 							/>
 							<InstanceAiDataTablePreview
-								v-if="preview.activeDataTableId.value"
+								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"
 								:class="$style.previewSlot"
 								:data-table-id="preview.activeDataTableId.value"
 								:project-id="preview.activeDataTableProjectId.value"
 								:refresh-key="preview.dataTableRefreshKey.value"
+							/>
+							<InstanceAiAgentPreview
+								v-if="
+									preview.isPreviewVisible.value &&
+									preview.activeAgentId.value &&
+									preview.activeAgentProjectId.value
+								"
+								:class="$style.previewSlot"
+								:agent-id="preview.activeAgentId.value"
+								:project-id="preview.activeAgentProjectId.value"
 							/>
 						</div>
 					</TabsRoot>
@@ -1009,6 +1169,8 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	:global([data-orientation='vertical'][data-orientation='vertical']) {
 		background: transparent;
 		padding: 0;
+		// Sit above the sticky input dock (z-index: 3) so its gradient doesn't cover the scrollbar
+		z-index: 4;
 	}
 
 	:global([data-orientation='vertical'][data-orientation='vertical'] > *) {
@@ -1125,6 +1287,14 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+
+.disclaimer {
+	margin: 0;
+	text-align: center;
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--md);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -30,6 +30,7 @@ const props = withDefaults(
 		agentName: string;
 		projectId: string;
 		agentId: string;
+		forceNewCredential?: boolean;
 	}>(),
 	{
 		credentialsLoading: false,
@@ -40,6 +41,7 @@ const props = withDefaults(
 		errorMessage: '',
 		errorIsConflict: false,
 		savedSettings: undefined,
+		forceNewCredential: false,
 	},
 );
 
@@ -210,6 +212,7 @@ defineExpose({ credentialId, currentSettings, validationError });
 							:credential-permissions="credentialPermissions"
 							:credentials-loading="credentialsLoading"
 							:disabled="loading"
+							:force-new-credential="forceNewCredential"
 							@create="emit('create')"
 							@edit="emit('edit')"
 							:class="$style.cred"

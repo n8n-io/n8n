@@ -94,7 +94,16 @@ const rerunRun = async () => {
 		// `runTest` had inserted the row, in which case the diffing fallback
 		// would pick nothing and the button would land on the edit page
 		// instead of the new run.
-		const { testRunId } = await evaluationStore.startTestRun(workflowId.value);
+		const configId = run.value?.evaluationConfigId;
+		const options = configId
+			? { evaluationConfigId: configId, compileFromConfig: true }
+			: undefined;
+		const { testRunId } = await evaluationStore.startTestRun(workflowId.value, options);
+		telemetry.track('User ran evaluation', {
+			workflow_id: workflowId.value,
+			run_id: testRunId,
+			run_type: configId ? 'config' : 'direct',
+		});
 		await evaluationStore.fetchTestRuns(workflowId.value);
 		await router.push({
 			name: VIEWS.EVALUATION_RUNS_DETAIL,
@@ -207,6 +216,8 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 			:current-metrics="run?.metrics"
 			:previous-metrics="previousRun?.metrics"
 			:metric-sources="metricSources"
+			:metric-scales="run?.metricScales"
+			:previous-metric-scales="previousRun?.metricScales"
 			:case-values-by-key="caseValuesByKey"
 			class="mb-m"
 		/>
@@ -222,6 +233,7 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 				:test-case="testCase"
 				:index="index + 1"
 				:metric-sources="metricSources"
+				:metric-scales="run?.metricScales"
 				@view="openRelatedExecution"
 				@cancel="cancelPendingCase"
 				@rerun="rerunRun"

@@ -1,0 +1,36 @@
+{
+	"description": "Gate-quietness guard, build-mode by design (the one case in this tier that builds): across a real iterative build with several change requests, the intent gate must fire exactly once — at the start — and the approach must stay stable. The changes escalate in re-classification temptation (schedule tweak → bounded AI summary step → 'use your judgment' relevance filter) but none carries a genuine anchor signal, so re-loading intent-recognition mid-build or reconsidering the design is the failure mode under guard. The outcome expectation pins the applied changes so a pass can't be vacuous.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every morning at 9, check our RSS feed and post any new articles to #news in Slack."
+		},
+		{
+			"role": "assistant",
+			"text": "Got it — I'll build that now."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Play a user iterating on this workflow. After the agent finishes each change, send the next one as its own natural, conversational message, waiting for it to be applied before continuing. Send them in this order:",
+				"- Message 1: actually, make it 8:30 instead of 9.",
+				"- Message 2: add a short AI-written summary of each article to the Slack message.",
+				"- Message 3: have it skip articles that aren't relevant to fintech — use your judgment on what counts as relevant.",
+				"Approve any reasonable plan or setup card. Once all three changes are done, you can finish.]"
+			]
+		}
+	],
+	"messageBudget": 12,
+	"complexity": "medium",
+	"tags": ["intent-resolution", "paradigm-continuity", "iterative-build"],
+	"datasets": ["agents"],
+	"triggerType": "schedule",
+	"processExpectations": [
+		"The agent calls the load_skill tool with the intent-recognition skill exactly once in the whole conversation — before the initial build — and does not load it again for any of the follow-up change requests.",
+		"Every follow-up is handled as an edit to the existing workflow: the agent does not re-classify the automation mid-conversation, propose switching to an n8n Agent, or start a second automation.",
+		"The 'use your judgment' phrasing in the relevance change is treated as an ordinary edit (a filtering step inside the workflow), not as a reason to reconsider the automation's overall design."
+	],
+	"outcomeExpectations": [
+		"The final workflow reflects all three changes: it runs at 8:30, the Slack message includes an AI-generated summary of each article, and articles not relevant to fintech are filtered out before posting."
+	]
+}

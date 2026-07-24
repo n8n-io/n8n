@@ -11,6 +11,7 @@ import { useI18n } from '@n8n/i18n';
 
 import { N8nButton, N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useInstanceAiCredentialHelp } from '@/features/ai/instanceAi/composables/useInstanceAiCredentialHelp';
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -23,6 +24,9 @@ const selectRef = ref<HTMLSelectElement>();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const instanceAiCredentialHelp = useInstanceAiCredentialHelp();
+
+const searchQuery = ref('');
 
 onMounted(async () => {
 	try {
@@ -39,9 +43,19 @@ onMounted(async () => {
 });
 
 // Exclude purpose built credentials for ChatHub
-const selectableCredentialTypes = computed(() =>
+const allSelectableCredentialTypes = computed(() =>
 	credentialsStore.allCredentialTypes.filter((c) => !c.name.startsWith('chatHub')),
 );
+
+const selectableCredentialTypes = computed(() => {
+	if (!searchQuery.value) return allSelectableCredentialTypes.value;
+	const q = searchQuery.value.toLowerCase();
+	return allSelectableCredentialTypes.value.filter((c) => c.displayName.toLowerCase().includes(q));
+});
+
+function filterCredentials(query: string) {
+	searchQuery.value = query;
+}
 
 function onSelect(type: string) {
 	selected.value = type;
@@ -49,7 +63,21 @@ function onSelect(type: string) {
 
 function openCredentialType() {
 	modalBus.value.emit('close');
-	uiStore.openNewCredential(selected.value);
+	// Carry the credentials-list credential help into the new-credential dialog so
+	// it offers the Instance AI button (not the legacy assistant) like the rest of
+	// the list does.
+	uiStore.openNewCredential(
+		selected.value,
+		false,
+		false,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		{
+			instanceAiCredentialHelp: instanceAiCredentialHelp(),
+		},
+	);
 
 	const telemetryPayload = {
 		credential_type: selected.value,
@@ -90,6 +118,7 @@ function openCredentialType() {
 					:placeholder="i18n.baseText('credentialSelectModal.searchForApp')"
 					size="xlarge"
 					:model-value="selected"
+					:filter-method="filterCredentials"
 					data-test-id="new-credential-type-select"
 					@update:model-value="onSelect"
 				>

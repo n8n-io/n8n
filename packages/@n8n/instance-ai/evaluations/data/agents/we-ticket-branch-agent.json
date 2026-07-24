@@ -1,0 +1,25 @@
+{
+	"description": "Gold: {anchor: wf, embedsOther: true} — event trigger with a deterministic FAQ-match branch; only the complex-case branch is open-ended investigation, so the agent is embedded on one branch, not anchoring the design.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When a support ticket arrives, if it matches an FAQ reply from the knowledge base; otherwise hand it to an agent to investigate and propose a resolution. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "medium",
+	"tags": ["intent-resolution", "event-triggered", "branch-embed-agent", "embed-agent"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent proposes a workflow — ticket trigger, FAQ-match branch replying from the knowledge base — and does not propose a standalone n8n Agent owning the whole flow.",
+		"In the proposed design the non-FAQ branch hands off to an embedded agent or open-ended AI investigation step, while the trigger and FAQ branch stay fixed."
+	]
+}

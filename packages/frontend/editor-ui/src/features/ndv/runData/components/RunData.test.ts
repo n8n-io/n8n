@@ -53,7 +53,7 @@ vi.mock('vue-router', () => {
 				href: '',
 			})),
 		}),
-		useRoute: () => reactive({ meta: {} }),
+		useRoute: () => reactive({ meta: {}, params: {} }),
 		RouterLink: vi.fn(),
 	};
 });
@@ -1477,7 +1477,9 @@ describe('RunData', () => {
 		);
 
 		if (lastSuccessfulExecution) {
-			workflowsStore.setLastSuccessfulExecution(lastSuccessfulExecution as IExecutionResponse);
+			useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			).setLastSuccessfulExecution(lastSuccessfulExecution as IExecutionResponse);
 		}
 
 		if (pinnedData) {

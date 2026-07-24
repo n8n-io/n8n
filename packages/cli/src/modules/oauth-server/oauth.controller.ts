@@ -5,36 +5,30 @@ import { tokenHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/tok
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { Get, Options, RootLevelController, StaticRouterMetadata } from '@n8n/decorators';
+import {
+	createIpRateLimit,
+	Get,
+	Options,
+	RootLevelController,
+	StaticRouterMetadata,
+} from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Response, Request, RequestHandler, Router } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { ProtectedResource } from '@/services/protected-resource.registry';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
+import { OAuthServerConfig } from './oauth-server.config';
 import { OAuthServerService } from './oauth-server.service';
-import { OAUTH_SERVER_DISABLED_ERROR_MESSAGE } from './oauth.constants';
 import { buildOAuthClientLimitReachedMessage } from './oauth.errors';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { OAuthHelpers } from './oauth.helpers';
 
 const oauthServerService = Container.get(OAuthServerService);
-const resourceRegistry = Container.get(ProtectedResourceRegistry);
 const globalConfig = Container.get(GlobalConfig);
+const oauthServerConfig = Container.get(OAuthServerConfig);
 const logger = Container.get(Logger);
-
-/**
- * Middleware that rejects requests when no protected resource is enabled.
- * Prevents unauthenticated access to OAuth endpoints when every registered
- * resource (currently only the instance MCP server) is turned off.
- */
-const oauthServerEnabledGuard: RequestHandler = async (_req, res, next) => {
-	const enabled = await resourceRegistry.isAnyResourceEnabled();
-	if (!enabled) {
-		res.status(403).json({ error: OAUTH_SERVER_DISABLED_ERROR_MESSAGE });
-		return;
-	}
-	next();
-};
+const urlService = Container.get(UrlService);
 
 /**
  * Pre-check guard for the unauthenticated DCR endpoint. Short-circuits with
@@ -63,6 +57,25 @@ const oauthClientLimitGuard: RequestHandler = async (_req, res, next) => {
 	next();
 };
 
+/**
+ * The SDK's authorization handler redirects request-validation errors (e.g.
+ * missing `code_challenge`) back to the client without the RFC 9207 `iss`
+ * parameter, while our metadata advertises
+ * `authorization_response_iss_parameter_supported`. Wrap `res.location`
+ * (which `res.redirect` sets its target through) so every absolute-URL
+ * redirect from the authorize route carries `iss` matching the advertised
+ * issuer. Internal relative redirects (consent screen) pass through
+ * untouched. Remove once `@modelcontextprotocol/sdk` ships
+ * `authorizationHandler({ issuerUrl })` (on upstream main, unreleased as of
+ * 1.29.0) and the catalog version is bumped past it.
+ */
+const rfc9207IssuerParam: RequestHandler = (_req, res, next) => {
+	const originalLocation = res.location.bind(res);
+	res.location = (url: string) =>
+		originalLocation(OAuthHelpers.setIssuerParam(url, urlService.getInstanceBaseUrl()));
+	next();
+};
+
 // Built once and mounted under both the legacy `/mcp-oauth/*` paths (existing
 // DCR clients hold them in their stored discovery metadata) and the neutral
 // `/oauth/*` paths that future, non-MCP protected resources will advertise.
@@ -78,31 +91,46 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		path: `${basePath}/register`,
 		router: registerRouter,
 		skipAuth: true,
-		middlewares: [oauthServerEnabledGuard, oauthClientLimitGuard],
-		ipRateLimit: { limit: 10, windowMs: 5 * Time.minutes.toMilliseconds },
+		middlewares: [oauthClientLimitGuard],
+		ipRateLimit: createIpRateLimit(
+			oauthServerConfig.rateLimitRegister,
+			5 * Time.minutes.toMilliseconds,
+		),
 	},
 	{
 		path: `${basePath}/authorize`,
 		router: authorizeRouter,
 		skipAuth: true,
-		middlewares: [oauthServerEnabledGuard],
-		ipRateLimit: { limit: 50, windowMs: 5 * Time.minutes.toMilliseconds },
+		middlewares: [rfc9207IssuerParam],
+		ipRateLimit: createIpRateLimit(
+			oauthServerConfig.rateLimitAuthorize,
+			5 * Time.minutes.toMilliseconds,
+		),
 	},
 	{
 		path: `${basePath}/token`,
 		router: tokenRouter,
 		skipAuth: true,
-		middlewares: [oauthServerEnabledGuard],
-		ipRateLimit: { limit: 20, windowMs: 5 * Time.minutes.toMilliseconds },
+		ipRateLimit: createIpRateLimit(
+			oauthServerConfig.rateLimitToken,
+			5 * Time.minutes.toMilliseconds,
+		),
 	},
 	{
 		path: `${basePath}/revoke`,
 		router: revokeRouter,
 		skipAuth: true,
-		middlewares: [oauthServerEnabledGuard],
-		ipRateLimit: { limit: 30, windowMs: 5 * Time.minutes.toMilliseconds },
+		ipRateLimit: createIpRateLimit(
+			oauthServerConfig.rateLimitRevoke,
+			5 * Time.minutes.toMilliseconds,
+		),
 	},
 ];
+
+const wellKnownIpRateLimit = createIpRateLimit(
+	oauthServerConfig.rateLimitWellKnown,
+	5 * Time.minutes.toMilliseconds,
+);
 
 @RootLevelController('/')
 export class OAuthController {
@@ -127,7 +155,7 @@ export class OAuthController {
 	@Options('/.well-known/oauth-authorization-server', {
 		skipAuth: true,
 		usesTemplates: true,
-		ipRateLimit: { limit: 100, windowMs: 5 * Time.minutes.toMilliseconds },
+		ipRateLimit: wellKnownIpRateLimit,
 	})
 	metadataOptions(_req: Request, res: Response) {
 		this.setCorsHeaders(res);
@@ -146,13 +174,14 @@ export class OAuthController {
 	@Get('/.well-known/oauth-authorization-server', {
 		skipAuth: true,
 		usesTemplates: true,
-		ipRateLimit: { limit: 100, windowMs: 5 * Time.minutes.toMilliseconds },
+		ipRateLimit: wellKnownIpRateLimit,
 	})
 	metadata(_req: Request, res: Response) {
 		this.setCorsHeaders(res);
 
 		const baseUrl = this.urlService.getInstanceBaseUrl();
-		const metadata = {
+		const allScopes = this.resourceRegistry.getAllScopes();
+		const metadata: Record<string, unknown> = {
 			issuer: baseUrl,
 			authorization_endpoint: `${baseUrl}/mcp-oauth/authorize`,
 			token_endpoint: `${baseUrl}/mcp-oauth/token`,
@@ -162,16 +191,21 @@ export class OAuthController {
 			grant_types_supported: ['authorization_code', 'refresh_token'],
 			token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
 			code_challenge_methods_supported: ['S256'],
-			scopes_supported: this.resourceRegistry.getAllScopes(),
+			// RFC 9207: we include the `iss` parameter on authorization responses
+			authorization_response_iss_parameter_supported: true,
 		};
+
+		if (allScopes.length > 0) {
+			metadata.scopes_supported = allScopes;
+		}
 
 		res.json(metadata);
 	}
 
-	@Options('/.well-known/oauth-protected-resource/mcp-server/http', {
+	@Options('/.well-known/oauth-protected-resource/*resourcePath', {
 		skipAuth: true,
 		usesTemplates: true,
-		ipRateLimit: { limit: 100, windowMs: 5 * Time.minutes.toMilliseconds },
+		ipRateLimit: wellKnownIpRateLimit,
 	})
 	protectedResourceMetadataOptions(_req: Request, res: Response) {
 		this.setCorsHeaders(res);
@@ -179,33 +213,88 @@ export class OAuthController {
 	}
 
 	/**
-	 * RFC 9728 protected-resource metadata for the instance MCP server.
-	 *
-	 * The route stays explicit (rather than a catch-all resolving any registered
-	 * resource path) because the instance MCP server is the only registered
-	 * resource today and existing clients depend on this exact URL. Generalize
-	 * to a registry-driven catch-all when per-workflow trigger resources land
-	 * (IAM-799).
+	 * RFC 9728 protected-resource metadata, resolved dynamically through the
+	 * registry so any registered resource path is served by one route — the
+	 * static instance MCP resource today, per-workflow resources later.
 	 */
-	@Get('/.well-known/oauth-protected-resource/mcp-server/http', {
+	@Get('/.well-known/oauth-protected-resource/*resourcePath', {
 		skipAuth: true,
 		usesTemplates: true,
-		ipRateLimit: { limit: 100, windowMs: 5 * Time.minutes.toMilliseconds },
+		ipRateLimit: wellKnownIpRateLimit,
 	})
-	protectedResourceMetadata(_req: Request, res: Response) {
+	async protectedResourceMetadata(req: Request, res: Response) {
 		this.setCorsHeaders(res);
 
-		const resource = this.resourceRegistry.getByResourcePath('/mcp-server/http');
+		const resourcePath =
+			'/' +
+			(Array.isArray(req.params.resourcePath)
+				? req.params.resourcePath.join('/')
+				: req.params.resourcePath); // Wildcard params are captured as arrays
+		const resource = await this.resourceRegistry.getByResourcePath(resourcePath);
 		if (!resource) {
-			throw new NotFoundError('Unknown protected resource');
+			res.status(404).json({ message: 'Unknown protected resource' });
+			return;
 		}
 
+		res.json(this.buildProtectedResourceMetadata(resource));
+	}
+
+	@Options('/.well-known/oauth-protected-resource', {
+		skipAuth: true,
+		usesTemplates: true,
+		ipRateLimit: wellKnownIpRateLimit,
+	})
+	defaultProtectedResourceMetadataOptions(_req: Request, res: Response) {
+		this.setCorsHeaders(res);
+		res.status(204).end();
+	}
+
+	/**
+	 * RFC 9728 protected-resource metadata for the bare `/.well-known/
+	 * oauth-protected-resource` path (no resource-path suffix).
+	 *
+	 * Per RFC 9728 §3.1, a resource server whose resource identifier has no
+	 * path component publishes its metadata at this exact well-known URI.
+	 * We also serve it as a courtesy for clients that probe the origin-level
+	 * document before (or instead of) the resource-scoped one advertised via
+	 * `WWW-Authenticate: resource_metadata=...` — without this route, such a
+	 * probe previously fell through to the SPA's catch-all handler, which
+	 * answered with `200 text/html` instead of a clean `404`, breaking OAuth
+	 * discovery for clients that don't special-case a non-JSON `200`.
+	 *
+	 * Resolves to this instance's default protected resource (today, always
+	 * the single instance-wide MCP resource); returns 404 when no default is
+	 * registered so the caller can fall back to the resource-scoped URL.
+	 */
+	@Get('/.well-known/oauth-protected-resource', {
+		skipAuth: true,
+		usesTemplates: true,
+		ipRateLimit: wellKnownIpRateLimit,
+	})
+	defaultProtectedResourceMetadata(_req: Request, res: Response) {
+		this.setCorsHeaders(res);
+
+		const resource = this.resourceRegistry.getDefaultResource();
+		if (!resource) {
+			res.status(404).json({ message: 'Unknown protected resource' });
+			return;
+		}
+
+		res.json(this.buildProtectedResourceMetadata(resource));
+	}
+
+	private buildProtectedResourceMetadata(resource: ProtectedResource): Record<string, unknown> {
 		const baseUrl = this.urlService.getInstanceBaseUrl();
-		res.json({
+		const metadata: Record<string, unknown> = {
 			resource: resource.getResourceUrl(),
 			bearer_methods_supported: ['header'],
 			authorization_servers: [baseUrl],
-			scopes_supported: resource.scopes,
-		});
+		};
+
+		if (resource.scopes.length > 0) {
+			metadata.scopes_supported = resource.scopes;
+		}
+
+		return metadata;
 	}
 }

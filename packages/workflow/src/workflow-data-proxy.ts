@@ -9,6 +9,7 @@ import { augmentArray, augmentObject } from './augment-object';
 import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES, BINARY_MODE_COMBINED } from './constants';
 import { UnexpectedError } from './errors';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
+import { isExpression } from './expressions/expression-helpers';
 import { getGlobalState } from './global-state';
 import { NodeConnectionTypes } from './interfaces';
 import type {
@@ -28,7 +29,7 @@ import type {
 	INodeType,
 } from './interfaces';
 import * as NodeHelpers from './node-helpers';
-import { createResultError, createResultOk } from './result';
+import { createResultError, createResultOk } from '@n8n/utils/result';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import { isResourceLocatorValue } from './type-guards';
 import { containsUnsafeObjectPropertyToken, deepCopy, isObjectEmpty } from './utils';
@@ -51,6 +52,26 @@ const PAIRED_ITEM_METHOD = {
 } as const;
 
 type PairedItemMethod = (typeof PAIRED_ITEM_METHOD)[keyof typeof PAIRED_ITEM_METHOD];
+
+/**
+ * Whether the runtime can compile expressions. The expression engine compiles
+ * expressions via `new Function`, which throws when the process is started with
+ * `--disallow-code-generation-from-strings` — as the secure-mode task runner is.
+ * This is a process-wide invariant, so we probe once and cache the result.
+ */
+let codeGenerationAllowed: boolean | undefined;
+const isCodeGenerationAllowed = (): boolean => {
+	if (codeGenerationAllowed === undefined) {
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+			new Function('return 1');
+			codeGenerationAllowed = true;
+		} catch {
+			codeGenerationAllowed = false;
+		}
+	}
+	return codeGenerationAllowed;
+};
 
 export class WorkflowDataProxy {
 	private runExecutionData: IRunExecutionData | null;
@@ -179,7 +200,32 @@ export class WorkflowDataProxy {
 				get(_, name) {
 					if (name === 'isProxy') return true;
 					name = name.toString();
-					return that.selfData[name];
+					const value = that.selfData[name];
+
+					// A credential field saved in expression mode keeps n8n's leading "="
+					// marker in its stored value. Returning it verbatim leaks the marker
+					// (or an unevaluated `{{ }}` expression) into the consuming template —
+					// e.g. a `$self` reference embedded mid-URL in an OAuth2
+					// authUrl/accessTokenUrl. Resolve it here so callers receive the
+					// evaluated value.
+					if (isExpression(value)) {
+						return that.workflow.expression.getParameterValue(
+							value,
+							that.runExecutionData,
+							that.runIndex,
+							that.itemIndex,
+							that.activeNodeName,
+							that.connectionInputData,
+							that.mode,
+							that.additionalKeys,
+							that.executeData,
+							false,
+							{},
+							that.contextNodeName,
+						);
+					}
+
+					return value;
 				},
 			},
 		);
@@ -1496,6 +1542,15 @@ export class WorkflowDataProxy {
 				that.envProviderState ?? createEnvProviderState(),
 			),
 			$evaluateExpression: (expression: string, itemIndex?: number) => {
+				if (!isCodeGenerationAllowed()) {
+					throw new ExpressionError(
+						"$evaluateExpression can't be used in the Code node while task runners run in secure mode",
+						{
+							description:
+								'Secure-mode task runners disable evaluating strings as code, which expressions rely on. Evaluate the expression in a node field instead, for example an Edit Fields (Set) node before the Code node.',
+						},
+					);
+				}
 				itemIndex = itemIndex || that.itemIndex;
 				return that.workflow.expression.getParameterValue(
 					`=${expression}`,

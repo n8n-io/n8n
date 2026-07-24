@@ -9,6 +9,7 @@ import { computed } from 'vue';
 import { N8nAskAssistantButton, N8nAssistantAvatar, N8nTooltip } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 
 const assistantStore = useAssistantStore();
 const builderStore = useBuilderStore();
@@ -17,6 +18,9 @@ const settingsStore = useSettingsStore();
 const workflowId = useWorkflowId();
 const i18n = useI18n();
 const { APP_Z_INDEXES } = useStyles();
+// The floating button is replaced by Instance AI's own entry points when the
+// Instance AI feature is on, so hide it then (host-scoped via useEditorContext).
+const { instanceAi } = useEditorContext();
 
 const lastUnread = computed(() => {
 	const msg = assistantStore.lastUnread;
@@ -61,7 +65,7 @@ const onClick = async () => {
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="ask-assistant-floating-button">
+	<div v-if="!instanceAi" :class="$style.container" data-test-id="ask-assistant-floating-button">
 		<N8nTooltip
 			:z-index="APP_Z_INDEXES.ASK_ASSISTANT_FLOATING_BUTTON_TOOLTIP"
 			placement="top"

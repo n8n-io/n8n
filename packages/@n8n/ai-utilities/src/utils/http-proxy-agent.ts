@@ -1,5 +1,25 @@
-import { HttpsProxyAgent } from 'https-proxy-agent';
-import proxyFromEnv from 'proxy-from-env';
+/**
+ * Proxy/transport helpers for the AI model suppliers.
+ *
+ * These are the last AI proxy-fetch helpers not yet consolidated onto `@n8n/backend-network`.
+ * They are kept here because their consumers (the langchain providers, e.g. `@langchain/openai` / `@langchain/anthropic`) pin
+ * undici v6 and inject the proxy via `fetchOptions: { dispatcher }`,
+ * while `@n8n/backend-network` builds undici v7 dispatchers.
+ *
+ * A v7 `Dispatcher` is not interoperable with a v6 `fetch` (the dispatch-handler protocol differs),
+ * so the dispatcher produced here cannot simply come from backend-network.
+ *
+ * Proxy URL resolution and the Node `http(s).Agent` (both version-agnostic) do come from `@n8n/backend-network/proxy`,
+ * so this module no longer depends on `proxy-from-env` / `https-proxy-agent` directly.
+ *
+ * TODO: once these consumers move to undici v7, drop these helpers and route
+ * their calls through `@n8n/backend-network/transport` (use `asCustomFetch()`,
+ * a self-contained `fetch` that is version-agnostic, rather than handing out a
+ * raw dispatcher). See CAT-3377 for the consolidation this completes.
+ */
+import { createHttpsProxyAgent, resolveProxyUrl } from '@n8n/backend-network/proxy'; // `@n8n/backend-network/proxy` is a DI-free subpath: it pulls in only the proxy-agent libs
+import type { LookupFunction } from 'node:net';
+/* eslint-disable n8n-local-rules/no-uncentralized-http -- langchain consumers pin undici v6, incompatible with backend-network's v7 dispatchers; see block comment below */
 import { Agent, ProxyAgent } from 'undici';
 
 /**
@@ -18,19 +38,10 @@ export interface AgentTimeoutOptions {
 const DEFAULT_TIMEOUT = parseInt(process.env.N8N_AI_TIMEOUT_MAX ?? '3600000', 10);
 
 /**
- * Resolves the proxy URL from environment variables for a given target URL.
- *
- * @param targetUrl - The target URL to check proxy configuration for (optional)
- * @returns The proxy URL string or undefined if no proxy is configured
- *
- * @remarks
- * There are cases where we don't know the target URL in advance (e.g. when we need to provide a proxy agent to ChatAwsBedrock).
- * In such case we use a dummy URL.
- * This will lead to `NO_PROXY` environment variable not being respected, but it is better than not having a proxy agent at all.
+ * Stand-in target used when the real target URL is unknown in advance (e.g. when providing a proxy agent to ChatAwsBedrock).
+ * Resolving against a stand-in cannot honor `NO_PROXY` for the real target, but it is better than having no proxy agent at all.
  */
-function getProxyUrlFromEnv(targetUrl?: string): string {
-	return proxyFromEnv.getProxyForUrl(targetUrl ?? 'https://example.nonexistent/');
-}
+const PROXY_FALLBACK_TARGET = 'https://example.nonexistent/';
 
 /**
  * Returns an undici Agent or ProxyAgent with configured timeouts based on the environment variables and target URL.
@@ -39,16 +50,22 @@ function getProxyUrlFromEnv(targetUrl?: string): string {
  * @param targetUrl - The target URL to check proxy configuration for (optional)
  * @param timeoutOptions - Optional timeout configuration to override defaults. When provided,
  *                         always returns an Agent/ProxyAgent (even without proxy) to ensure timeouts are applied.
- * @returns An Agent (no proxy with timeout options) or ProxyAgent (with proxy) configured with timeouts,
- *          or undefined if no proxy is configured and no timeout options are provided (backward compatible behavior).
+ * @param lookup - Optional DNS lookup to pin the resolved address at connect time (e.g. an egress
+ *                 filter's secure lookup). When provided (without a proxy) an Agent is always returned.
+ * @returns An Agent (no proxy with timeout options or a lookup) or ProxyAgent (with proxy) configured with timeouts,
+ *          or undefined if no proxy, timeout options, nor lookup are provided (backward compatible behavior).
  *
  * @remarks
  * When timeoutOptions are provided, this function always returns an agent to ensure timeouts are properly configured.
  * The default undici timeouts (5 minutes) are too short for many AI operations.
  * When timeoutOptions are NOT provided, returns undefined if no proxy is configured (backward compatible).
  */
-export function getProxyAgent(targetUrl?: string, timeoutOptions?: AgentTimeoutOptions) {
-	const proxyUrl = getProxyUrlFromEnv(targetUrl);
+export function getProxyAgent(
+	targetUrl?: string,
+	timeoutOptions?: AgentTimeoutOptions,
+	lookup?: LookupFunction,
+) {
+	const proxyUrl = resolveProxyUrl(targetUrl, PROXY_FALLBACK_TARGET);
 
 	const agentOptions = {
 		headersTimeout: timeoutOptions?.headersTimeout ?? DEFAULT_TIMEOUT,
@@ -59,6 +76,9 @@ export function getProxyAgent(targetUrl?: string, timeoutOptions?: AgentTimeoutO
 	};
 
 	if (!proxyUrl) {
+		if (lookup) {
+			return new Agent({ ...agentOptions, connect: { lookup } });
+		}
 		if (timeoutOptions) {
 			return new Agent(agentOptions);
 		}
@@ -75,14 +95,16 @@ export function getProxyAgent(targetUrl?: string, timeoutOptions?: AgentTimeoutO
  * @param input - The URL to fetch
  * @param init - Standard fetch RequestInit options
  * @param timeoutOptions - Optional timeout configuration to override defaults
+ * @param lookup - Optional connect-time DNS lookup (e.g. an egress filter's secure lookup)
  */
 export async function proxyFetch(
 	input: RequestInfo | URL,
 	init?: RequestInit,
 	timeoutOptions?: AgentTimeoutOptions,
+	lookup?: LookupFunction,
 ): Promise<Response> {
 	const targetUrl = input instanceof Request ? input.url : input.toString();
-	const dispatcher = getProxyAgent(targetUrl, timeoutOptions);
+	const dispatcher = getProxyAgent(targetUrl, timeoutOptions, lookup);
 
 	return await fetch(input, {
 		...init,
@@ -96,14 +118,14 @@ export async function proxyFetch(
  * AWS SDK v3 requires Node.js http.Agent/https.Agent instances (not undici ProxyAgent).
  *
  * @param targetUrl - The target URL to check proxy configuration for
- * @returns HttpsProxyAgent instance or undefined if no proxy is configured
+ * @returns An https.Agent proxy instance or undefined if no proxy is configured
  */
 export function getNodeProxyAgent(targetUrl?: string) {
-	const proxyUrl = getProxyUrlFromEnv(targetUrl);
+	const proxyUrl = resolveProxyUrl(targetUrl, PROXY_FALLBACK_TARGET);
 
 	if (!proxyUrl) {
 		return undefined;
 	}
 
-	return new HttpsProxyAgent(proxyUrl);
+	return createHttpsProxyAgent(targetUrl ?? PROXY_FALLBACK_TARGET, proxyUrl);
 }

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { defineComponent, h, type Component, type PropType } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiInput from '../components/InstanceAiInput.vue';
 import {
@@ -22,10 +23,13 @@ type InputTestProps = {
 	amendContext: { agentId: string; role: string } | null;
 	contextualSuggestion: string | null;
 	isWorkflowBuilderAvailable: boolean;
-	suggestions?: typeof suggestions;
+	suggestions?: readonly unknown[];
 	suggestionsComponent?: Component;
+	suggestionsComponentProps?: Record<string, unknown>;
 	suggestionCatalogVersion?: string;
+	suggestionTelemetryPayload?: ITelemetryTrackProperties;
 	placeholderKey?: BaseTextKey;
+	contextChip?: { label: string; testId?: string } | null;
 };
 
 const defaultProps = (): InputTestProps => ({
@@ -37,6 +41,7 @@ const defaultProps = (): InputTestProps => ({
 	amendContext: null,
 	contextualSuggestion: null,
 	isWorkflowBuilderAvailable: true,
+	contextChip: null,
 });
 
 function inputProps(overrides: Partial<InputTestProps> = {}): InputTestProps {
@@ -120,6 +125,72 @@ const CustomCycleSuggestionsComponent = defineComponent({
 				},
 				'Cycle suggestions',
 			);
+	},
+});
+
+const CustomRawPromptSuggestionsComponent = defineComponent({
+	name: 'CustomRawPromptSuggestionsComponent',
+	props: {
+		suggestions: {
+			type: Array as PropType<readonly { id: string; builderPrompt: string }[]>,
+			required: true,
+		},
+		disabled: {
+			type: Boolean,
+			required: true,
+		},
+	},
+	emits: ['preview-change', 'insert-suggestion', 'cycle-suggestions'],
+	setup(props, { emit }) {
+		return () =>
+			h('div', [
+				h(
+					'button',
+					{
+						type: 'button',
+						'data-test-id': 'custom-raw-suggestion-preview',
+						disabled: props.disabled,
+						onFocus: () =>
+							emit(
+								'preview-change',
+								props.suggestions[0] ? { prompt: props.suggestions[0].builderPrompt } : null,
+							),
+					},
+					'Preview raw suggestion',
+				),
+				h(
+					'button',
+					{
+						type: 'button',
+						'data-test-id': 'custom-raw-suggestion-insert',
+						disabled: props.disabled,
+						onClick: () =>
+							emit('insert-suggestion', {
+								prompt: props.suggestions[0]?.builderPrompt ?? '',
+								suggestionId: 'custom-raw-prompt',
+								suggestionKind: 'prompt',
+								position: 1,
+								telemetryPayload: { suggestion_source: 'v2_top_used_fallback' },
+							}),
+					},
+					'Insert raw suggestion',
+				),
+				h(
+					'button',
+					{
+						type: 'button',
+						'data-test-id': 'custom-raw-suggestion-cycle',
+						disabled: props.disabled,
+						onClick: () =>
+							emit('cycle-suggestions', {
+								visibleSuggestionIds: ['custom-raw-prompt'],
+								cycleCount: 1,
+								telemetryPayload: { suggestion_source: 'v2_top_used_fallback' },
+							}),
+					},
+					'Cycle raw suggestion',
+				),
+			]);
 	},
 });
 
@@ -643,6 +714,42 @@ describe('InstanceAiInput', () => {
 		expect(textbox).toHaveValue('');
 	});
 
+	it('renders a dismissible handoff context chip inside the input', async () => {
+		const { emitted, getByRole, getByTestId } = renderComponent({
+			props: {
+				contextChip: {
+					label: 'SEO Auditor session',
+				},
+			},
+		});
+
+		const textbox = getByRole('textbox');
+		const chip = getByTestId('instance-ai-handoff-context-chip');
+
+		expect(chip).toHaveTextContent('SEO Auditor session');
+		expect(chip.querySelector('.n8n-tag')?.className).toContain('lg');
+		expect(chip.querySelector('[data-icon="robot"]')).toBeInTheDocument();
+		expect(chip.closest('[class*="inputWrapper"]')).toContainElement(textbox);
+
+		await userEvent.click(getByTestId('instance-ai-handoff-context-chip-dismiss'));
+
+		expect(emitted()['dismiss-context-chip']).toEqual([[]]);
+	});
+
+	it('keeps plan edit mode as the only visible chip when both plan edit and handoff context are present', () => {
+		const { queryByTestId } = renderComponent({
+			props: {
+				isPlanEditMode: true,
+				contextChip: {
+					label: 'SEO Auditor session',
+				},
+			},
+		});
+
+		expect(queryByTestId('instance-ai-plan-edit-context')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-handoff-context-chip')).not.toBeInTheDocument();
+	});
+
 	it('emits stop when the streaming stop button is clicked', async () => {
 		const { emitted, getByTestId } = renderComponent({
 			props: {
@@ -767,6 +874,11 @@ describe('InstanceAiInput', () => {
 				isStreaming: false,
 				suggestions,
 				suggestionCatalogVersion: 'v2',
+				suggestionTelemetryPayload: {
+					suggestion_format: 'cards',
+					suggestion_source: 'matrix',
+					metadata_load_state: 'loaded',
+				},
 				currentThreadId: 'thread-v2',
 			},
 		});
@@ -775,6 +887,9 @@ describe('InstanceAiInput', () => {
 			expect(telemetryTrack).toHaveBeenCalledWith('Instance AI prompt suggestions shown', {
 				thread_id: 'thread-v2',
 				suggestion_catalog_version: 'v2',
+				suggestion_format: 'cards',
+				suggestion_source: 'matrix',
+				metadata_load_state: 'loaded',
 			});
 		});
 	});
@@ -798,6 +913,76 @@ describe('InstanceAiInput', () => {
 			cycle_count: 1,
 		});
 		expect(telemetryTrack.mock.calls[0]?.[1]).not.toHaveProperty('thread_id');
+	});
+
+	it('inserts raw prompt suggestions and merges experiment telemetry payloads', async () => {
+		const { getByRole, getByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions: [{ id: 'custom-raw-prompt', builderPrompt: 'Build my exact workflow' }],
+				suggestionsComponent: CustomRawPromptSuggestionsComponent,
+				suggestionCatalogVersion: 'v4-personalized',
+				suggestionTelemetryPayload: {
+					suggestion_catalog_version: 'v4-personalized',
+					suggestion_format: 'cards',
+					suggestion_source: 'matrix',
+					profile_role: 'sales',
+					metadata_load_state: 'loaded',
+					variant: 'variant-cards',
+					'$feature/093_instance_ai_personalized_prompt_suggestions': 'variant-cards',
+				},
+			},
+		});
+
+		telemetryTrack.mockClear();
+		await fireEvent.focus(getByTestId('custom-raw-suggestion-preview'));
+
+		expect(getByRole('textbox')).toHaveAttribute('placeholder', 'Build my exact workflow');
+
+		await userEvent.click(getByTestId('custom-raw-suggestion-insert'));
+
+		expect(getByRole('textbox')).toHaveValue('Build my exact workflow');
+		expect(telemetryTrack).toHaveBeenCalledWith('Instance AI prompt suggestion selected', {
+			thread_id: 'thread-1',
+			suggestion_catalog_version: 'v4-personalized',
+			suggestion_format: 'cards',
+			suggestion_source: 'v2_top_used_fallback',
+			profile_role: 'sales',
+			metadata_load_state: 'loaded',
+			variant: 'variant-cards',
+			'$feature/093_instance_ai_personalized_prompt_suggestions': 'variant-cards',
+			suggestion_id: 'custom-raw-prompt',
+			suggestion_kind: 'prompt',
+			position: 1,
+		});
+	});
+
+	it('merges experiment telemetry payloads for suggestion cycling', async () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions: [{ id: 'custom-raw-prompt', builderPrompt: 'Build my exact workflow' }],
+				suggestionsComponent: CustomRawPromptSuggestionsComponent,
+				suggestionCatalogVersion: 'v4-personalized',
+				suggestionTelemetryPayload: {
+					suggestion_format: 'list',
+					suggestion_source: 'role_default',
+					metadata_load_state: 'loaded',
+				},
+			},
+		});
+
+		telemetryTrack.mockClear();
+		await userEvent.click(getByTestId('custom-raw-suggestion-cycle'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith('Instance AI prompt suggestions cycled', {
+			suggestion_catalog_version: 'v4-personalized',
+			suggestion_format: 'list',
+			suggestion_source: 'v2_top_used_fallback',
+			metadata_load_state: 'loaded',
+			visible_suggestion_ids: ['custom-raw-prompt'],
+			cycle_count: 1,
+		});
 	});
 
 	it('tracks quick examples opened with semantic payload', async () => {
@@ -915,5 +1100,11 @@ describe('InstanceAiInput', () => {
 		});
 
 		expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
+	});
+
+	it('raises the character limit for long, externally-drafted prompts', () => {
+		const { getByRole } = renderComponent();
+
+		expect(getByRole('textbox')).toHaveAttribute('maxlength', '25000');
 	});
 });

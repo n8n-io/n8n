@@ -165,7 +165,7 @@ export class GoogleDocs implements INodeType {
 						value: 'default',
 					},
 				];
-				const driveId = this.getNodeParameter('driveId');
+				const driveId = this.getNodeParameter('driveId', 'myDrive');
 
 				const qs = {
 					q: `mimeType = \'application/vnd.google-apps.folder\' ${

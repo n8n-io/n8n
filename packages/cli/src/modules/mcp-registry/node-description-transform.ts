@@ -110,6 +110,12 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 				type: 'hidden',
 				default: remote.endpointUrl,
 			},
+			{
+				displayName: 'Resource URL',
+				name: 'resourceUrl',
+				type: 'hidden',
+				default: '',
+			},
 			...buildDomainRestrictionProperties(remote.hostname),
 		],
 	};

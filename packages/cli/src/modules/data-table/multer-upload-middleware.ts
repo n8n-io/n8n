@@ -1,10 +1,12 @@
 /* eslint-disable id-denylist */
+import { Logger, safeJoinPath } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Request, RequestHandler } from 'express';
-import { mkdir } from 'fs/promises';
+import { mkdir, readdir, stat, unlink } from 'fs/promises';
 import multer from 'multer';
 import { nanoid } from 'nanoid';
+import { extname } from 'path';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
@@ -18,7 +20,7 @@ import {
 } from './types';
 import { formatBytes } from './utils/size-utils';
 
-const ALLOWED_MIME_TYPES = ['text/csv'];
+const ALLOWED_EXTENSIONS = ['.csv'];
 
 @Service()
 export class MulterUploadMiddleware implements UploadMiddleware {
@@ -26,10 +28,13 @@ export class MulterUploadMiddleware implements UploadMiddleware {
 
 	private readonly uploadDir: string;
 
+	private quotaCheckChain: Promise<void> = Promise.resolve();
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly sizeValidator: DataTableSizeValidator,
 		private readonly dataTableRepository: DataTableRepository,
+		private readonly logger: Logger,
 	) {
 		this.uploadDir = this.globalConfig.dataTable.uploadDir;
 
@@ -47,49 +52,20 @@ export class MulterUploadMiddleware implements UploadMiddleware {
 
 		this.upload = multer({
 			storage,
-			limits: this.globalConfig.dataTable.uploadMaxFileSize
-				? { fileSize: this.globalConfig.dataTable.uploadMaxFileSize }
-				: undefined,
-			fileFilter: async (req, file, cb: multer.FileFilterCallback) => {
-				if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+			limits: {
+				fileSize:
+					this.globalConfig.dataTable.uploadMaxFileSize ?? this.globalConfig.dataTable.maxSize,
+			},
+			fileFilter: (_req, file, cb: multer.FileFilterCallback) => {
+				if (!ALLOWED_EXTENSIONS.includes(extname(file.originalname).toLowerCase())) {
 					cb(
 						new BadRequestError(
-							`Only the following file types are allowed: ${ALLOWED_MIME_TYPES.join(', ')}`,
+							`Only the following file types are allowed: ${ALLOWED_EXTENSIONS.join(', ')}`,
 						),
 					);
 					return;
 				}
-
-				const fileSize = parseInt(req.headers['content-length'] ?? '0', 10);
-
-				// If uploadMaxFileSize is set, multer's limits will handle the rejection
-				if (this.globalConfig.dataTable.uploadMaxFileSize) {
-					cb(null, true);
-					return;
-				}
-
-				// If uploadMaxFileSize is not set, check remaining space
-				try {
-					const sizeData = await this.sizeValidator.getCachedSizeData(async () => {
-						return await this.dataTableRepository.findDataTablesSize();
-					});
-					const remainingSpace = Math.max(
-						0,
-						this.globalConfig.dataTable.maxSize - sizeData.totalBytes,
-					);
-
-					if (fileSize > remainingSpace) {
-						const message =
-							remainingSpace === 0
-								? `Storage limit exceeded. Current usage: ${formatBytes(sizeData.totalBytes)}, Limit: ${formatBytes(this.globalConfig.dataTable.maxSize)}`
-								: `File size exceeds remaining storage space. Available: ${formatBytes(remainingSpace)}, File: ${formatBytes(fileSize)}`;
-						cb(new BadRequestError(message));
-						return;
-					}
-					cb(null, true);
-				} catch {
-					cb(new BadRequestError('Failed to validate file size'));
-				}
+				cb(null, true);
 			},
 		});
 	}
@@ -98,14 +74,84 @@ export class MulterUploadMiddleware implements UploadMiddleware {
 		await mkdir(this.uploadDir, { recursive: true });
 	}
 
+	private async getUploadDirSize(): Promise<number> {
+		const files = await readdir(this.uploadDir);
+		let total = 0;
+		for (const file of files) {
+			try {
+				const stats = await stat(safeJoinPath(this.uploadDir, file));
+				if (stats.isFile()) total += stats.size;
+			} catch (error) {
+				this.logger.debug('Failed to stat data-table upload file', { file, error });
+			}
+		}
+		return total;
+	}
+
 	single(fieldName: string): RequestHandler {
 		return (req, res, next) => {
-			void this.upload.single(fieldName)(req, res, (error) => {
+			void this.upload.single(fieldName)(req, res, async (error) => {
+				const authedReq = req as AuthenticatedRequestWithFile;
 				if (error) {
-					(req as AuthenticatedRequestWithFile).fileUploadError = error;
+					authedReq.fileUploadError = error;
+					next();
+					return;
+				}
+
+				if (authedReq.file) {
+					try {
+						await this.enqueueQuotaCheck(authedReq.file.path);
+					} catch (err) {
+						authedReq.fileUploadError = err as Error;
+					}
 				}
 				next();
 			});
 		};
+	}
+
+	private async enqueueQuotaCheck(uploadPath: string): Promise<void> {
+		// .catch on the shared chain so one rejection doesn't kill the queue.
+		const next = this.quotaCheckChain
+			.catch(() => {})
+			.then(async () => await this.enforceQuotaPostUpload(uploadPath));
+		this.quotaCheckChain = next.catch(() => {});
+		await next;
+	}
+
+	private async enforceQuotaPostUpload(uploadPath: string): Promise<void> {
+		let usedBytes: number;
+		try {
+			const sizeData = await this.sizeValidator.getCachedSizeData(async () => {
+				return await this.dataTableRepository.findDataTablesSize();
+			});
+			const tempBytes = await this.getUploadDirSize();
+			usedBytes = sizeData.totalBytes + tempBytes;
+		} catch (error) {
+			this.logger.warn('Failed to validate data-table storage budget; rejecting upload', {
+				path: uploadPath,
+				error,
+			});
+			await this.removeUpload(uploadPath);
+			throw new BadRequestError('Could not validate storage limit');
+		}
+
+		if (usedBytes > this.globalConfig.dataTable.maxSize) {
+			await this.removeUpload(uploadPath);
+			throw new BadRequestError(
+				`Storage limit exceeded. Current usage: ${formatBytes(usedBytes)}, Limit: ${formatBytes(this.globalConfig.dataTable.maxSize)}`,
+			);
+		}
+	}
+
+	private async removeUpload(uploadPath: string): Promise<void> {
+		try {
+			await unlink(uploadPath);
+		} catch (error) {
+			this.logger.warn('Failed to remove data-table upload after quota rejection', {
+				path: uploadPath,
+				error,
+			});
+		}
 	}
 }

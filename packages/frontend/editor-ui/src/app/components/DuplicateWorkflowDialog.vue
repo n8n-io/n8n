@@ -102,6 +102,9 @@ const save = async (): Promise<void> => {
 				activeVersionId,
 				activeVersion,
 				active,
+				// Placement is driven by `parentFolderId` below; the `parentFolder` relation object
+				// is not a valid create input and must not be forwarded to the API.
+				parentFolder,
 				...workflow
 			} = await workflowsListStore.fetchWorkflow(props.data.id);
 			workflowToCreate = { ...workflow, projectId: homeProject?.id };

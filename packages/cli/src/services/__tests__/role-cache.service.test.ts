@@ -3,22 +3,23 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { RoleRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { staticRolesWithScope } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
+import type { MockedFunction } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CacheService } from '@/services/cache/cache.service';
 import { RoleCacheService } from '@/services/role-cache.service';
 
 // Mock static function
-jest.mock('@n8n/permissions', () => ({
-	...jest.requireActual('@n8n/permissions'),
-	staticRolesWithScope: jest.fn(),
+vi.mock('@n8n/permissions', async () => ({
+	...(await vi.importActual<typeof import('@n8n/permissions')>('@n8n/permissions')),
+	staticRolesWithScope: vi.fn(),
 }));
 
 describe('RoleCacheService', () => {
 	const cacheService = mock<CacheService>();
 	const logger = mockInstance(Logger);
 	const roleRepository = mockInstance(RoleRepository);
-	const staticRolesMock = staticRolesWithScope as jest.MockedFunction<typeof staticRolesWithScope>;
+	const staticRolesMock = staticRolesWithScope as MockedFunction<typeof staticRolesWithScope>;
 
 	const roleCacheService = new RoleCacheService(cacheService, logger);
 
@@ -47,8 +48,8 @@ describe('RoleCacheService', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.spyOn(Container, 'get').mockReturnValue(roleRepository);
+		vi.clearAllMocks();
+		vi.spyOn(Container, 'get').mockReturnValue(roleRepository);
 	});
 
 	describe('getRolesWithAllScopes', () => {

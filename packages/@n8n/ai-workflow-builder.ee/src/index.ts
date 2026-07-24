@@ -34,9 +34,11 @@ export {
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
 	MCP_ARCHIVE_WORKFLOW_TOOL,
 	MCP_UPDATE_WORKFLOW_TOOL,
+	MCP_EXPLORE_NODE_RESOURCES_TOOL,
 	MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL,
 } from './code-builder';
 export type { ParseAndValidateResult, ValidationWarning } from './code-builder';
 
 // SSRF guard contract for the web_fetch tool (cli injects its SsrfProtectionService here)
 export { type SsrfGuard, createPassthroughSsrfGuard } from './tools/utils/ssrf-guard';
+export { type ChatPayload } from './workflow-builder-agent';

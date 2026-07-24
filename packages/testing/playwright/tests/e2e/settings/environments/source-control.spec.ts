@@ -79,7 +79,7 @@ test.describe(
 			await expect(n8n.settingsEnvironment.getBranchSelect()).toBeVisible();
 
 			await n8n.settingsEnvironment.getBranchSelect().click();
-			await expect(n8n.page.getByRole('option', { name: 'main' })).toBeVisible();
+			await expect(n8n.settingsEnvironment.getVisiblePopoverOption('main')).toBeVisible();
 
 			// Verify source control connected indicator is visible
 			await n8n.navigate.toHome();
@@ -98,26 +98,24 @@ test.describe(
 
 			// Switch to 'development' branch
 			await n8n.settingsEnvironment.getBranchSelect().click();
-			await expect(n8n.page.getByRole('option', { name: 'main' })).toBeVisible();
-			await expect(n8n.page.getByRole('option', { name: 'development' })).toBeVisible();
-			await expect(n8n.page.getByRole('option', { name: 'staging' })).toBeVisible();
-			await expect(n8n.page.getByRole('option', { name: 'production' })).toBeVisible();
-			await n8n.page.getByRole('option', { name: 'development' }).click();
+			await expect(n8n.settingsEnvironment.getVisiblePopoverOption('main')).toBeVisible();
+			await expect(n8n.settingsEnvironment.getVisiblePopoverOption('development')).toBeVisible();
+			await expect(n8n.settingsEnvironment.getVisiblePopoverOption('staging')).toBeVisible();
+			await expect(n8n.settingsEnvironment.getVisiblePopoverOption('production')).toBeVisible();
+			await n8n.settingsEnvironment.getVisiblePopoverOption('development').click();
 			await saveSettings(n8n);
 
 			// Verify branch switched by checking preferences
-			let preferencesResponse = await api.request.get('/rest/source-control/preferences');
-			let preferences = await preferencesResponse.json();
-			expect(preferences.data.branchName).toBe('development');
+			let preferences = await api.sourceControl.getPreferences();
+			expect(preferences.branchName).toBe('development');
 
 			// Switch back to 'main'
 			await n8n.settingsEnvironment.selectBranch('main');
 			await saveSettings(n8n);
 
 			// Verify switched back
-			preferencesResponse = await api.request.get('/rest/source-control/preferences');
-			preferences = await preferencesResponse.json();
-			expect(preferences.data.branchName).toBe('main');
+			preferences = await api.sourceControl.getPreferences();
+			expect(preferences.branchName).toBe('main');
 		});
 
 		test('should enable read-only mode and restrict operations', async ({ n8n, api }) => {

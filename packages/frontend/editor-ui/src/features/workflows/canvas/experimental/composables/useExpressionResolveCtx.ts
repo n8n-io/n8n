@@ -1,11 +1,11 @@
 import type { INodeUi } from '@/Interface';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import { computed, type ComputedRef } from 'vue';
 
 export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undefined>) {
-	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 
@@ -15,7 +15,7 @@ export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undef
 		}
 
 		const runIndex = 0; // not changeable for now
-		const execution = workflowsStore.workflowExecutionData;
+		const execution = workflowExecutionStateStore.value.activeExecution;
 		const nodeName = node.value.name;
 
 		function findInputNode(): ExpressionLocalResolveContext['inputNode'] {

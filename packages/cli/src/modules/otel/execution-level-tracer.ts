@@ -11,11 +11,14 @@ import {
 	type EndNodeParams,
 	isEndNodeError,
 } from './execution-level-tracer.types';
-import { OtelConfig } from './otel.config';
+import { OtelSettingsService } from './otel-settings.service';
 import { ATTR } from './otel.constants';
 import type { TracingContext } from './tracing-context';
 
 const TRACER_NAME = 'n8n-workflow';
+const UNKNOWN_ERROR_TYPE = 'UnknownError';
+const OBJECT_ERROR_TYPE = 'Object';
+
 function isError(status: ExecutionStatus): boolean {
 	return status === 'error' || status === 'crashed';
 }
@@ -26,10 +29,19 @@ type TrackedSpan = { span: Span };
 export class ExecutionLevelTracer {
 	private readonly activeWorkflowSpans = new Map<string, TrackedSpan>();
 	private readonly activeNodeSpansByExecutionId = new Map<string, Map<string, TrackedSpan>>();
-	private readonly tracer = trace.getTracer(TRACER_NAME);
+	private tracer = trace.getTracer(TRACER_NAME);
+
+	/**
+	 * Called by OtelService after a SDK restart so this instance picks up the
+	 * new NodeTracerProvider. Without this, the cached NodeTracer stays bound
+	 * to the old (shutdown) provider and all spans are silently dropped.
+	 */
+	refreshTracer(): void {
+		this.tracer = trace.getTracer(TRACER_NAME);
+	}
 
 	constructor(
-		private readonly config: OtelConfig,
+		private readonly otelSettingsService: OtelSettingsService,
 		private readonly logger: Logger,
 	) {}
 
@@ -190,7 +202,7 @@ export class ExecutionLevelTracer {
 		headers: Record<string, string>,
 	): void {
 		try {
-			if (!this.config.injectOutbound) return;
+			if (!this.otelSettingsService.getSettings().injectOutbound) return;
 
 			const span = this.findMostSpecificSpan(executionId, nodeName);
 			if (!span) return;
@@ -283,18 +295,22 @@ function terminateSpan(span: Span, reason: string): void {
 }
 
 function getErrorType(error: unknown): string {
-	if (typeof error !== 'object' || error === null) return 'UnknownError';
+	if (error instanceof Error) return error.constructor.name;
+
+	if (typeof error !== 'object' || error === null) return UNKNOWN_ERROR_TYPE;
 
 	const record = error as Record<string, unknown>;
 
-	const name = record.name;
-	if (typeof name === 'string' && name.trim() !== '') return name;
+	const name = getNonEmptyString(record.name);
+	if (name) return name;
 
-	if (isEndNodeError(error)) {
-		return error.constructor.name;
-	}
+	const constructorName = getConstructorName(record);
+	if (constructorName && constructorName !== OBJECT_ERROR_TYPE) return constructorName;
 
-	return 'UnknownError';
+	const description = getNonEmptyString(record.description);
+	if (description && looksLikeErrorType(description)) return description;
+
+	return UNKNOWN_ERROR_TYPE;
 }
 
 function toRecordableException(error: unknown): Exception | undefined {
@@ -302,10 +318,29 @@ function toRecordableException(error: unknown): Exception | undefined {
 	if (isEndNodeError(error)) {
 		return {
 			message: error.message,
-			name: error.constructor.name,
+			name: getErrorType(error),
 			stack: error.stack,
 		};
 	}
 
 	return undefined;
+}
+
+function getNonEmptyString(value: unknown): string | undefined {
+	if (typeof value !== 'string') return undefined;
+
+	const trimmed = value.trim();
+	return trimmed === '' ? undefined : trimmed;
+}
+
+function getConstructorName(record: Record<string, unknown>): string | undefined {
+	const constructor = record.constructor;
+	if (typeof constructor === 'function') return getNonEmptyString(constructor.name);
+	if (typeof constructor !== 'object' || constructor === null) return undefined;
+
+	return getNonEmptyString((constructor as Record<string, unknown>).name);
+}
+
+function looksLikeErrorType(value: string): boolean {
+	return /^[A-Z][\w.]*(Error|Exception)$/.test(value);
 }

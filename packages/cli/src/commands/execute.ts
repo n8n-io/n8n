@@ -10,6 +10,7 @@ import { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
 import { WorkflowRunner } from '@/workflow-runner';
+import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 
 import { BaseCommand } from './base-command';
 
@@ -79,6 +80,10 @@ export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 		const startingNode = findCliWorkflowStart(workflowData.nodes);
 
 		const user = await Container.get(OwnershipService).getInstanceOwner();
+		const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+			Container.get(OwnershipService),
+			workflowData.id,
+		);
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode: 'cli',
 			startNodes: [{ name: startingNode.name, sourceData: null }],
@@ -102,6 +107,8 @@ export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 			workflowId: workflowData.id,
 			workflowName: workflowData.name,
 			executionId,
+			projectId,
+			projectName,
 			source: 'cli',
 		});
 

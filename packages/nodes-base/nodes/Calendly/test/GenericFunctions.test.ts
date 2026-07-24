@@ -1,19 +1,20 @@
 import type { IHookFunctions } from 'n8n-workflow';
 
 import { calendlyApiRequest } from '../GenericFunctions';
+import type { Mocked } from 'vitest';
 
 describe('Calendly GenericFunctions', () => {
-	const requestWithAuthentication = jest.fn();
+	const requestWithAuthentication = vi.fn();
 
 	const mockHookFunctions = {
-		getNodeParameter: jest.fn(),
+		getNodeParameter: vi.fn(),
 		helpers: {
 			requestWithAuthentication,
 		},
-	} as unknown as jest.Mocked<IHookFunctions>;
+	} as unknown as Mocked<IHookFunctions>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		requestWithAuthentication.mockResolvedValue({});
 		mockHookFunctions.getNodeParameter.mockReturnValue('apiKey');
 	});

@@ -1,18 +1,19 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { Readable } from 'stream';
 
 import { HelpScout } from './HelpScout.node';
 import * as GenericFunctions from './GenericFunctions';
+import type { Mock, MockedFunction } from 'vitest';
 
-jest.mock('./GenericFunctions');
+vi.mock('./GenericFunctions');
 
 describe('HelpScout Node', () => {
 	let helpScout: HelpScout;
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
-	const mockHelpscoutApiRequest = GenericFunctions.helpscoutApiRequest as jest.MockedFunction<
+	const mockHelpscoutApiRequest = GenericFunctions.helpscoutApiRequest as MockedFunction<
 		typeof GenericFunctions.helpscoutApiRequest
 	>;
 
@@ -20,16 +21,16 @@ describe('HelpScout Node', () => {
 		helpScout = new HelpScout();
 		mockExecuteFunctions = mock<IExecuteFunctions>({
 			helpers: {
-				assertBinaryData: jest.fn(),
-				getBinaryStream: jest.fn(),
-				binaryToBuffer: jest.fn(),
-				constructExecutionMetaData: jest.fn((data: any) => data),
-				returnJsonArray: jest.fn((data: any) =>
+				assertBinaryData: vi.fn(),
+				getBinaryStream: vi.fn(),
+				binaryToBuffer: vi.fn(),
+				constructExecutionMetaData: vi.fn((data: any) => data),
+				returnJsonArray: vi.fn((data: any) =>
 					Array.isArray(data) ? data.map((d) => ({ json: d })) : [{ json: data }],
 				),
 			},
 		});
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('Thread create operation - binary attachments', () => {
@@ -71,9 +72,9 @@ describe('HelpScout Node', () => {
 			mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 
 			const mockBuffer = Buffer.from('mock-binary-content');
-			const assertBinaryData = mockExecuteFunctions.helpers.assertBinaryData as jest.Mock;
-			const getBinaryStream = mockExecuteFunctions.helpers.getBinaryStream as jest.Mock;
-			const binaryToBuffer = mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock;
+			const assertBinaryData = mockExecuteFunctions.helpers.assertBinaryData as Mock;
+			const getBinaryStream = mockExecuteFunctions.helpers.getBinaryStream as Mock;
+			const binaryToBuffer = mockExecuteFunctions.helpers.binaryToBuffer as Mock;
 
 			assertBinaryData.mockReturnValue({
 				data: '',
@@ -151,7 +152,7 @@ describe('HelpScout Node', () => {
 
 			mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 
-			const assertBinaryData = mockExecuteFunctions.helpers.assertBinaryData as jest.Mock;
+			const assertBinaryData = mockExecuteFunctions.helpers.assertBinaryData as Mock;
 			assertBinaryData.mockReturnValue({
 				data: base64Data,
 				mimeType: 'application/pdf',
@@ -225,7 +226,7 @@ describe('HelpScout Node', () => {
 
 			mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 
-			const assertBinaryData = mockExecuteFunctions.helpers.assertBinaryData as jest.Mock;
+			const assertBinaryData = mockExecuteFunctions.helpers.assertBinaryData as Mock;
 			assertBinaryData
 				.mockReturnValueOnce({
 					data: Buffer.from('file1-content').toString('base64'),
@@ -300,7 +301,7 @@ describe('HelpScout Node', () => {
 
 			mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 
-			const assertBinaryData = mockExecuteFunctions.helpers.assertBinaryData as jest.Mock;
+			const assertBinaryData = mockExecuteFunctions.helpers.assertBinaryData as Mock;
 			assertBinaryData.mockImplementation(() => {
 				throw new NodeOperationError(
 					mockExecuteFunctions.getNode(),
@@ -351,7 +352,7 @@ describe('HelpScout Node', () => {
 
 			mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 
-			const assertBinaryData = mockExecuteFunctions.helpers.assertBinaryData as jest.Mock;
+			const assertBinaryData = mockExecuteFunctions.helpers.assertBinaryData as Mock;
 			assertBinaryData.mockReturnValue({
 				data: Buffer.from('content').toString('base64'),
 				mimeType: 'application/octet-stream',
@@ -413,7 +414,7 @@ describe('HelpScout Node', () => {
 
 			mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 
-			const assertBinaryData = mockExecuteFunctions.helpers.assertBinaryData as jest.Mock;
+			const assertBinaryData = mockExecuteFunctions.helpers.assertBinaryData as Mock;
 			assertBinaryData.mockReturnValue(binaryDataObject);
 
 			mockHelpscoutApiRequest.mockResolvedValue({ success: true });

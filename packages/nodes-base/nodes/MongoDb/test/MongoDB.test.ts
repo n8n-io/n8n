@@ -1,5 +1,5 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import { Collection, Db, MongoClient, ObjectId } from 'mongodb';
 import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
 import type {
@@ -11,6 +11,7 @@ import type {
 } from 'n8n-workflow';
 
 import { MongoDb } from '../MongoDb.node';
+import type { MockInstance } from 'vitest';
 
 const manualTriggerName = 'When clicking "Execute Workflow"';
 const searchIndexName = 'my-index';
@@ -129,7 +130,7 @@ function mockExecuteFunctions(typeVersion: number, operation: string) {
 	return executeFunctions;
 }
 
-function collectionNames(collectionSpy: jest.SpyInstance): string[] {
+function collectionNames(collectionSpy: MockInstance): string[] {
 	return collectionSpy.mock.calls.reduce<string[]>((names, call) => {
 		const [collectionName] = call as unknown[];
 
@@ -149,21 +150,21 @@ describe('MongoDB CRUD Node', () => {
 	const testHarness = new NodeTestHarness();
 
 	describe('document operations in version 1.3', () => {
-		let collectionSpy: jest.SpyInstance;
+		let collectionSpy: MockInstance;
 		const node = new MongoDb();
 
 		beforeEach(() => {
-			collectionSpy = jest.spyOn(Db.prototype, 'collection');
+			collectionSpy = vi.spyOn(Db.prototype, 'collection');
 		});
 
 		afterEach(() => {
 			collectionSpy.mockRestore();
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('groups insert items by collection and uses insertMany per group', async () => {
-			const insertOneSpy = jest.spyOn(Collection.prototype, 'insertOne');
-			const insertManySpy = jest.spyOn(Collection.prototype, 'insertMany');
+			const insertOneSpy = vi.spyOn(Collection.prototype, 'insertOne');
+			const insertManySpy = vi.spyOn(Collection.prototype, 'insertMany');
 			insertManySpy.mockResolvedValue({
 				acknowledged: true,
 				insertedCount: 1,
@@ -183,7 +184,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('uses a single insertMany when all items share the same collection', async () => {
-			const insertManySpy = jest.spyOn(Collection.prototype, 'insertMany');
+			const insertManySpy = vi.spyOn(Collection.prototype, 'insertMany');
 			insertManySpy.mockResolvedValue({
 				acknowledged: true,
 				insertedCount: 3,
@@ -219,7 +220,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('pairs each insert output item to its input item', async () => {
-			const insertManySpy = jest.spyOn(Collection.prototype, 'insertMany');
+			const insertManySpy = vi.spyOn(Collection.prototype, 'insertMany');
 			insertManySpy.mockResolvedValue({
 				acknowledged: true,
 				insertedCount: 1,
@@ -242,7 +243,7 @@ describe('MongoDB CRUD Node', () => {
 				{ json: { id: '3', value: 'third', collection: 'col1' } },
 			];
 
-			const insertManySpy = jest.spyOn(Collection.prototype, 'insertMany');
+			const insertManySpy = vi.spyOn(Collection.prototype, 'insertMany');
 			insertManySpy
 				.mockResolvedValueOnce({
 					acknowledged: true,
@@ -284,7 +285,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('resolves update collections against each input item', async () => {
-			const updateOneSpy = jest.spyOn(Collection.prototype, 'updateOne');
+			const updateOneSpy = vi.spyOn(Collection.prototype, 'updateOne');
 			updateOneSpy.mockResolvedValue({
 				acknowledged: true,
 				matchedCount: 1,
@@ -304,7 +305,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('pairs each update output item to its input item', async () => {
-			const updateOneSpy = jest.spyOn(Collection.prototype, 'updateOne');
+			const updateOneSpy = vi.spyOn(Collection.prototype, 'updateOne');
 			updateOneSpy.mockResolvedValue({
 				acknowledged: true,
 				matchedCount: 1,
@@ -321,7 +322,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('resolves find-and-update collections against each input item', async () => {
-			const findOneAndUpdateSpy = jest.spyOn(Collection.prototype, 'findOneAndUpdate');
+			const findOneAndUpdateSpy = vi.spyOn(Collection.prototype, 'findOneAndUpdate');
 			findOneAndUpdateSpy.mockResolvedValue(null);
 
 			await node.execute.call(mockExecuteFunctions(1.3, 'findOneAndUpdate'));
@@ -335,7 +336,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('pairs each find-and-update output item to its input item', async () => {
-			const findOneAndUpdateSpy = jest.spyOn(Collection.prototype, 'findOneAndUpdate');
+			const findOneAndUpdateSpy = vi.spyOn(Collection.prototype, 'findOneAndUpdate');
 			findOneAndUpdateSpy.mockResolvedValue(null);
 
 			const [items] = await node.execute.call(mockExecuteFunctions(1.3, 'findOneAndUpdate'));
@@ -346,7 +347,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('resolves find-and-replace collections against each input item', async () => {
-			const findOneAndReplaceSpy = jest.spyOn(Collection.prototype, 'findOneAndReplace');
+			const findOneAndReplaceSpy = vi.spyOn(Collection.prototype, 'findOneAndReplace');
 			findOneAndReplaceSpy.mockResolvedValue(null);
 
 			await node.execute.call(mockExecuteFunctions(1.3, 'findOneAndReplace'));
@@ -360,7 +361,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('pairs each find-and-replace output item to its input item', async () => {
-			const findOneAndReplaceSpy = jest.spyOn(Collection.prototype, 'findOneAndReplace');
+			const findOneAndReplaceSpy = vi.spyOn(Collection.prototype, 'findOneAndReplace');
 			findOneAndReplaceSpy.mockResolvedValue(null);
 
 			const [items] = await node.execute.call(mockExecuteFunctions(1.3, 'findOneAndReplace'));
@@ -420,9 +421,9 @@ describe('MongoDB CRUD Node', () => {
 				});
 
 				it('does not invoke the driver for the affected item', async () => {
-					const findOneAndReplaceSpy = jest.spyOn(Collection.prototype, 'findOneAndReplace');
-					const findOneAndUpdateSpy = jest.spyOn(Collection.prototype, 'findOneAndUpdate');
-					const updateOneSpy = jest.spyOn(Collection.prototype, 'updateOne');
+					const findOneAndReplaceSpy = vi.spyOn(Collection.prototype, 'findOneAndReplace');
+					const findOneAndUpdateSpy = vi.spyOn(Collection.prototype, 'findOneAndUpdate');
+					const updateOneSpy = vi.spyOn(Collection.prototype, 'updateOne');
 					findOneAndReplaceSpy.mockResolvedValue(null);
 					findOneAndUpdateSpy.mockResolvedValue(null);
 					updateOneSpy.mockResolvedValue({
@@ -494,21 +495,21 @@ describe('MongoDB CRUD Node', () => {
 	});
 
 	describe('document operations in version 1.2', () => {
-		let collectionSpy: jest.SpyInstance;
+		let collectionSpy: MockInstance;
 		const node = new MongoDb();
 
 		beforeEach(() => {
-			collectionSpy = jest.spyOn(Db.prototype, 'collection');
+			collectionSpy = vi.spyOn(Db.prototype, 'collection');
 		});
 
 		afterEach(() => {
 			collectionSpy.mockRestore();
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('keeps insert using the first item collection', async () => {
-			const insertOneSpy = jest.spyOn(Collection.prototype, 'insertOne');
-			const insertManySpy = jest.spyOn(Collection.prototype, 'insertMany');
+			const insertOneSpy = vi.spyOn(Collection.prototype, 'insertOne');
+			const insertManySpy = vi.spyOn(Collection.prototype, 'insertMany');
 			insertManySpy.mockResolvedValue({
 				acknowledged: true,
 				insertedCount: 3,
@@ -525,7 +526,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('pairs all insert output items to all input items as fallback', async () => {
-			const insertManySpy = jest.spyOn(Collection.prototype, 'insertMany');
+			const insertManySpy = vi.spyOn(Collection.prototype, 'insertMany');
 			insertManySpy.mockResolvedValue({
 				acknowledged: true,
 				insertedCount: 3,
@@ -543,7 +544,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('keeps update using the first item collection', async () => {
-			const updateOneSpy = jest.spyOn(Collection.prototype, 'updateOne');
+			const updateOneSpy = vi.spyOn(Collection.prototype, 'updateOne');
 			updateOneSpy.mockResolvedValue({
 				acknowledged: true,
 				matchedCount: 1,
@@ -563,7 +564,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('pairs all update output items to all input items as fallback', async () => {
-			const updateOneSpy = jest.spyOn(Collection.prototype, 'updateOne');
+			const updateOneSpy = vi.spyOn(Collection.prototype, 'updateOne');
 			updateOneSpy.mockResolvedValue({
 				acknowledged: true,
 				matchedCount: 1,
@@ -581,7 +582,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('pairs all find-and-update output items to all input items as fallback', async () => {
-			const findOneAndUpdateSpy = jest.spyOn(Collection.prototype, 'findOneAndUpdate');
+			const findOneAndUpdateSpy = vi.spyOn(Collection.prototype, 'findOneAndUpdate');
 			findOneAndUpdateSpy.mockResolvedValue(null);
 
 			const [items] = await node.execute.call(mockExecuteFunctions(1.2, 'findOneAndUpdate'));
@@ -593,7 +594,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('pairs all find-and-replace output items to all input items as fallback', async () => {
-			const findOneAndReplaceSpy = jest.spyOn(Collection.prototype, 'findOneAndReplace');
+			const findOneAndReplaceSpy = vi.spyOn(Collection.prototype, 'findOneAndReplace');
 			findOneAndReplaceSpy.mockResolvedValue(null);
 
 			const [items] = await node.execute.call(mockExecuteFunctions(1.2, 'findOneAndReplace'));
@@ -606,8 +607,8 @@ describe('MongoDB CRUD Node', () => {
 	});
 
 	describe('createSearchIndex operation', () => {
-		// Direct method replacement (not jest.spyOn) so the recorded calls survive
-		// the per-test `restoreMocks` reset in the root jest config.
+		// Direct method replacement (not vi.spyOn) so the recorded calls survive
+		// the per-test `restoreMocks` reset in the vitest config.
 		const calls: unknown[][] = [];
 		const original = Collection.prototype.createSearchIndex;
 		beforeAll(() => {

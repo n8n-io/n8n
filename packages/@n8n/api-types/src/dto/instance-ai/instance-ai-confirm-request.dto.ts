@@ -15,6 +15,9 @@ const approvalConfirmSchema = z.object({
 	kind: z.literal('approval'),
 	approved: z.boolean(),
 	userInput: z.string().optional(),
+	/** `'session'` grants the same tool/action without re-asking for the rest of the
+	 *  thread ("always allow"). Absent/`'once'` approves this single request only. */
+	scope: z.enum(['once', 'session']).optional(),
 });
 
 /** Q&A wizard submission (inputType='questions'). */
@@ -36,6 +39,11 @@ const credentialIdByTypeSchema = z.record(z.string());
 const credentialSelectionConfirmSchema = z.object({
 	kind: z.literal('credentialSelection'),
 	credentials: credentialIdByTypeSchema,
+});
+
+const credentialAutoSetupConfirmSchema = z.object({
+	kind: z.literal('credentialAutoSetup'),
+	credentialType: z.string(),
 });
 
 /** Domain-access approval — `domainAccessAction` carries which scope the user picked. */
@@ -87,6 +95,7 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	approvalConfirmSchema,
 	questionsConfirmSchema,
 	credentialSelectionConfirmSchema,
+	credentialAutoSetupConfirmSchema,
 	domainAccessApproveSchema,
 	domainAccessDenySchema,
 	planDenySchema,

@@ -1,0 +1,24 @@
+{
+	"description": "Compound with a partial clarify, per part: 'summarize my meetings' is {anchor: wf, embedsOther: false} (bounded LLM summarization); 'follow up on action items' is needs-clarification (autonomy and channel unspecified). The agent must not let the clear part drag the vague part into a guessed design.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Summarize my meetings and follow up on action items. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[If the agent asks a clarifying question, do not answer it: say you are not sure yet and will come back to it, then end the conversation.",
+				"Do not approve any plan or setup card it presents.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "complex",
+	"tags": ["intent-resolution", "compound", "partial-clarify", "under-specified"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The meeting summarization is proposed as a workflow with a bounded LLM summarization step — not as an n8n Agent and not blocked on clarification.",
+		"For the follow-up-on-action-items part, the agent asks how follow-ups should work — its autonomy (send on its own vs draft for review) and/or the channel — and does not finalize a guessed follow-up design; keeping that part explicitly open in a provisional outline is acceptable."
+	]
+}

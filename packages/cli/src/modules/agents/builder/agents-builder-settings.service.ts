@@ -1,44 +1,54 @@
-import { proxyFetch } from '@n8n/ai-utilities/http-proxy-agent';
+import type { ModelConfig, ResolvedCredential } from '@n8n/agents';
 import {
 	AGENT_BUILDER_DEFAULT_MODEL,
 	agentBuilderAdminSettingsSchema,
+	buildProxyHeaders,
 	type AgentBuilderAdminSettings,
 	type AgentBuilderAdminSettingsResponse,
 	type AgentBuilderAdminSettingsUpdateRequest,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { ModelConfig, ResolvedCredential } from '@n8n/agents';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
+import { N8N_VERSION } from '@/constants';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
+import { BuilderNotConfiguredError } from './errors';
 import {
 	isSupportedAgentProvider,
 	mapCredentialForProvider,
 	SUPPORTED_AGENT_PROVIDERS,
 } from '../json-config/credential-field-mapping';
-import { BuilderNotConfiguredError } from './errors';
 
 const SETTINGS_KEY = 'agentBuilder.settings';
 
 const DEFAULT_SETTINGS: AgentBuilderAdminSettings = { mode: 'default' };
 
-const PROXY_HEADERS = {
-	'x-n8n-feature': 'agent-builder',
-};
-
 /** Read an Anthropic key from env, preferring the n8n-specific variable. */
 function readEnvAnthropicKey(): string | null {
 	const key = process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY;
 	return key && key.length > 0 ? key : null;
+}
+
+interface BuilderTelemetryProxyConfig {
+	apiUrl: string;
+	getAuthHeaders: () => Promise<Record<string, string>>;
+}
+
+interface ResolvedBuilderModelConfig {
+	config: ModelConfig;
+	isProxied: boolean;
+	tracingProxyConfig?: BuilderTelemetryProxyConfig;
 }
 
 /**
@@ -60,6 +70,7 @@ export class AgentsBuilderSettingsService {
 		private readonly aiService: AiService,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	/** Load and cache the persisted admin settings (defaults to `{ mode: 'default' }`). */
@@ -90,30 +101,10 @@ export class AgentsBuilderSettingsService {
 		this.cached = settings;
 	}
 
-	/** Get the persisted admin settings + the derived `isConfigured` flag. */
+	/** Get the persisted admin settings. */
 	async getAdminSettings(): Promise<AgentBuilderAdminSettingsResponse> {
 		const settings = await this.loadSettings();
-		const isConfigured = await this.computeIsConfigured(settings);
-		return { settings, isConfigured };
-	}
-
-	/** Lightweight readiness check used by the builder UI to gate the input box. */
-	async getStatus(): Promise<{ isConfigured: boolean }> {
-		const settings = await this.loadSettings();
-		const isConfigured = await this.computeIsConfigured(settings);
-		return { isConfigured };
-	}
-
-	private async computeIsConfigured(settings: AgentBuilderAdminSettings): Promise<boolean> {
-		if (settings.mode === 'custom') {
-			const credential = await this.credentialsFinderService.findCredentialById(
-				settings.credentialId,
-			);
-			return !!credential;
-		}
-		// mode === 'default' — true if any of the runtime resolution branches
-		// can succeed: AI proxy enabled, or the env-var backstop is set.
-		return this.aiService.isProxyEnabled() || !!readEnvAnthropicKey();
+		return { settings };
 	}
 
 	/**
@@ -144,7 +135,7 @@ export class AgentsBuilderSettingsService {
 	 *
 	 * Throws `BuilderNotConfiguredError` when none resolve.
 	 */
-	async resolveModelConfig(user: User): Promise<{ config: ModelConfig; isProxied: boolean }> {
+	async resolveModelConfig(user: User): Promise<ResolvedBuilderModelConfig> {
 		const settings = await this.loadSettings();
 
 		if (settings.mode === 'custom') {
@@ -157,7 +148,7 @@ export class AgentsBuilderSettingsService {
 		}
 
 		if (this.aiService.isProxyEnabled()) {
-			return { config: await this.resolveProxyModel(user), isProxied: true };
+			return await this.resolveProxyModel(user);
 		}
 
 		const envKey = readEnvAnthropicKey();
@@ -205,15 +196,21 @@ export class AgentsBuilderSettingsService {
 	 * headers are injected via a `fetch` wrapper backed by `ProxyTokenManager`
 	 * so each request gets a fresh-or-cached token.
 	 */
-	private async resolveProxyModel(user: User): Promise<ModelConfig> {
+	private async resolveProxyModel(user: User): Promise<ResolvedBuilderModelConfig> {
 		const client = await this.aiService.getClient();
-		const baseURL = client.getApiProxyBaseUrl().replace(/\/$/, '') + '/anthropic/v1';
+		const proxyBaseUrl = client.getApiProxyBaseUrl().replace(/\/$/, '');
+		const baseURL = proxyBaseUrl + '/anthropic/v1';
 
 		const tokenManager = new ProxyTokenManager(async () => {
 			return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
 		});
+		const proxyHeaders = buildProxyHeaders({
+			feature: 'agent-builder',
+			n8nVersion: N8N_VERSION,
+		});
 
 		const { createAnthropic } = await import('@ai-sdk/anthropic');
+		const proxyFetch = createAiProxyFetch(this.outboundHttp);
 
 		const provider = createAnthropic({
 			baseURL,
@@ -224,10 +221,10 @@ export class AgentsBuilderSettingsService {
 				for (const [k, v] of Object.entries(auth)) {
 					headers.set(k, v);
 				}
-				for (const [k, v] of Object.entries(PROXY_HEADERS)) {
+				for (const [k, v] of Object.entries(proxyHeaders)) {
 					headers.set(k, v);
 				}
-				return await proxyFetch(input as string, { ...init, headers });
+				return await proxyFetch(input, { ...init, headers });
 			},
 		});
 		const model = provider(AGENT_BUILDER_DEFAULT_MODEL);
@@ -235,6 +232,16 @@ export class AgentsBuilderSettingsService {
 		if (!model) {
 			throw new UnexpectedError('Failed to instantiate Anthropic proxy model');
 		}
-		return model as ModelConfig;
+		return {
+			config: model as ModelConfig,
+			isProxied: true,
+			tracingProxyConfig: {
+				apiUrl: proxyBaseUrl + '/langsmith',
+				getAuthHeaders: async () => ({
+					...(await tokenManager.getAuthHeaders()),
+					...proxyHeaders,
+				}),
+			},
+		};
 	}
 }

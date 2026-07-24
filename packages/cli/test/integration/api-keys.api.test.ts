@@ -9,9 +9,11 @@ import {
 	getOwnerOnlyApiKeyScopes,
 	type ApiKeyScope,
 } from '@n8n/permissions';
+
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import {
+	addApiKey,
 	createAdmin,
 	createMemberWithApiKey,
 	createOwnerWithApiKey,
@@ -249,6 +251,51 @@ describe('Owner shell', () => {
 		const updatedApiKey = allApiKeys.find((apiKey) => apiKey.id === newApiKey.id);
 
 		expect(updatedApiKey?.expiresAt).toBe(null);
+	});
+
+	test('POST /api-keys/:id/rotate should re-issue the secret while keeping label and scopes', async () => {
+		const newApiKeyResponse = await testServer
+			.authAgentFor(ownerShell)
+			.post('/api-keys')
+			.send({ label: 'My API Key', expiresAt: null, scopes: ['user:create'] });
+
+		const newApiKey = newApiKeyResponse.body.data as ApiKeyWithRawValue;
+
+		const rotateResponse = await testServer
+			.authAgentFor(ownerShell)
+			.post(`/api-keys/${newApiKey.id}/rotate`)
+			.expect(200);
+
+		const rotatedApiKey = rotateResponse.body.data as ApiKeyWithRawValue;
+
+		expect(rotatedApiKey.id).toBe(newApiKey.id);
+		expect(rotatedApiKey.label).toBe('My API Key');
+		expect(rotatedApiKey.scopes).toEqual(['user:create']);
+		expect(rotatedApiKey.rawApiKey).not.toBe(newApiKey.rawApiKey);
+
+		const storedApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
+			id: newApiKey.id,
+		});
+		// The stored token is the new one — the previous secret no longer authenticates.
+		expect(storedApiKey.apiKey).toBe(rotatedApiKey.rawApiKey);
+		expect(storedApiKey.apiKey).not.toBe(newApiKey.rawApiKey);
+	});
+
+	test('POST /api-keys/:id/rotate should reject an expired key', async () => {
+		// Mint an already-expired key via the service (the create DTO rejects past expiry).
+		const expiredKey = await publicApiKeyService.createPublicApiKeyForUser(ownerShell, {
+			label: 'My API Key',
+			expiresAt: Math.floor(Date.now() / 1000) - 1000,
+			scopes: ['user:create'],
+		});
+
+		await testServer.authAgentFor(ownerShell).post(`/api-keys/${expiredKey.id}/rotate`).expect(400);
+
+		const storedApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
+			id: expiredKey.id,
+		});
+		// The token is left untouched.
+		expect(storedApiKey.apiKey).toBe(expiredKey.apiKey);
 	});
 
 	test('GET /api-keys should fetch the api key redacted', async () => {
@@ -515,6 +562,31 @@ describe('Member', () => {
 		});
 	});
 
+	test('GET /api-keys ignores ownership and ownerIds filters for members', async () => {
+		// Another user's key that a member must never be able to surface.
+		const otherOwner = await createOwnerWithApiKey();
+
+		await testServer
+			.authAgentFor(member)
+			.post('/api-keys')
+			.send({ label: 'My API Key', expiresAt: null, scopes: ['workflow:create'] });
+
+		// A member tries to escalate to the "all" view and target another owner.
+		const response = await testServer
+			.authAgentFor(member)
+			.get(`/api-keys?ownership=all&ownerIds=${otherOwner.id}`);
+
+		expect(response.statusCode).toBe(200);
+		// Only the member's own key is returned; the owner filter is ignored.
+		expect(response.body.data.counts.all).toBe(1);
+		expect(response.body.data.items).toHaveLength(1);
+		expect(
+			response.body.data.items.every((apiKey: { userId: string }) => apiKey.userId === member.id),
+		).toBe(true);
+		// The owner list is never exposed to callers without apiKey:manage.
+		expect(response.body.data.owners).toEqual([]);
+	});
+
 	test('DELETE /api-keys/:id should delete the api key', async () => {
 		const newApiKeyResponse = await testServer
 			.authAgentFor(member)
@@ -717,5 +789,57 @@ describe('Cross-user behavior (admin scope)', () => {
 
 		const memberKeys = await Container.get(ApiKeyRepository).findBy({ userId: memberWithKey.id });
 		expect(memberKeys).toHaveLength(0);
+	});
+
+	test('GET /api-keys narrows the all view to ownerIds for an admin', async () => {
+		const ownerWithKey = await createOwnerWithApiKey();
+		const memberWithKey = await createMemberWithApiKey();
+
+		const response = await testServer
+			.authAgentFor(ownerWithKey)
+			.get(`/api-keys?ownership=all&ownerIds=${memberWithKey.id}`)
+			.expect(200);
+
+		const ids = (response.body.data.items as Array<{ id: string }>).map((k) => k.id);
+		// Only the targeted owner's keys come back...
+		expect(ids).toEqual([memberWithKey.apiKeys[0].id]);
+		// ...while the owner list still reflects the full population with counts.
+		const owners = response.body.data.owners as Array<{ id: string; keyCount: number }>;
+		expect(owners).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ id: ownerWithKey.id, keyCount: 1 }),
+				expect.objectContaining({ id: memberWithKey.id, keyCount: 1 }),
+			]),
+		);
+	});
+
+	test('GET /api-keys reports per-owner key counts and a true total independent of filters', async () => {
+		// One owner with several keys, one with a single key, so the grouped
+		// COUNT(...) is exercised beyond the trivial one-key case.
+		const ownerWithManyKeys = await createOwnerWithApiKey();
+		await addApiKey(ownerWithManyKeys);
+		await addApiKey(ownerWithManyKeys);
+		const memberWithKey = await createMemberWithApiKey();
+
+		// Narrow the page to a single owner; the owner list + counts must still
+		// reflect the full population.
+		const response = await testServer
+			.authAgentFor(ownerWithManyKeys)
+			.get(`/api-keys?ownership=all&ownerIds=${memberWithKey.id}`)
+			.expect(200);
+
+		const owners = response.body.data.owners as Array<{ id: string; keyCount: number }>;
+		expect(owners).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ id: ownerWithManyKeys.id, keyCount: 3 }),
+				expect.objectContaining({ id: memberWithKey.id, keyCount: 1 }),
+			]),
+		);
+
+		// The page is narrowed (member's single key) while `totals` keep the
+		// unfiltered population, so badges render against the true counts.
+		expect(response.body.data.items).toHaveLength(1);
+		expect(response.body.data.counts.all).toBe(1);
+		expect(response.body.data.totals.all).toBe(4);
 	});
 });

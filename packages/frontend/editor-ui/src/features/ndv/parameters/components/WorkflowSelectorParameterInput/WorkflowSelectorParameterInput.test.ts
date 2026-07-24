@@ -46,6 +46,18 @@ vi.mock('vue-router', () => {
 	};
 });
 
+const { workflowIdHolder } = vi.hoisted(() => ({
+	workflowIdHolder: { current: (): string => '' },
+}));
+
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => workflowIdHolder.current()),
+		useRouteWorkflowId: () => computed(() => workflowIdHolder.current()),
+	};
+});
+
 const renderComponent = createComponentRenderer(WorkflowSelectorParameterInput);
 
 let projectsStore: MockedStore<typeof useProjectsStore>;
@@ -60,6 +72,7 @@ describe('WorkflowSelectorParameterInput', () => {
 		projectsStore.isTeamProjectFeatureEnabled = false;
 
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowIdHolder.current = () => useWorkflowsStore().workflowId;
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 
 		// Mock store methods to prevent unhandled errors

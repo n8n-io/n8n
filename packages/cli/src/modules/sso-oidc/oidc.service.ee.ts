@@ -1,5 +1,6 @@
 import { OidcConfigDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import {
 	AuthIdentity,
@@ -16,7 +17,6 @@ import { randomUUID } from 'crypto';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, UserError } from 'n8n-workflow';
 import type * as openidClientTypes from 'openid-client';
-import { EnvHttpProxyAgent } from 'undici';
 import { inspect } from 'util';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -99,6 +99,7 @@ export class OidcService {
 		private readonly jwtService: JwtService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly provisioningService: ProvisioningService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	async init() {
@@ -525,7 +526,7 @@ export class OidcService {
 
 	private async broadcastReloadOIDCConfigurationCommand(): Promise<void> {
 		if (this.instanceSettings.isMultiMain) {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 			await Container.get(Publisher).publishCommand({ command: 'reload-oidc-config' });
 		}
 	}
@@ -695,8 +696,7 @@ export class OidcService {
 		| undefined;
 
 	/**
-	 * Creates a proxy-aware configuration for openid-client.
-	 * This method configures customFetch to respect HTTP_PROXY, HTTPS_PROXY, and NO_PROXY environment variables.
+	 * Creates a configuration for openid-client whose HTTP calls route through the outbound HTTP factory.
 	 */
 	private async createProxyAwareConfiguration(
 		discoveryUrl: URL,
@@ -705,46 +705,31 @@ export class OidcService {
 	): Promise<openidClientTypes.Configuration> {
 		await this.loadOpenIdClient();
 
-		// Check if proxy environment variables are set
-		const hasProxyConfig =
-			process.env.HTTP_PROXY ?? process.env.HTTPS_PROXY ?? process.env.ALL_PROXY;
+		const customFetch = this.outboundHttp
+			.transport({
+				// SSRF is explicitly disabled: the discovery endpoint (and the issuer's
+				// token/userinfo endpoints reached with the same `customFetch`) is
+				// admin-configured and may legitimately point at an internal IdP, so enabling
+				// SSRF protection here would block valid internal setups
+				ssrf: 'disabled',
+				// `proxy` defaults = `'env'`
+			})
+			.asCustomFetch() as unknown as openidClientTypes.CustomFetch;
 
-		if (hasProxyConfig) {
-			this.logger.debug('Configuring OIDC client with proxy support', {
-				HTTP_PROXY: process.env.HTTP_PROXY,
-				HTTPS_PROXY: process.env.HTTPS_PROXY,
-				NO_PROXY: process.env.NO_PROXY,
-				ALL_PROXY: process.env.ALL_PROXY,
-			});
+		const configuration = await this.openidClient.discovery(
+			discoveryUrl,
+			clientId,
+			clientSecret,
+			undefined,
+			{
+				[this.openidClient.customFetch]: customFetch,
+			},
+		);
 
-			// Create a proxy agent that automatically reads from environment variables
-			const proxyAgent = new EnvHttpProxyAgent();
-			const proxyFetch: openidClientTypes.CustomFetch = async (url, options) => {
-				return await fetch(url, {
-					...options,
-					// @ts-expect-error - dispatcher is an undici-specific option not in standard fetch
-					dispatcher: proxyAgent,
-				});
-			};
+		// Reuse the same fetch for token-exchange / userinfo on the returned configuration.
+		configuration[this.openidClient.customFetch] = customFetch;
 
-			// discovery call with custom fetch client using proxy agent
-			const configuration = await this.openidClient.discovery(
-				discoveryUrl,
-				clientId,
-				clientSecret,
-				undefined,
-				{
-					[this.openidClient.customFetch]: proxyFetch,
-				},
-			);
-
-			// Configure customFetch to use the proxy agent
-			configuration[this.openidClient.customFetch] = proxyFetch;
-
-			return configuration;
-		}
-
-		return await this.openidClient.discovery(discoveryUrl, clientId, clientSecret);
+		return configuration;
 	}
 
 	private async getOidcConfiguration(): Promise<openidClientTypes.Configuration> {

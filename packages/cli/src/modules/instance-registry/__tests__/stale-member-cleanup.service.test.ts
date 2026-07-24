@@ -1,26 +1,26 @@
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceRegistryService } from '../instance-registry.service';
 import { REGISTRY_CONSTANTS } from '../instance-registry.types';
 import { StaleMemberCleanupService } from '../stale-member-cleanup.service';
 
-const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 const instanceSettings = mock<InstanceSettings>({ isLeader: true });
 const registryService = mock<InstanceRegistryService>();
 
 let service: StaleMemberCleanupService;
 
 beforeEach(() => {
-	jest.useFakeTimers();
-	jest.clearAllMocks();
+	vi.useFakeTimers();
+	vi.clearAllMocks();
 	service = new StaleMemberCleanupService(logger, instanceSettings, registryService);
 });
 
 afterEach(() => {
 	service.shutdown();
-	jest.useRealTimers();
+	vi.useRealTimers();
 });
 
 describe('StaleMemberCleanupService', () => {
@@ -30,7 +30,7 @@ describe('StaleMemberCleanupService', () => {
 			Object.assign(instanceSettings, { isLeader: true });
 
 			service.init();
-			jest.advanceTimersByTime(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS);
+			vi.advanceTimersByTime(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS);
 
 			expect(registryService.cleanupStaleMembers).toHaveBeenCalled();
 		});
@@ -39,7 +39,7 @@ describe('StaleMemberCleanupService', () => {
 			Object.assign(instanceSettings, { isLeader: false });
 
 			service.init();
-			jest.advanceTimersByTime(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS * 2);
+			vi.advanceTimersByTime(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS * 2);
 
 			expect(registryService.cleanupStaleMembers).not.toHaveBeenCalled();
 		});
@@ -53,7 +53,7 @@ describe('StaleMemberCleanupService', () => {
 
 			expect(registryService.cleanupStaleMembers).not.toHaveBeenCalled();
 
-			jest.advanceTimersByTime(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS);
+			vi.advanceTimersByTime(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS);
 
 			expect(registryService.cleanupStaleMembers).toHaveBeenCalledTimes(1);
 		});
@@ -62,7 +62,7 @@ describe('StaleMemberCleanupService', () => {
 			service.shutdown();
 			service.startCleanup();
 
-			jest.advanceTimersByTime(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS * 2);
+			vi.advanceTimersByTime(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS * 2);
 
 			expect(registryService.cleanupStaleMembers).not.toHaveBeenCalled();
 		});
@@ -73,7 +73,7 @@ describe('StaleMemberCleanupService', () => {
 			registryService.cleanupStaleMembers.mockResolvedValue(3);
 
 			service.startCleanup();
-			await jest.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS);
+			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS);
 
 			expect(logger.scoped('instance-registry').info).toHaveBeenCalledWith(
 				'Cleaned up stale registry members',
@@ -85,7 +85,7 @@ describe('StaleMemberCleanupService', () => {
 			registryService.cleanupStaleMembers.mockResolvedValue(0);
 
 			service.startCleanup();
-			await jest.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS);
+			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS);
 
 			expect(logger.scoped('instance-registry').info).not.toHaveBeenCalled();
 		});
@@ -94,7 +94,7 @@ describe('StaleMemberCleanupService', () => {
 			registryService.cleanupStaleMembers.mockRejectedValue(new Error('Redis down'));
 
 			service.startCleanup();
-			await jest.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS);
+			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS);
 
 			expect(logger.scoped('instance-registry').warn).toHaveBeenCalledWith(
 				'Failed to clean up stale registry members',
@@ -110,7 +110,7 @@ describe('StaleMemberCleanupService', () => {
 			service.startCleanup();
 			service.stopCleanup();
 
-			jest.advanceTimersByTime(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS * 2);
+			vi.advanceTimersByTime(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS * 2);
 
 			expect(registryService.cleanupStaleMembers).not.toHaveBeenCalled();
 		});
@@ -123,7 +123,7 @@ describe('StaleMemberCleanupService', () => {
 			service.startCleanup();
 			service.shutdown();
 
-			jest.advanceTimersByTime(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS * 2);
+			vi.advanceTimersByTime(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS * 2);
 
 			expect(registryService.cleanupStaleMembers).not.toHaveBeenCalled();
 		});

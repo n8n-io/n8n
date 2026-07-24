@@ -227,7 +227,10 @@ export function useWorkflowDocumentPinData(deps: WorkflowDocumentPinDataDeps) {
 				// useWorkflowDocumentNodes via an injected `unpinNodeData` dep;
 				// pulling it into the pinData subscriber means nodes doesn't need
 				// to know about pinData at all (breaks the construction cycle).
-				if (payload.name) applyUnpin(payload.name);
+				// Skipped when the node has no pinned data: unpinning unconditionally
+				// would replace the pin-data object identity (dirtying every computed
+				// that reads it) and fire a spurious DELETE pin event.
+				if (payload.name && pinnedDataByNodeName.value[payload.name]) applyUnpin(payload.name);
 				break;
 			}
 			case CHANGE_ACTION.SET: {

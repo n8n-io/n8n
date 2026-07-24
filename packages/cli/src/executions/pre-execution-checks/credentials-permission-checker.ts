@@ -1,10 +1,11 @@
 import type { Project } from '@n8n/db';
-import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
+import { CredentialsRepository, SharedCredentialsRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { INode } from 'n8n-workflow';
-import { displayParameter, UserError } from 'n8n-workflow';
+import { displayParameter, isExpression, UserError } from 'n8n-workflow';
 
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -14,6 +15,15 @@ class InvalidCredentialError extends UserError {
 
 	constructor(readonly node: INode) {
 		super(`Node "${node.name}" uses invalid credential`);
+	}
+}
+
+class InaccessibleCredentialForUserError extends UserError {
+	override description =
+		'This node uses a credential you do not have access to. Ask its owner to share it with you.';
+
+	constructor(readonly node: INode) {
+		super(`Node "${node.name}" uses a credential you do not have access to`);
 	}
 }
 
@@ -39,7 +49,47 @@ export class CredentialsPermissionChecker {
 		private readonly ownershipService: OwnershipService,
 		private readonly projectService: ProjectService,
 		private readonly nodeTypes: NodeTypes,
+		private readonly userRepository: UserRepository,
+		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
+
+	/**
+	 * Check that a specific user can use every credential referenced by the given
+	 * nodes. Used for sub-workflows whose source is not a stored database workflow
+	 * (inline/parameter, file, url): these carry no project of their own, so their
+	 * credentials must be evaluated against the user triggering the run rather than
+	 * against the parent workflow's project.
+	 */
+	async checkForUser(userId: string, nodes: INode[]) {
+		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
+		const workflowCredIds = Object.keys(credIdsToNodes);
+
+		if (workflowCredIds.length === 0) return;
+
+		// Load the role relation (scopes are eager) so hasGlobalScope can resolve.
+		const user = await this.userRepository.findOne({
+			where: { id: userId },
+			relations: ['role'],
+		});
+		if (!user) {
+			// Cannot resolve the triggering user - fail closed.
+			throw new InaccessibleCredentialForUserError(credIdsToNodes[workflowCredIds[0]][0]);
+		}
+
+		// A user with instance-wide credential listing can use any credential.
+		if (hasGlobalScope(user, 'credential:list')) return;
+
+		const accessibleCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
+			'credential:read',
+		]);
+		const accessibleSet = new Set(accessibleCredentials.map((cred) => cred.id));
+
+		for (const credentialsId of workflowCredIds) {
+			if (!accessibleSet.has(credentialsId)) {
+				throw new InaccessibleCredentialForUserError(credIdsToNodes[credentialsId][0]);
+			}
+		}
+	}
 
 	/**
 	 * Check if a workflow has the ability to execute based on the projects it's apart of.
@@ -104,7 +154,11 @@ export class CredentialsPermissionChecker {
 			const activeCredTypes = this.getActiveCredentialTypes(node);
 
 			for (const [credType, cred] of Object.entries(node.credentials)) {
-				if (!cred.id) throw new InvalidCredentialError(node);
+				if (!cred.id) {
+					// AI Gateway managed credentials have no real DB id — skip permission check
+					if (cred.__aiGatewayManaged === true) continue;
+					throw new InvalidCredentialError(node);
+				}
 
 				// Skip credentials that are not actively used by the node's current configuration
 				if (activeCredTypes !== null && !activeCredTypes.has(credType)) continue;
@@ -137,6 +191,10 @@ export class CredentialsPermissionChecker {
 			// the active credential is specified by the nodeCredentialType parameter
 			const { nodeCredentialType } = node.parameters;
 			if (typeof nodeCredentialType === 'string' && nodeCredentialType) {
+				// An expression only resolves to its real type at execution time, so the
+				// static filter can't know which credential it activates. Check all
+				// referenced credentials rather than trust the unresolved literal.
+				if (isExpression(nodeCredentialType)) return null;
 				activeTypes.add(nodeCredentialType);
 			}
 
@@ -145,6 +203,7 @@ export class CredentialsPermissionChecker {
 			// specified by the genericAuthType parameter
 			const { genericAuthType } = node.parameters;
 			if (typeof genericAuthType === 'string' && genericAuthType) {
+				if (isExpression(genericAuthType)) return null;
 				activeTypes.add(genericAuthType);
 			}
 

@@ -38,9 +38,42 @@ export class MicrosoftGraphSecurity implements INodeType {
 			{
 				name: 'microsoftGraphSecurityOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftGraphSecurityOAuth2Api'],
+					},
+				},
+			},
+			{
+				name: 'microsoftOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftOAuth2Api'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Graph Security OAuth2',
+						value: 'microsoftGraphSecurityOAuth2Api',
+					},
+					{
+						name: 'Microsoft OAuth2 (Graph)',
+						value: 'microsoftOAuth2Api',
+						description:
+							'Generic Microsoft Graph credential. It must have the SecurityEvents.ReadWrite.All offline_access scope with Entra admin consent.',
+					},
+				],
+				default: 'microsoftGraphSecurityOAuth2Api',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',

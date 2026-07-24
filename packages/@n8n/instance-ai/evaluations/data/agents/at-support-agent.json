@@ -1,0 +1,25 @@
+{
+	"description": "Gold: {anchor: agent, embedsOther: true} — agent outer shell whose actions (lookup, refund, escalation) are explicitly first-class reusable workflows, also triggerable manually. The agent-side embeds_other=true shape, previously uncovered.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "A customer support agent that can look up orders from Postgres, issue refunds via our billing service, and escalate to a Zendesk ticket. The lookup, refund, and escalation should be reusable workflows we can also trigger manually elsewhere. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "medium",
+	"tags": ["intent-resolution", "chat", "wf-tools", "reusable-actions"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent proposes creating an n8n Agent as the top-level design for the support assistant, not a fixed workflow pipeline.",
+		"In the proposed design the lookup, refund, and escalation actions are workflows the n8n Agent invokes as tools — honoring the requirement that they stay reusable and manually triggerable — rather than capabilities baked only into the agent."
+	]
+}

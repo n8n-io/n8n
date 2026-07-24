@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/promise-function-async -- jest mocks */
+/* eslint-disable @typescript-eslint/unbound-method -- vi mocks */
 import type { User } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
@@ -26,8 +26,8 @@ describe('createWorkflow (public API)', () => {
 		});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.spyOn(Container, 'get').mockImplementation((serviceClass) => {
+		vi.clearAllMocks();
+		vi.spyOn(Container, 'get').mockImplementation((serviceClass) => {
 			if (serviceClass === WorkflowCreationService) return workflowCreationService;
 			if (serviceClass === RedactionEnforcementService) return redactionEnforcementService;
 			return mock();

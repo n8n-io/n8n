@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { useVersionsStore } from './versions.store';
+import type { ModalOpeners } from '@/Interface';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import * as versionsApi from '@n8n/rest-api-client/api/versions';
 import type { IVersionNotificationSettings } from '@n8n/api-types';
@@ -8,7 +9,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from './settings.store';
 import { useToast } from '@/app/composables/useToast';
 import { reactive } from 'vue';
-import { VIEWS } from '@/app/constants';
+import { VERSIONS_MODAL_KEY, VIEWS, WHATS_NEW_MODAL_KEY } from '@/app/constants';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -17,10 +18,12 @@ vi.mock('vue-router', async (importOriginal) => ({
 
 vi.mock('@/app/composables/useToast', () => {
 	const showToast = vi.fn();
+	const showMessage = vi.fn();
 	return {
 		useToast: () => {
 			return {
 				showToast,
+				showMessage,
 			};
 		},
 	};
@@ -70,11 +73,22 @@ const whatsNew: WhatsNewSection = {
 
 const toast = useToast();
 
+// Recreated per test (see beforeEach) so call history never leaks between tests —
+// vi.restoreAllMocks() resets spies from vi.spyOn but not standalone vi.fn()s.
+let openModal: ModalOpeners['openModal'];
+let openModalWithData: ModalOpeners['openModalWithData'];
+
 describe('versions.store', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
+		// The toast mocks live in the vi.mock factory and persist across tests;
+		// clear them so `.mock.calls` indexing reflects only the current test.
+		vi.mocked(toast.showToast).mockClear();
+		vi.mocked(toast.showMessage).mockClear();
 		localStorage.clear();
 		setActivePinia(createPinia());
+		openModal = vi.fn();
+		openModalWithData = vi.fn();
 	});
 
 	describe('fetchVersions()', () => {
@@ -128,6 +142,7 @@ describe('versions.store', () => {
 			const versionsStore = useVersionsStore();
 			versionsStore.initialize(settings);
 
+			versionsStore.registerModalOpeners({ openModal, openModalWithData });
 			await versionsStore.fetchWhatsNew();
 
 			expect(versionsApi.getWhatsNewSection).toHaveBeenCalledWith(
@@ -139,6 +154,52 @@ describe('versions.store', () => {
 			expect(versionsStore.whatsNewArticles).toEqual([whatsNewArticle]);
 		});
 
+		it('should dismiss the callout as soon as it is shown', async () => {
+			vi.spyOn(versionsApi, 'getWhatsNewSection').mockResolvedValue(whatsNew);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as any);
+
+			const rootStore = useRootStore();
+			rootStore.setVersionCli(currentVersionName);
+			rootStore.setInstanceId(instanceId);
+
+			const versionsStore = useVersionsStore();
+			versionsStore.initialize(settings);
+
+			versionsStore.registerModalOpeners({ openModal, openModalWithData });
+			await versionsStore.fetchWhatsNew();
+
+			// The callout has been shown ...
+			expect(toast.showMessage).toHaveBeenCalled();
+			// ... and is immediately marked as dismissed so it does not reappear on the
+			// next load, even though the user never explicitly closed it.
+			expect(versionsStore.shouldShowWhatsNewCallout()).toBe(false);
+		});
+
+		it("should open the what's new modal via the registered opener when the callout is clicked", async () => {
+			vi.spyOn(versionsApi, 'getWhatsNewSection').mockResolvedValue(whatsNew);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as any);
+
+			const rootStore = useRootStore();
+			rootStore.setVersionCli(currentVersionName);
+			rootStore.setInstanceId(instanceId);
+
+			const versionsStore = useVersionsStore();
+			versionsStore.initialize(settings);
+
+			versionsStore.registerModalOpeners({ openModal, openModalWithData });
+			await versionsStore.fetchWhatsNew();
+
+			const onClick = vi.mocked(toast.showMessage).mock.calls[0][0].onClick;
+			onClick?.();
+
+			expect(openModalWithData).toHaveBeenCalledWith({
+				name: WHATS_NEW_MODAL_KEY,
+				data: { articleId: whatsNewArticle.id },
+			});
+		});
+
 		it("should not fetch What's new articles if version notifications are disabled", async () => {
 			vi.spyOn(versionsApi, 'getWhatsNewSection');
 
@@ -148,6 +209,7 @@ describe('versions.store', () => {
 				enabled: false,
 			});
 
+			versionsStore.registerModalOpeners({ openModal, openModalWithData });
 			await versionsStore.fetchWhatsNew();
 
 			expect(versionsApi.getWhatsNewSection).not.toHaveBeenCalled();
@@ -164,6 +226,7 @@ describe('versions.store', () => {
 				whatsNewEnabled: false,
 			});
 
+			versionsStore.registerModalOpeners({ openModal, openModalWithData });
 			await versionsStore.fetchWhatsNew();
 
 			expect(versionsApi.getWhatsNewSection).not.toHaveBeenCalled();
@@ -183,6 +246,7 @@ describe('versions.store', () => {
 			const versionsStore = useVersionsStore();
 			versionsStore.initialize(settings);
 
+			versionsStore.registerModalOpeners({ openModal, openModalWithData });
 			await versionsStore.checkForNewVersions();
 
 			expect(versionsApi.getWhatsNewSection).toHaveBeenCalledWith(
@@ -220,6 +284,7 @@ describe('versions.store', () => {
 				infoUrl: 'https://docs.n8n.io/hosting/installation/updating/',
 			});
 
+			versionsStore.registerModalOpeners({ openModal, openModalWithData });
 			await versionsStore.checkForNewVersions();
 
 			expect(versionsStore.whatsNewArticles).toEqual([]);
@@ -244,6 +309,7 @@ describe('versions.store', () => {
 				infoUrl: 'https://docs.n8n.io/hosting/installation/updating/',
 			});
 
+			versionsStore.registerModalOpeners({ openModal, openModalWithData });
 			await versionsStore.checkForNewVersions();
 
 			expect(versionsStore.whatsNewArticles).toEqual([whatsNewArticle]);
@@ -273,6 +339,7 @@ describe('versions.store', () => {
 			const versionsStore = useVersionsStore();
 			versionsStore.initialize(settings);
 
+			versionsStore.registerModalOpeners({ openModal, openModalWithData });
 			await versionsStore.checkForNewVersions();
 
 			expect(versionsStore.nextVersions).toHaveLength(1);
@@ -284,6 +351,33 @@ describe('versions.store', () => {
 					type: 'warning',
 				}),
 			);
+
+			// Clicking the toast opens the versions modal through the registered opener.
+			const onClick = vi.mocked(toast.showToast).mock.calls[0][0].onClick;
+			onClick?.();
+			expect(openModal).toHaveBeenCalledWith(VERSIONS_MODAL_KEY);
+		});
+
+		it('does not throw when opening a modal before openers are registered', async () => {
+			vi.spyOn(versionsApi, 'getWhatsNewSection').mockResolvedValue({ ...whatsNew, items: [] });
+			vi.spyOn(versionsApi, 'getNextVersions').mockResolvedValue([
+				{ ...currentVersion, hasSecurityIssue: true, securityIssueFixVersion: '1.100.1' },
+				{ ...currentVersion, name: '1.100.1', hasSecurityFix: true },
+			]);
+
+			const rootStore = useRootStore();
+			rootStore.setVersionCli(currentVersionName);
+			rootStore.setInstanceId(instanceId);
+
+			const versionsStore = useVersionsStore();
+			versionsStore.initialize(settings);
+
+			// No registerModalOpeners() — the default no-op opener must not break the flow.
+			await versionsStore.checkForNewVersions();
+
+			const onClick = vi.mocked(toast.showToast).mock.calls[0][0].onClick;
+			expect(() => onClick?.()).not.toThrow();
+			expect(openModal).not.toHaveBeenCalled();
 		});
 	});
 

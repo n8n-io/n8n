@@ -1,3 +1,4 @@
+import { ModuleRegistry } from '@n8n/backend-common';
 import type { User, EntityManager } from '@n8n/db';
 import {
 	Project,
@@ -7,7 +8,6 @@ import {
 	SharedWorkflow,
 	SharedWorkflowRepository,
 } from '@n8n/db';
-import { ModuleRegistry } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
@@ -127,7 +127,7 @@ export async function userHasScopes(
 			throw new NotFoundError(`Data table with ID "${dataTableId}" not found.`);
 		}
 
-		const { DataTableRepository } = await import('@/modules/data-table/data-table.repository');
+		const { DataTableRepository } = await import('@/modules/data-table/data-table.repository.js');
 		const dataTable = await Container.get(DataTableRepository).findOne({
 			where: { id: dataTableId },
 			relations: ['project'],

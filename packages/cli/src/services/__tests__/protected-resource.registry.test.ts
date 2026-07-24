@@ -1,4 +1,7 @@
-import type { ProtectedResource } from '../protected-resource.registry';
+import type { Logger } from '@n8n/backend-common';
+import { mock } from 'vitest-mock-extended';
+
+import type { ProtectedResource, ProtectedResourceResolver } from '../protected-resource.registry';
 import { ProtectedResourceRegistry } from '../protected-resource.registry';
 
 const resourceA: ProtectedResource = {
@@ -6,6 +9,7 @@ const resourceA: ProtectedResource = {
 	getResourceUrl: () => 'https://n8n.example.com/mcp-server/http',
 	getAudiences: () => ['https://n8n.example.com/mcp-server/http', 'mcp-server-api'],
 	scopes: ['tool:listWorkflows', 'tool:getWorkflowDetails'],
+	authorize: async () => true,
 	isDefault: true,
 };
 
@@ -13,6 +17,7 @@ const resourceB: ProtectedResource = {
 	id: 'workflow-trigger',
 	getResourceUrl: () => 'https://n8n.example.com/webhook/wf-1/mcp',
 	getAudiences: () => ['https://n8n.example.com/webhook/wf-1/mcp'],
+	authorize: async () => true,
 	scopes: ['tool:listWorkflows', 'workflow:execute'],
 };
 
@@ -20,7 +25,7 @@ describe('ProtectedResourceRegistry', () => {
 	let registry: ProtectedResourceRegistry;
 
 	beforeEach(() => {
-		registry = new ProtectedResourceRegistry();
+		registry = new ProtectedResourceRegistry(mock<Logger>());
 		registry.register(resourceA);
 		registry.register(resourceB);
 	});
@@ -32,17 +37,55 @@ describe('ProtectedResourceRegistry', () => {
 			expect(registry.getById('unknown')).toBeUndefined();
 		});
 
-		it('should resolve resources by resource URL, ignoring trailing slashes', () => {
-			expect(registry.getByResourceUrl('https://n8n.example.com/mcp-server/http')).toBe(resourceA);
-			expect(registry.getByResourceUrl('https://n8n.example.com/mcp-server/http/')).toBe(resourceA);
-			expect(registry.getByResourceUrl('https://n8n.example.com/webhook/wf-1/mcp')).toBe(resourceB);
-			expect(registry.getByResourceUrl('https://evil.example.com/mcp-server/http')).toBeUndefined();
+		it('should resolve a resource by any of its declared resource URLs', async () => {
+			const multiUrlResource: ProtectedResource = {
+				id: 'instance-mcp-multi',
+				getResourceUrl: () => 'https://n8n-mcp.example.com/mcp-server/http',
+				getResourceUrls: () => [
+					'https://n8n-mcp.example.com/mcp-server/http',
+					'https://n8n.example.com/mcp-server/http',
+				],
+				getAudiences: () => [
+					'https://n8n-mcp.example.com/mcp-server/http',
+					'https://n8n.example.com/mcp-server/http',
+				],
+				authorize: async () => true,
+				scopes: [],
+			};
+			const multiRegistry = new ProtectedResourceRegistry(mock<Logger>());
+			multiRegistry.register(multiUrlResource);
+
+			expect(
+				await multiRegistry.getByResourceUrl('https://n8n-mcp.example.com/mcp-server/http'),
+			).toBe(multiUrlResource);
+			expect(await multiRegistry.getByResourceUrl('https://n8n.example.com/mcp-server/http/')).toBe(
+				multiUrlResource,
+			);
+			expect(
+				await multiRegistry.getByResourceUrl('https://other.example.com/mcp-server/http'),
+			).toBeUndefined();
+			expect(await multiRegistry.getByResourcePath('/mcp-server/http')).toBe(multiUrlResource);
 		});
 
-		it('should resolve resources by URL path', () => {
-			expect(registry.getByResourcePath('/mcp-server/http')).toBe(resourceA);
-			expect(registry.getByResourcePath('/webhook/wf-1/mcp')).toBe(resourceB);
-			expect(registry.getByResourcePath('/unknown')).toBeUndefined();
+		it('should resolve resources by resource URL, ignoring trailing slashes', async () => {
+			expect(await registry.getByResourceUrl('https://n8n.example.com/mcp-server/http')).toBe(
+				resourceA,
+			);
+			expect(await registry.getByResourceUrl('https://n8n.example.com/mcp-server/http/')).toBe(
+				resourceA,
+			);
+			expect(await registry.getByResourceUrl('https://n8n.example.com/webhook/wf-1/mcp')).toBe(
+				resourceB,
+			);
+			expect(
+				await registry.getByResourceUrl('https://evil.example.com/mcp-server/http'),
+			).toBeUndefined();
+		});
+
+		it('should resolve resources by URL path', async () => {
+			expect(await registry.getByResourcePath('/mcp-server/http')).toBe(resourceA);
+			expect(await registry.getByResourcePath('/webhook/wf-1/mcp')).toBe(resourceB);
+			expect(await registry.getByResourcePath('/unknown')).toBeUndefined();
 		});
 
 		it('should resolve the default resource', () => {
@@ -50,7 +93,7 @@ describe('ProtectedResourceRegistry', () => {
 		});
 
 		it('should return undefined as default when no resource is marked default', () => {
-			const emptyDefault = new ProtectedResourceRegistry();
+			const emptyDefault = new ProtectedResourceRegistry(mock<Logger>());
 			emptyDefault.register(resourceB);
 			expect(emptyDefault.getDefaultResource()).toBeUndefined();
 		});
@@ -72,12 +115,12 @@ describe('ProtectedResourceRegistry', () => {
 			]);
 		});
 
-		it('should keep per-resource audiences isolated', () => {
+		it('should keep per-resource audiences isolated', async () => {
 			// The legacy audience belongs to the instance resource only — resolving
 			// audiences through a specific resource must not leak it to others.
-			expect(registry.getByResourceUrl(resourceB.getResourceUrl())?.getAudiences()).toEqual([
-				'https://n8n.example.com/webhook/wf-1/mcp',
-			]);
+			expect((await registry.getByResourceUrl(resourceB.getResourceUrl()))?.getAudiences()).toEqual(
+				['https://n8n.example.com/webhook/wf-1/mcp'],
+			);
 		});
 
 		it('should union scopes across all registered resources, deduplicated', () => {
@@ -89,27 +132,22 @@ describe('ProtectedResourceRegistry', () => {
 		});
 	});
 
-	describe('isAnyResourceEnabled', () => {
-		it('should return false when no resources are registered', async () => {
-			expect(await new ProtectedResourceRegistry().isAnyResourceEnabled()).toBe(false);
-		});
+	describe('resolver failures', () => {
+		it('should treat a throwing resolver as a non-match and log a warning', async () => {
+			const logger = mock<Logger>();
+			const failingRegistry = new ProtectedResourceRegistry(logger);
+			const resolver = mock<ProtectedResourceResolver>({ id: 'boom', scopes: [] });
+			resolver.resolveByUrl.mockRejectedValue(new Error('backing store unavailable'));
+			resolver.resolveByPath.mockRejectedValue(new Error('backing store unavailable'));
+			failingRegistry.registerResolver(resolver);
 
-		it('should treat resources without an isEnabled hook as enabled', async () => {
-			expect(await registry.isAnyResourceEnabled()).toBe(true);
-		});
+			expect(await failingRegistry.getByResourceUrl('https://n8n.example.com/x')).toBeUndefined();
+			expect(await failingRegistry.getByResourcePath('/x')).toBeUndefined();
 
-		it('should return false when every resource reports disabled', async () => {
-			const gated = new ProtectedResourceRegistry();
-			gated.register({ ...resourceA, isEnabled: async () => false });
-			gated.register({ ...resourceB, isEnabled: async () => false });
-			expect(await gated.isAnyResourceEnabled()).toBe(false);
-		});
-
-		it('should return true when at least one resource reports enabled', async () => {
-			const gated = new ProtectedResourceRegistry();
-			gated.register({ ...resourceA, isEnabled: async () => false });
-			gated.register({ ...resourceB, isEnabled: async () => true });
-			expect(await gated.isAnyResourceEnabled()).toBe(true);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Protected resource resolver "boom" failed to resolve',
+				{ error: 'backing store unavailable' },
+			);
 		});
 	});
 });

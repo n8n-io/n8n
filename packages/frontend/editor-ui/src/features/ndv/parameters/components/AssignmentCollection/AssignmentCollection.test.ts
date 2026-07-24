@@ -13,6 +13,16 @@ import type { AssignmentCollectionValue, AssignmentValue } from 'n8n-workflow';
 
 vi.mock('vue-router');
 
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
 const DEFAULT_SETUP: RenderOptions<typeof AssignmentCollection> = {
 	pinia: createTestingPinia({
 		initialState: {
@@ -121,6 +131,42 @@ describe('AssignmentCollection.vue', () => {
 			'updatedValue1',
 		);
 		expect(getInput(within(assignments[1]).getByTestId('assignment-value'))).toHaveValue('value2');
+	});
+
+	it('keeps source assignments unchanged while editing restricted values', async () => {
+		const sourceValue: AssignmentCollectionValue = {
+			assignments: [
+				{
+					name: 'teamId',
+					value: '<__PLACEHOLDER_VALUE__Linear team ID__>',
+					type: 'string',
+				} as AssignmentValue,
+			],
+		};
+
+		const { findByTestId, queryByTestId } = renderComponent({
+			props: {
+				value: sourceValue,
+				editableValueIndices: [0],
+			},
+		});
+
+		const assignment = await findByTestId('assignment');
+		const valueInput = getInput(within(assignment).getByTestId('assignment-value'));
+		await userEvent.type(valueInput, 'team-1');
+		await fireEvent.blur(valueInput);
+
+		expect(sourceValue).toEqual({
+			assignments: [
+				{
+					name: 'teamId',
+					value: '<__PLACEHOLDER_VALUE__Linear team ID__>',
+					type: 'string',
+				},
+			],
+		});
+		expect(within(assignment).queryByTestId('assignment-remove')).not.toBeInTheDocument();
+		expect(queryByTestId('assignment-collection-drop-area')).not.toBeInTheDocument();
 	});
 
 	it('renders empty state properly', async () => {

@@ -9,6 +9,16 @@ import * as cloudPlanApi from '@n8n/rest-api-client/api/cloudPlans';
 import { useVersionsStore } from '@/app/stores/versions.store';
 import { useTelemetry } from './useTelemetry';
 
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let usersStore: ReturnType<typeof useUsersStore>;
 let versionStore: ReturnType<typeof useVersionsStore>;

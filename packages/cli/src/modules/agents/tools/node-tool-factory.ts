@@ -1,22 +1,25 @@
 import type { BuiltTool } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { createZodSchemaFromArgs, extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
+import type { AgentJsonToolConfig } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
-import type { IDataObject, INodeParameters } from 'n8n-workflow';
+import type { IDataObject, INodeParameters, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { isToolType, nodeNameToToolName } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
-import { Container } from '@n8n/di';
 
-import type { AgentJsonToolConfig } from '@n8n/api-types';
+import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
 
 type NodeToolInputSchema = JSONSchema7 | z.ZodType;
 
 export interface NodeToolFactoryContext {
 	executor: EphemeralNodeExecutor;
 	projectId: string;
+	/** Eval-only additionalData decoration — absent on every production path. */
+	instrumentToolAdditionalData?: InstrumentToolAdditionalData;
 }
 
 /**
@@ -137,6 +140,18 @@ export async function resolveNodeTool(
 	const sanitizedName = nodeNameToToolName(toolSchema.name);
 	const nodeType = resolveToolNodeType(toolSchema.node.nodeType, toolSchema.node.nodeTypeVersion);
 
+	// When instrumented (eval runs), the ephemeral node is named after the tool
+	// so hint lookup and request attribution key on the same identifier the
+	// model calls.
+	const instrument = ctx.instrumentToolAdditionalData;
+	const instrumentedExecution = instrument
+		? {
+				nodeName: sanitizedName,
+				configureAdditionalData: (additionalData: IWorkflowExecuteAdditionalData) =>
+					instrument(additionalData, { toolName: sanitizedName, toolKind: 'node' }),
+			}
+		: {};
+
 	const built = new Tool(sanitizedName)
 		.description(toolSchema.description ?? `Execute the ${nodeType} node`)
 		.input(await resolveInputSchema(toolSchema, ctx))
@@ -148,6 +163,7 @@ export async function resolveNodeTool(
 				credentialDetails: toExecutorCredentials(toolSchema.node.credentials),
 				inputData: [{ json: input as IDataObject }],
 				projectId: ctx.projectId,
+				...instrumentedExecution,
 			});
 			// Throw on the executor's structured error so the agent runtime
 			// flags the tool-result with `isError: true` and the recorder

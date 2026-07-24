@@ -24,6 +24,7 @@ import { nodeToMcpServer } from '../composables/useMcpServerAdapter';
 import AgentJsonEditor from './AgentJsonEditor.vue';
 import AgentToolConfigApprovalSetting from './AgentToolConfigApprovalSetting.vue';
 import AgentToolConfigCustomContent from './AgentToolConfigCustomContent.vue';
+import AgentToolConfigMcpApprovalSetting from './AgentToolConfigMcpApprovalSetting.vue';
 import AgentToolConfigModalHeader from './AgentToolConfigModalHeader.vue';
 import AgentToolConfigNodeContent from './AgentToolConfigNodeContent.vue';
 import AgentToolConfigWorkflowContent from './AgentToolConfigWorkflowContent.vue';
@@ -34,6 +35,8 @@ interface ToolModalData {
 	existingToolNames?: string[];
 	projectId?: string;
 	agentId?: string;
+	/** Inline agents pass false: approval needs suspend/resume, which workflow executions don't support. */
+	supportsToolApproval?: boolean;
 	onConfirm: (updatedRef: AgentJsonToolRef) => void;
 	onRemove?: () => void;
 	kind?: 'tool';
@@ -46,6 +49,8 @@ interface McpServerModalData {
 	existingToolNames?: string[];
 	projectId?: string;
 	agentId?: string;
+	/** Inline agents pass false: approval needs suspend/resume, which workflow executions don't support. */
+	supportsToolApproval?: boolean;
 	onConfirm: (updatedServer: AgentJsonMcpServerConfig) => void;
 	onRemove?: () => void;
 }
@@ -76,6 +81,9 @@ const workflowContentRef = ref<InstanceType<typeof AgentToolConfigWorkflowConten
 const isValid = ref(false);
 const activeView = ref<'config' | 'raw'>('config');
 const approvalRequired = ref(false);
+const mcpApproval = ref<AgentJsonMcpServerConfig['approval']>();
+const mcpApprovalValid = ref(true);
+const draftNode = ref<INode | null>(null);
 
 const initialNode = computed<INode | null>(() =>
 	isMcpTool.value
@@ -126,8 +134,15 @@ const viewOptions = computed(() => [
 const canRender = computed(
 	() => isCustomTool.value || isWorkflowTool.value || initialNode.value !== null,
 );
-const canSave = computed(() => isCustomTool.value || isValid.value);
-const showApprovalSetting = computed(() => !isMcpTool.value && toolModalData.value !== null);
+const canSave = computed(() => {
+	if (isCustomTool.value) return true;
+	if (isMcpTool.value) return isValid.value && mcpApprovalValid.value;
+	return isValid.value;
+});
+const supportsApproval = computed(() => props.data.supportsToolApproval !== false);
+const showApprovalSetting = computed(
+	() => supportsApproval.value && !isMcpTool.value && toolModalData.value !== null,
+);
 
 watch(
 	() => toolModalData.value?.toolRef,
@@ -136,6 +151,24 @@ watch(
 	},
 	{ immediate: true },
 );
+
+watch(
+	() => mcpModalData.value?.mcpServer.approval,
+	(approval) => {
+		mcpApproval.value = approval;
+	},
+	{ immediate: true },
+);
+
+watch(
+	initialNode,
+	(node) => {
+		draftNode.value = node;
+	},
+	{ immediate: true },
+);
+
+const currentNode = computed(() => draftNode.value ?? initialNode.value);
 
 const headerKind = computed<'node' | 'workflow' | 'custom' | 'mcp'>(() => {
 	if (isCustomTool.value) return 'custom';
@@ -156,15 +189,46 @@ const headerNodeTypeDescription = computed(() => {
 	return nodeContentRef.value?.getNodeTypeDescription() ?? null;
 });
 
-const rawEditorValue = computed(() =>
-	isMcpTool.value ? (mcpModalData.value?.mcpServer ?? {}) : (toolModalData.value?.toolRef ?? {}),
-);
+const draftRawEditorValue = computed(() => {
+	try {
+		if (isMcpTool.value) {
+			const mcpData = mcpModalData.value;
+			if (!mcpData || !currentNode.value) return mcpData?.mcpServer ?? {};
+			return withMcpApproval(nodeToMcpServer(currentNode.value, mcpData.mcpServer));
+		}
+
+		const toolData = toolModalData.value;
+		if (!toolData) return {};
+
+		if (toolData.toolRef.type === 'node' && draftNode.value) {
+			return withApprovalRequirement(updateToolRefFromNode(toolData.toolRef, draftNode.value));
+		}
+
+		return withApprovalRequirement(toolData.toolRef);
+	} catch {
+		return null;
+	}
+});
+
+const rawEditorValue = computed(() => {
+	if (draftRawEditorValue.value) {
+		return draftRawEditorValue.value;
+	}
+	const lastValidValue = isMcpTool.value
+		? (mcpModalData.value?.mcpServer ?? {})
+		: (toolModalData.value?.toolRef ?? {});
+	return lastValidValue;
+});
 
 function closeDialog() {
 	uiStore.closeModal(props.modalName);
 }
 
 function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
+	if (!supportsApproval.value) {
+		const { requireApproval: _requireApproval, ...rest } = ref;
+		return rest as AgentJsonToolRef;
+	}
 	const updatedRef = { ...ref };
 	if (approvalRequired.value) {
 		updatedRef.requireApproval = true;
@@ -172,6 +236,16 @@ function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
 		delete updatedRef.requireApproval;
 	}
 	return updatedRef;
+}
+
+function withMcpApproval(server: AgentJsonMcpServerConfig): AgentJsonMcpServerConfig {
+	const updatedServer = { ...server };
+	if (supportsApproval.value && mcpApproval.value) {
+		updatedServer.approval = mcpApproval.value;
+	} else {
+		delete updatedServer.approval;
+	}
+	return updatedServer;
 }
 
 function handleConfirm() {
@@ -189,7 +263,7 @@ function handleConfirm() {
 		if (!currentNode) return;
 		if (!mcpData) return;
 		const updatedServer = nodeToMcpServer(currentNode, mcpData.mcpServer);
-		mcpData.onConfirm(updatedServer);
+		mcpData.onConfirm(withMcpApproval(updatedServer));
 		closeDialog();
 		return;
 	}
@@ -245,6 +319,10 @@ function handleValidUpdate(valid: boolean) {
 
 function handleNodeNameUpdate(name: string) {
 	nodeName.value = name;
+}
+
+function handleNodeUpdate(node: INode) {
+	draftNode.value = node;
 }
 </script>
 
@@ -315,6 +393,7 @@ function handleNodeNameUpdate(name: string) {
 							content-test-id="agent-tool-config-mcp-content"
 							@update:valid="handleValidUpdate"
 							@update:node-name="handleNodeNameUpdate"
+							@update:node="handleNodeUpdate"
 						/>
 						<AgentToolConfigNodeContent
 							v-else-if="initialNode"
@@ -325,10 +404,18 @@ function handleNodeNameUpdate(name: string) {
 							content-test-id="node-tool-settings-content"
 							@update:valid="handleValidUpdate"
 							@update:node-name="handleNodeNameUpdate"
+							@update:node="handleNodeUpdate"
 						/>
 						<AgentToolConfigApprovalSetting
 							v-if="!isMcpTool && initialNode && showApprovalSetting"
 							v-model="approvalRequired"
+						/>
+						<AgentToolConfigMcpApprovalSetting
+							v-if="isMcpTool && currentNode && supportsApproval"
+							v-model="mcpApproval"
+							:node="currentNode"
+							:project-id="data.projectId"
+							@update:valid="mcpApprovalValid = $event"
 						/>
 					</div>
 				</template>
@@ -388,7 +475,7 @@ function handleNodeNameUpdate(name: string) {
 	max-height: var(--agent-tool-config-content-max-height);
 	overflow-x: hidden;
 	overflow-y: auto;
-	margin-right: calc(-1 * var(--spacing--lg));
+	margin-right: 0;
 	padding: var(--spacing--md) 0;
 
 	:global(.ndv-connection-hint-notice) {

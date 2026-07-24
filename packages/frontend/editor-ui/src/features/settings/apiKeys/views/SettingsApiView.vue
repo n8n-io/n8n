@@ -3,12 +3,13 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@/app/constants/durations';
 
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { DOCS_DOMAIN } from '@/app/constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { useI18n } from '@n8n/i18n';
@@ -19,8 +20,9 @@ import { useApiKeysStore } from '../apiKeys.store';
 import { storeToRefs } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { ApiKey } from '@n8n/api-types';
+import type { IUser } from '@n8n/design-system';
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
@@ -29,10 +31,12 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { I18nT } from 'vue-i18n';
+import ApiKeyOwnerFilter from '../components/ApiKeyOwnerFilter.vue';
 
 import ApiKeyTable from '../components/ApiKeyTable.vue';
 import ApiKeyScopesModal from '../components/ApiKeyScopesModal.vue';
 import RevokeApiKeyConfirmModal from '../components/RevokeApiKeyConfirmModal.vue';
+import RotateApiKeyConfirmModal from '../components/RotateApiKeyConfirmModal.vue';
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
@@ -52,8 +56,10 @@ const {
 	fetchApiKeys,
 	setOwnership,
 	setLabelFilter,
+	setOwnerFilter,
 	applyTableOptions,
 	deleteApiKey,
+	rotateApiKey,
 	getApiKeyAvailableScopes,
 } = apiKeysStore;
 const {
@@ -62,11 +68,46 @@ const {
 	totalCountForOwnership,
 	ownership,
 	labelFilter,
+	ownerIds,
+	owners,
 	totalMineCount,
 	totalAllCount,
 	hasAnyKeys,
 	tableOptions,
 } = storeToRefs(apiKeysStore);
+
+const ownerOptions = computed<IUser[]>(() =>
+	owners.value.map((owner) => ({
+		id: owner.id,
+		firstName: owner.firstName,
+		lastName: owner.lastName,
+		email: owner.email,
+	})),
+);
+
+const ownerKeyCounts = computed<Record<string, number>>(() =>
+	owners.value.reduce<Record<string, number>>((acc, owner) => {
+		acc[owner.id] = owner.keyCount;
+		return acc;
+	}, {}),
+);
+
+// The store carries `null` for "all owners" (no narrowing); the picker is a
+// plain multi-select, so present that as every owner being selected.
+const selectedOwnerIds = computed(
+	() => ownerIds.value ?? ownerOptions.value.map((owner) => owner.id),
+);
+
+async function onOwnerFilterChange(selected: string[]) {
+	try {
+		loading.value = true;
+		await setOwnerFilter(selected);
+	} catch (error) {
+		showError(error, i18n.baseText('settings.api.view.error'));
+	} finally {
+		loading.value = false;
+	}
+}
 
 const searchQuery = ref(labelFilter.value);
 
@@ -90,11 +131,20 @@ const { baseUrl } = useRootStore();
 
 const { isPublicApiEnabled } = settingsStore;
 
-const apiDocsURL = ref('');
+const apiDocsURL = computed(() => {
+	if (!isSwaggerUIEnabled) return `https://${DOCS_DOMAIN}/api/api-reference/`;
+
+	// Join with exactly one slash: baseUrl may or may not end in "/", and
+	// publicApiPath may or may not start with "/" (its default is "api").
+	const apiBase = `${baseUrl.replace(/\/+$/, '')}/${publicApiPath.replace(/^\/+/, '')}`;
+	return `${apiBase}/v${publicApiLatestVersion}/docs`;
+});
 
 const scopesModalApiKey = ref<ApiKey | null>(null);
 const revokeApiKey = ref<ApiKey | null>(null);
 const revoking = ref(false);
+const rotateConfirmApiKey = ref<ApiKey | null>(null);
+const rotating = ref(false);
 
 const canManageAllKeys = computed(() => rbacStore.hasScope('apiKey:manage'));
 
@@ -149,10 +199,6 @@ const onCreateApiKey = () => {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.api'));
-
-	apiDocsURL.value = isSwaggerUIEnabled
-		? `${baseUrl}${publicApiPath}/v${publicApiLatestVersion}/docs`
-		: `https://${DOCS_DOMAIN}/api/api-reference/`;
 
 	if (!isPublicApiEnabled) return;
 
@@ -211,6 +257,31 @@ async function onRevokeConfirm() {
 	}
 }
 
+function onRotateRequest(apiKey: ApiKey) {
+	rotateConfirmApiKey.value = apiKey;
+}
+
+async function onRotateConfirm() {
+	if (!rotateConfirmApiKey.value) return;
+	const apiKey = rotateConfirmApiKey.value;
+	rotating.value = true;
+	try {
+		const rotated = await rotateApiKey(apiKey.id);
+		rotateConfirmApiKey.value = null;
+		showMessage({ title: i18n.baseText('settings.api.rotate.toast'), type: 'success' });
+		// Reuse the create modal's "created" view so a rotated key is presented identically.
+		uiStore.openModalWithData({
+			name: API_KEY_CREATE_OR_EDIT_MODAL_KEY,
+			data: { mode: 'new', rotatedApiKey: rotated },
+		});
+		telemetry.track('User clicked rotate API key button', { is_own: true });
+	} catch (e) {
+		showError(e, i18n.baseText('settings.api.rotate.error'));
+	} finally {
+		rotating.value = false;
+	}
+}
+
 function onOpenScopes(apiKey: ApiKey) {
 	scopesModalApiKey.value = apiKey;
 	telemetry.track('User clicked view API key scopes', {
@@ -260,19 +331,32 @@ function onOpenScopes(apiKey: ApiKey) {
 		</p>
 
 		<div v-if="isPublicApiEnabled && hasAnyKeys" :class="$style.toolbar">
-			<N8nInput
-				:model-value="searchQuery"
-				:placeholder="i18n.baseText('settings.api.search.placeholder')"
-				:class="$style.search"
-				size="medium"
-				clearable
-				data-test-id="api-keys-search"
-				@update:model-value="onSearchInput"
-			>
-				<template #prefix>
-					<N8nIcon icon="search" />
-				</template>
-			</N8nInput>
+			<div :class="$style.filters">
+				<N8nInput
+					:model-value="searchQuery"
+					:placeholder="i18n.baseText('settings.api.search.placeholder')"
+					:class="$style.search"
+					size="medium"
+					clearable
+					data-test-id="api-keys-search"
+					@update:model-value="onSearchInput"
+				>
+					<template #prefix>
+						<N8nIcon icon="search" />
+					</template>
+				</N8nInput>
+				<div v-if="canManageAllKeys && ownership === 'all'" :class="$style.ownerFilter">
+					<ApiKeyOwnerFilter
+						:model-value="selectedOwnerIds"
+						:users="ownerOptions"
+						:counts="ownerKeyCounts"
+						:total-count="totalAllCount"
+						:current-user-id="usersStore.currentUser?.id"
+						data-test-id="api-keys-owner-filter"
+						@update:model-value="onOwnerFilterChange"
+					/>
+				</div>
+			</div>
 			<N8nButton size="medium" @click="onCreateApiKey">
 				{{ i18n.baseText('settings.api.create.button') }}
 			</N8nButton>
@@ -297,6 +381,7 @@ function onOpenScopes(apiKey: ApiKey) {
 			:class="$style.table"
 			@edit="onEdit"
 			@revoke="onRevokeRequest"
+			@rotate="onRotateRequest"
 			@open-scopes="onOpenScopes"
 			@update:options="onTableUpdate"
 		/>
@@ -319,7 +404,7 @@ function onOpenScopes(apiKey: ApiKey) {
 			{{ i18n.baseText('settings.api.empty.mine') }}
 		</N8nText>
 
-		<N8nActionBox
+		<N8nEmptyState
 			v-if="!isPublicApiEnabled && cloudPlanStore.userIsTrialing"
 			data-test-id="public-api-upgrade-cta"
 			:heading="i18n.baseText('settings.api.trial.upgradePlan.title')"
@@ -328,7 +413,7 @@ function onOpenScopes(apiKey: ApiKey) {
 			@click:button="onUpgrade"
 		/>
 
-		<N8nActionBox
+		<N8nEmptyState
 			v-if="isPublicApiEnabled && !hasAnyKeys"
 			:button-text="
 				i18n.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')
@@ -353,6 +438,15 @@ function onOpenScopes(apiKey: ApiKey) {
 			@confirm="onRevokeConfirm"
 			@cancel="revokeApiKey = null"
 			@update:open="revokeApiKey = null"
+		/>
+
+		<RotateApiKeyConfirmModal
+			:api-key="rotateConfirmApiKey"
+			:open="!!rotateConfirmApiKey"
+			:loading="rotating"
+			@confirm="onRotateConfirm"
+			@cancel="rotateConfirmApiKey = null"
+			@update:open="rotateConfirmApiKey = null"
 		/>
 	</div>
 </template>
@@ -387,9 +481,22 @@ function onOpenScopes(apiKey: ApiKey) {
 	margin-bottom: var(--spacing--sm);
 }
 
+.filters {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
 .search {
 	max-width: 320px;
 	flex: 1 1 auto;
+}
+
+.ownerFilter {
+	width: 240px;
+	flex: 0 0 auto;
 }
 
 .container {

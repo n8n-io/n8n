@@ -2,13 +2,17 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/rows/search.operation';
 import { apiRequest, apiRequestAllItems } from '../../../../v2/transport';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../../../../v2/transport/index';
 
-jest.mock('../../../../v2/transport/index', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport/index');
+vi.mock('../../../../v2/transport/index', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>(
+		'../../../../v2/transport/index',
+	);
 	return {
 		...originalModule,
-		apiRequest: { call: jest.fn() },
-		apiRequestAllItems: { call: jest.fn() },
+		apiRequest: { call: vi.fn() },
+		apiRequestAllItems: { call: vi.fn() },
 	};
 });
 
@@ -17,23 +21,23 @@ describe('NocoDB Rows Search Action', () => {
 
 	beforeEach(() => {
 		mockExecuteFunctions = {
-			getNodeParameter: jest.fn(),
-			getInputData: jest.fn(() => [{ json: {} }]),
-			continueOnFail: jest.fn(() => false),
+			getNodeParameter: vi.fn(),
+			getInputData: vi.fn(() => [{ json: {} }]),
+			continueOnFail: vi.fn(() => false),
 			helpers: {
-				returnJsonArray: jest.fn((data) => (Array.isArray(data) ? data : [data])),
-				constructExecutionMetaData: jest.fn((items) => items),
+				returnJsonArray: vi.fn((data) => (Array.isArray(data) ? data : [data])),
+				constructExecutionMetaData: vi.fn((items) => items),
 			},
-			getNode: jest.fn(() => {}),
+			getNode: vi.fn(() => {}),
 		} as unknown as IExecuteFunctions;
-		(apiRequest.call as jest.Mock).mockClear();
-		(apiRequestAllItems.call as jest.Mock).mockClear();
+		(apiRequest.call as Mock).mockClear();
+		(apiRequestAllItems.call as Mock).mockClear();
 	});
 
 	describe('v4', () => {
 		it('should make a basic search request with where and fields', async () => {
 			// Mocking getNodeParameter for v4
-			mockExecuteFunctions.getNodeParameter = jest.fn().mockImplementation((name: string) => {
+			mockExecuteFunctions.getNodeParameter = vi.fn().mockImplementation((name: string) => {
 				if (name === 'version') return 4;
 				if (name === 'projectId') return 'base1';
 				if (name === 'table') return 'table1';
@@ -49,7 +53,7 @@ describe('NocoDB Rows Search Action', () => {
 			});
 
 			// Mocking apiRequest.call
-			(apiRequest.call as jest.Mock).mockResolvedValue({
+			(apiRequest.call as Mock).mockResolvedValue({
 				records: [{ id: 1, name: 'testA' }],
 			});
 
@@ -88,7 +92,7 @@ describe('NocoDB Rows Search Action', () => {
 
 		it('should make a search request with only fields option', async () => {
 			// Mocking getNodeParameter for v4 with only fields
-			mockExecuteFunctions.getNodeParameter = jest.fn().mockImplementation((name: string) => {
+			mockExecuteFunctions.getNodeParameter = vi.fn().mockImplementation((name: string) => {
 				if (name === 'version') return 4;
 				if (name === 'projectId') return 'base1';
 				if (name === 'table') return 'table1';
@@ -103,7 +107,7 @@ describe('NocoDB Rows Search Action', () => {
 			});
 
 			// Mocking apiRequest.call
-			(apiRequest.call as jest.Mock).mockResolvedValue({
+			(apiRequest.call as Mock).mockResolvedValue({
 				records: [{ id: 1, fieldC: 'valueC' }],
 			});
 
@@ -143,7 +147,7 @@ describe('NocoDB Rows Search Action', () => {
 	describe('returnAll', () => {
 		it('should make a search request with returnAll set to true', async () => {
 			// Mocking getNodeParameter for returnAll
-			mockExecuteFunctions.getNodeParameter = jest.fn().mockImplementation((name: string) => {
+			mockExecuteFunctions.getNodeParameter = vi.fn().mockImplementation((name: string) => {
 				if (name === 'version') return 3;
 				if (name === 'projectId') return 'base1';
 				if (name === 'table') return 'table1';
@@ -155,7 +159,7 @@ describe('NocoDB Rows Search Action', () => {
 			});
 
 			// Mocking apiRequestAllItems.call
-			(apiRequestAllItems.call as jest.Mock).mockResolvedValue([
+			(apiRequestAllItems.call as Mock).mockResolvedValue([
 				{ id: 1, name: 'test1' },
 				{ id: 2, name: 'test2' },
 			]);

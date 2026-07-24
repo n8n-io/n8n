@@ -46,6 +46,8 @@ import type { FormTriggerData, FormField } from '../interfaces';
  */
 const FORM_USER_AUTH_TOKEN_TTL_SECONDS = 60 * 60;
 
+export const getNodeReference = (nodeName: string) => `$(${JSON.stringify(nodeName)})`;
+
 type FormUserAuthClaims = {
 	sub: string;
 	email: string;
@@ -406,7 +408,7 @@ export function addFormResponseDataToReturnItem(
 		if (field.fieldType === 'number') {
 			value = Number(value);
 		}
-		if (field.fieldType === 'text') {
+		if (field.fieldType === 'text' || field.fieldType === 'email') {
 			value = String(value).trim();
 		}
 		if (
@@ -519,6 +521,10 @@ export async function prepareFormReturnItem(
 
 	returnItem.json.formMode = mode;
 
+	if (context.getNodeParameter('options.showHeaders', false)) {
+		returnItem.json.headers = context.getHeaderData();
+	}
+
 	if (
 		context.getNode().type === FORM_TRIGGER_NODE_TYPE &&
 		Object.keys(context.getRequestObject().query || {}).length
@@ -581,8 +587,9 @@ export function renderForm({
 			(node) => node.type === FORM_TRIGGER_NODE_TYPE,
 		) as NodeTypeAndVersion;
 		try {
+			const triggerRef = getNodeReference(trigger.name);
 			const triggerQueryParameters = context.evaluateExpression(
-				`{{ $('${trigger?.name}').first().json.formQueryParameters }}`,
+				`{{ ${triggerRef}.first().json.formQueryParameters }}`,
 			) as IDataObject;
 
 			if (triggerQueryParameters) {
@@ -793,7 +800,7 @@ export async function formWebhook(
 		return { noWebhookResponse: true };
 	}
 
-	const authentication = (context.getNodeParameter(authProperty) as string) ?? 'none';
+	const authentication = context.getNodeParameter(authProperty, 'none') as string;
 	let authedUser: IUser | undefined;
 	if (node.typeVersion > 1) {
 		if (authentication === 'n8nUserAuth') {
@@ -930,6 +937,8 @@ export async function formWebhook(
 }
 
 export function resolveRawData(context: IWebhookFunctions, rawData: string) {
+	if (!rawData) return rawData;
+
 	const resolvables = getResolvables(rawData);
 	let returnData: string = rawData;
 

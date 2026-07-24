@@ -9,8 +9,10 @@
 
 packages/core/                                          @n8n-io/catalysts
 packages/workflow/                                      @n8n-io/catalysts
+packages/workflow/styker.config.mjs                     @n8n-io/qa-dx
 packages/@n8n/config/                                   @n8n-io/catalysts
 packages/@n8n/backend-common/                           @n8n-io/catalysts
+packages/@n8n/backend-network/                          @n8n-io/catalysts
 packages/@n8n/backend-test-utils/                       @n8n-io/catalysts
 packages/@n8n/di/                                       @n8n-io/catalysts
 packages/@n8n/errors/                                   @n8n-io/catalysts
@@ -168,7 +170,7 @@ packages/frontend/editor-ui/src/features/ai/            @n8n-io/ai
 packages/frontend/editor-ui/src/features/credentials/   @n8n-io/iam
 packages/frontend/editor-ui/src/features/execution/     @n8n-io/ligo
 packages/frontend/editor-ui/src/features/project-roles/ @n8n-io/iam
-packages/frontend/editor-ui/src/features/integrations/  @n8n-io/nodes
+packages/frontend/editor-ui/src/features/integrations/  @n8n-io/ligo
 
 packages/frontend/@n8n/design-system/                   @n8n-io/design
 packages/frontend/@n8n/stores/                          @n8n-io/frontend
