@@ -561,7 +561,7 @@ const pruneConnectionShape = (
 	const byType = connections[source];
 	if (!byType) return;
 	const outputs = byType[connectionType];
-	if (outputs && outputs.every((o) => !o || o.length === 0)) {
+	if (outputs?.every((o) => !o || o.length === 0)) {
 		delete byType[connectionType];
 	}
 	if (Object.keys(byType).length === 0) {
