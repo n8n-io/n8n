@@ -275,6 +275,59 @@ describe('ChatExecutionManager', () => {
 			});
 		});
 
+		describe('when node is a HITL tool', () => {
+			// HITL tools carry a generated `<base>HitlTool` type (e.g. chatHitlTool),
+			// not CHAT_TOOL_NODE_TYPE, but must get the same resume fix-up so the
+			// approval is logged on the ai_tool channel and the gated tool executes.
+			const HITL_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatHitlTool';
+			const message: ChatMessage = { sessionId: '123', action: 'sendMessage', chatInput: '' };
+
+			function makeHitlToolExecution() {
+				return {
+					id: '1',
+					workflowData: { id: 'workflowId' },
+					data: {
+						resultData: {
+							pinData: {},
+							lastNodeExecuted: 'HitlToolNode',
+							runData: {
+								HitlToolNode: [
+									{ startTime: 123, executionTime: 456, executionIndex: 0, source: [] },
+								],
+							},
+						},
+						executionData: {
+							nodeExecutionStack: [
+								{
+									node: { name: 'HitlToolNode', type: HITL_TOOL_NODE_TYPE, disabled: false },
+									data: { main: [[]] },
+								},
+							],
+						},
+						pushRef: 'pushRef',
+						waitTill: new Date(),
+					},
+					mode: 'manual',
+				} as any;
+			}
+
+			beforeEach(() => {
+				vi.spyOn(chatExecutionManager as any, 'runNode').mockResolvedValue(null);
+				ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'projectId' } as any);
+			});
+
+			it('should disable node, clear waitTill and rewire output to AiTool', async () => {
+				const execution = makeHitlToolExecution();
+
+				await (chatExecutionManager as any).getRunData(execution, message);
+
+				const resumingNode = execution.data.executionData.nodeExecutionStack[0].node;
+				expect(resumingNode.disabled).toBe(true);
+				expect(execution.data.waitTill).toBeUndefined();
+				expect(resumingNode.rewireOutputLogTo).toBe(NodeConnectionTypes.AiTool);
+			});
+		});
+
 		describe('when node is a regular chat node', () => {
 			const message: ChatMessage = { sessionId: '123', action: 'sendMessage', chatInput: 'input' };
 
