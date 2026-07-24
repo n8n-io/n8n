@@ -207,3 +207,29 @@ oneOf:
         type: array
         items:
           type: string
+  - type: object
+    description: >
+      Creating the package's variable stubs under `variableMissingMode=create-stub`
+      would exceed the instance variable quota (`quota:maxVariables`). Reported once
+      for the whole import; nothing is created.
+    required:
+      - type
+      - limit
+      - requested
+      - names
+    properties:
+      type:
+        type: string
+        enum:
+          - variable-limit-exceeded
+      limit:
+        type: integer
+        description: The instance variable quota.
+      requested:
+        type: integer
+        description: Number of new variable rows the import would create (destination-deduplicated).
+      names:
+        type: array
+        items:
+          type: string
+        description: The unique variable names the import would create.

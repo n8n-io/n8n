@@ -8,6 +8,7 @@ const BLOCKING_FAILURES: Record<
 > = {
 	[VariableMissingMode.DoNothing]: () => [],
 	[VariableMissingMode.MustPreexist]: (plan) => plan.missing,
+	[VariableMissingMode.CreateStub]: () => [],
 };
 
 export function variableBlockingFailures(

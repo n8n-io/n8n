@@ -38,7 +38,7 @@ const scope = (input: {
 	credentialResult: CredentialApplyResult;
 	requirements?: PackageCredentialRequirement[];
 	dataTable?: { matched: number; created: number; requirements: number };
-	variables?: { matched: number; missing: number; requirements: number };
+	variables?: { matched: number; missing: number; requirements: number; created?: number };
 }): PackageImportScope => {
 	const context: ImportContext = {
 		user: mock(),
@@ -46,7 +46,8 @@ const scope = (input: {
 		folderId: input.folderId ?? null,
 	};
 	const dt = input.dataTable ?? { matched: 0, created: 0, requirements: 0 };
-	const vars = input.variables ?? { matched: 0, missing: 0, requirements: 0 };
+	const vars = input.variables ?? { matched: 0, missing: 0, requirements: 0, created: 0 };
+	const created = vars.created ?? 0;
 	const imported: ImportOrchestrationResult = {
 		workflowOutcomes: input.outcomes,
 		folderSummaries: [],
@@ -59,6 +60,15 @@ const scope = (input: {
 				name: `missing-var-${i}`,
 				usedByWorkflows: [],
 			})),
+			creations: Array.from({ length: created }, (_, i) => ({
+				name: `created-var-${i}`,
+				usedByWorkflows: [],
+			})),
+		},
+		variableResult: {
+			stubbed: Array.from({ length: created }, (_, i) => `created-var-${i}`),
+			skippedExisting: [],
+			createdCount: created,
 		},
 	};
 	return {
@@ -87,6 +97,8 @@ const request = mock<ImportPackageRequest>({
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'create-stub',
 	workflowPublishingPolicy: 'preserve-published-state',
+	variableMissingMode: 'create-stub',
+	variableParentPolicy: 'global',
 	missingNodeTypeMode: 'fail',
 });
 
@@ -132,7 +144,7 @@ describe('emitPackageImportedEvent', () => {
 					},
 					requirements: [requirement('credB')],
 					dataTable: { matched: 0, created: 2, requirements: 2 },
-					variables: { matched: 0, missing: 2, requirements: 2 },
+					variables: { matched: 0, missing: 2, requirements: 2, created: 2 },
 				}),
 			],
 		});
@@ -153,9 +165,12 @@ describe('emitPackageImportedEvent', () => {
 			workflows: { created: 1, updated: 1, skipped: 1 },
 			credentials: { matched: 1, created: 1, requirements: 2 },
 			dataTables: { matched: 1, created: 2, requirements: 3 },
-			variables: { matched: 1, missing: 2, requirements: 3 },
+			// scope 2's two missing requirements were created, so post-apply missing is 0.
+			variables: { matched: 1, missing: 0, created: 2, requirements: 3 },
 		});
 		expect(payload.packageSourceId).toBe('src-1');
+		expect(payload.options.variableMissingMode).toBe('create-stub');
+		expect(payload.options.variableParentPolicy).toBe('global');
 	});
 
 	it('preserves the folder id for a single-scope import', () => {

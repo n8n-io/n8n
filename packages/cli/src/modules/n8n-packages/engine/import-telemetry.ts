@@ -60,7 +60,17 @@ export function emitPackageImportedEvent(
 		0,
 	);
 	const variablesMatched = variablePlans.reduce((total, plan) => total + plan.matched.length, 0);
-	const variablesMissing = variablePlans.reduce((total, plan) => total + plan.missing.length, 0);
+	// Post-apply per-destination missing: under `create-stub` every missing requirement becomes a
+	// creation (created or skipped-resolved), so `missing - creations` is 0; under `do-nothing`
+	// creations is empty and it stays the unresolved count.
+	const variablesMissing = variablePlans.reduce(
+		(total, plan) => total + (plan.missing.length - plan.creations.length),
+		0,
+	);
+	const variablesCreated = scopes.reduce(
+		(total, { imported }) => total + imported.variableResult.createdCount,
+		0,
+	);
 
 	const folderId = scopes.length === 1 ? scopes[0].context.folderId : null;
 
@@ -80,6 +90,7 @@ export function emitPackageImportedEvent(
 			dataTableMissingMode: request.dataTableMissingMode,
 			dataTableSchemaConflictPolicy: request.dataTableSchemaConflictPolicy,
 			variableMissingMode: request.variableMissingMode,
+			variableParentPolicy: request.variableParentPolicy,
 		},
 		packageSourceId: manifest.sourceId,
 		packageVersion: manifest.packageFormatVersion,
@@ -107,6 +118,7 @@ export function emitPackageImportedEvent(
 			variables: {
 				matched: variablesMatched,
 				missing: variablesMissing,
+				created: variablesCreated,
 				requirements: variableRequirements,
 			},
 		},

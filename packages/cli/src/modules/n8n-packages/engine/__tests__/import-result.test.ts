@@ -1,7 +1,15 @@
+import type {
+	VariableApplyResult,
+	VariableImportPlan,
+} from '../../entities/variable/variable.types';
 import type { PreparedWorkflow } from '../../entities/workflow/workflow-import.types';
 import type { ImportBindingMap } from '../../n8n-packages.types';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
-import { identifyRequirements, scopeCredentialBindingsToRequirements } from '../import-result';
+import {
+	identifyRequirements,
+	scopeCredentialBindingsToRequirements,
+	toVariableSummary,
+} from '../import-result';
 
 const requirement = (id: string, usedByWorkflows: string[]): PackageCredentialRequirement => ({
 	id,
@@ -59,5 +67,53 @@ describe('scopeCredentialBindingsToRequirements', () => {
 		]);
 
 		expect(scoped).toEqual(bindings);
+	});
+});
+
+describe('toVariableSummary', () => {
+	const plan = (matched: string[], missing: string[]): VariableImportPlan => ({
+		matched,
+		missing: missing.map((name) => ({ name, usedByWorkflows: [] })),
+		creations: [],
+	});
+
+	const result = (overrides: Partial<VariableApplyResult> = {}): VariableApplyResult => ({
+		stubbed: [],
+		skippedExisting: [],
+		createdCount: 0,
+		...overrides,
+	});
+
+	it('reports plan matches and no stubs under do-nothing', () => {
+		expect(toVariableSummary(plan(['A'], ['B']), result())).toEqual({
+			matched: ['A'],
+			missing: ['B'],
+			stubbed: [],
+		});
+	});
+
+	it('moves stubbed names out of missing', () => {
+		expect(toVariableSummary(plan(['A'], ['B', 'C']), result({ stubbed: ['B', 'C'] }))).toEqual({
+			matched: ['A'],
+			missing: [],
+			stubbed: ['B', 'C'],
+		});
+	});
+
+	it('counts an externally-created (skipped) destination as matched, not stubbed', () => {
+		// The destination was occupied between plan and apply, so this import did not create it.
+		expect(toVariableSummary(plan(['A'], ['B']), result({ skippedExisting: ['B'] }))).toEqual({
+			matched: ['A', 'B'],
+			missing: [],
+			stubbed: [],
+		});
+	});
+
+	it('deduplicates a plan match that also appears as skipped', () => {
+		expect(toVariableSummary(plan(['A'], ['B']), result({ skippedExisting: ['A', 'B'] }))).toEqual({
+			matched: ['A', 'B'],
+			missing: [],
+			stubbed: [],
+		});
 	});
 });

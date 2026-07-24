@@ -1,5 +1,6 @@
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
+import type { VariableApplyResult, VariableImportPlan } from '../entities/variable/variable.types';
 import type {
 	PreparedWorkflow,
 	WorkflowImportOutcome,
@@ -60,6 +61,28 @@ export function buildImportResult(input: {
 		bindings: serializeBindings(input.bindings),
 		credentials: input.credentials,
 		variables: input.variables,
+	};
+}
+
+/**
+ * Builds the response `variables` summary for a single-destination (workflow/folder) package,
+ * keeping the three lists mutually exclusive. A `skippedExisting` name means the destination was
+ * occupied between plan and apply (an external write) — it now resolves but this import did not
+ * create it, so it moves into `matched`, not `stubbed`.
+ */
+export function toVariableSummary(
+	plan: VariableImportPlan,
+	result: VariableApplyResult,
+): ImportVariableSummary {
+	const matched = new Set([...plan.matched, ...result.skippedExisting]);
+	const stubbed = new Set(result.stubbed);
+	const skipped = new Set(result.skippedExisting);
+	return {
+		matched: [...matched],
+		stubbed: [...stubbed],
+		missing: plan.missing
+			.map(({ name }) => name)
+			.filter((name) => !stubbed.has(name) && !skipped.has(name)),
 	};
 }
 

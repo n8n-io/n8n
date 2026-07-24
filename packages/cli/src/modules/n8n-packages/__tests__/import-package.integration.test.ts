@@ -73,6 +73,7 @@ type ImportPackageParams = Omit<
 	| 'dataTableMissingMode'
 	| 'dataTableSchemaConflictPolicy'
 	| 'variableMissingMode'
+	| 'variableParentPolicy'
 > &
 	Partial<
 		Pick<
@@ -89,6 +90,7 @@ type ImportPackageParams = Omit<
 			| 'dataTableMissingMode'
 			| 'dataTableSchemaConflictPolicy'
 			| 'variableMissingMode'
+			| 'variableParentPolicy'
 		>
 	>;
 
@@ -105,6 +107,7 @@ async function importPackage(params: ImportPackageParams) {
 		dataTableMissingMode: DataTableMissingMode.Create,
 		dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.KeepExisting,
 		variableMissingMode: 'do-nothing',
+		variableParentPolicy: 'project',
 		...params,
 	});
 }
@@ -1209,6 +1212,7 @@ describe('Package import event emission', () => {
 				variables: {
 					matched: 0,
 					missing: 0,
+					created: 0,
 					requirements: 0,
 				},
 			});
@@ -1293,6 +1297,7 @@ describe('Package import event emission', () => {
 				variables: {
 					matched: 0,
 					missing: 0,
+					created: 0,
 					requirements: 0,
 				},
 			});
@@ -1346,6 +1351,7 @@ describe('Package import event emission', () => {
 				variables: {
 					matched: 0,
 					missing: 0,
+					created: 0,
 					requirements: 0,
 				},
 			});
@@ -1401,6 +1407,7 @@ describe('Package import event emission', () => {
 				variables: {
 					matched: 0,
 					missing: 0,
+					created: 0,
 					requirements: 0,
 				},
 			});

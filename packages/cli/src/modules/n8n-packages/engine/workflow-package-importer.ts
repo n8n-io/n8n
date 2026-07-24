@@ -22,6 +22,7 @@ import {
 	identifyRequirements,
 	toImportedWorkflowSummaries,
 	toPackageSummary,
+	toVariableSummary,
 } from './import-result';
 import { emitPackageImportedEvent } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
@@ -83,8 +84,17 @@ export class WorkflowPackageImporter {
 			schemaConflictPolicy: request.dataTableSchemaConflictPolicy,
 		};
 
+		const variableRequirements = identifyRequirements(manifest.requirements?.variables, workflows);
+		if (variableRequirements?.length && request.variableMissingMode === 'create-stub') {
+			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['variable:create']);
+		}
+		// `project` places stubs in the import target project; `global` sends them to global scope.
+		const globalPlacement = request.variableParentPolicy === 'global';
 		const variableRequest: VariableImportRequest = {
-			requirements: identifyRequirements(manifest.requirements?.variables, workflows),
+			requirements: variableRequirements?.map((requirement) => ({
+				...requirement,
+				globalPlacement,
+			})),
 			missingMode: request.variableMissingMode,
 		};
 
@@ -114,10 +124,7 @@ export class WorkflowPackageImporter {
 				matched: imported.credentialResult.matched,
 				stubbed: imported.credentialResult.stubbed,
 			},
-			variables: {
-				matched: imported.variablePlan.matched,
-				missing: imported.variablePlan.missing.map(({ name }) => name),
-			},
+			variables: toVariableSummary(imported.variablePlan, imported.variableResult),
 		});
 	}
 

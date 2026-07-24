@@ -21,6 +21,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
 				variableMissingMode: 'do-nothing',
+				variableParentPolicy: 'project',
 			});
 		}
 	});
@@ -46,6 +47,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
 				variableMissingMode: 'do-nothing',
+				variableParentPolicy: 'project',
 			});
 		}
 	});
@@ -73,6 +75,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
 				variableMissingMode: 'do-nothing',
+				variableParentPolicy: 'project',
 			});
 		}
 	});
@@ -99,6 +102,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
 				variableMissingMode: 'do-nothing',
+				variableParentPolicy: 'project',
 			});
 		}
 	});
@@ -338,7 +342,7 @@ describe('ImportPackageRequestDto', () => {
 			}
 		});
 
-		it.each(['do-nothing', 'must-preexist'] as const)(
+		it.each(['do-nothing', 'must-preexist', 'create-stub'] as const)(
 			'accepts %s as a variableMissingMode value',
 			(variableMissingMode) => {
 				const result = ImportPackageRequestDto.safeParse({
@@ -356,6 +360,39 @@ describe('ImportPackageRequestDto', () => {
 			expect(
 				ImportPackageRequestDto.safeParse({
 					variableMissingMode: 'invent-variables',
+					workflowConflictPolicy: 'fail',
+				}).success,
+			).toBe(false);
+		});
+	});
+
+	describe('variableParentPolicy', () => {
+		it('defaults variableParentPolicy to project when omitted', () => {
+			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.variableParentPolicy).toBe('project');
+			}
+		});
+
+		it.each(['project', 'global'] as const)(
+			'accepts %s as a variableParentPolicy value',
+			(variableParentPolicy) => {
+				const result = ImportPackageRequestDto.safeParse({
+					variableParentPolicy,
+					workflowConflictPolicy: 'fail',
+				});
+				expect(result.success).toBe(true);
+				if (result.success) {
+					expect(result.data.variableParentPolicy).toBe(variableParentPolicy);
+				}
+			},
+		);
+
+		it('rejects unsupported variableParentPolicy values', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({
+					variableParentPolicy: 'owner-project',
 					workflowConflictPolicy: 'fail',
 				}).success,
 			).toBe(false);
