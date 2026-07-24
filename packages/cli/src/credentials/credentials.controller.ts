@@ -26,7 +26,6 @@ import {
 	Query,
 } from '@n8n/decorators';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
@@ -340,6 +339,40 @@ export class CredentialsController {
 		const scopes = await this.credentialsService.getCredentialScopes(req.user, credential.id);
 
 		return { ...rest, scopes };
+	}
+
+	@Delete('/:credentialId/oauth-token')
+	@ProjectScope('credential:update')
+	async disconnectOauthToken(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('credentialId') credentialId: string,
+	) {
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			req.user,
+			['credential:update'],
+		);
+
+		if (!credential) {
+			throw new NotFoundError(
+				'Credential not found. You can only modify credentials you have access to.',
+			);
+		}
+
+		if (credential.isManaged) {
+			throw new BadRequestError('Managed credentials cannot be updated');
+		}
+
+		if (!this.credentialsService.isOAuthCredentialType(credential.type)) {
+			throw new BadRequestError('Only OAuth credentials can be disconnected');
+		}
+
+		await this.credentialsService.clearOauthTokenData(credential);
+
+		this.logger.debug('Credential OAuth token cleared', { credentialId });
+
+		return { success: true };
 	}
 
 	@Delete('/:credentialId')

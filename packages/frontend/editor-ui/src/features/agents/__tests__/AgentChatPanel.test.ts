@@ -12,8 +12,20 @@ const cancelAndSteerMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
 const isStreamingMock = ref(false);
 
+const fatalErrorMock = ref<{ missing: string[] } | null>(null);
+
 vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({ baseText: (key: string) => key }),
+	useI18n: () => ({
+		baseText: (key: string) => {
+			const translations: Record<string, string> = {
+				'agents.chat.misconfigured.issuesPrefix': 'Check:',
+				'agents.chat.misconfigured.missing.tools': 'Tool configuration',
+				'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
+				'agents.chat.misconfigured.missing.subAgents.agents': 'Sub-agent',
+			};
+			return translations[key] ?? key;
+		},
+	}),
 }));
 
 vi.mock('@n8n/design-system', () => ({
@@ -45,7 +57,7 @@ vi.mock('../composables/useAgentChatStream', () => ({
 		messages: messagesMock,
 		isStreaming: isStreamingMock,
 		messagingState: computed(() => (isStreamingMock.value ? 'receiving' : 'idle')),
-		fatalError: ref(null),
+		fatalError: fatalErrorMock,
 		loadHistory: loadHistoryMock,
 		sendMessage: sendMessageMock,
 		stopGenerating: stopGeneratingMock,
@@ -76,6 +88,7 @@ describe('AgentChatPanel', () => {
 		vi.clearAllMocks();
 		messagesMock.value = [];
 		isStreamingMock.value = false;
+		fatalErrorMock.value = null;
 	});
 
 	function mountPanel() {
@@ -298,5 +311,24 @@ describe('AgentChatPanel', () => {
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
 		expect(chatInput.props('maxLength')).toBe(undefined);
+	});
+
+	it('humanises runtime issue paths with generic localized labels', () => {
+		fatalErrorMock.value = {
+			missing: [
+				'tools.0.workflow',
+				'mcpServers.0.url',
+				'subAgents.agents.0.agentId',
+				'integrations.0.credentialId',
+			],
+		};
+
+		const wrapper = mountPanel();
+
+		expect(wrapper.text()).toContain('Check:');
+		expect(wrapper.text()).toContain('Tool configuration');
+		expect(wrapper.text()).toContain('MCP server');
+		expect(wrapper.text()).toContain('Sub-agent');
+		expect(wrapper.text()).toContain('integrations.0.credentialId');
 	});
 });

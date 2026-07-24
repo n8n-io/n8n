@@ -683,6 +683,20 @@ describe('groupWorkflows', () => {
 					expected: false,
 				},
 				{
+					description: 'should return false when a group description changes',
+					baseWorkflow: createWorkflow(
+						'1',
+						[{ id: '1', parameters: {}, name: 'n1' }],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'], description: 'Before' }],
+					),
+					nextWorkflow: createWorkflow(
+						'1',
+						[{ id: '1', parameters: {}, name: 'n1' }],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'], description: 'After' }],
+					),
+					expected: false,
+				},
+				{
 					description: 'should return false when a node is removed from a group',
 					baseWorkflow: createWorkflow(
 						'1',

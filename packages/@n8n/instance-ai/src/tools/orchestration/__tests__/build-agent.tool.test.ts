@@ -1,4 +1,8 @@
-import { BUILDER_CHECKPOINT_UNAVAILABLE_CODE, type InstanceAiEvent } from '@n8n/api-types';
+import {
+	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
+	type InstanceAiEvent,
+	type QuestionAnswer,
+} from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -41,6 +45,7 @@ interface BuildAgentOutput {
 	error?: string;
 	agentId?: string;
 	agentName?: string;
+	answers?: QuestionAnswer[];
 }
 
 function fakeStream(chunks: unknown[], text: string): BuilderTurnStream {
@@ -432,7 +437,7 @@ describe('build-agent tool', () => {
 		expect(message).toContain('Attach the workflow');
 		expect(message).toContain('<session-workflows>');
 		expect(message).toContain(
-			'Workflows built in this session (attachable as {"type":"workflow"} tools):',
+			'Workflows built in this session (attachable as {"type":"workflow"} tools — reference by workflow name, never by id):',
 		);
 		expect(message).toContain('- Send Reminder (id: wf-1): Sends a reminder email');
 		expect(message).toContain('</session-workflows>');
@@ -500,7 +505,7 @@ describe('build-agent tool', () => {
 	});
 
 	describe('configUpdated', () => {
-		it.each(['write_config', 'patch_config'])(
+		it.each(['write_config', 'patch_config', 'publish_agent', 'unpublish_agent'])(
 			'is true when the work summary has a succeeded %s call',
 			async (toolName) => {
 				const { context, delegate } = makeContext();
@@ -547,6 +552,45 @@ describe('build-agent tool', () => {
 	});
 
 	describe('deferred agentId-path binding', () => {
+		it('rejects foreign agentId when the passed name contradicts the resolved agent name', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.resolveAgentName).mockResolvedValue('Support Triage Agent');
+
+			const result = await runTool(context, {
+				message: 'Build Ops Companion',
+				agentId: 'agent-existing',
+				name: 'Ops Companion',
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error:
+					'Agent agent-existing is named "Support Triage Agent", but name "Ops Companion" was passed. ' +
+					'To create a new agent named "Ops Companion", pass `name` only (no `agentId`). ' +
+					'To edit "Support Triage Agent", pass `agentId` only and put any rename instruction in `message`.',
+			});
+			expect(delegate.streamBuild).not.toHaveBeenCalled();
+			expect(saveAgentBuilderTarget).not.toHaveBeenCalled();
+		});
+
+		it('allows foreign agentId when the passed name matches the resolved agent name', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.resolveAgentName).mockResolvedValue('Ops Companion');
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Editing it.'));
+
+			await runTool(context, {
+				message: 'Add a tool',
+				agentId: 'agent-existing',
+				name: '  ops companion  ',
+			});
+
+			expect(delegate.streamBuild).toHaveBeenCalledWith(
+				'agent-existing',
+				'Add a tool',
+				expect.objectContaining({ threadId: 'ia-builder:thread-1:agent-existing' }),
+			);
+		});
+
 		it('does not persist the target when the agentId path fails before the stream settles', async () => {
 			const { context, delegate } = makeContext();
 			vi.mocked(delegate.streamBuild).mockRejectedValue(new Error('agent:update forbidden'));
@@ -629,6 +673,144 @@ describe('build-agent tool', () => {
 			expect(saveAgentBuilderTarget).toHaveBeenCalledWith(context.domainContext, {
 				agentId: 'agent-existing',
 				projectId: 'proj-1',
+			});
+		});
+	});
+
+	describe('agent display-name refresh', () => {
+		it('labels the first agent-spawned with the resolved name on the agentId path and stamps it on the output', async () => {
+			const { context, delegate, publishedEvents } = makeContext();
+			vi.mocked(delegate.resolveAgentName).mockResolvedValue('Existing Agent');
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Editing it.'));
+
+			const result = await runTool(context, { message: 'Add a tool', agentId: 'agent-existing' });
+
+			const spawned = publishedEvents[0];
+			expect(spawned).toMatchObject({ type: 'agent-spawned' });
+			expect(spawned && 'payload' in spawned ? spawned.payload : undefined).toMatchObject({
+				targetResource: {
+					type: 'agent',
+					id: 'agent-existing',
+					projectId: 'proj-1',
+					name: 'Existing Agent',
+				},
+			});
+			expect(result).toMatchObject({ ok: true, agentId: 'agent-existing' });
+			expect(result.agentName).toBe('Existing Agent');
+			// Name already fresh — no second agent-spawned republish.
+			expect(publishedEvents.filter((event) => event.type === 'agent-spawned')).toHaveLength(1);
+		});
+
+		it('leaves the spawn event unnamed and proceeds when the upfront lookup fails on the agentId path', async () => {
+			const { context, delegate, publishedEvents } = makeContext();
+			vi.mocked(delegate.resolveAgentName).mockRejectedValue(new Error('db down'));
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Editing it.'));
+
+			const result = await runTool(context, { message: 'Add a tool', agentId: 'agent-existing' });
+
+			expect(result).toMatchObject({ ok: true, agentId: 'agent-existing' });
+			expect(result.agentName).toBeUndefined();
+			const spawned = publishedEvents[0];
+			const payload = spawned && 'payload' in spawned ? spawned.payload : undefined;
+			expect(payload).toMatchObject({
+				targetResource: { type: 'agent', id: 'agent-existing', projectId: 'proj-1' },
+			});
+			expect(
+				(payload as { targetResource?: { name?: string } }).targetResource?.name,
+			).toBeUndefined();
+		});
+
+		it('picks up a builder rename after the turn: fresh agentName on the output, a republished agent-spawned, and a re-saved binding', async () => {
+			const { context, delegate, publishedEvents } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.resolveAgentName).mockResolvedValue('Renamed Agent');
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				fakeStream(
+					[toolCallChunk('call-1', 'patch_config'), toolResultChunk('call-1')],
+					'Renamed.',
+				),
+			);
+
+			const result = await runTool(context, { message: 'Rename it', name: 'New Agent' });
+
+			expect(result).toMatchObject({ ok: true, agentId: 'agent-1', agentName: 'Renamed Agent' });
+			const spawnedEvents = publishedEvents.filter((event) => event.type === 'agent-spawned');
+			expect(spawnedEvents).toHaveLength(2);
+			const republished = spawnedEvents[1];
+			expect(
+				republished && 'payload' in republished ? republished.payload : undefined,
+			).toMatchObject({
+				targetResource: {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'Renamed Agent',
+				},
+			});
+			expect(saveAgentBuilderTarget).toHaveBeenLastCalledWith(context.domainContext, {
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Renamed Agent',
+			});
+		});
+
+		it('does not republish or re-save when the resolved name matches the current target name', async () => {
+			const { context, delegate, publishedEvents } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.resolveAgentName).mockResolvedValue('New Agent');
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Done.'));
+
+			await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			expect(publishedEvents.filter((event) => event.type === 'agent-spawned')).toHaveLength(1);
+			// Only the create-path bind — no refresh save.
+			expect(saveAgentBuilderTarget).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps a successful turn intact and logs a warning when the post-turn refresh fails', async () => {
+			const { context, delegate, publishedEvents } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.resolveAgentName).mockRejectedValue(new Error('db down'));
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Done.'));
+
+			const result = await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			expect(result).toMatchObject({ ok: true, agentId: 'agent-1', agentName: 'New Agent' });
+			expect(publishedEvents.filter((event) => event.type === 'agent-spawned')).toHaveLength(1);
+			expect(context.logger.warn).toHaveBeenCalledWith(
+				'Failed to refresh agent name after builder turn',
+				expect.objectContaining({ agentId: 'agent-1' }),
+			);
+		});
+
+		it('carries the refreshed name in the builderCheckpoint target when the turn suspends', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.resolveAgentName).mockResolvedValue('Renamed Agent');
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				suspendingStream('ask_questions', askQuestionsSuspendPayload()),
+			);
+			const suspend: Mock = vi.fn().mockResolvedValue(undefined);
+
+			await runToolWithCtx(context, { message: 'Build it', name: 'New Agent' }, { suspend });
+
+			const payload = suspend.mock.calls[0][0] as Record<string, unknown>;
+			expect(payload).toMatchObject({
+				builderCheckpoint: {
+					target: { agentId: 'agent-1', projectId: 'proj-1', name: 'Renamed Agent' },
+				},
 			});
 		});
 	});
@@ -846,6 +1028,53 @@ describe('build-agent tool', () => {
 				modelConfig: context.modelId,
 			});
 		});
+
+		it('creates a fresh agent instead of switching back when createNew is set and the name matches a session agent', async () => {
+			const { context, delegate } = makeContext();
+			const boundTarget: AgentBuilderTarget = {
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Platform Cycle Tracker',
+			};
+			context.domainContext!.agentBuilderTarget = boundTarget;
+			vi.mocked(findSessionAgentByName).mockResolvedValue(boundTarget);
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-3',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Created it.'));
+
+			await runTool(context, {
+				message: 'Build another tracker',
+				name: 'Platform Cycle Tracker',
+				createNew: true,
+			});
+
+			expect(findSessionAgentByName).not.toHaveBeenCalled();
+			expect(delegate.createAgent).toHaveBeenCalledWith('Platform Cycle Tracker');
+			expect(delegate.streamBuild).toHaveBeenCalledWith(
+				'agent-3',
+				'Build another tracker',
+				expect.objectContaining({ threadId: 'ia-builder:thread-1:agent-3' }),
+			);
+		});
+
+		it.each([
+			{ agentId: 'agent-1', createNew: true, message: 'Build it' },
+			{ createNew: true, message: 'Build it' },
+		])('rejects createNew when combined with agentId or missing name', async (input) => {
+			const { context, delegate } = makeContext();
+
+			const result = await runTool(context, input);
+
+			expect(result).toEqual({
+				ok: false,
+				error:
+					'createNew requires `name` and cannot be combined with `agentId` — pass `name` only to create a new agent.',
+			});
+			expect(delegate.createAgent).not.toHaveBeenCalled();
+			expect(delegate.streamBuild).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('interactive suspension cascade', () => {
@@ -1010,6 +1239,40 @@ describe('build-agent tool', () => {
 			expect(result).toEqual({
 				ok: true,
 				builderReply: 'Using Slack.',
+				configUpdated: false,
+				agentId: 'agent-1',
+				answers: [{ questionId: 'q1', selectedOptions: ['slack'] }],
+			});
+		});
+
+		it('does not attach answers when resuming a credential suspension', async () => {
+			const { context, delegate } = makeContext();
+			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
+				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
+			]);
+			vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Connected Slack.'));
+
+			const result = await runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{
+					resumeData: { credentials: { slack: 'cred-1' } },
+					suspendPayload: {
+						...askCredentialSuspendPayload(),
+						requestId: 'orch-req-1',
+						builderCheckpoint: {
+							runId: 'builder-run-1',
+							toolCallId: 'builder-call-1',
+							configUpdated: false,
+						},
+					},
+				},
+			);
+
+			expect(result).toEqual({
+				ok: true,
+				builderReply: 'Connected Slack.',
 				configUpdated: false,
 				agentId: 'agent-1',
 			});

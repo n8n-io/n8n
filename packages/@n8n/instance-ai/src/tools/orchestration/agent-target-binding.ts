@@ -14,6 +14,10 @@
  */
 import { z } from 'zod';
 
+import {
+	AGENT_PREVIEW_SESSION_METADATA_KEY,
+	type AgentPreviewSession,
+} from './agent-preview-session-binding';
 import { getThread, patchThread } from '../../storage/thread-patch';
 import type { InstanceAiContext } from '../../types';
 
@@ -73,6 +77,7 @@ export async function resolveAgentBuilderTarget(
 export async function saveAgentBuilderTarget(
 	context: InstanceAiContext,
 	target: AgentBuilderTarget,
+	options?: { previewSession?: AgentPreviewSession },
 ): Promise<void> {
 	if (!context.threadMemory || !context.threadId) {
 		context.logger?.warn('Cannot persist agent-builder target: no thread persistence available', {
@@ -103,6 +108,9 @@ export async function saveAgentBuilderTarget(
 					...metadata,
 					[METADATA_KEY]: entry,
 					[REGISTRY_METADATA_KEY]: registry,
+					...(options?.previewSession
+						? { [AGENT_PREVIEW_SESSION_METADATA_KEY]: options.previewSession }
+						: {}),
 				},
 			};
 		},

@@ -40,10 +40,6 @@ vi.mock('../orchestration/build-agent.tool', () => ({
 	createBuildAgentTool: vi.fn(() => ({ id: 'build-agent' })),
 }));
 
-vi.mock('../agents.tool', () => ({
-	createAgentsTool: vi.fn(() => ({ id: 'agents' })),
-}));
-
 vi.mock('../orchestration/complete-checkpoint.tool', () => ({
 	createCompleteCheckpointTool: vi.fn(() => ({ id: 'complete-checkpoint' })),
 }));
@@ -142,6 +138,7 @@ describe('domain tool construction', () => {
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
 		});
+		expect(domainTools.has('templates')).toBe(false);
 	});
 
 	it('creates the native orchestrator domain tool map', async () => {
@@ -162,6 +159,7 @@ describe('domain tool construction', () => {
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
 		});
+		expect(orchestratorTools.has('templates')).toBe(false);
 
 		const { createWorkflowsTool } = await import('../workflows.tool.js');
 		const { createNodesTool } = await import('../nodes.tool.js');
@@ -239,19 +237,20 @@ describe('domain tool construction', () => {
 		});
 	});
 
-	it('registers agents only when a builder delegate is present on the domain context', () => {
-		const withoutDelegate = createOrchestrationTools(
+	it('registers get-session only when a preview session and resolver are present', () => {
+		const withoutSession = createOrchestrationTools(
 			makeContext({ domainContext: {} } as Partial<InstanceAiContext>) as never,
 		);
-		expect(withoutDelegate.has('agents')).toBe(false);
+		expect(withoutSession.has('get-session')).toBe(false);
 
-		const withDelegate = createOrchestrationTools(
+		const withSession = createOrchestrationTools(
 			makeContext({
-				domainContext: { builderDelegate: {} },
+				domainContext: {
+					agentPreviewSession: { agentId: 'agent-1', threadId: 'preview-1' },
+					resolvePreviewSession: async () => await Promise.resolve(null),
+				},
 			} as Partial<InstanceAiContext>) as never,
 		);
-		expect(Object.fromEntries(withDelegate)).toMatchObject({
-			agents: { id: 'agents' },
-		});
+		expect(withSession.has('get-session')).toBe(true);
 	});
 });

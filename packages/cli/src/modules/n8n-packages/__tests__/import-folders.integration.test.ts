@@ -10,6 +10,7 @@ import { UnprocessableRequestError } from '@/errors/response-errors/unprocessabl
 import { createFolder } from '@test-integration/db/folders';
 import { createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
+import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import type { FolderConflictPolicy, ImportPackageRequest } from '../n8n-packages.types';
@@ -42,10 +43,12 @@ async function importFolders(params: FolderImportParams) {
 		workflowConflictPolicy: 'new-version',
 		workflowPublishingPolicy: 'preserve-published-state',
 		workflowIdPolicy: 'new',
+		missingNodeTypeMode: 'fail',
 		folderConflictPolicy: params.folderConflictPolicy ?? 'merge',
 		dataTableMatchingMode: 'by-id',
 		dataTableMissingMode: 'create',
 		dataTableSchemaConflictPolicy: 'keep-existing',
+		variableMissingMode: 'do-nothing',
 	};
 	return await Container.get(N8nPackagesService).importPackage(request);
 }
@@ -69,6 +72,9 @@ async function findWorkflow(id: string) {
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages']);
 	await testDb.init();
+	// Register node types so the plan-phase missing-node-type check can resolve
+	// the node types used by the package fixtures.
+	await initNodeTypes();
 	licenseMocker.mockLicenseState(Container.get(LicenseState));
 	licenseMocker.setDefaults({ features: ['feat:folders'] });
 });
@@ -505,11 +511,48 @@ describe('folder shell import', () => {
 			},
 		});
 
-		// The folder-nested workflow is now imported (LIGO-723), so its missing must-preexist credential
-		// resolves through the same gate as a top-level workflow and blocks the import before any writes.
 		await expect(
 			importFolders({ user: owner, projectId: project.id, packageBuffer }),
 		).rejects.toBeInstanceOf(UnprocessableRequestError);
 		expect(await findFolder('F1')).toBeNull();
+	});
+
+	it('blocks re-importing a matched workflow into a different folder and never re-parents it', async () => {
+		const first = await importFolders({
+			user: owner,
+			projectId: project.id,
+			packageBuffer: await buildEntityPackageBuffer({
+				folders: [{ target: 'folders/fa', folder: serializedFolder({ id: 'FA', name: 'fa' }) }],
+				workflows: [
+					{
+						target: 'folders/fa/workflows/wf',
+						workflow: serializedWorkflow({ id: 'WF', name: 'wf' }),
+					},
+				],
+			}),
+		});
+		const localId = first.workflows[0].localId;
+		expect((await findWorkflow(localId))?.parentFolder?.id).toBe('FA');
+
+		// Re-import the same source workflow nested under a different folder: the matched workflow is not
+		// re-parented; the mismatch blocks the whole import before anything is written.
+		await expect(
+			importFolders({
+				user: owner,
+				projectId: project.id,
+				packageBuffer: await buildEntityPackageBuffer({
+					folders: [{ target: 'folders/fb', folder: serializedFolder({ id: 'FB', name: 'fb' }) }],
+					workflows: [
+						{
+							target: 'folders/fb/workflows/wf',
+							workflow: serializedWorkflow({ id: 'WF', name: 'wf' }),
+						},
+					],
+				}),
+			}),
+		).rejects.toBeInstanceOf(ConflictError);
+
+		expect((await findWorkflow(localId))?.parentFolder?.id).toBe('FA');
+		expect(await findFolder('FB')).toBeNull();
 	});
 });

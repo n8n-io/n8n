@@ -406,9 +406,22 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 
 		case 'agent-spawned': {
 			if (!isSafeObjectKey(event.agentId) || !isSafeObjectKey(event.payload.parentId)) break;
-			// Idempotency guard: a replayed agent-spawned for an existing agent
-			// must not create a second node for the same id.
-			if (state.agentsById[event.agentId]) break;
+			// A repeated agent-spawned for a known agent is an upsert of display
+			// metadata, never a second node or timeline entry: the builder
+			// republishes the event when the target agent's name changes, so
+			// refresh targetResource — but never erase a known name with an
+			// unnamed replay.
+			const existingNode = state.agentsById[event.agentId];
+			if (existingNode) {
+				const incoming = event.payload.targetResource;
+				if (incoming && incoming.id === existingNode.targetResource?.id) {
+					existingNode.targetResource = {
+						...incoming,
+						name: incoming.name ?? existingNode.targetResource?.name,
+					};
+				}
+				break;
+			}
 			const parentAgent = ensureAgent(state, event.payload.parentId);
 			if (parentAgent) {
 				const child: InstanceAiAgentNode = {

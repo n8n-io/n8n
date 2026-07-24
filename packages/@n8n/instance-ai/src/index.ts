@@ -192,6 +192,11 @@ export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver
 export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export { saveAgentBuilderTarget } from './tools/orchestration/agent-target-binding';
+export {
+	resolveAgentPreviewSession,
+	saveAgentPreviewSession,
+} from './tools/orchestration/agent-preview-session-binding';
+
 export type {
 	AgentDbMessage,
 	AgentMessage,
@@ -592,6 +597,7 @@ export type {
 	DataTableFilterInput,
 	InstanceAiEvaluationConfigService,
 	EvaluationConfigSummary,
+	EvaluationConfigDetail,
 	EvaluationConfigMetricInput,
 	EvaluationConfigMetricPreset,
 	UpsertEvaluationConfigInput,

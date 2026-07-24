@@ -10,10 +10,13 @@ import type {
 	BridgeExecutionContext,
 	PlatformAgentContext,
 } from './agent-chat-integration';
-import { ChatIntegrationRegistry } from './agent-chat-integration';
+import { ChatIntegrationRegistry, onceStatusHandle } from './agent-chat-integration';
 import { AgentChatHitlResumeHandler } from './agent-chat-hitl-resume-handler';
 import { AgentChatMessageContextBridge } from './agent-chat-message-context';
-import { AgentChatStreamConsumer } from './agent-chat-stream-consumer';
+import {
+	AgentChatStreamConsumer,
+	type SuspensionHandlingResult,
+} from './agent-chat-stream-consumer';
 import { buildSuspendCardPayload } from './agent-chat-suspension-cards';
 import { CallbackStore } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
@@ -184,7 +187,7 @@ export class AgentChatBridge {
 			try {
 				if (!this.canUserAccess(message.author)) return;
 				await thread.subscribe();
-				await this.executeAndStream(thread, message);
+				await this.executeAndStream(thread, message, { isNewMention: true });
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
 			}
@@ -193,7 +196,7 @@ export class AgentChatBridge {
 		this.chat.onSubscribedMessage(async (thread, message) => {
 			try {
 				if (!this.canUserAccess(message.author)) return;
-				await this.executeAndStream(thread, message);
+				await this.executeAndStream(thread, message, { isNewMention: false });
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
 			}
@@ -247,7 +250,12 @@ export class AgentChatBridge {
 	// Core execution pipeline
 	// ---------------------------------------------------------------------------
 
-	private async executeAndStream(thread: Thread, message: Message): Promise<void> {
+	private async executeAndStream(
+		thread: Thread,
+		message: Message,
+		options: { isNewMention: boolean },
+	): Promise<void> {
+		const { isNewMention } = options;
 		const platformAgentContext = this.getPlatformAgentContext();
 		const text = this.prepareInboundText(message.text, platformAgentContext).trim();
 		if (!text) return;
@@ -255,41 +263,57 @@ export class AgentChatBridge {
 		const platformThreadId = this.resolvePlatformThreadId(thread);
 		const threadId = this.toAgentThreadId(platformThreadId);
 		const statusRetry = new AbortController();
-		// Platform status hooks and the lazy
-		// `message.subject` fetch are both remote round-trips on independent
+		// Platform status hooks, the lazy `message.subject` fetch, and any
+		// thread-history fetch are all remote round-trips on independent
 		// resources — run them concurrently.
 		const [bridgeExecutionContext, subject] = await Promise.all([
-			this.resolveBridgeExecutionContext(thread, message, platformAgentContext, statusRetry),
+			this.resolveBridgeExecutionContext(
+				thread,
+				message,
+				platformAgentContext,
+				statusRetry,
+				isNewMention,
+			),
 			this.messageContextBridge.resolveSubject(message),
 		]);
-		await this.messageContextBridge.updateLatest(threadId.id, message.author.userId, thread, {
-			messageId: message.id,
-			interactingUserId: message.author.userId,
-			...bridgeExecutionContext.platformAgentContext,
-			subject,
-		});
-		// threadId.id is agent-prefixed for observation storage; resourceId keeps
-		// the platform user identity so episodic recall works across threads for
-		// the same user while staying isolated between users.
-		// Always run the published snapshot — integrations are production traffic.
-		const stream = this.agentService.executeForChatPublished({
-			agentId: this.agentId,
-			projectId: this.n8nProjectId,
-			message: text,
-			memory: {
-				threadId,
-				resourceId: integrationMemoryResourceId(this.integration.type, message.author.userId),
-			},
-			integrationType: this.integration.type,
-		});
-
+		const statusHandle = onceStatusHandle(bridgeExecutionContext.statusHandle);
 		try {
+			await this.messageContextBridge.updateLatest(threadId.id, message.author.userId, thread, {
+				messageId: message.id,
+				interactingUserId: message.author.userId,
+				...bridgeExecutionContext.platformAgentContext,
+				subject,
+			});
+			// threadId.id is agent-prefixed for observation storage; resourceId keeps
+			// the platform user identity so episodic recall works across threads for
+			// the same user while staying isolated between users.
+			// Always run the published snapshot — integrations are production traffic.
+			const agentInput = bridgeExecutionContext.historyContext
+				? `${bridgeExecutionContext.historyContext}\n\n${text}`
+				: text;
+			const stream = this.agentService.executeForChatPublished({
+				agentId: this.agentId,
+				projectId: this.n8nProjectId,
+				message: agentInput,
+				memory: {
+					threadId,
+					resourceId: integrationMemoryResourceId(this.integration.type, message.author.userId),
+				},
+				integrationType: this.integration.type,
+			});
+
 			await this.streamConsumer.consume(stream, thread, {
 				forceBuffered: bridgeExecutionContext.forceBuffered,
-				statusHandle: bridgeExecutionContext.statusHandle,
+				statusHandle,
 			});
 		} finally {
 			statusRetry.abort();
+			// The stream consumer clears the status right before the first response;
+			// this clear covers failures before/outside consumption, which would
+			// otherwise leave a status indicator (e.g. Telegram's typing keepalive)
+			// running after the error reply. The once-wrapped handle makes this a
+			// no-op await of the consumer's clear when that already ran.
+			await statusHandle?.clearBeforeResponse();
 		}
 	}
 
@@ -298,6 +322,7 @@ export class AgentChatBridge {
 		message: Message<unknown>,
 		platformAgentContext: PlatformAgentContext,
 		statusRetry: AbortController,
+		isNewMention: boolean,
 	): Promise<BridgeExecutionContext> {
 		return (
 			(await this.integrationImpl?.createBridgeExecutionContext?.({
@@ -307,6 +332,7 @@ export class AgentChatBridge {
 				logger: this.logger,
 				agentId: this.agentId,
 				statusRetry,
+				isNewMention,
 			})) ?? { platformAgentContext }
 		);
 	}
@@ -318,16 +344,16 @@ export class AgentChatBridge {
 	private async handleSuspension(
 		chunk: Extract<StreamChunk, { type: 'tool-call-suspended' }>,
 		thread: Thread,
-	): Promise<void> {
+	): Promise<SuspensionHandlingResult> {
 		const { runId, toolCallId, suspendPayload } = chunk;
 
 		if (!runId || !toolCallId) {
 			this.logger.warn('[AgentChatBridge] Suspended chunk missing runId or toolCallId');
-			return;
+			return 'failed';
 		}
 
 		const cardPayload = buildSuspendCardPayload(suspendPayload);
-		if (!cardPayload) return;
+		if (!cardPayload) return 'skipped';
 
 		try {
 			const card = await this.componentMapper.toCard(
@@ -339,6 +365,7 @@ export class AgentChatBridge {
 				this.integration.type,
 			);
 			await thread.post({ card });
+			return 'posted';
 		} catch (error) {
 			this.logger.error('[AgentChatBridge] Failed to post suspension card', {
 				agentId: this.agentId,
@@ -346,6 +373,7 @@ export class AgentChatBridge {
 				toolCallId,
 				error: error instanceof Error ? error.message : String(error),
 			});
+			return 'failed';
 		}
 	}
 
@@ -356,12 +384,12 @@ export class AgentChatBridge {
 	private async handleMessage(
 		chunk: Extract<StreamChunk, { type: 'message' }>,
 		thread: Thread,
-	): Promise<void> {
+	): Promise<boolean> {
 		const agentMessage: AgentMessage = chunk.message;
 
 		// AgentMessage is a union. LLM messages (Message) have a `content` array
 		// of typed content parts. Extract only text parts for display.
-		if (!('content' in agentMessage) || !Array.isArray(agentMessage.content)) return;
+		if (!('content' in agentMessage) || !Array.isArray(agentMessage.content)) return false;
 
 		const textParts = agentMessage.content
 			.filter(
@@ -372,16 +400,18 @@ export class AgentChatBridge {
 		const textToPost = textParts.join('');
 
 		// Skip messages with no displayable text (e.g. tool-call-only messages)
-		if (!textToPost.trim()) return;
+		if (!textToPost.trim()) return false;
 
 		try {
 			await thread.post(textToPost);
+			return true;
 		} catch (error) {
 			this.logger.error('[AgentChatBridge] Failed to post message chunk', {
 				agentId: this.agentId,
 				threadId: thread.id,
 				error: error instanceof Error ? error.message : String(error),
 			});
+			return false;
 		}
 	}
 

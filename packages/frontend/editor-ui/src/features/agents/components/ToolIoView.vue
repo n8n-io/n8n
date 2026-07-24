@@ -1,16 +1,30 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, provide } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, shallowRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { Workflow } from 'n8n-workflow';
 import type { IDataObject, INodeExecutionData, IRunData } from 'n8n-workflow';
 import { ChatSymbol } from '@n8n/chat/constants';
 import type { Chat } from '@n8n/chat/types';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
+import {
+	disposeWorkflowExecutionStateStore,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
+import {
+	createWorkflowDocumentId,
+	disposeWorkflowDocumentStore,
+	useWorkflowDocumentStore,
+	type WorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import {
+	createExecutionDataId,
+	disposeExecutionDataStore,
+	hasExecutionDataStore,
+	useExecutionDataStore,
+} from '@/app/stores/executionData.store';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { disposeNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { IWorkflowDb, INodeUi } from '@/Interface';
@@ -50,17 +64,30 @@ const props = withDefaults(
 );
 
 const i18n = useI18n();
-const workflowsStore = useWorkflowsStore();
 const workflowHelpers = useWorkflowHelpers();
 const nodeTypesStore = useNodeTypesStore();
 
 const SYNTHETIC_ID = '__tool_io__';
 const INPUT_NODE_NAME = '__tool_io_input__';
 
+// RunData (and VirtualSchema) resolve their NDV store via `injectNDVStore()`,
+// which throws when `WorkflowDocumentStoreKey` is null. On the sessions page
+// no real workflow is loaded, so App.vue provides `shallowRef(null)`. Provide
+// a synthetic, never-null document store keyed by the same id we write
+// execution state under, so the subtree resolves a scoped NDV store instead
+// of throwing on mount. SessionDetailPanel renders at most one ToolIoView, so
+// this component owns and disposes the fixed scope.
+const documentId = createWorkflowDocumentId(SYNTHETIC_ID);
+const scopedDocumentStore = useWorkflowDocumentStore(documentId);
+const documentStore = shallowRef<WorkflowDocumentStore | null>(scopedDocumentStore);
+const executionStateStore = useWorkflowExecutionStateStore(documentId);
+const executionDataId = createExecutionDataId(SYNTHETIC_ID);
+
 provide(
 	WorkflowIdKey,
 	computed(() => SYNTHETIC_ID),
 );
+provide(WorkflowDocumentStoreKey, documentStore);
 provide(ChatSymbol, null as unknown as Chat);
 
 function wrap(value: unknown): INodeExecutionData[] {
@@ -211,30 +238,23 @@ const toolNodeUi = computed<INodeUi>(() => {
 	return synthExecution.value.workflowData.nodes.find((n) => n.name === props.name) as INodeUi;
 });
 
-let previousWorkflowExecutionData: ReturnType<
-	typeof useWorkflowExecutionStateStore
->['activeExecution'] = null;
 let unmounted = false;
 
 onMounted(async () => {
-	previousWorkflowExecutionData = useWorkflowExecutionStateStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	).activeExecution;
 	await nodeTypesStore.loadNodeTypesIfNotLoaded();
-	// If the component unmounted while node-types were loading, the unmount
-	// hook already restored the previous execution data — installing the synth
-	// payload now would clobber the real workflow's state.
+	// The component may unmount while node types are loading.
 	if (unmounted) return;
-	useWorkflowExecutionStateStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	).setWorkflowExecutionData(synthExecution.value);
+	executionStateStore.setWorkflowExecutionData(synthExecution.value);
 });
 
 onBeforeUnmount(() => {
 	unmounted = true;
-	useWorkflowExecutionStateStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	).setWorkflowExecutionData(previousWorkflowExecutionData);
+	if (hasExecutionDataStore(executionDataId)) {
+		disposeExecutionDataStore(useExecutionDataStore(executionDataId));
+	}
+	disposeNDVStore(useNDVStore(documentId));
+	disposeWorkflowExecutionStateStore(executionStateStore);
+	disposeWorkflowDocumentStore(scopedDocumentStore);
 });
 </script>
 

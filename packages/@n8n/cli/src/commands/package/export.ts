@@ -13,6 +13,7 @@ export default class PackageExport extends BaseCommand {
 		'<%= config.bin %> package export --folder-id=xyz -o folders.n8np',
 		'<%= config.bin %> package export --project-id=abc -o project.n8np',
 		'<%= config.bin %> package export -p abc -p def -o projects.n8np',
+		'<%= config.bin %> package export -w abc --include-variable-values=false -o export.n8np',
 	];
 
 	static override flags = {
@@ -40,6 +41,14 @@ export default class PackageExport extends BaseCommand {
 			description: 'File to write the package to',
 			default: 'export.n8np',
 		}),
+		// String enum instead of Flags.boolean so `--include-variable-values=false` works (oclif booleans only support --no-*).
+		includeVariableValues: Flags.string({
+			description:
+				'Whether values of referenced variables are bundled into the package (the variables themselves always travel, value-less when false)',
+			options: ['true', 'false'],
+			default: 'true',
+			aliases: ['include-variable-values'],
+		}),
 		missingWorkflowDependencyPolicy: Flags.string({
 			options: ['fail', 'reference-only', 'include-in-package'],
 			default: 'fail',
@@ -54,6 +63,7 @@ export default class PackageExport extends BaseCommand {
 		const workflowIds = flags.workflowId ?? [];
 		const folderIds = flags.folderId ?? [];
 		const projectIds = flags.projectId ?? [];
+		const includeVariableValues = flags.includeVariableValues !== 'false';
 		const missingWorkflowDependencyPolicy = flags.missingWorkflowDependencyPolicy;
 
 		// A package is either loose workflows/folders or whole projects, not both.
@@ -70,8 +80,8 @@ export default class PackageExport extends BaseCommand {
 			try {
 				archive = await client.exportPackage(
 					projectIds.length > 0
-						? { projectIds, missingWorkflowDependencyPolicy }
-						: { workflowIds, folderIds, missingWorkflowDependencyPolicy },
+						? { projectIds, includeVariableValues, missingWorkflowDependencyPolicy }
+						: { workflowIds, folderIds, includeVariableValues, missingWorkflowDependencyPolicy },
 				);
 			} catch (error) {
 				throw toPackagesError(error);

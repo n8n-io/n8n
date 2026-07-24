@@ -16,7 +16,7 @@
     "@n8n/expression-runtime": "workspace:*",
     "vitest": "catalog:",
     "n8n-workflow": "workspace:*",
-    "typescript": "catalog:"
+    "typescript": "catalog:typescript"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

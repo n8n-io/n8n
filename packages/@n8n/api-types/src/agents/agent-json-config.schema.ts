@@ -1,5 +1,6 @@
 import { z, type ZodError } from 'zod';
 
+import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 /**
  * Regex for valid custom tool ids. Shared with the backend service layer
@@ -232,7 +233,7 @@ export const McpServerConfigSchema = z
 				'Unique server name, also used as the SDK tool-name prefix (e.g. github -> github_create_issue)',
 			),
 		description: z.string().max(512).optional().describe('Human-readable server description'),
-		url: z.string().min(1).describe('MCP server endpoint URL'),
+		url: z.string().describe('MCP server endpoint URL. Empty string means setup is incomplete'),
 		transport: z
 			.enum(['sse', 'streamableHttp'])
 			.default('streamableHttp')
@@ -258,7 +259,7 @@ export const McpServerConfigSchema = z
 			})
 			.optional()
 			.describe(
-				'Server-generated metadata. Do not set this manually, only copy from search_mcp_servers result if present',
+				'Server-generated metadata. Do not set this manually; only copy it from an MCP discovery result when present',
 			),
 		toolFilter: z
 			.discriminatedUnion('mode', [
@@ -401,7 +402,12 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	NodeToolJsonConfigSchema,
 ]);
 
-export const AgentJsonConfigSchema = z.object({
+/**
+ * Unrefined agent config object shape. Use for schema derivation only
+ * (`.extend`, `.pick`, `.partial`, `.shape`) — validate with
+ * {@link AgentJsonConfigSchema} instead.
+ */
+export const AgentJsonConfigBaseSchema = z.object({
 	name: z.string().min(1).max(128),
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
@@ -479,14 +485,22 @@ export const AgentJsonConfigSchema = z.object({
 		.optional(),
 });
 
-export const RunnableAgentJsonConfigSchema = AgentJsonConfigSchema.extend({
+export const AgentJsonConfigSchema = AgentJsonConfigBaseSchema.superRefine((config, ctx) => {
+	if (config.credential?.trim() && isDraftAgentConfig(config)) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ['credential'],
+			message: 'A credential requires a model to be set',
+		});
+	}
+});
+
+export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 	model: AgentModelSchema,
 	credential: z.string().refine((value) => value.trim().length > 0, {
 		message: 'Credential is required',
 	}),
 });
-
-export const AgentJsonConfigPartialSchema = AgentJsonConfigSchema.partial();
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;

@@ -217,6 +217,51 @@ describe('useCanvasNodeGroupActions', () => {
 			expect(command.after).toEqual({ id: group.id, name: 'New', nodeIds: ['a', 'b'] });
 		});
 
+		it('records an UpdateNodeGroupCommand with before/after snapshots on description change', () => {
+			const group = workflowDocumentStore.createGroup(['a', 'b'], 'G');
+			const historyStore = useHistoryStore();
+			const { updateGroupDescription } = useCanvasNodeGroupActions(
+				computed(() => [createCanvasGraphNode({ id: 'a' })]),
+			);
+
+			updateGroupDescription(group.id, 'A helpful description');
+
+			expect(historyStore.undoStack).toHaveLength(1);
+			const command = historyStore.undoStack[0] as UpdateNodeGroupCommand;
+			expect(command).toBeInstanceOf(UpdateNodeGroupCommand);
+			expect(command.before.description).toBeUndefined();
+			expect(command.after.description).toBe('A helpful description');
+		});
+
+		it('does not change the description in read-only mode', () => {
+			const group = workflowDocumentStore.createGroup(['a', 'b'], 'G');
+			const historyStore = useHistoryStore();
+			const { updateGroupDescription } = useCanvasNodeGroupActions(
+				computed(() => []),
+				{
+					readOnly: () => true,
+				},
+			);
+
+			updateGroupDescription(group.id, 'New');
+
+			expect(workflowDocumentStore.getGroupById(group.id)?.description).toBeUndefined();
+			expect(historyStore.undoStack).toHaveLength(0);
+		});
+
+		it('records nothing when the description does not change', () => {
+			const group = workflowDocumentStore.createGroup(['a', 'b'], 'G');
+			workflowDocumentStore.updateDescription(group.id, 'Same');
+			const historyStore = useHistoryStore();
+			const { updateGroupDescription } = useCanvasNodeGroupActions(
+				computed(() => [createCanvasGraphNode({ id: 'a' })]),
+			);
+
+			updateGroupDescription(group.id, 'Same');
+
+			expect(historyStore.undoStack).toHaveLength(0);
+		});
+
 		it('does not rename in read-only mode', () => {
 			const group = workflowDocumentStore.createGroup(['a', 'b'], 'Old');
 			const historyStore = useHistoryStore();

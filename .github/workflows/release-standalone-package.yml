@@ -66,7 +66,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
-          node-version: '24.16.0'
+          node-version: '24.18.0'
 
       # A version bump only edits one package.json, so no workspace install/build
       # is needed. `pnpm ls -r --only-projects` reads the workspace config directly.

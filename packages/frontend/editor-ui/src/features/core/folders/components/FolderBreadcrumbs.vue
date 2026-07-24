@@ -287,7 +287,7 @@ onBeforeUnmount(() => {
 					:content="item.data.tooltip"
 					placement="left"
 					:show-after="300"
-					:teleported="false"
+					teleported
 				>
 					<N8nText
 						:class="ui.class"

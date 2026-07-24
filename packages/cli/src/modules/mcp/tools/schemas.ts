@@ -79,6 +79,7 @@ export const nodeGroupSchema = z
 		id: z.string(),
 		name: z.string(),
 		nodeIds: z.array(z.string()),
+		description: z.string().optional(),
 	})
 	.describe('A named visual grouping of nodes');
 

@@ -73,6 +73,32 @@ export function getCaseRunStatus(result: WorkflowTestCaseResult): CaseRunStatus 
 	return 'build_failed';
 }
 
+/** Per-case verification tallies across an aggregated run. `notVerified` cases —
+ *  where nothing could be scored — are counted apart from passed/failed so the
+ *  reported pass rate reflects only what was actually checked. */
+export interface CaseVerificationRollup {
+	/** Verified cases where every evaluated unit passed. */
+	passed: number;
+	/** Verified cases with at least one failing evaluated unit. */
+	failed: number;
+	/** Cases where no unit could be scored (all incomplete / skipped). */
+	notVerified: number;
+}
+
+export function rollupCaseVerification(cases: TestCaseAggregation[]): CaseVerificationRollup {
+	const rollup: CaseVerificationRollup = { passed: 0, failed: 0, notVerified: 0 };
+	for (const tc of cases) {
+		if (tc.status === 'notVerified') {
+			rollup.notVerified++;
+			continue;
+		}
+		const { passCount, totalCount } = countAggregatedUnitTrials(getAggregatedCaseUnits(tc));
+		if (totalCount > 0 && passCount === totalCount) rollup.passed++;
+		else rollup.failed++;
+	}
+	return rollup;
+}
+
 export function getCaseRunStatusLabel(result: WorkflowTestCaseResult): string {
 	switch (getCaseRunStatus(result)) {
 		case 'checked':

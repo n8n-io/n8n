@@ -91,7 +91,7 @@ const searchTypesAction = z.object({
 		.boolean()
 		.optional()
 		.describe(
-			'When true, ignore `query` and return every credential type supported by n8n Connect. Use to answer "which credential types support n8n Connect?".',
+			'When true, ignore `query` and return every credential type supported by n8n credits. Use to answer "which credential types support n8n credits?".',
 		),
 });
 

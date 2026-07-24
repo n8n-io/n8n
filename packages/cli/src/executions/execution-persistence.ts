@@ -113,7 +113,7 @@ export class ExecutionPersistence {
 				const executionId = String(identifiers[0].id);
 				const ref = { workflowId: id, executionId };
 
-				const jsonSizeBytes = await this.trackWrite(storedAt, async () => {
+				const jsonSizeBytes = await this.trackWrite(storedAt, ref.workflowId, async () => {
 					const bundle: ExecutionDataPayload = {
 						data: stringify(rawData),
 						workflowData: workflowSnapshot,
@@ -761,7 +761,7 @@ export class ExecutionPersistence {
 				(workflowVersionId !== null || mode === 'db')
 			) {
 				const binaryDataSizeBytes = sumBinaryDataBytes(data);
-				const jsonSizeBytes = await this.trackWrite(mode, async () => {
+				const jsonSizeBytes = await this.trackWrite(mode, ref.workflowId, async () => {
 					const bundle: ExecutionDataPayload = {
 						data: stringify(data),
 						workflowData: this.toWorkflowSnapshot(workflowData),
@@ -786,7 +786,7 @@ export class ExecutionPersistence {
 			const existing = await this.trackRead(mode, async () => await this.readData(mode, ref, tx));
 			if (!existing) throw new MissingExecutionDataError(ref);
 
-			const jsonSizeBytes = await this.trackWrite(mode, async () => {
+			const jsonSizeBytes = await this.trackWrite(mode, ref.workflowId, async () => {
 				const bundle: ExecutionDataPayload = {
 					data: data !== undefined ? stringify(data) : existing.data,
 					workflowData: workflowData
@@ -889,6 +889,7 @@ export class ExecutionPersistence {
 	 */
 	private async trackWrite(
 		mode: ExecutionDataStorageLocation,
+		workflowId: string,
 		op: () => Promise<number>,
 	): Promise<number> {
 		const start = Date.now();
@@ -901,6 +902,7 @@ export class ExecutionPersistence {
 		} finally {
 			this.eventService.emit('execution-data-write', {
 				mode,
+				workflowId,
 				durationMs: Date.now() - start,
 				success,
 				jsonSizeBytes,

@@ -58,7 +58,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
-          node-version: 24.16.0
+          node-version: 24.18.0
 
       - name: Fetch read-all live ledger from BigQuery
         # Read-all (no ?package= param): one curl returns every row across
@@ -179,16 +179,16 @@ jobs:
         # source_file re-score path). Without it emit-payload falls back to git,
         # which yields null churn/fix_density on this shallow clone.
         run: |
-          signals_arg=""
+          signals_arg=()
           if [ -f .mutation-health/signals.json ]; then
-            signals_arg="--signals .mutation-health/signals.json"
+            signals_arg=(--signals .mutation-health/signals.json)
           else
             echo "::notice::signals.json not present — churn/fix_density will fall back to git (null on shallow clone)."
           fi
           node scripts/mutation-health/emit-payload.mjs \
             --summary "$REPORTS_DIR/summary.json" \
             --package "$PACKAGE_NAME" \
-            $signals_arg
+            "${signals_arg[@]}"
 
       - name: POST result payload
         env:

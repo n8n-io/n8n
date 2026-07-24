@@ -12,7 +12,7 @@ import {
 	TabsTrigger,
 } from 'reka-ui';
 import { computed, nextTick, ref, watch } from 'vue';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@/app/composables/useToast';
 import type { ArtifactTab } from '../useCanvasPreview';
 

@@ -331,7 +331,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(params.snapshot).toBeUndefined();
 	});
 
-	it('requests a proxy token scoped to the project id when the proxy is enabled', async () => {
+	it('requests a proxy token scoped to the project id when the proxy is enabled, even without sandbox env vars', async () => {
 		const client = mock<AiAssistantClient>();
 		client.getSandboxProxyConfig.mockResolvedValue({ image: 'proxy-image' });
 		client.getBuilderApiProxyToken.mockResolvedValue({
@@ -343,7 +343,11 @@ describe('AgentKnowledgeSandboxService', () => {
 			isProxyEnabled: vi.fn().mockReturnValue(true),
 			getClient: vi.fn().mockResolvedValue(client),
 		});
-		const service = makeService({}, mock<Logger>(), aiService);
+		const service = makeService(
+			{ sandboxEnabled: false, sandboxProvider: '' },
+			mock<Logger>(),
+			aiService,
+		);
 
 		await service.warmSandbox(projectId, agentId);
 

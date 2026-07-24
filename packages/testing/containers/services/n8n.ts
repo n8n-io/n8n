@@ -45,6 +45,7 @@ export class N8NStartupError extends Error {
 
 const BASE_ENV: Record<string, string> = {
 	N8N_LOG_LEVEL: 'debug',
+	N8N_EXPRESSION_ENGINE: 'vm',
 	N8N_ENCRYPTION_KEY: process.env.N8N_ENCRYPTION_KEY ?? 'test-encryption-key',
 	E2E_TESTS: 'false',
 	QUEUE_HEALTH_CHECK_ACTIVE: 'true',

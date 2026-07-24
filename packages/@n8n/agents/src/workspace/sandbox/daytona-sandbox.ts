@@ -10,7 +10,14 @@ import type {
 } from '@daytona/sdk';
 import { randomUUID } from 'node:crypto';
 
-import type { CommandResult, ExecuteCommandOptions, ProviderStatus, SandboxInfo } from '../types';
+import { isAbortError, raceWithAbort } from '../../sdk/abort';
+import type {
+	AbortableOptions,
+	CommandResult,
+	ExecuteCommandOptions,
+	ProviderStatus,
+	SandboxInfo,
+} from '../types';
 import { BaseSandbox } from './base-sandbox';
 import { DaytonaAuthManager } from './daytona-auth-manager';
 import { loadDaytona } from './lazy-daytona';
@@ -195,30 +202,32 @@ export class DaytonaSandbox extends BaseSandbox {
 		args: string[] = [],
 		options?: ExecuteCommandOptions,
 	): Promise<CommandResult> {
-		return await this.recoverAndRetry(async () => {
-			await this.ensureRunning();
-			await this.ensureAuthFresh();
-			const startedAt = Date.now();
-			const fullCommand = toShellCommand(command, args);
-			const result = await this.instance.process.executeCommand(
-				fullCommand,
-				options?.cwd,
-				this.compactEnv(options?.env),
-				Math.ceil((options?.timeout ?? this.timeout) / 1000),
-			);
-			const stdout = result.artifacts?.stdout ?? result.result ?? '';
-			if (stdout) options?.onStdout?.(stdout);
+		return await raceWithAbort(async () => {
+			return await this.recoverAndRetry(async () => {
+				await this.ensureRunning({ abortSignal: options?.abortSignal });
+				await this.ensureAuthFresh();
+				const startedAt = Date.now();
+				const fullCommand = toShellCommand(command, args);
+				const result = await this.instance.process.executeCommand(
+					fullCommand,
+					options?.cwd,
+					this.compactEnv(options?.env),
+					Math.ceil((options?.timeout ?? this.timeout) / 1000),
+				);
+				const stdout = result.artifacts?.stdout ?? result.result ?? '';
+				if (stdout) options?.onStdout?.(stdout);
 
-			return {
-				command,
-				args,
-				success: result.exitCode === 0,
-				exitCode: result.exitCode,
-				stdout,
-				stderr: '',
-				executionTimeMs: Date.now() - startedAt,
-			};
-		});
+				return {
+					command,
+					args,
+					success: result.exitCode === 0,
+					exitCode: result.exitCode,
+					stdout,
+					stderr: '',
+					executionTimeMs: Date.now() - startedAt,
+				};
+			});
+		}, options?.abortSignal);
 	}
 
 	/**
@@ -227,12 +236,17 @@ export class DaytonaSandbox extends BaseSandbox {
 	 * stopped/deleted while idle. Lets `DaytonaFilesystem` reuse the same recovery as
 	 * `executeCommand` without reaching into private state.
 	 */
-	async withFilesystem<T>(op: (fs: Sandbox['fs']) => Promise<T>): Promise<T> {
-		return await this.recoverAndRetry(async () => {
-			await this.ensureRunning();
-			await this.ensureAuthFresh();
-			return await op(this.instance.fs);
-		});
+	async withFilesystem<T>(
+		op: (fs: Sandbox['fs']) => Promise<T>,
+		options?: AbortableOptions,
+	): Promise<T> {
+		return await raceWithAbort(async () => {
+			return await this.recoverAndRetry(async () => {
+				await this.ensureRunning({ abortSignal: options?.abortSignal });
+				await this.ensureAuthFresh();
+				return await op(this.instance.fs);
+			});
+		}, options?.abortSignal);
 	}
 
 	/**
@@ -349,6 +363,7 @@ export class DaytonaSandbox extends BaseSandbox {
 		try {
 			return await op();
 		} catch (error) {
+			if (isAbortError(error)) throw error;
 			if (!(await this.isRecoverable(error))) throw error;
 			await this.recover();
 			return await op();
