@@ -187,6 +187,7 @@ const headers = computed<Array<TableHeader<ApiKey>>>(() => [
 						:items="getRowActions(item)"
 						placement="bottom-end"
 						activator-size="small"
+						activator-icon="ellipsis-vertical"
 						data-test-id="api-key-actions-toggle"
 						@select="(action) => onAction(action, item)"
 					/>
