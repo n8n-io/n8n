@@ -626,6 +626,60 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
 
+		it('write_config emits config-diff telemetry from the persisted config returned by updateConfig', async () => {
+			const { service, agentsService, telemetry } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [], tools: [] };
+			const updatedConfig: AgentJsonConfig = {
+				...currentConfig,
+				tools: [{ type: 'workflow', workflow: 'wf-1', name: 'My Workflow' }],
+			};
+			const normalizedConfig = {
+				...updatedConfig,
+				tools: [
+					{ type: 'workflow' as const, workflow: 'wf-1', name: 'My Workflow' },
+					{ type: 'workflow' as const, workflow: 'wf-2', name: 'Normalized Tool' },
+				],
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
+			};
+			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: normalizedConfig,
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(updatedConfig),
+				},
+				ctx,
+			);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TOOLS,
+				expect.objectContaining({
+					agent_id: agentId,
+					tool_added: 'My Workflow',
+					tools: ['My Workflow', 'Normalized Tool'],
+				}),
+			);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TOOLS,
+				expect.objectContaining({
+					agent_id: agentId,
+					tool_added: 'Normalized Tool',
+					tools: ['My Workflow', 'Normalized Tool'],
+				}),
+			);
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TOOLS,
+				expect.objectContaining({
+					tools: ['My Workflow'],
+				}),
+			);
+		});
+
 		it('write_config strips legacy schedule integrations before saving', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };

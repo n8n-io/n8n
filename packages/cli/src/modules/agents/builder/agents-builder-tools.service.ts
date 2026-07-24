@@ -384,10 +384,14 @@ export class AgentsBuilderToolsService {
 						applyNativeWebSearchDefaultOn(zodResult.data),
 					);
 					try {
-						await this.agentConfigService.updateConfig(agentId, projectId, configWithDefaults);
+						const { config: persistedConfig } = await this.agentConfigService.updateConfig(
+							agentId,
+							projectId,
+							configWithDefaults,
+						);
 						this.emitConfigDiffTelemetry(
 							snapshot,
-							configWithDefaults,
+							persistedConfig,
 							agentId,
 							user,
 							telemetryContext,
@@ -507,10 +511,14 @@ export class AgentsBuilderToolsService {
 					);
 
 					try {
-						await this.agentConfigService.updateConfig(agentId, projectId, configWithDefaults);
+						const { config: persistedConfig } = await this.agentConfigService.updateConfig(
+							agentId,
+							projectId,
+							configWithDefaults,
+						);
 						this.emitConfigDiffTelemetry(
 							snapshot,
-							configWithDefaults,
+							persistedConfig,
 							agentId,
 							user,
 							telemetryContext,
@@ -708,6 +716,7 @@ export class AgentsBuilderToolsService {
 					credentialProvider,
 					agentId,
 					projectId,
+					track,
 					isCredentialTypeKnown: (credentialType) =>
 						this.credentialTypes.recognizes(credentialType),
 					listIntegrationCredentialIds: async () => {
