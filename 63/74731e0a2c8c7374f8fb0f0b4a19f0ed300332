@@ -1,0 +1,41 @@
+packages/@n8n/telemetry/src/define.ts
+  s_1e5125c6600a65::t_d1efa65799d369 3-5,11-15,19,21-29
+packages/@n8n/telemetry/src/validate.ts
+  s_1e5125c6600a65::t_6fa2947b5b6b5d 131
+  s_1e5125c6600a65::t_4ba136ec855cb9 3
+packages/frontend/editor-ui/src/app/plugins/telemetry/index.ts
+  s_1e5125c6600a65::t_d0e690d980d71c 118
+packages/cli/src/telemetry/index.ts
+  s_1e5125c6600a65::t_1e2c46471177c2 568
+packages/@n8n/telemetry/src/__tests__/define.test.ts
+  ai_agent 18
+  s_1e5125c6600a65::t_8ff752a536d82a 1-17,19-42
+pnpm-lock.yaml
+  ai_agent 4465-4467,4994-4996
+packages/@n8n/telemetry/package.json
+  s_1e5125c6600a65::t_9a0bc67d3c5a67 4
+packages/@n8n/telemetry/src/index.ts
+  s_1e5125c6600a65::t_25619dc80829fe 5-10
+packages/@n8n/telemetry/src/__tests__/types.test-d.ts
+  s_1e5125c6600a65::t_c6e8d4f57c06ee 54-56
+packages/frontend/@n8n/composables/package.json
+  s_1e5125c6600a65::t_e62e359017fe81 41
+packages/cli/package.json
+  s_1e5125c6600a65::t_e62e359017fe81 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6374731e0a2c8c7374f8fb0f0b4a19f0ed300332",
+  "prompts": {},
+  "sessions": {
+    "s_1e5125c6600a65": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21142060-5675-4f0c-aacb-58656862d6d1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}
