@@ -2,7 +2,7 @@ packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller
   s_782e56c14c8ff8::t_463c3982d89327 5
   s_c7f2eb05574ce2::t_ceee2259a6e675 1-2,4,5
 packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
-  s_c7f2eb05574ce2::t_0759c7a798e271 253
+  s_c7f2eb05574ce2::t_0759c7a798e271 245,253
   s_4e81021c6567f0::t_b1728bcd115f19 254
 ---
 {
