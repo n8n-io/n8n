@@ -96,6 +96,14 @@ export type AgentSseEvent =
 	| { type: 'tool-call-suspended'; payload: ToolSuspendedPayload }
 	| { type: 'message'; message: AgentSseMessage }
 	| {
+			/** A warning message from the MCP server when it fails to connect or initialize. */
+			type: 'warning';
+			message: string;
+			code?: string;
+			source?: 'mcp';
+			server?: string;
+	  }
+	| {
 			type: 'error';
 			message: string;
 			/**

@@ -252,6 +252,44 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
 		expect(configs[0]).not.toHaveProperty('connectionTimeoutMs');
 	});
+
+	it('forwards onConnectionFailed to the SDK config when provided', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		const oauthService = mock<OauthService>();
+		const onConnectionFailed = vi.fn();
+
+		await buildMcpClientForServer(makeServer(), {
+			credentialProvider,
+			oauthService,
+			projectId: 'proj-1',
+			proxyFetch,
+			onConnectionFailed,
+		});
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
+		expect(typeof configs[0].onConnectionFailed).toBe('function');
+		// Invoking the wired callback forwards to the observer.
+		(configs[0].onConnectionFailed as (event: { server: string; error: string }) => void)({
+			server: 'srv',
+			error: 'boom',
+		});
+		expect(onConnectionFailed).toHaveBeenCalledWith({ server: 'srv', error: 'boom' });
+	});
+
+	it('omits onConnectionFailed from the SDK config when not provided', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		const oauthService = mock<OauthService>();
+
+		await buildMcpClientForServer(makeServer(), {
+			credentialProvider,
+			oauthService,
+			projectId: 'proj-1',
+			proxyFetch,
+		});
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
+		expect(configs[0]).not.toHaveProperty('onConnectionFailed');
+	});
 });
 
 // ---------------------------------------------------------------------------

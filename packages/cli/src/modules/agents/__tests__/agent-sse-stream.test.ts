@@ -81,6 +81,35 @@ describe('agent-sse-stream — stream completion', () => {
 	});
 });
 
+describe('agent-sse-stream — warning chunks', () => {
+	it('forwards warning chunks as non-fatal warning SSE events', async () => {
+		const events = await collectEvents([
+			{
+				type: 'warning',
+				message: 'fetch failed',
+				code: 'mcp_connection_failed',
+				source: 'mcp',
+				server: 'dead',
+			},
+		]);
+
+		expect(events).toEqual([
+			{
+				type: 'warning',
+				message: 'fetch failed',
+				code: 'mcp_connection_failed',
+				source: 'mcp',
+				server: 'dead',
+			},
+		]);
+	});
+
+	it('omits optional warning fields when absent', async () => {
+		const events = await collectEvents([{ type: 'warning', message: 'something' }]);
+		expect(events).toEqual([{ type: 'warning', message: 'something' }]);
+	});
+});
+
 describe('agent-sse-stream — tool execution lifecycle chunks', () => {
 	it('forwards tool-execution-start with its server startTime', async () => {
 		const events = await collectEvents([

@@ -98,6 +98,13 @@ export class McpConnection {
 		if (this.connectionPromise !== undefined) {
 			return await this.connectionPromise;
 		}
+		// Starting a fresh connection (the initial connect, or a retry after a
+		// prior disconnect cleared `connectionPromise`). Reset the closed
+		// flag so a subsequent disconnect() can tear down the new client —
+		// otherwise a reconnect after disconnect would leave the new transport
+		// open (doDisconnect() no-ops while `closed` is true).
+		this.closed = false;
+		this.disconnectPromise = undefined;
 		const sdk = await loadMcpSdk();
 		this.client = new sdk.Client({ name: '@n8n/agents', version: '0.1.0' }, { capabilities: {} });
 		this.connectionPromise = this.connectWithTransport(this.createTransport(this.config, sdk));
