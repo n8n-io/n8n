@@ -74,6 +74,7 @@ import {
 	N8nInputLabel,
 	N8nLink,
 	N8nNotice,
+	N8nSectionHeader,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -818,6 +819,13 @@ watch(
 				v-else-if="item.parameter.type === 'curlImport'"
 				:is-read-only="isReadOnly"
 				@value-changed="valueChanged"
+			/>
+
+			<N8nSectionHeader
+				v-else-if="item.parameter.type === 'notice' && item.parameter.typeOptions?.sectionHeader"
+				class="parameter-item"
+				:title="i18n.nodeText(activeNode?.type).inputLabelDisplayName(item.parameter, path)"
+				bordered
 			/>
 
 			<N8nNotice

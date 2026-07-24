@@ -280,6 +280,31 @@ describe('ParameterInputList', () => {
 		expect(link.getAttribute('href')).toEqual('notice.n8n.io');
 	});
 
+	it('renders a notice with typeOptions.sectionHeader as a section header, not a notice box', async () => {
+		ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+		const sectionHeaderParam: INodeProperties[] = [
+			{
+				displayName: 'Advanced Interactivity',
+				name: 'advancedInteractivityNotice',
+				type: 'notice',
+				default: '',
+				typeOptions: { sectionHeader: true },
+			},
+		];
+		const { getByTestId, queryByText } = renderComponent({
+			props: {
+				parameters: sectionHeaderParam,
+				nodeValues: TEST_NODE_VALUES,
+			},
+		});
+		await flushPromises();
+
+		// Renders as the section-header divider...
+		expect(getByTestId('section-header-title')).toHaveTextContent('Advanced Interactivity');
+		// ...and not as the fallthrough N8nNotice box.
+		expect(queryByText('Note: This is a notice with')).not.toBeInTheDocument();
+	});
+
 	it('renders callout correctly', async () => {
 		ndvStore.activeNode = TEST_NODE_NO_ISSUES;
 		const { getByTestId, findByText } = renderComponent({

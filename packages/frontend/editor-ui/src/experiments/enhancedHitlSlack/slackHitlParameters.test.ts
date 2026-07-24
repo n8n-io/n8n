@@ -3,6 +3,13 @@ import { describe, expect, it } from 'vitest';
 
 import { filterSlackHitlParameters } from './slackHitlParameters';
 
+const advancedInteractivityNotice: INodeProperties = {
+	displayName: 'Advanced Interactivity',
+	name: 'advancedInteractivityNotice',
+	type: 'notice',
+	default: '',
+};
+
 const captureResponder: INodeProperties = {
 	displayName: 'Capture Who Responded',
 	name: 'captureResponder',
@@ -25,8 +32,13 @@ const channelId: INodeProperties = {
 };
 
 describe('filterSlackHitlParameters', () => {
-	it('removes captureResponder and approvers', () => {
-		const result = filterSlackHitlParameters([captureResponder, approvers, channelId]);
+	it('removes the advanced interactivity notice, captureResponder and approvers', () => {
+		const result = filterSlackHitlParameters([
+			advancedInteractivityNotice,
+			captureResponder,
+			approvers,
+			channelId,
+		]);
 
 		expect(result).toEqual([channelId]);
 	});

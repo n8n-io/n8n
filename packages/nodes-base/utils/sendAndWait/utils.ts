@@ -70,6 +70,9 @@ export function getSendAndWaitProperties(
 		defaultApproveLabel?: string;
 		defaultDisapproveLabel?: string;
 		extraOptions?: INodeProperties[];
+		// Render `additionalProperties` right before the "Options" collection (grouped as
+		// their own section) instead of after it — used by the advanced-HITL nodes.
+		additionalPropertiesBeforeOptions?: boolean;
 	},
 ): INodeProperties[] {
 	const buttonStyle: INodeProperties = {
@@ -230,6 +233,7 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
+		...(options?.additionalPropertiesBeforeOptions ? additionalProperties : []),
 		{
 			displayName: 'Options',
 			name: 'options',
@@ -297,7 +301,7 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
-		...additionalProperties,
+		...(options?.additionalPropertiesBeforeOptions ? [] : additionalProperties),
 	];
 
 	return updateDisplayOptions(
