@@ -12,6 +12,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ExternalHooks } from '@/external-hooks';
+import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 // `ExternalHooks` loads hook files via `require(<path>)`. Vitest cannot mock a
 // path that doesn't resolve to a real module, so write a real fixture that
@@ -42,6 +43,7 @@ describe('ExternalHooks', () => {
 	const workflowRepository = mock<WorkflowRepository>();
 
 	const workflowData = mock<IWorkflowBase>({ id: '123', name: 'Test Workflow' });
+	const workflowContext = mock<WorkflowHookContextService>();
 	const hookFn = vi.fn();
 
 	let externalHooks: ExternalHooks;
@@ -87,10 +89,10 @@ describe('ExternalHooks', () => {
 
 			expect(externalHooks['registered']['workflow.create']).toHaveLength(1);
 
-			await externalHooks.run('workflow.create', [workflowData]);
+			await externalHooks.run('workflow.create', [workflowData, workflowContext]);
 
 			expect(hookFn).toHaveBeenCalledTimes(1);
-			expect(hookFn).toHaveBeenCalledWith(workflowData);
+			expect(hookFn).toHaveBeenCalledWith(workflowData, workflowContext);
 		});
 	});
 
@@ -102,7 +104,7 @@ describe('ExternalHooks', () => {
 		it('should execute registered hooks', async () => {
 			externalHooks['registered']['workflow.create'] = [hookFn];
 
-			await externalHooks.run('workflow.create', [workflowData]);
+			await externalHooks.run('workflow.create', [workflowData, workflowContext]);
 
 			expect(hookFn).toHaveBeenCalledTimes(1);
 
@@ -122,7 +124,9 @@ describe('ExternalHooks', () => {
 
 			externalHooks['registered']['workflow.create'] = [hookFn];
 
-			await expect(externalHooks.run('workflow.create', [workflowData])).rejects.toThrow(error);
+			await expect(
+				externalHooks.run('workflow.create', [workflowData, workflowContext]),
+			).rejects.toThrow(error);
 			expect(errorReporter.error).toHaveBeenCalledWith(
 				expect.objectContaining({
 					message: 'External hook "workflow.create" failed',

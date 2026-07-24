@@ -68,11 +68,20 @@ type ExternalHooksMap = {
 	'user.password.update': [updatedEmail: string, updatedPassword: string | null];
 	'user.invited': [emails: string[]];
 
-	'workflow.create': [createdWorkflow: IWorkflowBase];
-	'workflow.afterCreate': [createdWorkflow: IWorkflowBase];
-	'workflow.activate': [updatedWorkflow: IWorkflowBase];
-	'workflow.update': [updatedWorkflow: IWorkflowBase];
-	'workflow.afterUpdate': [updatedWorkflow: IWorkflowBase];
+	'workflow.create': [createdWorkflow: IWorkflowBase, workflowContext: WorkflowHookContextService];
+	'workflow.afterCreate': [
+		createdWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+	];
+	'workflow.activate': [
+		updatedWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+	];
+	'workflow.update': [updatedWorkflow: IWorkflowBase, workflowContext: WorkflowHookContextService];
+	'workflow.afterUpdate': [
+		updatedWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+	];
 	'workflow.delete': [workflowId: string];
 	'workflow.afterDelete': [workflowId: string];
 	'workflow.afterArchive': [workflowId: string];
@@ -87,6 +96,7 @@ type ExternalHooksMap = {
 		fullRunData: IRun | undefined,
 		workflowData: IWorkflowBase,
 		executionId: string,
+		workflowContext: WorkflowHookContextService,
 	];
 };
 type HookNames = keyof ExternalHooksMap;

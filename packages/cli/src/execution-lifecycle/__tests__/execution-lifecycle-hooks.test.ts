@@ -452,6 +452,7 @@ describe('Execution Lifecycle Hooks', () => {
 					successfulRun,
 					workflowData,
 					executionId,
+					workflowHookContext,
 				]);
 			});
 		});
