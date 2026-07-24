@@ -1,13 +1,13 @@
-# Terminal push event delivery guarantee
+# Terminal execution event delivery guarantee
 
 ## Guarantee
 
 **At-least-once delivery of terminal execution events across a client
 disconnect that spans the finish.** If a manual execution finishes while the
-editor is disconnected (laptop sleep, deploy, network blip), the terminal event
-is re-delivered on reconnect without a manual refresh.
+editor is disconnected (laptop sleep, deploy, network blip), the terminal
+execution event is re-delivered on reconnect without a manual refresh.
 
-Terminal events:
+Terminal execution events:
 
 - `executionFinished` — the run reached a completed/terminal status
   (`success`, `error`, `crashed`, `canceled`).
@@ -33,7 +33,7 @@ are the **same idempotent consumer with two producers**.
 
 ### 1. Additive envelope metadata
 
-Terminal events carry an optional `meta` alongside `type`/`data`:
+Terminal execution events carry an optional `meta` alongside `type`/`data`:
 
 ```jsonc
 {
@@ -48,8 +48,9 @@ Terminal events carry an optional `meta` alongside `type`/`data`:
 ```
 
 Backward-compatible **both directions**: old clients ignore `meta`; a new client
-tolerates its absence from an old server. Built by `createTerminalEventMeta()`
-so the live-push and replay paths emit an identically shaped envelope.
+tolerates its absence from an old server. Built by
+`createTerminalExecutionEventMeta()` so the live-push and replay paths emit an
+identically shaped envelope.
 
 ### 2. WebSocket reconnect handshake (bidirectional transport)
 
@@ -63,7 +64,7 @@ On reconnect, before consuming live events, the client sends:
 from the single tracked execution on the canvas, so **0-or-1 in practice**
 (capped at 50 defensively). For each id the server reads the execution row and:
 
-- **already terminal** → re-delivers the terminal event with `meta.replayed = true`;
+- **already terminal** → re-delivers the terminal execution event with `meta.replayed = true`;
 - **still running** (`new` / `running` / `unknown`) → sends nothing (live events resume);
 - **unknown / pruned** → sends nothing (client falls back to a full REST reconcile);
 - **not readable by the requesting user** → sends nothing.
@@ -87,15 +88,15 @@ server-side resume. Recovery **degrades to the frontend REST reconcile**
 - **No server-side buffer or replay journal** — nothing to size, trim, or leak.
   `awaiting` is 0-or-1 and the durability is the DB.
 - **No required acks** — a client MAY ack for telemetry, but a missing ack never
-  loses a terminal event; the DB is the durability.
+  loses a terminal execution event; the DB is the durability.
 - **No sequence counters, no cross-main shared state.** The client carries the
   id, `pushRef` is stable across reconnects, and the execution row is shared, so
   a reconnect that lands on a **different main** still resolves correctly.
 
 ## Client idempotency contract (normative)
 
-- **Idempotency key = `executionId`.** A terminal event/reconcile for an
-  execution the client is not tracking is a no-op.
+- **Idempotency key = `executionId`.** A terminal execution event/reconcile for
+  an execution the client is not tracking is a no-op.
 - **Convergent:** the same `(executionId, status)` yields the same final state
   regardless of source (live push / replay / `executionRecovered` / REST
   reconcile) or arrival count. Duplicate toasts are suppressed via `meta.replayed`.
@@ -117,7 +118,7 @@ server-side resume. Recovery **degrades to the frontend REST reconcile**
 
 | Failure | Detected by | Recovery |
 | --- | --- | --- |
-| Finish push dropped while client offline | client still shows running on reconnect | `resume` → DB read → terminal event replayed |
+| Finish push dropped while client offline | client still shows running on reconnect | `resume` → DB read → terminal execution event replayed |
 | `resume` id already pruned from DB | absent from DB lookup | client falls back to full REST reconcile |
 | Disconnect longer than the client's guard window | client-side timer | client does a full reconcile instead of/alongside replay |
 | Client on SSE (no upstream channel) | transport is unidirectional | REST reconcile carries the guarantee |

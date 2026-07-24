@@ -8,7 +8,7 @@ import { ErrorReporter } from 'n8n-core';
 import { isTerminalExecutionStatus, UnexpectedError } from 'n8n-workflow';
 
 import { Push } from '@/push';
-import { createTerminalEventMeta } from '@/push/terminal-event-meta';
+import { createTerminalExecutionEventMeta } from '@/push/terminal-execution-event-meta';
 import type { OnPushMessage } from '@/push/types';
 import { AccessService } from '@/services/access.service';
 
@@ -18,7 +18,7 @@ import { AccessService } from '@/services/access.service';
  * On reconnect the client sends a `resume` message naming the executions it
  * still shows as running (see `resumeMessageSchema`). For each, the server
  * reads the durable truth — the execution row — and, if the execution has
- * already reached a terminal state, re-pushes the terminal event marked
+ * already reached a terminal state, re-pushes the terminal execution event marked
  * `meta.replayed = true`. Executions still running (or unknown/pruned) get
  * nothing. A `resumeComplete` message always closes the handshake.
  *
@@ -85,7 +85,7 @@ export class ExecutionPushResumeService {
 						{
 							type: 'executionWaiting',
 							data: { executionId },
-							meta: createTerminalEventMeta({ replayed: true }),
+							meta: createTerminalExecutionEventMeta({ replayed: true }),
 						},
 						pushRef,
 					);
@@ -95,7 +95,7 @@ export class ExecutionPushResumeService {
 						{
 							type: 'executionFinished',
 							data: { executionId, workflowId, status },
-							meta: createTerminalEventMeta({ replayed: true }),
+							meta: createTerminalExecutionEventMeta({ replayed: true }),
 						},
 						pushRef,
 					);

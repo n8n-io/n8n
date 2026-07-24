@@ -12,7 +12,8 @@ export const RESUME_AWAITING_MAX = 50;
  * Client → server message sent over the (bidirectional) WebSocket push channel
  * right after reconnecting, before consuming live events. It names the
  * executions the client still shows as running so the server can re-deliver any
- * terminal events the client missed while disconnected, sourced from the DB.
+ * terminal execution events the client missed while disconnected, sourced from
+ * the DB.
  *
  * Not used on the SSE transport (unidirectional): there, recovery degrades to
  * the REST reconcile path.

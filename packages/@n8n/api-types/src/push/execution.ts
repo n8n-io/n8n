@@ -34,8 +34,8 @@ export type ExecutionWaiting = {
 		source?: WorkflowExecutionSource;
 	};
 	/**
-	 * Terminal-class event (spinner → idle). Carries delivery metadata so it can
-	 * be deduped and replayed on reconnect. See {@link PushMessageMeta}.
+	 * Terminal-class execution event (spinner → idle). Carries delivery metadata
+	 * so it can be deduped and replayed on reconnect. See {@link PushMessageMeta}.
 	 */
 	meta?: PushMessageMeta;
 };
@@ -53,8 +53,8 @@ export type ExecutionFinished = {
 		source?: WorkflowExecutionSource;
 	};
 	/**
-	 * Delivery metadata so this terminal event can be deduped and replayed on
-	 * reconnect. See {@link PushMessageMeta}.
+	 * Delivery metadata so this terminal execution event can be deduped and
+	 * replayed on reconnect. See {@link PushMessageMeta}.
 	 */
 	meta?: PushMessageMeta;
 };
@@ -68,14 +68,15 @@ export type ExecutionRecovered = {
 
 /**
  * Server → client message closing the reconnect handshake: sent after the
- * server has re-delivered any terminal events the client missed (in response to
- * a `resume` message), so the client knows catch-up is done.
+ * server has re-delivered any terminal execution events the client missed (in
+ * response to a `resume` message), so the client knows catch-up is done.
  */
 export type ResumeComplete = {
 	type: 'resumeComplete';
 	data: {
 		/**
-		 * Execution ids whose terminal event was re-delivered during this resume.
+		 * Execution ids whose terminal execution event was re-delivered during
+		 * this resume.
 		 * Informational — the client dedups by executionId regardless; empty when
 		 * nothing needed replaying.
 		 */

@@ -9,7 +9,9 @@ import { v4 as uuid } from 'uuid';
  * `eventId` is per-emission (a replay gets a fresh id); dedup on the client is
  * keyed on `executionId`, not `eventId`. `ts` is the server emit time.
  */
-export function createTerminalEventMeta(options?: { replayed?: boolean }): PushMessageMeta {
+export function createTerminalExecutionEventMeta(options?: {
+	replayed?: boolean;
+}): PushMessageMeta {
 	const meta: PushMessageMeta = {
 		eventId: uuid(),
 		ts: new Date().toISOString(),

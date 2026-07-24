@@ -85,7 +85,7 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 		});
 
 		// Serialize the whole message so the optional, additive `meta` envelope
-		// (present on terminal events) is preserved on the wire.
+		// (present on terminal execution events) is preserved on the wire.
 		const stringifiedPayload = jsonStringify(pushMsg, { replaceCircularRefs: true });
 
 		for (const pushRef of pushRefs) {
