@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddAvailableInMcpToAgents1784654971796 implements ReversibleMigration {
+export class AddAvailableInMcpToAgents1784897791636 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
 		await addColumns(
 			'agents',
