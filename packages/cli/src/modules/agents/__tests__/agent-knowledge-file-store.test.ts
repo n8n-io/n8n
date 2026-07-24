@@ -50,7 +50,7 @@ describe('AgentKnowledgeFileStore', () => {
 
 		expect(storedAt).toBe('fs');
 		expect(logger.warn).toHaveBeenCalledWith(
-			"Execution data storage mode is 'database'; agent knowledge files will be stored on the local filesystem",
+			"Execution data storage mode is 'database'; agent knowledge files will be stored on the local filesystem. In multi-main deployments this path must be on a shared filesystem.",
 		);
 		await expect(store.readAsBuffer({ ...ref, storedAt: 'fs' })).resolves.toEqual(body);
 	});

@@ -9,6 +9,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
 const MIGRATION_NAME = 'ReplaceAgentFileBinaryDataIdWithStoredAt1784900752603';
+const SURVIVOR_FILE_ID = '22222222-2222-2222-2222-222222222222';
 
 async function columnNames(context: TestMigrationContext, table: string): Promise<string[]> {
 	if (context.isSqlite) {
@@ -76,6 +77,34 @@ describe('ReplaceAgentFileBinaryDataIdWithStoredAt Migration', () => {
 		);
 	}
 
+	async function insertBinaryData(
+		context: TestMigrationContext,
+		data: {
+			fileId: string;
+			sourceType: string;
+			sourceId: string;
+			fileName: string;
+			payload: string;
+		},
+	): Promise<void> {
+		const binaryData = context.escape.tableName('binary_data');
+		const now = new Date();
+		await context.runQuery(
+			`INSERT INTO ${binaryData} ("fileId", "sourceType", "sourceId", "data", "mimeType", "fileName", "fileSize", "createdAt", "updatedAt") VALUES (:fileId, :sourceType, :sourceId, :data, :mimeType, :fileName, :fileSize, :createdAt, :updatedAt)`,
+			{
+				fileId: data.fileId,
+				sourceType: data.sourceType,
+				sourceId: data.sourceId,
+				data: Buffer.from(data.payload),
+				mimeType: 'text/plain',
+				fileName: data.fileName,
+				fileSize: data.payload.length,
+				createdAt: now,
+				updatedAt: now,
+			},
+		);
+	}
+
 	it('deletes existing knowledge files and replaces binaryDataId with storedAt', async () => {
 		const seedContext = createTestMigrationContext(dataSource);
 		try {
@@ -98,21 +127,20 @@ describe('ReplaceAgentFileBinaryDataIdWithStoredAt Migration', () => {
 				},
 			);
 
-			const binaryData = seedContext.escape.tableName('binary_data');
-			await seedContext.runQuery(
-				`INSERT INTO ${binaryData} ("fileId", "sourceType", "sourceId", "data", "mimeType", "fileName", "fileSize", "createdAt", "updatedAt") VALUES (:fileId, :sourceType, :sourceId, :data, :mimeType, :fileName, :fileSize, :createdAt, :updatedAt)`,
-				{
-					fileId: '11111111-1111-1111-1111-111111111111',
-					sourceType: 'agent_file',
-					sourceId: 'file-1',
-					data: Buffer.from('notes'),
-					mimeType: 'text/plain',
-					fileName: 'notes.txt',
-					fileSize: 5,
-					createdAt: now,
-					updatedAt: now,
-				},
-			);
+			await insertBinaryData(seedContext, {
+				fileId: '11111111-1111-1111-1111-111111111111',
+				sourceType: 'agent_file',
+				sourceId: 'file-1',
+				fileName: 'notes.txt',
+				payload: 'notes',
+			});
+			await insertBinaryData(seedContext, {
+				fileId: SURVIVOR_FILE_ID,
+				sourceType: 'execution',
+				sourceId: 'exec-1',
+				fileName: 'exec.bin',
+				payload: 'keep-me',
+			});
 		} finally {
 			await seedContext.queryRunner.release();
 		}
@@ -134,9 +162,25 @@ describe('ReplaceAgentFileBinaryDataIdWithStoredAt Migration', () => {
 			);
 			expect(remainingBinary).toEqual([]);
 
+			const survivor = await assertContext.runQuery<Array<{ fileId: string }>>(
+				`SELECT "fileId" FROM ${binaryData} WHERE "fileId" = :fileId`,
+				{ fileId: SURVIVOR_FILE_ID },
+			);
+			expect(survivor).toEqual([{ fileId: SURVIVOR_FILE_ID }]);
+
 			const columns = await columnNames(assertContext, 'agent_files');
 			expect(columns).toContain('storedAt');
 			expect(columns).not.toContain('binaryDataId');
+
+			await expect(
+				insertBinaryData(assertContext, {
+					fileId: '33333333-3333-3333-3333-333333333333',
+					sourceType: 'agent_file',
+					sourceId: 'should-fail',
+					fileName: 'rejected.txt',
+					payload: 'nope',
+				}),
+			).rejects.toThrow();
 		} finally {
 			await assertContext.queryRunner.release();
 		}

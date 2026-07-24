@@ -10,8 +10,8 @@ import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
-export type AgentKnowledgeFileRef = { agentId: string; fileId: string };
-export type StoredAgentKnowledgeFileRef = AgentKnowledgeFileRef & { storedAt: StorageLocation };
+type AgentKnowledgeFileRef = { agentId: string; fileId: string };
+type StoredAgentKnowledgeFileRef = AgentKnowledgeFileRef & { storedAt: StorageLocation };
 
 @Service()
 export class AgentKnowledgeFileFsByteStore extends FsByteStore {
@@ -27,6 +27,7 @@ export class AgentKnowledgeFileFsByteStore extends FsByteStore {
  * Stores agent knowledge file bytes via pluggable backends. The `fs` backend is
  * always available; `s3` and `az` are registered at module init when configured.
  * When execution data storage mode is `database`, writes fall back to `fs`.
+ * In multi-main deployments that fallback path must be on a shared filesystem.
  */
 @Service()
 export class AgentKnowledgeFileStore {
@@ -45,16 +46,12 @@ export class AgentKnowledgeFileStore {
 		this.byteStores.set(loc, store);
 	}
 
-	hasLocation(loc: StorageLocation) {
-		return this.byteStores.has(loc);
-	}
-
-	get writeLocation(): StorageLocation {
+	private get writeLocation(): StorageLocation {
 		if (this.storageConfig.modeTag === 'db') {
 			if (!this.warnedAboutDbFallback) {
 				this.warnedAboutDbFallback = true;
 				this.logger.warn(
-					"Execution data storage mode is 'database'; agent knowledge files will be stored on the local filesystem",
+					"Execution data storage mode is 'database'; agent knowledge files will be stored on the local filesystem. In multi-main deployments this path must be on a shared filesystem.",
 				);
 			}
 			return 'fs';

@@ -40,27 +40,17 @@ export class AgentsModule implements ModuleInterface {
 		// all commands) and are only registered when that init succeeded —
 		// mirroring ExecutionDataJsonStore, so a configured-but-unreachable
 		// backend degrades instead of throwing.
-		const { AzureByteStore, S3ByteStore } = await import('@n8n/blob-storage');
 		const { AgentExecutionLogStore } = await import('./execution-log/agent-execution-log-store.js');
 		const { AgentKnowledgeFileStore } = await import('./agent-knowledge-file-store.js');
 		const { ExecutionDataJsonStore } = await import(
 			'@/executions/execution-data/execution-data-json-store.js'
 		);
-		const agentExecutionLogStore = Container.get(AgentExecutionLogStore);
-		const agentKnowledgeFileStore = Container.get(AgentKnowledgeFileStore);
-		const executionDataJsonStore = Container.get(ExecutionDataJsonStore);
-		if (executionDataJsonStore.hasLocation('s3')) {
-			const { ObjectStoreService } = await import('@n8n/blob-storage/object-store');
-			const s3Store = new S3ByteStore(Container.get(ObjectStoreService));
-			agentExecutionLogStore.registerByteStore('s3', s3Store);
-			agentKnowledgeFileStore.registerByteStore('s3', s3Store);
-		}
-		if (executionDataJsonStore.hasLocation('az')) {
-			const { AzureBlobService } = await import('@n8n/blob-storage/azure-blob');
-			const azStore = new AzureByteStore(Container.get(AzureBlobService));
-			agentExecutionLogStore.registerByteStore('az', azStore);
-			agentKnowledgeFileStore.registerByteStore('az', azStore);
-		}
+		const { registerAgentBlobByteStores } = await import('./register-blob-byte-stores.js');
+		await registerAgentBlobByteStores({
+			executionDataJsonStore: Container.get(ExecutionDataJsonStore),
+			agentExecutionLogStore: Container.get(AgentExecutionLogStore),
+			agentKnowledgeFileStore: Container.get(AgentKnowledgeFileStore),
+		});
 
 		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service.js');
 		Container.get(AgentRuntimeCacheService);

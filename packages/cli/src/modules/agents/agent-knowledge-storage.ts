@@ -5,7 +5,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import type { AgentFile } from './entities/agent-file.entity';
 
-// Local sandbox disk mirroring the DB-backed knowledge files, so repeated
+// Local sandbox disk mirroring the persisted knowledge files, so repeated
 // reads/searches avoid re-fetching from the knowledge file store each time.
 export const KNOWLEDGE_MIRROR_DIR = '/home/daytona/knowledge-mirror';
 export const KNOWLEDGE_MIRROR_FILES_DIR = `${KNOWLEDGE_MIRROR_DIR}/files`;
