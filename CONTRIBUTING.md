@@ -194,6 +194,19 @@ checked out and set up:
    pnpm build
    ```
 
+4. **Rebuild native dependencies (if needed):**
+
+   Some packages include native dependencies that need to be compiled for your specific system. If you encounter errors related to native modules (e.g., "Could not locate the bindings file"), rebuild them:
+
+   ```bash
+   pnpm rebuild
+   ```
+
+   **Note:** Native modules must be rebuilt when:
+   - Switching Node.js versions
+   - Pulling updates that modify native dependencies
+   - Moving the project to a different machine or architecture
+
 ### Start
 
 To start n8n execute:
