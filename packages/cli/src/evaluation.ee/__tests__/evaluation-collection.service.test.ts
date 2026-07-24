@@ -16,6 +16,7 @@ import type {
 	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
+import { OperationalError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -128,7 +129,7 @@ describe('EvaluationCollectionService', () => {
 		dbLockService = mock<DbLockService>();
 		// The lock is exercised elsewhere; here it just runs the critical section so
 		// the rerun logic (re-check + kickoff) is what these tests observe.
-		dbLockService.withLock.mockImplementation(
+		dbLockService.tryWithLock.mockImplementation(
 			async (_lockId, fn) => await fn(mock<EntityManager>()),
 		);
 
@@ -352,14 +353,23 @@ describe('EvaluationCollectionService', () => {
 
 			await service.rerunCollection(user, 'wf-1', 'col-1');
 
-			// One DbLockService lock, keyed by EVAL_COLLECTION_RERUN + a per-collection
-			// subKey so different collections don't block each other.
-			expect(dbLockService.withLock).toHaveBeenCalledTimes(1);
-			const [lockId, , options] = dbLockService.withLock.mock.calls[0];
+			// One fail-fast DbLockService lock, keyed by EVAL_COLLECTION_RERUN + a
+			// per-collection subKey so different collections don't block each other.
+			expect(dbLockService.tryWithLock).toHaveBeenCalledTimes(1);
+			const [lockId, , options] = dbLockService.tryWithLock.mock.calls[0];
 			expect(lockId).toBe(DbLock.EVAL_COLLECTION_RERUN);
 			expect(options?.subKey).toEqual(expect.any(Number));
 			// Kickoff happened inside the lock.
 			expect(testRunnerService.startTestRun).toHaveBeenCalled();
+		});
+
+		it('rejects with an in-progress error when the re-run lock is already held', async () => {
+			// A concurrent re-run of the same collection can't take the lock — fail
+			// fast (not block on a pinned pool connection) and surface it as the 400.
+			dbLockService.tryWithLock.mockRejectedValueOnce(new OperationalError('held'));
+
+			await expect(service.rerunCollection(user, 'wf-1', 'col-1')).rejects.toThrow(BadRequestError);
+			expect(testRunnerService.startTestRun).not.toHaveBeenCalled();
 		});
 
 		it('re-checks in-flight runs inside the lock and bails when a wave is already running', async () => {
@@ -371,7 +381,7 @@ describe('EvaluationCollectionService', () => {
 
 			await expect(service.rerunCollection(user, 'wf-1', 'col-1')).rejects.toThrow(BadRequestError);
 
-			expect(dbLockService.withLock).toHaveBeenCalledTimes(1);
+			expect(dbLockService.tryWithLock).toHaveBeenCalledTimes(1);
 			// Guard tripped inside the lock → no fresh wave launched.
 			expect(testRunnerService.startTestRun).not.toHaveBeenCalled();
 		});

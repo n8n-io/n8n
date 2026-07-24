@@ -195,9 +195,11 @@ export type EvaluationCollectionRunSummary = {
 	completedAt: string | null;
 	avgScore: number | null;
 	metrics: Record<string, number> | null;
-	// Per-run metric-name → scale, derived from this run's frozen config snapshot,
-	// so its values normalize on the scales they were produced with. Absent → the
-	// caller falls back to the collection-wide `EvaluationCollectionDetail.metricScales`.
+	// Per-run metric-name → scale, from this run's frozen config snapshot, so its
+	// values normalize on the scales they were produced with. Always set on the
+	// collection detail (`toRunSummary` falls back to the collection-wide map);
+	// optional only for leaner responses that omit it, where the FE's name-based
+	// fallback applies.
 	metricScales?: Record<string, MetricScale>;
 };
 

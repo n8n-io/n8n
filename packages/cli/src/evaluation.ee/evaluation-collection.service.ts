@@ -22,7 +22,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
-import type { IDataObject } from 'n8n-workflow';
+import { OperationalError, type IDataObject } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -328,18 +328,40 @@ export class EvaluationCollectionService {
 
 	/**
 	 * Runs `fn` under a per-collection re-run lock so two concurrent re-runs can't
-	 * each launch a wave. Delegates to the shared `DbLockService` — a transaction-
-	 * scoped advisory lock on Postgres, an in-process mutex on SQLite — scoped to
-	 * the collection via `subKey`. The whole in-flight re-check + kickoff runs
-	 * inside the lock on purpose: shrinking the critical section would reopen the
-	 * read-then-act race. A deliberate advisory lock, not a row lock — a
+	 * each launch a wave. Delegates to the shared `DbLockService`, scoped to the
+	 * collection via `subKey` — a transaction-scoped advisory lock on Postgres, an
+	 * in-process mutex on SQLite. The whole in-flight re-check + kickoff runs inside
+	 * the lock on purpose: shrinking the critical section would reopen the
+	 * read-then-act race.
+	 *
+	 * Fail-fast (`tryWithLock`, not a blocking wait): a concurrent re-run of the
+	 * same collection returns immediately as "already in progress" rather than
+	 * camping on a pinned pool connection while this call still needs one to do its
+	 * work — which, on the default 2-connection pool, would deadlock the exact
+	 * two-tab case the lock guards. A deliberate advisory lock, not a row lock — a
 	 * `FOR UPDATE` on the collection row would deadlock against the FK KEY-SHARE
 	 * lock the child `test_run` inserts take on that row.
 	 */
 	private async withRerunLock<T>(collectionId: string, fn: () => Promise<T>): Promise<T> {
-		return await this.dbLockService.withLock(DbLock.EVAL_COLLECTION_RERUN, async () => await fn(), {
-			subKey: advisoryLockSubKey(collectionId),
-		});
+		// `entered` distinguishes a failed lock acquisition (fn never ran → a
+		// concurrent re-run holds it) from an OperationalError thrown by `fn` itself
+		// (e.g. a transient DB error during kickoff), so we only translate the former.
+		let entered = false;
+		try {
+			return await this.dbLockService.tryWithLock(
+				DbLock.EVAL_COLLECTION_RERUN,
+				async () => {
+					entered = true;
+					return await fn();
+				},
+				{ subKey: advisoryLockSubKey(collectionId) },
+			);
+		} catch (error) {
+			if (!entered && error instanceof OperationalError) {
+				throw new BadRequestError('Collection run already in progress');
+			}
+			throw error;
+		}
 	}
 
 	async listCollections(workflowId: string): Promise<EvaluationCollectionRecord[]> {

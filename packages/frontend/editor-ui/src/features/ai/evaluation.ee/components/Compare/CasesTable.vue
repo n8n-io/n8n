@@ -199,6 +199,8 @@ function deltas(row: CompareCaseRow) {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
+
 .table {
 	width: 100%;
 	border-collapse: collapse;
@@ -253,23 +255,8 @@ function deltas(row: CompareCaseRow) {
 	vertical-align: middle;
 	border-radius: var(--radius);
 	background: var(--background--subtle);
-	animation: compare-cases-input-skeleton 1.2s ease-in-out infinite;
-}
-
-@keyframes compare-cases-input-skeleton {
-	0%,
-	100% {
-		opacity: 0.4;
-	}
-	50% {
-		opacity: 0.8;
-	}
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.inputSkeleton {
-		animation: none;
-	}
+	// Shared design-system pulse (reduced-motion handled by the mixin).
+	@include motion.skeleton-pulse;
 }
 
 .score {
