@@ -1,16 +1,22 @@
-packages/@n8n/db/src/migrations/postgresdb/index.ts
-  s_b1ae3677d6bc36::t_56514d3460fa45 229,461
 packages/cli/src/workflows/publication/__tests__/workflow-publication-status.service.test.ts
   s_b1ae3677d6bc36::t_d092ed2e11e3bb 68,83,98
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_b1ae3677d6bc36::t_56514d3460fa45 229,461
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_b1ae3677d6bc36::t_82a570060839a6 66
+  s_b1ae3677d6bc36::t_3262ef573c75f7 448-449,606-612
 packages/@n8n/db/src/migrations/common/1784564167057-DropPublishedVersionIdFromWorkflowPublicationOutbox.ts
-  s_b1ae3677d6bc36::t_aff4cbd107a08b 6-44
+  s_b1ae3677d6bc36::t_aff4cbd107a08b 6-44,56
 packages/@n8n/db/src/migrations/sqlite/index.ts
   s_b1ae3677d6bc36::t_56514d3460fa45 221,443
 packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
   s_b1ae3677d6bc36::t_f07479af0002f0 224-228
-packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
-  s_b1ae3677d6bc36::t_82a570060839a6 66
-  s_b1ae3677d6bc36::t_3262ef573c75f7 448-449,606-612
+docs/generated/postgres-schema/README.md
+  s_b1ae3677d6bc36::t_b2ebe4afef1d00 118
+docs/generated/sqlite-schema/README.md
+  s_b1ae3677d6bc36::t_320eac19d8c31f 118
+docs/generated/sqlite-schema/workflow_publication_outbox.md
+  s_b1ae3677d6bc36::t_284a7155633aa3 9
 ---
 {
   "schema_version": "authorship/3.0.0",

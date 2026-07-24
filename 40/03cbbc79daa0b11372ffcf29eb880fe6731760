@@ -1,0 +1,47 @@
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_387876dfa0b61f::t_6943596fa9488e 44-45,49-50,52-63
+  s_387876dfa0b61f::t_25851953ef8391 183,192-193,195-200
+packages/cli/test/integration/workflow-publication-trigger-status.repository.test.ts
+  s_387876dfa0b61f::t_f98c138a30d8dd 138,140-142,146-147,154-155,162-163
+packages/@n8n/db/src/migrations/common/1784000000053-AppendOnlyPublicationOutboxIndexes.ts
+  s_387876dfa0b61f::t_dd868823e7d4cd 1-68
+packages/@n8n/db/src/entities/workflow-publication-outbox.ts
+  s_387876dfa0b61f::t_4206ac0a2409f9 25-33,35
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_387876dfa0b61f::t_9ae1dddf15504b 221
+  s_387876dfa0b61f::t_793f4432f8a15b 443
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_387876dfa0b61f::t_92c8fc1ed789b8 24-26,29-31
+  s_387876dfa0b61f::t_2f17ea8dd94505 176-178,182-188,200-205
+  s_387876dfa0b61f::t_a42023fa58680a 245-247
+  s_387876dfa0b61f::t_ff74751d4a4336 68-73,79-80,86,96-101
+  s_387876dfa0b61f::t_e7b21280e6a89a 111-122,129-132,137,143-147
+  s_387876dfa0b61f::t_68b239852ae19a 283-286,289-292
+  s_387876dfa0b61f::t_c7a9f89fc5343e 36-39,41,49-54
+  s_387876dfa0b61f::t_1a07ffcae62102 206
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_387876dfa0b61f::t_0de95374a0d990 461
+  s_387876dfa0b61f::t_8e60ab7b117e0f 229
+ANALYSIS.md
+  s_387876dfa0b61f::t_cc93bd1a7e4329 1-148
+docs/generated/postgres-schema/public.workflow_publication_outbox.md
+  s_387876dfa0b61f::t_4db02f6bf028de 32-33
+docs/generated/sqlite-schema/workflow_publication_outbox.md
+  s_387876dfa0b61f::t_f8c893c34dc17c 37-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "4003cbbc79daa0b11372ffcf29eb880fe6731760",
+  "prompts": {},
+  "sessions": {
+    "s_387876dfa0b61f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4f54a0f-67de-40bf-9a22-836491168fb8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+packages/@n8n/api-types/src/dto/workflow-reviews/list-workflow-review-inbox.dto.ts
+  h_9c8f56e3400786 10-11
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request-author.repository.test.ts
+  h_9c8f56e3400786 37
+packages/@n8n/api-types/src/workflow-review-request-summary.ts
+  h_9c8f56e3400786 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "55f7fd8443d277167f2c7a299c7c7a25221b00d6",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

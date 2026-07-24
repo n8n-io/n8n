@@ -1,0 +1,42 @@
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_387876dfa0b61f::t_5f46487091a33d 119-135,141-143,150-152,156,159-163
+  s_387876dfa0b61f::t_d95cd2cf98200f 7
+  s_387876dfa0b61f::t_a4f5eddf326ce5 46
+  s_387876dfa0b61f::t_9f4ec83f41c006 178-186,205-233
+  s_387876dfa0b61f::t_4536a92dc56f5f 234-235
+packages/@n8n/db/src/repositories/workflow-publication-trigger-status.repository.ts
+  s_387876dfa0b61f::t_4885da9befd51b 73-77
+  s_387876dfa0b61f::t_60eacd0c21ef44 52-65
+  s_387876dfa0b61f::t_c3558e5f3cb31f 51
+packages/cli/src/workflows/publication/workflow-publication-reconciler.service.ts
+  s_387876dfa0b61f::t_82a97684aacc57 184-187
+packages/cli/test/integration/workflows/workflow-publication-reconciler.test.ts
+  s_387876dfa0b61f::t_2d3df19bb4768d 242-274
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_387876dfa0b61f::t_5a0c01dc1f9bcc 188-240
+  s_387876dfa0b61f::t_0c111a3eb0dd00 8-12
+  s_387876dfa0b61f::t_7288e7dfbbbefd 51
+  s_387876dfa0b61f::t_5a640b78632a4d 81
+  s_387876dfa0b61f::t_91ad42c35fb140 91
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_387876dfa0b61f::t_c4702d546519bd 115
+  s_387876dfa0b61f::t_e111bff170677a 28,37
+  s_387876dfa0b61f::t_1f2618da7e6273 654-748
+  s_387876dfa0b61f::t_79fc37c86e2da3 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "c92e3d532dc000855028483eb244fff8876aa906",
+  "prompts": {},
+  "sessions": {
+    "s_387876dfa0b61f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4f54a0f-67de-40bf-9a22-836491168fb8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
