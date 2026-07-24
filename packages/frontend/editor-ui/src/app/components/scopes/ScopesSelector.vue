@@ -309,7 +309,7 @@ function toggleScope(scope: S, checked: boolean) {
 				</button>
 			</CollapsibleTrigger>
 
-			<N8nAnimatedCollapsibleContent>
+			<N8nAnimatedCollapsibleContent blur>
 				<div :class="$style.treeBody">
 					<N8nInput
 						v-model="searchTerm"
@@ -398,7 +398,7 @@ function toggleScope(scope: S, checked: boolean) {
 								</N8nTooltip>
 							</div>
 							<CollapsibleRoot :open="isGroupExpanded(group)">
-								<N8nAnimatedCollapsibleContent>
+								<N8nAnimatedCollapsibleContent blur>
 									<div :class="$style.scopeList">
 										<div v-for="scope in visibleScopes" :key="scope" :class="$style.scopeRow">
 											<N8nCheckbox
