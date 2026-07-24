@@ -6,7 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | data | text |  | false |  |  |  |
-| id | varchar(36) |  | false | [public.chat_hub_agents](public.chat_hub_agents.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.credential_dependency](public.credential_dependency.md) [public.dynamic_credential_entry](public.dynamic_credential_entry.md) [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) [public.shared_credentials](public.shared_credentials.md) |  |  |
+| id | varchar(36) |  | false | [public.chat_hub_agents](public.chat_hub_agents.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.credential_dependency](public.credential_dependency.md) [public.dynamic_credential_entry](public.dynamic_credential_entry.md) [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) [public.instance_credential_assignment](public.instance_credential_assignment.md) [public.shared_credentials](public.shared_credentials.md) |  |  |
 | isGlobal | boolean | false | false |  |  |  |
 | isManaged | boolean | false | false |  |  |  |
 | isResolvable | boolean | false | false |  |  |  |
@@ -15,11 +15,13 @@
 | resolverId | varchar(16) |  | true |  | [public.dynamic_credential_resolver](public.dynamic_credential_resolver.md) |  |
 | type | varchar(128) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| usageScope | varchar(16) | 'project'::character varying | false |  |  | Where the credential may be consumed: a project-owned feature or an instance-level feature |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_credentials_entity_usageScope | CHECK | CHECK ((("usageScope")::text = ANY ((ARRAY['project'::character varying, 'instance'::character varying])::text[]))) |
 | credentials_entity_createdAt_not_null | n | NOT NULL "createdAt" |
 | credentials_entity_data_not_null | n | NOT NULL data |
 | credentials_entity_id_not_null1 | n | NOT NULL id |
@@ -32,6 +34,7 @@
 | credentials_entity_resolverId_foreign | FOREIGN KEY | FOREIGN KEY ("resolverId") REFERENCES dynamic_credential_resolver(id) ON DELETE SET NULL |
 | credentials_entity_type_not_null | n | NOT NULL type |
 | credentials_entity_updatedAt_not_null | n | NOT NULL "updatedAt" |
+| credentials_entity_usageScope_not_null | n | NOT NULL "usageScope" |
 
 ## Indexes
 
@@ -53,6 +56,7 @@ erDiagram
 "public.dynamic_credential_entry" }o--|| "public.credentials_entity" : "FOREIGN KEY (credential_id) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.dynamic_credential_user_entry" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.instance_ai_mcp_registry_connections" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
+"public.instance_credential_assignment" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE RESTRICT"
 "public.shared_credentials" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialsId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.credentials_entity" }o--o| "public.dynamic_credential_resolver" : "FOREIGN KEY (#quot;resolverId#quot;) REFERENCES dynamic_credential_resolver(id) ON DELETE SET NULL"
 
@@ -68,6 +72,7 @@ erDiagram
   varchar_16_ resolverId FK
   varchar_128_ type
   timestamp_3__with_time_zone updatedAt
+  varchar_16_ usageScope
 }
 "public.chat_hub_agents" {
   timestamp_3__with_time_zone createdAt
@@ -130,6 +135,12 @@ erDiagram
   json toolFilter
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
+}
+"public.instance_credential_assignment" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ credentialId FK
+  varchar_128_ credentialUseId
+  timestamp_3__with_time_zone updatedAt
 }
 "public.shared_credentials" {
   timestamp_3__with_time_zone createdAt

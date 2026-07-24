@@ -22,6 +22,10 @@ frontend, and extensible node-based workflow engine.
   relevant to the surrounding code, not just to the current task
 - We use Linear as a ticket tracking system
 - We use Posthog for feature flags
+- To find registered telemetry events (names, descriptions, properties), run
+  `pnpm --filter @n8n/telemetry catalog` (`--json` for structured output). The
+  registry is being adopted incrementally, so search call sites if the catalog
+  has no match. The `n8n:telemetry` skill covers adding or changing events
 - When starting to work on a new ticket – create a new branch from fresh
   master with the name specified in Linear ticket
 - When creating a new branch for a ticket in Linear - use the branch name

@@ -772,31 +772,31 @@ async function seedInboxRequests() {
 }
 
 describe('GET /workflow-review-requests/summary', () => {
-	test('returns hasAny true for instance owner', async () => {
+	test('returns open/closed counts for instance owner', async () => {
 		await seedInboxRequests();
 
 		const response = await ownerAgent.get('/workflow-review-requests/summary').expect(200);
 
-		expect(response.body.data).toEqual({ hasAny: true });
+		expect(response.body.data).toEqual({ open: 1, closed: 1 });
 	});
 
-	test('returns hasAny true for project editor', async () => {
+	test('returns open/closed counts for project editor', async () => {
 		await seedInboxRequests();
 
 		const response = await memberAgent.get('/workflow-review-requests/summary').expect(200);
 
-		expect(response.body.data).toEqual({ hasAny: true });
+		expect(response.body.data).toEqual({ open: 1, closed: 1 });
 	});
 
-	test('returns hasAny false for project viewer', async () => {
+	test('returns zero counts for project viewer with nothing visible', async () => {
 		await seedInboxRequests();
 
 		const response = await viewerAgent.get('/workflow-review-requests/summary').expect(200);
 
-		expect(response.body.data).toEqual({ hasAny: false });
+		expect(response.body.data).toEqual({ open: 0, closed: 0 });
 	});
 
-	test('returns hasAny true for a requester of their own review', async () => {
+	test('counts a requester their own review regardless of project scope', async () => {
 		await requestRepository.createRequest({
 			projectId: teamProject.id,
 			title: 'Review submitted by viewer',
@@ -806,7 +806,7 @@ describe('GET /workflow-review-requests/summary', () => {
 
 		const response = await viewerAgent.get('/workflow-review-requests/summary').expect(200);
 
-		expect(response.body.data).toEqual({ hasAny: true });
+		expect(response.body.data).toEqual({ open: 1, closed: 0 });
 	});
 
 	test('returns 403 when feature is disabled', async () => {

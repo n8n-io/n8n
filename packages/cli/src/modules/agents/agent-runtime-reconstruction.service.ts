@@ -364,6 +364,13 @@ export class AgentRuntimeReconstructionService {
 				oauthService: this.oauthService,
 				projectId,
 				proxyFetch: aiMcpFetch,
+				...(instrumentation?.onMcpToolCallSettled !== undefined && {
+					onToolCallSettled: async (event) =>
+						await instrumentation.onMcpToolCallSettled?.({
+							serverName: server.name,
+							...event,
+						}),
+				}),
 			});
 
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
