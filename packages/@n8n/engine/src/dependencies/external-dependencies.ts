@@ -18,11 +18,16 @@ import type { GraphNode } from '../graph';
  * `INodeExecutionData[][]`); constraining to `JsonValue` enforces
  * serializability without teaching the engine that shape — which is what keeps
  * this package free of `n8n-workflow` / `n8n-core`.
+ *
+ * The legacy engine passes live objects between nodes in memory, whereas all
+ * non-JSON values inside step data (e.g. `Date`) are coerced by the round-trip
+ * on every hop. This coercion is an accepted behavioural divergence from legacy.
  */
 
 /** Ambient facts about the execution a step belongs to. */
 export interface StepExecutionContext {
 	executionId: string;
+	stepId: string;
 	workflowId: string;
 	mode: ExecutionMode;
 }
@@ -45,6 +50,10 @@ export interface StepExecutionResult {
  * Executes a step whose behaviour the engine does not implement itself.
  * Implemented by the host (for `v1-node`, by the node-engine-compatibility
  * layer, which adapts v1 nodes to this interface).
+ *
+ * A failed step signals by throwing. The engine catches, records the error
+ * on the step row, and classifies it as retryable or not. If `continueOnFail`
+ * is enabled, errors travel as data inside `outputs`.
  */
 export interface IStepExecutor {
 	execute(request: StepExecutionRequest): Promise<StepExecutionResult>;
@@ -55,6 +64,9 @@ export interface IStepExecutor {
  * omits them and falls back to default behaviour; concrete shapes for other
  * hooks (pre-fetch, status callbacks) are introduced with the tickets that
  * first need them.
+ *
+ * Step types that are native to the engine (`wait`, `subworkflow`, `batch`)
+ * do not go through this interface.
  */
 export interface ExternalDependencies {
 	/** Executes `v1-node` steps — supplied by the host in integrated mode. */
