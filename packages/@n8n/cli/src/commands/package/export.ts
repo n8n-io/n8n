@@ -88,9 +88,7 @@ export default class PackageExport extends BaseCommand {
 		const folderIds = flags.folderId ?? [];
 		const projectIds = flags.projectId ?? [];
 		const includeVariableValues = flags.includeVariableValues !== 'false';
-		// Only `false` goes on the wire: servers that predate the flag reject unknown
-		// body properties, and the server default already supplies `true`.
-		const includeTags = flags.includeTags === 'false' ? false : undefined;
+		const includeTags = flags.includeTags !== 'false';
 		const missingWorkflowDependencyPolicy = flags.missingWorkflowDependencyPolicy;
 
 		// A package is either loose workflows/folders or whole projects, not both.
