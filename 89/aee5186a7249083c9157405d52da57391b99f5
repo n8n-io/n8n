@@ -77,6 +77,8 @@ docs/generated/postgres-schema/public.instance_ai_events.md
   s_44a98ba2784a12::t_e7de892e1b7d06 1-65
 packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
   s_b1ae3677d6bc36::t_f4ecbbe076e13c 46,50
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_b34abcbd386402::t_f65d763798858f 103
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -98,6 +100,14 @@ packages/cli/test/integration/database/repositories/workflow-publication-outbox.
     }
   },
   "sessions": {
+    "s_12107b09095a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f36b6843-9b7a-45a5-8d52-4031db7468b2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
     "s_1ef72897374beb": {
       "agent_id": {
         "tool": "cursor",
@@ -105,6 +115,14 @@ packages/cli/test/integration/database/repositories/workflow-publication-outbox.
         "model": "claude-sonnet-5-thinking-high"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_278cbb65f99049": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1063cccb-da60-401d-8e97-8afd031e235c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
     "s_2a235a6e9347be": {
       "agent_id": {
@@ -146,6 +164,30 @@ packages/cli/test/integration/database/repositories/workflow-publication-outbox.
       },
       "human_author": null
     },
+    "s_6638f09b589e97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5e3f01e-f690-4590-9a30-a5e2bd26c393",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_70e4a16a672757": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f79e6-9f5d-7b91-b07b-a2c76974c292",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_744aa7ffad1673": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c708436e-d47a-46c9-8cfa-2a78ec728e0c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
     "s_770a4f5233186c": {
       "agent_id": {
         "tool": "cursor",
@@ -170,6 +212,22 @@ packages/cli/test/integration/database/repositories/workflow-publication-outbox.
       },
       "human_author": null
     },
+    "s_91f67565918eee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36f4874d-45bc-43d2-bd2d-9c16d23d9c95",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_94fa4ed7d7b038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d271a69-d48a-40c6-b6a3-5630b148db23",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
     "s_b1ae3677d6bc36": {
       "agent_id": {
         "tool": "claude",
@@ -177,6 +235,14 @@ packages/cli/test/integration/database/repositories/workflow-publication-outbox.
         "model": "claude-fable-5"
       },
       "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_b34abcbd386402": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dc6fdb7-ff5f-45a8-98bf-0345038d38d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
     },
     "s_b3f23ab76a494c": {
       "agent_id": {
@@ -186,11 +252,27 @@ packages/cli/test/integration/database/repositories/workflow-publication-outbox.
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
+    "s_b6381fbb8ddc64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7dd02182-97ab-4180-9c8a-8d5054fdd2f7",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
     "s_d8236b8b5400e8": {
       "agent_id": {
         "tool": "cursor",
         "id": "500e2669-64fc-46e2-9484-cf22ebf66e89",
         "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_e0d6b46d5a1cd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9bef762-10a3-4006-8b74-acefd3594aab",
+        "model": "claude-fable-5"
       },
       "human_author": null
     }

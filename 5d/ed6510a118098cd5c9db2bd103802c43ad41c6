@@ -95,6 +95,10 @@ packages/cli/src/modules/agents/builder/skills/mcp.skill.ts
   s_770a4f5233186c::t_8ad2b3903b74bc 98
 packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
   s_770a4f5233186c::t_a7cff99b8f3cd2 149
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_b1ae3677d6bc36::t_f4ecbbe076e13c 39,43
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_b34abcbd386402::t_f65d763798858f 85
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -116,6 +120,14 @@ packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
     }
   },
   "sessions": {
+    "s_12107b09095a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f36b6843-9b7a-45a5-8d52-4031db7468b2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
     "s_1ef72897374beb": {
       "agent_id": {
         "tool": "cursor",
@@ -129,6 +141,14 @@ packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
         "tool": "codex",
         "id": "019f6650-1132-7ff1-ab94-090605cfc9f7",
         "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_41e37076417c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "480c8620-d708-419e-ac08-fca1f0d2cb0a",
+        "model": "claude-fable-5"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
@@ -155,6 +175,22 @@ packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
         "model": "claude-sonnet-5-thinking-high"
       },
       "human_author": null
+    },
+    "s_6638f09b589e97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5e3f01e-f690-4590-9a30-a5e2bd26c393",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_70e4a16a672757": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f79e6-9f5d-7b91-b07b-a2c76974c292",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
     "s_744aa7ffad1673": {
       "agent_id": {
@@ -188,6 +224,38 @@ packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
       },
       "human_author": null
     },
+    "s_91f67565918eee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36f4874d-45bc-43d2-bd2d-9c16d23d9c95",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_94fa4ed7d7b038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d271a69-d48a-40c6-b6a3-5630b148db23",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_b1ae3677d6bc36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14856d89-b227-4425-adeb-7f31ce9ea7b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_b34abcbd386402": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dc6fdb7-ff5f-45a8-98bf-0345038d38d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
     "s_b3f23ab76a494c": {
       "agent_id": {
         "tool": "codex",
@@ -196,11 +264,27 @@ packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
+    "s_b6381fbb8ddc64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7dd02182-97ab-4180-9c8a-8d5054fdd2f7",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
     "s_d8236b8b5400e8": {
       "agent_id": {
         "tool": "cursor",
         "id": "500e2669-64fc-46e2-9484-cf22ebf66e89",
         "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_e0d6b46d5a1cd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9bef762-10a3-4006-8b74-acefd3594aab",
+        "model": "claude-fable-5"
       },
       "human_author": null
     }
