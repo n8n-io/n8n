@@ -57,8 +57,12 @@ export class WorkflowReviewRequestWorkflowRepository extends Repository<Workflow
 		);
 	}
 
-	async findByRequestId(requestId: string): Promise<WorkflowReviewRequestWorkflow[]> {
-		return await this.find({
+	async findByRequestId(
+		requestId: string,
+		trx?: EntityManager,
+	): Promise<WorkflowReviewRequestWorkflow[]> {
+		const manager = trx ?? this.manager;
+		return await manager.find(WorkflowReviewRequestWorkflow, {
 			where: { workflowReviewRequestId: requestId },
 			order: { id: 'ASC' },
 		});

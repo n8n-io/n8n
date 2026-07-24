@@ -314,7 +314,7 @@ export class WorkflowReviewRequestService {
 			return this.toSummary(request, workflowRow.workflowVersionId);
 		}
 
-		const updated = await this.dbLockService.withLock(
+		const { request: updated, changed } = await this.dbLockService.withLock(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
 			async (tx) => {
 				// Re-check under the lock so update can't race a concurrent close/approve.
@@ -326,6 +326,21 @@ export class WorkflowReviewRequestService {
 					throw new NotFoundError('Could not find review request');
 				}
 				this.assertRequestUpdatable(current);
+
+				// Re-check the pinned version too: a concurrent identical sync that won
+				// the lock already re-pinned — repeating the writes would bump updatedAt,
+				// reset the decision, and broadcast for a no-op.
+				const currentRows = await this.workflowReviewRequestWorkflowRepository.findByRequestId(
+					workflowReviewRequestId,
+					tx,
+				);
+				const currentRow = currentRows.find((row) => row.workflowId === dto.workflowId);
+				if (!currentRow) {
+					throw new NotFoundError('Could not find review request');
+				}
+				if (currentRow.workflowVersionId === dto.workflowVersionId) {
+					return { request: current, changed: false };
+				}
 
 				await this.workflowReviewRequestWorkflowRepository.updateWorkflowVersion(
 					{
@@ -346,11 +361,13 @@ export class WorkflowReviewRequestService {
 					tx,
 				);
 
-				return saved;
+				return { request: saved, changed: true };
 			},
 		);
 
-		this.broadcastReviewStateChanged(dto.workflowId);
+		if (changed) {
+			this.broadcastReviewStateChanged(dto.workflowId);
+		}
 
 		return this.toSummary(updated, dto.workflowVersionId);
 	}

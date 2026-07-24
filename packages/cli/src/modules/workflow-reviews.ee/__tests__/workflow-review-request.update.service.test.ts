@@ -255,6 +255,35 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		expect(authorRepository.addAuthorIfMissing).not.toHaveBeenCalled();
 	});
 
+	it('writes and broadcasts nothing when a concurrent identical sync wins the lock first', async () => {
+		mockSuccessfulUpdatePath();
+		workflowRepository.findByRequestId
+			.mockResolvedValueOnce([
+				mock<WorkflowReviewRequestWorkflow>({
+					workflowReviewRequestId: requestId,
+					workflowId: 'wf-1',
+					workflowVersionId: 'ver-1',
+				}),
+			])
+			// In-lock re-read: the winner already re-pinned to the requested version.
+			.mockResolvedValueOnce([
+				mock<WorkflowReviewRequestWorkflow>({
+					workflowReviewRequestId: requestId,
+					workflowId: 'wf-1',
+					workflowVersionId: 'ver-2',
+				}),
+			]);
+
+		const result = await service.updateVersion(user, requestId, dto);
+
+		expect(workflowRepository.findByRequestId).toHaveBeenLastCalledWith(requestId, tx);
+		expect(result.workflowVersionId).toBe('ver-2');
+		expect(workflowRepository.updateWorkflowVersion).not.toHaveBeenCalled();
+		expect(tx.save).not.toHaveBeenCalled();
+		expect(authorRepository.addAuthorIfMissing).not.toHaveBeenCalled();
+		expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
+	});
+
 	it('throws NotFoundError when the request disappears between check and lock', async () => {
 		mockSuccessfulUpdatePath();
 		requestRepository.findById.mockResolvedValueOnce(openRequest()).mockResolvedValueOnce(null);
