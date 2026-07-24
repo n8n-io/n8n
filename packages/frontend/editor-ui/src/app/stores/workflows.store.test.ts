@@ -747,7 +747,6 @@ describe('useWorkflowsStore', () => {
 			const mockStatus: WorkflowPublicationStatus = {
 				status: 'published',
 				liveVersionId: 'pub-1',
-				pendingVersionId: null,
 				triggers: [],
 			};
 

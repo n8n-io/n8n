@@ -215,7 +215,6 @@ export class WorkflowPublicationOutboxConsumer {
 				attributes: {
 					...this.tracing.pickWorkflowAttributes({ id: record.workflowId }),
 					'n8n.publication.outbox_id': record.id,
-					'n8n.publication.published_version_id': record.publishedVersionId,
 				},
 			},
 			async (span) => {
@@ -235,7 +234,6 @@ export class WorkflowPublicationOutboxConsumer {
 					this.logger.debug('Started processing workflow publication outbox record', {
 						outboxId: record.id,
 						workflowId: record.workflowId,
-						publishedVersionId: record.publishedVersionId,
 					});
 
 					const startedAt = Date.now();
@@ -249,6 +247,12 @@ export class WorkflowPublicationOutboxConsumer {
 							type: 'failed',
 							error: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
 						};
+					}
+
+					// Set post-apply: the record carries no target, so the version only
+					// exists once the applier has derived and applied it.
+					if ('appliedVersionId' in result && result.appliedVersionId) {
+						span.setAttribute('n8n.publication.applied_version_id', result.appliedVersionId);
 					}
 
 					let reporterFailed = false;

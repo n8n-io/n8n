@@ -76,7 +76,6 @@ describe('GET /workflows/:workflowId/publication-status', () => {
 		expect(res.body.data).toMatchObject({
 			status: 'partial',
 			liveVersionId: versionId,
-			pendingVersionId: null,
 			triggers: expect.arrayContaining([
 				expect.objectContaining({ nodeId: 'node-1', status: 'activated', errorMessage: null }),
 				expect.objectContaining({
@@ -97,7 +96,6 @@ describe('GET /workflows/:workflowId/publication-status', () => {
 		expect(res.body.data).toMatchObject({
 			status: 'not_published',
 			liveVersionId: null,
-			pendingVersionId: null,
 			triggers: [],
 		});
 	});

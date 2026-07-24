@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_publication_outbox" ("id" integer PRIMARY KEY NOT NULL, "workflowId" varchar(36) NOT NULL, "publishedVersionId" varchar(36) NOT NULL, "status" varchar(20) NOT NULL, "errorMessage" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_workflow_publication_outbox_status" CHECK ("status" IN ('pending', 'in_progress', 'completed', 'partial_success', 'failed')))
+CREATE TABLE "workflow_publication_outbox" ("id" integer PRIMARY KEY NOT NULL, "workflowId" varchar(36) NOT NULL, "status" varchar(20) NOT NULL, "errorMessage" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_workflow_publication_outbox_status" CHECK (("status" IN ('pending', 'in_progress', 'completed', 'partial_success', 'failed'))))
 ```
 
 </details>
@@ -18,7 +18,6 @@ CREATE TABLE "workflow_publication_outbox" ("id" integer PRIMARY KEY NOT NULL, "
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | errorMessage | TEXT |  | true |  |  |  |
 | id | INTEGER |  | false |  |  |  |
-| publishedVersionId | varchar(36) |  | false |  |  |  |
 | status | varchar(20) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | workflowId | varchar(36) |  | false |  |  |  |
@@ -27,7 +26,7 @@ CREATE TABLE "workflow_publication_outbox" ("id" integer PRIMARY KEY NOT NULL, "
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("status" IN ('pending', 'in_progress', 'completed', 'partial_success', 'failed')) |
+| - | CHECK | CHECK (("status" IN ('pending', 'in_progress', 'completed', 'partial_success', 'failed'))) |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
@@ -46,7 +45,6 @@ erDiagram
   datetime_3_ createdAt
   TEXT errorMessage
   INTEGER id
-  varchar_36_ publishedVersionId
   varchar_20_ status
   datetime_3_ updatedAt
   varchar_36_ workflowId

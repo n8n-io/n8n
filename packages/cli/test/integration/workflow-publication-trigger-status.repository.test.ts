@@ -142,7 +142,6 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 		await outboxRepo.save(
 			outboxRepo.create({
 				workflowId: wf.id,
-				publishedVersionId: 'v-pending',
 				status: 'pending',
 				errorMessage: null,
 			}),
@@ -150,7 +149,6 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 		await outboxRepo.save(
 			outboxRepo.create({
 				workflowId: wf.id,
-				publishedVersionId: 'v-in-progress',
 				status: 'in_progress',
 				errorMessage: null,
 			}),
@@ -159,7 +157,6 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 		const inFlight = await outboxRepo.findInFlightByWorkflowId(wf.id);
 		expect(inFlight).not.toBeNull();
 		expect(inFlight!.status).toBe('in_progress');
-		expect(inFlight!.publishedVersionId).toBe('v-in-progress');
 	});
 
 	it('findInFlightByWorkflowId ignores terminal records', async () => {
@@ -167,7 +164,6 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 		await outboxRepo.save(
 			outboxRepo.create({
 				workflowId: wf.id,
-				publishedVersionId: 'v1',
 				status: 'completed',
 				errorMessage: null,
 			}),
@@ -296,7 +292,6 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 			// the workflow anyway, so its triggers must not be reported.
 			const record = outboxRepo.create({
 				workflowId: workflow.id,
-				publishedVersionId: 'v1',
 				status: 'pending',
 				errorMessage: null,
 			});

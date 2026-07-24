@@ -543,7 +543,6 @@ describe('workflow publication outbox', () => {
 			const outboxRecord = await outboxRepository.findOne({
 				where: { workflowId: workflow.id },
 			});
-			expect(outboxRecord?.publishedVersionId).toBe(workflow.versionId);
 			expect(outboxRecord?.status).toBe('pending');
 
 			// Publication is async: the published version is advanced by the
@@ -554,7 +553,7 @@ describe('workflow publication outbox', () => {
 			expect(publishedVersion).toBeNull();
 		});
 
-		test('should supersede the pending outbox record when activating a new version', async () => {
+		test('should keep a single pending outbox record when activating a new version', async () => {
 			const owner = await createOwner();
 			const workflow = await createWorkflowWithHistory({}, owner);
 
@@ -567,9 +566,10 @@ describe('workflow publication outbox', () => {
 				versionId: newVersionId,
 			});
 
+			// The record is a reconcile marker: re-activating does not duplicate or
+			// rewrite it — the applier reads the new activeVersionId at claim time.
 			const outboxRecords = await outboxRepository.find({ where: { workflowId: workflow.id } });
 			expect(outboxRecords).toHaveLength(1);
-			expect(outboxRecords[0].publishedVersionId).toBe(newVersionId);
 			expect(outboxRecords[0].status).toBe('pending');
 
 			const updated = await workflowRepository.findOne({ where: { id: workflow.id } });
@@ -595,7 +595,6 @@ describe('workflow publication outbox', () => {
 			const outboxRecord = await outboxRepository.findOne({
 				where: { workflowId: workflow.id },
 			});
-			expect(outboxRecord?.publishedVersionId).toBe(workflow.versionId);
 			expect(outboxRecord?.status).toBe('pending');
 
 			// Mapping removal and trigger teardown are deferred to the consumer, so the
@@ -623,7 +622,6 @@ describe('workflow publication outbox', () => {
 			const outboxRecord = await outboxRepository.findOne({
 				where: { workflowId: workflow.id },
 			});
-			expect(outboxRecord?.publishedVersionId).toBe(workflow.versionId);
 			expect(outboxRecord?.status).toBe('pending');
 
 			// Mapping removal is deferred to the consumer.

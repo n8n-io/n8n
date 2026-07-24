@@ -39,8 +39,12 @@ export type TriggerPublicationStatus =
  * the single place mapping outcomes to terminal statuses and side effects.
  */
 export type PublicationResult =
-	/** Triggers reconciled (or no change needed); the published version advanced. */
-	| { type: 'completed'; triggerStatuses: TriggerPublicationStatus[] }
+	/**
+	 * Triggers reconciled (or no change needed); the published version advanced to
+	 * `appliedVersionId` — the workflow's `activeVersionId` at apply time, which
+	 * is what the reporter stamps into trigger-status rows and UI pushes.
+	 */
+	| { type: 'completed'; appliedVersionId: string; triggerStatuses: TriggerPublicationStatus[] }
 	/**
 	 * The workflow was unpublished: the triggers of the previously published
 	 * version were torn down and the `workflow_published_version` mapping removed.
@@ -49,13 +53,23 @@ export type PublicationResult =
 	| { type: 'unpublished' }
 	/** No trigger work was required; the record is completed without changes. */
 	| { type: 'skipped'; reason: PublicationSkipReason }
-	/** The history row for the published version is gone; the record is failed. */
+	/** The history row for the workflow's active version is gone; the record is failed. */
 	| { type: 'version-missing' }
 	/**
-	 * The published version advanced and some triggers are running, but others
-	 * failed to register. The record is marked `partial_success` and the workflow
-	 * stays published (no auto-unpublish); per-trigger detail is in `triggerStatuses`.
+	 * The published version advanced to `appliedVersionId` and some triggers are
+	 * running, but others failed to register. The record is marked
+	 * `partial_success` and the workflow stays published (no auto-unpublish);
+	 * per-trigger detail is in `triggerStatuses`.
 	 */
-	| { type: 'partial'; triggerStatuses: TriggerPublicationStatus[] }
-	/** The publication failed; the record is failed and the error is reported. */
-	| { type: 'failed'; error: Error; triggerStatuses?: TriggerPublicationStatus[] };
+	| { type: 'partial'; appliedVersionId: string; triggerStatuses: TriggerPublicationStatus[] }
+	/**
+	 * The publication failed; the record is failed and the error is reported.
+	 * `triggerStatuses` (with the `appliedVersionId` they were attempted at) are
+	 * present when the failure happened after the version advanced.
+	 */
+	| {
+			type: 'failed';
+			error: Error;
+			appliedVersionId?: string;
+			triggerStatuses?: TriggerPublicationStatus[];
+	  };

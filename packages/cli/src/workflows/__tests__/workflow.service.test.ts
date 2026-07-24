@@ -1181,11 +1181,7 @@ describe('WorkflowService', () => {
 				expect.objectContaining({ active: true, activeVersionId: TARGET_VERSION_ID }),
 			);
 			// the outbox record is enqueued in the same transaction
-			expect(outboxRepositoryMock.enqueue).toHaveBeenCalledWith(
-				WORKFLOW_ID,
-				TARGET_VERSION_ID,
-				trx,
-			);
+			expect(outboxRepositoryMock.enqueue).toHaveBeenCalledWith(WORKFLOW_ID, trx);
 			// publish-history records (deactivated for the previous version, activated for the
 			// target) are written in the same transaction
 			expect(workflowPublishHistoryRepositoryMock.addRecord).toHaveBeenCalledWith(

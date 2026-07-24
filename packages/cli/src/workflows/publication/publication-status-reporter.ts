@@ -42,10 +42,10 @@ export class PublicationStatusReporter {
 	async report(record: WorkflowPublicationOutbox, result: PublicationResult): Promise<void> {
 		switch (result.type) {
 			case 'completed': {
-				await this.complete(record, this.toRows(record, result.triggerStatuses));
+				await this.complete(record, this.toRows(result.appliedVersionId, result.triggerStatuses));
 				this.pushStatus({
 					type: 'workflowActivated',
-					data: { workflowId: record.workflowId, activeVersionId: record.publishedVersionId },
+					data: { workflowId: record.workflowId, activeVersionId: result.appliedVersionId },
 				});
 				return;
 			}
@@ -69,7 +69,6 @@ export class PublicationStatusReporter {
 				const errorMessage = 'Published version not found';
 				this.logger.warn('Published version not found, marking outbox record as failed', {
 					workflowId: record.workflowId,
-					publishedVersionId: record.publishedVersionId,
 					outboxId: record.id,
 				});
 				await this.outboxRepository.markFailed(record.id, errorMessage);
@@ -78,12 +77,12 @@ export class PublicationStatusReporter {
 			}
 
 			case 'failed': {
-				const { triggerStatuses } = result;
+				const { triggerStatuses, appliedVersionId } = result;
 				await this.outboxRepository.manager.transaction(async (trx) => {
-					if (triggerStatuses) {
+					if (triggerStatuses && appliedVersionId) {
 						await this.triggerStatusRepository.replaceForWorkflow(
 							record.workflowId,
-							this.toRows(record, triggerStatuses),
+							this.toRows(appliedVersionId, triggerStatuses),
 							trx,
 						);
 					}
@@ -95,7 +94,7 @@ export class PublicationStatusReporter {
 			}
 
 			case 'partial': {
-				await this.reportPartial(record, result.triggerStatuses);
+				await this.reportPartial(record, result.appliedVersionId, result.triggerStatuses);
 				return;
 			}
 		}
@@ -109,6 +108,7 @@ export class PublicationStatusReporter {
 	 */
 	private async reportPartial(
 		record: WorkflowPublicationOutbox,
+		appliedVersionId: string,
 		triggerStatuses: TriggerPublicationStatus[],
 	): Promise<void> {
 		const failures = triggerStatuses.filter(
@@ -125,7 +125,7 @@ export class PublicationStatusReporter {
 		await this.outboxRepository.manager.transaction(async (trx) => {
 			await this.triggerStatusRepository.replaceForWorkflow(
 				record.workflowId,
-				this.toRows(record, triggerStatuses),
+				this.toRows(appliedVersionId, triggerStatuses),
 				trx,
 			);
 			await this.outboxRepository.markPartialSuccess(record.id, errorMessage, trx);
@@ -135,7 +135,7 @@ export class PublicationStatusReporter {
 			type: 'workflowPartiallyActivated',
 			data: {
 				workflowId: record.workflowId,
-				activeVersionId: record.publishedVersionId,
+				activeVersionId: appliedVersionId,
 				errorMessage,
 				failedNodes: failures.map((triggerStatus) => ({
 					nodeId: triggerStatus.nodeId,
@@ -146,14 +146,14 @@ export class PublicationStatusReporter {
 		});
 	}
 
-	/** Maps trigger publication statuses to repository row objects, stamping the published version. */
+	/** Maps trigger publication statuses to repository row objects, stamping the version they were applied at. */
 	private toRows(
-		record: WorkflowPublicationOutbox,
+		appliedVersionId: string,
 		statuses: TriggerPublicationStatus[],
 	): TriggerStatusRow[] {
 		return statuses.map((triggerStatus) => ({
 			nodeId: triggerStatus.nodeId,
-			versionId: record.publishedVersionId,
+			versionId: appliedVersionId,
 			status: triggerStatus.status,
 			triggerKind: triggerStatus.triggerKind,
 			errorMessage: triggerStatus.status === 'failed' ? triggerStatus.errorMessage : null,
