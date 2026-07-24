@@ -4113,6 +4113,9 @@ importers:
       '@n8n/task-runner':
         specifier: workspace:*
         version: link:../@n8n/task-runner
+      '@n8n/telemetry':
+        specifier: workspace:*
+        version: link:../@n8n/telemetry
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../@n8n/typeorm
@@ -4462,9 +4465,6 @@ importers:
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../testing/janitor
-      '@n8n/telemetry':
-        specifier: workspace:*
-        version: link:../@n8n/telemetry
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
