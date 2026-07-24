@@ -52,6 +52,55 @@ const SAFE_METHODS_SENTENCE =
 	`and the string methods ${SAFE_STRING_METHOD_NAMES.map((n) => `\`.${n}()\``).join(', ')}. ` +
 	'Native array/string methods such as `.join()`, `.map()`, `.filter()`, `.reduce()`, and `.split()` are NOT available.';
 
+/**
+ * Node-groups documentation, extracted so consumers can import just this section
+ * without the whole builder-language reference. Shared by Instance AI (embedded
+ * in `SDK_LANGUAGE_REFERENCE` below) and the MCP `get_sdk_reference` tool.
+ *
+ * The rules stated here must match what the server enforces on save:
+ * - basic rules: `validateWorkflowNodeGroups`
+ * - structural rules: `validateNodeSelectionForGrouping`
+ * Save-time validation does NOT require a single entry/exit node (that lives in
+ * `validateNodeSelectionForExtraction`), so this doc must not claim it does.
+ */
+export const NODE_GROUPS_REFERENCE = `## Node groups
+
+A node group is a named, visual grouping of nodes (a frame on the canvas). It is
+purely organisational — nothing about execution depends on it. Declare one with
+\`.group(name, members)\` on the workflow. Members are the node handles (the
+\`const\` from \`node(...)\`) — the same way connections reference nodes:
+
+\`\`\`typescript
+const fetch = node({ /* ... name: 'Fetch data' */ });
+const transform = node({ /* ... name: 'Transform' */ });
+export default workflow('id', 'My workflow')
+  .add(fetch)
+  .to(transform)
+  .group('Ingestion', [fetch, transform]);
+\`\`\`
+
+When editing an existing workflow, **keep the \`.group(...)\` calls intact** unless
+the change is specifically about grouping.
+
+an invalid group is rejected on save, so these following rules MUST be followed when
+creating or editing groups.
+
+Rules:
+- **No trigger nodes.** Trigger nodes cannot be part of a group.
+- **One connected section.** Connectable members must form a single connected section of the
+  graph, not two unrelated islands with a gap between them; sticky notes may accompany
+  the selection without participating in connectivity, and a sticky-only group is valid.
+- **Keep AI sub-nodes with their Agent.** If an AI Agent is in a group, its
+  language-model, tool, and memory sub-nodes belong in the same group — put them
+  either all inside the group or all outside it, never split. A model/tool/memory
+  connection must not cross the group boundary.
+- **One group per node.** A node can belong to only one group at a time.
+- **Unique identity.** Group names and ids must be unique within the workflow.
+- **Non-empty.** A group needs at least one node.
+
+Prefer grouping a linear range of nodes — they read most clearly — but that is a
+readability guideline, not a rule the server enforces.`;
+
 /** Full reference, materialized into the knowledge base for on-demand reading. */
 export const SDK_LANGUAGE_REFERENCE = `# Workflow SDK language reference
 
@@ -66,25 +115,7 @@ ${renderMethodLines()}
 
 ${SAFE_METHODS_SENTENCE}
 
-## Node groups
-
-A node group is a named, visual grouping of nodes (a frame on the canvas).
-Declare one with \`.group(name, members)\` on the workflow. Members are the node
-handles (the \`const\` from \`node(...)\`) — the same way connections reference nodes:
-
-\`\`\`typescript
-const fetch = node({ /* ... name: 'Fetch data' */ });
-const transform = node({ /* ... name: 'Transform' */ });
-export default workflow('id', 'My workflow')
-  .add(fetch)
-  .to(transform)
-  .group('Ingestion', [fetch, transform]);
-\`\`\`
-
-When editing an existing workflow, **keep the \`.group(...)\` calls intact** unless
-the change is specifically about grouping. Group members must form a single
-connected section of the graph and cannot be trigger nodes; an invalid group is
-rejected on save.
+${NODE_GROUPS_REFERENCE}
 
 ## Forbidden constructs
 

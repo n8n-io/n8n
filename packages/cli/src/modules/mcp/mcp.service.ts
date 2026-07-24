@@ -34,36 +34,6 @@ import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
-
-import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
-import { createGetExecutionTool } from './tools/get-execution.tool';
-import { createSearchExecutionsTool } from './tools/search-executions.tool';
-import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
-import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
-import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
-import { createListN8nConnectServicesTool } from './tools/list-n8n-connect-services.tool';
-import { createListCredentialsTool } from './tools/list-credentials.tool';
-import { createListTagsTool } from './tools/list-tags.tool';
-import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
-import { createSearchFoldersTool } from './tools/search-folders.tool';
-import { createSearchProjectsTool } from './tools/search-projects.tool';
-import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
-import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
-import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL } from './tools/workflow-builder/constants';
-import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
-import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
-import { createExploreNodeResourcesTool } from './tools/workflow-builder/explore-node-resources.tool';
-import { createUpdateWorkflowTool } from './tools/workflow-builder/update-workflow.tool';
-import { createRestoreWorkflowVersionTool } from './tools/workflow-builder/restore-workflow-version.tool';
-import { createGetWorkflowBestPracticesTool } from './tools/workflow-builder/get-workflow-best-practices.tool';
-import { createGetWorkflowNodeTypesTool } from './tools/workflow-builder/get-workflow-node-types.tool';
-import { createGetWorkflowSdkReferenceTool } from './tools/workflow-builder/get-workflow-sdk-reference.tool';
-import { getMcpInstructions } from './tools/workflow-builder/mcp-instructions';
-import { createSearchWorkflowNodesTool } from './tools/workflow-builder/search-workflow-nodes.tool';
-import { getSdkReferenceContent } from './tools/workflow-builder/sdk-reference-content';
-import { createValidateNodeTool } from './tools/workflow-builder/validate-node.tool';
-import { createValidateWorkflowCodeTool } from './tools/workflow-builder/validate-workflow-code.tool';
-
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
@@ -80,8 +50,8 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
+import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import type { McpAppsTelemetryVariant, McpClientInfo, RegisterToolFn } from './mcp.types';
 import {
 	createAddDataTableColumnTool,
@@ -92,8 +62,36 @@ import {
 	createRenameDataTableTool,
 	createSearchDataTablesTool,
 } from './tools/data-table';
+import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
+import { createGetExecutionTool } from './tools/get-execution.tool';
+import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
+import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
+import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
+import { createListCredentialsTool } from './tools/list-credentials.tool';
+import { createListN8nConnectServicesTool } from './tools/list-n8n-connect-services.tool';
+import { createListTagsTool } from './tools/list-tags.tool';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
+import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
+import { createSearchExecutionsTool } from './tools/search-executions.tool';
+import { createSearchFoldersTool } from './tools/search-folders.tool';
+import { createSearchProjectsTool } from './tools/search-projects.tool';
+import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 import { createTestWorkflowTool } from './tools/test-workflow.tool';
+import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
+import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL } from './tools/workflow-builder/constants';
+import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
+import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
+import { createExploreNodeResourcesTool } from './tools/workflow-builder/explore-node-resources.tool';
+import { createGetWorkflowBestPracticesTool } from './tools/workflow-builder/get-workflow-best-practices.tool';
+import { createGetWorkflowNodeTypesTool } from './tools/workflow-builder/get-workflow-node-types.tool';
+import { createGetWorkflowSdkReferenceTool } from './tools/workflow-builder/get-workflow-sdk-reference.tool';
+import { getMcpInstructions } from './tools/workflow-builder/mcp-instructions';
+import { createRestoreWorkflowVersionTool } from './tools/workflow-builder/restore-workflow-version.tool';
+import { getSdkReferenceContent } from './tools/workflow-builder/sdk-reference-content';
+import { createSearchWorkflowNodesTool } from './tools/workflow-builder/search-workflow-nodes.tool';
+import { createUpdateWorkflowTool } from './tools/workflow-builder/update-workflow.tool';
+import { createValidateNodeTool } from './tools/workflow-builder/validate-node.tool';
+import { createValidateWorkflowCodeTool } from './tools/workflow-builder/validate-workflow-code.tool';
 
 /**
  * Pending MCP execution response, used for queue mode support.
@@ -276,7 +274,11 @@ export class McpService {
 				version: builderEnabled ? '1.1.0' : '1.0.0',
 			},
 			{
-				instructions: getMcpInstructions(builderInstructionsEnabled, n8nConnectAvailable),
+				instructions: getMcpInstructions({
+					isBuilderEnabled: builderInstructionsEnabled,
+					isN8nConnectAvailable: n8nConnectAvailable,
+					canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
+				}),
 			},
 		);
 
@@ -486,7 +488,9 @@ export class McpService {
 		);
 		registerIfAllowed(getNodeTypesTool);
 
-		const bestPracticesTool = createGetWorkflowBestPracticesTool(user, this.telemetry);
+		const bestPracticesTool = createGetWorkflowBestPracticesTool(user, this.telemetry, {
+			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
+		});
 		registerIfAllowed(bestPracticesTool);
 
 		const exploreNodeResourcesTool = createExploreNodeResourcesTool(
@@ -606,19 +610,21 @@ export class McpService {
 		registerIfAllowed(restoreVersionTool);
 
 		// SDK reference as MCP resource — for clients that support resources.
-		server.resource(
+		server.registerResource(
 			'workflow-sdk-reference',
 			'n8n://workflow-sdk/reference',
 			{
 				description:
 					'Required n8n Workflow SDK reference for building workflows from code. Read this before writing workflow code.',
 			},
-			async () => ({
+			() => ({
 				contents: [
 					{
 						uri: 'n8n://workflow-sdk/reference',
 						mimeType: 'text/plain',
-						text: getSdkReferenceContent(),
+						text: getSdkReferenceContent(undefined, {
+							includeGroups: featureFlags.canvasGroupsEnabled,
+						}),
 					},
 				],
 			}),
@@ -626,7 +632,9 @@ export class McpService {
 
 		// SDK reference tool — always registered alongside the MCP resource above,
 		// so all clients can access the SDK reference regardless of resource support.
-		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry);
+		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry, {
+			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
+		});
 		registerIfAllowed(sdkRefTool);
 	}
 
