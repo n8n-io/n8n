@@ -2,7 +2,7 @@
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import TidyUpIcon from '@/app/components/TidyUpIcon.vue';
 import { useI18n } from '@n8n/i18n';
-import { Controls } from '@vue-flow/controls';
+import { Controls } from '@/features/workflows/canvas/vueFlow.adapter';
 import { computed } from 'vue';
 import { useExperimentalNdvStore } from '../../../experimental/experimentalNdv.store';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';

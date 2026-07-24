@@ -1,4 +1,8 @@
-import { useVueFlow, type GraphNode, type VueFlowStore } from '@vue-flow/core';
+import {
+	useVueFlow,
+	type GraphNode,
+	type VueFlowStore,
+} from '@/features/workflows/canvas/vueFlow.adapter';
 import { computed, ref, shallowRef } from 'vue';
 import {
 	createEmptyCanvasRenderData,

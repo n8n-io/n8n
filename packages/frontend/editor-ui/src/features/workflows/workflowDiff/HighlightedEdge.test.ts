@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import HighlightedEdge from '@/features/workflows/workflowDiff/HighlightedEdge.vue';
 import type { CanvasEdgeProps } from '@/features/workflows/canvas/components/elements/edges/CanvasEdge.vue';
-import { Position } from '@vue-flow/core';
+import { Position } from '@/features/workflows/canvas/vueFlow.adapter';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 // Mock the Edge component

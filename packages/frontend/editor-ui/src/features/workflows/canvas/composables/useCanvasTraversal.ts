@@ -1,5 +1,5 @@
 import type { CanvasNode } from '../canvas.types';
-import type { VueFlowStore } from '@vue-flow/core';
+import type { VueFlowStore } from '@/features/workflows/canvas/vueFlow.adapter';
 
 export function useCanvasTraversal({ getIncomers, getOutgoers }: VueFlowStore) {
 	function sortNodesByVerticalPosition(nodes: CanvasNode[]) {

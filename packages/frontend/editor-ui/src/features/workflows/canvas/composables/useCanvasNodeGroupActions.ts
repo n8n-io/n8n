@@ -1,4 +1,4 @@
-import type { GraphNode } from '@vue-flow/core';
+import type { GraphNode } from '@/features/workflows/canvas/vueFlow.adapter';
 import { useI18n } from '@n8n/i18n';
 import type { IWorkflowGroup } from 'n8n-workflow';
 import type { MaybeRefOrGetter } from 'vue';

@@ -29,8 +29,8 @@ import {
 import type { IConnections, ITaskData, IWorkflowGroup } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import { MarkerType } from '@vue-flow/core';
-import type { Connection } from '@vue-flow/core';
+import { MarkerType } from '@/features/workflows/canvas/vueFlow.adapter';
+import type { Connection } from '@/features/workflows/canvas/vueFlow.adapter';
 import * as workflowUtils from 'n8n-workflow/common';
 
 // Highest priority first — single source of precedence for connection status.

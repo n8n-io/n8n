@@ -14,7 +14,7 @@ import type {
 	Position,
 	OnConnectStartParams,
 	ViewportTransform,
-} from '@vue-flow/core';
+} from '@/features/workflows/canvas/vueFlow.adapter';
 import type { AgentCapabilitySummary } from '@n8n/api-types';
 import type { INodeUi } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';

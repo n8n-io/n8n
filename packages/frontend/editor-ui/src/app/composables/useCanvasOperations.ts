@@ -102,7 +102,7 @@ import {
 	doRectsOverlap,
 } from '@/app/utils/nodeViewUtils';
 import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
-import type { Connection } from '@vue-flow/core';
+import type { Connection } from '@/features/workflows/canvas/vueFlow.adapter';
 import type {
 	IConnection,
 	IConnections,

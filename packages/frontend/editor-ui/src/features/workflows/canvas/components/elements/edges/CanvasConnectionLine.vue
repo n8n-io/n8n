@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 /* eslint-disable vue/no-multiple-template-root */
-import type { ConnectionLineProps } from '@vue-flow/core';
-import { BaseEdge } from '@vue-flow/core';
+import type { ConnectionLineProps } from '@/features/workflows/canvas/vueFlow.adapter';
+import { BaseEdge } from '@/features/workflows/canvas/vueFlow.adapter';
 import { computed, onMounted, ref, useCssModule } from 'vue';
 import { getEdgeRenderData } from './utils';
 import { useCanvas } from '../../../composables/useCanvas';

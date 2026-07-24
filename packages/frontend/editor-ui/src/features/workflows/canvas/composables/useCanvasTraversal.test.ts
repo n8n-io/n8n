@@ -1,6 +1,6 @@
 import { useCanvasTraversal } from '@/features/workflows/canvas/composables/useCanvasTraversal';
 import type { CanvasNode } from '../canvas.types';
-import type { VueFlowStore } from '@vue-flow/core';
+import type { VueFlowStore } from '@/features/workflows/canvas/vueFlow.adapter';
 import { mock } from 'vitest-mock-extended';
 
 describe('useCanvasTraversal', () => {

@@ -8,7 +8,7 @@ import {
 	type SetViewport,
 	type ViewportTransform,
 	type ZoomTo,
-} from '@vue-flow/core';
+} from '@/features/workflows/canvas/vueFlow.adapter';
 import { CanvasNodeRenderType, type CanvasNodeData } from '../canvas.types';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { CANVAS_ZOOMED_VIEW_EXPERIMENT, NDV_IN_FOCUS_PANEL_EXPERIMENT } from '@/app/constants';

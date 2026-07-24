@@ -3,8 +3,8 @@ import type { ContextMenuAction } from '@/features/shared/contextMenu/composable
 import type { IWorkflowDb } from '@/Interface';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { ViewportTransform } from '@vue-flow/core';
-import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
+import type { ViewportTransform } from '@/features/workflows/canvas/vueFlow.adapter';
+import { getRectOfNodes, useVueFlow } from '@/features/workflows/canvas/vueFlow.adapter';
 import { throttledRef } from '@vueuse/core';
 import {
 	computed,
