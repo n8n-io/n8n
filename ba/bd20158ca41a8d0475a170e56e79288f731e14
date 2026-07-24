@@ -1,22 +1,21 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowPublishChoiceDialog.vue
+  s_744aa7ffad1673::t_a97e4738a14138 2-8,44-46,51,72-76,86-91
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue
+  s_744aa7ffad1673::t_cd5e9d3edff1dc 48,72-77
 ---
 {
   "schema_version": "authorship/3.0.0",
-  "git_ai_version": "1.6.14",
+  "git_ai_version": "1.6.16",
   "base_commit_sha": "babd20158ca41a8d0475a170e56e79288f731e14",
   "prompts": {},
-  "humans": {
-    "h_b48525a15b2d62": {
-      "author": "Robin Braumann <robin.braumann@n8n.io>"
-    }
-  },
   "sessions": {
-    "s_770a4f5233186c": {
+    "s_744aa7ffad1673": {
       "agent_id": {
-        "tool": "cursor",
-        "id": "af98002c-f09b-4489-8374-ebc72894c73f",
-        "model": "claude-sonnet-5"
+        "tool": "claude",
+        "id": "c708436e-d47a-46c9-8cfa-2a78ec728e0c",
+        "model": "claude-opus-4-8"
       },
-      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     }
   }
 }
