@@ -1,4 +1,4 @@
-import { AgentJsonConfigSchema } from '@n8n/api-types';
+import { AgentJsonConfigBaseSchema } from '@n8n/api-types';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 export const AGENT_BUILDER_REFERENCE_URI = 'n8n://agents/reference';
@@ -6,7 +6,7 @@ export const AGENT_BUILDER_REFERENCE_URI = 'n8n://agents/reference';
 // Integrations are a published runtime surface managed only through
 // update_agent_integration, so they are never part of the editable draft
 // config the model reads and writes.
-const EditableAgentJsonConfigSchema = AgentJsonConfigSchema.omit({ integrations: true });
+const EditableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.omit({ integrations: true });
 
 export const AGENT_CONFIG_JSON_SCHEMA = zodToJsonSchema(EditableAgentJsonConfigSchema, {
 	name: 'AgentJsonConfig',

@@ -9,6 +9,7 @@ import {
 import {
 	AGENT_MODEL_PROVIDERS,
 	AgentIntegrationSchema,
+	AgentJsonConfigBaseSchema,
 	AgentJsonConfigSchema,
 	AgentTelegramSettingsSchema,
 	McpAuthenticationSchemaTypes,
@@ -174,7 +175,7 @@ const searchAgentsInput = {
 	limit: z.number().int().min(1).max(100).optional().default(50),
 } satisfies z.ZodRawShape;
 
-const initialAgentConfigSchema = AgentJsonConfigSchema.omit({
+const initialAgentConfigSchema = AgentJsonConfigBaseSchema.omit({
 	name: true,
 	skills: true,
 	tasks: true,
