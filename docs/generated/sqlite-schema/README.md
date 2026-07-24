@@ -10,7 +10,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | ---- | ------- | ------- | ---- |
 | [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
 | [agent_checkpoints](agent_checkpoints.md) | 6 |  | table |
-| [agent_execution](agent_execution.md) | 18 |  | table |
+| [agent_execution](agent_execution.md) | 19 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
 | [agent_files](agent_files.md) | 8 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
@@ -332,6 +332,7 @@ erDiagram
   datetime_3_ startedAt
   varchar_16_ status
   datetime_3_ stoppedAt
+  VARCHAR_2_ storedAt
   varchar_128_ threadId FK
   TEXT timeline
   INTEGER totalTokens
