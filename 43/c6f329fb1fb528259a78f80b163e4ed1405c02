@@ -310,6 +310,8 @@ packages/frontend/editor-ui/src/features/workflow-reviews/reviewRequired.store.t
 packages/frontend/editor-ui/src/features/workflow-reviews/reviewRequired.store.ts
   s_b3f23ab76a494c::t_b2af89bb108ca4 15
   s_b3f23ab76a494c::t_872ed66fdfb791 1-4,6-7,9,11-14,16-22
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_b1ae3677d6bc36::t_f4ecbbe076e13c 47,51
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -467,6 +469,14 @@ packages/frontend/editor-ui/src/features/workflow-reviews/reviewRequired.store.t
       },
       "human_author": null
     },
+    "s_b1ae3677d6bc36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14856d89-b227-4425-adeb-7f31ce9ea7b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
     "s_b34abcbd386402": {
       "agent_id": {
         "tool": "claude",
@@ -498,6 +508,14 @@ packages/frontend/editor-ui/src/features/workflow-reviews/reviewRequired.store.t
         "model": "gpt-5.6-sol"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_c7f2eb05574ce2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63ca9479-d174-4a0f-9349-54a47630f906",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
     },
     "s_d8236b8b5400e8": {
       "agent_id": {

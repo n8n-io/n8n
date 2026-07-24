@@ -192,7 +192,7 @@ packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
   s_b34abcbd386402::t_7bdead65e3c081 78,80,90
   s_c7f2eb05574ce2::t_00ea845ffd7ef8 72,78-79
   s_c7f2eb05574ce2::t_ddb40a3717c8e5 80
-  s_c7f2eb05574ce2::t_e7e31b99dfb2f4 90
+  s_c7f2eb05574ce2::t_e7e31b99dfb2f4 80,90
 packages/@n8n/backend-common/src/modules/modules.config.ts
   s_60c9025b151770::t_a4789809c277c5 36
 packages/@n8n/api-types/src/dto/workflow-reviews/create-workflow-review-request.dto.ts

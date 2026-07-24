@@ -333,6 +333,7 @@ packages/frontend/editor-ui/src/app/constants/localStorage.ts
   s_70e4a16a672757::t_489e68614b7d2b 40-41
   s_70e4a16a672757::t_706452e921bce7 42-43
   s_91f67565918eee::t_102841e08fe8e0 42-43
+  s_91f67565918eee::t_7841e24ee9fb32 42-43
 packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
   s_70e4a16a672757::t_489e68614b7d2b 1-28,1-9,10-11,16-20,23-28
   s_c7f2eb05574ce2::t_79fbbe00c1665e 16
