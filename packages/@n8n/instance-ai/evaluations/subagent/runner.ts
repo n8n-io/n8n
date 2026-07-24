@@ -15,8 +15,9 @@ import type {
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext } from '../binaryChecks/types';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
+import { buildWorkflow, type BuildResult } from '../harness/build-workflow';
+import { cleanupBuild } from '../harness/cleanup';
 import { createLogger, type EvalLogger } from '../harness/logger';
-import { buildWorkflow, cleanupBuild, type BuildResult } from '../harness/runner';
 import { agentTextOf } from '../utils/conversation-text';
 
 /**

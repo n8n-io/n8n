@@ -2,8 +2,9 @@ import { verifyBuildExpectations } from '../build-expectations/verifier';
 import type { CliArgs } from '../cli/args';
 import type { N8nClient } from '../clients/n8n-client';
 import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
+import type { BuildResult } from '../harness/build-workflow';
+import { runWorkflowChecks } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
-import { runWorkflowChecks, type BuildResult } from '../harness/runner';
 import {
 	createBuildOrchestrator,
 	type BuildOrchestratorDeps,
@@ -18,12 +19,19 @@ import type { WorkflowTestCase } from '../types';
 // against the behavior runWithLangSmith relied on while getOrBuild was a
 // closure — keep them green through the decomposition.
 
-vi.mock('../harness/runner', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('../harness/runner')>();
+vi.mock('../harness/agent-execution', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../harness/agent-execution')>();
+	return {
+		...actual,
+		fetchAgentScenarioContext: vi.fn().mockResolvedValue('AGENT CONTEXT'),
+	};
+});
+
+vi.mock('../harness/cleanup', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../harness/cleanup')>();
 	return {
 		...actual,
 		runWorkflowChecks: vi.fn().mockResolvedValue([]),
-		fetchAgentScenarioContext: vi.fn().mockResolvedValue('AGENT CONTEXT'),
 	};
 });
 

@@ -6,7 +6,7 @@
 // memory jobs (via thread status polling), auto-approves any confirmation
 // confirmation requests, and surfaces the captured events.
 //
-// Used by `harness/runner.ts` (workflow eval) and the computer-use eval
+// Used by `harness/build-workflow.ts` (workflow eval) and the computer-use eval
 // harness. Both consume the same primitives so any fix here lands in both
 // flows automatically.
 // ---------------------------------------------------------------------------
