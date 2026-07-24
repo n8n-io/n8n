@@ -1,5 +1,9 @@
 import { Logger } from '@n8n/backend-common';
+import type { StorageLocation } from '@n8n/blob-storage';
 import { Service } from '@n8n/di';
+import chunk from 'lodash/chunk';
+import { ErrorReporter, StorageConfig } from 'n8n-core';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
@@ -11,6 +15,7 @@ import {
 import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentExecution } from './entities/agent-execution.entity';
 import type { MessageRecord } from './execution-recorder';
+import { AgentExecutionLogStore } from './execution-log/agent-execution-log-store';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import type { AgentExecutionThreadMetadata } from './repositories/agent-execution-thread.repository';
@@ -53,6 +58,9 @@ export interface ThreadListItem extends Omit<AgentExecutionThread, 'generateId' 
 
 @Service()
 export class AgentExecutionService {
+	/** Batch size mirrors ExecutionPersistence.bulkDeletionBatchSize. */
+	private static readonly logDeletionBatchSize = 500;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentExecutionRepository: AgentExecutionRepository,
@@ -60,6 +68,9 @@ export class AgentExecutionService {
 		private readonly n8nMemory: N8nMemory,
 		private readonly telemetry: Telemetry,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
+		private readonly agentExecutionLogStore: AgentExecutionLogStore,
+		private readonly storageConfig: StorageConfig,
+		private readonly errorReporter: ErrorReporter,
 	) {}
 
 	/**
@@ -113,6 +124,8 @@ export class AgentExecutionService {
 		const status: AgentExecution['status'] = record.error ? 'error' : 'success';
 		const startedAt = new Date(record.startTime);
 		const stoppedAt = new Date(record.startTime + record.duration);
+		const storedAt: AgentExecution['storedAt'] =
+			record.timeline.length > 0 ? this.storageConfig.modeTag : 'db';
 
 		const inserted = await this.agentExecutionRepository.save(
 			this.agentExecutionRepository.create({
@@ -127,13 +140,27 @@ export class AgentExecutionService {
 				completionTokens: record.usage?.completionTokens ?? null,
 				totalTokens: record.usage?.totalTokens ?? null,
 				cost: record.totalCost,
-				timeline: record.timeline.length > 0 ? record.timeline : null,
+				timeline: storedAt === 'db' && record.timeline.length > 0 ? record.timeline : null,
+				storedAt,
 				error: record.error,
 				hitlStatus: hitlStatus ?? null,
 				source: source ?? null,
 				attachments: params.attachments?.length ? params.attachments : null,
 			}),
 		);
+
+		if (storedAt !== 'db') {
+			try {
+				await this.agentExecutionLogStore.write(
+					{ agentId, threadId, executionId: inserted.id },
+					{ timeline: record.timeline },
+					storedAt,
+				);
+			} catch (error) {
+				// Keep the row even without its blob; the read path treats a missing log as no timeline.
+				this.errorReporter.error(error);
+			}
+		}
 
 		// When a resumed execution completes with usage data, backfill any
 		// preceding suspended executions in the same thread that are missing it.
@@ -241,6 +268,7 @@ export class AgentExecutionService {
 	/**
 	 * Delete a thread and all its associated runs. The FK on agent_execution
 	 * cascades, so deleting the thread removes the runs in one statement.
+	 * Blob-stored timelines are deleted in parallel with the thread row.
 	 */
 	async deleteThread(projectId: string, agentId: string, threadId: string): Promise<boolean> {
 		// Verify ownership before deleting anything
@@ -251,10 +279,39 @@ export class AgentExecutionService {
 		});
 		if (!thread) return false;
 
+		const blobRefs = this.toBlobRefs(
+			await this.agentExecutionRepository.findBlobRefsByThreadId(threadId),
+		);
+
 		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
 		await this.agentChatAttachmentService.deleteByThread(threadId);
-		await this.agentExecutionThreadRepository.delete({ id: threadId });
+		await Promise.all([
+			this.agentExecutionThreadRepository.delete({ id: threadId }),
+			this.agentExecutionLogStore.delete(
+				blobRefs.map((r) => ({ agentId, threadId, executionId: r.id, storedAt: r.storedAt })),
+			),
+		]);
 		return true;
+	}
+
+	/**
+	 * Delete every blob-stored execution log across an agent's threads. Called
+	 * before the agent row is removed (the row cascade deletes the DB side).
+	 */
+	async deleteExecutionLogsForAgent(agentId: string): Promise<void> {
+		const refs = this.toBlobRefs(
+			await this.agentExecutionRepository.findBlobRefsByAgentId(agentId),
+		);
+		for (const batch of chunk(refs, AgentExecutionService.logDeletionBatchSize)) {
+			await this.agentExecutionLogStore.delete(
+				batch.map((r) => ({
+					agentId,
+					threadId: r.threadId,
+					executionId: r.id,
+					storedAt: r.storedAt,
+				})),
+			);
+		}
 	}
 
 	/**
@@ -304,7 +361,51 @@ export class AgentExecutionService {
 		if (!thread || !threadBelongsTo(thread, projectId, agentId)) return null;
 
 		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
+		await this.hydrateTimelines(agentId, threadId, executions);
 		return { thread, executions };
+	}
+
+	/**
+	 * Fill in `timeline` for blob-stored executions. Blob problems — missing
+	 * blobs, corrupted blobs, unregistered storage locations, or read failures —
+	 * degrade to a null timeline instead of failing the request, so the thread
+	 * always opens. Corruption, unregistered locations, and read failures are
+	 * reported; missing blobs degrade silently.
+	 */
+	private async hydrateTimelines(
+		agentId: string,
+		threadId: string,
+		executions: AgentExecution[],
+	): Promise<void> {
+		const blobStored = this.toBlobRefs(executions);
+		if (blobStored.length === 0) return;
+
+		const readable = blobStored.filter((e) => this.agentExecutionLogStore.hasLocation(e.storedAt));
+		if (readable.length < blobStored.length) {
+			this.errorReporter.error(
+				new UnexpectedError(
+					'Skipped reading agent execution logs for unconfigured storage location',
+					{
+						extra: { threadId, skipped: blobStored.length - readable.length },
+					},
+				),
+			);
+		}
+		if (readable.length === 0) return;
+
+		let entries;
+		try {
+			entries = await this.agentExecutionLogStore.readMany(
+				readable.map((e) => ({ agentId, threadId, executionId: e.id, storedAt: e.storedAt })),
+			);
+		} catch (error) {
+			this.errorReporter.error(error);
+			return;
+		}
+		for (const execution of readable) {
+			const entry = entries.get(execution.id);
+			if (entry) execution.timeline = entry.timeline;
+		}
 	}
 
 	/**
@@ -314,6 +415,11 @@ export class AgentExecutionService {
 	 */
 	async findThreadById(threadId: string): Promise<AgentExecutionThread | null> {
 		return await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
+	}
+
+	/** Narrow refs to those whose data lives in a blob store, i.e. all but `db`. */
+	private toBlobRefs<T extends { storedAt: AgentExecution['storedAt'] }>(refs: T[]) {
+		return refs.filter((r): r is T & { storedAt: StorageLocation } => r.storedAt !== 'db');
 	}
 }
 
