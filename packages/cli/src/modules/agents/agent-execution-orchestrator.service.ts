@@ -16,7 +16,9 @@ import { ExecutionRecorder } from './execution-recorder';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import type { ToolRegistry } from './tool-registry';
+import type { StoredAttachmentRef } from './agent-chat-attachment.service';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
+import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { streamAgentChunks } from './utils/agent-stream';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 
@@ -38,6 +40,8 @@ export interface ExecuteForChatConfig {
 	user: User;
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
+	/** Already-stored attachments to include as file parts on the user turn. */
+	attachments?: StoredAttachmentRef[];
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 }
@@ -48,6 +52,8 @@ export interface ExecuteForChatPublishedConfig {
 	message: string;
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
+	/** Already-stored attachments to include as file parts on the user turn. */
+	attachments?: StoredAttachmentRef[];
 	integrationType?: string;
 	// No `user` field here: a published chat integration (Slack, Telegram, …)
 	// run is triggered by an inbound platform event, not an interactive n8n
@@ -123,6 +129,8 @@ export interface StreamChatResponseConfig {
 	agentId: string;
 	userId?: string;
 	message: string;
+	/** Already-stored attachments to include as file parts on the user turn. */
+	attachments?: StoredAttachmentRef[];
 	memory: AgentMemoryScope;
 	projectId: string;
 	source?: string;
@@ -305,7 +313,7 @@ export class AgentExecutionOrchestratorService {
 	 * Execute an agent for the in-app test chat and yield stream chunks.
 	 */
 	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, message, user, memory, onExecutionRecorded } = config;
+		const { agentId, projectId, message, user, memory, attachments, onExecutionRecorded } = config;
 
 		// `user` is always set (see ExecuteForChatConfig) — this builds/reuses a
 		// runtime scoped to this specific user's tool access.
@@ -330,6 +338,7 @@ export class AgentExecutionOrchestratorService {
 			agentId,
 			userId: user.id,
 			message,
+			attachments,
 			memory,
 			projectId: runtime.projectId,
 			telemetry: {
@@ -348,7 +357,7 @@ export class AgentExecutionOrchestratorService {
 	async *executeForChatPublished(
 		config: ExecuteForChatPublishedConfig,
 	): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, message, memory, integrationType } = config;
+		const { agentId, projectId, message, memory, integrationType, attachments } = config;
 		await this.externalHooks.run('agent.preExecute', [agentId]);
 
 		// No `user` (see ExecuteForChatPublishedConfig): this is the shared,
@@ -367,6 +376,7 @@ export class AgentExecutionOrchestratorService {
 			toolRegistry: runtime.toolRegistry,
 			agentId,
 			message,
+			attachments,
 			memory,
 			projectId: runtime.projectId,
 			source: integrationType,
@@ -456,6 +466,7 @@ export class AgentExecutionOrchestratorService {
 			agentId,
 			userId,
 			message,
+			attachments,
 			memory,
 			projectId,
 			source,
@@ -478,7 +489,8 @@ export class AgentExecutionOrchestratorService {
 				modelId: modelIdFromSnapshot(agentInstance.snapshot.model),
 			});
 
-			const resultStream = await agentInstance.stream(message, {
+			const input = attachments?.length ? buildInboundUserMessage(message, attachments) : message;
+			const resultStream = await agentInstance.stream(input, {
 				persistence: { threadId, resourceId },
 				executionCounter: createAgentExecutionCounter(this.telemetry, { agentId, userId }),
 				...(tracing ? { telemetry: tracing } : {}),
@@ -518,6 +530,7 @@ export class AgentExecutionOrchestratorService {
 					agentName: agentInstance.name,
 					projectId,
 					userMessage: message,
+					attachments,
 					record: messageRecord,
 					hitlStatus: recorder.suspended ? 'suspended' : undefined,
 					source,

@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 
+import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 import { N8nMemory } from './integrations/n8n-memory';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
@@ -12,7 +13,10 @@ export function chatThreadId(agentId: string, userId?: string): string {
 
 @Service()
 export class AgentTestChatService {
-	constructor(private readonly n8nMemory: N8nMemory) {}
+	constructor(
+		private readonly n8nMemory: N8nMemory,
+		private readonly agentChatAttachmentService: AgentChatAttachmentService,
+	) {}
 
 	/**
 	 * Return persisted test-chat messages for an agent scoped to the current
@@ -30,7 +34,9 @@ export class AgentTestChatService {
 	 * Clear the current user's test-chat messages for an agent.
 	 */
 	async clearTestChatMessages(agentId: string, userId: string) {
-		await this.n8nMemory.getImplementation(agentId).deleteThread(chatThreadId(agentId, userId));
+		const threadId = chatThreadId(agentId, userId);
+		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
+		await this.agentChatAttachmentService.deleteByThread(threadId);
 	}
 
 	/** Delete all test-chat messages + the thread row — used when the agent itself is deleted. */

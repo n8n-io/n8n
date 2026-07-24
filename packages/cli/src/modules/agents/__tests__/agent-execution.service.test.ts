@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { Telemetry } from '@/telemetry';
 
+import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentExecutionService } from '../agent-execution.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
@@ -74,6 +75,7 @@ describe('AgentExecutionService', () => {
 			agentExecutionThreadRepository,
 			n8nMemory,
 			telemetry,
+			mock<AgentChatAttachmentService>(),
 		);
 	});
 

@@ -313,6 +313,11 @@ export class AgentMessageList {
 		return this.all.filter((m) => this.inputSet.has(m));
 	}
 
+	/** All messages currently in the list, as live references. */
+	messages(): readonly AgentDbMessage[] {
+		return this.all;
+	}
+
 	serialize(): SerializedMessageList {
 		const toIds = (set: Set<AgentDbMessage>) => Array.from(set).map((m) => m.id);
 		return {

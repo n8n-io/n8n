@@ -1,6 +1,12 @@
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
+import {
+	MAX_AGENT_CHAT_ATTACHMENT_BASE64_LENGTH,
+	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
+	MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH,
+	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
+} from './agent-chat-attachments.constants';
 import { AgentVectorStoreConfigSchema } from './agent-json-config.schema';
 import { agentSkillSchema, agentSkillShape } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
@@ -123,9 +129,27 @@ export class UpdateAgentSkillDto extends Z.class(updateAgentSkillShape) {
 	}
 }
 
+export const agentChatAttachmentSchema = z.object({
+	fileName: z.string().min(1).max(MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH),
+	mimeType: z.string().min(1).max(MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH),
+	// Base64; cap sized so the decoded payload stays within the 10 MB limit.
+	data: z
+		.string()
+		.min(1)
+		.max(MAX_AGENT_CHAT_ATTACHMENT_BASE64_LENGTH, 'Attachment exceeds 10 MB limit'),
+});
+
+export type AgentChatAttachmentPayload = z.infer<typeof agentChatAttachmentSchema>;
+
+// `message` may be empty when at least one attachment is present
+// (attachment-only sends); the controller enforces that invariant.
 export class AgentChatMessageDto extends Z.class({
-	message: z.string().min(1),
+	message: z.string(),
 	sessionId: z.string().min(1).optional(),
+	attachments: z
+		.array(agentChatAttachmentSchema)
+		.max(MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE)
+		.optional(),
 }) {}
 
 export class AgentChatResumeDto extends Z.class({

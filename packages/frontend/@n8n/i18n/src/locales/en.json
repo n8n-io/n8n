@@ -7036,6 +7036,8 @@
 	"agents.chat.toolError.generic": "Something went wrong while running this tool",
 	"agents.chat.clearHistory": "Clear chat history",
 	"agents.chat.input.placeholder": "Type a message...",
+	"agents.chat.attachments.tooLarge": "{fileName} exceeds the {limit} MB attachment limit",
+	"agents.chat.attachments.tooMany": "You can attach up to {limit} files per message",
 	"agents.preview.episodicMemoryCallout.text": "Access memories from previous conversations.",
 	"agents.preview.episodicMemoryCallout.action": "Enable",
 	"agents.chat.answerQuestionPlaceholder": "Answer the question above to continue",

@@ -16,6 +16,8 @@ import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import { parseIntegrationActionCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
+import type { ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
+import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import RichInteractionCard from './RichInteractionCard.vue';
 import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
@@ -27,7 +29,22 @@ import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 const i18n = useI18n();
 const router = useRouter();
 
-const props = defineProps<{ item: TimelineItem | null }>();
+const props = defineProps<{
+	item: TimelineItem | null;
+	/** Scope for the attachment download URLs on user items. */
+	projectId?: string;
+	agentId?: string;
+}>();
+
+const userAttachments = computed((): ChatMessageAttachment[] => {
+	if (props.item?.kind !== 'user' || !props.item.attachments) return [];
+	return props.item.attachments.map((attachment) => ({
+		fileId: attachment.id,
+		fileName: attachment.fileName,
+		mimeType: attachment.mimeType,
+		sizeBytes: attachment.sizeBytes,
+	}));
+});
 const copiedBlock = ref<string | null>(null);
 let copiedResetTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -414,6 +431,12 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</template>
 
 					<template v-else-if="item.kind === 'user' || item.kind === 'agent'">
+						<AgentChatMessageAttachments
+							v-if="userAttachments.length > 0 && projectId && agentId"
+							:attachments="userAttachments"
+							:project-id="projectId"
+							:agent-id="agentId"
+						/>
 						<VueMarkdown :source="item.content ?? ''" :class="$style.markdown" />
 					</template>
 				</div>

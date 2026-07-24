@@ -1,10 +1,19 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
+import {
+	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
+	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
+} from '@n8n/api-types';
 import { Container } from '@n8n/di';
-import type { Author, Chat, Message, Thread } from 'chat';
+import type { Attachment, Author, Chat, Message, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
+import {
+	AgentChatAttachmentService,
+	type StoredAttachmentRef,
+} from '../agent-chat-attachment.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
+import { resolveInboundMimeType } from '../utils/inbound-attachments';
 import type {
 	AgentChatIntegration,
 	BridgeExecutionContext,
@@ -30,6 +39,7 @@ interface AgentExecutor {
 		agentId: string;
 		projectId: string;
 		message: string;
+		attachments?: StoredAttachmentRef[];
 		memory: { threadId: InternalThread; resourceId: string };
 		integrationType?: string;
 	}): AsyncGenerator<StreamChunk>;
@@ -86,6 +96,7 @@ export class AgentChatBridge {
 		private readonly n8nProjectId: string,
 		private readonly integration: AgentIntegrationConfig,
 		messageContextStore?: IntegrationMessageContextService,
+		private readonly attachmentService?: AgentChatAttachmentService,
 	) {
 		this.integrationImpl = Container.get(ChatIntegrationRegistry).get(integration.type);
 		this.messageContextBridge = new AgentChatMessageContextBridge(
@@ -147,11 +158,18 @@ export class AgentChatBridge {
 		integration: AgentIntegrationConfig,
 	): AgentChatBridge {
 		const agentExecutor: AgentExecutor = {
-			async *executeForChatPublished({ memory, agentId: aid, message, integrationType }) {
+			async *executeForChatPublished({
+				memory,
+				agentId: aid,
+				message,
+				attachments,
+				integrationType,
+			}) {
 				yield* agentService.executeForChatPublished({
 					agentId: aid,
 					projectId: n8nProjectId,
 					message,
+					attachments,
 					memory: {
 						threadId: memory.threadId.id,
 						resourceId: memory.resourceId,
@@ -175,6 +193,7 @@ export class AgentChatBridge {
 			n8nProjectId,
 			integration,
 			Container.get(IntegrationMessageContextService),
+			Container.get(AgentChatAttachmentService),
 		);
 	}
 
@@ -258,10 +277,18 @@ export class AgentChatBridge {
 		const { isNewMention } = options;
 		const platformAgentContext = this.getPlatformAgentContext();
 		const text = this.prepareInboundText(message.text, platformAgentContext).trim();
-		if (!text) return;
+		// `?? []` guards rehydrated/serialized messages that predate the field.
+		const inboundAttachments = message.attachments ?? [];
+		if (!text && inboundAttachments.length === 0) return;
 
 		const platformThreadId = this.resolvePlatformThreadId(thread);
 		const threadId = this.toAgentThreadId(platformThreadId);
+		const resourceId = integrationMemoryResourceId(this.integration.type, message.author.userId);
+		const { attachments, attachmentNotes } = await this.storeInboundAttachments(
+			inboundAttachments,
+			threadId.id,
+			resourceId,
+		);
 		const statusRetry = new AbortController();
 		// Platform status hooks, the lazy `message.subject` fetch, and any
 		// thread-history fetch are all remote round-trips on independent
@@ -288,16 +315,18 @@ export class AgentChatBridge {
 			// the platform user identity so episodic recall works across threads for
 			// the same user while staying isolated between users.
 			// Always run the published snapshot — integrations are production traffic.
+			const textWithNotes = [text, ...attachmentNotes].filter(Boolean).join('\n');
 			const agentInput = bridgeExecutionContext.historyContext
-				? `${bridgeExecutionContext.historyContext}\n\n${text}`
-				: text;
+				? `${bridgeExecutionContext.historyContext}\n\n${textWithNotes}`
+				: textWithNotes;
 			const stream = this.agentService.executeForChatPublished({
 				agentId: this.agentId,
 				projectId: this.n8nProjectId,
 				message: agentInput,
+				attachments: attachments.length > 0 ? attachments : undefined,
 				memory: {
 					threadId,
-					resourceId: integrationMemoryResourceId(this.integration.type, message.author.userId),
+					resourceId,
 				},
 				integrationType: this.integration.type,
 			});
@@ -315,6 +344,88 @@ export class AgentChatBridge {
 			// no-op await of the consumer's clear when that already ran.
 			await statusHandle?.clearBeforeResponse();
 		}
+	}
+
+	/**
+	 * Download and persist inbound platform attachments (Slack/Telegram adapters
+	 * deliver them with authenticated `fetchData`). Oversize or failed downloads
+	 * degrade to a text note on the user turn — an attachment problem never
+	 * aborts the run. Returns stored refs plus the notes to append.
+	 */
+	private async storeInboundAttachments(
+		inboundAttachments: Attachment[],
+		threadId: string,
+		resourceId: string,
+	): Promise<{ attachments: StoredAttachmentRef[]; attachmentNotes: string[] }> {
+		const attachments: StoredAttachmentRef[] = [];
+		const attachmentNotes: string[] = [];
+		if (!this.attachmentService || inboundAttachments.length === 0) {
+			return { attachments, attachmentNotes };
+		}
+
+		const skipped = inboundAttachments.slice(MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE);
+		for (const attachment of skipped) {
+			attachmentNotes.push(
+				`[Attachment "${attachment.name ?? 'file'}" was not processed: too many attachments in one message]`,
+			);
+		}
+
+		for (const attachment of inboundAttachments.slice(0, MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE)) {
+			const name = attachment.name ?? 'attachment';
+			try {
+				if (
+					attachment.size !== undefined &&
+					attachment.size > MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES
+				) {
+					attachmentNotes.push(`[Attachment "${name}" was skipped: larger than 10 MB]`);
+					continue;
+				}
+
+				const data = await this.fetchAttachmentData(attachment);
+				if (!data || data.byteLength === 0) {
+					attachmentNotes.push(`[Attachment "${name}" could not be downloaded]`);
+					continue;
+				}
+				if (data.byteLength > MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES) {
+					attachmentNotes.push(`[Attachment "${name}" was skipped: larger than 10 MB]`);
+					continue;
+				}
+
+				const mimeType = await resolveInboundMimeType(attachment.mimeType, data);
+				const stored = await this.attachmentService.storeInbound({
+					agentId: this.agentId,
+					projectId: this.n8nProjectId,
+					threadId,
+					resourceId,
+					source: this.integration.type,
+					fileName: name,
+					mimeType,
+					data,
+				});
+				attachments.push({
+					id: stored.id,
+					fileName: stored.fileName,
+					mimeType: stored.mimeType,
+					sizeBytes: stored.fileSizeBytes,
+				});
+			} catch (error) {
+				this.logger.warn('[AgentChatBridge] Failed to ingest attachment', {
+					agentId: this.agentId,
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				attachmentNotes.push(`[Attachment "${name}" could not be processed]`);
+			}
+		}
+
+		return { attachments, attachmentNotes };
+	}
+
+	private async fetchAttachmentData(attachment: Attachment): Promise<Buffer | null> {
+		if (attachment.fetchData) return await attachment.fetchData();
+		if (Buffer.isBuffer(attachment.data)) return attachment.data;
+		if (attachment.data) return Buffer.from(await attachment.data.arrayBuffer());
+		return null;
 	}
 
 	private async resolveBridgeExecutionContext(

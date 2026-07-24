@@ -8,6 +8,7 @@ export type {
 	ContentText,
 	ContentReasoning,
 	ContentFile,
+	ContentFileRef,
 	ContentToolCall,
 	ContentInvalidToolCall,
 	ContentProvider,
@@ -17,6 +18,10 @@ export type {
 	AgentMessage,
 	AgentDbMessage,
 } from './sdk/message';
+
+export { stripHydratedFileData } from './sdk/message';
+
+export type { BuiltFileStore } from './sdk/file-store';
 
 export type {
 	Provider,

@@ -157,17 +157,45 @@ function toReasoningProviderOptions(block: ContentReasoning): ProviderOptions | 
 	return { ...block.providerOptions, ...additions };
 }
 
+function formatFileSize(bytes: number): string {
+	if (bytes < 1024) return `${bytes} B`;
+	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * Text stand-in for a file part the model cannot receive as bytes (media type
+ * unsupported, or hydration skipped/failed). The fileId is included so the
+ * agent can hand the file to a tool that can process it.
+ */
+export function fileMetadataText(block: ContentFile): string {
+	const name = block.fileRef?.fileName ?? 'file';
+	const details = [
+		block.mediaType,
+		block.fileRef?.sizeBytes !== undefined ? formatFileSize(block.fileRef.sizeBytes) : undefined,
+	]
+		.filter((part): part is string => part !== undefined)
+		.join(', ');
+	const id = block.fileRef?.id;
+	return `[File attachment "${name}"${details ? ` (${details})` : ''}${
+		id ? `, fileId: ${id}` : ''
+	} — not directly viewable by this model]`;
+}
+
 /** Convert a single n8n MessageContent block to an AI SDK content part. */
 function toAiContent(block: MessageContent): AiContentPart | undefined {
 	let base: AiContentPart | undefined;
 	if (isText(block)) {
 		base = { type: 'text', text: block.text };
 	} else if (isFile(block)) {
-		base = {
-			type: 'file',
-			data: block.data,
-			mediaType: block.mediaType ?? 'application/octet-stream',
-		};
+		base =
+			block.data === undefined
+				? { type: 'text', text: fileMetadataText(block) }
+				: {
+						type: 'file',
+						data: block.data,
+						mediaType: block.mediaType ?? 'application/octet-stream',
+					};
 	} else if (isToolCall(block)) {
 		base = {
 			type: 'tool-call',

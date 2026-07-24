@@ -8,6 +8,7 @@ import type {
 	CancellationResumeData,
 } from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
+import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { getChatMessages, getTestChatMessages, clearTestChatMessages } from './useAgentApi';
 
 import {
@@ -524,12 +525,20 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return { ok: !transportFailed && !session.errorEmitted };
 	}
 
-	async function streamChat(message: string): Promise<void> {
+	async function streamChat(message: string, files?: File[]): Promise<void> {
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat`;
 		const body: Record<string, unknown> = { message };
 		if (params.continueSessionId?.value) {
 			body.sessionId = params.continueSessionId.value;
+		}
+		if (files?.length) {
+			body.attachments = await Promise.all(
+				files.map(async (file) => {
+					const encoded = await convertFileToBinaryData(file);
+					return { fileName: file.name, mimeType: file.type, data: encoded.data };
+				}),
+			);
 		}
 		await postAndConsume(url, body);
 	}
@@ -647,9 +656,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		});
 	}
 
-	async function sendMessage(text: string): Promise<void> {
+	async function sendMessage(text: string, files?: File[]): Promise<void> {
 		const trimmed = text.trim();
-		if (!trimmed || isStreaming.value) return;
+		if ((!trimmed && !files?.length) || isStreaming.value) return;
 		// Any new send invalidates a prior misconfig banner — the user is retrying.
 		fatalError.value = null;
 		messages.value.push({
@@ -657,8 +666,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			role: 'user',
 			content: trimmed,
 			status: 'success',
+			...(files?.length && {
+				attachments: files.map((file) => ({
+					fileName: file.name,
+					mimeType: file.type,
+					sizeBytes: file.size,
+					file,
+				})),
+			}),
 		});
-		await streamChat(trimmed);
+		await streamChat(trimmed, files);
 	}
 
 	function dismissFatalError(): void {

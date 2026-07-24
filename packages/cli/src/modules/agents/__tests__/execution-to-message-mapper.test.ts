@@ -112,6 +112,52 @@ describe('execution-to-message-mapper', () => {
 		]);
 	});
 
+	it('includes attachment file parts on the user message', () => {
+		const result = executionToMessagesDto(
+			execution({
+				attachments: [{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 }],
+			}),
+		);
+
+		expect(result[0]).toEqual({
+			id: 'execution-1:user',
+			role: 'user',
+			content: [
+				{ type: 'text', text: 'Hello' },
+				{
+					type: 'file',
+					fileId: 'att-1',
+					fileName: 'photo.png',
+					mimeType: 'image/png',
+					sizeBytes: 33,
+				},
+			],
+			executionId: 'execution-1',
+		});
+	});
+
+	it('emits a user message for attachment-only turns without text', () => {
+		const result = executionToMessagesDto(
+			execution({
+				userMessage: null,
+				attachments: [
+					{ id: 'att-1', fileName: 'voice.ogg', mimeType: 'audio/ogg', sizeBytes: 100 },
+				],
+			}),
+		);
+
+		expect(result[0].role).toBe('user');
+		expect(result[0].content).toEqual([
+			{
+				type: 'file',
+				fileId: 'att-1',
+				fileName: 'voice.ogg',
+				mimeType: 'audio/ogg',
+				sizeBytes: 100,
+			},
+		]);
+	});
+
 	it('flattens multiple executions into a single message list', () => {
 		const result = executionsToMessagesDto([
 			execution({

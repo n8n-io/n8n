@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatController } from '../agent-chat.controller';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
@@ -34,6 +35,7 @@ function makeController() {
 		mock<CredentialsService>(),
 		agentExecutionService,
 		agentsService as unknown as AgentsService,
+		mock<AgentChatAttachmentService>(),
 	);
 
 	return {

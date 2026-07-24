@@ -47,6 +47,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
+import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
 import type { AgentRuntimeInstrumentation } from './agent-runtime-instrumentation';
 import { Agent } from './entities/agent.entity';
@@ -161,6 +162,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -630,6 +632,16 @@ export class AgentRuntimeReconstructionService {
 		// is an FK to `agents`, and a synthetic inline id has no entity row.
 		if (runtimeProfile !== 'inline' && !agent.hasCheckpointStorage()) {
 			agent.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
+		}
+
+		// Attachment lookups are agent-scoped, so a synthetic inline id would
+		// never match a row — inline agents get their file input via workflow
+		// items instead.
+		if (runtimeProfile !== 'inline') {
+			const provider = config.model.split('/')[0];
+			agent.fileStore(
+				this.agentChatAttachmentService.getFileStore({ agentId, projectId }, provider),
+			);
 		}
 	}
 

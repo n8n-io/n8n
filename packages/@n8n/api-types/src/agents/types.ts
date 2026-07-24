@@ -191,7 +191,7 @@ export interface AgentCapabilitySummary {
 }
 
 export interface AgentPersistedMessageContentPart {
-	type: 'text' | 'reasoning' | 'tool-call' | (string & {});
+	type: 'text' | 'reasoning' | 'tool-call' | 'file' | (string & {});
 	text?: string;
 	toolName?: string;
 	toolCallId?: string;
@@ -204,6 +204,11 @@ export interface AgentPersistedMessageContentPart {
 	startTime?: number;
 	/** Epoch ms when the tool handler settled. */
 	endTime?: number;
+	/** File parts carry attachment metadata only — bytes are fetched via the attachment download route. */
+	fileId?: string;
+	fileName?: string;
+	mimeType?: string;
+	sizeBytes?: number;
 }
 
 export interface AgentPersistedMessageDto {

@@ -18,6 +18,7 @@ import { summariseToolCall } from './interactiveSummary';
 import type {
 	ApprovalInput,
 	ChatMessage,
+	ChatMessageAttachment,
 	ChatMessageRenderPart,
 	InteractivePayload,
 	ToolCall,
@@ -176,12 +177,20 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 		const toolCalls: ToolCall[] = [];
 		const renderParts: ChatMessageRenderPart[] = [];
 		const interactives: InteractivePayload[] = [];
+		const attachments: ChatMessageAttachment[] = [];
 		let status: ChatMessage['status'];
 
 		for (const part of msg.content) {
 			if (part.type === 'text' && part.text) {
 				text += part.text;
 				renderParts.push({ type: 'text', text: part.text });
+			} else if (part.type === 'file' && part.fileId) {
+				attachments.push({
+					fileId: part.fileId,
+					fileName: part.fileName ?? 'attachment',
+					mimeType: part.mimeType ?? 'application/octet-stream',
+					sizeBytes: part.sizeBytes,
+				});
 			} else if (part.type === 'reasoning' && part.text) {
 				thinking += part.text;
 			} else if (part.type === 'tool-call' && part.toolName) {
@@ -236,6 +245,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			...(renderParts.length > 0 && { renderParts }),
 			thinking: thinking || undefined,
 			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+			...(attachments.length > 0 && { attachments }),
 			...(status && { status }),
 			...(msg.executionId ? { executionId: msg.executionId } : {}),
 		};

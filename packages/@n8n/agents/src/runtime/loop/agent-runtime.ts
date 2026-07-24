@@ -5,6 +5,7 @@ import type { z } from 'zod';
 
 import { incrementMessageCount, incrementTokenCountFromUsage } from './execution-counter';
 import { GenerateSink } from './generate-sink';
+import { hydrateFileParts } from './hydrate-file-parts';
 import type { RunOutputSink, RunServices } from './run-output-sink';
 import { RuntimeContextBuilder, getModelIdString } from './runtime-context';
 import {
@@ -17,6 +18,7 @@ import { StreamSink } from './stream-sink';
 import { isCancellation } from '../../sdk/cancellation';
 import { computeCost, getModelCost, type ModelCost } from '../../sdk/catalog';
 import type {
+	BuiltFileStore,
 	BuiltMemory,
 	BuiltProviderTool,
 	BuiltTelemetry,
@@ -88,6 +90,11 @@ export interface AgentRuntimeConfig {
 	};
 	providerTools?: BuiltProviderTool[];
 	memory?: BuiltMemory;
+	/**
+	 * Host store resolving file-reference content parts to bytes. When unset,
+	 * reference-only file parts reach the model as text metadata.
+	 */
+	fileStore?: BuiltFileStore;
 	observationLog?: ObservationLogMemoryConfig;
 	observationalMemory?: ObservationalMemoryConfig;
 	episodicMemory?: EpisodicMemoryConfig;
@@ -567,6 +574,9 @@ export class AgentRuntime {
 		// Best-effort: persistInputMessages swallows failures — the end-of-turn save
 		// is authoritative for completed turns, so this must not abort the turn.
 		await this.memory.persistInputMessages(list, options);
+
+		// Hydrate after the eager persist so stored input stays reference-only.
+		await hydrateFileParts(list.messages(), this.config.fileStore);
 
 		return list;
 	}

@@ -48,6 +48,15 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'text', nullable: true })
 	userMessage: string | null;
 
+	/** Metadata of files attached to the user turn ({id, fileName, mimeType, sizeBytes}[]); bytes live in BinaryDataService. */
+	@JsonColumn({ nullable: true })
+	attachments: Array<{
+		id: string;
+		fileName: string;
+		mimeType: string;
+		sizeBytes: number;
+	}> | null;
+
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	model: string | null;
 
