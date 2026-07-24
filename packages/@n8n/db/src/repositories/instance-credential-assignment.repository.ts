@@ -18,7 +18,7 @@ export class InstanceCredentialAssignmentRepository extends BaseRepository<Insta
 		return await this.managerFor(ctx).find(CredentialsEntity, {
 			select: ['id', 'name', 'type'],
 			where: {
-				availability: 'instance',
+				usageScope: 'instance',
 				type: In([...credentialTypes]),
 			},
 			order: { name: 'ASC' },
@@ -32,13 +32,20 @@ export class InstanceCredentialAssignmentRepository extends BaseRepository<Insta
 		ctx: OperationContext = {},
 	): Promise<CredentialsEntity | null> {
 		const manager = this.managerFor(ctx);
-		const credential = await this.findCredential(credentialId, credentialTypes, manager);
+		const credential = await this.findCredential(
+			credentialId,
+			credentialTypes,
+			manager,
+			ctx.trx !== undefined,
+		);
 		if (!credential) return null;
 
 		try {
-			await manager.upsert(InstanceCredentialAssignment, { credentialUseId, credentialId }, [
-				'credentialUseId',
-			]);
+			await manager.upsert(
+				InstanceCredentialAssignment,
+				{ credentialUseId, credentialId, updatedAt: new Date() },
+				['credentialUseId'],
+			);
 		} catch (error) {
 			// Distinguish a concurrent deletion from a transient database failure.
 			if (error instanceof QueryFailedError) {
@@ -67,6 +74,15 @@ export class InstanceCredentialAssignmentRepository extends BaseRepository<Insta
 		return assignment?.credentialId ?? null;
 	}
 
+	async findCredentialUseIds(credentialId: string, ctx: OperationContext = {}): Promise<string[]> {
+		const assignments = await this.managerFor(ctx).find(InstanceCredentialAssignment, {
+			select: ['credentialUseId'],
+			where: { credentialId },
+			order: { credentialUseId: 'ASC' },
+		});
+		return assignments.map(({ credentialUseId }) => credentialUseId);
+	}
+
 	async findAssignedCredential(
 		credentialUseId: string,
 		credentialTypes: readonly string[],
@@ -86,13 +102,17 @@ export class InstanceCredentialAssignmentRepository extends BaseRepository<Insta
 		credentialId: string,
 		credentialTypes: readonly string[],
 		manager: EntityManager,
+		lock = false,
 	): Promise<CredentialsEntity | null> {
 		return await manager.findOne(CredentialsEntity, {
 			where: {
 				id: credentialId,
-				availability: 'instance',
+				usageScope: 'instance',
 				type: In([...credentialTypes]),
 			},
+			...(lock && manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
 		});
 	}
 }

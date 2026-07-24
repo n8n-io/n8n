@@ -1,10 +1,13 @@
 import {
 	CredentialsEntity,
+	DbLock,
+	DbLockService,
 	Project,
 	User,
 	SharedCredentials,
 	ProjectRepository,
 	GLOBAL_OWNER_ROLE,
+	type OperationContext,
 } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -63,6 +66,9 @@ type ImportableCredentialProperty = Exclude<
 	'shared' | 'toJSON' | 'generateId' | 'setUpdateDate'
 >;
 
+const isCredentialData = (data: unknown): data is ICredentialDataDecryptedObject =>
+	typeof data === 'object' && data !== null && !Array.isArray(data);
+
 @Command({
 	name: 'import:credentials',
 	description: 'Import credentials',
@@ -119,22 +125,24 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			exclude,
 		});
 
-		const { manager: dbManager } = Container.get(ProjectRepository);
-		await dbManager.transaction(async (transactionManager) => {
-			this.transactionManager = transactionManager;
+		await Container.get(DbLockService).withLock(
+			DbLock.INSTANCE_AI_SETTINGS,
+			async (transactionManager, ctx) => {
+				this.transactionManager = transactionManager;
 
-			const project = await this.getProject(flags.userId, flags.projectId);
+				const project = await this.getProject(flags.userId, flags.projectId);
 
-			const result = await this.checkRelations(credentials, flags.projectId, flags.userId);
+				const result = await this.checkRelations(credentials, flags.projectId, flags.userId);
 
-			if (!result.success) {
-				throw new UserError(result.message);
-			}
+				if (!result.success) {
+					throw new UserError(result.message);
+				}
 
-			for (const credential of credentials) {
-				await this.storeCredential(credential, project);
-			}
-		});
+				for (const credential of credentials) {
+					await this.storeCredential(credential, project, ctx);
+				}
+			},
+		);
 
 		this.reportSuccess(credentials.length);
 	}
@@ -152,17 +160,22 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		);
 	}
 
-	private async storeCredential(credential: Partial<CredentialsEntity>, project: Project) {
-		// Availability is instance-local state; imports never change it for existing credentials.
+	private async storeCredential(
+		credential: Partial<CredentialsEntity>,
+		project: Project,
+		ctx: OperationContext,
+	) {
+		// UsageScope is instance-local state; imports never change it for existing credentials.
+		let existing: Pick<CredentialsEntity, 'id' | 'type' | 'usageScope'> | null = null;
 		if (credential.id) {
-			const existing = await this.transactionManager.findOne(CredentialsEntity, {
+			existing = await this.transactionManager.findOne(CredentialsEntity, {
 				where: { id: credential.id },
-				select: ['availability', 'type'],
+				select: ['id', 'usageScope', 'type'],
 			});
 			if (existing) {
-				credential.availability = existing.availability;
+				credential.usageScope = existing.usageScope;
 				if (
-					existing.availability === 'instance' &&
+					existing.usageScope === 'instance' &&
 					credential.type !== undefined &&
 					credential.type !== existing.type
 				) {
@@ -172,9 +185,9 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				}
 			}
 		}
-		credential.availability ??= 'workflow';
+		credential.usageScope ??= 'project';
 
-		if (credential.availability === 'instance') {
+		if (credential.usageScope === 'instance') {
 			if (
 				credential.isGlobal ||
 				credential.isResolvable ||
@@ -193,13 +206,14 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				resolvableAllowFallback: false,
 				resolverId: null,
 			});
-			await this.validateInstanceCredentialData(credential);
+			await this.validateInstanceCredentialData(credential, existing, ctx);
 		}
 
 		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
 		const credentialsId = credential.id ?? (result.identifiers[0].id as string);
 
-		if (credential.availability === 'instance') {
+		if (credential.usageScope === 'instance') {
+			// Instance credentials are instance-owned and must not retain project sharing rows.
 			await this.transactionManager.delete(SharedCredentials, { credentialsId });
 			return;
 		}
@@ -222,9 +236,13 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		}
 	}
 
-	private async validateInstanceCredentialData(credential: Partial<CredentialsEntity>) {
-		let data = credential.data;
-		if (!data && credential.id) {
+	private async validateInstanceCredentialData(
+		credential: Partial<CredentialsEntity>,
+		existing: Pick<CredentialsEntity, 'id' | 'type' | 'usageScope'> | null,
+		ctx: OperationContext,
+	) {
+		let data: unknown = credential.data;
+		if (data === undefined && credential.id) {
 			data = (
 				await this.transactionManager.findOne(CredentialsEntity, {
 					where: { id: credential.id },
@@ -232,13 +250,29 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				})
 			)?.data;
 		}
-		if (!data) return;
+		if (data === undefined) return;
+		if (data === null || data === '') {
+			throw new UserError('Provider connection data cannot be empty');
+		}
 
 		const decrypted =
 			typeof data === 'string'
-				? jsonParse<ICredentialDataDecryptedObject>(await Container.get(Cipher).decryptV2(data))
+				? jsonParse<unknown>(await Container.get(Cipher).decryptV2(data))
 				: data;
-		Container.get(CredentialsService).validateInstanceCredentialData(decrypted);
+		if (!isCredentialData(decrypted)) {
+			throw new UserError('Provider connection data must be a JSON object');
+		}
+		const credentialsService = Container.get(CredentialsService);
+		if (existing?.usageScope === 'instance') {
+			await credentialsService.validateInstanceCredentialUpdate(
+				existing,
+				decrypted,
+				undefined,
+				ctx,
+			);
+		} else {
+			credentialsService.validateInstanceCredentialData(decrypted);
+		}
 	}
 
 	private async checkRelations(
@@ -336,7 +370,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		return await Promise.all(
 			credentials.map(async (credential) => {
 				const filteredCredential = this.filterCredentialProperties(credential, include, exclude);
-				if (typeof filteredCredential.data === 'object') {
+				if (isCredentialData(filteredCredential.data)) {
 					// plain data / decrypted input. Should be encrypted first.
 					filteredCredential.data = await cipher.encryptV2(filteredCredential.data);
 				}
@@ -419,7 +453,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			isResolvable: true,
 			resolvableAllowFallback: true,
 			resolverId: true,
-			availability: true,
+			usageScope: true,
 		} satisfies Record<ImportableCredentialProperty, true>;
 
 		return property in importableProperties;

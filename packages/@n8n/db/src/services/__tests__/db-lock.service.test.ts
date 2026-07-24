@@ -34,7 +34,9 @@ describe('DbLockService', () => {
 
 			expect(result).toBe('result');
 			expect(mockTx.query).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock($1)', [1001]);
-			expect(fn).toHaveBeenCalledWith(mockTx);
+			expect(fn).toHaveBeenCalledWith(mockTx, {
+				trx: expect.any(TypeOrmTransaction) as TypeOrmTransaction,
+			});
 		});
 
 		it('should skip advisory lock on SQLite and still execute fn', async () => {
@@ -45,7 +47,9 @@ describe('DbLockService', () => {
 
 			expect(result).toBe('result');
 			expect(mockTx.query).not.toHaveBeenCalled();
-			expect(fn).toHaveBeenCalledWith(mockTx);
+			expect(fn).toHaveBeenCalledWith(mockTx, {
+				trx: expect.any(TypeOrmTransaction) as TypeOrmTransaction,
+			});
 		});
 
 		it('should set lock_timeout when timeoutMs is provided', async () => {
@@ -113,7 +117,9 @@ describe('DbLockService', () => {
 				'SELECT pg_advisory_xact_lock($1, $2)',
 				[1005, -12345],
 			);
-			expect(fn).toHaveBeenCalledWith(mockTx);
+			expect(fn).toHaveBeenCalledWith(mockTx, {
+				trx: expect.any(TypeOrmTransaction) as TypeOrmTransaction,
+			});
 		});
 
 		it('should include both keys in the timeout error message when subKey is provided', async () => {
@@ -184,7 +190,9 @@ describe('DbLockService', () => {
 			const fn = vi.fn().mockResolvedValue('result');
 
 			await expect(service.withLockContext(1001, fn)).resolves.toBe('result');
-			expect(fn).toHaveBeenCalledWith({ trx: expect.any(TypeOrmTransaction) });
+			expect(fn).toHaveBeenCalledWith({
+				trx: expect.any(TypeOrmTransaction) as TypeOrmTransaction,
+			});
 		});
 	});
 

@@ -65,7 +65,7 @@ describe('CredentialsRepository', () => {
 	});
 
 	describe('findStartingWith', () => {
-		it('only searches workflow credential names', async () => {
+		it('only searches project credential names', async () => {
 			entityManager.find.mockResolvedValueOnce([]);
 
 			await repository.findStartingWith('API key');
@@ -73,7 +73,7 @@ describe('CredentialsRepository', () => {
 			expect(entityManager.find).toHaveBeenCalledWith(
 				CredentialsEntity,
 				expect.objectContaining({
-					where: expect.objectContaining({ availability: 'workflow' }),
+					where: expect.objectContaining({ usageScope: 'project' }),
 				}),
 			);
 		});
@@ -255,7 +255,7 @@ describe('CredentialsRepository', () => {
 
 			// ASSERT
 			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
-				availability: 'workflow',
+				usageScope: 'project',
 				shared: { project: { type: 'personal' } },
 			});
 			expect(credentials).toHaveLength(2);
@@ -287,7 +287,7 @@ describe('CredentialsRepository', () => {
 
 			// ASSERT
 			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
-				availability: 'workflow',
+				usageScope: 'project',
 				shared: { project: { sharedWorkflows: { workflowId } } },
 			});
 			expect(credentials).toHaveLength(2);
@@ -320,7 +320,7 @@ describe('CredentialsRepository', () => {
 
 			// ASSERT
 			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
-				availability: 'workflow',
+				usageScope: 'project',
 				shared: { projectId },
 			});
 			expect(credentials).toHaveLength(2);

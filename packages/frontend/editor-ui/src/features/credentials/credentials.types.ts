@@ -16,7 +16,7 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	isManaged: boolean;
 	isGlobal?: boolean;
 	isResolvable?: boolean;
-	availability?: 'workflow' | 'instance';
+	usageScope?: 'project' | 'instance';
 	/** Whether the current user has personally connected this credential. Set on resolvable credentials only. */
 	connectedByMe?: boolean;
 	/** Total number of users connected to this credential. Set on resolvable credentials only. */

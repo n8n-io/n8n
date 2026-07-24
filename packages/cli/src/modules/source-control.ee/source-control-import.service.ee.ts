@@ -16,7 +16,6 @@ import {
 	ProjectRelationRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
-	SharedCredentials,
 	SharedWorkflowRepository,
 	TagRepository,
 	UserRepository,
@@ -26,7 +25,7 @@ import {
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG, hasGlobalScope } from '@n8n/permissions';
+import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { In, type DataSourceOptions, type EntityManager } from '@n8n/typeorm';
 import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import glob from 'fast-glob';
@@ -328,15 +327,15 @@ export class SourceControlImportService {
 		const remoteIds = remoteCredentialFilesRead.flatMap((remote) =>
 			remote?.id ? [remote.id] : [],
 		);
-		const localAvailability = new Map(
+		const localUsageScope = new Map(
 			remoteIds.length === 0
 				? []
 				: (
 						await this.credentialsRepository.find({
 							where: { id: In(remoteIds) },
-							select: ['id', 'availability'],
+							select: ['id', 'usageScope'],
 						})
-					).map((local) => [local.id, local.availability]),
+					).map((local) => [local.id, local.usageScope]),
 		);
 
 		const remoteCredentialFilesParsed = remoteCredentialFilesRead
@@ -344,8 +343,9 @@ export class SourceControlImportService {
 				if (!remote?.id) {
 					return false;
 				}
-				if (remote.availability === 'instance' || localAvailability.get(remote.id) === 'instance') {
-					return hasGlobalScope(context.user, 'credential:manageInstance');
+				// Instance credentials (provider connections) are instance-local and never synced
+				if (remote.usageScope === 'instance' || localUsageScope.get(remote.id) === 'instance') {
+					return false;
 				}
 				const owner = remote.ownedBy;
 				return (
@@ -391,7 +391,6 @@ export class SourceControlImportService {
 				isGlobal: true,
 				isResolvable: true,
 				resolvableAllowFallback: true,
-				availability: true,
 				shared: {
 					project: {
 						id: true,
@@ -434,7 +433,6 @@ export class SourceControlImportService {
 					isGlobal: local.isGlobal,
 					isResolvable: local.isResolvable,
 					resolvableAllowFallback: local.resolvableAllowFallback,
-					availability: local.availability,
 				};
 			},
 		)) as StatusExportableCredential[];
@@ -990,7 +988,7 @@ export class SourceControlImportService {
 			where: {
 				id: In(candidateIds),
 			},
-			select: ['id', 'name', 'type', 'data', 'availability'],
+			select: ['id', 'name', 'type', 'data', 'usageScope'],
 		});
 		const existingCredentialsById = new Map(
 			existingCredentials.map((credential) => [credential.id, credential]),
@@ -1003,116 +1001,99 @@ export class SourceControlImportService {
 			},
 		});
 
-		let importCredentialsResult: Array<{ id: string; name: string; type: string }> = [];
-		importCredentialsResult = await Promise.all(
-			candidates.map(async (candidate) => {
-				this.logger.debug(`Importing credentials file ${candidate.file}`);
-				const credential = jsonParse<ExportableCredential>(
-					await fsReadFile(candidate.file, { encoding: 'utf8' }),
-				);
-				const existingCredentialById = existingCredentialsById.get(credential.id);
-				if (
-					existingCredentialById?.availability === 'instance' &&
-					existingCredentialById.type !== credential.type
-				) {
-					throw new UserError(
-						'Provider connection type cannot be changed. Create a new connection instead.',
+		const importCredentialsResult: Array<{ id: string; name: string; type: string } | undefined> =
+			await Promise.all(
+				candidates.map(async (candidate) => {
+					this.logger.debug(`Importing credentials file ${candidate.file}`);
+					const credential = jsonParse<ExportableCredential>(
+						await fsReadFile(candidate.file, { encoding: 'utf8' }),
 					);
-				}
-				const existingCredential =
-					existingCredentialById?.type === credential.type ? existingCredentialById : undefined;
+					const existingCredentialById = existingCredentialsById.get(credential.id);
 
-				// Carry the "private"/resolvable nature across environments. resolverId is
-				// instance-local and handled separately (see IAM-906).
-				const {
-					name,
-					type,
-					data,
-					id,
-					isGlobal = false,
-					isResolvable = false,
-					resolvableAllowFallback = false,
-					availability: remoteAvailability = 'workflow',
-				} = credential;
-				const availability = existingCredentialById?.availability ?? remoteAvailability;
-				const newCredentialObject = new Credentials({ id, name }, type);
-				if (availability === 'instance' && (isGlobal || isResolvable || resolvableAllowFallback)) {
-					throw new UserError('Provider connections cannot be global or dynamically resolved');
-				}
-
-				if (existingCredential?.data) {
-					// Credential exists - merge expressions from remote while preserving local plain values
-					const existingDecrypted = new Credentials(
-						{ id: existingCredential.id, name: existingCredential.name },
-						existingCredential.type,
-						existingCredential.data,
-					);
-					const localData = await existingDecrypted.getData();
-					const mergedData = mergeRemoteCrendetialDataIntoLocalCredentialData({
-						local: localData,
-						remote: data,
-					});
-					await newCredentialObject.setData(mergedData);
-				} else {
-					// This is a safe guard, in principle remote data should already be sanitized
-					// This prevents importing invalid data that should have not been synched in the first place
-					const sanitizedData = sanitizeCredentialData(data);
-					await newCredentialObject.setData(sanitizedData);
-				}
-				if (availability === 'instance') {
-					this.credentialsService.validateInstanceCredentialData(
-						await newCredentialObject.getData(),
-					);
-				}
-				const targetOwnerProject =
-					availability === 'workflow'
-						? await this.resolveTargetOwnerProject(credential.ownedBy, personalProject)
-						: undefined;
-
-				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
-				await this.credentialsRepository.manager.transaction(async (transactionManager) => {
-					await transactionManager.upsert(
-						CredentialsEntity,
-						{
-							...newCredentialObject,
-							isGlobal,
-							isResolvable,
-							resolvableAllowFallback,
-							availability,
-							...(availability === 'instance' ? { isManaged: false, resolverId: null } : {}),
-						},
-						['id'],
-					);
-
-					if (availability === 'instance') {
-						await transactionManager.delete(SharedCredentials, {
-							credentialsId: credential.id,
-						});
-						return;
+					// Instance credentials (provider connections) are instance-local and never synced
+					if (
+						credential.usageScope === 'instance' ||
+						existingCredentialById?.usageScope === 'instance'
+					) {
+						this.logger.debug(`Skipping provider connection file ${candidate.file}`);
+						return undefined;
 					}
 
-					const localOwner = existingSharedCredentials.find(
-						(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
+					const existingCredential =
+						existingCredentialById?.type === credential.type ? existingCredentialById : undefined;
+
+					// Carry the "private"/resolvable nature across environments. resolverId is
+					// instance-local and handled separately (see IAM-906).
+					const {
+						name,
+						type,
+						data,
+						id,
+						isGlobal = false,
+						isResolvable = false,
+						resolvableAllowFallback = false,
+					} = credential;
+					const newCredentialObject = new Credentials({ id, name }, type);
+
+					if (existingCredential?.data) {
+						// Credential exists - merge expressions from remote while preserving local plain values
+						const existingDecrypted = new Credentials(
+							{ id: existingCredential.id, name: existingCredential.name },
+							existingCredential.type,
+							existingCredential.data,
+						);
+						const localData = await existingDecrypted.getData();
+						const mergedData = mergeRemoteCrendetialDataIntoLocalCredentialData({
+							local: localData,
+							remote: data,
+						});
+						await newCredentialObject.setData(mergedData);
+					} else {
+						// This is a safe guard, in principle remote data should already be sanitized
+						// This prevents importing invalid data that should have not been synched in the first place
+						const sanitizedData = sanitizeCredentialData(data);
+						await newCredentialObject.setData(sanitizedData);
+					}
+					const targetOwnerProject = await this.resolveTargetOwnerProject(
+						credential.ownedBy,
+						personalProject,
 					);
 
-					await this.syncResourceOwnership({
-						resourceId: credential.id,
-						remoteOwner: credential.ownedBy,
-						localOwner,
-						fallbackProject: personalProject,
-						repository: this.sharedCredentialsRepository,
-						transactionManager,
-						targetOwnerProject,
-					});
-				});
+					this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
+					await this.credentialsRepository.manager.transaction(async (transactionManager) => {
+						await transactionManager.upsert(
+							CredentialsEntity,
+							{
+								...newCredentialObject,
+								isGlobal,
+								isResolvable,
+								resolvableAllowFallback,
+							},
+							['id'],
+						);
 
-				return {
-					id: newCredentialObject.id as string,
-					name: newCredentialObject.name,
-					type: newCredentialObject.type,
-				};
-			}),
-		);
+						const localOwner = existingSharedCredentials.find(
+							(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
+						);
+
+						await this.syncResourceOwnership({
+							resourceId: credential.id,
+							remoteOwner: credential.ownedBy,
+							localOwner,
+							fallbackProject: personalProject,
+							repository: this.sharedCredentialsRepository,
+							transactionManager,
+							targetOwnerProject,
+						});
+					});
+
+					return {
+						id: newCredentialObject.id as string,
+						name: newCredentialObject.name,
+						type: newCredentialObject.type,
+					};
+				}),
+			);
 		return importCredentialsResult.filter((e) => e !== undefined);
 	}
 

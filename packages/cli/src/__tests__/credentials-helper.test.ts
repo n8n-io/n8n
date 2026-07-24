@@ -108,7 +108,7 @@ describe('CredentialsHelper', () => {
 					id: '1',
 					name: 'Instance credential',
 					type: 'bar',
-					availability: 'instance',
+					usageScope: 'instance',
 				}),
 			);
 
@@ -570,6 +570,7 @@ describe('CredentialsHelper', () => {
 				name: 'Test OAuth2 Credential',
 				type: 'oAuth2Api',
 				data: cipher.encrypt(existingCredentialData),
+				usageScope: 'project',
 			};
 
 			credentialsRepository.findOneByOrFail.mockResolvedValue(
@@ -674,6 +675,7 @@ describe('CredentialsHelper', () => {
 					data: cipher.encrypt(existingCredentialData),
 					isResolvable: true,
 					resolverId: 'resolver-123',
+					usageScope: 'project',
 				} as CredentialsEntity;
 
 				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
@@ -723,6 +725,7 @@ describe('CredentialsHelper', () => {
 					data: cipher.encrypt(existingCredentialData),
 					isResolvable: true,
 					resolverId: null,
+					usageScope: 'project',
 				} as unknown as CredentialsEntity;
 
 				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
@@ -777,6 +780,7 @@ describe('CredentialsHelper', () => {
 					data: cipher.encrypt(existingCredentialData),
 					isResolvable: true,
 					resolverId: 'resolver-123',
+					usageScope: 'project',
 				} as CredentialsEntity;
 
 				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
@@ -828,6 +832,7 @@ describe('CredentialsHelper', () => {
 					data: cipher.encrypt(existingCredentialData),
 					isResolvable: true,
 					resolverId: 'resolver-123',
+					usageScope: 'project',
 				} as CredentialsEntity;
 
 				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
@@ -1027,6 +1032,7 @@ describe('CredentialsHelper', () => {
 			type: 'testApi',
 			data: cipher.encrypt({ apiKey: 'test' }),
 			isResolvable: false,
+			usageScope: 'project',
 		} as CredentialsEntity;
 
 		beforeEach(() => {
@@ -1112,6 +1118,7 @@ describe('CredentialsHelper', () => {
 			type: credentialType,
 			data: cipher.encrypt({ apiKey: 'static-key' }),
 			isResolvable: false,
+			usageScope: 'project',
 		} as CredentialsEntity;
 
 		beforeEach(() => {
@@ -1570,6 +1577,7 @@ describe('CredentialsHelper', () => {
 			data: cipher.encrypt(credentialDataA),
 			isResolvable: false,
 			resolverId: null,
+			usageScope: 'project',
 		} as CredentialsEntity;
 
 		const credEntityB = {
@@ -1579,6 +1587,7 @@ describe('CredentialsHelper', () => {
 			data: cipher.encrypt(credentialDataB),
 			isResolvable: false,
 			resolverId: null,
+			usageScope: 'project',
 		} as CredentialsEntity;
 
 		const additionalData = {

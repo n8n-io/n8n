@@ -255,10 +255,10 @@ const closeOnSave = computed<boolean>(() => {
 	return isCredentialModalState(modalState) && modalState.closeOnSave === true;
 });
 
-const presetAvailability = computed<NewCredentialsModal['availability']>(() => {
+const presetUsageScope = computed<NewCredentialsModal['usageScope']>(() => {
 	if (props.mode !== 'new') return undefined;
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
-	return isCredentialModalState(modalState) ? modalState.availability : undefined;
+	return isCredentialModalState(modalState) ? modalState.usageScope : undefined;
 });
 
 const appendToBody = computed<boolean>(() => {
@@ -267,8 +267,7 @@ const appendToBody = computed<boolean>(() => {
 });
 
 const isInstanceCredential = computed(
-	() =>
-		presetAvailability.value === 'instance' || currentCredential.value?.availability === 'instance',
+	() => presetUsageScope.value === 'instance' || currentCredential.value?.usageScope === 'instance',
 );
 
 const sidebarItems = computed(() => {
@@ -662,8 +661,8 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	const isNewCredential = props.mode === 'new' && !credentialId.value;
 
 	if (isNewCredential) {
-		if (presetAvailability.value) {
-			credentialDetails.availability = presetAvailability.value;
+		if (presetUsageScope.value) {
+			credentialDetails.usageScope = presetUsageScope.value;
 		}
 		credential = await createCredential(credentialDetails, projectsStore.currentProject);
 	} else {

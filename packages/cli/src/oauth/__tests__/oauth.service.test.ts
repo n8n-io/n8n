@@ -463,17 +463,17 @@ describe('OauthService', () => {
 			expect(result).toBeNull();
 		});
 
-		it('should restrict the lookup to workflow credentials when requested', async () => {
+		it('should restrict the lookup to project credentials when requested', async () => {
 			credentialsRepository.findOneBy.mockResolvedValue(null);
 
 			const result = await (service as any).getCredentialWithoutUser('1', {
-				onlyWorkflowCredentials: true,
+				onlyProjectCredentials: true,
 			});
 
 			expect(result).toBeNull();
 			expect(credentialsRepository.findOneBy).toHaveBeenCalledWith({
 				id: '1',
-				availability: 'workflow',
+				usageScope: 'project',
 			});
 		});
 	});

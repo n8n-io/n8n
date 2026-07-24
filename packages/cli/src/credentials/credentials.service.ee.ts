@@ -47,7 +47,7 @@ export class EnterpriseCredentialsService {
 	) {
 		const em = entityManager ?? this.sharedCredentialsRepository.manager;
 		const canShare = await em.exists(CredentialsEntity, {
-			where: { id: credentialId, availability: 'workflow' },
+			where: { id: credentialId, usageScope: 'project' },
 		});
 		if (!canShare) throw new NotFoundError('Credential not found');
 

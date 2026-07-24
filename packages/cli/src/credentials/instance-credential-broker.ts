@@ -17,7 +17,7 @@ import {
 
 export type { InstanceCredentialUse } from './instance-credential-use.registry';
 
-export type InstanceCredentialSummary = Pick<CredentialsEntity, 'id' | 'name' | 'type'>;
+type InstanceCredentialSummary = Pick<CredentialsEntity, 'id' | 'name' | 'type'>;
 
 export interface ResolvedInstanceCredential extends InstanceCredentialSummary {
 	data: ICredentialDataDecryptedObject;

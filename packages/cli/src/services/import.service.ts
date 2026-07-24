@@ -77,7 +77,7 @@ export class ImportService {
 
 	async initRecords() {
 		this.dbCredentials = await this.credentialsRepository.find({
-			where: { availability: 'workflow' },
+			where: { usageScope: 'project' },
 		});
 		this.dbTags = await this.tagRepository.find();
 	}

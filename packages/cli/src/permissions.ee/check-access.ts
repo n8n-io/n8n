@@ -62,7 +62,7 @@ export async function userHasScopes(
 		if (
 			await credentialsRepository.existsBy({
 				id: credentialId,
-				availability: 'instance',
+				usageScope: 'instance',
 			})
 		) {
 			return true;

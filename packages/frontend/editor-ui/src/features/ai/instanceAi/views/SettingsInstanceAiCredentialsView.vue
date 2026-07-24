@@ -85,7 +85,7 @@ function handleCreateModelCredential(credentialType: string) {
 		undefined,
 		undefined,
 		undefined,
-		{ availability: 'instance', closeOnSave: true },
+		{ usageScope: 'instance', closeOnSave: true },
 	);
 }
 

@@ -125,7 +125,7 @@ describe('ImportService', () => {
 			await importService.initRecords();
 
 			expect(mockCredentialsRepository.find).toHaveBeenCalledWith({
-				where: { availability: 'workflow' },
+				where: { usageScope: 'project' },
 			});
 		});
 	});

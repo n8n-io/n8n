@@ -63,6 +63,8 @@ describe('CredentialsController', () => {
 		mock(), // externalSecretsProviderAccessCheckService
 		mock(), // connectionStatusProxy
 		mock(), // instanceCredentialAssignmentRepository
+		mock(), // instanceCredentialUseRegistry
+		mock(), // dbLockService
 	);
 
 	// Spy on methods that need to be mocked in tests
@@ -361,7 +363,7 @@ describe('CredentialsController', () => {
 		it('should accept unchanged false flags when editing an instance credential', async () => {
 			const instanceCredential = mock<CredentialsEntity>({
 				...existingCredential,
-				availability: 'instance',
+				usageScope: 'instance',
 				shared: [],
 			});
 			const ownerReq = {
@@ -393,7 +395,7 @@ describe('CredentialsController', () => {
 			async (flag) => {
 				const instanceCredential = mock<CredentialsEntity>({
 					...existingCredential,
-					availability: 'instance',
+					usageScope: 'instance',
 					shared: [],
 				});
 				const ownerReq = {
@@ -421,7 +423,7 @@ describe('CredentialsController', () => {
 			const instanceCredential = mock<CredentialsEntity>({
 				...existingCredential,
 				type: 'apiKey',
-				availability: 'instance',
+				usageScope: 'instance',
 				shared: [],
 			});
 			const ownerReq = {

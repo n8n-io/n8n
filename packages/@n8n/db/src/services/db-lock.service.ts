@@ -126,13 +126,15 @@ export class DbLockService {
 	 */
 	async withLock<T>(
 		lockId: DbLock,
-		fn: (tx: EntityManager) => Promise<T>,
+		fn: (tx: EntityManager, ctx: OperationContext) => Promise<T>,
 		options?: WithLockOptions,
 	): Promise<T> {
 		if (this.databaseConfig.type !== 'postgresdb') {
 			const release = await this.acquireLock(lockId, options?.timeoutMs, options?.subKey);
 			try {
-				return await this.dataSource.manager.transaction(async (tx) => await fn(tx));
+				return await this.dataSource.manager.transaction(
+					async (tx) => await fn(tx, { trx: new TypeOrmTransaction(tx) }),
+				);
 			} finally {
 				release();
 			}
@@ -168,7 +170,7 @@ export class DbLockService {
 				}
 				throw error;
 			}
-			return await fn(tx);
+			return await fn(tx, { trx: new TypeOrmTransaction(tx) });
 		});
 	}
 
@@ -177,11 +179,7 @@ export class DbLockService {
 		fn: (ctx: OperationContext) => Promise<T>,
 		options?: { timeoutMs?: number },
 	): Promise<T> {
-		return await this.withLock(
-			lockId,
-			async (manager) => await fn({ trx: new TypeOrmTransaction(manager) }),
-			options,
-		);
+		return await this.withLock(lockId, async (_manager, ctx) => await fn(ctx), options);
 	}
 
 	/**

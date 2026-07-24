@@ -1,14 +1,37 @@
-import { randomCredentialPayload, testDb } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
-import { CredentialsEntity, SharedCredentialsRepository } from '@n8n/db';
+import { mockInstance, randomCredentialPayload, testDb } from '@n8n/backend-test-utils';
+import type { ICredentialsDb, User } from '@n8n/db';
+import {
+	CredentialsEntity,
+	CredentialsRepository,
+	InstanceCredentialAssignmentRepository,
+	SharedCredentialsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { createCredentials, encryptCredentialData } from '../shared/db/credentials';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
+import type { InstanceCredentialUse } from '@/credentials/instance-credential-use.registry';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { ExternalHooks } from '@/external-hooks';
+
+import {
+	createCredentials,
+	decryptCredentialData,
+	encryptCredentialData,
+} from '../shared/db/credentials';
 import { createMember, createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { initCredentialsTypes, setupTestServer } from '../shared/utils';
 
+const externalHooks = mockInstance(ExternalHooks);
 const testServer = setupTestServer({ endpointGroups: ['credentials'] });
+const TEST_CREDENTIAL_USE = {
+	id: 'test:instance-credential',
+	credentialTypes: ['httpHeaderAuth'],
+	validate: ({ data }) => {
+		if (data.name !== 'x-api-key') throw new UnprocessableRequestError('Invalid header name');
+	},
+} satisfies InstanceCredentialUse;
 
 let owner: User;
 let member: User;
@@ -17,6 +40,7 @@ let authMemberAgent: SuperAgentTest;
 
 beforeAll(async () => {
 	await initCredentialsTypes();
+	Container.get(InstanceCredentialBroker).registerUse(TEST_CREDENTIAL_USE);
 	owner = await createOwner();
 	member = await createMember();
 	authOwnerAgent = testServer.authAgentFor(owner);
@@ -24,19 +48,20 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedCredentials', 'CredentialsEntity']);
+	externalHooks.run.mockReset();
+	await testDb.truncate(['InstanceCredentialAssignment', 'SharedCredentials', 'CredentialsEntity']);
 });
 
 async function createInstanceCredential(payload = randomCredentialPayload()) {
 	const entity = new CredentialsEntity();
-	Object.assign(entity, payload, { availability: 'instance' });
+	Object.assign(entity, payload, { usageScope: 'instance' });
 	await encryptCredentialData(entity);
 	return await createCredentials(entity);
 }
 
 describe('instance credentials', () => {
 	test('owner creates one without any sharing rows', async () => {
-		const payload = { ...randomCredentialPayload(), availability: 'instance' };
+		const payload = { ...randomCredentialPayload(), usageScope: 'instance' };
 
 		const response = await authOwnerAgent.post('/credentials').send(payload);
 
@@ -48,7 +73,7 @@ describe('instance credentials', () => {
 	});
 
 	test('member cannot create one', async () => {
-		const payload = { ...randomCredentialPayload(), availability: 'instance' };
+		const payload = { ...randomCredentialPayload(), usageScope: 'instance' };
 
 		await authMemberAgent.post('/credentials').send(payload).expect(403);
 	});
@@ -91,5 +116,79 @@ describe('instance credentials', () => {
 		const credential = await createInstanceCredential();
 
 		await authOwnerAgent.delete(`/credentials/${credential.id}`).expect(200);
+	});
+
+	describe('assigned to an instance credential use', () => {
+		const sandboxPayload = {
+			name: 'AI Assistant sandbox',
+			type: 'httpHeaderAuth',
+			data: { name: 'x-api-key', value: 'secret' },
+		};
+
+		async function createAssignedSandboxCredential() {
+			const credential = await createInstanceCredential(sandboxPayload);
+			await Container.get(InstanceCredentialAssignmentRepository).assignCredential(
+				TEST_CREDENTIAL_USE.id,
+				credential.id,
+				TEST_CREDENTIAL_USE.credentialTypes,
+			);
+			return credential;
+		}
+
+		test('owner can update an assigned credential', async () => {
+			const credential = await createAssignedSandboxCredential();
+
+			await authOwnerAgent
+				.patch(`/credentials/${credential.id}`)
+				.send({ ...sandboxPayload, data: { name: 'x-api-key', value: 'rotated' } })
+				.expect(200);
+
+			const row = await Container.get(CredentialsRepository).findOneByOrFail({
+				id: credential.id,
+			});
+			expect(await decryptCredentialData(row)).toMatchObject({ value: 'rotated' });
+		});
+
+		test('owner cannot update an assigned credential with data rejected by its use', async () => {
+			const credential = await createAssignedSandboxCredential();
+
+			await authOwnerAgent
+				.patch(`/credentials/${credential.id}`)
+				.send({ ...sandboxPayload, data: { name: 'Authorization', value: 'secret' } })
+				.expect(422);
+
+			const row = await Container.get(CredentialsRepository).findOneByOrFail({
+				id: credential.id,
+			});
+			expect(await decryptCredentialData(row)).toMatchObject({ name: 'x-api-key' });
+		});
+
+		test('owner cannot update one when a hook makes it invalid for its use', async () => {
+			const credential = await createAssignedSandboxCredential();
+			const invalid = await Container.get(CredentialsService).createEncryptedData({
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+				data: { name: 'Authorization', value: 'hooked' },
+			});
+			externalHooks.run.mockImplementation(async (event, hookParameters) => {
+				if (event !== 'credentials.update') return;
+				const [hooked] = hookParameters as [ICredentialsDb];
+				hooked.data = invalid.data;
+			});
+
+			await authOwnerAgent
+				.patch(`/credentials/${credential.id}`)
+				.send({ ...sandboxPayload, data: { name: 'x-api-key', value: 'rotated' } })
+				.expect(422);
+
+			const row = await Container.get(CredentialsRepository).findOneByOrFail({
+				id: credential.id,
+			});
+			expect(await decryptCredentialData(row)).toMatchObject({
+				name: 'x-api-key',
+				value: 'secret',
+			});
+		});
 	});
 });

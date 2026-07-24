@@ -433,11 +433,11 @@ export class OauthService {
 	/** Get a credential without user check */
 	protected async getCredentialWithoutUser(
 		credentialId: string,
-		options: { onlyWorkflowCredentials?: boolean } = {},
+		options: { onlyProjectCredentials?: boolean } = {},
 	): Promise<CredentialsEntity | null> {
 		return await this.credentialsRepository.findOneBy({
 			id: credentialId,
-			...(options.onlyWorkflowCredentials ? { availability: 'workflow' as const } : {}),
+			...(options.onlyProjectCredentials ? { usageScope: 'project' as const } : {}),
 		});
 	}
 
@@ -559,7 +559,7 @@ export class OauthService {
 			}
 			return [
 				{ ...decoded, ...decryptedState },
-				await this.getCredentialWithoutUser(decryptedState.cid, { onlyWorkflowCredentials: true }),
+				await this.getCredentialWithoutUser(decryptedState.cid, { onlyProjectCredentials: true }),
 			];
 		}
 
@@ -744,7 +744,7 @@ export class OauthService {
 		projectId: string,
 	): Promise<Record<string, string> | null> {
 		const credential = await this.credentialsRepository.findOne({
-			where: { id: credentialId, availability: 'workflow' },
+			where: { id: credentialId, usageScope: 'project' },
 			relations: { shared: true },
 		});
 		if (!credential) return null;

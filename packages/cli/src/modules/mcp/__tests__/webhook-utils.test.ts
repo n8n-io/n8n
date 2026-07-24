@@ -26,7 +26,7 @@ const mockCredentialsService = (
 				isManaged: false,
 				isGlobal: false,
 				isResolvable: false,
-				availability: 'workflow',
+				usageScope: 'project',
 				resolverId: null,
 				resolvableAllowFallback: false,
 				id,

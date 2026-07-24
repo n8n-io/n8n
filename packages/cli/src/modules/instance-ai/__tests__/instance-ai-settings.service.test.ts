@@ -283,7 +283,7 @@ describe('InstanceAiSettingsService', () => {
 				id: 'cred-1',
 				name: 'Admin model',
 				type: 'openAiApi',
-				availability: 'instance',
+				usageScope: 'instance',
 			});
 			instanceCredentialBroker.resolveForUse.mockResolvedValue({
 				id: credential.id,
@@ -330,7 +330,7 @@ describe('InstanceAiSettingsService', () => {
 				id: 'cred-1',
 				name: 'Admin model',
 				type: 'openAiApi',
-				availability: 'instance',
+				usageScope: 'instance',
 			});
 			instanceCredentialBroker.resolveForUse.mockResolvedValue({
 				id: credential.id,

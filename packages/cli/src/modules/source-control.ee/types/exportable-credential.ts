@@ -1,4 +1,4 @@
-import type { CredentialAvailability } from '@n8n/db';
+import type { CredentialUsageScope } from '@n8n/db';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import type { RemoteResourceOwner, StatusResourceOwner } from './resource-owner';
@@ -33,7 +33,7 @@ export interface ExportableCredential {
 	 * resolution fails. Travels with `isResolvable`.
 	 */
 	resolvableAllowFallback?: boolean;
-	availability?: CredentialAvailability;
+	usageScope?: CredentialUsageScope;
 }
 
 export type StatusExportableCredential = ExportableCredential & {

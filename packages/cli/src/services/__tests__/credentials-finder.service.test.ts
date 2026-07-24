@@ -62,13 +62,13 @@ describe('CredentialsFinderService', () => {
 	});
 
 	describe('findCredentialById', () => {
-		it('queries workflow credentials by default', async () => {
+		it('queries project credentials by default', async () => {
 			credentialsRepository.findOne.mockResolvedValueOnce(null);
 
 			await credentialsFinderService.findCredentialById('credential-id');
 
 			expect(credentialsRepository.findOne).toHaveBeenCalledWith({
-				where: { id: 'credential-id', availability: 'workflow' },
+				where: { id: 'credential-id', usageScope: 'project' },
 			});
 		});
 
@@ -82,7 +82,7 @@ describe('CredentialsFinderService', () => {
 			expect(credentialsRepository.findOne).toHaveBeenCalledWith({
 				where: {
 					id: 'credential-id',
-					availability: In(['workflow', 'instance']),
+					usageScope: In(['project', 'instance']),
 				},
 			});
 		});
@@ -93,7 +93,7 @@ describe('CredentialsFinderService', () => {
 		const sharedCredential = mock<SharedCredentials>();
 		sharedCredential.credentials = mock<CredentialsEntity>({
 			id: credentialsId,
-			availability: 'workflow',
+			usageScope: 'project',
 		});
 		const owner = mock<User>({ role: GLOBAL_OWNER_ROLE });
 		const member = mock<User>({ role: GLOBAL_MEMBER_ROLE, id: 'test' });
@@ -101,7 +101,7 @@ describe('CredentialsFinderService', () => {
 		test('should return instance credentials only when explicitly requested by a manager', async () => {
 			const instanceCredential = mock<CredentialsEntity>({
 				id: credentialsId,
-				availability: 'instance',
+				usageScope: 'instance',
 			});
 			credentialsRepository.findOneBy.mockResolvedValueOnce(instanceCredential);
 
@@ -114,7 +114,7 @@ describe('CredentialsFinderService', () => {
 
 			expect(credentialsRepository.findOneBy).toHaveBeenCalledWith({
 				id: credentialsId,
-				availability: 'instance',
+				usageScope: 'instance',
 			});
 			expect(credential).toBe(instanceCredential);
 			expect(sharedCredentialsRepository.findOne).not.toHaveBeenCalled();
@@ -125,7 +125,7 @@ describe('CredentialsFinderService', () => {
 				mock<SharedCredentials>({
 					credentials: mock<CredentialsEntity>({
 						id: credentialsId,
-						availability: 'instance',
+						usageScope: 'instance',
 					}),
 				}),
 			);
@@ -158,7 +158,7 @@ describe('CredentialsFinderService', () => {
 			const staleSharedCredential = mock<SharedCredentials>({
 				credentials: mock<CredentialsEntity>({
 					id: credentialsId,
-					availability: 'instance',
+					usageScope: 'instance',
 				}),
 			});
 			sharedCredentialsRepository.findOne.mockResolvedValueOnce(staleSharedCredential);
@@ -262,7 +262,7 @@ describe('CredentialsFinderService', () => {
 				where: {
 					id: credentialsId,
 					isGlobal: true,
-					availability: 'workflow',
+					usageScope: 'project',
 				},
 				relations: {
 					shared: { project: true },
@@ -286,7 +286,7 @@ describe('CredentialsFinderService', () => {
 				where: {
 					id: credentialsId,
 					isGlobal: true,
-					availability: 'workflow',
+					usageScope: 'project',
 				},
 				relations: {
 					shared: { project: true },
@@ -390,11 +390,11 @@ describe('CredentialsFinderService', () => {
 			]);
 
 			expect(credentialsRepository.find).toHaveBeenCalledWith({
-				where: { isGlobal: false, availability: 'workflow' },
+				where: { isGlobal: false, usageScope: 'project' },
 				relations: { shared: true },
 			});
 			expect(credentialsRepository.manager.find).toHaveBeenCalledWith(CredentialsEntity, {
-				where: { isGlobal: true, availability: 'workflow' },
+				where: { isGlobal: true, usageScope: 'project' },
 				relations: { shared: true },
 			});
 			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
@@ -413,7 +413,7 @@ describe('CredentialsFinderService', () => {
 			expect(credentialsRepository.find).toHaveBeenCalledWith({
 				where: {
 					isGlobal: false,
-					availability: 'workflow',
+					usageScope: 'project',
 					shared: {
 						role: In(['credential:owner', 'credential:user']),
 						project: {
@@ -503,7 +503,7 @@ describe('CredentialsFinderService', () => {
 			expect(result).toEqual(credentials);
 			// Should call fetchGlobalCredentials when read-only
 			expect(credentialsRepository.manager.find).toHaveBeenCalledWith(CredentialsEntity, {
-				where: { isGlobal: true, availability: 'workflow' },
+				where: { isGlobal: true, usageScope: 'project' },
 				relations: { shared: true },
 			});
 		});
@@ -525,7 +525,7 @@ describe('CredentialsFinderService', () => {
 			expect(credentialsRepository.find).toHaveBeenCalledWith({
 				where: {
 					isGlobal: false,
-					availability: 'workflow',
+					usageScope: 'project',
 					shared: {
 						role: In(['custom:cred-admin-789']),
 						project: {
@@ -589,7 +589,7 @@ describe('CredentialsFinderService', () => {
 			]);
 
 			expect(sharedCredentialsRepository.findCredentialsWithOptions).toHaveBeenCalledWith(
-				{ credentials: { availability: 'workflow' } },
+				{ credentials: { usageScope: 'project' } },
 				undefined,
 			);
 			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
@@ -612,7 +612,7 @@ describe('CredentialsFinderService', () => {
 			expect(roleService.rolesWithScope).toHaveBeenCalledWith('credential', ['credential:read']);
 			expect(sharedCredentialsRepository.findCredentialsWithOptions).toHaveBeenCalledWith(
 				{
-					credentials: { availability: 'workflow' },
+					credentials: { usageScope: 'project' },
 					role: In(['credential:owner', 'credential:user']),
 					project: {
 						projectRelations: {
@@ -673,7 +673,7 @@ describe('CredentialsFinderService', () => {
 			);
 
 			expect(credentialsRepository.manager.find).toHaveBeenCalledWith(CredentialsEntity, {
-				where: { isGlobal: true, availability: 'workflow' },
+				where: { isGlobal: true, usageScope: 'project' },
 				relations: { shared: true },
 			});
 			expect(result).toHaveLength(3);
@@ -803,7 +803,7 @@ describe('CredentialsFinderService', () => {
 			);
 
 			expect(mockFind).toHaveBeenCalledWith(CredentialsEntity, {
-				where: { isGlobal: true, availability: 'workflow' },
+				where: { isGlobal: true, usageScope: 'project' },
 				relations: { shared: true },
 			});
 		});
@@ -846,7 +846,7 @@ describe('CredentialsFinderService', () => {
 				select: { credentialsId: true },
 				where: {
 					credentialsId: In(ids),
-					credentials: { availability: 'workflow' },
+					credentials: { usageScope: 'project' },
 				},
 			});
 		});
@@ -869,7 +869,7 @@ describe('CredentialsFinderService', () => {
 				select: { credentialsId: true },
 				where: {
 					credentialsId: In(ids),
-					credentials: { availability: 'workflow' },
+					credentials: { usageScope: 'project' },
 					role: In(['credential:owner', 'credential:user']),
 					project: {
 						projectRelations: {
@@ -901,7 +901,7 @@ describe('CredentialsFinderService', () => {
 
 			expect(result).toEqual(new Set(['cred-1', 'global-1']));
 			expect(credentialsRepository.find).toHaveBeenCalledWith({
-				where: { id: In(ids), isGlobal: true, availability: 'workflow' },
+				where: { id: In(ids), isGlobal: true, usageScope: 'project' },
 				select: ['id'],
 			});
 		});
@@ -1057,7 +1057,7 @@ describe('CredentialsFinderService', () => {
 			expect(credentialsRepository.find).toHaveBeenCalledWith({
 				where: {
 					isGlobal: false,
-					availability: 'workflow',
+					usageScope: 'project',
 					shared: {
 						role: In([]),
 						project: {
@@ -1110,7 +1110,7 @@ describe('CredentialsFinderService', () => {
 			expect(credentialsRepository.find).toHaveBeenCalledWith({
 				where: {
 					isGlobal: false,
-					availability: 'workflow',
+					usageScope: 'project',
 					shared: {
 						role: In(['project:admin']), // Uses what RoleService returned for credential namespace
 						project: {
@@ -1186,7 +1186,7 @@ describe('CredentialsFinderService', () => {
 				where: {
 					id: credentialId,
 					isGlobal: true,
-					availability: 'workflow',
+					usageScope: 'project',
 				},
 				relations: undefined,
 			});
@@ -1206,7 +1206,7 @@ describe('CredentialsFinderService', () => {
 				where: {
 					id: credentialId,
 					isGlobal: true,
-					availability: 'workflow',
+					usageScope: 'project',
 				},
 				relations,
 			});
@@ -1222,7 +1222,7 @@ describe('CredentialsFinderService', () => {
 				where: {
 					id: 'non-existent-id',
 					isGlobal: true,
-					availability: 'workflow',
+					usageScope: 'project',
 				},
 				relations: undefined,
 			});

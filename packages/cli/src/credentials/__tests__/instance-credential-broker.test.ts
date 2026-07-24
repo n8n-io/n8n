@@ -28,6 +28,14 @@ describe('InstanceCredentialBroker', () => {
 		vi.resetAllMocks();
 	});
 
+	it('rejects credential use IDs with surrounding whitespace', () => {
+		const registry = new InstanceCredentialUseRegistry();
+
+		expect(() =>
+			registry.register({ id: ' example:primary', credentialTypes: ['openAiApi'] }),
+		).toThrow('cannot contain surrounding whitespace');
+	});
+
 	it('rejects unregistered credential uses', async () => {
 		const unknownUse = { id: 'unknown:use', credentialTypes: ['openAiApi'] } as const;
 
@@ -50,7 +58,7 @@ describe('InstanceCredentialBroker', () => {
 			id: 'credential-id',
 			name: 'Primary model',
 			type: 'openAiApi',
-			availability: 'instance',
+			usageScope: 'instance',
 		});
 		assignmentRepository.findAvailableCredentials.mockResolvedValue([credential]);
 
@@ -72,7 +80,7 @@ describe('InstanceCredentialBroker', () => {
 			id: 'credential-id',
 			name: 'Primary model',
 			type: 'openAiApi',
-			availability: 'instance',
+			usageScope: 'instance',
 		});
 		assignmentRepository.assignCredential.mockResolvedValue(credential);
 
@@ -120,7 +128,7 @@ describe('InstanceCredentialBroker', () => {
 			id: 'credential-id',
 			name: 'Primary model',
 			type: 'openAiApi',
-			availability: 'instance',
+			usageScope: 'instance',
 		});
 		assignmentRepository.findAssignedCredential.mockResolvedValue({
 			credentialId: credential.id,

@@ -93,7 +93,7 @@ function createCredential(overrides: {
 	id: string;
 	name: string;
 	type: string;
-	availability?: 'workflow' | 'instance';
+	usageScope?: 'project' | 'instance';
 }) {
 	return {
 		...overrides,
@@ -222,7 +222,7 @@ describe('useNodeCredentialOptions', () => {
 			id: 'instance-cred',
 			name: 'Instance Slack Token',
 			type: 'slackApi',
-			availability: 'instance',
+			usageScope: 'instance',
 		});
 
 		const { credentialTypesNodeDescriptionDisplayed } = setupOptions();

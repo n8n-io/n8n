@@ -230,7 +230,7 @@ export class CredentialsController {
 		}
 
 		if (
-			credential.availability === 'instance' &&
+			credential.usageScope === 'instance' &&
 			body.type !== undefined &&
 			body.type !== credential.type
 		) {
@@ -240,7 +240,7 @@ export class CredentialsController {
 		}
 
 		if (
-			credential.availability === 'instance' &&
+			credential.usageScope === 'instance' &&
 			(body.isGlobal === true || body.isResolvable === true)
 		) {
 			throw new BadRequestError(
@@ -312,7 +312,10 @@ export class CredentialsController {
 			body.data
 				? (preparedCredentialData.data as unknown as ICredentialDataDecryptedObject)
 				: undefined,
-			{ deleteUserEntries: isTogglingToStatic || sharedFieldsChanged },
+			{
+				deleteUserEntries: isTogglingToStatic || sharedFieldsChanged,
+				instanceCredential: credential.usageScope === 'instance' ? credential : undefined,
+			},
 		);
 
 		if (responseData === null) {

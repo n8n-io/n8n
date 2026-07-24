@@ -309,8 +309,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 			throw error;
 		}
 
-		// Keep non-workflow credentials blocked even if an earlier access check is bypassed.
-		if ((credential.availability ?? 'workflow') !== 'workflow') {
+		// Keep non-project credentials blocked even if an earlier access check is bypassed.
+		if (credential.usageScope !== 'project') {
 			throw new UserError('This credential cannot be used in workflows');
 		}
 

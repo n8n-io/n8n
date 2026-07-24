@@ -171,7 +171,7 @@ describe('DbConnection', () => {
 
 		beforeEach(() => {
 			Container.set(DbLockService, dbLockService);
-			dbLockService.withLock.mockImplementation(async (_lockId, fn) => await fn(tx));
+			dbLockService.withLock.mockImplementation(async (_lockId, fn) => await fn(tx, {}));
 			tx.query.mockResolvedValue([]);
 			vi.mocked(MigrationExecutor).mockImplementation(function () {
 				return migrationExecutor;

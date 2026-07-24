@@ -22,7 +22,7 @@ export class CredentialsFinderService {
 	private async fetchGlobalCredentials(trx?: EntityManager): Promise<CredentialsEntity[]> {
 		const em = trx ?? this.credentialsRepository.manager;
 		return await em.find(CredentialsEntity, {
-			where: { isGlobal: true, availability: 'workflow' },
+			where: { isGlobal: true, usageScope: 'project' },
 			relations: { shared: true },
 		});
 	}
@@ -46,7 +46,7 @@ export class CredentialsFinderService {
 			where: {
 				id: credentialId,
 				isGlobal: true,
-				availability: 'workflow',
+				usageScope: 'project',
 			},
 			relations,
 		});
@@ -59,9 +59,7 @@ export class CredentialsFinderService {
 		return await this.credentialsRepository.findOne({
 			where: {
 				id: credentialId,
-				availability: options.includeInstanceCredentials
-					? In(['workflow', 'instance'])
-					: 'workflow',
+				usageScope: options.includeInstanceCredentials ? In(['project', 'instance']) : 'project',
 			},
 		});
 	}
@@ -94,7 +92,7 @@ export class CredentialsFinderService {
 	async findCredentialsForUser(user: User, scopes: Scope[]) {
 		let where: FindOptionsWhere<CredentialsEntity> = {
 			isGlobal: false,
-			availability: 'workflow',
+			usageScope: 'project',
 		};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
@@ -140,7 +138,7 @@ export class CredentialsFinderService {
 		if (options.includeInstanceCredentials && hasGlobalScope(user, 'credential:manageInstance')) {
 			const instanceCredential = await this.credentialsRepository.findOneBy({
 				id: credentialsId,
-				availability: 'instance',
+				usageScope: 'instance',
 			});
 			if (instanceCredential) return instanceCredential;
 		}
@@ -175,7 +173,7 @@ export class CredentialsFinderService {
 		});
 
 		if (sharedCredential) {
-			if ((sharedCredential.credentials.availability ?? 'workflow') !== 'workflow') return null;
+			if (sharedCredential.credentials.usageScope !== 'project') return null;
 			return sharedCredential.credentials;
 		}
 
@@ -197,7 +195,7 @@ export class CredentialsFinderService {
 		options?: { includeGlobalCredentials?: boolean },
 	) {
 		let where: FindOptionsWhere<SharedCredentials> = {
-			credentials: { availability: 'workflow' },
+			credentials: { usageScope: 'project' },
 		};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
@@ -261,7 +259,7 @@ export class CredentialsFinderService {
 
 		let where: FindOptionsWhere<SharedCredentials> = {
 			credentialsId: In(credentialIds),
-			credentials: { availability: 'workflow' },
+			credentials: { usageScope: 'project' },
 		};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
@@ -291,7 +289,7 @@ export class CredentialsFinderService {
 		// Also include global credentials if scopes allow read-only access
 		if (this.hasGlobalReadOnlyAccess(scopes)) {
 			const globalCreds = await this.credentialsRepository.find({
-				where: { id: In(credentialIds), isGlobal: true, availability: 'workflow' },
+				where: { id: In(credentialIds), isGlobal: true, usageScope: 'project' },
 				select: ['id'],
 			});
 			for (const gc of globalCreds) result.add(gc.id);

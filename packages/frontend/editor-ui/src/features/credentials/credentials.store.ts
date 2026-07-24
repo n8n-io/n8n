@@ -263,7 +263,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	};
 
 	const upsertCredential = (credential: ICredentialsResponse) => {
-		if (credential.availability === 'instance') return;
+		if (credential.usageScope === 'instance') return;
 		if (credential.id) {
 			state.value.credentials = {
 				...state.value.credentials,
@@ -362,7 +362,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			uiContext,
 			isGlobal: data.isGlobal,
 			isResolvable: data.isResolvable,
-			availability: data.availability,
+			usageScope: data.usageScope,
 		});
 
 		if (data?.homeProject && !credential.homeProject) {

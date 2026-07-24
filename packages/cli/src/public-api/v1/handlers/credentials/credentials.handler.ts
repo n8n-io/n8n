@@ -68,7 +68,7 @@ const credentialsHandlers: CredentialsHandlers = {
 				select: ['id', 'name', 'type', 'createdAt', 'updatedAt'],
 				relations: ['shared', 'shared.project'],
 				order: { createdAt: 'DESC' },
-				where: { availability: 'workflow' },
+				where: { usageScope: 'project' },
 			});
 
 			const data = credentials.map((credential: CredentialsEntity) => {

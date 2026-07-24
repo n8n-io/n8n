@@ -29,9 +29,9 @@ const instanceAiCredentialHelp = useInstanceAiCredentialHelp();
 
 const searchQuery = ref('');
 
-const presetAvailability = computed<NewCredentialsModal['availability']>(() => {
+const presetUsageScope = computed<NewCredentialsModal['usageScope']>(() => {
 	const data = uiStore.modalsById[CREDENTIAL_SELECT_MODAL_KEY]?.data;
-	return data?.availability === 'instance' ? 'instance' : undefined;
+	return data?.usageScope === 'instance' ? 'instance' : undefined;
 });
 
 onMounted(async () => {
@@ -82,7 +82,7 @@ function openCredentialType() {
 		undefined,
 		{
 			instanceAiCredentialHelp: instanceAiCredentialHelp(),
-			availability: presetAvailability.value,
+			usageScope: presetUsageScope.value,
 		},
 	);
 

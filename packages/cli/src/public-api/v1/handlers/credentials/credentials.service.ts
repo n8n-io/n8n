@@ -69,7 +69,7 @@ export function buildSharedForCredential(
 
 export async function getCredential(credentialId: string): Promise<CredentialsEntity | null> {
 	return await Container.get(CredentialsRepository).findOne({
-		where: { id: credentialId, availability: 'workflow' },
+		where: { id: credentialId, usageScope: 'project' },
 		relations: ['shared', 'shared.project'],
 	});
 }
@@ -114,7 +114,7 @@ export async function saveCredential(
 			data: payload.data,
 			projectId: payload.projectId,
 			isResolvable: payload.isResolvable,
-			availability: 'workflow',
+			usageScope: 'project',
 		},
 		user,
 	);

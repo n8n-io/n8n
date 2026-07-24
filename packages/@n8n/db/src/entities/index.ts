@@ -9,7 +9,7 @@ import {
 	CredentialDependency,
 	type CredentialDependencyType,
 } from './credential-dependency-entity';
-import { CredentialsEntity, type CredentialAvailability } from './credentials-entity';
+import { CredentialsEntity, type CredentialUsageScope } from './credentials-entity';
 import { DeploymentKey } from './deployment-key';
 import { EvaluationCollection } from './evaluation-collection.ee';
 import { EvaluationConfig } from './evaluation-config.ee';
@@ -91,7 +91,7 @@ export {
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,
-	type CredentialAvailability,
+	type CredentialUsageScope,
 	CredentialDependency,
 	type CredentialDependencyType,
 	DeploymentKey,

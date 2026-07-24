@@ -115,7 +115,7 @@ describe('CredentialsService', () => {
 	});
 
 	describe('saveCredential', () => {
-		it('forces public API credentials to workflow availability', async () => {
+		it('forces public API credentials to project usage scope', async () => {
 			const credentialsService = mock<CredentialsService>();
 			const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 			const eventService = mock<EventService>();
@@ -140,7 +140,7 @@ describe('CredentialsService', () => {
 				type: 'testApi',
 				name: 'Credential',
 				data: { apiKey: 'secret' },
-				availability: 'instance',
+				usageScope: 'instance',
 			};
 
 			await saveCredential(payload, mock<User>());
@@ -152,7 +152,7 @@ describe('CredentialsService', () => {
 					data: payload.data,
 					projectId: undefined,
 					isResolvable: undefined,
-					availability: 'workflow',
+					usageScope: 'project',
 				},
 				expect.anything(),
 			);
@@ -565,6 +565,8 @@ describe('CredentialsService', () => {
 			mock(), // externalSecretsProviderAccessCheckService
 			mock(), // connectionStatusProxy
 			mock(), // instanceCredentialAssignmentRepository
+			mock(), // instanceCredentialUseRegistry
+			mock(), // dbLockService
 		);
 
 		beforeEach(() => {

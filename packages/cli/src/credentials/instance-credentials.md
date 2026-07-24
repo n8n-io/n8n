@@ -1,12 +1,12 @@
 # Instance credentials
 
-Instance credentials are credential rows with `availability: 'instance'`. Owners and
+Instance credentials are credential rows with `usageScope: 'instance'`. Owners and
 admins manage them through the global `credential:manageInstance` scope. They have no
 `SharedCredentials` owner row and workflows cannot use them.
 
 `InstanceCredentialBroker` is the only feature-facing API for using them. A
 **credential use** is a stable feature-purpose policy (for example `instance-ai:model`)
-that identifies trusted backend code, not a user. Workflow credentials and disallowed
+that identifies trusted backend code, not a user. Project credentials and disallowed
 credential types fail closed.
 
 ## Integrating a feature
@@ -38,7 +38,7 @@ credential types fail closed.
    ```
 
 4. **Assign or clear the credential through the broker.** The broker validates the
-   credential availability and type before it writes the
+   credential usage scope and type before it writes the
    `instance_credential_assignment` row:
 
    ```typescript

@@ -5,7 +5,7 @@ import { WithTimestampsAndStringId } from './abstract-entity';
 import type { SharedCredentials } from './shared-credentials';
 import type { ICredentialsDb } from './types-db';
 
-export type CredentialAvailability = 'workflow' | 'instance';
+export type CredentialUsageScope = 'project' | 'instance';
 
 @Entity()
 export class CredentialsEntity extends WithTimestampsAndStringId implements ICredentialsDb {
@@ -63,8 +63,8 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	@Column({ type: 'varchar', nullable: true })
 	resolverId: string | null;
 
-	@Column({ type: 'varchar', length: 16, default: 'workflow' })
-	availability: CredentialAvailability;
+	@Column({ type: 'varchar', length: 16, default: 'project' })
+	usageScope: CredentialUsageScope;
 
 	toJSON() {
 		const { shared, ...rest } = this;

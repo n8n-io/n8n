@@ -1,9 +1,13 @@
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 export interface InstanceCredentialUse {
 	readonly id: string;
 	readonly credentialTypes: readonly string[];
+	readonly validate?: (credential: {
+		type: string;
+		data: ICredentialDataDecryptedObject;
+	}) => void;
 }
 
 @Service()
@@ -13,6 +17,9 @@ export class InstanceCredentialUseRegistry {
 	register(credentialUse: InstanceCredentialUse) {
 		if (credentialUse.id.trim().length === 0) {
 			throw new UnexpectedError('Instance credential use ID cannot be empty');
+		}
+		if (credentialUse.id !== credentialUse.id.trim()) {
+			throw new UnexpectedError('Instance credential use ID cannot contain surrounding whitespace');
 		}
 		if (this.uses.has(credentialUse.id)) {
 			throw new UnexpectedError(

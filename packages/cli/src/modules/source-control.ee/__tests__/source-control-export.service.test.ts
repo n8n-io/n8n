@@ -5,7 +5,6 @@ import type {
 	Project,
 	ProjectRepository,
 	SharedCredentials,
-	CredentialsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflow,
 	SharedWorkflowRepository,
@@ -34,7 +33,6 @@ import { SourceControlContext } from '../types/source-control-context';
 describe('SourceControlExportService', () => {
 	const cipher = Container.get(Cipher);
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
-	const credentialsRepository = mock<CredentialsRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const tagRepository = mock<TagRepository>();
@@ -57,7 +55,6 @@ describe('SourceControlExportService', () => {
 		tagRepository,
 		projectRepository,
 		sharedCredentialsRepository,
-		credentialsRepository,
 		sharedWorkflowRepository,
 		workflowRepository,
 		workflowTagMappingRepository,
@@ -73,7 +70,6 @@ describe('SourceControlExportService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue({});
-		credentialsRepository.find.mockResolvedValue([]);
 	});
 
 	describe('exportCredentialsToWorkFolder', () => {

@@ -121,7 +121,7 @@ describe('userHasScopes', () => {
 			).resolves.toBe(true);
 			expect(instanceCredentialExistsMock).toHaveBeenCalledWith({
 				id: 'instance-cred',
-				availability: 'instance',
+				usageScope: 'instance',
 			});
 		});
 
