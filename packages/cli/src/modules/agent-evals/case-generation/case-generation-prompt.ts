@@ -30,8 +30,6 @@ export const generatedCasesSchema = z.object({
 	cases: z.array(draftCaseSchema),
 });
 
-export type GeneratedCases = z.infer<typeof generatedCasesSchema>;
-
 // Bound the prompt so token cost stays predictable regardless of how large the
 // agent's own instructions/toolset are.
 const MAX_INSTRUCTIONS_CHARS = 4000;

@@ -91,6 +91,12 @@ export class AgentEvalCaseGenerationService {
 		private readonly postHogClient: PostHogClient,
 	) {}
 
+	/**
+	 * Generate and persist draft cases for an agent. The caller is responsible for
+	 * authorizing `user` against `projectId` — the REST layer must apply
+	 * `@ProjectScope`. This resolves and uses the agent's own credential, so it
+	 * must never be exposed on an unscoped route.
+	 */
 	async generateDraftCases(
 		user: User,
 		projectId: string,
@@ -315,5 +321,5 @@ function suffixedName(baseName: string, n: number): string {
 }
 
 function truncateName(name: string, max = 128): string {
-	return name.length > max ? name.slice(0, max) : name;
+	return truncateText(name, max);
 }
