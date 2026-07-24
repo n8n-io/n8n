@@ -1,3 +1,11 @@
+## [2.31.6](https://github.com/n8n-io/n8n/compare/n8n@2.31.5...n8n@2.31.6) (2026-07-24)
+
+
+### Bug Fixes
+
+* **core:** Stop Instance AI follow-up runs from looping when they keep failing before the agent starts ([#34773](https://github.com/n8n-io/n8n/issues/34773)) ([031227a](https://github.com/n8n-io/n8n/commit/031227a50e15dd2885853ecfec0719e31c571f49))
+
+
 ## [2.31.5](https://github.com/n8n-io/n8n/compare/n8n@2.31.4...n8n@2.31.5) (2026-07-22)
 
 
