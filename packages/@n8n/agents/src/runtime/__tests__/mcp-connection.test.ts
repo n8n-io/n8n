@@ -1,5 +1,6 @@
 import { McpClient } from '../../sdk/mcp-client';
 import { McpConnection } from '../mcp/mcp-connection';
+import { executeTool } from '../tools/tool-adapter';
 
 const sseCtor = vi.fn();
 const streamableHttpCtor = vi.fn();
@@ -150,6 +151,28 @@ describe('McpClient — connection error formatting', () => {
 	});
 });
 
+describe('McpClient — tool name normalization', () => {
+	beforeEach(() => {
+		clientConnect.mockReset().mockResolvedValue(undefined);
+		clientListTools.mockReset().mockResolvedValue({
+			tools: [{ name: 'read', description: '', inputSchema: { type: 'object' } }],
+		});
+		clientClose.mockReset().mockResolvedValue(undefined);
+	});
+
+	it('keeps model-facing names unique across normalized server prefixes', async () => {
+		const client = new McpClient([
+			{ name: 'foo bar', url: 'https://example.test/first' },
+			{ name: 'foo_bar', url: 'https://example.test/second' },
+		]);
+
+		const tools = await client.listTools();
+
+		expect(new Set(tools.map((tool) => tool.name)).size).toBe(2);
+		await client.close();
+	});
+});
+
 describe('McpConnection - tool call settled callback', () => {
 	beforeEach(() => {
 		clientConnect.mockReset().mockResolvedValue(undefined);
@@ -198,6 +221,7 @@ describe('McpConnection — tool filtering', () => {
 	beforeEach(() => {
 		clientConnect.mockClear();
 		clientListTools.mockClear();
+		clientCallTool.mockReset().mockResolvedValue({ content: [] });
 		clientListTools.mockResolvedValue({
 			tools: [
 				{ name: 'echo', description: '', inputSchema: { type: 'object' } },
@@ -218,6 +242,100 @@ describe('McpConnection — tool filtering', () => {
 		const tools = await conn.listTools();
 
 		expect(tools.map((tool) => tool.name)).toEqual(['s1_echo', 's1_add', 's1_subtract']);
+	});
+
+	it('normalizes the model-facing prefix while preserving the MCP server name', async () => {
+		const conn = new McpConnection({
+			name: 'Linear Prod',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+			requireApproval: ['echo'],
+		});
+
+		await conn.connect();
+		const tools = await conn.listTools();
+
+		expect(tools.map((tool) => tool.name)).toEqual([
+			'Linear_Prod_echo',
+			'Linear_Prod_add',
+			'Linear_Prod_subtract',
+		]);
+		expect(tools.every((tool) => tool.mcpServerName === 'Linear Prod')).toBe(true);
+		expect(tools).toEqual([
+			expect.objectContaining({ mcpToolName: 'echo' }),
+			expect.objectContaining({ mcpToolName: 'add' }),
+			expect.objectContaining({ mcpToolName: 'subtract' }),
+		]);
+		expect(tools[0]?.suspendSchema).toBeDefined();
+		expect(tools[1]?.suspendSchema).toBeUndefined();
+	});
+
+	it('keeps model-facing names unique when tool names normalize identically', async () => {
+		const onToolCallSettled = vi.fn();
+		const rawTools = [
+			{ name: 'read file', description: '', inputSchema: { type: 'object' } },
+			{ name: 'read_file', description: '', inputSchema: { type: 'object' } },
+		];
+		clientListTools
+			.mockResolvedValueOnce({ tools: rawTools })
+			.mockResolvedValueOnce({ tools: [...rawTools].reverse() });
+
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+			onToolCallSettled,
+		});
+
+		await conn.connect();
+		const tools = await conn.listTools();
+		const reversedTools = await conn.listTools();
+
+		expect(new Set(tools.map((tool) => tool.name)).size).toBe(2);
+		expect(tools.map((tool) => tool.name)).toEqual([
+			reversedTools[1]?.name,
+			reversedTools[0]?.name,
+		]);
+		await executeTool({}, tools[0]);
+		await executeTool({}, tools[1]);
+		expect(onToolCallSettled).toHaveBeenNthCalledWith(1, {
+			toolName: 'read file',
+			modelToolName: tools[0].name,
+			success: true,
+		});
+		expect(onToolCallSettled).toHaveBeenNthCalledWith(2, {
+			toolName: 'read_file',
+			modelToolName: tools[1].name,
+			success: true,
+		});
+	});
+
+	it('keeps model-facing names unique when truncation removes the differing suffix', async () => {
+		const sharedPrefix = 'a'.repeat(80);
+		const rawTools = [
+			{ name: `${sharedPrefix}x`, description: '', inputSchema: { type: 'object' } },
+			{ name: `${sharedPrefix}y`, description: '', inputSchema: { type: 'object' } },
+		];
+		clientListTools
+			.mockResolvedValueOnce({ tools: rawTools })
+			.mockResolvedValueOnce({ tools: [...rawTools].reverse() });
+
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+		});
+
+		await conn.connect();
+		const tools = await conn.listTools();
+		const reversedTools = await conn.listTools();
+
+		expect(new Set(tools.map((tool) => tool.name)).size).toBe(2);
+		expect(tools.every((tool) => tool.name.length <= 64)).toBe(true);
+		expect(tools.map((tool) => tool.name)).toEqual([
+			reversedTools[1]?.name,
+			reversedTools[0]?.name,
+		]);
 	});
 
 	it('keeps only allowed tools when allow filter is configured', async () => {

@@ -1810,11 +1810,20 @@ describe('AgentJsonConfigSchema', () => {
 			).toThrow();
 		});
 
-		it('rejects names with invalid characters', () => {
+		it('preserves human-readable MCP server names', () => {
+			const parsed = AgentJsonConfigSchema.parse({
+				...base,
+				mcpServers: [{ name: 'Linear production (EU)', url: 'https://a.example.test/mcp' }],
+			});
+
+			expect(parsed.mcpServers?.[0].name).toBe('Linear production (EU)');
+		});
+
+		it('rejects whitespace-only MCP server names', () => {
 			expect(() =>
 				AgentJsonConfigSchema.parse({
 					...base,
-					mcpServers: [{ name: 'has spaces', url: 'https://a.example.test/mcp' }],
+					mcpServers: [{ name: '   ', url: 'https://a.example.test/mcp' }],
 				}),
 			).toThrow();
 		});

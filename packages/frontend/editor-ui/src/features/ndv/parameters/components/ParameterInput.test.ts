@@ -252,6 +252,38 @@ describe('ParameterInput.vue', () => {
 		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'append' })]);
 	});
 
+	test('should clamp long multi-option descriptions without truncating their content', async () => {
+		const longDescription =
+			'<p>Search every page and database in the workspace.</p><p>Returns complete metadata and matching content for the agent.</p>';
+		const { container, baseElement } = renderComponent({
+			props: {
+				path: 'includeTools',
+				parameter: {
+					displayName: 'Tools to Include',
+					name: 'includeTools',
+					type: 'multiOptions',
+					options: [
+						{
+							name: 'Search',
+							value: 'search',
+							description: longDescription,
+						},
+					],
+					default: [],
+				},
+				modelValue: [],
+			},
+		});
+
+		await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+		const description = baseElement.querySelector('.option-description');
+		expect(description).toHaveTextContent(
+			'Search every page and database in the workspace.Returns complete metadata and matching content for the agent.',
+		);
+		expect(description).toHaveClass('option-description--clamped');
+	});
+
 	test('should pass option disabled state to N8nOption', async () => {
 		const options = [
 			{ name: 'Connected Chat Trigger Node', value: 'auto', disabled: true },

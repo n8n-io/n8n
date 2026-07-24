@@ -1,4 +1,8 @@
-import type { GenerateResult, Agent as RuntimeAgent } from '@n8n/agents';
+import {
+	sanitizeToolName as sanitizeMcpToolName,
+	type Agent as RuntimeAgent,
+	type GenerateResult,
+} from '@n8n/agents';
 import {
 	hasNativeWebSearchProvider,
 	isNativeWebSearchRequested,
@@ -35,7 +39,11 @@ import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { createAgentModelTurnRecorder } from './agent-model-turn-recorder';
 import { generateAgentScenarioSeed, type AgentSeedToolSummary } from './agent-scenario-seed';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
-import { createMcpMockFetch, type McpMockCanonicalTool } from './mcp-mock-fetch';
+import {
+	createMcpMockFetch,
+	type McpMockCanonicalTool,
+	type McpMockToolCall,
+} from './mcp-mock-fetch';
 import { createLlmMockHandler } from './mock-handler';
 import { truncateForLlm } from './request-sanitizer';
 import { createWebSearchMock } from './web-search-mock';
@@ -166,9 +174,11 @@ export class EvalAgentExecutionService {
 			this.logger,
 		);
 
-		// Mock MCP server; ledger keys use the client-side `<server>_<tool>`
-		// names so entries merge with GenerateResult's tool calls. Always
-		// created — delegated sub-agents may bring their own servers.
+		const pendingMcpCalls = new Map<string, McpMockToolCall[]>();
+		const mcpCallIdentity = (serverName: string, toolName: string) =>
+			JSON.stringify([serverName, toolName]);
+
+		// Always created — delegated sub-agents may bring their own servers.
 		const mcpServers = config.mcpServers ?? [];
 		const knownToolsByServer = await this.resolveCanonicalMcpCatalogs(mcpServers);
 		const mcpFetch = createMcpMockFetch({
@@ -184,21 +194,35 @@ export class EvalAgentExecutionService {
 			knownToolsByServer,
 			logger: this.logger,
 			onToolCall: (call) => {
-				const key = `${call.serverName}_${call.toolName}`;
-				let entries = toolLedger.get(key);
-				if (!entries) {
-					entries = [];
-					toolLedger.set(key, entries);
-				}
-				entries.push({
-					url: mcpServers.find((server) => server.name === call.serverName)?.url ?? call.serverName,
-					method: 'POST',
-					nodeType: `mcp:${call.serverName}`,
-					requestBody: call.args,
-					mockResponse: call.result,
-				});
+				const identity = mcpCallIdentity(call.serverName, call.toolName);
+				const calls = pendingMcpCalls.get(identity) ?? [];
+				calls.push(call);
+				pendingMcpCalls.set(identity, calls);
 			},
 		});
+
+		const recordSettledMcpCall = (serverName: string, toolName: string, modelToolName?: string) => {
+			const identity = mcpCallIdentity(serverName, toolName);
+			const calls = pendingMcpCalls.get(identity);
+			if (!calls) return;
+			const call = calls.shift();
+			if (!call) return;
+			if (calls.length === 0) pendingMcpCalls.delete(identity);
+
+			const key = modelToolName ?? sanitizeMcpToolName(`${serverName}_${toolName}`);
+			let entries = toolLedger.get(key);
+			if (!entries) {
+				entries = [];
+				toolLedger.set(key, entries);
+			}
+			entries.push({
+				url: mcpServers.find((server) => server.name === serverName)?.url ?? serverName,
+				method: 'POST',
+				nodeType: `mcp:${serverName}`,
+				requestBody: call.args,
+				mockResponse: call.result,
+			});
+		};
 
 		// Fallback web_search mock — always created (sub-agents may enable web
 		// search); with native search the tool is never built and this goes unused.
@@ -241,6 +265,9 @@ export class EvalAgentExecutionService {
 				{
 					modelFetch: recorder.fetch,
 					mcpFetch,
+					onMcpToolCallSettled: ({ serverName, toolName, modelToolName }) => {
+						recordSettledMcpCall(serverName, toolName, modelToolName);
+					},
 					webSearch: webSearchMock,
 					// Delegated (configured) sub-agents inherit every seam above; their
 					// configs get the same pruning, reported under the child's id.
@@ -351,7 +378,7 @@ export class EvalAgentExecutionService {
 		// this agent's summaries — their ledger entries carry an `mcp:` nodeType.
 		const kindForTool = (tool: string): InstanceAiEvalAgentToolCallRecord['kind'] =>
 			kindByToolName.get(tool) ??
-			(mcpServers.some((server) => tool.startsWith(`${server.name}_`)) ||
+			(mcpServers.some((server) => tool.startsWith(sanitizeMcpToolName(`${server.name}_`))) ||
 			(toolLedger.get(tool) ?? []).some((request) => request.nodeType?.startsWith('mcp:'))
 				? 'mcp'
 				: 'other');

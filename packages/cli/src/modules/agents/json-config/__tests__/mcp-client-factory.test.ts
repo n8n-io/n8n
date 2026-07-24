@@ -211,9 +211,10 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 		proxyFetchMock.mockReset();
 	});
 
-	it('forwards toolFilter, approval, transport, and connectionTimeoutMs to the SDK config', async () => {
+	it('forwards tool and lifecycle options to the SDK config', async () => {
 		const credentialProvider = mock<CredentialProvider>();
 		const oauthService = mock<OauthService>();
+		const onToolCallSettled = vi.fn();
 
 		await buildMcpClientForServer(
 			makeServer({
@@ -222,7 +223,13 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 				approval: { mode: 'selected', tools: ['create'] },
 				connectionTimeoutMs: 5_000,
 			}),
-			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+			{
+				credentialProvider,
+				oauthService,
+				projectId: 'proj-1',
+				proxyFetch,
+				onToolCallSettled,
+			},
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
@@ -234,6 +241,7 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 			toolFilter: { mode: 'allow', tools: ['echo'] },
 			requireApproval: ['create'],
 			connectionTimeoutMs: 5_000,
+			onToolCallSettled,
 		});
 		expect(typeof configs[0].fetch).toBe('function');
 	});
