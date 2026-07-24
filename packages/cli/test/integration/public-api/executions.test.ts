@@ -717,6 +717,92 @@ describe('GET /executions', () => {
 		);
 	});
 
+	test('member should return executions filtered by accessible project ID', async () => {
+		/**
+		 * Arrange
+		 */
+		testServer.license.enable('feat:sharing');
+
+		const [firstProject, secondProject] = await Promise.all([
+			createTeamProject('member project 1', user1),
+			createTeamProject('member project 2', user1),
+		]);
+		const [firstWorkflow, secondWorkflow] = await Promise.all([
+			createWorkflow({}, firstProject),
+			createWorkflow({}, secondProject),
+		]);
+		const [firstExecution, secondExecution] = await Promise.all([
+			createExecution({}, firstWorkflow),
+			createExecution({}, firstWorkflow),
+		]);
+		await createExecution({}, secondWorkflow);
+
+		/**
+		 * Act
+		 */
+		const response = await authUser1Agent.get('/executions').query({
+			projectId: firstProject.id,
+		});
+
+		/**
+		 * Assert
+		 */
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(2);
+		expect(response.body.nextCursor).toBeNull();
+		expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).toEqual(
+			expect.arrayContaining([firstExecution.id, secondExecution.id]),
+		);
+	});
+
+	test('member should return empty list when filtering by inaccessible project ID', async () => {
+		/**
+		 * Arrange
+		 */
+		testServer.license.enable('feat:sharing');
+
+		const memberProject = await createTeamProject('member own project', user1);
+		const otherProject = await createTeamProject('other user project', user2);
+		await createWorkflow({}, memberProject).then(async (wf) => createExecution({}, wf));
+		await createWorkflow({}, otherProject).then(async (wf) => createExecution({}, wf));
+
+		/**
+		 * Act
+		 */
+		const response = await authUser1Agent.get('/executions').query({
+			projectId: otherProject.id,
+		});
+
+		/**
+		 * Assert
+		 */
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(0);
+	});
+
+	test('member should return empty list when filtering by nonexistent project ID', async () => {
+		/**
+		 * Arrange
+		 */
+		testServer.license.enable('feat:sharing');
+
+		const memberProject = await createTeamProject('member project', user1);
+		await createWorkflow({}, memberProject).then(async (wf) => createExecution({}, wf));
+
+		/**
+		 * Act
+		 */
+		const response = await authUser1Agent.get('/executions').query({
+			projectId: 'nonexistent-project-id-12345',
+		});
+
+		/**
+		 * Assert
+		 */
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(0);
+	});
+
 	test('owner should retrieve all executions regardless of ownership', async () => {
 		const [firstWorkflowForUser1, secondWorkflowForUser1] = await createManyWorkflows(2, {}, user1);
 		await createManyExecutions(2, firstWorkflowForUser1, createSuccessfulExecution);

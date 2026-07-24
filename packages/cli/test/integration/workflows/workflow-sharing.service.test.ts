@@ -115,5 +115,106 @@ describe('WorkflowSharingService', () => {
 			expect(sharedWorkflowIds).toContain(workflow1.id);
 			expect(sharedWorkflowIds).not.toContain(workflow2.id);
 		});
+
+		it('should filter by projectId for a member with access to the project', async () => {
+			//
+			// ARRANGE
+			//
+			const project1 = await projectService.createTeamProject(member, { name: 'Project A' });
+			const project2 = await projectService.createTeamProject(member, { name: 'Project B' });
+			const workflow1 = await createWorkflow(undefined, project1);
+			const workflow2 = await createWorkflow(undefined, project2);
+
+			//
+			// ACT
+			//
+			const sharedWorkflowIds = await workflowSharingService.getSharedWorkflowIds(member, {
+				scopes: ['workflow:read'],
+				projectId: project1.id,
+			});
+
+			//
+			// ASSERT
+			//
+			expect(sharedWorkflowIds).toContain(workflow1.id);
+			expect(sharedWorkflowIds).not.toContain(workflow2.id);
+		});
+
+		it('should return empty list when member filters by a project they have no access to', async () => {
+			//
+			// ARRANGE
+			//
+			const memberProject = await projectService.createTeamProject(member, {
+				name: 'Member Project',
+			});
+			const otherProject = await projectService.createTeamProject(anotherMember, {
+				name: 'Other Project',
+			});
+			await createWorkflow(undefined, memberProject);
+			await createWorkflow(undefined, otherProject);
+
+			//
+			// ACT
+			//
+			const sharedWorkflowIds = await workflowSharingService.getSharedWorkflowIds(member, {
+				scopes: ['workflow:read'],
+				projectId: otherProject.id,
+			});
+
+			//
+			// ASSERT
+			//
+			expect(sharedWorkflowIds).toHaveLength(0);
+		});
+
+		it('should return empty list when member filters by a nonexistent project ID', async () => {
+			//
+			// ARRANGE
+			//
+			const project = await projectService.createTeamProject(member, {
+				name: 'Existing Project',
+			});
+			await createWorkflow(undefined, project);
+
+			//
+			// ACT
+			//
+			const sharedWorkflowIds = await workflowSharingService.getSharedWorkflowIds(member, {
+				scopes: ['workflow:read'],
+				projectId: 'nonexistent-project-id-12345',
+			});
+
+			//
+			// ASSERT
+			//
+			expect(sharedWorkflowIds).toHaveLength(0);
+		});
+
+		it('should return all accessible workflows when no projectId is provided for a member', async () => {
+			//
+			// ARRANGE
+			//
+			const project1 = await projectService.createTeamProject(member, {
+				name: 'Member Project X',
+			});
+			const project2 = await projectService.createTeamProject(member, {
+				name: 'Member Project Y',
+			});
+			const workflow1 = await createWorkflow(undefined, project1);
+			const workflow2 = await createWorkflow(undefined, project2);
+
+			//
+			// ACT
+			//
+			const sharedWorkflowIds = await workflowSharingService.getSharedWorkflowIds(member, {
+				scopes: ['workflow:read'],
+			});
+
+			//
+			// ASSERT
+			//
+			expect(sharedWorkflowIds).toContain(workflow1.id);
+			expect(sharedWorkflowIds).toContain(workflow2.id);
+		});
 	});
 });
