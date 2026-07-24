@@ -1,7 +1,13 @@
+packages/frontend/editor-ui/src/app/constants/localStorage.ts
+  s_91f67565918eee::t_4d1de849a605b1 36-37
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewRequired.store.test.ts
+  s_abf81efdb80d12::t_0f8d9e165b3bb3 4,7-15,18-20,51-58
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewRequired.store.ts
+  s_abf81efdb80d12::t_7505a5f2dfaf8a 5,8,10
 ---
 {
   "schema_version": "authorship/3.0.0",
-  "git_ai_version": "1.6.14",
+  "git_ai_version": "1.6.16",
   "base_commit_sha": "6f0a66813592eed66db3de8b8cba40c7290dc08a",
   "prompts": {},
   "humans": {
@@ -10,27 +16,19 @@
     }
   },
   "sessions": {
-    "s_70e4a16a672757": {
+    "s_91f67565918eee": {
       "agent_id": {
-        "tool": "codex",
-        "id": "019f79e6-9f5d-7b91-b07b-a2c76974c292",
-        "model": "gpt-5.6-sol"
+        "tool": "claude",
+        "id": "36f4874d-45bc-43d2-bd2d-9c16d23d9c95",
+        "model": "claude-opus-4-8"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
-    "s_b6381fbb8ddc64": {
+    "s_abf81efdb80d12": {
       "agent_id": {
         "tool": "claude",
-        "id": "7dd02182-97ab-4180-9c8a-8d5054fdd2f7",
-        "model": "claude-fable-5"
-      },
-      "human_author": null
-    },
-    "s_c2503c0608a3df": {
-      "agent_id": {
-        "tool": "codex",
-        "id": "019f7ea4-b00f-7082-ab26-2894ae42cef2",
-        "model": "gpt-5.6-sol"
+        "id": "862ff03d-0d2b-46dc-9c15-ac812b44f63f",
+        "model": "claude-opus-4-8"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     }
