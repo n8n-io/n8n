@@ -11,6 +11,14 @@ export type {
 	WorkflowGraph,
 } from './graph';
 
+export type {
+	ExternalDependencies,
+	IStepExecutor,
+	StepExecutionContext,
+	StepExecutionRequest,
+	StepExecutionResult,
+} from './dependencies';
+
 export { AllowAllAdmittance, AdmittanceRejectedError } from './admittance';
 export type {
 	AdmittanceDecision,
