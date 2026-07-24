@@ -273,6 +273,13 @@ export interface FrontendSettings {
 		 */
 		collectionsEnabled: boolean;
 		/**
+		 * Operator override (`N8N_CONFIG_EVALS_ENABLED`) that force-enables the
+		 * config-based evals surface. Surfaced here so the in-editor gate works
+		 * even when the browser PostHog client is disabled (telemetry off), where
+		 * the `088_config_evaluations` flag would otherwise never resolve.
+		 */
+		configEvalsEnabled: boolean;
+		/**
 		 * Operator override (`N8N_AGENT_EVALS_ENABLED`) that force-enables the
 		 * agent-evals surface. Surfaced here so the frontend gate works even when
 		 * the in-browser PostHog client is disabled (telemetry off), where the

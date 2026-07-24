@@ -1,20 +1,42 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { NeededNodeType } from '@n8n/task-runner';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { Dirent } from 'fs';
 import { readdir, readFile } from 'fs/promises';
-import { RoutingNode } from 'n8n-core';
+import { RoutingNode, UnrecognizedNodeTypeError } from 'n8n-core';
 import type { ExecuteContext } from 'n8n-core';
 import type { INodeType, INodeTypeDescription, INodeTypes, IVersionedNodeType } from 'n8n-workflow';
-import { deepCopy, NodeHelpers, UnexpectedError, UserError } from 'n8n-workflow';
+import { deepCopy, isHitlToolType, NodeHelpers, UnexpectedError, UserError } from 'n8n-workflow';
 import { join, dirname } from 'path';
 
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
 import { convertNodeToAiTool, convertNodeToHitlTool } from './tool-generation';
-import { shouldAssignExecuteMethod, stripToolSuffix } from './utils';
+import { satisfiesToolCapability, shouldAssignExecuteMethod, stripToolSuffix } from './utils';
 
 @Service()
 export class NodeTypes implements INodeTypes {
-	constructor(private readonly loadNodesAndCredentials: LoadNodesAndCredentials) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+	) {}
+
+	/**
+	 * Resolves a tool-variant name (`…Tool`/`…HitlTool`) to the base node type it
+	 * is synthesized from, unless a real node with that name exists on disk.
+	 *
+	 * A "synthetic tool" has no implementation of its own: workflows persist
+	 * names like `gmailTool`, and the registry fabricates that node on demand by
+	 * converting the `gmail` base node into an agent tool.
+	 */
+	private resolveBaseName(nodeTypeName: string): { baseName: string; isSyntheticTool: boolean } {
+		const isSyntheticTool =
+			nodeTypeName.endsWith('Tool') && !this.loadNodesAndCredentials.recognizesNode(nodeTypeName);
+		return {
+			baseName: isSyntheticTool ? stripToolSuffix(nodeTypeName) : nodeTypeName,
+			isSyntheticTool,
+		};
+	}
 
 	/**
 	 * Variant of `getByNameAndVersion` that includes the node's source path, used to locate a node's translations.
@@ -65,23 +87,20 @@ export class NodeTypes implements INodeTypes {
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		const origType = nodeType;
 
-		const toolRequested = nodeType.endsWith('Tool');
+		const { baseName, isSyntheticTool } = this.resolveBaseName(nodeType);
 
 		// If an existing node name ends in `Tool`, then return that node, instead of creating a fake Tool node
-		if (toolRequested && this.loadNodesAndCredentials.recognizesNode(nodeType)) {
+		if (nodeType.endsWith('Tool') && !isSyntheticTool) {
 			const node = this.loadNodesAndCredentials.getNode(nodeType);
 			return NodeHelpers.getVersionedNodeType(node.type, version);
 		}
 
-		// Make sure the nodeType to actually get from disk is the un-wrapped type
-		if (toolRequested) {
-			nodeType = stripToolSuffix(nodeType);
-		}
-
-		const node = this.loadNodesAndCredentials.getNode(nodeType);
+		const node = this.loadNodesAndCredentials.getNode(baseName);
 		const versionedNodeType = NodeHelpers.getVersionedNodeType(node.type, version);
-		if (toolRequested && typeof versionedNodeType.supplyData === 'function') {
-			throw new UnexpectedError('Node already has a `supplyData` method', { extra: { nodeType } });
+		if (isSyntheticTool && typeof versionedNodeType.supplyData === 'function') {
+			throw new UnexpectedError('Node already has a `supplyData` method', {
+				extra: { nodeType: baseName },
+			});
 		}
 
 		if (shouldAssignExecuteMethod(versionedNodeType)) {
@@ -92,18 +111,17 @@ export class NodeTypes implements INodeTypes {
 			};
 		}
 
-		if (!toolRequested) return versionedNodeType;
+		if (!isSyntheticTool) return versionedNodeType;
 
 		const { loadedNodes } = this.loadNodesAndCredentials;
 		if (origType in loadedNodes) {
 			return loadedNodes[origType].type as INodeType;
 		}
 
-		// Check if this is an HITL tool (ends with 'HitlTool')
-		const isHitlTool = origType.endsWith('HitlTool');
+		const isHitlTool = isHitlToolType(origType);
 
-		if (!isHitlTool && !versionedNodeType.description.usableAsTool) {
-			throw new UserError('Node cannot be used as a tool', { extra: { nodeType } });
+		if (!satisfiesToolCapability(origType, versionedNodeType)) {
+			throw new UserError('Node cannot be used as a tool', { extra: { nodeType: baseName } });
 		}
 
 		// Instead of modifying the existing type, we extend it into a new type object
@@ -126,6 +144,49 @@ export class NodeTypes implements INodeTypes {
 
 	getKnownTypes() {
 		return this.loadNodesAndCredentials.knownNodes;
+	}
+
+	/**
+	 * The `typeVersion`s this instance can resolve for a node type. Returns
+	 * `undefined` when the type is unknown or fails to load (a warning is logged
+	 * for anything but a plain unrecognized type), and `[]` when the type exists
+	 * but no version satisfies the request — e.g. a synthetic tool name (`…Tool`)
+	 * whose base node cannot be used as a tool (`…HitlTool` has no such
+	 * requirement). Unlike `getByNameAndVersion`, never registers synthetic tools
+	 * or mutates the registry, though resolving a known type may trigger its lazy
+	 * module load.
+	 */
+	getSupportedVersions(nodeTypeName: string): number[] | undefined {
+		// The whole resolution runs fail-closed: name lookups use `in`, so a
+		// hostile name (e.g. `n8n-nodes-base.constructor`) can surface
+		// prototype-chain values that throw at any of the reads below. Fold any
+		// such failure into "unknown type" instead of failing the caller.
+		try {
+			const { baseName, isSyntheticTool } = this.resolveBaseName(nodeTypeName);
+
+			const { type } = this.loadNodesAndCredentials.getNode(baseName);
+
+			if ('nodeVersions' in type) {
+				return Object.entries(type.nodeVersions)
+					.filter(
+						([, versioned]) => !isSyntheticTool || satisfiesToolCapability(nodeTypeName, versioned),
+					)
+					.map(([version]) => Number(version));
+			}
+
+			if (isSyntheticTool && !satisfiesToolCapability(nodeTypeName, type)) return [];
+
+			const { version } = type.description;
+			return Array.isArray(version) ? [...version] : [version];
+		} catch (error) {
+			if (!(error instanceof UnrecognizedNodeTypeError)) {
+				this.logger.warn('Failed to resolve node type while listing supported versions', {
+					nodeType: nodeTypeName,
+					error: ensureError(error).message,
+				});
+			}
+			return undefined;
+		}
 	}
 
 	async getNodeTranslationPath({
@@ -172,9 +233,7 @@ export class NodeTypes implements INodeTypes {
 
 	getNodeTypeDescriptions(nodeTypes: NeededNodeType[]): INodeTypeDescription[] {
 		return nodeTypes.map(({ name: nodeTypeName, version: nodeTypeVersion }) => {
-			const isSyntheticTool =
-				nodeTypeName.endsWith('Tool') && !this.loadNodesAndCredentials.recognizesNode(nodeTypeName);
-			const baseName = isSyntheticTool ? stripToolSuffix(nodeTypeName) : nodeTypeName;
+			const { baseName, isSyntheticTool } = this.resolveBaseName(nodeTypeName);
 
 			const nodeType = this.loadNodesAndCredentials.getNode(baseName);
 			const { description } = NodeHelpers.getVersionedNodeType(nodeType.type, nodeTypeVersion);
@@ -201,7 +260,7 @@ export class NodeTypes implements INodeTypes {
 		nodeTypeName: string,
 		description: INodeTypeDescription,
 	): INodeTypeDescription {
-		if (nodeTypeName.endsWith('HitlTool')) {
+		if (isHitlToolType(nodeTypeName)) {
 			return convertNodeToHitlTool({ description: deepCopy(description) }).description;
 		}
 

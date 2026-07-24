@@ -75,7 +75,11 @@ describe('NewAgentView', () => {
 			agent_id: 'agent-1',
 			source: 'create_blank',
 		});
-		expect(mocks.syncThread).toHaveBeenCalledWith('thread-1', 'project-1');
+		expect(mocks.syncThread).toHaveBeenCalledWith('thread-1', 'project-1', {
+			source: 'agent_builder_page',
+			origin: 'internal',
+			sourceContext: { agentId: 'agent-1' },
+		});
 		expect(mocks.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
 			instanceAiAgentBuilderTarget: {
 				agentId: 'agent-1',

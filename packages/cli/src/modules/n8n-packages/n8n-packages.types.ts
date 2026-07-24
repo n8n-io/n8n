@@ -45,6 +45,13 @@ export const FolderConflictPolicy = {
 	Fail: 'fail',
 } as const;
 
+export const MissingNodeTypeMode = {
+	/** Fails the import when any workflow uses a node type or version this instance does not have. */
+	Fail: 'fail',
+	/** Imports anyway; workflows containing missing node types are never published. */
+	ImportAnyway: 'import-anyway',
+} as const;
+
 export const MissingWorkflowDependencyPolicy = {
 	/** Fails the export when a workflow dependency is not included. */
 	Fail: 'fail',
@@ -75,7 +82,7 @@ export const DataTableSchemaConflictPolicy = {
 	Fail: 'fail',
 } as const;
 
-export const VariableMissingPolicy = {
+export const VariableMissingMode = {
 	/** Imports workflows even when referenced variables are absent. Nothing is created; unresolved names are reported as warnings in the response. */
 	DoNothing: 'do-nothing',
 	/** Blocks the import unless every referenced variable already resolves in the target project or global scope. */
@@ -90,6 +97,8 @@ export type WorkflowIdPolicy = (typeof WorkflowIdPolicy)[keyof typeof WorkflowId
 
 export type FolderConflictPolicy = (typeof FolderConflictPolicy)[keyof typeof FolderConflictPolicy];
 
+export type MissingNodeTypeMode = (typeof MissingNodeTypeMode)[keyof typeof MissingNodeTypeMode];
+
 export type MissingWorkflowDependencyPolicy =
 	(typeof MissingWorkflowDependencyPolicy)[keyof typeof MissingWorkflowDependencyPolicy];
 
@@ -101,8 +110,7 @@ export type DataTableMissingMode = (typeof DataTableMissingMode)[keyof typeof Da
 export type DataTableSchemaConflictPolicy =
 	(typeof DataTableSchemaConflictPolicy)[keyof typeof DataTableSchemaConflictPolicy];
 
-export type VariableMissingPolicy =
-	(typeof VariableMissingPolicy)[keyof typeof VariableMissingPolicy];
+export type VariableMissingMode = (typeof VariableMissingMode)[keyof typeof VariableMissingMode];
 
 export interface ExportPackageRequest {
 	user: User;
@@ -136,6 +144,7 @@ export type ImportWorkflowProperties = {
 	workflowConflictPolicy: WorkflowConflictPolicy;
 	workflowPublishingPolicy: WorkflowPublishingPolicy;
 	workflowIdPolicy: WorkflowIdPolicy;
+	missingNodeTypeMode: MissingNodeTypeMode;
 };
 
 export type ImportFolderProperties = {
@@ -149,7 +158,7 @@ export type ImportDataTableProperties = {
 };
 
 export type ImportVariableProperties = {
-	variableMissingPolicy: VariableMissingPolicy;
+	variableMissingMode: VariableMissingMode;
 };
 
 /**
@@ -261,7 +270,14 @@ export type BlockingIssue =
 	  }
 	| ({ type: 'folder-conflict' } & FolderConflict)
 	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
-	| ({ type: 'variable-unresolved' } & VariableResolutionFailure);
+	| ({ type: 'variable-unresolved' } & VariableResolutionFailure)
+	| {
+			type: 'missing-node-type';
+			/** Node type this instance cannot resolve (at least not at `typeVersion`). */
+			nodeType: string;
+			typeVersion: number;
+			usedByWorkflows: string[];
+	  };
 
 export interface FolderConflict {
 	kind: 'parent-mismatch' | 'id-in-other-project' | 'fail-policy';

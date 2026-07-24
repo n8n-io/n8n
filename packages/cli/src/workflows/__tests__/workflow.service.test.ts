@@ -22,6 +22,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
+import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
 import type { EventService } from '@/events/event.service';
 import type { ExternalHooks } from '@/external-hooks';
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
@@ -1257,6 +1258,49 @@ describe('WorkflowService', () => {
 			);
 			// in-memory teardown is left to the leader, not run here
 			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
+		});
+
+		test('deactivation blocked by hook leaves the workflow published', async () => {
+			const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			externalHooksMock.run.mockRejectedValue(new Error('Code freeze in effect'));
+
+			const user = mock<User>();
+
+			await expect(workflowService.deactivateWorkflow(user, WORKFLOW_ID)).rejects.toBeInstanceOf(
+				WorkflowDeactivationBadRequestError,
+			);
+
+			expect(workflow.active).toBe(true);
+			expect(workflow.activeVersionId).toBe(PREVIOUS_VERSION_ID);
+			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
+			expect(workflowRepositoryMock.update).not.toHaveBeenCalled();
+			expect(workflowPublishHistoryRepositoryMock.addRecord).not.toHaveBeenCalled();
+		});
+
+		test('hook receives the workflow being deactivated', async () => {
+			const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			externalHooksMock.run.mockResolvedValue(undefined);
+
+			const user = mock<User>();
+
+			await workflowService.deactivateWorkflow(user, WORKFLOW_ID);
+
+			expect(externalHooksMock.run).toHaveBeenCalledWith('workflow.deactivate', [workflow]);
+		});
+
+		test('does not run the hook when the workflow is already inactive', async () => {
+			const workflow = makeWorkflowEntity({ active: false, activeVersionId: null });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			const user = mock<User>();
+
+			await workflowService.deactivateWorkflow(user, WORKFLOW_ID);
+
+			expect(externalHooksMock.run).not.toHaveBeenCalled();
 		});
 	});
 

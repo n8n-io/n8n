@@ -46,7 +46,11 @@ onMounted(async () => {
 			source: 'create_blank',
 		});
 		const threadId = uuidv4();
-		await instanceAiStore.syncThread(threadId, projectId);
+		await instanceAiStore.syncThread(threadId, projectId, {
+			source: 'agent_builder_page',
+			origin: 'internal',
+			sourceContext: { agentId: agent.id },
+		});
 		await instanceAiStore.updateThreadMetadata(threadId, {
 			[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
 				agentId: agent.id,

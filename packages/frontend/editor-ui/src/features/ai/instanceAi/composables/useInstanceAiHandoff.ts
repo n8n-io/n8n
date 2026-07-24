@@ -81,6 +81,7 @@ export function buildInstanceAiAgentPreviewHandoffContext(params: {
 	agentName?: string;
 	agentIcon?: string;
 	sessionTitle?: string;
+	executionId?: string;
 }): InstanceAiHandoffContext {
 	return {
 		source: 'agent-preview',
@@ -89,6 +90,7 @@ export function buildInstanceAiAgentPreviewHandoffContext(params: {
 		...(params.agentName ? { agentName: params.agentName } : {}),
 		...(params.agentIcon ? { agentIcon: params.agentIcon } : {}),
 		...(params.sessionTitle ? { sessionTitle: params.sessionTitle } : {}),
+		...(params.executionId ? { executionId: params.executionId } : {}),
 	};
 }
 
@@ -185,7 +187,7 @@ export async function ensurePersonalProjectId(): Promise<string | null> {
 export async function provisionLaunchedThread(
 	projectId: string,
 	payload: PendingFirstMessage,
-	launch?: InstanceAiThreadLaunch,
+	launch: InstanceAiThreadLaunch,
 ): Promise<string | null> {
 	const threadId = uuidv4();
 	try {
@@ -200,7 +202,7 @@ export async function provisionLaunchedThread(
 export async function provisionContextOnlyThread(
 	projectId: string,
 	context: InstanceAiHandoffContext,
-	launch?: InstanceAiThreadLaunch,
+	launch: InstanceAiThreadLaunch,
 ): Promise<string | null> {
 	const threadId = uuidv4();
 	try {
@@ -225,13 +227,16 @@ export function useInstanceAiHandoff() {
 	const router = useRouter();
 	const toast = useToast();
 
-	async function openAgentArtifactThread(attachment: InstanceAiAgentAttachment): Promise<boolean> {
+	async function openAgentArtifactThread(
+		attachment: InstanceAiAgentAttachment,
+		launch: InstanceAiThreadLaunch,
+	): Promise<boolean> {
 		if (handoffInFlight) return false;
 		handoffInFlight = true;
 		try {
 			const threadId = uuidv4();
 			try {
-				await instanceAiStore.syncThread(threadId, attachment.projectId);
+				await instanceAiStore.syncThread(threadId, attachment.projectId, launch);
 				await instanceAiStore.updateThreadMetadata(threadId, {
 					[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
 						agentId: attachment.id,
@@ -254,16 +259,16 @@ export function useInstanceAiHandoff() {
 	async function openThreadWithContext(
 		projectId: string,
 		context: InstanceAiHandoffContext,
+		launch: InstanceAiThreadLaunch,
 		options?: {
 			newTab?: boolean;
-			launch?: InstanceAiThreadLaunch;
 		},
 	): Promise<boolean> {
 		if (handoffInFlight) return false;
 		handoffInFlight = true;
 		try {
 			const tab = options?.newTab ? window.open('', '_blank') : null;
-			const threadId = await provisionContextOnlyThread(projectId, context, options?.launch);
+			const threadId = await provisionContextOnlyThread(projectId, context, launch);
 			if (!threadId) {
 				tab?.close();
 				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
@@ -284,12 +289,12 @@ export function useInstanceAiHandoff() {
 	async function startThread(
 		projectId: string,
 		message: string,
+		launch: InstanceAiThreadLaunch,
 		attachments?: InstanceAiResourceAttachment[],
 		prepare?: (threadId: string) => void,
 		options?: {
 			newTab?: boolean;
 			context?: InstanceAiHandoffContext;
-			launch?: InstanceAiThreadLaunch;
 		},
 	): Promise<void> {
 		// Drop re-entrant clicks — each call mints a fresh thread, so spam would duplicate.
@@ -304,7 +309,7 @@ export function useInstanceAiHandoff() {
 				const threadId = await provisionLaunchedThread(
 					projectId,
 					{ message, attachments, context: options?.context },
-					options?.launch,
+					launch,
 				);
 				if (!threadId) {
 					tab?.close();
@@ -319,7 +324,7 @@ export function useInstanceAiHandoff() {
 			// Same tab: send through a runtime seeded here, which survives the navigation.
 			const threadId = uuidv4();
 			try {
-				await instanceAiStore.syncThread(threadId, projectId, options?.launch);
+				await instanceAiStore.syncThread(threadId, projectId, launch);
 			} catch {
 				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
 				return;

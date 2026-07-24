@@ -54,7 +54,7 @@ import { LimitWorkflowVersionTriggerToContent1784000000003 } from './17840000000
 import { AddProjectIdToInstanceAiThread1784000000028 } from './1784000000028-AddProjectIdToInstanceAiThread';
 import { AddExecutionEntityWorkflowStatusIndex1784000000031 } from './1784000000031-AddExecutionEntityWorkflowStatusIndex';
 import { CreateWorkflowStatisticsDeltaTable1784000000043 } from './1784000000043-CreateWorkflowStatisticsDeltaTable';
-import { ChangeInstalledNodeVersionType1784716360735 } from './1784716360735-ChangeInstalledNodeVersionType';
+import { ChangeInstalledNodeVersionType1784889468000 } from './1784889468000-ChangeInstalledNodeVersionType';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -227,6 +227,8 @@ import { AddScheduledTaskDispatchedAt1784000000049 } from '../common/17840000000
 import { AddHostRunIdToInstanceAiCheckpoints1784000000050 } from '../common/1784000000050-AddHostRunIdToInstanceAiCheckpoints';
 import { BackfillInstanceAiEventLog1784000000051 } from '../common/1784000000051-BackfillInstanceAiEventLog';
 import { CreateWorkflowReviewRequestTables1784000000052 } from '../common/1784000000052-CreateWorkflowReviewRequestTables';
+import { AddStoredAtToAgentExecution1784815940110 } from '../common/1784815940110-AddStoredAtToAgentExecution';
+import { AddInstanceCredentials1784815940111 } from '../common/1784815940111-AddInstanceCredentials';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -458,5 +460,7 @@ export const postgresMigrations: Migration[] = [
 	AddHostRunIdToInstanceAiCheckpoints1784000000050,
 	BackfillInstanceAiEventLog1784000000051,
 	CreateWorkflowReviewRequestTables1784000000052,
-	ChangeInstalledNodeVersionType1784716360735,
+	AddStoredAtToAgentExecution1784815940110,
+	AddInstanceCredentials1784815940111,
+	ChangeInstalledNodeVersionType1784889468000,
 ];

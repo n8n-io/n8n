@@ -72,16 +72,38 @@ describe('OAuthClientsTable', () => {
 	});
 
 	describe('Empty state', () => {
-		it('should render empty state when clients array is empty', () => {
-			const { getByTestId } = createComponent({
+		it('should show only the empty state (no toolbar/table) when there are no clients', () => {
+			const { getByTestId, queryByTestId } = createComponent({
 				props: {
 					clients: [],
 					loading: false,
 				},
 			});
 
-			expect(getByTestId('mcp-workflow-table-empty-state')).toBeVisible();
-			expect(getByTestId('mcp-workflow-table-empty-state-description')).toBeVisible();
+			const empty = getByTestId('mcp-clients-empty');
+			expect(empty).toBeVisible();
+			expect(empty).toHaveTextContent('No clients connected yet');
+			expect(empty).toHaveTextContent('Clients you connect will appear here');
+			// The tabs, search/filters and table are hidden when there are no clients.
+			expect(queryByTestId('mcp-clients-search')).not.toBeInTheDocument();
+			expect(queryByTestId('oauth-clients-data-table')).not.toBeInTheDocument();
+		});
+
+		it('should keep the tabs for a manager with no own clients but clients under All', () => {
+			mockHasScope.mockReturnValue(true);
+			mockMcpStore.oauthClientTotals = { mine: 0, all: 3 };
+
+			const { getByTestId, queryByTestId } = createComponent({
+				props: {
+					// The Mine view is empty, but clients exist under All.
+					clients: [],
+					loading: false,
+				},
+			});
+
+			// No standalone empty state: the tabs must stay so the manager can switch to All.
+			expect(queryByTestId('mcp-clients-empty')).not.toBeInTheDocument();
+			expect(getByTestId('mcp-clients-tabs')).toBeVisible();
 		});
 	});
 
@@ -234,24 +256,26 @@ describe('OAuthClientsTable', () => {
 			});
 		});
 
-		it('should show a no-results message when the filtered set is empty', async () => {
-			// the server matched nothing for the active search
-			mockMcpStore.oauthClientsCount = 0;
+		it('should show a no-results message when a search filters the set to empty', async () => {
+			// Start with a client so the toolbar (and its search) is available.
+			mockMcpStore.oauthClientsCount = 1;
 
-			const { getByTestId, queryByTestId } = createComponent({
+			const { getByTestId, rerender } = createComponent({
 				props: {
-					clients: [],
+					clients: [createOAuthClient({ name: 'Claude Code' })],
 					loading: false,
 				},
 			});
 
 			await userEvent.type(getByTestId('mcp-clients-search'), 'nothing matches this');
 
+			// The server matched nothing: the parent pushes an empty result set back.
+			mockMcpStore.oauthClientsCount = 0;
+			await rerender({ clients: [], loading: false });
+
 			await waitFor(() => {
 				expect(getByTestId('mcp-clients-no-results')).toBeVisible();
 			});
-			// the connect CTA is reserved for a genuinely empty client list
-			expect(queryByTestId('mcp-oauth-create-client-button')).not.toBeInTheDocument();
 		});
 	});
 
@@ -330,21 +354,19 @@ describe('OAuthClientsTable', () => {
 			const modal = document.querySelector('[data-test-id="mcp-client-details-modal"]');
 			expect(modal).not.toBeNull();
 
-			// granted scope tokens are grouped per resource, with read/write tags
-			const workflowGroup = within(modal as HTMLElement).getByTestId(
-				'mcp-client-details-group-workflow',
-			);
-			expect(workflowGroup).toHaveTextContent('Workflow');
-			expect(workflowGroup).toHaveTextContent('workflow:read');
-			expect(workflowGroup).toHaveTextContent('workflow:write');
-			expect(workflowGroup).toHaveTextContent('Read');
-			expect(workflowGroup).toHaveTextContent('Write');
-
-			const executionGroup = within(modal as HTMLElement).getByTestId(
-				'mcp-client-details-group-execution',
-			);
-			expect(executionGroup).toHaveTextContent('Execution');
-			expect(executionGroup).toHaveTextContent('execution:read');
+			// access is listed plainly, one human-readable line per granted scope
+			expect(
+				within(modal as HTMLElement).getByTestId('mcp-client-details-access'),
+			).toBeInTheDocument();
+			expect(
+				within(modal as HTMLElement).getByTestId('mcp-client-details-scope-workflow:read'),
+			).toBeInTheDocument();
+			expect(
+				within(modal as HTMLElement).getByTestId('mcp-client-details-scope-workflow:write'),
+			).toBeInTheDocument();
+			expect(
+				within(modal as HTMLElement).getByTestId('mcp-client-details-scope-execution:read'),
+			).toBeInTheDocument();
 		});
 
 		it('should emit revokeClient from the details modal revoke button', async () => {

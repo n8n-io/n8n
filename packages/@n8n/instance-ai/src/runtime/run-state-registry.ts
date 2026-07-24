@@ -1,7 +1,7 @@
 import type { InstanceAiThreadStatusResponse } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
-import type { InstanceAiTraceContext, ModelConfig } from '../types';
+import type { InstanceAiTraceContext, ModelConfig, OrchestrationContext } from '../types';
 import type {
 	InstanceAiLivenessPolicy,
 	InstanceAiLivenessSurface,
@@ -24,6 +24,10 @@ export interface ActiveRunState {
 export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	agentRunId: string;
 	agent: unknown;
+	/** The orchestration context the agent's tools closed over. Stored so a
+	 *  resume can rebind `tracing` to the new resume trace — spans emitted
+	 *  through the suspended turn's shut-down runtime export nothing. */
+	orchestrationContext?: OrchestrationContext;
 	threadId: string;
 	user: TUser;
 	toolCallId: string;

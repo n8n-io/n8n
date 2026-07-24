@@ -779,6 +779,30 @@ export class CredentialsService {
 	}
 
 	/**
+	 * Clears a credential's stored OAuth token (and its derived account
+	 * identifier), returning it to a disconnected state. The normal update path
+	 * deliberately carries `oauthTokenData` forward, so a "Disconnect" action on a
+	 * fixed OAuth credential needs this dedicated path.
+	 */
+	async clearOauthTokenData(credential: CredentialsEntity): Promise<void> {
+		// Decrypt via the core credential so a decryption failure aborts the
+		// disconnect. `this.decrypt` swallows CredentialDataError and returns `{}`,
+		// which would otherwise overwrite the whole credential with empty data.
+		const decryptedData = await createCredentialsFromCredentialsEntity(credential).getData();
+		delete decryptedData.oauthTokenData;
+		delete decryptedData.accountIdentifier;
+
+		const newCredentialData = await this.createEncryptedData({
+			id: credential.id,
+			name: credential.name,
+			type: credential.type,
+			data: decryptedData,
+		});
+
+		await this.update(credential.id, newCredentialData, decryptedData);
+	}
+
+	/**
 	 * Decrypts the credentials data and redacts the content by default.
 	 *
 	 * If `includeRawData` is set to true it will not redact the data.
@@ -1411,6 +1435,20 @@ export class CredentialsService {
 		}
 		await validateExternalSecretsPermissions({ user, projectId, dataToSave: data });
 		this.validateOAuthCredentialUrls(type, data);
+	}
+
+	/**
+	 * Whether a credential type is OAuth1 or OAuth2, including types that extend
+	 * them (e.g. `gmailOAuth2`).
+	 */
+	isOAuthCredentialType(type: string): boolean {
+		const parentTypes = this.credentialTypes.getParentTypes(type) ?? [];
+		return (
+			type === 'oAuth1Api' ||
+			type === 'oAuth2Api' ||
+			parentTypes.includes('oAuth1Api') ||
+			parentTypes.includes('oAuth2Api')
+		);
 	}
 
 	/**

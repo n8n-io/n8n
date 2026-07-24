@@ -18,7 +18,6 @@ import {
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
-	normalizeInstanceAiThreadSource,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -758,14 +757,11 @@ export class InstanceAiController {
 		const requestedThreadId = payload.threadId ?? randomUUID();
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
 
-		const launchMetadata =
-			payload.source !== undefined || payload.origin !== undefined
-				? {
-						source: normalizeInstanceAiThreadSource(payload.source),
-						origin: payload.origin ?? ('internal' as const),
-						sourceContext: payload.sourceContext,
-					}
-				: undefined;
+		const launchMetadata = {
+			source: payload.source,
+			origin: payload.origin ?? ('internal' as const),
+			sourceContext: payload.sourceContext,
+		};
 
 		try {
 			return await this.memoryService.ensureThread(
