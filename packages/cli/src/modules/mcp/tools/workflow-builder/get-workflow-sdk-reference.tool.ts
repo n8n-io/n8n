@@ -44,7 +44,7 @@ export const createGetWorkflowSdkReferenceTool = (
 	name: MCP_GET_SDK_REFERENCE_TOOL.toolName,
 	config: {
 		description:
-			'Required reference for building n8n Workflow SDK code. Call this BEFORE writing workflow code to learn workflow(), trigger()/node(), .add()/.to(), expr(), and credential patterns.',
+			'Required reference when building a workflow, and only then. Call this BEFORE writing workflow code to learn workflow(), trigger()/node(), .add()/.to(), expr(), and credential patterns.',
 		inputSchema,
 		outputSchema,
 		annotations: {

@@ -212,3 +212,21 @@ export async function buildMcpClientForServer(
 
 	return new McpClient([sdkServerConfig]);
 }
+
+/**
+ * Connect to an MCP server, list its tools, and close the connection.
+ * Verification handshake for the instance MCP's verify-server tool.
+ */
+export async function listMcpServerTools(
+	server: AgentJsonMcpServerConfig,
+	deps: BuildMcpClientDeps,
+): Promise<Array<{ name: string; description: string }>> {
+	let client: McpClient | undefined;
+	try {
+		client = await buildMcpClientForServer(server, deps);
+		const tools = await client.listTools();
+		return tools.map((tool) => ({ name: tool.name, description: tool.description ?? '' }));
+	} finally {
+		await client?.close().catch(() => {});
+	}
+}

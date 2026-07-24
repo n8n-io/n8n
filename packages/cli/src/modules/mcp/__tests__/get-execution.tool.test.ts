@@ -42,10 +42,10 @@ describe('get-execution MCP tool', () => {
 				telemetry,
 			);
 
-			expect(tool.name).toBe('get_execution');
+			expect(tool.name).toBe('get_workflow_execution');
 			expect(tool.config).toBeDefined();
 			expect(typeof tool.config.description).toBe('string');
-			expect(tool.config.description).toContain('Get execution details');
+			expect(tool.config.description).toContain('Get workflow execution details');
 			expect(tool.config.inputSchema).toBeDefined();
 			expect(tool.config.outputSchema).toBeDefined();
 			expect(typeof tool.handler).toBe('function');
@@ -187,7 +187,7 @@ describe('get-execution MCP tool', () => {
 					USER_CALLED_MCP_TOOL_EVENT,
 					expect.objectContaining({
 						user_id: 'user-1',
-						tool_name: 'get_execution',
+						tool_name: 'get_workflow_execution',
 						parameters: expect.objectContaining({
 							workflowId: 'workflow-1',
 							executionId: 'execution-1',

@@ -188,11 +188,14 @@ jobs:
           # instance-ai serves the verifier; mcp + mcp-registry are default modules,
           # so MCP is available (the eval CLI enables the *setting* per lane after
           # reset). No sandbox — the builder is `claude`, not the in-n8n agent.
+          # agents registers the agent-builder MCP tools so the suite measures
+          # workflow building with the production tool surface, catching
+          # tool-choice regressions the extra tools could introduce.
           for i in "${!PORTS[@]}"; do
             port="${PORTS[$i]}"
             docker run -d --name "n8n-eval-mcp-$((i + 1))" \
               -e E2E_TESTS=true \
-              -e N8N_ENABLED_MODULES=instance-ai \
+              -e N8N_ENABLED_MODULES=instance-ai,agents \
               -e N8N_AI_ENABLED=true \
               -e N8N_INSTANCE_AI_MODEL_API_KEY="$EVALS_ANTHROPIC_KEY" \
               -e N8N_AI_ASSISTANT_BASE_URL="" \

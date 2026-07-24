@@ -5,7 +5,7 @@ import {
 	MCP_APPS_VARIANT_ENABLED,
 	MCP_CANVAS_GROUPS_FLAG,
 } from '@n8n/api-types';
-import { LicenseState, Logger } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
 	ExecutionRepository,
@@ -14,7 +14,7 @@ import {
 	SharedWorkflowRepository,
 	User,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import {
 	registerMcpAppTool,
 	registerWorkflowPreviewApp,
@@ -80,7 +80,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
+import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
 import type { McpAppsTelemetryVariant, McpClientInfo, RegisterToolFn } from './mcp.types';
 import {
@@ -162,6 +162,7 @@ export class McpService {
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	/**
@@ -270,13 +271,22 @@ export class McpService {
 		const builderInstructionsEnabled =
 			builderEnabled &&
 			(allowedToolNames?.has(MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName) ?? true);
+		const agentsEnabled = builderEnabled && this.moduleRegistry.isActive('agents');
+		// Same rationale as builderInstructionsEnabled: a grant that cannot call
+		// the agent tools gets no agent build walkthrough.
+		const agentInstructionsEnabled =
+			agentsEnabled && (allowedToolNames?.has(MCP_CREATE_AGENT_TOOL_NAME) ?? true);
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',
-				version: builderEnabled ? '1.1.0' : '1.0.0',
+				version: agentsEnabled ? '1.2.0' : builderEnabled ? '1.1.0' : '1.0.0',
 			},
 			{
-				instructions: getMcpInstructions(builderInstructionsEnabled, n8nConnectAvailable),
+				instructions: getMcpInstructions(
+					builderInstructionsEnabled,
+					n8nConnectAvailable,
+					agentInstructionsEnabled,
+				),
 			},
 		);
 
@@ -454,6 +464,11 @@ export class McpService {
 				allowedToolNames,
 				clientInfo,
 			);
+		}
+
+		if (agentsEnabled) {
+			const { McpAgentToolsService } = await import('./tools/agents/agent-tools.service.js');
+			Container.get(McpAgentToolsService).registerTools(server, user);
 		}
 
 		return server;

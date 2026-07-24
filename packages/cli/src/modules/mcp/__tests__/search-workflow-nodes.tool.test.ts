@@ -57,7 +57,7 @@ describe('search-workflow-nodes MCP tool', () => {
 		const tool = createTool();
 		const result = await tool.handler({ queries: ['gmail', 'missing-node'] }, {} as never);
 
-		expect(nodeCatalogService.searchNodes).toHaveBeenCalledWith(['gmail', 'missing-node']);
+		expect(nodeCatalogService.searchNodes).toHaveBeenCalledWith(['gmail', 'missing-node'], {});
 		expect(result.content).toEqual([{ type: 'text', text: 'search-result' }]);
 		expect(result.structuredContent).toEqual({ results: 'search-result' });
 		expect(telemetry.track).toHaveBeenCalledWith(

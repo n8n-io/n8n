@@ -1,0 +1,1518 @@
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { CredentialProvider } from '@n8n/agents';
+import {
+	rejectIfDynamicSelectorUsesFromAi,
+	rejectIfEmptyInstructions,
+	rejectIfUnsupportedNativeWebSearch,
+	type AgentConfigValidationMessages,
+} from '@n8n/ai-utilities/agent-config';
+import {
+	AGENT_MODEL_PROVIDERS,
+	AgentIntegrationSchema,
+	AgentJsonConfigBaseSchema,
+	AgentJsonConfigSchema,
+	AgentTelegramSettingsSchema,
+	McpAuthenticationSchemaTypes,
+	agentSkillSchema,
+	agentTaskSchema,
+	sanitizeAgentJsonConfig,
+	type AgentJsonConfig,
+} from '@n8n/api-types';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
+import { ProjectRelationRepository, type User } from '@n8n/db';
+import { Service } from '@n8n/di';
+import type { Scope } from '@n8n/permissions';
+import { isRecord } from '@n8n/utils/is-record';
+import { UserError } from 'n8n-workflow';
+import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+
+import { CredentialsService } from '@/credentials/credentials.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { AgentConfigService } from '@/modules/agents/agent-config.service';
+import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
+import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integration-persistence.service';
+import { AgentModelCatalogService } from '@/modules/agents/agent-model-catalog.service';
+import { AgentPublishService } from '@/modules/agents/agent-publish.service';
+import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
+import { AgentTaskService } from '@/modules/agents/agent-task.service';
+import { AgentValidationService } from '@/modules/agents/agent-validation.service';
+import { AgentsService } from '@/modules/agents/agents.service';
+import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
+import type { Agent } from '@/modules/agents/entities/agent.entity';
+import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
+import { ChatIntegrationService } from '@/modules/agents/integrations/chat-integration.service';
+import { composeJsonConfig } from '@/modules/agents/json-config/agent-config-composition';
+import { listMcpServerTools } from '@/modules/agents/json-config/mcp-client-factory';
+import { sanitizeUnknownAgentCredentials } from '@/modules/agents/json-config/sanitize-unknown-agent-credentials';
+import { filterOfferedAgentModelProviders } from '@/modules/agents/model-catalog';
+import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
+import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
+import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { NodeTypes } from '@/node-types';
+import { OauthService } from '@/oauth/oauth.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
+import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
+
+import {
+	AGENT_BUILDER_GUIDE,
+	AGENT_BUILDER_REFERENCE,
+	AGENT_BUILDER_REFERENCE_URI,
+	AGENT_CONFIG_JSON_SCHEMA,
+} from './agent-reference';
+import { MCP_CREATE_AGENT_TOOL_NAME, USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+
+const MCP_SERVER_DISCOVERY_LIMIT = 20;
+
+const INTEGRATIONS_NOT_IN_CONFIG_MESSAGE =
+	'Integrations are a published runtime surface, not editable config. Use update_agent_integration to connect or disconnect Slack, Telegram, or Linear.';
+
+/** LLM-facing follow-up guidance for the MCP builder surface. */
+const MCP_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
+	emptyInstructionsFollowUp: 'retrying the mutation.',
+	dynamicSelectorFollowUp:
+		'Ask the user for the concrete value and write it into nodeParameters as a literal.',
+};
+
+function integrationsField(config: unknown): unknown {
+	return isRecord(config) ? config.integrations : undefined;
+}
+
+/**
+ * Collects the credential IDs that `sanitizeUnknownAgentCredentials` rewrote
+ * to `''` — the only change that sanitizer ever makes.
+ */
+function collectClearedCredentialIds(
+	original: unknown,
+	sanitized: unknown,
+	ids: Set<string>,
+): void {
+	if (Array.isArray(original) && Array.isArray(sanitized)) {
+		original.forEach((entry, index) => collectClearedCredentialIds(entry, sanitized[index], ids));
+		return;
+	}
+	if (!isRecord(original) || !isRecord(sanitized)) return;
+	for (const [key, value] of Object.entries(original)) {
+		if (typeof value === 'string' && value !== '' && sanitized[key] === '') {
+			ids.add(value);
+			continue;
+		}
+		collectClearedCredentialIds(value, sanitized[key], ids);
+	}
+}
+
+/**
+ * True when `next` alters the integrations array relative to `current`. Compared
+ * structurally rather than by patch path so no operation — including an
+ * ancestor or whole-document replace — can slip an integrations change through.
+ */
+function integrationsChanged(current: AgentJsonConfig, next: unknown): boolean {
+	return (
+		JSON.stringify(current.integrations ?? []) !== JSON.stringify(integrationsField(next) ?? [])
+	);
+}
+
+const TELEGRAM_SETTINGS_JSON_SCHEMA = zodToJsonSchema(AgentTelegramSettingsSchema);
+
+const httpUrlSchema = z
+	.string()
+	.url()
+	.refine((value) => /^https?:\/\//i.test(value), { message: 'Must be a valid HTTP(S) URL' });
+
+const agentIdentityShape = {
+	agentId: z.string().min(1).describe('Agent ID'),
+} satisfies z.ZodRawShape;
+
+const getAgentInput = {
+	...agentIdentityShape,
+	versionId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Read a published version snapshot instead of the draft, e.g. the activeVersionId. Snapshots are read-only, so the response has no configHash.',
+		),
+} satisfies z.ZodRawShape;
+
+const publishAgentInput = {
+	...agentIdentityShape,
+	versionId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Republish a previously published version instead of the current draft. The draft is left untouched.',
+		),
+} satisfies z.ZodRawShape;
+
+const revertAgentInput = {
+	...agentIdentityShape,
+	versionId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Published version to restore the draft from; defaults to the currently published version',
+		),
+} satisfies z.ZodRawShape;
+
+const listAgentVersionsInput = {
+	...agentIdentityShape,
+	limit: z.number().int().min(1).max(100).optional().default(20),
+	offset: z.number().int().min(0).optional().default(0),
+} satisfies z.ZodRawShape;
+
+const searchAgentsInput = {
+	projectId: z.string().min(1).optional().describe('Restrict results to one project'),
+	query: z.string().optional().describe('Filter by Agent name'),
+	publishedOnly: z.boolean().optional().default(false),
+	excludeAgentId: z.string().optional().describe('Agent ID to omit, useful for sub-agent search'),
+	limit: z.number().int().min(1).max(100).optional().default(50),
+} satisfies z.ZodRawShape;
+
+const initialAgentConfigSchema = AgentJsonConfigBaseSchema.omit({
+	name: true,
+	skills: true,
+	tasks: true,
+	// Integrations are managed only through update_agent_integration.
+	integrations: true,
+}).superRefine((config, ctx) => {
+	if (config.tools?.some((tool) => tool.type === 'custom')) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ['tools'],
+			message: 'Create custom tools with mutate_agent after creating the Agent',
+		});
+	}
+});
+
+const createAgentInput = {
+	projectId: z.string().min(1),
+	name: z.string().trim().min(1).max(128),
+	config: initialAgentConfigSchema
+		.optional()
+		.describe(
+			'Optional initial Agent config without name, skills, tasks, or custom tools. The top-level name is injected into the config.',
+		),
+} satisfies z.ZodRawShape;
+
+const jsonPatchValueSchema = z.union([
+	z.null(),
+	z.boolean(),
+	z.number(),
+	z.string(),
+	z.array(z.unknown()),
+	z.record(z.unknown()),
+]);
+
+const jsonPatchOperationSchema = z.discriminatedUnion('op', [
+	z.object({ op: z.literal('add'), path: z.string(), value: jsonPatchValueSchema }),
+	z.object({ op: z.literal('remove'), path: z.string() }),
+	z.object({ op: z.literal('replace'), path: z.string(), value: jsonPatchValueSchema }),
+	z.object({ op: z.literal('move'), from: z.string(), path: z.string() }),
+	z.object({ op: z.literal('copy'), from: z.string(), path: z.string() }),
+	z.object({ op: z.literal('test'), path: z.string(), value: jsonPatchValueSchema }),
+]);
+
+const mutationOperationSchema = z.discriminatedUnion('type', [
+	z.object({ type: z.literal('config.replace'), config: z.record(z.unknown()) }),
+	z.object({
+		type: z.literal('config.patch'),
+		patch: z.array(jsonPatchOperationSchema).min(1),
+	}),
+	z.object({
+		type: z.literal('skill.upsert'),
+		skillId: z.string().optional(),
+		skill: agentSkillSchema,
+	}),
+	z.object({ type: z.literal('skill.delete'), skillId: z.string().min(1) }),
+	z.object({
+		type: z.literal('task.upsert'),
+		taskId: z.string().optional(),
+		task: agentTaskSchema,
+		enabled: z.boolean().optional(),
+	}),
+	z.object({ type: z.literal('task.delete'), taskId: z.string().min(1) }),
+	z.object({ type: z.literal('customTool.upsert'), code: z.string().min(1) }),
+	z.object({ type: z.literal('customTool.delete'), toolId: z.string().min(1) }),
+]);
+
+const mutateAgentInput = {
+	...agentIdentityShape,
+	baseConfigHash: z
+		.string()
+		.min(1)
+		.describe('Latest configHash returned by get_agent or a successful mutation'),
+	operation: mutationOperationSchema,
+} satisfies z.ZodRawShape;
+
+const discoverAssetsInput = {
+	projectId: z.string().min(1),
+	kind: z.enum(['models', 'integrations', 'workflows', 'subagents', 'mcpServers']),
+	query: z
+		.string()
+		.trim()
+		.min(1)
+		.optional()
+		.describe('Optional filter for workflows, subagents, or MCP servers'),
+	provider: z
+		.enum(AGENT_MODEL_PROVIDERS)
+		.optional()
+		.describe('Model provider for kind=models; omit to get a provider summary without model lists'),
+	credentialId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('Accessible credential used to verify models for the selected provider'),
+	excludeAgentId: z.string().optional().describe('Agent to omit when kind=subagents'),
+} satisfies z.ZodRawShape;
+
+const verifyMcpServerInput = {
+	projectId: z.string().min(1),
+	name: z
+		.string()
+		.min(1)
+		.max(64)
+		.regex(/^[a-zA-Z0-9_-]+$/),
+	url: httpUrlSchema.describe('HTTP(S) MCP server endpoint'),
+	transport: z.enum(['sse', 'streamableHttp']).optional().default('streamableHttp'),
+	authentication: z
+		.union([McpAuthenticationSchemaTypes, z.string().endsWith('McpOAuth2Api')])
+		.optional()
+		.default('none')
+		.describe('Authentication method; every value other than none requires credential'),
+	credential: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('Accessible credential ID; required when authentication is not none'),
+	connectionTimeoutMs: z.number().int().min(1).max(120_000).optional(),
+} satisfies z.ZodRawShape;
+
+const updateIntegrationInput = {
+	...agentIdentityShape,
+	action: z.enum(['connect', 'disconnect']),
+	type: z.string().min(1).describe('Integration type returned by discover_agent_assets'),
+	credentialId: z.string().min(1).describe('Accessible credential for this integration'),
+	settings: z
+		.record(z.unknown())
+		.optional()
+		.describe('Integration settings; required for Telegram connect operations'),
+} satisfies z.ZodRawShape;
+
+const emptyInput = {} satisfies z.ZodRawShape;
+
+type SearchAgentsInput = z.infer<z.ZodObject<typeof searchAgentsInput>>;
+type CreateAgentInput = z.infer<z.ZodObject<typeof createAgentInput>>;
+type MutateAgentInput = z.infer<z.ZodObject<typeof mutateAgentInput>>;
+type DiscoverAssetsInput = z.infer<z.ZodObject<typeof discoverAssetsInput>>;
+type VerifyMcpServerInput = z.infer<z.ZodObject<typeof verifyMcpServerInput>>;
+type UpdateIntegrationInput = z.infer<z.ZodObject<typeof updateIntegrationInput>>;
+
+type MutationResource = {
+	type: 'skill' | 'task' | 'customTool';
+	id: string;
+};
+
+function toolResult(data: Record<string, unknown>, isError = false) {
+	return {
+		content: [{ type: 'text' as const, text: JSON.stringify(data) }],
+		structuredContent: data,
+		...(isError ? { isError: true } : {}),
+	};
+}
+
+@Service()
+export class McpAgentToolsService {
+	constructor(
+		private readonly telemetry: Telemetry,
+		private readonly credentialsService: CredentialsService,
+		private readonly agentsService: AgentsService,
+		private readonly agentConfigService: AgentConfigService,
+		private readonly agentValidationService: AgentValidationService,
+		private readonly agentPublishService: AgentPublishService,
+		private readonly agentSkillsService: AgentSkillsService,
+		private readonly agentTaskService: AgentTaskService,
+		private readonly agentCustomToolsService: AgentCustomToolsService,
+		private readonly agentSecureRuntime: AgentSecureRuntime,
+		private readonly integrationPersistenceService: AgentIntegrationPersistenceService,
+		private readonly chatIntegrationService: ChatIntegrationService,
+		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
+		private readonly agentModelCatalogService: AgentModelCatalogService,
+		private readonly attachableWorkflowsService: AttachableWorkflowsService,
+		private readonly mcpRegistryService: McpRegistryService,
+		private readonly nodeTypes: NodeTypes,
+		private readonly oauthService: OauthService,
+		private readonly outboundHttp: OutboundHttp,
+		private readonly ssrfConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly urlService: UrlService,
+		private readonly projectRelationRepository: ProjectRelationRepository,
+	) {}
+
+	registerTools(server: McpServer, user: User): void {
+		this.register(server, this.searchAgentsTool(user));
+		this.register(server, this.getAgentTool(user));
+		this.register(server, this.createAgentTool(user));
+		this.register(server, this.mutateAgentTool(user));
+		this.register(server, this.validateAgentTool(user));
+		this.register(server, this.publishAgentTool(user));
+		this.register(server, this.unpublishAgentTool(user));
+		this.register(server, this.revertAgentTool(user));
+		this.register(server, this.listAgentVersionsTool(user));
+		this.register(server, this.deleteAgentTool(user));
+		this.register(server, this.discoverAssetsTool(user));
+		this.register(server, this.verifyMcpServerTool(user));
+		this.register(server, this.updateIntegrationTool(user));
+		this.register(server, this.referenceTool(user));
+
+		server.resource(
+			'agent-builder-reference',
+			AGENT_BUILDER_REFERENCE_URI,
+			{ description: 'Reference for creating and managing n8n Agents through MCP.' },
+			() => ({
+				contents: [
+					{
+						uri: AGENT_BUILDER_REFERENCE_URI,
+						mimeType: 'text/markdown',
+						text: AGENT_BUILDER_REFERENCE,
+					},
+				],
+			}),
+		);
+	}
+
+	private register<Input extends z.ZodRawShape>(
+		server: McpServer,
+		tool: ToolDefinition<Input>,
+	): void {
+		server.registerTool(tool.name, tool.config, tool.handler);
+	}
+
+	private searchAgentsTool(user: User): ToolDefinition<typeof searchAgentsInput> {
+		return {
+			name: 'search_agents',
+			config: {
+				description:
+					'Search Agents the current user can access. Use publishedOnly and excludeAgentId to discover saved sub-agents.',
+				inputSchema: searchAgentsInput,
+				annotations: {
+					title: 'Search Agents',
+					readOnlyHint: true,
+					destructiveHint: false,
+					idempotentHint: true,
+					openWorldHint: false,
+				},
+			},
+			handler: async (input: SearchAgentsInput) =>
+				await this.run(user, 'search_agents', { projectId: input.projectId }, async () => {
+					let projectIds: string[];
+					if (input.projectId) {
+						await this.assertScope(user, input.projectId, 'agent:list');
+						projectIds = [input.projectId];
+					} else {
+						projectIds = await this.listProjectIdsWithAgentList(user);
+					}
+					const agents = await this.agentsService.findSummariesInProjects(projectIds, {
+						query: input.query?.trim() || undefined,
+						publishedOnly: input.publishedOnly,
+						excludeAgentId: input.excludeAgentId,
+						limit: input.limit,
+					});
+					const data = agents.map((agent) => ({
+						id: agent.id,
+						name: agent.name,
+						projectId: agent.projectId,
+						published: agent.activeVersionId !== null,
+						updatedAt: agent.updatedAt.toISOString(),
+					}));
+					return { ok: true, data, count: data.length };
+				}),
+		};
+	}
+
+	private getAgentTool(user: User): ToolDefinition<typeof getAgentInput> {
+		return {
+			name: 'get_agent',
+			config: {
+				description:
+					'Read an Agent draft, sidecar resources, runnable state, and configHash. Call before mutate_agent. Pass versionId to inspect a published version snapshot instead of the draft.',
+				inputSchema: getAgentInput,
+				annotations: {
+					title: 'Get Agent',
+					readOnlyHint: true,
+					destructiveHint: false,
+					idempotentHint: true,
+					openWorldHint: false,
+				},
+			},
+			handler: async ({ agentId, versionId }) =>
+				await this.run(
+					user,
+					'get_agent',
+					{ agentId, ...(versionId ? { versionId } : {}) },
+					async () => {
+						const agent = await this.resolveAgent(user, agentId);
+						await this.assertScope(user, agent.projectId, 'agent:read');
+						const snapshot = versionId
+							? await this.getAgentVersionSnapshot(agent.projectId, agentId, versionId)
+							: await this.getAgentSnapshot(user, agent);
+						return { ok: true, ...snapshot };
+					},
+				),
+		};
+	}
+
+	private createAgentTool(user: User): ToolDefinition<typeof createAgentInput> {
+		return {
+			name: MCP_CREATE_AGENT_TOOL_NAME,
+			config: {
+				description:
+					'Create an Agent draft, optionally with its initial model, credential, instructions, and ordinary tool configuration. Returns its n8n editor URL. Use mutate_agent afterward for skills, tasks, and custom tools.',
+				inputSchema: createAgentInput,
+				annotations: {
+					title: 'Create Agent',
+					readOnlyHint: false,
+					destructiveHint: false,
+					idempotentHint: false,
+					openWorldHint: false,
+				},
+			},
+			handler: async ({ projectId, name, config }: CreateAgentInput) =>
+				await this.run(user, 'create_agent', { projectId }, async () => {
+					await this.assertScope(user, projectId, 'agent:create');
+					const initialConfig = config ? { ...config, name } : undefined;
+					if (initialConfig) {
+						const validation = await this.agentConfigService.validateConfig(initialConfig);
+						if (!validation.valid) {
+							throw new UserError(`Invalid initial Agent config: ${validation.error}`);
+						}
+						await this.assertAccessibleCredentials(initialConfig, user, projectId);
+					}
+
+					const agent = await this.agentsService.create(projectId, name);
+					let configHash: string | null;
+					let versionId = agent.versionId;
+					try {
+						if (initialConfig) {
+							const result = await this.agentConfigService.updateConfig(
+								agent.id,
+								projectId,
+								initialConfig,
+								user,
+							);
+							configHash = getAgentConfigHash(result.config);
+							versionId = result.versionId;
+						} else {
+							configHash = await this.fetchConfigHash(projectId, agent.id);
+						}
+					} catch (error) {
+						await this.agentsService.delete(agent.id, projectId);
+						throw error;
+					}
+
+					return {
+						ok: true,
+						agent: {
+							id: agent.id,
+							name: agent.name,
+							projectId: agent.projectId,
+							published: false,
+							versionId,
+							activeVersionId: agent.activeVersionId,
+						},
+						configHash,
+						url: this.getAgentUrl(projectId, agent.id),
+					};
+				}),
+		};
+	}
+
+	private mutateAgentTool(user: User): ToolDefinition<typeof mutateAgentInput> {
+		return {
+			name: 'mutate_agent',
+			config: {
+				description:
+					'Apply one config, skill, task, or custom-tool mutation to an Agent draft. The operation fields sit directly on the operation object (no value wrapper), e.g. { "type": "config.patch", "patch": [...] }. Returns the next configHash for subsequent mutations.',
+				inputSchema: mutateAgentInput,
+				annotations: {
+					title: 'Mutate Agent',
+					readOnlyHint: false,
+					destructiveHint: true,
+					idempotentHint: false,
+					openWorldHint: false,
+				},
+			},
+			handler: async (input: MutateAgentInput) =>
+				await this.run(
+					user,
+					'mutate_agent',
+					{ agentId: input.agentId, type: input.operation.type },
+					async () => {
+						const agent = await this.resolveAgent(user, input.agentId);
+						const projectId = agent.projectId;
+						await this.assertScope(user, projectId, 'agent:update');
+						const config = this.configFromEntity(agent);
+						const configHash = getAgentConfigHash(config);
+						if (configHash !== input.baseConfigHash) {
+							return {
+								ok: false,
+								code: 'stale_config',
+								agentId: input.agentId,
+								configHash,
+								message: 'Call get_agent before retrying the mutation.',
+							};
+						}
+
+						const { resource, config: newConfig } = await this.applyMutation(
+							user,
+							input,
+							config,
+							projectId,
+						);
+						return {
+							ok: true,
+							agentId: input.agentId,
+							operation: input.operation.type,
+							configHash: newConfig
+								? getAgentConfigHash(newConfig)
+								: await this.fetchConfigHash(projectId, input.agentId),
+							...(resource ? { resource } : {}),
+						};
+					},
+				),
+		};
+	}
+
+	private validateAgentTool(user: User): ToolDefinition<typeof agentIdentityShape> {
+		return {
+			name: 'validate_agent',
+			config: {
+				description:
+					'Validate an Agent draft, sidecar references, and user-accessible credentials. Returns its n8n editor URL.',
+				inputSchema: agentIdentityShape,
+				annotations: {
+					title: 'Validate Agent',
+					readOnlyHint: true,
+					destructiveHint: false,
+					idempotentHint: true,
+					openWorldHint: false,
+				},
+			},
+			handler: async ({ agentId }) =>
+				await this.run(user, 'validate_agent', { agentId }, async () => {
+					const agent = await this.resolveAgent(user, agentId);
+					await this.assertScope(user, agent.projectId, 'agent:read');
+					return {
+						ok: true,
+						...(await this.validateAgent(user, agent)),
+						url: this.getAgentUrl(agent.projectId, agentId),
+					};
+				}),
+		};
+	}
+
+	private publishAgentTool(user: User): ToolDefinition<typeof publishAgentInput> {
+		return {
+			name: 'publish_agent',
+			config: {
+				description:
+					'Publish a valid Agent draft and activate its tasks and integrations. Pass versionId to republish a previously published version instead. Only call after the user explicitly requests or confirms publication; completing a build does not imply approval.',
+				inputSchema: publishAgentInput,
+				annotations: {
+					title: 'Publish Agent',
+					readOnlyHint: false,
+					destructiveHint: false,
+					idempotentHint: true,
+					openWorldHint: true,
+				},
+			},
+			handler: async ({ agentId, versionId }) =>
+				await this.run(
+					user,
+					'publish_agent',
+					{ agentId, ...(versionId ? { versionId } : {}) },
+					async () => {
+						const agent = await this.resolveAgent(user, agentId);
+						const projectId = agent.projectId;
+						await this.assertScope(user, projectId, 'agent:publish');
+						// Republishing a snapshot skips draft validation, mirroring the
+						// REST publish endpoint: the draft is not what goes live.
+						if (!versionId) {
+							const validation = await this.validateAgent(user, agent);
+							if (!validation.valid) {
+								throw new UserError(
+									`Agent is not runnable: ${[...validation.errors, ...validation.missing].join(', ')}`,
+								);
+							}
+						}
+						const { agent: publishedAgent } = await this.agentPublishService.publishAgent(
+							agentId,
+							projectId,
+							user,
+							versionId,
+						);
+						return {
+							ok: true,
+							agentId,
+							published: true,
+							versionId: publishedAgent.versionId,
+							activeVersionId: publishedAgent.activeVersionId,
+							url: this.getAgentUrl(projectId, agentId),
+						};
+					},
+				),
+		};
+	}
+
+	private revertAgentTool(user: User): ToolDefinition<typeof revertAgentInput> {
+		return {
+			name: 'revert_agent',
+			config: {
+				description:
+					'Restore an Agent draft from a published version, overwriting the draft config, skills, tasks, and custom tools. Does not publish. Inspect the version with get_agent first; the response returns the new configHash.',
+				inputSchema: revertAgentInput,
+				annotations: {
+					title: 'Revert Agent',
+					readOnlyHint: false,
+					destructiveHint: true,
+					idempotentHint: true,
+					openWorldHint: false,
+				},
+			},
+			handler: async ({ agentId, versionId }) =>
+				await this.run(
+					user,
+					'revert_agent',
+					{ agentId, ...(versionId ? { versionId } : {}) },
+					async () => {
+						const { projectId } = await this.resolveAgent(user, agentId);
+						await this.assertScope(user, projectId, 'agent:update');
+						const agent = versionId
+							? await this.agentPublishService.revertToVersion(agentId, projectId, versionId)
+							: await this.agentPublishService.revertToPublishedAgent(agentId, projectId);
+						return {
+							ok: true,
+							agentId,
+							versionId: agent.versionId,
+							activeVersionId: agent.activeVersionId,
+							configHash: getAgentConfigHash(this.configFromEntity(agent)),
+							url: this.getAgentUrl(projectId, agentId),
+						};
+					},
+				),
+		};
+	}
+
+	private listAgentVersionsTool(user: User): ToolDefinition<typeof listAgentVersionsInput> {
+		return {
+			name: 'list_agent_versions',
+			config: {
+				description:
+					'List the publish history of an Agent, newest first. Pass a versionId to get_agent to inspect a version before revert_agent or publish_agent.',
+				inputSchema: listAgentVersionsInput,
+				annotations: {
+					title: 'List Agent Versions',
+					readOnlyHint: true,
+					destructiveHint: false,
+					idempotentHint: true,
+					openWorldHint: false,
+				},
+			},
+			handler: async ({ agentId, limit, offset }) =>
+				await this.run(user, 'list_agent_versions', { agentId }, async () => {
+					const { projectId } = await this.resolveAgent(user, agentId);
+					await this.assertScope(user, projectId, 'agent:read');
+					const versions = await this.agentPublishService.listPublishHistory(
+						agentId,
+						projectId,
+						limit,
+						offset,
+					);
+					return { ok: true, data: versions, count: versions.length };
+				}),
+		};
+	}
+
+	private unpublishAgentTool(user: User): ToolDefinition<typeof agentIdentityShape> {
+		return {
+			name: 'unpublish_agent',
+			config: {
+				description: 'Unpublish an Agent and stop its live tasks and integrations.',
+				inputSchema: agentIdentityShape,
+				annotations: {
+					title: 'Unpublish Agent',
+					readOnlyHint: false,
+					destructiveHint: true,
+					idempotentHint: true,
+					openWorldHint: true,
+				},
+			},
+			handler: async ({ agentId }) =>
+				await this.run(user, 'unpublish_agent', { agentId }, async () => {
+					const { projectId } = await this.resolveAgent(user, agentId);
+					await this.assertScope(user, projectId, 'agent:unpublish');
+					const agent = await this.agentPublishService.unpublishAgent(agentId, projectId);
+					return {
+						ok: true,
+						agentId,
+						published: false,
+						versionId: agent.versionId,
+						activeVersionId: agent.activeVersionId,
+					};
+				}),
+		};
+	}
+
+	private deleteAgentTool(user: User): ToolDefinition<typeof agentIdentityShape> {
+		return {
+			name: 'delete_agent',
+			config: {
+				description: 'Permanently delete an Agent and its associated resources.',
+				inputSchema: agentIdentityShape,
+				annotations: {
+					title: 'Delete Agent',
+					readOnlyHint: false,
+					destructiveHint: true,
+					idempotentHint: true,
+					openWorldHint: true,
+				},
+			},
+			handler: async ({ agentId }) =>
+				await this.run(user, 'delete_agent', { agentId }, async () => {
+					const { projectId } = await this.resolveAgent(user, agentId);
+					await this.assertScope(user, projectId, 'agent:delete');
+					const deleted = await this.agentsService.delete(agentId, projectId);
+					if (!deleted) throw new UserError(`Agent "${agentId}" not found`);
+					return { ok: true, deleted: true, agentId };
+				}),
+		};
+	}
+
+	private discoverAssetsTool(user: User): ToolDefinition<typeof discoverAssetsInput> {
+		return {
+			name: 'discover_agent_assets',
+			config: {
+				description:
+					'Discover model catalogs, chat integrations, attachable workflows, published sub-agents, or MCP registry servers.',
+				inputSchema: discoverAssetsInput,
+				annotations: {
+					title: 'Discover Agent Assets',
+					readOnlyHint: true,
+					destructiveHint: false,
+					idempotentHint: true,
+					openWorldHint: true,
+				},
+			},
+			handler: async (input: DiscoverAssetsInput) =>
+				await this.run(
+					user,
+					'discover_agent_assets',
+					{ projectId: input.projectId, kind: input.kind },
+					async () => {
+						await this.assertScope(user, input.projectId, 'agent:read');
+						return {
+							ok: true,
+							kind: input.kind,
+							data: await this.discoverAssets(user, input),
+						};
+					},
+				),
+		};
+	}
+
+	private verifyMcpServerTool(user: User): ToolDefinition<typeof verifyMcpServerInput> {
+		return {
+			name: 'verify_agent_mcp_server',
+			config: {
+				description:
+					'Test an MCP server with a user-accessible credential and return its available tools. Call before writing an mcpServers config entry; validate_agent performs no live MCP check.',
+				inputSchema: verifyMcpServerInput,
+				annotations: {
+					title: 'Verify Agent MCP Server',
+					readOnlyHint: true,
+					destructiveHint: false,
+					idempotentHint: true,
+					openWorldHint: true,
+				},
+			},
+			handler: async (input: VerifyMcpServerInput) =>
+				await this.run(
+					user,
+					'verify_agent_mcp_server',
+					{ projectId: input.projectId, authentication: input.authentication },
+					async () => await this.verifyMcpServer(user, input),
+				),
+		};
+	}
+
+	private updateIntegrationTool(user: User): ToolDefinition<typeof updateIntegrationInput> {
+		return {
+			name: 'update_agent_integration',
+			config: {
+				description:
+					'Connect or disconnect a Slack, Telegram, or Linear conversation integration. This is the only way to manage integrations; config.replace and config.patch cannot touch them. Connecting publishes the current Agent draft, so only connect after explicit user confirmation.',
+				inputSchema: updateIntegrationInput,
+				annotations: {
+					title: 'Update Agent Integration',
+					readOnlyHint: false,
+					destructiveHint: true,
+					idempotentHint: true,
+					openWorldHint: true,
+				},
+			},
+			handler: async (input: UpdateIntegrationInput) =>
+				await this.run(
+					user,
+					'update_agent_integration',
+					{
+						agentId: input.agentId,
+						action: input.action,
+						type: input.type,
+					},
+					async () => await this.updateIntegration(user, input),
+				),
+		};
+	}
+
+	private referenceTool(user: User): ToolDefinition<typeof emptyInput> {
+		return {
+			name: 'get_agent_builder_reference',
+			config: {
+				description:
+					'Return the required reference for Agent configuration and mutate_agent operations. Read before building an Agent.',
+				inputSchema: emptyInput,
+				annotations: {
+					title: 'Get Agent Builder Reference',
+					readOnlyHint: true,
+					destructiveHint: false,
+					idempotentHint: true,
+					openWorldHint: false,
+				},
+			},
+			handler: async () =>
+				await this.run(user, 'get_agent_builder_reference', {}, () => ({
+					ok: true,
+					uri: AGENT_BUILDER_REFERENCE_URI,
+					guide: AGENT_BUILDER_GUIDE,
+					configSchema: AGENT_CONFIG_JSON_SCHEMA,
+				})),
+		};
+	}
+
+	/** Projects from the user's relations where the user holds agent:list. */
+	private async listProjectIdsWithAgentList(user: User): Promise<string[]> {
+		const relations = await this.projectRelationRepository.findAllByUser(user.id);
+		const projectIds = [...new Set(relations.map((relation) => relation.projectId))];
+		const allowed = await Promise.all(
+			projectIds.map(
+				async (projectId) => await userHasScopes(user, ['agent:list'], false, { projectId }),
+			),
+		);
+		return projectIds.filter((_, index) => allowed[index]);
+	}
+
+	private async getAgentSnapshot(user: User, agent: Agent) {
+		const { id: agentId, projectId } = agent;
+		const config = this.configFromEntity(agent);
+		const credentialProvider = this.credentialProvider(user, projectId);
+		const [runnable, skills, tasks] = await Promise.all([
+			this.agentValidationService.validateAgentIsRunnable(agentId, projectId, credentialProvider),
+			this.agentSkillsService.listSkills(agentId, projectId),
+			this.agentTaskService.list(agentId),
+		]);
+		const taskEnabled = new Map((config.tasks ?? []).map((task) => [task.id, task.enabled]));
+
+		// The hash covers the full persisted config (integrations included) so it
+		// stays consistent with mutate_agent and update_agent_integration, but the
+		// config exposed to the client omits integrations: they are a read-only
+		// runtime surface reported separately, not part of the editable config.
+		const { integrations: _integrations, ...editableConfig } = config;
+
+		return {
+			agent: {
+				id: agent.id,
+				name: agent.name,
+				projectId: agent.projectId,
+				published: agent.activeVersionId !== null,
+				versionId: agent.versionId,
+				activeVersionId: agent.activeVersionId,
+				createdAt: agent.createdAt.toISOString(),
+				updatedAt: agent.updatedAt.toISOString(),
+			},
+			config: editableConfig,
+			configHash: getAgentConfigHash(config),
+			isRunnable: runnable.missing.length === 0,
+			missing: runnable.missing,
+			skills,
+			tasks: tasks.map((task) => ({ ...task, enabled: taskEnabled.get(task.id) ?? false })),
+			customTools: Object.entries(agent.tools ?? {}).map(([id, tool]) => ({
+				id,
+				descriptor: tool.descriptor,
+			})),
+			integrations: agent.integrations ?? [],
+		};
+	}
+
+	/**
+	 * Read-only view of a published version snapshot. Deliberately returns no
+	 * configHash: mutations only ever apply to the draft, so a snapshot hash
+	 * must not be usable as a mutate_agent baseConfigHash.
+	 */
+	private async getAgentVersionSnapshot(projectId: string, agentId: string, versionId: string) {
+		const { agent, version, tasks } = await this.agentPublishService.getVersion(
+			agentId,
+			projectId,
+			versionId,
+		);
+		if (!version.schema) throw new UserError(`Version "${versionId}" has no JSON config.`);
+		// Integrations are a read-only runtime surface, omitted from the config
+		// here for the same reason as in getAgentSnapshot.
+		const { integrations: _integrations, ...editableConfig } = version.schema;
+
+		return {
+			agent: {
+				id: agent.id,
+				name: agent.name,
+				projectId: agent.projectId,
+				published: agent.activeVersionId !== null,
+				versionId: agent.versionId,
+				activeVersionId: agent.activeVersionId,
+			},
+			version: {
+				versionId: version.versionId,
+				author: version.author,
+				createdAt: version.createdAt.toISOString(),
+				isActive: version.versionId === agent.activeVersionId,
+			},
+			config: editableConfig,
+			skills: version.skills ?? {},
+			tasks: tasks.map((task) => ({
+				id: task.taskId,
+				name: task.name,
+				objective: task.objective,
+				cronExpression: task.cronExpression,
+				enabled: task.enabled,
+			})),
+			customTools: Object.entries(version.tools ?? {}).map(([id, tool]) => ({
+				id,
+				descriptor: tool.descriptor,
+			})),
+		};
+	}
+
+	private async fetchConfigHash(projectId: string, agentId: string) {
+		return getAgentConfigHash(await this.agentConfigService.getConfig(agentId, projectId));
+	}
+
+	private configFromEntity(agent: Agent): AgentJsonConfig {
+		const config = composeJsonConfig(agent);
+		if (!config) throw new UserError('Agent has no JSON config yet.');
+		return config;
+	}
+
+	private getAgentUrl(projectId: string, agentId: string) {
+		return `${this.urlService.getInstanceBaseUrl()}/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(agentId)}`;
+	}
+
+	/**
+	 * Applies one mutation against the stale-checked `config`. Returns the
+	 * post-mutation config when the mutation itself produced it; the caller
+	 * re-fetches otherwise (sidecar services update config references
+	 * internally).
+	 */
+	private async applyMutation(
+		user: User,
+		input: MutateAgentInput,
+		config: AgentJsonConfig,
+		projectId: string,
+	): Promise<{ resource?: MutationResource; config?: AgentJsonConfig }> {
+		const { agentId, operation } = input;
+		switch (operation.type) {
+			case 'config.replace': {
+				if (operation.config.integrations !== undefined) {
+					throw new UserError(INTEGRATIONS_NOT_IN_CONFIG_MESSAGE);
+				}
+				this.assertSanitizeStable(operation.config, config);
+				this.assertPassesConfigGuards(operation.config, config);
+				await this.assertAccessibleCredentials(operation.config, user, projectId);
+				const result = await this.agentConfigService.updateConfig(
+					agentId,
+					projectId,
+					operation.config,
+					user,
+					{ clearOmittedOptionalFields: true },
+				);
+				return { config: result.config };
+			}
+			case 'config.patch': {
+				const jsonpatch = (await import('fast-json-patch')).default;
+				const patchError = jsonpatch.validate(operation.patch, config);
+				if (patchError) throw new UserError(patchError.message ?? 'Invalid JSON patch');
+				const patched: unknown = jsonpatch.applyPatch(
+					jsonpatch.deepClone(config),
+					operation.patch,
+				).newDocument;
+				if (integrationsChanged(config, patched)) {
+					throw new UserError(INTEGRATIONS_NOT_IN_CONFIG_MESSAGE);
+				}
+				this.assertSanitizeStable(patched, config);
+				this.assertPassesConfigGuards(patched, config);
+				await this.assertAccessibleCredentials(patched, user, projectId);
+				const result = await this.agentConfigService.updateConfig(
+					agentId,
+					projectId,
+					patched,
+					user,
+					{
+						clearOmittedOptionalFields: true,
+					},
+				);
+				return { config: result.config };
+			}
+			case 'skill.upsert':
+				if (operation.skillId) {
+					const result = await this.agentSkillsService.updateSkill(
+						agentId,
+						projectId,
+						operation.skillId,
+						operation.skill,
+					);
+					return { resource: { type: 'skill', id: result.id } };
+				} else {
+					const result = await this.agentSkillsService.createAndAttachSkill(
+						agentId,
+						projectId,
+						operation.skill,
+					);
+					return { resource: { type: 'skill', id: result.id } };
+				}
+			case 'skill.delete':
+				await this.agentSkillsService.deleteSkill(agentId, projectId, operation.skillId);
+				return { resource: { type: 'skill', id: operation.skillId } };
+			case 'task.upsert':
+				if (operation.taskId) {
+					const result = await this.agentTaskService.update(
+						agentId,
+						operation.taskId,
+						operation.task,
+					);
+					if (operation.enabled !== undefined) {
+						const updated = await this.setTaskEnabled(
+							user,
+							agentId,
+							projectId,
+							operation.taskId,
+							operation.enabled,
+							config,
+						);
+						return { resource: { type: 'task', id: result.id }, config: updated };
+					}
+					return { resource: { type: 'task', id: result.id } };
+				} else {
+					const result = await this.agentTaskService.create(agentId, {
+						...operation.task,
+						enabled: operation.enabled ?? true,
+					});
+					return { resource: { type: 'task', id: result.id } };
+				}
+			case 'task.delete':
+				await this.agentTaskService.delete(agentId, operation.taskId);
+				return { resource: { type: 'task', id: operation.taskId } };
+			case 'customTool.upsert': {
+				const descriptor = await this.agentSecureRuntime.describeToolSecurely(operation.code);
+				const built = await this.agentCustomToolsService.buildCustomTool(
+					agentId,
+					projectId,
+					operation.code,
+					descriptor,
+				);
+				if ((config.tools ?? []).some((tool) => tool.type === 'custom' && tool.id === built.id)) {
+					return { resource: { type: 'customTool', id: built.id }, config };
+				}
+				const next = {
+					...config,
+					tools: [...(config.tools ?? []), { type: 'custom' as const, id: built.id }],
+				};
+				await this.assertAccessibleCredentials(next, user, projectId);
+				const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user);
+				return { resource: { type: 'customTool', id: built.id }, config: result.config };
+			}
+			case 'customTool.delete':
+				await this.agentCustomToolsService.deleteCustomTool(agentId, projectId, operation.toolId);
+				return { resource: { type: 'customTool', id: operation.toolId } };
+		}
+	}
+
+	/**
+	 * updateConfig sanitizes configs on write, silently dropping array entries
+	 * whose `type` the schema does not recognize. Reject differences the
+	 * mutation itself introduced loudly instead of reporting a success that
+	 * persisted less than the client sent. Instability inherited unchanged from
+	 * the stored config (e.g. a legacy field persisted before the schema
+	 * dropped it) is tolerated — the write path cleans it up.
+	 */
+	private assertSanitizeStable(config: unknown, baseConfig: AgentJsonConfig): void {
+		const sanitized = sanitizeAgentJsonConfig(config);
+		if (JSON.stringify(sanitized) === JSON.stringify(config)) return;
+		if (!isRecord(config) || !isRecord(sanitized)) return;
+		const base: Record<string, unknown> = baseConfig;
+		const fields = Object.keys(config).filter((key) => {
+			const submitted = JSON.stringify(config[key]);
+			return (
+				submitted !== JSON.stringify(sanitized[key]) && submitted !== JSON.stringify(base[key])
+			);
+		});
+		if (fields.length === 0) return;
+		throw new UserError(
+			`Config contains entries the schema does not support (in: ${fields.join(', ')}); saving would silently drop them. Compare against the config schema from get_agent_builder_reference — e.g. sub-agents belong under subAgents.agents, not tools.`,
+		);
+	}
+
+	/**
+	 * Model-independent write guards shared with the in-app builder pipeline,
+	 * so a config the builder refuses cannot be persisted through MCP. Schema
+	 * failures are left for updateConfig's own validation to surface.
+	 */
+	private assertPassesConfigGuards(next: unknown, baseConfig: AgentJsonConfig): void {
+		const parsed = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(next));
+		if (!parsed.success) return;
+		const errors =
+			rejectIfEmptyInstructions(parsed.data, MCP_AGENT_CONFIG_MESSAGES) ??
+			rejectIfUnsupportedNativeWebSearch(parsed.data) ??
+			rejectIfDynamicSelectorUsesFromAi(
+				parsed.data,
+				baseConfig,
+				this.nodeTypes,
+				MCP_AGENT_CONFIG_MESSAGES,
+			);
+		if (errors) {
+			throw new UserError(errors.map((error) => `${error.path}: ${error.message}`).join('; '));
+		}
+	}
+
+	/**
+	 * updateConfig quietly rewrites credential references the calling user
+	 * cannot use to `''` before saving. Surfacing that here turns silent
+	 * credential loss — including references already stored on the agent by
+	 * another user — into an explicit error the client can act on.
+	 */
+	private async assertAccessibleCredentials(
+		config: unknown,
+		user: User,
+		projectId: string,
+	): Promise<void> {
+		const accessibleIds = new Set(
+			(await this.credentialProvider(user, projectId).list()).map((credential) => credential.id),
+		);
+		const sanitized = sanitizeUnknownAgentCredentials(config, accessibleIds);
+		if (JSON.stringify(sanitized) === JSON.stringify(config)) return;
+		const ids = new Set<string>();
+		collectClearedCredentialIds(config, sanitized, ids);
+		throw new UserError(
+			`Config references credentials you cannot use in this project: ${[...ids].join(', ')}. Saving would silently clear them. Use list_credentials to find an accessible credential, or remove the reference.`,
+		);
+	}
+
+	private async setTaskEnabled(
+		user: User,
+		agentId: string,
+		projectId: string,
+		taskId: string,
+		enabled: boolean,
+		config: AgentJsonConfig,
+	): Promise<AgentJsonConfig> {
+		let found = false;
+		const tasks = (config.tasks ?? []).map((task) => {
+			if (task.id !== taskId) return task;
+			found = true;
+			return { ...task, enabled };
+		});
+		if (!found) throw new UserError(`Task "${taskId}" is not attached to the Agent`);
+		const next = { ...config, tasks };
+		await this.assertAccessibleCredentials(next, user, projectId);
+		const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user);
+		return result.config;
+	}
+
+	/**
+	 * Publish-scope validation — the same pass `publishAgent` enforces — plus
+	 * the node-tool JSON-Schema checks from `validateConfig`, so validate_agent
+	 * and publish_agent cannot drift from the canonical validator.
+	 */
+	private async validateAgent(user: User, agent: Agent) {
+		const projectId = agent.projectId;
+		const config = this.configFromEntity(agent);
+		const credentialProvider = this.credentialProvider(user, projectId);
+		const [schema, configuration] = await Promise.all([
+			this.agentConfigService.validateConfig(config),
+			this.agentValidationService.validateLoadedAgentConfiguration(
+				agent,
+				projectId,
+				credentialProvider,
+				'publish',
+			),
+		]);
+		const errors = schema.valid ? [] : [schema.error];
+		const missing = [...new Set(configuration.issues.map((issue) => issue.path))];
+		return {
+			valid: errors.length === 0 && missing.length === 0,
+			errors,
+			missing,
+		};
+	}
+
+	private async discoverAssets(user: User, input: DiscoverAssetsInput): Promise<unknown> {
+		switch (input.kind) {
+			case 'models': {
+				if (input.provider) {
+					return await this.agentModelCatalogService.getProviderModels(
+						user,
+						input.projectId,
+						input.provider,
+						input.credentialId,
+					);
+				}
+				// The full catalog runs to hundreds of KB — far past MCP client
+				// token limits — so without a provider return a summary instead.
+				const catalog = filterOfferedAgentModelProviders(
+					await (await import('@n8n/agents')).fetchProviderCatalog(),
+				);
+				return {
+					providers: Object.values(catalog).map((provider) => ({
+						provider: provider.id,
+						name: provider.name,
+						modelCount: Object.keys(provider.models).length,
+					})),
+					hint: 'Pass provider (and optionally credentialId) to list the models of one provider.',
+				};
+			}
+			case 'integrations':
+				return this.integrationPersistenceService.listChatIntegrations().map((integration) => ({
+					...integration,
+					settingsRequired: integration.type === 'telegram',
+					...(integration.type === 'telegram'
+						? {
+								settingsSchema: TELEGRAM_SETTINGS_JSON_SCHEMA,
+								settingsGuidance:
+									'Pass accessMode=public with allowedUsers=[], or accessMode=private with at least one Telegram user ID or username.',
+							}
+						: {}),
+				}));
+			case 'workflows':
+				return await this.attachableWorkflowsService.list(user, input.projectId, input.query);
+			case 'subagents': {
+				const summaries = await this.agentsService.findSummariesInProjects([input.projectId], {
+					query: input.query?.trim() || undefined,
+					publishedOnly: true,
+					excludeAgentId: input.excludeAgentId,
+				});
+				return summaries.map((agent) => ({ agentId: agent.id, name: agent.name }));
+			}
+			case 'mcpServers':
+				return input.query
+					? await this.mcpRegistryService.search([input.query])
+					: await this.mcpRegistryService.list(MCP_SERVER_DISCOVERY_LIMIT);
+		}
+	}
+
+	private async verifyMcpServer(user: User, input: VerifyMcpServerInput) {
+		await this.assertScope(user, input.projectId, 'agent:read');
+		const credentialProvider = this.credentialProvider(user, input.projectId);
+		if (input.authentication !== 'none') {
+			if (!input.credential) {
+				throw new UserError('credential is required when authentication is not none');
+			}
+			await this.requireAccessibleCredential(credentialProvider, input.credential);
+		}
+
+		const tools = await listMcpServerTools(
+			{
+				name: input.name,
+				url: input.url,
+				transport: input.transport,
+				authentication: input.authentication,
+				credential: input.credential,
+				...(input.connectionTimeoutMs !== undefined
+					? { connectionTimeoutMs: input.connectionTimeoutMs }
+					: {}),
+			},
+			{
+				credentialProvider,
+				oauthService: this.oauthService,
+				projectId: input.projectId,
+				proxyFetch: createAiMcpFetch(
+					this.outboundHttp,
+					this.ssrfConfig,
+					this.ssrfProtectionService,
+				),
+			},
+		);
+		return { ok: true, tools };
+	}
+
+	private async updateIntegration(user: User, input: UpdateIntegrationInput) {
+		const agent = await this.resolveAgent(user, input.agentId);
+		const projectId = agent.projectId;
+		await this.assertScope(user, projectId, 'agent:update');
+		return input.action === 'disconnect'
+			? await this.disconnectIntegration(input, agent)
+			: await this.connectIntegration(user, input, agent, projectId);
+	}
+
+	private async disconnectIntegration(input: UpdateIntegrationInput, agent: Agent) {
+		const persisted = (agent.integrations ?? []).find(
+			(item) => item.type === input.type && item.credentialId === input.credentialId,
+		);
+		// Mirrors AgentIntegrationsController.disconnectIntegration: tear down
+		// the runtime channel even when persistence has no matching record
+		// (e.g. the integration was removed via a config mutation).
+		const parsed = AgentIntegrationSchema.safeParse({
+			type: input.type,
+			credentialId: input.credentialId,
+		});
+		const integration = persisted ?? (parsed.success ? parsed.data : undefined);
+		if (integration) {
+			await this.chatIntegrationService.disconnectChannel(input.agentId, integration);
+		} else {
+			await this.chatIntegrationService.disconnect(input.agentId, {
+				type: input.type,
+				credentialId: input.credentialId,
+			});
+		}
+		const saved = await this.integrationPersistenceService.removeCredentialIntegration(
+			agent,
+			input.type,
+			input.credentialId,
+			{ broadcast: false },
+		);
+		return {
+			ok: true,
+			agentId: input.agentId,
+			integration: { type: input.type, credentialId: input.credentialId },
+			connected: false,
+			published: saved.activeVersionId !== null,
+			activeVersionId: saved.activeVersionId,
+			configHash: getAgentConfigHash(this.configFromEntity(saved)),
+		};
+	}
+
+	private async connectIntegration(
+		user: User,
+		input: UpdateIntegrationInput,
+		agent: Agent,
+		projectId: string,
+	) {
+		const candidate = {
+			type: input.type,
+			credentialId: input.credentialId,
+			...(input.settings ? { settings: input.settings } : {}),
+		};
+		const parsed = AgentIntegrationSchema.safeParse(candidate);
+		if (!parsed.success) throw new UserError(`Invalid integration: ${parsed.error.message}`);
+		if (parsed.data.type === 'telegram' && !parsed.data.settings) {
+			throw new UserError('Telegram integration settings are required');
+		}
+
+		const credential = await this.requireAccessibleCredential(
+			this.credentialProvider(user, projectId),
+			input.credentialId,
+		);
+		const implementation = this.chatIntegrationRegistry.require(parsed.data.type);
+		if (!implementation.credentialTypes.includes(credential.type)) {
+			throw new UserError(
+				`${implementation.displayLabel} integrations do not support ${credential.type} credentials`,
+			);
+		}
+
+		const saved = await this.integrationPersistenceService.saveCredentialIntegration(
+			agent,
+			parsed.data,
+			{ broadcast: false },
+		);
+		const { agent: publishedAgent } = await this.agentPublishService.publishAgent(
+			input.agentId,
+			projectId,
+			user,
+			undefined,
+			{ syncIntegrations: false },
+		);
+		await this.chatIntegrationService.connect(input.agentId, parsed.data, projectId);
+		await this.chatIntegrationService.broadcastIntegrationChange(
+			input.agentId,
+			parsed.data,
+			'connect',
+		);
+		return {
+			ok: true,
+			agentId: input.agentId,
+			integration: { type: input.type, credentialId: input.credentialId },
+			connected: true,
+			published: true,
+			activeVersionId: publishedAgent.activeVersionId,
+			// Publishing with syncIntegrations:false touches neither schema nor
+			// integrations, so the entity saved above still hashes correctly.
+			configHash: getAgentConfigHash(this.configFromEntity(saved)),
+		};
+	}
+
+	private credentialProvider(user: User, projectId: string): CredentialProvider {
+		return createAgentCredentialProvider(this.credentialsService, projectId, user);
+	}
+
+	private async requireAccessibleCredential(
+		credentialProvider: CredentialProvider,
+		credentialId: string,
+	) {
+		const credential = (await credentialProvider.list()).find((item) => item.id === credentialId);
+		if (!credential) throw new UserError('Credential not found or not accessible');
+		return credential;
+	}
+
+	/**
+	 * An Agent belongs to exactly one project, so by-ID tools derive the project
+	 * from the agentId rather than making the client supply it, scoped to the
+	 * projects the user can access. Returns the loaded entity so callers don't
+	 * re-fetch the same row.
+	 */
+	private async resolveAgent(user: User, agentId: string): Promise<Agent> {
+		const agent = await this.agentsService.findByIdForUser(agentId, user);
+		if (!agent) throw new UserError(`Agent "${agentId}" not found`);
+		return agent;
+	}
+
+	private async assertScope(user: User, projectId: string, scope: Scope): Promise<void> {
+		if (!(await userHasScopes(user, [scope], false, { projectId }))) {
+			throw new ForbiddenError('You do not have permission to access agents in this project.');
+		}
+	}
+
+	private async run(
+		user: User,
+		toolName: string,
+		parameters: Record<string, unknown>,
+		action: () => Record<string, unknown> | Promise<Record<string, unknown>>,
+	) {
+		const telemetryPayload: UserCalledMCPToolEventPayload = {
+			user_id: user.id,
+			tool_name: toolName,
+			parameters,
+		};
+		try {
+			const data = await action();
+			telemetryPayload.results = { success: data.ok !== false };
+			this.telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			return toolResult(data, data.ok === false);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			telemetryPayload.results = { success: false, error: message };
+			this.telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			return toolResult({ ok: false, code: 'agent_tool_error', error: message }, true);
+		}
+	}
+}

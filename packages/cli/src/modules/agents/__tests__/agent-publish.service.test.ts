@@ -486,6 +486,34 @@ describe('AgentPublishService', () => {
 		);
 	});
 
+	it('returns a version snapshot with its task snapshots', async () => {
+		const { service, agentRepository, agentHistoryRepository, taskSnapshotRepository } =
+			makeService();
+		const version = makeHistory({ versionId: 'old-version' });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(version);
+		taskSnapshotRepository.findByVersionId.mockResolvedValue([makeTaskSnapshot()]);
+
+		const result = await service.getVersion(agentId, projectId, 'old-version');
+
+		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledWith(
+			'old-version',
+			agentId,
+		);
+		expect(result.version).toBe(version);
+		expect(result.tasks).toEqual([makeTaskSnapshot()]);
+	});
+
+	it('throws when the requested version does not exist for the agent', async () => {
+		const { service, agentRepository, agentHistoryRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(null);
+
+		await expect(service.getVersion(agentId, projectId, 'nope')).rejects.toThrow(
+			'Version "nope" not found for agent "agent-1"',
+		);
+	});
+
 	it('ignores other draft integrations when connecting a channel (ignoreDraftIntegrations)', async () => {
 		const { service, agentRepository, agentValidationService } = makeService();
 		const integrations = [
