@@ -1,4 +1,4 @@
-import type { StandardSchemaWithJSON } from "@modelcontextprotocol/server";
+import type { StandardSchemaWithJSON } from '@modelcontextprotocol/server';
 import type { IConnections, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
 import { z } from 'zod/v4';
 
@@ -130,6 +130,9 @@ export const workflowDetailsOutputSchema = z.object({
 // zod/v4 in the pinned zod 3.25.x implements Standard Schema validation but not
 // `~standard.jsonSchema` (added in zod 4.2). Wrapping the raw shape and grafting the
 // converter on satisfies the SDK's schema-object contract without bumping zod.
+// Duplicated in @n8n/mcp-browser/src/mcp-schema.ts and
+// @n8n/mcp-apps/src/server/register-mcp-app-tool.ts (both asMcpSchema) — no shared
+// package to host a stopgap. Keep in sync; delete all copies once the zod pin reaches >=4.2.
 export function toMcpSchema<S extends ToolInputShape>(
 	shape: S,
 ): StandardSchemaWithJSON<z.input<z.ZodObject<S>>, z.output<z.ZodObject<S>>> {
