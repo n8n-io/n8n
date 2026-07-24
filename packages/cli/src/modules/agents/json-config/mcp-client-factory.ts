@@ -157,6 +157,7 @@ export interface BuildMcpClientDeps {
 	oauthService: OauthService;
 	projectId: string;
 	proxyFetch: CustomFetch;
+	onToolCallSettled?: McpServerConfig['onToolCallSettled'];
 }
 
 /**
@@ -171,7 +172,7 @@ export async function buildMcpClientForServer(
 	server: AgentJsonMcpServerConfig,
 	deps: BuildMcpClientDeps,
 ): Promise<McpClient> {
-	const { credentialProvider, oauthService, projectId, proxyFetch } = deps;
+	const { credentialProvider, oauthService, projectId, proxyFetch, onToolCallSettled } = deps;
 	const { McpClient } = await import('@n8n/agents');
 
 	const { headers: initialHeaders, credentialData } = await deriveAuthHeaders(
@@ -205,6 +206,7 @@ export async function buildMcpClientForServer(
 		fetch: authFetch,
 		toolFilter: server.toolFilter,
 		requireApproval: mapApprovalToSdk(server.approval),
+		...(onToolCallSettled !== undefined && { onToolCallSettled }),
 		...(server.connectionTimeoutMs !== undefined && {
 			connectionTimeoutMs: server.connectionTimeoutMs,
 		}),
