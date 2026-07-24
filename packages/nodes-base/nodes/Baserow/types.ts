@@ -14,6 +14,7 @@ export type GetAllAdditionalOptions = {
 			field: string;
 			operator: string;
 			value: string;
+			timezone?: string;
 		}>;
 	};
 	filterType: string;

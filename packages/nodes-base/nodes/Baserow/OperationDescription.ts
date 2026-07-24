@@ -1,3 +1,8 @@
+import {
+	DEPRECATED_TIMEZONE_NUMBER_OPERATORS,
+	DEPRECATED_TIMEZONE_ONLY_OPERATORS,
+	MULTI_STEP_DATE_OPERATORS,
+} from './GenericFunctions';
 import type { INodeProperties } from 'n8n-workflow';
 
 export const operationFields: INodeProperties[] = [
@@ -443,157 +448,163 @@ export const operationFields: INodeProperties[] = [
 										name: 'Date Is',
 										value: 'date_is',
 										description:
-											'Date matches the given day. Format: `Europe/Berlin??2024-09-17` (Timezone??YYYY-MM-DD).',
+											'Date matches the given day. Enter a date as `YYYY-MM-DD` (timezone applied automatically).',
 									},
 									{
 										name: 'Date Is Not',
 										value: 'date_is_not',
-										description: 'Date does not match the given day. Format: `UTC??2024-09-17`.',
+										description:
+											'Date does not match the given day. Enter a date as `YYYY-MM-DD` (timezone applied automatically).',
 									},
 									{
 										name: 'Date Is Before',
 										value: 'date_is_before',
 										description:
-											'Date is strictly before the given day. Format: `UTC??2024-09-17`.',
+											'Date is strictly before the given day. Enter a date as `YYYY-MM-DD` (timezone applied automatically).',
 									},
 									{
 										name: 'Date Is On Or Before',
 										value: 'date_is_on_or_before',
 										description:
-											'Date is before or equal to the given day. Format: `UTC??2024-09-17`.',
+											'Date is before or equal to the given day. Enter a date as `YYYY-MM-DD` (timezone applied automatically).',
 									},
 									{
 										name: 'Date Is After',
 										value: 'date_is_after',
-										description: 'Date is strictly after the given day. Format: `UTC??2024-09-17`.',
+										description:
+											'Date is strictly after the given day. Enter a date as `YYYY-MM-DD` (timezone applied automatically).',
 									},
 									{
 										name: 'Date Is On Or After',
 										value: 'date_is_on_or_after',
 										description:
-											'Date is after or equal to the given day. Format: `UTC??2024-09-17`.',
+											'Date is after or equal to the given day. Enter a date as `YYYY-MM-DD` (timezone applied automatically).',
 									},
 									{
 										name: 'Date Is Within',
 										value: 'date_is_within',
 										description:
-											'Date is within the next X days. Format: `UTC??30` (Timezone??NumberOfDays).',
+											'Date is within the next X days. Enter the number of days (timezone applied automatically).',
 									},
 									{
 										name: 'Date Equals Today',
 										value: 'date_equals_today',
 										description:
-											'Date is today. Format: `UTC??today`. (Deprecated but kept for compatibility).',
+											'Date is today. Enter a timezone (e.g. `UTC`). Timezone field is used when value is empty. (Deprecated).',
 									},
 									{
 										name: 'Date Equals Month',
 										value: 'date_equals_month',
 										description:
-											'Date is in the given month. Format: `UTC??2024-09`. (Deprecated but kept for compatibility).',
+											'Date is in the current month. Enter a timezone (e.g. `UTC`). (Deprecated).',
 									},
 									{
 										name: 'Date Equals Year',
 										value: 'date_equals_year',
 										description:
-											'Date is in the given year. Format: `UTC??2024`. (Deprecated but kept for compatibility).',
+											'Date is in the current year. Enter a timezone (e.g. `UTC`). (Deprecated).',
 									},
 									{
 										name: 'Date Equals Day Of Month',
 										value: 'date_equals_day_of_month',
-										description: 'Day of month matches the given number. Format: `UTC??15` (1-31).',
+										description:
+											'Day of month matches the given number (1-31); pass a raw number, not a formatted date',
 									},
 									{
 										name: 'Date Equal (Deprecated)',
 										value: 'date_equal',
 										description:
-											'Field is date. Format: `UTC?YYYY-MM-DD`. Prefer using Date Is (date_is).',
+											'Field is date. Enter `YYYY-MM-DD`. Prefer using Date Is (date_is).',
 									},
 									{
 										name: 'Date Not Equal (Deprecated)',
 										value: 'date_not_equal',
 										description:
-											'Field is not date. Format: `UTC?YYYY-MM-DD`. Prefer using Date Is Not (date_is_not).',
+											'Field is not date. Enter `YYYY-MM-DD`. Prefer using Date Is Not (date_is_not).',
 									},
 									{
 										name: 'Date Before (Deprecated)',
 										value: 'date_before',
 										description:
-											'Field before this date. Format: `UTC?YYYY-MM-DD`. Prefer using Date Is Before (date_is_before).',
+											'Field before this date. Enter `YYYY-MM-DD`. Prefer using Date Is Before (date_is_before).',
 									},
 									{
 										name: 'Date Before Or Equal (Deprecated)',
 										value: 'date_before_or_equal',
 										description:
-											'Field on or before this date. Format: `UTC?YYYY-MM-DD`. Prefer using Date Is On Or Before (date_is_on_or_before).',
+											'Field on or before this date. Enter `YYYY-MM-DD`. Prefer using Date Is On Or Before (date_is_on_or_before).',
 									},
 									{
 										name: 'Date After (Deprecated)',
 										value: 'date_after',
 										description:
-											'Field after this date. Format: `UTC?YYYY-MM-DD`. Prefer using Date Is After (date_is_after).',
+											'Field after this date. Enter `YYYY-MM-DD`. Prefer using Date Is After (date_is_after).',
 									},
 									{
 										name: 'Date After Or Equal (Deprecated)',
 										value: 'date_after_or_equal',
 										description:
-											'Field after or equal to this date. Format: `UTC?YYYY-MM-DD`. Prefer using Date Is On Or After (date_is_on_or_after).',
+											'Field after or equal to this date. Enter `YYYY-MM-DD`. Prefer using Date Is On Or After (date_is_on_or_after).',
 									},
 									{
 										name: 'Date After Days Ago (Deprecated)',
 										value: 'date_after_days_ago',
 										description:
-											'Date is after X days ago. Format: `UTC?10`. Prefer using Date Is On Or After with NR_DAYS_AGO.',
+											'Date is after X days ago. Enter the number of days (e.g. `20`). (Deprecated).',
 									},
 									{
 										name: 'Date Within Days (Deprecated)',
 										value: 'date_within_days',
 										description:
-											'Date is within N days from today. Format: `UTC?30`. Prefer using Date Is Within (date_is_within).',
+											'Date is within N days from today. Enter the number of days; timezone is applied automatically (e.g. `Asia/Calcutta?1`). (Deprecated).',
 									},
 									{
 										name: 'Date Within Weeks (Deprecated)',
 										value: 'date_within_weeks',
 										description:
-											'Date is within N weeks from today. Format: `UTC?4`. Prefer using Date Is Within.',
+											'Date is within N weeks from today. Enter the number of weeks; timezone is applied automatically. (Deprecated).',
 									},
 									{
 										name: 'Date Within Months (Deprecated)',
 										value: 'date_within_months',
 										description:
-											'Date is within N months from today. Format: `UTC?3`. Prefer using Date Is Within.',
+											'Date is within N months from today. Enter the number of months; timezone is applied automatically. (Deprecated).',
 									},
 									{
 										name: 'Date Equals Days Ago (Deprecated)',
 										value: 'date_equals_days_ago',
-										description: 'Date is exactly N days ago. Format: `UTC?5`.',
+										description:
+											'Date is exactly N days ago. Enter the number of days; timezone is applied automatically. (Deprecated).',
 									},
 									{
 										name: 'Date Equals Months Ago (Deprecated)',
 										value: 'date_equals_months_ago',
-										description: 'Date is exactly N months ago. Format: `UTC?2`.',
+										description:
+											'Date is exactly N months ago. Enter the number of months; timezone is applied automatically. (Deprecated).',
 									},
 									{
 										name: 'Date Equals Years Ago (Deprecated)',
 										value: 'date_equals_years_ago',
-										description: 'Date is exactly N years ago. Format: `UTC?1`.',
+										description:
+											'Date is exactly N years ago. Enter the number of years; timezone is applied automatically. (Deprecated).',
 									},
 									{
 										name: 'Date Before Today (Deprecated)',
 										value: 'date_before_today',
 										description:
-											'Date is before today. Format: `UTC`. Prefer using Date Is Before with operator TODAY.',
+											'Date is before today. Enter a timezone (e.g. `UTC`). (Deprecated).',
 									},
 									{
 										name: 'Date After Today (Deprecated)',
 										value: 'date_after_today',
 										description:
-											'Date is after today. Format: `UTC`. Prefer using Date Is After with operator TODAY.',
+											'Date is after today. Enter a timezone (e.g. `UTC`). (Deprecated).',
 									},
 									{
 										name: 'Date Equals Current Week (Deprecated)',
 										value: 'date_equals_week',
 										description:
-											'Date is within current week. Format: `UTC`. Prefer using Date Is with THIS_WEEK.',
+											'Date is within current week. Enter a timezone (e.g. `UTC`). (Deprecated).',
 									},
 									{
 										name: 'Filename Contains',
@@ -699,11 +710,28 @@ export const operationFields: INodeProperties[] = [
 								default: 'equal',
 							},
 							{
+								displayName: 'Timezone',
+								name: 'timezone',
+								type: 'string',
+								default: 'UTC',
+								displayOptions: {
+									show: {
+										'../operator': [
+											...MULTI_STEP_DATE_OPERATORS,
+											...DEPRECATED_TIMEZONE_NUMBER_OPERATORS,
+											...DEPRECATED_TIMEZONE_ONLY_OPERATORS,
+										],
+									},
+								},
+								description: 'Timezone used for date filter evaluation, e.g. UTC or Europe/Berlin',
+							},
+							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value to compare to',
+								description: 'Value to compare to. For date filters, enter a date as YYYY-MM-DD.',
+								placeholder: 'e.g. 2026-06-17',
 							},
 						],
 					},
