@@ -41,7 +41,7 @@ packages/@n8n/db/src/entities/workflow-review-request.ee.ts
   s_b34abcbd386402::t_2745230adb7218 34,37
   s_b34abcbd386402::t_878432504932ba 1-4,11,15,23
 packages/@n8n/db/src/repositories/__tests__/workflow-review-request.repository.test.ts
-  s_44a98ba2784a12::t_dbad7b03bcd5c5 1,5,6-7,8-18,20-36,39-42,45-67,81,82,85,88,93,100,104,108,109,115,118,121-123
+  s_44a98ba2784a12::t_dbad7b03bcd5c5 1,5,6-7,8-18,20-36,39-42,45-67,45-66,81,82,85,88,93,100,104,108,109,115,118,121-123,123
   s_44a98ba2784a12::t_07ca4c76f2006f 94,97,99
   s_44a98ba2784a12::t_c1e2d13ee81f84 114
   s_44a98ba2784a12::t_8cf89fd1044fe9 37-38,43,44
@@ -203,7 +203,7 @@ packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
   s_b34abcbd386402::t_2cb3858f009244 1-4,6-7,19,31,40,43-74
   s_94fa4ed7d7b038::t_869d14d34be02d 5
   s_94fa4ed7d7b038::t_8f932cef4a463b 76-79
-  s_b34abcbd386402::t_7bdead65e3c081 115-117,119-125,127-153,155-160
+  s_b34abcbd386402::t_7bdead65e3c081 115-117,118,119-125,126,127-153,155-160
 packages/@n8n/backend-common/src/modules/modules.config.ts
   s_60c9025b151770::t_a4789809c277c5 36
 packages/@n8n/api-types/src/dto/workflow-reviews/create-workflow-review-request.dto.ts
@@ -298,7 +298,7 @@ packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPub
   h_9c8f56e3400786 53,92,113-114
   s_b3f23ab76a494c::t_77508911ec9f79 731
   s_b3f23ab76a494c::t_db71fb05e80031 748
-  s_70e4a16a672757::t_bdf6c7bea8e71a 55-59,93-94,106-108,234-241,243,245-257,261,263-274,763-766,768-770,772-776
+  s_70e4a16a672757::t_bdf6c7bea8e71a 55-59,93-94,106-108,233,234-241,243,245-257,261,263-274,763-766,768-770,772-776
   s_b6381fbb8ddc64::t_626896e5a21e72 110-112,115,117-118
   s_b6381fbb8ddc64::t_ee482984b97cbd 116
   s_b6381fbb8ddc64::t_809d0a0041ae07 7
