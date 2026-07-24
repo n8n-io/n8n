@@ -1,4 +1,3 @@
-import { useAsyncState } from '@vueuse/core';
 import {
 	type LoginRequestDto,
 	type PasswordUpdateRequestDto,
@@ -9,29 +8,43 @@ import {
 	ROLE,
 	type UsersListFilterDto,
 } from '@n8n/api-types';
-import type { UpdateGlobalRolePayload } from '@n8n/rest-api-client/api/users';
-import * as usersApi from '@n8n/rest-api-client/api/users';
 import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
-import { PERSONALIZATION_MODAL_KEY } from './users.constants';
-import { STORES } from '@n8n/stores';
-import type { InvitableRoleName } from './users.types';
-import type { IUserResponse } from '@n8n/rest-api-client/api/users';
+import type { AssignableGlobalRole } from '@n8n/permissions';
+import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
+import * as mfaApi from '@n8n/rest-api-client/api/mfa';
 import type {
+	UpdateGlobalRolePayload,
+	IUserResponse,
 	IUser,
 	CurrentUserResponse,
 	IPersonalizationLatestVersion,
+	IPersonalizationSurveyVersions,
 } from '@n8n/rest-api-client/api/users';
-import { getPersonalizedNodeTypes } from './users.utils';
+import * as usersApi from '@n8n/rest-api-client/api/users';
+import { useAsyncState } from '@vueuse/core';
 import { defineStore } from 'pinia';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import type { ModalOpeners } from '@/Interface';
-import * as mfaApi from '@n8n/rest-api-client/api/mfa';
-import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
-import * as invitationsApi from './invitation.api';
 import { computed, ref } from 'vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import * as onboardingApi from '@/app/api/workflow-webhooks';
-import { hasPermission } from '@/app/utils/rbac/permissions';
+
+import { STORES } from './constants';
+import * as invitationsApi from './invitation.api';
+import type { ModalOpeners } from './modalOpeners';
+import * as onboardingApi from './onboarding.api';
+import { useSettingsStore } from './settings.store';
+import { useRootStore } from './useRootStore';
+
+/**
+ * Registration key of the app's personalization modal, passed to the injected
+ * modal opener. Mirrors `PERSONALIZATION_MODAL_KEY` in editor-ui's
+ * `users.constants`; kept as a literal so the store carries no `@/app` import.
+ */
+const PERSONALIZATION_MODAL_KEY = 'personalization';
+
+/**
+ * Resolves a user's personalization-survey answers to recommended node types.
+ * Injected by the app (see `app/init.ts`) so the store avoids importing the
+ * node-type constants that the real implementation depends on.
+ */
+type PersonalizedNodeTypesResolver = (answers: IPersonalizationSurveyVersions) => string[];
 
 const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
@@ -69,6 +82,22 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	});
 	const registerModalOpeners = (openers: ModalOpeners) => {
 		modalOpeners.value = openers;
+	};
+
+	// App-provided capabilities, registered at bootstrap (see app/init.ts) so the store
+	// carries no `@/app` dependency. Both fall back to safe no-ops before registration.
+
+	// Permission checks, keyed by capability (app RBAC checks; extend the object as
+	// more permissions need resolving). `listUsers` gates the `user:list` scope.
+	const canListUsers = ref<() => boolean>(() => false);
+	const setPermissionsResolvers = (resolvers: { listUsers: () => boolean }) => {
+		canListUsers.value = resolvers.listUsers;
+	};
+
+	// Maps a user's personalization-survey answers to recommended node types.
+	const nodeTypesResolver = ref<PersonalizedNodeTypesResolver>(() => []);
+	const setNodeTypesResolver = (resolver: PersonalizedNodeTypesResolver) => {
+		nodeTypesResolver.value = resolver;
 	};
 
 	// Stores
@@ -119,9 +148,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	const setCalloutDismissed = (callout: string) => {
 		if (currentUser.value?.settings) {
-			if (!currentUser.value?.settings?.dismissedCallouts) {
-				currentUser.value.settings.dismissedCallouts = {};
-			}
+			currentUser.value.settings.dismissedCallouts ??= {};
 
 			currentUser.value.settings.dismissedCallouts[callout] = true;
 		}
@@ -137,7 +164,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		if (!answers) {
 			return [];
 		}
-		return getPersonalizedNodeTypes(answers);
+		return nodeTypesResolver.value(answers);
 	});
 
 	const usersLimitNotReached = computed(
@@ -156,7 +183,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 			const user: IUser = {
 				...updatedUser,
 				fullName: userResponse.firstName
-					? `${updatedUser.firstName} ${updatedUser.lastName || ''}`
+					? `${updatedUser.firstName} ${updatedUser.lastName ?? ''}`
 					: undefined,
 				isDefaultUser: _isDefaultUser(updatedUser),
 				isPendingUser: _isPendingUser(updatedUser),
@@ -199,7 +226,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		try {
 			await loginWithCookie();
 			initialized.value = true;
-		} catch (e) {}
+		} catch {
+			// A missing or expired auth cookie before setup is expected; leave the store
+			// uninitialized and let the caller proceed to the login/setup flow.
+		}
 	};
 
 	const unsetCurrentUser = () => {
@@ -345,7 +375,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		skip,
 		filter,
 	}: { take?: number; skip?: number; filter?: UsersListFilterDto['filter'] } = {}) => {
-		if (!hasPermission(['rbac'], { rbac: { scope: 'user:list' } })) {
+		if (!canListUsers.value()) {
 			return;
 		}
 
@@ -357,7 +387,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		addUsers(items);
 	};
 
-	const inviteUsers = async (params: Array<{ email: string; role: InvitableRoleName }>) => {
+	const inviteUsers = async (params: Array<{ email: string; role: AssignableGlobalRole }>) => {
 		const invitedUsers = await invitationsApi.inviteUsers(rootStore.restApiContext, params);
 		addUsers(
 			invitedUsers.map(({ user }) => ({
@@ -368,7 +398,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		return invitedUsers;
 	};
 
-	const reinviteUser = async ({ email, role }: { email: string; role: InvitableRoleName }) => {
+	const reinviteUser = async ({ email, role }: { email: string; role: AssignableGlobalRole }) => {
 		const invitationResponse = await invitationsApi.inviteUsers(rootStore.restApiContext, [
 			{ email, role },
 		]);
@@ -390,7 +420,9 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		setPersonalizationAnswers(results);
 	};
 
-	const showPersonalizationSurvey = async () => {
+	// Synchronous: after the `ui.store` modal decoupling this only fires the injected
+	// opener. All call sites invoke it fire-and-forget (`void ...`).
+	const showPersonalizationSurvey = () => {
 		const surveyEnabled = settingsStore.isPersonalizationSurveyEnabled;
 		if (surveyEnabled && currentUser.value && !currentUser.value.personalizationAnswers) {
 			modalOpeners.value.openModal(PERSONALIZATION_MODAL_KEY);
@@ -493,6 +525,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		registerLoginHook,
 		registerLogoutHook,
 		registerModalOpeners,
+		setPermissionsResolvers,
+		setNodeTypesResolver,
 		createOwner,
 		validateSignupToken,
 		acceptInvitation,
