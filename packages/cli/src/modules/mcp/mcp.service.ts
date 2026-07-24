@@ -592,6 +592,7 @@ export class McpService {
 			this.subworkflowPolicyChecker,
 			this.workflowPublishedDataService,
 			this.aiGatewayService,
+			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
 		);
 		registerIfAllowed(updateTool);
 

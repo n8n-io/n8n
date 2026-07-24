@@ -185,7 +185,7 @@ describe('update-workflow MCP tool', () => {
 	const aiGatewayService = mock<AiGatewayService>();
 	aiGatewayService.isAvailable.mockResolvedValue({ available: false });
 
-	const createTool = () =>
+	const createTool = (options?: { canvasGroupsEnabled?: boolean }) =>
 		createUpdateWorkflowTool(
 			user,
 			workflowFinderService,
@@ -202,6 +202,7 @@ describe('update-workflow MCP tool', () => {
 			subworkflowPolicyChecker,
 			workflowPublishedDataService,
 			aiGatewayService,
+			options,
 		);
 
 	const callHandler = async (
@@ -335,6 +336,137 @@ describe('update-workflow MCP tool', () => {
 					versionDescription: 'Updated nodes: B',
 				}),
 			);
+		});
+	});
+
+	describe('node group operations', () => {
+		const buildPublishedInputSchema = (tool: ReturnType<typeof createTool>) =>
+			z.object(tool.config.inputSchema as z.ZodRawShape);
+
+		const addGroupInput = {
+			workflowId: 'wf-1',
+			operations: [{ type: 'addNodeGroup', name: 'Group', nodeNames: ['A', 'B'] }],
+		};
+
+		test('published schema rejects gated group ops when the flag is off', () => {
+			const parsed = buildPublishedInputSchema(createTool()).safeParse(addGroupInput);
+			expect(parsed.success).toBe(false);
+		});
+
+		test('published schema accepts gated group ops when the flag is on', () => {
+			const parsed = buildPublishedInputSchema(createTool({ canvasGroupsEnabled: true })).safeParse(
+				addGroupInput,
+			);
+			expect(parsed.success).toBe(true);
+		});
+
+		test('handler rejects gated group ops when the flag is off', async () => {
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'addNodeGroup', name: 'Group', nodeNames: ['A'] }],
+			});
+
+			expect(result.isError).toBe(true);
+			const response = parseResult(result);
+			expect(response.error).toContain('not available on this instance');
+			expect(updateMock).not.toHaveBeenCalled();
+		});
+
+		test('setNodeGroups works with the flag off', async () => {
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{
+						type: 'setNodeGroups',
+						nodeGroups: [{ id: 'g1', name: 'Group', nodeNames: ['A', 'B'] }],
+					},
+				],
+			});
+
+			expect(result.isError).toBeUndefined();
+			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+			expect(saved.nodeGroups).toEqual([{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }]);
+		});
+
+		test('applies addNodeGroup end-to-end when the flag is on', async () => {
+			const result = await callHandler(
+				{
+					workflowId: 'wf-1',
+					operations: [{ type: 'addNodeGroup', id: 'g1', name: 'Group', nodeNames: ['A', 'B'] }],
+				},
+				createTool({ canvasGroupsEnabled: true }),
+			);
+
+			expect(result.isError).toBeUndefined();
+			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+			expect(saved.nodeGroups).toEqual([{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }]);
+		});
+
+		test('applies updateNodeGroup and removeNodeGroup against existing groups when the flag is on', async () => {
+			findWorkflowMock.mockResolvedValue(
+				Object.assign(buildExistingWorkflow(), {
+					nodeGroups: [
+						{ id: 'g1', name: 'First', nodeIds: ['a'] },
+						{ id: 'g2', name: 'Second', nodeIds: ['b'] },
+					],
+				}),
+			);
+
+			const result = await callHandler(
+				{
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'updateNodeGroup',
+							groupName: 'First',
+							newName: 'Renamed',
+							description: 'Ingest step',
+						},
+						{ type: 'removeNodeGroup', groupName: 'Second' },
+					],
+				},
+				createTool({ canvasGroupsEnabled: true }),
+			);
+
+			expect(result.isError).toBeUndefined();
+			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+			expect(saved.nodeGroups).toEqual([
+				{ id: 'g1', name: 'Renamed', nodeIds: ['a'], description: 'Ingest step' },
+			]);
+		});
+
+		test('removeNode prunes the node from groups and persists them, regardless of the flag', async () => {
+			findWorkflowMock.mockResolvedValue(
+				Object.assign(buildExistingWorkflow(), {
+					nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }],
+				}),
+			);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'removeNode', nodeName: 'B' }],
+			});
+
+			expect(result.isError).toBeUndefined();
+			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+			expect(saved.nodeGroups).toEqual([{ id: 'g1', name: 'Group', nodeIds: ['a'] }]);
+		});
+
+		test('does not attach nodeGroups when no operation touches groups', async () => {
+			findWorkflowMock.mockResolvedValue(
+				Object.assign(buildExistingWorkflow(), {
+					nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a'] }],
+				}),
+			);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'setNodePosition', nodeName: 'A', position: [50, 50] }],
+			});
+
+			expect(result.isError).toBeUndefined();
+			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+			expect('nodeGroups' in saved).toBe(false);
 		});
 	});
 
@@ -862,12 +994,12 @@ describe('update-workflow MCP tool', () => {
 						: null,
 				);
 
-				const result = await tool.handler(
+				const result = await callHandler(
 					{
 						workflowId: 'wf-1',
 						operations: [{ type: 'setWorkflowSettings', settings: { timezone: 'UTC' } }],
 					},
-					{} as never,
+					tool,
 				);
 
 				expect(result.isError).toBeUndefined();

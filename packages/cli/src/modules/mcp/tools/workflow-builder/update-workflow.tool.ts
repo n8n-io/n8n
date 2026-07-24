@@ -50,7 +50,7 @@ import { getMcpWorkflow } from '../workflow-validation.utils';
 
 const MAX_OPERATIONS_PER_CALL = 100;
 
-const operationTypeSchema = z.enum([
+const baseOperationTypes = [
 	'updateNodeParameters',
 	'setNodeParameter',
 	'addNode',
@@ -67,7 +67,18 @@ const operationTypeSchema = z.enum([
 	'addTags',
 	'removeTags',
 	'setNodeGroups',
-]);
+] as const;
+
+// Granular group ops roll out behind the `102_mcp_canvas_groups` flag;
+// `setNodeGroups` predates the flag and stays ungated.
+const gatedGroupOperationTypes = ['addNodeGroup', 'removeNodeGroup', 'updateNodeGroup'] as const;
+
+const GATED_GROUP_OP_TYPES: ReadonlySet<string> = new Set(gatedGroupOperationTypes);
+
+const buildOperationTypeSchema = (canvasGroupsEnabled: boolean) =>
+	canvasGroupsEnabled
+		? z.enum([...baseOperationTypes, ...gatedGroupOperationTypes])
+		: z.enum(baseOperationTypes);
 
 const positionInputSchema = z.array(z.number()).length(2).describe('Canvas [x, y].');
 
@@ -114,57 +125,96 @@ const combinedSettingsInputSchema = z
 		'Settings to write. For setNodeSettings use the node-level keys (onError, retryOnFail, maxTries, waitBetweenTries, alwaysOutputData, executeOnce). For setWorkflowSettings use the workflow-level keys (errorWorkflow, timezone, executionOrder, saveExecutionProgress, saveManualExecutions, saveDataErrorExecution, saveDataSuccessExecution, executionTimeout, timeSavedPerExecution, callerPolicy, callerIds). Provide only the keys for the operation you are running.',
 	);
 
-const operationInputSchema = z
-	.object({
-		type: operationTypeSchema.describe('Operation type.'),
-		nodeName: z.string().optional().describe('For node-targeted ops.'),
-		node: nodeInputSchema.optional().describe('For addNode.'),
-		parameters: z.record(z.string(), z.unknown()).optional().describe('For updateNodeParameters.'),
-		replace: z.boolean().optional().describe('For updateNodeParameters; default false.'),
-		path: z.string().min(2).optional().describe('For setNodeParameter; JSON Pointer path.'),
-		value: z.unknown().optional().describe('For setNodeParameter.'),
-		oldName: z.string().optional().describe('For renameNode.'),
-		newName: z.string().optional().describe('For renameNode.'),
-		source: z.string().optional().describe('For connection ops.'),
-		target: z.string().optional().describe('For connection ops.'),
-		sourceIndex: z
-			.number()
-			.int()
-			.nonnegative()
-			.optional()
-			.describe('For connection ops; default 0.'),
-		targetIndex: z
-			.number()
-			.int()
-			.nonnegative()
-			.optional()
-			.describe('For connection ops; default 0.'),
-		connectionType: z.string().optional().describe('For connection ops; default "main".'),
-		credentialKey: z.string().optional().describe('For setNodeCredential.'),
-		credentialId: z.string().optional().describe('For setNodeCredential.'),
-		credentialName: z.string().optional().describe('For setNodeCredential.'),
-		position: positionInputSchema.optional().describe('For setNodePosition.'),
-		disabled: z.boolean().optional().describe('For setNodeDisabled.'),
-		settings: combinedSettingsInputSchema
-			.optional()
-			.describe('For setNodeSettings or setWorkflowSettings.'),
-		name: z.string().max(128).optional().describe('Only used for setWorkflowMetadata.'),
-		description: z.string().max(255).optional().describe('Only used for setWorkflowMetadata.'),
-		names: z.array(z.string()).optional().describe('For addTags / removeTags.'),
-		nodeGroups: z
-			.array(
-				z.object({
-					id: z.string().optional(),
-					name: z.string(),
-					nodeIds: z.array(z.string()),
-				}),
-			)
-			.optional()
-			.describe('For setNodeGroups. Replaces all node groups; pass [] to clear.'),
-	})
-	.describe('Workflow update operation. Provide fields matching type.');
+const buildOperationInputSchema = (canvasGroupsEnabled: boolean) =>
+	z
+		.object({
+			type: buildOperationTypeSchema(canvasGroupsEnabled).describe('Operation type.'),
+			nodeName: z.string().optional().describe('For node-targeted ops.'),
+			node: nodeInputSchema.optional().describe('For addNode.'),
+			parameters: z
+				.record(z.string(), z.unknown())
+				.optional()
+				.describe('For updateNodeParameters.'),
+			replace: z.boolean().optional().describe('For updateNodeParameters; default false.'),
+			path: z.string().min(2).optional().describe('For setNodeParameter; JSON Pointer path.'),
+			value: z.unknown().optional().describe('For setNodeParameter.'),
+			oldName: z.string().optional().describe('For renameNode.'),
+			newName: z
+				.string()
+				.optional()
+				.describe(canvasGroupsEnabled ? 'For renameNode or updateNodeGroup.' : 'For renameNode.'),
+			source: z.string().optional().describe('For connection ops.'),
+			target: z.string().optional().describe('For connection ops.'),
+			sourceIndex: z
+				.number()
+				.int()
+				.nonnegative()
+				.optional()
+				.describe('For connection ops; default 0.'),
+			targetIndex: z
+				.number()
+				.int()
+				.nonnegative()
+				.optional()
+				.describe('For connection ops; default 0.'),
+			connectionType: z.string().optional().describe('For connection ops; default "main".'),
+			credentialKey: z.string().optional().describe('For setNodeCredential.'),
+			credentialId: z.string().optional().describe('For setNodeCredential.'),
+			credentialName: z.string().optional().describe('For setNodeCredential.'),
+			position: positionInputSchema.optional().describe('For setNodePosition.'),
+			disabled: z.boolean().optional().describe('For setNodeDisabled.'),
+			settings: combinedSettingsInputSchema
+				.optional()
+				.describe('For setNodeSettings or setWorkflowSettings.'),
+			name: z
+				.string()
+				.max(128)
+				.optional()
+				.describe(
+					canvasGroupsEnabled
+						? 'For setWorkflowMetadata (workflow name) or addNodeGroup (group name).'
+						: 'Only used for setWorkflowMetadata.',
+				),
+			description: z
+				.string()
+				.max(255)
+				.optional()
+				.describe(
+					canvasGroupsEnabled
+						? 'For setWorkflowMetadata, addNodeGroup, or updateNodeGroup.'
+						: 'Only used for setWorkflowMetadata.',
+				),
+			names: z.array(z.string()).optional().describe('For addTags / removeTags.'),
+			nodeGroups: z
+				.array(
+					z.object({
+						id: z.string().optional(),
+						name: z.string(),
+						nodeNames: z.array(z.string()),
+						description: z.string().optional(),
+					}),
+				)
+				.optional()
+				.describe(
+					'For setNodeGroups. Replaces all node groups; pass [] to clear. Group members are node names, not ids.',
+				),
+			...(canvasGroupsEnabled
+				? {
+						groupName: z.string().optional().describe('For removeNodeGroup / updateNodeGroup.'),
+						nodeNames: z
+							.array(z.string())
+							.optional()
+							.describe('For addNodeGroup / updateNodeGroup; group member node names.'),
+						id: z.string().optional().describe('For addNodeGroup; group id, generated if omitted.'),
+					}
+				: {}),
+		})
+		.describe('Workflow update operation. Provide fields matching type.');
 
-type OperationInput = { type: z.infer<typeof operationTypeSchema>; [key: string]: unknown };
+type OperationInput = {
+	type: (typeof baseOperationTypes)[number] | (typeof gatedGroupOperationTypes)[number];
+	[key: string]: unknown;
+};
 
 const strictOperationsSchema = z.array(partialUpdateOperationSchema);
 
@@ -213,23 +263,27 @@ function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, 
 	return touched;
 }
 
-const inputSchema: z.ZodRawShape = {
-	workflowId: z.string().describe('The ID of the workflow to update.'),
-	skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
-	operations: z
-		.array(operationInputSchema)
-		.min(1)
-		.max(MAX_OPERATIONS_PER_CALL)
-		.describe(
-			`Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved.`,
+// The concrete return type (not a widened z.ZodRawShape) keeps the tool's
+// generic coupled to the real schema shape, so the handler's argument
+// annotation is compile-checked against it via ToolCallback's parameter types.
+const buildInputSchema = (canvasGroupsEnabled: boolean) =>
+	({
+		workflowId: z.string().describe('The ID of the workflow to update.'),
+		skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
+		operations: z
+			.array(buildOperationInputSchema(canvasGroupsEnabled))
+			.min(1)
+			.max(MAX_OPERATIONS_PER_CALL)
+			.describe(
+				`Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved.`,
+			),
+		versionName: versionNameInputSchema.describe(
+			'Short summary of what this update changes, shown in the workflow\'s version history (e.g. "Added Slack notification after HTTP request"). Always provide it.',
 		),
-	versionName: versionNameInputSchema.describe(
-		'Short summary of what this update changes, shown in the workflow\'s version history (e.g. "Added Slack notification after HTTP request"). Always provide it.',
-	),
-	versionDescription: versionDescriptionInputSchema.describe(
-		'Longer description of what changed and why, shown in the version history alongside the version name.',
-	),
-};
+		versionDescription: versionDescriptionInputSchema.describe(
+			'Longer description of what changed and why, shown in the version history alongside the version name.',
+		),
+	}) satisfies z.ZodRawShape;
 
 // The MCP SDK publishes this schema with `additionalProperties: false` and
 // validates `structuredContent` against it on every response. Success returns
@@ -454,12 +508,21 @@ export const createUpdateWorkflowTool = (
 	subworkflowPolicyChecker: SubworkflowPolicyChecker,
 	workflowPublishedDataService: WorkflowPublishedDataService,
 	aiGatewayService: AiGatewayService,
-): ToolDefinition<typeof inputSchema> => ({
+	options: {
+		/**
+		 * `102_mcp_canvas_groups` rollout flag: when true, the granular node-group
+		 * operations (addNodeGroup, removeNodeGroup, updateNodeGroup) are published
+		 * in the tool schema and accepted by the handler. `setNodeGroups` predates
+		 * the flag and is always available.
+		 */
+		canvasGroupsEnabled?: boolean;
+	} = {},
+): ToolDefinition<ReturnType<typeof buildInputSchema>> => ({
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
 		description:
 			'Atomically update an existing workflow with operation objects. Edits nodes/connections and also workflow-level settings via setWorkflowSettings — including the error workflow that runs automatically on failure to send alerts (e.g. when a user asks to "add error handling" or "notify me if this breaks"). Pass skillsUsed if n8n skills were used.',
-		inputSchema,
+		inputSchema: buildInputSchema(options.canvasGroupsEnabled === true),
 		outputSchema,
 		annotations: {
 			title: MCP_UPDATE_WORKFLOW_TOOL.displayTitle,
@@ -498,6 +561,18 @@ export const createUpdateWorkflowTool = (
 
 		try {
 			const strictOperations = parseStrictOperations(operations);
+
+			// Defense in depth: with the flag off, the published schema already
+			// rejects these op types at the enum level; this guards against the
+			// loose and strict schemas drifting apart.
+			const hasGatedGroupOperations = strictOperations.some((op) =>
+				GATED_GROUP_OP_TYPES.has(op.type),
+			);
+			if (hasGatedGroupOperations && options.canvasGroupsEnabled !== true) {
+				throw new Error(
+					'Node group operations (addNodeGroup, removeNodeGroup, updateNodeGroup) are not available on this instance.',
+				);
+			}
 
 			const hasTagOperations = strictOperations.some(
 				(op) => op.type === 'addTags' || op.type === 'removeTags',
@@ -638,10 +713,6 @@ export const createUpdateWorkflowTool = (
 				}
 			}
 
-			// Only persist nodeGroups when a setNodeGroups op ran; otherwise omit the key so
-			// WorkflowService preserves the existing groups (preserve-on-omit).
-			const hasNodeGroupOperation = strictOperations.some((op) => op.type === 'setNodeGroups');
-
 			const workflowUpdateData = new WorkflowEntity();
 			Object.assign(workflowUpdateData, {
 				name: result.workflow.name,
@@ -653,7 +724,10 @@ export const createUpdateWorkflowTool = (
 				// Only attach settings when a settings op ran, so node-only edits
 				// don't re-save (and re-clean) the existing settings object.
 				...(hasSettingsOperations ? { settings: result.workflow.settings } : {}),
-				...(hasNodeGroupOperation ? { nodeGroups: result.workflow.nodeGroups } : {}),
+				// Only persist nodeGroups when the batch touched them (a group op ran
+				// or removing a node pruned a group); otherwise omit the key so
+				// WorkflowService preserves the existing groups (preserve-on-omit).
+				...(result.nodeGroupsChanged ? { nodeGroups: result.workflow.nodeGroups } : {}),
 				meta: hasNonTagOperations
 					? {
 							...(existingWorkflow.meta ?? {}),

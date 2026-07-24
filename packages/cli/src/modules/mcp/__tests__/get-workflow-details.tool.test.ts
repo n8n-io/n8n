@@ -96,6 +96,33 @@ describe('get-workflow-details MCP tool', () => {
 			expect(payload.workflow.canExecute).toBe(true);
 		});
 
+		test('presents node groups by member node names, dropping stale ids', async () => {
+			const workflow = createWorkflow({
+				nodeGroups: [{ id: 'group-1', name: 'Intake', nodeIds: ['node-1', 'stale-id'] }],
+			});
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1' },
+			);
+
+			// Read path presents groups by member node names; persisted ids stay internal.
+			expect(payload.workflow.nodeGroups).toEqual([
+				{ id: 'group-1', name: 'Intake', nodeNames: ['Webhook'] },
+			]);
+		});
+
 		test('requests and returns workflow tags', async () => {
 			const tags = [
 				{ id: 'tag-1', name: 'production' },

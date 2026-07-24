@@ -1,6 +1,6 @@
 import type { User } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { type IConnections, type IWorkflowGroup } from 'n8n-workflow';
+import { type IConnections } from 'n8n-workflow';
 import z from 'zod';
 
 import type { Telemetry } from '@/telemetry';
@@ -10,7 +10,13 @@ import type { WorkflowHistoryService } from '@/workflows/workflow-history/workfl
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { connectionsSchema, nodeGroupSchema, nodeSchema } from './schemas';
+import {
+	connectionsSchema,
+	nodeGroupSchema,
+	nodeSchema,
+	toNodeGroupSummary,
+	type NodeGroupSummary,
+} from './schemas';
 import { getMcpWorkflowVersion } from './workflow-history.utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
@@ -48,7 +54,7 @@ type GetWorkflowVersionResult = {
 	updatedAt: string;
 	nodes: Array<Record<string, unknown>>;
 	connections: IConnections;
-	nodeGroups: IWorkflowGroup[];
+	nodeGroups: NodeGroupSummary[];
 };
 type GetWorkflowVersionOutput = Omit<
 	GetWorkflowVersionResult,
@@ -171,6 +177,6 @@ export async function getWorkflowVersion(
 		updatedAt: version.updatedAt.toISOString(),
 		nodes,
 		connections: version.connections ?? {},
-		nodeGroups: version.nodeGroups ?? [],
+		nodeGroups: toNodeGroupSummary(version.nodeGroups ?? [], version.nodes ?? []),
 	};
 }
