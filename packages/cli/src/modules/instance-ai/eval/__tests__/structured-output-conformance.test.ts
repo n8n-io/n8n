@@ -2,6 +2,7 @@ import {
 	discoverStructuredOutputSchema,
 	conformContentToSchema,
 	applyStructuredOutputConformance,
+	requestDemandsFencedOutput,
 } from '../structured-output-conformance';
 
 const strict = (properties: Record<string, unknown>) => ({
@@ -134,5 +135,90 @@ describe('applyStructuredOutputConformance', () => {
 			input: [{ role: 'user', content: 'no schema here' }],
 		});
 		expect(out).toBe('{"a":1,"b":2}');
+	});
+});
+
+describe('requestDemandsFencedOutput', () => {
+	it('detects the Text Classifier fence instruction in chat messages', () => {
+		const body = {
+			messages: [
+				{
+					role: 'system',
+					content: 'Classify the input. Include the enclosing markdown codeblock: ```json ... ```',
+				},
+				{ role: 'user', content: 'hello' },
+			],
+		};
+		expect(requestDemandsFencedOutput(body)).toBe(true);
+	});
+
+	it('detects the classic StructuredOutputParser phrasing in Responses input', () => {
+		const body = {
+			input: [
+				{
+					role: 'system',
+					content: [
+						{
+							type: 'input_text',
+							text: 'Return a markdown code snippet formatted in the following schema',
+						},
+					],
+				},
+			],
+		};
+		expect(requestDemandsFencedOutput(body)).toBe(true);
+	});
+
+	it('is false when no fence instruction is present', () => {
+		expect(requestDemandsFencedOutput({ messages: [{ role: 'user', content: 'hi' }] })).toBe(false);
+		expect(requestDemandsFencedOutput(undefined)).toBe(false);
+	});
+});
+
+describe('conformContentToSchema — ensureFence', () => {
+	it('wraps bare JSON in a ```json block when the request demands fences', () => {
+		const schema = strict({ category: { type: 'string' } });
+		const out = conformContentToSchema('{"category":"bug"}', schema, { ensureFence: true });
+		expect(out).toBe('```json\n{"category":"bug"}\n```');
+	});
+
+	it('keeps already-fenced content fenced without double-wrapping', () => {
+		const schema = strict({ category: { type: 'string' } });
+		const out = conformContentToSchema('```json\n{"category":"bug"}\n```', schema, {
+			ensureFence: true,
+		});
+		expect(out).toBe('```json\n{"category":"bug"}\n```');
+	});
+
+	it('fences bare JSON even without a discovered schema', () => {
+		const out = conformContentToSchema('{"client_project":true}', undefined, { ensureFence: true });
+		expect(out).toBe('```json\n{"client_project":true}\n```');
+	});
+
+	it('leaves non-JSON content untouched even when fences are demanded', () => {
+		expect(conformContentToSchema('a plain prose answer', undefined, { ensureFence: true })).toBe(
+			'a plain prose answer',
+		);
+	});
+
+	it('does not fence when ensureFence is off (existing behavior)', () => {
+		const schema = strict({ category: { type: 'string' } });
+		expect(conformContentToSchema('{"category":"bug"}', schema)).toBe('{"category":"bug"}');
+	});
+});
+
+describe('applyStructuredOutputConformance — fence demand end-to-end', () => {
+	it('fences the reply when the request carries the fence instruction and a fenced schema', () => {
+		const body = {
+			messages: [
+				{
+					role: 'system',
+					content:
+						'Answer with JSON. Include the enclosing markdown codeblock:\n```json\n{"type":"object","properties":{"client_project":{"type":"boolean"}},"additionalProperties":false}\n```',
+				},
+			],
+		};
+		const out = applyStructuredOutputConformance('{"client_project":true,"stray":1}', body);
+		expect(out).toBe('```json\n{"client_project":true}\n```');
 	});
 });

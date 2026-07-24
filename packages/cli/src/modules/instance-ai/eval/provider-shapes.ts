@@ -59,6 +59,12 @@ function isOpenAiImagesGeneration(path: string): boolean {
 	return path.endsWith('/images/generations');
 }
 
+function isOpenAiCompletion(path: string): 'responses' | 'chat' | null {
+	if (path.endsWith('/v1/responses')) return 'responses';
+	if (path.endsWith('/chat/completions')) return 'chat';
+	return null;
+}
+
 function isGeminiGenerate(host: string, path: string): boolean {
 	return host === 'generativelanguage.googleapis.com' && path.includes('generatecontent');
 }
@@ -137,6 +143,52 @@ function coerceImageEntry(entry: unknown): Record<string, unknown> {
 	if (!isPlainObject(entry)) return { b64_json: PLACEHOLDER_B64 };
 	if (typeof entry.b64_json === 'string' && entry.b64_json.length > 0) return entry;
 	return { ...entry, b64_json: PLACEHOLDER_B64 };
+}
+
+// ---------------------------------------------------------------------------
+// OpenAI completions — /v1/responses, /chat/completions
+// ---------------------------------------------------------------------------
+
+/**
+ * The real OpenAI envelopes carry the model's answer as a STRING —
+ * `output[].content[].text` on /v1/responses, `choices[].message.content` on
+ * chat/completions — even when the answer is JSON (`json_object` format returns
+ * a JSON-encoded string). The generator sometimes embeds the parsed object
+ * instead; downstream code then runs `JSON.parse` on `"[object Object]"` and
+ * yields 0 items. Serialize any non-string payload at those paths; everything
+ * else (tool_call items, null content, content-part arrays) is left untouched.
+ */
+function normalizeOpenAiCompletionText(spec: NormalizableSpec, kind: 'responses' | 'chat'): void {
+	const body = spec.body;
+	if (!isPlainObject(body)) return;
+
+	if (kind === 'responses') {
+		if (Array.isArray(body.output)) {
+			for (const item of body.output) {
+				if (!isPlainObject(item) || !Array.isArray(item.content)) continue;
+				for (const part of item.content) {
+					if (isPlainObject(part) && 'text' in part && typeof part.text !== 'string') {
+						part.text = JSON.stringify(part.text);
+					}
+				}
+			}
+		}
+		if (body.output_text !== undefined && typeof body.output_text !== 'string') {
+			body.output_text = JSON.stringify(body.output_text);
+		}
+		return;
+	}
+
+	if (Array.isArray(body.choices)) {
+		for (const choice of body.choices) {
+			if (!isPlainObject(choice) || !isPlainObject(choice.message)) continue;
+			const content = choice.message.content;
+			// null (tool-calls-only turn) and content-part arrays are valid shapes.
+			if (content !== null && content !== undefined && typeof content !== 'string') {
+				if (!Array.isArray(content)) choice.message.content = JSON.stringify(content);
+			}
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -268,6 +320,8 @@ export function applyProviderShapeNormalizers(
 	const host = (info.hostname ?? '').toLowerCase();
 
 	if (isOpenAiImagesGeneration(path)) return normalizeOpenAiImages(spec);
+	const completionKind = isOpenAiCompletion(path);
+	if (completionKind) return normalizeOpenAiCompletionText(spec, completionKind);
 	if (isGeminiGenerate(host, path)) return normalizeGemini(spec);
 	const redditKind = isRedditWrite(host, path, info.method);
 	if (redditKind) return normalizeReddit(spec, redditKind);
@@ -288,6 +342,8 @@ export function findProviderShapeViolation(
 	const host = (info.hostname ?? '').toLowerCase();
 
 	if (isOpenAiImagesGeneration(path)) return openAiImagesViolation(body);
+	const completionKind = isOpenAiCompletion(path);
+	if (completionKind) return openAiCompletionTextViolation(body, completionKind);
 	if (isGeminiGenerate(host, path)) return geminiViolation(body);
 	const redditKind = isRedditWrite(host, path, info.method);
 	if (redditKind) return redditViolation(body, redditKind);
@@ -309,6 +365,35 @@ function openAiImagesViolation(body: unknown): string | undefined {
 	);
 	if (brokenEntry) {
 		return 'Invalid: every OpenAI image `data[]` entry must carry a `b64_json` (base64 string) — the node decodes it. Resubmit with `data: [{ "b64_json": "..." }]`.';
+	}
+	return undefined;
+}
+
+function openAiCompletionTextViolation(
+	body: unknown,
+	kind: 'responses' | 'chat',
+): string | undefined {
+	if (!isPlainObject(body)) return undefined;
+	if (kind === 'responses' && Array.isArray(body.output)) {
+		for (const item of body.output) {
+			if (!isPlainObject(item) || !Array.isArray(item.content)) continue;
+			for (const part of item.content) {
+				if (isPlainObject(part) && 'text' in part && typeof part.text !== 'string') {
+					return 'Invalid: OpenAI /v1/responses `output[].content[].text` must be a STRING — when the answer is JSON, JSON-encode it into the string (e.g. "{\\"quotes\\":[...]}"), never embed the parsed object. Resubmit with `text` as a string.';
+				}
+			}
+		}
+	}
+	if (kind === 'chat' && Array.isArray(body.choices)) {
+		for (const choice of body.choices) {
+			if (!isPlainObject(choice) || !isPlainObject(choice.message)) continue;
+			const content = choice.message.content;
+			if (content !== null && content !== undefined && typeof content !== 'string') {
+				if (!Array.isArray(content)) {
+					return 'Invalid: chat/completions `choices[].message.content` must be a STRING (or null with tool_calls) — when the answer is JSON, JSON-encode it into the string, never embed the parsed object. Resubmit with `content` as a string.';
+				}
+			}
+		}
 	}
 	return undefined;
 }
