@@ -20,27 +20,34 @@ export interface TagExportResult {
 @Service()
 export class TagExporter {
 	export(request: TagExportRequest): TagExportResult {
-		const tagsById = new Map<string, PackageTagRequirement>();
+		const requirementsByTagId = new Map<string, PackageTagRequirement>();
 
 		for (const { workflowId, tag } of request.usages) {
-			const grouped = tagsById.get(tag.id) ?? { id: tag.id, name: tag.name, usedByWorkflows: [] };
-			if (!grouped.usedByWorkflows.includes(workflowId)) {
-				grouped.usedByWorkflows.push(workflowId);
+			const requirement = requirementsByTagId.get(tag.id) ?? {
+				id: tag.id,
+				name: tag.name,
+				usedByWorkflows: [],
+			};
+			if (!requirement.usedByWorkflows.includes(workflowId)) {
+				requirement.usedByWorkflows.push(workflowId);
 			}
-			tagsById.set(tag.id, grouped);
+			requirementsByTagId.set(tag.id, requirement);
 		}
 
-		const requirements = [...tagsById.values()].sort(compareTagsByName);
+		const requirements = [...requirementsByTagId.values()].sort(compareTagsByName);
 
 		const allocator = new UniqueFilenameAllocator('tags', 'tag');
 		const entries: ManifestEntry[] = [];
 
-		for (const tag of requirements) {
-			const target = allocator.allocate(tag.name);
-			const serialized = serializedTagSchema.parse({ id: tag.id, name: tag.name });
-			request.writer.writeDirectory(target);
-			request.writer.writeFile(`${target}/tag.json`, JSON.stringify(serialized, null, '\t'));
-			entries.push({ id: tag.id, name: tag.name, target });
+		for (const { id, name } of requirements) {
+			const tagDirectory = allocator.allocate(name);
+			const serializedTag = serializedTagSchema.parse({ id, name });
+			request.writer.writeDirectory(tagDirectory);
+			request.writer.writeFile(
+				`${tagDirectory}/tag.json`,
+				JSON.stringify(serializedTag, null, '\t'),
+			);
+			entries.push({ id, name, target: tagDirectory });
 		}
 
 		return { entries, requirements };
