@@ -97,6 +97,7 @@ export { ExternalSecretsProxy, type IExternalSecretsManager } from './external-s
 export type * from './interfaces';
 export * from './node-execution-context';
 export * from './node-execution-context/utils/execution-metadata';
+export { NoOpPollJobManager } from './noop-poll-job-manager';
 export * from './partial-execution-utils';
 export { PollJobManager } from './poll-job-manager';
 export { PollTriggerExecutor } from './poll-trigger-executor';

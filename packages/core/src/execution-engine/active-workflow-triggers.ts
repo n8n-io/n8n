@@ -22,6 +22,7 @@ import {
 import { ErrorReporter } from '@/errors/error-reporter';
 
 import type { IGetExecutePollFunctions, IGetExecuteTriggerFunctions } from './interfaces';
+import { NoOpPollJobManager } from './noop-poll-job-manager';
 import { PollJobManager } from './poll-job-manager';
 import { PollTriggerExecutor } from './poll-trigger-executor';
 import { ScheduledTaskManager, type ScheduledTaskGroup } from './scheduled-task-manager';
@@ -57,11 +58,17 @@ export class ActiveWorkflowTriggers {
 
 	/**
 	 * Resolved lazily rather than via constructor injection, so this doesn't
-	 * depend on DI construction order. Unbound falls back to the legacy
-	 * in-memory cron path.
+	 * depend on DI construction order. Unbound, or bound to the no-op
+	 * implementation, falls back to the legacy in-memory cron path. The
+	 * `instanceof` check is safe here because this class and
+	 * {@link NoOpPollJobManager} both come from the same in-process `n8n-core`
+	 * module; it would not be safe across a sandboxed/duplicated module copy
+	 * (e.g. isolated-vm task runners).
 	 */
 	private getPollJobManager(): PollJobManager | undefined {
-		return Container.has(PollJobManager) ? Container.get(PollJobManager) : undefined;
+		if (!Container.has(PollJobManager)) return undefined;
+		const pollJobManager = Container.get(PollJobManager);
+		return pollJobManager instanceof NoOpPollJobManager ? undefined : pollJobManager;
 	}
 
 	private activeTriggersByWorkflowId = new Map<string, WorkflowActiveTriggersState>();
@@ -385,7 +392,7 @@ export class ActiveWorkflowTriggers {
 		);
 
 		const pollJobManager = this.getPollJobManager();
-		if (pollJobManager?.isActive()) {
+		if (pollJobManager) {
 			// Provision a scheduler job instead of an in-memory cron; recurring fires
 			// run as the job's occurrences, with no in-memory timer.
 			const { inserted } = await pollJobManager.register(

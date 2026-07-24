@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
+import type { GlobalConfig } from '@n8n/config';
 import type { EntityManager } from '@n8n/db';
 import type { CronDefinition } from '@n8n/scheduler';
 import type { CronExpression, INode, TriggerTime } from 'n8n-workflow';
@@ -31,18 +30,10 @@ const pollNode = mock<INode>({ id: NODE_ID, type: 'n8n-nodes-base.rssFeedReadTri
 describe('PollTriggerJobRegistrar', () => {
 	const jobProvisioner = mock<DurableJobProvisioner>();
 
-	const makeRegistrar = ({
-		schedulerEnabled = true,
-		publicationEnabled = true,
-		enabledForPollTriggers = true,
-	} = {}) =>
+	const makeRegistrar = () =>
 		new PollTriggerJobRegistrar(
 			mockLogger(),
-			mock<GlobalConfig>({
-				scheduler: { enabled: schedulerEnabled, enabledForPollTriggers },
-				generic: { timezone: TIMEZONE },
-			}),
-			mock<WorkflowsConfig>({ useWorkflowPublicationService: publicationEnabled }),
+			mock<GlobalConfig>({ generic: { timezone: TIMEZONE } }),
 			jobProvisioner,
 		);
 
@@ -62,46 +53,6 @@ describe('PollTriggerJobRegistrar', () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
-	});
-
-	describe('isActive', () => {
-		it.each([
-			{
-				schedulerEnabled: true,
-				publicationEnabled: true,
-				enabledForPollTriggers: true,
-				expected: true,
-			},
-			{
-				schedulerEnabled: false,
-				publicationEnabled: true,
-				enabledForPollTriggers: true,
-				expected: false,
-			},
-			{
-				schedulerEnabled: true,
-				publicationEnabled: false,
-				enabledForPollTriggers: true,
-				expected: false,
-			},
-			{
-				schedulerEnabled: true,
-				publicationEnabled: true,
-				enabledForPollTriggers: false,
-				expected: false,
-			},
-		] as const)(
-			'is $expected for scheduler=$schedulerEnabled publication=$publicationEnabled pollTriggers=$enabledForPollTriggers',
-			({ schedulerEnabled, publicationEnabled, enabledForPollTriggers, expected }) => {
-				expect(
-					makeRegistrar({
-						schedulerEnabled,
-						publicationEnabled,
-						enabledForPollTriggers,
-					}).isActive(),
-				).toBe(expected);
-			},
-		);
 	});
 
 	describe('register', () => {
@@ -326,43 +277,5 @@ describe('PollTriggerJobRegistrar', () => {
 				POLL_TRIGGER_TASK_TYPE,
 			);
 		});
-	});
-
-	describe('configuration warning', () => {
-		const construct = ({ schedulerEnabled = true, publicationEnabled = true } = {}) => {
-			const scopedLogger = mockLogger();
-			const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
-			new PollTriggerJobRegistrar(
-				logger,
-				mock<GlobalConfig>({
-					scheduler: { enabled: schedulerEnabled, enabledForPollTriggers: true },
-					generic: { timezone: TIMEZONE },
-				}),
-				mock<WorkflowsConfig>({ useWorkflowPublicationService: publicationEnabled }),
-				jobProvisioner,
-			);
-			return scopedLogger;
-		};
-
-		it.each([
-			{
-				schedulerEnabled: true,
-				publicationEnabled: false,
-				warnSubstring: 'workflow publication service is disabled',
-			},
-			{ schedulerEnabled: true, publicationEnabled: true, warnSubstring: null },
-			{ schedulerEnabled: false, publicationEnabled: false, warnSubstring: null },
-		])(
-			'scheduler=$schedulerEnabled publication=$publicationEnabled',
-			({ schedulerEnabled, publicationEnabled, warnSubstring }) => {
-				const logger = construct({ schedulerEnabled, publicationEnabled });
-
-				if (warnSubstring) {
-					expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(warnSubstring));
-				} else {
-					expect(logger.warn).not.toHaveBeenCalled();
-				}
-			},
-		);
 	});
 });
