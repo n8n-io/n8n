@@ -1,9 +1,11 @@
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isNodeWithWorkflowSelector, isResourceLocatorValue } from 'n8n-workflow';
 
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { orderBySubWorkflowDependencies } from './sub-workflow-ordering';
 import { decideWorkflowConflictAction } from './workflow-conflict-policy';
 import { decideWorkflowId } from './workflow-id-policy';
 import {
@@ -23,11 +25,13 @@ import type {
 } from './workflow-import.types';
 import { WorkflowPublisher } from './workflow-publisher';
 import type {
+	ImportBindingMap,
 	ImportContext,
 	ImportWorkflowProperties,
 	PackageImportBindings,
 	WorkflowIdPolicy,
 } from '../../n8n-packages.types';
+import type { PackageWorkflowRequirement } from '../../spec/requirements.schema';
 
 export interface WorkflowImportResult {
 	outcomes: WorkflowImportOutcome[];
@@ -52,11 +56,15 @@ export class WorkflowImporter {
 		context: ImportContext,
 		prepared: PreparedWorkflow[],
 		options: ImportWorkflowProperties,
+		subWorkflowRequirements?: PackageWorkflowRequirement[],
 	): Promise<WorkflowImportPlan> {
+		// Order so sub-workflows are planned (and applied) before the workflows that call them.
+		const orderedPrepared = orderBySubWorkflowDependencies(prepared, subWorkflowRequirements);
+
 		const existingBySourceWorkflowId =
 			await this.workflowImportMatchService.findBySourceWorkflowIds(
 				context.projectId,
-				prepared.map(({ sourceWorkflowId }) => sourceWorkflowId),
+				orderedPrepared.map(({ sourceWorkflowId }) => sourceWorkflowId),
 			);
 
 		const items: WorkflowPlanItem[] = [];
@@ -67,7 +75,7 @@ export class WorkflowImporter {
 		// already report a workflow-conflict for the same workflow.
 		const sourceCreateIds: string[] = [];
 
-		for (const workflow of prepared) {
+		for (const workflow of orderedPrepared) {
 			const existing = existingBySourceWorkflowId.get(workflow.sourceWorkflowId) ?? null;
 			const { action, blocked } = decideWorkflowConflictAction(
 				options.workflowConflictPolicy,
@@ -138,17 +146,21 @@ export class WorkflowImporter {
 		plan: WorkflowImportPlan,
 		bindings: PackageImportBindings,
 	): Promise<WorkflowImportResult> {
-		const workflowBindings = new Map(bindings.workflows);
-		const outcomes: WorkflowImportOutcome[] = [];
+		// Resolve the full source→target id map from the plan before writing, so sub-workflow
+		// references resolve regardless of import order or cycles. `bindings.workflows` may
+		// already carry ids from other scopes (a project package seeds the package-wide map).
+		const workflowBindings = new Map([
+			...bindings.workflows,
+			...collectPlannedWorkflowBindings(plan.items),
+		]);
+		const resolvedBindings: PackageImportBindings = { ...bindings, workflows: workflowBindings };
 
+		const outcomes: WorkflowImportOutcome[] = [];
 		for (const item of plan.items) {
-			const outcome = await this.applyItem(context, item, bindings);
-			outcomes.push(outcome);
-			// Works for every status: created/updated/skipped all resolve to a real target id.
-			workflowBindings.set(outcome.sourceWorkflowId, outcome.workflow.id);
+			outcomes.push(await this.applyItem(context, item, resolvedBindings));
 		}
 
-		return { outcomes, bindings: { ...bindings, workflows: workflowBindings } };
+		return { outcomes, bindings: resolvedBindings };
 	}
 
 	private async applyItem(
@@ -213,6 +225,16 @@ export class WorkflowImporter {
 	}
 }
 
+/** The id an applied plan item resolves to, known before anything is written. */
+function planItemTargetId(item: WorkflowPlanItem): string {
+	return item.action === 'create' ? item.decidedId : item.existing.id;
+}
+
+/** Source→target id map for a batch of planned items, known before any write. */
+export function collectPlannedWorkflowBindings(items: WorkflowPlanItem[]): ImportBindingMap {
+	return new Map(items.map((item) => [item.sourceWorkflowId, planItemTargetId(item)]));
+}
+
 /** Clones package content for persistence without mutating the import plan. */
 function prepareEntityForPersist(
 	source: WorkflowEntity,
@@ -221,16 +243,19 @@ function prepareEntityForPersist(
 ): WorkflowEntity {
 	const entity = Object.assign(new WorkflowEntity(), source, {
 		nodes: structuredClone(source.nodes),
+		...(source.settings ? { settings: structuredClone(source.settings) } : {}),
 		...(decidedId !== undefined ? { id: decidedId } : {}),
 	});
 	applyCredentialBindingsInPlace(entity, bindings.credentials);
+	applySubWorkflowBindingsInPlace(entity, bindings.workflows);
+	remapCallerIdsInPlace(entity, bindings.workflows);
 	return entity;
 }
 
 /** Mutates node credential ids on `entity` using the resolved import binding map. */
 function applyCredentialBindingsInPlace(
 	entity: WorkflowEntity,
-	credentialBindings: PackageImportBindings['credentials'],
+	credentialBindings: ImportBindingMap,
 ): void {
 	for (const node of entity.nodes) {
 		for (const details of Object.values(node.credentials ?? {})) {
@@ -242,6 +267,41 @@ function applyCredentialBindingsInPlace(
 			}
 		}
 	}
+}
+
+/** Rewrites each workflow-selector node's referenced sub-workflow id to its imported target id. */
+function applySubWorkflowBindingsInPlace(
+	entity: WorkflowEntity,
+	workflowBindings: ImportBindingMap,
+): void {
+	for (const node of entity.nodes) {
+		if (!isNodeWithWorkflowSelector(node)) continue;
+
+		const workflowId = node.parameters.workflowId;
+		if (!isResourceLocatorValue(workflowId) || typeof workflowId.value !== 'string') continue;
+
+		const targetId = workflowBindings.get(workflowId.value);
+		if (targetId) {
+			workflowId.value = targetId;
+		}
+	}
+}
+
+/**
+ * `settings.callerIds` is a comma-separated allowlist of workflow ids allowed to call this
+ * workflow. Remap each through the binding map; ids outside the package are left as-is.
+ */
+function remapCallerIdsInPlace(entity: WorkflowEntity, workflowBindings: ImportBindingMap): void {
+	const { settings } = entity;
+	// settings is opaque at the schema level, so a non-string callerIds would crash `.split`.
+	if (!settings?.callerIds || typeof settings.callerIds !== 'string') return;
+
+	settings.callerIds = settings.callerIds
+		.split(',')
+		.map((raw) => raw.trim())
+		.filter((id) => id !== '')
+		.map((id) => workflowBindings.get(id) ?? id)
+		.join(',');
 }
 
 function toPlanItem(

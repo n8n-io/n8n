@@ -1,6 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
 import { testDb, testModules } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
 import {
 	FolderRepository,
 	ProjectRelationRepository,
@@ -9,6 +8,7 @@ import {
 	VariablesRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
@@ -30,6 +30,9 @@ import {
 	serializedProject,
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
+	serializedWorkflowWithSubWorkflow,
+	subWorkflowRefOf,
+	workflowRequirementsFromWorkflows,
 } from './fixtures/package-fixtures';
 
 async function importProjects(
@@ -714,5 +717,43 @@ describe('project shell import', () => {
 		} finally {
 			emitSpy.mockRestore();
 		}
+	});
+
+	it('rewrites a sub-workflow reference that points into another project under the `new` policy', async () => {
+		// Project brie's workflow calls a sub-workflow that lives in project stilton.
+		const parent = serializedWorkflowWithSubWorkflow({
+			id: 'CHEDDAR',
+			name: 'Parent',
+			subWorkflowId: 'BRIE',
+		});
+		const subWorkflow = serializedWorkflow({ id: 'BRIE', name: 'Sub-workflow' });
+
+		const packageBuffer = await buildEntityPackageBuffer({
+			projects: [
+				{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+				{ target: 'projects/stilton', project: serializedProject({ id: 'P2', name: 'stilton' }) },
+			],
+			workflows: [
+				{ target: 'projects/brie/workflows/parent', workflow: parent },
+				{ target: 'projects/stilton/workflows/sub', workflow: subWorkflow },
+			],
+			manifestExtras: {
+				requirements: { workflows: workflowRequirementsFromWorkflows([parent, subWorkflow]) },
+			},
+		});
+
+		const result = await importProjects(owner, packageBuffer);
+
+		const importedParent = result.workflows.find((w) => w.sourceWorkflowId === 'CHEDDAR')!;
+		const importedSub = result.workflows.find((w) => w.sourceWorkflowId === 'BRIE')!;
+
+		// Each workflow landed in its own project with a freshly-minted id...
+		expect(importedParent.projectId).toBe('P1');
+		expect(importedSub.projectId).toBe('P2');
+		expect(importedSub.localId).not.toBe('BRIE');
+		// ...and the cross-project reference resolves to the sub-workflow's imported id.
+		expect(subWorkflowRefOf((await findWorkflow(importedParent.localId))!)).toBe(
+			importedSub.localId,
+		);
 	});
 });
