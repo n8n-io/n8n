@@ -28,12 +28,16 @@ export type FindManyForInboxOptions = {
 	cursor?: InboxCursor;
 };
 
-export type ExistsAnyForInboxOptions = {
+export type CountByStateForInboxOptions = {
 	/** `null` means all projects (no filter); `[]` means no publish-scoped projects. */
 	projectIds: string[] | null;
 	/** Requesters always see the reviews they created, regardless of project scope. */
 	requesterId: string;
-	state?: WorkflowReviewRequestState;
+};
+
+export type InboxStateCounts = {
+	open: number;
+	closed: number;
 };
 
 @Service()
@@ -148,19 +152,25 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 		return await queryBuilder.getMany();
 	}
 
-	async existsAnyForInbox(options: ExistsAnyForInboxOptions): Promise<boolean> {
-		const { projectIds, requesterId, state } = options;
+	async countByStateForInbox(options: CountByStateForInboxOptions): Promise<InboxStateCounts> {
+		const { projectIds, requesterId } = options;
 
-		const queryBuilder = this.createQueryBuilder('review').select('1');
+		const queryBuilder = this.createQueryBuilder('review')
+			.select('review.state', 'state')
+			.addSelect('COUNT(*)', 'count')
+			.groupBy('review.state');
 
 		this.applyInboxVisibility(queryBuilder, projectIds, requesterId);
 
-		if (state !== undefined) {
-			queryBuilder.andWhere('review.state = :state', { state });
-		}
+		const rows = await queryBuilder.getRawMany<{
+			state: WorkflowReviewRequestState;
+			count: string | number;
+		}>();
 
-		const row = await queryBuilder.limit(1).getRawOne<Record<string, unknown>>();
-		return row !== undefined;
+		return {
+			open: Number(rows.find((row) => row.state === 'open')?.count ?? 0),
+			closed: Number(rows.find((row) => row.state === 'closed')?.count ?? 0),
+		};
 	}
 
 	/**
