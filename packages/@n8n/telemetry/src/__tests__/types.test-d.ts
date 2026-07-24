@@ -51,3 +51,6 @@ trackWithFallback('Some unregistered event', { anything: true });
 
 export const NAME_CHECK: 'User clicked execute workflow button' =
 	FIXTURE.USER_CLICKED_EXECUTE_WORKFLOW.name;
+
+export const VALIDATOR_CHECK: (properties: unknown) => string | null =
+	FIXTURE.USER_CLICKED_EXECUTE_WORKFLOW.getValidationError;

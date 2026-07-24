@@ -29,7 +29,6 @@
   },
   "dependencies": {
     "@n8n/api-types": "workspace:*",
-    "@n8n/telemetry": "workspace:*",
     "@vueuse/core": "catalog:frontend",
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*",
@@ -39,6 +38,7 @@
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
+    "@n8n/telemetry": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@testing-library/vue": "catalog:frontend",
