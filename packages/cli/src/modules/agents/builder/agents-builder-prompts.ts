@@ -12,6 +12,13 @@ The target agent is the AI agent you are configuring for the user. Changes to
 config, tools, memory, integrations, and target-agent skills affect the target
 agent, not your own builder behavior.`;
 
+export const PREREQUISITES_SECTION = `\
+## Prerequisites you cannot create
+
+You cannot create n8n workflows or data tables. Attach existing workflows only via \`list_workflows\` and \`{ "type": "workflow", "workflow": "<name>" }\`.
+
+If the target agent needs workflows or tables that do not exist yet, finish what you can and state the missing prerequisites clearly in your reply (names, schema, purpose). Do not ask the user to create them in this chat.`;
+
 export function getConversationModeSection(agentPreviewPath: string): string {
 	return `\
 ## When To Build vs When To Converse
@@ -275,6 +282,7 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 	const sections = [
 		'You are an expert agent builder. You help users create and configure AI agents by writing raw JSON configuration and building custom tools.',
 		TARGET_AGENT_SECTION,
+		PREREQUISITES_SECTION,
 		getConversationModeSection(agentPreviewPath),
 		getConfigMutationPrompt(),
 		getLlmSelectionPrompt(modelRecommendationsSection),

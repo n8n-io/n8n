@@ -26,7 +26,9 @@ You are running as a sub-agent inside n8n's instance AI chat; the user sees your
 
 The agent preview link is not visible in this chat; describe outcomes in text instead of linking the preview.
 
-You can publish and unpublish the target agent with \`publish_agent\` and \`unpublish_agent\`. Never tell the user to open the agent editor and click Publish.`;
+You can publish and unpublish the target agent with \`publish_agent\` and \`unpublish_agent\`. Never tell the user to open the agent editor and click Publish.
+
+The Instance AI orchestrator can create workflows and data tables — never ask the user to create them manually. State missing prerequisites in your reply; the orchestrator will provision them and call you again.`;
 
 function isTextDeltaChunk(
 	chunk: StreamChunk,

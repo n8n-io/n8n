@@ -274,9 +274,23 @@ describe('getSystemPrompt', () => {
 				'Pass requests to add tools or capabilities to an agent to `build-agent` near-verbatim',
 			);
 			expect(prompt).toContain('multiple independent tools do not become one workflow');
-			expect(prompt).toContain('one agent tool call must execute an ordered multi-node procedure');
+			expect(prompt).toContain('one agent tool call must run an ordered multi-node procedure');
 			expect(prompt).not.toContain(
 				'Actions the agent should invoke as reusable tools are built as workflows',
+			);
+		});
+
+		it('creates agent prerequisites before build-agent and retries when the builder reports missing assets', async () => {
+			const prompt = await getSystemPromptWithEnabledModules('agents,instance-ai');
+
+			expect(prompt).toContain('before the first `build-agent` call, create prerequisites');
+			expect(prompt).toContain('data tables via `data-table-manager` → `data-tables`');
+			expect(prompt).toContain('workflow tools via `workflow-builder` → `build-workflow`');
+			expect(prompt).toContain('If a `builderReply` lists missing workflows or tables');
+			expect(prompt).toContain('never ask the user to create them manually');
+			expect(prompt).not.toContain('call `build-agent` right away');
+			expect(prompt).not.toContain(
+				'Use `workflow-builder` before `build-agent` only when one agent tool call must execute',
 			);
 		});
 
