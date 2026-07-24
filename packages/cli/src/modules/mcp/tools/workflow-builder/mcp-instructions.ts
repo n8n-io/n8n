@@ -39,9 +39,14 @@ Only deviate when the requested artifact is an unmistakably poor fit. A fixed tr
 
 Prefer an Agent when the model owns runtime decisions, conversations, investigation, iteration, proactive work, memory, or learning. Prefer a workflow when control flow is fixed and any LLM usage is a bounded step. A Chat Trigger plus an AI Agent node is not a substitute for a requested first-class Agent. If the intended artifact is genuinely ambiguous, clarify it before creating anything.`;
 
+	// Only reference Agents when the agent walkthrough is actually shown.
+	const WORKFLOWS_ONLY_CLAUSE = isAgentsEnabled
+		? ' (not standalone n8n Agents — those never use the Workflow SDK; see the Agent instructions above)'
+		: '';
+
 	const BUILDER_INSTRUCTIONS = `This MCP server provides tools to build n8n workflows programmatically using the n8n Workflow SDK.
 
-To build n8n workflows, follow these steps in order:
+To build n8n workflows${WORKFLOWS_ONLY_CLAUSE}, follow these steps in order:
 
 1. Read the SDK reference: You MUST call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} (or use the n8n://workflow-sdk/reference resource) before writing workflow code. Do not guess SDK syntax.
 
@@ -67,19 +72,19 @@ To build n8n workflows, follow these steps in order:
 
 Error handling has two complementary layers. (1) Per-node: set onError ("continueRegularOutput" / "continueErrorOutput"), retryOnFail, and maxTries via setNodeSettings on ${MCP_UPDATE_WORKFLOW_TOOL.toolName}. (2) Failure notifications via an Error Trigger node, which can be wired two ways: (a) Dedicated/shared error workflow — point settings.errorWorkflow (via the setWorkflowSettings operation) at a SEPARATE workflow whose first node is an Error Trigger; this is the common best practice and lets one handler cover many workflows. (b) Same-workflow — add an Error Trigger node (→ a notification node such as Send Email or Slack) INTO this workflow; n8n runs it automatically when the workflow fails, with no settings change needed. Caveats: both fire only for production executions (not manual/test runs), and a configured settings.errorWorkflow takes precedence over a same-workflow Error Trigger for the failing run. When a user asks to "add error handling", "get notified on failure", or "make this reliable", briefly explain both patterns — most users do not know Error Triggers exist — and ask which they prefer before setting one up; do not enable error handling silently. For the shared pattern, reuse an existing handler (find its ID with search_workflows) or create a new one — but a dedicated error workflow must be PUBLISHED before it can be linked, in this order: (1) create it (${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName}, first node = Error Trigger → a notification node), (2) publish it (publish_workflow), (3) set settings.errorWorkflow via ${MCP_UPDATE_WORKFLOW_TOOL.toolName}. Setting settings.errorWorkflow is rejected if the target has no published version, or no Error Trigger in that published version.`;
 
-	const AGENT_INSTRUCTIONS = `This MCP server also provides tools to build and manage n8n Agents.
+	const AGENT_INSTRUCTIONS = `This MCP server provides tools to build and manage n8n Agents.
 
 An n8n Agent is a first-class persisted Agent artifact, not an AI Agent node inside a workflow.
 
-To build an Agent, first call get_agent_builder_reference (or read n8n://agents/reference), then discover the required assets, create the Agent, apply one mutation at a time using the latest configHash, and validate it. A completed build is a saved draft, not a published Agent. Report that the draft is ready, include a clickable link using the \`url\` returned by validate_agent, and ask whether to publish it. Call publish_agent only if the user explicitly requested publication or confirms it after the build; connecting a chat integration also publishes and requires the same confirmation. Use search_nodes with usage="agentTool" when configuring node-backed Agent tools.
+To build an Agent, first call get_agent_builder_reference (or read n8n://agents/reference), then discover the required assets, create the Agent, apply one mutation at a time using the latest configHash, and validate it. Agents are configured as JSON, not Workflow SDK code: the workflow-building steps do not apply to Agents, and ${MCP_GET_SDK_REFERENCE_TOOL.toolName} and ${MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName} are never needed for an Agent build — get_agent_builder_reference is the only required reference. A completed build is a saved draft, not a published Agent. Report that the draft is ready, include a clickable link using the \`url\` returned by validate_agent, and ask whether to publish it. Call publish_agent only if the user explicitly requested publication or confirms it after the build; connecting a chat integration also publishes and requires the same confirmation. Use search_nodes with usage="agentTool" when configuring node-backed Agent tools.
 
 Agent conversations and runs are not workflow executions: get_workflow_execution and search_workflow_executions cover workflow executions only, including workflows an Agent invokes as tools.`;
 
 	return [
 		INTRO,
 		isBuilderEnabled && isAgentsEnabled ? ARTIFACT_ROUTING_INSTRUCTIONS : '',
-		isBuilderEnabled ? BUILDER_INSTRUCTIONS : '',
 		isAgentsEnabled ? AGENT_INSTRUCTIONS : '',
+		isBuilderEnabled ? BUILDER_INSTRUCTIONS : '',
 	]
 		.filter(Boolean)
 		.join('\n\n');

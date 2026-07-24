@@ -108,7 +108,7 @@ export const createGetWorkflowBestPracticesTool = (
 	name: MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName,
 	config: {
 		description:
-			'Required workflow-planning step. Get best-practices guidance (recommended nodes, patterns, and common pitfalls) for a specific workflow technique before searching for nodes or writing code. Call once per relevant technique. Use technique="list" first if unsure which techniques apply.',
+			'Required planning step when building a workflow, and only then. Get best-practices guidance (recommended nodes, patterns, and common pitfalls) for a specific workflow technique before searching for nodes or writing code. Call once per relevant technique. Use technique="list" first if unsure which techniques apply.',
 		inputSchema,
 		outputSchema,
 		annotations: {
