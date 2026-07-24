@@ -64,6 +64,11 @@ describe('HttpRequestV3', () => {
 				binaryToString: vi.fn((buffer: Buffer) => {
 					return buffer.toString();
 				}),
+				binaryToBuffer: vi.fn(async (body: Buffer | unknown) => {
+					if (Buffer.isBuffer(body)) return body;
+					if (typeof body === 'string') return Buffer.from(body);
+					return Buffer.from(JSON.stringify(body));
+				}),
 				prepareBinaryData: vi.fn(),
 			},
 			getContext: vi.fn(),
@@ -993,6 +998,209 @@ describe('HttpRequestV3', () => {
 			const sanitizedRequest = (executeFunctions.helpers.requestWithAuthenticationPaginated as Mock)
 				.mock.calls[0][5] as { headers: Record<string, unknown> };
 			expect(sanitizedRequest.headers[headerName]).toBe('**hidden**');
+		});
+	});
+
+	describe('Pagination with Generic Credentials', () => {
+		const paginationTestOptions = {
+			...options,
+			response: {
+				response: {
+					neverError: false,
+					responseFormat: 'json',
+					fullResponse: false,
+					outputPropertyName: 'data',
+				},
+			},
+		};
+
+		const paginationConfig = {
+			paginationMode: 'updateAParameterInEachRequest' as const,
+			parameters: {
+				parameters: [{ type: 'qs' as const, name: 'page', value: '={{ $pageCount + 1 }}' }],
+			},
+			paginationCompleteWhen: 'responseIsEmpty' as const,
+			statusCodesWhenComplete: '',
+			completeExpression: '',
+			limitPagesFetched: true,
+			maxRequests: 2,
+			requestInterval: 0,
+		};
+
+		const paginationResponse = [
+			{
+				headers: { 'content-type': 'application/json' },
+				body: { items: [1, 2] },
+				statusCode: 200,
+			},
+		];
+
+		const genericCredentialTypes = [
+			{
+				name: 'httpBearerAuth',
+				credentials: { token: 'bearerToken123' },
+			},
+			{
+				name: 'httpBasicAuth',
+				credentials: { user: 'username', password: 'password' },
+			},
+			{
+				name: 'httpHeaderAuth',
+				credentials: { name: 'X-API-Key', value: 'secret' },
+			},
+			{
+				name: 'httpQueryAuth',
+				credentials: { name: 'api_key', value: 'secret' },
+			},
+			{
+				name: 'httpDigestAuth',
+				credentials: { user: 'username', password: 'password' },
+			},
+		];
+
+		it.each(genericCredentialTypes)(
+			'should NOT pass credentialType for $name with pagination (uses simple request)',
+			async ({ name, credentials }) => {
+				(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+				(executeFunctions.getNodeParameter as Mock).mockImplementation(
+					(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+						switch (paramName) {
+							case 'method':
+								return 'GET';
+							case 'url':
+								return baseUrl;
+							case 'authentication':
+								return 'genericCredentialType';
+							case 'genericAuthType':
+								return name;
+							case 'options':
+								return paginationTestOptions;
+							case 'options.pagination.pagination':
+								return paginationConfig;
+							case 'options.response.response.responseFormat':
+								return 'json';
+							default:
+								return defaultValue;
+						}
+					},
+				);
+				(executeFunctions.getCredentials as Mock).mockResolvedValue(credentials);
+				(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue(
+					paginationResponse,
+				);
+
+				await node.execute.call(executeFunctions);
+
+				expect(executeFunctions.helpers.requestWithAuthenticationPaginated).toHaveBeenCalledTimes(
+					1,
+				);
+				// 4th argument (credentialType) should be undefined for generic credential types
+				// so pagination uses this.helpers.request() instead of requestWithAuthentication.
+				const credentialType = (executeFunctions.helpers.requestWithAuthenticationPaginated as Mock)
+					.mock.calls[0][3];
+				expect(credentialType).toBeUndefined();
+			},
+		);
+
+		it.each([
+			{ name: 'oAuth1Api', credentials: { oauth_token: 'token', oauth_token_secret: 'secret' } },
+			{ name: 'oAuth2Api', credentials: { access_token: 'token' } },
+		])(
+			'should pass credentialType for $name with pagination (needs token handling)',
+			async ({ name, credentials }) => {
+				(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+				(executeFunctions.getNodeParameter as Mock).mockImplementation(
+					(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+						switch (paramName) {
+							case 'method':
+								return 'GET';
+							case 'url':
+								return baseUrl;
+							case 'authentication':
+								return 'genericCredentialType';
+							case 'genericAuthType':
+								return name;
+							case 'options':
+								return paginationTestOptions;
+							case 'options.pagination.pagination':
+								return paginationConfig;
+							case 'options.response.response.responseFormat':
+								return 'json';
+							default:
+								return defaultValue;
+						}
+					},
+				);
+				(executeFunctions.getCredentials as Mock).mockResolvedValue(credentials);
+				(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue(
+					paginationResponse,
+				);
+
+				await node.execute.call(executeFunctions);
+
+				expect(executeFunctions.helpers.requestWithAuthenticationPaginated).toHaveBeenCalledTimes(
+					1,
+				);
+				const credentialType = (executeFunctions.helpers.requestWithAuthenticationPaginated as Mock)
+					.mock.calls[0][3];
+				expect(credentialType).toBe(name);
+			},
+		);
+
+		// Regression for #34618: Bearer auth + query params + pagination must use the
+		// simple request path (credentialType undefined) while preserving qs merge.
+		it('should keep Bearer auth + query params pagination on the simple request path', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'genericCredentialType';
+						case 'genericAuthType':
+							return 'httpBearerAuth';
+						case 'sendQuery':
+							return true;
+						case 'queryParameters.parameters':
+							return [{ name: 'limit', value: '10' }];
+						case 'specifyQuery':
+							return 'keypair';
+						case 'options':
+							return paginationTestOptions;
+						case 'options.pagination.pagination':
+							return paginationConfig;
+						case 'options.response.response.responseFormat':
+							return 'json';
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({ token: 'bearerToken123' });
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue(
+				paginationResponse,
+			);
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.helpers.requestWithAuthenticationPaginated).toHaveBeenCalledTimes(1);
+
+			const paginatedCall = (executeFunctions.helpers.requestWithAuthenticationPaginated as Mock)
+				.mock.calls[0];
+			const requestOptions = paginatedCall[0] as {
+				qs: Record<string, unknown>;
+				headers: Record<string, unknown>;
+			};
+			const paginationData = paginatedCall[2] as { request: { qs: Record<string, unknown> } };
+			const credentialType = paginatedCall[3];
+
+			expect(credentialType).toBeUndefined();
+			expect(requestOptions.qs).toEqual({ limit: '10' });
+			expect(requestOptions.headers.Authorization).toBe('Bearer bearerToken123');
+			expect(paginationData.request.qs).toEqual({ page: '={{ $pageCount + 1 }}' });
 		});
 	});
 
