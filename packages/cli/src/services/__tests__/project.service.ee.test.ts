@@ -17,6 +17,7 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
+import type { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
@@ -34,6 +35,7 @@ describe('ProjectService', () => {
 	const moduleRegistry = mock<ModuleRegistry>({ entities: [] });
 	const agentRepository = mock<AgentRepository>();
 	const agentKnowledgeService = mock<AgentKnowledgeService>();
+	const agentExecutionService = mock<AgentExecutionService>();
 	const ownershipService = mock<OwnershipService>();
 	const logger = mock<Logger>();
 	const projectService = new ProjectService(
@@ -605,6 +607,10 @@ describe('ProjectService', () => {
 				configurable: true,
 				get: async () => agentKnowledgeService,
 			});
+			Object.defineProperty(projectService, 'agentExecutionService', {
+				configurable: true,
+				get: async () => agentExecutionService,
+			});
 			manager.findOne.mockResolvedValueOnce(project);
 			projectRepository.remove.mockResolvedValueOnce(project);
 			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
@@ -632,6 +638,8 @@ describe('ProjectService', () => {
 			);
 			expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(project.id, 'agent-1');
 			expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(project.id, 'agent-2');
+			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-1');
+			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-2');
 		});
 
 		it('destroys agent sandboxes even when knowledge file cleanup fails', async () => {
@@ -643,6 +651,10 @@ describe('ProjectService', () => {
 			Object.defineProperty(projectService, 'agentKnowledgeService', {
 				configurable: true,
 				get: async () => agentKnowledgeService,
+			});
+			Object.defineProperty(projectService, 'agentExecutionService', {
+				configurable: true,
+				get: async () => agentExecutionService,
 			});
 			manager.findOne.mockResolvedValueOnce(project);
 			projectRepository.remove.mockResolvedValueOnce(project);
@@ -656,6 +668,7 @@ describe('ProjectService', () => {
 			await expect(projectService.deleteProject(user, project.id)).resolves.toBeUndefined();
 
 			expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(project.id, 'agent-1');
+			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-1');
 			expect(projectRepository.remove).toHaveBeenCalledWith(project);
 		});
 	});

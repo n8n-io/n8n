@@ -1,5 +1,4 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '../../../../../../utils/descriptions';
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
@@ -7,6 +6,8 @@ import {
 	assertPathSegment,
 	ITEM_SIMPLIFY_EXPAND,
 	ITEM_SIMPLIFY_SELECT,
+	NON_INDEXED_QUERY_HEADERS,
+	nonIndexedFilterThresholdError,
 	simplifyItem,
 } from '../../helpers/utils';
 import { listRLC, untilSiteSelected } from '../../list';
@@ -137,26 +138,10 @@ export async function execute(
 			{},
 			qs,
 			limit,
-			// SharePoint refuses filters on non-indexed columns without this opt-in
-			filter !== '' ? { Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly' } : {},
+			filter !== '' ? NON_INDEXED_QUERY_HEADERS : {},
 		);
 	} catch (error) {
-		// A non-indexed filter can fail part-way through a big list (the 5,000-item
-		// view threshold); the run must fail naming the column, never return a
-		// silent partial result.
-		if (filter !== '' && error instanceof NodeApiError && /threshold/i.test(error.message)) {
-			const columns = [...filter.matchAll(/fields\/(\w+)/g)].map((match) => match[1]);
-			const subject = columns.length > 0 ? `column(s) '${columns.join("', '")}'` : 'this filter';
-			throw new NodeOperationError(
-				this.getNode(),
-				`SharePoint could not finish filtering on ${subject}: large lists can only be filtered on indexed columns`,
-				{
-					description:
-						'Add an index to the column in SharePoint (List settings → Indexed columns) or filter on an indexed column, then try again.',
-				},
-			);
-		}
-		throw error;
+		throw nonIndexedFilterThresholdError(this.getNode(), error, filter) ?? error;
 	}
 
 	return simplify ? items.map(simplifyItem) : items;
