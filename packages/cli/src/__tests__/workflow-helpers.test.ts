@@ -548,7 +548,7 @@ describe('validateWorkflowNodeGroups', () => {
 				},
 				null,
 			),
-		).toThrow('Node "n1" belongs to multiple groups: "Group A" and "Group B".');
+		).toThrow('Node "Node n1" belongs to multiple groups: "Group A" and "Group B".');
 	});
 
 	it('should throw when group names are not unique', () => {

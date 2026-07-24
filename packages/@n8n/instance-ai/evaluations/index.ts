@@ -2,7 +2,8 @@
 // Public API for the instance-ai workflow evaluation framework
 //
 // This module exports the domain logic used by the CLI (evaluations/cli/)
-// and available for custom orchestration (e.g. LangSmith evaluate).
+// and available for custom orchestration. The run phases themselves live in
+// evaluations/run/ — see evaluations/ARCHITECTURE.md.
 // ---------------------------------------------------------------------------
 
 // -- Client & Auth --
