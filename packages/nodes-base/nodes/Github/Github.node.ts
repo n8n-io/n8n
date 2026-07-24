@@ -409,6 +409,12 @@ export class Github implements INodeType {
 						action: 'Get a release',
 					},
 					{
+						name: 'Get by Tag',
+						value: 'getByTag',
+						description: 'Get a release by Tag',
+						action: 'Get a release by Tag',
+					},
+					{
 						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get many repository releases',
@@ -1431,6 +1437,13 @@ export class Github implements INodeType {
 						description: 'Whether to point out that the release is non-production ready',
 					},
 					{
+						displayName: 'Latest',
+						name: 'make_latest',
+						type: 'boolean',
+						default: true,
+						description: 'Whether to mark the release as latest or not',
+					},
+					{
 						displayName: 'Target Commitish',
 						name: 'target_commitish',
 						type: 'string',
@@ -1509,6 +1522,13 @@ export class Github implements INodeType {
 						description: 'Whether to point out that the release is non-production ready',
 					},
 					{
+						displayName: 'Latest',
+						name: 'make_latest',
+						type: 'boolean',
+						default: true,
+						description: 'Whether to mark the release as latest or not',
+					},
+					{
 						displayName: 'Tag Name',
 						name: 'tag_name',
 						type: 'string',
@@ -1559,6 +1579,23 @@ export class Github implements INodeType {
 				},
 				default: 50,
 				description: 'Max number of results to return',
+			},
+			// ----------------------------------
+			//         release:getByTag
+			// ----------------------------------
+			{
+				displayName: 'Tag Name',
+				name: 'tag_name',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['release'],
+						operation: ['getByTag'],
+					},
+				},
+				default: '',
+				description: 'Release Tag Name',
 			},
 
 			// ----------------------------------
@@ -2390,6 +2427,7 @@ export class Github implements INodeType {
 			'user:getRepositories',
 			'user:getUserIssues',
 			'release:getAll',
+			'release:getByTag',
 			'review:getAll',
 			'organization:getRepositories',
 			'organization:getMembers',
@@ -2837,6 +2875,16 @@ export class Github implements INodeType {
 						if (!returnAll) {
 							qs.per_page = this.getNodeParameter('limit', 0);
 						}
+					}
+					if (operation === 'getByTag') {
+						// ----------------------------------
+						//         getbyTag
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						const tagName = this.getNodeParameter('tag_name', i) as string;
+
+						endpoint = `/repos/${owner}/${repository}/releases/tags/${tagName}`;
 					}
 					if (operation === 'update') {
 						// ----------------------------------
