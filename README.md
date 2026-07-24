@@ -2,6 +2,8 @@
 
 # n8n – The Platform for AI Agents and Workflow Automation
 
+[![MCP Toplist](https://mcptoplist.com/badge/mcp.so%2Fn8n%2Fn8n-io.svg)](https://mcptoplist.com/server/mcp.so%2Fn8n%2Fn8n-io)
+
 Fair-code platform to build and deploy AI agents and workflows. Combine a visual canvas with custom code, run it self-hosted or in the [cloud](https://app.n8n.cloud/login), and connect to 1500+ integrations. AI automation you can trust with real work, from prototype to production.
 
 ![n8n.io - Screenshot](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot-readme.png)
