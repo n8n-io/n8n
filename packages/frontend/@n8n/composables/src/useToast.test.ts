@@ -1,13 +1,19 @@
-import { screen, waitFor, within } from '@testing-library/vue';
-import { createTestingPinia } from '@pinia/testing';
-import { h, defineComponent } from 'vue';
-import { useToast } from './useToast';
-import { useTelemetry } from './useTelemetry';
+import { VIEWS } from '@n8n/frontend-constants/views';
+import { APP_Z_INDEXES } from '@n8n/frontend-constants/z-indexes';
 import { useNotificationsStore } from '@n8n/stores/notifications.store';
-import { VIEWS } from '@/app/constants';
+import { createTestingPinia } from '@pinia/testing';
+import { screen, waitFor, within } from '@testing-library/vue';
+import { ElNotification } from 'element-plus';
 import { vi } from 'vitest';
+import { h, defineComponent } from 'vue';
+
+import { useTelemetry } from './useTelemetry';
+import { useToast, setNotify } from './useToast';
 
 vi.mock('./useTelemetry');
+
+// Register the real element-plus notification function for integration tests.
+setNotify(ElNotification);
 
 const route = vi.hoisted(() => ({
 	name: '' as string | symbol,
@@ -143,7 +149,10 @@ describe('useToast', () => {
 		it('should extract error message from VNode props for telemetry', async () => {
 			const vnode = h(
 				defineComponent({
-					props: ['errorMessage', 'nodeName'],
+					props: {
+						errorMessage: { type: String, required: true },
+						nodeName: { type: String, required: true },
+					},
 					template: '<p>{{ errorMessage }}</p>',
 				}),
 				{
@@ -357,6 +366,26 @@ describe('useToast', () => {
 
 		it('should handle being called when there are no sticky notifications', () => {
 			expect(() => toast.clearAllStickyNotifications()).not.toThrow();
+		});
+	});
+
+	describe('toast z-index', () => {
+		afterEach(() => {
+			// Restore the notifier registered at module load for later tests.
+			setNotify(ElNotification);
+		});
+
+		it('sources the toast z-index from the shared layering scale', () => {
+			const notifySpy = vi.fn((_options: Record<string, unknown>) => ({ close: vi.fn() }));
+			setNotify(notifySpy);
+
+			useToast().showMessage({ message: 'Layered toast' });
+
+			// Asserting against the token (not a literal) proves the value is
+			// sourced from APP_Z_INDEXES, not hardcoded in the composable.
+			expect(notifySpy).toHaveBeenCalledWith(
+				expect.objectContaining({ zIndex: APP_Z_INDEXES.TOASTS }),
+			);
 		});
 	});
 });
