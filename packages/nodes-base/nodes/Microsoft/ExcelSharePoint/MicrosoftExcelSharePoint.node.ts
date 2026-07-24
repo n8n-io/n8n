@@ -6,6 +6,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import * as appendTable from './actions/table/append.operation';
+import * as convertTableToRange from './actions/table/convertToRange.operation';
+import * as createTable from './actions/table/create.operation';
+import * as deleteTable from './actions/table/deleteTable.operation';
 import * as getAllTables from './actions/table/getAll.operation';
 import * as getTableColumns from './actions/table/getColumns.operation';
 import * as getTableRows from './actions/table/getRows.operation';
@@ -15,11 +19,11 @@ import * as append from './actions/worksheet/append.operation';
 import * as clear from './actions/worksheet/clear.operation';
 import * as deleteWorksheet from './actions/worksheet/deleteWorksheet.operation';
 import * as getAllWorksheets from './actions/worksheet/getAll.operation';
+import * as updateWorksheet from './actions/worksheet/update.operation';
+import * as upsertWorksheet from './actions/worksheet/upsert.operation';
 import * as readRows from './actions/worksheet/readRows.operation';
-import { listSearch } from './methods';
+import { listSearch, loadOptions } from './methods';
 
-// Shell for the Excel-on-SharePoint build. Registered but hidden: workflows
-// using it always work; the launch ticket removes the `hidden` flag.
 export class MicrosoftExcelSharePoint implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft Excel (SharePoint)',
@@ -34,7 +38,7 @@ export class MicrosoftExcelSharePoint implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		hidden: true,
+		usableAsTool: true,
 		// Legacy credentials deliberately excluded: the SharePoint one targets
 		// the old _api host (not Graph); the Excel one has no Sites.* scopes.
 		credentials: [
@@ -118,6 +122,14 @@ export class MicrosoftExcelSharePoint implements INodeType {
 						action: 'Append rows to sheet',
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-upsert
+						name: 'Append or Update',
+						value: 'upsert',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-upsert
+						description: 'Append a new row or update the current one if it already exists (upsert)',
+						action: 'Append or update rows in sheet',
+					},
+					{
 						name: 'Clear',
 						value: 'clear',
 						description: 'Clear sheet',
@@ -141,6 +153,12 @@ export class MicrosoftExcelSharePoint implements INodeType {
 						description: 'Read rows from a range or the used range of a sheet',
 						action: 'Get rows in sheet',
 					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update rows matched by a column value',
+						action: 'Update rows in sheet',
+					},
 				],
 				default: 'readRows',
 			},
@@ -155,6 +173,30 @@ export class MicrosoftExcelSharePoint implements INodeType {
 					},
 				},
 				options: [
+					{
+						name: 'Append',
+						value: 'append',
+						description: 'Append rows to the end of a table',
+						action: 'Append rows to table',
+					},
+					{
+						name: 'Convert to Range',
+						value: 'convertToRange',
+						description: 'Convert a table to a plain range of cells',
+						action: 'Convert table to range',
+					},
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a table from a range of cells',
+						action: 'Create table',
+					},
+					{
+						name: 'Delete',
+						value: 'deleteTable',
+						description: 'Delete table',
+						action: 'Delete table',
+					},
 					{
 						name: 'Get Columns',
 						value: 'getColumns',
@@ -182,21 +224,26 @@ export class MicrosoftExcelSharePoint implements INodeType {
 				],
 				default: 'getAll',
 			},
-
 			...append.description,
 			...clear.description,
 			...deleteWorksheet.description,
 			...readRows.description,
 			...getAllWorksheets.description,
+			...updateWorksheet.description,
+			...upsertWorksheet.description,
 			...getAllTables.description,
 			...getTableColumns.description,
 			...getTableRows.description,
 			...lookupTable.description,
+			...appendTable.description,
+			...createTable.description,
+			...convertTableToRange.description,
+			...deleteTable.description,
 			...workbook.description,
 		],
 	};
 
-	methods = { listSearch };
+	methods = { listSearch, loadOptions };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -213,6 +260,12 @@ export class MicrosoftExcelSharePoint implements INodeType {
 		if (resource === 'worksheet' && operation === 'getAll') {
 			return [await getAllWorksheets.execute.call(this, items)];
 		}
+		if (resource === 'worksheet' && operation === 'update') {
+			return [await updateWorksheet.execute.call(this, items)];
+		}
+		if (resource === 'worksheet' && operation === 'upsert') {
+			return [await upsertWorksheet.execute.call(this, items)];
+		}
 		if (resource === 'table' && operation === 'getAll') {
 			return [await getAllTables.execute.call(this, items)];
 		}
@@ -224,6 +277,21 @@ export class MicrosoftExcelSharePoint implements INodeType {
 		}
 		if (resource === 'table' && operation === 'lookup') {
 			return [await lookupTable.execute.call(this, items)];
+		}
+		if (resource === 'table' && operation === 'append') {
+			return [await appendTable.execute.call(this, items)];
+		}
+		if (resource === 'table' && operation === 'create') {
+			return [await createTable.execute.call(this, items)];
+		}
+		if (resource === 'table' && operation === 'convertToRange') {
+			return [await convertTableToRange.execute.call(this, items)];
+		}
+		if (resource === 'table' && operation === 'deleteTable') {
+			return [await deleteTable.execute.call(this, items)];
+		}
+		if (resource === 'workbook' && operation === 'getAll') {
+			return [await workbook.getAll.execute.call(this, items)];
 		}
 
 		if (resource === 'worksheet' && operation === 'clear') {

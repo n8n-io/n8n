@@ -1,4 +1,4 @@
-import type { FetchFn } from '@n8n/agents';
+import type { FetchFn, McpToolCallSettledEvent } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
@@ -6,6 +6,10 @@ export interface AgentToolInstrumentationContext {
 	/** Sanitized tool name — the same identifier the model calls and `GenerateResult.toolCalls` reports. */
 	toolName: string;
 	toolKind: 'node' | 'workflow';
+}
+
+export interface AgentMcpToolCallSettledContext extends McpToolCallSettledEvent {
+	serverName: string;
 }
 
 /**
@@ -20,6 +24,8 @@ export interface AgentRuntimeInstrumentation {
 	modelFetch?: FetchFn;
 	/** Replaces the default SSRF-guarded transport for MCP server traffic. */
 	mcpFetch?: FetchFn;
+	/** Receives exact model-facing names for MCP calls after they settle. */
+	onMcpToolCallSettled?: (event: AgentMcpToolCallSettledContext) => void | Promise<void>;
 	/**
 	 * Replaces the live Brave/SearXNG call behind the fallback `web_search`
 	 * tool. When set, the tool attaches even without a search provider or

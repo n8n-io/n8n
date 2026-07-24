@@ -26,6 +26,14 @@ export const REQUIRED_PERMISSIONS: Record<string, { delegated: string; applicati
 		delegated: 'Sites.Read.All',
 		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
 	},
+	'worksheet:update': {
+		delegated: 'Sites.ReadWrite.All',
+		application: 'Sites.ReadWrite.All (or Sites.Selected granted for this site)',
+	},
+	'worksheet:upsert': {
+		delegated: 'Sites.ReadWrite.All',
+		application: 'Sites.ReadWrite.All (or Sites.Selected granted for this site)',
+	},
 	'table:getAll': {
 		delegated: 'Sites.Read.All',
 		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
@@ -39,6 +47,26 @@ export const REQUIRED_PERMISSIONS: Record<string, { delegated: string; applicati
 		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
 	},
 	'table:lookup': {
+		delegated: 'Sites.Read.All',
+		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
+	},
+	'table:append': {
+		delegated: 'Sites.ReadWrite.All',
+		application: 'Sites.ReadWrite.All (or Sites.Selected granted for this site)',
+	},
+	'table:create': {
+		delegated: 'Sites.ReadWrite.All',
+		application: 'Sites.ReadWrite.All (or Sites.Selected granted for this site)',
+	},
+	'table:convertToRange': {
+		delegated: 'Sites.ReadWrite.All',
+		application: 'Sites.ReadWrite.All (or Sites.Selected granted for this site)',
+	},
+	'table:deleteTable': {
+		delegated: 'Sites.ReadWrite.All',
+		application: 'Sites.ReadWrite.All (or Sites.Selected granted for this site)',
+	},
+	'workbook:getAll': {
 		delegated: 'Sites.Read.All',
 		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
 	},

@@ -14,9 +14,9 @@ import type { GraphTableRow } from '../../helpers/tableRead';
 import {
 	fetchTableColumnNames,
 	resolveTableEndpoint,
-	runPerItem,
 	rowsToObjects,
 } from '../../helpers/tableRead';
+import { runPerItem } from '../../helpers/utils';
 import { microsoftApiRequestAllItems } from '../../transport';
 
 const properties: INodeProperties[] = [

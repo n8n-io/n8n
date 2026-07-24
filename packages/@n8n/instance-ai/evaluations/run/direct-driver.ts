@@ -12,61 +12,38 @@ import { aggregateResults } from './aggregator';
 import type { ScenarioRowInputs } from './case-pipeline';
 import { createEvalSession, type EvalSessionConfig } from './eval-session';
 import { expandWithIterations } from './iterations';
+import { type RowSink } from './persist';
 import { reshapeLangSmithRuns, type ReshapeRunRow } from './reshape';
+import { BUILD_ONLY_SCENARIO_NAME, roundRobinCaseRows } from './rows';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { runWithConcurrency } from '../harness/runner';
-import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 import type { MultiRunEvaluation, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
 
 export interface DirectRunConfig extends Omit<EvalSessionConfig, 'wrap'> {
 	/** Sink for per-iteration results as reshape produces them, so an abort in
 	 *  aggregation/persistence still leaves runEvalAndPersist the completed rows. */
 	partialResults?: WorkflowTestCaseResult[][];
+	/** Journal of completed rows for crash recovery (see run/persist.ts). */
+	rowSink?: RowSink;
 }
 
-/** Mirror of the dataset sync's round-robin ordering: scenario #1 of every
- *  case, then scenario #2, …, then one build-only sentinel row per
- *  scenario-less case — so builds diversify early instead of burning all
- *  concurrency slots on one test case. */
+/** Same flattening as the LangSmith dataset sync (run/rows.ts), projected to
+ *  the per-row input shape the pipeline consumes. */
 function roundRobinRows(testCasesWithFiles: WorkflowTestCaseWithFile[]): ScenarioRowInputs[] {
-	const rows: ScenarioRowInputs[] = [];
-	const maxScenarios = Math.max(
-		...testCasesWithFiles.map(({ testCase }) => (testCase.executionScenarios ?? []).length),
-		0,
-	);
-	for (let i = 0; i < maxScenarios; i++) {
-		for (const { testCase, fileSlug } of testCasesWithFiles) {
-			const scenario = testCase.executionScenarios?.[i];
-			if (scenario) {
-				rows.push({
-					testCaseFile: fileSlug,
-					scenarioName: scenario.name,
-					scenarioDescription: scenario.description,
-					dataSetup: scenario.dataSetup,
-					successCriteria: scenario.successCriteria,
-				});
-			}
-		}
-	}
-	for (const { testCase, fileSlug } of testCasesWithFiles) {
-		if ((testCase.executionScenarios?.length ?? 0) === 0) {
-			rows.push({
-				testCaseFile: fileSlug,
-				scenarioName: BUILD_ONLY_SCENARIO_NAME,
-				scenarioDescription: '',
-				dataSetup: '',
-				successCriteria: '',
-			});
-		}
-	}
-	return rows;
+	return roundRobinCaseRows(testCasesWithFiles).map(({ testCaseFile, scenario }) => ({
+		testCaseFile,
+		scenarioName: scenario?.name ?? BUILD_ONLY_SCENARIO_NAME,
+		scenarioDescription: scenario?.description ?? '',
+		dataSetup: scenario?.dataSetup ?? '',
+		successCriteria: scenario?.successCriteria ?? '',
+	}));
 }
 
 export async function runDirect(config: DirectRunConfig): Promise<{
 	evaluation: MultiRunEvaluation;
 	slugByTestCase: Map<WorkflowTestCase, string>;
 }> {
-	const { args, lanes, logger, testCasesWithFiles, partialResults } = config;
+	const { args, lanes, logger, testCasesWithFiles, partialResults, rowSink } = config;
 
 	if (testCasesWithFiles.length === 0) {
 		console.log('No workflow test cases selected (check --source / --filter / --exclude / --tier)');
@@ -97,7 +74,12 @@ export async function runDirect(config: DirectRunConfig): Promise<{
 		// flight, builds capped per lane by the allocator (MAX_CONCURRENT_BUILDS).
 		const completed: ReshapeRunRow[] = await runWithConcurrency(
 			rows,
-			async (row) => ({ run: { inputs: row, outputs: await session.pipeline.runRow(row) } }),
+			async (row) => {
+				const outputs = await session.pipeline.runRow(row);
+				const completedRow = { run: { inputs: row, outputs } };
+				rowSink?.append(completedRow);
+				return completedRow;
+			},
 			args.concurrency,
 		);
 

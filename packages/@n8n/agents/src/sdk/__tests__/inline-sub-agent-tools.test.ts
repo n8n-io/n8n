@@ -13,10 +13,12 @@ import {
 } from '../../runtime/tools/delegate-sub-agent-tool';
 import { WRITE_TODOS_TOOL_NAME } from '../../runtime/tools/write-todos-tool';
 import type { BuiltProviderTool, BuiltTool } from '../../types';
+import type { BuiltTelemetry } from '../../types/telemetry';
 import { Agent, filterInlineSubAgentTools } from '../agent';
 
 const runtimeConfigs: Array<Record<string, unknown>> = [];
 const runtimeGenerateResults: Array<Record<string, unknown>> = [];
+const runtimeGenerateOptions: Array<Record<string, unknown>> = [];
 
 function makeGenerateSuccess(): Record<string, unknown> {
 	return {
@@ -42,7 +44,8 @@ vi.mock('../../runtime/loop/agent-runtime', async (importOriginal) => {
 				runtimeConfigs.push(config);
 			}
 
-			async generate() {
+			async generate(_prompt: string, options?: Record<string, unknown>) {
+				runtimeGenerateOptions.push(options ?? {});
 				return await Promise.resolve(runtimeGenerateResults.shift() ?? makeGenerateSuccess());
 			}
 
@@ -77,6 +80,7 @@ type AgentWithInlineRunner = {
 		deferredTools: BuiltTool[];
 		modelConfig: string;
 		tools: BuiltTool[];
+		telemetry?: BuiltTelemetry;
 		inlineSubAgentBlockedTools?: string[];
 		inlineSubAgentModelsByDifficulty?: Partial<Record<'low' | 'medium' | 'high', string>>;
 		resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;
@@ -85,6 +89,7 @@ type AgentWithInlineRunner = {
 
 function createInlineRunner(options: {
 	tools?: BuiltTool[];
+	telemetry?: BuiltTelemetry;
 	inlineSubAgentBlockedTools?: string[];
 	inlineSubAgentModelsByDifficulty?: Partial<Record<'low' | 'medium' | 'high', string>>;
 	resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;
@@ -94,10 +99,21 @@ function createInlineRunner(options: {
 		deferredTools: [],
 		modelConfig: 'openai/gpt-4o-mini',
 		tools: options.tools ?? [makeTool('lookup')],
+		telemetry: options.telemetry,
 		inlineSubAgentBlockedTools: options.inlineSubAgentBlockedTools,
 		inlineSubAgentModelsByDifficulty: options.inlineSubAgentModelsByDifficulty,
 		resolveInlineSubAgentProviderTools: options.resolveInlineSubAgentProviderTools,
 	});
+}
+
+function builtTelemetry(overrides: Partial<BuiltTelemetry> = {}): BuiltTelemetry {
+	return {
+		enabled: true,
+		recordInputs: true,
+		recordOutputs: true,
+		integrations: [],
+		...overrides,
+	};
 }
 
 function providerToolNames(runtimeConfig: Record<string, unknown> | undefined): string[] {
@@ -111,6 +127,7 @@ describe('inline sub-agent tool filtering', () => {
 	beforeEach(() => {
 		runtimeConfigs.length = 0;
 		runtimeGenerateResults.length = 0;
+		runtimeGenerateOptions.length = 0;
 	});
 
 	it.each([
@@ -349,6 +366,65 @@ describe('inline sub-agent tool filtering', () => {
 		expect(runtimeConfigs).toHaveLength(2);
 		expect(resolveInlineSubAgentProviderTools).toHaveBeenCalledWith('anthropic/claude-sonnet-4-5');
 		expect(providerToolNames(runtimeConfigs[1])).toEqual(['anthropic.web_search_20250305']);
+	});
+
+	it('derives the child telemetry from the live per-request parentTelemetry, not build-time telemetry', async () => {
+		const parentTelemetry = builtTelemetry({
+			functionId: 'parent-agent',
+			metadata: { thread_id: 't1' },
+		});
+		const runner = createInlineRunner({});
+
+		await runner({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: '/root/research',
+			childCount: 0,
+			parentTelemetry,
+		});
+
+		const expectedTelemetry = {
+			...parentTelemetry,
+			functionId: undefined,
+			metadata: { thread_id: 't1', source: 'sub-agent' },
+			rootAnchored: false,
+		};
+		expect(runtimeConfigs).toHaveLength(1);
+		expect(runtimeConfigs[0]?.telemetry).toEqual(expectedTelemetry);
+		expect(runtimeGenerateOptions).toHaveLength(1);
+		expect(runtimeGenerateOptions[0]?.telemetry).toEqual(expectedTelemetry);
+	});
+
+	it('falls back to build-time telemetry when the request has no parentTelemetry', async () => {
+		const buildTimeTelemetry = builtTelemetry({ functionId: 'build-time' });
+		const runner = createInlineRunner({ telemetry: buildTimeTelemetry });
+
+		await runner({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: '/root/research',
+			childCount: 0,
+		});
+
+		expect(runtimeConfigs[0]?.telemetry).toBe(buildTimeTelemetry);
+		expect(runtimeGenerateOptions[0]?.telemetry).toBe(buildTimeTelemetry);
+	});
+
+	it('omits telemetry entirely when neither parentTelemetry nor build-time telemetry is set', async () => {
+		const runner = createInlineRunner({});
+
+		await runner({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: '/root/research',
+			childCount: 0,
+		});
+
+		expect(runtimeConfigs[0]).not.toHaveProperty('telemetry');
+		expect(runtimeGenerateOptions[0]).not.toHaveProperty('telemetry');
 	});
 });
 
