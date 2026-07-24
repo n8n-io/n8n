@@ -5,6 +5,8 @@ export const SLACK_HITL_PARAMETER_NAMES = new Set([
 	'advancedInteractivityNotice',
 	'captureResponder',
 	'approvers',
+	'unauthorizedReplyText',
+	'postDecisionBehavior',
 ]);
 
 /** Removes the advanced HITL parameters from a Slack node's rendered parameter list. */

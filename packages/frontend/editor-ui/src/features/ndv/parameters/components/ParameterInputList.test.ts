@@ -304,6 +304,39 @@ describe('ParameterInputList', () => {
 		expect(queryByText('Note: This is a notice with')).not.toBeInTheDocument();
 	});
 
+	it('indents the fields that follow a section header, ending at the next collection', async () => {
+		ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+		const params: INodeProperties[] = [
+			{ displayName: 'Before', name: 'before', type: 'string', default: '' },
+			{
+				displayName: 'Advanced Interactivity',
+				name: 'advancedInteractivityNotice',
+				type: 'notice',
+				default: '',
+				typeOptions: { sectionHeader: true },
+			},
+			{ displayName: 'Toggle', name: 'toggle', type: 'boolean', default: false },
+			{ displayName: 'Field A', name: 'fieldA', type: 'string', default: '' },
+			{ displayName: 'Options', name: 'options', type: 'collection', default: {}, options: [] },
+		];
+		const { container } = renderComponent({
+			props: { parameters: params, nodeValues: TEST_NODE_VALUES },
+		});
+		await flushPromises();
+
+		// Only the two fields between the header and the Options collection are indented.
+		expect(container.querySelectorAll('[data-section-indent="true"]')).toHaveLength(2);
+		expect(
+			container.querySelector('[path="before"]')?.closest('[data-section-indent="true"]'),
+		).toBeNull();
+		expect(
+			container.querySelector('[path="toggle"]')?.closest('[data-section-indent="true"]'),
+		).not.toBeNull();
+		expect(
+			container.querySelector('[path="fieldA"]')?.closest('[data-section-indent="true"]'),
+		).not.toBeNull();
+	});
+
 	it('renders callout correctly', async () => {
 		ndvStore.activeNode = TEST_NODE_NO_ISSUES;
 		const { getByTestId, findByText } = renderComponent({
@@ -2364,8 +2397,8 @@ describe('ParameterInputList', () => {
 			{ displayName: 'Chat ID', name: 'chatId', type: 'string', default: '' },
 			{ displayName: 'Approve Within Chat', name: 'chatApproval', type: 'boolean', default: false },
 			{
-				displayName: 'Chat Approval Options',
-				name: 'chatApprovalOptions',
+				displayName: 'Restrict Who Can Approve',
+				name: 'approverIds',
 				type: 'string',
 				default: '',
 			},
@@ -2383,7 +2416,7 @@ describe('ParameterInputList', () => {
 
 			expect(container.querySelector('[path="chatId"]')).toBeInTheDocument();
 			expect(container.querySelector('[path="chatApproval"]')).not.toBeInTheDocument();
-			expect(container.querySelector('[path="chatApprovalOptions"]')).not.toBeInTheDocument();
+			expect(container.querySelector('[path="approverIds"]')).not.toBeInTheDocument();
 		});
 
 		it('shows the advanced HITL parameters when the experiment is on', async () => {
@@ -2399,7 +2432,7 @@ describe('ParameterInputList', () => {
 
 			expect(container.querySelector('[path="chatId"]')).toBeInTheDocument();
 			expect(container.querySelector('[path="chatApproval"]')).toBeInTheDocument();
-			expect(container.querySelector('[path="chatApprovalOptions"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="approverIds"]')).toBeInTheDocument();
 		});
 
 		it('does not filter parameters for other node types', async () => {
@@ -2413,7 +2446,7 @@ describe('ParameterInputList', () => {
 			await flushPromises();
 
 			expect(container.querySelector('[path="chatApproval"]')).toBeInTheDocument();
-			expect(container.querySelector('[path="chatApprovalOptions"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="approverIds"]')).toBeInTheDocument();
 		});
 
 		it('reveals the advanced HITL parameters once the flag resolves after mount', async () => {
@@ -2442,7 +2475,7 @@ describe('ParameterInputList', () => {
 				await flushPromises();
 
 				expect(container.querySelector('[path="chatApproval"]')).toBeInTheDocument();
-				expect(container.querySelector('[path="chatApprovalOptions"]')).toBeInTheDocument();
+				expect(container.querySelector('[path="approverIds"]')).toBeInTheDocument();
 			} finally {
 				vi.useRealTimers();
 			}

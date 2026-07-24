@@ -4,7 +4,9 @@ import type { INodeProperties } from 'n8n-workflow';
 export const TELEGRAM_HITL_PARAMETER_NAMES = new Set([
 	'advancedInteractivityNotice',
 	'chatApproval',
-	'chatApprovalOptions',
+	'approverIds',
+	'unauthorizedReplyText',
+	'postDecisionBehavior',
 ]);
 
 /** Removes the advanced HITL parameters from a Telegram node's rendered parameter list. */
