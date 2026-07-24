@@ -159,6 +159,22 @@ describe('AgentEvalRunnerService', () => {
 		});
 	});
 
+	describe('run creation', () => {
+		it('marks the run errored (not left `new`) when seeding fails', async () => {
+			seedFor([{ id: 'row-1', question: 'Q' }]);
+			resultRepository.seedResults.mockRejectedValue(new Error('db down'));
+
+			await expect(service.startRun('ds-1', 'proj-1', user)).rejects.toThrow('db down');
+
+			expect(runRepository.markAsError).toHaveBeenCalledWith(
+				'run-1',
+				'seed_failed',
+				expect.objectContaining({ message: 'db down' }),
+			);
+			expect(runRepository.markAsRunning).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('running cases', () => {
 		it('runs each case with its input verbatim, persists results, aggregates the run', async () => {
 			seedFor([
@@ -175,10 +191,11 @@ describe('AgentEvalRunnerService', () => {
 			await finished;
 
 			expect(runId).toBe('run-1');
-			// run pins the agent's active version + records who started it
+			// records who started it; version is left unpinned (execution runs the
+			// live agent config, so no version is claimed).
 			expect(runRepository.createRun).toHaveBeenCalledWith({
 				datasetId: 'ds-1',
-				agentVersionId: 'v-1',
+				agentVersionId: null,
 				createdById: 'user-1',
 			});
 			// each case fed its own input as the 4th arg (caseInput)

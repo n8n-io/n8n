@@ -118,20 +118,39 @@ export class AgentEvalRunnerService {
 
 		const run = await this.runRepository.createRun({
 			datasetId: dataset.id,
-			agentVersionId: agent.activeVersionId,
+			// Left unpinned: execution reloads the live agent by id (there is no
+			// snapshot-execution path yet), so tagging a specific version would
+			// misrepresent what actually ran — mirrors the workflow eval, which
+			// records a version only when it executes that pinned snapshot.
+			// Version-pinned execution is a follow-up.
+			agentVersionId: null,
 			createdById: user.id,
 		});
 
-		const seeded = await this.resultRepository.seedResults(
-			cases.map((c, index) => ({
-				runId: run.id,
-				sourceRowId: c.sourceRowId,
-				runIndex: index,
-				input: c.snapshot,
-			})),
-		);
-
-		await this.runRepository.markAsRunning(run.id, this.instanceSettings.hostId);
+		// The run row now exists; if seeding or marking it running fails, mark the
+		// run errored so polling never shows a permanently `new` run that will
+		// never execute.
+		let seeded: AgentEvalResult[];
+		try {
+			seeded = await this.resultRepository.seedResults(
+				cases.map((c, index) => ({
+					runId: run.id,
+					sourceRowId: c.sourceRowId,
+					runIndex: index,
+					input: c.snapshot,
+				})),
+			);
+			await this.runRepository.markAsRunning(run.id, this.instanceSettings.hostId);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			// Best-effort: don't let a failure to record the error mask the original.
+			try {
+				await this.runRepository.markAsError(run.id, 'seed_failed', { message });
+			} catch {
+				// ignore
+			}
+			throw error;
+		}
 
 		const concurrency = Math.max(
 			1,
