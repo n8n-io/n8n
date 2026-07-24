@@ -745,7 +745,14 @@ async function resolveTargetForCall(
 export function createBuildAgentTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.BUILD_AGENT)
 		.description(
-			'Delegate agent building to the agents-module builder, running as a sub-agent. ' +
+			'Builds and edits n8n **Agent** artifacts only (instructions, model, tools, skills, ' +
+				'tasks, integrations, sub-agents) by delegating to the agents-module builder. It is ' +
+				'only for that purpose. When the request is workflow-anchored (via the intent gate / ' +
+				'`intent-recognition`), stay on the `workflow-builder` path and do not call this tool ' +
+				'at all — not to inspect nodes, not to list workflows, and not to compile custom ' +
+				'tools. If a workflow build seems to need a utility tool the workspace does not ' +
+				'provide, ask the user or use a placeholder; do not route around that by calling ' +
+				'`build-agent`. ' +
 				'Pass `name` to start a new agent or `agentId` to edit an existing one; calls ' +
 				'without either keep editing the current agent. Create vs. edit follows user ' +
 				'intent, not name collisions: a request to build a NEW agent always passes `name` ' +

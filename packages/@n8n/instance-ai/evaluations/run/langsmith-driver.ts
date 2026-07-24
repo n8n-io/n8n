@@ -174,6 +174,16 @@ export async function runWithLangSmith(config: RunConfig): Promise<{
 		if (output.buildDurationMs !== undefined) {
 			feedback.push({ key: 'build_duration_s', score: output.buildDurationMs / 1000 });
 		}
+		// `claude` build spend (--build-via-mcp only). Like build_duration_s the
+		// value repeats on every row of the case's build, so the LangSmith column
+		// mean is per-row; sum true spend per (iteration, case) from
+		// eval-results.json (buildCostUsdPerRun) instead of over rows.
+		if (output.buildCostUsd !== undefined) {
+			feedback.push({ key: 'build_cost_usd', score: output.buildCostUsd });
+		}
+		if (output.buildTurns !== undefined) {
+			feedback.push({ key: 'build_turns', score: output.buildTurns });
+		}
 		// Deterministic conversation counter (per evals rubric) — a navigation/feature
 		// signal for the HOW judges, not a gating check.
 		if (output.planRejections !== undefined) {
