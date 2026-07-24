@@ -1,3 +1,12 @@
+## [2.32.4](https://github.com/n8n-io/n8n/compare/n8n@2.32.3...n8n@2.32.4) (2026-07-24)
+
+
+### Bug Fixes
+
+* **core:** Fall back to the run's resolved model for AI Assistant verification LLM calls ([#34776](https://github.com/n8n-io/n8n/issues/34776)) ([14e48ba](https://github.com/n8n-io/n8n/commit/14e48bacb974a76fbc73f385e25ad1540e47933a))
+* **core:** Stop Instance AI follow-up runs from looping when they keep failing before the agent starts ([#34772](https://github.com/n8n-io/n8n/issues/34772)) ([ebcaa72](https://github.com/n8n-io/n8n/commit/ebcaa7225ac4b7cf282cbabbacf94e768ecfc6c5))
+
+
 ## [2.32.3](https://github.com/n8n-io/n8n/compare/n8n@2.32.2...n8n@2.32.3) (2026-07-23)
 
 
