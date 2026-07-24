@@ -307,13 +307,10 @@ export class WorkflowReviewRequestService {
 		await this.assertFeatureAvailable();
 
 		const projectIds = await this.resolveAccessibleProjectIds(user);
-		// Any state — sidebar must appear so users can open the Closed tab.
-		const hasAny = await this.workflowReviewRequestRepository.existsAnyForInbox({
+		return await this.workflowReviewRequestRepository.countByStateForInbox({
 			projectIds,
 			requesterId: user.id,
 		});
-
-		return { hasAny };
 	}
 
 	private async assertFeatureAvailable(): Promise<void> {

@@ -73,17 +73,21 @@ export function toAiSdkTools(tools?: BuiltTool[]): Record<string, AiSdkTool> {
 		if (t.inputSchema) {
 			const ai = loadAi();
 			const providerOptions = applyToolProviderOptionDefaults(t.providerOptions);
+			// Responses otherwise normalizes omitted strict schemas and makes optional MCP fields required.
+			const strict = t.mcpTool ? false : undefined;
 			if (isZodSchema(t.inputSchema)) {
 				result[t.name] = ai.tool({
 					description: t.description,
 					inputSchema: t.inputSchema,
 					providerOptions,
+					strict,
 				});
 			} else {
 				result[t.name] = ai.tool({
 					description: t.description,
 					inputSchema: ai.jsonSchema(fixSchema(t.inputSchema)),
 					providerOptions,
+					strict,
 				});
 			}
 		}
@@ -118,6 +122,7 @@ export async function executeTool(
 			cancellation: isCancelled ? { message: resumeData.message } : undefined,
 			parentTelemetry,
 			toolCallId,
+			toolName: builtTool.name,
 			runId: executionContext.runId,
 			persistence: executionContext.persistence,
 			emitEvent: executionContext.emitEvent,
@@ -131,6 +136,7 @@ export async function executeTool(
 	const ctx: ToolContext = {
 		parentTelemetry,
 		toolCallId,
+		toolName: builtTool.name,
 		runId: executionContext.runId,
 		persistence: executionContext.persistence,
 		emitEvent: executionContext.emitEvent,
