@@ -28,12 +28,15 @@ type Repositories = {
 
 /**
  * Identity of the user performing a workflow lifecycle operation.
+ *
+ * `email`, `firstName` and `lastName` are nullable to match the underlying user
+ * columns: a user (e.g. one invited but not yet set up) may have no name or email.
  */
 export type WorkflowLifecycleHookActor = {
 	id: string;
-	email: string;
-	firstName: string;
-	lastName: string;
+	email: string | null;
+	firstName: string | null;
+	lastName: string | null;
 	role?: string;
 };
 
