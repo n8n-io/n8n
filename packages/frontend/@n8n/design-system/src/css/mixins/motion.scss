@@ -111,10 +111,10 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 // for small glyphs (icons dissolve at the surface-level 4px default).
 //
 // Unlike the collapsible motion above, the swap has no height change to carry
-// it, so it leans on a slightly longer run with a stronger deceleration
-// (ease-out-quint): the new state lands fast, then settles softly.
+// it, so it leans on a stronger deceleration (ease-out-quint) rather than a
+// longer run: the new state lands fast, then settles softly, without dragging.
 @mixin blur-swap-in {
-	animation: blurSwapIn var(--animation--blur-swap--duration, 450ms)
+	animation: blurSwapIn var(--animation--blur-swap--duration, 250ms)
 		var(--animation--blur-swap--easing, var(--easing--ease-out-quint));
 
 	@media (prefers-reduced-motion: reduce) {
@@ -123,7 +123,7 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @mixin blur-swap-out {
-	animation: blurSwapOut var(--animation--blur-swap--duration, 450ms)
+	animation: blurSwapOut var(--animation--blur-swap--duration, 250ms)
 		var(--animation--blur-swap--easing, var(--easing--ease-out-quint));
 
 	@media (prefers-reduced-motion: reduce) {
