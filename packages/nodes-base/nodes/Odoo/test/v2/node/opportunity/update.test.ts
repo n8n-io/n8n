@@ -49,7 +49,7 @@ describe('OdooV2 — opportunity:update', () => {
 
 	it('updates an opportunity using defineBelow mapping and returns id + updated flag', async () => {
 		setupParams({ 'fieldsToSend.value': { name: 'Renamed Deal', expected_revenue: 9000 } });
-		(transport.odooApiRequest as Mock).mockResolvedValue(true);
+		(transport.odooApiRequest as Mock).mockResolvedValueOnce({}).mockResolvedValue(true);
 
 		const result = await node.execute.call(exec);
 
@@ -63,7 +63,7 @@ describe('OdooV2 — opportunity:update', () => {
 	it('uses item json directly when mappingMode is autoMapInputData', async () => {
 		setupParams({ 'fieldsToSend.mappingMode': 'autoMapInputData' });
 		exec.getInputData.mockReturnValue([{ json: { name: 'Auto Update' } }]);
-		(transport.odooApiRequest as Mock).mockResolvedValue(true);
+		(transport.odooApiRequest as Mock).mockResolvedValueOnce({}).mockResolvedValue(true);
 
 		await node.execute.call(exec);
 
@@ -76,7 +76,9 @@ describe('OdooV2 — opportunity:update', () => {
 	it('returns error item and continues when continueOnFail is true', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(true);
-		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Update failed'));
+		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({})
+			.mockRejectedValue(new Error('Update failed'));
 
 		const result = await node.execute.call(exec);
 
@@ -86,7 +88,9 @@ describe('OdooV2 — opportunity:update', () => {
 	it('rethrows the error when continueOnFail is false', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(false);
-		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Update failed'));
+		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({})
+			.mockRejectedValue(new Error('Update failed'));
 
 		await expect(node.execute.call(exec)).rejects.toThrow('Update failed');
 	});
