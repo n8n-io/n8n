@@ -5,6 +5,12 @@ import { DataSource, Repository } from '@n8n/typeorm';
 import { WorkflowEntity } from '../entities/workflow-entity';
 import { WorkflowReviewRequestWorkflow } from '../entities/workflow-review-request-workflow.ee';
 
+/** The review's linked workflow as shown in cross-request lists (inbox). */
+export type WorkflowReviewRequestLinkedWorkflow = {
+	workflowName: string;
+	workflowVersionId: string | null;
+};
+
 @Service()
 export class WorkflowReviewRequestWorkflowRepository extends Repository<WorkflowReviewRequestWorkflow> {
 	constructor(dataSource: DataSource) {
@@ -31,6 +37,26 @@ export class WorkflowReviewRequestWorkflowRepository extends Repository<Workflow
 		return await manager.save(WorkflowReviewRequestWorkflow, entity);
 	}
 
+	/** Targets the (requestId, workflowId) pair so another workflow's row can never be re-pinned. */
+	async updateWorkflowVersion(
+		input: {
+			workflowReviewRequestId: string;
+			workflowId: string;
+			workflowVersionId: string;
+		},
+		trx?: EntityManager,
+	): Promise<void> {
+		const manager = trx ?? this.manager;
+		await manager.update(
+			WorkflowReviewRequestWorkflow,
+			{
+				workflowReviewRequestId: input.workflowReviewRequestId,
+				workflowId: input.workflowId,
+			},
+			{ workflowVersionId: input.workflowVersionId },
+		);
+	}
+
 	async findByRequestId(requestId: string): Promise<WorkflowReviewRequestWorkflow[]> {
 		return await this.find({
 			where: { workflowReviewRequestId: requestId },
@@ -39,7 +65,9 @@ export class WorkflowReviewRequestWorkflowRepository extends Repository<Workflow
 	}
 
 	/** One workflow per review for now; multi-workflow "primary" selection can wait. */
-	async findWorkflowNamesByRequestIds(requestIds: string[]): Promise<Map<string, string>> {
+	async findLinkedWorkflowsByRequestIds(
+		requestIds: string[],
+	): Promise<Map<string, WorkflowReviewRequestLinkedWorkflow>> {
 		if (requestIds.length === 0) {
 			return new Map();
 		}
@@ -49,9 +77,19 @@ export class WorkflowReviewRequestWorkflowRepository extends Repository<Workflow
 			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = wrw.workflowId')
 			.select('wrw.workflowReviewRequestId', 'requestId')
 			.addSelect('workflow.name', 'workflowName')
+			.addSelect('wrw.workflowVersionId', 'workflowVersionId')
 			.where('wrw.workflowReviewRequestId IN (:...requestIds)', { requestIds })
-			.getRawMany<{ requestId: string; workflowName: string }>();
+			.getRawMany<{
+				requestId: string;
+				workflowName: string;
+				workflowVersionId: string | null;
+			}>();
 
-		return new Map(rows.map((row) => [row.requestId, row.workflowName]));
+		return new Map(
+			rows.map((row) => [
+				row.requestId,
+				{ workflowName: row.workflowName, workflowVersionId: row.workflowVersionId ?? null },
+			]),
+		);
 	}
 }
