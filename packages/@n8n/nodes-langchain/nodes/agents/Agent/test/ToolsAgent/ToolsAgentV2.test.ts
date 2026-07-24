@@ -606,6 +606,7 @@ describe('toolsAgentExecute', () => {
 			const mockStreamEvents = async function* () {
 				yield {
 					event: 'on_chat_model_stream',
+					run_id: 'final-turn',
 					data: {
 						chunk: {
 							content: 'Hello ',
@@ -614,11 +615,17 @@ describe('toolsAgentExecute', () => {
 				};
 				yield {
 					event: 'on_chat_model_stream',
+					run_id: 'final-turn',
 					data: {
 						chunk: {
 							content: 'world!',
 						},
 					},
+				};
+				yield {
+					event: 'on_chat_model_end',
+					run_id: 'final-turn',
+					data: { output: { content: 'Hello world!', tool_calls: [] } },
 				};
 			};
 
@@ -691,9 +698,19 @@ describe('toolsAgentExecute', () => {
 
 			// Mock async generator for streamEvents with tool calls
 			const mockStreamEvents = async function* () {
+				yield {
+					event: 'on_chat_model_stream',
+					run_id: 'tool-turn',
+					data: {
+						chunk: {
+							content: [{ type: 'text', text: 'I need to call a tool' }],
+						},
+					},
+				};
 				// LLM response with tool call (using the fake AIMessage instance)
 				yield {
 					event: 'on_chat_model_end',
+					run_id: 'tool-turn',
 					data: {
 						output: fakeAIMessage,
 					},
@@ -709,10 +726,18 @@ describe('toolsAgentExecute', () => {
 				// Final LLM response
 				yield {
 					event: 'on_chat_model_stream',
+					run_id: 'final-turn',
 					data: {
 						chunk: {
 							content: 'Final response',
 						},
+					},
+				};
+				yield {
+					event: 'on_chat_model_end',
+					run_id: 'final-turn',
+					data: {
+						output: { content: 'Final response', tool_calls: [] },
 					},
 				};
 			};
@@ -729,6 +754,8 @@ describe('toolsAgentExecute', () => {
 
 			expect(result[0]).toHaveLength(1);
 			expect(result[0][0].json.output).toBe('Final response');
+			expect(mockContext.sendChunk).not.toHaveBeenCalledWith('item', 0, 'I need to call a tool');
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('item', 0, 'Final response');
 
 			// Check intermediate steps
 			expect(result[0][0].json.intermediateSteps).toBeDefined();
@@ -865,6 +892,7 @@ describe('toolsAgentExecute', () => {
 				// Message with array content including text and non-text types
 				yield {
 					event: 'on_chat_model_stream',
+					run_id: 'final-turn',
 					data: {
 						chunk: {
 							content: [
@@ -875,6 +903,11 @@ describe('toolsAgentExecute', () => {
 							],
 						},
 					},
+				};
+				yield {
+					event: 'on_chat_model_end',
+					run_id: 'final-turn',
+					data: { output: { content: 'Hello world!', tool_calls: [] } },
 				};
 			};
 
@@ -904,11 +937,17 @@ describe('toolsAgentExecute', () => {
 			const mockStreamEvents = async function* () {
 				yield {
 					event: 'on_chat_model_stream',
+					run_id: 'final-turn',
 					data: {
 						chunk: {
 							content: 'Direct string content',
 						},
 					},
+				};
+				yield {
+					event: 'on_chat_model_end',
+					run_id: 'final-turn',
+					data: { output: { content: 'Direct string content', tool_calls: [] } },
 				};
 			};
 
@@ -938,6 +977,7 @@ describe('toolsAgentExecute', () => {
 			const mockStreamEvents = async function* () {
 				yield {
 					event: 'on_chat_model_stream',
+					run_id: 'final-turn',
 					data: {
 						chunk: {
 							content: [
@@ -947,6 +987,11 @@ describe('toolsAgentExecute', () => {
 							],
 						},
 					},
+				};
+				yield {
+					event: 'on_chat_model_end',
+					run_id: 'final-turn',
+					data: { output: { content: [], tool_calls: [] } },
 				};
 			};
 
