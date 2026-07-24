@@ -1,4 +1,5 @@
 import { listAnthropicModels } from './providers/anthropic';
+import { listBasetenModels } from './providers/baseten';
 import { listCohereModels } from './providers/cohere';
 import { listDeepSeekModels } from './providers/deepseek';
 import { listGoogleModels } from './providers/google';
@@ -24,6 +25,7 @@ import type { ListModelsFn, ListModelsOptions, ProviderModel } from './types';
  */
 export const MODEL_DISCOVERY_PROVIDERS: Record<string, ListModelsFn> = {
 	anthropic: listAnthropicModels,
+	baseten: listBasetenModels,
 	cohere: listCohereModels,
 	deepseek: listDeepSeekModels,
 	google: listGoogleModels,
@@ -52,6 +54,7 @@ export async function listModelsForProvider(
 }
 
 export { listAnthropicModels } from './providers/anthropic';
+export { listBasetenModels } from './providers/baseten';
 export { listCohereModels } from './providers/cohere';
 export { listDeepSeekModels } from './providers/deepseek';
 export { listGoogleModels } from './providers/google';
