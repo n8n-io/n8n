@@ -36,12 +36,21 @@ const validateResourceMapperValue = (
 		return result;
 	}
 	const schema = resourceMapperField.schema;
+	// Index the schema by id so the per-value lookup below is O(1) instead of a `schema.find`
+	// scan — turning the validation loop from O(values × schema) into O(values + schema).
+	// First occurrence wins, mirroring `find`.
+	const schemaById = new Map<string, (typeof schema)[number]>();
+	for (const entry of schema) {
+		if (!schemaById.has(entry.id)) {
+			schemaById.set(entry.id, entry);
+		}
+	}
 	const paramValueNames = Object.keys(paramValues);
 	for (let i = 0; i < paramValueNames.length; i++) {
 		const key = paramValueNames[i];
 		const resolvedValue = paramValues[key];
 
-		const schemaEntry = schema.find((s) => s.id === key);
+		const schemaEntry = schemaById.get(key);
 
 		if (
 			!skipRequiredCheck &&
