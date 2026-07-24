@@ -15,6 +15,7 @@ interface ExportFlags {
 	projectId?: string[];
 	output: string;
 	includeVariableValues?: string;
+	includeTags?: string;
 	missingWorkflowDependencyPolicy?: string;
 }
 
@@ -191,6 +192,62 @@ describe('package export command', () => {
 			includeVariableValues: false,
 			missingWorkflowDependencyPolicy: 'fail',
 		});
+	});
+
+	it('forwards includeTags=false when the flag is set', async () => {
+		const { command, exportPackage } = stubCommand({
+			workflowId: ['wf-1'],
+			output: '/tmp/export.n8np',
+			includeTags: 'false',
+		});
+
+		await command.run();
+
+		expect(exportPackage).toHaveBeenCalledWith({
+			workflowIds: ['wf-1'],
+			folderIds: [],
+			includeVariableValues: true,
+			includeTags: false,
+			missingWorkflowDependencyPolicy: 'fail',
+		});
+	});
+
+	it('forwards includeTags=false for a project export', async () => {
+		const { command, exportPackage } = stubCommand({
+			projectId: ['proj-1'],
+			output: '/tmp/project.n8np',
+			includeTags: 'false',
+		});
+
+		await command.run();
+
+		expect(exportPackage).toHaveBeenCalledWith({
+			projectIds: ['proj-1'],
+			includeVariableValues: true,
+			includeTags: false,
+			missingWorkflowDependencyPolicy: 'fail',
+		});
+	});
+
+	// Only `false` may go on the wire — servers that predate the flag reject unknown body properties.
+	it('maps an explicit --include-tags=true to an omitted request field', async () => {
+		const { command, exportPackage } = stubCommand({
+			workflowId: ['wf-1'],
+			output: '/tmp/export.n8np',
+			includeTags: 'true',
+		});
+
+		await command.run();
+
+		const fields = exportPackage.mock.calls[0][0] as { includeTags?: boolean };
+		expect(fields.includeTags).toBeUndefined();
+	});
+
+	it('declares the includeTags flag with its alias, options, and default', () => {
+		const flag = PackageExport.flags.includeTags;
+		expect(flag.aliases).toEqual(['include-tags']);
+		expect(flag.options).toEqual(['true', 'false']);
+		expect(flag.default).toBe('true');
 	});
 
 	it('treats an explicit --include-variable-values=true like the default', async () => {

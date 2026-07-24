@@ -66,6 +66,12 @@ export default class PackageExport extends BaseCommand {
 			default: 'true',
 			aliases: ['include-variable-values'],
 		}),
+		includeTags: Flags.string({
+			description: 'Whether tags assigned to the exported workflows are bundled into the package',
+			options: ['true', 'false'],
+			default: 'true',
+			aliases: ['include-tags'],
+		}),
 		missingWorkflowDependencyPolicy: Flags.string({
 			options: ['fail', 'reference-only', 'include-in-package'],
 			default: 'fail',
@@ -81,6 +87,9 @@ export default class PackageExport extends BaseCommand {
 		const folderIds = flags.folderId ?? [];
 		const projectIds = flags.projectId ?? [];
 		const includeVariableValues = flags.includeVariableValues !== 'false';
+		// Only `false` goes on the wire: servers that predate the flag reject unknown
+		// body properties, and the server default already supplies `true`.
+		const includeTags = flags.includeTags === 'false' ? false : undefined;
 		const missingWorkflowDependencyPolicy = flags.missingWorkflowDependencyPolicy;
 
 		// A package is either loose workflows/folders or whole projects, not both.
@@ -97,8 +106,14 @@ export default class PackageExport extends BaseCommand {
 			try {
 				result = await client.exportPackage(
 					projectIds.length > 0
-						? { projectIds, includeVariableValues, missingWorkflowDependencyPolicy }
-						: { workflowIds, folderIds, includeVariableValues, missingWorkflowDependencyPolicy },
+						? { projectIds, includeVariableValues, includeTags, missingWorkflowDependencyPolicy }
+						: {
+								workflowIds,
+								folderIds,
+								includeVariableValues,
+								includeTags,
+								missingWorkflowDependencyPolicy,
+							},
 				);
 			} catch (error) {
 				throw toPackagesError(error);
