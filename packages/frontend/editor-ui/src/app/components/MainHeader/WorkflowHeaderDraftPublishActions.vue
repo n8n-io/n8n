@@ -55,6 +55,7 @@ import WorkflowReviewRequiredToggle from '@/features/workflow-reviews/components
 import WorkflowPublishChoiceDialog from '@/features/workflow-reviews/components/WorkflowPublishChoiceDialog.vue';
 import WorkflowSubmitForReviewDialog from '@/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue';
 import WorkflowReviewSubmittedDialog from '@/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue';
+import WorkflowUpdateReviewDialog from '@/features/workflow-reviews/components/WorkflowUpdateReviewDialog.vue';
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import { useWorkflowReviewStatusSync } from '@/features/workflow-reviews/composables/useWorkflowReviewStatusSync';
@@ -114,6 +115,7 @@ const isSaving = ref(false);
 const showPublishChoiceDialog = ref(false);
 const showSubmitForReviewDialog = ref(false);
 const showReviewSubmittedDialog = ref(false);
+const showUpdateReviewDialog = ref(false);
 
 watch(
 	() => props.id,
@@ -121,6 +123,7 @@ watch(
 		showPublishChoiceDialog.value = false;
 		showSubmitForReviewDialog.value = false;
 		showReviewSubmittedDialog.value = false;
+		showUpdateReviewDialog.value = false;
 		uiStore.closeModal(WORKFLOW_PUBLISH_MODAL_KEY);
 	},
 );
@@ -263,13 +266,31 @@ const onReviewSubmitted = () => {
 	}
 };
 
+const onReviewUpdated = () => {
+	toast.showMessage({
+		type: 'success',
+		title: i18n.baseText('workflowReviews.updateReview.toast'),
+	});
+};
+
+/** The submit dialog hit a 409: an open review exists, so offer updating it instead. */
+const onReviewConflict = () => {
+	showUpdateReviewDialog.value = true;
+};
+
 const onPublishButtonClick = async () => {
 	if (!(await ensureWorkflowSaved())) return;
 
 	if (isWorkflowReviewsEnabled.value) {
-		// TODO(LIGO-806): with an open review this submit dead-ends in the 409
-		// inline error until syncing the existing review exists
-		// TODO(LIGO-604): backend publish enforcement
+		// TODO(LIGO-604): backend publish enforcement. Until then this gate is
+		// best-effort: a not-yet-fetched status (e.g. Publish clicked before the
+		// on-mount fetch resolves) reads as "no open review" — accepted, since
+		// only backend enforcement can close that hole.
+		if (reviewStatusStore.hasOpenReview(props.id)) {
+			showUpdateReviewDialog.value = true;
+			return;
+		}
+
 		if (effectiveReviewRequired.value) {
 			showSubmitForReviewDialog.value = true;
 			return;
@@ -782,8 +803,15 @@ defineExpose({
 				:workflow-id="props.id"
 				:flush-save="flushSaveForReview"
 				@submitted="onReviewSubmitted"
+				@conflict="onReviewConflict"
 			/>
 			<WorkflowReviewSubmittedDialog v-model:open="showReviewSubmittedDialog" />
+			<WorkflowUpdateReviewDialog
+				v-model:open="showUpdateReviewDialog"
+				:workflow-id="props.id"
+				:flush-save="flushSaveForReview"
+				@updated="onReviewUpdated"
+			/>
 		</template>
 	</div>
 </template>
