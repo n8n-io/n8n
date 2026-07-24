@@ -815,30 +815,20 @@ describe('configureWaitTillDate', () => {
 	});
 });
 
-describe('getSendAndWaitProperties additionalPropertiesBeforeOptions', () => {
+describe('getSendAndWaitProperties additionalProperties', () => {
 	const hitl: INodeProperties = {
 		displayName: 'Capture Who Responded',
 		name: 'captureResponder',
 		type: 'boolean',
 		default: false,
 	};
-	// The first "options" collection is the approval one, emitted right after "Approval Options".
-	const firstOptionsIndex = (props: INodeProperties[]) =>
-		props.findIndex((p) => p.name === 'options');
 
-	it('places additionalProperties before the Options collection when the flag is set', () => {
-		const props = getSendAndWaitProperties([], undefined, [hitl], {
-			additionalPropertiesBeforeOptions: true,
-		});
+	it('renders additionalProperties before the Options collection', () => {
+		const props = getSendAndWaitProperties([], undefined, [hitl]);
+		// The first "options" collection is the approval one, emitted right after "Approval Options".
+		const firstOptionsIndex = props.findIndex((p) => p.name === 'options');
 		const hitlIndex = props.findIndex((p) => p.name === 'captureResponder');
 		expect(hitlIndex).toBeGreaterThan(-1);
-		expect(hitlIndex).toBeLessThan(firstOptionsIndex(props));
-	});
-
-	it('appends additionalProperties after Options by default (unchanged behaviour)', () => {
-		const props = getSendAndWaitProperties([], undefined, [hitl]);
-		const hitlIndex = props.findIndex((p) => p.name === 'captureResponder');
-		expect(hitlIndex).toBe(props.length - 1);
-		expect(hitlIndex).toBeGreaterThan(firstOptionsIndex(props));
+		expect(hitlIndex).toBeLessThan(firstOptionsIndex);
 	});
 });

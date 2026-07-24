@@ -64,9 +64,6 @@ export function getSendAndWaitProperties(
 		defaultApproveLabel?: string;
 		defaultDisapproveLabel?: string;
 		extraOptions?: INodeProperties[];
-		// Render `additionalProperties` right before the "Options" collection (grouped as
-		// their own section) instead of after it — used by the advanced-HITL nodes.
-		additionalPropertiesBeforeOptions?: boolean;
 	},
 ): INodeProperties[] {
 	const buttonStyle: INodeProperties = {
@@ -227,7 +224,8 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
-		...(options?.additionalPropertiesBeforeOptions ? additionalProperties : []),
+		// Advanced-HITL nodes (Slack, Telegram) render these as a section right before "Options".
+		...additionalProperties,
 		{
 			displayName: 'Options',
 			name: 'options',
@@ -295,7 +293,6 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
-		...(options?.additionalPropertiesBeforeOptions ? [] : additionalProperties),
 	];
 
 	return updateDisplayOptions(

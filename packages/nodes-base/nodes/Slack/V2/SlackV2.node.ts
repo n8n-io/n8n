@@ -181,7 +181,7 @@ export class SlackV2 implements INodeType {
 						unauthorizedReplyField,
 						postDecisionBehaviorField,
 					],
-					{ extraOptions: [replyToMessageField], additionalPropertiesBeforeOptions: true },
+					{ extraOptions: [replyToMessageField] },
 				).filter((p) => p.name !== 'subject'),
 				...starOperations,
 				...starFields,
