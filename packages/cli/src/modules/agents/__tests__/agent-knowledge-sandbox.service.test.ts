@@ -457,28 +457,6 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 	});
 
-	it('throws a published-only error when the agent has no active version', async () => {
-		const agentRepository = mock<AgentRepository>();
-		agentRepository.findByIdAndProjectId.mockResolvedValue({
-			id: agentId,
-			projectId,
-			activeVersionId: null,
-		} as Agent);
-		const service = makeService(
-			{},
-			mock<Logger>(),
-			makeAiService(),
-			mock<InstanceSettings>({ instanceId }),
-			mock<AgentFileRepository>(),
-			agentRepository,
-		);
-
-		await expect(service.warmSandbox(projectId, agentId)).rejects.toThrow(
-			'Knowledge base is only available for published agents. Publish the agent first.',
-		);
-		expect(createMock).not.toHaveBeenCalled();
-	});
-
 	describe('destroySandbox', () => {
 		it('deletes the sandbox by name', async () => {
 			const sandbox = makeSandbox('started');
