@@ -3,7 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { h, defineComponent } from 'vue';
 import { useToast } from './useToast';
 import { useTelemetry } from './useTelemetry';
-import { useUIStore } from '@/app/stores/ui.store';
+import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { VIEWS } from '@/app/constants';
 import { vi } from 'vitest';
 
@@ -230,9 +230,9 @@ describe('useToast', () => {
 
 	describe('notification suppression', () => {
 		it('should not render non-error notification when notifications are suppressed', async () => {
-			const uiStore = useUIStore();
-			uiStore.areNotificationsSuppressed = true;
-			uiStore.allowErrorNotificationsWhenSuppressed = true;
+			const notificationsStore = useNotificationsStore();
+			notificationsStore.areNotificationsSuppressed = true;
+			notificationsStore.allowErrorNotificationsWhenSuppressed = true;
 
 			toast.showMessage({ message: 'Should not appear', title: 'Suppressed' });
 
@@ -249,9 +249,9 @@ describe('useToast', () => {
 		});
 
 		it('should not render error notification when notifications are suppressed and errors are not allowed', async () => {
-			const uiStore = useUIStore();
-			uiStore.areNotificationsSuppressed = true;
-			uiStore.allowErrorNotificationsWhenSuppressed = false;
+			const notificationsStore = useNotificationsStore();
+			notificationsStore.areNotificationsSuppressed = true;
+			notificationsStore.allowErrorNotificationsWhenSuppressed = false;
 
 			toast.showMessage({
 				message: 'Error should not appear',
@@ -271,9 +271,9 @@ describe('useToast', () => {
 		});
 
 		it('should render error notification when notifications are suppressed and errors are allowed', async () => {
-			const uiStore = useUIStore();
-			uiStore.areNotificationsSuppressed = true;
-			uiStore.allowErrorNotificationsWhenSuppressed = true;
+			const notificationsStore = useNotificationsStore();
+			notificationsStore.areNotificationsSuppressed = true;
+			notificationsStore.allowErrorNotificationsWhenSuppressed = true;
 
 			toast.showMessage({
 				message: 'Error should appear',
@@ -291,9 +291,9 @@ describe('useToast', () => {
 		});
 
 		it('should track telemetry for allowed suppressed error notification', async () => {
-			const uiStore = useUIStore();
-			uiStore.areNotificationsSuppressed = true;
-			uiStore.allowErrorNotificationsWhenSuppressed = true;
+			const notificationsStore = useNotificationsStore();
+			notificationsStore.areNotificationsSuppressed = true;
+			notificationsStore.allowErrorNotificationsWhenSuppressed = true;
 
 			toast.showMessage({
 				message: 'Allowed error tracked',
