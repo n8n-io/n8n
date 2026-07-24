@@ -1,0 +1,30 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "46cd9cf029d1f8a38867fa432b1ef36042ed8a76",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_563a9e16fe5daf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77cbd763-38ec-4ec6-89cd-4072897b7706",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_83feff7457dd06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec8a95a5-afe0-452d-847f-10d4068d465c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

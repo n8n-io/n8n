@@ -3,7 +3,7 @@ AGENTS.md
 ---
 {
   "schema_version": "authorship/3.0.0",
-  "git_ai_version": "1.6.14",
+  "git_ai_version": "1.6.16",
   "base_commit_sha": "0e4645e921dab0af6ac0f59ec017f547d4b58dfa",
   "prompts": {},
   "humans": {
