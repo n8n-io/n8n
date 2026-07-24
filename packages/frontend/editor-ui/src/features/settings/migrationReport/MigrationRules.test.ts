@@ -105,6 +105,13 @@ describe('MigrationRules', () => {
 	});
 
 	describe('initial rendering and loading', () => {
+		it('should set the document title', () => {
+			document.title = '';
+			renderComponent();
+
+			expect(document.title).toContain('Migration Report');
+		});
+
 		it('should render correctly and load data on mount', async () => {
 			renderComponent();
 
@@ -113,7 +120,7 @@ describe('MigrationRules', () => {
 
 			// After loading, shows title, description, and data
 			await waitFor(() => {
-				expect(screen.getByText('Compatibility report for version 2.0.0')).toBeInTheDocument();
+				expect(screen.getByText('Migration Report')).toBeInTheDocument();
 				expect(
 					screen.getByText(/5 of your 10 workflows are already compatible/, { exact: false }),
 				).toBeInTheDocument();
@@ -532,7 +539,7 @@ describe('MigrationRules', () => {
 
 			// Component still renders title
 			await waitFor(() => {
-				expect(screen.getByText('Compatibility report for version 2.0.0')).toBeInTheDocument();
+				expect(screen.getByText('Migration Report')).toBeInTheDocument();
 			});
 		});
 
@@ -549,7 +556,7 @@ describe('MigrationRules', () => {
 
 			// Component still works after error
 			await waitFor(() => {
-				expect(screen.getByText('Compatibility report for version 2.0.0')).toBeInTheDocument();
+				expect(screen.getByText('Migration Report')).toBeInTheDocument();
 			});
 		});
 

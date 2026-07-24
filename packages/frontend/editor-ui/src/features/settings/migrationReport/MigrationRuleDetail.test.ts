@@ -108,6 +108,17 @@ describe('MigrationRuleDetail', () => {
 	});
 
 	describe('initial rendering', () => {
+		it('should set the document title', () => {
+			document.title = '';
+			renderComponent({
+				props: {
+					migrationRuleId: 'rule-1',
+				},
+			});
+
+			expect(document.title).toContain('Migration Report');
+		});
+
 		it('should render rule details correctly', async () => {
 			renderComponent({
 				props: {

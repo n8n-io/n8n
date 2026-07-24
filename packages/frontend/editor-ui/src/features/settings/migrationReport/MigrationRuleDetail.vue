@@ -3,9 +3,9 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropdown.vue';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME, VIEWS } from '@/app/constants';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
 import {
-	N8nButton,
 	N8nDataTableServer,
 	N8nIcon,
 	N8nInput,
@@ -14,6 +14,7 @@ import {
 	N8nLoading,
 	N8nOption,
 	N8nSelect,
+	N8nSettingsLayout,
 	N8nTag,
 	N8nText,
 } from '@n8n/design-system';
@@ -28,6 +29,8 @@ import { useRouter } from 'vue-router';
 import SeverityTag from './components/SeverityTag.vue';
 
 const i18n = useI18n();
+
+useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 
 const props = defineProps<{ migrationRuleId: string }>();
 
@@ -188,59 +191,58 @@ const sortedWorkflows = computed(() => {
 </script>
 
 <template>
-	<div>
-		<N8nButton
-			variant="ghost"
-			:class="$style.backButton"
-			icon="arrow-left"
-			:label="i18n.baseText('generic.back')"
-			class="mb-xs"
-			@click="router.push({ name: VIEWS.MIGRATION_REPORT })"
-		/>
-		<template v-if="isLoading">
-			<div class="mb-2xs">
-				<N8nLoading variant="h1" />
-			</div>
-			<div class="mb-2xl">
-				<N8nLoading variant="p" :rows="2" />
-			</div>
-		</template>
-		<template v-else>
-			<N8nText
-				tag="h2"
-				size="xlarge"
-				color="text-dark"
-				class="mb-2xs"
-				style="display: flex; align-items: center; gap: 4px"
-			>
-				{{ state.ruleTitle }}
-				<SeverityTag :severity="state.ruleSeverity" />
-				<N8nTag
-					:text="
-						i18n.baseText('settings.migrationReport.detail.affectedTag', {
-							interpolate: { count: String(state.affectedWorkflows.length) },
-						})
-					"
-					:clickable="false"
-				/>
-			</N8nText>
-			<N8nText tag="p" color="text-base" class="mb-2xl">
-				{{ state.ruleDescription }}{{ state.ruleDescription.endsWith('.') ? '' : '.' }}
-				<N8nLink
-					v-if="state.ruleDocumentationUrl"
-					theme="text"
-					:href="state.ruleDocumentationUrl"
-					target="_blank"
-					rel="noopener noreferrer"
-					:class="$style.NoLineBreak"
+	<N8nSettingsLayout
+		full-width
+		show-back
+		:back-label="i18n.baseText('generic.back')"
+		@back="router.push({ name: VIEWS.MIGRATION_REPORT })"
+	>
+		<header :class="$style.pageHeader">
+			<template v-if="isLoading">
+				<div class="mb-2xs">
+					<N8nLoading variant="h1" />
+				</div>
+				<div>
+					<N8nLoading variant="p" :rows="2" />
+				</div>
+			</template>
+			<template v-else>
+				<N8nText
+					tag="h2"
+					size="xlarge"
+					color="text-dark"
+					class="mb-2xs"
+					style="display: flex; align-items: center; gap: 4px"
 				>
-					<span :class="$style.UnderlinedText">{{
-						i18n.baseText('settings.migrationReport.documentation')
-					}}</span>
-					↗
-				</N8nLink>
-			</N8nText>
-		</template>
+					{{ state.ruleTitle }}
+					<SeverityTag :severity="state.ruleSeverity" />
+					<N8nTag
+						:text="
+							i18n.baseText('settings.migrationReport.detail.affectedTag', {
+								interpolate: { count: String(state.affectedWorkflows.length) },
+							})
+						"
+						:clickable="false"
+					/>
+				</N8nText>
+				<N8nText tag="p" color="text-base">
+					{{ state.ruleDescription }}{{ state.ruleDescription.endsWith('.') ? '' : '.' }}
+					<N8nLink
+						v-if="state.ruleDocumentationUrl"
+						theme="text"
+						:href="state.ruleDocumentationUrl"
+						target="_blank"
+						rel="noopener noreferrer"
+						:class="$style.NoLineBreak"
+					>
+						<span :class="$style.UnderlinedText">{{
+							i18n.baseText('settings.migrationReport.documentation')
+						}}</span>
+						↗
+					</N8nLink>
+				</N8nText>
+			</template>
+		</header>
 
 		<!-- Search and Filter Controls -->
 		<div :class="$style.filterControls">
@@ -322,12 +324,16 @@ const sortedWorkflows = computed(() => {
 				<TimeAgo :date="item.lastUpdatedAt.toString()" />
 			</template>
 		</N8nDataTableServer>
-	</div>
+	</N8nSettingsLayout>
 </template>
 
 <style module>
-.backButton {
-	padding-left: 0;
+/* Mirrors N8nSettingsPageHeader's self-capping so the header column stays centered
+   while the table below spans the full-width layout. */
+.pageHeader {
+	width: 100%;
+	max-width: var(--settings-content--max-width, 45rem);
+	margin-inline: auto;
 }
 
 .clickableRow {
