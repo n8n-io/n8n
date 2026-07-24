@@ -70,7 +70,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 	test('should allow creating API key with default expiration (30 days)', async () => {
 		apiKeysStore.createApiKey.mockResolvedValue(testApiKey);
 
-		const { getByText, getByPlaceholderText } = renderComponent({
+		const { getByText, getByPlaceholderText, getByDisplayValue } = renderComponent({
 			props: {
 				mode: 'new',
 			},
@@ -97,7 +97,8 @@ describe('ApiKeyCreateOrEditModal', () => {
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
 
-		expect(getByText('123456')).toBeInTheDocument();
+		// The key is shown inside a readonly input, so query by display value.
+		expect(getByDisplayValue('123456')).toBeInTheDocument();
 	});
 
 	test('should allow creating API key with custom expiration', async () => {
@@ -119,11 +120,12 @@ describe('ApiKeyCreateOrEditModal', () => {
 			},
 		});
 
-		const { getByText, getAllByText, getByPlaceholderText, getByTestId } = renderComponent({
-			props: {
-				mode: 'new',
-			},
-		});
+		const { getByText, getAllByText, getByPlaceholderText, getByTestId, getByDisplayValue } =
+			renderComponent({
+				props: {
+					mode: 'new',
+				},
+			});
 
 		await retry(() => expect(getByText('Create API Key')).toBeInTheDocument());
 		expect(getByText('Label')).toBeInTheDocument();
@@ -157,7 +159,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		await userEvent.click(saveButton);
 
-		expect(getByText('***456')).toBeInTheDocument();
+		expect(getByDisplayValue('***456')).toBeInTheDocument();
 
 		expect(getByText('API key created successfully')).toBeInTheDocument();
 
@@ -171,7 +173,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 	test('should allow creating API key with no expiration', async () => {
 		apiKeysStore.createApiKey.mockResolvedValue(testApiKey);
 
-		const { getByText, getByPlaceholderText, getByTestId } = renderComponent({
+		const { getByText, getByPlaceholderText, getByTestId, getByDisplayValue } = renderComponent({
 			props: {
 				mode: 'new',
 			},
@@ -208,7 +210,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
 
-		expect(getByText('123456')).toBeInTheDocument();
+		expect(getByDisplayValue('123456')).toBeInTheDocument();
 	});
 
 	test('shows the expiration hint for the default option and the "never" copy when Never is selected', async () => {
@@ -238,7 +240,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 	test('should allow creating API key with scopes pre-selected', async () => {
 		apiKeysStore.createApiKey.mockResolvedValue(testApiKey);
 
-		const { getByText, getByPlaceholderText, getByTestId } = renderComponent({
+		const { getByText, getByPlaceholderText, getByTestId, getByDisplayValue } = renderComponent({
 			props: {
 				mode: 'new',
 			},
@@ -269,11 +271,11 @@ describe('ApiKeyCreateOrEditModal', () => {
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
 
-		expect(getByText('123456')).toBeInTheDocument();
+		expect(getByDisplayValue('123456')).toBeInTheDocument();
 	});
 
 	test('shows a rotated key in the same created view, with the rotation title', async () => {
-		const { getByText } = renderComponent({
+		const { getByText, getByDisplayValue } = renderComponent({
 			props: {
 				mode: 'new',
 				rotatedApiKey: testApiKey,
@@ -287,7 +289,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 		expect(
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
-		expect(getByText('123456')).toBeInTheDocument();
+		expect(getByDisplayValue('123456')).toBeInTheDocument();
 	});
 
 	test('should allow editing API key label', async () => {

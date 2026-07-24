@@ -271,6 +271,12 @@ const apiKeyEnd = computed(() =>
 	isApiKeyTruncated.value ? rawApiKey.value.slice(-API_KEY_VISIBLE_CHARS_PER_SIDE) : '',
 );
 
+// Middle-truncated display value: the key's start and end stay visible so the
+// user can eyeball what they copied, while the input never holds the full key.
+const apiKeyDisplay = computed(() =>
+	isApiKeyTruncated.value ? `${apiKeyStart.value}...${apiKeyEnd.value}` : rawApiKey.value,
+);
+
 async function copyApiKey() {
 	if (!rawApiKey.value) return;
 	await clipboard.copy(rawApiKey.value);
@@ -360,22 +366,23 @@ async function handleEnterKey(event: KeyboardEvent) {
 			<div @keyup.enter="handleEnterKey">
 				<div v-if="newApiKey" :class="$style.createdView">
 					<N8nText size="small">{{ i18n.baseText('settings.api.view.copy') }}</N8nText>
-					<div :class="$style.apiKeyField" data-test-id="copy-input">
-						<div :class="[$style.apiKeyValue, 'ph-no-capture']">
-							<span>{{ apiKeyStart }}</span>
-							<template v-if="isApiKeyTruncated">
-								<span>...</span>
-								<span>{{ apiKeyEnd }}</span>
-							</template>
-						</div>
-						<N8nIconButton
-							icon="copy"
-							variant="ghost"
-							size="small"
-							:aria-label="i18n.baseText('generic.copy')"
-							@click="copyApiKey"
-						/>
-					</div>
+					<N8nInput
+						:model-value="apiKeyDisplay"
+						size="large"
+						readonly
+						:class="[$style.apiKeyField, 'ph-no-capture']"
+						data-test-id="copy-input"
+					>
+						<template #append>
+							<N8nIconButton
+								icon="copy"
+								variant="ghost"
+								size="large"
+								:aria-label="i18n.baseText('generic.copy')"
+								@click="copyApiKey"
+							/>
+						</template>
+					</N8nInput>
 				</div>
 
 				<div v-else :class="$style.form">
@@ -524,25 +531,33 @@ async function handleEnterKey(event: KeyboardEvent) {
 	gap: var(--spacing--2xs);
 }
 
+/*
+ * One continuous bordered field (the instance-settings copy-field pattern, see
+ * the N8nSettingsLayout MCP examples): border, radius and background move onto
+ * the input CONTAINER (with overflow hidden so the append segment is clipped by
+ * the outer radius), the wrapper drops its own border so it doesn't double up,
+ * and the append becomes a transparent, full-height button segment separated
+ * from the value by a single border-left divider. Focus indication is
+ * unaffected — the design system draws it with outline, not box-shadow.
+ */
 .apiKeyField {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--3xs) var(--spacing--3xs) var(--spacing--3xs) var(--spacing--xs);
-	background-color: var(--color--background--xlight);
-	border: var(--border);
-	border-radius: var(--radius);
-}
-
-.apiKeyValue {
-	flex: 1;
-	min-width: 0;
+	gap: 0;
+	border-radius: var(--input--radius);
+	background-color: var(--input--color--background);
+	box-shadow: inset var(--input--border--shadow);
 	overflow: hidden;
-	white-space: nowrap;
-	text-align: center;
-	font-family: Monaco, Consolas, monospace;
-	font-size: var(--font-size--xs);
-	color: var(--color--text);
+
+	:global(.n8n-input__wrapper) {
+		box-shadow: none;
+		background-color: transparent;
+	}
+
+	:global(.n8n-input__wrapper) + span {
+		background-color: transparent;
+		border-left: var(--border);
+		margin: 0;
+		padding: 0;
+	}
 }
 
 .form {
