@@ -4,7 +4,7 @@ import type { NotificationOptions } from '@/Interface';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
-import { useUIStore } from '@/app/stores/ui.store';
+import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { useI18n } from '@n8n/i18n';
 import { useExternalHooks } from './useExternalHooks';
 import { VIEWS } from '@/app/constants';
@@ -15,14 +15,14 @@ const stickyNotificationQueue: NotificationHandle[] = [];
 export function useToast() {
 	const telemetry = useTelemetry();
 	const workflowId = useWorkflowId();
-	const uiStore = useUIStore();
+	const notificationsStore = useNotificationsStore();
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
 	const { APP_Z_INDEXES } = useStyles();
 
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
-		const suppressed = uiStore.areNotificationsSuppressed;
-		const allowErrors = uiStore.allowErrorNotificationsWhenSuppressed;
+		const suppressed = notificationsStore.areNotificationsSuppressed;
+		const allowErrors = notificationsStore.allowErrorNotificationsWhenSuppressed;
 		if (suppressed && !(allowErrors && messageData.type === 'error')) {
 			return { close: () => {} } as NotificationHandle;
 		}
@@ -203,7 +203,7 @@ export function useToast() {
 	function showNotificationForViews(views: VIEWS[]) {
 		const notifications: NotificationOptions[] = [];
 		views.forEach((view) => {
-			notifications.push(...(uiStore.pendingNotificationsForViews[view] ?? []));
+			notifications.push(...(notificationsStore.pendingNotificationsForViews[view] ?? []));
 		});
 		if (notifications.length) {
 			notifications.forEach(async (notification) => {
@@ -213,7 +213,7 @@ export function useToast() {
 				}, 5);
 			});
 			// Clear the queue once all notifications are shown
-			uiStore.setNotificationsForView(VIEWS.WORKFLOW, []);
+			notificationsStore.setNotificationsForView(VIEWS.WORKFLOW, []);
 		}
 	}
 

@@ -123,9 +123,13 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 async function getParentDataSourceIdFromPage(
 	this: ILoadOptionsFunctions,
 ): Promise<string | undefined> {
-	const pageId = extractPageId(
-		this.getCurrentNodeParameter('pageId', { extractValue: true }) as string,
-	);
+	const pageIdValue = this.getCurrentNodeParameter('pageId', { extractValue: true }) as
+		| string
+		| null;
+	const pageId = extractPageId(pageIdValue ?? '');
+	if (!pageId) {
+		return undefined;
+	}
 	const page = await notionApiRequestV3.call(this, 'GET', `/pages/${pageId}`);
 	if (!isDataObject(page) || !isDataObject(page.parent)) {
 		return undefined;

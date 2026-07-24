@@ -97,6 +97,8 @@ interface DispatcherView {
 			pass: boolean;
 			reason: string;
 		}> | null>;
+		buildCostUsdPerRun?: Array<number | null>;
+		buildTurnsPerRun?: Array<number | null>;
 		scenarios: Array<{
 			name: string;
 			passCount: number;
@@ -157,6 +159,10 @@ describe('eval-results.json — dispatcher contract', () => {
 			[{ expectation: 'sends a digest', pass: true, reason: 'digest node present' }],
 			[{ expectation: 'sends a digest', pass: false, reason: 'digest node missing' }],
 		]);
+		// Spend arrays are `--build-via-mcp`-only — absent when no iteration
+		// recorded `claude` spend, so non-MCP dispatcher output is unchanged.
+		expect(tc).not.toHaveProperty('buildCostUsdPerRun');
+		expect(tc).not.toHaveProperty('buildTurnsPerRun');
 
 		// Scenario blocks serialize under the flat `scenarios` key with a flat
 		// `name` — the shape the dispatcher's fallback reader consumes today.
@@ -175,5 +181,29 @@ describe('eval-results.json — dispatcher contract', () => {
 			rootCause: 'mock returned an empty page',
 			execErrors: ['HTTP 500 from the mocked API'],
 		});
+	});
+
+	it('serializes per-iteration `claude` build spend when a run recorded it', () => {
+		const evaluation = aggregateResults(
+			[[{ ...iteration1(), buildCostUsd: 0.31, buildTurns: 5 }], [iteration2()]],
+			2,
+		);
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
+		const { jsonPath } = writeEvalResults(
+			evaluation,
+			1234,
+			dir,
+			'exp-dispatcher-contract',
+			undefined,
+			undefined,
+			new Map([[testCase, 'daily-digest']]),
+			undefined,
+			undefined,
+		);
+		const report = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8'));
+
+		const tc = report.testCases[0];
+		expect(tc.buildCostUsdPerRun).toEqual([0.31, null]);
+		expect(tc.buildTurnsPerRun).toEqual([5, null]);
 	});
 });
