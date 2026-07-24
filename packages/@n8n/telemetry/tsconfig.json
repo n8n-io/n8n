@@ -1,0 +1,7 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.common.go.json",
+	"compilerOptions": {
+		"types": ["vitest/globals", "node"]
+	},
+	"include": ["src/**/*.ts"]
+}
