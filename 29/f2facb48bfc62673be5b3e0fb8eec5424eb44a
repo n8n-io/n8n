@@ -1,10 +1,10 @@
-packages/cli/src/workflows/__tests__/workflow.service.test.ts
-  s_b1ae3677d6bc36::t_750ad20c76606c 1184
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_b1ae3677d6bc36::t_f4ecbbe076e13c 47,51
 ---
 {
   "schema_version": "authorship/3.0.0",
-  "git_ai_version": "1.6.15",
-  "base_commit_sha": "28e6c257bb9b0becf24c3e38b1c6b3234f4e9b07",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "29f2facb48bfc62673be5b3e0fb8eec5424eb44a",
   "prompts": {},
   "sessions": {
     "s_b1ae3677d6bc36": {
