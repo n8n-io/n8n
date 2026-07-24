@@ -38,7 +38,7 @@ import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-v
 import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { ExternalHooks } from '@/external-hooks';
+import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { NodeTypes } from '@/node-types';
@@ -517,7 +517,10 @@ export class WorkflowService {
 		}
 
 		// Run external hook after all validation has passed, right before persisting
-		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
+		await this.externalHooks.run('workflow.update', [
+			workflowUpdateData,
+			toWorkflowLifecycleHookActor(user),
+		]);
 
 		const fieldsToUpdate = [
 			'name',
@@ -601,7 +604,10 @@ export class WorkflowService {
 				requestOrder: tagIds,
 			});
 		}
-		await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
+		await this.externalHooks.run('workflow.afterUpdate', [
+			updatedWorkflow,
+			toWorkflowLifecycleHookActor(user),
+		]);
 
 		const settingsChangesDetail = this.calculateSettingsChanges(
 			workflow.settings,
@@ -825,7 +831,10 @@ export class WorkflowService {
 		});
 
 		try {
-			await this.externalHooks.run('workflow.activate', [candidateWorkflow]);
+			await this.externalHooks.run('workflow.activate', [
+				candidateWorkflow,
+				toWorkflowLifecycleHookActor(user),
+			]);
 		} catch (error) {
 			throw new WorkflowActivationBadRequestError(ensureError(error).message, {
 				nodeId: getErrorNodeId(error),
@@ -985,7 +994,10 @@ export class WorkflowService {
 		}
 
 		try {
-			await this.externalHooks.run('workflow.deactivate', [workflow]);
+			await this.externalHooks.run('workflow.deactivate', [
+				workflow,
+				toWorkflowLifecycleHookActor(user),
+			]);
 		} catch (error) {
 			throw new WorkflowDeactivationBadRequestError(ensureError(error).message, {
 				description: getErrorDescription(error),
@@ -1037,7 +1049,10 @@ export class WorkflowService {
 	 * nothing and returns void.
 	 */
 	async delete(user: User, workflowId: string, force = false): Promise<WorkflowEntity | undefined> {
-		await this.externalHooks.run('workflow.delete', [workflowId]);
+		await this.externalHooks.run('workflow.delete', [
+			workflowId,
+			toWorkflowLifecycleHookActor(user),
+		]);
 
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
@@ -1071,7 +1086,10 @@ export class WorkflowService {
 		await this.workflowRepository.delete(workflowId);
 
 		this.eventService.emit('workflow-deleted', { user, workflowId, publicApi: false });
-		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
+		await this.externalHooks.run('workflow.afterDelete', [
+			workflowId,
+			toWorkflowLifecycleHookActor(user),
+		]);
 
 		return workflow;
 	}
@@ -1138,7 +1156,10 @@ export class WorkflowService {
 			workflowId,
 			publicApi: options?.publicApi ?? false,
 		});
-		await this.externalHooks.run('workflow.afterArchive', [workflowId]);
+		await this.externalHooks.run('workflow.afterArchive', [
+			workflowId,
+			toWorkflowLifecycleHookActor(user),
+		]);
 
 		return workflow;
 	}
@@ -1173,7 +1194,10 @@ export class WorkflowService {
 			workflowId,
 			publicApi: options?.publicApi ?? false,
 		});
-		await this.externalHooks.run('workflow.afterUnarchive', [workflowId]);
+		await this.externalHooks.run('workflow.afterUnarchive', [
+			workflowId,
+			toWorkflowLifecycleHookActor(user),
+		]);
 
 		return workflow;
 	}
