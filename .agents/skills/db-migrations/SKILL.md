@@ -121,6 +121,8 @@ Run through this before requesting review. Each item is a real, recurring review
 - [ ] **No live-app value imports** in the migration body. Inline types/utility code locally. — [Never import entities as values](#never-import-entities-as-values)
 - [ ] **`async down()` was tested locally**: `pnpm start && pnpm start -- db:revert && pnpm start` on **both** SQLite and Postgres. — [Reversibility](#reversibility)
 - [ ] **One logical change per migration**; split unrelated table changes into separate files. — [Don't combine independent schema changes](#dont-combine-independent-schema-changes)
+- [ ] **Migration PR is as small as possible** — the migration and its directly-required entity/type changes only. Business logic that consumes the new schema goes in a separate PR. — [Reviewing migrations in a stack](#reviewing-migrations-in-a-stack)
+- [ ] **In a stacked PR, only the migration PR is marked ready for review**; the rest stay draft until the migration merges. — [Reviewing migrations in a stack](#reviewing-migrations-in-a-stack)
 - [ ] **`up()` / `down()` reads as a list of intentions.** If either body grows past a screen or mixes schema operations with a multi-statement raw-SQL data move, extract the data move into a `private async` method on the same class (e.g. `private async backfillFromX(ctx)`). The top-level should orchestrate, not implement.
 - [ ] **Precedent is the bar to fix, not perpetuate.** When the checklist conflicts with what an older migration does (e.g. redundant `.primary.notNull`, hand-quoted identifiers, missing `.comment()`), the checklist wins for new code — don't copy the violation forward. Note the old occurrences in the PR if you spotted them.
 - [ ] **Regenerated the schema docs** with `pnpm db:schema:docs` and committed the `docs/generated/` changes. The DB Tests CI job fails on stale docs. — [Schema documentation](#schema-documentation)
@@ -299,6 +301,27 @@ logger.warn(`[${migrationName}] Skipping row ${id}: missing required field`);
 ### Don't combine independent schema changes
 
 One logical change per file. Multiple unrelated tables → split. The reviewer line: "the name of the migration is misleading because it does two things." A migration that adds a column to `workflow_entity` *and* creates `audit_log` should be two migrations.
+
+### Reviewing migrations in a stack
+
+Migrations are gated by the `@n8n-io/migrations-review` team and are the hardest
+part of a change to get right, so isolate them for review:
+
+- **Keep the migration PR small.** It should contain the migration plus the
+  directly-required entity/type changes — nothing else. Business logic that
+  reads or writes the new schema belongs in a separate PR. A reviewer should be
+  able to judge the schema without wading through feature code. The migration
+  is then approved and merged to master on its own, before the rest of the
+  feature merges.
+- **Review the business logic before the migration merges** — the full feature
+  still gets reviewed; splitting it out doesn't skip that. The migration's
+  shape often depends on how the code uses it (a CHECK constraint enforcing an
+  invariant, a denormalized column serving a specific read pattern), so its
+  consuming logic must be validated before the schema is locked in and merged.
+- **In a stacked PR, only the migration PR is marked ready for review.** All
+  other PRs in the stack stay as drafts until the migration merges — this keeps
+  reviewer attention on the migration and avoids re-reviewing downstream PRs
+  when the schema shifts during migration review.
 
 ### Don't edit a previously merged migration
 
