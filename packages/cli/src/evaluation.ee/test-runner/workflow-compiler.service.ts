@@ -37,6 +37,20 @@ const METRIC_COLUMN_GAP = 440;
 const EXPRESSION_ROW_HEIGHT = 140;
 const LLM_JUDGE_ROW_HEIGHT = 380;
 
+/**
+ * Metric input fields (per type) whose value reads from the DATASET row, not the
+ * workflow output — retargeted to the eval trigger in `buildMetricNodeParameters`.
+ * Everything else stays on `$json` (the end node's output). Keyed exhaustively so
+ * a new metric type must declare its inputs' provenance or the build fails.
+ */
+const DATASET_SOURCED_INPUTS: Record<EvaluationMetric['type'], string[]> = {
+	expression: [],
+	llm_judge: ['userQuery', 'expectedAnswer'],
+	string_similarity: ['expectedAnswer'],
+	categorization: ['expectedAnswer'],
+	tools_used: ['expectedTools'],
+};
+
 type UserTriggerEdge = {
 	fromNode: string;
 	fromBucketIndex: number;
@@ -289,6 +303,19 @@ export class WorkflowCompilerService {
 	}
 
 	private buildMetricNodeParameters(metric: EvaluationMetric): INodeParameters {
+		const params = this.metricParametersByType(metric);
+		// Dataset-row inputs are authored as `$json.<column>`, but at the metric node
+		// `$json` is the end node's OUTPUT. Retarget those fields to the eval trigger.
+		for (const field of DATASET_SOURCED_INPUTS[metric.type]) {
+			const value = params[field];
+			if (typeof value === 'string') {
+				params[field] = resolveDatasetSourcedInput(value);
+			}
+		}
+		return params;
+	}
+
+	private metricParametersByType(metric: EvaluationMetric): INodeParameters {
 		if (metric.type === 'expression') {
 			// The legacy aggregator only accepts numeric metric values (averaging over cases).
 			// For boolean metrics, coerce true→1 / false→0 so an averaged result reads as a
@@ -496,6 +523,18 @@ export class WorkflowCompilerService {
 
 		return out;
 	}
+}
+
+/**
+ * Retarget a dataset-sourced input's `$json` base to the eval trigger. Only n8n
+ * expressions (leading `=`) reference the `$json` variable — a fixed literal is
+ * returned unchanged so text that merely contains "$json" isn't corrupted. Within
+ * an expression only the bare `$json` token is rewritten, so an explicit
+ * `$('Node')…` reference is left untouched too.
+ */
+function resolveDatasetSourcedInput(value: string): string {
+	if (!value.startsWith('=')) return value;
+	return value.replace(/\$json\b/g, () => `$('${TRIGGER_NAME}').item.json`);
 }
 
 /**

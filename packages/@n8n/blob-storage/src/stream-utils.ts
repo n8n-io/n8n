@@ -1,6 +1,13 @@
 import { UnexpectedError } from 'n8n-workflow';
 import { Transform } from 'node:stream';
 
+/** Throws unless `chunkSize` is a positive integer. */
+export function assertChunkSize(chunkSize: number): void {
+	if (!Number.isInteger(chunkSize) || chunkSize <= 0) {
+		throw new UnexpectedError(`chunkSize must be a positive integer, got ${chunkSize}`);
+	}
+}
+
 /**
  * A `Transform` that re-emits its input as chunks of exactly `chunkSize` bytes, with a possibly smaller final chunk.
  * `chunkSize` must be a positive integer: values `<= 0` throws an `UnexpectedError`.
@@ -14,9 +21,7 @@ import { Transform } from 'node:stream';
  * `.pipe()` does neither.
  */
 export function createFixedSizeChunker(chunkSize: number): Transform {
-	if (chunkSize <= 0) {
-		throw new UnexpectedError(`createFixedSizeChunker requires chunkSize > 0, got ${chunkSize}`);
-	}
+	assertChunkSize(chunkSize);
 
 	const queue: Buffer[] = [];
 	let queued = 0;

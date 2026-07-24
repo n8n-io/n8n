@@ -1,10 +1,12 @@
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { Telemetry } from '@/app/plugins/telemetry';
+import { TelemetryService } from '@/app/plugins/telemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { defineTelemetryEvents } from '@n8n/telemetry';
 import merge from 'lodash/merge';
 import { createPinia, setActivePinia } from 'pinia';
+import { z } from 'zod/v4';
 
-let telemetry: Telemetry;
+let telemetry: TelemetryService;
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 
@@ -12,7 +14,7 @@ const MOCK_VERSION_CLI = '0.0.0';
 
 describe('telemetry', () => {
 	beforeAll(() => {
-		telemetry = new Telemetry();
+		telemetry = new TelemetryService();
 		setActivePinia(createPinia());
 		settingsStore = useSettingsStore();
 		telemetry.init(
@@ -229,6 +231,72 @@ describe('telemetry', () => {
 		});
 	});
 
+	describe('track function with registry entries', () => {
+		const TEST_TELEMETRY = defineTelemetryEvents({
+			USER_TESTED_REGISTRY_ENTRY: {
+				name: 'User tested registry entry',
+				description: 'Fires when the registry entry pipeline is exercised in tests.',
+				properties: z.object({ workflow_id: z.string() }),
+			},
+		});
+
+		it('should emit the entry name and properties through the standard pipeline', () => {
+			const trackFunction = vi.spyOn(window.rudderanalytics, 'track');
+
+			telemetry.track(TEST_TELEMETRY.USER_TESTED_REGISTRY_ENTRY, { workflow_id: 'wf-1' });
+
+			expect(trackFunction).toHaveBeenCalledTimes(1);
+			expect(trackFunction).toHaveBeenCalledWith(
+				'User tested registry entry',
+				{
+					workflow_id: 'wf-1',
+					version_cli: MOCK_VERSION_CLI,
+				},
+				{ context: { ip: '0.0.0.0' } },
+			);
+		});
+
+		it('should warn and still emit when properties do not match the schema', () => {
+			const trackFunction = vi.spyOn(window.rudderanalytics, 'track');
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			expect(() =>
+				telemetry.track(TEST_TELEMETRY.USER_TESTED_REGISTRY_ENTRY, {
+					workflow_id: 123 as unknown as string,
+				}),
+			).not.toThrow();
+
+			expect(warnSpy).toHaveBeenCalledWith(
+				expect.stringContaining('"User tested registry entry" failed schema validation'),
+			);
+			expect(trackFunction).toHaveBeenCalledWith(
+				'User tested registry entry',
+				expect.objectContaining({ workflow_id: 123 }),
+				{ context: { ip: '0.0.0.0' } },
+			);
+
+			warnSpy.mockRestore();
+		});
+
+		it('should warn about schema mismatches even when RudderStack is not available', () => {
+			const originalRudderanalytics = window.rudderanalytics;
+			// @ts-expect-error simulating a disabled telemetry client
+			window.rudderanalytics = undefined;
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			telemetry.track(TEST_TELEMETRY.USER_TESTED_REGISTRY_ENTRY, {
+				workflow_id: 123 as unknown as string,
+			});
+
+			expect(warnSpy).toHaveBeenCalledWith(
+				expect.stringContaining('"User tested registry entry" failed schema validation'),
+			);
+
+			window.rudderanalytics = originalRudderanalytics;
+			warnSpy.mockRestore();
+		});
+	});
+
 	describe('trackNodeParametersValuesChange - advanced HITL', () => {
 		it('tracks the enable event when Slack captureResponder is turned on', () => {
 			const trackSpy = vi.spyOn(telemetry, 'track');
@@ -254,6 +322,54 @@ describe('telemetry', () => {
 			expect(trackSpy).toHaveBeenCalledWith('User enabled advanced HITL', {
 				node_type: 'n8n-nodes-base.telegram',
 			});
+		});
+
+		it('tracks the enable event when Gmail advancedEmail is turned on', () => {
+			const trackSpy = vi.spyOn(telemetry, 'track');
+
+			telemetry.trackNodeParametersValuesChange('n8n-nodes-base.gmail', {
+				name: 'parameters.advancedEmail',
+				value: true,
+			});
+
+			expect(trackSpy).toHaveBeenCalledWith('User enabled advanced HITL', {
+				node_type: 'n8n-nodes-base.gmail',
+			});
+		});
+
+		it('tracks the enable event when Gmail confirmationPage is turned on', () => {
+			const trackSpy = vi.spyOn(telemetry, 'track');
+
+			telemetry.trackNodeParametersValuesChange('n8n-nodes-base.gmail', {
+				name: 'parameters.confirmationPage',
+				value: true,
+			});
+
+			expect(trackSpy).toHaveBeenCalledWith('User enabled advanced HITL', {
+				node_type: 'n8n-nodes-base.gmail',
+			});
+		});
+
+		it('does not track the enable event when a Gmail toggle is turned off', () => {
+			const trackSpy = vi.spyOn(telemetry, 'track');
+
+			telemetry.trackNodeParametersValuesChange('n8n-nodes-base.gmail', {
+				name: 'parameters.confirmationPage',
+				value: false,
+			});
+
+			expect(trackSpy).not.toHaveBeenCalledWith('User enabled advanced HITL', expect.anything());
+		});
+
+		it('does not track the enable event for a non-mapped Gmail parameter', () => {
+			const trackSpy = vi.spyOn(telemetry, 'track');
+
+			telemetry.trackNodeParametersValuesChange('n8n-nodes-base.gmail', {
+				name: 'parameters.subject',
+				value: true,
+			});
+
+			expect(trackSpy).not.toHaveBeenCalledWith('User enabled advanced HITL', expect.anything());
 		});
 
 		it('does not track the enable event when the toggle is turned off', () => {

@@ -71,7 +71,10 @@ export {
 	type PublishedWorkflowDataForExecution,
 } from './workflow-published-version.repository';
 export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
-export { WorkflowReviewRequestRepository } from './workflow-review-request.repository';
+export {
+	WorkflowReviewRequestRepository,
+	type InboxCursor,
+} from './workflow-review-request.repository';
 export { WorkflowReviewRequestWorkflowRepository } from './workflow-review-request-workflow.repository';
 export { WorkflowReviewRequestReviewerRepository } from './workflow-review-request-reviewer.repository';
 export { WorkflowReviewRequestAuthorRepository } from './workflow-review-request-author.repository';

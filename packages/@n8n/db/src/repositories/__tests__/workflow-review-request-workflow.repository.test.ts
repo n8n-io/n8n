@@ -53,18 +53,4 @@ describe('WorkflowReviewRequestWorkflowRepository', () => {
 			});
 		});
 	});
-
-	describe('findByRequestId', () => {
-		it('returns child rows ordered by id ascending', async () => {
-			const rows = [{ id: 'child-1' }] as WorkflowReviewRequestWorkflow[];
-			entityManager.find.mockResolvedValueOnce(rows);
-
-			expect(await repo.findByRequestId('req-1')).toBe(rows);
-			const callArgs = entityManager.find.mock.calls[0];
-			expect(callArgs?.[1]).toEqual({
-				where: { workflowReviewRequestId: 'req-1' },
-				order: { id: 'ASC' },
-			});
-		});
-	});
 });

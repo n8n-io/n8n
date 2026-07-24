@@ -347,8 +347,10 @@ async function reconstructWithClient(
 		);
 	}
 
+	// `?? NaN` keeps the SDK's optional start_time behavior-identical: an absent
+	// value still yields NaN comparisons, never a valid epoch-0 date.
 	const byStartTime = (a: Run, b: Run) =>
-		new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
+		new Date(a.start_time ?? NaN).getTime() - new Date(b.start_time ?? NaN).getTime();
 	const rootRuns = runs.filter((r) => r.run_type === 'chain' && !r.parent_run_id).sort(byStartTime);
 	// Real agent tool calls only — the compiled-workflow bookkeeping event is
 	// excluded BY NAME (it must never become a tool-call block in the rebuilt
@@ -386,7 +388,7 @@ async function reconstructWithClient(
 		);
 	}
 	const liveTurnRun = userTurns[liveIndex];
-	const boundaryMs = new Date(liveTurnRun.start_time).getTime();
+	const boundaryMs = new Date(liveTurnRun.start_time ?? NaN).getTime();
 	const liveTurn = userMessageOf(liveTurnRun)!;
 
 	const messages = buildSeedMessages(rootRuns, toolRuns, boundaryMs);
@@ -432,7 +434,7 @@ function buildSeedMessages(
 	const messages: Array<Record<string, unknown>> = [];
 
 	for (const root of rootRuns) {
-		if (new Date(root.start_time).getTime() >= boundaryMs) break;
+		if (new Date(root.start_time ?? NaN).getTime() >= boundaryMs) break;
 
 		const userText = userMessageOf(root);
 		if (userText) {
@@ -440,7 +442,7 @@ function buildSeedMessages(
 				id: `${root.id}-user`,
 				role: 'user',
 				type: 'llm',
-				createdAt: new Date(root.start_time).toISOString(),
+				createdAt: new Date(root.start_time ?? NaN).toISOString(),
 				content: [{ type: 'text', text: userText }],
 			});
 		}
@@ -478,7 +480,7 @@ function buildSeedMessages(
 				role: 'assistant',
 				type: 'llm',
 				// +1ms so the assistant reply orders after its user turn.
-				createdAt: new Date(new Date(root.start_time).getTime() + 1).toISOString(),
+				createdAt: new Date(new Date(root.start_time ?? NaN).getTime() + 1).toISOString(),
 				content,
 			});
 		}

@@ -60,7 +60,7 @@ A "configure your workflow" / setup-wizard card (it lists nodes that need creden
 
 ## Pushing back on plans and summaries
 
-When the agent shows a plan, summary, or "here's what I'll build" preview, **audit it against the script**. The agent is designed to make assumptions rather than ask, so its plan often omits or substitutes things the user actually stated in the script.
+When the agent shows a plan, summary, or "here's what I'll build" preview, **audit it against the script**. The agent is designed to make assumptions rather than ask, so its plan often omits or substitutes things the user actually stated in the script. A plan can arrive as a plan-review widget (respond with the approval action) or as plain text with the agent waiting for a typed reply (respond with a chat message on the user's turn) — audit and push back the same way in both cases.
 
 Reject when the plan misses any of the following from the script:
 - **Concrete values** — channel IDs, table names, URLs, schedules, specific node configurations. Example: "Use #engineering (C04ENGINEER1), not the generic channel you picked."
@@ -93,7 +93,7 @@ export function buildConfirmationPrompt(ctx: PromptContext, event: CapturedEvent
 		formatScriptSection(ctx),
 		formatTranscriptSection(ctx),
 		formatEventSection(event),
-		'Pick one action to respond to this confirmation as the user.',
+		'A widget is on screen: the agent paused mid-run and is waiting for the user to respond to the event above. Pick one action to respond to this confirmation as the user.',
 	].join('\n\n');
 }
 
@@ -101,11 +101,10 @@ export function buildFollowUpPrompt(ctx: PromptContext): string {
 	return [
 		formatScriptSection(ctx),
 		formatTranscriptSection(ctx),
-		'The agent has just finished a run. Decide what the user would say next.',
-		'',
-		"Pick `send_follow_up_message` when the agent asked a question (in its last response) or stalled and needs unblocking. If the script answers the question, deliver that answer with concrete values verbatim. If the script doesn't cover it and credentials aren't involved, give a brief plausible reply.",
+		"It is now the user's turn: the agent finished its run and is waiting, and no widget is on screen. Decide what the user does — send a chat message or end the conversation.",
+		'Pick `send_follow_up_message` when the agent\'s last response leaves anything open — it asked a question, requested approval, presented a plan to react to, or stalled and needs unblocking. Approving or rejecting a plan the agent presented in plain text IS a follow-up message (e.g. "No — two changes first: …" / "Yes, go ahead."). If the script answers the open point, deliver it with concrete values verbatim; if the script doesn\'t cover it and credentials aren\'t involved, give a brief plausible reply.',
 		'If a stage direction tells the user to keep requesting changes or stay in the conversation, pick `send_follow_up_message` with the NEXT change — even after a successful build — until the change list is exhausted.',
-		'Pick `declare_done` when the agent finished a build, approved/rejected a plan appropriately, or otherwise has no open thread for the user to respond to. The script is a reference, not a checklist — late script content gets surfaced via plan rejection (or an explicit keep-going direction), not unsolicited follow-ups.',
+		'Pick `declare_done` only when the agent has no open thread for the user — never while it is waiting for an answer or an approval. The script is a reference, not a checklist — late script content gets surfaced by pushing back on the plan (or an explicit keep-going direction), not unsolicited follow-ups.',
 	].join('\n\n');
 }
 

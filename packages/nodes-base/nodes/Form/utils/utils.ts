@@ -46,6 +46,8 @@ import type { FormTriggerData, FormField } from '../interfaces';
  */
 const FORM_USER_AUTH_TOKEN_TTL_SECONDS = 60 * 60;
 
+export const getNodeReference = (nodeName: string) => `$(${JSON.stringify(nodeName)})`;
+
 type FormUserAuthClaims = {
 	sub: string;
 	email: string;
@@ -585,8 +587,9 @@ export function renderForm({
 			(node) => node.type === FORM_TRIGGER_NODE_TYPE,
 		) as NodeTypeAndVersion;
 		try {
+			const triggerRef = getNodeReference(trigger.name);
 			const triggerQueryParameters = context.evaluateExpression(
-				`{{ $('${trigger?.name}').first().json.formQueryParameters }}`,
+				`{{ ${triggerRef}.first().json.formQueryParameters }}`,
 			) as IDataObject;
 
 			if (triggerQueryParameters) {

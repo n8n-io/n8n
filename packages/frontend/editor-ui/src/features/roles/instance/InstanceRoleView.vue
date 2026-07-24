@@ -6,6 +6,7 @@ import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { N8nButton, N8nHeading, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { GLOBAL_ADMIN_ROLE_SLUG } from '@n8n/permissions';
 import { computed, toRaw } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -61,8 +62,12 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 	create: i18n.baseText('projectRoles.create'),
 }));
 
-// System roles populate the preset buttons (clicking copies their scopes).
-const presetRoles = computed(() => rolesStore.processedInstanceRoles.filter((r) => r.systemRole));
+// Only the Admin system role is offered as a preset (clicking copies its scopes).
+const presetRoles = computed(() =>
+	rolesStore.processedInstanceRoles.filter(
+		(r) => r.systemRole && r.slug === GLOBAL_ADMIN_ROLE_SLUG,
+	),
+);
 
 const reassignTargetRoles = computed(() =>
 	rolesStore.processedInstanceRoles.filter((r) => r.slug !== reassignState.value?.role.slug),

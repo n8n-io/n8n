@@ -33,7 +33,7 @@ it('should write the version-1 bundle at the stable execution-data key', async (
 	expect(fsByteStore.write).toHaveBeenCalledWith(
 		`workflows/${workflowId}/executions/${executionId}/execution_data/bundle.json`,
 		expect.any(Buffer),
-		'application/json',
+		{ mimeType: 'application/json' },
 	);
 	const [_, body] = fsByteStore.write.mock.calls[0];
 	expect(JSON.parse(body.toString('utf-8'))).toEqual({ ...payload, version: 1 });

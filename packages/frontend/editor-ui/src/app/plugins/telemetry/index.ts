@@ -1,5 +1,7 @@
 import type { Plugin } from 'vue';
 import type { ITelemetrySettings } from '@n8n/api-types';
+import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
+import { POSTHOG_EVENTS_BLACKLIST } from '@n8n/telemetry';
 import type { ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 
@@ -7,25 +9,31 @@ import type { IUpdateInformation } from '@/Interface';
 import type { RudderStack } from './telemetry.types';
 import {
 	APPEND_ATTRIBUTION_DEFAULT_PATH,
+	GOOGLE_GMAIL_NODE_TYPE,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	SLACK_NODE_TYPE,
 	TELEGRAM_NODE_TYPE,
-	POSTHOG_EVENTS_BLACKLIST,
 } from '@/app/constants';
+import {
+	setTelemetry,
+	TelemetryKey,
+	type Telemetry,
+	type TelemetryIdentifyOptions,
+} from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 
-export type TelemetryIdentifyOptions = {
-	instanceId: string;
-	userId?: string;
-	projectId?: string;
-	versionCli?: string;
-	userRole?: string;
-};
+const POSTHOG_BLACKLISTED_EVENT_NAMES = new Set(
+	POSTHOG_EVENTS_BLACKLIST.map((blacklisted) => blacklisted.name),
+);
 
-export class Telemetry {
+// `Telemetry` is the shared contract; consumers annotate with it. The concrete
+// implementation below is registered as the app's instance at bootstrap.
+export type { Telemetry, TelemetryIdentifyOptions } from '@n8n/composables/useTelemetry';
+
+export class TelemetryService implements Telemetry {
 	private pageEventQueue: Array<{ route: RouteLocation }>;
 
 	private previousPath: string;
@@ -101,7 +109,16 @@ export class Telemetry {
 		}
 	}
 
-	track(event: string, properties?: ITelemetryTrackProperties) {
+	track<T extends TelemetryEventDef>(event: T, properties: InferTelemetryProps<T>): void;
+	track(event: string, properties?: ITelemetryTrackProperties): void;
+	track(event: string | TelemetryEventDef, properties?: ITelemetryTrackProperties) {
+		const eventName = typeof event === 'string' ? event : event.name;
+
+		if (typeof event !== 'string') {
+			const validationError = event.getValidationError(properties);
+			if (validationError) console.warn(validationError);
+		}
+
 		if (!this.rudderStack) return;
 
 		const posthogSessionId = window.posthog?.get_session_id?.();
@@ -112,15 +129,15 @@ export class Telemetry {
 			posthog_session_id: posthogSessionId,
 		};
 
-		this.rudderStack.track(event, updatedProperties, {
+		this.rudderStack.track(eventName, updatedProperties, {
 			context: {
 				// provide a fake IP address to instruct RudderStack to not use the user's IP address
 				ip: '0.0.0.0',
 			},
 		});
 
-		if (!POSTHOG_EVENTS_BLACKLIST.includes(event)) {
-			usePostHog().capture(event, updatedProperties);
+		if (!POSTHOG_BLACKLISTED_EVENT_NAMES.has(eventName)) {
+			usePostHog().capture(eventName, updatedProperties);
 		}
 	}
 
@@ -212,11 +229,12 @@ export class Telemetry {
 			}
 
 			// Advanced HITL (one-tap approval) opt-in toggles, tracked per node.
-			const advancedHitlPathMap: { [key: string]: string } = {
-				[SLACK_NODE_TYPE]: 'parameters.captureResponder',
-				[TELEGRAM_NODE_TYPE]: 'parameters.chatApproval',
+			const advancedHitlPathMap: { [key: string]: string[] } = {
+				[SLACK_NODE_TYPE]: ['parameters.captureResponder'],
+				[TELEGRAM_NODE_TYPE]: ['parameters.chatApproval'],
+				[GOOGLE_GMAIL_NODE_TYPE]: ['parameters.advancedEmail', 'parameters.confirmationPage'],
 			};
-			if (change.name === advancedHitlPathMap[nodeType] && change.value === true) {
+			if (advancedHitlPathMap[nodeType]?.includes(change.name) && change.value === true) {
 				this.track('User enabled advanced HITL', { node_type: nodeType });
 			}
 		}
@@ -277,10 +295,15 @@ export class Telemetry {
 	}
 }
 
-export const telemetry = new Telemetry();
+export const telemetry = new TelemetryService();
+
+// Register the instance so package-side `useTelemetry` (@n8n/composables) can
+// resolve it from any context, including outside of component setup.
+setTelemetry(telemetry);
 
 export const TelemetryPlugin: Plugin = {
 	install(app) {
 		app.config.globalProperties.$telemetry = telemetry;
+		app.provide(TelemetryKey, telemetry);
 	},
 };

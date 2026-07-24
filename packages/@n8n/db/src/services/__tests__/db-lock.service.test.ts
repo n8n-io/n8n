@@ -67,6 +67,70 @@ describe('DbLockService', () => {
 			expect(mockTx.query).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock($1)', [1001]);
 		});
 
+		it('should disable all lock-killing timeouts when waitIndefinitely is set', async () => {
+			databaseConfig.type = 'postgresdb';
+			const fn = vi.fn().mockResolvedValue('result');
+
+			await service.withLock(1001, fn, { waitIndefinitely: true });
+
+			expect(mockTx.query).toHaveBeenCalledWith('SET LOCAL statement_timeout = 0');
+			expect(mockTx.query).toHaveBeenCalledWith('SET LOCAL lock_timeout = 0');
+			expect(mockTx.query).toHaveBeenCalledWith(
+				'SET LOCAL idle_in_transaction_session_timeout = 0',
+			);
+		});
+
+		it('should not touch statement timeouts without waitIndefinitely', async () => {
+			databaseConfig.type = 'postgresdb';
+			const fn = vi.fn().mockResolvedValue('result');
+
+			await service.withLock(1001, fn);
+			await service.withLock(1001, fn, { timeoutMs: 5000 });
+
+			expect(mockTx.query).not.toHaveBeenCalledWith(expect.stringContaining('statement_timeout'));
+			expect(mockTx.query).not.toHaveBeenCalledWith(
+				expect.stringContaining('idle_in_transaction_session_timeout'),
+			);
+		});
+
+		it('should reject combining timeoutMs and waitIndefinitely at compile time', async () => {
+			databaseConfig.type = 'postgresdb';
+			const fn = vi.fn().mockResolvedValue('result');
+
+			// @ts-expect-error timeoutMs and waitIndefinitely are mutually exclusive
+			await service.withLock(1001, fn, { timeoutMs: 5000, waitIndefinitely: true });
+		});
+
+		it('should use the two-key lock form when subKey is provided', async () => {
+			databaseConfig.type = 'postgresdb';
+			const fn = vi.fn().mockResolvedValue('result');
+
+			const result = await service.withLock(1005, fn, { subKey: -12345 });
+
+			expect(result).toBe('result');
+			expect(mockTx.query).toHaveBeenCalledWith(
+				'SELECT pg_advisory_xact_lock($1, $2)',
+				[1005, -12345],
+			);
+			expect(fn).toHaveBeenCalledWith(mockTx);
+		});
+
+		it('should include both keys in the timeout error message when subKey is provided', async () => {
+			databaseConfig.type = 'postgresdb';
+			const fn = vi.fn();
+			const timeoutError = new QueryFailedError(
+				'SELECT pg_advisory_xact_lock($1, $2)',
+				[1005, -12345],
+				new Error('canceling statement due to lock timeout'),
+			);
+
+			mockTx.query.mockResolvedValueOnce(undefined).mockRejectedValueOnce(timeoutError);
+
+			await expect(service.withLock(1005, fn, { timeoutMs: 5000, subKey: -12345 })).rejects.toThrow(
+				/Timed out waiting for DbLock 1005:-12345 after 5000ms/,
+			);
+		});
+
 		it('should throw OperationalError when lock timeout is exceeded', async () => {
 			databaseConfig.type = 'postgresdb';
 			const fn = vi.fn();
@@ -192,6 +256,35 @@ describe('DbLockService', () => {
 			expect(r1).toBe('first');
 			expect(r2).toBe('second');
 			expect(executionOrder).toEqual(['fn1-start', 'fn1-end', 'fn2-start']);
+		});
+
+		it('should scope the in-process mutex by subKey', async () => {
+			let resolveFirst!: () => void;
+			const firstBlocking = new Promise<void>((r) => {
+				resolveFirst = r;
+			});
+
+			const fn1 = vi.fn(async () => {
+				await firstBlocking;
+				return 'first';
+			});
+			const fn2 = vi.fn(async () => 'second');
+			const fn3 = vi.fn(async () => 'third');
+
+			const p1 = service.withLock(1001, fn1, { subKey: 1 });
+			// Different subKey — must not block
+			const p2 = service.withLock(1001, fn2, { subKey: 2 });
+			// Same subKey — must block until fn1 releases
+			const p3 = service.withLock(1001, fn3, { subKey: 1 });
+
+			await new Promise((r) => setImmediate(r));
+			expect(fn1).toHaveBeenCalled();
+			expect(fn2).toHaveBeenCalled();
+			expect(fn3).not.toHaveBeenCalled();
+
+			resolveFirst();
+			const results = await Promise.all([p1, p2, p3]);
+			expect(results).toEqual(['first', 'second', 'third']);
 		});
 
 		it('should not block different lockIds', async () => {

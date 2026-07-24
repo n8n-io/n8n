@@ -109,6 +109,7 @@ erDiagram
   datetime_3_ startedAt
   varchar_16_ status
   datetime_3_ stoppedAt
+  VARCHAR_2_ storedAt
   varchar_128_ threadId FK
   TEXT timeline
   INTEGER totalTokens

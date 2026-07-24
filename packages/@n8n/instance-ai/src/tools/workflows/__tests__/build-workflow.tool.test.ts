@@ -206,6 +206,15 @@ describe('createBuildWorkflowTool', () => {
 		vi.mocked(analyzeWorkflow).mockResolvedValue([]);
 	});
 
+	it('requires workflow-builder and data-table-manager skill loads in its description', () => {
+		const { context } = makeContext({ source: 'workflow source' });
+		const tool = createBuildWorkflowTool(context);
+
+		expect(tool.description).toContain('workflow-builder');
+		expect(tool.description).toContain('data-table-manager');
+		expect(tool.description).toContain('load_skill');
+	});
+
 	it('builds a new workflow from a workspace source file', async () => {
 		const source = 'workflow source from workspace';
 		const { context, filePath } = makeContext({ source });
@@ -232,6 +241,10 @@ describe('createBuildWorkflowTool', () => {
 			'Follow the post-build instructions in `instructions` now',
 		);
 		expect(result.postBuildFlow?.instructions).toContain('# Post-Build Flow');
+		// The language reminder in the skill intro must ride along in the inline copy.
+		expect(result.postBuildFlow?.instructions).toContain(
+			"stays in the user's conversation language",
+		);
 		expect(result.postBuildFlow?.instructions).not.toContain('recommended_tools');
 		// Tag-turn-only sections are stripped from the inline copy.
 		expect(result.postBuildFlow?.instructions).not.toContain('## Verification follow-up');

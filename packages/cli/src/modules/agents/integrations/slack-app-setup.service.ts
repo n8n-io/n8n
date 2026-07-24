@@ -266,6 +266,7 @@ export class SlackAppSetupService {
 			undefined,
 			{
 				syncIntegrations: false,
+				ignoreDraftIntegrations: true,
 			},
 		);
 		await this.chatIntegrationService.connect(session.agentId, integration, session.projectId);
