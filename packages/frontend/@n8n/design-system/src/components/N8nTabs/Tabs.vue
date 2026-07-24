@@ -223,6 +223,13 @@ const scrollRight = () => scroll(50);
 		color: var(--color--primary);
 	}
 
+	/* Inset outline so the ring isn't clipped by the scroll container and adds no layout shift. */
+	&:focus-visible {
+		outline: var(--border-width) solid var(--focus--border-color);
+		outline-offset: calc(-1 * var(--border-width));
+		border-radius: var(--radius--3xs);
+	}
+
 	span + span {
 		margin-left: var(--spacing--4xs);
 	}

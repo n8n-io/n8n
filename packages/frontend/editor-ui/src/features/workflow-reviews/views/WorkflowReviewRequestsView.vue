@@ -23,6 +23,8 @@ const {
 	loadingMore,
 	hasMore,
 	isEmpty,
+	openCount,
+	closedCount,
 } = storeToRefs(store);
 
 const i18n = useI18n();
@@ -76,6 +78,8 @@ onUnmounted(() => {
 				v-if="showSidebar"
 				:items="items"
 				:active-state="activeState"
+				:open-count="openCount"
+				:closed-count="closedCount"
 				:selected-id="selectedId"
 				:loading="loading"
 				:loading-more="loadingMore"
@@ -133,7 +137,7 @@ onUnmounted(() => {
 						size="medium"
 						data-test-id="workflow-reviews-empty-state"
 					>
-						{{ i18n.baseText('workflowReviews.emptyState.body') }}
+						{{ i18n.baseText(`workflowReviews.emptyState.body.${activeState}`) }}
 					</N8nText>
 					<N8nText
 						v-else
