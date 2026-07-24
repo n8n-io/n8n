@@ -136,6 +136,7 @@ describe('summary — scenario-less cases (no workflow)', () => {
 				buildSuccessCount: 0,
 				executionScenarios: [],
 				buildExpectations: [],
+				status: 'verified',
 			};
 			// Only the first run judged an expectation.
 			expect(getCheckedRunCount(tc)).toBe(1);

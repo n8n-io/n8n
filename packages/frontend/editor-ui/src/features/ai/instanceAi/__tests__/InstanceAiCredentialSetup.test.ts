@@ -446,6 +446,70 @@ describe('InstanceAiCredentialSetup', () => {
 			// Should show the form again (not deferred state)
 			expect(getByText('instanceAi.credential.deny')).toBeTruthy();
 		});
+
+		it('submits the selected credential and marks the skipped one when skipping the first of two', async () => {
+			const requests = makeCredentialRequestsWithExisting(2);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByText, getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			await userEvent.click(getByText('instanceAi.credential.deny'));
+			expect(getByText('2 of 2')).toBeTruthy();
+
+			await userEvent.click(getByTestId('credential-picker'));
+
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				kind: 'credentialSelection',
+				credentials: { type2: 'cred-123' },
+			});
+			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'approved');
+			expect(getByText('instanceAi.credential.someSkipped')).toBeTruthy();
+		});
+
+		it('auto-advances after a selection that follows a skipped step', async () => {
+			const requests = makeCredentialRequestsWithExisting(3);
+
+			const { getByText, getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			await userEvent.click(getByText('instanceAi.credential.deny'));
+			expect(getByText('2 of 3')).toBeTruthy();
+
+			await userEvent.click(getByTestId('credential-picker'));
+			expect(getByText('3 of 3')).toBeTruthy();
+		});
+
+		it('defers the whole card once every credential slot has been skipped', async () => {
+			const requests = makeCredentialRequests(2);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByText } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			await userEvent.click(getByText('instanceAi.credential.deny'));
+			await userEvent.click(getByText('instanceAi.credential.deny'));
+
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', { kind: 'approval', approved: false });
+			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'deferred');
+		});
 	});
 
 	describe('browser-use setup choice (094 experiment)', () => {

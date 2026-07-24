@@ -32,6 +32,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
+import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
@@ -981,6 +982,14 @@ export class WorkflowService {
 
 		if (options?.expectedChecksum) {
 			await this._detectConflicts(workflow, options.expectedChecksum);
+		}
+
+		try {
+			await this.externalHooks.run('workflow.deactivate', [workflow]);
+		} catch (error) {
+			throw new WorkflowDeactivationBadRequestError(ensureError(error).message, {
+				description: getErrorDescription(error),
+			});
 		}
 
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {

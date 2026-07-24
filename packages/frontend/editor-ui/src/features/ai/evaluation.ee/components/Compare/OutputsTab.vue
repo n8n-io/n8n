@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { N8nText } from '@n8n/design-system';
+import { normalizeMetricScore, type MetricScale } from '@n8n/api-types';
+import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
+
+import { VIEWS } from '@/app/constants';
 
 import type { CompareCaseRow } from '../../composables/useCompareCases';
 import type { CompareVersion } from '../../composables/useCompareData';
@@ -9,7 +13,6 @@ import {
 	extractAnswerText,
 	formatMetricLabel,
 	formatMetricPercent,
-	getMetricCategory,
 	getUserDefinedMetricNames,
 } from '../../evaluation.utils';
 import VersionAvatar from '../shared/VersionAvatar.vue';
@@ -18,7 +21,22 @@ const props = defineProps<{
 	versions: CompareVersion[];
 	caseRows: CompareCaseRow[];
 	selectedIndex: number;
+	workflowId: string;
+	// metric name → scale, so a raw value normalizes to a percent (a 1–5 judge 3 → 60%).
+	metricScales?: Record<string, MetricScale>;
 }>();
+
+const router = useRouter();
+
+// Open the source execution in a new tab so the user keeps their place in the compare.
+function openExecution(executionId: string | null) {
+	if (!executionId) return;
+	const { href } = router.resolve({
+		name: VIEWS.EXECUTION_PREVIEW,
+		params: { workflowId: props.workflowId, executionId },
+	});
+	window.open(href, '_blank');
+}
 
 const emit = defineEmits<{
 	'update:selectedIndex': [index: number];
@@ -32,11 +50,15 @@ const selectedRow = computed(
 
 function metricEntries(metrics: Record<string, number> | undefined) {
 	if (!metrics) return [];
-	return getUserDefinedMetricNames(metrics).map((key) => ({
-		key,
-		label: formatMetricLabel(key),
-		value: formatMetricPercent(metrics[key], { category: getMetricCategory(key) }),
-	}));
+	return getUserDefinedMetricNames(metrics).map((key) => {
+		// Normalize by the metric's scale so a raw judge value never shows as a bare percent.
+		const normalized = normalizeMetricScore(key, metrics[key], props.metricScales?.[key]);
+		return {
+			key,
+			label: formatMetricLabel(key),
+			value: formatMetricPercent(normalized ?? undefined),
+		};
+	});
 }
 </script>
 
@@ -81,6 +103,18 @@ function metricEntries(metrics: Record<string, number> | undefined) {
 						<N8nText size="xsmall" color="text-light">
 							{{ versions[cell.versionIndex]?.label }}
 						</N8nText>
+						<button
+							v-if="cell.executionId"
+							type="button"
+							:class="$style.inspect"
+							data-test-id="compare-outputs-inspect"
+							@click="openExecution(cell.executionId)"
+						>
+							<N8nText size="xsmall">
+								{{ i18n.baseText('evaluation.compare.outputs.inspectRun') }}
+							</N8nText>
+							<N8nIcon icon="external-link" size="xsmall" />
+						</button>
 					</header>
 
 					<div :class="$style.answer">
@@ -146,8 +180,11 @@ function metricEntries(metrics: Record<string, number> | undefined) {
 	}
 }
 
-.caseItemActive {
-	background: var(--background--subtle);
+// Primary wash + left accent bar, distinct from the hover tint, marks the open case.
+.caseItemActive,
+.caseItemActive:hover {
+	background: var(--color--primary--tint-3);
+	box-shadow: inset 2px 0 0 var(--color--primary);
 }
 
 .caseItemInput {
@@ -192,9 +229,26 @@ function metricEntries(metrics: Record<string, number> | undefined) {
 }
 
 .columnHeader {
-	display: inline-flex;
+	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.inspect {
+	margin-left: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	border: none;
+	background: none;
+	padding: 0;
+	color: var(--color--primary);
+	cursor: pointer;
+	font: inherit;
+
+	&:hover {
+		text-decoration: underline;
+	}
 }
 
 .answer {

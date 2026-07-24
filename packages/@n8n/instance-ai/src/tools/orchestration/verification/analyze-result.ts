@@ -224,8 +224,21 @@ function buildCoverageNote(
 	nodesNotReached: string[],
 	result: ExecutionRunResult,
 	success: boolean,
+	reachedHaltedGates: string[],
 ): string | undefined {
 	if (nodesNotReached.length === 0) return undefined;
+	if (success && reachedHaltedGates.length > 0) {
+		return (
+			`Verification pauses at wait gate(s) ${reachedHaltedGates.join(', ')} — in a live run the ` +
+			'workflow stops there (for a human response or a wait condition), so execution past the ' +
+			`gate is not simulated. ${nodesNotReached.length} planned node(s) were not reached: ` +
+			`${nodesNotReached.join(', ')}. Nodes behind the gate are expected to be unreached — do ` +
+			'not edit the workflow or re-run verification to force coverage there; recommend a live ' +
+			'end-to-end test instead. Any unreached node NOT behind the gate did not receive input ' +
+			'items (usually an empty lookup or query) — seed matching test data and re-run before ' +
+			'treating it as verified.'
+		);
+	}
 	const ending = result.lastNodeExecuted
 		? `. Execution ended at "${result.lastNodeExecuted}"${success ? ' because it produced no output items (empty item lists stop downstream nodes)' : ''}.`
 		: '.';
@@ -280,10 +293,12 @@ export function analyzeVerificationResult(args: {
 	result: ExecutionRunResult;
 	buildOutcome: WorkflowBuildOutcome;
 	simulatedNodes: Array<{ nodeName: string; reason: string }>;
+	/** Wait-gate nodes pinned with zero items — the run is expected to stop at these. */
+	haltedGateNames?: string[];
 	stateBefore: WorkflowLoopState | undefined;
 	runId: string;
 }): VerificationAnalysis {
-	const { result, buildOutcome, simulatedNodes, stateBefore, runId } = args;
+	const { result, buildOutcome, simulatedNodes, haltedGateNames, stateBefore, runId } = args;
 	const nodeErrors = result.nodeErrors ?? [];
 	const reachedNames = new Set(
 		result.executedNodeNames ?? (result.data ? Object.keys(result.data) : []),
@@ -321,7 +336,12 @@ export function analyzeVerificationResult(args: {
 		remediation,
 		nodesExecuted: namesOrDataKeys(reachedNames, result.data),
 		simulationNote: buildSimulationNote(reachedSimulatedNodes, false),
-		coverageNote: buildCoverageNote(nodesNotReached, result, success),
+		coverageNote: buildCoverageNote(
+			nodesNotReached,
+			result,
+			success,
+			(haltedGateNames ?? []).filter((name) => reachedNames.has(name)),
+		),
 		errorMessage,
 		nodeErrors,
 	};

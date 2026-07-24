@@ -110,7 +110,7 @@ describe('AgentInfoPanel', () => {
 			modelValue: '# Role\nHelp users.',
 			variant: 'contained',
 			showToolbar: 'never',
-			maxHeight: 'none',
+			maxHeight: '360px',
 		});
 		expect(editor.props('placeholder')).toBeUndefined();
 		expect(wrapper.find('[data-testid="agent-instructions-document"]').exists()).toBe(true);

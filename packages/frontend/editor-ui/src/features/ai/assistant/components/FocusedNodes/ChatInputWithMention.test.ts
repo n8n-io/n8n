@@ -3,7 +3,9 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { defineComponent, h } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
 import ChatInputWithMention from './ChatInputWithMention.vue';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useFocusedNodesStore } from '../../focusedNodes.store';
 import type { FocusedNode } from '../../focusedNodes.types';
 
@@ -142,6 +144,10 @@ describe('ChatInputWithMention', () => {
 			stubActions: false,
 		});
 		setActivePinia(pinia);
+
+		// The focused-nodes experiment is cloud-only; default to cloud so only
+		// the PostHog flag varies per test.
+		mockedStore(useSettingsStore).isCloudDeployment = true;
 
 		focusedNodesStore = useFocusedNodesStore();
 	});

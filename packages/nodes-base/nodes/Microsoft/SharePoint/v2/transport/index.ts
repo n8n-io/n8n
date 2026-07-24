@@ -36,6 +36,10 @@ export const REQUIRED_PERMISSIONS: Readonly<
 		delegated: 'Sites.ReadWrite.All',
 		application: 'Sites.ReadWrite.All (or Sites.Selected granted with write access for this site)',
 	},
+	'item:update': {
+		delegated: 'Sites.ReadWrite.All',
+		application: 'Sites.ReadWrite.All (or Sites.Selected granted with write access for this site)',
+	},
 	'list:get': {
 		delegated: 'Sites.Read.All',
 		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
@@ -43,6 +47,24 @@ export const REQUIRED_PERMISSIONS: Readonly<
 	'list:getAll': {
 		delegated: 'Sites.Read.All',
 		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
+	},
+	'item:create': {
+		delegated: 'Sites.ReadWrite.All',
+		application: 'Sites.ReadWrite.All (or Sites.Selected granted with write access for this site)',
+	},
+	'item:getAll': {
+		delegated: 'Sites.Read.All',
+		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
+	},
+	'item:get': {
+		delegated: 'Sites.Read.All (or Files.Read.All for document-library items)',
+		application:
+			'Sites.Read.All (or Sites.Selected granted for this site, or Files.Read.All for document-library items)',
+	},
+	'item:delete': {
+		delegated: 'Sites.ReadWrite.All (or Files.ReadWrite.All for document-library items)',
+		application:
+			'Sites.ReadWrite.All (or Sites.Selected granted for this site, or Files.ReadWrite.All for document-library items)',
 	},
 });
 
@@ -84,6 +106,10 @@ type GraphRequestError = {
 // message text is not a stable contract.
 const NOT_FOUND_CODES = ['NotFound', 'ItemNotFound', 'itemNotFound'];
 
+// Fixed Microsoft wording with no tenant identifiers — safe to let through the
+// app-only sanitizer, and operation catches key off it under both auth modes.
+const SAFE_GRAPH_MESSAGES = [/list view threshold/i, /unique constraints/i];
+
 /** Best-effort; load-options contexts may not expose the resource parameter. */
 function nodeResourceName(this: IExecuteFunctions | ILoadOptionsFunctions): string | undefined {
 	try {
@@ -120,7 +146,12 @@ function servicePrincipalApiError(
 			? `The app registration is missing a consented application permission for this operation: ${permissions.application}. Grant it and admin consent, then retry.`
 			: 'The app registration is missing a consented application permission for this operation. Grant the required Microsoft Graph application permission and admin consent, then retry.';
 	} else {
-		message = `Microsoft Graph rejected the request (HTTP ${httpCode ?? 'unknown'}). Check the operation's inputs and the app registration's permissions.`;
+		const graphMessage = error.error?.error?.message;
+		message =
+			typeof graphMessage === 'string' &&
+			SAFE_GRAPH_MESSAGES.some((pattern) => pattern.test(graphMessage))
+				? `Microsoft Graph rejected the request (HTTP ${httpCode ?? 'unknown'}): ${graphMessage}`
+				: `Microsoft Graph rejected the request (HTTP ${httpCode ?? 'unknown'}). Check the operation's inputs and the app registration's permissions.`;
 	}
 
 	const sanitizedError: JsonObject = { message };
@@ -228,6 +259,7 @@ export async function microsoftApiRequestAllItems(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	limit?: number,
+	headers: IDataObject = {},
 ): Promise<IDataObject[]> {
 	const returnData: IDataObject[] = [];
 	let uri: string | undefined;
@@ -235,6 +267,7 @@ export async function microsoftApiRequestAllItems(
 	do {
 		// A next-page link is a complete address (already carries $select/$top/
 		// $skiptoken) — qs only applies to the first, endpoint-built request.
+		// Headers don't ride the link, so they are re-sent on every page.
 		const responseData = await microsoftApiRequest.call(
 			this,
 			method,
@@ -242,6 +275,7 @@ export async function microsoftApiRequestAllItems(
 			body,
 			uri ? {} : qs,
 			uri,
+			headers,
 		);
 		returnData.push.apply(
 			returnData,
