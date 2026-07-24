@@ -200,6 +200,18 @@ Full schema reference:
 
 ${mcpServerSchemaText}
 
+### Tool exposure and approval
+
+- Expose every available MCP tool by default: omit \`toolFilter\` unless the user
+  explicitly asks to restrict which tools are exposed. Do not infer an allowlist
+  from the requested capability.
+- For an explicit filter or selected approval list, use only exact, unprefixed
+  \`name\` values from \`selectedResult.tools\` or a successful
+  \`verify_mcp_server\` result.
+- Never prepend the server name. Never invent MCP tool names. \`toolFilter.tools\`
+  and \`approval.tools\` match original MCP names; the SDK adds the server prefix
+  only when exposing tools to the model.
+
 ### Credential flow
 
 - For \`bearerAuth\`, call \`ask_credential\` with
@@ -223,8 +235,8 @@ Before writing to config, call \`verify_mcp_server\` with server \`name\`,
   not follow with \`read_config\`/\`patch_config\` for the credential.
 - When verify succeeds but \`credentialApplied: false\` and the entry already
   exists, fall back to \`read_config\` then \`patch_config\` for the credential.
-- Use the returned tool list to populate \`toolFilter.tools\` or
-  \`approval.tools\` so the user does not need to type tool names manually.
+- For an explicitly requested filter or selected approval list, copy exact names
+  from the returned tool list following Tool exposure and approval above.
 - Failure returns \`{ ok: false, error: "..." }\`.
 - If verification fails, explain the error and ask the user to check the URL
   or credentials before proceeding.
