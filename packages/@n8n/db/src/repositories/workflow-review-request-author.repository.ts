@@ -26,6 +26,24 @@ export class WorkflowReviewRequestAuthorRepository extends Repository<WorkflowRe
 		return await manager.save(WorkflowReviewRequestAuthor, entity);
 	}
 
+	/** Idempotent: checks the composite PK explicitly instead of relying on `save` upsert semantics. */
+	async addAuthorIfMissing(
+		input: {
+			workflowReviewRequestId: string;
+			userId: string;
+		},
+		trx?: EntityManager,
+	): Promise<void> {
+		const manager = trx ?? this.manager;
+		const exists = await manager.existsBy(WorkflowReviewRequestAuthor, {
+			workflowReviewRequestId: input.workflowReviewRequestId,
+			userId: input.userId,
+		});
+		if (exists) return;
+
+		await this.addAuthor(input, trx);
+	}
+
 	async findByRequestId(requestId: string): Promise<WorkflowReviewRequestAuthor[]> {
 		return await this.find({
 			where: { workflowReviewRequestId: requestId },

@@ -55,6 +55,7 @@ describe('WorkflowSubmitForReviewDialog', () => {
 			id: 'review-1',
 			state: 'open',
 			decision: 'pending',
+			workflowVersionId: 'version-1',
 			createdAt: '2024-01-01T00:00:00.000Z',
 			updatedAt: '2024-01-01T00:00:00.000Z',
 		});
@@ -155,27 +156,24 @@ describe('WorkflowSubmitForReviewDialog', () => {
 		expect(mockShowError).not.toHaveBeenCalled();
 	});
 
-	it('keeps the dialog open and preference enabled when an open review conflicts', async () => {
+	it('closes and hands off to the update-review flow when an open review conflicts', async () => {
 		vi.mocked(createWorkflowReviewRequest).mockRejectedValue(
 			new ResponseError('Conflict', {
 				httpStatusCode: 409,
 				meta: { workflowReviewRequestId: 'existing-review' },
 			}),
 		);
-		const { getByTestId, findByTestId, reviewRequiredStore, fetchStatusSpy, emitted } =
-			await renderDialog();
+		const { getByTestId, reviewRequiredStore, fetchStatusSpy, emitted } = await renderDialog();
 
 		await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
 		await userEvent.click(getByTestId('workflow-review-submit-button'));
 
-		expect(await findByTestId('workflow-review-conflict-error')).toHaveTextContent(
-			'This workflow already has an open review.',
-		);
+		await waitFor(() => expect(emitted('conflict')).toHaveLength(1));
+		expect(emitted('update:open')).toContainEqual([false]);
 		// The conflict proves an open review — refetch so the toggle locks immediately.
 		expect(fetchStatusSpy).toHaveBeenCalledWith('workflow-1');
 		expect(reviewRequiredStore.isReviewRequired('workflow-1')).toBe(true);
 		expect(emitted('submitted')).toBeUndefined();
-		expect(emitted('update:open')).toBeUndefined();
 		expect(mockShowError).not.toHaveBeenCalled();
 	});
 
