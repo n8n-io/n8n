@@ -6,6 +6,7 @@ import { Service } from '@n8n/di';
 import { ActiveWorkflowTriggers, ErrorReporter, InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 
@@ -33,6 +34,7 @@ export class PublishedWorkflowTriggerDeactivator {
 		private readonly activeWorkflowTriggers: ActiveWorkflowTriggers,
 		private readonly outboxConsumer: WorkflowPublicationOutboxConsumer,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -93,6 +95,9 @@ export class PublishedWorkflowTriggerDeactivator {
 		if (ghosts.length > 0) {
 			this.logger.warn(`Found ${ghosts.length} ghost workflows. Removed them.`, {
 				workflowIds: ghosts,
+			});
+			this.eventService.emit('workflow-publication-ghost-trigger-sweep', {
+				removedCount: ghosts.length,
 			});
 		}
 

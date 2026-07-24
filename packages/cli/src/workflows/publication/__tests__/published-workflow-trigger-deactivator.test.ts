@@ -3,6 +3,7 @@ import type { WorkflowsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import type { ActiveWorkflowTriggers, ErrorReporter, InstanceSettings } from 'n8n-core';
 
+import type { EventService } from '@/events/event.service';
 import { PublishedWorkflowTriggerDeactivator } from '@/workflows/publication/published-workflow-trigger-deactivator';
 import type { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import type { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
@@ -17,6 +18,7 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 	const lifecycleLock = mock<WorkflowPublicationLifecycleLock>();
 	const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
 	const outboxConsumer = mock<WorkflowPublicationOutboxConsumer>();
+	const eventService = mock<EventService>();
 
 	// A follower by default; tests flip `isLeader` to simulate (mid-sweep) promotion.
 	let instanceSettings: InstanceSettings;
@@ -34,6 +36,7 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 			activeWorkflowTriggers,
 			outboxConsumer,
 			instanceSettings,
+			eventService,
 		);
 	}
 
@@ -147,6 +150,9 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 				expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-2');
 				// A ghost on a follower is evidence of a zombie writer — loud, not debug.
 				expect(logger.warn).toHaveBeenCalled();
+				expect(eventService.emit).toHaveBeenCalledWith('workflow-publication-ghost-trigger-sweep', {
+					removedCount: 2,
+				});
 			});
 
 			test('does nothing on the leader', async () => {
@@ -220,6 +226,7 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 
 				expect(removed).toBe(0);
 				expect(logger.warn).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalled();
 			});
 		});
 
