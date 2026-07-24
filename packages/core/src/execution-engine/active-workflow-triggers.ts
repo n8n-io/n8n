@@ -68,6 +68,9 @@ export class ActiveWorkflowTriggers {
 	private getPollJobManager(): PollJobManager | undefined {
 		if (!Container.has(PollJobManager)) return undefined;
 		const pollJobManager = Container.get(PollJobManager);
+		// Checking the subtype of an abstract dependency is a smell; the in-memory
+		// fallback should become its own PollJobManager implementation instead.
+		// Tracked in CAT-3848 (unify durable-vs-in-memory dispatch across triggers).
 		return pollJobManager instanceof NoOpPollJobManager ? undefined : pollJobManager;
 	}
 
