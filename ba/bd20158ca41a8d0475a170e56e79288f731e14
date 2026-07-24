@@ -8,6 +8,11 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowRev
   "git_ai_version": "1.6.16",
   "base_commit_sha": "babd20158ca41a8d0475a170e56e79288f731e14",
   "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
   "sessions": {
     "s_744aa7ffad1673": {
       "agent_id": {
@@ -16,6 +21,14 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowRev
         "model": "claude-opus-4-8"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_770a4f5233186c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "af98002c-f09b-4489-8374-ebc72894c73f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     }
   }
 }

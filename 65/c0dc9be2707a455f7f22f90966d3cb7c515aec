@@ -5,9 +5,6 @@
   "base_commit_sha": "65c0dc9be2707a455f7f22f90966d3cb7c515aec",
   "prompts": {},
   "humans": {
-    "h_6ef4cecfee65a2": {
-      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
-    },
     "h_760178ed151f13": {
       "author": "Sandra Zollner <sandra.zollner@n8n.io>"
     },
@@ -32,22 +29,6 @@
         "tool": "codex",
         "id": "019f79e6-9f5d-7b91-b07b-a2c76974c292",
         "model": "gpt-5.6-sol"
-      },
-      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
-    },
-    "s_91f67565918eee": {
-      "agent_id": {
-        "tool": "claude",
-        "id": "36f4874d-45bc-43d2-bd2d-9c16d23d9c95",
-        "model": "claude-opus-4-8"
-      },
-      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
-    },
-    "s_abf81efdb80d12": {
-      "agent_id": {
-        "tool": "claude",
-        "id": "862ff03d-0d2b-46dc-9c15-ac812b44f63f",
-        "model": "claude-opus-4-8"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
