@@ -1,0 +1,25 @@
+get:
+  operationId: getWorkflowHistory
+  x-required-scope: workflow:read
+  tags:
+    - Workflow
+  summary: Retrieve workflow version history
+  description: Returns a paginated list of workflow versions (version IDs and metadata) for a workflow.
+  parameters:
+    - $ref: '../schemas/parameters/workflowId.yml'
+    - $ref: '../../../../shared/spec/parameters/limit.yml'
+    - $ref: '../../../../shared/spec/parameters/offset.yml'
+    - $ref: '../../../../shared/spec/parameters/cursor.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/workflowVersionHistoryList.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
