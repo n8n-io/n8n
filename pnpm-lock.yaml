@@ -4969,6 +4969,9 @@ importers:
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../../@n8n/api-types
+      '@n8n/frontend-constants':
+        specifier: workspace:*
+        version: link:../frontend-constants
       '@vueuse/core':
         specifier: catalog:frontend
         version: 14.3.0(vue@3.5.26(typescript@6.0.2))
