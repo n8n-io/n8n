@@ -328,27 +328,24 @@ describe('McpController', () => {
 			expect(res.json).toHaveBeenCalledWith({ message: 'MCP access is disabled' });
 		});
 
-		test('delegates to transport.handleRequest', async () => {
+		// The listen stream is unsupported in stateless mode: a GET routed into
+		// the transport would hang forever, so the route must answer 405 itself.
+		test('returns 405 without touching the MCP transport', async () => {
 			(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
-			(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
-				mcpApps: { enabled: true, variant: 'variant' },
-				canvasGroupsEnabled: false,
-			});
-			(mcpService.getServer as unknown as Mock).mockReturnValue({
-				connect: vi.fn().mockResolvedValue(undefined),
-				close: vi.fn().mockResolvedValue(undefined),
-			});
-			const req = createReq();
 			const res = createRes();
-			await controller.handleGet(req, res);
-			expect(mcpService.resolveFeatureFlags as Mock).toHaveBeenCalledTimes(1);
-			expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'user-1' }),
-				{ mcpApps: { enabled: true, variant: 'variant' }, canvasGroupsEnabled: false },
-				undefined,
-				undefined,
-			);
-			expect(mockHandleRequest).toHaveBeenCalledWith(req, res, undefined);
+			await controller.handleGet(createReq(), res);
+			expect(res.header).toHaveBeenCalledWith('Allow', 'POST');
+			expect(res.status).toHaveBeenCalledWith(405);
+			expect(res.json).toHaveBeenCalledWith({
+				jsonrpc: '2.0',
+				error: {
+					code: -32000,
+					message: 'Method not allowed.',
+				},
+				id: null,
+			});
+			expect(mcpService.getServer as unknown as Mock).not.toHaveBeenCalled();
+			expect(mockHandleRequest).not.toHaveBeenCalled();
 		});
 	});
 });
