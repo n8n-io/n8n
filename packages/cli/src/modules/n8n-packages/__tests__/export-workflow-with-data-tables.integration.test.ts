@@ -19,7 +19,10 @@ import { createMember, createOwner } from '@test-integration/db/users';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import { readExport } from './utils/tar-support';
-import { buildWorkflowReferencingDataTables } from './utils/test-builders';
+import {
+	buildWorkflowCallingSubWorkflow,
+	buildWorkflowReferencingDataTables,
+} from './utils/test-builders';
 
 let service: N8nPackagesService;
 let dataTableService: DataTableService;
@@ -179,6 +182,40 @@ describe('workflow package export — with data tables', () => {
 					id: dataTable.id,
 					name: 'Customers',
 					usedByWorkflows: [workflow.id],
+				},
+			]);
+			expect(entries.map((e) => e.name)).toContain('data-tables/customers/data-table.json');
+		});
+
+		it('bundles table requirements from auto-included sub-workflows', async () => {
+			const dataTable = await dataTableService.createDataTable(project.id, {
+				name: 'Customers',
+				columns: [{ name: 'email', type: 'string' }],
+			});
+			const child = await buildWorkflowReferencingDataTables({
+				name: 'Child with table',
+				project,
+				references: [{ dataTableId: dataTable.id }],
+			});
+			const parent = await buildWorkflowCallingSubWorkflow({
+				name: 'Parent',
+				project,
+				subWorkflowId: child.id,
+			});
+
+			const stream = await service.exportPackage({
+				user: owner,
+				workflowIds: [parent.id],
+				missingWorkflowDependencyPolicy: 'include-in-package',
+			});
+			const { manifest, entries } = await readExport(stream);
+
+			expect(manifest.workflows!.map(({ id }) => id).sort()).toEqual([parent.id, child.id].sort());
+			expect(manifest.requirements?.dataTables).toEqual([
+				{
+					id: dataTable.id,
+					name: 'Customers',
+					usedByWorkflows: [child.id],
 				},
 			]);
 			expect(entries.map((e) => e.name)).toContain('data-tables/customers/data-table.json');

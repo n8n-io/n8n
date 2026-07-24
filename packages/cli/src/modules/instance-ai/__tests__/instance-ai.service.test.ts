@@ -2394,6 +2394,45 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		);
 	});
 
+	it('rebinds the suspended orchestration context tracing to the resume trace', async () => {
+		const service = createSuspendedRunResumeService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+		const staleTracing = { id: 'stale-trace' };
+		const resumeTracing = { id: 'resume-trace' };
+		const orchestrationContext = { tracing: staleTracing };
+		service.runState.findSuspendedByRequestId.mockReturnValue({
+			agent: {},
+			runId: 'run-1',
+			agentRunId: 'agent-run-1',
+			threadId: 'thread-a',
+			user: fakeUser,
+			toolCallId: 'tool-call-1',
+			toolName: 'workflows',
+			suspendPayload: { workflowId: 'wf-1', setupRequests: [] },
+			abortController: new AbortController(),
+			tracing: staleTracing,
+			modelId: undefined,
+			messageGroupId: 'group-1',
+			checkpoint: undefined,
+			runHandoff: undefined,
+			orchestrationContext,
+		});
+		service.tracing.createOrchestratorResumeTraceContext.mockResolvedValue(resumeTracing);
+
+		await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
+
+		expect(orchestrationContext.tracing).toBe(resumeTracing);
+		expect(service.processResumedStream).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ approved: true }),
+			expect.objectContaining({
+				orchestrationContext,
+				tracing: resumeTracing,
+			}),
+		);
+	});
+
 	it('rebuilds the agent when autoSetup is set, and resumes with the rebuilt one', async () => {
 		const service = createSuspendedRunResumeService();
 		const freshUser = { id: 'user-1', disabled: false } as User;
@@ -2532,6 +2571,7 @@ describe('InstanceAiService — rebuildAgentForAutoSetupResume', () => {
 		expect(result).toEqual({
 			agent: rebuiltAgent,
 			modelId: { provider: 'anthropic', model: 'claude' },
+			orchestrationContext,
 		});
 		expect(createOrchestratorRunControl).toHaveBeenCalledWith(orchestrationContext, runHandoff);
 	});

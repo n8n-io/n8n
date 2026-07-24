@@ -203,7 +203,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 </script>
 
 <template>
-	<div :class="[$style.container, props.disabled && $style.disabled]">
+	<div :class="$style.container">
 		<div :class="$style.header">
 			<div :class="$style.titleGroup">
 				<N8nText step="sm" bold :class="shared.dataEntryLabel">
@@ -402,10 +402,6 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 .modelSelector > *,
 .credentialPicker > * {
 	width: 100%;
-}
-
-.container.disabled {
-	opacity: 0.6;
 }
 
 .inlineInput {
