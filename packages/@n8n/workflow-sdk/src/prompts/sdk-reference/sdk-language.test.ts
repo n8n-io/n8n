@@ -82,12 +82,16 @@ describe('NODE_GROUPS_REFERENCE', () => {
 		expect(NODE_GROUPS_REFERENCE).toMatch(/\.group\('[^']+', \[/);
 	});
 
-	it('does not claim a single-entry/single-exit rule the server does not enforce', () => {
-		// That check lives in validateNodeSelectionForExtraction, not group validation.
-		expect(NODE_GROUPS_REFERENCE).not.toMatch(/single (entry|exit)/i);
-		expect(NODE_GROUPS_REFERENCE).not.toMatch(
-			/(one|exactly one) (entry|exit|input|output) (node|point)/i,
-		);
+	it('states the single entry/exit boundary rule that grouping enforces', () => {
+		// reason: 'invalid-subgraph' — grouping rejects a group with more than one
+		// incoming or outgoing main connection (single entry/exit *boundary*).
+		expect(NODE_GROUPS_REFERENCE).toMatch(/single entry and exit/i);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/incoming and one outgoing main connection/i);
+	});
+
+	it('does not claim the extraction-only per-node single-main-port rule', () => {
+		// `multiple-input/-output-branches` is extraction-only, never fired by grouping.
+		expect(NODE_GROUPS_REFERENCE).not.toMatch(/input branch|output branch/i);
 	});
 
 	it('is embedded verbatim in the IAI-facing full reference', () => {

@@ -2,6 +2,8 @@
  * Builder-facing SDK language reference, rendered from the interpreter's own
  * tables so guidance cannot drift from what the parser accepts.
  */
+import { NODE_GROUPING_RULES } from 'n8n-workflow';
+
 import {
 	SDK_METHODS,
 	FORBIDDEN_NODE_TYPES,
@@ -58,10 +60,16 @@ const SAFE_METHODS_SENTENCE =
  * in `SDK_LANGUAGE_REFERENCE` below) and the MCP `get_sdk_reference` tool.
  *
  * The rules stated here must match what the server enforces on save:
- * - basic rules: `validateWorkflowNodeGroups`
+ * - basic rules (unique id/name, non-empty): `validateWorkflowGroups`
  * - structural rules: `validateNodeSelectionForGrouping`
- * Save-time validation does NOT require a single entry/exit node (that lives in
- * `validateNodeSelectionForExtraction`), so this doc must not claim it does.
+ * The four structural rules (and their save-path rejection messages) are sourced
+ * from the shared `NODE_GROUPING_RULES` constant in `n8n-workflow`, so this doc,
+ * the canvas, and the save path share one definition.
+ *
+ * Grouping DOES enforce a single entry/exit *boundary* (at most one incoming and
+ * one outgoing main connection) via the `invalid-subgraph` rule. The stricter
+ * per-node single-main-port check (`multiple-input/-output-branches`) is
+ * extraction-only (`validateNodeSelectionForExtraction`) and is not stated here.
  */
 export const NODE_GROUPS_REFERENCE = `## Node groups
 
@@ -86,15 +94,10 @@ an invalid group is rejected on save, so these following rules MUST be followed 
 creating or editing groups.
 
 Rules:
-- **No trigger nodes.** Trigger nodes cannot be part of a group.
-- **One connected section.** Connectable members must form a single connected section of the
-  graph, not two unrelated islands with a gap between them; sticky notes may accompany
-  the selection without participating in connectivity, and a sticky-only group is valid.
-- **Keep AI sub-nodes with their Agent.** If an AI Agent is in a group, its
-  language-model, tool, and memory sub-nodes belong in the same group — put them
-  either all inside the group or all outside it, never split. A model/tool/memory
-  connection must not cross the group boundary.
-- **One group per node.** A node can belong to only one group at a time.
+- ${NODE_GROUPING_RULES.triggerSelected.sdkReference}
+- ${NODE_GROUPING_RULES.invalidSubgraph.sdkReference}
+- ${NODE_GROUPING_RULES.nonMainBoundary.sdkReference}
+- ${NODE_GROUPING_RULES.nodeAlreadyGrouped.sdkReference}
 - **Unique identity.** Group names and ids must be unique within the workflow.
 - **Non-empty.** A group needs at least one node.
 
