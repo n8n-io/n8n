@@ -168,10 +168,6 @@ export class AgentRepository extends Repository<Agent> {
 		});
 	}
 
-	/**
-	 * Lean rows for resolving an MCP-availability bulk toggle: enough to check
-	 * per-project permissions and skip agents already in the requested state.
-	 */
 	async findMcpAvailabilityCandidates(
 		where: { ids: string[] } | { projectIds: string[] },
 	): Promise<Array<Pick<Agent, 'id' | 'projectId' | 'availableInMCP'>>> {
