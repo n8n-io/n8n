@@ -130,7 +130,7 @@ export class CredentialsRiskReporter implements RiskReporter {
 			.filter((workflow) => recentlyExecutedWorkflowIds.has(workflow.id))
 			.flatMap((workflow) => workflow.nodes)
 			.flatMap((node) => Object.values(node.credentials ?? {}))
-			.map((credential) => credential?.id)
+			.map((credential) => credential.id)
 			.filter((id): id is string => id !== undefined);
 
 		return new Set(credentialIds);
