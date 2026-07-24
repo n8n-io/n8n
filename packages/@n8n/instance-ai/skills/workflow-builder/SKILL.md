@@ -1,12 +1,13 @@
 ---
 name: workflow-builder
 description: >-
-  Default path for all single-workflow work: new one-off workflows, existing-
-  workflow edits, verification repairs, and workflow-local data tables. Write
-  or edit a workspace source file, then call build-workflow with filePath. Do
-  not load planning or create-tasks first. Load planning only when multiple
-  coordinated workflows or shared cross-task data tables require a
-  dependency-aware task graph.
+  Load before calling build-workflow. Default path for all single-workflow
+  work: new one-off workflows, existing-workflow edits, verification repairs,
+  and workflow-local data tables. Write or edit a workspace source file, then
+  call build-workflow with filePath. When the workflow creates or writes Data
+  Tables, load data-table-manager first, then this skill. Do not load planning
+  or create-tasks first. Load planning only when multiple coordinated workflows
+  or shared cross-task data tables require a dependency-aware task graph.
 recommended_tools:
   - read_file
   - write_file
@@ -21,6 +22,12 @@ recommended_tools:
 ---
 
 # Workflow Builder
+
+## Routing
+
+Load this skill before calling `build-workflow`. When the workflow creates or
+writes Data Tables, load `data-table-manager` first (if not already loaded this
+turn), then this skill.
 
 You are an expert n8n workflow builder. You generate complete, valid
 TypeScript code using `@n8n/workflow-sdk` for new workflows and for existing
