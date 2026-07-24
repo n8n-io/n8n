@@ -181,6 +181,8 @@ describe('LiveWebhooks', () => {
 			await liveWebhooks.executeWebhook(request, mock<Response>());
 
 			expect(capturedNodes[0].id).toBe('webhook-node-active');
+			// The allowed-methods lookup is reserved for 404 responses
+			expect(webhookService.getWebhookMethods).not.toHaveBeenCalled();
 		});
 
 		it('should pass workflowData with activeVersion nodes/connections to executeWebhook', async () => {
