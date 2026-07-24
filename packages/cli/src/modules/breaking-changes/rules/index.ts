@@ -29,6 +29,8 @@ import './v3/get-paired-item.rule';
 import './v3/gmail-trigger-version.rule';
 import './v3/in-memory-binary-data.rule';
 import './v3/offload-manual-executions.rule';
+import './v3/removed-nodes.rule';
+import './v3/removed-nodes-with-replacements.rule';
 import './v3/task-runner-task-timeout.rule';
 import './v3/unverified-packages.rule';
 import './v3/workflow-import-url-removed.rule';

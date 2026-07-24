@@ -34,7 +34,11 @@ vi.mock('@/features/settings/users/users.store', () => ({
 		initialize: vi.fn(),
 		registerLoginHook: vi.fn(),
 		registerLogoutHook: vi.fn(),
+<<<<<<< HEAD
 		registerModalOpener: vi.fn(),
+=======
+		registerModalOpeners: vi.fn(),
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 		setUserQuota: vi.fn(),
 	}),
 }));
@@ -250,7 +254,11 @@ describe('Init', () => {
 			expect(versionsSpy).toHaveBeenCalled();
 			expect(usersStore.setUserQuota).toHaveBeenCalled();
 			// Modal openers are provided to the decoupled stores at bootstrap.
+<<<<<<< HEAD
 			expect(usersStore.registerModalOpener).toHaveBeenCalled();
+=======
+			expect(usersStore.registerModalOpeners).toHaveBeenCalled();
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 			expect(versionsStore.registerModalOpeners).toHaveBeenCalled();
 
 			await initializeAuthenticatedFeatures();

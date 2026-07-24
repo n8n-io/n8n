@@ -24,7 +24,11 @@ import type {
 import { getPersonalizedNodeTypes } from './users.utils';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
+<<<<<<< HEAD
 import type { ModalKey } from '@/Interface';
+=======
+import type { ModalOpeners } from '@/Interface';
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 import * as mfaApi from '@n8n/rest-api-client/api/mfa';
 import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
 import * as invitationsApi from './invitation.api';
@@ -54,6 +58,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const loginHooks = ref<LoginHook[]>([]);
 	const logoutHooks = ref<LogoutHook[]>([]);
 
+<<<<<<< HEAD
 	// Modal-open action, registered at app bootstrap (see app/init.ts). Until then it
 	// no-ops — warning in dev — so the store never reaches into `ui.store`.
 	const openModal = ref<OpenModalFn>((name) => {
@@ -65,6 +70,26 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	});
 	const registerModalOpener = (opener: OpenModalFn) => {
 		openModal.value = opener;
+=======
+	// Modal-open actions, registered at app bootstrap (see app/init.ts). Until then
+	// they no-op — warning in dev — so the store never reaches into `ui.store`. Shares
+	// the `ModalOpeners` contract with the other decoupled stores; this store currently
+	// uses only `openModal`.
+	const warnModalOpenerMissing = (action: string) => {
+		if (import.meta.env.DEV) {
+			console.warn(
+				`[users.store] ${action} called before modal openers were registered; ignoring. Call registerModalOpeners() at app bootstrap.`,
+			);
+		}
+	};
+	const modalOpeners = ref<ModalOpeners>({
+		openModal: (name) => warnModalOpenerMissing(`openModal(${String(name)})`),
+		openModalWithData: (payload) =>
+			warnModalOpenerMissing(`openModalWithData(${String(payload.name)})`),
+	});
+	const registerModalOpeners = (openers: ModalOpeners) => {
+		modalOpeners.value = openers;
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 	};
 
 	// Stores
@@ -389,7 +414,11 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const showPersonalizationSurvey = async () => {
 		const surveyEnabled = settingsStore.isPersonalizationSurveyEnabled;
 		if (surveyEnabled && currentUser.value && !currentUser.value.personalizationAnswers) {
+<<<<<<< HEAD
 			openModal.value(PERSONALIZATION_MODAL_KEY);
+=======
+			modalOpeners.value.openModal(PERSONALIZATION_MODAL_KEY);
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 		}
 	};
 
@@ -488,7 +517,11 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		logout,
 		registerLoginHook,
 		registerLogoutHook,
+<<<<<<< HEAD
 		registerModalOpener,
+=======
+		registerModalOpeners,
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 		createOwner,
 		validateSignupToken,
 		acceptInvitation,

@@ -5,8 +5,13 @@
 // Parses args, selects cases, sets up lanes, then hands the run to one of two
 // drivers over the shared session/pipeline in evaluations/run/: the LangSmith
 // driver (evaluate() + experiments) when LANGSMITH_API_KEY is set, else the
+<<<<<<< HEAD
 // direct driver (same rows, same pipeline, eval-results.json only — the mode
 // the LangTracer dispatcher invokes).
+=======
+// direct driver (same rows, same pipeline and local artifacts, no LangSmith
+// experiment tracking — the mode the LangTracer dispatcher invokes).
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 // ---------------------------------------------------------------------------
 
 import { mkdirSync } from 'fs';
@@ -20,7 +25,11 @@ import { selectCases } from '../run/case-selection';
 import { runDirect } from '../run/direct-driver';
 import { cleanupLanes, setupLanes } from '../run/lane-setup';
 import { runWithLangSmith } from '../run/langsmith-driver';
+<<<<<<< HEAD
 import { ciRerunHint, runEvalAndPersist } from '../run/persist';
+=======
+import { ciRerunHint, createRowSink, runEvalAndPersist } from '../run/persist';
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 import { emitRunReports } from '../run/reporters';
 
 async function main(): Promise<void> {
@@ -52,6 +61,8 @@ async function main(): Promise<void> {
 		args.deletePrebuiltWorkflows || (args.buildViaMcp && !args.keepWorkflows);
 
 	const mcpBuildSpend: McpBuildSpend[] = [];
+	// Every completed row is journaled so a crashed run still persists verdicts.
+	const rowSink = createRowSink(args.outputDir);
 	const commitSha = process.env.LANGSMITH_REVISION_ID ?? process.env.GITHUB_SHA;
 
 	try {
@@ -72,6 +83,8 @@ async function main(): Promise<void> {
 					commitSha,
 					rerun: ciRerunHint(),
 					mcpBuildSpend,
+					rowSink,
+					testCasesWithFiles,
 				},
 				async (partialResults) => {
 					if (hasLangSmith) {
@@ -85,6 +98,7 @@ async function main(): Promise<void> {
 							cleanupBuiltWorkflows,
 							mcpBuildLogDir,
 							mcpBuildSpend,
+							rowSink,
 						});
 						return {
 							evaluation: langsmithRun.evaluation,
@@ -107,6 +121,7 @@ async function main(): Promise<void> {
 						mcpBuildLogDir,
 						mcpBuildSpend,
 						partialResults,
+						rowSink,
 					});
 					return { evaluation: directRun.evaluation, slugByTestCase: directRun.slugByTestCase };
 				},
@@ -128,6 +143,7 @@ async function main(): Promise<void> {
 	}
 }
 
+<<<<<<< HEAD
 // ---------------------------------------------------------------------------
 // LangSmith mode: evaluate() with dataset sync, tracing, experiments
 // ---------------------------------------------------------------------------
@@ -140,6 +156,8 @@ async function main(): Promise<void> {
 // Comparison vs the pinned baseline experiment
 // ---------------------------------------------------------------------------
 
+=======
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 // Only auto-run as the CLI entry point. Importing this module (e.g. from a unit
 // test that exercises the exported runEvalAndPersist / writeEvalResults seams)
 // must not kick off a real eval run against process.argv.

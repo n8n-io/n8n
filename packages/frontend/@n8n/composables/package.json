@@ -29,6 +29,10 @@
   },
   "dependencies": {
     "@n8n/api-types": "workspace:*",
+<<<<<<< HEAD
+=======
+    "@n8n/telemetry": "workspace:*",
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
     "@vueuse/core": "catalog:frontend",
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*",

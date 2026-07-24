@@ -1,5 +1,7 @@
 # Workflow evaluation framework
 
+> Module layout, extension points and external contracts: [ARCHITECTURE.md](./ARCHITECTURE.md).
+
 Tests whether workflows built by Instance AI actually work by executing them with LLM-generated mock HTTP responses. No real credentials or external services are involved.
 
 Five harnesses live here:
@@ -439,6 +441,15 @@ How it differs from the manifest flow:
   `--keep-workflows`. Known limitation: cleanup keys off the `WORKFLOW_ID` trailer
   `claude` prints, so a build that times out or never emits the trailer can leave
   its workflow behind on the lane even though cleanup is on.
+- **Per-case spend reporting.** Each build's `claude` cost/turns (summed across
+  attempts — failed attempts cost money too) land as `build_cost_usd` /
+  `build_turns` row feedback in LangSmith and as `buildCostUsdPerRun` /
+  `buildTurnsPerRun` per case in `eval-results.json`, alongside the run-level
+  `summary.mcpBuild` totals. For builder cost comparisons across any runs
+  (MCP vs AIA, builder-model A/Bs), the un-wired helper
+  `evaluations/cli/build-cost-report.ts` (run via `pnpm tsx`, one `--results`
+  per arm) auto-detects each arm's cost source — these persisted fields, or
+  the backend build threads priced in LangSmith.
 
 **Prerequisites**: `LANGSMITH_API_KEY` set — MCP builds only run on the
 LangSmith path, whose lane allocator caps builds at 4 per lane globally (the

@@ -28,6 +28,10 @@ import { getModelRecommendationsSection } from './agents-builder-model-recommend
 import { buildBuilderPrompt } from './agents-builder-prompts';
 import { AgentsBuilderToolsService } from './agents-builder-tools.service';
 import { BuilderCheckpointUnavailableError } from './errors';
+import {
+	BUILDER_PLANNER_TODOS_DESCRIPTION,
+	BUILDER_PLANNER_TODOS_SYSTEM_INSTRUCTION,
+} from './prompts/planner-todos.prompt';
 import { getBuilderRuntimeSkills } from './skills';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
@@ -229,7 +233,7 @@ export class AgentsBuilderService {
 			user,
 		);
 
-		const { Agent, Memory } = await import('@n8n/agents');
+		const { Agent, Memory, createPlannerTodosTool } = await import('@n8n/agents');
 
 		const onMemoryUsage = async (report: MemoryTaskUsageReport) => {
 			try {
@@ -275,6 +279,13 @@ export class AgentsBuilderService {
 		for (const tool of [...tools.json, ...tools.shared]) {
 			builder.tool(tool);
 		}
+
+		builder.tool(
+			createPlannerTodosTool({
+				description: BUILDER_PLANNER_TODOS_DESCRIPTION,
+				systemInstruction: BUILDER_PLANNER_TODOS_SYSTEM_INSTRUCTION,
+			}),
+		);
 
 		applyAgentThinking(builder, modelConfig);
 

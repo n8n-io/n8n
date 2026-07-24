@@ -133,6 +133,12 @@
 			"status": "covered",
 			"nodeOperation": "workflow:deactivate"
 		},
+		"POST /workflows/{id}/publish": {
+			"status": "gap"
+		},
+		"POST /workflows/{id}/unpublish": {
+			"status": "gap"
+		},
 		"POST /workflows/{id}/archive": {
 			"status": "gap"
 		},

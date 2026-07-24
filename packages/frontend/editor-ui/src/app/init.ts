@@ -126,11 +126,20 @@ export async function initializeAuthenticatedFeatures(
 
 	// Provide the modal-open actions to the stores that were decoupled from `ui.store`,
 	// so they can open modals without importing it.
+<<<<<<< HEAD
 	usersStore.registerModalOpener(uiStore.openModal);
 	versionsStore.registerModalOpeners({
 		openModal: uiStore.openModal,
 		openModalWithData: uiStore.openModalWithData,
 	});
+=======
+	const modalOpeners = {
+		openModal: uiStore.openModal,
+		openModalWithData: uiStore.openModalWithData,
+	};
+	usersStore.registerModalOpeners(modalOpeners);
+	versionsStore.registerModalOpeners(modalOpeners);
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 
 	if (!settingsStore.isPreviewMode) {
 		usersStore.setUserQuota(settingsStore.userManagement.quota);

@@ -15,11 +15,25 @@ import { traceable } from 'langsmith/traceable';
 
 import { aggregateResults, passAtK, passHatK } from './aggregator';
 import { type Lane, type McpBuildSpend } from './build-orchestrator';
+<<<<<<< HEAD
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { createEvalSession, MAX_CONCURRENT_BUILDS } from './eval-session';
 import { expandWithIterations } from './iterations';
 import { computePassRatePerIter, summarizeMcpBuildSpend } from './persist';
 import { isPlainObject, parseTargetOutput, reshapeLangSmithRuns } from './reshape';
+=======
+import type { ScenarioRowInputs } from './case-pipeline';
+import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
+import { createEvalSession, MAX_CONCURRENT_BUILDS } from './eval-session';
+import { expandWithIterations } from './iterations';
+import { computePassRatePerIter, summarizeMcpBuildSpend, type RowSink } from './persist';
+import {
+	isPlainObject,
+	parseTargetOutput,
+	reshapeLangSmithRuns,
+	type TargetOutput,
+} from './reshape';
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 import { partialIsolationWarning } from '../cli/args';
 import type { CliArgs } from '../cli/args';
 import { bucketFromEvaluation } from '../comparison/bucket-from-evaluation';
@@ -30,8 +44,13 @@ import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { EVAL_WORKSPACE_NAME, resolveEvalWorkspaceId } from '../harness/langsmith-seed';
 import type { EvalLogger } from '../harness/logger';
 import type { PrebuiltManifest } from '../harness/prebuilt-workflows';
+<<<<<<< HEAD
 import { syncDataset } from '../langsmith/dataset-sync';
 import type { MultiRunEvaluation, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
+=======
+import { ensureExamplesVisible, syncDataset } from '../langsmith/dataset-sync';
+import type { MultiRunEvaluation, WorkflowTestCase } from '../types';
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 
 export interface RunConfig {
 	args: CliArgs;
@@ -51,10 +70,15 @@ export interface RunConfig {
 	 *  LangSmith experiment metadata and eval-results.json — the run's only spend
 	 *  record beyond raw session logs, for a suite that's manual-only due to cost. */
 	mcpBuildSpend: McpBuildSpend[];
+<<<<<<< HEAD
 	/** Optional sink the direct loop pushes each completed iteration's results into
 	 *  as they finish, so an abort that rejects the run still leaves the caller
 	 *  (runEvalAndPersist) with the scenarios that already completed. */
 	partialResults?: WorkflowTestCaseResult[][];
+=======
+	/** Journal of completed rows for crash recovery (see run/persist.ts). */
+	rowSink?: RowSink;
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 }
 
 export async function runWithLangSmith(config: RunConfig): Promise<{
@@ -90,6 +114,14 @@ export async function runWithLangSmith(config: RunConfig): Promise<{
 	// isolation; overriding only one silently touches shared Instance AI data.
 	const isolationWarning = partialIsolationWarning(args.dataset, args.baselinePrefix);
 	if (isolationWarning) logger.warn(isolationWarning);
+<<<<<<< HEAD
+=======
+	if (args.datasetAutoForked) {
+		logger.warn(
+			`--source langtracer auto-forked this run to dataset "${args.dataset}" (baseline prefix "${args.baselinePrefix}") for cohort isolation. Pass --dataset/--baseline-prefix explicitly to target a shared cohort.`,
+		);
+	}
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 
 	// Pin eval writes to the eval workspace; our PAT would otherwise default to Prod.
 	const workspaceId = await resolveEvalWorkspaceId();
@@ -100,6 +132,10 @@ export async function runWithLangSmith(config: RunConfig): Promise<{
 	}
 	const lsClient = new Client(workspaceId ? { workspaceId } : {});
 	const datasetName = await syncDataset(lsClient, args.dataset, logger, testCasesWithFiles);
+<<<<<<< HEAD
+=======
+	await ensureExamplesVisible(lsClient, datasetName, testCasesWithFiles, logger);
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 
 	// Shared per-run assembly (lanes → allocator → build orchestrator → case
 	// pipeline). The traceable() hook around the lane functions is the only
@@ -124,7 +160,15 @@ export async function runWithLangSmith(config: RunConfig): Promise<{
 			}) as typeof fn,
 	});
 	const { buildDurations } = session.orchestrator;
+<<<<<<< HEAD
 	const target = session.pipeline.runRow;
+=======
+	const target = async (inputs: ScenarioRowInputs): Promise<TargetOutput> => {
+		const outputs = await session.pipeline.runRow(inputs);
+		config.rowSink?.append({ run: { inputs, outputs } });
+		return outputs;
+	};
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 
 	const feedbackExtractor = ({ run }: { run: Run }): EvaluationResult[] => {
 		const output = parseTargetOutput(run.outputs);
@@ -160,6 +204,19 @@ export async function runWithLangSmith(config: RunConfig): Promise<{
 		if (output.buildDurationMs !== undefined) {
 			feedback.push({ key: 'build_duration_s', score: output.buildDurationMs / 1000 });
 		}
+<<<<<<< HEAD
+=======
+		// `claude` build spend (--build-via-mcp only). Like build_duration_s the
+		// value repeats on every row of the case's build, so the LangSmith column
+		// mean is per-row; sum true spend per (iteration, case) from
+		// eval-results.json (buildCostUsdPerRun) instead of over rows.
+		if (output.buildCostUsd !== undefined) {
+			feedback.push({ key: 'build_cost_usd', score: output.buildCostUsd });
+		}
+		if (output.buildTurns !== undefined) {
+			feedback.push({ key: 'build_turns', score: output.buildTurns });
+		}
+>>>>>>> fe649efcbf42809f4b2307918b7520b23226abaa
 		// Deterministic conversation counter (per evals rubric) — a navigation/feature
 		// signal for the HOW judges, not a gating check.
 		if (output.planRejections !== undefined) {
