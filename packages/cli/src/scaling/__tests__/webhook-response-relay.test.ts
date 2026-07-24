@@ -1,5 +1,6 @@
+import type { Logger } from '@n8n/backend-common';
 import type { EndpointsConfig } from '@n8n/config';
-import type { BinaryDataService } from 'n8n-core';
+import type { BinaryDataConfig, BinaryDataService } from 'n8n-core';
 import type { IBinaryData, IN8nHttpFullResponse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -24,15 +25,16 @@ describe('WebhookResponseRelay', () => {
 		return binaryDataService;
 	};
 
-	// In-memory mode has no manager, so `store` returns the binary data without an id.
-	const inMemoryStore = () => {
-		const binaryDataService = mock<BinaryDataService>();
-		binaryDataService.store.mockResolvedValue({ data: '', mimeType: '' });
-		return binaryDataService;
-	};
-
-	const relayWith = (binaryDataService: BinaryDataService) =>
-		new WebhookResponseRelay(binaryDataService, endpointsConfig);
+	const relayWith = (
+		binaryDataService: BinaryDataService,
+		mode: BinaryDataConfig['mode'] = 'database',
+	) =>
+		new WebhookResponseRelay(
+			mock<Logger>(),
+			binaryDataService,
+			mock<BinaryDataConfig>({ mode }),
+			endpointsConfig,
+		);
 
 	describe('prepareResponse', () => {
 		it('base64-encodes a small Buffer body inline without touching the store', async () => {
@@ -88,8 +90,26 @@ describe('WebhookResponseRelay', () => {
 			expect(result.headers['content-type']).toBe('application/pdf');
 		});
 
-		it('relays a large Buffer inline when no persisted store is available', async () => {
-			const binaryDataService = inMemoryStore();
+		it.each(['default', 'filesystem'] as const)(
+			'relays a large Buffer inline without touching the store in %s mode',
+			async (mode) => {
+				const binaryDataService = persistingStore();
+				const buffer = Buffer.alloc(maxInlineSizeInBytes + 1, 1);
+				const response: IN8nHttpFullResponse = { body: buffer, headers: {}, statusCode: 200 };
+
+				const result = (await relayWith(binaryDataService, mode).prepareResponse(
+					response,
+					ctx,
+				)) as IN8nHttpFullResponse;
+
+				expect(binaryDataService.store).not.toHaveBeenCalled();
+				expect(result.body).toEqual({ [ENCODED_BUFFER_KEY]: buffer.toString('base64') });
+			},
+		);
+
+		it('relays a large Buffer inline when the store returns no id', async () => {
+			const binaryDataService = mock<BinaryDataService>();
+			binaryDataService.store.mockResolvedValue({ data: '', mimeType: '' });
 			const buffer = Buffer.alloc(maxInlineSizeInBytes + 1, 1);
 			const response: IN8nHttpFullResponse = { body: buffer, headers: {}, statusCode: 200 };
 
@@ -99,6 +119,34 @@ describe('WebhookResponseRelay', () => {
 			)) as IN8nHttpFullResponse;
 
 			expect(result.body).toEqual({ [ENCODED_BUFFER_KEY]: buffer.toString('base64') });
+		});
+
+		it('relays a large Buffer inline when storing fails', async () => {
+			const binaryDataService = mock<BinaryDataService>();
+			binaryDataService.store.mockRejectedValue(new Error('store unavailable'));
+			const buffer = Buffer.alloc(maxInlineSizeInBytes + 1, 1);
+			const response: IN8nHttpFullResponse = { body: buffer, headers: {}, statusCode: 200 };
+
+			const result = (await relayWith(binaryDataService).prepareResponse(
+				response,
+				ctx,
+			)) as IN8nHttpFullResponse;
+
+			expect(result.body).toEqual({ [ENCODED_BUFFER_KEY]: buffer.toString('base64') });
+		});
+
+		it('relays a large JSON body unchanged when storing fails', async () => {
+			const binaryDataService = mock<BinaryDataService>();
+			binaryDataService.store.mockRejectedValue(new Error('store unavailable'));
+			const body = { blob: 'x'.repeat(maxInlineSizeInBytes + 1) };
+			const response: IN8nHttpFullResponse = { body, headers: {}, statusCode: 200 };
+
+			const result = (await relayWith(binaryDataService).prepareResponse(
+				response,
+				ctx,
+			)) as IN8nHttpFullResponse;
+
+			expect(result.body).toBe(body);
 		});
 
 		it('leaves an existing binary-data reference untouched', async () => {

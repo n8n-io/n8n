@@ -1,11 +1,15 @@
+import { Logger } from '@n8n/backend-common';
 import { EndpointsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { BinaryDataService, FileLocation } from 'n8n-core';
+import { BinaryDataConfig, BinaryDataService, FileLocation } from 'n8n-core';
 import { BINARY_ENCODING } from 'n8n-workflow';
 import type { IDataObject, IExecuteResponsePromiseData, IN8nHttpFullResponse } from 'n8n-workflow';
 
 /** Sentinel key marking a base64-encoded Buffer body relayed inline through the queue. */
 export const ENCODED_BUFFER_KEY = '__@N8nEncodedBuffer@__';
+
+/** Stores readable by all instances; in-memory and filesystem are local to one host. */
+const SHARED_STORE_MODES: Array<BinaryDataConfig['mode']> = ['database', 's3', 'azure'];
 
 type RelayContext = { workflowId: string; executionId: string };
 
@@ -24,11 +28,16 @@ type MeasuredBody = {
 export class WebhookResponseRelay {
 	private readonly maxInlineSizeInBytes: number;
 
+	private readonly offloadingEnabled: boolean;
+
 	constructor(
+		private readonly logger: Logger,
 		private readonly binaryDataService: BinaryDataService,
+		binaryDataConfig: BinaryDataConfig,
 		endpointsConfig: EndpointsConfig,
 	) {
 		this.maxInlineSizeInBytes = endpointsConfig.webhookResponseOffloadThreshold * 1024 * 1024;
+		this.offloadingEnabled = SHARED_STORE_MODES.includes(binaryDataConfig.mode);
 	}
 
 	/**
@@ -42,9 +51,10 @@ export class WebhookResponseRelay {
 	 * @param ctx Execution the offloaded body is stored under.
 	 * @returns The same `response`, with any oversized body replaced by a reference.
 	 *
-	 * @remarks Offloading needs a persisted binary-data mode (queue mode defaults
-	 * to `database`). In in-memory mode the body is relayed inline regardless of
-	 * size, preserving prior behavior.
+	 * @remarks Offloading needs a binary-data store readable by all instances
+	 * (`database`, `s3` or `azure` — queue mode defaults to `database`). With
+	 * in-memory or filesystem storage, or when storing fails, the body is
+	 * relayed inline regardless of size, preserving prior behavior.
 	 */
 	async prepareResponse(
 		response: IExecuteResponsePromiseData,
@@ -54,12 +64,20 @@ export class WebhookResponseRelay {
 			return response;
 		}
 
-		const body = measureBody(response.body);
-
-		if (body && body.sizeInBytes > this.maxInlineSizeInBytes) {
-			const offloaded = await this.offloadToBinaryStore(response, body, ctx);
-			if (offloaded) {
-				return response;
+		if (this.offloadingEnabled) {
+			const body = measureBody(response.body);
+			if (body && body.sizeInBytes > this.maxInlineSizeInBytes) {
+				try {
+					const offloaded = await this.offloadToBinaryStore(response, body, ctx);
+					if (offloaded) {
+						return response;
+					}
+				} catch (error) {
+					this.logger.warn('Failed to offload large webhook response, relaying it inline', {
+						...ctx,
+						error,
+					});
+				}
 			}
 		}
 
