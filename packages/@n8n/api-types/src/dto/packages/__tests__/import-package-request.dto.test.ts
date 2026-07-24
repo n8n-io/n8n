@@ -249,8 +249,12 @@ describe('ImportPackageRequestDto', () => {
 		}
 	});
 
-	it('rejects omitted workflowConflictPolicy', () => {
-		expect(ImportPackageRequestDto.safeParse({}).success).toBe(false);
+	it('defaults workflowConflictPolicy to "new-version" when omitted', () => {
+		const result = ImportPackageRequestDto.safeParse({});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.workflowConflictPolicy).toBe('new-version');
+		}
 	});
 
 	describe('workflowIdPolicy', () => {

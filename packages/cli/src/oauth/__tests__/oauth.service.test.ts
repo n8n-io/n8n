@@ -2254,11 +2254,12 @@ describe('OauthService', () => {
 			expect(callArgs[1]).toHaveProperty('authUrl', 'https://example.domain/oauth2/auth');
 			expect(callArgs[1]).toHaveProperty('accessTokenUrl', 'https://example.domain/oauth2/token');
 			expect(callArgs[1]).toHaveProperty('clientId', 'registered_client_id');
-			expect(callArgs[1]).toHaveProperty('clientSecret', 'registered_client_secret');
+			expect(callArgs[1]).not.toHaveProperty('clientSecret');
 			expect(callArgs[1]).toHaveProperty('scope', 'openid profile');
 			expect(callArgs[1]).toHaveProperty('grantType', 'pkce');
 			expect(callArgs[1]).not.toHaveProperty('csrfSecret');
 			expect(callArgs[1]).not.toHaveProperty('codeVerifier');
+			expect(callArgs[2]).toEqual(expect.arrayContaining(['authentication', 'clientSecret']));
 			expect(cacheService.set).toHaveBeenCalledWith(
 				expect.stringMatching(/^oauth:flow:/),
 				expect.objectContaining({
@@ -3729,6 +3730,9 @@ describe('OauthService', () => {
 								const url = new URL(options.authorizationUri ?? '');
 								if (options.resource) url.searchParams.set('resource', options.resource);
 								if (options.state) url.searchParams.set('state', options.state);
+								for (const [key, value] of Object.entries(options.query ?? {})) {
+									if (typeof value === 'string') url.searchParams.set(key, value);
+								}
 								return url.toString();
 							},
 						}),
@@ -3889,6 +3893,7 @@ describe('OauthService', () => {
 					oauthCredentials,
 					'https://auth.example.com/issuer',
 					toUpdate,
+					[],
 				);
 
 				expect(httpClientMock.get).toHaveBeenNthCalledWith(
@@ -3944,6 +3949,7 @@ describe('OauthService', () => {
 						oauthCredentials,
 						'https://auth.example.com',
 						toUpdate,
+						[],
 					);
 
 					expect(oauthCredentials.grantType).toBe('clientCredentials');
@@ -3966,6 +3972,35 @@ describe('OauthService', () => {
 				},
 			);
 
+			it('should clear a stale PKCE flag when selecting client credentials', async () => {
+				const oauthCredentials = makeDcrCredentials({ usePkce: true });
+				const toUpdate = {};
+
+				vi.mocked(httpClientMock.get).mockResolvedValueOnce({
+					data: makeMetadata({
+						grant_types_supported: ['client_credentials'],
+						token_endpoint_auth_methods_supported: ['client_secret_basic'],
+					}),
+				});
+				vi.mocked(httpClientMock.post).mockResolvedValueOnce({
+					data: { client_id: 'registered-client-id', client_secret: 'registered-secret' },
+				});
+
+				await (service as any).performDynamicClientRegistration(
+					oauthCredentials,
+					'https://auth.example.com',
+					toUpdate,
+					[],
+				);
+
+				expect(oauthCredentials).toMatchObject({
+					grantType: 'clientCredentials',
+					usePkce: false,
+				});
+				expect(toUpdate).toEqual(expect.objectContaining({ usePkce: false }));
+				expect((service as any).shouldUsePkce(oauthCredentials)).toBe(false);
+			});
+
 			it('should default client credentials flow to header authentication when the server omits token_endpoint_auth_methods_supported', async () => {
 				const oauthCredentials = makeDcrCredentials();
 				const toUpdate = {};
@@ -3981,6 +4016,7 @@ describe('OauthService', () => {
 					oauthCredentials,
 					'https://auth.example.com',
 					toUpdate,
+					[],
 				);
 
 				expect(oauthCredentials.grantType).toBe('clientCredentials');
@@ -4017,6 +4053,7 @@ describe('OauthService', () => {
 					oauthCredentials,
 					'https://auth.example.com',
 					toUpdate,
+					[],
 				);
 
 				expect(oauthCredentials.grantType).toBe('authorizationCode');
@@ -4043,6 +4080,7 @@ describe('OauthService', () => {
 						makeDcrCredentials(),
 						'https://auth.example.com',
 						{},
+						[],
 					),
 				).rejects.toThrow('No supported grant type and authentication method found');
 				expect(httpClientMock.post).not.toHaveBeenCalled();
@@ -4073,14 +4111,17 @@ describe('OauthService', () => {
 							oauthCredentials,
 							'https://auth.example.com',
 							toUpdate,
+							[],
 						);
 
 						expect(oauthCredentials.grantType).toBe('authorizationCode');
 						expect(oauthCredentials.authentication).toBe(authentication);
+						expect(oauthCredentials.usePkce).toBe(true);
 						expect(toUpdate).toEqual(
 							expect.objectContaining({
 								grantType: 'authorizationCode',
 								authentication,
+								usePkce: true,
 								clientId: 'registered-client-id',
 								clientSecret: 'registered-secret',
 							}),
@@ -4095,6 +4136,49 @@ describe('OauthService', () => {
 					},
 				);
 
+				it('should honor the advertised order when both client authentication methods are supported', async () => {
+					const oauthCredentials = makeDcrCredentials();
+					const toUpdate = {};
+
+					vi.mocked(httpClientMock.get).mockResolvedValueOnce({
+						data: makeMetadata({
+							grant_types_supported: ['authorization_code'],
+							token_endpoint_auth_methods_supported: ['client_secret_post', 'client_secret_basic'],
+							code_challenge_methods_supported: ['S256'],
+						}),
+					});
+					vi.mocked(httpClientMock.post).mockResolvedValueOnce({
+						data: { client_id: 'registered-client-id', client_secret: 'registered-secret' },
+					});
+
+					await (service as any).performDynamicClientRegistration(
+						oauthCredentials,
+						'https://auth.example.com',
+						toUpdate,
+						[],
+					);
+
+					expect(oauthCredentials.grantType).toBe('authorizationCode');
+					expect(oauthCredentials.authentication).toBe('body');
+					expect(oauthCredentials.usePkce).toBe(true);
+					expect(toUpdate).toEqual(
+						expect.objectContaining({
+							grantType: 'authorizationCode',
+							authentication: 'body',
+							usePkce: true,
+							clientId: 'registered-client-id',
+							clientSecret: 'registered-secret',
+						}),
+					);
+					expect(httpClientMock.post).toHaveBeenCalledWith(
+						'https://auth.example.com/oauth2/register',
+						expect.objectContaining({
+							grant_types: ['authorization_code', 'refresh_token'],
+							token_endpoint_auth_method: 'client_secret_post',
+						}),
+					);
+				});
+
 				it('should register PKCE when the server supports both S256 and the none auth method', async () => {
 					const oauthCredentials = makeDcrCredentials();
 					const toUpdate = {};
@@ -4107,13 +4191,14 @@ describe('OauthService', () => {
 						}),
 					});
 					vi.mocked(httpClientMock.post).mockResolvedValueOnce({
-						data: { client_id: 'registered-client-id' },
+						data: { client_id: 'registered-client-id', client_secret: 'ignored-secret' },
 					});
 
 					await (service as any).performDynamicClientRegistration(
 						oauthCredentials,
 						'https://auth.example.com',
 						toUpdate,
+						[],
 					);
 
 					expect(oauthCredentials.grantType).toBe('pkce');
@@ -4124,6 +4209,38 @@ describe('OauthService', () => {
 							token_endpoint_auth_method: 'none',
 						}),
 					);
+				});
+
+				it('should clear stale client authentication when DCR selects public-client PKCE', async () => {
+					const oauthCredentials = makeDcrCredentials({
+						clientSecret: 'stale-secret',
+						authentication: 'header',
+					});
+					const toUpdate = {};
+					const toDelete: string[] = [];
+
+					vi.mocked(httpClientMock.get).mockResolvedValueOnce({
+						data: makeMetadata({
+							grant_types_supported: ['authorization_code'],
+							token_endpoint_auth_methods_supported: ['none'],
+							code_challenge_methods_supported: ['S256'],
+						}),
+					});
+					vi.mocked(httpClientMock.post).mockResolvedValueOnce({
+						data: { client_id: 'registered-client-id' },
+					});
+
+					await (service as any).performDynamicClientRegistration(
+						oauthCredentials,
+						'https://auth.example.com',
+						toUpdate,
+						toDelete,
+					);
+
+					expect(oauthCredentials.grantType).toBe('pkce');
+					expect(oauthCredentials.clientSecret).toBeUndefined();
+					expect(oauthCredentials.authentication).toBeUndefined();
+					expect(toDelete).toEqual(expect.arrayContaining(['clientSecret', 'authentication']));
 				});
 
 				it('should register PKCE when the server supports S256 and omits token_endpoint_auth_methods_supported', async () => {
@@ -4144,6 +4261,7 @@ describe('OauthService', () => {
 						oauthCredentials,
 						'https://auth.example.com',
 						toUpdate,
+						[],
 					);
 
 					expect(oauthCredentials.grantType).toBe('pkce');
@@ -4174,6 +4292,7 @@ describe('OauthService', () => {
 						oauthCredentials,
 						'https://auth.example.com',
 						toUpdate,
+						[],
 					);
 
 					expect(oauthCredentials.grantType).toBe('pkce');
@@ -4312,6 +4431,7 @@ describe('OauthService', () => {
 					oauthCredentials,
 					'https://as.example.com',
 					{},
+					[],
 				);
 
 				expect(requestMock).toHaveBeenCalledWith(
@@ -4467,6 +4587,113 @@ describe('OauthService', () => {
 						stateData: expect.objectContaining({ resource: 'https://mcp.example.com/mcp' }),
 					}),
 					expect.any(Number),
+				);
+			});
+
+			it('should include PKCE parameters for confidential authorization-code clients that advertise S256', async () => {
+				const pkceChallenge = await import('pkce-challenge');
+				vi.mocked(pkceChallenge.default).mockResolvedValue({
+					code_verifier: 'code_verifier',
+					code_challenge: 'code_challenge',
+				});
+				vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(makeDcrCredentials());
+				vi.mocked(httpClientMock.get).mockResolvedValueOnce({
+					data: {
+						authorization_servers: ['https://auth.example.com'],
+						resource: 'https://mcp.example.com/mcp',
+					},
+				});
+				vi.mocked(httpClientMock.get).mockResolvedValueOnce({
+					data: {
+						authorization_endpoint: 'https://auth.example.com/oauth2/auth',
+						token_endpoint: 'https://auth.example.com/oauth2/token',
+						registration_endpoint: 'https://auth.example.com/oauth2/register',
+						grant_types_supported: ['authorization_code', 'refresh_token'],
+						token_endpoint_auth_methods_supported: ['client_secret_basic'],
+						code_challenge_methods_supported: ['S256'],
+					},
+				});
+				vi.mocked(httpClientMock.post).mockResolvedValueOnce({
+					data: { client_id: 'registered-client-id', client_secret: 'registered-secret' },
+				});
+
+				const authUri = await service.generateAOauth2AuthUri(credential, {
+					cid: credential.id,
+					origin: 'static-credential',
+					userId: 'user-id',
+				});
+
+				const url = new URL(authUri);
+				expect(url.searchParams.get('code_challenge')).toBe('code_challenge');
+				expect(url.searchParams.get('code_challenge_method')).toBe('S256');
+				expect(httpClientMock.post).toHaveBeenCalledWith(
+					'https://auth.example.com/oauth2/register',
+					expect.objectContaining({
+						token_endpoint_auth_method: 'client_secret_basic',
+					}),
+				);
+				expect(service.encryptAndSaveData).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.objectContaining({
+						grantType: 'authorizationCode',
+						authentication: 'header',
+						usePkce: true,
+					}),
+					[],
+				);
+				expect(cacheService.set).toHaveBeenLastCalledWith(
+					expect.any(String),
+					expect.objectContaining({ codeVerifier: 'code_verifier' }),
+					expect.any(Number),
+				);
+			});
+
+			it('should persist stale client authentication cleanup when DCR selects public-client PKCE', async () => {
+				const pkceChallenge = await import('pkce-challenge');
+				vi.mocked(pkceChallenge.default).mockResolvedValue({
+					code_verifier: 'code_verifier',
+					code_challenge: 'code_challenge',
+				});
+				vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(
+					makeDcrCredentials({
+						clientSecret: 'stale-secret',
+						authentication: 'header',
+					}),
+				);
+				vi.mocked(httpClientMock.get).mockResolvedValueOnce({
+					data: {
+						authorization_servers: ['https://auth.example.com'],
+						resource: 'https://mcp.example.com/mcp',
+					},
+				});
+				vi.mocked(httpClientMock.get).mockResolvedValueOnce({
+					data: {
+						authorization_endpoint: 'https://auth.example.com/oauth2/auth',
+						token_endpoint: 'https://auth.example.com/oauth2/token',
+						registration_endpoint: 'https://auth.example.com/oauth2/register',
+						grant_types_supported: ['authorization_code'],
+						token_endpoint_auth_methods_supported: ['none'],
+						code_challenge_methods_supported: ['S256'],
+					},
+				});
+				vi.mocked(httpClientMock.post).mockResolvedValueOnce({
+					data: { client_id: 'registered-client-id' },
+				});
+
+				await service.generateAOauth2AuthUri(credential, {
+					cid: credential.id,
+					origin: 'static-credential',
+					userId: 'user-id',
+				});
+
+				expect(service.encryptAndSaveData).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.objectContaining({
+						grantType: 'pkce',
+						usePkce: true,
+						clientId: 'registered-client-id',
+					}),
+					expect.arrayContaining(['authentication', 'clientSecret']),
 				);
 			});
 

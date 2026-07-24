@@ -310,6 +310,10 @@ export interface WorkflowTestCaseResult {
 	workflowChecks?: CheckOutcome[];
 	/** Captured build-time sub-agent/tool activity for builder debugging. */
 	buildTrace?: BuildTrace;
+	/** `claude` build spend in USD for this iteration's build (--build-via-mcp only). */
+	buildCostUsd?: number;
+	/** Assistant turns across the `claude` build's attempts (--build-via-mcp only). */
+	buildTurns?: number;
 	/** Per-expectation verdicts from the build-expectations judge. Aggregated as
 	 *  scoring units alongside execution scenarios. */
 	buildExpectationResults?: BuildExpectationResult[];

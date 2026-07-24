@@ -41,7 +41,7 @@ instance's Instance AI config and the README's environment-variables section.
 
 | Mode | How | Produces |
 |---|---|---|
-| **Direct loop** | no `LANGSMITH_API_KEY` | `eval-results.json` + HTML report locally |
+| **Direct driver** | no `LANGSMITH_API_KEY` | `eval-results.json` + HTML report locally — same pipeline and row order as the LangSmith driver (TRUST-261), row concurrency follows `--concurrency` |
 | **LangSmith** | `LANGSMITH_API_KEY` set | also records an experiment and auto-compares against the baseline |
 | **Prebuilt** | `--prebuilt-workflows <manifest>` | skips the build; verifies existing workflows (score MCP/hand-built cohorts on the same verifier) |
 

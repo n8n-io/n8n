@@ -42,6 +42,7 @@ import type {
 	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
 	InstanceAiBuilderDelegate,
+	ModelConfig,
 } from '@n8n/instance-ai';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
@@ -296,6 +297,9 @@ export class InstanceAiAdapterService {
 			/** Per-user config-evals gate (via `isConfigEvalsEnabled`). Falsy →
 			 *  eval-config service/tool not wired. */
 			configEvalsEnabled?: boolean;
+			/** Host-resolved model for the run — fallback for utility LLM calls
+			 *  (simulation fixtures, destructiveness classification). */
+			modelId?: ModelConfig;
 		},
 	): InstanceAiContext {
 		const {
@@ -306,6 +310,7 @@ export class InstanceAiAdapterService {
 			credentialIdAllowlist,
 			agentId,
 			configEvalsEnabled,
+			modelId,
 		} = options ?? {};
 
 		// Record gateway availability once per context. Fire-and-forget: the
@@ -317,6 +322,7 @@ export class InstanceAiAdapterService {
 		return {
 			userId: user.id,
 			projectId,
+			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService: this.createCredentialAdapter(user, projectId, credentialIdAllowlist),

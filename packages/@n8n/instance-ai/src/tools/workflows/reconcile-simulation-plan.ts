@@ -20,6 +20,7 @@ import {
 	findCredentiallessAiRoots,
 } from './plan-verification-simulation';
 import type { CredentialMap } from './resolve-credentials';
+import type { ModelConfig } from '../../types';
 import type {
 	NodeSimulationVerdict,
 	WorkflowBuildOutcome,
@@ -75,8 +76,10 @@ export async function reconcileSimulationPlan(args: {
 	buildOutcome: WorkflowBuildOutcome;
 	workflow: WorkflowJSON;
 	availableCredentials: CredentialMap;
+	/** Host-resolved model used when no eval model API key is configured in the environment. */
+	fallbackModelConfig?: ModelConfig;
 }): Promise<SimulationPlanPatch | undefined> {
-	const { buildOutcome, workflow, availableCredentials } = args;
+	const { buildOutcome, workflow, availableCredentials, fallbackModelConfig } = args;
 
 	const mockedEntries = Object.entries(buildOutcome.mockedCredentialsByNode ?? {});
 	const satisfiedNames = new Set(
@@ -131,6 +134,7 @@ export async function reconcileSimulationPlan(args: {
 		const freshVerdicts = await classifyNodesForSimulation({
 			workflow: scopedWorkflow,
 			mockedNodeNames: remainingMockedNames,
+			fallbackModelConfig,
 		});
 		freshVerdictByName = new Map(freshVerdicts.map((verdict) => [verdict.nodeName, verdict]));
 	}

@@ -16,6 +16,7 @@ import type { FetchFn } from '../runtime/model/model-factory';
 import { mergeProviderOptions } from '../runtime/model/prompt-cache';
 import { AgentEventBus } from '../runtime/state/event-bus';
 import { RunStateManager } from '../runtime/state/run-state';
+import { deriveSubAgentTelemetry } from '../runtime/telemetry/sub-agent-telemetry';
 import {
 	LOAD_TOOL_TOOL_NAME,
 	SEARCH_TOOLS_TOOL_NAME,
@@ -1113,6 +1114,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			const childThinkingConfig = shouldInheritThinking(options.modelConfig, childModelConfig)
 				? this.thinkingConfig
 				: undefined;
+			const telemetry = deriveSubAgentTelemetry(request.parentTelemetry) ?? options.telemetry;
 			const childRuntime = new AgentRuntime({
 				name: `${this.name}:${request.taskName}`,
 				model: childModelConfig,
@@ -1129,7 +1131,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				promptCaching: this.promptCachingConfig,
 				checkpointStorage: this.checkpointStore,
 				...(childThinkingConfig !== undefined ? { thinking: childThinkingConfig } : {}),
-				...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
+				...(telemetry !== undefined ? { telemetry } : {}),
 				...(options.toolCallConcurrency !== undefined
 					? { toolCallConcurrency: options.toolCallConcurrency }
 					: {}),
@@ -1140,7 +1142,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 					...(request.parentAbortSignal !== undefined
 						? { abortSignal: request.parentAbortSignal }
 						: {}),
-					...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
+					...(telemetry !== undefined ? { telemetry } : {}),
 					...(request.parentExecutionCounter !== undefined
 						? { executionCounter: request.parentExecutionCounter }
 						: {}),

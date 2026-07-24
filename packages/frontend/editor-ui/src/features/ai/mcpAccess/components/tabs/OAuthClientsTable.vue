@@ -28,6 +28,7 @@ import {
 	scopeLabel,
 } from '../../clients.utils';
 import type { OAuthClientFilters } from '../../clients.utils';
+import McpEmptyStateCard from '../McpEmptyStateCard.vue';
 import OAuthClientDetailsModal from '../OAuthClientDetailsModal.vue';
 import OAuthClientOwnerCell from './OAuthClientOwnerCell.vue';
 import OAuthClientsFilters from './OAuthClientsFilters.vue';
@@ -97,6 +98,19 @@ const hasActiveFilters = computed(
 		filters.value.connected !== null,
 );
 
+// Aggregate total across the tabs a manager can see (own count for members).
+const totalClients = computed(
+	() => mcpStore.oauthClientTotals.all ?? mcpStore.oauthClientTotals.mine,
+);
+
+// Show only the empty state (hiding tabs, toolbar and table) when there are no
+// clients anywhere — so a manager with 0 of their own but clients under "All"
+// still gets the tabs. A search that returns nothing keeps the toolbar
+// (hasActiveFilters) so the user can clear it.
+const showEmptyState = computed(
+	() => props.clients.length === 0 && totalClients.value === 0 && !hasActiveFilters.value,
+);
+
 function onFiltersChange(newFilters: OAuthClientFilters) {
 	filters.value = newFilters;
 	emit('update:filters', newFilters);
@@ -140,7 +154,7 @@ const tableHeaders = computed<Array<TableHeader<OAuthClientResponseDto>>>(() => 
 	{
 		title: i18n.baseText('settings.mcp.oAuthClients.table.clientName'),
 		key: 'name',
-		width: 220,
+		width: 190,
 		disableSort: true,
 		value() {
 			return;
@@ -170,7 +184,7 @@ const tableHeaders = computed<Array<TableHeader<OAuthClientResponseDto>>>(() => 
 	{
 		title: i18n.baseText('settings.mcp.oAuthClients.table.connectedAt'),
 		key: 'grantedAt',
-		width: 160,
+		width: 110,
 		disableSort: true,
 		value() {
 			return;
@@ -226,6 +240,12 @@ function onRevoke(item: OAuthClientResponseDto) {
 			<N8nLoading :loading="props.loading" variant="h1" class="mb-l" />
 			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
 		</div>
+		<McpEmptyStateCard
+			v-else-if="showEmptyState"
+			data-test-id="mcp-clients-empty"
+			:title="i18n.baseText('settings.mcp.connectedClients.empty.title')"
+			:description="i18n.baseText('settings.mcp.connectedClients.empty.description')"
+		/>
 		<div v-else class="mt-s mb-xl">
 			<div :class="$style.toolbar">
 				<N8nTabs
@@ -262,6 +282,7 @@ function onRevoke(item: OAuthClientResponseDto) {
 			<N8nDataTableServer
 				v-model:page="page"
 				v-model:items-per-page="itemsPerPage"
+				:class="$style.table"
 				data-test-id="oauth-clients-data-table"
 				:headers="tableHeaders"
 				:items="props.clients"
@@ -270,26 +291,7 @@ function onRevoke(item: OAuthClientResponseDto) {
 				@click:row="(_, { item }) => openDetails(item)"
 			>
 				<template v-if="mcpStore.oauthClientsCount === 0" #cover>
-					<div v-if="!hasActiveFilters" :class="$style['empty-state']">
-						<N8nText data-test-id="mcp-workflow-table-empty-state" size="large" color="text-base">
-							{{ i18n.baseText('settings.mcp.oauth.table.empty.title') }}
-						</N8nText>
-						<N8nText
-							data-test-id="mcp-workflow-table-empty-state-description"
-							size="small"
-							color="text-base"
-						>
-							{{ i18n.baseText('settings.mcp.oauth.table.empty.description') }}
-						</N8nText>
-						<N8nButton
-							variant="solid"
-							data-test-id="mcp-oauth-create-client-button"
-							@click="mcpStore.openConnectPopover()"
-						>
-							{{ i18n.baseText('settings.mcp.oauth.table.empty.button') }}
-						</N8nButton>
-					</div>
-					<div v-else :class="$style['empty-state']">
+					<div :class="$style['empty-state']">
 						<N8nText data-test-id="mcp-clients-no-results" size="small" color="text-base">
 							{{ i18n.baseText('settings.mcp.oAuthClients.search.noResults') }}
 						</N8nText>
@@ -339,6 +341,7 @@ function onRevoke(item: OAuthClientResponseDto) {
 				</template>
 				<template #[`item.actions`]="{ item }">
 					<N8nButton
+						:class="$style['revoke-action']"
 						variant="outline"
 						size="small"
 						data-test-id="mcp-oauth-client-revoke-button"
@@ -353,7 +356,6 @@ function onRevoke(item: OAuthClientResponseDto) {
 		<OAuthClientDetailsModal
 			v-model:open="detailsOpen"
 			:client="detailsClient"
-			:scope-tools="props.scopeTools"
 			@revoke="onRevoke"
 		/>
 	</div>
@@ -394,8 +396,8 @@ function onRevoke(item: OAuthClientResponseDto) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: var(--spacing--xl);
-	height: var(--spacing--xl);
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
 	flex-shrink: 0;
 	/* fixed white tile so dark brand marks stay visible on the dark theme */
 	background-color: var(--color--neutral-white);
@@ -404,13 +406,21 @@ function onRevoke(item: OAuthClientResponseDto) {
 }
 
 .client-icon {
-	width: var(--spacing--md);
-	height: var(--spacing--md);
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
 	/* the tile is always white, so the fallback MCP glyph must stay dark in both themes */
 	color: var(--color--neutral-black);
 }
 
-/* the whole row opens the details modal; hint that on the access summary */
+/* Access summary stays on one line and truncates within its column (the fixed
+   table layout below gives the cell a real width). The row opens the details modal. */
+.access {
+	display: block;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
 .access:hover {
 	color: var(--color--primary);
 	text-decoration: underline;
@@ -430,5 +440,27 @@ function onRevoke(item: OAuthClientResponseDto) {
 	gap: var(--spacing--sm);
 	padding: var(--spacing--lg) 0;
 	min-height: 250px;
+}
+
+/* The whole row opens the details modal, so hint it with a pointer... */
+.table :global(tbody tr) {
+	cursor: pointer;
+}
+
+/* ...and keep the revoke button out of the way until the row is hovered/focused. */
+.table :global(tbody tr) .revoke-action {
+	opacity: 0;
+	transition: opacity var(--duration--snappy) var(--easing--ease-out);
+}
+
+.table :global(tbody tr:hover) .revoke-action,
+.table :global(tbody tr:focus-within) .revoke-action {
+	opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.table :global(tbody tr) .revoke-action {
+		transition: none;
+	}
 }
 </style>

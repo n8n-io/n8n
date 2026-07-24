@@ -188,7 +188,6 @@ const InstanceAiAgentPreviewStub = defineComponent({
 	props: {
 		agentId: { type: String, required: true },
 		projectId: { type: String, required: true },
-		refreshKey: { type: Number, required: true },
 	},
 	setup(props) {
 		return () =>
@@ -196,7 +195,6 @@ const InstanceAiAgentPreviewStub = defineComponent({
 				'data-test-id': 'instance-ai-agent-preview-stub',
 				'data-agent-id': props.agentId,
 				'data-project-id': props.projectId,
-				'data-refresh-key': String(props.refreshKey),
 			});
 	},
 });
@@ -939,7 +937,7 @@ describe('InstanceAiThreadView', () => {
 					{
 						agentId: 'agent-builder-child',
 						role: 'agent-builder',
-						kind: 'builder',
+						kind: 'agent-builder',
 						status: 'completed',
 						textContent: '',
 						reasoning: '',
@@ -970,7 +968,6 @@ describe('InstanceAiThreadView', () => {
 
 		expect(preview).toHaveAttribute('data-agent-id', 'agent-1');
 		expect(preview).toHaveAttribute('data-project-id', 'proj-1');
-		expect(preview).toHaveAttribute('data-refresh-key', '1');
 	});
 
 	it('closes the agent artifact preview from the wrapper toggle', async () => {
@@ -999,7 +996,7 @@ describe('InstanceAiThreadView', () => {
 					{
 						agentId: 'agent-builder-child',
 						role: 'agent-builder',
-						kind: 'builder',
+						kind: 'agent-builder',
 						status: 'completed',
 						textContent: '',
 						reasoning: '',
