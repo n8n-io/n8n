@@ -2,8 +2,6 @@ import {
 	DAYTONA_HOME,
 	N8N_SANDBOX_HOME,
 	getPromptWorkspaceRoot,
-	getPromptSandboxInstructions,
-	getPromptFilesystemInstructions,
 	getWorkspaceRoot,
 	WORKSPACE_DIR,
 	type SandboxWorkspace,
@@ -16,26 +14,6 @@ describe('getPromptWorkspaceRoot', () => {
 
 	it('returns n8n-sandbox workspace root', () => {
 		expect(getPromptWorkspaceRoot('n8n-sandbox')).toBe('/home/user/workspace');
-	});
-});
-
-describe('getPromptSandboxInstructions', () => {
-	// Empty across providers: Instance AI puts sandbox guidance in the system
-	// prompt; this stays byte-stable so it cannot bust the cached prefix.
-	it('returns the same empty stable text for every provider', () => {
-		expect(getPromptSandboxInstructions('daytona')).toBe('');
-		expect(getPromptSandboxInstructions('daytona')).toBe(
-			getPromptSandboxInstructions('n8n-sandbox'),
-		);
-	});
-});
-
-describe('getPromptFilesystemInstructions', () => {
-	it('returns the same empty stable text for every provider', () => {
-		expect(getPromptFilesystemInstructions('daytona')).toBe('');
-		expect(getPromptFilesystemInstructions('daytona')).toBe(
-			getPromptFilesystemInstructions('n8n-sandbox'),
-		);
 	});
 });
 

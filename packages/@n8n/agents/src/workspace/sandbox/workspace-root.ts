@@ -16,33 +16,6 @@ export function getPromptWorkspaceRoot(provider: SandboxProvider): string {
 	}
 }
 
-/**
- * Stable, cache-safe sandbox description appended via workspace tools.
- *
- * Instance AI surfaces sandbox/filesystem guidance in the system prompt's
- * `## Sandbox workspace` section instead. Returning empty here keeps the
- * workspace-appended block from duplicating that text while still providing a
- * byte-stable (empty) value across agent rebuilds/resumes — the live
- * sandbox's `getInstructions()` must not be used, because a lazily-resolved
- * workspace reports different text depending on whether its (per-build,
- * in-memory) handle happens to be resolved yet.
- */
-export function getPromptSandboxInstructions(_provider: SandboxProvider): string {
-	return '';
-}
-
-/**
- * Stable, cache-safe filesystem description appended via workspace tools.
- *
- * Same rationale as {@link getPromptSandboxInstructions}: content lives in the
- * system prompt's `## Sandbox workspace` section; this stays empty so the
- * lazily-resolved (and scoped) filesystem cannot shift the cached prompt
- * prefix across resumes.
- */
-export function getPromptFilesystemInstructions(_provider: SandboxProvider): string {
-	return '';
-}
-
 export interface SandboxWorkspace extends SandboxCommandTarget {
 	filesystem?: {
 		provider?: string;
