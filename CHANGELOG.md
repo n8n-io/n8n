@@ -1,3 +1,11 @@
+## [2.32.5](https://github.com/n8n-io/n8n/compare/n8n@2.32.4...n8n@2.32.5) (2026-07-24)
+
+
+### Bug Fixes
+
+* **core:** Sign S3 object paths with strict RFC 3986 encoding ([#34871](https://github.com/n8n-io/n8n/issues/34871)) ([95ad6f6](https://github.com/n8n-io/n8n/commit/95ad6f6eae274dcd0898128f3a23a90a9d69fafe))
+
+
 ## [2.32.4](https://github.com/n8n-io/n8n/compare/n8n@2.32.3...n8n@2.32.4) (2026-07-24)
 
 
