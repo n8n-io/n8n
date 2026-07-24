@@ -227,8 +227,12 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain(
 				'Never call `data-tables` or `parse-file` without loading `data-table-manager` first',
 			);
+			expect(prompt).toContain('what data tables do I have?');
 			expect(prompt).toContain(
-				'never call `build-workflow` without loading `workflow-builder` first',
+				'load `data-table-manager` then `workflow-builder` before `build-workflow`',
+			);
+			expect(prompt).toContain(
+				'Never call `build-workflow` without loading `workflow-builder` first',
 			);
 			expect(prompt).toContain(
 				'never call `create-tasks` without loading it via `load_tool` first',

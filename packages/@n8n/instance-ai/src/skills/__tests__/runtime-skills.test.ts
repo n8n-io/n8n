@@ -49,7 +49,7 @@ describe('Instance AI runtime skills', () => {
 		expect(dataTableManager).toMatchObject({
 			name: 'data-table-manager',
 			description:
-				'Designs and manages n8n Data Tables directly with the data-tables and parse-file tools. Use when the user asks to list, show, create, inspect, import, seed, query, update, clean up, rename columns in, or delete data tables and rows, especially from CSV/XLSX/JSON attachments, and before building or planning workflows that create or write to Data Tables.',
+				'Designs and manages n8n Data Tables directly with the data-tables and parse-file tools. Use for natural standalone requests like "what data tables do I have?", "show/list my tables", or "what columns are in this table?", and whenever the user asks to list, show, create, inspect, import, seed, query, update, clean up, rename columns in, or delete data tables and rows, especially from CSV/XLSX/JSON attachments. Also load before building or planning workflows that create or write to Data Tables.',
 			platforms: ['daytona'],
 			recommendedTools: ['data-tables', 'parse-file'],
 		});

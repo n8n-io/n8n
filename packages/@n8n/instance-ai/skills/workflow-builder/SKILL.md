@@ -397,10 +397,10 @@ n8n normalizes Data Table column names to snake_case, for example `dayName`
 becomes `day_name`. Always call `data-tables(action="schema")` before using a
 Data Table in workflow code so you use real column names.
 
-When building workflows that create or use tables, use the data table skill
-guidance already loaded by the orchestrator when available. Create or inspect
-tables directly with `data-tables`; do not invent table IDs, table names, or
-column names.
+When building workflows that create or use tables, load `data-table-manager`
+via `load_skill` first (if not already loaded this turn), then follow that
+skill for schema/row guidance. Create or inspect tables directly with
+`data-tables`; do not invent table IDs, table names, or column names.
 
 When the ask is a summary, digest, or report over a period ("weekly summary of
 what was recorded", "digest of this week's rows"), the summary branch must
