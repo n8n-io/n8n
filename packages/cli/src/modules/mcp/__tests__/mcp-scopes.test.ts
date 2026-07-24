@@ -159,6 +159,7 @@ describe('McpService scope enforcement', () => {
 		const mappedAgentTools = new Set([
 			...TOOLS_BY_SCOPE['agent:read'],
 			...TOOLS_BY_SCOPE['agent:write'],
+			...TOOLS_BY_SCOPE['agent:publish'],
 		]);
 		expect(new Set(AGENT_TOOLS)).toEqual(mappedAgentTools);
 	});

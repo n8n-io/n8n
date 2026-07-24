@@ -1372,6 +1372,21 @@ describe('McpAgentToolsService', () => {
 			});
 		});
 
+		it('denies connect without the agent:publish scope even when update is allowed', async () => {
+			userHasScopesMock.mockImplementation(
+				async (_user: unknown, scopes: string[]) => !scopes.includes('agent:publish'),
+			);
+
+			const result = await callTool('update_agent_integration', input);
+
+			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:publish'], false, {
+				projectId: 'project-1',
+			});
+			expect(result.isError).toBe(true);
+			expect(integrationPersistenceService.saveCredentialIntegration).not.toHaveBeenCalled();
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		});
+
 		it('requires settings for telegram integrations', async () => {
 			const result = await callTool('update_agent_integration', { ...input, type: 'telegram' });
 

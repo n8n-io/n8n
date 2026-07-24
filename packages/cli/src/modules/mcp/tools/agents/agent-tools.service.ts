@@ -1387,6 +1387,11 @@ export class McpAgentToolsService {
 		const agent = await this.resolveAgent(user, input.agentId);
 		const projectId = agent.projectId;
 		await this.assertScope(user, projectId, 'agent:update');
+		if (input.action === 'connect') {
+			// Connecting publishes the current draft, so it needs the publish
+			// scope on top of update (mirrors the builder's connect flow).
+			await this.assertScope(user, projectId, 'agent:publish');
+		}
 		return input.action === 'disconnect'
 			? await this.disconnectIntegration(input, agent)
 			: await this.connectIntegration(user, input, agent, projectId);

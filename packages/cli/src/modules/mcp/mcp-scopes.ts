@@ -55,12 +55,9 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	'agent:write': [
 		'create_agent',
 		'mutate_agent',
-		'publish_agent',
-		'unpublish_agent',
 		'revert_agent',
 		'delete_agent',
 		'verify_agent_mcp_server',
-		'update_agent_integration',
 		'search_agents',
 		'get_agent',
 		'list_agent_versions',
@@ -68,6 +65,10 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'validate_agent',
 		'get_agent_builder_reference',
 	],
+	// Publishing flips what runs live, so it is a separate consent grant from
+	// editing drafts. update_agent_integration sits here because connecting an
+	// integration publishes the current draft.
+	'agent:publish': ['publish_agent', 'unpublish_agent', 'update_agent_integration'],
 	// explore_node_resources queries external services with stored credentials,
 	// so it must sit behind the credential scope rather than a workflow one.
 	'credential:read': ['list_credentials', 'list_n8n_connect_services', 'explore_node_resources'],

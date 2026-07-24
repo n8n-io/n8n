@@ -82,6 +82,7 @@ onBeforeUnmount(() => {
 		width="600px"
 		:class="$style.container"
 		:event-bus="modalBus"
+		:close-on-click-modal="false"
 	>
 		<template #content>
 			<div :class="$style.content">
@@ -106,7 +107,6 @@ onBeforeUnmount(() => {
 				<N8nButton
 					variant="subtle"
 					:label="i18n.baseText('generic.cancel')"
-					:size="'small'"
 					:disabled="isSaving"
 					data-test-id="mcp-connect-agents-cancel-button"
 					@click="cancel(close)"

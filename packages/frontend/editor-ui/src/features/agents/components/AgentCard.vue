@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import dateformat from 'dateformat';
-import { N8nActionToggle, N8nBadge, N8nCard, N8nText } from '@n8n/design-system';
+import {
+	N8nActionToggle,
+	N8nBadge,
+	N8nCard,
+	N8nIcon,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { MODAL_CONFIRM } from '@/app/constants';
@@ -45,8 +52,7 @@ const { canUpdate, canDelete, canPublish, canUnpublish } = useAgentPermissions(
 const isPublished = computed(() => props.agent.activeVersionId !== null);
 
 const isMcpEnabled = computed(
-	() =>
-		settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
+	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
 
 // Optimistic state so the action label flips without refetching the list
@@ -56,6 +62,8 @@ const mcpToggleStatus = ref<boolean | null>(null);
 const isAvailableInMCP = computed(
 	() => mcpToggleStatus.value ?? props.agent.availableInMCP ?? false,
 );
+
+const showMcpIndicator = computed(() => isMcpEnabled.value && isAvailableInMCP.value);
 
 const favoriteStore = useFavoritesStore();
 const isFavorite = computed(() => favoriteStore.isFavorite(props.agent.id, 'agent'));
@@ -172,6 +180,12 @@ async function toggleMCPAccess(enabled: boolean) {
 				<TimeAgo :date="String(agent.updatedAt)" /> |
 			</span>
 			<span> {{ locale.baseText('agents.list.created') }} {{ formattedCreatedAtDate }} </span>
+			<span v-if="showMcpIndicator">|</span>
+			<span v-if="showMcpIndicator" :class="$style.mcpIndicator" data-test-id="agent-card-mcp">
+				<N8nTooltip placement="right" :content="locale.baseText('agents.list.availableInMCP')">
+					<N8nIcon icon="mcp" size="medium" />
+				</N8nTooltip>
+			</span>
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
@@ -229,6 +243,11 @@ async function toggleMCPAccess(enabled: boolean) {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
 	gap: var(--spacing--2xs);
+}
+
+.mcpIndicator {
+	display: inline-flex;
+	align-items: center;
 }
 
 .cardActions {

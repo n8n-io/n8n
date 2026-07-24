@@ -29,6 +29,7 @@ export const MCP_INSTANCE_SCOPES = [
 	'execution:read',
 	'agent:read',
 	'agent:write',
+	'agent:publish',
 	'credential:read',
 	'dataTable:read',
 	'dataTable:write',
