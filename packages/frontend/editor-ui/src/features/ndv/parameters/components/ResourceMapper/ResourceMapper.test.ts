@@ -549,6 +549,8 @@ describe('ResourceMapper.vue', () => {
 		const mappingContainer = getByTestId('mapping-fields-container');
 		expect(mappingContainer.textContent).not.toContain('user_added_field');
 		expect(mappingContainer.textContent).toContain('First name');
+		// Stale check and reconcile should reuse the same fetched fields (no second fetch).
+		expect(fetchFieldsSpy).toHaveBeenCalledTimes(1);
 	});
 
 	it('renders initially selected matching column properly', async () => {

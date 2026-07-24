@@ -138,7 +138,7 @@ async function checkStaleFields(): Promise<void> {
 		fetchedFields.fields,
 	);
 	if (isSchemaStale && props.parameter.typeOptions?.resourceMapper?.refreshStaleSchemaOnOpen) {
-		await initFetching(true);
+		await initFetching(true, fetchedFields);
 		return;
 	}
 	state.hasStaleFields = isSchemaStale;
@@ -320,7 +320,10 @@ const pluralFieldWord = computed<string>(() => {
 	);
 });
 
-async function initFetching(inlineLoading = false): Promise<void> {
+async function initFetching(
+	inlineLoading = false,
+	preFetchedFields?: ResourceMapperFields | null,
+): Promise<void> {
 	state.loadingError = false;
 	if (inlineLoading) {
 		state.refreshInProgress = true;
@@ -328,7 +331,7 @@ async function initFetching(inlineLoading = false): Promise<void> {
 		state.loading = true;
 	}
 	try {
-		await loadAndSetFieldsToMap();
+		await loadAndSetFieldsToMap(preFetchedFields);
 		if (!state.paramValue.matchingColumns || state.paramValue.matchingColumns.length === 0) {
 			onMatchingColumnsChanged(defaultSelectedMatchingColumns.value);
 		}
@@ -393,12 +396,14 @@ async function fetchFields(): Promise<ResourceMapperFields | null> {
 	return fetchedFields;
 }
 
-async function loadAndSetFieldsToMap(): Promise<void> {
+async function loadAndSetFieldsToMap(
+	preFetchedFields?: ResourceMapperFields | null,
+): Promise<void> {
 	if (!props.node) {
 		return;
 	}
 
-	const fetchedFields = await fetchFields();
+	const fetchedFields = preFetchedFields !== undefined ? preFetchedFields : await fetchFields();
 
 	if (fetchedFields !== null) {
 		const newSchema = fetchedFields.fields.map((field) => {
