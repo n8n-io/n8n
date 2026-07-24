@@ -264,7 +264,12 @@ export class OauthService {
 		// Private credentials are connected per-user, so executing users can authorize
 		// their own account without edit rights. Shared/static credentials store the
 		// token on the shared credential itself, so connecting them still requires edit.
-		const existingCredential = await this.credentialsFinderService.findCredentialById(credentialId);
+		const existingCredential = await this.credentialsFinderService.findCredentialById(
+			credentialId,
+			{
+				includeInstanceCredentials: true,
+			},
+		);
 		const requiredScope = existingCredential?.isResolvable
 			? 'credential:connect'
 			: 'credential:update';
@@ -273,6 +278,7 @@ export class OauthService {
 			credentialId,
 			req.user,
 			[requiredScope],
+			{ includeInstanceCredentials: true },
 		);
 
 		if (!credential) {
@@ -427,8 +433,12 @@ export class OauthService {
 	/** Get a credential without user check */
 	protected async getCredentialWithoutUser(
 		credentialId: string,
+		options: { onlyProjectCredentials?: boolean } = {},
 	): Promise<CredentialsEntity | null> {
-		return await this.credentialsRepository.findOneBy({ id: credentialId });
+		return await this.credentialsRepository.findOneBy({
+			id: credentialId,
+			...(options.onlyProjectCredentials ? { usageScope: 'project' as const } : {}),
+		});
 	}
 
 	/**
@@ -549,7 +559,7 @@ export class OauthService {
 			}
 			return [
 				{ ...decoded, ...decryptedState },
-				await this.getCredentialWithoutUser(decryptedState.cid),
+				await this.getCredentialWithoutUser(decryptedState.cid, { onlyProjectCredentials: true }),
 			];
 		}
 
@@ -569,6 +579,7 @@ export class OauthService {
 			decryptedState.cid,
 			req.user,
 			['credential:update'],
+			{ includeInstanceCredentials: true },
 		);
 
 		return [{ ...decoded, ...decryptedState }, credential];
@@ -733,7 +744,7 @@ export class OauthService {
 		projectId: string,
 	): Promise<Record<string, string> | null> {
 		const credential = await this.credentialsRepository.findOne({
-			where: { id: credentialId },
+			where: { id: credentialId, usageScope: 'project' },
 			relations: { shared: true },
 		});
 		if (!credential) return null;

@@ -1,6 +1,11 @@
 import { LicenseState } from '@n8n/backend-common';
-import type { CredentialsEntity, User } from '@n8n/db';
-import { Project, SharedCredentials, SharedCredentialsRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
+import {
+	CredentialsEntity,
+	Project,
+	SharedCredentials,
+	SharedCredentialsRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
@@ -41,6 +46,11 @@ export class EnterpriseCredentialsService {
 		entityManager?: EntityManager,
 	) {
 		const em = entityManager ?? this.sharedCredentialsRepository.manager;
+		const canShare = await em.exists(CredentialsEntity, {
+			where: { id: credentialId, usageScope: 'project' },
+		});
+		if (!canShare) throw new NotFoundError('Credential not found');
+
 		const roles = await this.roleService.rolesWithScope('project', ['project:list']);
 
 		let projects = await em.find(Project, {
@@ -102,6 +112,7 @@ export class EnterpriseCredentialsService {
 					// TODO: replace credential:update with credential:decrypt once it lands
 					// see: https://n8nio.slack.com/archives/C062YRE7EG4/p1708531433206069?thread_ts=1708525972.054149&cid=C062YRE7EG4
 					['credential:read', 'credential:update'],
+					{ includeInstanceCredentials: true },
 				)
 			: null;
 
@@ -112,9 +123,12 @@ export class EnterpriseCredentialsService {
 		} else {
 			// Otherwise try to find them with only the `credential:read` scope. In
 			// that case we return them without the decrypted data.
-			credential = await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
-				'credential:read',
-			]);
+			credential = await this.credentialsFinderService.findCredentialForUser(
+				credentialId,
+				user,
+				['credential:read'],
+				{ includeInstanceCredentials: true },
+			);
 
 			// Connect-capable users of a private credential need the redacted blueprint
 			// (secrets stay masked) so the UI can detect the OAuth type and render the
@@ -122,9 +136,12 @@ export class EnterpriseCredentialsService {
 			if (
 				includeDecryptedData &&
 				credential?.isResolvable &&
-				(await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
-					'credential:connect',
-				]))
+				(await this.credentialsFinderService.findCredentialForUser(
+					credentialId,
+					user,
+					['credential:connect'],
+					{ includeInstanceCredentials: true },
+				))
 			) {
 				decryptedData = await this.credentialsService.decrypt(credential);
 			}
