@@ -29,6 +29,13 @@ export interface InterceptedTurn {
 	method: string;
 	nodeType: string;
 	requestBody: unknown;
+	/**
+	 * Wire-level response body as served to the vendor SDK (post protocol
+	 * translation) — NOT the mock handler's internal shorthand. Judges read this
+	 * field as "what the node received"; recording the pre-translation shorthand
+	 * made them misattribute node-side failures to a malformed mock envelope.
+	 * For streamed turns this is the equivalent non-streamed envelope.
+	 */
 	mockResponse: unknown;
 }
 
@@ -232,6 +239,33 @@ export class LlmWireServer {
 			`[EvalMock] wire turn root="${rootName}" stream=${String(stream)} responseHead=${JSON.stringify(mockResponse?.body ?? null).slice(0, 300)}`,
 		);
 
+		// Translate to the wire envelope BEFORE the ledger write so the ledger
+		// records exactly what the SDK receives (a translator throw records an
+		// error turn instead of leaking the handler's internal shorthand).
+		let wireBody: Record<string, unknown>;
+		try {
+			wireBody = adapter.forwardObject(mockResponse, model);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.options.logger.error(
+				`[EvalMock] Wire-server envelope translation failed for root "${rootName}": ${message}`,
+			);
+			try {
+				this.options.onIntercept?.({
+					rootName,
+					url: synthetic.url,
+					method: synthetic.method ?? 'POST',
+					nodeType: subNode.type,
+					requestBody: req.body,
+					mockResponse: { evalMockGenerationError: `envelope translation failed: ${message}` },
+				});
+			} catch {
+				// Ledger write must never block the error response.
+			}
+			this.respondWithError(adapter, res, message);
+			return;
+		}
+
 		// Ledger write BEFORE the response so consumers see the entry deterministically
 		// after `await fetch(...)`. `requestBody` is stored by reference (express.json
 		// never re-touches it); callers must not mutate. A thrown `onIntercept` never
@@ -243,7 +277,7 @@ export class LlmWireServer {
 				method: synthetic.method ?? 'POST',
 				nodeType: subNode.type,
 				requestBody: req.body,
-				mockResponse: mockResponse?.body,
+				mockResponse: wireBody,
 			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -254,7 +288,7 @@ export class LlmWireServer {
 			if (stream) {
 				this.writeSseResponse(adapter, req, res, mockResponse, model);
 			} else {
-				res.status(200).json(adapter.forwardObject(mockResponse, model));
+				res.status(200).json(wireBody);
 			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
