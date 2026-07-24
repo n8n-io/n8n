@@ -4,10 +4,14 @@ import type {
 	INodeProperties,
 	ResourceMapperField,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import { assertPathSegment } from '../../helpers/utils';
+import {
+	addUniqueConstraintHint,
+	assertPathSegment,
+	HYPERLINK_WRITE_HEADERS,
+} from '../../helpers/utils';
+import { buildItemFieldsPayload, resolveItemMapperValues } from '../../item';
 import { listRLC, untilSiteSelected } from '../../list';
 import { itemColumns } from '../../list/columns';
 import { resolveSiteId, siteRLC } from '../../site';
@@ -39,36 +43,6 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-// A hyperlink column arrives as two mapper fields (`{name}.Url`/`{name}.Description`)
-// and must be folded back into SharePoint's two-part value; writing it requires
-// `Prefer: apiversion=2.1` (see the contract note in list/columns.ts).
-function buildItemFields(
-	value: IDataObject,
-	schema: ResourceMapperField[],
-): { fields: IDataObject; hasHyperlink: boolean } {
-	const hyperlinkColumns = new Set(
-		schema
-			.filter((field) => field.type === 'url' && field.id.endsWith('.Url'))
-			.map((field) => field.id.slice(0, -'.Url'.length)),
-	);
-
-	// Null-prototype accumulator: column names are data, not code
-	const fields = Object.create(null) as IDataObject;
-	let hasHyperlink = false;
-	for (const [key, fieldValue] of Object.entries(value)) {
-		const dot = key.lastIndexOf('.');
-		const name = dot === -1 ? key : key.slice(0, dot);
-		const part = dot === -1 ? '' : key.slice(dot + 1);
-		if (hyperlinkColumns.has(name) && (part === 'Url' || part === 'Description')) {
-			hasHyperlink = true;
-			fields[name] = { ...(fields[name] as IDataObject), [part]: fieldValue };
-		} else {
-			fields[key] = fieldValue;
-		}
-	}
-	return { fields: { ...fields }, hasHyperlink };
-}
-
 export async function execute(
 	this: IExecuteFunctions,
 	i: number,
@@ -82,22 +56,9 @@ export async function execute(
 		'List',
 	);
 
-	const mappingMode = this.getNodeParameter('columns.mappingMode', i) as string;
 	const schema = this.getNodeParameter('columns.schema', i, []) as ResourceMapperField[];
-
-	let value: IDataObject;
-	if (mappingMode === 'autoMapInputData') {
-		const knownColumns = new Set(schema.map((field) => field.id));
-		value = Object.fromEntries(
-			Object.entries(this.getInputData()[i].json).filter(([key]) => knownColumns.has(key)),
-		);
-	} else {
-		// The mapper's shipped default is { value: null } and the {} fallback only
-		// covers undefined — coalesce so v1's create-with-server-defaults survives
-		value = (this.getNodeParameter('columns.value', i, {}) ?? {}) as IDataObject;
-	}
-
-	const { fields, hasHyperlink } = buildItemFields(value, schema);
+	const value = resolveItemMapperValues.call(this, i);
+	const { fields, hasHyperlink } = buildItemFieldsPayload(value, schema);
 
 	try {
 		return await microsoftApiRequest.call(
@@ -107,12 +68,10 @@ export async function execute(
 			{ fields },
 			{},
 			undefined,
-			hasHyperlink ? { Prefer: 'apiversion=2.1' } : {},
+			hasHyperlink ? HYPERLINK_WRITE_HEADERS : {},
 		);
 	} catch (error) {
-		if (error instanceof NodeApiError && error.message.includes('unique constraints')) {
-			error.description = "Double-check the value(s) in 'Columns' and try again";
-		}
+		addUniqueConstraintHint(error);
 		throw error;
 	}
 }
