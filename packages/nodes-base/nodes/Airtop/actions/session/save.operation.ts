@@ -57,7 +57,12 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const sessionId = validateSessionId.call(this, index);
-	let profileName = validateRequiredStringField.call(this, index, 'profileName', 'Profile Name');
+	let profileName = validateRequiredStringField.call(
+		this,
+		index,
+		'profileName',
+		'Browser Profile ID',
+	);
 	profileName = validateProfileName.call(this, index);
 
 	const response = await apiRequest.call(
