@@ -2,10 +2,11 @@ import { screen, waitFor, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { ElNotification } from 'element-plus';
 import { h, defineComponent } from 'vue';
-import { useToast, setNotify, setToastZIndex } from './useToast';
+import { useToast, setNotify } from './useToast';
 import { useTelemetry } from './useTelemetry';
 import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { VIEWS } from '@n8n/frontend-constants/views';
+import { APP_Z_INDEXES } from '@n8n/frontend-constants/z-indexes';
 import { vi } from 'vitest';
 
 vi.mock('./useTelemetry');
@@ -364,22 +365,23 @@ describe('useToast', () => {
 		});
 	});
 
-	describe('setToastZIndex', () => {
+	describe('toast z-index', () => {
 		afterEach(() => {
 			// Restore the notifier registered at module load for later tests.
 			setNotify(ElNotification);
 		});
 
-		it('applies the registered z-index to notifications', () => {
+		it('sources the toast z-index from the shared layering scale', () => {
 			const notifySpy = vi.fn((_options: Record<string, unknown>) => ({ close: vi.fn() }));
 			setNotify(notifySpy);
-			// A non-2100 value proves the injected layering scale is used and no
-			// hardcoded z-index remains in the composable.
-			setToastZIndex(1234);
 
 			useToast().showMessage({ message: 'Layered toast' });
 
-			expect(notifySpy).toHaveBeenCalledWith(expect.objectContaining({ zIndex: 1234 }));
+			// Asserting against the token (not a literal) proves the value is
+			// sourced from APP_Z_INDEXES, not hardcoded in the composable.
+			expect(notifySpy).toHaveBeenCalledWith(
+				expect.objectContaining({ zIndex: APP_Z_INDEXES.TOASTS }),
+			);
 		});
 	});
 });

@@ -7,6 +7,7 @@ import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { useI18n } from '@n8n/i18n';
 import { useExternalHooks } from './useExternalHooks';
 import { VIEWS } from '@n8n/frontend-constants/views';
+import { APP_Z_INDEXES } from '@n8n/frontend-constants/z-indexes';
 
 /**
  * Handle returned by the notification function. Declared locally so the DTS
@@ -41,18 +42,6 @@ export function setNotify(fn: NotifyFn): void {
 const noopHandle: NotificationHandle = { close() {} };
 const noopNotify: NotifyFn = () => noopHandle;
 
-let registeredToastZIndex: number | undefined;
-
-/**
- * Register the z-index for toast notifications so they layer above NDV and
- * modal overlays. Called once at bootstrap by `editor-ui`, which owns the
- * application layering scale (`APP_Z_INDEXES.TOASTS`); this package keeps only
- * the registration slot so it stays decoupled from the app's layering source.
- */
-export function setToastZIndex(zIndex: number): void {
-	registeredToastZIndex = zIndex;
-}
-
 const stickyNotificationQueue: NotificationHandle[] = [];
 
 export function useToast() {
@@ -78,15 +67,11 @@ export function useToast() {
 		const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 			dangerouslyUseHTMLString: true,
 			position: 'bottom-right',
+			// Layer above NDV and modal overlays, sourced from the shared scale.
+			zIndex: APP_Z_INDEXES.TOASTS,
 			appendTo: '#n8n-app',
 			customClass: 'content-toast',
 		};
-		// `editor-ui` registers the toast layer at bootstrap from its own
-		// layering scale; only apply it when known so this package carries no
-		// hardcoded z-index of its own.
-		if (registeredToastZIndex !== undefined) {
-			messageDefaults.zIndex = registeredToastZIndex;
-		}
 		const { message, title } = messageData;
 		const params = { ...messageDefaults, ...messageData };
 
