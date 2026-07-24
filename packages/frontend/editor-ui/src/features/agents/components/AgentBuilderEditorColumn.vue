@@ -113,23 +113,6 @@ const i18n = useI18n();
 						@agent-changed="emit('agent-changed')"
 					/>
 
-					<AgentInfoPanel
-						:config="localConfig"
-						:disabled="childrenDisabled"
-						:project-id="projectId"
-						:show-instructions="false"
-						embedded
-						@update:config="emit('update:config', $event)"
-					/>
-					<AgentInfoPanel
-						:config="localConfig"
-						:disabled="childrenDisabled"
-						:project-id="projectId"
-						:show-model="false"
-						:show-instructions-toolbar="true"
-						embedded
-						@update:config="emit('update:config', $event)"
-					/>
 					<AgentCapabilitiesSection
 						:config="localConfig"
 						:tools="localConfig?.tools ?? []"
@@ -151,6 +134,25 @@ const i18n = useI18n();
 						@remove-skill="emit('remove-skill', $event)"
 						@toggle-task="emit('toggle-task', $event)"
 						@tasks-changed="emit('tasks-changed')"
+					/>
+
+					<AgentInfoPanel
+						:config="localConfig"
+						:disabled="childrenDisabled"
+						:project-id="projectId"
+						:show-instructions="false"
+						embedded
+						@update:config="emit('update:config', $event)"
+					/>
+					<AgentInfoPanel
+						:config="localConfig"
+						:disabled="childrenDisabled"
+						:project-id="projectId"
+						:show-model="false"
+						:show-instructions-toolbar="true"
+						instructions-max-height="none"
+						embedded
+						@update:config="emit('update:config', $event)"
 					/>
 				</AgentBuilderTabPanel>
 
