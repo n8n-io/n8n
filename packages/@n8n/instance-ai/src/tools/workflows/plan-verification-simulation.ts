@@ -20,6 +20,7 @@ import {
 	generateSimulationFixtures,
 	type SimulationFixtures,
 } from './generate-simulation-fixtures.service';
+import { deriveWaitGateScripts } from './wait-gate-script';
 import {
 	isMockableTriggerNodeType,
 	isTriggerNodeType,
@@ -28,7 +29,10 @@ import {
 } from './workflow-json-utils';
 import type { Logger } from '../../logger';
 import type { ModelConfig } from '../../types';
-import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
+import type {
+	NodeSimulationVerdict,
+	WaitGateScript,
+} from '../../workflow-loop/workflow-loop-state';
 
 export interface PlanVerificationSimulationInput {
 	workflow: WorkflowJSON;
@@ -50,6 +54,8 @@ export interface PlanVerificationSimulationInput {
 
 export interface VerificationSimulationPlan {
 	nodeSimulationPlan?: NodeSimulationVerdict[];
+	/** Scripted decisions for wait gates on loops; absent when none derivable. */
+	waitGateScripts?: WaitGateScript[];
 	simulationFixtures?: SimulationFixtures;
 }
 
@@ -299,6 +305,7 @@ export async function planVerificationSimulation({
 }: PlanVerificationSimulationInput): Promise<VerificationSimulationPlan> {
 	let nodeSimulationPlan: NodeSimulationVerdict[] | undefined;
 	let simulationFixtures: SimulationFixtures | undefined;
+	let waitGateScripts: WaitGateScript[] | undefined;
 	const declaredFixtures = nonEmptyDeclaredFixtures(declaredOutputFixtures);
 	try {
 		nodeSimulationPlan = await classifyNodesForSimulation({
@@ -314,6 +321,8 @@ export async function planVerificationSimulation({
 			new Set(mockedNodeNames ?? []),
 		);
 		nodeSimulationPlan = withWaitGateHaltVerdicts(nodeSimulationPlan, workflow);
+		const derivedScripts = deriveWaitGateScripts(workflow, nodeSimulationPlan);
+		waitGateScripts = derivedScripts.length > 0 ? derivedScripts : undefined;
 		if (nodeSimulationPlan.length > 0) {
 			const planNeedingGeneratedFixtures = nodeSimulationPlan.filter(
 				(verdict) =>
@@ -365,5 +374,5 @@ export async function planVerificationSimulation({
 			simulationFixtures = declaredFixtures;
 		}
 	}
-	return { nodeSimulationPlan, simulationFixtures };
+	return { nodeSimulationPlan, simulationFixtures, waitGateScripts };
 }
