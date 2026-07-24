@@ -97,6 +97,8 @@ import {
 	generateOffsets,
 	getNodesGroupSize,
 	PUSH_NODES_OFFSET,
+	HORIZONTAL_NODE_STEP,
+	NODE_X_SPACING,
 	doRectsOverlap,
 } from '@/app/utils/nodeViewUtils';
 import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
@@ -189,6 +191,33 @@ type AddNodeOptions = AddNodesBaseOptions & {
 	isAutoAdd?: boolean;
 	actionName?: string;
 };
+
+/**
+ * Rendered-width estimate for the multi-node sequential placement step, so a
+ * bulk-added node doesn't overlap a wide neighbor. The agent card
+ * (AGENT_NODE_SIZE) and default widths are exact; configurable nodes render at
+ * a dynamic width (see calculateNodeSize) that no constant matches, so
+ * CONFIGURABLE_NODE_SIZE is an overlap-safe estimate only — exact configurable
+ * spacing needs the measured width and is tracked as a follow-up.
+ */
+function getPlacementNodeWidth(node: INodeUi, nodeTypeDescription: INodeTypeDescription): number {
+	if (isAgentNodeV2(node)) {
+		return AGENT_NODE_SIZE[0];
+	}
+
+	// A dynamic-inputs expression (e.g. AI Agent) or any non-main input means the
+	// node renders at the wider configurable size.
+	const { inputs } = nodeTypeDescription;
+	const hasNonMainInput =
+		Array.isArray(inputs) &&
+		NodeHelpers.getConnectionTypes(inputs).some((input) => input !== NodeConnectionTypes.Main);
+
+	if (typeof inputs === 'string' || hasNonMainInput) {
+		return CONFIGURABLE_NODE_SIZE[0];
+	}
+
+	return DEFAULT_NODE_SIZE[0];
+}
 
 export function useCanvasOperations() {
 	const rootStore = useRootStore();
@@ -989,9 +1018,13 @@ export function useCanvasOperations() {
 				continue;
 			}
 
-			// When we're adding multiple nodes, increment the X position for the next one
+			// When we're adding multiple nodes, place the next one a constant
+			// NODE_X_SPACING gap past this node's right edge — using its actual width
+			// so the gap stays 128 even next to a wide agent/configurable node.
 			insertPosition = [
-				lastAddedNode.position[0] + DEFAULT_NODE_SIZE[0] * 2 + GRID_SIZE,
+				lastAddedNode.position[0] +
+					getPlacementNodeWidth(lastAddedNode, nodeTypeDescription) +
+					NODE_X_SPACING,
 				lastAddedNode.position[1],
 			];
 		}
@@ -1524,13 +1557,13 @@ export function useCanvasOperations() {
 					const newNodeSize: [number, number] = isNewNodeConfigurable
 						? CONFIGURABLE_NODE_SIZE
 						: DEFAULT_NODE_SIZE;
-					// Calculate shift margin: base offset plus extra width for configurable nodes
-					// For standard nodes: PUSH_NODES_OFFSET (208)
-					// For configurable nodes: PUSH_NODES_OFFSET + (configurable width - default width)
+					// Calculate shift margin: base horizontal step plus extra width for configurable nodes
+					// For standard nodes: HORIZONTAL_NODE_STEP (224, matches auto-layout)
+					// For configurable nodes: HORIZONTAL_NODE_STEP + (configurable width - default width)
 					const extraWidth = isNewNodeConfigurable
 						? CONFIGURABLE_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0]
 						: 0;
-					const shiftMargin = PUSH_NODES_OFFSET + extraWidth;
+					const shiftMargin = HORIZONTAL_NODE_STEP + extraWidth;
 
 					shiftDownstreamNodesPosition(lastInteractedWithNode.value.name, shiftMargin, {
 						trackHistory: true,
@@ -1601,7 +1634,7 @@ export function useCanvasOperations() {
 					// When the node has only main outputs, mixed outputs, or no outputs at all
 					// We want to place the new node directly to the right of the last interacted with node.
 
-					let pushOffset = PUSH_NODES_OFFSET;
+					let pushOffset = HORIZONTAL_NODE_STEP;
 					if (isAgentNodeV2(lastInteractedWithNodeObject)) {
 						// The agent card is wider than a default node, so offset by its width
 						// to keep the standard gap to its right edge
@@ -1924,10 +1957,10 @@ export function useCanvasOperations() {
 			if (associatedWithMovedNode) {
 				// Sticky has nodes that will move - check if new node will be close enough to the sticky
 				const newNodeRightEdge = insertX + nodeSize[0];
-				// If the new node's right edge is within 2/3 of PUSH_NODES_OFFSET from the sticky's left edge,
+				// If the new node's right edge is within 2/3 of the horizontal step from the sticky's left edge,
 				// stretch the sticky to include the new node
 				const isNewNodeCloseToSticky =
-					newNodeRightEdge > stickyLeftEdge + (2 * PUSH_NODES_OFFSET) / 3;
+					newNodeRightEdge > stickyLeftEdge + (2 * HORIZONTAL_NODE_STEP) / 3;
 
 				if (isNewNodeCloseToSticky) {
 					// New node is close enough to sticky - move AND stretch
@@ -2014,9 +2047,9 @@ export function useCanvasOperations() {
 		if (!sourceNode) return;
 
 		// Calculate insertion position (to the right of source node)
-		// Use PUSH_NODES_OFFSET to match the actual position where nodes are placed,
+		// Use HORIZONTAL_NODE_STEP to match the actual position where nodes are placed,
 		// including the wider agent card offset applied in resolveNodePosition
-		let insertOffset = PUSH_NODES_OFFSET;
+		let insertOffset = HORIZONTAL_NODE_STEP;
 		if (isAgentNodeV2(sourceNode)) {
 			insertOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
 		}

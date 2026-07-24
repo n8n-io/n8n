@@ -1,3 +1,4 @@
+import { isQuotaExhaustedError } from '../../stream/map-chunk';
 import type { WorkspaceFileTarget } from '../workspace-files';
 import { readWorkspaceFile, writeWorkspaceFile, writeWorkspaceFileMap } from '../workspace-files';
 
@@ -146,6 +147,36 @@ describe('workspace-files', () => {
 		expect(executeCommand).toHaveBeenCalledTimes(3);
 	});
 
+	it('keeps the underlying error as cause on exhausted transient filesystem reads', async () => {
+		const readError = new TransientWriteError('timeout');
+		const readFile = vi.fn(async () => await Promise.reject(readError));
+		const target: WorkspaceFileTarget = {
+			filesystem: { readFile, writeFile: vi.fn(async () => {}) },
+		};
+
+		const thrown: unknown = await readWorkspaceFile(target, '/tmp/manifest.json', {
+			logger: createLogger(),
+			retryBackoffBaseMs: 1,
+		}).catch((error: unknown) => error);
+
+		expect(thrown).toBeInstanceOf(Error);
+		expect((thrown as Error).cause).toBe(readError);
+	});
+
+	it('keeps the underlying error as cause on exhausted transient command reads', async () => {
+		const commandError = new TransientWriteError('bad gateway');
+		const executeCommand = vi.fn(async () => await Promise.reject(commandError));
+		const target: WorkspaceFileTarget = { sandbox: { executeCommand } };
+
+		const thrown: unknown = await readWorkspaceFile(target, '/tmp/manifest.json', {
+			logger: createLogger(),
+			retryBackoffBaseMs: 1,
+		}).catch((error: unknown) => error);
+
+		expect(thrown).toBeInstanceOf(Error);
+		expect((thrown as Error).cause).toBe(commandError);
+	});
+
 	it('writes via filesystem and supports batch writes', async () => {
 		const { target, writes } = createWorkspaceTarget(new Map());
 
@@ -233,6 +264,43 @@ describe('workspace-files', () => {
 
 		expect(writeFile).toHaveBeenCalledTimes(3);
 		expect(executeCommand).toHaveBeenCalledTimes(3);
+	});
+
+	it('keeps a classifiable quota error as cause when both write paths fail', async () => {
+		const quotaError = () =>
+			Object.assign(new Error('Have reached end of quota'), {
+				statusCode: 403,
+				errorCode: 'quota_exhausted',
+			});
+		const commandError = quotaError();
+		const writeFile = vi.fn(async () => await Promise.reject(quotaError()));
+		const executeCommand = vi.fn(async () => await Promise.reject(commandError));
+		const target: WorkspaceFileTarget = { filesystem: { writeFile }, sandbox: { executeCommand } };
+
+		const thrown: unknown = await writeWorkspaceFile(target, '/tmp/a.txt', 'alpha', {
+			logger: createLogger(),
+		}).catch((error: unknown) => error);
+
+		expect(thrown).toBeInstanceOf(Error);
+		expect((thrown as Error).cause).toBe(commandError);
+		expect(isQuotaExhaustedError(thrown)).toBe(true);
+	});
+
+	it('keeps a classifiable quota error as cause on the command-only write path', async () => {
+		const commandError = Object.assign(new Error('Have reached end of quota'), {
+			statusCode: 403,
+			errorCode: 'quota_exhausted',
+		});
+		const executeCommand = vi.fn(async () => await Promise.reject(commandError));
+		const target: WorkspaceFileTarget = { sandbox: { executeCommand } };
+
+		const thrown: unknown = await writeWorkspaceFile(target, '/tmp/a.txt', 'alpha', {
+			logger: createLogger(),
+		}).catch((error: unknown) => error);
+
+		expect(thrown).toBeInstanceOf(Error);
+		expect((thrown as Error).cause).toBe(commandError);
+		expect(isQuotaExhaustedError(thrown)).toBe(true);
 	});
 
 	it('logs successful command fallback at warn level', async () => {

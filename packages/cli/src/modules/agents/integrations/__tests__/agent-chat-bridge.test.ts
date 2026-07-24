@@ -28,6 +28,9 @@ interface FakeThread {
 	messages?: AsyncIterable<unknown>;
 }
 
+const GENERIC_ERROR_MESSAGE =
+	'⚠️ Something went wrong while processing your request. Please try again.';
+
 function makeBot() {
 	const handlers: {
 		mention?: (thread: unknown, message: unknown) => Promise<void>;
@@ -176,6 +179,56 @@ describe('AgentChatBridge — consumeStream', () => {
 		type: 'test-streaming',
 		credentialId: 'cred-1',
 	} as unknown as AgentIntegrationConfig;
+
+	const finishChunk: StreamChunk = { type: 'finish', finishReason: 'stop' };
+	const erroredToolResult: StreamChunk = {
+		type: 'tool-result',
+		toolCallId: 'tool-1',
+		toolName: 'slack',
+		output: { error: 'invalid input' },
+		isError: true,
+	};
+	const successfulToolResult: StreamChunk = {
+		type: 'tool-result',
+		toolCallId: 'tool-2',
+		toolName: 'slack',
+		output: { ok: true },
+		isError: false,
+	};
+	const integrationActionSuspension: StreamChunk = {
+		type: 'tool-call-suspended',
+		runId: 'run-1',
+		toolCallId: 'tool-1',
+		toolName: 'slack',
+		suspendPayload: {
+			type: 'integration_action',
+			action: 'send_channel_message',
+			integrationConnectionId: 'slack:cred-1',
+		},
+	};
+
+	/** Build a bridge for the integration, fire a mention that streams the given chunks, and return the thread. */
+	async function runMention(
+		integration: AgentIntegrationConfig,
+		chunks: StreamChunk[],
+		options: { thread?: FakeThread } = {},
+	): Promise<FakeThread> {
+		const { bot, handlers } = makeBot();
+		const thread = options.thread ?? makeThread();
+
+		new AgentChatBridge(
+			bot as unknown as ChatBotLike,
+			'agent-1',
+			makeAgentExecutor(chunks) as never,
+			componentMapper,
+			logger,
+			'project-1',
+			integration,
+		);
+
+		await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+		return thread;
+	}
 
 	beforeEach(() => {
 		registry = new ChatIntegrationRegistry();
@@ -363,6 +416,63 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledWith({ card: { kind: 'card' } });
 		});
 
+		it('posts a generic error when an approval card cannot be posted', async () => {
+			const thread = makeThread();
+			thread.post
+				.mockRejectedValueOnce(new Error('card post failed'))
+				.mockResolvedValueOnce(undefined);
+			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
+
+			await runMention(
+				bufferedIntegration,
+				[
+					{
+						type: 'tool-call-suspended',
+						runId: 'run-1',
+						toolCallId: 'tool-1',
+						toolName: 'approval',
+						suspendPayload: { message: 'Approve?' },
+					},
+					finishChunk,
+				],
+				{ thread },
+			);
+
+			expect(thread.post).toHaveBeenCalledTimes(2);
+			expect(thread.post).toHaveBeenNthCalledWith(1, { card: { kind: 'card' } });
+			expect(thread.post).toHaveBeenNthCalledWith(2, GENERIC_ERROR_MESSAGE);
+		});
+
+		it('posts a generic error when an approval card cannot be posted after earlier text', async () => {
+			const thread = makeThread();
+			thread.post
+				.mockResolvedValueOnce(undefined)
+				.mockRejectedValueOnce(new Error('card post failed'))
+				.mockResolvedValueOnce(undefined);
+			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
+
+			await runMention(
+				bufferedIntegration,
+				[
+					{ type: 'text-delta', id: 't1', delta: 'Let me check that.' },
+					{
+						type: 'tool-call-suspended',
+						runId: 'run-1',
+						toolCallId: 'tool-1',
+						toolName: 'approval',
+						suspendPayload: { message: 'Approve?' },
+					},
+					finishChunk,
+				],
+				{ thread },
+			);
+
+			expect(thread.post).toHaveBeenCalledTimes(3);
+			expect(thread.post).toHaveBeenNthCalledWith(1, { markdown: 'Let me check that.' });
+			expect(thread.post).toHaveBeenNthCalledWith(2, { card: { kind: 'card' } });
+			expect(thread.post).toHaveBeenNthCalledWith(3, GENERIC_ERROR_MESSAGE);
+		});
+
 		it('does not post when the buffer is only whitespace', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
@@ -382,6 +492,50 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 
 			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('posts a generic error when an errored tool result ends without output', async () => {
+			const thread = await runMention(bufferedIntegration, [erroredToolResult, finishChunk]);
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+		});
+
+		it('does not add a generic error when text follows an errored tool result', async () => {
+			const thread = await runMention(bufferedIntegration, [
+				erroredToolResult,
+				{ type: 'text-delta', id: 't1', delta: 'I could not send that report.' },
+				finishChunk,
+			]);
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith({ markdown: 'I could not send that report.' });
+		});
+
+		it('does not post an error for a successful tool-only run', async () => {
+			const thread = await runMention(bufferedIntegration, [successfulToolResult, finishChunk]);
+
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('does not post a fallback for a cardless integration action suspension', async () => {
+			const thread = await runMention(bufferedIntegration, [
+				integrationActionSuspension,
+				finishChunk,
+			]);
+
+			expect(componentMapper.toCard).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('does not post an error when a failed tool call is retried successfully', async () => {
+			const thread = await runMention(bufferedIntegration, [
+				erroredToolResult,
+				successfulToolResult,
+				finishChunk,
+			]);
 
 			expect(thread.post).not.toHaveBeenCalled();
 		});
@@ -525,10 +679,82 @@ describe('AgentChatBridge — consumeStream', () => {
 			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
 			expect(thread.post).toHaveBeenCalledTimes(2);
-			expect(thread.post).toHaveBeenNthCalledWith(
-				2,
-				'⚠️ Something went wrong while processing your request. Please try again.',
+			expect(thread.post).toHaveBeenNthCalledWith(2, GENERIC_ERROR_MESSAGE);
+		});
+
+		it('posts a generic error when an errored tool result ends without output', async () => {
+			const thread = await runMention(streamingIntegration, [erroredToolResult, finishChunk]);
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+		});
+
+		it('does not add a generic error when streamed text follows an errored tool result', async () => {
+			const thread = await runMention(streamingIntegration, [
+				erroredToolResult,
+				{ type: 'text-delta', id: 't1', delta: 'I could not send that report.' },
+				finishChunk,
+			]);
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(await drainIterable(thread.post.mock.calls[0][0])).toBe(
+				'I could not send that report.',
 			);
+		});
+
+		it('does not post an error for a successful streamed tool-only run', async () => {
+			const thread = await runMention(streamingIntegration, [successfulToolResult, finishChunk]);
+
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('does not post a fallback for a streamed cardless integration action suspension', async () => {
+			const thread = await runMention(streamingIntegration, [
+				integrationActionSuspension,
+				finishChunk,
+			]);
+
+			expect(componentMapper.toCard).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('posts a generic error when an approval card cannot be posted after streamed text', async () => {
+			const thread = makeThread();
+			thread.post
+				.mockResolvedValueOnce(undefined)
+				.mockRejectedValueOnce(new Error('card post failed'))
+				.mockResolvedValueOnce(undefined);
+			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
+
+			await runMention(
+				streamingIntegration,
+				[
+					{ type: 'text-delta', id: 't1', delta: 'Let me check that.' },
+					{
+						type: 'tool-call-suspended',
+						runId: 'run-1',
+						toolCallId: 'tool-1',
+						toolName: 'approval',
+						suspendPayload: { message: 'Approve?' },
+					},
+					finishChunk,
+				],
+				{ thread },
+			);
+
+			expect(thread.post).toHaveBeenCalledTimes(3);
+			expect(thread.post).toHaveBeenNthCalledWith(2, { card: { kind: 'card' } });
+			expect(thread.post).toHaveBeenNthCalledWith(3, GENERIC_ERROR_MESSAGE);
+		});
+
+		it('does not post an error when a failed streamed tool call is retried successfully', async () => {
+			const thread = await runMention(streamingIntegration, [
+				erroredToolResult,
+				successfulToolResult,
+				finishChunk,
+			]);
+
+			expect(thread.post).not.toHaveBeenCalled();
 		});
 	});
 

@@ -155,7 +155,7 @@ describe('OAuthConsentView', () => {
 		expect(window.location.href).toBe(redirectUrl);
 	});
 
-	it('should disable allow button until redirect URL is trusted', async () => {
+	it('should disable the allow button until the redirect URL is acknowledged', async () => {
 		const { getByTestId, getByLabelText } = renderComponent();
 		await waitAllPromises();
 
@@ -165,6 +165,16 @@ describe('OAuthConsentView', () => {
 		await userEvent.click(getByLabelText('I recognize and trust this URL'));
 
 		expect(allowButton).not.toBeDisabled();
+	});
+
+	it('should show the redirect URL inside the warning callout', async () => {
+		const { getByTestId } = renderComponent();
+		await waitAllPromises();
+
+		expect(getByTestId('consent-redirect-warning')).toBeVisible();
+		expect(getByTestId('consent-redirect-uri')).toHaveTextContent(
+			'https://legitimate-client.com/callback',
+		);
 	});
 
 	describe('scope selection', () => {
@@ -188,7 +198,6 @@ describe('OAuthConsentView', () => {
 			await waitAllPromises();
 
 			expect(getByTestId('consent-scopes')).toBeVisible();
-			expect(getByTestId('consent-scopes-note')).toBeVisible();
 			expect(queryByText('Get a list of your workflows')).toBeNull();
 		});
 

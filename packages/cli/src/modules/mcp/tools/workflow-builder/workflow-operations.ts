@@ -295,9 +295,9 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 				z.object({
 					id: z.string().trim().min(1).optional().describe('Group id. Generated if omitted.'),
 					name: z.string().trim().min(1).describe('Unique group name.'),
-					nodeIds: z
+					nodeNames: z
 						.array(z.string().trim().min(1))
-						.describe('IDs of the nodes that belong to this group.'),
+						.describe('Names of the nodes that belong to this group.'),
 					description: z
 						.string()
 						.trim()
@@ -309,7 +309,55 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 				}),
 			)
 			.describe(
-				'Replaces the workflow node groups entirely. Pass [] to remove all groups. Each nodeId must reference an existing node, and every group must form a valid, connected, trigger-free section of the graph (validated on save).',
+				'Replaces the workflow node groups entirely. Pass [] to remove all groups. Each nodeName must reference an existing node, and every group must form a valid, connected, trigger-free section of the graph (validated on save).',
+			),
+	}),
+	z.object({
+		type: z.literal('addNodeGroup'),
+		name: z.string().trim().min(1).describe('Name for the new group. Must be unique.'),
+		nodeNames: z
+			.array(z.string().trim().min(1))
+			.min(1)
+			.describe(
+				'Names of the nodes that belong to this group. The nodes must form a valid, connected, trigger-free section of the graph (validated on save).',
+			),
+		description: z
+			.string()
+			.trim()
+			.max(GROUP_DESCRIPTION_MAX_LENGTH)
+			.optional()
+			.describe(
+				`Optional description shown when the group is collapsed. Max ${GROUP_DESCRIPTION_MAX_LENGTH} characters.`,
+			),
+		id: z.string().trim().min(1).optional().describe('Group id. Generated if omitted.'),
+	}),
+	z.object({
+		type: z.literal('removeNodeGroup'),
+		groupName: z
+			.string()
+			.trim()
+			.min(1)
+			.describe('Name of the group to remove. The grouped nodes themselves are kept.'),
+	}),
+	// "At least one of newName / nodeNames / description" is enforced at apply
+	// time — zod v3 discriminated unions only accept plain object members, so a
+	// cross-field `.refine()` cannot live on this schema.
+	z.object({
+		type: z.literal('updateNodeGroup'),
+		groupName: z.string().trim().min(1).describe('Name of the existing group to update.'),
+		newName: z.string().trim().min(1).optional().describe('New unique group name.'),
+		nodeNames: z
+			.array(z.string().trim().min(1))
+			.min(1)
+			.optional()
+			.describe('Replaces the group membership entirely with these node names.'),
+		description: z
+			.string()
+			.trim()
+			.max(GROUP_DESCRIPTION_MAX_LENGTH)
+			.optional()
+			.describe(
+				`New description shown when the group is collapsed (max ${GROUP_DESCRIPTION_MAX_LENGTH} characters). Pass "" to clear it. Omit to leave unchanged.`,
 			),
 	}),
 ]);
@@ -335,6 +383,11 @@ export interface ApplyOperationsSuccess {
 	addedNodeNames: string[];
 	/** Final tag set after applying tag ops. Undefined means "leave unchanged". */
 	tagNames?: string[];
+	/**
+	 * True when a group op ran or removing a node pruned a group, i.e. whenever
+	 * `workflow.nodeGroups` must be persisted rather than preserved-on-omit.
+	 */
+	nodeGroupsChanged: boolean;
 }
 
 export interface ApplyOperationsFailure {
@@ -538,6 +591,23 @@ export function applyOperations(
 	// Tag set is null until the first tag op runs; that keeps "no tag ops"
 	// distinguishable from "tag ops applied to an empty set" at return time.
 	let tagSet: Set<string> | null = null;
+	let nodeGroupsChanged = false;
+
+	// Groups are persisted with node IDs, but ops reference nodes by name like
+	// every other operation; resolve against the current batch state so nodes
+	// added/renamed earlier in the same call are found. Dedupes repeats.
+	const resolveGroupNodeIds = (
+		nodeNames: string[],
+		groupName: string,
+	): { nodeIds: string[] } | { error: string } => {
+		const nodeIds = new Set<string>();
+		for (const nodeName of nodeNames) {
+			const node = nodeByName.get(nodeName);
+			if (!node) return { error: `node '${nodeName}' in group '${groupName}' not found` };
+			nodeIds.add(node.id);
+		}
+		return { nodeIds: [...nodeIds] };
+	};
 
 	for (let i = 0; i < operations.length; i++) {
 		const op = operations[i];
@@ -608,6 +678,22 @@ export function applyOperations(
 				nodeByName.delete(op.nodeName);
 				removeConnectionsFor(workflow.connections, op.nodeName);
 				addedNodeNames.delete(op.nodeName);
+				// Prune the removed node from any group, dropping a group that empties
+				// out — mirrors the editor's delete behavior and keeps the save-path
+				// group validation (all member ids must exist) from rejecting the batch.
+				if (workflow.nodeGroups?.length) {
+					const prunedGroups: IWorkflowGroup[] = [];
+					for (const group of workflow.nodeGroups) {
+						if (!group.nodeIds.includes(node.id)) {
+							prunedGroups.push(group);
+							continue;
+						}
+						nodeGroupsChanged = true;
+						const remaining = group.nodeIds.filter((id) => id !== node.id);
+						if (remaining.length > 0) prunedGroups.push({ ...group, nodeIds: remaining });
+					}
+					workflow.nodeGroups = prunedGroups;
+				}
 				break;
 			}
 
@@ -732,16 +818,91 @@ export function applyOperations(
 			}
 
 			case 'setNodeGroups': {
-				workflow.nodeGroups = op.nodeGroups.map((group) => {
+				const nodeGroups: IWorkflowGroup[] = [];
+				for (const group of op.nodeGroups) {
+					const resolved = resolveGroupNodeIds(group.nodeNames, group.name);
+					if ('error' in resolved) return fail(i, resolved.error);
 					// Omit blank descriptions so groups without one stay unset, matching the editor.
 					const description = group.description?.trim();
-					return {
+					nodeGroups.push({
 						id: group.id ?? uuid(),
 						name: group.name,
-						nodeIds: [...group.nodeIds],
+						nodeIds: resolved.nodeIds,
 						...(description ? { description } : {}),
-					};
+					});
+				}
+				workflow.nodeGroups = nodeGroups;
+				nodeGroupsChanged = true;
+				break;
+			}
+
+			case 'addNodeGroup': {
+				const groups = workflow.nodeGroups ?? [];
+				if (groups.some((g) => g.name === op.name)) {
+					return fail(i, `a node group named '${op.name}' already exists`);
+				}
+				if (op.id !== undefined && groups.some((g) => g.id === op.id)) {
+					return fail(i, `a node group with id '${op.id}' already exists`);
+				}
+				const resolved = resolveGroupNodeIds(op.nodeNames, op.name);
+				if ('error' in resolved) return fail(i, resolved.error);
+				const description = op.description?.trim();
+				groups.push({
+					id: op.id ?? uuid(),
+					name: op.name,
+					nodeIds: resolved.nodeIds,
+					...(description ? { description } : {}),
 				});
+				workflow.nodeGroups = groups;
+				nodeGroupsChanged = true;
+				break;
+			}
+
+			case 'removeNodeGroup': {
+				const groups = workflow.nodeGroups ?? [];
+				const index = groups.findIndex((g) => g.name === op.groupName);
+				if (index === -1) return fail(i, `node group '${op.groupName}' not found`);
+				groups.splice(index, 1);
+				workflow.nodeGroups = groups;
+				nodeGroupsChanged = true;
+				break;
+			}
+
+			case 'updateNodeGroup': {
+				// Cross-field "at least one change" lives here because zod v3
+				// discriminated unions cannot carry a `.refine()` on their members.
+				if (
+					op.newName === undefined &&
+					op.nodeNames === undefined &&
+					op.description === undefined
+				) {
+					return fail(
+						i,
+						'updateNodeGroup must specify at least one of newName, nodeNames, or description',
+					);
+				}
+				const groups = workflow.nodeGroups ?? [];
+				const group = groups.find((g) => g.name === op.groupName);
+				if (!group) return fail(i, `node group '${op.groupName}' not found`);
+				if (op.nodeNames !== undefined) {
+					const resolved = resolveGroupNodeIds(op.nodeNames, op.groupName);
+					if ('error' in resolved) return fail(i, resolved.error);
+					group.nodeIds = resolved.nodeIds;
+				}
+				if (op.newName !== undefined && op.newName !== group.name) {
+					if (groups.some((g) => g !== group && g.name === op.newName)) {
+						return fail(i, `a node group named '${op.newName}' already exists`);
+					}
+					group.name = op.newName;
+				}
+				if (op.description !== undefined) {
+					// A blank description clears it, matching the blank-description
+					// handling of setNodeGroups / addNodeGroup.
+					const description = op.description.trim();
+					if (description) group.description = description;
+					else delete group.description;
+				}
+				nodeGroupsChanged = true;
 				break;
 			}
 
@@ -775,6 +936,7 @@ export function applyOperations(
 		workflow,
 		addedNodeNames: [...addedNodeNames],
 		tagNames: tagSet !== null ? [...tagSet] : undefined,
+		nodeGroupsChanged,
 	};
 }
 

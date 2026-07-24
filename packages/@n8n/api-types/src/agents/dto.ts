@@ -142,7 +142,8 @@ export class AgentChatResumeDto extends Z.class({
 
 export class AgentDisconnectIntegrationDto extends Z.class({
 	type: z.string().min(1),
-	credentialId: z.string().min(1),
+	// Empty string targets a draft integration entry (`credentialId: ''`).
+	credentialId: z.string(),
 }) {}
 
 export class PublishAgentDto extends Z.class({

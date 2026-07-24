@@ -172,7 +172,7 @@ export function useWorkflowDocumentNodeGroups() {
 	function replaceNodeInGroup(id: string, previousNodeId: string, newNodeId: string) {
 		if (previousNodeId === newNodeId) return;
 		const group = groups.value.get(id);
-		if (!group || !group.nodeIds.includes(previousNodeId)) return;
+		if (!group?.nodeIds.includes(previousNodeId)) return;
 
 		applyUpsertGroup(
 			{

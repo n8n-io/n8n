@@ -1,3 +1,7 @@
+import { AgentEvalDataset, type AgentEvalColumnMapping } from './agent-eval-dataset.ee';
+import { AgentEvalRating, type AgentEvalVote } from './agent-eval-rating.ee';
+import { AgentEvalResult, type AgentEvalResultStatus } from './agent-eval-result.ee';
+import { AgentEvalRun, type AgentEvalRunStatus } from './agent-eval-run.ee';
 import { AiBuilderTemporaryWorkflow } from './ai-builder-temporary-workflow';
 import { AnnotationTagEntity } from './annotation-tag-entity.ee';
 import { AnnotationTagMapping } from './annotation-tag-mapping.ee';
@@ -51,6 +55,7 @@ import { WorkflowDependency } from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import {
+	UNPUBLISH_VERSION_SENTINEL,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
 } from './workflow-publication-outbox';
@@ -61,10 +66,28 @@ import {
 } from './workflow-publication-trigger-status';
 import { WorkflowPublishHistory } from './workflow-publish-history';
 import { WorkflowPublishedVersion } from './workflow-published-version';
+import { WorkflowReviewRequestAuthor } from './workflow-review-request-author.ee';
+import { WorkflowReviewRequestReviewer } from './workflow-review-request-reviewer.ee';
+import { WorkflowReviewRequestWorkflow } from './workflow-review-request-workflow.ee';
+import {
+	WorkflowReviewRequest,
+	WorkflowReviewRequestDecision,
+	WorkflowReviewRequestDecisionList,
+	WorkflowReviewRequestState,
+	WorkflowReviewRequestStateList,
+} from './workflow-review-request.ee';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
+	AgentEvalDataset,
+	type AgentEvalColumnMapping,
+	AgentEvalRun,
+	type AgentEvalRunStatus,
+	AgentEvalResult,
+	type AgentEvalResultStatus,
+	AgentEvalRating,
+	type AgentEvalVote,
 	InvalidAuthToken,
 	AiBuilderTemporaryWorkflow,
 	ProcessedData,
@@ -110,11 +133,20 @@ export {
 	WorkflowHistory,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
+	UNPUBLISH_VERSION_SENTINEL,
 	WorkflowPublicationTriggerStatus,
 	type WorkflowPublicationTriggerStatusType,
 	type WorkflowPublicationTriggerKind,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
+	WorkflowReviewRequest,
+	WorkflowReviewRequestState,
+	WorkflowReviewRequestStateList,
+	WorkflowReviewRequestDecision,
+	WorkflowReviewRequestDecisionList,
+	WorkflowReviewRequestWorkflow,
+	WorkflowReviewRequestReviewer,
+	WorkflowReviewRequestAuthor,
 	ExecutionData,
 	ExecutionMetadata,
 	AnnotationTagEntity,
@@ -129,6 +161,10 @@ export {
 };
 
 export const entities = {
+	AgentEvalDataset,
+	AgentEvalRun,
+	AgentEvalResult,
+	AgentEvalRating,
 	InvalidAuthToken,
 	AiBuilderTemporaryWorkflow,
 	ProcessedData,
@@ -163,6 +199,10 @@ export const entities = {
 	WorkflowPublicationTriggerStatus,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
+	WorkflowReviewRequest,
+	WorkflowReviewRequestWorkflow,
+	WorkflowReviewRequestReviewer,
+	WorkflowReviewRequestAuthor,
 	ExecutionData,
 	ExecutionMetadata,
 	AnnotationTagEntity,

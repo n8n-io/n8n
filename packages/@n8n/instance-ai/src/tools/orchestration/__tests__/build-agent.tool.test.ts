@@ -225,6 +225,7 @@ function makeContext(overrides: { delegate?: InstanceAiBuilderDelegate } = {}): 
 	context.domainContext = domainContext;
 	context.threadId = 'thread-1';
 	context.runId = 'run-1';
+	context.userId = 'user-1';
 	context.orchestratorAgentId = 'root-agent';
 	context.abortSignal = new AbortController().signal;
 	context.eventBus = eventBus;
@@ -263,6 +264,18 @@ describe('build-agent tool', () => {
 	beforeEach(() => {
 		vi.mocked(saveAgentBuilderTarget).mockClear();
 		vi.mocked(findSessionAgentByName).mockReset().mockResolvedValue(undefined);
+	});
+
+	it('fences the tool to Agent artifacts and away from workflow-anchored work', () => {
+		const { context } = makeContext();
+		const tool = createBuildAgentTool(context);
+
+		expect(tool.description).toContain('**Agent** artifacts only');
+		expect(tool.description).toContain('workflow-anchored');
+		expect(tool.description).toContain('`workflow-builder`');
+		expect(tool.description).toContain('do not call this tool');
+		expect(tool.description).toContain('not to compile custom');
+		expect(tool.description).toContain('do not route around that by calling');
 	});
 
 	it('creates and binds a new agent when name is given, keying the session to the instance thread', async () => {
@@ -437,7 +450,7 @@ describe('build-agent tool', () => {
 		expect(message).toContain('Attach the workflow');
 		expect(message).toContain('<session-workflows>');
 		expect(message).toContain(
-			'Workflows built in this session (attachable as {"type":"workflow"} tools):',
+			'Workflows built in this session (attachable as {"type":"workflow"} tools — reference by workflow name, never by id):',
 		);
 		expect(message).toContain('- Send Reminder (id: wf-1): Sends a reminder email');
 		expect(message).toContain('</session-workflows>');
@@ -552,6 +565,45 @@ describe('build-agent tool', () => {
 	});
 
 	describe('deferred agentId-path binding', () => {
+		it('rejects foreign agentId when the passed name contradicts the resolved agent name', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.resolveAgentName).mockResolvedValue('Support Triage Agent');
+
+			const result = await runTool(context, {
+				message: 'Build Ops Companion',
+				agentId: 'agent-existing',
+				name: 'Ops Companion',
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error:
+					'Agent agent-existing is named "Support Triage Agent", but name "Ops Companion" was passed. ' +
+					'To create a new agent named "Ops Companion", pass `name` only (no `agentId`). ' +
+					'To edit "Support Triage Agent", pass `agentId` only and put any rename instruction in `message`.',
+			});
+			expect(delegate.streamBuild).not.toHaveBeenCalled();
+			expect(saveAgentBuilderTarget).not.toHaveBeenCalled();
+		});
+
+		it('allows foreign agentId when the passed name matches the resolved agent name', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.resolveAgentName).mockResolvedValue('Ops Companion');
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Editing it.'));
+
+			await runTool(context, {
+				message: 'Add a tool',
+				agentId: 'agent-existing',
+				name: '  ops companion  ',
+			});
+
+			expect(delegate.streamBuild).toHaveBeenCalledWith(
+				'agent-existing',
+				'Add a tool',
+				expect.objectContaining({ threadId: 'ia-builder:thread-1:agent-existing' }),
+			);
+		});
+
 		it('does not persist the target when the agentId path fails before the stream settles', async () => {
 			const { context, delegate } = makeContext();
 			vi.mocked(delegate.streamBuild).mockRejectedValue(new Error('agent:update forbidden'));
@@ -988,6 +1040,53 @@ describe('build-agent tool', () => {
 				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
+		});
+
+		it('creates a fresh agent instead of switching back when createNew is set and the name matches a session agent', async () => {
+			const { context, delegate } = makeContext();
+			const boundTarget: AgentBuilderTarget = {
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Platform Cycle Tracker',
+			};
+			context.domainContext!.agentBuilderTarget = boundTarget;
+			vi.mocked(findSessionAgentByName).mockResolvedValue(boundTarget);
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-3',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Created it.'));
+
+			await runTool(context, {
+				message: 'Build another tracker',
+				name: 'Platform Cycle Tracker',
+				createNew: true,
+			});
+
+			expect(findSessionAgentByName).not.toHaveBeenCalled();
+			expect(delegate.createAgent).toHaveBeenCalledWith('Platform Cycle Tracker');
+			expect(delegate.streamBuild).toHaveBeenCalledWith(
+				'agent-3',
+				'Build another tracker',
+				expect.objectContaining({ threadId: 'ia-builder:thread-1:agent-3' }),
+			);
+		});
+
+		it.each([
+			{ agentId: 'agent-1', createNew: true, message: 'Build it' },
+			{ createNew: true, message: 'Build it' },
+		])('rejects createNew when combined with agentId or missing name', async (input) => {
+			const { context, delegate } = makeContext();
+
+			const result = await runTool(context, input);
+
+			expect(result).toEqual({
+				ok: false,
+				error:
+					'createNew requires `name` and cannot be combined with `agentId` — pass `name` only to create a new agent.',
+			});
+			expect(delegate.createAgent).not.toHaveBeenCalled();
+			expect(delegate.streamBuild).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1906,6 +2005,13 @@ describe('build-agent tool', () => {
 	});
 
 	describe('product telemetry', () => {
+		function trackTelemetryEventCalls(
+			trackTelemetry: NonNullable<OrchestrationContext['trackTelemetry']>,
+			eventName: string,
+		): unknown[][] {
+			return vi.mocked(trackTelemetry).mock.calls.filter(([name]) => name === eventName);
+		}
+
 		it('tracks one "Builder modified agent" event for a succeeded mutation call', async () => {
 			const { context, delegate } = makeContext();
 			context.trackTelemetry = vi.fn();
@@ -1922,7 +2028,17 @@ describe('build-agent tool', () => {
 
 			await runTool(context, { message: 'Build it', name: 'New Agent' });
 
-			expect(context.trackTelemetry).toHaveBeenCalledTimes(1);
+			expect(context.trackTelemetry).toHaveBeenCalledTimes(2);
+			expect(context.trackTelemetry).toHaveBeenCalledWith('instance_ai_agent_build_route', {
+				thread_id: 'thread-1',
+				run_id: 'run-1',
+				user_id: 'user-1',
+				mode: 'create',
+				agent_id: 'agent-1',
+			});
+			expect(
+				trackTelemetryEventCalls(context.trackTelemetry, 'Builder modified agent'),
+			).toHaveLength(1);
 			expect(context.trackTelemetry).toHaveBeenCalledWith('Builder modified agent', {
 				thread_id: 'thread-1',
 				agent_id: 'agent-1',
@@ -1950,12 +2066,14 @@ describe('build-agent tool', () => {
 
 			await runTool(context, { message: 'Build it', name: 'New Agent' });
 
-			expect(context.trackTelemetry).toHaveBeenCalledTimes(2);
-			expect(context.trackTelemetry).toHaveBeenNthCalledWith(1, 'Builder modified agent', {
-				thread_id: 'thread-1',
-				agent_id: 'agent-1',
-			});
-			expect(context.trackTelemetry).toHaveBeenNthCalledWith(2, 'Builder modified agent', {
+			expect(context.trackTelemetry).toHaveBeenCalledTimes(3);
+			expect(
+				trackTelemetryEventCalls(context.trackTelemetry, 'instance_ai_agent_build_route'),
+			).toHaveLength(1);
+			expect(
+				trackTelemetryEventCalls(context.trackTelemetry, 'Builder modified agent'),
+			).toHaveLength(2);
+			expect(context.trackTelemetry).toHaveBeenCalledWith('Builder modified agent', {
 				thread_id: 'thread-1',
 				agent_id: 'agent-1',
 			});
@@ -1980,7 +2098,16 @@ describe('build-agent tool', () => {
 
 			await runTool(context, { message: 'Build it', name: 'New Agent' });
 
-			expect(context.trackTelemetry).not.toHaveBeenCalled();
+			expect(
+				trackTelemetryEventCalls(context.trackTelemetry, 'Builder modified agent'),
+			).toHaveLength(0);
+			expect(context.trackTelemetry).toHaveBeenCalledWith('instance_ai_agent_build_route', {
+				thread_id: 'thread-1',
+				run_id: 'run-1',
+				user_id: 'user-1',
+				mode: 'create',
+				agent_id: 'agent-1',
+			});
 		});
 
 		it('does not track for a non-mutation tool call', async () => {
@@ -1999,7 +2126,16 @@ describe('build-agent tool', () => {
 
 			await runTool(context, { message: 'Build it', name: 'New Agent' });
 
-			expect(context.trackTelemetry).not.toHaveBeenCalled();
+			expect(
+				trackTelemetryEventCalls(context.trackTelemetry, 'Builder modified agent'),
+			).toHaveLength(0);
+			expect(context.trackTelemetry).toHaveBeenCalledWith('instance_ai_agent_build_route', {
+				thread_id: 'thread-1',
+				run_id: 'run-1',
+				user_id: 'user-1',
+				mode: 'create',
+				agent_id: 'agent-1',
+			});
 		});
 
 		it('still tracks a prior succeeded mutation when the leg suspends', async () => {
@@ -2029,9 +2165,54 @@ describe('build-agent tool', () => {
 
 			await runToolWithCtx(context, { message: 'Build it', name: 'New Agent' }, { suspend });
 
-			expect(context.trackTelemetry).toHaveBeenCalledTimes(1);
+			expect(context.trackTelemetry).toHaveBeenCalledTimes(2);
+			expect(context.trackTelemetry).toHaveBeenCalledWith('instance_ai_agent_build_route', {
+				thread_id: 'thread-1',
+				run_id: 'run-1',
+				user_id: 'user-1',
+				mode: 'create',
+				agent_id: 'agent-1',
+			});
 			expect(context.trackTelemetry).toHaveBeenCalledWith('Builder modified agent', {
 				thread_id: 'thread-1',
+				agent_id: 'agent-1',
+			});
+		});
+
+		it('tracks instance_ai_agent_build_route with mode create on a new-agent call', async () => {
+			const { context, delegate } = makeContext();
+			context.trackTelemetry = vi.fn();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Done.'));
+
+			await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			expect(context.trackTelemetry).toHaveBeenCalledWith('instance_ai_agent_build_route', {
+				thread_id: 'thread-1',
+				run_id: 'run-1',
+				user_id: 'user-1',
+				mode: 'create',
+				agent_id: 'agent-1',
+			});
+		});
+
+		it('tracks instance_ai_agent_build_route with mode edit when continuing a bound target', async () => {
+			const { context, delegate } = makeContext();
+			context.trackTelemetry = vi.fn();
+			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Done.'));
+
+			await runTool(context, { message: 'Tweak it' });
+
+			expect(delegate.createAgent).not.toHaveBeenCalled();
+			expect(context.trackTelemetry).toHaveBeenCalledWith('instance_ai_agent_build_route', {
+				thread_id: 'thread-1',
+				run_id: 'run-1',
+				user_id: 'user-1',
+				mode: 'edit',
 				agent_id: 'agent-1',
 			});
 		});

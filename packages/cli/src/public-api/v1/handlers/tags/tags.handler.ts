@@ -1,21 +1,12 @@
-import type { TagEntity } from '@n8n/db';
-import { TagRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import type { FindManyOptions } from '@n8n/typeorm';
+import type { TagRequest } from '../../../types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/global.middleware';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TagService } from '@/services/tag.service';
-
-import type { TagRequest } from '../../../types';
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
-import {
-	apiKeyHasScopeWithGlobalScopeFallback,
-	validCursor,
-} from '../../shared/middlewares/global.middleware';
-import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 type TagHandlers = {
 	createTag: PublicAPIEndpoint<TagRequest.Create>;
@@ -79,26 +70,19 @@ const tagHandlers: TagHandlers = {
 			return res.json(tag);
 		},
 	],
+	/**
+	 * Not the reference implementation — that is TagsPublicController
+	 * (PublicApiControllerRegistry mounts before eov and owns runtime GET /tags).
+	 *
+	 * Kept only so scope-parity.test.ts can match openapi.yml `x-required-scope`
+	 * against a handler middleware tagged with `__apiKeyScope`. Once that test
+	 * also reads `@ApiKeyScope` from public controllers, this stub can go.
+	 */
 	getTags: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'tag:list' }),
-		validCursor,
-		async (req, res) => {
-			const { offset = 0, limit = 100 } = req.query;
-
-			const query: FindManyOptions<TagEntity> = {
-				skip: offset,
-				take: limit,
-			};
-
-			const [tags, count] = await Container.get(TagRepository).findAndCount(query);
-
-			return res.json({
-				data: tags,
-				nextCursor: encodeNextCursor({
-					offset,
-					limit,
-					numberOfTotalRecords: count,
-				}),
+		async (_req, res) => {
+			return res.status(500).json({
+				message: 'Unexpected: GET /tags should be handled by TagsPublicController',
 			});
 		},
 	],

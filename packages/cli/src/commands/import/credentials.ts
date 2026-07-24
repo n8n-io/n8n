@@ -9,7 +9,6 @@ import {
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 import glob from 'fast-glob';
 import fs from 'fs';

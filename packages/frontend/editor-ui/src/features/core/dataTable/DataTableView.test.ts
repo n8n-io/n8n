@@ -71,7 +71,8 @@ const mockDebounce = {
 	callDebounced: vi.fn((fn) => fn()),
 	debounce: vi.fn(),
 };
-vi.mock('@/app/composables/useDebounce', () => ({
+vi.mock('@n8n/composables/useDebounce', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/composables/useDebounce')>()),
 	useDebounce: vi.fn(() => mockDebounce),
 }));
 

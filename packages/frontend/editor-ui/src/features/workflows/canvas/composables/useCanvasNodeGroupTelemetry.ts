@@ -9,7 +9,8 @@ export type CanvasNodeGroupEventSource =
 	| 'group-header'
 	| 'keyboard-shortcut'
 	| 'context-menu'
-	| 'update-blocked-toast';
+	| 'update-blocked-toast'
+	| 'sub-workflow-extraction';
 
 /**
  * Telemetry for canvas node groups: capturing how users

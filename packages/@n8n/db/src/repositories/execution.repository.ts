@@ -1086,6 +1086,23 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return qb;
 	}
 
+	/**
+	 * IDs of the distinct workflows that have at least one execution started at or after `date`.
+	 * @param date Lower bound (inclusive) for `startedAt`.
+	 * @returns Distinct workflow IDs, in no particular order.
+	 * @remarks Reads only entity columns, never the execution data blobs.
+	 */
+	async getWorkflowIdsWithExecutionsSince(date: Date): Promise<string[]> {
+		const result = await this.createQueryBuilder('execution')
+			.select('DISTINCT execution.workflowId', 'workflowId')
+			.where('execution.startedAt >= :date', {
+				date: DateUtils.mixedDateToUtcDatetimeString(date),
+			})
+			.getRawMany<{ workflowId: string }>();
+
+		return result.map((row) => row.workflowId);
+	}
+
 	async getDistinctVersionIds(workflowId: string): Promise<string[]> {
 		const result = await this.createQueryBuilder('execution')
 			.innerJoin('execution.executionData', 'ed')

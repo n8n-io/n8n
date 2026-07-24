@@ -1,6 +1,7 @@
 import {
 	AgentJsonConfigSchema,
 	findVectorStoreToolNameCollisions,
+	formatAgentConfigZodError,
 } from '../agent-json-config.schema';
 
 const minimalConfig = {
@@ -506,5 +507,68 @@ describe('AgentJsonConfigSchema — skills', () => {
 		if (!result.success) {
 			expect(result.error.errors[0].message).toBe('Duplicate skill id: "summarize_notes"');
 		}
+	});
+});
+
+describe('AgentJsonConfigSchema — model/credential coupling', () => {
+	it('rejects a credential without a model', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			model: '',
+			credential: 'cred-id',
+		});
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.errors[0].path).toEqual(['credential']);
+		}
+	});
+
+	it('accepts a model without a credential', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			credential: undefined,
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a fully cleared draft', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			model: '',
+			credential: '',
+		});
+
+		expect(result.success).toBe(true);
+	});
+});
+
+describe('formatAgentConfigZodError', () => {
+	it('formats an invalid MCP server name as path: message without a Zod JSON dump', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			mcpServers: [
+				{
+					name: 'has spaces',
+					url: 'https://example.com/mcp',
+					transport: 'streamableHttp',
+					authentication: 'none',
+				},
+			],
+		});
+
+		expect(result.success).toBe(false);
+		if (result.success) return;
+
+		const formatted = formatAgentConfigZodError(result.error);
+		expect(formatted).toContain('mcpServers.0.name');
+		expect(formatted).toContain(
+			'MCP server name can only contain letters, numbers, hyphens, and underscores',
+		);
+		expect(formatted).not.toContain('"validation": "regex"');
+		expect(result.error.issues[0]?.message).toBe(
+			'MCP server name can only contain letters, numbers, hyphens, and underscores',
+		);
 	});
 });

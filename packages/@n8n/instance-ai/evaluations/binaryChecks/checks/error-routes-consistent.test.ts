@@ -10,6 +10,7 @@ function reminderWorkflow(overrides: {
 		id: 'wf-1',
 		name: 'Reminder sender',
 		active: false,
+		versionId: 'test-version',
 		nodes: [
 			{ name: 'Daily', type: 'n8n-nodes-base.scheduleTrigger', parameters: {} },
 			{
@@ -73,6 +74,7 @@ describe('errorRoutesConsistent', () => {
 			id: 'wf-2',
 			name: 'Branching',
 			active: false,
+			versionId: 'test-version',
 			nodes: [
 				{ name: 'Start', type: 'n8n-nodes-base.manualTrigger', parameters: {} },
 				{ name: 'IF', type: 'n8n-nodes-base.if', parameters: {} },
@@ -97,6 +99,7 @@ describe('errorRoutesConsistent', () => {
 			id: 'wf-3',
 			name: 'Empty',
 			active: false,
+			versionId: 'test-version',
 			nodes: [{ name: 'Start', type: 'n8n-nodes-base.manualTrigger', parameters: {} }],
 			connections: {},
 		};
