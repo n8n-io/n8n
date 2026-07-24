@@ -61,8 +61,7 @@ describe('LmChatCohere', () => {
 
 		const requestedUrls: string[] = [];
 		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
-			const url =
-				typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+			const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
 			requestedUrls.push(url);
 			await Promise.resolve();
 			// Minimal successful Cohere chat response so `.invoke()` resolves cleanly.
