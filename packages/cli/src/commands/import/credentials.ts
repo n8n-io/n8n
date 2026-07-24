@@ -84,8 +84,6 @@ const isCredentialData = (data: unknown): data is ICredentialDataDecryptedObject
 	flagsSchema,
 })
 export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
-	private transactionManager: EntityManager;
-
 	async run(): Promise<void> {
 		const { flags } = this;
 
@@ -128,18 +126,21 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		await Container.get(DbLockService).withLock(
 			DbLock.INSTANCE_AI_SETTINGS,
 			async (transactionManager, ctx) => {
-				this.transactionManager = transactionManager;
+				const project = await this.getProject(transactionManager, flags.userId, flags.projectId);
 
-				const project = await this.getProject(flags.userId, flags.projectId);
-
-				const result = await this.checkRelations(credentials, flags.projectId, flags.userId);
+				const result = await this.checkRelations(
+					transactionManager,
+					credentials,
+					flags.projectId,
+					flags.userId,
+				);
 
 				if (!result.success) {
 					throw new UserError(result.message);
 				}
 
 				for (const credential of credentials) {
-					await this.storeCredential(credential, project, ctx);
+					await this.storeCredential(transactionManager, credential, project, ctx);
 				}
 			},
 		);
@@ -161,6 +162,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 	}
 
 	private async storeCredential(
+		transactionManager: EntityManager,
 		credential: Partial<CredentialsEntity>,
 		project: Project,
 		ctx: OperationContext,
@@ -168,7 +170,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		// UsageScope is instance-local state; imports never change it for existing credentials.
 		let existing: Pick<CredentialsEntity, 'id' | 'type' | 'usageScope'> | null = null;
 		if (credential.id) {
-			existing = await this.transactionManager.findOne(CredentialsEntity, {
+			existing = await transactionManager.findOne(CredentialsEntity, {
 				where: { id: credential.id },
 				select: ['id', 'usageScope', 'type'],
 			});
@@ -206,25 +208,25 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				resolvableAllowFallback: false,
 				resolverId: null,
 			});
-			await this.validateInstanceCredentialData(credential, existing, ctx);
+			await this.validateInstanceCredentialData(transactionManager, credential, existing, ctx);
 		}
 
-		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
+		const result = await transactionManager.upsert(CredentialsEntity, credential, ['id']);
 		const credentialsId = credential.id ?? (result.identifiers[0].id as string);
 
 		if (credential.usageScope === 'instance') {
 			// Instance credentials are instance-owned and must not retain project sharing rows.
-			await this.transactionManager.delete(SharedCredentials, { credentialsId });
+			await transactionManager.delete(SharedCredentials, { credentialsId });
 			return;
 		}
 
-		const sharingExists = await this.transactionManager.existsBy(SharedCredentials, {
+		const sharingExists = await transactionManager.existsBy(SharedCredentials, {
 			credentialsId,
 			role: 'credential:owner',
 		});
 
 		if (!sharingExists) {
-			await this.transactionManager.upsert(
+			await transactionManager.upsert(
 				SharedCredentials,
 				{
 					credentialsId,
@@ -237,6 +239,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 	}
 
 	private async validateInstanceCredentialData(
+		transactionManager: EntityManager,
 		credential: Partial<CredentialsEntity>,
 		existing: Pick<CredentialsEntity, 'id' | 'type' | 'usageScope'> | null,
 		ctx: OperationContext,
@@ -244,7 +247,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		let data: unknown = credential.data;
 		if (data === undefined && credential.id) {
 			data = (
-				await this.transactionManager.findOne(CredentialsEntity, {
+				await transactionManager.findOne(CredentialsEntity, {
 					where: { id: credential.id },
 					select: { data: true },
 				})
@@ -276,6 +279,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 	}
 
 	private async checkRelations(
+		transactionManager: EntityManager,
 		credentials: Array<Pick<Partial<CredentialsEntity>, 'id'>>,
 		projectId?: string,
 		userId?: string,
@@ -293,11 +297,14 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				continue;
 			}
 
-			if (!(await this.credentialExists(credential.id))) {
+			if (!(await this.credentialExists(transactionManager, credential.id))) {
 				continue;
 			}
 
-			const { user, project: ownerProject } = await this.getCredentialOwner(credential.id);
+			const { user, project: ownerProject } = await this.getCredentialOwner(
+				transactionManager,
+				credential.id,
+			);
 
 			if (!ownerProject) {
 				continue;
@@ -459,14 +466,14 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		return property in importableProperties;
 	}
 
-	private async getCredentialOwner(credentialsId: string) {
-		const sharedCredential = await this.transactionManager.findOne(SharedCredentials, {
+	private async getCredentialOwner(transactionManager: EntityManager, credentialsId: string) {
+		const sharedCredential = await transactionManager.findOne(SharedCredentials, {
 			where: { credentialsId, role: 'credential:owner' },
 			relations: { project: true },
 		});
 
 		if (sharedCredential && sharedCredential.project.type === 'personal') {
-			const user = await this.transactionManager.findOneByOrFail(User, {
+			const user = await transactionManager.findOneByOrFail(User, {
 				projectRelations: {
 					role: { slug: PROJECT_OWNER_ROLE_SLUG },
 					projectId: sharedCredential.projectId,
@@ -479,17 +486,17 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		return {};
 	}
 
-	private async credentialExists(credentialId: string) {
-		return await this.transactionManager.existsBy(CredentialsEntity, { id: credentialId });
+	private async credentialExists(transactionManager: EntityManager, credentialId: string) {
+		return await transactionManager.existsBy(CredentialsEntity, { id: credentialId });
 	}
 
-	private async getProject(userId?: string, projectId?: string) {
+	private async getProject(transactionManager: EntityManager, userId?: string, projectId?: string) {
 		if (projectId) {
-			return await this.transactionManager.findOneByOrFail(Project, { id: projectId });
+			return await transactionManager.findOneByOrFail(Project, { id: projectId });
 		}
 
 		if (!userId) {
-			const owner = await this.transactionManager.findOneBy(User, {
+			const owner = await transactionManager.findOneBy(User, {
 				role: {
 					slug: GLOBAL_OWNER_ROLE.slug,
 				},
@@ -502,7 +509,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 
 		return await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 			userId,
-			this.transactionManager,
+			transactionManager,
 		);
 	}
 }

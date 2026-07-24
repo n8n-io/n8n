@@ -12,6 +12,7 @@ export interface InstanceCredentialUse {
 
 @Service()
 export class InstanceCredentialUseRegistry {
+	// Use policies are code-defined; mutable assignments are persisted in the database.
 	private readonly uses = new Map<string, InstanceCredentialUse>();
 
 	register(credentialUse: InstanceCredentialUse) {
