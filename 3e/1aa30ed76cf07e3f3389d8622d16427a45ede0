@@ -1,0 +1,19 @@
+pnpm-lock.yaml
+  s_ea7353bbdf9fbd::t_f175b6d94e6a7b 4116-4118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3e1aa30ed76cf07e3f3389d8622d16427a45ede0",
+  "prompts": {},
+  "sessions": {
+    "s_ea7353bbdf9fbd": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9d6c671e-f6ef-4beb-927f-2f716ffeebc2",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
