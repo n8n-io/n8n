@@ -1411,22 +1411,47 @@ export function isInstanceAiSandboxProvider(value: unknown): value is InstanceAi
 	return instanceAiSandboxProviderSchema.safeParse(value).success;
 }
 
+export const INSTANCE_AI_MODEL_CREDENTIAL_TYPES = [
+	'openAiApi',
+	'anthropicApi',
+	'googlePalmApi',
+	'groqApi',
+	'deepSeekApi',
+	'mistralCloudApi',
+	'xAiApi',
+	'openRouterApi',
+	'cohereApi',
+] as const;
+
+export const INSTANCE_AI_SEARCH_CREDENTIAL_TYPES = ['braveSearchApi', 'searXngApi'] as const;
+
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
 	permissions: InstanceAiPermissions;
-	mcpServers: string;
 	mcpAccessEnabled: boolean;
 	sandboxEnabled: boolean;
 	sandboxProvider: InstanceAiSandboxProvider;
-	sandboxImage: string;
-	sandboxTimeout: number;
 	daytonaCredentialId: string | null;
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
 	modelCredentialId: string | null;
+	modelName: string | null;
+	modelEnvConfigured: boolean;
+	sandboxEnvConfigured: boolean;
+	searchEnvConfigured: boolean;
 	localGatewayDisabled: boolean;
 	browserUseEnabled: boolean;
 }
+
+/**
+ * Inline provider-connection payload: the credential type plus its field
+ * values. `null` clears the connection (and falls back to env config).
+ */
+export const instanceAiConnectionSchema = z.object({
+	type: z.string().min(1),
+	data: z.record(z.string(), z.unknown()),
+});
+export type InstanceAiConnectionUpdate = z.infer<typeof instanceAiConnectionSchema>;
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
@@ -1441,6 +1466,10 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	n8nSandboxCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
 	modelCredentialId: z.string().nullable().optional(),
+	modelConnection: instanceAiConnectionSchema.nullable().optional(),
+	sandboxConnection: instanceAiConnectionSchema.nullable().optional(),
+	searchConnection: instanceAiConnectionSchema.nullable().optional(),
+	modelName: z.string().trim().min(1).nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
 	browserUseEnabled: z.boolean().optional(),
 }) {}
@@ -1463,11 +1492,10 @@ export class InstanceAiUserPreferencesUpdateRequest extends Z.class({
 	localGatewayDisabled: z.boolean().optional(),
 }) {}
 
-export interface InstanceAiModelCredential {
+export interface InstanceAiProviderConnection {
 	id: string;
 	name: string;
 	type: string;
-	provider: string;
 }
 
 // ---------------------------------------------------------------------------

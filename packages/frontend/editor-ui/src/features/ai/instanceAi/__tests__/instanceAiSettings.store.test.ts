@@ -34,8 +34,8 @@ const mockFetchSettings = vi.fn();
 const mockUpdateSettings = vi.fn();
 const mockFetchPreferences = vi.fn();
 const mockUpdatePreferences = vi.fn();
-const mockFetchModelCredentials = vi.fn().mockResolvedValue([]);
 const mockFetchServiceCredentials = vi.fn().mockResolvedValue([]);
+const mockFetchInstanceModelCredentials = vi.fn().mockResolvedValue([]);
 const mockCreateGatewayLink = vi.fn();
 const mockDisconnectGatewaySession = vi.fn();
 
@@ -44,8 +44,8 @@ vi.mock('../instanceAi.settings.api', () => ({
 	updateSettings: (...args: unknown[]) => mockUpdateSettings(...args),
 	fetchPreferences: (...args: unknown[]) => mockFetchPreferences(...args),
 	updatePreferences: (...args: unknown[]) => mockUpdatePreferences(...args),
-	fetchModelCredentials: (...args: unknown[]) => mockFetchModelCredentials(...args),
 	fetchServiceCredentials: (...args: unknown[]) => mockFetchServiceCredentials(...args),
+	fetchInstanceModelCredentials: (...args: unknown[]) => mockFetchInstanceModelCredentials(...args),
 }));
 
 const mockGetGatewayStatus = vi.fn();
@@ -57,6 +57,7 @@ vi.mock('../instanceAi.api', () => ({
 
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 type InstanceAiModuleSettings = NonNullable<FrontendModuleSettings['instance-ai']>;
 
@@ -97,9 +98,32 @@ describe('useInstanceAiSettingsStore', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.mocked(hasPermission).mockReturnValue(false);
 		setActivePinia(createPinia());
 		store = useInstanceAiSettingsStore();
 		settingsStore = useSettingsStore();
+	});
+
+	describe('permissions', () => {
+		it('checks related admin scopes independently', () => {
+			vi.mocked(hasPermission)
+				.mockReturnValueOnce(true)
+				.mockReturnValueOnce(false)
+				.mockReturnValueOnce(false);
+
+			expect(store.canManage).toBe(true);
+			expect(store.canManageAiUsage).toBe(false);
+			expect(store.canManageInstanceCredentials).toBe(false);
+			expect(hasPermission).toHaveBeenNthCalledWith(1, ['rbac'], {
+				rbac: { scope: 'instanceAi:manage' },
+			});
+			expect(hasPermission).toHaveBeenNthCalledWith(2, ['rbac'], {
+				rbac: { scope: 'aiAssistant:manage' },
+			});
+			expect(hasPermission).toHaveBeenNthCalledWith(3, ['rbac'], {
+				rbac: { scope: 'credential:manageInstance' },
+			});
+		});
 	});
 
 	describe('isInstanceAiDisabled', () => {
@@ -256,10 +280,9 @@ describe('useInstanceAiSettingsStore', () => {
 
 			expect(store.isWorkflowBuilderAvailable).toBe(false);
 			expect(store.isSandboxEnabled).toBe(false);
-			expect(store.sandboxUnavailableReason).toBeNull();
 		});
 
-		it('exposes the sandbox unavailable reason from module settings', () => {
+		it('keeps the builder unavailable while the sandbox is enabled', () => {
 			setModuleSettings(settingsStore, {
 				sandboxEnabled: true,
 				workflowBuilderAvailable: false,
@@ -268,7 +291,51 @@ describe('useInstanceAiSettingsStore', () => {
 
 			expect(store.isWorkflowBuilderAvailable).toBe(false);
 			expect(store.isSandboxEnabled).toBe(true);
-			expect(store.sandboxUnavailableReason).toBe('N8N_SANDBOX_SERVICE_URL is required.');
+		});
+	});
+
+	describe('settings persistence', () => {
+		const response = {
+			enabled: true,
+			permissions: {},
+			mcpServers: '',
+			mcpAccessEnabled: true,
+			sandboxEnabled: false,
+			sandboxProvider: 'n8n-sandbox',
+			sandboxImage: '',
+			sandboxTimeout: 60,
+			daytonaCredentialId: null,
+			n8nSandboxCredentialId: null,
+			searchCredentialId: null,
+			modelCredentialId: null,
+			modelName: null,
+			modelEnvConfigured: false,
+			sandboxEnvConfigured: false,
+			searchEnvConfigured: false,
+			localGatewayDisabled: false,
+		};
+
+		beforeEach(() => {
+			setModuleSettings(settingsStore, { enabled: false });
+			mockUpdateSettings.mockResolvedValue(response);
+			settingsStore.getModuleSettings = vi.fn().mockRejectedValue(new Error('refresh failed'));
+		});
+
+		it('keeps a settings save successful when the module refresh fails', async () => {
+			store.setField('mcpAccessEnabled', true);
+
+			await expect(store.save()).resolves.toBe(true);
+
+			expect(store.settings).toEqual(response);
+			expect(store.draft).toEqual({});
+			expect(settingsStore.moduleSettings['instance-ai']?.enabled).toBe(true);
+		});
+
+		it('keeps an enablement save successful when the module refresh fails', async () => {
+			await expect(store.persistEnabled(true)).resolves.toBe(true);
+
+			expect(store.settings).toEqual(response);
+			expect(settingsStore.moduleSettings['instance-ai']?.enabled).toBe(true);
 		});
 	});
 

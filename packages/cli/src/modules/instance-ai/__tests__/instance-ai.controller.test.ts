@@ -96,6 +96,7 @@ function scopeOf(handlerName: string): { scope: Scope; globalOnly: boolean } | u
 describe('InstanceAiController', () => {
 	const instanceAiService = mock<InstanceAiService>();
 	const gatewayService = mock<InstanceAiGatewayService>();
+	const browserSessionService = mock<InstanceAiBrowserSessionService>();
 	const memoryService = mock<InstanceAiMemoryService>();
 	const settingsService = mock<InstanceAiSettingsService>();
 	const eventBus = mock<InProcessEventBus>();
@@ -122,7 +123,7 @@ describe('InstanceAiController', () => {
 	const controller = new InstanceAiController(
 		instanceAiService,
 		gatewayService,
-		mock<InstanceAiBrowserSessionService>(),
+		browserSessionService,
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),
@@ -986,13 +987,68 @@ describe('InstanceAiController', () => {
 			});
 		});
 
-		it('should wait for the settings reload to be published', async () => {
-			settingsService.updateAdminSettings.mockResolvedValue({ enabled: true } as never);
-			publisher.publishCommand.mockRejectedValue(new Error('publish failed'));
+		it('should publish and attempt every local side effect when one fails', async () => {
+			const refreshError = new Error('refresh failed');
+			settingsService.updateAdminSettings.mockResolvedValue({
+				enabled: false,
+				browserUseEnabled: false,
+				localGatewayDisabled: true,
+			} as never);
+			moduleRegistry.refreshModuleSettings.mockRejectedValueOnce(refreshError);
+			gatewayService.disconnectAllGateways.mockReturnValue([]);
 
-			await expect(controller.updateAdminSettings(req, res, { enabled: true })).rejects.toThrow(
-				'publish failed',
+			await expect(
+				controller.updateAdminSettings(req, res, { enabled: false }),
+			).resolves.toBeDefined();
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'reload-instance-ai-settings',
+			});
+			expect(browserSessionService.shutdown).toHaveBeenCalled();
+			expect(gatewayService.disconnectAllGateways).toHaveBeenCalled();
+			expect(instanceAiErrorReporter.report).toHaveBeenCalledWith(refreshError, {
+				component: 'settings-side-effects',
+				threadId: 'admin-settings',
+			});
+		});
+
+		it('should report a publish failure after applying committed settings', async () => {
+			const committedSettings = {
+				enabled: false,
+				browserUseEnabled: false,
+				localGatewayDisabled: true,
+			};
+			const publishError = new Error('publish failed');
+			settingsService.updateAdminSettings.mockResolvedValue(committedSettings as never);
+			publisher.publishCommand.mockRejectedValue(publishError);
+			gatewayService.disconnectAllGateways.mockReturnValue([]);
+
+			await expect(controller.updateAdminSettings(req, res, { enabled: false })).resolves.toBe(
+				committedSettings,
 			);
+			expect(instanceAiErrorReporter.report).toHaveBeenCalledWith(publishError, {
+				component: 'settings-publish',
+				threadId: 'admin-settings',
+			});
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('instance-ai');
+			expect(browserSessionService.shutdown).toHaveBeenCalled();
+			expect(gatewayService.disconnectAllGateways).toHaveBeenCalled();
+		});
+	});
+
+	describe('reloadAdminSettings', () => {
+		it('should apply side effects from the reloaded local flags', async () => {
+			settingsService.isInstanceAiEnabled.mockReturnValue(false);
+			settingsService.isBrowserUseEnabled.mockReturnValue(false);
+			settingsService.isLocalGatewayDisabled.mockReturnValue(true);
+			gatewayService.disconnectAllGateways.mockReturnValue([]);
+
+			await controller.reloadAdminSettings();
+
+			expect(settingsService.reloadFromDb).toHaveBeenCalled();
+			expect(settingsService.getAdminSettings).not.toHaveBeenCalled();
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('instance-ai');
+			expect(browserSessionService.shutdown).toHaveBeenCalled();
+			expect(gatewayService.disconnectAllGateways).toHaveBeenCalled();
 		});
 	});
 
@@ -1040,18 +1096,18 @@ describe('InstanceAiController', () => {
 		});
 	});
 
-	describe('listModelCredentials', () => {
-		it('should require instanceAi:message scope', () => {
-			expect(scopeOf('listModelCredentials')).toEqual({
-				scope: 'instanceAi:message',
+	describe('listServiceCredentials', () => {
+		it('should require instanceAi:manage scope', () => {
+			expect(scopeOf('listServiceCredentials')).toEqual({
+				scope: 'instanceAi:manage',
 				globalOnly: true,
 			});
 		});
 	});
 
-	describe('listServiceCredentials', () => {
+	describe('listInstanceModelCredentials', () => {
 		it('should require instanceAi:manage scope', () => {
-			expect(scopeOf('listServiceCredentials')).toEqual({
+			expect(scopeOf('listInstanceModelCredentials')).toEqual({
 				scope: 'instanceAi:manage',
 				globalOnly: true,
 			});

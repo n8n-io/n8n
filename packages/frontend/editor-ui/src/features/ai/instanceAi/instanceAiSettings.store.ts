@@ -9,7 +9,6 @@ import {
 	updateSettings,
 	fetchPreferences,
 	updatePreferences,
-	fetchModelCredentials,
 	fetchServiceCredentials,
 	fetchInstanceModelCredentials,
 } from './instanceAi.settings.api';
@@ -27,8 +26,7 @@ import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesResponse,
-	InstanceAiUserPreferencesUpdateRequest,
-	InstanceAiModelCredential,
+	InstanceAiProviderConnection,
 	InstanceAiPermissions,
 	InstanceAiPermissionMode,
 	ToolCategory,
@@ -50,11 +48,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isSaving = ref(false);
 	const settings = ref<InstanceAiAdminSettingsResponse | null>(null);
 	const preferences = ref<InstanceAiUserPreferencesResponse | null>(null);
-	const credentials = ref<InstanceAiModelCredential[]>([]);
-	const serviceCredentials = ref<InstanceAiModelCredential[]>([]);
-	const instanceModelCredentials = ref<InstanceAiModelCredential[]>([]);
+	const serviceCredentials = ref<InstanceAiProviderConnection[]>([]);
+	const instanceModelCredentials = ref<InstanceAiProviderConnection[]>([]);
 	const draft = reactive<InstanceAiAdminSettingsUpdateRequest>({});
-	const preferencesDraft = reactive<InstanceAiUserPreferencesUpdateRequest>({});
 
 	// ── Gateway / daemon state ──────────────────────────────────────────
 	const HAS_CONNECTED_STORAGE_KEY = 'instanceAi.gateway.hasConnected';
@@ -99,7 +95,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const browserConnectUrl = ref<string | null>(null);
 	const browserConnectUrlExpiresAt = ref<string | null>(null);
 	let browserConnectUrlRequestId = 0;
-	const activeDirectory = computed(() => gatewayDirectory.value);
 	const isInstanceAiDisabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.enabled !== true,
 	);
@@ -125,14 +120,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isWorkflowBuilderAvailable = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.workflowBuilderAvailable ?? true,
 	);
-	const sandboxUnavailableReason = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.sandboxUnavailableReason ?? null,
-	);
-
-	const isDirty = computed(() => {
-		if (!settings.value && !preferences.value) return false;
-		return Object.keys(draft).length > 0 || Object.keys(preferencesDraft).length > 0;
-	});
 
 	function syncInstanceAiFlagIntoGlobalModuleSettings(
 		adminRes: InstanceAiAdminSettingsResponse,
@@ -162,6 +149,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const canManage = computed(() =>
 		hasPermission(['rbac'], { rbac: { scope: 'instanceAi:manage' } }),
 	);
+	const canManageAiUsage = computed(() =>
+		hasPermission(['rbac'], { rbac: { scope: 'aiAssistant:manage' } }),
+	);
+	const canManageInstanceCredentials = computed(() =>
+		hasPermission(['rbac'], { rbac: { scope: 'credential:manageInstance' } }),
+	);
 
 	async function fetch(): Promise<void> {
 		isLoading.value = true;
@@ -176,87 +169,74 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			const [s, p] = await Promise.all(promises);
 			settings.value = s;
 			preferences.value = p;
-			if (!isProxyEnabled.value && !isCloudManaged.value) {
-				const credPromises: [
-					Promise<InstanceAiModelCredential[]>,
-					Promise<InstanceAiModelCredential[]>,
-					Promise<InstanceAiModelCredential[]>,
-				] = [
-					fetchModelCredentials(rootStore.restApiContext),
-					canManage.value ? fetchServiceCredentials(rootStore.restApiContext) : Promise.resolve([]),
-					canManage.value
-						? fetchInstanceModelCredentials(rootStore.restApiContext)
-						: Promise.resolve([]),
-				];
-				const [c, sc, imc] = await Promise.all(credPromises);
-				credentials.value = c;
+			if (!isProxyEnabled.value && !isCloudManaged.value && canManage.value) {
+				const [sc, imc] = await Promise.all([
+					fetchServiceCredentials(rootStore.restApiContext),
+					fetchInstanceModelCredentials(rootStore.restApiContext),
+				]);
 				serviceCredentials.value = sc;
 				instanceModelCredentials.value = imc;
 			}
 			clearDraft();
 		} catch {
-			toast.showError(new Error('Failed to load settings'), 'Settings error');
+			toast.showError(
+				new Error(i18n.baseText('settings.n8nAgent.toast.loadError')),
+				i18n.baseText('settings.n8nAgent.toast.errorTitle'),
+			);
 		} finally {
 			isLoading.value = false;
 		}
 	}
 
-	async function save(): Promise<void> {
+	/**
+	 * Persists the staged admin draft. Returns whether the save succeeded; on
+	 * failure the draft is discarded so a later unrelated save can't flush it.
+	 */
+	async function save(): Promise<boolean> {
+		if (Object.keys(draft).length === 0) return true;
 		isSaving.value = true;
 		try {
-			const hasAdminChanges = Object.keys(draft).length > 0;
-			const hasPreferenceChanges = Object.keys(preferencesDraft).length > 0;
-
-			const [adminResult, prefsResult] = await Promise.allSettled([
-				hasAdminChanges
-					? updateSettings(rootStore.restApiContext, {
-							...toRaw(draft),
-						} as InstanceAiAdminSettingsUpdateRequest)
-					: Promise.resolve(settings.value),
-				hasPreferenceChanges
-					? updatePreferences(rootStore.restApiContext, preferencesDraft)
-					: Promise.resolve(preferences.value),
-			]);
-
-			if (adminResult.status === 'fulfilled' && adminResult.value)
-				settings.value = adminResult.value;
-			if (prefsResult.status === 'fulfilled' && prefsResult.value)
-				preferences.value = prefsResult.value;
-
-			const failed = [adminResult, prefsResult].filter((r) => r.status === 'rejected');
-			if (failed.length > 0) {
-				throw (failed[0] as PromiseRejectedResult).reason;
-			}
-
+			const result = await updateSettings(rootStore.restApiContext, {
+				...toRaw(draft),
+			} as InstanceAiAdminSettingsUpdateRequest);
+			settings.value = result;
 			clearDraft();
-			toast.showMessage({ title: 'Settings saved', type: 'success' });
-			if (hasAdminChanges) {
-				await settingsStore.getModuleSettings();
-				const adminSaved =
-					adminResult.status === 'fulfilled' && adminResult.value ? adminResult.value : null;
-				if (adminSaved) {
-					syncInstanceAiFlagIntoGlobalModuleSettings(adminSaved);
-				}
-			}
-		} catch {
-			toast.showError(new Error('Failed to save settings'), 'Settings error');
+			toast.showMessage({
+				title: i18n.baseText('settings.n8nAgent.toast.saved'),
+				type: 'success',
+			});
+			syncInstanceAiFlagIntoGlobalModuleSettings(result);
+			await settingsStore.getModuleSettings().catch(() => {});
+			return true;
+		} catch (error) {
+			clearDraft();
+			toast.showError(error, i18n.baseText('settings.n8nAgent.toast.errorTitle'));
+			return false;
 		} finally {
 			isSaving.value = false;
 		}
 	}
 
 	/** Persists only the Instance AI on/off flag (does not send other admin draft fields). */
-	async function persistEnabled(value: boolean): Promise<void> {
+	async function persistEnabled(value: boolean): Promise<boolean> {
 		isSaving.value = true;
 		try {
 			const result = await updateSettings(rootStore.restApiContext, { enabled: value });
 			settings.value = result;
 			delete draft.enabled;
-			await settingsStore.getModuleSettings();
 			syncInstanceAiFlagIntoGlobalModuleSettings(result);
-			toast.showMessage({ title: 'Settings saved', type: 'success' });
+			await settingsStore.getModuleSettings().catch(() => {});
+			toast.showMessage({
+				title: i18n.baseText('settings.n8nAgent.toast.saved'),
+				type: 'success',
+			});
+			return true;
 		} catch {
-			toast.showError(new Error('Failed to save settings'), 'Settings error');
+			toast.showError(
+				new Error(i18n.baseText('settings.n8nAgent.toast.saveError')),
+				i18n.baseText('settings.n8nAgent.toast.errorTitle'),
+			);
+			return false;
 		} finally {
 			isSaving.value = false;
 		}
@@ -269,7 +249,10 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			});
 			preferences.value = result;
 		} catch {
-			toast.showError(new Error('Failed to save preference'), 'Settings error');
+			toast.showError(
+				new Error(i18n.baseText('settings.n8nAgent.toast.preferenceError')),
+				i18n.baseText('settings.n8nAgent.toast.errorTitle'),
+			);
 		}
 	}
 
@@ -363,22 +346,13 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		key: K,
 		value: InstanceAiAdminSettingsUpdateRequest[K],
 	): void {
-		draft[key] = value;
-	}
-
-	function setPreferenceField<K extends keyof InstanceAiUserPreferencesUpdateRequest>(
-		key: K,
-		value: InstanceAiUserPreferencesUpdateRequest[K],
-	): void {
-		preferencesDraft[key] = value;
+		if (value === undefined) delete draft[key];
+		else draft[key] = value;
 	}
 
 	function clearDraft(): void {
 		for (const key of Object.keys(draft)) {
 			delete (draft as Record<string, unknown>)[key];
-		}
-		for (const key of Object.keys(preferencesDraft)) {
-			delete (preferencesDraft as Record<string, unknown>)[key];
 		}
 	}
 
@@ -391,10 +365,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		const draftVal = draft.permissions?.[key];
 		if (draftVal !== undefined) return draftVal;
 		return settings.value?.permissions?.[key] ?? 'require_approval';
-	}
-
-	function reset(): void {
-		clearDraft();
 	}
 
 	// ── Gateway status fetch ──────────────────────────────────────────────
@@ -599,12 +569,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	async function refreshCredentials(): Promise<void> {
 		if (isProxyEnabled.value) return;
 		try {
-			const [c, sc] = await Promise.all([
-				fetchModelCredentials(rootStore.restApiContext),
-				fetchServiceCredentials(rootStore.restApiContext),
-			]);
-			credentials.value = c;
-			serviceCredentials.value = sc;
+			serviceCredentials.value = await fetchServiceCredentials(rootStore.restApiContext);
 		} catch {
 			// Silently fail — credentials list will refresh on next full fetch
 		}
@@ -633,26 +598,23 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 
 	return {
 		canManage,
+		canManageAiUsage,
+		canManageInstanceCredentials,
 		settings,
 		preferences,
-		credentials,
 		serviceCredentials,
 		instanceModelCredentials,
 		draft,
-		preferencesDraft,
 		isLoading,
 		isSaving,
-		isDirty,
 		fetch,
 		save,
 		persistEnabled,
 		persistLocalGatewayPreference,
 		ensurePreferencesLoaded,
 		setField,
-		setPreferenceField,
 		setPermission,
 		getPermission,
-		reset,
 		// Gateway / daemon
 		isDaemonConnecting,
 		setupCommand,
@@ -665,7 +627,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		gatewayDirectory,
 		gatewayHostIdentifier,
 		gatewayToolCategories,
-		activeDirectory,
 		isInstanceAiDisabled,
 		isLocalGatewayDisabled,
 		isLocalGatewayDisabledByAdmin,
@@ -673,7 +634,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isProxyEnabled,
 		isSandboxEnabled,
 		isWorkflowBuilderAvailable,
-		sandboxUnavailableReason,
 		fetchGatewayStatus,
 		connectLocalGateway,
 		isCloudManaged,

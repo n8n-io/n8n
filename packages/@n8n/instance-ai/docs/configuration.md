@@ -2,7 +2,10 @@
 
 ## Environment Variables
 
-All Instance AI configuration is done via environment variables.
+Environment variables define Instance AI defaults and fallbacks. On direct self-hosted
+deployments, admins can override the model credential and model name in Instance AI settings.
+The sandbox provider is also overridable there (via the sandbox connection); a provider
+persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 
 ### Core
 
@@ -63,7 +66,7 @@ When no search provider is available, the `web-search` action is disabled. `fetc
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `N8N_INSTANCE_AI_SANDBOX_ENABLED` | boolean | `false` | Enable sandbox-backed workflow building. When false, workflow builder capability is unavailable. |
-| `N8N_INSTANCE_AI_SANDBOX_PROVIDER` | string | `n8n-sandbox` | Sandbox provider: `n8n-sandbox` for the n8n sandbox service, or `daytona` for the Daytona provider. |
+| `N8N_INSTANCE_AI_SANDBOX_PROVIDER` | string | `n8n-sandbox` | Sandbox provider: `n8n-sandbox` for the n8n sandbox service, or `daytona` for the Daytona provider. On self-hosted, a provider selected in Instance AI settings takes precedence. |
 | `DAYTONA_API_URL` | string | `''` | Daytona API URL (e.g. `https://app.daytona.io/api`). Required when provider is `daytona`. |
 | `DAYTONA_API_KEY` | string | `''` | Daytona API key for authentication. Required when provider is `daytona`. |
 | `N8N_SANDBOX_SERVICE_URL` | string | `''` | n8n sandbox service URL. Required when provider is `n8n-sandbox`. |
@@ -121,6 +124,17 @@ and explicit `key=value`/JSON secret fields, not arbitrary opaque strings, to
 avoid mangling normal output. The `PiiDetectionType` API also reserves `phone`
 and `address`, but those have no detection pattern yet — setting them has no
 effect (they were deferred as too false-positive-prone for free-form prose).
+
+## Provider connections
+
+On self-hosted deployments, owners and admins can configure the model, sandbox, and
+web-search connections from the AI Assistant settings page. These connections are
+managed centrally and are not offered as workflow-canvas credentials.
+
+The environment variables above remain the fallback when no provider connection is
+selected. The effective model name resolves as the instance setting, then the per-user
+preference, then `N8N_INSTANCE_AI_MODEL`. Cloud and proxy-managed deployments receive
+these values from the managed service instead.
 
 ## Enabling / Disabling
 
