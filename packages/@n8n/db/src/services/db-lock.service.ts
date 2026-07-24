@@ -15,6 +15,7 @@ export const enum DbLock {
 	WORKFLOW_STATISTICS_ROLLUP = 1003,
 	WORKFLOW_REVIEW_REQUEST_CREATE = 1004,
 	MIGRATIONS = 1005,
+	EVAL_COLLECTION_RERUN = 1006,
 	/** Reserved for integration tests — never use in production code */
 	TEST = 9999,
 }
@@ -171,12 +172,20 @@ export class DbLockService {
 	/**
 	 * Execute `fn` inside a database transaction, but only if the advisory
 	 * lock (Postgres) or in-process mutex (SQLite) can be acquired immediately.
+	 * A blocked caller returns at once instead of camping on a pool connection.
 	 *
+	 * @param options.subKey - Optional int32 second lock key (Postgres two-int
+	 *   advisory lock form) to scope the lock, e.g. per entity. Scopes the SQLite
+	 *   in-process mutex the same way.
 	 * @throws {OperationalError} if the lock is already held by another process
 	 */
-	async tryWithLock<T>(lockId: DbLock, fn: (tx: EntityManager) => Promise<T>): Promise<T> {
+	async tryWithLock<T>(
+		lockId: DbLock,
+		fn: (tx: EntityManager) => Promise<T>,
+		options?: { subKey?: number },
+	): Promise<T> {
 		if (this.databaseConfig.type !== 'postgresdb') {
-			const release = this.tryAcquireLock(lockId);
+			const release = this.tryAcquireLock(lockId, options?.subKey);
 			try {
 				return await this.dataSource.manager.transaction(async (tx) => await fn(tx));
 			} finally {
@@ -185,12 +194,17 @@ export class DbLockService {
 		}
 
 		return await this.dataSource.manager.transaction(async (tx) => {
+			const lockKeys = options?.subKey === undefined ? [lockId] : [lockId, options.subKey];
 			const result: Array<{ pg_try_advisory_xact_lock: boolean }> = await tx.query(
-				'SELECT pg_try_advisory_xact_lock($1)',
-				[lockId],
+				lockKeys.length === 1
+					? 'SELECT pg_try_advisory_xact_lock($1)'
+					: 'SELECT pg_try_advisory_xact_lock($1, $2)',
+				lockKeys,
 			);
 			if (!result[0].pg_try_advisory_xact_lock) {
-				throw new OperationalError(`DbLock ${lockId} is already held by another process`);
+				throw new OperationalError(
+					`DbLock ${lockKey(lockId, options?.subKey)} is already held by another process`,
+				);
 			}
 			return await fn(tx);
 		});
@@ -255,8 +269,8 @@ export class DbLockService {
 	 *
 	 * @throws {OperationalError} if the lock is already held
 	 */
-	private tryAcquireLock(lockId: number): ReleaseFn {
-		const lockState = this.getOrCreateLockState(lockId);
+	private tryAcquireLock(lockId: number, subKey?: number): ReleaseFn {
+		const lockState = this.getOrCreateLockState(lockId, subKey);
 
 		if (!lockState.held) {
 			const token: OwnerToken = {} as OwnerToken;
@@ -264,7 +278,9 @@ export class DbLockService {
 			return this.createReleaseFn(lockState, token);
 		}
 
-		throw new OperationalError(`DbLock ${lockId} is already held by another process`);
+		throw new OperationalError(
+			`DbLock ${lockKey(lockId, subKey)} is already held by another process`,
+		);
 	}
 
 	/**

@@ -1,5 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
-import type { ProjectRepository, User } from '@n8n/db';
+import type { ProjectRepository, Role, User } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
@@ -8,12 +8,14 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks';
 import type { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import type { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ProjectService } from '@/services/project.service.ee';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
@@ -34,6 +36,8 @@ describe('WorkflowCreationService', () => {
 	let workflowValidationServiceMock: MockProxy<WorkflowValidationService>;
 	let instanceRedactionEnforcementServiceMock: MockProxy<InstanceRedactionEnforcementService>;
 	let workflowHistoryServiceMock: MockProxy<WorkflowHistoryService>;
+	let externalHooksMock: MockProxy<ExternalHooks>;
+	let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -46,6 +50,8 @@ describe('WorkflowCreationService', () => {
 		workflowValidationServiceMock = mock<WorkflowValidationService>();
 		instanceRedactionEnforcementServiceMock = mock<InstanceRedactionEnforcementService>();
 		workflowHistoryServiceMock = mock<WorkflowHistoryService>();
+		externalHooksMock = mock<ExternalHooks>();
+		workflowFinderServiceMock = mock<WorkflowFinderService>();
 		workflowValidationServiceMock.validateCredentialNodeRestrictions.mockReturnValue({
 			isValid: true,
 		});
@@ -58,11 +64,11 @@ describe('WorkflowCreationService', () => {
 			mock(), // sharedWorkflowRepository
 			mock(), // tagService
 			workflowHistoryServiceMock,
-			mock(), // externalHooks
+			externalHooksMock, // externalHooks
 			projectServiceMock,
 			mock(), // eventService
 			mock(), // globalConfig
-			mock(), // workflowFinderService
+			workflowFinderServiceMock, // workflowFinderService
 			licenseStateMock,
 			projectRepositoryMock,
 			mock(), // tagRepository
@@ -214,6 +220,75 @@ describe('WorkflowCreationService', () => {
 			).rejects.toThrow(
 				'The workflow you are trying to save contains credentials that are not shared with you',
 			);
+		});
+
+		describe('lifecycle hook actor', () => {
+			const expectedActor: WorkflowLifecycleHookActor = {
+				id: 'user-1',
+				email: 'actor@example.com',
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+				role: 'global:admin',
+			};
+
+			function makeActingUser() {
+				return mock<User>({
+					id: 'user-1',
+					email: 'actor@example.com',
+					firstName: 'Ada',
+					lastName: 'Lovelace',
+					role: mock<Role>({ slug: 'global:admin' }),
+				});
+			}
+
+			it('forwards the acting user to the create hook', async () => {
+				licenseStateMock.isSharingLicensed.mockReturnValue(false);
+				projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+				setupTransactionMocks();
+
+				const newWorkflow = new WorkflowEntity();
+				newWorkflow.name = 'Test';
+				newWorkflow.nodes = [];
+				newWorkflow.connections = {};
+
+				await expect(
+					workflowCreationService.createWorkflow(makeActingUser(), newWorkflow, {
+						projectId: 'project-1',
+					}),
+				).rejects.toThrow('Stopping for test');
+
+				expect(externalHooksMock.run).toHaveBeenCalledWith('workflow.create', [
+					newWorkflow,
+					expectedActor,
+				]);
+			});
+
+			it('forwards the acting user to the afterCreate hook', async () => {
+				licenseStateMock.isSharingLicensed.mockReturnValue(false);
+				licenseStateMock.isDataRedactionLicensed.mockReturnValue(false);
+				projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+				const { transactionManager } = setupTransactionMocks();
+				transactionManager.save.mockImplementation(async (entity: unknown) => entity);
+				workflowHistoryServiceMock.saveVersion.mockResolvedValue(undefined as never);
+
+				const savedWorkflow = new WorkflowEntity();
+				savedWorkflow.id = 'workflow-1';
+				workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(savedWorkflow);
+
+				const newWorkflow = new WorkflowEntity();
+				newWorkflow.name = 'Test';
+				newWorkflow.nodes = [];
+				newWorkflow.connections = {};
+
+				await workflowCreationService.createWorkflow(makeActingUser(), newWorkflow, {
+					projectId: 'project-1',
+				});
+
+				expect(externalHooksMock.run).toHaveBeenCalledWith('workflow.afterCreate', [
+					savedWorkflow,
+					expectedActor,
+				]);
+			});
 		});
 	});
 

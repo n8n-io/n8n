@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 
 const trackMock = vi.fn();
@@ -18,7 +19,7 @@ describe('useAgentTelemetry', () => {
 
 	it('trackClickedNewAgent fires event with source and session_id', () => {
 		useAgentTelemetry().trackClickedNewAgent('button');
-		expect(trackMock).toHaveBeenCalledWith('User clicked new agent', {
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_AGENT, {
 			source: 'button',
 			session_id: 'session-xyz',
 		});
@@ -26,7 +27,7 @@ describe('useAgentTelemetry', () => {
 
 	it('trackClickedNewAgent tracks card source', () => {
 		useAgentTelemetry().trackClickedNewAgent('card');
-		expect(trackMock).toHaveBeenCalledWith('User clicked new agent', {
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_AGENT, {
 			source: 'card',
 			session_id: 'session-xyz',
 		});
@@ -49,7 +50,7 @@ describe('useAgentTelemetry', () => {
 			status: 'draft',
 			agentConfig: fingerprint,
 		});
-		expect(trackMock).toHaveBeenCalledWith('User submitted message to agent', {
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_SUBMITTED_MESSAGE_TO_AGENT, {
 			agent_id: 'ag-1',
 			mode: 'test',
 			status: 'draft',
@@ -65,7 +66,7 @@ describe('useAgentTelemetry', () => {
 			configVersion: 'v2',
 			status: 'production',
 		});
-		expect(trackMock).toHaveBeenCalledWith('User edited agent config', {
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_EDITED_AGENT_CONFIG, {
 			agent_id: 'ag-1',
 			part: 'instructions',
 			config_version: 'v2',
@@ -82,7 +83,7 @@ describe('useAgentTelemetry', () => {
 			configVersion: 'v4',
 			status: 'draft',
 		});
-		expect(trackMock).toHaveBeenCalledWith('User added trigger to agent', {
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_ADDED_TRIGGER_TO_AGENT, {
 			agent_id: 'ag-1',
 			trigger_type: 'slack',
 			triggers: ['slack', 'telegram'],
@@ -100,7 +101,7 @@ describe('useAgentTelemetry', () => {
 			configVersion: 'v5',
 			status: 'draft',
 		});
-		expect(trackMock).toHaveBeenCalledWith('User added tools to agent', {
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_ADDED_TOOLS_TO_AGENT, {
 			agent_id: 'ag-1',
 			tool_added: 'search',
 			tools: ['search', 'summarize'],
@@ -118,7 +119,7 @@ describe('useAgentTelemetry', () => {
 			configVersion: 'v6',
 			status: 'production',
 		});
-		expect(trackMock).toHaveBeenCalledWith('User added skills to agent', {
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_ADDED_SKILLS_TO_AGENT, {
 			agent_id: 'ag-1',
 			skill_added: 'triage',
 			skills: ['outreach', 'triage'],
@@ -136,7 +137,7 @@ describe('useAgentTelemetry', () => {
 			configVersion: 'v7',
 			status: 'draft',
 		});
-		expect(trackMock).toHaveBeenCalledWith('User added tasks to agent', {
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_ADDED_TASKS_TO_AGENT, {
 			agent_id: 'ag-1',
 			task_added: 'task-1',
 			tasks: ['task-1', 'task-2'],
@@ -154,7 +155,7 @@ describe('useAgentTelemetry', () => {
 			configVersion: 'v8',
 			status: 'production',
 		});
-		expect(trackMock).toHaveBeenCalledWith('User removed tasks from agent', {
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_REMOVED_TASKS_FROM_AGENT, {
 			agent_id: 'ag-1',
 			task_removed: 'task-1',
 			tasks: ['task-2'],
@@ -166,7 +167,7 @@ describe('useAgentTelemetry', () => {
 
 	it('trackPublishedAgent fires with config_version and status=production', () => {
 		useAgentTelemetry().trackPublishedAgent({ agentId: 'ag-1', configVersion: 'v3' });
-		expect(trackMock).toHaveBeenCalledWith('User published agent', {
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_PUBLISHED_AGENT, {
 			agent_id: 'ag-1',
 			config_version: 'v3',
 			status: 'production',
@@ -176,7 +177,7 @@ describe('useAgentTelemetry', () => {
 
 	it('trackUnpublishedAgent fires with status=draft', () => {
 		useAgentTelemetry().trackUnpublishedAgent({ agentId: 'ag-1' });
-		expect(trackMock).toHaveBeenCalledWith('User unpublished agent', {
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_UNPUBLISHED_AGENT, {
 			agent_id: 'ag-1',
 			status: 'draft',
 			session_id: 'session-xyz',
@@ -185,7 +186,7 @@ describe('useAgentTelemetry', () => {
 
 	it('trackOpenedToolFromList fires with agent_id and tool_type', () => {
 		useAgentTelemetry().trackOpenedToolFromList({ agentId: 'ag-1', toolType: 'node' });
-		expect(trackMock).toHaveBeenCalledWith('User opened agent tool', {
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_TOOL, {
 			agent_id: 'ag-1',
 			tool_type: 'node',
 			session_id: 'session-xyz',
@@ -194,7 +195,7 @@ describe('useAgentTelemetry', () => {
 
 	it('trackOpenedSkillFromList fires with agent_id and skill_id', () => {
 		useAgentTelemetry().trackOpenedSkillFromList({ agentId: 'ag-1', skillId: 'skill-42' });
-		expect(trackMock).toHaveBeenCalledWith('User opened agent skill', {
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_SKILL, {
 			agent_id: 'ag-1',
 			skill_id: 'skill-42',
 			session_id: 'session-xyz',
@@ -203,7 +204,7 @@ describe('useAgentTelemetry', () => {
 
 	it('trackOpenedAddSkillModal fires with agent_id', () => {
 		useAgentTelemetry().trackOpenedAddSkillModal({ agentId: 'ag-1' });
-		expect(trackMock).toHaveBeenCalledWith('User opened add skill modal', {
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_OPENED_ADD_SKILL_MODAL, {
 			agent_id: 'ag-1',
 			session_id: 'session-xyz',
 		});

@@ -1,4 +1,10 @@
-import type { IConnections, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
+import type {
+	IConnections,
+	INode,
+	IWorkflowGroup,
+	IWorkflowSettings,
+	WorkflowFEMeta,
+} from 'n8n-workflow';
 import z from 'zod';
 
 export const nodeSchema = z
@@ -78,10 +84,33 @@ export const nodeGroupSchema = z
 	.object({
 		id: z.string(),
 		name: z.string(),
-		nodeIds: z.array(z.string()),
+		nodeNames: z
+			.array(z.string())
+			.describe('Names of the member nodes, matching the update_workflow group operations.'),
 		description: z.string().optional(),
 	})
 	.describe('A named visual grouping of nodes');
+
+export type NodeGroupSummary = z.infer<typeof nodeGroupSchema>;
+
+/**
+ * Maps persisted node groups (which store member node *ids*) to the read-path
+ * shape, which presents member node *names* — the same contract the
+ * update_workflow group operations accept. Stale ids that no longer resolve to
+ * a node are dropped, so echoing a group back into a write op repairs it.
+ */
+export const toNodeGroupSummary = (
+	nodeGroups: IWorkflowGroup[],
+	nodes: Array<Pick<INode, 'id' | 'name'>>,
+): NodeGroupSummary[] => {
+	const nameById = new Map(nodes.map((node) => [node.id, node.name]));
+	return nodeGroups.map(({ id, name, nodeIds, description }) => ({
+		id,
+		name,
+		nodeNames: nodeIds.flatMap((nodeId) => nameById.get(nodeId) ?? []),
+		...(description !== undefined ? { description } : {}),
+	}));
+};
 
 export const workflowDetailsOutputSchema = z.object({
 	workflow: z
