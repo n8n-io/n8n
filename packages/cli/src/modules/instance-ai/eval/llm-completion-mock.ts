@@ -14,6 +14,7 @@ import { z } from 'zod';
 import {
 	conformContentToSchema,
 	discoverStructuredOutputSchema,
+	requestDemandsFencedOutput,
 } from './structured-output-conformance';
 
 const COMPLETION_MOCK_PROMPT = `You simulate ONE response from the LLM that powers an AI agent inside an n8n workflow under evaluation. The agent runs a tool-calling loop and calls you once per turn. Decide the agent's NEXT step and submit it via submit_agent_step.
@@ -256,6 +257,10 @@ export function createLlmCompletionMockHandler(
 		const tools = extractTools(body);
 		const summary = summarizeConversation(body);
 		const outputSchema = discoverStructuredOutputSchema(body);
+		// The fence instruction rides at the tail of long node system prompts, past
+		// the transcript truncation — detect it on the RAW body and enforce
+		// mechanically, instead of hoping the mock model saw and obeyed it.
+		const ensureFence = requestDemandsFencedOutput(body);
 		const userPrompt = buildUserPrompt(
 			tools,
 			summary,
@@ -311,6 +316,9 @@ export function createLlmCompletionMockHandler(
 				content: conformContentToSchema(
 					unwrapProviderEnvelope(capture.content ?? ''),
 					outputSchema,
+					{
+						ensureFence,
+					},
 				),
 			};
 		} else {
@@ -321,7 +329,7 @@ export function createLlmCompletionMockHandler(
 			);
 			responseBody = {
 				content:
-					conformContentToSchema(unwrapProviderEnvelope(fallback), outputSchema) ||
+					conformContentToSchema(unwrapProviderEnvelope(fallback), outputSchema, { ensureFence }) ||
 					'[eval completion-mock: empty response]',
 			};
 		}

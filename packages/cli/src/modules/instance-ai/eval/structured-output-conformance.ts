@@ -46,6 +46,41 @@ function contentToText(content: unknown): string {
 
 const FENCED_JSON = /```(?:json)?\s*([\s\S]*?)```/gi;
 
+/** LangChain-style format instructions demanding the reply inside a markdown
+ *  code block — Text Classifier's "Include the enclosing markdown codeblock",
+ *  classic StructuredOutputParser's "a markdown code snippet". The node's parser
+ *  extracts from the fences, so a bare-JSON mock reply fails it with
+ *  "Model output doesn't fit required format". */
+const FENCE_DEMAND = /include the enclosing markdown codeblock|markdown code snippet/i;
+
+/** True when any request message carries format instructions that demand the
+ *  reply wrapped in a markdown code block. */
+export function requestDemandsFencedOutput(body: unknown): boolean {
+	if (!isRecord(body)) return false;
+	const items = Array.isArray(body.input)
+		? body.input
+		: Array.isArray(body.messages)
+			? body.messages
+			: [];
+	for (const item of items) {
+		if (!isRecord(item)) continue;
+		if (FENCE_DEMAND.test(contentToText(item.content))) return true;
+	}
+	return false;
+}
+
+/** Wrap bare JSON content in a ```json``` block; no-op for already-fenced or non-JSON content. */
+function fenceBareJson(content: string): string {
+	const trimmed = content.trim();
+	if (trimmed.startsWith('```')) return content;
+	try {
+		JSON.parse(trimmed);
+	} catch {
+		return content;
+	}
+	return `\`\`\`json\n${trimmed}\n\`\`\``;
+}
+
 /**
  * Find the structured-output JSON Schema a `/v1/responses` or chat-completions
  * request declares, from any of: native Responses `text.format.schema`, native
@@ -79,6 +114,7 @@ export function discoverStructuredOutputSchema(body: unknown): Record<string, un
 			? body.messages
 			: [];
 	let found: Record<string, unknown> | undefined;
+	let pseudo: Record<string, unknown> | undefined;
 	for (const item of items) {
 		if (!isRecord(item)) continue;
 		const itemText = contentToText(item.content);
@@ -86,15 +122,34 @@ export function discoverStructuredOutputSchema(body: unknown): Record<string, un
 		FENCED_JSON.lastIndex = 0;
 		let match: RegExpExecArray | null;
 		while ((match = FENCED_JSON.exec(itemText)) !== null) {
+			const block = match[1].trim();
 			try {
-				const parsed: unknown = JSON.parse(match[1].trim());
+				const parsed: unknown = JSON.parse(block);
 				if (looksLikeJsonSchema(parsed)) found = parsed; // keep the last schema-shaped block
 			} catch {
-				// not JSON — ignore this fence
+				// Not JSON — possibly pseudo-JSON format instructions; try synthesis.
+				pseudo = synthesizePseudoJsonSchema(block) ?? pseudo;
 			}
 		}
 	}
-	return found;
+	return found ?? pseudo;
+}
+
+/**
+ * Some format instructions (Text Classifier) embed a PSEUDO-JSON example
+ * (`{"Category name": boolean, ...}`) instead of a JSON Schema — unparseable, so
+ * plain discovery misses it and the mock invents shortened key names the node's
+ * parser then rejects ("Technical" vs the declared "Technical Support").
+ * Synthesize a strict all-required boolean schema from the quoted property names
+ * so prompt steering and conformance enforce the EXACT declared keys.
+ */
+function synthesizePseudoJsonSchema(block: string): Record<string, unknown> | undefined {
+	if (!/:\s*boolean\b/i.test(block)) return undefined;
+	const names = [...block.matchAll(/"((?:[^"\\]|\\.)+)"\s*:/g)].map((m) => m[1]);
+	if (names.length === 0) return undefined;
+	const properties: Record<string, unknown> = {};
+	for (const name of names) properties[name] = { type: 'boolean' };
+	return { type: 'object', properties, additionalProperties: false, required: names };
 }
 
 function schemaProperties(schema: unknown): Record<string, unknown> | undefined {
@@ -133,13 +188,17 @@ function pruneToSchema(value: unknown, schema: unknown): unknown {
  * Conform a generated content string to a declared schema: unwrap a stray
  * single-key wrapper the schema doesn't declare, then prune keys the strict
  * schema forbids. No schema, non-JSON content, or any failure => return the
- * content unchanged. Re-wraps in a ```json``` block only if the input was fenced.
+ * content unchanged. Re-wraps in a ```json``` block if the input was fenced —
+ * or when `ensureFence` says the request's format instructions demand fences
+ * (the parser extracts from the code block, so bare JSON fails it).
  */
 export function conformContentToSchema(
 	content: string,
 	schema: Record<string, unknown> | undefined,
+	options?: { ensureFence?: boolean },
 ): string {
-	if (!schema) return content;
+	const ensureFence = options?.ensureFence === true;
+	if (!schema) return ensureFence ? fenceBareJson(content) : content;
 
 	const fenced = /^```(?:json)?\s*([\s\S]*?)```$/i.exec(content.trim());
 	const jsonText = fenced ? fenced[1].trim() : content.trim();
@@ -163,12 +222,39 @@ export function conformContentToSchema(
 		}
 	}
 
-	const conformed = pruneToSchema(parsed, schema);
+	const conformed = fillMissingRequired(pruneToSchema(parsed, schema), schema);
 	const serialized = JSON.stringify(conformed);
-	return fenced ? `\`\`\`json\n${serialized}\n\`\`\`` : serialized;
+	return fenced || ensureFence ? `\`\`\`json\n${serialized}\n\`\`\`` : serialized;
 }
 
-/** Discover the declared schema from the request body and conform `content` to it. */
+/**
+ * Add schema-`required` keys the content is missing, with type-appropriate
+ * neutral values (false / '' / 0 / []). Rescues a pruned near-miss key invention
+ * (mock wrote "Technical", schema requires "Technical Support") into a
+ * schema-valid reply instead of a parser crash. Nested objects are not invented —
+ * fabricating deep shapes is riskier than the parser error.
+ */
+function fillMissingRequired(value: unknown, schema: unknown): unknown {
+	if (!isRecord(value) || !isStrictObject(schema)) return value;
+	const props = schemaProperties(schema);
+	if (!props) return value;
+	const required = isRecord(schema) && Array.isArray(schema.required) ? schema.required : [];
+	const out: Record<string, unknown> = { ...value };
+	for (const key of required) {
+		if (typeof key !== 'string' || key in out) continue;
+		const propSchema = props[key];
+		const type = isRecord(propSchema) ? propSchema.type : undefined;
+		if (type === 'boolean') out[key] = false;
+		else if (type === 'number' || type === 'integer') out[key] = 0;
+		else if (type === 'string') out[key] = '';
+		else if (type === 'array') out[key] = [];
+	}
+	return out;
+}
+
+/** Discover the declared schema + fence demand from the request body and conform `content`. */
 export function applyStructuredOutputConformance(content: string, body: unknown): string {
-	return conformContentToSchema(content, discoverStructuredOutputSchema(body));
+	return conformContentToSchema(content, discoverStructuredOutputSchema(body), {
+		ensureFence: requestDemandsFencedOutput(body),
+	});
 }

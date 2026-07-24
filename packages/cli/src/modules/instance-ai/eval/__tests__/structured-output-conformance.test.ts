@@ -2,6 +2,7 @@ import {
 	discoverStructuredOutputSchema,
 	conformContentToSchema,
 	applyStructuredOutputConformance,
+	requestDemandsFencedOutput,
 } from '../structured-output-conformance';
 
 const strict = (properties: Record<string, unknown>) => ({
@@ -134,5 +135,160 @@ describe('applyStructuredOutputConformance', () => {
 			input: [{ role: 'user', content: 'no schema here' }],
 		});
 		expect(out).toBe('{"a":1,"b":2}');
+	});
+});
+
+describe('requestDemandsFencedOutput', () => {
+	it('detects the Text Classifier fence instruction in chat messages', () => {
+		const body = {
+			messages: [
+				{
+					role: 'system',
+					content: 'Classify the input. Include the enclosing markdown codeblock: ```json ... ```',
+				},
+				{ role: 'user', content: 'hello' },
+			],
+		};
+		expect(requestDemandsFencedOutput(body)).toBe(true);
+	});
+
+	it('detects the classic StructuredOutputParser phrasing in Responses input', () => {
+		const body = {
+			input: [
+				{
+					role: 'system',
+					content: [
+						{
+							type: 'input_text',
+							text: 'Return a markdown code snippet formatted in the following schema',
+						},
+					],
+				},
+			],
+		};
+		expect(requestDemandsFencedOutput(body)).toBe(true);
+	});
+
+	it('is false when no fence instruction is present', () => {
+		expect(requestDemandsFencedOutput({ messages: [{ role: 'user', content: 'hi' }] })).toBe(false);
+		expect(requestDemandsFencedOutput(undefined)).toBe(false);
+	});
+});
+
+describe('conformContentToSchema — ensureFence', () => {
+	it('wraps bare JSON in a ```json block when the request demands fences', () => {
+		const schema = strict({ category: { type: 'string' } });
+		const out = conformContentToSchema('{"category":"bug"}', schema, { ensureFence: true });
+		expect(out).toBe('```json\n{"category":"bug"}\n```');
+	});
+
+	it('keeps already-fenced content fenced without double-wrapping', () => {
+		const schema = strict({ category: { type: 'string' } });
+		const out = conformContentToSchema('```json\n{"category":"bug"}\n```', schema, {
+			ensureFence: true,
+		});
+		expect(out).toBe('```json\n{"category":"bug"}\n```');
+	});
+
+	it('fences bare JSON even without a discovered schema', () => {
+		const out = conformContentToSchema('{"client_project":true}', undefined, { ensureFence: true });
+		expect(out).toBe('```json\n{"client_project":true}\n```');
+	});
+
+	it('leaves non-JSON content untouched even when fences are demanded', () => {
+		expect(conformContentToSchema('a plain prose answer', undefined, { ensureFence: true })).toBe(
+			'a plain prose answer',
+		);
+	});
+
+	it('does not fence when ensureFence is off (existing behavior)', () => {
+		const schema = strict({ category: { type: 'string' } });
+		expect(conformContentToSchema('{"category":"bug"}', schema)).toBe('{"category":"bug"}');
+	});
+});
+
+describe('applyStructuredOutputConformance — fence demand end-to-end', () => {
+	it('fences the reply when the request carries the fence instruction and a fenced schema', () => {
+		const body = {
+			messages: [
+				{
+					role: 'system',
+					content:
+						'Answer with JSON. Include the enclosing markdown codeblock:\n```json\n{"type":"object","properties":{"client_project":{"type":"boolean"}},"additionalProperties":false}\n```',
+				},
+			],
+		};
+		const out = applyStructuredOutputConformance('{"client_project":true,"stray":1}', body);
+		expect(out).toBe('```json\n{"client_project":true}\n```');
+	});
+});
+
+describe('pseudo-JSON schema synthesis (Text Classifier format instructions)', () => {
+	const classifierInstructions = [
+		'Categories are described below. Include the enclosing markdown codeblock:',
+		'```json',
+		'{"Billing": boolean, "Technical Support": boolean, "General": boolean, "fallback": boolean}',
+		'```',
+	].join('\n');
+
+	it('synthesizes a strict boolean schema from pseudo-JSON instruction blocks', () => {
+		const body = { messages: [{ role: 'system', content: classifierInstructions }] };
+		const schema = discoverStructuredOutputSchema(body);
+		expect(schema).toEqual({
+			type: 'object',
+			properties: {
+				Billing: { type: 'boolean' },
+				'Technical Support': { type: 'boolean' },
+				General: { type: 'boolean' },
+				fallback: { type: 'boolean' },
+			},
+			additionalProperties: false,
+			required: ['Billing', 'Technical Support', 'General', 'fallback'],
+		});
+	});
+
+	it('prefers a valid JSON Schema block over pseudo-JSON synthesis', () => {
+		const real = strict({ category: { type: 'string' } });
+		const body = {
+			messages: [
+				{ role: 'system', content: classifierInstructions },
+				{ role: 'system', content: '```json\n' + JSON.stringify(real) + '\n```' },
+			],
+		};
+		expect(discoverStructuredOutputSchema(body)).toEqual(real);
+	});
+
+	it('end-to-end: repairs an invented key into the declared category set, fenced', () => {
+		const body = { messages: [{ role: 'system', content: classifierInstructions }] };
+		const out = applyStructuredOutputConformance(
+			'{"Billing":true,"Technical":false,"General":false,"fallback":false}',
+			body,
+		);
+		expect(out).toBe(
+			'```json\n{"Billing":true,"General":false,"fallback":false,"Technical Support":false}\n```',
+		);
+	});
+});
+
+describe('fillMissingRequired via conformContentToSchema', () => {
+	it('adds missing required keys with neutral typed values', () => {
+		const schema = {
+			type: 'object',
+			properties: {
+				name: { type: 'string' },
+				count: { type: 'number' },
+				ok: { type: 'boolean' },
+				rows: { type: 'array' },
+			},
+			additionalProperties: false,
+			required: ['name', 'count', 'ok', 'rows'],
+		};
+		const out = conformContentToSchema('{"name":"x"}', schema);
+		expect(JSON.parse(out)).toEqual({ name: 'x', count: 0, ok: false, rows: [] });
+	});
+
+	it('does not touch content when the schema declares no required list', () => {
+		const schema = strict({ name: { type: 'string' } });
+		expect(conformContentToSchema('{}', schema)).toBe('{}');
 	});
 });
