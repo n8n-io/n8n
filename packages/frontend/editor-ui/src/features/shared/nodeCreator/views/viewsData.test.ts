@@ -142,6 +142,24 @@ describe('viewsData', () => {
 
 			expect(messageAgentItem).toBeUndefined();
 		});
+
+		test('should not mutate the shared template repository parameters', () => {
+			const templatesStore = useTemplatesStore();
+			const sharedParams = new URLSearchParams({ test: 'value' });
+			vi.spyOn(templatesStore, 'websiteTemplateRepositoryParameters', 'get').mockReturnValue(
+				sharedParams,
+			);
+
+			AIView([]);
+			AIView([]);
+
+			expect(sharedParams.has('utm_user_role')).toBe(false);
+
+			const [lastCallParams] = vi
+				.mocked(templatesStore.constructTemplateRepositoryURL)
+				.mock.calls.at(-1)!;
+			expect(lastCallParams.toString()).toBe('test=value&utm_user_role=AdvancedAI');
+		});
 	});
 
 	describe('HitlToolView', () => {
