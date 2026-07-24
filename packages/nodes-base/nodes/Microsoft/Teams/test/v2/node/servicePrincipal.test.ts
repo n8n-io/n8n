@@ -346,6 +346,8 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 				'GET',
 				'/beta/teams/1111-2222-3333/channels/19:abc@thread.tacv2/messages',
 				{},
+				{ $top: 1 },
+				1,
 			);
 		});
 	});
