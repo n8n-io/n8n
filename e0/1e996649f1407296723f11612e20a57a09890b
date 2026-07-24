@@ -33,12 +33,12 @@ packages/@n8n/db/src/repositories/workflow-review-request-author.repository.ts
 packages/@n8n/db/src/entities/workflow-review-request-author.ee.ts
   s_44a98ba2784a12::t_b68444cb9bf6bd 2-3,6-7,9-10
 packages/@n8n/db/src/entities/workflow-review-request.ee.ts
-  s_44a98ba2784a12::t_243fda83c3ba5d 1-4,2-4,16-20,23,25-26,28-31,37,39-50,52-53,55
+  s_44a98ba2784a12::t_243fda83c3ba5d 1-4,2-4,16-20,16-18,23,25-26,28-31,37,39-50,52-53,55
   s_44a98ba2784a12::t_4a86a82b8ef7a5 35
-  s_44a98ba2784a12::t_935930310cd5f0 5-15,21-22,24,32-34,36,51,54
+  s_44a98ba2784a12::t_935930310cd5f0 5-15,5-7,12-15,21-22,24,32-34,32,34,36,51,54
   s_44a98ba2784a12::t_95a1285ac2a8aa 38
 packages/@n8n/db/src/repositories/__tests__/workflow-review-request.repository.test.ts
-  s_44a98ba2784a12::t_dbad7b03bcd5c5 1,2-3,4-5,6-16,18-34,37-40,43-64,65
+  s_44a98ba2784a12::t_dbad7b03bcd5c5 1,2-3,3,4-5,6-16,18-34,37-40,43-64,65
   s_44a98ba2784a12::t_8cf89fd1044fe9 35-36,41,42
   s_44a98ba2784a12::t_177c7f50484c6d 17
 docs/generated/sqlite-schema/README.md
@@ -60,7 +60,7 @@ packages/@n8n/db/src/repositories/workflow-review-request-reviewer.repository.ts
 packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
   s_44a98ba2784a12::t_4188d7b926ed77 1,3-4,6-7,10-17,32-34,37-40,43,46-50,71
   s_44a98ba2784a12::t_686efdb1f1e86d 8-9,35-36,41,42
-  s_60c9025b151770::t_1b89b2320e2bd7 2,5,18-31,44-45,51-69
+  s_60c9025b151770::t_1b89b2320e2bd7 2,5,18-31,44-45,51-69,51,52-69
   s_60c9025b151770::t_b2234c8e7a704f 70
 packages/@n8n/db/src/entities/workflow-review-request-workflow.ee.ts
   s_44a98ba2784a12::t_d5ee5c3cc41445 2,4-5,15-20,23
@@ -182,12 +182,12 @@ docs/generated/sqlite-schema/instance_ai_checkpoints.md
 docs/generated/postgres-schema/public.instance_ai_checkpoints.md
   s_44a98ba2784a12::t_16f911908620c5 9,49
 packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.env-gate.integration.test.ts
-  s_60c9025b151770::t_1916428f831677 1-4,6-19,22-30,32-35
+  s_60c9025b151770::t_1916428f831677 1-4,6-19,7-19,22-30,32-35
   s_2a235a6e9347be::t_d664c830aa7f1c 5,20-21,31
 packages/cli/test/integration/shared/types.ts
   s_60c9025b151770::t_bc8f2e8a1ae3d0 55,70-71
 packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
-  s_60c9025b151770::t_f47620be23b460 1-13,18-39,41-46,48-50,54-57,61-64,66-73,79-108
+  s_60c9025b151770::t_f47620be23b460 1-13,2-9,11-13,18-39,18-24,25-32,33-34,36-39,41-46,48-50,54-57,61-64,66-73,66-67,79-108,99,103-104,107-108
   s_2a235a6e9347be::t_800b92cfc074ab 14-17,40,47,51-53,58-60,65,74-78
 packages/@n8n/backend-common/src/modules/modules.config.ts
   s_60c9025b151770::t_a4789809c277c5 36
@@ -206,7 +206,7 @@ packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.
   s_2a235a6e9347be::t_583ae2aa6bbb4b 171,177-190
   h_9c8f56e3400786 81
   s_2a235a6e9347be::t_d664c830aa7f1c 397
-  s_60c9025b151770::t_bb9cfd15536241 1-80,82-170,172-176,191-396,398-403
+  s_60c9025b151770::t_bb9cfd15536241 1-80,1-16,19-23,24-80,82-170,172-176,191-396,398-403
 packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
   s_9006126844c8d5::t_53a7b1c755ec03 101
   s_9006126844c8d5::t_235bdd463aba3d 66
@@ -216,15 +216,15 @@ packages/cli/src/modules/workflow-reviews.ee/workflow-reviews.module.ts
 packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
   s_2a235a6e9347be::t_a1657bd79d44c0 125,134,144,155
   h_9c8f56e3400786 75,114
-  s_60c9025b151770::t_8a8655a46f6611 1-16,21-68,70-74,76-113,115-116,118-124,126-129,131-133,135-139,141-143,145-150,152-154,156-167,170-176
+  s_60c9025b151770::t_8a8655a46f6611 1-16,2-16,21-68,21-43,44-46,47-54,55-62,63-68,70-74,76-113,76-84,86-113,115-116,118-124,126-129,131-133,135-139,141-143,145-150,152-154,156-167,170-176,170-174,175-176
   s_2a235a6e9347be::t_800b92cfc074ab 17-20,69,117,130,140,151,168-169
 packages/@n8n/backend-common/src/modules/module-registry.ts
   s_60c9025b151770::t_078acc951d9093 74
 packages/@n8n/api-types/src/dto/index.ts
-  s_2a235a6e9347be::t_6802c7ddb45108 295-296
+  s_2a235a6e9347be::t_6802c7ddb45108 295-296,295,296
 packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller.ts
   s_2a235a6e9347be::t_800b92cfc074ab 19-21
-  s_60c9025b151770::t_4dc13844903a23 1-18,22-23
+  s_60c9025b151770::t_4dc13844903a23 1-18,2,4-11,12-18,22-23
 packages/frontend/@n8n/design-system/src/components/N8nActionDropdown/ActionDropdown.test.ts
   s_b3f23ab76a494c::t_fe4db0fae50eb3 1-2,108-140
 packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuItem.test.ts
@@ -260,10 +260,10 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowRev
   s_b3f23ab76a494c::t_b351f837029862 22,33-34,55,57-58
   s_b3f23ab76a494c::t_cf554b9b58cae4 3,64
   s_b3f23ab76a494c::t_ed8574baef8748 38,44
-  s_b3f23ab76a494c::t_059fae10ef175c 23-32,37,39-43,45-47,49-51
+  s_b3f23ab76a494c::t_059fae10ef175c 23-32,23-28,29-32,37,39-43,39-40,41-43,45-47,49-51,50-51
   s_b3f23ab76a494c::t_af864b1534c5d0 48,54,56,60
   s_b3f23ab76a494c::t_1975825e8e11ab 62-63
-  s_b3f23ab76a494c::t_872ed66fdfb791 1-2,4-21,35-36,52-53,59,65-66
+  s_b3f23ab76a494c::t_872ed66fdfb791 1-2,4-21,4-6,7-13,14-15,18-21,35-36,52-53,59,65-66
   s_b3f23ab76a494c::t_12d480d8764f49 61
 packages/frontend/editor-ui/src/features/workflow-reviews/reviewRequired.store.test.ts
   s_b3f23ab76a494c::t_fe4db0fae50eb3 1-3,5-6,16-17,21-49,50,59-60
@@ -277,7 +277,7 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowRev
   s_b3f23ab76a494c::t_54c3edd2d2746f 29,31,39-41
   s_b3f23ab76a494c::t_1cc202f5a1a58b 32,44,50,64,89,93
   s_b3f23ab76a494c::t_326ef525bad1c8 63,66,70-82
-  s_b3f23ab76a494c::t_fe4db0fae50eb3 1-2,5-10,20-21,24-25,27-28,30,33-37,42-43,45-48,51,55,57-62,65,67-69,83-88,91,94-98
+  s_b3f23ab76a494c::t_fe4db0fae50eb3 1-2,5-10,5,6-8,9-10,20-21,24-25,27-28,30,33-37,42-43,45-48,51,55,57-62,65,67-69,83-88,91,94-98,94-97,98
 packages/frontend/@n8n/i18n/src/locales/en.json
   s_b3f23ab76a494c::t_872ed66fdfb791 4434-4435
   s_70e4a16a672757::t_bdf6c7bea8e71a 4436-4440,4436-4440,4442-4451,4442-4451
@@ -303,14 +303,14 @@ packages/frontend/editor-ui/src/app/constants/localStorage.ts
   s_70e4a16a672757::t_706452e921bce7 42-43
   s_91f67565918eee::t_102841e08fe8e0 42-43
 packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
-  s_70e4a16a672757::t_489e68614b7d2b 1-28
+  s_70e4a16a672757::t_489e68614b7d2b 1-28,1-11,16-20,23-28
 packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowPublishChoiceDialog.test.ts
   s_70e4a16a672757::t_a03d32108719b6 10,13-18,27,42,46-50
   s_70e4a16a672757::t_fb4dc791b159aa 1-9,11-12,19-26,28-41,43-45,51-52
 packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.test.ts
   s_70e4a16a672757::t_a03d32108719b6 23,27-33,36,72,98,114,128
   s_70e4a16a672757::t_40a2d32740e901 54,58-60,62
-  s_70e4a16a672757::t_951740fe8071cd 1-22,24-26,34-35,37-52,55,55,57,57,61,63-71,73-97,99-113,115-127,129-137
+  s_70e4a16a672757::t_951740fe8071cd 1-22,1-7,8-18,19-22,24-26,34-35,37-52,37-38,39-48,49-52,55,55,57,57,61,63-71,73-97,73-86,87-97,99-113,99-105,106-113,115-127,129-137
 packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowPublishChoiceDialog.vue
   s_70e4a16a672757::t_960c6985deff23 1,1,9-41,9-41,42-43,42-43,48-50,48-50,52,52,54-71,54-71,77-85,77-85,92,92
   s_70e4a16a672757::t_5e8b00967df401 53
@@ -325,7 +325,7 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowRev
   s_70e4a16a672757::t_e9f6c3ccb75050 39-41
 packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue
   s_70e4a16a672757::t_5e2c31eed03274 45-47,158
-  s_70e4a16a672757::t_960c6985deff23 1-40,42-44,48-55,57-74,76-100,102-122,102-122,124-126,124-126,132-157,159-192
+  s_70e4a16a672757::t_960c6985deff23 1-40,1-16,17-36,37-40,42-44,48-55,57-74,76-100,76-94,96,97-100,102-122,102-122,124-126,124-126,132-157,159-192
   s_70e4a16a672757::t_e9f6c3ccb75050 41,56,75,101,127-131
 packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/update.operation.ts
   s_61d0f858e68120::t_cd29dabc499dfb 1-103

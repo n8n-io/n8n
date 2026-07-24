@@ -577,6 +577,14 @@ packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflo
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
+    "s_c7f2eb05574ce2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63ca9479-d174-4a0f-9349-54a47630f906",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
     "s_d8236b8b5400e8": {
       "agent_id": {
         "tool": "cursor",
