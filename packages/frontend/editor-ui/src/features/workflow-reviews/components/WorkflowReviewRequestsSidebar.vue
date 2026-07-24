@@ -17,6 +17,8 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 const props = defineProps<{
 	items: WorkflowReviewInboxItem[];
 	activeState: WorkflowReviewRequestState;
+	openCount: number;
+	closedCount: number;
 	selectedId: string | null;
 	loading: boolean;
 	loadingMore: boolean;
@@ -36,8 +38,16 @@ const listRef = ref<HTMLElement | null>(null);
 const loadMoreSentinel = ref<HTMLElement | null>(null);
 
 const tabOptions = computed(() => [
-	{ label: i18n.baseText('workflowReviews.sidebar.tabs.open'), value: 'open' as const },
-	{ label: i18n.baseText('workflowReviews.sidebar.tabs.closed'), value: 'closed' as const },
+	{
+		label: i18n.baseText('workflowReviews.sidebar.tabs.open'),
+		value: 'open' as const,
+		tag: String(props.openCount),
+	},
+	{
+		label: i18n.baseText('workflowReviews.sidebar.tabs.closed'),
+		value: 'closed' as const,
+		tag: String(props.closedCount),
+	},
 ]);
 
 const { observe: observeForLoadMore } = useIntersectionObserver({
@@ -78,7 +88,6 @@ function onListBackgroundClick() {
 			<N8nTabs
 				:model-value="activeState"
 				:options="tabOptions"
-				variant="modern"
 				data-test-id="workflow-reviews-tabs"
 				@update:model-value="onTabChange"
 			/>
@@ -99,7 +108,7 @@ function onListBackgroundClick() {
 					size="small"
 					data-test-id="workflow-reviews-empty"
 				>
-					{{ i18n.baseText('workflowReviews.sidebar.empty') }}
+					{{ i18n.baseText(`workflowReviews.sidebar.empty.${activeState}`) }}
 				</N8nText>
 				<N8nCard
 					v-for="item in items"
