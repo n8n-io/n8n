@@ -1,12 +1,14 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 export class AddInstanceCredentials1784000000053 implements ReversibleMigration {
-	async up({ escape, runQuery, isPostgres, schemaBuilder }: MigrationContext) {
+	async up({ escape, runQuery, isPostgres, schemaBuilder, tablePrefix }: MigrationContext) {
 		const tableName = escape.tableName('credentials_entity');
 		const columnName = escape.columnName('usageScope');
+		// Named like the DSL's withEnumCheck() so a future migration can target it on Postgres
+		const checkName = `"CHK_${tablePrefix}credentials_entity_usageScope"`;
 
 		await runQuery(
-			`ALTER TABLE ${tableName} ADD COLUMN ${columnName} VARCHAR(16) NOT NULL DEFAULT 'project' CHECK (${columnName} IN ('project', 'instance'))`,
+			`ALTER TABLE ${tableName} ADD COLUMN ${columnName} VARCHAR(16) NOT NULL DEFAULT 'project' CONSTRAINT ${checkName} CHECK (${columnName} IN ('project', 'instance'))`,
 		);
 		if (isPostgres) {
 			await runQuery(
