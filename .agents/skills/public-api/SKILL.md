@@ -56,7 +56,9 @@ Reference: `v1/controllers/tags.public.controller.ts` (`GET /tags`).
 3. **Side-effect import** the controller from
    `packages/cli/src/public-api/v1/controllers/index.ts` (re-exported via
    `public-api/index.ts`) so metadata is registered before
-   `PublicApiControllerRegistry.activate`.
+   `PublicApiControllerRegistry.activate`. Name the file
+   `*.public.controller.ts` — `public-api-controllers.test.ts` fails CI if a
+   controller file is missing from that barrel or lives outside `controllers/`.
 4. **OpenAPI path spec** — still required for docs + `scope-parity.test.ts`
    (`handlers/<feature>/spec/paths/…`, `$ref` in `openapi.yml`). Set
    `operationId`, `x-required-scope` matching `@ApiKeyScope`. **Do not** set
