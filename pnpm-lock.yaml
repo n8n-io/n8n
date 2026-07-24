@@ -2226,15 +2226,15 @@ importers:
       express:
         specifier: 'catalog:'
         version: 5.1.0
-      nanoid:
-        specifier: 'catalog:'
-        version: 3.3.8
       pg:
         specifier: 8.21.0
         version: 8.21.0(pg-native@3.8.0)
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
+      uuid:
+        specifier: 'catalog:'
+        version: 11.1.1
       zod:
         specifier: 3.25.67
         version: 3.25.67

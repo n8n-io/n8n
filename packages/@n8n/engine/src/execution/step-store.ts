@@ -7,14 +7,6 @@ export interface NewStepRecord {
 	status: StepStatus;
 }
 
-/** A persisted step record. */
-export interface StepRecord {
-	id: string;
-	executionId: string;
-	nodeId: string;
-	status: StepStatus;
-}
-
 /**
  * Persistence port for step records.
  */

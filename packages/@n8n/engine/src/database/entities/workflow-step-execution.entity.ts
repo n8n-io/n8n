@@ -7,17 +7,17 @@ import {
 	PrimaryColumn,
 	UpdateDateColumn,
 } from '@n8n/typeorm';
-import { nanoid } from 'nanoid';
 
 import type { StepStatus } from '../../execution/execution.types';
+import { generateId } from '../generate-id';
 
 @Entity('workflow_step_execution')
 @Index('idx_workflow_step_execution_execution_id', ['executionId'])
 export class WorkflowStepExecution {
-	@PrimaryColumn('varchar')
+	@PrimaryColumn('uuid')
 	id!: string;
 
-	@Column('varchar', { name: 'execution_id' })
+	@Column('uuid', { name: 'execution_id' })
 	executionId!: string;
 
 	@Column('varchar', { name: 'node_id' })
@@ -33,7 +33,7 @@ export class WorkflowStepExecution {
 	updatedAt!: Date;
 
 	@BeforeInsert()
-	generateId(): void {
-		if (!this.id) this.id = nanoid();
+	setId(): void {
+		if (!this.id) this.id = generateId();
 	}
 }

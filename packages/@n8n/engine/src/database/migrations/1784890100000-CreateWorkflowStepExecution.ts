@@ -1,16 +1,16 @@
-import { Table, TableIndex } from '@n8n/typeorm';
+import { Table } from '@n8n/typeorm';
 import type { MigrationInterface, QueryRunner } from '@n8n/typeorm';
 
 const TABLE = 'workflow_step_execution';
 
-export class CreateWorkflowStepExecution1785000000000 implements MigrationInterface {
+export class CreateWorkflowStepExecution1784890100000 implements MigrationInterface {
 	async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.createTable(
 			new Table({
 				name: TABLE,
 				columns: [
-					{ name: 'id', type: 'varchar', isPrimary: true },
-					{ name: 'execution_id', type: 'varchar' },
+					{ name: 'id', type: 'uuid', isPrimary: true },
+					{ name: 'execution_id', type: 'uuid' },
 					{ name: 'node_id', type: 'varchar' },
 					{ name: 'status', type: 'varchar', length: '32' },
 					{
@@ -26,15 +26,25 @@ export class CreateWorkflowStepExecution1785000000000 implements MigrationInterf
 						default: 'CURRENT_TIMESTAMP(3)',
 					},
 				],
+				indices: [
+					{ name: 'idx_workflow_step_execution_execution_id', columnNames: ['execution_id'] },
+				],
+				foreignKeys: [
+					{
+						columnNames: ['execution_id'],
+						referencedTableName: 'workflow_execution',
+						referencedColumnNames: ['id'],
+						onDelete: 'CASCADE',
+					},
+				],
+				checks: [
+					{
+						name: 'chk_workflow_step_execution_status',
+						expression: "status IN ('queued', 'running', 'completed', 'failed', 'cancelled')",
+					},
+				],
 			}),
 		);
-
-		await queryRunner.createIndices(TABLE, [
-			new TableIndex({
-				name: 'idx_workflow_step_execution_execution_id',
-				columnNames: ['execution_id'],
-			}),
-		]);
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {

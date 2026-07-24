@@ -31,7 +31,6 @@ export type {
 	ExecutionStore,
 	NewExecutionRecord,
 	NewStepRecord,
-	StepRecord,
 	StepStatus,
 	StepStore,
 } from './execution';
