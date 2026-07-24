@@ -96,7 +96,10 @@ describe('Microsoft SharePoint v2 — Item: Update', () => {
 		operation: 'update',
 		site: { mode: 'id', value: SITE_ID },
 		list: LIST_ID,
-		columns: { mappingMode: 'defineBelow', schema: SCHEMA, ...columns },
+		'columns.mappingMode': columns.mappingMode ?? 'defineBelow',
+		'columns.schema': columns.schema ?? SCHEMA,
+		'columns.value': columns.value ?? null,
+		'columns.matchingColumns': columns.matchingColumns ?? [],
 	});
 
 	beforeEach(() => {
@@ -135,7 +138,7 @@ describe('Microsoft SharePoint v2 — Item: Update', () => {
 			{ Title: 'Title 2' },
 			{},
 			undefined,
-			{ Prefer: 'apiversion=2.1' },
+			{},
 		);
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
@@ -179,7 +182,7 @@ describe('Microsoft SharePoint v2 — Item: Update', () => {
 			{ Title: 'Title 2' },
 			{},
 			undefined,
-			{ Prefer: 'apiversion=2.1' },
+			{},
 		);
 		expect(result).toEqual([[{ json: GRAPH_ITEM_REPLY, pairedItem: { item: 0 } }]]);
 	});
@@ -329,6 +332,33 @@ describe('Microsoft SharePoint v2 — Item: Update', () => {
 		expect(apiRequest).not.toHaveBeenCalled();
 	});
 
+	it('resolves auto-mapped values from the input item and updates by its ID', async () => {
+		setParams(
+			baseParams({
+				mappingMode: 'autoMapInputData',
+				matchingColumns: ['id'],
+			}),
+		);
+		ctx.getInputData.mockReturnValue([
+			{ json: { id: ITEM_ID, Title: 'Title 2', Unknown: 'dropped' } },
+		]);
+		apiRequest
+			.mockResolvedValueOnce({ Title: 'Title 2' })
+			.mockResolvedValueOnce({ ...GRAPH_ITEM_REPLY });
+
+		await node.execute.call(ctx);
+
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			1,
+			'PATCH',
+			`${ITEMS_PATH}/${ITEM_ID}/fields`,
+			{ Title: 'Title 2' },
+			{},
+			undefined,
+			{},
+		);
+	});
+
 	it('surfaces a transport error per item when continueOnFail is on', async () => {
 		setParams(
 			baseParams({
@@ -346,22 +376,10 @@ describe('Microsoft SharePoint v2 — Item: Update', () => {
 });
 
 describe('buildItemFieldsPayload', () => {
-	const mapperValue = (
-		value: ResourceMapperValue['value'],
-		schema: ResourceMapperValue['schema'] = [],
-	): ResourceMapperValue => ({
-		mappingMode: 'defineBelow',
-		value,
-		matchingColumns: [],
-		schema,
-		attemptToConvertTypes: false,
-		convertFieldsToString: false,
-	});
-
 	it('drops the id entry and keeps plain columns as-is', () => {
-		expect(buildItemFieldsPayload(mapperValue({ id: 'item1', Title: 'A', Count: 3 }))).toEqual({
-			Title: 'A',
-			Count: 3,
+		expect(buildItemFieldsPayload({ id: 'item1', Title: 'A', Count: 3 }, [])).toEqual({
+			fields: { Title: 'A', Count: 3 },
+			hasHyperlink: false,
 		});
 	});
 
@@ -378,16 +396,17 @@ describe('buildItemFieldsPayload', () => {
 				type: 'url',
 			},
 		];
-		expect(
-			buildItemFieldsPayload(mapperValue({ 'Link.Url': 'https://x', 'Other.Url': 'y' }, schema)),
-		).toEqual({ Link: { Url: 'https://x' }, 'Other.Url': 'y' });
+		expect(buildItemFieldsPayload({ 'Link.Url': 'https://x', 'Other.Url': 'y' }, schema)).toEqual({
+			fields: { Link: { Url: 'https://x' }, 'Other.Url': 'y' },
+			hasHyperlink: true,
+		});
 	});
 
 	it('ignores prototype-polluting keys instead of writing them', () => {
 		// A literal `__proto__` key would set the prototype, not an own property
-		const value = jsonParse<ResourceMapperValue['value']>('{"__proto__": "x", "Title": "A"}');
-		const payload = buildItemFieldsPayload(mapperValue(value));
-		expect(payload).toEqual({ Title: 'A' });
+		const value = jsonParse<IDataObject>('{"__proto__": "x", "Title": "A"}');
+		const { fields } = buildItemFieldsPayload(value, []);
+		expect(fields).toEqual({ Title: 'A' });
 		expect(Object.prototype).not.toHaveProperty('x');
 	});
 
@@ -406,9 +425,9 @@ describe('buildItemFieldsPayload', () => {
 				type: 'url',
 			},
 		];
-		const value = jsonParse<ResourceMapperValue['value']>('{"__proto__.Url": "polluted"}');
-		const payload = buildItemFieldsPayload(mapperValue(value, schema));
-		expect(payload).toEqual({});
+		const value = jsonParse<IDataObject>('{"__proto__.Url": "polluted"}');
+		const { fields } = buildItemFieldsPayload(value, schema);
+		expect(fields).toEqual({});
 		expect(({} as Record<string, unknown>).Url).toBeUndefined();
 		expect(Object.prototype).not.toHaveProperty('Url');
 	});

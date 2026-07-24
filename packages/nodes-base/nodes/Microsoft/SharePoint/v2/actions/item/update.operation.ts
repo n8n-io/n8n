@@ -2,13 +2,17 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	INodeProperties,
-	ResourceMapperValue,
+	ResourceMapperField,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import { assertPathSegment } from '../../helpers/utils';
-import { buildItemFieldsPayload, lookupItemIdByColumns } from '../../item';
+import {
+	addUniqueConstraintHint,
+	assertPathSegment,
+	HYPERLINK_WRITE_HEADERS,
+} from '../../helpers/utils';
+import { buildItemFieldsPayload, lookupItemIdByColumns, resolveItemMapperValues } from '../../item';
 import { listRLC, untilSiteSelected } from '../../list';
 import { itemColumns } from '../../list/columns';
 import { resolveSiteId, siteRLC } from '../../site';
@@ -52,9 +56,9 @@ export async function execute(
 		'List',
 	);
 
-	const mapperValue = this.getNodeParameter('columns', i) as ResourceMapperValue;
-	const matchingColumns = mapperValue.matchingColumns ?? [];
-	const values = mapperValue.value ?? {};
+	const matchingColumns = this.getNodeParameter('columns.matchingColumns', i, []) as string[];
+	const schema = this.getNodeParameter('columns.schema', i, []) as ResourceMapperField[];
+	const values = resolveItemMapperValues.call(this, i);
 
 	let itemId: string | undefined;
 	if (matchingColumns.includes('id')) {
@@ -74,18 +78,24 @@ export async function execute(
 
 	itemId = assertPathSegment(this.getNode(), itemId, 'Item');
 
-	// The documented route updates the item's fields directly (v1 PATCHed the
-	// item itself with a { fields } wrapper — a route Graph doesn't document).
-	await microsoftApiRequest.call(
-		this,
-		'PATCH',
-		`/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}/items/${encodeURIComponent(itemId)}/fields`,
-		buildItemFieldsPayload(mapperValue),
-		{},
-		undefined,
-		// Graph rejects hyperlink field writes without this (see list/columns.ts)
-		{ Prefer: 'apiversion=2.1' },
-	);
+	const { fields, hasHyperlink } = buildItemFieldsPayload(values, schema);
+
+	try {
+		// The documented route updates the item's fields directly (v1 PATCHed the
+		// item itself with a { fields } wrapper — a route Graph doesn't document).
+		await microsoftApiRequest.call(
+			this,
+			'PATCH',
+			`/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}/items/${encodeURIComponent(itemId)}/fields`,
+			fields,
+			{},
+			undefined,
+			hasHyperlink ? HYPERLINK_WRITE_HEADERS : {},
+		);
+	} catch (error) {
+		addUniqueConstraintHint(error);
+		throw error;
+	}
 
 	// The /fields route replies with only the fieldValueSet, but v1 returned the
 	// full listItem envelope — re-read the item so the output stays identical.

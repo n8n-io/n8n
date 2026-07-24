@@ -4,12 +4,16 @@ import type {
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
 	INodeProperties,
-	ResourceMapperValue,
+	ResourceMapperField,
 } from 'n8n-workflow';
 import { setSafeObjectProperty } from 'n8n-workflow';
 
 import { type CollectionSearchOptions, searchGraphCollection } from '../helpers/graphSearch';
-import { odataFieldEqualsClause } from '../helpers/utils';
+import {
+	NON_INDEXED_QUERY_HEADERS,
+	nonIndexedFilterThresholdError,
+	odataFieldEqualsClause,
+} from '../helpers/utils';
 import { resolveSiteId } from '../site';
 import { microsoftApiRequest } from '../transport';
 
@@ -96,22 +100,26 @@ export async function lookupItemIdByColumns(
 	siteId: string,
 	listIdOrTitle: string,
 	matchingColumns: string[],
-	values: ResourceMapperValue['value'],
+	values: IDataObject,
 ): Promise<string | undefined> {
-	const response = (await microsoftApiRequest.call(
-		this,
-		'GET',
-		`/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}/items`,
-		{},
-		{
-			$filter: matchingColumns
-				.map((column) => odataFieldEqualsClause(column, values?.[column]))
-				.join(' and '),
-		},
-		undefined,
-		// SharePoint refuses to filter on non-indexed columns without this opt-in
-		{ Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly' },
-	)) as ItemsLookupReply;
+	const filter = matchingColumns
+		.map((column) => odataFieldEqualsClause(column, values[column]))
+		.join(' and ');
+
+	let response: ItemsLookupReply;
+	try {
+		response = (await microsoftApiRequest.call(
+			this,
+			'GET',
+			`/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}/items`,
+			{},
+			{ $filter: filter },
+			undefined,
+			NON_INDEXED_QUERY_HEADERS,
+		)) as ItemsLookupReply;
+	} catch (error) {
+		throw nonIndexedFilterThresholdError(this.getNode(), error, filter) ?? error;
+	}
 
 	if (response.value?.length === 1 && response.value[0].id !== undefined) {
 		return String(response.value[0].id);
@@ -120,14 +128,37 @@ export async function lookupItemIdByColumns(
 }
 
 /**
- * Builds the body for a fields write from the resource-mapper value. The `id`
+ * Resolves the resource mapper into the item's effective column values — from
+ * the input JSON in auto-map mode (schema-unknown keys dropped), otherwise
+ * from the mapper's own value. The mapper's shipped default is `{ value: null }`
+ * and the `{}` fallback only covers undefined — coalesce so
+ * create-with-server-defaults survives.
+ */
+export function resolveItemMapperValues(this: IExecuteFunctions, i: number): IDataObject {
+	if (this.getNodeParameter('columns.mappingMode', i) === 'autoMapInputData') {
+		const schema = this.getNodeParameter('columns.schema', i, []) as ResourceMapperField[];
+		const knownColumns = new Set(schema.map((field) => field.id));
+		return Object.fromEntries(
+			Object.entries(this.getInputData()[i].json).filter(([key]) => knownColumns.has(key)),
+		);
+	}
+	return (this.getNodeParameter('columns.value', i, {}) ?? {}) as IDataObject;
+}
+
+/**
+ * Builds the body for a fields write from the resolved column values. The `id`
  * entry identifies the item and is never a field; hyperlink columns arrive as
  * two mapper fields (`{name}.Url`/`{name}.Description`, see list/columns.ts)
- * and are folded back into SharePoint's two-part shape.
+ * and are folded back into SharePoint's two-part shape. `hasHyperlink` tells
+ * the caller whether the write needs the `Prefer: apiversion=2.1` header.
  */
-export function buildItemFieldsPayload(mapperValue: ResourceMapperValue): IDataObject {
+export function buildItemFieldsPayload(
+	value: IDataObject,
+	schema: ResourceMapperField[] | undefined,
+): { fields: IDataObject; hasHyperlink: boolean } {
 	const fields: IDataObject = {};
-	for (const [key, value] of Object.entries(mapperValue.value ?? {})) {
+	let hasHyperlink = false;
+	for (const [key, fieldValue] of Object.entries(value)) {
 		if (key === 'id') {
 			continue;
 		}
@@ -140,21 +171,22 @@ export function buildItemFieldsPayload(mapperValue: ResourceMapperValue): IDataO
 		if (
 			dotIndex > 0 &&
 			(part === 'Url' || part === 'Description') &&
-			mapperValue.schema?.some((field) => field.id === `${base}.Url` && field.type === 'url')
+			schema?.some((field) => field.id === `${base}.Url` && field.type === 'url')
 		) {
+			hasHyperlink = true;
 			// Own properties only — an inherited read must not be reused as the base.
 			const existing = Object.hasOwn(fields, base) ? fields[base] : undefined;
 			const folded: IDataObject =
 				typeof existing === 'object' && existing !== null && !Array.isArray(existing)
 					? (existing as IDataObject)
 					: {};
-			folded[part] = value;
+			folded[part] = fieldValue;
 			// Column names are user-influenced — never use them as raw object keys
 			setSafeObjectProperty(fields, base, folded);
 			continue;
 		}
 
-		setSafeObjectProperty(fields, key, value);
+		setSafeObjectProperty(fields, key, fieldValue);
 	}
-	return fields;
+	return { fields, hasHyperlink };
 }
