@@ -15,12 +15,12 @@ import {
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+
+import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import { createAdmin, createMember, createOwner, createUser } from '@test-integration/db/users';
 import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
-
-import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflow-reviews'],
@@ -30,9 +30,12 @@ const testServer = utils.setupTestServer({
 
 let owner: User;
 let member: User;
+let viewer: User;
 let ownerProject: Project;
+let teamProject: Project;
 let ownerAgent: SuperAgentTest;
 let memberAgent: SuperAgentTest;
+let viewerAgent: SuperAgentTest;
 
 let requestRepository: WorkflowReviewRequestRepository;
 let workflowRepository: WorkflowReviewRequestWorkflowRepository;
@@ -49,6 +52,9 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
+	process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
+	testServer.license.enable('feat:workflowReviews');
+
 	await testDb.truncate([
 		'WorkflowReviewRequestAuthor',
 		'WorkflowReviewRequestReviewer',
@@ -68,9 +74,15 @@ beforeEach(async () => {
 
 	owner = await createOwner();
 	member = await createMember();
+	viewer = await createMember();
 	ownerProject = await getPersonalProject(owner);
+	teamProject = await createTeamProject('Reviews Project', owner);
+	await linkUserToProject(member, teamProject, 'project:editor');
+	await linkUserToProject(viewer, teamProject, 'project:viewer');
+
 	ownerAgent = testServer.authAgentFor(owner);
 	memberAgent = testServer.authAgentFor(member);
+	viewerAgent = testServer.authAgentFor(viewer);
 });
 
 /** Create a workflow owned by `owner` with a pinned history version. */
@@ -740,5 +752,229 @@ describe('GET /workflow-review-requests', () => {
 		await ownerAgent.get('/workflow-review-requests').query({ workflowId: 'wf-1' }).expect(403);
 
 		testServer.license.enable('feat:workflowReviews');
+	});
+});
+
+async function seedInboxRequests() {
+	const openRequest = await requestRepository.createRequest({
+		projectId: teamProject.id,
+		title: 'Open review request',
+		createdById: owner.id,
+		state: 'open',
+	});
+	const closedRequest = await requestRepository.createRequest({
+		projectId: teamProject.id,
+		title: 'Closed review request',
+		createdById: owner.id,
+		state: 'closed',
+	});
+	return { openRequest, closedRequest };
+}
+
+describe('GET /workflow-review-requests/summary', () => {
+	test('returns hasAny true for instance owner', async () => {
+		await seedInboxRequests();
+
+		const response = await ownerAgent.get('/workflow-review-requests/summary').expect(200);
+
+		expect(response.body.data).toEqual({ hasAny: true });
+	});
+
+	test('returns hasAny true for project editor', async () => {
+		await seedInboxRequests();
+
+		const response = await memberAgent.get('/workflow-review-requests/summary').expect(200);
+
+		expect(response.body.data).toEqual({ hasAny: true });
+	});
+
+	test('returns hasAny false for project viewer', async () => {
+		await seedInboxRequests();
+
+		const response = await viewerAgent.get('/workflow-review-requests/summary').expect(200);
+
+		expect(response.body.data).toEqual({ hasAny: false });
+	});
+
+	test('returns hasAny true for a requester of their own review', async () => {
+		await requestRepository.createRequest({
+			projectId: teamProject.id,
+			title: 'Review submitted by viewer',
+			createdById: viewer.id,
+			state: 'open',
+		});
+
+		const response = await viewerAgent.get('/workflow-review-requests/summary').expect(200);
+
+		expect(response.body.data).toEqual({ hasAny: true });
+	});
+
+	test('returns 403 when feature is disabled', async () => {
+		await policyService.set(false);
+
+		await ownerAgent.get('/workflow-review-requests/summary').expect(403);
+	});
+});
+
+describe('GET /workflow-review-requests/inbox', () => {
+	test('returns reviews for instance owner', async () => {
+		const { openRequest } = await seedInboxRequests();
+
+		const response = await ownerAgent
+			.get('/workflow-review-requests/inbox')
+			.query({ state: 'open', limit: 15 })
+			.expect(200);
+
+		expect(response.body.data.data).toHaveLength(1);
+		expect(response.body.data.data[0]).toMatchObject({
+			id: openRequest.id,
+			title: 'Open review request',
+			state: 'open',
+			workflowName: null,
+		});
+		expect(response.body.data.hasMore).toBe(false);
+		expect(response.body.data.nextCursor).toBeNull();
+	});
+
+	test('returns empty list for project viewer', async () => {
+		await seedInboxRequests();
+
+		const response = await viewerAgent.get('/workflow-review-requests/inbox').expect(200);
+
+		expect(response.body.data.data).toEqual([]);
+		expect(response.body.data.hasMore).toBe(false);
+	});
+
+	test('returns 403 when license is disabled', async () => {
+		testServer.license.disable('feat:workflowReviews');
+
+		await ownerAgent.get('/workflow-review-requests/inbox').expect(403);
+	});
+
+	test('returns cursor pagination metadata', async () => {
+		await seedInboxRequests();
+		await requestRepository.createRequest({
+			projectId: teamProject.id,
+			title: 'Second open review',
+			createdById: owner.id,
+			state: 'open',
+		});
+
+		const firstPage = await ownerAgent
+			.get('/workflow-review-requests/inbox')
+			.query({ state: 'open', limit: 1 })
+			.expect(200);
+
+		expect(firstPage.body.data.data).toHaveLength(1);
+		expect(firstPage.body.data.hasMore).toBe(true);
+		expect(firstPage.body.data.nextCursor).toBeTruthy();
+
+		const secondPage = await ownerAgent
+			.get('/workflow-review-requests/inbox')
+			.query({
+				state: 'open',
+				limit: 1,
+				cursor: firstPage.body.data.nextCursor,
+			})
+			.expect(200);
+
+		expect(secondPage.body.data.data).toHaveLength(1);
+		expect(secondPage.body.data.data[0].id).not.toBe(firstPage.body.data.data[0].id);
+	});
+
+	test('includes workflow name on list items', async () => {
+		const workflow = await createWorkflow({ name: 'Inbox Workflow' }, teamProject);
+		const enrichedRequest = await requestRepository.createRequest({
+			projectId: teamProject.id,
+			title: 'Enriched review request',
+			createdById: owner.id,
+			state: 'open',
+		});
+
+		await workflowRepository.createWorkflowRow({
+			workflowReviewRequestId: enrichedRequest.id,
+			workflowId: workflow.id,
+		});
+
+		const response = await ownerAgent
+			.get('/workflow-review-requests/inbox')
+			.query({ state: 'open', limit: 15 })
+			.expect(200);
+
+		expect(response.body.data.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: enrichedRequest.id,
+					title: 'Enriched review request',
+					workflowName: 'Inbox Workflow',
+				}),
+			]),
+		);
+	});
+
+	test('hides reviews from projects the member cannot access', async () => {
+		const otherProject = await createTeamProject('Other Reviews Project', owner);
+		await requestRepository.createRequest({
+			projectId: otherProject.id,
+			title: 'Private other-project review',
+			createdById: owner.id,
+			state: 'open',
+		});
+
+		const memberResponse = await memberAgent.get('/workflow-review-requests/inbox').expect(200);
+		expect(memberResponse.body.data.data).toEqual([]);
+
+		const ownerResponse = await ownerAgent.get('/workflow-review-requests/inbox').expect(200);
+		expect(ownerResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					title: 'Private other-project review',
+				}),
+			]),
+		);
+	});
+
+	test('shows requesters their own reviews even without project access', async () => {
+		const otherProject = await createTeamProject('Unrelated Project', owner);
+		const ownRequest = await requestRepository.createRequest({
+			projectId: otherProject.id,
+			title: 'Review I submitted',
+			createdById: member.id,
+			state: 'open',
+		});
+
+		const response = await memberAgent.get('/workflow-review-requests/inbox').expect(200);
+
+		expect(response.body.data.data).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: ownRequest.id })]),
+		);
+	});
+
+	test('does not truncate pagination when the cursor row is deleted', async () => {
+		await seedInboxRequests();
+		await requestRepository.createRequest({
+			projectId: teamProject.id,
+			title: 'Second open review',
+			createdById: owner.id,
+			state: 'open',
+		});
+
+		const firstPage = await ownerAgent
+			.get('/workflow-review-requests/inbox')
+			.query({ state: 'open', limit: 1 })
+			.expect(200);
+		const cursor = firstPage.body.data.nextCursor as string;
+		const firstId = firstPage.body.data.data[0].id as string;
+
+		// Delete the anchor row before requesting the next page.
+		await requestRepository.delete({ id: firstId });
+
+		const secondPage = await ownerAgent
+			.get('/workflow-review-requests/inbox')
+			.query({ state: 'open', limit: 1, cursor })
+			.expect(200);
+
+		expect(secondPage.body.data.data).toHaveLength(1);
+		expect(secondPage.body.data.data[0].id).not.toBe(firstId);
 	});
 });

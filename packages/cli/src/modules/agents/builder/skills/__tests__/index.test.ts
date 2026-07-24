@@ -1,9 +1,9 @@
 import { getBuilderRuntimeSkills } from '../index';
 
 describe('getBuilderRuntimeSkills', () => {
-	it('includes the integrations skill', () => {
+	it('includes the external services skill', () => {
 		const skills = getBuilderRuntimeSkills();
 
-		expect(skills.some((skill) => skill.id === 'agent-builder-integrations')).toBe(true);
+		expect(skills.some((skill) => skill.id === 'agent-builder-external-services')).toBe(true);
 	});
 });

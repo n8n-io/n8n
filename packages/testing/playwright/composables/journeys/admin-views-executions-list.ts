@@ -1,8 +1,8 @@
+import { workflow, trigger, node } from '@n8n/workflow-sdk';
 import { expect } from '@playwright/test';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { workflow, trigger, node } from '../../../../@n8n/workflow-sdk/src';
 import type { n8nPage } from '../../pages/n8nPage';
 import type { ApiHelpers } from '../../services/api-helper';
 import type { TestUser } from '../../services/user-api-helper';

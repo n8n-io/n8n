@@ -680,6 +680,27 @@ describe('AgentBuilderView — preview routing', () => {
 		});
 	});
 
+	it('forwards executionId from preview Fix with Assistant to instance AI handoff', async () => {
+		routeName = 'AgentPreviewView';
+		routeQuery.continueSessionId = 'thread-1';
+
+		const wrapper = await renderView();
+		const preview = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
+
+		preview.vm.$emit('send-to-assistant', 'exec-turn-1');
+		await flushPromises();
+
+		expect(sendPreviewSessionToInstanceAiMock).toHaveBeenCalledWith({
+			projectId: 'p1',
+			agentId: 'a1',
+			threadId: 'thread-1',
+			agentName: 'Agent One',
+			agentIcon: 'bot',
+			sessionTitle: 'agents.builder.chat.newChat.label',
+			executionId: 'exec-turn-1',
+		});
+	});
+
 	it('blocks knowledge file uploads that would exceed the total size limit', async () => {
 		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
 		listAgentFilesMock.mockResolvedValue([
@@ -833,7 +854,6 @@ describe('AgentBuilderView — preview routing', () => {
 				artifactMode: true,
 				artifactProjectId: 'p2',
 				artifactAgentId: 'a2',
-				artifactRefreshKey: 0,
 			},
 		});
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
@@ -990,11 +1010,11 @@ describe('AgentBuilderView — preview routing', () => {
 
 	it('refreshes full config after channel connection changes the agent', async () => {
 		const wrapper = await renderView();
-		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
+		const channels = wrapper.findComponent({ name: 'AgentChannelsSection' });
 
 		fetchConfigMock.mockClear();
 		getAgentMock.mockClear();
-		capabilities.vm.$emit('agent-changed');
+		channels.vm.$emit('agent-changed');
 		await nextTick();
 
 		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p1', 'a1');
@@ -1157,7 +1177,6 @@ describe('AgentBuilderView — three-column shell', () => {
 				artifactMode: true,
 				artifactProjectId: 'p2',
 				artifactAgentId: 'a2',
-				artifactRefreshKey: 0,
 			},
 		});
 
@@ -1197,7 +1216,6 @@ describe('AgentBuilderView — three-column shell', () => {
 				artifactMode: true,
 				artifactProjectId: 'p2',
 				artifactAgentId: 'a2',
-				artifactRefreshKey: 0,
 			},
 		});
 
@@ -1211,13 +1229,39 @@ describe('AgentBuilderView — three-column shell', () => {
 		});
 	});
 
+	it('drops a config edit queued right before the artifact lock engages instead of persisting it', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactEditingLocked: false,
+			},
+		});
+		updateConfigMock.mockClear();
+
+		vi.useFakeTimers();
+		try {
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('update:config', { name: 'Renamed while building' });
+
+			await wrapper.setProps({ artifactEditingLocked: true });
+			await vi.advanceTimersByTimeAsync(500);
+		} finally {
+			vi.useRealTimers();
+		}
+		await flushPromises();
+
+		expect(updateConfigMock).not.toHaveBeenCalled();
+	});
+
 	it('keeps artifact mode tab switching out of the route query', async () => {
 		const wrapper = await renderView({
 			props: {
 				artifactMode: true,
 				artifactProjectId: 'p2',
 				artifactAgentId: 'a2',
-				artifactRefreshKey: 0,
 			},
 		});
 		routerReplace.mockClear();
@@ -1239,7 +1283,6 @@ describe('AgentBuilderView — three-column shell', () => {
 				artifactMode: true,
 				artifactProjectId: 'p2',
 				artifactAgentId: 'a2',
-				artifactRefreshKey: 0,
 			},
 		});
 
@@ -1257,25 +1300,6 @@ describe('AgentBuilderView — three-column shell', () => {
 		});
 	});
 
-	it('refreshes the artifact shell when the artifact refresh key changes', async () => {
-		const wrapper = await renderView({
-			props: {
-				artifactMode: true,
-				artifactProjectId: 'p2',
-				artifactAgentId: 'a2',
-				artifactRefreshKey: 0,
-			},
-		});
-		getAgentMock.mockClear();
-		fetchConfigMock.mockClear();
-
-		await wrapper.setProps({ artifactRefreshKey: 1 });
-		await flushPromises();
-
-		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p2', 'a2');
-		expect(fetchConfigMock).toHaveBeenCalledWith('p2', 'a2');
-	});
-
 	it('refreshes the shell when another surface reports an update to this agent', async () => {
 		// Unique ids: earlier tests leave mounted instances (and their bus
 		// listeners) behind, so shared ids would inflate the mock call counts.
@@ -1284,13 +1308,18 @@ describe('AgentBuilderView — three-column shell', () => {
 				artifactMode: true,
 				artifactProjectId: 'p-bus',
 				artifactAgentId: 'a-bus',
-				artifactRefreshKey: 0,
 			},
 		});
 		getAgentMock.mockClear();
 		fetchConfigMock.mockClear();
 
-		agentsEventBus.emit('agentUpdated', { agentId: 'a-bus', source: 'channel-setup-card' });
+		vi.useFakeTimers();
+		try {
+			agentsEventBus.emit('agentUpdated', { agentId: 'a-bus', source: 'channel-setup-card' });
+			await vi.advanceTimersByTimeAsync(400);
+		} finally {
+			vi.useRealTimers();
+		}
 		await flushPromises();
 
 		expect(getAgentMock).toHaveBeenCalledWith(
@@ -1303,12 +1332,45 @@ describe('AgentBuilderView — three-column shell', () => {
 		// Other agents' updates and the builder's own writes are ignored.
 		getAgentMock.mockClear();
 		fetchConfigMock.mockClear();
-		agentsEventBus.emit('agentUpdated', { agentId: 'a-other', source: 'channel-setup-card' });
-		agentsEventBus.emit('agentUpdated', { agentId: 'a-bus', source: 'agent-builder' });
+		vi.useFakeTimers();
+		try {
+			agentsEventBus.emit('agentUpdated', { agentId: 'a-other', source: 'channel-setup-card' });
+			agentsEventBus.emit('agentUpdated', { agentId: 'a-bus', source: 'agent-builder' });
+			await vi.advanceTimersByTimeAsync(400);
+		} finally {
+			vi.useRealTimers();
+		}
 		await flushPromises();
 
 		expect(getAgentMock).not.toHaveBeenCalled();
 		expect(fetchConfigMock).not.toHaveBeenCalled();
+
+		wrapper.unmount();
+	});
+
+	it('coalesces rapid external agent updates into one refresh cascade', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p-debounce',
+				artifactAgentId: 'a-debounce',
+			},
+		});
+		getAgentMock.mockClear();
+		fetchConfigMock.mockClear();
+
+		vi.useFakeTimers();
+		try {
+			agentsEventBus.emit('agentUpdated', { agentId: 'a-debounce', source: 'channel-setup-card' });
+			agentsEventBus.emit('agentUpdated', { agentId: 'a-debounce', source: 'instance-ai' });
+			await vi.advanceTimersByTimeAsync(400);
+		} finally {
+			vi.useRealTimers();
+		}
+		await flushPromises();
+
+		expect(getAgentMock).toHaveBeenCalledTimes(1);
+		expect(fetchConfigMock).toHaveBeenCalledTimes(1);
 
 		wrapper.unmount();
 	});
@@ -1324,7 +1386,6 @@ describe('AgentBuilderView — three-column shell', () => {
 				artifactMode: true,
 				artifactProjectId: 'p-bus-init',
 				artifactAgentId: 'a-bus-init',
-				artifactRefreshKey: 0,
 			},
 		});
 		await vi.waitFor(() => {
@@ -1353,45 +1414,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		wrapper.unmount();
 	});
 
-	it('replays artifact refresh key changes that arrive before initialization completes', async () => {
-		let resolveAgent!: (agent: ReturnType<typeof makeAgentResponse>) => void;
-		getAgentMock.mockReturnValueOnce(new Promise((resolve) => (resolveAgent = resolve)));
-
-		const wrapper = await renderView({
-			waitForAsyncSetup: false,
-			props: {
-				artifactMode: true,
-				artifactProjectId: 'p2',
-				artifactAgentId: 'a2',
-				artifactRefreshKey: 0,
-			},
-		});
-		await vi.waitFor(() => {
-			expect(getAgentMock).toHaveBeenCalledTimes(1);
-			expect(fetchConfigMock).toHaveBeenCalledTimes(1);
-		});
-
-		await wrapper.setProps({ artifactRefreshKey: 1 });
-		await nextTick();
-		expect(getAgentMock).toHaveBeenCalledTimes(1);
-		expect(fetchConfigMock).toHaveBeenCalledTimes(1);
-
-		await wrapper.setProps({ artifactRefreshKey: 2 });
-		await nextTick();
-		expect(getAgentMock).toHaveBeenCalledTimes(1);
-		expect(fetchConfigMock).toHaveBeenCalledTimes(1);
-
-		resolveAgent(makeAgentResponse());
-		await flushPromises();
-		await flushPromises();
-
-		expect(getAgentMock).toHaveBeenCalledTimes(2);
-		expect(fetchConfigMock).toHaveBeenCalledTimes(2);
-		expect(getAgentMock).toHaveBeenLastCalledWith({ baseUrl: 'http://localhost:5678' }, 'p2', 'a2');
-		expect(fetchConfigMock).toHaveBeenLastCalledWith('p2', 'a2');
-	});
-
-	it('surfaces errors from pending artifact refresh replay', async () => {
+	it('surfaces errors from a replayed external agent update', async () => {
 		let resolveAgent!: (agent: ReturnType<typeof makeAgentResponse>) => void;
 		getAgentMock.mockReturnValueOnce(new Promise((resolve) => (resolveAgent = resolve)));
 		fetchConfigMock.mockImplementationOnce(async () => {
@@ -1404,24 +1427,23 @@ describe('AgentBuilderView — three-column shell', () => {
 			waitForAsyncSetup: false,
 			props: {
 				artifactMode: true,
-				artifactProjectId: 'p2',
-				artifactAgentId: 'a2',
-				artifactRefreshKey: 0,
+				artifactProjectId: 'p-err',
+				artifactAgentId: 'a-err',
 			},
 		});
 		await vi.waitFor(() => {
-			expect(getAgentMock).toHaveBeenCalledTimes(1);
 			expect(fetchConfigMock).toHaveBeenCalledTimes(1);
 		});
 
-		await wrapper.setProps({ artifactRefreshKey: 1 });
-		await nextTick();
+		// Lands mid-initialize → queued via pendingExternalRefresh, replayed after init.
+		agentsEventBus.emit('agentUpdated', { agentId: 'a-err', source: 'channel-setup-card' });
 
 		resolveAgent(makeAgentResponse());
 		await flushPromises();
 		await flushPromises();
 
 		expect(showErrorMock).toHaveBeenCalledWith(replayError, 'agents.builder.loadError');
+		wrapper.unmount();
 	});
 
 	it('adds JSON import and export actions to the header menu', async () => {

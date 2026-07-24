@@ -5,7 +5,8 @@ post:
   tags:
     - Workflow
   summary: Deactivate a workflow
-  description: Deactivate a workflow.
+  description: 'Deprecated: use POST /workflows/{id}/unpublish instead. Deactivate a workflow.'
+  deprecated: true
   parameters:
     - $ref: '../schemas/parameters/workflowId.yml'
   responses:

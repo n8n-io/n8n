@@ -62,6 +62,34 @@ describe('planVerificationSimulation — simulated trigger verdicts', () => {
 		mockGenerateFixtures.mockResolvedValue({});
 	});
 
+	it('forwards the fallback model config to classification and fixture generation', async () => {
+		const fallbackModelConfig = {
+			id: 'anthropic/claude-opus-4-8' as const,
+			url: 'https://proxy.example.com/anthropic/v1',
+			apiKey: 'proxy-token',
+		};
+		mockClassify.mockResolvedValue([
+			{
+				nodeName: 'Send It',
+				verdict: 'simulate',
+				reason: 'Sends a message',
+				confidence: 'high',
+				source: 'deterministic',
+			},
+		]);
+
+		await planVerificationSimulation({
+			workflow: wf([{ name: 'Send It', type: 'n8n-nodes-base.slack' }]),
+			workflowId: 'wf-1',
+			fallbackModelConfig,
+		});
+
+		expect(mockClassify).toHaveBeenCalledWith(expect.objectContaining({ fallbackModelConfig }));
+		expect(mockGenerateFixtures).toHaveBeenCalledWith(
+			expect.objectContaining({ fallbackModelConfig }),
+		);
+	});
+
 	it('injects a deterministic simulate verdict for non-deterministic triggers', async () => {
 		mockClassify.mockResolvedValue([executeVerdict('Fetch Rows')]);
 

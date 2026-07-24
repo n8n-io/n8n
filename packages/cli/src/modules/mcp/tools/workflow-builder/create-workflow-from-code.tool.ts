@@ -34,6 +34,19 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 const MAX_WORKFLOW_DESCRIPTION_LENGTH = 255;
 
+export type CreateWorkflowFromCodeToolOptions = {
+	/**
+	 * `102_mcp_canvas_groups` rollout flag: when true, node groups authored in the
+	 * SDK code (`.group(...)`) are persisted on the created workflow. Off by
+	 * default — groups are then dropped at the entity assembly, exactly like
+	 * before groups were supported. Note that with the flag on, invalid groups
+	 * fail the creation: `WorkflowCreationService.createWorkflow` rejects them
+	 * with the same messages the `validate_workflow` tool reports as errors,
+	 * so agents can catch group problems before calling this tool.
+	 */
+	canvasGroupsEnabled?: boolean;
+};
+
 function normalizeWorkflowDescription(description?: string) {
 	if (!description) return { description: undefined, truncated: false };
 	if (description.length <= MAX_WORKFLOW_DESCRIPTION_LENGTH) {
@@ -169,6 +182,7 @@ export const createCreateWorkflowFromCodeTool = (
 	projectRepository: ProjectRepository,
 	dataTableOps: DataTableUserOperations,
 	aiGatewayService: AiGatewayService,
+	options: CreateWorkflowFromCodeToolOptions = {},
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
@@ -262,6 +276,8 @@ export const createCreateWorkflowFromCodeTool = (
 				...(workflowDescription ? { description: workflowDescription } : {}),
 				nodes: workflowJson.nodes,
 				connections: workflowJson.connections,
+				// Flag off: groups keep being dropped here, exactly like before.
+				...(options.canvasGroupsEnabled ? { nodeGroups: workflowJson.nodeGroups ?? [] } : {}),
 				settings: { ...workflowJson.settings, executionOrder: 'v1', availableInMCP: true },
 				pinData: workflowJson.pinData,
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true, builderVariant: 'mcp' },
@@ -349,6 +365,11 @@ export const createCreateWorkflowFromCodeTool = (
 				data: {
 					workflowId: savedWorkflow.id,
 					nodeCount: savedWorkflow.nodes.length,
+					// Rollout monitoring for `102_mcp_canvas_groups`; absent when the
+					// flag is off so the payload stays identical across cohorts.
+					...(options.canvasGroupsEnabled
+						? { groupCount: workflowJson.nodeGroups?.length ?? 0 }
+						: {}),
 				},
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);

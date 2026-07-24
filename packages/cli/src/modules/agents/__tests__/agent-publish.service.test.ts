@@ -486,6 +486,30 @@ describe('AgentPublishService', () => {
 		);
 	});
 
+	it('ignores other draft integrations when connecting a channel (ignoreDraftIntegrations)', async () => {
+		const { service, agentRepository, agentValidationService } = makeService();
+		const integrations = [
+			{ type: 'slack', credentialId: 'slack-1' },
+			{ type: 'telegram', credentialId: '' },
+		];
+		const agent = makeAgent({ integrations: integrations as never });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		await service.publishAgent(agentId, projectId, user, undefined, {
+			ignoreDraftIntegrations: true,
+		});
+
+		expect(agentValidationService.validateAgentEntityConfiguration).toHaveBeenCalledWith(
+			agent,
+			projectId,
+			expect.anything(),
+			expect.anything(),
+			'publish',
+			[{ type: 'slack', credentialId: 'slack-1' }],
+		);
+		expect(agent.integrations).toBe(integrations);
+	});
+
 	it('maps publish history rows and marks the active version', async () => {
 		const { service, agentRepository, agentHistoryRepository } = makeService();
 		const active = makeHistory({ versionId: 'active-version', author: 'Ada Lovelace' });

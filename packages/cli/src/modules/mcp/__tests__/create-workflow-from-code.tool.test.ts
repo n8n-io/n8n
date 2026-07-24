@@ -14,7 +14,10 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/create-workflow-from-code.tool';
+import {
+	createCreateWorkflowFromCodeTool,
+	type CreateWorkflowFromCodeToolOptions,
+} from '../tools/workflow-builder/create-workflow-from-code.tool';
 
 // Mocks referenced inside vi.mock factories must come from vi.hoisted, otherwise the
 // factory (hoisted above these declarations) silently loads the real module.
@@ -167,7 +170,7 @@ describe('create-workflow-from-code MCP tool', () => {
 	const aiGatewayService = mock<AiGatewayService>();
 	aiGatewayService.isAvailable.mockResolvedValue({ available: false });
 
-	const createTool = () =>
+	const createTool = (options?: CreateWorkflowFromCodeToolOptions) =>
 		createCreateWorkflowFromCodeTool(
 			user,
 			workflowCreationService,
@@ -179,6 +182,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			projectRepository,
 			dataTableOps as never,
 			aiGatewayService,
+			options,
 		);
 
 	// Helper to call handler with proper typing (optional fields default to undefined)
@@ -943,6 +947,88 @@ describe('create-workflow-from-code MCP tool', () => {
 			// so strict clients no longer reject it with -32602.
 			const strictSchema = z.object(tool.config.outputSchema as z.ZodRawShape).strict();
 			expect(() => strictSchema.parse(result.structuredContent)).not.toThrow();
+		});
+	});
+
+	describe('canvas groups (102_mcp_canvas_groups)', () => {
+		const nodeGroups = [{ id: 'g1', name: 'Ingestion', nodeIds: ['node-1', 'node-2'] }];
+
+		/** results.data of the last tracked telemetry event */
+		const trackedData = () => {
+			const payload = vi.mocked(telemetry.track).mock.calls.at(-1)?.[1] as {
+				results?: { data?: Record<string, unknown> };
+			};
+			return payload.results?.data;
+		};
+
+		test('flag off: groups from the code are dropped and telemetry is unchanged', async () => {
+			mockParseAndValidate.mockResolvedValue({
+				workflow: { ...mockWorkflowJson, nodeGroups },
+				warnings: [],
+			});
+
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			expect(parseResult(result).workflowId).toBe('wf-saved-1');
+			const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+			expect(passedWorkflow).not.toHaveProperty('nodeGroups');
+			// Telemetry payload is byte-identical to the pre-flag shape.
+			expect(trackedData()).toEqual({ workflowId: 'wf-saved-1', nodeCount: 2 });
+		});
+
+		test('flag on: groups from the code are persisted on the created workflow', async () => {
+			mockParseAndValidate.mockResolvedValue({
+				workflow: { ...mockWorkflowJson, nodeGroups },
+				warnings: [],
+			});
+
+			const result = await callHandler(
+				{ code: 'const wf = ...' },
+				createTool({ canvasGroupsEnabled: true }),
+			);
+
+			expect(parseResult(result).workflowId).toBe('wf-saved-1');
+			const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+			expect(passedWorkflow.nodeGroups).toEqual(nodeGroups);
+			expect(trackedData()).toEqual({ workflowId: 'wf-saved-1', nodeCount: 2, groupCount: 1 });
+		});
+
+		test('flag on: code without groups persists an empty group list', async () => {
+			mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson, warnings: [] });
+
+			await callHandler({ code: 'const wf = ...' }, createTool({ canvasGroupsEnabled: true }));
+
+			const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+			expect(passedWorkflow.nodeGroups).toEqual([]);
+			expect(trackedData()).toEqual({ workflowId: 'wf-saved-1', nodeCount: 2, groupCount: 0 });
+		});
+
+		test('flag on: invalid groups fail the creation with the save-path message', async () => {
+			// The save path rejects invalid groups (`validateWorkflowNodeGroups`);
+			// the tool intentionally lets that error fail the call so no workflow
+			// is silently created without the authored groups.
+			const saveError = new Error(
+				'Node group "Ingestion" (g1) cannot contain trigger nodes: Webhook.',
+			);
+			mockParseAndValidate.mockResolvedValue({
+				workflow: { ...mockWorkflowJson, nodeGroups },
+				warnings: [],
+			});
+			createWorkflowMock.mockRejectedValue(saveError);
+
+			const result = await callHandler(
+				{ code: 'const wf = ...' },
+				createTool({ canvasGroupsEnabled: true }),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(parseResult(result).error).toBe(saveError.message);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User called mcp tool',
+				expect.objectContaining({
+					results: expect.objectContaining({ success: false, error: saveError.message }),
+				}),
+			);
 		});
 	});
 });
