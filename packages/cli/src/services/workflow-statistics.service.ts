@@ -15,6 +15,7 @@ import {
 	type IRun,
 	type IWorkflowBase,
 	type WorkflowExecuteMode,
+	type WorkflowExecutionSource,
 } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
@@ -58,13 +59,19 @@ const isModeRootExecution = {
 	agent: false,
 } satisfies Record<WorkflowExecuteMode, boolean>;
 
-function getStatisticsNameForCompletedRun(runData: IRun): StatisticsNames | null {
+function getStatisticsNameForCompletedRun(
+	runData: IRun,
+	source?: WorkflowExecutionSource,
+): StatisticsNames | null {
 	const isChatExecution = runData.mode === 'chat';
 	if (isChatExecution || !isCompletedExecutionStatus(runData.status)) {
 		return null;
 	}
 
-	const isManualExecution = runData.mode === 'manual';
+	// Instance AI verification runs mimic the trigger's execution mode, but they
+	// are test runs on the user's behalf — count them as manual so they never
+	// land in production stats or fire first-production milestones.
+	const isManualExecution = runData.mode === 'manual' || source === 'instance_ai';
 	if (isManualExecution) {
 		return runData.status === 'success'
 			? StatisticsNames.manualSuccess
@@ -81,8 +88,12 @@ function isRootExecutionForRun(runData: IRun): boolean {
 }
 
 type WorkflowStatisticsEvents = {
-	nodeFetchedData: { workflowId: string; node: INode };
-	workflowExecutionCompleted: { workflowData: IWorkflowBase; fullRunData: IRun };
+	nodeFetchedData: { workflowId: string; node: INode; source?: WorkflowExecutionSource };
+	workflowExecutionCompleted: {
+		workflowData: IWorkflowBase;
+		fullRunData: IRun;
+		source?: WorkflowExecutionSource;
+	};
 };
 
 @Service()
@@ -102,23 +113,29 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 
 		this.on(
 			'nodeFetchedData',
-			async ({ workflowId, node }) => await this.nodeFetchedData(workflowId, node),
+			async ({ workflowId, node, source }) => await this.nodeFetchedData(workflowId, node, source),
 		);
 		this.on(
 			'workflowExecutionCompleted',
-			async ({ workflowData, fullRunData }) =>
-				await this.workflowExecutionCompleted(workflowData, fullRunData),
+			async ({ workflowData, fullRunData, source }) =>
+				await this.workflowExecutionCompleted(workflowData, fullRunData, source),
 		);
 	}
 
-	async workflowExecutionCompleted(workflowData: IWorkflowBase, runData: IRun): Promise<void> {
-		const statisticsName = getStatisticsNameForCompletedRun(runData);
+	async workflowExecutionCompleted(
+		workflowData: IWorkflowBase,
+		runData: IRun,
+		source?: WorkflowExecutionSource,
+	): Promise<void> {
+		const statisticsName = getStatisticsNameForCompletedRun(runData, source);
+
+		// Instance AI runs mimic trigger modes but are not root production runs.
+		const isRoot = source !== 'instance_ai' && isRootExecutionForRun(runData);
+
 		if (!statisticsName) return;
 
 		const workflowId = workflowData.id;
 		if (!workflowId) return;
-
-		const isRoot = isRootExecutionForRun(runData);
 
 		let upsertResult: Awaited<ReturnType<WorkflowStatisticsRepository['upsertWorkflowStatistics']>>;
 
@@ -256,8 +273,16 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		});
 	}
 
-	async nodeFetchedData(workflowId: string | undefined | null, node: INode): Promise<void> {
+	async nodeFetchedData(
+		workflowId: string | undefined | null,
+		node: INode,
+		source?: WorkflowExecutionSource,
+	): Promise<void> {
 		if (!workflowId) return;
+
+		// Instance AI verification runs must not claim a workflow's
+		// first-data-loaded milestone on the user's behalf.
+		if (source === 'instance_ai') return;
 
 		const insertResult = await this.repository.insertWorkflowStatistics(
 			StatisticsNames.dataLoaded,

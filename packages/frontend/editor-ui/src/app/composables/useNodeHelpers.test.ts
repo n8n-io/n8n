@@ -895,6 +895,7 @@ describe('useNodeHelpers()', () => {
 
 		afterEach(() => {
 			mockDocumentStore.workflowTriggerNodes = [];
+			mockDocumentStore.settings = {};
 		});
 
 		describe('not connected', () => {
@@ -1069,7 +1070,7 @@ describe('useNodeHelpers()', () => {
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
 				expect(result?.credentials?.[NOTION_API]).toEqual([
-					"End-user credentials aren't supported with the Webhook trigger. Use a Manual, Chat, Webhook, or MCP server trigger, or switch this credential to Fixed.",
+					"End-user credentials aren't supported with the Webhook trigger. Use a Manual, Chat, MCP server, or Sub-workflow trigger, or switch this credential to Fixed.",
 				]);
 			});
 
@@ -1115,6 +1116,40 @@ describe('useNodeHelpers()', () => {
 				expect(result?.credentials?.[NOTION_API]).toBeDefined();
 			});
 
+			it('does not warn under a custom resolver when the trigger extracts an external identity', () => {
+				// A custom (non-system) resolver keys on the identity extracted from the
+				// trigger, so a webhook with a context-establishment hook is compatible —
+				// even though it does not provide the n8n user identity.
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.settings = { credentialResolverId: 'custom-resolver' };
+				mockDocumentStore.workflowTriggerNodes = [
+					buildTriggerNode(WEBHOOK_TRIGGER, {
+						parameters: {
+							executionsHooksVersion: 1,
+							contextEstablishmentHooks: { hooks: [{ hookName: 'credentials.bearerToken' }] },
+						},
+					}),
+				];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result).toBeNull();
+			});
+
+			it('warns with the identity-extractor message under a custom resolver when the trigger provides no external identity', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.settings = { credentialResolverId: 'custom-resolver' };
+				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(WEBHOOK_TRIGGER)];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result?.credentials?.[NOTION_API]?.[0]).toContain(
+					'need a trigger that extracts an identity',
+				);
+			});
+
 			it('does not warn when a static (non-resolvable) credential is used under a non-manual trigger', () => {
 				mockConnectedPrivateCred(false);
 				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(WEBHOOK_TRIGGER)];
@@ -1148,9 +1183,9 @@ describe('useNodeHelpers()', () => {
 				expect(result).toBeNull();
 			});
 
-			it('does not warn when at least one trigger in a multi-trigger workflow is compatible', () => {
-				// Mirrors the backend: the workflow is compatible as long as one trigger
-				// establishes the n8n user identity, even if others do not.
+			it('warns when a compatible trigger is combined with an incompatible one', () => {
+				// Mirrors the backend: every enabled trigger must establish the n8n user
+				// identity, so a manual trigger cannot mask an incompatible trigger.
 				mockConnectedPrivateCred(true);
 				mockDocumentStore.workflowTriggerNodes = [
 					buildTriggerNode(MANUAL_TRIGGER),
@@ -1160,7 +1195,9 @@ describe('useNodeHelpers()', () => {
 				const { getNodeCredentialIssues } = useNodeHelpers();
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
-				expect(result).toBeNull();
+				expect(result?.credentials?.[NOTION_API]?.[0]).toContain(
+					"End-user credentials aren't supported with the Webhook trigger",
+				);
 			});
 
 			it('warns when no trigger in a multi-trigger workflow is compatible', () => {
@@ -1264,7 +1301,7 @@ describe('useNodeHelpers()', () => {
 					const result = getNodeCredentialIssues(buildGenericAuthNode(), httpRequestWithSslAuth);
 
 					expect(result?.credentials?.[OAUTH2_API]).toEqual([
-						"End-user credentials aren't supported with the Webhook trigger. Use a Manual, Chat, Webhook, or MCP server trigger, or switch this credential to Fixed.",
+						"End-user credentials aren't supported with the Webhook trigger. Use a Manual, Chat, MCP server, or Sub-workflow trigger, or switch this credential to Fixed.",
 					]);
 				});
 
@@ -1296,7 +1333,7 @@ describe('useNodeHelpers()', () => {
 					const result = getNodeCredentialIssues(buildPredefinedAuthNode(), httpRequestWithSslAuth);
 
 					expect(result?.credentials?.[OAUTH2_API]).toEqual([
-						"End-user credentials aren't supported with the Webhook trigger. Use a Manual, Chat, Webhook, or MCP server trigger, or switch this credential to Fixed.",
+						"End-user credentials aren't supported with the Webhook trigger. Use a Manual, Chat, MCP server, or Sub-workflow trigger, or switch this credential to Fixed.",
 					]);
 				});
 

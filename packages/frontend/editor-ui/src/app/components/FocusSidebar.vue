@@ -18,10 +18,9 @@ import { N8nResizeWrapper } from '@n8n/design-system';
 import FocusSidebarTabs from '@/features/setupPanel/components/FocusSidebarTabs.vue';
 import SetupPanel from '@/features/setupPanel/components/SetupPanel.vue';
 import FocusPanel from '@/app/components/FocusPanel.vue';
-import EvaluationsWizardSidepanel from '@/features/ai/evaluation.ee/components/WizardSidepanel/EvaluationsWizardSidepanel.vue';
+import TestsPanel from '@/features/ai/evaluation.ee/components/Tests/TestsPanel.vue';
 import EvaluationsPaywall from '@/features/ai/evaluation.ee/components/Paywall/EvaluationsPaywall.vue';
 import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
-import { useAiRootNodes } from '@/features/ai/evaluation.ee/composables/useAiRootNodes';
 import { useEvaluationsLicense } from '@/features/ai/evaluation.ee/composables/useEvaluationsLicense';
 
 defineOptions({ name: 'FocusSidebar' });
@@ -56,17 +55,16 @@ const resolvedParameter = computed(() => focusPanelStore.resolvedParameter);
 const isSetupPanelEnabled = computed(() => setupPanelStore.isFeatureEnabled);
 const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
 	useEvaluationsWizardSidepanelExperiment();
-const aiRootNodes = useAiRootNodes();
-const hasAiRootNode = computed(() => aiRootNodes.value.length > 0);
 const { isLicensed, isResolved, ensureLicenseLoaded } = useEvaluationsLicense();
 
 const showSetupPanel = computed(
 	() => setupPanelStore.isFeatureEnabled && selectedTab.value === 'setup',
 );
+// The panel is shown regardless of whether the workflow has an AI node yet — the
+// "add a node first" empty state is handled inside TestsPanel.
 const showEvaluationsPanel = computed(
 	() =>
 		isEvaluationsWizardSidepanelEnabled.value &&
-		hasAiRootNode.value &&
 		selectedTab.value === 'evaluations' &&
 		isResolved.value &&
 		isLicensed.value,
@@ -74,7 +72,6 @@ const showEvaluationsPanel = computed(
 const showEvaluationsPaywall = computed(
 	() =>
 		isEvaluationsWizardSidepanelEnabled.value &&
-		hasAiRootNode.value &&
 		selectedTab.value === 'evaluations' &&
 		isResolved.value &&
 		!isLicensed.value,
@@ -84,8 +81,7 @@ const showEvaluationsPaywall = computed(
 // stay shown when the evaluations tab is available, otherwise the user has no
 // way to switch back.
 const showTabs = computed(
-	() =>
-		isSetupPanelEnabled.value || (isEvaluationsWizardSidepanelEnabled.value && hasAiRootNode.value),
+	() => isSetupPanelEnabled.value || isEvaluationsWizardSidepanelEnabled.value,
 );
 
 const node = computed<INodeUi | undefined>(() => {
@@ -198,9 +194,12 @@ onBeforeUnmount(() => {
 					<SetupPanel />
 				</div>
 				<div v-else-if="showEvaluationsPanel" :class="$style['setup-panel-wrapper']">
-					<EvaluationsWizardSidepanel />
+					<TestsPanel />
 				</div>
-				<div v-else-if="showEvaluationsPaywall" :class="$style['setup-panel-wrapper']">
+				<div
+					v-else-if="showEvaluationsPaywall"
+					:class="[$style['setup-panel-wrapper'], $style['evaluations-paywall-wrapper']]"
+				>
 					<EvaluationsPaywall />
 				</div>
 				<FocusPanel
@@ -237,5 +236,11 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	height: calc(100% - 36px);
 	width: 100%;
+}
+
+// The paywall renders a bare action box; unlike the setup/tests panels it has no
+// internal padding, so inset it from the panel edges here.
+.evaluations-paywall-wrapper {
+	padding: var(--spacing--sm);
 }
 </style>

@@ -1,0 +1,11 @@
+{
+	"type": "object",
+	"required": ["output"],
+	"properties": {
+		"output": {
+			"type": "string",
+			"description": "The assistant's final response text — a plain string"
+		}
+	},
+	"version": 1
+}

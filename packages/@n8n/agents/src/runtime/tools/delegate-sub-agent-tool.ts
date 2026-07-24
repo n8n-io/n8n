@@ -19,6 +19,7 @@ import type {
 } from '../../types/sdk/agent';
 import type { AgentMessage } from '../../types/sdk/message';
 import type { BuiltProviderTool, BuiltTool, ToolContext } from '../../types/sdk/tool';
+import type { BuiltTelemetry } from '../../types/telemetry';
 
 export const DELEGATE_SUB_AGENT_TOOL_NAME = 'delegate_subagent';
 export const INLINE_SUB_AGENT_ID = 'inline';
@@ -129,6 +130,13 @@ export interface DelegateSubAgentRequest extends DelegateSubAgentInput {
 	parentAbortSignal?: AbortSignal;
 	/** Parent aggregate execution counter (`ctx.executionCounter`) for inline child accounting. */
 	parentExecutionCounter?: AgentExecutionCounter;
+	/**
+	 * Parent's live, resolved telemetry (`ctx.parentTelemetry`). Hosts derive the
+	 * child's own telemetry from this (see `deriveSubAgentTelemetry`) so the
+	 * sub-agent shares the parent's tracer and nests under the parent's
+	 * delegate-tool-call span instead of starting a separate root trace.
+	 */
+	parentTelemetry?: BuiltTelemetry;
 	/** How many siblings the parent already spawned before this one (0-based). */
 	childCount: number;
 	/** Effective policy for this delegation. */
@@ -459,6 +467,7 @@ async function handleDelegateSubAgent(
 			...(ctx.executionCounter !== undefined
 				? { parentExecutionCounter: ctx.executionCounter }
 				: {}),
+			...(ctx.parentTelemetry !== undefined ? { parentTelemetry: ctx.parentTelemetry } : {}),
 			...(options.policy !== undefined ? { policy: options.policy } : {}),
 		};
 

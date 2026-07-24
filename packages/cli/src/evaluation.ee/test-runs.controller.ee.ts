@@ -163,18 +163,28 @@ export class TestRunsController {
 
 		const concurrency = payload.concurrency ?? 1;
 
+		const options: {
+			evaluationConfigId?: string;
+			compileFromConfig?: boolean;
+			rowIndices?: number[];
+		} = {};
+		if (payload.evaluationConfigId) {
+			options.evaluationConfigId = payload.evaluationConfigId;
+			options.compileFromConfig = payload.compileFromConfig === true;
+		}
+		if (payload.rowIndices && payload.rowIndices.length > 0) {
+			options.rowIndices = payload.rowIndices;
+		}
+
 		// Await sync setup so the 202 carries testRunId; case execution is
-		// detached inside startTestRun via `finished` (discarded here).
+		// detached inside startTestRun via `finished` (discarded here). Pass
+		// `undefined` (not `{}`) when there are no options so the service applies
+		// its own defaults (e.g. `via: 'ui'`).
 		const { testRun } = await this.testRunnerService.startTestRun(
 			req.user,
 			workflowId,
 			concurrency,
-			payload.evaluationConfigId
-				? {
-						evaluationConfigId: payload.evaluationConfigId,
-						compileFromConfig: payload.compileFromConfig === true,
-					}
-				: undefined,
+			Object.keys(options).length > 0 ? options : undefined,
 		);
 
 		res.status(202).json({ success: true, testRunId: testRun.id });

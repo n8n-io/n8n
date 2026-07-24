@@ -11,13 +11,11 @@ import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { LOCAL_STORAGE_SKIP_DISCONNECT_CONFIRM } from '@/app/constants/localStorage';
-import CredentialIcon from './CredentialIcon.vue';
 
 interface Props {
 	credentialTypeName: string;
 	credentialName: string;
 	isConnected: boolean;
-	canModify: boolean;
 	canConnect?: boolean;
 	connectedAccountName?: string;
 }
@@ -29,29 +27,31 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
 	connect: [];
-	modify: [];
+	switchAccount: [];
 	disconnect: [];
 }>();
 
 const i18n = useI18n();
 
 const connectedActions = computed<Array<ActionDropdownItem<string>>>(() => [
-	...(props.canModify
-		? [
-				{
-					id: 'modify',
-					label: i18n.baseText('credentials.private.row.modify'),
-					icon: 'square-pen' as const,
-				},
-			]
-		: []),
+	{
+		id: 'switchAccount',
+		label: i18n.baseText('credentials.private.row.switchAccount'),
+		// Switching accounts re-runs OAuth, which needs the connect scope. Disconnect
+		// stays available regardless — users can always clear their own connection.
+		disabled: !props.canConnect,
+	},
 	{
 		id: 'disconnect',
 		label: i18n.baseText('credentials.private.row.disconnect'),
-		icon: 'unplug' as const,
-		divided: props.canModify,
 	},
 ]);
+
+const connectPlaceholder = computed(() =>
+	i18n.baseText('credentials.private.row.connectPlaceholder', {
+		interpolate: { service: props.credentialName },
+	}),
+);
 
 const statusText = computed(() => {
 	if (!props.isConnected) {
@@ -69,7 +69,7 @@ const disconnectDialogOpen = ref(false);
 const skipDisconnectConfirm = ref(false);
 
 function onActionSelect(action: string) {
-	if (action === 'modify') emit('modify');
+	if (action === 'switchAccount') emit('switchAccount');
 	else if (action === 'disconnect') onDisconnect();
 }
 
@@ -94,18 +94,15 @@ function onDisconnectConfirm() {
 <template>
 	<div :class="$style.row">
 		<div :class="$style.left">
-			<CredentialIcon :credential-type-name="credentialTypeName" :size="20" />
-			<div :class="$style.textGroup">
-				<span :class="$style.name">{{ credentialName }}</span>
-				<span :class="$style.status">
-					<N8nTooltip :disabled="!isConnected || !connectedAccountName" placement="top">
-						<template #content>
-							<span :class="$style.tooltipAccount">{{ statusText }}</span>
-						</template>
-						<span :class="$style.statusText">{{ statusText }}</span>
-					</N8nTooltip>
-				</span>
-			</div>
+			<span v-if="!isConnected" :class="$style.placeholder">{{ connectPlaceholder }}</span>
+			<span v-else :class="$style.status">
+				<N8nTooltip :disabled="!connectedAccountName" placement="top">
+					<template #content>
+						<span :class="$style.tooltipAccount">{{ statusText }}</span>
+					</template>
+					<span :class="$style.statusText">{{ statusText }}</span>
+				</N8nTooltip>
+			</span>
 		</div>
 
 		<div :class="$style.right">
@@ -183,24 +180,18 @@ function onDisconnectConfirm() {
 	flex: 1;
 }
 
-.textGroup {
-	display: flex;
-	align-items: baseline;
-	gap: var(--spacing--2xs);
-	min-width: 0;
-	flex: 1;
-}
-
-.name {
+.placeholder {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
-	color: var(--color--text);
+	color: var(--text-color--subtle);
+	overflow: hidden;
+	text-overflow: ellipsis;
 	white-space: nowrap;
-	flex-shrink: 0;
+	min-width: 0;
 }
 
 .status {
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 	color: var(--text-color--subtle);
 	overflow: hidden;

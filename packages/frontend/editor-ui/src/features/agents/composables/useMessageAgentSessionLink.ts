@@ -8,12 +8,13 @@ import { type LogEntry, isNodeLog } from '@/features/execution/logs/logs.types';
 /**
  * Session identifiers the MessageAnAgent node emits in its output JSON. Kept
  * structural so we don't have to import the runtime type from `n8n-workflow`
- * just to read three string fields.
+ * just to read simple string fields.
  */
 type MessageAgentSession = {
 	agentId: string;
 	projectId: string;
 	sessionId: string;
+	threadId?: string;
 };
 
 function isMessageAgentSession(value: unknown): value is MessageAgentSession {
@@ -77,7 +78,9 @@ export function useMessageAgentSessionLink(logEntry: ComputedRef<LogEntry | unde
 				params: {
 					projectId: session.projectId,
 					agentId: session.agentId,
-					threadId: session.sessionId,
+					// Sessions are persisted under the scoped thread key; sessionId is
+					// the caller-facing id.
+					threadId: session.threadId ?? session.sessionId,
 				},
 			}).href;
 		} catch {

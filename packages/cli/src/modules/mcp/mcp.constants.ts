@@ -13,6 +13,7 @@ import {
 export const USER_CONNECTED_TO_MCP_EVENT = 'User connected to MCP server';
 export const USER_CALLED_MCP_TOOL_EVENT = 'User called mcp tool';
 export const MCP_PREVIEW_RENDER_REQUESTED_EVENT = 'MCP App preview render requested';
+export const MCP_CREDENTIALS_AUTOASSIGN_EVENT = 'MCP credentials autoassign';
 
 /**
  * Message constants
@@ -20,6 +21,11 @@ export const MCP_PREVIEW_RENDER_REQUESTED_EVENT = 'MCP App preview render reques
 export const UNAUTHORIZED_ERROR_MESSAGE = 'Unauthorized';
 export const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal server error';
 export const MCP_ACCESS_DISABLED_ERROR_MESSAGE = 'MCP access is disabled';
+
+/**
+ * Tool name constants
+ */
+export const LIST_N8N_CONNECT_SERVICES_TOOL_NAME = 'list_n8n_connect_services';
 
 /**
  * Triggers supported in production mode for MCP execution

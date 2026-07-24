@@ -1,4 +1,6 @@
+import { Container } from '@n8n/di';
 import get from 'lodash/get';
+import { buildHitlCallbackReference, InstanceSettings } from 'n8n-core';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -10,7 +12,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError, sleep } from 'n8n-workflow';
 
-import type { SendAndWaitMessageBody } from './MessageInterface';
+import {
+	HITL_APPROVE_ACTION_ID,
+	HITL_DECLINE_ACTION_ID,
+	type SendAndWaitMessageBody,
+} from './MessageInterface';
 import { getSendAndWaitConfig } from '../../../utils/sendAndWait/utils';
 import { createUtmCampaignLink } from '../../../utils/utilities';
 
@@ -427,6 +433,18 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 
 	const config = getSendAndWaitConfig(context);
 
+	const responseType = context.getNodeParameter('responseType', 0, 'approval');
+
+	// Capture-responder only works with Approve/Reject buttons. Free-text and custom-form
+	// replies still use the plain link button.
+	const captureResponder =
+		context.getNodeParameter('captureResponder', 0, false) === true && responseType === 'approval';
+
+	// HMAC secret for the callback reference the CLI layer verifies to prove which execution and
+	// decision to resume (same helper/secret as Telegram). Only needed in capture-responder mode.
+	const executionId = context.getExecutionId();
+	const hmacSecret = captureResponder ? Container.get(InstanceSettings).hmacSignatureSecret : '';
+
 	const body: SendAndWaitMessageBody = {
 		channel: target,
 		blocks: [
@@ -453,18 +471,27 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 			},
 			{
 				type: 'actions',
-				elements: config.options.map((option) => {
-					return {
-						type: 'button',
-						style: option.style === 'primary' ? 'primary' : undefined,
-						text: {
-							type: 'plain_text',
-							text: option.label,
-							emoji: true,
-						},
-						url: option.url,
-					};
-				}),
+				elements: config.options.map((option) => ({
+					type: 'button',
+					style: option.style === 'primary' ? 'primary' : undefined,
+					text: {
+						type: 'plain_text',
+						text: option.label,
+						emoji: true,
+					},
+					// A button with a `url` is a plain link. In capture-responder mode we drop
+					// the url so Slack treats it as interactive and POSTs the click to us instead.
+					...(captureResponder
+						? {
+								action_id: option.approved ? HITL_APPROVE_ACTION_ID : HITL_DECLINE_ACTION_ID,
+								value: buildHitlCallbackReference(
+									executionId,
+									option.approved ? 'a' : 'd',
+									hmacSecret,
+								),
+							}
+						: { url: option.url }),
+				})),
 			},
 		],
 	};

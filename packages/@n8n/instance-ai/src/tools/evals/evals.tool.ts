@@ -26,6 +26,7 @@ import {
 } from './metric-catalog';
 import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../../types';
+import { refreshWorkflowSourceFileBindingFromSave } from '../workflows/workflow-file-bindings';
 
 // ── Action input schemas ───────────────────────────────────────────────────
 
@@ -528,8 +529,16 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 		});
 		const patched = applyPinData(wf, generated);
 		if (patched !== wf) {
-			await context.workflowService.updateFromWorkflowJSON(input.workflowId, patched, {
-				...(input.projectId ? { projectId: input.projectId } : {}),
+			const saved = await context.workflowService.updateFromWorkflowJSON(
+				input.workflowId,
+				patched,
+				{
+					...(input.projectId ? { projectId: input.projectId } : {}),
+				},
+			);
+			await refreshWorkflowSourceFileBindingFromSave(context, input.workflowId, {
+				versionId: saved.versionId,
+				checksum: saved.checksum,
 			});
 			workflowWithPinData = patched;
 		}

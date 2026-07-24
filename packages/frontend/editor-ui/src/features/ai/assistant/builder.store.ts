@@ -146,7 +146,7 @@ interface EndOfStreamingTrackingPayload {
 interface UserSubmittedBuilderMessageTrackingPayload
 	extends ITelemetryTrackProperties,
 		TodosTrackingPayload {
-	source: 'chat' | 'canvas' | 'empty-state';
+	source: 'chat' | 'canvas';
 	message: string;
 	session_id: string;
 	start_workflow_json: string;
@@ -738,7 +738,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 */
 	function trackUserSubmittedBuilderMessage(options: {
 		text: string;
-		source: 'chat' | 'canvas' | 'empty-state';
+		source: 'chat' | 'canvas';
 		type: 'message' | 'execution';
 		userMessageId: string;
 		currentWorkflowJson: string;
@@ -888,7 +888,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 */
 	async function sendChatMessage(options: {
 		text: string;
-		source?: 'chat' | 'canvas' | 'empty-state';
+		source?: 'chat' | 'canvas';
 		quickReplyType?: QuickReplyType;
 		initialGeneration?: boolean;
 		type?: 'message' | 'execution';

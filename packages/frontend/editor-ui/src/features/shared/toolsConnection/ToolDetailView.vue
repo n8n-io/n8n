@@ -17,6 +17,9 @@ const emit = defineEmits<{
 	back: [];
 	close: [];
 	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
+	'credential-dropdown-open': [item: ToolConnectionItem];
+	'first-credential-connect': [item: ToolConnectionItem];
+	'new-credential-connect': [item: ToolConnectionItem];
 }>();
 
 const i18n = useI18n();
@@ -76,6 +79,9 @@ const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 						(toolItem, authType, credentialId) =>
 							emit('select-credential', toolItem, authType, credentialId)
 					"
+					@credential-dropdown-open="emit('credential-dropdown-open', $event)"
+					@first-credential-connect="emit('first-credential-connect', $event)"
+					@new-credential-connect="emit('new-credential-connect', $event)"
 				/>
 				<N8nIconButton
 					icon="x"

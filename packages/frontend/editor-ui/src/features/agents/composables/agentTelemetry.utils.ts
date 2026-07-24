@@ -8,6 +8,7 @@ export type AgentConfigFingerprint = {
 	skills: string[];
 	tasks: string[];
 	triggers: string[];
+	vector_stores: string[];
 	memory: { enabled: boolean; storage: 'n8n' } | null;
 	model: string | null;
 	config_version: string;
@@ -56,6 +57,9 @@ export async function buildAgentConfigFingerprint(
 	const skills = skillIdentifiersFromConfig(config);
 	const tasks = taskIdentifiersFromConfig(config);
 	const triggers = [...connectedTriggers].sort();
+	const vectorStores = (config?.vectorStores ?? [])
+		.map((store) => `${store.provider}:${store.name}`)
+		.sort();
 	const memory = config?.memory
 		? { enabled: config.memory.enabled, storage: config.memory.storage }
 		: null;
@@ -67,6 +71,7 @@ export async function buildAgentConfigFingerprint(
 		skills,
 		tasks,
 		triggers,
+		vector_stores: vectorStores,
 		memory,
 		model,
 	});
@@ -78,6 +83,7 @@ export async function buildAgentConfigFingerprint(
 		skills,
 		tasks,
 		triggers,
+		vector_stores: vectorStores,
 		memory,
 		model,
 		config_version: configVersion,

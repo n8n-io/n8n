@@ -202,6 +202,7 @@ async function handleRun(
 	input: Extract<Input, { action: 'run' }>,
 	resumeData: z.infer<typeof resumeSchema> | undefined,
 	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>,
+	abortSignal?: AbortSignal,
 ) {
 	if (context.permissions?.runWorkflow === 'blocked') {
 		return {
@@ -212,10 +213,13 @@ async function handleRun(
 		};
 	}
 
-	// `always_allow` is only honored for the workflow IDs the caller pre-authorized
-	// (e.g. checkpoint follow-ups scope the override to the workflows the checkpoint
-	// is verifying). When the allow-list is unset, `always_allow` applies broadly,
-	// matching the legacy behavior.
+	// `always_allow` is only honored for the workflow IDs the caller pre-authorized.
+	// Checkpoint follow-ups pass an explicit allow-list (the workflows the checkpoint is
+	// verifying). When the allow-list is unset (e.g. planned-build follow-ups, which grant
+	// `runWorkflow: 'always_allow'` without one), the bypass is scoped to the workflows the
+	// agent created during the active plan cycle. Running any other pre-existing workflow
+	// still requires HITL approval, so a prompt injection can't silently run arbitrary
+	// workflows under the user's authority.
 	const allowList = context.allowedRunWorkflowIds;
 	const workflowNameAllowList = context.allowedRunWorkflowNames;
 	let workflowName: string | undefined;
@@ -244,10 +248,14 @@ async function handleRun(
 			allowedByName = true;
 		}
 	}
+	const allowedByList =
+		allowList !== undefined
+			? allowList.has(workflowId)
+			: (context.aiCreatedWorkflowIds?.has(workflowId) ?? false);
 	const allowedByScope =
 		context.requireRunWorkflowApproval !== true &&
 		context.permissions?.runWorkflow === 'always_allow' &&
-		(allowList === undefined || allowList.has(workflowId) || allowedByName);
+		(allowedByList || allowedByName);
 
 	// A per-workflow "always allow" grant skips HITL for the rest of the session, but an
 	// admin's `requireRunWorkflowApproval` always wins - same gate as `allowedByScope`.
@@ -285,6 +293,7 @@ async function handleRun(
 	// Approved or always_allow — execute
 	return await context.executionService.run(workflowId, input.inputData, {
 		timeout: input.timeout,
+		abortSignal,
 	});
 }
 
@@ -340,7 +349,7 @@ export function createExecutionsTool(context: InstanceAiContext) {
 				case 'get':
 					return await handleGet(context, input);
 				case 'run': {
-					return await handleRun(context, input, ctx.resumeData, ctx.suspend);
+					return await handleRun(context, input, ctx.resumeData, ctx.suspend, ctx.abortSignal);
 				}
 				case 'debug':
 					return await handleDebug(context, input);

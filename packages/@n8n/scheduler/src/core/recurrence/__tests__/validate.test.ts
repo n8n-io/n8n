@@ -54,6 +54,69 @@ describe('validateSchedule', () => {
 		});
 	});
 
+	describe('recurring_cron', () => {
+		const valid = {
+			kind: 'recurring_cron',
+			cronExpression: '0 0 9 * * 1',
+			timezone: 'UTC',
+			recurrenceUnit: 'weeks',
+			recurrenceSize: 3,
+		} as const;
+
+		it('accepts a valid anchor with a gate', () => {
+			expect(() => validateSchedule(valid)).not.toThrow();
+		});
+
+		it('accepts the node rule ranges (23 hours, 31 days, 13+ months)', () => {
+			expect(() =>
+				validateSchedule({ ...valid, recurrenceUnit: 'hours', recurrenceSize: 23 }),
+			).not.toThrow();
+			expect(() =>
+				validateSchedule({ ...valid, recurrenceUnit: 'days', recurrenceSize: 31 }),
+			).not.toThrow();
+			expect(() =>
+				validateSchedule({ ...valid, recurrenceUnit: 'months', recurrenceSize: 13 }),
+			).not.toThrow();
+		});
+
+		it('rejects a stride of 1 (that is a plain cron) and other non-strides', () => {
+			expect(() => validateSchedule({ ...valid, recurrenceSize: 1 })).toThrow(/recurrenceSize/);
+			expect(() => validateSchedule({ ...valid, recurrenceSize: 0 })).toThrow(InvalidScheduleError);
+			expect(() => validateSchedule({ ...valid, recurrenceSize: -3 })).toThrow(
+				InvalidScheduleError,
+			);
+			expect(() => validateSchedule({ ...valid, recurrenceSize: 2.5 })).toThrow(
+				InvalidScheduleError,
+			);
+		});
+
+		it('rejects an unknown recurrence unit', () => {
+			expect(() =>
+				validateSchedule({
+					...valid,
+					recurrenceUnit: 'fortnights' as unknown as (typeof valid)['recurrenceUnit'],
+				}),
+			).toThrow(/recurrenceUnit/);
+		});
+
+		it('applies the cron anchor checks (field count, timezone, range)', () => {
+			expect(() =>
+				validateSchedule({
+					...valid,
+					cronExpression: '0 9 * * 1' as unknown as CronExpression,
+				}),
+			).toThrow(InvalidScheduleError);
+			expect(() => validateSchedule({ ...valid, timezone: 'Mars/Phobos' })).toThrow(/timezone/);
+			expect(() =>
+				validateSchedule({ ...valid, cronExpression: '99 0 9 * * 1' as CronExpression }),
+			).toThrow(InvalidScheduleError);
+		});
+
+		it('accepts a null timezone (instance default)', () => {
+			expect(() => validateSchedule({ ...valid, timezone: null })).not.toThrow();
+		});
+	});
+
 	describe('interval', () => {
 		it('accepts a positive intervalSeconds', () => {
 			expect(() => validateSchedule({ kind: 'interval', intervalSeconds: 60 })).not.toThrow();

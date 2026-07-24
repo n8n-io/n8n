@@ -200,11 +200,25 @@ describe('InstanceAiMarkdown', () => {
 		// the empty registry keeps decorateResourceNames a no-op so the rendered
 		// HTML is stable across re-renders.
 		const content = '<a href="n8n-resource://workflow/wf-1">Invoice Processing Pipeline</a>';
+		const agentContent = '<a href="n8n-resource://agent/agent-1">Artifact Agent Test</a>';
 
 		function renderWithPreview(openWorkflowPreview: (id: string) => boolean) {
 			const utils = renderComponent({
 				props: { content },
 				global: { provide: { openWorkflowPreview } },
+			});
+			const link = utils.getByTestId('markdown-output').querySelector('a');
+			if (!link) throw new Error('expected enhanced anchor');
+			return { ...utils, link };
+		}
+
+		function renderAgentWithPreview(openAgentPreview: (id: string, projectId: string) => boolean) {
+			thread.resourceNameIndex = makeRegistry([
+				{ type: 'agent', id: 'agent-1', name: 'Artifact Agent Test', projectId: 'project-1' },
+			]);
+			const utils = renderComponent({
+				props: { content: agentContent },
+				global: { provide: { openAgentPreview } },
 			});
 			const link = utils.getByTestId('markdown-output').querySelector('a');
 			if (!link) throw new Error('expected enhanced anchor');
@@ -263,6 +277,26 @@ describe('InstanceAiMarkdown', () => {
 			link.dispatchEvent(clickEvent({ metaKey: true }));
 
 			expect(openWorkflowPreview).not.toHaveBeenCalled();
+		});
+
+		it('should enhance agent links into project-scoped resource chips', () => {
+			const { link } = renderAgentWithPreview(vi.fn(() => true));
+
+			expect(link.dataset.resourceChip).toBe('agent');
+			expect(link.dataset.resourceId).toBe('agent-1');
+			expect(link.getAttribute('href')).toBe('/projects/project-1/agents/agent-1');
+			expect(link.target).toBe('_blank');
+		});
+
+		it('should open the agent preview on left-click and suppress navigation', () => {
+			const openAgentPreview = vi.fn(() => true);
+			const { link } = renderAgentWithPreview(openAgentPreview);
+
+			const event = clickEvent();
+			link.dispatchEvent(event);
+
+			expect(openAgentPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'project-1');
+			expect(event.defaultPrevented).toBe(true);
 		});
 	});
 });

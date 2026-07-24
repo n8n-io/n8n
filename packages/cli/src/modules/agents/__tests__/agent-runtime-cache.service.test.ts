@@ -2,6 +2,7 @@ import type { Mock } from 'vitest';
 import type { Agent as RuntimeAgent } from '@n8n/agents';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
+import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import { OperationalError } from 'n8n-workflow';
 
@@ -89,6 +90,7 @@ describe('AgentRuntimeCacheService', () => {
 			agent,
 			expect.anything(),
 			undefined,
+			undefined,
 		);
 	});
 
@@ -118,6 +120,44 @@ describe('AgentRuntimeCacheService', () => {
 			agent,
 			expect.anything(),
 			'n8n_chat',
+			undefined,
+		);
+	});
+
+	it('keys draft runtimes by user id so different users get separate runtimes, reused per user', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const userARuntime = makeRuntime();
+		const userBRuntime = makeRuntime();
+		const userA = mock<User>({ id: 'user-a' });
+		const userB = mock<User>({ id: 'user-b' });
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(userARuntime)
+			.mockResolvedValueOnce(userBRuntime);
+
+		const forUserA = await service.getRuntime({ agentId, projectId, user: userA });
+		const forUserAAgain = await service.getRuntime({ agentId, projectId, user: userA });
+		const forUserB = await service.getRuntime({ agentId, projectId, user: userB });
+
+		expect(forUserA.agent).toBe(userARuntime.agent);
+		expect(forUserAAgain.agent).toBe(userARuntime.agent);
+		expect(forUserB.agent).toBe(userBRuntime.agent);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
+			1,
+			agent,
+			expect.anything(),
+			undefined,
+			userA,
+		);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
+			2,
+			agent,
+			expect.anything(),
+			undefined,
+			userB,
 		);
 	});
 
@@ -240,6 +280,7 @@ describe('AgentRuntimeCacheService', () => {
 			}),
 			expect.anything(),
 			'slack',
+			undefined,
 		);
 	});
 

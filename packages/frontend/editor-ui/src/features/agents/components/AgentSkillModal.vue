@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { AGENT_SKILL_REFERENCE_MAX_COUNT } from '@n8n/api-types';
-import { N8nButton, N8nHeading, N8nIcon } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { N8nButton, N8nCallout, N8nHeading, N8nIcon } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -20,6 +20,11 @@ export type AgentSkillModalData = {
 	skill?: AgentSkill;
 	skillId?: string;
 	availableTools?: AgentSkillAllowedToolOption[];
+	/**
+	 * Names of the agent's other skills, so a duplicate name blocks save while
+	 * the modal is still open — skill names must be unique per agent.
+	 */
+	existingSkillNames?: string[];
 	onConfirm: (payload: { id?: string; skill: AgentSkill }) => void;
 	onRemove?: (id: string) => void;
 };
@@ -50,6 +55,14 @@ const isEditing = computed(() => !!props.data.skillId);
 const canAddReference = computed(
 	() => (skill.value.references ?? []).length < AGENT_SKILL_REFERENCE_MAX_COUNT,
 );
+// A skill saved through this modal always has instructions (required below), so
+// empty instructions on an existing ref mean its stored content is gone — the
+// backend validation issue this modal opened from. Detected from the opening
+// data rather than threaded validation state, so it stays correct even if this
+// modal is ever opened from a surface that doesn't know about validation issues.
+const openedWithMissingContent = computed(
+	() => isEditing.value && !(props.data.skill?.instructions ?? '').trim(),
+);
 
 const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() => {
 	const errors: Partial<Record<keyof AgentSkill, string>> = {};
@@ -79,7 +92,9 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 	return errors;
 });
 
-const visibleErrors = computed(() => (submitted.value ? validationErrors.value : {}));
+const visibleErrors = computed(() =>
+	submitted.value || openedWithMissingContent.value ? validationErrors.value : {},
+);
 const canSave = computed(() => formIsValid.value);
 
 function onSkillUpdate(updates: Partial<AgentSkill>) {
@@ -188,6 +203,13 @@ function onRemove() {
 		</template>
 
 		<template #content>
+			<N8nCallout
+				v-if="openedWithMissingContent"
+				theme="warning"
+				data-testid="agent-skill-missing-content-callout"
+			>
+				{{ i18n.baseText('agents.builder.skills.missingContent.callout' as BaseTextKey) }}
+			</N8nCallout>
 			<div :class="$style.content">
 				<AgentSkillFileNav
 					:skill="skill"
@@ -200,10 +222,11 @@ function onRemove() {
 				<AgentSkillViewer
 					:skill="skill"
 					:available-tools="props.data.availableTools ?? []"
+					:existing-skill-names="props.data.existingSkillNames ?? []"
 					:selected-path="selectedPath"
 					:errors="visibleErrors"
 					:scrollable="false"
-					:show-validation-warnings="submitted"
+					:show-validation-warnings="submitted || openedWithMissingContent"
 					@import:skill="onImportSkill"
 					@select:path="selectedPath = $event"
 					@update:skill="onSkillUpdate"
@@ -227,12 +250,7 @@ function onRemove() {
 					<N8nButton variant="subtle" @click="closeModal">
 						{{ i18n.baseText('agents.builder.skills.create.cancel') }}
 					</N8nButton>
-					<N8nButton
-						variant="solid"
-						:disabled="!canSave"
-						data-testid="agent-skill-create-save"
-						@click="onSave"
-					>
+					<N8nButton variant="solid" data-testid="agent-skill-create-save" @click="onSave">
 						{{ i18n.baseText('agents.builder.skills.create.save') }}
 					</N8nButton>
 				</div>

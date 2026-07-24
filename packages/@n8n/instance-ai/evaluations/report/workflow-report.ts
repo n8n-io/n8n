@@ -590,8 +590,166 @@ function renderScenario(
 	</div>`;
 }
 
+/** Objects render as pretty JSON; pre-truncated capture strings render verbatim. */
+function agentValueBlock(value: unknown): string {
+	const text = typeof value === 'string' ? value : (JSON.stringify(value, null, 2) ?? 'null');
+	return `<pre class="json-block json-sm"><code>${escapeHtml(text)}</code></pre>`;
+}
+
+/**
+ * Scenario detail for agent-artifact runs: the tool-call timeline (with the
+ * intercepted requests + mock responses behind each call) plays the role the
+ * per-node execution trace plays for workflows, and the recorded real-model
+ * turns replace the wire-server section.
+ */
+function renderAgentScenarioDetail(
+	sr: ExecutionScenarioResult,
+	ar: NonNullable<ExecutionScenarioResult['agentEvalResult']>,
+): string {
+	let html = '';
+
+	if (!sr.success && sr.failureCategory) {
+		const catClass =
+			sr.failureCategory === 'builder_issue'
+				? 'warn'
+				: sr.failureCategory === 'mock_issue'
+					? 'fail'
+					: 'info';
+		html += `<div class="category-badge category-${catClass}">${escapeHtml(sr.failureCategory)}${sr.rootCause ? ': ' + escapeHtml(sr.rootCause) : ''}</div>`;
+	}
+
+	// The reshape guard only validates runId/toolCalls/modelTurns/seed — default
+	// the rest so a partially-shaped row degrades instead of crashing the report.
+	const errors = ar.errors ?? [];
+	const seedWarnings = ar.seed.warnings ?? [];
+	const skippedFeatures = ar.skippedFeatures ?? [];
+	if (errors.length > 0) {
+		html += `<div class="error-box">${escapeHtml(errors.join('; '))}</div>`;
+	}
+	if (seedWarnings.length > 0) {
+		html += `<div class="warning-box">${escapeHtml(seedWarnings.join('; '))}</div>`;
+	}
+	if (skippedFeatures.length > 0) {
+		html += `<div class="warning-box">Agent features disabled for this run (not mockable yet): ${escapeHtml(
+			skippedFeatures.map((s) => s.feature).join(', '),
+		)}</div>`;
+	}
+
+	if (sr.reasoning) {
+		html += '<details class="section" open><summary>Diagnosis</summary>';
+		html += `<div class="diagnosis">${escapeHtml(sr.reasoning)}</div>`;
+		html += '</details>';
+	}
+
+	// Scenario seed — the agent analog of the workflow mock data plan: the
+	// generated opening message plays the trigger-content role.
+	html += '<details class="section"><summary>Scenario seed</summary>';
+	html += '<div class="subsection-label">Opening user message</div>';
+	html += `<div class="hint-text">${escapeHtml(ar.seed.openingMessage || '(none)')}</div>`;
+	if (ar.seed.globalContext) {
+		html += '<div class="subsection-label">Global context</div>';
+		html += `<div class="hint-text">${escapeHtml(ar.seed.globalContext)}</div>`;
+	}
+	const toolHintEntries = Object.entries(ar.seed.toolHints ?? {});
+	if (toolHintEntries.length > 0) {
+		html += '<div class="subsection-label">Per-tool hints</div>';
+		for (const [toolName, hint] of toolHintEntries) {
+			html += `<details class="node-hint"><summary>${escapeHtml(toolName)}</summary>`;
+			html += `<div class="hint-text">${escapeHtml(hint)}</div>`;
+			html += '</details>';
+		}
+	}
+	html += '</details>';
+
+	// Agent run trace — tool calls with their intercepted wire traffic.
+	html += '<details class="section"><summary>Agent run trace</summary>';
+	const usage = ar.usage
+		? ` — ~${String(ar.usage.inputTokens ?? 0)} in / ${String(ar.usage.outputTokens ?? 0)} out tokens`
+		: '';
+	html += `<div class="hint-text">Model ${escapeHtml(ar.model ?? '(unknown)')} ran for real (${String(ar.modelTurns.length)} turn(s)${usage})${ar.finishReason ? ` — finishReason: ${escapeHtml(ar.finishReason)}` : ''}</div>`;
+
+	if (ar.toolCalls.length === 0) {
+		html += '<div class="muted">No tool calls were made in this run.</div>';
+	}
+	for (const call of ar.toolCalls) {
+		// Defensive: reshaped LangSmith rows may carry partially-shaped entries.
+		const interceptedRequests = call.interceptedRequests ?? [];
+		html += '<div class="trace-node">';
+		html += '<div class="trace-node-header">';
+		html += `<span class="${call.mocked ? 'node-mode-mocked' : 'node-mode-real'}">[${escapeHtml(call.kind)}]</span> <strong>${escapeHtml(call.tool ?? '(unnamed tool)')}</strong>`;
+		if (interceptedRequests.length > 0) {
+			html += ` <span class="request-count">${String(interceptedRequests.length)} request(s)</span>`;
+		}
+		if (call.autoApproved) {
+			html += ' <span class="muted">(approval auto-granted by the harness)</span>';
+		}
+		html += '</div>';
+		if (call.error) {
+			html += `<span class="build-issue">Tool error: ${escapeHtml(call.error)}</span>`;
+		}
+		if (call.input !== undefined) {
+			html += '<div class="request-header">Tool input</div>';
+			html += agentValueBlock(call.input);
+		}
+		for (const req of interceptedRequests) {
+			html += '<div class="request-pair">';
+			html += '<div class="request-header">Request sent</div>';
+			html += `<div class="request-method">${escapeHtml(req.method)} ${escapeHtml(req.url || '(no URL)')}</div>`;
+			if (req.requestBody) {
+				html += agentValueBlock(req.requestBody);
+			}
+			html += '<div class="response-header">Mock returned</div>';
+			if (req.mockResponse !== undefined) {
+				html += agentValueBlock(req.mockResponse);
+			} else {
+				html += '<div class="muted">no mock response</div>';
+			}
+			html += '</div>';
+		}
+		if (call.output !== undefined) {
+			html += '<div class="response-header">Tool output</div>';
+			html += agentValueBlock(call.output);
+		}
+		html += '</div>';
+	}
+
+	// Real model turns (recorded passthrough traffic, bodies truncated at capture).
+	if (ar.modelTurns.length > 0) {
+		html += '<div class="subsection-label">Model turns (real, recorded)</div>';
+		ar.modelTurns.forEach((turn, index) => {
+			const duration =
+				turn.durationMs !== undefined ? ` ${String(Math.round(turn.durationMs / 100) / 10)}s` : '';
+			html += `<details class="node-hint"><summary>turn ${String(index + 1)} — ${escapeHtml(turn.provider ?? turn.url)} ${turn.status !== undefined ? String(turn.status) : ''}${duration}${turn.streamed ? ' (streamed)' : ''}${turn.error ? ' — ERROR' : ''}</summary>`;
+			if (turn.error) {
+				html += `<div class="error-box">${escapeHtml(turn.error)}</div>`;
+			}
+			if (turn.requestBody !== undefined) {
+				html += '<div class="request-header">Request body</div>';
+				html += agentValueBlock(turn.requestBody);
+			}
+			if (turn.responseBody !== undefined) {
+				html += '<div class="response-header">Response body</div>';
+				html += agentValueBlock(turn.responseBody);
+			}
+			html += '</details>';
+		});
+	}
+	html += '</details>';
+
+	// Final reply — what the user would have seen.
+	html += '<details class="section" open><summary>Agent final reply</summary>';
+	html += `<div class="diagnosis">${escapeHtml(ar.finalText || '(no final text)')}</div>`;
+	html += '</details>';
+
+	return html;
+}
+
 function renderScenarioDetail(sr: ExecutionScenarioResult): string {
 	let html = '';
+
+	if (sr.agentEvalResult) {
+		return renderAgentScenarioDetail(sr, sr.agentEvalResult);
+	}
 
 	if (!sr.evalResult) {
 		if (sr.reasoning) {
@@ -1067,29 +1225,38 @@ function renderWorkflowChecks(outcomes: CheckOutcome[] | undefined): string {
 
 // ---------------------------------------------------------------------------
 // Build expectations
+//
+// Aggregates a list of pass/fail/incomplete verdicts into a `<details>`
+// checklist shell; per-item markup comes from `renderItem`.
 // ---------------------------------------------------------------------------
 
-function renderBuildExpectations(results: BuildExpectationResult[] | undefined): string {
-	if (!results || results.length === 0) return '';
+function renderChecklistSection<T extends { pass: boolean; incomplete?: boolean }>(
+	title: string,
+	entries: T[] | undefined,
+	renderItem: (entry: T) => string,
+): string {
+	if (!entries || entries.length === 0) return '';
 	// `incomplete` (no verdict) stays out of the pass/fail count — rendered neutrally.
-	const passCount = results.filter((r) => r.pass && !r.incomplete).length;
-	const failCount = results.filter((r) => !r.pass && !r.incomplete).length;
-	const incompleteCount = results.filter((r) => r.incomplete).length;
+	const passCount = entries.filter((e) => e.pass && !e.incomplete).length;
+	const failCount = entries.filter((e) => !e.pass && !e.incomplete).length;
+	const incompleteCount = entries.filter((e) => e.incomplete).length;
 	const scored = passCount + failCount;
 	const statusClass = failCount > 0 ? 'fail' : 'pass';
 	const openAttr = failCount > 0 ? 'open' : '';
 	const summary = `${String(passCount)}/${String(scored)}${incompleteCount > 0 ? ` · ${String(incompleteCount)} no verdict` : ''}`;
-	const items = results
-		.map((r) => {
-			const cls = r.incomplete ? 'n_a' : r.pass ? 'pass' : 'fail';
-			const icon = r.incomplete ? '⌀' : r.pass ? '&#10003;' : '&#10007;';
-			const judgment = r.reason
-				? `<div class="expectation-judgment">${escapeHtml(r.reason)}</div>`
-				: '';
-			return `<li class="expectation ${cls}"><span class="check-icon ${cls}">${icon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(r.expectation)}</div>${judgment}</div></li>`;
-		})
-		.join('');
-	return `<details class="section" ${openAttr}><summary>Build expectations <span class="${statusClass}">${summary}</span></summary><ul class="check-list">${items}</ul></details>`;
+	const items = entries.map(renderItem).join('');
+	return `<details class="section" ${openAttr}><summary>${title} <span class="${statusClass}">${summary}</span></summary><ul class="check-list">${items}</ul></details>`;
+}
+
+function renderBuildExpectations(results: BuildExpectationResult[] | undefined): string {
+	return renderChecklistSection('Build expectations', results, (r) => {
+		const cls = r.incomplete ? 'n_a' : r.pass ? 'pass' : 'fail';
+		const icon = r.incomplete ? '⌀' : r.pass ? '&#10003;' : '&#10007;';
+		const judgment = r.reason
+			? `<div class="expectation-judgment">${escapeHtml(r.reason)}</div>`
+			: '';
+		return `<li class="expectation ${cls}"><span class="check-icon ${cls}">${icon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(r.expectation)}</div>${judgment}</div></li>`;
+	});
 }
 
 // ---------------------------------------------------------------------------
@@ -1188,7 +1355,16 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 			`<details class="section"><summary>Builder agent activity (raw)</summary><pre class="json-block"><code>${escapeHtml(JSON.stringify(result.buildTrace.agentActivities, null, 2))}</code></pre></details>`;
 	}
 
-	return nodesHtml + diagramHtml + edgesHtml + jsonHtml + traceHtml;
+	// Agent-artifact cases: the rendered agent config + skills is the built
+	// artifact — the counterpart of the workflow JSON block above.
+	let agentHtml = '';
+	if (result.agentArtifactContext) {
+		agentHtml = `<details class="section"><summary>Built agent${result.agentId ? ` (${escapeHtml(result.agentId)})` : ''}</summary><pre class="json-block"><code>${escapeHtml(result.agentArtifactContext)}</code></pre></details>`;
+	} else if (result.agentId) {
+		agentHtml = `<details class="section"><summary>Built agent (${escapeHtml(result.agentId)})</summary><pre class="json-block"><code>(no agent artifact captured for this run)</code></pre></details>`;
+	}
+
+	return agentHtml + nodesHtml + diagramHtml + edgesHtml + jsonHtml + traceHtml;
 }
 
 // ---------------------------------------------------------------------------
@@ -1196,7 +1372,7 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 // ---------------------------------------------------------------------------
 
 function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string {
-	// Pass rate counts scenarios AND build expectations as units (incomplete units excluded).
+	// Pass rate counts scenarios and build expectations as units (incomplete units excluded).
 	const { passCount, totalCount } = getRunScoredCounts(result);
 	const allPass = passCount === totalCount && totalCount > 0;
 	const caseStatus = getCaseRunStatus(result);
@@ -1599,17 +1775,17 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	<div class="stat-card">
 		<div class="label">Failed</div>
 		<div class="value${failCount > 0 ? ' fail' : ''}">${String(failCount)}</div>
-	</div>${
-		noVerdictCount > 0
-			? `
-	<div class="stat-card">
-		<div class="label">No verdict</div>
-		<div class="value">${String(noVerdictCount)}</div>
-	</div>`
-			: ''
-	}
-	<div class="stat-card">
-		<div class="label">Checked/Built</div>
+		</div>${
+			noVerdictCount > 0
+				? `
+		<div class="stat-card">
+			<div class="label">No verdict</div>
+			<div class="value">${String(noVerdictCount)}</div>
+		</div>`
+				: ''
+		}
+		<div class="stat-card">
+			<div class="label">Checked/Built</div>
 		<div class="value${checkedOrBuiltCount === totalTestCases ? ' pass' : ' mixed'}">${String(checkedOrBuiltCount)}/${String(totalTestCases)}</div>
 	</div>
 </div>

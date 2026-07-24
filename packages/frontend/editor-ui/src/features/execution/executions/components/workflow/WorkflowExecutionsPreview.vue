@@ -18,8 +18,9 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useExecutionsStore } from '../../executions.store';
+import { useEvaluationsWizardSidepanelStore } from '@/features/ai/evaluation.ee/wizardSidepanel.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useAddExecutionToDataset } from '@/features/ai/evaluation.ee/composables/useAddExecutionToDataset';
 
@@ -74,12 +75,10 @@ const isRetriable = computed(
 	() => !!props.execution && executionHelpers.isExecutionRetriable(props.execution),
 );
 
-const {
-	isFeatureEnabled: isAddToDatasetFeatureEnabled,
-	hasDataTableConfig,
-	fetchDataTableConfigs,
-	openModal: openAddToDatasetModal,
-} = useAddExecutionToDataset(workflowId);
+const { isFeatureEnabled: isAddToDatasetFeatureEnabled } = useAddExecutionToDataset(workflowId);
+
+const router = useRouter();
+const evaluationsWizardStore = useEvaluationsWizardSidepanelStore();
 
 const showAddToDataset = computed(
 	() =>
@@ -89,17 +88,19 @@ const showAddToDataset = computed(
 		props.execution?.mode !== 'evaluation',
 );
 
-watch(
-	isAddToDatasetFeatureEnabled,
-	async (enabled) => {
-		if (enabled) await fetchDataTableConfigs();
-	},
-	{ immediate: true },
-);
-
-function onAddToDatasetClick() {
-	if (props.execution) {
-		openAddToDatasetModal(props.execution.id);
+// Seed a new test case from this execution and navigate to the editor. The
+// Tests panel is opened editor-side (NodeView) off the pending seed, so the
+// handoff survives the route change instead of relying on focus-panel state set
+// here, on a route that never renders the panel.
+async function onAddToDatasetClick() {
+	if (!props.execution) return;
+	try {
+		const full = await executionsStore.fetchExecution(props.execution.id);
+		if (!full) return;
+		evaluationsWizardStore.setPendingSeedExecution(full);
+		await router.push({ name: VIEWS.WORKFLOW, params: { workflowId: workflowId.value } });
+	} catch (error) {
+		showError(error, locale.baseText('evaluations.tests.seedFromExecution.error'));
 	}
 }
 
@@ -443,25 +444,17 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 					</template>
 				</ElDropdown>
 
-				<N8nTooltip
+				<N8nButton
 					v-if="showAddToDataset"
-					:content="locale.baseText('evaluations.addToDataset.button.tooltip.noConfig')"
-					:disabled="hasDataTableConfig"
-					placement="bottom"
+					variant="subtle"
+					size="medium"
+					icon="list-plus"
+					:disabled="!workflowPermissions.update"
+					data-test-id="execution-preview-add-to-dataset-button"
+					@click="onAddToDatasetClick"
 				>
-					<span>
-						<N8nButton
-							variant="subtle"
-							size="medium"
-							icon="list-plus"
-							:disabled="!workflowPermissions.update || !hasDataTableConfig"
-							data-test-id="execution-preview-add-to-dataset-button"
-							@click="onAddToDatasetClick"
-						>
-							{{ locale.baseText('evaluations.addToDataset.button.label') }}
-						</N8nButton>
-					</span>
-				</N8nTooltip>
+					{{ locale.baseText('evaluations.addToDataset.button.label') }}
+				</N8nButton>
 
 				<WorkflowExecutionAnnotationPanel
 					v-if="isAnnotationEnabled && activeExecution"

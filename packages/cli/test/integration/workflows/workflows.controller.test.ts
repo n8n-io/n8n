@@ -4535,6 +4535,79 @@ describe('POST /workflows/:workflowId/activate', () => {
 	});
 });
 
+describe('workflow conflict detection when a version is activated mid-edit (INS-859)', () => {
+	// `activeVersionId` is one of WORKFLOW_CHECKSUM_FIELDS, so activating a workflow shifts its
+	// server-side checksum even though no editable content changed. An editor that captured its
+	// checksum before the activation push therefore autosaves with a stale checksum and gets a
+	// (correct) 409 — the false "changed by someone else" conflict from INS-859. These tests pin
+	// that backend contract: a 409 on the pre-activation checksum, a clean save on the refreshed
+	// one. The frontend fix (refresh the checksum on the `workflowActivated` push) relies on it.
+
+	test('changes the workflow checksum when a version is activated', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const beforeActivation = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+		expect(beforeActivation.body.data.activeVersionId).toBeNull();
+		const checksumBeforeActivation = beforeActivation.body.data.checksum;
+
+		const activated = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId })
+			.expect(200);
+
+		// Only activeVersionId changed, yet the checksum moves — the root cause of the conflict.
+		expect(activated.body.data.activeVersionId).toBe(workflow.versionId);
+		expect(activated.body.data.checksum).not.toBe(checksumBeforeActivation);
+	});
+
+	test('rejects an autosave whose checksum was captured before activation', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		// The editor loads the workflow and holds its checksum while the user keeps editing.
+		const loaded = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+		const checksumHeldByEditor = loaded.body.data.checksum;
+
+		// A server-side activation lands while the canvas is still dirty.
+		await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId })
+			.expect(200);
+
+		// The debounced autosave ships with the now-stale pre-activation checksum (the edit here
+		// stands in for the node drag in the original report — the conflict is checksum-driven,
+		// not content-driven).
+		const autosave = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			name: 'Edited while activation landed',
+			expectedChecksum: checksumHeldByEditor,
+		});
+
+		expect(autosave.statusCode).toBe(409);
+		expect(autosave.body.code).toBe(409);
+	});
+
+	test('accepts the autosave once the checksum is refreshed after activation, preserving the edit', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const activated = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId })
+			.expect(200);
+
+		// The fix: on the `workflowActivated` push the editor refreshes its checksum to the
+		// post-activation value before the autosave fires.
+		const refreshedChecksum = activated.body.data.checksum;
+
+		const autosave = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ name: 'Edited while activation landed', expectedChecksum: refreshedChecksum })
+			.expect(200);
+
+		// The in-progress edit is persisted and the activation state is preserved.
+		expect(autosave.body.data.name).toBe('Edited while activation landed');
+		expect(autosave.body.data.activeVersionId).toBe(workflow.versionId);
+	});
+});
+
 describe('POST /workflows/:workflowId/deactivate', () => {
 	test('should deactivate active workflow', async () => {
 		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
@@ -4727,7 +4800,7 @@ describe('POST /workflows/:workflowId/run', () => {
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${dbWorkflow.id}/run`)
-			.send({ workflowData: tamperedWorkflowData });
+			.send({ triggerToStartFrom: { name: 'Start' }, workflowData: tamperedWorkflowData });
 
 		// The endpoint should accept the request (the DB workflow exists)
 		// It should NOT use the tampered workflowData
@@ -4740,9 +4813,22 @@ describe('POST /workflows/:workflowId/run', () => {
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${nonExistentId}/run`)
-			.send({ workflowData: fakeWorkflow });
+			.send({ triggerToStartFrom: { name: 'Start' }, workflowData: fakeWorkflow });
 
 		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 400 when neither a trigger nor a destination node is provided', async () => {
+		const dbWorkflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${dbWorkflow.id}/run`)
+			.send({ startNodes: [] });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			'To run the workflow manually, specify either a trigger to start from or a destination node.',
+		);
 	});
 });
 
@@ -5179,7 +5265,7 @@ describe('GET /workflows/:workflowId/executions/last-successful', () => {
 	test('should return the last successful execution', async () => {
 		const workflow = await createWorkflow({}, owner);
 
-		const { createSuccessfulExecution } = await import('../shared/db/executions');
+		const { createSuccessfulExecution } = await import('../shared/db/executions.js');
 
 		// Create multiple executions with different statuses
 		await createSuccessfulExecution(workflow);

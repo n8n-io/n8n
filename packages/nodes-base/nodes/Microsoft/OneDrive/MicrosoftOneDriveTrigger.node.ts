@@ -8,7 +8,7 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { targetDescription } from './descriptions/TargetDescription';
+import { triggerTargetDescription } from './descriptions/TargetDescription';
 import {
 	driveEndpoint,
 	getOneDriveCredentialType,
@@ -89,7 +89,7 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 				],
 				default: 'microsoftOneDriveOAuth2Api',
 			},
-			...targetDescription,
+			...triggerTargetDescription,
 			...triggerDescription,
 		],
 	};

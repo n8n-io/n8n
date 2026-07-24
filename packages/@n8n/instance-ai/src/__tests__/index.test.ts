@@ -189,7 +189,7 @@ vi.mock('../parsers/validate-attachments', () => {
 
 describe('@n8n/instance-ai public entrypoint', () => {
 	it('exposes representative lazy exports without invoking them', async () => {
-		const entrypoint = await import('../index');
+		const entrypoint = await import('../index.js');
 
 		expect(entrypoint.MAX_STEPS.ORCHESTRATOR).toBeGreaterThan(0);
 		expect(entrypoint.createAllTools).toEqual(expect.any(Function));
@@ -206,7 +206,7 @@ describe('@n8n/instance-ai public entrypoint', () => {
 	});
 
 	it('loads lazy functions, classes, and getters through the public barrel', async () => {
-		const entrypoint = await import('../index');
+		const entrypoint = await import('../index.js');
 
 		expect(call(entrypoint.createInstanceAiTraceContext)).toBe('createInstanceAiTraceContext');
 		expect(call(entrypoint.createInternalOperationTraceContext)).toBe(

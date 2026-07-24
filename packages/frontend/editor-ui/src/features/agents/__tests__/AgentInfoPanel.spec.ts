@@ -102,15 +102,15 @@ describe('AgentInfoPanel', () => {
 		vi.clearAllMocks();
 	});
 
-	it('renders instructions as a document-style markdown editor', () => {
+	it('renders instructions as a contained markdown editor', () => {
 		const wrapper = mountPanel();
 
 		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
 		expect(editor.props()).toMatchObject({
 			modelValue: '# Role\nHelp users.',
-			variant: 'ghost',
+			variant: 'contained',
 			showToolbar: 'never',
-			maxHeight: 'none',
+			maxHeight: '360px',
 		});
 		expect(editor.props('placeholder')).toBeUndefined();
 		expect(wrapper.find('[data-testid="agent-instructions-document"]').exists()).toBe(true);

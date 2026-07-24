@@ -19,6 +19,11 @@ import { fetchApiDocs } from './api-docs';
 import { buildDateAnchors } from './date-anchors';
 import { findMockQuirks } from './mock-quirks';
 import { extractNodeConfig } from './node-config';
+import {
+	applyProviderShapeNormalizers,
+	findProviderShapeViolation,
+	type ProviderRequestInfo,
+} from './provider-shapes';
 import { redactBinaryBody } from './request-binary-redactor';
 import { redactSecretKeys, truncateForLlm } from './request-sanitizer';
 
@@ -74,7 +79,12 @@ For APIs that return empty responses on success (204/202), call submit_response 
 // Types
 // ---------------------------------------------------------------------------
 
-const DEFAULT_MAX_RETRIES = 1;
+// 2 retries: worst case 120s + 300s + 300s = 720s stays inside the 900s
+// scenario budget. One retry left large-payload generations (32-row klines,
+// multi-entry forecasts) failing both attempts under provider contention —
+// observed as _evalMockError mock_issue rows and client-side scenario aborts
+// in run 29012884140 (trading-bot, weather-alert families).
+const DEFAULT_MAX_RETRIES = 2;
 const ERROR_PREVIEW_MAX = 400;
 const ERROR_DETAIL_MAX = 300;
 
@@ -401,6 +411,10 @@ async function generateMockResponse(
 				dateConstraints,
 			);
 			applyEndpointNormalizers(request, spec);
+			applyProviderShapeNormalizers(
+				{ method: requestMethod, pathname: requestPath, hostname: requestHostname },
+				spec,
+			);
 			const response = materializeSpec(spec);
 			// Mark soft-fallback responses so the handler's cache evicts them.
 			if (softOnly) softFallbackResponses.add(response);
@@ -636,10 +650,13 @@ interface SubmitCapture {
 	softOnly?: boolean;
 	/** Set after the one-shot date-filter rejection — a resubmission is then accepted as-is. */
 	dateFilterWarned?: boolean;
+	/** Set after the one-shot provider-shape rejection — a resubmission is then accepted as-is. */
+	shapeWarned?: boolean;
 }
 
 function createSubmitResponseTool(
 	capture: SubmitCapture,
+	requestInfo: ProviderRequestInfo,
 	dateConstraints: DateFilterConstraint[] = [],
 ) {
 	return new Tool('submit_response')
@@ -689,6 +706,21 @@ function createSubmitResponseTool(
 				return reject(
 					'Invalid: type="error" takes either body (JSON error) or textBody (text/XML error document), not both. Resubmit with exactly one.',
 				);
+			}
+			// One-shot deterministic provider-shape check: some nodes read one exact
+			// path off the response and CRASH when it's missing (e.g. OpenAI images
+			// `data[].b64_json`, Gemini `candidates[].content.parts`). Nudge the model
+			// to produce full-fidelity data before the normalizer's minimal-envelope
+			// fallback kicks in; keep the submission as a soft fallback so a
+			// never-resubmitting agent can't dead-lock the generation.
+			if (input.type === 'json' && !capture.shapeWarned) {
+				const violation = findProviderShapeViolation(requestInfo, input.body);
+				if (violation) {
+					capture.shapeWarned = true;
+					capture.spec = input;
+					capture.softOnly = true;
+					return reject(violation);
+				}
 			}
 			// One-shot deterministic check: prompt rules alone don't reliably stop
 			// mocks from returning records outside the request's date window (the
@@ -757,7 +789,17 @@ async function callLlm(
 				requestInfo.hostname,
 			),
 		)
-		.tool(createSubmitResponseTool(capture, dateConstraints));
+		.tool(
+			createSubmitResponseTool(
+				capture,
+				{
+					method: requestInfo.method,
+					pathname: requestInfo.pathname,
+					hostname: requestInfo.hostname,
+				},
+				dateConstraints,
+			),
+		);
 
 	const result = await agent.generate(userPrompt, {
 		abortSignal: AbortSignal.timeout(timeoutMs),

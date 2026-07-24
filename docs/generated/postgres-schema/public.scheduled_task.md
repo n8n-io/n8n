@@ -7,6 +7,7 @@
 | attempts | integer | 0 | false |  |  | Execution attempts started so far; compared against maxAttempts. |
 | claimedBy | varchar(255) |  | true |  |  | Id of the instance currently holding the lease; NULL when unclaimed. |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| dispatchedAt | timestamp(3) with time zone |  | true |  |  | When the current attempt handed off its effect; NULL until then. Splits dispatch-attempted (startedAt) from effect-happened, so the reaper completes a dispatched occurrence rather than redelivering it. |
 | errorMessage | text |  | true |  |  | Failure detail from the last attempt. |
 | finishedAt | timestamp(3) with time zone |  | true |  |  | When the occurrence reached a terminal state; drives retention pruning. |
 | id | bigint |  | false |  |  |  |
@@ -62,6 +63,7 @@ erDiagram
   integer attempts
   varchar_255_ claimedBy
   timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone dispatchedAt
   text errorMessage
   timestamp_3__with_time_zone finishedAt
   bigint id
@@ -90,6 +92,8 @@ erDiagram
   timestamp_3__with_time_zone nextRunAt
   varchar_36_ nodeId
   json payload
+  integer recurrenceSize
+  varchar_16_ recurrenceUnit
   varchar_128_ taskType
   varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt

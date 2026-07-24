@@ -151,6 +151,25 @@ describe('WhatsNewModal', () => {
 		expect(queryByTestId('whats-new-modal-next-versions-link')).not.toBeInTheDocument();
 	});
 
+	it('should render a close button that dismisses the modal', async () => {
+		const { getByTestId, getByRole } = renderComponent({
+			props: {
+				data: {
+					articleId: 1,
+				},
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('whatsNew-modal')).toBeInTheDocument());
+
+		const closeButton = getByRole('button', { name: 'Close this dialog' });
+		expect(closeButton).toBeInTheDocument();
+
+		await userEvent.click(closeButton);
+
+		expect(uiStore.closeModal).toHaveBeenCalledWith(WHATS_NEW_MODAL_KEY);
+	});
+
 	it('should render with update button enabled', async () => {
 		versionsStore.hasVersionUpdates = true;
 		versionsStore.nextVersions = [

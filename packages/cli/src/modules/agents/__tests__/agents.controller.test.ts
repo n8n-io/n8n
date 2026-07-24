@@ -123,7 +123,10 @@ describe('AgentsController agent resource', () => {
 			id: 'agent-1',
 			projectId: 'project-1',
 		} as never);
-		agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
+		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+			status: 'valid',
+			issues: [],
+		});
 		agentPublishService.hasPublishHistory.mockResolvedValue(false);
 
 		const { controller } = makeController({
@@ -147,10 +150,11 @@ describe('AgentsController agent resource', () => {
 				isRunnable: true,
 			}),
 		);
-		expect(agentValidationService.validateAgentIsRunnable).toHaveBeenCalledWith(
-			'agent-1',
+		expect(agentValidationService.validateLoadedAgentConfiguration).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'agent-1' }),
 			'project-1',
 			expect.any(AgentsCredentialProvider),
+			'runtime',
 		);
 	});
 
@@ -163,8 +167,9 @@ describe('AgentsController agent resource', () => {
 			id: 'agent-1',
 			projectId: 'project-1',
 		} as never);
-		agentValidationService.validateAgentIsRunnable.mockResolvedValue({
-			missing: ['credential'],
+		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+			status: 'invalid',
+			issues: [{ code: 'missing_credential', path: 'credential', capability: { kind: 'agent' } }],
 		});
 		agentPublishService.hasPublishHistory.mockResolvedValue(false);
 

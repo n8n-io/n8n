@@ -43,13 +43,14 @@ watch(
 	},
 );
 
-// Validity gate: the name is required (matches the node flow). Description
-// and allOutputs are free to be empty/false.
+// Validity gate: name and description are required — the description is what
+// the LLM reads to decide when to invoke the tool, and executing without one
+// fails. Only allOutputs is free to stay false.
 watch(
-	name,
-	(value) => {
-		emit('update:valid', value.trim().length > 0);
-		emit('update:node-name', value);
+	[name, description],
+	([nameValue, descriptionValue]) => {
+		emit('update:valid', nameValue.trim().length > 0 && descriptionValue.trim().length > 0);
+		emit('update:node-name', nameValue);
 	},
 	{ immediate: true },
 );
@@ -74,6 +75,7 @@ defineExpose({
 		<div :class="$style.field">
 			<label :class="$style.label" for="workflow-tool-description">
 				{{ i18n.baseText('agents.toolConfig.workflow.description') }}
+				<N8nText color="primary" size="small" bold>*</N8nText>
 			</label>
 			<N8nInput
 				id="workflow-tool-description"

@@ -1,5 +1,6 @@
 import { z, type ZodError } from 'zod';
 
+import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 /**
  * Regex for valid custom tool ids. Shared with the backend service layer
@@ -181,7 +182,7 @@ const NodeToolCredentialSchema = z.object({
 	name: z.string(),
 });
 
-const DraftAgentModelSchema = z.union([z.literal(''), AgentModelSchema]);
+export const DraftAgentModelSchema = z.union([z.literal(''), AgentModelSchema]);
 
 export const NodeConfigSchema = z.object({
 	nodeType: z.string().min(1),
@@ -232,7 +233,7 @@ export const McpServerConfigSchema = z
 				'Unique server name, also used as the SDK tool-name prefix (e.g. github -> github_create_issue)',
 			),
 		description: z.string().max(512).optional().describe('Human-readable server description'),
-		url: z.string().min(1).describe('MCP server endpoint URL'),
+		url: z.string().describe('MCP server endpoint URL. Empty string means setup is incomplete'),
 		transport: z
 			.enum(['sse', 'streamableHttp'])
 			.default('streamableHttp')
@@ -258,7 +259,7 @@ export const McpServerConfigSchema = z
 			})
 			.optional()
 			.describe(
-				'Server-generated metadata. Do not set this manually, only copy from search_mcp_servers result if present',
+				'Server-generated metadata. Do not set this manually; only copy it from an MCP discovery result when present',
 			),
 		toolFilter: z
 			.discriminatedUnion('mode', [
@@ -299,38 +300,114 @@ export const McpServerConfigSchema = z
 	})
 	.strict();
 
-const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
-	z.object({
-		type: z.literal('custom'),
-		id: z.string().min(1).regex(CUSTOM_TOOL_ID_REGEX),
-		requireApproval: z.boolean().optional(),
-	}),
+export const AGENT_VECTOR_STORE_PROVIDERS = ['pinecone', 'supabase', 'qdrant', 'postgres'] as const;
+
+/** n8n credential type each vector store provider's connection credential must have. */
+export const AGENT_VECTOR_STORE_CREDENTIAL_TYPES = {
+	pinecone: 'pineconeApi',
+	supabase: 'supabaseApi',
+	qdrant: 'qdrantApi',
+	postgres: 'postgres',
+} as const satisfies Record<AgentVectorStoreProvider, string>;
+
+export const VECTOR_STORE_USE_WHEN_MAX_LENGTH = 512;
+export const VECTOR_STORE_NAME_REGEX = /^[a-zA-Z0-9_-]+$/;
+
+const VectorStoreEmbeddingSchema = z
+	.object({
+		model: AgentModelSchema,
+		credential: CredentialIdSchema,
+	})
+	.strict();
+
+const VectorStoreBaseShape = {
+	name: z
+		.string()
+		.min(1)
+		.max(64)
+		.regex(VECTOR_STORE_NAME_REGEX)
+		.describe('Unique connection name, also used as the SDK tool-name suffix: search_<name>'),
+	credential: CredentialIdSchema,
+	useWhen: z.string().trim().min(1).max(VECTOR_STORE_USE_WHEN_MAX_LENGTH),
+	embedding: VectorStoreEmbeddingSchema,
+};
+
+export const AgentVectorStoreConfigSchema = z.discriminatedUnion('provider', [
 	z
 		.object({
-			type: z.literal('workflow'),
-			workflow: z.string().min(1),
-			name: z.string().optional(),
-			description: z.string().optional(),
-			requireApproval: z.boolean().optional(),
-			allOutputs: z
-				.boolean()
-				.optional()
-				.describe('Whether to return all node outputs instead of just the last node'),
+			provider: z.literal('pinecone'),
+			...VectorStoreBaseShape,
+			indexName: z.string().min(1),
+			namespace: z.string().optional(),
 		})
 		.strict(),
 	z
 		.object({
-			type: z.literal('node'),
-			name: z.string().min(1),
-			description: z.string().optional(),
-			inputSchema: z.never().optional(),
-			node: NodeConfigSchema,
-			requireApproval: z.boolean().optional(),
+			provider: z.literal('qdrant'),
+			...VectorStoreBaseShape,
+			collectionName: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			provider: z.literal('supabase'),
+			...VectorStoreBaseShape,
+			tableName: z.string().min(1),
+			queryName: z.string().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			provider: z.literal('postgres'),
+			...VectorStoreBaseShape,
+			tableName: z.string().min(1),
 		})
 		.strict(),
 ]);
 
-export const AgentJsonConfigSchema = z.object({
+const CustomToolJsonConfigSchema = z.object({
+	type: z.literal('custom'),
+	id: z.string().min(1).regex(CUSTOM_TOOL_ID_REGEX),
+	requireApproval: z.boolean().optional(),
+});
+
+export const WorkflowToolJsonConfigSchema = z
+	.object({
+		type: z.literal('workflow'),
+		workflow: z.string().min(1),
+		name: z.string().optional(),
+		description: z.string().optional(),
+		requireApproval: z.boolean().optional(),
+		allOutputs: z
+			.boolean()
+			.optional()
+			.describe('Whether to return all node outputs instead of just the last node'),
+	})
+	.strict();
+
+export const NodeToolJsonConfigSchema = z
+	.object({
+		type: z.literal('node'),
+		name: z.string().min(1),
+		description: z.string().optional(),
+		inputSchema: z.never().optional(),
+		node: NodeConfigSchema,
+		requireApproval: z.boolean().optional(),
+	})
+	.strict();
+
+const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
+	CustomToolJsonConfigSchema,
+	WorkflowToolJsonConfigSchema,
+	NodeToolJsonConfigSchema,
+]);
+
+/**
+ * Unrefined agent config object shape. Use for schema derivation only
+ * (`.extend`, `.pick`, `.partial`, `.shape`) — validate with
+ * {@link AgentJsonConfigSchema} instead.
+ */
+export const AgentJsonConfigBaseSchema = z.object({
 	name: z.string().min(1).max(128),
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
@@ -379,6 +456,16 @@ export const AgentJsonConfigSchema = z.object({
 			message: 'MCP server names must be unique within an agent',
 		})
 		.optional(),
+	vectorStores: z
+		.array(AgentVectorStoreConfigSchema)
+		.max(20)
+		// The SDK's asTool() sanitizes '-' to '_' when deriving the search_<name>
+		// tool name, so uniqueness must be checked on the sanitized form.
+		.refine(
+			(stores) => new Set(stores.map((s) => s.name.replace(/-/g, '_'))).size === stores.length,
+			{ message: 'Vector store names must be unique within an agent' },
+		)
+		.optional(),
 	config: z
 		.object({
 			thinking: ThinkingConfigSchema.optional(),
@@ -398,14 +485,22 @@ export const AgentJsonConfigSchema = z.object({
 		.optional(),
 });
 
-export const RunnableAgentJsonConfigSchema = AgentJsonConfigSchema.extend({
+export const AgentJsonConfigSchema = AgentJsonConfigBaseSchema.superRefine((config, ctx) => {
+	if (config.credential?.trim() && isDraftAgentConfig(config)) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ['credential'],
+			message: 'A credential requires a model to be set',
+		});
+	}
+});
+
+export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 	model: AgentModelSchema,
 	credential: z.string().refine((value) => value.trim().length > 0, {
 		message: 'Credential is required',
 	}),
 });
-
-export const AgentJsonConfigPartialSchema = AgentJsonConfigSchema.partial();
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
@@ -421,6 +516,8 @@ export type NodeToolConfig = z.infer<typeof NodeConfigSchema>;
 export type AgentJsonMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
 export type McpAuthenticationSchemaType = z.infer<typeof McpAuthenticationSchemaTypes>;
 export type SubAgentTaskDifficulty = z.infer<typeof SubAgentTaskDifficultySchema>;
+export type AgentVectorStoreProvider = (typeof AGENT_VECTOR_STORE_PROVIDERS)[number];
+export type AgentJsonVectorStoreConfig = z.infer<typeof AgentVectorStoreConfigSchema>;
 
 export interface ConfigValidationError {
 	path: string;
@@ -438,6 +535,37 @@ export function tryParseConfigJson(
 		const msg = e instanceof SyntaxError ? e.message : String(e);
 		return { ok: false, errors: [{ path: '(root)', message: `JSON parse error: ${msg}` }] };
 	}
+}
+
+/**
+ * Vector stores register a `search_<sanitized-name>` tool at runtime (see
+ * `@n8n/agents`' `VectorStore.asTool()`). The `vectorStores` array refine
+ * above only catches vector-store-vs-vector-store name collisions; this also
+ * catches a vector store colliding with a configured tool, which would
+ * otherwise only surface as a runtime "tool name collision" error once the
+ * agent is built. Returns the colliding `search_<name>` tool names, if any.
+ */
+export function findVectorStoreToolNameCollisions(
+	config: Pick<AgentJsonConfig, 'tools' | 'vectorStores'>,
+): string[] {
+	if (!config.vectorStores?.length) return [];
+
+	const toolNames = new Set(
+		(config.tools ?? []).map((tool) => {
+			switch (tool.type) {
+				case 'custom':
+					return tool.id;
+				case 'workflow':
+					return tool.name ?? tool.workflow;
+				case 'node':
+					return tool.name;
+			}
+		}),
+	);
+
+	return config.vectorStores
+		.map((store) => `search_${store.name.replace(/-/g, '_')}`)
+		.filter((toolName) => toolNames.has(toolName));
 }
 
 export function formatZodErrors(error: ZodError): ConfigValidationError[] {

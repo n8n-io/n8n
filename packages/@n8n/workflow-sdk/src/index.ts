@@ -152,6 +152,7 @@ export {
 	validateWorkflow,
 	ValidationError,
 	ValidationWarning,
+	getSchemaBaseDirs,
 	setSchemaBaseDirs,
 	type ValidationResult,
 	type ValidationOptions,
@@ -171,6 +172,9 @@ export { parseWorkflowCode, parseWorkflowCodeToBuilder } from './codegen/parse-w
 
 // Type generation utilities (for runtime type generation in CLI)
 export * from './generate-types';
+
+// Mock/pin-data generation building blocks (LLM- and fs-free; see src/mock-data/)
+export * from './mock-data';
 
 // Plugin system
 export {

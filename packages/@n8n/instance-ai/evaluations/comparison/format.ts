@@ -17,14 +17,18 @@
 // ---------------------------------------------------------------------------
 
 import {
+	expectationUnitKey,
 	hardRegressions,
 	improvements,
+	scenarioUnitKey,
 	softRegressions,
+	unitKeyOf,
 	watchList,
 	type ComparisonOutcome,
 	type ComparisonResult,
+	type EvaluationUnitComparison,
 	type FailureCategoryComparison,
-	type ScenarioComparison,
+	type UnitRef,
 } from './compare';
 import type { GateCriterion, GateResult, GateUnit } from './gate';
 import { aggregateWorkflowChecks } from '../binaryChecks/aggregate';
@@ -124,6 +128,49 @@ function unitCountLabel(summary: { scenarios: number; expectations: number }, to
 	return `${scenarioLabel}${expectationLabel}, N=${totalRuns}`;
 }
 
+/** Display label for a comparison unit — `file/scenario`, or the
+ *  `file :: expectation-text…` style used by the Failures section. */
+function unitLabel(unit: UnitRef): string {
+	return unit.kind === 'scenario'
+		? `${unit.testCaseFile}/${unit.name}`
+		: `${unit.testCaseFile} :: ${unit.name.slice(0, 60)}`;
+}
+
+/** `${n} units (X scenarios + Y expectations)` — collapses to the legacy
+ *  `${n} scenarios` copy when no expectation units are present. */
+function unitMixLabel(units: Array<{ kind: EvaluationUnitComparison['kind'] }>): string {
+	const scenarios = units.filter((u) => u.kind === 'scenario').length;
+	const expectations = units.length - scenarios;
+	if (expectations === 0) return `${scenarios} scenario${scenarios === 1 ? '' : 's'}`;
+	return `${units.length} units (${scenarios} scenario${scenarios === 1 ? '' : 's'} + ${expectations} expectation${expectations === 1 ? '' : 's'})`;
+}
+
+/** Sentence fragments describing units missing on one side of the comparison.
+ *  Expectations missing from the baseline get their own clause — the usual
+ *  cause is a baseline captured before expectation persistence, not case drift. */
+function describePartialCoverage(comparison: ComparisonResult): string[] {
+	const parts: string[] = [];
+	if (comparison.baselineOnly.length > 0) {
+		const label = comparison.baselineOnly.every((u) => u.kind === 'scenario')
+			? 'baseline scenarios'
+			: 'baseline units';
+		parts.push(`${comparison.baselineOnly.length} ${label} not run by PR`);
+	}
+	const prOnlyScenarios = comparison.prOnly.filter((u) => u.kind === 'scenario').length;
+	const prOnlyExpectations = comparison.prOnly.length - prOnlyScenarios;
+	if (prOnlyScenarios > 0) {
+		parts.push(
+			`${prOnlyScenarios} PR scenarios have no baseline data (added since baseline captured)`,
+		);
+	}
+	if (prOnlyExpectations > 0) {
+		parts.push(
+			`${prOnlyExpectations} PR expectations have no baseline data (baseline predates expectation persistence)`,
+		);
+	}
+	return parts;
+}
+
 // ---------------------------------------------------------------------------
 // Markdown PR comment
 // ---------------------------------------------------------------------------
@@ -178,13 +225,11 @@ export function formatComparisonMarkdown(
 			: undefined;
 
 		if (hard.length > 0) {
-			lines.push(
-				...renderScenarioSection('Regressions', '— high-confidence', hard, true, failedIndex),
-			);
+			lines.push(...renderUnitSection('Regressions', '— high-confidence', hard, true, failedIndex));
 		}
 		if (soft.length > 0) {
 			lines.push(
-				...renderScenarioSection(
+				...renderUnitSection(
 					'Likely regressions',
 					'— looser statistical flag, investigate if related to your changes',
 					soft,
@@ -195,7 +240,7 @@ export function formatComparisonMarkdown(
 		}
 		if (watch.length > 0) {
 			lines.push(
-				...renderScenarioSection(
+				...renderUnitSection(
 					'Worth watching',
 					'— large change, not flagged as a regression',
 					watch,
@@ -205,7 +250,7 @@ export function formatComparisonMarkdown(
 			);
 		}
 		if (imps.length > 0) {
-			lines.push(...renderScenarioSection('Improvements', '', imps, true));
+			lines.push(...renderUnitSection('Improvements', '', imps, true));
 		}
 
 		if (renderedAnyTable) {
@@ -544,24 +589,13 @@ function formatAggregateBlock(
 	const arrow = delta > 0 ? ' ↑' : delta < 0 ? ' ↓' : '';
 
 	const baselineN = inferBaselineN(comparison);
+	const mixLabel = unitMixLabel(comparison.evaluationUnits);
 	const sampleLine = baselineN
-		? `_${aggregate.intersectionSize} scenarios · N=${evaluation.totalRuns} (PR) vs N=${baselineN} (baseline) · baseline: \`${comparison.baseline.experimentName}\`_`
-		: `_${aggregate.intersectionSize} scenarios · N=${evaluation.totalRuns} (PR) · baseline: \`${comparison.baseline.experimentName}\`_`;
+		? `_${mixLabel} · N=${evaluation.totalRuns} (PR) vs N=${baselineN} (baseline) · baseline: \`${comparison.baseline.experimentName}\`_`
+		: `_${mixLabel} · N=${evaluation.totalRuns} (PR) · baseline: \`${comparison.baseline.experimentName}\`_`;
 
-	const partial = comparison.baselineOnly.length + comparison.prOnly.length;
-	const partialNote =
-		partial > 0
-			? `\n_Partial: ${[
-					comparison.baselineOnly.length > 0
-						? `${comparison.baselineOnly.length} baseline scenarios not run by PR`
-						: null,
-					comparison.prOnly.length > 0
-						? `${comparison.prOnly.length} PR scenarios have no baseline data (added since baseline captured)`
-						: null,
-				]
-					.filter((s) => s !== null)
-					.join(', ')}._`
-			: '';
+	const partialParts = describePartialCoverage(comparison);
+	const partialNote = partialParts.length > 0 ? `\n_Partial: ${partialParts.join(', ')}._` : '';
 
 	return [
 		`**Aggregate**: ${pct(aggregate.prAggregatePassRate)}% PR vs ${pct(aggregate.baselineAggregatePassRate)}% baseline — **${sign}${delta.toFixed(1)}pp${arrow}**`,
@@ -569,29 +603,29 @@ function formatAggregateBlock(
 	].join('\n');
 }
 
-function renderScenarioSection(
+function renderUnitSection(
 	heading: string,
 	subtitle: string,
-	scenarios: ScenarioComparison[],
+	units: EvaluationUnitComparison[],
 	withPValue: boolean,
 	failedIndex?: FailedRunsBySlug,
 ): string[] {
 	const lines: string[] = [];
 	const headingLine = subtitle
-		? `#### ${heading} (${scenarios.length}) ${subtitle}`
-		: `#### ${heading} (${scenarios.length})`;
+		? `#### ${heading} (${units.length}) ${subtitle}`
+		: `#### ${heading} (${units.length})`;
 	lines.push(headingLine);
 	lines.push('');
 	if (withPValue) {
-		lines.push('| Scenario | PR | Baseline | Δ | p |');
+		lines.push('| Unit | PR | Baseline | Δ | p |');
 		lines.push('|---|---|---|---|---|');
 	} else {
-		lines.push('| Scenario | PR | Baseline | Δ |');
+		lines.push('| Unit | PR | Baseline | Δ |');
 		lines.push('|---|---|---|---|');
 	}
-	for (const s of scenarios) {
+	for (const s of units) {
 		const cells = [
-			`\`${s.testCaseFile}/${s.scenarioName}\``,
+			`\`${unitLabel(s)}\``,
 			formatRateCell(s.prPasses, s.prTotal),
 			formatRateCell(s.baselinePasses, s.baselineTotal),
 			formatDeltaCell(s.delta),
@@ -604,25 +638,25 @@ function renderScenarioSection(
 	}
 	lines.push('');
 
-	// Per-scenario failure breakdown — one collapsible per row that had failed
-	// PR runs. Lets the reader drill into each flagged scenario without
+	// Per-unit failure breakdown — one collapsible per row that had failed
+	// PR runs. Lets the reader drill into each flagged unit without
 	// hunting through a separate "Failure details" section.
 	if (failedIndex) {
-		for (const s of scenarios) {
-			const failedRuns = failedIndex.get(`${s.testCaseFile}/${s.scenarioName}`) ?? [];
+		for (const s of units) {
+			const failedRuns = failedIndex.get(unitKeyOf(s)) ?? [];
 			if (failedRuns.length === 0) continue;
-			lines.push(...renderScenarioFailureBreakdown(s, failedRuns));
+			lines.push(...renderUnitFailureBreakdown(s, failedRuns));
 		}
 	}
 
 	return lines;
 }
 
-function renderScenarioFailureBreakdown(
-	s: ScenarioComparison,
+function renderUnitFailureBreakdown(
+	s: EvaluationUnitComparison,
 	failedRuns: FailedRunDetail[],
 ): string[] {
-	const slug = `${s.testCaseFile}/${s.scenarioName}`;
+	const slug = unitLabel(s);
 	const categoryMix = summarizeCategories(failedRuns);
 	const summaryParts = [`${failedRuns.length} of ${s.prTotal} failed`];
 	if (categoryMix) summaryParts.push(categoryMix);
@@ -741,35 +775,31 @@ function renderOtherFindings(comparison: ComparisonResult): string[] {
 	lines.push(`<details><summary>Other findings: ${summary}</summary>`);
 	lines.push('');
 
-	const stableScenarios = comparison.scenarios.filter((s) => s.verdict === 'stable');
-	const flakyScenarios = comparison.scenarios.filter((s) => s.verdict === 'unreliable_baseline');
-	const noDataScenarios = comparison.scenarios.filter((s) => s.verdict === 'insufficient_data');
+	const stableUnits = comparison.evaluationUnits.filter((s) => s.verdict === 'stable');
+	const flakyUnits = comparison.evaluationUnits.filter((s) => s.verdict === 'unreliable_baseline');
+	const noDataUnits = comparison.evaluationUnits.filter((s) => s.verdict === 'insufficient_data');
 
-	if (flakyScenarios.length > 0) {
+	if (flakyUnits.length > 0) {
 		lines.push('**Confident drop on a flaky baseline (surfaced for visibility, not flagged):**');
 		lines.push('');
-		lines.push('| Scenario | PR | Baseline | Δ |');
+		lines.push('| Unit | PR | Baseline | Δ |');
 		lines.push('|---|---|---|---|');
-		for (const s of flakyScenarios) {
+		for (const s of flakyUnits) {
 			lines.push(
-				`| \`${s.testCaseFile}/${s.scenarioName}\` | ${formatRateCell(s.prPasses, s.prTotal)} | ${formatRateCell(s.baselinePasses, s.baselineTotal)} | ${formatDeltaCell(s.delta)} |`,
+				`| \`${unitLabel(s)}\` | ${formatRateCell(s.prPasses, s.prTotal)} | ${formatRateCell(s.baselinePasses, s.baselineTotal)} | ${formatDeltaCell(s.delta)} |`,
 			);
 		}
 		lines.push('');
 	}
 
-	if (noDataScenarios.length > 0) {
-		lines.push(
-			`**No data:** ${noDataScenarios.map((s) => `\`${s.testCaseFile}/${s.scenarioName}\``).join(', ')}`,
-		);
+	if (noDataUnits.length > 0) {
+		lines.push(`**No data:** ${noDataUnits.map((s) => `\`${unitLabel(s)}\``).join(', ')}`);
 		lines.push('');
 	}
 
-	if (stableScenarios.length > 0) {
-		lines.push(`**Stable (${stableScenarios.length}):**`);
-		lines.push(
-			stableScenarios.map((s) => `\`${s.testCaseFile}/${s.scenarioName}\``).join(', ') + '.',
-		);
+	if (stableUnits.length > 0) {
+		lines.push(`**Stable (${stableUnits.length}):**`);
+		lines.push(stableUnits.map((s) => `\`${unitLabel(s)}\``).join(', ') + '.');
 		lines.push('');
 	}
 
@@ -892,7 +922,19 @@ function buildFailedRunsIndex(
 				}
 			});
 			if (failedRuns.length > 0) {
-				map.set(`${fileSlug}/${sa.scenario.name}`, failedRuns);
+				map.set(scenarioUnitKey(fileSlug, sa.scenario.name), failedRuns);
+			}
+		}
+		for (const ea of tc.buildExpectations) {
+			const failedRuns: FailedRunDetail[] = [];
+			ea.runs.forEach((r, i) => {
+				// Judge-incomplete verdicts are outside the comparison denominators — skip.
+				if (!r.incomplete && !r.pass) {
+					failedRuns.push({ reasoning: r.reason, runIndex: i + 1 });
+				}
+			});
+			if (failedRuns.length > 0) {
+				map.set(expectationUnitKey(fileSlug, ea.expectation), failedRuns);
 			}
 		}
 	}
@@ -933,17 +975,18 @@ function formatDeltaCell(delta: number): string {
 
 function countByVerdict(
 	comparison: ComparisonResult,
-	verdict: ScenarioComparison['verdict'],
+	verdict: EvaluationUnitComparison['verdict'],
 ): number {
-	return comparison.scenarios.filter((s) => s.verdict === verdict).length;
+	return comparison.evaluationUnits.filter((s) => s.verdict === verdict).length;
 }
 
-/** Best-effort N=baseline iteration count. The comparison only carries trial
- *  totals per scenario; we infer N from the most-common scenario total since
- *  the baseline runs every scenario the same number of times. */
+/** Best-effort N=baseline iteration count, inferred from the most-common
+ *  scenario trial total (the baseline runs every scenario the same number of
+ *  times). Scenario units only — expectation denominators exclude
+ *  judge-incomplete verdicts, so they'd distort the inferred N. */
 function inferBaselineN(comparison: ComparisonResult): number | undefined {
-	const totals = comparison.scenarios
-		.filter((s) => s.baselineTotal > 0)
+	const totals = comparison.evaluationUnits
+		.filter((s) => s.kind === 'scenario' && s.baselineTotal > 0)
 		.map((s) => s.baselineTotal);
 	if (totals.length === 0) return undefined;
 	const counts = new Map<number, number>();
@@ -1005,7 +1048,7 @@ export function formatComparisonTerminal(
 				TERMINAL_INDENT +
 					'REGRESSIONS  (high-confidence: large drop on a reliable scenario, unlikely noise)',
 			);
-			lines.push(formatTerminalScenarioTable(hard, true));
+			lines.push(formatTerminalUnitTable(hard, true));
 			lines.push('');
 		}
 		if (soft.length > 0) {
@@ -1013,17 +1056,17 @@ export function formatComparisonTerminal(
 				TERMINAL_INDENT +
 					'LIKELY REGRESSIONS  (looser statistical flag — investigate if related to your changes)',
 			);
-			lines.push(formatTerminalScenarioTable(soft, true));
+			lines.push(formatTerminalUnitTable(soft, true));
 			lines.push('');
 		}
 		if (watch.length > 0) {
 			lines.push(TERMINAL_INDENT + 'WORTH WATCHING  (large change, not flagged as a regression)');
-			lines.push(formatTerminalScenarioTable(watch, false));
+			lines.push(formatTerminalUnitTable(watch, false));
 			lines.push('');
 		}
 		if (imps.length > 0) {
 			lines.push(TERMINAL_INDENT + 'IMPROVEMENTS');
-			lines.push(formatTerminalScenarioTable(imps, true));
+			lines.push(formatTerminalUnitTable(imps, true));
 			lines.push('');
 		}
 
@@ -1115,7 +1158,7 @@ function formatTerminalAggregate(
 	const aggDelta = aggregate.delta * 100;
 	const sign = aggDelta >= 0 ? '+' : '';
 	const arrow = aggDelta > 0 ? ' ↑' : aggDelta < 0 ? ' ↓' : '';
-	lines.push(TERMINAL_INDENT + `Aggregate (${aggregate.intersectionSize} scenarios)`);
+	lines.push(TERMINAL_INDENT + `Aggregate (${unitMixLabel(comparison.evaluationUnits)})`);
 	lines.push(
 		TERMINAL_INDENT +
 			`  PR        ${pct(aggregate.prAggregatePassRate)}%   (N=${evaluation.totalRuns})`,
@@ -1130,12 +1173,8 @@ function formatTerminalAggregate(
 	}
 	lines.push(TERMINAL_INDENT + `  Δ         ${sign}${aggDelta.toFixed(1)}pp${arrow}`);
 
-	if (comparison.baselineOnly.length > 0 || comparison.prOnly.length > 0) {
-		const partialParts: string[] = [];
-		if (comparison.baselineOnly.length > 0)
-			partialParts.push(`${comparison.baselineOnly.length} baseline scenarios not run by PR`);
-		if (comparison.prOnly.length > 0)
-			partialParts.push(`${comparison.prOnly.length} PR scenarios have no baseline data`);
+	const partialParts = describePartialCoverage(comparison);
+	if (partialParts.length > 0) {
 		lines.push(TERMINAL_INDENT + `  partial: ${partialParts.join(', ')}`);
 	}
 
@@ -1254,28 +1293,28 @@ function formatTerminalPerTestCase(
 	return lines;
 }
 
-function formatTerminalScenarioTable(scenarios: ScenarioComparison[], withPValue: boolean): string {
-	const names = scenarios.map((s) => `${s.testCaseFile}/${s.scenarioName}`);
-	const prCells = scenarios.map((s) => `${s.prPasses}/${s.prTotal}`);
-	const baseCells = scenarios.map((s) => `${s.baselinePasses}/${s.baselineTotal}`);
-	const deltaCells = scenarios.map((s) => {
+function formatTerminalUnitTable(units: EvaluationUnitComparison[], withPValue: boolean): string {
+	const names = units.map((s) => unitLabel(s));
+	const prCells = units.map((s) => `${s.prPasses}/${s.prTotal}`);
+	const baseCells = units.map((s) => `${s.baselinePasses}/${s.baselineTotal}`);
+	const deltaCells = units.map((s) => {
 		const d = s.delta * 100;
 		const sign = d >= 0 ? '+' : '';
 		const arrow = d > 0 ? ' ↑' : d < 0 ? ' ↓' : '';
 		return `${sign}${d.toFixed(0)}pp${arrow}`;
 	});
 	const pCells = withPValue
-		? scenarios.map((s) => (s.verdict === 'improvement' ? s.pValueRight : s.pValueLeft).toFixed(3))
+		? units.map((s) => (s.verdict === 'improvement' ? s.pValueRight : s.pValueLeft).toFixed(3))
 		: [];
 
-	const nameW = maxWidth(names, 'scenario');
+	const nameW = maxWidth(names, 'unit');
 	const prW = maxWidth(prCells, 'PR');
 	const baseW = maxWidth(baseCells, 'baseline');
 	const deltaW = maxWidth(deltaCells, 'Δ');
 	const pW = withPValue ? maxWidth(pCells, 'p') : 0;
 
 	const headers = [
-		'scenario'.padEnd(nameW),
+		'unit'.padEnd(nameW),
 		'PR'.padEnd(prW),
 		'baseline'.padEnd(baseW),
 		'Δ'.padEnd(deltaW),
@@ -1284,7 +1323,7 @@ function formatTerminalScenarioTable(scenarios: ScenarioComparison[], withPValue
 	const widths = withPValue ? [nameW, prW, baseW, deltaW, pW] : [nameW, prW, baseW, deltaW];
 	const sep = widths.map((w) => '─'.repeat(w)).join('  ');
 
-	const rows = scenarios.map((_, i) => {
+	const rows = units.map((_, i) => {
 		const cells = [
 			names[i].padEnd(nameW),
 			prCells[i].padEnd(prW),

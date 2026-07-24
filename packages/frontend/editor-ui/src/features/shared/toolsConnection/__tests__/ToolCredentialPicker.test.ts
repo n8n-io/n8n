@@ -90,6 +90,39 @@ describe('ToolCredentialPicker', () => {
 		expect(events?.[0]).toEqual([baseNodeItem, 'slackApi', 'c-1']);
 	});
 
+	it('emits credential-dropdown-open when the credential dropdown opens', async () => {
+		const { getByTestId, emitted } = render(
+			baseNodeItem,
+			[{ authType: 'slackApi' }],
+			[{ id: 'c-1', name: 'My Slack', type: 'slackApi' }],
+		);
+
+		await fireEvent.click(getByTestId('tool-credential-picker-trigger-connect'));
+
+		expect(emitted()['credential-dropdown-open']?.[0]).toEqual([baseNodeItem]);
+	});
+
+	it('emits new-credential-connect when creating from the dropdown', async () => {
+		const { getByTestId, findByTestId, emitted } = render(
+			baseNodeItem,
+			[{ authType: 'slackApi' }],
+			[{ id: 'c-1', name: 'My Slack', type: 'slackApi' }],
+		);
+		await fireEvent.click(getByTestId('tool-credential-picker-trigger-connect'));
+
+		await fireEvent.click(await findByTestId('tool-credential-picker-create'));
+
+		expect(emitted()['new-credential-connect']?.[0]).toEqual([baseNodeItem]);
+	});
+
+	it('emits first-credential-connect when connecting without existing credentials', async () => {
+		const { getByTestId, emitted } = render(baseMcpItem, [{ authType: 'mcpOAuth2Api' }]);
+
+		await fireEvent.click(getByTestId('tool-credential-picker-trigger-connect'));
+
+		expect(emitted()['first-credential-connect']?.[0]).toEqual([baseMcpItem]);
+	});
+
 	it('renders a single trigger even when the item accepts multiple auth types', () => {
 		const { getAllByTestId } = render(baseNodeItem, [
 			{ authType: 'googleApi' },

@@ -1,6 +1,11 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { channelsToPolicy, WorkflowExecuteMode, WorkflowSettings } from 'n8n-workflow';
+import {
+	channelsToPolicy,
+	runDataUsedDynamicCredentials,
+	WorkflowExecuteMode,
+	WorkflowSettings,
+} from 'n8n-workflow';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
@@ -270,11 +275,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 * mere presence of credential context infrastructure.
 	 */
 	private hasDynamicCredentials(execution: RedactableExecution): boolean {
-		return Object.values(execution.data.resultData?.runData ?? {}).some((taskDataList) =>
-			// runData node arrays can hold null placeholder slots at runtime despite
-			// the ITaskData[] type, so guard the element deref.
-			taskDataList.some((taskData) => taskData?.usedDynamicCredentials),
-		);
+		return runDataUsedDynamicCredentials(execution.data.resultData?.runData);
 	}
 
 	/**

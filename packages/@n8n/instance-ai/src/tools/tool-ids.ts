@@ -1,6 +1,9 @@
+import { isAgentFeatureEnabled } from '../utils/agent-feature-enabled';
+
 export const DOMAIN_TOOL_IDS = {
 	WORKFLOWS: 'workflows',
 	EVALS: 'evals',
+	EVAL_CONFIG: 'eval-config',
 	EXECUTIONS: 'executions',
 	CREDENTIALS: 'credentials',
 	DATA_TABLES: 'data-tables',
@@ -11,6 +14,7 @@ export const DOMAIN_TOOL_IDS = {
 	ASK_USER: 'ask-user',
 	BUILD_WORKFLOW: 'build-workflow',
 	PARSE_FILE: 'parse-file',
+	AGENTS: 'agents',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `build-workflow` with the
@@ -28,6 +32,8 @@ export const ORCHESTRATION_TOOL_IDS = {
 	VERIFY_BUILT_WORKFLOW: 'verify-built-workflow',
 	REPORT_VERIFICATION_VERDICT: 'report-verification-verdict',
 	APPLY_WORKFLOW_CREDENTIALS: 'apply-workflow-credentials',
+	BUILD_AGENT: 'build-agent',
+	GET_SESSION: 'get-session',
 } as const;
 
 export const WORKSPACE_TOOL_IDS = {
@@ -36,13 +42,13 @@ export const WORKSPACE_TOOL_IDS = {
 
 export const CREDENTIALS_TOOL_ID = DOMAIN_TOOL_IDS.CREDENTIALS;
 export const DATA_TABLES_TOOL_ID = DOMAIN_TOOL_IDS.DATA_TABLES;
+export const EVAL_CONFIG_TOOL_ID = DOMAIN_TOOL_IDS.EVAL_CONFIG;
 export const ASK_USER_TOOL_ID = DOMAIN_TOOL_IDS.ASK_USER;
 export const N8N_DOCS_TOOL_ID = DOMAIN_TOOL_IDS.N8N_DOCS;
 
 export const ORCHESTRATION_TOOL_NAMES = new Set<string>(Object.values(ORCHESTRATION_TOOL_IDS));
 
 export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
-	ORCHESTRATION_TOOL_IDS.CREATE_TASKS,
 	DOMAIN_TOOL_IDS.ASK_USER,
 	DOMAIN_TOOL_IDS.CREDENTIALS,
 	DOMAIN_TOOL_IDS.WORKFLOWS,
@@ -51,12 +57,15 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.PARSE_FILE,
 	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
 	DOMAIN_TOOL_IDS.NODES,
-	DOMAIN_TOOL_IDS.N8N_DOCS,
 	ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 	DOMAIN_TOOL_IDS.RESEARCH,
-	DOMAIN_TOOL_IDS.EVALS,
+	DOMAIN_TOOL_IDS.AGENTS,
 	'web-search',
 	'fetch-url',
+	// build-agent is the primary route for agent-anchored intents; deferring it
+	// costs 2 LLM rounds (search_tools + load_tool) and a prompt-cache rewrite
+	// on every agent build.
+	...(isAgentFeatureEnabled() ? [ORCHESTRATION_TOOL_IDS.BUILD_AGENT] : []),
 ]);
 
 export const CHECKPOINT_FOLLOW_UP_TOOL_NAMES = new Set<string>([

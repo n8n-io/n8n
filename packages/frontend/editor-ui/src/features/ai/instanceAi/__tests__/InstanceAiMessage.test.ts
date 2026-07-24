@@ -163,6 +163,58 @@ describe('InstanceAiMessage', () => {
 		expect(pre?.textContent).toContain('plain text error details');
 	});
 
+	it('should render a dedicated out-of-credits message when the error code is quota_exhausted', () => {
+		const { getByTestId, getByText, queryByText } = renderComponent({
+			props: {
+				message: makeMessage({
+					agentTree: makeAgentTree({
+						status: 'error',
+						error: 'Have reached end of quota',
+						errorDetails: { code: 'quota_exhausted', statusCode: 403 },
+					}),
+				}),
+			},
+		});
+
+		expect(getByTestId('instance-ai-out-of-credits')).toBeInTheDocument();
+		expect(getByText("You've run out of AI credits")).toBeInTheDocument();
+		// Raw provider text and status code are hidden for the tailored state.
+		expect(queryByText('Have reached end of quota')).not.toBeInTheDocument();
+		expect(queryByText('403')).not.toBeInTheDocument();
+	});
+
+	it('should offer an upgrade action in the out-of-credits state', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				message: makeMessage({
+					agentTree: makeAgentTree({
+						status: 'error',
+						error: 'Have reached end of quota',
+						errorDetails: { code: 'quota_exhausted' },
+					}),
+				}),
+			},
+		});
+
+		expect(getByTestId('instance-ai-out-of-credits-upgrade')).toBeInTheDocument();
+	});
+
+	it('should not hide technical details for non-quota errors', () => {
+		const { container } = renderComponent({
+			props: {
+				message: makeMessage({
+					agentTree: makeAgentTree({
+						status: 'error',
+						error: 'API error',
+						errorDetails: { technicalDetails: 'plain text error details' },
+					}),
+				}),
+			},
+		});
+
+		expect(container.querySelector('pre')?.textContent).toContain('plain text error details');
+	});
+
 	it('should show blinking cursor when streaming with no content and no agentTree', () => {
 		const { container } = renderComponent({
 			props: {

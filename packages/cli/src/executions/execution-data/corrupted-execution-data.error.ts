@@ -3,7 +3,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import type { ExecutionRef } from './types';
 
 /**
- * Thrown when execution data read from the filesystem store
+ * Thrown when execution data read from a blob store
  * cannot be parsed as valid JSON.
  */
 export class CorruptedExecutionDataError extends UnexpectedError {

@@ -1,15 +1,15 @@
 <script lang="ts" setup>
+import { N8nAiActivityStep } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
-import TimelineStepButton from './TimelineStepButton.vue';
-import TimelineStepChevron from './TimelineStepChevron.vue';
+import { computed } from 'vue';
+import { firstSentence } from '../agentTimeline.utils';
 
 /**
- * Collapsible "Reasoning" block. Takes an entry-like object (not a plain
- * string) so the per-token `entry.content` read stays inside this component's
- * render — streamed reasoning tokens re-render only this block, not the
- * whole timeline.
+ * Collapsible reasoning block, labeled with the first sentence of the
+ * reasoning itself (a bare "Reasoning" toggle told the user nothing until
+ * expanded). Takes an entry-like object (not a plain string) so the per-token
+ * `entry.content` read stays inside this component's render — streamed
+ * reasoning tokens re-render only this block, not the whole timeline.
  */
 const props = withDefaults(
 	defineProps<{
@@ -21,24 +21,20 @@ const props = withDefaults(
 );
 
 const i18n = useI18n();
+
+const label = computed(
+	() => firstSentence(props.entry.content) || i18n.baseText('instanceAi.message.reasoning'),
+);
 </script>
 
 <template>
-	<CollapsibleRoot v-slot="{ open: isOpen }">
-		<CollapsibleTrigger as-child>
-			<TimelineStepButton :loading="props.streaming">
-				<template #icon>
-					<TimelineStepChevron :open="isOpen" />
-				</template>
-				{{ i18n.baseText('instanceAi.message.reasoning') }}
-			</TimelineStepButton>
-		</CollapsibleTrigger>
-		<AnimatedCollapsibleContent :class="$style.reasoningPanel">
+	<N8nAiActivityStep :label="label" :loading="props.streaming">
+		<div :class="$style.reasoningPanel">
 			<div :class="$style.reasoningScroll">
 				<span :class="$style.reasoningContent">{{ props.entry.content }}</span>
 			</div>
-		</AnimatedCollapsibleContent>
-	</CollapsibleRoot>
+		</div>
+	</N8nAiActivityStep>
 </template>
 
 <style lang="scss" module>

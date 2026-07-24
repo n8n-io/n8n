@@ -411,11 +411,11 @@ where <id> is the workflowId returned by create_workflow_from_code. Emit it verb
 export interface McpBuildResult {
 	/** The created workflow's id, or null if every attempt failed. */
 	workflowId: string | null;
-	/** Anthropic spend for the last attempt (USD). */
+	/** Anthropic spend summed across every attempt (USD) — failed attempts cost money too. */
 	cost: number;
-	/** Assistant turns in the last attempt. */
+	/** Assistant turns summed across every attempt. */
 	turns: number;
-	/** Wall-clock of the last attempt (ms). */
+	/** `claude` wall-clock summed across every attempt (ms). */
 	durationMs: number;
 	/** Path to the last attempt's captured `claude` output, for post-mortem. */
 	logFile: string | null;
@@ -446,9 +446,11 @@ export async function buildWorkflowViaMcp(opts: {
 	const userMessage = buildUserMessage(conversation, settings);
 
 	let workflowId: string | null = null;
-	let lastSession: ClaudeSession | undefined;
 	let lastLogFile: string | null = null;
 	let failureReason: string | undefined;
+	let totalCostUsd = 0;
+	let totalTurns = 0;
+	let totalDurationMs = 0;
 
 	for (let attempt = 1; attempt <= settings.maxAttempts; attempt++) {
 		const ts = new Date().toISOString().replace(/[:.]/g, '-');
@@ -464,7 +466,9 @@ export async function buildWorkflowViaMcp(opts: {
 			allowedTools,
 			logFile,
 		);
-		lastSession = session;
+		totalCostUsd += session?.total_cost_usd ?? 0;
+		totalTurns += session?.num_turns ?? 0;
+		totalDurationMs += session?.duration_ms ?? 0;
 		const id = session?.result ? tailWorkflowId(session.result) : null;
 		if (id) {
 			workflowId = id;
@@ -504,9 +508,9 @@ export async function buildWorkflowViaMcp(opts: {
 
 	return {
 		workflowId,
-		cost: lastSession?.total_cost_usd ?? 0,
-		turns: lastSession?.num_turns ?? 0,
-		durationMs: lastSession?.duration_ms ?? 0,
+		cost: totalCostUsd,
+		turns: totalTurns,
+		durationMs: totalDurationMs,
 		logFile: lastLogFile,
 		failureReason: workflowId ? undefined : failureReason,
 	};

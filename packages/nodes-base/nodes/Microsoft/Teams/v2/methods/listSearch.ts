@@ -186,25 +186,17 @@ export async function getGroups(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const returnData: INodeListSearchItems[] = [];
-	// const groupSource = this.getCurrentNodeParameter('groupSource') as string;
-	const requestUrl = '/v1.0/groups' as string;
+	const value = await microsoftApiRequestAllItems.call(
+		this,
+		'value',
+		'GET',
+		joinedTeamsEndpoint.call(this),
+	);
 
-	// if (groupSource === 'mine') {
-	// 	requestUrl = '/v1.0/me/transitiveMemberOf';
-	// }
-
-	const { value } = await microsoftApiRequest.call(this, 'GET', requestUrl);
-
-	for (const group of value) {
-		if (group.displayName === 'All Company') continue;
-
-		const name = group.displayName || group.mail;
-
-		if (name === undefined) continue;
-
+	for (const team of value) {
 		returnData.push({
-			name,
-			value: group.id,
+			name: team.displayName,
+			value: team.id,
 		});
 	}
 

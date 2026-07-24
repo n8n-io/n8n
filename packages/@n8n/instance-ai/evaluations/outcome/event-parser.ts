@@ -4,9 +4,10 @@
 
 import { isRecord } from '@n8n/utils/is-record';
 
-import { DATA_TABLES_TOOL_ID, DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
+import { DATA_TABLES_TOOL_ID, DOMAIN_TOOL_IDS, EVAL_CONFIG_TOOL_ID } from '../../src/tools/tool-ids';
 import type {
 	AgentActivity,
+	ArtifactRef,
 	CapturedEvent,
 	CapturedToolCall,
 	ConversationMetrics,
@@ -35,6 +36,7 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 	const workflowIds: string[] = [];
 	const executionIds: string[] = [];
 	const dataTableIds: string[] = [];
+	const artifactRefsByKey = new Map<string, ArtifactRef>();
 	const textChunks: string[] = [];
 	const toolCalls: CapturedToolCall[] = [];
 	const agentActivities: AgentActivity[] = [];
@@ -98,6 +100,8 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 
 				// Extract resource IDs from tool results
 				extractResourceIds(toolName, args, result, workflowIds, executionIds, dataTableIds);
+				// Config-eval rides the same tool-result signal (eval-config create).
+				captureConfigEvalRef(toolName, args, result, artifactRefsByKey);
 				break;
 			}
 
@@ -147,6 +151,9 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 				if (tools.length > 0) {
 					activity.reasoning = `Tools: ${tools.join(', ')}`;
 				}
+
+				// The build-agent sub-agent announces the created agent via targetResource.
+				captureAgentRef(getRecord(payload, 'targetResource'), artifactRefsByKey);
 				break;
 			}
 
@@ -200,10 +207,47 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 		workflowIds: dedupe(workflowIds),
 		executionIds: dedupe(executionIds),
 		dataTableIds: dedupe(dataTableIds),
+		artifactRefs: [...artifactRefsByKey.values()],
 		finalText: textChunks.join(''),
 		toolCalls,
 		agentActivities,
 	};
+}
+
+/**
+ * Capture a config-eval ref from a tool result. The `eval-config` tool's `create` action
+ * returns `{ config }`; the ref id is the owning workflow id from the call args (config-evals
+ * are fetched per-workflow). Deduped by type+id.
+ *
+ * ('create' is the eval-config action literal — no exported constant.)
+ */
+function captureConfigEvalRef(
+	toolName: string,
+	args: Record<string, unknown>,
+	result: unknown,
+	out: Map<string, ArtifactRef>,
+): void {
+	if (toolName !== EVAL_CONFIG_TOOL_ID || getString(args, 'action') !== 'create') return;
+	const record = toResultRecord(result);
+	const workflowId = getString(args, 'workflowId');
+	const created = record?.config !== undefined && record.config !== null;
+	if (workflowId && created) {
+		out.set(`config-eval:${workflowId}`, { type: 'config-eval', id: workflowId });
+	}
+}
+
+/**
+ * Capture an agent ref from an `agent-spawned` event's `targetResource`. The build-agent
+ * sub-agent announces itself with `targetResource: { type: 'agent', id }` — the only agent
+ * signal (its tool result carries no id). Deduped by type+id.
+ */
+function captureAgentRef(
+	targetResource: Record<string, unknown> | undefined,
+	out: Map<string, ArtifactRef>,
+): void {
+	if (!targetResource || getString(targetResource, 'type') !== 'agent') return;
+	const id = getString(targetResource, 'id');
+	if (id) out.set(`agent:${id}`, { type: 'agent', id });
 }
 
 // ---------------------------------------------------------------------------

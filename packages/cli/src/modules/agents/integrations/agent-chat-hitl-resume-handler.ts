@@ -4,6 +4,7 @@ import type { ActionEvent, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
 import type { BridgeResumeExecutionContext, PlatformAgentContext } from './agent-chat-integration';
+import { onceStatusHandle } from './agent-chat-integration';
 import type { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import type { AgentChatStreamConsumer } from './agent-chat-stream-consumer';
 import type { CallbackStore } from './callback-store';
@@ -170,15 +171,26 @@ export class AgentChatHitlResumeHandler {
 		this.activeResumedRuns.add(runId);
 		try {
 			const resumeExecutionContext = await this.options.createResumeExecutionContext(thread);
-			const stream = this.options.agentService.resumeForChat({
-				agentId: this.options.agentId,
-				projectId: this.options.projectId,
-				runId,
-				toolCallId,
-				resumeData,
-				integrationType: this.options.integration.type,
-			});
-			await this.options.streamConsumer.consume(stream, thread, resumeExecutionContext);
+			const statusHandle = onceStatusHandle(resumeExecutionContext.statusHandle);
+			try {
+				const stream = this.options.agentService.resumeForChat({
+					agentId: this.options.agentId,
+					projectId: this.options.projectId,
+					runId,
+					toolCallId,
+					resumeData,
+					integrationType: this.options.integration.type,
+				});
+				await this.options.streamConsumer.consume(stream, thread, {
+					...resumeExecutionContext,
+					statusHandle,
+				});
+			} finally {
+				// The stream consumer clears the status right before the first response;
+				// this clear covers failures before/outside consumption. The
+				// once-wrapped handle makes it a no-op await when that already ran.
+				await statusHandle?.clearBeforeResponse();
+			}
 		} finally {
 			this.activeResumedRuns.delete(runId);
 		}

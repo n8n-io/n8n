@@ -125,7 +125,7 @@ async function openSingletonModal(type: SingletonConnectionType) {
 }
 
 function openToolsConnectionModal() {
-	mcpTelemetry.trackModalOpened();
+	mcpTelemetry.trackToolsListOpened();
 	uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
 }
 
@@ -152,7 +152,6 @@ function openMcpSettings(connectionId: string) {
 	if (connection) {
 		mcpTelemetry.trackSettingsOpened(connection.serverSlug);
 	}
-	mcpTelemetry.trackModalOpened();
 	uiStore.openModalWithData({
 		name: INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 		data: { connectionId },

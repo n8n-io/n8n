@@ -55,6 +55,37 @@ export function createRuntimeSkillRegistry(skills: RuntimeSkill[]): RuntimeSkill
 	};
 }
 
+/**
+ * Hide skills from an already-loaded source. Recomputes `skillsHash` so
+ * manifests/prebaked bundles keyed on it can't match a differently-filtered
+ * catalog, and wraps the loaders so hidden skills are unavailable rather than
+ * just absent from the registry.
+ */
+export function filterRuntimeSkillSource(
+	source: RuntimeSkillSource,
+	excludeSkillIds: string[],
+): RuntimeSkillSource {
+	const excluded = new Set(excludeSkillIds);
+	const skills = source.registry.skills.filter((skill) => !excluded.has(skill.id));
+	const { loadFile } = source;
+
+	return {
+		...source,
+		registry: {
+			...source.registry,
+			skillsHash: hashRegistry(skills),
+			skills,
+		},
+		loadSkill: async (skillId) => (excluded.has(skillId) ? null : await source.loadSkill(skillId)),
+		...(loadFile
+			? {
+					loadFile: async (skillId: string, filePath: string) =>
+						excluded.has(skillId) ? null : await loadFile(skillId, filePath),
+				}
+			: {}),
+	};
+}
+
 export function loadRuntimeSkillSourceFromDirectory(
 	rootDir: string,
 	options: LoadRuntimeSkillSourceFromDirectoryOptions = {},

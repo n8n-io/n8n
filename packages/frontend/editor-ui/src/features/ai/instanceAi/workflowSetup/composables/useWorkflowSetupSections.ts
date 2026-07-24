@@ -3,7 +3,7 @@ import { computed, type ComputedRef, type Ref } from 'vue';
 import { isExpression } from '@/app/utils/expressions';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
-import { NodeHelpers, type INodeParameters } from 'n8n-workflow';
+import { isResourceLocatorValue, NodeHelpers, type INodeParameters } from 'n8n-workflow';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { buildSectionId } from '../workflowSetup.helpers';
 import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
@@ -37,7 +37,10 @@ export function useWorkflowSetupSections(
 
 			const node = {
 				...req.node,
-				parameters: resolveParameterDefaults(req.node),
+				parameters: dropStaleResourceLocatorCache(
+					resolveParameterDefaults(req.node),
+					parameterNames,
+				),
 			};
 			const existingCred = credentialType ? req.node.credentials?.[credentialType] : undefined;
 			const currentCredentialId =
@@ -79,6 +82,32 @@ export function useWorkflowSetupSections(
 	}
 
 	return { sections };
+}
+
+/**
+ * A resource locator with a cached display name but no value renders as if a
+ * resource were selected, while its "required" issue keeps the section
+ * incomplete — the user can't tell why they can't continue. Drop the stale
+ * cache so the field honestly shows as unset.
+ */
+function dropStaleResourceLocatorCache(
+	parameters: INodeParameters,
+	parameterNames: string[],
+): INodeParameters {
+	let result = parameters;
+	for (const name of parameterNames) {
+		const parameter = result[name];
+		if (!isResourceLocatorValue(parameter)) continue;
+		const isEmpty =
+			parameter.value === '' || parameter.value === null || parameter.value === undefined;
+		if (!isEmpty) continue;
+		if (parameter.cachedResultName === undefined && parameter.cachedResultUrl === undefined) {
+			continue;
+		}
+		const { cachedResultName, cachedResultUrl, ...rest } = parameter;
+		result = { ...result, [name]: rest };
+	}
+	return result;
 }
 
 /**

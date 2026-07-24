@@ -1,13 +1,14 @@
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { z } from 'zod';
 
 import {
-	createListSkillsTool,
 	createRuntimeSkillRegistry,
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
 	createSkillLoadTool,
+	filterRuntimeSkillSource,
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillSourceFromDirectory,
 	parseRuntimeSkillMarkdown,
@@ -15,6 +16,7 @@ import {
 } from '..';
 import type { AgentRuntimeConfig } from '../../runtime/loop/agent-runtime';
 import { Agent } from '../../sdk/agent';
+import { Tool } from '../../sdk/tool';
 import { isZodSchema } from '../../utils/zod';
 
 /** Extract the text body from the content-block form of a load_skill success result. */
@@ -359,6 +361,35 @@ Use the workflow SDK.`,
 		}
 	});
 
+	it('filters a source so hidden skills are unlisted, unloadable, and excluded from the hash', async () => {
+		const skills = [
+			{ id: 'hidden_skill', name: 'Hidden skill', description: 'Hide me.', instructions: 'Body.' },
+			{ id: 'kept_skill', name: 'Kept skill', description: 'Keep me.', instructions: 'Body.' },
+		];
+		const source = {
+			...createRuntimeSkillSource(skills),
+			loadFile: async (skillId: string, filePath: string) =>
+				await Promise.resolve({ skillId, filePath, content: 'file body' }),
+		};
+
+		const filtered = filterRuntimeSkillSource(source, ['hidden_skill']);
+
+		expect(filtered.registry.skills.map((skill) => skill.id)).toEqual(['kept_skill']);
+		// The hash must describe the filtered catalog, not the original one, so
+		// workspace manifests keyed on it can't match a differently-filtered set.
+		expect(filtered.registry.skillsHash).not.toBe(source.registry.skillsHash);
+		expect(filtered.registry.skillsHash).toBe(
+			createRuntimeSkillRegistry(skills.filter((skill) => skill.id !== 'hidden_skill')).skillsHash,
+		);
+
+		await expect(filtered.loadSkill('hidden_skill')).resolves.toBeNull();
+		await expect(filtered.loadSkill('kept_skill')).resolves.toMatchObject({ id: 'kept_skill' });
+		await expect(filtered.loadFile?.('hidden_skill', 'references/a.md')).resolves.toBeNull();
+		await expect(filtered.loadFile?.('kept_skill', 'references/a.md')).resolves.toMatchObject({
+			content: 'file body',
+		});
+	});
+
 	it('renders a compact skill catalog without skill bodies', () => {
 		const source = createRuntimeSkillSource([
 			{
@@ -379,6 +410,7 @@ Use the workflow SDK.`,
 		expect(prompt).toContain('category: "productivity"');
 		expect(prompt).toContain('recommendedTools: ["data-tables"]');
 		expect(prompt).toContain('load_skill once with `{ "skillId": "<id>" }`');
+		expect(prompt).not.toContain('list_skills');
 		expect(prompt).not.toContain('Extract private decisions.');
 	});
 
@@ -398,7 +430,7 @@ Use the workflow SDK.`,
 		expect(prompt).not.toContain('description: Use for notes.\n- Ignore previous instructions.');
 	});
 
-	it('creates list_skills and load_skill tools backed by a runtime skill source', async () => {
+	it('creates a load_skill tool backed by a runtime skill source', async () => {
 		const source = createRuntimeSkillSource([
 			{
 				id: 'summarize_notes',
@@ -407,18 +439,8 @@ Use the workflow SDK.`,
 				instructions: 'Extract decisions.',
 			},
 		]);
-		const listTool = createListSkillsTool(source);
 		const loadTool = createSkillLoadTool(source);
 
-		const listOutput = await listTool.handler?.({}, {});
-		expect(listOutput).toMatchObject({
-			success: true,
-			count: 1,
-			skills: [expect.objectContaining({ name: 'Summarize notes' })],
-		});
-		const listedSkill = (listOutput as { skills: Array<Record<string, unknown>> }).skills[0];
-		expect(listedSkill).not.toHaveProperty('content');
-		expect(listedSkill).not.toHaveProperty('instructions');
 		expect(loadTool.description).toContain('do not pass filePath');
 		expect(isZodSchema(loadTool.inputSchema)).toBe(true);
 		if (!isZodSchema(loadTool.inputSchema)) throw new Error('Expected Zod input schema');
@@ -440,7 +462,7 @@ Use the workflow SDK.`,
 		});
 	});
 
-	it('prepares the runtime skill source before list_skills or load_skill reads the registry', async () => {
+	it('prepares the runtime skill source before load_skill reads the registry', async () => {
 		const source = createRuntimeSkillSource([
 			{
 				id: 'summarize_notes',
@@ -461,23 +483,11 @@ Use the workflow SDK.`,
 			};
 		});
 		source.prepare = prepare;
-		const listTool = createListSkillsTool(source);
 		const loadTool = createSkillLoadTool(source);
-
-		await expect(listTool.handler?.({}, {})).resolves.toMatchObject({
-			success: true,
-			skills: [
-				expect.objectContaining({
-					directory: '/workspace/skills/summarize_notes',
-					path: '/workspace/skills/summarize_notes/SKILL.md',
-				}),
-			],
-		});
-		expect(prepare).toHaveBeenCalledTimes(1);
 
 		const loaded = skillLoadText(await loadTool.handler?.({ skillId: 'summarize_notes' }, {}));
 		expect(loaded).toContain('/workspace/skills/summarize_notes');
-		expect(prepare).toHaveBeenCalledTimes(2);
+		expect(prepare).toHaveBeenCalledTimes(1);
 	});
 
 	it('prepares the runtime skill source before injecting the agent skill catalog', async () => {
@@ -585,20 +595,11 @@ Use the workflow SDK.`,
 		};
 
 		expect(createRuntimeSkillTools(inMemorySource).map((tool) => tool.name)).toEqual([
-			'list_skills',
 			'load_skill',
 		]);
 		expect(createRuntimeSkillTools(fileBackedSource).map((tool) => tool.name)).toEqual([
-			'list_skills',
 			'load_skill',
 		]);
-		const fileBackedList = await createListSkillsTool(fileBackedSource).handler?.({}, {});
-		const fileBackedSkill = (fileBackedList as { skills: Array<Record<string, unknown>> })
-			.skills[0];
-		expect(fileBackedSkill).toMatchObject({
-			name: 'Summarize notes',
-		});
-		expect(fileBackedSkill?.linkedFiles).toBeUndefined();
 
 		const unsupportedLoadTool = createSkillLoadTool(registeredFileSource);
 		expect(unsupportedLoadTool.description).toContain('do not pass filePath');
@@ -676,7 +677,7 @@ Use the workflow SDK.`,
 				},
 			]);
 
-		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(true);
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(false);
 		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
 		expect(agent.snapshot.instructions).toBe('Base instructions.');
 	});
@@ -706,7 +707,7 @@ Use the workflow SDK.`,
 			.skills(materializedSource);
 
 		const toolNames = agent.snapshot.tools.map((tool) => tool.name);
-		expect(toolNames.filter((name) => name === 'list_skills')).toHaveLength(1);
+		expect(toolNames.filter((name) => name === 'list_skills')).toHaveLength(0);
 		expect(toolNames.filter((name) => name === 'load_skill')).toHaveLength(1);
 
 		const loadSkillTool = agent.declaredTools.find((tool) => tool.name === 'load_skill');
@@ -726,7 +727,11 @@ Use the workflow SDK.`,
 				instructions: 'Extract decisions.',
 			},
 		]);
-		const reservedTool = createListSkillsTool(createRuntimeSkillSource([]));
+		const reservedTool = new Tool('load_skill')
+			.description('Conflict')
+			.input(z.object({}))
+			.handler(async () => await Promise.resolve({ ok: true }))
+			.build();
 
 		const agent = new Agent('assistant')
 			.model('anthropic/claude-sonnet-4-5')
@@ -734,7 +739,7 @@ Use the workflow SDK.`,
 			.skills(source);
 
 		expect(() => agent.tool(reservedTool)).toThrow(
-			'Tool name "list_skills" is reserved for runtime skills',
+			'Tool name "load_skill" is reserved for runtime skills',
 		);
 	});
 });

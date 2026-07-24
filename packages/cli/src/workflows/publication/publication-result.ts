@@ -5,15 +5,16 @@
  */
 export type PublicationSkipReason =
 	/** The workflow row no longer exists. */
-	| 'workflow-not-found'
-	/** The workflow is no longer active, so there are no triggers to reconcile. */
-	| 'workflow-inactive';
+	'workflow-not-found';
+
+import type { WorkflowPublicationTriggerKind } from '@n8n/db';
 
 /** A trigger that activated successfully; carries no error. */
 type ActivatedTriggerPublicationStatus = {
 	nodeId: string;
 	nodeName: string;
 	status: 'activated';
+	triggerKind: WorkflowPublicationTriggerKind;
 };
 
 /** A trigger that failed to activate; always carries the failure message. */
@@ -21,6 +22,7 @@ export type FailedTriggerPublicationStatus = {
 	nodeId: string;
 	nodeName: string;
 	status: 'failed';
+	triggerKind: WorkflowPublicationTriggerKind;
 	errorMessage: string;
 };
 

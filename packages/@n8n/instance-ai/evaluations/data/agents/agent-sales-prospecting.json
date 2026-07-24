@@ -1,0 +1,25 @@
+{
+	"description": "Tolerance case: gold accepts {anchor: agent, embedsOther: true} or {anchor: wf, embedsOther: true} — reasoning and prioritization dominate, buildable as an agent with workflow tools or a scheduled workflow with an embedded agent.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "A prospecting agent that finds leads matching our ICP, enriches them, decides who to reach out to first, and drafts personalized outreach. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "complex",
+	"tags": ["intent-resolution", "reasoning-dominated", "tolerance"],
+	"datasets": ["agents", "agents-tolerance"],
+	"processExpectations": [
+		"The agent proposes an agent primitive in one of two accepted shapes: an n8n Agent owning the prospecting (possibly invoking workflows as tools), or a workflow whose lead-selection and outreach-drafting steps are an embedded agent; a fully fixed pipeline with no open-ended judgment step is wrong.",
+		"The proposal grounds the design in the judgment-driven parts of the task (deciding who to reach out to first, tailoring outreach per lead), not in vague or incorrect justifications."
+	]
+}

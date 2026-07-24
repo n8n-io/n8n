@@ -14,6 +14,9 @@ const emit = defineEmits<{
 	'open-detail': [item: ToolConnectionItem];
 	connect: [item: ToolConnectionItem];
 	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
+	'credential-dropdown-open': [item: ToolConnectionItem];
+	'first-credential-connect': [item: ToolConnectionItem];
+	'new-credential-connect': [item: ToolConnectionItem];
 }>();
 
 const i18n = useI18n();
@@ -56,6 +59,9 @@ function handleRowClick() {
 
 function handleConnect() {
 	emit('connect', props.item);
+	if (props.item.credentials?.length) {
+		emit('first-credential-connect', props.item);
+	}
 }
 </script>
 
@@ -115,6 +121,9 @@ function handleConnect() {
 					(toolItem, authType, credentialId) =>
 						emit('select-credential', toolItem, authType, credentialId)
 				"
+				@credential-dropdown-open="emit('credential-dropdown-open', $event)"
+				@first-credential-connect="emit('first-credential-connect', $event)"
+				@new-credential-connect="emit('new-credential-connect', $event)"
 			/>
 			<template v-else>
 				<N8nButton

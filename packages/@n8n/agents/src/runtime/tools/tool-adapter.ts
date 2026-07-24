@@ -123,6 +123,7 @@ export async function executeTool(
 			emitEvent: executionContext.emitEvent,
 			abortSignal: executionContext.abortSignal,
 			executionCounter: executionContext.executionCounter,
+			suspendPayload: executionContext.suspendPayload,
 		};
 		return await builtTool.handler(args, ctx);
 	}

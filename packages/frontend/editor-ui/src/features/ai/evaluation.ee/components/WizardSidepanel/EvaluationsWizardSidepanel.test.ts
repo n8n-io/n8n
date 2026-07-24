@@ -288,6 +288,18 @@ describe('EvaluationsWizardSidepanel', () => {
 		expect(getByTestId('evaluations-wizard-sidepanel-metric-toolsUsed')).toBeInTheDocument();
 	});
 
+	it('renders a selected metric that is outside the built-in catalog', () => {
+		// A config created outside the wizard (agent/API) can select a metric the
+		// curated primary/more lists never surface — e.g. `helpfulness`. It must
+		// still get a card so the selection is visible.
+		const store = useEvaluationsWizardSidepanelStore();
+		store.open(1);
+		store.selectedMetricKeys = ['helpfulness'];
+
+		const { getByTestId } = renderComponent();
+		expect(getByTestId('evaluations-wizard-sidepanel-metric-helpfulness')).toBeInTheDocument();
+	});
+
 	it('toggles selection when a check card is clicked on step 1', async () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		store.open(1);

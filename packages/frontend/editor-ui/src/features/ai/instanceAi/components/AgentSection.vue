@@ -1,12 +1,14 @@
 <script lang="ts" setup>
+import {
+	N8nCallout,
+	N8nAnimatedCollapsibleContent as AnimatedCollapsibleContent,
+	N8nAiActivityStepChevron as TimelineStepChevron,
+	N8nAiActivityStepButton as TimelineStepButton,
+} from '@n8n/design-system';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
-import { N8nCallout } from '@n8n/design-system';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { computed, ref, watch } from 'vue';
 import SubagentStepTimeline from './SubagentStepTimeline.vue';
-import TimelineStepChevron from './TimelineStepChevron.vue';
-import TimelineStepButton from './TimelineStepButton.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 const props = defineProps<{

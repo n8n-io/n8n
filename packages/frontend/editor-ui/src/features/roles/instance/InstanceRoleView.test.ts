@@ -9,6 +9,7 @@ import InstanceRoleView from './InstanceRoleView.vue';
 
 const mockShowError = vi.fn();
 const mockShowMessage = vi.fn();
+const mockConfirm = vi.fn();
 const mockPush = vi.fn();
 const mockReplace = vi.fn();
 
@@ -17,7 +18,7 @@ vi.mock('@/app/composables/useToast', () => ({
 }));
 
 vi.mock('@/app/composables/useMessage', () => ({
-	useMessage: () => ({ confirm: vi.fn() }),
+	useMessage: () => ({ confirm: mockConfirm }),
 }));
 
 const mockRoute = {
@@ -168,7 +169,7 @@ describe('InstanceRoleView', () => {
 
 	describe('Edit', () => {
 		it('updates an existing custom role', async () => {
-			rolesStore.fetchRoleBySlug.mockResolvedValueOnce(mockCustomRole);
+			rolesStore.fetchRoleBySlug.mockResolvedValue(mockCustomRole);
 			rolesStore.updateRole.mockResolvedValueOnce({ ...mockCustomRole, displayName: 'Support 2' });
 
 			const { container, getByRole } = renderComponent({ props: { roleSlug: 'support' } });
@@ -195,6 +196,135 @@ describe('InstanceRoleView', () => {
 				type: 'success',
 				message: 'Role updated successfully',
 			});
+			expect(mockConfirm).not.toHaveBeenCalled();
+		});
+
+		it('asks for confirmation before updating a role with assigned users', async () => {
+			rolesStore.fetchRoleBySlug.mockResolvedValue({ ...mockCustomRole, usedByUsers: 8 });
+			rolesStore.updateRole.mockResolvedValueOnce({ ...mockCustomRole, displayName: 'Support 2' });
+			mockConfirm.mockResolvedValueOnce('confirm');
+
+			const { container, getByRole } = renderComponent({ props: { roleSlug: 'support' } });
+
+			await waitFor(() => {
+				const { nameInput } = getFormElements(container);
+				expect(nameInput?.value).toBe('Support');
+			});
+
+			await fillName(container, 'Support 2');
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			await waitFor(() => {
+				expect(mockConfirm).toHaveBeenCalledWith(
+					expect.stringContaining('<b>8 users</b>'),
+					'Update permissions for this role?',
+					expect.objectContaining({ type: 'warning' }),
+				);
+			});
+			await waitFor(() => {
+				expect(rolesStore.updateRole).toHaveBeenCalledWith('support', {
+					displayName: 'Support 2',
+					description: 'A custom instance role',
+					scopes: ['user:read', 'user:list'],
+				});
+			});
+		});
+
+		it('does not save changes when the confirmation is cancelled', async () => {
+			rolesStore.fetchRoleBySlug.mockResolvedValue({ ...mockCustomRole, usedByUsers: 1 });
+			mockConfirm.mockResolvedValueOnce('cancel');
+
+			const { container, getByRole } = renderComponent({ props: { roleSlug: 'support' } });
+
+			await waitFor(() => {
+				const { nameInput } = getFormElements(container);
+				expect(nameInput?.value).toBe('Support');
+			});
+
+			await fillName(container, 'Support 2');
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			await waitFor(() => {
+				expect(mockConfirm).toHaveBeenCalledWith(
+					expect.stringContaining('<b>1 user</b>'),
+					'Update permissions for this role?',
+					expect.objectContaining({ type: 'warning' }),
+				);
+			});
+			expect(rolesStore.updateRole).not.toHaveBeenCalled();
+			expect(mockShowMessage).not.toHaveBeenCalled();
+		});
+
+		it('skips the confirmation when the role has no assigned users', async () => {
+			rolesStore.fetchRoleBySlug.mockResolvedValue({ ...mockCustomRole, usedByUsers: 0 });
+			rolesStore.updateRole.mockResolvedValueOnce({ ...mockCustomRole, displayName: 'Support 2' });
+
+			const { container, getByRole } = renderComponent({ props: { roleSlug: 'support' } });
+
+			await waitFor(() => {
+				const { nameInput } = getFormElements(container);
+				expect(nameInput?.value).toBe('Support');
+			});
+
+			await fillName(container, 'Support 2');
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			await waitFor(() => expect(rolesStore.updateRole).toHaveBeenCalled());
+			expect(mockConfirm).not.toHaveBeenCalled();
+		});
+
+		it('picks up assignments made after the page was loaded', async () => {
+			// The role is unassigned at page load; by save time it has 3 users.
+			rolesStore.fetchRoleBySlug
+				.mockResolvedValueOnce(mockCustomRole)
+				.mockResolvedValueOnce({ ...mockCustomRole, usedByUsers: 3 });
+			rolesStore.updateRole.mockResolvedValueOnce({ ...mockCustomRole, displayName: 'Support 2' });
+			mockConfirm.mockResolvedValueOnce('confirm');
+
+			const { container, getByRole } = renderComponent({ props: { roleSlug: 'support' } });
+
+			await waitFor(() => {
+				const { nameInput } = getFormElements(container);
+				expect(nameInput?.value).toBe('Support');
+			});
+
+			await fillName(container, 'Support 2');
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			await waitFor(() => {
+				expect(mockConfirm).toHaveBeenCalledWith(
+					expect.stringContaining('<b>3 users</b>'),
+					'Update permissions for this role?',
+					expect.objectContaining({ type: 'warning' }),
+				);
+			});
+			await waitFor(() => expect(rolesStore.updateRole).toHaveBeenCalled());
+		});
+
+		it('falls back to the count from page load when the pre-save fetch fails', async () => {
+			rolesStore.fetchRoleBySlug
+				.mockResolvedValueOnce({ ...mockCustomRole, usedByUsers: 8 })
+				.mockRejectedValueOnce(new Error('network error'));
+			mockConfirm.mockResolvedValueOnce('cancel');
+
+			const { container, getByRole } = renderComponent({ props: { roleSlug: 'support' } });
+
+			await waitFor(() => {
+				const { nameInput } = getFormElements(container);
+				expect(nameInput?.value).toBe('Support');
+			});
+
+			await fillName(container, 'Support 2');
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			await waitFor(() => {
+				expect(mockConfirm).toHaveBeenCalledWith(
+					expect.stringContaining('<b>8 users</b>'),
+					'Update permissions for this role?',
+					expect.objectContaining({ type: 'warning' }),
+				);
+			});
+			expect(rolesStore.updateRole).not.toHaveBeenCalled();
 		});
 	});
 

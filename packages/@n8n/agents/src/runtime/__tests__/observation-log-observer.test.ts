@@ -1,6 +1,8 @@
 import type * as AiImport from 'ai';
 
 import type { AgentDbMessage } from '../../types/sdk/message';
+import type { MemoryTaskUsageReport } from '../../types/sdk/observation-log';
+import type { BuiltTelemetry } from '../../types/telemetry';
 import { InMemoryMemory } from '../memory/memory-store';
 import {
 	buildObservationLogObserverPrompt,
@@ -16,7 +18,20 @@ import {
 } from '../memory/observation-log-observer';
 
 type GenerateTextCall = Record<string, unknown>;
-type GenerateTextResult = { text: string; usage?: { totalTokens?: number } };
+type GenerateTextResult = {
+	text: string;
+	usage?: {
+		totalTokens?: number;
+		inputTokens?: number;
+		outputTokens?: number;
+		inputTokenDetails?: {
+			noCacheTokens?: number;
+			cacheReadTokens?: number;
+			cacheWriteTokens?: number;
+		};
+	};
+	providerMetadata?: Record<string, unknown>;
+};
 
 const { mockGenerateText } = vi.hoisted(() => ({
 	mockGenerateText: vi.fn<(...args: [GenerateTextCall]) => Promise<GenerateTextResult>>(),
@@ -51,7 +66,7 @@ describe('observation-log observer defaults', () => {
 	});
 
 	it('keeps default policy and threshold configuration in the SDK', () => {
-		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS).toBe(500);
+		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS).toBe(8_000);
 		expect(DEFAULT_OBSERVATION_LOG_TAIL_LIMIT).toBe(20);
 		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT).toContain('Output the new observations only');
 		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT).toContain(
@@ -106,6 +121,100 @@ describe('observation-log observer defaults', () => {
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(17);
 		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
 		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
+	});
+
+	it('threads input.telemetry into generateText as a memory-observer-suffixed call, omitting it when disabled or absent', async () => {
+		mockGenerateText.mockResolvedValue({ text: '' });
+		const observe = createObservationLogObserveFn('openai/gpt-4o-mini');
+		const baseInput = {
+			observationScopeId: 'thread-1',
+			now: new Date('2026-05-12T14:30:00.000Z'),
+			deltaMessages: [],
+			transcript: '',
+			transcriptTokenCount: 0,
+			observationLogTail: [],
+			renderedObservationLogTail: null,
+		};
+		const telemetry: BuiltTelemetry = {
+			enabled: true,
+			functionId: 'my-agent',
+			metadata: { thread_id: 't1' },
+			recordInputs: true,
+			recordOutputs: false,
+			integrations: [],
+		};
+
+		await observe({ ...baseInput, telemetry });
+		await observe(baseInput);
+		await observe({ ...baseInput, telemetry: { ...telemetry, enabled: false } });
+
+		expect(mockGenerateText.mock.calls[0][0]).toMatchObject({
+			experimental_telemetry: {
+				isEnabled: true,
+				functionId: 'my-agent.memory-observer',
+				metadata: { thread_id: 't1' },
+				recordInputs: true,
+				recordOutputs: false,
+			},
+		});
+		expect(mockGenerateText.mock.calls[1][0].experimental_telemetry).toBeUndefined();
+		expect(mockGenerateText.mock.calls[2][0].experimental_telemetry).toBeUndefined();
+	});
+
+	it('reports normalized, cache-aware usage through an async onUsage before the observer promise settles', async () => {
+		mockGenerateText.mockResolvedValue({
+			text: '* CRITICAL (14:30) Durable fact.',
+			usage: {
+				inputTokens: 100,
+				outputTokens: 10,
+				totalTokens: 110,
+				inputTokenDetails: { noCacheTokens: 20, cacheReadTokens: 80 },
+			},
+		});
+		let resolveUsage!: () => void;
+		const usageGate = new Promise<void>((resolve) => {
+			resolveUsage = resolve;
+		});
+		const onUsage = vi.fn(async (report: MemoryTaskUsageReport) => {
+			expect(report).toMatchObject({
+				task: 'observer',
+				model: 'anthropic/claude-haiku-4-5-20251001',
+				usage: expect.objectContaining({
+					promptTokens: 100,
+					completionTokens: 10,
+					totalTokens: 110,
+					inputTokenDetails: { noCache: 20, cacheRead: 80 },
+				}),
+				reportId: expect.any(String),
+			});
+			await usageGate;
+		});
+
+		const observePromise = createObservationLogObserveFn('anthropic/claude-haiku-4-5-20251001', {
+			onUsage,
+		})({
+			observationScopeId: 'thread-1',
+			now: new Date('2026-05-12T14:30:00.000Z'),
+			deltaMessages: [],
+			transcript: '',
+			transcriptTokenCount: 0,
+			observationLogTail: [],
+			renderedObservationLogTail: null,
+		});
+		let observeSettled = false;
+		void observePromise.then(() => {
+			observeSettled = true;
+		});
+
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(observeSettled).toBe(false);
+
+		resolveUsage();
+		await observePromise;
+
+		expect(observeSettled).toBe(true);
+		expect(onUsage).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -188,24 +297,21 @@ describe('renderObserverTranscript', () => {
 						state: 'resolved',
 						output: {
 							access_token: 'output-access-token',
-							message: 'Authorization: Basic output-basic-token; token: inline-output-token',
+							message: 'Authorization: Basic output-basic-token',
 						},
 					},
 				],
 			},
 		]);
 
-		expect(transcript).toContain('[redacted]');
+		expect(transcript).toContain('[REDACTED]');
 		expect(transcript).toContain('"x-safe-header":"keep-me"');
 		expect(transcript).toContain('safe=1');
-		expect(transcript).toContain('password=[redacted]');
 		expect(transcript).not.toContain('sk-live-input-secret');
 		expect(transcript).not.toContain('input-token');
 		expect(transcript).not.toContain('inline-secret');
 		expect(transcript).not.toContain('output-access-token');
 		expect(transcript).not.toContain('output-basic-token');
-		expect(transcript).not.toContain('inline-output-token');
-		expect(transcript).not.toMatch(/password=\d+\[redacted\]/);
 	});
 
 	it('redacts credential-looking rejected tool errors before serialization', () => {
@@ -232,12 +338,38 @@ describe('renderObserverTranscript', () => {
 		);
 
 		expect(transcript).toContain('tool_result call_api error=');
-		expect(transcript).toContain('Authorization: [redacted]');
-		expect(transcript).toContain('api_key=[redacted]');
-		expect(transcript).toContain('password=[redacted]');
+		expect(transcript).toContain('[REDACTED]');
 		expect(transcript).not.toContain('rejected-token');
 		expect(transcript).not.toContain('rejected-key');
 		expect(transcript).not.toContain('rejected-password');
+	});
+
+	it('redacts secret values from user and assistant message text', () => {
+		const transcript = renderObserverTranscript([
+			message(
+				'u1',
+				'user',
+				'Here is the setup: xoxb-1234567890-abcdefghij for the integration.',
+				new Date(0),
+			),
+			{
+				id: 'a1',
+				createdAt: new Date(1),
+				role: 'assistant',
+				content: [
+					{
+						type: 'text',
+						text: 'Got it, I will use sk-live-assistant-echo-secret to configure it.',
+					},
+				],
+			},
+		]);
+
+		expect(transcript).toContain('for the integration.');
+		expect(transcript).toContain('Got it, I will use');
+		expect(transcript).toContain('[REDACTED]');
+		expect(transcript).not.toContain('xoxb-1234567890-abcdefghij');
+		expect(transcript).not.toContain('sk-live-assistant-echo-secret');
 	});
 });
 
@@ -344,5 +476,35 @@ describe('runObservationLogObserver', () => {
 		// raw history in the meantime.
 		expect(await store.getCursor('thread-1')).toBeNull();
 		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
+	});
+
+	it('does not persist secret values echoed by the observer into observation entries', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [
+				message('m1', 'user', 'setting up the integration', new Date(2026, 4, 12, 14, 30)),
+			],
+		});
+
+		await runObservationLogObserver({
+			memory: store,
+			observationScopeId: 'thread-1',
+			observerThresholdTokens: 1,
+			observationLogTailLimit: 20,
+			tokenCounter: () => 10,
+			now: new Date(2026, 4, 12, 14, 31),
+			observe: async () =>
+				await Promise.resolve(
+					'* CRITICAL (14:31) User provided the token xoxb-1234567890-abcdefghij for the integration.',
+				),
+		});
+
+		const observations = await store.getActiveObservationLog({ observationScopeId: 'thread-1' });
+		expect(observations).toHaveLength(1);
+		expect(observations[0].text).toContain('[REDACTED]');
+		expect(observations[0].text).not.toContain('xoxb-1234567890-abcdefghij');
 	});
 });

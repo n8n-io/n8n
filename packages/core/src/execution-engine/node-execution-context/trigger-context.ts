@@ -4,6 +4,7 @@ import type {
 	INode,
 	ITriggerFunctions,
 	IWorkflowExecuteAdditionalData,
+	SchedulingFunctions,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -41,6 +42,11 @@ export class TriggerContext extends NodeExecutionContext implements ITriggerFunc
 		readonly emit: ITriggerFunctions['emit'] = throwOnEmit,
 		readonly emitError: ITriggerFunctions['emitError'] = throwOnEmitError,
 		readonly saveFailedExecution: ITriggerFunctions['saveFailedExecution'] = throwOnSaveFailedExecution,
+		schedulingFunctions: SchedulingFunctions = getSchedulingFunctions(
+			workflow.id,
+			workflow.timezone,
+			node.id,
+		),
 	) {
 		super(workflow, node, additionalData, mode);
 
@@ -50,7 +56,7 @@ export class TriggerContext extends NodeExecutionContext implements ITriggerFunc
 			...getSSHTunnelFunctions(),
 			...getRequestHelperFunctions(workflow, node, additionalData),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
-			...getSchedulingFunctions(workflow.id, workflow.timezone, node.id),
+			...schedulingFunctions,
 		};
 	}
 

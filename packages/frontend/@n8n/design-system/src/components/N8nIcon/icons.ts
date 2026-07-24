@@ -39,7 +39,7 @@ import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
 import Webhook from './custom/webhook.svg';
-import type { NodeIconName } from './node-icons';
+import { nodeIconNames, type NodeIconName } from './node-icon-names';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
 import IconLucideArchive from '~icons/lucide/archive';
@@ -230,6 +230,7 @@ import IconLucideSmile from '~icons/lucide/smile';
 import IconLucideSparkles from '~icons/lucide/sparkles';
 import IconLucideSplit from '~icons/lucide/split';
 import IconLucideSquare from '~icons/lucide/square';
+import IconLucideSquareArrowOutUpRight from '~icons/lucide/square-arrow-out-up-right';
 import IconLucideSquareCheck from '~icons/lucide/square-check';
 import IconLucideSquareMinus from '~icons/lucide/square-minus';
 import IconLucideSquarePen from '~icons/lucide/square-pen';
@@ -726,6 +727,7 @@ export const updatedIconSet = {
 	sparkles: IconLucideSparkles,
 	split: IconLucideSplit,
 	square: IconLucideSquare,
+	'square-arrow-out-up-right': IconLucideSquareArrowOutUpRight,
 	'square-check': IconLucideSquareCheck,
 	'square-minus': IconLucideSquareMinus,
 	'square-pen': IconLucideSquarePen,
@@ -780,19 +782,18 @@ export const updatedIconSet = {
 
 export type IconName = keyof typeof updatedIconSet; // only new icon names should be used moving forward
 
-export { type NodeIconName } from './node-icons';
+export { type NodeIconName } from './node-icon-names';
 
 const NODE_ICON_PREFIX = 'node:';
+const nodeIconNameSet = new Set<string>(nodeIconNames);
 
 export function isNodeIcon(iconName?: string): iconName is NodeIconName {
 	return typeof iconName === 'string' && iconName.startsWith(NODE_ICON_PREFIX);
 }
 
-export function isSupportedIconName(iconName?: string): iconName is IconName {
+export function isSupportedIconName(iconName?: string): iconName is IconName | NodeIconName {
 	return (
 		typeof iconName === 'string' &&
-		(iconName in updatedIconSet ||
-			iconName in deprecatedIconSet ||
-			iconName.startsWith(NODE_ICON_PREFIX))
+		(iconName in updatedIconSet || iconName in deprecatedIconSet || nodeIconNameSet.has(iconName))
 	);
 }

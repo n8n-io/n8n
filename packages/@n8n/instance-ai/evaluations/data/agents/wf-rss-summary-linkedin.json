@@ -1,0 +1,26 @@
+{
+	"description": "Gold: {anchor: wf, embedsOther: false} — event-triggered pipeline with the LLM as a stateless summarizer; linear, no reasoning.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When a new article hits our RSS feed, summarize it in two sentences and post to LinkedIn. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "simple",
+	"tags": ["intent-resolution", "event-triggered", "single-llm-transform"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent proposes a workflow — an RSS/feed trigger, a summarization step, and a LinkedIn post — and does not propose creating an n8n Agent.",
+		"In the proposed design the summarization is a single bounded LLM step, not an AI Agent node or open-ended agent step.",
+		"The proposal grounds the workflow choice in the shape of the task — a fixed trigger feeding a bounded two-sentence summarization and a fixed post action — rather than in vague or incorrect justifications."
+	]
+}

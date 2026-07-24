@@ -183,7 +183,15 @@ watch(
 						src="https://www.youtube.com/embed/5LlF196PKaE"
 						title="n8n Evaluation quickstart"
 						frameborder="0"
-						allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+						allow="
+							accelerometer;
+							autoplay;
+							clipboard-write;
+							encrypted-media;
+							gyroscope;
+							picture-in-picture;
+							web-share;
+						"
 						referrerpolicy="strict-origin-when-cross-origin"
 						allowfullscreen
 					></iframe>

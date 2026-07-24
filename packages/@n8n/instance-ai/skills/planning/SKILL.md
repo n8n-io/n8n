@@ -23,6 +23,9 @@ Use this skill to design a dependency-aware task graph in the orchestrator and
 submit it with `create-tasks`. Do not spawn another agent and do not use
 incremental plan item tools.
 
+Before calling `create-tasks`, load it via `load_tool` (search "create tasks" if
+it is not visible).
+
 ## When NOT to use this skill
 
 Stop and use `workflow-builder` + `build-workflow` instead when the request is:
@@ -69,7 +72,8 @@ with direct `data-tables` and `parse-file` calls.
    artifact shared across tasks.
 6. Add checkpoint tasks only for exceptional semantic checks that normal
    workflow verification cannot cover.
-7. Call `create-tasks` with `planningContext.source: "planning-skill"`,
+7. Load `create-tasks` via `load_tool` if needed, then call `create-tasks` with
+   `planningContext.source: "planning-skill"`,
    a concise `summary`, optional `assumptions`, `postBuildRunRequested: true`
    only when the user explicitly asked to run, execute, or test a workflow
    after building it, and the final task graph.
@@ -167,8 +171,9 @@ Do not add checkpoints for routine verification-only work.
 
 ## Revisions
 
-If the user rejects the plan with requested changes, revise surgically and call
-`create-tasks` again in the same orchestrator run with
+If the user rejects the plan with requested changes, revise surgically, load
+`create-tasks` via `load_tool` if needed, and call `create-tasks` again in the
+same orchestrator run with
 `planningContext.source: "planning-skill"`.
 
 If the user denies the plan outright, stop. Do not call `create-tasks` again in

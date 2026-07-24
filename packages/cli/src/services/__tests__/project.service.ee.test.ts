@@ -659,4 +659,21 @@ describe('ProjectService', () => {
 			expect(projectRepository.remove).toHaveBeenCalledWith(project);
 		});
 	});
+
+	describe('findExistingProjectIds', () => {
+		it('returns an empty set without querying when no ids are given', async () => {
+			const result = await projectService.findExistingProjectIds([]);
+
+			expect(result.size).toBe(0);
+			expect(projectRepository.find).not.toHaveBeenCalled();
+		});
+
+		it('returns the ids that exist in the database, unscoped by access', async () => {
+			projectRepository.find.mockResolvedValueOnce([mock<Project>({ id: 'proj-1' })]);
+
+			const result = await projectService.findExistingProjectIds(['proj-1', 'proj-missing']);
+
+			expect(result).toEqual(new Set(['proj-1']));
+		});
+	});
 });

@@ -411,7 +411,9 @@ jobs:
   post-qa-metrics-comment:
     name: QA Metrics
     needs: [required-checks, e2e-performance]
-    if: always()
+    # Only post when the perf suite actually measured this PR, otherwise the
+    # comment fires on trivial PRs and flags master drift/noise that isn't theirs.
+    if: always() && needs.e2e-performance.result == 'success'
     uses: ./.github/workflows/util-qa-metrics-comment-reusable.yml
     with:
       metrics: memory-heap-used-baseline,memory-rss-baseline,instance-ai-heap-used-baseline,instance-ai-rss-baseline,agents-heap-used-baseline,agents-rss-baseline,docker-image-size-n8n,docker-image-size-runners,canvas-cold-load-S-ms,canvas-cold-load-M-ms,canvas-cold-load-L-ms,canvas-server-heap-M-mb,canvas-server-heap-L-mb,canvas-browser-heap-M-mb,canvas-browser-heap-L-mb,canvas-pan-frame-p95-M-ms,canvas-pan-frame-p95-L-ms,canvas-tidy-up-M-ms,canvas-tidy-up-L-ms,canvas-exec-heavy-M-ms,canvas-exec-heavy-L-ms

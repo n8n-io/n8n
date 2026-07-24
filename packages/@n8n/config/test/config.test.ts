@@ -170,6 +170,7 @@ describe('GlobalConfig', () => {
 					'workflow-shared': '',
 					'project-shared': '',
 					'api-key-revoked': '',
+					'mcp-client-revoked': '',
 				},
 			},
 		},
@@ -194,6 +195,7 @@ describe('GlobalConfig', () => {
 			include: [],
 			exclude: ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'],
 			pythonEnabled: true,
+			mergeSqlSandboxMemoryLimitMb: 64,
 		},
 		publicApi: {
 			disabled: false,
@@ -203,7 +205,6 @@ describe('GlobalConfig', () => {
 		templates: {
 			enabled: true,
 			host: 'https://api.n8n.io/api/',
-			dynamicTemplatesHost: 'https://dynamic-templates.n8n.io/templates',
 		},
 		versionNotifications: {
 			enabled: true,
@@ -229,6 +230,7 @@ describe('GlobalConfig', () => {
 			publicationOutboxFailedRetentionHours: 168,
 			publicationOutboxCleanupIntervalSeconds: 1200,
 			publicationOutboxCleanupBatchSize: 1000,
+			publicationReconcileIntervalSeconds: 10,
 			autosaveDisabled: false,
 		},
 		endpoints: {
@@ -249,6 +251,8 @@ describe('GlobalConfig', () => {
 				includeQueueMetrics: false,
 				includeWorkflowExecutionDuration: true,
 				queueMetricsInterval: 20,
+				includeSchedulerMetrics: false,
+				schedulerMetricsInterval: 20,
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
 				workflowStatisticsInterval: 300,
@@ -272,6 +276,7 @@ describe('GlobalConfig', () => {
 			mcp: 'mcp',
 			mcpAppsEnabled: false,
 			mcpBuilderEnabled: true,
+			mcpCanvasGroupsEnabled: false,
 			mcpMaxRegisteredClients: 5000,
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
@@ -305,7 +310,7 @@ describe('GlobalConfig', () => {
 			cacheMaxSize: 500,
 		},
 		mcpServer: {
-			sessionIdleTtl: 3600000,
+			sessionIdleTtl: 900000,
 			sessionSweepInterval: 300000,
 		},
 		chatHub: {
@@ -352,6 +357,7 @@ describe('GlobalConfig', () => {
 			outputRedactionPlaceholder: '[REDACTED]',
 			runDebugEnabled: false,
 			thinkingEnabled: true,
+			durableLog: true,
 		},
 		queue: {
 			health: {
@@ -441,19 +447,30 @@ describe('GlobalConfig', () => {
 		scheduler: {
 			enabled: false,
 			materializationWindowSeconds: 60,
-			sweepIntervalSeconds: 10,
+			materializationIntervalSeconds: 10,
+			materializationTimeoutSeconds: 60,
 			executorIntervalSeconds: 5,
+			executorTimeoutSeconds: 60,
 			claimBatchSize: 100,
 			reaperIntervalSeconds: 30,
 			reaperBatchSize: 100,
+			reaperTimeoutSeconds: 60,
 			leaseDurationSeconds: 60,
 			retentionSeconds: 86400,
 			failedRetentionSeconds: 604800,
 			retentionIntervalSeconds: 3600,
+			retentionTimeoutSeconds: 300,
+			jitterRatio: 0.1,
 			minIntervalSeconds: 0,
+			maxConcurrentPasses: 10,
+			triggerNodeMode: 'legacy',
+			allowSkipDurableScheduler: false,
+			maxAttempts: 5,
 		},
 		evaluation: {
 			collectionsEnabled: false,
+			configEvalsEnabled: false,
+			agentEvalsEnabled: false,
 		},
 		generic: {
 			timezone: 'America/New_York',
@@ -639,6 +656,9 @@ describe('GlobalConfig', () => {
 		},
 		agents: {
 			checkpointTtlSeconds: 345600,
+			tracingEnabled: true,
+			tracingRecordInputs: true,
+			tracingRecordOutputs: true,
 			modules: [],
 			sandboxEnabled: false,
 			sandboxProvider: '',
@@ -659,6 +679,33 @@ describe('GlobalConfig', () => {
 		expect(defaultConfig).toMatchObject(config);
 		expect(config).toMatchObject(defaultConfig);
 		expect(readFileSyncMock).not.toHaveBeenCalled();
+	});
+
+	it('should parse N8N_AGENTS_TRACING_ENABLED from env variables', () => {
+		process.env = {
+			N8N_AGENTS_TRACING_ENABLED: 'false',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.agents.tracingEnabled).toBe(false);
+	});
+
+	it('should parse N8N_AGENTS_TRACING_RECORD_INPUTS from env variables', () => {
+		process.env = {
+			N8N_AGENTS_TRACING_RECORD_INPUTS: 'false',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.agents.tracingRecordInputs).toBe(false);
+	});
+
+	it('should parse N8N_AGENTS_TRACING_RECORD_OUTPUTS from env variables', () => {
+		process.env = {
+			N8N_AGENTS_TRACING_RECORD_OUTPUTS: 'false',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.agents.tracingRecordOutputs).toBe(false);
 	});
 
 	it('should parse N8N_AGENTS_AI_SANDBOX_EPHEMERAL from env variables', () => {

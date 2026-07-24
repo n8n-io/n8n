@@ -168,4 +168,32 @@ describe('workflowPartiallyActivated', () => {
 		expect(workflowDocumentStore.publicationFailures).toEqual([]);
 		expect(mockToast.showError).not.toHaveBeenCalled();
 	});
+
+	// Regression: INS-859 — same latent defect as workflowActivated. `activeVersionId` is part
+	// of the conflict checksum (WORKFLOW_CHECKSUM_FIELDS in packages/workflow), so a partial
+	// activation also changes the server-side checksum. An editor with unsaved changes must
+	// refresh its stored `expectedChecksum` instead of being left holding the pre-publish value,
+	// which would 409 the next autosave with "Workflow was changed by someone else".
+	it('refreshes the editor checksum on partial activation even when there are unsaved changes', async () => {
+		// Editor opened before publication: draft checksum captured, workflow not yet published.
+		workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
+		workflowDocumentStore.setChecksum('checksum-before-publish');
+
+		// User dragged a node → workspace is dirty, autosave pending.
+		mockUIStore.stateIsDirty = true;
+
+		// Publication lands with a partial result: server checksum now reflects the new
+		// activeVersionId.
+		mockWorkflowsListStore.fetchWorkflow.mockResolvedValue({
+			id: 'wf-123',
+			activeVersionId: 'v2',
+			checksum: 'checksum-after-publish',
+		});
+
+		await workflowPartiallyActivated(makeEvent(), options);
+
+		expect(workflowDocumentStore.checksum).toBe('checksum-after-publish');
+		// The in-progress edits must survive: reconcile the checksum, never re-hydrate.
+		expect(mockCanvasOperations.initializeWorkspace).not.toHaveBeenCalled();
+	});
 });

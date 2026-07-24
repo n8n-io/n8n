@@ -1,4 +1,4 @@
-const NPM_PROVENANCE_PREDICATE_TYPE = 'https://slsa.dev/provenance/v1';
+export const NPM_PROVENANCE_PREDICATE_TYPE = 'https://slsa.dev/provenance/v1';
 const N8N_COMMUNITY_NODE_PUBLISH_DOCS_URL =
 	'https://docs.n8n.io/integrations/creating-nodes/deploy/submit-community-nodes/';
 

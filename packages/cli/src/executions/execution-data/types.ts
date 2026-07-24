@@ -1,7 +1,7 @@
 import type { ExecutionDataStorageLocation } from '@n8n/db';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-/** Storage locations served by {@link ExecutionDataStore} implementations. `db` is handled natively by `DbStore`. */
+/** Storage locations served by the execution-data JSON store. `db` is handled natively by `DbStore`. */
 export type BlobStorageLocation = Exclude<ExecutionDataStorageLocation, 'db'>;
 
 export type ExecutionRef = {
@@ -24,26 +24,8 @@ export type ExecutionDataPayload = {
 	workflowVersionId: string | null;
 };
 
-export type ExecutionDataBundle = ExecutionDataPayload & {
-	version: 1;
-};
-
 /** The workflow-snapshot part of a payload, without the run data. */
 export type BundleWorkflowSnapshot = Pick<
 	ExecutionDataPayload,
 	'workflowData' | 'workflowVersionId'
 >;
-
-/**
- * Persistence operations for execution data bundles kept in
- * blob storage (filesystem, S3, Azure Blob Storage).
- */
-export interface ExecutionDataStore {
-	init?(): Promise<void>;
-	/** Persist a bundle and return the number of bytes it occupies in this store. */
-	write(ref: ExecutionRef, payload: ExecutionDataPayload): Promise<number>;
-	read(ref: ExecutionRef): Promise<ExecutionDataBundle | null>;
-	/** Read multiple bundles by ref. Returns a map keyed by `executionId`; missing entries are omitted. */
-	readMany(refs: ExecutionRef[]): Promise<Map<string, ExecutionDataBundle>>;
-	delete(ref: ExecutionRef | ExecutionRef[]): Promise<void>;
-}

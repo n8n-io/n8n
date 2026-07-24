@@ -5,7 +5,10 @@ import { backoff } from './backoff';
 import { DEFAULT_EXECUTOR_OPTIONS, type ExecutorOptions } from './options';
 import type { PrecisionTimer } from './precision-timer';
 import type { ClaimedTaskRef, ClaimDueTasksBatch, ExecutorTaskStore } from './store';
+import { createDispatchReporter } from './task-handler';
 import type { TaskHandlerRegistry } from './task-handler';
+import { noopExecutorTracing } from './tracing';
+import type { ExecutorTracing, FireResult } from './tracing';
 import type { ClaimedTask } from '../types';
 
 type ClaimedEntry = { host: string; task: ClaimedTask };
@@ -37,12 +40,35 @@ export interface ExecutorHooks {
 
 	/** A best-effort claim release failed; the reaper still recovers the row. */
 	onReleaseError?: (taskId: string, error: unknown) => void;
+
+	// Fire-path metrics hooks (the normal path), distinct from the incident hooks above.
+
+	/** A claimed task was dispatched to its handler; `lagSeconds` is fire time minus its effective `runAt` (clamped >= 0). */
+	onDispatch?: (taskType: string, lagSeconds: number) => void;
+	/** A fire reached a terminal outcome: the handler completed ('success') or exhausted its attempts ('failure'). */
+	onFire?: (taskType: string, result: 'success' | 'failure') => void;
+	/** A fire failed but has attempts left; it was rescheduled with backoff. */
+	onRetry?: (taskType: string) => void;
 }
 
 /**
  * Claims due tasks, fires each at its `runAt`, dispatches to the handler registered
  * for its `taskType`, and records the outcome. Runs on every main; the claim's
- * locking guarantees each task is owned by one instance.
+ * locking guarantees no two instances *claim* a task at once. Before running a
+ * handler the executor takes a pre-dispatch mutex ({@link ExecutorTaskStore.beginDispatch}):
+ * an atomic compare-and-set that stamps `startedAt` and returns 1 for a single
+ * winner, so the handler runs at most once per lease. That same write refreshes the
+ * lease, giving the handler a full lease for its execution window.
+ *
+ * The contract is at-least-once. Ownership only lasts as long as the lease: if an
+ * owner is lost past it (crash or partition), the reaper reclaims the row, clears
+ * `startedAt`, and another instance re-acquires the mutex and runs the handler again
+ * so the occurrence is not lost. A genuinely stalled-but-alive owner keeps its
+ * (refreshed) lease, so it is not reclaimed and no second handler overlaps it. The
+ * one residual overlap is a partitioned owner still running while its lease is
+ * reclaimed; there the unique `deduplicationKey` index on `execution_entity`
+ * suppresses the duplicate effect. That index, not the claim, is the effect-level
+ * backstop.
  *
  * This is the executor logic only: a driver (the multi-main loop) calls
  * {@link claimAndSchedule} on a cadence and supplies the instance host id. The
@@ -54,8 +80,7 @@ export interface ExecutorHooks {
  * past its lease and is reaped can't write its stale result over the recovered run:
  * while the row sits `pending` the `status = 'running'` guard rejects it, and once
  * another claim takes it the epoch has advanced, so the stale owner's guarded update
- * matches no row. Handlers are still expected to hand off quickly; the lease-renewal
- * heartbeat for longer ones is future work.
+ * matches no row.
  *
  * Persistence sits behind the {@link ExecutorTaskStore} it is given, so this is only
  * the algorithm and a fake store is enough to test it.
@@ -72,12 +97,16 @@ export class Executor {
 	 */
 	private readonly claimedTaskById = new Map<string, ClaimedEntry>();
 
+	/** Set by {@link stop}: claims resolving after it must be handed back, never scheduled. */
+	private stopping = false;
+
 	constructor(
 		private readonly store: ExecutorTaskStore,
 		private readonly registry: TaskHandlerRegistry,
 		private readonly timer: PrecisionTimer,
 		private readonly options: ExecutorOptions = DEFAULT_EXECUTOR_OPTIONS,
 		private readonly hooks: ExecutorHooks = {},
+		private readonly tracing: ExecutorTracing = noopExecutorTracing,
 	) {
 		this.leaseMs = options.leaseSeconds * Time.seconds.toMilliseconds;
 		// Claim one driver tick ahead so a task due before the next tick fires precisely
@@ -97,8 +126,13 @@ export class Executor {
 	 * its `runAt`. Returns the claimed tasks (for tests/observability). Only the claim
 	 * is atomic; the per-row scheduling and any release are deliberately separate
 	 * writes (a failed one is recovered by the reaper), not one enclosing transaction.
+	 *
+	 * `signal` is the driver's abandonment marker: a tick that outlives its timeout is
+	 * aborted and its claim may still resolve later — possibly after {@link stop} already
+	 * released everything. Scheduling then would arm timers nobody cancels, so an aborted
+	 * (or post-stop) claim is handed back instead and the tick reports nothing claimed.
 	 */
-	async claimAndSchedule(host: string): Promise<ClaimedTask[]> {
+	async claimAndSchedule(host: string, signal?: AbortSignal): Promise<ClaimedTask[]> {
 		const taskTypes = this.registry.registeredTypes();
 		if (taskTypes.length === 0) return [];
 
@@ -110,11 +144,42 @@ export class Executor {
 			batchSize: this.options.batchSize,
 		};
 		const tasks = await this.store.claimDueTasks(batch);
+
+		// The pass's one cancellation point, right after its one await. The claim
+		// is a single already-committed statement, so cancelling cannot roll it
+		// back (contrast the materializer): it compensates, handing every row back.
+		// `stopping` covers a claim resolving mid-shutdown even when no signal was
+		// wired (e.g. a manual `SchedulerPasses.execute()`).
+		if (this.stopping || signal?.aborted === true) {
+			await this.handBackClaims(host, tasks);
+			return [];
+		}
+
 		for (const task of tasks) {
 			this.scheduleClaimed(host, task);
 		}
 
 		return tasks;
+	}
+
+	/**
+	 * Compensate a claim that must not be scheduled (cancelled tick, or executor
+	 * stopping): release each row back to `pending`, so the next tick — here or
+	 * on another instance — picks it up. Scheduling instead would arm fire
+	 * timers no teardown tracks. Best-effort like any release; a failed row is
+	 * reported and left leased until the reaper recovers it.
+	 */
+	private async handBackClaims(host: string, tasks: ClaimedTask[]): Promise<void> {
+		await Promise.all(
+			tasks.map(
+				async (task) =>
+					await this.releaseClaimBestEffort({
+						host,
+						id: task.id,
+						claimedEpoch: task.leaseEpoch,
+					}),
+			),
+		);
 	}
 
 	/** Track a claimed task and schedule its timer to fire at `runAt`. */
@@ -135,44 +200,121 @@ export class Executor {
 	/**
 	 * Fire one claimed task: confirm it is still ours, dispatch to its handler, then
 	 * record the outcome. A row that vanished (cascade-delete) or was reclaimed after
-	 * a lease expiry is a benign no-op at every step, never an error.
+	 * a lease expiry is skipped quietly at every step, never treated as an error.
+	 *
+	 * @returns How the fire ended; see {@link FireResult}.
 	 */
-	async fire(host: string, task: ClaimedTask): Promise<void> {
+	async fire(host: string, task: ClaimedTask): Promise<FireResult> {
+		return await this.tracing.fire(host, task, async () => await this.runFire(host, task));
+	}
+
+	/** The actual fire logic. {@link fire} wraps it in the tracing hook. */
+	private async runFire(host: string, task: ClaimedTask): Promise<FireResult> {
 		const claim: ClaimedTaskRef = { host, id: task.id, claimedEpoch: task.leaseEpoch };
 
-		// Resolve the handler before marking the task started: don't mark a task started
-		// we can't run, and skip the write on the missing-handler path. The claim is
-		// scoped to registered types, so this normally resolves; if the handler went away
-		// (e.g. a rolling restart), release without counting an attempt so it isn't lost.
+		// Resolve the handler before the ownership check: don't touch the DB for a task
+		// we can't run, and skip on the missing-handler path. The claim is scoped to
+		// registered types, so this normally resolves; if the handler went away (e.g. a
+		// rolling restart), release without counting an attempt so it isn't lost.
 		const handler = this.registry.resolve(task.taskType);
 		if (handler === undefined) {
 			this.hooks.onMissingHandler?.(task);
 			await this.releaseClaimBestEffort(claim);
-			return;
+			return { outcome: 'skipped-no-handler' };
 		}
 
-		// Guard + set `startedAt` in one write. 0 rows => deleted or reclaimed; don't
-		// dispatch an execution for work that is gone or no longer ours.
-		const started = await this.store.markStarted(claim);
-		if (started === 0) return;
+		// Pre-dispatch mutex: atomically claim the sole right to run this occurrence's
+		// handler for this lease, and refresh the lease for the execution window. 0 rows
+		// => the row is gone, was reclaimed (epoch bumped), or was already dispatched on
+		// this lease; in every case don't run the handler. This compare-and-set, not the
+		// later marker, is what keeps the executor from calling a handler twice per lease.
+		const won = await this.store.beginDispatch(claim, this.leaseMs);
+		if (won === 0) {
+			return { outcome: 'skipped-not-owned' };
+		}
+
+		// The task is confirmed ours and is being handed to its handler. Lag is measured
+		// against `runAt` (the effective fire time, pushed forward by retry backoff), not
+		// the fixed original slot, so a retry's backoff wait isn't logged as lag. The
+		// timer's clock (the one scheduling used) is used, not a fresh wall clock, so a
+		// skewed instance doesn't bias the lag it also scheduled against; clamp
+		// non-negative since a timer can fire marginally early.
+		const lagMs = this.timer.now() - task.runAt.getTime();
+		const lagSeconds = Math.max(0, lagMs) / Time.seconds.toMilliseconds;
+		this.hooks.onDispatch?.(task.taskType, lagSeconds);
+
+		// `report.dispatched()` persists the `dispatchedAt` marker so the reaper can tell an
+		// occurrence that ran from one that never did. The write is kicked off from the
+		// (synchronous) callback and its promise captured, then settled before any terminal
+		// write below so the marker can't land on (and be rejected by) an already-terminal
+		// row. A failed marker write is reported, not thrown: losing it only costs a
+		// redelivery, which the at-least-once contract accepts. `??=` makes a second call a
+		// no-op, so an explicit `dispatched()` and the post-return fallback below collapse to
+		// one write.
+		let dispatchMark: Promise<void> | undefined;
+		const markDispatched = (): void => {
+			dispatchMark ??= this.store.markDispatched(claim).then(
+				() => undefined,
+				(error: unknown) => this.hooks.onFireError?.(task, error),
+			);
+		};
+		const report = createDispatchReporter(markDispatched);
 
 		// Record success only after the try, so a failure to record it isn't taken for a
 		// handler failure. Such a failure propagates out (caught by the detached `.catch`
 		// in claimAndSchedule) and leaves the row `running` for the reaper.
 		try {
-			await handler.execute(task);
+			await handler.execute(task, report);
 		} catch (error) {
-			const message = ensureError(error).message;
+			await dispatchMark;
+			const errorMessage = ensureError(error).message;
 			const nextAttempts = task.attempts + 1;
 			if (nextAttempts >= task.maxAttempts) {
-				await this.store.failTaskTerminal(claim, message);
-			} else {
-				await this.store.rescheduleTask(claim, backoff(nextAttempts), message);
+				// If the handler had already handed off its effect (`dispatched()` ran, so
+				// `dispatchMark` is set) before throwing, the occurrence's work is done.
+				// On this last attempt, recording it failed would blame the scheduler for
+				// work that happened; complete it as succeeded instead, mirroring the
+				// reaper's post-dispatch branch. Only pre-dispatch failures are dead-lettered.
+				if (dispatchMark !== undefined) {
+					const rowsAffected = await this.store.completeTask(claim);
+					if (rowsAffected > 0) {
+						this.hooks.onFire?.(task.taskType, 'success');
+						return { outcome: 'completed' };
+					}
+					return { outcome: 'skipped-not-owned', errorMessage };
+				}
+				// A terminal write resolves 0 (it does not reject) when the row was
+				// reclaimed by the reaper after a lease overrun. The result is then no
+				// longer ours to record: report the fire as skipped, not as a state
+				// transition we did not make, and count no metric. Same on every
+				// terminal write below.
+				const rowsAffected = await this.store.failTaskTerminal(claim, errorMessage);
+				if (rowsAffected > 0) {
+					this.hooks.onFire?.(task.taskType, 'failure');
+					return { outcome: 'dead-lettered', errorMessage };
+				}
+				return { outcome: 'skipped-not-owned', errorMessage };
 			}
-			return;
+			const rowsAffected = await this.store.rescheduleTask(
+				claim,
+				backoff(nextAttempts),
+				errorMessage,
+			);
+			if (rowsAffected > 0) {
+				this.hooks.onRetry?.(task.taskType);
+				return { outcome: 'rescheduled', errorMessage };
+			}
+			return { outcome: 'skipped-not-owned', errorMessage };
 		}
 
-		await this.store.completeTask(claim);
+		markDispatched(); // A handler that returned without throwing is considered as dispatched
+		await dispatchMark;
+		const rowsAffected = await this.store.completeTask(claim);
+		if (rowsAffected > 0) {
+			this.hooks.onFire?.(task.taskType, 'success');
+			return { outcome: 'completed' };
+		}
+		return { outcome: 'skipped-not-owned' };
 	}
 
 	/** Release a claim, reporting but swallowing failures: the reaper still recovers the row. */
@@ -188,12 +330,12 @@ export class Executor {
 	 * Cancel scheduled-but-unfired timers and release their claims (shutdown); without
 	 * the release they stay `running`+leased until the reaper reclaims them.
 	 *
-	 * Driver contract: stop calling {@link claimAndSchedule} before this. There is no
-	 * in-flight guard, so a concurrent tick could schedule timers after `cancelAll`
-	 * whose entries `claimed.clear()` drops, leaving them to fire post-stop. A tick and
-	 * stop must not overlap.
+	 * Driver contract: stop calling {@link claimAndSchedule} before this. A tick whose
+	 * claim is still in flight (e.g. abandoned at its timeout) is safe: once `stopping`
+	 * is set, its late resolution hands the claims back instead of scheduling.
 	 */
 	async stop(): Promise<void> {
+		this.stopping = true;
 		this.timer.cancelAll();
 
 		const entries = [...this.claimedTaskById.values()];

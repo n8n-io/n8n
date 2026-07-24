@@ -68,6 +68,16 @@ describe('classifyTriggerIdentity', () => {
 			});
 		});
 
+		it('provides the external identity when the version field was stripped on save', () => {
+			// `executionsHooksVersion` is a hidden default and is not serialized into
+			// saved workflows, so the hooks must still be recognized without it.
+			const { executionsHooksVersion, ...withoutVersion } = hooksParameters;
+			expect(classifyTriggerIdentity('n8n-nodes-base.webhook', withoutVersion)).toEqual({
+				providesN8nIdentity: false,
+				providesExternalIdentity: true,
+			});
+		});
+
 		it('provides no identity without hooks', () => {
 			expect(classifyTriggerIdentity('n8n-nodes-base.scheduleTrigger', {})).toEqual({
 				providesN8nIdentity: false,

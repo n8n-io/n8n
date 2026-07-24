@@ -131,7 +131,7 @@ describe('AgentTasksController tasks', () => {
 
 		const result = await controller.runTaskNow(runReq, undefined as never, 'agent-1', 'task-1');
 
-		expect(agentTaskService.runNow).toHaveBeenCalledWith('agent-1', 'task-1', 'user-1');
+		expect(agentTaskService.runNow).toHaveBeenCalledWith('agent-1', 'task-1', { id: 'user-1' });
 		expect(result).toEqual({ success: true });
 	});
 

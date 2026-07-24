@@ -3,7 +3,7 @@
 exports[`components > N8nDatatable > should render correctly 1`] = `
 "<div data-v-c73ff18f="" class="datatable datatableWrapper">
   <div data-v-c73ff18f="" class="n8nTable">
-    <div class="n8nTableScroll">
+    <div class="n8nTableScroll" data-test-id="table-base-scroll">
       <table>
         <thead data-v-c73ff18f="">
           <tr data-v-c73ff18f="">

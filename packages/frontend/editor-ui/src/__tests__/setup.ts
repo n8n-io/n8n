@@ -47,8 +47,15 @@ vi.mock('reka-ui', async (importOriginal) => {
 				const context = inject<{ isOpen: { value: boolean }; setOpen: (v: boolean) => void }>(
 					POPOVER_OPEN_KEY,
 				);
+				// Capture phase avoids Vue's "event fired before listener attached" guard
+				// (`e._vts <= invoker.attached`), which flakily skips a bubble-phase onClick
+				// when a test renders and clicks within the same millisecond.
 				return () =>
-					h('div', { onClick: () => context?.setOpen(!context.isOpen.value) }, slots.default?.());
+					h(
+						'div',
+						{ onClickCapture: () => context?.setOpen(!context.isOpen.value) },
+						slots.default?.(),
+					);
 			},
 		}),
 		PopoverPortal: defineComponent({

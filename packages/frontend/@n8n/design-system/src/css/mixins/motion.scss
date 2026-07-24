@@ -89,9 +89,11 @@
 @keyframes shimmer {
 	0% {
 		background-position: 200% 0;
+		animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
 	}
 	100% {
 		background-position: -200% 0;
+		animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
 	}
 }
 

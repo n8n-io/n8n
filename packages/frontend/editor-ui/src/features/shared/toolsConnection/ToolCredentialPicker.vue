@@ -21,6 +21,9 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
+	'credential-dropdown-open': [item: ToolConnectionItem];
+	'first-credential-connect': [item: ToolConnectionItem];
+	'new-credential-connect': [item: ToolConnectionItem];
 }>();
 
 const i18n = useI18n();
@@ -56,6 +59,7 @@ const filteredCredentials = computed(() => {
 
 watch(isOpen, (open) => {
 	if (open) {
+		emit('credential-dropdown-open', props.item);
 		searchQuery.value = '';
 		void nextTick(() => {
 			(searchInputRef.value?.$el as HTMLElement | undefined)
@@ -74,8 +78,13 @@ const createAuthType = computed(
 	() => props.credentials.find((c) => c.required)?.authType ?? props.credentials[0]?.authType,
 );
 
-function createCredential() {
+function createCredential(source: 'direct' | 'dropdown') {
 	if (!createAuthType.value) return;
+	if (source === 'direct') {
+		emit('first-credential-connect', props.item);
+	} else {
+		emit('new-credential-connect', props.item);
+	}
 	adapter?.openNewCredential(createAuthType.value);
 	isOpen.value = false;
 }
@@ -173,7 +182,7 @@ function editCredential(credentialId: string) {
 				type="button"
 				:class="$style.createRow"
 				data-test-id="tool-credential-picker-create"
-				@click="createCredential"
+				@click="createCredential('dropdown')"
 			>
 				<N8nIcon icon="plus" :size="14" />
 				<span>{{ i18n.baseText('tools.connection.credentialPicker.create') }}</span>
@@ -185,7 +194,7 @@ function editCredential(credentialId: string) {
 		:variant="connectVariant"
 		size="small"
 		data-test-id="tool-credential-picker-trigger-connect"
-		@click="createCredential"
+		@click="createCredential('direct')"
 	>
 		<span>{{ i18n.baseText('tools.connection.action.connect') }}</span>
 	</N8nButton>

@@ -115,24 +115,37 @@ describe('createOpenAIPromptCacheKey (via buildCallPromptCacheOptions)', () => {
 		instructions: 'You are a helpful assistant with very specific secret instructions.',
 	};
 
-	function generatedKey(instructions: string): string {
+	function generatedKey(overrides: { agentName?: string; instructions?: string } = {}): string {
 		const result = buildCallPromptCacheOptions({ enabled: true }, modelId, {
 			...context,
-			instructions,
+			...overrides,
 		});
 		return (result?.openai as { promptCacheKey: string }).promptCacheKey;
 	}
 
 	it('is deterministic for the same agent, model, and instructions', () => {
-		expect(generatedKey(context.instructions)).toBe(generatedKey(context.instructions));
+		expect(generatedKey()).toBe(generatedKey());
 	});
 
 	it('changes when the instructions change (per-agent-version granularity)', () => {
-		expect(generatedKey(context.instructions)).not.toBe(generatedKey('Different instructions.'));
+		expect(generatedKey()).not.toBe(generatedKey({ instructions: 'Different instructions.' }));
 	});
 
 	it('never embeds the raw instructions text', () => {
-		expect(generatedKey(context.instructions)).not.toContain('secret instructions');
+		expect(generatedKey()).not.toContain('secret instructions');
+	});
+
+	it('changes when only the agent name changes', () => {
+		expect(generatedKey()).not.toBe(generatedKey({ agentName: 'other-assistant' }));
+	});
+
+	it("stays within OpenAI's 64-character limit for a 128-character agent name", () => {
+		const longName = 'a'.repeat(128);
+		const key = generatedKey({ agentName: longName });
+
+		expect(key.length).toBe(64);
+		expect(key.startsWith('agent:')).toBe(true);
+		expect(key).not.toContain(longName);
 	});
 });
 

@@ -1,6 +1,5 @@
 import type { Folder, User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
 
 import { FolderFinderService } from '@/services/folder-finder.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -9,6 +8,7 @@ import { FolderSerializer } from './folder.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
+import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import { mergeRequirements } from '../requirements.types';
 import type { WorkflowExportRequirements } from '../requirements.types';
 import { WorkflowExporter } from '../workflow/workflow.exporter';
@@ -57,7 +57,12 @@ export class FolderExporter {
 			['folder:read'],
 		);
 
-		this.assertAllRequestedFoldersFound(request.folderIds, folders);
+		await assertEveryRequestedEntityAccessible(
+			'folder',
+			request.folderIds,
+			folders,
+			async (ids) => await this.folderFinder.findExistingFolderIds(ids),
+		);
 
 		const { roots, childrenByParent } = this.buildForest(folders);
 
@@ -198,27 +203,5 @@ export class FolderExporter {
 			const byCreatedAt = a.createdAt.getTime() - b.createdAt.getTime();
 			return byCreatedAt !== 0 ? byCreatedAt : a.id.localeCompare(b.id);
 		});
-	}
-
-	private assertAllRequestedFoldersFound(
-		requestedFolderIds: string[],
-		foundFolders: Array<{ id: string }>,
-	) {
-		const foundFolderIds = new Set(foundFolders.map(({ id }) => id));
-		const missingFolderIds = requestedFolderIds.filter((id) => !foundFolderIds.has(id));
-
-		if (missingFolderIds.length > 0) {
-			const displayedFolderIds = missingFolderIds.slice(0, 20);
-			const omittedCount = missingFolderIds.length - displayedFolderIds.length;
-
-			throw new UserError(
-				`${missingFolderIds.length} folder(s) not found or not accessible. Export aborted.`,
-				{
-					description: `Missing folder IDs: ${displayedFolderIds.join(', ')}${
-						omittedCount > 0 ? `, and ${omittedCount} more` : ''
-					}`,
-				},
-			);
-		}
 	}
 }

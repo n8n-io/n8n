@@ -1,291 +1,379 @@
 [
 	{
-		"id": "n8n-nodes-base.azureCosmosDb",
-		"popularity": 0.266
+		"id": "n8n-nodes-spreadapi.spreadApi",
+		"popularity": 0.054
 	},
 	{
-		"id": "n8n-nodes-base.clearbit",
-		"popularity": 0.244
+		"id": "@workiom/n8n-nodes-workiom.workiom",
+		"popularity": 0.238
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.agent",
-		"popularity": 0.975
+		"popularity": 0.982
 	},
 	{
 		"id": "n8n-nodes-base.httpRequest",
-		"popularity": 0.989
+		"popularity": 0.991
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
-		"popularity": 0.829
+		"popularity": 0.831
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
-		"popularity": 0.661
+		"popularity": 0.656
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.mcpClient",
-		"popularity": 0.649
+		"popularity": 0.644
 	},
 	{
 		"id": "n8n-nodes-base.executeCommand",
-		"popularity": 0.67
+		"popularity": 0.673
 	},
 	{
 		"id": "n8n-nodes-base.compareDatasets",
-		"popularity": 0.582
+		"popularity": 0.574
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.alibabaCloud",
-		"popularity": 0.535
+		"popularity": 0.529
 	},
 	{
 		"id": "n8n-nodes-base.microsoftOutlookHitlTool",
-		"popularity": 0.527
+		"popularity": 0.514
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.minimax",
-		"popularity": 0.509
-	},
-	{
-		"id": "n8n-nodes-base.shopifyTrigger",
-		"popularity": 0.524
+		"popularity": 0.507
 	},
 	{
 		"id": "@chatarchitect/n8n-nodes-chatarchitectcom-for-whatsapp.chatArchitectWhatsApp",
-		"popularity": 0.503
+		"popularity": 0.495
+	},
+	{
+		"id": "n8n-nodes-base.shopifyTrigger",
+		"popularity": 0.509
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.embeddingsGoogleVertex",
-		"popularity": 0.47
-	},
-	{
-		"id": "n8n-nodes-browserless-api.browserless",
-		"popularity": 0.476
+		"popularity": 0.472
 	},
 	{
 		"id": "n8n-nodes-base.localFileTrigger",
 		"popularity": 0.464
 	},
 	{
+		"id": "n8n-nodes-browserless-api.browserless",
+		"popularity": 0.469
+	},
+	{
 		"id": "@n8n/n8n-nodes-langchain.microsoftAgent365Trigger",
-		"popularity": 0.438
+		"popularity": 0.423
 	},
 	{
 		"id": "@cloudconvert/n8n-nodes-cloudconvert.cloudConvert",
-		"popularity": 0.444
+		"popularity": 0.433
+	},
+	{
+		"id": "n8n-nodes-base.azureCosmosDb",
+		"popularity": 0.273
 	},
 	{
 		"id": "n8n-nodes-base.phantombusterTool",
-		"popularity": 0.244
+		"popularity": 0.217
+	},
+	{
+		"id": "n8n-nodes-base.clearbit",
+		"popularity": 0.226
+	},
+	{
+		"id": "@workiom/n8n-nodes-workiom.workiomTrigger",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-llmpulse.llmPulseTrigger",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-ocean.ocean",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-socialapi.socialApiTrigger",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-boostspace.boostspace",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-qorami.qorami",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-shortgenius.shortGeniusTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-mercateer.mercateer",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-speakai.speakAiTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "@probo/n8n-nodes-probo.proboTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-boostspace.boostspaceTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-realtyapi.realtyApi",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-shortgenius.shortGenius",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-trestle.trestle",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-loopquest.loopQuestTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "@deepidealab/n8n-nodes-tracira.tracira",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-mercateer.mercateerTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-speakai.speakAi",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.hkcMcpTool",
+		"popularity": 0
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.anthropic",
-		"popularity": 0.74
+		"popularity": 0.734
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.informationExtractor",
-		"popularity": 0.696
+		"popularity": 0.695
 	},
 	{
 		"id": "n8n-nodes-base.notion",
-		"popularity": 0.747
+		"popularity": 0.743
 	},
 	{
 		"id": "@bufferapp/n8n-nodes-buffer.buffer",
-		"popularity": 0.517
+		"popularity": 0.508
 	},
 	{
 		"id": "@z-api/n8n-nodes-zapi.zapi",
-		"popularity": 0.488
+		"popularity": 0.47
 	},
 	{
 		"id": "n8n-nodes-agentmail.agentMailTrigger",
-		"popularity": 0.404
+		"popularity": 0.39
 	},
 	{
 		"id": "@pinecone-database/n8n-nodes-pinecone-assistant.pineconeAssistant",
-		"popularity": 0.407
-	},
-	{
-		"id": "n8n-nodes-base.googleBusinessProfileTrigger",
-		"popularity": 0.398
+		"popularity": 0.393
 	},
 	{
 		"id": "n8n-nodes-pdfbolt.pdfBolt",
-		"popularity": 0.399
+		"popularity": 0.387
+	},
+	{
+		"id": "n8n-nodes-base.googleBusinessProfileTrigger",
+		"popularity": 0.38
 	},
 	{
 		"id": "n8n-nodes-zalo-platform.zaloBotTrigger",
-		"popularity": 0.394
-	},
-	{
-		"id": "n8n-nodes-extract-monster.extractMonster",
-		"popularity": 0.364
+		"popularity": 0.4
 	},
 	{
 		"id": "n8n-nodes-base.googleChatTool",
-		"popularity": 0.364
+		"popularity": 0.366
 	},
 	{
-		"id": "n8n-nodes-teable-io.teable",
-		"popularity": 0.298
+		"id": "n8n-nodes-extract-monster.extractMonster",
+		"popularity": 0.355
 	},
 	{
-		"id": "n8n-nodes-base.googleFirebaseRealtimeDatabaseTool",
-		"popularity": 0.318
+		"id": "n8n-nodes-fullenrich.fullEnrichTrigger",
+		"popularity": 0.152
+	},
+	{
+		"id": "n8n-nodes-trendswell.trendswellTrigger",
+		"popularity": 0.054
+	},
+	{
+		"id": "@simplyprint/n8n-nodes-simplyprint.simplyPrintTrigger",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-video-api-hub.videoApiHub",
+		"popularity": 0.322
+	},
+	{
+		"id": "@mercadopago/n8n-nodes-mercadopago.mercadoPago",
+		"popularity": 0.285
+	},
+	{
+		"id": "@calcslive/n8n-nodes-calcslive.calcsLive",
+		"popularity": 0.234
+	},
+	{
+		"id": "@easysoftware/n8n-nodes-easy-redmine.easyRedmine",
+		"popularity": 0.23
+	},
+	{
+		"id": "n8n-nodes-base.googleFirebaseCloudFirestoreTool",
+		"popularity": 0.329
+	},
+	{
+		"id": "n8n-nodes-filepost.filePost",
+		"popularity": 0.269
+	},
+	{
+		"id": "n8n-nodes-agent-brains.agentBrains",
+		"popularity": 0.18
 	},
 	{
 		"id": "n8n-nodes-transcript-lol.transcriptLol",
-		"popularity": 0.288
+		"popularity": 0.282
 	},
 	{
 		"id": "n8n-nodes-lara-translate.laraTranslate",
-		"popularity": 0.309
+		"popularity": 0.282
 	},
 	{
 		"id": "n8n-nodes-agent-brains.integrationTrigger",
 		"popularity": 0.226
 	},
 	{
-		"id": "n8n-nodes-video-api-hub.videoApiHub",
-		"popularity": 0.304
-	},
-	{
-		"id": "@mercadopago/n8n-nodes-mercadopago.mercadoPago",
-		"popularity": 0.304
-	},
-	{
-		"id": "n8n-nodes-rd.rdStationCrmTrigger",
-		"popularity": 0.253
-	},
-	{
-		"id": "n8n-nodes-base.googleFirebaseCloudFirestoreTool",
-		"popularity": 0.328
-	},
-	{
-		"id": "n8n-nodes-filepost.filePost",
-		"popularity": 0.279
-	},
-	{
-		"id": "@calcslive/n8n-nodes-calcslive.calcsLive",
-		"popularity": 0.244
-	},
-	{
-		"id": "@sinch/n8n-nodes-number-lookup-api.sinchNumberLookupApi",
-		"popularity": 0.123
-	},
-	{
-		"id": "@easysoftware/n8n-nodes-easy-redmine.easyRedmine",
-		"popularity": 0.244
-	},
-	{
-		"id": "n8n-nodes-base.salesmate",
-		"popularity": 0.149
+		"id": "n8n-nodes-weclapp.weclapp",
+		"popularity": 0.194
 	},
 	{
 		"id": "@vybit/n8n-nodes-vybit.vybit",
-		"popularity": 0.244
-	},
-	{
-		"id": "@gotohuman/n8n-nodes-gotohuman.gotoHumanTrigger",
-		"popularity": 0.106
-	},
-	{
-		"id": "@simplyprint/n8n-nodes-simplyprint.simplyPrint",
-		"popularity": 0.19
-	},
-	{
-		"id": "n8n-nodes-agent-brains.agentBrains",
-		"popularity": 0.177
-	},
-	{
-		"id": "n8n-nodes-caspioofficial.caspio",
-		"popularity": 0.084
-	},
-	{
-		"id": "n8n-nodes-workdrive.workDrive",
-		"popularity": 0.226
-	},
-	{
-		"id": "n8n-nodes-base.microsoftSql",
-		"popularity": 0.635
-	},
-	{
-		"id": "n8n-nodes-trendswell.trendswellTrigger",
-		"popularity": 0.084
-	},
-	{
-		"id": "n8n-nodes-wildix.wildix",
-		"popularity": 0.084
-	},
-	{
-		"id": "@biztory/n8n-nodes-autom8-tableau-alert-trigger.autom8TableauAlertTrigger",
-		"popularity": 0.159
-	},
-	{
-		"id": "@periodix/n8n-nodes-actions.linkedInSearch",
-		"popularity": 0.233
-	},
-	{
-		"id": "n8n-nodes-pagbank-connect.pagBankTrigger",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-trendswell.trendswell",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-parseur.parseurTrigger",
-		"popularity": 0.084
-	},
-	{
-		"id": "n8n-nodes-teable-io.teableTrigger",
-		"popularity": 0.159
-	},
-	{
-		"id": "n8n-nodes-vodafone.vodafone",
-		"popularity": 0.084
-	},
-	{
-		"id": "@woztell-sanuker/n8n-nodes-woztell-sanuker.woztellTrigger",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-base.theHiveProjectTool",
-		"popularity": 0.084
+		"popularity": 0.212
 	},
 	{
 		"id": "@crowdin/n8n-nodes-crowdin.crowdinEnterpriseStringBased",
-		"popularity": 0.168
+		"popularity": 0.14
 	},
 	{
-		"id": "n8n-nodes-mpesa-daraja.mpesaTrigger",
-		"popularity": 0.106
+		"id": "n8n-nodes-workdrive.workDrive",
+		"popularity": 0.234
 	},
 	{
-		"id": "n8n-nodes-weclapp.weclapp",
-		"popularity": 0.233
+		"id": "@periodix/n8n-nodes-actions.linkedInSearch",
+		"popularity": 0.126
 	},
 	{
-		"id": "n8n-nodes-fullenrich.fullEnrichTrigger",
-		"popularity": 0.184
+		"id": "@contactout/n8n-nodes-contactout.contactOut",
+		"popularity": 0.152
 	},
 	{
-		"id": "@leadtributor/n8n-nodes-leadtributor.leadtributor",
-		"popularity": 0
+		"id": "@simplyprint/n8n-nodes-simplyprint.simplyPrint",
+		"popularity": 0.172
 	},
 	{
-		"id": "@mendable/n8n-nodes-firecrawl.firecrawl",
-		"popularity": 0.615
+		"id": "n8n-nodes-vodafone.vodafone",
+		"popularity": 0.054
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStoreSupabaseInsert",
-		"popularity": 0
+		"id": "n8n-nodes-linktwin.linkTwin",
+		"popularity": 0.201
+	},
+	{
+		"id": "n8n-nodes-docupotion.docupotion",
+		"popularity": 0.355
+	},
+	{
+		"id": "@klardaten/n8n-nodes-datevconnect.identityAndAccessManagement",
+		"popularity": 0.086
 	},
 	{
 		"id": "@sinch-engage/n8n-nodes-sinch-engage.sinchEngage",
 		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-teable-io.teable",
+		"popularity": 0.29
+	},
+	{
+		"id": "n8n-nodes-parseur.parseurTrigger",
+		"popularity": 0.108
+	},
+	{
+		"id": "n8n-nodes-workdrive.workDriveTrigger",
+		"popularity": 0.108
+	},
+	{
+		"id": "@woztell-sanuker/n8n-nodes-woztell-sanuker.woztellTrigger",
+		"popularity": 0.108
+	},
+	{
+		"id": "n8n-nodes-pagbank-connect.pagBankTrigger",
+		"popularity": 0.108
+	},
+	{
+		"id": "@mendable/n8n-nodes-firecrawl.firecrawl",
+		"popularity": 0.619
+	},
+	{
+		"id": "@gotohuman/n8n-nodes-gotohuman.gotoHumanTrigger",
+		"popularity": 0.126
+	},
+	{
+		"id": "n8n-nodes-mpesa-daraja.mpesaTrigger",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-android-texter.androidTexterTrigger",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-coreclaw.coreClaw",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-trendswell.trendswell",
+		"popularity": 0.086
+	},
+	{
+		"id": "@aistemsplitter/n8n-nodes-aistemsplitter.aiStemSplitter",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-teable-io.teableTrigger",
+		"popularity": 0.163
+	},
+	{
+		"id": "@sinch/n8n-nodes-number-lookup-api.sinchNumberLookupApi",
+		"popularity": 0.126
+	},
+	{
+		"id": "@carbonvoice/n8n-nodes-carbonvoice.carbonVoiceTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.microsoftSql",
+		"popularity": 0.624
 	},
 	{
 		"id": "@alephantai/n8n-nodes-alephant-ai.alephantAi",
@@ -296,7 +384,7 @@
 		"popularity": 0
 	},
 	{
-		"id": "@carbonvoice/n8n-nodes-carbonvoice.carbonVoiceTrigger",
+		"id": "n8n-nodes-kargo-entegrator.kargoEntegratorTrigger",
 		"popularity": 0
 	},
 	{
@@ -304,143 +392,119 @@
 		"popularity": 0
 	},
 	{
-		"id": "@carbonvoice/n8n-nodes-carbonvoice.carbonVoice",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-teckel-ipfs.teckelIpfs",
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreSupabaseInsert",
 		"popularity": 0
 	},
 	{
-		"id": "@respond-io/n8n-nodes-respond-io.respondioTrigger",
-		"popularity": 0.429
-	},
-	{
-		"id": "@rrulenet/n8n-nodes-rrulenet.rruleNetScheduleTrigger",
-		"popularity": 0.337
-	},
-	{
-		"id": "n8n-nodes-docupotion.docupotion",
-		"popularity": 0.356
-	},
-	{
-		"id": "n8n-nodes-base.coinGecko",
-		"popularity": 0.352
-	},
-	{
-		"id": "n8n-nodes-mindlytics.mindlytics",
-		"popularity": 0.168
-	},
-	{
-		"id": "n8n-nodes-linktwin.linkTwin",
-		"popularity": 0.197
-	},
-	{
-		"id": "@momentum-labs/n8n-nodes-1lookup.oneLookup",
-		"popularity": 0.053
+		"id": "@leadtributor/n8n-nodes-leadtributor.leadtributor",
+		"popularity": 0
 	},
 	{
 		"id": "n8n-nodes-gravityzone.gravityZone",
-		"popularity": 0.084
+		"popularity": 0.054
 	},
 	{
-		"id": "n8n-nodes-renderpix.renderPix",
-		"popularity": 0.106
+		"id": "n8n-nodes-base.coinGecko",
+		"popularity": 0.344
+	},
+	{
+		"id": "@respond-io/n8n-nodes-respond-io.respondioTrigger",
+		"popularity": 0.433
+	},
+	{
+		"id": "@rrulenet/n8n-nodes-rrulenet.rruleNetScheduleTrigger",
+		"popularity": 0.333
+	},
+	{
+		"id": "n8n-nodes-base.googleFirebaseRealtimeDatabaseTool",
+		"popularity": 0.303
+	},
+	{
+		"id": "n8n-nodes-rd.rdStationCrmTrigger",
+		"popularity": 0.249
+	},
+	{
+		"id": "n8n-nodes-mindlytics.mindlytics",
+		"popularity": 0.172
 	},
 	{
 		"id": "n8n-nodes-kargo-entegrator.kargoEntegrator",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-android-texter.androidTexterTrigger",
-		"popularity": 0.053
+		"id": "n8n-nodes-renderpix.renderPix",
+		"popularity": 0.054
 	},
 	{
-		"id": "@simplyprint/n8n-nodes-simplyprint.simplyPrintTrigger",
-		"popularity": 0.084
+		"id": "n8n-nodes-caspioofficial.caspio",
+		"popularity": 0.054
 	},
 	{
-		"id": "n8n-nodes-vh3ai.vh3Ai",
-		"popularity": 0.294
-	},
-	{
-		"id": "@sendpulse/n8n-nodes-sendpulse.sendPulseA360",
-		"popularity": 0.149
-	},
-	{
-		"id": "@contactout/n8n-nodes-contactout.contactOut",
-		"popularity": 0.149
-	},
-	{
-		"id": "@klardaten/n8n-nodes-datevconnect.identityAndAccessManagement",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-postora.postora",
-		"popularity": 0.084
-	},
-	{
-		"id": "n8n-nodes-workdrive.workDriveTrigger",
-		"popularity": 0.084
-	},
-	{
-		"id": "@optimizely-campaign/n8n-nodes-optimizely-campaign.optimizelyCampaign",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-voico.voico",
-		"popularity": 0.184
+		"id": "n8n-nodes-teckel-ipfs.teckelIpfs",
+		"popularity": 0
 	},
 	{
 		"id": "n8n-nodes-android-texter.androidTexter",
-		"popularity": 0.084
+		"popularity": 0.086
 	},
 	{
-		"id": "@aistemsplitter/n8n-nodes-aistemsplitter.aiStemSplitter",
-		"popularity": 0.123
+		"id": "@optimizely-campaign/n8n-nodes-optimizely-campaign.optimizelyCampaign",
+		"popularity": 0.054
 	},
 	{
-		"id": "n8n-nodes-kargo-entegrator.kargoEntegratorTrigger",
+		"id": "@biztory/n8n-nodes-autom8-tableau-alert-trigger.autom8TableauAlertTrigger",
+		"popularity": 0.152
+	},
+	{
+		"id": "n8n-nodes-base.salesmate",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-vh3ai.vh3Ai",
+		"popularity": 0.344
+	},
+	{
+		"id": "@carbonvoice/n8n-nodes-carbonvoice.carbonVoice",
+		"popularity": 0.054
+	},
+	{
+		"id": "@sendpulse/n8n-nodes-sendpulse.sendPulseA360",
+		"popularity": 0.108
+	},
+	{
+		"id": "n8n-nodes-postora.postora",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-wildix.wildix",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-coreclaw.coreClaw",
+		"id": "n8n-nodes-base.theHiveProjectTool",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-voico.voico",
+		"popularity": 0.126
+	},
+	{
+		"id": "@momentum-labs/n8n-nodes-1lookup.oneLookup",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.weWorkSingleChatPushTool",
+		"id": "n8n-nodes-romulus.romulus",
 		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-pegalaunchpad.pegaLaunchpad",
-		"popularity": 0.084
-	},
-	{
-		"id": "@biztory/n8n-nodes-autom8-tableau-action-trigger.autom8TableauActionTrigger",
-		"popularity": 0.123
 	},
 	{
 		"id": "n8n-nodes-viral-app.viralApp",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-trainar.trainar",
-		"popularity": 0
+		"id": "n8n-nodes-peak.peak",
+		"popularity": 0.108
 	},
 	{
-		"id": "@consolidate-software/n8n-nodes-consolidate.consolidateTrigger",
-		"popularity": 0
-	},
-	{
-		"id": "@eleapis-n8n/n8n-nodes-eleapis.eleapisTrigger",
-		"popularity": 0.053
-	},
-	{
-		"id": "@musixmatch/n8n-nodes-musixmatch.musixmatch",
-		"popularity": 0.084
-	},
-	{
-		"id": "n8n-nodes-dataforseo.dataForSeoMerchantApi",
+		"id": "n8n-nodes-finimpulse.finImpulse",
 		"popularity": 0
 	},
 	{
@@ -448,27 +512,91 @@
 		"popularity": 0
 	},
 	{
-		"id": "@clod_io/n8n-nodes-clod.clod",
+		"id": "@optimizely-campaign/n8n-nodes-optimizely-campaign.optimizelyCampaignTrigger",
 		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-govee.govee",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-easyparser.easyparser",
+		"popularity": 0
+	},
+	{
+		"id": "@attachmentav/n8n-nodes-attachmentav.attachmentAV",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-albacross.albacrossTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.embeddingsHuggingFaceInference",
+		"popularity": 0.555
+	},
+	{
+		"id": "n8n-nodes-seleqt.seleqt",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-youtube-comments-downloader.youtubeCommentsDownloader",
+		"popularity": 0.296
+	},
+	{
+		"id": "n8n-nodes-resend.resendTrigger",
+		"popularity": 0.23
+	},
+	{
+		"id": "n8n-nodes-finviz.finviz",
+		"popularity": 0
+	},
+	{
+		"id": "@eleapis-n8n/n8n-nodes-eleapis.eleapisTrigger",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-rd.rdStationCrm",
+		"popularity": 0.337
+	},
+	{
+		"id": "n8n-nodes-browser-use-cloud.browserUse",
+		"popularity": 0.428
+	},
+	{
+		"id": "@biztory/n8n-nodes-autom8-tableau-action-trigger.autom8TableauActionTrigger",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-winston-ai.winstonAi",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-waapy.waapyTrigger",
+		"popularity": 0.163
+	},
+	{
+		"id": "@consolidate-software/n8n-nodes-consolidate.consolidateTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-emailbison-official.emailBison",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-romulus.romulusTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-paystack.paystack",
+		"popularity": 0.234
 	},
 	{
 		"id": "n8n-nodes-comdirect.comdirect",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-bridgegate.bridgegate",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-youtube-comments-downloader.youtubeCommentsDownloader",
-		"popularity": 0.314
-	},
-	{
-		"id": "n8n-nodes-sendit.sendItTrigger",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-winston-ai.winstonAi",
+		"id": "n8n-nodes-dataforseo.dataForSeoMerchantApi",
 		"popularity": 0
 	},
 	{
@@ -476,175 +604,19 @@
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-waapy.waapy",
-		"popularity": 0.168
-	},
-	{
-		"id": "n8n-nodes-waapy.waapyTrigger",
-		"popularity": 0.237
-	},
-	{
-		"id": "n8n-nodes-paystack.paystack",
-		"popularity": 0.268
-	},
-	{
-		"id": "n8n-nodes-romulus.romulusTrigger",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-romulus.romulus",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-pipelex.pipelex",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-liferay.liferay",
-		"popularity": 0.123
-	},
-	{
-		"id": "n8n-nodes-rd.rdStationCrm",
-		"popularity": 0.364
-	},
-	{
-		"id": "n8n-nodes-alohub.alohub",
-		"popularity": 0.137
-	},
-	{
-		"id": "@optimizely-campaign/n8n-nodes-optimizely-campaign.optimizelyCampaignTrigger",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-finimpulse.finImpulse",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-ckan.ckan",
-		"popularity": 0
-	},
-	{
-		"id": "@digitalocean/n8n-nodes-digitalocean-gradient-serverless-inference.digitalOceanGradientServerlessInference",
-		"popularity": 0.247
-	},
-	{
-		"id": "@attachmentav/n8n-nodes-attachmentav.attachmentAV",
-		"popularity": 0.053
-	},
-	{
-		"id": "@openemm/n8n-nodes-openemm.openEmmTrigger",
-		"popularity": 0
-	},
-	{
-		"id": "@peachai/n8n-nodes-peach.peach",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-govee.govee",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-recruspace.recruspace",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.mailchimpTrigger",
-		"popularity": 0.27
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.embeddingsHuggingFaceInference",
-		"popularity": 0.559
-	},
-	{
-		"id": "n8n-nodes-emailbison-official.emailBison",
-		"popularity": 0.208
-	},
-	{
-		"id": "n8n-nodes-paystack.paystackTrigger",
-		"popularity": 0.19
-	},
-	{
-		"id": "n8n-nodes-pdf-api-hub.pdfSplitMerge",
-		"popularity": 0.263
-	},
-	{
-		"id": "n8n-nodes-seleqt.seleqt",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-trainar.trainarTrigger",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-browser-use-cloud.browserUse",
-		"popularity": 0.429
-	},
-	{
-		"id": "n8n-nodes-resend.resendTrigger",
-		"popularity": 0.281
-	},
-	{
-		"id": "n8n-nodes-wildix.wildixTrigger",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-wawcd.wawcdSendMessage",
-		"popularity": 0.341
-	},
-	{
-		"id": "n8n-nodes-finviz.finviz",
+		"id": "n8n-nodes-base.weWorkSingleChatPushTool",
 		"popularity": 0
 	},
 	{
 		"id": "n8n-nodes-zai.zaiImage",
-		"popularity": 0.222
+		"popularity": 0.188
 	},
 	{
-		"id": "@alephantai/n8n-nodes-alephant-analytics.alephantUsage",
-		"popularity": 0.159
+		"id": "n8n-nodes-wawcd.wawcdSendMessage",
+		"popularity": 0.329
 	},
 	{
-		"id": "@truelist/n8n-nodes-truelist.truelist",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-kipps.kippsAi",
-		"popularity": 0.084
-	},
-	{
-		"id": "n8n-nodes-peak.peak",
-		"popularity": 0.19
-	},
-	{
-		"id": "n8n-nodes-easyparser.easyparser",
-		"popularity": 0
-	},
-	{
-		"id": "@finlight/n8n-nodes-finlight.finlightWebhookTrigger",
-		"popularity": 0.32
-	},
-	{
-		"id": "@nuacom/n8n-nodes-nuacom.nuacomTrigger",
-		"popularity": 0.202
-	},
-	{
-		"id": "n8n-nodes-base.awsTextractTool",
-		"popularity": 0.213
-	},
-	{
-		"id": "@chroniclehq/n8n-nodes-chronicle.chronicle",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-digitalsac.digitalsac",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-webcrawlerapi.webCrawlerApiNode",
-		"popularity": 0.326
-	},
-	{
-		"id": "n8n-nodes-albacross.albacrossTrigger",
+		"id": "n8n-nodes-wildix.wildixTrigger",
 		"popularity": 0
 	},
 	{
@@ -652,28 +624,120 @@
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.philipsHueTool",
-		"popularity": 0.489
+		"id": "n8n-nodes-recruspace.recruspace",
+		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.nextCloud",
-		"popularity": 0.535
+		"id": "n8n-nodes-trainar.trainar",
+		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-wawcd.wawcdTrigger",
-		"popularity": 0.23
+		"id": "n8n-nodes-ckan.ckan",
+		"popularity": 0
 	},
 	{
-		"id": "@nuacom/n8n-nodes-nuacom.nuacom",
-		"popularity": 0.279
+		"id": "n8n-nodes-webcrawlerapi.webCrawlerApiNode",
+		"popularity": 0.316
 	},
 	{
-		"id": "@rightech/n8n-nodes-ric.rightechIotCore",
-		"popularity": 0.084
+		"id": "@nuacom/n8n-nodes-nuacom.nuacomTrigger",
+		"popularity": 0.276
+	},
+	{
+		"id": "n8n-nodes-pdf-api-hub.pdfSplitMerge",
+		"popularity": 0.258
+	},
+	{
+		"id": "@clod_io/n8n-nodes-clod.clod",
+		"popularity": 0
+	},
+	{
+		"id": "@truelist/n8n-nodes-truelist.truelist",
+		"popularity": 0.086
+	},
+	{
+		"id": "@alephantai/n8n-nodes-alephant-analytics.alephantUsage",
+		"popularity": 0.108
+	},
+	{
+		"id": "n8n-nodes-sendit.sendItTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-pegalaunchpad.pegaLaunchpad",
+		"popularity": 0
+	},
+	{
+		"id": "@digitalocean/n8n-nodes-digitalocean-gradient-serverless-inference.digitalOceanGradientServerlessInference",
+		"popularity": 0.285
+	},
+	{
+		"id": "n8n-nodes-paystack.paystackTrigger",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-base.mailchimpTrigger",
+		"popularity": 0.245
+	},
+	{
+		"id": "@finlight/n8n-nodes-finlight.finlightWebhookTrigger",
+		"popularity": 0.285
+	},
+	{
+		"id": "n8n-nodes-kipps.kippsAi",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-digitalsac.digitalsac",
+		"popularity": 0.054
+	},
+	{
+		"id": "@peachai/n8n-nodes-peach.peach",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-liferay.liferay",
+		"popularity": 0.152
+	},
+	{
+		"id": "n8n-nodes-bridgegate.bridgegate",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.awsTextractTool",
+		"popularity": 0.222
+	},
+	{
+		"id": "n8n-nodes-alohub.alohub",
+		"popularity": 0.14
+	},
+	{
+		"id": "@chroniclehq/n8n-nodes-chronicle.chronicle",
+		"popularity": 0.126
+	},
+	{
+		"id": "@musixmatch/n8n-nodes-musixmatch.musixmatch",
+		"popularity": 0.054
+	},
+	{
+		"id": "@openemm/n8n-nodes-openemm.openEmmTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-waapy.waapy",
+		"popularity": 0.126
+	},
+	{
+		"id": "n8n-nodes-pipelex.pipelex",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-trainar.trainarTrigger",
+		"popularity": 0
 	},
 	{
 		"id": "n8n-nodes-weclapp.weclappTrigger",
-		"popularity": 0.053
+		"popularity": 0.054
 	},
 	{
 		"id": "@finlight/n8n-nodes-finlight.finlight",
@@ -684,519 +748,319 @@
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.lineTool",
-		"popularity": 0.314
+		"id": "n8n-nodes-base.nextCloud",
+		"popularity": 0.525
 	},
 	{
-		"id": "n8n-nodes-base.asanaTool",
-		"popularity": 0.371
+		"id": "n8n-nodes-base.philipsHueTool",
+		"popularity": 0.447
 	},
 	{
-		"id": "n8n-nodes-base.awsDynamoDb",
-		"popularity": 0.356
+		"id": "n8n-nodes-wawcd.wawcdTrigger",
+		"popularity": 0.252
 	},
 	{
-		"id": "@adcalls/n8n-nodes-call-tracking.AdCallsHook",
-		"popularity": 0.301
+		"id": "@nuacom/n8n-nodes-nuacom.nuacom",
+		"popularity": 0.332
 	},
 	{
-		"id": "n8n-nodes-faceless-video.facelessVideo",
-		"popularity": 0.288
-	},
-	{
-		"id": "@nodrel-dev/n8n-nodes-fedex.fedex",
-		"popularity": 0.226
-	},
-	{
-		"id": "@periodix/n8n-nodes-actions.linkedIn",
-		"popularity": 0.177
-	},
-	{
-		"id": "@francodesystems-npm/n8n-nodes-holded.holded",
-		"popularity": 0.263
-	},
-	{
-		"id": "@lucca/n8n-nodes-lucca.luccaWebhooks",
-		"popularity": 0.123
-	},
-	{
-		"id": "@woopsocial/n8n-nodes-woopsocial.woopSocial",
-		"popularity": 0.159
-	},
-	{
-		"id": "@nodrel-dev/n8n-nodes-ups.ups",
-		"popularity": 0.208
-	},
-	{
-		"id": "@lucca/n8n-nodes-lucca.lucca",
-		"popularity": 0.159
-	},
-	{
-		"id": "@strive-task/n8n-nodes-kanbano.kanbano",
-		"popularity": 0.184
-	},
-	{
-		"id": "n8n-nodes-vatis-transcribe.vatisTranscribe",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-ibm-quantum.ibmQuantumErrorTrigger",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-sendcloud.sendCloudTrigger",
-		"popularity": 0.084
-	},
-	{
-		"id": "n8n-nodes-nocrash.nocrash",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-hookdeploy.hookDeploy",
-		"popularity": 0.084
-	},
-	{
-		"id": "n8n-nodes-palatine-speech.palatineSpeech",
-		"popularity": 0.222
-	},
-	{
-		"id": "@wizcut/n8n-nodes-wizcut.wizcut",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-simplescraper.simpleScraper",
-		"popularity": 0.213
-	},
-	{
-		"id": "n8n-nodes-advbox.advbox",
-		"popularity": 0.253
-	},
-	{
-		"id": "n8n-nodes-zadarma-app.zadarmaTrigger",
-		"popularity": 0.266
-	},
-	{
-		"id": "@polotno/n8n-nodes-polotno-studio.polotnoStudio",
-		"popularity": 0.123
-	},
-	{
-		"id": "n8n-nodes-emailsherlock.emailSherlock",
-		"popularity": 0.23
-	},
-	{
-		"id": "n8n-nodes-cellystial.cellystial",
-		"popularity": 0.202
-	},
-	{
-		"id": "n8n-nodes-anyapi.anyApi",
-		"popularity": 0.053
-	},
-	{
-		"id": "@syndie/n8n-nodes-syndie.syndie",
-		"popularity": 0.149
-	},
-	{
-		"id": "n8n-nodes-sendcloud.sendCloud",
-		"popularity": 0.137
-	},
-	{
-		"id": "n8n-nodes-nimriz.nimriz",
-		"popularity": 0.159
-	},
-	{
-		"id": "n8n-nodes-doubleverify.doubleVerify",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-virtual-marketer.virtualMarketer",
-		"popularity": 0.053
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatNvidia",
-		"popularity": 0.606
-	},
-	{
-		"id": "n8n-nodes-base.metabase",
-		"popularity": 0.445
-	},
-	{
-		"id": "n8n-nodes-whatsapp-crm-marketing.waCrm",
-		"popularity": 0.417
-	},
-	{
-		"id": "n8n-nodes-htmlcsstoimage.htmlCssToImage",
-		"popularity": 0.425
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.embeddingsNvidia",
-		"popularity": 0.423
-	},
-	{
-		"id": "n8n-nodes-base.linear",
-		"popularity": 0.437
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStoreOracleDBVector",
-		"popularity": 0.374
-	},
-	{
-		"id": "n8n-nodes-wati.wati",
-		"popularity": 0.371
+		"id": "@rightech/n8n-nodes-ric.rightechIotCore",
+		"popularity": 0.054
 	},
 	{
 		"id": "@pdfless/n8n-nodes-pdfless.pdfless",
-		"popularity": 0.32
+		"popularity": 0.312
 	},
 	{
-		"id": "@wasapi/n8n-nodes-wasapi.wasapi",
-		"popularity": 0.255
+		"id": "n8n-nodes-faceless-video.facelessVideo",
+		"popularity": 0.299
 	},
 	{
-		"id": "n8n-nodes-apexverify.apexVerify",
-		"popularity": 0.149
-	},
-	{
-		"id": "@affeldt28/n8n-nodes-weclapp.weclapp",
-		"popularity": 0.149
-	},
-	{
-		"id": "n8n-nodes-geekflare-api.geekflare",
-		"popularity": 0.123
-	},
-	{
-		"id": "@onlyoffice/n8n-nodes-docspace.onlyofficeDocspace",
-		"popularity": 0.149
-	},
-	{
-		"id": "@manyreach/n8n-nodes-manyreach.manyreach",
-		"popularity": 0.247
-	},
-	{
-		"id": "n8n-nodes-unlimited-messaging.unlimitedMessaging",
-		"popularity": 0.137
-	},
-	{
-		"id": "n8n-nodes-privent.privent",
-		"popularity": 0.168
-	},
-	{
-		"id": "n8n-nodes-relayshield.relayShield",
-		"popularity": 0.137
-	},
-	{
-		"id": "@useinsider/n8n-nodes-insiderone.insiderOne",
+		"id": "n8n-nodes-palatine-speech.palatineSpeech",
 		"popularity": 0.217
 	},
 	{
-		"id": "n8n-nodes-captchasonic.captchaSonic",
-		"popularity": 0.208
+		"id": "n8n-nodes-wati.wati",
+		"popularity": 0.372
 	},
 	{
-		"id": "n8n-nodes-emailconnect.emailConnect",
-		"popularity": 0.084
+		"id": "n8n-nodes-base.lineTool",
+		"popularity": 0.306
 	},
 	{
-		"id": "n8n-nodes-vidiq.vidIq",
-		"popularity": 0.177
+		"id": "n8n-nodes-advbox.advbox",
+		"popularity": 0.188
 	},
 	{
-		"id": "@firstpromoter/n8n-nodes-firstpromoter.firstPromoterTrigger",
-		"popularity": 0.084
+		"id": "@wasapi/n8n-nodes-wasapi.wasapi",
+		"popularity": 0.242
 	},
 	{
-		"id": "n8n-nodes-infini-analytics.infiniAnalytics",
-		"popularity": 0.123
+		"id": "@nodrel-dev/n8n-nodes-fedex.fedex",
+		"popularity": 0.206
 	},
 	{
-		"id": "n8n-nodes-ibm-quantum.ibmQuantum",
-		"popularity": 0.244
+		"id": "n8n-nodes-unlimited-messaging.unlimitedMessaging",
+		"popularity": 0.14
 	},
 	{
-		"id": "@g-digital/n8n-nodes-gocertius.gocertius",
-		"popularity": 0.053
+		"id": "n8n-nodes-emailsherlock.emailSherlock",
+		"popularity": 0.086
 	},
 	{
-		"id": "n8n-nodes-scorechain.scorechain",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-emboss.emboss",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-astrolabe.astrolabe",
-		"popularity": 0.053
+		"id": "n8n-nodes-nocrash.nocrash",
+		"popularity": 0.126
 	},
 	{
 		"id": "n8n-nodes-emailconnect.emailConnectTrigger",
-		"popularity": 0.177
+		"popularity": 0
 	},
 	{
-		"id": "@mice-operations/n8n-nodes-miceoperations.miceoperations",
-		"popularity": 0.137
+		"id": "n8n-nodes-emailconnect.emailConnect",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-sendcloud.sendCloud",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-geekflare-api.geekflare",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-simplescraper.simpleScraper",
+		"popularity": 0.206
+	},
+	{
+		"id": "n8n-nodes-sendcloud.sendCloudTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-zadarma-app.zadarmaTrigger",
+		"popularity": 0.226
+	},
+	{
+		"id": "@lucca/n8n-nodes-lucca.luccaWebhooks",
+		"popularity": 0.152
+	},
+	{
+		"id": "@onlyoffice/n8n-nodes-docspace.onlyofficeDocspace",
+		"popularity": 0.206
+	},
+	{
+		"id": "n8n-nodes-ibm-quantum.ibmQuantum",
+		"popularity": 0.261
+	},
+	{
+		"id": "@useinsider/n8n-nodes-insiderone.insiderOne",
+		"popularity": 0.226
 	},
 	{
 		"id": "@loewencreville/n8n-nodes-ttn.ttn",
-		"popularity": 0.279
+		"popularity": 0
 	},
 	{
-		"id": "@loewencreville/n8n-nodes-ttn.ttnTrigger",
-		"popularity": 0.159
+		"id": "n8n-nodes-cellystial.cellystial",
+		"popularity": 0.201
 	},
 	{
-		"id": "n8n-nodes-appreviewbot.appReviewBot",
-		"popularity": 0.123
-	},
-	{
-		"id": "n8n-nodes-nimriz.nimrizTrigger",
-		"popularity": 0.084
+		"id": "@n8n/n8n-nodes-langchain.lmChatNvidia",
+		"popularity": 0.611
 	},
 	{
 		"id": "n8n-nodes-phacet-official.phacet",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-oxapay.oxapay",
+		"id": "@mice-operations/n8n-nodes-miceoperations.miceoperations",
+		"popularity": 0.14
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.embeddingsNvidia",
+		"popularity": 0.471
+	},
+	{
+		"id": "n8n-nodes-base.linear",
+		"popularity": 0.392
+	},
+	{
+		"id": "n8n-nodes-htmlcsstoimage.htmlCssToImage",
+		"popularity": 0.413
+	},
+	{
+		"id": "n8n-nodes-base.metabase",
+		"popularity": 0.423
+	},
+	{
+		"id": "n8n-nodes-whatsapp-crm-marketing.waCrm",
+		"popularity": 0.42
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreOracleDBVector",
+		"popularity": 0.359
+	},
+	{
+		"id": "@adcalls/n8n-nodes-call-tracking.AdCallsHook",
+		"popularity": 0.322
+	},
+	{
+		"id": "n8n-nodes-base.asanaTool",
+		"popularity": 0.368
+	},
+	{
+		"id": "n8n-nodes-base.awsDynamoDb",
+		"popularity": 0.298
+	},
+	{
+		"id": "@francodesystems-npm/n8n-nodes-holded.holded",
+		"popularity": 0.261
+	},
+	{
+		"id": "n8n-nodes-captchasonic.captchaSonic",
+		"popularity": 0.126
+	},
+	{
+		"id": "n8n-nodes-nimriz.nimriz",
+		"popularity": 0.163
+	},
+	{
+		"id": "@periodix/n8n-nodes-actions.linkedIn",
+		"popularity": 0.18
+	},
+	{
+		"id": "n8n-nodes-infini-analytics.infiniAnalytics",
+		"popularity": 0.152
+	},
+	{
+		"id": "n8n-nodes-privent.privent",
+		"popularity": 0.188
+	},
+	{
+		"id": "n8n-nodes-anyapi.anyApi",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-ibm-quantum.ibmQuantumErrorTrigger",
+		"popularity": 0.108
+	},
+	{
+		"id": "@firstpromoter/n8n-nodes-firstpromoter.firstPromoterTrigger",
+		"popularity": 0.108
+	},
+	{
+		"id": "@syndie/n8n-nodes-syndie.syndie",
+		"popularity": 0.152
+	},
+	{
+		"id": "n8n-nodes-nimriz.nimrizTrigger",
+		"popularity": 0.086
+	},
+	{
+		"id": "@lucca/n8n-nodes-lucca.lucca",
+		"popularity": 0.152
+	},
+	{
+		"id": "@woopsocial/n8n-nodes-woopsocial.woopSocial",
+		"popularity": 0.163
+	},
+	{
+		"id": "@loewencreville/n8n-nodes-ttn.ttnTrigger",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-sweeppea.sweeppea",
+		"id": "@g-digital/n8n-nodes-gocertius.gocertius",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-human-in-the-loop.hitlNode",
-		"popularity": 0.401
-	},
-	{
-		"id": "@llamaindex/n8n-nodes-llamacloud.llamaParsePlatform",
-		"popularity": 0.344
-	},
-	{
-		"id": "n8n-nodes-phacet-official.phacetTrigger",
+		"id": "@wizcut/n8n-nodes-wizcut.wizcut",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-rapiwa.rapiwaTrigger",
+		"id": "n8n-nodes-vidiq.vidIq",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-doubleverify.doubleVerify",
 		"popularity": 0
 	},
 	{
-		"id": "@wizcut/n8n-nodes-wizcut.wizcutTrigger",
+		"id": "@strive-task/n8n-nodes-kanbano.kanbano",
 		"popularity": 0
 	},
 	{
-		"id": "@divyanshu007/n8n-nodes-ratelimiter.rateLimiter",
-		"popularity": 0.275
+		"id": "n8n-nodes-virtual-marketer.virtualMarketer",
+		"popularity": 0.054
 	},
 	{
-		"id": "n8n-nodes-testmuai.testmuaiAgent",
-		"popularity": 0.285
+		"id": "n8n-nodes-hookdeploy.hookDeploy",
+		"popularity": 0.086
 	},
 	{
-		"id": "@crm-kraft/n8n-nodes-close.close",
-		"popularity": 0.445
-	},
-	{
-		"id": "n8n-nodes-companyenrich.companyEnrich",
-		"popularity": 0.149
-	},
-	{
-		"id": "n8n-nodes-ngram.ngramTriggerFailed",
-		"popularity": 0.123
-	},
-	{
-		"id": "@bilig/n8n-nodes-workpaper.biligWorkpaper",
+		"id": "n8n-nodes-astrolabe.astrolabe",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-aidenix.aidenix",
-		"popularity": 0.053
+		"id": "@affeldt28/n8n-nodes-weclapp.weclapp",
+		"popularity": 0.152
 	},
 	{
-		"id": "n8n-nodes-sendseven.sendSeven",
-		"popularity": 0.177
+		"id": "@manyreach/n8n-nodes-manyreach.manyreach",
+		"popularity": 0.14
 	},
 	{
-		"id": "@scopebound/n8n-nodes-scopebound.scopebound",
-		"popularity": 0.106
+		"id": "n8n-nodes-apexverify.apexVerify",
+		"popularity": 0.152
+	},
+	{
+		"id": "@polotno/n8n-nodes-polotno-studio.polotnoStudio",
+		"popularity": 0.126
+	},
+	{
+		"id": "n8n-nodes-relayshield.relayShield",
+		"popularity": 0.14
+	},
+	{
+		"id": "@nodrel-dev/n8n-nodes-ups.ups",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-vatis-transcribe.vatisTranscribe",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-scorechain.scorechain",
+		"popularity": 0.108
+	},
+	{
+		"id": "n8n-nodes-appreviewbot.appReviewBot",
+		"popularity": 0.126
+	},
+	{
+		"id": "n8n-nodes-emboss.emboss",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-spike.spikeTrigger",
+		"popularity": 0.054
 	},
 	{
 		"id": "n8n-nodes-screenshotrender.screenshotRender",
-		"popularity": 0.123
-	},
-	{
-		"id": "@mibo-ai/n8n-nodes-mibo-testing.miboTesting",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-deso.deso",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-declaw.declaw",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-biala-lista-vat.bialaListaVat",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-goodsender.goodSender",
-		"popularity": 0
+		"popularity": 0.054
 	},
 	{
 		"id": "n8n-nodes-preroll.preRoll",
 		"popularity": 0
 	},
 	{
-		"id": "@testsavant/n8n-nodes-testsavant.testSavantGuard",
-		"popularity": 0
+		"id": "@llamaindex/n8n-nodes-llamacloud.llamaParsePlatform",
+		"popularity": 0.372
 	},
 	{
-		"id": "n8n-nodes-donethat.doneThat",
-		"popularity": 0
+		"id": "@itechnotion/n8n-nodes-headless-saas-infographics.headlessSaas",
+		"popularity": 0.311
 	},
 	{
-		"id": "n8n-nodes-ceidg.ceidg",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-spike.spikeTrigger",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-ngram.ngram",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-tyme.tymeTrigger",
-		"popularity": 0.053
-	},
-	{
-		"id": "@uprock-ai/n8n-nodes-uprock.upRockCrawler",
-		"popularity": 0.3
-	},
-	{
-		"id": "@crm-kraft/n8n-nodes-close.closeTrigger",
-		"popularity": 0.33
-	},
-	{
-		"id": "@kapso/n8n-nodes-kapso.kapso",
-		"popularity": 0.306
-	},
-	{
-		"id": "n8n-nodes-smskub.Smskub",
-		"popularity": 0.24
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.embeddingsOracleDb",
-		"popularity": 0.263
-	},
-	{
-		"id": "n8n-nodes-usepdfmaker.usePdfMaker",
-		"popularity": 0.226
-	},
-	{
-		"id": "n8n-nodes-warmy-io.warmy",
-		"popularity": 0.287
-	},
-	{
-		"id": "n8n-nodes-peek-pro.peekProTrigger",
-		"popularity": 0.197
-	},
-	{
-		"id": "n8n-nodes-zadarma-app.zadarma",
-		"popularity": 0.23
-	},
-	{
-		"id": "n8n-nodes-resourceplanner.resourceplanner",
-		"popularity": 0.084
-	},
-	{
-		"id": "n8n-nodes-emailverify.emailVerify",
-		"popularity": 0.137
-	},
-	{
-		"id": "@continuumtracker/n8n-nodes-continuum-tracker.continuumTracker",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-keupera.keupera",
-		"popularity": 0.106
-	},
-	{
-		"id": "@checkilo/n8n-nodes-checkilo.checkilo",
-		"popularity": 0.255
-	},
-	{
-		"id": "n8n-nodes-pdfpipe.pdfPipe",
-		"popularity": 0.222
-	},
-	{
-		"id": "@presentations-ai/n8n-nodes-presentations-ai.presentationsAi",
-		"popularity": 0.202
-	},
-	{
-		"id": "n8n-nodes-socialfetch.socialFetch",
-		"popularity": 0.202
-	},
-	{
-		"id": "@green-api/n8n-nodes-max-greenapi.greenapi",
-		"popularity": 0.168
-	},
-	{
-		"id": "n8n-nodes-hookdeploy.hookDeployTrigger",
-		"popularity": 0.084
-	},
-	{
-		"id": "@bambuser/n8n-nodes-livecommerce.bambuserWebhookTrigger",
-		"popularity": 0.137
-	},
-	{
-		"id": "n8n-nodes-rentman.rentman",
-		"popularity": 0.19
-	},
-	{
-		"id": "n8n-nodes-tyme.tyme",
-		"popularity": 0.123
-	},
-	{
-		"id": "@mookielianhd/n8n-nodes-checkly.checkly",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-keplars.keplars",
-		"popularity": 0.084
-	},
-	{
-		"id": "@firstpromoter/n8n-nodes-firstpromoter.firstPromoter",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-fluidx.fluidX",
-		"popularity": 0.084
-	},
-	{
-		"id": "n8n-nodes-seatalk.seaTalkTrigger",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-dvelop.dvelopActions",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-seatalk.seaTalk",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-sendseven.sendSevenTrigger",
-		"popularity": 0.137
-	},
-	{
-		"id": "n8n-nodes-efficycrm.efficyTrigger",
-		"popularity": 0
-	},
-	{
-		"id": "@onlyoffice/n8n-nodes-docspace.onlyofficeDocspaceTrigger",
+		"id": "n8n-nodes-lindo.lindoTrigger",
 		"popularity": 0
 	},
 	{
@@ -1204,15 +1068,59 @@
 		"popularity": 0
 	},
 	{
+		"id": "n8n-nodes-seatalk.seaTalkTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "@uprock-ai/n8n-nodes-uprock.upRockCrawler",
+		"popularity": 0.28
+	},
+	{
+		"id": "@kapso/n8n-nodes-kapso.kapsoTrigger",
+		"popularity": 0.278
+	},
+	{
+		"id": "n8n-nodes-testmuai.testmuaiAgent",
+		"popularity": 0.261
+	},
+	{
+		"id": "@affeldt28/n8n-nodes-infinigate.infinigate",
+		"popularity": 0.108
+	},
+	{
+		"id": "@bambuser/n8n-nodes-livecommerce.bambuserWebhookTrigger",
+		"popularity": 0.152
+	},
+	{
+		"id": "n8n-nodes-biala-lista-vat.bialaListaVat",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-ceidg.ceidg",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-fluidx.fluidX",
+		"popularity": 0.152
+	},
+	{
+		"id": "n8n-nodes-seatalk.seaTalk",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-efficycrm.efficyTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "@firstpromoter/n8n-nodes-firstpromoter.firstPromoter",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-keupera.keupera",
+		"popularity": 0
+	},
+	{
 		"id": "n8n-nodes-cortana-ai.cortanaAi",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-growbro.growbroTrigger",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-veridion.veridion",
 		"popularity": 0
 	},
 	{
@@ -1220,235 +1128,295 @@
 		"popularity": 0
 	},
 	{
-		"id": "@itechnotion/n8n-nodes-headless-saas-infographics.headlessSaas",
-		"popularity": 0.309
+		"id": "n8n-nodes-donethat.doneThat",
+		"popularity": 0
 	},
 	{
-		"id": "@kapso/n8n-nodes-kapso.kapsoTrigger",
-		"popularity": 0.304
+		"id": "n8n-nodes-declaw.declaw",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-human-in-the-loop.hitlNode",
+		"popularity": 0.374
+	},
+	{
+		"id": "n8n-nodes-tyme.tymeTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-emailverify.emailVerify",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-tyme.tyme",
+		"popularity": 0.054
+	},
+	{
+		"id": "@bilig/n8n-nodes-workpaper.biligWorkpaper",
+		"popularity": 0
+	},
+	{
+		"id": "@crm-kraft/n8n-nodes-close.close",
+		"popularity": 0.422
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.embeddingsOracleDb",
+		"popularity": 0.245
+	},
+	{
+		"id": "n8n-nodes-usepdfmaker.usePdfMaker",
+		"popularity": 0.238
 	},
 	{
 		"id": "n8n-nodes-deep-ocr.deepOcr",
+		"popularity": 0.206
+	},
+	{
+		"id": "@kapso/n8n-nodes-kapso.kapso",
+		"popularity": 0.289
+	},
+	{
+		"id": "n8n-nodes-pdfpipe.pdfPipe",
+		"popularity": 0.242
+	},
+	{
+		"id": "n8n-nodes-ngram.ngramTriggerFailed",
+		"popularity": 0.14
+	},
+	{
+		"id": "@green-api/n8n-nodes-max-greenapi.greenapi",
+		"popularity": 0.14
+	},
+	{
+		"id": "@presentations-ai/n8n-nodes-presentations-ai.presentationsAi",
+		"popularity": 0.172
+	},
+	{
+		"id": "n8n-nodes-sendseven.sendSeven",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-keplars.keplars",
+		"popularity": 0.086
+	},
+	{
+		"id": "@onlyoffice/n8n-nodes-docspace.onlyofficeDocspaceTrigger",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-sendseven.sendSevenTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "@continuumtracker/n8n-nodes-continuum-tracker.continuumTracker",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-smskub.Smskub",
 		"popularity": 0.222
 	},
 	{
-		"id": "@affeldt28/n8n-nodes-infinigate.infinigate",
-		"popularity": 0.106
+		"id": "n8n-nodes-socialfetch.socialFetch",
+		"popularity": 0.163
 	},
 	{
-		"id": "n8n-nodes-onetap.onetap",
-		"popularity": 0.184
+		"id": "n8n-nodes-warmy-io.warmy",
+		"popularity": 0.282
 	},
 	{
-		"id": "@polotno/n8n-nodes-polotno-studio.polotnoStudioTrigger",
-		"popularity": 0.084
+		"id": "n8n-nodes-companyenrich.companyEnrich",
+		"popularity": 0.126
 	},
 	{
-		"id": "n8n-nodes-dhis2.dhis2",
-		"popularity": 0.053
+		"id": "n8n-nodes-oxapay.oxapay",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-resourceplanner.resourceplanner",
+		"popularity": 0.126
+	},
+	{
+		"id": "n8n-nodes-dvelop.dvelopActions",
+		"popularity": 0.126
+	},
+	{
+		"id": "@mookielianhd/n8n-nodes-checkly.checkly",
+		"popularity": 0.054
 	},
 	{
 		"id": "n8n-nodes-scribeless.scribeless",
-		"popularity": 0.084
+		"popularity": 0.086
 	},
 	{
-		"id": "n8n-nodes-lindo.lindoTrigger",
+		"id": "n8n-nodes-aidenix.aidenix",
+		"popularity": 0.054
+	},
+	{
+		"id": "@mibo-ai/n8n-nodes-mibo-testing.miboTesting",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-fondaro.fondaroTrigger",
-		"popularity": 0.137
+		"id": "n8n-nodes-peek-pro.peekProTrigger",
+		"popularity": 0.188
 	},
 	{
-		"id": "n8n-nodes-spike.spike",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-apogeoapi.apogeoAPI",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-acquibee.acquibee",
-		"popularity": 0.084
-	},
-	{
-		"id": "n8n-nodes-parcel-app.parcelApp",
-		"popularity": 0.084
-	},
-	{
-		"id": "n8n-nodes-carly.carly",
+		"id": "n8n-nodes-rapiwa.rapiwaTrigger",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-tacticalrmm.tacticalRmm",
-		"popularity": 0.106
+		"id": "@checkilo/n8n-nodes-checkilo.checkilo",
+		"popularity": 0.14
 	},
 	{
-		"id": "n8n-nodes-mentionfox.mentionFoxTrigger",
+		"id": "n8n-nodes-dhis2.dhis2",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-phacet-official.phacetTrigger",
 		"popularity": 0
 	},
 	{
-		"id": "@alephantai/n8n-nodes-alephant.alephant",
+		"id": "@wizcut/n8n-nodes-wizcut.wizcutTrigger",
 		"popularity": 0
 	},
 	{
-		"id": "@saberapp/n8n-nodes-saber.saber",
+		"id": "@polotno/n8n-nodes-polotno-studio.polotnoStudioTrigger",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-veridion.veridion",
 		"popularity": 0
 	},
 	{
-		"id": "@peedief/n8n-nodes-peedief.peedief",
-		"popularity": 0.237
-	},
-	{
-		"id": "@imagekit/n8n-nodes-imagekit.imagekit",
-		"popularity": 0.25
-	},
-	{
-		"id": "n8n-nodes-perfexcrm.perfexCrm",
-		"popularity": 0.25
-	},
-	{
-		"id": "@daytona/n8n-nodes-daytona.daytona",
-		"popularity": 0.226
-	},
-	{
-		"id": "@mookielianhd/n8n-nodes-hetzner-cloud.hetznerCloud",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-ngram.ngramTriggerCompleted",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-statista-api.statistaApi",
-		"popularity": 0.159
-	},
-	{
-		"id": "n8n-nodes-efficycrm.efficy",
-		"popularity": 0.137
-	},
-	{
-		"id": "@geoterritories/n8n-nodes-geoterritories.geoTerritories",
-		"popularity": 0.084
-	},
-	{
-		"id": "n8n-nodes-team-dynamix.teamDynamix",
-		"popularity": 0.149
-	},
-	{
-		"id": "n8n-nodes-adeu.adeu",
+		"id": "@testsavant/n8n-nodes-testsavant.testSavantGuard",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-rapiwa.rapiwa",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-fondaro.fondaro",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-dreem.dreem",
-		"popularity": 0.149
-	},
-	{
-		"id": "n8n-nodes-preroll.preRollTrigger",
+		"id": "@scopebound/n8n-nodes-scopebound.scopebound",
 		"popularity": 0
 	},
 	{
-		"id": "@mookielianhd/n8n-nodes-checkly.checklyTrigger",
+		"id": "n8n-nodes-sweeppea.sweeppea",
 		"popularity": 0
 	},
 	{
-		"id": "@saberapp/n8n-nodes-saber.saberTrigger",
+		"id": "n8n-nodes-growbro.growbroTrigger",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-growbro.growbro",
+		"id": "@divyanshu007/n8n-nodes-ratelimiter.rateLimiter",
+		"popularity": 0.309
+	},
+	{
+		"id": "@crm-kraft/n8n-nodes-close.closeTrigger",
+		"popularity": 0.32
+	},
+	{
+		"id": "n8n-nodes-zadarma-app.zadarma",
+		"popularity": 0.212
+	},
+	{
+		"id": "n8n-nodes-ngram.ngram",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-hookdeploy.hookDeployTrigger",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-goodsender.goodSender",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-ramsisa.ramsisa",
+		"id": "n8n-nodes-deso.deso",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-dageno-ai.dagenoApi",
-		"popularity": 0
+		"id": "n8n-nodes-onetap.onetap",
+		"popularity": 0.212
 	},
 	{
-		"id": "@syndie/n8n-nodes-syndie.syndieTrigger",
-		"popularity": 0.123
+		"id": "n8n-nodes-rentman.rentman",
+		"popularity": 0.18
 	},
 	{
 		"id": "n8n-nodes-lindo.lindo",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-launix.launixNode",
+		"id": "n8n-nodes-mentionfox.mentionFox",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-crawlsnap.crawlSnap",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-droptocdn.dropToCdn",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-scraperapi-official.scraperApi",
-		"popularity": 0.359
+		"id": "@mookielianhd/n8n-nodes-hetzner-cloud.hetznerCloud",
+		"popularity": 0.14
 	},
 	{
-		"id": "@cryptoapis-io/n8n-nodes-cryptoapis.cryptoApis",
-		"popularity": 0.24
-	},
-	{
-		"id": "n8n-nodes-bolten.bolten",
-		"popularity": 0.123
-	},
-	{
-		"id": "n8n-nodes-exayard.exayardTrigger",
+		"id": "@saberapp/n8n-nodes-saber.saber",
 		"popularity": 0
 	},
 	{
-		"id": "@evolution_infosystem/n8n-nodes-chatterfox.chatterfox",
-		"popularity": 0.19
+		"id": "n8n-nodes-ibm-quantum.ibmQuantumTrigger",
+		"popularity": 0.086
 	},
 	{
-		"id": "n8n-nodes-k2think.k2Think",
-		"popularity": 0.197
+		"id": "n8n-nodes-roapp.roapp",
+		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-joomreem-content.joomla",
-		"popularity": 0.25
-	},
-	{
-		"id": "n8n-nodes-perfexcrm.perfexCrmTrigger",
-		"popularity": 0.137
-	},
-	{
-		"id": "n8n-nodes-businessmap.businessmapTrigger",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-trugen.trugen",
-		"popularity": 0.123
-	},
-	{
-		"id": "@mlabsh/n8n-nodes-mlab.mlab",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-submitrax.submitraxTrigger",
-		"popularity": 0.106
-	},
-	{
-		"id": "@sinch/n8n-nodes-sinch.sinch",
-		"popularity": 0.084
+		"id": "n8n-nodes-team-dynamix.teamDynamix",
+		"popularity": 0
 	},
 	{
 		"id": "n8n-nodes-oxapay.oxapayTrigger",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-ibm-quantum.ibmQuantumTrigger",
-		"popularity": 0.053
+		"id": "n8n-nodes-spike.spike",
+		"popularity": 0.054
 	},
 	{
-		"id": "n8n-nodes-roapp.roapp",
+		"id": "n8n-nodes-rdsm.rdStationMarketing",
+		"popularity": 0.276
+	},
+	{
+		"id": "@cryptoapis-io/n8n-nodes-cryptoapis.cryptoApis",
+		"popularity": 0.217
+	},
+	{
+		"id": "n8n-nodes-ploomes.ploomes",
+		"popularity": 0.249
+	},
+	{
+		"id": "n8n-nodes-base.turiumOrbit7EnigmaTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-rapiwa.rapiwa",
+		"popularity": 0.108
+	},
+	{
+		"id": "n8n-nodes-efficycrm.efficy",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-parcel-app.parcelApp",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-dageno-ai.dagenoApi",
+		"popularity": 0
+	},
+	{
+		"id": "@nowcapital/n8n-nodes-nowcapital.nowCapital",
 		"popularity": 0
 	},
 	{
@@ -1456,103 +1424,19 @@
 		"popularity": 0
 	},
 	{
-		"id": "@admin_programini/n8n-nodes-monitorix360.monitorix360",
-		"popularity": 0.106
+		"id": "n8n-nodes-tacticalrmm.tacticalRmm",
+		"popularity": 0.108
 	},
 	{
-		"id": "n8n-nodes-droptocdn.dropToCdn",
-		"popularity": 0
+		"id": "@syndie/n8n-nodes-syndie.syndieTrigger",
+		"popularity": 0.126
 	},
 	{
-		"id": "n8n-nodes-syncx.syncXTrigger",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-fillout.filloutTrigger",
-		"popularity": 0.379
-	},
-	{
-		"id": "@nowcapital/n8n-nodes-nowcapital.nowCapital",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-shade.shade",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-stealthgpt.stealthGpt",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-syncx.syncX",
-		"popularity": 0
+		"id": "n8n-nodes-businessmap.businessmapTrigger",
+		"popularity": 0.108
 	},
 	{
 		"id": "n8n-nodes-musicgpt.musicGptTrigger",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-stemsplit.stemSplit",
-		"popularity": 0
-	},
-	{
-		"id": "@appomni/n8n-nodes-agentguard.agentguard",
-		"popularity": 0.247
-	},
-	{
-		"id": "n8n-nodes-guni.guni",
-		"popularity": 0.244
-	},
-	{
-		"id": "n8n-nodes-fluentc.fluentC",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.turiumOrbit7EnigmaTool",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-rdsm.rdStationMarketing",
-		"popularity": 0.23
-	},
-	{
-		"id": "@green-api/n8n-nodes-max-greenapi.greenapiTrigger",
-		"popularity": 0.084
-	},
-	{
-		"id": "@testdino/n8n-nodes-testdino.testDino",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-ploomes.ploomes",
-		"popularity": 0.053
-	},
-	{
-		"id": "@seamless-oss/n8n-nodes-seamless.seamless",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-mentionfox.mentionFox",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-datahyena.datahyena",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-crawlsnap.crawlSnap",
-		"popularity": 0.053
-	},
-	{
-		"id": "@imagekit/n8n-nodes-imagekit.imagekitTrigger",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-zenchef.zenchef",
-		"popularity": 0
-	},
-	{
-		"id": "@approx-tech/n8n-nodes-approx.approx",
 		"popularity": 0
 	},
 	{
@@ -1560,67 +1444,207 @@
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-chat-data.chatDataTrigger",
-		"popularity": 0.29
-	},
-	{
-		"id": "n8n-nodes-smstools.smstools",
-		"popularity": 0.288
-	},
-	{
-		"id": "n8n-nodes-submitrax.submitrax",
-		"popularity": 0.177
-	},
-	{
-		"id": "@mookielianhd/n8n-nodes-infisical.infisical",
-		"popularity": 0.137
-	},
-	{
-		"id": "@seventhingscompany/n8n-nodes-seventhings.seventhingsTrigger",
-		"popularity": 0.177
-	},
-	{
-		"id": "n8n-nodes-socialapis.socialApis",
-		"popularity": 0.137
-	},
-	{
-		"id": "n8n-nodes-musicgpt.musicGpt",
-		"popularity": 0.149
-	},
-	{
-		"id": "@seventhingscompany/n8n-nodes-seventhings.seventhings",
-		"popularity": 0.197
-	},
-	{
-		"id": "n8n-nodes-exayard.exayard",
-		"popularity": 0.184
-	},
-	{
-		"id": "n8n-nodes-rdsm.rdStationMarketingTrigger",
-		"popularity": 0.084
-	},
-	{
-		"id": "@streameye/n8n-nodes-streameye.streameye",
-		"popularity": 0.084
-	},
-	{
-		"id": "n8n-nodes-pulpo-wms.pulpoWms",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-polydoc.polyDoc",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-fondaro.fondaroPollingTrigger",
-		"popularity": 0.149
-	},
-	{
-		"id": "@woopsocial/n8n-nodes-woopsocial.woopSocialPostFailedTrigger",
+		"id": "@alephantai/n8n-nodes-alephant.alephant",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-signatrust.signatrust",
+		"id": "n8n-nodes-scraperapi-official.scraperApi",
+		"popularity": 0.342
+	},
+	{
+		"id": "@daytona/n8n-nodes-daytona.daytona",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-exayard.exayardTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-stealthgpt.stealthGpt",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-preroll.preRollTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-growbro.growbro",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-fillout.filloutTrigger",
+		"popularity": 0.36
+	},
+	{
+		"id": "n8n-nodes-k2think.k2Think",
+		"popularity": 0.18
+	},
+	{
+		"id": "n8n-nodes-carly.carly",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-statista-api.statistaApi",
+		"popularity": 0.108
+	},
+	{
+		"id": "n8n-nodes-perfexcrm.perfexCrm",
+		"popularity": 0.238
+	},
+	{
+		"id": "@admin_programini/n8n-nodes-monitorix360.monitorix360",
+		"popularity": 0.108
+	},
+	{
+		"id": "n8n-nodes-dreem.dreem",
+		"popularity": 0.108
+	},
+	{
+		"id": "n8n-nodes-ngram.ngramTriggerCompleted",
+		"popularity": 0.108
+	},
+	{
+		"id": "@imagekit/n8n-nodes-imagekit.imagekitTrigger",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-shade.shade",
+		"popularity": 0
+	},
+	{
+		"id": "@sinch/n8n-nodes-sinch.sinch",
+		"popularity": 0.086
+	},
+	{
+		"id": "@testdino/n8n-nodes-testdino.testDino",
+		"popularity": 0.054
+	},
+	{
+		"id": "@approx-tech/n8n-nodes-approx.approx",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-acquibee.acquibee",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-launix.launixNode",
+		"popularity": 0
+	},
+	{
+		"id": "@mlabsh/n8n-nodes-mlab.mlab",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-mentionfox.mentionFoxTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "@appomni/n8n-nodes-agentguard.agentguard",
+		"popularity": 0.245
+	},
+	{
+		"id": "n8n-nodes-adeu.adeu",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-fondaro.fondaroTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "@saberapp/n8n-nodes-saber.saberTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "@geoterritories/n8n-nodes-geoterritories.geoTerritories",
+		"popularity": 0
+	},
+	{
+		"id": "@mookielianhd/n8n-nodes-checkly.checklyTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-guni.guni",
+		"popularity": 0.234
+	},
+	{
+		"id": "@peedief/n8n-nodes-peedief.peedief",
+		"popularity": 0.234
+	},
+	{
+		"id": "n8n-nodes-joomreem-content.joomla",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-stemsplit.stemSplit",
+		"popularity": 0
+	},
+	{
+		"id": "@imagekit/n8n-nodes-imagekit.imagekit",
+		"popularity": 0.23
+	},
+	{
+		"id": "n8n-nodes-fluentc.fluentC",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-perfexcrm.perfexCrmTrigger",
+		"popularity": 0.126
+	},
+	{
+		"id": "n8n-nodes-trugen.trugen",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-apogeoapi.apogeoAPI",
+		"popularity": 0.054
+	},
+	{
+		"id": "@seamless-oss/n8n-nodes-seamless.seamless",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-bolten.bolten",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-syncx.syncXTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "@green-api/n8n-nodes-max-greenapi.greenapiTrigger",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-submitrax.submitraxTrigger",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-zenchef.zenchef",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-fondaro.fondaro",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-datahyena.datahyena",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-ramsisa.ramsisa",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-syncx.syncX",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-socialapis.socialApis",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-fondaro.fondaroPollingTrigger",
 		"popularity": 0
 	},
 	{
@@ -1628,15 +1652,7 @@
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-notsy.notsy",
-		"popularity": 0
-	},
-	{
-		"id": "@testdino/n8n-nodes-testdino.testDinoTrigger",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-encelade.enceladeTrigger",
+		"id": "n8n-nodes-signatrust.signatrust",
 		"popularity": 0
 	},
 	{
@@ -1644,11 +1660,19 @@
 		"popularity": 0
 	},
 	{
+		"id": "n8n-nodes-truthscan.truthscan",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-notsy.notsy",
+		"popularity": 0
+	},
+	{
 		"id": "n8n-nodes-encelade.encelade",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-truthscan.truthscan",
+		"id": "@streameye/n8n-nodes-streameye.streameye",
 		"popularity": 0
 	},
 	{
@@ -1656,19 +1680,63 @@
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.manualTrigger",
-		"popularity": 0.989
-	},
-	{
-		"id": "n8n-nodes-dust.dust",
-		"popularity": 0.341
-	},
-	{
-		"id": "n8n-nodes-cellystial.cellystialTrigger",
+		"id": "n8n-nodes-pulpo-wms.pulpoWms",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-relayion.relayionTrigger",
+		"id": "n8n-nodes-encelade.enceladeTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-exayard.exayard",
+		"popularity": 0
+	},
+	{
+		"id": "@testdino/n8n-nodes-testdino.testDinoTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-chat-data.chatDataTrigger",
+		"popularity": 0.276
+	},
+	{
+		"id": "n8n-nodes-smstools.smstools",
+		"popularity": 0.287
+	},
+	{
+		"id": "@mookielianhd/n8n-nodes-infisical.infisical",
+		"popularity": 0.172
+	},
+	{
+		"id": "n8n-nodes-submitrax.submitrax",
+		"popularity": 0.172
+	},
+	{
+		"id": "@seventhingscompany/n8n-nodes-seventhings.seventhingsTrigger",
+		"popularity": 0.172
+	},
+	{
+		"id": "@woopsocial/n8n-nodes-woopsocial.woopSocialPostFailedTrigger",
+		"popularity": 0.14
+	},
+	{
+		"id": "n8n-nodes-musicgpt.musicGpt",
+		"popularity": 0.108
+	},
+	{
+		"id": "n8n-nodes-polydoc.polyDoc",
+		"popularity": 0.108
+	},
+	{
+		"id": "n8n-nodes-rdsm.rdStationMarketingTrigger",
+		"popularity": 0.086
+	},
+	{
+		"id": "@seventhingscompany/n8n-nodes-seventhings.seventhings",
+		"popularity": 0.201
+	},
+	{
+		"id": "n8n-nodes-upvoty.upvoty",
 		"popularity": 0
 	},
 	{
@@ -1676,7 +1744,7 @@
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-relayion.relayion",
+		"id": "n8n-nodes-cellystial.cellystialTrigger",
 		"popularity": 0
 	},
 	{
@@ -1684,11 +1752,7 @@
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-periskop.periskop",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-resilience.resilience",
+		"id": "n8n-nodes-bolten.boltenTrigger",
 		"popularity": 0
 	},
 	{
@@ -1696,15 +1760,7 @@
 		"popularity": 0
 	},
 	{
-		"id": "@woopsocial/n8n-nodes-woopsocial.woopSocialPostPublishedTrigger",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-bolten.boltenTrigger",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-upvoty.upvoty",
+		"id": "n8n-nodes-relayion.relayionTrigger",
 		"popularity": 0
 	},
 	{
@@ -1712,1160 +1768,1204 @@
 		"popularity": 0
 	},
 	{
+		"id": "n8n-nodes-resilience.resilience",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-periskop.periskop",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-relayion.relayion",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.manualTrigger",
+		"popularity": 0.996
+	},
+	{
+		"id": "n8n-nodes-dust.dust",
+		"popularity": 0.294
+	},
+	{
+		"id": "@woopsocial/n8n-nodes-woopsocial.woopSocialPostPublishedTrigger",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-base.highLevel",
+		"popularity": 0.53
+	},
+	{
+		"id": "n8n-nodes-base.youTubeTool",
+		"popularity": 0.491
+	},
+	{
 		"id": "n8n-nodes-mailtrap.mailtrap",
-		"popularity": 0.283
+		"popularity": 0.276
 	},
 	{
 		"id": "n8n-nodes-base.affinityTool",
-		"popularity": 0.258
+		"popularity": 0.249
+	},
+	{
+		"id": "@ffmpeg-micro/n8n-nodes-ffmpeg-micro.ffmpegMicro",
+		"popularity": 0.245
+	},
+	{
+		"id": "@evolution_infosystem/n8n-nodes-chatterfox.chatterfox",
+		"popularity": 0.163
+	},
+	{
+		"id": "@open-banking-io/n8n-nodes-open-banking-io.openBankingIo",
+		"popularity": 0.126
+	},
+	{
+		"id": "@ffmpeg-micro/n8n-nodes-ffmpeg-micro.ffmpegMicroTrigger",
+		"popularity": 0.086
+	},
+	{
+		"id": "@itservtechnology/n8n-nodes-itoc360.itoc360",
+		"popularity": 0.206
 	},
 	{
 		"id": "n8n-nodes-base.xeroTool",
-		"popularity": 0.281
+		"popularity": 0.245
+	},
+	{
+		"id": "n8n-nodes-xmemory.xmemory",
+		"popularity": 0.163
+	},
+	{
+		"id": "@acrewity/n8n-nodes-acrewity.acrewity",
+		"popularity": 0.108
+	},
+	{
+		"id": "@probo/n8n-nodes-probo.probo",
+		"popularity": 0.212
+	},
+	{
+		"id": "n8n-nodes-llmpulse.llmPulse",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-socialapi.socialApi",
+		"popularity": 0.086
+	},
+	{
+		"id": "@open-banking-io/n8n-nodes-open-banking-io.openBankingIoTrigger",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-loopquest.loopQuest",
+		"popularity": 0.054
 	},
 	{
 		"id": "n8n-nodes-2captcha-official.twoCaptcha",
-		"popularity": 0.321
+		"popularity": 0.312
 	},
 	{
 		"id": "n8n-nodes-base.microsoftGraphSecurityTool",
-		"popularity": 0.287
+		"popularity": 0.261
 	},
 	{
 		"id": "n8n-nodes-base.Brandfetch",
-		"popularity": 0.197
+		"popularity": 0.201
 	},
 	{
 		"id": "n8n-nodes-base.zammadTool",
-		"popularity": 0.159
+		"popularity": 0.163
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.googleGemini",
-		"popularity": 0.843
+		"popularity": 0.847
 	},
 	{
 		"id": "n8n-nodes-fyo.fyo",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-resend.resend",
-		"popularity": 0.494
+		"popularity": 0.108
 	},
 	{
 		"id": "n8n-nodes-base.cron",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-neverbounce-email-verification.nbEmailVerification",
-		"popularity": 0.263
+		"id": "n8n-nodes-resend.resend",
+		"popularity": 0.482
 	},
 	{
-		"id": "n8n-nodes-base.graphqlTool",
-		"popularity": 0.268
+		"id": "@zerobounce/n8n-nodes-zerobounce.zeroBounce",
+		"popularity": 0.271
 	},
 	{
-		"id": "n8n-nodes-base.autopilot",
-		"popularity": 0.217
-	},
-	{
-		"id": "n8n-nodes-merge.mergeAgentHandlerTools",
-		"popularity": 0.25
-	},
-	{
-		"id": "@prospeo/n8n-nodes-prospeo.prospeo",
-		"popularity": 0.266
-	},
-	{
-		"id": "n8n-nodes-base.deepLTool",
-		"popularity": 0.159
-	},
-	{
-		"id": "n8n-nodes-base.freshworksCrm",
+		"id": "n8n-nodes-converthub.converthub",
 		"popularity": 0.258
-	},
-	{
-		"id": "n8n-nodes-base.ghostTool",
-		"popularity": 0.208
-	},
-	{
-		"id": "n8n-nodes-kipps.kippsAiChatbot",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.mailerLiteTrigger",
-		"popularity": 0.263
-	},
-	{
-		"id": "@datafix/n8n-nodes-exact-online.exactOnline",
-		"popularity": 0.319
-	},
-	{
-		"id": "n8n-nodes-base.freshdeskTool",
-		"popularity": 0.258
-	},
-	{
-		"id": "@easybits/n8n-nodes-extractor.easybitsExtractor",
-		"popularity": 0.213
-	},
-	{
-		"id": "n8n-nodes-base.humanticAi",
-		"popularity": 0.184
-	},
-	{
-		"id": "n8n-nodes-base.currentsTool",
-		"popularity": 0.247
-	},
-	{
-		"id": "n8n-nodes-personio-hr.personioHr",
-		"popularity": 0.202
 	},
 	{
 		"id": "n8n-nodes-base.awsLambdaTool",
-		"popularity": 0.159
-	},
-	{
-		"id": "n8n-nodes-base.mqttTool",
-		"popularity": 0.25
-	},
-	{
-		"id": "n8n-nodes-base.nasaTool",
-		"popularity": 0.217
-	},
-	{
-		"id": "n8n-nodes-base.autopilotTool",
-		"popularity": 0.149
-	},
-	{
-		"id": "n8n-nodes-base.wufooTrigger",
-		"popularity": 0.237
-	},
-	{
-		"id": "n8n-nodes-base.misp",
-		"popularity": 0.255
+		"popularity": 0.206
 	},
 	{
 		"id": "n8n-nodes-base.invoiceNinjaTool",
-		"popularity": 0.263
+		"popularity": 0.245
 	},
 	{
-		"id": "@contaazul/n8n-nodes-contaazul.contaAzul",
-		"popularity": 0.25
+		"id": "@easybits/n8n-nodes-extractor.easybitsExtractor",
+		"popularity": 0.222
 	},
 	{
-		"id": "n8n-nodes-base.helpScoutTrigger",
-		"popularity": 0.184
+		"id": "n8n-nodes-base.autopilotTool",
+		"popularity": 0.108
 	},
 	{
-		"id": "@solution25/n8n-nodes-shopware.shopware",
-		"popularity": 0.279
+		"id": "n8n-nodes-chatwork.chatwork",
+		"popularity": 0.217
 	},
 	{
-		"id": "@gotohuman/n8n-nodes-gotohuman.gotoHuman",
-		"popularity": 0.23
+		"id": "n8n-nodes-base.deepLTool",
+		"popularity": 0.14
 	},
 	{
-		"id": "n8n-nodes-base.travisCiTool",
-		"popularity": 0.253
+		"id": "n8n-nodes-base.autopilot",
+		"popularity": 0.206
+	},
+	{
+		"id": "n8n-nodes-base.surveyMonkeyTrigger",
+		"popularity": 0.273
+	},
+	{
+		"id": "n8n-nodes-base.nasaTool",
+		"popularity": 0.201
 	},
 	{
 		"id": "n8n-nodes-base.pagerDuty",
-		"popularity": 0.29
+		"popularity": 0.226
+	},
+	{
+		"id": "n8n-nodes-base.harvest",
+		"popularity": 0.261
+	},
+	{
+		"id": "n8n-nodes-base.graphqlTool",
+		"popularity": 0.263
+	},
+	{
+		"id": "n8n-nodes-base.freshworksCrm",
+		"popularity": 0.217
+	},
+	{
+		"id": "n8n-nodes-inoreader.inoreader",
+		"popularity": 0.222
+	},
+	{
+		"id": "n8n-nodes-base.convertKitTool",
+		"popularity": 0.212
+	},
+	{
+		"id": "@hyperflow-global/n8n-nodes-hyperflow-whatsapp.hyperflowWhatsAppTrigger",
+		"popularity": 0.172
+	},
+	{
+		"id": "@picsart/n8n-nodes-picsart-creative-apis.picsartVideo",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-base.mauticTrigger",
+		"popularity": 0.194
+	},
+	{
+		"id": "n8n-nodes-merge.mergeAgentHandlerTools",
+		"popularity": 0.212
+	},
+	{
+		"id": "n8n-nodes-base.mqttTool",
+		"popularity": 0.23
+	},
+	{
+		"id": "n8n-nodes-edenai.lmChatEdenAi",
+		"popularity": 0.356
+	},
+	{
+		"id": "n8n-nodes-base.ghostTool",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-base.dhlTool",
+		"popularity": 0.152
+	},
+	{
+		"id": "n8n-nodes-verifiemail.verifiEmail",
+		"popularity": 0.201
+	},
+	{
+		"id": "@jetbrains/n8n-nodes-youtrack.youtrack",
+		"popularity": 0.234
+	},
+	{
+		"id": "@prospeo/n8n-nodes-prospeo.prospeo",
+		"popularity": 0.245
+	},
+	{
+		"id": "n8n-nodes-base.misp",
+		"popularity": 0.258
+	},
+	{
+		"id": "n8n-nodes-byteplus.bytePlus",
+		"popularity": 0.222
+	},
+	{
+		"id": "n8n-nodes-base.helpScout",
+		"popularity": 0.238
+	},
+	{
+		"id": "n8n-nodes-bookstack.bookstack",
+		"popularity": 0.28
+	},
+	{
+		"id": "@gotohuman/n8n-nodes-gotohuman.gotoHuman",
+		"popularity": 0.222
+	},
+	{
+		"id": "n8n-nodes-base.oneSimpleApiTool",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-base.wufooTrigger",
+		"popularity": 0.212
+	},
+	{
+		"id": "n8n-nodes-personio-hr.personioHr",
+		"popularity": 0.212
+	},
+	{
+		"id": "n8n-nodes-late.late",
+		"popularity": 0.369
+	},
+	{
+		"id": "n8n-nodes-vikunja.vikunjaTrigger",
+		"popularity": 0.188
+	},
+	{
+		"id": "@scrapeops/n8n-nodes-scrapeops.ScrapeOps",
+		"popularity": 0.14
+	},
+	{
+		"id": "n8n-nodes-fluentc.fluentCTranslate",
+		"popularity": 0.054
+	},
+	{
+		"id": "@contaazul/n8n-nodes-contaazul.contaAzul",
+		"popularity": 0.234
+	},
+	{
+		"id": "n8n-nodes-base.currentsTool",
+		"popularity": 0.263
+	},
+	{
+		"id": "n8n-nodes-base.msg91",
+		"popularity": 0.23
+	},
+	{
+		"id": "n8n-nodes-wati.watiTrigger",
+		"popularity": 0.335
+	},
+	{
+		"id": "@ycloud-ai/n8n-nodes-ycloud.ycloud",
+		"popularity": 0.313
+	},
+	{
+		"id": "n8n-nodes-base.mailerLiteTrigger",
+		"popularity": 0.258
+	},
+	{
+		"id": "@solution25/n8n-nodes-shopware.shopware",
+		"popularity": 0.238
 	},
 	{
 		"id": "n8n-nodes-base.flowTrigger",
 		"popularity": 0.226
 	},
 	{
-		"id": "@jetbrains/n8n-nodes-youtrack.youtrack",
-		"popularity": 0.266
-	},
-	{
-		"id": "n8n-nodes-base.cortex",
-		"popularity": 0.217
-	},
-	{
-		"id": "n8n-nodes-base.zulip",
-		"popularity": 0.275
-	},
-	{
-		"id": "@hyperflow-global/n8n-nodes-hyperflow-whatsapp.hyperflowWhatsAppTrigger",
-		"popularity": 0.177
-	},
-	{
-		"id": "n8n-nodes-base.oneSimpleApiTool",
-		"popularity": 0.184
-	},
-	{
-		"id": "n8n-nodes-inoreader.inoreader",
-		"popularity": 0.233
-	},
-	{
-		"id": "@fibery/n8n-nodes-fibery.fibery",
-		"popularity": 0.281
-	},
-	{
-		"id": "n8n-nodes-base.dhlTool",
-		"popularity": 0.184
-	},
-	{
-		"id": "n8n-nodes-base.awsRekognition",
-		"popularity": 0.168
-	},
-	{
-		"id": "n8n-nodes-base.harvest",
-		"popularity": 0.266
-	},
-	{
-		"id": "n8n-nodes-base.sms77",
-		"popularity": 0.281
-	},
-	{
-		"id": "n8n-nodes-byteplus.bytePlus",
-		"popularity": 0.213
-	},
-	{
-		"id": "n8n-nodes-edenai.lmChatEdenAi",
-		"popularity": 0.379
-	},
-	{
-		"id": "n8n-nodes-wati.watiTrigger",
-		"popularity": 0.333
-	},
-	{
-		"id": "n8n-nodes-skyvern.skyvern",
-		"popularity": 0.244
-	},
-	{
-		"id": "n8n-nodes-chatwork.chatwork",
-		"popularity": 0.208
-	},
-	{
 		"id": "n8n-nodes-craftmypdf.craftMyPdf",
-		"popularity": 0.25
+		"popularity": 0.23
 	},
 	{
-		"id": "n8n-nodes-base.affinityTrigger",
-		"popularity": 0.25
-	},
-	{
-		"id": "@ycloud-ai/n8n-nodes-ycloud.ycloud",
-		"popularity": 0.327
-	},
-	{
-		"id": "n8n-nodes-base.surveyMonkeyTrigger",
-		"popularity": 0.294
-	},
-	{
-		"id": "n8n-nodes-fluentc.fluentCTranslate",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-base.postmarkTrigger",
-		"popularity": 0.159
-	},
-	{
-		"id": "n8n-nodes-base.mauticTrigger",
-		"popularity": 0.208
-	},
-	{
-		"id": "n8n-nodes-late.late",
-		"popularity": 0.352
-	},
-	{
-		"id": "n8n-nodes-verifiemail.verifiEmail",
-		"popularity": 0.217
-	},
-	{
-		"id": "n8n-nodes-dataforseo.dataForSeoSerpApi",
-		"popularity": 0.253
-	},
-	{
-		"id": "n8n-nodes-converthub.converthub",
-		"popularity": 0.266
-	},
-	{
-		"id": "@picsart/n8n-nodes-picsart-creative-apis.picsartVideo",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-base.microsoftDynamicsCrmTool",
-		"popularity": 0.226
-	},
-	{
-		"id": "n8n-nodes-base.helpScout",
-		"popularity": 0.237
-	},
-	{
-		"id": "n8n-nodes-bookstack.bookstack",
-		"popularity": 0.19
-	},
-	{
-		"id": "@scrapeops/n8n-nodes-scrapeops.ScrapeOps",
-		"popularity": 0.168
-	},
-	{
-		"id": "n8n-nodes-base.convertKitTool",
-		"popularity": 0.202
-	},
-	{
-		"id": "@zerobounce/n8n-nodes-zerobounce.zeroBounce",
+		"id": "n8n-nodes-neverbounce-email-verification.nbEmailVerification",
 		"popularity": 0.273
 	},
 	{
-		"id": "@heygenofficial/n8n-nodes-heygen-official.heygenTrigger",
-		"popularity": 0.261
+		"id": "n8n-nodes-base.travisCiTool",
+		"popularity": 0.234
 	},
 	{
-		"id": "n8n-nodes-vikunja.vikunjaTrigger",
-		"popularity": 0.27
+		"id": "n8n-nodes-kipps.kippsAiChatbot",
+		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.msg91",
-		"popularity": 0.217
+		"id": "n8n-nodes-base.freshdeskTool",
+		"popularity": 0.238
+	},
+	{
+		"id": "n8n-nodes-base.helpScoutTrigger",
+		"popularity": 0.188
+	},
+	{
+		"id": "n8n-nodes-base.sms77",
+		"popularity": 0.278
 	},
 	{
 		"id": "n8n-nodes-base.mattermostTool",
-		"popularity": 0.213
+		"popularity": 0.206
+	},
+	{
+		"id": "n8n-nodes-base.affinityTrigger",
+		"popularity": 0.234
+	},
+	{
+		"id": "@heygenofficial/n8n-nodes-heygen-official.heygenTrigger",
+		"popularity": 0.252
+	},
+	{
+		"id": "n8n-nodes-base.zulip",
+		"popularity": 0.238
+	},
+	{
+		"id": "n8n-nodes-base.postmarkTrigger",
+		"popularity": 0.188
+	},
+	{
+		"id": "@fibery/n8n-nodes-fibery.fibery",
+		"popularity": 0.242
+	},
+	{
+		"id": "n8n-nodes-base.awsRekognition",
+		"popularity": 0.126
 	},
 	{
 		"id": "n8n-nodes-abyssale.abyssale",
-		"popularity": 0.202
+		"popularity": 0.206
+	},
+	{
+		"id": "@datafix/n8n-nodes-exact-online.exactOnline",
+		"popularity": 0.311
+	},
+	{
+		"id": "n8n-nodes-dataforseo.dataForSeoSerpApi",
+		"popularity": 0.252
+	},
+	{
+		"id": "n8n-nodes-base.humanticAi",
+		"popularity": 0.172
+	},
+	{
+		"id": "n8n-nodes-skyvern.skyvern",
+		"popularity": 0.222
+	},
+	{
+		"id": "n8n-nodes-base.cortex",
+		"popularity": 0.234
+	},
+	{
+		"id": "n8n-nodes-base.microsoftDynamicsCrmTool",
+		"popularity": 0.23
 	},
 	{
 		"id": "@2chat/n8n-nodes-twochat.twoChatTrigger",
-		"popularity": 0.507
+		"popularity": 0.5
 	},
 	{
 		"id": "n8n-nodes-uploadtourl.uploadToUrl",
-		"popularity": 0.438
+		"popularity": 0.434
 	},
 	{
-		"id": "n8n-nodes-base.netlifyTool",
-		"popularity": 0.184
-	},
-	{
-		"id": "n8n-nodes-base.jwtTool",
-		"popularity": 0.149
-	},
-	{
-		"id": "n8n-nodes-parallel.parallel",
-		"popularity": 0.237
-	},
-	{
-		"id": "n8n-nodes-base.clockifyTrigger",
-		"popularity": 0.208
-	},
-	{
-		"id": "@replyio/n8n-nodes-reply.replyTrigger",
-		"popularity": 0.149
-	},
-	{
-		"id": "n8n-nodes-base.netlifyTrigger",
-		"popularity": 0.412
-	},
-	{
-		"id": "n8n-nodes-solapi.solapi",
-		"popularity": 0.3
-	},
-	{
-		"id": "n8n-nodes-dumplingai.dumplingAi",
-		"popularity": 0.084
-	},
-	{
-		"id": "@videosailor/n8n-nodes-videosailor.videoSailor",
-		"popularity": 0.321
-	},
-	{
-		"id": "n8n-nodes-base.contentful",
-		"popularity": 0.177
-	},
-	{
-		"id": "n8n-nodes-twelve-data.twelveData",
-		"popularity": 0.292
-	},
-	{
-		"id": "n8n-nodes-base.yourls",
-		"popularity": 0.197
-	},
-	{
-		"id": "n8n-nodes-taskpano.taskPano",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-base.mailchimpTool",
-		"popularity": 0.19
+		"id": "n8n-nodes-zohoteaminbox.zohoTeamInbox",
+		"popularity": 0.152
 	},
 	{
 		"id": "n8n-nodes-base.dropcontact",
-		"popularity": 0.263
+		"popularity": 0.258
+	},
+	{
+		"id": "@netgsm/n8n-nodes-netgsm.netgsm",
+		"popularity": 0.172
+	},
+	{
+		"id": "n8n-nodes-base.securityScorecard",
+		"popularity": 0.163
 	},
 	{
 		"id": "@zohomail/n8n-nodes-zohocalendar.zohoCalendar",
-		"popularity": 0.237
+		"popularity": 0.163
 	},
 	{
-		"id": "n8n-nodes-base.googleBooksTool",
-		"popularity": 0.263
+		"id": "n8n-nodes-adyntel.adyntel",
+		"popularity": 0.054
 	},
 	{
-		"id": "n8n-nodes-base.mandrill",
-		"popularity": 0.24
-	},
-	{
-		"id": "n8n-nodes-mallabe-barcodes.mallabeBarcodes",
-		"popularity": 0.23
-	},
-	{
-		"id": "@replyio/n8n-nodes-reply.reply",
-		"popularity": 0.23
-	},
-	{
-		"id": "n8n-nodes-base.awsSnsTrigger",
-		"popularity": 0.253
-	},
-	{
-		"id": "n8n-nodes-zitedb.ziteTrigger",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-ada.ada",
-		"popularity": 0.213
+		"id": "@base64ai/n8n-nodes-base64ai.base64ai",
+		"popularity": 0.222
 	},
 	{
 		"id": "n8n-nodes-scrapeless.scrapeless",
-		"popularity": 0.168
+		"popularity": 0.163
 	},
 	{
-		"id": "n8n-nodes-base.clockifyTool",
-		"popularity": 0.233
+		"id": "n8n-nodes-base.syncroMspTool",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-twelve-data.twelveData",
+		"popularity": 0.276
+	},
+	{
+		"id": "n8n-nodes-dataforseo.dataForSeoOnPageApi",
+		"popularity": 0.126
+	},
+	{
+		"id": "n8n-nodes-base.ciscoWebexTool",
+		"popularity": 0.188
+	},
+	{
+		"id": "@thingsboard/n8n-nodes-thingsboard.thingsBoard",
+		"popularity": 0.206
+	},
+	{
+		"id": "n8n-nodes-base.jenkinsTool",
+		"popularity": 0.163
+	},
+	{
+		"id": "@soniox/n8n-nodes-soniox.soniox",
+		"popularity": 0.234
+	},
+	{
+		"id": "n8n-nodes-base.jwtTool",
+		"popularity": 0.126
+	},
+	{
+		"id": "n8n-nodes-newsmanapp.newsman",
+		"popularity": 0.217
 	},
 	{
 		"id": "@orq-ai/n8n-nodes-orq.orqKnowledgeBaseSearch",
-		"popularity": 0.202
+		"popularity": 0.188
+	},
+	{
+		"id": "n8n-nodes-klicktipp.klicktipp",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-dataforseo.dataForSeoKeywordsApi",
+		"popularity": 0.245
+	},
+	{
+		"id": "n8n-nodes-solapi.solapi",
+		"popularity": 0.242
+	},
+	{
+		"id": "n8n-nodes-base.beeminder",
+		"popularity": 0.152
+	},
+	{
+		"id": "n8n-nodes-base.contentful",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-airparser.airparser",
+		"popularity": 0.201
+	},
+	{
+		"id": "n8n-nodes-ada.ada",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-dumplingai.dumplingAi",
+		"popularity": 0.126
+	},
+	{
+		"id": "@makingchatbots/n8n-nodes-genesys-cloud.genesysCloud",
+		"popularity": 0.206
+	},
+	{
+		"id": "@replyio/n8n-nodes-reply.replyTrigger",
+		"popularity": 0.108
 	},
 	{
 		"id": "@camb-ai/n8n-nodes-cambai.cambAi",
-		"popularity": 0.159
+		"popularity": 0.14
+	},
+	{
+		"id": "n8n-nodes-base.oura",
+		"popularity": 0.18
+	},
+	{
+		"id": "n8n-nodes-templatefox.templateFox",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-base.clockifyTool",
+		"popularity": 0.245
+	},
+	{
+		"id": "n8n-nodes-base.yourls",
+		"popularity": 0.188
+	},
+	{
+		"id": "n8n-nodes-authentica.authentica",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-ldxhub.ldxHub",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-zitedb.ziteTrigger",
+		"popularity": 0
 	},
 	{
 		"id": "@wizaco/n8n-nodes-wiza.wiza",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.ciscoWebexTool",
-		"popularity": 0.197
-	},
-	{
-		"id": "@thingsboard/n8n-nodes-thingsboard.thingsBoard",
-		"popularity": 0.226
-	},
-	{
-		"id": "n8n-nodes-awork.awork",
-		"popularity": 0.159
-	},
-	{
-		"id": "n8n-nodes-dataforseo.dataForSeoKeywordsApi",
-		"popularity": 0.244
-	},
-	{
-		"id": "n8n-nodes-klicktipp.klicktipp",
-		"popularity": 0.244
-	},
-	{
-		"id": "n8n-nodes-ldxhub.ldxHub",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-adyntel.adyntel",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-presenton.presenton",
-		"popularity": 0.177
-	},
-	{
-		"id": "n8n-nodes-base.beeminder",
-		"popularity": 0.159
-	},
-	{
-		"id": "n8n-nodes-dataforseo.dataForSeoOnPageApi",
-		"popularity": 0.149
-	},
-	{
 		"id": "n8n-nodes-base.venafiTlsProtectCloudTool",
-		"popularity": 0.168
-	},
-	{
-		"id": "n8n-nodes-ragmetrics.ragmetrics",
-		"popularity": 0.123
+		"popularity": 0.14
 	},
 	{
 		"id": "n8n-nodes-surveysparrow.surveySparrow",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-authentica.authentica",
-		"popularity": 0.123
-	},
-	{
-		"id": "n8n-nodes-base.oura",
-		"popularity": 0.19
-	},
-	{
-		"id": "n8n-nodes-air.air",
-		"popularity": 0.237
-	},
-	{
-		"id": "n8n-nodes-base.syncroMspTool",
-		"popularity": 0.123
-	},
-	{
-		"id": "@makingchatbots/n8n-nodes-genesys-cloud.genesysCloud",
-		"popularity": 0.202
-	},
-	{
-		"id": "n8n-nodes-templatefox.templateFox",
-		"popularity": 0.106
-	},
-	{
-		"id": "@base64ai/n8n-nodes-base64ai.base64ai",
-		"popularity": 0.233
+		"id": "n8n-nodes-base.netlifyTrigger",
+		"popularity": 0.42
 	},
 	{
 		"id": "n8n-nodes-base.boxTrigger",
-		"popularity": 0.292
+		"popularity": 0.285
 	},
 	{
-		"id": "n8n-nodes-imessage.photonIMessageTrigger",
-		"popularity": 0.255
+		"id": "n8n-nodes-base.googleBooksTool",
+		"popularity": 0.258
 	},
 	{
-		"id": "n8n-nodes-base.jenkinsTool",
-		"popularity": 0.208
-	},
-	{
-		"id": "n8n-nodes-base.awsSns",
-		"popularity": 0.23
-	},
-	{
-		"id": "n8n-nodes-shortio.Shortio",
-		"popularity": 0.23
-	},
-	{
-		"id": "n8n-nodes-airparser.airparser",
-		"popularity": 0.226
-	},
-	{
-		"id": "n8n-nodes-newsmanapp.newsman",
-		"popularity": 0.208
-	},
-	{
-		"id": "n8n-nodes-bulkpublish.bulkPublish",
-		"popularity": 0.208
-	},
-	{
-		"id": "n8n-nodes-zohoteaminbox.zohoTeamInbox",
-		"popularity": 0.159
-	},
-	{
-		"id": "@soniox/n8n-nodes-soniox.soniox",
-		"popularity": 0.244
-	},
-	{
-		"id": "n8n-nodes-base.keapTrigger",
-		"popularity": 0.177
-	},
-	{
-		"id": "@netgsm/n8n-nodes-netgsm.netgsm",
-		"popularity": 0.137
-	},
-	{
-		"id": "n8n-nodes-base.securityScorecard",
-		"popularity": 0.184
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatAlibabaCloud",
-		"popularity": 0.614
-	},
-	{
-		"id": "n8n-nodes-whatsable.whatsAbleTrigger",
-		"popularity": 0.56
-	},
-	{
-		"id": "n8n-nodes-base.apiTemplateIoTool",
-		"popularity": 0.197
-	},
-	{
-		"id": "n8n-nodes-docsautomator.docsAutomator",
-		"popularity": 0.213
-	},
-	{
-		"id": "n8n-nodes-base.keap",
-		"popularity": 0.24
-	},
-	{
-		"id": "n8n-nodes-newscatcher-catchall-pernode.newscatcher",
-		"popularity": 0.177
-	},
-	{
-		"id": "n8n-nodes-base.upleadTool",
-		"popularity": 0.168
-	},
-	{
-		"id": "@decodo/n8n-nodes-decodo.decodo",
+		"id": "n8n-nodes-base.mandrill",
 		"popularity": 0.217
 	},
 	{
-		"id": "n8n-nodes-base.seaTableTool",
-		"popularity": 0.159
+		"id": "@videosailor/n8n-nodes-videosailor.videoSailor",
+		"popularity": 0.252
+	},
+	{
+		"id": "n8n-nodes-shortio.Shortio",
+		"popularity": 0.152
+	},
+	{
+		"id": "n8n-nodes-taskpano.taskPano",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.clockifyTrigger",
+		"popularity": 0.18
+	},
+	{
+		"id": "n8n-nodes-imessage.photonIMessageTrigger",
+		"popularity": 0.266
+	},
+	{
+		"id": "n8n-nodes-presenton.presenton",
+		"popularity": 0.217
+	},
+	{
+		"id": "@replyio/n8n-nodes-reply.reply",
+		"popularity": 0.212
+	},
+	{
+		"id": "n8n-nodes-base.awsSnsTrigger",
+		"popularity": 0.226
+	},
+	{
+		"id": "n8n-nodes-air.air",
+		"popularity": 0.212
+	},
+	{
+		"id": "n8n-nodes-base.mailchimpTool",
+		"popularity": 0.172
+	},
+	{
+		"id": "n8n-nodes-base.netlifyTool",
+		"popularity": 0.172
+	},
+	{
+		"id": "n8n-nodes-parallel.parallel",
+		"popularity": 0.206
+	},
+	{
+		"id": "n8n-nodes-bulkpublish.bulkPublish",
+		"popularity": 0.194
+	},
+	{
+		"id": "n8n-nodes-base.keapTrigger",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-mallabe-barcodes.mallabeBarcodes",
+		"popularity": 0.152
+	},
+	{
+		"id": "n8n-nodes-awork.awork",
+		"popularity": 0.212
+	},
+	{
+		"id": "n8n-nodes-ragmetrics.ragmetrics",
+		"popularity": 0.108
+	},
+	{
+		"id": "n8n-nodes-base.awsSns",
+		"popularity": 0.194
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmChatAlibabaCloud",
+		"popularity": 0.635
+	},
+	{
+		"id": "n8n-nodes-whatsable.whatsAbleTrigger",
+		"popularity": 0.564
 	},
 	{
 		"id": "@onlyfansapi/n8n-nodes-onlyfansapi.onlyFans",
+		"popularity": 0.249
+	},
+	{
+		"id": "n8n-nodes-base.uproc",
+		"popularity": 0.126
+	},
+	{
+		"id": "n8n-nodes-botnoi-voice.botnoitts",
+		"popularity": 0.206
+	},
+	{
+		"id": "n8n-nodes-onepage.onepageTrigger",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-base.splunkTool",
+		"popularity": 0.28
+	},
+	{
+		"id": "@exploriumai/n8n-nodes-explorium-ai.exploriumApiNode",
+		"popularity": 0.226
+	},
+	{
+		"id": "n8n-nodes-base.workableTrigger",
+		"popularity": 0.14
+	},
+	{
+		"id": "@wix/n8n-nodes-wix.wix",
+		"popularity": 0.201
+	},
+	{
+		"id": "n8n-nodes-base.driftTool",
+		"popularity": 0.054
+	},
+	{
+		"id": "@telnyx/n8n-nodes-telnyx-ai.telnyxAi",
+		"popularity": 0.269
+	},
+	{
+		"id": "n8n-nodes-base.rundeck",
+		"popularity": 0.222
+	},
+	{
+		"id": "n8n-nodes-base.pushcut",
+		"popularity": 0.152
+	},
+	{
+		"id": "n8n-nodes-base.uptimeRobot",
+		"popularity": 0.212
+	},
+	{
+		"id": "n8n-nodes-gleanclient.gleanClient",
+		"popularity": 0.163
+	},
+	{
+		"id": "@watchflow/n8n-nodes-watchflow.watchflow",
+		"popularity": 0.18
+	},
+	{
+		"id": "n8n-nodes-dataforseo.dataForSeoLabsApi",
+		"popularity": 0.14
+	},
+	{
+		"id": "n8n-nodes-scrapingant.scrapingAnt",
+		"popularity": 0.163
+	},
+	{
+		"id": "@cometapi-dev/n8n-nodes-cometapi.cometApi",
+		"popularity": 0.217
+	},
+	{
+		"id": "n8n-nodes-justcall.justCall",
+		"popularity": 0.18
+	},
+	{
+		"id": "n8n-nodes-merge.mergeAgentHandler",
+		"popularity": 0.194
+	},
+	{
+		"id": "n8n-nodes-supermetrics.supermetrics",
+		"popularity": 0.108
+	},
+	{
+		"id": "n8n-nodes-mpesa-daraja.mpesa",
+		"popularity": 0.152
+	},
+	{
+		"id": "n8n-nodes-base.seaTableTool",
+		"popularity": 0.152
+	},
+	{
+		"id": "n8n-nodes-sap-odata.sapOData",
+		"popularity": 0.278
+	},
+	{
+		"id": "n8n-nodes-base.bubbleTool",
+		"popularity": 0.14
+	},
+	{
+		"id": "n8n-nodes-base.ciscoWebexTrigger",
+		"popularity": 0.201
+	},
+	{
+		"id": "@ainoflow/n8n-nodes-ainoflow.ainoflowConvert",
+		"popularity": 0.188
+	},
+	{
+		"id": "n8n-nodes-base.venafiTlsProtectDatacenterTool",
+		"popularity": 0.201
+	},
+	{
+		"id": "n8n-nodes-base.mailgunTool",
+		"popularity": 0.126
+	},
+	{
+		"id": "n8n-nodes-base.awsCognito",
+		"popularity": 0.152
+	},
+	{
+		"id": "n8n-nodes-base.googleBooks",
+		"popularity": 0.14
+	},
+	{
+		"id": "n8n-nodes-personio-hr.personioHrTrigger",
+		"popularity": 0.18
+	},
+	{
+		"id": "@zohosign/n8n-nodes-sign.zohoSignTrigger",
+		"popularity": 0.172
+	},
+	{
+		"id": "@eledo/n8n-nodes-eledo.eledo",
+		"popularity": 0.172
+	},
+	{
+		"id": "n8n-nodes-mallabe-images.mallabeImages",
+		"popularity": 0.108
+	},
+	{
+		"id": "n8n-nodes-base.uplead",
+		"popularity": 0.14
+	},
+	{
+		"id": "n8n-nodes-parseur.parseur",
+		"popularity": 0.126
+	},
+	{
+		"id": "n8n-nodes-contextualai.contextualAi",
+		"popularity": 0.188
+	},
+	{
+		"id": "n8n-nodes-vocallabs.vocallabs",
+		"popularity": 0.23
+	},
+	{
+		"id": "n8n-nodes-trackingtime.trackingtimeTrigger",
+		"popularity": 0.054
+	},
+	{
+		"id": "@biztory/n8n-nodes-tableau-rest-api.tableauRestApi",
+		"popularity": 0.304
+	},
+	{
+		"id": "n8n-nodes-base.bitwardenTool",
+		"popularity": 0.14
+	},
+	{
+		"id": "n8n-nodes-yepcode.yepCode",
+		"popularity": 0.172
+	},
+	{
+		"id": "n8n-nodes-imessage.photonIMessage",
+		"popularity": 0.276
+	},
+	{
+		"id": "n8n-nodes-base.oneSimpleApi",
+		"popularity": 0.126
+	},
+	{
+		"id": "n8n-nodes-linkup-so.linkup",
+		"popularity": 0.23
+	},
+	{
+		"id": "n8n-nodes-base.discourse",
+		"popularity": 0.172
+	},
+	{
+		"id": "n8n-nodes-base.upleadTool",
+		"popularity": 0.201
+	},
+	{
+		"id": "@enginemailer/n8n-nodes-enginemailer.enginemailer",
+		"popularity": 0.086
+	},
+	{
+		"id": "@alphainsiderinc/n8n-nodes-alphainsider.alphaInsider",
+		"popularity": 0.172
+	},
+	{
+		"id": "n8n-nodes-nimbasms.nimbaSMS",
+		"popularity": 0.108
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.memoryMotorhead",
+		"popularity": 0.108
+	},
+	{
+		"id": "n8n-nodes-screenshotbase.screenshotBase",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.taiga",
+		"popularity": 0.152
+	},
+	{
+		"id": "@urlbox/n8n-nodes-urlbox.urlbox",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-base.plivo",
+		"popularity": 0.238
+	},
+	{
+		"id": "n8n-nodes-base.agileCrmTool",
+		"popularity": 0.201
+	},
+	{
+		"id": "n8n-nodes-base.awsIam",
+		"popularity": 0.238
+	},
+	{
+		"id": "n8n-nodes-pagepixels-screenshots.pagePixelsScreenshots",
+		"popularity": 0.126
+	},
+	{
+		"id": "@waapi/n8n-nodes-waalaxy.waalaxy",
+		"popularity": 0.163
+	},
+	{
+		"id": "@youdotcom-oss/n8n-nodes-youdotcom.youDotCom",
+		"popularity": 0.172
+	},
+	{
+		"id": "n8n-nodes-base.apiTemplateIoTool",
+		"popularity": 0.188
+	},
+	{
+		"id": "n8n-nodes-channel-talk.channelTalk",
+		"popularity": 0.108
+	},
+	{
+		"id": "n8n-nodes-base.wiseTrigger",
+		"popularity": 0.172
+	},
+	{
+		"id": "n8n-nodes-newscatcher-catchall-pernode.newscatcher",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-docsautomator.docsAutomator",
+		"popularity": 0.126
+	},
+	{
+		"id": "@decodo/n8n-nodes-decodo.decodo",
+		"popularity": 0.14
+	},
+	{
+		"id": "n8n-nodes-base.strapiTool",
+		"popularity": 0.126
+	},
+	{
+		"id": "n8n-nodes-base.keap",
 		"popularity": 0.255
 	},
 	{
 		"id": "@phil-fetchski/n8n-nodes-zoho-cliq.zohoCliq",
-		"popularity": 0.285
-	},
-	{
-		"id": "n8n-nodes-sap-odata.sapOData",
-		"popularity": 0.255
-	},
-	{
-		"id": "n8n-nodes-base.bitwardenTool",
-		"popularity": 0.123
-	},
-	{
-		"id": "n8n-nodes-botnoi-voice.botnoitts",
-		"popularity": 0.177
-	},
-	{
-		"id": "n8n-nodes-base.wiseTrigger",
-		"popularity": 0.202
-	},
-	{
-		"id": "n8n-nodes-onepage.onepageTrigger",
-		"popularity": 0.184
-	},
-	{
-		"id": "@cometapi-dev/n8n-nodes-cometapi.cometApi",
-		"popularity": 0.208
-	},
-	{
-		"id": "@fellow/n8n-nodes-fellow.fellowTrigger",
-		"popularity": 0.197
-	},
-	{
-		"id": "@enginemailer/n8n-nodes-enginemailer.enginemailer",
-		"popularity": 0.084
-	},
-	{
-		"id": "n8n-nodes-scrapingant.scrapingAnt",
-		"popularity": 0.213
-	},
-	{
-		"id": "n8n-nodes-contextualai.contextualAi",
-		"popularity": 0.19
-	},
-	{
-		"id": "n8n-nodes-base.mailjetTrigger",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-base.googleBooks",
-		"popularity": 0.137
-	},
-	{
-		"id": "n8n-nodes-base.bubbleTool",
-		"popularity": 0.149
-	},
-	{
-		"id": "@telnyx/n8n-nodes-telnyx-ai.telnyxAi",
-		"popularity": 0.266
-	},
-	{
-		"id": "n8n-nodes-justcall.justCall",
-		"popularity": 0.226
-	},
-	{
-		"id": "n8n-nodes-base.plivo",
-		"popularity": 0.226
-	},
-	{
-		"id": "@wix/n8n-nodes-wix.wix",
-		"popularity": 0.226
-	},
-	{
-		"id": "n8n-nodes-base.agileCrmTool",
-		"popularity": 0.184
-	},
-	{
-		"id": "n8n-nodes-parseur.parseur",
-		"popularity": 0.149
-	},
-	{
-		"id": "n8n-nodes-base.pushcut",
-		"popularity": 0.208
-	},
-	{
-		"id": "n8n-nodes-base.oneSimpleApi",
-		"popularity": 0.084
-	},
-	{
-		"id": "@ainoflow/n8n-nodes-ainoflow.ainoflowConvert",
-		"popularity": 0.202
-	},
-	{
-		"id": "n8n-nodes-linkup-so.linkup",
-		"popularity": 0.275
-	},
-	{
-		"id": "@zohosign/n8n-nodes-sign.zohoSignTrigger",
-		"popularity": 0.197
-	},
-	{
-		"id": "n8n-nodes-base.strapiTool",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-base.awsCognito",
-		"popularity": 0.202
-	},
-	{
-		"id": "@exploriumai/n8n-nodes-explorium-ai.exploriumApiNode",
-		"popularity": 0.208
-	},
-	{
-		"id": "@apaleo/n8n-nodes-apaleo-official.apaleo",
-		"popularity": 0.29
-	},
-	{
-		"id": "n8n-nodes-base.rundeck",
-		"popularity": 0.213
-	},
-	{
-		"id": "n8n-nodes-dataforseo.dataForSeoLabsApi",
-		"popularity": 0.168
-	},
-	{
-		"id": "n8n-nodes-imessage.photonIMessage",
-		"popularity": 0.298
-	},
-	{
-		"id": "@urlbox/n8n-nodes-urlbox.urlbox",
-		"popularity": 0.159
-	},
-	{
-		"id": "@waapi/n8n-nodes-waalaxy.waalaxy",
-		"popularity": 0.217
-	},
-	{
-		"id": "n8n-nodes-base.uproc",
-		"popularity": 0.197
-	},
-	{
-		"id": "n8n-nodes-yepcode.yepCode",
-		"popularity": 0.184
-	},
-	{
-		"id": "@alphainsiderinc/n8n-nodes-alphainsider.alphaInsider",
-		"popularity": 0.19
-	},
-	{
-		"id": "n8n-nodes-merge.mergeAgentHandler",
-		"popularity": 0.197
-	},
-	{
-		"id": "n8n-nodes-supermetrics.supermetrics",
-		"popularity": 0.123
-	},
-	{
-		"id": "n8n-nodes-gleanclient.gleanClient",
-		"popularity": 0.149
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.memoryMotorhead",
-		"popularity": 0.149
-	},
-	{
-		"id": "n8n-nodes-channel-talk.channelTalk",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-screenshotbase.screenshotBase",
-		"popularity": 0.159
-	},
-	{
-		"id": "n8n-nodes-pagepixels-screenshots.pagePixelsScreenshots",
-		"popularity": 0.149
-	},
-	{
-		"id": "n8n-nodes-nimbasms.nimbaSMS",
-		"popularity": 0.084
-	},
-	{
-		"id": "@watchflow/n8n-nodes-watchflow.watchflow",
-		"popularity": 0.213
-	},
-	{
-		"id": "n8n-nodes-base.uptimeRobot",
-		"popularity": 0.202
-	},
-	{
-		"id": "n8n-nodes-base.awsIam",
-		"popularity": 0.255
-	},
-	{
-		"id": "n8n-nodes-vocallabs.vocallabs",
-		"popularity": 0.237
-	},
-	{
-		"id": "n8n-nodes-trackingtime.trackingtimeTrigger",
-		"popularity": 0.149
-	},
-	{
-		"id": "n8n-nodes-base.driftTool",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-personio-hr.personioHrTrigger",
-		"popularity": 0.177
-	},
-	{
-		"id": "n8n-nodes-checkmk.checkmk",
-		"popularity": 0.159
-	},
-	{
-		"id": "n8n-nodes-base.splunkTool",
-		"popularity": 0.25
-	},
-	{
-		"id": "n8n-nodes-mallabe-images.mallabeImages",
-		"popularity": 0.137
-	},
-	{
-		"id": "@eledo/n8n-nodes-eledo.eledo",
-		"popularity": 0.217
-	},
-	{
-		"id": "n8n-nodes-base.discourse",
-		"popularity": 0.237
-	},
-	{
-		"id": "n8n-nodes-base.mailgunTool",
-		"popularity": 0.137
-	},
-	{
-		"id": "n8n-nodes-base.workableTrigger",
-		"popularity": 0.177
-	},
-	{
-		"id": "n8n-nodes-mpesa-daraja.mpesa",
-		"popularity": 0.177
-	},
-	{
-		"id": "n8n-nodes-base.venafiTlsProtectDatacenterTool",
-		"popularity": 0.177
-	},
-	{
-		"id": "@biztory/n8n-nodes-tableau-rest-api.tableauRestApi",
-		"popularity": 0.315
-	},
-	{
-		"id": "n8n-nodes-base.taiga",
-		"popularity": 0.217
-	},
-	{
-		"id": "n8n-nodes-base.ciscoWebexTrigger",
-		"popularity": 0.279
-	},
-	{
-		"id": "@youdotcom-oss/n8n-nodes-youdotcom.youDotCom",
-		"popularity": 0.226
+		"popularity": 0.282
 	},
 	{
 		"id": "n8n-nodes-afipsdk.afipSdk",
-		"popularity": 0.202
+		"popularity": 0.14
 	},
 	{
-		"id": "n8n-nodes-base.uplead",
-		"popularity": 0.19
+		"id": "@apaleo/n8n-nodes-apaleo-official.apaleo",
+		"popularity": 0.263
+	},
+	{
+		"id": "@fellow/n8n-nodes-fellow.fellowTrigger",
+		"popularity": 0.14
+	},
+	{
+		"id": "n8n-nodes-base.mailjetTrigger",
+		"popularity": 0.086
+	},
+	{
+		"id": "n8n-nodes-checkmk.checkmk",
+		"popularity": 0.152
 	},
 	{
 		"id": "@green-api/n8n-nodes-whatsapp-greenapi.greenapi",
-		"popularity": 0.387
-	},
-	{
-		"id": "n8n-nodes-base.codaTool",
-		"popularity": 0.217
-	},
-	{
-		"id": "n8n-nodes-loops.loops",
-		"popularity": 0.222
-	},
-	{
-		"id": "@oregister/n8n-nodes-openregister.openRegister",
-		"popularity": 0.184
-	},
-	{
-		"id": "@a700/n8n-nodes-agent700.agent700Agent",
-		"popularity": 0.159
-	},
-	{
-		"id": "n8n-nodes-base.bambooHrTool",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-base.taigaTrigger",
-		"popularity": 0.053
-	},
-	{
-		"id": "n8n-nodes-pachca.pachca",
-		"popularity": 0.202
-	},
-	{
-		"id": "n8n-nodes-base.awsCertificateManager",
-		"popularity": 0.19
-	},
-	{
-		"id": "n8n-nodes-base.mailcheckTool",
-		"popularity": 0.123
-	},
-	{
-		"id": "n8n-nodes-base.erpNextTool",
-		"popularity": 0.277
-	},
-	{
-		"id": "@decisionrules/n8n-nodes-decisionrules.decisionRules",
-		"popularity": 0.202
-	},
-	{
-		"id": "@ekyte/n8n-nodes-ekyte.eKyteAction",
-		"popularity": 0.197
-	},
-	{
-		"id": "@docuseal/n8n-nodes-docuseal.docusealTrigger",
-		"popularity": 0.208
-	},
-	{
-		"id": "n8n-nodes-base.koBoToolbox",
-		"popularity": 0.197
-	},
-	{
-		"id": "n8n-nodes-base.seaTableTrigger",
-		"popularity": 0.202
-	},
-	{
-		"id": "n8n-nodes-infranodus.infranodus",
-		"popularity": 0.149
-	},
-	{
-		"id": "n8n-nodes-coresignal-api.coresignal",
-		"popularity": 0.222
-	},
-	{
-		"id": "@xano/n8n-nodes-xano.xano",
-		"popularity": 0.123
-	},
-	{
-		"id": "n8n-nodes-seo-content-machine.seoContentMachine",
-		"popularity": 0.208
-	},
-	{
-		"id": "n8n-nodes-base.googlePerspective",
-		"popularity": 0.168
-	},
-	{
-		"id": "@hyperflow-global/n8n-nodes-hyperflow-whatsapp.hyperflowWhatsApp",
-		"popularity": 0.149
-	},
-	{
-		"id": "n8n-nodes-base.autopilotTrigger",
-		"popularity": 0.197
-	},
-	{
-		"id": "n8n-nodes-base.mediumTool",
-		"popularity": 0.149
-	},
-	{
-		"id": "@globalping/n8n-nodes-globalping.globalping",
-		"popularity": 0.19
-	},
-	{
-		"id": "n8n-nodes-base.kafkaTool",
-		"popularity": 0.168
-	},
-	{
-		"id": "n8n-nodes-base.BrandfetchTool",
-		"popularity": 0.197
-	},
-	{
-		"id": "n8n-nodes-invoice-api-xhub.invoiceXhub",
-		"popularity": 0.137
-	},
-	{
-		"id": "n8n-nodes-base.yourlsTool",
-		"popularity": 0.137
-	},
-	{
-		"id": "n8n-nodes-peek-pro.peekPro",
-		"popularity": 0.237
-	},
-	{
-		"id": "n8n-nodes-base.gongTool",
-		"popularity": 0.137
-	},
-	{
-		"id": "n8n-nodes-wcrm.wcrm",
-		"popularity": 0.159
-	},
-	{
-		"id": "n8n-nodes-mrscraper.mrscraper",
-		"popularity": 0.137
-	},
-	{
-		"id": "n8n-nodes-streamline.streamline",
-		"popularity": 0.217
-	},
-	{
-		"id": "n8n-nodes-base.gristTool",
-		"popularity": 0.123
-	},
-	{
-		"id": "n8n-nodes-aimfox.aimfox",
-		"popularity": 0.261
-	},
-	{
-		"id": "n8n-nodes-alive5.alive5",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-mercury.mercuryTrigger",
-		"popularity": 0.208
-	},
-	{
-		"id": "n8n-nodes-docuwriter-ai.docuWriter",
-		"popularity": 0.168
-	},
-	{
-		"id": "n8n-nodes-base.koBoToolboxTrigger",
-		"popularity": 0.168
-	},
-	{
-		"id": "n8n-nodes-pushinator.pushinator",
-		"popularity": 0.19
-	},
-	{
-		"id": "n8n-nodes-csvbox.csvboxTrigger",
-		"popularity": 0.177
-	},
-	{
-		"id": "@gptmaker/n8n-nodes-gptmaker.gptMaker",
-		"popularity": 0.197
-	},
-	{
-		"id": "n8n-nodes-base.chargebeeTrigger",
-		"popularity": 0.159
-	},
-	{
-		"id": "n8n-nodes-capsolver.capSolver",
-		"popularity": 0.208
-	},
-	{
-		"id": "n8n-nodes-base.rabbitmqTool",
-		"popularity": 0.19
-	},
-	{
-		"id": "n8n-nodes-base.googlePerspectiveTool",
-		"popularity": 0.137
-	},
-	{
-		"id": "n8n-nodes-zitedb.zite",
-		"popularity": 0.149
-	},
-	{
-		"id": "@queng123/n8n-nodes-beeper.beeper",
-		"popularity": 0.184
-	},
-	{
-		"id": "n8n-nodes-blooio.blooioMessaging",
-		"popularity": 0.253
-	},
-	{
-		"id": "n8n-nodes-base.contentfulTool",
-		"popularity": 0.106
-	},
-	{
-		"id": "n8n-nodes-base.oktaTool",
-		"popularity": 0.159
-	},
-	{
-		"id": "n8n-nodes-beyondpresence.beyondPresence",
-		"popularity": 0.159
-	},
-	{
-		"id": "n8n-nodes-base.invoiceNinjaTrigger",
-		"popularity": 0.197
-	},
-	{
-		"id": "n8n-nodes-base.lemlistTool",
-		"popularity": 0.123
-	},
-	{
-		"id": "n8n-nodes-base.unleashedSoftwareTool",
-		"popularity": 0.237
-	},
-	{
-		"id": "@seranking/n8n-nodes-seranking.seRanking",
-		"popularity": 0.294
+		"popularity": 0.391
 	},
 	{
 		"id": "@actaport/n8n-nodes-actaport.actaport",
-		"popularity": 0.279
+		"popularity": 0.261
 	},
 	{
-		"id": "n8n-nodes-straico-official.straicoOfficial",
+		"id": "n8n-nodes-base.codaTool",
+		"popularity": 0.188
+	},
+	{
+		"id": "n8n-nodes-base.koBoToolbox",
+		"popularity": 0.222
+	},
+	{
+		"id": "@hyperflow-global/n8n-nodes-hyperflow-whatsapp.hyperflowWhatsApp",
+		"popularity": 0.152
+	},
+	{
+		"id": "n8n-nodes-base.googlePerspectiveTool",
+		"popularity": 0.14
+	},
+	{
+		"id": "n8n-nodes-base.unleashedSoftwareTool",
+		"popularity": 0.226
+	},
+	{
+		"id": "n8n-nodes-capsolver.capSolver",
+		"popularity": 0.152
+	},
+	{
+		"id": "@docuseal/n8n-nodes-docuseal.docusealTrigger",
+		"popularity": 0.14
+	},
+	{
+		"id": "n8n-nodes-infranodus.infranodus",
+		"popularity": 0.14
+	},
+	{
+		"id": "n8n-nodes-docuwriter-ai.docuWriter",
+		"popularity": 0.172
+	},
+	{
+		"id": "n8n-nodes-peek-pro.peekPro",
+		"popularity": 0.258
+	},
+	{
+		"id": "n8n-nodes-base.lemlistTool",
+		"popularity": 0.194
+	},
+	{
+		"id": "n8n-nodes-base.yourlsTool",
+		"popularity": 0.108
+	},
+	{
+		"id": "n8n-nodes-blooio.blooioMessaging",
+		"popularity": 0.263
+	},
+	{
+		"id": "@ekyte/n8n-nodes-ekyte.eKyteAction",
+		"popularity": 0.201
+	},
+	{
+		"id": "@seranking/n8n-nodes-seranking.seRanking",
+		"popularity": 0.261
+	},
+	{
+		"id": "@decisionrules/n8n-nodes-decisionrules.decisionRules",
+		"popularity": 0.212
+	},
+	{
+		"id": "@queng123/n8n-nodes-beeper.beeper",
+		"popularity": 0.054
+	},
+	{
+		"id": "@xano/n8n-nodes-xano.xano",
+		"popularity": 0.108
+	},
+	{
+		"id": "n8n-nodes-seo-content-machine.seoContentMachine",
+		"popularity": 0.212
+	},
+	{
+		"id": "n8n-nodes-zitedb.zite",
+		"popularity": 0.054
+	},
+	{
+		"id": "n8n-nodes-mercury.mercuryTrigger",
 		"popularity": 0.217
 	},
 	{
-		"id": "n8n-nodes-base.filter",
-		"popularity": 0.834
+		"id": "n8n-nodes-base.awsCertificateManager",
+		"popularity": 0.172
 	},
 	{
-		"id": "n8n-nodes-base.wait",
-		"popularity": 0.837
+		"id": "n8n-nodes-base.gristTool",
+		"popularity": 0.126
 	},
 	{
-		"id": "n8n-nodes-base.googleDrive",
-		"popularity": 0.85
+		"id": "n8n-nodes-straico-official.straicoOfficial",
+		"popularity": 0.126
 	},
 	{
-		"id": "n8n-nodes-base.googleSheetsTool",
-		"popularity": 0.849
+		"id": "n8n-nodes-base.autopilotTrigger",
+		"popularity": 0.152
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.agentTool",
-		"popularity": 0.808
+		"id": "n8n-nodes-base.gongTool",
+		"popularity": 0.126
 	},
 	{
-		"id": "n8n-nodes-base.gmailTrigger",
-		"popularity": 0.806
+		"id": "@globalping/n8n-nodes-globalping.globalping",
+		"popularity": 0.172
 	},
 	{
-		"id": "n8n-nodes-base.extractFromFile",
-		"popularity": 0.809
+		"id": "n8n-nodes-base.bambooHrTool",
+		"popularity": 0.152
 	},
 	{
-		"id": "n8n-nodes-base.splitOut",
-		"popularity": 0.811
+		"id": "n8n-nodes-base.taigaTrigger",
+		"popularity": 0.054
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
-		"popularity": 0.799
+		"id": "n8n-nodes-mrscraper.mrscraper",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.contentfulTool",
+		"popularity": 0.14
+	},
+	{
+		"id": "n8n-nodes-base.invoiceNinjaTrigger",
+		"popularity": 0.226
+	},
+	{
+		"id": "n8n-nodes-invoice-api-xhub.invoiceXhub",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-wcrm.wcrm",
+		"popularity": 0.14
+	},
+	{
+		"id": "n8n-nodes-loops.loops",
+		"popularity": 0.206
+	},
+	{
+		"id": "@gptmaker/n8n-nodes-gptmaker.gptMaker",
+		"popularity": 0.23
+	},
+	{
+		"id": "n8n-nodes-base.kafkaTool",
+		"popularity": 0.18
+	},
+	{
+		"id": "n8n-nodes-beyondpresence.beyondPresence",
+		"popularity": 0.172
+	},
+	{
+		"id": "n8n-nodes-csvbox.csvboxTrigger",
+		"popularity": 0.201
+	},
+	{
+		"id": "n8n-nodes-base.koBoToolboxTrigger",
+		"popularity": 0.222
+	},
+	{
+		"id": "n8n-nodes-base.erpNextTool",
+		"popularity": 0.255
+	},
+	{
+		"id": "n8n-nodes-alive5.alive5",
+		"popularity": 0.14
+	},
+	{
+		"id": "n8n-nodes-coresignal-api.coresignal",
+		"popularity": 0.18
+	},
+	{
+		"id": "n8n-nodes-base.googlePerspective",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-base.seaTableTrigger",
+		"popularity": 0.188
+	},
+	{
+		"id": "@oregister/n8n-nodes-openregister.openRegister",
+		"popularity": 0.172
+	},
+	{
+		"id": "n8n-nodes-streamline.streamline",
+		"popularity": 0.188
+	},
+	{
+		"id": "n8n-nodes-base.mailcheckTool",
+		"popularity": 0.126
+	},
+	{
+		"id": "n8n-nodes-pushinator.pushinator",
+		"popularity": 0.18
+	},
+	{
+		"id": "n8n-nodes-base.chargebeeTrigger",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-base.rabbitmqTool",
+		"popularity": 0.188
+	},
+	{
+		"id": "n8n-nodes-base.oktaTool",
+		"popularity": 0.14
+	},
+	{
+		"id": "n8n-nodes-aimfox.aimfox",
+		"popularity": 0.249
+	},
+	{
+		"id": "n8n-nodes-pachca.pachca",
+		"popularity": 0.234
+	},
+	{
+		"id": "@a700/n8n-nodes-agent700.agent700Agent",
+		"popularity": 0.206
+	},
+	{
+		"id": "n8n-nodes-base.mediumTool",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-base.BrandfetchTool",
+		"popularity": 0.172
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.chatTrigger",
-		"popularity": 0.949
+		"popularity": 0.955
 	},
 	{
 		"id": "n8n-nodes-base.code",
@@ -2873,55 +2973,55 @@
 	},
 	{
 		"id": "n8n-nodes-base.webhook",
-		"popularity": 0.933
+		"popularity": 0.935
 	},
 	{
 		"id": "n8n-nodes-base.set",
-		"popularity": 0.959
+		"popularity": 0.966
 	},
 	{
 		"id": "n8n-nodes-base.scheduleTrigger",
-		"popularity": 0.912
+		"popularity": 0.914
 	},
 	{
 		"id": "n8n-nodes-base.if",
-		"popularity": 0.951
+		"popularity": 0.953
 	},
 	{
 		"id": "n8n-nodes-base.googleSheets",
-		"popularity": 0.961
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
-		"popularity": 0.917
+		"popularity": 0.965
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-		"popularity": 0.927
+		"popularity": 0.934
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+		"popularity": 0.923
 	},
 	{
 		"id": "n8n-nodes-base.gmail",
-		"popularity": 0.919
+		"popularity": 0.925
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-		"popularity": 0.91
+		"popularity": 0.916
 	},
 	{
 		"id": "n8n-nodes-base.formTrigger",
-		"popularity": 0.874
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.openAi",
 		"popularity": 0.879
 	},
 	{
+		"id": "@n8n/n8n-nodes-langchain.openAi",
+		"popularity": 0.883
+	},
+	{
 		"id": "@n8n/n8n-nodes-langchain.chainLlm",
-		"popularity": 0.871
+		"popularity": 0.873
 	},
 	{
 		"id": "n8n-nodes-base.telegram",
-		"popularity": 0.899
+		"popularity": 0.901
 	},
 	{
 		"id": "n8n-nodes-base.telegramTrigger",
@@ -2929,11 +3029,11 @@
 	},
 	{
 		"id": "n8n-nodes-base.switch",
-		"popularity": 0.856
+		"popularity": 0.859
 	},
 	{
 		"id": "n8n-nodes-base.noOp",
-		"popularity": 0.867
+		"popularity": 0.866
 	},
 	{
 		"id": "n8n-nodes-base.merge",
@@ -2941,1062 +3041,962 @@
 	},
 	{
 		"id": "n8n-nodes-base.respondToWebhook",
-		"popularity": 0.85
+		"popularity": 0.852
 	},
 	{
 		"id": "n8n-nodes-base.splitInBatches",
-		"popularity": 0.842
+		"popularity": 0.84
 	},
 	{
-		"id": "n8n-nodes-base.whatsApp",
-		"popularity": 0.785
+		"id": "n8n-nodes-base.filter",
+		"popularity": 0.833
 	},
 	{
-		"id": "n8n-nodes-base.googleSheetsTrigger",
-		"popularity": 0.781
+		"id": "n8n-nodes-base.wait",
+		"popularity": 0.833
 	},
 	{
-		"id": "n8n-nodes-base.whatsAppTrigger",
-		"popularity": 0.78
+		"id": "n8n-nodes-base.googleSheetsTool",
+		"popularity": 0.855
 	},
 	{
-		"id": "n8n-nodes-base.dataTable",
-		"popularity": 0.829
+		"id": "n8n-nodes-base.googleDrive",
+		"popularity": 0.85
 	},
 	{
-		"id": "n8n-nodes-base.executeWorkflowTrigger",
-		"popularity": 0.786
+		"id": "@n8n/n8n-nodes-langchain.agentTool",
+		"popularity": 0.813
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatOllama",
-		"popularity": 0.788
+		"id": "n8n-nodes-base.gmailTrigger",
+		"popularity": 0.812
 	},
 	{
-		"id": "n8n-nodes-base.gmailTool",
-		"popularity": 0.773
+		"id": "n8n-nodes-base.splitOut",
+		"popularity": 0.812
 	},
 	{
-		"id": "n8n-nodes-base.executeWorkflow",
-		"popularity": 0.798
+		"id": "n8n-nodes-base.extractFromFile",
+		"popularity": 0.807
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+		"popularity": 0.796
 	},
 	{
 		"id": "n8n-nodes-base.convertToFile",
-		"popularity": 0.775
+		"popularity": 0.776
 	},
 	{
-		"id": "n8n-nodes-base.limit",
-		"popularity": 0.763
+		"id": "n8n-nodes-base.emailSend",
+		"popularity": 0.778
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.toolCode",
-		"popularity": 0.719
+		"id": "@n8n/n8n-nodes-langchain.chat",
+		"popularity": 0.785
 	},
 	{
-		"id": "n8n-nodes-base.googleCalendarTool",
-		"popularity": 0.761
+		"id": "n8n-nodes-base.executeWorkflowTrigger",
+		"popularity": 0.788
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
-		"popularity": 0.75
+		"id": "n8n-nodes-base.whatsApp",
+		"popularity": 0.786
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.toolWorkflow",
-		"popularity": 0.767
-	},
-	{
-		"id": "n8n-nodes-base.gmailHitlTool",
-		"popularity": 0.733
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
-		"popularity": 0.748
-	},
-	{
-		"id": "n8n-nodes-base.airtable",
+		"id": "n8n-nodes-base.executeWorkflow",
 		"popularity": 0.797
 	},
 	{
-		"id": "n8n-nodes-base.supabase",
-		"popularity": 0.79
+		"id": "@n8n/n8n-nodes-langchain.lmChatOllama",
+		"popularity": 0.789
+	},
+	{
+		"id": "n8n-nodes-base.limit",
+		"popularity": 0.764
+	},
+	{
+		"id": "n8n-nodes-base.gmailTool",
+		"popularity": 0.787
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.toolWorkflow",
+		"popularity": 0.768
+	},
+	{
+		"id": "n8n-nodes-base.googleDriveTrigger",
+		"popularity": 0.725
+	},
+	{
+		"id": "n8n-nodes-base.rssFeedRead",
+		"popularity": 0.765
 	},
 	{
 		"id": "n8n-nodes-base.postgres",
 		"popularity": 0.818
 	},
 	{
-		"id": "n8n-nodes-base.emailReadImap",
-		"popularity": 0.706
-	},
-	{
-		"id": "n8n-nodes-base.rssFeedRead",
-		"popularity": 0.762
+		"id": "n8n-nodes-base.googleCalendarTool",
+		"popularity": 0.772
 	},
 	{
 		"id": "n8n-nodes-base.slack",
-		"popularity": 0.763
+		"popularity": 0.757
 	},
 	{
-		"id": "n8n-nodes-base.form",
-		"popularity": 0.73
+		"id": "@n8n/n8n-nodes-langchain.toolCode",
+		"popularity": 0.718
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
-		"popularity": 0.715
-	},
-	{
-		"id": "n8n-nodes-base.googleDocs",
-		"popularity": 0.739
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.textClassifier",
-		"popularity": 0.701
-	},
-	{
-		"id": "n8n-nodes-base.googleDriveTrigger",
-		"popularity": 0.726
+		"id": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+		"popularity": 0.75
 	},
 	{
 		"id": "n8n-nodes-base.googleCalendar",
 		"popularity": 0.735
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.toolCalculator",
-		"popularity": 0.685
+		"id": "n8n-nodes-base.gmailHitlTool",
+		"popularity": 0.74
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+		"id": "n8n-nodes-base.googleDocs",
+		"popularity": 0.736
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
 		"popularity": 0.746
 	},
 	{
-		"id": "n8n-nodes-base.errorTrigger",
-		"popularity": 0.692
+		"id": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+		"popularity": 0.744
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+		"popularity": 0.713
+	},
+	{
+		"id": "n8n-nodes-base.supabase",
+		"popularity": 0.786
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.textClassifier",
+		"popularity": 0.706
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.ollama",
-		"popularity": 0.712
+		"popularity": 0.707
 	},
 	{
-		"id": "n8n-nodes-base.html",
-		"popularity": 0.72
-	},
-	{
-		"id": "n8n-nodes-base.microsoftOutlook",
-		"popularity": 0.731
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
-		"popularity": 0.725
+		"id": "n8n-nodes-base.airtable",
+		"popularity": 0.793
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.mcpTrigger",
-		"popularity": 0.699
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
-		"popularity": 0.715
-	},
-	{
-		"id": "n8n-nodes-base.summarize",
-		"popularity": 0.677
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.mcpClientTool",
-		"popularity": 0.689
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
-		"popularity": 0.674
-	},
-	{
-		"id": "n8n-nodes-base.microsoftExcel",
-		"popularity": 0.705
+		"popularity": 0.7
 	},
 	{
 		"id": "n8n-nodes-base.discord",
-		"popularity": 0.719
+		"popularity": 0.724
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
-		"popularity": 0.699
+		"id": "n8n-nodes-base.html",
+		"popularity": 0.722
 	},
 	{
-		"id": "n8n-nodes-base.aiTransform",
-		"popularity": 0.655
+		"id": "n8n-nodes-base.microsoftOutlook",
+		"popularity": 0.724
 	},
 	{
-		"id": "n8n-nodes-base.stopAndError",
-		"popularity": 0.666
+		"id": "n8n-nodes-base.errorTrigger",
+		"popularity": 0.691
+	},
+	{
+		"id": "n8n-nodes-base.form",
+		"popularity": 0.728
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.toolCalculator",
+		"popularity": 0.69
+	},
+	{
+		"id": "n8n-nodes-base.microsoftExcel",
+		"popularity": 0.701
+	},
+	{
+		"id": "n8n-nodes-base.emailReadImap",
+		"popularity": 0.706
 	},
 	{
 		"id": "n8n-nodes-base.dateTime",
-		"popularity": 0.67
+		"popularity": 0.678
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.mcpClientTool",
+		"popularity": 0.682
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.memoryMongoDbChat",
+		"popularity": 0.655
+	},
+	{
+		"id": "n8n-nodes-base.summarize",
+		"popularity": 0.679
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+		"popularity": 0.673
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+		"popularity": 0.727
 	},
 	{
 		"id": "n8n-nodes-base.executionData",
-		"popularity": 0.65
-	},
-	{
-		"id": "n8n-nodes-base.youTube",
-		"popularity": 0.662
+		"popularity": 0.644
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
-		"popularity": 0.695
-	},
-	{
-		"id": "n8n-nodes-base.microsoftOutlookTrigger",
-		"popularity": 0.65
+		"popularity": 0.697
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.toolWikipedia",
 		"popularity": 0.649
 	},
 	{
-		"id": "n8n-nodes-base.emailSend",
-		"popularity": 0.779
+		"id": "n8n-nodes-base.aiTransform",
+		"popularity": 0.651
+	},
+	{
+		"id": "n8n-nodes-base.stopAndError",
+		"popularity": 0.655
 	},
 	{
 		"id": "@apify/n8n-nodes-apify.apify",
-		"popularity": 0.684
+		"popularity": 0.679
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.memoryMongoDbChat",
-		"popularity": 0.656
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+		"popularity": 0.697
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.modelSelector",
-		"popularity": 0.633
+		"popularity": 0.628
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatXAiGrok",
-		"popularity": 0.638
+		"id": "n8n-nodes-base.youTube",
+		"popularity": 0.658
 	},
 	{
-		"id": "n8n-nodes-base.facebookGraphApi",
-		"popularity": 0.662
+		"id": "n8n-nodes-base.whatsAppTrigger",
+		"popularity": 0.786
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatMoonshot",
-		"popularity": 0.504
+		"id": "n8n-nodes-base.microsoftOutlookTrigger",
+		"popularity": 0.644
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.outputParserItemList",
-		"popularity": 0.627
+		"id": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+		"popularity": 0.717
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.memoryRedisChat",
-		"popularity": 0.647
+		"popularity": 0.643
 	},
 	{
-		"id": "n8n-nodes-base.googleAds",
-		"popularity": 0.491
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.textSplitterTokenSplitter",
-		"popularity": 0.477
-	},
-	{
-		"id": "n8n-nodes-base.asana",
-		"popularity": 0.541
-	},
-	{
-		"id": "n8n-nodes-base.wooCommerce",
-		"popularity": 0.527
-	},
-	{
-		"id": "n8n-nodes-base.homeAssistant",
-		"popularity": 0.501
+		"id": "@n8n/n8n-nodes-langchain.outputParserItemList",
+		"popularity": 0.622
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.lmOllama",
-		"popularity": 0.648
+		"popularity": 0.644
 	},
 	{
-		"id": "n8n-nodes-base.googleTasksTool",
-		"popularity": 0.505
+		"id": "n8n-nodes-base.googleAds",
+		"popularity": 0.48
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmChatMoonshot",
+		"popularity": 0.503
+	},
+	{
+		"id": "n8n-nodes-base.facebookGraphApi",
+		"popularity": 0.657
+	},
+	{
+		"id": "n8n-nodes-base.githubTool",
+		"popularity": 0.496
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.toolSerpApi",
-		"popularity": 0.288
+		"popularity": 0.289
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.chat",
-		"popularity": 0.781
+		"id": "n8n-nodes-base.wooCommerce",
+		"popularity": 0.505
 	},
 	{
-		"id": "n8n-nodes-base.aggregate",
-		"popularity": 0.788
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatGroq",
-		"popularity": 0.822
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.outputParserStructured",
-		"popularity": 0.8
+		"id": "n8n-nodes-base.homeAssistant",
+		"popularity": 0.496
 	},
 	{
 		"id": "n8n-nodes-qdrant.qdrant",
-		"popularity": 0.527
+		"popularity": 0.511
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmChatXAiGrok",
+		"popularity": 0.636
+	},
+	{
+		"id": "n8n-nodes-base.asana",
+		"popularity": 0.529
+	},
+	{
+		"id": "n8n-nodes-base.dataTable",
+		"popularity": 0.835
 	},
 	{
 		"id": "n8n-nodes-base.readWriteFile",
 		"popularity": 0.8
 	},
 	{
-		"id": "n8n-nodes-base.githubTool",
-		"popularity": 0.5
+		"id": "@n8n/n8n-nodes-langchain.lmChatGroq",
+		"popularity": 0.826
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.outputParserStructured",
+		"popularity": 0.806
 	},
 	{
 		"id": "n8n-nodes-base.httpRequestTool",
-		"popularity": 0.789
+		"popularity": 0.794
 	},
 	{
-		"id": "n8n-nodes-base.markdown",
-		"popularity": 0.627
+		"id": "@n8n/n8n-nodes-langchain.textSplitterTokenSplitter",
+		"popularity": 0.458
 	},
 	{
-		"id": "n8n-nodes-base.microsoftTeams",
-		"popularity": 0.641
+		"id": "n8n-nodes-base.googleSheetsTrigger",
+		"popularity": 0.783
 	},
 	{
-		"id": "n8n-nodes-base.linkedIn",
-		"popularity": 0.635
+		"id": "n8n-nodes-base.googleTasksTool",
+		"popularity": 0.493
 	},
 	{
-		"id": "n8n-nodes-base.dataTableTool",
-		"popularity": 0.646
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.memoryManager",
-		"popularity": 0.622
-	},
-	{
-		"id": "n8n-nodes-base.openWeatherMap",
-		"popularity": 0.642
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatGoogleVertex",
-		"popularity": 0.624
-	},
-	{
-		"id": "n8n-nodes-base.googleDriveTool",
-		"popularity": 0.643
-	},
-	{
-		"id": "n8n-nodes-base.telegramHitlTool",
-		"popularity": 0.615
-	},
-	{
-		"id": "n8n-nodes-base.xml",
-		"popularity": 0.616
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
-		"popularity": 0.641
-	},
-	{
-		"id": "n8n-nodes-base.sort",
-		"popularity": 0.641
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
-		"popularity": 0.632
-	},
-	{
-		"id": "n8n-nodes-base.ssh",
-		"popularity": 0.654
-	},
-	{
-		"id": "n8n-nodes-base.facebookTrigger",
-		"popularity": 0.622
-	},
-	{
-		"id": "n8n-nodes-base.airtableTool",
-		"popularity": 0.65
+		"id": "n8n-nodes-base.aggregate",
+		"popularity": 0.79
 	},
 	{
 		"id": "n8n-nodes-base.twilio",
-		"popularity": 0.653
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
-		"popularity": 0.655
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.embeddingsOllama",
-		"popularity": 0.638
-	},
-	{
-		"id": "n8n-nodes-base.dateTimeTool",
-		"popularity": 0.619
-	},
-	{
-		"id": "n8n-nodes-base.openWeatherMapTool",
-		"popularity": 0.603
-	},
-	{
-		"id": "@elevenlabs/n8n-nodes-elevenlabs.elevenLabs",
-		"popularity": 0.618
-	},
-	{
-		"id": "n8n-nodes-base.n8n",
-		"popularity": 0.602
-	},
-	{
-		"id": "n8n-nodes-base.hackerNews",
-		"popularity": 0.595
-	},
-	{
-		"id": "n8n-nodes-base.telegramTool",
-		"popularity": 0.609
+		"popularity": 0.644
 	},
 	{
 		"id": "n8n-nodes-base.n8nTrainingCustomerDatastore",
-		"popularity": 0.623
+		"popularity": 0.632
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.toolThink",
-		"popularity": 0.595
+		"id": "n8n-nodes-base.mySql",
+		"popularity": 0.688
+	},
+	{
+		"id": "n8n-nodes-base.linkedIn",
+		"popularity": 0.633
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+		"popularity": 0.624
+	},
+	{
+		"id": "n8n-nodes-base.googleDocsTool",
+		"popularity": 0.647
+	},
+	{
+		"id": "n8n-nodes-base.facebookTrigger",
+		"popularity": 0.618
+	},
+	{
+		"id": "n8n-nodes-base.xml",
+		"popularity": 0.621
+	},
+	{
+		"id": "n8n-nodes-base.microsoftTeams",
+		"popularity": 0.632
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmChatGoogleVertex",
+		"popularity": 0.617
+	},
+	{
+		"id": "n8n-nodes-base.telegramTool",
+		"popularity": 0.603
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.chainRetrievalQa",
+		"popularity": 0.626
+	},
+	{
+		"id": "n8n-nodes-base.ssh",
+		"popularity": 0.649
+	},
+	{
+		"id": "n8n-nodes-base.airtableTool",
+		"popularity": 0.652
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.memoryManager",
+		"popularity": 0.619
+	},
+	{
+		"id": "n8n-nodes-base.telegramHitlTool",
+		"popularity": 0.61
+	},
+	{
+		"id": "n8n-nodes-base.googleDriveTool",
+		"popularity": 0.64
 	},
 	{
 		"id": "n8n-nodes-base.editImage",
 		"popularity": 0.61
 	},
 	{
-		"id": "n8n-nodes-base.wordpress",
-		"popularity": 0.6
+		"id": "n8n-nodes-base.microsoftOneDrive",
+		"popularity": 0.648
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
-		"popularity": 0.627
+		"id": "n8n-nodes-base.openWeatherMap",
+		"popularity": 0.64
 	},
 	{
-		"id": "n8n-nodes-base.microsoftSharePoint",
-		"popularity": 0.633
+		"id": "@elevenlabs/n8n-nodes-elevenlabs.elevenLabs",
+		"popularity": 0.615
 	},
 	{
 		"id": "n8n-nodes-base.hubspot",
-		"popularity": 0.66
+		"popularity": 0.65
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.toolVectorStore",
-		"popularity": 0.598
+		"id": "n8n-nodes-base.microsoftSharePoint",
+		"popularity": 0.62
 	},
 	{
-		"id": "n8n-nodes-whatsable.whatsAble",
-		"popularity": 0.571
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+		"popularity": 0.65
 	},
 	{
-		"id": "n8n-nodes-base.airtableTrigger",
-		"popularity": 0.601
+		"id": "n8n-nodes-base.hackerNews",
+		"popularity": 0.605
 	},
 	{
-		"id": "n8n-nodes-base.github",
-		"popularity": 0.602
-	},
-	{
-		"id": "n8n-nodes-base.facebookLeadAdsTrigger",
-		"popularity": 0.569
-	},
-	{
-		"id": "@mookielianhd/n8n-nodes-instagram.instagram",
-		"popularity": 0.607
-	},
-	{
-		"id": "n8n-nodes-base.postgresTool",
-		"popularity": 0.612
-	},
-	{
-		"id": "n8n-nodes-base.supabaseTool",
-		"popularity": 0.617
-	},
-	{
-		"id": "n8n-nodes-base.whatsAppHitlTool",
-		"popularity": 0.563
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.sentimentAnalysis",
-		"popularity": 0.58
-	},
-	{
-		"id": "n8n-nodes-base.microsoftOneDrive",
-		"popularity": 0.655
-	},
-	{
-		"id": "n8n-nodes-base.jira",
-		"popularity": 0.626
+		"id": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+		"popularity": 0.642
 	},
 	{
 		"id": "n8n-nodes-base.redis",
-		"popularity": 0.661
+		"popularity": 0.653
 	},
 	{
-		"id": "n8n-nodes-serpapi.serpApi",
-		"popularity": 0.578
+		"id": "n8n-nodes-base.openWeatherMapTool",
+		"popularity": 0.607
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+		"popularity": 0.602
+	},
+	{
+		"id": "n8n-nodes-base.emailSendHitlTool",
+		"popularity": 0.565
 	},
 	{
 		"id": "@tavily/n8n-nodes-tavily.tavily",
+		"popularity": 0.586
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+		"popularity": 0.627
+	},
+	{
+		"id": "n8n-nodes-base.airtableTrigger",
+		"popularity": 0.597
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.toolVectorStore",
+		"popularity": 0.591
+	},
+	{
+		"id": "@mookielianhd/n8n-nodes-instagram.instagram",
+		"popularity": 0.602
+	},
+	{
+		"id": "n8n-nodes-base.whatsAppHitlTool",
+		"popularity": 0.56
+	},
+	{
+		"id": "n8n-nodes-base.ftp",
+		"popularity": 0.576
+	},
+	{
+		"id": "n8n-nodes-base.n8n",
 		"popularity": 0.591
 	},
 	{
 		"id": "n8n-nodes-base.crypto",
-		"popularity": 0.576
+		"popularity": 0.569
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.memoryXata",
-		"popularity": 0.561
+		"id": "n8n-nodes-base.jira",
+		"popularity": 0.617
 	},
 	{
-		"id": "n8n-nodes-base.emailSendHitlTool",
-		"popularity": 0.564
+		"id": "n8n-nodes-base.postgresTool",
+		"popularity": 0.605
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.guardrails",
-		"popularity": 0.572
+		"id": "n8n-nodes-whatsable.whatsAble",
+		"popularity": 0.574
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference",
-		"popularity": 0.566
+		"id": "@n8n/n8n-nodes-langchain.sentimentAnalysis",
+		"popularity": 0.579
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.toolThink",
+		"popularity": 0.584
+	},
+	{
+		"id": "n8n-nodes-serpapi.serpApi",
+		"popularity": 0.571
+	},
+	{
+		"id": "n8n-nodes-base.wordpress",
+		"popularity": 0.593
+	},
+	{
+		"id": "n8n-nodes-base.supabaseTool",
+		"popularity": 0.612
 	},
 	{
 		"id": "n8n-nodes-base.microsoftExcelTool",
-		"popularity": 0.575
+		"popularity": 0.571
+	},
+	{
+		"id": "n8n-nodes-base.github",
+		"popularity": 0.599
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.memoryXata",
+		"popularity": 0.555
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.chainSummarization",
-		"popularity": 0.551
-	},
-	{
-		"id": "n8n-nodes-base.salesforce",
-		"popularity": 0.615
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatAwsBedrock",
-		"popularity": 0.564
-	},
-	{
-		"id": "n8n-nodes-base.nasa",
-		"popularity": 0.547
-	},
-	{
-		"id": "n8n-nodes-base.perplexityTool",
-		"popularity": 0.543
-	},
-	{
-		"id": "n8n-nodes-base.googleCalendarTrigger",
-		"popularity": 0.549
+		"popularity": 0.546
 	},
 	{
 		"id": "n8n-nodes-base.googleChat",
-		"popularity": 0.566
+		"popularity": 0.561
 	},
 	{
-		"id": "n8n-nodes-htmlcsstopdf.htmlcsstopdf",
-		"popularity": 0.549
+		"id": "@n8n/n8n-nodes-langchain.guardrails",
+		"popularity": 0.567
+	},
+	{
+		"id": "n8n-nodes-base.facebookLeadAdsTrigger",
+		"popularity": 0.558
 	},
 	{
 		"id": "n8n-nodes-base.linkedInTool",
-		"popularity": 0.55
+		"popularity": 0.538
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.chainRetrievalQa",
-		"popularity": 0.63
+		"id": "n8n-nodes-base.perplexityTool",
+		"popularity": 0.534
+	},
+	{
+		"id": "n8n-nodes-base.notionTrigger",
+		"popularity": 0.556
 	},
 	{
 		"id": "n8n-nodes-base.clickUp",
-		"popularity": 0.6
-	},
-	{
-		"id": "n8n-nodes-base.ftp",
-		"popularity": 0.581
-	},
-	{
-		"id": "n8n-nodes-base.twitter",
-		"popularity": 0.568
+		"popularity": 0.596
 	},
 	{
 		"id": "n8n-nodes-base.compression",
-		"popularity": 0.549
+		"popularity": 0.543
 	},
 	{
-		"id": "n8n-nodes-base.googleDocsTool",
-		"popularity": 0.653
+		"id": "n8n-nodes-base.whatsAppTool",
+		"popularity": 0.533
 	},
 	{
-		"id": "n8n-nodes-base.evaluationTrigger",
-		"popularity": 0.638
+		"id": "n8n-nodes-base.salesforce",
+		"popularity": 0.592
 	},
 	{
-		"id": "n8n-nodes-base.rssFeedReadTrigger",
-		"popularity": 0.654
+		"id": "@n8n/n8n-nodes-langchain.lmChatAwsBedrock",
+		"popularity": 0.55
+	},
+	{
+		"id": "n8n-nodes-base.slackTrigger",
+		"popularity": 0.644
+	},
+	{
+		"id": "n8n-nodes-base.notionTool",
+		"popularity": 0.543
+	},
+	{
+		"id": "n8n-nodes-base.twitter",
+		"popularity": 0.556
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.retrieverVectorStore",
 		"popularity": 0.562
 	},
 	{
-		"id": "n8n-nodes-base.notionTool",
-		"popularity": 0.548
+		"id": "@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference",
+		"popularity": 0.555
+	},
+	{
+		"id": "n8n-nodes-base.dataTableTool",
+		"popularity": 0.645
 	},
 	{
 		"id": "n8n-nodes-base.removeDuplicates",
 		"popularity": 0.65
 	},
 	{
-		"id": "n8n-nodes-base.whatsAppTool",
-		"popularity": 0.535
+		"id": "n8n-nodes-base.sort",
+		"popularity": 0.648
 	},
 	{
-		"id": "n8n-nodes-base.mySql",
-		"popularity": 0.696
-	},
-	{
-		"id": "n8n-nodes-base.evaluation",
-		"popularity": 0.567
-	},
-	{
-		"id": "n8n-nodes-base.notionTrigger",
-		"popularity": 0.563
-	},
-	{
-		"id": "n8n-nodes-base.slackTrigger",
-		"popularity": 0.652
-	},
-	{
-		"id": "n8n-nodes-base.microsoftOutlookTool",
-		"popularity": 0.549
-	},
-	{
-		"id": "n8n-nodes-base.postgresTrigger",
-		"popularity": 0.532
-	},
-	{
-		"id": "@mookielianhd/n8n-nodes-instagram.instagramTrigger",
-		"popularity": 0.535
-	},
-	{
-		"id": "n8n-nodes-base.microsoftTeamsTrigger",
-		"popularity": 0.535
-	},
-	{
-		"id": "n8n-nodes-base.odoo",
-		"popularity": 0.592
-	},
-	{
-		"id": "@aotoki/n8n-nodes-line-messaging.lineMessaging",
-		"popularity": 0.573
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.textSplitterCharacterTextSplitter",
-		"popularity": 0.535
-	},
-	{
-		"id": "n8n-nodes-base.rssFeedReadTool",
-		"popularity": 0.54
-	},
-	{
-		"id": "n8n-nodes-base.sendInBlue",
+		"id": "n8n-nodes-base.nasa",
 		"popularity": 0.543
 	},
 	{
-		"id": "n8n-nodes-base.sseTrigger",
-		"popularity": 0.517
+		"id": "n8n-nodes-base.rssFeedReadTrigger",
+		"popularity": 0.649
 	},
 	{
-		"id": "n8n-nodes-base.slackTool",
-		"popularity": 0.494
-	},
-	{
-		"id": "n8n-nodes-base.emailSendTool",
-		"popularity": 0.502
-	},
-	{
-		"id": "n8n-nodes-base.hubspotTrigger",
-		"popularity": 0.536
-	},
-	{
-		"id": "n8n-nodes-base.pipedrive",
-		"popularity": 0.601
-	},
-	{
-		"id": "n8n-nodes-base.googleBigQuery",
+		"id": "n8n-nodes-base.evaluation",
 		"popularity": 0.563
 	},
 	{
+		"id": "n8n-nodes-base.evaluationTrigger",
+		"popularity": 0.657
+	},
+	{
+		"id": "n8n-nodes-base.markdown",
+		"popularity": 0.626
+	},
+	{
+		"id": "n8n-nodes-htmlcsstopdf.htmlcsstopdf",
+		"popularity": 0.541
+	},
+	{
+		"id": "n8n-nodes-base.googleCalendarTrigger",
+		"popularity": 0.546
+	},
+	{
+		"id": "n8n-nodes-base.dateTimeTool",
+		"popularity": 0.642
+	},
+	{
+		"id": "n8n-nodes-base.sendInBlue",
+		"popularity": 0.534
+	},
+	{
+		"id": "n8n-nodes-base.sseTrigger",
+		"popularity": 0.516
+	},
+	{
+		"id": "n8n-nodes-base.mistralAi",
+		"popularity": 0.523
+	},
+	{
+		"id": "n8n-nodes-base.mongoDb",
+		"popularity": 0.575
+	},
+	{
+		"id": "n8n-nodes-base.googleChatHitlTool",
+		"popularity": 0.506
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.textSplitterCharacterTextSplitter",
+		"popularity": 0.531
+	},
+	{
+		"id": "n8n-nodes-base.typeformTrigger",
+		"popularity": 0.528
+	},
+	{
+		"id": "@searchapi/n8n-nodes-searchapi.searchApi",
+		"popularity": 0.489
+	},
+	{
+		"id": "n8n-nodes-base.awsS3",
+		"popularity": 0.521
+	},
+	{
+		"id": "n8n-nodes-base.shopify",
+		"popularity": 0.552
+	},
+	{
+		"id": "n8n-nodes-base.baserow",
+		"popularity": 0.587
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.rerankerCohere",
+		"popularity": 0.504
+	},
+	{
+		"id": "n8n-nodes-base.rssFeedReadTool",
+		"popularity": 0.517
+	},
+	{
+		"id": "n8n-nodes-base.hubspotTrigger",
+		"popularity": 0.517
+	},
+	{
+		"id": "n8n-nodes-base.pipedrive",
+		"popularity": 0.582
+	},
+	{
+		"id": "n8n-nodes-base.zohoCrm",
+		"popularity": 0.538
+	},
+	{
+		"id": "n8n-nodes-base.githubTrigger",
+		"popularity": 0.511
+	},
+	{
+		"id": "n8n-nodes-base.twilioTrigger",
+		"popularity": 0.516
+	},
+	{
+		"id": "n8n-nodes-base.microsoftOutlookTool",
+		"popularity": 0.524
+	},
+	{
 		"id": "n8n-nodes-base.calendlyTrigger",
-		"popularity": 0.508
+		"popularity": 0.503
+	},
+	{
+		"id": "n8n-nodes-base.s3",
+		"popularity": 0.537
+	},
+	{
+		"id": "n8n-nodes-base.trello",
+		"popularity": 0.563
+	},
+	{
+		"id": "n8n-nodes-base.odoo",
+		"popularity": 0.583
+	},
+	{
+		"id": "n8n-nodes-tallyforms.tallyTrigger",
+		"popularity": 0.537
+	},
+	{
+		"id": "n8n-nodes-base.googleBigQuery",
+		"popularity": 0.538
+	},
+	{
+		"id": "@brave/n8n-nodes-brave-search.braveSearch",
+		"popularity": 0.497
+	},
+	{
+		"id": "n8n-nodes-base.nocoDb",
+		"popularity": 0.598
+	},
+	{
+		"id": "@mookielianhd/n8n-nodes-instagram.instagramTrigger",
+		"popularity": 0.531
+	},
+	{
+		"id": "@aotoki/n8n-nodes-line-messaging.lineMessaging",
+		"popularity": 0.577
+	},
+	{
+		"id": "n8n-nodes-base.timeSaved",
+		"popularity": 0.492
+	},
+	{
+		"id": "n8n-nodes-base.googleContacts",
+		"popularity": 0.494
+	},
+	{
+		"id": "n8n-nodes-base.microsoftTeamsTrigger",
+		"popularity": 0.52
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.toolSearXng",
+		"popularity": 0.467
+	},
+	{
+		"id": "n8n-nodes-base.n8nTrainingCustomerMessenger",
+		"popularity": 0.46
+	},
+	{
+		"id": "n8n-nodes-base.jiraTrigger",
+		"popularity": 0.505
+	},
+	{
+		"id": "n8n-nodes-base.debugHelper",
+		"popularity": 0.482
+	},
+	{
+		"id": "n8n-nodes-base.n8nTrigger",
+		"popularity": 0.494
+	},
+	{
+		"id": "n8n-nodes-base.sendGrid",
+		"popularity": 0.433
+	},
+	{
+		"id": "n8n-nodes-base.slackTool",
+		"popularity": 0.492
+	},
+	{
+		"id": "n8n-nodes-base.quickChart",
+		"popularity": 0.483
+	},
+	{
+		"id": "n8n-nodes-base.reddit",
+		"popularity": 0.487
+	},
+	{
+		"id": "n8n-nodes-base.calTrigger",
+		"popularity": 0.512
+	},
+	{
+		"id": "n8n-nodes-base.spotify",
+		"popularity": 0.46
+	},
+	{
+		"id": "n8n-nodes-base.togglTrigger",
+		"popularity": 0.39
+	},
+	{
+		"id": "n8n-nodes-google-search-console.googleSearchConsole",
+		"popularity": 0.475
+	},
+	{
+		"id": "n8n-nodes-base.mondayCom",
+		"popularity": 0.556
+	},
+	{
+		"id": "n8n-nodes-base.googleSlides",
+		"popularity": 0.506
+	},
+	{
+		"id": "n8n-nodes-base.postBin",
+		"popularity": 0.534
+	},
+	{
+		"id": "n8n-nodes-base.dropbox",
+		"popularity": 0.543
+	},
+	{
+		"id": "n8n-nodes-base.filemaker",
+		"popularity": 0.469
+	},
+	{
+		"id": "n8n-nodes-base.jiraTool",
+		"popularity": 0.507
+	},
+	{
+		"id": "n8n-nodes-base.microsoftOneDriveTrigger",
+		"popularity": 0.486
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.lmChatMinimax",
 		"popularity": 0.517
 	},
 	{
-		"id": "n8n-nodes-base.mongoDb",
-		"popularity": 0.587
+		"id": "n8n-nodes-pdfco.PDFco Api",
+		"popularity": 0.484
 	},
 	{
-		"id": "@searchapi/n8n-nodes-searchapi.searchApi",
-		"popularity": 0.497
-	},
-	{
-		"id": "n8n-nodes-base.jiraTrigger",
-		"popularity": 0.512
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.rerankerCohere",
-		"popularity": 0.51
-	},
-	{
-		"id": "n8n-nodes-base.s3",
-		"popularity": 0.546
-	},
-	{
-		"id": "n8n-nodes-base.mistralAi",
-		"popularity": 0.538
-	},
-	{
-		"id": "n8n-nodes-base.googleChatHitlTool",
-		"popularity": 0.508
-	},
-	{
-		"id": "n8n-nodes-base.trello",
-		"popularity": 0.56
-	},
-	{
-		"id": "n8n-nodes-base.awsS3",
-		"popularity": 0.53
-	},
-	{
-		"id": "n8n-nodes-base.n8nTrigger",
-		"popularity": 0.501
-	},
-	{
-		"id": "n8n-nodes-base.shopify",
-		"popularity": 0.57
-	},
-	{
-		"id": "n8n-nodes-base.line",
-		"popularity": 0.558
-	},
-	{
-		"id": "n8n-nodes-base.mondayCom",
-		"popularity": 0.573
-	},
-	{
-		"id": "n8n-nodes-base.highLevel",
-		"popularity": 0.545
-	},
-	{
-		"id": "n8n-nodes-tallyforms.tallyTrigger",
-		"popularity": 0.538
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.moonshot",
-		"popularity": 0.46
-	},
-	{
-		"id": "n8n-nodes-base.microsoftOneDriveTrigger",
-		"popularity": 0.496
-	},
-	{
-		"id": "@brave/n8n-nodes-brave-search.braveSearch",
-		"popularity": 0.499
-	},
-	{
-		"id": "n8n-nodes-base.googleContacts",
-		"popularity": 0.507
-	},
-	{
-		"id": "n8n-nodes-base.postBin",
-		"popularity": 0.538
-	},
-	{
-		"id": "n8n-nodes-base.jwt",
-		"popularity": 0.454
-	},
-	{
-		"id": "n8n-nodes-base.jiraTool",
-		"popularity": 0.527
-	},
-	{
-		"id": "n8n-nodes-base.googleTasks",
-		"popularity": 0.518
-	},
-	{
-		"id": "n8n-nodes-base.googleSlides",
-		"popularity": 0.518
-	},
-	{
-		"id": "n8n-nodes-base.zohoCrm",
-		"popularity": 0.552
-	},
-	{
-		"id": "n8n-nodes-base.mqttTrigger",
-		"popularity": 0.448
-	},
-	{
-		"id": "n8n-nodes-base.sendGrid",
-		"popularity": 0.444
-	},
-	{
-		"id": "n8n-nodes-base.perplexity",
-		"popularity": 0.486
-	},
-	{
-		"id": "n8n-nodes-base.filemaker",
-		"popularity": 0.475
-	},
-	{
-		"id": "n8n-nodes-base.baserow",
-		"popularity": 0.594
-	},
-	{
-		"id": "n8n-nodes-base.twilioTrigger",
-		"popularity": 0.526
-	},
-	{
-		"id": "n8n-nodes-base.quickChart",
-		"popularity": 0.488
-	},
-	{
-		"id": "n8n-nodes-base.reddit",
-		"popularity": 0.506
-	},
-	{
-		"id": "n8n-nodes-base.debugHelper",
+		"id": "n8n-nodes-base.emailSendTool",
 		"popularity": 0.498
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.retrieverContextualCompression",
-		"popularity": 0.473
-	},
-	{
-		"id": "n8n-nodes-base.nocoDb",
-		"popularity": 0.613
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.toolSearXng",
-		"popularity": 0.473
-	},
-	{
-		"id": "n8n-nodes-base.githubTrigger",
-		"popularity": 0.509
-	},
-	{
-		"id": "n8n-nodes-base.calTrigger",
-		"popularity": 0.517
-	},
-	{
-		"id": "n8n-nodes-base.dropbox",
-		"popularity": 0.545
-	},
-	{
-		"id": "n8n-nodes-google-search-console.googleSearchConsole",
-		"popularity": 0.483
-	},
-	{
-		"id": "n8n-nodes-base.youTubeTool",
-		"popularity": 0.496
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.embeddingsMistralCloud",
-		"popularity": 0.469
-	},
-	{
-		"id": "n8n-nodes-base.n8nTrainingCustomerMessenger",
-		"popularity": 0.481
-	},
-	{
-		"id": "n8n-nodes-base.timeSaved",
-		"popularity": 0.504
-	},
-	{
 		"id": "n8n-nodes-cloudinary.cloudinary",
-		"popularity": 0.505
+		"popularity": 0.502
 	},
 	{
 		"id": "n8n-nodes-base.slackHitlTool",
-		"popularity": 0.481
+		"popularity": 0.473
 	},
 	{
-		"id": "n8n-nodes-base.googleFirebaseCloudFirestore",
-		"popularity": 0.504
+		"id": "@n8n/n8n-nodes-langchain.moonshot",
+		"popularity": 0.456
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.embeddingsAzureOpenAi",
-		"popularity": 0.445
-	},
-	{
-		"id": "n8n-nodes-pdfco.PDFco Api",
-		"popularity": 0.48
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatCohere",
-		"popularity": 0.592
-	},
-	{
-		"id": "n8n-nodes-base.togglTrigger",
-		"popularity": 0.407
-	},
-	{
-		"id": "n8n-nodes-base.microsoftSqlTool",
-		"popularity": 0.467
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.embeddingsCohere",
-		"popularity": 0.632
-	},
-	{
-		"id": "n8n-nodes-base.formIoTrigger",
-		"popularity": 0.624
-	},
-	{
-		"id": "n8n-nodes-base.spotify",
-		"popularity": 0.479
+		"id": "n8n-nodes-base.googleTasks",
+		"popularity": 0.5
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.retrieverWorkflow",
-		"popularity": 0.427
+		"popularity": 0.425
 	},
 	{
-		"id": "n8n-nodes-base.marketstackTool",
-		"popularity": 0.621
+		"id": "n8n-nodes-base.perplexity",
+		"popularity": 0.467
 	},
 	{
-		"id": "n8n-nodes-base.mySqlTool",
-		"popularity": 0.607
+		"id": "@n8n/n8n-nodes-langchain.retrieverContextualCompression",
+		"popularity": 0.47
 	},
 	{
-		"id": "n8n-nodes-base.renameKeys",
-		"popularity": 0.544
+		"id": "@n8n/n8n-nodes-langchain.embeddingsMistralCloud",
+		"popularity": 0.474
 	},
 	{
-		"id": "n8n-nodes-base.typeformTrigger",
-		"popularity": 0.539
+		"id": "n8n-nodes-base.microsoftSqlTool",
+		"popularity": 0.447
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.lmLemonade",
-		"popularity": 0.422
-	},
-	{
-		"id": "n8n-nodes-upload-post.uploadPost",
-		"popularity": 0.489
-	},
-	{
-		"id": "n8n-nodes-base.clickUpTrigger",
-		"popularity": 0.492
-	},
-	{
-		"id": "n8n-nodes-base.oracleDatabase",
-		"popularity": 0.49
-	},
-	{
-		"id": "n8n-nodes-base.stripeTrigger",
-		"popularity": 0.471
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatVercelAiGateway",
-		"popularity": 0.448
-	},
-	{
-		"id": "n8n-nodes-base.discordTool",
-		"popularity": 0.466
-	},
-	{
-		"id": "n8n-nodes-base.actionNetwork",
-		"popularity": 0.449
-	},
-	{
-		"id": "n8n-nodes-base.mqtt",
-		"popularity": 0.421
-	},
-	{
-		"id": "n8n-nodes-base.zoom",
-		"popularity": 0.441
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.retrieverMultiQuery",
-		"popularity": 0.448
-	},
-	{
-		"id": "n8n-nodes-base.hunter",
-		"popularity": 0.451
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStoreChromaDB",
-		"popularity": 0.501
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas",
-		"popularity": 0.444
-	},
-	{
-		"id": "n8n-nodes-base.graphql",
-		"popularity": 0.477
-	},
-	{
-		"id": "n8n-nodes-base.formstackTrigger",
-		"popularity": 0.444
-	},
-	{
-		"id": "n8n-nodes-base.facebookGraphApiTool",
-		"popularity": 0.448
-	},
-	{
-		"id": "n8n-nodes-base.todoist",
-		"popularity": 0.493
-	},
-	{
-		"id": "@blotato/n8n-nodes-blotato.blotato",
-		"popularity": 0.493
-	},
-	{
-		"id": "n8n-nodes-base.googleAnalytics",
-		"popularity": 0.492
-	},
-	{
-		"id": "n8n-nodes-base.pipedriveTrigger",
-		"popularity": 0.41
-	},
-	{
-		"id": "n8n-nodes-zalo-platform.zaloBot",
-		"popularity": 0.431
-	},
-	{
-		"id": "n8n-nodes-base.trelloTrigger",
+		"id": "n8n-nodes-base.mqttTrigger",
 		"popularity": 0.43
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatLemonade",
-		"popularity": 0.421
+		"id": "n8n-nodes-base.googleFirebaseCloudFirestore",
+		"popularity": 0.493
 	},
 	{
-		"id": "n8n-nodes-base.matrix",
-		"popularity": 0.416
+		"id": "@n8n/n8n-nodes-langchain.embeddingsAzureOpenAi",
+		"popularity": 0.439
 	},
 	{
-		"id": "n8n-nodes-base.hackerNewsTool",
-		"popularity": 0.395
+		"id": "@n8n/n8n-nodes-langchain.embeddingsCohere",
+		"popularity": 0.614
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.lmCohere",
-		"popularity": 0.401
+		"id": "n8n-nodes-base.jwt",
+		"popularity": 0.44
 	},
 	{
-		"id": "n8n-nodes-base.mailchimp",
-		"popularity": 0.42
+		"id": "n8n-nodes-base.formIoTrigger",
+		"popularity": 0.632
 	},
 	{
-		"id": "n8n-nodes-base.git",
-		"popularity": 0.423
+		"id": "n8n-nodes-base.renameKeys",
+		"popularity": 0.562
 	},
 	{
-		"id": "n8n-nodes-base.gitlabTrigger",
-		"popularity": 0.412
+		"id": "n8n-nodes-base.marketstackTool",
+		"popularity": 0.629
 	},
 	{
-		"id": "n8n-nodes-base.googleCloudStorage",
-		"popularity": 0.438
+		"id": "@n8n/n8n-nodes-langchain.lmChatCohere",
+		"popularity": 0.58
+	},
+	{
+		"id": "n8n-nodes-base.line",
+		"popularity": 0.552
+	},
+	{
+		"id": "n8n-nodes-base.mySqlTool",
+		"popularity": 0.589
 	}
 ]

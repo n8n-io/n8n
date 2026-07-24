@@ -8,6 +8,7 @@ import type { McpClient } from './mcp-client';
 import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './memory';
 import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
+import type { VectorStore } from './vector-store';
 import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/loop/agent-runtime';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
 import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
@@ -15,6 +16,7 @@ import type { FetchFn } from '../runtime/model/model-factory';
 import { mergeProviderOptions } from '../runtime/model/prompt-cache';
 import { AgentEventBus } from '../runtime/state/event-bus';
 import { RunStateManager } from '../runtime/state/run-state';
+import { deriveSubAgentTelemetry } from '../runtime/telemetry/sub-agent-telemetry';
 import {
 	LOAD_TOOL_TOOL_NAME,
 	SEARCH_TOOLS_TOOL_NAME,
@@ -257,6 +259,14 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 		this.tools.push(...builtTools);
 		return this;
+	}
+
+	/** Attach a vector store as a search tool. Accepts a VectorStore builder. */
+	vectorStore(
+		store: VectorStore,
+		options?: { name?: string; description?: string; filterableKeys?: Record<string, string> },
+	): this {
+		return this.tool(store.asTool(options));
 	}
 
 	/** Add tools that are searchable through `search_tools` and activated on demand with `load_tool`. */
@@ -721,6 +731,26 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 	}
 
+	/**
+	 * Durable-log RFC (resilience phase): re-drive a run from a `running`-status
+	 * step checkpoint after a process crash. There is no pending tool call to
+	 * settle — the loop re-enters at the next model call. See
+	 * AgentRuntime.crashResume for `contextNotes` semantics.
+	 */
+	async crashResume(
+		options: { runId: string; contextNotes?: string[] } & ExecutionOptions,
+	): Promise<StreamResult> {
+		const config = await this.ensureBuilt();
+		const active = this.createRuntime(config, options.runId);
+		try {
+			const result = await active.runtime.crashResume(options);
+			return { ...result, stream: this.trackStreamRuntime(result.stream, active) };
+		} catch (error) {
+			await this.cleanupRuntime(active);
+			throw error;
+		}
+	}
+
 	approve(method: 'generate', options: ResumeOptions & ExecutionOptions): Promise<GenerateResult>;
 	approve(method: 'stream', options: ResumeOptions & ExecutionOptions): Promise<StreamResult>;
 	async approve(
@@ -1084,9 +1114,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			const childThinkingConfig = shouldInheritThinking(options.modelConfig, childModelConfig)
 				? this.thinkingConfig
 				: undefined;
+			const telemetry = deriveSubAgentTelemetry(request.parentTelemetry) ?? options.telemetry;
 			const childRuntime = new AgentRuntime({
 				name: `${this.name}:${request.taskName}`,
 				model: childModelConfig,
+				// Inherit the parent's transport so children can't bypass a
+				// guarded/instrumented fetch via the ambient default.
+				...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
 				instructions:
 					'You are a focused subagent working on a specific delegated task. Complete the delegated task independently and return a concise, self-contained summary to your parent agent.',
 				tools: tools.length > 0 ? tools : undefined,
@@ -1097,7 +1131,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				promptCaching: this.promptCachingConfig,
 				checkpointStorage: this.checkpointStore,
 				...(childThinkingConfig !== undefined ? { thinking: childThinkingConfig } : {}),
-				...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
+				...(telemetry !== undefined ? { telemetry } : {}),
 				...(options.toolCallConcurrency !== undefined
 					? { toolCallConcurrency: options.toolCallConcurrency }
 					: {}),
@@ -1108,7 +1142,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 					...(request.parentAbortSignal !== undefined
 						? { abortSignal: request.parentAbortSignal }
 						: {}),
-					...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
+					...(telemetry !== undefined ? { telemetry } : {}),
 					...(request.parentExecutionCounter !== undefined
 						? { executionCounter: request.parentExecutionCounter }
 						: {}),

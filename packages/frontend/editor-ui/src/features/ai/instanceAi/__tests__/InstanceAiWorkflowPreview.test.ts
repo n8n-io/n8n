@@ -14,6 +14,7 @@ import {
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useLogsStore } from '@/app/stores/logs.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { RememberedManualExecution } from '../canvasPreview.utils';
@@ -382,5 +383,64 @@ describe('InstanceAiWorkflowPreview', () => {
 		const restoredExecutionState = useWorkflowExecutionStateStore(documentId);
 		expect(restoredExecutionState.displayedExecutionId).toBe('exec-agent-2');
 		expect(workflowsStore.fetchExecutionDataById).toHaveBeenLastCalledWith('exec-agent-2');
+	});
+
+	it('opens the logs panel when an execution starts for the previewed workflow', async () => {
+		const { listeners } = await mountPreview();
+		const logsStore = useLogsStore();
+		logsStore.toggleOpen(false);
+
+		// User run from the embedded canvas.
+		for (const listener of listeners) {
+			listener({
+				type: 'executionStarted',
+				data: {
+					executionId: 'exec-user-1',
+					mode: 'manual',
+					startedAt: new Date(),
+					workflowId: 'wf-1',
+					flattedRunData: '[]',
+				},
+			});
+		}
+		expect(logsStore.isOpen).toBe(true);
+
+		// Agent run while the artifact is open.
+		logsStore.toggleOpen(false);
+		for (const listener of listeners) {
+			listener({
+				type: 'executionStarted',
+				data: {
+					executionId: 'exec-agent-2',
+					mode: 'manual',
+					source: 'instance_ai',
+					startedAt: new Date(),
+					workflowId: 'wf-1',
+					flattedRunData: '[]',
+				},
+			});
+		}
+		expect(logsStore.isOpen).toBe(true);
+	});
+
+	it('does not open the logs panel for executions of other workflows', async () => {
+		const { listeners } = await mountPreview();
+		const logsStore = useLogsStore();
+		logsStore.toggleOpen(false);
+
+		for (const listener of listeners) {
+			listener({
+				type: 'executionStarted',
+				data: {
+					executionId: 'exec-other-1',
+					mode: 'manual',
+					startedAt: new Date(),
+					workflowId: 'wf-2',
+					flattedRunData: '[]',
+				},
+			});
+		}
+
+		expect(logsStore.isOpen).toBe(false);
 	});
 });

@@ -45,20 +45,24 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// Run before the loose pattern so nested objects like
 	// `{"credentials": {"apiKey": "..."}}` don't have the outer key consume
 	// the inner key on its way to a non-quoted (object) value. The value
-	// body uses the standard JSON-string idiom `(?:\\.|[^"\r\n])*` so an
-	// escaped quote inside the value (`"abc\"def"`) doesn't end the match
-	// early and leak the rest of the secret. The negative lookahead skips
+	// body uses the unrolled JSON-string idiom `(?:[^"\\\r\n]|\\.)*`: the
+	// negated class excludes the backslash so a backslash can only be consumed
+	// by the `\\.` escape branch. Keep the two alternatives disjoint (don't
+	// fold `\\` back into the negated class) — that keeps every run of
+	// backslashes to a single, unambiguous parse, so matching stays fast on any
+	// input. An escaped quote inside the value (`"abc\"def"`) still doesn't end
+	// the match early, via the escape branch. The negative lookahead skips
 	// values that are already a `[redacted]` / `[REDACTED]` / typed
 	// `[REDACTED:<type>:<index>]` placeholder so this stays idempotent when
 	// chained behind upstream object-walking redaction (langsmith trace
 	// payloads, mcp-browser markers).
 	new RegExp(
-		`"(?:${SECRET_KEYS})"\\s*:\\s*"(?!\\[(?:redacted|REDACTED)(?::[^"\\]]*)?\\]")(?:\\\\.|[^"\\r\\n])*"`,
+		`"(?:${SECRET_KEYS})"\\s*:\\s*"(?!\\[(?:redacted|REDACTED)(?::[^"\\]]*)?\\]")(?:[^"\\\\\\r\\n]|\\\\.)*"`,
 		'gi',
 	),
 	// JS-object-shaped `'key': 'value'`
 	new RegExp(
-		`'(?:${SECRET_KEYS})'\\s*:\\s*'(?!\\[(?:redacted|REDACTED)(?::[^'\\]]*)?\\]')(?:\\\\.|[^'\\r\\n])*'`,
+		`'(?:${SECRET_KEYS})'\\s*:\\s*'(?!\\[(?:redacted|REDACTED)(?::[^'\\]]*)?\\]')(?:[^'\\\\\\r\\n]|\\\\.)*'`,
 		'gi',
 	),
 	// Generic `password=...` / `api_key=...` / `secret=...` style assignments.

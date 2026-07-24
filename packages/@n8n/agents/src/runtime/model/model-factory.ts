@@ -15,11 +15,11 @@ import type { ModelConfig } from '../../types/sdk/agent';
  * model calls route through the configured HTTP(S)_PROXY.
  */
 export type FetchFn = typeof globalThis.fetch;
-type EmbeddingProviderOptions = {
+export type EmbeddingProviderOptions = {
 	apiKey?: string;
 	baseURL?: string;
 	fetch?: FetchFn;
-};
+} & Partial<ProviderCredentials<'aws-bedrock'>>;
 type CreateEmbeddingProviderFn = (opts?: EmbeddingProviderOptions) => {
 	embeddingModel(model: string): EmbeddingModel;
 };
@@ -74,14 +74,43 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	openai: {
 		build: (creds, model, fetch) => {
 			const { createOpenAI } = require('@ai-sdk/openai') as typeof import('@ai-sdk/openai');
-			return createOpenAI({ ...creds, fetch })(model);
+			const provider = createOpenAI({ ...creds, fetch });
+			// A custom baseURL means an OpenAI-COMPATIBLE server (LM Studio, vLLM,
+			// Ollama, gateways), which speaks /chat/completions; the provider's
+			// default model targets OpenAI's own Responses API (/responses) that
+			// those servers do not implement.
+			return creds.baseURL ? provider.chat(model) : provider(model);
+		},
+	},
+	custom: {
+		build: (creds, model, fetch) => {
+			const { createOpenAICompatible } =
+				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
+			return createOpenAICompatible({
+				name: 'custom',
+				baseURL: creds.baseURL,
+				apiKey: creds.apiKey,
+				headers: creds.headers,
+				fetch,
+			})(model);
 		},
 	},
 	anthropic: {
 		build: (creds, model, fetch) => {
 			const { createAnthropic } =
 				require('@ai-sdk/anthropic') as typeof import('@ai-sdk/anthropic');
-			return createAnthropic({ ...creds, fetch })(model);
+			let normalizedBaseURL = creds.baseURL;
+			// The SDK expects the versioned base (default `https://api.anthropic.com/v1`),
+			// but n8n Anthropic credentials store the host without `/v1` — their
+			// consumers append the version segment themselves.
+			if (normalizedBaseURL) {
+				const url = new URL(normalizedBaseURL);
+				if (!url.pathname.replace(/\/$/, '').endsWith('/v1')) {
+					url.pathname = url.pathname.replace(/\/?$/, '/v1');
+					normalizedBaseURL = url.toString();
+				}
+			}
+			return createAnthropic({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
 		},
 	},
 	google: {
@@ -215,6 +244,15 @@ export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel
 	if (typeof config !== 'string') {
 		const { id: _id, ...rest } = config as { id: string; [k: string]: unknown };
 		credFields = rest;
+	}
+	// Host configs (e.g. Instance AI's `{ id, url }` for OpenAI-compatible
+	// endpoints) spell the base URL as `url`; the provider schemas only know
+	// `baseURL`, and Zod strips unknown keys, so normalize before validation.
+	// An EMPTY url means "no custom endpoint" (Instance AI emits `url: ''` for
+	// the api-key-only config) and must keep the provider default.
+	if (typeof credFields.url === 'string' && credFields.baseURL === undefined) {
+		const { url, ...restCreds } = credFields;
+		credFields = url ? { ...restCreds, baseURL: url } : restCreds;
 	}
 
 	const schema = PROVIDER_CREDENTIAL_SCHEMAS[provider];

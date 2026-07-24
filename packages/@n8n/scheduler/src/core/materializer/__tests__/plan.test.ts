@@ -14,6 +14,8 @@ const makeJob = (overrides: Partial<ScheduledJob> = {}): ScheduledJob => ({
 	timezone: null,
 	intervalSeconds: 10,
 	fireAt: null,
+	recurrenceUnit: null,
+	recurrenceSize: null,
 	nextRunAt: NOW,
 	lastFiredAt: null,
 	maxAttempts: 1,
@@ -87,6 +89,37 @@ describe('planOccurrences', () => {
 
 		// 9am Berlin (UTC+1 in January) is 8am UTC.
 		expect(plan.nextRunAt).toEqual(new Date('2026-01-01T08:00:00.000Z'));
+	});
+
+	it('thins a recurring_cron anchor by its every-Nth-period gate across a window', () => {
+		// "Every 2 weeks on Monday and Wednesday at midnight UTC." The anchor fires
+		// every Mon and Wed; the weeks gate keeps both days of an on-cadence week
+		// (the Monday and its same-week Wednesday) and skips the week in between.
+		const firstMonday = new Date('2026-01-05T00:00:00.000Z'); // first Monday of 2026
+		const job = makeJob({
+			kind: 'recurring_cron',
+			cronExpression: '0 0 0 * * 1,3',
+			timezone: 'UTC',
+			intervalSeconds: null,
+			recurrenceUnit: 'weeks',
+			recurrenceSize: 2,
+			nextRunAt: firstMonday,
+		});
+
+		// Window runs through the Wednesday two weeks on (the fourth recorded fire).
+		const windowEnd = new Date('2026-01-21T00:00:00.000Z');
+		const windowSeconds = (windowEnd.getTime() - firstMonday.getTime()) / 1000;
+
+		const plan = planOccurrences(job, firstMonday, { ...options, windowSeconds });
+
+		expect(plan.occurrences).toEqual([
+			new Date('2026-01-05T00:00:00.000Z'), // Mon, week 1
+			new Date('2026-01-07T00:00:00.000Z'), // Wed, week 1 (same-period refire)
+			new Date('2026-01-19T00:00:00.000Z'), // Mon, week 3 (week 2 skipped by the gate)
+			new Date('2026-01-21T00:00:00.000Z'), // Wed, week 3
+		]);
+		// Two weeks on again: week 5's Monday, with week 4 skipped.
+		expect(plan.nextRunAt).toEqual(new Date('2026-02-02T00:00:00.000Z'));
 	});
 
 	it('does nothing when the next run is past the window', () => {

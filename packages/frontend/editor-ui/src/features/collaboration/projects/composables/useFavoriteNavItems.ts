@@ -7,6 +7,7 @@ import { DEFAULT_PROJECT_ICON } from '../projects.constants';
 import type { Project } from '../projects.types';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 import type { FavoriteResourceType } from '@/app/api/favorites';
+import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 
 export type FavoriteGroupItem = {
 	menuItem: IMenuItem;
@@ -96,6 +97,26 @@ export function useFavoriteNavItems() {
 			})),
 	);
 
+	const favoriteAgentItems = computed<FavoriteGroupItem[]>(() =>
+		favoritesStore.favorites
+			.filter((f) => f.resourceType === 'agent' && f.resourceProjectId)
+			.map((f) => ({
+				menuItem: {
+					id: `favorite-agent-${f.resourceId}`,
+					label: f.resourceName,
+					icon: 'robot' as IMenuItem['icon'],
+					route: {
+						to: {
+							name: AGENT_BUILDER_VIEW,
+							params: { projectId: f.resourceProjectId, agentId: f.resourceId },
+						},
+					},
+				},
+				resourceId: f.resourceId,
+				resourceType: 'agent',
+			})),
+	);
+
 	const favoriteGroups = computed<FavoriteGroup[]>(() => {
 		const groups: FavoriteGroup[] = [];
 		if (favoriteProjectItems.value.length > 0) {
@@ -120,6 +141,12 @@ export function useFavoriteNavItems() {
 			groups.push({
 				type: 'dataTable',
 				items: favoriteDataTableItems.value,
+			});
+		}
+		if (favoriteAgentItems.value.length > 0) {
+			groups.push({
+				type: 'agent',
+				items: favoriteAgentItems.value,
 			});
 		}
 		return groups;
@@ -150,6 +177,7 @@ export function useFavoriteNavItems() {
 		favoriteProjectItems,
 		favoriteDataTableItems,
 		favoriteFolderItems,
+		favoriteAgentItems,
 		favoriteGroups,
 		activeTabId,
 		onFavoriteProjectClick,

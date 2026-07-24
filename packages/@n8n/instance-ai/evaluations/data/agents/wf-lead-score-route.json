@@ -1,0 +1,25 @@
+{
+	"description": "Gold: {anchor: wf, embedsOther: false} — bounded scoring feeding enumerable branches (notify sales / nurture email). Dissolved-hybrid family; 'how promising' tempts judgment framing, but a single bounded score decision suffices.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When a new lead arrives, score how promising it is from the message and company, notify sales if high, send a nurture email if low. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "simple",
+	"tags": ["intent-resolution", "event-triggered", "bounded-llm", "dissolved-hybrid"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent proposes a workflow — lead trigger, a scoring step, and fixed high/low branches to sales notification or nurture email — and does not propose creating an n8n Agent.",
+		"In the proposed design the lead scoring is a single bounded LLM decision feeding enumerable branches, not an AI Agent node or open-ended agent step."
+	]
+}

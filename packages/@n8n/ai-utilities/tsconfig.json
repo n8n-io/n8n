@@ -1,12 +1,18 @@
 {
 	"extends": [
-		"@n8n/typescript-config/tsconfig.common.json",
-		"@n8n/typescript-config/tsconfig.backend.json"
+		"@n8n/typescript-config/tsconfig.common.go.json",
+		"@n8n/typescript-config/tsconfig.backend.go.json"
 	],
 	"compilerOptions": {
 		"paths": {
 			"src/*": ["./src/*"],
-			"src": ["./src"]
+			"src": ["./src"],
+			// Type-only deep import of a type LangChain doesn't re-export publicly.
+			// exports-map-aware resolution can't reach dist/, so map straight to the
+			// declaration file (erased at runtime — never resolved by Node).
+			"@langchain/core/dist/load/map_keys": [
+				"./node_modules/@langchain/core/dist/load/map_keys.d.cts"
+			]
 		},
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,

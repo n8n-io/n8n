@@ -1,4 +1,4 @@
-import type { BuiltTool, CredentialProvider, McpClient } from '@n8n/agents';
+import type { BuiltTool, CredentialProvider, McpClient, ToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { McpAuthenticationSchemaTypes } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
@@ -10,10 +10,58 @@ import { BUILDER_TOOLS } from './builder-tool-names';
 import { buildMcpClientForServer } from '../json-config/mcp-client-factory';
 
 export interface VerifyMcpServerDeps {
+	agentId?: string;
 	credentialProvider: CredentialProvider;
 	oauthService: OauthService;
 	projectId: string;
 	proxyFetch: CustomFetch;
+	/** When verification succeeds with a credential, writes it into the matching
+	 *  mcpServers entry so the builder can skip read_config → patch_config. */
+	applyCredentialToMcpServer?: (
+		serverName: string,
+		credentialId: string,
+	) => Promise<{ applied: boolean }>;
+}
+
+/** Default deadline for the whole verify operation (connect + listTools) when the
+ *  caller does not provide `connectionTimeoutMs`. Matches the Instance AI MCP registry default. */
+const DEFAULT_MCP_VERIFICATION_TIMEOUT_MS = 10_000;
+
+/**
+ * Race `client.listTools()` against a timeout and the run's abort signal.
+ * Callers are responsible for closing `client` on rejection — the tool
+ * handler's own `finally` already does this on every exit path, so this
+ * helper only decides when to give up waiting.
+ */
+async function listToolsWithinDeadline(
+	client: McpClient,
+	timeoutMs: number,
+	abortSignal: AbortSignal | undefined,
+): Promise<Awaited<ReturnType<McpClient['listTools']>>> {
+	if (abortSignal?.aborted) {
+		throw new Error('MCP server verification was cancelled');
+	}
+
+	let timeoutId: ReturnType<typeof setTimeout> | undefined;
+	let onAbort: (() => void) | undefined;
+
+	const control = new Promise<never>((_, reject) => {
+		timeoutId = setTimeout(() => {
+			reject(new Error(`MCP server verification timed out after ${timeoutMs}ms`));
+		}, timeoutMs);
+
+		if (abortSignal) {
+			onAbort = () => reject(new Error('MCP server verification was cancelled'));
+			abortSignal.addEventListener('abort', onAbort, { once: true });
+		}
+	});
+
+	try {
+		return await Promise.race([client.listTools(), control]);
+	} finally {
+		if (timeoutId !== undefined) clearTimeout(timeoutId);
+		if (onAbort) abortSignal?.removeEventListener('abort', onAbort);
+	}
 }
 
 /**
@@ -53,7 +101,9 @@ const verifyMcpServerInputSchema = z.object({
 		.min(1)
 		.max(120_000)
 		.optional()
-		.describe('Connection timeout in milliseconds'),
+		.describe(
+			'Timeout in milliseconds for the whole verification (connect + list tools). Defaults to 10000ms',
+		),
 });
 
 type VerifyMcpServerInput = z.infer<typeof verifyMcpServerInputSchema>;
@@ -65,10 +115,14 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 				'Establishes a temporary connection, lists the available tools, then closes the connection. ' +
 				'Returns { ok: true, tools: [{ name, description }] } on success, or ' +
 				'{ ok: false, error: string } on failure. ' +
-				'Call this after ask_credential (when authentication is not "none") and before patch_config.',
+				'When a credential is provided and a matching mcpServers entry already exists, ' +
+				'a successful verify also writes the credential into that entry ' +
+				'({ credentialApplied: true, configMutated: true, agentId }) — no read_config/patch_config follow-up. ' +
+				'Call this after ask_credential when authentication is not "none".',
 		)
 		.input(verifyMcpServerInputSchema)
-		.handler(async (input: VerifyMcpServerInput) => {
+		.handler(async (input: VerifyMcpServerInput, ctx: ToolContext) => {
+			const timeoutMs = input.connectionTimeoutMs ?? DEFAULT_MCP_VERIFICATION_TIMEOUT_MS;
 			let client: McpClient | undefined;
 			try {
 				client = await buildMcpClientForServer(
@@ -78,19 +132,40 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 						transport: input.transport,
 						authentication: input.authentication,
 						credential: input.credential,
-						...(input.connectionTimeoutMs !== undefined && {
-							connectionTimeoutMs: input.connectionTimeoutMs,
-						}),
+						connectionTimeoutMs: timeoutMs,
 					},
 					deps,
 				);
-				const tools = await client.listTools();
+				const tools = await listToolsWithinDeadline(client, timeoutMs, ctx.abortSignal);
+				const mappedTools = tools.map((t) => ({
+					name: t.name,
+					description: t.description ?? '',
+				}));
+
+				if (input.credential && deps.applyCredentialToMcpServer) {
+					try {
+						const { applied } = await deps.applyCredentialToMcpServer(input.name, input.credential);
+						if (applied && deps.agentId) {
+							return {
+								ok: true,
+								tools: mappedTools,
+								credentialApplied: true,
+								configMutated: true,
+								agentId: deps.agentId,
+							};
+						}
+					} catch {
+						return {
+							ok: true,
+							tools: mappedTools,
+							credentialApplied: false,
+						};
+					}
+				}
+
 				return {
 					ok: true,
-					tools: tools.map((t) => ({
-						name: t.name,
-						description: t.description ?? '',
-					})),
+					tools: mappedTools,
 				};
 			} catch (error) {
 				return {

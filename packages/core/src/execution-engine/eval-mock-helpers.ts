@@ -8,6 +8,7 @@
  */
 
 import type { IHttpRequestOptions, INode, INodeProperties, IRequestOptions } from 'n8n-workflow';
+import { generateKeyPairSync } from 'node:crypto';
 import { Readable } from 'node:stream';
 
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from './index';
@@ -16,28 +17,20 @@ import type { EvalLlmMockHandler, EvalMockHttpResponse } from './index';
 // Mock credentials
 // ---------------------------------------------------------------------------
 
-// NOT A SECRET — throwaway RSA key used only in eval mode to satisfy OAuth
-// signing requirements so HTTP requests reach the interception layer. This key
-// has no access to any real service. It never leaves the process. The mock
-// credential system needs a structurally valid key for jwt.sign() to succeed;
-// without it, OAuth nodes crash before the HTTP interceptor can capture the request.
-// Generated once offline via: openssl genrsa 2048
-// prettier-ignore
-const EVAL_MOCK_RSA_KEY =
-	'-----BEGIN RSA PRIVATE KEY-----\n' +
-	'MIIEpAIBAAKCAQEA0Z3VS5JJcds3xfn/ygWep4PAtGoRBh2hHiwxBgNlHOVMSMk7\n' +
-	'R1ueXBOwqmLMSsGCnl1kV2QLFG6mnMBOxJBbXGLuzJsFMDPCnZGfnJBfcCnxGYCE\n' +
-	'c0bO3GN/S4Lk1eTarfEDQC/k0GFyyGPMQ5rnmZxSOqX1MtVCoB5FEGnLJEMqNFDt\n' +
-	'tJmYMmzxR9Lgd7bVMOYG8xDT/PYWw28GdgNZhAIPqFVHqMjUFWC76Q8rA6OF4OU0\n' +
-	'S0IAejdh3LGAzMIjCMfmSBn+VaRzcBVoKBpZgN0a1YjqFCr8LpqpMIxLfm+7SIdB\n' +
-	'Z6YWxEeOwKoiMIB9drmHO2lNzSTmblOKMPmqJwIDAQABAoIBAC5RgZ+hBx7xHNaM\n' +
-	'pPgwGMnCd3KE2M8RMBx1bfOUEODjQx7E3fOtqqa4HNqVGz9HBfVzL4JBpYCknI1X\n' +
-	'p9Dxd6hf0Ht5BPMWxPBqKGhqCSxIxwvGLShDANGKbjilSTkmhGBDrGj3U0DRXKxmU\n' +
-	'i6jDP0VJwy9ZmkBqxJvYEhW0m+fQd0JJKQ5HRk2RNXoP+GBmZsBeIs4uAt14i6n4\n' +
-	'kfYCR9CMSBC6DlNWxqGSAWzPrKAMPMiL5GJWGhy+A4DEXPewYQ6LpbD4xXEJN2v7\n' +
-	'Tae0YYjM/B7oy3JV5UsMaQKBgQDjYKMcn8io6Ei7RDYH8sMpKLejIEjE7ksMvYCk\n' +
-	'1RGx/w0Q3n5FVjMP3oG3UcUx9EB7GD8NMo74J/lEJ2UsBnIP3ggOb3AE+pWHNE0K\n' +
-	'-----END RSA PRIVATE KEY-----';
+// NOT A SECRET — throwaway RSA key used only in eval mode to satisfy local
+// JWT/OAuth signing (e.g. Google service-account nodes call jwt.sign with
+// credentials.privateKey before any HTTP request) so requests reach the
+// interception layer. Generated per process rather than checked in: a static
+// PEM here rotted into an unparseable key, and every service-account node then
+// crashed with "secretOrPrivateKey must be an asymmetric key when using RS256"
+// before the interceptor could capture the request.
+let evalMockRsaKey: string | undefined;
+function getEvalMockRsaKey(): string {
+	evalMockRsaKey ??= generateKeyPairSync('rsa', { modulusLength: 2048 })
+		.privateKey.export({ type: 'pkcs1', format: 'pem' })
+		.toString();
+	return evalMockRsaKey;
+}
 
 // Name patterns that indicate a property holds a secret value (case-insensitive).
 const SECRET_NAME_PATTERNS =
@@ -105,7 +98,7 @@ export function buildEvalMockCredentials(properties: INodeProperties[]): Record<
 		token_type: 'Bearer',
 		refresh_token: 'eval-mock-refresh-token',
 	};
-	mockCredentials.privateKey = EVAL_MOCK_RSA_KEY;
+	mockCredentials.privateKey = getEvalMockRsaKey();
 	return mockCredentials;
 }
 

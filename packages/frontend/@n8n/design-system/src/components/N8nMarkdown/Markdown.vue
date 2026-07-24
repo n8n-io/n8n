@@ -361,6 +361,11 @@ input[type='checkbox'] + label {
 	color: var(--sticky--color--text);
 	overflow-wrap: break-word;
 
+	// First rendered block sits flush with the top; container padding supplies the gap.
+	> :first-child {
+		margin-top: 0;
+	}
+
 	h1,
 	h2,
 	h3,

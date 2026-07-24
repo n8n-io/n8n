@@ -15,6 +15,7 @@ function makeContext(
 		credentialService: {} as InstanceAiContext['credentialService'],
 		nodeService: {} as InstanceAiContext['nodeService'],
 		dataTableService: {} as InstanceAiContext['dataTableService'],
+		workflowTemplateService: {} as InstanceAiContext['workflowTemplateService'],
 		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
 	};
 }

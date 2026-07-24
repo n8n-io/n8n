@@ -22,13 +22,19 @@ vi.mock('vue-router', async (importOriginal) => {
 });
 
 vi.mock('@n8n/design-system', () => ({
-	N8nActionBox: { template: '<div />', props: ['icon', 'description'] },
+	N8nEmptyState: { template: '<div />', props: ['icon', 'description'] },
 	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
 	N8nCard: {
 		name: 'N8nCard',
 		template: '<div v-bind="$attrs"><slot /></div>',
 		props: ['hoverable'],
 	},
+	N8nDialog: {
+		template: '<div v-if="open"><slot /></div>',
+		props: ['open'],
+	},
+	N8nDialogHeader: { template: '<div><slot /></div>' },
+	N8nDialogTitle: { template: '<div><slot /></div>' },
 	N8nHeading: { template: '<h2><slot /></h2>', props: ['size'] },
 	N8nIcon: { template: '<span />', props: ['icon', 'size'] },
 	N8nIconButton: {
@@ -64,6 +70,10 @@ vi.mock('../components/AgentAdvancedPanel.vue', () => ({
 
 vi.mock('../components/AgentCapabilitiesSection.vue', () => ({
 	default: { name: 'AgentCapabilitiesSection', template: '<div />' },
+}));
+
+vi.mock('../components/AgentChannelsSection.vue', () => ({
+	default: { name: 'AgentChannelsSection', template: '<div />' },
 }));
 
 vi.mock('../components/AgentIdentityHeader.vue', () => ({
@@ -106,7 +116,11 @@ vi.mock('../components/AgentSubAgentsPanel.vue', () => ({
 }));
 
 vi.mock('../views/AgentSessionsListView.vue', () => ({
-	default: { name: 'AgentSessionsListView', props: ['embedded'], template: '<div />' },
+	default: {
+		name: 'AgentSessionsListView',
+		props: ['embedded', 'projectId', 'agentId', 'openSessionInNewTab'],
+		template: '<div />',
+	},
 }));
 
 // First mount of this SFC eats the Vite transform cost; give it headroom.
@@ -149,14 +163,14 @@ async function mountColumn(
 			knowledgeBaseEnabled: overrides.knowledgeBaseEnabled ?? true,
 			appliedSkills: [],
 			connectedTriggers: [],
-			isBuildChatStreaming: false,
 			canEditAgent: true,
 			executionsDescription: '',
 		},
 		global: {
 			plugins: [createTestingPinia({ createSpy: vi.fn })],
 			stubs: {
-				AgentCapabilitiesSection: true,
+				AgentCapabilitiesSection: false,
+				AgentChannelsSection: false,
 				AgentInfoPanel: {
 					name: 'AgentInfoPanel',
 					template:
@@ -248,6 +262,14 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(knowledgeWrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(true);
 	});
 
+	it('renders the Knowledge tab with vector stores but without the files table when the knowledge base is disabled', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'knowledge', knowledgeBaseEnabled: false });
+
+		expect(wrapper.find('[data-testid="agent-knowledge-tab-content"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-vector-stores-card"]').exists()).toBe(true);
+	});
+
 	it('renders tabs inside the constrained rule container that aligns with content cards', async () => {
 		const wrapper = await mountColumn();
 
@@ -303,23 +325,28 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.findComponent({ name: 'AgentAdvancedPanel' }).exists()).toBe(false);
 	});
 
-	it('orders the Agent tab as capabilities, model, then instructions', async () => {
+	it('orders the Agent tab as channels, model, instructions, then capabilities', async () => {
 		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
 		await flushPromises();
 
+		const channels = wrapper.findComponent({ name: 'AgentChannelsSection' });
 		const model = wrapper.find('[data-testid="agent-model-panel"]');
 		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
 		const instructions = wrapper.find('[data-testid="agent-instructions-panel"]');
 
+		expect(channels.exists()).toBe(true);
 		expect(model.exists()).toBe(true);
 		expect(capabilities.exists()).toBe(true);
 		expect(instructions.exists()).toBe(true);
 		expect(
-			capabilities.element.compareDocumentPosition(model.element) &
-				Node.DOCUMENT_POSITION_FOLLOWING,
+			channels.element.compareDocumentPosition(model.element) & Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
 		expect(
 			model.element.compareDocumentPosition(instructions.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(
+			instructions.element.compareDocumentPosition(capabilities.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
 	});

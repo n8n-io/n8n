@@ -455,6 +455,7 @@ interface VerifyToolContext {
 		};
 		workflowService?: InstanceAiWorkflowService;
 		dataTableService?: InstanceAiDataTableService;
+		credentialService?: { list: Mock };
 	};
 	logger: { debug: Mock; info: Mock; warn: Mock; error: Mock };
 }
@@ -481,8 +482,15 @@ function makeContext(
 	outcome: WorkflowBuildOutcome | undefined,
 	runResult: ExecutionRunResult,
 	overrides: {
-		workflowNodes?: Array<{ name?: string; type: string; parameters?: Record<string, unknown> }>;
+		workflowNodes?: Array<{
+			name?: string;
+			type: string;
+			parameters?: Record<string, unknown>;
+			credentials?: Record<string, unknown>;
+		}>;
+		workflowConnections?: Record<string, unknown>;
 		tableRows?: Record<string, Array<Record<string, unknown>>>;
+		availableCredentials?: Array<{ id: string; name: string; type: string }>;
 	} = {},
 ) {
 	const updateBuildOutcome = vi.fn(
@@ -530,9 +538,19 @@ function makeContext(
 	const workflowService = {
 		getAsWorkflowJSON: vi.fn(async () => {
 			await Promise.resolve();
-			return { nodes: overrides.workflowNodes ?? [] };
+			return {
+				nodes: overrides.workflowNodes ?? [],
+				connections: overrides.workflowConnections ?? {},
+			};
 		}),
 	} as unknown as InstanceAiWorkflowService;
+
+	const credentialService = {
+		list: vi.fn(async () => {
+			await Promise.resolve();
+			return overrides.availableCredentials ?? [];
+		}),
+	};
 
 	const dataTableService = {
 		queryRows,
@@ -565,6 +583,7 @@ function makeContext(
 			executionService: { run },
 			workflowService,
 			dataTableService,
+			credentialService,
 		},
 		logger,
 	};
@@ -1374,5 +1393,106 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 
 		expect(result.success).toBe(true);
 		expect(deleteRows).not.toHaveBeenCalled();
+	});
+});
+
+describe('verify-built-workflow tool — stale mocked-credential plan', () => {
+	const mockedCredentialVerdict = {
+		nodeName: 'Notion',
+		verdict: 'simulate' as const,
+		reason: 'Credentials are not configured for this node',
+		confidence: 'high' as const,
+		source: 'deterministic' as const,
+	};
+	const staleOutcome = () =>
+		makeBuildOutcome({
+			mockedNodeNames: ['Notion'],
+			mockedCredentialTypes: ['notionApi'],
+			mockedCredentialsByNode: { Notion: ['notionApi'] },
+			nodeSimulationPlan: [mockedCredentialVerdict],
+			simulationFixtures: { Notion: [{ page: 'mock' }] },
+		});
+	const notionConnections = {
+		Trigger: { main: [[{ node: 'Notion', type: 'main', index: 0 }]] },
+	};
+
+	it('executes a node for real once its mocked credential was assigned after the build', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(
+			staleOutcome(),
+			{ executionId: 'exec-1', status: 'success', data: {} },
+			{
+				workflowNodes: [
+					{
+						name: 'Notion',
+						type: 'n8n-nodes-base.notion',
+						parameters: { operation: 'get' },
+						credentials: { notionApi: { id: 'cred-1', name: 'Notion' } },
+					},
+				],
+				workflowConnections: notionConnections,
+				availableCredentials: [{ id: 'cred-1', name: 'Notion', type: 'notionApi' }],
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.simulatedNodes).toBeUndefined();
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run.mock.calls[0][2]).toMatchObject({ verificationPinData: undefined });
+		expect(updateBuildOutcome).toHaveBeenCalledWith(
+			'wi-1',
+			expect.objectContaining({
+				mockedNodeNames: undefined,
+				mockedCredentialTypes: undefined,
+				mockedCredentialsByNode: undefined,
+				nodeSimulationPlan: [expect.objectContaining({ nodeName: 'Notion', verdict: 'execute' })],
+				simulationFixtures: undefined,
+			}),
+		);
+	});
+
+	it('keeps replaying the stored plan while the credential is still missing', async () => {
+		const { ctx } = makeContext(
+			staleOutcome(),
+			{ executionId: 'exec-1', status: 'success', data: {} },
+			{
+				workflowNodes: [
+					{ name: 'Notion', type: 'n8n-nodes-base.notion', parameters: { operation: 'get' } },
+				],
+				workflowConnections: notionConnections,
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.simulatedNodes).toBeUndefined(); // node not reached in this run result
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run.mock.calls[0][2]).toMatchObject({
+			verificationPinData: { Notion: [{ page: 'mock' }] },
+		});
+	});
+
+	it('proceeds with the stored plan when the live workflow cannot be loaded', async () => {
+		const { ctx } = makeContext(staleOutcome(), {
+			executionId: 'exec-1',
+			status: 'success',
+			data: {},
+		});
+		vi.mocked(ctx.domainContext.workflowService!.getAsWorkflowJSON).mockRejectedValue(
+			new Error('boom'),
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run.mock.calls[0][2]).toMatchObject({
+			verificationPinData: { Notion: [{ page: 'mock' }] },
+		});
+		expect(ctx.logger.warn).toHaveBeenCalledWith(
+			'verify-built-workflow: could not reconcile mocked-credential plan',
+			expect.objectContaining({ workItemId: 'wi-1' }),
+		);
 	});
 });

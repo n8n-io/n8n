@@ -34,6 +34,11 @@ export class PrecisionTimer {
 
 	constructor(private readonly backend: TimerBackend = defaultBackend) {}
 
+	/** The clock scheduling is measured against; callers timing against `runAt` must use it. */
+	now(): number {
+		return this.backend.now();
+	}
+
 	/** Fire `fn` at `runAt` (or immediately if that instant has passed). */
 	schedule(runAt: Date, fn: () => void): void {
 		// The delay is measured against the instance wall clock, whereas due-ness and

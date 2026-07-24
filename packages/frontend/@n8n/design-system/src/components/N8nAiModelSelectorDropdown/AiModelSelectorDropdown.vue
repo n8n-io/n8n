@@ -105,6 +105,7 @@ defineExpose({
 		placement="bottom-start"
 		teleported
 		searchable
+		width="var(--reka-dropdown-menu-trigger-width)"
 		@select="handleSelect"
 	>
 		<template #trigger>
@@ -192,7 +193,7 @@ defineExpose({
 				:content="truncateBeforeLast(item.data.description, 320, 0)"
 				:class="ui.class"
 				placement="right"
-				:teleported="false"
+				:teleported="item.data?.descriptionTooltipTeleported ?? true"
 			>
 				<N8nIcon icon="info" size="medium" color="text-light" :class="$style.infoIcon" />
 			</N8nTooltip>

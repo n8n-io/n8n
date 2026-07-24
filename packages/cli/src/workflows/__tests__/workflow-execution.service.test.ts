@@ -13,6 +13,7 @@ import {
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
+import type { EventService } from '@/events/event.service';
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -392,6 +393,59 @@ describe('WorkflowExecutionService', () => {
 			const callArgs = workflowRunner.run.mock.calls[0][0];
 			expect('runData' in callArgs).toBe(false);
 			expect(result).toEqual({ executionId });
+		});
+
+		test('should treat an explicitly undefined trigger as absent and execute as partial run', async () => {
+			const executionId = 'fake-execution-id';
+			const user = mock<User>({ id: 'user-id' });
+			// Local copies: the deep mock caches auto-mocked properties onto the
+			// node objects it wraps, which would pollute the shared fixtures
+			const localWebhookNode = { ...webhookNode };
+			const localHackerNewsNode = { ...hackerNewsNode };
+			const workflowData = mock<IWorkflowBase>({
+				nodes: [localWebhookNode, localHackerNewsNode],
+				connections: createMainConnection(localHackerNewsNode.name, localWebhookNode.name),
+				pinData: {},
+			});
+
+			// Not an object literal: widened payloads bypass excess property checks,
+			// so the key can reach the service despite the union type
+			const runData = { [localWebhookNode.name]: [toITaskData([{ data: { value: 1 } }])] };
+			const runPayload = {
+				triggerToStartFrom: undefined,
+				destinationNode: { nodeName: localHackerNewsNode.name, mode: 'inclusive' },
+				runData,
+				dirtyNodeNames: [],
+			} as WorkflowRequest.ManualRunPayload;
+
+			nodeTypes.getByNameAndVersion.mockReturnValueOnce(
+				mock<INodeType>({ description: { group: [] } }),
+			);
+			workflowRunner.run.mockResolvedValue(executionId);
+
+			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({
+					destinationNode: { nodeName: localHackerNewsNode.name, mode: 'inclusive' },
+					executionMode: 'manual',
+					runData,
+				}),
+			);
+			expect(result).toEqual({ executionId });
+		});
+
+		test('should reject a payload with neither a trigger nor a destination node', async () => {
+			const user = mock<User>({ id: 'user-id' });
+			const workflowData = mock<IWorkflowBase>({ nodes: [], connections: {}, pinData: undefined });
+
+			await expect(
+				workflowExecutionService.executeManually(
+					workflowData,
+					{} as WorkflowRequest.ManualRunPayload,
+					user,
+				),
+			).rejects.toThrow('`executeManually` was called with an unexpected payload');
 		});
 
 		test('should force current version for manual execution even if workflow has active version', async () => {
@@ -1178,6 +1232,50 @@ describe('WorkflowExecutionService', () => {
 			// workflow separately (single query via the publication service).
 			expect(workflowRunnerMock.run).not.toHaveBeenCalled();
 			expect(workflowRepositoryMock.get).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('executeChatWorkflow()', () => {
+		test('should emit empty project fields when the project lookup fails', async () => {
+			const ownershipService = mock<OwnershipService>();
+			ownershipService.getWorkflowProjectCached.mockRejectedValue(new Error('no project'));
+
+			const eventService = mock<EventService>();
+			const workflowRunnerMock = mock<WorkflowRunner>();
+			workflowRunnerMock.run.mockResolvedValue('fake-execution-id');
+
+			const service = new WorkflowExecutionService(
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				nodeTypes,
+				mock(),
+				workflowRunnerMock,
+				mock(),
+				mock(),
+				mock(),
+				eventService,
+				ownershipService,
+				mock(),
+				mock(),
+				mock(),
+			);
+
+			const user = mock<User>({ id: 'user-id' });
+			const workflowData = mock<IWorkflowBase>({ id: 'workflow-id', name: 'Test Workflow' });
+
+			await service.executeChatWorkflow(user, workflowData, createRunExecutionData({}));
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-executed',
+				expect.objectContaining({ projectId: '', projectName: '' }),
+			);
+			expect(workflowRunnerMock.run).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: '', projectName: '' }),
+				undefined,
+				true,
+			);
 		});
 	});
 });

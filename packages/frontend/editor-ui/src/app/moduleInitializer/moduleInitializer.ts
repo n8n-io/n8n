@@ -1,31 +1,13 @@
 import { type Router } from 'vue-router';
+import { modalRegistry, registerResource } from '@n8n/frontend-module-sdk';
 import { VIEWS } from '@/app/constants';
-import { DataTableModule } from '@/features/core/dataTable/module.descriptor';
-import { registerResource } from '@/app/moduleInitializer/resourceRegistry';
+import { modules } from '@/app/modules.manifest';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { InsightsModule } from '@/features/execution/insights/module.descriptor';
-import { MCPModule } from '@/features/ai/mcpAccess/module.descriptor';
-import { ChatModule } from '@/features/ai/chatHub/module.descriptor';
-import { InstanceAiModule } from '@/features/ai/instanceAi/module.descriptor';
-import { AgentsModule } from '@/features/agents/module.descriptor';
-import { OtelModule } from '@/features/settings/otel/module.descriptor';
-import { INSTANCE_AI_SETTINGS_VIEW } from '@/features/ai/instanceAi/constants';
-import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
-import * as modalRegistry from '@/app/moduleInitializer/modalRegistry';
-
-/**
- * Hard-coding modules list until we have a dynamic way to load modules.
- */
-const modules: FrontendModuleDescription[] = [
-	InsightsModule,
-	DataTableModule,
-	MCPModule,
-	ChatModule,
-	InstanceAiModule,
-	AgentsModule,
-	OtelModule,
-];
+import {
+	INSTANCE_AI_NEW_VIEW,
+	INSTANCE_AI_SETTINGS_VIEW,
+} from '@/features/ai/instanceAi/constants';
 
 /**
  * Initialize modules resources (used in ResourcesListLayout), done in init.ts
@@ -83,11 +65,12 @@ const checkModuleAvailability = (options: any) => {
 		return false;
 	}
 
-	// Settings route is always accessible even when the admin toggle is off;
-	// other instance-ai routes are disabled.
+	// When the admin toggle is off, instance-ai routes are disabled except the
+	// settings route, and the template deep-link route, whose guard falls back
+	// to the classic template setup instead of losing the user's intent.
 	if (options.to.meta.moduleName === 'instance-ai') {
 		const routeName = options.to.name;
-		if (routeName !== INSTANCE_AI_SETTINGS_VIEW) {
+		if (routeName !== INSTANCE_AI_SETTINGS_VIEW && routeName !== INSTANCE_AI_NEW_VIEW) {
 			const enabled = settingsStore.moduleSettings['instance-ai']?.enabled;
 			if (enabled === false) {
 				return false;

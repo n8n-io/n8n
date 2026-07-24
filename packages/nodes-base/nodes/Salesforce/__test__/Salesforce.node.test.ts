@@ -1918,6 +1918,33 @@ describe('Salesforce', () => {
 				);
 			});
 
+			it('should pass ParentId when creating a case with a parent', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'case',
+						operation: 'create',
+						type: 'Problem',
+						additionalFields: {
+							ParentId: 'parentCase123',
+						},
+					};
+					return get(params, param);
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'childCase123', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/case',
+					expect.objectContaining({
+						Type: 'Problem',
+						ParentId: 'parentCase123',
+					}),
+				);
+			});
+
 			it('should handle case create with all additional fields', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
 					const params: Record<string, unknown> = {
@@ -1930,7 +1957,7 @@ describe('Salesforce', () => {
 							status: 'New',
 							owner: 'user123',
 							subject: 'Test Case Subject',
-							parentId: 'parent123',
+							ParentId: 'parent123',
 							priority: 'High',
 							accountId: 'acc123',
 							contactId: 'contact123',
@@ -2023,7 +2050,7 @@ describe('Salesforce', () => {
 							status: 'Working',
 							owner: 'user456',
 							subject: 'Updated Case Subject',
-							parentId: 'parent456',
+							ParentId: 'parent456',
 							priority: 'Medium',
 							accountId: 'acc456',
 							recordTypeId: 'rt456',
@@ -2064,6 +2091,32 @@ describe('Salesforce', () => {
 						SuppliedEmail: 'jane@example.com',
 						SuppliedPhone: '+1987654321',
 						SuppliedCompany: 'Updated Company',
+					}),
+				);
+			});
+
+			it('should pass ParentId when updating a case to set a parent', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'case',
+						operation: 'update',
+						caseId: 'childCase456',
+						updateFields: {
+							ParentId: 'parentCase456',
+						},
+					};
+					return get(params, param);
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'PATCH',
+					'/sobjects/case/childCase456',
+					expect.objectContaining({
+						ParentId: 'parentCase456',
 					}),
 				);
 			});

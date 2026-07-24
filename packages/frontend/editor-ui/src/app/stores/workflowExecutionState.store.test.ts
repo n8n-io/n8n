@@ -748,6 +748,7 @@ describe('workflowExecutionState.store', () => {
 				executionDataStore.addNodeExecutionStartedData({
 					executionId: 'exec-1',
 					nodeName: 'Code',
+					sequenceNumber: 0,
 					data: { startTime: 1 } as never,
 				});
 				executionStateStore.setActiveExecutionId('exec-1');
@@ -767,6 +768,7 @@ describe('workflowExecutionState.store', () => {
 				executionDataStore.addNodeExecutionStartedData({
 					executionId: IN_PROGRESS_EXECUTION_ID,
 					nodeName: 'Pending',
+					sequenceNumber: 0,
 					data: { startTime: 1 } as never,
 				});
 				executionStateStore.setActiveExecutionId(null);
@@ -896,6 +898,7 @@ describe('workflowExecutionState.store', () => {
 			executionStateStore.addActiveNodeExecutionStartedData({
 				executionId: 'exec-1',
 				nodeName: 'Code',
+				sequenceNumber: 0,
 				data: { startTime: 1 } as never,
 			});
 
@@ -911,6 +914,7 @@ describe('workflowExecutionState.store', () => {
 			executionDataStore.addNodeExecutionStartedData({
 				executionId: 'exec-1',
 				nodeName: 'Code',
+				sequenceNumber: 0,
 				data: { startTime: 1 } as never,
 			});
 			executionStateStore.setActiveExecutionId('exec-1');
@@ -933,6 +937,7 @@ describe('workflowExecutionState.store', () => {
 				executionStateStore.addActiveNodeExecutionStartedData({
 					executionId: 'x',
 					nodeName: 'N',
+					sequenceNumber: 0,
 					data: { startTime: 1 } as never,
 				}),
 			).not.toThrow();
@@ -1363,7 +1368,7 @@ describe('workflowExecutionState.store', () => {
 			executionStateStore.setSelectedTriggerNodeName('Trigger');
 			executionStateStore.setCurrentWorkflowExecutions([makeExecutionSummary({ id: '1' })]);
 			executionStateStore.setLastSuccessfulExecutionId('last-1');
-			executionStateStore.executingNode.addExecutingNode('Node');
+			executionStateStore.executingNode.addExecutingNode('Node', 0);
 
 			executionStateStore.resetExecutionState();
 
@@ -1430,7 +1435,7 @@ describe('workflowExecutionState.store', () => {
 				createWorkflowDocumentId('wf-1'),
 			);
 
-			workflowExecutionStateStore.executingNode.addExecutingNode('Node A');
+			workflowExecutionStateStore.executingNode.addExecutingNode('Node A', 0);
 
 			expect(workflowExecutionStateStore.executingNode.isNodeExecuting('Node A')).toBe(true);
 			expect(workflowExecutionStateStore.executingNode.lastAddedExecutingNode).toBe('Node A');
@@ -1440,11 +1445,47 @@ describe('workflowExecutionState.store', () => {
 			const a = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-a'));
 			const b = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-b'));
 
-			a.executingNode.addExecutingNode('Node A');
+			a.executingNode.addExecutingNode('Node A', 0);
 
 			expect(a.executingNode.isNodeExecuting('Node A')).toBe(true);
 			expect(b.executingNode.isNodeExecuting('Node A')).toBe(false);
 			expect(b.executingNode.executingNode).toEqual([]);
+		});
+
+		// CAT-2895: only the latest node (highest sequence number) renders as
+		// executing, so a stale node left over from a suspended tab can never add
+		// a second spinner. Driven through the store so the per-node canvas
+		// projection (executionRunningByNodeId) is asserted end to end.
+		it('shows only the latest node as executing, superseding the earlier one', () => {
+			const id = createWorkflowDocumentId('wf-latest');
+			const documentStore = useWorkflowDocumentStore(id);
+			const executionStateStore = useWorkflowExecutionStateStore(id);
+
+			documentStore.addNode({
+				id: 'a-id',
+				name: 'Node A',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			});
+			documentStore.addNode({
+				id: 'b-id',
+				name: 'Node B',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			});
+
+			executionStateStore.executingNode.addExecutingNode('Node A', 0);
+			executionStateStore.executingNode.addExecutingNode('Node B', 1);
+
+			expect(executionStateStore.executingNode.isNodeExecuting('Node A')).toBe(false);
+			expect(executionStateStore.executingNode.isNodeExecuting('Node B')).toBe(true);
+			// The canvas projection sees exactly one running node.
+			expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(false);
+			expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
 		});
 	});
 

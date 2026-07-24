@@ -15,7 +15,9 @@ import { listEvaluationConfigs } from '../../evaluation.api';
 import { useAiRootNodes } from '../../composables/useAiRootNodes';
 import {
 	CANNED_METRIC_EXPECTED_FIELDS,
+	getCanonicalEvaluationName,
 	LM_SUBNODE_TYPE_TO_CHATHUB_PROVIDER,
+	TEST_CASE_NAME_COLUMN,
 	type CannedMetricKey,
 } from '../../evaluation.constants';
 import { stringifyValue } from '../../evaluation.utils';
@@ -23,14 +25,6 @@ import { stringifyValue } from '../../evaluation.utils';
 // Matches the dataset trigger's row cap (see EvaluationTrigger), so the wizard
 // hydrates the same set of rows the run iterates over.
 const MAX_DATASET_ROWS = 1000;
-
-const CANNED_METRIC_KEYS = new Set<CannedMetricKey>([
-	'correctness',
-	'helpfulness',
-	'stringSimilarity',
-	'categorization',
-	'toolsUsed',
-]);
 
 export function useWizardHydration() {
 	const wizardStore = useEvaluationsWizardSidepanelStore();
@@ -43,22 +37,44 @@ export function useWizardHydration() {
 	const locale = useI18n();
 
 	const isHydrating = ref(false);
+	// Dedupe concurrent hydrate() calls onto one promise, keyed by the workflow it
+	// runs for. A call for a different workflow must NOT reuse an in-flight run —
+	// that would resolve without hydrating the new workflow and let the old run's
+	// rows land on it.
+	let inFlight: Promise<void> | null = null;
+	let inFlightWorkflowId: string | undefined;
 
 	async function hydrate(): Promise<void> {
-		if (isHydrating.value) return;
+		const workflowId = workflowDocumentStore.value?.workflowId;
+		if (inFlight && inFlightWorkflowId === workflowId) {
+			await inFlight;
+			return;
+		}
+		inFlightWorkflowId = workflowId;
+		inFlight = doHydrate().finally(() => {
+			if (inFlightWorkflowId === workflowId) {
+				inFlight = null;
+				inFlightWorkflowId = undefined;
+			}
+		});
+		await inFlight;
+	}
+
+	async function doHydrate(): Promise<void> {
 		const wf = workflowDocumentStore.value;
 		const workflowId = wf?.workflowId;
 		const projectId = wf?.homeProject?.id;
 		if (!workflowId || !projectId) return;
-		// A new/unsaved workflow has no persisted config to load; calling the API
-		// with its placeholder id 404s ("Workflow not found") and surfaces a
-		// spurious error toast. Start blank instead.
+
 		if (workflowsStore.isNewWorkflow) return;
+
+		const isStale = () => workflowDocumentStore.value?.workflowId !== workflowId;
 
 		isHydrating.value = true;
 		try {
 			const configs = await listEvaluationConfigs(rootStore.restApiContext, workflowId);
-			const canonical = `Evaluation: ${wf.name ?? 'workflow'}`.slice(0, 128);
+			if (isStale()) return;
+			const canonical = getCanonicalEvaluationName(wf.name);
 			const config = configs.find((c) => c.name === canonical) ?? configs[configs.length - 1];
 			if (!config) return;
 
@@ -72,28 +88,33 @@ export function useWizardHydration() {
 						projectId,
 						{ take: MAX_DATASET_ROWS },
 					);
+					if (isStale()) return;
 					applyDatasetRowsToStore(rows.data);
 				} catch (error) {
 					console.warn('[evaluations wizard] failed to hydrate dataset rows', error);
 				}
 			}
 
-			await restoreLastRun(workflowId);
+			if (isStale()) return;
+			await restoreLastRun(workflowId, isStale);
 		} catch (error) {
-			toast.showError(error, locale.baseText('evaluations.wizardSidepanel.hydrate.error'));
+			// A failure for a workflow the user already navigated away from must not
+			// surface a toast on the now-active workflow.
+			if (!isStale()) {
+				toast.showError(error, locale.baseText('evaluations.wizardSidepanel.hydrate.error'));
+			}
 		} finally {
 			isHydrating.value = false;
 		}
 	}
 
-	// On a fresh (re)open of a configured eval, land on the results pane showing
-	// the most recent run instead of step 0. Skips when the user is already
-	// mid-flow (past step 0) or has a run pinned this session — e.g. after
-	// "Edit evals", which sends them to step 0 but keeps the run pinned.
-	async function restoreLastRun(workflowId: string): Promise<void> {
+	async function restoreLastRun(workflowId: string, isStale: () => boolean): Promise<void> {
 		if (wizardStore.activeStep !== 0 || wizardStore.activeRunId) return;
 		try {
 			await evaluationStore.fetchTestRuns(workflowId);
+			// A workflow switch during the fetch must not pin this (now previous)
+			// workflow's run onto the newly-active pane.
+			if (isStale()) return;
 			const runs = [...(evaluationStore.testRunsByWorkflowId[workflowId] ?? [])].sort(
 				(a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
 			);
@@ -127,8 +148,6 @@ export function useWizardHydration() {
 		wizardStore.customChecks = [];
 		for (const check of customChecks) wizardStore.addCustomCheck(check);
 
-		// Prefer single-AI-node mode when the saved end node still matches an
-		// AI root node; fall back to explicit slice names otherwise.
 		const aiNodeNames = new Set(aiRootNodes.value.map((n) => n.name));
 		if (aiNodeNames.has(config.endNodeName)) {
 			wizardStore.aiNodeName = config.endNodeName;
@@ -147,53 +166,60 @@ export function useWizardHydration() {
 		// Per-row expected values keep each result case mapped to its own dataset
 		// row (by `runIndex`). The first row additionally seeds the Step-2 form's
 		// inputs/expected fields.
-		wizardStore.datasetExpectedByRow = rows.map((row) => splitDatasetRow(row).expected);
-		const first = rows[0];
+		const split = rows.map((row) => splitDatasetRow(row));
+		wizardStore.datasetExpectedByRow = split.map((s) => s.expected);
+		wizardStore.datasetInputsByRow = split.map((s) => s.inputs);
+		wizardStore.datasetNamesByRow = split.map((s) => s.name);
+		const first = split[0];
 		if (!first) return;
-		const { inputs, expected } = splitDatasetRow(first);
-		wizardStore.inputs = inputs;
-		wizardStore.expectedValues = expected;
+		wizardStore.inputs = first.inputs;
+		wizardStore.expectedValues = first.expected;
+		// `caseName` is per-active-row and owned by `openDetail`. Seeding it from
+		// row 0 here would clobber the open case's name when a late hydrate resolves,
+		// and the next auto-save would then persist that wrong (empty) name.
 	}
 
 	return { hydrate, isHydrating };
 }
 
 // Splits a data table row into the expected-output columns (matched against the
-// canned metrics' field names) and the remaining input columns. The synthetic
-// id/timestamp columns are dropped.
+// canned metrics' field names), the reserved case-name column, and the remaining
+// input columns. The synthetic id/timestamp columns are dropped.
 function splitDatasetRow(row: Record<string, unknown>): {
 	inputs: Record<string, string>;
 	expected: Record<string, string>;
+	name: string;
 } {
 	const inputs: Record<string, string> = {};
 	const expected: Record<string, string> = {};
+	let name = '';
 	const expectedFieldNames = new Set(
 		Object.values(CANNED_METRIC_EXPECTED_FIELDS).map((f) => f.name),
 	);
 	for (const [key, value] of Object.entries(row)) {
 		if (key === 'id' || key === 'createdAt' || key === 'updatedAt') continue;
 		const stringified = stringifyValue(value);
-		if (expectedFieldNames.has(key)) expected[key] = stringified;
+		if (key === TEST_CASE_NAME_COLUMN) name = stringified;
+		else if (expectedFieldNames.has(key)) expected[key] = stringified;
 		else inputs[key] = stringified;
 	}
-	return { inputs, expected };
+	return { inputs, expected, name };
 }
 
 type CannedDecode = { key: CannedMetricKey; judge?: JudgeSelection };
 
 function decodeCannedMetric(metric: EvaluationMetric): CannedDecode | undefined {
-	// Discriminate on `name` rather than `type` — `llm_judge` covers both
-	// canned presets and user-defined judges.
-	const name = metric.name;
-	if (!isCannedMetricKey(name)) return undefined;
-
-	if (metric.type === 'llm_judge' && (name === 'correctness' || name === 'helpfulness')) {
+	// Classify by the metric's own discriminator (llm_judge preset / metric type),
+	// not by `metric.name`. `name` is a free-form human label — a config created
+	// outside the wizard (by the agent or the API) may name a helpfulness judge
+	// "Valid Markdown", so it can't identify the canned metric.
+	if (metric.type === 'llm_judge') {
 		const preset: LlmJudgeMetricPreset = metric.config.preset;
-		if (preset !== name) return undefined;
+		if (preset !== 'correctness' && preset !== 'helpfulness') return undefined;
 		const provider = LM_SUBNODE_TYPE_TO_CHATHUB_PROVIDER[metric.config.provider];
-		if (!provider) return { key: name };
+		if (!provider) return { key: preset };
 		return {
-			key: name,
+			key: preset,
 			judge: {
 				provider,
 				credentialId: metric.config.credentialId,
@@ -201,9 +227,9 @@ function decodeCannedMetric(metric: EvaluationMetric): CannedDecode | undefined 
 			},
 		};
 	}
-	if (metric.type === 'string_similarity' && name === 'stringSimilarity') return { key: name };
-	if (metric.type === 'categorization' && name === 'categorization') return { key: name };
-	if (metric.type === 'tools_used' && name === 'toolsUsed') return { key: name };
+	if (metric.type === 'string_similarity') return { key: 'stringSimilarity' };
+	if (metric.type === 'categorization') return { key: 'categorization' };
+	if (metric.type === 'tools_used') return { key: 'toolsUsed' };
 	return undefined;
 }
 
@@ -215,8 +241,4 @@ function decodeCustomCheck(metric: EvaluationMetric): Omit<CustomCheck, 'id'> | 
 		};
 	}
 	return undefined;
-}
-
-function isCannedMetricKey(name: string): name is CannedMetricKey {
-	return CANNED_METRIC_KEYS.has(name as CannedMetricKey);
 }

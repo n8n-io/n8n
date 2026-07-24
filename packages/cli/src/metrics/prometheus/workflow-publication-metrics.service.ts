@@ -56,6 +56,7 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 		this.initRecordOutcomeMetrics();
 		this.initTriggerMetrics();
 		this.initCleanupMetrics();
+		this.initReconciliationMetrics();
 	}
 
 	private initOutboxGauges() {
@@ -185,6 +186,36 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 			'workflow-publication-outbox-cleanup',
 			({ result, deletedCount, durationMs }) => {
 				deleted.inc(deletedCount);
+				duration.observe({ result }, durationMs * Time.milliseconds.toSeconds);
+			},
+		);
+	}
+
+	private initReconciliationMetrics() {
+		const prefix = this.config.prefix;
+
+		const deficient = new promClient.Counter({
+			name: `${prefix}workflow_publication_reconciliation_deficient_workflows_total`,
+			help: 'Total number of workflows re-enqueued by trigger reconciliation because their in-memory triggers were missing.',
+		});
+
+		const surplus = new promClient.Counter({
+			name: `${prefix}workflow_publication_reconciliation_surplus_workflows_total`,
+			help: 'Total number of registered workflows torn down by trigger reconciliation because they were no longer published.',
+		});
+
+		const duration = new promClient.Histogram({
+			name: `${prefix}workflow_publication_reconciliation_duration_seconds`,
+			help: 'Duration in seconds of a trigger reconciliation pass by result.',
+			labelNames: ['result'],
+			buckets: DURATION_BUCKETS_SECONDS,
+		});
+
+		this.eventService.on(
+			'workflow-publication-reconciliation',
+			({ result, deficientCount, surplusCount, durationMs }) => {
+				deficient.inc(deficientCount);
+				surplus.inc(surplusCount);
 				duration.observe({ result }, durationMs * Time.milliseconds.toSeconds);
 			},
 		);

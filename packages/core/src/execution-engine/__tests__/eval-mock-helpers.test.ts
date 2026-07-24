@@ -1,4 +1,5 @@
 import type { IHttpRequestOptions, INode, INodeProperties, IRequestOptions } from 'n8n-workflow';
+import { createPrivateKey, createSign } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
@@ -182,6 +183,22 @@ describe('eval-mock-helpers', () => {
 
 			expect(result.privateKey).toEqual(expect.stringContaining('BEGIN RSA PRIVATE KEY'));
 			expect(result.privateKey).toEqual(expect.stringContaining('END RSA PRIVATE KEY'));
+		});
+
+		it('should include a privateKey that parses and RS256-signs', () => {
+			// PEM markers alone are not enough: service-account nodes jwt.sign()
+			// with this key before any HTTP request, so it must be a real key.
+			const result = buildEvalMockCredentials([]);
+
+			const key = createPrivateKey(String(result.privateKey));
+			expect(key.asymmetricKeyType).toBe('rsa');
+			const signer = createSign('RSA-SHA256');
+			signer.update('eval-mock');
+			expect(signer.sign(key).length).toBeGreaterThan(0);
+		});
+
+		it('should reuse the same generated privateKey across calls', () => {
+			expect(buildEvalMockCredentials([]).privateKey).toBe(buildEvalMockCredentials([]).privateKey);
 		});
 
 		it('should return oauthTokenData and privateKey even with empty properties array', () => {

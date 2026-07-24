@@ -19,7 +19,7 @@ function toError(e: unknown): Error {
 
 // Tool-variant node types carry a "Tool"/"HitlTool" suffix (e.g. "openAiTool"),
 // but the gateway config is keyed by the base node name ("openAi").
-const stripToolSuffix = (nodeName: string) =>
+export const stripToolSuffix = (nodeName: string) =>
 	nodeName.replace(/HitlTool$/, '').replace(/Tool$/, '');
 
 export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {

@@ -55,6 +55,8 @@ vi.mock('../sandbox-fs', () => ({
 			throw new Error(`Failed to write file ${path}: ${result.stderr}`);
 		}
 	},
+	retryTransientSandboxIo: async (op: () => Promise<unknown>) => await op(),
+	isTransientSandboxIoError: () => false,
 	escapeSingleQuotes: (value: string) => value.replace(/'/g, "'\\''"),
 }));
 
@@ -201,10 +203,12 @@ async function loadLinkWorkspaceSdkWithMocks(
 		runInSandbox,
 		readFileViaSandbox: vi.fn(),
 		writeFileViaSandbox: vi.fn(),
+		retryTransientSandboxIo: async (op: () => Promise<unknown>) => await op(),
+		isTransientSandboxIoError: () => false,
 		escapeSingleQuotes: (value: string) => value.replace(/'/g, "'\\''"),
 	}));
 
-	const sandboxSetup = (await import('../sandbox-setup')) as {
+	const sandboxSetup = (await import('../sandbox-setup.js')) as {
 		linkWorkspaceSdkIfEnabled: LinkWorkspaceSdkIfEnabled;
 	};
 
@@ -229,7 +233,7 @@ async function loadSandboxPackageJson(linkSdk: boolean): Promise<{
 		delete process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK;
 	}
 
-	const sandboxSetup = await import('../sandbox-setup');
+	const sandboxSetup = await import('../sandbox-setup.js');
 	const packageJson = sandboxSetup.PACKAGE_JSON;
 
 	return jsonParse<{
@@ -613,7 +617,7 @@ describe('formatNodeCatalogLine', () => {
 		packWorkspaceSdkMockState.isEnabled = false;
 		packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 		vi.resetModules();
-		({ formatNodeCatalogLine } = await import('../sandbox-setup'));
+		({ formatNodeCatalogLine } = await import('../sandbox-setup.js'));
 	});
 
 	it('should format a basic node with a string version', () => {

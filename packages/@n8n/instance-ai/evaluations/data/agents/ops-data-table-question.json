@@ -1,0 +1,16 @@
+{
+	"description": "Out-of-scope/ops rule from the intent-recognition skill, enacted: requests to operate on existing resources are not classified by the skill at all — they route through their normal paths. Doubles as the over-trigger guard: the intent gate must not fire on an operational question.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "What data tables do I have?"
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "out-of-scope", "non-build-ops"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent answers the data-table question via the data-table tools (or states there are none), without loading the intent-recognition skill.",
+		"The agent does not start any build path — no workflow-builder skill load, no `build-agent` call, and no other build tools — in response to the question."
+	]
+}

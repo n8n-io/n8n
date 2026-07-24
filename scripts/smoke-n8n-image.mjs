@@ -26,8 +26,7 @@ const CLOUD = {
 	// n8n-cloud:packages/instance-controller/charts/n8napp/{n8n,values-v1.yaml}
 	chartPath: process.env.CLOUD_CHART_PATH || 'packages/instance-controller/charts/n8napp/n8n',
 	valuesPath:
-		process.env.CLOUD_CHART_VALUES ||
-		'packages/instance-controller/charts/n8napp/values-v1.yaml',
+		process.env.CLOUD_CHART_VALUES || 'packages/instance-controller/charts/n8napp/values-v1.yaml',
 };
 
 async function fetchCloudInvocations() {
@@ -59,6 +58,68 @@ async function fetchCloudInvocations() {
 	}
 }
 
+// Do not add to this list
+const KNOWN_DUPLICATED = new Map([
+	// pnpm materializes a package once per distinct peer resolution, and
+	// @langchain/community has optional peers (qdrant, mongodb, redis, …) that only
+	// nodes-langchain installs, so it splits into two variants, and its dependent
+	// @n8n/ai-utilities gets materialized twice with it. Versions already align;
+	// the fix is dropping ai-utilities' @langchain/community dependency
+	['@n8n/ai-utilities', 2],
+]);
+
+function reportFailure(name, err) {
+	echo(chalk.red(`✗ ${name}`));
+	echo(chalk.dim(`  ${(err.stderr ?? err.message ?? '').slice(0, 1200)}`));
+	return false;
+}
+
+// `pnpm deploy` materializes a workspace package more than once when a peer
+// resolves differently per importer, breaking cross-package `instanceof`.
+async function runWorkspaceDedupCheck() {
+	const name = 'workspace packages materialized once in image';
+	try {
+		const { stdout } = await $({
+			timeout: TIMEOUT,
+		})`docker run --rm --entrypoint ls ${IMAGE} /usr/local/lib/node_modules/n8n/node_modules/.pnpm`;
+		const variants = new Map();
+		for (const entry of stdout.split('\n')) {
+			const match = entry.match(/^(.+?)@file\+packages\+/);
+			if (!match) continue;
+			const pkg = match[1].replace('+', '/');
+			variants.set(pkg, [...(variants.get(pkg) ?? []), entry]);
+		}
+
+		if (variants.size === 0) {
+			throw new Error(
+				'no injected workspace packages matched — the .pnpm depPath encoding may have changed; update the regex',
+			);
+		}
+		for (const [pkg, expected] of KNOWN_DUPLICATED) {
+			const found = variants.get(pkg)?.length ?? 0;
+			if (found < expected) {
+				throw new Error(
+					`expected ${expected} copies of ${pkg} but found ${found} — if the duplication was fixed, update KNOWN_DUPLICATED`,
+				);
+			}
+		}
+		const duplicated = [...variants].filter(
+			([pkg, dirs]) => dirs.length > (KNOWN_DUPLICATED.get(pkg) ?? 1),
+		);
+		if (duplicated.length > 0) {
+			const details = duplicated.map(([pkg, dirs]) => `${pkg}:\n    ${dirs.join('\n    ')}`);
+			throw new Error(
+				'workspace package(s) materialized more than once — align the offending peer ' +
+					`dependency's version across the workspace:\n  ${details.join('\n  ')}`,
+			);
+		}
+		echo(chalk.green(`✓ ${name} (${variants.size} injected packages)`));
+		return true;
+	} catch (err) {
+		return reportFailure(name, err);
+	}
+}
+
 async function run({ name, user, entrypoint, args }) {
 	const dockerArgs = ['run', '--rm', '--user', `${user}:${user}`];
 	if (entrypoint) dockerArgs.push('--entrypoint', entrypoint);
@@ -72,16 +133,16 @@ async function run({ name, user, entrypoint, args }) {
 		echo(chalk.green(`✓ ${name}`));
 		return true;
 	} catch (err) {
-		echo(chalk.red(`✗ ${name}`));
-		echo(chalk.dim(`  ${(err.stderr ?? err.message ?? '').slice(0, 600)}`));
-		return false;
+		return reportFailure(name, err);
 	}
 }
 
 const cloud = process.env.SMOKE_SKIP_CLOUD === 'true' ? [] : await fetchCloudInvocations();
 if (process.env.SMOKE_SKIP_CLOUD !== 'true' && cloud.length === 0) {
 	echo(chalk.red('Cloud chart rendered no n8n containers — chart structure may have moved.'));
-	echo(chalk.dim('  Check CLOUD_CHART_PATH / CLOUD_CHART_VALUES, or run with SMOKE_SKIP_CLOUD=true.'));
+	echo(
+		chalk.dim('  Check CLOUD_CHART_PATH / CLOUD_CHART_VALUES, or run with SMOKE_SKIP_CLOUD=true.'),
+	);
 	process.exit(1);
 }
 
@@ -91,5 +152,5 @@ const invocations = [
 ];
 
 echo(chalk.bold(`Verifying ${IMAGE} against ${invocations.length} deployment pattern(s)`));
-const ok = (await Promise.all(invocations.map(run))).every(Boolean);
+const ok = (await Promise.all([...invocations.map(run), runWorkspaceDedupCheck()])).every(Boolean);
 if (!ok) process.exit(1);

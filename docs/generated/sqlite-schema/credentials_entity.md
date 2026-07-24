@@ -39,6 +39,7 @@ CREATE TABLE "credentials_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name"
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_credentials_entity_is_global | CREATE INDEX "IDX_credentials_entity_is_global" ON "credentials_entity" ("id") WHERE "isGlobal" = true |
 | idx_credentials_entity_type | CREATE INDEX "idx_credentials_entity_type" ON "credentials_entity" ("type")  |
 | sqlite_autoindex_credentials_entity_1 | PRIMARY KEY (id) |
 

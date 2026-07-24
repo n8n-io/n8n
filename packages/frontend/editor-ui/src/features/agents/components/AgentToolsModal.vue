@@ -10,7 +10,8 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getWorkflow } from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { AI_SECTION_RECOMMENDED_TOOLS, DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { AI_SECTION_RECOMMENDED_TOOLS, DEBOUNCE_TIME } from '@/app/constants';
 import { N8nHeading, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
@@ -58,6 +59,8 @@ const props = defineProps<{
 		projectId?: string;
 		/** Optional — tagged onto telemetry events for correlation with agent analytics. */
 		agentId?: string;
+		/** Inline agents pass false: approval needs suspend/resume, which workflow executions don't support. */
+		supportsToolApproval?: boolean;
 		onConfirm: (props: {
 			tools?: AgentJsonToolRef[];
 			mcpServers?: AgentJsonMcpServerConfig[];
@@ -532,6 +535,7 @@ function openConfigForNewRef(newRef: AgentJsonToolRef) {
 			toolRef: newRef,
 			projectId: props.data.projectId,
 			agentId: props.data.agentId,
+			supportsToolApproval: props.data.supportsToolApproval,
 			existingToolNames: getExistingToolNames(workingTools.value),
 			onConfirm: (savedRef: AgentJsonToolRef) => {
 				addToolRef(savedRef);
@@ -559,6 +563,7 @@ function openConfigForNewMcpServer(
 			initialNode: mcpServerToNode(server, nodeType),
 			projectId: props.data.projectId,
 			agentId: props.data.agentId,
+			supportsToolApproval: props.data.supportsToolApproval,
 			existingToolNames: getExistingMcpServerNames(workingMcpServers.value),
 			onConfirm: (savedServer: AgentJsonMcpServerConfig) => {
 				addMcpServer(savedServer);
@@ -651,6 +656,7 @@ function handleConfigureTool(tool: ConfiguredToolView | ConfiguredWorkflowView) 
 			toolRef,
 			projectId: props.data.projectId,
 			agentId: props.data.agentId,
+			supportsToolApproval: props.data.supportsToolApproval,
 			existingToolNames: getExistingToolNames(workingTools.value, toolRef),
 			onConfirm: (updatedRef: AgentJsonToolRef) => {
 				workingToolEntries.value = workingToolEntries.value.map((entry) =>
@@ -675,6 +681,7 @@ function handleConfigureMcpServer(serverView: ConfiguredMcpServerView) {
 			initialNode: mcpServerToNode(serverView.server, nodeType),
 			projectId: props.data.projectId,
 			agentId: props.data.agentId,
+			supportsToolApproval: props.data.supportsToolApproval,
 			existingToolNames: getExistingMcpServerNames(workingMcpServers.value, serverView.server),
 			onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
 				workingMcpServerEntries.value = workingMcpServerEntries.value.map((entry) =>

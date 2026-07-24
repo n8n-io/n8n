@@ -6,6 +6,7 @@ import type {
 	CredentialCheckResult,
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	HitlResponseTelemetryPayload,
 	IExecuteData,
 	INode,
 	INodeExecutionData,
@@ -155,6 +156,20 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 
 	getWebhookName() {
 		return this.webhookData.webhookDescription.name;
+	}
+
+	logHitlResponse(
+		payload: Pick<
+			HitlResponseTelemetryPayload,
+			'approved' | 'authorized' | 'response_mode' | 'advanced_email'
+		>,
+	) {
+		this.additionalData.logHitlResponse?.({
+			...payload,
+			nodeType: this.node.type,
+			executionId: this.additionalData.executionId,
+			workflowId: this.workflow.id,
+		});
 	}
 
 	async validateCookieAuth(cookieValue: string): Promise<IUser> {

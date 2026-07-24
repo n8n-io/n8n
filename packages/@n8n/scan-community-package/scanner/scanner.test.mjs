@@ -3,7 +3,13 @@ import path from 'path';
 import os from 'os';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { analyzePackage, buildScanConfig } from './scanner.mjs';
+import {
+	analyzePackage,
+	buildScanConfig,
+	findPackageRoot,
+	parseSourceRepo,
+	SOURCE_FILE_PATTERNS,
+} from './scanner.mjs';
 
 /**
  * Build a temporary package directory on disk so we can hand it to
@@ -73,6 +79,125 @@ describe('buildScanConfig', () => {
 	});
 });
 
+describe('parseSourceRepo', () => {
+	const makeAttestation = (predicate) => [
+		{
+			predicateType: 'https://slsa.dev/provenance/v1',
+			bundle: {
+				dsseEnvelope: {
+					payload: Buffer.from(JSON.stringify({ predicate })).toString('base64'),
+				},
+			},
+		},
+	];
+
+	const commit = 'a'.repeat(40);
+
+	it('extracts owner, repo and commit from a GitHub attestation', () => {
+		const attestations = makeAttestation({
+			buildDefinition: {
+				resolvedDependencies: [
+					{
+						uri: `git+https://github.com/acme/n8n-nodes-foo@refs/heads/main`,
+						digest: { gitCommit: commit },
+					},
+				],
+			},
+		});
+
+		expect(parseSourceRepo(attestations)).toEqual({
+			owner: 'acme',
+			repo: 'n8n-nodes-foo',
+			gitCommit: commit,
+		});
+	});
+
+	it('supports repo names containing dots', () => {
+		const attestations = makeAttestation({
+			buildDefinition: {
+				resolvedDependencies: [
+					{
+						uri: 'git+https://github.com/acme/n8n-nodes-foo.bar@refs/heads/main',
+						digest: { gitCommit: commit },
+					},
+				],
+			},
+		});
+
+		expect(parseSourceRepo(attestations)).toEqual({
+			owner: 'acme',
+			repo: 'n8n-nodes-foo.bar',
+			gitCommit: commit,
+		});
+	});
+
+	it('returns null for non-GitHub source hosts', () => {
+		const attestations = makeAttestation({
+			buildDefinition: {
+				resolvedDependencies: [
+					{
+						uri: `git+https://gitlab.com/acme/n8n-nodes-foo@refs/heads/main`,
+						digest: { gitCommit: commit },
+					},
+				],
+			},
+		});
+
+		expect(parseSourceRepo(attestations)).toBeNull();
+	});
+
+	it('returns null when the commit digest is not a git SHA', () => {
+		const attestations = makeAttestation({
+			buildDefinition: {
+				resolvedDependencies: [
+					{
+						uri: 'git+https://github.com/acme/n8n-nodes-foo@refs/heads/main',
+						digest: { gitCommit: 'not-a-sha' },
+					},
+				],
+			},
+		});
+
+		expect(parseSourceRepo(attestations)).toBeNull();
+	});
+
+	it('returns null when there is no provenance attestation', () => {
+		expect(parseSourceRepo(undefined)).toBeNull();
+		expect(parseSourceRepo([])).toBeNull();
+		expect(parseSourceRepo([{ predicateType: 'something-else' }])).toBeNull();
+	});
+});
+
+describe('findPackageRoot', () => {
+	let fixtureDir;
+
+	afterEach(() => {
+		if (fixtureDir) {
+			fs.rmSync(fixtureDir, { recursive: true, force: true });
+			fixtureDir = undefined;
+		}
+	});
+
+	it('finds the package directory in a monorepo by package.json name', () => {
+		fixtureDir = makeFixturePackage({
+			'package.json': { name: 'monorepo-root', private: true },
+			'packages/foo/package.json': { name: 'n8n-nodes-foo', version: '1.0.0' },
+		});
+
+		expect(findPackageRoot(fixtureDir, 'n8n-nodes-foo')).toBe(
+			path.join(fixtureDir, 'packages', 'foo'),
+		);
+	});
+
+	it('returns null when no package.json declares the package name', () => {
+		fixtureDir = makeFixturePackage({
+			'package.json': { name: 'something-else' },
+		});
+
+		expect(findPackageRoot(fixtureDir, 'n8n-nodes-foo')).toBeNull();
+	});
+});
+
 describe('analyzePackage', () => {
 	let fixtureDir;
 
@@ -92,7 +217,7 @@ describe('analyzePackage', () => {
 				peerDependencies: { 'n8n-workflow': '*' },
 				overrides: { 'change-case': '4.1.2' },
 			},
-			'index.js': "module.exports = {};\n",
+			'index.js': 'module.exports = {};\n',
 		});
 
 		const result = await analyzePackage(fixtureDir);
@@ -113,7 +238,7 @@ describe('analyzePackage', () => {
 				peerDependencies: { 'n8n-workflow': '*' },
 				n8n: { n8nNodesApiVersion: 1, nodes: ['dist/nodes/Foo/Foo.node.js'] },
 			},
-			'index.js': "module.exports = {};\n",
+			'index.js': 'module.exports = {};\n',
 		});
 
 		const result = await analyzePackage(fixtureDir);
@@ -130,7 +255,7 @@ describe('analyzePackage', () => {
 				peerDependencies: { 'n8n-workflow': '*' },
 				scripts: { postinstall: 'node ./malicious.js' },
 			},
-			'index.js': "module.exports = {};\n",
+			'index.js': 'module.exports = {};\n',
 		});
 
 		const result = await analyzePackage(fixtureDir);
@@ -167,12 +292,54 @@ describe('analyzePackage', () => {
     };
 }
 `,
-			'dist/nodes/Foo/Foo.node.js': "\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.Foo = void 0;\nclass Foo {}\nexports.Foo = Foo;\n",
+			'dist/nodes/Foo/Foo.node.js':
+				'"use strict";\nObject.defineProperty(exports, "__esModule", { value: true });\nexports.Foo = void 0;\nclass Foo {}\nexports.Foo = Foo;\n',
 		});
 
 		const result = await analyzePackage(fixtureDir);
 
 		expect(result.passed).toBe(true);
+	});
+
+	// CE-1713: source checkouts are linted with dev-scoped globs — only the
+	// shippable `nodes/**` / `credentials/**` sources and package.json, so repo
+	// dev files (gulpfile, test configs) can't produce gate-only violations.
+	it('ignores repo dev files when linting with source file patterns', async () => {
+		fixtureDir = makeFixturePackage({
+			'package.json': {
+				name: 'n8n-nodes-fixture',
+				version: '1.0.0',
+				description: 'A fixture community node package',
+				license: 'MIT',
+				author: { name: 'Test Author', email: 'test@example.com' },
+				keywords: ['n8n-community-node-package'],
+				peerDependencies: { 'n8n-workflow': '*' },
+				n8n: { n8nNodesApiVersion: 1, nodes: ['dist/nodes/Foo/Foo.node.js'] },
+			},
+			'gulpfile.js': "console.log('building');\n",
+		});
+
+		const result = await analyzePackage(fixtureDir, SOURCE_FILE_PATTERNS);
+
+		expect(result.passed).toBe(true);
+	});
+
+	it('flags violations in node sources when linting with source file patterns', async () => {
+		fixtureDir = makeFixturePackage({
+			'package.json': {
+				name: 'n8n-nodes-fixture',
+				version: '1.0.0',
+				keywords: ['n8n-community-node-package'],
+				peerDependencies: { 'n8n-workflow': '*' },
+				n8n: { n8nNodesApiVersion: 1, nodes: ['dist/nodes/Foo/Foo.node.js'] },
+			},
+			'nodes/Foo/Foo.node.ts': "console.log('debug');\nexport class Foo {}\n",
+		});
+
+		const result = await analyzePackage(fixtureDir, SOURCE_FILE_PATTERNS);
+
+		expect(result.passed).toBe(false);
+		expect(result.details).toContain('no-console');
 	});
 
 	it('returns passed when the package contains no lintable files', async () => {

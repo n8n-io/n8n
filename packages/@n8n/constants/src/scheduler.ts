@@ -8,19 +8,45 @@
  */
 
 /**
- * Recurrence kind of a scheduled job.
- * It selects which schedule columns apply.
+ * How a scheduled job decides when to fire:
+ * - on a cron expression
+ * - on a fixed interval
+ * - just once
+ * - or on a cron repeated every N periods.
  */
 export const ScheduledJobKind = {
 	Cron: 'cron',
 	Interval: 'interval',
 	OneOff: 'one_off',
+	RecurringCron: 'recurring_cron',
 } as const;
 
 export type ScheduledJobKind = (typeof ScheduledJobKind)[keyof typeof ScheduledJobKind];
 
 /** All recurrence kinds as a runtime list. */
 export const ScheduledJobKindList = Object.values(ScheduledJobKind);
+
+/**
+ * The unit of recurrence for a `recurring_cron` schedule: a cron expression
+ * repeated every N of these. For example:
+ * - `weeks` for "every 3 weeks"
+ * - `hours` for "every 5 hours"
+ *
+ * Only these coarse units are supported here.
+ * Finer cadences (every N seconds or minutes) are expressed as a different schedule instead
+ * (a plain `interval`, or a stepped cron expression, see {@link ScheduledJobKind}),
+ * so they never go through this recurrence step.
+ */
+export const RecurringCronUnit = {
+	Hours: 'hours',
+	Days: 'days',
+	Weeks: 'weeks',
+	Months: 'months',
+} as const;
+
+export type RecurringCronUnit = (typeof RecurringCronUnit)[keyof typeof RecurringCronUnit];
+
+export const RecurringCronUnitList = Object.values(RecurringCronUnit);
 
 /**
  * Where a scheduled task is in its lifecycle, from waiting to run to a final outcome.

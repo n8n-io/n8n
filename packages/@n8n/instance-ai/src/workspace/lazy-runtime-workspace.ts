@@ -2,6 +2,9 @@ import {
 	BaseFilesystem,
 	BaseSandbox,
 	Workspace,
+	raceWithAbort,
+	type AbortableOptions,
+	type AppendOptions,
 	type CommandResult,
 	type CopyOptions,
 	type ExecuteCommandOptions,
@@ -9,6 +12,7 @@ import {
 	type FileEntry,
 	type FileStat,
 	type ListOptions,
+	type MkdirOptions,
 	type ProviderStatus,
 	type ReadOptions,
 	type RemoveOptions,
@@ -18,6 +22,15 @@ import {
 } from '@n8n/agents';
 
 export type RuntimeWorkspaceResolver = () => Promise<Workspace | undefined>;
+
+/** Workspace tools exposed to Instance AI agents — read/write/replace/execute only. */
+export const INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST = new Set([
+	'workspace_read_file',
+	'workspace_write_file',
+	'workspace_str_replace_file',
+	'workspace_batch_str_replace_file',
+	'workspace_execute_command',
+]);
 
 export interface LazyRuntimeWorkspaceOptions {
 	ensureWorkspace: RuntimeWorkspaceResolver;
@@ -47,12 +60,18 @@ export function createLazyRuntimeWorkspace({
 }: LazyRuntimeWorkspaceOptions): Workspace {
 	const resolver = new LazyRuntimeWorkspaceResolver(ensureWorkspace);
 
-	return new Workspace({
+	const workspace = new Workspace({
 		id,
 		name,
 		filesystem: new LazyRuntimeFilesystem(resolver, filesystemInstructions),
 		sandbox: new LazyRuntimeSandbox(resolver, sandboxInstructions),
 	});
+
+	const baseGetTools = workspace.getTools.bind(workspace);
+	workspace.getTools = () =>
+		baseGetTools().filter((tool) => INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST.has(tool.name));
+
+	return workspace;
 }
 
 class LazyRuntimeWorkspaceResolver {
@@ -207,51 +226,54 @@ class LazyRuntimeFilesystem extends BaseFilesystem {
 	}
 
 	async readFile(path: string, options?: ReadOptions): Promise<string | Buffer> {
-		return await (await this.getFilesystem()).readFile(path, options);
+		return await (await this.getFilesystem(options?.abortSignal)).readFile(path, options);
 	}
 
 	async writeFile(path: string, content: FileContent, options?: WriteOptions): Promise<void> {
-		await (await this.getFilesystem()).writeFile(path, content, options);
+		await (await this.getFilesystem(options?.abortSignal)).writeFile(path, content, options);
 	}
 
-	async appendFile(path: string, content: FileContent): Promise<void> {
-		await (await this.getFilesystem()).appendFile(path, content);
+	async appendFile(path: string, content: FileContent, options?: AppendOptions): Promise<void> {
+		await (await this.getFilesystem(options?.abortSignal)).appendFile(path, content, options);
 	}
 
 	async deleteFile(path: string, options?: RemoveOptions): Promise<void> {
-		await (await this.getFilesystem()).deleteFile(path, options);
+		await (await this.getFilesystem(options?.abortSignal)).deleteFile(path, options);
 	}
 
 	async copyFile(src: string, dest: string, options?: CopyOptions): Promise<void> {
-		await (await this.getFilesystem()).copyFile(src, dest, options);
+		await (await this.getFilesystem(options?.abortSignal)).copyFile(src, dest, options);
 	}
 
 	async moveFile(src: string, dest: string, options?: CopyOptions): Promise<void> {
-		await (await this.getFilesystem()).moveFile(src, dest, options);
+		await (await this.getFilesystem(options?.abortSignal)).moveFile(src, dest, options);
 	}
 
-	async mkdir(path: string, options?: { recursive?: boolean }): Promise<void> {
-		await (await this.getFilesystem()).mkdir(path, options);
+	async mkdir(path: string, options?: MkdirOptions): Promise<void> {
+		await (await this.getFilesystem(options?.abortSignal)).mkdir(path, options);
 	}
 
 	async rmdir(path: string, options?: RemoveOptions): Promise<void> {
-		await (await this.getFilesystem()).rmdir(path, options);
+		await (await this.getFilesystem(options?.abortSignal)).rmdir(path, options);
 	}
 
 	async readdir(path: string, options?: ListOptions): Promise<FileEntry[]> {
-		return await (await this.getFilesystem()).readdir(path, options);
+		return await (await this.getFilesystem(options?.abortSignal)).readdir(path, options);
 	}
 
-	async exists(path: string): Promise<boolean> {
-		return await (await this.getFilesystem()).exists(path);
+	async exists(path: string, options?: AbortableOptions): Promise<boolean> {
+		return await (await this.getFilesystem(options?.abortSignal)).exists(path, options);
 	}
 
-	async stat(path: string): Promise<FileStat> {
-		return await (await this.getFilesystem()).stat(path);
+	async stat(path: string, options?: AbortableOptions): Promise<FileStat> {
+		return await (await this.getFilesystem(options?.abortSignal)).stat(path, options);
 	}
 
-	private async getFilesystem(): Promise<WorkspaceFilesystem> {
-		const filesystem = await this.resolver.getFilesystem();
+	private async getFilesystem(abortSignal?: AbortSignal): Promise<WorkspaceFilesystem> {
+		const filesystem = await raceWithAbort(
+			async () => await this.resolver.getFilesystem(),
+			abortSignal,
+		);
 		this.syncStatus(filesystem);
 		return filesystem;
 	}
@@ -306,7 +328,7 @@ class LazyRuntimeSandbox extends BaseSandbox {
 		args: string[] = [],
 		options?: ExecuteCommandOptions,
 	): Promise<CommandResult> {
-		const sandbox = await this.getSandbox();
+		const sandbox = await this.getSandbox(options?.abortSignal);
 		if (!sandbox.executeCommand) {
 			throw new Error('Instance AI runtime sandbox does not support command execution.');
 		}
@@ -336,8 +358,8 @@ class LazyRuntimeSandbox extends BaseSandbox {
 		return 'Workspace command tools are available and create the runtime sandbox on first use.';
 	}
 
-	private async getSandbox(): Promise<WorkspaceSandbox> {
-		const sandbox = await this.resolver.getSandbox();
+	private async getSandbox(abortSignal?: AbortSignal): Promise<WorkspaceSandbox> {
+		const sandbox = await raceWithAbort(async () => await this.resolver.getSandbox(), abortSignal);
 		this.syncStatus(sandbox);
 		return sandbox;
 	}

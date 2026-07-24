@@ -60,6 +60,14 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_QUEUE_METRICS_INTERVAL')
 	queueMetricsInterval: number = 20;
 
+	/** Whether to include Durable Scheduler metrics (queue depth, scheduling lag, dispatches, retries, dead-letters). */
+	@Env('N8N_METRICS_INCLUDE_SCHEDULER_METRICS')
+	includeSchedulerMetrics: boolean = false;
+
+	/** How often (in seconds) the scheduler gauge queries are refreshed (cache TTL). */
+	@Env('N8N_METRICS_SCHEDULER_INTERVAL')
+	schedulerMetricsInterval: number = 20;
+
 	/** How often (in seconds) to update active workflow metric */
 	@Env('N8N_METRICS_ACTIVE_WORKFLOW_METRIC_INTERVAL')
 	activeWorkflowCountInterval: number = 60;
@@ -181,6 +189,14 @@ export class EndpointsConfig {
 	 */
 	@Env('N8N_MCP_APPS_ENABLED')
 	mcpAppsEnabled: boolean = false;
+
+	/**
+	 * Force-enable Canvas node-group support in the MCP workflow-builder tools.
+	 * Acts as an operator-level override of the PostHog rollout flag.
+	 * Cannot force-disable: setting this to `false` falls back to PostHog.
+	 */
+	@Env('N8N_MCP_CANVAS_GROUPS_ENABLED')
+	mcpCanvasGroupsEnabled: boolean = false;
 
 	/** Maximum number of OAuth clients that can be registered for MCP. */
 	@Env('N8N_MCP_MAX_REGISTERED_CLIENTS')

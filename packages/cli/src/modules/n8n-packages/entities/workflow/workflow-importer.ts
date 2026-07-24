@@ -89,14 +89,15 @@ export class WorkflowImporter {
 				});
 			}
 
-			if (context.folderId && existing) {
+			const targetFolderId = workflow.parentFolderId ?? context.folderId;
+			if (targetFolderId && existing) {
 				const existingParentFolderId = existing.parentFolder?.id ?? null;
-				if (existingParentFolderId !== context.folderId) {
+				if (existingParentFolderId !== targetFolderId) {
 					folderConflicts.push({
 						sourceWorkflowId: workflow.sourceWorkflowId,
 						existingWorkflowId: existing.id,
 						existingParentFolderId,
-						targetFolderId: context.folderId,
+						targetFolderId,
 						name: existing.name,
 					});
 				}
@@ -170,7 +171,7 @@ export class WorkflowImporter {
 			item,
 			savedWorkflow,
 			context.publishingPolicy,
-			context.publishBlockedSourceWorkflowIds,
+			context.publishBlocked,
 		);
 
 		// Publish reloads the workflow without parentFolder; restore it for the import summary.
@@ -197,7 +198,7 @@ export class WorkflowImporter {
 			const entity = prepareEntityForPersist(item.entity, bindings, item.decidedId);
 			return await this.workflowCreationService.createWorkflow(context.user, entity, {
 				projectId: context.projectId,
-				parentFolderId: context.folderId ?? undefined,
+				parentFolderId: item.parentFolderId ?? context.folderId ?? undefined,
 				publicApi: true,
 				source: 'import',
 				sourceWorkflowId: item.sourceWorkflowId,

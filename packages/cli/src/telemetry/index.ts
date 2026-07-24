@@ -9,6 +9,7 @@ import {
 } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import type { AxiosRequestConfig } from 'axios';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -88,6 +89,7 @@ interface IAgentSessionMetrics {
 interface IAgentSessionMetricsBuffer {
 	[bufferKey: string]: {
 		agent_id: string;
+		agent_type: IAgentTurnFinishedTrackProperties['agent_type'];
 		run_type: IAgentTurnFinishedTrackProperties['run_type'];
 		turn_status: IAgentTurnFinishedTrackProperties['turn_status'];
 		configuration: IAgentConfigurationTelemetryProperties;
@@ -98,6 +100,8 @@ interface IAgentSessionMetricsBuffer {
 @Service()
 export class Telemetry {
 	private rudderStack?: RudderStack;
+
+	private userCloudId?: string;
 
 	private pulseIntervalReference: NodeJS.Timeout;
 
@@ -334,6 +338,7 @@ export class Telemetry {
 			this.track('Agent session metrics', {
 				event_version: '1',
 				agent_id: bucket.agent_id,
+				...(bucket.agent_type ? { agent_type: bucket.agent_type } : {}),
 				...bucket.configuration,
 				run_type: bucket.run_type,
 				turn_status: bucket.turn_status,
@@ -382,8 +387,8 @@ export class Telemetry {
 				this.addExecutionTrackData(workflowId, sourceKey, execTime);
 			}
 
-			if (properties.used_private_credentials) {
-				this.track('Workflow execution with private credentials', properties);
+			if (properties.used_end_user_credentials) {
+				this.track('Workflow execution with end-user credentials', properties);
 			}
 
 			if (
@@ -441,6 +446,7 @@ export class Telemetry {
 		const bufferKey = this.getAgentSessionMetricsBufferKey(properties);
 		this.agentSessionMetricsBuffer[bufferKey] = this.agentSessionMetricsBuffer[bufferKey] ?? {
 			agent_id: properties.agent_id,
+			agent_type: properties.agent_type,
 			run_type: properties.run_type,
 			turn_status: properties.turn_status,
 			configuration: properties.configuration,
@@ -549,7 +555,20 @@ export class Telemetry {
 		}
 	}
 
-	track(eventName: string, properties: ITelemetryTrackProperties = {}) {
+	setUserCloudId(userCloudId?: string) {
+		this.userCloudId = userCloudId;
+	}
+
+	track<T extends TelemetryEventDef>(event: T, properties: InferTelemetryProps<T>): void;
+	track(eventName: string, properties?: ITelemetryTrackProperties): void;
+	track(event: string | TelemetryEventDef, properties: ITelemetryTrackProperties = {}) {
+		const eventName = typeof event === 'string' ? event : event.name;
+
+		if (typeof event !== 'string') {
+			const validationError = event.getValidationError(properties);
+			if (validationError) this.logger.warn(validationError);
+		}
+
 		if (!this.rudderStack) {
 			return;
 		}
@@ -567,7 +586,7 @@ export class Telemetry {
 			userId: `${instanceId}${user_id ? `#${user_id}` : ''}`,
 			event: eventName,
 			properties: updatedProperties,
-			context: {},
+			context: this.userCloudId ? { traits: { user_cloud_id: this.userCloudId } } : {},
 		};
 
 		// Build the actual payload that will be sent to RudderStack (with fake IP)

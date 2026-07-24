@@ -1,5 +1,6 @@
 import { onBeforeUnmount, shallowRef, watch } from 'vue';
 import type { IPinData } from 'n8n-workflow';
+import { useLogsStore } from '@/app/stores/logs.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
@@ -43,6 +44,7 @@ export function useInstanceAiWorkflowPreviewExecution(
 ) {
 	const pushStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
+	const logsStore = useLogsStore();
 	// Thread runtime owns the user-run memory so it survives the preview unmounting
 	// on a tab switch and is reachable here without prop-drilling (INS-611).
 	const thread = useThread();
@@ -132,6 +134,10 @@ export function useInstanceAiWorkflowPreviewExecution(
 	const removeExecutionStartedListener = pushStore.addEventListener((event) => {
 		if (event.type !== 'executionStarted') return;
 		if (event.data.workflowId !== options.workflowId()) return;
+		// Users rarely discover the logs panel on their own, so open it whenever a
+		// run (user- or agent-made) starts for this artifact's workflow — watching
+		// data flow through the nodes is the payoff of the run (INS-860).
+		logsStore.toggleOpen(true);
 		const executionState = useWorkflowExecutionStateStore(
 			createWorkflowDocumentId(options.workflowId()),
 		);

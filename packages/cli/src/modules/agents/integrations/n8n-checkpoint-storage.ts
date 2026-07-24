@@ -109,8 +109,11 @@ export class N8NCheckpointStorage {
 		return { status: 'active', checkpoint: jsonParse<SerializableAgentState>(checkpoint.state) };
 	}
 
-	async delete(key: string): Promise<void> {
-		await this.agentCheckpointRepository.update({ runId: key }, { expired: true, state: null });
+	async delete(key: string, agentId?: string): Promise<void> {
+		await this.agentCheckpointRepository.update(
+			{ runId: key, ...(agentId !== undefined ? { agentId } : {}) },
+			{ expired: true, state: null },
+		);
 	}
 
 	@OnLeaderTakeover()

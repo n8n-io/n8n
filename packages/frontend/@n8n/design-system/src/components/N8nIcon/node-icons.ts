@@ -1,3 +1,4 @@
+import type { NodeIconName } from './node-icon-names';
 import NodeAggregate from './nodes/aggregate.svg';
 import NodeAiAgent from './nodes/ai-agent.svg';
 import NodeAiTransform from './nodes/ai-transform.svg';
@@ -160,6 +161,4 @@ export const nodeIconSet = {
 	'node:webhook': NodeWebhook,
 	'node:workflow-retriever': NodeWorkflowRetriever,
 	'node:xml': NodeXml,
-} as const;
-
-export type NodeIconName = keyof typeof nodeIconSet;
+} as const satisfies Record<NodeIconName, unknown>;

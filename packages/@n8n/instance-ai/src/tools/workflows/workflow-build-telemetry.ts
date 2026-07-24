@@ -10,7 +10,8 @@ export type BuildTelemetryStage =
 	| 'parse'
 	| 'validation'
 	| 'name'
-	| 'save';
+	| 'save'
+	| 'conflict';
 
 export function trackWorkflowSourceBuild(
 	context: InstanceAiContext,

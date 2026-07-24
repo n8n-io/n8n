@@ -17,10 +17,10 @@ export const mailboxRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'id', value: '' },
 	required: true,
-	// Resolved once per run (from the first item) and reused for every item, so it accepts a fixed
-	// value or an expression; for per-item targeting, feed a single item or use Loop Over Items.
+	// Shared with the trigger: the action node evaluates this per input item; the
+	// trigger resolves it once per poll.
 	description:
-		'The mailbox the Service Principal should act on. Applies to the whole node (every item in the execution).',
+		'The mailbox the Service Principal should act on. In the action node this is evaluated per input item (an expression can target a different mailbox per item); the trigger resolves it once.',
 	modes: [
 		{
 			displayName: 'By ID',

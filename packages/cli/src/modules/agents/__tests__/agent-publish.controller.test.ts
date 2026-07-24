@@ -89,7 +89,10 @@ describe('AgentPublishController revert to version', () => {
 			id: 'agent-1',
 			projectId: 'project-1',
 		} as never);
-		agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
+		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+			status: 'valid',
+			issues: [],
+		});
 
 		const result = await controller.revertToVersion(
 			{

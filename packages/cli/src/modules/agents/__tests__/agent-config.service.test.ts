@@ -1,6 +1,7 @@
 import type { Mocked } from 'vitest';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -43,11 +44,13 @@ function makeService() {
 	const agentSkillsService = mock<AgentSkillsService>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const credentialsService = mock<CredentialsService>();
+	const workflowRepository = mock<WorkflowRepository>();
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
+	workflowRepository.find.mockResolvedValue([]);
 	agentSkillsService.removeUnreferencedSkills.mockImplementation((agent, config) => {
 		const ids = new Set((config.skills ?? []).map((skill) => skill.id));
 		agent.skills = Object.fromEntries(
@@ -62,6 +65,7 @@ function makeService() {
 		agentSkillsService,
 		runtimeCacheService,
 		credentialsService,
+		workflowRepository,
 	);
 
 	return {
@@ -71,6 +75,7 @@ function makeService() {
 		agentSkillsService,
 		runtimeCacheService,
 		credentialsService,
+		workflowRepository,
 	};
 }
 
@@ -114,6 +119,30 @@ describe('AgentConfigService', () => {
 			});
 		});
 
+		it('rejects a vector store whose derived tool name collides with a configured tool', async () => {
+			const { service } = makeService();
+
+			const result = await service.validateConfig({
+				...baseConfig,
+				tools: [{ type: 'custom', id: 'search_product_docs' }],
+				vectorStores: [
+					{
+						provider: 'qdrant',
+						name: 'product_docs',
+						credential: 'qdrant-cred',
+						useWhen: 'Search product docs',
+						embedding: { model: 'openai/text-embedding-3-small', credential: 'embed-cred' },
+						collectionName: 'product-docs',
+					},
+				],
+			});
+
+			expect(result).toEqual({
+				valid: false,
+				error: 'Vector store tool name collides with an existing tool: search_product_docs',
+			});
+		});
+
 		it('accepts draft credentials that are not checked until update sanitization', async () => {
 			const { service } = makeService();
 
@@ -136,6 +165,34 @@ describe('AgentConfigService', () => {
 	});
 
 	describe('updateConfig', () => {
+		it('persists an explicit web-search disable and clears native provider tools', async () => {
+			// Regression: previously the disable was stripped on write and resurrected
+			// on read, so the config hash never changed and the builder looped.
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					config: { webSearch: { enabled: true } },
+					providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+				} as unknown as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.updateConfig(agentId, projectId, {
+				...baseConfig,
+				config: { webSearch: { enabled: false } },
+				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+			} as unknown as AgentJsonConfig);
+
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.config?.webSearch).toEqual({ enabled: false });
+			expect(saved.schema?.providerTools).toEqual({});
+			// The returned (composed) config reflects the persisted state so the tool
+			// layer's freshness hash actually changes.
+			expect(result.config?.config?.webSearch).toEqual({ enabled: false });
+			expect(result.config?.providerTools).toEqual({});
+		});
+
 		it('preserves omitted stored fields but clears explicitly empty integrations', async () => {
 			const { service, agentRepository, credentialsService, runtimeCacheService } = makeService();
 			const agent = makeAgent({
@@ -171,6 +228,37 @@ describe('AgentConfigService', () => {
 			saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.integrations).toEqual([]);
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		});
+
+		it('rewrites an id-valued workflow tool ref to the workflow name on save', async () => {
+			const { service, agentRepository, workflowRepository } = makeService();
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			workflowRepository.find.mockResolvedValue([
+				{ id: 'wf-id-1', name: 'Dice Roller' },
+				{ id: 'wf-2', name: 'Existing Name' },
+			] as never);
+
+			await service.updateConfig(agentId, projectId, {
+				...baseConfig,
+				tools: [
+					{ type: 'workflow', workflow: 'wf-id-1', name: 'dice_roller', description: 'Roll dice' },
+					{ type: 'workflow', workflow: 'Existing Name' },
+					{ type: 'workflow', workflow: 'ghost' },
+				],
+			});
+
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.tools).toEqual([
+				{
+					type: 'workflow',
+					workflow: 'Dice Roller',
+					name: 'dice_roller',
+					description: 'Roll dice',
+				},
+				{ type: 'workflow', workflow: 'Existing Name' },
+				{ type: 'workflow', workflow: 'ghost' },
+			]);
 		});
 
 		it('removes config refs and stored bodies that no longer have matching definitions', async () => {
@@ -254,6 +342,19 @@ describe('AgentConfigService', () => {
 						credential: 'unknown-mcp',
 					},
 				],
+				vectorStores: [
+					{
+						provider: 'qdrant',
+						name: 'product_docs',
+						credential: 'unknown-vector-store',
+						useWhen: 'Search product docs',
+						embedding: {
+							model: 'openai/text-embedding-3-small',
+							credential: 'unknown-embedding',
+						},
+						collectionName: 'docs',
+					},
+				],
 			});
 
 			const saved = agentRepository.save.mock.calls[0][0] as Agent;
@@ -265,6 +366,8 @@ describe('AgentConfigService', () => {
 			);
 			expect(saved.integrations).toEqual([{ type: 'slack', credentialId: '' }]);
 			expect(savedConfig.mcpServers?.[0].credential).toBe('');
+			expect(savedConfig.vectorStores?.[0].credential).toBe('');
+			expect(savedConfig.vectorStores?.[0].embedding.credential).toBe('');
 		});
 
 		it('persists personalisation changes from the config payload', async () => {

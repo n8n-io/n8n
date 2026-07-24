@@ -14,6 +14,7 @@ export interface FormInputsProps {
 	columnView?: boolean;
 	verticalSpacing?: '' | 'xs' | 's' | 'm' | 'l' | 'xl';
 	teleported?: boolean;
+	tagSize?: 'small' | 'medium' | 'large';
 }
 
 const props = withDefaults(defineProps<FormInputsProps>(), {
@@ -170,6 +171,7 @@ onMounted(() => {
 						v-bind="input.properties"
 						:name="input.name"
 						:label="input.properties.label || ''"
+						:tag-size="input.properties.tagSize ?? tagSize"
 						:model-value="values[input.name]"
 						:data-test-id="input.name"
 						:show-validation-warnings="showValidationWarnings"

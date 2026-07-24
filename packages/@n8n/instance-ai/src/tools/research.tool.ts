@@ -80,6 +80,7 @@ type DomainGatingSuspendPayload = z.infer<typeof domainGatingSuspendSchema>;
 interface DomainGatingToolContext {
 	resumeData: DomainGatingResumeData | undefined;
 	suspend?: (payload: DomainGatingSuspendPayload) => Promise<never>;
+	abortSignal?: AbortSignal;
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
@@ -127,6 +128,7 @@ async function handleWebSearch(
 	const result = await context.webResearchService.search(input.query, {
 		maxResults: input.maxResults ?? undefined,
 		includeDomains: input.includeDomains ?? undefined,
+		abortSignal: ctx.abortSignal,
 	});
 	// Snippets come from arbitrary third-party pages — sanitize against hidden
 	// payloads, then wrap so the LLM treats the content as data, not instructions.
@@ -236,6 +238,7 @@ async function handleFetchUrl(
 	const result = await context.webResearchService.fetchUrl(input.url, {
 		maxContentLength: input.maxContentLength ?? undefined,
 		authorizeUrl,
+		abortSignal: ctx.abortSignal,
 	});
 	result.content = wrapUntrustedData(sanitizeWebContent(result.content), result.finalUrl);
 	return result;

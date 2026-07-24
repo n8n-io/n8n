@@ -1,34 +1,47 @@
 import { testDb } from '@n8n/backend-test-utils';
 import type { ScheduledJob } from '@n8n/db';
-import { ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
+import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { ClaimedTask } from '@n8n/scheduler';
+import { createScheduler } from '@n8n/scheduler';
+import type { ClaimedTask, Scheduler, SchedulerPasses } from '@n8n/scheduler';
 
-import { DurableScheduler } from '@/scheduling/durable-scheduler';
+import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 
 /**
- * The composed path against a real database: DurableScheduler binding the
- * repositories to the core algorithms, a registered handler, and the full
+ * The composed path against a real database: the storage bindings
+ * (`buildMaterializerTransaction` plus the repositories as the task store)
+ * composed by `createScheduler`, a registered handler, and the full
  * materialize -> claim -> fire -> terminal-write lifecycle. The unit suites
  * cover each piece with mocks; this proves the structural seams line up at
  * runtime.
  */
-describe('scheduler execution through DurableScheduler', () => {
+describe('scheduler execution over the storage bindings', () => {
 	const TASK_TYPE = 'integration-execute-test';
 
 	let jobRepo: ScheduledJobRepository;
 	let taskRepo: ScheduledTaskRepository;
-	let scheduler: DurableScheduler;
+	let scheduler: Scheduler & SchedulerPasses;
 	const executed: ClaimedTask[] = [];
 
 	beforeAll(async () => {
 		await testDb.init();
 		jobRepo = Container.get(ScheduledJobRepository);
 		taskRepo = Container.get(ScheduledTaskRepository);
-		scheduler = Container.get(DurableScheduler);
+		scheduler = createScheduler({
+			hostId: 'main-execute-test',
+			materializerTransaction: buildMaterializerTransaction(
+				Container.get(DataSource),
+				jobRepo,
+				taskRepo,
+			),
+			taskStore: taskRepo,
+		});
 		scheduler.registerTaskHandler(TASK_TYPE, {
-			execute: async (task) => {
+			execute: async (task, report) => {
 				executed.push(task);
+				// The fake's effect is the push above; report it so the task carries its
+				// effect marker (`dispatchedAt`) like a real handler would.
+				return report.dispatched();
 			},
 		});
 	});
@@ -74,7 +87,7 @@ describe('scheduler execution through DurableScheduler', () => {
 		const job = await createJob({ payload: { answer: 42 } });
 
 		const summary = await scheduler.materialize();
-		expect(summary).toEqual({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
+		expect(summary).toMatchObject({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
 
 		// The occurrence is already due, so the claim schedules an immediate fire.
 		const claimed = await scheduler.execute();
@@ -89,7 +102,9 @@ describe('scheduler execution through DurableScheduler', () => {
 		expect(executed[0].payload).toEqual({ answer: 42 });
 		const done = await taskRepo.findOneByOrFail({ jobId: job.id });
 		expect(done.finishedAt).not.toBeNull();
+		// `beginDispatch` stamped `startedAt`, and the handler's `report.dispatched()` stamped `dispatchedAt`.
 		expect(done.startedAt).not.toBeNull();
+		expect(done.dispatchedAt).not.toBeNull();
 		// Terminal rows keep the claim as the record of who ran them.
 		expect(done.claimedBy).toMatch(/^main-/);
 	}, 15_000);
@@ -121,6 +136,35 @@ describe('scheduler execution through DurableScheduler', () => {
 		expect(recovered.claimedBy).toBeNull();
 		expect(recovered.leaseEpoch).toBe(2);
 		expect(recovered.errorMessage).toBe('Lease expired before completion');
+	});
+
+	it('honours maxAttempts: dead-letters once reclaims exhaust the configured limit', async () => {
+		const job = await createJob({ maxAttempts: 3 });
+		const past = new Date(Date.now() - 60_000);
+		await taskRepo.save(
+			taskRepo.create({
+				jobId: job.id,
+				taskType: TASK_TYPE,
+				payload: {},
+				scheduledFor: past,
+				runAt: past,
+				status: 'running',
+				claimedBy: 'main-dead',
+				leaseExpiresAt: new Date(Date.now() - 1000),
+				leaseEpoch: 1,
+				// Already reclaimed twice; this expired lease is the 3rd and last attempt.
+				attempts: 2,
+				maxAttempts: 3,
+			}),
+		);
+
+		const result = await scheduler.reap();
+
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 1 });
+		const failed = await taskRepo.findOneByOrFail({ jobId: job.id });
+		expect(failed.status).toBe('failed');
+		expect(failed.claimedBy).toBe('main-dead');
+		expect(failed.errorMessage).toBe('Lease expired before completion');
 	});
 
 	// Last on purpose: it stops the shared scheduler's executor.

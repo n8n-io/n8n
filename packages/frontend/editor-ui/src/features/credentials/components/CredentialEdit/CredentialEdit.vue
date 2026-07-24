@@ -1157,8 +1157,14 @@ async function onDisconnectMyConnection(): Promise<void> {
 	if (confirmed !== MODAL_CONFIRM) return;
 
 	try {
-		await credentialsStore.disconnectMyConnection({ id: credentialId.value });
-		connectedByMe.value = false;
+		// End-user creds clear the caller's own per-user connection; fixed creds
+		// clear the shared OAuth token stored on the credential itself.
+		if (isResolvable.value) {
+			await credentialsStore.disconnectMyConnection({ id: credentialId.value });
+			connectedByMe.value = false;
+		} else {
+			await credentialsStore.disconnectOauthToken({ id: credentialId.value });
+		}
 		credentialData.value = {
 			...credentialData.value,
 			oauthTokenData: null as unknown as CredentialInformation,
@@ -1307,7 +1313,11 @@ const { width } = useElementSize(credNameRef);
 						/>
 						<N8nIconButton
 							variant="subtle"
-							v-if="currentCredential && credentialPermissions.delete"
+							v-if="
+								currentCredential &&
+								credentialPermissions.delete &&
+								(!isResolvable || credentialPermissions.createEndUser)
+							"
 							:title="i18n.baseText('credentialEdit.credentialEdit.delete')"
 							icon="trash-2"
 							:disabled="isSaving"

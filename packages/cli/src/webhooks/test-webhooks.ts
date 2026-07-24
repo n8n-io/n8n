@@ -186,7 +186,11 @@ export class TestWebhooks implements IWebhookManager {
 							pushRef,
 						);
 					}
-				} catch {}
+				} catch (error) {
+					// Settle the Promise to prevent hanging the request.
+					// No return to ensure test-webhook cleanup.
+					reject(error as Error);
+				}
 
 				/**
 				 * Multi-main setup: In a manual webhook execution, the main process that
@@ -199,6 +203,9 @@ export class TestWebhooks implements IWebhookManager {
 						command: 'clear-test-webhooks',
 						payload: { webhookKey: key, workflowEntity, pushRef },
 					});
+					// Response (if any) was already sent via WebhookHelpers.executeWebhook's
+					// callback; resolve to settle promise to be safe and avoid hanging.
+					resolve({ noWebhookResponse: true });
 					return;
 				}
 

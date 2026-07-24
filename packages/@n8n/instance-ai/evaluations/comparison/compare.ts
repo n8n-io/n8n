@@ -1,6 +1,11 @@
 // ---------------------------------------------------------------------------
 // Comparison core: take two experiment buckets, return a ComparisonResult.
 //
+// A comparable "unit" is an execution scenario or an evaluated build
+// expectation — both carry (passed, total) counts and get the same
+// statistical treatment. Failure-category drift stays scenario-only:
+// expectation verdicts carry no failure category.
+//
 // Pure function, no I/O. The tier thresholds (p-value cutoff, minimum delta,
 // minimum baseline pass rate) live in statistics.ts — there's no CLI knob.
 // Tune them there if the false-positive rate drifts.
@@ -18,9 +23,13 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
-export interface ScenarioCounts {
+export type EvaluationUnitKind = 'scenario' | 'expectation';
+
+export interface EvaluationUnitCounts {
+	kind: EvaluationUnitKind;
 	testCaseFile: string;
-	scenarioName: string;
+	/** Scenario name, or the full expectation text for expectation units. */
+	name: string;
 	passed: number;
 	total: number;
 	failureCategories?: Record<string, number>;
@@ -28,23 +37,52 @@ export interface ScenarioCounts {
 
 export interface ExperimentBucket {
 	experimentName: string;
-	scenarios: Map<string, ScenarioCounts>;
+	evaluationUnits: Map<string, EvaluationUnitCounts>;
 	/**
-	 * Aggregated failure-category counts across all trials in all scenarios.
+	 * Aggregated failure-category counts across all *scenario* trials.
 	 * Used for the run-level failure-category drift table — orthogonal to
-	 * per-scenario verdicts.
+	 * per-unit verdicts; expectation units never contribute here.
 	 */
 	failureCategoryTotals?: Record<string, number>;
+	/** Scenario trials only — the denominator for failure-category rates. */
 	trialTotal?: number;
 }
 
-export interface ScenarioComparison extends ScenarioClassification {
+/** Bucket key for a scenario unit. */
+export function scenarioUnitKey(testCaseFile: string, scenarioName: string): string {
+	return `${testCaseFile}/${scenarioName}`;
+}
+
+/** Bucket key for an expectation unit. The `#expectation:` infix cannot occur
+ *  in a `${fileSlug}/${scenarioName}` key, so the two kinds can't collide. */
+export function expectationUnitKey(testCaseFile: string, expectation: string): string {
+	return `${testCaseFile}#expectation:${expectation}`;
+}
+
+export function unitKeyOf(unit: {
+	kind: EvaluationUnitKind;
 	testCaseFile: string;
-	scenarioName: string;
+	name: string;
+}): string {
+	return unit.kind === 'scenario'
+		? scenarioUnitKey(unit.testCaseFile, unit.name)
+		: expectationUnitKey(unit.testCaseFile, unit.name);
+}
+
+export interface EvaluationUnitComparison extends ScenarioClassification {
+	kind: EvaluationUnitKind;
+	testCaseFile: string;
+	name: string;
 	prPasses: number;
 	prTotal: number;
 	baselinePasses: number;
 	baselineTotal: number;
+}
+
+export interface UnitRef {
+	kind: EvaluationUnitKind;
+	testCaseFile: string;
+	name: string;
 }
 
 export interface AggregateComparison {
@@ -70,9 +108,9 @@ export interface ComparisonResult {
 	pr: { experimentName: string };
 	baseline: { experimentName: string };
 	aggregate: AggregateComparison;
-	scenarios: ScenarioComparison[];
-	prOnly: Array<{ testCaseFile: string; scenarioName: string }>;
-	baselineOnly: Array<{ testCaseFile: string; scenarioName: string }>;
+	evaluationUnits: EvaluationUnitComparison[];
+	prOnly: UnitRef[];
+	baselineOnly: UnitRef[];
 	failureCategories: FailureCategoryComparison[];
 }
 
@@ -94,22 +132,22 @@ export type ComparisonOutcome =
 // ---------------------------------------------------------------------------
 
 /** Hard regressions only — high-confidence, gating-grade flags. */
-export function hardRegressions(result: ComparisonResult): ScenarioComparison[] {
-	return result.scenarios.filter((s) => s.verdict === 'hard_regression');
+export function hardRegressions(result: ComparisonResult): EvaluationUnitComparison[] {
+	return result.evaluationUnits.filter((s) => s.verdict === 'hard_regression');
 }
 
 /** Soft regressions — looser thresholds, worth investigating but not gating. */
-export function softRegressions(result: ComparisonResult): ScenarioComparison[] {
-	return result.scenarios.filter((s) => s.verdict === 'soft_regression');
+export function softRegressions(result: ComparisonResult): EvaluationUnitComparison[] {
+	return result.evaluationUnits.filter((s) => s.verdict === 'soft_regression');
 }
 
 /** Movement ≥ watchDelta without reaching a flag tier. Visibility only. */
-export function watchList(result: ComparisonResult): ScenarioComparison[] {
-	return result.scenarios.filter((s) => s.verdict === 'watch');
+export function watchList(result: ComparisonResult): EvaluationUnitComparison[] {
+	return result.evaluationUnits.filter((s) => s.verdict === 'watch');
 }
 
-export function improvements(result: ComparisonResult): ScenarioComparison[] {
-	return result.scenarios.filter((s) => s.verdict === 'improvement');
+export function improvements(result: ComparisonResult): EvaluationUnitComparison[] {
+	return result.evaluationUnits.filter((s) => s.verdict === 'improvement');
 }
 
 export function byVerdict(result: ComparisonResult): Record<ScenarioVerdict, number> {
@@ -122,7 +160,7 @@ export function byVerdict(result: ComparisonResult): Record<ScenarioVerdict, num
 		unreliable_baseline: 0,
 		insufficient_data: 0,
 	};
-	for (const s of result.scenarios) counts[s.verdict]++;
+	for (const s of result.evaluationUnits) counts[s.verdict]++;
 	return counts;
 }
 
@@ -133,10 +171,11 @@ export function byVerdict(result: ComparisonResult): Record<ScenarioVerdict, num
 /**
  * Compare two experiment buckets and produce a structured comparison result.
  *
- * Aggregate is computed over the *intersection* of scenarios — the only
- * scenarios for which the rates are directly comparable. PR-only and
- * baseline-only scenarios are surfaced separately, not folded into the
- * aggregate.
+ * Aggregate is computed over the *intersection* of units — the only units
+ * for which the rates are directly comparable. PR-only and baseline-only
+ * units are surfaced separately, not folded into the aggregate (a baseline
+ * captured before expectation persistence simply contributes no expectation
+ * units, so those degrade to prOnly).
  *
  * Aggregate pass rate is the *micro* average — total passes / total trials
  * across the intersection.
@@ -148,21 +187,22 @@ export function compareBuckets(
 	baseline: ExperimentBucket,
 	options: ClassifyOptions = {},
 ): ComparisonResult {
-	const scenarios: ScenarioComparison[] = [];
-	const prOnly: Array<{ testCaseFile: string; scenarioName: string }> = [];
-	const baselineOnly: Array<{ testCaseFile: string; scenarioName: string }> = [];
+	const evaluationUnits: EvaluationUnitComparison[] = [];
+	const prOnly: UnitRef[] = [];
+	const baselineOnly: UnitRef[] = [];
 
 	let prIPasses = 0;
 	let prITotal = 0;
 	let baseIPasses = 0;
 	let baseITotal = 0;
 
-	for (const [key, prCounts] of pr.scenarios) {
-		const baseCounts = baseline.scenarios.get(key);
+	for (const [key, prCounts] of pr.evaluationUnits) {
+		const baseCounts = baseline.evaluationUnits.get(key);
 		if (!baseCounts) {
 			prOnly.push({
+				kind: prCounts.kind,
 				testCaseFile: prCounts.testCaseFile,
-				scenarioName: prCounts.scenarioName,
+				name: prCounts.name,
 			});
 			continue;
 		}
@@ -179,9 +219,10 @@ export function compareBuckets(
 			baseCounts.total,
 			options,
 		);
-		scenarios.push({
+		evaluationUnits.push({
+			kind: prCounts.kind,
 			testCaseFile: prCounts.testCaseFile,
-			scenarioName: prCounts.scenarioName,
+			name: prCounts.name,
 			prPasses: prCounts.passed,
 			prTotal: prCounts.total,
 			baselinePasses: baseCounts.passed,
@@ -190,17 +231,18 @@ export function compareBuckets(
 		});
 	}
 
-	for (const [key, baseCounts] of baseline.scenarios) {
-		if (!pr.scenarios.has(key)) {
+	for (const [key, baseCounts] of baseline.evaluationUnits) {
+		if (!pr.evaluationUnits.has(key)) {
 			baselineOnly.push({
+				kind: baseCounts.kind,
 				testCaseFile: baseCounts.testCaseFile,
-				scenarioName: baseCounts.scenarioName,
+				name: baseCounts.name,
 			});
 		}
 	}
 
 	const aggregate: AggregateComparison = {
-		intersectionSize: scenarios.length,
+		intersectionSize: evaluationUnits.length,
 		prAggregatePassRate: rate(prIPasses, prITotal),
 		baselineAggregatePassRate: rate(baseIPasses, baseITotal),
 		prAggregateCI: wilsonInterval(prIPasses, prITotal),
@@ -208,7 +250,7 @@ export function compareBuckets(
 		delta: rate(prIPasses, prITotal) - rate(baseIPasses, baseITotal),
 	};
 
-	scenarios.sort(scenarioComparator);
+	evaluationUnits.sort(unitComparator);
 
 	const failureCategories = compareFailureCategories(pr, baseline);
 
@@ -216,7 +258,7 @@ export function compareBuckets(
 		pr: { experimentName: pr.experimentName },
 		baseline: { experimentName: baseline.experimentName },
 		aggregate,
-		scenarios,
+		evaluationUnits,
 		prOnly,
 		baselineOnly,
 		failureCategories,
@@ -313,7 +355,7 @@ function rate(passes: number, total: number): number {
 	return total > 0 ? passes / total : 0;
 }
 
-const VERDICT_ORDER: Record<ScenarioComparison['verdict'], number> = {
+const VERDICT_ORDER: Record<EvaluationUnitComparison['verdict'], number> = {
 	hard_regression: 0,
 	soft_regression: 1,
 	improvement: 2,
@@ -323,11 +365,12 @@ const VERDICT_ORDER: Record<ScenarioComparison['verdict'], number> = {
 	insufficient_data: 6,
 };
 
-function scenarioComparator(a: ScenarioComparison, b: ScenarioComparison): number {
+function unitComparator(a: EvaluationUnitComparison, b: EvaluationUnitComparison): number {
 	const av = VERDICT_ORDER[a.verdict];
 	const bv = VERDICT_ORDER[b.verdict];
 	if (av !== bv) return av - bv;
 	const fileCmp = a.testCaseFile.localeCompare(b.testCaseFile);
 	if (fileCmp !== 0) return fileCmp;
-	return a.scenarioName.localeCompare(b.scenarioName);
+	if (a.kind !== b.kind) return a.kind === 'scenario' ? -1 : 1;
+	return a.name.localeCompare(b.name);
 }

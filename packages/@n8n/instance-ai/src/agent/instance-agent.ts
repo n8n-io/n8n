@@ -1,4 +1,9 @@
-import { Agent, Memory } from '@n8n/agents';
+import {
+	Agent,
+	createObservationLogObserveFn,
+	createObservationLogReflectFn,
+	Memory,
+} from '@n8n/agents';
 
 import { applyAgentThinking } from './apply-agent-thinking';
 import {
@@ -90,7 +95,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		? createOrchestrationTools(orchestrationContext)
 		: createToolRegistry();
 
-	// Keep MCP tools from shadowing domain or orchestration tools during object composition.
+	// Keep MCP tools from shadowing domain or orchestration tools.
 	const reservedToolNames = new Set([...domainTools.keys(), ...orchestrationTools.keys()]);
 
 	// Store all MCP tools on orchestrationContext for sub-agents.
@@ -193,11 +198,17 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		const mem = new Memory().storage(options.memory);
 
 		if (memoryConfig.observationalMemory) {
-			const { observerThresholdTokens, reflectorThresholdTokens } =
+			const { observerThresholdTokens, reflectorThresholdTokens, onTaskUsage } =
 				memoryConfig.observationalMemory;
 			mem.observationalMemory({
 				observerThresholdTokens,
 				reflectorThresholdTokens,
+				...(onTaskUsage
+					? {
+							observe: createObservationLogObserveFn(modelId, { onUsage: onTaskUsage }),
+							reflect: createObservationLogReflectFn(modelId, { onUsage: onTaskUsage }),
+						}
+					: {}),
 			});
 		}
 

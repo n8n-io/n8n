@@ -3,7 +3,6 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { AgentConfigFingerprint, AgentTelemetryStatus } from './agentTelemetry.utils';
 
-export type AgentChatMode = 'build' | 'test';
 export type AgentCreateSource = 'button' | 'dropdown' | 'card';
 export type AgentConfigPart =
 	| 'instructions'
@@ -14,7 +13,8 @@ export type AgentConfigPart =
 	| 'triggers'
 	| 'subAgents'
 	| 'name'
-	| 'description';
+	| 'description'
+	| 'vectorStores';
 
 export function useAgentTelemetry() {
 	const telemetry = useTelemetry();
@@ -39,13 +39,12 @@ export function useAgentTelemetry() {
 
 	function trackSubmittedMessage(params: {
 		agentId: string;
-		mode: AgentChatMode;
 		status: AgentTelemetryStatus;
 		agentConfig: AgentConfigFingerprint;
 	}) {
 		safeTrack('User submitted message to agent', {
 			agent_id: params.agentId,
-			mode: params.mode,
+			mode: 'test', // Constant dimension kept for warehouse-schema stability.
 			status: params.status,
 			agent_config: params.agentConfig,
 			...common(),

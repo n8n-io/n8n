@@ -1,4 +1,5 @@
 import { UnexpectedError } from 'n8n-workflow';
+import { lstat } from 'node:fs/promises';
 import * as path from 'node:path';
 
 /**
@@ -33,4 +34,50 @@ export function safeJoinPath(parentPath: string, ...paths: string[]): string {
 	}
 
 	return candidate;
+}
+
+/** Components of an absolute path, root-first: `/a/b/c` -> [`/a`, `/a/b`, `/a/b/c`]. */
+export function pathComponents(targetPath: string): string[] {
+	// Start from the path root (`/` on POSIX, `C:\` on Windows) so drive-qualified
+	// paths build correctly instead of being re-rooted at the bare separator.
+	const root = path.parse(targetPath).root;
+	const segments = targetPath.slice(root.length).split(path.sep).filter(Boolean);
+	return segments.reduce<string[]>(
+		(components, segment) => [...components, path.join(components.at(-1) ?? root, segment)],
+		[],
+	);
+}
+
+/**
+ * Path segments of `descendant` below `ancestor`, or `null` if `descendant` is
+ * not contained within `ancestor`. `/a/b` below `/a` -> [`b`]; equal paths -> [].
+ */
+export function pathSegmentsBetween(ancestor: string, descendant: string): string[] | null {
+	if (!isContainedWithin(ancestor, descendant)) {
+		return null;
+	}
+	const relative = path.relative(ancestor, descendant);
+	return relative.split(path.sep).filter(Boolean);
+}
+
+export async function containsSymlinkedComponent(resolvedPath: string): Promise<boolean> {
+	for (const component of pathComponents(resolvedPath)) {
+		let stats;
+		try {
+			stats = await lstat(component);
+		} catch (error) {
+			if (
+				error instanceof Error &&
+				'code' in error &&
+				(error.code === 'ENOENT' || error.code === 'ENOTDIR')
+			) {
+				continue;
+			}
+			throw error;
+		}
+		if (stats.isSymbolicLink()) {
+			return true;
+		}
+	}
+	return false;
 }

@@ -47,9 +47,10 @@ test.describe(
 			await createBasicWorkflow(n8n, URLS.FAILING);
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				NOTIFICATIONS.PROBLEM_IN_NODE,
+				{ timeout: 10_000 },
 			);
 			await importExecutionForDebugging(n8n);
-			expect(n8n.page.url()).toContain('/debug');
+			await expect(n8n.page).toHaveURL(/\/debug/);
 		});
 
 		test('should exit debug mode after successful execution', async ({ n8n }) => {

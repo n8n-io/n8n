@@ -51,6 +51,19 @@ describe('ToolRow', () => {
 		expect(emitted()['open-detail']).toBeUndefined();
 	});
 
+	it('emits first-credential-connect when the standalone Connect button is used for an item with credentials', async () => {
+		const item: McpServerConnectionItem = {
+			...baseMcp,
+			credentials: [{ authType: 'mcpOAuth2Api', required: true }],
+		};
+		const { getByTestId, emitted } = render(item);
+
+		await fireEvent.click(getByTestId('tools-connection-row-connect'));
+
+		expect(emitted()['first-credential-connect']?.[0]).toEqual([item]);
+		expect(emitted().connect?.[0]).toEqual([item]);
+	});
+
 	it('shows a Connect button for an available node and emits connect on click', async () => {
 		const { getByTestId, emitted } = render(baseNode);
 

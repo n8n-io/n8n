@@ -5,6 +5,7 @@ import type {
 	TraceWriter as TraceWriterType,
 	TraceEvent,
 } from '@n8n/instance-ai';
+import { lazyImport } from '@n8n/utils/lazy-import';
 
 const TOOL_TRACE_EVENT_KINDS = new Set(['tool-call', 'tool-suspend', 'tool-resume']);
 
@@ -155,7 +156,14 @@ export class TraceReplayState {
 			return;
 		}
 
-		const { TraceIndex: TI, IdRemapper: IR, TraceWriter: TW } = await import('@n8n/instance-ai');
+		// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+		type InstanceAiImport = typeof import('@n8n/instance-ai');
+
+		const {
+			TraceIndex: TI,
+			IdRemapper: IR,
+			TraceWriter: TW,
+		} = await lazyImport<InstanceAiImport>(async () => await import('@n8n/instance-ai'));
 
 		const slug = this.activeSlug;
 		const events = slug ? this.eventsBySlug.get(slug) : undefined;

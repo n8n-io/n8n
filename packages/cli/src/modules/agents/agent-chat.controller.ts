@@ -86,21 +86,25 @@ export class AgentChatController {
 		}
 
 		try {
+			let executionId: string | undefined;
 			const suspended = await pumpChunks(
 				this.agentExecutionOrchestratorService.executeForChat({
 					agentId,
 					projectId,
 					message,
-					userId: req.user.id,
+					user: req.user,
 					memory: {
 						threadId,
 						resourceId: draftChatMemoryResourceId(req.user.id),
+					},
+					onExecutionRecorded: (id) => {
+						executionId = id;
 					},
 				}),
 				send,
 			);
 			if (!suspended) {
-				send({ type: 'done', sessionId: threadId });
+				send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
 			}
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Chat failed';
@@ -123,6 +127,7 @@ export class AgentChatController {
 		const { send } = initSseStream(res);
 
 		try {
+			let executionId: string | undefined;
 			const suspended = await pumpChunks(
 				this.agentExecutionOrchestratorService.resumeForChat({
 					agentId,
@@ -130,14 +135,17 @@ export class AgentChatController {
 					runId,
 					toolCallId,
 					resumeData,
-					userId: req.user.id,
+					user: req.user,
 					usePublishedVersion: false,
 					integrationType: N8N_CHAT_INTEGRATION_TYPE,
+					onExecutionRecorded: (id) => {
+						executionId = id;
+					},
 				}),
 				send,
 			);
 			if (!suspended) {
-				send({ type: 'done' });
+				send({ type: 'done', ...(executionId ? { executionId } : {}) });
 			}
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Resume failed';

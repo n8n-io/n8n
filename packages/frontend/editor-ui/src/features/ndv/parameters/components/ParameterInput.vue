@@ -41,6 +41,7 @@ import ResourceLocator from './ResourceLocator/ResourceLocator.vue';
 import SqlEditor from '@/features/shared/editors/components/SqlEditor/SqlEditor.vue';
 import TextEdit from './TextEdit.vue';
 import WorkflowSelectorParameterInput from './WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.vue';
+import AgentSelectorParameterInput from './AgentSelectorParameterInput/AgentSelectorParameterInput.vue';
 
 import {
 	formatAsExpression,
@@ -59,12 +60,11 @@ import {
 	CUSTOM_API_CALL_KEY,
 	DEBOUNCE_TIME,
 	ExpressionLocalResolveContextSymbol,
-	getDebounceTime,
 	HTML_NODE_TYPE,
 	NODES_USING_CODE_NODE_EDITOR,
 } from '@/app/constants';
 
-import { useDebounce } from '@/app/composables/useDebounce';
+import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -788,6 +788,10 @@ function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
 }
 
+function isOptionDisabled(option: INodePropertyOptions) {
+	return 'disabled' in option && option.disabled === true;
+}
+
 function credentialSelected(updateInformation: INodeUpdatePropertiesInformation) {
 	// Update the values on the node
 	workflowDocumentStore?.value?.updateNodeProperties(updateInformation);
@@ -1366,18 +1370,29 @@ onBeforeUnmount(() => {
 
 watch(
 	() => node.value?.credentials,
-	(_newCredentials, oldCredentials) => {
-		if (hasRemoteMethod.value && node.value) {
-			void loadRemoteParameterOptions();
-			// Reset options value when credentials change (not on initial load or first assignment)
-			const hadCredentials = oldCredentials !== undefined && Object.keys(oldCredentials).length > 0;
-			if (hadCredentials && props.parameter.type === 'options') {
-				emit('update', {
-					node: node.value.name,
-					name: props.path,
-					value: props.parameter.default ?? '',
-				});
-			}
+	async (newCredentials, oldCredentials) => {
+		if (!hasRemoteMethod.value || !node.value) return;
+		await loadRemoteParameterOptions();
+		// Credentials changed again while loading — a newer run will validate the fresh results.
+		if (!node.value || node.value.credentials !== newCredentials) return;
+		const hadCredentials = oldCredentials !== undefined && Object.keys(oldCredentials).length > 0;
+		if (
+			!hadCredentials ||
+			props.parameter.type !== 'options' ||
+			isModelValueExpression.value ||
+			remoteParameterOptionsLoading.value
+		) {
+			return;
+		}
+		const stillValid = remoteParameterOptions.value.some(
+			(option) => option.value === props.modelValue,
+		);
+		if (!stillValid) {
+			emit('update', {
+				node: node.value.name,
+				name: props.path,
+				value: props.parameter.default ?? '',
+			});
 		}
 	},
 	{ immediate: true },
@@ -1525,6 +1540,22 @@ onUpdated(async () => {
 				:parameter-issues="getIssues"
 				:is-read-only="isReadOnly"
 				@update:model-value="valueChangedDebounced"
+				@modal-opener-click="openExpressionEditorModal"
+				@focus="setFocus"
+				@blur="onBlur"
+				@drop="onResourceLocatorDrop"
+			/>
+			<AgentSelectorParameterInput
+				v-else-if="parameter.type === 'agentSelector'"
+				ref="resourceLocator"
+				:parameter="parameter"
+				:model-value="modelValueResourceLocator"
+				:expression-display-value="expressionDisplayValue"
+				:is-value-expression="isModelValueExpression"
+				:path="path"
+				:parameter-issues="getIssues"
+				:is-read-only="isReadOnly"
+				@update:model-value="valueChanged"
 				@modal-opener-click="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -1968,6 +1999,7 @@ onUpdated(async () => {
 					v-for="option in parameterOptions"
 					:key="option.value.toString()"
 					:value="option.value"
+					:disabled="isOptionDisabled(option)"
 					:label="getOptionsOptionDisplayName(option)"
 					data-test-id="parameter-input-item"
 				>
@@ -2007,6 +2039,7 @@ onUpdated(async () => {
 					v-for="option in parameterOptions"
 					:key="option.value.toString()"
 					:value="option.value"
+					:disabled="isOptionDisabled(option)"
 					:label="getOptionsOptionDisplayName(option)"
 				>
 					<div class="list-option">

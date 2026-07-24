@@ -70,6 +70,7 @@ erDiagram
 "public.instance_ai_checkpoints" {
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone expiredAt
+  varchar_64_ hostRunId
   varchar_255_ key
   varchar_255_ resourceId
   varchar_255_ runId

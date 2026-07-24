@@ -16,6 +16,7 @@ import { PrometheusInstanceRoleMetricsService } from './instance-role-metrics.se
 import { PrometheusPssMetricsService } from './pss-metrics.service';
 import { PrometheusQueueMetricsService } from './queue-metrics.service';
 import { PrometheusRouteMetricsService } from './route-metrics.service';
+import { PrometheusSchedulerMetricsService } from './scheduler-metrics.service';
 import { PrometheusSsrfMetricsService } from './ssrf-metrics.service';
 import { PrometheusTokenExchangeMetricsService } from './token-exchange-metrics.service';
 import { PrometheusVersionMetricsService } from './version-metrics.service';
@@ -53,6 +54,7 @@ export class PrometheusMetricsService {
 		instanceAi: PrometheusInstanceAiMetricsService,
 		dbPool: PrometheusDbPoolMetricsService,
 		workflowPublication: PrometheusWorkflowPublicationMetricsService,
+		scheduler: PrometheusSchedulerMetricsService,
 	) {
 		this.logger = logger.scoped('metrics');
 		this.collectors = [
@@ -76,6 +78,7 @@ export class PrometheusMetricsService {
 			instanceAi,
 			dbPool,
 			workflowPublication,
+			scheduler,
 		];
 	}
 

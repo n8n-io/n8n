@@ -12,7 +12,6 @@ import {
 import type { ListQueryDb, SlimProject, User, ICredentialsDb, ScopesField } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import {
 	In,
 	type EntityManager,
@@ -780,6 +779,30 @@ export class CredentialsService {
 	}
 
 	/**
+	 * Clears a credential's stored OAuth token (and its derived account
+	 * identifier), returning it to a disconnected state. The normal update path
+	 * deliberately carries `oauthTokenData` forward, so a "Disconnect" action on a
+	 * fixed OAuth credential needs this dedicated path.
+	 */
+	async clearOauthTokenData(credential: CredentialsEntity): Promise<void> {
+		// Decrypt via the core credential so a decryption failure aborts the
+		// disconnect. `this.decrypt` swallows CredentialDataError and returns `{}`,
+		// which would otherwise overwrite the whole credential with empty data.
+		const decryptedData = await createCredentialsFromCredentialsEntity(credential).getData();
+		delete decryptedData.oauthTokenData;
+		delete decryptedData.accountIdentifier;
+
+		const newCredentialData = await this.createEncryptedData({
+			id: credential.id,
+			name: credential.name,
+			type: credential.type,
+			data: decryptedData,
+		});
+
+		await this.update(credential.id, newCredentialData, decryptedData);
+	}
+
+	/**
 	 * Decrypts the credentials data and redacts the content by default.
 	 *
 	 * If `includeRawData` is set to true it will not redact the data.
@@ -931,6 +954,12 @@ export class CredentialsService {
 
 		if (!credential) {
 			return;
+		}
+
+		if (credential.isResolvable) {
+			const owningProject =
+				await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+			await this.ensureCanManageEndUserCredential(user, owningProject?.id);
 		}
 
 		await this.credentialsRepository.remove(credential);
@@ -1409,6 +1438,20 @@ export class CredentialsService {
 	}
 
 	/**
+	 * Whether a credential type is OAuth1 or OAuth2, including types that extend
+	 * them (e.g. `gmailOAuth2`).
+	 */
+	isOAuthCredentialType(type: string): boolean {
+		const parentTypes = this.credentialTypes.getParentTypes(type) ?? [];
+		return (
+			type === 'oAuth1Api' ||
+			type === 'oAuth2Api' ||
+			parentTypes.includes('oAuth1Api') ||
+			parentTypes.includes('oAuth2Api')
+		);
+	}
+
+	/**
 	 * Validates that OAuth credential URL fields (authUrl, accessTokenUrl, etc.) use http/https only.
 	 * No-op if the credential type is not OAuth1 or OAuth2 (including extended types).
 	 */
@@ -1444,8 +1487,31 @@ export class CredentialsService {
 		return await this.createCredential({ ...dto, isManaged: true }, user);
 	}
 
+	/**
+	 * The end-user (resolvable) credential lifecycle — creating one, switching a
+	 * credential to or from end-user, deleting or transferring one — is limited
+	 * to roles holding `credential:createEndUser` on the owning project
+	 * (instance owners/admins, project admins, and personal project owners by
+	 * default). These operations affect every user's own connection, not just
+	 * the caller's, so they need more than the plain credential CRUD scopes.
+	 */
+	async ensureCanManageEndUserCredential(user: User, projectId?: string) {
+		const allowed =
+			projectId !== undefined &&
+			(await userHasScopes(user, ['credential:createEndUser'], false, { projectId }));
+		if (!allowed) {
+			throw new ForbiddenError(
+				'You do not have permission to manage end-user credentials in this project',
+			);
+		}
+	}
+
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
 		const targetProjectId = await this.resolveOwningProjectIdForNewCredential(user, opts.projectId);
+
+		if (opts.isResolvable === true) {
+			await this.ensureCanManageEndUserCredential(user, targetProjectId);
+		}
 
 		await this.checkCredentialData(
 			opts.type,

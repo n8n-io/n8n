@@ -17,7 +17,7 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
-import { N8nActionBox, N8nButton, N8nHeading, N8nInfoTip, N8nNotice } from '@n8n/design-system';
+import { N8nEmptyState, N8nButton, N8nHeading, N8nInfoTip, N8nNotice } from '@n8n/design-system';
 const environment = process.env.NODE_ENV;
 
 const settingsStore = useSettingsStore();
@@ -223,14 +223,14 @@ async function onEdit(destinationId?: string) {
 				</div>
 			</template>
 			<div v-else-if="!isManagedByEnv" data-test-id="action-box-licensed">
-				<N8nActionBox
+				<N8nEmptyState
 					:button-text="i18n.baseText(`settings.log-streaming.add`)"
 					@click:button="addDestination"
 				>
 					<template #heading>
 						<span v-n8n-html="i18n.baseText(`settings.log-streaming.addFirstTitle`)" />
 					</template>
-				</N8nActionBox>
+				</N8nEmptyState>
 			</div>
 		</template>
 		<template v-else>
@@ -240,7 +240,7 @@ async function onEdit(destinationId?: string) {
 				</N8nInfoTip>
 			</div>
 			<div data-test-id="action-box-unlicensed">
-				<N8nActionBox
+				<N8nEmptyState
 					:description="i18n.baseText('settings.log-streaming.actionBox.description')"
 					:button-text="i18n.baseText('settings.log-streaming.actionBox.button')"
 					@click:button="goToUpgrade"
@@ -248,7 +248,7 @@ async function onEdit(destinationId?: string) {
 					<template #heading>
 						<span v-n8n-html="i18n.baseText('settings.log-streaming.actionBox.title')" />
 					</template>
-				</N8nActionBox>
+				</N8nEmptyState>
 			</div>
 		</template>
 	</div>

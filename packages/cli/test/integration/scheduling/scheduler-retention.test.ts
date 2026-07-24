@@ -1,11 +1,11 @@
 import { testDb } from '@n8n/backend-test-utils';
 import type { ScheduledJob, ScheduledTask } from '@n8n/db';
-import { ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
+import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createScheduler } from '@n8n/scheduler';
 import type { SchedulerDeps } from '@n8n/scheduler';
 
-import { DurableScheduler } from '@/scheduling/durable-scheduler';
+import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 
 describe('scheduler retention', () => {
 	let jobRepo: ScheduledJobRepository;
@@ -28,11 +28,15 @@ describe('scheduler retention', () => {
 	let sequence = 0;
 	const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 3600 * 1000);
 
-	/** Compose a scheduler over the same storage bindings, with per-test retention windows. */
-	const composeScheduler = (retention: SchedulerDeps['retention']) =>
+	/** Compose a scheduler over the production storage bindings, with per-test retention windows. */
+	const composeScheduler = (retention?: SchedulerDeps['retention']) =>
 		createScheduler({
 			hostId: 'retention-test',
-			materializerTransaction: Container.get(DurableScheduler).materializerTransaction,
+			materializerTransaction: buildMaterializerTransaction(
+				Container.get(DataSource),
+				jobRepo,
+				taskRepo,
+			),
 			taskStore: taskRepo,
 			retention,
 		});
@@ -68,9 +72,9 @@ describe('scheduler retention', () => {
 		);
 	};
 
-	it('prunes each terminal class on its own window through DurableScheduler', async () => {
+	it('prunes each terminal class on its own default window', async () => {
 		const job = await createJob();
-		// Config defaults: cleanly finished kept 1 day, failed/missed kept 7 days.
+		// Default windows: cleanly finished kept 1 day, failed/missed kept 7 days.
 		await createTask(job.id, { status: 'succeeded', finishedAt: daysAgo(2) });
 		await createTask(job.id, { status: 'cancelled', finishedAt: daysAgo(2) });
 		await createTask(job.id, { status: 'failed', finishedAt: daysAgo(8) });
@@ -89,7 +93,7 @@ describe('scheduler retention', () => {
 			leaseExpiresAt: daysAgo(2),
 		});
 
-		const summary = await Container.get(DurableScheduler).prune();
+		const summary = await composeScheduler().prune();
 
 		expect(summary).toEqual({ deleted: 4, drained: true });
 		const survivors = new Set((await taskRepo.find()).map((t) => t.id));
@@ -157,7 +161,7 @@ describe('scheduler retention', () => {
 		const job = await createJob();
 		const fresh = await createTask(job.id, { status: 'succeeded', finishedAt: daysAgo(0.5) });
 
-		const summary = await Container.get(DurableScheduler).prune();
+		const summary = await composeScheduler().prune();
 
 		expect(summary).toEqual({ deleted: 0, drained: true });
 		expect((await taskRepo.find()).map((t) => t.id)).toEqual([fresh.id]);

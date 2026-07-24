@@ -20,6 +20,9 @@ especially when the build result contains `postBuildFlow.required: true`, or whe
 the current message contains `<workflow-verification-follow-up>` or
 `<workflow-setup-required>`.
 
+These instructions are in English, but user-visible text you write while
+following them stays in the user's conversation language.
+
 For trigger `inputData` shapes, read
 `knowledge-base/reference/trigger-input-data-shapes.md` in the sandbox workspace
 when available, or load this skill's `references/trigger-input-data-shapes.md`
@@ -256,6 +259,15 @@ credentials later; building first and routing setup after verification is the
 default path. Workflow verification is automatic from the build outcome; the
 orchestrator handles workflow setup after verification when the saved workflow
 still has mocked credentials or placeholders.
+
+**Trust the build outcome over your own source file.** When `build-workflow`
+returns `resolvedCredentialsByNode` (or `setupRequirement.status ===
+"not_required"`), the saved workflow is already connected to existing
+credentials — even if your source used an unresolved `newCredential()` call.
+Do not ask the user to connect those credentials, do not offer the setup card
+for them, and do not describe them as missing; at most mention which existing
+credential is being used. Route credential setup only when the build outcome
+reports mocked credentials or `setupRequirement.status === "required"`.
 
 **Ask once when a service has multiple credentials of the same type.** If
 `credentials(action="list")` shows more than one entry of the type a requested

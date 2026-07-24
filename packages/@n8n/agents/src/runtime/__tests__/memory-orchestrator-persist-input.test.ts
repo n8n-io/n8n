@@ -8,6 +8,7 @@ import { InMemoryMemory } from '../memory/memory-store';
 import { AgentMessageList } from '../model/message-list';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus } from '../state/event-bus';
+import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 
 const THREAD_ID = 'thread-1';
 const RESOURCE_ID = 'user-1';
@@ -26,7 +27,12 @@ function buildOrchestrator(
 	bus: AgentEventBus = new AgentEventBus(),
 ): MemoryOrchestrator {
 	const config = { memory: store } as unknown as AgentRuntimeConfig;
-	return new MemoryOrchestrator(config, new BackgroundTaskTracker(), bus);
+	return new MemoryOrchestrator(
+		config,
+		new BackgroundTaskTracker(),
+		bus,
+		new RuntimeTelemetry(config),
+	);
 }
 
 function textsOf(messages: AgentDbMessage[]): string[] {

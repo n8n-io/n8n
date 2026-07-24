@@ -4,6 +4,7 @@ import type {
 	InstanceAiEvent,
 	PushMessage,
 	WorkerStatus,
+	WorkflowPublicationStatusMessage,
 } from '@n8n/api-types';
 import type { IWorkflowBase, WorkflowActivateMode } from 'n8n-workflow';
 
@@ -113,6 +114,10 @@ export type PubSubCommandMap = {
 		nodeId?: string;
 	};
 
+	/** Relay a publication status push from the leader (which drains the publication
+	 * outbox) to the other mains, so clients connected to followers get the push too. */
+	'display-workflow-publication-status': WorkflowPublicationStatusMessage;
+
 	'relay-execution-lifecycle-event': PushMessage & {
 		pushRef: string;
 		asBinary: boolean;
@@ -161,7 +166,14 @@ export type PubSubCommandMap = {
 	 */
 	'relay-instance-ai-event': {
 		threadId: string;
-		event: InstanceAiEvent;
+		/**
+		 * Producer-assigned stored event. The id comes from the shared per-thread
+		 * sequence, so every main stores and serves identical event ids and the
+		 * frontend's replay cursor is valid against any main. With the durable
+		 * log enabled ids are DB-assigned seqs and ephemeral events (deltas,
+		 * status) carry no id at all: they are live-only.
+		 */
+		storedEvent: { id?: number; event: InstanceAiEvent };
 	};
 
 	/**
