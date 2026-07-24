@@ -4,6 +4,7 @@ packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPub
   h_9c8f56e3400786 113-114
   s_b6381fbb8ddc64::t_ee482984b97cbd 116
   s_b6381fbb8ddc64::t_809d0a0041ae07 7
+  s_b34abcbd386402::t_f65d763798858f 95
 packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
   s_70e4a16a672757::t_1114f6e615019a 31,77-78,217-220,486-496,498-502,535-536,559-570,572-579
   s_70e4a16a672757::t_40de41d139ecad 523,571
@@ -18,6 +19,9 @@ packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPub
   s_70e4a16a672757::t_e0f8efdf136a81 79-80
   s_70e4a16a672757::t_80ca5ad0b26e03 196
   s_70e4a16a672757::t_9d84826ed0653e 608
+  s_70e4a16a672757::t_baa616d62e6876 79-80
+  s_70e4a16a672757::t_2fcc749fa1c9d5 196
+  s_70e4a16a672757::t_8c8a72da8d37b5 608
 packages/@n8n/db/src/migrations/sqlite/index.ts
   s_44a98ba2784a12::t_d446b22a984aa3 216
   s_44a98ba2784a12::t_29c7d74109de94 437
@@ -91,10 +95,13 @@ docs/generated/postgres-schema/public.instance_ai_checkpoints.md
   s_44a98ba2784a12::t_16f911908620c5 9,49
 packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue
   s_744aa7ffad1673::t_ab502cabe8a978 75
+  s_744aa7ffad1673::t_d74ae10d998849 75
 packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.test.ts
   s_c7f2eb05574ce2::t_2e03c02acc8062 49
 packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
   s_c7f2eb05574ce2::t_79fbbe00c1665e 16
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_b1ae3677d6bc36::t_f4ecbbe076e13c 47,51
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -220,6 +227,38 @@ packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
       },
       "human_author": null
     },
+    "s_91f67565918eee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36f4874d-45bc-43d2-bd2d-9c16d23d9c95",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_94fa4ed7d7b038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d271a69-d48a-40c6-b6a3-5630b148db23",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_b1ae3677d6bc36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14856d89-b227-4425-adeb-7f31ce9ea7b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_b34abcbd386402": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dc6fdb7-ff5f-45a8-98bf-0345038d38d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
     "s_b3f23ab76a494c": {
       "agent_id": {
         "tool": "codex",
@@ -249,6 +288,14 @@ packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
         "tool": "cursor",
         "id": "500e2669-64fc-46e2-9484-cf22ebf66e89",
         "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_e0d6b46d5a1cd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9bef762-10a3-4006-8b74-acefd3594aab",
+        "model": "claude-fable-5"
       },
       "human_author": null
     }
