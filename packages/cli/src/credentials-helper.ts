@@ -198,10 +198,38 @@ export class CredentialsHelper extends ICredentialsHelper {
 					}
 
 					if (node.credentials) {
+						// Build the data to persist by merging the hook's output with the
+						// current credential data. We only include keys from the output that
+						// are either:
+						// 1. The expirable property (always persist token refreshes)
+						// 2. Keys that were not in the input, or were empty/undefined
+						// This prevents resolved {{ ... }} expressions from being written
+						// back over the original expression text, while ensuring token
+						// refreshes are persisted.
+						const currentCredentials = await this.getCredentials(
+							node.credentials[credentialType.name],
+							credentialType.name,
+						);
+						const currentData = await currentCredentials.getData();
+						const dataToPersist: ICredentialDataDecryptedObject = { ...currentData };
+
+						for (const [key, value] of Object.entries(output)) {
+							const shouldPersist =
+								key === expirableProperty.name ||
+								!(key in credentials) ||
+								credentials[key] === '' ||
+								credentials[key] === undefined ||
+								credentials[key] === null;
+
+							if (shouldPersist) {
+								dataToPersist[key] = value;
+							}
+						}
+
 						await this.updateCredentials(
 							node.credentials[credentialType.name],
 							credentialType.name,
-							Object.assign(credentials, output),
+							dataToPersist,
 						);
 						return Object.assign(credentials, output);
 					}

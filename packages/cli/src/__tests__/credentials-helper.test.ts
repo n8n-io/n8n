@@ -1887,5 +1887,105 @@ describe('CredentialsHelper', () => {
 			expect(mockTokenRequest).toHaveBeenCalledTimes(2);
 			expect(refreshed).toMatchObject({ accessToken: 'TOKEN_2' });
 		});
+
+		// Regression: GitHub App's `preAuthentication` hook used to return the entire
+		// resolved credentials object (including the freshly-resolved value of an
+		// `{{ ... }}` expression in the Installation ID field). The resolver was
+		// persisting that whole object back to the DB, permanently overwriting the
+		// stored expression with the test-run's static value. The fix persists only
+		// keys that the hook actually introduced — keys that were not in the input
+		// or that were empty/undefined. This test reproduces the bug shape (a hook
+		// that spreads `...credentials`) and asserts the expression survives.
+		test('does not persist values for keys that were already populated in the input', async () => {
+			class SpreadingPreAuthCredential implements ICredentialType {
+				name = 'spreadingPreAuthCredential';
+				displayName = 'Spreading PreAuth';
+				properties: INodeProperties[] = [
+					{
+						displayName: 'Dynamic ID',
+						name: 'dynamicId',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Access Token',
+						name: 'accessToken',
+						type: 'hidden',
+						typeOptions: { expirable: true },
+						default: '',
+					},
+				];
+				async preAuthentication(
+					this: IHttpRequestHelper,
+					credentials: ICredentialDataDecryptedObject,
+				) {
+					// Buggy hook shape: spreads the input back, including any
+					// expressions that the resolver just resolved.
+					return { ...credentials, accessToken: 'NEW_TOKEN' };
+				}
+			}
+
+			const spreading = new SpreadingPreAuthCredential();
+			mockNodesAndCredentials.getCredential
+				.calledWith('spreadingPreAuthCredential')
+				.mockReturnValue({ type: spreading, sourcePath: '' });
+
+			const spreadingNode: INode = {
+				id: 'uuid-spread',
+				name: 'Spread',
+				type: 'n8n-nodes-base.noOp',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+				credentials: { spreadingPreAuthCredential: { id: 'spread-cred', name: 'Spread' } },
+			};
+
+			const expressionText = "{{ $('Webhook').item.json.body.installation.id }}";
+			const inputCredentials: ICredentialDataDecryptedObject = {
+				// Resolver has already turned the expression into a static number —
+				// the in-memory shape that the hook actually sees.
+				dynamicId: 12345,
+				accessToken: '',
+			};
+
+			// Mock getCredentials to return a credential entity with the original
+			// expression string in the DB
+			const mockCredentialEntity = {
+				getData: vi.fn().mockResolvedValue({
+					dynamicId: expressionText,
+					accessToken: '',
+				}),
+			};
+			const getCredentialsSpy = vi
+				.spyOn(credentialsHelper, 'getCredentials')
+				.mockResolvedValue(mockCredentialEntity as any);
+
+			try {
+				const result = await credentialsHelper.preAuthentication(
+					helpers,
+					inputCredentials,
+					'spreadingPreAuthCredential',
+					spreadingNode,
+					false,
+				);
+
+				// The in-memory return must include the new token so the request
+				// can proceed.
+				expect(result).toMatchObject({ accessToken: 'NEW_TOKEN' });
+
+				// Only one persistence call
+				expect(updateSpy).toHaveBeenCalledTimes(1);
+				const persisted = updateSpy.mock.calls[0][2];
+
+				// The persisted data must include the original expression string
+				// (not the resolved value 12345) and the new token
+				expect(persisted).toEqual({
+					dynamicId: expressionText,
+					accessToken: 'NEW_TOKEN',
+				});
+			} finally {
+				getCredentialsSpy.mockRestore();
+			}
+		});
 	});
 });
