@@ -1,7 +1,9 @@
 packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowPublishChoiceDialog.vue
   s_744aa7ffad1673::t_a97e4738a14138 2-8,44-46,51,72-76,86-91
+  s_744aa7ffad1673::t_73cdb0ee9d60f0 2-8,44-46,51,72-76,86-91
 packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue
   s_744aa7ffad1673::t_cd5e9d3edff1dc 48,72-77
+  s_744aa7ffad1673::t_f1b0bd4abe766b 48,72-77
 packages/cli/test/integration/public-api/n8n-packages-import.test.ts
   s_a2f2604c6a0758::t_de3019d0aa72db 231-234
   s_a2f2604c6a0758::t_d8339cbae28916 255
