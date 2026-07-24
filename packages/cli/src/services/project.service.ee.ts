@@ -123,6 +123,12 @@ export class ProjectService {
 		);
 	}
 
+	private get agentExecutionService() {
+		return import('@/modules/agents/agent-execution.service.js').then(({ AgentExecutionService }) =>
+			Container.get(AgentExecutionService),
+		);
+	}
+
 	private get connectionStatusProxy() {
 		return import('@/credentials/credential-connection-status-proxy.js').then(
 			({ CredentialConnectionStatusProxy }) => Container.get(CredentialConnectionStatusProxy),
@@ -232,9 +238,10 @@ export class ProjectService {
 
 		// 8. delete agent knowledge files before project removal cascades delete agent_files rows.
 		if (this.moduleRegistry.isActive('agents')) {
-			const [agentRepository, agentKnowledgeService] = await Promise.all([
+			const [agentRepository, agentKnowledgeService, agentExecutionService] = await Promise.all([
 				this.agentRepository,
 				this.agentKnowledgeService,
+				this.agentExecutionService,
 			]);
 			const agents = await agentRepository.findByProjectId(project.id);
 			for (const agent of agents) {
@@ -249,6 +256,7 @@ export class ProjectService {
 				}
 
 				await agentKnowledgeService.destroySandbox(project.id, agent.id);
+				await agentExecutionService.deleteExecutionLogsForAgent(agent.id);
 			}
 		}
 
