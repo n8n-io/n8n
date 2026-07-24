@@ -7,7 +7,7 @@ const table = 'role_mapping_rule';
  * the rule blocks access — a matching login is denied instead of being
  * assigned a role (exposed in the API as the `block:access` sentinel).
  */
-export class MakeRoleMappingRuleRoleNullable1784556173999 implements ReversibleMigration {
+export class MakeRoleMappingRuleRoleNullable1784925817575 implements ReversibleMigration {
 	async up({ schemaBuilder: { dropNotNull } }: MigrationContext) {
 		await dropNotNull(table, 'role', { recreatesOnSqlite: true });
 	}

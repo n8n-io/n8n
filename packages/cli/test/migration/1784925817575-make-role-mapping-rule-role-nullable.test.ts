@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { nanoid } from 'nanoid';
 
-const MIGRATION_NAME = 'MakeRoleMappingRuleRoleNullable1784556173999';
+const MIGRATION_NAME = 'MakeRoleMappingRuleRoleNullable1784925817575';
 
 describe('MakeRoleMappingRuleRoleNullable Migration', () => {
 	let dataSource: DataSource;

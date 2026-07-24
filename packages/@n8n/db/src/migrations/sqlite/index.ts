@@ -58,8 +58,8 @@ import { AddProjectIdToInstanceAiThread1784000000028 } from './1784000000028-Add
 import { AllowAzureStoredAt1784000000034 } from './1784000000034-AllowAzureStoredAt';
 import { DropAgentDescriptionFromAgents1784000000037 } from './1784000000037-DropAgentDescriptionFromAgents';
 import { AddRecurringCronScheduleKind1784000000045 } from './1784000000045-AddRecurringCronScheduleKind';
-import { MakeRoleMappingRuleRoleNullable1784556173999 } from './1784556173999-MakeRoleMappingRuleRoleNullable';
 import { AddAvailableInMcpToAgents1784897791636 } from './1784897791636-AddAvailableInMcpToAgents';
+import { MakeRoleMappingRuleRoleNullable1784925817575 } from './1784925817575-MakeRoleMappingRuleRoleNullable';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -444,11 +444,11 @@ const sqliteMigrations: Migration[] = [
 	AddHostRunIdToInstanceAiCheckpoints1784000000050,
 	BackfillInstanceAiEventLog1784000000051,
 	CreateWorkflowReviewRequestTables1784000000052,
-	MakeRoleMappingRuleRoleNullable1784556173999,
 	AddStoredAtToAgentExecution1784815940110,
 	AddInstanceCredentials1784815940111,
 	CreateAgentEvalTables1784815940112,
 	AddAvailableInMcpToAgents1784897791636,
+	MakeRoleMappingRuleRoleNullable1784925817575,
 ];
 
 export { sqliteMigrations };
