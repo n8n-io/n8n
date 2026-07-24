@@ -1,9 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { OnLeaderStepdown, OnShutdown } from '@n8n/decorators';
+import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { ActiveWorkflowTriggers, ErrorReporter } from 'n8n-core';
+import { ActiveWorkflowTriggers, ErrorReporter, InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
@@ -22,6 +22,9 @@ const STEPDOWN_TEARDOWN_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
  */
 @Service()
 export class PublishedWorkflowTriggerDeactivator {
+	private ghostTriggerJanitorInterval: NodeJS.Timeout | undefined;
+	private isShuttingDown = false;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly workflowsConfig: WorkflowsConfig,
@@ -29,6 +32,7 @@ export class PublishedWorkflowTriggerDeactivator {
 		private readonly lifecycleLock: WorkflowPublicationLifecycleLock,
 		private readonly activeWorkflowTriggers: ActiveWorkflowTriggers,
 		private readonly outboxConsumer: WorkflowPublicationOutboxConsumer,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -62,6 +66,63 @@ export class PublishedWorkflowTriggerDeactivator {
 		for (const workflowId of lockedWorkflowIds) {
 			await this.deactivateWorkflow(workflowId);
 		}
+	}
+
+	async sweepGhostTriggers(): Promise<number> {
+		if (this.instanceSettings.isLeader) return 0;
+
+		const candidates = this.activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds();
+		const ghosts: string[] = [];
+
+		for (const candidate of candidates) {
+			if (this.lifecycleLock.isLocked(candidate)) continue;
+
+			await this.lifecycleLock.runExclusive(candidate, async () => {
+				if (this.instanceSettings.isLeader) return;
+
+				const result = await this.activeWorkflowTriggers
+					.remove(candidate)
+					.catch((error) => this.errorReporter.error(error, { shouldBeLogged: true }));
+
+				if (result) {
+					ghosts.push(candidate);
+				}
+			});
+		}
+
+		if (ghosts.length > 0) {
+			this.logger.warn(`Found ${ghosts.length} ghost workflows. Removed them.`, {
+				workflowIds: ghosts,
+			});
+		}
+
+		return ghosts.length;
+	}
+
+	@OnLeaderStepdown()
+	startGhostTriggerJanitor(): void {
+		if (!this.workflowsConfig.useWorkflowPublicationService) return;
+		if (this.isShuttingDown) return;
+		if (this.ghostTriggerJanitorInterval) return;
+
+		this.ghostTriggerJanitorInterval = setInterval(
+			async () => await this.sweepGhostTriggers(),
+			this.workflowsConfig.publicationReconcileIntervalSeconds * Time.seconds.toMilliseconds,
+		);
+	}
+
+	@OnLeaderTakeover()
+	stopGhostTriggerJanitor(): void {
+		if (this.ghostTriggerJanitorInterval) {
+			clearInterval(this.ghostTriggerJanitorInterval);
+			this.ghostTriggerJanitorInterval = undefined;
+		}
+	}
+
+	@OnShutdown()
+	shutdown(): void {
+		this.isShuttingDown = true;
+		this.stopGhostTriggerJanitor();
 	}
 
 	/**
