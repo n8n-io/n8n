@@ -1,0 +1,30 @@
+packages/cli/src/modules/agents/execution-log/agent-execution-log-write.error.ts
+  s_16323f976c7783::t_ed34a4ab2b84a9 1-13
+packages/cli/src/modules/agents/execution-log/agent-execution-log-store.ts
+  s_16323f976c7783::t_77b5981e1cc4ef 1-45
+packages/cli/src/modules/agents/execution-log/corrupted-agent-execution-log.error.ts
+  s_16323f976c7783::t_77950d3c050928 1-13
+packages/cli/src/modules/agents/agents.module.ts
+  s_16323f976c7783::t_022fc4331d4438 37-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "62106998c4ab70e7cc48e4bbada8f82a412ab9c6",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_16323f976c7783": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3ba1c9d-62c3-4db4-be71-8ed941f5d77c",
+        "model": "composer-2.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

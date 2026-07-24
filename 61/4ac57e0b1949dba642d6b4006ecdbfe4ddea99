@@ -13,6 +13,14 @@ packages/@n8n/db/src/repositories/user.repository.ts
   "base_commit_sha": "614ac57e0b1949dba642d6b4006ecdbfe4ddea99",
   "prompts": {},
   "sessions": {
+    "s_41e37076417c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "480c8620-d708-419e-ac08-fca1f0d2cb0a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
     "s_c7f2eb05574ce2": {
       "agent_id": {
         "tool": "claude",
