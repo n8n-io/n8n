@@ -1,5 +1,5 @@
 import type { Mocked } from 'vitest';
-import type { AgentJsonConfig } from '@n8n/api-types';
+import { DEFAULT_AGENT_PERSONALISATION, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -503,6 +503,43 @@ describe('AgentConfigService', () => {
 					fromStop: 12,
 					toStop: 88,
 				},
+			});
+		});
+
+		it('resets an omitted gradient to the schema default when clearOmittedOptionalFields is set', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					personalisation: {
+						icon: 'bot',
+						gradient: {
+							from: '#111111',
+							to: '#222222',
+							angle: 42,
+							fromStop: 12,
+							toStop: 88,
+						},
+					},
+				},
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					personalisation: { icon: 'mail' },
+				},
+				undefined,
+				{ clearOmittedOptionalFields: true },
+			);
+
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.personalisation).toEqual({
+				icon: 'mail',
+				gradient: DEFAULT_AGENT_PERSONALISATION.gradient,
 			});
 		});
 

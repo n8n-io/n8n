@@ -175,12 +175,16 @@ export class AgentConfigService {
 			decomposeJsonConfig(validatedConfig);
 
 		const nextIntegrations = integrationsProvided ? decomposedIntegrations : previousIntegrations;
+		// Under clearOmittedOptionalFields an omitted gradient is a deliberate
+		// removal, so the schema default wins instead of the previous gradient.
 		const nextPersonalisation = personalisationProvided
-			? mergePersonalisationWithPreviousGradient(
-					decomposedSchema.personalisation,
-					previousSchema,
-					config,
-				)
+			? options?.clearOmittedOptionalFields
+				? decomposedSchema.personalisation
+				: mergePersonalisationWithPreviousGradient(
+						decomposedSchema.personalisation,
+						previousSchema,
+						config,
+					)
 			: undefined;
 
 		const nextSchema: AgentJsonConfig = {
