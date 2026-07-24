@@ -170,6 +170,16 @@ const i18n = useI18n();
 						@delete-file="emit('delete-file', $event)"
 					/>
 
+					<N8nCard :class="$style.settingsCard" data-testid="agent-settings-card">
+						<AgentMemoryPanel
+							:config="localConfig"
+							:disabled="childrenDisabled"
+							embedded
+							data-testid="agent-memory-panel"
+							@update:config="emit('update:config', $event)"
+						/>
+					</N8nCard>
+
 					<AgentVectorStoresPanel
 						:vector-stores="localConfig?.vectorStores ?? []"
 						:disabled="childrenDisabled"
@@ -204,15 +214,6 @@ const i18n = useI18n();
 								:disabled="childrenDisabled"
 								:project-id="projectId"
 								:agent-id="agentId"
-								@update:config="emit('update:config', $event)"
-							/>
-						</N8nCard>
-						<N8nCard :class="$style.settingsCard" data-testid="agent-settings-card">
-							<AgentMemoryPanel
-								:config="localConfig"
-								:disabled="childrenDisabled"
-								embedded
-								data-testid="agent-memory-panel"
 								@update:config="emit('update:config', $event)"
 							/>
 						</N8nCard>
