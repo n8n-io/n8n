@@ -99,11 +99,24 @@ export async function execute(
 
 	// The /fields route replies with only the fieldValueSet, but v1 returned the
 	// full listItem envelope — re-read the item so the output stays identical.
-	return await microsoftApiRequest.call(
-		this,
-		'GET',
-		`/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}/items/${encodeURIComponent(itemId)}`,
-		{},
-		{ $expand: 'fields' },
-	);
+	try {
+		return await microsoftApiRequest.call(
+			this,
+			'GET',
+			`/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}/items/${encodeURIComponent(itemId)}`,
+			{},
+			{ $expand: 'fields' },
+		);
+	} catch (error) {
+		// The write above already succeeded — a failed read-back must not look
+		// like a failed update, or the user retries a change that went through.
+		const reason = error instanceof Error ? error.message : String(error);
+		throw new NodeOperationError(
+			this.getNode(),
+			'The item was updated, but reading back the updated item failed',
+			{
+				description: `The update itself succeeded — check the item in SharePoint before retrying. Read-back error: ${reason}`,
+			},
+		);
+	}
 }

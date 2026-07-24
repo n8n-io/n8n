@@ -359,6 +359,47 @@ describe('Microsoft SharePoint v2 — Item: Update', () => {
 		);
 	});
 
+	it('reports that the update succeeded when only the read-back fails', async () => {
+		setParams(
+			baseParams({
+				value: { Title: 'Title 2', id: ITEM_ID },
+				matchingColumns: ['id'],
+			}),
+		);
+		apiRequest
+			.mockResolvedValueOnce({ Title: 'Title 2' })
+			.mockRejectedValueOnce(new Error('429 Too Many Requests'));
+
+		await expect(node.execute.call(ctx)).rejects.toThrow(
+			'The item was updated, but reading back the updated item failed',
+		);
+		expect(apiRequest).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps the update-succeeded wording in the error item when continueOnFail is on', async () => {
+		setParams(
+			baseParams({
+				value: { Title: 'Title 2', id: ITEM_ID },
+				matchingColumns: ['id'],
+			}),
+		);
+		ctx.continueOnFail.mockReturnValue(true);
+		apiRequest
+			.mockResolvedValueOnce({ Title: 'Title 2' })
+			.mockRejectedValueOnce(new Error('429 Too Many Requests'));
+
+		const result = await node.execute.call(ctx);
+
+		expect(result).toEqual([
+			[
+				{
+					json: { error: 'The item was updated, but reading back the updated item failed' },
+					pairedItem: { item: 0 },
+				},
+			],
+		]);
+	});
+
 	it('surfaces a transport error per item when continueOnFail is on', async () => {
 		setParams(
 			baseParams({
