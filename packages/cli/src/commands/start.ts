@@ -410,14 +410,21 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// name-keyed job with no owning workflow through the generalised
 		// DurableJobProvisioner path. See
 		// notes/builder/durable-scheduler/distributed-scheduler-system-tasks-batch1-spec.md.
-		// No-op when the scheduler is disabled or this row already matches.
-		await Container.get(DurableJobProvisioner).provisionSystemJob(POC_HEARTBEAT_TASK_TYPE, {}, [
-			{
-				name: POC_HEARTBEAT_TASK_TYPE,
-				schedule: { kind: 'interval', intervalSeconds: 30 },
-				firstRunAt: new Date(),
-			},
-		]);
+		// Gated on the flag: DurableJobProvisioner writes unconditionally
+		// (by design, matching the schedule-trigger node's own provisioning,
+		// which must not depend on this instance running the scheduler loops),
+		// so an unguarded call here would insert a permanent row on every
+		// instance even with the scheduler disabled. No-op on repeat boots
+		// once the row exists (upsert by name).
+		if (this.globalConfig.scheduler.enabled) {
+			await Container.get(DurableJobProvisioner).provisionSystemJob(POC_HEARTBEAT_TASK_TYPE, {}, [
+				{
+					name: POC_HEARTBEAT_TASK_TYPE,
+					schedule: { kind: 'interval', intervalSeconds: 30 },
+					firstRunAt: new Date(),
+				},
+			]);
+		}
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			await this.runEnqueuedExecutions();
