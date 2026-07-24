@@ -198,15 +198,21 @@ function seededCron(item: TriggerTime, seed: string): CronExpression {
 
 	const second = stableInt(seed, 'second', 0, 60);
 
-	if (item.mode === 'everyMinute') return `${second} * * * * *`;
-	if (item.mode === 'everyHour') return `${second} ${item.minute} * * * *`;
-	if (item.mode === 'everyX') {
-		if (item.unit === 'minutes') return `${second} */${item.value} * * * *`;
-		const minute = stableInt(seed, 'minute', 0, 60);
-		return `${second} ${minute} */${item.value} * * *`;
+	switch (item.mode) {
+		case 'everyMinute':
+			return `${second} * * * * *`;
+		case 'everyHour':
+			return `${second} ${item.minute} * * * *`;
+		case 'everyX': {
+			if (item.unit === 'minutes') return `${second} */${item.value} * * * *`;
+			const minute = stableInt(seed, 'minute', 0, 60);
+			return `${second} ${minute} */${item.value} * * *`;
+		}
+		case 'everyDay':
+			return `${second} ${item.minute} ${item.hour} * * *`;
+		case 'everyWeek':
+			return `${second} ${item.minute} ${item.hour} * * ${item.weekday}`;
+		case 'everyMonth':
+			return `${second} ${item.minute} ${item.hour} ${item.dayOfMonth} * *`;
 	}
-	if (item.mode === 'everyDay') return `${second} ${item.minute} ${item.hour} * * *`;
-	if (item.mode === 'everyWeek') return `${second} ${item.minute} ${item.hour} * * ${item.weekday}`;
-	// everyMonth
-	return `${second} ${item.minute} ${item.hour} ${item.dayOfMonth} * *`;
 }
