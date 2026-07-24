@@ -51,7 +51,7 @@ function dispatchDragStart(element: Element) {
 	return dataTransfer;
 }
 
-function getDescription(container: HTMLElement) {
+function getDescription(container: Element) {
 	return container.querySelector('[data-test-id="node-creator-item-description"]')?.textContent;
 }
 
