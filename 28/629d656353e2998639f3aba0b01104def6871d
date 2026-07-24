@@ -1,0 +1,30 @@
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_6167e43a9f492f::t_625e6f715c6b79 9
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_6167e43a9f492f::t_cd9772081e52e3 26
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_6167e43a9f492f::t_e27ea3a6f996d4 4
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_6167e43a9f492f::t_48f1186b898283 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "28629d656353e2998639f3aba0b01104def6871d",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6167e43a9f492f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1339a674-ce23-49f2-8f5e-17168a943872",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
