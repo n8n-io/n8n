@@ -97,15 +97,17 @@ const isManagedByEnv = computed((): boolean => {
 	return currentUser.value?.isManagedByEnv ?? false;
 });
 
+const isLdapCurrentAuthMethod = computed((): boolean => {
+	return ssoStore.isEnterpriseLdapEnabled && currentUser.value?.signInType === 'ldap';
+});
+
 const isExternalAuthEnabled = computed((): boolean => {
-	const isLdapEnabled =
-		ssoStore.isEnterpriseLdapEnabled && currentUser.value?.signInType === 'ldap';
 	const isSamlEnabled = ssoStore.isSamlLoginEnabled && ssoStore.isDefaultAuthenticationSaml;
 	const isOidcEnabled =
 		ssoStore.isEnterpriseOidcEnabled &&
 		ssoStore.isOidcLoginEnabled &&
 		currentUser.value?.signInType === 'oidc';
-	return isLdapEnabled || isSamlEnabled || isOidcEnabled;
+	return isLdapCurrentAuthMethod.value || isSamlEnabled || isOidcEnabled;
 });
 
 const isPersonalSecurityEnabled = computed((): boolean => {
@@ -120,6 +122,18 @@ const mfaEnforced = computed((): boolean => {
 });
 const isMfaFeatureEnabled = computed((): boolean => {
 	return settingsStore.isMfaFeatureEnabled;
+});
+
+// Unlike SAML/OIDC, LDAP has no native 2FA, so n8n's own 2FA must stay
+// configurable for LDAP users even though password management is external.
+const canConfigureMfa = computed((): boolean => {
+	return (
+		isMfaFeatureEnabled.value && (isPersonalSecurityEnabled.value || isLdapCurrentAuthMethod.value)
+	);
+});
+
+const isSecuritySectionVisible = computed((): boolean => {
+	return !isManagedByEnv.value && (isPersonalSecurityEnabled.value || canConfigureMfa.value);
 });
 
 const hasAnyPersonalisationChanges = computed((): boolean => {
@@ -403,18 +417,18 @@ onBeforeUnmount(() => {
 				/>
 			</div>
 		</div>
-		<div v-if="isPersonalSecurityEnabled && !isManagedByEnv">
+		<div v-if="isSecuritySectionVisible">
 			<div class="mb-s">
 				<N8nHeading size="large">{{ i18n.baseText('settings.personal.security') }}</N8nHeading>
 			</div>
-			<div class="mb-s">
+			<div v-if="isPersonalSecurityEnabled" class="mb-s">
 				<N8nInputLabel :label="i18n.baseText('auth.password')">
 					<N8nLink data-test-id="change-password-link" @click="openPasswordModal">{{
 						i18n.baseText('auth.changePassword')
 					}}</N8nLink>
 				</N8nInputLabel>
 			</div>
-			<div v-if="isMfaFeatureEnabled" data-test-id="mfa-section">
+			<div v-if="canConfigureMfa" data-test-id="mfa-section">
 				<div class="mb-xs">
 					<N8nInputLabel :label="i18n.baseText('settings.personal.mfa.section.title')" />
 					<N8nText :bold="false" :class="$style.infoText">

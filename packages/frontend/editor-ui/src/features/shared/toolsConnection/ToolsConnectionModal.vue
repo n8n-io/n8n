@@ -3,7 +3,8 @@ import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { N8nDialog, N8nIcon, N8nInput, N8nRecycleScroller, N8nText } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@/app/constants/durations';
 
 import ToolRow from './ToolRow.vue';
 import ToolDetailView from './ToolDetailView.vue';

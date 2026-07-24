@@ -1,6 +1,5 @@
 import { isSafeObjectKey } from '@n8n/api-types';
 
-import { makeToolAbortable } from '../tools/shared/abortable-tool';
 import type { InstanceAiToolRegistry } from '../types';
 
 type McpToolRegistry = InstanceAiToolRegistry;
@@ -74,7 +73,7 @@ export function addSafeMcpTools(
 				);
 			}
 			options.claimedToolNames.set(normalizedName, name);
-			target.set(name, makeToolAbortable(tool));
+			target.set(name, tool);
 		} catch (error) {
 			if (error instanceof McpToolNameValidationError) {
 				options.warn?.(error);

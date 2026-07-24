@@ -1,4 +1,4 @@
-import { Tool } from '@n8n/agents';
+import { isAbortError, Tool } from '@n8n/agents';
 
 import type { InstanceAiContext } from '../types';
 import {
@@ -32,7 +32,6 @@ import {
 	type N8nDocsReadInput,
 	type N8nDocsSearchInput,
 } from './n8n-docs/schemas';
-import { isAbortError } from './shared/abortable-tool';
 import { N8N_DOCS_TOOL_ID } from './tool-ids';
 
 export { N8N_DOCS_TOOL_ID };

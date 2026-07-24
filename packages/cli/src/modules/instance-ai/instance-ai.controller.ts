@@ -14,10 +14,10 @@ import {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
+	InstanceAiEvalAgentExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
-	normalizeInstanceAiThreadSource,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -42,6 +42,7 @@ import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/in
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
+import { EvalAgentExecutionService } from './eval/agent-execution.service';
 import { EvalExecutionService } from './eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { EvalThreadRestoreService } from './eval/thread-restore.service';
@@ -112,6 +113,7 @@ export class InstanceAiController {
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly evalExecutionService: EvalExecutionService,
+		private readonly evalAgentExecutionService: EvalAgentExecutionService,
 		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
 		private readonly evalThreadRestore: EvalThreadRestoreService,
 		private readonly eventBus: InProcessEventBus,
@@ -755,14 +757,11 @@ export class InstanceAiController {
 		const requestedThreadId = payload.threadId ?? randomUUID();
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
 
-		const launchMetadata =
-			payload.source !== undefined || payload.origin !== undefined
-				? {
-						source: normalizeInstanceAiThreadSource(payload.source),
-						origin: payload.origin ?? ('internal' as const),
-						sourceContext: payload.sourceContext,
-					}
-				: undefined;
+		const launchMetadata = {
+			source: payload.source,
+			origin: payload.origin ?? ('internal' as const),
+			sourceContext: payload.sourceContext,
+		};
 
 		try {
 			return await this.memoryService.ensureThread(
@@ -926,6 +925,18 @@ export class InstanceAiController {
 		@Body payload: InstanceAiEvalExecutionRequest,
 	) {
 		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
+	}
+
+	// Runs for minutes; same client timeout handling as the workflow variant.
+	@Post('/eval/execute-agent-with-llm-mock/:agentId')
+	@GlobalScope('instanceAi:eval')
+	async executeAgentWithLlmMock(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: InstanceAiEvalAgentExecutionRequest,
+	) {
+		return await this.evalAgentExecutionService.executeWithLlmMock(agentId, req.user, payload);
 	}
 
 	/**

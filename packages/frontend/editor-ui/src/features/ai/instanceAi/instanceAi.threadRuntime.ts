@@ -4,6 +4,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import {
 	buildRunWorkflowSessionGrantKey,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
+	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	instanceAiEventSchema,
 	isSafeObjectKey,
 	type InstanceAiConfirmation,
@@ -41,6 +42,7 @@ import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi
 import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
+import { INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY } from './constants';
 import {
 	findToolCallInTree,
 	isOrchestratorLive,
@@ -49,6 +51,7 @@ import {
 	shouldRearmRunAfterConfirm,
 	syncLiveRunFromStatus,
 } from './instanceAi.liveRunState';
+import { isInstanceAiThreadSource } from './constants';
 
 export interface PlanEditContext {
 	requestId: string;
@@ -98,12 +101,10 @@ export interface ThreadRuntimeHooks {
 	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
 }
 
-const AGENT_BUILDER_TARGET_METADATA_KEY = 'instanceAiAgentBuilderTarget';
-
 export function getAgentBuilderTargetFromThreadMetadata(
 	metadata: Record<string, unknown> | undefined,
 ) {
-	const raw = metadata?.[AGENT_BUILDER_TARGET_METADATA_KEY];
+	const raw = metadata?.[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY];
 	if (!raw || typeof raw !== 'object') return undefined;
 	const target = raw as Record<string, unknown>;
 	if (typeof target.agentId !== 'string' || typeof target.projectId !== 'string') return undefined;
@@ -169,21 +170,6 @@ function hasUnresolvedConfirmation(
 		}
 	}
 	return node.children.some((child) => hasUnresolvedConfirmation(child, resolved));
-}
-
-/** Settle persisted activity only after thread status confirms there is no live work. */
-function settleStaleAgentTree(node: InstanceAiAgentNode): void {
-	if (node.status === 'active') {
-		node.status = 'cancelled';
-	}
-	for (const tc of node.toolCalls) {
-		if (tc.isLoading) {
-			tc.isLoading = false;
-		}
-	}
-	for (const child of node.children) {
-		settleStaleAgentTree(child);
-	}
 }
 
 function findLatestTasksFromMessages(messages: InstanceAiMessage[]): TaskList | null {
@@ -975,27 +961,20 @@ export function createThreadRuntime(
 				return;
 			}
 
-			if (isOrchestratorLive(status)) {
-				const runId = syncLiveRunFromStatus(status, messages.value);
-				if (runId) {
-					activeRunId.value = runId;
-					triggerRef(messages);
-				}
-				return;
+			// An idle response is deliberately a no-op: /status reflects this
+			// process only, so on multi-main a non-driving main truthfully
+			// reports idle while a sibling still streams — settling local state
+			// on it would cancel a live run's tree. Dead runs converge through
+			// terminal facts in the durable log (boot sweep + cancel) instead.
+			// Background task visibility is handled by the run-sync control
+			// frame that is sent on SSE connect.
+			if (!isOrchestratorLive(status)) return;
+
+			const runId = syncLiveRunFromStatus(status, messages.value);
+			if (runId) {
+				activeRunId.value = runId;
+				triggerRef(messages);
 			}
-
-			activeRunId.value = null;
-
-			// Background work is still visible via SSE run-sync on reconnect —
-			// settling trees here would race with that authoritative snapshot.
-			if (status.backgroundTasks.length > 0) return;
-
-			for (const message of messages.value) {
-				if (message.role !== 'assistant') continue;
-				message.isStreaming = false;
-				if (message.agentTree) settleStaleAgentTree(message.agentTree);
-			}
-			triggerRef(messages);
 		} catch {
 			// Silently ignore
 		}
@@ -1041,10 +1020,27 @@ export function createThreadRuntime(
 	}
 
 	function trackUserMessageSent(isFirstMessage: boolean): void {
+		const rawSource = hooks.getThreadMetadata?.(threadId)?.source;
+		const actionSource = isInstanceAiThreadSource(rawSource)
+			? rawSource
+			: INSTANCE_AI_THREAD_SOURCE_FALLBACK;
+
+		// Create-path validation hard-rejects missing source; this is the read-path
+		// safety net for legacy threads and for entry points that forget to thread
+		// launch metadata through syncThread. Keep telemetry resilient, but make the
+		// gap loud in development so new surfaces can't ship silent unknown attribution.
+		if (import.meta.env.DEV && actionSource === INSTANCE_AI_THREAD_SOURCE_FALLBACK) {
+			console.warn(
+				`[InstanceAI] Missing or invalid thread source for message telemetry (thread ${threadId}). ` +
+					'Pass launch metadata through syncThread so action_source is attributed.',
+			);
+		}
+
 		telemetry.track('User sent builder message', {
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
 			is_first_message: isFirstMessage,
+			action_source: actionSource,
 		});
 	}
 
@@ -1114,15 +1110,16 @@ export function createThreadRuntime(
 	}
 
 	async function cancelRun(): Promise<void> {
+		// Thread-scoped and idempotent server-side, so it works after a reload
+		// that lost the local run id. Don't clear activeRunId or settle any
+		// state here: the terminal state arrives as a run-finish fact over SSE
+		// — the backend appends one even for a crashed run with no live
+		// process left to emit it, so every client converges through replay.
 		try {
 			await postCancel(rootStore.restApiContext, threadId);
 		} catch {
 			toast.showError(new Error('Failed to cancel. Try again.'), 'Cancel failed');
-			return;
 		}
-		// Cancel is idempotent, so an already-dead run emits no run-finish SSE —
-		// re-check authoritative status to settle stale local state either way.
-		await loadThreadStatus();
 	}
 
 	/** Cancel a specific background task. */

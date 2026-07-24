@@ -78,7 +78,7 @@ export class DurableJobProvisioner {
 		private readonly dataSource: DataSource,
 		private readonly jobs: ScheduledJobRepository,
 		private readonly tasks: ScheduledTaskRepository,
-		globalConfig: GlobalConfig,
+		private readonly globalConfig: GlobalConfig,
 		tracing: Tracing,
 	) {
 		this.logger = this.logger.scoped('scheduler');
@@ -170,6 +170,7 @@ export class DurableJobProvisioner {
 								payload,
 								...scheduleColumns(job.schedule),
 								nextRunAt: job.firstRunAt,
+								maxAttempts: this.globalConfig.scheduler.maxAttempts,
 							}),
 						);
 						const ids = await this.jobs.insertMany(manager, rows);

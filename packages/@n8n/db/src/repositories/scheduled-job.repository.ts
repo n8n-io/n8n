@@ -15,7 +15,7 @@ export interface JobAdvance {
 	lastFiredAt: Date | null;
 }
 
-/** A job row to insert; bookkeeping columns take their schema defaults. */
+/** A job row to insert; remaining bookkeeping columns take their schema defaults. */
 export type NewScheduledJob = Pick<
 	ScheduledJob,
 	| 'name'
@@ -31,6 +31,7 @@ export type NewScheduledJob = Pick<
 	| 'intervalSeconds'
 	| 'fireAt'
 	| 'nextRunAt'
+	| 'maxAttempts'
 >;
 
 /** A changed schedule definition, plus the fresh clock it restarts from. */

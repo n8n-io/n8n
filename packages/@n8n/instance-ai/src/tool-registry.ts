@@ -1,6 +1,5 @@
 import type { BuiltTool } from '@n8n/agents';
 
-import { makeToolAbortable } from './tools/shared/abortable-tool';
 import type { InstanceAiToolRegistry } from './types';
 
 export function createToolRegistry(
@@ -8,7 +7,7 @@ export function createToolRegistry(
 ): InstanceAiToolRegistry {
 	const registry = new Map<string, BuiltTool>();
 	for (const [name, tool] of entries) {
-		registry.set(name, makeToolAbortable(tool));
+		registry.set(name, tool);
 	}
 	return registry;
 }
@@ -16,7 +15,7 @@ export function createToolRegistry(
 export function createToolRegistryFromTools(tools: Iterable<BuiltTool>): InstanceAiToolRegistry {
 	const registry = createToolRegistry();
 	for (const tool of tools) {
-		registry.set(tool.name, makeToolAbortable(tool));
+		registry.set(tool.name, tool);
 	}
 	return registry;
 }
@@ -28,7 +27,7 @@ export function mergeToolRegistries(
 	for (const registry of registries) {
 		if (!registry) continue;
 		for (const [name, tool] of registry) {
-			merged.set(name, makeToolAbortable(tool));
+			merged.set(name, tool);
 		}
 	}
 	return merged;
