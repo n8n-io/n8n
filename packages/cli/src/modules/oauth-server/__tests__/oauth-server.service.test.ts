@@ -17,6 +17,7 @@ import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.servi
 import { OAuthServerService } from '../oauth-server.service';
 import { OAuthSessionService } from '../oauth-session.service';
 import { OAuthTokenService } from '../oauth-token.service';
+import type { EventService } from '@/events/event.service';
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
@@ -36,6 +37,7 @@ let service: OAuthServerService;
 let userConsentRepository: Mocked<UserConsentRepository>;
 let mailer: Mocked<UserManagementMailer>;
 let getAllowedRedirectUris: Mock<() => Promise<string[]>>;
+let eventService: Mocked<EventService>;
 
 describe('OAuthServerService', () => {
 	beforeAll(() => {
@@ -47,6 +49,7 @@ describe('OAuthServerService', () => {
 		userConsentRepository = mockInstance(UserConsentRepository);
 		mailer = mockInstance(UserManagementMailer);
 		getAllowedRedirectUris = vi.fn<(...args: []) => Promise<string[]>>().mockResolvedValue([]);
+		eventService = mock<EventService>();
 
 		const resourceRegistry = new ProtectedResourceRegistry(mock<Logger>());
 		resourceRegistry.register({
@@ -69,6 +72,7 @@ describe('OAuthServerService', () => {
 			userConsentRepository,
 			resourceRegistry,
 			mailer,
+			eventService,
 		);
 	});
 
@@ -662,6 +666,11 @@ describe('OAuthServerService', () => {
 				refresh_token: 'refresh-token-456',
 				scope: 'workflow:read',
 			});
+			expect(eventService.emit).toHaveBeenCalledWith('mcp-oauth-completed', {
+				userId: 'user-456',
+				clientId: 'client-123',
+				clientName: 'Test Client',
+			});
 		});
 
 		it('should handle authorization code exchange without redirect URI', async () => {
@@ -1177,6 +1186,7 @@ describe('OAuthServerService', () => {
 				userConsentRepository,
 				multiRegistry,
 				mailer,
+				mock<EventService>(),
 			);
 
 			expect(
@@ -1222,6 +1232,7 @@ describe('OAuthServerService', () => {
 				userConsentRepository,
 				configuredRegistry,
 				mailer,
+				mock<EventService>(),
 			);
 		};
 

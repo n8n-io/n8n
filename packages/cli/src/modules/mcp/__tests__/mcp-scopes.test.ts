@@ -24,6 +24,7 @@ import { registerMcpAppTool, registerWorkflowPreviewApp } from '@n8n/mcp-apps/se
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
@@ -125,6 +126,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(AiGatewayService, {
 				isAvailable: vi.fn().mockResolvedValue({ available: false }),
 			}),
+			mockInstance(EventService),
 		);
 
 	beforeEach(() => {

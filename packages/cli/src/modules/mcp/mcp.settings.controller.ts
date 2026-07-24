@@ -5,6 +5,7 @@ import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decora
 import type { Response } from 'express';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 import { listQueryMiddleware } from '@/middlewares';
 import type { ListQuery } from '@/requests';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -24,20 +25,27 @@ export class McpSettingsController {
 		private readonly mcpServerApiKeyService: McpServerApiKeyService,
 		private readonly workflowService: WorkflowService,
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
+		private readonly eventService: EventService,
 	) {}
 
 	@GlobalScope('mcp:manage')
 	@Patch('/settings')
-	async updateSettings(
-		_req: AuthenticatedRequest,
-		_res: Response,
-		@Body dto: UpdateMcpSettingsDto,
-	) {
+	async updateSettings(req: AuthenticatedRequest, _res: Response, @Body dto: UpdateMcpSettingsDto) {
 		if (this.instanceSettingsLoaderConfig.mcpManagedByEnv) {
 			throw new ForbiddenError('MCP settings are managed via environment variables');
 		}
 		const enabled = dto.mcpAccessEnabled;
 		await this.mcpSettingsService.setEnabled(enabled);
+		this.eventService.emit('mcp-access-updated', {
+			user: {
+				id: req.user.id,
+				email: req.user.email,
+				firstName: req.user.firstName,
+				lastName: req.user.lastName,
+				role: req.user.role ? { slug: req.user.role.slug } : undefined,
+			},
+			enabled,
+		});
 		try {
 			await this.moduleRegistry.refreshModuleSettings('mcp');
 		} catch (error) {

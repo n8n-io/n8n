@@ -22,6 +22,7 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
+import { EventService } from '@/events/event.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 import { OAuthClient } from './database/entities/oauth-client.entity';
@@ -102,6 +103,7 @@ export class OAuthServerService implements OAuthServerProvider {
 		private readonly userConsentRepository: UserConsentRepository,
 		private readonly resourceRegistry: ProtectedResourceRegistry,
 		private readonly mailer: UserManagementMailer,
+		private readonly eventService: EventService,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
@@ -392,6 +394,14 @@ export class OAuthServerService implements OAuthServerProvider {
 			authRecord.userId,
 			grantedScopes,
 		);
+
+		// Completion of the authorization-code grant is the point at which the user
+		// has finished the OAuth flow for this client.
+		this.eventService.emit('mcp-oauth-completed', {
+			userId: authRecord.userId,
+			clientId: client.client_id,
+			clientName: client.client_name,
+		});
 
 		return {
 			access_token: accessToken,

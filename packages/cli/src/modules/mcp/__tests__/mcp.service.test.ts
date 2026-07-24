@@ -38,6 +38,7 @@ import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
@@ -77,8 +78,10 @@ describe('McpService', () => {
 	let executionsConfig: ExecutionsConfig;
 	let instanceSettings: InstanceSettings;
 	let logger: Logger;
+	let eventService: EventService;
 
 	beforeEach(() => {
+		eventService = mockInstance(EventService);
 		activeExecutions = mockInstance(ActiveExecutions);
 		executionsConfig = mockInstance(ExecutionsConfig, {
 			mode: 'regular',
@@ -124,6 +127,7 @@ describe('McpService', () => {
 			mockInstance(WorkflowPublishedDataService),
 			mockInstance(SubworkflowPolicyChecker),
 			mockAiGatewayService(),
+			eventService,
 		);
 	});
 
@@ -173,6 +177,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
+				mockInstance(EventService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -377,6 +382,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
+				mockInstance(EventService),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1' });
@@ -528,6 +534,68 @@ describe('McpService', () => {
 			expect(typeof server.registerTool).toBe('function');
 		});
 
+		const mcpUser = () =>
+			Object.assign(new User(), {
+				id: 'user-1',
+				email: 'u@n8n.io',
+				firstName: 'U',
+				lastName: 'One',
+				role: { slug: 'global:member' },
+			});
+
+		it('should emit `mcp-tool-called` with the target workflow on tool success', async () => {
+			const user = mcpUser();
+			const server = await mcpService.getServer(user, mcpFeatureFlags());
+
+			const registered = server.registerTool('my_tool', { description: 'test' }, async () => ({
+				content: [{ type: 'text', text: 'ok' }],
+			}));
+			const invokeTool = registered.handler as (args: unknown, extra: unknown) => Promise<unknown>;
+
+			await invokeTool({ workflowId: 'wf-42' }, {});
+
+			expect(eventService.emit).toHaveBeenCalledWith('mcp-tool-called', {
+				user: {
+					id: 'user-1',
+					email: 'u@n8n.io',
+					firstName: 'U',
+					lastName: 'One',
+					role: { slug: 'global:member' },
+				},
+				toolName: 'my_tool',
+				workflowId: 'wf-42',
+				status: 'success',
+				clientName: undefined,
+			});
+		});
+
+		it('should emit `mcp-tool-called` with error status when a tool throws', async () => {
+			const user = mcpUser();
+			const server = await mcpService.getServer(user, mcpFeatureFlags());
+
+			const registered = server.registerTool('err_tool', { description: 'test' }, async () => {
+				throw new Error('boom');
+			});
+			const invokeTool = registered.handler as (args: unknown, extra: unknown) => Promise<unknown>;
+
+			await expect(invokeTool({}, {})).rejects.toThrow('boom');
+
+			expect(eventService.emit).toHaveBeenCalledWith('mcp-tool-called', {
+				user: {
+					id: 'user-1',
+					email: 'u@n8n.io',
+					firstName: 'U',
+					lastName: 'One',
+					role: { slug: 'global:member' },
+				},
+				toolName: 'err_tool',
+				workflowId: undefined,
+				status: 'error',
+				errorMessage: 'boom',
+				clientName: undefined,
+			});
+		});
+
 		it('should not register builder tools when mcpBuilderEnabled is false', async () => {
 			const user = Object.assign(new User(), { id: 'user-1' });
 			const nodeCatalogService = mockInstance(NodeCatalogService);
@@ -571,6 +639,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
+				mockInstance(EventService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -622,6 +691,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
+				mockInstance(EventService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -698,6 +768,7 @@ describe('McpService', () => {
 					mockInstance(WorkflowPublishedDataService),
 					mockInstance(SubworkflowPolicyChecker),
 					mockAiGatewayService(),
+					mockInstance(EventService),
 				);
 			};
 

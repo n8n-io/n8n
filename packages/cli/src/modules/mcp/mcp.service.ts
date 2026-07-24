@@ -30,6 +30,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
@@ -162,6 +163,7 @@ export class McpService {
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly eventService: EventService,
 	) {}
 
 	/**
@@ -240,6 +242,62 @@ export class McpService {
 	}
 
 	/**
+	 * Wraps `server.registerTool` so each tool invocation emits an `mcp-tool-called`
+	 * event (forwarded to log streaming). Applied once, before any tool is
+	 * registered, so it covers every tool including builder and data-table tools.
+	 */
+	private instrumentToolUsage(server: McpServer, user: User, clientInfo?: McpClientInfo) {
+		const { eventService } = this;
+		const userLike = {
+			id: user.id,
+			email: user.email,
+			firstName: user.firstName,
+			lastName: user.lastName,
+			role: user.role ? { slug: user.role.slug } : undefined,
+		};
+
+		const originalRegisterTool: typeof server.registerTool = server.registerTool.bind(server);
+
+		server.registerTool = (name, config, handler) => {
+			// `ToolCallback` is a union of 1- and 2-arity signatures, so we invoke it
+			// through a generic callable and narrow the result back to a tool result.
+			const invoke = handler as (...handlerArgs: unknown[]) => Promise<{ isError?: boolean }>;
+
+			const instrumentedHandler = async (...handlerArgs: unknown[]) => {
+				const toolArgs = handlerArgs[0];
+				const workflowId =
+					toolArgs && typeof toolArgs === 'object' && 'workflowId' in toolArgs
+						? String((toolArgs as { workflowId: unknown }).workflowId)
+						: undefined;
+
+				try {
+					const result = await invoke(...handlerArgs);
+					eventService.emit('mcp-tool-called', {
+						user: userLike,
+						toolName: name,
+						workflowId,
+						status: result?.isError === true ? 'error' : 'success',
+						clientName: clientInfo?.name,
+					});
+					return result;
+				} catch (error) {
+					eventService.emit('mcp-tool-called', {
+						user: userLike,
+						toolName: name,
+						workflowId,
+						status: 'error',
+						errorMessage: error instanceof Error ? error.message : String(error),
+						clientName: clientInfo?.name,
+					});
+					throw error;
+				}
+			};
+
+			return originalRegisterTool(name, config, instrumentedHandler as typeof handler);
+		};
+	}
+
+	/**
 	 * Builds a per-request MCP server exposing only the tools covered by the
 	 * token's granted scopes. `grantedScopes: undefined` (API keys, legacy
 	 * tokens) exposes all tools. Filtering registration is sufficient
@@ -279,6 +337,10 @@ export class McpService {
 				instructions: getMcpInstructions(builderInstructionsEnabled, n8nConnectAvailable),
 			},
 		);
+
+		// Instrument every registered tool so MCP usage flows to log streaming:
+		// which tool was called, against which workflow, and whether it succeeded.
+		this.instrumentToolUsage(server, user, clientInfo);
 
 		const registerIfAllowed: RegisterToolFn = (tool) => {
 			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;

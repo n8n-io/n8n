@@ -1132,4 +1132,28 @@ export type RelayEventMap = {
 	};
 
 	// #endregion
+
+	// #region MCP server
+
+	'mcp-oauth-completed': {
+		userId: string;
+		clientId: string;
+		clientName?: string;
+	};
+
+	'mcp-tool-called': {
+		user: UserLike;
+		toolName: string;
+		workflowId?: string;
+		status: 'success' | 'error';
+		errorMessage?: string;
+		clientName?: string;
+	};
+
+	'mcp-access-updated': {
+		user: UserLike;
+		enabled: boolean;
+	};
+
+	// #endregion
 } & AiEventMap;

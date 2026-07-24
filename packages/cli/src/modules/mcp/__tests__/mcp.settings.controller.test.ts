@@ -6,6 +6,7 @@ import type { Response } from 'express';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 import type { ListQuery } from '@/requests';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -83,6 +84,7 @@ describe('McpSettingsController', () => {
 	const mcpServerApiKeyService = mockDeep<McpServerApiKeyService>();
 	const workflowService = mock<WorkflowService>();
 	const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>();
+	const eventService = mock<EventService>();
 
 	let controller: McpSettingsController;
 
@@ -95,6 +97,7 @@ describe('McpSettingsController', () => {
 		Container.set(McpServerApiKeyService, mcpServerApiKeyService);
 		Container.set(WorkflowService, workflowService);
 		Container.set(InstanceSettingsLoaderConfig, instanceSettingsLoaderConfig);
+		Container.set(EventService, eventService);
 		controller = Container.get(McpSettingsController);
 	});
 
@@ -104,7 +107,7 @@ describe('McpSettingsController', () => {
 
 	describe('updateSettings', () => {
 		test('disables MCP access correctly', async () => {
-			const req = createReq({ mcpAccessEnabled: false });
+			const req = createReq({ mcpAccessEnabled: false }, { user: createUser() });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: false });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
 			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
@@ -114,11 +117,21 @@ describe('McpSettingsController', () => {
 
 			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(false);
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
+			expect(eventService.emit).toHaveBeenCalledWith('mcp-access-updated', {
+				user: {
+					id: 'user-1',
+					email: 'user@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'member' },
+				},
+				enabled: false,
+			});
 			expect(result).toEqual({ mcpAccessEnabled: false });
 		});
 
 		test('enables MCP access correctly', async () => {
-			const req = createReq({ mcpAccessEnabled: true });
+			const req = createReq({ mcpAccessEnabled: true }, { user: createUser() });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
 			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
@@ -128,11 +141,21 @@ describe('McpSettingsController', () => {
 
 			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(true);
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
+			expect(eventService.emit).toHaveBeenCalledWith('mcp-access-updated', {
+				user: {
+					id: 'user-1',
+					email: 'user@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'member' },
+				},
+				enabled: true,
+			});
 			expect(result).toEqual({ mcpAccessEnabled: true });
 		});
 
 		test('handles module registry refresh failure gracefully', async () => {
-			const req = createReq({ mcpAccessEnabled: true });
+			const req = createReq({ mcpAccessEnabled: true }, { user: createUser() });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
 			const error = new Error('Registry sync failed');
 
@@ -160,6 +183,7 @@ describe('McpSettingsController', () => {
 			);
 			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
 			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		test('requires boolean mcpAccessEnabled value', () => {
