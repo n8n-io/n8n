@@ -6,7 +6,7 @@
 	@include meta.load-css('highlight.js/styles/github-dark-dimmed.css');
 }
 
-body[data-theme='dark'] {
+[data-theme='dark'] {
 	@include hljs-dark-theme;
 }
 

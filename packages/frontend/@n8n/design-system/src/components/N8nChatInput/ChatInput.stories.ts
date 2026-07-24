@@ -386,7 +386,7 @@ const InteractiveTemplate: StoryFn = (args, { argTypes }) => ({
 	},
 	template: `
 		<div>
-			<div style="width: 500px; max-width: 100%; margin-bottom: 20px;">
+			<div style="width: 500px; max-width: 100%; margin-bottom: var(--spacing--md);">
 				<n8n-chat-input
 					v-bind="args"
 					:modelValue="val"
@@ -398,11 +398,30 @@ const InteractiveTemplate: StoryFn = (args, { argTypes }) => ({
 					@blur="onBlur"
 				/>
 			</div>
-			<div style="padding: 10px; background: #f0f0f0; border-radius: 4px;">
+			<div
+				style="
+					padding: var(--spacing--xs);
+					background: var(--background--subtle);
+					color: var(--text-color);
+					border: var(--border);
+					border-radius: var(--radius);
+				"
+			>
 				<p><strong>Current value:</strong> {{ val }}</p>
 				<p><strong>Character count:</strong> {{ val.length }} / {{ args.maxLength }}</p>
 				<p><strong>Streaming:</strong> {{ streaming }}</p>
-				<button @click="streaming = !streaming" style="margin-top: 10px;">
+				<button
+					style="
+						margin-top: var(--spacing--xs);
+						padding: var(--spacing--3xs) var(--spacing--xs);
+						color: var(--text-color);
+						background: var(--background--surface);
+						border: var(--border);
+						border-radius: var(--radius);
+						cursor: pointer;
+					"
+					@click="streaming = !streaming"
+				>
 					Toggle Streaming (Current: {{ streaming ? 'ON' : 'OFF' }})
 				</button>
 			</div>

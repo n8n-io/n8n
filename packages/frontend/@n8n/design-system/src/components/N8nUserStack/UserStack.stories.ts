@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { StoryFn } from '@storybook/vue3-vite';
 
-import UserStack from './UserStack.vue';
+import N8nUserStack from './UserStack.vue';
 
 export default {
 	title: 'Core/UserStack',
-	component: UserStack,
+	component: N8nUserStack,
 
 	parameters: {
 		docs: {
@@ -16,9 +16,8 @@ export default {
 
 const Template: StoryFn = (args) => ({
 	setup: () => ({ args }),
-	props: args,
 	components: {
-		UserStack,
+		N8nUserStack,
 	},
 	template: '<n8n-user-stack v-bind="args" />',
 });

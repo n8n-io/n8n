@@ -1245,11 +1245,12 @@
 	@include theme;
 }
 
-body[data-theme='light'] {
+[data-theme='light'] {
+	@include theme;
 	color-scheme: light;
 }
 
-body[data-theme='dark'] {
+[data-theme='dark'] {
 	@include theme-dark;
 	color-scheme: dark;
 }

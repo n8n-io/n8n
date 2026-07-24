@@ -21,6 +21,25 @@ body {
 	gap: 1rem;
 }
 
+.theme-side-by-side {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--md);
+}
+
+.theme-side-by-side__panel {
+	position: relative;
+	padding: var(--spacing--md);
+	background: var(--background--surface);
+	color: var(--text-color);
+	border-radius: var(--radius--lg);
+	overflow: auto;
+
+	&[data-theme='light'] {
+		border: var(--border);
+	}
+}
+
 .sbdocs .sbdocs-content table:not(.sbdocs-preview table, .docs-story table) {
 	width: 100%;
 	border-collapse: collapse;
