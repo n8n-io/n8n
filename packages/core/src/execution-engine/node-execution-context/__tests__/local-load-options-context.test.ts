@@ -237,6 +237,80 @@ describe('LocalLoadOptionsContext', () => {
 
 			expect(result).toBeNull();
 		});
+
+		// Regression test for ADO-5610 / https://github.com/n8n-io/n8n/issues/34517
+		// "Parameter from start node in subworkflow don't update in main workflow".
+		//
+		// The parent "Execute Sub-workflow" node loads its input mapping via
+		// loadWorkflowInputMappings -> getWorkflowNodeContext(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, true).
+		// When a sub-workflow has an active (published) version, that snapshot is read
+		// instead of the current draft nodes. A field the user just added to the
+		// sub-workflow's trigger (and saved) therefore never reaches the parent, because
+		// the active version snapshot predates the edit.
+		//
+		// The context used to populate the parent's field list should reflect the latest
+		// saved (draft) trigger schema so newly added inputs show up in the main workflow.
+		it('should reflect newly added draft input fields even when an older activeVersion exists', async () => {
+			const workflowId = 'workflow-123';
+			additionalData.currentNodeParameters = {
+				workflowId: { value: workflowId },
+			};
+
+			// Draft: the user just added the "Tipo de reporte" input to the trigger and saved
+			const draftTriggerNode = mock<INode>({
+				type: targetNodeType,
+				name: 'When Executed by Another Workflow',
+				parameters: {
+					inputSource: 'workflowInputs',
+					workflowInputs: { values: [{ name: 'Tipo de reporte', type: 'string' }] },
+				},
+			});
+
+			// Active (published) version: stale snapshot from before the edit, no fields defined
+			const activeVersionTriggerNode = mock<INode>({
+				type: targetNodeType,
+				name: 'When Executed by Another Workflow',
+				parameters: {
+					inputSource: 'workflowInputs',
+					workflowInputs: { values: [] },
+				},
+			});
+
+			const dbWorkflow = mock<IWorkflowBase>({
+				id: workflowId,
+				name: 'Test Workflow',
+				nodes: [draftTriggerNode],
+				activeVersion: {
+					versionId: 'version-1',
+					workflowId,
+					nodes: [activeVersionTriggerNode],
+					connections: {},
+					authors: 'test',
+					name: 'Test Workflow',
+					description: null,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+			workflowLoader.get.mockResolvedValue(dbWorkflow);
+
+			const context = new LocalLoadOptionsContext(nodeTypes, additionalData, path, workflowLoader);
+
+			const result = await context.getWorkflowNodeContext(targetNodeType, true);
+
+			expect(result).toBeInstanceOf(LoadWorkflowNodeContext);
+			// The parent must be built from the latest saved (draft) trigger so the newly
+			// added "Tipo de reporte" input is available for mapping — not the stale
+			// published snapshot, which would omit the field.
+			expect(Workflow).toHaveBeenCalledWith({
+				id: workflowId,
+				name: 'Test Workflow',
+				nodes: [draftTriggerNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+		});
 	});
 
 	describe('getCurrentNodeParameter', () => {
