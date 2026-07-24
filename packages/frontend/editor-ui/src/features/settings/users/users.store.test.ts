@@ -233,7 +233,7 @@ describe('users.store', () => {
 			setCurrentUser(usersStore);
 
 			const openModal = vi.fn();
-			usersStore.registerModalOpener(openModal);
+			usersStore.registerModalOpeners({ openModal, openModalWithData: vi.fn() });
 
 			await usersStore.showPersonalizationSurvey();
 
@@ -245,7 +245,7 @@ describe('users.store', () => {
 			setCurrentUser(usersStore);
 
 			const openModal = vi.fn();
-			usersStore.registerModalOpener(openModal);
+			usersStore.registerModalOpeners({ openModal, openModalWithData: vi.fn() });
 
 			await usersStore.showPersonalizationSurvey();
 
@@ -257,7 +257,7 @@ describe('users.store', () => {
 			enableSurvey();
 			setCurrentUser(usersStore);
 
-			// No registerModalOpener() — the default no-op opener must not break the flow.
+			// No registerModalOpeners() — the default no-op opener must not break the flow.
 			await expect(usersStore.showPersonalizationSurvey()).resolves.toBeUndefined();
 		});
 	});

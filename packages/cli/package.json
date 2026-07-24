@@ -167,6 +167,7 @@
     "@n8n/scheduler": "workspace:*",
     "@n8n/syslog-client": "workspace:*",
     "@n8n/task-runner": "workspace:*",
+    "@n8n/telemetry": "workspace:*",
     "@n8n/typeorm": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",

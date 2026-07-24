@@ -508,3 +508,37 @@ describe('AgentJsonConfigSchema — skills', () => {
 		}
 	});
 });
+
+describe('AgentJsonConfigSchema — model/credential coupling', () => {
+	it('rejects a credential without a model', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			model: '',
+			credential: 'cred-id',
+		});
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.errors[0].path).toEqual(['credential']);
+		}
+	});
+
+	it('accepts a model without a credential', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			credential: undefined,
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a fully cleared draft', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			model: '',
+			credential: '',
+		});
+
+		expect(result.success).toBe(true);
+	});
+});
