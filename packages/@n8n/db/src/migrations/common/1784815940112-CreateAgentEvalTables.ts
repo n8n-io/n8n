@@ -17,7 +17,7 @@ const RESULT_STATUSES = ['new', 'running', 'success', 'error', 'cancelled'];
  * feedback. `agentVersionId` is a loose pointer (no FK) so runs survive history
  * pruning, mirroring `TestRun.workflowVersionId`.
  */
-export class CreateAgentEvalTables1784815940111 implements ReversibleMigration {
+export class CreateAgentEvalTables1784815940112 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(DATASET_TABLE)
 			.withColumns(

@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'CreateAgentEvalTables1784815940111';
+const MIGRATION_NAME = 'CreateAgentEvalTables1784815940112';
 
 const AGENT_EVAL_TABLES = [
 	'agent_eval_dataset',
