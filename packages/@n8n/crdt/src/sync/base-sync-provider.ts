@@ -15,6 +15,7 @@ type ErrorHandler = (error: Error) => void;
  */
 export class BaseSyncProvider implements SyncProvider {
 	private _syncing = false;
+	private _starting = false;
 	private stateHandlers = new Set<SyncStateHandler>();
 	private errorHandlers = new Set<ErrorHandler>();
 	private unsubscribeDoc: Unsubscribe | null = null;
@@ -30,10 +31,20 @@ export class BaseSyncProvider implements SyncProvider {
 	}
 
 	async start(): Promise<void> {
-		if (this._syncing) return;
+		if (this._syncing || this._starting) return;
+		this._starting = true;
 
 		// Connect transport
 		await this.transport.connect();
+
+		// `stop()` may run while we await `connect()`; it can't tear down a sync
+		// that isn't active yet, so it clears `_starting` to cancel this start.
+		// Honor that: undo the connect and bail before subscribing, otherwise the
+		// transport/doc subscriptions would leak past a stop().
+		if (!this._starting) {
+			this.transport.disconnect();
+			return;
+		}
 
 		// Subscribe to incoming updates from transport
 		this.unsubscribeTransport = this.transport.onReceive((data) => {
@@ -56,10 +67,13 @@ export class BaseSyncProvider implements SyncProvider {
 		this.transport.send(initialState);
 
 		this._syncing = true;
+		this._starting = false;
 		this.notifyStateChange();
 	}
 
 	stop(): void {
+		// Cancel an in-flight `start()` that is still awaiting `connect()`.
+		this._starting = false;
 		if (!this._syncing) return;
 
 		// Unsubscribe from doc updates

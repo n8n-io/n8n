@@ -25,6 +25,7 @@ import {
 	useWorkflowDocumentConnections,
 	type WorkflowDocumentConnectionsDeps,
 } from './useWorkflowDocumentConnections';
+import { CHANGE_ACTION } from './types';
 
 function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
 	return createTestNode({ name: 'Test Node', ...overrides }) as INodeUi;
@@ -291,16 +292,20 @@ describe('useWorkflowDocumentConnections', () => {
 	});
 
 	describe('events', () => {
-		it('setConnections does not fire onConnectionsChange (initialization path)', () => {
+		it('setConnections fires onConnectionsChange with SET action', () => {
 			const hookSpy = vi.fn();
+			const connections = {
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			};
 
 			const composable = useWorkflowDocumentConnections(deps);
 			composable.onConnectionsChange(hookSpy);
-			composable.setConnections({
-				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
-			});
+			composable.setConnections(connections);
 
-			expect(hookSpy).not.toHaveBeenCalled();
+			expect(hookSpy).toHaveBeenCalledWith({
+				action: CHANGE_ACTION.SET,
+				payload: { connections },
+			});
 		});
 
 		it('setConnections does not fire onStateDirty (initialization path)', () => {
