@@ -16,14 +16,21 @@ vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
 // Controls which env feature flags the mocked composable reports as enabled.
 const enabledEnvFeatureFlags = new Set<string>();
 
-vi.mock('n8n-workflow', async (importOriginal) => ({
-	...(await importOriginal()),
-	NodeHelpers: {
-		displayParameter: vi.fn(),
-		getNodeParameters: vi.fn(),
-	},
-	traverseNodeParameters: vi.fn(),
-}));
+vi.mock('n8n-workflow', async (importOriginal) => {
+	const original = await importOriginal<typeof import('n8n-workflow')>();
+	return {
+		...original,
+		NodeHelpers: {
+			displayParameter: vi.fn(),
+			getNodeParameters: vi.fn(),
+			// serializeNode's credential filtering relies on these; keep the real
+			// implementations so tests cover the actual active-type semantics.
+			getActiveCredentialTypes: original.NodeHelpers.getActiveCredentialTypes,
+			displayParameterPath: original.NodeHelpers.displayParameterPath,
+		},
+		traverseNodeParameters: vi.fn(),
+	};
+});
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(),
@@ -436,5 +443,142 @@ describe('serializeNode', () => {
 		>;
 		expect(normalizedNode).not.toHaveProperty('credentials');
 		expect(normalizedNode).not.toHaveProperty('webhookId');
+	});
+
+	describe('credential filtering', () => {
+		// Mirrors how the HTTP Request node declares credentials: only httpSslAuth is
+		// declared; generic/predefined auth types come from the genericAuthType and
+		// nodeCredentialType parameters.
+		const httpRequestNodeType = {
+			name: 'n8n-nodes-base.httpRequest',
+			displayName: 'HTTP Request',
+			version: 1,
+			description: '',
+			defaults: { name: 'HTTP Request' },
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [],
+			group: ['transform'],
+			credentials: [
+				{
+					name: 'httpSslAuth',
+					required: true,
+					displayOptions: { show: { provideSslCertificates: [true] } },
+				},
+			],
+		} as INodeTypeDescription;
+
+		it('drops credentials not referenced by genericAuthType', () => {
+			nodeTypeProvider.getNodeType.mockReturnValue(httpRequestNodeType);
+
+			const node = createNode({
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth' },
+				credentials: {
+					httpHeaderAuth: { id: '1', name: 'Header Auth' },
+					httpBasicAuth: { id: '2', name: 'Stale Basic Auth' },
+				},
+			});
+
+			const result = serializeNode(nodeTypeProvider, node);
+
+			expect(result.credentials).toEqual({ httpHeaderAuth: { id: '1', name: 'Header Auth' } });
+		});
+
+		it('drops credentials not referenced by nodeCredentialType', () => {
+			nodeTypeProvider.getNodeType.mockReturnValue(httpRequestNodeType);
+
+			const node = createNode({
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { authentication: 'predefinedCredentialType', nodeCredentialType: 'slackApi' },
+				credentials: {
+					slackApi: { id: '1', name: 'Slack' },
+					httpQueryAuth: { id: '2', name: 'Stale Query Auth' },
+				},
+			});
+
+			const result = serializeNode(nodeTypeProvider, node);
+
+			expect(result.credentials).toEqual({ slackApi: { id: '1', name: 'Slack' } });
+		});
+
+		it('keeps a displayed declared credential alongside the parameter-selected one', () => {
+			nodeTypeProvider.getNodeType.mockReturnValue(httpRequestNodeType);
+
+			const node = createNode({
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpHeaderAuth',
+					provideSslCertificates: true,
+				},
+				credentials: {
+					httpHeaderAuth: { id: '1', name: 'Header Auth' },
+					httpSslAuth: { id: '2', name: 'SSL Cert' },
+				},
+			});
+
+			const result = serializeNode(nodeTypeProvider, node);
+
+			expect(result.credentials).toEqual({
+				httpHeaderAuth: { id: '1', name: 'Header Auth' },
+				httpSslAuth: { id: '2', name: 'SSL Cert' },
+			});
+		});
+
+		it('keeps all credentials when the credential-type parameter is an expression', () => {
+			nodeTypeProvider.getNodeType.mockReturnValue(httpRequestNodeType);
+
+			const node = createNode({
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					authentication: 'genericCredentialType',
+					genericAuthType: '={{ $json.authType }}',
+				},
+				credentials: {
+					httpHeaderAuth: { id: '1', name: 'Header Auth' },
+					httpBasicAuth: { id: '2', name: 'Basic Auth' },
+				},
+			});
+
+			const result = serializeNode(nodeTypeProvider, node);
+
+			expect(result.credentials).toEqual({
+				httpHeaderAuth: { id: '1', name: 'Header Auth' },
+				httpBasicAuth: { id: '2', name: 'Basic Auth' },
+			});
+		});
+
+		it('filters declared credentials by display state and drops unknown types', () => {
+			const declaredNodeType = {
+				name: 'n8n-nodes-base.testNode',
+				displayName: 'Test Node',
+				version: 1,
+				description: '',
+				defaults: { name: 'Test Node' },
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+				group: ['transform'],
+				credentials: [
+					{ name: 'shownApi' },
+					{ name: 'hiddenApi', displayOptions: { show: { mode: ['special'] } } },
+				],
+			} as INodeTypeDescription;
+			nodeTypeProvider.getNodeType.mockReturnValue(declaredNodeType);
+
+			const node = createNode({
+				type: 'n8n-nodes-base.testNode',
+				credentials: {
+					shownApi: { id: '1', name: 'Shown' },
+					hiddenApi: { id: '2', name: 'Hidden' },
+					unknownApi: { id: '3', name: 'Unknown' },
+				},
+			});
+
+			const result = serializeNode(nodeTypeProvider, node);
+
+			expect(result.credentials).toEqual({ shownApi: { id: '1', name: 'Shown' } });
+		});
 	});
 });

@@ -512,6 +512,55 @@ export function displayParameterPath(
 }
 
 /**
+ * Returns the credential types a node actively uses given its current configuration,
+ * or `null` when the active set cannot be determined statically. A credential type is
+ * active when:
+ * - its description in the node type is currently displayed (its `displayOptions` match), or
+ * - it is referenced by the `nodeCredentialType` / `genericAuthType` parameters — nodes like
+ *   HTTP Request select credential types dynamically through these parameters instead of
+ *   declaring them in the node type description.
+ *
+ * Returns `null` when the node type description is unavailable, a credential-type
+ * parameter is an expression (it only resolves at runtime), or evaluating the
+ * configuration throws. Callers must fall back conservatively for their use case:
+ * treat all referenced credentials as active when validating, and clean nothing
+ * when removing stale entries.
+ */
+export function getActiveCredentialTypes(
+	node: INode,
+	nodeTypeDescription: INodeTypeDescription | null,
+): Set<string> | null {
+	if (!nodeTypeDescription) {
+		return null;
+	}
+
+	try {
+		const activeTypes = new Set<string>();
+
+		for (const credentialDescription of nodeTypeDescription.credentials ?? []) {
+			if (displayParameter(node.parameters, credentialDescription, node, nodeTypeDescription)) {
+				activeTypes.add(credentialDescription.name);
+			}
+		}
+
+		const { nodeCredentialType, genericAuthType } = node.parameters;
+		for (const paramValue of [nodeCredentialType, genericAuthType]) {
+			if (isExpression(paramValue)) {
+				return null;
+			}
+			if (typeof paramValue === 'string' && paramValue) {
+				activeTypes.add(paramValue);
+			}
+		}
+
+		return activeTypes;
+	} catch {
+		// Malformed display options must not break callers that never evaluated them before
+		return null;
+	}
+}
+
+/**
  * Returns the context data
  *
  * @param {IRunExecutionData} runExecutionData The run execution data
