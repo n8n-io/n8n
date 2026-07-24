@@ -1,6 +1,6 @@
 packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
-  s_278cbb65f99049::t_1004403ccef234 767,771
   s_278cbb65f99049::t_8f25dec16e340b 262
+  s_278cbb65f99049::t_1004403ccef234 767,771
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -8,6 +8,9 @@ packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPub
   "base_commit_sha": "aebcbe2dbd87ea2f892344b8abc7636469ef4025",
   "prompts": {},
   "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    },
     "h_760178ed151f13": {
       "author": "Sandra Zollner <sandra.zollner@n8n.io>"
     },
