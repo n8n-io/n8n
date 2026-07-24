@@ -360,7 +360,6 @@ const commonStubs = {
 		name: 'AgentChatPanel',
 		template: `
 			<div data-testid="chat-panel-stub">
-				<div data-testid="stub-above-input"><slot name="above-input" /></div>
 				<div data-testid="stub-footer-start"><slot name="footer-start" /></div>
 			</div>
 		`,
@@ -727,6 +726,22 @@ describe('AgentBuilderView — preview routing', () => {
 		);
 	});
 
+	it('uploads knowledge files for an unpublished agent', async () => {
+		// Default makeAgentResponse() has activeVersionId: null (unpublished).
+		const wrapper = await renderView({ knowledgeBaseEnabled: true });
+
+		const file = new File(['x'], 'notes.txt', { type: 'text/plain' });
+		wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('upload-files', [file]);
+		await flushPromises();
+
+		expect(uploadAgentFilesMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			[file],
+		);
+	});
+
 	it('always includes the Knowledge tab and keeps it selectable regardless of the knowledge base flag', async () => {
 		routeQuery.section = 'knowledge';
 		const withoutKnowledge = await renderView();
@@ -764,6 +779,14 @@ describe('AgentBuilderView — preview routing', () => {
 			'p1',
 			'a1',
 		);
+	});
+
+	it('does not warm the knowledge sandbox when agent loading fails', async () => {
+		getAgentMock.mockRejectedValueOnce(new Error('load failed'));
+
+		await renderView({ knowledgeBaseEnabled: true });
+
+		expect(warmAgentKnowledgeSandboxMock).not.toHaveBeenCalled();
 	});
 
 	it('shows the manual editor for unbuilt agents', async () => {

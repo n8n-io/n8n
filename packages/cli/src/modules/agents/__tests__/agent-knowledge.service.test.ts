@@ -167,7 +167,12 @@ describe('AgentKnowledgeService', () => {
 	});
 
 	it('stores text and PDF files via BinaryDataService, creates DB rows, and cleans temp files', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		// activeVersionId: null — unpublished agents may upload knowledge files
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: agentId,
+			projectId,
+			activeVersionId: null,
+		} as never);
 		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
 		const textFilePath = path.join(tempDirectory, 'notes.txt');
 		const pdfFilePath = path.join(tempDirectory, 'report.pdf');
@@ -448,10 +453,11 @@ describe('AgentKnowledgeService', () => {
 		expect(binaryDataService.deleteMany).not.toHaveBeenCalled();
 	});
 
-	it('delegates warmup to the sandbox service', async () => {
+	it('delegates warmup to the sandbox service for an unpublished agent', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({
 			id: agentId,
 			projectId,
+			activeVersionId: null,
 		} as never);
 
 		await expect(service.warmSandbox(agentId, projectId)).resolves.toBeUndefined();

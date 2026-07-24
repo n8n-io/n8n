@@ -92,12 +92,13 @@ function makeAiService(overrides: Partial<AiService> = {}): AiService {
 	return Object.assign(aiService, overrides);
 }
 
-function makePublishedAgentRepository(): ReturnType<typeof mock<AgentRepository>> {
+function makeAgentRepository(): ReturnType<typeof mock<AgentRepository>> {
 	const repository = mock<AgentRepository>();
+	// Unpublished on purpose: the knowledge sandbox must not require a published version.
 	repository.findByIdAndProjectId.mockResolvedValue({
 		id: agentId,
 		projectId,
-		activeVersionId: 'version-1',
+		activeVersionId: null,
 	} as Agent);
 	return repository;
 }
@@ -114,7 +115,7 @@ function makeService(
 	aiService: AiService = makeAiService(),
 	instanceSettings: InstanceSettings = mock<InstanceSettings>({ instanceId }),
 	agentFileRepository: AgentFileRepository = mock<AgentFileRepository>(),
-	agentRepository: AgentRepository = makePublishedAgentRepository(),
+	agentRepository: AgentRepository = makeAgentRepository(),
 	binaryDataService: BinaryDataService = makeBinaryDataService(),
 ): AgentKnowledgeSandboxService {
 	return new AgentKnowledgeSandboxService(
@@ -523,7 +524,7 @@ describe('AgentKnowledgeSandboxService', () => {
 				makeMirrorFile('file-1', 'doc1.txt'),
 				makeMirrorFile('file-2', 'doc2.txt'),
 			]);
-			const agentRepository = makePublishedAgentRepository();
+			const agentRepository = makeAgentRepository();
 			agentRepository.existsBy.mockResolvedValue(true);
 			const binaryDataService = makeBinaryDataService();
 			const service = makeService(
@@ -590,7 +591,7 @@ describe('AgentKnowledgeSandboxService', () => {
 				makeMirrorFile('file-1', 'doc1.txt'),
 				makeMirrorFile('file-2', 'doc2.txt'),
 			]);
-			const agentRepository = makePublishedAgentRepository();
+			const agentRepository = makeAgentRepository();
 			agentRepository.existsBy.mockResolvedValue(true);
 			const binaryDataService = makeBinaryDataService();
 			binaryDataService.getAsBuffer.mockResolvedValue(Buffer.alloc(MIRROR_UPLOAD_BATCH_BYTES));
@@ -623,7 +624,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			getMock.mockResolvedValue(sandbox);
 			const agentFileRepository = mock<AgentFileRepository>();
 			agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
-			const agentRepository = makePublishedAgentRepository();
+			const agentRepository = makeAgentRepository();
 			agentRepository.existsBy.mockResolvedValue(true);
 			const service = makeService(
 				{},
@@ -653,7 +654,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			getMock.mockResolvedValue(sandbox);
 			const agentFileRepository = mock<AgentFileRepository>();
 			agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
-			const agentRepository = makePublishedAgentRepository();
+			const agentRepository = makeAgentRepository();
 			agentRepository.existsBy.mockResolvedValue(true);
 			const service = makeService(
 				{},
@@ -678,7 +679,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			getMock.mockResolvedValue(sandbox);
 			const agentFileRepository = mock<AgentFileRepository>();
 			agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
-			const agentRepository = makePublishedAgentRepository();
+			const agentRepository = makeAgentRepository();
 			agentRepository.existsBy.mockResolvedValue(true);
 			const binaryDataService = makeBinaryDataService();
 			binaryDataService.getAsBuffer.mockRejectedValueOnce(new Error('missing on disk'));
