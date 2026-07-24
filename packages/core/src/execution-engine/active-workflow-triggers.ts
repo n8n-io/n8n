@@ -369,10 +369,8 @@ export class ActiveWorkflowTriggers {
 		const cronExpressions = triggerTimes.map(toCronExpression);
 
 		// Reject sub-minute polling up front, so both paths are guarded.
-		for (const expression of cronExpressions) {
-			if (isSubMinuteCron(expression)) {
-				throw new UserError('The polling interval is too short. It has to be at least a minute.');
-			}
+		if (cronExpressions.some(isSubMinuteCron)) {
+			throw new UserError('The polling interval is too short. It has to be at least a minute.');
 		}
 
 		// Capture this node activation's generation; removing or replacing the node
@@ -398,7 +396,16 @@ export class ActiveWorkflowTriggers {
 			);
 			// A newly provisioned node polls once inline, to seed the cursor and fail
 			// loudly on a broken source; a pure reconcile (nothing inserted) skips it.
-			if (inserted) await executePollTrigger(true);
+			// A failure here must deprovision the row just inserted, or the durable
+			// job keeps firing a node whose activation never completed.
+			if (inserted) {
+				try {
+					await executePollTrigger(true);
+				} catch (error) {
+					await pollJobManager.remove(workflowId, node.id);
+					throw error;
+				}
+			}
 			return;
 		}
 

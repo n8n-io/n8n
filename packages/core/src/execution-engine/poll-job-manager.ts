@@ -22,4 +22,11 @@ export abstract class PollJobManager {
 		pollTimes: TriggerTime[],
 		timezone: string,
 	): Promise<{ inserted: boolean }>;
+
+	/**
+	 * Deprovision the node's poll jobs. Used to roll back a {@link register} whose
+	 * seeding inline poll then failed, so a failed activation cannot leave a
+	 * durable job firing.
+	 */
+	abstract remove(workflowId: string, nodeId: string): Promise<void>;
 }

@@ -72,7 +72,7 @@ describe('SchedulerConfig', () => {
 			vi.stubEnv('N8N_SCHEDULER_RETENTION_TIMEOUT', '120');
 			vi.stubEnv('N8N_SCHEDULER_MAX_CONCURRENT_PASSES', '4');
 			vi.stubEnv('N8N_SCHEDULER_MAX_ATTEMPTS', '3');
-			vi.stubEnv('N8N_SCHEDULER_ENABLE_FOR_POLL_TRIGGERS', 'true');
+			vi.stubEnv('N8N_SCHEDULER_POLL_TRIGGERS_ENABLED', 'true');
 
 			const { scheduler } = Container.get(GlobalConfig);
 

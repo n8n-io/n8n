@@ -938,15 +938,9 @@ export class ActiveWorkflowManager {
 			// Drop the durable jobs here rather than leaving it to the fire-and-forget
 			// command below: they are DB state, so removal is leader-independent, and a
 			// lost command would otherwise leak them, firing an inactive workflow.
-			try {
-				await this.scheduleTriggerJobRegistrar.removeWorkflow(workflowId);
-				await this.pollTriggerJobRegistrar.removeWorkflow(workflowId);
-			} catch (error) {
-				this.errorReporter.error(error);
-				this.logger.error(
-					`Could not remove durable scheduler jobs of workflow "${workflowId}" because of error: "${error.message}"`,
-				);
-			}
+			// Each call is independently guarded so a failure in one registrar
+			// cannot skip the other and leak its durable jobs.
+			await this.removeDurableJobs(workflowId);
 
 			void this.publisher.publishCommand({
 				command: 'remove-triggers-and-pollers',
@@ -992,6 +986,27 @@ export class ActiveWorkflowManager {
 	}
 
 	/**
+	 * Remove a workflow's durable schedule and poll jobs. The two registrars are
+	 * called independently so a failure in one cannot skip the other and leak
+	 * its durable jobs.
+	 */
+	private async removeDurableJobs(workflowId: WorkflowId) {
+		const results = await Promise.allSettled([
+			this.scheduleTriggerJobRegistrar.removeWorkflow(workflowId),
+			this.pollTriggerJobRegistrar.removeWorkflow(workflowId),
+		]);
+
+		for (const result of results) {
+			if (result.status === 'rejected') {
+				this.errorReporter.error(result.reason);
+				this.logger.error(
+					`Could not remove durable scheduler jobs of workflow "${workflowId}" because of error: "${ensureError(result.reason).message}"`,
+				);
+			}
+		}
+	}
+
+	/**
 	 * Stop running active, poll, and schedule triggers for a workflow,
 	 * and drop the durable schedule jobs its activation committed.
 	 */
@@ -1016,15 +1031,7 @@ export class ActiveWorkflowManager {
 		// here would also skip the workflowDeactivated broadcast, leaving the UI
 		// showing a torn-down workflow as active. Report and continue, mirroring
 		// how clearWebhooks failures are handled.
-		try {
-			await this.scheduleTriggerJobRegistrar.removeWorkflow(workflowId);
-			await this.pollTriggerJobRegistrar.removeWorkflow(workflowId);
-		} catch (error) {
-			this.errorReporter.error(error);
-			this.logger.error(
-				`Could not remove durable scheduler jobs of workflow "${workflowId}" because of error: "${error.message}"`,
-			);
-		}
+		await this.removeDurableJobs(workflowId);
 
 		if (wasRemoved) {
 			this.logger.debug(`Removed non-webhook triggers for workflow "${workflowId}"`, {

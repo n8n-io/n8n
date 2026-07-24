@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { EntityManager } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { DesiredJob, Schedule } from '@n8n/scheduler';
 import { computeFirstRunAt, scheduleFingerprint } from '@n8n/scheduler';
 import { PollJobManager } from 'n8n-core';
@@ -48,6 +48,17 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 				'N8N_SCHEDULER_ENABLED is set but the workflow publication service is disabled. The durable scheduler cannot take over poll triggers, which keep using the legacy in-memory engine.',
 			);
 		}
+	}
+
+	/**
+	 * Registers this as the DI container's active {@link PollJobManager}, so
+	 * activation code depending on the abstract port resolves this
+	 * implementation. Called once at startup, lazily before the first workflow
+	 * activation, from {@link Container.get}'s own registration point rather than
+	 * the command that boots the process.
+	 */
+	bindAsActivePollJobManager(): void {
+		Container.set(PollJobManager, this);
 	}
 
 	// The run side is gated where the scheduler loops start, not on instanceType here.

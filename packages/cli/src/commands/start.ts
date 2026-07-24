@@ -13,7 +13,7 @@ import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
-import { BinaryDataConfig, PollJobManager } from 'n8n-core';
+import { BinaryDataConfig } from 'n8n-core';
 import { jsonParse, sleep, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import path from 'path';
 import replaceStream from 'replacestream';
@@ -217,7 +217,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		// Resolved lazily at activation time, so this only needs to run before the
 		// first workflow activation.
-		Container.set(PollJobManager, Container.get(PollTriggerJobRegistrar));
+		Container.get(PollTriggerJobRegistrar).bindAsActivePollJobManager();
 
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
