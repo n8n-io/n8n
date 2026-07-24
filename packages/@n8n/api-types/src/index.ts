@@ -113,6 +113,9 @@ export type { Collaborator } from './push/collaboration';
 export type { WorkflowPublicationStatusMessage } from './push/workflow';
 export type { HeartbeatMessage } from './push/heartbeat';
 export { createHeartbeatMessage, heartbeatMessageSchema } from './push/heartbeat';
+export type { PushMessageMeta } from './push/meta';
+export type { ResumeMessage } from './push/resume';
+export { resumeMessageSchema, RESUME_AWAITING_MAX } from './push/resume';
 export type { SendWorkerStatusMessage } from './push/worker';
 
 export type { FavoriteResourceType } from './schemas/favorites.schema';

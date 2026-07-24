@@ -76,15 +76,17 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 		delete this.userIdByPushRef[pushRef];
 	}
 
-	private sendTo({ type, data }: PushMessage, pushRefs: string[], asBinary: boolean = false) {
+	private sendTo(pushMsg: PushMessage, pushRefs: string[], asBinary: boolean = false) {
 		if (pushRefs.length === 0) return;
 
-		this.logger.debug(`Pushed to frontend: ${type}`, {
-			dataType: type,
+		this.logger.debug(`Pushed to frontend: ${pushMsg.type}`, {
+			dataType: pushMsg.type,
 			pushRefs: pushRefs.join(', '),
 		});
 
-		const stringifiedPayload = jsonStringify({ type, data }, { replaceCircularRefs: true });
+		// Serialize the whole message so the optional, additive `meta` envelope
+		// (present on terminal events) is preserved on the wire.
+		const stringifiedPayload = jsonStringify(pushMsg, { replaceCircularRefs: true });
 
 		for (const pushRef of pushRefs) {
 			const connection = this.connections[pushRef];

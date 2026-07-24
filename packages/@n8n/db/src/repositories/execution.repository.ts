@@ -608,6 +608,22 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return await this.delete({ id: In(executionIds) });
 	}
 
+	/**
+	 * Minimal lookup of `{ id, workflowId, status }` for the given execution ids,
+	 * used to re-deliver terminal push events on client reconnect. Ids not found
+	 * (e.g. pruned) are simply absent from the result.
+	 */
+	async findStatusByIds(
+		executionIds: string[],
+	): Promise<Array<{ id: string; workflowId: string; status: ExecutionStatus }>> {
+		if (executionIds.length === 0) return [];
+
+		return await this.find({
+			select: ['id', 'workflowId', 'status'],
+			where: { id: In(executionIds) },
+		});
+	}
+
 	async getWaitingExecutions() {
 		// Find all the executions which should be triggered in the next 70 seconds
 		const waitTill = new Date(Date.now() + 70000);

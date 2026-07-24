@@ -219,6 +219,13 @@ export class Server extends AbstractServer {
 
 			const collaborationService = Container.get(CollaborationService);
 			collaborationService.init();
+
+			// Re-delivers terminal execution events a client missed while
+			// disconnected. Requires a client->server channel, so WebSocket only.
+			const { ExecutionPushResumeService } = await import(
+				'@/executions/execution-push-resume.service.js'
+			);
+			Container.get(ExecutionPushResumeService).init();
 		} else {
 			this.logger.warn(
 				'Collaboration features are disabled because push is configured unidirectional. Use N8N_PUSH_BACKEND=websocket environment variable to enable them.',

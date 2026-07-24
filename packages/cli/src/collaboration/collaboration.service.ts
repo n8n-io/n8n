@@ -7,7 +7,7 @@ import { ErrorReporter } from 'n8n-core';
 import type { IWorkflowSettings, Workflow } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { parseWorkflowMessage } from './collaboration.message';
+import { isCollaborationMessage, parseWorkflowMessage } from './collaboration.message';
 import type {
 	WorkflowClosedMessage,
 	WorkflowOpenedMessage,
@@ -76,6 +76,10 @@ export class CollaborationService {
 	}
 
 	async handleUserMessage(userId: User['id'], clientId: string, msg: unknown) {
+		// The push `message` channel is multiplexed across features; ignore
+		// messages that aren't collaboration messages (e.g. execution `resume`).
+		if (!isCollaborationMessage(msg)) return;
+
 		const workflowMessage = await parseWorkflowMessage(msg);
 
 		if (workflowMessage.type === 'workflowOpened') {

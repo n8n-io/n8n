@@ -7,6 +7,8 @@ import type {
 	WorkflowExecutionSource,
 } from 'n8n-workflow';
 
+import type { PushMessageMeta } from './meta';
+
 export type ExecutionStarted = {
 	type: 'executionStarted';
 	data: {
@@ -31,6 +33,11 @@ export type ExecutionWaiting = {
 		executionId: string;
 		source?: WorkflowExecutionSource;
 	};
+	/**
+	 * Terminal-class event (spinner → idle). Carries delivery metadata so it can
+	 * be deduped and replayed on reconnect. See {@link PushMessageMeta}.
+	 */
+	meta?: PushMessageMeta;
 };
 
 export type ExecutionFinished = {
@@ -45,12 +52,34 @@ export type ExecutionFinished = {
 		 */
 		source?: WorkflowExecutionSource;
 	};
+	/**
+	 * Delivery metadata so this terminal event can be deduped and replayed on
+	 * reconnect. See {@link PushMessageMeta}.
+	 */
+	meta?: PushMessageMeta;
 };
 
 export type ExecutionRecovered = {
 	type: 'executionRecovered';
 	data: {
 		executionId: string;
+	};
+};
+
+/**
+ * Server → client message closing the reconnect handshake: sent after the
+ * server has re-delivered any terminal events the client missed (in response to
+ * a `resume` message), so the client knows catch-up is done.
+ */
+export type ResumeComplete = {
+	type: 'resumeComplete';
+	data: {
+		/**
+		 * Execution ids whose terminal event was re-delivered during this resume.
+		 * Informational — the client dedups by executionId regardless; empty when
+		 * nothing needed replaying.
+		 */
+		replayed: string[];
 	};
 };
 
@@ -124,6 +153,7 @@ export type ExecutionPushMessage =
 	| ExecutionWaiting
 	| ExecutionFinished
 	| ExecutionRecovered
+	| ResumeComplete
 	| NodeExecuteBefore
 	| NodeExecuteAfter
 	| NodeExecuteAfterData;

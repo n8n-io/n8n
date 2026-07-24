@@ -29,6 +29,7 @@ import type { RedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
+import { createTerminalEventMeta } from '@/push/terminal-event-meta';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { isWorkflowIdValid } from '@/utils';
 import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
@@ -456,10 +457,21 @@ function hookFunctionsPush(
 
 		const { status } = fullRunData;
 		if (status === 'waiting') {
-			pushInstance.send({ type: 'executionWaiting', data: { executionId, source } }, pushRef);
+			pushInstance.send(
+				{
+					type: 'executionWaiting',
+					data: { executionId, source },
+					meta: createTerminalEventMeta(),
+				},
+				pushRef,
+			);
 		} else {
 			pushInstance.send(
-				{ type: 'executionFinished', data: { executionId, workflowId, status, source } },
+				{
+					type: 'executionFinished',
+					data: { executionId, workflowId, status, source },
+					meta: createTerminalEventMeta(),
+				},
 				pushRef,
 			);
 		}

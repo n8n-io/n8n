@@ -953,6 +953,10 @@ describe('Execution Lifecycle Hooks', () => {
 							status: 'success',
 							workflowId: 'test-workflow-id',
 						},
+						meta: expect.objectContaining({
+							eventId: expect.any(String),
+							ts: expect.any(String),
+						}),
 					},
 					pushRef,
 				);
@@ -965,6 +969,10 @@ describe('Execution Lifecycle Hooks', () => {
 					{
 						type: 'executionWaiting',
 						data: { executionId },
+						meta: expect.objectContaining({
+							eventId: expect.any(String),
+							ts: expect.any(String),
+						}),
 					},
 					pushRef,
 				);
