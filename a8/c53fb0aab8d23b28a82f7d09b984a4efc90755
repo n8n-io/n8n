@@ -9,6 +9,9 @@ packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPub
   s_70e4a16a672757::t_e0f8efdf136a81 79-80
   s_70e4a16a672757::t_80ca5ad0b26e03 196
   s_70e4a16a672757::t_9d84826ed0653e 608
+  s_70e4a16a672757::t_054f4386e635c2 79-80
+  s_70e4a16a672757::t_1ed0098a0aec0a 196
+  s_70e4a16a672757::t_69bc31d0031457 608
 packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
   s_70e4a16a672757::t_bdf6c7bea8e71a 55-59,93-94,106-108,229-264,275-288,783-796
   s_b6381fbb8ddc64::t_626896e5a21e72 110-112,115,117-118

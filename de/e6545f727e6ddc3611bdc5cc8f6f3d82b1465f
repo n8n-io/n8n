@@ -2,11 +2,11 @@ packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
   s_9006126844c8d5::t_53a7b1c755ec03 86
   s_9006126844c8d5::t_235bdd463aba3d 51
 packages/@n8n/db/src/repositories/workflow-review-request-author.repository.ts
-  s_60c9025b151770::t_65875a2109bd21 2,13-28
+  s_60c9025b151770::t_65875a2109bd21 2,13-28,13-14,16-22,24-28
   s_60c9025b151770::t_2d9a68134ecfe0 29-30
 packages/@n8n/db/src/repositories/__tests__/workflow-review-request-author.repository.test.ts
   s_2a235a6e9347be::t_d664c830aa7f1c 19,23-24,26-29,31
-  s_60c9025b151770::t_dd91bf959b2356 1-18,20-22,25,30,32-39
+  s_60c9025b151770::t_dd91bf959b2356 1-18,20-22,25,30,32-39,33-39
 packages/cli/test/integration/shared/utils/test-server.ts
   s_2a235a6e9347be::t_493341e5e43666 346
   s_2a235a6e9347be::t_2f37f299fc095c 345,347-348
