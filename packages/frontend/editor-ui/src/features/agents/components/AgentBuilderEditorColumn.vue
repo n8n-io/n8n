@@ -15,6 +15,7 @@ import type { ToolOpenTarget } from './AgentCapabilitiesSection.types';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
+import AgentChannelsSection from './AgentChannelsSection.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
@@ -98,30 +99,17 @@ const i18n = useI18n();
 			</div>
 			<div :class="$style.panelAreaContainer">
 				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
-					<AgentCapabilitiesSection
-						:config="localConfig"
-						:tools="localConfig?.tools ?? []"
-						:custom-tools="agent?.tools ?? {}"
-						:skills="appliedSkills"
+					<AgentChannelsSection
+						:key="`${projectId}:${agentId}`"
 						:connected-triggers="connectedTriggers"
 						:disabled="childrenDisabled"
-						:project-id="projectId"
 						:agent-id="agentId"
+						:project-id="projectId"
 						:is-published="Boolean(agent?.activeVersionId)"
-						:task-refs="localConfig?.tasks ?? []"
-						:reload-key="tasksReloadKey"
 						:validation-issues="configValidationIssues ?? []"
-						@open-tool="emit('open-tool', $event)"
-						@open-skill="emit('open-skill', $event)"
-						@add-tool="emit('add-tool')"
-						@add-skill="emit('add-skill')"
-						@update:config="emit('update:config', $event)"
-						@remove-tool="emit('remove-tool', $event)"
-						@remove-skill="emit('remove-skill', $event)"
+						:simple-channel-setup="artifactMode"
 						@update:connected-triggers="emit('update:connected-triggers', $event)"
 						@trigger-added="emit('trigger-added', $event)"
-						@toggle-task="emit('toggle-task', $event)"
-						@tasks-changed="emit('tasks-changed')"
 						@agent-changed="emit('agent-changed')"
 					/>
 
@@ -141,6 +129,28 @@ const i18n = useI18n();
 						:show-instructions-toolbar="true"
 						embedded
 						@update:config="emit('update:config', $event)"
+					/>
+					<AgentCapabilitiesSection
+						:config="localConfig"
+						:tools="localConfig?.tools ?? []"
+						:custom-tools="agent?.tools ?? {}"
+						:skills="appliedSkills"
+						:disabled="childrenDisabled"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:is-published="Boolean(agent?.activeVersionId)"
+						:task-refs="localConfig?.tasks ?? []"
+						:reload-key="tasksReloadKey"
+						:validation-issues="configValidationIssues ?? []"
+						@open-tool="emit('open-tool', $event)"
+						@open-skill="emit('open-skill', $event)"
+						@add-tool="emit('add-tool')"
+						@add-skill="emit('add-skill')"
+						@update:config="emit('update:config', $event)"
+						@remove-tool="emit('remove-tool', $event)"
+						@remove-skill="emit('remove-skill', $event)"
+						@toggle-task="emit('toggle-task', $event)"
+						@tasks-changed="emit('tasks-changed')"
 					/>
 				</AgentBuilderTabPanel>
 
@@ -226,7 +236,7 @@ const i18n = useI18n();
 .editorColumn {
 	display: flex;
 	flex-direction: column;
-	background-color: var(--background--surface);
+	background-color: light-dark(var(--background--surface), var(--background));
 	min-height: 0;
 	min-width: var(--agent-builder-editor-min-width, 35rem);
 }
@@ -240,10 +250,6 @@ const i18n = useI18n();
 	min-height: 0;
 	display: flex;
 	flex-direction: column;
-	background-color: light-dark(
-		var(--color--background--light-1),
-		var(--color--background--light-2)
-	);
 	overflow: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
@@ -274,17 +280,13 @@ const i18n = useI18n();
 	--card--padding: var(--spacing--sm);
 
 	align-items: stretch;
-	background-color: transparent;
+	background-color: var(--background--surface);
 }
 
 .identityHeaderRow {
 	flex-shrink: 0;
 	display: flex;
 	width: 100%;
-	background-color: light-dark(
-		var(--color--background--light-1),
-		var(--color--background--light-2)
-	);
 }
 
 .identityHeader {
@@ -300,10 +302,6 @@ const i18n = useI18n();
 	display: flex;
 	align-items: center;
 	width: 100%;
-	background-color: light-dark(
-		var(--color--background--light-1),
-		var(--color--background--light-2)
-	);
 }
 
 .tabsRule {
@@ -316,7 +314,7 @@ const i18n = useI18n();
 
 .mainTabs {
 	width: 100%;
-	border-bottom: calc(var(--border-width, 1px) * 2) var(--border-style, solid) var(--border-color);
+	border-bottom: var(--border);
 
 	:global([data-test-id='tab-agent'] > *) {
 		padding-left: 0;

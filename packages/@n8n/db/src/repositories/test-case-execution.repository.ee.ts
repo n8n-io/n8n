@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { DataSource, In, Not, Repository } from '@n8n/typeorm';
 import type { DeepPartial } from '@n8n/typeorm/common/DeepPartial';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 
 import { TestCaseExecution } from '../entities';
 import type { TestCaseExecutionErrorCode } from '../entities/types-db';
@@ -78,20 +78,24 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 	}
 
 	/**
-	 * Seeds pending test case rows for a run, one per entry in `runIndices`.
-	 * Each row's `runIndex` is set to the corresponding value from the list so
-	 * it always reflects the original dataset position — even for filtered runs
-	 * where only a subset of rows is executed. The FE maps results back by
-	 * `runIndex`, so preserving the original index is critical.
-	 *
-	 * For a full run (all rows), pass `[0, 1, 2, …, N-1]`.
+	 * Seeds pending test case rows for a run, one per entry in `cases`. Each row's
+	 * `runIndex` is set to the given value so it always reflects the original
+	 * dataset position — even for filtered runs where only a subset of rows is
+	 * executed. The FE maps results back by `runIndex`, so preserving the original
+	 * index is critical. The dataset-row `inputs` are seeded up front so the
+	 * compare view can show them while cases are still pending.
 	 */
-	async createPendingBatch(testRunId: string, runIndices: number[]): Promise<TestCaseExecution[]> {
-		const rows = runIndices.map((runIndex) =>
+	async createPendingBatch(
+		testRunId: string,
+		cases: Array<{ runIndex: number; inputs?: JsonObject }>,
+	): Promise<TestCaseExecution[]> {
+		const rows = cases.map(({ runIndex, inputs }) =>
 			this.create({
 				testRun: { id: testRunId },
 				status: 'new',
 				runIndex,
+				// Refined by the runner on execution; seeded here (see doc comment).
+				inputs: inputs ?? null,
 			}),
 		);
 		return await this.save(rows);

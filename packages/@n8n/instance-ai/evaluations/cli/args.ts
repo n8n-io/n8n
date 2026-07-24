@@ -63,6 +63,9 @@ export interface CliArgs {
 	outputDir?: string;
 	/** LangSmith dataset name (synced from JSON test cases before each run) */
 	dataset: string;
+	/** True when `--source langtracer` auto-forked the dataset name off the suite
+	 *  (no explicit --dataset) — cohort isolation, surfaced loudly by the driver. */
+	datasetAutoForked: boolean;
 	/** Max concurrent target() calls in LangSmith evaluate(). Build concurrency is
 	 *  enforced separately by the LaneAllocator (cap=4 per lane). */
 	concurrency: number;
@@ -212,13 +215,17 @@ export function parseCliArgs(argv: string[]): CliArgs {
 	// In langtracer mode, default the dataset + baseline to a suite-scoped, eval-tagged
 	// name so runs don't pollute the shared cohort and re-runs upsert one stable dataset.
 	let dataset = validated.dataset;
+	let datasetAutoForked = false;
 	let baselinePrefix = validated.baselinePrefix;
 	if (validated.source === 'langtracer' && validated.suite) {
 		const suiteSlug = validated.suite
 			.toLowerCase()
 			.replace(/[^a-z0-9]+/g, '-')
 			.replace(/^-+|-+$/g, '');
-		if (!raw.datasetProvided) dataset = `instance-ai-langtracer-${suiteSlug}`;
+		if (!raw.datasetProvided) {
+			dataset = `instance-ai-langtracer-${suiteSlug}`;
+			datasetAutoForked = true;
+		}
 		if (!raw.baselineProvided) baselinePrefix = `instance-ai-langtracer-${suiteSlug}-baseline-`;
 	}
 
@@ -235,6 +242,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		deletePrebuiltWorkflows: validated.deletePrebuiltWorkflows,
 		outputDir: validated.outputDir,
 		dataset,
+		datasetAutoForked,
 		concurrency: validated.concurrency,
 		experimentName: validated.experimentName,
 		iterations: validated.iterations,

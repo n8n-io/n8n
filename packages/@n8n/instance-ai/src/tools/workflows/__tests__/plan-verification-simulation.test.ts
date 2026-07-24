@@ -62,6 +62,34 @@ describe('planVerificationSimulation — simulated trigger verdicts', () => {
 		mockGenerateFixtures.mockResolvedValue({});
 	});
 
+	it('forwards the fallback model config to classification and fixture generation', async () => {
+		const fallbackModelConfig = {
+			id: 'anthropic/claude-opus-4-8' as const,
+			url: 'https://proxy.example.com/anthropic/v1',
+			apiKey: 'proxy-token',
+		};
+		mockClassify.mockResolvedValue([
+			{
+				nodeName: 'Send It',
+				verdict: 'simulate',
+				reason: 'Sends a message',
+				confidence: 'high',
+				source: 'deterministic',
+			},
+		]);
+
+		await planVerificationSimulation({
+			workflow: wf([{ name: 'Send It', type: 'n8n-nodes-base.slack' }]),
+			workflowId: 'wf-1',
+			fallbackModelConfig,
+		});
+
+		expect(mockClassify).toHaveBeenCalledWith(expect.objectContaining({ fallbackModelConfig }));
+		expect(mockGenerateFixtures).toHaveBeenCalledWith(
+			expect.objectContaining({ fallbackModelConfig }),
+		);
+	});
+
 	it('injects a deterministic simulate verdict for non-deterministic triggers', async () => {
 		mockClassify.mockResolvedValue([executeVerdict('Fetch Rows')]);
 
@@ -289,5 +317,114 @@ describe('planVerificationSimulation — simulated trigger verdicts', () => {
 		// Declared fixture is used; no generation needed for this node.
 		expect(mockGenerateFixtures).not.toHaveBeenCalled();
 		expect(simulationFixtures).toEqual({ 'On New Email': [{ subject: 'declared' }] });
+	});
+});
+
+describe('planVerificationSimulation — wait-gate halt verdicts', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockGenerateFixtures.mockResolvedValue({});
+	});
+
+	const simulateVerdict = (nodeName: string): NodeSimulationVerdict => ({
+		nodeName,
+		verdict: 'simulate',
+		reason: 'Credentials are not configured for this node',
+		confidence: 'high',
+		source: 'deterministic',
+	});
+
+	const gateWorkflow = (connections: Record<string, unknown>): WorkflowJSON =>
+		({
+			name: 'approval loop',
+			nodes: [
+				{
+					id: 'id-0',
+					name: 'Format Draft',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'id-1',
+					name: 'Email Approval',
+					type: 'n8n-nodes-base.gmail',
+					typeVersion: 2,
+					position: [100, 0],
+					parameters: { operation: 'sendAndWait' },
+				},
+				{
+					id: 'id-2',
+					name: 'Revise Post',
+					type: 'n8n-nodes-base.openAi',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: {},
+				},
+			],
+			connections,
+		}) as unknown as WorkflowJSON;
+
+	const loopConnections = {
+		'Format Draft': { main: [[{ node: 'Email Approval', type: 'main', index: 0 }]] },
+		'Email Approval': { main: [[{ node: 'Revise Post', type: 'main', index: 0 }]] },
+		'Revise Post': { main: [[{ node: 'Format Draft', type: 'main', index: 0 }]] },
+	};
+
+	it('halts a simulated send-and-wait gate that sits on a loop', async () => {
+		mockClassify.mockResolvedValue([
+			simulateVerdict('Email Approval'),
+			simulateVerdict('Revise Post'),
+		]);
+
+		const { nodeSimulationPlan } = await planVerificationSimulation({
+			workflow: gateWorkflow(loopConnections),
+			workflowId: 'wf-1',
+		});
+
+		const gateVerdict = nodeSimulationPlan?.find((v) => v.nodeName === 'Email Approval');
+		expect(gateVerdict).toMatchObject({ verdict: 'simulate', haltBranch: true });
+		expect(gateVerdict?.reason).toContain('human decision');
+		// Non-gate loop members keep their fixture behaviour.
+		expect(
+			nodeSimulationPlan?.find((v) => v.nodeName === 'Revise Post')?.haltBranch,
+		).toBeUndefined();
+		// No fixture is generated for a halted gate.
+		const fixtureInput = mockGenerateFixtures.mock.calls[0][0];
+		expect(fixtureInput.plan.map((verdict) => verdict.nodeName)).not.toContain('Email Approval');
+		expect(fixtureInput.plan.map((verdict) => verdict.nodeName)).toContain('Revise Post');
+	});
+
+	it('leaves a simulated gate off any loop untouched', async () => {
+		mockClassify.mockResolvedValue([simulateVerdict('Email Approval')]);
+
+		const { nodeSimulationPlan } = await planVerificationSimulation({
+			workflow: gateWorkflow({
+				'Format Draft': { main: [[{ node: 'Email Approval', type: 'main', index: 0 }]] },
+				'Email Approval': { main: [[{ node: 'Revise Post', type: 'main', index: 0 }]] },
+			}),
+			workflowId: 'wf-1',
+		});
+
+		expect(
+			nodeSimulationPlan?.find((v) => v.nodeName === 'Email Approval')?.haltBranch,
+		).toBeUndefined();
+	});
+
+	it('leaves an execute-verdict gate alone — a live gate pauses and breaks the loop itself', async () => {
+		mockClassify.mockResolvedValue([executeVerdict('Email Approval')]);
+
+		const { nodeSimulationPlan } = await planVerificationSimulation({
+			workflow: gateWorkflow(loopConnections),
+			workflowId: 'wf-1',
+		});
+
+		expect(nodeSimulationPlan?.find((v) => v.nodeName === 'Email Approval')).toMatchObject({
+			verdict: 'execute',
+		});
+		expect(
+			nodeSimulationPlan?.find((v) => v.nodeName === 'Email Approval')?.haltBranch,
+		).toBeUndefined();
 	});
 });

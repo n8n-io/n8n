@@ -69,6 +69,11 @@ const targetOutputSchema = z.object({
 	agentContext: z.string().optional(),
 	/** Only set on the scenario that initiated the build. */
 	buildDurationMs: z.number().optional(),
+	/** `claude` build spend in USD (--build-via-mcp only). Repeats on every row
+	 *  of the case's build — dedupe per (iteration, case) when summing. */
+	buildCostUsd: z.number().optional(),
+	/** Assistant turns across the `claude` build's attempts (--build-via-mcp only). */
+	buildTurns: z.number().optional(),
 	execDurationMs: z.number().default(0),
 	nodeCount: z.number().default(0),
 	/** The thread id used during the build — keys the LangSmith trace lookup. */
@@ -253,6 +258,8 @@ export function reshapeLangSmithRuns(
 			let workflowChecks: CheckOutcome[] | undefined;
 			let workflowJson: WorkflowResponse | undefined;
 			let buildTrace: BuildTrace | undefined;
+			let buildCostUsd: number | undefined;
+			let buildTurns: number | undefined;
 
 			for (const scenario of testCase.executionScenarios ?? []) {
 				const run = byKey.get(`${String(iter)}/${fileSlug}/${scenario.name}`);
@@ -276,6 +283,9 @@ export function reshapeLangSmithRuns(
 				if (output.workflowChecks && !workflowChecks) workflowChecks = output.workflowChecks;
 				if (output.workflowJson && !workflowJson) workflowJson = output.workflowJson;
 				if (output.buildTrace && !buildTrace) buildTrace = output.buildTrace;
+				// Every row of the case repeats the build's spend — first defined wins.
+				buildCostUsd ??= output.buildCostUsd;
+				buildTurns ??= output.buildTurns;
 				executionScenarioResults.push({
 					scenario,
 					success: output.passed,
@@ -305,6 +315,8 @@ export function reshapeLangSmithRuns(
 					workflowChecks = output.workflowChecks;
 					workflowJson = output.workflowJson;
 					buildTrace = output.buildTrace;
+					buildCostUsd = output.buildCostUsd;
+					buildTurns = output.buildTurns;
 				}
 			}
 
@@ -325,6 +337,8 @@ export function reshapeLangSmithRuns(
 				workflowChecks,
 				workflowJson,
 				buildTrace,
+				buildCostUsd,
+				buildTurns,
 				n8nBaseUrl,
 				runDebug: threadId ? runDebugByThreadId.get(threadId) : undefined,
 			});
