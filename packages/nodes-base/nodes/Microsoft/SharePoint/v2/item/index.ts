@@ -6,10 +6,13 @@ import type {
 	INodeProperties,
 	ResourceMapperField,
 } from 'n8n-workflow';
-import { setSafeObjectProperty } from 'n8n-workflow';
+import { NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
 
 import { type CollectionSearchOptions, searchGraphCollection } from '../helpers/graphSearch';
 import {
+	addUniqueConstraintHint,
+	assertPathSegment,
+	HYPERLINK_WRITE_HEADERS,
 	NON_INDEXED_QUERY_HEADERS,
 	nonIndexedFilterThresholdError,
 	odataFieldEqualsClause,
@@ -90,10 +93,11 @@ export async function getItems(
 type ItemsLookupReply = { value?: Array<{ id?: string | number }> };
 
 /**
- * Finds the one item whose columns match the given values, or `undefined`
- * when zero or several items match — the caller decides what that means
- * (Update fails, Create or Update falls back to creating; both mirror v1).
- * Values are always compared as quoted strings, exactly like v1's filter.
+ * Returns the id of every item whose columns match the given values. Each
+ * caller decides what the count means: Update requires exactly one, Create or
+ * Update maps one→update / none→create / many→error (a deliberate divergence
+ * from v1, which created on many). Values are always compared as quoted
+ * strings, exactly like v1's filter.
  */
 export async function lookupItemIdByColumns(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -101,7 +105,7 @@ export async function lookupItemIdByColumns(
 	listIdOrTitle: string,
 	matchingColumns: string[],
 	values: IDataObject,
-): Promise<string | undefined> {
+): Promise<string[]> {
 	const filter = matchingColumns
 		.map((column) => odataFieldEqualsClause(column, values[column]))
 		.join(' and ');
@@ -121,10 +125,34 @@ export async function lookupItemIdByColumns(
 		throw nonIndexedFilterThresholdError(this.getNode(), error, filter) ?? error;
 	}
 
-	if (response.value?.length === 1 && response.value[0].id !== undefined) {
-		return String(response.value[0].id);
+	// One page is enough to tell the callers apart: a >page-size match still
+	// yields length ≥ 2, so the multi-match guard fires (Graph rows carry `id`).
+	return (response.value ?? [])
+		.filter((row): row is { id: string | number } => row.id !== undefined)
+		.map((row) => String(row.id));
+}
+
+/**
+ * Resolves the item id(s) an item operation should act on: the `id` matching
+ * column when chosen (update only), otherwise the columns lookup. No try/catch —
+ * a failed lookup propagates so it can never become a silent create.
+ */
+export async function resolveMatchedItemIds(
+	this: IExecuteFunctions,
+	siteId: string,
+	listIdOrTitle: string,
+	matchingColumns: string[],
+	values: IDataObject,
+): Promise<string[]> {
+	if (matchingColumns.includes('id')) {
+		// The `id` matching column is update-only; upsert never offers it.
+		const idValue = values.id;
+		return idValue === undefined || idValue === null || idValue === '' ? [] : [String(idValue)];
 	}
-	return undefined;
+	if (matchingColumns.length > 0) {
+		return await lookupItemIdByColumns.call(this, siteId, listIdOrTitle, matchingColumns, values);
+	}
+	return [];
 }
 
 /**
@@ -189,4 +217,54 @@ export function buildItemFieldsPayload(
 		setSafeObjectProperty(fields, key, fieldValue);
 	}
 	return { fields, hasHyperlink };
+}
+
+/**
+ * Writes the mapped fields to an existing item, then re-reads it. The write goes
+ * to the documented /fields route (v1's `{ fields }`-wrapper PATCH on the item
+ * itself isn't a documented Graph route); that route replies with only the
+ * fieldValueSet, but v1 returned the full listItem envelope, so the GET re-read
+ * keeps the output identical.
+ */
+export async function updateItemFields(
+	this: IExecuteFunctions,
+	siteId: string,
+	listIdOrTitle: string,
+	itemId: string,
+	value: IDataObject,
+	schema: ResourceMapperField[],
+): Promise<IDataObject> {
+	itemId = assertPathSegment(this.getNode(), itemId, 'Item');
+	const { fields, hasHyperlink } = buildItemFieldsPayload(value, schema);
+
+	const itemPath = `/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}/items/${encodeURIComponent(itemId)}`;
+	try {
+		await microsoftApiRequest.call(
+			this,
+			'PATCH',
+			`${itemPath}/fields`,
+			fields,
+			{},
+			undefined,
+			hasHyperlink ? HYPERLINK_WRITE_HEADERS : {},
+		);
+	} catch (error) {
+		addUniqueConstraintHint(error);
+		throw error;
+	}
+
+	try {
+		return await microsoftApiRequest.call(this, 'GET', itemPath, {}, { $expand: 'fields' });
+	} catch (error) {
+		// The write above already succeeded — a failed read-back must not look
+		// like a failed update, or the user retries a change that went through.
+		const reason = error instanceof Error ? error.message : String(error);
+		throw new NodeOperationError(
+			this.getNode(),
+			'The item was updated, but reading back the updated item failed',
+			{
+				description: `The update itself succeeded — check the item in SharePoint before retrying. Read-back error: ${reason}`,
+			},
+		);
+	}
 }

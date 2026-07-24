@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import * as create from './create.operation';
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { assertPathSegment } from '../../helpers/utils';
 import { resolveItemMapperValues, resolveMatchedItemIds, updateItemFields } from '../../item';
@@ -16,24 +17,24 @@ import { resolveSiteId, siteRLC } from '../../site';
 const properties: INodeProperties[] = [
 	{
 		...siteRLC,
-		description: 'Select the site to retrieve lists from',
+		description: 'Select the site the list belongs to',
 	},
 	{
 		...listRLC,
-		description: 'Select the list you want to update an item in',
+		description: 'Select the list you want to create or update an item in',
 		displayOptions: {
 			hide: {
 				...untilSiteSelected,
 			},
 		},
 	},
-	itemColumns('update'),
+	itemColumns('upsert'),
 ];
 
 const displayOptions = {
 	show: {
 		resource: ['item'],
-		operation: ['update'],
+		operation: ['upsert'],
 	},
 };
 
@@ -43,7 +44,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	i: number,
 	siteIdCache?: Map<string, string>,
-): Promise<IDataObject> {
+): Promise<IDataObject | IDataObject[]> {
 	const siteId = await resolveSiteId.call(this, i, siteIdCache);
 	const listIdOrTitle = assertPathSegment(
 		this.getNode(),
@@ -62,12 +63,19 @@ export async function execute(
 		matchingColumns,
 		values,
 	);
-	if (ids.length !== 1) {
-		// v1's exact wording for "no single item matched" (covers zero and several)
-		throw new NodeOperationError(this.getNode(), "The column(s) don't match any existing item", {
-			description: 'Double-check the value(s) for the columns to match and try again',
+	if (ids.length >= 2) {
+		// v1 created on multiple matches; we stop instead so an ambiguous match
+		// never silently updates or duplicates the wrong item.
+		throw new NodeOperationError(this.getNode(), 'Multiple items match the selected column(s)', {
+			description:
+				'Narrow the matching column(s) so they identify a single item, or remove the duplicates, then try again.',
 		});
 	}
+	if (ids.length === 1) {
+		return await updateItemFields.call(this, siteId, listIdOrTitle, ids[0], values, schema);
+	}
 
-	return await updateItemFields.call(this, siteId, listIdOrTitle, ids[0], values, schema);
+	// No match → create. create.execute re-reads the same params (no extra API
+	// call) and POSTs; its field builder also drops `id`, so upsert never leaks one.
+	return await create.execute.call(this, i, siteIdCache);
 }
