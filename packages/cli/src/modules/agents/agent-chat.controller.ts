@@ -12,6 +12,7 @@ import { Body, Delete, Get, Param, Post, ProjectScope, RestController } from '@n
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import { randomUUID } from 'crypto';
 import type { Response } from 'express';
+import { getHtmlSandboxCSP } from 'n8n-core';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -284,6 +285,10 @@ export class AgentChatController {
 		res.setHeader('Content-Type', attachment.mimeType);
 		res.setHeader('Content-Length', attachment.fileSizeBytes);
 		res.setHeader('X-Content-Type-Options', 'nosniff');
+		// Sandbox anything rendered inline: attachments are user-supplied content
+		// served same-origin, so active content in them must never script against
+		// the n8n session (same posture as the binary-data controller).
+		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
 		// Non-viewable types must not render inline in the browser.
 		if (!ViewableMimeTypes.includes(attachment.mimeType.toLowerCase())) {
 			res.setHeader(
