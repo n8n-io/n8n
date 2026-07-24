@@ -139,6 +139,15 @@ export class EndpointsConfig {
 	@Env('N8N_FORMDATA_FILE_SIZE_MAX')
 	formDataFileSizeMax: number = 200;
 
+	/**
+	 * In scaling mode, webhook responses larger than this (in MiB) are sent via
+	 * storage instead of through the queue, so one big response can't overload
+	 * the Redis broker. This is not a size limit: larger responses are still
+	 * returned in full.
+	 */
+	@Env('N8N_WEBHOOK_RESPONSE_OFFLOAD_THRESHOLD')
+	webhookResponseOffloadThreshold: number = 16;
+
 	@Nested
 	metrics: PrometheusMetricsConfig;
 
