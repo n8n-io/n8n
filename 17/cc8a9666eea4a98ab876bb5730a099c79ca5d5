@@ -32,6 +32,22 @@ packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPub
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
+    "s_91f67565918eee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36f4874d-45bc-43d2-bd2d-9c16d23d9c95",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_abf81efdb80d12": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "862ff03d-0d2b-46dc-9c15-ac812b44f63f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
     "s_b6381fbb8ddc64": {
       "agent_id": {
         "tool": "claude",

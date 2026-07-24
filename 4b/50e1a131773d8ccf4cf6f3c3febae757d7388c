@@ -1,0 +1,23 @@
+packages/@n8n/db/src/migrations/common/1784000000053-AddInstanceCredentials.ts
+  s_38f5272c4af8c0::t_c7b928b207a4e6 4,7-8,11
+docs/generated/postgres-schema/public.credentials_entity.md
+  s_38f5272c4af8c0::t_97c9511829489c 24
+docs/generated/sqlite-schema/credentials_entity.md
+  s_38f5272c4af8c0::t_47e3e1ce3130d8 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "4b50e1a131773d8ccf4cf6f3c3febae757d7388c",
+  "prompts": {},
+  "sessions": {
+    "s_38f5272c4af8c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3f35139-b098-407d-8f3f-37268864db9b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
