@@ -1,15 +1,16 @@
-import { computed, reactive, ref } from 'vue';
-import { defineStore } from 'pinia';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
-import { useRootStore } from './useRootStore';
-import { useSettingsStore } from './settings.store';
 import {
 	getAdminPanelLoginCode,
 	getCurrentPlan,
 	getCurrentUsage,
 } from '@n8n/rest-api-client/api/cloudPlans';
 import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
+import { defineStore } from 'pinia';
+import { computed, reactive, ref } from 'vue';
+
 import { STORES } from './constants';
+import { useSettingsStore } from './settings.store';
+import { useRootStore } from './useRootStore';
 
 export interface CloudPlanState {
 	initialized: boolean;
@@ -60,8 +61,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 
 	// Check if TRIAL banner was previously dismissed
 	const isBannerDismissed = computed(() => {
-		const dismissed = settingsStore.permanentlyDismissedBanners;
-
+		const dismissed = settingsStore.permanentlyDismissedBanners as string[];
 		return dismissed.includes('TRIAL') || dismissed.includes('TRIAL_OVER');
 	});
 
@@ -133,8 +133,9 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	});
 
 	const hasCloudPlan = computed<boolean>(() => {
-		const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
-		return _isInstanceOwner.value() && settingsStore.isCloudDeployment && !!cloudUserId;
+		const { n8nMetadata } = settingsStore.settings as { n8nMetadata?: { userId?: string } };
+		const isCloud = Boolean(settingsStore.isCloudDeployment);
+		return _isInstanceOwner.value() && isCloud && !!n8nMetadata?.userId;
 	});
 
 	const getUserCloudAccount = async () => {
@@ -223,7 +224,9 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 					clearInterval(interval);
 					return;
 				}
-			} catch {}
+			} catch {
+				// Silently ignore polling errors — the next interval will retry
+			}
 		}, CLOUD_TRIAL_CHECK_INTERVAL);
 	};
 

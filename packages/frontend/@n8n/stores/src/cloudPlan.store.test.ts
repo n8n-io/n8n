@@ -1,4 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
+
 import { useCloudPlanStore } from './cloudPlan.store';
 
 vi.mock('./useRootStore', () => ({

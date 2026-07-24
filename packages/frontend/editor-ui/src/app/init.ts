@@ -116,6 +116,7 @@ export async function initializeAuthenticatedFeatures(
 	const rootStore = useRootStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const cloudPlanStore = useCloudPlanStore();
+	cloudPlanStore.setIsInstanceOwner(() => hasPermission(['instanceOwner']));
 	const projectsStore = useProjectsStore();
 	const rolesStore = useRolesStore();
 	const bannersStore = useBannersStore();
