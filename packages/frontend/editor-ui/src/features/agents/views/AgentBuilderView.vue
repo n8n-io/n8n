@@ -47,6 +47,7 @@ import type {
 	AgentSkill,
 } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
+import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentConfigValidation } from '../composables/useAgentConfigValidation';
@@ -214,7 +215,6 @@ const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
 /** Bumped when the config changes outside the local editor (modal flows, version revert) so the Tasks panel reloads. */
 const tasksReloadKey = ref(0);
-const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
@@ -232,6 +232,7 @@ const builderTelemetry = useAgentBuilderTelemetry({
 	savedConfig: config,
 	connectedTriggers,
 });
+const toolTelemetry = useAgentToolTelemetry(agentId);
 
 /**
  * The backend owns runnable validation so the chat entry point either opens
@@ -820,6 +821,8 @@ const caps = useAgentCapabilitiesActions({
 		trackOpenedAddSkillModal: builderTelemetry.trackOpenedAddSkillModal,
 		trackTriggerListChanged: builderTelemetry.trackTriggerListChanged,
 		trackTriggerAdded: builderTelemetry.trackTriggerAdded,
+		trackRemovedTool: toolTelemetry.trackRemoved,
+		trackRemovedMcpServer: toolTelemetry.trackRemovedMcpServer,
 	},
 });
 // Top-level alias so the template auto-unwraps the ref (nested `caps.appliedSkills`

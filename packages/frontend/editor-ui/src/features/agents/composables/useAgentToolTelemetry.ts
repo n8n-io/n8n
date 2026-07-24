@@ -1,3 +1,4 @@
+import { toValue, type MaybeRefOrGetter } from 'vue';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
@@ -31,11 +32,12 @@ function identityProps(ref: AgentJsonToolRef): {
 	return { custom_id: ref.id };
 }
 
-export function useAgentToolTelemetry(agentId?: string) {
+export function useAgentToolTelemetry(agentId?: MaybeRefOrGetter<string | undefined>) {
 	const telemetry = useTelemetry();
 
 	function agentProps(): { agent_id?: string } {
-		return agentId ? { agent_id: agentId } : {};
+		const resolvedAgentId = toValue(agentId);
+		return resolvedAgentId ? { agent_id: resolvedAgentId } : {};
 	}
 
 	/** Fired when the user clicks Connect on an Available row — a new-ref flow begins. */
@@ -86,5 +88,21 @@ export function useAgentToolTelemetry(agentId?: string) {
 		});
 	}
 
-	return { trackAddStarted, trackAdded, trackAddedMcpServer, trackEdited, trackRemoved };
+	/** Fired when the user confirms removing an MCP server from the config modal. */
+	function trackRemovedMcpServer(server: AgentJsonMcpServerConfig) {
+		telemetry.track(TELEMETRY_EVENT.AGENTS.USER_REMOVED_AGENT_TOOL, {
+			tool_type: 'mcpServer',
+			server_name: server.name,
+			...agentProps(),
+		});
+	}
+
+	return {
+		trackAddStarted,
+		trackAdded,
+		trackAddedMcpServer,
+		trackEdited,
+		trackRemoved,
+		trackRemovedMcpServer,
+	};
 }
