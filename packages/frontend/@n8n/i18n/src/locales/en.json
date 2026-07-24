@@ -4028,7 +4028,6 @@
 	"settings.sourceControl.httpsWarningNotice": "{strong} To create one for GitHub: Go to Settings → Developer settings → Personal access tokens → Tokens (classic). Required scopes: {repo} for private repositories or {publicRepo} for public ones. Other providers are also supported.",
 	"settings.sourceControl.httpsWarningNotice.strong": "Personal Access Token required:",
 	"settings.migrationReport": "Migration Report",
-	"settings.migrationReport.title": "Compatibility report for version {version}",
 	"settings.migrationReport.description": "{compatibleCount} of your {totalCount} workflows are already compatible with version {version}. Review the details below to understand and resolve any compatibility problems. Learn more about all breaking changes in our",
 	"settings.migrationReport.documentationLink": "documentation",
 	"settings.migrationReport.refreshButton": "Refresh",

@@ -1,7 +1,8 @@
 import { createPinia, setActivePinia } from 'pinia';
+
 import { useCloudPlanStore } from './cloudPlan.store';
 
-vi.mock('@n8n/stores/useRootStore', () => ({
+vi.mock('./useRootStore', () => ({
 	useRootStore: vi.fn(() => ({
 		restApiContext: {},
 		baseUrl: 'http://localhost:5678',
@@ -9,7 +10,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 const mockPermanentlyDismissedBanners: string[] = [];
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('./settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({
 		settings: { n8nMetadata: { userId: 'test-user-id' } },
 		isCloudDeployment: true,
@@ -17,21 +18,11 @@ vi.mock('@/app/stores/settings.store', () => ({
 	})),
 }));
 
-vi.mock('@/app/utils/rbac/permissions', () => ({
-	hasPermission: vi.fn(() => true),
-}));
-
 vi.mock('@n8n/rest-api-client/api/cloudPlans', () => ({
 	getAdminPanelLoginCode: vi.fn(),
 	getCurrentPlan: vi.fn(),
 	getCurrentUsage: vi.fn(),
 	getCloudUserInfo: vi.fn(),
-}));
-
-vi.mock('./posthog.store', () => ({
-	usePostHog: vi.fn(() => ({
-		getVariant: vi.fn(),
-	})),
 }));
 
 describe('cloudPlan.store', () => {
@@ -373,6 +364,31 @@ describe('cloudPlan.store', () => {
 			store.state.data = { bannerConfig: { dismissible: false } } as never;
 
 			expect(store.bannerDismissible).toBe(false);
+		});
+	});
+
+	describe('hasCloudPlan', () => {
+		it('should return false when isInstanceOwner is not injected', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+
+			expect(store.hasCloudPlan).toBe(false);
+		});
+
+		it('should return true when isInstanceOwner is injected and returns true', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.setIsInstanceOwner(() => true);
+
+			expect(store.hasCloudPlan).toBe(true);
+		});
+
+		it('should return false when isInstanceOwner returns false', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.setIsInstanceOwner(() => false);
+
+			expect(store.hasCloudPlan).toBe(false);
 		});
 	});
 });

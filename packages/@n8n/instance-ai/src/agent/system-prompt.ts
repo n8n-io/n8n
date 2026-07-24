@@ -115,7 +115,7 @@ ${workspaceRoot ? `\n${getSandboxWorkspaceSection(workspaceRoot)}\n` : ''}
 
 ${getProjectScopeSection(projectId)}
 
-Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. Never call \`data-tables\` or \`parse-file\` without loading \`data-table-manager\` first, never call \`build-workflow\` without loading \`workflow-builder\` first, never call \`create-tasks\` without loading it via \`load_tool\` first (search "create tasks" if it is not visible), and never call \`n8n-docs\` without loading it via \`load_tool\` first (search "n8n docs" if it is not visible). A single turn may need more than one skill when routing requires it (e.g. \`data-table-manager\` then \`workflow-builder\`).
+Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\` / \`load_tool\`).
 
 ## System follow-ups
 

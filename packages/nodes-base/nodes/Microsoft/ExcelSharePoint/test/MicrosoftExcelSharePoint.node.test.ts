@@ -1,12 +1,12 @@
 import { MicrosoftExcel } from '../../Excel/MicrosoftExcel.node';
 import { MicrosoftExcelSharePoint } from '../MicrosoftExcelSharePoint.node';
 
-describe('MicrosoftExcelSharePoint (hidden shell)', () => {
+describe('MicrosoftExcelSharePoint', () => {
 	const node = new MicrosoftExcelSharePoint();
 
-	it('should be hidden from the nodes panel', () => {
+	it('should be visible in the nodes panel', () => {
 		// `hidden` is the flag the editor's visibleNodeTypes filters on
-		expect(node.description.hidden).toBe(true);
+		expect(node.description.hidden).toBeUndefined();
 	});
 
 	it('should not collide with the OneDrive Excel node', () => {
