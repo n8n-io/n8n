@@ -186,6 +186,11 @@ class WebhookRequestHandler {
 		const method = req.method;
 		const { path } = req.params;
 
+		// Cross-origin browser clients can't read the session id unless it's exposed
+		if (this.expectedNodeType === 'mcp') {
+			res.header('Access-Control-Expose-Headers', 'mcp-session-id');
+		}
+
 		if (this.webhookManager.getWebhookMethods) {
 			try {
 				const allowedMethods = await this.webhookManager.getWebhookMethods(path);

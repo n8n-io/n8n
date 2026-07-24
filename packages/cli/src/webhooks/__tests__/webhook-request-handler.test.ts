@@ -312,6 +312,50 @@ describe('WebhookRequestHandler', () => {
 		);
 	});
 
+	describe('CORS exposed headers', () => {
+		const mcpHandler = createWebhookHandlerFor(webhookManager, 'mcp') as (
+			req: WebhookRequest | WebhookOptionsRequest,
+			res: Response,
+		) => Promise<void>;
+
+		const createCrossOriginRequest = (method: IHttpRequestMethods) =>
+			mock<WebhookRequest>({
+				path: '/',
+				method,
+				headers: { origin: 'https://example.com' },
+				params: { path: 'test' },
+			});
+
+		it('should expose the mcp session id header on cross-origin responses for mcp webhooks', async () => {
+			const req = createCrossOriginRequest('POST');
+			const res = mock<Response>();
+			res.status.mockReturnValue(res);
+
+			webhookManager.getWebhookMethods.mockResolvedValue(['GET', 'POST']);
+			webhookManager.executeWebhook.mockResolvedValueOnce({ responseCode: 200, data: {} });
+
+			await mcpHandler(req, res);
+
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Expose-Headers', 'mcp-session-id');
+		});
+
+		it('should not expose the mcp session id header for other webhook types', async () => {
+			const req = createCrossOriginRequest('POST');
+			const res = mock<Response>();
+			res.status.mockReturnValue(res);
+
+			webhookManager.getWebhookMethods.mockResolvedValue(['GET', 'POST']);
+			webhookManager.executeWebhook.mockResolvedValueOnce({ responseCode: 200, data: {} });
+
+			await handler(req, res);
+
+			expect(res.header).not.toHaveBeenCalledWith(
+				'Access-Control-Expose-Headers',
+				expect.anything(),
+			);
+		});
+	});
+
 	describe('CSP sandbox header', () => {
 		it('should set CSP sandbox header on all webhook responses', async () => {
 			const req = mock<WebhookRequest>({
