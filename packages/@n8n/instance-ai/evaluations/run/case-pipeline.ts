@@ -20,7 +20,9 @@ import {
 	cleanupBuild,
 	effectiveTimeoutMs,
 	findAgentArtifactRef,
+	scenariosRequireSerialSeeding,
 	warnAgentSeedDataTablesIgnored,
+	type ScenarioSeedContext,
 } from '../harness/runner';
 import {
 	classifyScenarioExecutionError,
@@ -106,6 +108,21 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		}
 	}
 
+	// Per-build-key execution chain for seed-table cases (see runScenarioRow).
+	const serialExecutionByKey = new Map<string, Promise<unknown>>();
+	async function withSerialSeeding<T>(key: string, fn: () => Promise<T>): Promise<T> {
+		const prev = serialExecutionByKey.get(key) ?? Promise.resolve();
+		const next = prev.then(fn, fn);
+		serialExecutionByKey.set(
+			key,
+			next.then(
+				() => undefined,
+				() => undefined,
+			),
+		);
+		return await next;
+	}
+
 	const runRow = async (inputs: ScenarioRowInputs): Promise<TargetOutput> => {
 		const iteration = inputs._iteration ?? 0;
 		try {
@@ -140,7 +157,13 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		inputs: ScenarioRowInputs,
 		iteration: number,
 	): Promise<TargetOutput> => {
-		const scenario: ExecutionScenario = {
+		// Rows carry only the per-scenario prose; the authored scenario is the
+		// source of truth for typed extras (seedDataTables) — merge it back so
+		// table-backed scenarios seed their declared rows in both drivers.
+		const authoredScenarios = testCaseByFileSlug.get(inputs.testCaseFile)?.executionScenarios ?? [];
+		const scenario: ExecutionScenario = authoredScenarios.find(
+			(s) => s.name === inputs.scenarioName,
+		) ?? {
 			name: inputs.scenarioName,
 			description: inputs.scenarioDescription,
 			dataSetup: inputs.dataSetup,
@@ -151,8 +174,15 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 			build,
 			lane: builtOnLane,
 			buildDurationMs,
+			buildSpend,
 		} = await getOrBuild(iteration, inputs.testCaseFile);
 		const cacheKey = `${String(iteration)}:${inputs.testCaseFile}`;
+		// `claude` spend for this case's build (--build-via-mcp only). Rides on
+		// every row of the case like buildDurationMs — dedupe per (iteration, case)
+		// when summing (persist takes the first defined value per iteration).
+		const buildSpendFields = buildSpend
+			? { buildCostUsd: buildSpend.costUsd, buildTurns: buildSpend.turns }
+			: {};
 
 		// Agent-anchored build: scenarios target the agent and a missing workflow is
 		// not a build failure (helper workflows are its tools) — mirrors the direct loop.
@@ -188,6 +218,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				...(outcome.incomplete ? { incomplete: true } : {}),
 				execErrors: [],
 				buildDurationMs,
+				...buildSpendFields,
 				execDurationMs: 0,
 				nodeCount: build.workflowJsons[0]?.nodes.length ?? 0,
 				threadId: build.threadId,
@@ -210,6 +241,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					build.seedingFailed || build.transportFailure ? 'framework_issue' : 'build_failure',
 				execErrors: build.error ? [build.error] : [],
 				buildDurationMs,
+				...buildSpendFields,
 				execDurationMs: 0,
 				nodeCount: 0,
 				threadId: build.threadId,
@@ -268,6 +300,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 						failureCategory: 'framework_issue',
 						execErrors: [errorMessage],
 						buildDurationMs,
+						...buildSpendFields,
 						execDurationMs: Date.now() - agentExecStart,
 						nodeCount: 0,
 						threadId: build.threadId,
@@ -292,6 +325,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				...(agentResult.incomplete ? { incomplete: true } : {}),
 				execErrors: agentResult.agentEvalResult?.errors ?? [],
 				buildDurationMs,
+				...buildSpendFields,
 				execDurationMs: Date.now() - agentExecStart,
 				nodeCount: 0,
 				threadId: build.threadId,
@@ -304,88 +338,131 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 			// and guards the workflow path below.
 			throw new Error(`No runnable artifact for scenario ${scenario.name}`);
 		}
+		// Captured as a const so the narrowing survives into the closure below.
+		const workflowId = build.workflowId;
 
-		const execStart = Date.now();
-		const nodeCount = build.workflowJsons[0]?.nodes.length ?? 0;
-		let result;
-		for (let attempt = 1; ; attempt++) {
-			try {
-				result = await builtOnLane.tracedExecute({
-					workflowId: build.workflowId,
-					scenario,
-					workflowJsons: build.workflowJsons,
-					buildTrace: build.buildTrace,
-					timeoutMs: effectiveTimeoutMs(
-						testCaseByFileSlug.get(inputs.testCaseFile)?.complexity,
-						args.timeoutMs,
-					),
-				});
-				break;
-			} catch (error: unknown) {
-				const errorMessage = extractErrorMessage(error);
-				if (shouldRetryScenarioExecution(errorMessage, attempt)) {
-					logger.warn(
-						`    [${scenario.name}] execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
-					);
-					await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
-					continue;
-				}
-				// Mirror direct mode's per-scenario guard — without this, n8n API errors,
-				// verifier timeouts, or a per-iteration budget abort from
-				// executeWithLlmMock / verifyChecklist would escape to the driver, come
-				// back as a Run with null outputs, and be misclassified as builder
-				// regressions by the feedback extractor. classifyScenarioExecutionError
-				// stamps framework_issue + a timeout-flavoured rootCause for budget aborts.
-				logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
-				const classified = classifyScenarioExecutionError(errorMessage);
-				return await attachExpectations({
-					buildSuccess: true,
-					workflowId: build.workflowId,
-					passed: false,
-					score: 0,
-					reasoning: classified.reasoning,
-					failureCategory: classified.failureCategory,
-					rootCause: classified.rootCause,
-					execErrors: [errorMessage],
-					buildDurationMs,
-					execDurationMs: Date.now() - execStart,
-					nodeCount,
-					threadId: build.threadId,
-					workflowChecks: build.workflowChecks,
-					workflowJson: build.workflowJsons[0],
-					buildTrace: build.buildTrace,
-					planRejections: build.proxyDecisionStats?.rejection ?? 0,
-				});
-			}
+		// Mirrors the retired direct loop (TRUST-311): a seeded row resets + seeds
+		const seedContext: ScenarioSeedContext | undefined =
+			build.threadId && build.seededScenarioTableIdsByName
+				? { threadId: build.threadId, tableIdsByName: build.seededScenarioTableIdsByName }
+				: undefined;
+		// A scenario that declares seed tables must not run without them (MCP and
+		// prebuilt builds never seed data tables) — executing anyway would grade the
+		// workflow against empty tables and report the miss as a builder failure.
+		if ((scenario.seedDataTables?.length ?? 0) > 0 && !seedContext) {
+			const reason =
+				'Scenario declares seedDataTables but the build provided no seeded-table mapping ' +
+				'(MCP/prebuilt builds do not seed data tables) — refusing to run without the declared rows';
+			logger.error(`    ERROR [${scenario.name}]: ${reason}`);
+			return await attachExpectations({
+				buildSuccess: true,
+				workflowId,
+				passed: false,
+				score: 0,
+				reasoning: reason,
+				failureCategory: 'framework_issue',
+				execErrors: [reason],
+				buildDurationMs,
+				...buildSpendFields,
+				execDurationMs: 0,
+				nodeCount: build.workflowJsons[0]?.nodes.length ?? 0,
+				threadId: build.threadId,
+				buildTrace: build.buildTrace,
+				planRejections: build.proxyDecisionStats?.rejection ?? 0,
+			});
 		}
-		const execDurationMs = Date.now() - execStart;
+		const runWorkflowScenario = async (): Promise<TargetOutput> => {
+			const execStart = Date.now();
+			const nodeCount = build.workflowJsons[0]?.nodes.length ?? 0;
+			let result;
+			for (let attempt = 1; ; attempt++) {
+				try {
+					result = await builtOnLane.tracedExecute({
+						workflowId,
+						scenario,
+						workflowJsons: build.workflowJsons,
+						buildTrace: build.buildTrace,
+						seedContext,
+						timeoutMs: effectiveTimeoutMs(
+							testCaseByFileSlug.get(inputs.testCaseFile)?.complexity,
+							args.timeoutMs,
+						),
+					});
+					break;
+				} catch (error: unknown) {
+					const errorMessage = extractErrorMessage(error);
+					if (shouldRetryScenarioExecution(errorMessage, attempt)) {
+						logger.warn(
+							`    [${scenario.name}] execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
+						);
+						await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+						continue;
+					}
+					// Mirror direct mode's per-scenario guard — without this, n8n API errors,
+					// verifier timeouts, or a per-iteration budget abort from
+					// executeWithLlmMock / verifyChecklist would escape to the driver, come
+					// back as a Run with null outputs, and be misclassified as builder
+					// regressions by the feedback extractor. classifyScenarioExecutionError
+					// stamps framework_issue + a timeout-flavoured rootCause for budget aborts.
+					logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
+					const classified = classifyScenarioExecutionError(errorMessage);
+					return await attachExpectations({
+						buildSuccess: true,
+						workflowId: build.workflowId,
+						passed: false,
+						score: 0,
+						reasoning: classified.reasoning,
+						failureCategory: classified.failureCategory,
+						rootCause: classified.rootCause,
+						execErrors: [errorMessage],
+						buildDurationMs,
+						...buildSpendFields,
+						execDurationMs: Date.now() - execStart,
+						nodeCount,
+						threadId: build.threadId,
+						workflowChecks: build.workflowChecks,
+						workflowJson: build.workflowJsons[0],
+						buildTrace: build.buildTrace,
+						planRejections: build.proxyDecisionStats?.rejection ?? 0,
+					});
+				}
+			}
+			const execDurationMs = Date.now() - execStart;
 
-		// Strip failure fields on pass: the verifier sometimes returns "."
-		// placeholders instead of omitting them.
-		const failureCategory = result.success ? undefined : result.failureCategory;
-		const rootCause = result.success ? undefined : result.rootCause;
+			// Strip failure fields on pass: the verifier sometimes returns "."
+			// placeholders instead of omitting them.
+			const failureCategory = result.success ? undefined : result.failureCategory;
+			const rootCause = result.success ? undefined : result.rootCause;
 
-		return await attachExpectations({
-			buildSuccess: true,
-			workflowId: build.workflowId,
-			scenarioWorkflowId: result.workflowId,
-			passed: result.success,
-			score: result.score,
-			reasoning: result.reasoning,
-			failureCategory,
-			rootCause,
-			...(result.incomplete ? { incomplete: true } : {}),
-			execErrors: result.evalResult?.errors ?? [],
-			evalResult: result.evalResult,
-			buildDurationMs,
-			execDurationMs,
-			nodeCount,
-			threadId: build.threadId,
-			workflowChecks: build.workflowChecks,
-			workflowJson: build.workflowJsons[0],
-			buildTrace: build.buildTrace,
-			planRejections: build.proxyDecisionStats?.rejection ?? 0,
-		});
+			return await attachExpectations({
+				buildSuccess: true,
+				workflowId: build.workflowId,
+				scenarioWorkflowId: result.workflowId,
+				passed: result.success,
+				score: result.score,
+				reasoning: result.reasoning,
+				failureCategory,
+				rootCause,
+				...(result.incomplete ? { incomplete: true } : {}),
+				execErrors: result.evalResult?.errors ?? [],
+				evalResult: result.evalResult,
+				buildDurationMs,
+				...buildSpendFields,
+				execDurationMs,
+				nodeCount,
+				threadId: build.threadId,
+				workflowChecks: build.workflowChecks,
+				workflowJson: build.workflowJsons[0],
+				buildTrace: build.buildTrace,
+				planRejections: build.proxyDecisionStats?.rejection ?? 0,
+			});
+		};
+		// Scenarios of one case share tables by name, so seeded rows must not
+		// interleave — the retired direct loop ran them at concurrency 1; rows now
+		// arrive independently, so the gate is a per-build-key chain instead.
+		return scenariosRequireSerialSeeding(authoredScenarios)
+			? await withSerialSeeding(cacheKey, runWorkflowScenario)
+			: await runWorkflowScenario();
 	};
 
 	return { runRow };

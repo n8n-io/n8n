@@ -1,4 +1,4 @@
-import { AI_GATEWAY_MANAGED_TAG, MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, isDraftAgentConfig, MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
 
 function clearUnknownCredentialId(
 	credentialId: unknown,
@@ -116,6 +116,10 @@ function sanitizeUnknownCredentialsInValue(
  * Replace credential IDs that are not accessible to the agent project with `""`.
  * Walks the config recursively and only targets credential-like fields:
  * `credential`, `credentialId`, and `credentials.*.id`.
+ *
+ * A top-level credential without a model is also cleared so legacy rows
+ * converge to a clean draft instead of failing the `credential ⇒ model`
+ * schema refine.
  */
 export function sanitizeUnknownAgentCredentials(
 	raw: unknown,
@@ -125,5 +129,23 @@ export function sanitizeUnknownAgentCredentials(
 		return raw;
 	}
 
-	return sanitizeUnknownCredentialsInValue(raw, accessibleCredentialIds);
+	const sanitized = sanitizeUnknownCredentialsInValue(raw, accessibleCredentialIds);
+	if (!isRecord(sanitized)) {
+		return sanitized;
+	}
+
+	const model = typeof sanitized.model === 'string' ? sanitized.model : undefined;
+	if (
+		isDraftAgentConfig({ model }) &&
+		typeof sanitized.credential === 'string' &&
+		sanitized.credential !== ''
+	) {
+		sanitized.credential = '';
+	}
+
+	return sanitized;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

@@ -197,6 +197,7 @@ describe('GET /credentials', () => {
 			expect(cred1.scopes).toEqual(
 				[
 					'credential:connect',
+					'credential:createEndUser',
 					'credential:move',
 					'credential:read',
 					'credential:update',
@@ -237,6 +238,7 @@ describe('GET /credentials', () => {
 			expect(cred2.scopes).toEqual(
 				[
 					'credential:connect',
+					'credential:createEndUser',
 					'credential:delete',
 					'credential:move',
 					'credential:read',
@@ -350,6 +352,7 @@ describe('GET /credentials', () => {
 		expect(ownedCred.scopes).toEqual(
 			[
 				'credential:connect',
+				'credential:createEndUser',
 				'credential:move',
 				'credential:read',
 				'credential:update',
@@ -871,6 +874,7 @@ describe('POST /credentials', () => {
 		expect(scopes).toEqual(
 			[
 				'credential:connect',
+				'credential:createEndUser',
 				'credential:delete',
 				'credential:move',
 				'credential:read',

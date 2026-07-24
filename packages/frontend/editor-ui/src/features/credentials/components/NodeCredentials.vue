@@ -1120,12 +1120,10 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					:credential-name="getServiceName(type.name)"
 					:is-connected="isPrivateConnected(type.name)"
 					:connected-account-name="usersStore.currentUser?.email ?? undefined"
-					:can-modify="canEditPrivateCredential(type.name)"
 					:can-connect="canConnectPrivateCredential(type.name)"
-					:readonly="readonly"
 					data-test-id="node-credential-private-row"
 					@connect="onConnectFromRow(type.name)"
-					@modify="editCredential(type.name)"
+					@switch-account="onConnectFromRow(type.name)"
 					@disconnect="onDisconnectFromRow(type.name)"
 				/>
 			</N8nInputLabel>
