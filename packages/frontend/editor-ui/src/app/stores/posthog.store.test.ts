@@ -264,6 +264,69 @@ describe('Posthog store', () => {
 			expect(posthog.getVariant('test')).toEqual('variant');
 		});
 
+		describe('trackExposure', () => {
+			it('fires the native exposure event for a resolved variant', () => {
+				const posthog = usePostHog();
+				posthog.init({ test: 'variant' });
+
+				posthog.trackExposure('test');
+
+				expect(window.posthog?.capture).toHaveBeenCalledWith('$feature_flag_called', {
+					$feature_flag: 'test',
+					$feature_flag_response: 'variant',
+				});
+			});
+
+			it('does not fire the exposure event twice for the same variant', () => {
+				const posthog = usePostHog();
+				posthog.init({ test: 'variant' });
+
+				posthog.trackExposure('test');
+				posthog.trackExposure('test');
+
+				expect(window.posthog?.capture).toHaveBeenCalledTimes(1);
+			});
+
+			it('re-fires the exposure event when the variant changes', () => {
+				const posthog = usePostHog();
+				posthog.init({ test: 'variant' });
+
+				posthog.trackExposure('test');
+				posthog.overrides.test = 'variant-2';
+				posthog.trackExposure('test');
+
+				expect(window.posthog?.capture).toHaveBeenCalledTimes(2);
+				expect(window.posthog?.capture).toHaveBeenLastCalledWith('$feature_flag_called', {
+					$feature_flag: 'test',
+					$feature_flag_response: 'variant-2',
+				});
+			});
+
+			it('skips flags with no variant or a disabled boolean flag', () => {
+				const posthog = usePostHog();
+				posthog.init({ enabled_flag: false });
+
+				posthog.trackExposure('missing_flag');
+				posthog.trackExposure('enabled_flag');
+
+				expect(window.posthog?.capture).not.toHaveBeenCalled();
+			});
+
+			it('re-fires the exposure event after reset clears the dedupe cache', () => {
+				const posthog = usePostHog();
+				posthog.overrides.test = 'variant';
+
+				posthog.trackExposure('test');
+				posthog.trackExposure('test');
+				expect(window.posthog?.capture).toHaveBeenCalledTimes(1);
+
+				posthog.reset();
+				posthog.trackExposure('test');
+
+				expect(window.posthog?.capture).toHaveBeenCalledTimes(2);
+			});
+		});
+
 		afterEach(() => {
 			resetStores();
 			window.localStorage.clear();
