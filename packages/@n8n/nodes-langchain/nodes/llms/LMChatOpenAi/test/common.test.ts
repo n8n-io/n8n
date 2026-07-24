@@ -208,6 +208,20 @@ describe('prepareAdditionalResponsesParams', () => {
 		expect(text).toEqual({ text: { verbosity: 'high', format: { type: 'text' } } });
 	});
 
+	it('does not include text config when textOptions.type is empty', () => {
+		const body = prepareAdditionalResponsesParams({
+			textFormat: { textOptions: { type: '', verbosity: undefined } },
+		} as unknown as IDataObject);
+		expect(body).not.toHaveProperty('text');
+	});
+
+	it('does not include text config when textOptions result in empty object', () => {
+		const body = prepareAdditionalResponsesParams({
+			textFormat: { textOptions: { type: '' } },
+		} as unknown as IDataObject);
+		expect(body).not.toHaveProperty('text');
+	});
+
 	it('sets reasoning effort', () => {
 		const body = prepareAdditionalResponsesParams({
 			reasoningEffort: 'low',
