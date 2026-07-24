@@ -11,35 +11,13 @@ import type {
 
 import { ALL_CONDITIONS, ANY_CONDITION, ROWS_LIMIT_DEFAULT, type FilterType } from './constants';
 import { DATA_TABLE_ID_FIELD } from './fields';
-import { buildGetManyFilter, isFieldArray, isMatchType, getDataTableProxyExecute } from './utils';
-
-/**
- * Recursively converts Date objects to ISO strings in an object
- * This ensures that all output data is JSON-compatible
- */
-function convertDatesToIsoStrings<T>(obj: T): T {
-	if (obj === null || obj === undefined) {
-		return obj;
-	}
-
-	if (obj instanceof Date) {
-		return obj.toISOString() as T;
-	}
-
-	if (Array.isArray(obj)) {
-		return obj.map(convertDatesToIsoStrings) as T;
-	}
-
-	if (typeof obj === 'object') {
-		const converted: Record<string, unknown> = {};
-		for (const [key, value] of Object.entries(obj)) {
-			converted[key] = convertDatesToIsoStrings(value);
-		}
-		return converted as T;
-	}
-
-	return obj;
-}
+import {
+	buildGetManyFilter,
+	convertDatesToIsoStrings,
+	getDataTableProxyExecute,
+	isFieldArray,
+	isMatchType,
+} from './utils';
 
 export function getSelectFields(
 	displayOptions: IDisplayOptions,

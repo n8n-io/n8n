@@ -10,7 +10,7 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import * as row from './row/Row.resource';
 import * as table from './table/Table.resource';
 import { DATA_TABLE_ID_FIELD } from '../common/fields';
-import { getDataTableProxyExecute } from '../common/utils';
+import { convertDatesToIsoStrings, getDataTableProxyExecute } from '../common/utils';
 
 type DataTableNodeType = AllEntities<{
 	row: DataTableRowOperation;
@@ -18,6 +18,8 @@ type DataTableNodeType = AllEntities<{
 }>;
 
 const BULK_OPERATIONS = ['insert'] as const;
+
+const ROW_WRITE_OPERATIONS = ['insert', 'update', 'upsert', 'deleteRows'] as const;
 
 function hasBulkExecute(operation: string): operation is (typeof BULK_OPERATIONS)[number] {
 	return (BULK_OPERATIONS as readonly string[]).includes(operation);
@@ -116,6 +118,19 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				}
 			}
 		}
+	}
+
+	const nodeVersion = this.getNode().typeVersion;
+	const shouldConvertDates =
+		dataTableNodeData.resource === 'row' &&
+		nodeVersion >= 1.1 &&
+		(ROW_WRITE_OPERATIONS as readonly string[]).includes(dataTableNodeData.operation);
+
+	if (shouldConvertDates) {
+		operationResult = operationResult.map((item) => ({
+			...item,
+			json: convertDatesToIsoStrings(item.json),
+		}));
 	}
 
 	return [operationResult];

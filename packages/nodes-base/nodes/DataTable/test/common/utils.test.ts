@@ -3,7 +3,11 @@ import type { INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { ANY_CONDITION, ALL_CONDITIONS, type FieldEntry } from '../../common/constants';
-import { dataObjectToApiInput, buildGetManyFilter } from '../../common/utils';
+import {
+	buildGetManyFilter,
+	convertDatesToIsoStrings,
+	dataObjectToApiInput,
+} from '../../common/utils';
 
 const mockNode: INode = {
 	id: 'test-node',
@@ -460,5 +464,48 @@ describe('buildGetManyFilter', () => {
 				buildGetManyFilter(fieldEntries, ALL_CONDITIONS, { createdAt: 'date' }, mockNode),
 			).toThrowError(`Invalid date string '${invalidDateString}' for column 'createdAt'`);
 		});
+	});
+});
+
+describe('convertDatesToIsoStrings', () => {
+	it('should convert Date objects to ISO strings', () => {
+		const date = new Date('2025-12-11T10:30:59.000Z');
+		expect(convertDatesToIsoStrings(date)).toBe('2025-12-11T10:30:59.000Z');
+	});
+
+	it('should convert nested Date fields in objects', () => {
+		const createdAt = new Date('2025-12-11T10:30:59.000Z');
+		const updatedAt = new Date('2025-12-12T11:16:53.385Z');
+
+		expect(
+			convertDatesToIsoStrings({
+				id: 1,
+				createdAt,
+				updatedAt,
+				customDate: createdAt,
+				status: 'active',
+			}),
+		).toEqual({
+			id: 1,
+			createdAt: '2025-12-11T10:30:59.000Z',
+			updatedAt: '2025-12-12T11:16:53.385Z',
+			customDate: '2025-12-11T10:30:59.000Z',
+			status: 'active',
+		});
+	});
+
+	it('should leave strings and numbers unchanged', () => {
+		expect(convertDatesToIsoStrings('2025-12-11T10:30:59.000Z')).toBe('2025-12-11T10:30:59.000Z');
+		expect(convertDatesToIsoStrings(42)).toBe(42);
+	});
+
+	it('should handle null and undefined', () => {
+		expect(convertDatesToIsoStrings(null)).toBeNull();
+		expect(convertDatesToIsoStrings(undefined)).toBeUndefined();
+	});
+
+	it('should convert dates in arrays', () => {
+		const date = new Date('2025-12-11T10:30:59.000Z');
+		expect(convertDatesToIsoStrings([date, 'text'])).toEqual(['2025-12-11T10:30:59.000Z', 'text']);
 	});
 });
