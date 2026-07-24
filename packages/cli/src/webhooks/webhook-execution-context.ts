@@ -24,13 +24,15 @@ export class WebhookExecutionContext {
 
 	/**
 	 * Evaluates a simple expression from the webhook description.
+	 * Description templates are trusted (node-author code), so they run on the
+	 * in-process engine and need no isolate.
 	 */
 	evaluateSimpleWebhookDescriptionExpression<T extends boolean | number | string | unknown[]>(
 		propertyName: keyof IWebhookDescription,
 		executeData?: IExecuteData,
 		defaultValue?: T,
 	): T | undefined {
-		return this.workflow.expression.getSimpleParameterValue(
+		return this.workflow.expression.getTrustedSimpleParameterValue(
 			this.workflowStartNode,
 			this.webhookData.webhookDescription[propertyName],
 			this.executionMode,
@@ -48,7 +50,7 @@ export class WebhookExecutionContext {
 		executeData?: IExecuteData,
 		defaultValue?: T,
 	): T | undefined {
-		return this.workflow.expression.getComplexParameterValue(
+		return this.workflow.expression.getTrustedComplexParameterValue(
 			this.workflowStartNode,
 			this.webhookData.webhookDescription[propertyName],
 			this.executionMode,

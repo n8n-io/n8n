@@ -12,7 +12,9 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
-import type { Mock } from 'vitest';
+import { WorkflowExpression } from 'n8n-workflow';
+import { Webhook as WebhookNode } from 'n8n-nodes-base/nodes/Webhook/Webhook.node';
+import type { Mock, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
@@ -578,6 +580,165 @@ describe('LiveWebhooks', () => {
 			await expect(
 				liveWebhooks.executeWebhook(buildRequest(), mock<Response>()),
 			).resolves.toBeDefined();
+		});
+	});
+
+	describe('isolate acquisition strategy', () => {
+		let acquireSpy: MockInstance;
+		let releaseSpy: MockInstance;
+
+		beforeEach(() => {
+			acquireSpy = vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate');
+			releaseSpy = vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate');
+		});
+
+		afterEach(() => {
+			acquireSpy.mockRestore();
+			releaseSpy.mockRestore();
+		});
+
+		const buildNode = (
+			parameters: INode['parameters'],
+			type = 'n8n-nodes-base.webhook',
+		): INode => ({
+			id: 'webhook-node-1',
+			name: NODE_NAME,
+			type,
+			typeVersion: 2.2,
+			position: [0, 0],
+			parameters,
+		});
+
+		const runWebhookWithNode = async (node: INode) => {
+			// Plain objects, not vitest-mock-extended deep mocks: the deep-mock
+			// proxy fabricates a `toJSON` function on nested objects, which makes
+			// `deepCopy` (used by parameter normalization in the Workflow
+			// constructor) collapse the node parameters to undefined.
+			const activeVersion = {
+				versionId: 'v1',
+				workflowId: WORKFLOW_ID,
+				nodes: [node],
+				connections: {},
+				authors: 'test-user',
+			} as unknown as WorkflowHistory;
+			const workflowEntity = {
+				id: WORKFLOW_ID,
+				name: 'Test Workflow',
+				active: true,
+				activeVersionId: activeVersion.versionId,
+				nodes: [node],
+				connections: {},
+				staticData: {},
+				settings: {},
+				activeVersion,
+				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
+			} as unknown as WorkflowEntity;
+			const request = setupExecuteWebhookMocks(workflowEntity);
+			// Use the real Webhook node description so the Workflow constructor's
+			// parameter normalization keeps the parameters under test (the shared
+			// mock declares `properties: []`, which would strip them all).
+			nodeTypes.getByNameAndVersion.mockReturnValue(new WebhookNode() as unknown as INodeType);
+			await liveWebhooks.executeWebhook(request, mock<Response>());
+		};
+
+		const simpleConditions = {
+			options: { caseSensitive: true, leftValue: '', typeValidation: 'loose', version: 2 },
+			combinator: 'and',
+			conditions: [
+				{
+					id: '1',
+					leftValue: '={{ $json.body.campaign_id }}',
+					rightValue: 'match-me',
+					operator: { type: 'string', operation: 'equals' },
+				},
+			],
+		};
+
+		it('skips acquisition for a webhook node without expressions', async () => {
+			await runWebhookWithNode(buildNode({ path: WEBHOOK_PATH, httpMethod: 'GET', options: {} }));
+
+			expect(acquireSpy).not.toHaveBeenCalled();
+			expect(releaseSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('skips acquisition for simple "Only Run If" conditions on the webhook node', async () => {
+			await runWebhookWithNode(
+				buildNode({
+					path: WEBHOOK_PATH,
+					httpMethod: 'GET',
+					onlyRunIfMode: 'conditions',
+					onlyRunIfConditions: simpleConditions,
+					options: {},
+				}),
+			);
+
+			expect(acquireSpy).not.toHaveBeenCalled();
+			expect(releaseSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('acquires when a parameter contains an expression', async () => {
+			await runWebhookWithNode(
+				buildNode({
+					path: WEBHOOK_PATH,
+					httpMethod: 'GET',
+					options: { responseData: '={{ $json.body.answer }}' },
+				}),
+			);
+
+			expect(acquireSpy).toHaveBeenCalledTimes(1);
+			expect(releaseSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('acquires when an "Only Run If" condition needs the expression engine', async () => {
+			const complexConditions = {
+				...simpleConditions,
+				conditions: [
+					{
+						...simpleConditions.conditions[0],
+						leftValue: '={{ $json.body.campaign_id.toUpperCase() }}',
+					},
+				],
+			};
+			await runWebhookWithNode(
+				buildNode({
+					path: WEBHOOK_PATH,
+					httpMethod: 'GET',
+					onlyRunIfMode: 'conditions',
+					onlyRunIfConditions: complexConditions,
+					options: {},
+				}),
+			);
+
+			expect(acquireSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('acquires in expression mode', async () => {
+			await runWebhookWithNode(
+				buildNode({
+					path: WEBHOOK_PATH,
+					httpMethod: 'GET',
+					onlyRunIfMode: 'expression',
+					onlyRunIfExpression: '={{ $json.body.x === 1 }}',
+					options: {},
+				}),
+			);
+
+			expect(acquireSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('always acquires for non-webhook node types, even without expressions', async () => {
+			await runWebhookWithNode(
+				buildNode(
+					{
+						path: WEBHOOK_PATH,
+						httpMethod: 'GET',
+						options: {},
+					},
+					'n8n-nodes-base.formTrigger',
+				),
+			);
+
+			expect(acquireSpy).toHaveBeenCalledTimes(1);
 		});
 	});
 });

@@ -243,6 +243,78 @@ export const responseBinaryPropertyNameProperty: INodeProperties = {
 	description: 'Name of the binary property to return',
 };
 
+export const onlyRunIfModeProperty: INodeProperties = {
+	displayName: 'Only Run Workflow If',
+	name: 'onlyRunIfMode',
+	type: 'options',
+	options: [
+		{
+			name: 'Always',
+			value: 'all',
+			description: 'Run the workflow for every incoming request',
+		},
+		{
+			name: 'Conditions Match',
+			value: 'conditions',
+			description:
+				'Run only when the request matches simple conditions on its fields. Faster than an expression for busy endpoints.',
+		},
+		{
+			name: 'Expression Is True',
+			value: 'expression',
+			description: 'Run only when an expression evaluates to true',
+		},
+	],
+	default: 'all',
+	displayOptions: {
+		show: {
+			'@version': [{ _cnd: { gte: 2.2 } }],
+		},
+	},
+	description:
+		"Whether to filter incoming requests before running the workflow. Requests that don't match get a 200 response and don't create an execution.",
+};
+
+export const onlyRunIfConditionsProperty: INodeProperties = {
+	displayName: 'Conditions',
+	name: 'onlyRunIfConditions',
+	type: 'filter',
+	default: {},
+	typeOptions: {
+		filter: {
+			caseSensitive: true,
+			typeValidation: 'loose',
+			version: 2,
+		},
+	},
+	displayOptions: {
+		show: {
+			'@version': [{ _cnd: { gte: 2.2 } }],
+			onlyRunIfMode: ['conditions'],
+		},
+	},
+	// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
+	description:
+		"Reference request fields with <code>{{ $json.body.field }}</code>, <code>{{ $json.headers['name'] }}</code>, or <code>{{ $json.query.param }}</code>. Plain field references like these are the fastest way to filter busy endpoints. If a condition can't be checked, the workflow runs anyway and the error is logged.",
+};
+
+export const onlyRunIfExpressionProperty: INodeProperties = {
+	displayName: 'Expression',
+	name: 'onlyRunIfExpression',
+	type: 'string',
+	default: '',
+	placeholder: "{{ $json.body.campaign_id === 'user-research-invite' }}",
+	displayOptions: {
+		show: {
+			'@version': [{ _cnd: { gte: 2.2 } }],
+			onlyRunIfMode: ['expression'],
+		},
+	},
+	// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
+	description:
+		'Expression evaluated against the incoming request. The workflow runs only if the expression returns true. <code>$json</code> exposes the request as <code>{ body, headers, params, query }</code>. If the expression errors, the workflow runs anyway and the error is logged.',
+};
+
 export const optionsProperty: INodeProperties = {
 	displayName: 'Options',
 	name: 'options',
@@ -304,6 +376,12 @@ export const optionsProperty: INodeProperties = {
 			type: 'string',
 			default: '',
 			placeholder: "{{ $json.body.campaign_id === 'user-research-invite' }}",
+			// Deprecated on Webhook >= 2.2; still used by earlier versions and the Wait node (1.x)
+			displayOptions: {
+				show: {
+					'@version': [{ _cnd: { lt: 2.2 } }],
+				},
+			},
 			// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
 			description:
 				'Expression evaluated against the incoming request. The workflow will run only if the expression returns true. <code>$json</code> exposes the request as <code>{ body, headers, params, query }</code>. Requests that do not match receive a 200 response, without creating an execution. If the expression fails to evaluate, the request is allowed through and the error is logged.',

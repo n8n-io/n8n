@@ -284,4 +284,153 @@ describe('Test Webhook Node', () => {
 			expect(context.evaluateExpression).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('onlyRunIf modes', () => {
+		const node = new Webhook();
+		let context: ReturnType<typeof mock<IWebhookFunctions>>;
+		let req: ReturnType<typeof mock<Request>>;
+
+		const conditionsFor = (rightValue: string) => ({
+			options: { caseSensitive: true, leftValue: '', typeValidation: 'loose', version: 2 },
+			combinator: 'and',
+			conditions: [
+				{
+					id: '1',
+					leftValue: '={{ $json.body.campaign_id }}',
+					rightValue,
+					operator: { type: 'string', operation: 'equals' },
+				},
+			],
+		});
+
+		const setup = (parameters: Record<string, unknown>, typeVersion = 2.2) => {
+			context = mock<IWebhookFunctions>({ nodeHelpers: mock(), logger: mock() });
+			req = mock<Request>();
+
+			context.getRequestObject.mockReturnValue(req);
+			context.getResponseObject.mockReturnValue(mock<Response>());
+			context.getChildNodes.mockReturnValue([]);
+			context.getNode.mockReturnValue({
+				type: 'n8n-nodes-base.webhook',
+				typeVersion,
+				name: 'Webhook',
+				parameters,
+			} as any);
+			context.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'options') return (parameters.options as object) ?? {};
+				if (paramName === 'responseMode') return 'onReceived';
+				if (paramName === 'httpMethod') return 'POST';
+				return undefined;
+			});
+
+			req.headers = { 'content-type': 'application/json' };
+			req.params = {};
+			req.query = {};
+			req.body = { campaign_id: 'match-me' };
+			Object.defineProperty(req, 'ips', { value: [], configurable: true });
+			Object.defineProperty(req, 'ip', { value: '127.0.0.1', configurable: true });
+		};
+
+		afterEach(() => vi.clearAllMocks());
+
+		it('runs the workflow when simple conditions match, without the expression engine', async () => {
+			setup({ onlyRunIfMode: 'conditions', onlyRunIfConditions: conditionsFor('match-me') });
+
+			const result = await node.webhook(context);
+
+			expect(result.workflowData).toBeDefined();
+			expect(context.evaluateExpression).not.toHaveBeenCalled();
+		});
+
+		it('skips execution when simple conditions do not match', async () => {
+			setup({ onlyRunIfMode: 'conditions', onlyRunIfConditions: conditionsFor('other') });
+
+			const result = await node.webhook(context);
+
+			expect(result).toEqual({});
+			expect(context.evaluateExpression).not.toHaveBeenCalled();
+		});
+
+		it('runs the workflow when the conditions list is empty', async () => {
+			setup({
+				onlyRunIfMode: 'conditions',
+				onlyRunIfConditions: { ...conditionsFor('x'), conditions: [] },
+			});
+
+			const result = await node.webhook(context);
+
+			expect(result.workflowData).toBeDefined();
+		});
+
+		it('ignores the legacy options.onlyRunIf when conditions mode is active', async () => {
+			setup({
+				onlyRunIfMode: 'conditions',
+				onlyRunIfConditions: conditionsFor('match-me'),
+				options: { onlyRunIf: '={{ false }}' },
+			});
+
+			const result = await node.webhook(context);
+
+			expect(result.workflowData).toBeDefined();
+			expect(context.evaluateExpression).not.toHaveBeenCalled();
+		});
+
+		it('allows the request through and warns when condition evaluation throws', async () => {
+			const strict = conditionsFor('match-me');
+			strict.options.typeValidation = 'strict';
+			strict.conditions[0].operator = { type: 'number', operation: 'equals' };
+			setup({ onlyRunIfMode: 'conditions', onlyRunIfConditions: strict });
+
+			const result = await node.webhook(context);
+
+			expect(result.workflowData).toBeDefined();
+			expect(context.logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Only Run If'),
+				expect.objectContaining({ nodeName: 'Webhook' }),
+			);
+		});
+
+		it('evaluates onlyRunIfExpression in expression mode', async () => {
+			setup({
+				onlyRunIfMode: 'expression',
+				onlyRunIfExpression: "={{ $json.body.campaign_id === 'match-me' }}",
+			});
+			context.evaluateExpression.mockReturnValue(false);
+
+			const result = await node.webhook(context);
+
+			expect(result).toEqual({});
+			expect(context.evaluateExpression).toHaveBeenCalledWith(
+				"{{ $json.body.campaign_id === 'match-me' }}",
+				0,
+			);
+		});
+
+		it('ignores the legacy options.onlyRunIf on version 2.2, so the default mode runs every request', async () => {
+			setup({ options: { onlyRunIf: '={{ false }}' } });
+
+			const result = await node.webhook(context);
+
+			expect(result.workflowData).toBeDefined();
+			expect(context.evaluateExpression).not.toHaveBeenCalled();
+		});
+
+		it('evaluates the legacy options.onlyRunIf on versions below 2.2', async () => {
+			setup({ options: { onlyRunIf: '={{ false }}' } }, 2.1);
+			context.evaluateExpression.mockReturnValue(false);
+
+			const result = await node.webhook(context);
+
+			expect(result).toEqual({});
+			expect(context.evaluateExpression).toHaveBeenCalledWith('{{ false }}', 0);
+		});
+
+		it('ignores the new mode parameters on versions below 2.2', async () => {
+			setup({ onlyRunIfMode: 'conditions', onlyRunIfConditions: conditionsFor('other') }, 2.1);
+
+			const result = await node.webhook(context);
+
+			expect(result.workflowData).toBeDefined();
+		});
+	});
 });

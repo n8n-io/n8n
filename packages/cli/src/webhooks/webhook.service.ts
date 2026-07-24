@@ -279,7 +279,7 @@ export class WebhookService {
 				continue;
 			}
 
-			let nodeWebhookPath = workflow.expression.getSimpleParameterValue(
+			let nodeWebhookPath = workflow.expression.getTrustedSimpleParameterValue(
 				node,
 				webhookDescription.path,
 				mode,
@@ -301,7 +301,7 @@ export class WebhookService {
 				nodeWebhookPath = nodeWebhookPath.slice(0, -1);
 			}
 
-			const isFullPath: boolean = workflow.expression.getSimpleParameterValue(
+			const isFullPath: boolean = workflow.expression.getTrustedSimpleParameterValue(
 				node,
 				webhookDescription.isFullPath,
 				'internal',
@@ -309,7 +309,7 @@ export class WebhookService {
 				undefined,
 				false,
 			) as boolean;
-			const restartWebhook: boolean = workflow.expression.getSimpleParameterValue(
+			const restartWebhook: boolean = workflow.expression.getTrustedSimpleParameterValue(
 				node,
 				webhookDescription.restartWebhook,
 				'internal',
@@ -325,7 +325,7 @@ export class WebhookService {
 				restartWebhook,
 			);
 
-			const webhookMethods = workflow.expression.getSimpleParameterValue(
+			const webhookMethods = workflow.expression.getTrustedSimpleParameterValue(
 				node,
 				webhookDescription.httpMethod,
 				mode,

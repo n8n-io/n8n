@@ -80,6 +80,7 @@ describe('HookContext', () => {
 		nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 		expression.getParameterValue.mockImplementation((value) => value);
 		expression.getSimpleParameterValue.mockImplementation((_, value) => value);
+		expression.getTrustedSimpleParameterValue.mockImplementation((_, value) => value);
 	});
 
 	describe('getActivationMode', () => {

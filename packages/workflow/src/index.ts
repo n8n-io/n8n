@@ -92,6 +92,7 @@ export { ExpressionExtensions, type Alias, type AliasCompletion } from './extens
 export * as ExpressionParser from './extensions/expression-parser';
 export { NativeMethods } from './native-methods';
 export * from './node-parameters/filter-parameter';
+export * from './node-parameters/request-field-expression';
 export * from './node-parameters/parameter-type-validation';
 export * from './node-parameters/node-parameter-value-type-guard';
 export * from './node-parameters/path-utils';

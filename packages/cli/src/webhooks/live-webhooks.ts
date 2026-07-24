@@ -3,7 +3,12 @@ import { WorkflowsConfig } from '@n8n/config';
 import { WorkflowRepository, type WorkflowEntity, type WorkflowHistory } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
-import { Workflow, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import {
+	Workflow,
+	CHAT_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+	matchSimpleRequestFieldPath,
+} from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods, IWorkflowBase } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -25,6 +30,38 @@ import type {
 	WebhookAccessControlOptions,
 	WebhookRequest,
 } from './webhook.types';
+
+/**
+ * Whether handling a webhook request for this start node needs an isolate
+ * acquired for the duration of the request. Only the base Webhook node can
+ * skip it — its webhook phase is fully first-party code that evaluates no
+ * user expressions unless the node parameters contain one: description
+ * templates run as trusted (in-process) and "Only Run If" conditions made of
+ * simple request-field references are resolved natively. Every other node
+ * type acquires upfront, since its webhook code may evaluate expressions the
+ * parameter scan cannot see.
+ */
+function webhookPhaseNeedsIsolate(node: INode): boolean {
+	if (node.type !== WEBHOOK_NODE_TYPE) return true;
+	const scan = (value: unknown, inNativeConditions: boolean): boolean => {
+		if (typeof value === 'string') {
+			return (
+				value.startsWith('=') &&
+				!(inNativeConditions && matchSimpleRequestFieldPath(value) !== null)
+			);
+		}
+		if (Array.isArray(value)) {
+			return value.some((item) => scan(item, inNativeConditions));
+		}
+		if (value !== null && typeof value === 'object') {
+			return Object.entries(value).some(([key, item]) =>
+				scan(item, inNativeConditions || key === 'onlyRunIfConditions'),
+			);
+		}
+		return false;
+	};
+	return scan(node.parameters, false);
+}
 
 /**
  * Service for handling the execution of live webhooks, i.e. webhooks
@@ -131,7 +168,12 @@ export class LiveWebhooks implements IWebhookManager {
 			projectId: ownerProjectId,
 		});
 
-		await workflow.expression.acquireIsolate();
+		// Skip acquiring an isolate when the webhook phase provably evaluates no
+		// user expressions. `releaseIsolate()` is a no-op when nothing was acquired.
+		const startNode = workflow.getNode(webhook.node);
+		if (startNode === null || webhookPhaseNeedsIsolate(startNode)) {
+			await workflow.expression.acquireIsolate();
+		}
 		try {
 			const webhookData = this.webhookService
 				.getNodeWebhooks(workflow, workflow.getNode(webhook.node) as INode, additionalData)

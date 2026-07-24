@@ -49,7 +49,7 @@ export function getNodeWebhookUrl(
 		baseUrl = isTest === true ? additionalData.webhookTestBaseUrl : additionalData.webhookBaseUrl;
 	}
 
-	const path = workflow.expression.getSimpleParameterValue(
+	const path = workflow.expression.getTrustedSimpleParameterValue(
 		node,
 		webhookDescription.path,
 		mode,
@@ -57,7 +57,7 @@ export function getNodeWebhookUrl(
 	);
 	if (path === undefined) return;
 
-	const isFullPath: boolean = workflow.expression.getSimpleParameterValue(
+	const isFullPath: boolean = workflow.expression.getTrustedSimpleParameterValue(
 		node,
 		webhookDescription.isFullPath,
 		mode,
