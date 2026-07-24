@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddInstanceCredentials1784000000053 implements ReversibleMigration {
+export class AddInstanceCredentials1784815940111 implements ReversibleMigration {
 	async up({ escape, runQuery, isPostgres, schemaBuilder, tablePrefix }: MigrationContext) {
 		const tableName = escape.tableName('credentials_entity');
 		const columnName = escape.columnName('usageScope');

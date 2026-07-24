@@ -219,7 +219,7 @@ import { AddHostRunIdToInstanceAiCheckpoints1784000000050 } from '../common/1784
 import { BackfillInstanceAiEventLog1784000000051 } from '../common/1784000000051-BackfillInstanceAiEventLog';
 import { CreateWorkflowReviewRequestTables1784000000052 } from '../common/1784000000052-CreateWorkflowReviewRequestTables';
 import { AddStoredAtToAgentExecution1784815940110 } from '../common/1784815940110-AddStoredAtToAgentExecution';
-import { AddInstanceCredentials1784000000053 } from '../common/1784000000053-AddInstanceCredentials';
+import { AddInstanceCredentials1784815940111 } from '../common/1784815940111-AddInstanceCredentials';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -442,7 +442,7 @@ const sqliteMigrations: Migration[] = [
 	BackfillInstanceAiEventLog1784000000051,
 	CreateWorkflowReviewRequestTables1784000000052,
 	AddStoredAtToAgentExecution1784815940110,
-	AddInstanceCredentials1784000000053,
+	AddInstanceCredentials1784815940111,
 ];
 
 export { sqliteMigrations };
