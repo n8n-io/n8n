@@ -62,9 +62,9 @@ export type AgentEvalVote = z.infer<typeof agentEvalVoteSchema>;
 export const createAgentEvalDatasetSchema = z
 	.object({
 		name: z.string().min(1).max(128),
-		description: z.string().optional(),
+		description: z.string().nullable().optional(),
 		agentId: z.string().min(1),
-		columnMapping: agentEvalColumnMappingSchema.optional(),
+		columnMapping: agentEvalColumnMappingSchema.nullable().optional(),
 	})
 	.and(datasetRefSchema);
 export type CreateAgentEvalDatasetDto = z.infer<typeof createAgentEvalDatasetSchema>;

@@ -84,6 +84,19 @@ describe('createAgentEvalDatasetSchema', () => {
 		).toBe(true);
 	});
 
+	it('accepts an explicit null description and columnMapping', () => {
+		expect(
+			createAgentEvalDatasetSchema.safeParse({
+				name: 'Support cases',
+				agentId: 'agent-1',
+				description: null,
+				columnMapping: null,
+				datasetSource: 'data_table',
+				datasetRef: { dataTableId: 'dt-1' },
+			}).success,
+		).toBe(true);
+	});
+
 	it('rejects a missing agentId', () => {
 		expect(
 			createAgentEvalDatasetSchema.safeParse({
