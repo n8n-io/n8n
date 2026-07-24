@@ -296,6 +296,7 @@ describe('AgentsBuilderToolsService', () => {
 				ok: true,
 				config: { ...baseConfig, integrations: [] },
 				configHash: getAgentConfigHash({ ...baseConfig, integrations: [] }),
+				status: 'draft',
 			});
 			expect(result).not.toHaveProperty('configMutated');
 		});
@@ -1579,7 +1580,8 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('creates multiple tasks in one call and returns only ids, names, and enabled, not objectives or crons, in order', async () => {
-			const { service, agentTaskService } = makeService();
+			const { service, agentsService, agentTaskService } = makeService();
+			agentsService.findById.mockResolvedValue(makeAgent());
 			agentTaskService.createTasks.mockResolvedValue([
 				makeTaskDto(),
 				makeTaskDto({ id: 'task-2', ...taskTwoInput }),
@@ -1630,7 +1632,8 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('surfaces a service error (e.g. invalid cron) for the whole batch', async () => {
-			const { service, agentTaskService } = makeService();
+			const { service, agentsService, agentTaskService } = makeService();
+			agentsService.findById.mockResolvedValue(makeAgent());
 			agentTaskService.createTasks.mockRejectedValue(new Error('Invalid cron expression'));
 
 			const result = await getCreateTasksTool(service).handler!({ tasks: [taskOneInput] }, ctx);
@@ -1639,7 +1642,8 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('returns an error when the agent is not in the project', async () => {
-			const { service, agentTaskService } = makeService();
+			const { service, agentsService, agentTaskService } = makeService();
+			agentsService.findById.mockResolvedValue(makeAgent());
 			agentTaskService.createTasks.mockRejectedValue(new Error('Agent "agent-1" not found'));
 
 			const result = await getCreateTasksTool(service).handler!({ tasks: [taskOneInput] }, ctx);
@@ -1680,6 +1684,7 @@ describe('AgentsBuilderToolsService', () => {
 				agentId,
 				projectId,
 				user,
+				'builder',
 				undefined,
 			);
 			expect(result).toEqual({
@@ -1707,6 +1712,7 @@ describe('AgentsBuilderToolsService', () => {
 				agentId,
 				projectId,
 				user,
+				'builder',
 				'v-history',
 			);
 			expect(result).toEqual({
@@ -1758,7 +1764,12 @@ describe('AgentsBuilderToolsService', () => {
 			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:unpublish'], false, {
 				projectId,
 			});
-			expect(agentPublishService.unpublishAgent).toHaveBeenCalledWith(agentId, projectId);
+			expect(agentPublishService.unpublishAgent).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				user,
+				'builder',
+			);
 			expect(result).toEqual({
 				ok: true,
 				configMutated: true,
