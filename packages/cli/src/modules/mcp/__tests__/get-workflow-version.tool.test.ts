@@ -66,16 +66,41 @@ describe('get-workflow-version MCP tool', () => {
 			const tool = buildTool();
 			const result = await tool.handler({ workflowId: 'wf-1', versionId: 'v1' }, callContext);
 
-			const content = result.structuredContent as { nodes: Array<Record<string, unknown>> };
+			const content = result.structuredContent as {
+				nodes: Array<Record<string, unknown>>;
+				nodeGroups: Array<Record<string, unknown>>;
+			};
 			expect(content).toMatchObject({
 				versionId: 'v1',
 				workflowId: 'wf-1',
 				connections: { 'HTTP Request': { main: [] } },
-				nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-1'] }],
+				// Read path presents groups by member node names; persisted ids stay internal.
+				nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeNames: ['HTTP Request'] }],
 			});
+			expect(content.nodeGroups[0]).not.toHaveProperty('nodeIds');
 			expect(content.nodes).toHaveLength(1);
 			expect(content.nodes[0]).not.toHaveProperty('credentials');
 			expect(content.nodes[0]).toMatchObject({ name: 'HTTP Request' });
+		});
+
+		test('omits group member ids that no longer resolve to a node', async () => {
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(createWorkflow());
+			(workflowHistoryService.getVersion as Mock).mockResolvedValue(
+				createWorkflowHistoryVersion({
+					workflowId: 'wf-1',
+					versionId: 'v1',
+					nodes: [nodeWithCredentials],
+					connections: {},
+					nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-1', 'ghost'] }],
+				}),
+			);
+
+			const tool = buildTool();
+			const result = await tool.handler({ workflowId: 'wf-1', versionId: 'v1' }, callContext);
+
+			expect(result.structuredContent).toMatchObject({
+				nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeNames: ['HTTP Request'] }],
+			});
 		});
 
 		test('returns a structured friendly error when the version is not found', async () => {

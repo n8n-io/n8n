@@ -195,7 +195,9 @@ const buildOperationInputSchema = (canvasGroupsEnabled: boolean) =>
 					}),
 				)
 				.optional()
-				.describe('For setNodeGroups. Replaces all node groups; pass [] to clear.'),
+				.describe(
+					'For setNodeGroups. Replaces all node groups; pass [] to clear. Group members are node names, not ids.',
+				),
 			...(canvasGroupsEnabled
 				? {
 						groupName: z.string().optional().describe('For removeNodeGroup / updateNodeGroup.'),
