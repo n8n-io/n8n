@@ -67,7 +67,7 @@ export class McpTrigger extends Node {
 			},
 		],
 		outputs: [],
-		sensitiveOutputFields: ['headers.authorization', 'headers.cookie'],
+		sensitiveOutputFields: ['headers.authorization', 'headers.cookie', 'headers.x-auth-token'],
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
@@ -131,6 +131,13 @@ export class McpTrigger extends Node {
 				placeholder: 'webhook',
 				required: true,
 				description: 'The base path for this MCP server',
+			},
+			{
+				displayName: 'Show Headers',
+				name: 'showHeaders',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the incoming request headers are shown in the node output',
 			},
 		],
 		webhooks: [
@@ -233,13 +240,14 @@ export class McpTrigger extends Node {
 						await mcpServer.handlePostMessage(req, resp, connectedTools, serverName, gateResult);
 
 					if (wasToolCall) {
+						// Opt-in: incoming headers carry the caller's credentials, so they are only
+						// emitted when asked for. Lets multi-user MCP clients pass caller identity
+						// (e.g. x-user-id, x-tenant-id) for per-user routing and auth.
+						const showHeaders = context.getNodeParameter('showHeaders', false) as boolean;
 						const workflowData = {
 							...(toolCallInfo && { mcpToolCall: toolCallInfo }),
 							...(messageId && { mcpMessageId: messageId }),
-							// Expose the incoming request headers to the workflow, matching the
-							// Webhook node. Lets multi-user MCP clients pass caller identity
-							// (e.g. x-user-id, x-tenant-id) for per-user routing and auth.
-							headers: req.headers,
+							...(showHeaders && { headers: req.headers }),
 						};
 						return {
 							noWebhookResponse: true,

@@ -292,7 +292,6 @@ describe('McpTrigger', () => {
 							json: {
 								mcpToolCall: { toolName: 'test-tool', arguments: { arg1: 'value1' } },
 								mcpMessageId: 'msg-123',
-								headers: {},
 							},
 						},
 					],
@@ -300,7 +299,7 @@ describe('McpTrigger', () => {
 			});
 		});
 
-		it('should expose incoming request headers in the tool call workflow data', async () => {
+		it('should expose incoming request headers when Show Headers is on', async () => {
 			const headers = {
 				'x-user-id': 'user-42',
 				'x-tenant-id': 'tenant-7',
@@ -330,16 +329,50 @@ describe('McpTrigger', () => {
 			mockContext.getRequestObject.mockReturnValue(req as never);
 			mockContext.getResponseObject.mockReturnValue(resp as never);
 			mockContext.getNode.mockReturnValue(node);
+			mockContext.getNodeParameter.mockImplementation((name, fallback) =>
+				name === 'showHeaders' ? true : fallback,
+			);
 
 			const result = await mcpTrigger.webhook(mockContext);
 
 			expect(result.workflowData?.[0]?.[0]?.json?.headers).toEqual(headers);
 		});
 
-		it('should declare authorization and cookie headers as sensitive output fields', () => {
+		it('should not expose incoming request headers while Show Headers is off', async () => {
+			// The default. Headers carry the caller's credentials, so an existing workflow must
+			// not start collecting them in its execution data on upgrade.
+			const req = createMockRequest({
+				method: 'POST',
+				query: { sessionId: 'test-session' },
+				headers: { authorization: 'Bearer secret-token' },
+			});
+			const resp = createMockResponse();
+			const node = mock<INode>({ typeVersion: 2, name: 'MCP Server Trigger' });
+
+			mockMcpServer.getSessionId.mockReturnValue('test-session');
+			mockMcpServer.handlePostMessage.mockResolvedValue({
+				wasToolCall: true,
+				toolCallInfo: { toolName: 'test-tool', arguments: { arg1: 'value1' } },
+				messageId: 'msg-123',
+				relaySessionId: undefined,
+				needsListToolsRelay: false,
+			});
+
+			mockContext.getWebhookName.mockReturnValue('default');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(result.workflowData?.[0]?.[0]?.json).not.toHaveProperty('headers');
+		});
+
+		it('should declare the credential-bearing headers as sensitive output fields', () => {
 			expect(mcpTrigger.description.sensitiveOutputFields).toEqual([
 				'headers.authorization',
 				'headers.cookie',
+				'headers.x-auth-token',
 			]);
 		});
 
