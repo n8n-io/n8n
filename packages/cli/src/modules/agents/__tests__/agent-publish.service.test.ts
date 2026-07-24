@@ -2,9 +2,11 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { Telemetry } from '@/telemetry';
 
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentPublishService } from '../agent-publish.service';
@@ -104,6 +106,7 @@ function makeService() {
 	const subAgentCleanupService = mock<SubAgentCleanupService>();
 	const agentValidationService = mock<AgentValidationService>();
 	const credentialsService = mock<CredentialsService>();
+	const telemetry = mock<Telemetry>();
 	const { trx, taskRepo, transaction } = makeTransaction();
 
 	Object.defineProperty(agentRepository, 'manager', {
@@ -141,6 +144,7 @@ function makeService() {
 		subAgentCleanupService,
 		agentValidationService,
 		credentialsService,
+		telemetry,
 	);
 
 	return {
@@ -156,6 +160,7 @@ function makeService() {
 		subAgentCleanupService,
 		agentValidationService,
 		credentialsService,
+		telemetry,
 		trx,
 		taskRepo,
 	};
@@ -184,7 +189,7 @@ describe('AgentPublishService', () => {
 			issues: [{ code: 'missing_credential', path: 'credential', capability: { kind: 'agent' } }],
 		});
 
-		await expect(service.publishAgent(agentId, projectId, user)).rejects.toThrow(
+		await expect(service.publishAgent(agentId, projectId, user, 'editor')).rejects.toThrow(
 			'Agent configuration has errors that must be resolved before publishing',
 		);
 
@@ -220,7 +225,7 @@ describe('AgentPublishService', () => {
 			],
 		});
 
-		await expect(service.publishAgent(agentId, projectId, user, 'v1')).rejects.toThrow(
+		await expect(service.publishAgent(agentId, projectId, user, 'editor', 'v1')).rejects.toThrow(
 			'Agent configuration has errors that must be resolved before publishing',
 		);
 		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledTimes(1);
@@ -246,6 +251,7 @@ describe('AgentPublishService', () => {
 			customToolsService,
 			runtimeCacheService,
 			agentValidationService,
+			telemetry,
 			trx,
 		} = makeService();
 		const configuredTools = { tool: { descriptor: { name: 'tool' } } };
@@ -274,7 +280,7 @@ describe('AgentPublishService', () => {
 		customToolsService.snapshotConfiguredTools.mockReturnValue(configuredTools as never);
 		agentTaskRepository.findByAgentId.mockResolvedValue([task] as never);
 
-		const result = await service.publishAgent(agentId, projectId, user);
+		const result = await service.publishAgent(agentId, projectId, user, 'builder');
 
 		expect(result.draftValidation).toBe(draftValidation);
 		expect(agentValidationService.validateAgentEntityConfiguration).toHaveBeenCalledTimes(1);
@@ -303,10 +309,17 @@ describe('AgentPublishService', () => {
 		);
 		expect(agent.activeVersionId).toBe(versionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.AGENT_PUBLISHED, {
+			agent_id: agentId,
+			project_id: projectId,
+			user_id: user.id,
+			source: 'builder',
+			version_id: versionId,
+		});
 	});
 
 	it('rejects publishing when a configured task body is missing', async () => {
-		const { service, agentRepository, runtimeCacheService } = makeService();
+		const { service, agentRepository, runtimeCacheService, telemetry } = makeService();
 		const agent = makeAgent({
 			schema: {
 				...schema,
@@ -315,12 +328,13 @@ describe('AgentPublishService', () => {
 		});
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-		await expect(service.publishAgent(agentId, projectId, user)).rejects.toThrow(
+		await expect(service.publishAgent(agentId, projectId, user, 'editor')).rejects.toThrow(
 			'Cannot publish agent with missing task bodies: missing_task',
 		);
 
 		expect(agent.activeVersionId).toBeNull();
 		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+		expect(telemetry.track).not.toHaveBeenCalled();
 	});
 
 	it('rejects publishing when a configured skill body is missing', async () => {
@@ -333,7 +347,7 @@ describe('AgentPublishService', () => {
 		});
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-		await expect(service.publishAgent(agentId, projectId, user)).rejects.toThrow(
+		await expect(service.publishAgent(agentId, projectId, user, 'editor')).rejects.toThrow(
 			'Cannot publish agent with missing skill bodies: missing_skill',
 		);
 
@@ -349,6 +363,7 @@ describe('AgentPublishService', () => {
 			agentValidationService,
 			chatIntegrationService,
 			subAgentCleanupService,
+			telemetry,
 		} = makeService();
 		const agent = makeAgent({
 			versionId: 'v1',
@@ -358,14 +373,16 @@ describe('AgentPublishService', () => {
 		});
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		const result = await service.publishAgent(agentId, projectId, user);
+		const result = await service.publishAgent(agentId, projectId, user, 'editor');
 		expect(result).toStrictEqual({ agent });
 		expect(Object.hasOwn(result, 'draftValidation')).toBe(false);
 		expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
 		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
 		expect(agentValidationService.validateAgentEntityConfiguration).not.toHaveBeenCalled();
+		// Idempotent no-op publish (already the active version) must not emit.
+		expect(telemetry.track).not.toHaveBeenCalled();
 
-		await service.unpublishAgent(agentId, projectId);
+		await service.unpublishAgent(agentId, projectId, user, 'editor');
 		expect(agent.activeVersionId).toBeNull();
 		expect(agent.versionId).not.toBe('v1');
 		expect(subAgentCleanupService.removeSubAgentFromParents).toHaveBeenCalledWith(
@@ -380,17 +397,30 @@ describe('AgentPublishService', () => {
 			},
 			{ deleteSubscriptions: false },
 		);
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.AGENT_UNPUBLISHED, {
+			agent_id: agentId,
+			project_id: projectId,
+			user_id: user.id,
+			source: 'editor',
+		});
 
 		const draftVersion = agent.versionId;
 		if (!draftVersion) throw new Error('Expected unpublish to assign a draft version');
 		agentHistoryRepository.saveVersion.mockResolvedValue(makeHistory({ versionId: draftVersion }));
-		await service.publishAgent(agentId, projectId, user);
+		await service.publishAgent(agentId, projectId, user, 'editor');
 
 		expect(agent.activeVersionId).toBe(draftVersion);
 		expect(agentHistoryRepository.saveVersion).toHaveBeenCalledWith(
 			expect.objectContaining({ versionId: draftVersion }),
 			expect.anything(),
 		);
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.AGENT_PUBLISHED, {
+			agent_id: agentId,
+			project_id: projectId,
+			user_id: user.id,
+			source: 'editor',
+			version_id: draftVersion,
+		});
 	});
 
 	it('switches to an existing history row when publishing a specific version', async () => {
@@ -401,7 +431,7 @@ describe('AgentPublishService', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(target);
 
-		const result = await service.publishAgent(agentId, projectId, user, 'v1');
+		const result = await service.publishAgent(agentId, projectId, user, 'editor', 'v1');
 
 		expect(result).toStrictEqual({ agent });
 		expect(Object.hasOwn(result, 'draftValidation')).toBe(false);
@@ -495,7 +525,7 @@ describe('AgentPublishService', () => {
 		const agent = makeAgent({ integrations: integrations as never });
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-		await service.publishAgent(agentId, projectId, user, undefined, {
+		await service.publishAgent(agentId, projectId, user, 'channel_connect', undefined, {
 			ignoreDraftIntegrations: true,
 		});
 

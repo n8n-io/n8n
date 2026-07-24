@@ -5,7 +5,7 @@ const sourceTypeColumn = 'sourceType';
 const sourceTypesBefore = ['execution', 'chat_message_attachment', 'agent_file'];
 const sourceTypesAfter = [...sourceTypesBefore, 'agent_chat_attachment'];
 
-export class CreateAgentChatAttachmentsTable1784819939398 implements ReversibleMigration {
+export class CreateAgentChatAttachmentsTable1784905879579 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
 		const { createTable, column } = ctx.schemaBuilder;
 

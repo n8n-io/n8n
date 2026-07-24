@@ -7,7 +7,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'AddAttachmentsToAgentExecution1784820682891';
+const MIGRATION_NAME = 'AddAttachmentsToAgentExecution1784905879580';
 
 describe('AddAttachmentsToAgentExecution Migration', () => {
 	let dataSource: DataSource;

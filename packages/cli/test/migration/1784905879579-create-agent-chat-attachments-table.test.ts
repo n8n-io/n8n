@@ -9,7 +9,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'CreateAgentChatAttachmentsTable1784819939398';
+const MIGRATION_NAME = 'CreateAgentChatAttachmentsTable1784905879579';
 
 describe('CreateAgentChatAttachmentsTable Migration', () => {
 	let dataSource: DataSource;

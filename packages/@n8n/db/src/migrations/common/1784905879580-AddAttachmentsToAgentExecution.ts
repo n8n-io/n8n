@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddAttachmentsToAgentExecution1784820682891 implements ReversibleMigration {
+export class AddAttachmentsToAgentExecution1784905879580 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
 		await addColumns(
 			'agent_execution',

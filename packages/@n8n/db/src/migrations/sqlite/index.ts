@@ -58,6 +58,7 @@ import { AddProjectIdToInstanceAiThread1784000000028 } from './1784000000028-Add
 import { AllowAzureStoredAt1784000000034 } from './1784000000034-AllowAzureStoredAt';
 import { DropAgentDescriptionFromAgents1784000000037 } from './1784000000037-DropAgentDescriptionFromAgents';
 import { AddRecurringCronScheduleKind1784000000045 } from './1784000000045-AddRecurringCronScheduleKind';
+import { AddAvailableInMcpToAgents1784897791636 } from './1784897791636-AddAvailableInMcpToAgents';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -221,8 +222,8 @@ import { CreateWorkflowReviewRequestTables1784000000052 } from '../common/178400
 import { AddStoredAtToAgentExecution1784815940110 } from '../common/1784815940110-AddStoredAtToAgentExecution';
 import { AddInstanceCredentials1784815940111 } from '../common/1784815940111-AddInstanceCredentials';
 import { CreateAgentEvalTables1784815940112 } from '../common/1784815940112-CreateAgentEvalTables';
-import { CreateAgentChatAttachmentsTable1784819939398 } from '../common/1784819939398-CreateAgentChatAttachmentsTable';
-import { AddAttachmentsToAgentExecution1784820682891 } from '../common/1784820682891-AddAttachmentsToAgentExecution';
+import { CreateAgentChatAttachmentsTable1784905879579 } from '../common/1784905879579-CreateAgentChatAttachmentsTable';
+import { AddAttachmentsToAgentExecution1784905879580 } from '../common/1784905879580-AddAttachmentsToAgentExecution';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -447,8 +448,9 @@ const sqliteMigrations: Migration[] = [
 	AddStoredAtToAgentExecution1784815940110,
 	AddInstanceCredentials1784815940111,
 	CreateAgentEvalTables1784815940112,
-	CreateAgentChatAttachmentsTable1784819939398,
-	AddAttachmentsToAgentExecution1784820682891,
+	AddAvailableInMcpToAgents1784897791636,
+	CreateAgentChatAttachmentsTable1784905879579,
+	AddAttachmentsToAgentExecution1784905879580,
 ];
 
 export { sqliteMigrations };
