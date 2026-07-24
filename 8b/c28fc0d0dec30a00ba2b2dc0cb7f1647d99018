@@ -1,0 +1,37 @@
+packages/cli/src/executions/execution-push-resume.service.ts
+  s_b5ea67f95e0bc8::t_827662674bbfea 11
+  s_b5ea67f95e0bc8::t_ad24c229dae6ab 21
+  s_b5ea67f95e0bc8::t_8a70bc039869df 88,98
+packages/cli/src/push/terminal-delivery.md
+  s_b5ea67f95e0bc8::t_2d3592524ff366 1,7-8,10,36,51-53,67,91,98-99,121
+packages/cli/src/push/abstract.push.ts
+  s_b5ea67f95e0bc8::t_116d6ed153d650 88
+packages/cli/src/push/terminal-execution-event-meta.ts
+  s_b5ea67f95e0bc8::t_14e70c74e49f3d 12-14
+packages/@n8n/api-types/src/push/execution.ts
+  s_b5ea67f95e0bc8::t_a45bbe133912e4 56-57
+  s_b5ea67f95e0bc8::t_c9d876b1542782 71-72
+  s_b5ea67f95e0bc8::t_66dd4f90c11d70 37-38
+  s_b5ea67f95e0bc8::t_2ff20caf0f3d39 78-79
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  s_b5ea67f95e0bc8::t_20d051fbf79ed4 32
+  s_b5ea67f95e0bc8::t_35cba97a628103 464,473
+packages/@n8n/api-types/src/push/resume.ts
+  s_b5ea67f95e0bc8::t_a3f41b67a11008 15-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "8bc28fc0d0dec30a00ba2b2dc0cb7f1647d99018",
+  "prompts": {},
+  "sessions": {
+    "s_b5ea67f95e0bc8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "603d7ab7-f1a2-453b-8ac4-f91c4365d8c7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
