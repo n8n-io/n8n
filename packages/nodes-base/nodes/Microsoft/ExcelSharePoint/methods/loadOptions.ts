@@ -1,6 +1,7 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
 import { parseAddress } from '../../Excel/v2/helpers/utils';
+import { fetchTableColumnNames } from '../helpers/tableRead';
 import { resolveWorkbookRoot, validatePathSegment } from '../helpers/utils';
 import { microsoftApiRequest } from '../transport';
 
@@ -45,4 +46,22 @@ export async function getWorksheetColumnRowSkipColumnToMatchOn(
 	return (await readHeaderRow.call(this))
 		.filter((column) => column !== columnToMatchOn)
 		.map((column) => ({ name: column, value: column }));
+}
+
+export async function getTableColumns(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const workbookRoot = await resolveWorkbookRoot.call(this);
+	// Load-options contexts take (name, fallback, options) — the execute-style
+	// 4-arg read would silently drop extractValue here.
+	const tableId = validatePathSegment(
+		this.getNode(),
+		'Table',
+		this.getNodeParameter('table', '', { extractValue: true }) as string,
+	);
+	const tableEndpoint = `${workbookRoot}/workbook/tables/${encodeURIComponent(tableId)}`;
+	return (await fetchTableColumnNames.call(this, tableEndpoint)).map((column) => ({
+		name: column,
+		value: column,
+	}));
 }

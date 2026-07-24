@@ -548,6 +548,57 @@ describe('AgentValidationService — structured issues', () => {
 		);
 	});
 
+	it('flags a vector store whose derived tool name collides with a configured tool', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent(
+				{
+					...runnableConfig,
+					tools: [{ type: 'custom', id: 'search_product_docs' }],
+					vectorStores: [
+						{
+							provider: 'qdrant',
+							name: 'product-docs',
+							credential: 'qdrant-cred',
+							useWhen: 'Search product docs',
+							embedding: {
+								model: 'openai/text-embedding-3-small',
+								credential: 'embed-cred',
+							},
+							collectionName: 'product-docs',
+						},
+					],
+				},
+				{},
+				{
+					tools: {
+						search_product_docs: {
+							code: '',
+							descriptor: { name: 'search_product_docs' },
+						},
+					} as unknown as Agent['tools'],
+				},
+			),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.status).toBe('invalid');
+		expect(result.issues).toEqual(
+			expect.arrayContaining([
+				{
+					code: 'invalid_value',
+					path: 'vectorStores.0.name',
+					capability: { kind: 'vectorStore', id: 'product-docs', index: 0 },
+				},
+			]),
+		);
+	});
+
 	it('flags an enabled task with an invalid schedule while keeping its body available, but ignores the same invalid body on a disabled task', async () => {
 		const { service, agentRepository, agentTaskRepository } = makeService();
 		agentTaskRepository.findByAgentId.mockResolvedValue([

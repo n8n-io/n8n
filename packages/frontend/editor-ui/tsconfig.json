@@ -9,7 +9,8 @@
 			"../@n8n/chat/src",
 			"../@n8n/design-system/src",
 			"../@n8n/frontend-module-sdk/src",
-			"../@n8n/frontend-utils/src"
+			"../@n8n/frontend-utils/src",
+			"../@n8n/frontend-constants/src"
 		],
 		"noEmit": true,
 		"types": [
@@ -25,11 +26,14 @@
 			"@n8n/constants*": ["../../@n8n/constants/src*"],
 			"@n8n/frontend-module-sdk": ["../@n8n/frontend-module-sdk/src/index.ts"],
 			"@n8n/frontend-utils*": ["../@n8n/frontend-utils/src*"],
+			"@n8n/frontend-constants*": ["../@n8n/frontend-constants/src*"],
 			"@n8n/chat*": ["../@n8n/chat/src*"],
 			"@n8n/chat-hub*": ["../../@n8n/chat-hub/src*"],
 			"@n8n/design-system*": ["../@n8n/design-system/src*"],
 			"@n8n/i18n*": ["../@n8n/i18n/src*"],
 			"@n8n/stores*": ["../@n8n/stores/src*"],
+			"@n8n/telemetry": ["../../@n8n/telemetry/src/index.ts"],
+			"@n8n/telemetry*": ["../../@n8n/telemetry/src*"],
 			"@n8n/api-types*": ["../../@n8n/api-types/src*"],
 			"@n8n/utils*": ["../../@n8n/utils/src*"],
 			"@n8n/expression-runtime": ["./vite/expression-runtime-stub.ts"]

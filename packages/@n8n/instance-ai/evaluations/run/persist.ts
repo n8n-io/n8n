@@ -5,27 +5,35 @@
 // crash path that still writes whatever completed when the run threw.
 // ---------------------------------------------------------------------------
 
-import { mkdirSync, writeFileSync } from 'fs';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
 import { aggregateResults } from './aggregator';
 import type { McpBuildSpend } from './build-orchestrator';
+import { parseTargetOutput, reshapeLangSmithRuns, type ReshapeRunRow } from './reshape';
+import { roundRobinCaseRows } from './rows';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
 import type { CliArgs } from '../cli/args';
 import type { ComparisonOutcome, ComparisonResult } from '../comparison/compare';
 import { formatComparisonMarkdown, type RerunHint } from '../comparison/format';
 import { evaluateGate, isGatedTier, type GateResult } from '../comparison/gate';
+import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import type { EvalLogger } from '../harness/logger';
 import { extractErrorMessage } from '../harness/transient-error';
 import { rollupCaseVerification } from '../summary';
-import type { MultiRunEvaluation, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
+import type {
+	BuildExpectationResult,
+	MultiRunEvaluation,
+	WorkflowTestCase,
+	WorkflowTestCaseResult,
+} from '../types';
 import { caseDisplayPrompt } from '../utils/conversation-text';
 
 /**
  * Sum per-build `claude` spend into run-level numbers, or undefined when no
  * MCP builds were recorded (so non-MCP runs add nothing to their outputs).
- * Last-attempt semantics (see McpBuildSpend): totals are a lower bound when
- * builds were retried.
+ * Each entry already sums every attempt of its build (see McpBuildSpend), so
+ * the totals are the run's true spend.
  */
 export function summarizeMcpBuildSpend(
 	spend: McpBuildSpend[] | undefined,
@@ -127,6 +135,108 @@ export function ciRerunHint(): RerunHint | undefined {
 
 /** What `runEval` produces on success — the aggregation plus the LangSmith-only
  *  comparison metadata (undefined in direct-loop mode). */
+
+// ---------------------------------------------------------------------------
+// Row sink — crash recovery
+// ---------------------------------------------------------------------------
+
+/** Journals one JSON line per completed row so a run that dies mid-flight
+ *  (budget abort, lane meltdown, OOM) still leaves recoverable verdicts.
+ *  Both drivers feed it; `runEvalAndPersist` reads it back on the crash path. */
+export interface RowSink {
+	path: string;
+	append: (row: ReshapeRunRow) => void;
+	readRows: () => ReshapeRunRow[];
+}
+
+export function createRowSink(outputDir: string | undefined): RowSink {
+	const dir = outputDir ?? process.cwd();
+	mkdirSync(dir, { recursive: true });
+	const path = join(dir, 'eval-rows.jsonl');
+	// Truncate any previous run's file so recovery never mixes runs.
+	writeFileSync(path, '');
+	return {
+		path,
+		append(row) {
+			try {
+				appendFileSync(path, `${JSON.stringify(row)}\n`);
+			} catch {
+				// The sink must never fail a row.
+			}
+		},
+		readRows() {
+			try {
+				return readFileSync(path, 'utf8')
+					.split('\n')
+					.filter(Boolean)
+					.flatMap((line) => {
+						try {
+							return [JSON.parse(line) as ReshapeRunRow];
+						} catch {
+							return []; // torn final line from a hard crash
+						}
+					});
+			} catch {
+				return [];
+			}
+		},
+	};
+}
+
+/** Reshape sink rows back into per-iteration results, keeping only COMPLETE
+ *  iterations (every expected row present) — the retired direct loop's
+ *  guarantee that persisted iterations are whole and index-aligned, so
+ *  never-run scenarios are not misreported as failures in a crash artifact. */
+function recoverCompleteIterations(
+	sinkRows: ReshapeRunRow[],
+	testCasesWithFiles: WorkflowTestCaseWithFile[],
+): WorkflowTestCaseResult[][] {
+	const rowsPerIteration = roundRobinCaseRows(testCasesWithFiles).length;
+	if (rowsPerIteration === 0) return [];
+	const byIteration = new Map<number, ReshapeRunRow[]>();
+	for (const row of sinkRows) {
+		const inputs = row.run.inputs as { _iteration?: number } | undefined;
+		const iteration = inputs?._iteration ?? 0;
+		const group = byIteration.get(iteration) ?? [];
+		group.push(row);
+		byIteration.set(iteration, group);
+	}
+	const complete = [...byIteration.entries()]
+		.filter(([, rows]) => rows.length === rowsPerIteration)
+		.sort(([a], [b]) => a - b);
+	if (complete.length === 0) return [];
+	// Renumber to dense iterations so reshape doesn't stub the gaps.
+	const renumbered = complete.flatMap(([, rows], denseIndex) =>
+		rows.map((row) => ({
+			run: {
+				inputs: { ...(row.run.inputs ?? {}), _iteration: denseIndex },
+				outputs: row.run.outputs,
+			},
+		})),
+	);
+	// Rebuild the judge-verdict side band from the verdicts each row embeds —
+	// reshape reads only this map (the in-memory one died with the run), and
+	// without it recovered rows would lose their expectation units.
+	const buildExpectationsByKey = new Map<string, BuildExpectationResult[]>();
+	for (const row of renumbered) {
+		const inputs = row.run.inputs as { _iteration?: number; testCaseFile?: string };
+		const output = parseTargetOutput(row.run.outputs);
+		if (!inputs.testCaseFile || !output?.expectationResults?.length) continue;
+		const key = `${String(inputs._iteration ?? 0)}:${inputs.testCaseFile}`;
+		if (!buildExpectationsByKey.has(key))
+			buildExpectationsByKey.set(key, output.expectationResults);
+	}
+	return reshapeLangSmithRuns(
+		renumbered,
+		testCasesWithFiles,
+		complete.length,
+		new Map(),
+		buildExpectationsByKey,
+		undefined,
+		new Map(),
+	);
+}
+
 export interface EvalRunOutput {
 	evaluation: MultiRunEvaluation;
 	experimentName?: string;
@@ -144,6 +254,10 @@ export interface PersistEvalConfig {
 	commitSha: string | undefined;
 	rerun: RerunHint | undefined;
 	mcpBuildSpend: McpBuildSpend[];
+	/** Journal of completed rows; read back to recover a crashed run. */
+	rowSink?: RowSink;
+	/** Needed to reshape recovered sink rows on the crash path. */
+	testCasesWithFiles?: WorkflowTestCaseWithFile[];
 }
 
 export interface PersistedEval extends EvalRunOutput {
@@ -193,10 +307,21 @@ export async function runEvalAndPersist(
 	} finally {
 		if (!persisted) {
 			try {
+				// Prefer sink recovery — row-granular and fed by BOTH drivers; fall
+				// back to the direct driver's per-iteration channel.
+				const sinkRows = config.rowSink?.readRows() ?? [];
+				const recovered =
+					sinkRows.length > 0 && config.testCasesWithFiles
+						? recoverCompleteIterations(sinkRows, config.testCasesWithFiles)
+						: [];
+				const runResults = recovered.length > 0 ? recovered : partialResults;
 				const evaluation: MultiRunEvaluation =
-					partialResults.length > 0
-						? aggregateResults(partialResults, partialResults.length)
+					runResults.length > 0
+						? aggregateResults(runResults, runResults.length)
 						: { totalRuns: config.iterations, testCases: [] };
+				const recoverySlugByTestCase = config.testCasesWithFiles
+					? new Map(config.testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]))
+					: undefined;
 				const { jsonPath } = writeEvalResults(
 					evaluation,
 					Date.now() - config.startTime,
@@ -204,14 +329,14 @@ export async function runEvalAndPersist(
 					undefined,
 					undefined,
 					config.commitSha,
-					undefined,
+					recoverySlugByTestCase,
 					config.rerun,
 					undefined,
 					config.mcpBuildSpend,
 					undefined,
 				);
 				config.logger.error(
-					`Eval run did not finish cleanly — wrote partial results (${String(partialResults.length)} iteration(s)) to ${jsonPath}`,
+					`Eval run did not finish cleanly — wrote partial results (${String(runResults.length)} iteration(s)) to ${jsonPath}`,
 				);
 			} catch (writeError: unknown) {
 				config.logger.error(
@@ -304,6 +429,15 @@ export function writeEvalResults(
 				passHatK: terminalRate(ea.passHatK),
 			})),
 			threadIds: tc.runs.map((run) => run.threadId ?? null),
+			// `claude` build spend per iteration (--build-via-mcp only) — the
+			// dedupe-safe source for per-case cost (LangSmith feedback repeats the
+			// value on every row of a case's build).
+			...(tc.runs.some((run) => run.buildCostUsd !== undefined)
+				? {
+						buildCostUsdPerRun: tc.runs.map((run) => run.buildCostUsd ?? null),
+						buildTurnsPerRun: tc.runs.map((run) => run.buildTurns ?? null),
+					}
+				: {}),
 			scenarios: tc.executionScenarios.map((sa) => ({
 				name: sa.scenario.name,
 				passCount: sa.passCount,
