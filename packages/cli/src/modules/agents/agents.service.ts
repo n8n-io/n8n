@@ -14,6 +14,7 @@ import { v4 as uuid } from 'uuid';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentKnowledgeService } from './agent-knowledge.service';
+import { AgentExecutionService } from './agent-execution.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentTestChatService } from './agent-test-chat.service';
 import { Agent } from './entities/agent.entity';
@@ -39,6 +40,7 @@ export class AgentsService {
 		private readonly agentTaskRepository: AgentTaskRepository,
 		private readonly subAgentCleanupService: SubAgentCleanupService,
 		private readonly eventService: EventService,
+		private readonly agentExecutionService: AgentExecutionService,
 	) {}
 
 	async create(
@@ -248,6 +250,8 @@ export class AgentsService {
 		for (const integration of agent.integrations ?? []) {
 			await chatIntegrationService.disconnectChannel(agentId, integration);
 		}
+
+		await this.agentExecutionService.deleteExecutionLogsForAgent(agentId);
 
 		await this.agentRepository.remove(agent);
 
