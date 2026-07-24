@@ -249,3 +249,71 @@ describe('findProviderShapeViolation', () => {
 		expect(findProviderShapeViolation(googleDocs, { replies: [{}] })).toBeUndefined();
 	});
 });
+
+describe('OpenAI completion text normalizer', () => {
+	const info = (pathname: string) => ({ method: 'POST', pathname, hostname: 'api.openai.com' });
+
+	it('stringifies an object embedded as Responses output text', () => {
+		const spec = {
+			type: 'json' as const,
+			body: {
+				object: 'response',
+				output: [
+					{
+						type: 'message',
+						content: [{ type: 'output_text', text: { quotes: ['a', 'b'] } }],
+					},
+				],
+			},
+		};
+		applyProviderShapeNormalizers(info('/v1/responses'), spec);
+		const body = spec.body as { output: Array<{ content: Array<{ text: unknown }> }> };
+		expect(body.output[0].content[0].text).toBe('{"quotes":["a","b"]}');
+	});
+
+	it('leaves string Responses text and tool-call items untouched', () => {
+		const spec = {
+			type: 'json' as const,
+			body: {
+				output: [
+					{ type: 'message', content: [{ type: 'output_text', text: '{"ok":true}' }] },
+					{ type: 'function_call', name: 'lookup', arguments: '{}' },
+				],
+			},
+		};
+		const before = JSON.stringify(spec.body);
+		applyProviderShapeNormalizers(info('/v1/responses'), spec);
+		expect(JSON.stringify(spec.body)).toBe(before);
+	});
+
+	it('stringifies an object chat-completions message content, preserving null and part arrays', () => {
+		const spec = {
+			type: 'json' as const,
+			body: {
+				choices: [
+					{ message: { role: 'assistant', content: { answer: 42 } } },
+					{ message: { role: 'assistant', content: null, tool_calls: [] } },
+					{ message: { role: 'assistant', content: [{ type: 'text', text: 'hi' }] } },
+				],
+			},
+		};
+		applyProviderShapeNormalizers(info('/v1/chat/completions'), spec);
+		const body = spec.body as { choices: Array<{ message: { content: unknown } }> };
+		expect(body.choices[0].message.content).toBe('{"answer":42}');
+		expect(body.choices[1].message.content).toBeNull();
+		expect(Array.isArray(body.choices[2].message.content)).toBe(true);
+	});
+
+	it('reports a violation for object-typed Responses text and passes string text', () => {
+		expect(
+			findProviderShapeViolation(info('/v1/responses'), {
+				output: [{ content: [{ type: 'output_text', text: { a: 1 } }] }],
+			}),
+		).toContain('must be a STRING');
+		expect(
+			findProviderShapeViolation(info('/v1/responses'), {
+				output: [{ content: [{ type: 'output_text', text: '{"a":1}' }] }],
+			}),
+		).toBeUndefined();
+	});
+});

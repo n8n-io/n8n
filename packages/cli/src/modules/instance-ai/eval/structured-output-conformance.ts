@@ -46,6 +46,41 @@ function contentToText(content: unknown): string {
 
 const FENCED_JSON = /```(?:json)?\s*([\s\S]*?)```/gi;
 
+/** LangChain-style format instructions demanding the reply inside a markdown
+ *  code block — Text Classifier's "Include the enclosing markdown codeblock",
+ *  classic StructuredOutputParser's "a markdown code snippet". The node's parser
+ *  extracts from the fences, so a bare-JSON mock reply fails it with
+ *  "Model output doesn't fit required format". */
+const FENCE_DEMAND = /include the enclosing markdown codeblock|markdown code snippet/i;
+
+/** True when any request message carries format instructions that demand the
+ *  reply wrapped in a markdown code block. */
+export function requestDemandsFencedOutput(body: unknown): boolean {
+	if (!isRecord(body)) return false;
+	const items = Array.isArray(body.input)
+		? body.input
+		: Array.isArray(body.messages)
+			? body.messages
+			: [];
+	for (const item of items) {
+		if (!isRecord(item)) continue;
+		if (FENCE_DEMAND.test(contentToText(item.content))) return true;
+	}
+	return false;
+}
+
+/** Wrap bare JSON content in a ```json``` block; no-op for already-fenced or non-JSON content. */
+function fenceBareJson(content: string): string {
+	const trimmed = content.trim();
+	if (trimmed.startsWith('```')) return content;
+	try {
+		JSON.parse(trimmed);
+	} catch {
+		return content;
+	}
+	return `\`\`\`json\n${trimmed}\n\`\`\``;
+}
+
 /**
  * Find the structured-output JSON Schema a `/v1/responses` or chat-completions
  * request declares, from any of: native Responses `text.format.schema`, native
@@ -133,13 +168,17 @@ function pruneToSchema(value: unknown, schema: unknown): unknown {
  * Conform a generated content string to a declared schema: unwrap a stray
  * single-key wrapper the schema doesn't declare, then prune keys the strict
  * schema forbids. No schema, non-JSON content, or any failure => return the
- * content unchanged. Re-wraps in a ```json``` block only if the input was fenced.
+ * content unchanged. Re-wraps in a ```json``` block if the input was fenced —
+ * or when `ensureFence` says the request's format instructions demand fences
+ * (the parser extracts from the code block, so bare JSON fails it).
  */
 export function conformContentToSchema(
 	content: string,
 	schema: Record<string, unknown> | undefined,
+	options?: { ensureFence?: boolean },
 ): string {
-	if (!schema) return content;
+	const ensureFence = options?.ensureFence === true;
+	if (!schema) return ensureFence ? fenceBareJson(content) : content;
 
 	const fenced = /^```(?:json)?\s*([\s\S]*?)```$/i.exec(content.trim());
 	const jsonText = fenced ? fenced[1].trim() : content.trim();
@@ -165,10 +204,12 @@ export function conformContentToSchema(
 
 	const conformed = pruneToSchema(parsed, schema);
 	const serialized = JSON.stringify(conformed);
-	return fenced ? `\`\`\`json\n${serialized}\n\`\`\`` : serialized;
+	return fenced || ensureFence ? `\`\`\`json\n${serialized}\n\`\`\`` : serialized;
 }
 
-/** Discover the declared schema from the request body and conform `content` to it. */
+/** Discover the declared schema + fence demand from the request body and conform `content`. */
 export function applyStructuredOutputConformance(content: string, body: unknown): string {
-	return conformContentToSchema(content, discoverStructuredOutputSchema(body));
+	return conformContentToSchema(content, discoverStructuredOutputSchema(body), {
+		ensureFence: requestDemandsFencedOutput(body),
+	});
 }
