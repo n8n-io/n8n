@@ -818,7 +818,7 @@ erDiagram
   bigint value
 }
 "public.installed_nodes" {
-  integer latestVersion
+  double_precision latestVersion
   varchar_200_ name
   varchar_241_ package FK
   varchar_200_ type
