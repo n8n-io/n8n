@@ -1,6 +1,7 @@
 import {
 	AgentJsonConfigSchema,
 	findVectorStoreToolNameCollisions,
+	formatAgentConfigZodError,
 } from '../agent-json-config.schema';
 
 const minimalConfig = {
@@ -540,5 +541,34 @@ describe('AgentJsonConfigSchema — model/credential coupling', () => {
 		});
 
 		expect(result.success).toBe(true);
+	});
+});
+
+describe('formatAgentConfigZodError', () => {
+	it('formats an invalid MCP server name as path: message without a Zod JSON dump', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			mcpServers: [
+				{
+					name: 'has spaces',
+					url: 'https://example.com/mcp',
+					transport: 'streamableHttp',
+					authentication: 'none',
+				},
+			],
+		});
+
+		expect(result.success).toBe(false);
+		if (result.success) return;
+
+		const formatted = formatAgentConfigZodError(result.error);
+		expect(formatted).toContain('mcpServers.0.name');
+		expect(formatted).toContain(
+			'MCP server name can only contain letters, numbers, hyphens, and underscores',
+		);
+		expect(formatted).not.toContain('"validation": "regex"');
+		expect(result.error.issues[0]?.message).toBe(
+			'MCP server name can only contain letters, numbers, hyphens, and underscores',
+		);
 	});
 });

@@ -2,7 +2,7 @@ import type { Agent as RuntimeAgent, BuiltAgent, BuiltTool, CredentialProvider }
 import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
-	formatZodErrors,
+	formatAgentConfigZodError,
 	RunnableInlineAgentConfigSchema,
 	sanitizeAgentJsonConfig,
 	sanitizeAgentSkillBodies,
@@ -556,10 +556,9 @@ export class AgentWorkflowExecutionService {
 			...(payload.skills !== undefined ? { skills: sanitizeAgentSkillBodies(payload.skills) } : {}),
 		});
 		if (!parsed.success) {
-			const details = formatZodErrors(parsed.error)
-				.map((issue) => `${issue.path}: ${issue.message}`)
-				.join('; ');
-			throw new UserError(`Invalid inline agent configuration: ${details}`);
+			throw new UserError(
+				`Invalid inline agent configuration: ${formatAgentConfigZodError(parsed.error)}`,
+			);
 		}
 		const config = parsed.data.config;
 

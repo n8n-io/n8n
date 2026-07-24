@@ -90,7 +90,9 @@ const WebSearchConfigSchema = z.object({
 	credential: z.string().optional(),
 });
 
-const HexColorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
+const HexColorSchema = z
+	.string()
+	.regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be a 6-digit hex value (e.g. #FF5500)');
 
 export const DEFAULT_AGENT_PERSONALISATION = {
 	icon: 'bot',
@@ -196,7 +198,10 @@ const AgentJsonSkillConfigSchema = z.object({
 	id: z
 		.string()
 		.min(1)
-		.regex(/^[A-Za-z0-9_-]+$/),
+		.regex(
+			/^[A-Za-z0-9_-]+$/,
+			'Skill id can only contain letters, numbers, hyphens, and underscores',
+		),
 });
 
 const AgentJsonTaskConfigSchema = z.object({
@@ -204,7 +209,10 @@ const AgentJsonTaskConfigSchema = z.object({
 	id: z
 		.string()
 		.min(1)
-		.regex(/^[A-Za-z0-9_-]+$/),
+		.regex(
+			/^[A-Za-z0-9_-]+$/,
+			'Task id can only contain letters, numbers, hyphens, and underscores',
+		),
 	enabled: z.boolean(),
 });
 
@@ -228,7 +236,10 @@ export const McpServerConfigSchema = z
 			.string()
 			.min(1)
 			.max(64)
-			.regex(/^[a-zA-Z0-9_-]+$/)
+			.regex(
+				/^[a-zA-Z0-9_-]+$/,
+				'MCP server name can only contain letters, numbers, hyphens, and underscores',
+			)
 			.describe(
 				'Unique server name, also used as the SDK tool-name prefix (e.g. github -> github_create_issue)',
 			),
@@ -325,7 +336,10 @@ const VectorStoreBaseShape = {
 		.string()
 		.min(1)
 		.max(64)
-		.regex(VECTOR_STORE_NAME_REGEX)
+		.regex(
+			VECTOR_STORE_NAME_REGEX,
+			'Vector store name can only contain letters, numbers, hyphens, and underscores',
+		)
 		.describe('Unique connection name, also used as the SDK tool-name suffix: search_<name>'),
 	credential: CredentialIdSchema,
 	useWhen: z.string().trim().min(1).max(VECTOR_STORE_USE_WHEN_MAX_LENGTH),
@@ -367,7 +381,13 @@ export const AgentVectorStoreConfigSchema = z.discriminatedUnion('provider', [
 
 const CustomToolJsonConfigSchema = z.object({
 	type: z.literal('custom'),
-	id: z.string().min(1).regex(CUSTOM_TOOL_ID_REGEX),
+	id: z
+		.string()
+		.min(1)
+		.regex(
+			CUSTOM_TOOL_ID_REGEX,
+			'Custom tool id can only contain letters, numbers, and underscores',
+		),
 	requireApproval: z.boolean().optional(),
 });
 
@@ -575,4 +595,10 @@ export function formatZodErrors(error: ZodError): ConfigValidationError[] {
 		expected: 'expected' in issue ? String(issue.expected) : undefined,
 		received: 'received' in issue ? String(issue.received) : undefined,
 	}));
+}
+
+export function formatAgentConfigZodError(error: ZodError): string {
+	return formatZodErrors(error)
+		.map((issue) => `${issue.path}: ${issue.message}`)
+		.join('; ');
 }
