@@ -24,6 +24,7 @@ const configs = {
 			'@n8n/community-nodes/no-restricted-globals': 'error',
 			'@n8n/community-nodes/no-restricted-imports': 'error',
 			'@n8n/community-nodes/credential-password-field': 'error',
+			'@n8n/community-nodes/credential-unnecessary-password': 'warn',
 			'@n8n/community-nodes/n8n-object-validation': 'error',
 			'@n8n/community-nodes/no-deprecated-workflow-functions': 'error',
 			'@n8n/community-nodes/no-emoji-in-options': 'error',
@@ -67,6 +68,7 @@ const configs = {
 		rules: {
 			'@n8n/community-nodes/ai-node-package-json': 'error',
 			'@n8n/community-nodes/credential-password-field': 'error',
+			'@n8n/community-nodes/credential-unnecessary-password': 'warn',
 			'@n8n/community-nodes/n8n-object-validation': 'error',
 			'@n8n/community-nodes/no-deprecated-workflow-functions': 'error',
 			'@n8n/community-nodes/no-emoji-in-options': 'error',

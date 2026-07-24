@@ -2013,7 +2013,7 @@ onUpdated(async () => {
 						<div
 							v-if="option.description"
 							v-n8n-html="getOptionsOptionDescription(option)"
-							class="option-description"
+							class="option-description option-description--clamped"
 						></div>
 					</div>
 				</N8nOption>
@@ -2047,7 +2047,7 @@ onUpdated(async () => {
 						<div
 							v-if="option.description"
 							v-n8n-html="getOptionsOptionDescription(option)"
-							class="option-description"
+							class="option-description option-description--clamped"
 						></div>
 					</div>
 				</N8nOption>
@@ -2240,6 +2240,14 @@ onUpdated(async () => {
 		font-weight: var(--font-weight--regular);
 		line-height: var(--line-height--xl);
 		color: $custom-font-very-light;
+	}
+
+	.option-description--clamped {
+		overflow: hidden;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		text-overflow: ellipsis;
 	}
 }
 

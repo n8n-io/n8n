@@ -3,7 +3,10 @@ export type McpVerifyResult =
 	| { ok: false; errors: Array<{ server: string; error: string }> };
 
 export interface McpToolCallSettledEvent {
+	/** Original, unprefixed name reported by the MCP server. */
 	toolName: string;
+	/** Exact normalized name exposed to the model. */
+	modelToolName?: string;
 	success: boolean;
 }
 
