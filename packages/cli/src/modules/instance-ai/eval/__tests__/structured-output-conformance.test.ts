@@ -222,3 +222,73 @@ describe('applyStructuredOutputConformance — fence demand end-to-end', () => {
 		expect(out).toBe('```json\n{"client_project":true}\n```');
 	});
 });
+
+describe('pseudo-JSON schema synthesis (Text Classifier format instructions)', () => {
+	const classifierInstructions = [
+		'Categories are described below. Include the enclosing markdown codeblock:',
+		'```json',
+		'{"Billing": boolean, "Technical Support": boolean, "General": boolean, "fallback": boolean}',
+		'```',
+	].join('\n');
+
+	it('synthesizes a strict boolean schema from pseudo-JSON instruction blocks', () => {
+		const body = { messages: [{ role: 'system', content: classifierInstructions }] };
+		const schema = discoverStructuredOutputSchema(body);
+		expect(schema).toEqual({
+			type: 'object',
+			properties: {
+				Billing: { type: 'boolean' },
+				'Technical Support': { type: 'boolean' },
+				General: { type: 'boolean' },
+				fallback: { type: 'boolean' },
+			},
+			additionalProperties: false,
+			required: ['Billing', 'Technical Support', 'General', 'fallback'],
+		});
+	});
+
+	it('prefers a valid JSON Schema block over pseudo-JSON synthesis', () => {
+		const real = strict({ category: { type: 'string' } });
+		const body = {
+			messages: [
+				{ role: 'system', content: classifierInstructions },
+				{ role: 'system', content: '```json\n' + JSON.stringify(real) + '\n```' },
+			],
+		};
+		expect(discoverStructuredOutputSchema(body)).toEqual(real);
+	});
+
+	it('end-to-end: repairs an invented key into the declared category set, fenced', () => {
+		const body = { messages: [{ role: 'system', content: classifierInstructions }] };
+		const out = applyStructuredOutputConformance(
+			'{"Billing":true,"Technical":false,"General":false,"fallback":false}',
+			body,
+		);
+		expect(out).toBe(
+			'```json\n{"Billing":true,"General":false,"fallback":false,"Technical Support":false}\n```',
+		);
+	});
+});
+
+describe('fillMissingRequired via conformContentToSchema', () => {
+	it('adds missing required keys with neutral typed values', () => {
+		const schema = {
+			type: 'object',
+			properties: {
+				name: { type: 'string' },
+				count: { type: 'number' },
+				ok: { type: 'boolean' },
+				rows: { type: 'array' },
+			},
+			additionalProperties: false,
+			required: ['name', 'count', 'ok', 'rows'],
+		};
+		const out = conformContentToSchema('{"name":"x"}', schema);
+		expect(JSON.parse(out)).toEqual({ name: 'x', count: 0, ok: false, rows: [] });
+	});
+
+	it('does not touch content when the schema declares no required list', () => {
+		const schema = strict({ name: { type: 'string' } });
+		expect(conformContentToSchema('{}', schema)).toBe('{}');
+	});
+});

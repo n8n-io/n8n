@@ -60,8 +60,9 @@ function isOpenAiImagesGeneration(path: string): boolean {
 }
 
 function isOpenAiCompletion(path: string): 'responses' | 'chat' | null {
-	if (path.endsWith('/v1/responses')) return 'responses';
-	if (path.endsWith('/chat/completions')) return 'chat';
+	// Tolerate trailing slashes and any /v{n}/ — endsWith misses "/v1/responses/".
+	if (/\/v\d+\/responses\/?$/.test(path)) return 'responses';
+	if (/\/chat\/completions\/?$/.test(path)) return 'chat';
 	return null;
 }
 

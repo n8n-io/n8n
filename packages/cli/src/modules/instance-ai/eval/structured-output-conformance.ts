@@ -114,6 +114,7 @@ export function discoverStructuredOutputSchema(body: unknown): Record<string, un
 			? body.messages
 			: [];
 	let found: Record<string, unknown> | undefined;
+	let pseudo: Record<string, unknown> | undefined;
 	for (const item of items) {
 		if (!isRecord(item)) continue;
 		const itemText = contentToText(item.content);
@@ -121,15 +122,34 @@ export function discoverStructuredOutputSchema(body: unknown): Record<string, un
 		FENCED_JSON.lastIndex = 0;
 		let match: RegExpExecArray | null;
 		while ((match = FENCED_JSON.exec(itemText)) !== null) {
+			const block = match[1].trim();
 			try {
-				const parsed: unknown = JSON.parse(match[1].trim());
+				const parsed: unknown = JSON.parse(block);
 				if (looksLikeJsonSchema(parsed)) found = parsed; // keep the last schema-shaped block
 			} catch {
-				// not JSON — ignore this fence
+				// Not JSON — possibly pseudo-JSON format instructions; try synthesis.
+				pseudo = synthesizePseudoJsonSchema(block) ?? pseudo;
 			}
 		}
 	}
-	return found;
+	return found ?? pseudo;
+}
+
+/**
+ * Some format instructions (Text Classifier) embed a PSEUDO-JSON example
+ * (`{"Category name": boolean, ...}`) instead of a JSON Schema — unparseable, so
+ * plain discovery misses it and the mock invents shortened key names the node's
+ * parser then rejects ("Technical" vs the declared "Technical Support").
+ * Synthesize a strict all-required boolean schema from the quoted property names
+ * so prompt steering and conformance enforce the EXACT declared keys.
+ */
+function synthesizePseudoJsonSchema(block: string): Record<string, unknown> | undefined {
+	if (!/:\s*boolean\b/i.test(block)) return undefined;
+	const names = [...block.matchAll(/"((?:[^"\\]|\\.)+)"\s*:/g)].map((m) => m[1]);
+	if (names.length === 0) return undefined;
+	const properties: Record<string, unknown> = {};
+	for (const name of names) properties[name] = { type: 'boolean' };
+	return { type: 'object', properties, additionalProperties: false, required: names };
 }
 
 function schemaProperties(schema: unknown): Record<string, unknown> | undefined {
@@ -202,9 +222,34 @@ export function conformContentToSchema(
 		}
 	}
 
-	const conformed = pruneToSchema(parsed, schema);
+	const conformed = fillMissingRequired(pruneToSchema(parsed, schema), schema);
 	const serialized = JSON.stringify(conformed);
 	return fenced || ensureFence ? `\`\`\`json\n${serialized}\n\`\`\`` : serialized;
+}
+
+/**
+ * Add schema-`required` keys the content is missing, with type-appropriate
+ * neutral values (false / '' / 0 / []). Rescues a pruned near-miss key invention
+ * (mock wrote "Technical", schema requires "Technical Support") into a
+ * schema-valid reply instead of a parser crash. Nested objects are not invented —
+ * fabricating deep shapes is riskier than the parser error.
+ */
+function fillMissingRequired(value: unknown, schema: unknown): unknown {
+	if (!isRecord(value) || !isStrictObject(schema)) return value;
+	const props = schemaProperties(schema);
+	if (!props) return value;
+	const required = isRecord(schema) && Array.isArray(schema.required) ? schema.required : [];
+	const out: Record<string, unknown> = { ...value };
+	for (const key of required) {
+		if (typeof key !== 'string' || key in out) continue;
+		const propSchema = props[key];
+		const type = isRecord(propSchema) ? propSchema.type : undefined;
+		if (type === 'boolean') out[key] = false;
+		else if (type === 'number' || type === 'integer') out[key] = 0;
+		else if (type === 'string') out[key] = '';
+		else if (type === 'array') out[key] = [];
+	}
+	return out;
 }
 
 /** Discover the declared schema + fence demand from the request body and conform `content`. */
