@@ -7,6 +7,7 @@ export const AGENT_MODEL_PROVIDERS = [
 	'xai',
 	'groq',
 	'openrouter',
+	'baseten',
 	'deepseek',
 	'cohere',
 	'mistral',

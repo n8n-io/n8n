@@ -66,6 +66,11 @@ export const AGENT_MODEL_PROVIDER_DEFINITIONS = {
 		credentialTypes: ['openRouterApi'],
 		isAggregator: true,
 	},
+	baseten: {
+		displayName: 'Baseten',
+		credentialTypes: ['basetenApi'],
+		isAggregator: true,
+	},
 	deepseek: {
 		displayName: 'DeepSeek',
 		credentialTypes: ['deepSeekApi'],

@@ -39,6 +39,7 @@ describe('provider-capabilities', () => {
 			'deepseek',
 			'mistral',
 			'openrouter',
+			'baseten',
 			'cohere',
 			'ollama',
 		];

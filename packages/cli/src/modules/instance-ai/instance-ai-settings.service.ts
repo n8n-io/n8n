@@ -53,6 +53,7 @@ const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
 	mistralCloudApi: 'mistral',
 	xAiApi: 'xai',
 	openRouterApi: 'openrouter',
+	basetenApi: 'baseten',
 	cohereApi: 'cohere',
 };
 
@@ -67,6 +68,7 @@ const URL_FIELD_MAP: Record<string, string> = {
 	anthropicApi: 'url',
 	googlePalmApi: 'host',
 	ollamaApi: 'baseUrl',
+	basetenApi: 'url',
 };
 
 // ---------------------------------------------------------------------------
