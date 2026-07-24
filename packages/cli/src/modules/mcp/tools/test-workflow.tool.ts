@@ -23,7 +23,11 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { waitForExecutionResult, WORKFLOW_EXECUTION_TIMEOUT_MS } from './execution-utils';
+import {
+	waitForExecutionResult,
+	WORKFLOW_EXECUTION_TIMEOUT_DEFAULT_SECONDS,
+	WORKFLOW_EXECUTION_TIMEOUT_MAX_SECONDS,
+} from './execution-utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = z.object({
@@ -38,6 +42,15 @@ const inputSchema = z.object({
 		.optional()
 		.describe(
 			'Optional name of the trigger node to start execution from. Useful for workflows with multiple triggers. Defaults to the first trigger node found.',
+		),
+	timeout: z
+		.number()
+		.int()
+		.positive()
+		.max(WORKFLOW_EXECUTION_TIMEOUT_MAX_SECONDS)
+		.optional()
+		.describe(
+			`Optional timeout in seconds before the test execution is interrupted. Defaults to ${WORKFLOW_EXECUTION_TIMEOUT_DEFAULT_SECONDS} seconds. Increase this to test workflows that take longer to run.`,
 		),
 });
 
@@ -78,7 +91,12 @@ export const createTestWorkflowTool = (
 			openWorldHint: false,
 		},
 	},
-	handler: async ({ workflowId, pinData, triggerNodeName }: z.infer<typeof inputSchema>) => {
+	handler: async ({
+		workflowId,
+		pinData,
+		triggerNodeName,
+		timeout,
+	}: z.infer<typeof inputSchema>) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: 'test_workflow',
@@ -86,6 +104,7 @@ export const createTestWorkflowTool = (
 				workflowId,
 				nodeCount: Object.keys(pinData).length,
 				hasTriggerNodeName: !!triggerNodeName,
+				hasCustomTimeout: timeout !== undefined,
 			},
 		};
 
@@ -100,6 +119,7 @@ export const createTestWorkflowTool = (
 				workflowId,
 				pinData as IPinData,
 				triggerNodeName,
+				timeout,
 			);
 
 			telemetryPayload.results = {
@@ -124,7 +144,7 @@ export const createTestWorkflowTool = (
 				executionId: isTimeout ? error.executionId : null,
 				status: 'error',
 				error: isTimeout
-					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS * Time.milliseconds.toSeconds} seconds`
+					? `Workflow execution timed out after ${error.timeoutMs * Time.milliseconds.toSeconds} seconds`
 					: (error.message ?? `${error.constructor.name}: (no message)`),
 			};
 
@@ -157,6 +177,7 @@ export async function testWorkflow(
 	workflowId: string,
 	pinData: IPinData,
 	triggerNodeName?: string,
+	timeoutSeconds: number = WORKFLOW_EXECUTION_TIMEOUT_DEFAULT_SECONDS,
 ): Promise<TestWorkflowOutput> {
 	const workflow = await getMcpWorkflow(
 		workflowId,
@@ -234,7 +255,12 @@ export async function testWorkflow(
 	};
 
 	const executionId = await workflowRunner.run(runData);
-	const data = await waitForExecutionResult(executionId, activeExecutions, mcpService);
+	const data = await waitForExecutionResult(
+		executionId,
+		activeExecutions,
+		mcpService,
+		timeoutSeconds * Time.seconds.toMilliseconds,
+	);
 	const hasError = data.status === 'error' || data.data.resultData?.error;
 
 	return {
