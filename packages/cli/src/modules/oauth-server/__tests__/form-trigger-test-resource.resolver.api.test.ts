@@ -34,7 +34,7 @@ const prmPathFor = (webhookPath: string) =>
 
 const formTriggerNode = ({
 	name = 'On form submission',
-	authentication = 'n8nOAuth2',
+	authentication = 'n8nUserAuth',
 	disabled = false,
 }: { name?: string; authentication?: string; disabled?: boolean } = {}): INode => ({
 	id: randomUUID(),
@@ -80,11 +80,16 @@ const resolveResource = async (webhookPath: string) =>
 	);
 
 beforeAll(async () => {
+	process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2 = 'true'; // gates the form-trigger resolver
 	owner = await createOwner();
 	const { endpoints } = Container.get(GlobalConfig);
 	formEndpoint = endpoints.form;
 	formTestEndpoint = endpoints.formTest;
 	registrations = Container.get(TestWebhookRegistrationsService);
+});
+
+afterAll(() => {
+	delete process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2;
 });
 
 afterEach(async () => {

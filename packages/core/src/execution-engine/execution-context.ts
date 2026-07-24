@@ -2,9 +2,9 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { type IRunExecutionData, type Workflow, type WorkflowExecuteMode } from 'n8n-workflow';
 
-import { ExecutionContextService } from './execution-context.service';
-
 import { assertExecutionDataExists, type PreExecutionAdditionalData } from '@/utils/assertions';
+
+import { ExecutionContextService } from './execution-context.service';
 
 /**
  * Establishes the execution context for a workflow run.

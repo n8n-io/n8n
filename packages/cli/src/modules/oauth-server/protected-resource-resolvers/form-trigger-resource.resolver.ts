@@ -10,6 +10,7 @@ import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import {
 	FORM_TRIGGER_SCOPES,
+	isFormOAuth2Enabled,
 	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
@@ -39,6 +40,10 @@ export class FormTriggerResourceResolver implements ProtectedResourceResolver {
 	}
 
 	async resolveByPath(pathname: string) {
+		if (!isFormOAuth2Enabled()) {
+			return undefined;
+		}
+
 		if (!pathname.startsWith(`/${this.config.endpoints.form}/`)) {
 			return undefined;
 		}

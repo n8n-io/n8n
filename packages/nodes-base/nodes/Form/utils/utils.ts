@@ -768,7 +768,7 @@ async function authenticateFormUserOrRespond(
 				});
 				res.end();
 			} catch (error) {
-				// Ignore errors and fall through to the redirect below
+				// Can't build the authorization URL — nothing to redirect to, so abort.
 				context.logger.warn('Form OAuth2 flow failed', {
 					error,
 				});
