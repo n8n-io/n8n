@@ -86,9 +86,9 @@ describe('Instance AI runtime skills', () => {
 
 		const loaded = await source.loadSkill('data-table-manager');
 		expect(loaded?.instructions).toContain('## Routing');
-		expect(loaded?.instructions).toContain(
-			'load this skill, then `workflow-builder`, before `build-workflow`',
-		);
+		expect(loaded?.instructions).toContain('For workflow builds that create or write Data Tables');
+		expect(loaded?.instructions).toContain('`workflow-builder`');
+		expect(loaded?.instructions).toContain('before `build-workflow`');
 	});
 
 	it('loads the bundled config-evals skill and its linked files', async () => {
