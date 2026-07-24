@@ -16,7 +16,7 @@ export type WorkflowReviewRequestSummary = {
 	id: string;
 	state: WorkflowReviewRequestState;
 	decision: WorkflowReviewRequestDecision;
-	/** Pinned version of the workflow the list was scoped to; null when the history entry was pruned. */
+	/** Pinned version of the workflow; null when the history entry was pruned. (LIGO-879) */
 	workflowVersionId: string | null;
 	createdAt: Iso8601DateTimeString;
 	updatedAt: Iso8601DateTimeString;

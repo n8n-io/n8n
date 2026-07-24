@@ -34,7 +34,7 @@ describe('WorkflowReviewRequestAuthorRepository', () => {
 	});
 
 	describe('addAuthorIfMissing', () => {
-		it('inserts the author when the composite key is absent', async () => {
+		it('inserts the author when they have not been added yet', async () => {
 			(entityManager.create as Mock).mockImplementation(
 				(_target: unknown, entityLike: unknown) => entityLike as WorkflowReviewRequestAuthor,
 			);
