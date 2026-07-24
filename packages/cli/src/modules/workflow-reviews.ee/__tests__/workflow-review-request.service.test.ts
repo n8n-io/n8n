@@ -13,6 +13,7 @@ import type {
 	WorkflowEntity,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
+	WorkflowReviewRequestForWorkflow,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
@@ -490,11 +491,11 @@ describe('WorkflowReviewRequestService', () => {
 
 		it('maps rows to summaries and returns the total count', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
-			const request = mock<WorkflowReviewRequest>({
+			const request = mock<WorkflowReviewRequestForWorkflow>({
 				id: 'req-1',
 				state: 'open',
 				decision: 'pending',
-				title: 'Secret title',
+				workflowVersionId: 'ver-1',
 				createdAt: new Date('2026-07-20T10:00:00.000Z'),
 				updatedAt: new Date('2026-07-20T11:00:00.000Z'),
 			});
@@ -509,6 +510,7 @@ describe('WorkflowReviewRequestService', () => {
 						id: 'req-1',
 						state: 'open',
 						decision: 'pending',
+						workflowVersionId: 'ver-1',
 						createdAt: '2026-07-20T10:00:00.000Z',
 						updatedAt: '2026-07-20T11:00:00.000Z',
 					},
