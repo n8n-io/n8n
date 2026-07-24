@@ -24,6 +24,13 @@ export default defineConfig({
 					env: { N8N_EXPRESSION_ENGINE: 'vm' },
 				},
 			},
+			{
+				test: {
+					...sharedTestConfig,
+					name: 'quickjs-engine',
+					env: { N8N_EXPRESSION_ENGINE: 'quickjs' },
+				},
+			},
 		],
 	},
 });

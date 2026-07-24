@@ -24,7 +24,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
-import { IsolatedVmBridge } from '../bridge/isolated-vm-bridge';
+import { createBridge } from './test-bridge';
 
 describe('Host-fn shadowing: data.extend / data.extendOptional must not be invoked in VM mode', () => {
 	let evaluator: ExpressionEvaluator;
@@ -32,7 +32,7 @@ describe('Host-fn shadowing: data.extend / data.extendOptional must not be invok
 
 	beforeAll(async () => {
 		evaluator = new ExpressionEvaluator({
-			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			createBridge,
 			maxCodeCacheSize: 64,
 		});
 		await evaluator.initialize();
@@ -154,5 +154,14 @@ describe('Host-fn shadowing: data.extend / data.extendOptional must not be invok
 
 		expect(result).toBe(1);
 		expect(hostJmespathCalls).toBe(0);
+	});
+
+	it('resolves function-typed data properties as undefined (no marker object)', () => {
+		const data: Record<string, unknown> = {
+			$json: { weirdFn: (x: number) => x + 1, value: 42 },
+		};
+
+		expect(evaluator.evaluate('{{ typeof $json.weirdFn }}', data, caller)).toBe('undefined');
+		expect(evaluator.evaluate('{{ $json.value }}', data, caller)).toBe(42);
 	});
 });
