@@ -257,7 +257,7 @@ export const onlyRunIfModeProperty: INodeProperties = {
 			name: 'Conditions Match',
 			value: 'conditions',
 			description:
-				'Run only when the request matches simple conditions on its fields. Faster than Expressions for busy endpoints.',
+				'Run only when the request matches simple conditions on its fields. Faster than an expression for busy endpoints.',
 		},
 		{
 			name: 'Expression Is True',
@@ -272,7 +272,7 @@ export const onlyRunIfModeProperty: INodeProperties = {
 		},
 	},
 	description:
-		'Whether to filter incoming requests before running the workflow. Requests that do not match receive a 200 response and no execution is created.',
+		"Whether to filter incoming requests before running the workflow. Requests that don't match get a 200 response and don't create an execution.",
 };
 
 export const onlyRunIfConditionsProperty: INodeProperties = {
@@ -295,7 +295,7 @@ export const onlyRunIfConditionsProperty: INodeProperties = {
 	},
 	// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
 	description:
-		"Reference request fields with <code>{{ $json.body.field }}</code>, <code>{{ $json.headers['name'] }}</code>, <code>{{ $json.query.param }}</code>. Simple field references like these are checked natively, without running the expression sandbox.",
+		"Reference request fields with <code>{{ $json.body.field }}</code>, <code>{{ $json.headers['name'] }}</code>, or <code>{{ $json.query.param }}</code>. Plain field references like these are the fastest way to filter busy endpoints. If a condition can't be checked, the workflow runs anyway and the error is logged.",
 };
 
 export const onlyRunIfExpressionProperty: INodeProperties = {
@@ -312,7 +312,7 @@ export const onlyRunIfExpressionProperty: INodeProperties = {
 	},
 	// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
 	description:
-		'Expression evaluated against the incoming request. The workflow will run only if the expression returns true. <code>$json</code> exposes the request as <code>{ body, headers, params, query }</code>. If the expression fails to evaluate, the request is allowed through and the error is logged.',
+		'Expression evaluated against the incoming request. The workflow runs only if the expression returns true. <code>$json</code> exposes the request as <code>{ body, headers, params, query }</code>. If the expression errors, the workflow runs anyway and the error is logged.',
 };
 
 export const optionsProperty: INodeProperties = {
