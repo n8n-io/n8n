@@ -2,12 +2,13 @@ import {
 	CreateWorkflowReviewRequestDto,
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	ListWorkflowReviewRequestsQueryDto,
+	UpdateWorkflowReviewRequestVersionDto,
 	type GetWorkflowReviewInboxSummaryResponse,
 	type ListWorkflowReviewInboxResponse,
 	ListWorkflowReviewInboxQueryDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Licensed, Post, Query, RestController } from '@n8n/decorators';
+import { Body, Get, Licensed, Param, Post, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { WorkflowReviewRequestService } from './workflow-review-request.service';
@@ -48,6 +49,21 @@ export class WorkflowReviewRequestsController {
 		const request = await this.workflowReviewRequestService.create(req.user, dto);
 		res.status(201);
 		return request;
+	}
+
+	@Post('/:workflowReviewRequestId/update-version')
+	@Licensed('feat:workflowReviews')
+	async updateVersion(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowReviewRequestId') workflowReviewRequestId: string,
+		@Body dto: UpdateWorkflowReviewRequestVersionDto,
+	) {
+		return await this.workflowReviewRequestService.updateVersion(
+			req.user,
+			workflowReviewRequestId,
+			dto,
+		);
 	}
 
 	/**

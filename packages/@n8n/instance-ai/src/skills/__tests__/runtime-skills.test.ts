@@ -48,11 +48,16 @@ describe('Instance AI runtime skills', () => {
 
 		expect(dataTableManager).toMatchObject({
 			name: 'data-table-manager',
-			description:
-				'Designs and manages n8n Data Tables directly with the data-tables and parse-file tools. Use when the user asks to list, show, create, inspect, import, seed, query, update, clean up, rename columns in, or delete data tables and rows, especially from CSV/XLSX/JSON attachments, and before building or planning workflows that create or write to Data Tables.',
 			platforms: ['daytona'],
 			recommendedTools: ['data-tables', 'parse-file'],
 		});
+		expect(dataTableManager?.description).toContain(
+			'Load before calling data-tables or parse-file',
+		);
+		expect(dataTableManager?.description).toContain('what data tables do I have?');
+		expect(dataTableManager?.description).toContain(
+			'load before building or planning workflows that create or write to Data Tables',
+		);
 		expect(dataTableManager?.linkedFiles.references).toEqual([
 			expect.objectContaining({ path: 'references/data-table-playbook.md' }),
 		]);
@@ -78,6 +83,12 @@ describe('Instance AI runtime skills', () => {
 			throw new Error('Expected load_skill to return file content');
 		}
 		expect(loadResult.content).toContain('Fast Routing');
+
+		const loaded = await source.loadSkill('data-table-manager');
+		expect(loaded?.instructions).toContain('## Routing');
+		expect(loaded?.instructions).toContain('For workflow builds that create or write Data Tables');
+		expect(loaded?.instructions).toContain('`workflow-builder`');
+		expect(loaded?.instructions).toContain('before `build-workflow`');
 	});
 
 	it('loads the bundled config-evals skill and its linked files', async () => {
@@ -213,6 +224,7 @@ describe('Instance AI runtime skills', () => {
 			name: 'n8n-docs-assistant',
 			recommendedTools: ['n8n-docs', 'credentials', 'nodes'],
 		});
+		expect(skill?.description).toContain('Load n8n-docs via load_tool before calling it');
 		expect(skill?.description).toContain(
 			'credential setup questions opened from the credential modal',
 		);
@@ -247,10 +259,13 @@ describe('Instance AI runtime skills', () => {
 			'verify-built-workflow',
 			'executions',
 		]);
+		expect(skill?.description).toContain('Load before calling build-workflow');
 		expect(skill?.description).toContain('Default path for all single-workflow work');
+		expect(skill?.description).toContain('load data-table-manager first');
 		expect(skill?.description).toContain('Do not load planning or create-tasks first');
 
 		const loaded = await source.loadSkill('workflow-builder');
+		expect(loaded?.instructions).toContain('## Routing');
 		expect(loaded?.instructions).toContain('build-workflow');
 		expect(loaded?.instructions).toContain('filePath');
 		expect(loaded?.instructions).toContain('workspace source file');
@@ -309,6 +324,7 @@ describe('Instance AI runtime skills', () => {
 			'research',
 			'ask-user',
 		]);
+		expect(skill?.description).toContain('Load create-tasks via load_tool before calling it');
 		expect(skill?.description).toContain('Do NOT use for new one-off workflows');
 
 		const loaded = await source.loadSkill('planning');

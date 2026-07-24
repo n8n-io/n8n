@@ -2,6 +2,7 @@ import type {
 	CreateWorkflowReviewRequestDto,
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	ListWorkflowReviewRequestsQueryDto,
+	UpdateWorkflowReviewRequestVersionDto,
 	WorkflowReviewEligibleReviewersList,
 	WorkflowReviewRequestList,
 	WorkflowReviewRequestSummary,
@@ -24,6 +25,7 @@ import {
 	type InboxCursor,
 	type User,
 	type WorkflowReviewRequest,
+	type WorkflowReviewRequestLinkedWorkflow,
 	type WorkflowReviewRequestReviewer,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -105,6 +107,7 @@ export class WorkflowReviewRequestService {
 				id: request.id,
 				state: request.state,
 				decision: request.decision,
+				workflowVersionId: request.workflowVersionId,
 				createdAt: request.createdAt.toISOString(),
 				updatedAt: request.updatedAt.toISOString(),
 			})),
@@ -215,7 +218,7 @@ export class WorkflowReviewRequestService {
 				if (existing) {
 					throw new ConflictError(
 						'An open review request already exists for this workflow',
-						'Sync the existing review request instead of creating a new one',
+						'Update the existing review request instead of creating a new one',
 						{ workflowReviewRequestId: existing.id },
 					);
 				}
@@ -255,18 +258,155 @@ export class WorkflowReviewRequestService {
 			},
 		);
 
-		// Fire-and-forget: the transaction has committed, a failed broadcast
-		// must not fail the request. Viewers heal via focus/reconnect refetch.
+		this.broadcastReviewStateChanged(workflowId);
+
+		return this.toSummary(request, workflowVersionId);
+	}
+
+	/**
+	 * Re-pin an open review request to another version of the workflow it covers,
+	 * preserving its discussion and metadata.
+	 */
+	async updateVersion(
+		user: User,
+		workflowReviewRequestId: string,
+		dto: UpdateWorkflowReviewRequestVersionDto,
+	): Promise<WorkflowReviewRequestSummary> {
+		const policy = await this.workflowReviewPolicyService.get();
+		if (!policy.enabled) {
+			throw new ForbiddenError('Workflow reviews are not enabled for this instance');
+		}
+
+		const request = await this.workflowReviewRequestRepository.findById(workflowReviewRequestId);
+		if (!request) {
+			throw new NotFoundError('Could not find review request');
+		}
+
+		const workflowRows =
+			await this.workflowReviewRequestWorkflowRepository.findByRequestId(workflowReviewRequestId);
+		const workflowRow = workflowRows.find((row) => row.workflowId === dto.workflowId);
+		if (!workflowRow) {
+			throw new NotFoundError('Could not find review request');
+		}
+
+		const workflow = await this.workflowFinderService.findWorkflowForUser(dto.workflowId, user, [
+			'workflow:publish',
+		]);
+		if (!workflow) {
+			throw new NotFoundError('Could not find workflow');
+		}
+
+		if (workflow.isArchived) {
+			throw new BadRequestError(
+				`The workflow '${dto.workflowId}' is archived and its review cannot be updated`,
+			);
+		}
+
+		this.assertRequestUpdatable(request);
+
+		const version = await this.workflowHistoryService.findVersion(
+			dto.workflowId,
+			dto.workflowVersionId,
+		);
+		if (!version) {
+			throw new BadRequestError(
+				`Version '${dto.workflowVersionId}' does not exist for workflow '${dto.workflowId}'`,
+			);
+		}
+
+		// Nothing new to review: skip the lock, write nothing, broadcast nothing.
+		// Once decisions exist (LIGO-786) this also means an unchanged version does
+		// NOT reset `changes_requested` back to `pending` — which is correct.
+		if (workflowRow.workflowVersionId === dto.workflowVersionId) {
+			return this.toSummary(request, workflowRow.workflowVersionId);
+		}
+
+		const { request: updated, changed } = await this.dbLockService.withLock(
+			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+			async (tx) => {
+				// Re-check under the lock so update can't race a concurrent close/approve.
+				const current = await this.workflowReviewRequestRepository.findById(
+					workflowReviewRequestId,
+					tx,
+				);
+				if (!current) {
+					throw new NotFoundError('Could not find review request');
+				}
+				this.assertRequestUpdatable(current);
+
+				// Re-check the pinned version too: a concurrent identical sync that won
+				// the lock already re-pinned — repeating the writes would bump updatedAt,
+				// reset the decision, and broadcast for a no-op.
+				const currentRows = await this.workflowReviewRequestWorkflowRepository.findByRequestId(
+					workflowReviewRequestId,
+					tx,
+				);
+				const currentRow = currentRows.find((row) => row.workflowId === dto.workflowId);
+				if (!currentRow) {
+					throw new NotFoundError('Could not find review request');
+				}
+				if (currentRow.workflowVersionId === dto.workflowVersionId) {
+					return { request: current, changed: false };
+				}
+
+				await this.workflowReviewRequestWorkflowRepository.updateWorkflowVersion(
+					{
+						workflowReviewRequestId,
+						workflowId: dto.workflowId,
+						workflowVersionId: dto.workflowVersionId,
+					},
+					tx,
+				);
+
+				current.decision = 'pending';
+				current.updatedById = user.id;
+				// save (not update) so @BeforeUpdate bumps updatedAt
+				const saved = await tx.save(current);
+
+				await this.workflowReviewRequestAuthorRepository.addAuthorIfMissing(
+					{ workflowReviewRequestId, userId: user.id },
+					tx,
+				);
+
+				return { request: saved, changed: true };
+			},
+		);
+
+		if (changed) {
+			this.broadcastReviewStateChanged(dto.workflowId);
+		}
+
+		return this.toSummary(updated, dto.workflowVersionId);
+	}
+
+	/**
+	 * Fire-and-forget: the transaction has committed, a failed broadcast
+	 * must not fail the request. Viewers heal via focus/reconnect refetch.
+	 */
+	private broadcastReviewStateChanged(workflowId: string): void {
 		this.collaborationService
 			.broadcastWorkflowReviewStateChanged(workflowId)
 			.catch((error) =>
 				this.logger.warn('Failed to broadcast review state change', { workflowId, error }),
 			);
+	}
 
+	/** A closed or already-approved request can no longer be re-pinned to a new version. */
+	private assertRequestUpdatable(request: WorkflowReviewRequest): void {
+		if (request.state === 'closed' || request.decision === 'approved') {
+			throw new ConflictError('The review request is no longer open');
+		}
+	}
+
+	private toSummary(
+		request: WorkflowReviewRequest,
+		workflowVersionId: string | null,
+	): WorkflowReviewRequestSummary {
 		return {
 			id: request.id,
 			state: request.state,
 			decision: request.decision,
+			workflowVersionId,
 			createdAt: request.createdAt.toISOString(),
 			updatedAt: request.updatedAt.toISOString(),
 		};
@@ -299,8 +439,8 @@ export class WorkflowReviewRequestService {
 		const lastRow = data.at(-1);
 		const nextCursor = hasMore && lastRow ? this.encodeInboxCursor(lastRow) : null;
 		const requestIds = data.map((row) => row.id);
-		const [workflowNamesByRequestId, reviewerRows] = await Promise.all([
-			this.workflowReviewRequestWorkflowRepository.findWorkflowNamesByRequestIds(requestIds),
+		const [linkedWorkflowByRequestId, reviewerRows] = await Promise.all([
+			this.workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds(requestIds),
 			this.workflowReviewRequestReviewerRepository.findByRequestIds(requestIds),
 		]);
 
@@ -314,7 +454,7 @@ export class WorkflowReviewRequestService {
 				};
 				return this.toInboxItem(
 					row,
-					workflowNamesByRequestId.get(row.id) ?? null,
+					linkedWorkflowByRequestId.get(row.id) ?? null,
 					requester,
 					reviewers,
 				);
@@ -434,7 +574,7 @@ export class WorkflowReviewRequestService {
 
 	private toInboxItem(
 		entity: WorkflowReviewRequest,
-		workflowName: string | null,
+		linkedWorkflow: WorkflowReviewRequestLinkedWorkflow | null,
 		requester: WorkflowReviewEligibleReviewer | null,
 		reviewers: WorkflowReviewEligibleReviewer[],
 	): WorkflowReviewInboxItem {
@@ -442,7 +582,8 @@ export class WorkflowReviewRequestService {
 			id: entity.id,
 			projectId: entity.projectId,
 			title: entity.title,
-			workflowName,
+			workflowName: linkedWorkflow?.workflowName ?? null,
+			workflowVersionId: linkedWorkflow?.workflowVersionId ?? null,
 			decision: entity.decision,
 			state: entity.state,
 			createdAt: entity.createdAt.toISOString(),
