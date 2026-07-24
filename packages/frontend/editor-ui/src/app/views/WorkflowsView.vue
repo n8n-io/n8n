@@ -47,6 +47,7 @@ import TemplateRecommendationV2 from '@/experiments/templateRecoV2/components/Te
 import TemplateRecommendationV3 from '@/experiments/personalizedTemplatesV3/components/TemplateRecommendationV3.vue';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
+import { useTrialIntroModalStore } from '@/experiments/trialIntroModal/stores/trialIntroModal.store';
 import EmptyStateLayout from '@/app/components/layouts/EmptyStateLayout.vue';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useEmptyStateDetection } from '@/features/workflows/readyToRun/composables/useEmptyStateDetection';
@@ -168,6 +169,7 @@ const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const readyToRunStore = useReadyToRunStore();
+const trialIntroModalStore = useTrialIntroModalStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
@@ -2178,8 +2180,12 @@ const onNameSubmit = async (name: string) => {
 </script>
 
 <template>
+	<div
+		v-if="trialIntroModalStore.shouldSuppressTrialBackground"
+		data-test-id="trial-intro-background-placeholder"
+	/>
 	<ResourcesListLoadingState
-		v-if="deferChromeForOnboarding"
+		v-else-if="deferChromeForOnboarding"
 		data-test-id="workflows-onboarding-loading"
 	/>
 	<EmptyStateLayout v-else-if="shouldUseSimplifiedLayout" @click:add="addWorkflow" />

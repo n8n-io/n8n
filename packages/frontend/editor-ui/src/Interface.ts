@@ -925,7 +925,8 @@ export type CloudUpdateLinkSourceType =
 	| 'empty-state-builder-prompt'
 	| 'instance-ai'
 	| 'data-redaction'
-	| 'workflow-settings';
+	| 'workflow-settings'
+	| 'trial-welcome-modal';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'

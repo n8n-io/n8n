@@ -6,6 +6,10 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type { CloudPlanAndUsageData } from '@/Interface';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { TRIAL_INTRO_MODAL_KEY } from '@/app/constants/modals';
+import { VIEWS } from '@/app/constants/navigation';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useTrialIntroModalStore } from '@/experiments/trialIntroModal/stores/trialIntroModal.store';
 import { N8nButton, N8nText, type IconName, type ButtonVariant } from '@n8n/design-system';
 
 const LEGACY_STYLE_TO_VARIANT: Record<string, ButtonVariant> = {
@@ -71,10 +75,33 @@ const LEGACY_STYLE_TO_CSS_VARS: Record<string, Record<string, string>> = {
 };
 
 const PROGRESS_BAR_MINIMUM_THRESHOLD = 8;
+const WORKFLOW_LIST_VIEWS = new Set<string>([
+	VIEWS.WORKFLOWS,
+	VIEWS.FOLDERS,
+	VIEWS.PROJECTS_WORKFLOWS,
+	VIEWS.PROJECTS_FOLDERS,
+	VIEWS.SHARED_WORKFLOWS,
+]);
 
 const cloudPlanStore = useCloudPlanStore();
+const uiStore = useUIStore();
+const trialIntroModalStore = useTrialIntroModalStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const router = useRouter();
+
+const isTrialIntroModalOpen = computed(() => uiStore.activeModals.includes(TRIAL_INTRO_MODAL_KEY));
+const isWorkflowListView = computed(() => {
+	const routeName = router.currentRoute.value.name;
+	return (
+		(typeof routeName === 'string' && WORKFLOW_LIST_VIEWS.has(routeName)) ||
+		window.location.pathname.endsWith('/workflows')
+	);
+});
+const shouldHideTrialBanner = computed(
+	() =>
+		isTrialIntroModalOpen.value ||
+		(isWorkflowListView.value && trialIntroModalStore.shouldSuppressTrialBackground),
+);
 
 // Banner config from backend
 const bannerTimeLeft = computed(() => cloudPlanStore.bannerTimeLeft);
@@ -169,6 +196,7 @@ function onCtaClick() {
 
 <template>
 	<BaseBanner
+		v-if="!shouldHideTrialBanner"
 		name="TRIAL"
 		theme="custom"
 		:dismissible="cloudPlanStore.bannerDismissible"
