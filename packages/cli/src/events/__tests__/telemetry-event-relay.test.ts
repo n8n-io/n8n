@@ -2313,6 +2313,7 @@ describe('TelemetryEventRelay', () => {
 					credentials: 2,
 					dataTables: 1,
 					variables: 4,
+					tags: 2,
 				},
 			};
 
@@ -2325,6 +2326,7 @@ describe('TelemetryEventRelay', () => {
 				credential_count: 2,
 				data_table_count: 1,
 				variable_count: 4,
+				tag_count: 2,
 			});
 		});
 

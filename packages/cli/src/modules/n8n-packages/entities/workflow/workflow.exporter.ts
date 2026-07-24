@@ -13,7 +13,7 @@ import { DataTableRequirementsExtractor } from '../data-table/data-table-require
 import type { WorkflowDataTableRequirement } from '../data-table/data-table.types';
 import type { WorkflowNodeTypeSource } from './node-type-usage';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
-import type { WorkflowExportRequirements } from '../requirements.types';
+import type { WorkflowExportRequirements, WorkflowTagUsage } from '../requirements.types';
 import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
 import type { WorkflowVariableRequirement } from '../variable/variable.types';
 
@@ -21,6 +21,7 @@ export interface WorkflowExportRequest {
 	user: User;
 	workflowIds: string[];
 	writer: PackageWriter;
+	includeTags: boolean;
 
 	// Directory the workflow is written under. e.g. folders/{folderId}/
 	basePrefix?: string;
@@ -46,7 +47,7 @@ export class WorkflowExporter {
 			request.workflowIds,
 			request.user,
 			['workflow:export'],
-			{ includeParentFolder: true },
+			{ includeParentFolder: true, includeTags: request.includeTags },
 		);
 
 		await assertEveryRequestedEntityAccessible(
@@ -61,6 +62,7 @@ export class WorkflowExporter {
 		const credentials: WorkflowCredentialRequirement[] = [];
 		const dataTables: WorkflowDataTableRequirement[] = [];
 		const variables: WorkflowVariableRequirement[] = [];
+		const tags: WorkflowTagUsage[] = [];
 		const nodeTypes: WorkflowNodeTypeSource[] = [];
 		const fileNames = new UniqueFilenameAllocator(
 			request.basePrefix ? `${request.basePrefix}/workflows` : 'workflows',
@@ -83,10 +85,16 @@ export class WorkflowExporter {
 			credentials.push(...this.credentialRequirementsExtractor.extract(workflow));
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(workflow));
 			variables.push(...this.variableRequirementsExtractor.extract(workflow));
+			tags.push(
+				...(workflow.tags ?? []).map((tag) => ({
+					workflowId: workflow.id,
+					tag: { id: tag.id, name: tag.name },
+				})),
+			);
 			nodeTypes.push({ workflowId: workflow.id, nodes: workflow.nodes ?? [] });
 		}
 
-		return { entries, requirements: { credentials, dataTables, variables, nodeTypes } };
+		return { entries, requirements: { credentials, dataTables, variables, tags, nodeTypes } };
 	}
 
 	private orderWorkflowsByRequest(

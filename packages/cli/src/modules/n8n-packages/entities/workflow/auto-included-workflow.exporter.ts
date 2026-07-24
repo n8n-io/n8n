@@ -14,7 +14,7 @@ import { DataTableRequirementsExtractor } from '../data-table/data-table-require
 import type { WorkflowDataTableRequirement } from '../data-table/data-table.types';
 import { FolderSerializer } from '../folder/folder.serializer';
 import { ProjectSerializer } from '../project/project.serializer';
-import type { WorkflowExportRequirements } from '../requirements.types';
+import type { WorkflowExportRequirements, WorkflowTagUsage } from '../requirements.types';
 import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
 import type { WorkflowVariableRequirement } from '../variable/variable.types';
 
@@ -93,6 +93,7 @@ export class AutoIncludedWorkflowExporter {
 		const credentials: WorkflowCredentialRequirement[] = [];
 		const dataTables: WorkflowDataTableRequirement[] = [];
 		const variables: WorkflowVariableRequirement[] = [];
+		const tags: WorkflowTagUsage[] = [];
 		const nodeTypes: WorkflowNodeTypeSource[] = [];
 
 		for (const included of request.workflows) {
@@ -119,6 +120,12 @@ export class AutoIncludedWorkflowExporter {
 			credentials.push(...this.credentialRequirementsExtractor.extract(included.workflow));
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(included.workflow));
 			variables.push(...this.variableRequirementsExtractor.extract(included.workflow));
+			tags.push(
+				...(included.workflow.tags ?? []).map((tag) => ({
+					workflowId: included.workflow.id,
+					tag: { id: tag.id, name: tag.name },
+				})),
+			);
 			nodeTypes.push({
 				workflowId: included.workflow.id,
 				nodes: included.workflow.nodes ?? [],
@@ -129,7 +136,7 @@ export class AutoIncludedWorkflowExporter {
 			workflowEntries,
 			folderEntries,
 			projectEntries,
-			requirements: { credentials, dataTables, variables, nodeTypes },
+			requirements: { credentials, dataTables, variables, tags, nodeTypes },
 			projectTargetsById,
 		};
 	}

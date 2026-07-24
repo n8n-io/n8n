@@ -132,6 +132,7 @@ export interface ExportPackageRequest {
 	projectIds?: string[];
 	includeVariableValues?: boolean;
 	canExportVariableValues?: boolean;
+	includeTags?: boolean;
 	missingWorkflowDependencyPolicy?: MissingWorkflowDependencyPolicy;
 }
 
@@ -235,6 +236,7 @@ export type ExportPackageEventCounts = {
 	credentials: number;
 	dataTables: number;
 	variables: number;
+	tags: number;
 };
 
 /**
