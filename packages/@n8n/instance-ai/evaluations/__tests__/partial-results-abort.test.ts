@@ -1,4 +1,4 @@
-import { abortedWorkflowTestCaseResult } from '../harness/runner';
+import { abortedWorkflowTestCaseResult } from '../harness/cleanup';
 import { classifyScenarioExecutionError } from '../harness/transient-error';
 import { aggregateResults } from '../run/aggregator';
 import type { ExecutionScenario, WorkflowTestCase, WorkflowTestCaseResult } from '../types';

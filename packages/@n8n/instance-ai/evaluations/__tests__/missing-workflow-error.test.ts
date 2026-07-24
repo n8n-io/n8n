@@ -1,4 +1,4 @@
-import { summarizeMissingWorkflowError } from '../harness/runner';
+import { summarizeMissingWorkflowError } from '../harness/cleanup';
 import type { CapturedEvent } from '../types';
 
 function event(type: string, data: Record<string, unknown>): CapturedEvent {

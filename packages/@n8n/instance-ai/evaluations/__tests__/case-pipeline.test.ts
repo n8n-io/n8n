@@ -1,6 +1,7 @@
 import type { CliArgs } from '../cli/args';
+import type { BuildResult } from '../harness/build-workflow';
+import { cleanupBuild } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
-import { cleanupBuild, type BuildResult } from '../harness/runner';
 import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 import type { BuildOrchestrator, CachedBuild, LaneState } from '../run/build-orchestrator';
 import { createCasePipeline, type CasePipelineDeps } from '../run/case-pipeline';
@@ -12,11 +13,18 @@ import type { WorkflowTestCase } from '../types';
 // per-build cleanup. Both drivers run rows through runRow — keep these green
 // through the decomposition.
 
-vi.mock('../harness/runner', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('../harness/runner')>();
+vi.mock('../harness/cleanup', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../harness/cleanup')>();
 	return {
 		...actual,
 		cleanupBuild: vi.fn().mockResolvedValue(true),
+	};
+});
+
+vi.mock('../harness/seed-tables', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../harness/seed-tables')>();
+	return {
+		...actual,
 		warnAgentSeedDataTablesIgnored: vi.fn(),
 	};
 });

@@ -15,15 +15,14 @@ import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 import type { BuildOrchestrator } from './build-orchestrator';
 import { sentinelOutcomeFromVerdicts, type TargetOutput } from './reshape';
 import type { CliArgs } from '../cli/args';
+import { findAgentArtifactRef } from '../harness/agent-execution';
+import { cleanupBuild, effectiveTimeoutMs } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
 import {
-	cleanupBuild,
-	effectiveTimeoutMs,
-	findAgentArtifactRef,
 	scenariosRequireSerialSeeding,
 	warnAgentSeedDataTablesIgnored,
 	type ScenarioSeedContext,
-} from '../harness/runner';
+} from '../harness/seed-tables';
 import {
 	classifyScenarioExecutionError,
 	extractErrorMessage,

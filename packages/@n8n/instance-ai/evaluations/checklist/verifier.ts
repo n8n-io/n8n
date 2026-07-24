@@ -6,7 +6,7 @@ import {
 	createEvalAgent,
 	resolveEvalModelConfig,
 } from '../../src/utils/eval-agents';
-import type { VerificationArtifact } from '../harness/runner';
+import type { VerificationArtifact } from '../harness/scenario-execution';
 import { MOCK_EXECUTION_VERIFY_PROMPT } from '../system-prompts/mock-execution-verify';
 import type { ChecklistItem, ChecklistResult } from '../types';
 
