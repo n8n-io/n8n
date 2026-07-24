@@ -19,6 +19,7 @@ import {
 } from '@n8n/api-types';
 import type { AgentFileDto } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -488,7 +489,7 @@ async function onOpenPreview() {
 		return;
 	}
 	await openPreview();
-	telemetry.track('User opened agent preview', { agent_id: agentId.value });
+	telemetry.track(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW, { agent_id: agentId.value });
 }
 
 function getBuilderQuery() {
@@ -669,7 +670,7 @@ const configAutosave = useAgentConfigAutosave<ConfigAutosaveSnapshot>({
 const skillAutosave = useAgentConfigAutosave<SkillAutosaveSnapshot>({
 	save: saveSkill,
 	onSaved: (snapshot) => {
-		telemetry.track('User saved agent skill', {
+		telemetry.track(TELEMETRY_EVENT.AGENTS.USER_SAVED_AGENT_SKILL, {
 			agent_id: snapshot.agentId,
 			skill_id: snapshot.skillId,
 		});
