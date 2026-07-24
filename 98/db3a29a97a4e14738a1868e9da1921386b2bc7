@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.ts
+  s_a929e1b0dab458::t_8b72dc036648fd 228-231
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/test/LmChatGoogleVertex.test.ts
+  s_a929e1b0dab458::t_3159b01efb2657 251-268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "98db3a29a97a4e14738a1868e9da1921386b2bc7",
+  "prompts": {},
+  "sessions": {
+    "s_a929e1b0dab458": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e91f9091-2d18-444e-8a33-87350ec07084",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

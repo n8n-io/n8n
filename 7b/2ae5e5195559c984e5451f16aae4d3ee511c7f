@@ -1,58 +1,52 @@
-packages/@n8n/db/src/migrations/sqlite/index.ts
-  s_44a98ba2784a12::t_fe94af8470378e 435
-  s_44a98ba2784a12::t_bfa5a9f5ac9def 215
-  s_44a98ba2784a12::t_d446b22a984aa3 216,216
-  s_44a98ba2784a12::t_29c7d74109de94 436,436
-  s_44a98ba2784a12::t_40ef558442421f 214,214
-  s_44a98ba2784a12::t_e003fa0ab06b5c 434,434
-  s_44a98ba2784a12::t_893c5ef8fdc256 217-218,217-218
-  s_44a98ba2784a12::t_daa8f45a138448 437-438,437-438
-docs/generated/sqlite-schema/oauth_user_consents.md
-  s_44a98ba2784a12::t_c7a37a3d8a1ed7 9,21,51
-docs/generated/sqlite-schema/oauth_clients.md
-  s_44a98ba2784a12::t_c7a37a3d8a1ed7 95
-docs/generated/sqlite-schema/README.md
-  s_44a98ba2784a12::t_c7a37a3d8a1ed7 87,1052
-  s_44a98ba2784a12::t_e7de892e1b7d06 218,832-838
-  s_44a98ba2784a12::t_16f911908620c5 65,97,824,1138
-docs/generated/sqlite-schema/user.md
-  s_44a98ba2784a12::t_c7a37a3d8a1ed7 241
-packages/@n8n/db/src/migrations/postgresdb/index.ts
-  s_44a98ba2784a12::t_aa1e8f3f5a3b38 223
-  s_44a98ba2784a12::t_473e032380eaeb 453
-  s_44a98ba2784a12::t_50f198fd2246d1 224,224
-  s_44a98ba2784a12::t_6a70a4b32b68f9 454,454
-  s_44a98ba2784a12::t_591d9ac7718227 222,222
-  s_44a98ba2784a12::t_0e1b7d2554975c 452,452
-  s_44a98ba2784a12::t_51812c9029fdb3 455-456,455-456
-  s_44a98ba2784a12::t_d25d8416783ebe 225-226,225-226
-packages/@n8n/db/src/migrations/common/1784000000047-BackfillPreScopingOAuthGrantScopes.ts
-  s_44a98ba2784a12::t_2b023adf499a11 1-100
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue
+  s_744aa7ffad1673::t_d74ae10d998849 75
+  s_744aa7ffad1673::t_ab502cabe8a978 75
 packages/cli/src/modules/agents/builder/skills/mcp.skill.ts
   s_770a4f5233186c::t_8ad2b3903b74bc 98
 packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
   s_770a4f5233186c::t_a7cff99b8f3cd2 149
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_44a98ba2784a12::t_d446b22a984aa3 216,216
+  s_44a98ba2784a12::t_29c7d74109de94 436,436
+  s_44a98ba2784a12::t_fe94af8470378e 435,435
+  s_44a98ba2784a12::t_bfa5a9f5ac9def 215,215
+  s_44a98ba2784a12::t_893c5ef8fdc256 217-218,217-218
+  s_44a98ba2784a12::t_daa8f45a138448 437-438,437-438
+  s_44a98ba2784a12::t_40ef558442421f 214,214
+  s_44a98ba2784a12::t_e003fa0ab06b5c 434,434
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_44a98ba2784a12::t_50f198fd2246d1 224,224
+  s_44a98ba2784a12::t_6a70a4b32b68f9 454,454
+  s_44a98ba2784a12::t_aa1e8f3f5a3b38 223,223
+  s_44a98ba2784a12::t_473e032380eaeb 453,453
+  s_44a98ba2784a12::t_51812c9029fdb3 455-456,455-456
+  s_44a98ba2784a12::t_d25d8416783ebe 225-226,225-226
+  s_44a98ba2784a12::t_591d9ac7718227 222,222
+  s_44a98ba2784a12::t_0e1b7d2554975c 452,452
 packages/@n8n/db/src/migrations/common/1784000000048-AddTriggerKindToWorkflowPublicationTriggerStatus.ts
   ai_agent 1-39
-packages/@n8n/db/src/migrations/common/1784000000046-CreateInstanceAiEventsTable.ts
-  s_44a98ba2784a12::t_ce0caa502ea993 1-36
-docs/generated/postgres-schema/README.md
-  s_44a98ba2784a12::t_e7de892e1b7d06 235,845-851
-  s_44a98ba2784a12::t_16f911908620c5 65,97,837,1151
-docs/generated/sqlite-schema/instance_ai_threads.md
-  s_44a98ba2784a12::t_e7de892e1b7d06 19,49,87-93
-  s_44a98ba2784a12::t_16f911908620c5 79
-docs/generated/sqlite-schema/instance_ai_events.md
-  s_44a98ba2784a12::t_e7de892e1b7d06 1-71
-docs/generated/postgres-schema/public.instance_ai_events.md
-  s_44a98ba2784a12::t_e7de892e1b7d06 1-65
-docs/generated/postgres-schema/public.instance_ai_threads.md
-  s_44a98ba2784a12::t_e7de892e1b7d06 8,43,81-87
-  s_44a98ba2784a12::t_16f911908620c5 73
+docs/generated/sqlite-schema/README.md
+  s_44a98ba2784a12::t_c7a37a3d8a1ed7 87,1052
+  s_44a98ba2784a12::t_16f911908620c5 65,97,824,1138
+  s_44a98ba2784a12::t_e7de892e1b7d06 218,832-838
+docs/generated/sqlite-schema/oauth_user_consents.md
+  s_44a98ba2784a12::t_c7a37a3d8a1ed7 9,21,51
+docs/generated/sqlite-schema/oauth_clients.md
+  s_44a98ba2784a12::t_c7a37a3d8a1ed7 95
+docs/generated/sqlite-schema/user.md
+  s_44a98ba2784a12::t_c7a37a3d8a1ed7 241
+packages/@n8n/db/src/migrations/common/1784000000047-BackfillPreScopingOAuthGrantScopes.ts
+  s_44a98ba2784a12::t_2b023adf499a11 1-100
 docs/generated/postgres-schema/public.scheduled_task.md
   s_44a98ba2784a12::t_16f911908620c5 10,66
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_44a98ba2784a12::t_16f911908620c5 79
+  s_44a98ba2784a12::t_e7de892e1b7d06 19,49,87-93
 docs/generated/sqlite-schema/instance_ai_pending_confirmations.md
   s_44a98ba2784a12::t_16f911908620c5 78
+docs/generated/postgres-schema/README.md
+  s_44a98ba2784a12::t_16f911908620c5 65,97,837,1151
+  s_44a98ba2784a12::t_e7de892e1b7d06 235,845-851
 packages/@n8n/db/src/migrations/common/1784000000050-AddHostRunIdToInstanceAiCheckpoints.ts
   ai_agent 1-31
 docs/generated/postgres-schema/public.instance_ai_pending_confirmations.md
@@ -65,14 +59,27 @@ docs/generated/sqlite-schema/scheduled_task.md
   s_44a98ba2784a12::t_16f911908620c5 9,21,65
 docs/generated/postgres-schema/public.scheduled_job.md
   s_44a98ba2784a12::t_16f911908620c5 92
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_44a98ba2784a12::t_16f911908620c5 73
+  s_44a98ba2784a12::t_e7de892e1b7d06 8,43,81-87
 docs/generated/sqlite-schema/instance_ai_checkpoints.md
   s_44a98ba2784a12::t_16f911908620c5 9,20,57
 docs/generated/postgres-schema/public.instance_ai_checkpoints.md
   s_44a98ba2784a12::t_16f911908620c5 9,49
+packages/@n8n/db/src/migrations/common/1784000000046-CreateInstanceAiEventsTable.ts
+  s_44a98ba2784a12::t_ce0caa502ea993 1-36
+docs/generated/sqlite-schema/instance_ai_events.md
+  s_44a98ba2784a12::t_e7de892e1b7d06 1-71
+docs/generated/postgres-schema/public.instance_ai_events.md
+  s_44a98ba2784a12::t_e7de892e1b7d06 1-65
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_b1ae3677d6bc36::t_f4ecbbe076e13c 46,50
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_b34abcbd386402::t_f65d763798858f 95
 ---
 {
   "schema_version": "authorship/3.0.0",
-  "git_ai_version": "1.5.2",
+  "git_ai_version": "1.6.16",
   "base_commit_sha": "7b2ae5e5195559c984e5451f16aae4d3ee511c7f",
   "prompts": {},
   "humans": {
@@ -90,6 +97,14 @@ docs/generated/postgres-schema/public.instance_ai_checkpoints.md
     }
   },
   "sessions": {
+    "s_12107b09095a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f36b6843-9b7a-45a5-8d52-4031db7468b2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
     "s_1ef72897374beb": {
       "agent_id": {
         "tool": "cursor",
@@ -103,6 +118,14 @@ docs/generated/postgres-schema/public.instance_ai_checkpoints.md
         "tool": "codex",
         "id": "019f6650-1132-7ff1-ab94-090605cfc9f7",
         "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_41e37076417c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "480c8620-d708-419e-ac08-fca1f0d2cb0a",
+        "model": "claude-fable-5"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
@@ -130,6 +153,30 @@ docs/generated/postgres-schema/public.instance_ai_checkpoints.md
       },
       "human_author": null
     },
+    "s_6638f09b589e97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5e3f01e-f690-4590-9a30-a5e2bd26c393",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_70e4a16a672757": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f79e6-9f5d-7b91-b07b-a2c76974c292",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_744aa7ffad1673": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c708436e-d47a-46c9-8cfa-2a78ec728e0c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
     "s_770a4f5233186c": {
       "agent_id": {
         "tool": "cursor",
@@ -154,6 +201,38 @@ docs/generated/postgres-schema/public.instance_ai_checkpoints.md
       },
       "human_author": null
     },
+    "s_91f67565918eee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36f4874d-45bc-43d2-bd2d-9c16d23d9c95",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_94fa4ed7d7b038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d271a69-d48a-40c6-b6a3-5630b148db23",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_b1ae3677d6bc36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14856d89-b227-4425-adeb-7f31ce9ea7b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_b34abcbd386402": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dc6fdb7-ff5f-45a8-98bf-0345038d38d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
     "s_b3f23ab76a494c": {
       "agent_id": {
         "tool": "codex",
@@ -162,11 +241,27 @@ docs/generated/postgres-schema/public.instance_ai_checkpoints.md
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
+    "s_b6381fbb8ddc64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7dd02182-97ab-4180-9c8a-8d5054fdd2f7",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
     "s_d8236b8b5400e8": {
       "agent_id": {
         "tool": "cursor",
         "id": "500e2669-64fc-46e2-9484-cf22ebf66e89",
         "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_e0d6b46d5a1cd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9bef762-10a3-4006-8b74-acefd3594aab",
+        "model": "claude-fable-5"
       },
       "human_author": null
     }

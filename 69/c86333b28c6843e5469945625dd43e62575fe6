@@ -1,7 +1,7 @@
 packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/update.operation.ts
   s_61d0f858e68120::t_cd29dabc499dfb 1-103
 packages/nodes-base/nodes/Microsoft/SharePoint/v2/item/index.ts
-  s_61d0f858e68120::t_079ea6bc595776 1-40,42-93
+  s_61d0f858e68120::t_079ea6bc595776 1-40,42-93,75-93
 packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/index.ts
   s_61d0f858e68120::t_8b8a501f626794 1-30
 packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/versionDescription.ts
@@ -26,6 +26,11 @@ packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/router.ts
   "git_ai_version": "1.5.2",
   "base_commit_sha": "69c86333b28c6843e5469945625dd43e62575fe6",
   "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
   "sessions": {
     "s_61d0f858e68120": {
       "agent_id": {
@@ -34,6 +39,14 @@ packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/router.ts
         "model": "claude-fable-5"
       },
       "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    },
+    "s_d7309962fc8352": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cde34fb2-171c-4c0e-ba62-dcc55361bc75",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     }
   }
 }

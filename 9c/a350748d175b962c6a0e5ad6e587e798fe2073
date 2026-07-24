@@ -3,12 +3,21 @@ packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowDetails.test.t
 ---
 {
   "schema_version": "authorship/3.0.0",
-  "git_ai_version": "1.6.14",
+  "git_ai_version": "1.6.16",
   "base_commit_sha": "9ca350748d175b962c6a0e5ad6e587e798fe2073",
   "prompts": {},
   "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    },
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
     "h_9c8f56e3400786": {
       "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
     }
   },
   "sessions": {
