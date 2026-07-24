@@ -103,6 +103,7 @@ describe('eval agent model config', () => {
 		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith(fallbackModelConfig);
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
 			mode: 'adaptive',
+			effort: 'medium',
 		});
 	});
 

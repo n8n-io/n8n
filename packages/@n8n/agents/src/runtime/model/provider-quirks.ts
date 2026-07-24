@@ -44,6 +44,7 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 				return {
 					anthropic: {
 						thinking: { type: 'adaptive', display: cfg.display ?? 'summarized' },
+						effort: cfg.effort ?? 'medium',
 					},
 				};
 			}
