@@ -10,7 +10,7 @@ docs/generated/postgres-schema/public.workflow_review_request_workflow.md
 packages/nodes-base/nodes/N8n/n8n-api-coverage.json
   s_44a98ba2784a12::t_50150ccddc31fc 8-13
 packages/cli/test/migration/1784000000052-create-workflow-review-request-tables.test.ts
-  s_44a98ba2784a12::t_fa25b39e56246d 1-12,14-117,158-161,183-186,197-210,287-288,290,343-344
+  s_44a98ba2784a12::t_fa25b39e56246d 1-12,14-117,14-115,158-161,160-161,183-186,183-184,186,197-210,287-288,290,343-344
   s_44a98ba2784a12::t_a3d1d9fc652366 118-157,162-165,167-170,172-173,177,179-182,187
   s_44a98ba2784a12::t_9100d997b3e449 229-230
   s_44a98ba2784a12::t_46696f806e3c30 284-286,291
@@ -33,7 +33,7 @@ packages/@n8n/db/src/repositories/workflow-review-request-author.repository.ts
 packages/@n8n/db/src/entities/workflow-review-request-author.ee.ts
   s_44a98ba2784a12::t_b68444cb9bf6bd 2-3,6-7,9-10
 packages/@n8n/db/src/entities/workflow-review-request.ee.ts
-  s_44a98ba2784a12::t_243fda83c3ba5d 1-4,16-20,23,25-26,28-31,37,39-50,52-53,55
+  s_44a98ba2784a12::t_243fda83c3ba5d 1-4,2-4,16-20,23,25-26,28-31,37,39-50,52-53,55
   s_44a98ba2784a12::t_4a86a82b8ef7a5 35
   s_44a98ba2784a12::t_935930310cd5f0 5-15,21-22,24,32-34,36,51,54
   s_44a98ba2784a12::t_95a1285ac2a8aa 38
@@ -300,6 +300,7 @@ packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflo
 packages/frontend/editor-ui/src/app/constants/localStorage.ts
   s_70e4a16a672757::t_489e68614b7d2b 40-41
   s_70e4a16a672757::t_706452e921bce7 42-43
+  s_91f67565918eee::t_102841e08fe8e0 42-43
 packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
   s_70e4a16a672757::t_489e68614b7d2b 1-28
 ---
@@ -399,6 +400,14 @@ packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
         "model": "claude-opus-4-8"
       },
       "human_author": null
+    },
+    "s_91f67565918eee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36f4874d-45bc-43d2-bd2d-9c16d23d9c95",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
     "s_b3f23ab76a494c": {
       "agent_id": {
