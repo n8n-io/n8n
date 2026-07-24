@@ -89,6 +89,32 @@ describe('AgentEvalResultRepository', () => {
 		});
 	});
 
+	describe('markAsRunning', () => {
+		it('marks the case running and stamps runAt', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.markAsRunning('res-1');
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[1]).toBe('res-1');
+			expect(callArgs?.[2]).toMatchObject({ status: 'running' });
+			expect((callArgs?.[2] as { runAt: Date }).runAt).toBeInstanceOf(Date);
+		});
+	});
+
+	describe('markAsCancelled', () => {
+		it('marks the case cancelled and stamps completedAt', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.markAsCancelled('res-1');
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[1]).toBe('res-1');
+			expect(callArgs?.[2]).toMatchObject({ status: 'cancelled' });
+			expect((callArgs?.[2] as { completedAt: Date }).completedAt).toBeInstanceOf(Date);
+		});
+	});
+
 	describe('findByRunId', () => {
 		it('scopes to runId ordered by runIndex ascending', async () => {
 			entityManager.find.mockResolvedValueOnce([]);

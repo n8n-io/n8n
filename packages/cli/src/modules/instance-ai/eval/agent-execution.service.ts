@@ -101,6 +101,11 @@ export class EvalAgentExecutionService {
 		agentId: string,
 		user: User,
 		options: InstanceAiEvalAgentExecutionRequest,
+		// When set, the run uses this exact text as the opening message instead of
+		// a generated scenario. The seed is still generated (its shared context +
+		// per-tool hints keep the tool mocks coherent), but the message the agent
+		// receives is this input verbatim — how a fixed eval case is executed.
+		caseInput?: string,
 	): Promise<InstanceAiEvalAgentExecutionResult> {
 		// Workflow-tool sub-executions carry a configureAdditionalData closure
 		// that doesn't survive queue serialization — refuse upfront so tool
@@ -152,13 +157,22 @@ export class EvalAgentExecutionService {
 				agentName: config.name,
 				instructions: config.instructions,
 				tools: toolSummaries,
-				scenarioHints: options.scenarioHints,
+				// A fixed case input doubles as the scenario signal so the generated
+				// context + tool hints stay coherent with the message actually sent.
+				scenarioHints: options.scenarioHints ?? caseInput,
 			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			return this.errorResult(
 				message.startsWith('FRAMEWORK ISSUE:') ? message : `FRAMEWORK ISSUE: ${message}`,
 			);
+		}
+
+		// A fixed eval case overrides the generated opening message: keep the
+		// seed's context/hints (they steer the tool mocks) but send the case's
+		// input verbatim.
+		if (caseInput !== undefined) {
+			seed = { ...seed, openingMessage: caseInput };
 		}
 
 		const mockHandler = createLlmMockHandler({

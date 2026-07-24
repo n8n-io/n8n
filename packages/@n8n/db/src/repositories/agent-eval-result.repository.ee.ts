@@ -38,6 +38,14 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 		return await this.save(results);
 	}
 
+	async markAsRunning(id: string) {
+		return await this.update(id, { status: 'running', runAt: new Date() });
+	}
+
+	async markAsCancelled(id: string) {
+		return await this.update(id, { status: 'cancelled', completedAt: new Date() });
+	}
+
 	async markAsCompleted(
 		id: string,
 		attrs: {

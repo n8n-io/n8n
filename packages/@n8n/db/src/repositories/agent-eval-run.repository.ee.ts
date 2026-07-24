@@ -55,10 +55,11 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 		});
 	}
 
-	async markAsCancelled(id: string) {
+	async markAsCancelled(id: string, metrics: IDataObject | null = null) {
 		return await this.update(id, {
 			status: 'cancelled',
 			completedAt: new Date(),
+			metrics,
 			runningInstanceId: null,
 		});
 	}
@@ -73,5 +74,15 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 
 	async findByDatasetId(datasetId: string): Promise<AgentEvalRun[]> {
 		return await this.find({ where: { datasetId }, order: { createdAt: 'DESC' } });
+	}
+
+	async findById(id: string): Promise<AgentEvalRun | null> {
+		return await this.findOneBy({ id });
+	}
+
+	/** Lightweight read of just the cross-main cancellation flag for a run. */
+	async isCancellationRequested(id: string): Promise<boolean> {
+		const run = await this.findOne({ where: { id }, select: ['id', 'cancelRequested'] });
+		return run?.cancelRequested ?? false;
 	}
 }
