@@ -168,10 +168,10 @@ export function getCurrentWorkflowInputData(this: IExecuteFunctions | ISupplyDat
 export async function loadWorkflowInputMappings(
 	this: ILocalLoadOptionsFunctions,
 ): Promise<WorkflowInputsData> {
-	const nodeLoadContext = await this.getWorkflowNodeContext(
-		EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-		true,
-	);
+	// Read the trigger from the sub-workflow draft so the resource mapper reflects the
+	// latest saved inputs. Manual/chat executions run the draft, and production executions
+	// resolve the published version at runtime, so this only affects the editing surface.
+	const nodeLoadContext = await this.getWorkflowNodeContext(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE);
 	let fields: ResourceMapperField[] = [];
 	let dataMode: string = PASSTHROUGH;
 	let subworkflowInfo: { workflowId?: string; triggerId?: string } | undefined;
