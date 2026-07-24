@@ -101,14 +101,15 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			);
 		} else {
 			const limit = this.getNodeParameter('limit', i);
-			const responseData = await microsoftApiRequestAllItems.call(
+			return await microsoftApiRequestAllItems.call(
 				this,
 				'value',
 				'GET',
 				`/v1.0/users/${memberId}/planner/tasks`,
 				{},
+				{},
+				limit,
 			);
-			return responseData.splice(0, limit);
 		}
 	} else {
 		//https://docs.microsoft.com/en-us/graph/api/plannerplan-list-tasks?view=graph-rest-1.0&tabs=http
@@ -118,14 +119,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			return await microsoftApiRequestAllItems.call(this, 'value', 'GET', endpoint);
 		} else {
 			const limit = this.getNodeParameter('limit', i);
-			const responseData = await microsoftApiRequestAllItems.call(
-				this,
-				'value',
-				'GET',
-				endpoint,
-				{},
-			);
-			return responseData.splice(0, limit);
+			return await microsoftApiRequestAllItems.call(this, 'value', 'GET', endpoint, {}, {}, limit);
 		}
 	}
 }

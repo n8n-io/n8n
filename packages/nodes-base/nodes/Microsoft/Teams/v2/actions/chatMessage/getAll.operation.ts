@@ -41,13 +41,14 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		);
 	} else {
 		const limit = this.getNodeParameter('limit', i);
-		const responseData = await microsoftApiRequestAllItems.call(
+		return await microsoftApiRequestAllItems.call(
 			this,
 			'value',
 			'GET',
 			`/v1.0/chats/${chatId}/messages`,
 			{},
+			{ $top: limit },
+			limit,
 		);
-		return responseData.splice(0, limit);
 	}
 }
