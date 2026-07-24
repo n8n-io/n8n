@@ -1,4 +1,5 @@
 import { McpConnection } from '../runtime/mcp/mcp-connection';
+import { ensureUniqueMcpToolNames } from '../runtime/mcp/mcp-tool-resolver';
 import type { McpServerConfig, McpVerifyResult } from '../types/sdk/mcp';
 import type { BuiltTool } from '../types/sdk/tool';
 
@@ -211,24 +212,7 @@ export class McpClient {
 		}
 
 		const tools = settled.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
-
-		const seen = new Set<string>();
-		const duplicates: string[] = [];
-		for (const tool of tools) {
-			if (seen.has(tool.name)) {
-				duplicates.push(tool.name);
-			}
-			seen.add(tool.name);
-		}
-
-		if (duplicates.length > 0) {
-			await Promise.allSettled(connectedConnections.map(async (c) => await c.disconnect()));
-			throw new Error(
-				`MCP tool name collision — the following tool names resolve to duplicates: ${duplicates.join(', ')}`,
-			);
-		}
-
-		return tools;
+		return ensureUniqueMcpToolNames(tools);
 	}
 
 	private async doClose(): Promise<void> {
