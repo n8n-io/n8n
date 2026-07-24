@@ -99,7 +99,7 @@ export const API_KEY_RESOURCES = {
 	testRun: ['read', 'list', 'create', 'cancel'] as const,
 	credential: ['create', 'read', 'update', 'move', 'delete', 'list'] as const,
 	eventBusDestination: ['test', 'create', 'read', 'update', 'delete', 'list'] as const,
-	sourceControl: ['pull'] as const,
+	sourceControl: ['pull', 'push'] as const,
 	workflowTags: ['update', 'list'] as const,
 	executionTags: ['update', 'list'] as const,
 	communityPackage: ['install', 'uninstall', 'update', 'list'] as const,
