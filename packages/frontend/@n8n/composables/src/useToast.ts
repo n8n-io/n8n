@@ -24,8 +24,7 @@ export type NotificationType = '' | 'success' | 'warning' | 'info' | 'error';
  * The application registers the concrete implementation at bootstrap via
  * {@link setNotify}; this package owns only the contract.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type NotifyFn = (options: any) => NotificationHandle;
+type NotifyFn = (options: Record<string, unknown>) => NotificationHandle;
 
 let registeredNotify: NotifyFn | undefined;
 
