@@ -6,7 +6,6 @@ import type {
 	CredentialCheckResult,
 	ICredentialDataDecryptedObject,
 	IDataObject,
-	HitlResponseTelemetryPayload,
 	IExecuteData,
 	INode,
 	INodeExecutionData,
@@ -158,12 +157,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return this.webhookData.webhookDescription.name;
 	}
 
-	logHitlResponse(
-		payload: Pick<
-			HitlResponseTelemetryPayload,
-			'approved' | 'authorized' | 'response_mode' | 'advanced_email'
-		>,
-	) {
+	logHitlResponse(payload: { approved: boolean; authorized: boolean }) {
 		this.additionalData.logHitlResponse?.({
 			...payload,
 			nodeType: this.node.type,

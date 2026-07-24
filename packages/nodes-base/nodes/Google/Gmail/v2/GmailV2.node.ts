@@ -10,8 +10,6 @@ import type {
 import { NodeConnectionTypes, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { draftFields, draftOperations } from './DraftDescription';
-import { gmailHitlProperties } from './hitl/descriptions';
-import { createSendAndWaitEmail } from './hitl/email';
 import { labelFields, labelOperations } from './LabelDescription';
 import { getGmailAliases, getLabels, getThreadMessages } from './loadOptions';
 import { messageFields, messageOperations } from './MessageDescription';
@@ -21,6 +19,7 @@ import { configureWaitTillDate } from '../../../../utils/sendAndWait/configureWa
 import { sendAndWaitWebhooksDescription } from '../../../../utils/sendAndWait/descriptions';
 import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
 import {
+	createEmail,
 	getSendAndWaitProperties,
 	SEND_AND_WAIT_WAITING_TOOLTIP,
 	sendAndWaitWebhook,
@@ -133,20 +132,16 @@ const versionDescription: INodeTypeDescription = {
 		//-------------------------------
 		...messageOperations,
 		...messageFields,
-		...getSendAndWaitProperties(
-			[
-				{
-					displayName: 'To',
-					name: 'sendTo',
-					type: 'string',
-					default: '',
-					required: true,
-					placeholder: 'e.g. info@example.com',
-				},
-			],
-			'message',
-			gmailHitlProperties,
-		),
+		...getSendAndWaitProperties([
+			{
+				displayName: 'To',
+				name: 'sendTo',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'e.g. info@example.com',
+			},
+		]),
 		//-------------------------------
 		// Thread Operations
 		//-------------------------------
@@ -185,11 +180,11 @@ export class GmailV2 implements INodeType {
 		const instanceId = this.getInstanceId();
 
 		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
+			const email: IEmail = createEmail(this);
+
 			try {
-				const { email, threadId } = await createSendAndWaitEmail(this);
 				await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', {
 					raw: await encodeEmail(email),
-					...(threadId ? { threadId } : {}),
 				});
 			} catch (error) {
 				if (this.continueOnFail()) {
