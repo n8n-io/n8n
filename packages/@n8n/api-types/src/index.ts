@@ -546,6 +546,7 @@ export {
 	averageNormalizedScore,
 	metricScaleFromConfig,
 	metricScalesFromConfig,
+	metricScalesFromSnapshot,
 	type MetricScale,
 	evalCollectionVersionEntrySchema,
 	createEvaluationCollectionSchema,

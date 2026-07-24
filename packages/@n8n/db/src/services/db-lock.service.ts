@@ -15,6 +15,7 @@ export const enum DbLock {
 	WORKFLOW_STATISTICS_ROLLUP = 1003,
 	WORKFLOW_REVIEW_REQUEST_CREATE = 1004,
 	MIGRATIONS = 1005,
+	EVAL_COLLECTION_RERUN = 1006,
 	/** Reserved for integration tests — never use in production code */
 	TEST = 9999,
 }

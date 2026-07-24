@@ -11,6 +11,9 @@ import { versionColorVar } from '../shared/versionPalette';
 const props = defineProps<{
 	versions: CompareVersion[];
 	caseRows: CompareCaseRow[];
+	// While the run is in progress, a case whose input hasn't loaded yet shows a
+	// skeleton rather than a blank cell.
+	isRunning?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -147,7 +150,15 @@ function deltas(row: CompareCaseRow) {
 				@keydown.enter="emit('drilldown', row.index)"
 			>
 				<td :class="$style.num">{{ row.displayIndex }}</td>
-				<td :class="$style.input" :title="row.inputPreview">{{ row.inputPreview }}</td>
+				<td :class="$style.input" :title="row.inputPreview">
+					<span v-if="row.inputPreview">{{ row.inputPreview }}</span>
+					<span
+						v-else-if="isRunning"
+						:class="$style.inputSkeleton"
+						data-test-id="compare-cases-input-skeleton"
+						aria-hidden="true"
+					/>
+				</td>
 				<td v-for="cell in row.cells" :key="cell.versionIndex" :class="$style.score">
 					<span :class="$style.chip">
 						<span :class="$style.dot" :style="{ background: versionColorVar(cell.versionIndex) }" />
@@ -232,6 +243,33 @@ function deltas(row: CompareCaseRow) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.inputSkeleton {
+	display: inline-block;
+	width: 60%;
+	min-width: 80px;
+	height: 0.9em;
+	vertical-align: middle;
+	border-radius: var(--radius);
+	background: var(--background--subtle);
+	animation: compare-cases-input-skeleton 1.2s ease-in-out infinite;
+}
+
+@keyframes compare-cases-input-skeleton {
+	0%,
+	100% {
+		opacity: 0.4;
+	}
+	50% {
+		opacity: 0.8;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.inputSkeleton {
+		animation: none;
+	}
 }
 
 .score {
