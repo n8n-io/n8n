@@ -1,9 +1,10 @@
 import { WikipediaQueryRun } from '@langchain/community/tools/wikipedia_query_run';
-import type {
-	IExecuteFunctions,
-	INode,
-	INodeExecutionData,
-	ISupplyDataFunctions,
+import {
+	NodeOperationError,
+	type IExecuteFunctions,
+	type INode,
+	type INodeExecutionData,
+	type ISupplyDataFunctions,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -162,6 +163,65 @@ describe('ToolWikipedia', () => {
 				],
 			]);
 			expect(WikipediaQueryRun.prototype.invoke).toHaveBeenCalledTimes(1);
+		});
+
+		it('should wrap network errors in a warning-level NodeOperationError', async () => {
+			const node = new ToolWikipedia();
+			const inputData: INodeExecutionData[] = [{ json: { query: 'test' } }];
+
+			const mockExecute = mock<IExecuteFunctions>({
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ name: 'test wikipedia' })),
+			});
+
+			WikipediaQueryRun.prototype.invoke = vi
+				.fn()
+				.mockRejectedValue(new Error('Network response was not ok'));
+
+			const promise = node.execute.call(mockExecute);
+
+			await expect(promise).rejects.toThrow(NodeOperationError);
+			await expect(promise).rejects.toMatchObject({
+				message: 'Network response was not ok',
+				level: 'warning',
+			});
+		});
+
+		it('should keep programmer errors at error level', async () => {
+			const node = new ToolWikipedia();
+			const inputData: INodeExecutionData[] = [{ json: { query: 'test' } }];
+
+			const mockExecute = mock<IExecuteFunctions>({
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ name: 'test wikipedia' })),
+			});
+
+			WikipediaQueryRun.prototype.invoke = vi
+				.fn()
+				.mockRejectedValue(new TypeError('undefined is not a function'));
+
+			const promise = node.execute.call(mockExecute);
+
+			await expect(promise).rejects.toThrow(NodeOperationError);
+			await expect(promise).rejects.toMatchObject({
+				message: 'undefined is not a function',
+				level: 'error',
+			});
+		});
+
+		it('should rethrow n8n errors unchanged', async () => {
+			const node = new ToolWikipedia();
+			const inputData: INodeExecutionData[] = [{ json: { query: 'test' } }];
+
+			const mockExecute = mock<IExecuteFunctions>({
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ name: 'test wikipedia' })),
+			});
+
+			const originalError = new NodeOperationError(mock<INode>({ name: 'test wikipedia' }), 'boom');
+			WikipediaQueryRun.prototype.invoke = vi.fn().mockRejectedValue(originalError);
+
+			await expect(node.execute.call(mockExecute)).rejects.toBe(originalError);
 		});
 	});
 });
