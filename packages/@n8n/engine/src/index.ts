@@ -30,6 +30,10 @@ export type {
 	ExecutionStatus,
 	ExecutionStore,
 	NewExecutionRecord,
+	NewStepRecord,
+	StepRecord,
+	StepStatus,
+	StepStore,
 } from './execution';
 
-export { createDataSource, TypeOrmExecutionStore } from './database';
+export { createDataSource, TypeOrmExecutionStore, TypeOrmStepStore } from './database';
