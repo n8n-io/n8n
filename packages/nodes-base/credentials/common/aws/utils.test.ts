@@ -1250,9 +1250,11 @@ describe('awsGetSignInOptionsAndUpdateRequest — S3 object-path canonicalizatio
 	});
 
 	it('canonicalizes S3 requests arriving through the uri branch (HTTP Request node)', () => {
+		// Path-style on this branch: resolving virtual-hosted `<bucket>.s3.<region>`
+		// hosts through the uri branch needs the parseAwsUrl rework (#34081, master-only).
 		const { signOpts, url } = awsGetSignInOptionsAndUpdateRequest(
 			{
-				uri: 'https://mybucket.s3.eu-west-1.amazonaws.com/exports/a+b (copy).csv',
+				uri: 'https://s3.eu-west-1.amazonaws.com/mybucket/exports/a+b (copy).csv',
 				headers: {},
 			} as any,
 			credentials,
@@ -1263,8 +1265,8 @@ describe('awsGetSignInOptionsAndUpdateRequest — S3 object-path canonicalizatio
 		);
 
 		expect(signOpts.service).toBe('s3');
-		expect(signOpts.path).toBe('/exports/a%2Bb%20%28copy%29.csv');
-		expect(url).toBe('https://mybucket.s3.eu-west-1.amazonaws.com' + signOpts.path);
+		expect(signOpts.path).toBe('/mybucket/exports/a%2Bb%20%28copy%29.csv');
+		expect(url).toBe('https://s3.eu-west-1.amazonaws.com' + signOpts.path);
 	});
 
 	it('canonicalizes paths for a custom s3Endpoint (S3-compatible providers)', () => {
