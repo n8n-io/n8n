@@ -36,7 +36,7 @@ export class McpRegistryTestController {
 	}
 
 	private assertE2ETestsEnabled(): void {
-		if (process.env.E2E_TESTS !== 'true' || process.env.NODE_ENV === 'production') {
+		if (process.env.E2E_TESTS !== 'true') {
 			throw new ForbiddenError('MCP registry test endpoints are not enabled');
 		}
 	}
