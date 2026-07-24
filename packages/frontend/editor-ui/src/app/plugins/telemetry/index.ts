@@ -1,7 +1,6 @@
 import type { Plugin } from 'vue';
 import type { ITelemetrySettings } from '@n8n/api-types';
 import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
-import { getEventValidationError } from '@n8n/telemetry';
 import { POSTHOG_EVENTS_BLACKLIST } from '@n8n/telemetry';
 import type { ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
@@ -10,7 +9,6 @@ import type { IUpdateInformation } from '@/Interface';
 import type { RudderStack } from './telemetry.types';
 import {
 	APPEND_ATTRIBUTION_DEFAULT_PATH,
-	GOOGLE_GMAIL_NODE_TYPE,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	SLACK_NODE_TYPE,
 	TELEGRAM_NODE_TYPE,
@@ -116,7 +114,7 @@ export class TelemetryService implements Telemetry {
 		const eventName = typeof event === 'string' ? event : event.name;
 
 		if (typeof event !== 'string') {
-			const validationError = getEventValidationError(event, properties);
+			const validationError = event.getValidationError(properties);
 			if (validationError) console.warn(validationError);
 		}
 
@@ -230,12 +228,11 @@ export class TelemetryService implements Telemetry {
 			}
 
 			// Advanced HITL (one-tap approval) opt-in toggles, tracked per node.
-			const advancedHitlPathMap: { [key: string]: string[] } = {
-				[SLACK_NODE_TYPE]: ['parameters.captureResponder'],
-				[TELEGRAM_NODE_TYPE]: ['parameters.chatApproval'],
-				[GOOGLE_GMAIL_NODE_TYPE]: ['parameters.advancedEmail', 'parameters.confirmationPage'],
+			const advancedHitlPathMap: { [key: string]: string } = {
+				[SLACK_NODE_TYPE]: 'parameters.captureResponder',
+				[TELEGRAM_NODE_TYPE]: 'parameters.chatApproval',
 			};
-			if (advancedHitlPathMap[nodeType]?.includes(change.name) && change.value === true) {
+			if (change.name === advancedHitlPathMap[nodeType] && change.value === true) {
 				this.track('User enabled advanced HITL', { node_type: nodeType });
 			}
 		}

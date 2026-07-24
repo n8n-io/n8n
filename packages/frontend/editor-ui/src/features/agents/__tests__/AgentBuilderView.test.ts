@@ -142,22 +142,24 @@ vi.mock('../composables/useAgentApi', () => ({
 	getAgentConfigValidation: getAgentConfigValidationMock,
 }));
 
+const builderTelemetryMock = vi.hoisted(() => ({
+	resetForAgentSwitch: vi.fn(),
+	captureToolsBaseline: vi.fn(),
+	captureSkillsBaseline: vi.fn(),
+	captureTasksBaseline: vi.fn(),
+	fetchInitialTriggersBaseline: vi.fn().mockResolvedValue(null),
+	recordConfigEdit: vi.fn(),
+	flushConfigEdits: vi.fn(),
+	trackToolsAdded: vi.fn(),
+	trackSkillsAdded: vi.fn(),
+	trackTasksChanged: vi.fn(),
+	trackOpenedToolFromList: vi.fn(),
+	trackOpenedSkillFromList: vi.fn(),
+	trackOpenedAddSkillModal: vi.fn(),
+}));
+
 vi.mock('../composables/useAgentBuilderTelemetry', () => ({
-	useAgentBuilderTelemetry: () => ({
-		resetForAgentSwitch: vi.fn(),
-		captureToolsBaseline: vi.fn(),
-		captureSkillsBaseline: vi.fn(),
-		captureTasksBaseline: vi.fn(),
-		fetchInitialTriggersBaseline: vi.fn().mockResolvedValue(null),
-		recordConfigEdit: vi.fn(),
-		flushConfigEdits: vi.fn(),
-		trackToolsAdded: vi.fn(),
-		trackSkillsAdded: vi.fn(),
-		trackTasksChanged: vi.fn(),
-		trackOpenedToolFromList: vi.fn(),
-		trackOpenedSkillFromList: vi.fn(),
-		trackOpenedAddSkillModal: vi.fn(),
-	}),
+	useAgentBuilderTelemetry: () => builderTelemetryMock,
 }));
 
 vi.mock('../composables/useAgentPermissions', () => ({
@@ -533,6 +535,7 @@ function resetViewMocks() {
 	uploadAgentFilesMock.mockResolvedValue([]);
 	showErrorMock.mockReset();
 	fetchConfigMock.mockClear();
+	builderTelemetryMock.fetchInitialTriggersBaseline.mockResolvedValue(null);
 	favoritesStoreMock.isFavorite.mockReturnValue(false);
 	instanceAiAvailableRef.value = true;
 	startInstanceAiThread.mockReset();
@@ -1344,6 +1347,40 @@ describe('AgentBuilderView — three-column shell', () => {
 
 		expect(getAgentMock).not.toHaveBeenCalled();
 		expect(fetchConfigMock).not.toHaveBeenCalled();
+
+		wrapper.unmount();
+	});
+
+	it('re-baselines instead of tracking capability diffs on external refresh', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p-rebase',
+				artifactAgentId: 'a-rebase',
+			},
+		});
+		builderTelemetryMock.trackToolsAdded.mockClear();
+		builderTelemetryMock.trackSkillsAdded.mockClear();
+		builderTelemetryMock.trackTasksChanged.mockClear();
+		builderTelemetryMock.captureToolsBaseline.mockClear();
+		builderTelemetryMock.captureSkillsBaseline.mockClear();
+		builderTelemetryMock.captureTasksBaseline.mockClear();
+
+		vi.useFakeTimers();
+		try {
+			agentsEventBus.emit('agentUpdated', { agentId: 'a-rebase', source: 'instance-ai' });
+			await vi.advanceTimersByTimeAsync(400);
+		} finally {
+			vi.useRealTimers();
+		}
+		await flushPromises();
+
+		expect(builderTelemetryMock.trackToolsAdded).not.toHaveBeenCalled();
+		expect(builderTelemetryMock.trackSkillsAdded).not.toHaveBeenCalled();
+		expect(builderTelemetryMock.trackTasksChanged).not.toHaveBeenCalled();
+		expect(builderTelemetryMock.captureToolsBaseline).toHaveBeenCalled();
+		expect(builderTelemetryMock.captureSkillsBaseline).toHaveBeenCalled();
+		expect(builderTelemetryMock.captureTasksBaseline).toHaveBeenCalled();
 
 		wrapper.unmount();
 	});

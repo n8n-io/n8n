@@ -28,12 +28,35 @@ export type FindManyForInboxOptions = {
 	cursor?: InboxCursor;
 };
 
+/**
+ * Projection for the workflow-scoped list: the request fields the use case
+ * needs plus the version pinned for the workflow the query was scoped to.
+ */
+export type WorkflowReviewRequestForWorkflow = Pick<
+	WorkflowReviewRequest,
+	'id' | 'state' | 'decision' | 'createdAt' | 'updatedAt'
+> & {
+	workflowVersionId: string | null;
+};
+
 export type ExistsAnyForInboxOptions = {
 	/** `null` means all projects (no filter); `[]` means no publish-scoped projects. */
 	projectIds: string[] | null;
 	/** Requesters always see the reviews they created, regardless of project scope. */
 	requesterId: string;
 	state?: WorkflowReviewRequestState;
+};
+
+export type CountByStateForInboxOptions = {
+	/** `null` means all projects (no filter); `[]` means no publish-scoped projects. */
+	projectIds: string[] | null;
+	/** Requesters always see the reviews they created, regardless of project scope. */
+	requesterId: string;
+};
+
+export type InboxStateCounts = {
+	open: number;
+	closed: number;
 };
 
 @Service()
@@ -72,14 +95,15 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 		return await manager.save(WorkflowReviewRequest, entity);
 	}
 
-	async findById(id: string): Promise<WorkflowReviewRequest | null> {
-		return await this.findOne({ where: { id } });
+	async findById(id: string, trx?: EntityManager): Promise<WorkflowReviewRequest | null> {
+		const manager = trx ?? this.manager;
+		return await manager.findOne(WorkflowReviewRequest, { where: { id } });
 	}
 
 	async findRequestsForWorkflow(
 		workflowId: string,
 		options: { state?: WorkflowReviewRequestState; skip?: number; take?: number } = {},
-	): Promise<[WorkflowReviewRequest[], number]> {
+	): Promise<[WorkflowReviewRequestForWorkflow[], number]> {
 		const qb = this.manager
 			.createQueryBuilder(WorkflowReviewRequest, 'request')
 			.innerJoin(
@@ -87,6 +111,7 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 				'requestWorkflow',
 				'requestWorkflow.workflowReviewRequestId = request.id',
 			)
+			.addSelect('requestWorkflow.workflowVersionId', 'pinnedWorkflowVersionId')
 			.where('requestWorkflow.workflowId = :workflowId', { workflowId })
 			.orderBy('request.createdAt', 'DESC');
 
@@ -100,7 +125,26 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 			qb.take(options.take);
 		}
 
-		return await qb.getManyAndCount();
+		const [{ entities, raw }, count] = await Promise.all([
+			qb.getRawAndEntities<{ request_id: string; pinnedWorkflowVersionId: string | null }>(),
+			qb.getCount(),
+		]);
+
+		// Raw rows are 1:1 with entities — the (requestId, workflowId) pair is unique —
+		// but key by id instead of index to stay independent of entity deduplication.
+		const versionIdByRequestId = new Map(
+			raw.map((row) => [row.request_id, row.pinnedWorkflowVersionId ?? null]),
+		);
+		const requests = entities.map((entity) => ({
+			id: entity.id,
+			state: entity.state,
+			decision: entity.decision,
+			createdAt: entity.createdAt,
+			updatedAt: entity.updatedAt,
+			workflowVersionId: versionIdByRequestId.get(entity.id) ?? null,
+		}));
+
+		return [requests, count];
 	}
 
 	async findOpenRequestForWorkflow(
@@ -148,19 +192,25 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 		return await queryBuilder.getMany();
 	}
 
-	async existsAnyForInbox(options: ExistsAnyForInboxOptions): Promise<boolean> {
-		const { projectIds, requesterId, state } = options;
+	async countByStateForInbox(options: CountByStateForInboxOptions): Promise<InboxStateCounts> {
+		const { projectIds, requesterId } = options;
 
-		const queryBuilder = this.createQueryBuilder('review').select('1');
+		const queryBuilder = this.createQueryBuilder('review')
+			.select('review.state', 'state')
+			.addSelect('COUNT(*)', 'count')
+			.groupBy('review.state');
 
 		this.applyInboxVisibility(queryBuilder, projectIds, requesterId);
 
-		if (state !== undefined) {
-			queryBuilder.andWhere('review.state = :state', { state });
-		}
+		const rows = await queryBuilder.getRawMany<{
+			state: WorkflowReviewRequestState;
+			count: string | number;
+		}>();
 
-		const row = await queryBuilder.limit(1).getRawOne<Record<string, unknown>>();
-		return row !== undefined;
+		return {
+			open: Number(rows.find((row) => row.state === 'open')?.count ?? 0),
+			closed: Number(rows.find((row) => row.state === 'closed')?.count ?? 0),
+		};
 	}
 
 	/**

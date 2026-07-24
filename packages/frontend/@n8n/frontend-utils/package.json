@@ -1,6 +1,5 @@
 {
   "name": "@n8n/frontend-utils",
-  "private": true,
   "type": "module",
   "version": "0.1.0",
   "files": [
