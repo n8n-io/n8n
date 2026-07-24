@@ -135,6 +135,7 @@ describe('AgentRepository', () => {
 				'agent.name',
 				'agent.projectId',
 				'agent.activeVersionId',
+				'agent.availableInMCP',
 				'agent.updatedAt',
 			]);
 			expect(mockQb.where).toHaveBeenCalledWith('agent.projectId IN (:...projectIds)', {

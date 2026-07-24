@@ -116,6 +116,7 @@ describe('AgentsService', () => {
 				skills: [],
 			},
 			versionId: expect.any(String),
+			availableInMCP: false,
 		});
 	});
 

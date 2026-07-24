@@ -24,6 +24,10 @@ export type Agent = {
 	id: string;
 	name: string;
 	projectId: string;
+	// Narrow declaration of the eagerly-loaded home project relation — only
+	// the fields list consumers (e.g. the MCP agents table) read are typed.
+	project?: { id: string; name: string; type: string } | null;
+	availableInMCP?: boolean;
 	isCompiled: boolean;
 	isRunnable?: boolean;
 	hasPublishHistory?: boolean;

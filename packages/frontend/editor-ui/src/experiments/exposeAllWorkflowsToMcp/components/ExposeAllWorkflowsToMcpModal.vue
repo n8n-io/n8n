@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
 import { useToast } from '@/app/composables/useToast';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWorkflowsToMcp/constants';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 const props = defineProps<{
 	data: {
@@ -18,25 +19,74 @@ const props = defineProps<{
 const i18n = useI18n();
 const toast = useToast();
 const mcpStore = useMCPStore();
+const settingsStore = useSettingsStore();
 const experimentStore = useExposeAllWorkflowsToMcpStore();
 const modalBus = createEventBus();
 
 const isSaving = ref(false);
 const closedByAction = ref(false);
 
+// With the agents module active, "expose all" covers agents too, and the
+// copy must say so (the ADO-5615 requirement).
+const includesAgents = computed(() => settingsStore.isModuleActive('agents'));
+
+const modalCopy = computed(() =>
+	includesAgents.value
+		? {
+				title: i18n.baseText('experiments.exposeAllWorkflowsToMcp.modal.withAgents.title'),
+				description: i18n.baseText(
+					'experiments.exposeAllWorkflowsToMcp.modal.withAgents.description',
+				),
+				confirm: i18n.baseText('experiments.exposeAllWorkflowsToMcp.modal.withAgents.confirm'),
+			}
+		: {
+				title: i18n.baseText('experiments.exposeAllWorkflowsToMcp.modal.title'),
+				description: i18n.baseText('experiments.exposeAllWorkflowsToMcp.modal.description'),
+				confirm: i18n.baseText('experiments.exposeAllWorkflowsToMcp.modal.confirm'),
+			},
+);
+
+function successToast(workflowCount: number, agentCount: number) {
+	if (!includesAgents.value) {
+		return {
+			title: i18n.baseText('experiments.exposeAllWorkflowsToMcp.modal.success.title'),
+			message: i18n.baseText('experiments.exposeAllWorkflowsToMcp.modal.success.message', {
+				adjustToNumber: workflowCount,
+				interpolate: { count: String(workflowCount) },
+			}),
+		};
+	}
+	return {
+		title: i18n.baseText('experiments.exposeAllWorkflowsToMcp.modal.withAgents.success.title'),
+		message: i18n.baseText('experiments.exposeAllWorkflowsToMcp.modal.withAgents.success.message', {
+			interpolate: {
+				workflows: i18n.baseText('settings.mcp.workflowsExposed.count', {
+					adjustToNumber: workflowCount,
+					interpolate: { count: String(workflowCount) },
+				}),
+				agents: i18n.baseText('settings.mcp.agentsExposed.count', {
+					adjustToNumber: agentCount,
+					interpolate: { count: String(agentCount) },
+				}),
+			},
+		}),
+	};
+}
+
 async function onExposeAll(close: () => void) {
 	isSaving.value = true;
 	try {
-		const response = await mcpStore.toggleWorkflowsMcpAccess({ allWorkflows: true }, true);
+		const [workflowsResponse, agentsResponse] = await Promise.all([
+			mcpStore.toggleWorkflowsMcpAccess({ allWorkflows: true }, true),
+			includesAgents.value
+				? mcpStore.toggleAgentsMcpAccess({ allAgents: true }, true)
+				: Promise.resolve(undefined),
+		]);
 		closedByAction.value = true;
 		experimentStore.trackConfirmed();
 		toast.showMessage({
 			type: 'success',
-			title: i18n.baseText('experiments.exposeAllWorkflowsToMcp.modal.success.title'),
-			message: i18n.baseText('experiments.exposeAllWorkflowsToMcp.modal.success.message', {
-				adjustToNumber: response.updatedCount,
-				interpolate: { count: String(response.updatedCount) },
-			}),
+			...successToast(workflowsResponse.updatedCount, agentsResponse?.updatedCount ?? 0),
 		});
 		await props.data.onExposed?.();
 		close();
@@ -71,14 +121,14 @@ onBeforeUnmount(() => {
 <template>
 	<Modal
 		:name="EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY"
-		:title="i18n.baseText('experiments.exposeAllWorkflowsToMcp.modal.title')"
+		:title="modalCopy.title"
 		width="480px"
 		:event-bus="modalBus"
 		:closeOnClickModal="false"
 	>
 		<template #content>
 			<N8nText color="text-base" data-test-id="expose-all-workflows-mcp-description">
-				{{ i18n.baseText('experiments.exposeAllWorkflowsToMcp.modal.description') }}
+				{{ modalCopy.description }}
 			</N8nText>
 		</template>
 		<template #footer="{ close }">
@@ -94,7 +144,7 @@ onBeforeUnmount(() => {
 				<N8nButton
 					variant="solid"
 					size="small"
-					:label="i18n.baseText('experiments.exposeAllWorkflowsToMcp.modal.confirm')"
+					:label="modalCopy.confirm"
 					:loading="isSaving"
 					data-test-id="expose-all-workflows-mcp-confirm-button"
 					@click="onExposeAll(close)"

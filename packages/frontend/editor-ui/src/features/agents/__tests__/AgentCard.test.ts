@@ -40,6 +40,42 @@ vi.mock('@/app/stores/favorites.store', () => ({
 	useFavoritesStore: () => favoritesStoreMock,
 }));
 
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({ showError: vi.fn() }),
+}));
+
+// MCP inactive by default so the pre-existing action-list assertions are
+// unaffected; MCP-specific tests flip these.
+const settingsStoreMock = {
+	isModuleActive: vi.fn(() => false),
+	moduleSettings: { mcp: { mcpAccessEnabled: false } } as {
+		mcp: { mcpAccessEnabled: boolean };
+	},
+};
+
+vi.mock('@/app/stores/settings.store', () => ({
+	useSettingsStore: () => settingsStoreMock,
+}));
+
+const mcpStoreMock = {
+	toggleAgentMcpAccess: vi.fn().mockResolvedValue({ updatedCount: 1 }),
+};
+
+vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
+	useMCPStore: () => mcpStoreMock,
+}));
+
+const trackMcpAccessEnabledForAgentMock = vi.fn();
+
+vi.mock('@/features/ai/mcpAccess/composables/useMcp', () => ({
+	useMcp: () => ({ trackMcpAccessEnabledForAgent: trackMcpAccessEnabledForAgentMock }),
+}));
+
+function enableMcp() {
+	settingsStoreMock.isModuleActive.mockReturnValue(true);
+	settingsStoreMock.moduleSettings.mcp.mcpAccessEnabled = true;
+}
+
 const agentPermissionsMock = {
 	canCreate: ref(true),
 	canUpdate: ref(true),
@@ -120,6 +156,10 @@ describe('AgentCard', () => {
 		favoritesStoreMock.removeFavoriteLocally.mockClear();
 		deleteAgentMock.mockClear();
 		openAgentConfirmationModalMock.mockClear();
+		settingsStoreMock.isModuleActive.mockReturnValue(false);
+		settingsStoreMock.moduleSettings.mcp.mcpAccessEnabled = false;
+		mcpStoreMock.toggleAgentMcpAccess.mockClear();
+		trackMcpAccessEnabledForAgentMock.mockClear();
 	});
 
 	it('hides the read-only badge when canUpdate is true', async () => {
@@ -220,5 +260,47 @@ describe('AgentCard', () => {
 		expect(deleteAgentMock).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
 		expect(favoritesStoreMock.removeFavoriteLocally).toHaveBeenCalledWith('agent-1', 'agent');
 		expect(wrapper.emitted('deleted')).toEqual([['agent-1']]);
+	});
+
+	it('hides the MCP action when instance MCP access is disabled', async () => {
+		const wrapper = await renderComponent();
+
+		expect(wrapper.find('[data-action="toggleMCPAccess"]').exists()).toBe(false);
+	});
+
+	it('offers to enable MCP access on an unexposed agent when MCP is on', async () => {
+		enableMcp();
+		const wrapper = await renderComponent(createAgent({ availableInMCP: false }));
+
+		const action = wrapper.find('[data-action="toggleMCPAccess"]');
+		expect(action.exists()).toBe(true);
+		expect(action.text()).toBe('agents.list.actions.enableMCPAccess');
+	});
+
+	it('offers to remove MCP access on an exposed agent', async () => {
+		enableMcp();
+		const wrapper = await renderComponent(createAgent({ availableInMCP: true }));
+
+		expect(wrapper.find('[data-action="toggleMCPAccess"]').text()).toBe(
+			'agents.list.actions.disableMCPAccess',
+		);
+	});
+
+	it('hides the MCP action without agent update permission', async () => {
+		enableMcp();
+		agentPermissionsMock.canUpdate.value = false;
+		const wrapper = await renderComponent();
+
+		expect(wrapper.find('[data-action="toggleMCPAccess"]').exists()).toBe(false);
+	});
+
+	it('toggles agent MCP access via the store and tracks the enablement', async () => {
+		enableMcp();
+		const wrapper = await renderComponent(createAgent({ availableInMCP: false }));
+
+		await wrapper.find('[data-action="toggleMCPAccess"]').trigger('click');
+
+		expect(mcpStoreMock.toggleAgentMcpAccess).toHaveBeenCalledWith('agent-1', true);
+		expect(trackMcpAccessEnabledForAgentMock).toHaveBeenCalledWith('agent-1');
 	});
 });

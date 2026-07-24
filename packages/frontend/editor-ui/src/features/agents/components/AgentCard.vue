@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import dateformat from 'dateformat';
 import { N8nActionToggle, N8nBadge, N8nCard, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { MODAL_CONFIRM } from '@/app/constants';
 import TimeAgo from '@/app/components/TimeAgo.vue';
+import { useToast } from '@/app/composables/useToast';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { deleteAgent } from '../composables/useAgentApi';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
@@ -27,7 +31,11 @@ const emit = defineEmits<{
 }>();
 
 const locale = useI18n();
+const toast = useToast();
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
+const mcpStore = useMCPStore();
+const mcp = useMcp();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const { publish, unpublish } = useAgentPublish();
 const { canUpdate, canDelete, canPublish, canUnpublish } = useAgentPermissions(
@@ -35,6 +43,19 @@ const { canUpdate, canDelete, canPublish, canUnpublish } = useAgentPermissions(
 );
 
 const isPublished = computed(() => props.agent.activeVersionId !== null);
+
+const isMcpEnabled = computed(
+	() =>
+		settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
+);
+
+// Optimistic state so the action label flips without refetching the list
+// (same pattern as the workflow card's 3-dot menu).
+const mcpToggleStatus = ref<boolean | null>(null);
+
+const isAvailableInMCP = computed(
+	() => mcpToggleStatus.value ?? props.agent.availableInMCP ?? false,
+);
 
 const favoriteStore = useFavoritesStore();
 const isFavorite = computed(() => favoriteStore.isFavorite(props.agent.id, 'agent'));
@@ -52,6 +73,17 @@ const actions = computed(() => {
 		value: 'toggleFavorite',
 		label: locale.baseText(isFavorite.value ? 'favorites.remove' : 'favorites.add'),
 	});
+
+	if (isMcpEnabled.value && canUpdate.value) {
+		items.push({
+			value: 'toggleMCPAccess',
+			label: locale.baseText(
+				isAvailableInMCP.value
+					? 'agents.list.actions.disableMCPAccess'
+					: 'agents.list.actions.enableMCPAccess',
+			),
+		});
+	}
 
 	if (canDelete.value) {
 		items.push({
@@ -84,6 +116,8 @@ async function onAction(action: string) {
 		if (updated) emit('unpublished', updated);
 	} else if (action === 'toggleFavorite') {
 		await favoriteStore.toggleFavorite(props.agent.id, 'agent');
+	} else if (action === 'toggleMCPAccess') {
+		await toggleMCPAccess(!isAvailableInMCP.value);
 	} else if (action === 'delete') {
 		const confirmed = await openAgentConfirmationModal({
 			title: locale.baseText('agents.delete.modal.title', {
@@ -100,6 +134,18 @@ async function onAction(action: string) {
 		removeProjectAgentFromListCache(props.projectId, props.agent.id);
 		favoriteStore.removeFavoriteLocally(props.agent.id, 'agent');
 		emit('deleted', props.agent.id);
+	}
+}
+
+async function toggleMCPAccess(enabled: boolean) {
+	try {
+		await mcpStore.toggleAgentMcpAccess(props.agent.id, enabled);
+		mcpToggleStatus.value = enabled;
+		if (enabled) {
+			mcp.trackMcpAccessEnabledForAgent(props.agent.id);
+		}
+	} catch (error) {
+		toast.showError(error, locale.baseText('agents.toggleMCP.error.title'));
 	}
 }
 </script>

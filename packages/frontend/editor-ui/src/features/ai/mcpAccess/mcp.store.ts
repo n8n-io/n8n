@@ -10,17 +10,23 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	updateMcpSettings,
 	toggleWorkflowsMcpAccessApi,
+	toggleAgentsMcpAccessApi,
 	fetchApiKey,
 	rotateApiKey,
 	fetchOAuthClients,
 	fetchInstanceMcpClientStats,
 	deleteOAuthClient,
 	fetchMcpEligibleWorkflows,
+	fetchMcpEligibleAgents,
 	getAllowedRedirectUris,
 	updateAllowedRedirectUris,
 	type ToggleWorkflowsMcpAccessResponse,
 	type ToggleWorkflowsMcpAccessTarget,
+	type ToggleAgentsMcpAccessResponse,
+	type ToggleAgentsMcpAccessTarget,
 } from '@/features/ai/mcpAccess/mcp.api';
+import { listAgentsPageGlobal } from '@/features/agents/composables/useAgentApi';
+import type { Agent } from '@/features/agents/agent.types';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import {
@@ -98,6 +104,37 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		if (response.data.length === 0 && response.count > 0 && page > 1) {
 			const maxPage = Math.max(1, Math.ceil(response.count / pageSize));
 			const clamped = await fetchWorkflowsAvailableForMCP(maxPage, pageSize);
+			return { ...clamped, page: maxPage };
+		}
+		return { ...response, page };
+	}
+
+	async function fetchAgentsAvailableForMCP(
+		page = 1,
+		pageSize = 50,
+	): Promise<{ data: Agent[]; count: number }> {
+		const { data, count } = await listAgentsPageGlobal(rootStore.restApiContext, {
+			skip: (page - 1) * pageSize,
+			take: pageSize,
+			sortBy: 'updatedAt:desc',
+			filter: { availableInMCP: true },
+		});
+		return { data, count };
+	}
+
+	/**
+	 * Fetch a page of MCP-available agents, clamping to the last non-empty page
+	 * when the requested one shrank away (e.g. after removing access). Returns
+	 * the effective 1-based page so callers can sync their table state.
+	 */
+	async function fetchAgentsAvailableForMCPPage(
+		page: number,
+		pageSize: number,
+	): Promise<{ data: Agent[]; count: number; page: number }> {
+		const response = await fetchAgentsAvailableForMCP(page, pageSize);
+		if (response.data.length === 0 && response.count > 0 && page > 1) {
+			const maxPage = Math.max(1, Math.ceil(response.count / pageSize));
+			const clamped = await fetchAgentsAvailableForMCP(maxPage, pageSize);
 			return { ...clamped, page: maxPage };
 		}
 		return { ...response, page };
@@ -183,6 +220,41 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		}
 
 		return response;
+	}
+
+	// Toggle MCP access for a single agent
+	async function toggleAgentMcpAccess(
+		agentId: string,
+		availableInMCP: boolean,
+	): Promise<ToggleAgentsMcpAccessResponse> {
+		const response = await toggleAgentsMcpAccessApi(
+			rootStore.restApiContext,
+			{ agentIds: [agentId] },
+			availableInMCP,
+		);
+
+		const confirmedIds = new Set([
+			...(response.updatedIds ?? []),
+			...(response.unchangedIds ?? []),
+		]);
+
+		if (!confirmedIds.has(agentId)) {
+			throw new Error(
+				i18n.baseText('agents.toggleMCP.updateSkippedError', {
+					interpolate: { agentId },
+				}),
+			);
+		}
+
+		return response;
+	}
+
+	/** Bulk-toggle MCP availability for agents, scoped by an id list, a project, or all agents. */
+	async function toggleAgentsMcpAccess(
+		target: ToggleAgentsMcpAccessTarget,
+		availableInMCP: boolean,
+	): Promise<ToggleAgentsMcpAccessResponse> {
+		return await toggleAgentsMcpAccessApi(rootStore.restApiContext, target, availableInMCP);
 	}
 
 	async function getOrCreateApiKey(): Promise<ApiKey> {
@@ -293,6 +365,14 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return await fetchMcpEligibleWorkflows(rootStore.restApiContext, options);
 	}
 
+	async function getMcpEligibleAgents(options?: {
+		take?: number;
+		skip?: number;
+		query?: string;
+	}): Promise<{ count: number; data: Agent[] }> {
+		return await fetchMcpEligibleAgents(rootStore.restApiContext, options);
+	}
+
 	function openConnectPopover(): void {
 		connectPopoverOpen.value = true;
 	}
@@ -318,9 +398,13 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		serverUrl,
 		fetchWorkflowsAvailableForMCP,
 		fetchWorkflowsAvailableForMCPPage,
+		fetchAgentsAvailableForMCP,
+		fetchAgentsAvailableForMCPPage,
 		setMcpAccessEnabled,
 		toggleWorkflowMcpAccess,
 		toggleWorkflowsMcpAccess,
+		toggleAgentMcpAccess,
+		toggleAgentsMcpAccess,
 		currentUserMCPKey,
 		getOrCreateApiKey,
 		generateNewApiKey,
@@ -342,6 +426,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		getInstanceClientStats,
 		removeOAuthClient,
 		getMcpEligibleWorkflows,
+		getMcpEligibleAgents,
 		allowedRedirectUris,
 		fetchAllowedRedirectUris,
 		setAllowedRedirectUris,
