@@ -49,6 +49,7 @@ import { mimeTypeFromResponse } from './utils/parse';
 import { configureResponseOptimizer } from '../shared/optimizeResponse';
 
 import { binaryToStringWithEncodingDetection } from './utils/buffer-decoding';
+import { createErrorDetails } from './utils/error-details';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -72,7 +73,7 @@ export class HttpRequestV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			subtitle: '={{$parameter["method"] + ": " + $parameter["url"]}}',
-			version: [3, 4, 4.1, 4.2, 4.3, 4.4],
+			version: [3, 4, 4.1, 4.2, 4.3, 4.4, 4.5],
 			defaults: {
 				name: 'HTTP Request',
 				color: '#0004F5',
@@ -823,7 +824,7 @@ export class HttpRequestV3 implements INodeType {
 									secrets = getSecrets(credentials);
 								}
 								const sanitizedRequestOptions = sanitizeUiMessage(options, authKeys, secrets);
-								sanitizedRequests.push(sanitizedRequestOptions);
+								sanitizedRequests[itemIndex] = sanitizedRequestOptions;
 								this.sendMessageToUI(sanitizedRequestOptions);
 							} catch (e) {}
 						}),
@@ -878,6 +879,15 @@ export class HttpRequestV3 implements INodeType {
 						returnItems.push({
 							json: {
 								error: responseData.reason,
+								...(nodeVersion >= 4.5
+									? {
+											details: createErrorDetails(
+												this.getNode(),
+												responseData.reason as JsonObject,
+												itemIndex,
+											),
+										}
+									: {}),
 							},
 							pairedItem: {
 								item: itemIndex,
