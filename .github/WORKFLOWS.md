@@ -198,7 +198,7 @@ The current trigger fires once per `opened` / `reopened` / `ready_for_review`
 on a non-fork PR touching the eval surface, and runs the `pr` test-case dataset
 (a small set of high-reliability, capability-diverse cases) instead of the full
 suite. Test cases are pulled at run time from the LangTracer suite
-`n8n-workflows` — the source of truth; CI has no disk fallback (local runs
+`baseline` — the source of truth; CI has no disk fallback (local runs
 keep `--source disk` for authoring). To
 re-run after pushing a fix, dispatch `ci-instance-ai-evals.yml` with the PR
 number (optionally `tier: full` for broader coverage) — results post back to

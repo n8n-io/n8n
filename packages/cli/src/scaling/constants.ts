@@ -46,5 +46,6 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'display-workflow-activation',
 	'display-workflow-deactivation',
 	'display-workflow-activation-error',
+	'display-workflow-publication-status',
 	'workflow-publish-wake-up',
 ]);

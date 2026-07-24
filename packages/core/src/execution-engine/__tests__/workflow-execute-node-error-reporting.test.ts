@@ -163,6 +163,17 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 		expect(reported).toBe(baseError);
 	});
 
+	it('should not report an axios error', async () => {
+		const axiosError = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:443'), {
+			name: 'AxiosError',
+			isAxiosError: true,
+		});
+
+		await runWorkflowThatThrows(axiosError);
+
+		expect(mockErrorReporter.error).not.toHaveBeenCalled();
+	});
+
 	it('should not report an ApplicationError with no cause', async () => {
 		const plainAppError = new ApplicationError('plain operational error', { level: 'error' });
 

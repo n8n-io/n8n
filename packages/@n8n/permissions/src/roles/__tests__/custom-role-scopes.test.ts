@@ -1,5 +1,6 @@
 import {
 	CUSTOM_ROLE_SCOPE_WHITELIST,
+	GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS,
 	GLOBAL_CUSTOM_ROLE_SCOPES,
 	PROJECT_CUSTOM_ROLE_SCOPES,
 } from '@/roles/custom-role-scopes.ee';
@@ -43,5 +44,29 @@ describe('custom role scope whitelists', () => {
 	it('exposes whitelists keyed by role type', () => {
 		expect(CUSTOM_ROLE_SCOPE_WHITELIST.project).toBe(PROJECT_CUSTOM_ROLE_SCOPES);
 		expect(CUSTOM_ROLE_SCOPE_WHITELIST.global).toBe(GLOBAL_CUSTOM_ROLE_SCOPES);
+	});
+
+	it('includes Chat scopes in the settings.Manage bundle', () => {
+		const bundle = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings.Manage;
+
+		expect(bundle).toContain('chatHub:manage');
+		expect(bundle).toContain('chatHub:message');
+	});
+
+	it('includes AI Assistant and n8n Agent scopes in the settings.Manage bundle', () => {
+		const bundle = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings.Manage;
+
+		expect(bundle).toContain('aiAssistant:manage');
+		expect(bundle).toContain('instanceAi:manage');
+		expect(bundle).toContain('instanceAi:message');
+	});
+
+	it('includes instance-level MCP scopes in the settings.Manage bundle', () => {
+		const bundle = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings.Manage;
+
+		expect(bundle).toContain('mcp:manage');
+		expect(bundle).toContain('mcp:oauth');
+		expect(bundle).toContain('mcpApiKey:create');
+		expect(bundle).toContain('mcpApiKey:rotate');
 	});
 });

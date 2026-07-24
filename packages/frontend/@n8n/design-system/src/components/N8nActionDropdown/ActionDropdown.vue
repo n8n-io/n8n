@@ -28,6 +28,7 @@ interface ActionDropdownProps {
 	disabled?: boolean;
 	extraPopperClass?: string;
 	maxHeight?: string | number;
+	width?: string;
 	modal?: boolean;
 }
 
@@ -122,6 +123,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 			:modal="modal"
 			:extra-popper-class="`${extraPopperClass ?? ''}`"
 			:max-height="maxHeight"
+			:width="width"
 			@select="onSelect"
 			@update:model-value="onOpenChange"
 		>
@@ -176,6 +178,9 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 						:class="$style.shortcut"
 					/>
 				</span>
+			</template>
+			<template v-if="$slots.footer" #footer>
+				<slot name="footer" />
 			</template>
 		</N8nDropdownMenu>
 	</div>

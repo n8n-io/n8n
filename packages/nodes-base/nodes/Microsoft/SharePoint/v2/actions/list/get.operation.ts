@@ -2,8 +2,8 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import { listRLC, untilSiteSelected } from '../../descriptions';
 import { LIST_SIMPLIFY_SELECT } from '../../helpers/utils';
+import { listRLC, untilSiteSelected } from '../../list';
 import { resolveSiteId, siteRLC } from '../../site';
 import { microsoftApiRequest } from '../../transport';
 
@@ -43,7 +43,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	i: number,
 	siteIdCache?: Map<string, string>,
-): Promise<IDataObject> {
+): Promise<IDataObject | IDataObject[]> {
 	// https://learn.microsoft.com/en-us/graph/api/list-get — {list-id} accepts the list ID or title
 	const siteId = await resolveSiteId.call(this, i, siteIdCache);
 	const listIdOrTitle = (

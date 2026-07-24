@@ -60,7 +60,10 @@ export async function braveSearch(
 		...(proxyHeaders ?? { 'X-Subscription-Token': apiKey }),
 	};
 
-	const response = await fetch(`${baseUrl}?${params}`, { headers });
+	const response = await fetch(`${baseUrl}?${params}`, {
+		headers,
+		...(options.abortSignal ? { signal: options.abortSignal } : {}),
+	});
 
 	if (!response.ok) {
 		throw new Error(`Brave search failed: ${response.status} ${response.statusText}`);

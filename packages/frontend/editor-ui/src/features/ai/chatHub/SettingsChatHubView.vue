@@ -5,8 +5,8 @@ import { useToast } from '@/app/composables/useToast';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import { CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT } from '@/app/constants';
 import {
 	type ChatHubLLMProvider,
@@ -33,15 +33,12 @@ const toast = useToast();
 const documentTitle = useDocumentTitle();
 
 const chatStore = useChatStore();
-const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
 
-const isOwner = computed(() => usersStore.isInstanceOwner);
-const isAdmin = computed(() => usersStore.isAdmin);
-const disabled = computed(() => !isOwner.value && !isAdmin.value);
+const disabled = computed(() => !hasPermission(['rbac'], { rbac: { scope: 'chatHub:manage' } }));
 
 const isChatEnabled = computed(() => settingsStore.moduleSettings['chat-hub']?.enabled === true);
 

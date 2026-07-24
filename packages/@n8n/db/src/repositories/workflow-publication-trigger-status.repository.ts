@@ -49,16 +49,15 @@ export class WorkflowPublicationTriggerStatusRepository extends Repository<Workf
 	}
 
 	/**
-	 * Returns every trigger that should currently be registered in memory: the
-	 * activated, in-memory triggers of active workflows. The join on
-	 * `activeVersionId` drops stale rows left by an interrupted unpublish, which
-	 * would otherwise read as missing forever. Workflows with an in-flight
-	 * (pending/in-progress) publication record are excluded: that publication is
-	 * about to reconcile them anyway.
+	 * Returns every trigger status row that claims an in-memory registration
+	 * (`activated`, in-memory) — deliberately including rows of unpublished
+	 * workflows: stale rows left by an interrupted unpublish then surface as a
+	 * deficit, and reconciliation heals them by re-running the unpublish.
+	 * Workflows with an in-flight (pending/in-progress) publication record are
+	 * excluded: that publication is about to reconcile them anyway.
 	 */
 	async findActivatedInMemoryTriggers(): Promise<InMemoryTriggerRef[]> {
 		return await this.createQueryBuilder('ts')
-			.innerJoin('ts.workflow', 'workflow', 'workflow.activeVersionId IS NOT NULL')
 			.select(['ts.workflowId AS "workflowId"', 'ts.nodeId AS "nodeId"'])
 			.where('ts.status = :status', { status: 'activated' })
 			.andWhere('ts.triggerKind = :kind', { kind: 'in-memory' })

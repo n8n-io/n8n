@@ -275,7 +275,7 @@ describe('buildFromJson()', () => {
 		const instructions = agent.snapshot.instructions ?? '';
 		expect(instructions).toBe('You are a test agent.');
 		expect(instructions).not.toContain('Extract decisions and action items.');
-		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(true);
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(false);
 		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
 	});
 
@@ -338,15 +338,6 @@ describe('buildFromJson()', () => {
 			content: '# Guide',
 			bytes: 7,
 			sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
-		});
-
-		const listSkills = agent.declaredTools.find((t) => t.name === 'list_skills');
-		const listOutput = (await listSkills!.handler?.({}, {})) as {
-			skills: Array<Record<string, unknown>>;
-		};
-		expect(listOutput?.skills[0]).toMatchObject({
-			name: 'Summarize notes',
-			allowedTools: ['load_workflow'],
 		});
 
 		await expect(loadSkill!.handler?.({ skillId: 'unused_skill' }, {})).resolves.toMatchObject({

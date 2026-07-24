@@ -33,6 +33,9 @@ export function useInvalidNodeGroupCleanup() {
 		group: IWorkflowGroup,
 		allGroups: IWorkflowGroup[],
 	): boolean {
+		// The backend rejects memberless groups
+		if (group.nodeIds.length === 0) return false;
+
 		const nodes: INodeUi[] = [];
 		for (const nodeId of group.nodeIds) {
 			const node = store.getNodeById(nodeId);

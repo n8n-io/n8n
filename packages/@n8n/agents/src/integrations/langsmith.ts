@@ -390,7 +390,10 @@ export class LangSmithTelemetry extends Telemetry {
 		const built = await super.build();
 
 		// Attach the provider for flush/shutdown (parent build sets it from
-		// otlpEndpoint but not from .tracer(), so we add it here).
-		return { ...built, provider };
+		// otlpEndpoint but not from .tracer(), so we add it here). Mark this
+		// telemetry as LangSmith-flavored regardless of whether the caller
+		// declared a `.credential()` — many callers rely on the
+		// `LANGSMITH_API_KEY` env var instead and never call it.
+		return { ...built, provider, isLangSmith: true };
 	}
 }
