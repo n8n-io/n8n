@@ -65,7 +65,8 @@
     "@modelcontextprotocol/server": "2.0.0-beta.5"
   },
   "peerDependencies": {
-    "@modelcontextprotocol/sdk": "catalog:"
+    "@modelcontextprotocol/sdk": "catalog:",
+    "@modelcontextprotocol/server": "2.0.0-beta.5"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }
