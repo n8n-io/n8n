@@ -66,6 +66,10 @@ packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller
   s_782e56c14c8ff8::t_463c3982d89327 7,10,39,45
   s_278b5dc3633c05::t_14e71601275869 4-6,40-44,46-51,60
   s_659d89565dd06e::t_9b75777233e743 56-59
+  s_c7f2eb05574ce2::t_ceee2259a6e675 1-2,3,7
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_c7f2eb05574ce2::t_0759c7a798e271 213
+  s_4e81021c6567f0::t_b1728bcd115f19 215
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -75,6 +79,9 @@ packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller
   "humans": {
     "h_760178ed151f13": {
       "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
     }
   },
   "sessions": {
@@ -85,6 +92,14 @@ packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller
         "model": "default"
       },
       "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_4e81021c6567f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "013ede52-1858-4647-bc13-cff498ab7a24",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
     "s_659d89565dd06e": {
       "agent_id": {
@@ -110,6 +125,22 @@ packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller
       },
       "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
     },
+    "s_c7f2eb05574ce2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63ca9479-d174-4a0f-9349-54a47630f906",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_d7309962fc8352": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cde34fb2-171c-4c0e-ba62-dcc55361bc75",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
     "s_e0cc82d125e08a": {
       "agent_id": {
         "tool": "cursor",
@@ -117,6 +148,14 @@ packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller
         "model": "claude-opus-4-8"
       },
       "human_author": null
+    },
+    "s_f201eb7bca5bd7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "269f2628-3ad3-4988-9c50-1b2b78345323",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     }
   }
 }
