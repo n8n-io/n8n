@@ -46,6 +46,15 @@ import {
 	validateLdapConfigurationSchema,
 	getUserByLdapId,
 } from './helpers.ee';
+import { LdapConnectionError, LdapRejectionError } from './ldap.errors';
+
+const LDAP_CONNECTION_ERROR_CODES = new Set([
+	'ECONNREFUSED',
+	'ETIMEDOUT',
+	'ENOTFOUND',
+	'EHOSTUNREACH',
+	'ECONNRESET',
+]);
 
 @AuthHandler()
 export class LdapService implements IPasswordAuthHandler<User> {
@@ -104,7 +113,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 		const { valid, message } = validateLdapConfigurationSchema(ldapConfig);
 
 		if (!valid) {
-			throw new UnexpectedError(message);
+			throw new BadRequestError(message);
 		}
 
 		if (
@@ -385,6 +394,15 @@ export class LdapService implements IPasswordAuthHandler<User> {
 		} catch (e) {
 			if (e instanceof Error) {
 				this.logger.error(`LDAP - ${e.message}`);
+				if (this.ldapts && e instanceof this.ldapts.ResultCodeError) {
+					throw new LdapRejectionError(e.message);
+				}
+				if (
+					'code' in e &&
+					LDAP_CONNECTION_ERROR_CODES.has((e as NodeJS.ErrnoException).code ?? '')
+				) {
+					throw new LdapConnectionError(e.message);
+				}
 				throw e;
 			}
 		}

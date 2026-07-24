@@ -40,7 +40,9 @@ vi.mock('ldapts', async () => {
 	ClientMock.prototype.startTLS = vi.fn();
 	ClientMock.prototype.search = vi.fn();
 
-	return { Client: ClientMock };
+	class ResultCodeError extends Error {}
+
+	return { Client: ClientMock, ResultCodeError };
 });
 
 vi.mock('../helpers.ee', async () => ({

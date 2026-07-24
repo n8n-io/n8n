@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { getLdapSynchronizationsWithCount } from '@/modules/ldap.ee/helpers.ee';
+import { LdapConnectionError, LdapRejectionError } from '@/modules/ldap.ee/ldap.errors';
 import { LdapService } from '@/modules/ldap.ee/ldap.service.ee';
 
 import {
@@ -51,13 +52,8 @@ const ldapHandlers: LdapHandlers = {
 			const ldapService = Container.get(LdapService);
 			const current = await ldapService.loadConfig();
 
-			try {
-				const updated = toLdapConfigUpdate(payload.data, current);
-				await ldapService.updateConfig(updated);
-			} catch (e) {
-				if (e instanceof ResponseError) throw e;
-				throw new BadRequestError((e as Error).message);
-			}
+			const updated = toLdapConfigUpdate(payload.data, current);
+			await ldapService.updateConfig(updated);
 
 			const reloaded = await ldapService.loadConfig();
 			return res.json(toLdapConfigurationResponse(reloaded));
@@ -94,7 +90,10 @@ const ldapHandlers: LdapHandlers = {
 				syncHistory = await Container.get(LdapService).runSync(payload.data.type);
 			} catch (e) {
 				if (e instanceof ResponseError) throw e;
-				throw new BadRequestError((e as Error).message);
+				if (e instanceof LdapRejectionError || e instanceof LdapConnectionError) {
+					throw new BadRequestError(e.message);
+				}
+				throw e;
 			}
 
 			return res.json(toLdapSyncHistoryResponse(syncHistory));
