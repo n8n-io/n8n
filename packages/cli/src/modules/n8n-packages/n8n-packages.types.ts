@@ -1,6 +1,7 @@
 import type { User } from '@n8n/db';
 
 import type { DataTableResolutionFailure } from './entities/data-table/data-table.types';
+import type { VariableResolutionFailure } from './entities/variable/variable.types';
 import type { WorkflowIdConflict } from './entities/workflow/workflow-import-match.service';
 import type {
 	WorkflowConflict,
@@ -44,12 +45,19 @@ export const FolderConflictPolicy = {
 	Fail: 'fail',
 } as const;
 
-export const MissingWorkflowDependencyPolicy = {
-	/** Fails the export when a static sub-workflow dependency is not included. */
+export const MissingNodeTypeMode = {
+	/** Fails the import when any workflow uses a node type or version this instance does not have. */
 	Fail: 'fail',
-	/** Reserved for exporting missing static sub-workflows as requirements only. */
+	/** Imports anyway; workflows containing missing node types are never published. */
+	ImportAnyway: 'import-anyway',
+} as const;
+
+export const MissingWorkflowDependencyPolicy = {
+	/** Fails the export when a workflow dependency is not included. */
+	Fail: 'fail',
+	/** Reserved for exporting missing workflow dependencies as requirements only. */
 	ReferenceOnly: 'reference-only',
-	/** Reserved for automatically adding missing static sub-workflows to the package. */
+	/** Reserved for automatically adding missing workflow dependencies to the package. */
 	IncludeInPackage: 'include-in-package',
 } as const;
 
@@ -73,6 +81,13 @@ export const DataTableSchemaConflictPolicy = {
 	/** Strict drift detection: fails the import on any schema difference, including target-only columns. */
 	Fail: 'fail',
 } as const;
+
+export const VariableMissingMode = {
+	/** Imports workflows even when referenced variables are absent. Nothing is created; unresolved names are reported as warnings in the response. */
+	DoNothing: 'do-nothing',
+	/** Blocks the import unless every referenced variable already resolves in the target project or global scope. */
+	MustPreexist: 'must-preexist',
+} as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
 export type WorkflowConflictPolicy =
@@ -81,6 +96,8 @@ export type WorkflowConflictPolicy =
 export type WorkflowIdPolicy = (typeof WorkflowIdPolicy)[keyof typeof WorkflowIdPolicy];
 
 export type FolderConflictPolicy = (typeof FolderConflictPolicy)[keyof typeof FolderConflictPolicy];
+
+export type MissingNodeTypeMode = (typeof MissingNodeTypeMode)[keyof typeof MissingNodeTypeMode];
 
 export type MissingWorkflowDependencyPolicy =
 	(typeof MissingWorkflowDependencyPolicy)[keyof typeof MissingWorkflowDependencyPolicy];
@@ -93,11 +110,15 @@ export type DataTableMissingMode = (typeof DataTableMissingMode)[keyof typeof Da
 export type DataTableSchemaConflictPolicy =
 	(typeof DataTableSchemaConflictPolicy)[keyof typeof DataTableSchemaConflictPolicy];
 
+export type VariableMissingMode = (typeof VariableMissingMode)[keyof typeof VariableMissingMode];
+
 export interface ExportPackageRequest {
 	user: User;
 	workflowIds?: string[];
 	folderIds?: string[];
 	projectIds?: string[];
+	includeVariableValues?: boolean;
+	canExportVariableValues?: boolean;
 	missingWorkflowDependencyPolicy?: MissingWorkflowDependencyPolicy;
 }
 
@@ -111,7 +132,8 @@ export type ImportPackageRequest = {
 } & ImportCredentialProperties &
 	ImportWorkflowProperties &
 	ImportFolderProperties &
-	ImportDataTableProperties;
+	ImportDataTableProperties &
+	ImportVariableProperties;
 
 export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
@@ -122,6 +144,7 @@ export type ImportWorkflowProperties = {
 	workflowConflictPolicy: WorkflowConflictPolicy;
 	workflowPublishingPolicy: WorkflowPublishingPolicy;
 	workflowIdPolicy: WorkflowIdPolicy;
+	missingNodeTypeMode: MissingNodeTypeMode;
 };
 
 export type ImportFolderProperties = {
@@ -132,6 +155,10 @@ export type ImportDataTableProperties = {
 	dataTableMatchingMode: DataTableMatchingMode;
 	dataTableMissingMode: DataTableMissingMode;
 	dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy;
+};
+
+export type ImportVariableProperties = {
+	variableMissingMode: VariableMissingMode;
 };
 
 /**
@@ -149,7 +176,8 @@ export interface ImportContext {
 
 export type ImportPackageEventOptions = ImportCredentialProperties &
 	ImportWorkflowProperties &
-	ImportDataTableProperties;
+	ImportDataTableProperties &
+	ImportVariableProperties;
 
 /** Credential ids involved in a package import, shaped for forward-compatible audit events. */
 export type ImportAuditCredentialIds = {
@@ -178,6 +206,11 @@ export type ImportPackageEventCounts = {
 		created: number;
 		requirements: number;
 	};
+	variables: {
+		matched: number;
+		missing: number;
+		requirements: number;
+	};
 };
 
 /** Per-entity counts for an export, carried on `n8n-package-exported` for telemetry. */
@@ -186,6 +219,7 @@ export type ExportPackageEventCounts = {
 	folders: number;
 	credentials: number;
 	dataTables: number;
+	variables: number;
 };
 
 export interface ImportedWorkflowSummary {
@@ -235,7 +269,15 @@ export type BlockingIssue =
 			usedByWorkflows: string[];
 	  }
 	| ({ type: 'folder-conflict' } & FolderConflict)
-	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure);
+	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
+	| ({ type: 'variable-unresolved' } & VariableResolutionFailure)
+	| {
+			type: 'missing-node-type';
+			/** Node type this instance cannot resolve (at least not at `typeVersion`). */
+			nodeType: string;
+			typeVersion: number;
+			usedByWorkflows: string[];
+	  };
 
 export interface FolderConflict {
 	kind: 'parent-mismatch' | 'id-in-other-project' | 'fail-policy';
@@ -266,6 +308,14 @@ export function createBindings(seed: Partial<PackageImportBindings> = {}): Packa
 	};
 }
 
+/** Combines per-scope binding maps into one — used when a project package imports several scopes. */
+export function mergeBindings(...bindings: PackageImportBindings[]): PackageImportBindings {
+	return {
+		workflows: new Map(bindings.flatMap(({ workflows }) => [...workflows])),
+		credentials: new Map(bindings.flatMap(({ credentials }) => [...credentials])),
+	};
+}
+
 /** Plain-object form of {@link PackageImportBindings}, suitable for JSON responses. */
 export type SerializedBindings = Record<keyof PackageImportBindings, Record<string, string>>;
 
@@ -288,6 +338,11 @@ export interface ImportCredentialSummary {
 	stubbed: string[];
 }
 
+export interface ImportVariableSummary {
+	matched: string[];
+	missing: string[];
+}
+
 export interface ImportResult {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
@@ -295,4 +350,5 @@ export interface ImportResult {
 	projects: ImportedProjectSummary[];
 	bindings: SerializedBindings;
 	credentials: ImportCredentialSummary;
+	variables: ImportVariableSummary;
 }

@@ -5,6 +5,7 @@ import { backoff } from './backoff';
 import { DEFAULT_EXECUTOR_OPTIONS, type ExecutorOptions } from './options';
 import type { PrecisionTimer } from './precision-timer';
 import type { ClaimedTaskRef, ClaimDueTasksBatch, ExecutorTaskStore } from './store';
+import { createDispatchReporter } from './task-handler';
 import type { TaskHandlerRegistry } from './task-handler';
 import { noopExecutorTracing } from './tracing';
 import type { ExecutorTracing, FireResult } from './tracing';
@@ -242,32 +243,34 @@ export class Executor {
 		const lagSeconds = Math.max(0, lagMs) / Time.seconds.toMilliseconds;
 		this.hooks.onDispatch?.(task.taskType, lagSeconds);
 
-		// The handler reports the instant its effect was handed off; persist it as the
-		// `dispatchedAt` marker so the reaper can tell an occurrence that ran from one
-		// that never did. The write is kicked off from the (synchronous) callback and its
-		// promise captured, then settled before any terminal write below so the marker
-		// can't land on (and be rejected by) an already-terminal row. A failed marker
-		// write is reported, not thrown: losing it only costs a redelivery, which the
-		// at-least-once contract accepts. `??=` makes a second onDispatch call a no-op.
+		// `report.dispatched()` persists the `dispatchedAt` marker so the reaper can tell an
+		// occurrence that ran from one that never did. The write is kicked off from the
+		// (synchronous) callback and its promise captured, then settled before any terminal
+		// write below so the marker can't land on (and be rejected by) an already-terminal
+		// row. A failed marker write is reported, not thrown: losing it only costs a
+		// redelivery, which the at-least-once contract accepts. `??=` makes a second call a
+		// no-op, so an explicit `dispatched()` and the post-return fallback below collapse to
+		// one write.
 		let dispatchMark: Promise<void> | undefined;
-		const onDispatch = (): void => {
+		const markDispatched = (): void => {
 			dispatchMark ??= this.store.markDispatched(claim).then(
 				() => undefined,
 				(error: unknown) => this.hooks.onFireError?.(task, error),
 			);
 		};
+		const report = createDispatchReporter(markDispatched);
 
 		// Record success only after the try, so a failure to record it isn't taken for a
 		// handler failure. Such a failure propagates out (caught by the detached `.catch`
 		// in claimAndSchedule) and leaves the row `running` for the reaper.
 		try {
-			await handler.execute(task, onDispatch);
+			await handler.execute(task, report);
 		} catch (error) {
 			await dispatchMark;
 			const errorMessage = ensureError(error).message;
 			const nextAttempts = task.attempts + 1;
 			if (nextAttempts >= task.maxAttempts) {
-				// If the handler had already handed off its effect (onDispatch ran, so
+				// If the handler had already handed off its effect (`dispatched()` ran, so
 				// `dispatchMark` is set) before throwing, the occurrence's work is done.
 				// On this last attempt, recording it failed would blame the scheduler for
 				// work that happened; complete it as succeeded instead, mirroring the
@@ -304,6 +307,7 @@ export class Executor {
 			return { outcome: 'skipped-not-owned', errorMessage };
 		}
 
+		markDispatched(); // A handler that returned without throwing is considered as dispatched
 		await dispatchMark;
 		const rowsAffected = await this.store.completeTask(claim);
 		if (rowsAffected > 0) {

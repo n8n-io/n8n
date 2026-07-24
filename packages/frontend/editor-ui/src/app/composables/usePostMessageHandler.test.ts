@@ -5,7 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { jsonParse } from 'n8n-workflow';
 import { usePostMessageControls, usePostMessageHandler } from './usePostMessageHandler';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useUIStore } from '@/app/stores/ui.store';
+import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
@@ -222,7 +222,7 @@ describe('usePostMessageHandler', () => {
 
 		it('should set notification suppression and error allowance from openWorkflow message', async () => {
 			setActivePinia(createTestingPinia({ stubActions: false }));
-			const uiStore = useUIStore();
+			const notificationsStore = useNotificationsStore();
 			const { setup, cleanup } = usePostMessageHandler({
 				currentWorkflowDocumentStore: shallowRef(null),
 			});
@@ -243,16 +243,16 @@ describe('usePostMessageHandler', () => {
 				expect(mockImportWorkflowExact).toHaveBeenCalled();
 			});
 
-			expect(uiStore.areNotificationsSuppressed).toBe(true);
-			expect(uiStore.allowErrorNotificationsWhenSuppressed).toBe(true);
+			expect(notificationsStore.areNotificationsSuppressed).toBe(true);
+			expect(notificationsStore.allowErrorNotificationsWhenSuppressed).toBe(true);
 
 			cleanup();
 		});
 
 		it('should clear notification suppression and error allowance when suppression is false', async () => {
 			setActivePinia(createTestingPinia({ stubActions: false }));
-			const uiStore = useUIStore();
-			uiStore.setNotificationsSuppressed(true, { allowErrors: true });
+			const notificationsStore = useNotificationsStore();
+			notificationsStore.setNotificationsSuppressed(true, { allowErrors: true });
 			const { setup, cleanup } = usePostMessageHandler({
 				currentWorkflowDocumentStore: shallowRef(null),
 			});
@@ -273,16 +273,16 @@ describe('usePostMessageHandler', () => {
 				expect(mockImportWorkflowExact).toHaveBeenCalled();
 			});
 
-			expect(uiStore.areNotificationsSuppressed).toBe(false);
-			expect(uiStore.allowErrorNotificationsWhenSuppressed).toBe(false);
+			expect(notificationsStore.areNotificationsSuppressed).toBe(false);
+			expect(notificationsStore.allowErrorNotificationsWhenSuppressed).toBe(false);
 
 			cleanup();
 		});
 
 		it('should clear notification suppression and error allowance when suppression is absent', async () => {
 			setActivePinia(createTestingPinia({ stubActions: false }));
-			const uiStore = useUIStore();
-			uiStore.setNotificationsSuppressed(true, { allowErrors: true });
+			const notificationsStore = useNotificationsStore();
+			notificationsStore.setNotificationsSuppressed(true, { allowErrors: true });
 			const { setup, cleanup } = usePostMessageHandler({
 				currentWorkflowDocumentStore: shallowRef(null),
 			});
@@ -301,8 +301,8 @@ describe('usePostMessageHandler', () => {
 				expect(mockImportWorkflowExact).toHaveBeenCalled();
 			});
 
-			expect(uiStore.areNotificationsSuppressed).toBe(false);
-			expect(uiStore.allowErrorNotificationsWhenSuppressed).toBe(false);
+			expect(notificationsStore.areNotificationsSuppressed).toBe(false);
+			expect(notificationsStore.allowErrorNotificationsWhenSuppressed).toBe(false);
 
 			cleanup();
 		});
@@ -550,7 +550,7 @@ describe('usePostMessageHandler', () => {
 
 		it('should show an error toast when opening execution fails with error allowance enabled', async () => {
 			setActivePinia(createTestingPinia({ stubActions: false }));
-			const uiStore = useUIStore();
+			const notificationsStore = useNotificationsStore();
 			const { setup, cleanup } = usePostMessageHandler({
 				currentWorkflowDocumentStore: shallowRef(null),
 			});
@@ -567,8 +567,8 @@ describe('usePostMessageHandler', () => {
 				expect(mockImportWorkflowExact).toHaveBeenCalled();
 			});
 
-			expect(uiStore.areNotificationsSuppressed).toBe(true);
-			expect(uiStore.allowErrorNotificationsWhenSuppressed).toBe(true);
+			expect(notificationsStore.areNotificationsSuppressed).toBe(true);
+			expect(notificationsStore.allowErrorNotificationsWhenSuppressed).toBe(true);
 
 			mockOpenExecution.mockRejectedValueOnce(new Error('Execution could not be opened'));
 			dispatchPostMessage({
@@ -735,7 +735,7 @@ describe('usePostMessageHandler', () => {
 
 		it('should show an error toast when opening execution preview fails with error allowance enabled', async () => {
 			setActivePinia(createTestingPinia({ stubActions: false }));
-			const uiStore = useUIStore();
+			const notificationsStore = useNotificationsStore();
 			const { setup, cleanup } = usePostMessageHandler({
 				currentWorkflowDocumentStore: shallowRef(null),
 			});
@@ -752,8 +752,8 @@ describe('usePostMessageHandler', () => {
 				expect(mockImportWorkflowExact).toHaveBeenCalled();
 			});
 
-			expect(uiStore.areNotificationsSuppressed).toBe(true);
-			expect(uiStore.allowErrorNotificationsWhenSuppressed).toBe(true);
+			expect(notificationsStore.areNotificationsSuppressed).toBe(true);
+			expect(notificationsStore.allowErrorNotificationsWhenSuppressed).toBe(true);
 
 			dispatchPostMessage({
 				command: 'openExecutionPreview',

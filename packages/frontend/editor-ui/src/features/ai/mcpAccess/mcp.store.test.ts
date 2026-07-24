@@ -4,7 +4,7 @@ import { setActivePinia, createPinia } from 'pinia';
 import * as mcpApi from './mcp.api';
 import { useMCPStore } from './mcp.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { createWorkflow } from './mcp.test.utils';
+import { createOAuthClient, createWorkflow } from './mcp.test.utils';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
@@ -171,6 +171,182 @@ describe('mcp.store', () => {
 
 			expect(workflowsListStore.workflowsById['wf-1'].settings?.availableInMCP).toBe(false);
 			expect(mockWorkflowDocumentStore.mergeSettings).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('OAuth clients ownership', () => {
+		it('fetches the current page with ownership, pagination and filters', async () => {
+			const client = createOAuthClient();
+			const fetchSpy = vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [client],
+				count: 1,
+				totals: { mine: 1, all: 3 },
+			});
+
+			await store.getAllOAuthClients();
+
+			expect(fetchSpy).toHaveBeenCalledWith({}, { ownership: 'mine', skip: 0, take: 10 });
+			expect(store.oauthClients).toEqual([client]);
+			expect(store.oauthClientTotals).toEqual({ mine: 1, all: 3 });
+			expect(store.oauthClientsCount).toBe(1);
+		});
+
+		it('switches ownership, resetting page and filters, and refetches', async () => {
+			const fetchSpy = vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [],
+				count: 0,
+				totals: { mine: 0, all: 0 },
+			});
+
+			store.oauthClientsFilters = {
+				search: 'claude',
+				type: 'cli',
+				ownerId: 'user-1',
+				connected: 'last7',
+			};
+
+			await store.setOAuthClientsOwnership('all');
+
+			expect(store.oauthClientsOwnership).toBe('all');
+			expect(store.oauthClientsFilters).toEqual({
+				search: '',
+				type: null,
+				ownerId: null,
+				connected: null,
+			});
+			expect(fetchSpy).toHaveBeenCalledWith({}, { ownership: 'all', skip: 0, take: 10 });
+		});
+
+		it('sends the active filters as query params and resets the page', async () => {
+			const fetchSpy = vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [],
+				count: 0,
+				totals: { mine: 0 },
+			});
+
+			store.oauthClientsPage = 2;
+			await store.setOAuthClientsFilters({
+				search: '  claude ',
+				type: 'cli',
+				ownerId: 'user-1',
+				connected: 'last30',
+			});
+
+			expect(store.oauthClientsPage).toBe(0);
+			expect(fetchSpy).toHaveBeenCalledWith(
+				{},
+				{
+					ownership: 'mine',
+					skip: 0,
+					take: 10,
+					name: 'claude',
+					ownerId: 'user-1',
+					type: 'cli',
+					connected: 'last30',
+				},
+			);
+		});
+
+		it('paginates server-side and restarts from the first page on a page-size change', async () => {
+			const fetchSpy = vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [createOAuthClient()],
+				count: 40,
+				totals: { mine: 40 },
+			});
+
+			await store.setOAuthClientsPagination(2, 10);
+			expect(fetchSpy).toHaveBeenLastCalledWith({}, { ownership: 'mine', skip: 20, take: 10 });
+
+			await store.setOAuthClientsPagination(2, 25);
+			expect(store.oauthClientsPage).toBe(0);
+			expect(fetchSpy).toHaveBeenLastCalledWith({}, { ownership: 'mine', skip: 0, take: 25 });
+		});
+
+		it('clamps to the last page when the requested one shrank away', async () => {
+			const fetchSpy = vi
+				.spyOn(mcpApi, 'fetchOAuthClients')
+				.mockResolvedValueOnce({ data: [], count: 11, totals: { mine: 11 } })
+				.mockResolvedValueOnce({
+					data: [createOAuthClient()],
+					count: 11,
+					totals: { mine: 11 },
+				});
+
+			await store.setOAuthClientsPagination(5, 10);
+
+			expect(store.oauthClientsPage).toBe(1);
+			expect(fetchSpy).toHaveBeenLastCalledWith({}, { ownership: 'mine', skip: 10, take: 10 });
+		});
+
+		it('stores the distinct owners returned by the server', async () => {
+			const jane = { id: 'user-1', firstName: 'Jane', lastName: 'Doe', email: 'jane@n8n.io' };
+			const adam = { id: 'user-2', firstName: 'Adam', lastName: 'Ant', email: 'adam@n8n.io' };
+			vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [createOAuthClient({ id: 'a', owner: jane })],
+				count: 1,
+				totals: { mine: 1, all: 3 },
+				owners: [adam, jane],
+			});
+
+			await store.getAllOAuthClients();
+
+			expect(store.oauthClientOwners).toEqual([adam, jane]);
+		});
+
+		it('passes the target userId on revoke and refetches the list', async () => {
+			const deleteSpy = vi.spyOn(mcpApi, 'deleteOAuthClient').mockResolvedValue({
+				success: true,
+				message: 'ok',
+			});
+			const fetchSpy = vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [],
+				count: 0,
+				totals: { mine: 0, all: 0 },
+			});
+
+			await store.removeOAuthClient('client-1', 'user-2');
+
+			expect(deleteSpy).toHaveBeenCalledWith({}, 'client-1', 'user-2');
+			expect(fetchSpy).toHaveBeenCalled();
+			expect(store.oauthClientTotals).toEqual({ mine: 0, all: 0 });
+		});
+
+		it('keeps a successful revoke successful when the totals refetch fails', async () => {
+			vi.spyOn(mcpApi, 'deleteOAuthClient').mockResolvedValue({ success: true, message: 'ok' });
+			vi.spyOn(mcpApi, 'fetchOAuthClients').mockRejectedValue(new Error('refetch failed'));
+
+			await expect(store.removeOAuthClient('client-1')).resolves.toEqual({
+				success: true,
+				message: 'ok',
+			});
+		});
+
+		it('ignores a stale in-flight list response superseded by a newer request', async () => {
+			let resolveStale!: (value: Awaited<ReturnType<typeof mcpApi.fetchOAuthClients>>) => void;
+			const stale = new Promise<Awaited<ReturnType<typeof mcpApi.fetchOAuthClients>>>((resolve) => {
+				resolveStale = resolve;
+			});
+			vi.spyOn(mcpApi, 'fetchOAuthClients')
+				.mockReturnValueOnce(stale)
+				.mockResolvedValueOnce({
+					data: [createOAuthClient({ id: 'new' })],
+					count: 1,
+					totals: { mine: 1 },
+				});
+
+			const staleCall = store.getAllOAuthClients(); // in flight
+			await store.getAllOAuthClients(); // newer request commits 'new'
+
+			resolveStale({
+				data: [createOAuthClient({ id: 'old' })],
+				count: 1,
+				totals: { mine: 99 },
+			});
+			await staleCall;
+
+			// the superseded response must not overwrite the newer selection
+			expect(store.oauthClients.map((client) => client.id)).toEqual(['new']);
+			expect(store.oauthClientTotals).toEqual({ mine: 1 });
 		});
 	});
 

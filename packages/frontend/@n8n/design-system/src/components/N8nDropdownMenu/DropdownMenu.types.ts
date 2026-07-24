@@ -42,6 +42,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	divided?: boolean;
 	/** Whether to show a checkmark indicator */
 	checked?: boolean;
+	/** Whether to expose the item as a menu item checkbox */
+	checkbox?: boolean;
 	/** Additional CSS classes */
 	class?: VueCssClass;
 	/** Nested menu items (creates a sub-menu) */

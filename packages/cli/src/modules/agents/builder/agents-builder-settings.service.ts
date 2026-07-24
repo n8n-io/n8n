@@ -15,15 +15,14 @@ import { Service } from '@n8n/di';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
+import { N8N_VERSION } from '@/constants';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { N8N_VERSION } from '@/constants';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
-import type { BuilderTelemetryProxyConfig } from '../tracing/builder-telemetry';
 import { BuilderNotConfiguredError } from './errors';
 import {
 	isSupportedAgentProvider,
@@ -39,6 +38,11 @@ const DEFAULT_SETTINGS: AgentBuilderAdminSettings = { mode: 'default' };
 function readEnvAnthropicKey(): string | null {
 	const key = process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY;
 	return key && key.length > 0 ? key : null;
+}
+
+interface BuilderTelemetryProxyConfig {
+	apiUrl: string;
+	getAuthHeaders: () => Promise<Record<string, string>>;
 }
 
 interface ResolvedBuilderModelConfig {

@@ -100,8 +100,14 @@ function makeAgentSpawned(
 	parentId: string,
 	role = 'sub-agent',
 	tools = ['tool-a'],
+	targetResource?: Extract<InstanceAiEvent, { type: 'agent-spawned' }>['payload']['targetResource'],
 ): Extract<InstanceAiEvent, { type: 'agent-spawned' }> {
-	return { type: 'agent-spawned', runId, agentId, payload: { parentId, role, tools } };
+	return {
+		type: 'agent-spawned',
+		runId,
+		agentId,
+		payload: { parentId, role, tools, targetResource },
+	};
 }
 
 function makeAgentCompleted(
@@ -1031,6 +1037,91 @@ describe('agent-run-reducer', () => {
 			expect(state.agentsById['root'].children).toHaveLength(1);
 			expect(state.agentsById['sub-1'].textContent).toBe('kept');
 		});
+
+		it('republished agent-spawned for the same target upserts targetResource without a second node', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+				}),
+			);
+
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'Support Bot',
+				}),
+			);
+
+			expect(state.agentsById['root'].children).toHaveLength(1);
+			expect(state.agentsById['sub-1'].targetResource).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Support Bot',
+			});
+		});
+
+		it('an unnamed replayed agent-spawned does not erase a known targetResource name', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'Support Bot',
+				}),
+			);
+
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+				}),
+			);
+
+			expect(state.agentsById['sub-1'].targetResource?.name).toBe('Support Bot');
+		});
+
+		it('a replayed agent-spawned for a different target resource leaves the node untouched', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'Support Bot',
+				}),
+			);
+
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], {
+					type: 'agent',
+					id: 'agent-2',
+					projectId: 'proj-1',
+					name: 'Other Agent',
+				}),
+			);
+
+			expect(state.agentsById['root'].children).toHaveLength(1);
+			expect(state.agentsById['sub-1'].targetResource).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Support Bot',
+			});
+		});
 	});
 
 	describe('stateFromAgentTree', () => {
@@ -1417,6 +1508,37 @@ describe('agent-run-reducer', () => {
 			reconnected = reduceEvent(reconnected, makeReasoningBlock('deep thoughts...', 'msg-open'));
 
 			expect(reconnected).toEqual(live);
+		});
+
+		it('text-block heals a suffix-only attacher to deep-equal the block-only state', () => {
+			// Mid-segment attach (refresh served by a main without the coalescer
+			// buffer): the client holds only the segment's tail when the block
+			// arrives, so the entry is a SUFFIX of the block, not a prefix.
+			let suffixOnly = createInitialState(AGENT);
+			suffixOnly = reduceEvent(suffixOnly, makeRunStart(RUN, AGENT));
+			suffixOnly = reduceEvent(suffixOnly, makeTextDelta(RUN, AGENT, ' 4', 'msg-open'));
+			suffixOnly = reduceEvent(suffixOnly, makeTextDelta(RUN, AGENT, ' 5', 'msg-open'));
+			suffixOnly = reduceEvent(suffixOnly, makeTextBlock('1 2 3 4 5', 'msg-open'));
+
+			let blockOnly = createInitialState(AGENT);
+			blockOnly = reduceEvent(blockOnly, makeRunStart(RUN, AGENT));
+			blockOnly = reduceEvent(blockOnly, makeTextBlock('1 2 3 4 5', 'msg-open'));
+
+			expect(suffixOnly).toEqual(blockOnly);
+		});
+
+		it('reasoning-block heals a suffix-only attacher to deep-equal the block-only state', () => {
+			let suffixOnly = createInitialState(AGENT);
+			suffixOnly = reduceEvent(suffixOnly, makeRunStart(RUN, AGENT));
+			suffixOnly = reduceEvent(suffixOnly, makeReasoningDelta(RUN, AGENT, 'oughts', 'msg-open'));
+			suffixOnly = reduceEvent(suffixOnly, makeReasoningDelta(RUN, AGENT, '...', 'msg-open'));
+			suffixOnly = reduceEvent(suffixOnly, makeReasoningBlock('deep thoughts...', 'msg-open'));
+
+			let blockOnly = createInitialState(AGENT);
+			blockOnly = reduceEvent(blockOnly, makeRunStart(RUN, AGENT));
+			blockOnly = reduceEvent(blockOnly, makeReasoningBlock('deep thoughts...', 'msg-open'));
+
+			expect(suffixOnly).toEqual(blockOnly);
 		});
 
 		it('a block with a DIFFERENT responseId appends instead of replacing', () => {

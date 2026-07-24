@@ -15,13 +15,15 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
+import { createProjectVariable } from '@test-integration/db/variables';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import { FORMAT_VERSION } from '../spec/constants';
 import { readExport } from './utils/tar-support';
 import {
-	buildWorkflowCallingSubWorkflow,
 	buildWorkflowReferencingCredential,
+	buildWorkflowCallingSubWorkflow,
+	buildWorkflowReferencingVariables,
 } from './utils/test-builders';
 
 let service: N8nPackagesService;
@@ -43,6 +45,7 @@ beforeEach(async () => {
 		'SharedWorkflow',
 		'CredentialsEntity',
 		'SharedCredentials',
+		'Variables',
 		'ProjectRelation',
 		'Project',
 	]);
@@ -131,7 +134,7 @@ describe('project package export', () => {
 		}
 	});
 
-	it('blocks project exports when a static sub-workflow is outside the package', async () => {
+	it('blocks project exports when a workflow dependency is outside the package', async () => {
 		const owner = await createOwner();
 		const projectA = await createTeamProject('Project A', owner);
 		const projectB = await createTeamProject('Project B', owner);
@@ -146,8 +149,113 @@ describe('project package export', () => {
 		});
 
 		await expect(service.exportPackage({ user: owner, projectIds: [projectA.id] })).rejects.toThrow(
-			'sub-workflow dependency not included in the package',
+			'workflow dependency not included in the package',
 		);
+	});
+
+	it('auto-includes a static sub-workflow in another project folder under a partial project shell', async () => {
+		const owner = await createOwner();
+		const projectA = await createTeamProject('Project A', owner);
+		const projectB = await createTeamProject('Project B', owner);
+		const dependencyRoot = await createFolder(projectB, { name: 'Dependencies' });
+		const dependencyFolder = await createFolder(projectB, {
+			name: 'Nested',
+			parentFolder: dependencyRoot,
+		});
+		const siblingFolder = await createFolder(projectB, { name: 'Sibling' });
+		const dependency = await createWorkflow(
+			{ name: 'External Child', parentFolder: dependencyFolder },
+			projectB,
+		);
+		await createWorkflow({ name: 'Unrelated', parentFolder: siblingFolder }, projectB);
+		await buildWorkflowCallingSubWorkflow({
+			name: 'Parent',
+			project: projectA,
+			subWorkflowId: dependency.id,
+		});
+
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		try {
+			const { manifest, entries } = await readExport(
+				await service.exportPackage({
+					user: owner,
+					projectIds: [projectA.id],
+					missingWorkflowDependencyPolicy: 'include-in-package',
+				}),
+			);
+
+			const projectBEntry = manifest.projects!.find(({ id }) => id === projectB.id)!;
+			expect(projectBEntry.target).toMatch(/^projects\//);
+			expect(entries.find((e) => e.name === `${projectBEntry.target}/project.json`)).toBeDefined();
+			expect(manifest.folders!.map(({ id }) => id).sort()).toEqual(
+				expect.arrayContaining([dependencyRoot.id, dependencyFolder.id]),
+			);
+			expect(manifest.folders!.some(({ id }) => id === siblingFolder.id)).toBe(false);
+
+			const dependencyFolderEntry = manifest.folders!.find(({ id }) => id === dependencyFolder.id)!;
+			const dependencyEntry = manifest.workflows!.find(({ id }) => id === dependency.id)!;
+			expect(dependencyEntry.target).toMatch(
+				new RegExp(`^${dependencyFolderEntry.target}/workflows/[^/]+$`),
+			);
+
+			const exportedEvents = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-exported');
+			expect(exportedEvents).toHaveLength(1);
+			const payload = exportedEvents[0][1] as RelayEventMap['n8n-package-exported'];
+			expect(payload.projectIds?.sort()).toEqual([projectA.id, projectB.id].sort());
+			expect(payload.folderIds?.sort()).toEqual([dependencyRoot.id, dependencyFolder.id].sort());
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
+	it('auto-includes a static sub-workflow at another project root', async () => {
+		const owner = await createOwner();
+		const projectA = await createTeamProject('Project A', owner);
+		const projectB = await createTeamProject('Project B', owner);
+		const dependency = await createWorkflow({ name: 'External Root' }, projectB);
+		await buildWorkflowCallingSubWorkflow({
+			name: 'Parent',
+			project: projectA,
+			subWorkflowId: dependency.id,
+		});
+
+		const { manifest } = await readExport(
+			await service.exportPackage({
+				user: owner,
+				projectIds: [projectA.id],
+				missingWorkflowDependencyPolicy: 'include-in-package',
+			}),
+		);
+
+		const projectBEntry = manifest.projects!.find(({ id }) => id === projectB.id)!;
+		const dependencyEntry = manifest.workflows!.find(({ id }) => id === dependency.id)!;
+		expect(dependencyEntry.target).toMatch(new RegExp(`^${projectBEntry.target}/workflows/[^/]+$`));
+	});
+
+	it('auto-includes a shared workflow under its owner project', async () => {
+		const owner = await createOwner();
+		const projectA = await createTeamProject('Project A', owner);
+		const projectB = await createTeamProject('Project B', owner);
+		const dependency = await createWorkflow({ name: 'Shared Child' }, projectB);
+		await shareWorkflowWithProjects(dependency, [{ project: projectA, role: 'workflow:editor' }]);
+		await buildWorkflowCallingSubWorkflow({
+			name: 'Parent',
+			project: projectA,
+			subWorkflowId: dependency.id,
+		});
+
+		const { manifest } = await readExport(
+			await service.exportPackage({
+				user: owner,
+				projectIds: [projectA.id],
+				missingWorkflowDependencyPolicy: 'include-in-package',
+			}),
+		);
+
+		const projectBEntry = manifest.projects!.find(({ id }) => id === projectB.id)!;
+		const dependencyEntry = manifest.workflows!.find(({ id }) => id === dependency.id)!;
+		expect(dependencyEntry.target).toMatch(new RegExp(`^${projectBEntry.target}/workflows/[^/]+$`));
 	});
 
 	it('allows sub-workflow dependencies inside any selected project', async () => {
@@ -164,7 +272,9 @@ describe('project package export', () => {
 		const { manifest } = await exportProjects(owner, [projectA.id, projectB.id]);
 
 		expect(manifest.workflows!.map(({ id }) => id).sort()).toEqual([parent.id, child.id].sort());
-		expect(manifest.requirements).toBeUndefined();
+		expect(manifest.requirements?.workflows).toEqual([
+			{ id: child.id, name: child.name, usedByWorkflows: [parent.id] },
+		]);
 	});
 
 	it('exports the owner personal project', async () => {
@@ -308,6 +418,9 @@ describe('project package export — with folders / workflows', () => {
 			entries.find((e) => e.name === `${credentialEntry.target}/credential.json`),
 		).toBeDefined();
 		expect(manifest.requirements).toEqual({
+			nodeTypes: [
+				{ type: 'n8n-nodes-base.httpRequest', typeVersion: 1, usedByWorkflows: [workflow.id] },
+			],
 			credentials: [
 				{
 					id: credential.id,
@@ -317,6 +430,41 @@ describe('project package export — with folders / workflows', () => {
 				},
 			],
 		});
+	});
+
+	it('namespaces a project-owned variable inside the project directory and counts it in telemetry', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('team-ligo', owner);
+		const folder = await createFolder(project, { name: 'in_progress' });
+		const variable = await createProjectVariable('API_URL', 'https://team.example.com', project);
+		const workflow = await buildWorkflowReferencingVariables({
+			name: 'triage',
+			project,
+			variableNames: ['API_URL'],
+			parentFolder: folder,
+		});
+
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		const { manifest, entries } = await exportProject(owner, project.id);
+
+		const projectEntry = manifest.projects!.find((p) => p.id === project.id)!;
+		expect(manifest.variables).toHaveLength(1);
+		const variableEntry = manifest.variables![0];
+		expect(variableEntry.id).toBe(variable.id);
+		expect(variableEntry.target).toMatch(new RegExp(`^${projectEntry.target}/variables/[^/]+$`));
+		expect(entries.find((e) => e.name === `${variableEntry.target}/variable.json`)).toBeDefined();
+		expect(manifest.requirements).toEqual({
+			nodeTypes: expect.any(Array),
+			variables: [
+				{ name: 'API_URL', value: 'https://team.example.com', usedByWorkflows: [workflow.id] },
+			],
+		});
+
+		const events = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-exported');
+		expect(events).toHaveLength(1);
+		const payload = events[0][1] as RelayEventMap['n8n-package-exported'];
+		expect(payload.counts.variables).toBe(1);
 	});
 
 	it('keeps a credential owned by a non-exported project at the package top level', async () => {

@@ -1,7 +1,6 @@
 import type { TagEntity, ITagWithCountDb } from '@n8n/db';
 import { TagRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, QueryFailedError } from '@n8n/typeorm';
 
 import { ExternalHooks } from '@/external-hooks';
@@ -100,6 +99,19 @@ export class TagService {
 			...(options?.orderByName ? { order: { name: 'ASC' as const } } : {}),
 			...(options?.limit !== undefined ? { take: options.limit } : {}),
 		}) as Promise<GetAllResult<T>>);
+	}
+
+	async getPaginated({ offset, limit }: { offset: number; limit: number }): Promise<{
+		data: TagEntity[];
+		count: number;
+	}> {
+		const [data, count] = await this.tagRepository.findAndCount({
+			skip: offset,
+			take: limit,
+			select: ['id', 'name', 'createdAt', 'updatedAt'],
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+		return { data, count };
 	}
 
 	async getById(id: string) {

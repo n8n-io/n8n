@@ -43,6 +43,10 @@ describe('InstanceAiModelService', () => {
 		service = new InstanceAiModelService(settingsService, aiService, outboundHttp);
 	});
 
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	describe('isProxyEnabled', () => {
 		it('should mirror the AI service proxy state', () => {
 			aiService.isProxyEnabled.mockReturnValue(true);
@@ -74,6 +78,26 @@ describe('InstanceAiModelService', () => {
 				creditsClaimed: 12,
 			});
 			expect(client.getInstanceAiCredits).toHaveBeenCalledWith({ id: 'user-1' });
+		});
+
+		it('should retry transient failures when fetching credits', async () => {
+			vi.useFakeTimers();
+			aiService.isProxyEnabled.mockReturnValue(true);
+			const transient = Object.assign(new Error('Bad Gateway'), { statusCode: 502 });
+			const client = createClient();
+			client.getInstanceAiCredits
+				.mockRejectedValueOnce(transient)
+				.mockResolvedValue({ creditsQuota: 5700, creditsClaimed: 12 });
+			aiService.getClient.mockResolvedValue(client as never);
+
+			const promise = service.getCredits(fakeUser);
+			await vi.runAllTimersAsync();
+
+			await expect(promise).resolves.toEqual({
+				creditsQuota: 5700,
+				creditsClaimed: 12,
+			});
+			expect(client.getInstanceAiCredits).toHaveBeenCalledTimes(2);
 		});
 	});
 

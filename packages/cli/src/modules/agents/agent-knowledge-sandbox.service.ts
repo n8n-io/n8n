@@ -13,6 +13,7 @@ import { createHash } from 'node:crypto';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AiService } from '@/services/ai.service';
+import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 import { TtlMap } from '@/utils/ttl-map';
 
 import {
@@ -228,7 +229,7 @@ export class AgentKnowledgeSandboxService {
 	 * callers must not have cleanup failures block the parent delete operation.
 	 */
 	async destroySandbox(projectId: string, agentId: string): Promise<void> {
-		if (!isAgentKnowledgeBaseEnabled(this.agentsConfig)) return;
+		if (!this.isKnowledgeBaseEnabled()) return;
 
 		try {
 			const { Daytona } = loadDaytona();
@@ -792,11 +793,17 @@ export class AgentKnowledgeSandboxService {
 		}
 
 		const client = await this.aiService.getClient();
-		const proxyConfig = await client.getSandboxProxyConfig();
+		const proxyConfig = await callAiServiceWithRetry(
+			'Agent knowledge sandbox proxy config fetch',
+			async () => await client.getSandboxProxyConfig(),
+			this.logger,
+		);
 		// The proxy does not enforce per-user identity; the project id is the stable scope for agents.
-		const token = await client.getBuilderApiProxyToken(
-			{ id: projectId },
-			{ userMessageId: nanoid() },
+		const token = await callAiServiceWithRetry(
+			'Agent knowledge sandbox proxy token mint',
+			async () =>
+				await client.getBuilderApiProxyToken({ id: projectId }, { userMessageId: nanoid() }),
+			this.logger,
 		);
 
 		return {
@@ -878,8 +885,12 @@ export class AgentKnowledgeSandboxService {
 		}
 	}
 
+	private isKnowledgeBaseEnabled(): boolean {
+		return isAgentKnowledgeBaseEnabled(this.agentsConfig, this.aiService.isProxyEnabled());
+	}
+
 	private assertKnowledgeBaseEnabled(): void {
-		if (isAgentKnowledgeBaseEnabled(this.agentsConfig)) {
+		if (this.isKnowledgeBaseEnabled()) {
 			return;
 		}
 

@@ -87,7 +87,7 @@ const scrollRight = () => scroll(50);
 		<div v-if="canScrollRight" :class="$style.next" @click="scrollRight">
 			<N8nIcon :class="$style.positionIcon" icon="chevron-right" size="small" />
 		</div>
-		<div ref="tabs" :class="$style.tabs">
+		<div ref="tabs" role="tablist" :class="$style.tabs">
 			<div
 				v-for="option in options"
 				:id="option.value.toString()"
@@ -133,6 +133,9 @@ const scrollRight = () => scroll(50);
 					</RouterLink>
 					<div
 						v-else
+						role="tab"
+						tabindex="0"
+						:aria-selected="modelValue === option.value"
 						:class="{
 							[$style.tab]: true,
 							[$style.activeTab]: modelValue === option.value,
@@ -140,6 +143,8 @@ const scrollRight = () => scroll(50);
 							[$style.dangerTab]: option.variant === 'danger',
 						}"
 						@click="() => handleTabClick(option.value)"
+						@keydown.enter.prevent="() => handleTabClick(option.value)"
+						@keydown.space.prevent="() => handleTabClick(option.value)"
 					>
 						<N8nIcon
 							v-if="option.icon && option.iconPosition !== 'right'"

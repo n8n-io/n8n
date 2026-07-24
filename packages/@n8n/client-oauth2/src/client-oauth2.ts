@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { createHttpsProxyAgent } from '@n8n/backend-network/proxy';
 import axios from 'axios';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { Agent } from 'https';
 import * as qs from 'querystring';
 
 import type { ClientOAuth2TokenData } from './client-oauth2-token';
@@ -57,8 +57,6 @@ export class ResponseError extends Error {
 	}
 }
 
-const sslIgnoringAgent = new Agent({ rejectUnauthorized: false });
-
 /**
  * Construct an object that can handle the multiple OAuth 2.0 flows.
  */
@@ -112,7 +110,12 @@ export class ClientOAuth2 {
 		};
 
 		if (options.ignoreSSLIssues) {
-			requestConfig.httpsAgent = sslIgnoringAgent;
+			// Build a proxy-aware agent that relaxes TLS verification, so ignoring SSL
+			// issues still routes through the env proxy (HTTPS_PROXY / NO_PROXY) instead
+			// of connecting directly and bypassing the proxy.
+			requestConfig.httpsAgent = createHttpsProxyAgent(url, undefined, {
+				rejectUnauthorized: false,
+			});
 		}
 
 		const response = await axios.request(requestConfig);

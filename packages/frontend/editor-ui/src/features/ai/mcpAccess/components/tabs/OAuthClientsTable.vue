@@ -2,16 +2,41 @@
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
-import { N8nButton, N8nDataTableServer, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
-import { computed, ref, watch } from 'vue';
+import {
+	N8nButton,
+	N8nDataTableServer,
+	N8nIcon,
+	N8nInput,
+	N8nLoading,
+	N8nTabs,
+	N8nText,
+} from '@n8n/design-system';
+import type { IUser, TabOptions } from '@n8n/design-system';
+import { computed, ref } from 'vue';
+import debounce from 'lodash/debounce';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@/app/constants';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import TimeAgo from '@/app/components/TimeAgo.vue';
-import { getClientBrand, isFullAccessGrant, scopeLabel } from '../../clients.utils';
+import {
+	EMPTY_OAUTH_CLIENT_FILTERS,
+	getClientBrand,
+	isFullAccessGrant,
+	scopeLabel,
+} from '../../clients.utils';
+import type { OAuthClientFilters } from '../../clients.utils';
+import McpEmptyStateCard from '../McpEmptyStateCard.vue';
 import OAuthClientDetailsModal from '../OAuthClientDetailsModal.vue';
+import OAuthClientOwnerCell from './OAuthClientOwnerCell.vue';
+import OAuthClientsFilters from './OAuthClientsFilters.vue';
 
 const i18n = useI18n();
 const mcpStore = useMCPStore();
+const rbacStore = useRBACStore();
+const usersStore = useUsersStore();
 
 type Props = {
 	clients: OAuthClientResponseDto[];
@@ -21,41 +46,133 @@ type Props = {
 
 const props = defineProps<Props>();
 
-const page = ref(0);
-const itemsPerPage = ref(10);
+const emit = defineEmits<{
+	revokeClient: [client: OAuthClientResponseDto];
+	'update:ownership': [ownership: 'mine' | 'all'];
+	'update:filters': [filters: OAuthClientFilters];
+	'update:options': [options: { page: number; itemsPerPage: number }];
+}>();
+
+// The store is the source of truth for pagination; setters route through the
+// parent so it can wrap the refetch in its loading state.
+const page = computed({
+	get: () => mcpStore.oauthClientsPage,
+	set: (value: number) => emit('update:options', { page: value, itemsPerPage: itemsPerPage.value }),
+});
+const itemsPerPage = computed({
+	get: () => mcpStore.oauthClientsPageSize,
+	set: (value: number) => emit('update:options', { page: page.value, itemsPerPage: value }),
+});
 
 const detailsClient = ref<OAuthClientResponseDto | null>(null);
 const detailsOpen = ref(false);
 
-const visibleClients = computed(() => {
-	const start = page.value * itemsPerPage.value;
-	return props.clients.slice(start, start + itemsPerPage.value);
-});
+const canManageAllClients = computed(() => rbacStore.hasScope('mcp:manage'));
+const ownership = computed(() => mcpStore.oauthClientsOwnership);
 
-watch(
-	() => props.clients.length,
-	(length) => {
-		const maxPage = Math.max(0, Math.ceil(length / itemsPerPage.value) - 1);
-		if (page.value > maxPage) {
-			page.value = maxPage;
-		}
+// Badges show the unfiltered totals so a search-narrowed "Mine (0)" doesn't read
+// as "no connected clients" when there are clients that just don't match.
+const tabOptions = computed<Array<TabOptions<'mine' | 'all'>>>(() => [
+	{
+		label: i18n.baseText('settings.mcp.oAuthClients.tabs.mine'),
+		value: 'mine' as const,
+		tag: String(mcpStore.oauthClientTotals.mine),
 	},
+	{
+		label: i18n.baseText('settings.mcp.oAuthClients.tabs.all'),
+		value: 'all' as const,
+		tag: String(mcpStore.oauthClientTotals.all ?? 0),
+	},
+]);
+
+// Local UI state of the search + popover; every change is emitted so the
+// parent can push it to the store and refetch server-side.
+const filters = ref<OAuthClientFilters>({ ...EMPTY_OAUTH_CLIENT_FILTERS });
+const searchQuery = ref('');
+
+const hasActiveFilters = computed(
+	() =>
+		filters.value.search.trim() !== '' ||
+		filters.value.type !== null ||
+		filters.value.ownerId !== null ||
+		filters.value.connected !== null,
 );
 
-const emit = defineEmits<{
-	revokeClient: [client: OAuthClientResponseDto];
-}>();
+// Aggregate total across the tabs a manager can see (own count for members).
+const totalClients = computed(
+	() => mcpStore.oauthClientTotals.all ?? mcpStore.oauthClientTotals.mine,
+);
 
-const tableHeaders = ref<Array<TableHeader<OAuthClientResponseDto>>>([
+// Show only the empty state (hiding tabs, toolbar and table) when there are no
+// clients anywhere — so a manager with 0 of their own but clients under "All"
+// still gets the tabs. A search that returns nothing keeps the toolbar
+// (hasActiveFilters) so the user can clear it.
+const showEmptyState = computed(
+	() => props.clients.length === 0 && totalClients.value === 0 && !hasActiveFilters.value,
+);
+
+function onFiltersChange(newFilters: OAuthClientFilters) {
+	filters.value = newFilters;
+	emit('update:filters', newFilters);
+}
+
+const applySearch = debounce((value: string) => {
+	onFiltersChange({ ...filters.value, search: value });
+}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+
+function onSearchInput(value: string) {
+	searchQuery.value = value;
+	void applySearch(value);
+}
+
+const ownerOptions = computed<IUser[]>(() =>
+	mcpStore.oauthClientOwners.map((owner) => ({
+		id: owner.id,
+		firstName: owner.firstName,
+		lastName: owner.lastName,
+		email: owner.email,
+		fullName: [owner.firstName, owner.lastName].filter(Boolean).join(' ') || undefined,
+	})),
+);
+
+function onOwnershipChange(newOwnership: 'mine' | 'all') {
+	if (newOwnership === ownership.value) return;
+	// Drop any queued search so a stale term can't re-filter after the switch.
+	applySearch.cancel();
+	filters.value = { ...EMPTY_OAUTH_CLIENT_FILTERS };
+	searchQuery.value = '';
+	emit('update:ownership', newOwnership);
+}
+
+// A consent row is (client × owner): the same client id can appear once per
+// owner in the All view, so row identity must include the owner.
+function rowId(row: OAuthClientResponseDto) {
+	return `${row.id}:${row.owner?.id ?? 'mine'}`;
+}
+
+const tableHeaders = computed<Array<TableHeader<OAuthClientResponseDto>>>(() => [
 	{
 		title: i18n.baseText('settings.mcp.oAuthClients.table.clientName'),
 		key: 'name',
-		width: 220,
+		width: 190,
 		disableSort: true,
 		value() {
 			return;
 		},
 	},
+	...(ownership.value === 'all'
+		? [
+				{
+					title: i18n.baseText('settings.mcp.oAuthClients.table.connectedBy'),
+					key: 'owner',
+					width: 200,
+					disableSort: true,
+					value() {
+						return;
+					},
+				} satisfies TableHeader<OAuthClientResponseDto>,
+			]
+		: []),
 	{
 		title: i18n.baseText('settings.mcp.oAuthClients.table.access'),
 		key: 'scopes',
@@ -67,7 +184,7 @@ const tableHeaders = ref<Array<TableHeader<OAuthClientResponseDto>>>([
 	{
 		title: i18n.baseText('settings.mcp.oAuthClients.table.connectedAt'),
 		key: 'grantedAt',
-		width: 160,
+		width: 110,
 		disableSort: true,
 		value() {
 			return;
@@ -123,35 +240,61 @@ function onRevoke(item: OAuthClientResponseDto) {
 			<N8nLoading :loading="props.loading" variant="h1" class="mb-l" />
 			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
 		</div>
+		<McpEmptyStateCard
+			v-else-if="showEmptyState"
+			data-test-id="mcp-clients-empty"
+			:title="i18n.baseText('settings.mcp.connectedClients.empty.title')"
+			:description="i18n.baseText('settings.mcp.connectedClients.empty.description')"
+		/>
 		<div v-else class="mt-s mb-xl">
+			<div :class="$style.toolbar">
+				<N8nTabs
+					v-if="canManageAllClients"
+					:model-value="ownership"
+					:options="tabOptions"
+					data-test-id="mcp-clients-tabs"
+					@update:model-value="onOwnershipChange"
+				/>
+				<div v-else />
+				<div :class="$style.filters">
+					<N8nInput
+						:model-value="searchQuery"
+						:placeholder="i18n.baseText('settings.mcp.oAuthClients.search.placeholder')"
+						:class="$style.search"
+						size="medium"
+						clearable
+						data-test-id="mcp-clients-search"
+						@update:model-value="onSearchInput"
+					>
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+					</N8nInput>
+					<OAuthClientsFilters
+						:model-value="filters"
+						:owners="ownerOptions"
+						:show-owner-filter="ownership === 'all'"
+						:current-user-id="usersStore.currentUser?.id"
+						@update:model-value="onFiltersChange"
+					/>
+				</div>
+			</div>
 			<N8nDataTableServer
 				v-model:page="page"
 				v-model:items-per-page="itemsPerPage"
+				:class="$style.table"
 				data-test-id="oauth-clients-data-table"
 				:headers="tableHeaders"
-				:items="visibleClients"
-				:items-length="props.clients.length"
+				:items="props.clients"
+				:items-length="mcpStore.oauthClientsCount"
+				:item-value="rowId"
 				@click:row="(_, { item }) => openDetails(item)"
 			>
-				<template v-if="props.clients.length === 0" #cover>
+				<template v-if="mcpStore.oauthClientsCount === 0" #cover>
 					<div :class="$style['empty-state']">
-						<N8nText data-test-id="mcp-workflow-table-empty-state" size="large" color="text-base">
-							{{ i18n.baseText('settings.mcp.oauth.table.empty.title') }}
+						<N8nText data-test-id="mcp-clients-no-results" size="small" color="text-base">
+							{{ i18n.baseText('settings.mcp.oAuthClients.search.noResults') }}
 						</N8nText>
-						<N8nText
-							data-test-id="mcp-workflow-table-empty-state-description"
-							size="small"
-							color="text-base"
-						>
-							{{ i18n.baseText('settings.mcp.oauth.table.empty.description') }}
-						</N8nText>
-						<N8nButton
-							variant="solid"
-							data-test-id="mcp-oauth-create-client-button"
-							@click="mcpStore.openConnectPopover()"
-						>
-							{{ i18n.baseText('settings.mcp.oauth.table.empty.button') }}
-						</N8nButton>
 					</div>
 				</template>
 				<template #[`item.name`]="{ item }">
@@ -179,6 +322,13 @@ function onRevoke(item: OAuthClientResponseDto) {
 						</div>
 					</div>
 				</template>
+				<template #[`item.owner`]="{ item }">
+					<OAuthClientOwnerCell
+						v-if="item.owner"
+						:owner="item.owner"
+						:is-current-user="item.owner.id === usersStore.currentUser?.id"
+					/>
+				</template>
 				<template #[`item.scopes`]="{ item }">
 					<N8nText data-test-id="mcp-client-access" color="text-light" :class="$style.access">
 						{{ accessSummary(item) }}
@@ -191,6 +341,7 @@ function onRevoke(item: OAuthClientResponseDto) {
 				</template>
 				<template #[`item.actions`]="{ item }">
 					<N8nButton
+						:class="$style['revoke-action']"
 						variant="outline"
 						size="small"
 						data-test-id="mcp-oauth-client-revoke-button"
@@ -205,7 +356,6 @@ function onRevoke(item: OAuthClientResponseDto) {
 		<OAuthClientDetailsModal
 			v-model:open="detailsOpen"
 			:client="detailsClient"
-			:scope-tools="props.scopeTools"
 			@revoke="onRevoke"
 		/>
 	</div>
@@ -218,6 +368,24 @@ function onRevoke(item: OAuthClientResponseDto) {
 	align-items: center;
 }
 
+.toolbar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: var(--spacing--sm);
+	margin-bottom: var(--spacing--sm);
+}
+
+.filters {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.search {
+	max-width: 240px;
+}
+
 .client {
 	display: flex;
 	align-items: center;
@@ -228,8 +396,8 @@ function onRevoke(item: OAuthClientResponseDto) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: var(--spacing--xl);
-	height: var(--spacing--xl);
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
 	flex-shrink: 0;
 	/* fixed white tile so dark brand marks stay visible on the dark theme */
 	background-color: var(--color--neutral-white);
@@ -238,13 +406,21 @@ function onRevoke(item: OAuthClientResponseDto) {
 }
 
 .client-icon {
-	width: var(--spacing--md);
-	height: var(--spacing--md);
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
 	/* the tile is always white, so the fallback MCP glyph must stay dark in both themes */
 	color: var(--color--neutral-black);
 }
 
-/* the whole row opens the details modal; hint that on the access summary */
+/* Access summary stays on one line and truncates within its column (the fixed
+   table layout below gives the cell a real width). The row opens the details modal. */
+.access {
+	display: block;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
 .access:hover {
 	color: var(--color--primary);
 	text-decoration: underline;
@@ -264,5 +440,27 @@ function onRevoke(item: OAuthClientResponseDto) {
 	gap: var(--spacing--sm);
 	padding: var(--spacing--lg) 0;
 	min-height: 250px;
+}
+
+/* The whole row opens the details modal, so hint it with a pointer... */
+.table :global(tbody tr) {
+	cursor: pointer;
+}
+
+/* ...and keep the revoke button out of the way until the row is hovered/focused. */
+.table :global(tbody tr) .revoke-action {
+	opacity: 0;
+	transition: opacity var(--duration--snappy) var(--easing--ease-out);
+}
+
+.table :global(tbody tr:hover) .revoke-action,
+.table :global(tbody tr:focus-within) .revoke-action {
+	opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.table :global(tbody tr) .revoke-action {
+		transition: none;
+	}
 }
 </style>

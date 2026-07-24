@@ -6,12 +6,9 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { FeatureFlags, IDataObject } from 'n8n-workflow';
-import {
-	EXPERIMENTS_TO_TRACK,
-	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
-	TELEMETRY_EVENTS,
-} from '@/app/constants';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/app/constants';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
 const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
@@ -144,7 +141,7 @@ export const usePostHog = defineStore('posthog', () => {
 			return;
 		}
 
-		telemetry.track(TELEMETRY_EVENTS.IS_PART_OF_EXPERIMENT, {
+		telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT, {
 			name,
 			variant,
 		});

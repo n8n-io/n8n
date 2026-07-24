@@ -298,8 +298,7 @@ export class WorkflowPublicationOutboxConsumer {
 			case 'skipped':
 				return {
 					result: 'skipped',
-					reason:
-						result.reason === 'workflow-not-found' ? 'workflow_not_found' : 'workflow_inactive',
+					reason: 'workflow_not_found',
 				};
 			case 'version-missing':
 				return { result: 'failed', reason: 'version_missing' };

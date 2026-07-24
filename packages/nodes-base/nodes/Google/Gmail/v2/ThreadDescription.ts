@@ -1,5 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import { simplifyMemoryNotice } from '../utils/descriptions';
+
 export const threadOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -240,7 +242,14 @@ export const threadFields: INodeProperties[] = [
 		},
 		default: true,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
+		builderHint: {
+			propertyHint:
+				'Keep true by default. When true, returns lightweight metadata (labels, subject, from, to, snippet) for each message in the thread. When false, fetches and parses the full raw thread (adds html, text, textAsHtml, headers, attachments for every message), which uses much more memory and is a common cause of out-of-memory crashes. Only set false when the email body is actually required, e.g. for AI classification, summarization, or content processing.',
+		},
 	},
+	simplifyMemoryNotice({
+		displayOptions: { show: { operation: ['get'], resource: ['thread'], simple: [false] } },
+	}),
 	{
 		displayName: 'Options',
 		name: 'options',

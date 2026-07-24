@@ -24,6 +24,20 @@ describe('Instance AI runtime skills', () => {
 		expect(skill).toContain('knowledge-base/reference/workflow-sdk-language.md');
 	});
 
+	it('tells the workflow-builder not to add sticky notes by default', () => {
+		const skill = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
+			'utf-8',
+		);
+		expect(skill).toContain(
+			'Do not add sticky notes (`sticky(...)` / `n8n-nodes-base.stickyNote`) unless',
+		);
+		expect(skill).not.toMatch(/import \{\n(?:[^\n]*\n)*?\s*sticky,/);
+		expect(skill).toMatch(
+			/opt-in only when the user explicitly\s+asks for a sticky note on the canvas/,
+		);
+	});
+
 	it('loads the bundled data-table-manager skill and its linked files', async () => {
 		expect(existsSync(INSTANCE_AI_SKILLS_DIR)).toBe(true);
 
@@ -146,6 +160,20 @@ describe('Instance AI runtime skills', () => {
 		);
 	});
 
+	it('keeps agent tool routing in one dedicated section', () => {
+		const skill = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'intent-recognition', 'SKILL.md'),
+			'utf-8',
+		);
+
+		expect(skill).toContain('## Adding tools to an agent');
+		expect(skill).toContain('Direct agent tools are the default');
+		expect(skill.match(/multiple independent node tools/g)).toHaveLength(1);
+		expect(
+			skill.match(/one agent tool call must run an ordered\s+multi-node procedure/g),
+		).toHaveLength(1);
+	});
+
 	it('loads the bundled Computer Use credential setup skill', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const skill = source.registry.skills.find(
@@ -225,8 +253,6 @@ describe('Instance AI runtime skills', () => {
 		const loaded = await source.loadSkill('workflow-builder');
 		expect(loaded?.instructions).toContain('build-workflow');
 		expect(loaded?.instructions).toContain('filePath');
-		expect(loaded?.instructions).toContain('workspace file tools');
-		expect(loaded?.instructions).toContain('plus any relevant tool-search/MCP tool');
 		expect(loaded?.instructions).toContain('workspace source file');
 		expect(loaded?.instructions).toContain('nodes(action="suggested")');
 		expect(loaded?.instructions).toContain('nodes(action="search")');
@@ -243,6 +269,19 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain(
 			'knowledge-base/reference/workflow-builder-guardrails.md',
 		);
+		expect(loaded?.instructions).toContain('Prefer n8n sources over guessing');
+		expect(loaded?.instructions).toContain('knowledge base');
+		expect(loaded?.instructions).toContain('n8n-docs-assistant');
+		expect(loaded?.instructions).toContain('never load `templates/index.json`');
+		expect(loaded?.instructions).toContain('node-types/index.txt');
+		expect(loaded?.instructions).toContain('## Trigger URL Sharing');
+		expect(loaded?.instructions).toContain('{formBaseUrl}/{path}');
+		expect(loaded?.instructions).toContain('**Open chat** button');
+		expect(loaded?.instructions).toContain('batch\n`nodes(action="type-definition")`');
+		expect(loaded?.instructions).toContain('together with the `load_skill` call');
+		expect(loaded?.instructions).toContain('Do not create a plan\njust for verification');
+		expect(loaded?.instructions).toContain('never stop before the first\n`build-workflow` call');
+		expect(loaded?.instructions).toContain('inspect it first via `debugging-executions`');
 		expect(loaded?.instructions).toContain('SDK node `output` mocks are raw `$json` objects');
 		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
 		expect(loaded?.instructions).toContain(
@@ -274,6 +313,8 @@ describe('Instance AI runtime skills', () => {
 
 		const loaded = await source.loadSkill('planning');
 		expect(loaded?.instructions).toContain('## When NOT to use this skill');
+		expect(loaded?.instructions).toContain('Consult the knowledge base before planning');
+		expect(loaded?.instructions).toContain('never load `templates/index.json` wholesale');
 		expect(loaded?.instructions).toContain(
 			'Before calling `create-tasks`, load it via `load_tool`',
 		);

@@ -1,7 +1,63 @@
+import escape from 'lodash/escape';
+
 export const BUTTON_STYLE_SECONDARY =
 	'display:inline-block; text-decoration:none; background-color:#fff; color:#4a4a4a; padding:12px 24px; font-family: Arial,sans-serif; font-size:14px;font-weight:600; border:1px solid #d1d1d1; border-radius:6px; min-width:120px; margin: 12px 6px 0 6px;';
 export const BUTTON_STYLE_PRIMARY =
 	'display:inline-block; text-decoration:none; background-color:#ff6d5a; color: #fff; padding:12px 24px; font-family: Arial,sans-serif; font-size:14px;font-weight:600; border-radius:6px; min-width:120px; margin: 12px 2px 0 2px;';
+export const BUTTON_STYLE_CONFIRMATION = `${BUTTON_STYLE_PRIMARY} border:0; cursor:pointer;`;
+
+/**
+ * Response page for approval links when the confirmation-page option is on.
+ * The form has no `action`, so submitting it POSTs to the page's own URL,
+ * keeping the signed query string intact (also behind reverse-proxy prefixes).
+ */
+export function createConfirmationPage(rawTitle: string, rawMessage: string, rawLabel: string) {
+	const title = escape(rawTitle);
+	const message = escape(rawMessage);
+	const buttonLabel = escape(rawLabel);
+	return `
+	<html lang='en'>
+
+	<head>
+		<meta charset='UTF-8' />
+		<meta name='viewport' content='width=device-width, initial-scale=1.0' />
+		<link rel='icon' type='image/png' href='https://n8n.io/favicon.ico' />
+		<link
+			href='https://fonts.googleapis.com/css?family=Open+Sans'
+			rel='stylesheet'
+			type='text/css'
+		/>
+		<title>Confirm your response</title>
+		<style>
+			*, ::after, ::before { box-sizing: border-box; margin: 0; padding: 0; } body { font-family:
+			Open Sans, sans-serif; font-weight: 400; font-size: 12px; display: flex; flex-direction:
+			column; justify-content: start; background-color: #FBFCFE; } .container { margin: auto;
+			text-align: center; padding-top: 24px; width: 448px; } .card { padding: 24px;
+			background-color: white; border: 1px solid #DBDFE7; border-radius: 8px; box-shadow: 0px 4px
+			16px 0px #634DFF0F; margin-bottom: 16px; } .header h1 { color: #525356; font-size: 20px;
+			font-weight: 400; padding-bottom: 8px; } .header p { color: #7E8186; font-size: 14px;
+			font-weight: 400; white-space: pre-line; }
+		</style>
+	</head>
+
+	<body>
+		<div class='container'>
+			<section>
+				<div class='card'>
+					<div class='header'>
+						<h1>${title}</h1>
+						<p>${message}</p>
+					</div>
+					<form method='POST'>
+						<button type='submit' style='${BUTTON_STYLE_CONFIRMATION}'>${buttonLabel}</button>
+					</form>
+				</div>
+			</section>
+		</div>
+	</body>
+
+</html>`;
+}
 
 export const ACTION_RECORDED_PAGE = `
 	<html lang='en'>

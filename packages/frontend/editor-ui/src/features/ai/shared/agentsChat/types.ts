@@ -91,6 +91,8 @@ export interface AgentsChatMessage {
 	status?: ChatMessageStatus;
 	interactives?: InteractivePayload[];
 	interactive?: InteractivePayload;
+	/** Persisted agent execution id for this turn (history parse or live SSE `done`). */
+	executionId?: string;
 }
 
 export type ChatMessage = AgentsChatMessage;

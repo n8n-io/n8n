@@ -257,7 +257,7 @@ describe('slackSendAndWaitWebhook', () => {
 	});
 
 	it('ignores a click from someone not on the approver list and notifies them privately', async () => {
-		const { ctx, httpRequest } = createContext({
+		const { ctx, httpRequest, status, send } = createContext({
 			interaction: true,
 			signatureSecret: 'secret',
 			approvers: ['U_ALLOWED'],
@@ -284,6 +284,9 @@ describe('slackSendAndWaitWebhook', () => {
 			'/chat.postEphemeral',
 			expect.objectContaining({ channel: 'C1', user: 'U_OTHER' }),
 		);
+		// Must acknowledge with a 200 so Slack doesn't time out and retry the same click.
+		expect(status).toHaveBeenCalledWith(200);
+		expect(send).toHaveBeenCalledWith('');
 	});
 
 	it('resumes when the responder is on the approver list', async () => {
@@ -569,6 +572,84 @@ describe('slackSendAndWaitWebhook', () => {
 		const result = await slackSendAndWaitWebhook.call(ctx);
 
 		expect(result).toEqual({ noWebhookResponse: true });
+	});
+
+	it('emits an actioned telemetry event with authorized: true when an approver approves', async () => {
+		const { ctx, httpRequest } = createContext({
+			interaction: true,
+			signatureSecret: 'secret',
+			approvers: ['U1'],
+			payload: {
+				user: { id: 'U1' },
+				actions: [
+					{ action_id: HITL_APPROVE_ACTION_ID, value: APPROVE_VALUE, action_ts: '1700000000.000' },
+				],
+				channel: { id: 'C1' },
+				message: { ts: '111.222' },
+				response_url: 'https://hooks.slack.com/actions/xxx',
+			},
+		});
+		verifySignature.mockResolvedValue(true);
+		slackApiRequest.mockResolvedValue({ user: { profile: {} } });
+		httpRequest.mockResolvedValue({});
+
+		await slackSendAndWaitWebhook.call(ctx);
+
+		expect(ctx.logHitlResponse).toHaveBeenCalledWith({ approved: true, authorized: true });
+	});
+
+	it('emits an actioned telemetry event with approved: false for a decline', async () => {
+		const { ctx, httpRequest } = createContext({
+			interaction: true,
+			signatureSecret: 'secret',
+			payload: {
+				user: { id: 'U1' },
+				actions: [
+					{ action_id: HITL_DECLINE_ACTION_ID, value: DECLINE_VALUE, action_ts: '1700000000.000' },
+				],
+				channel: { id: 'C1' },
+				message: { ts: '111.222' },
+				response_url: 'https://hooks.slack.com/actions/xxx',
+			},
+		});
+		verifySignature.mockResolvedValue(true);
+		slackApiRequest.mockResolvedValue({ user: { profile: {} } });
+		httpRequest.mockResolvedValue({});
+
+		await slackSendAndWaitWebhook.call(ctx);
+
+		expect(ctx.logHitlResponse).toHaveBeenCalledWith({ approved: false, authorized: true });
+	});
+
+	it('emits an actioned telemetry event with authorized: false when a non-approver clicks', async () => {
+		const { ctx } = createContext({
+			interaction: true,
+			signatureSecret: 'secret',
+			approvers: ['U_ALLOWED'],
+			payload: {
+				user: { id: 'U_OTHER' },
+				actions: [
+					{ action_id: HITL_APPROVE_ACTION_ID, value: APPROVE_VALUE, action_ts: '1700000000.000' },
+				],
+				channel: { id: 'C1' },
+				message: { ts: '111.222' },
+			},
+		});
+		verifySignature.mockResolvedValue(true);
+		slackApiRequest.mockResolvedValue({ ok: true });
+
+		await slackSendAndWaitWebhook.call(ctx);
+
+		expect(ctx.logHitlResponse).toHaveBeenCalledWith({ approved: true, authorized: false });
+	});
+
+	it('emits no telemetry event for a non-interaction (standard link button) request', async () => {
+		const { ctx } = createContext({ method: 'GET', interaction: false });
+		sendAndWaitWebhook.mockResolvedValue({ noWebhookResponse: true });
+
+		await slackSendAndWaitWebhook.call(ctx);
+
+		expect(ctx.logHitlResponse).not.toHaveBeenCalled();
 	});
 
 	it('falls back to the receive time for respondedAt when action_ts is invalid', async () => {

@@ -21,6 +21,26 @@ export const sendAndWaitWebhooksDescription: IWebhookDescription[] = [
 	},
 ];
 
+/**
+ * Opt-in per node: pass this via `getSendAndWaitProperties`'s
+ * `additionalProperties` to let users require a confirmation step on the
+ * response page. Top-level (not in the `options` collection) so the frontend
+ * can gate its visibility by parameter name. Read by `sendAndWaitWebhook`.
+ */
+export const confirmationPageOption: INodeProperties = {
+	displayName: 'Show Confirmation Page',
+	name: 'confirmationPage',
+	type: 'boolean',
+	default: false,
+	description:
+		'Whether the response link opens a page where the responder confirms their choice. If disabled, the response is recorded as soon as the link is opened.',
+	displayOptions: {
+		show: {
+			responseType: ['approval'],
+		},
+	},
+};
+
 export const limitWaitTimeProperties: INodeProperties[] = [
 	{
 		displayName: 'Limit Type',

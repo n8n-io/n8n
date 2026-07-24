@@ -17,7 +17,7 @@ import { packageManifestSchema } from '../spec/manifest.schema';
 import { serializedDataTableSchema } from '../spec/serialized/data-table.schema';
 import type { SerializedDataTable } from '../spec/serialized/data-table.schema';
 import { serializedFolderSchema, type SerializedFolder } from '../spec/serialized/folder.schema';
-import { serializedProjectSchema } from '../spec/serialized/project.schema';
+import { serializedProjectSchema, type SerializedProject } from '../spec/serialized/project.schema';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 /**
@@ -180,20 +180,30 @@ export class N8nPackageParser {
 		const path = `${entry.target}/project.json`;
 		const wire = await this.readJson(reader, path, 'project');
 
+		let project: SerializedProject;
 		try {
-			const project = serializedProjectSchema.parse(wire);
-			return {
-				sourceProjectId: project.id,
-				name: project.name,
-				...(project.description !== undefined ? { description: project.description } : {}),
-				...(project.icon !== undefined ? { icon: project.icon } : {}),
-			};
+			project = serializedProjectSchema.parse(wire);
 		} catch (cause) {
 			if (cause instanceof ZodError) {
 				throw new UserError(`Package project file at ${path} failed schema validation.`, { cause });
 			}
 			throw cause;
 		}
+
+		// Project contents scope by manifest id, but the project is created/matched under project.json's
+		// id — a mismatch would import folders and workflows into the wrong project.
+		if (project.id !== entry.id) {
+			throw new UserError(
+				`Package project at ${path} declares id "${project.id}" but the manifest lists it as "${entry.id}".`,
+			);
+		}
+
+		return {
+			sourceProjectId: project.id,
+			name: project.name,
+			...(project.description !== undefined ? { description: project.description } : {}),
+			...(project.icon !== undefined ? { icon: project.icon } : {}),
+		};
 	}
 
 	private async readJson<T = unknown>(

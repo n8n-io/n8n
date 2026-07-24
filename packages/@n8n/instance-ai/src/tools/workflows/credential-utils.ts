@@ -14,7 +14,7 @@ export interface AiGatewayCredential {
  * the frontend i18n key `aiGateway.credentialMode.n8nConnect.title` so the
  * setup wizard, credential picker, and chat surface the same label.
  */
-export const N8N_CONNECT_DISPLAY_NAME = 'n8n Connect';
+export const N8N_CONNECT_DISPLAY_NAME = 'n8n credits';
 
 /** Canonical AI Gateway-managed credential written to workflow nodes at apply time. */
 export const AI_GATEWAY_CREDENTIAL: AiGatewayCredential = {
@@ -69,7 +69,7 @@ export async function resolveCredentialForApply(
 			if (!supported) {
 				return {
 					resolved: false,
-					error: `Credential type "${credType}" is not supported by n8n Connect`,
+					error: `Credential type "${credType}" is not supported by n8n credits`,
 				};
 			}
 		}

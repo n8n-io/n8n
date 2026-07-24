@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { type WorkflowExecuteMode, type IRunExecutionData, type Workflow } from 'n8n-workflow';
+import { type IRunExecutionData, type Workflow, type WorkflowExecuteMode } from 'n8n-workflow';
 
 import { assertExecutionDataExists, type PreExecutionAdditionalData } from '@/utils/assertions';
 
@@ -141,6 +141,19 @@ export const establishExecutionContext = async (
 			...executionData.runtimeData,
 			parentExecutionId: runExecutionData.parentExecution.executionId,
 		};
+
+		// The child inherits the parent's context, but its OWN execution record must
+		// still reflect context derived from the child workflow — most importantly
+		// its redaction policy (a policy'd child called by a policy-less parent must
+		// redact its own record). Re-run the global context hooks against the
+		// inherited context so they can merge with it (redaction escalates
+		// strictest-per-channel; the parent's top-down escalation is preserved).
+		const [subExecutionStartItem] = executionData.nodeExecutionStack;
+		if (subExecutionStartItem) {
+			executionData.runtimeData = await Container.get(
+				ExecutionContextService,
+			).augmentSubExecutionContext(workflow, subExecutionStartItem, executionData.runtimeData);
+		}
 		return;
 	}
 

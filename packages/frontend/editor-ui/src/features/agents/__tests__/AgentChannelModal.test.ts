@@ -1,8 +1,12 @@
-import { mount } from '@vue/test-utils';
+import { mount, VueWrapper } from '@vue/test-utils';
 import { ref } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import AgentChannelModal from '../components/AgentChannelModal.vue';
+
+type SlackSetupStubWrapper = VueWrapper<{
+	disconnectSlackApp: () => Promise<void>;
+}>;
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -14,6 +18,8 @@ const catalog = ref([
 	{ type: 'slack', label: 'Slack', icon: 'zap' },
 	{ type: 'linear', label: 'Linear', icon: 'zap' },
 ]);
+
+const disconnectMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 
 vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 	useAgentIntegrationsCatalog: () => ({
@@ -32,7 +38,7 @@ vi.mock('../composables/useAgentIntegrationStatus', () => ({
 		errorIsConflict: ref({}),
 		isConnected: () => false,
 		connect: vi.fn(),
-		disconnect: vi.fn(),
+		disconnect: disconnectMock,
 	}),
 }));
 
@@ -79,19 +85,16 @@ function mountModal(props: Record<string, unknown>) {
 				N8nText: { template: '<span><slot /></span>' },
 				AgentChannelListItem: { template: '<li data-testid="channel-list-item" />' },
 				AgentChannelSlackSetup: {
-					props: ['forceNewCredential', 'setupMode', 'mode'],
-					template:
-						'<div data-testid="slack-setup" :data-mode="mode" :data-force-new-credential="forceNewCredential" :data-setup-mode="setupMode" />',
+					props: ['mode', 'disconnectSlackApp'],
+					template: '<div data-testid="slack-setup" :data-mode="mode" />',
 				},
 				AgentChannelLinearSetup: {
-					props: ['forceNewCredential', 'mode'],
-					template:
-						'<div data-testid="linear-setup" :data-mode="mode" :data-force-new-credential="forceNewCredential" />',
+					props: ['mode'],
+					template: '<div data-testid="linear-setup" :data-mode="mode" />',
 				},
 				AgentChannelTelegramSetup: {
-					props: ['forceNewCredential', 'mode'],
-					template:
-						'<div data-testid="telegram-setup" :data-mode="mode" :data-force-new-credential="forceNewCredential" />',
+					props: ['mode'],
+					template: '<div data-testid="telegram-setup" :data-mode="mode" />',
 				},
 			},
 		},
@@ -99,39 +102,43 @@ function mountModal(props: Record<string, unknown>) {
 }
 
 describe('AgentChannelModal', () => {
-	it('does not force a new credential or simple setup by default', () => {
+	beforeEach(() => {
+		disconnectMock.mockClear();
+	});
+
+	it('renders the channel list for the list view', () => {
+		const wrapper = mountModal({ view: 'list' });
+
+		expect(wrapper.findAll('[data-testid="channel-list-item"]')).toHaveLength(catalog.value.length);
+	});
+
+	it('renders the per-channel setup view for a setup view', () => {
 		const wrapper = mountModal({ view: 'linear_setup' });
-
-		const linearSetup = wrapper.find('[data-testid="linear-setup"]');
-		expect(linearSetup.attributes('data-force-new-credential')).toBe('false');
-	});
-
-	it('forces a new credential and simple setup mode on the Slack setup child when simpleSetup is set', () => {
-		const wrapper = mountModal({ view: 'slack_setup', simpleSetup: true });
-
-		const slackSetup = wrapper.find('[data-testid="slack-setup"]');
-		expect(slackSetup.attributes('data-force-new-credential')).toBe('true');
-		expect(slackSetup.attributes('data-setup-mode')).toBe('simple');
-	});
-
-	it('forces a new credential on non-Slack setup children when simpleSetup is set', () => {
-		const wrapper = mountModal({ view: 'linear_setup', simpleSetup: true });
-
-		const linearSetup = wrapper.find('[data-testid="linear-setup"]');
-		expect(linearSetup.attributes('data-force-new-credential')).toBe('true');
-	});
-
-	it('redirects a channel edit view to the simple setup view instead of the advanced edit UI', () => {
-		const wrapper = mountModal({ view: 'linear_edit', simpleSetup: true });
 
 		const linearSetup = wrapper.find('[data-testid="linear-setup"]');
 		expect(linearSetup.attributes('data-mode')).toBe('setup');
 	});
 
-	it('keeps the advanced edit view when simpleSetup is not set', () => {
+	it('renders the per-channel edit view for an edit view', () => {
 		const wrapper = mountModal({ view: 'linear_edit' });
 
 		const linearSetup = wrapper.find('[data-testid="linear-setup"]');
 		expect(linearSetup.attributes('data-mode')).toBe('edit');
+	});
+
+	it('disconnects a draft slack channel and closes the modal', async () => {
+		const wrapper = mountModal({
+			view: 'slack_edit',
+			connectedChannels: ['slack'],
+		});
+
+		const slackSetup = wrapper.findComponent(
+			'[data-testid="slack-setup"]',
+		) as SlackSetupStubWrapper;
+		await slackSetup.vm.disconnectSlackApp();
+
+		expect(disconnectMock).toHaveBeenCalledWith('slack', '');
+		expect(wrapper.emitted('channel-disconnected')).toEqual([['slack']]);
+		expect(wrapper.emitted('update:open')).toEqual([[false]]);
 	});
 });

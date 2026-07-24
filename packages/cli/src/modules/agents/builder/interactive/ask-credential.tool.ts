@@ -16,6 +16,12 @@ import { nanoid } from 'nanoid';
 export interface AskCredentialToolDeps {
 	credentialProvider: CredentialProvider;
 	isCredentialTypeKnown?: (credentialType: string) => boolean;
+	/**
+	 * Credential ids of the agent's configured chat channel integrations. When
+	 * one of them matches the requested credential type, it is reused for the
+	 * tool instead of asking the user to pick a credential.
+	 */
+	listIntegrationCredentialIds?: () => Promise<string[]>;
 }
 
 export interface AskEmbeddingCredentialToolDeps extends AskCredentialToolDeps {
@@ -88,13 +94,25 @@ async function resolveCredentialSelection(
 		);
 	}
 
-	// If the user has exactly one credential of the requested type the
-	// picker has nothing to ask — auto-resolve so the LLM doesn't render
-	// a card the user can only confirm.
 	const existingCredentials = await listExistingCredentials(
 		deps.credentialProvider,
 		input.credentialType,
 	);
+
+	// The agent's configured chat channel credential wins when it matches the
+	// requested type — tools should act through the same connection the user
+	// already set up for the channel, not an arbitrary same-type credential.
+	const integrationCredentialIds = (await deps.listIntegrationCredentialIds?.()) ?? [];
+	const channelCredential = existingCredentials.find((credential) =>
+		integrationCredentialIds.includes(credential.id),
+	);
+	if (channelCredential) {
+		return withNodeCredentialMap(input, channelCredential.id, channelCredential.name);
+	}
+
+	// If the user has exactly one credential of the requested type the
+	// picker has nothing to ask — auto-resolve so the LLM doesn't render
+	// a card the user can only confirm.
 	if (existingCredentials.length === 1) {
 		return withNodeCredentialMap(input, existingCredentials[0].id, existingCredentials[0].name);
 	}
@@ -118,11 +136,16 @@ export function buildAskCredentialTool(deps: AskCredentialToolDeps): BuiltTool {
 	return new Tool(ASK_CREDENTIAL_TOOL_NAME)
 		.description(
 			'Show a credential picker card in the chat UI and suspend until the user selects ' +
-				'a credential. Call ONCE per credential slot, BEFORE the write_config / patch_config ' +
-				'that introduces the node tool. Returns { credentialId, credentialName, credentials } on success ' +
+				'a credential. Call ONCE per credential slot. For an addition to an existing agent, ' +
+				'call it before the write_config / patch_config that introduces the tool. Never call ' +
+				'this during an initial build — follow the Initial Build rules in your system prompt; ' +
+				'use it for additions to an existing agent and follow-up setup turns. ' +
+				'Returns { credentialId, credentialName, credentials } on success ' +
 				'or { skipped: true } if the user skips credential setup so the tool can be added ' +
 				'without credentials. For node tools, copy the returned `credentials` object into `node.credentials`. Auto-resolves without ' +
-				'rendering a card when the user has exactly one credential of the requested type.',
+				'rendering a card when the agent has a chat channel configured whose credential matches the ' +
+				'requested type (the channel credential is reused so tools act through the same connection), ' +
+				'or when the user has exactly one credential of the requested type.',
 		)
 		.input(askCredentialInputSchema)
 		.suspend(credentialSuspendPayloadSchema)

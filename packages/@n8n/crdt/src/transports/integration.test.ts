@@ -1,10 +1,10 @@
 import WebSocketMock from 'vitest-websocket-mock';
 
 import { CRDTEngine, createCRDTProvider } from '../index';
-import { createSyncProvider } from '../sync/base-sync-provider';
-import type { CRDTDoc, CRDTMap } from '../types';
 import { MessagePortTransport } from './message-port';
 import { WebSocketTransport } from './websocket';
+import { createSyncProvider } from '../sync/base-sync-provider';
+import type { CRDTDoc, CRDTMap } from '../types';
 
 /**
  * Test: Does onUpdate fire for applied remote updates?

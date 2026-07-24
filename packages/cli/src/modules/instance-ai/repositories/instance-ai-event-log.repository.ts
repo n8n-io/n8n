@@ -71,7 +71,7 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 			where: { threadId, seq: MoreThan(afterSeq) },
 			order: { seq: 'ASC' },
 		});
-		return rows.map((r) => ({ id: r.seq, event: jsonParse<InstanceAiEvent>(r.payload) }));
+		return rows.map((r) => ({ id: r.seq, event: this.toEvent(r) }));
 	}
 
 	async getForRuns(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
@@ -81,7 +81,7 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 			.andWhere('e.runId IN (:...runIds)', { runIds })
 			.orderBy('e.seq', 'ASC')
 			.getMany();
-		return rows.map((r) => jsonParse<InstanceAiEvent>(r.payload));
+		return rows.map((r) => this.toEvent(r));
 	}
 
 	/** Every fact of a thread in seq order, with the run and write-time context
@@ -93,7 +93,7 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 		return rows.map((r) => ({
 			runId: r.runId,
 			createdAt: r.createdAt,
-			event: jsonParse<InstanceAiEvent>(r.payload),
+			event: this.toEvent(r),
 		}));
 	}
 
@@ -112,9 +112,11 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	 * Interrupted-run sweep source: runs whose log has a `run-start` but no
 	 * `run-finish`, as distinct (threadId, runId) pairs. Pure log query —
 	 * liveness (is a main still driving it?) is the caller's concern.
+	 * Instance-wide for the boot sweep; pass `threadId` to scope a single
+	 * thread (cancel-time zombie resolution) to its (threadId, runId) index.
 	 */
-	async findUnfinishedRuns(): Promise<UnfinishedRun[]> {
-		const rows = await this.createQueryBuilder('e')
+	async findUnfinishedRuns(threadId?: string): Promise<UnfinishedRun[]> {
+		const qb = this.createQueryBuilder('e')
 			.select('e.threadId', 'threadId')
 			.addSelect('e.runId', 'runId')
 			.distinct(true)
@@ -130,8 +132,18 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 						.andWhere('f.runId = e.runId')
 						.andWhere("f.type = 'run-finish'")
 						.getQuery(),
-			)
-			.getRawMany<UnfinishedRun>();
-		return rows;
+			);
+		if (threadId) qb.andWhere('e.threadId = :threadId', { threadId });
+		return await qb.getRawMany<UnfinishedRun>();
+	}
+
+	/** Parse a row's event, defaulting the publish timestamp to the row's write
+	 *  time for rows that predate the `ts` envelope field (and backfilled rows):
+	 *  createdAt ≈ publish time, so replayed tool durations on old threads stay
+	 *  honest instead of the reducer falling back to "now" at each fold. */
+	private toEvent(row: InstanceAiEventLogEntry): InstanceAiEvent {
+		const event = jsonParse<InstanceAiEvent>(row.payload);
+		event.ts ??= row.createdAt.getTime();
+		return event;
 	}
 }

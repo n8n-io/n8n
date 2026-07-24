@@ -1,6 +1,7 @@
 import type { Mocked } from 'vitest';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -43,11 +44,13 @@ function makeService() {
 	const agentSkillsService = mock<AgentSkillsService>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const credentialsService = mock<CredentialsService>();
+	const workflowRepository = mock<WorkflowRepository>();
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
+	workflowRepository.find.mockResolvedValue([]);
 	agentSkillsService.removeUnreferencedSkills.mockImplementation((agent, config) => {
 		const ids = new Set((config.skills ?? []).map((skill) => skill.id));
 		agent.skills = Object.fromEntries(
@@ -62,6 +65,7 @@ function makeService() {
 		agentSkillsService,
 		runtimeCacheService,
 		credentialsService,
+		workflowRepository,
 	);
 
 	return {
@@ -71,6 +75,7 @@ function makeService() {
 		agentSkillsService,
 		runtimeCacheService,
 		credentialsService,
+		workflowRepository,
 	};
 }
 
@@ -223,6 +228,37 @@ describe('AgentConfigService', () => {
 			saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.integrations).toEqual([]);
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		});
+
+		it('rewrites an id-valued workflow tool ref to the workflow name on save', async () => {
+			const { service, agentRepository, workflowRepository } = makeService();
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			workflowRepository.find.mockResolvedValue([
+				{ id: 'wf-id-1', name: 'Dice Roller' },
+				{ id: 'wf-2', name: 'Existing Name' },
+			] as never);
+
+			await service.updateConfig(agentId, projectId, {
+				...baseConfig,
+				tools: [
+					{ type: 'workflow', workflow: 'wf-id-1', name: 'dice_roller', description: 'Roll dice' },
+					{ type: 'workflow', workflow: 'Existing Name' },
+					{ type: 'workflow', workflow: 'ghost' },
+				],
+			});
+
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.tools).toEqual([
+				{
+					type: 'workflow',
+					workflow: 'Dice Roller',
+					name: 'dice_roller',
+					description: 'Roll dice',
+				},
+				{ type: 'workflow', workflow: 'Existing Name' },
+				{ type: 'workflow', workflow: 'ghost' },
+			]);
 		});
 
 		it('removes config refs and stored bodies that no longer have matching definitions', async () => {
