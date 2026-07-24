@@ -635,6 +635,48 @@ describe('AgentIntegrationsController integration credentials', () => {
 		);
 	});
 
+	it('disconnects a draft integration entry with an empty credentialId', async () => {
+		const agentRepository = mock<AgentRepository>();
+		const agent = {
+			id: 'agent-1',
+			projectId: 'project-1',
+			integrations: [{ type: 'slack', credentialId: '' }],
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
+
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
+		const { controller } = makeController({
+			agentRepository,
+			chatIntegrationService,
+			agentIntegrationPersistenceService,
+		});
+
+		await expect(
+			controller.disconnectIntegration(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+					body: { type: 'slack', credentialId: '' },
+				} as never,
+				undefined as never,
+				'agent-1',
+				{ type: 'slack', credentialId: '' },
+			),
+		).resolves.toEqual({ status: 'disconnected' });
+
+		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith('agent-1', {
+			type: 'slack',
+			credentialId: '',
+		});
+		expect(agentIntegrationPersistenceService.removeCredentialIntegration).toHaveBeenCalledWith(
+			agent,
+			'slack',
+			'',
+			{ broadcast: false },
+		);
+	});
+
 	it('starts Slack app setup with the temporary app configuration token', async () => {
 		const slackAppSetupService = mock<SlackAppSetupService>();
 		slackAppSetupService.createApp.mockResolvedValue({

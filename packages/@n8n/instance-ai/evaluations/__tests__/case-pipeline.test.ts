@@ -128,7 +128,12 @@ describe('createCasePipeline', () => {
 			reasoning: 'works',
 			workflowId: 'wf-exec',
 		} as never);
-		const cached: CachedBuild = { build: okBuild(), lane, buildDurationMs: 42 };
+		const cached: CachedBuild = {
+			build: okBuild(),
+			lane,
+			buildDurationMs: 42,
+			buildSpend: { costUsd: 0.42, turns: 6 },
+		};
 		const orchestrator = makeOrchestrator(cached);
 		const pipeline = createCasePipeline(makeDeps(orchestrator));
 
@@ -142,6 +147,9 @@ describe('createCasePipeline', () => {
 			scenarioWorkflowId: 'wf-exec',
 			nodeCount: 2,
 			buildDurationMs: 42,
+			// `claude` spend (--build-via-mcp) rides on every row of the case's build.
+			buildCostUsd: 0.42,
+			buildTurns: 6,
 		});
 		// Single-scenario case → this was the last row → artifacts deleted eagerly.
 		expect(vi.mocked(cleanupBuild)).toHaveBeenCalledTimes(1);

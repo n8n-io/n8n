@@ -1373,6 +1373,48 @@ describe.each(['deactivate', 'unpublish'])('POST /workflows/:id/%s', (action) =>
 	});
 });
 
+describe('Deprecation header on legacy activate/deactivate aliases', () => {
+	// RFC 9745 structured-field Date: "@" followed by unix seconds. Assert the contract, not a
+	// specific date, so the test doesn't couple to the (release-owned) deprecation date.
+	const rfc9745Date = /^@\d+$/;
+
+	test('should return a Deprecation header on activate', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toMatch(rfc9745Date);
+	});
+
+	test('should return a Deprecation header on deactivate', async () => {
+		const workflow = await createActiveWorkflow({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/deactivate`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toMatch(rfc9745Date);
+	});
+
+	test('should not return a Deprecation header on publish', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/publish`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toBeUndefined();
+	});
+
+	test('should not return a Deprecation header on unpublish', async () => {
+		const workflow = await createActiveWorkflow({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/unpublish`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toBeUndefined();
+	});
+});
+
 describe('POST /workflows/:id/archive', () => {
 	test('should fail due to missing API Key', testWithAPIKey('post', '/workflows/2/archive', null));
 

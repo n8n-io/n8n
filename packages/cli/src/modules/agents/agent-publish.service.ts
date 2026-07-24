@@ -1,5 +1,6 @@
 import {
 	type AgentConfigValidationResponse,
+	isDraftIntegration,
 	type AgentJsonConfig,
 	type AgentSkill,
 	type AgentVersionListItemDto,
@@ -202,7 +203,7 @@ export class AgentPublishService {
 
 		const baseIntegrations = agent.integrations ?? [];
 		const integrations = ignoreDraftIntegrations
-			? baseIntegrations.filter((integration) => integration.credentialId !== '')
+			? baseIntegrations.filter((integration) => !isDraftIntegration(integration))
 			: baseIntegrations;
 
 		const validation = targetHistory
