@@ -207,7 +207,10 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 
 	const askAiEnabled = settingsStore.isAskAiEnabled;
 	const aiTransformNode = nodeTypesStore.getNodeType(AI_TRANSFORM_NODE_TYPE);
-	const transformNode = askAiEnabled && aiTransformNode ? [getNodeView(aiTransformNode)] : [];
+	const transformNode =
+		askAiEnabled && aiTransformNode && !aiTransformNode.hidden
+			? [getNodeView(aiTransformNode)]
+			: [];
 
 	const callouts: NodeViewItem[] = [getAiTemplatesCallout(aiTemplatesURL)];
 

@@ -247,6 +247,7 @@ export type {
 	BreakingChangeReportResult,
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
+	WorkflowMigrationResult,
 } from './schemas/breaking-changes.schema';
 
 export { MIGRATION_REPORT_TARGET_VERSION } from './schemas/breaking-changes.schema';

@@ -12,11 +12,12 @@ import { BreakingChangeRuleMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
-import type { INode } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
+import { MigrationRegistry } from './breaking-changes.migration-registry.service';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
+import { groupNodesByType } from './group-nodes-by-type';
 import type {
 	IBreakingChangeBatchWorkflowRule,
 	IBreakingChangeInstanceRule,
@@ -45,6 +46,7 @@ export class BreakingChangeService {
 
 	constructor(
 		private readonly ruleRegistry: RuleRegistry,
+		private readonly migrationRegistry: MigrationRegistry,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowStatisticsRepository: WorkflowStatisticsRepository,
 		private readonly cacheService: CacheService,
@@ -78,6 +80,7 @@ export class BreakingChangeService {
 						ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 						instanceIssues: ruleResult.instanceIssues,
 						recommendations: ruleResult.recommendations,
+						migratable: this.migrationRegistry.has(rule.id),
 					});
 				}
 			} catch (error) {
@@ -86,17 +89,6 @@ export class BreakingChangeService {
 			}
 		}
 		return instanceLevelResults;
-	}
-
-	private groupNodesByType(nodes: INode[]): Map<string, INode[]> {
-		const nodesGroupedByType: Map<string, INode[]> = new Map();
-		for (const node of nodes) {
-			if (!nodesGroupedByType.has(node.type)) {
-				nodesGroupedByType.set(node.type, []);
-			}
-			nodesGroupedByType.get(node.type)!.push(node);
-		}
-		return nodesGroupedByType;
 	}
 
 	private async aggregateRegularRuleResults(
@@ -117,6 +109,7 @@ export class BreakingChangeService {
 					ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 					affectedWorkflows: workflowResults,
 					recommendations: await rule.getRecommendations(workflowResults),
+					migratable: this.migrationRegistry.has(rule.id),
 				});
 			}
 		}
@@ -165,6 +158,7 @@ export class BreakingChangeService {
 					ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 					affectedWorkflows,
 					recommendations: await rule.getRecommendations(affectedWorkflows),
+					migratable: this.migrationRegistry.has(rule.id),
 				});
 			}
 		}
@@ -218,7 +212,7 @@ export class BreakingChangeService {
 			}
 
 			for (const workflow of workflows) {
-				const nodesGroupedByType = this.groupNodesByType(workflow.nodes);
+				const nodesGroupedByType = groupNodesByType(workflow.nodes);
 				const statistics = statisticsByWorkflowId.get(workflow.id) ?? [];
 
 				const workflowMetadata: WorkflowMetadata = {
