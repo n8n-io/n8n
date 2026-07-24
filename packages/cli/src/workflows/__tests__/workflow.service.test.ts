@@ -7,6 +7,7 @@ import type {
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
@@ -94,6 +95,7 @@ describe('WorkflowService', () => {
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
+				mock(), // workflowPublishedVersionRepository
 			);
 		});
 
@@ -355,6 +357,7 @@ describe('WorkflowService', () => {
 				redactionEnforcementServiceMock, // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
+				mock(), // workflowPublishedVersionRepository
 			);
 
 			vi.clearAllMocks();
@@ -1055,6 +1058,7 @@ describe('WorkflowService', () => {
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
 				scheduleTriggerJobRegistrarMock, // scheduleTriggerJobRegistrar
+				mock(), // workflowPublishedVersionRepository
 			);
 
 			// Bypass validation internals
@@ -1267,6 +1271,7 @@ describe('WorkflowService', () => {
 		let executionPersistenceMock: MockProxy<ExecutionPersistence>;
 		let globalConfigMock: MockProxy<GlobalConfig>;
 		let activeWorkflowManagerMock: MockProxy<ActiveWorkflowManager>;
+		let workflowPublishedVersionRepositoryMock: MockProxy<WorkflowPublishedVersionRepository>;
 
 		const WORKFLOW_ID = 'workflow-1';
 
@@ -1286,6 +1291,8 @@ describe('WorkflowService', () => {
 			workflowRepositoryMock = mock();
 			executionPersistenceMock = mock();
 			activeWorkflowManagerMock = mock();
+			workflowPublishedVersionRepositoryMock = mock<WorkflowPublishedVersionRepository>();
+			workflowPublishedVersionRepositoryMock.getPublishedVersionId.mockResolvedValue(null);
 			globalConfigMock = mock<GlobalConfig>({
 				workflows: mock<WorkflowsConfig>({ useWorkflowPublicationService: true }),
 			});
@@ -1317,6 +1324,7 @@ describe('WorkflowService', () => {
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
+				workflowPublishedVersionRepositoryMock, // workflowPublishedVersionRepository
 			);
 		});
 
@@ -1326,6 +1334,19 @@ describe('WorkflowService', () => {
 
 			await expect(workflowService.delete(mock<User>(), WORKFLOW_ID, true)).rejects.toBeInstanceOf(
 				ConflictError,
+			);
+
+			expect(workflowRepositoryMock.delete).not.toHaveBeenCalled();
+		});
+
+		test('throws ConflictError while the published-version mapping still exists', async () => {
+			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			// The unpublish outbox record has not been consumed yet.
+			workflowPublishedVersionRepositoryMock.getPublishedVersionId.mockResolvedValue('v1');
+
+			await expect(workflowService.delete(mock<User>(), WORKFLOW_ID)).rejects.toThrowError(
+				'Workflow is still being unpublished. Please try again in a few moments.',
 			);
 
 			expect(workflowRepositoryMock.delete).not.toHaveBeenCalled();
