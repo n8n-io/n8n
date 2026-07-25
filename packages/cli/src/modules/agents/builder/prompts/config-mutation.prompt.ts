@@ -34,17 +34,18 @@ ${getSchemaReferenceSection()}
 
 ### Recipes
 
-#### Create Or Replace A Fresh Runnable Agent
+#### Create A Fresh Agent Draft
 
-- Requires \`name\`, \`model\`, \`credential\`, and \`instructions\`.
+- Requires \`name\` and \`instructions\`.
+- Use the model and credential from \`resolve_llm\` when resolved; while LLM
+  setup is pending, write \`model: ""\` and omit \`credential\`.
 - Keep \`tools\` and \`skills\` arrays if present.
 
 Good minimal shape:
 \`\`\`json
 {
   "name": "Support assistant",
-  "model": "openrouter/openai/gpt-5.5",
-  "credential": "<main-llm-credential-id>",
+  "model": "",
   "instructions": "Help the user with support questions.",
   "tools": [],
   "skills": []
@@ -139,7 +140,7 @@ Bad: replacing \`config\` while dropping unrelated settings
 - Removing an integration means deleting its entry from \`integrations[]\`; do
   not call \`configure_channel\` for removal.
 - Model-only changes must preserve existing Brave or SearXNG \`config.webSearch\`.
-- Empty, placeholder, or guessed \`instructions\` values are rejected; ask for details instead.
+- Empty or placeholder \`instructions\` values are rejected; derive real instructions from the stated goal instead.
 
 ### Verify
 

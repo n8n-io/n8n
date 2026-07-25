@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type {
+	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiRunDebugResponse,
@@ -261,6 +262,10 @@ export interface ExecutionScenarioResult {
 	scenario: ExecutionScenario;
 	success: boolean;
 	evalResult?: InstanceAiEvalExecutionResult;
+	/** Set when the scenario ran against a first-class Agent instead of a workflow. */
+	agentEvalResult?: InstanceAiEvalAgentExecutionResult;
+	/** Agent the scenario executed, for agent-artifact cases. */
+	agentId?: string;
 	/** Workflow actually executed for this scenario, after multi-workflow routing. */
 	workflowId?: string;
 	score: number;
@@ -290,6 +295,10 @@ export interface WorkflowTestCaseResult {
 	/** Source-file slug (matches the PR-comment / comparison label, for consistency). */
 	fileSlug?: string;
 	workflowId?: string;
+	/** Agent the case's scenarios executed (agent-artifact cases). */
+	agentId?: string;
+	/** Rendered agent config + skills — the agent analog of `workflowJson`, for the report. */
+	agentArtifactContext?: string;
 	workflowBuildSuccess: boolean;
 	buildError?: string;
 	executionScenarioResults: ExecutionScenarioResult[];
@@ -301,6 +310,10 @@ export interface WorkflowTestCaseResult {
 	workflowChecks?: CheckOutcome[];
 	/** Captured build-time sub-agent/tool activity for builder debugging. */
 	buildTrace?: BuildTrace;
+	/** `claude` build spend in USD for this iteration's build (--build-via-mcp only). */
+	buildCostUsd?: number;
+	/** Assistant turns across the `claude` build's attempts (--build-via-mcp only). */
+	buildTurns?: number;
 	/** Per-expectation verdicts from the build-expectations judge. Aggregated as
 	 *  scoring units alongside execution scenarios. */
 	buildExpectationResults?: BuildExpectationResult[];

@@ -4,7 +4,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useI18n } from '@n8n/i18n';
 
-import { N8nActionBox } from '@n8n/design-system';
+import { N8nEmptyState } from '@n8n/design-system';
 const settingsStore = useSettingsStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const i18n = useI18n();
@@ -19,7 +19,7 @@ const goToUpgrade = () => {
 		v-if="settingsStore.isQueueModeEnabled && settingsStore.isWorkerViewAvailable"
 		data-test-id="worker-view-licensed"
 	/>
-	<N8nActionBox
+	<N8nEmptyState
 		v-else
 		data-test-id="worker-view-unlicensed"
 		:class="$style.actionBox"
@@ -36,7 +36,7 @@ const goToUpgrade = () => {
 				{{ i18n.baseText('workerList.actionBox.description.link') }}
 			</a>
 		</template>
-	</N8nActionBox>
+	</N8nEmptyState>
 </template>
 
 <style module lang="scss">

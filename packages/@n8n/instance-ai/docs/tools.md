@@ -791,3 +791,7 @@ only the domain tools wired into that agent.
 6. New native domain tools registered in `createAllTools` are available to the orchestrator immediately
 7. For HITL tools, define `suspendSchema` and `resumeSchema` — `@n8n/agents` handles
    the suspension/resume lifecycle automatically
+8. Tool handlers are wrapped at registry registration time so Stop races
+   `ctx.abortSignal`. For network/sandbox I/O, also forward `ctx.abortSignal`
+   into the underlying request so work stops cooperatively (see `research` and
+   `n8n-docs`)

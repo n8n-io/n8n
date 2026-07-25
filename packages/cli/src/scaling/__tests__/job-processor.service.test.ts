@@ -19,8 +19,9 @@ import {
 	type IRunExecutionData,
 	type WorkflowExecuteMode,
 	type ExecutionError,
+	WorkflowExpression,
 } from 'n8n-workflow';
-import type { Mock, MockedClass } from 'vitest';
+import type { Mock, MockedClass, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsHelper } from '@/credentials-helper';
@@ -938,6 +939,127 @@ describe('JobProcessor', () => {
 			});
 			// Response should contain the tool's output data
 			expect(lastResponse.response).toEqual([{ result: 'tool response data' }]);
+		});
+
+		describe('expression isolate for tool calls', () => {
+			const toolNode = {
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequestTool',
+				typeVersion: 4.4,
+				parameters: {},
+				position: [0, 0] as [number, number],
+			};
+
+			const setupToolJob = (executeFn: Mock) => {
+				const executionPersistence = mock<ExecutionPersistence>();
+				executionPersistence.findSingleExecution.mockResolvedValueOnce(
+					mock<IExecutionResponse>({
+						mode: 'trigger',
+						workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
+						data: mock<IRunExecutionData>({ executionData: undefined }),
+					}),
+				);
+				executionPersistence.findSingleExecution.mockResolvedValueOnce(
+					mock<IExecutionResponse>({
+						status: 'success',
+						workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
+						data: mock<IRunExecutionData>({ resultData: { runData: {} } }),
+					}),
+				);
+
+				const nodeTypes = mock<NodeTypes>();
+				nodeTypes.getByNameAndVersion.mockReturnValue({
+					description: {
+						name: 'httpRequestTool',
+						outputs: [NodeConnectionTypes.AiTool],
+						properties: [],
+					},
+					execute: executeFn,
+				} as never);
+
+				const jobProcessor = new JobProcessor(
+					logger,
+					mock(), // executionRepository
+					executionPersistence,
+					mock(), // workflowRepository
+					nodeTypes,
+					{ hostId: 'worker-host-123' } as unknown as InstanceSettings,
+					createManualExecutionServiceMock(),
+					executionsConfig,
+					mock(), // eventService
+				);
+
+				const job = mock<Job>();
+				job.data = {
+					workflowId: 'wf-1',
+					executionId: 'exec-mcp-isolate',
+					loadStaticData: false,
+					isMcpExecution: true,
+					mcpType: 'trigger',
+					mcpSessionId: 'session-isolate',
+					mcpMessageId: 'msg-isolate',
+					mcpToolCall: {
+						toolName: 'HTTP Request',
+						arguments: { url: 'https://example.com' },
+						sourceNodeName: 'HTTP Request',
+					},
+				};
+
+				return { jobProcessor, job };
+			};
+
+			let acquireSpy: MockInstance;
+			let releaseSpy: MockInstance;
+
+			beforeEach(() => {
+				acquireSpy = vi
+					.spyOn(WorkflowExpression.prototype, 'acquireIsolate')
+					.mockResolvedValue(true);
+				releaseSpy = vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockResolvedValue();
+			});
+
+			afterEach(() => {
+				acquireSpy.mockRestore();
+				releaseSpy.mockRestore();
+			});
+
+			it('should acquire an isolate around the tool invocation and release it after', async () => {
+				const executeFn = vi.fn().mockResolvedValue([[{ json: { ok: true } }]]);
+				const { jobProcessor, job } = setupToolJob(executeFn);
+
+				await jobProcessor.processJob(job);
+
+				expect(acquireSpy).toHaveBeenCalledTimes(1);
+				expect(releaseSpy).toHaveBeenCalledTimes(1);
+				// The tool must run inside the acquire/release window
+				expect(acquireSpy.mock.invocationCallOrder[0]).toBeLessThan(
+					executeFn.mock.invocationCallOrder[0],
+				);
+				expect(releaseSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+					executeFn.mock.invocationCallOrder[0],
+				);
+			});
+
+			it('should release the isolate when the tool invocation throws', async () => {
+				const executeFn = vi.fn().mockRejectedValue(new Error('tool failed'));
+				const { jobProcessor, job } = setupToolJob(executeFn);
+
+				await jobProcessor.processJob(job);
+
+				expect(acquireSpy).toHaveBeenCalledTimes(1);
+				expect(releaseSpy).toHaveBeenCalledTimes(1);
+			});
+
+			it('should not release an isolate it did not newly acquire', async () => {
+				acquireSpy.mockResolvedValue(false);
+				const executeFn = vi.fn().mockResolvedValue([[{ json: { ok: true } }]]);
+				const { jobProcessor, job } = setupToolJob(executeFn);
+
+				await jobProcessor.processJob(job);
+
+				expect(acquireSpy).toHaveBeenCalledTimes(1);
+				expect(releaseSpy).not.toHaveBeenCalled();
+			});
 		});
 
 		it('should invoke tool via supplyData for nodes with supplyData method', async () => {

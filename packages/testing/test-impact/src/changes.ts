@@ -13,8 +13,9 @@
  *
  * NOT ignored (deliberately): `docker`/Dockerfiles (define the container the
  * E2E suite runs in), `pnpm-lock.yaml`/`package.json` (dependency changes —
- * handled by the devDep classifier / dep-graph selector), and `patches/**`
- * (edits a dependency's code = a dependency change).
+ * handled by the devDep classifier / dep-graph selector), `patches/**`
+ * (edits a dependency's code = a dependency change), and `tsconfig*.json`
+ * (can carry module-resolution keys — see {@link tsconfigForcesBroad}).
  */
 
 const NON_IMPACTFUL: Array<(f: string) => boolean> = [
@@ -31,9 +32,10 @@ const NON_IMPACTFUL: Array<(f: string) => boolean> = [
 	(f) => /^(docs|assets)\/.*\.(png|jpe?g|gif|svg|webp)$/.test(f),
 	// Repo automation scripts (not shipped, not exercised by E2E)
 	(f) => f.startsWith('scripts/'),
-	// Named build / lint / test-runner config (NOT all json/yaml)
+	// Named build / lint / test-runner config (NOT all json/yaml). `tsconfig*` is
+	// deliberately absent — it's routed through tsconfigForcesBroad instead.
 	(f) =>
-		/(^|\/)(turbo\.json|tsconfig([.\w-]*)\.json|biome\.jsonc?|vitest\.config\.[cm]?[jt]s|\.eslintrc[\w.]*|\.prettierrc[\w.]*)$/.test(
+		/(^|\/)(turbo\.json|biome\.jsonc?|vitest\.config\.[cm]?[jt]s|\.eslintrc[\w.]*|\.prettierrc[\w.]*)$/.test(
 			f,
 		),
 ];
@@ -157,6 +159,52 @@ export function changedRuntimeDepsFromManifests(
 
 const isManifest = (f: string): boolean => /(^|\/)package\.json$/.test(f);
 const isLockfile = (f: string): boolean => f === 'pnpm-lock.yaml';
+
+export const isTsconfig = (f: string): boolean => /(^|\/)tsconfig([.\w-]*)\.json$/.test(f);
+
+/** compilerOptions keys that change which module a bare import resolves to. */
+const TSCONFIG_RESOLUTION_KEYS = [
+	'paths',
+	'baseUrl',
+	'moduleResolution',
+	'customConditions',
+] as const;
+
+/** Tolerant parse for tsconfig (allows comments + trailing commas). Null when
+ *  unparseable, which the caller treats as "force broad". */
+function parseTsconfig(raw: string): Record<string, unknown> | null {
+	if (!raw.trim()) return null;
+	try {
+		return JSON.parse(raw) as Record<string, unknown>;
+	} catch {
+		try {
+			const stripped = raw
+				.replace(/\/\*[\s\S]*?\*\//g, '')
+				.replace(/(^|[^:])\/\/.*$/gm, '$1')
+				.replace(/,(\s*[}\]])/g, '$1');
+			return JSON.parse(stripped) as Record<string, unknown>;
+		} catch {
+			return null;
+		}
+	}
+}
+
+/**
+ * True when a tsconfig change touches a resolution key (`paths`/`baseUrl`/
+ * `moduleResolution`/`customConditions`/`extends`), which re-points imports for
+ * every spec and can't be attributed in the coverage map → force the full
+ * suite. A type-check-only edit (`strict`, `target`, …) resolves to the same
+ * modules and is non-impactful.
+ */
+export function tsconfigForcesBroad(before: string, after: string): boolean {
+	const b = parseTsconfig(before);
+	const a = parseTsconfig(after);
+	if (!b || !a) return true;
+	if (JSON.stringify(b.extends) !== JSON.stringify(a.extends)) return true;
+	const bco = (b.compilerOptions ?? {}) as Record<string, unknown>;
+	const aco = (a.compilerOptions ?? {}) as Record<string, unknown>;
+	return TSCONFIG_RESOLUTION_KEYS.some((k) => JSON.stringify(bco[k]) !== JSON.stringify(aco[k]));
+}
 
 /** Remove the lockfile + every package.json from a changed-file set. */
 export function stripDependencyFiles(files: string[]): string[] {

@@ -592,7 +592,7 @@ export class CanvasPage extends BasePage {
 	 * interacting with it after a navigation.
 	 */
 	async waitForCanvasReady(): Promise<void> {
-		await expect(this.canvasPane()).toBeVisible();
+		await expect(this.canvasPane()).toBeVisible({ timeout: 30_000 });
 		await expect(this.getNodeViewLoader()).toBeHidden();
 		await expect(this.getLoadingMask()).toBeHidden();
 	}
@@ -1259,6 +1259,14 @@ export class CanvasPage extends BasePage {
 
 	getNodeGroupFrame(title: string): Locator {
 		return this.getNodeGroupByTitle(title).getByTestId('canvas-node-group-frame');
+	}
+
+	async getNodeGroupFrameBoundingBox(
+		title: string,
+	): Promise<{ x: number; y: number; width: number; height: number }> {
+		const box = await this.getNodeGroupFrame(title).boundingBox();
+		if (!box) throw new Error(`Node group frame for "${title}" not found or not visible`);
+		return box;
 	}
 
 	async toggleNodeGroup(title: string) {

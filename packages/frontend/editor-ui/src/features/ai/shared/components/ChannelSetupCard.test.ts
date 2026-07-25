@@ -102,6 +102,8 @@ vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', () => ({
 	},
 }));
 
+import { agentsEventBus } from '@/features/agents/agents.eventBus';
+
 import ChannelSetupCard from './ChannelSetupCard.vue';
 
 const defaultProps = {
@@ -156,6 +158,43 @@ describe('ChannelSetupCard', () => {
 
 		expect(mocks.connect).toHaveBeenCalledWith('slack', 'cred-1', undefined);
 		expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+	});
+
+	it('notifies agent surfaces on the event bus after a successful connect', async () => {
+		const onAgentUpdated = vi.fn();
+		agentsEventBus.on('agentUpdated', onAgentUpdated);
+		try {
+			const wrapper = mountCard();
+			await flushPromises();
+
+			await wrapper.find('[data-testid="mock-slack-connect"]').trigger('click');
+			await flushPromises();
+
+			expect(onAgentUpdated).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				source: 'channel-setup-card',
+			});
+		} finally {
+			agentsEventBus.off('agentUpdated', onAgentUpdated);
+		}
+	});
+
+	it('does not notify agent surfaces when the connect fails or setup is skipped', async () => {
+		mocks.connect.mockRejectedValueOnce(new Error('connect failed'));
+		const onAgentUpdated = vi.fn();
+		agentsEventBus.on('agentUpdated', onAgentUpdated);
+		try {
+			const wrapper = mountCard();
+			await flushPromises();
+
+			await wrapper.find('[data-testid="mock-slack-connect"]').trigger('click');
+			await flushPromises();
+			await wrapper.find('[data-testid="channel-setup-card-skip"]').trigger('click');
+
+			expect(onAgentUpdated).not.toHaveBeenCalled();
+		} finally {
+			agentsEventBus.off('agentUpdated', onAgentUpdated);
+		}
 	});
 
 	it('emits resolve({ approved: false }) when the user skips setup', async () => {

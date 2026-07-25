@@ -1,11 +1,5 @@
 import { useUIStore } from '@/app/stores/ui.store';
-import {
-	AutoSaveState,
-	MODAL_CANCEL,
-	MODAL_CONFIRM,
-	STICKY_NODE_TYPE,
-	VIEWS,
-} from '@/app/constants';
+import { AutoSaveState, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import router from '@/app/router';
 import { createTestingPinia } from '@pinia/testing';
@@ -677,7 +671,7 @@ describe('useWorkflowSaving', () => {
 				nodes: [
 					createTestNode({ id: 'node-a', name: 'Node A' }),
 					createTestNode({ id: 'node-b', name: 'Node B' }),
-					createTestNode({ id: 'sticky', name: 'Sticky', type: STICKY_NODE_TYPE }),
+					createTestNode({ id: 'node-c', name: 'Node C' }),
 				],
 				connections: {
 					'Node A': {
@@ -686,9 +680,9 @@ describe('useWorkflowSaving', () => {
 						],
 					},
 				},
-				// The sticky member is not connected to the rest of the group, which
-				// this version's (<2.32) grouping rules reject
-				nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-a', 'node-b', 'sticky'] }],
+				// Node C is not connected to the rest of the group, so the members
+				// do not form a connected subgraph and the grouping rules reject it
+				nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-a', 'node-b', 'node-c'] }],
 			});
 
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);

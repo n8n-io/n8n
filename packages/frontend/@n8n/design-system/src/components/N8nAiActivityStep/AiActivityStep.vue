@@ -21,12 +21,15 @@ const props = withDefaults(
 		hasContent?: boolean;
 		/** Wraps slot content in the standard activity data panel. */
 		wrapContent?: boolean;
+		/** Keep error icon/tooltip but skip the inner danger callout. */
+		hideErrorCallout?: boolean;
 	}>(),
 	{
 		loading: false,
 		error: undefined,
 		hasContent: true,
 		wrapContent: false,
+		hideErrorCallout: false,
 	},
 );
 
@@ -71,7 +74,11 @@ const errorTooltip = computed(() =>
 					<slot />
 				</N8nAiActivityStepResultSection>
 				<slot v-else />
-				<N8nCallout v-if="props.error !== undefined" theme="danger" :class="$style.errorCallout">
+				<N8nCallout
+					v-if="props.error !== undefined && !props.hideErrorCallout"
+					theme="danger"
+					:class="$style.errorCallout"
+				>
 					{{ props.error }}
 				</N8nCallout>
 			</N8nAnimatedCollapsibleContent>

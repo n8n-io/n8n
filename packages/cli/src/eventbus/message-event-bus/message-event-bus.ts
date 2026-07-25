@@ -2,7 +2,6 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, IsNull, Not } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';

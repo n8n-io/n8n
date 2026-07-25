@@ -21,7 +21,13 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useSSOStore } from '../sso.store';
 
 import { ElTable, ElTableColumn } from 'element-plus';
-import { N8nActionBox, N8nButton, N8nFormInputs, N8nHeading, N8nInfoTip } from '@n8n/design-system';
+import {
+	N8nEmptyState,
+	N8nButton,
+	N8nFormInputs,
+	N8nHeading,
+	N8nInfoTip,
+} from '@n8n/design-system';
 type TableRow = {
 	status: string;
 	startAt: string;
@@ -631,7 +637,7 @@ onMounted(async () => {
 		<N8nInfoTip type="note" theme="info" tooltip-placement="right" class="mb-l">
 			{{ i18n.baseText('settings.ldap.note') }}
 		</N8nInfoTip>
-		<N8nActionBox
+		<N8nEmptyState
 			:description="i18n.baseText('settings.ldap.disabled.description')"
 			:button-text="i18n.baseText('settings.ldap.disabled.buttonText')"
 			@click:button="goToUpgrade"
@@ -639,7 +645,7 @@ onMounted(async () => {
 			<template #heading>
 				<span>{{ i18n.baseText('settings.ldap.disabled.title') }}</span>
 			</template>
-		</N8nActionBox>
+		</N8nEmptyState>
 	</div>
 	<div v-else>
 		<div :class="$style.container">

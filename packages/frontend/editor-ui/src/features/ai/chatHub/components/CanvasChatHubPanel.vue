@@ -3,7 +3,7 @@ import { computed, ref, useTemplateRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
 import { N8nIconButton, N8nScrollArea, N8nText, N8nTooltip } from '@n8n/design-system';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@/app/composables/useToast';
 import type {
 	AgentIconOrEmoji,

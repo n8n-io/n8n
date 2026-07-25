@@ -13,7 +13,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import type { SecretProviderConnection } from '@n8n/api-types';
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
@@ -323,7 +323,7 @@ function goToUpgrade() {
 				/>
 			</div>
 		</div>
-		<N8nActionBox
+		<N8nEmptyState
 			v-else
 			class="mt-2xl mb-l"
 			data-test-id="secrets-provider-connections-content-unlicensed"
@@ -342,7 +342,7 @@ function goToUpgrade() {
 					</template>
 				</I18nT>
 			</template>
-		</N8nActionBox>
+		</N8nEmptyState>
 	</div>
 </template>
 

@@ -114,7 +114,10 @@ describe('createWorkspaceTools', () => {
 
 			const result = await readTool.handler!({ path: '/test.txt', encoding: 'utf-8' }, {} as never);
 
-			expect(fs.readFile).toHaveBeenCalledWith('/test.txt', { encoding: 'utf-8' });
+			expect(fs.readFile).toHaveBeenCalledWith('/test.txt', {
+				encoding: 'utf-8',
+				abortSignal: undefined,
+			});
 			expect(result).toEqual({ content: 'file content' });
 		});
 
@@ -147,6 +150,7 @@ describe('createWorkspaceTools', () => {
 
 			expect(fs.writeFile).toHaveBeenCalledWith('/test.txt', 'first\nchanged', {
 				overwrite: true,
+				abortSignal: undefined,
 			});
 			expect(result).toEqual({ success: true, result: 'Edit applied successfully.' });
 		});
@@ -174,6 +178,28 @@ describe('createWorkspaceTools', () => {
 			});
 		});
 
+		it('str_replace_file handler rethrows abort errors instead of soft-failing', async () => {
+			const abortError = new Error('This operation was aborted');
+			abortError.name = 'AbortError';
+			const fs = makeFakeFilesystem({
+				readFile: vi.fn().mockRejectedValue(abortError),
+			});
+			const tools = createWorkspaceTools({ filesystem: fs });
+			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
+
+			await expect(
+				strReplaceTool.handler!(
+					{
+						path: '/test.txt',
+						old_str: 'a',
+						new_str: 'b',
+					},
+					{} as never,
+				),
+			).rejects.toMatchObject({ name: 'AbortError' });
+			expect(fs.writeFile).not.toHaveBeenCalled();
+		});
+
 		it('batch_str_replace_file handler applies all replacements atomically', async () => {
 			const fs = makeFakeFilesystem({
 				readFile: vi.fn().mockResolvedValue('const a = 1;\nconst b = 2;'),
@@ -194,6 +220,7 @@ describe('createWorkspaceTools', () => {
 
 			expect(fs.writeFile).toHaveBeenCalledWith('/test.ts', 'const a = 10;\nconst b = 20;', {
 				overwrite: true,
+				abortSignal: undefined,
 			});
 			expect(result).toEqual({
 				success: true,
@@ -240,13 +267,17 @@ describe('createWorkspaceTools', () => {
 			const fs = makeFakeFilesystem();
 			const tools = createWorkspaceTools({ filesystem: fs });
 			const writeTool = tools.find((t) => t.name === 'workspace_write_file')!;
+			const abortController = new AbortController();
 
 			const result = await writeTool.handler!(
 				{ path: '/out.txt', content: 'hello', recursive: true },
-				{} as never,
+				{ abortSignal: abortController.signal } as never,
 			);
 
-			expect(fs.writeFile).toHaveBeenCalledWith('/out.txt', 'hello', { recursive: true });
+			expect(fs.writeFile).toHaveBeenCalledWith('/out.txt', 'hello', {
+				recursive: true,
+				abortSignal: abortController.signal,
+			});
 			expect(result).toEqual({ success: true });
 		});
 
@@ -264,16 +295,18 @@ describe('createWorkspaceTools', () => {
 			});
 			const tools = createWorkspaceTools({ sandbox });
 			const commandTool = tools.find((t) => t.name === 'workspace_execute_command')!;
+			const abortController = new AbortController();
 
 			const result = await commandTool.handler!(
 				{ command: 'node script.mjs', cwd: '/home/daytona/workspace' },
-				{} as never,
+				{ abortSignal: abortController.signal } as never,
 			);
 
 			expect(executeCommand).toHaveBeenCalledWith('node script.mjs', undefined, {
 				cwd: '/home/daytona/workspace',
 				env: { CUSTOM_ENV: 'enabled' },
 				timeout: undefined,
+				abortSignal: abortController.signal,
 			});
 			expect(result).toMatchObject({ success: true, stdout: 'ok' });
 		});
@@ -285,7 +318,10 @@ describe('createWorkspaceTools', () => {
 
 			const result = await listTool.handler!({ path: '/', recursive: false }, {} as never);
 
-			expect(fs.readdir).toHaveBeenCalledWith('/', { recursive: false });
+			expect(fs.readdir).toHaveBeenCalledWith('/', {
+				recursive: false,
+				abortSignal: undefined,
+			});
 			expect(result).toEqual({
 				entries: [
 					{ name: 'file1.txt', type: 'file' },
@@ -301,7 +337,7 @@ describe('createWorkspaceTools', () => {
 
 			const result = await statTool.handler!({ path: '/test.txt' }, {} as never);
 
-			expect(fs.stat).toHaveBeenCalledWith('/test.txt');
+			expect(fs.stat).toHaveBeenCalledWith('/test.txt', { abortSignal: undefined });
 			expect(result).toEqual({
 				name: 'test.txt',
 				path: '/test.txt',
@@ -319,7 +355,10 @@ describe('createWorkspaceTools', () => {
 
 			const result = await mkdirTool.handler!({ path: '/new-dir', recursive: true }, {} as never);
 
-			expect(fs.mkdir).toHaveBeenCalledWith('/new-dir', { recursive: true });
+			expect(fs.mkdir).toHaveBeenCalledWith('/new-dir', {
+				recursive: true,
+				abortSignal: undefined,
+			});
 			expect(result).toEqual({ success: true });
 		});
 
@@ -333,7 +372,11 @@ describe('createWorkspaceTools', () => {
 				{} as never,
 			);
 
-			expect(fs.deleteFile).toHaveBeenCalledWith('/old.txt', { recursive: false, force: true });
+			expect(fs.deleteFile).toHaveBeenCalledWith('/old.txt', {
+				recursive: false,
+				force: true,
+				abortSignal: undefined,
+			});
 			expect(result).toEqual({ success: true });
 		});
 
@@ -347,7 +390,9 @@ describe('createWorkspaceTools', () => {
 				{} as never,
 			);
 
-			expect(fs.appendFile).toHaveBeenCalledWith('/log.txt', 'new line');
+			expect(fs.appendFile).toHaveBeenCalledWith('/log.txt', 'new line', {
+				abortSignal: undefined,
+			});
 			expect(result).toEqual({ success: true });
 		});
 
@@ -361,7 +406,10 @@ describe('createWorkspaceTools', () => {
 				{} as never,
 			);
 
-			expect(fs.copyFile).toHaveBeenCalledWith('/a.txt', '/b.txt', { overwrite: true });
+			expect(fs.copyFile).toHaveBeenCalledWith('/a.txt', '/b.txt', {
+				overwrite: true,
+				abortSignal: undefined,
+			});
 			expect(result).toEqual({ success: true });
 		});
 
@@ -375,7 +423,10 @@ describe('createWorkspaceTools', () => {
 				{} as never,
 			);
 
-			expect(fs.moveFile).toHaveBeenCalledWith('/old.txt', '/new.txt', { overwrite: false });
+			expect(fs.moveFile).toHaveBeenCalledWith('/old.txt', '/new.txt', {
+				overwrite: false,
+				abortSignal: undefined,
+			});
 			expect(result).toEqual({ success: true });
 		});
 
@@ -389,7 +440,11 @@ describe('createWorkspaceTools', () => {
 				{} as never,
 			);
 
-			expect(fs.rmdir).toHaveBeenCalledWith('/old-dir', { recursive: true, force: false });
+			expect(fs.rmdir).toHaveBeenCalledWith('/old-dir', {
+				recursive: true,
+				force: false,
+				abortSignal: undefined,
+			});
 			expect(result).toEqual({ success: true });
 		});
 
@@ -406,6 +461,7 @@ describe('createWorkspaceTools', () => {
 			expect(sb.executeCommand).toHaveBeenCalledWith('echo hello', undefined, {
 				cwd: '/tmp',
 				timeout: 5000,
+				abortSignal: undefined,
 			});
 			expect(result).toEqual({
 				success: true,

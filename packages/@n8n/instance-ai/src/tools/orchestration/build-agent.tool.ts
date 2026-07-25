@@ -61,15 +61,24 @@ import type {
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 import { failTraceRun, finishTraceRun, startSubAgentTrace, withTraceRun } from './tracing-utils';
 
+const BUILDER_SUB_AGENT_ROLE = 'agent-builder';
+const BUILDER_SUB_AGENT_KIND = 'agent-builder';
+
+function getErrorCode(error: unknown): string | undefined {
+	if (!isRecord(error)) return undefined;
+	const code = error.code;
+	return typeof code === 'string' ? code : undefined;
+}
+
 function isBuilderNotConfiguredError(error: unknown): boolean {
-	return isRecord(error) && error.code === BUILDER_NOT_CONFIGURED_CODE;
+	return getErrorCode(error) === BUILDER_NOT_CONFIGURED_CODE;
 }
 
 /** `AgentsBuilderService.resumeBuild` throws `BuilderCheckpointUnavailableError`
  *  (stable `code`, shared via `@n8n/api-types`) when the checkpoint being
  *  resumed has expired or no longer exists. */
 function isBuilderCheckpointUnavailableError(error: unknown): boolean {
-	return isRecord(error) && error.code === BUILDER_CHECKPOINT_UNAVAILABLE_CODE;
+	return getErrorCode(error) === BUILDER_CHECKPOINT_UNAVAILABLE_CODE;
 }
 
 /** Either friendly-mappable failure this tool recognizes mid-stream. */
@@ -107,7 +116,7 @@ function formatWorkflowContextEnvelope(workflowContext: SessionWorkflowRef[]): s
 	);
 	return [
 		'<session-workflows>',
-		'Workflows built in this session (attachable as {"type":"workflow"} tools):',
+		'Workflows built in this session (attachable as {"type":"workflow"} tools — reference by workflow name, never by id):',
 		...lines,
 		'</session-workflows>',
 	].join('\n');
@@ -122,7 +131,7 @@ function buildOutboundMessage(message: string, workflowContext?: SessionWorkflow
  *  leg must reconstruct this byte-identically after a restart. */
 function builderSessionFor(context: OrchestrationContext, agentId: string) {
 	const telemetry = context.tracing?.getTelemetry?.({
-		agentRole: 'agent-builder',
+		agentRole: BUILDER_SUB_AGENT_ROLE,
 		functionId: 'instance-ai.subagent.agent-builder',
 		executionMode: 'foreground',
 		metadata: { agent_id: builderAgentIdFor(agentId), target_agent_id: agentId },
@@ -140,7 +149,7 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 }
 
 function builderAgentIdFor(agentId: string): string {
-	return `agent-builder:${agentId}`;
+	return `${BUILDER_SUB_AGENT_ROLE}:${agentId}`;
 }
 
 const buildAgentInputSchema = z.object({
@@ -158,7 +167,17 @@ const buildAgentInputSchema = z.object({
 		.describe(
 			'Agent name. A name matching an agent already built in this conversation switches back ' +
 				'to that agent; a new name creates a new agent and makes it the active target. Omit on ' +
-				'follow-up calls for the current agent.',
+				'follow-up calls for the current agent. Combine with `createNew: true` to force creating ' +
+				'a fresh agent when the name matches one built earlier this conversation.',
+		),
+	createNew: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set true when the user asks to create a brand-new agent. Bypasses the same-name ' +
+				'switch-back: with createNew, `name` always creates a fresh agent even if that name ' +
+				'matches one built earlier in this conversation. Requires `name`; never combine with ' +
+				'`agentId`. Omit for edits, follow-ups, and switch-backs.',
 		),
 	agentId: z
 		.string()
@@ -166,7 +185,12 @@ const buildAgentInputSchema = z.object({
 		.describe(
 			'Existing agent id to edit — use the `agentId` returned by earlier build-agent ' +
 				'results. Pass to start editing that agent or to switch the active build target; ' +
-				'omit on follow-up calls.',
+				'omit on follow-up calls. Only pass this when the user explicitly wants to change ' +
+				'that specific existing agent. NEVER pass it for a request to build/create a NEW ' +
+				'agent — even if an agent with the same or a similar name already exists in the ' +
+				'project (duplicate names are allowed). Agents the request merely references — as ' +
+				'sub-agents, delegation targets, or examples — are not the build target: mention ' +
+				'them in `message` instead.',
 		),
 	workflowContext: z
 		.array(z.object({ id: z.string(), name: z.string(), description: z.string().optional() }))
@@ -258,9 +282,9 @@ function publishAgentSpawned(
 		agentId: builderAgentId,
 		payload: {
 			parentId: context.orchestratorAgentId,
-			role: 'agent-builder',
+			role: BUILDER_SUB_AGENT_ROLE,
 			tools: [],
-			kind: 'agent-builder',
+			kind: BUILDER_SUB_AGENT_KIND,
 			title: 'Building agent',
 			// name/projectId make the FE render the agent as a conversation artifact
 			// (artifact list + preview both require projectId).
@@ -289,7 +313,7 @@ function publishAgentBuilderFailure(
 		type: 'agent-completed',
 		runId: context.runId,
 		agentId: builderAgentId,
-		payload: { role: 'agent-builder', result: '', error: message },
+		payload: { role: BUILDER_SUB_AGENT_ROLE, result: '', error: message },
 	});
 	return message;
 }
@@ -308,7 +332,7 @@ async function finishTurn(
 			type: 'agent-completed',
 			runId: context.runId,
 			agentId: builderAgentId,
-			payload: { role: 'agent-builder', result: text.slice(0, 200) },
+			payload: { role: BUILDER_SUB_AGENT_ROLE, result: text.slice(0, 200) },
 		});
 		return { ok: true, builderReply: text, configUpdated };
 	}
@@ -319,7 +343,7 @@ async function finishTurn(
 		type: 'agent-completed',
 		runId: context.runId,
 		agentId: builderAgentId,
-		payload: { role: 'agent-builder', result: '', error },
+		payload: { role: BUILDER_SUB_AGENT_ROLE, result: '', error },
 	});
 	return { ok: false, error, configUpdated };
 }
@@ -366,8 +390,8 @@ async function runBuilderConsumeLoop(params: {
 
 	const traceRun = await startSubAgentTrace(context, {
 		agentId: builderAgentId,
-		role: 'agent-builder',
-		kind: 'agent-builder',
+		role: BUILDER_SUB_AGENT_ROLE,
+		kind: BUILDER_SUB_AGENT_KIND,
 		metadata: { target_agent_id: target.agentId },
 		...(traceInputs !== undefined ? { inputs: traceInputs } : {}),
 	});
@@ -612,12 +636,37 @@ async function handleResume(
 }
 
 type TargetResolution =
-	| { ok: true; target: AgentBuilderTarget; bindAfterTurn: boolean }
+	| { ok: true; target: AgentBuilderTarget; bindAfterTurn: boolean; mode: 'create' | 'edit' }
 	| { ok: false; error: string };
 
 const NO_TARGET_INPUT_ERROR = 'Pass name to create a new agent or agentId to edit an existing one.';
+const CREATE_NEW_INPUT_ERROR =
+	'createNew requires `name` and cannot be combined with `agentId` — pass `name` only to create a new agent.';
 const AGENT_ID_NEEDS_PROJECT_ERROR =
 	'Cannot bind to agentId without an active project context. Start this conversation from within a project.';
+
+function buildAgentTargetNameMismatchError(
+	agentId: string,
+	realName: string,
+	passedName: string,
+): string {
+	return (
+		`Agent ${agentId} is named "${realName}", but name "${passedName}" was passed. ` +
+		`To create a new agent named "${passedName}", pass \`name\` only (no \`agentId\`). ` +
+		`To edit "${realName}", pass \`agentId\` only and put any rename instruction in \`message\`.`
+	);
+}
+
+function rejectAgentTargetNameMismatch(
+	agentId: string,
+	realName: string | undefined,
+	passedName: string | undefined,
+): TargetResolution | undefined {
+	if (!passedName || !realName || agentNamesMatch(passedName, realName)) {
+		return undefined;
+	}
+	return { ok: false, error: buildAgentTargetNameMismatchError(agentId, realName, passedName) };
+}
 
 /**
  * Resolve which agent this call should build/edit. A bound target stays
@@ -636,9 +685,15 @@ async function resolveTargetForCall(
 	input: z.infer<typeof buildAgentInputSchema>,
 	boundTarget: AgentBuilderTarget | undefined,
 ): Promise<TargetResolution> {
+	if (input.createNew && (input.agentId || !input.name)) {
+		return { ok: false, error: CREATE_NEW_INPUT_ERROR };
+	}
+
 	if (input.agentId) {
 		if (boundTarget && input.agentId === boundTarget.agentId) {
-			return { ok: true, target: boundTarget, bindAfterTurn: false };
+			const mismatch = rejectAgentTargetNameMismatch(input.agentId, boundTarget.name, input.name);
+			if (mismatch) return mismatch;
+			return { ok: true, target: boundTarget, bindAfterTurn: false, mode: 'edit' };
 		}
 		if (!domainContext.projectId) {
 			return { ok: false, error: AGENT_ID_NEEDS_PROJECT_ERROR };
@@ -651,6 +706,8 @@ async function resolveTargetForCall(
 		} catch {
 			name = undefined;
 		}
+		const mismatch = rejectAgentTargetNameMismatch(input.agentId, name, input.name);
+		if (mismatch) return mismatch;
 		return {
 			ok: true,
 			target: {
@@ -659,23 +716,26 @@ async function resolveTargetForCall(
 				...(name ? { name } : {}),
 			},
 			bindAfterTurn: true,
+			mode: 'edit',
 		};
 	}
 
 	if (input.name) {
-		// Guards against the orchestrator redundantly repeating `name` on a
-		// follow-up call for the agent already being built.
-		if (boundTarget && agentNamesMatch(input.name, boundTarget.name)) {
-			return { ok: true, target: boundTarget, bindAfterTurn: false };
-		}
-		// A name matching an agent already built/targeted this conversation is a
-		// switch-back, not a creation — the duplicate-agent failure mode this
-		// registry exists to prevent. Deferred persist like the agentId path: the
-		// agent may have been deleted since, and a failed turn must not clobber
-		// the current binding.
-		const sessionAgent = await findSessionAgentByName(domainContext, input.name);
-		if (sessionAgent) {
-			return { ok: true, target: sessionAgent, bindAfterTurn: true };
+		if (!input.createNew) {
+			// Guards against the orchestrator redundantly repeating `name` on a
+			// follow-up call for the agent already being built.
+			if (boundTarget && agentNamesMatch(input.name, boundTarget.name)) {
+				return { ok: true, target: boundTarget, bindAfterTurn: false, mode: 'edit' };
+			}
+			// A name matching an agent already built/targeted this conversation is a
+			// switch-back, not a creation — the duplicate-agent failure mode this
+			// registry exists to prevent. Deferred persist like the agentId path: the
+			// agent may have been deleted since, and a failed turn must not clobber
+			// the current binding.
+			const sessionAgent = await findSessionAgentByName(domainContext, input.name);
+			if (sessionAgent) {
+				return { ok: true, target: sessionAgent, bindAfterTurn: true, mode: 'edit' };
+			}
 		}
 		const created = await delegate.createAgent(input.name);
 		const target: AgentBuilderTarget = {
@@ -685,21 +745,33 @@ async function resolveTargetForCall(
 		};
 		domainContext.agentBuilderTarget = target;
 		await saveAgentBuilderTarget(domainContext, target);
-		return { ok: true, target, bindAfterTurn: false };
+		return { ok: true, target, bindAfterTurn: false, mode: 'create' };
 	}
 
-	if (boundTarget) return { ok: true, target: boundTarget, bindAfterTurn: false };
+	if (boundTarget) {
+		return { ok: true, target: boundTarget, bindAfterTurn: false, mode: 'edit' };
+	}
 	return { ok: false, error: NO_TARGET_INPUT_ERROR };
 }
 
 export function createBuildAgentTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.BUILD_AGENT)
 		.description(
-			'Delegate agent building to the agents-module builder, running as a sub-agent. ' +
+			'Builds and edits n8n **Agent** artifacts only (instructions, model, tools, skills, ' +
+				'tasks, integrations, sub-agents) by delegating to the agents-module builder. It is ' +
+				'only for that purpose. When the request is workflow-anchored (via the intent gate / ' +
+				'`intent-recognition`), stay on the `workflow-builder` path and do not call this tool ' +
+				'at all — not to inspect nodes, not to list workflows, and not to compile custom ' +
+				'tools. If a workflow build seems to need a utility tool the workspace does not ' +
+				'provide, ask the user or use a placeholder; do not route around that by calling ' +
+				'`build-agent`. ' +
 				'Pass `name` to start a new agent or `agentId` to edit an existing one; calls ' +
-				'without either keep editing the current agent. To build ANOTHER agent in the same ' +
+				'without either keep editing the current agent. Create vs. edit follows user ' +
+				'intent, not name collisions: a request to build a NEW agent always passes `name` ' +
+				'plus `createNew: true` — never `agentId` — even when a same-named agent already exists in the ' +
+				'project. To build ANOTHER agent in the same ' +
 				'conversation, pass its `name` or `agentId` — a name matching an agent already built ' +
-				'in this conversation switches back to it; an unmatched name creates a new agent and ' +
+				'in this conversation switches back to it (unless `createNew: true` is passed); an unmatched name creates a new agent and ' +
 				'switches the active target. The builder can also publish or unpublish the target ' +
 				'agent when the user asks to publish, activate, make it live/usable, or unpublish — ' +
 				'forward that intent in `message`; never tell the user to open the agent editor and ' +
@@ -731,8 +803,21 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			const existingTarget = await resolveAgentBuilderTarget(domainContext);
 			const resolution = await resolveTargetForCall(domainContext, delegate, input, existingTarget);
 			if (!resolution.ok) {
+				context.trackTelemetry?.('instance_ai_agent_build_route', {
+					thread_id: context.threadId,
+					run_id: context.runId,
+					user_id: context.userId,
+					mode: 'resolution_failed',
+				});
 				return { ok: false, error: resolution.error };
 			}
+			context.trackTelemetry?.('instance_ai_agent_build_route', {
+				thread_id: context.threadId,
+				run_id: context.runId,
+				user_id: context.userId,
+				mode: resolution.mode,
+				agent_id: resolution.target.agentId,
+			});
 			const boundTarget = resolution.target;
 			const bindAfterTurn = resolution.bindAfterTurn;
 

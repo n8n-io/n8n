@@ -170,28 +170,38 @@ export class McpConnection {
 		if (requireApproval === true) return true;
 
 		if (Array.isArray(requireApproval) && requireApproval.length > 0) {
-			const prefix = `${this.config.name}_`;
-			const originalName = tool.name.startsWith(prefix)
-				? tool.name.slice(prefix.length)
-				: tool.name;
+			const originalName = tool.mcpToolName ?? tool.name;
 			return requireApproval.includes(originalName);
 		}
 
 		return false;
 	}
 
-	async callTool(name: string, args: Record<string, unknown>): Promise<McpCallToolResult> {
+	async callTool(
+		name: string,
+		args: Record<string, unknown>,
+		options?: { abortSignal?: AbortSignal; modelToolName?: string },
+	): Promise<McpCallToolResult> {
 		if (!this.client) throw new Error('MCP client not initialized; connect() must be called first');
 		const { CallToolResultSchema } = await loadMcpSdk();
 		try {
 			const result = (await this.client.callTool(
 				{ name, arguments: args },
 				CallToolResultSchema,
+				options?.abortSignal ? { signal: options.abortSignal } : undefined,
 			)) as McpCallToolResult;
-			await this.notifyToolCallSettled({ toolName: name, success: result.isError !== true });
+			await this.notifyToolCallSettled({
+				toolName: name,
+				...(options?.modelToolName !== undefined && { modelToolName: options.modelToolName }),
+				success: result.isError !== true,
+			});
 			return result;
 		} catch (error) {
-			await this.notifyToolCallSettled({ toolName: name, success: false });
+			await this.notifyToolCallSettled({
+				toolName: name,
+				...(options?.modelToolName !== undefined && { modelToolName: options.modelToolName }),
+				success: false,
+			});
 			throw error;
 		}
 	}
