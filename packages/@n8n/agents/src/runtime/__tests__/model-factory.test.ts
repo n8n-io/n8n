@@ -202,9 +202,9 @@ describe('createModel', () => {
 	});
 
 	it('should accept a string config', () => {
-		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
+		const model = createModel('anthropic/claude-opus-5') as unknown as Record<string, unknown>;
 		expect(model.provider).toBe('anthropic');
-		expect(model.modelId).toBe('claude-sonnet-4-5');
+		expect(model.modelId).toBe('claude-opus-5');
 	});
 
 	it('should accept an object config with baseURL', () => {

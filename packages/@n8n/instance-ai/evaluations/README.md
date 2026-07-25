@@ -851,7 +851,7 @@ Evals run automatically on PRs that change Instance AI code (path-filtered). The
 
 The job is **non-blocking**. Results are posted as a PR comment and uploaded as artifacts. When `LANGSMITH_API_KEY` is set via the `EVALS_LANGSMITH_API_KEY` secret, runs also land as LangSmith experiments tagged with commit SHA + branch, so you can compare against master side-by-side.
 
-For model A/B experiments, dispatch **Instance AI Evals: Experiments** (`test-evals-instance-ai.yml`) and set the `model` input. Supported experiment models include `anthropic/claude-sonnet-4-6`, `openai/gpt-5.6-sol`, `openai/gpt-5.6-terra`, `openai/gpt-5.6-luna`, `openrouter/moonshotai/kimi-k3`, `xai/grok-4.5`, `baseten/zai-org/GLM-5.2`, and `baseten/zai-org/GLM-5.2-Fast`. CI routes the matching provider key from repo secrets (`EVALS_*_KEY`; Baseten uses `EVALS_BASETEN_KEY`).
+For model A/B experiments, dispatch **Instance AI Evals: Experiments** (`test-evals-instance-ai.yml`) and set the `model` input. Supported experiment models include `anthropic/claude-opus-5`, `anthropic/claude-sonnet-4-6`, `openai/gpt-5.6-sol`, `openai/gpt-5.6-terra`, `openai/gpt-5.6-luna`, `openrouter/moonshotai/kimi-k3`, `xai/grok-4.5`, `baseten/zai-org/GLM-5.2`, and `baseten/zai-org/GLM-5.2-Fast`. CI routes the matching provider key from repo secrets (`EVALS_*_KEY`; Baseten uses `EVALS_BASETEN_KEY`).
 
 ## Architecture
 
