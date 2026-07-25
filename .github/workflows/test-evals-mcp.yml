@@ -51,7 +51,7 @@ on:
         type: string
         default: ''
       build-model:
-        description: 'Anthropic model id for the claude MCP build step (injected as ANTHROPIC_MODEL)'
+        description: 'Anthropic model id for the claude MCP build step (injected as ANTHROPIC_MODEL). Examples: claude-opus-4-8, claude-opus-5.'
         required: false
         type: string
         default: 'claude-opus-4-8'

@@ -7,7 +7,7 @@ packages:
 
 catalog:
   '@ai-sdk/amazon-bedrock': ^4.0.113
-  '@ai-sdk/anthropic': ^3.0.98
+  '@ai-sdk/anthropic': ^3.0.102
   '@ai-sdk/azure': ^3.0.70
   '@ai-sdk/cohere': ^3.0.36
   '@ai-sdk/deepseek': ^2.0.35
@@ -278,3 +278,7 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
+  # Fresh Claude model IDs (e.g. Opus 5) ship in @ai-sdk/anthropic patches; allow
+  # installing before the 3-day minimumReleaseAge so agents/evals aren't stuck on
+  # the unknown-model 4096 max_tokens default.
+  - '@ai-sdk/anthropic'
