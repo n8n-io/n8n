@@ -22,7 +22,10 @@ export function determineFinalExecutionStatus(runData: IRun): ExecutionStatus {
 	let workflowStatusFinal: ExecutionStatus = workflowDidSucceed ? 'success' : 'error';
 	if (workflowHasCrashed) workflowStatusFinal = 'crashed';
 	if (workflowWasCanceled) workflowStatusFinal = 'canceled';
-	if (runData.waitTill) workflowStatusFinal = 'waiting';
+	// Also trust an incoming 'waiting' status on its own: in scaling mode main
+	// rebuilds the run from the worker's job result, and losing `waitTill` on
+	// that path must not turn a parked execution into a deletable 'success'
+	if (runData.waitTill || runData.status === 'waiting') workflowStatusFinal = 'waiting';
 	return workflowStatusFinal;
 }
 

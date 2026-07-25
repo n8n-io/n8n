@@ -37,6 +37,15 @@ describe('determineFinalExecutionStatus', () => {
 
 		expect(determineFinalExecutionStatus(runData)).toBe('waiting');
 	});
+
+	it('should return "waiting" for a "waiting" status even without waitTill', () => {
+		// A run rebuilt from a worker's job result may lose `waitTill`; the
+		// 'waiting' status alone must not be recomputed into 'success', or a
+		// parked execution becomes eligible for deletion
+		const runData = { status: 'waiting', data: {} } as IRun;
+
+		expect(determineFinalExecutionStatus(runData)).toBe('waiting');
+	});
 });
 
 describe('updateExistingExecution', () => {
