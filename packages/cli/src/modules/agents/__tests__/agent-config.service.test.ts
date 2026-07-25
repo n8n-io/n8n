@@ -170,7 +170,7 @@ describe('AgentConfigService', () => {
 				...baseConfig,
 				mcpServers: [
 					{
-						name: 'has spaces',
+						name: '   ',
 						url: 'https://example.com/mcp',
 						transport: 'streamableHttp',
 						authentication: 'none',
@@ -181,9 +181,7 @@ describe('AgentConfigService', () => {
 			expect(result.valid).toBe(false);
 			if (result.valid) return;
 			expect(result.error).toContain('mcpServers.0.name');
-			expect(result.error).toContain(
-				'MCP server name can only contain letters, numbers, hyphens, and underscores',
-			);
+			expect(result.error).toContain('MCP server name cannot be blank');
 			expect(result.error).not.toContain('"validation": "regex"');
 		});
 	});
