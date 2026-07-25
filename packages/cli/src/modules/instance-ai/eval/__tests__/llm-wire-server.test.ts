@@ -208,7 +208,12 @@ describe('LlmWireServer', () => {
 			expect(intercepts[0].rootName).toBe('LLM Chain');
 			expect(intercepts[0].method).toBe('POST');
 			expect(intercepts[0].nodeType).toBe(subNode.type);
-			expect(intercepts[0].mockResponse).toEqual({ content: 'reply' });
+			// The ledger records the wire envelope the SDK received, not the mock
+			// handler's `{ content }` shorthand — judges read this as the wire body.
+			expect(intercepts[0].mockResponse).toMatchObject({
+				object: 'chat.completion',
+				choices: [{ message: { role: 'assistant', content: 'reply' } }],
+			});
 		});
 
 		it('still returns 200 with a valid envelope when onIntercept throws (ledger failure is isolated)', async () => {
@@ -567,6 +572,11 @@ describe('LlmWireServer', () => {
 
 			expect(intercepts).toHaveLength(1);
 			expect(intercepts[0].rootName).toBe('Agent');
+			// Streamed turns record the equivalent non-streamed wire envelope.
+			expect(intercepts[0].mockResponse).toMatchObject({
+				object: 'chat.completion',
+				choices: [{ message: { content: 'streamed' } }],
+			});
 		});
 
 		it('uses the no-handler stub for streaming when no mock handler is attached', async () => {
@@ -945,6 +955,12 @@ describe('LlmWireServer', () => {
 
 			expect(intercepts).toHaveLength(1);
 			expect(intercepts[0].rootName).toBe('My Agent');
+			// The ledger records the canonical Responses envelope the SDK received —
+			// output[].content[].text — not the handler's internal shorthand.
+			expect(intercepts[0].mockResponse).toMatchObject({
+				object: 'response',
+				output: [{ type: 'message', content: [{ type: 'output_text', text: 'ok' }] }],
+			});
 			// Reverse translator uses the canonical OpenAI URL so mock-handler's
 			// service/endpoint extraction derives `/v1/responses` correctly.
 			expect(intercepts[0].url).toBe('https://api.openai.com/v1/responses');
