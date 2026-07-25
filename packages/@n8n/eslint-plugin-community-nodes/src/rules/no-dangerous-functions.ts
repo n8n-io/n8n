@@ -1,4 +1,5 @@
 import { TSESTree } from '@typescript-eslint/utils';
+import type { TSESLint } from '@typescript-eslint/utils';
 
 import { createRule, getStaticStringValue, isDirectRequireCall } from '../utils/index.js';
 
@@ -65,72 +66,112 @@ export const NoDangerousFunctionsRule = createRule({
 	},
 	defaultOptions: [],
 	create(context) {
-		// Local names bound to dangerous named imports, e.g. `import { exec as run }` -> `run`.
-		const dangerousLocalNames = new Map<string, string>();
-		// Local names bound to the whole module, e.g. `import * as cp` or `const cp = require(...)`.
-		const namespaceNames = new Set<string>();
+		const { sourceCode } = context;
+
+		// Bindings are tracked by the variable they declare, not by name, so a
+		// binding in one scope cannot be confused with an unrelated binding of
+		// the same name in another.
+
+		/** Variables bound to a dangerous function, e.g. `import { exec as run }`. */
+		const dangerousVariables = new Map<TSESLint.Scope.Variable, string>();
+		/** Variables bound to the module itself, e.g. `import * as cp`. */
+		const namespaceVariables = new Set<TSESLint.Scope.Variable>();
+
+		/** The variable an identifier refers to, or null when it is unresolved. */
+		const resolveVariable = (identifier: TSESTree.Identifier): TSESLint.Scope.Variable | null => {
+			for (
+				let scope: TSESLint.Scope.Scope | null = sourceCode.getScope(identifier);
+				scope;
+				scope = scope.upper
+			) {
+				const variable = scope.set.get(identifier.name);
+				if (variable) return variable;
+			}
+
+			return null;
+		};
+
+		/** The variable a declaration introduces for `identifier`. */
+		const resolveDeclaredVariable = (
+			declaration: TSESTree.Node,
+			identifier: TSESTree.Identifier,
+		): TSESLint.Scope.Variable | null =>
+			sourceCode
+				.getDeclaredVariables(declaration)
+				.find((variable) => variable.defs.some((def) => def.name === identifier)) ?? null;
 
 		/**
-		 * Resolves whether an expression is the `child_process` module.
-		 *
-		 * `followBindings` decides whether a bare identifier may be matched
-		 * against the recorded names. Reporting a call site does follow them —
-		 * that is the point of recording. Deciding whether a *declaration*
-		 * introduces a new name does not, because names are tracked in a flat,
-		 * file-wide set: minting `alias` from `const alias = cp` would make
-		 * every unrelated `alias` in the file look like `child_process`.
+		 * True for the `require` of the CommonJS loader. A `require` declared in
+		 * the file — a parameter, a local helper — shadows it and loads nothing.
 		 */
-		const resolveModule = (
-			node: TSESTree.Node | null | undefined,
-			followBindings: boolean,
-		): boolean => {
+		const isModuleLoaderRequire = (node: TSESTree.CallExpression): boolean => {
+			if (!isDirectRequireCall(node) || node.callee.type !== AST_NODE_TYPES.Identifier) {
+				return false;
+			}
+
+			// A global has no definition site; anything with one is a local binding.
+			const variable = resolveVariable(node.callee);
+			return variable === null || variable.defs.length === 0;
+		};
+
+		/** Whether an expression is the `child_process` module. */
+		const resolvesToChildProcessModule = (node: TSESTree.Node | null | undefined): boolean => {
 			if (!node) return false;
 
 			switch (node.type) {
-				case AST_NODE_TYPES.Identifier:
-					return followBindings && namespaceNames.has(node.name);
+				case AST_NODE_TYPES.Identifier: {
+					const variable = resolveVariable(node);
+					return variable !== null && namespaceVariables.has(variable);
+				}
 				// `require('child_process')`. `require.resolve(...)` is deliberately
 				// excluded: it returns a path string, not the module.
 				case AST_NODE_TYPES.CallExpression:
-					return isDirectRequireCall(node) && isChildProcessModule(node.arguments[0] ?? null);
+					return isModuleLoaderRequire(node) && isChildProcessModule(node.arguments[0] ?? null);
 				case AST_NODE_TYPES.AwaitExpression:
-					return (
-						isChildProcessImport(node.argument) || resolveModule(node.argument, followBindings)
-					);
+					return isChildProcessImport(node.argument) || resolvesToChildProcessModule(node.argument);
 				// `mod.default` is the CommonJS module object under interop.
 				case AST_NODE_TYPES.MemberExpression:
 					return (
-						getStaticPropertyName(node) === 'default' && resolveModule(node.object, followBindings)
+						getStaticPropertyName(node) === 'default' && resolvesToChildProcessModule(node.object)
 					);
 				// Wrappers that do not change the value being accessed:
 				// `(0, require('child_process'))`, `require('child_process') as any`,
 				// `... satisfies unknown`, `...!`, `<any>...`.
 				case AST_NODE_TYPES.SequenceExpression:
-					return resolveModule(node.expressions.at(-1), followBindings);
+					return resolvesToChildProcessModule(node.expressions.at(-1));
 				case AST_NODE_TYPES.TSAsExpression:
 				case AST_NODE_TYPES.TSSatisfiesExpression:
 				case AST_NODE_TYPES.TSNonNullExpression:
 				case AST_NODE_TYPES.TSTypeAssertion:
-					return resolveModule(node.expression, followBindings);
+					return resolvesToChildProcessModule(node.expression);
 				default:
 					return false;
 			}
 		};
 
-		/** The module, reached through a recorded binding or written out in place. */
-		const resolvesToChildProcessModule = (node: TSESTree.Node | null | undefined): boolean =>
-			resolveModule(node, true);
+		const recordNamespace = (declaration: TSESTree.Node, identifier: TSESTree.Identifier) => {
+			const variable = resolveDeclaredVariable(declaration, identifier);
+			if (variable) namespaceVariables.add(variable);
+		};
 
-		/** The module written out in place, without consulting recorded names. */
-		const isChildProcessModuleExpression = (node: TSESTree.Node | null | undefined): boolean =>
-			resolveModule(node, false);
+		const recordDangerous = (
+			declaration: TSESTree.Node,
+			identifier: TSESTree.Identifier,
+			functionName: string,
+		) => {
+			const variable = resolveDeclaredVariable(declaration, identifier);
+			if (variable) dangerousVariables.set(variable, functionName);
+		};
 
-		const recordDestructuredModule = (pattern: TSESTree.ObjectPattern) => {
+		const recordDestructuredModule = (
+			declaration: TSESTree.Node,
+			pattern: TSESTree.ObjectPattern,
+		) => {
 			for (const property of pattern.properties) {
 				// `const { ...cp } = require('child_process')` copies the module.
 				if (property.type === AST_NODE_TYPES.RestElement) {
 					if (property.argument.type === AST_NODE_TYPES.Identifier) {
-						namespaceNames.add(property.argument.name);
+						recordNamespace(declaration, property.argument);
 					}
 					continue;
 				}
@@ -141,9 +182,9 @@ export const NoDangerousFunctionsRule = createRule({
 				if (keyName === null) continue;
 
 				if (DANGEROUS_CHILD_PROCESS_FUNCTIONS.has(keyName)) {
-					dangerousLocalNames.set(property.value.name, keyName);
+					recordDangerous(declaration, property.value, keyName);
 				} else if (keyName === 'default') {
-					namespaceNames.add(property.value.name);
+					recordNamespace(declaration, property.value);
 				}
 			}
 		};
@@ -158,12 +199,12 @@ export const NoDangerousFunctionsRule = createRule({
 						specifier.imported.type === AST_NODE_TYPES.Identifier &&
 						DANGEROUS_CHILD_PROCESS_FUNCTIONS.has(specifier.imported.name)
 					) {
-						dangerousLocalNames.set(specifier.local.name, specifier.imported.name);
+						recordDangerous(node, specifier.local, specifier.imported.name);
 					} else if (
 						specifier.type === AST_NODE_TYPES.ImportNamespaceSpecifier ||
 						specifier.type === AST_NODE_TYPES.ImportDefaultSpecifier
 					) {
-						namespaceNames.add(specifier.local.name);
+						recordNamespace(node, specifier.local);
 					}
 				}
 			},
@@ -174,16 +215,16 @@ export const NoDangerousFunctionsRule = createRule({
 					node.moduleReference.type === AST_NODE_TYPES.TSExternalModuleReference &&
 					isChildProcessModule(node.moduleReference.expression)
 				) {
-					namespaceNames.add(node.id.name);
+					recordNamespace(node, node.id);
 				}
 			},
 
 			VariableDeclarator(node) {
-				if (isChildProcessModuleExpression(node.init)) {
+				if (resolvesToChildProcessModule(node.init)) {
 					if (node.id.type === AST_NODE_TYPES.ObjectPattern) {
-						recordDestructuredModule(node.id);
+						recordDestructuredModule(node, node.id);
 					} else if (node.id.type === AST_NODE_TYPES.Identifier) {
-						namespaceNames.add(node.id.name);
+						recordNamespace(node, node.id);
 					}
 					return;
 				}
@@ -203,7 +244,7 @@ export const NoDangerousFunctionsRule = createRule({
 					DANGEROUS_CHILD_PROCESS_FUNCTIONS.has(memberName) &&
 					resolvesToChildProcessModule(node.init.object)
 				) {
-					dangerousLocalNames.set(node.id.name, memberName);
+					recordDangerous(node, node.id, memberName);
 				}
 			},
 
@@ -227,7 +268,8 @@ export const NoDangerousFunctionsRule = createRule({
 						return;
 					}
 
-					const originalName = dangerousLocalNames.get(callee.name);
+					const variable = resolveVariable(callee);
+					const originalName = variable && dangerousVariables.get(variable);
 					if (originalName) {
 						context.report({ node, messageId: 'noChildProcess', data: { name: originalName } });
 					}

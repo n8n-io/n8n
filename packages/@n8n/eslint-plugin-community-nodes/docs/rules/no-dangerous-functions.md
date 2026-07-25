@@ -16,7 +16,9 @@ The `child_process` functions are detected only when they originate from the `ch
 
 The module counts as the origin however it is reached: a static `import`, a `require`, or an awaited dynamic `import()`, whether it is bound to a name first or used inline. Keys are resolved whenever they are statically knowable, so `cp['exec']` and `const { 'exec': run }` are treated like `cp.exec` and `const { exec }`. Access that can only be resolved by running the code, such as `cp[name]`, is left alone.
 
-The rule reasons about syntax, not values, and it tracks names in a flat, file-wide set rather than per scope. It therefore does not follow the module through a callback (`import('child_process').then(cp => cp.exec(...))`), through later reassignment (`let cp; cp = require('child_process')`), or through aliasing a namespace to a second name — that last one is deliberate, since minting a name from a name would make every unrelated binding of that name look like `child_process`. Bindings also have to appear before the call that uses them. It is defence in depth for reviewers alongside [`no-restricted-imports`](no-restricted-imports.md), not a sandbox.
+Bindings are matched by the variable they declare, resolved through lexical scope, so a parameter or block-scoped binding that happens to reuse a tracked name is left alone — as is a call to a locally declared `require`, which is not the CommonJS loader.
+
+The rule still reasons about syntax rather than values, so it does not follow the module through a callback (`import('child_process').then(cp => cp.exec(...))`) or through later reassignment (`let cp; cp = require('child_process')`), and a binding has to appear before the call that uses it. It is defence in depth for reviewers alongside [`no-restricted-imports`](no-restricted-imports.md), not a sandbox.
 
 This complements [`no-restricted-imports`](no-restricted-imports.md) (which blocks the `child_process` module entirely on n8n Cloud) and [`no-restricted-globals`](no-restricted-globals.md), providing a clear, specific error and defense-in-depth that also applies when the import restrictions are relaxed.
 

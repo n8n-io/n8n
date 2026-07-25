@@ -57,12 +57,28 @@ ruleTester.run('no-dangerous-functions', NoDangerousFunctionsRule, {
 			name: 'unawaited dynamic import',
 			code: "const pending = import('child_process'); pending.then(handle);",
 		},
-		// Names are tracked in a flat, file-wide set, so aliasing a namespace to
-		// another name is deliberately not followed — doing so would make every
-		// unrelated binding of that name look like `child_process`.
+		// Bindings are matched by the variable they declare, so an unrelated
+		// binding that happens to reuse a tracked name is left alone.
 		{
 			name: 'unrelated binding reusing an aliased name',
 			code: "const cp = require('child_process');\nconst alias = cp;\nfunction f(x) { const alias = getLogger(); alias.fork(x); }",
+		},
+		{
+			name: 'shadowed parameter named after the namespace',
+			code: "import * as cp from 'child_process';\nexport function f(cp) { cp.exec('x'); }",
+		},
+		{
+			name: 'member alias off a shadowed parameter',
+			code: "import * as cp from 'child_process';\nexport function f(cp) { const run = cp.exec; run('x'); }",
+		},
+		{
+			name: 'block shadowing with a different module',
+			code: "{ const cp = require('child_process'); }\n{ const cp = require('sqlite3'); cp.exec('x'); }",
+		},
+		// A locally declared `require` is not the CommonJS loader.
+		{
+			name: 'locally shadowed require',
+			code: "function load(require) { return require('child_process').exec('ls'); }",
 		},
 	],
 	invalid: [
@@ -225,6 +241,16 @@ ruleTester.run('no-dangerous-functions', NoDangerousFunctionsRule, {
 		{
 			name: 'SECURITY: member alias off a namespace',
 			code: "const cp = require('child_process'); const run = cp.spawn; run('ls');",
+			errors: [{ messageId: 'noChildProcess', data: { name: 'spawn' } }],
+		},
+		{
+			name: 'SECURITY: aliased namespace binding',
+			code: "const cp = require('child_process'); const alias = cp; alias.exec('ls');",
+			errors: [{ messageId: 'noChildProcess', data: { name: 'exec' } }],
+		},
+		{
+			name: 'SECURITY: member alias off an aliased namespace',
+			code: "import * as cp from 'child_process'; const alias = cp; const run = alias.spawn; run('ls');",
 			errors: [{ messageId: 'noChildProcess', data: { name: 'spawn' } }],
 		},
 	],
