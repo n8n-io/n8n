@@ -1,40 +1,161 @@
-import type { NodeSchemaContext, OutputParserContext, OutputSchemaLookup } from './types';
+import { findEnvelopeKey } from './ai-root-shapes';
+import type {
+	DataTableColumnInfo,
+	DeclaredFieldContract,
+	NodeSchemaContext,
+	OutputParserContext,
+	OutputSchemaLookup,
+} from './types';
 import type { NodeJSON, WorkflowJSON } from '../types/base';
+
+export const INFORMATION_EXTRACTOR_NODE_TYPE = '@n8n/n8n-nodes-langchain.informationExtractor';
+
+/** System columns every Data Table row carries in addition to the user-defined ones. */
+export const DATA_TABLE_SYSTEM_COLUMNS = ['id', 'createdAt', 'updatedAt'];
 
 /**
  * Assemble the per-node contexts the generation prompt is built from.
  * Schema enrichment happens through the injected lookup (consumers pass
  * n8n-core's `__schema__` resolver); absent lookup = no schema sections.
+ * `dataTableColumns` (node name → real table columns) comes from consumers
+ * with instance access — the pinned rows must mirror those exact keys.
  */
 export function buildSchemaContexts(
 	nodes: NodeJSON[],
 	outputSchemaLookup?: OutputSchemaLookup,
 	outputParserTargets?: Map<string, OutputParserContext>,
+	dataTableColumns?: Record<string, DataTableColumnInfo[]>,
 ): NodeSchemaContext[] {
 	return nodes.map((node) => {
 		const params = node.parameters as Record<string, unknown> | undefined;
 		const resource = typeof params?.resource === 'string' ? params.resource : undefined;
 		const operation = typeof params?.operation === 'string' ? params.operation : undefined;
-		const outputParser = node.name ? outputParserTargets?.get(node.name) : undefined;
+		// An information extractor declares its output schema in its OWN
+		// parameters (there is no parser sub-node to read it from) — surface it
+		// through the same outputParser slot so the prompt embeds it.
+		const outputParser =
+			(node.name ? outputParserTargets?.get(node.name) : undefined) ??
+			(node.type === INFORMATION_EXTRACTOR_NODE_TYPE
+				? extractInformationExtractorSchema(params)
+				: undefined);
 
 		const schema = outputSchemaLookup?.({
 			type: node.type,
 			typeVersion: node.typeVersion,
 			resource,
 			operation,
-			hasOutputParser: outputParser !== undefined,
+			hasOutputParser: node.name ? outputParserTargets?.has(node.name) === true : false,
 		});
 
+		const nodeName = node.name ?? node.type;
+		const columns = dataTableColumns?.[nodeName];
+
 		return {
-			nodeName: node.name ?? node.type,
+			nodeName,
 			nodeType: node.type,
 			typeVersion: node.typeVersion,
 			resource,
 			operation,
 			schema,
 			outputParser,
+			dataTableColumns: columns,
+			declaredFields: buildDeclaredFieldContract(node.type, schema, outputParser, columns),
 		};
 	});
+}
+
+/**
+ * Derive the field-name contract pinned items are validated against.
+ * Data Table columns are exact (real rows always carry every column);
+ * schema-declared fields allow a subset (optional fields may be absent).
+ */
+function buildDeclaredFieldContract(
+	nodeType: string,
+	schema: Record<string, unknown> | undefined,
+	outputParser: OutputParserContext | undefined,
+	columns: DataTableColumnInfo[] | undefined,
+): DeclaredFieldContract | undefined {
+	if (columns && columns.length > 0) {
+		return {
+			keys: [...DATA_TABLE_SYSTEM_COLUMNS, ...columns.map((c) => c.name)],
+			exact: true,
+			source: 'data-table-columns',
+		};
+	}
+
+	if (outputParser?.schemaText) {
+		const keys = deriveTopLevelKeys(outputParser.schemaText, outputParser.schemaIsExample);
+		if (keys.length > 0) {
+			// The extractor always wraps in `output`, even when the `__schema__`
+			// lookup is unavailable; parser targets get their envelope from the
+			// resolved with-parser schema variant.
+			const envelopeKey =
+				findEnvelopeKey(schema) ??
+				(nodeType === INFORMATION_EXTRACTOR_NODE_TYPE ? 'output' : undefined);
+			return { keys, envelopeKey, exact: false, source: 'declared-schema' };
+		}
+	}
+
+	return undefined;
+}
+
+/** Top-level field names of a JSON Schema (`properties` keys) or an example object. */
+function deriveTopLevelKeys(schemaText: string, isExample: boolean): string[] {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(schemaText);
+	} catch {
+		return [];
+	}
+	if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return [];
+	const record = parsed as Record<string, unknown>;
+	if (isExample) return Object.keys(record);
+	const properties = record.properties;
+	if (typeof properties !== 'object' || properties === null) return [];
+	return Object.keys(properties);
+}
+
+/**
+ * Read the information extractor's own declared schema off its parameters:
+ * `fromAttributes` holds an attribute list (synthesized into a JSON Schema
+ * here), `fromJson` an example object, `manual` a JSON Schema — mirroring the
+ * fields the structured output parser node uses.
+ */
+function extractInformationExtractorSchema(
+	params: Record<string, unknown> | undefined,
+): OutputParserContext | undefined {
+	if (!params) return undefined;
+	const schemaType = typeof params.schemaType === 'string' ? params.schemaType : 'fromAttributes';
+
+	if (schemaType === 'fromAttributes') {
+		const attributesWrapper = params.attributes as Record<string, unknown> | undefined;
+		const attributes = Array.isArray(attributesWrapper?.attributes)
+			? attributesWrapper.attributes
+			: [];
+		const properties: Record<string, unknown> = {};
+		const required: string[] = [];
+		for (const attribute of attributes) {
+			if (typeof attribute !== 'object' || attribute === null) continue;
+			const { name, type, description } = attribute as Record<string, unknown>;
+			if (typeof name !== 'string' || name.length === 0) continue;
+			properties[name] = {
+				type: typeof type === 'string' ? type : 'string',
+				...(typeof description === 'string' && description ? { description } : {}),
+			};
+			if ((attribute as Record<string, unknown>).required === true) required.push(name);
+		}
+		if (Object.keys(properties).length === 0) return undefined;
+		return {
+			schemaText: JSON.stringify({ type: 'object', properties, required }, null, 2),
+			schemaIsExample: false,
+		};
+	}
+
+	const candidate = schemaType === 'manual' ? params.inputSchema : params.jsonSchemaExample;
+	if (typeof candidate === 'string' && candidate.trim().length > 0) {
+		return { schemaText: candidate.trim(), schemaIsExample: schemaType !== 'manual' };
+	}
+	return undefined;
 }
 
 /**

@@ -17,7 +17,9 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
+import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { WorkflowRunner } from '@/workflow-runner';
+import type { OwnershipService } from '@/services/ownership.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
@@ -44,6 +46,7 @@ vi.mock('../workflow-analysis', () => ({
 	generateMockHints: vi.fn(),
 	identifyNodesForHints: vi.fn(),
 	identifyNodesForPinData: vi.fn(),
+	isDataTableRead: vi.fn().mockReturnValue(false),
 	detectBinaryDependencies: vi.fn(),
 }));
 
@@ -209,6 +212,8 @@ describe('EvalExecutionService', () => {
 	const binaryDataService = mock<BinaryDataService>();
 	const workflowStaticDataService = mock<WorkflowStaticDataService>();
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
+	const ownershipService = mock<OwnershipService>();
+	const dataTableService = mock<DataTableService>();
 
 	// Captured configureAdditionalData closure so tests can re-invoke it on a
 	// stub additionalData without booting the real runner.
@@ -243,6 +248,8 @@ describe('EvalExecutionService', () => {
 			binaryDataService,
 			workflowStaticDataService,
 			loadNodesAndCredentials,
+			ownershipService,
+			dataTableService,
 		);
 		// Reset to safe default — tests that flip queue mode reassign in-test.
 		Object.assign(executionsConfig, { mode: 'regular' });

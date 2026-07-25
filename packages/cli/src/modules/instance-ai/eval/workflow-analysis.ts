@@ -94,7 +94,7 @@ const PROTOCOL_BINARY_SUB_NODE_TYPES = new Set([
  * verification runs, so scenario outcomes become a coin flip on build-phase leftovers. */
 const DATA_TABLE_READ_OPERATIONS = new Set(['get', 'rowExists', 'rowNotExists']);
 
-function isDataTableRead(node: INode): boolean {
+export function isDataTableRead(node: INode): boolean {
 	if (node.type !== 'n8n-nodes-base.dataTable') return false;
 	const params = node.parameters as { resource?: string; operation?: string } | undefined;
 	// Node defaults: resource 'row', operation 'insert' (a write) — only pin explicit reads.
