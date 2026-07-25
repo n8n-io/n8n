@@ -63,6 +63,16 @@ on:
         required: false
         type: string
         default: ''
+      lanes:
+        description: 'Parallel n8n lane containers (1-11). Empty = 10, or 1 when model is baseten/* (fits Baseten Basic verified ~500k TPM).'
+        required: false
+        type: string
+        default: ''
+      eval-concurrency:
+        description: 'Concurrent scenario executions. Empty = 32, or 2 when model is baseten/* (~0.5M TPM / ~12 RPM — fits Baseten Basic verified).'
+        required: false
+        type: string
+        default: ''
   workflow_dispatch:
     inputs:
       branch:
@@ -97,6 +107,14 @@ on:
         description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Experiments: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6, openai/gpt-5.6-sol, openai/gpt-5.6-terra, openai/gpt-5.6-luna, openrouter/moonshotai/kimi-k3, xai/grok-4.5, baseten/zai-org/GLM-5.2, baseten/zai-org/GLM-5.2-Fast.'
         required: false
         default: ''
+      lanes:
+        description: 'Parallel n8n lane containers (1-11). Empty = 10, or 1 when model is baseten/* (fits Baseten Basic verified ~500k TPM).'
+        required: false
+        default: ''
+      eval-concurrency:
+        description: 'Concurrent scenarios. Empty = 32, or 2 when model is baseten/* (~0.5M TPM / ~12 RPM — fits Baseten Basic verified).'
+        required: false
+        default: ''
 
 jobs:
   run-evals:
@@ -104,16 +122,19 @@ jobs:
     # 8vcpu/32GB: full-suite N=10 baselines need ~150 min of eval time and
     # did not fit the 4vcpu tier at any timeout.
     runs-on: blacksmith-8vcpu-ubuntu-2204
-    # Long ceiling only for high-N baseline captures; regular runs keep a
-    # tight guard so a wedged run fails fast. Plain comparison (not fromJSON):
-    # it coerces the string input to a number, and a malformed dispatch value
-    # (NaN) falls back to the 90-minute guard instead of erroring the job.
-    timeout-minutes: ${{ (inputs.iterations || '3') >= 5 && 240 || 90 }}
+    # Long ceiling for high-N baselines (240) and for Baseten (600: auto
+    # 1 lane / c=2 is ~16× slower than the Anthropic default, so a ~18 min
+    # full suite becomes ~5 h; +2 h buffer for provider backoff). Plain
+    # comparison (not fromJSON): coerces the string input to a number;
+    # malformed NaN falls back to the 90-minute guard instead of erroring.
+    timeout-minutes: ${{ startsWith(inputs.model || '', 'baseten/') && 600 || ((inputs.iterations || '3') >= 5 && 240 || 90) }}
     env:
-      # Each port hosts an independent n8n container. The eval CLI's
-      # work-stealing allocator dispatches builds across them, capped per-lane.
-      # 10 lanes x 2.5 GB caps = 25 GB, leaving ~7 GB for sandbox + CLI + OS.
-      LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686,5687'
+      # Contiguous ports from 5678; 5678..5688 avoids Node fetch()'s blocked-
+      # port list (max 11 lanes). Defaults: 10 lanes / c=32 for Anthropic;
+      # baseten/* auto-throttles to 1 / 2 to stay under Baseten Basic verified
+      # (~500k TPM).
+      LANES: ${{ inputs.lanes != '' && inputs.lanes || (startsWith(inputs.model || '', 'baseten/') && '1' || '10') }}
+      EVAL_CONCURRENCY: ${{ inputs.eval-concurrency != '' && inputs.eval-concurrency || (startsWith(inputs.model || '', 'baseten/') && '2' || '32') }}
     permissions:
       contents: read
       pull-requests: write
@@ -239,7 +260,15 @@ jobs:
             MODEL_API_KEY="$EVALS_BASETEN_KEY"
           fi
 
-          IFS=',' read -ra PORTS <<< "$LANE_PORTS"
+          if [ "$LANES" -lt 1 ] || [ "$LANES" -gt 11 ]; then
+            echo "::error::lanes must be 1-11 (got $LANES)"
+            exit 1
+          fi
+          PORTS=()
+          for i in $(seq 0 $((LANES - 1))); do
+            PORTS+=($((5678 + i)))
+          done
+          echo "Starting $LANES lane(s) on ports ${PORTS[*]} (eval concurrency $EVAL_CONCURRENCY)"
           for i in "${!PORTS[@]}"; do
             port="${PORTS[$i]}"
             # Bounded and self-healing: a lane that exhausts its capped heap is
@@ -296,7 +325,10 @@ jobs:
 
       - name: Create test users
         run: |
-          IFS=',' read -ra PORTS <<< "$LANE_PORTS"
+          PORTS=()
+          for i in $(seq 0 $((LANES - 1))); do
+            PORTS+=($((5678 + i)))
+          done
           for port in "${PORTS[@]}"; do
             curl -sf -X POST "http://localhost:$port/rest/e2e/reset" \
               -H "Content-Type: application/json" \
@@ -317,7 +349,10 @@ jobs:
           SANDBOX_PROVIDER: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
           INSTANCE_AI_MODEL: ${{ inputs.model }}
         run: |
-          IFS=',' read -ra PORTS <<< "$LANE_PORTS"
+          PORTS=()
+          for i in $(seq 0 $((LANES - 1))); do
+            PORTS+=($((5678 + i)))
+          done
           bad=0
           for i in "${!PORTS[@]}"; do
             port="${PORTS[$i]}"
@@ -398,13 +433,17 @@ jobs:
           EXPERIMENT_NAME: ${{ inputs.experiment-name }}
           EVAL_PR_NUMBER: ${{ inputs.pr-number || github.event.pull_request.number }}
         run: |
-          IFS=',' read -ra PORTS <<< "$LANE_PORTS"
+          PORTS=()
+          for i in $(seq 0 $((LANES - 1))); do
+            PORTS+=($((5678 + i)))
+          done
           URLS=()
           for port in "${PORTS[@]}"; do
             URLS+=("http://localhost:$port")
           done
           BASE_URLS=$(IFS=,; printf '%s' "${URLS[*]}")
-          ARGS=(--base-url "$BASE_URLS" --concurrency 32 --verbose --iterations "${ITERATIONS:-3}")
+          echo "Lanes: $LANES | eval concurrency: $EVAL_CONCURRENCY"
+          ARGS=(--base-url "$BASE_URLS" --concurrency "$EVAL_CONCURRENCY" --verbose --iterations "${ITERATIONS:-3}")
           # LangTracer is the only CI case source (no disk fallback by design).
           ARGS+=(--source langtracer --suite "${SUITE:-baseline}")
           # Pin the LangSmith cohort: langtracer mode otherwise derives a
