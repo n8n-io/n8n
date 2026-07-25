@@ -150,6 +150,55 @@ describe('LocalLoadOptionsContext', () => {
 			});
 		});
 
+		it('should use draft nodes by default even when an activeVersion exists', async () => {
+			const workflowId = 'workflow-123';
+			const nodeParameters = { inputSource: 'workflowInputs' };
+			additionalData.currentNodeParameters = {
+				workflowId: { value: workflowId },
+			};
+
+			const draftNode = mock<INode>({
+				type: targetNodeType,
+				name: 'Draft Trigger',
+				parameters: nodeParameters,
+			});
+			const activeVersionNode = mock<INode>({
+				type: targetNodeType,
+				name: 'Active Version Trigger',
+			});
+			const dbWorkflow = mock<IWorkflowBase>({
+				id: workflowId,
+				name: 'Test Workflow',
+				nodes: [draftNode],
+				activeVersion: {
+					versionId: 'version-1',
+					workflowId,
+					nodes: [activeVersionNode],
+					connections: {},
+					authors: 'test',
+					name: 'Test Workflow',
+					description: null,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+			workflowLoader.get.mockResolvedValue(dbWorkflow);
+
+			const context = new LocalLoadOptionsContext(nodeTypes, additionalData, path, workflowLoader);
+
+			const result = await context.getWorkflowNodeContext(targetNodeType);
+
+			expect(result).toBeInstanceOf(LoadWorkflowNodeContext);
+			expect(Workflow).toHaveBeenCalledWith({
+				id: workflowId,
+				name: 'Test Workflow',
+				nodes: [draftNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+		});
+
 		it('should use activeVersion nodes when useActiveVersion is true', async () => {
 			const workflowId = 'workflow-123';
 			const nodeParameters = { inputSource: 'passthrough' };
