@@ -33,6 +33,7 @@ type Item = InsightsByWorkflow['data'][number];
 const sampleWorkflows: InsightsByWorkflow['data'] = Array.from({ length: 10 }, (_, i) => ({
 	workflowId: `sample-workflow-${i + 1}`,
 	workflowName: `Sample Workflow ${i + 1}`,
+	hasReadAccess: true,
 	total: Math.floor(Math.random() * 2000) + 500,
 	failed: Math.floor(Math.random() * 100) + 20,
 	failureRate: Math.random() * 100,
@@ -169,18 +170,25 @@ watch(sortBy, (newValue) => {
 		>
 			<template #[`item.workflowName`]="{ item }">
 				<component
-					:is="item.workflowId ? RouterLink : 'div'"
+					:is="item.workflowId && item.hasReadAccess ? RouterLink : 'span'"
+					:class="[$style.nameCell, { [$style.link]: item.workflowId && item.hasReadAccess }]"
 					v-bind="
-						item.workflowId
+						item.workflowId && item.hasReadAccess
 							? {
 									to: getWorkflowLink(item),
-									class: $style.link,
 									onClick: () => trackWorkflowClick(item),
 								}
 							: {}
 					"
 				>
-					<N8nTooltip :content="item.workflowName" placement="top">
+					<N8nTooltip
+						:content="
+							item.hasReadAccess
+								? item.workflowName
+								: i18n.baseText('insights.dashboard.table.noAccess')
+						"
+						placement="top"
+					>
 						<div :class="$style.ellipsis">
 							{{ item.workflowName }}
 						</div>
@@ -189,7 +197,7 @@ watch(sortBy, (newValue) => {
 			</template>
 			<template #[`item.timeSaved`]="{ item, value }">
 				<RouterLink
-					v-if="!item.timeSaved && item.workflowId"
+					v-if="!item.timeSaved && item.workflowId && item.hasReadAccess"
 					:to="getWorkflowLink(item, { settings: 'true' })"
 					:class="$style.link"
 				>
@@ -225,12 +233,10 @@ watch(sortBy, (newValue) => {
 	max-width: 100%;
 }
 
-.link {
+.nameCell {
 	display: flex;
 	height: 100%;
 	align-items: center;
-	color: var(--color--text);
-	text-decoration: underline;
 	max-width: 100%;
 	overflow: hidden;
 	min-width: 0;
@@ -238,6 +244,11 @@ watch(sortBy, (newValue) => {
 		min-width: 0;
 		overflow: hidden;
 	}
+}
+
+.link {
+	color: var(--color--text);
+	text-decoration: underline;
 	&:hover {
 		color: var(--color--text--shade-1);
 	}

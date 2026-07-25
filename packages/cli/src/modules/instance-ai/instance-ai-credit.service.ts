@@ -102,7 +102,7 @@ export class InstanceAiCreditService {
 		// later run can re-attempt, and reports the failure.
 		let result: Awaited<ReturnType<typeof this.claimTokens>>;
 		try {
-			result = await this.claimTokensWithRetry(user, dedupeId, usage);
+			result = await this.claimTokensWithRetry(user, threadId, dedupeId, usage);
 		} catch (error) {
 			this.claimedRunIds.delete(dedupeId); // allow retry on failure
 			this.telemetry.track('Builder credits claimed', {
@@ -202,12 +202,13 @@ export class InstanceAiCreditService {
 	}
 
 	/**
-	 * Fetch a fresh proxy auth token and return the client + Authorization headers.
-	 * Each caller gets a unique token (separate nanoid) for audit tracking.
+	 * Fetch a fresh Instance AI proxy auth token and return the client +
+	 * Authorization headers. Each caller gets a unique token (separate nanoid)
+	 * for audit tracking.
 	 */
 	private async getProxyAuth(user: User) {
 		const client = await this.aiService.getClient();
-		const token = await client.getBuilderApiProxyToken(
+		const token = await client.getInstanceAiApiProxyToken(
 			{ id: user.id },
 			{ userMessageId: nanoid() },
 		);
@@ -217,10 +218,22 @@ export class InstanceAiCreditService {
 		};
 	}
 
-	/** Single authoritative claim call against the proxy. */
-	private async claimTokens(user: User, dedupeId: string, usage: BuilderUsageItem[]) {
+	/**
+	 * Single authoritative claim call against the Instance AI pool. Forwards
+	 * `threadId` so the service can attach it to the claim telemetry.
+	 */
+	private async claimTokens(
+		user: User,
+		threadId: string,
+		dedupeId: string,
+		usage: BuilderUsageItem[],
+	) {
 		const { client, headers } = await this.getProxyAuth(user);
-		return await client.markBuilderTokenUsage({ id: user.id }, headers, { dedupeId, usage });
+		return await client.markInstanceAiTokenUsage({ id: user.id }, headers, {
+			dedupeId,
+			usage,
+			threadId,
+		});
 	}
 
 	/**
@@ -228,11 +241,16 @@ export class InstanceAiCreditService {
 	 * service dedupes replays by `dedupeId`. Rethrows the last error if every
 	 * attempt fails.
 	 */
-	private async claimTokensWithRetry(user: User, dedupeId: string, usage: BuilderUsageItem[]) {
+	private async claimTokensWithRetry(
+		user: User,
+		threadId: string,
+		dedupeId: string,
+		usage: BuilderUsageItem[],
+	) {
 		let lastError: unknown;
 		for (let attempt = 1; attempt <= InstanceAiCreditService.CLAIM_MAX_ATTEMPTS; attempt++) {
 			try {
-				return await this.claimTokens(user, dedupeId, usage);
+				return await this.claimTokens(user, threadId, dedupeId, usage);
 			} catch (error) {
 				lastError = error;
 				this.logger.debug('Instance AI credit claim attempt failed', {

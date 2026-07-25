@@ -2,7 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { ensureError, jsonParse, type PublicInstalledPackage } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { jsonParse, type PublicInstalledPackage } from 'n8n-workflow';
 
 import {
 	RESPONSE_ERROR_MESSAGES,

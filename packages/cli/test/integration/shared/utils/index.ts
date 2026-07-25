@@ -49,7 +49,7 @@ export async function initActiveWorkflowManager() {
 
 	mockInstance(Push);
 	mockInstance(ExecutionService);
-	const { ActiveWorkflowManager } = await import('@/active-workflow-manager');
+	const { ActiveWorkflowManager } = await import('@/active-workflow-manager.js');
 	const activeWorkflowManager = Container.get(ActiveWorkflowManager);
 	await activeWorkflowManager.init();
 	return activeWorkflowManager;
@@ -108,6 +108,20 @@ function buildDefaultNodes(): INodeTypeData {
 		},
 		'n8n-nodes-base.webhook': {
 			type: mock<INodeType>({ description: new WebhookNode().description } as never) as INodeType,
+			sourcePath: '',
+		},
+		// Minimal mocks for node types the package-import fixtures reference at
+		// typeVersion 1; import validation only needs name + version resolution.
+		'n8n-nodes-base.httpRequest': {
+			type: mock<INodeType>({
+				description: { name: 'n8n-nodes-base.httpRequest', version: 1 },
+			} as never) as INodeType,
+			sourcePath: '',
+		},
+		'n8n-nodes-base.dataTable': {
+			type: mock<INodeType>({
+				description: { name: 'n8n-nodes-base.dataTable', version: 1 },
+			} as never) as INodeType,
 			sourcePath: '',
 		},
 	};

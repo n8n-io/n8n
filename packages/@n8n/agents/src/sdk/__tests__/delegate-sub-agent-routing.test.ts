@@ -212,6 +212,28 @@ describe('delegate sub-agent routing', () => {
 		expect(runtimeConfigs[0]?.model).toBe('openai/gpt-4o-mini');
 	});
 
+	it("passes the parent's promptCaching config to the inline sub-agent runtime", async () => {
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Delegate when needed.')
+			.promptCaching({ openai: { promptCacheRetention: '24h' } })
+			.tool(createDelegateSubAgentTool())
+			.tool(makeTool('lookup'));
+
+		const runtimeConfig = await buildAgentConfig(agent);
+		const delegateTool = runtimeConfig.tools?.find(
+			(tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+		);
+		expect(delegateTool).toBeDefined();
+
+		await delegateTool?.handler?.(delegateInput, { runId: 'parent-run-1' });
+
+		expect(runtimeConfigs).toHaveLength(1);
+		expect(runtimeConfigs[0]?.promptCaching).toEqual({
+			openai: { promptCacheRetention: '24h' },
+		});
+	});
+
 	it('passes the parent execution counter to inline child generate options', async () => {
 		const executionCounter = {
 			incrementMessageCount: vi.fn(),

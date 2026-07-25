@@ -20,6 +20,7 @@ export type {
 } from './search';
 
 export {
+	getNodeTypeDefinition,
 	getNodeTypes,
 	isValidPathComponent,
 	validatePathWithinBase,

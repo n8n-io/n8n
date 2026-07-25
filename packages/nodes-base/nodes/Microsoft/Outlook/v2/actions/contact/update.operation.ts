@@ -39,6 +39,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		this,
 		'PATCH',
 		`/contacts/${contactId}`,
+		index,
 		body,
 	);
 

@@ -43,7 +43,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 	{
 		title: i18n.baseText('settings.users.table.header.user'),
 		key: 'name',
-		width: 400,
+		width: 300,
 		value(row) {
 			return {
 				...row,
@@ -55,6 +55,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 	{
 		title: i18n.baseText('settings.users.table.header.accountType'),
 		key: 'role',
+		width: 200,
 	},
 	{
 		title: i18n.baseText('settings.users.table.header.lastActive'),
@@ -168,7 +169,9 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 					:loading="props.updatingRoleUserId === item.id"
 					@update:role="onRoleChange"
 				/>
-				<N8nText v-else color="text-dark">{{ roles[item.role ?? ROLE.Default]?.label }}</N8nText>
+				<N8nText v-else color="text-dark" :class="$style.roleName">{{
+					roles[item.role ?? ROLE.Default]?.label
+				}}</N8nText>
 			</template>
 			<template #[`item.lastActiveAt`]="{ item }">
 				<SettingsUsersLastActiveCell :data="item" />
@@ -186,3 +189,13 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 		</N8nDataTableServer>
 	</div>
 </template>
+
+<style lang="scss" module>
+.roleName {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 200px;
+}
+</style>

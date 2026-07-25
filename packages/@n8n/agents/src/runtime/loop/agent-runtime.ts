@@ -8,9 +8,9 @@ import { GenerateSink } from './generate-sink';
 import type { RunOutputSink, RunServices } from './run-output-sink';
 import { RuntimeContextBuilder, getModelIdString } from './runtime-context';
 import {
-	accumulateUsage,
 	extractSettledToolCalls,
 	makeErrorStream,
+	mergeUsage,
 	normalizeInput,
 } from './runtime-helpers';
 import { StreamSink } from './stream-sink';
@@ -41,6 +41,7 @@ import type {
 	ExecutionOptions,
 	ModelConfig,
 	PersistedExecutionOptions,
+	PromptCachingConfig,
 } from '../../types/sdk/agent';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import type { JSONValue } from '../../types/utils/json';
@@ -50,6 +51,12 @@ import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner'
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import type { FetchFn } from '../model/model-factory';
+import {
+	applyRuntimeCacheBreakpoints,
+	buildInstructionPromptCacheOptions,
+	getEffectiveAnthropicCacheTtl,
+	mergeProviderOptions,
+} from '../model/prompt-cache';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
 import { generateRunId, RunStateManager } from '../state/run-state';
@@ -87,6 +94,7 @@ export interface AgentRuntimeConfig {
 	structuredOutput?: z.ZodType | JSONSchema7;
 	checkpointStorage?: 'memory' | CheckpointStore;
 	thinking?: ThinkingConfig;
+	promptCaching?: PromptCachingConfig;
 	eventBus?: AgentEventBus;
 	/** Number of tool calls to execute concurrently. Default `1` (sequential). */
 	toolCallConcurrency?: number;
@@ -175,7 +183,12 @@ export class AgentRuntime {
 		this.context = new RuntimeContextBuilder(config, this.deferredToolManager);
 		this.runState = config.runState ?? new RunStateManager(config.checkpointStorage);
 		this.eventBus = config.eventBus ?? new AgentEventBus();
-		this.memory = new MemoryOrchestrator(config, this.backgroundTasks, this.eventBus);
+		this.memory = new MemoryOrchestrator(
+			config,
+			this.backgroundTasks,
+			this.eventBus,
+			this.telemetry,
+		);
 		this.toolExecutor = new ToolCallExecutor({
 			telemetry: this.telemetry,
 			eventBus: this.eventBus,
@@ -246,7 +259,11 @@ export class AgentRuntime {
 			await this.telemetry.flush(options);
 			const isAbort = abortScope.isAborted;
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
-			if (!isAbort) {
+			if (isAbort) {
+				// Durably save the turn-so-far so a cancelled run still leaves its assistant
+				// work in memory (mirrors the suspend-time save). Best-effort.
+				if (list) await this.memory.persistTurnDelta(list, options);
+			} else {
 				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 			}
 			return {
@@ -382,6 +399,11 @@ export class AgentRuntime {
 
 			await this.memory.setListObservationLogMemory(list, state.persistence);
 
+			const claimed = await this.runState.claimResume(this.runId, state);
+			if (!claimed) {
+				throw new Error(`Run ${this.runId} is not suspended. Cannot resume.`);
+			}
+
 			if (method === 'generate') {
 				const sink = new GenerateSink(this.createRunServices());
 				const rawResult = await this.telemetry.withRootSpan(
@@ -431,6 +453,92 @@ export class AgentRuntime {
 					error,
 					getState: () => this.getState(),
 				};
+			}
+			return { runId: this.runId, stream: makeErrorStream(error), getState: () => this.getState() };
+		}
+	}
+
+	/**
+	 * Durable-log RFC (resilience phase): re-drive a run from a `running`-status
+	 * step checkpoint after a process crash. Unlike resume(), there is no
+	 * pending tool call to settle — the checkpoint was written at a step
+	 * boundary — so the loop re-enters directly at the next model call.
+	 * `contextNotes` are appended as user messages before the model call: the
+	 * host uses them to surface interrupted tool calls ("effect unverified —
+	 * verify before retrying") and undrained steering corrections recovered
+	 * from its durable event log. Tool calls are never re-executed mechanically.
+	 */
+	async crashResume(
+		options: { runId: string; contextNotes?: string[] } & ExecutionOptions,
+	): Promise<StreamResult> {
+		this.runId = options.runId;
+		const state = await this.runState.loadForCrashResume(this.runId);
+		if (!state) throw new Error(`No checkpoint found for runId: ${this.runId}`);
+		if (state.status !== 'running') {
+			throw new Error(
+				`Checkpoint for runId ${this.runId} has status '${state.status}' — crashResume only accepts step checkpoints; use resume() for suspended runs`,
+			);
+		}
+		// A claimed HITL resume also persists as 'running' but still carries its
+		// pending tool calls; re-driving it would skip settling them. Step
+		// checkpoints are always written with empty pendingToolCalls.
+		if (Object.keys(state.pendingToolCalls).length > 0) {
+			throw new Error(
+				`Checkpoint for runId ${this.runId} has pending tool calls — crashResume only accepts step checkpoints`,
+			);
+		}
+
+		const list = AgentMessageList.deserialize(state.messageList);
+		this.context.hydrateDeferredToolsFromList(list);
+
+		let abortScope: AgentAbortScope | undefined;
+		try {
+			const { runId: _rid, contextNotes, ...callerExecOptions } = options;
+			const persisted = state.executionOptions ?? {};
+			const persistedMaxIterations = persisted.maxIterations;
+			const callerMaxIterations = callerExecOptions.maxIterations;
+			if (
+				callerMaxIterations !== undefined &&
+				persistedMaxIterations !== undefined &&
+				callerMaxIterations < persistedMaxIterations
+			) {
+				throw new Error(
+					`Cannot decrease maxIterations when resuming a run. Expected >= ${persistedMaxIterations}, received ${callerMaxIterations}.`,
+				);
+			}
+			const mergedMaxIterations = callerMaxIterations ?? persistedMaxIterations;
+			const resumeOptions: RuntimeExecutionOptions = {
+				persistence: state.persistence,
+				...callerExecOptions,
+				...(mergedMaxIterations !== undefined ? { maxIterations: mergedMaxIterations } : {}),
+				...(state.iterationCount !== undefined ? { iterationCount: state.iterationCount } : {}),
+			};
+
+			for (const note of contextNotes ?? []) {
+				list.addInput([{ role: 'user', content: [{ type: 'text', text: note }] }]);
+			}
+
+			abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
+			const activeAbortScope = abortScope;
+
+			await this.ensureModelCost();
+			await this.memory.setListObservationLogMemory(list, state.persistence);
+
+			return {
+				runId: this.runId,
+				stream: this.startStream({
+					list,
+					options: resumeOptions,
+					abortScope: activeAbortScope,
+				}),
+				getState: () => this.getState(),
+			};
+		} catch (error) {
+			const isAbort = abortScope?.isAborted ?? false;
+			abortScope?.dispose();
+			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
+			if (!isAbort) {
+				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 			}
 			return { runId: this.runId, stream: makeErrorStream(error), getState: () => this.getState() };
 		}
@@ -591,6 +699,12 @@ export class AgentRuntime {
 			...options,
 			persistence: options?.persistence,
 		});
+		// Anthropic cache breakpoints are Anthropic-only and don't change across
+		// iterations, so compute once. Explicit .instructions() providerOptions win.
+		const instructionProviderOptions = mergeProviderOptions(
+			buildInstructionPromptCacheOptions(this.config.promptCaching, this.modelIdString),
+			this.config.instructionProviderOptions,
+		);
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 		let iterationCount = options?.iterationCount ?? 0;
 		let reachedStopCondition = false;
@@ -641,24 +755,41 @@ export class AgentRuntime {
 
 			this.eventBus.emit({ type: AgentEvent.TurnStart });
 
-			const { toolMap, aiTools, hasTools, effectiveInstructions } =
-				this.context.buildToolLoopContext(
-					staticLoopContext.aiProviderTools,
-					options?.persistence,
-					options?.executionCounter,
-				);
+			const {
+				toolMap,
+				aiTools,
+				hasTools,
+				effectiveInstructions,
+				volatileInstructions,
+				staticToolCacheName,
+			} = this.context.buildToolLoopContext(
+				staticLoopContext.aiProviderTools,
+				options?.persistence,
+				options?.executionCounter,
+			);
 			const { system, messages } = list.forLlm(
 				effectiveInstructions,
-				this.config.instructionProviderOptions,
+				instructionProviderOptions,
+				volatileInstructions,
 			);
+			// Runtime breakpoints (conversation history, static tools) are per-call
+			// only — never persisted back to the message list or tool set.
+			const cached = applyRuntimeCacheBreakpoints({
+				system,
+				messages,
+				aiTools,
+				promptCaching: this.config.promptCaching,
+				modelId: this.modelIdString,
+				staticToolCacheName,
+			});
 
 			const turn = await sink.callModel({
 				model: staticLoopContext.model,
 				system,
-				messages,
+				messages: cached.messages,
 				abortSignal: abortScope.signal,
 				hasTools,
-				aiTools,
+				aiTools: cached.aiTools,
 				providerOptions: staticLoopContext.providerOptions,
 				outputSpec: staticLoopContext.outputSpec,
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
@@ -666,7 +797,7 @@ export class AgentRuntime {
 
 			// Fold the just-finished turn's usage in before the abort check so a
 			// stop that lands right after the model call still bills its tokens.
-			totalUsage = accumulateUsage(totalUsage, turn.usage);
+			totalUsage = mergeUsage(totalUsage, turn.usage);
 			incrementTokenCountFromUsage(options?.executionCounter, turn.usage);
 			sink.reportUsage(totalUsage);
 
@@ -674,8 +805,15 @@ export class AgentRuntime {
 
 			lastFinishReason = turn.finishReason;
 			list.addResponse(turn.newMessages);
+			// The turn is now in the list; drop any retained streamed text so a later
+			// abort's snapshot can't duplicate it (a stop before this point recovers it).
+			sink.onTurnFolded?.();
 
 			if (turn.aiFinishReason !== 'tool-calls') {
+				// A rejected/filtered request (e.g. a provider prompt safety block)
+				// surfaces as an output-less turn instead of an SDK error — throw so
+				// the failure reaches the caller rather than ending the run silently.
+				if (turn.errorReason) throw new Error(turn.errorReason.message);
 				structuredOutput = turn.structuredOutput;
 				this.emitTurnEnd(turn.newMessages, extractSettledToolCalls(turn.newMessages));
 				reachedStopCondition = true;
@@ -710,6 +848,18 @@ export class AgentRuntime {
 
 			// Emit TurnEnd after all tool calls in this iteration are processed
 			this.emitTurnEnd(turn.newMessages, extractSettledToolCalls(list.responseDelta()));
+
+			// Step boundary reached with nothing pending: durably checkpoint so a
+			// crash before the next model call loses only the in-flight step.
+			if (options?.stepCheckpoints) {
+				await this.persistStepCheckpoint(
+					list,
+					totalUsage,
+					options,
+					maxIterations,
+					iterationCount + 1,
+				);
+			}
 		}
 
 		if (!reachedStopCondition && iterationCount >= maxIterations) {
@@ -743,6 +893,15 @@ export class AgentRuntime {
 				await this.runAgentLoop(ctx, sink);
 			},
 			getAbortFinish: () => sink?.getAbortFinish() ?? {},
+			// Durably save the turn-so-far when a streaming run is aborted, so a cancelled
+			// run still leaves its assistant work in memory. Fold in the text streamed for
+			// the in-flight turn first — its `newMessages` are only built once the stream
+			// completes, which the abort skipped, so it isn't in the list yet.
+			persistTurnOnAbort: async () => {
+				const partial = sink?.getAbortSnapshot();
+				if (partial) ctx.list.addResponse([partial]);
+				await this.memory.persistTurnDelta(ctx.list, ctx.options);
+			},
 			flushTelemetry: async (options) => await this.telemetry.flush(options),
 			cleanupRun: async () => await this.cleanupRun(),
 			updateState: (status) => this.updateState({ status }),
@@ -782,9 +941,41 @@ export class AgentRuntime {
 		};
 		await this.runState.suspend(this.runId, state);
 		this.updateState({ status: 'suspended', pendingToolCalls, messageList: list.serialize() });
-		await this.memory.persistTurnOnSuspend(list, options);
+		await this.memory.persistTurnDelta(list, options);
 
 		return this.runId;
+	}
+
+	/**
+	 * Durable-log RFC (resilience phase): per-step checkpoint — the completion
+	 * of the "step boundary = durability boundary" rule. Called at the end of
+	 * each loop iteration (after tool results are appended to `list`, before
+	 * the next model call), gated on the `stepCheckpoints` opt-in so the write
+	 * cost is only paid where crash-resume matters. Reuses the suspension state
+	 * shape; pendingToolCalls is empty at a step boundary.
+	 */
+	private async persistStepCheckpoint(
+		list: AgentMessageList,
+		totalUsage: TokenUsage | undefined,
+		options: RuntimeExecutionOptions | undefined,
+		maxIterations?: number,
+		iterationCount?: number,
+	): Promise<void> {
+		const resolvedMaxIterations = maxIterations ?? options?.maxIterations;
+		const resolvedIterationCount = iterationCount ?? options?.iterationCount;
+		const executionOptions: PersistedExecutionOptions | undefined =
+			resolvedMaxIterations !== undefined ? { maxIterations: resolvedMaxIterations } : undefined;
+
+		const state: SerializableAgentState = {
+			persistence: options?.persistence,
+			status: 'running',
+			messageList: list.serialize(),
+			pendingToolCalls: {},
+			usage: totalUsage,
+			executionOptions,
+			...(resolvedIterationCount !== undefined ? { iterationCount: resolvedIterationCount } : {}),
+		};
+		await this.runState.checkpointStep(this.runId, state);
 	}
 
 	/** Clean up stored state for a run when it finishes without re-suspending. */
@@ -824,7 +1015,11 @@ export class AgentRuntime {
 	/** Apply cost to a TokenUsage object using catalog pricing. */
 	private applyCost(usage: TokenUsage | undefined): TokenUsage | undefined {
 		if (!usage || !this.modelCost) return usage;
-		return { ...usage, cost: computeCost(usage, this.modelCost) };
+		const anthropicCacheTtl = getEffectiveAnthropicCacheTtl(
+			this.config.promptCaching,
+			this.modelIdString,
+		);
+		return { ...usage, cost: computeCost(usage, this.modelCost, { anthropicCacheTtl }) };
 	}
 
 	/**

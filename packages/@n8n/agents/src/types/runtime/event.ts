@@ -69,7 +69,7 @@ export type AgentEventData =
 				| 'reflector'
 				| 'episodic-memory'
 				| 'input-persistence'
-				| 'turn-suspend-persistence';
+				| 'turn-delta-persistence';
 	  };
 
 export type AgentEventHandler = (data: AgentEventData) => void;

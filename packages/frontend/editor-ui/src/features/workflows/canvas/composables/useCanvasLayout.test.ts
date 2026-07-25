@@ -16,7 +16,7 @@ import {
 } from '../canvas.types';
 import { useCanvasLayout, type CanvasLayoutResult } from './useCanvasLayout';
 import { STICKY_NODE_TYPE } from '@/app/constants';
-import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
+import { AGENT_NODE_SIZE, DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
 
 vi.mock('@vue-flow/core');
 
@@ -234,6 +234,32 @@ describe('useCanvasLayout', () => {
 		// Nodes should be positioned in a logical order (node1 -> node2 -> node3)
 		expect(node2.x).toBeGreaterThan(node1.x);
 		expect(node3.x).toBeGreaterThan(node2.x);
+	});
+
+	test('should use agent fallback dimensions and preserve center alignment when unmeasured', () => {
+		const nodes = [
+			createCanvasGraphNode({ id: 'node' }),
+			createCanvasGraphNode({
+				id: 'agent',
+				data: { render: { type: CanvasNodeRenderType.Agent, options: {} } },
+				dimensions: { width: 0, height: 0 },
+			}),
+		];
+
+		const { layout } = createTestSetup(nodes, [['node', 'agent']]);
+		const result = layout('all');
+		const node = result.nodes.find(({ id }) => id === 'node');
+		const agent = result.nodes.find(({ id }) => id === 'agent');
+
+		assert(node);
+		assert(agent);
+		expect(result.boundingBox).toEqual({
+			x: 0,
+			y: 0,
+			width: DEFAULT_NODE_SIZE[0] + GRID_SIZE * 8 + AGENT_NODE_SIZE[0],
+			height: AGENT_NODE_SIZE[1],
+		});
+		expect(node.y + DEFAULT_NODE_SIZE[1] / 2).toBe(agent.y + AGENT_NODE_SIZE[1] / 2);
 	});
 
 	test('should calculate dimensions for configurable nodes with missing dimensions', () => {

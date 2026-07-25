@@ -37,6 +37,7 @@ describe('UserService', () => {
 		listen_address: '::',
 		protocol: 'http',
 		editorBaseUrl: '',
+		webhookUrl: '',
 	});
 	const urlService = new UrlService(globalConfig);
 	const manager = mock<EntityManager>();

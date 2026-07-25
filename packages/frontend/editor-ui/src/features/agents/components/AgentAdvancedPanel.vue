@@ -12,7 +12,7 @@
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import {
-	N8nCollapsiblePanel,
+	N8nIcon,
 	N8nInputNumber2,
 	N8nSelect,
 	N8nSwitch2,
@@ -27,7 +27,9 @@ import type { AgentJsonConfig } from '../types';
 import {
 	PROVIDER_CAPABILITIES,
 	REASONING_EFFORT_OPTIONS,
+	ANTHROPIC_CACHE_TTL_OPTIONS,
 	type ReasoningEffort,
+	type AnthropicCacheTtl,
 } from '../provider-capabilities';
 import { parseProvider } from '../utils/model-string';
 import {
@@ -38,10 +40,16 @@ import {
 	type WebSearchMethod,
 	withWebSearchConfig,
 } from '../utils/nativeWebSearch';
+import shared from '../styles/agent-panel.module.scss';
 
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
-const DEFAULT_CAPABILITIES = { thinking: false, webSearch: false, providerTools: [] } as const;
+const DEFAULT_CAPABILITIES = {
+	thinking: false,
+	promptCaching: false,
+	webSearch: false,
+	providerTools: [],
+} as const;
 const ANTHROPIC_WEB_SEARCH_DEFAULT_MAX_USES = 5;
 const SEARCH_CONTEXT_SIZE_OPTIONS = ['low', 'medium', 'high'] as const;
 type SearchContextSize = (typeof SEARCH_CONTEXT_SIZE_OPTIONS)[number];
@@ -152,6 +160,7 @@ const MAX_ITERATIONS_MAX = 200;
 const MAX_ITERATIONS_DEFAULT = 30;
 const BUDGET_TOKENS_MIN = 1;
 const BUDGET_TOKENS_DEFAULT = 1024;
+const PROMPT_CACHING_TTL_DEFAULT: AnthropicCacheTtl = '1h';
 
 const {
 	modelValue: concurrencyModelValue,
@@ -190,6 +199,12 @@ const reasoningEffort = ref<ReasoningEffort>(
 	(thinkingCfg.value?.reasoningEffort as ReasoningEffort) ?? 'medium',
 );
 
+function anthropicTtlFrom(cfg: AgentJsonConfig | null): AnthropicCacheTtl {
+	return cfg?.config?.promptCaching?.anthropic?.ttl ?? PROMPT_CACHING_TTL_DEFAULT;
+}
+
+const anthropicTtl = ref<AnthropicCacheTtl>(anthropicTtlFrom(props.config));
+
 function syncWebSearchOptions(args: NativeWebSearchArgs) {
 	webSearchMaxUses.value =
 		typeof args.maxUses === 'number'
@@ -215,6 +230,7 @@ watch(
 		thinkingEnabled.value = t !== null;
 		budgetTokens.value = t?.budgetTokens ?? BUDGET_TOKENS_DEFAULT;
 		reasoningEffort.value = (t?.reasoningEffort as ReasoningEffort) ?? 'medium';
+		anthropicTtl.value = anthropicTtlFrom(cfg);
 		syncConcurrency(cfg);
 		syncMaxIterations(cfg);
 		webSearchEnabled.value = cfg.config?.webSearch?.enabled === true;
@@ -363,26 +379,51 @@ const thinkingDisabledReason = computed(() =>
 				},
 			}),
 );
+
+function onAnthropicTtlChange(value: AnthropicCacheTtl) {
+	anthropicTtl.value = value;
+	emit('update:config', {
+		config: {
+			...props.config?.config,
+			promptCaching: { enabled: true, anthropic: { ttl: value } },
+		},
+	});
+}
 </script>
 
 <template>
-	<N8nCollapsiblePanel
-		v-model="isExpanded"
+	<div
 		:class="$style.panel"
-		:disabled="!props.collapsible"
+		:data-state="isExpanded ? 'open' : 'closed'"
 		data-testid="agent-behavior-panel"
 	>
-		<template #title>
-			<N8nText tag="h3" :bold="true">{{ i18n.baseText('agents.builder.advanced.title') }}</N8nText>
-		</template>
-		<div :class="$style.content">
+		<button
+			type="button"
+			:class="[$style.header, { [$style.collapsibleHeader]: props.collapsible }]"
+			:aria-expanded="isExpanded"
+			:aria-disabled="!props.collapsible"
+			data-testid="agent-advanced-trigger"
+			@click="props.collapsible && (isExpanded = !isExpanded)"
+		>
+			<N8nText tag="h3" :bold="true" data-testid="agent-advanced-title">{{
+				i18n.baseText('agents.builder.advanced.title')
+			}}</N8nText>
+			<N8nIcon
+				v-if="props.collapsible"
+				icon="chevron-down"
+				size="small"
+				:class="$style.chevron"
+				data-testid="agent-advanced-chevron"
+			/>
+		</button>
+		<div v-show="isExpanded" :class="$style.content" data-testid="agent-advanced-content">
 			<div :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
-						<N8nText size="small" :bold="true">{{
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.webSearch.label')
 						}}</N8nText>
-						<N8nText size="xsmall" color="text-light">
+						<N8nText size="small" :class="shared.dataEntrySubLabel">
 							{{ i18n.baseText('agents.builder.advanced.webSearch.hint') }}
 						</N8nText>
 					</div>
@@ -424,10 +465,10 @@ const thinkingDisabledReason = computed(() =>
 						:class="$style.row"
 					>
 						<div :class="$style.rowLabel">
-							<N8nText size="small" :bold="true">{{
+							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 								i18n.baseText('agents.builder.advanced.webSearch.maxUses.label')
 							}}</N8nText>
-							<N8nText size="xsmall" color="text-light">
+							<N8nText size="small" :class="shared.dataEntrySubLabel">
 								{{ i18n.baseText('agents.builder.advanced.webSearch.maxUses.hint') }}
 							</N8nText>
 						</div>
@@ -452,10 +493,10 @@ const thinkingDisabledReason = computed(() =>
 						:class="$style.row"
 					>
 						<div :class="$style.rowLabel">
-							<N8nText size="small" :bold="true">{{
+							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 								i18n.baseText('agents.builder.advanced.webSearch.externalAccess.label')
 							}}</N8nText>
-							<N8nText size="xsmall" color="text-light">
+							<N8nText size="small" :class="shared.dataEntrySubLabel">
 								{{ i18n.baseText('agents.builder.advanced.webSearch.externalAccess.hint') }}
 							</N8nText>
 						</div>
@@ -477,7 +518,7 @@ const thinkingDisabledReason = computed(() =>
 						v-if="webSearchMethod === 'native' && capabilities.webSearch === 'openai.web_search'"
 						:class="$style.row"
 					>
-						<N8nText size="small" :bold="true">{{
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.webSearch.contextSize.label')
 						}}</N8nText>
 						<N8nSelect
@@ -504,10 +545,10 @@ const thinkingDisabledReason = computed(() =>
 
 					<div v-if="webSearchMethod !== 'native'" :class="$style.row">
 						<div :class="$style.rowLabel">
-							<N8nText size="small" :bold="true">{{
+							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 								i18n.baseText('agents.builder.advanced.webSearch.credential.label')
 							}}</N8nText>
-							<N8nText size="xsmall" color="text-light">
+							<N8nText size="small" :class="shared.dataEntrySubLabel">
 								{{ i18n.baseText('agents.builder.advanced.webSearch.credential.hint') }}
 							</N8nText>
 						</div>
@@ -533,10 +574,10 @@ const thinkingDisabledReason = computed(() =>
 			<div :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
-						<N8nText size="small" :bold="true">{{
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.thinking.label')
 						}}</N8nText>
-						<N8nText size="xsmall" color="text-light">
+						<N8nText size="small" :class="shared.dataEntrySubLabel">
 							{{ i18n.baseText('agents.builder.advanced.thinking.hint') }}
 						</N8nText>
 					</div>
@@ -562,10 +603,10 @@ const thinkingDisabledReason = computed(() =>
 				>
 					<div v-if="capabilities.thinking === 'budgetTokens'" :class="$style.row">
 						<div :class="$style.rowLabel">
-							<N8nText size="small" :bold="true">{{
+							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 								i18n.baseText('agents.builder.advanced.budgetTokens.label')
 							}}</N8nText>
-							<N8nText size="xsmall" color="text-light">
+							<N8nText size="small" :class="shared.dataEntrySubLabel">
 								{{ i18n.baseText('agents.builder.advanced.budgetTokens.hint') }}
 							</N8nText>
 						</div>
@@ -581,7 +622,7 @@ const thinkingDisabledReason = computed(() =>
 					</div>
 
 					<div v-if="capabilities.thinking === 'reasoningEffort'" :class="$style.row">
-						<N8nText size="small" :bold="true">{{
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.reasoningEffort.label')
 						}}</N8nText>
 						<N8nSelect
@@ -603,12 +644,40 @@ const thinkingDisabledReason = computed(() =>
 				</div>
 			</div>
 
+			<div v-if="capabilities.promptCaching === 'ttl'" :class="$style.settingGroup">
+				<div :class="$style.row">
+					<div :class="$style.rowLabel">
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
+							i18n.baseText('agents.builder.advanced.promptCachingTtl.label')
+						}}</N8nText>
+						<N8nText size="small" :class="shared.dataEntrySubLabel">
+							{{ i18n.baseText('agents.builder.advanced.promptCaching.hint') }}
+						</N8nText>
+					</div>
+					<N8nSelect
+						:model-value="anthropicTtl"
+						size="small"
+						:disabled="props.disabled"
+						:class="$style.shortInput"
+						data-testid="agent-prompt-caching-ttl-select"
+						@update:model-value="(v) => onAnthropicTtlChange(v as AnthropicCacheTtl)"
+					>
+						<N8nOption
+							v-for="opt in ANTHROPIC_CACHE_TTL_OPTIONS"
+							:key="opt"
+							:value="opt"
+							:label="opt"
+						/>
+					</N8nSelect>
+				</div>
+			</div>
+
 			<div :class="$style.row">
 				<div :class="$style.rowLabel">
-					<N8nText size="small" :bold="true">{{
+					<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 						i18n.baseText('agents.builder.advanced.concurrency.label')
 					}}</N8nText>
-					<N8nText size="xsmall" color="text-light">
+					<N8nText size="small" :class="shared.dataEntrySubLabel">
 						{{ i18n.baseText('agents.builder.advanced.concurrency.hint') }}
 					</N8nText>
 				</div>
@@ -626,10 +695,10 @@ const thinkingDisabledReason = computed(() =>
 
 			<div :class="$style.row">
 				<div :class="$style.rowLabel">
-					<N8nText size="small" :bold="true">{{
+					<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 						i18n.baseText('agents.builder.advanced.maxIterations.label')
 					}}</N8nText>
-					<N8nText size="xsmall" color="text-light">
+					<N8nText size="small" :class="shared.dataEntrySubLabel">
 						{{ i18n.baseText('agents.builder.advanced.maxIterations.hint') }}
 					</N8nText>
 				</div>
@@ -645,7 +714,7 @@ const thinkingDisabledReason = computed(() =>
 				/>
 			</div>
 		</div>
-	</N8nCollapsiblePanel>
+	</div>
 </template>
 
 <style module>
@@ -654,23 +723,44 @@ const thinkingDisabledReason = computed(() =>
 }
 
 .panel.panel {
-	border: 0;
-	border-radius: 0;
-	background-color: transparent;
-	scroll-margin-bottom: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
 }
 
-.panel.panel > :first-child {
-	padding: 0;
-	min-height: auto;
+.header {
+	all: unset;
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	width: 100%;
 }
 
-.panel.panel > :first-child h3 {
+.header h3 {
 	margin: 0;
 }
 
-.panel.panel > [data-state] > :first-child {
-	padding: var(--spacing--sm) 0 0;
+.collapsibleHeader {
+	cursor: pointer;
+
+	&:focus-visible {
+		outline: 2px solid var(--color--primary);
+		outline-offset: 2px;
+		border-radius: var(--radius--sm);
+	}
+}
+
+.chevron {
+	flex-shrink: 0;
+	color: var(--text-color--subtler);
+	transform: rotate(0deg);
+	transition: transform var(--animation--duration) var(--animation--easing);
+}
+
+.panel[data-state='open'] .chevron {
+	transform: rotate(180deg);
 }
 
 .content {

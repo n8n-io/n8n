@@ -92,9 +92,9 @@ export class TaskRunnerModule {
 	}
 
 	private async loadTaskRequester() {
-		const { TaskRequester } = await import('@/task-runners/task-managers/task-requester');
+		const { TaskRequester } = await import('@/task-runners/task-managers/task-requester.js');
 		const { LocalTaskRequester } = await import(
-			'@/task-runners/task-managers/local-task-requester'
+			'@/task-runners/task-managers/local-task-requester.js'
 		);
 		this.taskRequester = Container.get(LocalTaskRequester);
 		Container.set(TaskRequester, this.taskRequester);
@@ -103,7 +103,7 @@ export class TaskRunnerModule {
 	private async loadTaskBroker() {
 		// These are imported dynamically because we need to set the task manager
 		// instance before importing them
-		const { TaskBrokerServer } = await import('@/task-runners/task-broker/task-broker-server');
+		const { TaskBrokerServer } = await import('@/task-runners/task-broker/task-broker-server.js');
 		this.taskBrokerHttpServer = Container.get(TaskBrokerServer);
 		this.taskBrokerWsServer = Container.get(TaskBrokerWsServer);
 
@@ -114,13 +114,13 @@ export class TaskRunnerModule {
 		a.ok(this.taskBrokerWsServer, 'Task Runner WS Server not loaded');
 
 		const { InternalTaskRunnerDisconnectAnalyzer } = await import(
-			'@/task-runners/internal-task-runner-disconnect-analyzer'
+			'@/task-runners/internal-task-runner-disconnect-analyzer.js'
 		);
 		this.taskBrokerWsServer.setDisconnectAnalyzer(
 			Container.get(InternalTaskRunnerDisconnectAnalyzer),
 		);
 
-		const { JsTaskRunnerProcess } = await import('@/task-runners/task-runner-process-js');
+		const { JsTaskRunnerProcess } = await import('@/task-runners/task-runner-process-js.js');
 		this.jsRunnerProcess = Container.get(JsTaskRunnerProcess);
 		this.jsRunnerProcessRestartLoopDetector = new TaskRunnerProcessRestartLoopDetector(
 			this.jsRunnerProcess,
@@ -132,7 +132,7 @@ export class TaskRunnerModule {
 
 		await this.jsRunnerProcess.start();
 
-		const { PyTaskRunnerProcess } = await import('@/task-runners/task-runner-process-py');
+		const { PyTaskRunnerProcess } = await import('@/task-runners/task-runner-process-py.js');
 
 		const failureReason = await PyTaskRunnerProcess.checkRequirements();
 		if (failureReason) {

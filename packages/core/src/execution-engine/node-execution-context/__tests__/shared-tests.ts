@@ -14,12 +14,14 @@ import type {
 	RelatedExecution,
 	IExecuteWorkflowInfo,
 	IExecutionContext,
+	IRun,
 } from 'n8n-workflow';
 import { UnexpectedError, NodeHelpers, WAIT_INDEFINITELY } from 'n8n-workflow';
 import { captor, mock, type MockProxy } from 'vitest-mock-extended';
 
 import { BinaryDataService } from '@/binary-data/binary-data.service';
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
+import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
 import type { BaseExecuteContext } from '../base-execute-context';
 
@@ -129,6 +131,58 @@ export const describeCommonTests = (
 			fnCaptor.value();
 			expect(abortSignal.removeEventListener).toHaveBeenCalledWith('abort', fnCaptor);
 			expect(handler).toHaveBeenCalled();
+		});
+	});
+
+	describe('onExecutionFinish', () => {
+		const hooks = mock<ExecutionLifecycleHooks>();
+		const originalHooks = additionalData.hooks;
+
+		beforeEach(() => {
+			vi.mocked(hooks.addHandler).mockClear();
+			additionalData.hooks = hooks;
+		});
+
+		afterEach(() => {
+			additionalData.hooks = originalHooks;
+		});
+
+		const registeredHandler = () => {
+			const fnCaptor = captor<(run: IRun) => Promise<void>>();
+			expect(hooks.addHandler).toHaveBeenLastCalledWith('workflowExecuteAfter', fnCaptor);
+			return fnCaptor.value;
+		};
+
+		it('invokes the handler once the execution ends', async () => {
+			const handler = vi.fn();
+			context.onExecutionFinish(handler);
+
+			await registeredHandler()(mock<IRun>({ status: 'success' }));
+
+			expect(handler).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not invoke the handler when the execution pauses into the waiting state', async () => {
+			const handler = vi.fn();
+			context.onExecutionFinish(handler);
+
+			await registeredHandler()(mock<IRun>({ status: 'waiting' }));
+
+			expect(handler).not.toHaveBeenCalled();
+		});
+
+		it('contains handler errors so the lifecycle hook chain cannot fail', async () => {
+			const handler = vi.fn().mockRejectedValue(new Error('cleanup failed'));
+			context.onExecutionFinish(handler);
+
+			await expect(registeredHandler()(mock<IRun>({ status: 'success' }))).resolves.toBeUndefined();
+			expect(handler).toHaveBeenCalledTimes(1);
+		});
+
+		it('does nothing when lifecycle hooks are unavailable', () => {
+			additionalData.hooks = undefined;
+
+			expect(() => context.onExecutionFinish(vi.fn())).not.toThrow();
 		});
 	});
 
@@ -396,6 +450,68 @@ export const describeCommonTests = (
 				});
 
 				expect(childParentExecution.executionContext).toBeUndefined();
+			});
+		});
+
+		describe('sub-workflow dynamic credential reporting', () => {
+			beforeEach(() => {
+				// The shared mock keeps assigned flags across tests; reset like the engine loop does.
+				additionalData.currentNodeUsedDynamicCredentials = false;
+				additionalData.currentNodeAttemptedDynamicCredentials = false;
+				additionalData.dynamicCredentialsResolvedUserId = undefined;
+			});
+
+			it('forwards the sub-workflow dynamic-credential usage onto the parent execution', async () => {
+				additionalData.executeWorkflow.mockResolvedValue({
+					...executeWorkflowData,
+					usedDynamicCredentials: true,
+					dynamicCredentialsResolvedUserId: 'sub-user',
+				});
+
+				await context.executeWorkflow(workflowInfo);
+
+				expect(additionalData.currentNodeUsedDynamicCredentials).toBe(true);
+				expect(additionalData.dynamicCredentialsResolvedUserId).toBe('sub-user');
+			});
+
+			it('forwards the attempted flag onto the parent execution', async () => {
+				additionalData.executeWorkflow.mockResolvedValue({
+					...executeWorkflowData,
+					attemptedDynamicCredentials: true,
+				});
+
+				await context.executeWorkflow(workflowInfo);
+
+				expect(additionalData.currentNodeAttemptedDynamicCredentials).toBe(true);
+			});
+
+			it('forwards usage attached to a failed sub-workflow error and rethrows', async () => {
+				const error = Object.assign(new Error('sub-workflow failed'), {
+					dynamicCredentialsUsage: {
+						usedDynamicCredentials: true,
+						attemptedDynamicCredentials: true,
+						dynamicCredentialsResolvedUserId: 'sub-user',
+					},
+				});
+				additionalData.executeWorkflow.mockRejectedValue(error);
+
+				await expect(context.executeWorkflow(workflowInfo)).rejects.toThrow('sub-workflow failed');
+
+				expect(additionalData.currentNodeUsedDynamicCredentials).toBe(true);
+				expect(additionalData.currentNodeAttemptedDynamicCredentials).toBe(true);
+				expect(additionalData.dynamicCredentialsResolvedUserId).toBe('sub-user');
+				// The marker is transport-only and must not persist into the node's taskData.error.
+				expect('dynamicCredentialsUsage' in error).toBe(false);
+			});
+
+			it('rethrows a failed sub-workflow error without usage untouched', async () => {
+				additionalData.executeWorkflow.mockRejectedValue(new Error('sub-workflow failed'));
+
+				await expect(context.executeWorkflow(workflowInfo)).rejects.toThrow('sub-workflow failed');
+
+				expect(additionalData.currentNodeUsedDynamicCredentials).toBe(false);
+				expect(additionalData.currentNodeAttemptedDynamicCredentials).toBe(false);
+				expect(additionalData.dynamicCredentialsResolvedUserId).toBeUndefined();
 			});
 		});
 	});

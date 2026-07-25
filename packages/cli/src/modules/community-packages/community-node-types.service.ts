@@ -2,7 +2,8 @@ import type { CommunityNodeType } from '@n8n/api-types';
 import { inProduction, Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import cloneDeep from 'lodash/cloneDeep';
-import { ensureError, isToolType, NodeConnectionTypes } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { isToolType, NodeConnectionTypes } from 'n8n-workflow';
 
 import { buildStrapiUpdateQuery } from '@/utils/strapi-utils';
 

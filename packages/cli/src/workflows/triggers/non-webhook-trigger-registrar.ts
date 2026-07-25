@@ -18,6 +18,8 @@ import type {
 	WorkflowId,
 } from 'n8n-workflow';
 
+import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import type { TriggerFailureHandler } from '@/workflows/triggers/trigger-execution-context.factory';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
@@ -35,6 +37,8 @@ export interface PreparedNonWebhookTriggerRegistration {
 	additionalData: IWorkflowExecuteAdditionalData;
 	getTriggerFunctions: IGetExecuteTriggerFunctions;
 	getPollFunctions: IGetExecutePollFunctions;
+	/** This activation attempt's rule collection, committed or discarded per node by {@link NonWebhookTriggerRegistrar.register}. */
+	scheduleCollectionSession: ScheduleTriggerCollectionSession;
 }
 
 /**
@@ -46,6 +50,7 @@ export class NonWebhookTriggerRegistrar {
 		private readonly logger: Logger,
 		private readonly activeWorkflowTriggers: ActiveWorkflowTriggers,
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
+		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
 		private readonly tracing: Tracing,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
@@ -79,6 +84,8 @@ export class NonWebhookTriggerRegistrar {
 			onTriggerFailure,
 		}: NonWebhookTriggerRegistrationContext,
 	) {
+		const scheduleCollectionSession = this.scheduleTriggerJobRegistrar.createSession();
+
 		const getTriggerFunctions = this.triggerExecutionContextFactory.getExecuteTriggerFunctions(
 			dbWorkflow,
 			additionalData,
@@ -86,6 +93,7 @@ export class NonWebhookTriggerRegistrar {
 			activationMode,
 			resolveWorkflowData,
 			onTriggerFailure,
+			scheduleCollectionSession,
 		);
 
 		const getPollFunctions = this.triggerExecutionContextFactory.getExecutePollFunctions(
@@ -102,6 +110,7 @@ export class NonWebhookTriggerRegistrar {
 			additionalData,
 			getTriggerFunctions,
 			getPollFunctions,
+			scheduleCollectionSession,
 		};
 	}
 
@@ -116,6 +125,7 @@ export class NonWebhookTriggerRegistrar {
 			additionalData,
 			getTriggerFunctions,
 			getPollFunctions,
+			scheduleCollectionSession,
 		}: PreparedNonWebhookTriggerRegistration,
 		nodeId: INode['id'],
 	) {
@@ -131,16 +141,21 @@ export class NonWebhookTriggerRegistrar {
 				},
 			},
 			async (span) => {
-				await this.activeWorkflowTriggers.addTriggers(
-					workflow.id,
-					workflow,
-					[nodeId],
-					additionalData,
-					executionMode,
-					activationMode,
-					getTriggerFunctions,
-					getPollFunctions,
-				);
+				try {
+					await this.activeWorkflowTriggers.addTriggers(
+						workflow.id,
+						workflow,
+						[nodeId],
+						additionalData,
+						executionMode,
+						activationMode,
+						getTriggerFunctions,
+						getPollFunctions,
+					);
+					await scheduleCollectionSession.commit(workflow.id, nodeId);
+				} finally {
+					scheduleCollectionSession.discard(workflow.id, nodeId);
+				}
 
 				span.setStatus({ code: SpanStatus.ok });
 			},
@@ -162,6 +177,7 @@ export class NonWebhookTriggerRegistrar {
 			},
 			async (span) => {
 				await this.activeWorkflowTriggers.removeTriggers(workflowId, new Set([nodeId]));
+				await this.scheduleTriggerJobRegistrar.remove(workflowId, nodeId);
 
 				span.setStatus({ code: SpanStatus.ok });
 			},

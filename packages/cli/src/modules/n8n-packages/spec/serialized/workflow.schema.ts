@@ -13,7 +13,9 @@ const nodeSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
 	type: z.string().min(1),
-	typeVersion: z.number(),
+	// `finite()`: JSON like `1e999` parses to Infinity, which would serialize to
+	// `null` in a missing-node-type issue and break the OpenAPI number contract.
+	typeVersion: z.number().finite(),
 	position: z.tuple([z.number(), z.number()]),
 	parameters: z.record(z.unknown()),
 	credentials: z.record(credentialReferenceSchema).optional(),

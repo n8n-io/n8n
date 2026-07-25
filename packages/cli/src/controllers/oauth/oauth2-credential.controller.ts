@@ -1,14 +1,16 @@
 import { Logger } from '@n8n/backend-common';
 import type { ClientOAuth2Options, OAuth2CredentialData } from '@n8n/client-oauth2';
-import { ClientOAuth2 } from '@n8n/client-oauth2';
+import { ClientOAuth2, resolveClientAuthOptions } from '@n8n/client-oauth2';
 import { Get, RestController } from '@n8n/decorators';
 import { Response } from 'express';
 import omit from 'lodash/omit';
 import set from 'lodash/set';
 import split from 'lodash/split';
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
-import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { jsonParse } from 'n8n-workflow';
 
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
@@ -23,6 +25,7 @@ export class OAuth2CredentialController {
 		private readonly externalHooks: ExternalHooks,
 		private readonly oauthJweServiceProxy: OAuthJweServiceProxy,
 		private readonly eventService: EventService,
+		private readonly credentialsOverwrites: CredentialsOverwrites,
 	) {}
 
 	/** Get Authorization url */
@@ -55,7 +58,7 @@ export class OAuth2CredentialController {
 
 			const oAuthOptions = this.convertCredentialToOptions(oauthCredentials);
 
-			const isPkce = oauthCredentials.grantType === 'pkce';
+			const isPkce = oauthCredentials.grantType === 'pkce' || oauthCredentials.usePkce === true;
 			const isBodyAuth = oauthCredentials.authentication === 'body';
 
 			const body: Record<string, string> = { ...(oAuthOptions.body ?? {}) };
@@ -108,6 +111,11 @@ export class OAuth2CredentialController {
 				...tokenResponse,
 			} as ICredentialDataDecryptedObject;
 
+			const expiresInSeconds = Number(tokenResponse.expires_in);
+			if (Number.isFinite(expiresInSeconds) && expiresInSeconds > 0) {
+				oauthTokenData.n8n_expires_at = String(Date.now() + expiresInSeconds * 1000);
+			}
+
 			if (typeof state.resource === 'string') {
 				oauthTokenData.resource = state.resource;
 			}
@@ -148,6 +156,11 @@ export class OAuth2CredentialController {
 						user: { id: state.userId },
 						credentialType: credential.type,
 						credentialId: credential.id,
+						supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(credential.type),
+						usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(
+							credential.type,
+							decryptedDataOriginal,
+						),
 					});
 				}
 
@@ -155,10 +168,11 @@ export class OAuth2CredentialController {
 			}
 		} catch (e) {
 			const error = ensureError(e);
+			this.logger.error('OAuth2 callback failed', { error, cause: error.cause });
 			return this.oauthService.renderCallbackError(
 				res,
 				error.message,
-				'body' in error ? jsonStringify(error.body) : undefined,
+				this.oauthService.extractCallbackErrorReason(error),
 			);
 		}
 	}
@@ -166,7 +180,7 @@ export class OAuth2CredentialController {
 	private convertCredentialToOptions(credential: OAuth2CredentialData): ClientOAuth2Options {
 		const options: ClientOAuth2Options = {
 			clientId: credential.clientId,
-			clientSecret: credential.clientSecret ?? '',
+			...resolveClientAuthOptions(credential),
 			accessTokenUri: credential.accessTokenUrl ?? '',
 			authorizationUri: credential.authUrl ?? '',
 			authentication: credential.authentication ?? 'header',

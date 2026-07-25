@@ -27,6 +27,7 @@ import {
 	isHitlToolType,
 	getNodeOutputs,
 	nodeIssuesToString,
+	findDisplayedProperty,
 	isTriggerNodeType,
 } from '../src/node-helpers';
 import type { Workflow } from '../src/workflow';
@@ -3729,6 +3730,30 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(testData.output.noneDisplayedTrue.defaultsTrue);
 			});
 		}
+
+		test('does not treat showOnDeployment as a parameter dependency', () => {
+			const properties: INodeProperties[] = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [{ name: 'Read', value: 'read' }],
+					default: 'read',
+				},
+				{
+					displayName: 'Cloud notice',
+					name: 'cloudNotice',
+					type: 'notice',
+					default: '',
+					displayOptions: {
+						show: { operation: ['read'] },
+						showOnDeployment: 'cloud',
+					},
+				},
+			];
+
+			expect(() => getNodeParameters(properties, {}, true, false, null, null)).not.toThrow();
+		});
 	});
 
 	describe('isSubNodeType', () => {
@@ -4394,6 +4419,52 @@ describe('NodeHelpers', () => {
 					testDateTime: ['Parameter "Date Time" is required.'],
 				},
 			});
+		});
+
+		it('Should treat agentSelector like a resource locator when required and empty', () => {
+			const nodeProperties: INodeProperties = {
+				displayName: 'Agent',
+				name: 'agentId',
+				type: 'agentSelector',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{ displayName: 'From List', name: 'list', type: 'list' },
+					{ displayName: 'By ID', name: 'id', type: 'string' },
+				],
+			};
+			const nodeValues: INodeParameters = {
+				agentId: { __rl: true, mode: 'list', value: '' },
+			};
+
+			const result = getParameterIssues(nodeProperties, nodeValues, '', testNode, null);
+
+			expect(result).toEqual({
+				parameters: {
+					agentId: ['Parameter "Agent" is required.'],
+				},
+			});
+		});
+
+		it('Should not report an issue for a populated agentSelector', () => {
+			const nodeProperties: INodeProperties = {
+				displayName: 'Agent',
+				name: 'agentId',
+				type: 'agentSelector',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{ displayName: 'From List', name: 'list', type: 'list' },
+					{ displayName: 'By ID', name: 'id', type: 'string' },
+				],
+			};
+			const nodeValues: INodeParameters = {
+				agentId: { __rl: true, mode: 'list', value: 'agent-1' },
+			};
+
+			const result = getParameterIssues(nodeProperties, nodeValues, '', testNode, null);
+
+			expect(result).toEqual({});
 		});
 	});
 
@@ -6910,6 +6981,161 @@ describe('NodeHelpers', () => {
 		});
 	});
 
+	describe('findDisplayedProperty', () => {
+		const routingFor = (url: string) => ({
+			typeOptions: { loadOptions: { routing: { request: { url } } } },
+		});
+		const resolve = (
+			path: string,
+			properties: INodeProperties[],
+			nodeValues: INodeParameters = {},
+			node: Pick<INode, 'typeVersion'> | null = null,
+		) =>
+			findDisplayedProperty(path, properties, nodeValues, node, null) as
+				| INodeProperties
+				| undefined;
+		const routingUrl = (property: INodeProperties | undefined) =>
+			property?.typeOptions?.loadOptions?.routing?.request?.url;
+
+		it('resolves a top-level property', () => {
+			const properties = [
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: '',
+					...routingFor('/models'),
+				},
+			] as INodeProperties[];
+
+			expect(resolve('parameters.model', properties)?.name).toBe('model');
+		});
+
+		it('resolves a property nested in a collection', () => {
+			const properties = [
+				{
+					displayName: 'Options',
+					name: 'options',
+					type: 'collection',
+					default: {},
+					options: [
+						{
+							displayName: 'Model',
+							name: 'model',
+							type: 'options',
+							default: '',
+							...routingFor('/m'),
+						},
+					],
+				},
+			] as INodeProperties[];
+
+			expect(resolve('parameters.options.model', properties)?.name).toBe('model');
+		});
+
+		it('resolves a field in a fixedCollection section, ignoring the array index', () => {
+			const properties = [
+				{
+					displayName: 'Create',
+					name: 'createContactAttributes',
+					type: 'fixedCollection',
+					default: {},
+					options: [
+						{
+							displayName: 'Attr',
+							name: 'attributesValues',
+							values: [
+								{
+									displayName: 'Field',
+									name: 'fieldName',
+									type: 'options',
+									default: '',
+									...routingFor('/create'),
+								},
+							],
+						},
+					],
+				},
+			] as INodeProperties[];
+
+			expect(
+				routingUrl(
+					resolve('parameters.createContactAttributes.attributesValues[0].fieldName', properties),
+				),
+			).toBe('/create');
+		});
+
+		it('picks the displayed variant when two properties share a name (param-gated)', () => {
+			const properties = [
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: '',
+					displayOptions: { show: { modelSource: ['a'] } },
+					...routingFor('/a'),
+				},
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: '',
+					displayOptions: { show: { modelSource: ['b'] } },
+					...routingFor('/b'),
+				},
+			] as INodeProperties[];
+
+			expect(routingUrl(resolve('parameters.model', properties, { modelSource: 'a' }))).toBe('/a');
+			expect(routingUrl(resolve('parameters.model', properties, { modelSource: 'b' }))).toBe('/b');
+		});
+
+		it('picks the displayed variant by node type version', () => {
+			const properties = [
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: '',
+					displayOptions: { show: { '@version': [1] } },
+					...routingFor('/v1'),
+				},
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: '',
+					displayOptions: { show: { '@version': [2] } },
+					...routingFor('/v2'),
+				},
+			] as INodeProperties[];
+
+			expect(routingUrl(resolve('parameters.model', properties, {}, { typeVersion: 2 }))).toBe(
+				'/v2',
+			);
+		});
+
+		it('returns undefined for an unknown path', () => {
+			const properties = [
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: '',
+					...routingFor('/models'),
+				},
+			] as INodeProperties[];
+
+			expect(resolve('parameters.unknown', properties)).toBeUndefined();
+		});
+
+		it('returns undefined when a collection property has no options', () => {
+			const properties = [
+				{ displayName: 'Options', name: 'options', type: 'collection', default: {} },
+			] as INodeProperties[];
+
+			expect(resolve('parameters.options.model', properties)).toBeUndefined();
+		});
+	});
 	describe('isTriggerNodeType', () => {
 		// Membership in TRIGGER_NODE_TYPES: each legacy/special type is matched by
 		// identity, not by the generic "contains trigger" heuristic.

@@ -1364,4 +1364,46 @@ describe('WorkflowCard', () => {
 			});
 		});
 	});
+
+	describe('metadata divider spacing (ADO-5569)', () => {
+		// The metadata row (`.cardDescription`) lays its items out with
+		// `display: flex; gap`. The flex `gap` only produces even spacing on both
+		// sides of a "|" divider when the "|" is its OWN direct flex child. When a
+		// "|" is baked into the "Last updated ..." / "Created ..." text spans it
+		// gets a plain text space on one side and the flex `gap` on the other,
+		// which makes the spacing around the divider visually uneven.
+		it('should render each "|" divider as its own flex item so spacing is even on both sides', () => {
+			const data = createWorkflow({
+				scopes: ['workflow:update'],
+				settings: {
+					availableInMCP: true,
+				},
+			});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					data,
+					isMcpEnabled: true,
+					isMcpModuleActive: true,
+					canManageInstanceMcp: true,
+					isWorkflowCardMcpToggleEnabled: false,
+				},
+			});
+
+			// The MCP indicator is a direct child of the metadata flex row.
+			const metadataRow = getByTestId('workflow-card-mcp').parentElement;
+			expect(metadataRow).not.toBeNull();
+
+			// Sanity check: the row actually renders divider characters.
+			expect(metadataRow!.textContent).toContain('|');
+
+			// No content span may embed a "|"; every divider must be a dedicated
+			// direct child of the flex row so the `gap` applies symmetrically.
+			const embedsDivider = Array.from(metadataRow!.children).some((el) => {
+				const text = el.textContent ?? '';
+				return text.includes('|') && text.trim() !== '|';
+			});
+			expect(embedsDivider).toBe(false);
+		});
+	});
 });

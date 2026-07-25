@@ -3,9 +3,11 @@ import {
 	createRunExecutionData,
 	isTrimmedNodeExecutionData,
 } from 'n8n-workflow';
+import { CANCELLABLE_EXECUTION_STATUSES } from './executions.constants';
 import type {
 	ITaskData,
 	ExecutionStatus,
+	ExecutionSummary,
 	IDataObject,
 	INode,
 	IPinData,
@@ -44,6 +46,12 @@ import { h } from 'vue';
 import NodeExecutionErrorMessage from '@/app/components/NodeExecutionErrorMessage.vue';
 import { parse } from 'flatted';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+
+export function hasCancellableExecutions(executions: ExecutionSummary[]): boolean {
+	const cancellableStatuses = new Set<ExecutionStatus>(CANCELLABLE_EXECUTION_STATUSES);
+
+	return executions.some((execution) => cancellableStatuses.has(execution.status));
+}
 
 export function getDefaultExecutionFilters(): ExecutionFilterType {
 	return {

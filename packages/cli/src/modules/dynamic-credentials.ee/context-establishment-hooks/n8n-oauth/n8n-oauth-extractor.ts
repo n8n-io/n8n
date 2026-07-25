@@ -8,7 +8,8 @@ import {
 } from '@n8n/decorators';
 import { Cipher } from 'n8n-core';
 import { EncryptedMetadataSchema, N8NOAuth2ExtractorMetadataSchema } from './metadata';
-import { ensureError, jsonParse } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { jsonParse } from 'n8n-workflow';
 
 export const N8N_OAUTH_EXTRACTOR_NAME = 'N8nOAuthExtractor';
 

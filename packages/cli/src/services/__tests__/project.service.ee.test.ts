@@ -17,6 +17,7 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
+import type { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
@@ -34,6 +35,7 @@ describe('ProjectService', () => {
 	const moduleRegistry = mock<ModuleRegistry>({ entities: [] });
 	const agentRepository = mock<AgentRepository>();
 	const agentKnowledgeService = mock<AgentKnowledgeService>();
+	const agentExecutionService = mock<AgentExecutionService>();
 	const ownershipService = mock<OwnershipService>();
 	const logger = mock<Logger>();
 	const projectService = new ProjectService(
@@ -605,6 +607,10 @@ describe('ProjectService', () => {
 				configurable: true,
 				get: async () => agentKnowledgeService,
 			});
+			Object.defineProperty(projectService, 'agentExecutionService', {
+				configurable: true,
+				get: async () => agentExecutionService,
+			});
 			manager.findOne.mockResolvedValueOnce(project);
 			projectRepository.remove.mockResolvedValueOnce(project);
 			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
@@ -622,16 +628,65 @@ describe('ProjectService', () => {
 			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(
 				project.id,
 				'agent-1',
-				user.id,
 			);
 			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(
 				project.id,
 				'agent-2',
-				user.id,
 			);
 			expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[1]).toBeLessThan(
 				projectRepository.remove.mock.invocationCallOrder[0],
 			);
+			expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(project.id, 'agent-1');
+			expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(project.id, 'agent-2');
+			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-1');
+			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-2');
+		});
+
+		it('destroys agent sandboxes even when knowledge file cleanup fails', async () => {
+			const project = mock<Project>({ id: 'project-1', type: 'team' });
+			Object.defineProperty(projectService, 'agentRepository', {
+				configurable: true,
+				get: async () => agentRepository,
+			});
+			Object.defineProperty(projectService, 'agentKnowledgeService', {
+				configurable: true,
+				get: async () => agentKnowledgeService,
+			});
+			Object.defineProperty(projectService, 'agentExecutionService', {
+				configurable: true,
+				get: async () => agentExecutionService,
+			});
+			manager.findOne.mockResolvedValueOnce(project);
+			projectRepository.remove.mockResolvedValueOnce(project);
+			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
+			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
+			moduleRegistry.isActive.mockImplementation((moduleName) => moduleName === 'agents');
+			projectRelationRepository.findBy.mockResolvedValueOnce([]);
+			agentRepository.findByProjectId.mockResolvedValueOnce([{ id: 'agent-1' }] as never);
+			agentKnowledgeService.deleteAllFilesForAgent.mockRejectedValueOnce(new Error('storage down'));
+
+			await expect(projectService.deleteProject(user, project.id)).resolves.toBeUndefined();
+
+			expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(project.id, 'agent-1');
+			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-1');
+			expect(projectRepository.remove).toHaveBeenCalledWith(project);
+		});
+	});
+
+	describe('findExistingProjectIds', () => {
+		it('returns an empty set without querying when no ids are given', async () => {
+			const result = await projectService.findExistingProjectIds([]);
+
+			expect(result.size).toBe(0);
+			expect(projectRepository.find).not.toHaveBeenCalled();
+		});
+
+		it('returns the ids that exist in the database, unscoped by access', async () => {
+			projectRepository.find.mockResolvedValueOnce([mock<Project>({ id: 'proj-1' })]);
+
+			const result = await projectService.findExistingProjectIds(['proj-1', 'proj-missing']);
+
+			expect(result).toEqual(new Set(['proj-1']));
 		});
 	});
 });

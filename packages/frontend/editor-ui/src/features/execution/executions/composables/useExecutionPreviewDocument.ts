@@ -265,10 +265,11 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 			});
 		} catch (error) {
 			if (requestId === latestLoadRequestId) {
+				// No toast: the host renders the load error state, and WorkflowExecutionsView
+				// already toasts its own failed fetch of the same execution.
 				loadError.value = error instanceof Error ? error : new Error(String(error));
 				documentStore.value = null;
 				execution.value = null;
-				toast.showError(error, i18n.baseText('nodeView.showError.openExecution.title'));
 			}
 		} finally {
 			if (requestId === latestLoadRequestId) {

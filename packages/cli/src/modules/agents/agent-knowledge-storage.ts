@@ -1,29 +1,21 @@
 import type { AgentFileDto } from '@n8n/api-types';
+import type { SourceType } from '@n8n/db';
+import { FileLocation } from 'n8n-core';
 import path from 'node:path';
-import { OperationalError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import type { AgentFile } from './entities/agent-file.entity';
 
-export const AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH = '/home/daytona/workspace/agent-knowledge';
-export const KNOWLEDGE_FILES_DIR = `${AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH}/files`;
+// Local sandbox disk mirroring the DB-backed knowledge files, so repeated
+// reads/searches avoid re-fetching from BinaryDataService each time.
+export const KNOWLEDGE_MIRROR_DIR = '/home/daytona/knowledge-mirror';
+export const KNOWLEDGE_MIRROR_FILES_DIR = `${KNOWLEDGE_MIRROR_DIR}/files`;
+export const KNOWLEDGE_MIRROR_MANIFEST = `${KNOWLEDGE_MIRROR_DIR}/manifest`;
 
-const AGENT_KNOWLEDGE_VOLUME_SUBPATH_PREFIX = 'agent-knowledge';
-
-const DAYTONA_VOLUME_STORAGE_PREFIX = 'daytona-volume:';
-
-export interface AgentKnowledgeFileUpload {
-	/** Local temp file path when `string`; in-memory content when `Buffer`. */
-	source: Buffer | string;
-	destination: string;
-}
-
-export interface AgentKnowledgeFilesystem {
-	uploadFiles(files: AgentKnowledgeFileUpload[]): Promise<void>;
-	deleteFile(filePath: string, recursive?: boolean): Promise<void>;
-	ensureDir(dirPath: string): Promise<void>;
-}
+// Typed against `SourceType` so a drift from the `binary_data` schema enum
+// (see `packages/@n8n/db/src/entities/binary-data-file.ts`) is a compile error.
+const AGENT_FILE_SOURCE_TYPE: SourceType = 'agent_file';
 
 export function hasControlCharacter(value: string): boolean {
 	for (const character of value) {
@@ -41,12 +33,13 @@ function sanitizePathCharacter(character: string): string {
 	return character;
 }
 
-export function buildKnowledgeVolumeSubpath(
-	instanceId: string,
-	projectId: string,
-	agentId: string,
-): string {
-	return `${instanceId}/${AGENT_KNOWLEDGE_VOLUME_SUBPATH_PREFIX}/projects/${projectId}/agents/${agentId}/knowledge`;
+/** One directory per file, so deleting a single file never touches others. */
+export function buildKnowledgeFileLocation(agentId: string, fileId: string) {
+	return FileLocation.ofCustom({
+		pathSegments: ['agents', agentId, 'knowledge-files', fileId],
+		sourceType: AGENT_FILE_SOURCE_TYPE,
+		sourceId: fileId,
+	});
 }
 
 export function assertKnowledgePathSegment(segment: string, label: string): void {
@@ -72,17 +65,6 @@ function sanitizeStorageFileName(originalName: string): string {
 	return sanitized;
 }
 
-export function toVolumeStorageReference(storageFileName: string): string {
-	return `${DAYTONA_VOLUME_STORAGE_PREFIX}${storageFileName}`;
-}
-
-export function fromVolumeStorageReference(binaryDataId: string): string {
-	if (!binaryDataId.startsWith(DAYTONA_VOLUME_STORAGE_PREFIX)) {
-		throw new OperationalError('Unknown agent file storage reference');
-	}
-	return binaryDataId.slice(DAYTONA_VOLUME_STORAGE_PREFIX.length);
-}
-
 export function storageFileNameForOriginalFileName(originalFileName: string): string {
 	const sanitizedName = sanitizeStorageFileName(originalFileName);
 	const extension = path.extname(sanitizedName).toLowerCase();
@@ -102,12 +84,4 @@ export function toAgentFileDto(file: AgentFile): AgentFileDto {
 		fileSizeBytes: file.fileSizeBytes,
 		createdAt: file.createdAt.toISOString(),
 	};
-}
-
-export function isFilesystemNotFoundError(error: unknown): boolean {
-	return (
-		error instanceof Error &&
-		'statusCode' in error &&
-		(error as { statusCode: unknown }).statusCode === 404
-	);
 }

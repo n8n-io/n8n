@@ -28,9 +28,6 @@ vi.mock('@n8n/backend-common', async (importOriginal) => ({
 	safeJoinPath: vi.fn(),
 }));
 
-// Mock @n8n/db
-// Spread the real module so transitively-imported exports resolve (Vitest throws
-// on undeclared mock exports, unlike Jest), overriding only the repos under test.
 vi.mock('@n8n/db', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/db')>()),
 	CredentialsRepository: mock<CredentialsRepository>(),
@@ -118,6 +115,19 @@ describe('ImportService', () => {
 			mockUserRepository,
 			mockWorkflowService,
 		);
+	});
+
+	describe('initRecords', () => {
+		it('loads only credentials available to workflows', async () => {
+			vi.mocked(mockCredentialsRepository.find).mockResolvedValue([]);
+			vi.mocked(mockTagRepository.find).mockResolvedValue([]);
+
+			await importService.initRecords();
+
+			expect(mockCredentialsRepository.find).toHaveBeenCalledWith({
+				where: { usageScope: 'project' },
+			});
+		});
 	});
 
 	describe('isTableEmpty', () => {

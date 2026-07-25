@@ -13,6 +13,7 @@ import { McpRegistryServerRepository } from './mcp-registry-server.repository';
 import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
 import type { McpRegistryServerMetadata } from './mcp-registry-api.client';
 import { McpRegistryApiClient } from './mcp-registry-api.client';
+import { searchMcpRegistryServers, type McpRegistrySearchResult } from './mcp-registry-search';
 import type { McpRegistryServer } from './mcp-registry.types';
 import { toEntity, fromEntity } from './mcp-registry.types';
 import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform';
@@ -102,6 +103,15 @@ export class McpRegistryService {
 
 		const entities = await this.repository.findBy(slugs.map((slug) => ({ slug })));
 		return entities.map(fromEntity);
+	}
+
+	/**
+	 * Match active registry servers against free-text queries and return them in
+	 * the config-ready shape used by the agent-builder tools. Centralizes the
+	 * matching + mapping that used to be re-implemented per call site.
+	 */
+	async search(queries: string[]): Promise<McpRegistrySearchResult[]> {
+		return searchMcpRegistryServers(await this.getAll(), queries);
 	}
 
 	private startPeriodicRefresh(): void {

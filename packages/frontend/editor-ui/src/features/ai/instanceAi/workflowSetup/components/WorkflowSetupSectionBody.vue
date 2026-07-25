@@ -20,6 +20,8 @@ import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { useWorkflowSetupContext } from '../composables/useWorkflowSetupContext';
+import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
+import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 
 const props = defineProps<{
 	section: WorkflowSetupSection;
@@ -41,6 +43,10 @@ const selectedCredentialId = computed(() =>
 const selectedCredentials = computed<INodeUi['credentials']>(() => {
 	const type = credentialType.value;
 	if (!type) return undefined;
+
+	if (selectedCredentialId.value === AI_GATEWAY_MANAGED_TAG) {
+		return { [type]: { id: null, name: '', __aiGatewayManaged: true } };
+	}
 
 	const cred = selectedCredentialId.value
 		? credentialsStore.getCredentialById(selectedCredentialId.value)
@@ -70,12 +76,34 @@ const parameterDefinitions = computed<INodeProperties[]>(() => {
 	return nodeType.value.properties.filter((property) => names.has(property.name));
 });
 
-const revealedIssues = ref(new Set<string>());
+const assignmentCollectionEditableValueIndices = computed<Record<string, number[]>>(() => {
+	const result: Record<string, number[]> = {};
+	for (const parameter of parameterDefinitions.value) {
+		if (parameter.type !== 'assignmentCollection') continue;
+
+		const indices = new Set<number>();
+		const placeholderDetails = findPlaceholderDetails(
+			props.section.node.parameters[parameter.name],
+		);
+		for (const detail of placeholderDetails) {
+			if (detail.path[0] !== 'assignments' || detail.path[2] !== 'value') continue;
+			const match = /^\[(\d+)\]$/.exec(detail.path[1] ?? '');
+			if (match?.[1]) indices.add(Number.parseInt(match[1], 10));
+		}
+		result[parameter.name] = [...indices];
+	}
+	return result;
+});
+
+// Reveal validation for the setup-flagged parameters up front, so a required
+// field the builder left unset (e.g. an empty resource locator) shows why the
+// step is blocked instead of only surfacing after the user edits it.
+const revealedIssues = ref(new Set<string>(props.section.parameterNames));
 
 watch(
 	() => props.section.id,
 	() => {
-		revealedIssues.value = new Set();
+		revealedIssues.value = new Set(props.section.parameterNames);
 	},
 );
 
@@ -146,7 +174,11 @@ provide(WorkflowDocumentStoreKey, workflowDocumentStore);
 function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 	if (!credentialType.value) return;
 	const data = update.properties.credentials?.[credentialType.value];
-	ctx.setCredential(props.section, data?.id ?? null);
+	let credId: string | null = null;
+	if (data && typeof data !== 'string') {
+		credId = data.__aiGatewayManaged === true ? AI_GATEWAY_MANAGED_TAG : (data.id ?? null);
+	}
+	ctx.setCredential(props.section, credId);
 }
 
 function onParameterValueChanged(update: IUpdateInformation) {
@@ -203,6 +235,7 @@ function onParameterValueChanged(update: IUpdateInformation) {
 				:remove-first-parameter-margin="true"
 				:remove-last-parameter-margin="true"
 				:options-overrides="{ hideExpressionSelector: true, hideFocusPanelButton: true }"
+				:assignment-collection-editable-value-indices="assignmentCollectionEditableValueIndices"
 				@value-changed="onParameterValueChanged"
 				@parameter-blur="revealParameterIssues"
 			/>

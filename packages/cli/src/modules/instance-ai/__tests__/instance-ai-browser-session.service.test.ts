@@ -7,6 +7,7 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
 import type { UrlService } from '@/services/url.service';
+import type { Telemetry } from '@/telemetry';
 
 import {
 	CDP_TOKEN_HEADER,
@@ -106,6 +107,7 @@ describe('InstanceAiBrowserSessionService', () => {
 	const userRepository = mock<UserRepository>();
 	const credentialsService = mock<CredentialsService>();
 	const globalConfig = mock<GlobalConfig>({ port: 5678 });
+	const telemetry = mock<Telemetry>();
 	let service: InstanceAiBrowserSessionService;
 
 	beforeEach(() => {
@@ -120,6 +122,7 @@ describe('InstanceAiBrowserSessionService', () => {
 			userRepository,
 			credentialsService,
 			globalConfig,
+			telemetry,
 		);
 	});
 
@@ -269,6 +272,16 @@ describe('InstanceAiBrowserSessionService', () => {
 			const status = service.getStatus(USER_ID);
 			expect(status.connected).toBe(true);
 			expect(status.toolCategories).toEqual([{ name: 'browser', enabled: true }]);
+		});
+
+		it('tracks a connect event when the extension connects', async () => {
+			const { relay } = await createSession(service);
+
+			relay.onExtensionConnect?.();
+
+			expect(telemetry.track).toHaveBeenCalledWith('Instance AI Browser connected', {
+				user_id: USER_ID,
+			});
 		});
 	});
 });

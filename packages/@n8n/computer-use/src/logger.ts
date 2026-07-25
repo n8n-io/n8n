@@ -165,52 +165,93 @@ function permissionIcon(mode: PermissionMode): string {
 	return pc.dim('✗');
 }
 
-export function printModuleStatus(config: GatewayConfig): void {
+/**
+ * Print the module overview. Pass resolved `categories` (from the gateway) so
+ * runtime-gated modules (shell sandbox, native computer modules) reflect their
+ * actual state; without them it falls back to the permission modes alone.
+ */
+export function printModuleStatus(
+	config: GatewayConfig,
+	categories?: Array<{ name: string; enabled: boolean; writeAccess?: boolean }>,
+): void {
 	const { permissions } = config;
+	const isOn = (category: string, fallback: boolean) =>
+		categories ? (categories.find((c) => c.name === category)?.enabled ?? false) : fallback;
+	const icon = (mode: PermissionMode, enabled: boolean) =>
+		enabled ? permissionIcon(mode) : pc.dim('✗');
+	const row = (iconStr: string, label: string, value: string) =>
+		`  ${iconStr} ${label.padEnd(16)} ${value}`;
+	const disabled = pc.dim('(disabled)');
+	const dir = pc.dim(formatPath(config.filesystem.dir));
 
-	// Filesystem — read and write are separate permission groups
+	// Filesystem — permission-only, no runtime gating
 	const fsRead = permissions.filesystemRead ?? 'deny';
 	const fsWrite: PermissionMode =
 		fsRead === 'deny' ? 'deny' : (permissions.filesystemWrite ?? 'deny');
-	const dir = pc.dim(formatPath(config.filesystem.dir));
+	logger.info(row(permissionIcon(fsRead), 'Filesystem read', fsRead !== 'deny' ? dir : disabled), {
+		module: 'FilesystemRead',
+	});
 	logger.info(
-		`  ${permissionIcon(fsRead)} Filesystem read  ${fsRead !== 'deny' ? dir : pc.dim('(disabled)')}`,
-		{ module: 'FilesystemRead' },
-	);
-	logger.info(
-		`  ${permissionIcon(fsWrite)} Filesystem write ${fsWrite !== 'deny' ? dir : pc.dim('(disabled)')}`,
+		row(permissionIcon(fsWrite), 'Filesystem write', fsWrite !== 'deny' ? dir : disabled),
 		{ module: 'FilesystemWrite' },
 	);
 
-	// Shell
+	// Shell — gated by the OS sandbox at runtime
 	const shellMode = permissions.shell ?? 'deny';
-	const shellDetail =
-		shellMode === 'deny'
-			? pc.dim('(disabled)')
-			: pc.dim(`timeout: ${config.computer.shell.timeout / 1000}s`);
-	logger.info(`  ${permissionIcon(shellMode)} Shell         ${shellDetail}`, { module: 'Shell' });
-
-	// Computer — Screenshot + Mouse/keyboard share the same group
-	const computerMode = permissions.computer ?? 'deny';
-	const computerDisabled = pc.dim('(disabled)');
+	const shellOn = isOn('shell', shellMode !== 'deny');
 	logger.info(
-		`  ${permissionIcon(computerMode)} Screenshot    ${computerMode === 'deny' ? computerDisabled : ''}`,
-		{ module: 'Screenshot' },
+		row(
+			icon(shellMode, shellOn),
+			'Shell',
+			shellOn ? pc.dim(`timeout: ${config.computer.shell.timeout / 1000}s`) : disabled,
+		),
+		{ module: 'Shell' },
 	);
+
+	// Computer — Screenshot + Mouse/keyboard, gated by native modules at runtime
+	const computerMode = permissions.computer ?? 'deny';
+	const screenshotOn = isOn('screenshot', computerMode !== 'deny');
+	const mouseKeyboardOn = isOn('mouse-keyboard', computerMode !== 'deny');
+	logger.info(row(icon(computerMode, screenshotOn), 'Screenshot', screenshotOn ? '' : disabled), {
+		module: 'Screenshot',
+	});
 	logger.info(
-		`  ${permissionIcon(computerMode)} Mouse/keyboard ${computerMode === 'deny' ? computerDisabled : ''}`,
+		row(icon(computerMode, mouseKeyboardOn), 'Mouse/keyboard', mouseKeyboardOn ? '' : disabled),
 		{ module: 'MouseKeyboard' },
 	);
 
 	// Browser
 	const browserMode = permissions.browser ?? 'deny';
-	const browserDetail =
-		browserMode === 'deny' ? pc.dim('(disabled)') : pc.dim(config.browser.defaultBrowser);
-	logger.info(`  ${permissionIcon(browserMode)} Browser       ${browserDetail}`, {
-		module: 'Browser',
-	});
+	const browserOn = isOn('browser', browserMode !== 'deny');
+	logger.info(
+		row(
+			icon(browserMode, browserOn),
+			'Browser',
+			browserOn ? pc.dim(config.browser.defaultBrowser) : disabled,
+		),
+		{ module: 'Browser' },
+	);
 
 	logger.info('');
+}
+
+/**
+ * Report permitted modules that couldn't activate, with why + how to fix.
+ * Printed as visible lines (the logger only surfaces metadata at debug level);
+ * hints may be multi-line and each line is shown indented.
+ */
+export function printModuleDiagnostics(
+	modules: Array<{ name: string; reason: string; hint?: string }>,
+): void {
+	if (modules.length === 0) return;
+	for (const { name, reason, hint } of modules) {
+		logger.warn(`  ${pc.yellow('⚠')} ${name}`, { module: name, reason, ...(hint ? { hint } : {}) });
+		logger.warn(`      ${pc.dim(reason)}`);
+		for (const line of hint?.split('\n') ?? []) {
+			logger.warn(`      ${pc.dim(line)}`);
+		}
+	}
+	logger.warn('');
 }
 
 export function printToolList(tools: ToolDefinition[]): void {
@@ -243,7 +284,7 @@ export function printWaiting(): void {
 }
 
 export function printConnected(url: string): void {
-	logger.info(`  ${pc.green('●')} Connected to ${pc.bold(url)}`, { url });
+	logger.info(`\n  ${pc.green('●')} Connected to ${pc.bold(url)}\n`, { url });
 }
 
 export function printDisconnected(): void {
@@ -260,9 +301,9 @@ export function printAuthFailure(): void {
 }
 
 export function printInvalidToken(url: string): void {
-	logger.error(`  ${pc.red('✗')} Connection token invalid`);
+	logger.error(`\n  ${pc.red('✗')} Connection token invalid`);
 	logger.error(
-		`    ${pc.dim(`Go to ${url} and reconnect n8n Computer Use using a new connection token`)}`,
+		`    ${pc.dim(`Go to ${url} and reconnect n8n Computer Use using a new connection token`)}\n`,
 	);
 }
 

@@ -1,4 +1,4 @@
-import type { OrchestrationContext } from '../../../types';
+import type { ExecutionNodeError, OrchestrationContext } from '../../../types';
 import type { RemediationMetadata } from '../../../workflow-loop/workflow-loop-state';
 
 export interface VerifyToolInput {
@@ -40,6 +40,7 @@ export interface VerifyBuiltWorkflowOutput {
 	simulatedNodes?: Array<{ nodeName: string; reason: string }>;
 	simulationNote?: string;
 	lastNodeExecuted?: string;
+	nodeErrors?: ExecutionNodeError[];
 	nodesNotReached?: string[];
 	coverageNote?: string;
 	data?: Record<string, unknown>;

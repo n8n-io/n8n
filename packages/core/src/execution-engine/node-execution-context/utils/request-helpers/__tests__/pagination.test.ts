@@ -136,6 +136,59 @@ describe('applyPaginationRequestData', () => {
 		});
 	});
 
+	test('should not re-apply qs keys already embedded in the next-page URL', () => {
+		// When the next-page URL already carries a query param, keeping it in qs would
+		// make the HTTP client duplicate it, which some APIs reject.
+		const originalRequestOptions: IRequestOptions = {
+			uri: 'https://graph.microsoft.com/v1.0/users',
+			method: 'GET',
+			qs: { $select: 'id,displayName' },
+		};
+
+		const paginationRequestData: PaginationOptions['request'] = {
+			url: 'https://graph.microsoft.com/v1.0/users?$select=id,displayName&$skip=100',
+		};
+
+		const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
+
+		// The next-page URL already contains $select; the stale qs must not carry it over,
+		// otherwise it gets duplicated by the HTTP client.
+		expect(result.qs?.$select).toBeUndefined();
+	});
+
+	test('should keep the original qs when the next-page URL is relative/unparseable', () => {
+		// A relative next-page URL can't be parsed, so there are no embedded params
+		// to reconcile against - the original qs must be preserved untouched.
+		const originalRequestOptions: IRequestOptions = {
+			uri: 'https://graph.microsoft.com/v1.0/users',
+			method: 'GET',
+			qs: { $select: 'id,displayName' },
+		};
+
+		const paginationRequestData: PaginationOptions['request'] = {
+			url: 'users?$skip=100',
+		};
+
+		const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
+
+		expect(result.qs).toEqual({ $select: 'id,displayName' });
+	});
+
+	test('should not throw when there is no qs and the next-page URL carries params', () => {
+		const originalRequestOptions: IRequestOptions = {
+			uri: 'https://graph.microsoft.com/v1.0/users',
+			method: 'GET',
+		};
+
+		const paginationRequestData: PaginationOptions['request'] = {
+			url: 'https://graph.microsoft.com/v1.0/users?$select=id&$skip=100',
+		};
+
+		const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
+
+		expect(result.qs).toBeUndefined();
+	});
+
 	test('should handle edge cases with empty pagination data', () => {
 		const originalRequestOptions: IRequestOptions = {
 			uri: 'https://original.com/api',

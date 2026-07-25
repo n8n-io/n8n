@@ -9,13 +9,9 @@ import type { Project, WorkflowEntity, IWorkflowDb, SharedWorkflowRepository } f
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { In } from '@n8n/typeorm';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { DateTime } from 'luxon';
-import {
-	createDeferredPromise,
-	type ExecutionStatus,
-	type IRun,
-	type WorkflowExecuteMode,
-} from 'n8n-workflow';
+import { type ExecutionStatus, type IRun, type WorkflowExecuteMode } from 'n8n-workflow';
 import assert from 'node:assert';
 import { mock } from 'vitest-mock-extended';
 

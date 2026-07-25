@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -13,6 +13,7 @@ import type { PersistedWorkflowPlanItem } from './workflow-import.types';
 import { decideWorkflowPublishingAction } from './workflow-publishing-policy';
 import {
 	WorkflowPublishingPolicy,
+	type WorkflowPublishingBlockedReason,
 	type WorkflowPublishingContext,
 	type WorkflowPublishingOutcome,
 } from './workflow-publishing-policy.types';
@@ -40,13 +41,22 @@ export class WorkflowPublisher {
 	 * Fail the import before any writes when {@link WorkflowPublishingPolicy.PublishAll}
 	 * is selected and the actor lacks `workflow:publish`. Other policies skip this check;
 	 * publish permission is checked per workflow in workflowService
+	 *
+	 * `projectPendingCreation` lets this run before the target project exists: a project the
+	 * user is importing as new will be created with them as admin, so they can always publish
+	 * in it and there is nothing to look up yet.
 	 */
 	async assertCanPublish(
 		user: User,
 		projectId: string,
 		policy: WorkflowPublishingPolicy,
+		projectPendingCreation = false,
 	): Promise<void> {
 		if (policy !== WorkflowPublishingPolicy.PublishAll) {
+			return;
+		}
+
+		if (projectPendingCreation) {
 			return;
 		}
 
@@ -72,7 +82,7 @@ export class WorkflowPublisher {
 		item: PersistedWorkflowPlanItem,
 		workflow: WorkflowEntity,
 		policy: WorkflowPublishingPolicy,
-		publishBlockedSourceWorkflowIds?: ReadonlySet<string>,
+		publishBlocked: ReadonlyMap<string, WorkflowPublishingBlockedReason>,
 	): Promise<WorkflowPublishingResult> {
 		const action = decideWorkflowPublishingAction(policy, toPublishingContext(item, workflow));
 
@@ -80,7 +90,8 @@ export class WorkflowPublisher {
 			return { workflow, publishing: { state: 'unchanged' } };
 		}
 
-		if (action === 'publish' && publishBlockedSourceWorkflowIds?.has(item.sourceWorkflowId)) {
+		const blockedReason = publishBlocked.get(item.sourceWorkflowId);
+		if (action === 'publish' && blockedReason) {
 			// A prior published version may still be active after an update; report
 			// that the live publish state is unchanged rather than "blocked".
 			if (workflow.activeVersionId) {
@@ -88,14 +99,14 @@ export class WorkflowPublisher {
 					workflow,
 					publishing: {
 						state: 'unchanged',
-						skippedPublishReason: 'stub-credential',
+						skippedPublishReason: blockedReason,
 					},
 				};
 			}
 
 			return {
 				workflow,
-				publishing: { state: 'blocked', blockedReason: 'stub-credential' },
+				publishing: { state: 'blocked', blockedReason },
 			};
 		}
 

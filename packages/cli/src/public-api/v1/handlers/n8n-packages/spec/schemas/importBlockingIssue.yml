@@ -86,6 +86,71 @@ oneOf:
       name:
         type: string
   - type: object
+    description: >
+      A package folder that cannot be imported as-is. `kind` distinguishes the cause:
+      `parent-mismatch` (a folder matched by id sits under a different parent than the
+      package places it), `id-in-other-project` (the folder id already exists in a
+      different project — ids are globally unique), or `fail-policy` (the folder already
+      exists and `folderConflictPolicy` is `fail`).
+    required:
+      - type
+      - kind
+      - sourceFolderId
+      - name
+    properties:
+      type:
+        type: string
+        enum:
+          - folder-conflict
+      kind:
+        type: string
+        enum:
+          - parent-mismatch
+          - id-in-other-project
+          - fail-policy
+      sourceFolderId:
+        type: string
+      name:
+        type: string
+      existingParentFolderId:
+        type: string
+        nullable: true
+        description: "For `parent-mismatch`: the matched folder's current parent in the target."
+      expectedParentFolderId:
+        type: string
+        nullable: true
+        description: 'For `parent-mismatch`: the parent the package would place the folder under.'
+      existingProjectId:
+        type: string
+        nullable: true
+        description: 'For `id-in-other-project`: the project that already owns the id.'
+  - type: object
+    description: >
+      A node type — or a version of a node type — used by a package workflow that
+      this instance does not have, under `missingNodeTypeMode=fail`. One issue is
+      reported per missing `(nodeType, typeVersion)` pair.
+    required:
+      - type
+      - nodeType
+      - typeVersion
+      - usedByWorkflows
+    properties:
+      type:
+        type: string
+        enum:
+          - missing-node-type
+      nodeType:
+        type: string
+        description: Full node type name as used by the package's workflows.
+      typeVersion:
+        type: number
+        description: Node type version the package's workflows use.
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+        description: Package workflow ids that use this node type and version.
+  - type: object
     description: A credential reference that could not be resolved in the target project.
     required:
       - type
@@ -118,6 +183,26 @@ oneOf:
         type: string
         description: >
           For `type_mismatch`: the actual type of the resolved target credential.
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+  - type: object
+    description: >
+      A variable reference that could not be resolved in the target project or the
+      global scope, under `variableMissingMode=must-preexist`.
+    required:
+      - type
+      - name
+      - usedByWorkflows
+    properties:
+      type:
+        type: string
+        enum:
+          - variable-unresolved
+      name:
+        type: string
+        description: Requirement name with no match in the target project or global scope.
       usedByWorkflows:
         type: array
         items:

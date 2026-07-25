@@ -22,7 +22,12 @@ import type {
 	ILocalLoadOptionsFunctions,
 	IExecuteData,
 } from 'n8n-workflow';
-import { Workflow, UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
+import {
+	Workflow,
+	UnexpectedError,
+	createEmptyRunExecutionData,
+	findDisplayedProperty,
+} from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -143,6 +148,43 @@ export class DynamicNodeParametersService {
 		});
 	}
 
+	/**
+	 * Resolves the property's loadOptions routing from the node definition via the parameter path
+	 * (not from the request body), then runs it.
+	 */
+	async getOptionsViaLoadOptionsByPath(
+		path: string,
+		additionalData: IWorkflowExecuteAdditionalData,
+		nodeTypeAndVersion: INodeTypeNameVersion,
+		currentNodeParameters: INodeParameters,
+		credentials?: INodeCredentials,
+	): Promise<INodePropertyOptions[]> {
+		const nodeType = this.getNodeType(nodeTypeAndVersion);
+		const property = findDisplayedProperty(
+			path,
+			nodeType.description.properties,
+			currentNodeParameters,
+			{ typeVersion: nodeTypeAndVersion.version },
+			nodeType.description,
+		);
+		const routing =
+			property && 'typeOptions' in property
+				? property.typeOptions?.loadOptions?.routing
+				: undefined;
+		if (!routing) {
+			throw new BadRequestError(
+				`Node type "${nodeType.description.name}" has no loadOptions routing for parameter path "${path}"`,
+			);
+		}
+		return await this.getOptionsViaLoadOptions(
+			{ routing },
+			additionalData,
+			nodeTypeAndVersion,
+			currentNodeParameters,
+			credentials,
+		);
+	}
+
 	/** Returns the available options via a loadOptions param */
 	async getOptionsViaLoadOptions(
 		loadOptions: ILoadOptions,
@@ -153,12 +195,6 @@ export class DynamicNodeParametersService {
 	): Promise<INodePropertyOptions[]> {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		if (!nodeType.description.requestDefaults?.baseURL) {
-			// This is in here for now for security reasons.
-			// Background: As the full data for the request to make does get send, and the auth data
-			// will then be applied, would it be possible to retrieve that data like that. By at least
-			// requiring a baseURL to be defined can at least not a random server be called.
-			// In the future this code has to get improved that it does not use the request information from
-			// the request rather resolves it via the parameter-path and nodeType data.
 			throw new BadRequestError(
 				`Node type "${nodeType.description.name}" does not exist or does not have "requestDefaults.baseURL" defined!`,
 			);

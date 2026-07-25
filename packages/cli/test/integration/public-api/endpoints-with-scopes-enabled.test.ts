@@ -78,9 +78,9 @@ describe('Public API endpoints with API key scopes', () => {
 		// N8N_ENV_FEAT_TOKEN_EXCHANGE env flag. We register it directly here to test
 		// the auth layer in isolation without triggering the full module boot.
 		const { ScopedJwtStrategy } = await import(
-			'@/modules/token-exchange/services/scoped-jwt.strategy'
+			'@/modules/token-exchange/services/scoped-jwt.strategy.js'
 		);
-		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry');
+		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry.js');
 		Container.get(AuthStrategyRegistry).register(Container.get(ScopedJwtStrategy));
 	});
 

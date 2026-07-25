@@ -4,12 +4,23 @@ import { Container } from '@n8n/di';
 import { UserError, type IDataObject, type INodeProperties } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE } from '../constants';
+import {
+	buildHttpProviderErrorContext,
+	logSecretsProviderOperationFailure,
+	type LogContext,
+	type SecretsProviderOperationFailureParams,
+} from '../errors/secrets-provider-errors';
 import { SecretsProvider, type SecretsProviderSettings } from '../types';
 
 export type OnePasswordContext = SecretsProviderSettings<{
 	serverUrl: string;
 	accessToken: string;
 }>;
+
+type OnePasswordSettings = {
+	serverUrl: string;
+	accessToken: string;
+};
 
 export class OnePasswordProvider extends SecretsProvider {
 	name = 'onePassword';
@@ -45,7 +56,7 @@ export class OnePasswordProvider extends SecretsProvider {
 
 	private client: OPConnect;
 
-	private settings: { serverUrl: string; accessToken: string };
+	private settings: OnePasswordSettings;
 
 	constructor(private readonly logger = Container.get(Logger)) {
 		super();
@@ -53,51 +64,72 @@ export class OnePasswordProvider extends SecretsProvider {
 	}
 
 	async init(context: OnePasswordContext) {
-		const trimmedServerUrl = context.settings.serverUrl?.trim();
-		const trimmedAccessToken = context.settings.accessToken?.trim();
+		try {
+			const trimmedServerUrl = context.settings.serverUrl?.trim();
+			const trimmedAccessToken = context.settings.accessToken?.trim();
 
-		if (!trimmedServerUrl) {
-			throw new UserError('Connect Server URL is required.');
+			if (!trimmedServerUrl) {
+				throw new UserError('Connect Server URL is required.');
+			}
+
+			if (!trimmedAccessToken) {
+				throw new UserError('Access Token is required.');
+			}
+
+			this.settings = {
+				serverUrl: trimmedServerUrl,
+				accessToken: trimmedAccessToken,
+			};
+		} catch (error) {
+			this.logOperationFailure('Failed to initialize 1Password provider', {
+				operation: 'initialize',
+				error,
+			});
+			throw error;
 		}
-
-		if (!trimmedAccessToken) {
-			throw new UserError('Access Token is required.');
-		}
-
-		this.settings = {
-			serverUrl: trimmedServerUrl,
-			accessToken: trimmedAccessToken,
-		};
 	}
 
 	protected async doConnect(): Promise<void> {
-		const { OnePasswordConnect } = await import('@1password/connect');
+		try {
+			const { OnePasswordConnect } = await import('@1password/connect');
 
-		// TODO: the @1password/connect SDK exposes no transport/agent injection hook,
-		// so requests bypass @n8n/backend-network and the configured proxy and SSRF/DNS rules are not enforced here.
-		// Route through it once the SDK supports a custom client.
-		this.client = OnePasswordConnect({
-			serverURL: this.settings.serverUrl,
-			token: this.settings.accessToken,
-			keepAlive: true,
-		});
+			// TODO: the @1password/connect SDK exposes no transport/agent injection hook,
+			// so requests bypass @n8n/backend-network and the configured proxy and SSRF/DNS rules are not enforced here.
+			// Route through it once the SDK supports a custom client.
+			this.client = OnePasswordConnect({
+				serverURL: this.settings.serverUrl,
+				token: this.settings.accessToken,
+				keepAlive: true,
+			});
 
-		const [wasSuccessful, errorMessage] = await this.test();
+			await this.verifyConnection();
 
-		if (!wasSuccessful) {
-			throw new Error(errorMessage || 'Connection failed');
+			this.logger.debug('1Password provider connected');
+		} catch (error) {
+			this.logOperationFailure('Failed to connect 1Password provider', {
+				operation: 'connect',
+				error,
+				context: buildHttpProviderErrorContext(error),
+			});
+			throw error;
 		}
-
-		this.logger.debug('1Password provider connected');
 	}
 
 	async test(): Promise<[boolean] | [boolean, string]> {
 		if (!this.client) return [false, 'Client not initialized'];
 
 		try {
-			await this.client.listVaults();
+			await this.verifyConnection();
 			return [true];
 		} catch (error: unknown) {
+			this.logOperationFailure('1Password provider test failed', {
+				operation: 'test',
+				error,
+				context: {
+					...buildHttpProviderErrorContext(error),
+					endpoint: 'vaults',
+				},
+			});
 			return [false, error instanceof Error ? error.message : 'Unknown error'];
 		}
 	}
@@ -107,38 +139,50 @@ export class OnePasswordProvider extends SecretsProvider {
 	}
 
 	async update() {
-		const vaults = await this.client.listVaults();
+		try {
+			const vaults = await this.client.listVaults();
 
-		const secrets: Record<string, IDataObject> = {};
+			const secrets: Record<string, IDataObject> = {};
 
-		for (const vault of vaults) {
-			if (!vault.id) continue;
+			for (const vault of vaults) {
+				if (!vault.id) continue;
 
-			const items = await this.client.listItems(vault.id);
+				const items = await this.client.listItems(vault.id);
 
-			for (const item of items) {
-				if (!item.id || !item.title) continue;
+				for (const item of items) {
+					if (!item.id || !item.title) continue;
 
-				const fullItem = await this.client.getItemById(vault.id, item.id);
+					const fullItem = await this.client.getItemById(vault.id, item.id);
 
-				if (!fullItem.fields?.length) continue;
+					if (!fullItem.fields?.length) continue;
 
-				const fieldValues: IDataObject = {};
-				for (const field of fullItem.fields) {
-					if (field.label && field.value) {
-						fieldValues[field.label] = field.value;
+					const fieldValues: IDataObject = {};
+					for (const field of fullItem.fields) {
+						if (field.label && field.value) {
+							fieldValues[field.label] = field.value;
+						}
 					}
+
+					if (Object.keys(fieldValues).length === 0) continue;
+
+					secrets[item.title] = fieldValues;
 				}
-
-				if (Object.keys(fieldValues).length === 0) continue;
-
-				secrets[item.title] = fieldValues;
 			}
+
+			this.cachedSecrets = secrets;
+
+			this.logger.debug('1Password provider secrets updated');
+		} catch (error) {
+			this.logOperationFailure('Failed to update 1Password provider secrets', {
+				operation: 'update',
+				error,
+				context: {
+					...buildHttpProviderErrorContext(error),
+					endpoint: 'secrets',
+				},
+			});
+			throw error;
 		}
-
-		this.cachedSecrets = secrets;
-
-		this.logger.debug('1Password provider secrets updated');
 	}
 
 	getSecret(name: string): IDataObject {
@@ -151,5 +195,29 @@ export class OnePasswordProvider extends SecretsProvider {
 
 	getSecretNames() {
 		return Object.keys(this.cachedSecrets);
+	}
+
+	private async verifyConnection(): Promise<void> {
+		await this.client.listVaults();
+	}
+
+	private logOperationFailure(
+		message: string,
+		params: SecretsProviderOperationFailureParams,
+	): void {
+		const context: LogContext = { ...params.context };
+		if (this.settings?.serverUrl) {
+			context.serverUrl = this.settings.serverUrl;
+		}
+
+		logSecretsProviderOperationFailure({
+			logger: this.logger,
+			message,
+			providerName: this.name,
+			providerDisplayName: this.displayName,
+			operation: params.operation,
+			error: params.error,
+			context,
+		});
 	}
 }

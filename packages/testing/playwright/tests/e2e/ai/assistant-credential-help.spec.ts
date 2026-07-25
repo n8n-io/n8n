@@ -131,7 +131,11 @@ test.describe(
 								'authUrl',
 								'accessTokenUrl',
 								'clientId',
+								'authentication',
+								'clientCredentialType',
 								'clientSecret',
+								'privateKey',
+								'certificate',
 								'graphApiBaseUrl',
 							],
 						};

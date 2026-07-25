@@ -76,6 +76,10 @@ export const BUILTIN_PATTERNS: SecretPattern[] = [
 		slug: 'slack_webhook_url',
 		pattern: /https:\/\/hooks\.slack\.com\/services\/[A-Za-z0-9/_-]{30,}/,
 	},
+	{ slug: 'slack_app_level_token', pattern: /xapp-\d-[A-Z0-9]+-\d+-[a-z0-9]{32,}/ },
+	{ slug: 'slack_config_access_token', pattern: /xoxe\.xoxp-\d-[A-Za-z0-9-]{100,}/ },
+	{ slug: 'slack_config_refresh_token', pattern: /xoxe-\d-[A-Za-z0-9-]{100,}/ },
+	{ slug: 'slack_workflow_token', pattern: /xwfp-[A-Za-z0-9_-]{20,}/ },
 	// `discord_bot_token` must precede `jwt`: both shapes can match the same
 	// string (three base64url segments separated by `.`), and we want the more
 	// specific provider slug to win when both apply.

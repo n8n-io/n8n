@@ -2,6 +2,7 @@ import type {
 	ExecutionStatus,
 	IConnections,
 	INodeConnections,
+	INodeParameterResourceLocator,
 	IWorkflowGroup,
 	NodeConnectionType,
 } from 'n8n-workflow';
@@ -14,6 +15,7 @@ import type {
 	OnConnectStartParams,
 	ViewportTransform,
 } from '@vue-flow/core';
+import type { AgentCapabilitySummary } from '@n8n/api-types';
 import type { INodeUi } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ComputedRef, Ref } from 'vue';
@@ -54,6 +56,7 @@ export const enum CanvasNodeRenderType {
 	StickyNote = 'n8n-nodes-base.stickyNote',
 	AddNodes = 'n8n-nodes-internal.addNodes',
 	ChoicePrompt = 'n8n-nodes-internal.choicePrompt',
+	Agent = 'n8n-nodes-base.messageAnAgent',
 }
 
 export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
@@ -101,6 +104,24 @@ export type CanvasNodeStickyNoteRender = {
 	}>;
 };
 
+export type CanvasNodeAgentRender = {
+	type: CanvasNodeRenderType.Agent;
+	options: Partial<{
+		// The node's `agentId` resource-locator — referenced mode only (ignored
+		// in inline mode). Empty `value` => unconfigured card (shows the agent
+		// picker); set => rich card keyed by this agent.
+		agentId: INodeParameterResourceLocator;
+		// 'inline' renders the card from `inlineSummary` below instead of
+		// fetching the referenced agent's capability summary.
+		agentSource: 'referenced' | 'inline';
+		// Pre-projected summary of the node's embedded agent definition (when
+		// agentSource is 'inline'). The card renders only name/model/tools, so
+		// the full inline config (instructions, embedded tool parameters) stays
+		// out of the render options.
+		inlineSummary: AgentCapabilitySummary;
+	}>;
+};
+
 export interface CanvasNodeData {
 	id: INodeUi['id'];
 	name: INodeUi['name'];
@@ -131,7 +152,8 @@ export interface CanvasNodeData {
 		| CanvasNodeDefaultRender
 		| CanvasNodeStickyNoteRender
 		| CanvasNodeAddNodesRender
-		| CanvasNodeChoicePromptRender;
+		| CanvasNodeChoicePromptRender
+		| CanvasNodeAgentRender;
 }
 
 export type CanvasNode = Node<CanvasNodeData>;
@@ -184,6 +206,7 @@ export interface CanvasGroupNodeData {
 	nodesRect: { x: number; y: number; width: number; height: number };
 	isCollapsed: boolean;
 	executionStatus?: GroupExecutionStatus;
+	allNodesDisabled?: boolean;
 }
 
 export type CanvasGroupNode = Node<CanvasGroupNodeData>;

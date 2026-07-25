@@ -22,6 +22,7 @@ export const LOG_SCOPES = [
 	'task-runner-js',
 	'task-runner-py',
 	'insights',
+	'workflow-statistics',
 	'workflow-activation',
 	'ssh-client',
 	'data-table',
@@ -49,6 +50,7 @@ export const LOG_SCOPES = [
 	'workflow-publication',
 	'poll-trigger',
 	'metrics',
+	'scheduler',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

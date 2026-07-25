@@ -73,6 +73,19 @@ describe('ApiKeyScopes', () => {
 		expect(emitted('update:modelValue').at(-1)).toEqual([readOnlyScopes]);
 	});
 
+	it('selects read only when navigating with arrow keys inside a keydown.stop container', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: { modelValue: availableScopes, availableScopes },
+			attrs: { onKeydown: (event: KeyboardEvent) => event.stopPropagation() },
+		});
+
+		getByTestId('scopes-mode-all').focus();
+		await userEvent.keyboard('{ArrowDown}');
+
+		expect(getByTestId('scopes-mode-read-only')).toBeChecked();
+		expect(emitted('update:modelValue').at(-1)).toEqual([readOnlyScopes]);
+	});
+
 	it('clears the selection when switching to "Custom"', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: { modelValue: availableScopes, availableScopes },

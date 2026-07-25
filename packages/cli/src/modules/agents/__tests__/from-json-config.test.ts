@@ -10,6 +10,11 @@ import type { JSONSchema7 } from 'json-schema';
 
 import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
+import { buildVectorStore } from '../json-config/vector-store-factory';
+
+vi.mock('../json-config/vector-store-factory', () => ({
+	buildVectorStore: vi.fn(),
+}));
 
 type EmbeddingProviderOpts = {
 	apiKey?: string;
@@ -270,7 +275,7 @@ describe('buildFromJson()', () => {
 		const instructions = agent.snapshot.instructions ?? '';
 		expect(instructions).toBe('You are a test agent.');
 		expect(instructions).not.toContain('Extract decisions and action items.');
-		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(true);
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(false);
 		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
 	});
 
@@ -313,23 +318,15 @@ describe('buildFromJson()', () => {
 		expect(loadSkill?.description).not.toContain('Summarize notes');
 		expect(loadSkill?.systemInstruction).toBeUndefined();
 
-		await expect(loadSkill!.handler?.({ skillId: 'summarize_notes' }, {})).resolves.toMatchObject({
-			ok: true,
-			success: true,
-			skillId: 'summarize_notes',
-			name: 'Summarize notes',
-			content: 'Extract decisions and action items.',
-			instructions: 'Extract decisions and action items.',
-			linkedFiles: {
-				references: [
-					{
-						path: 'references/guide.md',
-						bytes: 7,
-						sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
-					},
-				],
-			},
-		});
+		const loaded = (await loadSkill!.handler?.({ skillId: 'summarize_notes' }, {})) as {
+			type?: string;
+			value?: Array<{ type: string; text: string }>;
+		};
+		expect(loaded.type).toBe('content');
+		const loadedText = (loaded.value ?? []).map((part) => part.text).join('\n');
+		expect(loadedText).toContain('[Skill: "Summarize notes"]');
+		expect(loadedText).toContain('Extract decisions and action items.');
+		expect(loadedText).toContain('filePath: "references/guide.md"');
 
 		await expect(
 			loadSkill!.handler?.({ skillId: 'summarize_notes', filePath: 'references/guide.md' }, {}),
@@ -341,15 +338,6 @@ describe('buildFromJson()', () => {
 			content: '# Guide',
 			bytes: 7,
 			sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
-		});
-
-		const listSkills = agent.declaredTools.find((t) => t.name === 'list_skills');
-		const listOutput = (await listSkills!.handler?.({}, {})) as {
-			skills: Array<Record<string, unknown>>;
-		};
-		expect(listOutput?.skills[0]).toMatchObject({
-			name: 'Summarize notes',
-			allowedTools: ['load_workflow'],
 		});
 
 		await expect(loadSkill!.handler?.({ skillId: 'unused_skill' }, {})).resolves.toMatchObject({
@@ -594,6 +582,79 @@ describe('buildFromJson()', () => {
 
 		expect(snap.thinking).not.toBeNull();
 		expect(snap.thinking).toMatchObject({ budgetTokens: 5000 });
+	});
+
+	it('sets prompt caching config with an Anthropic ttl', async () => {
+		const config = makeConfig({
+			config: { promptCaching: { enabled: true, anthropic: { ttl: '1h' } } },
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+		const snap: AgentSnapshot = agent.snapshot;
+
+		expect(snap.promptCaching).toEqual({ enabled: true, anthropic: { ttl: '1h' } });
+	});
+
+	it('sets prompt caching config when enabled with no ttl', async () => {
+		const config = makeConfig({
+			config: { promptCaching: { enabled: true } },
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+		const snap: AgentSnapshot = agent.snapshot;
+
+		expect(snap.promptCaching).toEqual({ enabled: true });
+	});
+
+	it('passes through promptCaching verbatim even if enabled=false was somehow saved (mapping is not a policy enforcer)', async () => {
+		const config = makeConfig({
+			config: { promptCaching: { enabled: false } },
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+		const snap: AgentSnapshot = agent.snapshot;
+
+		expect(snap.promptCaching).toEqual({ enabled: false });
+	});
+
+	it('does not set prompt caching config when omitted', async () => {
+		const config = makeConfig();
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(agent.snapshot.promptCaching).toBeNull();
 	});
 
 	it('builds native provider tools for an inline child model, not the parent model', () => {
@@ -1254,6 +1315,156 @@ describe('buildFromJson()', () => {
 			expect(buildMcpClient.mock.calls[0][0]).toMatchObject({ name: 'github' });
 			expect(buildMcpClient.mock.calls[1][0]).toMatchObject({ name: 'fs' });
 		});
+
+		it('skips a draft server with an empty url', async () => {
+			const buildMcpClient = vi.fn().mockImplementation(async () => ({ close: vi.fn() }) as never);
+			await buildFromJson(
+				makeConfig({
+					mcpServers: [
+						{ name: 'github', url: '', transport: 'streamableHttp', authentication: 'none' },
+					],
+				}),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					buildMcpClient,
+				},
+			);
+
+			expect(buildMcpClient).not.toHaveBeenCalled();
+		});
+
+		it('skips a draft server that requires a credential but was skipped', async () => {
+			const buildMcpClient = vi.fn().mockImplementation(async () => ({ close: vi.fn() }) as never);
+			await buildFromJson(
+				makeConfig({
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://api.example.test/mcp',
+							transport: 'streamableHttp',
+							authentication: 'bearerAuth',
+						},
+					],
+				}),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					buildMcpClient,
+				},
+			);
+
+			expect(buildMcpClient).not.toHaveBeenCalled();
+		});
+
+		it('connects a server that requires a credential once one is set', async () => {
+			const buildMcpClient = vi.fn().mockImplementation(async () => ({ close: vi.fn() }) as never);
+			await buildFromJson(
+				makeConfig({
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://api.example.test/mcp',
+							transport: 'streamableHttp',
+							authentication: 'bearerAuth',
+							credential: 'cred-1',
+						},
+					],
+				}),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					buildMcpClient,
+				},
+			);
+
+			expect(buildMcpClient).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	// -------------------------------------------------------------------------
+	// Vector stores
+	// -------------------------------------------------------------------------
+
+	describe('vectorStores', () => {
+		beforeEach(() => {
+			vi.mocked(buildVectorStore).mockReset();
+		});
+
+		const vectorStoreConfig = {
+			provider: 'qdrant' as const,
+			name: 'product_docs',
+			credential: 'qdrant-cred',
+			useWhen: 'Search product docs when the user asks about features.',
+			embedding: { model: 'openai/text-embedding-3-small', credential: 'embed-cred' },
+			collectionName: 'docs',
+		};
+
+		it('registers a search_<name> tool for a fully configured vector store', async () => {
+			const fakeTool = {
+				name: 'search_product_docs',
+				description: vectorStoreConfig.useWhen,
+				handler: vi.fn(),
+			};
+			const mockVectorStore = { asTool: vi.fn().mockReturnValue(fakeTool) };
+			vi.mocked(buildVectorStore).mockResolvedValue(mockVectorStore as never);
+
+			const agent = await buildFromJson(
+				makeConfig({ vectorStores: [vectorStoreConfig] }),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+				},
+			);
+
+			expect(buildVectorStore).toHaveBeenCalledWith(vectorStoreConfig, expect.anything());
+			expect(mockVectorStore.asTool).toHaveBeenCalledWith({
+				description: vectorStoreConfig.useWhen,
+			});
+			expect(agent.snapshot.tools.some((t) => t.name === 'search_product_docs')).toBe(true);
+		});
+
+		it.each([
+			['no credential', { ...vectorStoreConfig, credential: '' }],
+			[
+				'no embedding credential',
+				{ ...vectorStoreConfig, embedding: { ...vectorStoreConfig.embedding, credential: '' } },
+			],
+		])('skips a vector store entry with %s', async (_label, entry) => {
+			await buildFromJson(
+				makeConfig({ vectorStores: [entry] }),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+				},
+			);
+
+			expect(buildVectorStore).not.toHaveBeenCalled();
+		});
+
+		it('does nothing when vectorStores is absent', async () => {
+			await buildFromJson(
+				makeConfig(),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+				},
+			);
+
+			expect(buildVectorStore).not.toHaveBeenCalled();
+		});
 	});
 });
 
@@ -1599,11 +1810,20 @@ describe('AgentJsonConfigSchema', () => {
 			).toThrow();
 		});
 
-		it('rejects names with invalid characters', () => {
+		it('preserves human-readable MCP server names', () => {
+			const parsed = AgentJsonConfigSchema.parse({
+				...base,
+				mcpServers: [{ name: 'Linear production (EU)', url: 'https://a.example.test/mcp' }],
+			});
+
+			expect(parsed.mcpServers?.[0].name).toBe('Linear production (EU)');
+		});
+
+		it('rejects whitespace-only MCP server names', () => {
 			expect(() =>
 				AgentJsonConfigSchema.parse({
 					...base,
-					mcpServers: [{ name: 'has spaces', url: 'https://a.example.test/mcp' }],
+					mcpServers: [{ name: '   ', url: 'https://a.example.test/mcp' }],
 				}),
 			).toThrow();
 		});

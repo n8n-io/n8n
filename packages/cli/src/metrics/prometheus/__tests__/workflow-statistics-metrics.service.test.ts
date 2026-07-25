@@ -209,8 +209,8 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
 			expect(cacheService.set.mock.calls[0]).toEqual([
-				'metrics:workflow-statistics:shared',
-				expect.any(String),
+				'metrics:workflow-statistics:shared:v2',
+				MOCK_METRICS,
 				30 * 1000,
 			]);
 		});
@@ -228,7 +228,7 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 				totalWorkflows: 444,
 				totalCredentials: 333,
 			};
-			cacheService.get.mockResolvedValue(JSON.stringify(cachedMetrics));
+			cacheService.get.mockResolvedValue(cachedMetrics);
 
 			service.init();
 			const collectFn = extractGaugeCollect('production_executions');
@@ -240,37 +240,23 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 		});
 	});
 
-	describe('collect callbacks — in-memory cache deduplication', () => {
-		it('should call DB only once within 1 second for multiple collect calls', async () => {
-			vi.useFakeTimers();
+	describe('collect callbacks — concurrent scrape coalescing', () => {
+		it('should call DB only once when gauges collect concurrently', async () => {
 			service.init();
-			const collectFn = extractGaugeCollect('production_executions');
-			const mockGauge = { set: vi.fn() };
+			const collectA = extractGaugeCollect('production_executions');
+			const collectB = extractGaugeCollect('manual_executions');
+			const gaugeA = { set: vi.fn() };
+			const gaugeB = { set: vi.fn() };
 
-			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
-			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
+			await Promise.all([
+				collectA.call(gaugeA as unknown as promClient.Gauge<string>),
+				collectB.call(gaugeB as unknown as promClient.Gauge<string>),
+			]);
 
-			// DB should only be called once; second call uses in-memory cache
+			// Both gauges share one CachedMetricQuery; concurrent collects coalesce to a single DB read.
 			expect(licenseMetricsRepository.getLicenseRenewalMetrics.mock.calls).toHaveLength(1);
-		});
-
-		it('should call DB again after in-memory cache TTL (1 second) expires', async () => {
-			vi.useFakeTimers();
-			service.init();
-			const collectFn = extractGaugeCollect('production_executions');
-			const mockGauge = { set: vi.fn() };
-
-			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
-
-			// Advance past the 1 second in-memory TTL
-			vi.advanceTimersByTime(1100);
-
-			// Also need to reset external cache mock to undefined to trigger DB again
-			cacheService.get.mockResolvedValue(undefined);
-
-			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
-
-			expect(licenseMetricsRepository.getLicenseRenewalMetrics.mock.calls).toHaveLength(2);
+			expect(gaugeA.set).toHaveBeenCalledWith(100);
+			expect(gaugeB.set).toHaveBeenCalledWith(50);
 		});
 	});
 });

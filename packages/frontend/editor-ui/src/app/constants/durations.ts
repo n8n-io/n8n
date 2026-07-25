@@ -5,6 +5,13 @@
 export const LOGS_EXECUTION_DATA_THROTTLE_DURATION = 1000;
 export const CANVAS_EXECUTION_DATA_THROTTLE_DURATION = 500;
 
+/**
+ * Repeat group-header clicks within this window are treated as one
+ * double-click and toggle collapse only once. Kept well below the OS
+ * double-click interval (~500ms) so deliberate fast re-clicks still register.
+ */
+export const CANVAS_GROUP_HEADER_TOGGLE_SUPPRESS_DURATION = 250;
+
 export const EXPRESSION_EDITOR_PARSER_TIMEOUT = 15_000; // ms
 
 export const CLOUD_TRIAL_CHECK_INTERVAL = 5000;
@@ -26,15 +33,13 @@ export const SIX_MONTHS_IN_MILLIS = 6 * 30 * TIME.DAY;
 
 export const LOADING_ANIMATION_MIN_DURATION = 1000;
 
-/**
- * Get debounce time with optional multiplier from sessionStorage.
- * Reads 'N8N_DEBOUNCE_MULTIPLIER' - defaults to 1 if not set.
- */
-export function getDebounceTime(time: number): number {
-	const stored = sessionStorage.getItem('N8N_DEBOUNCE_MULTIPLIER');
-	const multiplier = stored !== null ? parseFloat(stored) : 1;
-	return Math.round(time * (Number.isNaN(multiplier) ? 1 : multiplier));
-}
+/** Hover-intent delays for reveal-on-hover affordances (e.g. a collapsed group's description). */
+export const HOVER_DELAY = {
+	/** Delay before a hovered affordance reveals its content. */
+	SHOW: 300,
+	/** Grace period before hiding, so the cursor can bridge onto the revealed content. */
+	LEAVE: 150,
+} as const;
 
 /** Centralized debounce timing constants. Use with getDebounceTime(). */
 export const DEBOUNCE_TIME = {

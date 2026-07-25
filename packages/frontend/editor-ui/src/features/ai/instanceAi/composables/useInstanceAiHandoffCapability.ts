@@ -15,7 +15,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
-import { INSTANCE_AI_VIEW } from '../constants';
+import { INSTANCE_AI_SOURCE_QUERY, INSTANCE_AI_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 import {
 	buildInstanceAiCredentialHandoffContext,
@@ -66,7 +66,9 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 	function persistedWorkflow(): { workflowId: string; projectId: string } | null {
 		const doc = documentStore.value;
 		const workflowId = doc.workflowId;
-		const projectId = doc.homeProject?.id;
+		// Sharing-unlicensed instances omit homeProject from the workflow response,
+		// so fall back to the personal project (the only project they have).
+		const projectId = doc.homeProject?.id ?? projectsStore.personalProject?.id;
 		const isPersisted = !!workflowId && !!workflowsListStore.getWorkflowById(workflowId)?.id;
 		return isPersisted && workflowId && projectId ? { workflowId, projectId } : null;
 	}
@@ -117,6 +119,14 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 		await startThread(
 			projectId,
 			openingMessage,
+			{
+				source,
+				origin: 'internal',
+				sourceContext: {
+					workflowId,
+					...(executionId ? { executionId } : {}),
+				},
+			},
 			[attachment],
 			(threadId) => {
 				instanceAiStore.getOrCreateRuntime(threadId, projectId).setPendingHandoff({
@@ -144,7 +154,12 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 				workflow_id: null,
 				execution_id: null,
 			});
-			await router.push({ name: INSTANCE_AI_VIEW });
+			// Carry source into EmptyView so the eventual syncThread attributes the
+			// canvas entry point instead of hardcoding assistant_page.
+			await router.push({
+				name: INSTANCE_AI_VIEW,
+				query: { [INSTANCE_AI_SOURCE_QUERY]: source },
+			});
 			return;
 		}
 		await handOffWorkflow('', source, persisted.workflowId, persisted.projectId);
@@ -159,10 +174,13 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 		// credential form open beside the chat. Scope to the editor's project, else personal.
 		const projectId = persistedWorkflow()?.projectId ?? projectsStore.personalProject?.id;
 		if (!projectId) {
-			await router.push({ name: INSTANCE_AI_VIEW });
+			await router.push({
+				name: INSTANCE_AI_VIEW,
+				query: { [INSTANCE_AI_SOURCE_QUERY]: source },
+			});
 			return false;
 		}
-		await startThread(projectId, question, undefined, undefined, {
+		await startThread(projectId, question, { source, origin: 'internal' }, undefined, undefined, {
 			newTab: true,
 			context: buildInstanceAiCredentialHandoffContext(credential),
 		});

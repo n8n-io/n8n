@@ -19,6 +19,7 @@ import type {
 	IExecutionContext,
 	INodeExecutionData,
 	IRun,
+	IRunExecutionData,
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 	CloseFunction,
@@ -28,18 +29,23 @@ import {
 	BINARY_ENCODING,
 	ManualExecutionCancelledError,
 	NodeConnectionTypes,
+	NodeOperationError,
 	Workflow,
 	UnexpectedError,
 	createRunExecutionData,
+	runDataAttemptedDynamicCredentials,
+	runDataUsedDynamicCredentials,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
 import { EventService } from '@/events/event.service';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { prepareExecutionDataForDbUpdate } from '@/execution-lifecycle/shared/shared-hook-functions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
+import { withExpressionIsolate } from '@/utils';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 import type {
@@ -178,6 +184,7 @@ export class JobProcessor {
 				retryOf: execution.retryOf,
 				pushRef,
 				userId: execution.data.manualData?.userId,
+				source: execution.data.manualData?.source,
 			},
 			executionId,
 		);
@@ -350,15 +357,23 @@ export class JobProcessor {
 
 			let toolResult: unknown;
 			try {
-				toolResult = await this.invokeTool(
+				// The execution's isolate window closed when the run finished, but the
+				// tool's parameters may still contain expressions (e.g. $fromAI), so
+				// the tool call needs its own isolate window.
+				toolResult = await withExpressionIsolate(
 					workflow,
-					sourceNodeName,
-					toolArgs,
-					additionalData,
-					// The execution context (e.g. the OAuth identity for private credentials)
-					// is established on the main and loaded with the execution here; pass it
-					// through so the tool node can resolve dynamic credentials on the worker.
-					execution.data?.executionData?.runtimeData,
+					async () =>
+						await this.invokeTool(
+							workflow,
+							sourceNodeName,
+							toolArgs,
+							additionalData,
+							run.data,
+							// The execution context (e.g. the OAuth identity for private credentials)
+							// is established on the main and loaded with the execution here; pass it
+							// through so the tool node can resolve dynamic credentials on the worker.
+							execution.data?.executionData?.runtimeData,
+						),
 				);
 			} catch (error) {
 				this.logger.error('Tool node execution failed for MCP Trigger', {
@@ -373,6 +388,36 @@ export class JobProcessor {
 							? { message: error.message, name: error.name }
 							: { message: String(error) },
 				};
+			}
+
+			// Persist the tool call's run data, since the save hook fired before it ran.
+			try {
+				const toolRunData = run.data.resultData?.runData;
+				await this.executionPersistence.updateExistingExecution(
+					executionId,
+					{
+						...prepareExecutionDataForDbUpdate({
+							runData: run,
+							workflowData: execution.workflowData,
+							workflowStatusFinal: run.status,
+							retryOf: execution.retryOf ?? undefined,
+						}),
+						// The save hook computed this marker before the tool ran, so recompute it now
+						// that the tool task may carry dynamic-credential flags.
+						usedPrivateCredentials:
+							runDataUsedDynamicCredentials(toolRunData) ||
+							runDataAttemptedDynamicCredentials(toolRunData),
+					},
+					// A cancel racing the tool call must keep its status; skip the tool-run persist
+					// entirely rather than write over `canceled` (matches the completion hook).
+					{ requireNotCanceled: true },
+				);
+			} catch (error) {
+				this.logger.error('Failed to persist tool call run data for MCP Trigger', {
+					executionId,
+					sourceNodeName,
+					error: error instanceof Error ? error.message : String(error),
+				});
 			}
 
 			const mcpMsg: McpResponseMessage = {
@@ -475,6 +520,7 @@ export class JobProcessor {
 		>
 			? T
 			: never,
+		runExecutionData: IRunExecutionData,
 		executionContext?: IExecutionContext,
 	): Promise<unknown> {
 		const toolNode = workflow.getNode(sourceNodeName);
@@ -498,12 +544,15 @@ export class JobProcessor {
 			],
 		];
 
-		// Create minimal run execution data, carrying the established execution
-		// context so the tool node's `getExecutionContext()` exposes it to dynamic
-		// credential resolution (otherwise resolution fails with
-		// MissingExecutionContextError for private credentials in queue mode).
-		const runExecutionData = createRunExecutionData({});
-		if (executionContext && runExecutionData.executionData) {
+		// `executionData` must exist for output recording; init it if the run lacks it.
+		runExecutionData.executionData ??= {
+			contextData: {},
+			nodeExecutionStack: [],
+			metadata: {},
+			waitingExecution: {},
+			waitingExecutionSource: {},
+		};
+		if (executionContext) {
 			runExecutionData.executionData.runtimeData = executionContext;
 		}
 
@@ -518,6 +567,11 @@ export class JobProcessor {
 
 		const closeFunctions: CloseFunction[] = [];
 
+		// Parent = the node the tool feeds (the MCP trigger), so the recorded run
+		// data's `source` points back at it, as in direct mode.
+		const [parentNodeName] = workflow.getChildNodes(sourceNodeName, NodeConnectionTypes.AiTool, 1);
+		const parentNode = parentNodeName ? (workflow.getNode(parentNodeName) ?? undefined) : undefined;
+
 		// Create SupplyDataContext for the tool node
 		const context = new SupplyDataContext(
 			workflow,
@@ -531,6 +585,8 @@ export class JobProcessor {
 			NodeConnectionTypes.AiTool,
 			executeData,
 			closeFunctions,
+			undefined,
+			parentNode,
 		);
 
 		try {
@@ -550,7 +606,21 @@ export class JobProcessor {
 					[{ json: validatedToolArgs as INodeExecutionData['json'] }],
 				]);
 
-				const result = await nodeType.execute.call(context as unknown as IExecuteFunctions);
+				let result: Awaited<ReturnType<NonNullable<typeof nodeType.execute>>>;
+				try {
+					result = await nodeType.execute.call(context as unknown as IExecuteFunctions);
+				} catch (error) {
+					// Record the failure so the tool node shows as errored, not stuck
+					// "running"; rethrow so the caller returns an error to the client.
+					context.addOutputData(
+						NodeConnectionTypes.AiTool,
+						0,
+						error instanceof NodeOperationError
+							? error
+							: new NodeOperationError(toolNode, error as Error),
+					);
+					throw error;
+				}
 
 				let response: IDataObject | IDataObject[] | GenericValue | GenericValue[] = [];
 				if (Array.isArray(result)) {

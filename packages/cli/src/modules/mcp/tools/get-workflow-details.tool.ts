@@ -13,7 +13,7 @@ import type {
 	WorkflowDetailsResult,
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
-import { toTagSummary, workflowDetailsOutputSchema } from './schemas';
+import { toNodeGroupSummary, toTagSummary, workflowDetailsOutputSchema } from './schemas';
 import { getTriggerDetails, type WebhookEndpoints } from './webhook-utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
@@ -37,6 +37,7 @@ export const createWorkflowDetailsTool = (
 	telemetry: Telemetry,
 	roleService: RoleService,
 	projectService: ProjectService,
+	testBaseWebhookUrl: string = baseWebhookUrl,
 ): ToolDefinition<typeof inputSchema> => {
 	return {
 		name: 'get_workflow_details',
@@ -70,6 +71,7 @@ export const createWorkflowDetailsTool = (
 					roleService,
 					projectService,
 					{ workflowId },
+					testBaseWebhookUrl,
 				);
 
 				// Track successful execution
@@ -110,13 +112,14 @@ export async function getWorkflowDetails(
 	roleService: RoleService,
 	projectService: ProjectService,
 	{ workflowId }: { workflowId: string },
+	testBaseWebhookUrl: string = baseWebhookUrl,
 ): Promise<WorkflowDetailsResult> {
 	const workflow = await getMcpWorkflow(
 		workflowId,
 		user,
 		['workflow:read'],
 		workflowFinderService,
-		{ includeActiveVersion: true },
+		{ includeActiveVersion: true, includeTags: true },
 	);
 
 	// Compute user scopes for this workflow
@@ -134,7 +137,10 @@ export async function getWorkflowDetails(
 						({ credentials: _credentials, ...node }) => node,
 					),
 					connections: workflow.activeVersion.connections ?? {},
-					nodeGroups: workflow.activeVersion.nodeGroups ?? [],
+					nodeGroups: toNodeGroupSummary(
+						workflow.activeVersion.nodeGroups ?? [],
+						workflow.activeVersion.nodes ?? [],
+					),
 				}
 			: null;
 
@@ -149,6 +155,8 @@ export async function getWorkflowDetails(
 		baseWebhookUrl,
 		credentialsService,
 		endpoints,
+		workflow.id,
+		testBaseWebhookUrl,
 	);
 
 	const sanitizedWorkflow: WorkflowDetailsResult['workflow'] = {
@@ -164,7 +172,7 @@ export async function getWorkflowDetails(
 		settings: workflow.settings ?? null,
 		connections,
 		nodes: nodes.map(({ credentials: _credentials, ...node }) => node),
-		nodeGroups: workflow.nodeGroups ?? [],
+		nodeGroups: toNodeGroupSummary(workflow.nodeGroups ?? [], nodes),
 		activeVersion,
 		tags: toTagSummary(workflow.tags),
 		meta: workflow.meta ?? null,

@@ -17,10 +17,10 @@ import { generateNodeDefinitions } from '../generate-types/generate-node-defs-cl
 // Use a worker-specific directory to prevent race conditions when multiple test
 // workers run schema-using tests in parallel (they would otherwise concurrently
 // delete and regenerate schemas into the same shared temp directory).
-// Vitest exposes the per-worker id as VITEST_POOL_ID; Jest used JEST_WORKER_ID.
+// Vitest exposes the per-worker id as VITEST_POOL_ID.
 // Without this, every parallel worker collapses onto the same `-0` directory and
 // one worker's rmSync wipes schemas another worker just generated.
-const WORKER_ID = process.env.VITEST_POOL_ID ?? process.env.JEST_WORKER_ID ?? '0';
+const WORKER_ID = process.env.VITEST_POOL_ID ?? '0';
 const SCHEMA_TEST_DIR = path.join(os.tmpdir(), `n8n-schema-tests-${WORKER_ID}`);
 const STAMP_FILE = path.join(SCHEMA_TEST_DIR, '.generator-hash');
 

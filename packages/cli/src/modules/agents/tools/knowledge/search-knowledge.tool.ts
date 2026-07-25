@@ -96,17 +96,19 @@ function isReadKnowledgeResult(output: unknown): output is ReadKnowledgeResult {
 function toGlobKnowledgeModelOutput(output: unknown): unknown {
 	if (isKnowledgeToolErrorOutput(output) || !isGlobKnowledgeFilesResult(output)) return output;
 
-	const files = output.files.slice(0, MODEL_OUTPUT_GLOB_FILE_LIMIT).map((file) => ({
+	const files = output.files.map((file) => ({
 		file: file.file,
 		fileId: file.fileId,
 		displayName: file.displayName,
+		mimeType: file.mimeType,
+		fileSizeBytes: file.fileSizeBytes,
 	}));
 
 	return {
 		files,
-		returnedFiles: output.files.length,
-		shownFiles: files.length,
-		hasMore: output.hasMore || output.files.length > MODEL_OUTPUT_GLOB_FILE_LIMIT,
+		returnedFiles: files.length,
+		offset: output.offset,
+		hasMore: output.hasMore,
 	};
 }
 
@@ -237,36 +239,34 @@ function toReadKnowledgeModelOutput(output: unknown): unknown {
 export function createKnowledgeRetrievalTools({
 	projectId,
 	agentId,
-	userId,
 	sandboxService,
 }: {
 	projectId: string;
 	agentId: string;
-	userId: string;
 	sandboxService: AgentKnowledgeSandboxService;
 }) {
 	const globTool = new Tool('find_file')
 		.description(
-			'Find uploaded knowledge files by filename pattern only, such as `*knowledge*`, `*agent*tool*`, or `*sandbox*`. Use first for knowledge lookup to discover plausible candidate files; call until enough candidates are found, then copy returned file values into search_text path or read_file. Use for explicit document, title, standard, paper, dataset, author, product, or file-like clues. Do not use catch-all or extension-only patterns. Returns file and fileId metadata; does not read file contents.',
+			'Find uploaded knowledge files by filename pattern, such as `*knowledge*`, `*agent*tool*`, or `*sandbox*`. Use `*` to list every uploaded file, an extension pattern like `*.pdf` to filter by type, or a name fragment when the user gives title or filename clues. Use first for knowledge lookup to discover plausible candidate files; call until enough candidates are found, then copy returned file values into search_text path or read_file. Results are paged: page through the full list with `limit` and `offset` while `hasMore` is true. Returns file, fileId, mimeType, and fileSizeBytes metadata; does not read file contents.',
 		)
 		.input(globKnowledgeFilesInputSchema)
 		.handler(
 			async (input) =>
 				await runKnowledgeTool(
-					async () => await sandboxService.globKnowledgeFiles(projectId, agentId, userId, input),
+					async () => await sandboxService.globKnowledgeFiles(projectId, agentId, input),
 				),
 		)
 		.toModelOutput(toGlobKnowledgeModelOutput);
 
 	const searchTool = new Tool('search_text')
 		.description(
-			'Search uploaded knowledge file contents with a ripgrep regex `pattern` inside exact candidate files. Requires `path`: pass one exact file value or an array of exact file values returned by find_file, search_text, or read_file. Does not perform global search and does not accept omitted path, empty path, `*`, fileId, absolute paths, guessed paths, arrays of non-strings, offsets, or semantic questions. `output_mode` defaults to content for snippets; use files_with_matches for matching files only or count for per-file match counts. Use `head_limit` to bound results and small `-C` values for nearby context. Answer from snippets when enough; use read_file only for quotes, citations, exact wording, source text, or larger missing context.',
+			'Search uploaded knowledge file contents with a ripgrep regex `pattern`. Omit `path` to search across every uploaded knowledge file. Pass `path` — one exact file value or an array of exact file values returned by find_file, search_text, or read_file — to scope the search to specific files. Does not accept empty path, `*`, fileId, absolute paths, guessed paths, arrays of non-strings, offsets, or semantic questions. Searching more than 20 files with an explicit `path` requires batching arrays across multiple calls (max 20 paths per call). `output_mode` defaults to content for snippets; use files_with_matches for matching files only or count for per-file match counts. Use `head_limit` to bound results and small `-C` values for nearby context. Answer from snippets when enough; use read_file only for quotes, citations, exact wording, source text, or larger missing context.',
 		)
 		.input(searchKnowledgeInputSchema)
 		.handler(
 			async (input) =>
 				await runKnowledgeTool(
-					async () => await sandboxService.searchKnowledge(projectId, agentId, userId, input),
+					async () => await sandboxService.searchKnowledge(projectId, agentId, input),
 				),
 		)
 		.toModelOutput(toSearchKnowledgeModelOutput);
@@ -279,7 +279,7 @@ export function createKnowledgeRetrievalTools({
 		.handler(
 			async (input) =>
 				await runKnowledgeTool(
-					async () => await sandboxService.readKnowledge(projectId, agentId, userId, input),
+					async () => await sandboxService.readKnowledge(projectId, agentId, input),
 				),
 		)
 		.toModelOutput(toReadKnowledgeModelOutput);

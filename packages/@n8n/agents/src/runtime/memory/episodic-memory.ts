@@ -8,6 +8,7 @@ import {
 } from './episodic-memory-defaults';
 import { normalizeFlatReflectionActions } from './memory-lifecycle';
 import { renderObservationLog } from './observation-log-renderer';
+import { redactText } from '../../sdk/guardrails';
 import { Tool } from '../../sdk/tool';
 import type {
 	BuiltEpisodicMemoryStore,
@@ -188,11 +189,12 @@ export function createRecallMemoryTool(opts: {
 		.systemInstruction(normalized.recallToolInstruction)
 		.input(RecallMemoryInputSchema)
 		.output(RecallMemoryOutputSchema)
-		.handler(async ({ query }): Promise<RecallMemoryOutput> => {
+		.handler(async ({ query }, ctx): Promise<RecallMemoryOutput> => {
 			const { embed } = await import('ai');
 			const { embedding: queryEmbedding, usage } = await embed({
 				model: normalized.embedder,
 				value: query,
+				abortSignal: ctx.abortSignal,
 			});
 			incrementTokenCountFromUsage(opts.executionCounter, usage);
 			const entries = await opts.memory.episodic.searchEntries(opts.scope, query, {
@@ -355,7 +357,7 @@ async function saveCandidate(
 		candidate.sources.map((source) => ({
 			observationId: source.observationId,
 			threadId: opts.threadId,
-			evidenceText: source.evidence,
+			evidenceText: redactText(source.evidence).text,
 			createdAt: now,
 		})),
 	);
@@ -525,7 +527,7 @@ function isFailedRecallCandidate(content: string, evidence: string, sourceText: 
 }
 
 function normalizeEntryContent(content: string): string {
-	return content.replace(/\s+/g, ' ').trim();
+	return redactText(content.replace(/\s+/g, ' ').trim()).text;
 }
 
 function normalizeHashContent(content: string): string {

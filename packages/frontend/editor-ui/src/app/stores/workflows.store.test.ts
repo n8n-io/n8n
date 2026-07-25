@@ -16,6 +16,7 @@ import * as apiUtils from '@n8n/rest-api-client';
 import { createTestWorkflow, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { WorkflowHistory } from '@n8n/rest-api-client';
+import type { WorkflowPublicationStatus } from '@n8n/api-types';
 
 vi.mock('@/app/api/workflows', () => ({
 	getWorkflows: vi.fn(),
@@ -737,6 +738,31 @@ describe('useWorkflowsStore', () => {
 				executionOrder: 'v1',
 				timezone: 'Asia/Tokyo',
 			});
+		});
+	});
+
+	describe('fetchPublicationStatus', () => {
+		it('should call GET /workflows/:id/publication-status and return the payload', async () => {
+			const workflowId = 'workflow-abc';
+			const mockStatus: WorkflowPublicationStatus = {
+				status: 'published',
+				liveVersionId: 'pub-1',
+				pendingVersionId: null,
+				triggers: [],
+			};
+
+			const makeRestApiRequestSpy = vi
+				.spyOn(apiUtils, 'makeRestApiRequest')
+				.mockResolvedValue(mockStatus);
+
+			const result = await workflowsStore.fetchPublicationStatus(workflowId);
+
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ baseUrl: '/rest', pushRef: expect.any(String) }),
+				'GET',
+				`/workflows/${workflowId}/publication-status`,
+			);
+			expect(result).toEqual(mockStatus);
 		});
 	});
 

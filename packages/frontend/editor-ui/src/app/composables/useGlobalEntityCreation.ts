@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
-import { AGENTS_MODULE_NAME, NEW_AGENT_VIEW } from '@/features/agents/constants';
+import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
+import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
@@ -239,10 +240,7 @@ export const useGlobalEntityCreation = () => {
 							{
 								id: AGENTS_MENU_ID,
 								title: agentTitle,
-								route: {
-									name: NEW_AGENT_VIEW,
-									query: { projectId: projectsStore.personalProject?.id },
-								},
+								route: instanceAiCreateAgentRoute(projectsStore.personalProject?.id ?? ''),
 							},
 						]
 					: []),
@@ -288,10 +286,7 @@ export const useGlobalEntityCreation = () => {
 								id: AGENTS_MENU_ID,
 								title: agentTitle,
 								disabled: disabledAgent(projectsStore.personalProject?.scopes),
-								route: {
-									name: NEW_AGENT_VIEW,
-									query: { projectId: projectsStore.personalProject?.id },
-								},
+								route: instanceAiCreateAgentRoute(projectsStore.personalProject?.id ?? ''),
 							},
 						]
 					: []),
@@ -396,20 +391,14 @@ export const useGlobalEntityCreation = () => {
 										title: i18n.baseText('projects.menu.personal'),
 										icon: 'user' as const,
 										disabled: disabledAgent(projectsStore.personalProject?.scopes),
-										route: {
-											name: NEW_AGENT_VIEW,
-											query: { projectId: projectsStore.personalProject?.id },
-										},
+										route: instanceAiCreateAgentRoute(projectsStore.personalProject?.id ?? ''),
 									},
 									...displayProjects.value.map((project) => ({
 										id: `agent-${project.id}`,
 										title: project.name as string,
 										icon: isProjectIcon(project.icon) ? project.icon : DEFAULT_ICON,
 										disabled: disabledAgent(project.scopes),
-										route: {
-											name: NEW_AGENT_VIEW,
-											query: { projectId: project.id },
-										},
+										route: instanceAiCreateAgentRoute(project.id),
 									})),
 								],
 							}),

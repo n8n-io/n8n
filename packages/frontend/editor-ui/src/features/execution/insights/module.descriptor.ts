@@ -1,5 +1,5 @@
 import { RouterView } from 'vue-router';
-import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { VIEWS } from '@/app/constants';
 

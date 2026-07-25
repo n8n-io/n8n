@@ -7,9 +7,12 @@ import {
 	type ChatModelsResponse,
 	type ChatProviderSettingsDto,
 } from '@n8n/api-types';
-import type { DropdownMenuItemProps, IconOrEmoji } from '@n8n/design-system';
+import type {
+	AiModelSelectorMenuItemData,
+	DropdownMenuItemProps,
+	IconOrEmoji,
+} from '@n8n/design-system';
 import type { I18nClass } from '@n8n/i18n';
-import type { AiModelSelectorMenuItemData } from '@/features/ai/modelSelector/types';
 import {
 	createFakeAgent,
 	isAllowedModel,

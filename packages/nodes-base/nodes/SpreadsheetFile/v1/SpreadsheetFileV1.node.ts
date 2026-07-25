@@ -1,4 +1,20 @@
 import type {
+	JSON2SheetOpts,
+	ParsingOptions,
+	Sheet2JSONOpts,
+	WorkBook,
+	WritingOptions,
+} from '@e965/xlsx';
+import {
+	read as xlsxRead,
+	readFile as xlsxReadFile,
+	utils as xlsxUtils,
+	write as xlsxWrite,
+} from '@e965/xlsx';
+import { oldVersionNotice } from '@utils/descriptions';
+import { flattenObject, generatePairedItemData } from '@utils/utilities';
+import { BINARY_ENCODING, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import type {
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -6,23 +22,6 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import type {
-	JSON2SheetOpts,
-	ParsingOptions,
-	Sheet2JSONOpts,
-	WorkBook,
-	WritingOptions,
-} from 'xlsx';
-import {
-	read as xlsxRead,
-	readFile as xlsxReadFile,
-	utils as xlsxUtils,
-	write as xlsxWrite,
-} from 'xlsx';
-
-import { oldVersionNotice } from '@utils/descriptions';
-import { flattenObject, generatePairedItemData } from '@utils/utilities';
 
 import {
 	operationProperty,

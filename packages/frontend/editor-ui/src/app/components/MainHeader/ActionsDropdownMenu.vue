@@ -423,6 +423,7 @@ defineExpose({
 		<N8nActionDropdown
 			:items="workflowMenuItems"
 			data-test-id="workflow-menu"
+			max-height="var(--reka-dropdown-menu-content-available-height)"
 			@select="onWorkflowMenuSelect"
 		/>
 	</div>

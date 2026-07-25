@@ -22,6 +22,7 @@ import MappingFields from './MappingFields.vue';
 import {
 	fieldCannotBeDeleted,
 	isResourceMapperFieldListStale,
+	isResourceMapperSchemaIncomplete,
 	parseResourceMapperFieldName,
 } from '@/app/utils/nodeTypesUtils';
 import { isFullExecutionResponse, isResourceMapperValue } from '@/app/utils/typeGuards';
@@ -209,6 +210,16 @@ onMounted(async () => {
 	if (!hasSchema) {
 		// Only fetch a schema if it's not already set
 		await initFetching();
+	} else if (
+		props.parameter.typeOptions?.resourceMapper?.refreshIncompleteSchemaOnOpen &&
+		isResourceMapperSchemaIncomplete(state.paramValue.schema)
+	) {
+		// Opt-in: the cached schema is structurally incomplete (e.g. authored by
+		// an AI builder rather than loaded from the source), so it would render
+		// with broken/outdated inputs. Reconcile it against the live source
+		// instead. A complete-but-drifted schema falls through to the stale-data
+		// check below, leaving the refresh up to the user.
+		await initFetching(true);
 	} else {
 		await checkStaleFields();
 	}
@@ -388,7 +399,13 @@ async function loadAndSetFieldsToMap(): Promise<void> {
 		const newSchema = fetchedFields.fields.map((field) => {
 			const existingField = state.paramValue.schema.find((f) => f.id === field.id);
 			if (existingField) {
-				field.removed = existingField.removed;
+				// Keep the user's removed state, but don't let an incomplete cached
+				// field (e.g. an AI-authored schema missing `removed`) overwrite the
+				// loader-populated value with `undefined`.
+				field.removed =
+					typeof existingField.removed === 'boolean'
+						? existingField.removed
+						: (field.removed ?? false);
 			} else if (state.paramValue.value !== null && !(field.id in state.paramValue.value)) {
 				// New fields are shown by default
 				field.removed = false;

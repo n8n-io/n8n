@@ -1,5 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import { accountResourceLocator } from './SharedDescriptions';
+
 export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -138,17 +140,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Account Name or ID',
-				name: 'acconuntId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getAccounts',
-				},
-				default: '',
-				description:
-					'ID of the account that is the parent of this contact. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-			},
+			accountResourceLocator('acconuntId', 'The account that is the parent of this contact'),
 			{
 				displayName: 'Assistant Name',
 				name: 'assistantName',
@@ -496,17 +488,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Account Name or ID',
-				name: 'acconuntId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getAccounts',
-				},
-				default: '',
-				description:
-					'ID of the account that is the parent of this contact. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-			},
+			accountResourceLocator('acconuntId', 'The account that is the parent of this contact'),
 			{
 				displayName: 'Assistant Name',
 				name: 'assistantName',

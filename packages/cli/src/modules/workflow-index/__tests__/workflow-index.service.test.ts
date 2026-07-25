@@ -393,6 +393,30 @@ describe('WorkflowIndexService', () => {
 			);
 		});
 
+		it('should not throw when a webhook node has undefined parameters', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				{
+					id: 'node-1',
+					name: 'node-1',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: undefined as unknown as INode['parameters'],
+				},
+			]);
+
+			await expect(service.updateIndexForDraft(workflow)).resolves.not.toThrow();
+
+			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
+			const dependencies = call[1].dependencies;
+
+			expect(dependencies).not.toContainEqual(
+				expect.objectContaining({ dependencyType: 'webhookPath' }),
+			);
+		});
+
 		it('should extract dataTableId from all data-table-related node types', async () => {
 			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 

@@ -19,13 +19,25 @@
  * parse yields a state whose index and tree no longer share objects.
  */
 
-import { getRenderHint, isSafeObjectKey } from './instance-ai.schema';
+import { getRenderHint, isKnownInstanceAiErrorCode, isSafeObjectKey } from './instance-ai.schema';
 import type {
 	InstanceAiEvent,
 	InstanceAiAgentNode,
+	InstanceAiCancellationReason,
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
 } from './instance-ai.schema';
+
+/** Map the backend's run-finish reason string to a semantic cancellation cause. */
+function categorizeCancellation(
+	reason: string | undefined,
+): InstanceAiCancellationReason | undefined {
+	if (reason === 'timeout') return 'timeout';
+	if (reason === 'service_shutdown') return 'shutdown';
+	if (reason === 'user_cancelled') return 'user';
+	if (reason === 'crash_interrupted') return 'interrupted';
+	return undefined;
+}
 
 // ---------------------------------------------------------------------------
 // State types
@@ -98,6 +110,13 @@ function ensureAgent(state: AgentRunState, agentId: string): InstanceAiAgentNode
 	return state.agentsById[agentId];
 }
 
+/** When the event was published — falls back to "now" for live events and
+ *  old persisted events that predate the `ts` envelope field. Replays must
+ *  use the publish time or tool durations collapse to processing time. */
+function eventTimestamp(event: { ts?: number }): string {
+	return (event.ts !== undefined ? new Date(event.ts) : new Date()).toISOString();
+}
+
 /** Append text to timeline — merges consecutive text entries within the same responseId. */
 function appendTimelineText(
 	timeline: InstanceAiTimelineEntry[],
@@ -109,6 +128,42 @@ function appendTimelineText(
 		last.content += text;
 	} else {
 		timeline.push({ type: 'text', content: text, ...(responseId ? { responseId } : {}) });
+	}
+}
+
+/**
+ * Append reasoning to timeline — merges consecutive reasoning entries within
+ * the same responseId, so each LLM step (and anything interleaved with tool
+ * calls or text) gets its own reasoning segment.
+ */
+function appendTimelineReasoning(
+	timeline: InstanceAiTimelineEntry[],
+	text: string,
+	responseId?: string,
+): void {
+	const last = timeline.at(-1);
+	if (last?.type === 'reasoning' && last.responseId === responseId) {
+		last.content += text;
+	} else {
+		timeline.push({ type: 'reasoning', content: text, ...(responseId ? { responseId } : {}) });
+	}
+}
+
+/**
+ * Trees persisted before reasoning became a timeline entry carry only the
+ * aggregate `reasoning` string. Copy it into the timeline once so resumed
+ * runs can append new reasoning segments without dropping the old block.
+ */
+export function normalizeLegacyReasoningTimeline(node: InstanceAiAgentNode): void {
+	if (!node.reasoning || node.timeline.some((entry) => entry.type === 'reasoning')) return;
+	node.timeline.unshift({ type: 'reasoning', content: node.reasoning });
+}
+
+/** Walk an agent tree and normalize legacy reasoning on every node. */
+export function normalizeAgentTree(tree: InstanceAiAgentNode): void {
+	normalizeLegacyReasoningTimeline(tree);
+	for (const child of tree.children) {
+		normalizeAgentTree(child);
 	}
 }
 
@@ -156,7 +211,14 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				// Follow-up run in a merged group: preserve existing agent tree,
 				// just re-activate the root orchestrator for the new run's events.
 				state.status = 'active';
-				if (root) root.status = 'active';
+				if (root) {
+					root.status = 'active';
+					// A merged follow-up/resume run streams under its own per-run agentId
+					// (e.g. `orchestrator-<runId>`). Alias it to the existing root so its
+					// tool calls and confirmations resolve an agent instead of being
+					// dropped as orphans; rootAgentId and toAgentTree stay on the original.
+					if (rootId !== state.rootAgentId) state.agentsById[rootId] = root;
+				}
 			} else {
 				// First run: initialize from scratch.
 				state.rootAgentId = rootId;
@@ -181,12 +243,111 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				agent.reasoning += event.payload.text;
+				appendTimelineReasoning(agent.timeline, event.payload.text, event.responseId);
+			}
+			break;
+		}
+
+		case 'tool-input-start': {
+			// Announces a tool call whose arguments are still streaming — surfaces
+			// the pending call immediately; `tool-call` fills the args in later.
+			if (!isSafeObjectKey(event.payload.toolCallId)) break;
+			if (state.toolCallsById[event.payload.toolCallId]) break;
+			const agent = ensureAgent(state, event.agentId);
+			if (agent) {
+				const tc: InstanceAiToolCallState = {
+					toolCallId: event.payload.toolCallId,
+					toolName: event.payload.toolName,
+					args: {},
+					isLoading: true,
+					renderHint: getRenderHint(event.payload.toolName),
+					startedAt: eventTimestamp(event),
+				};
+				state.toolCallsById[event.payload.toolCallId] = tc;
+				agent.toolCalls.push(tc);
+				agent.timeline.push({
+					type: 'tool-call',
+					toolCallId: event.payload.toolCallId,
+					...(event.responseId ? { responseId: event.responseId } : {}),
+				});
+			}
+			break;
+		}
+
+		case 'text-block': {
+			// Coalesced segment from the durable log (replay path). When the last
+			// timeline entry is this segment's streamed deltas (mid-block reconnect:
+			// the client saw part of the text live), REPLACE it instead of appending
+			// so no text renders twice. The log flushes a block immediately before
+			// the segment's next structural fact, so on replay the partial deltas
+			// are always the last text entry when this event arrives.
+			// Replace requires a PRESENT, matching responseId: id-less blocks
+			// (synthetic markers, backfill) have no identity to match on, so they
+			// always append — two of them can never overwrite each other. The
+			// block must also textually contain the entry at one end: a genuine
+			// partial is a prefix when the client streamed the segment from its
+			// start (mid-block reconnect) and a suffix when it attached mid-segment
+			// (refresh served by a main without the coalescer buffer); the same id
+			// reused with unrelated text is a new message, not the open segment.
+			const agent = ensureAgent(state, event.agentId);
+			if (agent) {
+				const last = agent.timeline.at(-1);
+				const isOpenSegment =
+					last?.type === 'text' &&
+					event.responseId !== undefined &&
+					last.responseId === event.responseId &&
+					(event.payload.text.startsWith(last.content) ||
+						event.payload.text.endsWith(last.content));
+				if (isOpenSegment && agent.textContent.endsWith(last.content)) {
+					agent.textContent =
+						agent.textContent.slice(0, agent.textContent.length - last.content.length) +
+						event.payload.text;
+					last.content = event.payload.text;
+				} else {
+					agent.textContent += event.payload.text;
+					appendTimelineText(agent.timeline, event.payload.text, event.responseId);
+				}
+			}
+			break;
+		}
+
+		case 'reasoning-block': {
+			// Coalesced reasoning segment from the durable log (replay path). Same
+			// replace semantics as text-block (present matching responseId plus a
+			// prefix or suffix match): the segment's open streamed deltas are its
+			// timeline entry, so REPLACE that entry and strip the partial text
+			// from the aggregate — no text renders twice.
+			const agent = ensureAgent(state, event.agentId);
+			if (agent) {
+				const last = agent.timeline.at(-1);
+				const isOpenSegment =
+					last?.type === 'reasoning' &&
+					event.responseId !== undefined &&
+					last.responseId === event.responseId &&
+					(event.payload.text.startsWith(last.content) ||
+						event.payload.text.endsWith(last.content));
+				if (isOpenSegment && agent.reasoning.endsWith(last.content)) {
+					agent.reasoning =
+						agent.reasoning.slice(0, agent.reasoning.length - last.content.length) +
+						event.payload.text;
+					last.content = event.payload.text;
+				} else {
+					agent.reasoning += event.payload.text;
+					appendTimelineReasoning(agent.timeline, event.payload.text, event.responseId);
+				}
 			}
 			break;
 		}
 
 		case 'tool-call': {
 			if (!isSafeObjectKey(event.payload.toolCallId)) break;
+			// Announced by a preceding tool-input-start: fill in the streamed args
+			// on the existing entry instead of duplicating it.
+			const announced = state.toolCallsById[event.payload.toolCallId];
+			if (announced) {
+				announced.args = event.payload.args;
+				break;
+			}
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				const tc: InstanceAiToolCallState = {
@@ -195,7 +356,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					args: event.payload.args,
 					isLoading: true,
 					renderHint: getRenderHint(event.payload.toolName),
-					startedAt: new Date().toISOString(),
+					startedAt: eventTimestamp(event),
 				};
 				state.toolCallsById[event.payload.toolCallId] = tc;
 				agent.toolCalls.push(tc);
@@ -214,7 +375,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (tc) {
 				tc.result = event.payload.result;
 				tc.isLoading = false;
-				tc.completedAt = new Date().toISOString();
+				tc.completedAt = eventTimestamp(event);
 			}
 			break;
 		}
@@ -225,16 +386,42 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (tc) {
 				tc.error = event.payload.error;
 				tc.isLoading = false;
-				tc.completedAt = new Date().toISOString();
+				tc.completedAt = eventTimestamp(event);
+			}
+			break;
+		}
+
+		case 'tool-interrupted': {
+			// Durable fact for a tool call in flight when the process died:
+			// terminal like tool-error, effect unverified, never blind-retried.
+			if (!isSafeObjectKey(event.payload.toolCallId)) break;
+			const tc = state.toolCallsById[event.payload.toolCallId];
+			if (tc) {
+				tc.error = event.payload.error;
+				tc.isLoading = false;
+				tc.completedAt = eventTimestamp(event);
 			}
 			break;
 		}
 
 		case 'agent-spawned': {
 			if (!isSafeObjectKey(event.agentId) || !isSafeObjectKey(event.payload.parentId)) break;
-			// Idempotency guard: a replayed agent-spawned for an existing agent
-			// must not create a second node for the same id.
-			if (state.agentsById[event.agentId]) break;
+			// A repeated agent-spawned for a known agent is an upsert of display
+			// metadata, never a second node or timeline entry: the builder
+			// republishes the event when the target agent's name changes, so
+			// refresh targetResource — but never erase a known name with an
+			// unnamed replay.
+			const existingNode = state.agentsById[event.agentId];
+			if (existingNode) {
+				const incoming = event.payload.targetResource;
+				if (incoming && incoming.id === existingNode.targetResource?.id) {
+					existingNode.targetResource = {
+						...incoming,
+						name: incoming.name ?? existingNode.targetResource?.name,
+					};
+				}
+				break;
+			}
 			const parentAgent = ensureAgent(state, event.payload.parentId);
 			if (parentAgent) {
 				const child: InstanceAiAgentNode = {
@@ -301,6 +488,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					introMessage: event.payload.introMessage,
 					tasks: event.payload.tasks,
 					resourceDecision: event.payload.resourceDecision,
+					channelConfig: event.payload.channelConfig,
 				};
 			}
 			break;
@@ -326,6 +514,10 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 		}
 
 		case 'error': {
+			// A recognized error code is rendered by a dedicated UI state from the error
+			// payload, so don't also inline the raw text. An unknown code (older/newer
+			// service) has no such state — fall through and show the raw error.
+			if (isKnownInstanceAiErrorCode(event.payload.code)) break;
 			const errorText = '\n\n*Error: ' + event.payload.content + '*';
 			const agent = ensureAgent(state, event.agentId) ?? state.agentsById[state.rootAgentId];
 			if (agent) {
@@ -337,11 +529,20 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 
 		case 'run-finish': {
 			const { status } = event.payload;
+			// 'interrupted' renders as a cancellation whose reason attributes the
+			// crash — no dedicated FE state needed.
 			state.status =
-				status === 'completed' ? 'completed' : status === 'cancelled' ? 'cancelled' : 'error';
+				status === 'completed'
+					? 'completed'
+					: status === 'cancelled' || status === 'interrupted'
+						? 'cancelled'
+						: 'error';
 			const root = state.agentsById[state.rootAgentId];
 			if (root) {
 				root.status = state.status;
+				if (state.status === 'cancelled') {
+					root.cancellationReason = categorizeCancellation(event.payload.reason);
+				}
 			}
 			// A terminated run can't have tool calls still in-flight.
 			// Clear isLoading so persisted snapshots don't show stale confirmations.
@@ -441,6 +642,7 @@ function adoptNode(
 	for (const tc of node.toolCalls) {
 		state.toolCallsById[tc.toolCallId] = tc;
 	}
+	normalizeLegacyReasoningTimeline(node);
 	for (const child of node.children) {
 		adoptNode(state, child, node.agentId);
 	}

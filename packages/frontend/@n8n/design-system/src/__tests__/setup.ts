@@ -41,6 +41,15 @@ beforeAll(() => {
 			},
 		});
 	}
+
+	// jsdom lacks elementFromPoint; ProseMirror's posAtCoords calls it during
+	// editor mount (tiptap placeholder viewport tracking). null is a valid result.
+	const documentProto = Document.prototype as Document & {
+		elementFromPoint?: (x: number, y: number) => Element | null;
+	};
+	if (!documentProto.elementFromPoint) {
+		documentProto.elementFromPoint = () => null;
+	}
 });
 
 // Preserve originals

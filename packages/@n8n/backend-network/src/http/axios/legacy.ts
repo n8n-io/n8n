@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
-import type { AxiosHeaders, AxiosRequestConfig } from 'axios';
+import type { AxiosRequestConfig, AxiosRequestHeaders } from 'axios';
 import crypto from 'crypto';
 import type FormData from 'form-data';
 import { type AgentOptions } from 'https';
@@ -57,7 +57,7 @@ export async function buildAxiosConfigFromLegacyRequest(
 	const axiosConfig: AxiosRequestConfig = {};
 
 	if (requestObject.headers !== undefined) {
-		axiosConfig.headers = requestObject.headers as AxiosHeaders;
+		axiosConfig.headers = requestObject.headers as AxiosRequestHeaders;
 	}
 
 	// Let's start parsing the hardest part, which is the request body.

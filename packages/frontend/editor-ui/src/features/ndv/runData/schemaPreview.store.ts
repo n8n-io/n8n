@@ -1,5 +1,6 @@
 import * as schemaPreviewApi from './schemaPreview.api';
-import { createResultError, createResultOk, type INode, type Result } from 'n8n-workflow';
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
+import { type INode } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { reactive } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';

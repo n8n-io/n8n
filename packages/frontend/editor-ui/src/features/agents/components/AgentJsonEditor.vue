@@ -110,10 +110,7 @@ watch(
 		<div v-if="jsonError" :class="$style.errorBanner">{{ jsonError }}</div>
 		<div
 			ref="jsonContainer"
-			:class="[
-				$style.editorArea,
-				props.readOnly && props.showReadOnlyOverlay && shared.disabledOverlay,
-			]"
+			:class="[$style.editorArea, props.readOnly && props.showReadOnlyOverlay && shared.disabled]"
 		/>
 	</div>
 </template>

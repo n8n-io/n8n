@@ -1,17 +1,19 @@
-import type { WorkflowRepository, UserRepository, WorkflowEntity } from '@n8n/db';
+import type { WorkflowRepository, WorkflowEntity } from '@n8n/db';
+import { In } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { WorkflowRunner } from '@/workflow-runner';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import {
+	detectTriggerNode,
 	normalizeTriggerInput,
 	resolveWorkflowTool,
 	validateCompatibility,
 } from '../tools/workflow-tool-factory';
 import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
+import { findWorkflowToolWorkflows } from '../tools/workflow-tool-workflow-resolver';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -83,29 +85,18 @@ function makeWorkflow(
 	} as unknown as WorkflowEntity;
 }
 
-function makeContext(workflowForUser: WorkflowEntity | null): WorkflowToolContext {
+function makeContext(foundWorkflow: WorkflowEntity | null): WorkflowToolContext {
 	const workflowRepository = mock<WorkflowRepository>();
-	const userRepository = mock<UserRepository>();
-	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const activeExecutions = mock<ActiveExecutions>();
 
-	// findOne returns a candidate workflow
-	workflowRepository.findOne.mockResolvedValue(workflowForUser ?? makeWorkflow());
-
-	// userRepository returns a dummy user
-	userRepository.findOne.mockResolvedValue({ id: 'user-1' } as never);
-
-	// workflowFinderService returns the full workflow for the user
-	workflowFinderService.findWorkflowForUser.mockResolvedValue(workflowForUser);
+	workflowRepository.findOne.mockResolvedValue(foundWorkflow);
 
 	return {
 		workflowRepository,
 		workflowRunner,
 		activeExecutions,
-		workflowFinderService,
-		userRepository,
-		userId: 'user-1',
+		projectId: 'project-1',
 	};
 }
 
@@ -172,9 +163,40 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 			workflowName: 'canonical-name',
 		});
 	});
+
+	it('scopes the workflow lookup to the project', async () => {
+		const workflow = makeWorkflow({ id: 'wf-scoped-1', name: 'Scoped Workflow' });
+		const context = makeContext(workflow);
+
+		await resolveWorkflowTool({ type: 'workflow', workflow: 'Scoped Workflow' }, context);
+
+		expect(context.workflowRepository.findOne).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: { name: 'Scoped Workflow', shared: { projectId: 'project-1' } },
+				relations: ['shared'],
+			}),
+		);
+	});
+
+	it('throws when the workflow is not shared with the project', async () => {
+		const context = makeContext(null);
+
+		await expect(
+			resolveWorkflowTool({ type: 'workflow', workflow: 'Missing Workflow' }, context),
+		).rejects.toThrow('Workflow "Missing Workflow" not found');
+	});
 });
 
 describe('workflow tool compatibility', () => {
+	it('rejects workflows with only a schedule trigger', () => {
+		const workflow = makeWorkflow(
+			{},
+			makeManualTriggerNode({ type: 'n8n-nodes-base.scheduleTrigger' }),
+		);
+
+		expect(() => detectTriggerNode(workflow)).toThrow('no supported trigger node');
+	});
+
 	it('allows Respond to Webhook nodes in workflow tools', () => {
 		const workflow = makeWorkflow({
 			nodes: [makeWebhookTriggerNode(), makeRespondToWebhookNode()],
@@ -224,5 +246,33 @@ describe('workflow tool compatibility', () => {
 				},
 			],
 		});
+	});
+});
+
+describe('findWorkflowToolWorkflows', () => {
+	it('returns an empty map without querying when no names are provided, and dedupes workflow names into a project-scoped map otherwise', async () => {
+		const workflowRepository = mock<WorkflowRepository>();
+
+		const emptyResult = await findWorkflowToolWorkflows(workflowRepository, [], 'project-1');
+
+		expect(emptyResult).toEqual(new Map());
+		expect(workflowRepository.find).not.toHaveBeenCalled();
+
+		const workflow = makeWorkflow({ id: 'wf-a', name: 'Workflow A' });
+		workflowRepository.find.mockResolvedValue([workflow]);
+
+		const result = await findWorkflowToolWorkflows(
+			workflowRepository,
+			['Workflow A', 'Workflow A', 'Workflow B'],
+			'project-1',
+		);
+
+		expect(workflowRepository.find).toHaveBeenCalledTimes(1);
+		expect(workflowRepository.find).toHaveBeenCalledWith({
+			where: { name: In(['Workflow A', 'Workflow B']), shared: { projectId: 'project-1' } },
+			select: ['id', 'name', 'nodes'],
+		});
+		expect(result.get('Workflow A')).toBe(workflow);
+		expect(result.has('Workflow B')).toBe(false);
 	});
 });

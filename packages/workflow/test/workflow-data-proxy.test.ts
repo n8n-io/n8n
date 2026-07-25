@@ -1,7 +1,7 @@
 import { DateTime, Duration, Interval } from 'luxon';
 
 import * as Helpers from './helpers';
-import { ensureError } from '../src/errors/ensure-error';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ExpressionError } from '../src/errors/expression.error';
 import {
 	NodeConnectionTypes,

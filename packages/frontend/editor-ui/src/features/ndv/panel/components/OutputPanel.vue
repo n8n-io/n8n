@@ -418,7 +418,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 								<NodeExecuteButton
 									hide-icon
 									transparent
-									type="secondary"
+									variant="subtle"
 									:node-name="activeNode?.name ?? ''"
 									:label="
 										i18n.baseText(
@@ -437,7 +437,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							<NodeExecuteButton
 								hide-icon
 								transparent
-								type="secondary"
+								variant="subtle"
 								:node-name="activeNode?.name ?? ''"
 								:label="
 									i18n.baseText(

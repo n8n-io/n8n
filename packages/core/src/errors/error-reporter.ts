@@ -83,6 +83,15 @@ const SENTRY_MAX_VALUE_LENGTH = 500;
 const PNPM_NESTED_FRAME_RE = /.*\/node_modules\/\.pnpm\/[^/]+\/node_modules\//;
 const N8N_CLI_INSTALL_PREFIX = '/usr/local/lib/node_modules/n8n/';
 
+type ErrorReportingOptions = ReportingOptions & {
+	/**
+	 * Capture in a forked Sentry isolation scope, dropping any ambient HTTP
+	 * request context. Use for errors reported from background work, which would
+	 * otherwise inherit whatever unrelated request is active at capture time.
+	 */
+	shouldIsolate?: boolean;
+};
+
 /**
  * Normalises a Sentry stack-frame filename so that pnpm-nested dependency
  * paths and the n8n CLI install prefix become stable `app:///` roots. This
@@ -102,7 +111,7 @@ export class ErrorReporter {
 	/** Hashes of error stack traces, to deduplicate error reports. */
 	private seenErrors = new Set<string>();
 
-	private report: (error: Error | string, options?: ReportingOptions) => void;
+	private report: (error: Error | string, options?: ErrorReportingOptions) => void;
 
 	private beforeSendFilter?: (event: ErrorEvent, hint: EventHint) => boolean;
 
@@ -207,6 +216,7 @@ export class ErrorReporter {
 			requestDataIntegration,
 			rewriteFramesIntegration,
 			httpIntegration,
+			withIsolationScope,
 		} = sentry;
 
 		// Most of the integrations are listed here:
@@ -311,7 +321,22 @@ export class ErrorReporter {
 			setUser({ id: serverName });
 		}
 
-		this.report = (error, options) => captureException(error, options);
+		this.report = (error, options) => {
+			if (options?.shouldIsolate) {
+				// The fork is a clone of the ambient isolation scope, so instance-level
+				// tags and user identity survive while request metadata is dropped.
+				withIsolationScope((isolationScope) => {
+					isolationScope.clearBreadcrumbs();
+					isolationScope.setSDKProcessingMetadata({
+						normalizedRequest: undefined,
+						ipAddress: undefined,
+					});
+					captureException(error, options);
+				});
+				return;
+			}
+			captureException(error, options);
+		};
 		this.beforeSendFilter = beforeSendFilter;
 	}
 
@@ -368,7 +393,7 @@ export class ErrorReporter {
 		return event;
 	}
 
-	error(e: unknown, options?: ReportingOptions) {
+	error(e: unknown, options?: ErrorReportingOptions) {
 		if (e instanceof ExecutionCancelledError) return;
 		const toReport = this.wrap(e);
 		if (toReport) this.report(toReport, options);

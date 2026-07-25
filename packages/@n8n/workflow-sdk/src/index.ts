@@ -152,6 +152,7 @@ export {
 	validateWorkflow,
 	ValidationError,
 	ValidationWarning,
+	getSchemaBaseDirs,
 	setSchemaBaseDirs,
 	type ValidationResult,
 	type ValidationOptions,
@@ -162,11 +163,18 @@ export {
 
 // Code generation
 export { generateWorkflowCode } from './codegen/index';
-export { emitInstanceAi, type EmitInstanceAiOptions } from './codegen/index';
+export {
+	emitInstanceAi,
+	SDK_IMPORTABLE_FUNCTIONS,
+	type EmitInstanceAiOptions,
+} from './codegen/index';
 export { parseWorkflowCode, parseWorkflowCodeToBuilder } from './codegen/parse-workflow-code';
 
 // Type generation utilities (for runtime type generation in CLI)
 export * from './generate-types';
+
+// Mock/pin-data generation building blocks (LLM- and fs-free; see src/mock-data/)
+export * from './mock-data';
 
 // Plugin system
 export {

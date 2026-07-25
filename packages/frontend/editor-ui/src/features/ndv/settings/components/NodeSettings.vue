@@ -12,7 +12,7 @@ import type {
 	NodeParameterValue,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, deepCopy, isCommunityPackageName } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import { BASE_NODE_SURVEY_URL, VIEWS } from '@/app/constants';
 
@@ -22,6 +22,10 @@ import NodeSettingsHeader from './NodeSettingsHeader.vue';
 import NodeSettingsTabs from './NodeSettingsTabs.vue';
 import NodeWebhooks from './NodeWebhooks.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
+import AgentNdvInlineControls from '@/features/ndv/agents/components/AgentNdvInlineControls.vue';
+import AgentNdvReferencedSummary from '@/features/ndv/agents/components/AgentNdvReferencedSummary.vue';
+import { NdvAgentConfigKey } from '@/features/ndv/agents/composables/useNdvAgentConfig';
+import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
 import get from 'lodash/get';
 
 import ExperimentalEmbeddedNdvHeader from '@/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
@@ -514,6 +518,17 @@ const nodeSettings = computed(() =>
 	),
 );
 
+// The AI Agent node renders extra Parameters-tab surfaces (referenced-agent
+// summary OR inline-agent controls, by `agentSource` mode) —
+// all driven by the NDV container's provided facade. Guarded on the facade
+// being provided so NodeSettings still works if ever mounted outside the NDV
+// container.
+const ndvAgentConfig = inject(NdvAgentConfigKey, null);
+// v2-gated to match the canvas card: v1 nodes keep the raw NDV layout.
+const isAgentNode = computed(() => isAgentNodeV2(node.value));
+const showAgentNdvControls = computed(() => isAgentNode.value && ndvAgentConfig !== null);
+const agentNdvMode = computed(() => ndvAgentConfig?.mode?.value ?? 'referenced');
+
 const iconSource = useNodeIconSource(nodeType, node);
 
 const onParameterBlur = (parameterName: string) => {
@@ -803,6 +818,14 @@ function handleSelectAction(params: INodeParameters) {
 						@blur="onParameterBlur"
 					/>
 				</ParameterInputList>
+				<AgentNdvReferencedSummary
+					v-if="showAgentNdvControls && agentNdvMode === 'referenced'"
+					:is-read-only="isReadOnly"
+				/>
+				<AgentNdvInlineControls
+					v-if="showAgentNdvControls && agentNdvMode === 'inline'"
+					:is-read-only="isReadOnly"
+				/>
 				<div v-if="showNoParametersNotice" class="no-parameters">
 					<N8nText>
 						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}

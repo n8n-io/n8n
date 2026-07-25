@@ -13,6 +13,7 @@ const props = withDefaults(
 		slideFrom?: 'left' | 'right';
 		icon?: string;
 		iconOverride?: string;
+		lightInvert?: boolean;
 	}>(),
 	{
 		title: 'New lead',
@@ -72,7 +73,12 @@ onUnmounted(clearTimers);
 		]"
 	>
 		<Transition :name="$style.swipe" mode="out-in">
-			<img :key="currentIcon" :class="$style.icon" :src="currentIcon" alt="" />
+			<img
+				:key="currentIcon"
+				:class="[$style.icon, props.lightInvert && $style.lightInvert]"
+				:src="currentIcon"
+				alt=""
+			/>
 		</Transition>
 		<div :class="$style.content">
 			<span :class="$style.title">{{ props.title }}</span>
@@ -115,6 +121,20 @@ onUnmounted(clearTimers);
 	width: 36px;
 	height: 36px;
 	flex-shrink: 0;
+}
+
+.lightInvert {
+	filter: invert(1);
+}
+
+:global([data-theme='dark']) .lightInvert {
+	filter: none;
+}
+
+@media (prefers-color-scheme: dark) {
+	:global(body:not([data-theme])) .lightInvert {
+		filter: none;
+	}
 }
 
 .swipe:global(-enter-active),

@@ -4,10 +4,19 @@ These expectations are NOT about whether the workflow executes correctly — the
 
 ## What you receive
 
-1. **Workflow structure**: the final built workflow — every node, its config, and the connections JSON. If no workflow was built (the build failed), this says "(no workflow built)".
+1. **Workflow structure**: the final built workflow — every node, its config, and the connections JSON. If no workflow was built (the build failed, or the build produced a non-workflow artifact instead), this says "(no workflow built)".
+1a. **Agent** / **Config-eval** (present when the case can produce these): the agent configuration and its skills, or the evaluation configs plus a dataset sample. When the build produced none, the section says "(no agent produced)" / "(no config-eval produced)". Judge existence/absence claims ("an agent was created and no workflow was built") and content claims ("the agent instructions mention escalating refunds", "the eval dataset has question and expected columns") from these sections.
 2. **Conversation transcript**: the full multi-turn conversation, both sides, turn by turn. Each turn shows the user message, the agent's text, and compact summaries of tool interactions — plans, questions asked to the user (with answers), setup cards the agent showed (the values it asked the user to provide — credentials and/or parameters — and whether the user filled or dismissed them), setup-wizard configured/skipped nodes, resumed confirmations (approved/rejected), and the names of tools called.
 3. **Conversation metrics (ground truth)**: deterministic counters spanning the whole conversation (restored/seeded context plus the live evaluated turn) — turn count, per-turn tool-call and confirmation counts, and how many confirmations were asked and of which kind. The reachedRunFinishCleanly flag and any per-turn runFinishStatus describe ONLY the evaluated (live) run; seeded turns carry no finish status, so a blank status on a seeded turn does not indicate an unfinished run. Treat these as authoritative. Do NOT recount turns or confirmations from the raw transcript when a metric already states the number.
 4. **Expectations**: a numbered list (indices start at 0). Judge each one.
+
+## Vocabulary: "agent" has three distinct senses — never conflate them
+
+- **The agent** (unqualified) = the builder assistant under evaluation, whose conversation you are judging.
+- **An n8n Agent / agent-builder artifact** = a first-class Agent resource — evidenced by \`build-agent\` tool calls or by the assistant explicitly proposing/creating a standalone Agent, never by anything inside a workflow.
+- **An AI Agent node** = a node of type \`@n8n/n8n-nodes-langchain.agent\` inside the workflow JSON.
+
+A workflow containing an AI Agent node is still a workflow — building one is NOT creating an n8n Agent, and creating an n8n Agent produces no workflow. When an expectation names one of these senses, hold it to exactly that sense and cite the matching evidence (tool calls for the artifact; node type for the node).
 
 ## How to judge
 

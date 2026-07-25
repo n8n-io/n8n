@@ -14,6 +14,7 @@ import {
 	recurrenceCheck,
 	resetStaleRecurrence,
 	toCronExpression,
+	toCronSource,
 	validateInterval,
 } from './GenericFunctions';
 import type { IRecurrenceRule, Rule } from './SchedulerInterface';
@@ -425,6 +426,19 @@ export class ScheduleTrigger implements INodeType {
 					},
 				],
 			},
+			{
+				// Temporary escape hatch for the durable-scheduler rollout (preview to
+				// GA): keeps this trigger on the legacy in-memory scheduler while testing.
+				// Hidden unless N8N_ENV_FEAT_SKIP_DURABLE_SCHEDULER is enabled. Remove at GA.
+				displayName: 'Skip Durable Scheduler',
+				name: 'skipDurableScheduler',
+				type: 'boolean',
+				default: false,
+				isNodeSetting: true,
+				envFeatureFlag: 'SKIP_DURABLE_SCHEDULER',
+				description:
+					'Whether to run this trigger through the legacy in-memory scheduler instead of the durable scheduler',
+			},
 		],
 	};
 
@@ -508,6 +522,7 @@ export class ScheduleTrigger implements INodeType {
 					const cron: Cron = {
 						expression: cronExpression,
 						recurrence,
+						source: toCronSource(interval),
 					};
 					this.helpers.registerCron(cron, (scheduledTime: Date) =>
 						executeTrigger(recurrence, /* skipRecurrenceCheck= */ false, scheduledTime),

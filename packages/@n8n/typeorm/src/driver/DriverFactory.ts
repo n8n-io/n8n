@@ -5,11 +5,11 @@ import { MissingDriverError } from '../error/MissingDriverError';
 const getDriver = async (type: DataSource['options']['type']): Promise<DriverConstructor> => {
 	switch (type) {
 		case 'postgres':
-			return (await import('./postgres/PostgresDriver')).PostgresDriver;
+			return (await import('./postgres/PostgresDriver.js')).PostgresDriver;
 		case 'sqlite':
-			return (await import('./sqlite/SqliteDriver')).SqliteDriver;
+			return (await import('./sqlite/SqliteDriver.js')).SqliteDriver;
 		case 'sqlite-pooled':
-			return (await import('./sqlite-pooled/SqliteReadWriteDriver')).SqliteReadWriteDriver;
+			return (await import('./sqlite-pooled/SqliteReadWriteDriver.js')).SqliteReadWriteDriver;
 		default:
 			throw new MissingDriverError(type, ['postgres', 'sqlite', 'sqlite-pooled']);
 	}

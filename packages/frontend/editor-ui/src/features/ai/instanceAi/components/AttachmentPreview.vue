@@ -21,6 +21,9 @@ const loading = ref(true);
 const workflowAttachment = computed(() =>
 	props.attachment?.type === 'workflow' ? props.attachment : undefined,
 );
+const agentAttachment = computed(() =>
+	props.attachment?.type === 'agent' ? props.attachment : undefined,
+);
 const fileAttachment = computed(() =>
 	props.attachment?.type === 'file' ? props.attachment : undefined,
 );
@@ -78,6 +81,14 @@ onBeforeUnmount(() => {
 		<N8nIcon icon="workflow" size="small" />
 		<span :class="$style.resourceName">{{ workflowAttachment.name ?? 'Workflow' }}</span>
 		<N8nIcon v-if="workflowAttachment.executionId" icon="play" size="xsmall" />
+	</div>
+	<div
+		v-else-if="agentAttachment"
+		:class="$style.resourceChip"
+		data-test-id="attachment-preview-resource"
+	>
+		<N8nIcon icon="robot" size="small" />
+		<span :class="$style.resourceName">{{ agentAttachment.name ?? 'Agent' }}</span>
 	</div>
 	<div v-else-if="isImage && thumbnailSrc" :class="$style.thumbnailWrapper">
 		<div v-if="loading" :class="$style.loadingSkeleton">

@@ -1,7 +1,7 @@
 import { LicenseState } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { User, WorkflowEntity, Project } from '@n8n/db';
 import { WorkflowRepository, DbConnection, AuthRolesService, BinaryDataRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { IRun } from 'n8n-workflow';
@@ -66,6 +66,9 @@ test('should start a task runner', async () => {
 
 	workflowRepository.findOneBy.mockResolvedValue(workflow);
 	ownershipService.getInstanceOwner.mockResolvedValue(mock<User>({ id: '123' }));
+	ownershipService.getWorkflowProjectCached.mockResolvedValue(
+		mock<Project>({ id: 'project-id-1', name: 'Mock Project' }),
+	);
 	workflowRunner.run.mockResolvedValue('123');
 	activeExecutions.getPostExecutePromise.mockResolvedValue(run);
 

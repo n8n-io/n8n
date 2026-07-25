@@ -322,7 +322,7 @@ describe('PrometheusMetricsService', () => {
 		expect(lines).toContain('n8n_test_active_workflow_count 0');
 
 		const cacheService = Container.get(CacheService);
-		await cacheService.delete('metrics:active-workflow-count');
+		await cacheService.delete('metrics:active-workflow-count:v2');
 
 		response = await agent.get('/metrics');
 

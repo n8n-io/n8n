@@ -263,17 +263,14 @@ export class SlackAppSetupService {
 			session.agentId,
 			session.projectId,
 			user,
+			'slack_setup',
 			undefined,
 			{
 				syncIntegrations: false,
+				ignoreDraftIntegrations: true,
 			},
 		);
-		await this.chatIntegrationService.connect(
-			session.agentId,
-			integration,
-			session.userId,
-			session.projectId,
-		);
+		await this.chatIntegrationService.connect(session.agentId, integration, session.projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(
 			session.agentId,
 			integration,

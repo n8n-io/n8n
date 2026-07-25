@@ -162,7 +162,8 @@ const displayNodes = computed(() =>
 		const icon = node.icon;
 		if (icon.type !== 'file' || !icon.src) return node;
 		const src = normalizeIconSrc(icon.src);
-		return src === icon.src ? node : { ...node, icon: { ...icon, src } };
+		if (src === icon.src) return node;
+		return { ...node, icon: { ...icon, src, lightInvert: false } };
 	}),
 );
 

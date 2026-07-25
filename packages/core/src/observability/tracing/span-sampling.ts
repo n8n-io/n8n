@@ -31,12 +31,27 @@ const NOISE_INCOMING_PATHS = [
 	/^\/rest\/telemetry\/proxy\//,
 ];
 
+/**
+ * Long-lived stream / MCP endpoints whose transaction duration is connection
+ * lifetime, not handler work. Recording them pollutes latency percentiles, so
+ * skip span creation entirely.
+ */
+const STREAMING_INCOMING_PATHS = [
+	/^\/rest\/instance-ai\/events(\/|$)/, // SSE stream (EventSource)
+	/^\/mcp-server\/http(\/|$)/, // Streamable-HTTP MCP
+	/^\/mcp(\/|$)/, // MCP webhook trigger (endpoints.mcp default)
+	/^\/mcp-test(\/|$)/, // test MCP webhook (endpoints.mcpTest default)
+];
+
 const TELEMETRY_HOSTNAME = 'telemetry.n8n.io';
 
 /** Whether an incoming request path should be skipped before a server span is created. */
 export function shouldIgnoreIncomingRequest(urlPath: string): boolean {
 	const path = urlPath.split('?')[0];
-	return NOISE_INCOMING_PATHS.some((re) => re.test(path));
+	return (
+		NOISE_INCOMING_PATHS.some((re) => re.test(path)) ||
+		STREAMING_INCOMING_PATHS.some((re) => re.test(path))
+	);
 }
 
 /** Outbound telemetry batch calls carry no tracing signal. */

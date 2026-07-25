@@ -13,10 +13,10 @@ describe('Test PipedriveV2, activity => create', () => {
 			done: false,
 			type: 'call',
 			deal_id: 8,
-			person_id: 10,
 			org_id: 7,
 			owner_id: 25455458,
 			due_date: '2026-04-01',
+			participants: [{ person_id: 10, primary: true }],
 		})
 		.reply(200, {
 			success: true,

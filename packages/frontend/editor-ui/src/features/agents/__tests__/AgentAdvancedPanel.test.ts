@@ -30,18 +30,7 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 });
 
 const globalStubs = {
-	N8nCollapsiblePanel: {
-		props: ['modelValue', 'title', 'disabled'],
-		emits: ['update:modelValue'],
-		template: `
-			<section>
-				<button :disabled="disabled" @click="$emit('update:modelValue', !modelValue)">
-					{{ title }}
-				</button>
-				<div v-show="modelValue"><slot /></div>
-			</section>
-		`,
-	},
+	N8nIcon: { template: '<span v-bind="$attrs" />', props: ['icon', 'size'] },
 	N8nText: { template: '<span><slot /></span>' },
 	N8nTooltip: { template: '<div><slot /></div>' },
 	N8nInputNumber2: {
@@ -104,6 +93,26 @@ function getWebSearchConfig(changes: Partial<AgentJsonConfig>): WebSearchConfig 
 }
 
 describe('AgentAdvancedPanel', () => {
+	it('renders the collapsible heading and toggles the advanced content', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig(), collapsible: true },
+			global: { stubs: globalStubs },
+		});
+
+		const title = wrapper.find('[data-testid="agent-advanced-title"]');
+		const trigger = wrapper.find('[data-testid="agent-advanced-trigger"]');
+		const chevron = wrapper.find('[data-testid="agent-advanced-chevron"]');
+		const content = wrapper.find('[data-testid="agent-advanced-content"]');
+
+		expect(title.text()).toContain('agents.builder.advanced.title');
+		expect(chevron.exists()).toBe(true);
+		expect(content.isVisible()).toBe(false);
+
+		await trigger.trigger('click');
+
+		expect(content.isVisible()).toBe(true);
+	});
+
 	it('treats sparse native web search config as disabled', async () => {
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config: makeConfig() },
@@ -328,6 +337,52 @@ describe('AgentAdvancedPanel', () => {
 		expect(events.length).toBeGreaterThan(0);
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
 		expect((last.config as { thinking: { provider: string } }).thinking.provider).toBe('anthropic');
+	});
+
+	it('shows the Anthropic ttl dropdown, defaulting to 1h, with no on/off toggle', async () => {
+		const config = makeConfig();
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		await nextTick();
+		expect(wrapper.find('[data-testid="agent-prompt-caching-toggle"]').exists()).toBe(false);
+		const ttlSelect = findStubComponent(wrapper, 'agent-prompt-caching-ttl-select');
+		expect(ttlSelect.exists()).toBe(true);
+		expect(ttlSelect.props('modelValue')).toBe('1h');
+	});
+
+	it('hides the prompt-caching row entirely for OpenAI (mandatory, no user-facing control)', () => {
+		const config = makeConfig({ model: 'openai/gpt-5.1' });
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		expect(wrapper.find('[data-testid="agent-prompt-caching-toggle"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
+	});
+
+	it('hides the prompt-caching row entirely for providers that do not support it', () => {
+		const config = makeConfig({ model: 'google/gemini-pro' });
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		expect(wrapper.find('[data-testid="agent-prompt-caching-toggle"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
+	});
+
+	it('emits { enabled: true, anthropic: { ttl } } when the ttl dropdown changes', () => {
+		const config = makeConfig();
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		emitSelectValue(wrapper, 'agent-prompt-caching-ttl-select', '5m');
+		const events = wrapper.emitted('update:config') ?? [];
+		expect(events.length).toBeGreaterThan(0);
+		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
+		expect(last.config?.promptCaching).toEqual({ enabled: true, anthropic: { ttl: '5m' } });
 	});
 
 	it('disables every control when the disabled prop is true', () => {

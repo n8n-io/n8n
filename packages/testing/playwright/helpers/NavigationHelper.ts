@@ -234,8 +234,7 @@ export class NavigationHelper {
 	 * URL: /assistant
 	 */
 	async toInstanceAi() {
-		await this.page.goto('/assistant');
-		await this.instanceAi.enableInstanceAiIfPrompted();
+		await this.instanceAi.goto();
 	}
 
 	/**

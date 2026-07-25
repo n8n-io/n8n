@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 /**
  * Descriptor for an OAuth 2.1 protected resource served by this instance.
@@ -26,6 +27,15 @@ export interface ProtectedResource {
 	getResourceUrl(): string;
 
 	/**
+	 * Every resource URL this resource is served at, canonical URL
+	 * (`getResourceUrl()`) first. A configured MCP base URL becomes the
+	 * canonical entry, and the instance-base-URL-derived resource follows so
+	 * clients using the instance hostname keep working. Treated as
+	 * `[getResourceUrl()]` when not implemented.
+	 */
+	getResourceUrls?(): string[];
+
+	/**
 	 * All `aud` values accepted at this resource's gate. Must include the
 	 * canonical resource URL; may include resource-specific legacy audiences.
 	 */
@@ -33,6 +43,12 @@ export interface ProtectedResource {
 
 	/** OAuth scopes advertised for this resource in discovery documents. */
 	scopes: string[];
+
+	/**
+	 * Tool names unlocked by each grantable scope, for display on the consent
+	 * screen. Omit when the resource has no per-tool scope mapping.
+	 */
+	getScopeTools?(): Record<string, string[]>;
 
 	/**
 	 * Fallback audience for token requests that omit an RFC 8707 `resource`
@@ -48,6 +64,15 @@ export interface ProtectedResource {
 	 * registered-URIs match per RFC 6749 §3.1.2.4.
 	 */
 	getAllowedRedirectUris?(): Promise<string[]>;
+
+	/**
+	 * Determine whether the given user is authorized to access this resource.
+	 * Called during the consent flow to gate access to the resource.
+	 *
+	 * @param user The user to authorize
+	 * @returns A promise that resolves to a boolean indicating whether the user is authorized
+	 **/
+	authorize(user: User): Promise<boolean>;
 }
 
 /**
@@ -86,6 +111,9 @@ export interface ProtectedResourceResolver {
 
 const trimTrailingSlash = (url: string): string => url.replace(/\/$/, '');
 
+const getResourceUrls = (resource: ProtectedResource): string[] =>
+	resource.getResourceUrls?.() ?? [resource.getResourceUrl()];
+
 /**
  * Registry of the protected resources served by this instance's shared OAuth
  * server. Modules register their resources on init (e.g. instance MCP
@@ -111,11 +139,13 @@ export class ProtectedResourceRegistry {
 		return this.resources.get(id);
 	}
 
-	/** Look up a resource by its canonical URL (trailing slashes ignored). */
+	/** Look up a resource by any of its resource URLs (trailing slashes ignored). */
 	async getByResourceUrl(resourceUrl: string): Promise<ProtectedResource | undefined> {
 		const normalized = trimTrailingSlash(resourceUrl);
 		for (const resource of this.resources.values()) {
-			if (trimTrailingSlash(resource.getResourceUrl()) === normalized) return resource;
+			if (getResourceUrls(resource).some((url) => trimTrailingSlash(url) === normalized)) {
+				return resource;
+			}
 		}
 		for (const resolver of this.resolvers) {
 			try {
@@ -132,12 +162,14 @@ export class ProtectedResourceRegistry {
 	async getByResourcePath(pathname: string): Promise<ProtectedResource | undefined> {
 		const normalized = trimTrailingSlash(pathname);
 		for (const resource of this.resources.values()) {
-			try {
-				if (trimTrailingSlash(new URL(resource.getResourceUrl()).pathname) === normalized) {
-					return resource;
+			for (const url of getResourceUrls(resource)) {
+				try {
+					if (trimTrailingSlash(new URL(url).pathname) === normalized) {
+						return resource;
+					}
+				} catch {
+					continue;
 				}
-			} catch {
-				continue;
 			}
 		}
 

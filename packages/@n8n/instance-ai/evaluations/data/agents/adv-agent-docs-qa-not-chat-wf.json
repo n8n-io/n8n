@@ -1,0 +1,26 @@
+{
+	"description": "Explicit agent request with chat-shaped Q&A. Gold: {anchor: agent, embedsOther: false} — the deliverable is an n8n Agent artifact, not a workflow with a Chat Trigger + AI Agent node (the historical misroute this case pins).",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build me an agent that answers customer questions from our docs. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"complexity": "medium",
+	"tags": ["intent-resolution", "explicit-artifact", "chat"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent proposes creating an n8n Agent as the deliverable for the docs Q&A assistant.",
+		"The proposal does NOT design a workflow with a Chat Trigger and an AI Agent node as the top-level shape.",
+		"The proposal grounds the agent choice in the explicit agent request and the chat-shaped, open-ended Q&A — not in generic preference."
+	],
+	"messageBudget": 4
+}

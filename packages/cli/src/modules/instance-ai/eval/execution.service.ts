@@ -40,14 +40,23 @@ import {
 import { randomUUID } from 'node:crypto';
 
 import { ActiveExecutions } from '@/active-executions';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+import { createLlmCompletionMockHandler } from './llm-completion-mock';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
+import { EvalTimings } from './eval-timings';
 import { type InterceptedTurn, LlmWireServer } from './llm-wire-server';
 import { createLlmMockHandler } from './mock-handler';
+import {
+	extractResponsesRequestModel,
+	isOpenAiResponsesUrl,
+	normalizeOpenAiResponsesMockResponse,
+} from './openai-responses-envelope';
 import { generatePinData } from './pin-data-generator';
 import {
 	buildVendorLlmRouting,
@@ -86,6 +95,8 @@ export class EvalExecutionService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly binaryDataService: BinaryDataService,
+		private readonly workflowStaticDataService: WorkflowStaticDataService,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 	) {}
 
 	async executeWithLlmMock(
@@ -156,7 +167,17 @@ export class EvalExecutionService {
 		}
 
 		const unpinSet = unpinNodes.length > 0 ? new Set(unpinNodes) : undefined;
-		const hints = await this.analyzeWorkflow(workflowEntity, options.scenarioHints, unpinSet);
+		const timings = new EvalTimings();
+		let hints: MockHints;
+		try {
+			hints = await this.analyzeWorkflow(workflowEntity, timings, options.scenarioHints, unpinSet);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			return this.errorResult(
+				randomUUID(),
+				message.startsWith('FRAMEWORK ISSUE:') ? message : `FRAMEWORK ISSUE: ${message}`,
+			);
+		}
 		const vendorLlmRouting = interceptionEnabled
 			? buildVendorLlmRouting(workflowEntity, unpinNodes)
 			: undefined;
@@ -165,6 +186,7 @@ export class EvalExecutionService {
 			workflowEntity,
 			user,
 			hints,
+			timings,
 			options.scenarioHints,
 			interceptionEnabled,
 			vendorLlmRouting,
@@ -188,6 +210,7 @@ export class EvalExecutionService {
 
 	private async analyzeWorkflow(
 		workflowEntity: IWorkflowBase,
+		timings: EvalTimings,
 		scenarioHints?: string,
 		unpinSet?: Set<string>,
 	): Promise<MockHints> {
@@ -199,11 +222,16 @@ export class EvalExecutionService {
 			`[EvalMock] Generating hints for ${nodeNames.length} nodes: ${nodeNames.join(', ')}`,
 		);
 
-		const hints = await generateMockHints({
-			workflow: workflowEntity,
-			nodeNames,
-			scenarioHints,
-		});
+		const hints = await timings.time(
+			'hints',
+			undefined,
+			async () =>
+				await generateMockHints({
+					workflow: workflowEntity,
+					nodeNames,
+					scenarioHints,
+				}),
+		);
 
 		if (!hints.globalContext && nodeNames.length > 0) {
 			this.logger.warn(
@@ -227,6 +255,7 @@ export class EvalExecutionService {
 				workflowEntity,
 				bypassNodeNames,
 				hints.globalContext,
+				timings,
 				scenarioHints,
 			);
 			this.logger.debug(
@@ -248,27 +277,53 @@ export class EvalExecutionService {
 		workflowEntity: IWorkflowBase,
 		bypassNodeNames: string[],
 		globalContext: string,
+		timings: EvalTimings,
 		scenarioHints?: string,
 	): Promise<IPinData> {
 		if (bypassNodeNames.length === 0) return {};
 
 		try {
-			const dataDescription = [globalContext, scenarioHints].filter(Boolean).join('\n\n');
-			const result = await generatePinData({
-				workflow: workflowEntity as unknown as WorkflowJSON,
-				nodeNames: bypassNodeNames,
-				instructions: dataDescription ? { dataDescription } : undefined,
-			});
+			// Keep the scenario separate from the general context: the pin generator
+			// treats "Test Scenario" as authoritative, and merging them into one blob
+			// lets invented context override scenario-specified stored state.
+			const result = await timings.time(
+				'bypass-pin',
+				undefined,
+				async () =>
+					await generatePinData({
+						workflow: workflowEntity as unknown as WorkflowJSON,
+						nodeNames: bypassNodeNames,
+						instructions:
+							globalContext || scenarioHints
+								? { dataDescription: globalContext, testScenario: scenarioHints }
+								: undefined,
+						outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup(),
+					}),
+			);
 
-			return normalizePinData(result as unknown as IPinData);
+			const normalized = normalizePinData(result as unknown as IPinData);
+
+			// generatePinData swallows internal failures (LLM timeout, parse error)
+			// and returns {} or a partial map instead of throwing, so the catch
+			// fallback below never fires for those. An unpinned bypass node
+			// EXECUTES for real — for AI roots the vendor SDK then makes real
+			// network calls (observed in CI: un-mocked Anthropic request →
+			// "Authorization failed"). Guarantee every bypass node is pinned,
+			// even if only with an empty item.
+			for (const nodeName of bypassNodeNames) {
+				if (!normalized[nodeName] || normalized[nodeName].length === 0) {
+					this.logger.warn(
+						`[EvalMock] Phase 1.5 produced no pin data for bypass node "${nodeName}" — pinning an empty item to prevent real execution`,
+					);
+					normalized[nodeName] = [{ json: {} }];
+				}
+			}
+
+			return normalized;
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			this.logger.error(`[EvalMock] Phase 1.5 pin data generation failed: ${errorMsg}`);
-			return normalizePinData(
-				Object.fromEntries(
-					bypassNodeNames.map((nodeName) => [nodeName, [{ json: {} }]]),
-				) as IPinData,
-			);
+			throw new Error(`FRAMEWORK ISSUE: Phase 1.5 pin data generation failed: ${errorMsg}`);
 		}
 	}
 
@@ -278,14 +333,47 @@ export class EvalExecutionService {
 		workflowEntity: IWorkflowBase,
 		user: User,
 		hints: MockHints,
+		timings: EvalTimings,
 		scenarioHints?: string,
 		interceptionEnabled = false,
 		vendorLlmRouting?: VendorLlmRouting,
 	): Promise<InstanceAiEvalExecutionResult> {
 		const nodeResults: Record<string, InstanceAiEvalNodeResult> = {};
 
+		// Fill setup-pending resource locators BEFORE the first normalization pass:
+		// Workflow construction runs getNodeParameters(returnNoneDisplayed=false),
+		// which STRIPS params whose displayOptions depend on a selected resource
+		// (e.g. Google Sheets `columns` vanishes while documentId/sheetName are
+		// empty) — destroying the builder's full column mapping before the patcher
+		// runs; the engine later re-adds such params from bare defaults and the
+		// node crashes. Production never executes in this state — users complete
+		// setup first — so filling here mirrors a completed setup.
+		for (const node of workflowEntity.nodes) {
+			if (node.disabled || !node.parameters) continue;
+			fillSetupPendingResourceLocators(node.parameters);
+		}
+
+		// Time-based Wait nodes park the execution until a future timestamp
+		// (specificTime) or sleep away the scenario budget (timeInterval), so
+		// downstream nodes never run inside the eval window even when the built
+		// workflow is correct. Zero them — execution order and branch structure
+		// stay observable, and the verifier still sees the builder's original
+		// wait config in the workflow JSON. Webhook/form-resume waits are left
+		// untouched (they model an external event, not the passage of time).
+		for (const node of workflowEntity.nodes) {
+			if (node.disabled || node.type !== 'n8n-nodes-base.wait') continue;
+			const resume = node.parameters?.resume;
+			if (resume === 'webhook' || resume === 'form') continue;
+			node.parameters = { ...node.parameters, resume: 'timeInterval', amount: 0, unit: 'seconds' };
+		}
+
 		const workflow = this.buildWorkflow(workflowEntity);
-		const startNode = this.findStartNode(workflow);
+		// Multi-trigger workflows: Phase 1 picks the trigger the scenario targets
+		// (firing the wrong one leaves the scenario's branch dormant and fails it).
+		const hintedStart = hints.startNodeName
+			? this.asTriggerNode(workflow.nodes[hints.startNodeName])
+			: undefined;
+		const startNode = hintedStart ?? this.findStartNode(workflow);
 
 		if (!startNode) {
 			return this.errorResult(randomUUID(), 'No trigger or start node found in the workflow');
@@ -295,6 +383,7 @@ export class EvalExecutionService {
 			scenarioHints,
 			globalContext: hints.globalContext,
 			nodeHints: hints.nodeHints,
+			pinnedOutputs: summarizePinnedOutputs(hints.bypassPinData),
 		});
 
 		const binaryRequirement = detectBinaryDependencies(workflowEntity);
@@ -306,9 +395,14 @@ export class EvalExecutionService {
 		const pinData: IPinData = { ...triggerPinData, ...hints.bypassPinData };
 		const pinDataNodeNames = Object.keys(pinData);
 
-		// Check config completeness before execution — detect missing required parameters
-		this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
+		// Patch setup-pending params first, THEN record remaining config issues.
+		// Issues the patcher resolves (empty locators awaiting user setup, eval
+		// placeholders) must not fail the scenario — collectConfigIssueErrors folds
+		// recorded issues into errors and flips success:false, so recording
+		// pre-patch state failed runs the harness had already made executable.
+		// Genuinely unresolved misconfigurations are still recorded and still fail.
 		this.patchParameterIssuesForEval(workflow, pinDataNodeNames);
+		this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
 		const executionData = this.buildExecutionData(startNode, pinData);
 
 		// Mark the trigger node as pinned (it gets its output from pin data, not execution).
@@ -328,8 +422,20 @@ export class EvalExecutionService {
 		try {
 			let serverUrl: string | undefined;
 			if (interceptionEnabled) {
+				// Wire server mocks the agent's own model turns (not HTTP APIs) → LLM completion mock.
+				const llmCompletionMockHandler = createLlmCompletionMockHandler({
+					scenarioHints,
+					globalContext: hints.globalContext,
+					nodeHints: hints.nodeHints,
+				});
+				const timedAiTurnHandler: EvalLlmMockHandler = async (request, node) =>
+					await timings.time(
+						'ai-turn',
+						node.type,
+						async () => await llmCompletionMockHandler(request, node),
+					);
 				wireServer = new LlmWireServer({
-					mockHandler,
+					mockHandler: timedAiTurnHandler,
 					rootToSubNode: vendorLlmRouting?.rootToSubNode,
 					onIntercept: (turn) => this.recordWireServerTurn(turn, nodeResults),
 					logger: this.logger,
@@ -341,7 +447,8 @@ export class EvalExecutionService {
 
 			const runData: IWorkflowExecutionDataProcess = {
 				executionMode: 'evaluation',
-				workflowData: workflowEntity,
+				// Builder-verify runs persist staticData (e.g. dedup cursors); scenarios assume it starts empty.
+				workflowData: { ...workflowEntity, staticData: undefined },
 				userId: user.id,
 				executionData,
 				pinData,
@@ -356,6 +463,7 @@ export class EvalExecutionService {
 					additionalData.evalLlmMockHandler = this.createInterceptingHandler(
 						mockHandler,
 						nodeResults,
+						timings,
 					);
 				},
 			};
@@ -399,6 +507,23 @@ export class EvalExecutionService {
 					});
 				}
 			}
+			await this.blankPersistedStaticData(workflowEntity.id);
+			timings.summary(this.logger);
+		}
+	}
+
+	/**
+	 * 'evaluation'-mode runs persist getWorkflowStaticData() writes back to the
+	 * workflow row — blank it after the run so scenarios leave no state behind.
+	 */
+	private async blankPersistedStaticData(workflowId: string): Promise<void> {
+		try {
+			await this.workflowStaticDataService.saveStaticDataById(workflowId, {});
+		} catch (error) {
+			this.logger.warn('[EvalMock] Failed to blank workflow staticData after run', {
+				workflowId,
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 
@@ -424,6 +549,15 @@ export class EvalExecutionService {
 	 */
 	private findStartNode(workflow: Workflow): INode | undefined {
 		return workflow.getStartNode() ?? this.findWebhookNode(workflow);
+	}
+
+	/** Accept a Phase-1 start-node hint only when it names a real, enabled trigger-capable node. */
+	private asTriggerNode(node: INode | undefined): INode | undefined {
+		if (!node || node.disabled) return undefined;
+		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		if (!nodeType) return undefined;
+		const isTriggerCapable = 'trigger' in nodeType || 'poll' in nodeType || 'webhook' in nodeType;
+		return isTriggerCapable ? node : undefined;
 	}
 
 	private findWebhookNode(workflow: Workflow): INode | undefined {
@@ -456,7 +590,15 @@ export class EvalExecutionService {
 				pinDataNodeNames,
 			);
 
-			if (issues?.parameters && Object.keys(issues.parameters).length > 0) {
+			const parameterIssues = { ...(issues?.parameters ?? {}) };
+			// '__evalMockValue' marks a required param the patcher could only blind-fill — still a genuine config issue.
+			for (const [paramName, value] of Object.entries(node.parameters ?? {})) {
+				if (value === '__evalMockValue') {
+					parameterIssues[paramName] ??= [`Parameter "${paramName}" is required.`];
+				}
+			}
+
+			if (Object.keys(parameterIssues).length > 0) {
 				const entry = (nodeResults[node.name] ??= {
 					outputs: {},
 					outputCount: 0,
@@ -464,7 +606,7 @@ export class EvalExecutionService {
 					interceptedRequests: [],
 					executionMode: 'real',
 				});
-				entry.configIssues = issues.parameters;
+				entry.configIssues = parameterIssues;
 			}
 		}
 	}
@@ -480,6 +622,9 @@ export class EvalExecutionService {
 
 			if (node.parameters) {
 				node.parameters = scrubPlaceholderValues(node.parameters) as INodeParameters;
+				for (const change of patchSetupPendingResourceMappers(node.parameters)) {
+					this.logger.info(`[EvalMock] resourceMapper patch on "${node.name}": ${change}`);
+				}
 			}
 
 			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -499,6 +644,7 @@ export class EvalExecutionService {
 			for (const paramName of Object.keys(paramIssues)) {
 				params[paramName] = synthesizeMissingParamValue(
 					params[paramName],
+					paramName,
 				) as INodeParameters[string];
 			}
 			node.parameters = params;
@@ -618,6 +764,7 @@ export class EvalExecutionService {
 	private createInterceptingHandler(
 		mockHandler: EvalLlmMockHandler,
 		nodeResults: Record<string, InstanceAiEvalNodeResult>,
+		timings: EvalTimings,
 	): EvalLlmMockHandler {
 		return async (
 			requestOptions: IHttpRequestOptions,
@@ -633,10 +780,35 @@ export class EvalExecutionService {
 				executionMode: 'mocked',
 			});
 			entry.executionMode = 'mocked';
-			const response = await mockHandler(requestOptions, node);
+			let response = await timings.time(
+				'http-mock',
+				node.name,
+				async () => await mockHandler(requestOptions, node),
+			);
+
+			// Responses-API calls from the openAi node bypass the wire-server
+			// protocol adapters — coerce the generated body to the canonical
+			// envelope so the node's real parser accepts it.
+			if (response && response.statusCode < 400 && isOpenAiResponsesUrl(requestOptions.url)) {
+				const normalized = normalizeOpenAiResponsesMockResponse(
+					response,
+					extractResponsesRequestModel(requestOptions.body),
+				);
+				if (normalized !== response) {
+					// Triage breadcrumb: the recorded mockResponse below is the coerced
+					// body, not the generator's raw output.
+					this.logger.debug(
+						`[EvalMock] Applied Responses-envelope normalization for "${node.name}"`,
+					);
+				}
+				response = normalized;
+			}
 
 			entry.interceptedRequests.push({
-				url: requestOptions.url,
+				// Broken routing (resource/operation missing on the node type) emits a
+				// request with no URL — store a readable marker; the verifier prompt
+				// and the HTML report both key on it, and undefined crashes the report.
+				url: requestOptions.url ?? '(no URL)',
 				method: requestOptions.method ?? 'GET',
 				nodeType: node.type,
 				requestBody: requestOptions.body,
@@ -933,7 +1105,46 @@ function scrubPlaceholderValues(value: unknown): unknown {
 	return value;
 }
 
-function synthesizeMissingParamValue(current: unknown): unknown {
+/**
+ * Empty resource locators are the builder's correct "user picks at setup"
+ * state — filling them with one opaque token crashes nodes that resolve the
+ * value client-side against mock metadata (e.g. Google Sheets resolves the
+ * sheet gid locally; '__evalMockResource' can never match the mock's sheetId
+ * 0). Pick the value the mock environment consistently serves, keyed off the
+ * parameter name; fall back to the generic token.
+ */
+function synthesizeResourceLocatorValue(paramName: string): string {
+	const h = paramName.toLowerCase();
+	if (h.includes('spreadsheet') || h.includes('document')) return 'eval-spreadsheet-id';
+	if (h.includes('sheet')) return '0';
+	if (h.includes('calendar')) return 'eval-calendar-id';
+	if (h.includes('folder')) return 'eval-folder-id';
+	if (h.includes('file')) return 'eval-file-id';
+	if (h.includes('drive')) return 'eval-drive-id';
+	if (h.includes('channel')) return 'C00000000EVAL';
+	return '__evalMockResource';
+}
+
+/**
+ * Fill empty resource-locator values on the raw entity nodes. Must run before
+ * any Workflow construction — see the call site in execute() for why.
+ */
+function fillSetupPendingResourceLocators(parameters: INodeParameters): void {
+	for (const [key, raw] of Object.entries(parameters)) {
+		if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) continue;
+		const rl = raw as Record<string, unknown>;
+		if (!('__rl' in rl)) continue;
+		const value = rl.value;
+		const isEmpty = value === undefined || value === null || value === '';
+		if (!isEmpty) continue;
+		parameters[key] = {
+			...rl,
+			value: synthesizeResourceLocatorValue(key),
+		} as INodeParameters[string];
+	}
+}
+
+function synthesizeMissingParamValue(current: unknown, paramName = ''): unknown {
 	if (
 		current !== null &&
 		typeof current === 'object' &&
@@ -949,7 +1160,7 @@ function synthesizeMissingParamValue(current: unknown): unknown {
 		return {
 			...rl,
 			mode,
-			value: hasValue ? rawValue : '__evalMockResource',
+			value: hasValue ? rawValue : synthesizeResourceLocatorValue(paramName),
 		};
 	}
 
@@ -957,6 +1168,92 @@ function synthesizeMissingParamValue(current: unknown): unknown {
 	if (current === null || current === undefined) return '__evalMockValue';
 
 	return current;
+}
+
+/**
+ * Resource-mapper params (e.g. Google Sheets `columns`) crash at runtime when
+ * `mappingMode: 'defineBelow'` lacks `schema` — an artifact only the
+ * setup-time schema fetch can supply once the real resource exists. The
+ * defined mapping IS the builder's content: synthesize the schema from its
+ * keys, mirroring what the fetch would return. With no mappings at all, fall
+ * back to automatic input mapping. The node raises this at runtime, so
+ * pre-execution paramIssues never flags it — scan every node's params
+ * directly.
+ */
+function patchSetupPendingResourceMappers(parameters: INodeParameters): string[] {
+	const changes: string[] = [];
+	for (const [key, raw] of Object.entries(parameters)) {
+		if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) continue;
+		const mapper = raw as Record<string, unknown>;
+		if (!('mappingMode' in mapper) || mapper.mappingMode !== 'defineBelow') continue;
+
+		const value = mapper.value;
+		const mappingKeys =
+			value !== null && typeof value === 'object' && !Array.isArray(value)
+				? Object.keys(value as Record<string, unknown>)
+				: [];
+
+		if (mappingKeys.length === 0) {
+			// Keep a schema key even when empty: Google Sheets appendOrUpdate
+			// (v4.4+) reads `columns.schema` without a fallback regardless of
+			// mapping mode — an absent key crashes with "Could not get parameter".
+			parameters[key] = {
+				...mapper,
+				mappingMode: 'autoMapInputData',
+				value: null,
+				schema: Array.isArray(mapper.schema) ? mapper.schema : [],
+			} as INodeParameters[string];
+			changes.push(`${key}: defineBelow without mappings → autoMapInputData`);
+			continue;
+		}
+
+		const schema = mapper.schema;
+		if (Array.isArray(schema) && schema.length > 0) continue;
+
+		changes.push(`${key}: synthesized schema from ${String(mappingKeys.length)} mapping keys`);
+		parameters[key] = {
+			...mapper,
+			schema: mappingKeys.map((id) => ({
+				id,
+				displayName: id,
+				required: false,
+				defaultMatch: false,
+				display: true,
+				type: 'string',
+				canBeUsedToMatch: true,
+			})),
+		} as INodeParameters[string];
+	}
+	return changes;
+}
+
+/**
+ * Compact per-node summary of Phase-1.5 pinned outputs for the runtime mock
+ * prompt — HTTP mocks must stay consistent with pinned stored state (same
+ * entities/timestamps), else "stored matches current" scenarios can never pass.
+ */
+function summarizePinnedOutputs(pinData: IPinData | undefined): string | undefined {
+	if (!pinData) return undefined;
+	const lines: string[] = [];
+	for (const [nodeName, items] of Object.entries(pinData)) {
+		// Guaranteed-pin placeholders ({json:{}}) are execution guards, not
+		// scenario data — presenting them to the mock LLM as authoritative
+		// facts would bias HTTP mocks toward empty data exactly in the runs
+		// where pin generation under-delivered.
+		const meaningful = items.filter(
+			(item) => Object.keys(item.json ?? {}).length > 0 || item.binary !== undefined,
+		);
+		if (meaningful.length === 0) continue;
+		let json = '';
+		try {
+			json = JSON.stringify(meaningful);
+		} catch {
+			continue;
+		}
+		if (json.length > 1500) json = json.slice(0, 1500) + '…';
+		lines.push(`- ${nodeName}: ${json}`);
+	}
+	return lines.length > 0 ? lines.join('\n') : undefined;
 }
 
 function collectConfigIssueErrors(nodeResults: Record<string, InstanceAiEvalNodeResult>): string[] {
