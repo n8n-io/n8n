@@ -5,7 +5,7 @@ import { parsePinDataResponse, repairStructuredOutput } from './parse';
 import { buildNodeSchemaSection, buildPinDataUserPrompt } from './prompt';
 import type { NodeSchemaContext, OutputSchemaLookup } from './types';
 import { buildFieldViolationRetryMessage, collectPinFieldViolations } from './validate';
-import type { WorkflowJSON } from '../types/base';
+import type { NodeJSON, WorkflowJSON } from '../types/base';
 
 const workflow = {
 	nodes: [
@@ -348,7 +348,7 @@ describe('information extractor own-schema enrichment', () => {
 				],
 			},
 		},
-	};
+	} as unknown as NodeJSON;
 	const extractorWorkflow = {
 		nodes: [extractorNode],
 		connections: {},
