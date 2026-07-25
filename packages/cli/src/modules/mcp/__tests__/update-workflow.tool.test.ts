@@ -47,6 +47,10 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 			validateJSON: (json: unknown) => mockValidateJSON(json) as unknown,
 		};
 	}),
+	// Real key logic (code|nodeName|parameterPath), inlined because the module
+	// is fully mocked; the pre-existing annotation tests depend on it.
+	getWarningKey: (warning: { code: string; nodeName?: string; parameterPath?: string }) =>
+		`${warning.code}|${warning.nodeName ?? ''}|${warning.parameterPath ?? ''}`,
 }));
 
 const parseResult = (result: { content: Array<{ type: string; text?: string }> }) =>
