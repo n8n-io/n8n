@@ -152,8 +152,26 @@ function extractInformationExtractorSchema(
 	}
 
 	const candidate = schemaType === 'manual' ? params.inputSchema : params.jsonSchemaExample;
-	if (typeof candidate === 'string' && candidate.trim().length > 0) {
-		return { schemaText: candidate.trim(), schemaIsExample: schemaType !== 'manual' };
+	const schemaText = schemaDeclarationText(candidate);
+	if (schemaText) {
+		return { schemaText, schemaIsExample: schemaType !== 'manual' };
+	}
+	return undefined;
+}
+
+/**
+ * Schema declarations are JSON strings in the editor, but eval builders
+ * sometimes store them as raw objects — those still declare the field names
+ * the pin must follow, so read both forms.
+ */
+export function schemaDeclarationText(candidate: unknown): string | undefined {
+	if (typeof candidate === 'string' && candidate.trim().length > 0) return candidate.trim();
+	if (typeof candidate === 'object' && candidate !== null) {
+		try {
+			return JSON.stringify(candidate);
+		} catch {
+			return undefined;
+		}
 	}
 	return undefined;
 }
@@ -208,8 +226,9 @@ function extractParserContext(parserNode: NodeJSON | undefined): OutputParserCon
 		[example, true],
 		[legacySchema, false],
 	] as Array<[unknown, boolean]>) {
-		if (typeof candidate === 'string' && candidate.trim().length > 0) {
-			return { schemaText: candidate.trim(), schemaIsExample: isExample };
+		const schemaText = schemaDeclarationText(candidate);
+		if (schemaText) {
+			return { schemaText, schemaIsExample: isExample };
 		}
 	}
 

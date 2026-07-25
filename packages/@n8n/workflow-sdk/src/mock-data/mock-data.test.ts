@@ -379,6 +379,40 @@ describe('information extractor own-schema enrichment', () => {
 		});
 	});
 
+	it('reads schema declarations stored as raw objects (eval-builder quirk)', () => {
+		const rawObjectExample = {
+			...extractorNode,
+			parameters: {
+				schemaType: 'fromJson',
+				jsonSchemaExample: { amount: 4750, po_number: 'PO-1' },
+			},
+		};
+		expect(buildSchemaContexts([rawObjectExample])[0].declaredFields).toMatchObject({
+			keys: ['amount', 'po_number'],
+			envelopeKey: 'output',
+		});
+
+		const parserWorkflow = {
+			nodes: [
+				{
+					name: 'Invoice Schema',
+					type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+					typeVersion: 1.2,
+					parameters: { schemaType: 'fromJson', jsonSchemaExample: { amount: 1 } },
+				},
+			],
+			connections: {
+				'Invoice Schema': {
+					ai_outputParser: [[{ node: 'AI Root', type: 'ai_outputParser', index: 0 }]],
+				},
+			},
+		} as unknown as WorkflowJSON;
+		expect(findOutputParserTargets(parserWorkflow).get('AI Root')).toEqual({
+			schemaText: '{"amount":1}',
+			schemaIsExample: true,
+		});
+	});
+
 	it('repairs flat extractor pins into the output envelope without a parser connection', () => {
 		const flat = { 'Extract Invoice Details': [{ json: { invoice_number: 'INV-1' } }] };
 

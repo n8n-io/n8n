@@ -67,8 +67,9 @@ export function buildNodeSchemaSection(ctx: NodeSchemaContext): string[] {
 		const columnList = ctx.dataTableColumns.map((c) => `${c.name} (${c.type})`).join(', ');
 		lines.push(
 			'- REAL Data Table columns — every pinned row MUST contain exactly these keys plus ' +
-				'`id`, `createdAt`, `updatedAt`, and no others (values may be empty/null when the ' +
-				`scenario calls for it): ${columnList}`,
+				'`id` (a NUMBER, auto-incremented: 1, 2, 3…), `createdAt`, `updatedAt` (ISO ' +
+				'timestamps), and no others (values may be empty/null when the scenario calls ' +
+				`for it): ${columnList}`,
 		);
 		return lines;
 	}
