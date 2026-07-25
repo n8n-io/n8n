@@ -8,7 +8,7 @@
 
 import type { InstanceAiEvalSeedDataTable } from '@n8n/api-types';
 
-import { type EvalLogger } from './logger';
+import type { EvalLogger } from './logger';
 import type { N8nClient } from '../clients/n8n-client';
 import type { ExecutionScenario } from '../types';
 

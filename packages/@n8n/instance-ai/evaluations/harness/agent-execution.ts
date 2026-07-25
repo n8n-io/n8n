@@ -11,7 +11,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { agentHandler } from './artifacts/agent-handler';
-import { type EvalLogger } from './logger';
+import type { EvalLogger } from './logger';
 import { writeScenarioVerificationSnapshot, type VerificationArtifact } from './scenario-execution';
 import { isTransientExecutionAbort, MAX_EXEC_ATTEMPTS } from './transient-error';
 import { verifyChecklist } from '../checklist/verifier';

@@ -28,7 +28,7 @@ import {
 	type ConversationSeed,
 } from './conversation-seed';
 import { reconstructSeedFromThread, type SeedThreadRef } from './langsmith-seed';
-import { type EvalLogger } from './logger';
+import type { EvalLogger } from './logger';
 import { buildSeededTablesNote, dedupeScenarioSeedTables } from './seed-tables';
 import type { CheckOutcome } from '../binaryChecks/types';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';

@@ -12,7 +12,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { type EvalLogger } from './logger';
+import type { EvalLogger } from './logger';
 import { reseedScenarioTables, type ScenarioSeedContext } from './seed-tables';
 import { isTransientExecutionAbort, MAX_EXEC_ATTEMPTS } from './transient-error';
 import { buildWorkflowContextBlock } from './workflow-context';
@@ -43,6 +43,7 @@ function slugifyArtifactSegment(value: string, fallback: string): string {
 	return slug.length > 0 ? slug : fallback;
 }
 
+/** Exported for the agent scenario path — agent-execution.ts writes the same snapshots. */
 export async function writeScenarioVerificationSnapshot(input: {
 	testCaseName: string;
 	scenarioName: string;

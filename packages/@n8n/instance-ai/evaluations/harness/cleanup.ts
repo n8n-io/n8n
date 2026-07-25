@@ -8,7 +8,7 @@
 
 import { findAgentArtifactRef } from './agent-execution';
 import type { BuildResult } from './build-workflow';
-import { type EvalLogger } from './logger';
+import type { EvalLogger } from './logger';
 import { classifyScenarioExecutionError } from './transient-error';
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
@@ -21,10 +21,11 @@ import type { CapturedEvent, WorkflowTestCase, WorkflowTestCaseResult } from '..
  * builds (multi-agent fan-outs, 5-integration pipelines) legitimately run at
  * the shared default's cap — observed 777–900s with 4/10 builds timing out on
  * weekly-social-content-scheduler in run 29012884140 — while the default must
- * NOT rise globally (see the DEFAULT_TIMEOUT_MS comment in build-workflow.ts: a generous default lets starved
- * scenarios amplify the contention that starved them). Keyed off the authored
- * `complexity` field so the budget travels with the case (incl. through the
- * lang-tracer mirror) instead of a bespoke per-case knob.
+ * NOT rise globally (see the DEFAULT_TIMEOUT_MS comment in build-workflow.ts:
+ * a generous default lets starved scenarios amplify the contention that
+ * starved them). Keyed off the authored `complexity` field so the budget
+ * travels with the case (incl. through the lang-tracer mirror) instead of a
+ * bespoke per-case knob.
  */
 export function effectiveTimeoutMs(
 	complexity: WorkflowTestCase['complexity'] | undefined,
