@@ -134,8 +134,9 @@ export function decodeRelayedWebhookResponse(
  * stream, e.g. a sub-workflow tool reading the response.
  *
  * @param response Relayed response. Mutated and returned.
- * @returns The same `response`, with an offloaded body restored. When
- * fetching fails, the reference body is left in place and a warning logged.
+ * @returns The same `response`, with an offloaded body restored. When fetching
+ * fails, an empty body of the original kind is substituted (never the internal
+ * reference) and a warning logged.
  */
 export async function restoreOffloadedWebhookResponseBody(
 	response: IExecuteResponsePromiseData,
@@ -155,6 +156,7 @@ export async function restoreOffloadedWebhookResponseBody(
 		response.body = deserializeBody(buffer, offloaded.kind);
 	} catch (error) {
 		logger.warn('Failed to restore offloaded webhook response body', { error });
+		response.body = emptyBodyOf(offloaded.kind);
 	}
 
 	return response;
@@ -244,6 +246,18 @@ function deserializeBody(buffer: Buffer, kind: OffloadedBodyKind): IN8nHttpFullR
 			return buffer.toString('utf8');
 		case 'json':
 			return jsonParse<IDataObject>(buffer.toString('utf8'));
+	}
+}
+
+/** An empty body of the given kind, substituted when a stored body can't be fetched. */
+function emptyBodyOf(kind: OffloadedBodyKind): IN8nHttpFullResponse['body'] {
+	switch (kind) {
+		case 'buffer':
+			return Buffer.alloc(0);
+		case 'string':
+			return '';
+		case 'json':
+			return {};
 	}
 }
 

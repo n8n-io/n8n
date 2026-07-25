@@ -424,18 +424,25 @@ describe('webhook-response-relay', () => {
 			expect(result.body).toBe(reference);
 		});
 
-		it('leaves the reference in place when fetching fails', async () => {
-			const binaryDataService = mock<BinaryDataService>();
-			binaryDataService.getAsBuffer.mockRejectedValue(new Error('store unavailable'));
-			const response = offloadedResponse('json');
-			const reference = response.body;
+		it('substitutes an empty body of the original kind when fetching fails', async () => {
+			const cases: Array<['buffer' | 'string' | 'json', IN8nHttpFullResponse['body']]> = [
+				['buffer', Buffer.alloc(0)],
+				['string', ''],
+				['json', {}],
+			];
 
-			const result = (await restoreOffloadedWebhookResponseBody(
-				response,
-				depsWith(binaryDataService),
-			)) as IN8nHttpFullResponse;
+			for (const [kind, expected] of cases) {
+				const binaryDataService = mock<BinaryDataService>();
+				binaryDataService.getAsBuffer.mockRejectedValue(new Error('store unavailable'));
 
-			expect(result.body).toBe(reference);
+				const result = (await restoreOffloadedWebhookResponseBody(
+					offloadedResponse(kind),
+					depsWith(binaryDataService),
+				)) as IN8nHttpFullResponse;
+
+				expect(result.body).toEqual(expected);
+				expect(result.body).not.toHaveProperty(OFFLOADED_BODY_KIND_KEY);
+			}
 		});
 
 		it('leaves a response without a body untouched', async () => {
