@@ -412,7 +412,16 @@ export class FrontendService {
 				postMessageAllowedOrigins: this.securityConfig.postMessageAllowedOrigins
 					.split(',')
 					.map((origin) => origin.trim())
-					.filter((origin) => origin !== ''),
+					.filter((origin) => origin !== '')
+					// Normalize to a serialized origin (lowercase scheme/host, no trailing
+					// slash or default port) so config values match `MessageEvent.origin`.
+					.map((origin) => {
+						try {
+							return new URL(origin).origin;
+						} catch {
+							return origin;
+						}
+					}),
 			},
 			chatTrigger: {
 				disablePublicChat: this.globalConfig.chatTrigger.disablePublicChat,

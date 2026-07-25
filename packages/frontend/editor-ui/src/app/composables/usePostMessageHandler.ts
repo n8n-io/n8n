@@ -9,13 +9,13 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useCanvasStore } from '@/app/stores/canvas.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { isPostMessageOriginAllowed } from '@/app/utils/postMessageUtils';
 import { buildExecutionResponseFromSchema } from '@/features/execution/executions/executions.utils';
 import type { ExecutionPreviewNodeSchema } from '@/features/execution/executions/executions.types';
 import type { IWorkflowDb } from '@/Interface';
@@ -49,7 +49,6 @@ export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMess
 	const i18n = useI18n();
 	const toast = useToast();
 	const canvasStore = useCanvasStore();
-	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
 	const projectsStore = useProjectsStore();
 	const executionsStore = useExecutionsStore();
@@ -231,24 +230,12 @@ export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMess
 		canvasEventBus.emit('open:execution', data);
 	}
 
-	// When an allowlist is configured, only accept commands from those origins
-	// (same-origin is always allowed). An empty allowlist keeps the historical
-	// behavior of accepting messages from any origin, so existing embeds are
-	// unaffected unless an operator opts in.
-	function isOriginAllowed(origin: string) {
-		const allowedOrigins = settingsStore.settings.security?.postMessageAllowedOrigins ?? [];
-		if (allowedOrigins.length === 0) {
-			return true;
-		}
-		return origin === window.location.origin || allowedOrigins.includes(origin);
-	}
-
 	async function onPostMessageReceived(messageEvent: MessageEvent) {
 		if (
 			!messageEvent ||
 			typeof messageEvent.data !== 'string' ||
 			!messageEvent.data?.includes?.('"command"') ||
-			!isOriginAllowed(messageEvent.origin)
+			!isPostMessageOriginAllowed(messageEvent.origin)
 		) {
 			return;
 		}

@@ -248,6 +248,22 @@ describe('FrontendService', () => {
 			);
 		});
 
+		it('should normalize configured postMessage origins', async () => {
+			securityConfig.postMessageAllowedOrigins =
+				'HTTPS://Example.COM/, https://app.example.com:443, http://localhost:5678/path, not a url';
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+			expect(settings.security.postMessageAllowedOrigins).toEqual([
+				'https://example.com',
+				'https://app.example.com',
+				'http://localhost:5678',
+				'not a url',
+			]);
+
+			securityConfig.postMessageAllowedOrigins = '';
+		});
+
 		it('should refresh the workflow reviews policy on every settings fetch', async () => {
 			process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 			licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
