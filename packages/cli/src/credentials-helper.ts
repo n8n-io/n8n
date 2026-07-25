@@ -587,8 +587,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.allowedDomains = decryptedDataOriginal.allowedDomains;
 		}
 
-		// When using dynamic client registration, fields
-		// for client ID, secret, auth URL, access token URL, grant type and authentication
+		// When using dynamic client registration, OAuth fields negotiated at runtime
 		// are not shown in the UI, so we need to copy them from the original data.
 		if (decryptedData.useDynamicClientRegistration) {
 			decryptedData.clientId = decryptedDataOriginal.clientId;
@@ -597,6 +596,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.accessTokenUrl = decryptedDataOriginal.accessTokenUrl;
 			decryptedData.grantType = decryptedDataOriginal.grantType;
 			decryptedData.authentication = decryptedDataOriginal.authentication;
+			decryptedData.usePkce = decryptedDataOriginal.usePkce;
 		}
 
 		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {

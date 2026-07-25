@@ -1,6 +1,7 @@
 import {
 	AgentDisconnectIntegrationDto,
 	AgentIntegrationSchema,
+	isDraftIntegration,
 	type AgentIntegrationStatusResponse,
 	CreateSlackAgentAppDto,
 	type CreateSlackAgentAppResponse,
@@ -81,8 +82,9 @@ export class AgentIntegrationsController {
 			agentId,
 			agent.projectId,
 			req.user,
+			'channel_connect',
 			undefined,
-			{ syncIntegrations: false },
+			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);
 		await this.chatIntegrationService.connect(agentId, integration, agent.projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(agentId, integration, 'connect');
@@ -215,11 +217,17 @@ export class AgentIntegrationsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		const chatIntegrations = (agent.integrations ?? []).map((i) => ({
-			type: i.type,
-			credentialId: i.credentialId,
-			...('settings' in i ? { settings: i.settings } : {}),
-		}));
+		// Draft entries (`credentialId: ''`) written during the initial build so
+		// the panel can show a needs-setup chip aren't a real connection — report
+		// them as disconnected so channel-setup UIs don't render an already-
+		// connected state and hide their own setup form.
+		const chatIntegrations = (agent.integrations ?? [])
+			.filter((i) => !isDraftIntegration(i))
+			.map((i) => ({
+				type: i.type,
+				credentialId: i.credentialId,
+				...('settings' in i ? { settings: i.settings } : {}),
+			}));
 		return {
 			status: chatIntegrations.length > 0 ? 'connected' : 'disconnected',
 			integrations: chatIntegrations,

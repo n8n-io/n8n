@@ -204,6 +204,11 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 			help: 'Total number of registered workflows torn down by trigger reconciliation because they were no longer published.',
 		});
 
+		const versionSkew = new promClient.Counter({
+			name: `${prefix}workflow_publication_reconciliation_version_skew_workflows_total`,
+			help: 'Total number of workflows re-enqueued by reconciliation because their published version diverged from the active version.',
+		});
+
 		const duration = new promClient.Histogram({
 			name: `${prefix}workflow_publication_reconciliation_duration_seconds`,
 			help: 'Duration in seconds of a trigger reconciliation pass by result.',
@@ -213,9 +218,10 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 
 		this.eventService.on(
 			'workflow-publication-reconciliation',
-			({ result, deficientCount, surplusCount, durationMs }) => {
+			({ result, deficientCount, surplusCount, versionSkewCount, durationMs }) => {
 				deficient.inc(deficientCount);
 				surplus.inc(surplusCount);
+				versionSkew.inc(versionSkewCount);
 				duration.observe({ result }, durationMs * Time.milliseconds.toSeconds);
 			},
 		);

@@ -162,6 +162,30 @@ describe('AgentConfigService', () => {
 				}),
 			).resolves.toMatchObject({ valid: true });
 		});
+
+		it('returns a human-readable Zod error for an invalid MCP server name', async () => {
+			const { service } = makeService();
+
+			const result = await service.validateConfig({
+				...baseConfig,
+				mcpServers: [
+					{
+						name: 'has spaces',
+						url: 'https://example.com/mcp',
+						transport: 'streamableHttp',
+						authentication: 'none',
+					},
+				],
+			});
+
+			expect(result.valid).toBe(false);
+			if (result.valid) return;
+			expect(result.error).toContain('mcpServers.0.name');
+			expect(result.error).toContain(
+				'MCP server name can only contain letters, numbers, hyphens, and underscores',
+			);
+			expect(result.error).not.toContain('"validation": "regex"');
+		});
 	});
 
 	describe('updateConfig', () => {

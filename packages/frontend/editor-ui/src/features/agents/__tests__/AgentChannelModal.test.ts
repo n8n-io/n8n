@@ -1,8 +1,12 @@
-import { mount } from '@vue/test-utils';
+import { mount, VueWrapper } from '@vue/test-utils';
 import { ref } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import AgentChannelModal from '../components/AgentChannelModal.vue';
+
+type SlackSetupStubWrapper = VueWrapper<{
+	disconnectSlackApp: () => Promise<void>;
+}>;
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -14,6 +18,8 @@ const catalog = ref([
 	{ type: 'slack', label: 'Slack', icon: 'zap' },
 	{ type: 'linear', label: 'Linear', icon: 'zap' },
 ]);
+
+const disconnectMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 
 vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 	useAgentIntegrationsCatalog: () => ({
@@ -32,7 +38,7 @@ vi.mock('../composables/useAgentIntegrationStatus', () => ({
 		errorIsConflict: ref({}),
 		isConnected: () => false,
 		connect: vi.fn(),
-		disconnect: vi.fn(),
+		disconnect: disconnectMock,
 	}),
 }));
 
@@ -79,7 +85,7 @@ function mountModal(props: Record<string, unknown>) {
 				N8nText: { template: '<span><slot /></span>' },
 				AgentChannelListItem: { template: '<li data-testid="channel-list-item" />' },
 				AgentChannelSlackSetup: {
-					props: ['mode'],
+					props: ['mode', 'disconnectSlackApp'],
 					template: '<div data-testid="slack-setup" :data-mode="mode" />',
 				},
 				AgentChannelLinearSetup: {
@@ -96,6 +102,10 @@ function mountModal(props: Record<string, unknown>) {
 }
 
 describe('AgentChannelModal', () => {
+	beforeEach(() => {
+		disconnectMock.mockClear();
+	});
+
 	it('renders the channel list for the list view', () => {
 		const wrapper = mountModal({ view: 'list' });
 
@@ -114,5 +124,21 @@ describe('AgentChannelModal', () => {
 
 		const linearSetup = wrapper.find('[data-testid="linear-setup"]');
 		expect(linearSetup.attributes('data-mode')).toBe('edit');
+	});
+
+	it('disconnects a draft slack channel and closes the modal', async () => {
+		const wrapper = mountModal({
+			view: 'slack_edit',
+			connectedChannels: ['slack'],
+		});
+
+		const slackSetup = wrapper.findComponent(
+			'[data-testid="slack-setup"]',
+		) as SlackSetupStubWrapper;
+		await slackSetup.vm.disconnectSlackApp();
+
+		expect(disconnectMock).toHaveBeenCalledWith('slack', '');
+		expect(wrapper.emitted('channel-disconnected')).toEqual([['slack']]);
+		expect(wrapper.emitted('update:open')).toEqual([[false]]);
 	});
 });

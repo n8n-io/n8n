@@ -138,6 +138,7 @@ describe('domain tool construction', () => {
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
 		});
+		expect(domainTools.has('templates')).toBe(false);
 	});
 
 	it('creates the native orchestrator domain tool map', async () => {
@@ -158,6 +159,7 @@ describe('domain tool construction', () => {
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
 		});
+		expect(orchestratorTools.has('templates')).toBe(false);
 
 		const { createWorkflowsTool } = await import('../workflows.tool.js');
 		const { createNodesTool } = await import('../nodes.tool.js');

@@ -31,6 +31,10 @@ vi.mock('@n8n/ai-utilities', async () => {
 const MockedClient = Client as MockedClass<typeof Client>;
 
 describe('utils', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	describe('tryRefreshOAuth2Token', () => {
 		it('should refresh an OAuth2 token without headers', async () => {
 			const ctx = mockDeep<IExecuteFunctions>();
@@ -148,6 +152,104 @@ describe('utils', () => {
 			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
 			expect(result).toEqual({ credentials });
 			expect(result.headers).toBeUndefined();
+		});
+
+		it('should ignore a provider expiry field when the internal expiry is unknown', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = {
+				oauthTokenData: {
+					access_token: 'access-token',
+					refresh_token: 'refresh-token',
+					expires_at: '1700000060',
+				},
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+
+			expect(result).toEqual({
+				headers: { Authorization: 'Bearer access-token' },
+				credentials,
+			});
+			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+		});
+
+		it('should not proactively refresh legacy credentials without an absolute expiry', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = {
+				oauthTokenData: {
+					access_token: 'access-token',
+					refresh_token: 'refresh-token',
+					expires_in: '3600',
+				},
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+
+			expect(result.headers).toEqual({ Authorization: 'Bearer access-token' });
+			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+		});
+
+		it('should refresh mcpOAuth2Api credentials before the access token expires', async () => {
+			const now = 1_700_000_000_000;
+			vi.spyOn(Date, 'now').mockReturnValue(now);
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = {
+				oauthTokenData: {
+					access_token: 'access-token',
+					refresh_token: 'refresh-token',
+					n8n_expires_at: String(now + 60_000),
+				},
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
+			ctx.helpers.refreshOAuth2Token.mockResolvedValue({
+				access_token: 'new-access-token',
+			});
+
+			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+
+			expect(result.headers).toEqual({ Authorization: 'Bearer new-access-token' });
+			expect(ctx.helpers.refreshOAuth2Token).toHaveBeenCalledWith('mcpOAuth2Api');
+		});
+
+		it('should not refresh mcpOAuth2Api credentials when the access token is still valid', async () => {
+			const now = 1_700_000_000_000;
+			vi.spyOn(Date, 'now').mockReturnValue(now);
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = {
+				oauthTokenData: {
+					access_token: 'access-token',
+					refresh_token: 'refresh-token',
+					n8n_expires_at: String(now + 10 * 60_000),
+				},
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+
+			expect(result.headers).toEqual({ Authorization: 'Bearer access-token' });
+			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+		});
+
+		it('should not immediately refresh a short-lived token', async () => {
+			const now = 1_700_000_000_000;
+			vi.spyOn(Date, 'now').mockReturnValue(now);
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = {
+				oauthTokenData: {
+					access_token: 'access-token',
+					refresh_token: 'refresh-token',
+					expires_in: '60',
+					n8n_expires_at: String(now + 60_000),
+				},
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+
+			expect(result.headers).toEqual({ Authorization: 'Bearer access-token' });
+			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
 		});
 
 		it('should return the headers and credentials for headerAuth', async () => {
