@@ -1,0 +1,39 @@
+{
+	"complexity": "complex",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "A valid reservation flows through all steps and reaches the CRM",
+			"dataSetup": "The webhook receives a complete reservation from Maria Lopez (maria@example.com) for an airport pickup: hotel, pickup location, destination, flight number, arrival date/time, 3 passengers, vehicle type SUV, total price 220, payment status paid. The email, calendar, spreadsheet, and CRM endpoint all return success responses.",
+			"successCriteria": "The workflow executes without errors and the webhook returns a response acknowledging the reservation. A confirmation email is sent to maria@example.com. A calendar event is created for the booking. The reservation is written to the spreadsheet. The CRM endpoint receives a POST whose JSON body contains the reservation fields (name, email, pickup, destination, total price, etc.). The flow reaches its final response step."
+		},
+		{
+			"name": "crm-failure-graceful",
+			"description": "The CRM call fails but the rest of the booking still completes",
+			"dataSetup": "The webhook receives a valid reservation from Tom Reyes (tom@example.com). The email, calendar, and spreadsheet nodes return success responses. The CRM endpoint returns an error (HTTP 500).",
+			"successCriteria": "The workflow does not crash or abort on the CRM error. The confirmation email is sent, the calendar event is created, and the reservation is saved to the spreadsheet. The CRM error is handled/logged rather than failing silently, and the workflow still finishes and returns a success response to the webhook caller.",
+			"requires": "mock-server"
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I run an airport-transfer booking business and get reservations through my website. I want one workflow that handles everything end to end once a reservation comes in over a webhook.\n\nOn each incoming reservation (it arrives as JSON with fields like reservation number, customer name, email, phone, hotel, pickup location, destination, airline, flight number, arrival date and time, passengers, vehicle type, total price, amount paid, payment method, payment status, notes, and source):\n- Validate and prepare the booking data.\n- Send a confirmation email to the customer.\n- Add the booking to my Google Calendar.\n- Save the reservation to my Google Sheet.\n- Finally, forward the complete reservation to my CRM: send all the booking fields as a JSON POST to my CRM's reservations endpoint, with Content-Type application/json, authenticated using the API key/token my CRM requires (kept as a credential, not hardcoded).\n\nThe CRM step must be production-ready: retry on transient failures, and if the CRM call still fails, log the error but do not stop the workflow \u2014 the booking should finish normally. If the CRM call succeeds, just continue."
+		}
+	],
+	"description": "Extend a reservation-intake automation with a fault-tolerant, authenticated HTTP step that forwards each booking to an external CRM (thread 251b6a4e). Real thread: reservations webhook (validate -> confirmation email -> calendar -> spreadsheet) plus a CRM POST that must retry, send the full reservation as JSON, and continue the workflow even if the CRM call errors. Auth is asserted as 'a configured credential, not hardcoded' rather than pinning a scheme, since the real build switched between Bearer and x-api-key.",
+	"outcomeExpectations": [
+		"The workflow is triggered by a webhook that accepts POST reservation data from the website.",
+		"Incoming reservation data is validated/prepared before the downstream actions consume it.",
+		"A confirmation email is sent to the customer's email address taken from the reservation.",
+		"A calendar event is created for the booking.",
+		"The reservation is recorded to a spreadsheet.",
+		"The complete reservation is sent to the CRM as a JSON POST to the CRM endpoint, carrying the booking fields (not a subset unrelated to the reservation).",
+		"The CRM request authenticates using a configured credential rather than a hardcoded key/token, and sets Content-Type application/json.",
+		"The CRM step is fault-tolerant: if the CRM returns an error, the workflow handles/logs it and still completes the rest of the flow instead of aborting; on success it continues normally.",
+		"The CRM HTTP request is configured to retry on transient failures.",
+		"Adding the CRM step does not break the email, calendar, and spreadsheet actions \u2014 they still run."
+	],
+	"triggerType": "webhook"
+}

@@ -130,17 +130,6 @@ digests or reports, non-trivial branching, or Code nodes, read
 Use it as the build checklist for source preservation, fan-out/fan-in,
 effect-specific gating, list itemization, and Code-node safety.
 
-When mapping downstream fields from an OpenAI node, read
-`knowledge-base/reference/open-ai-output-shape.md` (v2+ text/response uses
-`$json.output[0].content[0].text`; v1 text/message uses `$json.message.content`
-— not `$json.text`).
-
-Before wiring expressions that read LLM, HTTP list, webhook/form/chat trigger,
-Sheets/Set, agent/memory, or Code/loop outputs, load this skill's
-`references/common-output-shapes.md` linked file. Do not assume `$json.text`,
-flat webhook bodies, or that a page envelope is already itemized — wrong paths
-are the most common silent build failure.
-
 ## Workflow-Level Error Workflows
 
 Error workflows are per-target-workflow (`settings.errorWorkflow` must be the
