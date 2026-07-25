@@ -247,6 +247,12 @@ describe('Instance AI runtime skills', () => {
 
 		expect(skill?.name).toBe('workflow-builder');
 		expect(skill?.platforms).toBeUndefined();
+		expect(skill?.linkedFiles.references).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ path: 'references/common-output-shapes.md' }),
+				expect.objectContaining({ path: 'references/error-workflows.md' }),
+			]),
+		);
 		expect(skill?.recommendedTools).toEqual([
 			'read_file',
 			'write_file',
@@ -280,6 +286,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('workflows(action="get-as-code", workflowId)');
 		expect(loaded?.instructions).toContain('n8n has no global error workflow setting');
 		expect(loaded?.instructions).toContain('references/error-workflows.md');
+		expect(loaded?.instructions).toContain('references/common-output-shapes.md');
 		expect(loaded?.instructions).toContain('settings.errorWorkflow');
 		expect(loaded?.instructions).toContain(
 			'knowledge-base/reference/workflow-builder-guardrails.md',

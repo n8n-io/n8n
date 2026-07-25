@@ -5,6 +5,7 @@
  */
 
 export { agentValidator } from './agent-validator';
+export { arrayInputCollapseValidator } from './array-input-collapse-validator';
 export { chainLlmValidator } from './chain-llm-validator';
 export { dateMethodValidator } from './date-method-validator';
 export { disconnectedNodeValidator } from './disconnected-node-validator';
@@ -13,12 +14,14 @@ export { subnodeConnectionValidator } from './subnode-connection-validator';
 export { expressionPrefixValidator } from './expression-prefix-validator';
 export { filterNodeValidator } from './filter-node-validator';
 export { fromAiValidator } from './from-ai-validator';
+export { httpPaginationValidator } from './http-pagination-validator';
 export { httpRequestValidator } from './http-request-validator';
 export { maxNodesValidator } from './max-nodes-validator';
 export { memorySessionKeyValidator } from './memory-session-key-validator';
 export { mergeNodeValidator } from './merge-node-validator';
 export { missingTriggerValidator } from './missing-trigger-validator';
 export { noNodesValidator } from './no-nodes-validator';
+export { openAiStructuredOutputValidator } from './openai-structured-output-validator';
 export { setNodeValidator } from './set-node-validator';
 export { toolNodeValidator } from './tool-node-validator';
 export { unknownConfigKeysValidator } from './unknown-config-keys-validator';

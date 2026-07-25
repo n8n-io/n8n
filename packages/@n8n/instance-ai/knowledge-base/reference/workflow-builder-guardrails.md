@@ -66,9 +66,11 @@ final item. For one action per source record, keep the stream itemized. Use
 rankings, summaries, or final one-message posts that should run once.
 
 Avoid using `SplitInBatches` as the collector for a fixed set of external
-sources in a digest/report path. Its done branch does not accumulate loop-body
-outputs. Prefer parallel source branches plus explicit fan-in, or emit one
-success/empty/failure record per source before aggregation.
+sources in a digest/report path. Its done branch carries only what looped back
+through `nextBatch`, so anything a Filter/IF drops or a non-reconnecting branch
+handles is silently missing from the digest — and the loop serializes fetches
+that could run in parallel. Prefer parallel source branches plus explicit
+fan-in, or emit one success/empty/failure record per source before aggregation.
 
 ## HTTP Request Output Field Names
 
@@ -81,6 +83,16 @@ never under `body`. A Code node reading `$json.body` after a text-format fetch
 gets `undefined`, which silently breaks length/emptiness checks (e.g. scraped
 HTML misclassified as blocked). Read the field the chosen format actually
 emits.
+
+## HTTP Pagination Stop Conditions
+
+Declare `output` on paginated HTTP Request nodes and run `workflow-sdk validate`
+before `build-workflow`. The SDK rule
+`HTTP_PAGINATION_ENVELOPE_RESPONSE_IS_EMPTY` flags `responseIsEmpty` (the
+default) when the declared body is an envelope wrapping an array, and names the
+fix (`paginationCompleteWhen: 'other'` +
+`completeExpression: '={{ $response.body.<field>.length === 0 }}'`). Also unwrap
+the envelope into one item per record before any per-record loop.
 
 ## Fetch Complete External Data
 

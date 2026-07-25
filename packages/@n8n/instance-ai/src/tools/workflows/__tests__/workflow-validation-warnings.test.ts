@@ -13,4 +13,20 @@ describe('partitionWarnings', () => {
 			errors: [warnings[2]],
 		});
 	});
+
+	it('keeps staged HTTP pagination envelope code informational', () => {
+		const warnings: ValidationWarning[] = [
+			{
+				code: 'HTTP_PAGINATION_ENVELOPE_RESPONSE_IS_EMPTY',
+				message: 'Use completeExpression',
+				nodeName: 'Fetch',
+			},
+			{ code: 'ARRAY_INPUT_COLLAPSED_TO_FIRST_ITEM', message: 'Use $input.all()' },
+		];
+
+		expect(partitionWarnings(warnings)).toEqual({
+			informational: [warnings[0]],
+			errors: [warnings[1]],
+		});
+	});
 });

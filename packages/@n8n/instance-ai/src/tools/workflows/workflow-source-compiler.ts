@@ -5,8 +5,6 @@ import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
 import { normalizeNodeShape } from 'n8n-workflow';
 
 import { buildCredentialHostIndex, resolveCredentialByUrl } from './credential-url-resolver';
-import { detectArrayInputCollapse } from './detect-array-input-collapse';
-import { detectUnparseableOpenAiSchema } from './detect-unparseable-openai-schema';
 import { detectWrongKindLocatorValues } from './detect-wrong-kind-locator';
 import { collectValidationIssues, type ValidationWarning } from './workflow-validation-warnings';
 import type { InstanceAiContext } from '../../types';
@@ -89,9 +87,10 @@ function validateCompiledWorkflow(
 	const warnings = [...compilerWarnings];
 	collectValidationIssues(schemaValidation.errors, warnings);
 	collectValidationIssues(schemaValidation.warnings, warnings);
-	warnings.push(...detectArrayInputCollapse(json));
+	// ARRAY_INPUT_COLLAPSED_TO_FIRST_ITEM and OPENAI_STRUCTURED_OUTPUT_* run as
+	// SDK ValidatorPlugins during sandbox wf.validate() (and the CLI validate
+	// command). Registry-gated checks stay here.
 	warnings.push(...detectWrongKindLocatorValues(json, context.nodeTypesProvider));
-	warnings.push(...detectUnparseableOpenAiSchema(json));
 	return warnings;
 }
 

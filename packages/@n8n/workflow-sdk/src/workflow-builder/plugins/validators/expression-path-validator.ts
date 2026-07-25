@@ -5,10 +5,14 @@
  * that exist in predecessor node outputs.
  */
 
+import { isRecord } from '@n8n/utils/is-record';
+
 import { isNodeChain, type GraphNode, type NodeInstance } from '../../../types/base';
 import { filterMethodsFromPath } from '../../string-utils';
 import { extractExpressions, parseExpression, hasPath } from '../../validation-helpers';
 import type { ValidatorPlugin, ValidationIssue, PluginContext } from '../types';
+
+const SPLIT_OUT_TYPE = 'n8n-nodes-base.splitOut';
 
 /**
  * Resolve the target node name from a connection target.
@@ -156,6 +160,114 @@ function unwrapItemJson(item: Record<string, unknown>): Record<string, unknown> 
 	return item;
 }
 
+/** Resolve a field path the same way Split Out does (lodash-style dots, unless disabled). */
+function getByPath(
+	shape: Record<string, unknown>,
+	fieldPath: string,
+	disableDotNotation: boolean,
+): unknown {
+	if (disableDotNotation) {
+		return shape[fieldPath];
+	}
+	let current: unknown = shape;
+	for (const key of fieldPath.split('.')) {
+		if (!isRecord(current)) {
+			return undefined;
+		}
+		current = current[key];
+	}
+	return current;
+}
+
+/**
+ * Derive the post-split `$json` shape for a Split Out node from its upstream
+ * output and `fieldToSplitOut`.
+ *
+ * Verified against nodes-base SplitOut: dotted paths work via lodash `get`
+ * unless Options > Disable Dot Notation is on. With default
+ * `include: 'noOtherFields'` and no destination field, each array element is
+ * spread onto the item root — so `$json.id` is correct after splitting
+ * `body.customers`. When a destination field is set (or multi-split /
+ * include≠noOtherFields), the element is nested under that key instead.
+ */
+function deriveSplitOutShape(
+	mapKey: string,
+	graphNode: GraphNode,
+	nodes: ReadonlyMap<string, GraphNode>,
+	outputShapes: Map<string, Record<string, unknown>>,
+): Record<string, unknown> | undefined {
+	if (graphNode.instance.type !== SPLIT_OUT_TYPE) return undefined;
+
+	const params = graphNode.instance.config?.parameters;
+	if (!isRecord(params)) return undefined;
+
+	const fieldToSplitOut =
+		typeof params.fieldToSplitOut === 'string'
+			? params.fieldToSplitOut.replace(/^\$json\./, '').trim()
+			: '';
+	if (!fieldToSplitOut || fieldToSplitOut.includes(',')) {
+		// Multi-field split needs per-field destination handling; skip derivation.
+		return undefined;
+	}
+
+	const include = typeof params.include === 'string' ? params.include : 'noOtherFields';
+	const options = isRecord(params.options) ? params.options : {};
+	const disableDotNotation = options.disableDotNotation === true;
+	const destinationFieldName =
+		typeof options.destinationFieldName === 'string' ? options.destinationFieldName.trim() : '';
+
+	const predecessors = findPredecessors(mapKey, nodes);
+	for (const pred of predecessors) {
+		const predShape = outputShapes.get(pred);
+		if (!predShape) continue;
+
+		const resolved = getByPath(predShape, fieldToSplitOut, disableDotNotation);
+		if (resolved === undefined || resolved === null) continue;
+
+		let entity: unknown[];
+		if (Array.isArray(resolved)) {
+			entity = resolved;
+		} else if (typeof resolved === 'object') {
+			entity = Object.values(resolved);
+		} else {
+			entity = [resolved];
+		}
+		if (entity.length === 0) continue;
+
+		const first: unknown = entity[0];
+		const elementShape: Record<string, unknown> = isRecord(first) ? first : { value: first };
+
+		if (include === 'noOtherFields' && destinationFieldName === '') {
+			return { ...elementShape };
+		}
+
+		const fieldName = destinationFieldName || fieldToSplitOut;
+		return { [fieldName]: elementShape };
+	}
+
+	return undefined;
+}
+
+/**
+ * Propagate Split Out post-split shapes into `outputShapes` so downstream
+ * `$json.x` checks use the unwrapped element, not the upstream envelope.
+ * Prefer an explicit Split Out `output` declaration when present.
+ */
+function propagateSplitOutShapes(
+	nodes: ReadonlyMap<string, GraphNode>,
+	outputShapes: Map<string, Record<string, unknown>>,
+): void {
+	for (const [mapKey, graphNode] of nodes) {
+		if (graphNode.instance.type !== SPLIT_OUT_TYPE) continue;
+		if (outputShapes.has(mapKey)) continue;
+
+		const derived = deriveSplitOutShape(mapKey, graphNode, nodes, outputShapes);
+		if (derived) {
+			outputShapes.set(mapKey, derived);
+		}
+	}
+}
+
 /**
  * Validator for expression paths.
  *
@@ -213,6 +325,10 @@ export const expressionPathValidator: ValidatorPlugin = {
 				}
 			}
 		}
+
+		// Derive Split Out shapes from upstream envelopes when the Split Out
+		// node itself has no declared output (lodash get supports dotted paths).
+		propagateSplitOutShapes(ctx.nodes, outputShapes);
 
 		// Skip if no output data declared
 		if (outputShapes.size === 0) {

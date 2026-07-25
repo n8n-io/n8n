@@ -254,6 +254,10 @@ describe('emit-instance-ai', () => {
 			'validateWorkflow',
 			'getSchemaBaseDirs',
 			'setSchemaBaseDirs',
+			'isInformationalValidationCode',
+			'partitionValidationIssues',
+			// Source repair for builder tooling, never called from a workflow body
+			'autoImportMissingSdkSymbols',
 			// Pin-data + schema discovery
 			'discoverOutputSchemaForNode',
 			'discoverSchemasForNode',

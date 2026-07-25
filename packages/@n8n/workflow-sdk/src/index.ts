@@ -159,6 +159,9 @@ export {
 	type ValidationErrorCode,
 	validateNodeConfig,
 	type SchemaValidationResult,
+	INFORMATIONAL_VALIDATION_CODES,
+	isInformationalValidationCode,
+	partitionValidationIssues,
 } from './validation';
 
 // Code generation
@@ -167,6 +170,8 @@ export {
 	emitInstanceAi,
 	SDK_IMPORTABLE_FUNCTIONS,
 	type EmitInstanceAiOptions,
+	autoImportMissingSdkSymbols,
+	type AutoImportResult,
 } from './codegen/index';
 export { parseWorkflowCode, parseWorkflowCodeToBuilder } from './codegen/parse-workflow-code';
 

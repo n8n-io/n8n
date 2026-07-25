@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Opus 5 vs Opus 4.8 — Instance AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --color--neutral-white: #ffffff;
+    --color--neutral-50: #fafafa;
+    --color--neutral-100: #f3f4f6;
+    --color--neutral-200: #e5e7eb;
+    --color--neutral-400: #9ca3af;
+    --color--neutral-500: #6b7280;
+    --color--neutral-700: #374151;
+    --color--neutral-900: #111827;
+    --color--orange-500: #ff6d5a;
+    --color--orange-600: #ea4b71;
+    --color--green-50: #f0fdf4;
+    --color--green-100: #dcfce7;
+    --color--green-700: #15803d;
+    --color--green-800: #166534;
+
+    --background--surface: var(--color--neutral-white);
+    --background--subtle: var(--color--neutral-50);
+    --text-color: var(--color--neutral-900);
+    --text-color--subtle: var(--color--neutral-700);
+    --text-color--subtler: var(--color--neutral-500);
+    --border-color: var(--color--neutral-200);
+    --font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+    --radius--sm: 12px;
+    --radius--md: 16px;
+    --radius--full: 9999px;
+    --spacing--2xs: 8px;
+    --spacing--xs: 12px;
+    --spacing--sm: 16px;
+    --spacing--md: 20px;
+    --spacing--lg: 24px;
+    --spacing--xl: 32px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: var(--spacing--xl);
+    font-family: var(--font-family);
+    color: var(--text-color);
+    background-color: #f7f7f8;
+    background-image: radial-gradient(circle, #d1d5db 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .card {
+    width: min(740px, 100%);
+    background: var(--background--surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius--md);
+    box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04), 0 8px 24px rgba(17, 24, 39, 0.06);
+    padding: 28px 32px 0;
+  }
+
+  .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing--sm);
+    margin-bottom: 28px;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-color);
+    flex-shrink: 0;
+  }
+
+  .brand svg { display: block; }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    margin: 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    text-align: left;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-color--subtler);
+    padding: 0 12px 12px 0;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  th.num, td.num { text-align: right; padding-right: 0; padding-left: 12px; }
+
+  td {
+    padding: 16px 12px 16px 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 14px;
+    color: var(--text-color);
+    vertical-align: middle;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  .model {
+    font-weight: 600;
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+
+  .footer {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    margin-top: 8px;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .stat {
+    padding: 18px 0 20px;
+    padding-right: 16px;
+  }
+
+  .stat + .stat {
+    padding-left: 16px;
+    border-left: 1px solid var(--border-color);
+  }
+
+  .stat__label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-color--subtler);
+    margin-bottom: 6px;
+  }
+
+  .stat__value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-color);
+  }
+
+  .stat__value .accent {
+    color: var(--color--orange-500);
+  }
+
+  @media (max-width: 720px) {
+    .card { padding: 20px 18px 0; }
+    h1 { font-size: 22px; }
+    .footer { grid-template-columns: 1fr 1fr; }
+    .stat + .stat { border-left: none; }
+    .stat:nth-child(odd) { padding-right: 12px; }
+    .stat:nth-child(even) { padding-left: 12px; border-left: 1px solid var(--border-color); }
+    .stat:nth-child(n + 3) { border-top: 1px solid var(--border-color); }
+  }
+</style>
+</head>
+<body>
+  <article class="card">
+    <div class="top">
+      <h1>Opus 5 vs Opus 4.8</h1>
+      <div class="brand">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <circle cx="4" cy="4" r="2.25" fill="#ea4b71"/>
+          <circle cx="14" cy="4" r="2.25" fill="#ea4b71"/>
+          <circle cx="4" cy="14" r="2.25" fill="#ea4b71"/>
+          <circle cx="14" cy="14" r="2.25" fill="#ea4b71"/>
+          <circle cx="9" cy="9" r="2.25" fill="#ea4b71"/>
+          <path d="M5.6 5.6L7.4 7.4M10.6 7.4L12.4 5.6M5.6 12.4L7.4 10.6M10.6 10.6L12.4 12.4" stroke="#ea4b71" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        Instance AI
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th class="num">Pass / iter</th>
+          <th class="num">pass@k</th>
+          <th class="num">Builder cost</th>
+          <th class="num">$ / build</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="model">Opus 5</td>
+          <td class="num">89% / 92% / 91%</td>
+          <td class="num">93.2%</td>
+          <td class="num">~$81</td>
+          <td class="num">$0.87</td>
+        </tr>
+        <tr>
+          <td class="model">Opus 4.8</td>
+          <td class="num">89% / 90% / 91%</td>
+          <td class="num">93.2%</td>
+          <td class="num">~$72</td>
+          <td class="num">$0.78</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="footer">
+      <div class="stat">
+        <div class="stat__label">Quality</div>
+        <div class="stat__value"><span class="accent">Tied</span> · 93.2% pass@k</div>
+      </div>
+      <div class="stat">
+        <div class="stat__label">Pass / iter</div>
+        <div class="stat__value">Opus 5 · 92% mid</div>
+      </div>
+      <div class="stat">
+        <div class="stat__label">Cost</div>
+        <div class="stat__value">Opus 4.8 · ~$72</div>
+      </div>
+      <div class="stat">
+        <div class="stat__label">$ / build</div>
+        <div class="stat__value">Opus 4.8 · $0.78</div>
+      </div>
+    </div>
+  </article>
+</body>
+</html>

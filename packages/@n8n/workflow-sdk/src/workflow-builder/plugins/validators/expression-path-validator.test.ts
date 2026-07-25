@@ -391,5 +391,71 @@ describe('expressionPathValidator', () => {
 				}),
 			);
 		});
+
+		it('propagates Split Out dotted-path shape so downstream $json.id validates', () => {
+			// nodes-base Split Out uses lodash get for dotted paths and, with
+			// default include=noOtherFields, spreads each element onto the root.
+			const http = createMockNode('n8n-nodes-base.httpRequest', 'Fetch', {
+				output: [{ body: { customers: [{ id: 'c1', name: 'Ada' }] } }],
+			});
+			const httpConns = new Map<string, Map<number, ConnectionTarget[]>>();
+			httpConns.set('main', new Map([[0, [conn('Split', 0)]]]));
+
+			const split = createMockNode('n8n-nodes-base.splitOut', 'Split', {
+				parameters: { fieldToSplitOut: 'body.customers' },
+			});
+			const splitConns = new Map<string, Map<number, ConnectionTarget[]>>();
+			splitConns.set('main', new Map([[0, [conn('Consumer', 0)]]]));
+
+			const consumer = createMockNode('n8n-nodes-base.set', 'Consumer', {
+				parameters: { value: '={{ $json.id }}' },
+			});
+
+			const nodes = new Map<string, GraphNode>();
+			nodes.set('Fetch', createGraphNode(http, httpConns));
+			nodes.set('Split', createGraphNode(split, splitConns));
+			nodes.set('Consumer', createGraphNode(consumer));
+
+			const issues = expressionPathValidator.validateWorkflow!(createMockPluginContext(nodes));
+			expect(issues).toHaveLength(0);
+		});
+
+		it('nests under destinationFieldName when Split Out sets one', () => {
+			const http = createMockNode('n8n-nodes-base.httpRequest', 'Fetch', {
+				output: [{ body: { customers: [{ id: 'c1', name: 'Ada' }] } }],
+			});
+			const httpConns = new Map<string, Map<number, ConnectionTarget[]>>();
+			httpConns.set('main', new Map([[0, [conn('Split', 0)]]]));
+
+			const split = createMockNode('n8n-nodes-base.splitOut', 'Split', {
+				parameters: {
+					fieldToSplitOut: 'body.customers',
+					options: { destinationFieldName: 'customer' },
+				},
+			});
+			const splitConns = new Map<string, Map<number, ConnectionTarget[]>>();
+			splitConns.set('main', new Map([[0, [conn('Consumer', 0)]]]));
+
+			const consumer = createMockNode('n8n-nodes-base.set', 'Consumer', {
+				parameters: {
+					bad: '={{ $json.id }}',
+					good: '={{ $json.customer.id }}',
+				},
+			});
+
+			const nodes = new Map<string, GraphNode>();
+			nodes.set('Fetch', createGraphNode(http, httpConns));
+			nodes.set('Split', createGraphNode(split, splitConns));
+			nodes.set('Consumer', createGraphNode(consumer));
+
+			const issues = expressionPathValidator.validateWorkflow!(createMockPluginContext(nodes));
+			expect(
+				issues.some(
+					(issue) =>
+						issue.code === 'INVALID_EXPRESSION_PATH' && issue.message.includes('$json.id but'),
+				),
+			).toBe(true);
+			expect(issues.find((i) => i.message.includes('$json.customer.id'))).toBeUndefined();
+		});
 	});
 });

@@ -61,6 +61,10 @@ export {
 	type EmitInstanceAiOptions,
 } from './emit-instance-ai';
 export {
+	autoImportMissingSdkSymbols,
+	type AutoImportResult,
+} from './auto-import-sdk-symbols';
+export {
 	getOutputName,
 	getInputName,
 	getCompositeType,

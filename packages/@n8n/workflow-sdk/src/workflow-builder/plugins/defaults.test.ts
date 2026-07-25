@@ -20,6 +20,9 @@ describe('Default Plugins', () => {
 		expect(validatorIds).toContain('core:disconnected-node');
 		expect(validatorIds).toContain('core:agent');
 		expect(validatorIds).toContain('core:http-request');
+		expect(validatorIds).toContain('core:http-pagination');
+		expect(validatorIds).toContain('core:array-input-collapse');
+		expect(validatorIds).toContain('core:openai-structured-output');
 		expect(validatorIds).toContain('core:memory-session-key');
 		expect(validatorIds).toContain('core:unknown-config-keys');
 	});
