@@ -24,7 +24,7 @@ describe('applyAgentThinking', () => {
 
 	it('enables adaptive thinking with medium effort for Anthropic', () => {
 		const agent = new Agent('test');
-		applyAgentThinking(agent, 'anthropic/claude-opus-4-8');
+		applyAgentThinking(agent, 'anthropic/claude-opus-5');
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
 			mode: 'adaptive',
 			effort: 'medium',

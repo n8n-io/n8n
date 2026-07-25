@@ -28,7 +28,7 @@ on:
           - '5'
         default: '3'
       build-model:
-        description: 'Which Anthropic model builds the workflows. Change it to compare models; otherwise leave as-is.'
+        description: 'Which Anthropic model builds the workflows (e.g. claude-opus-4-8, claude-opus-5). Change it to compare models; otherwise leave as-is.'
         required: false
         default: 'claude-opus-4-8'
       filter:
