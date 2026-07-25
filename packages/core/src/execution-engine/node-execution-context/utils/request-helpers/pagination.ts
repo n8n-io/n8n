@@ -36,6 +36,21 @@ export type ResolveValueFn = (
 	returnObjectAsString?: boolean,
 ) => NodeParameterValueType;
 
+/**
+ * `$request`/`$response` are exposed to pagination expressions with secrets masked
+ * (see `sanitizeUiMessage` in nodes-base). If an expression reads a masked field back out
+ * (e.g. `{{$request.headers.Authorization}}`) and feeds it into the next request, the
+ * placeholder itself would go out over the wire instead of the real secret.
+ */
+function containsRedactedValue(value: unknown, redactedValue: string): boolean {
+	if (typeof value === 'string') return value === redactedValue;
+	if (Array.isArray(value)) return value.some((item) => containsRedactedValue(item, redactedValue));
+	if (value && typeof value === 'object') {
+		return Object.values(value).some((item) => containsRedactedValue(item, redactedValue));
+	}
+	return false;
+}
+
 export function applyPaginationRequestData(
 	requestData: IRequestOptions,
 	paginationRequestData: PaginationOptions['request'],
@@ -77,6 +92,7 @@ export async function requestWithAuthenticationPaginated(
 	credentialsType?: string,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 	sanitizedRequest?: IDataObject,
+	redactedValue?: string,
 ): Promise<any[]> {
 	const responseData = [];
 	if (!requestOptions.qs) {
@@ -118,6 +134,22 @@ export async function requestWithAuthenticationPaginated(
 			additionalKeys,
 			false,
 		) as object as PaginationOptions['request'];
+
+		if (redactedValue && containsRedactedValue(paginateRequestData, redactedValue)) {
+			throw new NodeOperationError(
+				node,
+				'Pagination settings reference a masked credential value',
+				{
+					itemIndex,
+					runIndex,
+					type: 'redacted_value_in_pagination',
+					description:
+						'Fields configured under Authentication (e.g. an Authorization header) are already ' +
+						'included in every paginated request automatically. Remove any reference to ' +
+						'$request that reads that field back out, since its value is masked for security.',
+				},
+			);
+		}
 
 		const tempRequestOptions = applyPaginationRequestData(requestOptions, paginateRequestData);
 

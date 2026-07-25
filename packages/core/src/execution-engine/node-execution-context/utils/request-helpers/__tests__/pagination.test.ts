@@ -302,4 +302,57 @@ describe('requestWithAuthenticationPaginated', () => {
 
 		expect(capturedKeys[0].$request).toBe(requestOptions);
 	});
+
+	test('throws instead of sending the masked value when a pagination expression reads a redacted field back out', async () => {
+		const { ctx, requestOptions, paginationOptions, request } = setup();
+
+		const redactedValue = '**hidden**';
+		// Simulates a pagination expression like `{{$request.headers['x-secret']}}`
+		// resolving to the masked placeholder instead of the real secret.
+		const resolveValue = vi.fn((parameterValue) => {
+			if (parameterValue === paginationOptions.request) {
+				return { url: 'https://example.com/page', headers: { 'x-secret': redactedValue } };
+			}
+			return 1;
+		});
+
+		await expect(
+			requestWithAuthenticationPaginated.call(
+				ctx,
+				requestOptions,
+				0,
+				paginationOptions,
+				resolveValue,
+				node,
+				undefined,
+				undefined,
+				undefined,
+				redactedValue,
+			),
+		).rejects.toThrow('Pagination settings reference a masked credential value');
+
+		expect(request).not.toHaveBeenCalled();
+	});
+
+	test('does not throw when redactedValue is not provided, even if the field happens to match', async () => {
+		const { ctx, requestOptions, paginationOptions, request } = setup();
+
+		const resolveValue = vi.fn((parameterValue) => {
+			if (parameterValue === paginationOptions.request) {
+				return { url: 'https://example.com/page', headers: { 'x-secret': '**hidden**' } };
+			}
+			return 1;
+		});
+
+		await requestWithAuthenticationPaginated.call(
+			ctx,
+			requestOptions,
+			0,
+			paginationOptions,
+			resolveValue,
+			node,
+		);
+
+		expect(request).toHaveBeenCalledTimes(1);
+	});
 });

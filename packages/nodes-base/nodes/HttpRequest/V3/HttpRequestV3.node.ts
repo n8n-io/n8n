@@ -38,6 +38,7 @@ import {
 	getOAuth2AdditionalParameters,
 	getSecrets,
 	prepareRequestBody,
+	REDACTED,
 	reduceAsync,
 	replaceNullValues,
 	sanitizeUiMessage,
@@ -729,6 +730,7 @@ export class HttpRequestV3 implements INodeType {
 							nodeCredentialType ?? genericCredentialType,
 							undefined,
 							sanitizedRequest,
+							REDACTED,
 						)
 						.catch((error) => {
 							if (error instanceof NodeOperationError && error.type === 'invalid_url') {

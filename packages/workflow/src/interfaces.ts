@@ -944,6 +944,7 @@ export interface RequestHelperFunctions {
 		credentialsType?: string,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
 		sanitizedRequest?: IDataObject,
+		redactedValue?: string,
 	): Promise<any[]>;
 
 	/**
