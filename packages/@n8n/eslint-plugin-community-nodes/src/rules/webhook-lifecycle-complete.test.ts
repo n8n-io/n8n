@@ -251,5 +251,23 @@ export class RegularClass {
 				},
 			],
 		},
+		{
+			name: 'lifecycle method set to undefined',
+			code: createTriggerNode({
+				webhookMethods: `{
+					default: {
+						checkExists,
+						create,
+						delete: undefined,
+					},
+				}`,
+			}),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: { group: 'default', missing: '`delete`' },
+				},
+			],
+		},
 	],
 });

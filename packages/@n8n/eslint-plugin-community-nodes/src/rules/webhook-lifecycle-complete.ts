@@ -24,17 +24,19 @@ function hasWebhooksDeclared(descriptionValue: TSESTree.ObjectExpression): boole
 
 /**
  * Returns true when the value supplies an implementation. A method may be
- * written inline or handed over as a reference — `{ checkExists }`,
- * `{ delete: removeWebhook }`, `{ create: hooks.create }` — which is just as
- * implemented as a function expression.
+ * written inline or handed over as a reference (`{ checkExists }`,
+ * `{ delete: removeWebhook }`, `{ create: hooks.create }`), which is just as
+ * implemented as a function expression. `undefined` is an identifier too, but
+ * it supplies nothing.
  */
 function isImplementation(node: TSESTree.Node): boolean {
 	switch (node.type) {
 		case AST_NODE_TYPES.FunctionExpression:
 		case AST_NODE_TYPES.ArrowFunctionExpression:
-		case AST_NODE_TYPES.Identifier:
 		case AST_NODE_TYPES.MemberExpression:
 			return true;
+		case AST_NODE_TYPES.Identifier:
+			return node.name !== 'undefined';
 		case AST_NODE_TYPES.TSAsExpression:
 		case AST_NODE_TYPES.TSSatisfiesExpression:
 		case AST_NODE_TYPES.TSNonNullExpression:
