@@ -5,7 +5,7 @@
 
 import type { Logger } from '@n8n/backend-common';
 import type { EndpointsConfig } from '@n8n/config';
-import type { BinaryDataConfig, BinaryDataService } from 'n8n-core';
+import type { BinaryData, BinaryDataConfig, BinaryDataService } from 'n8n-core';
 import { FileLocation } from 'n8n-core';
 import { BINARY_ENCODING, jsonParse, OperationalError } from 'n8n-workflow';
 import type {
@@ -24,6 +24,17 @@ export const OFFLOADED_BODY_KIND_KEY = '__@N8nOffloadedBodyKind@__';
 
 /** Stores readable by all instances; in-memory and filesystem are local to one host. */
 const SHARED_STORE_MODES: Array<BinaryDataConfig['mode']> = ['database', 's3', 'azure'];
+
+/**
+ * Stored modes whose reads stream live from the store. An offloaded body in
+ * one of these must sit off the execution's prefix, so an execution hard-delete
+ * cannot remove it mid-download. Database rows are buffered fully before
+ * streaming, so they ride the execution's lifetime instead.
+ */
+const OBJECT_STORE_MODES: Array<BinaryDataConfig['mode']> = ['s3', 'azure'];
+
+/** Root path segment for offloaded response bodies kept off the execution prefix. */
+const OFFLOADED_RESPONSE_PATH_SEGMENT = 'webhook-responses';
 
 type RelayContext = { workflowId: string; executionId: string };
 
@@ -66,10 +77,12 @@ type SerializedBody = {
  * in-memory or filesystem storage, or when storing fails, the body is
  * relayed inline regardless of size, preserving prior behavior.
  *
- * An offloaded body shares the execution's binary-data lifetime. With
- * pruning disabled, an unsaved execution is hard-deleted as soon as it
- * finishes, which can remove the body while a slow client is still
- * downloading it.
+ * An offloaded body is transient: main deletes it once the response has been
+ * delivered (see {@link deleteOffloadedWebhookResponseBody} and
+ * {@link restoreOffloadedWebhookResponseBody}). Object-store bodies are kept
+ * off the execution's prefix so an execution hard-delete cannot remove them
+ * mid-download; database bodies ride the execution's lifetime, where reads are
+ * buffered before streaming and execution pruning is the cleanup backstop.
  */
 export async function prepareWebhookResponseForRelay(
 	response: IExecuteResponsePromiseData,
@@ -85,7 +98,12 @@ export async function prepareWebhookResponseForRelay(
 			const maxInlineSizeInBytes = endpointsConfig.webhookResponseOffloadThreshold * 1024 * 1024;
 			const oversized = serializeIfOversized(response.body, maxInlineSizeInBytes);
 			if (oversized) {
-				await offload(response, oversized, ctx, binaryDataService);
+				await offload(
+					response,
+					oversized,
+					offloadLocation(binaryDataConfig.mode, ctx),
+					binaryDataService,
+				);
 				return response;
 			}
 		} catch (error) {
@@ -133,10 +151,13 @@ export function decodeRelayedWebhookResponse(
  * left untouched. For consumers that need the body itself rather than a
  * stream, e.g. a sub-workflow tool reading the response.
  *
+ * On a successful restore the stored body is deleted, since this consumer
+ * reads it once and never streams it again.
+ *
  * @param response Relayed response. Mutated and returned.
  * @returns The same `response`, with an offloaded body restored. When fetching
  * fails, an empty body of the original kind is substituted (never the internal
- * reference) and a warning logged.
+ * reference), the stored body is left for its backstop, and a warning logged.
  */
 export async function restoreOffloadedWebhookResponseBody(
 	response: IExecuteResponsePromiseData,
@@ -157,9 +178,62 @@ export async function restoreOffloadedWebhookResponseBody(
 	} catch (error) {
 		logger.warn('Failed to restore offloaded webhook response body', { error });
 		response.body = emptyBodyOf(offloaded.kind);
+		return response;
 	}
 
+	await deleteStoredBody(offloaded.binaryData.id, { logger, binaryDataService });
 	return response;
+}
+
+/**
+ * Deletes an offloaded response body from the store once main has delivered it.
+ * A no-op for bodies that were never offloaded, so it is safe to call for every
+ * response-node response. Read-only; the response is not mutated.
+ *
+ * @remarks Storage failures are swallowed and logged: the response has already
+ * been delivered, and a body left behind is reclaimed by execution pruning
+ * (database) or store lifecycle rules (object stores).
+ */
+export async function deleteOffloadedWebhookResponseBody(
+	response: IExecuteResponsePromiseData,
+	deps: Pick<WebhookResponseRelayDeps, 'logger' | 'binaryDataService'>,
+): Promise<void> {
+	if (!isFullResponse(response)) {
+		return;
+	}
+
+	const offloaded = asOffloadedBody(response.body);
+	if (offloaded) {
+		await deleteStoredBody(offloaded.binaryData.id, deps);
+	}
+}
+
+async function deleteStoredBody(
+	binaryDataId: string | undefined,
+	{ logger, binaryDataService }: Pick<WebhookResponseRelayDeps, 'logger' | 'binaryDataService'>,
+): Promise<void> {
+	if (binaryDataId) {
+		try {
+			await binaryDataService.deleteManyByBinaryDataId([binaryDataId]);
+		} catch (error) {
+			logger.warn('Failed to delete offloaded webhook response body', { error });
+		}
+	}
+}
+
+/**
+ * Where an offloaded body is stored. Object stores keep it off the execution's
+ * prefix so an execution hard-delete cannot remove it mid-download; database
+ * bodies ride the execution's lifetime, where reads are buffered before
+ * streaming and execution pruning is the cleanup backstop.
+ */
+function offloadLocation(
+	mode: BinaryDataConfig['mode'],
+	ctx: RelayContext,
+): BinaryData.FileLocation {
+	return OBJECT_STORE_MODES.includes(mode)
+		? FileLocation.ofCustom({ pathSegments: [OFFLOADED_RESPONSE_PATH_SEGMENT, ctx.executionId] })
+		: FileLocation.ofExecution(ctx.workflowId, ctx.executionId);
 }
 
 /**
@@ -173,21 +247,17 @@ export async function restoreOffloadedWebhookResponseBody(
 async function offload(
 	response: IN8nHttpFullResponse,
 	{ kind, buffer, inlineContentType }: SerializedBody,
-	ctx: RelayContext,
+	location: BinaryData.FileLocation,
 	binaryDataService: BinaryDataService,
 ): Promise<void> {
 	const existingContentType = contentTypeOf(response.headers);
 	const contentType = existingContentType ?? inlineContentType;
 
-	const stored = await binaryDataService.store(
-		FileLocation.ofExecution(ctx.workflowId, ctx.executionId),
-		buffer,
-		{
-			data: '',
-			mimeType: contentType ?? 'application/octet-stream',
-			fileName: 'webhook-response',
-		},
-	);
+	const stored = await binaryDataService.store(location, buffer, {
+		data: '',
+		mimeType: contentType ?? 'application/octet-stream',
+		fileName: 'webhook-response',
+	});
 	if (!stored.id) {
 		throw new OperationalError('Binary-data store did not persist the response body');
 	}

@@ -7,6 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import {
 	decodeRelayedWebhookResponse,
+	deleteOffloadedWebhookResponseBody,
 	ENCODED_BUFFER_KEY,
 	OFFLOADED_BODY_KIND_KEY,
 	prepareWebhookResponseForRelay,
@@ -105,6 +106,50 @@ describe('webhook-response-relay', () => {
 				expect.objectContaining({ mimeType: 'application/xml' }),
 			);
 		});
+
+		it('stores an offloaded body under the execution in database mode', async () => {
+			const binaryDataService = persistingStore();
+			const response: IN8nHttpFullResponse = {
+				body: 'x'.repeat(maxInlineSizeInBytes + 1),
+				headers: {},
+				statusCode: 200,
+			};
+
+			await prepareWebhookResponseForRelay(response, ctx, depsWith(binaryDataService, 'database'));
+
+			expect(binaryDataService.store).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'execution',
+					workflowId: ctx.workflowId,
+					executionId: ctx.executionId,
+				}),
+				expect.anything(),
+				expect.anything(),
+			);
+		});
+
+		it.each(['s3', 'azure'] as const)(
+			'stores an offloaded body off the execution prefix in %s mode',
+			async (mode) => {
+				const binaryDataService = persistingStore();
+				const response: IN8nHttpFullResponse = {
+					body: 'x'.repeat(maxInlineSizeInBytes + 1),
+					headers: {},
+					statusCode: 200,
+				};
+
+				await prepareWebhookResponseForRelay(response, ctx, depsWith(binaryDataService, mode));
+
+				expect(binaryDataService.store).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'custom',
+						pathSegments: ['webhook-responses', ctx.executionId],
+					}),
+					expect.anything(),
+					expect.anything(),
+				);
+			},
+		);
 
 		it.each(['default', 'filesystem'] as const)(
 			'relays a large Buffer inline without touching the store in %s mode',
@@ -386,6 +431,19 @@ describe('webhook-response-relay', () => {
 			expect(result.body).toEqual(body);
 		});
 
+		it('deletes the stored body after a successful restore', async () => {
+			const binaryDataService = fetchingStore(Buffer.from(JSON.stringify({ a: 1 }), 'utf8'));
+
+			await restoreOffloadedWebhookResponseBody(
+				offloadedResponse('json'),
+				depsWith(binaryDataService),
+			);
+
+			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith([
+				'database:stored-id',
+			]);
+		});
+
 		it('round-trips a large JSON body through prepareWebhookResponseForRelay', async () => {
 			const body = { blob: 'x'.repeat(maxInlineSizeInBytes + 1) };
 			const response: IN8nHttpFullResponse = { body, headers: {}, statusCode: 200 };
@@ -442,6 +500,7 @@ describe('webhook-response-relay', () => {
 
 				expect(result.body).toEqual(expected);
 				expect(result.body).not.toHaveProperty(OFFLOADED_BODY_KIND_KEY);
+				expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
 			}
 		});
 
@@ -456,6 +515,57 @@ describe('webhook-response-relay', () => {
 
 			expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
 			expect(result).toBe(response);
+		});
+	});
+
+	describe('deleteOffloadedWebhookResponseBody', () => {
+		const offloadedResponse = (): IN8nHttpFullResponse => ({
+			body: {
+				binaryData: { id: 'database:stored-id', data: '', mimeType: 'application/octet-stream' },
+				[OFFLOADED_BODY_KIND_KEY]: 'json',
+			},
+			headers: {},
+			statusCode: 200,
+		});
+
+		it('deletes an offloaded body by its stored id', async () => {
+			const binaryDataService = mock<BinaryDataService>();
+
+			await deleteOffloadedWebhookResponseBody(offloadedResponse(), depsWith(binaryDataService));
+
+			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith([
+				'database:stored-id',
+			]);
+		});
+
+		it('ignores a genuine binary-data reference without the offload marker', async () => {
+			const binaryDataService = mock<BinaryDataService>();
+			const response: IN8nHttpFullResponse = {
+				body: { binaryData: { id: 'database:abc', data: '', mimeType: 'application/pdf' } },
+				headers: {},
+				statusCode: 200,
+			};
+
+			await deleteOffloadedWebhookResponseBody(response, depsWith(binaryDataService));
+
+			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
+		});
+
+		it('swallows deletion failures since the response is already delivered', async () => {
+			const binaryDataService = mock<BinaryDataService>();
+			binaryDataService.deleteManyByBinaryDataId.mockRejectedValue(new Error('store down'));
+
+			await expect(
+				deleteOffloadedWebhookResponseBody(offloadedResponse(), depsWith(binaryDataService)),
+			).resolves.toBeUndefined();
+		});
+
+		it('is a no-op for a response without a body', async () => {
+			const binaryDataService = mock<BinaryDataService>();
+
+			await deleteOffloadedWebhookResponseBody({ foo: 'bar' }, depsWith(binaryDataService));
+
+			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
 		});
 	});
 });

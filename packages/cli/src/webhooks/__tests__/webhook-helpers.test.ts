@@ -36,6 +36,8 @@ import type { Readable } from 'stream';
 import { finished } from 'stream/promises';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
+import { OFFLOADED_BODY_KIND_KEY } from '@/scaling/webhook-response-relay';
+
 import {
 	autoDetectResponseMode,
 	handleFormRedirectionCase,
@@ -289,6 +291,60 @@ describe('setupResponseNodePromise', () => {
 		expect(mockStream.pipe).toHaveBeenCalledWith(res, { end: false });
 		expect(finished).toHaveBeenCalledWith(mockStream);
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	test('deletes an offloaded response body after streaming it', async () => {
+		const mockStream = mock<Readable>();
+		binaryDataService.getAsStream.mockResolvedValue(mockStream);
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: {
+				binaryData: { id: 'database:offloaded-id' },
+				[OFFLOADED_BODY_KIND_KEY]: 'json',
+			},
+			headers: {},
+			statusCode: 200,
+		} as unknown as IN8nHttpFullResponse);
+		await new Promise(process.nextTick);
+		await new Promise(process.nextTick);
+
+		expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith([
+			'database:offloaded-id',
+		]);
+		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	test('does not delete a genuine binary response after streaming it', async () => {
+		const mockStream = mock<Readable>();
+		binaryDataService.getAsStream.mockResolvedValue(mockStream);
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: { binaryData: { id: 'database:genuine-id' } },
+			headers: {},
+			statusCode: 200,
+		});
+		await new Promise(process.nextTick);
+		await new Promise(process.nextTick);
+
+		expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
 	});
 
 	test('should not set sandbox CSP header on binary stream responses when sandboxing is disabled', async () => {
