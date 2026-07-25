@@ -550,7 +550,7 @@ describe('formatAgentConfigZodError', () => {
 			...minimalConfig,
 			mcpServers: [
 				{
-					name: 'has spaces',
+					name: '   ',
 					url: 'https://example.com/mcp',
 					transport: 'streamableHttp',
 					authentication: 'none',
@@ -563,12 +563,8 @@ describe('formatAgentConfigZodError', () => {
 
 		const formatted = formatAgentConfigZodError(result.error);
 		expect(formatted).toContain('mcpServers.0.name');
-		expect(formatted).toContain(
-			'MCP server name can only contain letters, numbers, hyphens, and underscores',
-		);
+		expect(formatted).toContain('MCP server name cannot be blank');
 		expect(formatted).not.toContain('"validation": "regex"');
-		expect(result.error.issues[0]?.message).toBe(
-			'MCP server name can only contain letters, numbers, hyphens, and underscores',
-		);
+		expect(result.error.issues[0]?.message).toBe('MCP server name cannot be blank');
 	});
 });
