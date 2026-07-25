@@ -20,11 +20,12 @@ export interface SettingsSaveBarProps {
 	saveDisabled?: boolean;
 	/**
 	 * Sticks the bar to the bottom of the scrollport so it floats over the settings column.
-	 * Contract: render the bar as the last child of a flex-column wrapper with `min-height: 100%`
-	 * inside the scroll container (the sticky-footer pattern). The bar carries `margin-top: auto`,
-	 * so on short pages it is pushed to the wrapper bottom, where `position: sticky` lifts it to
-	 * its usual 24px viewport gap; on long pages the auto margin collapses to zero and the bar
-	 * floats over the scrolling content exactly as before.
+	 * Contract: render the bar as the last child of the settings content column, and make that
+	 * column a flex column with `min-height: 100%` inside the scroll container (the sticky-footer
+	 * pattern). The bar carries `margin-top: auto`, so on short pages it is pushed to the column
+	 * bottom, where `position: sticky` lifts it to its usual 24px viewport gap; on long pages the
+	 * auto margin collapses to zero and the bar floats over the scrolling content exactly as
+	 * before.
 	 */
 	floating?: boolean;
 	/** Allow Cmd/Ctrl+S to trigger a save while the bar is visible and enabled. */
@@ -115,26 +116,26 @@ $slide-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	justify-content: space-between;
 	gap: var(--spacing--sm);
 	/*
-	 * Bar width = 2 * side padding + the settings row width (--settings-content--max-width):
-	 * 2*12px + 720px = 744px (Figma 5991:7910). Both terms reference their tokens — the same
-	 * --n8n-settings-save-bar--padding-inline is used by `padding` and `width`, so the bar
-	 * outgrows the column by exactly its own padding (inner edges sit on the column edges, give
-	 * or take the 1px border under border-box sizing). Falls back to 45rem when the
-	 * component-scoped --settings-content--max-width isn't in scope (e.g. when the floating bar is
-	 * a sibling of N8nSettingsLayout rather than a descendant; mirrors N8nSettingsPageHeader).
-	 * `max-width: 100%` keeps it from overflowing narrower containers.
+	 * Bar width = the settings content column (its container) + side padding and border on each
+	 * side (Figma 5991:7910: 720px column + 2*12px padding). Sizing off the container instead of
+	 * a fixed token means the CONTENT box always equals the column exactly: the status icon's
+	 * left edge sits on the settings rows' left edge and the Save button's right edge on their
+	 * right edge, while the bar surface overhangs the column by its own padding (+1px border,
+	 * so the inner edges land precisely under border-box sizing). The negative inline margins
+	 * cancel the overhang in layout, keeping the bar centered on the column with no host wiring.
+	 * Render the bar inside the settings content column (e.g. as the last child of
+	 * N8nSettingsLayout's content) — on narrower viewports it shrinks with the column.
 	 *
-	 * `margin-inline: auto` is what centers the bar within its container. It is `!important` so a
-	 * higher-specificity host `margin` reset can't pin the bar to the left: e.g. Storybook's
-	 * `#storybook-root > * { margin: ... }` (specificity 1,1,1) would otherwise beat this class
-	 * (0,1,0) and collapse the auto margins to a fixed value, left-aligning the bar.
+	 * `!important` so a higher-specificity host `margin` reset can't defeat the overhang: e.g.
+	 * Storybook's `#storybook-root > * { margin: ... }` (specificity 1,1,1) would otherwise beat
+	 * this class (0,1,0) and re-align the bar flush with the column.
 	 */
 	--n8n-settings-save-bar--padding-inline: var(--spacing--xs);
-	width: calc(
-		var(--settings-content--max-width, 45rem) + 2 * var(--n8n-settings-save-bar--padding-inline)
+	--n8n-settings-save-bar--overhang: calc(
+		var(--n8n-settings-save-bar--padding-inline) + var(--border-width, 1px)
 	);
-	max-width: 100%;
-	margin-inline: auto !important;
+	width: calc(100% + 2 * var(--n8n-settings-save-bar--overhang));
+	margin-inline: calc(-1 * var(--n8n-settings-save-bar--overhang)) !important;
 	box-sizing: border-box;
 	padding: var(--spacing--xs) var(--n8n-settings-save-bar--padding-inline);
 	background: var(--background--surface);

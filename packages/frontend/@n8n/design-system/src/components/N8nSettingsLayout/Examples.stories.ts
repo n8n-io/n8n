@@ -1014,8 +1014,9 @@ export const ExampleSettingsPage: Story = {
 		},
 		// A full-height scrollable viewport hosts the realistic page so the whole settings page is
 		// visible and scrolls naturally (rather than being clipped inside a short windowed box). The
-		// floating save bar is a sibling of the layout so it can sit 744px wide (12px proud of the
-		// 720px content column) and stick to the bottom of the viewport; the layout gets 64px
+		// floating save bar is the last child of the layout's content column: it spans the column
+		// plus its own side padding (12px proud of the 720px column, inner edges aligned with the
+		// settings rows) and sticks to the bottom of the viewport; the layout gets 64px
 		// (--spacing--3xl) of bottom scroll padding so the last row can clear the floating bar.
 		template: `
 			<div style="${fullPageViewportStyle}">
@@ -1073,15 +1074,15 @@ export const ExampleSettingsPage: Story = {
 							</N8nSettingsRow>
 						</N8nSettingsRowGroup>
 					</N8nSettingsSection>
-				</N8nSettingsLayout>
 
-				<N8nSettingsSaveBar
-					floating
-					:visible="dirty"
-					:saving="saving"
-					@save="onSave"
-					@discard="onDiscard"
-				/>
+					<N8nSettingsSaveBar
+						floating
+						:visible="dirty"
+						:saving="saving"
+						@save="onSave"
+						@discard="onDiscard"
+					/>
+				</N8nSettingsLayout>
 			</div>
 		`,
 	}),
@@ -1091,7 +1092,7 @@ export const ExampleSettingsPage: Story = {
 		docs: {
 			description: {
 				story:
-					'A realistic General settings page built from the `N8nSettings*` family inside a full-height scrollable viewport. Editing any high-impact field (instance name/URL, timezone, sender email, log level) flips a dirty flag that slides the floating `N8nSettingsSaveBar` up — a 744px gently rounded bar (the 720px content column plus 12px on each side) with the prominent `--shadow--xl`, resting 24px above the bottom, its Save action on the far right. Discard reverts the draft and hides the bar; Save shows the loading state, commits, hides the bar, and confirms through the existing app notification (the bottom-right `ElNotification` that `useToast()` shows in the app). The low-impact telemetry toggle saves instantly through the same notification. The page carries 64px (`--spacing--3xl`) of bottom scroll padding so the last row clears the floating bar.',
+					'A realistic General settings page built from the `N8nSettings*` family inside a full-height scrollable viewport. Editing any high-impact field (instance name/URL, timezone, sender email, log level) flips a dirty flag that slides the floating `N8nSettingsSaveBar` up — a gently rounded bar spanning the 720px content column plus its own 12px side padding (so its inner edges align with the settings rows) with the prominent `--shadow--xl`, resting 24px above the bottom, its Save action on the far right. Discard reverts the draft and hides the bar; Save shows the loading state, commits, hides the bar, and confirms through the existing app notification (the bottom-right `ElNotification` that `useToast()` shows in the app). The low-impact telemetry toggle saves instantly through the same notification. The page carries 64px (`--spacing--3xl`) of bottom scroll padding so the last row clears the floating bar.',
 			},
 		},
 	},
