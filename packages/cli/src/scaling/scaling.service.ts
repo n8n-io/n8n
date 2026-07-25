@@ -30,7 +30,7 @@ import type {
 	JobMessage,
 	JobFailedMessage,
 } from './scaling.types';
-import { WebhookResponseRelay } from './webhook-response-relay';
+import { decodeRelayedWebhookResponse } from './webhook-response-relay';
 
 @Service()
 export class ScalingService {
@@ -48,7 +48,6 @@ export class ScalingService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
-		private readonly webhookResponseRelay: WebhookResponseRelay,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -353,10 +352,11 @@ export class ScalingService {
 				case 'send-chunk':
 					this.activeExecutions.sendChunk(msg.executionId, msg.chunkText);
 					break;
-				case 'respond-to-webhook':
-					const decodedResponse = this.webhookResponseRelay.decodeResponse(msg.response);
+				case 'respond-to-webhook': {
+					const decodedResponse = decodeRelayedWebhookResponse(msg.response);
 					this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
 					break;
+				}
 				case 'job-finished':
 					if (msg.success) {
 						this.activeExecutions.resolveResponsePromise(msg.executionId, {});

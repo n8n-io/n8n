@@ -132,6 +132,7 @@ function makeRuntimeReconstructionService(
 		mock<SsrfProtectionService>(),
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
+		mock(),
 	);
 }
 

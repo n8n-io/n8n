@@ -30,7 +30,10 @@ import { z } from 'zod';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
+import {
+	restoreOffloadedWebhookResponseBody,
+	type WebhookResponseRelayDeps,
+} from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
@@ -82,6 +85,7 @@ export interface WorkflowToolContext {
 	workflowRepository: WorkflowRepository;
 	workflowRunner: WorkflowRunner;
 	activeExecutions: ActiveExecutions;
+	webhookRelayDeps: Pick<WebhookResponseRelayDeps, 'logger' | 'binaryDataService'>;
 	projectId: string;
 	/** Base URL for webhooks/forms (e.g. http://localhost:5678/) */
 	webhookBaseUrl?: string;
@@ -384,8 +388,10 @@ export async function executeWorkflow(
 	if (isWorkflowToolResponse(webhookResponse)) {
 		// In queue mode, large response bodies arrive as a binary-store reference;
 		// fetch the content back so the tool sees the body, not the reference.
-		webhookResponse =
-			await Container.get(WebhookResponseRelay).restoreOffloadedBody(webhookResponse);
+		webhookResponse = await restoreOffloadedWebhookResponseBody(
+			webhookResponse,
+			context.webhookRelayDeps,
+		);
 		result.data = {
 			...(result.data ?? {}),
 			response: truncateResultData({ response: webhookResponse }).response,

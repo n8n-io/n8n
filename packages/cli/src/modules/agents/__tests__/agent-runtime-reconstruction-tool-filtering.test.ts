@@ -138,6 +138,7 @@ function makeService(overrides: {
 		mock<SsrfProtectionService>(),
 		credentialsFinderService,
 		workflowFinderService,
+		mock(),
 	);
 
 	return { service, credentialsFinderService, workflowFinderService, workflowRepository };

@@ -15,7 +15,11 @@ import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
 import type { JobProcessor } from '../job-processor';
 import { ScalingService } from '../scaling.service';
 import type { Job, JobData, JobId, JobQueue } from '../scaling.types';
-import type { WebhookResponseRelay } from '../webhook-response-relay';
+import { decodeRelayedWebhookResponse } from '../webhook-response-relay';
+
+vi.mock('../webhook-response-relay', () => ({
+	decodeRelayedWebhookResponse: vi.fn(),
+}));
 
 const queue = mock<JobQueue>({
 	client: { ping: vi.fn() },
@@ -102,7 +106,6 @@ describe('ScalingService', () => {
 			executionRepository,
 			executionPersistence,
 			instanceSettings,
-			mock(),
 			mock(),
 		);
 
@@ -372,7 +375,6 @@ describe('ScalingService', () => {
 				mock(),
 				instanceSettings,
 				mock(),
-				mock(),
 			);
 
 			await scalingService.setupQueue();
@@ -410,7 +412,6 @@ describe('ScalingService', () => {
 				mock(),
 				instanceSettings,
 				mock(),
-				mock(),
 			);
 
 			await scalingService.setupQueue();
@@ -443,7 +444,6 @@ describe('ScalingService', () => {
 				mock(),
 				instanceSettings,
 				mock(),
-				mock(),
 			);
 
 			await scalingService.setupQueue();
@@ -470,7 +470,6 @@ describe('ScalingService', () => {
 		describe('respond-to-webhook decoding', () => {
 			const setupHandler = async () => {
 				const activeExecutions = mock<ActiveExecutions>();
-				const webhookResponseRelay = mock<WebhookResponseRelay>();
 				scalingService = new ScalingService(
 					mockLogger(),
 					mock(),
@@ -481,20 +480,19 @@ describe('ScalingService', () => {
 					mock(),
 					instanceSettings,
 					mock(),
-					webhookResponseRelay,
 				);
 				await scalingService.setupQueue();
 				const messageHandler = queue.on.mock.calls.find(
 					([event]) => (event as string) === 'global:progress',
 				)?.[1] as (jobId: JobId, msg: unknown) => void;
-				return { activeExecutions, webhookResponseRelay, messageHandler };
+				return { activeExecutions, messageHandler };
 			};
 
-			it('decodes the response via WebhookResponseRelay before resolving', async () => {
-				const { activeExecutions, webhookResponseRelay, messageHandler } = await setupHandler();
+			it('decodes the response via the webhook response relay before resolving', async () => {
+				const { activeExecutions, messageHandler } = await setupHandler();
 				const relayedResponse = { body: 'relayed', headers: {}, statusCode: 200 };
 				const decodedResponse = { body: Buffer.from('decoded'), headers: {}, statusCode: 200 };
-				webhookResponseRelay.decodeResponse.mockReturnValue(decodedResponse);
+				vi.mocked(decodeRelayedWebhookResponse).mockReturnValue(decodedResponse);
 
 				messageHandler('job-1', {
 					kind: 'respond-to-webhook',
@@ -503,7 +501,7 @@ describe('ScalingService', () => {
 					workerId: 'worker-1',
 				});
 
-				expect(webhookResponseRelay.decodeResponse).toHaveBeenCalledWith(relayedResponse);
+				expect(decodeRelayedWebhookResponse).toHaveBeenCalledWith(relayedResponse);
 				expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledWith(
 					'exec-1',
 					decodedResponse,

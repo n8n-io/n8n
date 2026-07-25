@@ -42,7 +42,11 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 
 import { JobProcessor } from '../job-processor';
 import type { Job } from '../scaling.types';
-import type { WebhookResponseRelay } from '../webhook-response-relay';
+import { prepareWebhookResponseForRelay } from '../webhook-response-relay';
+
+vi.mock('../webhook-response-relay', () => ({
+	prepareWebhookResponseForRelay: vi.fn(),
+}));
 
 mockInstance(WorkflowPublishHistoryRepository);
 mockInstance(VariablesService, {
@@ -129,7 +133,9 @@ describe('JobProcessor', () => {
 			mock(),
 			executionsConfig,
 			mock(),
-			mock(), // webhookResponseRelay
+			mock(),
+			mock(),
+			mock(),
 		);
 
 		const result = await jobProcessor.processJob(mock<Job>());
@@ -160,7 +166,9 @@ describe('JobProcessor', () => {
 			manualExecutionService,
 			executionsConfig,
 			mock(),
-			mock(), // webhookResponseRelay
+			mock(),
+			mock(),
+			mock(),
 		);
 
 		const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
@@ -195,7 +203,9 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -239,7 +249,9 @@ describe('JobProcessor', () => {
 			manualExecutionService,
 			executionsConfig,
 			mock(),
-			mock(), // webhookResponseRelay
+			mock(),
+			mock(),
+			mock(),
 		);
 
 		const job = mock<Job>();
@@ -288,7 +300,9 @@ describe('JobProcessor', () => {
 			manualExecutionService,
 			executionsConfig,
 			mock(),
-			mock(), // webhookResponseRelay
+			mock(),
+			mock(),
+			mock(),
 		);
 
 		const executionId = 'execution-id';
@@ -338,7 +352,9 @@ describe('JobProcessor', () => {
 			manualExecutionService,
 			executionsConfig,
 			mock(),
-			mock(), // webhookResponseRelay
+			mock(),
+			mock(),
+			mock(),
 		);
 
 		const executionId = 'execution-id';
@@ -377,7 +393,9 @@ describe('JobProcessor', () => {
 			manualExecutionService,
 			executionsConfig,
 			mock(),
-			mock(), // webhookResponseRelay
+			mock(),
+			mock(),
+			mock(),
 		);
 
 		const executionId = 'execution-id';
@@ -431,7 +449,9 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			await jobProcessor.processJob(mock<Job>());
@@ -445,8 +465,8 @@ describe('JobProcessor', () => {
 	describe('webhook response relay wiring', () => {
 		// Runs a job far enough to register the `sendResponse` handler and returns it,
 		// since the mocked workflow never fires it. Offload behavior itself is covered
-		// by WebhookResponseRelay's own tests; here we assert the handler delegates.
-		const captureSendResponseHandler = async (webhookResponseRelay: WebhookResponseRelay) => {
+		// by the webhook-response-relay tests; here we assert the handler delegates.
+		const captureSendResponseHandler = async () => {
 			const executionPersistence = mock<ExecutionPersistence>();
 			executionPersistence.findSingleExecution.mockResolvedValue(
 				mock<IExecutionResponse>({
@@ -478,7 +498,9 @@ describe('JobProcessor', () => {
 				createManualExecutionServiceMock(),
 				executionsConfig,
 				mock(),
-				webhookResponseRelay,
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -496,16 +518,15 @@ describe('JobProcessor', () => {
 			return { sendResponse, job };
 		};
 
-		it('delegates the response to WebhookResponseRelay and relays the prepared result', async () => {
-			const webhookResponseRelay = mock<WebhookResponseRelay>();
+		it('delegates the response to the webhook response relay and relays the prepared result', async () => {
 			const preparedResponse: IN8nHttpFullResponse = {
 				body: { binaryData: { id: 'database:stored-id', data: '', mimeType: 'application/pdf' } },
 				headers: {},
 				statusCode: 200,
 			};
-			webhookResponseRelay.prepareResponse.mockResolvedValue(preparedResponse);
+			vi.mocked(prepareWebhookResponseForRelay).mockResolvedValue(preparedResponse);
 
-			const { sendResponse, job } = await captureSendResponseHandler(webhookResponseRelay);
+			const { sendResponse, job } = await captureSendResponseHandler();
 
 			const response: IN8nHttpFullResponse = {
 				body: Buffer.from('payload'),
@@ -514,10 +535,11 @@ describe('JobProcessor', () => {
 			};
 			await sendResponse(response);
 
-			expect(webhookResponseRelay.prepareResponse).toHaveBeenCalledWith(response, {
-				workflowId: 'workflow-id',
-				executionId: 'exec-1',
-			});
+			expect(prepareWebhookResponseForRelay).toHaveBeenCalledWith(
+				response,
+				{ workflowId: 'workflow-id', executionId: 'exec-1' },
+				expect.anything(),
+			);
 			expect(job.progress).toHaveBeenCalledWith(
 				expect.objectContaining({
 					kind: 'respond-to-webhook',
@@ -565,7 +587,9 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(), // eventService
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -625,7 +649,9 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -676,7 +702,9 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(), // eventService
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -738,7 +766,9 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(), // eventService
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -826,7 +856,9 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(), // eventService
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -901,7 +933,9 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1004,7 +1038,9 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1092,7 +1128,9 @@ describe('JobProcessor', () => {
 					createManualExecutionServiceMock(),
 					executionsConfig,
 					mock(), // eventService
-					mock(), // webhookResponseRelay
+					mock(),
+					mock(),
+					mock(),
 				);
 
 				const job = mock<Job>();
@@ -1228,7 +1266,9 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1336,7 +1376,9 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1431,7 +1473,9 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1521,7 +1565,9 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1621,7 +1667,9 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1707,7 +1755,9 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1799,7 +1849,9 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1876,7 +1928,9 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1915,7 +1969,9 @@ describe('JobProcessor', () => {
 				mock(),
 				executionsConfig,
 				mock(),
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 			const run = mock<IRun>({
 				status: 'waiting',
@@ -1945,7 +2001,9 @@ describe('JobProcessor', () => {
 				mock(),
 				executionsConfig,
 				mock(),
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 			const run = mock<IRun>({
 				status: 'success',
@@ -1995,7 +2053,9 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -2062,7 +2122,9 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(),
-				mock(), // webhookResponseRelay
+				mock(),
+				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();

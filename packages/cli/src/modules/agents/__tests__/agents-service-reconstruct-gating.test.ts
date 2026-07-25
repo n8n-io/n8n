@@ -123,6 +123,7 @@ function makeReconstructionService(
 		mock<SsrfProtectionService>(),
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
+		mock(),
 	);
 }
 

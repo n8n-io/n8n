@@ -30,6 +30,7 @@ import { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { BinaryDataService } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
@@ -161,6 +162,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly binaryDataService: BinaryDataService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -494,6 +496,7 @@ export class AgentRuntimeReconstructionService {
 					workflowRepository: this.workflowRepository,
 					workflowRunner: await getWorkflowRunner(),
 					activeExecutions: this.activeExecutions,
+					webhookRelayDeps: { logger: this.logger, binaryDataService: this.binaryDataService },
 					projectId,
 					webhookBaseUrl: this.urlService.getWebhookBaseUrl(),
 					instrumentToolAdditionalData,

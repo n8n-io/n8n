@@ -1,7 +1,7 @@
 import type { Tool } from '@langchain/core/tools';
 import type { RunningJobSummary } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ExecutionsConfig } from '@n8n/config';
+import { EndpointsConfig, ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -9,6 +9,8 @@ import {
 	InstanceSettings,
 	WorkflowExecute,
 	SupplyDataContext,
+	BinaryDataConfig,
+	BinaryDataService,
 } from 'n8n-core';
 import type {
 	ExecutionStatus,
@@ -57,7 +59,7 @@ import type {
 	RunningJob,
 	SendChunkMessage,
 } from './scaling.types';
-import { WebhookResponseRelay } from './webhook-response-relay';
+import { prepareWebhookResponseForRelay } from './webhook-response-relay';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -76,7 +78,9 @@ export class JobProcessor {
 		private readonly manualExecutionService: ManualExecutionService,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly eventService: EventService,
-		private readonly webhookResponseRelay: WebhookResponseRelay,
+		private readonly binaryDataService: BinaryDataService,
+		private readonly binaryDataConfig: BinaryDataConfig,
+		private readonly endpointsConfig: EndpointsConfig,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -217,10 +221,16 @@ export class JobProcessor {
 			const msg: RespondToWebhookMessage = {
 				kind: 'respond-to-webhook',
 				executionId,
-				response: await this.webhookResponseRelay.prepareResponse(response, {
-					workflowId: job.data.workflowId,
-					executionId,
-				}),
+				response: await prepareWebhookResponseForRelay(
+					response,
+					{ workflowId: job.data.workflowId, executionId },
+					{
+						logger: this.logger,
+						binaryDataService: this.binaryDataService,
+						binaryDataConfig: this.binaryDataConfig,
+						endpointsConfig: this.endpointsConfig,
+					},
+				),
 				workerId: this.instanceSettings.hostId,
 			};
 

@@ -9,10 +9,14 @@ import type {
 
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
+import { restoreOffloadedWebhookResponseBody } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import { executeWorkflow, type WorkflowToolContext } from '../workflow-tool-factory';
+
+vi.mock('@/scaling/webhook-response-relay', () => ({
+	restoreOffloadedWebhookResponseBody: vi.fn(),
+}));
 
 const triggerNode: INode = {
 	id: 'trigger-1',
@@ -35,6 +39,7 @@ function buildContext(run: ReturnType<typeof vi.fn>, extras: Partial<WorkflowToo
 		workflowRepository: {} as never,
 		workflowRunner: { run } as unknown as WorkflowRunner,
 		activeExecutions: { has: vi.fn().mockReturnValue(false) } as unknown as ActiveExecutions,
+		webhookRelayDeps: {} as never,
 		projectId: 'p1',
 		...extras,
 	} satisfies WorkflowToolContext;
@@ -128,10 +133,7 @@ describe('executeWorkflow → webhook response', () => {
 			headers: {},
 			statusCode: 200,
 		};
-		const restoreOffloadedBody = vi.fn().mockResolvedValue(restoredResponse);
-		Container.set(WebhookResponseRelay, {
-			restoreOffloadedBody,
-		} as unknown as WebhookResponseRelay);
+		vi.mocked(restoreOffloadedWebhookResponseBody).mockResolvedValue(restoredResponse);
 
 		const run = vi.fn(
 			(
@@ -155,7 +157,10 @@ describe('executeWorkflow → webhook response', () => {
 			false,
 		);
 
-		expect(restoreOffloadedBody).toHaveBeenCalledWith(relayedResponse);
+		expect(restoreOffloadedWebhookResponseBody).toHaveBeenCalledWith(
+			relayedResponse,
+			expect.anything(),
+		);
 		expect(result.data?.response).toEqual(restoredResponse);
 	});
 });

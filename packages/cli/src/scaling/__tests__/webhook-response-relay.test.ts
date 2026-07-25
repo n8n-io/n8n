@@ -6,12 +6,15 @@ import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
 import {
+	decodeRelayedWebhookResponse,
 	ENCODED_BUFFER_KEY,
 	OFFLOADED_BODY_KIND_KEY,
-	WebhookResponseRelay,
+	prepareWebhookResponseForRelay,
+	restoreOffloadedWebhookResponseBody,
+	type WebhookResponseRelayDeps,
 } from '../webhook-response-relay';
 
-describe('WebhookResponseRelay', () => {
+describe('webhook-response-relay', () => {
 	const ctx = { workflowId: 'wf-1', executionId: 'exec-1' };
 	const offloadThresholdMiB = 1;
 	const maxInlineSizeInBytes = offloadThresholdMiB * 1024 * 1024;
@@ -30,18 +33,17 @@ describe('WebhookResponseRelay', () => {
 		return binaryDataService;
 	};
 
-	const relayWith = (
+	const depsWith = (
 		binaryDataService: BinaryDataService,
 		mode: BinaryDataConfig['mode'] = 'database',
-	) =>
-		new WebhookResponseRelay(
-			mock<Logger>(),
-			binaryDataService,
-			mock<BinaryDataConfig>({ mode }),
-			endpointsConfig,
-		);
+	): WebhookResponseRelayDeps => ({
+		logger: mock<Logger>(),
+		binaryDataService,
+		binaryDataConfig: mock<BinaryDataConfig>({ mode }),
+		endpointsConfig,
+	});
 
-	describe('prepareResponse', () => {
+	describe('prepareWebhookResponseForRelay', () => {
 		it('base64-encodes a small Buffer body inline without touching the store', async () => {
 			const binaryDataService = persistingStore();
 			const response: IN8nHttpFullResponse = {
@@ -50,9 +52,10 @@ describe('WebhookResponseRelay', () => {
 				statusCode: 200,
 			};
 
-			const result = (await relayWith(binaryDataService).prepareResponse(
+			const result = (await prepareWebhookResponseForRelay(
 				response,
 				ctx,
+				depsWith(binaryDataService),
 			)) as IN8nHttpFullResponse;
 
 			expect(binaryDataService.store).not.toHaveBeenCalled();
@@ -69,9 +72,10 @@ describe('WebhookResponseRelay', () => {
 				statusCode: 200,
 			};
 
-			const result = (await relayWith(binaryDataService).prepareResponse(
+			const result = (await prepareWebhookResponseForRelay(
 				response,
 				ctx,
+				depsWith(binaryDataService),
 			)) as IN8nHttpFullResponse;
 
 			expect(binaryDataService.store).toHaveBeenCalledTimes(1);
@@ -88,9 +92,10 @@ describe('WebhookResponseRelay', () => {
 				statusCode: 200,
 			};
 
-			const result = (await relayWith(binaryDataService).prepareResponse(
+			const result = (await prepareWebhookResponseForRelay(
 				response,
 				ctx,
+				depsWith(binaryDataService),
 			)) as IN8nHttpFullResponse;
 
 			expect(result.headers['content-type']).toBe('application/xml');
@@ -108,9 +113,10 @@ describe('WebhookResponseRelay', () => {
 				const buffer = Buffer.alloc(maxInlineSizeInBytes + 1, 1);
 				const response: IN8nHttpFullResponse = { body: buffer, headers: {}, statusCode: 200 };
 
-				const result = (await relayWith(binaryDataService, mode).prepareResponse(
+				const result = (await prepareWebhookResponseForRelay(
 					response,
 					ctx,
+					depsWith(binaryDataService, mode),
 				)) as IN8nHttpFullResponse;
 
 				expect(binaryDataService.store).not.toHaveBeenCalled();
@@ -124,9 +130,10 @@ describe('WebhookResponseRelay', () => {
 			const buffer = Buffer.alloc(maxInlineSizeInBytes + 1, 1);
 			const response: IN8nHttpFullResponse = { body: buffer, headers: {}, statusCode: 200 };
 
-			const result = (await relayWith(binaryDataService).prepareResponse(
+			const result = (await prepareWebhookResponseForRelay(
 				response,
 				ctx,
+				depsWith(binaryDataService),
 			)) as IN8nHttpFullResponse;
 
 			expect(result.body).toEqual({ [ENCODED_BUFFER_KEY]: buffer.toString('base64') });
@@ -138,9 +145,10 @@ describe('WebhookResponseRelay', () => {
 			const buffer = Buffer.alloc(maxInlineSizeInBytes + 1, 1);
 			const response: IN8nHttpFullResponse = { body: buffer, headers: {}, statusCode: 200 };
 
-			const result = (await relayWith(binaryDataService).prepareResponse(
+			const result = (await prepareWebhookResponseForRelay(
 				response,
 				ctx,
+				depsWith(binaryDataService),
 			)) as IN8nHttpFullResponse;
 
 			expect(result.body).toEqual({ [ENCODED_BUFFER_KEY]: buffer.toString('base64') });
@@ -152,9 +160,10 @@ describe('WebhookResponseRelay', () => {
 			const body = { blob: 'x'.repeat(maxInlineSizeInBytes + 1) };
 			const response: IN8nHttpFullResponse = { body, headers: {}, statusCode: 200 };
 
-			const result = (await relayWith(binaryDataService).prepareResponse(
+			const result = (await prepareWebhookResponseForRelay(
 				response,
 				ctx,
+				depsWith(binaryDataService),
 			)) as IN8nHttpFullResponse;
 
 			expect(result.body).toBe(body);
@@ -167,9 +176,10 @@ describe('WebhookResponseRelay', () => {
 			};
 			const response: IN8nHttpFullResponse = { body: reference, headers: {}, statusCode: 200 };
 
-			const result = (await relayWith(binaryDataService).prepareResponse(
+			const result = (await prepareWebhookResponseForRelay(
 				response,
 				ctx,
+				depsWith(binaryDataService),
 			)) as IN8nHttpFullResponse;
 
 			expect(binaryDataService.store).not.toHaveBeenCalled();
@@ -181,9 +191,10 @@ describe('WebhookResponseRelay', () => {
 			const body = { hello: 'world' };
 			const response: IN8nHttpFullResponse = { body, headers: {}, statusCode: 200 };
 
-			const result = (await relayWith(binaryDataService).prepareResponse(
+			const result = (await prepareWebhookResponseForRelay(
 				response,
 				ctx,
+				depsWith(binaryDataService),
 			)) as IN8nHttpFullResponse;
 
 			expect(binaryDataService.store).not.toHaveBeenCalled();
@@ -195,9 +206,10 @@ describe('WebhookResponseRelay', () => {
 			const body = { blob: 'x'.repeat(maxInlineSizeInBytes + 1) };
 			const response: IN8nHttpFullResponse = { body, headers: {}, statusCode: 200 };
 
-			const result = (await relayWith(binaryDataService).prepareResponse(
+			const result = (await prepareWebhookResponseForRelay(
 				response,
 				ctx,
+				depsWith(binaryDataService),
 			)) as IN8nHttpFullResponse;
 
 			expect(binaryDataService.store).toHaveBeenCalledTimes(1);
@@ -214,9 +226,10 @@ describe('WebhookResponseRelay', () => {
 				statusCode: 200,
 			};
 
-			const result = (await relayWith(binaryDataService).prepareResponse(
+			const result = (await prepareWebhookResponseForRelay(
 				response,
 				ctx,
+				depsWith(binaryDataService),
 			)) as IN8nHttpFullResponse;
 
 			expect(binaryDataService.store).toHaveBeenCalledTimes(1);
@@ -228,7 +241,11 @@ describe('WebhookResponseRelay', () => {
 			const binaryDataService = persistingStore();
 			const response = { foo: 'bar' };
 
-			const result = await relayWith(binaryDataService).prepareResponse(response, ctx);
+			const result = await prepareWebhookResponseForRelay(
+				response,
+				ctx,
+				depsWith(binaryDataService),
+			);
 
 			expect(binaryDataService.store).not.toHaveBeenCalled();
 			expect(result).toBe(response);
@@ -239,9 +256,10 @@ describe('WebhookResponseRelay', () => {
 			const stream = Readable.from(['x'.repeat(maxInlineSizeInBytes + 1)]);
 			const response: IN8nHttpFullResponse = { body: stream, headers: {}, statusCode: 200 };
 
-			const result = (await relayWith(binaryDataService).prepareResponse(
+			const result = (await prepareWebhookResponseForRelay(
 				response,
 				ctx,
+				depsWith(binaryDataService),
 			)) as IN8nHttpFullResponse;
 
 			expect(binaryDataService.store).not.toHaveBeenCalled();
@@ -254,9 +272,10 @@ describe('WebhookResponseRelay', () => {
 			circular.self = circular;
 			const response: IN8nHttpFullResponse = { body: circular, headers: {}, statusCode: 200 };
 
-			const result = (await relayWith(binaryDataService).prepareResponse(
+			const result = (await prepareWebhookResponseForRelay(
 				response,
 				ctx,
+				depsWith(binaryDataService),
 			)) as IN8nHttpFullResponse;
 
 			expect(binaryDataService.store).not.toHaveBeenCalled();
@@ -264,9 +283,7 @@ describe('WebhookResponseRelay', () => {
 		});
 	});
 
-	describe('decodeResponse', () => {
-		const relay = relayWith(mock<BinaryDataService>());
-
+	describe('decodeRelayedWebhookResponse', () => {
 		it('decodes an encoded-buffer body back into the original Buffer', () => {
 			const payload = Buffer.from('a large binary payload');
 			const response: IN8nHttpFullResponse = {
@@ -275,7 +292,7 @@ describe('WebhookResponseRelay', () => {
 				statusCode: 200,
 			};
 
-			const result = relay.decodeResponse(response) as IN8nHttpFullResponse;
+			const result = decodeRelayedWebhookResponse(response) as IN8nHttpFullResponse;
 
 			expect(Buffer.isBuffer(result.body)).toBe(true);
 			expect(result.body).toEqual(payload);
@@ -287,7 +304,7 @@ describe('WebhookResponseRelay', () => {
 			};
 			const response: IN8nHttpFullResponse = { body: reference, headers: {}, statusCode: 200 };
 
-			const result = relay.decodeResponse(response) as IN8nHttpFullResponse;
+			const result = decodeRelayedWebhookResponse(response) as IN8nHttpFullResponse;
 
 			expect(result.body).toBe(reference);
 		});
@@ -296,7 +313,7 @@ describe('WebhookResponseRelay', () => {
 			const body = { hello: 'world' };
 			const response: IN8nHttpFullResponse = { body, headers: {}, statusCode: 200 };
 
-			const result = relay.decodeResponse(response) as IN8nHttpFullResponse;
+			const result = decodeRelayedWebhookResponse(response) as IN8nHttpFullResponse;
 
 			expect(result.body).toBe(body);
 		});
@@ -304,13 +321,13 @@ describe('WebhookResponseRelay', () => {
 		it('leaves a response without a body untouched', () => {
 			const response = { foo: 'bar' };
 
-			const result = relay.decodeResponse(response);
+			const result = decodeRelayedWebhookResponse(response);
 
 			expect(result).toBe(response);
 		});
 	});
 
-	describe('restoreOffloadedBody', () => {
+	describe('restoreOffloadedWebhookResponseBody', () => {
 		const offloadedResponse = (
 			kind: 'buffer' | 'string' | 'json',
 			binaryData: Partial<IBinaryData> = {},
@@ -338,8 +355,9 @@ describe('WebhookResponseRelay', () => {
 			const payload = Buffer.from('binary payload');
 			const binaryDataService = fetchingStore(payload);
 
-			const result = (await relayWith(binaryDataService).restoreOffloadedBody(
+			const result = (await restoreOffloadedWebhookResponseBody(
 				offloadedResponse('buffer'),
+				depsWith(binaryDataService),
 			)) as IN8nHttpFullResponse;
 
 			expect(result.body).toEqual(payload);
@@ -348,8 +366,9 @@ describe('WebhookResponseRelay', () => {
 		it('restores an offloaded string body', async () => {
 			const binaryDataService = fetchingStore(Buffer.from('plain text', 'utf8'));
 
-			const result = (await relayWith(binaryDataService).restoreOffloadedBody(
+			const result = (await restoreOffloadedWebhookResponseBody(
 				offloadedResponse('string'),
+				depsWith(binaryDataService),
 			)) as IN8nHttpFullResponse;
 
 			expect(result.body).toBe('plain text');
@@ -359,24 +378,32 @@ describe('WebhookResponseRelay', () => {
 			const body = { hello: 'world' };
 			const binaryDataService = fetchingStore(Buffer.from(JSON.stringify(body), 'utf8'));
 
-			const result = (await relayWith(binaryDataService).restoreOffloadedBody(
+			const result = (await restoreOffloadedWebhookResponseBody(
 				offloadedResponse('json'),
+				depsWith(binaryDataService),
 			)) as IN8nHttpFullResponse;
 
 			expect(result.body).toEqual(body);
 		});
 
-		it('round-trips a large JSON body through prepareResponse', async () => {
+		it('round-trips a large JSON body through prepareWebhookResponseForRelay', async () => {
 			const body = { blob: 'x'.repeat(maxInlineSizeInBytes + 1) };
 			const response: IN8nHttpFullResponse = { body, headers: {}, statusCode: 200 };
 			const binaryDataService = persistingStore();
-			const relay = relayWith(binaryDataService);
+			const deps = depsWith(binaryDataService);
 
-			const prepared = (await relay.prepareResponse(response, ctx)) as IN8nHttpFullResponse;
+			const prepared = (await prepareWebhookResponseForRelay(
+				response,
+				ctx,
+				deps,
+			)) as IN8nHttpFullResponse;
 			const storedContent = binaryDataService.store.mock.calls[0][1] as Buffer;
 			binaryDataService.getAsBuffer.mockResolvedValue(storedContent);
 
-			const result = (await relay.restoreOffloadedBody(prepared)) as IN8nHttpFullResponse;
+			const result = (await restoreOffloadedWebhookResponseBody(
+				prepared,
+				deps,
+			)) as IN8nHttpFullResponse;
 
 			expect(result.body).toEqual(body);
 		});
@@ -388,8 +415,9 @@ describe('WebhookResponseRelay', () => {
 			};
 			const response: IN8nHttpFullResponse = { body: reference, headers: {}, statusCode: 200 };
 
-			const result = (await relayWith(binaryDataService).restoreOffloadedBody(
+			const result = (await restoreOffloadedWebhookResponseBody(
 				response,
+				depsWith(binaryDataService),
 			)) as IN8nHttpFullResponse;
 
 			expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
@@ -402,8 +430,9 @@ describe('WebhookResponseRelay', () => {
 			const response = offloadedResponse('json');
 			const reference = response.body;
 
-			const result = (await relayWith(binaryDataService).restoreOffloadedBody(
+			const result = (await restoreOffloadedWebhookResponseBody(
 				response,
+				depsWith(binaryDataService),
 			)) as IN8nHttpFullResponse;
 
 			expect(result.body).toBe(reference);
@@ -413,7 +442,10 @@ describe('WebhookResponseRelay', () => {
 			const binaryDataService = mock<BinaryDataService>();
 			const response = { foo: 'bar' };
 
-			const result = await relayWith(binaryDataService).restoreOffloadedBody(response);
+			const result = await restoreOffloadedWebhookResponseBody(
+				response,
+				depsWith(binaryDataService),
+			);
 
 			expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
 			expect(result).toBe(response);

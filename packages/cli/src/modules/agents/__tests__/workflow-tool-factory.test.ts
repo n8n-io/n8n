@@ -96,6 +96,7 @@ function makeContext(foundWorkflow: WorkflowEntity | null): WorkflowToolContext 
 		workflowRepository,
 		workflowRunner,
 		activeExecutions,
+		webhookRelayDeps: mock<WorkflowToolContext['webhookRelayDeps']>(),
 		projectId: 'project-1',
 	};
 }
