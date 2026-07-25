@@ -128,6 +128,16 @@ export interface ValidationResult {
 }
 
 /**
+ * Optional n8n credits / AI Gateway metadata for a node type (graph validators).
+ */
+export interface AiGatewayNodeMeta {
+	readonly supported: true;
+	readonly operations?: Readonly<Record<string, readonly string[]>>;
+	readonly minVersion?: number;
+	readonly hiddenProperties?: readonly string[];
+}
+
+/**
  * Validation options
  */
 export interface ValidationOptions {
@@ -141,6 +151,11 @@ export interface ValidationOptions {
 	validateSchema?: boolean;
 	/** Optional node types provider for dynamic input index validation */
 	nodeTypesProvider?: INodeTypes;
+	/**
+	 * Optional AI Gateway (n8n credits) metadata keyed by node type.
+	 * When set, graph validators can enforce minVersion / operations / hiddenProperties.
+	 */
+	aiGatewayByNodeType?: Readonly<Record<string, AiGatewayNodeMeta>>;
 }
 
 /**

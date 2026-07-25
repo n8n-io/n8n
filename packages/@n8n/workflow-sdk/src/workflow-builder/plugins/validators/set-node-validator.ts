@@ -45,6 +45,7 @@ function formatMode(mode: unknown): string {
  *
  * Checks for:
  * - Invalid Set node mode values
+ * - Legacy `values` / `fields.values` shapes on Set v3+
  * - Invalid assignment collection entries
  * - Credential-like field names in assignments (password, api_key, secret, token, etc.)
  */
@@ -93,6 +94,33 @@ export const setNodeValidator: ValidatorPlugin = {
 				violationLevel: 'major',
 				nodeName: displayName,
 				parameterPath: 'parameters.mode',
+				originalName: origForWarning,
+			});
+		}
+
+		// Set v3+ fields live under `assignments`. The legacy `values` /
+		// `fields.values` shapes belong to v1/v2 (and early v3.0–3.2) — using
+		// them on a modern Set node emits `{}` and writes blank rows.
+		const hasAssignments =
+			isRecord(params.assignments) && Array.isArray(params.assignments.assignments);
+		const hasLegacyValues = params.values !== undefined;
+		const hasLegacyFieldsValues =
+			isRecord(params.fields) && (params.fields as Record<string, unknown>).values !== undefined;
+		if (
+			nodeVersion >= MIN_ASSIGNMENT_VERSION &&
+			!hasAssignments &&
+			(hasLegacyValues || hasLegacyFieldsValues)
+		) {
+			issues.push({
+				code: 'SET_LEGACY_VALUES_SHAPE',
+				message:
+					`${nodeRef} uses the legacy Set field shape (parameters.values / parameters.fields.values) ` +
+					'on Set v3.3+. Fields must live under parameters.assignments.assignments ' +
+					'({ id, name, value, type }). The legacy shape emits {} and writes blank rows.',
+				severity: 'warning',
+				violationLevel: 'major',
+				nodeName: displayName,
+				parameterPath: hasLegacyValues ? 'parameters.values' : 'parameters.fields.values',
 				originalName: origForWarning,
 			});
 		}

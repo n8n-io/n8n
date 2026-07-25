@@ -1,13 +1,20 @@
 import type { INodeProperties, IParameterBuilderHint } from 'n8n-workflow';
 
+/** Every column identifier here is the sheet's header cell — `schema[].id` is
+ *  matched against the live header row, so an invented id namespace fails. */
+const columnIdentifierHint =
+	"Column identifiers are header cells, not field names: each `schema` entry's `id` MUST be the exact header text as it appears in the sheet's header row, so `id` and `displayName` are the same string (e.g. { id: 'Customer Name', displayName: 'Customer Name' }), and every `value` key must be one of those ids. Inventing a camelCase id namespace (id: 'customerName' for a 'Customer Name' header) fails at runtime for every row with \"Column names were updated after the node's setup\". If the real headers are unknown \u2014 no spreadsheet selected, or the columns were never fetched \u2014 use mappingMode: 'autoMapInputData' with value: {} and let n8n map input fields to columns by name instead of guessing a schema.";
+
 export const columnsResourceMapperBuilderHint: IParameterBuilderHint = {
 	propertyHint:
-		"Pass the full resourceMapper object: { mappingMode, value, schema }. A bare string like 'autoMapInputData' fails validation. `append` is plain insert \u2014 do NOT add `matchingColumns` here (that is for the `appendOrUpdate` and `update` operations).",
+		"Pass the full resourceMapper object: { mappingMode, value, schema }. A bare string like 'autoMapInputData' fails validation. `append` is plain insert \u2014 do NOT add `matchingColumns` here (that is for the `appendOrUpdate` and `update` operations). " +
+		columnIdentifierHint,
 };
 
 export const upsertColumnsResourceMapperBuilderHint: IParameterBuilderHint = {
 	propertyHint:
-		"Pass the full resourceMapper object: { mappingMode, value, schema, matchingColumns }. `matchingColumns` is REQUIRED for this operation \u2014 it must be a non-empty `string[]` of header names that uniquely identify the row to update; without it the node throws 'Could not get parameter' at runtime. Use the `append` operation instead if there is no key column to match on. A bare string like 'autoMapInputData' silently fails validation; always send the full resourceMapper object.",
+		"Pass the full resourceMapper object: { mappingMode, value, schema, matchingColumns }. `matchingColumns` is REQUIRED for this operation \u2014 it must be a non-empty `string[]` of header names that uniquely identify the row to update; without it the node throws 'Could not get parameter' at runtime. Use the `append` operation instead if there is no key column to match on. A bare string like 'autoMapInputData' silently fails validation; always send the full resourceMapper object. " +
+		columnIdentifierHint,
 };
 
 export const dataLocationOnSheet: INodeProperties = {

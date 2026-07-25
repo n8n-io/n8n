@@ -13,6 +13,42 @@ export const INFORMATIONAL_VALIDATION_CODES: ReadonlySet<string> = new Set([
 	'auto_imported_sdk_symbols',
 	// Staged: envelope + responseIsEmpty pagination mismatch (promote after evals)
 	'HTTP_PAGINATION_ENVELOPE_RESPONSE_IS_EMPTY',
+	// Staged: common-output-shape heuristics (promote after evals)
+	'EMPTY_RESOURCE_LOCATOR_VALUE',
+	'SET_LEGACY_VALUES_SHAPE',
+	'WRONG_LLM_TEXT_PATH',
+	'WRONG_LLM_OUTPUT_FIXTURE',
+	'MEMORY_FROM_INPUT_WITHOUT_CHAT_TRIGGER',
+	'AGENT_CHAT_INPUT_WITHOUT_CHAT_TRIGGER',
+	// Staged: skill→lint first cut (promote after evals)
+	'CODE_NODE_NETWORK_CALL',
+	'CODE_MODE_API_MISUSE',
+	'OUTPUT_FIXTURE_ITEM_ENVELOPE',
+	'MISSING_OUTPUT_FIXTURE',
+	'RAW_CREDENTIAL_OBJECT',
+	'BRANCH_OUTPUT_NOT_WIRED',
+	'SPLIT_IN_BATCHES_NO_LOOPBACK',
+	// Staged: nested Loop Over Items (promote after evals)
+	'NESTED_SPLIT_IN_BATCHES',
+	// Staged: skill→lint second cut
+	'TOOL_NAME_CONVENTION',
+	'SHEETS_MATCH_COLUMN_NOT_IN_SCHEMA',
+	'SHEETS_SCHEMA_ID_NOT_HEADER',
+	'SHEETS_VALUE_KEY_NOT_IN_SCHEMA',
+	'DATA_TABLE_CAMELCASE_COLUMN',
+	'AGENT_MODEL_PAIRING',
+	'AI_GATEWAY_CONSTRAINT',
+	'SDK_CODE_AFTER_EXPORT_DEFAULT',
+	'SDK_REPEATED_BRANCH_WIRING',
+	'SDK_FORBIDDEN_CONSTRUCT',
+	'SDK_AS_CONST',
+	'SDK_PLACEHOLDER_WRAPPED',
+	// Staged: fixture cardinality + empty-item semantics
+	'SINGLE_ITEM_LIST_FIXTURE',
+	'HTTP_ENVELOPE_NOT_UNWRAPPED',
+	'ALWAYS_OUTPUT_DATA_NO_EFFECT',
+	'EMPTY_ITEM_NOT_FILTERED',
+	'SUBNODE_UNSAFE_JSON_REFERENCE',
 ]);
 
 export function isInformationalValidationCode(code: string): boolean {

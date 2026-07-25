@@ -5,14 +5,15 @@ import type { PluginContext } from '../types';
 // Helper to create a mock node instance
 function createMockNode(
 	type: string,
-	config: { parameters?: Record<string, unknown> } = {},
+	config: { parameters?: Record<string, unknown>; name?: string } = {},
 ): NodeInstance<string, string, unknown> {
 	return {
 		type,
-		name: 'Test Node',
+		name: config.name ?? 'do_request',
 		version: '1',
 		config: {
 			parameters: config.parameters ?? {},
+			name: config.name ?? 'do_request',
 		},
 	} as NodeInstance<string, string, unknown>;
 }
@@ -261,6 +262,48 @@ describe('toolNodeValidator', () => {
 				const issues = toolNodeValidator.validateNode(node, createGraphNode(node), ctx);
 
 				expect(issues).toHaveLength(0);
+			});
+		});
+
+		describe('TOOL_NAME_CONVENTION', () => {
+			it('flags auto-generated type display names', () => {
+				const node = createMockNode('n8n-nodes-base.gmailTool', {
+					parameters: { resource: 'message' },
+					name: 'Gmail Tool',
+				});
+				Object.assign(node, { name: 'Gmail Tool' });
+				const issues = toolNodeValidator.validateNode(
+					node,
+					createGraphNode(node),
+					createMockPluginContext(),
+				);
+				expect(issues).toContainEqual(expect.objectContaining({ code: 'TOOL_NAME_CONVENTION' }));
+			});
+
+			it('flags service-family prefixes', () => {
+				const node = createMockNode('n8n-nodes-base.gmailTool', {
+					parameters: { resource: 'message' },
+					name: 'gmail_get_email',
+				});
+				Object.assign(node, { name: 'gmail_get_email' });
+				expect(
+					toolNodeValidator
+						.validateNode(node, createGraphNode(node), createMockPluginContext())
+						.map((i) => i.code),
+				).toContain('TOOL_NAME_CONVENTION');
+			});
+
+			it('accepts concise snake_case action names', () => {
+				const node = createMockNode('n8n-nodes-base.gmailTool', {
+					parameters: { resource: 'message' },
+					name: 'get_email',
+				});
+				Object.assign(node, { name: 'get_email' });
+				expect(
+					toolNodeValidator
+						.validateNode(node, createGraphNode(node), createMockPluginContext())
+						.filter((i) => i.code === 'TOOL_NAME_CONVENTION'),
+				).toHaveLength(0);
 			});
 		});
 	});

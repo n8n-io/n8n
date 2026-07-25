@@ -26,13 +26,23 @@ function createGraphNode(node: NodeInstance<string, string, unknown>): GraphNode
 }
 
 // Helper to create a mock plugin context
-function createMockPluginContext(): PluginContext {
+function createMockPluginContext(
+	extraNodes: Array<NodeInstance<string, string, unknown>> = [],
+): PluginContext {
+	const nodes = new Map<string, GraphNode>();
+	for (const node of extraNodes) {
+		nodes.set(node.name, createGraphNode(node));
+	}
 	return {
-		nodes: new Map(),
+		nodes,
 		workflowId: 'test-workflow',
 		workflowName: 'Test Workflow',
 		settings: {},
 	};
+}
+
+function createChatTrigger(): NodeInstance<string, string, unknown> {
+	return createMockNode('@n8n/n8n-nodes-langchain.chatTrigger');
 }
 
 describe('agentValidator', () => {
@@ -160,26 +170,65 @@ describe('agentValidator', () => {
 			expect(issues.filter((i) => i.code === 'AGENT_NO_SYSTEM_MESSAGE')).toHaveLength(0);
 		});
 
-		it('returns no issues when promptType is auto', () => {
+		it('returns no issues when promptType is auto and Chat Trigger is present', () => {
+			const chat = createChatTrigger();
+			Object.assign(chat, { name: 'When chat message received' });
 			const node = createMockNode('@n8n/n8n-nodes-langchain.agent', {
 				parameters: { promptType: 'auto' },
 			});
-			const ctx = createMockPluginContext();
+			const ctx = createMockPluginContext([chat, node]);
 
 			const issues = agentValidator.validateNode(node, createGraphNode(node), ctx);
 
 			expect(issues).toHaveLength(0);
 		});
 
-		it('returns no issues when promptType is undefined (defaults to auto)', () => {
+		it('returns no issues when promptType is undefined with Chat Trigger (defaults to auto)', () => {
+			const chat = createChatTrigger();
+			Object.assign(chat, { name: 'When chat message received' });
 			const node = createMockNode('@n8n/n8n-nodes-langchain.agent', {
 				parameters: {},
 			});
-			const ctx = createMockPluginContext();
+			const ctx = createMockPluginContext([chat, node]);
 
 			const issues = agentValidator.validateNode(node, createGraphNode(node), ctx);
 
 			expect(issues).toHaveLength(0);
+		});
+
+		it('returns AGENT_CHAT_INPUT_WITHOUT_CHAT_TRIGGER when promptType is auto without Chat Trigger', () => {
+			const node = createMockNode('@n8n/n8n-nodes-langchain.agent', {
+				parameters: { promptType: 'auto' },
+			});
+			const ctx = createMockPluginContext([node]);
+
+			const issues = agentValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toEqual([
+				expect.objectContaining({
+					code: 'AGENT_CHAT_INPUT_WITHOUT_CHAT_TRIGGER',
+					severity: 'warning',
+				}),
+			]);
+		});
+
+		it('returns AGENT_CHAT_INPUT_WITHOUT_CHAT_TRIGGER when text uses $json.chatInput without Chat Trigger', () => {
+			const node = createMockNode('@n8n/n8n-nodes-langchain.agent', {
+				parameters: {
+					promptType: 'define',
+					text: '={{ $json.chatInput }}',
+					options: { systemMessage: 'Be helpful' },
+				},
+			});
+			const ctx = createMockPluginContext([node]);
+
+			const issues = agentValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({
+					code: 'AGENT_CHAT_INPUT_WITHOUT_CHAT_TRIGGER',
+				}),
+			);
 		});
 
 		it('returns no issues when promptType is guardrails', () => {
@@ -194,7 +243,12 @@ describe('agentValidator', () => {
 		});
 
 		it('returns no issues when parameters is undefined', () => {
-			const node = createMockNode('@n8n/n8n-nodes-langchain.agent', {});
+			const node = {
+				type: '@n8n/n8n-nodes-langchain.agent',
+				name: 'Test Node',
+				version: '1',
+				config: {},
+			} as NodeInstance<string, string, unknown>;
 			const ctx = createMockPluginContext();
 
 			const issues = agentValidator.validateNode(node, createGraphNode(node), ctx);

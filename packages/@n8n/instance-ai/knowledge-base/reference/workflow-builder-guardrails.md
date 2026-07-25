@@ -4,9 +4,6 @@ Use these guardrails for workflow builds with multiple external systems,
 multiple requested effects, digests or reports, non-trivial branching, or Code
 nodes. They are a runtime checklist, not extra user-facing output.
 
-Do not add sticky notes unless the user explicitly asks for them. Prefer chat
-explanations over canvas stickies.
-
 ## Preserve Source Data
 
 Normalize trigger or source data before side effects. Nodes that create, update,
@@ -45,13 +42,6 @@ upserting, or posting, check the actual item shape. Preserve itemized flow or
 split arrays into one item per record; do not collapse to no work because
 `$input.first().json` is a single object.
 
-A top-level array response (for example Binance klines, list endpoints, search
-results) is split by the HTTP Request node into one item per element, so
-`$input.first().json` is a single element, not the whole array. In a Code node
-that must process every row, read `$input.all().map(i => i.json)` (or iterate
-the items) instead of mapping over `$input.first().json`, which would only see
-the first record and produce null/empty downstream values.
-
 When a downstream node must reason over the whole collection at once — a single
 AI Agent analysing a series, an indicator/metric computed across all rows, a
 summary, or a structured-output parser expecting one object — first aggregate
@@ -84,16 +74,6 @@ gets `undefined`, which silently breaks length/emptiness checks (e.g. scraped
 HTML misclassified as blocked). Read the field the chosen format actually
 emits.
 
-## HTTP Pagination Stop Conditions
-
-Declare `output` on paginated HTTP Request nodes and run `workflow-sdk validate`
-before `build-workflow`. The SDK rule
-`HTTP_PAGINATION_ENVELOPE_RESPONSE_IS_EMPTY` flags `responseIsEmpty` (the
-default) when the declared body is an envelope wrapping an array, and names the
-fix (`paginationCompleteWhen: 'other'` +
-`completeExpression: '={{ $response.body.<field>.length === 0 }}'`). Also unwrap
-the envelope into one item per record before any per-record loop.
-
 ## Fetch Complete External Data
 
 If downstream logic depends on labels, memberships, related records, nested
@@ -106,16 +86,6 @@ For reports that combine named sources, make sure every named source has a
 reachable read/query/fetch node before the formatter and final action. A
 schedule item, date-window calculator, placeholder row, or final formatter is
 not source data.
-
-## Structured-Output Schema Fields Are JSON Strings
-
-On OpenAI/LM nodes, the structured-output schema field
-(`textFormat.textOptions.schema` and equivalents) must be a STRING containing
-strict, valid JSON — the node runs JSON.parse on it at execution time. A
-JS/TS object literal, single-quoted keys, trailing commas, comments, or an
-expression there produce "Failed to parse schema" and crash the node before
-any output. Serialize the schema with double-quoted keys and strings, keep it
-minimal, and set the sibling `name` field.
 
 ## Data After Side-Effect Nodes
 
@@ -137,11 +107,6 @@ return explicit `json` objects.
 Code nodes run in a restricted runtime. Do not `require()` or `import`
 unavailable modules such as `luxon` or `openai`; use JavaScript `Date`, `Intl`,
 `$now`, `$today`, existing workflow data, or dedicated AI nodes.
-
-Code nodes have no network access. `fetch()`, `axios`, `XMLHttpRequest`, and
-`require` of http modules all fail at runtime, in JavaScript and Python alike.
-Make every HTTP/API call with the HTTP Request node and transform its output in
-the Code node, even when the user asks to fetch inside a Code node.
 
 Keep embedded Code node source parseable after saving. Avoid nested template
 literals, raw newlines inside quoted strings, and escape-heavy regex literals.

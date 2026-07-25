@@ -24,6 +24,15 @@ describe('Instance AI runtime skills', () => {
 		expect(skill).toContain('knowledge-base/reference/workflow-sdk-language.md');
 	});
 
+	it('requires the workflow-builder to act on validate warnings, not just errors', () => {
+		const skill = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
+			'utf-8',
+		);
+		expect(skill).toContain('Every `warning` row must be considered too');
+		expect(skill).toContain('Never leave a warning unread');
+	});
+
 	it('tells the workflow-builder not to add sticky notes by default', () => {
 		const skill = readFileSync(
 			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
@@ -36,6 +45,23 @@ describe('Instance AI runtime skills', () => {
 		expect(skill).toMatch(
 			/opt-in only when the user explicitly\s+asks for a sticky note on the canvas/,
 		);
+	});
+
+	it('makes the workflow-builder pick providers from the instance credentials, vendor-agnostically', () => {
+		const skill = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
+			'utf-8',
+		);
+		const section = skill.slice(
+			skill.indexOf('## Provider Selection'),
+			skill.indexOf('## n8n credits Preference'),
+		);
+
+		expect(section).toContain('call `credentials(action="list")`');
+		expect(section).toContain('unfiltered before choosing the node');
+		expect(section).toContain('A stored credential for a different provider outranks that');
+		// The rule has to generalise: naming vendors here turns it into a lookup table.
+		expect(section).not.toMatch(/openai|gemini|anthropic|slack|gmail/i);
 	});
 
 	it('loads the bundled data-table-manager skill and its linked files', async () => {
@@ -304,7 +330,6 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('Do not create a plan\njust for verification');
 		expect(loaded?.instructions).toContain('never stop before the first\n`build-workflow` call');
 		expect(loaded?.instructions).toContain('inspect it first via `debugging-executions`');
-		expect(loaded?.instructions).toContain('SDK node `output` mocks are raw `$json` objects');
 		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
 		expect(loaded?.instructions).toContain(
 			'never ask for\nsetup values before the first successful build',
@@ -312,8 +337,6 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('`planning` or call `create-tasks` first');
 		expect(loaded?.instructions).toContain('.to(isImportant)');
 		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
-		expect(loaded?.instructions).toContain('Never call `.onFalse()` more than once');
-		expect(loaded?.instructions).toContain('branch nodes are omitted from the saved graph');
 	});
 
 	it('loads the bundled planning skill', async () => {

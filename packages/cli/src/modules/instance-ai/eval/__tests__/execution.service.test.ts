@@ -35,17 +35,24 @@ vi.mock('../pin-data-generator', () => ({
 vi.mock('../mock-handler', () => ({
 	createLlmMockHandler: vi.fn(),
 }));
-vi.mock('../workflow-analysis', () => ({
-	partitionAiRoots: vi.fn(),
-	buildVendorLlmRouting: vi.fn().mockReturnValue({
-		subNodeToRoot: new Map(),
-		rootToSubNode: new Map(),
-	}),
-	generateMockHints: vi.fn(),
-	identifyNodesForHints: vi.fn(),
-	identifyNodesForPinData: vi.fn(),
-	detectBinaryDependencies: vi.fn(),
-}));
+vi.mock('../workflow-analysis', async (importOriginal) => {
+	// Pure helper with no LLM call — keep the real one so pin shaping is tested.
+	const { unwrapTriggerPinEnvelope } =
+		await importOriginal<typeof import('../workflow-analysis')>();
+
+	return {
+		unwrapTriggerPinEnvelope,
+		partitionAiRoots: vi.fn(),
+		buildVendorLlmRouting: vi.fn().mockReturnValue({
+			subNodeToRoot: new Map(),
+			rootToSubNode: new Map(),
+		}),
+		generateMockHints: vi.fn(),
+		identifyNodesForHints: vi.fn(),
+		identifyNodesForPinData: vi.fn(),
+		detectBinaryDependencies: vi.fn(),
+	};
+});
 
 // Class-based mock — `vi.fn().mockImplementation(() => obj)` doesn't reliably return the object via `new`.
 const mockWireServerStart = vi.fn();
@@ -1319,6 +1326,37 @@ describe('EvalExecutionService', () => {
 
 			expect(result.nodeResults['Webhook']).toBeDefined();
 			expect(result.nodeResults['Webhook'].executionMode).toBe('pinned');
+		});
+
+		it('pins trigger fields at the top level when the hints arrive inside a pin envelope', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = {
+				json: { chatInput: 'Hi there', sessionId: 'session-1', action: 'sendMessage' },
+			};
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			const item = runData.pinData?.['Webhook']?.[0];
+			// $json.sessionId has to resolve — a second envelope would hide it.
+			expect(item?.json).toEqual({
+				chatInput: 'Hi there',
+				sessionId: 'session-1',
+				action: 'sendMessage',
+			});
+		});
+
+		it('keeps a trigger payload whose own field is named json', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = { body: { json: { raw: true } } };
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			const item = runData.pinData?.['Webhook']?.[0];
+			expect(item?.json).toEqual({ body: { json: { raw: true } } });
 		});
 
 		it('mirrors an LLM-embedded binary map as real item.binary while keeping json intact', async () => {

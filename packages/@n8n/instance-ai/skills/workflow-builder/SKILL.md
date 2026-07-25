@@ -198,10 +198,17 @@ build → publish → assign steps. Do not create one before the user opts in.
    SDK validation on the workspace source file via
    `workspace_execute_command`:
    `node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate <filePath>`
-   Fix blocking issues it reports. This is a subset of what `build-workflow`
-   enforces (no node-type registry), so a green result does not guarantee the
-   save will succeed — still call `build-workflow`. Prefer this over guessing
-   when pagination, expression paths, or structured-output schema look wrong.
+   Output is lint-style (`line  severity  code  message`); fix every `error`
+   row. Every `warning` row must be considered too — warnings do not block the
+   save and the command still exits 0, but they flag defects that surface at
+   run time rather than build time (wrong LLM text path, unwired branch output,
+   missing loop-back, fixture shape mismatch, empty resource locator). Resolve
+   each one by fixing the code, or by confirming from the node definition or
+   knowledge base that it does not apply here. Never leave a warning unread
+   just because the build succeeded. This is a subset of what `build-workflow`
+   enforces (no node-type registry), so a clean run does not guarantee the save
+   will succeed — still call `build-workflow`. Prefer this over guessing when
+   pagination, expression paths, or structured-output schema look wrong.
 8. Call `build-workflow` with the `filePath` you wrote.
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
@@ -326,8 +333,36 @@ decision after testing.
 - These rules apply to outbound service calls. Inbound trigger nodes (Webhook,
   Form, Chat, MCP Trigger) keep authentication at its default `none` unless
   the user explicitly asks to authenticate inbound traffic.
-- Always declare `output` on nodes that use unresolved credentials when mock
-  data is needed for verification.
+
+## Provider Selection
+
+Most capabilities have interchangeable providers — chat models, email,
+storage, messaging, CRM, databases. When the request does not name one, pick
+from evidence on the instance instead of a habitual default:
+
+1. The user's words win: a named provider, node, or credential is the choice.
+2. Then existing structure: when editing or rebuilding a workflow the user
+   supplied, keep the providers it already uses.
+3. Then the instance's credentials: call `credentials(action="list")`
+   unfiltered before choosing the node, and read which providers the user
+   already has keys for. When exactly one of them covers the capability you
+   need, that is the provider — storing that key is the user telling you which
+   service they use. When several do, pick the closest fit and say why, or ask.
+4. Only with no signal at all, fall back to the n8n credits preference below,
+   then to a common provider for the capability.
+
+Two habits skip step 3 silently; avoid both:
+
+- Narrowing discovery to a provider you already assumed. A `type`-filtered
+  credential list, or a `nodes(action="search")` query naming a vendor, asks
+  about your guess instead of the user's setup. Search by capability — the
+  `connectionType` for subnodes, the task for action nodes — and let the
+  credential list narrow it.
+- Treating one provider as the house default because it is the most common.
+  A stored credential for a different provider outranks that.
+
+Name the provider you chose and why, so a wrong guess costs the user one
+correction instead of a rebuild.
 
 ## n8n credits Preference
 
@@ -362,6 +397,11 @@ API quota. The synthetic entry in `credentials(action="list", type=...)` (see
 Credential Rules) is your signal that a type is covered. Do not change
 credentials on nodes that already have one assigned (editing an existing
 workflow, or after the user has made a credential choice).
+
+This preference decides between providers you have no other signal about — it
+runs after Provider Selection, not instead of it. When the user already stores
+a credential for one provider in the capability family, build with that
+provider; credits still covers any other node whose type it supports.
 
 - If the user explicitly specified their own credential (by name or by
   choosing one from a list), use that credential and do not substitute
@@ -435,27 +475,21 @@ never from `$now.weekday == N`, which silently no-ops on other days.
   `knowledge-base/reference/workflow-sdk-language.md`.
 
 - Code nodes have NO network access at runtime: `fetch()`, `axios`,
-  `XMLHttpRequest`, and `require` of http modules all fail in the sandbox. Make
-  every HTTP/API call with the HTTP Request node and transform its output in a
-  Code node, even when the user asks to fetch inside a Code node.
+  `XMLHttpRequest`, and `require` of http modules all fail in the sandbox
+  (`CODE_NODE_NETWORK_CALL`). Make every HTTP/API call with the HTTP Request
+  node and transform its output in a Code node, even when the user asks to
+  fetch inside a Code node.
 
 - Use `@n8n/workflow-sdk`.
 - `export default workflow(...)...` must be the last statement in the file, with
-  all wiring composed inside that chain. Statements after it (e.g.
-  `ifNode.onTrue(...)`) do not reach the builder and their nodes are dropped.
+  all wiring composed inside that chain.
 - Do not specify node positions. They are auto-calculated by the layout engine.
 - Use `expr('{{ $json.field }}')` for n8n expressions. Variables must be inside
   `{{ }}`. `$json` is only the current item from the immediate predecessor.
-- Do not use TypeScript-only syntax that the workflow parser cannot interpret,
-  such as `as const`.
 - Use string values directly for discriminator fields like `resource` and
   `operation`, for example `resource: 'message'`.
 - When editing a pre-loaded workflow, remove `position` arrays from node
   configs; they are auto-calculated.
-- Use `placeholder('hint')` directly as the parameter value. Do not wrap
-  placeholders in `expr()`, objects, or arrays unless the node definition
-  explicitly expects an object and the placeholder is the direct value of one
-  field.
 - For unresolved resource-locator fields (`{ __rl: true, mode, value }` —
   Slack channel / Sheets document selectors), use the locator object, never a
   raw `placeholder()` string. When the user names the resource
@@ -473,15 +507,17 @@ never from `$now.weekday == N`, which silently no-ops on other days.
   list-returning / search / read nodes whose fields downstream expressions or
   Code nodes read. Shape-aware validators (`expression-path`, HTTP pagination
   stop conditions, Split Out unwrap) no-op without declared output — skipping
-  it leaves those gates dark. Include every field later referenced by `$json`
-  expressions, including optional trigger fields used in filters (for example
-  Slack `subtype`, `bot_id`, `text`, `user`, `ts`, `channel`).
+  it leaves those gates dark (`MISSING_OUTPUT_FIXTURE`). Include every field
+  later referenced by `$json` expressions, including optional trigger fields
+  used in filters (for example Slack `subtype`, `bot_id`, `text`, `user`,
+  `ts`, `channel`).
 - Match real cardinality in mock `output`. When a node's real response is a
   collection (HTTP list endpoints, search results, a top-level array such as
   Binance klines or a bare array of IDs), declare at least two items so
   single-item assumptions like `$input.first()` break during verification
   instead of on the user's first run. A single-item mock hides array-vs-single
-  bugs.
+  bugs (`SINGLE_ITEM_LIST_FIXTURE`). When the fixture is a page envelope, unwrap
+  it before the loop (`HTTP_ENVELOPE_NOT_UNWRAPPED`).
 - Match the real payload SHAPE in webhook trigger mocks. When a third-party
   platform calls the webhook (voice agents, payment providers, messaging
   platforms), that platform's documented envelope fixes the shape — mock it
@@ -490,13 +526,6 @@ never from `$now.weekday == N`, which silently no-ops on other days.
   (`body.message.toolCalls[0].function.arguments`), not at the body root and
   not under `call.arguments`. Coding against an invented flat mock
   self-verifies green, then every field parses empty on the first real call.
-- SDK node `output` mocks are raw `$json` objects. Do not wrap mock items in
-  n8n runtime item envelopes like `{ json: { ... } }` unless downstream
-  expressions intentionally read `$json.json.*`. Correct:
-  `output: [{ orderId: 'ord_123', total: 42 }]`; wrong:
-  `output: [{ json: { orderId: 'ord_123', total: 42 } }]`.
-  Code node `jsCode` may still return runtime items like `[{ json: { ... } }]`;
-  this rule applies to SDK `node({ output: [...] })` mocks.
 
 Use this import shape unless the task needs fewer symbols:
 
@@ -556,11 +585,11 @@ Follow these rules strictly when generating workflows:
      set `alwaysOutputData: true` on every node that can emit zero items before
      the effect — often both the HTTP fetch (empty `[]`) and the filter (all rows
      dropped). Not on the formatter or notifier; consumers that receive zero
-     items never run. `alwaysOutputData` delivers an empty result as one item
-     with empty json (`{}`), not zero items — a downstream formatter or Code
-     node must treat empty-json items as zero rows (e.g. `const rows =
-     $input.all().filter(i => Object.keys(i.json).length > 0)`) before counting
-     or listing them.
+     items never run (`ALWAYS_OUTPUT_DATA_NO_EFFECT`). `alwaysOutputData`
+     delivers an empty result as one item with empty json (`{}`), not zero items
+     — a downstream formatter or Code node must treat empty-json items as zero
+     rows (e.g. `const rows = $input.all().filter(i => Object.keys(i.json).length
+     > 0)`) before counting or listing them (`EMPTY_ITEM_NOT_FILTERED`).
    - A Filter or IF only selects items; it does not perform the requested side
      effect. If the user asks to archive, update, delete, send, or create only
      matching items, wire the corresponding action node on the matching path.
@@ -579,19 +608,6 @@ Follow these rules strictly when generating workflows:
    when the SDK language reference documents `sticky()`, do not use it by
    default. When editing a workflow, do not add or reintroduce stickies unless the user
    explicitly asks for them.
-8. Field paths must match real node output. Never invent `$json.text` for Gemini
-   or Anthropic; unwrap HTTP list envelopes before loops; match webhook nesting
-   and Form flatten rules; use `assignments` on Set v3+; keep every item that
-   must reach a `splitInBatches` done branch wired back through `nextBatch`. See
-   `references/common-output-shapes.md`.
-
-## Tool Naming Rules
-
-Always set an explicit `config.name` on every `tool(...)` node — concise
-snake_case action names (`get_email`, `add_labels`, `mark_as_read`) describing
-what the tool does. Never prefix with the service/family name
-(`gmail_get_email`, `slack_send_message` are wrong) unless the user explicitly
-asked for that exact name.
 
 ## Node Configuration Safety Rules
 
@@ -643,10 +659,6 @@ per-item data in a multi-item workflow; it always reads item 0 and makes every
 downstream item reuse the first value. Use `.first()` only for a true global
 first item, such as a single configuration row.
 
-For provider- and trigger-specific paths (Gemini `content.parts[0].text`,
-OpenAI `output[0].content[0].text`, webhook nesting, list envelopes), see
-`references/common-output-shapes.md` — do not guess `$json.text`.
-
 ## SDK Patterns Reference
 
 Define nodes first, then compose the workflow:
@@ -690,8 +702,6 @@ export default workflow('id', 'name')
 For IF, each branch is a complete processing path. Wire branches on the workflow
 builder, not as standalone calls on the IF node variable. Chain steps inside a
 branch with `.to()`, or pass an array for parallel fan-out.
-Never call `.onFalse()` more than once (same for `.onTrue()`); each repeat
-overwrites the previous target.
 
 ```ts
 const isImportant = ifElse({
@@ -719,18 +729,6 @@ export default workflow('id', 'name')
 // Parallel fan-out on a branch: .onFalse([a, b, c])
 ```
 
-Do NOT wire branches as standalone statements.
-Then branch nodes are omitted from the saved graph, and repeated `.onFalse()`
-calls keep only the last target.
-
-```ts
-// WRONG
-export default workflow('id', 'name').add(startTrigger).to(isImportant);
-isImportant.onTrue(handleImportant); // never reaches the builder
-isImportant.onFalse(sendHolding);    // overwritten
-isImportant.onFalse(alertSlack);     // only this one would wire
-```
-
 For Switch, wire cases the same way — `.to(switchNode).onCase(0, a).onCase(1, b)`
 or inline — using zero-based `.onCase(index, target)` for each rule output.
 
@@ -741,10 +739,15 @@ For AI Agent workflows:
 
 - Attach language models, memory, tools, parsers, retrievers, vector stores, and
   other subnodes to the agent as subnodes.
+- When the user did not name a model provider, choose it through Provider
+  Selection: list credentials unfiltered first, and search for the subnode by
+  `connectionType` rather than putting a vendor name in the query.
 - Tool nodes must have explicit concise `config.name` values.
 - Prefer `fromAi(...)` for values the agent should supply to tools.
 - Use explicit node references instead of `$json` in subnodes when the value
-  comes from a trigger or a main-flow node.
+  comes from a trigger or a main-flow node (`SUBNODE_UNSAFE_JSON_REFERENCE`
+  covers tool and memory subnodes; in a document loader `$json` is the parent's
+  own input item and is correct).
 
 ## Additional SDK Functions
 

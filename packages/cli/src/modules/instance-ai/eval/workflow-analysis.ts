@@ -567,6 +567,8 @@ RULES:
    - For service-specific triggers (Gmail Trigger, Slack Trigger, etc.): match the service's real event/message output format
    - For schedule triggers: include timestamp fields
    - For manual triggers: include the fields that downstream nodes reference
+   - For chat triggers: emit the chat payload FLAT — { chatInput, sessionId, action } — because the agent reads $json.chatInput and memory sub-nodes read $json.sessionId
+   - CRITICAL: triggerContent IS the node's json content. Never wrap it in a "json" key ({ "json": { ... } }) — the harness adds the pin envelope, so a wrapper nests every field one level too deep and every $json reference misses
    - CRITICAL: triggerContent must NEVER be an empty object ({}). Even for scenarios that test empty payloads ("empty submission", "no data", "missing fields"), emit the trigger envelope with empty *nested* fields — an empty webhook is { headers: {}, query: {}, body: {} }, a schedule with no context is { timestamp: "..." }. The workflow cannot execute without trigger output.
    - CRITICAL: check what downstream nodes reference (e.g., $json.body.email, $json.subject, $json.text) and ensure those paths exist in triggerContent
    - CRITICAL: when the workflow has MULTIPLE trigger nodes, pick the ONE the Test Scenario targets (the trigger whose firing the scenario describes, e.g. "The weekly Schedule Trigger fires") and return its exact node name in a "startNodeName" field. triggerContent must be THAT trigger's output.
@@ -638,6 +640,24 @@ function buildUserPrompt(
 	return sections.join('\n');
 }
 
+/**
+ * Phase 1 sometimes returns the trigger output already inside a pin envelope
+ * (`{ json: { ... } }`). Pinning that as-is buries every field one level below
+ * where the real trigger emits it, so `$json.<field>` resolves to undefined —
+ * a chat trigger's `sessionId` disappears and the memory sub-node throws.
+ */
+export function unwrapTriggerPinEnvelope(
+	triggerContent: Record<string, unknown>,
+): Record<string, unknown> {
+	const keys = Object.keys(triggerContent);
+	if (keys.length !== 1 || keys[0] !== 'json') return triggerContent;
+
+	const inner = triggerContent.json;
+	if (inner === null || typeof inner !== 'object' || Array.isArray(inner)) return triggerContent;
+
+	return inner as Record<string, unknown>;
+}
+
 const MAX_HINT_ATTEMPTS = 2;
 
 /**
@@ -707,12 +727,13 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 			) {
 				reason = `invalid nodeHints structure (raw: ${text.slice(0, 200)})`;
 			} else {
-				const triggerContent =
+				const triggerContent = unwrapTriggerPinEnvelope(
 					typeof parsed.triggerContent === 'object' &&
-					parsed.triggerContent !== null &&
-					!Array.isArray(parsed.triggerContent)
-						? parsed.triggerContent
-						: {};
+						parsed.triggerContent !== null &&
+						!Array.isArray(parsed.triggerContent)
+						? (parsed.triggerContent as Record<string, unknown>)
+						: {},
+				);
 				if (Object.keys(triggerContent).length === 0) {
 					reason = 'empty triggerContent';
 				} else {
@@ -724,7 +745,7 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 					return {
 						globalContext,
 						nodeHints,
-						triggerContent: triggerContent as Record<string, unknown>,
+						triggerContent,
 						...(typeof parsed.startNodeName === 'string' && parsed.startNodeName.length > 0
 							? { startNodeName: parsed.startNodeName }
 							: {}),

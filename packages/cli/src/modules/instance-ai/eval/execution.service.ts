@@ -67,6 +67,7 @@ import {
 	type MockHints,
 	partitionAiRoots,
 	type TriggerBinaryRequirement,
+	unwrapTriggerPinEnvelope,
 	type VendorLlmRouting,
 } from './workflow-analysis';
 
@@ -663,12 +664,15 @@ export class EvalExecutionService {
 		triggerContent: Record<string, unknown>,
 		binaryRequirement?: TriggerBinaryRequirement,
 	): IPinData {
-		if (Object.keys(triggerContent).length === 0 && !binaryRequirement) return {};
+		// Hints reach this path from callers other than Phase 1 too, so guard the
+		// pin envelope here as well rather than trusting the content is unwrapped.
+		const content = unwrapTriggerPinEnvelope(triggerContent);
+		if (Object.keys(content).length === 0 && !binaryRequirement) return {};
 
 		// Mirror any LLM-embedded binary map as real item-level binary; json stays
 		// untouched so $json.binary.* references keep resolving.
-		const embedded = readEmbeddedBinaryMeta(triggerContent);
-		const item: INodeExecutionData = { json: triggerContent as IDataObject };
+		const embedded = readEmbeddedBinaryMeta(content);
+		const item: INodeExecutionData = { json: content as IDataObject };
 		const binary: IBinaryKeyData = {};
 
 		if (binaryRequirement) {

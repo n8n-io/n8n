@@ -20,6 +20,7 @@ export const ASK_USER_FALLBACK =
 	'If you are stuck, need clarification, or need information only a human can provide, use the `ask-user` tool instead of asking in plain text. Before the first `build-workflow` call, use `ask-user` only for choices that change the workflow intent or topology, such as the missing destination service for "send my team a summary". Do not use `ask-user` before the first build for missing setup values after the service is already known, such as notification recipients, account labels or IDs, channel IDs, resource IDs, credential choices, or credential fields; use placeholders or unresolved `newCredential()` calls and leave them for post-build workflow setup. Do not retry the same failing approach more than twice — use `ask-user` instead. Never solicit API keys, tokens, or other secrets through `ask-user` — route credential collection through credential setup or Computer Use browser credential capture instead.';
 
 export function getSandboxWorkspaceSection(workspaceRoot?: string): string {
+	const root = workspaceRoot ?? '<workspace_root>';
 	const isolation = workspaceRoot
 		? `Cloud sandbox with isolated execution (TypeScript runtime). Filesystem access is scoped to \`${workspaceRoot}\`. Paths are relative to the workspace root unless you pass an absolute path under that root.`
 		: 'Cloud sandbox with isolated execution (TypeScript runtime).';
@@ -28,5 +29,14 @@ export function getSandboxWorkspaceSection(workspaceRoot?: string): string {
 
 ${isolation}
 
-You are given a sandbox workspace to use for your work that is scoped to the current thread. Use the workspace_* tools to read, write, update and execute commands in the workspace.`;
+You are given a sandbox workspace to use for your work that is scoped to the current thread. Use the workspace_* tools to read, write, update and execute commands in the workspace.
+
+Every path a skill mentions is relative to the workspace root: \`knowledge-base/reference/x.md\` means \`${root}/knowledge-base/reference/x.md\`.
+
+- \`${root}/skills/<skill-name>/\` — SKILL.md and its \`references/\` files. Read them with \`load_skill\` (\`filePath\` for a linked file) rather than off disk.
+- \`${root}/knowledge-base/\` — \`index.json\` catalog, plus \`best-practices/\`, \`reference/\`, and \`templates/\`.
+- \`${root}/node-types/index.txt\` — searchable catalog of available n8n nodes.
+- \`${root}/workflows/\`, \`${root}/src/\`, \`${root}/chunks/\` — workflow JSON and builder source.
+
+\`workspace_execute_command\` defaults to the sandbox home directory, not the workspace root, so pass \`cwd: "${root}"\` or an absolute path when running commands like \`rg\`, \`find\`, or \`cat\`.`;
 }

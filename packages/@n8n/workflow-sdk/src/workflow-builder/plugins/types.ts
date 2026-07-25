@@ -97,6 +97,17 @@ export interface NodeTypesProvider {
 }
 
 /**
+ * Optional n8n credits / AI Gateway metadata for a node type.
+ * When absent, ai-gateway-validator no-ops.
+ */
+export interface AiGatewayNodeMeta {
+	readonly supported: true;
+	readonly operations?: Readonly<Record<string, readonly string[]>>;
+	readonly minVersion?: number;
+	readonly hiddenProperties?: readonly string[];
+}
+
+/**
  * Validation options that can be passed to validators via PluginContext.
  */
 export interface ValidationOptions {
@@ -106,6 +117,11 @@ export interface ValidationOptions {
 	readonly allowNoTrigger?: boolean;
 	/** Optional provider for looking up node type metadata (e.g., maxNodes) */
 	readonly nodeTypesProvider?: NodeTypesProvider;
+	/**
+	 * Optional AI Gateway (n8n credits) metadata keyed by node type.
+	 * Supplied by Instance AI when licensed; CLI validate usually omits this.
+	 */
+	readonly aiGatewayByNodeType?: Readonly<Record<string, AiGatewayNodeMeta>>;
 }
 
 /**

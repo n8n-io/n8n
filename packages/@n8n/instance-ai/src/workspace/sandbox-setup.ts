@@ -237,7 +237,10 @@ export async function linkWorkspaceSdkIfEnabled(
 export const BUILD_MJS = `const filePath = process.argv[2] || './src/workflow.ts';
 try {
   const mod = await import(filePath);
-  const wf = mod.default;
+  // CJS/ESM interop (esp. under tsx without "type":"module") may nest default.
+  const wf = (mod.default && typeof mod.default.toJSON === 'function')
+    ? mod.default
+    : mod.default?.default;
   if (!wf || typeof wf.toJSON !== 'function') {
     console.log(JSON.stringify({ success: false, errors: ['Default export is not a workflow. Make sure your file has: export default workflow(...)'] }));
     process.exit(1);

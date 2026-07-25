@@ -1059,6 +1059,40 @@ describe('generateMockHints', () => {
 		expect(result.warnings).toEqual([]);
 	});
 
+	it('should strip a pin envelope the LLM wrapped around triggerContent', async () => {
+		mockAgentResponses(
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { json: { chatInput: 'Hi there', sessionId: 'session-1' } },
+				nodeHints: { Slack: 'foo' },
+			}),
+		);
+
+		const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(result.triggerContent).toEqual({ chatInput: 'Hi there', sessionId: 'session-1' });
+	});
+
+	it('should treat a wrapper around empty content as empty and retry', async () => {
+		const generate = mockAgentResponses(
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { json: {} },
+				nodeHints: { Slack: 'foo' },
+			}),
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+				nodeHints: { Slack: 'foo' },
+			}),
+		);
+
+		const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(generate).toHaveBeenCalledTimes(2);
+		expect(result.triggerContent).toEqual({ timestamp: '2024-01-01T00:00:00Z' });
+	});
+
 	it('should retry when the first attempt returns empty triggerContent, then succeed', async () => {
 		const generate = mockAgentResponses(
 			JSON.stringify({ globalContext: '', triggerContent: {}, nodeHints: { Slack: 'foo' } }),

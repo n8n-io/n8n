@@ -171,6 +171,51 @@ describe('setNodeValidator', () => {
 			expect(issues).toHaveLength(0);
 		});
 
+		it('returns SET_LEGACY_VALUES_SHAPE when v3.3+ uses parameters.values without assignments', () => {
+			const node = createMockNode(
+				'n8n-nodes-base.set',
+				{
+					parameters: {
+						values: {
+							string: [{ name: 'foo', value: 'bar' }],
+						},
+					},
+				},
+				'3.5',
+			);
+			const ctx = createMockPluginContext();
+
+			const issues = setNodeValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({
+					code: 'SET_LEGACY_VALUES_SHAPE',
+					severity: 'warning',
+					parameterPath: 'parameters.values',
+				}),
+			);
+		});
+
+		it('does not return SET_LEGACY_VALUES_SHAPE when assignments are present', () => {
+			const node = createMockNode(
+				'n8n-nodes-base.set',
+				{
+					parameters: {
+						values: { string: [{ name: 'foo', value: 'bar' }] },
+						assignments: {
+							assignments: [createAssignment('foo', 'bar', 'string')],
+						},
+					},
+				},
+				'3.5',
+			);
+			const ctx = createMockPluginContext();
+
+			const issues = setNodeValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues.filter((i) => i.code === 'SET_LEGACY_VALUES_SHAPE')).toHaveLength(0);
+		});
+
 		it('returns no issues when parameters is undefined', () => {
 			const node = createMockNode('n8n-nodes-base.set', {});
 			const ctx = createMockPluginContext();
