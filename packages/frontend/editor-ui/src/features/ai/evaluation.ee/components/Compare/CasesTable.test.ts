@@ -34,6 +34,7 @@ const versions: CompareVersion[] = [
 const cell = (versionIndex: number, score: number | null): CompareCaseCell => ({
 	versionIndex,
 	testCaseId: score === null ? null : `c${versionIndex}`,
+	executionId: null,
 	inputs: { q: 'x' },
 	outputs: { output: 'y' },
 	metrics: score === null ? undefined : { helpfulness: score },
@@ -76,6 +77,25 @@ describe('CasesTable', () => {
 		expect(rows[0].textContent).toContain('2');
 	});
 
+	it('exposes sortable headers to the keyboard (tabindex, aria-sort, Enter)', async () => {
+		const { container } = renderComponent({
+			props: { versions, caseRows: [row(0, [0.9, 0.85], 0), row(1, [0.9, 0.5], 0)] },
+		});
+
+		const sortableHeaders = [...container.querySelectorAll('th[role="button"]')];
+		expect(sortableHeaders.length).toBeGreaterThan(0);
+		for (const th of sortableHeaders) {
+			expect(th.getAttribute('tabindex')).toBe('0');
+			expect(th.getAttribute('aria-sort')).not.toBeNull();
+		}
+
+		// The first sortable header ("#") is inactive by default; Enter sorts by it.
+		const indexHeader = sortableHeaders[0];
+		expect(indexHeader.getAttribute('aria-sort')).toBe('none');
+		await fireEvent.keyDown(indexHeader, { key: 'Enter' });
+		expect(indexHeader.getAttribute('aria-sort')).toBe('ascending');
+	});
+
 	it('emits drilldown with the case index when a row is clicked', async () => {
 		const { container, emitted } = renderComponent({
 			props: { versions, caseRows: [row(3, [0.7, 0.9], 1)] },
@@ -97,6 +117,7 @@ describe('CasesTable', () => {
 		const pendingCell: CompareCaseCell = {
 			versionIndex: 1,
 			testCaseId: 'c1',
+			executionId: null,
 			inputs: {},
 			outputs: undefined,
 			metrics: undefined,
@@ -119,5 +140,38 @@ describe('CasesTable', () => {
 
 		expect(container.textContent).toContain('–');
 		expect(container.textContent).not.toContain('⊘');
+	});
+
+	const emptyInputRow = (best: number | null): CompareCaseRow => ({
+		index: 0,
+		displayIndex: 1,
+		inputPreview: '',
+		cells: [cell(0, best === null ? null : 0.7), cell(1, best === null ? null : 0.9)],
+		bestVersionIndex: best,
+	});
+
+	it('shows an input skeleton for an unloaded input while the run is in progress', () => {
+		const { container } = renderComponent({
+			props: { versions, caseRows: [emptyInputRow(null)], isRunning: true },
+		});
+
+		expect(container.querySelector('[data-test-id="compare-cases-input-skeleton"]')).not.toBeNull();
+	});
+
+	it('drops the input skeleton once the run has finished (empty input reads as genuinely empty)', () => {
+		const { container } = renderComponent({
+			props: { versions, caseRows: [emptyInputRow(1)], isRunning: false },
+		});
+
+		expect(container.querySelector('[data-test-id="compare-cases-input-skeleton"]')).toBeNull();
+	});
+
+	it('shows the input text and no skeleton once the input has loaded', () => {
+		const { container } = renderComponent({
+			props: { versions, caseRows: [row(0, [0.7, 0.9], 1)], isRunning: true },
+		});
+
+		expect(container.querySelector('[data-test-id="compare-cases-input-skeleton"]')).toBeNull();
+		expect(container.textContent).toContain('case 0');
 	});
 });

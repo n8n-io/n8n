@@ -60,12 +60,11 @@ import {
 	CUSTOM_API_CALL_KEY,
 	DEBOUNCE_TIME,
 	ExpressionLocalResolveContextSymbol,
-	getDebounceTime,
 	HTML_NODE_TYPE,
 	NODES_USING_CODE_NODE_EDITOR,
 } from '@/app/constants';
 
-import { useDebounce } from '@/app/composables/useDebounce';
+import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -2014,7 +2013,7 @@ onUpdated(async () => {
 						<div
 							v-if="option.description"
 							v-n8n-html="getOptionsOptionDescription(option)"
-							class="option-description"
+							class="option-description option-description--clamped"
 						></div>
 					</div>
 				</N8nOption>
@@ -2048,7 +2047,7 @@ onUpdated(async () => {
 						<div
 							v-if="option.description"
 							v-n8n-html="getOptionsOptionDescription(option)"
-							class="option-description"
+							class="option-description option-description--clamped"
 						></div>
 					</div>
 				</N8nOption>
@@ -2241,6 +2240,14 @@ onUpdated(async () => {
 		font-weight: var(--font-weight--regular);
 		line-height: var(--line-height--xl);
 		color: $custom-font-very-light;
+	}
+
+	.option-description--clamped {
+		overflow: hidden;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		text-overflow: ellipsis;
 	}
 }
 

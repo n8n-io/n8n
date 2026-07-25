@@ -2,11 +2,15 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { createTestNodeProperties } from '@/__tests__/mocks';
+import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
 import ParameterInputExpanded from './ParameterInputExpanded.vue';
+import type { NDVStore } from '@/features/ndv/shared/ndv.store';
 import type { INodePropertyCollection } from 'n8n-workflow';
 import userEvent from '@testing-library/user-event';
+import { mock } from 'vitest-mock-extended';
 import { nextTick } from 'vue';
+
+const ndvStoreMock = vi.hoisted(() => ({ current: null as unknown }));
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -15,6 +19,14 @@ vi.mock('@/app/composables/useWorkflowId', async () => {
 	return {
 		useWorkflowId: () => computed(() => ''),
 		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const { computed } = await import('vue');
+	return {
+		...(await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>()),
+		injectNDVStoreIfProvided: () => computed(() => ndvStoreMock.current),
 	};
 });
 
@@ -74,6 +86,26 @@ describe('ParameterInputExpanded.vue', () => {
 
 	const renderComponent = createComponentRenderer(ParameterInputExpanded, {
 		pinia: mockPinia,
+	});
+
+	afterEach(() => {
+		ndvStoreMock.current = null;
+	});
+
+	it('does not render the focus parameter button, even with an active NDV node', async () => {
+		ndvStoreMock.current = mock<NDVStore>({ activeNode: createTestNode() });
+
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				parameter: createTestNodeProperties({ name: 'apiKey', type: 'string' }),
+				value: '',
+			},
+		});
+		await vi.dynamicImportSettled();
+
+		expect(getByTestId('parameter-options-container')).toBeInTheDocument();
+		// the focus panel cannot host credential fields, so the button must stay hidden
+		expect(queryByTestId('parameter-focus-button')).not.toBeInTheDocument();
 	});
 
 	describe('FixedCollectionParameter', () => {

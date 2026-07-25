@@ -8,6 +8,7 @@ import { NoInterpolationInRegularStringRule } from './no-interpolation-in-regula
 import { NoPlainErrorsRule } from './no-plain-errors.js';
 import { NoDynamicImportTemplateRule } from './no-dynamic-import-template.js';
 import { MisplacedN8nTypeormImportRule } from './misplaced-n8n-typeorm-import.js';
+import { NoMisplacedTypeormImportDisableRule } from './no-misplaced-typeorm-import-disable.js';
 import { NoTypeUnsafeEventEmitterRule } from './no-type-unsafe-event-emitter.js';
 import { NoUntypedConfigClassFieldRule } from './no-untyped-config-class-field.js';
 import { NoTopLevelRelativeImportsInBackendModuleRule } from './no-top-level-relative-imports-in-backend-module.js';
@@ -34,6 +35,7 @@ export const rules = {
 	'no-plain-errors': NoPlainErrorsRule,
 	'no-dynamic-import-template': NoDynamicImportTemplateRule,
 	'misplaced-n8n-typeorm-import': MisplacedN8nTypeormImportRule,
+	'no-misplaced-typeorm-import-disable': NoMisplacedTypeormImportDisableRule,
 	'no-type-unsafe-event-emitter': NoTypeUnsafeEventEmitterRule,
 	'no-untyped-config-class-field': NoUntypedConfigClassFieldRule,
 	'no-top-level-relative-imports-in-backend-module': NoTopLevelRelativeImportsInBackendModuleRule,

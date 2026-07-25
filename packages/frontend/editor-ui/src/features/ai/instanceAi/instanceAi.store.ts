@@ -176,31 +176,30 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	async function syncThread(
 		threadId: string,
 		projectId: string,
-		launch?: InstanceAiThreadLaunchInput,
+		launch: InstanceAiThreadLaunchInput,
 	): Promise<void> {
 		if (persistedThreadIds.has(threadId)) return;
 
 		const result = await ensureThread(rootStore.restApiContext, threadId, projectId, launch);
 		persistedThreadIds.add(result.thread.id);
 
-		if (launch) {
-			const templateId = launch.sourceContext?.templateId;
-			telemetry.track('User launched Instance AI thread', {
-				thread_id: result.thread.id,
-				instance_id: rootStore.instanceId,
-				source: launch.source,
-				origin: launch.origin,
-				...(typeof templateId === 'string' || typeof templateId === 'number'
-					? { template_id: templateId }
-					: {}),
-			});
-		}
+		const templateId = launch.sourceContext?.templateId;
+		telemetry.track('User launched Instance AI thread', {
+			thread_id: result.thread.id,
+			instance_id: rootStore.instanceId,
+			source: launch.source,
+			origin: launch.origin ?? 'internal',
+			...(typeof templateId === 'string' || typeof templateId === 'number'
+				? { template_id: templateId }
+				: {}),
+		});
 
 		const existingThread = threads.value.find((thread) => thread.id === threadId);
 		if (existingThread) {
 			existingThread.createdAt = result.thread.createdAt;
 			existingThread.updatedAt = result.thread.updatedAt;
 			existingThread.title = result.thread.title || existingThread.title;
+			existingThread.metadata = result.thread.metadata ?? existingThread.metadata;
 			return;
 		}
 
@@ -209,6 +208,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			title: result.thread.title || NEW_CONVERSATION_TITLE,
 			createdAt: result.thread.createdAt,
 			updatedAt: result.thread.updatedAt,
+			metadata: result.thread.metadata ?? undefined,
 		});
 	}
 

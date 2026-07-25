@@ -100,6 +100,9 @@ export class ScheduleTriggerJobRegistrar {
 	/** How a fixed second/minute interval is represented (see `SchedulerConfig`). */
 	private readonly triggerNodeMode: 'legacy' | 'new';
 
+	/** Whether a node's "Skip Durable Scheduler" toggle is honored (see `SchedulerConfig`). */
+	private readonly allowSkipDurableScheduler: boolean;
+
 	constructor(
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
@@ -110,6 +113,7 @@ export class ScheduleTriggerJobRegistrar {
 			globalConfig.scheduler.enabled && workflowsConfig.useWorkflowPublicationService;
 		this.defaultTimezone = globalConfig.generic.timezone;
 		this.triggerNodeMode = globalConfig.scheduler.triggerNodeMode;
+		this.allowSkipDurableScheduler = globalConfig.scheduler.allowSkipDurableScheduler;
 		this.logger = this.logger.scoped('scheduler');
 
 		if (globalConfig.scheduler.enabled && !workflowsConfig.useWorkflowPublicationService) {
@@ -124,7 +128,15 @@ export class ScheduleTriggerJobRegistrar {
 	 * @returns `true` to hand the node a durable collector, `false` to leave it on the legacy path.
 	 */
 	interceptsNode(node: INode): boolean {
-		return this.intercepting && node.type === SCHEDULE_TRIGGER_NODE_TYPE;
+		if (
+			!this.intercepting ||
+			node.type !== SCHEDULE_TRIGGER_NODE_TYPE ||
+			(this.allowSkipDurableScheduler && node.parameters?.skipDurableScheduler === true)
+		) {
+			return false;
+		}
+
+		return true;
 	}
 
 	/**

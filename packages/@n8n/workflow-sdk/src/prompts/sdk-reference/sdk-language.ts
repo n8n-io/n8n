@@ -2,6 +2,8 @@
  * Builder-facing SDK language reference, rendered from the interpreter's own
  * tables so guidance cannot drift from what the parser accepts.
  */
+import { NODE_GROUPING_RULES } from 'n8n-workflow';
+
 import {
 	SDK_METHODS,
 	FORBIDDEN_NODE_TYPES,
@@ -20,6 +22,17 @@ const GROUP_LABELS: Record<Exclude<SdkMethodGroup, 'internal'>, string> = {
 };
 
 const PUBLIC_METHODS = SDK_METHODS.filter((m) => m.public);
+
+function renderRulesLines(): string {
+	return [
+		...Object.values(NODE_GROUPING_RULES).map((r) => `- ${r.sdkReference}`),
+		'- **Unique identity.** Group names and ids must be unique within the workflow.',
+		'- **Non-empty.** A group needs at least one node.',
+		'',
+		'Prefer grouping a linear range of nodes — they read most clearly — but that is a',
+		'readability guideline, not a rule the server enforces.',
+	].join('\n');
+}
 
 function renderMethodLines(): string {
 	return (Object.keys(GROUP_LABELS) as Array<keyof typeof GROUP_LABELS>)
@@ -52,6 +65,49 @@ const SAFE_METHODS_SENTENCE =
 	`and the string methods ${SAFE_STRING_METHOD_NAMES.map((n) => `\`.${n}()\``).join(', ')}. ` +
 	'Native array/string methods such as `.join()`, `.map()`, `.filter()`, `.reduce()`, and `.split()` are NOT available.';
 
+/**
+ * Node-groups documentation, extracted so consumers can import just this section
+ * without the whole builder-language reference. Shared by Instance AI (embedded
+ * in `SDK_LANGUAGE_REFERENCE` below) and the MCP `get_sdk_reference` tool.
+ *
+ * The rules stated here must match what the server enforces on save:
+ * - basic rules (unique id/name, non-empty): `validateWorkflowGroups`
+ * - structural rules: `validateNodeSelectionForGrouping`
+ * The four structural rules (and their save-path rejection messages) are sourced
+ * from the shared `NODE_GROUPING_RULES` constant in `n8n-workflow`, so this doc,
+ * the canvas, and the save path share one definition.
+ *
+ * Grouping DOES enforce a single entry/exit *boundary* (at most one incoming and
+ * one outgoing main connection) via the `invalid-subgraph` rule. The stricter
+ * per-node single-main-port check (`multiple-input/-output-branches`) is
+ * extraction-only (`validateNodeSelectionForExtraction`) and is not stated here.
+ */
+export const NODE_GROUPS_REFERENCE = `## Node groups
+
+A node group is a named, visual grouping of nodes (a frame on the canvas). It is
+purely organisational — nothing about execution depends on it. Declare one with
+\`.group(name, members)\` on the workflow. Members are the node handles (the
+\`const\` from \`node(...)\`) — the same way connections reference nodes:
+
+\`\`\`typescript
+const fetch = node({ /* ... name: 'Fetch data' */ });
+const transform = node({ /* ... name: 'Transform' */ });
+export default workflow('id', 'My workflow')
+  .add(fetch)
+  .to(transform)
+  .group('Ingestion', [fetch, transform]);
+\`\`\`
+
+When editing an existing workflow, **keep the \`.group(...)\` calls intact** unless
+the change is specifically about grouping.
+
+an invalid group is rejected on save, so these following rules MUST be followed when
+creating or editing groups.
+
+Rules:
+${renderRulesLines()}
+`;
+
 /** Full reference, materialized into the knowledge base for on-demand reading. */
 export const SDK_LANGUAGE_REFERENCE = `# Workflow SDK language reference
 
@@ -66,25 +122,7 @@ ${renderMethodLines()}
 
 ${SAFE_METHODS_SENTENCE}
 
-## Node groups
-
-A node group is a named, visual grouping of nodes (a frame on the canvas).
-Declare one with \`.group(name, members)\` on the workflow. Members are the node
-handles (the \`const\` from \`node(...)\`) — the same way connections reference nodes:
-
-\`\`\`typescript
-const fetch = node({ /* ... name: 'Fetch data' */ });
-const transform = node({ /* ... name: 'Transform' */ });
-export default workflow('id', 'My workflow')
-  .add(fetch)
-  .to(transform)
-  .group('Ingestion', [fetch, transform]);
-\`\`\`
-
-When editing an existing workflow, **keep the \`.group(...)\` calls intact** unless
-the change is specifically about grouping. Group members must form a single
-connected section of the graph and cannot be trigger nodes; an invalid group is
-rejected on save.
+${NODE_GROUPS_REFERENCE}
 
 ## Forbidden constructs
 
