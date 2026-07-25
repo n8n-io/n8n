@@ -156,6 +156,48 @@ describe('folder package export', () => {
 		);
 	});
 
+	it('auto-includes a foldered static sub-workflow with only its ancestor folder chain', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const exportedFolder = await createFolder(project, { name: 'Exported' });
+		const dependencyRoot = await createFolder(project, { name: 'Dependencies' });
+		const dependencyFolder = await createFolder(project, {
+			name: 'Nested',
+			parentFolder: dependencyRoot,
+		});
+		const siblingFolder = await createFolder(project, { name: 'Sibling' });
+		const dependency = await createWorkflow(
+			{ name: 'Dependency', parentFolder: dependencyFolder },
+			project,
+		);
+		await createWorkflow({ name: 'Unrelated', parentFolder: siblingFolder }, project);
+		await buildWorkflowCallingSubWorkflow({
+			name: 'Parent',
+			project,
+			parentFolder: exportedFolder,
+			subWorkflowId: dependency.id,
+		});
+
+		const stream = await service.exportPackage({
+			user: owner,
+			folderIds: [exportedFolder.id],
+			missingWorkflowDependencyPolicy: 'include-in-package',
+		});
+		const { manifest, entries } = await readExport(stream);
+
+		expect(manifest.folders!.map(({ id }) => id).sort()).toEqual(
+			[exportedFolder.id, dependencyRoot.id, dependencyFolder.id].sort(),
+		);
+		expect(manifest.folders!.some(({ id }) => id === siblingFolder.id)).toBe(false);
+
+		const dependencyFolderEntry = manifest.folders!.find(({ id }) => id === dependencyFolder.id)!;
+		const dependencyEntry = manifest.workflows!.find(({ id }) => id === dependency.id)!;
+		expect(dependencyEntry.target).toMatch(
+			new RegExp(`^${dependencyFolderEntry.target}/workflows/[^/]+$`),
+		);
+		expect(entries.find((e) => e.name === `${dependencyEntry.target}/workflow.json`)).toBeDefined();
+	});
+
 	it('blocks folder exports when an error workflow is outside the package', async () => {
 		const owner = await createOwner();
 		const projectA = await createTeamProject('Project A', owner);
@@ -206,6 +248,45 @@ describe('folder package export', () => {
 		expect(manifest.requirements?.workflows).toEqual([
 			{ id: externalChild.id, name: externalChild.name, usedByWorkflows: [parent.id] },
 		]);
+	});
+
+	it('keeps explicit workflowIds top-level while structured auto-included dependencies win', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const exportedFolder = await createFolder(project, { name: 'Exported' });
+		const dependencyFolder = await createFolder(project, { name: 'Dependencies' });
+		const dependency = await createWorkflow(
+			{ name: 'Dependency', parentFolder: dependencyFolder },
+			project,
+		);
+		await buildWorkflowCallingSubWorkflow({
+			name: 'Folder Parent',
+			project,
+			parentFolder: exportedFolder,
+			subWorkflowId: dependency.id,
+		});
+		const topLevelParent = await buildWorkflowCallingSubWorkflow({
+			name: 'Top Level Parent',
+			project,
+			subWorkflowId: dependency.id,
+		});
+
+		const stream = await service.exportPackage({
+			user: owner,
+			folderIds: [exportedFolder.id],
+			workflowIds: [topLevelParent.id],
+			missingWorkflowDependencyPolicy: 'include-in-package',
+		});
+		const { manifest } = await readExport(stream);
+
+		const explicitEntry = manifest.workflows!.find(({ id }) => id === topLevelParent.id)!;
+		expect(explicitEntry.target).toMatch(/^workflows\//);
+
+		const dependencyFolderEntry = manifest.folders!.find(({ id }) => id === dependencyFolder.id)!;
+		const dependencyEntry = manifest.workflows!.find(({ id }) => id === dependency.id)!;
+		expect(dependencyEntry.target).toMatch(
+			new RegExp(`^${dependencyFolderEntry.target}/workflows/[^/]+$`),
+		);
 	});
 
 	it('preserves nesting through multiple levels when exporting a folder subtree', async () => {

@@ -13,9 +13,11 @@ import {
 	questionsSuspendPayloadSchema,
 	type InteractionQuestion,
 } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import type { BuilderTrackFn } from '../builder-config-telemetry';
 import { BUILDER_TOOLS } from '../builder-tool-names';
 
 /** Filters an already-fetched credential list down to one type, in the shape the setup cards need. */
@@ -36,6 +38,7 @@ export interface FinishSetupToolDeps {
 	credentialProvider: CredentialProvider;
 	agentId: string;
 	projectId: string;
+	track: BuilderTrackFn;
 	isCredentialTypeKnown?: (credentialType: string) => boolean;
 	/** Credential ids of the agent's configured chat channel integrations — reused for a matching credential slot. */
 	listIntegrationCredentialIds?: () => Promise<string[]>;
@@ -249,12 +252,26 @@ async function mergeResumeIntoCollected(
 	deps: FinishSetupToolDeps,
 ): Promise<Collected> {
 	if (phase.kind === 'questions') {
-		return { ...previous, answers: resumeData?.answers ?? [] };
+		const answers = resumeData?.answers ?? [];
+		const skippedCount = answers.filter((answer) => answer.skipped === true).length;
+		const hasUsableAnswer = answers.some((answer) => answer.skipped !== true);
+		deps.track(TELEMETRY_EVENT.AGENTS.USER_ANSWERED_BUILDER_QUESTIONS, {
+			outcome:
+				resumeData?.approved === false ? 'dismissed' : hasUsableAnswer ? 'answered' : 'skipped',
+			answered_count: answers.length - skippedCount,
+			skipped_count: skippedCount,
+		});
+		return { ...previous, answers };
 	}
 
 	if (phase.kind === 'channel') {
 		const channels = { ...(previous.channels ?? {}) };
 		channels[phase.integrationType] = resumeData?.approved ? 'connected' : 'skipped';
+		if (resumeData?.approved) {
+			deps.track(TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TRIGGER, {
+				trigger_type: phase.integrationType,
+			});
+		}
 		return { ...previous, channels };
 	}
 
@@ -263,6 +280,10 @@ async function mergeResumeIntoCollected(
 	for (const slot of phase.slots) {
 		const key = slot.credentialSlot ?? slot.credentialType;
 		const credentialId = resumeData?.credentials?.[slot.credentialType];
+		deps.track(TELEMETRY_EVENT.AGENTS.USER_PROVIDED_CREDENTIAL, {
+			credential_type: slot.credentialType,
+			outcome: credentialId ? 'provided' : 'skipped',
+		});
 		credentials[key] = credentialId
 			? {
 					id: credentialId,
@@ -324,6 +345,10 @@ async function suspendForPhase(params: {
 	const message = `Finish setup (${phaseNumber}/${totalPhases})`;
 
 	if (phase.kind === 'questions') {
+		deps.track(TELEMETRY_EVENT.AGENTS.BUILDER_ASKED_QUESTIONS, {
+			question_count: (questions ?? []).length,
+			question_types: [...new Set((questions ?? []).map((q) => q.type))].sort(),
+		});
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message,
@@ -355,6 +380,9 @@ async function suspendForPhase(params: {
 	for (const slot of phase.slots) {
 		if (seenTypes.has(slot.credentialType)) continue;
 		seenTypes.add(slot.credentialType);
+		deps.track(TELEMETRY_EVENT.AGENTS.BUILDER_REQUESTED_CREDENTIAL, {
+			credential_type: slot.credentialType,
+		});
 		credentialRequests.push({
 			credentialType: slot.credentialType,
 			reason: slot.purpose,

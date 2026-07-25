@@ -313,6 +313,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 			'agent-1',
 			'project-1',
 			{ id: 'user-1' },
+			'channel_connect',
 			undefined,
 			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);
@@ -426,6 +427,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 			'agent-1',
 			'project-1',
 			{ id: 'user-1' },
+			'channel_connect',
 			undefined,
 			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);
@@ -632,6 +634,48 @@ describe('AgentIntegrationsController integration credentials', () => {
 		);
 		expect(chatIntegrationService.disconnectChannel.mock.invocationCallOrder[0]).toBeLessThan(
 			agentIntegrationPersistenceService.removeCredentialIntegration.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('disconnects a draft integration entry with an empty credentialId', async () => {
+		const agentRepository = mock<AgentRepository>();
+		const agent = {
+			id: 'agent-1',
+			projectId: 'project-1',
+			integrations: [{ type: 'slack', credentialId: '' }],
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
+
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
+		const { controller } = makeController({
+			agentRepository,
+			chatIntegrationService,
+			agentIntegrationPersistenceService,
+		});
+
+		await expect(
+			controller.disconnectIntegration(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+					body: { type: 'slack', credentialId: '' },
+				} as never,
+				undefined as never,
+				'agent-1',
+				{ type: 'slack', credentialId: '' },
+			),
+		).resolves.toEqual({ status: 'disconnected' });
+
+		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith('agent-1', {
+			type: 'slack',
+			credentialId: '',
+		});
+		expect(agentIntegrationPersistenceService.removeCredentialIntegration).toHaveBeenCalledWith(
+			agent,
+			'slack',
+			'',
+			{ broadcast: false },
 		);
 	});
 

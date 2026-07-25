@@ -116,6 +116,7 @@ export async function initializeAuthenticatedFeatures(
 	const rootStore = useRootStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const cloudPlanStore = useCloudPlanStore();
+	cloudPlanStore.setIsInstanceOwner(() => hasPermission(['instanceOwner']));
 	const projectsStore = useProjectsStore();
 	const rolesStore = useRolesStore();
 	const bannersStore = useBannersStore();
@@ -126,11 +127,12 @@ export async function initializeAuthenticatedFeatures(
 
 	// Provide the modal-open actions to the stores that were decoupled from `ui.store`,
 	// so they can open modals without importing it.
-	usersStore.registerModalOpener(uiStore.openModal);
-	versionsStore.registerModalOpeners({
+	const modalOpeners = {
 		openModal: uiStore.openModal,
 		openModalWithData: uiStore.openModalWithData,
-	});
+	};
+	usersStore.registerModalOpeners(modalOpeners);
+	versionsStore.registerModalOpeners(modalOpeners);
 
 	if (!settingsStore.isPreviewMode) {
 		usersStore.setUserQuota(settingsStore.userManagement.quota);

@@ -1,7 +1,7 @@
 import type { CredentialListItem, CredentialProvider } from '@n8n/agents';
 import type { Mock } from 'vitest';
 
-import { LLM_PROVIDER_DEFAULTS, LLM_PROVIDER_PRIORITY } from '../llm-provider-defaults';
+import { LLM_PROVIDER_DEFAULTS, LLM_PROVIDER_PRIORITY } from '../../../llm-provider-defaults';
 import type { FreeCreditsProvisioner, ModelLookup } from '../resolve-llm.tool';
 import { buildResolveLlmTool } from '../resolve-llm.tool';
 
