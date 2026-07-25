@@ -16,7 +16,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nButton,
 	N8nCallout,
 	N8nCheckbox,
@@ -538,7 +538,7 @@ watch(connectionType, () => {
 				</div>
 			</div>
 		</div>
-		<N8nActionBox
+		<N8nEmptyState
 			v-else
 			data-test-id="source-control-content-unlicensed"
 			:class="$style.actionBox"
@@ -555,7 +555,7 @@ watch(connectionType, () => {
 					{{ locale.baseText('settings.sourceControl.actionBox.description.link') }}
 				</a>
 			</template>
-		</N8nActionBox>
+		</N8nEmptyState>
 	</div>
 </template>
 

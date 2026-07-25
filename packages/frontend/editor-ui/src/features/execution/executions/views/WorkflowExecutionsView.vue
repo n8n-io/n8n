@@ -12,7 +12,7 @@ import { VIEWS } from '@/app/constants';
 import { useRoute, useRouter } from 'vue-router';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import type { ExecutionSummary } from 'n8n-workflow';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { executionRetryMessage } from '../executions.utils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';

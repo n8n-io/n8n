@@ -1,9 +1,17 @@
+import type { ZodClass } from '@n8n/api-types';
 import type { BooleanLicenseFeature } from '@n8n/constants';
 import type { Constructable } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type { RequestHandler, Router } from 'express';
 
 import type { KeyedRateLimiterConfig, RateLimiterLimits } from './rate-limit';
+
+export type ApiKeyScopeRequirement =
+	| ApiKeyScope
+	| { anyOf: readonly ApiKeyScope[] }
+	| { allOf: readonly ApiKeyScope[] };
+
+export type ResponseDtoClass = Pick<ZodClass, 'parse'>;
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options';
 
@@ -43,6 +51,8 @@ export interface RouteMetadata {
 	keyedRateLimit?: KeyedRateLimiterConfig;
 	licenseFeature?: BooleanLicenseFeature;
 	accessScope?: AccessScope;
+	apiKeyScope?: ApiKeyScopeRequirement;
+	responseDto?: ResponseDtoClass;
 	args: Arg[];
 	router?: Router;
 }
@@ -72,6 +82,7 @@ export interface ControllerMetadata {
 	basePath: `/${string}`;
 	// If true, the controller will be registered on the root path without the any prefix
 	registerOnRootPath?: boolean;
+	isPublicApi?: boolean;
 	middlewares: HandlerName[];
 	routes: Map<HandlerName, RouteMetadata>;
 }

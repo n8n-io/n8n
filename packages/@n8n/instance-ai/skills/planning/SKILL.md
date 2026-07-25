@@ -3,9 +3,10 @@ name: planning
 description: >-
   ONLY for coordinated multi-artifact work: multiple workflows with dependencies,
   shared data-table schema/migration across tasks, or the user explicitly asked
-  to review a plan first. Do NOT use for new one-off workflows, single-workflow
-  edits, verification-only requests, or standalone data-table ops — use
-  workflow-builder or data-table-manager instead.
+  to review a plan first. Load create-tasks via load_tool before calling it
+  (search "create tasks" if not visible). Do NOT use for new one-off workflows,
+  single-workflow edits, verification-only requests, or standalone data-table
+  ops — use workflow-builder or data-table-manager instead.
 recommended_tools:
   - create-tasks
   - workflows
@@ -55,6 +56,15 @@ single-workflow builds and existing-workflow edits use `workflow-builder` with
 `build-workflow` directly. Standalone data-table work uses `data-table-manager`
 with direct `data-tables` and `parse-file` calls.
 
+## Knowledge Base
+
+**Consult the knowledge base before planning.** Read the relevant `.md` guides
+and templates for each technique the request involves (`knowledge-base/index.json`,
+`knowledge-base/best-practices/index.json`, and linked files). Use
+`workspace_execute_command` with `rg` or `find` under `knowledge-base/templates/`
+to locate matching SDK examples — never load `templates/index.json` wholesale.
+Skip only for trivial mechanical edits you have already reviewed in this thread.
+
 ## Method
 
 1. Decide whether the request is plan-worthy by coordination need, not by
@@ -63,6 +73,7 @@ with direct `data-tables` and `parse-file` calls.
    `nodes(action="suggested")`, `credentials(action="list")`,
    `data-tables(action="list")`, `parse-file`, `workflows`, and `research`
    when relevant.
+
 3. Prefer reasonable assumptions over questions. Ask the user only when the
    answer would materially change the plan and cannot be discovered.
 4. Build a dependency-aware graph. Producers must come before consumers.

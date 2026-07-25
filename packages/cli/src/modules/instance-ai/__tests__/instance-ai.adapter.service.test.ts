@@ -2980,7 +2980,22 @@ describe('createExecutionAdapter run()', () => {
 			saveManualExecutions: true,
 			saveDataSuccessExecution: 'all',
 			saveDataErrorExecution: 'all',
+			executionTimeout: 300,
 		});
+	});
+
+	it('bounds the execution inside the engine with the wait budget, capped at the max', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			nodes: [],
+		});
+
+		await adapter.run('wf-1', undefined, { timeout: 60_000 });
+		await adapter.run('wf-1', undefined, { timeout: 60 * 60 * 1000 });
+
+		const [firstRun, secondRun] = mockWorkflowRunner.run.mock.calls.map((call) => call[0]);
+		expect(firstRun.workflowData.settings?.executionTimeout).toBe(60);
+		expect(secondRun.workflowData.settings?.executionTimeout).toBe(600);
 	});
 
 	it('attaches Instance AI execution telemetry metadata to workflow runs', async () => {
@@ -3134,13 +3149,55 @@ describe('createExecutionAdapter run()', () => {
 			status: 'error',
 		});
 
-		expect(mockActiveExecutions.stopExecution).toHaveBeenCalled();
+		expect(mockActiveExecutions.stopExecution).toHaveBeenCalledWith(
+			'exec-1',
+			expect.objectContaining({ name: 'TimeoutExecutionCancelledError' }),
+		);
 		expect(mockTelemetry.track).toHaveBeenCalledWith(
 			'Builder executed workflow',
 			expect.objectContaining({
 				workflow_id: 'wf-1',
 				status: 'error',
 				error: expect.stringContaining('timed out'),
+			}),
+		);
+	});
+
+	it('tracks abort cancellation as a manual cancel, not a timeout', async () => {
+		const { adapter, mockActiveExecutions, mockTelemetry } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [],
+			},
+			{
+				activeExecution: true,
+				postExecutePromise: new Promise(() => {}),
+				threadId: 'thread-1',
+			},
+		);
+		const abortController = new AbortController();
+
+		const runPromise = adapter.run('wf-1', undefined, {
+			timeout: 60_000,
+			abortSignal: abortController.signal,
+		});
+		abortController.abort();
+
+		await expect(runPromise).resolves.toMatchObject({
+			status: 'error',
+			error: 'Execution was cancelled',
+		});
+
+		expect(mockActiveExecutions.stopExecution).toHaveBeenCalledWith(
+			'exec-1',
+			expect.objectContaining({ name: 'ManualExecutionCancelledError' }),
+		);
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({
+				workflow_id: 'wf-1',
+				status: 'error',
+				error: 'Execution was cancelled',
 			}),
 		);
 	});
@@ -3723,5 +3780,38 @@ describe('createContext — builder delegate telemetry', () => {
 
 		expect(result).toEqual(agents);
 		expect(delegate.listAgents).toHaveBeenCalledTimes(1);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// createContext — run model wiring
+// ---------------------------------------------------------------------------
+
+describe('createContext — run model wiring', () => {
+	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	// Guards the one link of the INS-948 fix that instance-ai's own unit tests
+	// cannot see: the run's resolved (proxy-aware) model must land on the domain
+	// context, where simulation fixture/classifier LLM calls read it as their
+	// fallback on deployments without env model keys (cloud). Dropping this
+	// wiring regresses silently — every simulated node degrades back to a
+	// single empty pinned item.
+	it('copies the host-resolved modelId onto the context', () => {
+		const service = createAdapterWithGatewayMock(vi.fn());
+		const modelId = {
+			id: 'anthropic/claude-opus-4-8' as const,
+			url: 'https://proxy.example.com/anthropic/v1',
+			apiKey: 'proxy-token',
+		};
+
+		const context = service.createContext(mockUser, { modelId });
+
+		expect(context.modelId).toEqual(modelId);
+	});
+
+	it('leaves modelId undefined when the host does not resolve one', () => {
+		const service = createAdapterWithGatewayMock(vi.fn());
+
+		expect(service.createContext(mockUser).modelId).toBeUndefined();
 	});
 });

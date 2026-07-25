@@ -8,14 +8,15 @@ const redactionEnforcementFieldSchema = z.object({
 });
 
 /**
- * Public API request body for updating the security policy group. Mirrors the
- * writable subset of the internal security settings, validated with the same
- * field schemas so behaviour stays in sync.
+ * Public API PUT body for the security policy group. Clients must send the full
+ * writable configuration; partial updates are rejected. Mirrors the writable
+ * subset of the internal security settings, validated with the same field
+ * schemas so behaviour stays in sync.
  */
 export class UpdateSecurityPolicyDto extends Z.class({
-	personalSpacePublishing: z.boolean().optional(),
-	personalSpaceSharing: z.boolean().optional(),
-	redactionEnforcement: redactionEnforcementFieldSchema.optional(),
+	personalSpacePublishing: z.boolean(),
+	personalSpaceSharing: z.boolean(),
+	redactionEnforcement: redactionEnforcementFieldSchema,
 }) {}
 
 /**

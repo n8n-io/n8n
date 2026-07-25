@@ -730,6 +730,98 @@ describe('establishExecutionContext', () => {
 		});
 	});
 
+	describe('sub-workflow re-runs global context hooks against the inherited context', () => {
+		let mockExecutionContextService: ReturnType<typeof mock<ExecutionContextService>>;
+
+		const buildSubWorkflowRunData = (withStartItem = true) =>
+			createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: withStartItem
+						? [
+								{
+									node: mock<INode>({
+										name: 'Execute Workflow Trigger',
+										type: 'n8n-nodes-base.executeWorkflowTrigger',
+									}),
+									data: { main: [[{ json: { fromParent: true } }]] },
+									source: null,
+								},
+							]
+						: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+				parentExecution: {
+					executionId: 'parent-execution-id',
+					workflowId: 'parent-workflow-id',
+					executionContext: {
+						version: 1,
+						establishedAt: 1000,
+						source: 'manual',
+						redaction: { version: 2, production: false, manual: false },
+					},
+				},
+			});
+
+		beforeEach(() => {
+			mockExecutionContextService = mock<ExecutionContextService>();
+			Container.set(ExecutionContextService, mockExecutionContextService);
+		});
+
+		afterEach(() => {
+			Container.reset();
+		});
+
+		it('passes the inherited context to augmentSubExecutionContext and assigns its result', async () => {
+			const runExecutionData = buildSubWorkflowRunData();
+			const rederived: IExecutionContext = {
+				version: 1,
+				establishedAt: 2000,
+				source: 'integrated',
+				parentExecutionId: 'parent-execution-id',
+				redaction: { version: 2, production: true, manual: true, source: 'workflow' },
+			};
+			mockExecutionContextService.augmentSubExecutionContext.mockResolvedValue(rederived);
+
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData,
+				mockAdditionalData,
+				'integrated',
+			);
+
+			expect(mockExecutionContextService.augmentSubExecutionContext).toHaveBeenCalledWith(
+				mockWorkflow,
+				runExecutionData.executionData!.nodeExecutionStack[0],
+				expect.objectContaining({
+					parentExecutionId: 'parent-execution-id',
+					redaction: { version: 2, production: false, manual: false },
+				}),
+			);
+			expect(runExecutionData.executionData!.runtimeData).toBe(rederived);
+		});
+
+		it('skips augmentation when the child sub-execution has no start item', async () => {
+			const runExecutionData = buildSubWorkflowRunData(false);
+
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData,
+				mockAdditionalData,
+				'integrated',
+			);
+
+			expect(mockExecutionContextService.augmentSubExecutionContext).not.toHaveBeenCalled();
+			expect(runExecutionData.executionData!.runtimeData!.parentExecutionId).toBe(
+				'parent-execution-id',
+			);
+		});
+	});
+
 	describe('error workflow context inheritance', () => {
 		it('should inherit context from start item metadata', async () => {
 			const parentContext: IExecutionContext = {

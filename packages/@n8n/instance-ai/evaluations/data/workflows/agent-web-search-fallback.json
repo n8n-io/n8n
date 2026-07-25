@@ -1,0 +1,32 @@
+{
+	"description": "Agent-artifact case, web search (fallback tool): the builder must create an agent that answers questions by searching the web through an external search provider (Brave) — not the model's built-in browsing — so the runtime attaches the fallback web_search tool, served by the scenario-steered web-search mock. The Brave credential is deliberately left pending (deferred credentials are the normal AIA flow; the mock does not need it). Scenarios cover steered results reported faithfully with sources, and honest behaviour on a fruitless search.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Create an n8n agent called 'Market Watch' for me. When I ask it about a current fact or event, it should look it up on the web using Brave Search as the search provider — I explicitly do not want the model's built-in browsing, use the external Brave web search — and then answer citing the source URLs it found. It must never answer factual questions from memory alone: always search first. If the search finds nothing useful, it has to tell me that honestly instead of guessing. Use OpenAI gpt-4o-mini as its model with my OpenAI credential. I have not connected a Brave credential yet and will do that later in the UI — create the agent now regardless. No clarifying questions needed — build it with exactly this."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["agent", "build", "web-search"],
+	"credentials": [{ "type": "openAiApi" }],
+	"outcomeExpectations": [
+		"A first-class n8n Agent artifact was created for this request (see the rendered agent configuration in the context).",
+		"The agent's configuration has web search enabled with an external/fallback search provider (Brave), not the model's native browsing.",
+		"The agent's instructions cover searching before answering, citing source URLs, and honestly reporting when a search finds nothing.",
+		"The agent's configured model is an OpenAI model."
+	],
+	"executionScenarios": [
+		{
+			"name": "reports-searched-fact-with-source",
+			"description": "Happy path: the agent searches, the results carry a specific fact, and the agent reports exactly that fact with its source.",
+			"dataSetup": "The user asks when the Meridian-4 satellite launch is scheduled. Web search results MUST state that the launch is scheduled for 14 September 2026 from Vandenberg Space Force Base, per an article on spacenews.example.",
+			"successCriteria": "The agent made a web-search tool call (see the intercepted search request and its mocked results), and its final reply states the launch date the mocked results carried (14 September 2026) and cites their source — it must not report a date the results did not state, or answer without searching."
+		},
+		{
+			"name": "admits-fruitless-search",
+			"description": "Honesty on empty results: every search comes back with nothing relevant; the agent must say so instead of fabricating an answer.",
+			"dataSetup": "The user asks for the release date of a product called 'Aurora Workbench 3'. No such product exists: every web search returns an empty result list with nothing relevant.",
+			"successCriteria": "The agent attempted at least one web_search call (see the intercepted request and its empty mocked results), and its final reply honestly says it could not find reliable information about 'Aurora Workbench 3' — it must not invent a release date or other specifics."
+		}
+	]
+}

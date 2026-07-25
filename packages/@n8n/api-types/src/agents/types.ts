@@ -3,7 +3,6 @@ import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
-	SCHEDULE_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
 import { z } from 'zod';
@@ -15,7 +14,6 @@ export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [
 	MANUAL_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
-	SCHEDULE_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 ] as const;
@@ -212,6 +210,8 @@ export interface AgentPersistedMessageDto {
 	id: string;
 	role: 'user' | 'assistant' | (string & {});
 	content: AgentPersistedMessageContentPart[];
+	/** Agent-execution turn id when this message was produced from an execution transcript. */
+	executionId?: string;
 }
 
 export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-6' as const;

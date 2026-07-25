@@ -16,37 +16,77 @@ const answerSchema = z.object({
 	skipped: z.boolean().optional(),
 });
 
+const answerQuestionsDecisionSchema = z.object({
+	action: z.literal('answer_questions'),
+	answers: z.array(answerSchema),
+});
+
+const applySetupWizardDecisionSchema = z.object({
+	action: z.literal('apply_setup_wizard'),
+	// JSON-encoded object mapping setup node name -> parameter map. Emitted as a string
+	// because Anthropic structured output rejects nested z.record schemas.
+	nodeParametersJson: z.string(),
+});
+
+const approveOrRejectDecisionSchema = z.object({
+	action: z.literal('approve_or_reject'),
+	approved: z.boolean(),
+	userInput: z.string().optional(),
+});
+
+const respondToDomainAccessDecisionSchema = z.object({
+	action: z.literal('respond_to_domain_access'),
+	response: z.enum(['allow_once', 'allow_all', 'deny']),
+});
+
+const pickResourceDecisionSchema = z.object({
+	action: z.literal('pick_resource_decision'),
+	decision: z.string(),
+});
+
+const sendFollowUpMessageDecisionSchema = z.object({
+	action: z.literal('send_follow_up_message'),
+	message: z.string(),
+});
+
+const declareDoneDecisionSchema = z.object({
+	action: z.literal('declare_done'),
+});
+
+/**
+ * The two moments the proxy is asked to decide, each with its own action menu:
+ *  - `confirmation` — the agent paused mid-run to show a widget; the proxy must
+ *    respond to that widget.
+ *  - `user-turn` — the agent's run finished with nothing pending; the turn passed
+ *    to the user, who either types a chat message or ends the conversation.
+ * The schema handed to the model per mode IS the action menu — actions that
+ * cannot function at that moment are not offered at all.
+ */
+export type ProxyDecisionMode = 'confirmation' | 'user-turn';
+
+export const confirmationDecisionSchema = z.discriminatedUnion('action', [
+	answerQuestionsDecisionSchema,
+	applySetupWizardDecisionSchema,
+	approveOrRejectDecisionSchema,
+	respondToDomainAccessDecisionSchema,
+	pickResourceDecisionSchema,
+]);
+
+export const userTurnDecisionSchema = z.discriminatedUnion('action', [
+	sendFollowUpMessageDecisionSchema,
+	declareDoneDecisionSchema,
+]);
+
+/** Full union — the type every decision consumer handles. Agents are only ever
+ *  offered the mode-scoped subsets above. */
 export const decisionSchema = z.discriminatedUnion('action', [
-	z.object({
-		action: z.literal('answer_questions'),
-		answers: z.array(answerSchema),
-	}),
-	z.object({
-		action: z.literal('apply_setup_wizard'),
-		// JSON-encoded object mapping setup node name -> parameter map. Emitted as a string
-		// because Anthropic structured output rejects nested z.record schemas.
-		nodeParametersJson: z.string(),
-	}),
-	z.object({
-		action: z.literal('approve_or_reject'),
-		approved: z.boolean(),
-		userInput: z.string().optional(),
-	}),
-	z.object({
-		action: z.literal('respond_to_domain_access'),
-		response: z.enum(['allow_once', 'allow_all', 'deny']),
-	}),
-	z.object({
-		action: z.literal('pick_resource_decision'),
-		decision: z.string(),
-	}),
-	z.object({
-		action: z.literal('send_follow_up_message'),
-		message: z.string(),
-	}),
-	z.object({
-		action: z.literal('declare_done'),
-	}),
+	answerQuestionsDecisionSchema,
+	applySetupWizardDecisionSchema,
+	approveOrRejectDecisionSchema,
+	respondToDomainAccessDecisionSchema,
+	pickResourceDecisionSchema,
+	sendFollowUpMessageDecisionSchema,
+	declareDoneDecisionSchema,
 ]);
 
 export type Decision = z.infer<typeof decisionSchema>;
@@ -63,21 +103,23 @@ export interface SetupWizardParseContext {
 // Tool descriptions — bundled with the prompt so the model picks the right action
 // ---------------------------------------------------------------------------
 
-export const TOOL_DESCRIPTIONS = `Available actions:
+export const CONFIRMATION_TOOL_DESCRIPTIONS = `Available actions — confirmation responses. A widget is on screen: the agent paused mid-run and is waiting for the user to respond to the event shown in this prompt. Pick the action that matches the widget:
 
 - answer_questions(answers[]): The agent fired an ask-user confirmation (inputType=questions). Answer every question with a plausible value — stated → implied → invented. Invent rather than skip. Set skipped=true only when the question has no plausible answer of any shape, OR when a [stage direction] in the script tells the user to decline or withhold that value — in that case you MUST set skipped=true with an empty selectedOptions and pick NO option (not even one that looks standard or obvious); picking a value defeats the test.
 
 - apply_setup_wizard(nodeParametersJson): The agent fired a setup-wizard / "configure your workflow" setup card with placeholder parameters. Emit a JSON string that decodes to { "<setup node name>": { "<paramName>": <value>, ... }, ... }. Fill every non-credential placeholder with a plausible value — stated → implied → invented. Never set credentials. This is the ONLY correct way to fill a setup card — do NOT answer it with answer_questions. To deliberately leave a value unset (e.g. a stage direction says the user skips it), dismiss the whole card with approve_or_reject(approved=false) instead of filling it.
 
-- approve_or_reject(approved, userInput?): The agent showed a plan (plan-review) or asked an open free-text question (inputType=text). Approve if the plan matches user intent; reject with reason if it diverges.
+- approve_or_reject(approved, userInput?): A plan-review or free-text confirmation widget is on screen (the event's inputType is plan-review or text). Approve if the plan matches user intent; reject with reason if it diverges. This action only exists as a response to such a widget.
 
 - respond_to_domain_access(response): The agent is asking for domain access permissions. Pick allow_once, allow_all, or deny. Default to allow_all unless the user would deny.
 
-- pick_resource_decision(decision): The agent is asking the user to pick a gateway resource access option. Pick the option the user would choose.
+- pick_resource_decision(decision): The agent is asking the user to pick a gateway resource access option. Pick the option the user would choose.`;
 
-- send_follow_up_message(message): Between-run decision. Send the user's next message — use when the user would continue.
+export const USER_TURN_TOOL_DESCRIPTIONS = `Available actions — it is the user's turn. The agent finished its run, no widget is on screen, and the chat input is waiting. The user either types a message or ends the conversation:
 
-- declare_done(): Between-run decision. Signal that the user has gotten what they wanted and the conversation ends.`;
+- send_follow_up_message(message): Send the user's next chat message. Everything the user wants to say right now goes here — including answering a question the agent asked in plain text, and approving or rejecting a plan the agent presented in plain text ("No — two changes first: …" or "Yes, go ahead." ARE follow-up messages).
+
+- declare_done(): The user got what they wanted (or has nothing left to say) and walks away; the conversation ends. Never pick this while the agent is waiting for an answer.`;
 
 // ---------------------------------------------------------------------------
 // Decision → InstanceAiConfirmRequest encoders
@@ -85,7 +127,7 @@ export const TOOL_DESCRIPTIONS = `Available actions:
 
 /**
  * Encode a confirmation-response action into an InstanceAiConfirmRequest.
- * Returns null for between-run actions (send_follow_up_message, declare_done),
+ * Returns null for user-turn actions (send_follow_up_message, declare_done),
  * which the caller routes separately.
  */
 export function encodeConfirmationDecision(

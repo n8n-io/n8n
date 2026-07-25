@@ -1,4 +1,4 @@
-import { aggregateResults } from '../cli/aggregator';
+import { aggregateResults } from '../run/aggregator';
 import type { ExecutionScenario, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
 
 const scenario: ExecutionScenario = {

@@ -180,18 +180,8 @@ function getMessageAnAgentNode(
 	const node = nodeTypesStore.getNodeType(MESSAGE_AN_AGENT_NODE_TYPE);
 	if (!node) return [];
 
-	const view = getNodeView(node);
-	return [
-		{
-			...view,
-			properties: {
-				...view.properties,
-				tag: {
-					preview: true,
-				},
-			},
-		},
-	];
+	// The early-preview tag is attached centrally in `applyNodeTags`.
+	return [getNodeView(node)];
 }
 
 export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
@@ -208,8 +198,10 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
 	const messageAnAgentNode = getMessageAnAgentNode(nodeTypesStore, settingsStore);
 
-	const websiteCategoryURLParams = templatesStore.websiteTemplateRepositoryParameters;
-	websiteCategoryURLParams.append('utm_user_role', 'AdvancedAI');
+	const websiteCategoryURLParams = new URLSearchParams(
+		templatesStore.websiteTemplateRepositoryParameters,
+	);
+	websiteCategoryURLParams.set('utm_user_role', 'AdvancedAI');
 	const aiTemplatesURL = templatesStore.constructTemplateRepositoryURL(
 		websiteCategoryURLParams,
 		TEMPLATE_CATEGORY_AI,

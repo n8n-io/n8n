@@ -55,7 +55,10 @@ export class InstanceAiTestController {
 		const user = await this.userRepo.findOneByOrFail({ id: payload.userId });
 		const personalProject = await this.projectRepo.getPersonalProjectForUserOrFail(user.id);
 
-		await this.memoryService.ensureThread(user.id, threadId, personalProject.id);
+		await this.memoryService.ensureThread(user.id, threadId, personalProject.id, {
+			source: 'playwright',
+			origin: 'internal',
+		});
 		return await this.instanceAiService.startStuckBackgroundTaskForTest(user, threadId);
 	}
 
