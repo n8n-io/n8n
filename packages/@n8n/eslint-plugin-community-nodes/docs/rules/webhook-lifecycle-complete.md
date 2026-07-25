@@ -17,7 +17,11 @@ This rule applies to node classes that:
 - define a `webhookMethods` class property.
 
 For every webhook group inside `webhookMethods` (typically `default`), the
-methods `checkExists`, `create`, and `delete` must all be implemented.
+methods `checkExists`, `create`, and `delete` must all be implemented. A method
+counts as implemented whether it is written inline or handed over as a
+reference, so extracting the handlers into named functions is fine. A group
+assembled by spreading another object is skipped, since its methods cannot be
+read from the class.
 
 Polling triggers (trigger nodes without a `webhooks` array and without
 `webhookMethods`) are intentionally out of scope.
@@ -83,6 +87,22 @@ export class MyTrigger implements INodeType {
         return true;
       },
     },
+  };
+}
+```
+
+Handing the methods over as references is equally complete:
+
+```typescript
+async function checkExists(this: IHookFunctions): Promise<boolean> { return true; }
+async function create(this: IHookFunctions): Promise<boolean> { return true; }
+async function removeWebhook(this: IHookFunctions): Promise<boolean> { return true; }
+
+export class MyTrigger implements INodeType {
+  description: INodeTypeDescription = { /* ... */ };
+
+  webhookMethods = {
+    default: { checkExists, create, delete: removeWebhook },
   };
 }
 ```

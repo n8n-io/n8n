@@ -22,7 +22,30 @@ function hasWebhooksDeclared(descriptionValue: TSESTree.ObjectExpression): boole
 	return webhooksProperty.value.elements.length > 0;
 }
 
-/** Returns true when the property defines a (possibly async) method named `name`. */
+/**
+ * Returns true when the value supplies an implementation. A method may be
+ * written inline or handed over as a reference — `{ checkExists }`,
+ * `{ delete: removeWebhook }`, `{ create: hooks.create }` — which is just as
+ * implemented as a function expression.
+ */
+function isImplementation(node: TSESTree.Node): boolean {
+	switch (node.type) {
+		case AST_NODE_TYPES.FunctionExpression:
+		case AST_NODE_TYPES.ArrowFunctionExpression:
+		case AST_NODE_TYPES.Identifier:
+		case AST_NODE_TYPES.MemberExpression:
+			return true;
+		case AST_NODE_TYPES.TSAsExpression:
+		case AST_NODE_TYPES.TSSatisfiesExpression:
+		case AST_NODE_TYPES.TSNonNullExpression:
+		case AST_NODE_TYPES.TSTypeAssertion:
+			return isImplementation(node.expression);
+		default:
+			return false;
+	}
+}
+
+/** Returns true when the property supplies a method named `name`. */
 function isMethodProperty(property: TSESTree.ObjectLiteralElement, name: string): boolean {
 	if (property.type !== AST_NODE_TYPES.Property) return false;
 	if (property.computed) return false;
@@ -32,10 +55,12 @@ function isMethodProperty(property: TSESTree.ObjectLiteralElement, name: string)
 		(property.key.type === AST_NODE_TYPES.Literal && property.key.value === name);
 	if (!keyMatches) return false;
 
-	return (
-		property.value.type === AST_NODE_TYPES.FunctionExpression ||
-		property.value.type === AST_NODE_TYPES.ArrowFunctionExpression
-	);
+	return isImplementation(property.value);
+}
+
+/** A group built up by spreading another object does not list its methods. */
+function isComposedBySpread(group: TSESTree.ObjectExpression): boolean {
+	return group.properties.some((property) => property.type === AST_NODE_TYPES.SpreadElement);
 }
 
 function findMissingMethods(group: TSESTree.ObjectExpression): WebhookLifecycleMethod[] {
@@ -103,6 +128,7 @@ export const WebhookLifecycleCompleteRule = createRule({
 				for (const groupProperty of webhookMethodsProperty.value.properties) {
 					if (groupProperty.type !== AST_NODE_TYPES.Property) continue;
 					if (groupProperty.value.type !== AST_NODE_TYPES.ObjectExpression) continue;
+					if (isComposedBySpread(groupProperty.value)) continue;
 
 					const groupName =
 						groupProperty.key.type === AST_NODE_TYPES.Identifier

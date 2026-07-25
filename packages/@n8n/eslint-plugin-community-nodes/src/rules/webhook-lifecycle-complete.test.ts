@@ -100,6 +100,25 @@ export class RegularClass {
 				}`,
 			}),
 		},
+		// A method handed over as a reference is just as implemented as one
+		// written inline.
+		{
+			name: 'lifecycle methods provided as shorthand references',
+			code: createTriggerNode({
+				webhookMethods: '{ default: { checkExists, create, delete: removeWebhook } }',
+			}),
+		},
+		{
+			name: 'lifecycle methods provided as member references',
+			code: createTriggerNode({
+				webhookMethods:
+					'{ default: { checkExists: hooks.checkExists, create: hooks.create, delete: hooks.delete } }',
+			}),
+		},
+		{
+			name: 'lifecycle group composed by spreading another object',
+			code: createTriggerNode({ webhookMethods: '{ default: { ...sharedLifecycle } }' }),
+		},
 	],
 	invalid: [
 		{
@@ -210,6 +229,25 @@ export class RegularClass {
 				{
 					messageId: 'missingLifecycleMethod',
 					data: { group: 'setup', missing: '`checkExists`' },
+				},
+			],
+		},
+		// A key that is present but supplies nothing is still not an implementation.
+		{
+			name: 'lifecycle method set to a nullish placeholder',
+			code: createTriggerNode({
+				webhookMethods: `{
+					default: {
+						checkExists,
+						create,
+						delete: null,
+					},
+				}`,
+			}),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: { group: 'default', missing: '`delete`' },
 				},
 			],
 		},
