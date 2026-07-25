@@ -85,6 +85,12 @@ const OPENAI_TYPE: ICredentialType = {
 	properties: [
 		{ displayName: 'API Key', name: 'apiKey', type: 'string', required: true, default: '' },
 		{ displayName: 'Organization ID', name: 'organizationId', type: 'string', default: '' },
+		{
+			displayName: 'Base URL',
+			name: 'url',
+			type: 'string',
+			default: 'https://api.openai.com/v1',
+		},
 		{ displayName: 'Add Custom Header', name: 'header', type: 'boolean', default: false },
 		{
 			displayName: 'Header Name',
@@ -156,13 +162,14 @@ describe('ConnectionDialog (real connection fields)', () => {
 		expect(queryAllByTestId('credential-connection-parameter')).toHaveLength(0);
 	});
 
-	it('keeps supported OpenAI organization and custom-header fields editable', async () => {
+	it('renders only the minimal OpenAI fields while preserving hidden credential data', async () => {
 		const credentialsStore = useCredentialsStore();
 		credentialsStore.setCredentialTypes([OPENAI_TYPE]);
 		vi.mocked(credentialsStore.getCredentialData).mockResolvedValue({
 			data: {
 				apiKey: 'stored-key',
 				organizationId: 'org-old',
+				url: 'https://api.openai.com/v1',
 				header: true,
 				headerName: 'x-proxy-key',
 				headerValue: 'old-value',
@@ -178,17 +185,17 @@ describe('ConnectionDialog (real connection fields)', () => {
 		const refresh = Promise.withResolvers<void>();
 		vi.mocked(store.refreshInstanceModelCredentials).mockReturnValue(refresh.promise);
 
-		const { emitted, findByTestId, getByTestId } = renderDialog({
+		const { emitted, findByTestId, getByTestId, queryByTestId } = renderDialog({
 			props: { kind: 'model', open: true },
 		});
 
-		await findByTestId('param-headerValue');
-		expect(getByTestId('param-organizationId')).toBeVisible();
-		expect(getByTestId('param-header')).toBeVisible();
-		expect(getByTestId('param-headerName')).toBeVisible();
-		await fireEvent.update(getByTestId('param-organizationId'), 'org-new');
-		await fireEvent.update(getByTestId('param-headerName'), 'x-new-proxy-key');
-		await fireEvent.update(getByTestId('param-headerValue'), 'new-value');
+		await findByTestId('param-apiKey');
+		expect(getByTestId('param-url')).toBeVisible();
+		expect(queryByTestId('param-organizationId')).toBeNull();
+		expect(queryByTestId('param-header')).toBeNull();
+		expect(queryByTestId('param-headerName')).toBeNull();
+		expect(queryByTestId('param-headerValue')).toBeNull();
+		await fireEvent.update(getByTestId('param-apiKey'), 'new-key');
 		await fireEvent.click(getByTestId('n8n-agent-model-dialog-save'));
 
 		await waitFor(() => expect(store.save).toHaveBeenCalledOnce());
@@ -197,10 +204,12 @@ describe('ConnectionDialog (real connection fields)', () => {
 			modelConnection: {
 				type: 'openAiApi',
 				data: {
-					organizationId: 'org-new',
+					apiKey: 'new-key',
+					organizationId: 'org-old',
+					url: 'https://api.openai.com/v1',
 					header: true,
-					headerName: 'x-new-proxy-key',
-					headerValue: 'new-value',
+					headerName: 'x-proxy-key',
+					headerValue: 'old-value',
 				},
 			},
 		});
