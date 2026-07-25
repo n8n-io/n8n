@@ -64,8 +64,8 @@ export interface Lane {
 }
 
 /** One `claude` build's Anthropic spend (`--build-via-mcp` only). Mirrors
- *  McpBuildResult: the numbers cover the LAST attempt, so totals are a lower
- *  bound when retries happened (same semantics as the manifest flow's stats). */
+ *  McpBuildResult: cost and turns are summed across every attempt of the
+ *  build, so totals are the run's true spend (failed attempts cost money too). */
 export interface McpBuildSpend {
 	costUsd: number;
 	turns: number;
@@ -203,6 +203,9 @@ export interface CachedBuild {
 	build: BuildResult;
 	lane: LaneState;
 	buildDurationMs: number;
+	/** `claude` spend for this case's build (`--build-via-mcp` only) — feeds the
+	 *  per-row build_cost_usd/build_turns feedback and eval-results.json. */
+	buildSpend?: McpBuildSpend;
 }
 
 export interface BuildOrchestratorDeps {
@@ -349,6 +352,9 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				const lane = await allocator.acquire(fileSlug);
 				const start = Date.now();
 				let build: BuildResult;
+				// Local collector so this case's spend stays attributable to its own
+				// rows; drained into the run-wide record right after the build.
+				const caseSpend: McpBuildSpend[] = [];
 				try {
 					build = await buildWorkflowViaMcpOnLane({
 						lane: lane.runner,
@@ -358,7 +364,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						args,
 						logDir: mcpBuildLogDir ?? process.cwd(),
 						logger,
-						buildSpend: mcpBuildSpend,
+						buildSpend: caseSpend,
 					});
 				} finally {
 					// Release as soon as the build (incl. fetch-back) is done — the
@@ -366,6 +372,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					// holding the slot through it would idle the lane's build capacity.
 					allocator.release(lane, fileSlug);
 				}
+				mcpBuildSpend.push(...caseSpend);
 				{
 					const transient = await isTransportFailure(build, lane);
 					if (!build.success) build.transportFailure = transient;
@@ -388,7 +395,9 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						logger,
 					});
 				}
-				return { build, lane, buildDurationMs };
+				// One collector entry per buildWorkflowViaMcpOnLane call (attempts are
+				// summed inside buildWorkflowViaMcp), so [0] is this build's whole spend.
+				return { build, lane, buildDurationMs, buildSpend: caseSpend[0] };
 			}
 			const prebuiltId = pickPrebuiltWorkflowId(prebuiltManifest, fileSlug, iteration);
 			if (prebuiltId !== undefined) {
