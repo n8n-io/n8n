@@ -61,15 +61,24 @@ import type {
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 import { failTraceRun, finishTraceRun, startSubAgentTrace, withTraceRun } from './tracing-utils';
 
+const BUILDER_SUB_AGENT_ROLE = 'agent-builder';
+const BUILDER_SUB_AGENT_KIND = 'agent-builder';
+
+function getErrorCode(error: unknown): string | undefined {
+	if (!isRecord(error)) return undefined;
+	const code = error.code;
+	return typeof code === 'string' ? code : undefined;
+}
+
 function isBuilderNotConfiguredError(error: unknown): boolean {
-	return isRecord(error) && error.code === BUILDER_NOT_CONFIGURED_CODE;
+	return getErrorCode(error) === BUILDER_NOT_CONFIGURED_CODE;
 }
 
 /** `AgentsBuilderService.resumeBuild` throws `BuilderCheckpointUnavailableError`
  *  (stable `code`, shared via `@n8n/api-types`) when the checkpoint being
  *  resumed has expired or no longer exists. */
 function isBuilderCheckpointUnavailableError(error: unknown): boolean {
-	return isRecord(error) && error.code === BUILDER_CHECKPOINT_UNAVAILABLE_CODE;
+	return getErrorCode(error) === BUILDER_CHECKPOINT_UNAVAILABLE_CODE;
 }
 
 /** Either friendly-mappable failure this tool recognizes mid-stream. */
@@ -122,7 +131,7 @@ function buildOutboundMessage(message: string, workflowContext?: SessionWorkflow
  *  leg must reconstruct this byte-identically after a restart. */
 function builderSessionFor(context: OrchestrationContext, agentId: string) {
 	const telemetry = context.tracing?.getTelemetry?.({
-		agentRole: 'agent-builder',
+		agentRole: BUILDER_SUB_AGENT_ROLE,
 		functionId: 'instance-ai.subagent.agent-builder',
 		executionMode: 'foreground',
 		metadata: { agent_id: builderAgentIdFor(agentId), target_agent_id: agentId },
@@ -140,7 +149,7 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 }
 
 function builderAgentIdFor(agentId: string): string {
-	return `agent-builder:${agentId}`;
+	return `${BUILDER_SUB_AGENT_ROLE}:${agentId}`;
 }
 
 const buildAgentInputSchema = z.object({
@@ -273,9 +282,9 @@ function publishAgentSpawned(
 		agentId: builderAgentId,
 		payload: {
 			parentId: context.orchestratorAgentId,
-			role: 'agent-builder',
+			role: BUILDER_SUB_AGENT_ROLE,
 			tools: [],
-			kind: 'agent-builder',
+			kind: BUILDER_SUB_AGENT_KIND,
 			title: 'Building agent',
 			// name/projectId make the FE render the agent as a conversation artifact
 			// (artifact list + preview both require projectId).
@@ -304,7 +313,7 @@ function publishAgentBuilderFailure(
 		type: 'agent-completed',
 		runId: context.runId,
 		agentId: builderAgentId,
-		payload: { role: 'agent-builder', result: '', error: message },
+		payload: { role: BUILDER_SUB_AGENT_ROLE, result: '', error: message },
 	});
 	return message;
 }
@@ -323,7 +332,7 @@ async function finishTurn(
 			type: 'agent-completed',
 			runId: context.runId,
 			agentId: builderAgentId,
-			payload: { role: 'agent-builder', result: text.slice(0, 200) },
+			payload: { role: BUILDER_SUB_AGENT_ROLE, result: text.slice(0, 200) },
 		});
 		return { ok: true, builderReply: text, configUpdated };
 	}
@@ -334,7 +343,7 @@ async function finishTurn(
 		type: 'agent-completed',
 		runId: context.runId,
 		agentId: builderAgentId,
-		payload: { role: 'agent-builder', result: '', error },
+		payload: { role: BUILDER_SUB_AGENT_ROLE, result: '', error },
 	});
 	return { ok: false, error, configUpdated };
 }
@@ -381,8 +390,8 @@ async function runBuilderConsumeLoop(params: {
 
 	const traceRun = await startSubAgentTrace(context, {
 		agentId: builderAgentId,
-		role: 'agent-builder',
-		kind: 'agent-builder',
+		role: BUILDER_SUB_AGENT_ROLE,
+		kind: BUILDER_SUB_AGENT_KIND,
 		metadata: { target_agent_id: target.agentId },
 		...(traceInputs !== undefined ? { inputs: traceInputs } : {}),
 	});

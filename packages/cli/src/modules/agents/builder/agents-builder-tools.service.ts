@@ -967,7 +967,7 @@ export class AgentsBuilderToolsService {
 			)
 			.build();
 
-		const listWorkflowsTool = new Tool('list_workflows')
+		const listWorkflowsTool = new Tool(BUILDER_TOOLS.LIST_WORKFLOWS)
 			.description(
 				'List the n8n workflows that can be attached as tools via `type: "workflow"` in the agent config. ' +
 					'Only returns workflows with supported trigger types. Pass `searchTerm` to narrow by workflow name; ' +
