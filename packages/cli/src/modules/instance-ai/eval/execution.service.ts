@@ -32,6 +32,7 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	type IWorkflowExecutionDataProcess,
 	createRunExecutionData,
+	deepCopy,
 	fileTypeFromMimeType,
 	NodeHelpers,
 	UserError,
@@ -812,7 +813,7 @@ export class EvalExecutionService {
 				method: requestOptions.method ?? 'GET',
 				nodeType: node.type,
 				requestBody: requestOptions.body,
-				mockResponse: response?.body,
+				mockResponse: snapshotLedgerBody(response?.body),
 			});
 
 			this.logger.debug(
@@ -999,6 +1000,20 @@ export class EvalExecutionService {
 			rewrittenCredentials: [],
 		};
 	}
+}
+
+/**
+ * Ledger entries must be immutable snapshots. The served body object is handed
+ * to node code, and some nodes mutate it in place — e.g. the OpenAI node's
+ * json_schema output mode parses `output[].content[].text` into an object —
+ * so an aliased ledger entry rewrites history and the judge blames the mock
+ * for a body it never sent. `deepCopy` matches the artifact's JSON semantics;
+ * Buffers pass by reference (response bytes are not mutated in place, and
+ * copying megabyte buffers element-wise would be wasteful).
+ */
+export function snapshotLedgerBody(body: unknown): unknown {
+	if (body === undefined || body === null || Buffer.isBuffer(body)) return body;
+	return deepCopy(body);
 }
 
 /** Synthesize a structurally valid binary entry (real bytes, base64-inlined). */
