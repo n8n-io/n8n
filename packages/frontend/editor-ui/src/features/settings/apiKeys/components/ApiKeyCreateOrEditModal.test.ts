@@ -14,6 +14,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { DateTime } from 'luxon';
 import type { ApiKeyWithRawValue } from '@n8n/api-types';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 vi.mock('@/app/composables/useTelemetry', () => {
 	const track = vi.fn();
@@ -58,6 +59,7 @@ const testApiKey: ApiKeyWithRawValue = {
 };
 
 const apiKeysStore = mockedStore(useApiKeysStore);
+const rootStore = mockedStore(useRootStore);
 const usersStore = mockedStore(useUsersStore);
 const uiStore = mockedStore(useUIStore);
 
@@ -230,7 +232,11 @@ describe('ApiKeyCreateOrEditModal', () => {
 		await retry(() => expect(getByText('Create API Key')).toBeInTheDocument());
 
 		// Default is 30 days → the hint spells out the concrete date.
-		const expectedDate = DateTime.now().plus({ days: 30 }).toFormat('ccc, MMM d yyyy');
+		const expectedDate = DateTime.now()
+			.setZone(rootStore.timezone)
+			.startOf('day')
+			.plus({ days: 30 })
+			.toFormat('ccc, MMM d yyyy');
 		expect(getByTestId('api-key-expiration-hint')).toHaveTextContent(
 			`The API key will expire on ${expectedDate}`,
 		);
