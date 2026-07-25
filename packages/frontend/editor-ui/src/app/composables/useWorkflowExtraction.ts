@@ -12,6 +12,7 @@ import type {
 	ExtractableErrorResult,
 	IConnections,
 	INode,
+	IWorkflowGroup,
 } from 'n8n-workflow';
 import { useToast } from './useToast';
 import { useRouter } from 'vue-router';
@@ -130,6 +131,42 @@ export function useWorkflowExtraction() {
 			position,
 			name,
 		};
+	}
+
+	/**
+	 * Copies the parent workflow's groups that should survive extraction into the
+	 * new sub-workflow. A group is carried over only when every one of its members
+	 * is extracted (a partial subset may no longer form a valid group) AND the
+	 * selection contains at least one node outside the group. The whole-group-only
+	 * case is intentionally excluded: the nodes become the sub-workflow itself and
+	 * the parent group is dissolved separately (ADO-5580). A fresh id is minted so
+	 * the copy never collides with the group still present in the parent.
+	 */
+	function computeSubworkflowNodeGroups(extractedNodes: INodeUi[]): IWorkflowGroup[] {
+		const extractedIds = new Set(extractedNodes.map((node) => node.id));
+		const groups: IWorkflowGroup[] = [];
+
+		for (const group of workflowDocumentStore.value.allGroups) {
+			const fullyContained = group.nodeIds.every((id) => extractedIds.has(id));
+
+			if (!fullyContained) {
+				continue;
+			}
+
+			const hasExtraOutsideGroup = extractedIds.size > group.nodeIds.length;
+			if (!hasExtraOutsideGroup) {
+				continue;
+			}
+
+			groups.push({
+				id: window.crypto.randomUUID(),
+				name: group.name,
+				nodeIds: [...group.nodeIds],
+				...(group.description ? { description: group.description } : {}),
+			});
+		}
+
+		return groups;
 	}
 
 	function makeSubworkflow(
@@ -262,6 +299,7 @@ export function useWorkflowExtraction() {
 			settings: { executionOrder: 'v1' },
 			projectId: workflowDocumentStore.value.homeProject?.id,
 			parentFolderId: workflowDocumentStore.value.parentFolder?.id ?? undefined,
+			nodeGroups: computeSubworkflowNodeGroups(nodes),
 		};
 		result.connections = sanitizeConnections(
 			result.connections,

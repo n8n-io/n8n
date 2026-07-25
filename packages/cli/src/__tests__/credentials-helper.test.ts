@@ -101,6 +101,21 @@ describe('CredentialsHelper', () => {
 				credentialsHelper.getCredentials({ id: '1', name: 'foo' }, 'bar'),
 			).rejects.toThrow(errorMessage);
 		});
+
+		test('rejects credentials that are not available to workflows', async () => {
+			credentialsRepository.findOneByOrFail.mockResolvedValueOnce(
+				mock<CredentialsEntity>({
+					id: '1',
+					name: 'Instance credential',
+					type: 'bar',
+					usageScope: 'instance',
+				}),
+			);
+
+			await expect(
+				credentialsHelper.getCredentials({ id: '1', name: 'foo' }, 'bar'),
+			).rejects.toThrow('This credential cannot be used in workflows');
+		});
 	});
 
 	describe('applyDefaultsAndOverwrites', () => {
@@ -228,6 +243,64 @@ describe('CredentialsHelper', () => {
 					'internal',
 				),
 			).rejects.toThrow('save workflow to view');
+		});
+
+		test('preserves PKCE flag negotiated by dynamic client registration', async () => {
+			const credentialType: ICredentialType = {
+				name: 'mcpOAuth2Api',
+				displayName: 'MCP OAuth2 API',
+				properties: [
+					{
+						displayName: 'Use Dynamic Client Registration',
+						name: 'useDynamicClientRegistration',
+						type: 'boolean',
+						default: true,
+					},
+				],
+			};
+			mockNodesAndCredentials.getCredential.calledWith(credentialType.name).mockReturnValue({
+				type: credentialType,
+				sourcePath: '',
+			});
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+			const helper = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				credentialsOverwrites,
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+			);
+
+			const result = await helper.applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{
+					useDynamicClientRegistration: true,
+					clientId: 'registered-client-id',
+					clientSecret: 'registered-secret',
+					authUrl: 'https://auth.example.com/authorize',
+					accessTokenUrl: 'https://auth.example.com/token',
+					grantType: 'authorizationCode',
+					authentication: 'body',
+					usePkce: true,
+				},
+				credentialType.name,
+				'internal',
+			);
+
+			expect(result).toMatchObject({
+				useDynamicClientRegistration: true,
+				clientId: 'registered-client-id',
+				clientSecret: 'registered-secret',
+				authUrl: 'https://auth.example.com/authorize',
+				accessTokenUrl: 'https://auth.example.com/token',
+				grantType: 'authorizationCode',
+				authentication: 'body',
+				usePkce: true,
+			});
 		});
 	});
 
@@ -497,6 +570,7 @@ describe('CredentialsHelper', () => {
 				name: 'Test OAuth2 Credential',
 				type: 'oAuth2Api',
 				data: cipher.encrypt(existingCredentialData),
+				usageScope: 'project',
 			};
 
 			credentialsRepository.findOneByOrFail.mockResolvedValue(
@@ -601,6 +675,7 @@ describe('CredentialsHelper', () => {
 					data: cipher.encrypt(existingCredentialData),
 					isResolvable: true,
 					resolverId: 'resolver-123',
+					usageScope: 'project',
 				} as CredentialsEntity;
 
 				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
@@ -650,6 +725,7 @@ describe('CredentialsHelper', () => {
 					data: cipher.encrypt(existingCredentialData),
 					isResolvable: true,
 					resolverId: null,
+					usageScope: 'project',
 				} as unknown as CredentialsEntity;
 
 				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
@@ -704,6 +780,7 @@ describe('CredentialsHelper', () => {
 					data: cipher.encrypt(existingCredentialData),
 					isResolvable: true,
 					resolverId: 'resolver-123',
+					usageScope: 'project',
 				} as CredentialsEntity;
 
 				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
@@ -755,6 +832,7 @@ describe('CredentialsHelper', () => {
 					data: cipher.encrypt(existingCredentialData),
 					isResolvable: true,
 					resolverId: 'resolver-123',
+					usageScope: 'project',
 				} as CredentialsEntity;
 
 				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
@@ -954,6 +1032,7 @@ describe('CredentialsHelper', () => {
 			type: 'testApi',
 			data: cipher.encrypt({ apiKey: 'test' }),
 			isResolvable: false,
+			usageScope: 'project',
 		} as CredentialsEntity;
 
 		beforeEach(() => {
@@ -1039,6 +1118,7 @@ describe('CredentialsHelper', () => {
 			type: credentialType,
 			data: cipher.encrypt({ apiKey: 'static-key' }),
 			isResolvable: false,
+			usageScope: 'project',
 		} as CredentialsEntity;
 
 		beforeEach(() => {
@@ -1497,6 +1577,7 @@ describe('CredentialsHelper', () => {
 			data: cipher.encrypt(credentialDataA),
 			isResolvable: false,
 			resolverId: null,
+			usageScope: 'project',
 		} as CredentialsEntity;
 
 		const credEntityB = {
@@ -1506,6 +1587,7 @@ describe('CredentialsHelper', () => {
 			data: cipher.encrypt(credentialDataB),
 			isResolvable: false,
 			resolverId: null,
+			usageScope: 'project',
 		} as CredentialsEntity;
 
 		const additionalData = {

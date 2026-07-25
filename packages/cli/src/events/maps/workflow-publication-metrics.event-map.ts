@@ -53,6 +53,8 @@ export type WorkflowPublicationMetricsEventMap = {
 		deficientCount: number;
 		/** Registered workflows torn down because they are no longer published. */
 		surplusCount: number;
+		/** Workflows re-enqueued because their published version diverged from the active version. */
+		versionSkewCount: number;
 		durationMs: number;
 	};
 };

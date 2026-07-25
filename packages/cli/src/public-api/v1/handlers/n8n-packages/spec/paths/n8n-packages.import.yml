@@ -111,6 +111,20 @@ post:
                 existing workflow in the target project (status `updated` or
                 `skipped`) always keep that workflow's current id, regardless
                 of policy.
+            missingNodeTypeMode:
+              type: string
+              enum:
+                - fail
+                - import-anyway
+              default: fail
+              description: >
+                What to do when a workflow in the package uses a node type — or a
+                version of a node type — this instance does not have. `fail`
+                (default) rejects the import before anything is written, listing
+                every missing `(nodeType, typeVersion)` pair and the workflows
+                that use it. `import-anyway` imports the package; workflows
+                containing missing node types are never published by this import,
+                regardless of `workflowPublishingPolicy`.
             workflowPublishingPolicy:
               type: string
               enum:
@@ -185,10 +199,11 @@ post:
                 column or a type mismatch always rejects. Both policies are
                 non-destructive — the matched target table is never altered, and
                 package columns are never added to it.
-            variableMissingPolicy:
+            variableMissingMode:
               type: string
               enum:
                 - do-nothing
+                - must-preexist
               default: do-nothing
               description: >
                 Controls what happens when a variable referenced by the package's
@@ -196,8 +211,9 @@ post:
                 (lookup order: project, then global). `do-nothing` (default)
                 imports the workflows without creating the missing variable and
                 lists its name under `variables.missing` in the response so the
-                caller can fill it in afterwards. Additional policies will be
-                added in follow-up work.
+                caller can fill it in afterwards. `must-preexist` rejects the
+                import unless every referenced variable already resolves. Neither
+                mode ever creates a variable.
   responses:
     '200':
       description: Import succeeded; the listed workflows were written to the target project.
@@ -283,7 +299,8 @@ post:
                           description: >
                             `blocked` means the imported version could not be published
                             and no version is active (for example because the workflow
-                            uses a stubbed credential). When a prior published version
+                            uses a stubbed credential, or uses a node type this instance
+                            does not have). When a prior published version
                             remains active, `state` is `unchanged` with
                             `skippedPublishReason` instead. `failed` means publish or
                             unpublish was attempted but did not succeed.
@@ -296,6 +313,7 @@ post:
                           type: string
                           enum:
                             - stub-credential
+                            - missing-node-type
                           description: >
                             Present when `state` is `blocked`: the imported version
                             could not be published and no version is active.
@@ -303,6 +321,7 @@ post:
                           type: string
                           enum:
                             - stub-credential
+                            - missing-node-type
                           description: >
                             Present when `state` is `unchanged` but the policy wanted
                             to publish the imported version: a prior published version
@@ -399,9 +418,10 @@ post:
               variables:
                 type: object
                 description: >
-                  Variable names from the package requirements, grouped by whether
-                  they resolved in the target project (or globally) or remain
-                  unresolved. Names only — values never travel in the response.
+                  Resolution of the package's variable requirements. Names only —
+                  values never travel in the response. For project packages,
+                  resolution runs per project, so a name that resolves in some
+                  projects but not others appears in both lists.
                 required:
                   - matched
                   - missing
@@ -411,15 +431,15 @@ post:
                     items:
                       type: string
                     description: >
-                      Variable names that already exist in the target project or
-                      at the global level (project first, then global).
+                      Variable names that resolved to an existing variable
+                      (importing project's scope first, then global).
                   missing:
                     type: array
                     items:
                       type: string
                     description: >
-                      Variable names with no match in the lookup scope. Under
-                      `variableMissingPolicy=do-nothing` these are warnings —
+                      Variable names that did not resolve. Under
+                      `variableMissingMode=do-nothing` these are warnings —
                       the import still succeeds and nothing is created.
               bindings:
                 type: object
@@ -463,7 +483,9 @@ post:
                   $ref: '../schemas/importBlockingIssue.yml'
     '422':
       description: >
-        Import blocked by non-conflict issues only (e.g. unresolved credentials).
+        Import blocked by non-conflict issues only (e.g. unresolved credentials or
+        variables, or node types this instance does not have under
+        `missingNodeTypeMode=fail`).
       content:
         application/json:
           schema:

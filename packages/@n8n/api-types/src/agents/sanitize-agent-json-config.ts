@@ -1,6 +1,6 @@
 import { z, type ZodDiscriminatedUnionOption } from 'zod';
 
-import { AgentJsonConfigSchema } from './agent-json-config.schema';
+import { AgentJsonConfigBaseSchema } from './agent-json-config.schema';
 import { agentSkillSchema } from './agent-skill.schema';
 
 const TYPED_ARRAY_CONFIG_KEYS = ['integrations', 'tools', 'skills', 'tasks'] as const;
@@ -190,7 +190,7 @@ function stripUnknownSchemaFields(value: unknown, schema: z.ZodTypeAny): unknown
 
 /**
  * Strip legacy or unsupported typed entries from agent JSON config before strict
- * Zod validation. Unknown top-level keys are dropped from `AgentJsonConfigSchema`.
+ * Zod validation. Unknown top-level keys are dropped from `AgentJsonConfigBaseSchema`.
  * This intentionally cleans unknown fields gracefully, so older persisted configs
  * and generated drafts can move forward as the schema evolves.
  *
@@ -202,12 +202,12 @@ export function sanitizeAgentJsonConfig(raw: unknown): unknown {
 		return raw;
 	}
 
-	const sanitized = stripUnknownSchemaFields(raw, AgentJsonConfigSchema);
+	const sanitized = stripUnknownSchemaFields(raw, AgentJsonConfigBaseSchema);
 	if (!isRecord(sanitized)) return sanitized;
 
 	for (const key of TYPED_ARRAY_CONFIG_KEYS) {
 		if (key in sanitized) {
-			const schema = getArrayElementSchema(AgentJsonConfigSchema.shape[key]);
+			const schema = getArrayElementSchema(AgentJsonConfigBaseSchema.shape[key]);
 			if (schema === undefined) continue;
 
 			sanitized[key] = filterUnsupportedTypedEntries(

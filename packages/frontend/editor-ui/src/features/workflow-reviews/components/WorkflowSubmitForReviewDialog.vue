@@ -1,13 +1,16 @@
 <script setup lang="ts">
+import type { WorkflowReviewEligibleReviewer } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	N8nButton,
-	N8nCallout,
 	N8nDialog,
 	N8nDialogFooter,
+	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
+	N8nUserSelect,
+	type IUser,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
@@ -15,7 +18,10 @@ import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
-import { createWorkflowReviewRequest } from '@/features/workflow-reviews/workflowReviews.api';
+import {
+	createWorkflowReviewRequest,
+	fetchEligibleReviewers,
+} from '@/features/workflow-reviews/workflowReviews.api';
 
 const REVIEW_TITLE_MAX_LENGTH = 128;
 const REVIEW_DESCRIPTION_MAX_LENGTH = 512;
@@ -29,6 +35,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:open': [value: boolean];
 	submitted: [];
+	conflict: [];
 }>();
 
 const i18n = useI18n();
@@ -40,13 +47,35 @@ const reviewStatusStore = useWorkflowReviewStatusStore();
 const reviewTitle = ref('');
 const description = ref('');
 const isSubmitting = ref(false);
-const hasConflict = ref(false);
-const existingReviewRequestId = ref<string>();
+const selectedReviewerId = ref('');
+const eligibleReviewers = ref<WorkflowReviewEligibleReviewer[]>([]);
+const isLoadingReviewers = ref(false);
 const titleInput = useTemplateRef<InstanceType<typeof N8nInput>>('titleInput');
 
 const isSubmitDisabled = computed(
 	() => isSubmitting.value || reviewTitle.value.trim().length === 0,
 );
+
+const reviewerOptions = computed<IUser[]>(() =>
+	eligibleReviewers.value.map((reviewer) => ({
+		...reviewer,
+		fullName: [reviewer.firstName, reviewer.lastName].filter(Boolean).join(' ') || undefined,
+	})),
+);
+
+const loadEligibleReviewers = async () => {
+	isLoadingReviewers.value = true;
+	try {
+		const { data } = await fetchEligibleReviewers(rootStore.restApiContext, {
+			workflowId: props.workflowId,
+		});
+		eligibleReviewers.value = data;
+	} catch {
+		eligibleReviewers.value = [];
+	} finally {
+		isLoadingReviewers.value = false;
+	}
+};
 
 watch(
 	() => props.open,
@@ -55,8 +84,9 @@ watch(
 
 		reviewTitle.value = '';
 		description.value = '';
-		hasConflict.value = false;
-		existingReviewRequestId.value = undefined;
+		selectedReviewerId.value = '';
+		eligibleReviewers.value = [];
+		void loadEligibleReviewers();
 	},
 );
 
@@ -74,8 +104,6 @@ const submit = async () => {
 	if (isSubmitDisabled.value) return;
 
 	isSubmitting.value = true;
-	hasConflict.value = false;
-	existingReviewRequestId.value = undefined;
 
 	try {
 		const workflowVersionId = await props.flushSave();
@@ -92,6 +120,7 @@ const submit = async () => {
 			title: reviewTitle.value.trim(),
 			description: trimmedDescription || undefined,
 			workflows: [{ workflowId: props.workflowId, workflowVersionId }],
+			reviewerUserIds: selectedReviewerId.value ? [selectedReviewerId.value] : undefined,
 		});
 
 		reviewRequiredStore.setReviewRequired(props.workflowId, false);
@@ -100,13 +129,11 @@ const submit = async () => {
 		emit('submitted');
 	} catch (error) {
 		if (error instanceof ResponseError && error.httpStatusCode === 409) {
-			// The conflict proves an open review this client didn't know about — lock immediately.
+			// The conflict proves an open review this client didn't know about — lock
+			// immediately and hand off to the update-review dialog.
 			void reviewStatusStore.fetchStatus(props.workflowId);
-			hasConflict.value = true;
-			const workflowReviewRequestId = error.meta?.workflowReviewRequestId;
-			existingReviewRequestId.value =
-				typeof workflowReviewRequestId === 'string' ? workflowReviewRequestId : undefined;
-			// TODO(LIGO-806): link to the existing review and offer updating it to the current version
+			emit('update:open', false);
+			emit('conflict');
 			return;
 		}
 
@@ -115,8 +142,6 @@ const submit = async () => {
 		isSubmitting.value = false;
 	}
 };
-
-// TODO(LIGO-600, LIGO-601): add Reviewer selection (N8nUserSelect) once eligible-reviewers + notify-list endpoints exist
 </script>
 
 <template>
@@ -159,10 +184,26 @@ const submit = async () => {
 					data-test-id="workflow-review-description-input"
 				/>
 			</N8nInputLabel>
-			<N8nCallout v-if="hasConflict" theme="danger" data-test-id="workflow-review-conflict-error">
-				{{ i18n.baseText('workflowReviews.submitForReview.error.conflict') }}
-			</N8nCallout>
-
+			<hr :class="$style.divider" />
+			<N8nInputLabel
+				input-name="workflow-review-reviewer"
+				:label="i18n.baseText('workflowReviews.submitForReview.reviewer.label')"
+			>
+				<N8nUserSelect
+					id="workflow-review-reviewer"
+					v-model="selectedReviewerId"
+					:users="reviewerOptions"
+					:loading="isLoadingReviewers"
+					:placeholder="i18n.baseText('workflowReviews.submitForReview.reviewer.placeholder')"
+					:teleported="false"
+					clearable
+					data-test-id="workflow-review-reviewer-select"
+				>
+					<template #prefix>
+						<N8nIcon icon="search" />
+					</template>
+				</N8nUserSelect>
+			</N8nInputLabel>
 			<N8nDialogFooter>
 				<N8nButton
 					type="button"
@@ -192,5 +233,12 @@ const submit = async () => {
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	margin-top: var(--spacing--xs);
+}
+
+.divider {
+	width: 100%;
+	margin: 0;
+	border: none;
+	border-top: var(--border);
 }
 </style>

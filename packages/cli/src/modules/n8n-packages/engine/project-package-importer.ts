@@ -100,7 +100,7 @@ export class ProjectPackageImporter {
 			matched.push(...imported.credentialResult.matched);
 			stubbed.push(...imported.credentialResult.stubbed);
 			imported.variablePlan.matched.forEach((name) => variablesMatched.add(name));
-			imported.variablePlan.missing.forEach((name) => variablesMissing.add(name));
+			imported.variablePlan.missing.forEach(({ name }) => variablesMissing.add(name));
 			scopes.push({
 				context: plan.input.context,
 				imported,
@@ -157,7 +157,7 @@ export class ProjectPackageImporter {
 
 		const variableRequest: VariableImportRequest = {
 			requirements: identifyRequirements(manifest.requirements?.variables, workflows),
-			missingPolicy: request.variableMissingPolicy,
+			missingMode: request.variableMissingMode,
 		};
 
 		return {

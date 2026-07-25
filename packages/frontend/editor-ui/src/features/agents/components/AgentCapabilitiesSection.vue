@@ -6,13 +6,12 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
-import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon';
+import type { IconName } from '@n8n/design-system/components/N8nIcon';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref, watch } from 'vue';
 import type { AgentJsonConfig, AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 import type { AgentSkill, CustomToolEntry } from '../types';
-import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { getAgentTasks } from '../composables/useAgentApi';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
@@ -21,10 +20,8 @@ import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import type { ToolMenuItem, ToolOpenTarget, ToolRow } from './AgentCapabilitiesSection.types';
 import { buildToolRows } from './AgentCapabilitiesSection.utils';
 import AgentChipButton from './AgentChipButton.vue';
-import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
 
-/** Capability rows this section can render. */
-export type AgentCapabilitySection = 'channels' | 'tools' | 'tasks' | 'skills' | 'subAgents';
+export type AgentCapabilitySection = 'tools' | 'tasks' | 'skills' | 'subAgents';
 
 const props = withDefaults(
 	defineProps<{
@@ -32,29 +29,26 @@ const props = withDefaults(
 		tools: AgentJsonToolRef[];
 		customTools?: Record<string, CustomToolEntry>;
 		skills: Array<{ id: string; skill: AgentSkill }>;
-		connectedTriggers: string[];
 		disabled?: boolean;
 		projectId: string;
 		agentId: string;
 		isPublished: boolean;
 		taskRefs?: AgentJsonTaskConfig[];
 		reloadKey?: number;
+
 		/** Structured backend validation issues — drives the invalid state on capability chips. */
 		validationIssues?: AgentConfigValidationIssue[];
-		/**
-		 * Allowlist of sections to render. Defaults to all — the Agent Builder
-		 * shows everything; the NDV passes `['tools', 'skills']` to hide Channels,
-		 * Tasks and Sub-agents (all standalone-agent concepts that don't apply when
-		 * the agent is invoked by the embedding workflow). Suppressing `channels`
-		 * also suppresses the inline `AgentChannelModal`.
-		 */
+		/** Capability sections to render. */
+
 		sections?: AgentCapabilitySection[];
 	}>(),
 	{
 		disabled: false,
 		taskRefs: () => [],
+
 		validationIssues: () => [],
-		sections: () => ['channels', 'tools', 'skills', 'subAgents', 'tasks'],
+
+		sections: () => ['tools', 'skills', 'subAgents', 'tasks'],
 	},
 );
 
@@ -70,11 +64,8 @@ const emit = defineEmits<{
 	'add-skill': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
-	'update:connected-triggers': [triggers: string[]];
-	'trigger-added': [{ triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
-	'agent-changed': [];
 	'update:config': [updates: Partial<AgentJsonConfig>];
 }>();
 
@@ -84,7 +75,6 @@ const rootStore = useRootStore();
 const uiStore = useUIStore();
 const nodeTypesStore = useNodeTypesStore();
 
-const { catalog } = useAgentIntegrationsCatalog();
 const projectIdRef = computed(() => props.projectId);
 const { list: projectAgents, ensureLoaded: ensureProjectAgentsLoaded } =
 	useProjectAgentsList(projectIdRef);
@@ -95,38 +85,7 @@ type TaskRow = AgentTaskDto & {
 	invalidReasons: string[];
 };
 
-const channelModalOpen = ref(false);
-const channelModalView = ref<ChannelView>('list');
-
-function isIconName(icon: unknown): icon is IconName {
-	return typeof icon === 'string' && icon in updatedIconSet;
-}
-
-function channelIcon(integrationIcon?: string): IconName {
-	if (isIconName(integrationIcon)) return integrationIcon;
-	return 'zap';
-}
-
-const channelRows = computed<
-	Array<{ type: string; label: string; icon: IconName; invalid: boolean; invalidReasons: string[] }>
->(() =>
-	props.connectedTriggers.map((channel) => {
-		const integration = catalog.value?.find(({ type }) => type === channel);
-		const reasons = channelIssueMessages.value.get(channel) ?? [];
-		return {
-			type: channel,
-			label: integration?.label ?? channel,
-			icon: channelIcon(integration?.icon),
-			invalid: reasons.length > 0,
-			invalidReasons: reasons,
-		};
-	}),
-);
-
-const hasChannels = computed(() => channelRows.value.length > 0);
 const mcpServers = computed(() => props.config?.mcpServers ?? []);
-const hasTools = computed(() => props.tools.length + mcpServers.value.length > 0);
-const hasSkills = computed(() => props.skills.length > 0);
 const selectedSubAgentRefs = computed(() => props.config?.subAgents?.agents ?? []);
 const selectedSubAgentIds = computed(() =>
 	selectedSubAgentRefs.value.map(({ agentId }) => agentId),
@@ -153,7 +112,6 @@ const selectedSubAgents = computed(() =>
 		};
 	}),
 );
-const hasSubAgents = computed(() => selectedSubAgents.value.length > 0);
 const taskBodies = ref<AgentTaskDto[]>([]);
 const taskErrorMessage = ref('');
 
@@ -173,7 +131,6 @@ const taskRows = computed<TaskRow[]>(() => {
 		})
 		.filter((task): task is TaskRow => task !== null);
 });
-const hasTasks = computed(() => taskRows.value.length > 0);
 
 // `as BaseTextKey`: these keys are new (see en.json) and not yet reflected in
 // @n8n/i18n's built type declarations — matches the same workaround already
@@ -244,9 +201,6 @@ function groupIssueMessages<TKey>(
 	return new Map([...byKey].map(([key, issues]) => [key, issueMessages(issues)]));
 }
 
-const channelIssueMessages = computed(() =>
-	groupIssueMessages('channel', (issue) => issue.capability.id),
-);
 const toolIssueMessages = computed(() =>
 	groupIssueMessages('tool', (issue) => issue.capability.index),
 );
@@ -281,7 +235,6 @@ async function reloadTasks() {
 
 onMounted(() => {
 	if (showSection('tasks')) void reloadTasks();
-	// Sub-agent picker needs the project agent list; skip when the section is hidden.
 	if (showSection('subAgents')) void ensureProjectAgentsLoaded().catch(() => {});
 });
 
@@ -490,11 +443,6 @@ function toSubAgentRef(agentId: string, useWhen?: string) {
 	};
 }
 
-function openChannelModal() {
-	channelModalView.value = 'list';
-	channelModalOpen.value = true;
-}
-
 async function openSubAgentsModal() {
 	try {
 		await ensureProjectAgentsLoaded();
@@ -547,85 +495,26 @@ function openExistingSubAgentModal(subAgent: {
 		},
 	});
 }
-
-function openChannelEdit(channelType: string) {
-	const hasEditableChannelView = catalog.value?.some(({ type }) => type === channelType) ?? false;
-	channelModalView.value = hasEditableChannelView ? (`${channelType}_edit` as ChannelView) : 'list';
-	channelModalOpen.value = true;
-}
-
-function handleChannelConnected(channelType: string) {
-	const channels = Array.from(new Set([...props.connectedTriggers, channelType]));
-	emit('update:connected-triggers', channels);
-	emit('trigger-added', { triggerType: channelType, triggers: channels });
-}
-
-function handleChannelDisconnected(channelType: string) {
-	emit(
-		'update:connected-triggers',
-		props.connectedTriggers.filter((channel) => channel !== channelType),
-	);
-}
 </script>
 
 <template>
 	<div>
-		<div
-			:class="[$style.section, props.disabled && $style.disabled]"
-			:inert="props.disabled || undefined"
-			data-testid="agent-capabilities-section"
-		>
-			<div v-if="showSection('channels')" :class="$style.capabilityRow">
-				<N8nText size="small" color="text-light" :class="$style.rowLabel">
-					{{ i18n.baseText('agents.builder.triggers.title') }}
-				</N8nText>
-
-				<div :class="$style.chips">
-					<AgentChipButton
-						v-for="channel in channelRows"
-						:key="channel.type"
-						:icon="channel.icon"
-						:invalid="channel.invalid"
-						:invalid-reasons="channel.invalidReasons"
-						:class="$style.capabilityChip"
-						data-testid="agent-capabilities-channel-row"
-						@click="openChannelEdit(channel.type)"
-					>
-						{{ channel.label }}
-					</AgentChipButton>
-
-					<N8nTooltip
-						:disabled="!hasChannels"
-						:content="i18n.baseText('agents.builder.triggers.add')"
-						placement="top"
-					>
-						<N8nButton
-							variant="ghost"
-							size="medium"
-							:icon-only="hasChannels"
-							:disabled="props.disabled"
-							data-testid="agent-capabilities-add-channel"
-							@click="openChannelModal"
-						>
-							<template #icon><N8nIcon icon="plus" :size="16" color="text-light" /></template>
-							<template v-if="!hasChannels">
-								{{ i18n.baseText('agents.builder.triggers.add') }}
-							</template>
-						</N8nButton>
-					</N8nTooltip>
-				</div>
-			</div>
-
+		<div :class="$style.section" data-testid="agent-capabilities-section">
 			<div v-if="showSection('tools')" :class="$style.capabilityRow">
-				<N8nText size="small" color="text-light" :class="$style.rowLabel">
+				<N8nText v-if="toolRows.length > 0" bold :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.tools.title') }}
 				</N8nText>
 
 				<div :class="$style.chips">
-					<template v-for="tool in toolRows" :key="`tool-${tool.index}`">
+					<div
+						v-for="(tool, toolIndex) in toolRows"
+						:key="`tool-${tool.index}`"
+						:class="$style.chipGroup"
+					>
 						<N8nDropdownMenu
 							v-if="tool.isGrouped"
 							:items="toolMenuItems(tool)"
+							:disabled="props.disabled"
 							placement="bottom-start"
 							data-testid="agent-capabilities-tool-group"
 							@select="onToolMenuSelect"
@@ -634,6 +523,7 @@ function handleChannelDisconnected(channelType: string) {
 								<AgentChipButton
 									:invalid="tool.invalid"
 									:invalid-reasons="tool.invalidReasons"
+									:disabled="props.disabled"
 									:class="$style.capabilityChip"
 									data-testid="agent-capabilities-tool-row"
 								>
@@ -659,6 +549,7 @@ function handleChannelDisconnected(channelType: string) {
 							v-else-if="tool.nodeType"
 							:invalid="tool.invalid"
 							:invalid-reasons="tool.invalidReasons"
+							:disabled="props.disabled"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-tool-row"
 							@click="emit('open-tool', tool.tool.openTarget)"
@@ -673,151 +564,233 @@ function handleChannelDisconnected(channelType: string) {
 							:icon="tool.fallbackIcon"
 							:invalid="tool.invalid"
 							:invalid-reasons="tool.invalidReasons"
+							:disabled="props.disabled"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-tool-row"
 							@click="emit('open-tool', tool.tool.openTarget)"
 						>
 							{{ tool.label }}
 						</AgentChipButton>
-					</template>
-
-					<N8nTooltip
-						v-if="!props.disabled"
-						:disabled="!hasTools"
-						:content="i18n.baseText('agents.builder.tools.add')"
-						placement="top"
-					>
-						<N8nButton
-							variant="ghost"
-							size="medium"
-							:icon-only="hasTools"
-							data-testid="agent-capabilities-add-tool"
-							@click="emit('add-tool')"
+						<N8nTooltip
+							v-if="toolIndex === toolRows.length - 1"
+							:content="i18n.baseText('agents.builder.tools.add')"
+							placement="top"
 						>
-							<template #icon><N8nIcon icon="plus" :size="16" color="text-light" /></template>
-							<template v-if="!hasTools">
+							<N8nButton
+								variant="ghost"
+								size="medium"
+								icon-only
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-tool"
+								@click="emit('add-tool')"
+							>
+								<template #icon>
+									<N8nIcon icon="plus" :size="16" color="text-light" />
+								</template>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
+
+					<div v-if="toolRows.length === 0" :class="$style.chipGroup">
+						<N8nTooltip
+							disabled
+							:content="i18n.baseText('agents.builder.tools.add')"
+							placement="top"
+						>
+							<N8nButton
+								:class="$style.addButtonEmpty"
+								variant="ghost"
+								size="medium"
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-tool"
+								@click="emit('add-tool')"
+							>
 								{{ i18n.baseText('agents.builder.tools.add') }}
-							</template>
-						</N8nButton>
-					</N8nTooltip>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
 				</div>
 			</div>
 
 			<div v-if="showSection('skills')" :class="$style.capabilityRow">
-				<N8nText size="small" color="text-light" :class="$style.rowLabel">
+				<N8nText v-if="skills.length > 0" bold :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.skills.title') }}
 				</N8nText>
 
 				<div :class="$style.chips">
-					<AgentChipButton
-						v-for="{ id, skill } in skills"
-						:key="id"
-						icon="sparkles"
-						:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
-						:invalid-reasons="skillIssueMessages.get(id) ?? []"
-						:class="$style.capabilityChip"
-						data-testid="agent-capabilities-skill-row"
-						@click="emit('open-skill', id)"
-					>
-						{{ skill.name || id }}
-					</AgentChipButton>
-
-					<N8nTooltip
-						v-if="!props.disabled"
-						:disabled="!hasSkills"
-						:content="i18n.baseText('agents.builder.skills.add')"
-						placement="top"
-					>
-						<N8nButton
-							variant="ghost"
-							size="medium"
-							:icon-only="hasSkills"
-							data-testid="agent-capabilities-add-skill"
-							@click="emit('add-skill')"
+					<div v-for="({ id, skill }, skillIndex) in skills" :key="id" :class="$style.chipGroup">
+						<AgentChipButton
+							icon="sparkles"
+							:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
+							:invalid-reasons="skillIssueMessages.get(id) ?? []"
+							:disabled="props.disabled"
+							:class="$style.capabilityChip"
+							data-testid="agent-capabilities-skill-row"
+							@click="emit('open-skill', id)"
 						>
-							<template #icon><N8nIcon icon="plus" :size="16" color="text-light" /></template>
-							<template v-if="!hasSkills">
+							{{ skill.name || id }}
+						</AgentChipButton>
+
+						<N8nTooltip
+							v-if="skillIndex === skills.length - 1"
+							:content="i18n.baseText('agents.builder.skills.add')"
+							placement="top"
+						>
+							<N8nButton
+								variant="ghost"
+								size="medium"
+								icon-only
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-skill"
+								@click="emit('add-skill')"
+							>
+								<template #icon>
+									<N8nIcon icon="plus" :size="16" color="text-light" />
+								</template>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
+
+					<div v-if="skills.length === 0" :class="$style.chipGroup">
+						<N8nTooltip
+							disabled
+							:content="i18n.baseText('agents.builder.skills.add')"
+							placement="top"
+						>
+							<N8nButton
+								:class="$style.addButtonEmpty"
+								variant="ghost"
+								size="medium"
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-skill"
+								@click="emit('add-skill')"
+							>
 								{{ i18n.baseText('agents.builder.skills.add') }}
-							</template>
-						</N8nButton>
-					</N8nTooltip>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
 				</div>
 			</div>
 			<div v-if="showSection('subAgents')" :class="$style.capabilityRow">
-				<N8nText size="small" color="text-light" :class="$style.rowLabel">
+				<N8nText v-if="selectedSubAgents.length > 0" bold :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.subAgents.title') }}
 				</N8nText>
 
 				<div :class="$style.chips">
-					<AgentChipButton
-						v-for="subAgent in selectedSubAgents"
+					<div
+						v-for="(subAgent, subAgentIndex) in selectedSubAgents"
 						:key="subAgent.id"
-						icon="bot"
-						:invalid="subAgent.invalid"
-						:invalid-reasons="subAgent.invalidReasons"
-						:class="$style.capabilityChip"
-						data-testid="agent-capabilities-sub-agent-row"
-						@click="openExistingSubAgentModal(subAgent)"
+						:class="$style.chipGroup"
 					>
-						{{ subAgent.name }}
-					</AgentChipButton>
-
-					<N8nTooltip
-						:disabled="!hasSubAgents"
-						:content="i18n.baseText('agents.builder.subAgents.modal.title')"
-						placement="top"
-					>
-						<N8nButton
-							variant="ghost"
-							size="medium"
+						<AgentChipButton
+							icon="bot"
+							:invalid="subAgent.invalid"
+							:invalid-reasons="subAgent.invalidReasons"
 							:disabled="props.disabled"
-							data-testid="agent-capabilities-add-sub-agent"
-							@click="openSubAgentsModal"
+							:class="$style.capabilityChip"
+							data-testid="agent-capabilities-sub-agent-row"
+							@click="openExistingSubAgentModal(subAgent)"
 						>
-							<template #icon><N8nIcon icon="plus" :size="16" color="text-light" /></template>
-							{{ i18n.baseText('agents.builder.subAgents.add') }}
-						</N8nButton>
-					</N8nTooltip>
+							{{ subAgent.name }}
+						</AgentChipButton>
+
+						<N8nTooltip
+							v-if="subAgentIndex === selectedSubAgents.length - 1"
+							:content="i18n.baseText('agents.builder.subAgents.modal.title')"
+							placement="top"
+						>
+							<N8nButton
+								variant="ghost"
+								size="medium"
+								icon-only
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-sub-agent"
+								@click="openSubAgentsModal"
+							>
+								<template #icon>
+									<N8nIcon icon="plus" :size="16" color="text-light" />
+								</template>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
+
+					<div v-if="selectedSubAgents.length === 0" :class="$style.chipGroup">
+						<N8nTooltip
+							disabled
+							:content="i18n.baseText('agents.builder.subAgents.modal.title')"
+							placement="top"
+						>
+							<N8nButton
+								:class="$style.addButtonEmpty"
+								variant="ghost"
+								size="medium"
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-sub-agent"
+								@click="openSubAgentsModal"
+							>
+								{{ i18n.baseText('agents.builder.subAgents.add') }}
+							</N8nButton>
+						</N8nTooltip>
+					</div>
 				</div>
 			</div>
 			<div v-if="showSection('tasks')" :class="$style.capabilityRow">
-				<N8nText size="small" color="text-light" :class="$style.rowLabel">
+				<N8nText v-if="taskRows.length > 0" bold :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.tasks.title') }}
 				</N8nText>
 
 				<div :class="$style.chips">
-					<AgentChipButton
-						v-for="task in taskRows"
-						:key="task.id"
-						icon="clipboard-list"
-						:invalid="task.invalid"
-						:invalid-reasons="task.invalidReasons"
-						:class="$style.capabilityChip"
-						data-testid="agent-capabilities-task-row"
-						@click="openTaskModal(task)"
-					>
-						{{ task.name }}
-					</AgentChipButton>
-
-					<N8nTooltip
-						:disabled="!hasTasks"
-						:content="i18n.baseText('agents.builder.tasks.add')"
-						placement="top"
-					>
-						<N8nButton
-							variant="ghost"
-							size="medium"
-							:icon-only="hasTasks"
+					<div v-for="(task, taskIndex) in taskRows" :key="task.id" :class="$style.chipGroup">
+						<AgentChipButton
+							icon="clipboard-list"
+							:invalid="task.invalid"
+							:invalid-reasons="task.invalidReasons"
 							:disabled="props.disabled"
-							data-testid="agent-capabilities-add-task"
-							@click="openTaskModal(null)"
+							:class="$style.capabilityChip"
+							data-testid="agent-capabilities-task-row"
+							@click="openTaskModal(task)"
 						>
-							<template #icon><N8nIcon icon="plus" :size="16" color="text-light" /></template>
-							<template v-if="!hasTasks">
+							{{ task.name }}
+						</AgentChipButton>
+
+						<N8nTooltip
+							v-if="taskIndex === taskRows.length - 1"
+							:content="i18n.baseText('agents.builder.tasks.add')"
+							placement="top"
+						>
+							<N8nButton
+								variant="ghost"
+								size="medium"
+								icon-only
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-task"
+								@click="openTaskModal(null)"
+							>
+								<template #icon>
+									<N8nIcon icon="plus" :size="16" color="text-light" />
+								</template>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
+
+					<div v-if="taskRows.length === 0" :class="$style.chipGroup">
+						<N8nTooltip
+							disabled
+							:content="i18n.baseText('agents.builder.tasks.add')"
+							placement="top"
+						>
+							<N8nButton
+								:class="$style.addButtonEmpty"
+								variant="ghost"
+								size="medium"
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-task"
+								@click="openTaskModal(null)"
+							>
 								{{ i18n.baseText('agents.builder.tasks.add') }}
-							</template>
-						</N8nButton>
-					</N8nTooltip>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
 
 					<N8nText v-if="taskErrorMessage" size="small" :class="$style.error">
 						{{ taskErrorMessage }}
@@ -825,19 +798,6 @@ function handleChannelDisconnected(channelType: string) {
 				</div>
 			</div>
 		</div>
-
-		<AgentChannelModal
-			v-if="showSection('channels') && channelModalOpen"
-			v-model:open="channelModalOpen"
-			v-model:view="channelModalView"
-			:agent-id="agentId"
-			:project-id="projectId"
-			:connected-channels="connectedTriggers"
-			:is-published="isPublished"
-			@channel-connected="handleChannelConnected"
-			@channel-disconnected="handleChannelDisconnected"
-			@agent-changed="emit('agent-changed')"
-		/>
 	</div>
 </template>
 
@@ -845,31 +805,44 @@ function handleChannelDisconnected(channelType: string) {
 .section {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--sm);
 	width: 100%;
 }
 
 .capabilityRow {
 	display: flex;
 	align-items: flex-start;
-	gap: var(--spacing--lg);
-	min-height: var(--height--lg);
+	gap: var(--spacing--2xs);
 }
 
 .rowLabel {
-	flex: 0 0 calc(var(--spacing--3xl) + var(--spacing--sm));
-	line-height: var(--height--lg);
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--medium);
+	--n8n--row-label-width: max(7%, calc(var(--spacing--3xl) + var(--spacing--sm)));
+	flex: 0 0 var(--n8n--row-label-width);
+	line-height: var(--line-height--sm);
+	margin-top: var(--spacing--3xs);
 }
 
 .chips {
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--3xs);
 	min-width: 0;
-	margin-top: var(--spacing--5xs);
+}
+
+.chipGroup {
+	display: inline-flex;
+	align-items: center;
+	flex-wrap: nowrap;
+	gap: var(--spacing--3xs);
+	max-width: 100%;
+	min-width: 0;
+}
+
+.addButtonEmpty {
+	--button--color: var(--text-color--subtler);
+	margin-left: calc(-1 * var(--spacing--xs));
+	margin-top: calc(-1 * var(--spacing--4xs));
 }
 
 .capabilityChip {
@@ -880,11 +853,6 @@ function handleChannelDisconnected(channelType: string) {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-}
-
-.disabled {
-	opacity: 0.5;
-	pointer-events: none;
 }
 
 .error {
