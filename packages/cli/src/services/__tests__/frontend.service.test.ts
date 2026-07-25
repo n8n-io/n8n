@@ -250,7 +250,7 @@ describe('FrontendService', () => {
 
 		it('should normalize configured postMessage origins', async () => {
 			securityConfig.postMessageAllowedOrigins =
-				'HTTPS://Example.COM/, https://app.example.com:443, http://localhost:5678/path, not a url';
+				'HTTPS://Example.COM/, https://app.example.com:443, http://localhost:5678/path, not a url, data:text/html;foo';
 			const { service } = createMockService();
 
 			const settings = await service.getSettings();
@@ -259,6 +259,7 @@ describe('FrontendService', () => {
 				'https://app.example.com',
 				'http://localhost:5678',
 				'not a url',
+				'data:text/html;foo',
 			]);
 
 			securityConfig.postMessageAllowedOrigins = '';

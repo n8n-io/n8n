@@ -415,9 +415,12 @@ export class FrontendService {
 					.filter((origin) => origin !== '')
 					// Normalize to a serialized origin (lowercase scheme/host, no trailing
 					// slash or default port) so config values match `MessageEvent.origin`.
+					// URLs with an opaque origin serialize to 'null', which would match any
+					// opaque-origin sender — keep the raw value for those instead.
 					.map((origin) => {
 						try {
-							return new URL(origin).origin;
+							const normalized = new URL(origin).origin;
+							return normalized === 'null' ? origin : normalized;
 						} catch {
 							return origin;
 						}
