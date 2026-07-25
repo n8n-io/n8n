@@ -84,7 +84,8 @@ export function collectPinFieldViolations(
 export function buildFieldViolationRetryMessage(violations: PinFieldViolation[]): string {
 	const lines = [
 		'Your previous response used field names that do not exist on the nodes below.',
-		'Regenerate the COMPLETE JSON object (every node, same format), keeping all values scenario-consistent, but use EXACTLY the declared field names — do not rename, synonymize, or invent fields:',
+		'Regenerate the COMPLETE JSON object (every node, same format), keeping all values scenario-consistent, but use EXACTLY the declared field names — do not rename, synonymize, or invent fields.',
+		'Keep the SAME number of items per node as before — do not satisfy a correction by dropping items or returning an empty array unless the scenario itself requires zero items:',
 		'',
 	];
 	for (const v of violations) {
