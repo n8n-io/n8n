@@ -3,14 +3,13 @@ import ApiKeyScopes from './ApiKeyScopes.vue';
 import RevokeApiKeyConfirmModal from './RevokeApiKeyConfirmModal.vue';
 import Modal from '@/app/components/Modal.vue';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useClipboard } from '@n8n/composables/useClipboard';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useApiKeysStore } from '../apiKeys.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -23,7 +22,7 @@ import type { ApiKeyScope } from '@n8n/permissions';
 import { ElDatePicker } from 'element-plus';
 import {
 	N8nButton,
-	N8nIcon,
+	N8nCopyInput,
 	N8nInput,
 	N8nInputLabel,
 	N8nOption,
@@ -45,7 +44,6 @@ const { showError, showMessage } = useToast();
 
 const uiStore = useUIStore();
 const rootStore = useRootStore();
-const clipboard = useClipboard();
 const apiKeysStore = useApiKeysStore();
 const { createApiKey, updateApiKey, deleteApiKey, apiKeysById, availableScopes } = apiKeysStore;
 const { currentUser } = storeToRefs(useUsersStore());
@@ -277,22 +275,7 @@ const apiKeyDisplay = computed(() =>
 	isApiKeyTruncated.value ? `${apiKeyStart.value}...${apiKeyEnd.value}` : rawApiKey.value,
 );
 
-// After a successful copy the button's icon morphs into a check mark for a
-// moment, then morphs back — immediate feedback right where the user clicked.
-const showCopiedFeedback = ref(false);
-const COPIED_FEEDBACK_MS = 2000;
-let copiedFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
-
-onBeforeUnmount(() => clearTimeout(copiedFeedbackTimer));
-
-async function copyApiKey() {
-	if (!rawApiKey.value) return;
-	await clipboard.copy(rawApiKey.value);
-	showCopiedFeedback.value = true;
-	clearTimeout(copiedFeedbackTimer);
-	copiedFeedbackTimer = setTimeout(() => {
-		showCopiedFeedback.value = false;
-	}, COPIED_FEEDBACK_MS);
+function onApiKeyCopied() {
 	showMessage({
 		title: i18n.baseText('settings.api.view.copy.toast'),
 		type: 'success',
@@ -379,40 +362,16 @@ async function handleEnterKey(event: KeyboardEvent) {
 			<div @keyup.enter="handleEnterKey">
 				<div v-if="newApiKey" :class="$style.createdView">
 					<N8nText size="small">{{ i18n.baseText('settings.api.view.copy') }}</N8nText>
-					<N8nInput
-						:model-value="apiKeyDisplay"
+					<N8nCopyInput
+						:value="rawApiKey"
+						:display-value="apiKeyDisplay"
 						size="large"
-						readonly
-						:class="[$style.apiKeyField, 'ph-no-capture']"
+						:copy-label="i18n.baseText('generic.copy')"
+						:copied-label="i18n.baseText('generic.copiedToClipboard')"
+						class="ph-no-capture"
 						data-test-id="copy-input"
-					>
-						<template #append>
-							<N8nButton
-								variant="ghost"
-								size="large"
-								icon-only
-								:aria-label="
-									showCopiedFeedback
-										? i18n.baseText('generic.copiedToClipboard')
-										: i18n.baseText('generic.copy')
-								"
-								data-test-id="copy-api-key-button"
-								@click="copyApiKey"
-							>
-								<template #icon>
-									<span :class="$style.copyIconSwap">
-										<Transition
-											:enter-active-class="$style.swapEnterActive"
-											:leave-active-class="$style.swapLeaveActive"
-										>
-											<N8nIcon v-if="showCopiedFeedback" key="check" icon="check" size="large" />
-											<N8nIcon v-else key="copy" icon="copy" size="large" />
-										</Transition>
-									</span>
-								</template>
-							</N8nButton>
-						</template>
-					</N8nInput>
+						@copy="onApiKeyCopied"
+					/>
 				</div>
 
 				<div v-else :class="$style.form">
@@ -551,8 +510,6 @@ async function handleEnterKey(event: KeyboardEvent) {
 	</Modal>
 </template>
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins/motion';
-
 .notice {
 	margin: 0;
 }
@@ -561,59 +518,6 @@ async function handleEnterKey(event: KeyboardEvent) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-}
-
-/*
- * One continuous bordered field (the instance-settings copy-field pattern, see
- * the N8nSettingsLayout MCP examples): border, radius and background move onto
- * the input CONTAINER (with overflow hidden so the append segment is clipped by
- * the outer radius), the wrapper drops its own border so it doesn't double up,
- * and the append becomes a transparent, full-height button segment separated
- * from the value by a single border-left divider. Focus indication is
- * unaffected — the design system draws it with outline, not box-shadow.
- */
-.apiKeyField {
-	gap: 0;
-	border-radius: var(--input--radius);
-	background-color: var(--input--color--background);
-	box-shadow: inset var(--input--border--shadow);
-	overflow: hidden;
-
-	:global(.n8n-input__wrapper) {
-		box-shadow: none;
-		background-color: transparent;
-	}
-
-	:global(.n8n-input__wrapper) + span {
-		background-color: transparent;
-		border-left: var(--border);
-		margin: 0;
-		padding: 0;
-	}
-}
-
-/*
- * Copy -> check swap: both icons overlap in the same spot (the leaving one is
- * absolutely positioned) and crossfade through the design system's blur-swap
- * motion. The blur is tightened for the 16px glyph — the surface-level 4px
- * default dissolves an icon this small instead of morphing it.
- */
-.copyIconSwap {
-	--animation--blur-swap--blur: 2px;
-
-	position: relative;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.swapEnterActive {
-	@include motion.blur-swap-in;
-}
-
-.swapLeaveActive {
-	position: absolute;
-	@include motion.blur-swap-out;
 }
 
 .form {

@@ -24,9 +24,13 @@ vi.mock('@/app/composables/useTelemetry', () => {
 });
 
 const clipboardCopy = vi.fn();
-vi.mock('@n8n/composables/useClipboard', () => ({
-	useClipboard: () => ({ copy: clipboardCopy }),
-}));
+vi.mock('@vueuse/core', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@vueuse/core')>();
+	return {
+		...original,
+		useClipboard: () => ({ copy: clipboardCopy }),
+	};
+});
 
 const renderComponent = createComponentRenderer(ApiKeyEditModal, {
 	pinia: createTestingPinia({
@@ -316,7 +320,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 			});
 			await nextTick();
 
-			const copyButton = getByTestId('copy-api-key-button');
+			const copyButton = getByTestId('copy-input-button');
 			expect(copyButton).toHaveAccessibleName('Copy');
 
 			await fireEvent.click(copyButton);
