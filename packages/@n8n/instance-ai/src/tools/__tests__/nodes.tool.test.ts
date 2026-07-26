@@ -374,6 +374,96 @@ describe('nodes tool', () => {
 		});
 	});
 
+	describe('output-schema action', () => {
+		it('should resolve schemas through the lookup, passing parameters for variants', async () => {
+			const outputSchemaLookup = vi.fn().mockReturnValue({
+				type: 'object',
+				properties: { output: { type: 'array' } },
+			});
+			const context = createMockContext({ outputSchemaLookup });
+			const tool = createNodesTool(context, 'full');
+
+			const parameters = {
+				resource: 'text',
+				operation: 'response',
+				options: { textFormat: { textOptions: { type: 'json_object' } } },
+			};
+			const result = await executeTool(
+				tool,
+				{
+					action: 'output-schema',
+					nodes: [
+						{
+							nodeType: '@n8n/n8n-nodes-langchain.openAi',
+							typeVersion: 2.3,
+							parameters,
+						},
+					],
+				} as never,
+				{} as never,
+			);
+
+			expect(outputSchemaLookup).toHaveBeenCalledWith({
+				type: '@n8n/n8n-nodes-langchain.openAi',
+				typeVersion: 2.3,
+				resource: 'text',
+				operation: 'response',
+				hasOutputParser: undefined,
+				parameters,
+			});
+			expect(result).toEqual({
+				schemas: [
+					{
+						nodeType: '@n8n/n8n-nodes-langchain.openAi',
+						schema: { type: 'object', properties: { output: { type: 'array' } } },
+					},
+				],
+			});
+		});
+
+		it('should tell the agent not to guess when no schema is published', async () => {
+			const context = createMockContext({ outputSchemaLookup: vi.fn().mockReturnValue(undefined) });
+			const tool = createNodesTool(context, 'full');
+
+			const result = await executeTool(
+				tool,
+				{
+					action: 'output-schema',
+					nodes: [{ nodeType: 'n8n-nodes-base.someNode', typeVersion: 1 }],
+				} as never,
+				{} as never,
+			);
+
+			expect(result).toMatchObject({
+				schemas: [
+					{
+						nodeType: 'n8n-nodes-base.someNode',
+						note: expect.stringContaining('Do not guess field paths'),
+					},
+				],
+			});
+		});
+
+		it('should report when the lookup is unavailable', async () => {
+			const context = createMockContext();
+			const tool = createNodesTool(context, 'full');
+
+			const result = await executeTool(
+				tool,
+				{
+					action: 'output-schema',
+					nodes: [{ nodeType: 'n8n-nodes-base.gmail', typeVersion: 2.2 }],
+				} as never,
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				schemas: [],
+				error: 'Output schemas are not available in this environment.',
+			});
+		});
+	});
+
 	describe('type-definition action', () => {
 		it('should return a Zod-derived error when nodeTypes is missing', async () => {
 			// The discriminated union is flattened for Anthropic, so `nodeTypes`

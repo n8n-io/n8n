@@ -112,20 +112,26 @@ Prefer docs over web search for n8n-specific questions.
    method name, method type, credential type, and credential ID — mandatory
    for calendars, spreadsheets, channels, folders, databases, models, and any
    other list-backed parameter when a credential is available.
-5. Pick a stable workspace `filePath` for the source file, typically
+5. Before writing any expression or Code node that reads an upstream node's
+   output, call `nodes(action="output-schema")` for that upstream node, passing
+   the parameters you configured on it. Output shape is a function of those
+   parameters, not just the node type. If the action
+   reports no published schema, do not guess — run the node (or a simulated
+   verification) and read its real output before mapping fields.
+6. Pick a stable workspace `filePath` for the source file, typically
    `src/workflows/main.workflow.ts` for a one-off new workflow, or a clearly
    named `.workflow.ts` file when multiple source files are useful. For an
    existing workflow with no source file in context, call
    `workflows(action="get-as-code", workflowId)`, apply your edit to the
    returned code, and pass the n8n `workflowId` only on the first
    `build-workflow` call.
-6. Before writing SDK code the first time in a thread, load `workflow-builder`
+7. Before writing SDK code the first time in a thread, load `workflow-builder`
    with `filePath: "references/sdk-code.md"` and write from the patterns it
    gives. Builder code is a restricted subset of TypeScript, so ordinary
    TypeScript habits — loops, arrow functions, `.map()`, `new`, `Math`/`Date`
    — produce code the workflow parser rejects. Read it again whenever a
    `validate` run reports an `SDK_*` code.
-7. Produce complete TypeScript SDK code and write it to `filePath` — a new or
+8. Produce complete TypeScript SDK code and write it to `filePath` — a new or
    fully rewritten source file goes through `workspace_write_file`, while
    follow-up changes and repairs to an existing `.workflow.ts` use
    `workspace_str_replace_file`. `build-workflow` builds only what is on disk,
@@ -139,7 +145,7 @@ Prefer docs over web search for n8n-specific questions.
    and later `fixtureOverrides` can exercise those scenarios. Do not simulate
    every external read by default; use this when branch coverage or deterministic
    proof depends on controlling the upstream data.
-8. Before the first `build-workflow` (and again after substantive edits), run
+9. Before the first `build-workflow` (and again after substantive edits), run
    SDK validation on the workspace source file via
    `workspace_execute_command`:
    `node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate <filePath>`
@@ -157,19 +163,19 @@ Prefer docs over web search for n8n-specific questions.
    just because the build succeeded. This is a subset of what `build-workflow`
    enforces (no node-type registry), so a clean run does not guarantee the save
    will succeed — still call `build-workflow`.
-9. Call `build-workflow` with the `filePath` you wrote.
-   For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
-   pass `isSupportingWorkflow: true`; that saved supporting workflow is the
-   task's final deliverable.
-10. Fix errors by editing the same workspace source file, re-running
+10. Call `build-workflow` with the `filePath` you wrote.
+    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
+    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
+    task's final deliverable.
+11. Fix errors by editing the same workspace source file, re-running
     `workflow-sdk validate` on that file, then calling `build-workflow` again
     with the same `filePath`. Save again before any verification step.
-11. Modify existing workflows by editing the workspace `.workflow.ts` source
+12. Modify existing workflows by editing the workspace `.workflow.ts` source
     file. If the file was created from `workflows(action="get-as-code")`, pass
     the real n8n `workflowId` on the first `build-workflow` call so the file is
     bound to the saved workflow. Never pass local SDK workflow IDs as n8n
     workflow IDs.
-12. After a successful direct `build-workflow` result, if the tool output
+13. After a successful direct `build-workflow` result, if the tool output
     contains `postBuildFlow.required: true`, follow the inlined
     `postBuildFlow.instructions` from that output (do not load `post-build-flow`
     separately) before verification, setup, error-workflow follow-up,

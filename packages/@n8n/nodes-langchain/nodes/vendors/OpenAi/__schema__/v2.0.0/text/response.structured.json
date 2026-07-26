@@ -1,0 +1,40 @@
+{
+	"type": "object",
+	"required": ["output"],
+	"properties": {
+		"output": {
+			"type": "array",
+			"description": "Assistant messages from the Responses API, with Output Format set to JSON Object or JSON Schema. The structured result is at `$json.output[0].content[0].text` — an ALREADY-PARSED object, not a string. Do not call JSON.parse on it, and never JSON.parse `output` itself (it is an array). There is NO `text` key at the root of `$json`.",
+			"items": {
+				"type": "object",
+				"required": ["type", "role", "content"],
+				"properties": {
+					"id": { "type": "string" },
+					"type": {
+						"type": "string",
+						"description": "Always `message` — simplified output keeps only message items"
+					},
+					"role": { "type": "string", "description": "Always `assistant`" },
+					"status": { "type": "string" },
+					"content": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"required": ["type", "text"],
+							"properties": {
+								"type": { "type": "string", "description": "Always `output_text`" },
+								"text": {
+									"type": "object",
+									"description": "The parsed structured output — the node already ran JSON.parse, so this is an OBJECT whose fields come from the configured JSON schema. It stays a string only when the model returns invalid JSON.",
+									"additionalProperties": true
+								},
+								"annotations": { "type": "array", "items": { "type": "object" } }
+							}
+						}
+					}
+				}
+			}
+		}
+	},
+	"version": 1
+}

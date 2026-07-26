@@ -109,7 +109,51 @@ describe('discoverOutputSchemaForNode', () => {
 		});
 
 		expect(result).toEqual(schema);
-		expect(mockFindSchemaForOperation).toHaveBeenCalledWith(expect.any(Array), 'message', 'post');
+		expect(mockFindSchemaForOperation).toHaveBeenCalledWith(
+			expect.any(Array),
+			'message',
+			'post',
+			undefined,
+		);
+	});
+
+	it('passes the parameter-derived variant to findSchemaForOperation', () => {
+		const structured = { type: 'object', properties: { parsed: { type: 'object' } } };
+		mockDiscoverSchemasForNode.mockReturnValue([
+			{ resource: 'text', operation: 'response', variant: 'structured', schema: structured },
+		]);
+		mockFindSchemaForOperation.mockReturnValue({ schema: structured });
+
+		const result = discoverOutputSchemaForNode('@n8n/n8n-nodes-langchain.openAi', 2.3, {
+			resource: 'text',
+			operation: 'response',
+			options: { textFormat: { textOptions: { type: 'json_object' } } },
+		});
+
+		expect(result).toEqual(structured);
+		expect(mockFindSchemaForOperation).toHaveBeenCalledWith(
+			expect.any(Array),
+			'text',
+			'response',
+			'structured',
+		);
+	});
+
+	it('resolves a variant for nodes without resource/operation discriminators', () => {
+		const withParser = { type: 'object', properties: { output: { type: 'object' } } };
+		mockDiscoverSchemasForNode.mockReturnValue([
+			{ resource: '', operation: 'output', schema: { type: 'object' } },
+			{ resource: '', operation: 'output', variant: 'with-parser', schema: withParser },
+		]);
+
+		const result = discoverOutputSchemaForNode(
+			'@n8n/n8n-nodes-langchain.agent',
+			3.1,
+			{},
+			{ hasOutputParser: true },
+		);
+
+		expect(result).toEqual(withParser);
 	});
 
 	it('returns single schema when only one exists and no resource/operation', () => {
@@ -120,6 +164,16 @@ describe('discoverOutputSchemaForNode', () => {
 
 		expect(result).toEqual(schema);
 		expect(mockFindSchemaForOperation).not.toHaveBeenCalled();
+	});
+
+	it('ignores variants when falling back to a single base schema', () => {
+		const base = { type: 'object', properties: { val: { type: 'number' } } };
+		mockDiscoverSchemasForNode.mockReturnValue([
+			{ schema: base },
+			{ variant: 'with-parser', schema: { type: 'object' } },
+		]);
+
+		expect(discoverOutputSchemaForNode('n8n-nodes-base.httpRequest', 4)).toEqual(base);
 	});
 
 	it('returns undefined when multiple schemas exist and no resource/operation', () => {

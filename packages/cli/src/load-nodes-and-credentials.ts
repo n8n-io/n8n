@@ -20,7 +20,6 @@ import {
 	CUSTOM_NODES_PACKAGE_NAME,
 	resolveOutputSchemaPath,
 	loadOutputSchema,
-	OUTPUT_PARSER_SCHEMA_VARIANT,
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
@@ -34,7 +33,12 @@ import type {
 	NodeLoader,
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { injectDomainRestrictionFields, UnexpectedError, UserError } from 'n8n-workflow';
+import {
+	injectDomainRestrictionFields,
+	resolveOutputSchemaVariant,
+	UnexpectedError,
+	UserError,
+} from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 
@@ -286,7 +290,7 @@ export class LoadNodesAndCredentials {
 	 * community nodes and production installs alike.
 	 */
 	createOutputSchemaLookup(): OutputSchemaLookup {
-		return ({ type, typeVersion, resource, operation, hasOutputParser }) => {
+		return ({ type, typeVersion, resource, operation, hasOutputParser, parameters }) => {
 			const nodePath = this.known.nodes[type]?.sourcePath;
 			if (!nodePath) return undefined;
 
@@ -296,7 +300,7 @@ export class LoadNodesAndCredentials {
 				resource,
 				operation,
 				versionFallback: true,
-				variant: hasOutputParser ? OUTPUT_PARSER_SCHEMA_VARIANT : undefined,
+				variant: resolveOutputSchemaVariant({ type, parameters, hasOutputParser }),
 			});
 		};
 	}

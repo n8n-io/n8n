@@ -143,12 +143,6 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 		fileName: 'trigger-input-data-shapes.md',
 	},
 	{
-		id: 'open-ai-output-shape',
-		description:
-			'OpenAI node (@n8n/n8n-nodes-langchain.openAi) output shape for downstream expressions',
-		fileName: 'open-ai-output-shape.md',
-	},
-	{
 		id: 'workflow-builder-guardrails',
 		description:
 			'Architecture guardrails validate cannot cover: source preservation, independent effects, list semantics, complete external data',

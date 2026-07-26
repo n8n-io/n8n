@@ -23,6 +23,7 @@ export function buildSchemaContexts(
 			resource,
 			operation,
 			hasOutputParser: outputParser !== undefined,
+			parameters: params,
 		});
 
 		return {

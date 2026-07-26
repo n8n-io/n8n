@@ -45,8 +45,22 @@ const NODES_LANGCHAIN_TYPES = path.resolve(
 /** Dev script output path (local to the package) */
 const DEV_OUTPUT_PATH = path.resolve(__dirname, '../../dist/node-definitions');
 
-// Path to nodes-base dist for finding output schemas
-const NODES_BASE_DIST = path.resolve(__dirname, '../../../../nodes-base/dist/nodes');
+// Node-package dist roots searched for `__schema__` directories. Both packages
+// ship schemas, so a nodes-base-only search silently drops the AI-root and
+// vendor-LLM shapes.
+const NODES_BASE_SCHEMA_DIST = path.resolve(__dirname, '../../../../nodes-base/dist/nodes');
+const NODES_LANGCHAIN_SCHEMA_DIST = path.resolve(__dirname, '../../../nodes-langchain/dist/nodes');
+
+/**
+ * Dist roots to search for a node type, scoped by its package. Base names
+ * collide across packages — `openAi` is both the deprecated nodes-base node and
+ * the langchain vendor node — so an unscoped search resolves the wrong schemas.
+ */
+function schemaDistRootsForNodeType(nodeName: string): string[] {
+	if (nodeName.startsWith('@n8n/n8n-nodes-langchain.')) return [NODES_LANGCHAIN_SCHEMA_DIST];
+	if (nodeName.startsWith('n8n-nodes-base.')) return [NODES_BASE_SCHEMA_DIST];
+	return [NODES_BASE_SCHEMA_DIST, NODES_LANGCHAIN_SCHEMA_DIST];
+}
 
 // Discriminator fields that create operation-specific parameter sets
 // Only fields that truly benefit from splitting the type are included here
@@ -395,6 +409,11 @@ export interface VersionGroup {
 export interface OutputSchema {
 	resource: string;
 	operation: string;
+	/**
+	 * Layout variant parsed from `<operation>.<variant>.json`, absent for the
+	 * base layout. See `resolveOutputSchemaVariant` in n8n-workflow.
+	 */
+	variant?: string;
 	schema: JsonSchema;
 }
 
@@ -536,13 +555,13 @@ function emitNodeHintForCombo(
 const schemaCache = new Map<string, OutputSchema[]>();
 
 /**
- * Recursively search for a __schema__ directory matching one of the target names
+ * Recursively search for a __schema__ directory whose folder matches the target
  *
  * @param dir Directory to search in
- * @param targetNames List of possible folder names to match (e.g., ['Gmail', 'gmail', 'GMAIL'])
+ * @param targetName Lowercased folder name to match (e.g., 'gmail')
  * @returns Path to the __schema__ directory, or undefined if not found
  */
-function findNestedSchemaDir(dir: string, targetNames: string[]): string | undefined {
+function findNestedSchemaDir(dir: string, targetName: string): string | undefined {
 	let entries: fs.Dirent[];
 	try {
 		entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -555,8 +574,9 @@ function findNestedSchemaDir(dir: string, targetNames: string[]): string | undef
 
 		const entryPath = path.join(dir, entry.name);
 
-		// Check if this directory matches our target and has __schema__
-		if (targetNames.includes(entry.name)) {
+		// Folder casing does not always track the node name ('chainLlm' lives in
+		// 'ChainLLM'), so match case-insensitively.
+		if (entry.name.toLowerCase() === targetName) {
 			const schemaPath = path.join(entryPath, '__schema__');
 			if (fs.existsSync(schemaPath)) {
 				return schemaPath;
@@ -565,7 +585,7 @@ function findNestedSchemaDir(dir: string, targetNames: string[]): string | undef
 
 		// Recurse into subdirectories (but skip __schema__ dirs and node_modules)
 		if (entry.name !== '__schema__' && entry.name !== 'node_modules') {
-			const found = findNestedSchemaDir(entryPath, targetNames);
+			const found = findNestedSchemaDir(entryPath, targetName);
 			if (found) return found;
 		}
 	}
@@ -575,35 +595,63 @@ function findNestedSchemaDir(dir: string, targetNames: string[]): string | undef
 
 /**
  * Find the schema directory for a node, searching both flat and nested paths
+ * within the dist roots that belong to the node's package.
  *
  * @param baseName The base node name (e.g., 'gmail')
+ * @param roots Dist roots to search, from `schemaDistRootsForNodeType`
  * @returns Path to the __schema__ directory, or undefined if not found
  */
-function findSchemaDirectory(baseName: string, schemaPath?: string): string | undefined {
-	// If explicit schemaPath is provided, use it directly
-	if (schemaPath) {
-		const explicitPath = path.join(NODES_BASE_DIST, schemaPath, '__schema__');
-		if (fs.existsSync(explicitPath)) {
-			return explicitPath;
-		}
-	}
-
-	const possibleNames = [
+function findSchemaDirectory(
+	baseName: string,
+	roots: string[],
+	schemaPath?: string,
+): string | undefined {
+	const flatNames = [
 		baseName.charAt(0).toUpperCase() + baseName.slice(1), // Gmail
 		baseName, // gmail
 		baseName.toUpperCase(), // GMAIL
 	];
 
-	// Try flat paths first (most common case)
-	for (const folderName of possibleNames) {
-		const flatPath = path.join(NODES_BASE_DIST, folderName, '__schema__');
-		if (fs.existsSync(flatPath)) {
-			return flatPath;
+	for (const root of roots) {
+		// If explicit schemaPath is provided, use it directly
+		if (schemaPath) {
+			const explicitPath = path.join(root, schemaPath, '__schema__');
+			if (fs.existsSync(explicitPath)) {
+				return explicitPath;
+			}
+		}
+
+		// Try flat paths first (most common case)
+		for (const folderName of flatNames) {
+			const flatPath = path.join(root, folderName, '__schema__');
+			if (fs.existsSync(flatPath)) {
+				return flatPath;
+			}
 		}
 	}
 
 	// Search recursively for nested paths (e.g., Google/Gmail/__schema__)
-	return findNestedSchemaDir(NODES_BASE_DIST, possibleNames);
+	for (const root of roots) {
+		const found = findNestedSchemaDir(root, baseName.toLowerCase());
+		if (found) return found;
+	}
+
+	return undefined;
+}
+
+/**
+ * Split `<operation>.json` / `<operation>.<variant>.json` into its parts.
+ * Variant names never contain a dot, so the first dot is the boundary.
+ */
+function parseSchemaFileName(fileName: string): { operation: string; variant?: string } {
+	const withoutExtension = fileName.slice(0, -'.json'.length);
+	const dotIndex = withoutExtension.indexOf('.');
+	if (dotIndex === -1) return { operation: withoutExtension };
+
+	return {
+		operation: withoutExtension.slice(0, dotIndex),
+		variant: withoutExtension.slice(dotIndex + 1),
+	};
 }
 
 /**
@@ -613,8 +661,8 @@ function findSchemaDirectory(baseName: string, schemaPath?: string): string | un
  *
  * @param nodeName Full node name (e.g., 'n8n-nodes-base.freshservice')
  * @param version The node version number
- * @param schemaPath Optional explicit path to schema directory relative to nodes-base/dist/nodes/
- * @returns Array of discovered output schemas
+ * @param schemaPath Optional explicit path to schema directory relative to a node-package dist root
+ * @returns Array of discovered output schemas, including layout variants
  */
 export function discoverSchemasForNode(
 	nodeName: string,
@@ -633,7 +681,7 @@ export function discoverSchemasForNode(
 	const baseName = nodeName.split('.').pop() ?? '';
 
 	// Find schema directory (handles both flat and nested paths, or explicit schemaPath)
-	const schemaDir = findSchemaDirectory(baseName, schemaPath);
+	const schemaDir = findSchemaDirectory(baseName, schemaDistRootsForNodeType(nodeName), schemaPath);
 	if (!schemaDir) {
 		schemaCache.set(cacheKey, schemas);
 		return schemas;
@@ -653,10 +701,7 @@ export function discoverSchemasForNode(
 		for (const entry of entries) {
 			// JSON files directly in the version directory (nodes without resource/operation)
 			if (entry.isFile() && entry.name.endsWith('.json')) {
-				const operationName = entry.name.replace('.json', '');
-				// `output.<variant>.json` files are context-conditional layout
-				// variants (e.g. with-parser), not operations — skip them here.
-				if (operationName.includes('.')) continue;
+				const { operation, variant } = parseSchemaFileName(entry.name);
 				const filePath = path.join(versionDir, entry.name);
 
 				try {
@@ -664,7 +709,8 @@ export function discoverSchemasForNode(
 					const schema = JSON.parse(schemaContent) as JsonSchema;
 					schemas.push({
 						resource: '',
-						operation: operationName,
+						operation,
+						...(variant ? { variant } : {}),
 						schema,
 					});
 				} catch {
@@ -682,7 +728,7 @@ export function discoverSchemasForNode(
 			for (const opEntry of operations) {
 				if (!opEntry.isFile() || !opEntry.name.endsWith('.json')) continue;
 
-				const operationName = opEntry.name.replace('.json', '');
+				const { operation, variant } = parseSchemaFileName(opEntry.name);
 				const schemaPath = path.join(resourceDir, opEntry.name);
 
 				try {
@@ -690,7 +736,8 @@ export function discoverSchemasForNode(
 					const schema = JSON.parse(schemaContent) as JsonSchema;
 					schemas.push({
 						resource: entry.name,
-						operation: operationName,
+						operation,
+						...(variant ? { variant } : {}),
 						schema,
 					});
 				} catch {
@@ -869,16 +916,25 @@ export function jsonSchemaToTypeScript(schema: JsonSchema, indent = 0): string {
  * @param schemas Array of discovered schemas for the node
  * @param resource The resource name (e.g., 'ticket')
  * @param operation The operation name (e.g., 'get')
+ * @param variant Layout variant to prefer; falls back to the base layout when absent
  * @returns The matching schema, or undefined if not found
  */
 export function findSchemaForOperation(
 	schemas: OutputSchema[],
 	resource: string,
 	operation: string,
+	variant?: string,
 ): OutputSchema | undefined {
-	return schemas.find(
+	const matches = schemas.filter(
 		(s) => s.resource.toLowerCase() === resource.toLowerCase() && s.operation === operation,
 	);
+
+	if (variant) {
+		const variantMatch = matches.find((s) => s.variant === variant);
+		if (variantMatch) return variantMatch;
+	}
+
+	return matches.find((s) => s.variant === undefined);
 }
 
 /**
@@ -3171,9 +3227,10 @@ export function generateSingleVersionTypeFile(
 				: undefined;
 
 		// Fallback for nodes without resource/operation discriminators:
-		// use root-level schema files (resource === '')
+		// use root-level schema files (resource === ''). Emitted types cannot be
+		// conditioned on parameters, so variants never win here.
 		if (!matchingSchema && !configInfo.resource && !configInfo.operation) {
-			matchingSchema = outputSchemas.find((s) => s.resource === '');
+			matchingSchema = outputSchemas.find((s) => s.resource === '' && s.variant === undefined);
 		}
 
 		if (matchingSchema) {

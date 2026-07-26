@@ -5294,6 +5294,92 @@ describe('generate-types', () => {
 				cleanupTestDir(nodeName);
 			}
 		});
+
+		it('records layout variants from <operation>.<variant>.json', () => {
+			const nodeName = '__TestSchemaVariants__';
+			const base = { type: 'object', properties: { a: { type: 'string' } } };
+			const structured = { type: 'object', properties: { a: { type: 'object' } } };
+			const rootVariant = { type: 'object', properties: { parsed: { type: 'object' } } };
+
+			try {
+				createTestSchemaDir(nodeName, 'v1.0.0', {
+					'text/response.json': JSON.stringify(base),
+					'text/response.structured.json': JSON.stringify(structured),
+					'output.with-parser.json': JSON.stringify(rootVariant),
+				});
+
+				const result = generateTypes.discoverSchemasForNode(
+					`n8n-nodes-base.${nodeName}`,
+					1,
+					nodeName,
+				);
+
+				expect(result).toHaveLength(3);
+				expect(result).toContainEqual({ resource: 'text', operation: 'response', schema: base });
+				expect(result).toContainEqual({
+					resource: 'text',
+					operation: 'response',
+					variant: 'structured',
+					schema: structured,
+				});
+				expect(result).toContainEqual({
+					resource: '',
+					operation: 'output',
+					variant: 'with-parser',
+					schema: rootVariant,
+				});
+			} finally {
+				cleanupTestDir(nodeName);
+			}
+		});
+
+		it('scopes discovery to the node package so colliding base names do not leak', () => {
+			// `openAi` exists in nodes-base and as a langchain vendor node.
+			const nodeName = '__TestPackageScoped__';
+
+			try {
+				createTestSchemaDir(nodeName, 'v1.0.0', {
+					'contact/get.json': JSON.stringify({ type: 'object' }),
+				});
+
+				expect(generateTypes.discoverSchemasForNode(`n8n-nodes-base.${nodeName}`, 1)).toHaveLength(
+					1,
+				);
+				expect(
+					generateTypes.discoverSchemasForNode(`@n8n/n8n-nodes-langchain.${nodeName}`, 1),
+				).toHaveLength(0);
+			} finally {
+				cleanupTestDir(nodeName);
+			}
+		});
+	});
+
+	describe('findSchemaForOperation', () => {
+		const schemas = [
+			{ resource: 'text', operation: 'response', schema: { type: 'object' } },
+			{
+				resource: 'text',
+				operation: 'response',
+				variant: 'structured',
+				schema: { type: 'object', properties: { parsed: {} } },
+			},
+		];
+
+		it('returns the base layout when no variant is requested', () => {
+			expect(generateTypes.findSchemaForOperation(schemas, 'text', 'response')).toBe(schemas[0]);
+		});
+
+		it('returns the requested variant when present', () => {
+			expect(generateTypes.findSchemaForOperation(schemas, 'text', 'response', 'structured')).toBe(
+				schemas[1],
+			);
+		});
+
+		it('falls back to the base layout for an unknown variant', () => {
+			expect(generateTypes.findSchemaForOperation(schemas, 'text', 'response', 'raw')).toBe(
+				schemas[0],
+			);
+		});
 	});
 
 	describe('generateSingleVersionTypeFile with root-level output schema', () => {

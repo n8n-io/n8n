@@ -9,7 +9,7 @@
  */
 
 import type { INode, INodeExecutionData, IPinData } from 'n8n-workflow';
-import { HTTP_REQUEST_NODE_TYPE } from 'n8n-workflow';
+import { HTTP_REQUEST_NODE_TYPE, resolveOutputSchemaVariant } from 'n8n-workflow';
 
 import {
 	discoverSchemasForNode,
@@ -69,16 +69,21 @@ export function needsPinData(node: INode, isTriggerNode?: IsTriggerNodeFn): bool
  *
  * Combines `discoverSchemasForNode` + `findSchemaForOperation` with a
  * single-schema fallback when no resource/operation discriminators exist.
+ * Parameter-conditioned layouts (e.g. OpenAI `simplify` / output format) and
+ * an attached output parser resolve to the matching `<operation>.<variant>`
+ * schema; see `resolveOutputSchemaVariant` in n8n-workflow.
  *
  * @param nodeType Full node type string (e.g. 'n8n-nodes-base.slack')
  * @param typeVersion The node's version number
- * @param parameters Optional node parameters containing resource/operation
+ * @param parameters Optional node parameters — resource/operation plus anything a variant depends on
+ * @param options Extra resolution context that is not part of the node parameters
  * @returns The discovered JSON Schema, or undefined if none found
  */
 export function discoverOutputSchemaForNode(
 	nodeType: string,
 	typeVersion: number,
-	parameters?: { resource?: string; operation?: string },
+	parameters?: Record<string, unknown> & { resource?: string; operation?: string },
+	options?: { hasOutputParser?: boolean },
 ): JsonSchema | undefined {
 	if (!nodeType) return undefined;
 
@@ -88,14 +93,25 @@ export function discoverOutputSchemaForNode(
 
 	const resource = parameters?.resource ?? '';
 	const operation = parameters?.operation ?? '';
+	const variant = resolveOutputSchemaVariant({
+		type: nodeType,
+		parameters,
+		hasOutputParser: options?.hasOutputParser,
+	});
 
 	if (resource || operation) {
-		const match = findSchemaForOperation(schemas, resource, operation);
+		const match = findSchemaForOperation(schemas, resource, operation, variant);
 		return match?.schema;
 	}
 
-	if (schemas.length === 1) {
-		return schemas[0].schema;
+	if (variant) {
+		const variantMatch = schemas.find((s) => s.variant === variant);
+		if (variantMatch) return variantMatch.schema;
+	}
+
+	const baseSchemas = schemas.filter((s) => s.variant === undefined);
+	if (baseSchemas.length === 1) {
+		return baseSchemas[0].schema;
 	}
 
 	return undefined;

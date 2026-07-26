@@ -1,0 +1,27 @@
+{
+	"type": "object",
+	"required": ["message"],
+	"description": "Chat Completions choice with Output Content as JSON enabled, emitted one item per choice. Read the structured result from `$json.message.content` — it is ALREADY parsed, so do not call JSON.parse on it. There is NO `text` key.",
+	"properties": {
+		"index": { "type": "number" },
+		"message": {
+			"type": "object",
+			"required": ["role", "content"],
+			"properties": {
+				"role": { "type": "string", "description": "Always `assistant`" },
+				"content": {
+					"type": "object",
+					"description": "The parsed structured output — the node already ran JSON.parse, so this is an OBJECT. It stays a string only when the model returns invalid JSON.",
+					"additionalProperties": true
+				},
+				"tool_calls": {
+					"type": "array",
+					"items": { "type": "object" }
+				}
+			}
+		},
+		"finish_reason": { "type": "string" },
+		"logprobs": { "type": "object" }
+	},
+	"version": 1
+}

@@ -1,10 +1,17 @@
 /**
  * LLM Text Path Validator
  *
- * Flags the common silent failure of reading `$json.text` from vendor LLM
- * nodes whose simplify-on shape uses provider-specific paths (Gemini
+ * Flags the common silent failures of reading a vendor LLM node's output:
+ * `$json.text` where the node uses a provider-specific path (Gemini
  * `content.parts[0].text`, Anthropic `content[0].text`, OpenAI
- * `output[0].content[0].text` / `message.content`).
+ * `output[0].content[0].text` / `message.content`), and defensive fallback
+ * chains (`x.content || x.text || x.output`) that guess at the shape instead of
+ * reading it. A guessed chain does not fail loudly — it lands in the catch
+ * branch and ships a workflow that quietly produces empty results.
+ *
+ * Guidance is keyed by the same layout variant the node's `__schema__` files
+ * are keyed by (`resolveOutputSchemaVariant`), so structured output and
+ * simplify-off get their own correct paths rather than being skipped.
  *
  * Also flags declared `output` fixtures that invent a flat `{ text }` shape
  * for those nodes — the workflow then verifies green against the mock and
@@ -12,6 +19,11 @@
  */
 
 import { isRecord } from '@n8n/utils/is-record';
+import {
+	RAW_OUTPUT_SCHEMA_VARIANT,
+	resolveOutputSchemaVariant,
+	STRUCTURED_OUTPUT_SCHEMA_VARIANT,
+} from 'n8n-workflow';
 
 import { isNodeChain, type GraphNode, type NodeInstance } from '../../../types/base';
 import { extractExpressions } from '../../validation-helpers';
@@ -25,41 +37,82 @@ const CODE_NODE_TYPE = 'n8n-nodes-base.code';
 const JSON_TEXT_FIELD = /\$json\.text\b/;
 const NODE_TEXT_FIELD = /\$\(\s*['"][^'"]+['"]\s*\)\.(?:item|first\(\)|last\(\))\.json\.text\b/;
 
-interface LlmHint {
-	readonly type: string;
+/**
+ * Two reads of the SAME base expression under `||`, differing only in which
+ * output-ish field they pick — e.g. `aiOutput.content || aiOutput.text`. That is
+ * a guess about the node's shape, not a fallback for missing data.
+ */
+const GUESSED_FIELD_CHAIN =
+	/([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\.(content|text|output|message|response)\s*\|\|\s*\1\.(content|text|output|message|response)/;
+
+const JSON_PARSE_CALL = /\bJSON\.parse\s*\(/;
+
+interface LlmShapeHint {
+	/** Correct path for this layout. */
 	readonly correctPath: string;
+	/** True when the source already reads the right place. */
 	readonly hasCorrectPath: (source: string) => boolean;
 }
 
-const LLM_HINTS: readonly LlmHint[] = [
-	{
-		type: GEMINI,
-		correctPath:
-			'$json.content.parts[0].text (or $json.mergedResponse when Include Merged Response is on)',
-		hasCorrectPath: (source) =>
-			source.includes('$json.content') ||
-			source.includes('.json.content') ||
-			source.includes('mergedResponse'),
+interface LlmHint extends LlmShapeHint {
+	readonly type: string;
+	/** True when the node already parsed the text, so `JSON.parse` on it is wrong. */
+	readonly textAlreadyParsed: boolean;
+}
+
+interface LlmShapes {
+	readonly base: LlmShapeHint;
+	readonly structured?: LlmShapeHint;
+	readonly raw?: LlmShapeHint;
+}
+
+const readsContent = (source: string) =>
+	source.includes('$json.content') || source.includes('.json.content');
+
+const LLM_SHAPES: Readonly<Record<string, LlmShapes>> = {
+	[GEMINI]: {
+		base: {
+			correctPath:
+				'$json.content.parts[0].text (or $json.mergedResponse when Include Merged Response is on)',
+			hasCorrectPath: (source) => readsContent(source) || source.includes('mergedResponse'),
+		},
 	},
-	{
-		type: ANTHROPIC,
-		correctPath:
-			'$json.content[0].text (or $json.merged_response when Include Merged Response is on)',
-		hasCorrectPath: (source) =>
-			source.includes('$json.content') ||
-			source.includes('.json.content') ||
-			source.includes('merged_response'),
+	[ANTHROPIC]: {
+		base: {
+			correctPath:
+				'$json.content[0].text (or $json.merged_response when Include Merged Response is on)',
+			hasCorrectPath: (source) => readsContent(source) || source.includes('merged_response'),
+		},
 	},
-	{
-		type: OPENAI,
-		correctPath: '$json.output[0].content[0].text (v2+) or $json.message.content (v1)',
-		hasCorrectPath: (source) =>
-			source.includes('$json.output') ||
-			source.includes('.json.output') ||
-			source.includes('$json.message') ||
-			source.includes('.json.message'),
+	[OPENAI]: {
+		base: {
+			correctPath: '$json.output[0].content[0].text (v2+) or $json.message.content (v1)',
+			hasCorrectPath: (source) =>
+				source.includes('$json.output') ||
+				source.includes('.json.output') ||
+				source.includes('$json.message') ||
+				source.includes('.json.message'),
+		},
+		structured: {
+			correctPath:
+				'$json.output[0].content[0].text (v2+) or $json.message.content (v1) — already a parsed OBJECT, not a JSON string',
+			hasCorrectPath: (source) =>
+				source.includes('$json.output') ||
+				source.includes('.json.output') ||
+				source.includes('$json.message') ||
+				source.includes('.json.message'),
+		},
+		raw: {
+			correctPath:
+				"the message item of $json.output (filter for type === 'message', v2+) or $json.choices[0].message.content (v1) — Simplify Output is off, so the item is the full API payload",
+			hasCorrectPath: (source) =>
+				source.includes('$json.output') ||
+				source.includes('.json.output') ||
+				source.includes('$json.choices') ||
+				source.includes('.json.choices'),
+		},
 	},
-];
+};
 
 function resolveTargetNodeName(target: unknown): string | undefined {
 	if (!target) return undefined;
@@ -103,10 +156,6 @@ function mainInputSources(targetName: string, nodes: ReadonlyMap<string, GraphNo
 	return [...new Set(sources)];
 }
 
-function isSimplifyOn(parameters: Record<string, unknown>): boolean {
-	return parameters.simplify !== false;
-}
-
 function isTextMessageOperation(parameters: Record<string, unknown>): boolean {
 	const resource = parameters.resource;
 	const operation = parameters.operation;
@@ -119,14 +168,36 @@ function isTextMessageOperation(parameters: Record<string, unknown>): boolean {
 }
 
 function hintForNode(node: NodeInstance<string, string, unknown>): LlmHint | undefined {
-	const hint = LLM_HINTS.find((entry) => entry.type === node.type);
-	if (!hint) return undefined;
+	const shapes = LLM_SHAPES[node.type];
+	if (!shapes) return undefined;
+
 	const params = node.config?.parameters;
-	if (!isRecord(params)) return hint;
-	if (!isSimplifyOn(params) || !isTextMessageOperation(params)) return undefined;
-	// Structured JSON output is not the chat-text shape — skip path heuristics.
-	if (params.jsonOutput === true) return undefined;
-	return hint;
+	const asHint = (shape: LlmShapeHint, textAlreadyParsed = false): LlmHint => ({
+		type: node.type,
+		correctPath: shape.correctPath,
+		hasCorrectPath: shape.hasCorrectPath,
+		textAlreadyParsed,
+	});
+
+	if (!isRecord(params)) return asHint(shapes.base);
+	if (!isTextMessageOperation(params)) return undefined;
+
+	// Same variant resolution the node's `__schema__` layouts are keyed by, so
+	// structured output and simplify-off get their own paths instead of being
+	// skipped as "not the chat-text shape".
+	const variant = resolveOutputSchemaVariant({ type: node.type, parameters: params });
+	if (variant === STRUCTURED_OUTPUT_SCHEMA_VARIANT) {
+		return shapes.structured ? asHint(shapes.structured, true) : undefined;
+	}
+	if (variant === RAW_OUTPUT_SCHEMA_VARIANT) {
+		return shapes.raw ? asHint(shapes.raw) : undefined;
+	}
+
+	// No variant rule for this node type: stay quiet on configs that reshape the
+	// output rather than assert a path we have not verified for this provider.
+	if (params.simplify === false || params.jsonOutput === true) return undefined;
+
+	return asHint(shapes.base);
 }
 
 function usesJsonTextWithoutCorrectPath(source: string, hint: LlmHint): boolean {
@@ -174,7 +245,7 @@ export const llmTextPathValidator: ValidatorPlugin = {
 			{
 				code: 'WRONG_LLM_OUTPUT_FIXTURE',
 				message:
-					`'${node.name}' declares a flat \`{ text }\` output fixture, but ${hint.type} with simplify on ` +
+					`'${node.name}' declares a flat \`{ text }\` output fixture, but ${hint.type} ` +
 					`emits ${hint.correctPath}. Coding against this mock self-verifies green and fails on the first real run. ` +
 					'Update the declared output to the provider shape (or enable Include Merged Response and use that field).',
 				severity: 'warning',
@@ -219,18 +290,49 @@ export const llmTextPathValidator: ValidatorPlugin = {
 
 			for (const { name: parentName, hint } of llmParents) {
 				for (const { source, parameterPath } of expressionSources) {
-					if (!usesJsonTextWithoutCorrectPath(source, hint)) continue;
-					issues.push({
-						code: 'WRONG_LLM_TEXT_PATH',
-						message:
-							`'${mapKey}' parameter '${parameterPath}' reads $json.text from upstream LLM '${parentName}', ` +
-							`but ${hint.type} with simplify on exposes text at ${hint.correctPath} — not $json.text. ` +
-							'Update the path (or use Include Merged Response) before wiring more nodes.',
-						severity: 'warning',
-						violationLevel: 'major',
-						nodeName: mapKey,
-						parameterPath,
-					});
+					if (usesJsonTextWithoutCorrectPath(source, hint)) {
+						issues.push({
+							code: 'WRONG_LLM_TEXT_PATH',
+							message:
+								`'${mapKey}' parameter '${parameterPath}' reads $json.text from upstream LLM '${parentName}', ` +
+								`but ${hint.type} exposes text at ${hint.correctPath} — not $json.text. ` +
+								'Update the path (or use Include Merged Response) before wiring more nodes.',
+							severity: 'warning',
+							violationLevel: 'major',
+							nodeName: mapKey,
+							parameterPath,
+						});
+					}
+
+					if (GUESSED_FIELD_CHAIN.test(source)) {
+						issues.push({
+							code: 'GUESSED_LLM_OUTPUT_PATH',
+							message:
+								`'${mapKey}' parameter '${parameterPath}' picks between several fields of the output of upstream LLM ` +
+								`'${parentName}' (e.g. \`x.content || x.text\`) instead of reading the one real path, ${hint.correctPath}. ` +
+								'The chain resolves to undefined and lands in the error branch, so the workflow ships quietly producing ' +
+								'empty results. Call nodes(action="output-schema") for that node and read the exact path.',
+							severity: 'warning',
+							violationLevel: 'major',
+							nodeName: mapKey,
+							parameterPath,
+						});
+					}
+
+					if (hint.textAlreadyParsed && JSON_PARSE_CALL.test(source)) {
+						issues.push({
+							code: 'REDUNDANT_LLM_OUTPUT_PARSE',
+							message:
+								`'${mapKey}' parameter '${parameterPath}' calls JSON.parse on the output of upstream LLM ` +
+								`'${parentName}', but that node is configured for structured output and has already parsed it — ` +
+								`${hint.correctPath}. Parsing again throws (or stringifies an object) and lands in the error branch. ` +
+								'Read the value directly.',
+							severity: 'warning',
+							violationLevel: 'major',
+							nodeName: mapKey,
+							parameterPath,
+						});
+					}
 				}
 			}
 		}

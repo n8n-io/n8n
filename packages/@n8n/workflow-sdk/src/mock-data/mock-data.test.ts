@@ -86,6 +86,7 @@ describe('buildSchemaContexts', () => {
 			resource: 'row',
 			operation: 'get',
 			hasOutputParser: false,
+			parameters: { resource: 'row', operation: 'get' },
 		});
 		expect(contexts[0].schema).toEqual({ type: 'object', properties: { id: {} } });
 	});

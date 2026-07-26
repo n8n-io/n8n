@@ -202,6 +202,45 @@ describe('output-schema-resolver', () => {
 			).toBe(plain);
 		});
 
+		it('prefers a discriminated variant and falls through to the base operation', () => {
+			const base = writeSchema('v2.0.0/text/response.json');
+			const variant = writeSchema('v2.0.0/text/response.structured.json');
+
+			expect(
+				resolveOutputSchemaPath({
+					nodeDir,
+					version: 2.3,
+					resource: 'text',
+					operation: 'response',
+					versionFallback: true,
+					variant: 'structured',
+				}),
+			).toBe(variant);
+			// An operation without that variant file still resolves to its base schema.
+			expect(
+				resolveOutputSchemaPath({
+					nodeDir,
+					version: 2.3,
+					resource: 'text',
+					operation: 'response',
+					versionFallback: true,
+					variant: 'raw',
+				}),
+			).toBe(base);
+			// A variant may not escape the __schema__ directory.
+			writeFileSync(path.join(nodeDir, 'leak.json'), '{}');
+			expect(
+				resolveOutputSchemaPath({
+					nodeDir,
+					version: 2.3,
+					resource: 'text',
+					operation: 'response',
+					versionFallback: true,
+					variant: '../../../../leak',
+				}),
+			).toBe(base);
+		});
+
 		it('returns undefined when __schema__ does not exist', () => {
 			expect(
 				resolveOutputSchemaPath({

@@ -1,0 +1,27 @@
+{
+	"type": "object",
+	"required": ["message"],
+	"description": "Chat Completions choice, emitted one item per choice. There is NO `text` key — read the reply from `$json.message.content`.",
+	"properties": {
+		"index": { "type": "number" },
+		"message": {
+			"type": "object",
+			"required": ["role", "content"],
+			"properties": {
+				"role": { "type": "string", "description": "Always `assistant`" },
+				"content": {
+					"type": "string",
+					"description": "The assistant's reply as a plain STRING. With Output Content as JSON enabled the node parses it into an object instead — see the `structured` schema variant. May be null when the model returned tool calls."
+				},
+				"tool_calls": {
+					"type": "array",
+					"description": "Populated instead of `content` when the model called a tool",
+					"items": { "type": "object" }
+				}
+			}
+		},
+		"finish_reason": { "type": "string" },
+		"logprobs": { "type": "object" }
+	},
+	"version": 1
+}

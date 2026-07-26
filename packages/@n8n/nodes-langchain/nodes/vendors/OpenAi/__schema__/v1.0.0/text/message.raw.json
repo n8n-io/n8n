@@ -1,0 +1,41 @@
+{
+	"type": "object",
+	"required": ["choices"],
+	"description": "Simplify Output is off, so the item is the full Chat Completions payload rather than one item per choice. Read the reply from `$json.choices[0].message.content`.",
+	"properties": {
+		"id": { "type": "string" },
+		"object": { "type": "string" },
+		"created": { "type": "number" },
+		"model": { "type": "string" },
+		"system_fingerprint": { "type": "string" },
+		"choices": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"index": { "type": "number" },
+					"message": {
+						"type": "object",
+						"properties": {
+							"role": { "type": "string" },
+							"content": {
+								"description": "String for a plain reply; an already-parsed object when Output Content as JSON is enabled"
+							},
+							"tool_calls": { "type": "array", "items": { "type": "object" } }
+						}
+					},
+					"finish_reason": { "type": "string" }
+				}
+			}
+		},
+		"usage": {
+			"type": "object",
+			"properties": {
+				"prompt_tokens": { "type": "number" },
+				"completion_tokens": { "type": "number" },
+				"total_tokens": { "type": "number" }
+			}
+		}
+	},
+	"version": 1
+}

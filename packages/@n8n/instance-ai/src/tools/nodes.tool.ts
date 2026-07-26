@@ -1,5 +1,6 @@
 /**
- * Consolidated nodes tool — list, search, describe, type-definition, suggested, explore-resources.
+ * Consolidated nodes tool — list, search, describe, type-definition,
+ * output-schema, suggested, explore-resources.
  */
 import { Tool } from '@n8n/agents';
 import { categoryList, suggestedNodesData } from '@n8n/ai-utilities/node-catalog';
@@ -88,6 +89,34 @@ const typeDefinitionAction = z.object({
 	nodeTypes: z.array(nodeRequestSchema).min(1).max(5).describe(NODE_TYPES_ARRAY_DESCRIPTION),
 });
 
+const outputSchemaNodeSchema = z.object({
+	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
+	typeVersion: z.number().describe('Node type version, e.g. 2.3'),
+	parameters: z
+		.record(z.unknown())
+		.optional()
+		.describe(
+			'The parameters you configured on the node. Output shape often depends on them — pass resource/operation plus anything that reshapes the result (e.g. OpenAI `simplify` and Output Format), not just the discriminators.',
+		),
+	hasOutputParser: z
+		.boolean()
+		.optional()
+		.describe('True when an output parser sub-node is attached to this node.'),
+});
+
+const outputSchemaAction = z.object({
+	action: z
+		.literal('output-schema')
+		.describe(
+			"Get the JSON Schema of the items a node EMITS — the real field paths for `$json.…` expressions and Code nodes reading from it. Call this before writing any expression or Code node that consumes an upstream node's output; do not guess field names or add `a || b || c` fallbacks.",
+		),
+	nodes: z
+		.array(outputSchemaNodeSchema)
+		.min(1)
+		.max(5)
+		.describe('Nodes to resolve output schemas for (max 5).'),
+});
+
 const suggestedAction = z.object({
 	action: z
 		.literal('suggested')
@@ -128,6 +157,7 @@ const fullInputSchema = sanitizeInputSchema(
 		searchAction,
 		describeAction,
 		typeDefinitionAction,
+		outputSchemaAction,
 		suggestedAction,
 		exploreResourcesAction,
 	]),
@@ -319,6 +349,48 @@ async function handleTypeDefinition(
 }
 
 // eslint-disable-next-line @typescript-eslint/require-await
+async function handleOutputSchema(
+	context: InstanceAiContext,
+	input: Extract<FullInput, { action: 'output-schema' }>,
+) {
+	const lookup = context.outputSchemaLookup;
+	if (!lookup) {
+		return {
+			schemas: [],
+			error: 'Output schemas are not available in this environment.',
+		};
+	}
+
+	const schemas = input.nodes.map((node) => {
+		const parameters = node.parameters;
+		const resource = typeof parameters?.resource === 'string' ? parameters.resource : undefined;
+		const operation = typeof parameters?.operation === 'string' ? parameters.operation : undefined;
+
+		const schema = lookup({
+			type: node.nodeType,
+			typeVersion: node.typeVersion,
+			resource,
+			operation,
+			hasOutputParser: node.hasOutputParser,
+			parameters,
+		});
+
+		if (!schema) {
+			return {
+				nodeType: node.nodeType,
+				// A missing schema is normal — most nodes ship none. The agent must
+				// fall back to running the node, not to inventing field names.
+				note: 'No output schema is published for this node/operation. Do not guess field paths — run the node (or a simulated verification) and read the real output instead.',
+			};
+		}
+
+		return { nodeType: node.nodeType, schema };
+	});
+
+	return { schemas };
+}
+
+// eslint-disable-next-line @typescript-eslint/require-await
 async function handleSuggested(input: Extract<FullInput, { action: 'suggested' }>) {
 	const results: Array<{
 		category: string;
@@ -428,7 +500,7 @@ export function createNodesTool(
 
 	return new Tool('nodes')
 		.description(
-			'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, and `explore-resources` for live credential-backed lists.',
+			"Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, `output-schema` before reading a node's output downstream, and `explore-resources` for live credential-backed lists.",
 		)
 		.input(fullInputSchema)
 		.handler(async (input: FullInput) => {
@@ -441,6 +513,8 @@ export function createNodesTool(
 					return await handleDescribe(context, input);
 				case 'type-definition':
 					return await handleTypeDefinition(context, input);
+				case 'output-schema':
+					return await handleOutputSchema(context, input);
 				case 'suggested':
 					return await handleSuggested(input);
 				case 'explore-resources':

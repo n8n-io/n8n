@@ -165,4 +165,87 @@ describe('llmTextPathValidator', () => {
 			expect(issues.map((i) => i.code)).toEqual(['WRONG_LLM_TEXT_PATH']);
 		});
 	});
+
+	describe('guessed output paths', () => {
+		const openAiParams = (extra: Record<string, unknown> = {}) => ({
+			resource: 'text',
+			operation: 'response',
+			...extra,
+		});
+
+		it('flags a Code node picking between output fields of an OpenAI parent', () => {
+			const code = createNode('n8n-nodes-base.code', 'Format', {
+				parameters: {
+					jsCode:
+						'const aiOutput = $input.first().json;\n' +
+						'const content = aiOutput.content || aiOutput.text || aiOutput.output;\n' +
+						'return [{ json: { content } }];',
+				},
+			});
+			const { ctx } = llmToDownstream('@n8n/n8n-nodes-langchain.openAi', openAiParams(), code);
+
+			const issues = llmTextPathValidator.validateWorkflow!(ctx);
+			expect(issues.map((i) => i.code)).toContain('GUESSED_LLM_OUTPUT_PATH');
+			expect(issues[0]).toMatchObject({ nodeName: 'Format', parameterPath: 'jsCode' });
+		});
+
+		it('does not flag a fallback between different sources', () => {
+			const code = createNode('n8n-nodes-base.code', 'Format', {
+				parameters: {
+					jsCode:
+						'const text = $json.output[0].content[0].text || $json.fallbackText;\n' +
+						'return [{ json: { text } }];',
+				},
+			});
+			const { ctx } = llmToDownstream('@n8n/n8n-nodes-langchain.openAi', openAiParams(), code);
+
+			expect(llmTextPathValidator.validateWorkflow!(ctx)).toEqual([]);
+		});
+
+		it('flags JSON.parse of output the node already parsed', () => {
+			const code = createNode('n8n-nodes-base.code', 'Format', {
+				parameters: {
+					jsCode:
+						'const text = $json.output[0].content[0].text;\n' +
+						'return [{ json: JSON.parse(text) }];',
+				},
+			});
+			const { ctx } = llmToDownstream(
+				'@n8n/n8n-nodes-langchain.openAi',
+				openAiParams({ options: { textFormat: { textOptions: { type: 'json_schema' } } } }),
+				code,
+			);
+
+			const issues = llmTextPathValidator.validateWorkflow!(ctx);
+			expect(issues.map((i) => i.code)).toEqual(['REDUNDANT_LLM_OUTPUT_PARSE']);
+		});
+
+		it('allows JSON.parse when the node returns plain text', () => {
+			const code = createNode('n8n-nodes-base.code', 'Format', {
+				parameters: {
+					jsCode:
+						'const text = $json.output[0].content[0].text;\n' +
+						'return [{ json: JSON.parse(text) }];',
+				},
+			});
+			const { ctx } = llmToDownstream('@n8n/n8n-nodes-langchain.openAi', openAiParams(), code);
+
+			expect(llmTextPathValidator.validateWorkflow!(ctx)).toEqual([]);
+		});
+
+		it('points at the raw-payload path when Simplify Output is off', () => {
+			const code = createNode('n8n-nodes-base.code', 'Format', {
+				parameters: { jsCode: 'return [{ json: { text: $json.text } }];' },
+			});
+			const { ctx } = llmToDownstream(
+				'@n8n/n8n-nodes-langchain.openAi',
+				openAiParams({ simplify: false }),
+				code,
+			);
+
+			const issues = llmTextPathValidator.validateWorkflow!(ctx);
+			expect(issues).toHaveLength(1);
+			expect(issues[0].message).toContain('Simplify Output is off');
+		});
+	});
 });

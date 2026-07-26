@@ -1,0 +1,39 @@
+{
+	"type": "object",
+	"required": ["output"],
+	"properties": {
+		"output": {
+			"type": "array",
+			"description": "Assistant messages from the Responses API. There is NO `text` key on this node — reading `$json.text` always resolves undefined. For a single plain-text reply the assistant text is at `$json.output[0].content[0].text`. `output` can hold several message items and each message several content parts, so pick the index that matches the text you need.",
+			"items": {
+				"type": "object",
+				"required": ["type", "role", "content"],
+				"properties": {
+					"id": { "type": "string" },
+					"type": {
+						"type": "string",
+						"description": "Always `message` — simplified output keeps only message items"
+					},
+					"role": { "type": "string", "description": "Always `assistant`" },
+					"status": { "type": "string" },
+					"content": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"required": ["type", "text"],
+							"properties": {
+								"type": { "type": "string", "description": "Always `output_text`" },
+								"text": {
+									"type": "string",
+									"description": "The assistant's reply as a plain STRING. With an Output Format of JSON Object or JSON Schema the node parses this into an object instead — see the `structured` schema variant."
+								},
+								"annotations": { "type": "array", "items": { "type": "object" } }
+							}
+						}
+					}
+				}
+			}
+		}
+	},
+	"version": 1
+}

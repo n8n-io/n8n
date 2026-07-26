@@ -1,0 +1,54 @@
+{
+	"type": "object",
+	"required": ["output"],
+	"description": "Simplify Output is off, so the item is the full Responses API payload rather than just the assistant messages.",
+	"properties": {
+		"id": { "type": "string" },
+		"object": { "type": "string" },
+		"created_at": { "type": "number" },
+		"status": {
+			"type": "string",
+			"description": "`completed`, `incomplete`, `failed`, or `in_progress`"
+		},
+		"model": { "type": "string" },
+		"output": {
+			"type": "array",
+			"description": "All output items, NOT only assistant messages: reasoning summaries, tool calls, and built-in tool results are interleaved here. `output[0]` is therefore not reliably the reply — filter for `type === 'message'` first, then read `content[0].text`.",
+			"items": {
+				"type": "object",
+				"required": ["type"],
+				"properties": {
+					"id": { "type": "string" },
+					"type": {
+						"type": "string",
+						"description": "Item kind — `message`, `reasoning`, `function_call`, `web_search_call`, etc."
+					},
+					"role": { "type": "string" },
+					"status": { "type": "string" },
+					"content": {
+						"type": "array",
+						"description": "Present on `message` items only",
+						"items": {
+							"type": "object",
+							"properties": {
+								"type": { "type": "string" },
+								"text": {
+									"description": "String for a plain reply; an already-parsed object when Output Format is JSON Object or JSON Schema"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"usage": {
+			"type": "object",
+			"properties": {
+				"input_tokens": { "type": "number" },
+				"output_tokens": { "type": "number" },
+				"total_tokens": { "type": "number" }
+			}
+		}
+	},
+	"version": 1
+}

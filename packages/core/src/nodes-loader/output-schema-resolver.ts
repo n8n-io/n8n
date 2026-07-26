@@ -22,19 +22,18 @@ export interface OutputSchemaRef {
 	 */
 	versionFallback?: boolean;
 	/**
-	 * Output-layout variant for nodes whose shape depends on workflow context
-	 * (e.g. an attached output parser): probes `v<X>/output.<variant>.json`
-	 * before the plain `v<X>/output.json`. Only meaningful for refs without
-	 * resource/operation, and only with `versionFallback`.
+	 * Output-layout variant for nodes whose shape depends on parameters
+	 * (e.g. OpenAI `simplify`/output format) or on workflow context (e.g. an
+	 * attached output parser). Probes the variant file before the plain one —
+	 * `v<X>/<resource>/<operation>.<variant>.json` for discriminated refs,
+	 * `v<X>/output.<variant>.json` otherwise. Only honoured with
+	 * `versionFallback`; see `resolveOutputSchemaVariant` in n8n-workflow for
+	 * the config → variant mapping.
 	 */
 	variant?: string;
 }
 
-/**
- * Variant name for AI roots with an `ai_outputParser` attached — their items
- * carry the parser's fields instead of the plain-text shape.
- */
-export const OUTPUT_PARSER_SCHEMA_VARIANT = 'with-parser';
+export { OUTPUT_PARSER_SCHEMA_VARIANT } from 'n8n-workflow';
 
 /**
  * Node-type-aware schema lookup. Generation code depends on this shape so it
@@ -47,6 +46,8 @@ export type OutputSchemaLookup = (node: {
 	operation?: string;
 	/** Node has an `ai_outputParser` attached — resolves the `with-parser` layout variant. */
 	hasOutputParser?: boolean;
+	/** Full node parameters, used to resolve parameter-conditioned layout variants. */
+	parameters?: Record<string, unknown>;
 }) => Record<string, unknown> | undefined;
 
 /** Pad "1" / "1.2" to the on-disk "1.0.0" / "1.2.0" directory format. */
@@ -102,7 +103,8 @@ function orderFallbackCandidates(dirNames: string[], target: number[]): string[]
  * the caller's concern (the `/schemas` route probes with fsAccess before
  * serving). With `versionFallback` it returns the first *existing* match,
  * trying the exact version first, then the other available version dirs in
- * the `orderFallbackCandidates` order; for refs without resource/operation it
+ * the `orderFallbackCandidates` order, and a requested `variant` ahead of the
+ * base layout within each version dir; for refs without resource/operation it
  * also probes the version-level `v<X>/output.json` layout (used by trigger
  * nodes such as Webhook).
  */
@@ -111,10 +113,11 @@ export function resolveOutputSchemaPath(ref: OutputSchemaRef): string | undefine
 	const schemaBaseDir = path.join(nodeDir, '__schema__');
 	const exactVersionDir = `v${padVersion(version)}`;
 
-	const buildPath = (versionDir: string, filename?: string) => {
+	const buildPath = (versionDir: string, filename?: string, variantSuffix?: string) => {
 		const parts = [versionDir, resource, operation, filename].filter(
 			(part): part is string => typeof part === 'string' && part.length > 0,
 		);
+		if (variantSuffix) parts[parts.length - 1] += `.${variantSuffix}`;
 		const filePath = path.resolve(schemaBaseDir, parts.join('/') + '.json');
 		return isContainedWithin(schemaBaseDir, filePath) ? filePath : undefined;
 	};
@@ -131,11 +134,18 @@ export function resolveOutputSchemaPath(ref: OutputSchemaRef): string | undefine
 		return undefined;
 	}
 
-	// Nodes without resource/operation discriminators (currently only triggers,
-	// e.g. Webhook) store their single schema as `v<X>/output.json`.
+	// Nodes without resource/operation discriminators (e.g. triggers such as
+	// Webhook, and AI roots) store their single schema as `v<X>/output.json`.
 	const hasDiscriminators = Boolean(resource) || Boolean(operation);
 
 	for (const versionDir of [...new Set([exactVersionDir, ...available])]) {
+		// Discriminated refs carry the variant as a suffix on the operation file
+		// (`<operation>.<variant>.json`); an absent variant file falls through
+		// to the base layout below.
+		if (variant && hasDiscriminators) {
+			const variantPath = buildPath(versionDir, undefined, variant);
+			if (variantPath && existsSync(variantPath)) return variantPath;
+		}
 		const filePath = buildPath(versionDir);
 		if (filePath && existsSync(filePath)) return filePath;
 		if (!hasDiscriminators) {
