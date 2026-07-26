@@ -13,6 +13,7 @@ export { arrayInputCollapseValidator } from './array-input-collapse-validator';
 export { branchOutputValidator } from './branch-output-validator';
 export { chainLlmValidator } from './chain-llm-validator';
 export { codeNodeValidator } from './code-node-validator';
+export { codeNodePythonValidator } from './code-node-python-validator';
 export { connectionIndexValidator } from './connection-index-validator';
 export { dataTableColumnValidator } from './data-table-column-validator';
 export { dateMethodValidator } from './date-method-validator';

@@ -27,7 +27,7 @@ interface CollectedIssue {
 	/** 1-based line in the workflow source file, when resolvable */
 	line?: number;
 	severity: 'error' | 'warning';
-	source: 'graph' | 'schema' | 'source';
+	source: 'graph' | 'schema' | 'sdk' | 'jsCode' | 'pythonCode';
 }
 
 interface WorkflowBuilderLike {
@@ -339,7 +339,9 @@ export async function validateCommand(argv: string[] = process.argv.slice(3)): P
 				message: issue.message,
 				line: issue.line,
 				severity: issue.severity,
-				source: 'source',
+				source: issue.lintTarget,
+				nodeName: issue.nodeName,
+				parameterPath: issue.parameterPath,
 			}),
 		),
 	];
