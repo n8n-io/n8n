@@ -4,14 +4,15 @@
  * - SINGLE_ITEM_LIST_FIXTURE: a collection source mocked with one item hides
  *   array-vs-single bugs, so `$input.first()` assumptions verify green and
  *   break on the user's first real run.
- * - HTTP_ENVELOPE_NOT_UNWRAPPED: a page envelope (`{ orders: [...] }`) is one
- *   item, not one item per record. Loops and per-item Code need an unwrap
- *   (Split Out, or a Code node that maps the array field) first.
+ * - HTTP_ENVELOPE_NOT_UNWRAPPED: list APIs often return one n8n item wrapping
+ *   an array (`{ value: [...] }`, `{ results: [...] }`, …). Downstream nodes
+ *   must not treat `$input.all()` length or per-item iteration as record count
+ *   until that array field is unwrapped (Split Out, or Code that maps it).
  */
 
 import { isRecord } from '@n8n/utils/is-record';
 
-import { mainSuccessors, walkDownstream } from './connection-helpers';
+import { findUpstream, mainSuccessors, walkDownstream } from './connection-helpers';
 import { NODE_TYPES, isHttpRequestType } from '../../../constants/node-types';
 import type { GraphNode, NodeInstance } from '../../../types/base';
 import { extractExpressions } from '../../validation-helpers';
@@ -22,6 +23,8 @@ const SPLIT_OUT_TYPE = 'n8n-nodes-base.splitOut';
 const ITEM_LISTS_TYPE = 'n8n-nodes-base.itemLists';
 const AGGREGATE_TYPE = 'n8n-nodes-base.aggregate';
 const SUMMARIZE_TYPE = 'n8n-nodes-base.summarize';
+
+const MAX_UPSTREAM_HOPS = 6;
 
 /** Operations that return a collection rather than a single record. */
 const COLLECTION_OPERATIONS = new Set([
@@ -36,6 +39,7 @@ const COLLECTION_OPERATIONS = new Set([
 
 const FIRST_ITEM_READ = /\$input\.first\(\)|\$input\.all\(\)\[0\]|items\[0\]|\.first\(\)/;
 const ALL_ITEMS_READ = /\$input\.all\(\)|\$input\.last\(\)/;
+const ALL_ITEMS_CALL = /\$input\.all\s*\(\s*\)/;
 
 function declaredOutput(
 	node: NodeInstance<string, string, unknown>,
@@ -81,9 +85,42 @@ function isPerItemCode(node: NodeInstance<string, string, unknown>): boolean {
 	return node.type === CODE_NODE_TYPE && isRecord(params) && params.mode === 'runOnceForEachItem';
 }
 
-/** Nodes that treat their input as one item per record. */
-function isLoopConsumer(node: NodeInstance<string, string, unknown>): boolean {
-	return node.type === NODE_TYPES.SPLIT_IN_BATCHES || isPerItemCode(node);
+/** Code reads the array inside a response envelope before counting or iterating records. */
+function unwrapsEnvelopeArray(code: string): boolean {
+	return (
+		/\.json\.\w+\.(?:length|map|flatMap|filter|forEach|slice|reduce)\b/.test(code) ||
+		(/\.\w+\s*\?\?\s*\[\]/.test(code) && /\.json\.\w+/.test(code))
+	);
+}
+
+/**
+ * Treats n8n item count as record count, or iterates `$input.all()` items as
+ * records, without unwrapping a list API envelope first.
+ */
+function isEnvelopeMisconsumer(node: NodeInstance<string, string, unknown>): boolean {
+	if (node.type === NODE_TYPES.SPLIT_IN_BATCHES || isPerItemCode(node)) return true;
+
+	const code = jsCodeOf(node);
+	if (!code || !ALL_ITEMS_CALL.test(code) || unwrapsEnvelopeArray(code)) return false;
+
+	if (/\$input\.all\s*\(\s*\)\.length\b/.test(code)) return true;
+
+	const assigned = code.match(/(?:const|let|var)\s+(\w+)\s*=\s*\$input\.all\s*\(\s*\)/);
+	if (assigned) {
+		const variable = assigned[1];
+		if (new RegExp(`\\b${variable}\\.length\\s*===?\\s*0\\b`).test(code)) return true;
+		if (new RegExp(`for\\s*\\(\\s*(?:const|let|var)\\s+\\w+\\s+of\\s+${variable}\\b`).test(code)) {
+			return true;
+		}
+	}
+
+	if (/for\s*\(\s*(?:const|let|var)\s+\w+\s+of\s+\$input\.all\s*\(\s*\)/.test(code)) {
+		return true;
+	}
+
+	if (/\$input\.all\s*\(\s*\)\.map\s*\(/.test(code)) return true;
+
+	return false;
 }
 
 /** Nodes that collapse many items, or reads that assume a single item. */
@@ -104,14 +141,106 @@ function collapsesOrAssumesSingleItem(node: NodeInstance<string, string, unknown
 	return extractExpressions(params).some((entry) => FIRST_ITEM_READ.test(entry.expression));
 }
 
-/** Split Out / itemLists / a Code node that maps the envelope's array field. */
-function isUnwrapNode(node: NodeInstance<string, string, unknown>, arrayField: string): boolean {
+/** Split Out / itemLists / Code that maps an array field out of the envelope. */
+function isUnwrapNode(
+	node: NodeInstance<string, string, unknown>,
+	arrayField: string | undefined,
+): boolean {
 	if (node.type === SPLIT_OUT_TYPE || node.type === ITEM_LISTS_TYPE) return true;
 
 	const code = jsCodeOf(node);
 	if (!code) return false;
-	// An unwrap reads the array field and emits per-record items.
-	return code.includes(arrayField) && (code.includes('.map(') || code.includes('for '));
+
+	if (arrayField) {
+		return code.includes(arrayField) && (code.includes('.map(') || code.includes('for '));
+	}
+
+	return (
+		/\.json\.\w+\.(?:map|flatMap|filter|reduce)\s*\(/.test(code) ||
+		(/\bfor\s*\(/.test(code) && /\.json\.\w+/.test(code))
+	);
+}
+
+function envelopeArrayFieldForSource(
+	source: NodeInstance<string, string, unknown>,
+): string | undefined {
+	const output = declaredOutput(source);
+	if (!output) return undefined;
+	return findEnvelopeArrayField(unwrapItemJson(output[0]));
+}
+
+function likelyEnvelopeSource(source: NodeInstance<string, string, unknown>): boolean {
+	if (isHttpRequestType(source.type)) return true;
+	return envelopeArrayFieldForSource(source) !== undefined;
+}
+
+function buildEnvelopeNotUnwrappedMessage(
+	sourceName: string,
+	consumerName: string,
+	arrayField: string | undefined,
+): string {
+	const fieldHint = arrayField
+		? `under "${arrayField}"`
+		: 'with an array field on the response object';
+	const unwrapHint = arrayField
+		? `Split Out on "${arrayField}" (or Code that maps \`$json.${arrayField}\`)`
+		: 'Split Out on the array field (or Code that maps it, e.g. `$json.value.map(...)`)';
+
+	return (
+		`'${sourceName}' is a list API source that emits one n8n item wrapping records ${fieldHint}, ` +
+		`but '${consumerName}' uses $input.all() item count or iterates those items as records with no unwrap ` +
+		`in between. Item count ≠ record count — an empty list can still be one wrapper item. ` +
+		`Add ${unwrapHint} before counting or looping. Note $input.all().map(i => i.json) is not an unwrap.`
+	);
+}
+
+function findEnvelopeMisconsumerDownstream(
+	startNames: readonly string[],
+	nodes: ReadonlyMap<string, GraphNode>,
+	arrayField: string | undefined,
+): string | undefined {
+	return walkDownstream(startNames, nodes, (_name, candidate) => {
+		if (isUnwrapNode(candidate.instance, arrayField)) return 'stop';
+		if (isEnvelopeMisconsumer(candidate.instance)) return 'match';
+		return 'continue';
+	});
+}
+
+function validateEnvelopeMisconsumerCode(
+	node: NodeInstance<string, string, unknown>,
+	ctx: PluginContext,
+): ValidationIssue[] {
+	if (!isEnvelopeMisconsumer(node)) return [];
+
+	const sourceName = findUpstream(
+		node.name,
+		ctx.nodes,
+		(_name, candidate) => looksLikeCollectionSource(candidate.instance),
+		{ maxHops: MAX_UPSTREAM_HOPS },
+	);
+	if (sourceName === undefined) return [];
+
+	const sourceNode = ctx.nodes.get(sourceName)?.instance;
+	if (!sourceNode || !likelyEnvelopeSource(sourceNode)) return [];
+
+	const arrayField = envelopeArrayFieldForSource(sourceNode);
+	const hit = walkDownstream([sourceName], ctx.nodes, (name, candidate) => {
+		if (isUnwrapNode(candidate.instance, arrayField)) return 'stop';
+		if (name === node.name && isEnvelopeMisconsumer(candidate.instance)) return 'match';
+		return 'continue';
+	});
+	if (hit !== node.name) return [];
+
+	return [
+		{
+			code: 'HTTP_ENVELOPE_NOT_UNWRAPPED',
+			message: buildEnvelopeNotUnwrappedMessage(sourceName, node.name, arrayField),
+			severity: 'warning',
+			violationLevel: 'major',
+			nodeName: node.name,
+			parameterPath: 'jsCode',
+		},
+	];
 }
 
 /**
@@ -127,10 +256,11 @@ export const listFixtureValidator: ValidatorPlugin = {
 		graphNode: GraphNode,
 		ctx: PluginContext,
 	): ValidationIssue[] {
-		const output = declaredOutput(node);
-		if (!output || output.length === 0) return [];
+		const issues = validateEnvelopeMisconsumerCode(node, ctx);
 
-		const issues: ValidationIssue[] = [];
+		const output = declaredOutput(node);
+		if (!output || output.length === 0) return issues;
+
 		const successors = mainSuccessors(graphNode);
 		if (successors.length === 0) return issues;
 
@@ -138,20 +268,12 @@ export const listFixtureValidator: ValidatorPlugin = {
 		const arrayField = findEnvelopeArrayField(firstShape);
 
 		if (arrayField !== undefined && looksLikeCollectionSource(node)) {
-			const consumer = walkDownstream(successors, ctx.nodes, (_name, candidate) => {
-				if (isUnwrapNode(candidate.instance, arrayField)) return 'stop';
-				if (isLoopConsumer(candidate.instance)) return 'match';
-				return 'continue';
-			});
+			const consumer = findEnvelopeMisconsumerDownstream(successors, ctx.nodes, arrayField);
 
 			if (consumer !== undefined) {
 				issues.push({
 					code: 'HTTP_ENVELOPE_NOT_UNWRAPPED',
-					message:
-						`'${node.name}' emits one item wrapping a list under "${arrayField}", but '${consumer}' ` +
-						'consumes it per record with no unwrap in between. One envelope item is not one item per ' +
-						`record — add a Split Out on "${arrayField}" (or a Code node that maps it) before the loop. ` +
-						'Note $input.all().map(i => i.json) is not an unwrap.',
+					message: buildEnvelopeNotUnwrappedMessage(node.name, consumer, arrayField),
 					severity: 'warning',
 					violationLevel: 'major',
 					nodeName: node.name,

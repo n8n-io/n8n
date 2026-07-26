@@ -5,10 +5,12 @@ import type { PluginContext } from '../types';
 function createMockNode(
 	parameters: Record<string, unknown>,
 	version = '1.3',
+	type = '@n8n/n8n-nodes-langchain.outputParserStructured',
+	name = 'Structured Output Parser',
 ): NodeInstance<string, string, unknown> {
 	return {
-		type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-		name: 'Structured Output Parser',
+		type,
+		name,
 		version,
 		config: { parameters },
 	} as NodeInstance<string, string, unknown>;
@@ -27,8 +29,13 @@ function createContext(): PluginContext {
 	};
 }
 
-function codes(parameters: Record<string, unknown>, version = '1.3'): string[] {
-	const node = createMockNode(parameters, version);
+function codes(
+	parameters: Record<string, unknown>,
+	version = '1.3',
+	type = '@n8n/n8n-nodes-langchain.outputParserStructured',
+	name = 'Structured Output Parser',
+): string[] {
+	const node = createMockNode(parameters, version, type, name);
 	return structuredOutputParserValidator
 		.validateNode(node, createGraphNode(node), createContext())
 		.map((issue) => issue.code);
@@ -120,5 +127,73 @@ describe('structuredOutputParserValidator', () => {
 			lowPriority: [],
 		});
 		expect(codes({ schemaType: 'fromJson', jsonSchemaExample: example })).toEqual([]);
+	});
+
+	describe('Information Extractor', () => {
+		const type = '@n8n/n8n-nodes-langchain.informationExtractor';
+
+		it('ignores fromAttributes mode', () => {
+			expect(
+				codes({ schemaType: 'fromAttributes', jsonSchemaExample: SCHEMA_OBJECT }, '1.2', type),
+			).toEqual([]);
+		});
+
+		it('flags invalid fromJson example', () => {
+			expect(
+				codes({ schemaType: 'fromJson', jsonSchemaExample: SCHEMA_OBJECT }, '1.2', type),
+			).toContain('STRUCTURED_OUTPUT_PARSER_EXAMPLE_NOT_STRING');
+		});
+	});
+
+	describe('Code Tool', () => {
+		const type = '@n8n/n8n-nodes-langchain.toolCode';
+
+		it('ignores when specifyInputSchema is false', () => {
+			expect(
+				codes(
+					{ specifyInputSchema: false, schemaType: 'fromJson', jsonSchemaExample: SCHEMA_OBJECT },
+					'1.3',
+					type,
+				),
+			).toEqual([]);
+		});
+
+		it('flags invalid example when schema mode is enabled', () => {
+			expect(
+				codes(
+					{ specifyInputSchema: true, schemaType: 'fromJson', jsonSchemaExample: SCHEMA_OBJECT },
+					'1.3',
+					type,
+				),
+			).toContain('STRUCTURED_OUTPUT_PARSER_EXAMPLE_NOT_STRING');
+		});
+	});
+
+	describe('Call n8n Workflow Tool', () => {
+		const type = '@n8n/n8n-nodes-langchain.toolWorkflow';
+
+		it('ignores when specifyInputSchema is false', () => {
+			expect(
+				codes(
+					{ specifyInputSchema: false, schemaType: 'fromJson', jsonSchemaExample: SCHEMA_OBJECT },
+					'1.1',
+					type,
+				),
+			).toEqual([]);
+		});
+
+		it('flags JSON Schema content in fromJson mode', () => {
+			expect(
+				codes(
+					{
+						specifyInputSchema: true,
+						schemaType: 'fromJson',
+						jsonSchemaExample: JSON.stringify(SCHEMA_OBJECT),
+					},
+					'1.1',
+					type,
+				),
+			).toContain('STRUCTURED_OUTPUT_PARSER_SCHEMA_IN_EXAMPLE_FIELD');
+		});
 	});
 });

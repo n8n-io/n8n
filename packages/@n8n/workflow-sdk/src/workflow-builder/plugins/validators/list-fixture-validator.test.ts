@@ -135,6 +135,92 @@ describe('listFixtureValidator', () => {
 
 			expect(codesFor(set, nodes, 'Build Payload')).toEqual([]);
 		});
+
+		it('flags aggregate Code that uses item count for emptiness on an envelope', () => {
+			const http = createMockNode('n8n-nodes-base.httpRequest', 'Fetch Mail', {
+				output: [{ value: [] }],
+			});
+			const aggregate = createMockNode('n8n-nodes-base.code', 'Aggregate', {
+				parameters: {
+					jsCode: `const emails = $input.all();
+if (emails.length === 0) {
+  return [{ json: { hasEmails: false } }];
+}
+return [{ json: { hasEmails: true } }];`,
+				},
+			});
+			const nodes = new Map<string, GraphNode>([
+				['Fetch Mail', createGraphNode(http, new Map([[0, [conn('Aggregate')]]]))],
+				['Aggregate', createGraphNode(aggregate)],
+			]);
+
+			expect(codesFor(http, nodes, 'Fetch Mail')).toEqual(['HTTP_ENVELOPE_NOT_UNWRAPPED']);
+			expect(codesFor(aggregate, nodes, 'Aggregate')).toEqual(['HTTP_ENVELOPE_NOT_UNWRAPPED']);
+		});
+
+		it('flags aggregate Code after HTTP even without a declared output fixture', () => {
+			const http = createMockNode('n8n-nodes-base.httpRequest', 'Fetch Mail');
+			const aggregate = createMockNode('n8n-nodes-base.code', 'Aggregate', {
+				parameters: {
+					jsCode: `const rows = $input.all();
+if (rows.length === 0) return [{ json: { empty: true } }];
+for (const item of rows) {
+  const j = item.json;
+}
+return [{ json: { empty: false } }];`,
+				},
+			});
+			const nodes = new Map<string, GraphNode>([
+				['Fetch Mail', createGraphNode(http, new Map([[0, [conn('Aggregate')]]]))],
+				['Aggregate', createGraphNode(aggregate)],
+			]);
+
+			expect(codesFor(aggregate, nodes, 'Aggregate')).toEqual(['HTTP_ENVELOPE_NOT_UNWRAPPED']);
+		});
+
+		it('accepts aggregate Code that unwraps the envelope array before counting', () => {
+			const http = createMockNode('n8n-nodes-base.httpRequest', 'Fetch Mail', {
+				output: [{ value: [] }],
+			});
+			const aggregate = createMockNode('n8n-nodes-base.code', 'Aggregate', {
+				parameters: {
+					jsCode: `const rows = $input.first().json.value ?? [];
+if (rows.length === 0) {
+  return [{ json: { hasEmails: false } }];
+}
+return [{ json: { hasEmails: true, emailCount: rows.length } }];`,
+				},
+			});
+			const nodes = new Map<string, GraphNode>([
+				['Fetch Mail', createGraphNode(http, new Map([[0, [conn('Aggregate')]]]))],
+				['Aggregate', createGraphNode(aggregate)],
+			]);
+
+			expect(codesFor(aggregate, nodes, 'Aggregate')).toEqual([]);
+		});
+
+		it('accepts aggregate Code after Split Out on the envelope field', () => {
+			const http = createMockNode('n8n-nodes-base.httpRequest', 'Fetch Mail', {
+				output: [{ value: [{ id: 1 }] }],
+			});
+			const split = createMockNode('n8n-nodes-base.splitOut', 'Split Mail', {
+				parameters: { fieldToSplitOut: 'value' },
+			});
+			const aggregate = createMockNode('n8n-nodes-base.code', 'Aggregate', {
+				parameters: {
+					jsCode: `const emails = $input.all();
+if (emails.length === 0) return [{ json: { hasEmails: false } }];
+return [{ json: { hasEmails: true } }];`,
+				},
+			});
+			const nodes = new Map<string, GraphNode>([
+				['Fetch Mail', createGraphNode(http, new Map([[0, [conn('Split Mail')]]]))],
+				['Split Mail', createGraphNode(split, new Map([[0, [conn('Aggregate')]]]))],
+				['Aggregate', createGraphNode(aggregate)],
+			]);
+
+			expect(codesFor(aggregate, nodes, 'Aggregate')).toEqual([]);
+		});
 	});
 
 	describe('SINGLE_ITEM_LIST_FIXTURE', () => {
