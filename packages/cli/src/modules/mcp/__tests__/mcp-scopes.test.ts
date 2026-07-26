@@ -44,6 +44,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 import { BUILDER_TOOLS, getAllowedToolNames, TOOLS_BY_SCOPE } from '../mcp-scopes';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
 
@@ -125,6 +126,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(AiGatewayService, {
 				isAvailable: vi.fn().mockResolvedValue({ available: false }),
 			}),
+			mockInstance(McpPostSaveMetricsService),
 		);
 
 	beforeEach(() => {

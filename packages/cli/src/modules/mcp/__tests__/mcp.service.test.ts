@@ -34,11 +34,11 @@ import {
 	MCP_CANVAS_GROUPS_FLAG,
 } from '@n8n/api-types';
 
-import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionService } from '@/executions/execution.service';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
@@ -55,9 +55,10 @@ import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
-import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
+import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
 
 const mockAiGatewayService = () =>
@@ -124,6 +125,7 @@ describe('McpService', () => {
 			mockInstance(WorkflowPublishedDataService),
 			mockInstance(SubworkflowPolicyChecker),
 			mockAiGatewayService(),
+			mockInstance(McpPostSaveMetricsService),
 		);
 	});
 
@@ -173,6 +175,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
+				mockInstance(McpPostSaveMetricsService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -377,6 +380,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
+				mockInstance(McpPostSaveMetricsService),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1' });
@@ -571,6 +575,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
+				mockInstance(McpPostSaveMetricsService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -622,6 +627,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
+				mockInstance(McpPostSaveMetricsService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -698,6 +704,7 @@ describe('McpService', () => {
 					mockInstance(WorkflowPublishedDataService),
 					mockInstance(SubworkflowPolicyChecker),
 					mockAiGatewayService(),
+					mockInstance(McpPostSaveMetricsService),
 				);
 			};
 
