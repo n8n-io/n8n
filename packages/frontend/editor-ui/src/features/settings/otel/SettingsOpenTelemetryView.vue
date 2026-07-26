@@ -635,7 +635,6 @@ watch(
 	display: flex;
 	flex-direction: column;
 	width: 100%;
-	min-height: calc(100vh - var(--spacing--4xl));
 }
 
 .loading {
