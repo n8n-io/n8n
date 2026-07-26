@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import { confirmSaved } from './quickSaveNotification';
 import N8nSettingsSaveBar from './SettingsSaveBar.vue';
@@ -102,6 +102,202 @@ export const Floating: Story = {
 			description: {
 				story:
 					'With `floating`, the bar is `position: sticky` at the bottom of its container, so it hovers over the settings column (not the full window width) while there is more content below the fold. Scroll to the end and it settles into its natural in-flow position after the last settings row — the same place it rests on pages shorter than the scrollport. It just needs to be the last child of the settings content column; no flex or min-height wiring.',
+			},
+		},
+	},
+};
+
+export const DockedAtEnd: Story = {
+	render: () => ({
+		components: {
+			N8nSettingsSaveBar,
+			N8nSettingsSection,
+			N8nSettingsRowGroup,
+			N8nSettingsRow,
+			N8nInput,
+		},
+		setup() {
+			const value = ref('');
+			const panel = ref<HTMLElement | null>(null);
+			onMounted(() => {
+				if (panel.value) panel.value.scrollTop = panel.value.scrollHeight;
+			});
+			return { value, panel };
+		},
+		template: `
+			<div ref="panel" style="height: 22rem; overflow-y: auto; padding: var(--spacing--lg); box-sizing: border-box; background: var(--background--subtle); border-radius: var(--radius--md);">
+				<div style="max-width: 45rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--spacing--lg);">
+					<N8nSettingsSection title="Webhook" description="The panel starts scrolled to the very end.">
+						<N8nSettingsRowGroup>
+							<N8nSettingsRow v-for="n in 6" :key="n" :title="'Setting ' + n" description="A high-impact instance setting that requires an explicit save." :action-fill="true">
+								<template #action><N8nInput v-model="value" placeholder="Edit me" /></template>
+							</N8nSettingsRow>
+						</N8nSettingsRowGroup>
+					</N8nSettingsSection>
+					<N8nSettingsSaveBar floating :visible="true" @save="() => {}" @discard="() => {}" />
+				</div>
+			</div>
+		`,
+	}),
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Corner case: the end-of-page resting state. The panel starts scrolled to the very end, so the floating bar is DOCKED — sitting in flow 24px below the last settings row instead of hovering over content. Scroll up a little and it detaches back into its floating position. This is the moment where floating and in-flow behavior hand over to each other; judge whether the docked resting spot feels natural.',
+			},
+		},
+	},
+};
+
+export const ShortPage: Story = {
+	render: () => ({
+		components: {
+			N8nSettingsSaveBar,
+			N8nSettingsSection,
+			N8nSettingsRowGroup,
+			N8nSettingsRow,
+			N8nInput,
+		},
+		setup() {
+			const value = ref('');
+			return { value };
+		},
+		template: `
+			<div style="height: 22rem; overflow-y: auto; padding: var(--spacing--lg); box-sizing: border-box; background: var(--background--subtle); border-radius: var(--radius--md);">
+				<div style="max-width: 45rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--spacing--lg);">
+					<N8nSettingsSection title="Webhook" description="One row; the page never scrolls.">
+						<N8nSettingsRowGroup>
+							<N8nSettingsRow title="Endpoint" description="A high-impact instance setting that requires an explicit save." :action-fill="true">
+								<template #action><N8nInput v-model="value" placeholder="Edit me" /></template>
+							</N8nSettingsRow>
+						</N8nSettingsRowGroup>
+					</N8nSettingsSection>
+					<N8nSettingsSaveBar floating :visible="true" @save="() => {}" @discard="() => {}" />
+				</div>
+			</div>
+		`,
+	}),
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Corner case: a page shorter than the scrollport. Floating never engages — the bar simply rests in flow 24px after the last (only) row, top-anchored with the content rather than pinned to the bottom of the empty panel. The alternative (pinning to the viewport bottom across a large gap of empty space) was considered and rejected.',
+			},
+		},
+	},
+};
+
+export const AppearsAtPageEnd: Story = {
+	render: () => ({
+		components: {
+			N8nSettingsSaveBar,
+			N8nSettingsSection,
+			N8nSettingsRowGroup,
+			N8nSettingsRow,
+			N8nInput,
+		},
+		setup() {
+			const saved = 'https://collector.internal';
+			const draft = ref(saved);
+			const dirty = computed(() => draft.value !== saved);
+			const panel = ref<HTMLElement | null>(null);
+			onMounted(() => {
+				if (panel.value) panel.value.scrollTop = panel.value.scrollHeight;
+			});
+			const onDiscard = () => {
+				draft.value = saved;
+			};
+			const onSave = () => {
+				draft.value = saved;
+				confirmSaved('Settings saved');
+			};
+			return { draft, dirty, panel, onDiscard, onSave };
+		},
+		template: `
+			<div ref="panel" style="height: 22rem; overflow-y: auto; padding: var(--spacing--lg); box-sizing: border-box; background: var(--background--subtle); border-radius: var(--radius--md);">
+				<div style="max-width: 45rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--spacing--lg);">
+					<N8nSettingsSection title="Webhook" description="You are already at the end of the page. Edit the LAST field to reveal the bar.">
+						<N8nSettingsRowGroup>
+							<N8nSettingsRow v-for="n in 5" :key="n" :title="'Setting ' + n" description="A high-impact instance setting that requires an explicit save." :action-fill="true">
+								<template #action><N8nInput :model-value="''" placeholder="Scroll target" /></template>
+							</N8nSettingsRow>
+							<N8nSettingsRow title="OTLP endpoint" description="Edit me — the bar appears while you are at the page end." :action-fill="true">
+								<template #action><N8nInput v-model="draft" /></template>
+							</N8nSettingsRow>
+						</N8nSettingsRowGroup>
+					</N8nSettingsSection>
+					<N8nSettingsSaveBar floating :visible="dirty" @save="onSave" @discard="onDiscard" />
+				</div>
+			</div>
+		`,
+	}),
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Corner case: the bar APPEARS while the user is already scrolled to the very end. Mounting the bar makes the page taller, so it slides in floating 24px above the panel bottom — briefly overlapping the tail of the content — and a small extra scroll docks it below the last row. Judge whether that momentary overlap is acceptable; the alternative (pages permanently reserving bottom padding for a bar that is usually hidden) is what this design avoids. Discard or Save hides the bar again, shrinking the page back.',
+			},
+		},
+	},
+};
+
+export const NarrowColumn: Story = {
+	render: () => ({
+		components: {
+			N8nSettingsSaveBar,
+			N8nSettingsSection,
+			N8nSettingsRowGroup,
+			N8nSettingsRow,
+			N8nInput,
+		},
+		setup() {
+			const value = ref('');
+			return { value };
+		},
+		template: `
+			<div style="max-width: 22.5rem; padding: var(--spacing--lg); display: flex; flex-direction: column; gap: var(--spacing--lg);">
+				<N8nSettingsSection title="Webhook" description="A 360px column, e.g. a split view or a small window.">
+					<N8nSettingsRowGroup>
+						<N8nSettingsRow title="Endpoint" description="A high-impact setting." :action-fill="true">
+							<template #action><N8nInput v-model="value" placeholder="Edit me" /></template>
+						</N8nSettingsRow>
+					</N8nSettingsRowGroup>
+				</N8nSettingsSection>
+				<N8nSettingsSaveBar :visible="true" @save="() => {}" @discard="() => {}" />
+			</div>
+		`,
+	}),
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Corner case: a narrow settings column (360px). The bar sizes off the column, so it shrinks with it while keeping its 12px side overhang; the status message wraps first (its box may shrink), while the action buttons keep their intrinsic size. Judge whether the wrapped layout is acceptable at this width or whether the bar should stack its rows on narrow columns.',
+			},
+		},
+	},
+};
+
+export const LongLabels: Story = {
+	render: () => ({
+		components: { N8nSettingsSaveBar },
+		template: `
+			<div style="max-width: 45rem; padding: var(--spacing--lg);">
+				<N8nSettingsSaveBar
+					:visible="true"
+					message="You have unsaved changes to the collector connection and tracing configuration"
+					save-label="Save and apply configuration"
+					discard-label="Discard all pending changes"
+					@save="() => {}"
+					@discard="() => {}"
+				/>
+			</div>
+		`,
+	}),
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Corner case: verbose copy (long status message and long button labels, e.g. after translation). The status text wraps within its flexible box while the buttons keep their intrinsic width; nothing truncates silently. Judge whether multi-line status text is acceptable or whether the message should truncate with an ellipsis.',
 			},
 		},
 	},
