@@ -631,6 +631,47 @@ describe('createEngineRequests', () => {
 			expect(result[0].metadata.anthropic?.thinkingSignature).toBe('test_signature_123');
 		});
 
+		it('should preserve thinking blocks with empty thinking text (display "omitted")', async () => {
+			// Models with thinking display "omitted" (the default on Claude Fable 5 and
+			// Opus 4.7+) return thinking blocks whose `thinking` field is an empty string
+			// while `signature` carries the encrypted reasoning. The block (and especially
+			// the signature) must survive the engine round-trip.
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_omitted_1',
+					messageLog: [
+						{
+							content: [
+								{
+									type: 'thinking',
+									thinking: '',
+									signature: 'encrypted_signature_abc',
+								},
+								{
+									type: 'tool_use',
+									id: 'call_omitted_1',
+									name: 'calculator',
+									input: { expression: '2+2' },
+								},
+							],
+						},
+					],
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.anthropic).toBeDefined();
+			expect(result[0].metadata.anthropic?.thinkingContent).toBe('');
+			expect(result[0].metadata.anthropic?.thinkingType).toBe('thinking');
+			expect(result[0].metadata.anthropic?.thinkingSignature).toBe('encrypted_signature_abc');
+		});
+
 		it('should extract redacted_thinking content from Anthropic message', async () => {
 			const tools = [createMockTool('search', { sourceNodeName: 'Search' })];
 

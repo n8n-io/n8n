@@ -153,7 +153,7 @@ function extractThinkingMetadata(
 					}
 				}
 
-				if (thoughtSignature || thinkingContent) break;
+				if (thoughtSignature || thinkingContent !== undefined) break;
 			}
 		}
 	}
@@ -163,7 +163,11 @@ function extractThinkingMetadata(
 		result.google = { thoughtSignature };
 	}
 
-	if (thinkingContent && thinkingType) {
+	// Note: thinkingContent may be an empty string. Models that omit thinking text
+	// (e.g. thinking display "omitted", the default on Claude Fable 5, Mythos 5, and
+	// Opus 4.7+) return thinking blocks with an empty `thinking` field whose `signature`
+	// still carries the encrypted reasoning — the block must be preserved and replayed.
+	if (thinkingContent !== undefined && thinkingType) {
 		result.anthropic = {
 			thinkingContent,
 			thinkingType,
