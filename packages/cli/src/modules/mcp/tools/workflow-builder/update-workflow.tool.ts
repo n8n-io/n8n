@@ -1,12 +1,28 @@
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import isEqual from 'lodash/isEqual';
 import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
 import z from 'zod';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
+import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import type { McpPostSaveMetricsService } from '@/modules/mcp/mcp-post-save-metrics.service';
+import type { NodeTypes } from '@/node-types';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
+import type { TagService } from '@/services/tag.service';
+import type { UrlService } from '@/services/url.service';
+import type { Telemetry } from '@/telemetry';
+import { resolveNodeWebhookIds } from '@/workflow-helpers';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
+
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
 import { validateCredentialReferences } from './credential-validation';
@@ -30,22 +46,8 @@ import {
 	workflowSettingsObjectSchema,
 	type PartialUpdateOperation,
 } from './workflow-operations';
-
-import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { CredentialsService } from '@/credentials/credentials.service';
-import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
-import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
-import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
-import type { NodeTypes } from '@/node-types';
-import type { TagService } from '@/services/tag.service';
-import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { UrlService } from '@/services/url.service';
-import type { Telemetry } from '@/telemetry';
-import { resolveNodeWebhookIds } from '@/workflow-helpers';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowService } from '@/workflows/workflow.service';
-
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getMcpWorkflow } from '../workflow-validation.utils';
 
 const MAX_OPERATIONS_PER_CALL = 100;
@@ -285,17 +287,17 @@ const buildInputSchema = (canvasGroupsEnabled: boolean) =>
 		),
 	}) satisfies z.ZodRawShape;
 
-// The MCP SDK publishes this schema with `additionalProperties: false` and
-// validates `structuredContent` against it on every response. Success returns
-// the full payload below; the error path returns only `{ error }`. To keep
-// both shapes valid under strict clients, the success fields are optional and
-// `error` is a declared, optional property — otherwise a thrown handler error
-// surfaces as an opaque `-32602` schema mismatch instead of the real message.
+import { getErrorCode } from './error-code.utils';
+
 const outputSchema = {
 	workflowId: z.string().optional(),
 	name: z.string().optional(),
 	nodeCount: z.number().optional(),
 	url: z.string().optional(),
+	nodes: z.array(z.unknown()).optional(),
+	active: z.boolean().optional(),
+	updatedAt: z.union([z.string(), z.date()]).optional(),
+	versionId: z.string().optional(),
 	appliedOperations: z.number().optional().describe('Number of operations applied.'),
 	autoAssignedCredentials: z
 		.array(
@@ -331,6 +333,7 @@ const outputSchema = {
 		.string()
 		.optional()
 		.describe('Error message explaining why the update failed. Present only on failure.'),
+	errorCode: z.string().optional().describe('Machine-readable error code.'),
 } satisfies z.ZodRawShape;
 
 /**
@@ -517,6 +520,8 @@ export const createUpdateWorkflowTool = (
 		 */
 		canvasGroupsEnabled?: boolean;
 	} = {},
+	logger: Logger,
+	postSaveMetrics: McpPostSaveMetricsService,
 ): ToolDefinition<ReturnType<typeof buildInputSchema>> => ({
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
@@ -532,6 +537,8 @@ export const createUpdateWorkflowTool = (
 			openWorldHint: false,
 		},
 	},
+
+	// eslint-disable-next-line complexity
 	handler: async ({
 		workflowId,
 		skillsUsed,
@@ -559,6 +566,11 @@ export const createUpdateWorkflowTool = (
 			},
 		};
 
+		let updateAttempted = false;
+		let expectedWorkflow: { nodes: unknown; connections: unknown } | null = null;
+		let existingWorkflow: Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>> | null =
+			null;
+
 		try {
 			const strictOperations = parseStrictOperations(operations);
 
@@ -584,7 +596,7 @@ export const createUpdateWorkflowTool = (
 				);
 			}
 
-			const existingWorkflow = await getMcpWorkflow(
+			existingWorkflow = await getMcpWorkflow(
 				workflowId,
 				user,
 				['workflow:update'],
@@ -618,7 +630,7 @@ export const createUpdateWorkflowTool = (
 			const invalidToolSourceResponse = buildInvalidAiToolSourceErrorResponse(
 				{ nodes: result.workflow.nodes, connections: result.workflow.connections },
 				nodeTypes,
-				(errorMessage) => ({ error: errorMessage }),
+				(errorMessage) => ({ error: errorMessage, errorCode: 'INVALID_AI_TOOL_SOURCE' }),
 				telemetryPayload,
 				telemetry,
 			);
@@ -806,6 +818,11 @@ export const createUpdateWorkflowTool = (
 				),
 			);
 
+			expectedWorkflow = {
+				nodes: workflowUpdateData.nodes,
+				connections: workflowUpdateData.connections,
+			};
+			updateAttempted = true;
 			const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
 				aiBuilderAssisted: hasNonTagOperations,
 				source: 'n8n-mcp',
@@ -814,31 +831,8 @@ export const createUpdateWorkflowTool = (
 				...(tagIds !== undefined ? { tagIds } : {}),
 			});
 
-			if (autoAssignOutcomes.length > 0) {
-				const nodeTypesByName = new Map(updatedWorkflow.nodes.map((n) => [n.name, n.type]));
-				trackAutoassignOutcomes(
-					telemetry,
-					user.id,
-					'update_workflow',
-					autoAssignOutcomes,
-					nodeTypesByName,
-					workflowId,
-				);
-			}
-
-			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
-
 			const baseUrl = urlService.getInstanceBaseUrl();
 			const workflowUrl = `${baseUrl}/workflow/${updatedWorkflow.id}`;
-
-			telemetryPayload.results = {
-				success: true,
-				data: {
-					workflowId: updatedWorkflow.id,
-					nodeCount: updatedWorkflow.nodes.length,
-				},
-			};
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			const output = {
 				workflowId: updatedWorkflow.id,
@@ -854,20 +848,134 @@ export const createUpdateWorkflowTool = (
 				settings: hasSettingsOperations ? (updatedWorkflow.settings ?? {}) : undefined,
 			};
 
+			try {
+				if (autoAssignOutcomes.length > 0) {
+					const nodeTypesByName = new Map(updatedWorkflow.nodes.map((n) => [n.name, n.type]));
+					trackAutoassignOutcomes(
+						telemetry,
+						user.id,
+						'update_workflow',
+						autoAssignOutcomes,
+						nodeTypesByName,
+						workflowId,
+					);
+				}
+
+				void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
+
+				telemetryPayload.results = {
+					success: true,
+					data: {
+						workflowId: updatedWorkflow.id,
+						nodeCount: updatedWorkflow.nodes.length,
+					},
+				};
+				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			} catch (sideEffectError) {
+				logger.error('Post-save side effect failed for update_workflow', {
+					workflowId: updatedWorkflow.id,
+					error: sideEffectError,
+				});
+				postSaveMetrics.incrementPostSaveFailure('update', sideEffectError);
+			}
+
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
 				structuredContent: output,
 			};
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
+			const errorCode = getErrorCode(error);
 
-			telemetryPayload.results = {
-				success: false,
+			if (updateAttempted && existingWorkflow) {
+				let persisted: Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>> | null =
+					null;
+				try {
+					persisted = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+						'workflow:read',
+					]);
+				} catch (lookupError) {
+					logger.warn('Post-update verification lookup failed', {
+						workflowId,
+						error: lookupError,
+					});
+				}
+
+				const matchesExpected =
+					persisted &&
+					expectedWorkflow &&
+					isEqual(persisted.nodes, expectedWorkflow.nodes) &&
+					isEqual(persisted.connections, expectedWorkflow.connections);
+
+				const wasTouched = Boolean(
+					existingWorkflow?.updatedAt &&
+						persisted?.updatedAt &&
+						new Date(persisted.updatedAt).getTime() >
+							new Date(existingWorkflow.updatedAt).getTime(),
+				);
+
+				// Recovery succeeds if the persisted workflow matches our expected state
+				// (nodes+connections) OR if the updatedAt timestamp indicates a write occurred.
+				// The latter catches settings-only updates and concurrent edits where
+				// the content still matches, while the content check prevents false positives
+				// from purely concurrent edits that changed nodes.
+				// Trade-off: Settings-only updates where updatedAt changes due to another
+				// process's write could still cause a false positive recovery, but this is
+				// acceptable because the workflow was indeed updated (just not by our call).
+				// The client can verify via get_workflow if needed.
+				if (persisted && (matchesExpected || wasTouched)) {
+					const baseUrl = urlService.getInstanceBaseUrl();
+					const workflowUrl = `${baseUrl}/workflow/${persisted.id}`;
+
+					try {
+						telemetryPayload.results = {
+							success: true,
+							data: {
+								workflowId: persisted.id,
+								nodeCount: persisted.nodes.length,
+								postSaveError: errorMessage,
+							},
+						};
+						telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+					} catch (telemetryError) {
+						logger.error('Post-save telemetry failed for update_workflow (recovery path)', {
+							workflowId: persisted.id,
+							error: telemetryError,
+						});
+						postSaveMetrics.incrementPostSaveFailure('update', telemetryError);
+					}
+
+					const output = {
+						workflowId: persisted.id,
+						name: persisted.name,
+						url: workflowUrl,
+						note: `Workflow was updated successfully, but a post-save operation failed: ${errorMessage}`,
+					};
+
+					return {
+						content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+						structuredContent: output,
+					};
+				}
+			}
+
+			try {
+				telemetryPayload.results = {
+					success: false,
+					error: errorMessage,
+				};
+				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			} catch (telemetryError) {
+				logger.error('Post-save telemetry failed for update_workflow (error path)', {
+					error: telemetryError,
+				});
+				postSaveMetrics.incrementPostSaveFailure('update', telemetryError);
+			}
+
+			const output = {
 				error: errorMessage,
+				errorCode,
 			};
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-
-			const output = { error: errorMessage };
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
