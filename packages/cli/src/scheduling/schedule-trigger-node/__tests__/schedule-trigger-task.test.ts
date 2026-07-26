@@ -53,4 +53,45 @@ describe('buildScheduleTriggerItem', () => {
 			},
 		});
 	});
+
+	test('renders UTC as an explicit +00:00 offset and midnight as 12 am', () => {
+		expect(buildScheduleTriggerItem(new Date('2026-01-01T00:00:30.000Z'), 'UTC')).toEqual({
+			json: {
+				timestamp: '2026-01-01T00:00:30.000+00:00',
+				'Readable date': 'January 1st 2026, 12:00:30 am',
+				'Readable time': '12:00:30 am',
+				'Day of week': 'Thursday',
+				Year: '2026',
+				Month: 'January',
+				'Day of month': '01',
+				Hour: '00',
+				Minute: '00',
+				Second: '30',
+				Timezone: 'UTC (UTC+00:00)',
+			},
+		});
+	});
+
+	test('renders negative offsets and noon as 12 pm', () => {
+		const item = buildScheduleTriggerItem(new Date('2026-07-06T16:00:00.000Z'), 'America/New_York');
+		expect(item.json.timestamp).toBe('2026-07-06T12:00:00.000-04:00');
+		expect(item.json['Readable time']).toBe('12:00:00 pm');
+		expect(item.json.Timezone).toBe('America/New_York (UTC-04:00)');
+	});
+
+	test.each([
+		['2026-03-02', 'March 2nd 2026'],
+		['2026-03-03', 'March 3rd 2026'],
+		['2026-03-04', 'March 4th 2026'],
+		['2026-03-11', 'March 11th 2026'],
+		['2026-03-12', 'March 12th 2026'],
+		['2026-03-13', 'March 13th 2026'],
+		['2026-03-21', 'March 21st 2026'],
+		['2026-03-22', 'March 22nd 2026'],
+		['2026-03-23', 'March 23rd 2026'],
+		['2026-03-31', 'March 31st 2026'],
+	])('renders the ordinal day for %s', (date, expectedPrefix) => {
+		const item = buildScheduleTriggerItem(new Date(`${date}T09:05:07.000Z`), 'UTC');
+		expect(item.json['Readable date']).toBe(`${expectedPrefix}, 9:05:07 am`);
+	});
 });

@@ -4311,9 +4311,6 @@ importers:
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
-      moment-timezone:
-        specifier: 'catalog:'
-        version: 0.5.48
       ms:
         specifier: 'catalog:'
         version: 2.1.3

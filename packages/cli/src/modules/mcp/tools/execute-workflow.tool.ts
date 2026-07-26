@@ -31,6 +31,7 @@ import { findMcpSupportedTrigger } from '../mcp.utils';
 import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils';
 
 import type { McpService } from '@/modules/mcp/mcp.service';
+import { buildScheduleTriggerItem } from '@/scheduling/schedule-trigger-node/schedule-trigger-task';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -421,26 +422,8 @@ const getPinDataForTrigger = async (
 		case SCHEDULE_TRIGGER_NODE_TYPE: {
 			// For schedule triggers, we don't map any inputs but we can add expected datetime info
 			const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-			const moment = (await import('moment-timezone')).default;
-			const momentTz = moment.tz(timezone);
 			return {
-				[node.name]: [
-					{
-						json: {
-							timestamp: momentTz.toISOString(true),
-							'Readable date': momentTz.format('MMMM Do YYYY, h:mm:ss a'),
-							'Readable time': momentTz.format('h:mm:ss a'),
-							'Day of week': momentTz.format('dddd'),
-							Year: momentTz.format('YYYY'),
-							Month: momentTz.format('MMMM'),
-							'Day of month': momentTz.format('DD'),
-							Hour: momentTz.format('HH'),
-							Minute: momentTz.format('mm'),
-							Second: momentTz.format('ss'),
-							Timezone: `${timezone} (UTC${momentTz.format('Z')})`,
-						},
-					},
-				],
+				[node.name]: [buildScheduleTriggerItem(new Date(), timezone)],
 			};
 		}
 		default:

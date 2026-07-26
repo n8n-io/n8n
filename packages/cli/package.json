@@ -233,7 +233,6 @@
     "lodash": "catalog:",
     "lru-cache": "catalog:",
     "luxon": "catalog:",
-    "moment-timezone": "catalog:",
     "ms": "catalog:",
     "multer": "^2.2.0",
     "n8n-core": "workspace:*",
