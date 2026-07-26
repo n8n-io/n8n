@@ -13,7 +13,7 @@ describe('Execute Grist Node', () => {
 			},
 		},
 		nock: {
-			baseUrl: 'https://docs.getgrist.com',
+			baseUrl: 'https://api.getgrist.com',
 			mocks: [
 				{
 					method: 'put',
