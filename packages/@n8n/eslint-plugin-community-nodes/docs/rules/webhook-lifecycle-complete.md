@@ -19,6 +19,11 @@ This rule applies to node classes that:
 For every webhook group inside `webhookMethods` (typically `default`), the
 methods `checkExists`, `create`, and `delete` must all be implemented.
 
+`description`, `webhookMethods`, and a lifecycle group may be written in place
+or declared once as a `const` in the same file and referred to by name. A value
+that comes from an import, or from a binding that can be reassigned, cannot be
+read, and the class is left alone.
+
 Polling triggers (trigger nodes without a `webhooks` array and without
 `webhookMethods`) are intentionally out of scope.
 

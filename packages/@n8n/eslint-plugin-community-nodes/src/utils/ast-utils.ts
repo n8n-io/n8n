@@ -1,6 +1,33 @@
 import type { TSESTree } from '@typescript-eslint/utils';
-import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, ASTUtils, TSESLint } from '@typescript-eslint/utils';
 import { distance } from 'fastest-levenshtein';
+
+/**
+ * Follows an identifier to the value it stands for, when that value is fixed
+ * and written in this file: a `const` with an initialiser, or a function
+ * declaration. Anything that can hold something else by the time the node runs
+ * (`let`, a parameter, a re-declared name) reads as unresolved, and so does an
+ * import, whose value lives in another file the rule cannot see.
+ */
+export function resolveIdentifier(
+	scope: TSESLint.Scope.Scope,
+	identifier: TSESTree.Identifier,
+): TSESTree.Node | null {
+	const variable = ASTUtils.findVariable(scope, identifier);
+	if (variable === null || variable.defs.length !== 1) return null;
+
+	const [definition] = variable.defs;
+	if (definition === undefined) return null;
+
+	if (definition.type === TSESLint.Scope.DefinitionType.FunctionName) {
+		return definition.node;
+	}
+
+	if (definition.type !== TSESLint.Scope.DefinitionType.Variable) return null;
+	if (definition.parent.kind !== 'const') return null;
+
+	return definition.node.init;
+}
 
 function implementsInterface(node: TSESTree.ClassDeclaration, interfaceName: string): boolean {
 	return (
