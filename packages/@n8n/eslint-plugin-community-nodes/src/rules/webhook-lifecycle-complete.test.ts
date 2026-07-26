@@ -258,6 +258,30 @@ export class RegularClass {
 			],
 		},
 		{
+			name: 'webhookMethods behind an as-expression, delete missing',
+			code: createTriggerNode({
+				webhookMethods: '{ default: { checkExists, create } } as IWebhookMethods',
+			}),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: { group: 'default', missing: '`delete`' },
+				},
+			],
+		},
+		{
+			name: 'lifecycle group behind an as-expression, delete missing',
+			code: createTriggerNode({
+				webhookMethods: '{ default: { checkExists, create } as IWebhookMethods }',
+			}),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: { group: 'default', missing: '`delete`' },
+				},
+			],
+		},
+		{
 			name: 'lifecycle method overridden with undefined after a spread',
 			code: createTriggerNode({
 				webhookMethods: '{ default: { ...sharedLifecycle, delete: undefined } }',

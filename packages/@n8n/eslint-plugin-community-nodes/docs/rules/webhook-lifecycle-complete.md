@@ -23,6 +23,10 @@ reference, so extracting the handlers into named functions is fine. When a group
 spreads another object, a method it does not list itself is assumed to come from
 that spread, but a method it does list must still supply an implementation.
 
+Type annotations (`as`, `satisfies`, `!`, type assertions) are read through, so
+annotating `description`, `webhookMethods`, a lifecycle group, or an individual
+method does not change whether the rule applies.
+
 Polling triggers (trigger nodes without a `webhooks` array and without
 `webhookMethods`) are intentionally out of scope.
 
