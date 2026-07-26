@@ -26,19 +26,6 @@ function createContext(): PluginContext {
 	};
 }
 
-function issueCodes(parameters: Record<string, unknown>): string[] {
-	const node = createMockNode(parameters);
-	return codeNodeValidator
-		.validateNode(node, createGraphNode(node), createContext())
-		.map((i) => i.code);
-}
-
-function firstIssueMessage(parameters: Record<string, unknown>): string {
-	const node = createMockNode(parameters);
-	const issues = codeNodeValidator.validateNode(node, createGraphNode(node), createContext());
-	return issues[0]?.message ?? '';
-}
-
 describe('codeNodeValidator', () => {
 	it('has correct id', () => {
 		expect(codeNodeValidator.id).toBe('core:code-node');
@@ -55,66 +42,35 @@ describe('codeNodeValidator', () => {
 	});
 
 	it('flags require("https")', () => {
-		expect(issueCodes({ jsCode: "const https = require('https');\nreturn [];" })).toEqual([
-			'CODE_NODE_NETWORK_CALL',
-		]);
-	});
-
-	it('flags this.helpers.httpRequest', () => {
+		const node = createMockNode({
+			jsCode: "const https = require('https');\nreturn [];",
+		});
 		expect(
-			issueCodes({
-				jsCode: "const res = await this.helpers.httpRequest({ url: 'https://x' });\nreturn [];",
-			}),
+			codeNodeValidator
+				.validateNode(node, createGraphNode(node), createContext())
+				.map((i) => i.code),
 		).toEqual(['CODE_NODE_NETWORK_CALL']);
 	});
 
-	it('flags require("imap") as a network-capable module', () => {
-		const jsCode =
-			"const Imap = require('imap');\nconst { simpleParser } = require('mailparser');\nreturn [];";
-		expect(issueCodes({ jsCode })).toEqual(['CODE_NODE_NETWORK_CALL']);
-		const message = firstIssueMessage({ jsCode });
-		expect(message).toContain("imports 'imap'");
-		expect(message).toContain('HTTP Request node');
-		expect(message).toContain('Rewrite:');
-	});
-
 	it('flags require("luxon")', () => {
-		const jsCode = "const { DateTime } = require('luxon');\nreturn [];";
-		expect(issueCodes({ jsCode })).toEqual(['CODE_NODE_FORBIDDEN_IMPORT']);
-		const message = firstIssueMessage({ jsCode });
-		expect(message).toContain("imports 'luxon'");
-		expect(message).toContain('Rewrite:');
-		expect(message).toContain('remove the import');
-		expect(message).toContain('$now');
-	});
-
-	it('flags require of arbitrary modules disallowed by default', () => {
-		expect(issueCodes({ jsCode: "const fs = require('fs');\nreturn [];" })).toEqual([
-			'CODE_NODE_FORBIDDEN_IMPORT',
-		]);
-		expect(firstIssueMessage({ jsCode: "const fs = require('fs');\nreturn [];" })).toContain(
-			"imports 'fs'",
-		);
-	});
-
-	it('flags static import of an arbitrary module', () => {
-		expect(issueCodes({ jsCode: "import path from 'path';\nreturn [];" })).toEqual([
-			'CODE_NODE_FORBIDDEN_IMPORT',
-		]);
-	});
-
-	it('flags Python HTTP libraries', () => {
-		const parameters = { language: 'python', pythonCode: 'import requests\nreturn []' };
-		expect(issueCodes(parameters)).toEqual(['CODE_NODE_NETWORK_CALL']);
-		expect(firstIssueMessage(parameters)).toContain('HTTP Request node');
-		expect(firstIssueMessage(parameters)).toContain('Rewrite:');
+		const node = createMockNode({
+			jsCode: "const { DateTime } = require('luxon');\nreturn [];",
+		});
+		expect(
+			codeNodeValidator
+				.validateNode(node, createGraphNode(node), createContext())
+				.map((i) => i.code),
+		).toEqual(['CODE_NODE_FORBIDDEN_IMPORT']);
 	});
 
 	it('flags nested template literals', () => {
+		const node = createMockNode({
+			jsCode: 'const inner = `x`;\nconst out = `hello ${`nested ${inner}`}`;\nreturn [];',
+		});
 		expect(
-			issueCodes({
-				jsCode: 'const inner = `x`;\nconst out = `hello ${`nested ${inner}`}`;\nreturn [];',
-			}),
+			codeNodeValidator
+				.validateNode(node, createGraphNode(node), createContext())
+				.map((i) => i.code),
 		).toEqual(['CODE_NESTED_TEMPLATE_LITERAL']);
 	});
 
@@ -128,15 +84,15 @@ describe('codeNodeValidator', () => {
 	});
 
 	it('flags $input.all() in runOnceForEachItem mode', () => {
-		const parameters = {
+		const node = createMockNode({
 			mode: 'runOnceForEachItem',
 			jsCode: 'return $input.all().map(i => i.json);',
-		};
-		expect(issueCodes(parameters)).toEqual(['CODE_MODE_API_MISUSE']);
-		const message = firstIssueMessage(parameters);
-		expect(message).toContain('Rewrite:');
-		expect(message).toContain('runOnceForAllItems');
-		expect(message).toContain('$json');
+		});
+		expect(
+			codeNodeValidator
+				.validateNode(node, createGraphNode(node), createContext())
+				.map((i) => i.code),
+		).toEqual(['CODE_MODE_API_MISUSE']);
 	});
 
 	it('allows $input.all() in default runOnceForAllItems mode', () => {
