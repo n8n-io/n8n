@@ -525,6 +525,24 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(response.errorCode).toBe('UNKNOWN_ERROR');
 		});
 
+		test('does not record post-save failure metric when telemetry fails on error path', async () => {
+			mockParseAndValidate.mockRejectedValue(new Error('Invalid syntax at line 5'));
+			(telemetry.track as Mock).mockImplementationOnce(() => {
+				throw new Error('Telemetry pipeline exploded');
+			});
+
+			const result = await callHandler({ code: 'bad code' });
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toBe('Invalid syntax at line 5');
+			expect(postSaveMetrics.incrementPostSaveFailure).not.toHaveBeenCalled();
+			expect(logger.error).toHaveBeenCalledWith(
+				'Telemetry failed for create_workflow_from_code (error path)',
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+		});
+
 		test('includes errorCode on the folderId-without-projectId early-return error', async () => {
 			const result = await callHandler({ code: 'const wf = ...', folderId: 'folder-1' });
 

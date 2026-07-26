@@ -503,10 +503,9 @@ export const createCreateWorkflowFromCodeTool = (
 				};
 				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 			} catch (telemetryError) {
-				logger.error('Post-save telemetry failed for create_workflow_from_code (error path)', {
+				logger.error('Telemetry failed for create_workflow_from_code (error path)', {
 					error: telemetryError,
 				});
-				postSaveMetrics.incrementPostSaveFailure('create', telemetryError);
 			}
 
 			const hint = getSdkReferenceHint(error, {

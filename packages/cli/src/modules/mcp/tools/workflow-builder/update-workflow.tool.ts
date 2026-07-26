@@ -983,10 +983,9 @@ export const createUpdateWorkflowTool = (
 				};
 				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 			} catch (telemetryError) {
-				logger.error('Post-save telemetry failed for update_workflow (error path)', {
+				logger.error('Telemetry failed for update_workflow (error path)', {
 					error: telemetryError,
 				});
-				postSaveMetrics.incrementPostSaveFailure('update', telemetryError);
 			}
 
 			const output = {

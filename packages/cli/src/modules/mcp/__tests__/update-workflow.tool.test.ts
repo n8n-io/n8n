@@ -560,6 +560,28 @@ describe('update-workflow MCP tool', () => {
 			);
 		});
 
+		test('does not record post-save failure metric when telemetry fails on error path', async () => {
+			findWorkflowMock.mockResolvedValue(null);
+			(telemetry.track as Mock).mockImplementationOnce(() => {
+				throw new Error('Telemetry pipeline exploded');
+			});
+
+			const result = await callHandler({
+				workflowId: 'non-existent-id',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+				],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(postSaveMetrics.incrementPostSaveFailure).not.toHaveBeenCalled();
+			expect(logger.error).toHaveBeenCalledWith(
+				'Telemetry failed for update_workflow (error path)',
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+		});
+
 		test('recovers from a thrown post-save error when persisted nodes and connections match expected', async () => {
 			const expectedWf = buildExistingWorkflow();
 			expectedWf.nodes.find((n) => n.name === 'B')!.parameters = {
