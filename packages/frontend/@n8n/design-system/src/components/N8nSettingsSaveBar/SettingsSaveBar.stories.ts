@@ -26,7 +26,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'The explicit-save affordance for high-impact instance settings. It stays hidden until there are unsaved changes, then slides up showing an "Unsaved changes" status on the left plus Discard (outline) and Save (solid) actions on the right — the primary action sits on the far right, consistent with dialogs. It is presentational: the consumer owns `visible` (bind it to a dirty flag), `saving`, and reacts to `save`/`discard`. On a successful save, hide the bar and confirm through the existing app notification (`useToast().showMessage` in the app). The bar is a gently rounded (12px) bordered rectangle with a prominent shadow that spans its container — the settings content column — plus its own 12px side padding (720px column → 744px bar), so it sits a touch proud of the column while its inner edges align exactly with the settings rows: the status message starts on the rows\' left edge and the Save button ends on their right edge. Render it as the last child of the settings content column; set `floating` to stick it 24px above the bottom of the scrollport while scrolling (make the column a `min-height: 100%` flex column inside the scroll container so the bar stays pinned at the viewport bottom on short pages too). Mirrors Figma 5991:7910.',
+					'The explicit-save affordance for high-impact instance settings. It stays hidden until there are unsaved changes, then slides up showing an "Unsaved changes" status on the left plus Discard (outline) and Save (solid) actions on the right — the primary action sits on the far right, consistent with dialogs. It is presentational: the consumer owns `visible` (bind it to a dirty flag), `saving`, and reacts to `save`/`discard`. On a successful save, hide the bar and confirm through the existing app notification (`useToast().showMessage` in the app). The bar is a gently rounded (12px) bordered rectangle with a prominent shadow that spans its container — the settings content column — plus its own 12px side padding (720px column → 744px bar), so it sits a touch proud of the column while its inner edges align exactly with the settings rows: the status message starts on the rows\' left edge and the Save button ends on their right edge. Render it as the last child of the settings content column; set `floating` to make it float 24px above the bottom of the scrollport while there is more content below the fold — at the end of the page (or on pages shorter than the scrollport) it settles into flow after the last settings row. Plain `position: sticky`, no host wiring needed. Mirrors Figma 5991:7910.',
 			},
 		},
 	},
@@ -84,8 +84,8 @@ export const Floating: Story = {
 		},
 		template: `
 			<div style="height: 22rem; overflow-y: auto; padding: var(--spacing--lg); box-sizing: border-box; background: var(--background--subtle); border-radius: var(--radius--md);">
-				<div style="min-height: 100%; box-sizing: border-box; max-width: 45rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--spacing--lg);">
-					<N8nSettingsSection title="Webhook" description="Scroll the panel — the save bar sticks to the bottom of the column.">
+				<div style="max-width: 45rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--spacing--lg);">
+					<N8nSettingsSection title="Webhook" description="Scroll the panel — the save bar floats above the bottom, then docks after the last row at the end.">
 						<N8nSettingsRowGroup>
 							<N8nSettingsRow v-for="n in 6" :key="n" :title="'Setting ' + n" description="A high-impact instance setting that requires an explicit save." :action-fill="true">
 								<template #action><N8nInput v-model="value" placeholder="Edit me" /></template>
@@ -101,7 +101,7 @@ export const Floating: Story = {
 		docs: {
 			description: {
 				story:
-					'With `floating`, the bar is `position: sticky` at the bottom of its container, so it hovers over the settings column (not the full window width) while the content scrolls beneath it. The floating contract: the bar is the last child of a flex column with `min-height: 100%` inside the scroll container — the bar carries `margin-top: auto`, so on pages shorter than the scrollport it is still pushed down and pinned at the bottom with its usual gap.',
+					'With `floating`, the bar is `position: sticky` at the bottom of its container, so it hovers over the settings column (not the full window width) while there is more content below the fold. Scroll to the end and it settles into its natural in-flow position after the last settings row — the same place it rests on pages shorter than the scrollport. It just needs to be the last child of the settings content column; no flex or min-height wiring.',
 			},
 		},
 	},
@@ -206,13 +206,12 @@ export const SettingsFlow: Story = {
 
 			return { draft, saving, dirty, telemetry, onSave, onDiscard, onToggleTelemetry };
 		},
-		// Full-height flex-column page (the floating contract): the bar is the LAST CHILD OF THE
-		// SETTINGS COLUMN, which flex-grows to fill the scrollport, so even though this page is
-		// shorter than the viewport the bar's `margin-top: auto` pushes it to the bottom, where
-		// its sticky offset pins it 24px above the viewport edge.
+		// The bar is the LAST CHILD OF THE SETTINGS COLUMN. This page is shorter than the
+		// viewport, so the floating bar rests in flow right after the last section — floating
+		// only kicks in when there is more content below the fold.
 		template: `
-			<div style="min-height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; padding: var(--spacing--lg); background: var(--background--subtle);">
-				<div style="width: 100%; max-width: 45rem; margin-inline: auto; flex: 1; display: flex; flex-direction: column; gap: var(--spacing--xl);">
+			<div style="min-height: 100vh; box-sizing: border-box; padding: var(--spacing--lg); background: var(--background--subtle);">
+				<div style="width: 100%; max-width: 45rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--spacing--xl);">
 					<N8nSettingsSection title="Instance" description="High-impact fields require an explicit save.">
 						<N8nSettingsRowGroup>
 							<N8nSettingsRow title="Instance name" description="Shown in the header and in emails." :action-fill="true">
@@ -250,7 +249,7 @@ export const SettingsFlow: Story = {
 		docs: {
 			description: {
 				story:
-					"A realistic settings page combining both save modes: the high-impact Instance fields drive the floating explicit-save bar, while the low-impact telemetry toggle saves instantly. Both confirm through the existing app notification. The page is deliberately shorter than the viewport to show that the floating bar still pins to the bottom of the screen with its 24px gap (the full-height flex-column wrapper plus the bar's auto top margin).",
+					'A realistic settings page combining both save modes: the high-impact Instance fields drive the floating explicit-save bar, while the low-impact telemetry toggle saves instantly. Both confirm through the existing app notification. The page is deliberately shorter than the viewport to show the floating bar at rest: it sits in flow right after the last section, since floating only engages while there is more content below the fold.',
 			},
 		},
 	},

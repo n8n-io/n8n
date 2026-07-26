@@ -665,13 +665,8 @@ const components = {
 
 // Wrapper style shared by every full-page story so each reads as a real, full-height scrollable
 // settings page (no windowed box). It deliberately paints no background of its own, so wrapped
-// stories sit on the same theme background as the unwrapped ones. The flex column is part of the
-// floating save bar contract: the bar (last child, `margin-top: auto`) gets pushed to the bottom
-// of the scrollport even when the page content is shorter than the viewport, where its sticky
-// offset gives the usual 24px gap; on long pages the auto margin has no free space to absorb, so
-// scrolling behavior is unchanged.
-const fullPageViewportStyle =
-	'height: 100vh; overflow-y: auto; display: flex; flex-direction: column;';
+// stories sit on the same theme background as the unwrapped ones.
+const fullPageViewportStyle = 'height: 100vh; overflow-y: auto;';
 
 // Bordered, rounded metrics card mirroring the Settings Row `Custom` story: three equal columns
 // (tiles) separated by vertical dividers, built from DS border/radius/spacing tokens. Each tile
@@ -1016,11 +1011,11 @@ export const ExampleSettingsPage: Story = {
 		// visible and scrolls naturally (rather than being clipped inside a short windowed box). The
 		// floating save bar is the last child of the layout's content column: it spans the column
 		// plus its own side padding (12px proud of the 720px column, inner edges aligned with the
-		// settings rows) and sticks to the bottom of the viewport; the layout gets 64px
-		// (--spacing--3xl) of bottom scroll padding so the last row can clear the floating bar.
+		// settings rows), floats above the bottom of the viewport while there is more content below
+		// the fold, and docks after the last row at the end of the page.
 		template: `
 			<div style="${fullPageViewportStyle}">
-				<N8nSettingsLayout style="padding-block-end: var(--spacing--3xl);">
+				<N8nSettingsLayout>
 					<N8nSettingsPageHeader
 						title="General"
 						description="Instance-wide defaults for naming, scheduling, email, and logging."
@@ -1092,7 +1087,7 @@ export const ExampleSettingsPage: Story = {
 		docs: {
 			description: {
 				story:
-					'A realistic General settings page built from the `N8nSettings*` family inside a full-height scrollable viewport. Editing any high-impact field (instance name/URL, timezone, sender email, log level) flips a dirty flag that slides the floating `N8nSettingsSaveBar` up — a gently rounded bar spanning the 720px content column plus its own 12px side padding (so its inner edges align with the settings rows) with the prominent `--shadow--xl`, resting 24px above the bottom, its Save action on the far right. Discard reverts the draft and hides the bar; Save shows the loading state, commits, hides the bar, and confirms through the existing app notification (the bottom-right `ElNotification` that `useToast()` shows in the app). The low-impact telemetry toggle saves instantly through the same notification. The page carries 64px (`--spacing--3xl`) of bottom scroll padding so the last row clears the floating bar.',
+					'A realistic General settings page built from the `N8nSettings*` family inside a full-height scrollable viewport. Editing any high-impact field (instance name/URL, timezone, sender email, log level) flips a dirty flag that slides the floating `N8nSettingsSaveBar` up — a gently rounded bar spanning the 720px content column plus its own 12px side padding (so its inner edges align with the settings rows) with the prominent `--shadow--xl`, floating 24px above the bottom while there is more content below the fold and docking after the last row at the end of the page, its Save action on the far right. Discard reverts the draft and hides the bar; Save shows the loading state, commits, hides the bar, and confirms through the existing app notification (the bottom-right `ElNotification` that `useToast()` shows in the app). The low-impact telemetry toggle saves instantly through the same notification.',
 			},
 		},
 	},

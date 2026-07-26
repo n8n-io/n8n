@@ -19,13 +19,11 @@ export interface SettingsSaveBarProps {
 	/** Disables the Save button (e.g. when the form is invalid). */
 	saveDisabled?: boolean;
 	/**
-	 * Sticks the bar to the bottom of the scrollport so it floats over the settings column.
-	 * Contract: render the bar as the last child of the settings content column, and make that
-	 * column a flex column with `min-height: 100%` inside the scroll container (the sticky-footer
-	 * pattern). The bar carries `margin-top: auto`, so on short pages it is pushed to the column
-	 * bottom, where `position: sticky` lifts it to its usual 24px viewport gap; on long pages the
-	 * auto margin collapses to zero and the bar floats over the scrolling content exactly as
-	 * before.
+	 * Floats the bar 24px above the bottom of the scrollport while there is more content below
+	 * the fold; once the user reaches the end of the page (or the page is shorter than the
+	 * scrollport) the bar settles into its natural in-flow position after the last settings row.
+	 * Contract: render the bar as the last child of the settings content column — plain
+	 * `position: sticky` does the rest, no host wiring needed.
 	 */
 	floating?: boolean;
 	/** Allow Cmd/Ctrl+S to trigger a save while the bar is visible and enabled. */
@@ -155,17 +153,13 @@ $slide-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	bottom: var(--spacing--lg);
 	z-index: 2;
 	/*
-	 * Sticky-footer half of the floating contract (see the `floating` prop docs). Sticky alone
-	 * only LIFTS the bar within its parent's box — on a page shorter than the scrollport the
-	 * parent ends right after the content, so the bar would sit in flow instead of at the
-	 * viewport bottom. Inside the required flex-column wrapper (min-height: 100%), the auto top
-	 * margin absorbs the free space and pushes the bar to the wrapper bottom, where the sticky
-	 * `bottom` offset yields the usual 24px gap. On long pages there is no free space (and in
-	 * plain block layout `auto` computes to 0), so nothing changes. `!important` for the same
-	 * reason as the `margin-inline: auto` above: host margin resets with higher specificity
-	 * (e.g. Storybook's `#storybook-root > * { margin: ... }`) must not defeat the auto margin.
+	 * Native sticky mechanics carry the whole behavior (see the `floating` prop docs): while the
+	 * bar's natural position is below the fold it floats 24px above the scrollport bottom, and
+	 * when the user scrolls to the end of the page — or the page is shorter than the scrollport —
+	 * it docks into flow after the last settings row. The top margin is the docked bar's gap from
+	 * that row.
 	 */
-	margin-top: auto !important;
+	margin-block-start: var(--spacing--lg);
 }
 
 /*
