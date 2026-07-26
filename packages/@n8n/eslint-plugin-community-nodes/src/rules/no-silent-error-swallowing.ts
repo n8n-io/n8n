@@ -3,19 +3,12 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import {
 	createRule,
 	findClassProperty,
+	getPropertyKeyName,
 	isNodeTypeClass,
 	WEBHOOK_LIFECYCLE_METHODS,
 } from '../utils/index.js';
 
 const LIFECYCLE_METHODS: readonly string[] = WEBHOOK_LIFECYCLE_METHODS;
-
-/** Returns the static name of a non-computed object property key, or null. */
-function getPropertyName(property: TSESTree.Property): string | null {
-	if (property.computed) return null;
-	if (property.key.type === AST_NODE_TYPES.Identifier) return property.key.name;
-	if (property.key.type === AST_NODE_TYPES.Literal) return String(property.key.value);
-	return null;
-}
 
 function isFunctionNode(node: TSESTree.Node): boolean {
 	return (
@@ -81,7 +74,7 @@ export const NoSilentErrorSwallowingRule = createRule({
 					for (const methodProperty of groupProperty.value.properties) {
 						if (methodProperty.type !== AST_NODE_TYPES.Property) continue;
 
-						const methodName = getPropertyName(methodProperty);
+						const methodName = getPropertyKeyName(methodProperty);
 						if (methodName === null || !LIFECYCLE_METHODS.includes(methodName)) continue;
 
 						const fn = methodProperty.value;

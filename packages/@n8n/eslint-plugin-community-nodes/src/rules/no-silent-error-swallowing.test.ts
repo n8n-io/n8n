@@ -175,6 +175,32 @@ export class RegularClass {
 			errors: [{ messageId: 'silentReturn', data: { method: 'delete' } }],
 		},
 		{
+			name: 'lifecycle method written with a computed literal key',
+			code: createTriggerNode(`{
+				default: {
+					['delete']: async function (this: IHookFunctions): Promise<boolean> {
+						try {
+							return await this.helpers.httpRequest({ url: 'https://example.com' });
+						} catch (error) {}
+					},
+				},
+			}`),
+			errors: [{ messageId: 'emptyCatch', data: { method: 'delete' } }],
+		},
+		{
+			name: 'lifecycle group written with a quoted key',
+			code: createTriggerNode(`{
+				'default': {
+					async delete(this: IHookFunctions): Promise<boolean> {
+						try {
+							return await this.helpers.httpRequest({ url: 'https://example.com' });
+						} catch (error) {}
+					},
+				},
+			}`),
+			errors: [{ messageId: 'emptyCatch', data: { method: 'delete' } }],
+		},
+		{
 			name: 'catch block with a bare return',
 			code: createTriggerNode(`{
 				default: {
