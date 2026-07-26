@@ -26,7 +26,6 @@ describe('informational validation codes', () => {
 		expect(INFORMATIONAL_VALIDATION_CODES.has('SUBNODE_UNSAFE_JSON_REFERENCE')).toBe(true);
 		expect(INFORMATIONAL_VALIDATION_CODES.has('MISSING_EXECUTE_ONCE')).toBe(true);
 		expect(INFORMATIONAL_VALIDATION_CODES.has('WEEKDAY_DIGEST_CADENCE')).toBe(true);
-		expect(INFORMATIONAL_VALIDATION_CODES.has('HTTP_TEXT_BODY_FIELD')).toBe(true);
 		expect(INFORMATIONAL_VALIDATION_CODES.has('SIDE_EFFECT_JSON_CHAIN')).toBe(true);
 		expect(INFORMATIONAL_VALIDATION_CODES.has('CODE_NODE_FORBIDDEN_IMPORT')).toBe(true);
 		expect(INFORMATIONAL_VALIDATION_CODES.has('SDK_UNSOLICITED_STICKY')).toBe(true);
@@ -41,6 +40,18 @@ describe('informational validation codes', () => {
 		expect(INFORMATIONAL_VALIDATION_CODES.has('HTTP_PAGINATION_MISSING_OUTPUT_SHAPE')).toBe(false);
 		expect(isInformationalValidationCode('HTTP_PAGINATION_ENVELOPE_RESPONSE_IS_EMPTY')).toBe(false);
 		expect(isInformationalValidationCode('HTTP_PAGINATION_MISSING_OUTPUT_SHAPE')).toBe(false);
+	});
+
+	it('treats HTTP text-body and structured-output-parser codes as blocking', () => {
+		for (const code of [
+			'HTTP_TEXT_BODY_FIELD',
+			'STRUCTURED_OUTPUT_PARSER_EXAMPLE_NOT_STRING',
+			'STRUCTURED_OUTPUT_PARSER_SCHEMA_IN_EXAMPLE_FIELD',
+			'STRUCTURED_OUTPUT_PARSER_EXAMPLE_INVALID',
+		]) {
+			expect(INFORMATIONAL_VALIDATION_CODES.has(code)).toBe(false);
+			expect(isInformationalValidationCode(code)).toBe(false);
+		}
 	});
 
 	it('partitionValidationIssues separates blocking from informational', () => {

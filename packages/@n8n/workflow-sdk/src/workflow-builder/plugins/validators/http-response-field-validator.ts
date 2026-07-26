@@ -4,7 +4,8 @@
  * With Response Format `text`, the HTTP Request node puts the body string under
  * the Output Field option (default `data`) — never under `body`. Reading
  * `$json.body` (or `$('Node').item.json.body`) after a text-format fetch is
- * always undefined and silently breaks length/emptiness checks.
+ * always undefined and silently breaks length/emptiness checks. The same
+ * applies to `item.json.body` in `$input.all().map(...)` over the HTTP output.
  */
 
 import { isRecord } from '@n8n/utils/is-record';
@@ -19,6 +20,8 @@ const CODE_NODE_TYPE = 'n8n-nodes-base.code';
 
 const JSON_BODY_FIELD = /\$json\.body\b/;
 const NODE_BODY_FIELD = /\$\(\s*['"]([^'"]+)['"]\s*\)\.(?:item|first\(\)|last\(\))\.json\.body\b/;
+/** e.g. item.json.body / row.json.body inside $input.all().map(...) */
+const ITERATOR_JSON_BODY_FIELD = /\b\w+\.json\.body\b/;
 
 function responseOptions(params: Record<string, unknown>): Record<string, unknown> | undefined {
 	const options = isRecord(params.options) ? params.options : undefined;
@@ -72,8 +75,12 @@ function readsBodyFrom(
 	httpParentName: string,
 	isImmediatePredecessor: boolean,
 ): boolean {
-	if (isImmediatePredecessor && JSON_BODY_FIELD.test(source)) {
-		return true;
+	if (isImmediatePredecessor) {
+		if (JSON_BODY_FIELD.test(source)) return true;
+		// $('Fetch').item.json.body is handled by NODE_BODY_FIELD below.
+		if (ITERATOR_JSON_BODY_FIELD.test(source) && !NODE_BODY_FIELD.test(source)) {
+			return true;
+		}
 	}
 	for (const match of source.matchAll(new RegExp(NODE_BODY_FIELD.source, 'g'))) {
 		if (match[1] === httpParentName) return true;

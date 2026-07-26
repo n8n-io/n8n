@@ -54,7 +54,6 @@ export const INFORMATIONAL_VALIDATION_CODES: ReadonlySet<string> = new Set([
 	// Staged: skill→lint third cut (promote after evals)
 	'MISSING_EXECUTE_ONCE',
 	'WEEKDAY_DIGEST_CADENCE',
-	'HTTP_TEXT_BODY_FIELD',
 	'SIDE_EFFECT_JSON_CHAIN',
 	'CODE_NODE_FORBIDDEN_IMPORT',
 	'CODE_NESTED_TEMPLATE_LITERAL',

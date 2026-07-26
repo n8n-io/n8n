@@ -34,4 +34,25 @@ describe('partitionWarnings', () => {
 			informational: [warnings[2]],
 		});
 	});
+
+	it('treats HTTP text-body and structured-output-parser codes as blocking', () => {
+		const warnings: ValidationWarning[] = [
+			{
+				code: 'HTTP_TEXT_BODY_FIELD',
+				message: 'Use $json.data after text-format HTTP Request',
+				nodeName: 'Aggregate Emails',
+			},
+			{
+				code: 'STRUCTURED_OUTPUT_PARSER_SCHEMA_IN_EXAMPLE_FIELD',
+				message: 'Use schemaType manual or example JSON',
+				nodeName: 'Structured Output Parser',
+			},
+			{ code: 'DISCONNECTED_NODE', message: 'Node is disconnected' },
+		];
+
+		expect(partitionWarnings(warnings)).toEqual({
+			errors: [warnings[0], warnings[1]],
+			informational: [warnings[2]],
+		});
+	});
 });

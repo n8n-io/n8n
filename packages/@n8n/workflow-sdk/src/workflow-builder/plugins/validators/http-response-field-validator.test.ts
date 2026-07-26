@@ -59,6 +59,54 @@ describe('httpResponseFieldValidator', () => {
 		expect(issues).toContainEqual(expect.objectContaining({ code: 'HTTP_TEXT_BODY_FIELD' }));
 	});
 
+	it('flags item.json.body after text-format HTTP Request', () => {
+		const http = createMockNode('n8n-nodes-base.httpRequest', 'Fetch Last 24h Emails (EWS)', {
+			method: 'POST',
+			url: 'https://exchange.company.com/EWS/Exchange.asmx',
+			options: { response: { response: { responseFormat: 'text' } } },
+		});
+		const code = createMockNode('n8n-nodes-base.code', 'Aggregate Emails', {
+			jsCode:
+				"const items = $input.all();\nconst emails = items.map((item) => {\n  const xml = item.json.body || '';\n  return xml;\n});",
+		});
+		const httpGraph = createGraphNode(http);
+		const codeGraph = createGraphNode(code);
+		connect(httpGraph, 'Aggregate Emails');
+		const nodes = new Map([
+			['Fetch Last 24h Emails (EWS)', httpGraph],
+			['Aggregate Emails', codeGraph],
+		]);
+
+		const issues = httpResponseFieldValidator.validateWorkflow?.(createCtx(nodes)) ?? [];
+		expect(issues).toContainEqual(
+			expect.objectContaining({
+				code: 'HTTP_TEXT_BODY_FIELD',
+				nodeName: 'Aggregate Emails',
+				parameterPath: 'jsCode',
+			}),
+		);
+	});
+
+	it('allows item.json.data after text-format HTTP Request', () => {
+		const http = createMockNode('n8n-nodes-base.httpRequest', 'Fetch HTML', {
+			url: 'https://example.com',
+			options: { response: { response: { responseFormat: 'text' } } },
+		});
+		const code = createMockNode('n8n-nodes-base.code', 'Check Length', {
+			jsCode:
+				'return $input.all().map((item) => ({ json: { len: (item.json.data || "").length } }));',
+		});
+		const httpGraph = createGraphNode(http);
+		const codeGraph = createGraphNode(code);
+		connect(httpGraph, 'Check Length');
+		const nodes = new Map([
+			['Fetch HTML', httpGraph],
+			['Check Length', codeGraph],
+		]);
+
+		expect(httpResponseFieldValidator.validateWorkflow?.(createCtx(nodes)) ?? []).toEqual([]);
+	});
+
 	it('allows $json.data after text-format HTTP Request', () => {
 		const http = createMockNode('n8n-nodes-base.httpRequest', 'Fetch HTML', {
 			url: 'https://example.com',

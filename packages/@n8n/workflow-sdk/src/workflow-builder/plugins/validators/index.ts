@@ -43,6 +43,7 @@ export { rawCredentialValidator } from './raw-credential-validator';
 export { setNodeValidator } from './set-node-validator';
 export { sheetsMatchColumnValidator } from './sheets-match-column-validator';
 export { sideEffectJsonChainValidator } from './side-effect-json-chain-validator';
+export { structuredOutputParserValidator } from './structured-output-parser-validator';
 export { nestedSplitInBatchesValidator } from './nested-split-in-batches-validator';
 export { splitInBatchesLoopbackValidator } from './split-in-batches-loopback-validator';
 export { subnodeJsonReferenceValidator } from './subnode-json-reference-validator';
