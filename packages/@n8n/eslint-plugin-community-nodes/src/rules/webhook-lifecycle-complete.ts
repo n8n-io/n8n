@@ -60,15 +60,35 @@ function isMethodProperty(property: TSESTree.ObjectLiteralElement, name: string)
 	return isImplementation(property.value);
 }
 
-/** A group built up by spreading another object does not list its methods. */
+/** A group built up by spreading another object does not list all its methods. */
 function isComposedBySpread(group: TSESTree.ObjectExpression): boolean {
 	return group.properties.some((property) => property.type === AST_NODE_TYPES.SpreadElement);
 }
 
+/** Returns true when the group states the key itself, whatever value it gives it. */
+function declaresKey(group: TSESTree.ObjectExpression, name: string): boolean {
+	return group.properties.some((property) => {
+		if (property.type !== AST_NODE_TYPES.Property) return false;
+		if (property.computed) return false;
+
+		return (
+			(property.key.type === AST_NODE_TYPES.Identifier && property.key.name === name) ||
+			(property.key.type === AST_NODE_TYPES.Literal && property.key.value === name)
+		);
+	});
+}
+
 function findMissingMethods(group: TSESTree.ObjectExpression): WebhookLifecycleMethod[] {
-	return WEBHOOK_LIFECYCLE_METHODS.filter(
-		(method) => !group.properties.some((property) => isMethodProperty(property, method)),
-	);
+	const composedBySpread = isComposedBySpread(group);
+
+	return WEBHOOK_LIFECYCLE_METHODS.filter((method) => {
+		if (group.properties.some((property) => isMethodProperty(property, method))) return false;
+
+		// A spread may carry the method in, so a key that is simply absent is not
+		// evidence of anything. A key the group states itself is, since an explicit
+		// `delete: undefined` overrides whatever the spread supplied.
+		return !composedBySpread || declaresKey(group, method);
+	});
 }
 
 export const WebhookLifecycleCompleteRule = createRule({
@@ -130,7 +150,6 @@ export const WebhookLifecycleCompleteRule = createRule({
 				for (const groupProperty of webhookMethodsProperty.value.properties) {
 					if (groupProperty.type !== AST_NODE_TYPES.Property) continue;
 					if (groupProperty.value.type !== AST_NODE_TYPES.ObjectExpression) continue;
-					if (isComposedBySpread(groupProperty.value)) continue;
 
 					const groupName =
 						groupProperty.key.type === AST_NODE_TYPES.Identifier

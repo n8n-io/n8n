@@ -119,6 +119,12 @@ export class RegularClass {
 			name: 'lifecycle group composed by spreading another object',
 			code: createTriggerNode({ webhookMethods: '{ default: { ...sharedLifecycle } }' }),
 		},
+		{
+			name: 'lifecycle group spreading another object and overriding one method',
+			code: createTriggerNode({
+				webhookMethods: '{ default: { ...sharedLifecycle, delete: removeWebhook } }',
+			}),
+		},
 	],
 	invalid: [
 		{
@@ -243,6 +249,18 @@ export class RegularClass {
 						delete: null,
 					},
 				}`,
+			}),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: { group: 'default', missing: '`delete`' },
+				},
+			],
+		},
+		{
+			name: 'lifecycle method overridden with undefined after a spread',
+			code: createTriggerNode({
+				webhookMethods: '{ default: { ...sharedLifecycle, delete: undefined } }',
 			}),
 			errors: [
 				{
