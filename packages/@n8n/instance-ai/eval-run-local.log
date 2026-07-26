@@ -1,0 +1,18 @@
+[dotenvx@1.55.1] injecting env (33) from ../../../.env.local
+
+> @n8n/instance-ai@1.17.0 eval:instance-ai /Users/riqwan/Projects/n8n/packages/@n8n/instance-ai
+> tsx evaluations/cli/index.ts --base-url http://localhost:5678 --source langtracer --suite baseline --iterations 3 --verbose
+
+Fatal error: Error: --source langtracer needs LANGTRACER_URL and LANGTRACER_API_KEY in the environment (set them in .env.local). LANGTRACER_URL is the lang-tracer base URL; LANGTRACER_API_KEY is an MCP bearer key (lt_…), minted in lang-tracer via the MCP-keys UI or the mint-mcp-key script.
+    at resolveLangTracerConfig (/Users/riqwan/Projects/n8n/packages/@n8n/instance-ai/evaluations/langtracer/config.ts:17:9)
+    at loadTestCasesFromLangTracer (/Users/riqwan/Projects/n8n/packages/@n8n/instance-ai/evaluations/langtracer/provider.ts:91:38)
+    at loadTestCases (/Users/riqwan/Projects/n8n/packages/@n8n/instance-ai/evaluations/data/source.ts:16:16)
+    at main (/Users/riqwan/Projects/n8n/packages/@n8n/instance-ai/evaluations/cli/index.ts:32:9)
+    at <anonymous> (/Users/riqwan/Projects/n8n/packages/@n8n/instance-ai/evaluations/cli/index.ts:141:2)
+    at Object.<anonymous> (/Users/riqwan/Projects/n8n/packages/@n8n/instance-ai/evaluations/cli/index.ts:145:1)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object.transformer (/Users/riqwan/Projects/n8n/node_modules/.pnpm/tsx@4.19.3/node_modules/tsx/dist/register-DCnOAxY2.cjs:2:1186)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+ ELIFECYCLE  Command failed with exit code 1.
+Command failed with exit code 1: /Users/riqwan/.nvm/versions/node/v24.15.0/bin/pnpm eval:instance-ai --base-url http://localhost:5678 --source langtracer --suite baseline --iterations 3 --verbose

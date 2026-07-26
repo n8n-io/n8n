@@ -19,6 +19,7 @@ export { dataTableColumnValidator } from './data-table-column-validator';
 export { dateMethodValidator } from './date-method-validator';
 export { disconnectedNodeValidator } from './disconnected-node-validator';
 export { emptyResourceLocatorValidator } from './empty-resource-locator-validator';
+export { errorRoutesValidator } from './error-routes-validator';
 export { executeOnceAggregatorValidator } from './execute-once-aggregator-validator';
 export { expressionPathValidator } from './expression-path-validator';
 export { subnodeConnectionValidator } from './subnode-connection-validator';

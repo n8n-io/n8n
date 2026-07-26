@@ -1,0 +1,24 @@
+[dotenvx@1.55.1] injecting env (33) from ../../../.env.local
+
+> @n8n/instance-ai@1.17.0 eval:instance-ai /Users/riqwan/Projects/n8n/packages/@n8n/instance-ai
+> tsx evaluations/cli/index.ts --filter loop-anti-nested-batches --base-url http://localhost:5678 --verbose --keep-workflows
+
+2026-07-26T23:22:49.094Z [INFO] Authenticating with http://localhost:5678...
+2026-07-26T23:22:49.393Z [OK] Authenticated
+2026-07-26T23:22:49.393Z [INFO] Seeding MCP registry...
+2026-07-26T23:22:49.398Z [VERBOSE]   Skipping MCP registry seed: n8n API POST /rest/mcp-registry/test/seed failed (404): <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot POST /rest/mcp-registry/test/seed</pre>
+</body>
+</html>
+
+2026-07-26T23:22:49.398Z [INFO] Skipped MCP registry seed (test endpoint unavailable)
+2026-07-26T23:22:49.460Z [INFO] No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)
+2026-07-26T23:22:49.460Z [INFO] Running 1 test case(s) with 1 scenario(s) × 1 iteration(s) across 1 lane(s)
+2026-07-26T23:22:49.461Z [INFO]   Complex case: per-iteration budget 1350s [loop-anti-nested-batches]
+2026-07-26T23:22:49.461Z [INFO]   Running case: "When the webhook fires with a customers array, for each cust..."

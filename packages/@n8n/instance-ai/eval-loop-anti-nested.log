@@ -1,0 +1,67 @@
+[dotenvx@1.55.1] injecting env (33) from ../../../.env.local
+
+> @n8n/instance-ai@1.17.0 eval:instance-ai /Users/riqwan/Projects/n8n/packages/@n8n/instance-ai
+> tsx evaluations/cli/index.ts --filter loop-anti-nested-batches --base-url http://localhost:5678 --verbose --keep-workflows
+
+2026-07-26T22:45:17.435Z [INFO] Authenticating with http://localhost:5678...
+2026-07-26T22:45:17.549Z [OK] Authenticated
+2026-07-26T22:45:17.549Z [INFO] Seeding MCP registry...
+2026-07-26T22:45:17.552Z [VERBOSE]   Skipping MCP registry seed: n8n API POST /rest/mcp-registry/test/seed failed (404): <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot POST /rest/mcp-registry/test/seed</pre>
+</body>
+</html>
+
+2026-07-26T22:45:17.552Z [INFO] Skipped MCP registry seed (test endpoint unavailable)
+2026-07-26T22:45:17.569Z [INFO] No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)
+2026-07-26T22:45:17.569Z [INFO] Running 1 test case(s) with 1 scenario(s) × 1 iteration(s) across 1 lane(s)
+2026-07-26T22:45:17.570Z [INFO]   Complex case: per-iteration budget 1350s [loop-anti-nested-batches]
+2026-07-26T22:45:17.570Z [INFO]   Running case: "When the webhook fires with a customers array, for each cust..."
+2026-07-26T22:46:48.028Z [VERBOSE] [confirm] Responding to confirmation: N_Z5cvZ0_Z_tNMjf-WEfI
+2026-07-26T22:46:53.080Z [VERBOSE] [confirm] Responding to confirmation: jP7moJBjwGHyPDslDu35p
+2026-07-26T22:46:58.099Z [VERBOSE] [347a283c-497d-4fdb-aaf2-a737221c8c34] Run #1 finished -- time: 100529ms
+2026-07-26T22:46:58.100Z [VERBOSE] No background agent tasks spawned -- skipping background task wait
+2026-07-26T22:46:58.100Z [VERBOSE] [347a283c-497d-4fdb-aaf2-a737221c8c34] Waiting for observational-memory jobs (timeout 30000ms)...
+2026-07-26T22:46:58.126Z [VERBOSE] [347a283c-497d-4fdb-aaf2-a737221c8c34] Memory task poll #1 (26ms): 2 pending, 2 tracked — observer:running, reflector:queued
+2026-07-26T22:47:01.785Z [VERBOSE] [347a283c-497d-4fdb-aaf2-a737221c8c34] Memory task poll #8 (3685ms): 0 pending, 0 tracked — none
+2026-07-26T22:47:01.785Z [VERBOSE] [347a283c-497d-4fdb-aaf2-a737221c8c34] Memory tasks idle after 3685ms (8 poll(s))
+2026-07-26T22:47:02.270Z [INFO]   Workflow built: Customer Orders Fetcher (7 nodes) [105s] [thread 347a283c-497d-4fdb-aaf2-a737221c8c34]
+2026-07-26T22:47:02.952Z [INFO]   Workflow checks: 7 failing (handles_multiple_items, correct_node_operations, valid_data_flow, fulfills_user_request, response_describes_changes_accurately, no_unnecessary_code_nodes, descriptive_node_names)
+2026-07-26T22:47:02.953Z [INFO] [lane 1] built loop-anti-nested-batches (iteration 0) thread=347a283c-497d-4fdb-aaf2-a737221c8c34 success=true
+[expectations] attempt 1/2 produced no parseable results
+[expectations] attempt 2/2 produced no parseable results
+[expectations] exhausted 2 attempts, returning all-fail
+2026-07-26T22:47:13.626Z [INFO]     [one-customer-two-orders] exec=11s (5 nodes)
+AI SDK Warning System: To turn off warning logging, set the AI_SDK_LOG_WARNINGS global to false.
+AI SDK Warning (baseten.chat / zai-org/GLM-5.2-Fast): The feature "responseFormat" is not supported. JSON response format schema is only supported with structuredOutputs
+[verifier] attempt 1/3 returned model error: No object generated: response did not match schema.
+AI SDK Warning (baseten.chat / zai-org/GLM-5.2-Fast): The feature "responseFormat" is not supported. JSON response format schema is only supported with structuredOutputs
+2026-07-26T22:47:17.865Z [VERBOSE]     [one-customer-two-orders] wrote verifier snapshot: /Users/riqwan/Projects/n8n/packages/@n8n/instance-ai/.data/workflow-stbfot0xhmoqd7p4_one-customer-two-orders_2026-07-26T22-47-17-854Z.json
+2026-07-26T22:47:17.865Z [INFO]     [one-customer-two-orders] FAIL [builder_issue] verify=4s
+2026-07-26T22:47:17.865Z [INFO]     [one-customer-two-orders] Flatten Orders produced 0 items because the Code node looks for body.data or body.orderId, but the mock response wraps orders under an "orders" key — the field name the Code node was written to extract is missing, so no orders are emitted and Fetch Line Items / Unwrap Line Items never run.
+Results:    /Users/riqwan/Projects/n8n/packages/@n8n/instance-ai/eval-results.json
+PR comment: /Users/riqwan/Projects/n8n/packages/@n8n/instance-ai/eval-pr-comment.md
+Report:     /Users/riqwan/Projects/n8n/packages/@n8n/instance-ai/.data/workflow-eval-2026-07-26T22-47-17.html
+LLM debug:  /Users/riqwan/Projects/n8n/packages/@n8n/instance-ai/.data/workflow-eval-llm-debug-2026-07-26T22-47-18.html
+
+Instance AI Workflow Eval
+═════════════════════════
+  ▶ No baseline comparison ran (LangSmith disabled).
+
+  Aggregate: 0.0% pass (0/1 trials, 1 scenario, N=1)
+
+  Per-test-case results (1)
+
+  loop-anti-nested-batches…
+    BUILT (stBFOt0Xhmoqd7p4)
+    FAIL  one-customer-two-orders [builder_issue]
+          diagnosis: Flatten Orders produced 0 items because the Code node looks for body.data or body.orderId, but the mock response wraps orders under an "orders" key — the field name the Code node was written to extrac
+    SKIP  expectation: Customers are processed one at a time (sequential outer iteration via default it
+    SKIP  expectation: Order pagination uses HTTP Request built-in pagination (or a sub-workflow), not 
+    SKIP  expectation: Line items are fetched per order without nesting two Split In Batches nodes in o
+
