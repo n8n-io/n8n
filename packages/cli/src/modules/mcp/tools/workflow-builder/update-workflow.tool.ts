@@ -318,7 +318,6 @@ const outputSchema = {
 		.describe(
 			'Graph and JSON validation warnings on the resulting workflow. Use these to self-correct on the next call.',
 		),
-	note: z.string().optional(),
 	settings: z
 		.record(z.string(), z.unknown())
 		.optional()
@@ -330,6 +329,7 @@ const outputSchema = {
 		.optional()
 		.describe('Error message explaining why the update failed. Present only on failure.'),
 	errorCode: z.string().optional().describe('Machine-readable error code.'),
+	note: z.string().optional(),
 } satisfies z.ZodRawShape;
 
 /**
