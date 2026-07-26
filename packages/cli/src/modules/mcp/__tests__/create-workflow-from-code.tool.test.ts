@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ProjectRepository, User, WorkflowEntity } from '@n8n/db';
 import { NodeConnectionTypes, type INode } from 'n8n-workflow';
@@ -14,6 +15,7 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 import {
 	createCreateWorkflowFromCodeTool,
 	type CreateWorkflowFromCodeToolOptions,
@@ -170,6 +172,11 @@ describe('create-workflow-from-code MCP tool', () => {
 	const aiGatewayService = mock<AiGatewayService>();
 	aiGatewayService.isAvailable.mockResolvedValue({ available: false });
 
+	const logger = mockInstance(Logger, { error: vi.fn(), warn: vi.fn() });
+	const postSaveMetrics = mockInstance(McpPostSaveMetricsService, {
+		incrementPostSaveFailure: vi.fn(),
+	});
+
 	const createTool = (options?: CreateWorkflowFromCodeToolOptions) =>
 		createCreateWorkflowFromCodeTool(
 			user,
@@ -183,6 +190,8 @@ describe('create-workflow-from-code MCP tool', () => {
 			dataTableOps as never,
 			aiGatewayService,
 			options,
+			logger,
+			postSaveMetrics,
 		);
 
 	// Helper to call handler with proper typing (optional fields default to undefined)
@@ -444,6 +453,85 @@ describe('create-workflow-from-code MCP tool', () => {
 				type: 'team',
 			});
 			expect(response.note).toContain('post-save operation failed');
+		});
+
+		test('logs a warning when post-create verification lookup throws and still reports the original error', async () => {
+			createWorkflowMock.mockImplementation(async (_user, workflow: WorkflowEntity) => {
+				workflow.id = 'wf-lookup-fail-1';
+				throw new Error('Outer failure');
+			});
+			(workflowFinderService.findWorkflowForUser as Mock).mockRejectedValueOnce(
+				new Error('Lookup DB outage'),
+			);
+
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toBe('Outer failure');
+			expect(response.errorCode).toBe('UNKNOWN_ERROR');
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Post-create verification lookup failed',
+				expect.objectContaining({ workflowId: 'wf-lookup-fail-1' }),
+			);
+		});
+
+		test('does not report a successful save when the post-create lookup cannot find the workflow', async () => {
+			createWorkflowMock.mockImplementation(async (_user, workflow: WorkflowEntity) => {
+				workflow.id = 'wf-missing-1';
+				throw new Error('Post-save hook failed');
+			});
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValueOnce(null);
+
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toBe('Post-save hook failed');
+			// Genuine failure path: errorCode is exposed.
+			expect(response.errorCode).toBe('UNKNOWN_ERROR');
+		});
+
+		test('returns success when telemetry fails after a successful persist and records the post-save metric', async () => {
+			(telemetry.track as Mock).mockImplementationOnce(() => {
+				throw new Error('Telemetry pipeline exploded');
+			});
+
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			const response = parseResult(result);
+			// The response still describes the persisted workflow, not the telemetry
+			// failure — the workflow was successfully saved.
+			expect(response.workflowId).toBe('wf-saved-1');
+			expect(result.isError).toBeUndefined();
+			expect(postSaveMetrics.incrementPostSaveFailure).toHaveBeenCalledWith(
+				'create',
+				expect.any(Error),
+			);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Post-save side effect failed for create_workflow_from_code',
+				expect.objectContaining({ workflowId: 'wf-saved-1' }),
+			);
+		});
+
+		test('includes errorCode on genuine failure responses', async () => {
+			mockParseAndValidate.mockRejectedValue(new Error('Invalid syntax at line 5'));
+
+			const result = await callHandler({ code: 'bad code' });
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toBe('Invalid syntax at line 5');
+			expect(response.errorCode).toBe('UNKNOWN_ERROR');
+		});
+
+		test('includes errorCode on the folderId-without-projectId early-return error', async () => {
+			const result = await callHandler({ code: 'const wf = ...', folderId: 'folder-1' });
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toBe('projectId is required when folderId is provided');
+			expect(response.errorCode).toBe('MISSING_PROJECT_ID');
 		});
 
 		test('returns error when service throws permission error', async () => {

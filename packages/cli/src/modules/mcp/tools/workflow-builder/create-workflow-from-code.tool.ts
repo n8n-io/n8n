@@ -1,5 +1,16 @@
+import type { Logger } from '@n8n/backend-common';
 import { type Project, type ProjectRepository, type User, WorkflowEntity } from '@n8n/db';
 import z from 'zod';
+
+import type { CredentialsService } from '@/credentials/credentials.service';
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import type { NodeTypes } from '@/node-types';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
+import type { UrlService } from '@/services/url.service';
+import type { Telemetry } from '@/telemetry';
+import { resolveNodeWebhookIds } from '@/workflow-helpers';
+import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
@@ -10,6 +21,7 @@ import {
 	trackAutoassignOutcomes,
 } from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
+import { getErrorCode } from './error-code.utils';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
 import {
 	buildCreateVersionMetadata,
@@ -17,20 +29,12 @@ import {
 	versionDescriptionInputSchema,
 	versionNameInputSchema,
 } from './version-metadata';
+import type { McpPostSaveMetricsService } from '../../mcp-post-save-metrics.service';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
-import type { NodeTypes } from '@/node-types';
-import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { UrlService } from '@/services/url.service';
-import type { Telemetry } from '@/telemetry';
-import { resolveNodeWebhookIds } from '@/workflow-helpers';
-import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const MAX_WORKFLOW_DESCRIPTION_LENGTH = 255;
 
@@ -165,6 +169,10 @@ const outputSchema = {
 		.string()
 		.optional()
 		.describe('Error message explaining why the creation failed. Present only on failure.'),
+	errorCode: z
+		.string()
+		.optional()
+		.describe('Machine-readable error code. Present only on failure.'),
 } satisfies z.ZodRawShape;
 
 /**
@@ -183,6 +191,8 @@ export const createCreateWorkflowFromCodeTool = (
 	dataTableOps: DataTableUserOperations,
 	aiGatewayService: AiGatewayService,
 	options: CreateWorkflowFromCodeToolOptions = {},
+	logger: Logger,
+	postSaveMetrics: McpPostSaveMetricsService,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
@@ -197,6 +207,8 @@ export const createCreateWorkflowFromCodeTool = (
 			openWorldHint: false,
 		},
 	},
+
+	// eslint-disable-next-line complexity
 	handler: async ({
 		code,
 		skillsUsed,
@@ -235,9 +247,10 @@ export const createCreateWorkflowFromCodeTool = (
 			const errorMessage = 'projectId is required when folderId is provided';
 			telemetryPayload.results = { success: false, error: errorMessage };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			const output = { error: errorMessage, errorCode: 'MISSING_PROJECT_ID' };
 			return {
-				content: [{ type: 'text', text: JSON.stringify({ error: errorMessage }, null, 2) }],
-				structuredContent: { error: errorMessage },
+				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+				structuredContent: output,
 				isError: true,
 			};
 		}
@@ -347,32 +360,8 @@ export const createCreateWorkflowFromCodeTool = (
 				versionDescription: versionMetadata.description,
 			});
 
-			const nodeTypesByName = new Map(savedWorkflow.nodes.map((n) => [n.name, n.type]));
-			trackAutoassignOutcomes(
-				telemetry,
-				user.id,
-				'create_workflow_from_code',
-				autoAssignOutcomes,
-				nodeTypesByName,
-				savedWorkflow.id,
-			);
-
 			const baseUrl = urlService.getInstanceBaseUrl();
 			const workflowUrl = `${baseUrl}/workflow/${savedWorkflow.id}`;
-
-			telemetryPayload.results = {
-				success: true,
-				data: {
-					workflowId: savedWorkflow.id,
-					nodeCount: savedWorkflow.nodes.length,
-					// Rollout monitoring for `102_mcp_canvas_groups`; absent when the
-					// flag is off so the payload stays identical across cohorts.
-					...(options.canvasGroupsEnabled
-						? { groupCount: workflowJson.nodeGroups?.length ?? 0 }
-						: {}),
-				},
-			};
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			const notes = [
 				descriptionTruncated
@@ -399,12 +388,48 @@ export const createCreateWorkflowFromCodeTool = (
 			const output =
 				result.warnings.length > 0 ? { ...baseOutput, warnings: result.warnings } : baseOutput;
 
+			// The response is fully built above. Side effects below (telemetry,
+			// credential auto-assign tracking) must not turn a successful persist
+			// into a client-visible error — they are observability-only.
+			try {
+				const nodeTypesByName = new Map(savedWorkflow.nodes.map((n) => [n.name, n.type]));
+				trackAutoassignOutcomes(
+					telemetry,
+					user.id,
+					'create_workflow_from_code',
+					autoAssignOutcomes,
+					nodeTypesByName,
+					savedWorkflow.id,
+				);
+
+				telemetryPayload.results = {
+					success: true,
+					data: {
+						workflowId: savedWorkflow.id,
+						nodeCount: savedWorkflow.nodes.length,
+						// Rollout monitoring for `102_mcp_canvas_groups`; absent when the
+						// flag is off so the payload stays identical across cohorts.
+						...(options.canvasGroupsEnabled
+							? { groupCount: workflowJson.nodeGroups?.length ?? 0 }
+							: {}),
+					},
+				};
+				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			} catch (sideEffectError) {
+				logger.error('Post-save side effect failed for create_workflow_from_code', {
+					workflowId: savedWorkflow.id,
+					error: sideEffectError,
+				});
+				postSaveMetrics.incrementPostSaveFailure('create', sideEffectError);
+			}
+
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
 				structuredContent: output,
 			};
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
+			const errorCode = getErrorCode(error);
 
 			// Check whether the workflow was actually persisted despite the error.
 			// TypeORM sets the entity id during save(), even inside a transaction that
@@ -417,23 +442,38 @@ export const createCreateWorkflowFromCodeTool = (
 					persisted = await workflowFinderService.findWorkflowForUser(newWorkflow.id, user, [
 						'workflow:read',
 					]);
-				} catch {
-					// Verification lookup failed — fall through and report the original error.
+				} catch (lookupError) {
+					logger.warn('Post-create verification lookup failed', {
+						workflowId: newWorkflow.id,
+						error: lookupError,
+					});
+					// fall through — let the existing logic decide (error path)
 				}
 
 				if (persisted && landingProject) {
 					const baseUrl = urlService.getInstanceBaseUrl();
 					const workflowUrl = `${baseUrl}/workflow/${persisted.id}`;
 
-					telemetryPayload.results = {
-						success: true,
-						data: {
-							workflowId: persisted.id,
-							nodeCount: persisted.nodes.length,
-							postSaveError: errorMessage,
-						},
-					};
-					telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+					try {
+						telemetryPayload.results = {
+							success: true,
+							data: {
+								workflowId: persisted.id,
+								nodeCount: persisted.nodes.length,
+								postSaveError: errorMessage,
+							},
+						};
+						telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+					} catch (telemetryError) {
+						logger.error(
+							'Post-save telemetry failed for create_workflow_from_code (recovery path)',
+							{
+								workflowId: persisted.id,
+								error: telemetryError,
+							},
+						);
+						postSaveMetrics.incrementPostSaveFailure('create', telemetryError);
+					}
 
 					const output = {
 						workflowId: persisted.id,
@@ -456,16 +496,27 @@ export const createCreateWorkflowFromCodeTool = (
 				}
 			}
 
-			telemetryPayload.results = {
-				success: false,
-				error: errorMessage,
-			};
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			try {
+				telemetryPayload.results = {
+					success: false,
+					error: errorMessage,
+				};
+				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			} catch (telemetryError) {
+				logger.error('Post-save telemetry failed for create_workflow_from_code (error path)', {
+					error: telemetryError,
+				});
+				postSaveMetrics.incrementPostSaveFailure('create', telemetryError);
+			}
 
 			const hint = getSdkReferenceHint(error, {
 				afterReference: `Rewrite the code, call ${CODE_BUILDER_VALIDATE_TOOL.toolName} until it returns valid=true, then call ${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName} again.`,
 			});
-			const output = { error: errorMessage, ...(hint ? { hint } : {}) };
+			const output = {
+				error: errorMessage,
+				errorCode,
+				...(hint ? { hint } : {}),
+			};
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
