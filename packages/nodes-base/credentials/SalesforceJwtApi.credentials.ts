@@ -1,6 +1,5 @@
 import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import jwt from 'jsonwebtoken';
-import moment from 'moment-timezone';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
@@ -96,7 +95,7 @@ export class SalesforceJwtApi implements ICredentialType {
 	// the instance URL) so chained Salesforce actions reuse the same session instead
 	// of logging in on every request.
 	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
-		const now = moment().unix();
+		const now = Math.floor(Date.now() / 1000);
 		const authUrl = resolveAuthUrl(credentials);
 		const privateKey = formatPemBlock(credentials.privateKey as string);
 		const signature = jwt.sign(

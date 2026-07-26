@@ -1,4 +1,4 @@
-import moment from 'moment-timezone';
+import tzData from 'moment-timezone/data/packed/latest.json';
 import type {
 	ICredentialTestRequest,
 	ICredentialType,
@@ -6,15 +6,16 @@ import type {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-// Get options for timezones
-const timezones: INodePropertyOptions[] = moment.tz
-	.countries()
-	.reduce((tz: INodePropertyOptions[], country: string) => {
-		const zonesForCountry = moment.tz
-			.zonesForCountry(country)
-			.map((zone) => ({ value: zone, name: zone }));
-		return tz.concat(zonesForCountry);
-	}, []);
+// Credential classes are loaded eagerly at server boot, so build the timezone
+// options from moment-timezone's packed data ("CC|Zone Zone…" entries) instead
+// of loading the whole library. Matches moment.tz.countries()/zonesForCountry().
+const timezones: INodePropertyOptions[] = tzData.countries.flatMap((entry) => {
+	const [, zones] = entry.split('|');
+	return zones
+		.split(' ')
+		.sort()
+		.map((zone) => ({ value: zone, name: zone }));
+});
 
 export class SeaTableApi implements ICredentialType {
 	name = 'seaTableApi';

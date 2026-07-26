@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import moment from 'moment-timezone';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
@@ -339,7 +338,7 @@ export class GoogleApi implements ICredentialType {
 			.filter((scope) => scope)
 			.join(' ');
 
-		const now = moment().unix();
+		const now = Math.floor(Date.now() / 1000);
 
 		const signature = jwt.sign(
 			{
