@@ -769,3 +769,66 @@ describe('formatNodeCatalogLine', () => {
 		expect(result).toBe('n8n-nodes-base.code | Code | Run custom JavaScript code | v2');
 	});
 });
+
+describe('collectNodeDefaultVersions', () => {
+	let collectNodeDefaultVersions: typeof import('../sandbox-setup.js').collectNodeDefaultVersions;
+	let BUILD_MJS: string;
+
+	beforeAll(async () => {
+		vi.doUnmock('../sandbox-fs');
+		packWorkspaceSdkMockState.isEnabled = false;
+		packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
+		vi.resetModules();
+		({ collectNodeDefaultVersions, BUILD_MJS } = await import('../sandbox-setup.js'));
+	});
+
+	it('prefers provider defaultVersion over catalog version', () => {
+		const nodes: SearchableNodeDescription[] = [
+			{
+				name: 'n8n-nodes-base.if',
+				displayName: 'If',
+				description: 'Route items',
+				version: [1, 2, 2.1, 2.2, 2.3],
+				inputs: ['main'],
+				outputs: ['main', 'main'],
+			},
+		];
+		const provider = {
+			getByName: () => ({
+				description: { defaultVersion: 2.3 },
+				currentVersion: 2.3,
+				nodeVersions: {},
+				getNodeType: () => ({ description: { defaultVersion: 2.3 } }),
+			}),
+			getByNameAndVersion: () => ({ description: {} }),
+			getKnownTypes: () => ({}),
+		};
+
+		expect(collectNodeDefaultVersions(nodes, provider)).toEqual({
+			'n8n-nodes-base.if': 2.3,
+		});
+	});
+
+	it('falls back to the latest catalog version when provider has no default', () => {
+		const nodes: SearchableNodeDescription[] = [
+			{
+				name: 'n8n-nodes-base.slack',
+				displayName: 'Slack',
+				description: 'Slack',
+				version: [1, 2, 2.1],
+				inputs: ['main'],
+				outputs: ['main'],
+			},
+		];
+
+		expect(collectNodeDefaultVersions(nodes)).toEqual({
+			'n8n-nodes-base.slack': 2.1,
+		});
+	});
+
+	it('build.mjs loads node-default-versions.json into validate/toJSON', () => {
+		expect(BUILD_MJS).toContain('node-default-versions.json');
+		expect(BUILD_MJS).toContain('wf.validate({ defaultVersions })');
+		expect(BUILD_MJS).toContain('wf.toJSON({ tidyUp: true, defaultVersions })');
+	});
+});

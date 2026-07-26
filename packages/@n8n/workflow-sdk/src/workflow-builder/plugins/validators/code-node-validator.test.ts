@@ -52,6 +52,37 @@ describe('codeNodeValidator', () => {
 		).toEqual(['CODE_NODE_NETWORK_CALL']);
 	});
 
+	it('flags require("luxon")', () => {
+		const node = createMockNode({
+			jsCode: "const { DateTime } = require('luxon');\nreturn [];",
+		});
+		expect(
+			codeNodeValidator
+				.validateNode(node, createGraphNode(node), createContext())
+				.map((i) => i.code),
+		).toEqual(['CODE_NODE_FORBIDDEN_IMPORT']);
+	});
+
+	it('flags nested template literals', () => {
+		const node = createMockNode({
+			jsCode: 'const inner = `x`;\nconst out = `hello ${`nested ${inner}`}`;\nreturn [];',
+		});
+		expect(
+			codeNodeValidator
+				.validateNode(node, createGraphNode(node), createContext())
+				.map((i) => i.code),
+		).toEqual(['CODE_NESTED_TEMPLATE_LITERAL']);
+	});
+
+	it('allows flat template literals', () => {
+		const node = createMockNode({
+			jsCode: 'const out = `hello ${$json.name}`;\nreturn [{ json: { out } }];',
+		});
+		expect(codeNodeValidator.validateNode(node, createGraphNode(node), createContext())).toEqual(
+			[],
+		);
+	});
+
 	it('flags $input.all() in runOnceForEachItem mode', () => {
 		const node = createMockNode({
 			mode: 'runOnceForEachItem',

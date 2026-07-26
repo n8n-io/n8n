@@ -19,7 +19,9 @@
 			"**/o200k_base.json",
 			"**/*.generated.ts",
 			"**/expectations/**",
-			"**/instance-ai-examples.data.json"
+			"**/instance-ai-examples.data.json",
+			// Large real-workflow fixture index (grows with warning coverage)
+			"**/workflow-sdk/test-fixtures/real-workflows/manifest.json"
 		]
 	},
 	"formatter": {

@@ -22,8 +22,7 @@ const GENERIC_ESCALATION =
 	'Use a different repair strategy for this work item.';
 
 const SDK_LANGUAGE_GUIDANCE =
-	'SDK builder code is a restricted subset of TypeScript (see ' +
-	'knowledge-base/reference/workflow-sdk-language.md): only SDK builder methods are allowed, not ' +
+	'SDK builder code is a restricted subset of TypeScript: only SDK builder methods are allowed, not ' +
 	'native array/string methods or globals. Build strings with template literals or explicit lines, ' +
 	'and move runtime joining, aggregation, or transforms into a Code node or an n8n expression.';
 

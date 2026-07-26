@@ -1,4 +1,8 @@
-import { httpPaginationValidator } from './http-pagination-validator';
+import {
+	HTTP_PAGINATION_ENVELOPE_RESPONSE_IS_EMPTY,
+	HTTP_PAGINATION_MISSING_OUTPUT_SHAPE,
+	httpPaginationValidator,
+} from './http-pagination-validator';
 import type { GraphNode, IDataObject, NodeInstance } from '../../../types/base';
 import type { PluginContext } from '../types';
 
@@ -6,11 +10,12 @@ function createMockNode(
 	config: {
 		parameters?: Record<string, unknown>;
 		output?: IDataObject[];
+		name?: string;
 	} = {},
 ): NodeInstance<string, string, unknown> {
 	return {
 		type: 'n8n-nodes-base.httpRequest',
-		name: 'Fetch Orders',
+		name: config.name ?? 'Fetch Page',
 		version: '4.2',
 		config: {
 			parameters: config.parameters ?? {},
@@ -37,7 +42,7 @@ function paginationParams(
 	mode = 'updateAParameterInEachRequest',
 ) {
 	return {
-		url: 'https://api.example.com/orders',
+		url: 'https://api.example.com/resources',
 		options: {
 			pagination: {
 				pagination: {
@@ -54,10 +59,10 @@ describe('httpPaginationValidator', () => {
 		expect(httpPaginationValidator.id).toBe('core:http-pagination');
 	});
 
-	it('flags responseIsEmpty with an envelope output shape', () => {
+	it('flags responseIsEmpty with an envelope output shape under a generic key', () => {
 		const node = createMockNode({
 			parameters: paginationParams('responseIsEmpty'),
-			output: [{ orders: [{ id: '1' }], nextPage: '2' }],
+			output: [{ results: [{ id: '1' }], nextPage: '2' }],
 		});
 		const issues = httpPaginationValidator.validateNode(
 			node,
@@ -65,9 +70,10 @@ describe('httpPaginationValidator', () => {
 			createContext(),
 		);
 		expect(issues).toHaveLength(1);
-		expect(issues[0].code).toBe('HTTP_PAGINATION_ENVELOPE_RESPONSE_IS_EMPTY');
+		expect(issues[0].code).toBe(HTTP_PAGINATION_ENVELOPE_RESPONSE_IS_EMPTY);
 		expect(issues[0].message).toContain("paginationCompleteWhen: 'other'");
-		expect(issues[0].message).toContain('$response.body.orders.length === 0');
+		expect(issues[0].message).toContain('$response.body.results.length === 0');
+		expect(issues[0].message).not.toContain('orders');
 	});
 
 	it('flags when paginationCompleteWhen is defaulted (omitted)', () => {
@@ -80,13 +86,37 @@ describe('httpPaginationValidator', () => {
 			createGraphNode(node),
 			createContext(),
 		);
-		expect(issues.map((i) => i.code)).toEqual(['HTTP_PAGINATION_ENVELOPE_RESPONSE_IS_EMPTY']);
+		expect(issues.map((i) => i.code)).toEqual([HTTP_PAGINATION_ENVELOPE_RESPONSE_IS_EMPTY]);
+		expect(issues[0].message).toContain('$response.body.data.length === 0');
+	});
+
+	it('flags responseIsEmpty pagination when no output fixture is declared', () => {
+		const node = createMockNode({
+			parameters: paginationParams('responseIsEmpty'),
+		});
+		const issues = httpPaginationValidator.validateNode(
+			node,
+			createGraphNode(node),
+			createContext(),
+		);
+		expect(issues.map((i) => i.code)).toEqual([HTTP_PAGINATION_MISSING_OUTPUT_SHAPE]);
+		expect(issues[0].message).toContain('no declared output fixture');
+		expect(issues[0].message).toContain('<arrayField>');
 	});
 
 	it('does not flag when completeWhen is other', () => {
 		const node = createMockNode({
 			parameters: paginationParams('other'),
-			output: [{ orders: [] }],
+			output: [{ items: [] }],
+		});
+		expect(
+			httpPaginationValidator.validateNode(node, createGraphNode(node), createContext()),
+		).toEqual([]);
+	});
+
+	it('does not flag missing output when completeWhen is other', () => {
+		const node = createMockNode({
+			parameters: paginationParams('other'),
 		});
 		expect(
 			httpPaginationValidator.validateNode(node, createGraphNode(node), createContext()),
@@ -96,16 +126,7 @@ describe('httpPaginationValidator', () => {
 	it('does not flag when pagination is off', () => {
 		const node = createMockNode({
 			parameters: paginationParams('responseIsEmpty', 'off'),
-			output: [{ orders: [] }],
-		});
-		expect(
-			httpPaginationValidator.validateNode(node, createGraphNode(node), createContext()),
-		).toEqual([]);
-	});
-
-	it('does not flag without declared output', () => {
-		const node = createMockNode({
-			parameters: paginationParams('responseIsEmpty'),
+			output: [{ items: [] }],
 		});
 		expect(
 			httpPaginationValidator.validateNode(node, createGraphNode(node), createContext()),

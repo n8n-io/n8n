@@ -188,6 +188,17 @@ export function lintWorkflowSource(source: string): SourceLintIssue[] {
 		if (node.type !== 'CallExpression') return;
 		const call = node;
 
+		if (call.callee.type === 'Identifier' && call.callee.name === 'sticky') {
+			issues.push({
+				code: 'SDK_UNSOLICITED_STICKY',
+				message:
+					'Do not add sticky() / stickyNote nodes unless the user explicitly asked for canvas notes. ' +
+					'Put explanations in the chat reply instead.',
+				line: lineOf(call),
+				severity: 'warning',
+			});
+		}
+
 		if (
 			call.callee.type === 'MemberExpression' &&
 			!call.callee.computed &&

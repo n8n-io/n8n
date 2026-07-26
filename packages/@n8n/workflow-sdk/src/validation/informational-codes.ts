@@ -11,8 +11,6 @@ export const INFORMATIONAL_VALIDATION_CODES: ReadonlySet<string> = new Set([
 	'MISSING_TRIGGER',
 	'DISCONNECTED_NODE',
 	'auto_imported_sdk_symbols',
-	// Staged: envelope + responseIsEmpty pagination mismatch (promote after evals)
-	'HTTP_PAGINATION_ENVELOPE_RESPONSE_IS_EMPTY',
 	// Staged: common-output-shape heuristics (promote after evals)
 	'EMPTY_RESOURCE_LOCATOR_VALUE',
 	'SET_LEGACY_VALUES_SHAPE',
@@ -27,6 +25,8 @@ export const INFORMATIONAL_VALIDATION_CODES: ReadonlySet<string> = new Set([
 	'MISSING_OUTPUT_FIXTURE',
 	'RAW_CREDENTIAL_OBJECT',
 	'BRANCH_OUTPUT_NOT_WIRED',
+	// Staged: boolean LHS compared with string op under strict (promote after evals)
+	'FILTER_BOOLEAN_COMPARED_AS_STRING',
 	'SPLIT_IN_BATCHES_NO_LOOPBACK',
 	// Staged: nested Loop Over Items (promote after evals)
 	'NESTED_SPLIT_IN_BATCHES',
@@ -49,6 +49,15 @@ export const INFORMATIONAL_VALIDATION_CODES: ReadonlySet<string> = new Set([
 	'ALWAYS_OUTPUT_DATA_NO_EFFECT',
 	'EMPTY_ITEM_NOT_FILTERED',
 	'SUBNODE_UNSAFE_JSON_REFERENCE',
+	// Staged: skill→lint third cut (promote after evals)
+	'MISSING_EXECUTE_ONCE',
+	'WEEKDAY_DIGEST_CADENCE',
+	'HTTP_TEXT_BODY_FIELD',
+	'SIDE_EFFECT_JSON_CHAIN',
+	'CODE_NODE_FORBIDDEN_IMPORT',
+	'CODE_NESTED_TEMPLATE_LITERAL',
+	'SDK_UNSOLICITED_STICKY',
+	'AGENT_WITHOUT_PRIOR_AGGREGATE',
 ]);
 
 export function isInformationalValidationCode(code: string): boolean {

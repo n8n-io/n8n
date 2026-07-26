@@ -59,11 +59,9 @@ with direct `data-tables` and `parse-file` calls.
 ## Knowledge Base
 
 **Consult the knowledge base before planning.** Read the relevant `.md` guides
-and templates for each technique the request involves (`knowledge-base/index.json`,
-`knowledge-base/best-practices/index.json`, and linked files). Use
-`workspace_execute_command` with `rg` or `find` under `knowledge-base/templates/`
-to locate matching SDK examples — never load `templates/index.json` wholesale.
-Skip only for trivial mechanical edits you have already reviewed in this thread.
+for each technique the request involves (`knowledge-base/index.json`,
+`knowledge-base/best-practices/index.json`, and linked files). Skip only for
+trivial mechanical edits you have already reviewed in this thread.
 
 ## Method
 
@@ -128,7 +126,9 @@ Skip only for trivial mechanical edits you have already reviewed in this thread.
 - If a `build-workflow` task's final deliverable is a supporting sub-workflow,
   set `isSupportingWorkflow: true` on that task. Do not set it for helper
   sub-workflows that are only intermediate artifacts inside a larger main
-  workflow task.
+  workflow task. For multi-workflow decomposition, have the build follow-up
+  load `workflow-builder` with
+  `filePath: "references/compositional-workflows.md"`.
 - For `checkpoint` tasks, write structured semantic verification instructions:
   `Verify trigger mode`, `Verify external systems`, `Verify required effects`,
   `Verify required branches`, `Verify required data`,

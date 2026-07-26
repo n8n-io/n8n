@@ -16,7 +16,7 @@ import { firstSentence, isStreamingTimelineEntry } from '../agentTimeline.utils'
 import { useToolLabel } from '../toolLabels';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import ReasoningBlock from './ReasoningBlock.vue';
-import ToolResultJson from './ToolResultJson.vue';
+import ToolArgsRenderer from './ToolArgsRenderer.vue';
 import ToolResultRenderer from './ToolResultRenderer.vue';
 
 /**
@@ -275,7 +275,11 @@ const title = computed<{ key: string; text: string }>(() => {
 						:loading="toolCallFor(entry)!.isLoading"
 						:error="toolCallFor(entry)!.error"
 					>
-						<ToolResultJson v-if="toolCallFor(entry)!.args" :value="toolCallFor(entry)!.args" />
+						<ToolArgsRenderer
+							v-if="toolCallFor(entry)!.args"
+							:tool-name="toolCallFor(entry)!.toolName"
+							:args="toolCallFor(entry)!.args"
+						/>
 						<ToolResultRenderer
 							v-if="toolCallFor(entry)!.result !== undefined"
 							:result="toolCallFor(entry)!.result"

@@ -2,6 +2,9 @@ import {
 	JS_METHODS,
 	filterMethodsFromPath,
 	parseVersion,
+	isMissingNodeVersion,
+	resolveTypeVersion,
+	lookupDefaultVersion,
 	isPlaceholderValue,
 	containsPlaceholderMarker,
 	isResourceLocatorLike,
@@ -83,6 +86,40 @@ describe('workflow-builder/string-utils', () => {
 		it('returns number directly when given a number', () => {
 			expect(parseVersion(1.3)).toBe(1.3);
 			expect(parseVersion(2)).toBe(2);
+		});
+	});
+
+	describe('isMissingNodeVersion / resolveTypeVersion', () => {
+		it('treats undefined, empty, and String(undefined) as missing', () => {
+			expect(isMissingNodeVersion(undefined)).toBe(true);
+			expect(isMissingNodeVersion('')).toBe(true);
+			expect(isMissingNodeVersion('undefined')).toBe(true);
+			expect(isMissingNodeVersion('null')).toBe(true);
+			expect(isMissingNodeVersion(2.3)).toBe(false);
+			expect(isMissingNodeVersion('2.3')).toBe(false);
+		});
+
+		it('uses defaultVersion when version is missing', () => {
+			expect(resolveTypeVersion(undefined, 2.3)).toBe(2.3);
+			expect(resolveTypeVersion('undefined', 2.3)).toBe(2.3);
+			expect(resolveTypeVersion('', 2.3)).toBe(2.3);
+		});
+
+		it('keeps explicit versions over defaultVersion', () => {
+			expect(resolveTypeVersion(1, 2.3)).toBe(1);
+			expect(resolveTypeVersion('2.2', 2.3)).toBe(2.2);
+		});
+
+		it('falls back to 1 when missing and no defaultVersion', () => {
+			expect(resolveTypeVersion(undefined)).toBe(1);
+		});
+
+		it('looks up defaultVersions from a record or map', () => {
+			expect(lookupDefaultVersion('n8n-nodes-base.if', { 'n8n-nodes-base.if': 2.3 })).toBe(2.3);
+			expect(lookupDefaultVersion('n8n-nodes-base.if', new Map([['n8n-nodes-base.if', 2.2]]))).toBe(
+				2.2,
+			);
+			expect(lookupDefaultVersion('n8n-nodes-base.if', {})).toBeUndefined();
 		});
 	});
 

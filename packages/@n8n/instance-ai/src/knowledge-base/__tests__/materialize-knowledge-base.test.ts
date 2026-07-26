@@ -93,49 +93,21 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 			bundle.files.get(
 				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/trigger-input-data-shapes.md`,
 			),
-		).toContain('# Per-trigger `inputData` shape');
-		expect(
-			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/open-ai-output-shape.md`),
-		).toContain('# OpenAI node output shape');
-		expect(
-			bundle.files.get(
-				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-builder-guardrails.md`,
-			),
-		).toContain('# Workflow Builder Guardrails');
-
+		).toBeUndefined();
 		expect(
 			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-sdk-language.md`),
-		).toContain('# Workflow SDK language reference');
+		).toBeUndefined();
 
 		const rootIndex = jsonParse<{
 			bestPractices: { indexFile: string; entries: Array<{ id: string }> };
-			templates: { indexFile: string; entries?: unknown[] };
-			reference: { indexFile: string; entries: Array<{ id: string; file: string }> };
+			templates?: { indexFile: string; entries?: unknown[] };
+			reference?: { indexFile: string; entries: Array<{ id: string; file: string }> };
 		}>(
 			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_INDEX_FILE}`) ?? '',
 		);
 		expect(rootIndex.bestPractices.indexFile).toBe('best-practices/index.json');
-		expect(rootIndex.templates.indexFile).toBe('templates/index.json');
-		expect(rootIndex.reference.indexFile).toBe('reference/index.json');
-		expect(rootIndex.templates.entries).toBeUndefined();
-		expect(rootIndex.reference.entries).toEqual([
-			expect.objectContaining({
-				id: 'trigger-input-data-shapes',
-				file: 'reference/trigger-input-data-shapes.md',
-			}),
-			expect.objectContaining({
-				id: 'open-ai-output-shape',
-				file: 'reference/open-ai-output-shape.md',
-			}),
-			expect.objectContaining({
-				id: 'workflow-builder-guardrails',
-				file: 'reference/workflow-builder-guardrails.md',
-			}),
-			expect.objectContaining({
-				id: 'workflow-sdk-language',
-				file: 'reference/workflow-sdk-language.md',
-			}),
-		]);
+		expect(rootIndex.templates).toBeUndefined();
+		expect(rootIndex.reference).toBeUndefined();
 		expect(rootIndex.bestPractices.entries.some((entry) => entry.id === 'scheduling')).toBe(true);
 		expect(bundle.indexPath).toBe(
 			`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_INDEX_FILE}`,

@@ -25,6 +25,12 @@ describe('Default Plugins', () => {
 		expect(validatorIds).toContain('core:openai-structured-output');
 		expect(validatorIds).toContain('core:memory-session-key');
 		expect(validatorIds).toContain('core:unknown-config-keys');
+		expect(validatorIds).toContain('core:filter-type-mismatch');
+		expect(validatorIds).toContain('core:execute-once-aggregator');
+		expect(validatorIds).toContain('core:http-response-field');
+		expect(validatorIds).toContain('core:side-effect-json-chain');
+		expect(validatorIds).toContain('core:weekday-cadence');
+		expect(validatorIds).toContain('core:agent-without-aggregate');
 	});
 
 	it('registerDefaultPlugins registers core composite handlers', () => {

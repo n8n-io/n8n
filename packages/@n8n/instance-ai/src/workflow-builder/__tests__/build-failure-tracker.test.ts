@@ -35,8 +35,9 @@ describe('BuildFailureTracker', () => {
 		});
 		expect(escalation).toBeDefined();
 		expect(escalation).toContain('You already tried this');
-		expect(escalation).toContain('workflow-sdk-language.md');
+		expect(escalation).toContain('restricted subset of TypeScript');
 		expect(escalation).toContain('Code node');
+		expect(escalation).not.toContain('knowledge-base/reference');
 	});
 
 	it('keeps generic validation repeats free of SDK-specific repair advice', () => {

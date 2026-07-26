@@ -16,14 +16,6 @@ describe('Instance AI runtime skills', () => {
 		}
 	});
 
-	it('points the workflow-builder skill at the SDK language reference', () => {
-		const skill = readFileSync(
-			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
-			'utf-8',
-		);
-		expect(skill).toContain('knowledge-base/reference/workflow-sdk-language.md');
-	});
-
 	it('requires the workflow-builder to act on validate warnings, not just errors', () => {
 		const skill = readFileSync(
 			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
@@ -33,18 +25,56 @@ describe('Instance AI runtime skills', () => {
 		expect(skill).toContain('Never leave a warning unread');
 	});
 
-	it('tells the workflow-builder not to add sticky notes by default', () => {
+	it('points sticky-note avoidance at workflow-sdk validate warnings', () => {
 		const skill = readFileSync(
 			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
 			'utf-8',
 		);
-		expect(skill).toContain(
-			'Do not add sticky notes (`sticky(...)` / `n8n-nodes-base.stickyNote`) unless',
-		);
+		expect(skill).toContain('unsolicited `sticky()`');
+		expect(skill).toContain('fix its warnings instead of re-deriving them');
 		expect(skill).not.toMatch(/import \{\n(?:[^\n]*\n)*?\s*sticky,/);
-		expect(skill).toMatch(
-			/opt-in only when the user explicitly\s+asks for a sticky note on the canvas/,
+	});
+
+	it('keeps the workflow-builder node schema lookups narrow', () => {
+		const skill = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
+			'utf-8',
 		);
+		expect(skill).toMatch(/starting from the narrowest\s+query/);
+		expect(skill).toMatch(/only after a narrower query failed/);
+		expect(skill).toMatch(/Ask for the narrowest schema/);
+		expect(skill).toMatch(/do not re-fetch one\s+already returned in this thread/);
+	});
+
+	it('sends the workflow-builder to the SDK code reference before it writes code', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const skill = source.registry.skills.find((entry) => entry.name === 'workflow-builder');
+
+		expect(skill?.linkedFiles.references).toContainEqual(
+			expect.objectContaining({ path: 'references/sdk-code.md' }),
+		);
+
+		const loaded = await source.loadSkill('workflow-builder');
+		expect(loaded?.instructions).toMatch(
+			/Before writing SDK code the first time in a thread, load `workflow-builder`\s+with `filePath: "references\/sdk-code\.md"`/,
+		);
+
+		const loadTool = createSkillLoadTool(source);
+		const loadResult = await loadTool.handler?.(
+			{ skillId: 'workflow-builder', filePath: 'references/sdk-code.md' },
+			{},
+		);
+		if (
+			!loadResult ||
+			typeof loadResult !== 'object' ||
+			!('content' in loadResult) ||
+			typeof loadResult.content !== 'string'
+		) {
+			throw new Error('Expected load_skill to return file content');
+		}
+		expect(loadResult.content).toContain('restricted subset of TypeScript');
+		expect(loadResult.content).toContain('SDK_CODE_AFTER_EXPORT_DEFAULT');
+		expect(loadResult.content).toContain('export default workflow(');
 	});
 
 	it('makes the workflow-builder pick providers from the instance credentials, vendor-agnostically', () => {
@@ -282,8 +312,6 @@ describe('Instance AI runtime skills', () => {
 			'nodes',
 			'data-tables',
 			'credentials',
-			'verify-built-workflow',
-			'executions',
 		]);
 		expect(skill?.description).toContain('Load before calling build-workflow');
 		expect(skill?.description).toContain('Default path for all single-workflow work');
@@ -298,38 +326,37 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('nodes(action="suggested")');
 		expect(loaded?.instructions).toContain('nodes(action="search")');
 		expect(loaded?.instructions).toContain("newCredential('Credential Name', 'credential-id')");
-		expect(loaded?.instructions).toContain('Verification');
-		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
 		expect(loaded?.instructions).toContain('postBuildFlow.required: true');
 		expect(loaded?.instructions).toContain('follow the inlined\n    `postBuildFlow.instructions`');
 		expect(loaded?.instructions).toContain('Do not call\n    `verify-built-workflow` directly');
 		expect(loaded?.instructions).toContain('workflows(action="get-as-code", workflowId)');
-		expect(loaded?.instructions).toContain('n8n has no global error workflow setting');
-		expect(loaded?.instructions).toContain('references/error-workflows.md');
-		expect(loaded?.instructions).toContain('settings.errorWorkflow');
-		expect(loaded?.instructions).toContain(
-			'knowledge-base/reference/workflow-builder-guardrails.md',
-		);
 		expect(loaded?.instructions).toContain('Prefer n8n sources over guessing');
 		expect(loaded?.instructions).toContain('knowledge base');
 		expect(loaded?.instructions).toContain('n8n-docs-assistant');
-		expect(loaded?.instructions).toContain('never load `templates/index.json`');
-		expect(loaded?.instructions).toContain('node-types/index.txt');
+		expect(loaded?.instructions).toContain('knowledge-base/best-practices/');
+		expect(loaded?.instructions).not.toContain('templates/index.json');
+		expect(loaded?.instructions).not.toContain('knowledge-base/reference/');
 		expect(loaded?.instructions).toContain('## Trigger URL Sharing');
 		expect(loaded?.instructions).toContain('{formBaseUrl}/{path}');
 		expect(loaded?.instructions).toContain('**Open chat** button');
 		expect(loaded?.instructions).toContain('batch\n`nodes(action="type-definition")`');
 		expect(loaded?.instructions).toContain('together with the `load_skill` call');
 		expect(loaded?.instructions).toContain('Do not create a plan\njust for verification');
-		expect(loaded?.instructions).toContain('never stop before the first\n`build-workflow` call');
-		expect(loaded?.instructions).toContain('inspect it first via `debugging-executions`');
 		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
 		expect(loaded?.instructions).toContain(
 			'never ask for\nsetup values before the first successful build',
 		);
 		expect(loaded?.instructions).toContain('`planning` or call `create-tasks` first');
-		expect(loaded?.instructions).toContain('.to(isImportant)');
-		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
+		expect(loaded?.instructions).not.toContain('## Escalation');
+		expect(loaded?.instructions).not.toContain('## Repair Strategy');
+		expect(loaded?.instructions).not.toContain('## Verification Contract');
+		expect(loaded?.instructions).not.toContain('## Workflow-Level Error Workflows');
+		expect(loaded?.instructions).not.toContain('## Compositional Workflows');
+		expect(loaded?.instructions).not.toContain('## Node Configuration Safety Rules');
+		expect(loaded?.instructions).not.toContain('## SDK Patterns Reference');
+		expect(loaded?.instructions).not.toContain('MISSING_OUTPUT_FIXTURE');
+		expect(loaded?.instructions).not.toContain('CODE_NODE_NETWORK_CALL');
+		expect(loaded?.instructions).not.toContain('Capability Honesty');
 	});
 
 	it('loads the bundled planning skill', async () => {
@@ -353,7 +380,10 @@ describe('Instance AI runtime skills', () => {
 		const loaded = await source.loadSkill('planning');
 		expect(loaded?.instructions).toContain('## When NOT to use this skill');
 		expect(loaded?.instructions).toContain('Consult the knowledge base before planning');
-		expect(loaded?.instructions).toContain('never load `templates/index.json` wholesale');
+		expect(loaded?.instructions).toContain('knowledge-base/best-practices/index.json');
+		expect(loaded?.instructions).not.toContain('templates/index.json');
+		expect(loaded?.instructions).not.toContain('knowledge-base/templates/');
+		expect(loaded?.instructions).not.toContain('knowledge-base/reference/');
 		expect(loaded?.instructions).toContain(
 			'Before calling `create-tasks`, load it via `load_tool`',
 		);
@@ -399,6 +429,9 @@ describe('Instance AI runtime skills', () => {
 		);
 		expect(loaded?.instructions).toContain(
 			'This follow-up comes after the mocked verification live-test follow-up',
+		);
+		expect(loaded?.instructions).toContain(
+			'Load `workflow-builder` with `filePath: "references/error-workflows.md"`',
 		);
 		expect(loaded?.instructions).toContain(
 			'The error workflow must be published before it can be assigned',

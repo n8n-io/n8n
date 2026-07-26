@@ -51,7 +51,70 @@ export function filterMethodsFromPath(fieldPath: string[]): string[] {
 }
 
 /**
- * Parse version string to number
+ * True when the builder omitted a usable typeVersion (or passed a non-numeric
+ * sentinel such as `String(undefined)` → `"undefined"`).
+ */
+export function isMissingNodeVersion(version: string | number | undefined | null): boolean {
+	if (version === undefined || version === null) return true;
+	if (typeof version === 'number') return Number.isNaN(version);
+	const trimmed = version.trim();
+	if (trimmed === '' || trimmed === 'undefined' || trimmed === 'null') return true;
+	return !/^v?\d+(?:\.\d+)?$/.test(trimmed);
+}
+
+/**
+ * Parse a concrete version string/number, or `undefined` when missing/invalid.
+ */
+export function parseVersionStrict(
+	version: string | number | undefined | null,
+): number | undefined {
+	if (typeof version === 'number') {
+		return Number.isNaN(version) ? undefined : version;
+	}
+	if (version === undefined || version === null) return undefined;
+	const match = String(version)
+		.trim()
+		.match(/^v?(\d+(?:\.\d+)?)$/);
+	return match ? parseFloat(match[1]) : undefined;
+}
+
+/**
+ * Resolve a node's typeVersion: explicit value wins; otherwise use the node
+ * type's defaultVersion when provided; otherwise fall back to `1` (legacy).
+ */
+export function resolveTypeVersion(
+	version: string | number | undefined | null,
+	defaultVersion?: number,
+): number {
+	const parsed = parseVersionStrict(version);
+	if (parsed !== undefined) return parsed;
+	if (typeof defaultVersion === 'number' && !Number.isNaN(defaultVersion)) {
+		return defaultVersion;
+	}
+	return 1;
+}
+
+/**
+ * Look up a defaultVersion for a node type from a map or plain record.
+ */
+export function lookupDefaultVersion(
+	nodeType: string,
+	defaultVersions?: ReadonlyMap<string, number> | Readonly<Record<string, number>>,
+): number | undefined {
+	if (!defaultVersions) return undefined;
+	if (defaultVersions instanceof Map) {
+		return defaultVersions.get(nodeType);
+	}
+	if (!Object.prototype.hasOwnProperty.call(defaultVersions, nodeType)) {
+		return undefined;
+	}
+	const value = (defaultVersions as Readonly<Record<string, number>>)[nodeType];
+	return typeof value === 'number' && !Number.isNaN(value) ? value : undefined;
+}
+
+/**
+ * Parse version string to number. Missing/unparseable values become `1`.
+ * Prefer {@link resolveTypeVersion} when a node-type defaultVersion is available.
  */
 export function parseVersion(version: string | number | undefined): number {
 	if (typeof version === 'number') return version;

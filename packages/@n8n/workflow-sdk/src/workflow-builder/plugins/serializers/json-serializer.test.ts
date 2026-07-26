@@ -113,6 +113,47 @@ describe('jsonSerializer', () => {
 			expect(result.nodes[0]?.parameters).toEqual({});
 		});
 
+		it('uses defaultVersions when builder node omits version', () => {
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: undefined as unknown as number,
+				config: {
+					name: 'If',
+					parameters: {
+						conditions: {
+							combinator: 'and',
+							options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
+							conditions: [],
+						},
+					},
+				},
+			});
+			const ctx = createMockSerializerContext({
+				nodes: new Map<string, GraphNode>([['If', { instance: ifNode, connections: new Map() }]]),
+				defaultVersions: { 'n8n-nodes-base.if': 2.3 },
+			});
+
+			const result = jsonSerializer.serialize(ctx);
+
+			expect(result.nodes[0]?.typeVersion).toBe(2.3);
+		});
+
+		it('keeps explicit typeVersion 1 even when defaultVersions is higher', () => {
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 1,
+				config: { name: 'If', parameters: {} },
+			});
+			const ctx = createMockSerializerContext({
+				nodes: new Map<string, GraphNode>([['If', { instance: ifNode, connections: new Map() }]]),
+				defaultVersions: { 'n8n-nodes-base.if': 2.3 },
+			});
+
+			const result = jsonSerializer.serialize(ctx);
+
+			expect(result.nodes[0]?.typeVersion).toBe(1);
+		});
+
 		it('omits null and undefined optional top-level node keys', () => {
 			const httpNode = node({
 				type: 'n8n-nodes-base.httpRequest',

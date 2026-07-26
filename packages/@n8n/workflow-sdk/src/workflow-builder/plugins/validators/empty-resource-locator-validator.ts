@@ -1,9 +1,10 @@
 /**
  * Empty Resource Locator Validator
  *
- * Flags resource locator objects whose `value` is an empty string. Empty
- * `__rl.value` crashes at runtime — use a real ID, name mode, or
- * `placeholder()` / setup, never `""`.
+ * Flags empty `id`-mode resource locators. Unknown resources should use
+ * `mode: 'list'` with `value: ''` and a `cachedResultName` hint so setup shows
+ * the From-list picker (INS-631) — that shape is intentional and not flagged.
+ * Empty `id` forces a By-ID text field and often hallucinated IDs.
  */
 
 import { isRecord } from '@n8n/utils/is-record';
@@ -44,7 +45,13 @@ function collectEmptyResourceLocators(
 
 	if (isResourceLocator(params)) {
 		const value = params.value;
+		const mode = params.mode;
+		// Empty list + cachedResultName is the approved unknown-resource setup
+		// shape — list-mode placeholders are also cleared to "" by the serializer.
+		if (mode === 'list') return;
+
 		if (
+			mode === 'id' &&
 			isEmptyResourceLocatorValue(value) &&
 			!isPlaceholderValue(value) &&
 			!containsPlaceholderMarker(value)
@@ -53,8 +60,9 @@ function collectEmptyResourceLocators(
 			issues.push({
 				code: 'EMPTY_RESOURCE_LOCATOR_VALUE',
 				message:
-					`'${nodeName}' parameter '${parameterPath}' has an empty resource locator value. ` +
-					'Empty __rl.value crashes at runtime — use a real ID, name mode, or placeholder() / setup, never "".',
+					`'${nodeName}' parameter '${parameterPath}' has an empty id-mode resource locator. ` +
+					"Use mode: 'list' with value: '' and a cachedResultName hint when the resource is " +
+					'unknown (setup From-list picker), or a real ID when known — never empty id mode.',
 				severity: 'warning',
 				violationLevel: 'major',
 				nodeName,
@@ -71,7 +79,7 @@ function collectEmptyResourceLocators(
 }
 
 /**
- * Validator for empty resource locator values.
+ * Validator for empty id-mode resource locator values.
  */
 export const emptyResourceLocatorValidator: ValidatorPlugin = {
 	id: 'core:empty-resource-locator',

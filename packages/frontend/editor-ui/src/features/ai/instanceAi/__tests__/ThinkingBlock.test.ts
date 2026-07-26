@@ -14,7 +14,7 @@ const renderComponent = createThreadComponentRenderer(ThinkingBlock, {
 	global: {
 		stubs: {
 			InstanceAiMarkdown: { template: '<span>{{ content }}</span>', props: ['content'] },
-			ToolResultJson: true,
+			ToolArgsRenderer: true,
 			ToolResultRenderer: true,
 		},
 	},

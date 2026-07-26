@@ -156,6 +156,11 @@ export interface ValidationOptions {
 	 * When set, graph validators can enforce minVersion / operations / hiddenProperties.
 	 */
 	aiGatewayByNodeType?: Readonly<Record<string, AiGatewayNodeMeta>>;
+	/**
+	 * Per-node-type defaultVersion map. When a builder node omits `version`,
+	 * graph validators / serialize use this instead of typeVersion 1.
+	 */
+	defaultVersions?: ReadonlyMap<string, number> | Readonly<Record<string, number>>;
 }
 
 /**

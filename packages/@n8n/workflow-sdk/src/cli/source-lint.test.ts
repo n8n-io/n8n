@@ -60,6 +60,15 @@ export default workflow('id', 'name').add(n);
 		expect(lintWorkflowSource(source).map((i) => i.code)).toContain('SDK_PLACEHOLDER_WRAPPED');
 	});
 
+	it('flags sticky() calls', () => {
+		const source = `
+const note = sticky('## Notes');
+const start = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } });
+export default workflow('id', 'name').add(start).add(note);
+`;
+		expect(lintWorkflowSource(source).map((i) => i.code)).toContain('SDK_UNSOLICITED_STICKY');
+	});
+
 	it('flags .map() in builder code', () => {
 		const source = `
 const names = ['a', 'b'].map((x) => x);

@@ -5,7 +5,10 @@
  * defaulted) when the declared output body is an envelope wrapping an array.
  * `responseIsEmpty` continues while
  * `Array.isArray($response.body) ? $response.body.length : !!$response.body`,
- * so `{"orders": []}` is truthy and paging never stops until n8n aborts.
+ * so `{"items": []}` is truthy and paging never stops until n8n aborts.
+ *
+ * When pagination uses that stop condition but no output fixture is declared,
+ * emits a companion issue so the envelope case cannot slip through silently.
  */
 
 import { isRecord } from '@n8n/utils/is-record';
@@ -14,6 +17,10 @@ import type { GraphNode, NodeInstance } from '../../../types/base';
 import type { PluginContext, ValidationIssue, ValidatorPlugin } from '../types';
 
 const HTTP_REQUEST_TYPE = 'n8n-nodes-base.httpRequest';
+
+export const HTTP_PAGINATION_ENVELOPE_RESPONSE_IS_EMPTY =
+	'HTTP_PAGINATION_ENVELOPE_RESPONSE_IS_EMPTY';
+export const HTTP_PAGINATION_MISSING_OUTPUT_SHAPE = 'HTTP_PAGINATION_MISSING_OUTPUT_SHAPE';
 
 function unwrapItemJson(item: Record<string, unknown>): Record<string, unknown> {
 	if ('json' in item && isRecord(item.json)) {
@@ -43,7 +50,7 @@ function usesResponseIsEmpty(pagination: Record<string, unknown>): boolean {
 }
 
 /**
- * An envelope wraps a list under a named key (`{ orders: [...] }`) rather than
+ * An envelope wraps a list under a named key (`{ items: [...] }`) rather than
  * being a bare array (which the HTTP node splits into one item per element).
  */
 function findEnvelopeArrayField(outputShape: Record<string, unknown>): string | undefined {
@@ -88,14 +95,30 @@ export const httpPaginationValidator: ValidatorPlugin = {
 		}
 
 		const outputShape = getDeclaredOutputShape(node);
-		if (!outputShape) return [];
+		if (!outputShape) {
+			return [
+				{
+					code: HTTP_PAGINATION_MISSING_OUTPUT_SHAPE,
+					message:
+						`'${node.name}' paginates with paginationCompleteWhen: 'responseIsEmpty' (the default) ` +
+						'but has no declared output fixture, so the stop condition cannot be checked against the ' +
+						'response shape. Declare an output fixture for the real response body, or set ' +
+						"paginationCompleteWhen: 'other' with a completeExpression that is true when paging is done " +
+						'(for envelope responses, e.g. {{ $response.body.<arrayField>.length === 0 }}). ' +
+						'Keep responseIsEmpty only when the endpoint returns a bare top-level array.',
+					severity: 'warning',
+					nodeName: node.name,
+					parameterPath: 'options.pagination.pagination.paginationCompleteWhen',
+				},
+			];
+		}
 
 		const arrayField = findEnvelopeArrayField(outputShape);
 		if (!arrayField) return [];
 
 		return [
 			{
-				code: 'HTTP_PAGINATION_ENVELOPE_RESPONSE_IS_EMPTY',
+				code: HTTP_PAGINATION_ENVELOPE_RESPONSE_IS_EMPTY,
 				message:
 					`'${node.name}' paginates with paginationCompleteWhen: 'responseIsEmpty' (the default), but its ` +
 					`declared output is an envelope wrapping an array under "${arrayField}". ` +

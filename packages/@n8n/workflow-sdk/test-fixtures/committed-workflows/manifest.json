@@ -251,6 +251,10 @@
 				{
 					"code": "SHEETS_MATCH_COLUMN_NOT_IN_SCHEMA",
 					"nodeName": "Log to Google Sheets"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Return Analysis Result"
 				}
 			],
 			"expectedValidationWarnings": [

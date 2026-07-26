@@ -591,7 +591,6 @@ export function builderTemplatesOptionsFromEnv({
 }: { logger: Logger }): BuilderTemplatesServiceOptions {
 	const url = process.env.N8N_INSTANCE_AI_TEMPLATES_URL;
 	const hoursRaw = process.env.N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS;
-	const disabled = process.env.N8N_INSTANCE_AI_TEMPLATES_DISABLED;
 
 	const refreshIntervalMs = parseRefreshHoursMs(hoursRaw, logger);
 
@@ -599,7 +598,8 @@ export function builderTemplatesOptionsFromEnv({
 		logger,
 		...(url ? { cdnBaseUrl: url } : {}),
 		...(refreshIntervalMs !== null ? { refreshIntervalMs } : {}),
-		disabled: disabled === '1' || disabled?.toLowerCase() === 'true',
+		// TEMP: always return no templates until re-enabled.
+		disabled: true,
 	};
 }
 

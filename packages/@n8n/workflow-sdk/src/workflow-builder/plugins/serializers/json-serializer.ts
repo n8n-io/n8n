@@ -20,7 +20,8 @@ import { calculateNodePositions, calculateNodePositionsDagre } from '../../layou
 import {
 	normalizeResourceLocators,
 	escapeNewlinesInExpressionStrings,
-	parseVersion,
+	lookupDefaultVersion,
+	resolveTypeVersion,
 	generateDeterministicGroupId,
 } from '../../string-utils';
 import type { SerializerPlugin, SerializerContext } from '../types';
@@ -42,6 +43,7 @@ function serializeNode(
 	mapKey: string,
 	graphNode: GraphNode,
 	nodePositions: Map<string, [number, number]>,
+	defaultVersions?: SerializerContext['defaultVersions'],
 ): NodeJSON | undefined {
 	const instance = graphNode.instance;
 
@@ -90,7 +92,10 @@ function serializeNode(
 		id: instance.id,
 		name: nodeName,
 		type: instance.type,
-		typeVersion: parseVersion(instance.version),
+		typeVersion: resolveTypeVersion(
+			instance.version,
+			lookupDefaultVersion(instance.type, defaultVersions),
+		),
 		position,
 		parameters: serializedParams,
 	};
@@ -232,7 +237,7 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 		// Convert nodes and connections
 		for (const [mapKey, graphNode] of ctx.nodes) {
 			// Serialize node
-			const serializedNode = serializeNode(mapKey, graphNode, nodePositions);
+			const serializedNode = serializeNode(mapKey, graphNode, nodePositions, ctx.defaultVersions);
 			if (!serializedNode) continue;
 
 			nodes.push(serializedNode);

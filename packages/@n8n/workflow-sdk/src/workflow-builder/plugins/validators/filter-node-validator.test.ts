@@ -6,11 +6,12 @@ function createMockNode(
 	type: string,
 	name: string,
 	parameters: Record<string, unknown> = {},
+	version: string | number = '2.2',
 ): NodeInstance<string, string, unknown> {
 	return {
 		type,
 		name,
-		version: '2.2',
+		version: String(version),
 		config: { parameters },
 	} as NodeInstance<string, string, unknown>;
 }
@@ -22,8 +23,11 @@ function createGraphNode(
 	return { instance: node, connections };
 }
 
-function createCtx(nodes: Map<string, GraphNode> = new Map()): PluginContext {
-	return { nodes, workflowId: 'test', workflowName: 'Test', settings: {} };
+function createCtx(
+	nodes: Map<string, GraphNode> = new Map(),
+	validationOptions?: PluginContext['validationOptions'],
+): PluginContext {
+	return { nodes, workflowId: 'test', workflowName: 'Test', settings: {}, validationOptions };
 }
 
 const VALID_CONDITIONS = {
@@ -145,14 +149,50 @@ describe('filterNodeValidator', () => {
 			);
 		});
 
-		it('returns no issues when node has no parameters', () => {
+		it('returns FILTER_MISSING_CONDITIONS when node has no parameters', () => {
 			const node = createMockNode('n8n-nodes-base.if', 'Check');
 			const graphNode = createGraphNode(node);
 			const nodes = new Map([['Check', graphNode]]);
 
 			const issues = filterNodeValidator.validateNode(node, graphNode, createCtx(nodes));
 
-			expect(issues).toHaveLength(0);
+			expect(issues).toContainEqual(
+				expect.objectContaining({
+					code: 'FILTER_MISSING_CONDITIONS',
+					severity: 'error',
+					parameterPath: 'conditions',
+				}),
+			);
+		});
+
+		it('returns all FILTER_MISSING_* errors for empty conditions object', () => {
+			const node = createMockNode('n8n-nodes-base.if', 'Check', {
+				conditions: {},
+			});
+			const graphNode = createGraphNode(node);
+			const nodes = new Map([['Check', graphNode]]);
+
+			const issues = filterNodeValidator.validateNode(node, graphNode, createCtx(nodes));
+
+			expect(issues.map((i) => i.code).sort()).toEqual([
+				'FILTER_MISSING_COMBINATOR',
+				'FILTER_MISSING_CONDITIONS',
+				'FILTER_MISSING_OPTIONS',
+			]);
+		});
+
+		it('returns FILTER_MISSING_CONDITIONS when conditions is not an object', () => {
+			const node = createMockNode('n8n-nodes-base.if', 'Check', {
+				conditions: '={{ $json.resolved }}',
+			});
+			const graphNode = createGraphNode(node);
+			const nodes = new Map([['Check', graphNode]]);
+
+			const issues = filterNodeValidator.validateNode(node, graphNode, createCtx(nodes));
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({ code: 'FILTER_MISSING_CONDITIONS', severity: 'error' }),
+			);
 		});
 
 		it('works for Filter nodes too', () => {
@@ -173,6 +213,80 @@ describe('filterNodeValidator', () => {
 			const issues = filterNodeValidator.validateNode(node, graphNode, createCtx(nodes));
 
 			expect(issues.some((i) => i.code === 'FILTER_MISSING_OPTIONS')).toBe(true);
+		});
+
+		it('returns FILTER_OUTDATED_TYPE_VERSION for explicit IF typeVersion 1 with V2 conditions', () => {
+			const node = createMockNode(
+				'n8n-nodes-base.if',
+				'Check',
+				{ conditions: VALID_CONDITIONS },
+				1,
+			);
+			const graphNode = createGraphNode(node);
+			const nodes = new Map([['Check', graphNode]]);
+
+			const issues = filterNodeValidator.validateNode(node, graphNode, createCtx(nodes));
+
+			expect(issues).toEqual([
+				expect.objectContaining({
+					code: 'FILTER_OUTDATED_TYPE_VERSION',
+					severity: 'error',
+					parameterPath: 'version',
+				}),
+			]);
+			expect(issues[0]?.message).toContain('true branch');
+		});
+
+		it('returns FILTER_OUTDATED_TYPE_VERSION when IF version is missing and no defaultVersions', () => {
+			const node = createMockNode(
+				'n8n-nodes-base.if',
+				'Check',
+				{ conditions: VALID_CONDITIONS },
+				'undefined',
+			);
+			const graphNode = createGraphNode(node);
+			const nodes = new Map([['Check', graphNode]]);
+
+			const issues = filterNodeValidator.validateNode(node, graphNode, createCtx(nodes));
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({ code: 'FILTER_OUTDATED_TYPE_VERSION', severity: 'error' }),
+			);
+		});
+
+		it('accepts missing IF version when defaultVersions resolves to v2+', () => {
+			const node = createMockNode(
+				'n8n-nodes-base.if',
+				'Check',
+				{ conditions: VALID_CONDITIONS },
+				'undefined',
+			);
+			const graphNode = createGraphNode(node);
+			const nodes = new Map([['Check', graphNode]]);
+			const ctx = createCtx(nodes, {
+				defaultVersions: { 'n8n-nodes-base.if': 2.3 },
+			});
+
+			const issues = filterNodeValidator.validateNode(node, graphNode, ctx);
+
+			expect(issues).toHaveLength(0);
+		});
+
+		it('returns FILTER_OUTDATED_TYPE_VERSION for Filter typeVersion 1', () => {
+			const node = createMockNode(
+				'n8n-nodes-base.filter',
+				'Filter',
+				{ conditions: VALID_CONDITIONS },
+				1,
+			);
+			const graphNode = createGraphNode(node);
+			const nodes = new Map([['Filter', graphNode]]);
+
+			const issues = filterNodeValidator.validateNode(node, graphNode, createCtx(nodes));
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({ code: 'FILTER_OUTDATED_TYPE_VERSION', severity: 'error' }),
+			);
 		});
 	});
 
@@ -236,6 +350,25 @@ describe('filterNodeValidator', () => {
 
 			expect(issues).toContainEqual(expect.objectContaining({ code: 'FILTER_MISSING_OPTIONS' }));
 			expect(issues).toContainEqual(expect.objectContaining({ code: 'FILTER_MISSING_COMBINATOR' }));
+		});
+
+		it('returns FILTER_MISSING_* for empty rule conditions object', () => {
+			const node = createMockNode('n8n-nodes-base.switch', 'Router', {
+				rules: {
+					values: [{ outputKey: 'a', conditions: {} }],
+				},
+			});
+			const graphNode = createGraphNode(node);
+			const nodes = new Map([['Router', graphNode]]);
+
+			const issues = filterNodeValidator.validateNode(node, graphNode, createCtx(nodes));
+
+			expect(issues.map((i) => i.code).sort()).toEqual([
+				'FILTER_MISSING_COMBINATOR',
+				'FILTER_MISSING_CONDITIONS',
+				'FILTER_MISSING_OPTIONS',
+			]);
+			expect(issues[0]?.parameterPath).toMatch(/^rules\.values\[0\]\.conditions/);
 		});
 
 		it('still validates conditions inside rules.rules (wrong key but checks content)', () => {

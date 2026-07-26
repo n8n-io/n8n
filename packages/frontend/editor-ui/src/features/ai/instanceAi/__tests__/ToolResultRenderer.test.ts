@@ -5,6 +5,26 @@ import ToolResultRenderer from '../components/ToolResultRenderer.vue';
 const renderComponent = createComponentRenderer(ToolResultRenderer);
 
 describe('ToolResultRenderer', () => {
+	it('renders execute-command stdout as terminal output', () => {
+		const { getByTestId, queryByText } = renderComponent({
+			props: {
+				toolName: 'workspace_execute_command',
+				result: {
+					success: true,
+					exitCode: 0,
+					stdout: '#!/usr/bin/env node\n"use strict";\n',
+					stderr: '',
+					executionTimeMs: 42,
+				},
+			},
+		});
+
+		expect(getByTestId('tool-command-result')).toBeInTheDocument();
+		expect(getByTestId('tool-command-stdout')).toHaveTextContent('#!/usr/bin/env node');
+		expect(getByTestId('tool-command-stdout')).toHaveTextContent('"use strict";');
+		expect(queryByText('"stdout"')).not.toBeInTheDocument();
+	});
+
 	it('renders MCP image content', () => {
 		const { container, getByText } = renderComponent({
 			props: {

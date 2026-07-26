@@ -1013,6 +1013,11 @@ export interface ToJSONOptions {
 	 * isn't skewed; groups without a match fall back to a deterministic ID.
 	 */
 	existingGroupIdsByName?: Map<string, string>;
+	/**
+	 * Per-node-type defaultVersion map. When a builder node omits `version`, serialize
+	 * uses this instead of falling back to typeVersion 1.
+	 */
+	defaultVersions?: ReadonlyMap<string, number> | Readonly<Record<string, number>>;
 }
 
 /**

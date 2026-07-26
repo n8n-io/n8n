@@ -122,6 +122,11 @@ export interface ValidationOptions {
 	 * Supplied by Instance AI when licensed; CLI validate usually omits this.
 	 */
 	readonly aiGatewayByNodeType?: Readonly<Record<string, AiGatewayNodeMeta>>;
+	/**
+	 * Per-node-type defaultVersion map. When a builder node omits `version`,
+	 * validators resolve against this instead of treating the node as typeVersion 1.
+	 */
+	readonly defaultVersions?: ReadonlyMap<string, number> | Readonly<Record<string, number>>;
 }
 
 /**
@@ -367,6 +372,11 @@ export interface SerializerContext extends PluginContext {
 
 	/** Whether to use Dagre-based layout for node positioning */
 	readonly tidyUp?: boolean;
+
+	/**
+	 * Per-node-type defaultVersion map used when a builder node omits `version`.
+	 */
+	readonly defaultVersions?: ReadonlyMap<string, number> | Readonly<Record<string, number>>;
 
 	/**
 	 * Node groups carried by member node *ID* — already resolved to the IDs the emitted

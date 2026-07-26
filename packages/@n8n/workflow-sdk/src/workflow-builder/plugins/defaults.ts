@@ -12,6 +12,7 @@ import type { ValidatorPlugin, CompositeHandlerPlugin, SerializerPlugin } from '
 import {
 	agentValidator,
 	agentModelPairingValidator,
+	agentWithoutAggregateValidator,
 	aiGatewayValidator,
 	alwaysOutputDataValidator,
 	arrayInputCollapseValidator,
@@ -26,9 +27,12 @@ import {
 	expressionPathValidator,
 	expressionPrefixValidator,
 	filterNodeValidator,
+	filterTypeMismatchValidator,
 	fromAiValidator,
+	executeOnceAggregatorValidator,
 	httpPaginationValidator,
 	httpRequestValidator,
+	httpResponseFieldValidator,
 	listFixtureValidator,
 	llmTextPathValidator,
 	maxNodesValidator,
@@ -42,12 +46,14 @@ import {
 	rawCredentialValidator,
 	setNodeValidator,
 	sheetsMatchColumnValidator,
+	sideEffectJsonChainValidator,
 	nestedSplitInBatchesValidator,
 	splitInBatchesLoopbackValidator,
 	subnodeConnectionValidator,
 	subnodeJsonReferenceValidator,
 	toolNodeValidator,
 	unknownConfigKeysValidator,
+	weekdayCadenceValidator,
 } from './validators';
 
 // Note: Core composite handlers are now imported from ./composite-handlers
@@ -70,6 +76,7 @@ const coreValidators: ValidatorPlugin[] = [
 	// Node-specific validators (high priority)
 	agentValidator,
 	agentModelPairingValidator,
+	agentWithoutAggregateValidator,
 	aiGatewayValidator,
 	chainLlmValidator,
 	httpRequestValidator,
@@ -95,10 +102,15 @@ const coreValidators: ValidatorPlugin[] = [
 	setNodeValidator,
 	mergeNodeValidator,
 	filterNodeValidator,
+	filterTypeMismatchValidator,
 	branchOutputValidator,
 	nestedSplitInBatchesValidator,
 	splitInBatchesLoopbackValidator,
 	connectionIndexValidator,
+	executeOnceAggregatorValidator,
+	httpResponseFieldValidator,
+	sideEffectJsonChainValidator,
+	weekdayCadenceValidator,
 
 	// Expression validators (lower priority)
 	expressionPrefixValidator,

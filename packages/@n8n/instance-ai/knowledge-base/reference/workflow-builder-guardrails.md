@@ -1,8 +1,16 @@
 # Workflow Builder Guardrails
 
-Use these guardrails for workflow builds with multiple external systems,
-multiple requested effects, digests or reports, non-trivial branching, or Code
-nodes. They are a runtime checklist, not extra user-facing output.
+Use these for workflow builds with multiple external systems, multiple requested
+effects, digests or reports, non-trivial branching, or Code nodes. They are a
+runtime checklist, not extra user-facing output.
+
+**Validate first.** Before iterating on complex graphs, run
+`workflow-sdk validate` and fix every warning. It already covers HTTP text
+response field paths, bare `$json` after messaging side effects, missing
+`executeOnce` on digests/summaries, list/array collapse, boolean-vs-string
+filters, weekday digest gates, Code sandbox imports / nested templates, Agents
+fed itemized streams without aggregation, and related defects. The sections
+below are architecture checks validate cannot fully see.
 
 ## Preserve Source Data
 
@@ -39,40 +47,21 @@ synthetic failure records for the same source/effect.
 HTTP and app nodes may return one n8n item per record, a top-level array, or an
 envelope such as `records`, `body`, or `data`. Before per-record filtering,
 upserting, or posting, check the actual item shape. Preserve itemized flow or
-split arrays into one item per record; do not collapse to no work because
-`$input.first().json` is a single object.
+split arrays into one item per record.
 
 When a downstream node must reason over the whole collection at once — a single
-AI Agent analysing a series, an indicator/metric computed across all rows, a
-summary, or a structured-output parser expecting one object — first aggregate
-the split items into a single item with a Code node (`return [{ json: { rows:
-$input.all().map(i => i.json) } }]`) and feed that one item in. A single-shot
-Agent or output parser wired directly to N split items runs once per row and
-produces malformed or unparseable output.
-
-For one digest, ranking, summary, count, or report, aggregate first and send one
-final item. For one action per source record, keep the stream itemized. Use
-`executeOnce: true` only for shared-context reads, report construction,
-rankings, summaries, or final one-message posts that should run once.
+AI Agent analysing a series, an indicator across all rows, a summary, or a
+structured-output parser expecting one object — aggregate first into one item
+(`return [{ json: { rows: $input.all().map(i => i.json) } }]`). For one digest,
+ranking, summary, count, or report, aggregate then send once; for one action per
+source record, keep the stream itemized.
 
 Avoid using `SplitInBatches` as the collector for a fixed set of external
 sources in a digest/report path. Its done branch carries only what looped back
-through `nextBatch`, so anything a Filter/IF drops or a non-reconnecting branch
-handles is silently missing from the digest — and the loop serializes fetches
-that could run in parallel. Prefer parallel source branches plus explicit
-fan-in, or emit one success/empty/failure record per source before aggregation.
-
-## HTTP Request Output Field Names
-
-The HTTP Request node's output field depends on Response Format. With `json`
-(the default), the parsed body is the item json itself — or under `body` when
-"Include Response Headers and Status" (full response) is enabled. With `text`,
-the body string is under the Output Field option (default `data`) — even with
-full response enabled it stays under `data` next to `headers`/`statusCode`,
-never under `body`. A Code node reading `$json.body` after a text-format fetch
-gets `undefined`, which silently breaks length/emptiness checks (e.g. scraped
-HTML misclassified as blocked). Read the field the chosen format actually
-emits.
+through `nextBatch`, so anything a Filter/IF drops is silently missing — and the
+loop serializes fetches that could run in parallel. Prefer parallel source
+branches plus explicit fan-in, or emit one success/empty/failure record per
+source before aggregation.
 
 ## Fetch Complete External Data
 
@@ -87,28 +76,11 @@ reachable read/query/fetch node before the formatter and final action. A
 schedule item, date-window calculator, placeholder row, or final formatter is
 not source data.
 
-## Data After Side-Effect Nodes
-
-Send/notify/write nodes (Gmail, Slack, Telegram, email send, most "create"
-actions) output their own API response — message IDs, thread stamps, `ok`
-flags — not the data that flowed into them. A node chained after a send that
-reads `$json.someField` from the original data gets `null`/undefined and
-silently no-ops (an update matching no rows, an empty mapped column). When a
-node after a side-effect needs the original data, reference it by node name
-(`$('Compute Change').item.json.status`) or wire it in parallel from the
-data-producing node instead of chaining through the send.
-
-## Keep Code Nodes Parseable
+## Keep Code Nodes Minimal
 
 Prefer built-in nodes for simple split, map, filter, merge, and aggregate work.
 When a Code node is necessary, use real n8n item APIs such as `$input.all()` and
-return explicit `json` objects.
-
-Code nodes run in a restricted runtime. Do not `require()` or `import`
-unavailable modules such as `luxon` or `openai`; use JavaScript `Date`, `Intl`,
-`$now`, `$today`, existing workflow data, or dedicated AI nodes.
-
-Keep embedded Code node source parseable after saving. Avoid nested template
-literals, raw newlines inside quoted strings, and escape-heavy regex literals.
-Prefer arrays joined with a runtime separator such as
+return explicit `json` objects. Keep embedded source parseable after saving —
+avoid raw newlines inside quoted strings and escape-heavy regex literals; prefer
+arrays joined with a runtime separator such as
 `const LF = String.fromCharCode(10);`.

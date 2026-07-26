@@ -4,6 +4,8 @@ import type { McpToolCallResult } from '@n8n/api-types';
 import { N8nAiActivityStepResultSection } from '@n8n/design-system';
 import { isRecord } from '@n8n/utils/is-record';
 
+import { extractExecuteCommandResult } from '../toolCommand.utils';
+import ToolCommandView from './ToolCommandView.vue';
 import ToolResultJson from './ToolResultJson.vue';
 import ToolResultTable from './ToolResultTable.vue';
 import ToolResultCode from './ToolResultCode.vue';
@@ -17,7 +19,7 @@ const props = defineProps<{
 	toolArgs?: Record<string, unknown>;
 }>();
 
-type ResultType = 'content' | 'code' | 'table' | 'json';
+type ResultType = 'content' | 'code' | 'table' | 'command' | 'json';
 type McpContentItem = McpToolCallResult['content'][number];
 
 function isAction(family: string, action: string): boolean {
@@ -113,6 +115,7 @@ function extractMcpContent(result: unknown): McpToolCallResult['content'] | null
 
 function detectType(result: unknown): ResultType {
 	if (extractMcpContent(result) !== null) return 'content';
+	if (extractExecuteCommandResult(props.toolName, result)) return 'command';
 	if (isCodeTool()) return 'code';
 	if (isTableTool() && result && typeof result === 'object') return 'table';
 	return 'json';
@@ -159,6 +162,7 @@ const resultType = computed(() => detectType(props.result));
 const contentItems = computed(() => extractMcpContent(props.result));
 const codeContent = computed(() => extractCode(props.result));
 const tableRows = computed(() => extractTableRows(props.result));
+const commandResult = computed(() => extractExecuteCommandResult(props.toolName, props.result));
 </script>
 
 <template>
@@ -179,8 +183,9 @@ const tableRows = computed(() => extractTableRows(props.result));
 			</template>
 		</div>
 	</N8nAiActivityStepResultSection>
+	<ToolCommandView v-else-if="resultType === 'command' && commandResult" :result="commandResult" />
 	<N8nAiActivityStepResultSection v-else-if="resultType === 'code' && codeContent">
-		<ToolResultCode :code="codeContent" />
+		<ToolResultCode :code="codeContent" language="typescript" />
 	</N8nAiActivityStepResultSection>
 	<N8nAiActivityStepResultSection v-else-if="resultType === 'table' && tableRows">
 		<ToolResultTable :rows="tableRows" />

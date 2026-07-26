@@ -182,7 +182,7 @@ function validateFilterValue(
 	const issues: ValidationIssue[] = [];
 
 	for (let i = 0; i < conditions.length; i++) {
-		const condition = conditions[i];
+		const condition: unknown = conditions[i];
 		if (!isRecord(condition)) continue;
 		if (!shouldFlagCondition(condition, typeValidation, nodes, predecessors)) continue;
 
@@ -233,7 +233,7 @@ export const filterTypeMismatchValidator: ValidatorPlugin = {
 			const values = rules.values ?? rules.rules;
 			if (Array.isArray(values)) {
 				for (let i = 0; i < values.length; i++) {
-					const rule = values[i];
+					const rule: unknown = values[i];
 					if (!isRecord(rule)) continue;
 					const ruleConditions = rule.conditions;
 					if (isRecord(ruleConditions) && 'conditions' in ruleConditions) {

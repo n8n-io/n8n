@@ -19,7 +19,7 @@ import { HIDDEN_TOOLS } from '../agentTimeline.utils';
 import { getToolIcon, useToolLabel } from '../toolLabels';
 import ButtonLike from './ButtonLike.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
-import ToolResultJson from './ToolResultJson.vue';
+import ToolArgsRenderer from './ToolArgsRenderer.vue';
 import ToolResultRenderer from './ToolResultRenderer.vue';
 
 const props = withDefaults(
@@ -123,7 +123,11 @@ const steps = computed((): TimelineStep[] => {
 				:loading="step.toolCall.isLoading"
 				:error="step.toolCall.error"
 			>
-				<ToolResultJson v-if="step.toolCall.args" :value="step.toolCall.args" />
+				<ToolArgsRenderer
+					v-if="step.toolCall.args"
+					:tool-name="step.toolCall.toolName"
+					:args="step.toolCall.args"
+				/>
 				<ToolResultRenderer
 					v-if="step.toolCall.result !== undefined"
 					:result="step.toolCall.result"

@@ -764,6 +764,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate – gather 3 video URLs"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "ChatGPT Image – fetch generated image"
 				},
@@ -1269,6 +1273,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Get LinkedIn Company"
 				},
@@ -1355,6 +1363,10 @@
 			"name": "PPC campaign intelligence & optimization with Google Ads, Sheets & Slack",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Generate Action Plan"
+				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "Alert: Issues Detected"
@@ -1806,6 +1818,10 @@
 				{
 					"code": "EMPTY_RESOURCE_LOCATOR_VALUE",
 					"nodeName": "Sending Raw Data To A Google Sheet"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Metrics by Ad Creative"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -2598,6 +2614,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Data Preparation"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Google Drive Trigger"
 				}
@@ -2655,6 +2675,10 @@
 			"name": "Build a weekly AI trend alerter with arXiv and Weaviate",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Uploaded arXiv IDs"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Query arXiv"
@@ -3017,6 +3041,10 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Gemini"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Sum Token Totals - aggregate by model"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -3587,6 +3615,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Evals"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Get Dataset Splits"
 				},
@@ -3670,6 +3702,18 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Check Collection Exists1"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate a Batch"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate a Batch to Embed"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate a Batch to Upsert"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -4436,8 +4480,16 @@
 					"nodeName": "Filter Overdue Invoices"
 				},
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Format Email"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Webhook: Payment Received"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Update Reminder Status"
 				}
 			]
 		},
@@ -4852,6 +4904,10 @@
 					"nodeName": "Sticky Note9"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Google Sheets request"
 				},
@@ -5113,7 +5169,13 @@
 		{
 			"id": 11466,
 			"name": "Create and send tech news digests with RSS, Gemini AI and Gmail",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Send Final Digest Email"
+				}
+			]
 		},
 		{
 			"id": 5611,
@@ -5449,6 +5511,14 @@
 					"nodeName": "Transcript Present?"
 				},
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Create as HTML"
+				},
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Format Key Parts"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Convert to Google Doc"
 				},
@@ -5528,6 +5598,10 @@
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "Generate Full Narrative from Prompt"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate videos with audio"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -5941,7 +6015,13 @@
 		{
 			"id": 10729,
 			"name": "Benchmark content safety guardrails with automated test suite & reports",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Format Report"
+				}
+			]
 		},
 		{
 			"id": 10230,
@@ -6278,6 +6358,10 @@
 					"nodeName": "Update Article Writer table1"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "HTTP Request"
 				},
@@ -6444,6 +6528,10 @@
 			"name": "Google Maps business scraper with contact extraction via Apify and Firecrawl",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "FILTER_BOOLEAN_COMPARED_AS_STRING",
+					"nodeName": "Filter Businesses with Websites"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Check Scraping Status"
@@ -6873,6 +6961,10 @@
 				{
 					"code": "INVALID_INPUT_INDEX",
 					"nodeName": "Merge"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
 				}
 			],
 			"app": "Merge"
@@ -7279,6 +7371,20 @@
 			"id": 4678,
 			"name": "Intelligent AI digest for security, privacy, and compliance feeds",
 			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Compliance Send Final Digest Email"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Privacy Send Final Digest Email"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Security Send Final Digest Email"
+				}
+			],
 			"nodeType": "agent"
 		},
 		{
@@ -7395,6 +7501,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Email Trigger (IMAP)"
 				},
@@ -7439,6 +7549,10 @@
 					"nodeName": "Archive Data"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate: Relevant Items"
+				},
+				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "AI Pre-filtering"
 				},
@@ -7468,6 +7582,14 @@
 			"name": "Host your own AI deep research agent with n8n, Apify and OpenAI o3",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Generate Report"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Report Page Generator"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "DeepResearch Subworkflow"
@@ -8005,7 +8127,13 @@
 		{
 			"id": 9633,
 			"name": "Newsletter summarization & briefing with Gmail, AI, Google Sheets & Email",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Structure HTML-Mail"
+				}
+			]
 		},
 		{
 			"id": 9375,
@@ -8534,6 +8662,10 @@
 					"nodeName": "Get snapshot + data"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Financial times scraper"
 				},
@@ -9017,6 +9149,10 @@
 					"nodeName": "If the booking is confirmed then true"
 				},
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Available Start Times & Ranges"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "bookslots_tool"
 				},
@@ -9109,6 +9245,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Construir_Prompt_Gemini1"
+				},
+				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "GENERADOR DE MENSAJE DE VOZ"
 				},
@@ -9176,6 +9316,10 @@
 				{
 					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Fetch Scraper Results"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Stock Data"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -9329,6 +9473,10 @@
 					"nodeName": "SEO analyst"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Send Email with Full report"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Get Page GSC Stats"
 				},
@@ -9450,7 +9598,13 @@
 		{
 			"id": 4709,
 			"name": "Daily news digest: summarize RSS feeds with OpenAI and deliver to WhatsApp",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				}
+			]
 		},
 		{
 			"id": 4674,
@@ -9475,6 +9629,14 @@
 				{
 					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Call new lead using RetellAI"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Generate call summary with OpenAI"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Send call summary email"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -9731,6 +9893,10 @@
 			"name": "Scrape business emails from Google Maps without the use of any third party APIs",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate arrays of emails"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Request web page for URL"
@@ -10157,6 +10323,10 @@
 			"name": "Automated invoice-PO matching with Google Gemini AI and email notifications",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "FILTER_BOOLEAN_COMPARED_AS_STRING",
+					"nodeName": "If"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Google Drive Trigger"
@@ -11325,6 +11495,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Google Sheet Data"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Download Resume"
 				},
@@ -11664,6 +11838,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Download Image"
 				},
@@ -11702,8 +11880,16 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Render Elegant Email Template"
+				},
+				{
 					"code": "EMPTY_ITEM_NOT_FILTERED",
 					"nodeName": "Universal Safe Parser"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Send Executive Summary Email"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -11823,6 +12009,10 @@
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Webhook Trigger"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Update CRM"
 				}
 			]
 		},
@@ -11908,6 +12098,18 @@
 			"name": "Automate Google Ads copy optimization with Channable feed and Relevance AI",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Generate Performance Report"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Email Performance Report"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Generate Performance Report"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "AI Performance Analysis"
@@ -12135,6 +12337,10 @@
 			"name": "Automate HS code lookup & enrichment with Google Sheets and customs API (beta)",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Chat Trigger"
@@ -12508,6 +12714,14 @@
 					"nodeName": "Run Ad Library Scraper"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Output Image Summary"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Output Text Summary"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Analyze Video with Gemini"
 				},
@@ -12868,6 +13082,14 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Get Response"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Search Results"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Get Employees"
 				},
@@ -12901,6 +13123,22 @@
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "Business Performance AI Agent (Analyst)"
+				},
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "CostCenter"
+				},
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Employees1"
+				},
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "verticalPL"
+				},
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "WIP1"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
@@ -13140,6 +13378,10 @@
 			"name": "Find Content Gaps in Competitors' Websites with InfraNodus GraphRAG for SEO",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "HTTP Request"
@@ -13471,6 +13713,10 @@
 					"nodeName": "AI Agent"
 				},
 				{
+					"code": "FILTER_BOOLEAN_COMPARED_AS_STRING",
+					"nodeName": "If_ticker_not_valid"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Get articles from EODHD"
 				}
@@ -13508,6 +13754,10 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "OpenAI"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -14258,6 +14508,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate results"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "DNS Lookup"
 				},
@@ -14306,6 +14560,14 @@
 				{
 					"code": "EMPTY_RESOURCE_LOCATOR_VALUE",
 					"nodeName": "AI Post Analysis"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Generate Daily Summary"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Send Slack Report"
 				},
 				{
 					"code": "SPLIT_IN_BATCHES_NO_LOOPBACK",
@@ -14465,7 +14727,13 @@
 		{
 			"id": 7650,
 			"name": "Batch Convert CAD/BIM Files to XLSX/DAE with Validation and Reporting",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Generate HTML Report1"
+				}
+			]
 		},
 		{
 			"id": 7142,
@@ -14862,6 +15130,10 @@
 					"nodeName": "Create Sheet If It Doesn't Exist"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Generate Journal Summary"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Get Commits From Github"
 				}
@@ -14981,6 +15253,10 @@
 				{
 					"code": "BRANCH_OUTPUT_NOT_WIRED",
 					"nodeName": "Should Process?"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
 				}
 			]
 		},
@@ -15044,6 +15320,18 @@
 			"name": "Summarise Slack channel activity for weekly reports with AI",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Reply Users"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Results"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Team Member Weekly Report Agent"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "When Executed by Another Workflow"
@@ -15311,6 +15599,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Generate HTML Invoice"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Download File PDF"
 				},
@@ -15373,6 +15665,10 @@
 			"name": "Automated US stock portfolio analysis with Telegram, Perplexity AI & PDF reports",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "HTML Report Generator"
+				},
 				{
 					"code": "TOOL_NO_PARAMETERS",
 					"nodeName": "update_wallet"
@@ -15471,6 +15767,18 @@
 				{
 					"code": "EMPTY_RESOURCE_LOCATOR_VALUE",
 					"nodeName": "Create new Google Doc with summary"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Create new Google Doc with summary"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Proces transcript to summary template"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -15604,6 +15912,10 @@
 					"nodeName": "Switch by Market Score"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Generate Portfolio Summary"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Fetch Crypto Data"
 				},
@@ -15707,6 +16019,10 @@
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "Security Vulnerabilities Audit"
+				},
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "convert to HTML"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -16097,7 +16413,17 @@
 		{
 			"id": 5391,
 			"name": "Smart invoice collection system with GPT-4.1, Gmail & Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "FILTER_BOOLEAN_COMPARED_AS_STRING",
+					"nodeName": "Filter1"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				}
+			]
 		},
 		{
 			"id": 5164,
@@ -16230,6 +16556,10 @@
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Webhook Trigger"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Final Response"
 				}
 			]
 		},
@@ -16480,6 +16810,18 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Create final summary"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Send final summary"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Email Trigger (IMAP)"
 				}
@@ -16572,6 +16914,10 @@
 					"nodeName": "Check Rendering Status"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Video Assets"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Create AI Video (Veo 3 API)"
 				},
@@ -16598,6 +16944,14 @@
 			"name": "Generate course certificates from Google Sheets with Stencil PDF and Outlook",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Generate and save report"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Generate report"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Generate report"
@@ -17041,6 +17395,10 @@
 					"nodeName": "Search Cold Leads Without Icebreaker"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Generate Icebreaker, Summary & Email (GPT-4o)"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Scrape Lead Website with Dumpling AI"
 				}
@@ -17322,6 +17680,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Telegram Trigger"
 				}
@@ -17335,6 +17697,10 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Window Memory (Easy Mode)"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -18212,6 +18578,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Send Report"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Google Calendar Trigger"
 				},
@@ -18283,6 +18653,10 @@
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Telegram Trigger"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Set Interaction to Human"
 				},
 				{
 					"code": "TOOL_NAME_CONVENTION",
@@ -18578,6 +18952,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "HTML structuring"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "article creation"
 				},
@@ -18670,6 +19048,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Config Validation"
+				},
+				{
 					"code": "DATA_TABLE_CAMELCASE_COLUMN",
 					"nodeName": "Upsert Workflow Records"
 				},
@@ -18685,6 +19067,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Prepare Confirmation Email"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Error Trigger"
 				},
@@ -18695,6 +19081,38 @@
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Updated Event Trigger"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Log Statistics"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Log Statistics"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Log Statistics"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Log Statistics"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Log Statistics"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Log Statistics"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Log Statistics"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Log Statistics"
 				}
 			]
 		},
@@ -19073,6 +19491,10 @@
 				{
 					"code": "SET_CREDENTIAL_FIELD",
 					"nodeName": "Workflow Configuration"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Webhook Response"
 				}
 			]
 		},
@@ -19392,6 +19814,38 @@
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Scoring API – Call"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Email – CSM/AM HIGH"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Prepare log payload"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Prepare log payload"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Prepare log payload"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Prepare log payload"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Prepare log payload"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Prepare log payload"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Prepare log payload"
 				}
 			]
 		},
@@ -19753,7 +20207,13 @@
 		{
 			"id": 10837,
 			"name": "Chat with GitHub issues using OpenAI and Redis vector search",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HTTP_PAGINATION_MISSING_OUTPUT_SHAPE",
+					"nodeName": "Fetch issues from GitHub"
+				}
+			]
 		},
 		{
 			"id": 10815,
@@ -19846,6 +20306,14 @@
 					"nodeName": "Check Significant Price Movement"
 				},
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Enhanced Dashboard Report"
+				},
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Format HTML Report"
+				},
+				{
 					"code": "EMPTY_RESOURCE_LOCATOR_VALUE",
 					"nodeName": "Airtable - Store COE Data"
 				},
@@ -19881,6 +20349,10 @@
 					"nodeName": "Create a database page"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate All1"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Fetch Workflow JSON1"
 				},
@@ -19902,6 +20374,10 @@
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Webhook Trigger"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Respond to Webhook"
 				}
 			]
 		},
@@ -19944,6 +20420,10 @@
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Webhook Trigger"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Respond to Webhook"
 				}
 			]
 		},
@@ -20021,6 +20501,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Create Email Template"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Fetch Daily Quote"
 				}
@@ -20051,6 +20535,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Format Appeal Emails"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Scrape NTU Requirements"
 				},
@@ -20076,6 +20564,10 @@
 				{
 					"code": "BRANCH_OUTPUT_NOT_WIRED",
 					"nodeName": "Check for Buy Opportunities"
+				},
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Format HTML Report"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
@@ -20189,6 +20681,10 @@
 			"name": "Automate sales order prioritization with ERP-WMS-TMS integration based on SLA tiers",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Generate Summary Report"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Alert Warehouse Manager"
@@ -20376,6 +20872,10 @@
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Webhook - Submit Health Data"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Check If Doctor Alert Needed"
 				}
 			]
 		},
@@ -20491,6 +20991,14 @@
 				{
 					"code": "AGENT_CHAT_INPUT_WITHOUT_CHAT_TRIGGER",
 					"nodeName": "🤖 AI Evaluator1"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "✅ Completion Summary1"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "✅ Completion Summary1"
 				}
 			]
 		},
@@ -20555,6 +21063,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "🎨 Format HTML Email"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "✈️ Search Flights (Skyscanner)"
 				},
@@ -20565,6 +21077,10 @@
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "📥 Travel Request Webhook"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "📤 Webhook Response"
 				}
 			]
 		},
@@ -20576,6 +21092,10 @@
 				{
 					"code": "AGENT_CHAT_INPUT_WITHOUT_CHAT_TRIGGER",
 					"nodeName": "AI Agent - Itinerary Optimizer"
+				},
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Generate Premium HTML Email"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
@@ -20657,6 +21177,30 @@
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Webhook - Submit Assignment"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Prepare Response Data"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Prepare Response Data"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Prepare Response Data"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Prepare Response Data"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Prepare Response Data"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Prepare Response Data"
 				}
 			]
 		},
@@ -21175,7 +21719,13 @@
 		{
 			"id": 10136,
 			"name": "Track daily SEO rankings with DataForSEO and Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Extract Query, Rank & Domain"
+				}
+			]
 		},
 		{
 			"id": 10134,
@@ -21230,6 +21780,10 @@
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Google Forms Webhook1"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Notify Teammate on Slack1"
 				}
 			]
 		},
@@ -21289,6 +21843,10 @@
 			"name": "🛍️ Google Shopping feed optimization with Channable, Relevance AI & Merchant API",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Products"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Check Product Status (NEW API)"
@@ -21381,6 +21939,10 @@
 			"name": "Generate Google ad copy automatically with Claude 3.5, Channable & Relevance AI",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Batches"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Compliance Check Agent1"
@@ -21506,6 +22068,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Format Email Report"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Scrape Agoda"
 				},
@@ -21520,6 +22086,10 @@
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Webhook - Receive Request"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Webhook Response (Success)"
 				}
 			]
 		},
@@ -21575,12 +22145,24 @@
 		{
 			"id": 9882,
 			"name": "Generate personalized cold email icebreakers from sites with GPT-4 & G-Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				}
+			]
 		},
 		{
 			"id": 9881,
 			"name": "AI automate UX feedback: Sentiment & emotion analysis in Google Sheets + OpenAI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Batch Items"
+				}
+			]
 		},
 		{
 			"id": 9861,
@@ -21844,6 +22426,10 @@
 					"nodeName": "Insert invoice id to DB"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Send reminders sent summary"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Receive form submission"
 				}
@@ -22007,6 +22593,14 @@
 					"nodeName": "JotForm Trigger"
 				},
 				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Store to Comments Sheet"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Store to Comments Sheet"
+				},
+				{
 					"code": "TOOL_NAME_CONVENTION",
 					"nodeName": "Read Database"
 				}
@@ -22018,12 +22612,28 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Generate Proposal"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Jotform Trigger"
 				},
 				{
 					"code": "SHEETS_MATCH_COLUMN_NOT_IN_SCHEMA",
 					"nodeName": "Log to Google Sheets"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Send Welcome Email"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Send Welcome Email"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Send Welcome Email"
 				}
 			]
 		},
@@ -22067,6 +22677,10 @@
 			"name": "Automate product ad creation with Telegram, Fal.AI & Facebook posting",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "FILTER_BOOLEAN_COMPARED_AS_STRING",
+					"nodeName": "Check Caption Approval (Yes/No)"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Call Fal.AI API (nano-banana model)"
@@ -22413,6 +23027,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Output"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Download Demo Website"
 				}
@@ -22473,6 +23091,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Generate HTML Report"
+				},
+				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Anthropic Chat Model1"
 				},
@@ -22498,7 +23120,13 @@
 		{
 			"id": 7632,
 			"name": "Automate Morning Brew–style Reddit Digests and Publish to DEV using AI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				}
+			]
 		},
 		{
 			"id": 7405,
@@ -22614,6 +23242,10 @@
 			"name": "Learn n8n interactively, lesson 1: data flow, execution & debugging",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Sets"
+				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "2d Once for Each Form"
@@ -23395,6 +24027,10 @@
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "GenerateLayout"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate analyzed result"
 				}
 			]
 		},
@@ -24636,6 +25272,10 @@
 					"nodeName": "Slack Channel"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Get Patch Summary:ID"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Get Patch Summary:ID"
 				},
@@ -24775,6 +25415,18 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate API Results"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate API Results1"
+				},
+				{
 					"code": "TOOL_NAME_CONVENTION",
 					"nodeName": "SerpAPItool"
 				},
@@ -24855,6 +25507,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Format the Summary for Email"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "HTTP Request"
 				}
@@ -24884,6 +25540,10 @@
 			"name": "Generate SEO Arabic articles and save to Notion",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "notion"
@@ -25127,6 +25787,22 @@
 					"nodeName": "Topic Expansion"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Competitor Analysis"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate KWD"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate SV & CPC"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Keyword Ranking per URL"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Get Input from NocoDB"
 				}
@@ -25278,6 +25954,14 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Send Daily Digest"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Fetch Latest 10 per Category"
 				}
@@ -25426,6 +26110,14 @@
 			"name": "Open deep research - AI-powered autonomous research workflow",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "AGENT_WITHOUT_PRIOR_AGGREGATE",
+					"nodeName": "Generate Comprehensive Research Report"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Generate Comprehensive Research Report"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Chat Message Trigger"
@@ -25644,6 +26336,14 @@
 					"nodeName": "Summary Generator"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Summary Generator"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Firefly Webhook"
 				}
@@ -25803,6 +26503,10 @@
 			"name": "Automatic email unsubscribe handler: Outlook to BigQuery integration",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate to email level"
+				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "Add unsubscribes to Table"
@@ -26071,6 +26775,10 @@
 					"nodeName": "Don't respond to yourself"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "HTTP Request"
 				},
@@ -26184,6 +26892,14 @@
 			"name": "Track n8n workflow changes over time with compare dataset & Google Sheets",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Report Connections"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Report Nodes"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "When Executed by Another Workflow"
@@ -26344,6 +27060,22 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate All Comments"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate All Profiles"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Comments"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Profiles"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "On form submission"
 				},
@@ -26364,7 +27096,13 @@
 		{
 			"id": 4420,
 			"name": "Automated daily Outlook calendar meeting digest",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Generate HTML"
+				}
+			]
 		},
 		{
 			"id": 4373,
@@ -26400,7 +27138,25 @@
 		{
 			"id": 3971,
 			"name": "Summarise MS Teams channel activity for weekly reports with AI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Merge Report With User Data"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Send Report to Channel"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Team Member Weekly Report Agent"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Team Weekly Report Agent"
+				}
+			]
 		},
 		{
 			"id": 3895,
@@ -26677,6 +27433,10 @@
 					"nodeName": "Respond to Webhook"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
 					"code": "TOOL_NAME_CONVENTION",
 					"nodeName": "Calc201"
 				},
@@ -26928,6 +27688,10 @@
 				{
 					"code": "EMPTY_RESOURCE_LOCATOR_VALUE",
 					"nodeName": "Google Sheets"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "All scraping node failed. Don't save record without summary"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -27812,6 +28576,10 @@
 					"nodeName": "history_sources_gathered"
 				},
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "web_search step record"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "GeminiSearch"
 				},
@@ -28100,7 +28868,13 @@
 		{
 			"id": 3868,
 			"name": "Automate support ticket triage and resolution with JIRA and AI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				}
+			]
 		},
 		{
 			"id": 3820,
@@ -28257,6 +29031,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Email Lists"
+				},
+				{
 					"code": "NESTED_SPLIT_IN_BATCHES",
 					"nodeName": "Loop Through Search Queries"
 				}
@@ -28301,6 +29079,10 @@
 			"name": "Automatic reminders for follow-ups with AI and human in the loop Gmail",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Flag to Follow Up"
+				},
 				{
 					"code": "TOOL_NAME_CONVENTION",
 					"nodeName": "Availability"
@@ -28719,6 +29501,14 @@
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Error Trigger"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "If User Deactivates"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Second User Deactivates"
 				}
 			]
 		},
@@ -29067,6 +29857,10 @@
 					"nodeName": "Check for Tasks"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Webhook"
 				}
@@ -29136,6 +29930,10 @@
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "update-tags"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
 				}
 			]
 		},
@@ -29265,6 +30063,10 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Disable Access Keys"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Search Results"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -29572,6 +30374,14 @@
 				{
 					"code": "INVALID_INPUT_INDEX",
 					"nodeName": "Merge"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "AI Agent Create Summary"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Summary HTML"
 				}
 			]
 		},
@@ -29774,8 +30584,16 @@
 					"nodeName": "If"
 				},
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Generate PDF HTML"
+				},
+				{
 					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Convert HTML to PDF"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -29830,6 +30648,10 @@
 				{
 					"code": "BRANCH_OUTPUT_NOT_WIRED",
 					"nodeName": "If Message From User"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Prompts"
 				}
 			]
 		},
@@ -30290,6 +31112,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Generate PWA Components"
+				},
+				{
 					"code": "CODE_NODE_NETWORK_CALL",
 					"nodeName": "Generate PWA Components"
 				},
@@ -30414,6 +31240,10 @@
 				{
 					"code": "DATA_TABLE_CAMELCASE_COLUMN",
 					"nodeName": "Upsert row(s)5"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -30576,6 +31406,10 @@
 					"nodeName": "Render Status Check1"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Video Parts"
+				},
+				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "Save Viral Content to Sheet"
 				},
@@ -30609,6 +31443,10 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Download Video"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Videos"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -30731,6 +31569,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Competitor Data"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "SEO Keyword Input Form"
 				},
@@ -30768,6 +31610,18 @@
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Fetch Customer History"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Log SMS Touchpoint"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Log SMS Touchpoint"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Log SMS Touchpoint"
 				}
 			]
 		},
@@ -30911,6 +31765,14 @@
 			"name": "fluidX THE EYE — Create & invite via SMS for live camera session",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Convert Summary Text to Binary"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "fluidX API - Media Summary"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "fluidX API - Create Session"
@@ -31070,6 +31932,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate tags article"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Add tag"
 				},
@@ -31099,6 +31965,10 @@
 				{
 					"code": "EMPTY_RESOURCE_LOCATOR_VALUE",
 					"nodeName": "Save Discovered URLs"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Completion Summary"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -31199,6 +32069,10 @@
 				{
 					"code": "BRANCH_OUTPUT_NOT_WIRED",
 					"nodeName": "Compare date of spreadsheet and todays"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -31323,6 +32197,18 @@
 			"name": "Automate Reddit Monitoring with GPT-5-Mini, Notion, and Gmail",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Generate HTML Email"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Posts"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Reddit Items"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Search Reddit"
@@ -31549,7 +32435,13 @@
 		{
 			"id": 10813,
 			"name": "Create SEO-Optimized Blog Articles with GPT-4o Mini's Multi-Stage Generation",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				}
+			]
 		},
 		{
 			"id": 10672,
@@ -31705,6 +32597,18 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "AI - Generate Smart Summary"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Prepare AI Summary Data"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Send Email Summary"
+				},
+				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "AI - Generate Smart Summary"
 				},
@@ -31837,6 +32741,10 @@
 			"name": "Affiliate competitor tracking & analysis with AI, Bright Data, Sheets & Slack",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Generate Strategic Report"
+				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "Archive All Data"
@@ -31990,6 +32898,10 @@
 					"nodeName": "Check Has Custom Fields"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Generate Summary Report"
+				},
+				{
 					"code": "SHEETS_MATCH_COLUMN_NOT_IN_SCHEMA",
 					"nodeName": "Log Results to Google Sheets"
 				}
@@ -32038,6 +32950,14 @@
 				{
 					"code": "BRANCH_OUTPUT_NOT_WIRED",
 					"nodeName": "Check If Conflicts Found"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Format Slack Digest"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Post Slack Digest"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -32133,6 +33053,10 @@
 					"nodeName": "Insert row"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Haal JSON Details"
 				},
@@ -32221,8 +33145,16 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Format Email Report"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Webhook - Receive Flight Request"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Webhook Response (Success)"
 				}
 			]
 		},
@@ -32296,6 +33228,10 @@
 				{
 					"code": "BRANCH_OUTPUT_NOT_WIRED",
 					"nodeName": "Check Valid Email1"
+				},
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Build HTML Report1"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -32784,6 +33720,14 @@
 				{
 					"code": "INVALID_INPUT_INDEX",
 					"nodeName": "Merge"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Summary Customer Insight"
 				}
 			]
 		},
@@ -32879,6 +33823,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Generate HTML Report"
+				},
+				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "OpenAI Chat Model"
 				},
@@ -32902,6 +33850,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Get many Subreddit"
 				},
@@ -32914,7 +33866,21 @@
 		{
 			"id": 7608,
 			"name": "Cybersecurity Intelligence: Create Daily Digest & Viral Topics with Gemini AI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Send daily digest email"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Write basic digest for today"
+				}
+			]
 		},
 		{
 			"id": 7579,
@@ -33408,6 +34374,14 @@
 					"nodeName": "HTTP Request Example"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Final Aggregate"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "HTTP Request"
 				},
@@ -33495,6 +34469,10 @@
 			"name": "Automated AWS IAM key compromise response with Slack & Claude AI",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "📦 Aggregate Final Results"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "📄 Retrieve Policy Document"
@@ -33693,6 +34671,10 @@
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "Summarize conversation"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Add summary to Notion page and update last execution date"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -34643,6 +35625,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate all Data into 1 list"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "On Email receipt"
 				},
@@ -34788,6 +35774,22 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Generate HTML Report"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Build Report Structure"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Download Report"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Generate HTML Report"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Check Task Status"
 				},
@@ -34866,6 +35868,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Response"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Acuity Support Search API"
 				},
@@ -34919,6 +35925,14 @@
 				{
 					"code": "BRANCH_OUTPUT_NOT_WIRED",
 					"nodeName": "Website is not empty"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Post summary is empty"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -35115,6 +36129,10 @@
 				{
 					"code": "AGENT_CHAT_INPUT_WITHOUT_CHAT_TRIGGER",
 					"nodeName": "AI Agent With SQL Query Prompt"
+				},
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "create insertion query"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
@@ -35466,6 +36484,14 @@
 			"name": "Draft Gmail replies with OpenAI and OpenRouter for an inbox-zero workflow",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "FILTER_BOOLEAN_COMPARED_AS_STRING",
+					"nodeName": "Customer Support?"
+				},
+				{
+					"code": "FILTER_BOOLEAN_COMPARED_AS_STRING",
+					"nodeName": "Customer Support?"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Gmail Trigger"
@@ -35822,6 +36848,10 @@
 					"nodeName": "Newsletter AI Agent"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Call NewsAPI"
 				},
@@ -35909,6 +36939,10 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Create data table"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Send Report Email"
 				}
 			]
 		},
@@ -36018,6 +37052,10 @@
 			"name": "Automated Google Business reports with GPT insights to Slack & email",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Create Email"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "12 week impressions"
@@ -36329,6 +37367,14 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Get all deals"
+				},
+				{
+					"code": "FILTER_BOOLEAN_COMPARED_AS_STRING",
+					"nodeName": "Filter won deals last week"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Send report to a Slack channel"
 				}
 			]
 		},
@@ -36436,6 +37482,10 @@
 			"name": "Find perfect jobs & generate tailored cover letters with Gemini & Google Jobs",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Generate HTML Email"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "On form submission"
@@ -36786,6 +37836,10 @@
 			"name": "Fetch hierarchical data records from Airtable with multi-level relationships",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate to record list"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Execute Workflow Trigger"
@@ -37850,6 +38904,10 @@
 				{
 					"code": "BRANCH_OUTPUT_NOT_WIRED",
 					"nodeName": "Should Process?"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
 				}
 			]
 		},
@@ -38009,6 +39067,10 @@
 				{
 					"code": "MERGE_SINGLE_INPUT",
 					"nodeName": "Append Blocks1"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
 				}
 			]
 		},
@@ -38026,7 +39088,13 @@
 		{
 			"id": 4487,
 			"name": "Automate LinkedIn content from Twitter AI posts with GPT-4 and Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				}
+			]
 		},
 		{
 			"id": 4481,
@@ -38082,6 +39150,10 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Gmail3"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -38715,6 +39787,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "HTTP Request"
 				},
@@ -38756,6 +39832,10 @@
 				{
 					"code": "BRANCH_OUTPUT_NOT_WIRED",
 					"nodeName": "If"
+				},
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Split Articles"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
@@ -39313,6 +40393,14 @@
 					"nodeName": "Create tasks and follow-up call"
 				},
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Format to html"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Create meeting summary"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Execute Workflow Trigger"
 				},
@@ -39600,6 +40688,10 @@
 					"nodeName": "Embedding Recommendation Request with Open AI"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Calling Qdrant Recommendation API"
 				},
@@ -39675,6 +40767,10 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Set domain (URL)"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate URLs"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
@@ -40016,6 +41112,10 @@
 					"nodeName": "Store UP/DOWN tokens and end time"
 				},
 				{
+					"code": "FILTER_BOOLEAN_COMPARED_AS_STRING",
+					"nodeName": "Check if market has closed"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Fetch price history"
 				},
@@ -40109,6 +41209,10 @@
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Telegram Trigger"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Create Transloadit Assembly"
 				}
 			]
 		},
@@ -40305,6 +41409,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Deduplicate, Count, and Format"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Form"
 				},
@@ -40330,6 +41438,10 @@
 				{
 					"code": "BRANCH_OUTPUT_NOT_WIRED",
 					"nodeName": "If3"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
 				},
 				{
 					"code": "TOOL_NAME_CONVENTION",
@@ -40904,6 +42016,22 @@
 			"name": "Automate GitHub PRs & JIRA updates from Git commit commands-single repo",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "FILTER_BOOLEAN_COMPARED_AS_STRING",
+					"nodeName": "Check for PR commands"
+				},
+				{
+					"code": "FILTER_BOOLEAN_COMPARED_AS_STRING",
+					"nodeName": "Check for task completed command"
+				},
+				{
+					"code": "FILTER_BOOLEAN_COMPARED_AS_STRING",
+					"nodeName": "Check if task exist"
+				},
+				{
+					"code": "FILTER_BOOLEAN_COMPARED_AS_STRING",
+					"nodeName": "Check if task exists"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Check if PR exists"
@@ -41940,7 +43068,13 @@
 		{
 			"id": 4974,
 			"name": "YouTube Videos to Viral X Threads by Keywords (using Gemini & Claude)",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Extract Video Summary"
+				}
+			]
 		},
 		{
 			"id": 4946,
@@ -42018,6 +43152,10 @@
 					"nodeName": "Merge Research Content"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Newsletter Content"
+				},
+				{
 					"code": "TOOL_NAME_CONVENTION",
 					"nodeName": "Tavily"
 				},
@@ -42060,6 +43198,10 @@
 				{
 					"code": "EMPTY_RESOURCE_LOCATOR_VALUE",
 					"nodeName": "Fetch Topics with Empty Commentary"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Scraped Article Content"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -42192,6 +43334,14 @@
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "User Profile Analyser"
+				},
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "Prepare Result"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
 				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
@@ -42368,6 +43518,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate label IDs"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Gmail trigger"
 				}
@@ -42451,6 +43605,14 @@
 			"name": "Generate visual summary & knowledge graph insights for your email",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate from email snippets"
+				},
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate from full email texts"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "InfraNodus AI Summary & Graph Link"
@@ -42697,6 +43859,10 @@
 			"name": "Evaluate AI agent response correctness with OpenAI and RAGAS methodology",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Get Embeddings"
@@ -43426,6 +44592,10 @@
 					"nodeName": "72 Horas"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
 					"code": "TOOL_NAME_CONVENTION",
 					"nodeName": "Calc201"
 				},
@@ -43684,6 +44854,10 @@
 			"name": "Build your own Qdrant vector store MCP server",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate Compare Response"
+				},
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Get Embeddings"
@@ -44076,6 +45250,10 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Fetch HTML"
 				}
@@ -44275,6 +45453,14 @@
 				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "Github HTTP Request"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Comapre Two Input"
+				},
+				{
+					"code": "SIDE_EFFECT_JSON_CHAIN",
+					"nodeName": "Comapre Two Input"
 				}
 			]
 		},
@@ -44546,6 +45732,10 @@
 					"nodeName": "Ollama Chat Model"
 				},
 				{
+					"code": "MISSING_EXECUTE_ONCE",
+					"nodeName": "Aggregate"
+				},
+				{
 					"code": "MISSING_OUTPUT_FIXTURE",
 					"nodeName": "stats_aggregate_creators"
 				},
@@ -44594,6 +45784,10 @@
 				{
 					"code": "ALWAYS_OUTPUT_DATA_NO_EFFECT",
 					"nodeName": "sanitize_data"
+				},
+				{
+					"code": "CODE_NESTED_TEMPLATE_LITERAL",
+					"nodeName": "create_query"
 				},
 				{
 					"code": "DISCONNECTED_NODE",

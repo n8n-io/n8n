@@ -8,6 +8,9 @@ describe('getSandboxWorkspaceSection', () => {
 
 		expect(section).toContain(`${WORKSPACE_ROOT}/skills/<skill-name>/`);
 		expect(section).toContain(`${WORKSPACE_ROOT}/knowledge-base/`);
+		expect(section).toContain('`index.json` catalog and `best-practices/`');
+		expect(section).not.toContain('templates/');
+		expect(section).not.toContain('knowledge-base/reference');
 		expect(section).toContain(`${WORKSPACE_ROOT}/node-types/index.txt`);
 	});
 

@@ -31,10 +31,10 @@ ${isolation}
 
 You are given a sandbox workspace to use for your work that is scoped to the current thread. Use the workspace_* tools to read, write, update and execute commands in the workspace.
 
-Every path a skill mentions is relative to the workspace root: \`knowledge-base/reference/x.md\` means \`${root}/knowledge-base/reference/x.md\`.
+Every path a skill mentions is relative to the workspace root: \`knowledge-base/best-practices/x.md\` means \`${root}/knowledge-base/best-practices/x.md\`.
 
 - \`${root}/skills/<skill-name>/\` — SKILL.md and its \`references/\` files. Read them with \`load_skill\` (\`filePath\` for a linked file) rather than off disk.
-- \`${root}/knowledge-base/\` — \`index.json\` catalog, plus \`best-practices/\`, \`reference/\`, and \`templates/\`.
+- \`${root}/knowledge-base/\` — \`index.json\` catalog and \`best-practices/\`.
 - \`${root}/node-types/index.txt\` — searchable catalog of available n8n nodes.
 - \`${root}/workflows/\`, \`${root}/src/\`, \`${root}/chunks/\` — workflow JSON and builder source.
 

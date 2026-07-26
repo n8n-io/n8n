@@ -20,16 +20,14 @@
  *     chunks/
  *       *.ts                          # reusable node/workflow modules
  *     knowledge-base/
- *       index.json                    # combined catalog of guides and templates
+ *       index.json                    # combined catalog of guides
  *       best-practices/
  *         index.json                  # technique guide catalog
  *         *.md                        # guide content per technique
- *       templates/
- *         index.json                  # curated template catalog
- *         *.ts                        # SDK workflow examples
  */
 
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
+import type { INodeTypes } from 'n8n-workflow';
 import { createRequire } from 'node:module';
 
 import type { Logger } from '../logger';
@@ -57,9 +55,13 @@ type SandboxWorkspaceSetupStep =
 	| 'list-node-types'
 	| 'write-workspace-files'
 	| 'materialize-knowledge-base'
+	| 'materialize-build-defaults'
 	| 'install-dependencies'
 	| 'link-workspace-sdk'
 	| 'write-initialization-marker';
+
+/** Workspace-relative path for the per-node-type defaultVersion map. */
+export const NODE_DEFAULT_VERSIONS_PATH = 'node-default-versions.json';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -233,6 +235,9 @@ export async function linkWorkspaceSdkIfEnabled(
 /**
  * Runner script that executes a workflow TS file via tsx, calls validate() + toJSON(),
  * and outputs structured JSON to stdout. Executed via: node --import tsx build.mjs ./src/workflow.ts
+ *
+ * Loads `node-default-versions.json` so omitted builder `version` fields resolve to
+ * each node type's defaultVersion instead of typeVersion 1.
  */
 export const BUILD_MJS = `const filePath = process.argv[2] || './src/workflow.ts';
 try {
@@ -245,10 +250,19 @@ try {
     console.log(JSON.stringify({ success: false, errors: ['Default export is not a workflow. Make sure your file has: export default workflow(...)'] }));
     process.exit(1);
   }
-  const validation = wf.validate();
-  const json = wf.toJSON({ tidyUp: true });
+  let defaultVersions = {};
+  try {
+    const { readFileSync } = await import('node:fs');
+    defaultVersions = JSON.parse(readFileSync('node-default-versions.json', 'utf8'));
+  } catch {
+    // optional — older sandboxes may not have the map yet
+  }
+  const validation = typeof wf.validate === 'function'
+    ? wf.validate({ defaultVersions })
+    : { errors: [], warnings: [] };
+  const json = wf.toJSON({ tidyUp: true, defaultVersions });
   const declaredOutputJson = typeof wf.generatePinData === 'function'
-    ? wf.generatePinData().toJSON({ tidyUp: true })
+    ? wf.generatePinData().toJSON({ tidyUp: true, defaultVersions })
     : undefined;
   const declaredOutputFixtures = declaredOutputJson?.pinData;
   const warnings = [...(validation.errors || []), ...(validation.warnings || [])];
@@ -283,6 +297,61 @@ export const TSCONFIG_JSON = JSON.stringify(
 	null,
 	2,
 );
+
+function readDescriptionVersion(description: unknown): number | undefined {
+	if (!description || typeof description !== 'object') return undefined;
+	if (!('version' in description)) return undefined;
+	const version = description.version;
+	if (typeof version === 'number') return version;
+	if (Array.isArray(version) && typeof version[version.length - 1] === 'number') {
+		return version[version.length - 1];
+	}
+	return undefined;
+}
+
+function defaultVersionFromProvider(
+	provider: INodeTypes | undefined,
+	nodeType: string,
+): number | undefined {
+	if (!provider) return undefined;
+	try {
+		const resolved = provider.getByName(nodeType);
+		const fromDescription = resolved.description?.defaultVersion;
+		if (typeof fromDescription === 'number') return fromDescription;
+		if (
+			'currentVersion' in resolved &&
+			typeof resolved.currentVersion === 'number' &&
+			!Number.isNaN(resolved.currentVersion)
+		) {
+			return resolved.currentVersion;
+		}
+		return readDescriptionVersion(resolved.description);
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Build a nodeType → defaultVersion map for sandbox validate/toJSON.
+ * Prefers `INodeTypes` defaultVersion; falls back to the latest catalog version.
+ */
+export function collectNodeDefaultVersions(
+	nodes: readonly SearchableNodeDescription[],
+	provider?: INodeTypes,
+): Record<string, number> {
+	const defaults: Record<string, number> = {};
+	for (const node of nodes) {
+		const fromProvider = defaultVersionFromProvider(provider, node.name);
+		const fromCatalog = Array.isArray(node.version)
+			? node.version[node.version.length - 1]
+			: node.version;
+		const resolved = fromProvider ?? fromCatalog;
+		if (typeof resolved === 'number' && !Number.isNaN(resolved)) {
+			defaults[node.name] = resolved;
+		}
+	}
+	return defaults;
+}
 
 /**
  * Build a searchable catalog line for a node type.
@@ -417,6 +486,30 @@ async function materializeKnowledgeBaseStep(
 }
 
 /**
+ * Refresh build.mjs + node-default-versions.json on every setup (including
+ * already-initialized sandboxes) so omitted builder versions keep resolving
+ * to each node type's current defaultVersion.
+ */
+async function materializeBuildDefaultsStep(
+	workspace: SandboxWorkspace,
+	root: string,
+	context: InstanceAiContext,
+): Promise<void> {
+	await setupStep('materialize-build-defaults', async () => {
+		const nodeTypes = await context.nodeService.listSearchable();
+		const defaultVersions = collectNodeDefaultVersions(nodeTypes, context.nodeTypesProvider);
+		await writeWorkspaceFiles(
+			workspace,
+			root,
+			new Map([
+				['build.mjs', BUILD_MJS],
+				[NODE_DEFAULT_VERSIONS_PATH, `${JSON.stringify(defaultVersions, null, 2)}\n`],
+			]),
+		);
+	});
+}
+
+/**
  * Initialize the sandbox workspace for the workflow builder agent.
  * Idempotent — skips if already initialized (checks marker file).
  *
@@ -441,6 +534,7 @@ export async function setupSandboxWorkspace(
 	);
 	if (marker !== null) {
 		await materializeKnowledgeBaseStep(workspace, root, context);
+		await materializeBuildDefaultsStep(workspace, root, context);
 		return false;
 	}
 
@@ -459,6 +553,10 @@ export async function setupSandboxWorkspace(
 	);
 	const catalogLines = nodeTypes.map(formatNodeCatalogLine);
 	files.set('node-types/index.txt', catalogLines.join('\n'));
+	files.set(
+		NODE_DEFAULT_VERSIONS_PATH,
+		`${JSON.stringify(collectNodeDefaultVersions(nodeTypes, context.nodeTypesProvider), null, 2)}\n`,
+	);
 
 	// Existing workflows as JSON (fetch in parallel)
 	try {

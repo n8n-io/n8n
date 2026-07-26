@@ -1,14 +1,19 @@
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { N8nIconButton } from '@n8n/design-system';
 import { useClipboard } from '@n8n/composables/useClipboard';
+import { highlightCode } from '../codeHighlight';
 
 const props = defineProps<{
 	code: string;
+	/** highlight.js language id, e.g. `typescript`. */
+	language?: string;
 }>();
 
 const clipboard = useClipboard();
 const copied = ref(false);
+
+const highlighted = computed(() => highlightCode(props.code, props.language));
 
 async function handleCopy() {
 	await clipboard.copy(props.code);
@@ -28,7 +33,14 @@ async function handleCopy() {
 			:class="$style.copyBtn"
 			@click="handleCopy"
 		/>
-		<pre :class="$style.code">{{ props.code }}</pre>
+		<!-- eslint-disable-next-line vue/no-v-html -->
+		<pre
+			v-if="highlighted"
+			:class="[$style.code, 'hljs']"
+			data-test-id="tool-result-code-highlighted"
+			v-html="highlighted"
+		/>
+		<pre v-else :class="$style.code" data-test-id="tool-result-code">{{ props.code }}</pre>
 	</div>
 </template>
 
@@ -43,6 +55,7 @@ async function handleCopy() {
 	right: var(--spacing--4xs);
 	opacity: 0;
 	transition: opacity 0.15s ease;
+	z-index: 1;
 
 	.wrapper:hover & {
 		opacity: 1;
@@ -50,7 +63,7 @@ async function handleCopy() {
 }
 
 .code {
-	font-family: monospace;
+	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--xl);
 	white-space: pre-wrap;
@@ -58,5 +71,6 @@ async function handleCopy() {
 	margin: 0;
 	padding: var(--spacing--xs);
 	color: var(--color--text--tint-1);
+	background: transparent;
 }
 </style>

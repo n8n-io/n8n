@@ -557,6 +557,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			pinData: this._pinData,
 			meta: this._meta,
 			tidyUp: options?.tidyUp ?? false,
+			defaultVersions: options?.defaultVersions,
 			resolveTargetNodeName: (target: unknown) => this.resolveTargetNodeName(target),
 			nodeGroups: this._nodeGroups.length > 0 ? this.resolveNodeGroups() : undefined,
 			existingGroupIdsByName: options?.existingGroupIdsByName,
@@ -686,6 +687,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				allowNoTrigger: options.allowNoTrigger,
 				nodeTypesProvider: options.nodeTypesProvider,
 				aiGatewayByNodeType: options.aiGatewayByNodeType,
+				defaultVersions: options.defaultVersions,
 			},
 		};
 

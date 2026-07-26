@@ -23,10 +23,8 @@ the current message contains `<workflow-verification-follow-up>` or
 These instructions are in English, but user-visible text you write while
 following them stays in the user's conversation language.
 
-For trigger `inputData` shapes, read
-`knowledge-base/reference/trigger-input-data-shapes.md` in the sandbox workspace
-when available, or load this skill's `references/trigger-input-data-shapes.md`
-linked file.
+For trigger `inputData` shapes, load this skill's
+`references/trigger-input-data-shapes.md` linked file.
 
 ## Verification follow-up
 
@@ -196,9 +194,10 @@ Skip this follow-up when:
 
 If the user says yes:
 
-1. Load `workflow-builder` and build a separate error workflow using the user's
-   requested notification destination. Keep the error workflow scoped to the
-   target workflow the user opted in for.
+1. Load `workflow-builder` with `filePath: "references/error-workflows.md"` and
+   follow that file's build → publish → assign steps. Build a separate error
+   workflow using the user's requested notification destination. Keep the error
+   workflow scoped to the target workflow the user opted in for.
 2. Do not ask whether this new error workflow needs its own error workflow.
 3. The error workflow must be published before it can be assigned. If the user
    has not already asked you to publish and attach it, ask whether to publish it

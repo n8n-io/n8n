@@ -65,10 +65,12 @@ export interface KnowledgeBaseRootIndex {
 		indexFile: string;
 		entries: KnowledgeBaseIndexEntry[];
 	};
-	templates: {
+	/** Present only when a templates archive was materialized. */
+	templates?: {
 		indexFile: string;
 	};
-	reference: {
+	/** Present only when reference docs are materialized. */
+	reference?: {
 		indexFile: string;
 		entries: KnowledgeBaseReferenceIndexEntry[];
 	};
@@ -149,7 +151,7 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 	{
 		id: 'workflow-builder-guardrails',
 		description:
-			'Workflow builder guardrails for source preservation, fan-out/fan-in, effects, and Code nodes',
+			'Architecture guardrails validate cannot cover: source preservation, independent effects, list semantics, complete external data',
 		fileName: 'workflow-builder-guardrails.md',
 	},
 	{
@@ -240,10 +242,18 @@ export async function buildKnowledgeBaseWorkspaceBundle(
 	const bestPracticesIndex: KnowledgeBaseBestPracticesIndex = { entries: bestPracticeEntries };
 	files.set(bestPracticesIndexPath, stringifyWorkspaceJson(bestPracticesIndex));
 
+	let templatesMaterialized = false;
 	if (templatesArchive) {
 		addTemplatesToKnowledgeBaseFiles(files, rootDir, templatesArchive, logger);
+		templatesMaterialized = files.has(
+			posixJoin(rootDir, KNOWLEDGE_BASE_TEMPLATES_DIR, KNOWLEDGE_BASE_INDEX_FILE),
+		);
 	}
-	const referenceEntries = await addReferenceFilesToKnowledgeBase(files, rootDir);
+	// TEMP: skip knowledge-base reference docs until re-enabled.
+	const includeReference = false;
+	const referenceEntries = includeReference
+		? await addReferenceFilesToKnowledgeBase(files, rootDir)
+		: [];
 
 	const rootIndexPath = posixJoin(rootDir, KNOWLEDGE_BASE_INDEX_FILE);
 	const rootIndex: KnowledgeBaseRootIndex = {
@@ -251,13 +261,21 @@ export async function buildKnowledgeBaseWorkspaceBundle(
 			indexFile: posixJoin(KNOWLEDGE_BASE_BEST_PRACTICES_DIR, KNOWLEDGE_BASE_INDEX_FILE),
 			entries: bestPracticeEntries,
 		},
-		templates: {
-			indexFile: posixJoin(KNOWLEDGE_BASE_TEMPLATES_DIR, KNOWLEDGE_BASE_INDEX_FILE),
-		},
-		reference: {
-			indexFile: posixJoin(KNOWLEDGE_BASE_REFERENCE_DIR, KNOWLEDGE_BASE_INDEX_FILE),
-			entries: referenceEntries,
-		},
+		...(templatesMaterialized
+			? {
+					templates: {
+						indexFile: posixJoin(KNOWLEDGE_BASE_TEMPLATES_DIR, KNOWLEDGE_BASE_INDEX_FILE),
+					},
+				}
+			: {}),
+		...(includeReference
+			? {
+					reference: {
+						indexFile: posixJoin(KNOWLEDGE_BASE_REFERENCE_DIR, KNOWLEDGE_BASE_INDEX_FILE),
+						entries: referenceEntries,
+					},
+				}
+			: {}),
 	};
 	files.set(rootIndexPath, stringifyWorkspaceJson(rootIndex));
 

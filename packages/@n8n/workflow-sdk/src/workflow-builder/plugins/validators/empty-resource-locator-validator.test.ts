@@ -32,7 +32,7 @@ describe('emptyResourceLocatorValidator', () => {
 		expect(emptyResourceLocatorValidator.id).toBe('core:empty-resource-locator');
 	});
 
-	it('flags empty __rl.value', () => {
+	it('allows empty list mode with cachedResultName (setup From-list picker)', () => {
 		const node = createMockNode({
 			documentId: {
 				__rl: true,
@@ -40,6 +40,24 @@ describe('emptyResourceLocatorValidator', () => {
 				value: '',
 				cachedResultName: 'FAQ spreadsheet',
 			},
+		});
+		expect(
+			emptyResourceLocatorValidator.validateNode(node, createGraphNode(node), createContext()),
+		).toEqual([]);
+	});
+
+	it('allows empty list mode without cachedResultName (node default)', () => {
+		const node = createMockNode({
+			documentId: { __rl: true, mode: 'list', value: '' },
+		});
+		expect(
+			emptyResourceLocatorValidator.validateNode(node, createGraphNode(node), createContext()),
+		).toEqual([]);
+	});
+
+	it('flags empty id-mode resource locators', () => {
+		const node = createMockNode({
+			documentId: { __rl: true, mode: 'id', value: '' },
 		});
 		const issues = emptyResourceLocatorValidator.validateNode(
 			node,
@@ -53,12 +71,13 @@ describe('emptyResourceLocatorValidator', () => {
 				severity: 'warning',
 			}),
 		]);
+		expect(issues[0]?.message).toContain("mode: 'list'");
 	});
 
-	it('flags nested empty resource locators', () => {
+	it('flags nested empty id-mode resource locators', () => {
 		const node = createMockNode({
 			options: {
-				sheetName: { __rl: true, mode: 'name', value: '' },
+				sheetName: { __rl: true, mode: 'id', value: '' },
 			},
 		});
 		const issues = emptyResourceLocatorValidator.validateNode(
@@ -67,6 +86,15 @@ describe('emptyResourceLocatorValidator', () => {
 			createContext(),
 		);
 		expect(issues.map((i) => i.parameterPath)).toEqual(['options.sheetName']);
+	});
+
+	it('does not flag empty name mode', () => {
+		const node = createMockNode({
+			sheetName: { __rl: true, mode: 'name', value: '' },
+		});
+		expect(
+			emptyResourceLocatorValidator.validateNode(node, createGraphNode(node), createContext()),
+		).toEqual([]);
 	});
 
 	it('does not flag non-empty values', () => {
@@ -78,12 +106,12 @@ describe('emptyResourceLocatorValidator', () => {
 		).toEqual([]);
 	});
 
-	it('does not flag placeholder markers', () => {
+	it('does not flag placeholder markers in id mode', () => {
 		const node = createMockNode({
 			documentId: {
 				__rl: true,
-				mode: 'list',
-				value: '<__PLACEHOLDER_VALUE__Pick a spreadsheet__>',
+				mode: 'id',
+				value: '<__PLACEHOLDER_VALUE__Enter spreadsheet ID__>',
 			},
 		});
 		expect(
