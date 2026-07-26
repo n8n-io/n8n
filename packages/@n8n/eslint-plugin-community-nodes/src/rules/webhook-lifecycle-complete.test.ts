@@ -125,6 +125,12 @@ export class RegularClass {
 				webhookMethods: '{ default: { ...sharedLifecycle, delete: removeWebhook } }',
 			}),
 		},
+		{
+			name: 'lifecycle key superseded by a later spread',
+			code: createTriggerNode({
+				webhookMethods: '{ default: { delete: undefined, ...sharedLifecycle } }',
+			}),
+		},
 	],
 	invalid: [
 		{

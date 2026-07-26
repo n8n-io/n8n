@@ -20,8 +20,9 @@ For every webhook group inside `webhookMethods` (typically `default`), the
 methods `checkExists`, `create`, and `delete` must all be implemented. A method
 counts as implemented whether it is written inline or handed over as a
 reference, so extracting the handlers into named functions is fine. When a group
-spreads another object, a method it does not list itself is assumed to come from
-that spread, but a method it does list must still supply an implementation.
+spreads another object, only the methods written after the last spread settle
+the group: one of those must supply an implementation, while anything the spread
+may still replace or fill in is left alone.
 
 Type annotations (`as`, `satisfies`, `!`, type assertions) are read through, so
 annotating `description`, `webhookMethods`, a lifecycle group, or an individual

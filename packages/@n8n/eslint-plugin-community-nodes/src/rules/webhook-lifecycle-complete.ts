@@ -93,21 +93,36 @@ function isMethodProperty(property: TSESTree.ObjectLiteralElement, name: string)
 	return declaresKey(property, name) && isImplementation(property.value);
 }
 
-/** A group built up by spreading another object does not list all its methods. */
-function isComposedBySpread(group: TSESTree.ObjectExpression): boolean {
-	return group.properties.some((property) => property.type === AST_NODE_TYPES.SpreadElement);
+/**
+ * Whatever a spread carries in cannot be read from the class, so only the
+ * properties written after the last one settle the group. Everything before it
+ * may be replaced by that spread, and the spread itself may fill in a key the
+ * group never mentions.
+ */
+function conclusiveProperties(
+	group: TSESTree.ObjectExpression,
+): [properties: TSESTree.ObjectLiteralElement[], spreads: boolean] {
+	let lastSpread = -1;
+	group.properties.forEach((property, index) => {
+		if (property.type === AST_NODE_TYPES.SpreadElement) lastSpread = index;
+	});
+
+	return [group.properties.slice(lastSpread + 1), lastSpread !== -1];
 }
 
 function findMissingMethods(group: TSESTree.ObjectExpression): WebhookLifecycleMethod[] {
-	const composedBySpread = isComposedBySpread(group);
+	const [properties, spreads] = conclusiveProperties(group);
 
 	return WEBHOOK_LIFECYCLE_METHODS.filter((method) => {
-		if (group.properties.some((property) => isMethodProperty(property, method))) return false;
+		const declared = properties.find((property): property is TSESTree.Property =>
+			declaresKey(property, method),
+		);
 
-		// A spread may carry the method in, so a key that is simply absent is not
-		// evidence of anything. A key the group states itself is, since an explicit
-		// `delete: undefined` overrides whatever the spread supplied.
-		return !composedBySpread || group.properties.some((p) => declaresKey(p, method));
+		// A key stated last says what the method really is, `delete: undefined`
+		// included. Otherwise a spread leaves it open, and its absence proves
+		// nothing; without one, an absent key is simply missing.
+		if (declared) return !isImplementation(declared.value);
+		return !spreads;
 	});
 }
 
