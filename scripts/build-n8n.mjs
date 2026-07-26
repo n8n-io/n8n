@@ -101,26 +101,9 @@ try {
 	installProcess.pipe(process.stdout);
 	await installProcess;
 
-	const buildProcess = $`cd ${config.rootDir} && pnpm build`;
+	const buildProcess = $`cd ${config.rootDir} && pnpm build --summarize`;
 	buildProcess.pipe(process.stdout);
 	await buildProcess;
-
-	// Generate third-party licenses for production builds
-	// Skip with N8N_SKIP_LICENSES=true for CI test builds
-	if (process.env.N8N_SKIP_LICENSES !== 'true') {
-		echo(chalk.yellow('INFO: Generating third-party licenses...'));
-		try {
-			const licenseProcess = $`cd ${config.rootDir} && node scripts/generate-third-party-licenses.mjs`;
-			licenseProcess.pipe(process.stdout);
-			await licenseProcess;
-			echo(chalk.green('✅ Third-party licenses generated successfully'));
-		} catch (error) {
-			echo(chalk.yellow('⚠️  Warning: Third-party license generation failed, continuing build...'));
-			echo(chalk.red(`ERROR: License generation failed: ${error.message}`));
-		}
-	} else {
-		echo(chalk.gray('INFO: Skipping license generation (N8N_SKIP_LICENSES=true)'));
-	}
 
 	echo(chalk.green('✅ pnpm install and build completed'));
 } catch (error) {
@@ -207,7 +190,34 @@ if (excludeTestController) {
 	echo(chalk.gray('  - Excluded test controller from packages/cli/package.json'));
 }
 
+// The release SBOM is built by cdxgen inventorying the top-level node_modules of this
+// deployed closure. Since #32569 dropped shamefully-hoist, only direct deps surface at
+// top level, so cdxgen would miss the transitive tree (the manifest would be incomplete).
+// Re-enable hoisting for the licenses build only — shipped images keep the non-hoisted
+// layout, since regular builds leave N8N_GENERATE_LICENSES unset.
+const generateLicenses = process.env.N8N_GENERATE_LICENSES === 'true';
+if (generateLicenses) {
+	process.env.npm_config_shamefully_hoist = 'true';
+}
+
 await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --legacy deploy --no-optional ./compiled`;
+
+// Strip test/example/benchmark dirs shipped inside production deps that lack a
+// `files` field in their package.json. These are valid runtime deps but their
+// authors published full source trees; syft inventories the subdirs as phantom
+// packages with no license, which fails enterprise SBOM license gates.
+echo(chalk.yellow('INFO: Stripping test/example/benchmark dirs from production closure...'));
+const phantomDirs = [
+	'resolve/*/test',
+	'import-in-the-middle/*/test',
+	'github-from-package/*/example',
+	'tedious/*/benchmarks',
+];
+for (const pattern of phantomDirs) {
+	await $`find ${config.compiledAppDir}/node_modules/.pnpm -type d -path "*/${pattern}" -exec rm -rf {} + 2>/dev/null || true`;
+}
+echo(chalk.green('✅ Phantom dirs stripped'));
+
 await fs.ensureDir(config.compiledTaskRunnerDir);
 
 echo(
@@ -219,6 +229,38 @@ echo(
 await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner --prod --legacy deploy --no-optional ${config.compiledTaskRunnerDir}`;
 
 const packageDeployTime = getElapsedTime('package_deploy');
+
+// Generate SBOM + render THIRD_PARTY_LICENSES.md from the deployed runtime closure.
+// Single source of truth: the SBOM. Both the runtime endpoint (packages/cli/) and the
+// release asset (compiled/) get the same SBOM-derived attribution file.
+// Tooling (cdxgen + renderer) is installed in .github/scripts/, alongside other CI
+// scripts, so we don't carry a second isolated install.
+//
+// Default: skip. cdxgen + license rendering adds ~minutes to every build:deploy and
+// is only needed for the release SBOM job. The release-publish workflow opts in by
+// setting N8N_GENERATE_LICENSES=true; regular CI Docker prepare runs skip it.
+if (generateLicenses) {
+	echo(chalk.yellow('INFO: Generating SBOM and rendering THIRD_PARTY_LICENSES.md...'));
+	try {
+		const toolingDir = path.join(config.rootDir, '.github', 'scripts');
+		await $`cd ${config.rootDir} && pnpm install --frozen-lockfile --dir .github/scripts --ignore-workspace`;
+		const generateProcess = $`cd ${toolingDir} && pnpm generate-licenses`;
+		generateProcess.pipe(process.stdout);
+		await generateProcess;
+		echo(chalk.green('✅ SBOM generated and THIRD_PARTY_LICENSES.md rendered'));
+	} catch (error) {
+		echo(chalk.red(`ERROR: SBOM/license generation failed: ${error.message}`));
+		// In CI, fail loudly. A stale or missing THIRD_PARTY_LICENSES.md must never ship —
+		// the release workflow uploads it unconditionally and would otherwise publish
+		// an incomplete attribution file.
+		if (process.env.CI === 'true') {
+			throw error;
+		}
+		echo(chalk.yellow('⚠️  Warning: continuing local build (CI=true would have failed)'));
+	}
+} else {
+	echo(chalk.gray('INFO: Skipping SBOM/license generation (set N8N_GENERATE_LICENSES=true to enable)'));
+}
 
 // Restore package.json files
 // This is only needed locally, not in CI

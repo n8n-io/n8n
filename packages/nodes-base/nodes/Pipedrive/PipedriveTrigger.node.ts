@@ -11,7 +11,7 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { pipedriveApiRequest } from './GenericFunctions';
+import { pipedriveApiRequest } from './v1/GenericFunctions';
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {
@@ -45,6 +45,10 @@ const entityOptions = [
 	{
 		name: 'Deal',
 		value: 'deal',
+	},
+	{
+		name: 'Lead',
+		value: 'lead',
 	},
 	{
 		name: 'Note',

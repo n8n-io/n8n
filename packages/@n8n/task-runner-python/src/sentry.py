@@ -20,18 +20,48 @@ class TaskRunnerSentry:
         import sentry_sdk
         from sentry_sdk.integrations.logging import LoggingIntegration
 
-        sentry_sdk.init(
-            dsn=self.config.dsn,
-            release=f"n8n@{self.config.n8n_version}",
-            environment=self.config.environment,
-            server_name=self.config.deployment_name,
-            before_send=self._filter_out_ignored_errors,
-            attach_stacktrace=True,
-            send_default_pii=False,
-            auto_enabling_integrations=False,
-            default_integrations=True,
-            integrations=[LoggingIntegration(level=logging.ERROR)],
-        )
+        integrations = [LoggingIntegration(level=logging.ERROR)]
+
+        is_profiling_enabled = self.config.profiles_sample_rate > 0
+
+        if is_profiling_enabled:
+            try:
+                # Import profiling integration lazily to avoid hard dependency
+                import sentry_sdk.profiler  # noqa: F401
+
+                self.logger.info("Sentry profiling integration loaded")
+            except ImportError:
+                self.logger.warning(
+                    "Sentry profiling is enabled but sentry-sdk profiling is not available. "
+                    "Install with: uv sync --all-extras"
+                )
+
+        is_tracing_enabled = self.config.traces_sample_rate > 0
+        if is_profiling_enabled and not is_tracing_enabled:
+            self.logger.warning(
+                "Profiling is enabled but tracing is disabled. Profiling will not work."
+            )
+
+        init_options = {
+            "dsn": self.config.dsn,
+            "release": f"n8n@{self.config.n8n_version}",
+            "environment": self.config.environment,
+            "server_name": self.config.deployment_name,
+            "before_send": self._filter_out_ignored_errors,
+            "attach_stacktrace": True,
+            "send_default_pii": False,
+            "auto_enabling_integrations": False,
+            "default_integrations": True,
+            "integrations": integrations,
+        }
+
+        if self.config.traces_sample_rate > 0:
+            init_options["traces_sample_rate"] = self.config.traces_sample_rate
+
+        if is_profiling_enabled:
+            init_options["profiles_sample_rate"] = self.config.profiles_sample_rate
+
+        sentry_sdk.init(**init_options)
         sentry_sdk.set_tag(SENTRY_TAG_SERVER_TYPE_KEY, SENTRY_TAG_SERVER_TYPE_VALUE)
         self.logger.info("Sentry ready")
 

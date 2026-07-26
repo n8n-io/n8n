@@ -1,12 +1,13 @@
 <script lang="ts" setup>
-import { ref, computed, onBeforeMount } from 'vue';
+import { ref, computed } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 import Modal from '@/app/components/Modal.vue';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useUsersStore } from '../users.store';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { useRemoteProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import { useI18n } from '@n8n/i18n';
 
 import { ElRadio } from 'element-plus';
@@ -27,7 +28,6 @@ const selectedProject = ref<ProjectSharingData | null>(null);
 
 const i18n = useI18n();
 const usersStore = useUsersStore();
-const projectsStore = useProjectsStore();
 
 const userToDelete = computed(() => {
 	if (!props.data?.userId) return null;
@@ -61,17 +61,10 @@ const enabled = computed(() => {
 	return !!(operation.value === 'transfer' && selectedProject.value);
 });
 
-const projects = computed(() => {
-	return projectsStore.projects.filter(
-		(project) =>
-			project.name !==
-			`${userToDelete.value?.firstName} ${userToDelete.value?.lastName} <${userToDelete.value?.email}>`,
-	);
-});
-
-onBeforeMount(async () => {
-	await projectsStore.getAllProjects();
-});
+const searchFn = useRemoteProjectSearch();
+const filterFn = (project: ProjectListItem) =>
+	project.name !==
+	`${userToDelete.value?.firstName} ${userToDelete.value?.lastName} <${userToDelete.value?.email}>`;
 
 const { showMessage, showError } = useToast();
 
@@ -91,13 +84,10 @@ async function onSubmit() {
 		await usersStore.deleteUser(params);
 
 		let message = '';
-		if (params.transferId) {
-			const transferProject = projects.value.find((project) => project.id === params.transferId);
-			if (transferProject) {
-				message = i18n.baseText('settings.users.transferredToUser', {
-					interpolate: { projectName: transferProject.name ?? '' },
-				});
-			}
+		if (params.transferId && selectedProject.value) {
+			message = i18n.baseText('settings.users.transferredToUser', {
+				interpolate: { projectName: selectedProject.value.name ?? '' },
+			});
 		}
 
 		showMessage({
@@ -154,7 +144,8 @@ async function onSubmit() {
 						<ProjectSharing
 							v-model="selectedProject"
 							class="pt-2xs"
-							:projects="projects"
+							:search-fn="searchFn"
+							:filter-fn="filterFn"
 							:placeholder="
 								i18n.baseText('settings.users.transferWorkflowsAndCredentials.placeholder')
 							"

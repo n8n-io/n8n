@@ -2,11 +2,33 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { createTestNodeProperties } from '@/__tests__/mocks';
+import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
 import ParameterInputExpanded from './ParameterInputExpanded.vue';
+import type { NDVStore } from '@/features/ndv/shared/ndv.store';
 import type { INodePropertyCollection } from 'n8n-workflow';
 import userEvent from '@testing-library/user-event';
+import { mock } from 'vitest-mock-extended';
 import { nextTick } from 'vue';
+
+const ndvStoreMock = vi.hoisted(() => ({ current: null as unknown }));
+
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const { computed } = await import('vue');
+	return {
+		...(await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>()),
+		injectNDVStoreIfProvided: () => computed(() => ndvStoreMock.current),
+	};
+});
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
@@ -14,43 +36,40 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 	}),
 }));
 
-vi.mock('@n8n/i18n', () => ({
-	i18n: {
-		baseText: vi.fn().mockImplementation((key) => key),
-		credText: vi.fn().mockReturnValue({
-			inputLabelDisplayName: () => 'Test label',
-			inputLabelDescription: () => 'Test description',
-			hint: () => 'Test hint',
-			placeholder: () => 'Test placeholder',
-		}),
-		nodeText: vi.fn().mockReturnValue({
-			inputLabelDisplayName: () => 'Test label',
-			inputLabelDescription: () => 'Test description',
-			hint: () => 'Test hint',
-			placeholder: () => 'Test placeholder',
-		}),
-	},
-	i18nInstance: {
-		global: {
-			t: vi.fn().mockImplementation((key) => key),
-		},
-	},
-	useI18n: vi.fn().mockReturnValue({
-		baseText: vi.fn().mockImplementation((key) => key),
-		credText: vi.fn().mockReturnValue({
-			inputLabelDisplayName: () => 'Test label',
-			inputLabelDescription: () => 'Test description',
-			hint: () => 'Test hint',
-			placeholder: () => 'Test placeholder',
-		}),
-		nodeText: vi.fn().mockReturnValue({
-			inputLabelDisplayName: () => 'Test label',
-			inputLabelDescription: () => 'Test description',
-			hint: () => 'Test hint',
-			placeholder: () => 'Test placeholder',
-		}),
+vi.mock('@/app/composables/useCollectionOverhaul', () => ({
+	useCollectionOverhaul: () => ({
+		isEnabled: { value: true },
 	}),
 }));
+
+vi.mock('@n8n/i18n', () => {
+	const mockNodeText = {
+		inputLabelDisplayName: () => 'Test label',
+		inputLabelDescription: () => 'Test description',
+		hint: () => 'Test hint',
+		placeholder: () => 'Test placeholder',
+		collectionOptionDisplayName: () => 'Test option',
+		addOptionalFieldButtonText: () => 'Add field',
+	};
+
+	return {
+		i18n: {
+			baseText: vi.fn().mockImplementation((key: string) => key),
+			credText: vi.fn().mockReturnValue(mockNodeText),
+			nodeText: vi.fn().mockReturnValue(mockNodeText),
+		},
+		i18nInstance: {
+			global: {
+				t: vi.fn().mockImplementation((key: string) => key),
+			},
+		},
+		useI18n: vi.fn().mockReturnValue({
+			baseText: vi.fn().mockImplementation((key: string) => key),
+			credText: vi.fn().mockReturnValue(mockNodeText),
+			nodeText: vi.fn().mockReturnValue(mockNodeText),
+		}),
+	};
+});
 
 describe('ParameterInputExpanded.vue', () => {
 	const mockPinia = createTestingPinia({
@@ -67,6 +86,26 @@ describe('ParameterInputExpanded.vue', () => {
 
 	const renderComponent = createComponentRenderer(ParameterInputExpanded, {
 		pinia: mockPinia,
+	});
+
+	afterEach(() => {
+		ndvStoreMock.current = null;
+	});
+
+	it('does not render the focus parameter button, even with an active NDV node', async () => {
+		ndvStoreMock.current = mock<NDVStore>({ activeNode: createTestNode() });
+
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				parameter: createTestNodeProperties({ name: 'apiKey', type: 'string' }),
+				value: '',
+			},
+		});
+		await vi.dynamicImportSettled();
+
+		expect(getByTestId('parameter-options-container')).toBeInTheDocument();
+		// the focus panel cannot host credential fields, so the button must stay hidden
+		expect(queryByTestId('parameter-focus-button')).not.toBeInTheDocument();
 	});
 
 	describe('FixedCollectionParameter', () => {
@@ -136,11 +175,11 @@ describe('ParameterInputExpanded.vue', () => {
 			expect(input).toHaveValue('Content-Type');
 		});
 
-		it('should add a new option when the user clicks the add button', async () => {
+		it('should emit update event when the user clicks the add button', async () => {
 			const nodeValues = {
 				headers: { values: [{ name: '', value: '' }] },
 			};
-			const { getByTestId, queryAllByTestId } = renderComponent({
+			const { getByTestId, emitted } = renderComponent({
 				props: {
 					parameter: fixedCollectionParameter,
 					value: nodeValues.headers,
@@ -149,15 +188,21 @@ describe('ParameterInputExpanded.vue', () => {
 			});
 			await vi.dynamicImportSettled();
 
-			const inputsBefore = queryAllByTestId('parameter-input-field');
-			expect(inputsBefore.length).toBe(2);
-
-			const button = getByTestId('fixed-collection-add');
+			const button = getByTestId('fixed-collection-add-top-level-button');
 			await userEvent.click(button);
 			await nextTick();
 
-			const inputsAfter = queryAllByTestId('parameter-input-field');
-			expect(inputsAfter.length).toBe(4);
+			expect(emitted('update')).toEqual([
+				[
+					{
+						name: 'headers.values',
+						value: [
+							{ name: '', value: '' },
+							{ name: '', value: '' },
+						],
+					},
+				],
+			]);
 		});
 
 		describe('ParameterInputWrapper', () => {

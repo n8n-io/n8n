@@ -182,6 +182,22 @@ function onScroll() {
 
 	scrollTop.value = wrapperRef.value.scrollTop;
 }
+
+function scrollToKey(key: Item[Key]) {
+	if (!wrapperRef.value) {
+		return;
+	}
+
+	const position = itemPositionCache.value[key];
+	if (position === undefined) {
+		return;
+	}
+
+	wrapperRef.value.scrollTop = position;
+	scrollTop.value = position;
+}
+
+defineExpose({ scrollToKey });
 </script>
 
 <template>

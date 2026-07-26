@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { sentryIoApiRequest } from '../GenericFunctions';
 
@@ -6,7 +6,7 @@ describe('SentryIo GenericFunctions', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('sentryIoApiRequest', () => {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useTemplateWorkflow } from '@/features/workflows/templates/utils/templateActions';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -8,11 +8,19 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
-import TemplateDetails from '../components/TemplateDetails.vue';
-import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
+import {
+	ensurePersonalProjectId,
+	useInstanceAiHandoff,
+} from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import WorkflowPreviewHost from '@/app/components/WorkflowPreviewHost.vue';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import TemplatesView from './TemplatesView.vue';
+import RecommendedTemplateCard from '../recommendations/components/RecommendedTemplateCard.vue';
 
-import { N8nButton, N8nHeading, N8nLoading, N8nMarkdown, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nMarkdown, N8nText } from '@n8n/design-system';
+import type { IWorkflowTemplate } from '@n8n/rest-api-client';
+
 const externalHooks = useExternalHooks();
 const templatesStore = useTemplatesStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -22,10 +30,15 @@ const router = useRouter();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
+const instanceAiHandoff = useInstanceAiHandoff();
+const instanceAiAvailable = useInstanceAiAvailable();
 
 const loading = ref(true);
 const showPreview = ref(true);
 const notFoundError = ref(false);
+const isPreviewVisible = ref(true);
+const previewWrapperRef = ref<HTMLElement | null>(null);
+let previewObserver: IntersectionObserver | null = null;
 
 const templateId = computed(() =>
 	Array.isArray(route.params.id) ? route.params.id[0] : route.params.id,
@@ -46,8 +59,22 @@ const openTemplateSetup = async (id: string, e: PointerEvent) => {
 	});
 };
 
-const onHidePreview = () => {
-	showPreview.value = false;
+const startWithAi = async () => {
+	if (!template.value || !instanceAiAvailable.value) return;
+	const projectId = await ensurePersonalProjectId();
+	if (!projectId) return;
+
+	await instanceAiHandoff.startThread(
+		projectId,
+		i18n.baseText('instanceAi.launch.template.message', {
+			interpolate: { name: template.value.name, id: templateId.value },
+		}),
+		{
+			source: 'template-view',
+			origin: 'internal',
+			sourceContext: { templateId: templateId.value, templateName: template.value.name },
+		},
+	);
 };
 
 const scrollToTop = () => {
@@ -71,8 +98,38 @@ watch(
 	},
 );
 
+watch(
+	previewWrapperRef,
+	(newRef) => {
+		if (previewObserver) {
+			previewObserver.disconnect();
+			previewObserver = null;
+		}
+
+		if (newRef) {
+			previewObserver = new IntersectionObserver(
+				(entries) => {
+					for (const entry of entries) {
+						isPreviewVisible.value = entry.isIntersecting;
+					}
+				},
+				{ threshold: 0 },
+			);
+			previewObserver.observe(newRef);
+		}
+	},
+	{ immediate: true },
+);
+
 onMounted(async () => {
 	scrollToTop();
+
+	// The native preview canvas renders node icons/shapes from the node types
+	// store; community nodes used by templates resolve through previews.
+	if (nodeTypesStore.allNodeTypes.length === 0) {
+		void nodeTypesStore.getNodeTypes();
+	}
+	void nodeTypesStore.fetchCommunityNodePreviews();
 
 	if (template.value?.full) {
 		loading.value = false;
@@ -87,59 +144,82 @@ onMounted(async () => {
 
 	loading.value = false;
 });
+
+onBeforeUnmount(() => {
+	if (previewObserver) {
+		previewObserver.disconnect();
+		previewObserver = null;
+	}
+});
+
+const strippedWorkflow = computed<IWorkflowTemplate['workflow'] | undefined>(() => {
+	if (!template.value?.workflow) return undefined;
+
+	if (template.value.readyToDemo) return template.value.workflow;
+
+	return {
+		...template.value.workflow,
+		pinData: {},
+	};
+});
+
+// Synthetic preview document id — template workflows have no instance
+// workflow id, so key by the template id.
+const previewDocumentId = computed(() =>
+	createWorkflowDocumentId(`template-${templateId.value}`, 'preview'),
+);
 </script>
 
 <template>
-	<TemplatesView :go-back-enabled="true">
-		<template #header>
-			<div v-if="!notFoundError" :class="$style.wrapper">
-				<div :class="$style.title">
-					<N8nHeading v-if="template && template.name" tag="h1" size="2xlarge">{{
-						template.name
-					}}</N8nHeading>
-					<N8nText v-if="template && template.name" color="text-base" size="small">
-						{{ i18n.baseText('generic.workflow') }}
-					</N8nText>
-					<N8nLoading :loading="!template || !template.name" :rows="2" variant="h1" />
-				</div>
-				<div :class="$style.button">
-					<N8nButton
-						v-if="template"
-						data-test-id="use-template-button"
-						:label="i18n.baseText('template.buttons.useThisWorkflowButton')"
-						size="large"
-						@click="openTemplateSetup(templateId, $event)"
-					/>
-					<N8nLoading :loading="!template" :rows="1" variant="button" />
-				</div>
-			</div>
-			<div v-else :class="$style.notFound">
+	<TemplatesView :full-width="true">
+		<template v-if="notFoundError" #header>
+			<div :class="$style.notFound">
 				<N8nText color="text-base">{{ i18n.baseText('templates.workflowsNotFound') }}</N8nText>
 			</div>
 		</template>
 		<template v-if="!notFoundError" #content>
-			<div :class="$style.image">
-				<WorkflowPreview
-					v-if="showPreview"
-					:loading="loading"
-					:workflow="template?.workflow"
-					@close="onHidePreview"
-				/>
-			</div>
-			<div :class="$style.content">
-				<div :class="$style.markdown" data-test-id="template-description">
-					<N8nMarkdown
-						:content="template?.description"
-						:images="template?.image"
-						:loading="loading"
+			<div :class="$style.previewWrapper">
+				<div :class="$style.image">
+					<WorkflowPreviewHost
+						v-if="showPreview && !loading && strippedWorkflow"
+						:document-id="previewDocumentId"
+						:workflow="strippedWorkflow"
 					/>
 				</div>
-				<div :class="$style.details">
-					<TemplateDetails
-						:block-title="i18n.baseText('template.details.appsInTheWorkflow')"
-						:loading="loading"
-						:template="template"
-					/>
+			</div>
+			<div :class="$style.contentContainer">
+				<div :class="$style.content">
+					<div :class="$style.templateCard">
+						<RecommendedTemplateCard v-if="template" :template="template" :show-details="true">
+							<template #belowContent>
+								<div :class="$style.templateActions">
+									<N8nButton
+										data-test-id="use-template-button"
+										:label="i18n.baseText('template.buttons.tryTemplate')"
+										size="large"
+										@click.stop="openTemplateSetup(templateId, $event)"
+									/>
+									<N8nButton
+										v-if="instanceAiAvailable"
+										data-test-id="start-with-ai-button"
+										:class="$style.startWithAi"
+										:label="i18n.baseText('template.buttons.startWithAi')"
+										variant="ghost"
+										icon="sparkles"
+										size="large"
+										@click.stop="startWithAi"
+									/>
+								</div>
+							</template>
+						</RecommendedTemplateCard>
+					</div>
+					<div :class="$style.markdown" data-test-id="template-description">
+						<N8nMarkdown
+							:content="template?.description"
+							:images="template?.image"
+							:loading="loading"
+						/>
+					</div>
 				</div>
 			</div>
 		</template>
@@ -147,28 +227,18 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
-.wrapper {
-	display: flex;
-	justify-content: space-between;
-}
-
 .notFound {
-	padding-top: var(--spacing--xl);
+	padding-top: var(--spacing--sm);
 }
 
-.title {
-	width: 75%;
-}
-
-.button {
-	display: block;
+.previewWrapper {
+	position: relative;
 }
 
 .image {
 	width: 100%;
 	height: 500px;
 	border: var(--border);
-	border-radius: var(--radius--lg);
 	overflow: hidden;
 
 	img {
@@ -176,27 +246,85 @@ onMounted(async () => {
 	}
 }
 
+.button {
+	position: absolute;
+	bottom: var(--spacing--sm);
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: var(--canvas-select-box--z);
+}
+
+.contentContainer {
+	max-width: var(--content-container--width);
+	margin: var(--spacing--lg) auto 0;
+	padding: 0 var(--spacing--2xl);
+}
+
 .content {
-	padding: var(--spacing--2xl) 0;
 	display: flex;
-	justify-content: space-between;
+	gap: var(--spacing--lg);
 
 	@media (max-width: $breakpoint-xs) {
 		display: block;
 	}
 }
 
-.markdown {
-	width: calc(100% - 180px);
-	padding-right: var(--spacing--2xl);
-	margin-bottom: var(--spacing--lg);
+.templateActions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
 
-	@media (max-width: $breakpoint-xs) {
-		width: 100%;
+// Same layered-background technique as the design system's Ask Assistant
+// button; the doubled class selector outranks N8nButton's background rules.
+.startWithAi.startWithAi {
+	// Icon inherits currentColor; the label is repainted with the gradient below.
+	--button--color: var(--assistant--color--highlight-2);
+	border: 1px solid transparent;
+	background:
+		var(--assistant--button--color--background--gradient) padding-box,
+		var(--assistant--color--highlight-gradient) border-box;
+
+	&:hover {
+		background:
+			var(--assistant--button--color--background--hover) padding-box,
+			var(--assistant--button--color--background--gradient--hover) padding-box,
+			var(--assistant--color--highlight-gradient--reverse) border-box;
+	}
+
+	&:active {
+		background:
+			var(--assistant--button--color--background--active) padding-box,
+			var(--assistant--button--color--background--gradient--active) padding-box,
+			var(--assistant--color--highlight-gradient--reverse) border-box;
+	}
+
+	span {
+		background: var(--assistant--color--highlight-gradient);
+		background-clip: text;
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
 	}
 }
 
-.details {
-	width: 180px;
+.templateCard {
+	width: 380px;
+	flex-shrink: 0;
+	position: sticky;
+	top: var(--spacing--lg);
+	align-self: flex-start;
+
+	@media (max-width: $breakpoint-xs) {
+		width: 100%;
+		position: static;
+		margin-bottom: var(--spacing--lg);
+	}
+}
+
+.markdown {
+	flex: 1;
+	min-width: 0;
+	margin-bottom: var(--spacing--lg);
 }
 </style>

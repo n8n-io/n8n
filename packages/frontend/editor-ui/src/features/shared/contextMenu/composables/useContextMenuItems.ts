@@ -7,14 +7,19 @@ import {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
-import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
+import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
 import { isPresent } from '@/app/utils/typesUtils';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 import { usePinnedData } from '@/app/composables/usePinnedData';
+import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { injectContextMenuGroupView } from './contextMenuGroupView';
 
 export type ContextMenuAction =
 	| 'open'
@@ -35,29 +40,72 @@ export type ContextMenuAction =
 	| 'change_color'
 	| 'open_sub_workflow'
 	| 'tidy_up'
-	| 'extract_sub_workflow';
+	| 'extract_sub_workflow'
+	| 'group_nodes'
+	| 'rename_group'
+	| 'ungroup_nodes'
+	| 'expand_all_groups'
+	| 'collapse_all_groups'
+	| 'expand_selected_groups'
+	| 'collapse_selected_groups'
+	| 'show_all_group_descriptions'
+	| 'hide_all_group_descriptions'
+	| 'show_group_description'
+	| 'hide_group_description'
+	| 'focus_ai_on_selected';
+
+/**
+ * Actions that, once selected, hand off to another floating layer or input
+ * (e.g. a popover, the group title editor) which then takes focus. For these
+ * the context menu must not restore focus on close — otherwise the restore
+ * lands outside the freshly-focused element and immediately dismisses it.
+ * `group_nodes` qualifies because it autofocuses the created group's title
+ * editor, just like `rename_group`.
+ */
+const FOCUS_HANDOFF_ACTIONS = new Set<ContextMenuAction>([
+	'change_color',
+	'rename_group',
+	'group_nodes',
+]);
+
+export function isFocusHandoffAction(action: ContextMenuAction): boolean {
+	return FOCUS_HANDOFF_ACTIONS.has(action);
+}
 
 type Item = ActionDropdownItem<ContextMenuAction>;
 
-export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): ComputedRef<Item[]> {
+export function useContextMenuItems(
+	targetNodeIds: ComputedRef<string[]>,
+	targetGroupId?: ComputedRef<string | undefined>,
+	targetReadOnly?: ComputedRef<boolean>,
+): ComputedRef<Item[]> {
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const sourceControlStore = useSourceControlStore();
+	const collaborationStore = useCollaborationStore();
+	const focusedNodesStore = useFocusedNodesStore();
+	const { resolveGroupableNodeIds } = useSelectionValidation();
+	const groupView = injectContextMenuGroupView();
 	const i18n = useI18n();
 
-	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+	// Per-editor host overrides (already ANDed with the instance-wide store
+	// flags) — e.g. the Instance AI artifact preview supersedes the AI
+	// capabilities of its embedded editor, which must hide the AI actions.
+	const { aiAssistant, aiBuilder, instanceAi } = useEditorContext();
 
 	const workflowPermissions = computed(
-		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,
+		() => getResourcePermissions(workflowDocumentStore?.value?.scopes).workflow,
 	);
 
 	const isReadOnly = computed(
 		() =>
+			(targetReadOnly?.value ?? false) ||
 			sourceControlStore.preferences.branchReadOnly ||
 			uiStore.isReadOnlyView ||
 			!workflowPermissions.value.update ||
-			workflowsStore.workflow.isArchived,
+			(workflowDocumentStore?.value?.isArchived ?? false) ||
+			collaborationStore.shouldBeReadOnly,
 	);
 
 	const canOpenSubworkflow = computed(() => {
@@ -71,11 +119,19 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	});
 
 	const targetNodes = computed(() =>
-		targetNodeIds.value.map((nodeId) => workflowsStore.getNodeById(nodeId)).filter(isPresent),
+		targetNodeIds.value
+			.map((nodeId) => workflowDocumentStore?.value?.getNodeById(nodeId))
+			.filter(isPresent),
 	);
 
+	// Mirrors the Cmd+G eligibility — the same resolver also produces the
+	// member ids at execution time, so enablement can't diverge from it.
+	const canGroupTargetNodes = computed(() => resolveGroupableNodeIds(targetNodeIds.value) !== null);
+
 	const canAddNodeOfType = (nodeType: INodeTypeDescription) => {
-		const sameTypeNodes = workflowsStore.allNodes.filter((n) => n.type === nodeType.name);
+		const sameTypeNodes = (workflowDocumentStore?.value?.allNodes ?? []).filter(
+			(n) => n.type === nodeType.name,
+		);
 		return nodeType.maxNodes === undefined || sameTypeNodes.length < nodeType.maxNodes;
 	};
 
@@ -88,16 +144,22 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	};
 
 	const hasPinData = (node: INode): boolean => {
-		return !!workflowsStore.pinDataByNodeName(node.name);
+		return !!workflowDocumentStore?.value?.pinnedDataByNodeName?.[node.name];
 	};
 
 	const isExecutable = (node: INodeUi) => {
-		const workflowNode = workflowObject.value.getNode(node.name) as INode;
+		if (!workflowDocumentStore?.value) return false;
+
 		const nodeType = nodeTypesStore.getNodeType(
-			workflowNode.type,
-			workflowNode.typeVersion,
+			node.type,
+			node.typeVersion,
 		) as INodeTypeDescription;
-		return NodeHelpers.isExecutable(workflowObject.value, workflowNode, nodeType);
+
+		return NodeHelpers.isExecutable(
+			{ expression: workflowDocumentStore.value.getExpressionHandler() },
+			node,
+			nodeType,
+		);
 	};
 
 	const isWebhookNode = (node: INodeUi) => {
@@ -109,18 +171,115 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 		return true;
 	};
 
-	return computed(() => {
-		const nodes = targetNodes.value;
-		const onlyStickies = nodes.every((node) => node.type === STICKY_NODE_TYPE);
+	const isAiSubNode = (node: INodeUi): boolean => {
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		return NodeHelpers.isSubNodeType(nodeType);
+	};
 
-		const i18nOptions = {
-			adjustToNumber: nodes.length,
-			interpolate: {
-				subject: onlyStickies
-					? i18n.baseText('contextMenu.sticky', { adjustToNumber: nodes.length })
-					: i18n.baseText('contextMenu.node', { adjustToNumber: nodes.length }),
-			},
-		};
+	return computed(() => {
+		// A group target gets the multi-selection menu over its member nodes,
+		// worded for the group as a whole, plus the group's own actions on top.
+		const isGroupTarget = targetGroupId?.value !== undefined;
+
+		// Workflow-wide show/hide, for the empty-canvas menu only. A view
+		// preference, so it stays enabled in read-only mode.
+		const allGroupsDescriptionActions: Item[] = (() => {
+			if (groupView === undefined) return [];
+
+			const groupsWithDescription = (workflowDocumentStore?.value?.allGroups ?? []).filter(
+				(group) => !!group.description?.trim(),
+			);
+			if (groupsWithDescription.length === 0) return [];
+
+			const anyDisplayed = groupsWithDescription.some((group) =>
+				groupView.isDescriptionVisible(group.id),
+			);
+			const anyHidden = groupsWithDescription.some(
+				(group) => !groupView.isDescriptionVisible(group.id),
+			);
+
+			const items: Item[] = [];
+			if (anyHidden) {
+				items.push({
+					id: 'show_all_group_descriptions',
+					label: i18n.baseText('contextMenu.showAllGroupDescriptions'),
+				});
+			}
+			if (anyDisplayed) {
+				items.push({
+					id: 'hide_all_group_descriptions',
+					label: i18n.baseText('contextMenu.hideAllGroupDescriptions'),
+				});
+			}
+			return items;
+		})();
+
+		// Show/hide the targeted group's own description. Collapsed only — the
+		// pinned panel it toggles exists only then.
+		const groupDescriptionActions: Item[] = (() => {
+			const groupId = targetGroupId?.value;
+			if (groupView === undefined || groupId === undefined) return [];
+
+			const group = workflowDocumentStore?.value?.allGroups.find((g) => g.id === groupId);
+			if (!group?.description?.trim() || !groupView.isGroupCollapsed(groupId)) return [];
+
+			const visible = groupView.isDescriptionVisible(groupId);
+			return [
+				{
+					id: visible ? 'hide_group_description' : 'show_group_description',
+					divided: true,
+					label: visible
+						? i18n.baseText('contextMenu.hideGroupDescription')
+						: i18n.baseText('contextMenu.showGroupDescription'),
+				},
+			];
+		})();
+
+		const groupActions: Item[] = isGroupTarget
+			? [
+					{
+						id: 'rename_group',
+						label: i18n.baseText('contextMenu.renameGroup'),
+						shortcut: { keys: ['Space'] },
+						disabled: isReadOnly.value,
+					},
+					{
+						id: 'ungroup_nodes',
+						label: i18n.baseText('contextMenu.ungroupNodes'),
+						shortcut: { metaKey: true, shiftKey: true, keys: ['G'] },
+						disabled: isReadOnly.value,
+					},
+					...groupDescriptionActions,
+				]
+			: [];
+
+		const nodes = targetNodes.value;
+
+		// A group whose members can't be resolved anymore (e.g. deleted by a
+		// collaborator while the menu was open) keeps only its own actions.
+		if (isGroupTarget && nodes.length === 0) {
+			return groupActions;
+		}
+
+		const onlyStickies = nodes.every((node) => node.type === STICKY_NODE_TYPE);
+		const canExtract = nodes.some(isExecutable) && !nodes.every(isAiSubNode);
+
+		const i18nOptions = isGroupTarget
+			? {
+					// Always the multi-selection wording ("Copy {subject}"), with the
+					// group as the subject, regardless of how many nodes it contains.
+					adjustToNumber: 2,
+					interpolate: { subject: i18n.baseText('contextMenu.nodeGroup') },
+				}
+			: {
+					adjustToNumber: nodes.length,
+					interpolate: {
+						subject: i18n.baseText(onlyStickies ? 'contextMenu.sticky' : 'contextMenu.node', {
+							adjustToNumber: nodes.length,
+							interpolate: { count: nodes.length },
+						}),
+					},
+				};
 
 		const selectionActions: Item[] = [
 			{
@@ -128,7 +287,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 				divided: true,
 				label: i18n.baseText('contextMenu.selectAll'),
 				shortcut: { metaKey: true, keys: ['A'] },
-				disabled: nodes.length === workflowsStore.allNodes.length,
+				disabled: nodes.length === (workflowDocumentStore?.value?.allNodes ?? []).length,
 			},
 			{
 				id: 'deselect_all',
@@ -141,11 +300,38 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			{
 				id: 'extract_sub_workflow',
 				divided: true,
-				label: i18n.baseText('contextMenu.extract', { adjustToNumber: nodes.length }),
+				label: i18n.baseText('contextMenu.extract', i18nOptions),
 				shortcut: { altKey: true, keys: ['X'] },
 				disabled: isReadOnly.value,
 			},
 		];
+
+		// Grouping doesn't apply to an existing group — it offers ungroup instead.
+		const groupingActions: Item[] = !isGroupTarget
+			? [
+					{
+						id: 'group_nodes',
+						// Starts its own section when the extraction item above is hidden
+						divided: !canExtract,
+						label: i18n.baseText('contextMenu.group', { adjustToNumber: nodes.length }),
+						shortcut: { metaKey: true, keys: ['G'] },
+						disabled: isReadOnly.value || !canGroupTargetNodes.value,
+					},
+				]
+			: [];
+
+		const aiActions: Item[] = [
+			!onlyStickies &&
+				(aiAssistant.value || aiBuilder.value) &&
+				!instanceAi.value &&
+				focusedNodesStore.isFeatureEnabled && {
+					id: 'focus_ai_on_selected',
+					divided: true,
+					label: i18n.baseText('contextMenu.focusAiOnSelected', i18nOptions),
+					shortcut: { altKey: true, keys: ['I'] },
+					disabled: isReadOnly.value,
+				},
+		].filter(Boolean) as Item[];
 
 		const layoutActions: Item[] = [
 			{
@@ -159,11 +345,77 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			},
 		];
 
+		// Distinct groups behind the target — a targeted title bar or the groups
+		// of the targeted nodes. Only a groups-only target qualifies: a single
+		// loose node yields undefined and hides the expand/collapse pair.
+		// Alt+G follows the same rule, so shortcut and menu can't diverge.
+		const targetGroupIds = ((): string[] | undefined => {
+			const carriedGroupId = targetGroupId?.value;
+			if (carriedGroupId !== undefined) return [carriedGroupId];
+			const groupIds = new Set<string>();
+			for (const node of nodes) {
+				const group = workflowDocumentStore?.value?.getGroupForNode(node.id);
+				if (!group) return undefined;
+				groupIds.add(group.id);
+			}
+			return groupIds.size > 0 ? [...groupIds] : undefined;
+		})();
+		// View preferences, so they stay enabled in read-only mode. An item is
+		// disabled when every target group is already in its end state; without
+		// a canvas-provided group view the state is unknown and both stay enabled.
+		const selectedGroupViewActions: Item[] = targetGroupIds
+			? [
+					{
+						id: 'expand_selected_groups',
+						divided: true,
+						label: i18n.baseText('contextMenu.expandSelectedGroups'),
+						shortcut: { altKey: true, keys: ['G'] },
+						disabled:
+							groupView !== undefined &&
+							targetGroupIds.every((groupId) => !groupView.isGroupCollapsed(groupId)),
+					},
+					{
+						id: 'collapse_selected_groups',
+						label: i18n.baseText('contextMenu.collapseSelectedGroups'),
+						shortcut: { shiftKey: true, altKey: true, keys: ['G'] },
+						disabled:
+							groupView !== undefined &&
+							targetGroupIds.every((groupId) => groupView.isGroupCollapsed(groupId)),
+					},
+				]
+			: [];
+
+		// Toggling group collapse is a view preference, not a workflow mutation,
+		// so these stay enabled in read-only mode. Same end-state rule as the
+		// selection-scoped items, applied to every group in the workflow.
+		const allGroups = workflowDocumentStore?.value?.allGroups ?? [];
+		const groupViewActions: Item[] = [
+			{
+				id: 'expand_all_groups',
+				divided: true,
+				label: i18n.baseText('contextMenu.expandAllGroups'),
+				shortcut: { altKey: true, keys: ['G'] },
+				disabled:
+					allGroups.length === 0 ||
+					(groupView !== undefined &&
+						allGroups.every((group) => !groupView.isGroupCollapsed(group.id))),
+			},
+			{
+				id: 'collapse_all_groups',
+				label: i18n.baseText('contextMenu.collapseAllGroups'),
+				shortcut: { shiftKey: true, altKey: true, keys: ['G'] },
+				disabled:
+					allGroups.length === 0 ||
+					(groupView !== undefined &&
+						allGroups.every((group) => groupView.isGroupCollapsed(group.id))),
+			},
+		];
+
 		if (nodes.length === 0) {
 			return [
 				{
 					id: 'add_node',
-					shortcut: { keys: ['Tab'] },
+					shortcut: { keys: ['N'] },
 					label: i18n.baseText('contextMenu.addNode'),
 					disabled: isReadOnly.value,
 				},
@@ -174,6 +426,9 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 					disabled: isReadOnly.value,
 				},
 				...layoutActions,
+				...groupViewActions,
+				// Join the group-view section
+				...allGroupsDescriptionActions.map((item) => ({ ...item, divided: false })),
 				...selectionActions,
 			];
 		} else {
@@ -206,7 +461,10 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 					disabled: isReadOnly.value || !nodes.every(canDuplicateNode),
 				},
 				...layoutActions,
-				...extractionActions,
+				...selectedGroupViewActions,
+				...(canExtract ? extractionActions : []),
+				...groupingActions,
+				...aiActions,
 				...selectionActions,
 				{
 					id: 'delete',
@@ -217,12 +475,15 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 				},
 			].filter(Boolean) as Item[];
 
-			if (nodes.length === 1) {
+			if (isGroupTarget) {
+				// The group's own actions sit on top, like single-node actions do
+				menuActions.unshift(...groupActions);
+			} else if (nodes.length === 1) {
 				const copyWebhookActions: Item[] = [];
 
 				if (isWebhookNode(nodes[0])) {
 					const isProductionOnly = PRODUCTION_ONLY_TRIGGER_NODE_TYPES.includes(nodes[0].type);
-					const isWorkflowActive = workflowsStore.workflow.active;
+					const isWorkflowActive = workflowDocumentStore?.value?.active ?? false;
 					if (!isProductionOnly) {
 						copyWebhookActions.push({
 							divided: true,

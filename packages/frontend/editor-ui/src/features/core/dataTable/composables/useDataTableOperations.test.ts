@@ -64,6 +64,7 @@ describe('useDataTableOperations', () => {
 	let dataTableStore: ReturnType<typeof useDataTableStore>;
 	let confirmMock: ReturnType<typeof vi.fn>;
 	let showErrorMock: ReturnType<typeof vi.fn>;
+	let showMessageMock: ReturnType<typeof vi.fn>;
 	let telemetryTrackMock: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
@@ -86,8 +87,10 @@ describe('useDataTableOperations', () => {
 		} as unknown as ReturnType<typeof useMessage>);
 
 		showErrorMock = vi.fn();
+		showMessageMock = vi.fn();
 		vi.mocked(useToast).mockReturnValue({
 			showError: showErrorMock,
+			showMessage: showMessageMock,
 		} as unknown as ReturnType<typeof useToast>);
 
 		telemetryTrackMock = vi.fn();
@@ -598,6 +601,51 @@ describe('useDataTableOperations', () => {
 			});
 			expect(showErrorMock).toHaveBeenCalledWith(updateError, 'dataTable.updateRow.error');
 			expect(params.toggleSave).toHaveBeenCalledWith(false);
+		});
+
+		it('should show a precision warning when the new number exceeds MAX_SAFE_INTEGER', async () => {
+			vi.mocked(useDataTableStore).mockReturnValue({
+				...dataTableStore,
+				updateRow: vi.fn().mockResolvedValue(undefined),
+			});
+
+			const { onCellValueChanged } = useDataTableOperations(params);
+			const unsafeValue = Number.MAX_SAFE_INTEGER + 10;
+			const event = {
+				data: { id: 1, amount: unsafeValue },
+				api: { applyTransaction: vi.fn() },
+				oldValue: 0,
+				colDef: { field: 'amount', cellDataType: 'number', colId: 'col1' },
+			} as unknown as CellValueChangedEvent<DataTableRow>;
+
+			await onCellValueChanged(event);
+
+			expect(showMessageMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'dataTable.updateRow.numberPrecisionWarning.title',
+					message: 'dataTable.updateRow.numberPrecisionWarning.message',
+					type: 'warning',
+				}),
+			);
+		});
+
+		it('should not show a precision warning for safe numbers', async () => {
+			vi.mocked(useDataTableStore).mockReturnValue({
+				...dataTableStore,
+				updateRow: vi.fn().mockResolvedValue(undefined),
+			});
+
+			const { onCellValueChanged } = useDataTableOperations(params);
+			const event = {
+				data: { id: 1, amount: 42 },
+				api: { applyTransaction: vi.fn() },
+				oldValue: 0,
+				colDef: { field: 'amount', cellDataType: 'number', colId: 'col1' },
+			} as unknown as CellValueChangedEvent<DataTableRow>;
+
+			await onCellValueChanged(event);
+
+			expect(showMessageMock).not.toHaveBeenCalled();
 		});
 
 		it('should revert cell value to null when old value is invalid', async () => {

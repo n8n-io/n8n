@@ -1,20 +1,21 @@
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Head, Post, RootLevelController } from '@n8n/decorators';
+import { createIpRateLimit, Get, Head, Post, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 
 import { Telemetry } from '@/telemetry';
 
+import { McpProtectedResource } from './mcp-protected-resource';
 import { McpServerMiddlewareService } from './mcp-server-middleware.service';
+import { McpConfig } from './mcp.config';
 import {
 	USER_CONNECTED_TO_MCP_EVENT,
 	MCP_ACCESS_DISABLED_ERROR_MESSAGE,
 	INTERNAL_SERVER_ERROR_MESSAGE,
 } from './mcp.constants';
-import { McpService } from './mcp.service';
+import { McpService, type McpFeatureFlags } from './mcp.service';
 import { McpSettingsService } from './mcp.settings.service';
 import { isJSONRPCRequest } from './mcp.typeguards';
 import type { UserConnectedToMCPEventPayload } from './mcp.types';
@@ -24,6 +25,8 @@ export type FlushableResponse = Response & { flush: () => void };
 
 const getAuthMiddleware = () => Container.get(McpServerMiddlewareService).getAuthMiddleware();
 
+const mcpConfig = Container.get(McpConfig);
+
 @RootLevelController('/mcp-server')
 export class McpController {
 	constructor(
@@ -32,6 +35,7 @@ export class McpController {
 		private readonly mcpSettingsService: McpSettingsService,
 		private readonly telemetry: Telemetry,
 		private readonly logger: Logger,
+		private readonly mcpProtectedResource: McpProtectedResource,
 	) {}
 
 	// Add CORS headers helper
@@ -64,12 +68,50 @@ export class McpController {
 	})
 	async discoverAuthSchemeHead(_req: Request, res: Response) {
 		this.setCorsHeaders(res);
-		res.header('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+		const prmUrl = this.mcpProtectedResource.getProtectedResourceMetadataUrl();
+		res.header('WWW-Authenticate', `Bearer realm="n8n MCP Server", resource_metadata="${prmUrl}"`);
 		res.status(401).end();
 	}
 
+	/**
+	 * GET endpoint for SSE stream (MCP Streamable HTTP spec)
+	 * Allows clients like Gemini CLI to establish an SSE stream for server-to-client notifications.
+	 */
+	@Get('/http', {
+		ipRateLimit: createIpRateLimit(mcpConfig.rateLimitServer),
+		middlewares: [getAuthMiddleware()],
+		skipAuth: true,
+		usesTemplates: true,
+	})
+	async handleGet(req: AuthenticatedRequest, res: FlushableResponse) {
+		this.setCorsHeaders(res);
+
+		const enabled = await this.mcpSettingsService.getEnabled();
+		if (!enabled) {
+			res.status(403).json({ message: MCP_ACCESS_DISABLED_ERROR_MESSAGE });
+			return;
+		}
+
+		try {
+			const featureFlags = await this.mcpService.resolveFeatureFlags(req.user);
+			await this.handleTransportRequest(req, res, featureFlags);
+		} catch (error) {
+			this.errorReporter.error(error);
+			if (!res.headersSent) {
+				res.status(500).json({
+					jsonrpc: '2.0',
+					error: {
+						code: -32603,
+						message: INTERNAL_SERVER_ERROR_MESSAGE,
+					},
+					id: null,
+				});
+			}
+		}
+	}
+
 	@Post('/http', {
-		rateLimit: { limit: 100 },
+		ipRateLimit: createIpRateLimit(mcpConfig.rateLimitServer),
 		middlewares: [getAuthMiddleware()],
 		skipAuth: true,
 		usesTemplates: true,
@@ -81,22 +123,24 @@ export class McpController {
 		const body = req.body;
 		this.logger.debug('MCP Request', { body });
 		const isInitializationRequest = isJSONRPCRequest(body) ? body.method === 'initialize' : false;
-		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'toolCall' : false;
+		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'tools/call' : false;
 		const clientInfo = getClientInfo(req);
 
-		const telemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
+		const baseTelemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
 			user_id: req.user.id,
 			client_name: clientInfo?.name,
 			client_version: clientInfo?.version,
+			auth_type: (
+				req as AuthenticatedRequest & { mcpAuthType?: UserConnectedToMCPEventPayload['auth_type'] }
+			).mcpAuthType,
 		};
 
-		// Deny if MCP access is disabled
 		const enabled = await this.mcpSettingsService.getEnabled();
 
 		if (!enabled) {
 			if (isInitializationRequest) {
 				this.trackConnectionEvent({
-					...telemetryPayload,
+					...baseTelemetryPayload,
 					mcp_connection_status: 'error',
 					error: MCP_ACCESS_DISABLED_ERROR_MESSAGE,
 				});
@@ -105,20 +149,21 @@ export class McpController {
 			res.status(403).json({ message: MCP_ACCESS_DISABLED_ERROR_MESSAGE });
 			return;
 		}
+
+		const featureFlags = await this.mcpService.resolveFeatureFlags(req.user);
+
+		const telemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
+			...baseTelemetryPayload,
+			mcp_apps_enabled: featureFlags.mcpApps.enabled,
+			mcp_apps_variant: featureFlags.mcpApps.variant,
+			mcp_canvas_groups_enabled: featureFlags.canvasGroupsEnabled,
+		};
+
 		// In stateless mode, create a new instance of transport and server for each request
 		// to ensure complete isolation. A single instance would cause request ID collisions
 		// when multiple clients connect concurrently.
 		try {
-			const server = this.mcpService.getServer(req.user);
-			const transport: StreamableHTTPServerTransport = new StreamableHTTPServerTransport({
-				sessionIdGenerator: undefined,
-			});
-			res.on('close', () => {
-				void transport.close();
-				void server.close();
-			});
-			await server.connect(transport);
-			await transport.handleRequest(req, res, req.body);
+			await this.handleTransportRequest(req, res, featureFlags, req.body);
 			if (isInitializationRequest) {
 				this.trackConnectionEvent({
 					...telemetryPayload,
@@ -148,6 +193,33 @@ export class McpController {
 				});
 			}
 		}
+	}
+
+	private async handleTransportRequest(
+		req: AuthenticatedRequest,
+		res: FlushableResponse,
+		featureFlags: McpFeatureFlags,
+		body?: unknown,
+	) {
+		const { StreamableHTTPServerTransport } = await import(
+			'@modelcontextprotocol/sdk/server/streamableHttp.js'
+		);
+		const grantedScopes = (req as AuthenticatedRequest & { mcpScopes?: string[] }).mcpScopes;
+		const server = await this.mcpService.getServer(
+			req.user,
+			featureFlags,
+			getClientInfo(req),
+			grantedScopes,
+		);
+		const transport = new StreamableHTTPServerTransport({
+			sessionIdGenerator: undefined,
+		});
+		res.on('close', () => {
+			void transport.close();
+			void server.close();
+		});
+		await server.connect(transport);
+		await transport.handleRequest(req, res, body);
 	}
 
 	private trackConnectionEvent(payload: UserConnectedToMCPEventPayload) {

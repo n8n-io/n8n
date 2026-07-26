@@ -5,7 +5,8 @@ import type {
 	WorkflowVersion,
 	WorkflowHistoryActionTypes,
 } from '@n8n/rest-api-client/api/workflowHistory';
-import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
+import WorkflowPreviewHost from '@/app/components/WorkflowPreviewHost.vue';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
@@ -17,9 +18,9 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
-import { formatTimestamp, generateVersionName } from '@/features/workflows/workflowHistory/utils';
+import { formatTimestamp, getVersionLabel } from '@/features/workflows/workflowHistory/utils';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
+import omit from 'lodash/omit';
 
 const i18n = useI18n();
 
@@ -27,7 +28,7 @@ const props = defineProps<{
 	workflow: IWorkflowDb | null;
 	workflowVersion: WorkflowVersion | null;
 	actions: Array<UserAction<IUser>>;
-	isVersionActive?: boolean;
+	isPublished?: boolean;
 	isListLoading?: boolean;
 	isFirstItemShown?: boolean;
 }>();
@@ -36,19 +37,27 @@ const emit = defineEmits<{
 	action: [value: WorkflowHistoryAction];
 }>();
 
-const isDraftPublishEnabled = IS_DRAFT_PUBLISH_ENABLED;
-
 const workflowVersionPreview = computed<IWorkflowDb | undefined>(() => {
 	if (!props.workflowVersion || !props.workflow) {
 		return;
 	}
-	const { pinData, ...workflow } = props.workflow;
+	const workflowWithoutPinData = omit(props.workflow, 'pinData');
 	return {
-		...workflow,
+		...workflowWithoutPinData,
+		nodeGroups: props.workflowVersion.nodeGroups,
 		nodes: props.workflowVersion.nodes,
 		connections: props.workflowVersion.connections,
 	};
 });
+
+// Synthetic preview document id, distinct from the editor's `{id}@latest` and
+// from the history diff's `{id}@{versionId}` stores.
+const previewDocumentId = computed(() =>
+	createWorkflowDocumentId(
+		props.workflow?.id ?? '',
+		`history-preview-${props.workflowVersion?.versionId ?? ''}`,
+	),
+);
 
 const formattedCreatedAt = computed<string>(() => {
 	if (!props.workflowVersion) {
@@ -59,12 +68,14 @@ const formattedCreatedAt = computed<string>(() => {
 });
 
 const versionNameDisplay = computed(() => {
-	if (props.workflowVersion?.name) {
-		return props.workflowVersion.name;
+	if (!props.workflowVersion) {
+		return '';
 	}
-	return props.isVersionActive && props.workflowVersion
-		? generateVersionName(props.workflowVersion.versionId)
-		: formattedCreatedAt.value;
+
+	return getVersionLabel({
+		workflowHistory: props.workflowVersion,
+		currentVersionId: props.workflow?.versionId,
+	});
 });
 
 const MAX_DESCRIPTION_LENGTH = 200;
@@ -90,16 +101,10 @@ const actions = computed(() => {
 		filteredActions = filteredActions.filter((action) => action.value !== 'restore');
 	}
 
-	if (isDraftPublishEnabled) {
-		if (props.isVersionActive) {
-			filteredActions = filteredActions.filter((action) => action.value !== 'publish');
-		} else {
-			filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
-		}
+	if (props.isPublished) {
+		filteredActions = filteredActions.filter((action) => action.value !== 'publish');
 	} else {
-		filteredActions = filteredActions.filter(
-			(action) => action.value !== 'publish' && action.value !== 'unpublish',
-		);
+		filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
 	}
 
 	return filteredActions;
@@ -131,16 +136,18 @@ watch(
 
 <template>
 	<div :class="$style.content">
-		<WorkflowPreview
-			v-if="props.workflowVersion"
+		<WorkflowPreviewHost
+			v-if="workflowVersionPreview && !props.isListLoading"
+			:document-id="previewDocumentId"
 			:workflow="workflowVersionPreview"
-			:loading="props.isListLoading"
-			loader-type="spinner"
 		/>
 		<div v-if="props.workflowVersion" :class="$style.info">
 			<div :class="$style.card">
-				<div v-if="isDraftPublishEnabled" :class="$style.descriptionBox">
-					<N8nTooltip v-if="versionNameDisplay" :content="versionNameDisplay">
+				<div :class="$style.descriptionBox">
+					<N8nTooltip v-if="versionNameDisplay" placement="right" :show-after="300">
+						<template #content>
+							{{ formattedCreatedAt }}
+						</template>
 						<N8nText :class="$style.mainLine" bold color="text-dark">{{
 							versionNameDisplay
 						}}</N8nText>
@@ -156,28 +163,6 @@ watch(
 						</N8nLink>
 					</N8nText>
 				</div>
-				<section v-else :class="$style.textOld">
-					<p>
-						<span :class="$style.label">
-							{{ i18n.baseText('workflowHistory.content.title') }}:
-						</span>
-						<time :datetime="props.workflowVersion.createdAt">{{ formattedCreatedAt }}</time>
-					</p>
-					<p>
-						<span :class="$style.label">
-							{{ i18n.baseText('workflowHistory.content.editedBy') }}:
-						</span>
-						<span>{{ props.workflowVersion.authors }}</span>
-					</p>
-					<p>
-						<span :class="$style.label">
-							{{ i18n.baseText('workflowHistory.content.versionId') }}:
-						</span>
-						<data :value="props.workflowVersion.versionId">{{
-							props.workflowVersion.versionId
-						}}</data>
-					</p>
-				</section>
 				<N8nActionToggle
 					:class="$style.actions"
 					:actions="actions"
@@ -185,7 +170,7 @@ watch(
 					data-test-id="workflow-history-content-actions"
 					@action="onAction"
 				>
-					<N8nButton type="tertiary" size="large" data-test-id="action-toggle-button">
+					<N8nButton variant="subtle" size="large" data-test-id="action-toggle-button">
 						{{ i18n.baseText('workflowHistory.content.actions') }}
 						<N8nIcon class="ml-3xs" icon="chevron-down" size="small" />
 					</N8nButton>
@@ -236,53 +221,9 @@ $descriptionBoxMaxWidth: 330px;
 }
 
 .mainLine {
+	display: block;
 	@include mixins.utils-ellipsis;
 	cursor: default;
-}
-
-.textOld {
-	display: flex;
-	flex-direction: column;
-	flex: 1 1 auto;
-
-	p {
-		display: flex;
-		align-items: center;
-		padding: 0;
-		cursor: default;
-
-		&:first-child {
-			padding-top: var(--spacing--3xs);
-			padding-bottom: var(--spacing--4xs);
-			* {
-				margin-top: auto;
-				font-size: var(--font-size--md);
-			}
-		}
-
-		&:last-child {
-			padding-top: var(--spacing--3xs);
-
-			* {
-				font-size: var(--font-size--2xs);
-			}
-		}
-
-		* {
-			max-width: unset;
-			justify-self: unset;
-			white-space: unset;
-			overflow: hidden;
-			text-overflow: unset;
-			padding: 0;
-			font-size: var(--font-size--sm);
-		}
-	}
-}
-
-.label {
-	color: var(--color--text--tint-1);
-	padding-right: var(--spacing--4xs);
 }
 
 .actions {

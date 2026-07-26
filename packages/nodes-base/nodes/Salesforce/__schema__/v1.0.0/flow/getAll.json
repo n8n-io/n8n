@@ -1,0 +1,18 @@
+{
+    "type": "object",
+    "properties": {
+        "label": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -7,7 +7,7 @@ name: 'Docker: Build and Push'
 
 env:
   NODE_OPTIONS: '--max-old-space-size=7168'
-  NODE_VERSION: '22.21.1'
+  NODE_VERSION: '24.16.0'
 
 on:
   schedule:
@@ -29,6 +29,16 @@ on:
         required: false
         type: boolean
         default: true
+      ref:
+        description: 'Git ref (branch/tag/sha) to build from. Empty checks out the triggering ref.'
+        required: false
+        type: string
+        default: ''
+      date_tag:
+        description: 'Optional date suffix for an extra <version>-<date> tag (e.g. 20260625)'
+        required: false
+        type: string
+        default: ''
 
   workflow_dispatch:
     inputs:
@@ -52,26 +62,40 @@ jobs:
       push_enabled: ${{ steps.context.outputs.push_enabled }}
       push_to_docker: ${{ steps.context.outputs.push_to_docker }}
       build_matrix: ${{ steps.context.outputs.build_matrix }}
+      short_sha: ${{ steps.sha.outputs.short_sha }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Resolve built commit SHA
+        id: sha
+        # From the checked-out working tree (honours `ref`), not GITHUB_SHA — which
+        # is the triggering ref (e.g. master) and would mislabel a ref-override build.
+        run: echo "short_sha=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Determine build context
         id: context
+        env:
+          N8N_VERSION: ${{ inputs.n8n_version }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          PUSH_ENABLED: ${{ inputs.push_enabled }}
+          GITHUB_REF: ${{ github.ref_name }}
         run: |
           node .github/scripts/docker/docker-config.mjs \
             --event "${{ github.event_name }}" \
             --pr "${{ github.event.pull_request.number }}" \
-            --branch "${{ github.ref_name }}" \
-            --version "${{ inputs.n8n_version }}" \
-            --release-type "${{ inputs.release_type }}" \
-            --push-enabled "${{ inputs.push_enabled }}"
+            --branch "$GITHUB_REF" \
+            --version "$N8N_VERSION" \
+            --release-type "$RELEASE_TYPE" \
+            --push-enabled "$PUSH_ENABLED"
 
   build-and-push-docker:
     name: Build App, then Build and Push Docker Image (${{ matrix.platform }})
     needs: determine-build-context
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 25
+    timeout-minutes: 35
     strategy:
       matrix: ${{ fromJSON(needs.determine-build-context.outputs.build_matrix) }}
     outputs:
@@ -79,10 +103,17 @@ jobs:
       primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.n8n_primary_tag }}
       runners_primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.runners_primary_tag }}
       runners_distroless_primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.runners_distroless_primary_tag }}
+      n8n_sha_manifest_tag: ${{ steps.determine-tags.outputs.n8n_sha_primary_tag }}
+      runners_sha_manifest_tag: ${{ steps.determine-tags.outputs.runners_sha_primary_tag }}
+      runners_distroless_sha_manifest_tag: ${{ steps.determine-tags.outputs.runners_distroless_sha_primary_tag }}
+      n8n_date_manifest_tag: ${{ steps.determine-tags.outputs.n8n_date_primary_tag }}
+      runners_date_manifest_tag: ${{ steps.determine-tags.outputs.runners_date_primary_tag }}
+      runners_distroless_date_manifest_tag: ${{ steps.determine-tags.outputs.runners_distroless_date_primary_tag }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          ref: ${{ inputs.ref }}
           fetch-depth: 0
 
       - name: Setup and Build
@@ -90,14 +121,27 @@ jobs:
         with:
           build-command: pnpm build:n8n
           enable-docker-cache: 'true'
+        env:
+          RELEASE: ${{ needs.determine-build-context.outputs.n8n_version }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
       - name: Determine Docker tags for all images
         id: determine-tags
+        env:
+          DATE_TAG: ${{ inputs.date_tag }}
+          SHORT_SHA: ${{ needs.determine-build-context.outputs.short_sha }}
         run: |
+          # Build the optional --date flag in shell (not via a template expansion) so
+          # the caller-supplied input never expands directly into the command line.
+          DATE_ARGS=()
+          if [ -n "${DATE_TAG:-}" ]; then DATE_ARGS=(--date "$DATE_TAG"); fi
+
           node .github/scripts/docker/docker-tags.mjs \
             --all \
             --version "${{ needs.determine-build-context.outputs.n8n_version }}" \
             --platform "${{ matrix.docker_platform }}" \
+            --sha "$SHORT_SHA" \
+            "${DATE_ARGS[@]}" \
             ${{ needs.determine-build-context.outputs.push_to_docker == 'true' && '--include-docker' || '' }}
 
           echo "=== Generated Docker Tags ==="
@@ -115,6 +159,7 @@ jobs:
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push n8n Docker image
+        id: build-n8n
         uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
         with:
           context: .
@@ -124,12 +169,13 @@ jobs:
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
-          provenance: true
+          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
           sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.n8n_tags }}
 
       - name: Build and push task runners Docker image (Alpine)
+        id: build-runners
         uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
         with:
           context: .
@@ -139,12 +185,13 @@ jobs:
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
-          provenance: true
+          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
           sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_tags }}
 
       - name: Build and push task runners Docker image (distroless)
+        id: build-runners-distroless
         uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
         with:
           context: .
@@ -154,7 +201,7 @@ jobs:
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
-          provenance: true
+          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
           sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
@@ -166,12 +213,19 @@ jobs:
     if: |
       needs.build-and-push-docker.result == 'success' &&
       needs.determine-build-context.outputs.push_enabled == 'true'
+    outputs:
+      n8n_digest: ${{ steps.get-digests.outputs.n8n_digest }}
+      n8n_image: ${{ steps.get-digests.outputs.n8n_image }}
+      runners_digest: ${{ steps.get-digests.outputs.runners_digest }}
+      runners_image: ${{ steps.get-digests.outputs.runners_image }}
+      runners_distroless_digest: ${{ steps.get-digests.outputs.runners_distroless_digest }}
+      runners_distroless_image: ${{ steps.get-digests.outputs.runners_distroless_image }}
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
       - name: Login to Docker registries
         uses: ./.github/actions/docker-registry-login
@@ -182,6 +236,10 @@ jobs:
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Create GHCR multi-arch manifests
+        env:
+          N8N_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.n8n_date_manifest_tag }}
+          RUNNERS_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_date_manifest_tag }}
+          RUNNERS_DISTROLESS_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_date_manifest_tag }}
         run: |
           RELEASE_TYPE="${{ needs.determine-build-context.outputs.release_type }}"
 
@@ -215,11 +273,27 @@ jobs:
           create_manifest "runners" "${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}"
           create_manifest "runners-distroless" "${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}"
 
+          # Create SHA-tagged manifests (immutable references for deployments)
+          create_manifest "n8n (sha)" "${{ needs.build-and-push-docker.outputs.n8n_sha_manifest_tag }}"
+          create_manifest "runners (sha)" "${{ needs.build-and-push-docker.outputs.runners_sha_manifest_tag }}"
+          create_manifest "runners-distroless (sha)" "${{ needs.build-and-push-docker.outputs.runners_distroless_sha_manifest_tag }}"
+
+          # Create date-tagged manifests. The *_DATE_MANIFEST_TAG vars are empty unless the
+          # date_tag input was set (e.g. nightly), and create_manifest skips empty tags —
+          # so these calls are no-ops on non-dated builds.
+          create_manifest "n8n (date)" "$N8N_DATE_MANIFEST_TAG"
+          create_manifest "runners (date)" "$RUNNERS_DATE_MANIFEST_TAG"
+          create_manifest "runners-distroless (date)" "$RUNNERS_DISTROLESS_DATE_MANIFEST_TAG"
+
       - name: Create Docker Hub manifests
         if: needs.determine-build-context.outputs.push_to_docker == 'true'
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DATE_TAG: ${{ inputs.date_tag }}
+          SHORT_SHA: ${{ needs.determine-build-context.outputs.short_sha }}
         run: |
           VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
-          DOCKER_BASE="${{ secrets.DOCKER_USERNAME }}"
+          DOCKER_BASE="$DOCKER_USERNAME"
 
           # Create manifests for each image type
           declare -A images=(
@@ -237,7 +311,44 @@ jobs:
               --tag "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" \
               "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64" \
               "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
+
+            # Create SHA-tagged manifest (immutable reference)
+            # For distroless, insert SHA between version and -distroless suffix
+            # to match docker-tags.mjs format: nightly-abc1234-distroless (not nightly-distroless-abc1234)
+            if [[ "$image" == *"-distroless"* ]]; then
+              SHA_SUFFIX="${VERSION}-${SHORT_SHA}-distroless"
+            else
+              SHA_SUFFIX="${TAG_SUFFIX}-${SHORT_SHA}"
+            fi
+            echo "Creating Docker Hub SHA manifest for $image: ${SHA_SUFFIX}"
+            docker buildx imagetools create \
+              --tag "${DOCKER_BASE}/${IMAGE_NAME}:${SHA_SUFFIX}" \
+              "${DOCKER_BASE}/${IMAGE_NAME}:${SHA_SUFFIX}-amd64" \
+              "${DOCKER_BASE}/${IMAGE_NAME}:${SHA_SUFFIX}-arm64"
+
+            # Create date-tagged manifest when a date suffix was provided (e.g. v3-nightly-20260625)
+            # Mirrors the SHA suffix placement: <version>-<date> and <version>-<date>-distroless
+            if [[ -n "$DATE_TAG" ]]; then
+              if [[ "$image" == *"-distroless"* ]]; then
+                DATE_SUFFIX="${VERSION}-${DATE_TAG}-distroless"
+              else
+                DATE_SUFFIX="${TAG_SUFFIX}-${DATE_TAG}"
+              fi
+              echo "Creating Docker Hub date manifest for $image: ${DATE_SUFFIX}"
+              docker buildx imagetools create \
+                --tag "${DOCKER_BASE}/${IMAGE_NAME}:${DATE_SUFFIX}" \
+                "${DOCKER_BASE}/${IMAGE_NAME}:${DATE_SUFFIX}-amd64" \
+                "${DOCKER_BASE}/${IMAGE_NAME}:${DATE_SUFFIX}-arm64"
+            fi
           done
+
+      - name: Get manifest digests for attestation
+        id: get-digests
+        env:
+          N8N_TAG: ${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}
+          RUNNERS_TAG: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
+          DISTROLESS_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
+        run: node .github/scripts/docker/get-manifest-digests.mjs
 
   call-success-url:
     name: Call Success URL
@@ -253,6 +364,182 @@ jobs:
           echo "Calling success URL: ${{ env.SUCCESS_URL }}"
           curl -v "${{ env.SUCCESS_URL }}" || echo "Failed to call success URL"
         shell: bash
+
+  provenance-n8n:
+    name: SLSA Provenance (n8n)
+    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
+    if: |
+      needs.create_multi_arch_manifest.result == 'success' &&
+      needs.create_multi_arch_manifest.outputs.n8n_digest != ''
+    permissions:
+      id-token: write
+      packages: write
+      actions: read
+    # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    with:
+      image: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}
+      digest: ${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
+      registry-username: ${{ github.actor }}
+    secrets:
+      registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  provenance-runners:
+    name: SLSA Provenance (runners)
+    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
+    if: |
+      needs.create_multi_arch_manifest.result == 'success' &&
+      needs.create_multi_arch_manifest.outputs.runners_digest != ''
+    permissions:
+      id-token: write
+      packages: write
+      actions: read
+    # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    with:
+      image: ${{ needs.create_multi_arch_manifest.outputs.runners_image }}
+      digest: ${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
+      registry-username: ${{ github.actor }}
+    secrets:
+      registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  provenance-runners-distroless:
+    name: SLSA Provenance (runners-distroless)
+    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
+    if: |
+      needs.create_multi_arch_manifest.result == 'success' &&
+      needs.create_multi_arch_manifest.outputs.runners_distroless_digest != ''
+    permissions:
+      id-token: write
+      packages: write
+      actions: read
+    # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    with:
+      image: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}
+      digest: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
+      registry-username: ${{ github.actor }}
+    secrets:
+      registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  # VEX Attestation - Documents which CVEs affect us (security/vex.openvex.json)
+  vex-attestation:
+    name: VEX Attestation
+    needs:
+      [
+        determine-build-context,
+        build-and-push-docker,
+        create_multi_arch_manifest,
+        provenance-n8n,
+        provenance-runners,
+        provenance-runners-distroless,
+      ]
+    if: |
+      always() &&
+      needs.create_multi_arch_manifest.result == 'success' &&
+      (needs.determine-build-context.outputs.release_type == 'stable' ||
+       needs.determine-build-context.outputs.release_type == 'rc' ||
+       needs.determine-build-context.outputs.release_type == 'nightly')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
+
+      - name: Login to GHCR
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Attest VEX to n8n image
+        if: needs.create_multi_arch_manifest.outputs.n8n_digest != ''
+        run: |
+          cosign attest --yes \
+            --type openvex \
+            --predicate security/vex.openvex.json \
+            ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}@${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
+
+      - name: Attest VEX to runners image
+        if: needs.create_multi_arch_manifest.outputs.runners_digest != ''
+        run: |
+          cosign attest --yes \
+            --type openvex \
+            --predicate security/vex.openvex.json \
+            ${{ needs.create_multi_arch_manifest.outputs.runners_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
+
+      - name: Attest VEX to runners-distroless image
+        if: needs.create_multi_arch_manifest.outputs.runners_distroless_digest != ''
+        run: |
+          cosign attest --yes \
+            --type openvex \
+            --predicate security/vex.openvex.json \
+            ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
+
+  # SBOM Attestation - one enriched, license-gated CycloneDX SBOM per image.
+  # cdxgen scans the image (OS + npm), enrich-sbom resolves first-party + override
+  # licenses, check-sbom-licenses gates the npm components, and the result is
+  # attested to the image digest via cosign (same mechanism as VEX/provenance).
+  # This replaces BuildKit's `sbom: true` so the image carries the same resolved
+  # license picture as the release SBOM rather than the un-enriched syft output.
+  sbom-attestation:
+    name: SBOM Attestation
+    needs:
+      [
+        determine-build-context,
+        build-and-push-docker,
+        create_multi_arch_manifest,
+        provenance-n8n,
+        provenance-runners,
+        provenance-runners-distroless,
+      ]
+    if: |
+      always() &&
+      needs.create_multi_arch_manifest.result == 'success' &&
+      (needs.determine-build-context.outputs.release_type == 'stable' ||
+       needs.determine-build-context.outputs.release_type == 'rc' ||
+       needs.determine-build-context.outputs.release_type == 'nightly')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      id-token: write
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js and install SBOM tooling
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
+
+      - name: Login to GHCR
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate, enrich, gate and attest SBOM per image
+        env:
+          N8N_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}
+          N8N_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
+          RUNNERS_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.runners_image }}
+          RUNNERS_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
+          DISTROLESS_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}
+          DISTROLESS_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
+        run: node .github/scripts/attest-image-sbom.mjs
 
   security-scan:
     name: Security Scan
@@ -286,9 +573,14 @@ jobs:
     needs: [build-and-push-docker]
     if: needs.build-and-push-docker.result == 'failure' && github.event_name == 'schedule'
     steps:
-      - uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          status: ${{ needs.build-and-push-docker.result }}
-          channel: '#team-catalysts'
-          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: Nightly Docker build failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#team-catalysts' \
+            --text 'Nightly Docker build failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'

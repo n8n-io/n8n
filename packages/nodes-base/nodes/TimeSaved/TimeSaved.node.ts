@@ -10,14 +10,14 @@ export class TimeSaved implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Track Time Saved',
 		name: 'timeSaved',
-		icon: 'fa:timer',
+		icon: 'node:track-time-saved',
+		iconColor: 'black',
 		group: ['organization'],
 		version: 1,
 		description:
 			'Dynamically track time saved based on the workflow’s execution path and the number of items processed',
 		defaults: {
 			name: 'Time Saved',
-			color: '#1E90FF',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
@@ -56,6 +56,7 @@ export class TimeSaved implements INodeType {
 				noDataExpression: true,
 				typeOptions: {
 					minValue: 0,
+					numberPrecision: 0,
 				},
 				description: 'Number of minutes saved by this workflow execution',
 			},

@@ -2,17 +2,18 @@ import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
 import {
-	ApplicationError,
 	NodeOperationError,
+	UserError,
 	deepCopy,
 	getValueDescription,
 	jsonParse,
 	validateFieldType,
+	isBinaryValue,
+	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import type {
 	AssignmentCollectionValue,
 	FieldType,
-	IBinaryData,
 	IDataObject,
 	IExecuteFunctions,
 	INode,
@@ -114,7 +115,7 @@ export function composeReturnItem(
 		case INCLUDE.NONE:
 			break;
 		default:
-			throw new ApplicationError(`The include option "${options.include}" is not known!`, {
+			throw new UserError(`The include option "${options.include}" is not known!`, {
 				level: 'warning',
 			});
 	}
@@ -204,9 +205,17 @@ export const validateEntry = (
 		}
 	}
 
+	const newValue = validationResult.newValue;
+
+	// v3.5+ serializes values to JSON-safe form so output never carries live
+	// Luxon DateTime objects (dateTime fields) or nested dates inside objects/arrays
+	if (nodeVersion && nodeVersion >= 3.5 && newValue !== undefined && newValue !== null) {
+		return { name, value: deepCopy(newValue) };
+	}
+
 	return {
 		name,
-		value: validationResult.newValue ?? null,
+		value: newValue ?? null,
 	};
 };
 
@@ -231,10 +240,6 @@ export function resolveRawData(
 		}
 	}
 	return returnData;
-}
-
-function isBinaryData(obj: unknown): obj is IBinaryData {
-	return typeof obj === 'object' && obj !== null && 'data' in obj && 'mimeType' in obj;
 }
 
 export function prepareReturnItem(
@@ -285,19 +290,35 @@ export function prepareReturnItem(
 		if (!returnItem.binary) {
 			returnItem.binary = {};
 		}
+		const { binaryMode } = context.getWorkflowSettings();
+
+		const target = binaryMode === BINARY_MODE_COMBINED ? 'json' : 'binary';
+
+		const fieldHelper = configureFieldHelper(options.dotNotation);
 
 		for (const assignment of binaryValues) {
 			const name = assignment.name;
 			const value = assignment.value as string;
 			const binaryData = context.helpers.assertBinaryData(itemIndex, value);
-			if (!isBinaryData(binaryData)) {
+			if (!isBinaryValue(binaryData)) {
 				throw new NodeOperationError(
 					node,
 					`Could not find binary data specified in field ${name}`,
 					{ itemIndex },
 				);
 			}
-			returnItem.binary[name] = binaryData;
+			// Do not push binary data to json if entry contains raw data
+			if (target === 'json' && !binaryData.id) {
+				returnItem.binary[name] = binaryData;
+				continue;
+			}
+
+			if (target === 'json') {
+				fieldHelper.set(returnItem.json, name, binaryData);
+				continue;
+			}
+
+			returnItem[target]![name] = binaryData;
 		}
 	}
 

@@ -12,6 +12,7 @@ import { DataTableColumn } from './data-table-column.entity';
 import { DataTableDDLService } from './data-table-ddl.service';
 import { DataTable } from './data-table.entity';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
+import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
 import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 
@@ -28,10 +29,11 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 	 * Validates that a column name is not reserved as a system column
 	 */
 	private validateNotSystemColumn(columnName: string): void {
-		if (DATA_TABLE_SYSTEM_COLUMNS.includes(columnName)) {
+		const lowerName = columnName.toLowerCase();
+		if (DATA_TABLE_SYSTEM_COLUMNS.some((sc) => sc.toLowerCase() === lowerName)) {
 			throw new DataTableSystemColumnNameConflictError(columnName);
 		}
-		if (columnName === DATA_TABLE_SYSTEM_TESTING_COLUMN) {
+		if (lowerName === DATA_TABLE_SYSTEM_TESTING_COLUMN.toLowerCase()) {
 			throw new DataTableSystemColumnNameConflictError(columnName, 'testing');
 		}
 	}
@@ -59,23 +61,39 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 	}
 
 	async getColumns(dataTableId: string, trx?: EntityManager) {
-		return await withTransaction(
-			this.manager,
-			trx,
-			async (em) => {
-				const columns = await em
-					.createQueryBuilder(DataTableColumn, 'dsc')
-					.where('dsc.dataTableId = :dataTableId', { dataTableId })
-					.getMany();
+		const em = trx ?? this.manager;
+		const columns = await em
+			.createQueryBuilder(DataTableColumn, 'dsc')
+			.where('dsc.dataTableId = :dataTableId', { dataTableId })
+			.getMany();
 
-				// Ensure columns are always returned in the correct order by index,
-				// since the database does not guarantee ordering and TypeORM does not preserve
-				// join order in @OneToMany relations.
-				columns.sort((a, b) => a.index - b.index);
-				return columns;
-			},
-			false,
-		);
+		// Ensure columns are always returned in the correct order by index,
+		// since the database does not guarantee ordering and TypeORM does not preserve
+		// join order in @OneToMany relations.
+		columns.sort((a, b) => a.index - b.index);
+		return columns;
+	}
+
+	async getColumnByIdOrFail(dataTableId: string, columnId: string) {
+		const column = await this.findOneBy({ id: columnId, dataTableId });
+		if (!column) {
+			throw new DataTableColumnNotFoundError(dataTableId, columnId);
+		}
+		return column;
+	}
+
+	/**
+	 * Insertion index must be in [0, currentColumnCount] (append == currentColumnCount).
+	 * Values above that would create empty columns in between.
+	 */
+	private normalizeAddColumnIndex(index: number | undefined, currentColumnCount: number): number {
+		if (index === undefined || index > currentColumnCount) {
+			return currentColumnCount;
+		}
+		if (index < 0) {
+			throw new DataTableValidationError('tried to add column at a negative index');
+		}
+		return index;
 	}
 
 	async addColumn(dataTableId: string, schema: DataTableCreateColumnSchema, trx?: EntityManager) {
@@ -83,10 +101,11 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 			this.validateNotSystemColumn(schema.name);
 			await this.validateUniqueColumnName(schema.name, dataTableId, em);
 
-			if (schema.index === undefined) {
-				const columns = await this.getColumns(dataTableId, em);
-				schema.index = columns.length;
-			} else {
+			const columns = await this.getColumns(dataTableId, em);
+			const columnCount = columns.length;
+			schema.index = this.normalizeAddColumnIndex(schema.index, columnCount);
+
+			if (schema.index < columnCount) {
 				await this.shiftColumns(dataTableId, schema.index, 1, em);
 			}
 

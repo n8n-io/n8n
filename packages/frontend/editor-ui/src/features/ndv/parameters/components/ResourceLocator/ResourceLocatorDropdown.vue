@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import type { IResourceLocatorResultExpanded } from '@/Interface';
 import { N8nBadge, N8nIcon, N8nInput, N8nLoading, N8nPopover, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
+import { ResourceLocatorDropdownTeleportedKey } from '@/app/constants';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
@@ -64,6 +65,8 @@ const debouncedLoadMore = debounce(
 
 const i18n = useI18n();
 const $style = useCssModule();
+
+const teleported = inject(ResourceLocatorDropdownTeleportedKey, false);
 
 const hoverIndex = ref(0);
 const showHoverUrl = ref(false);
@@ -269,7 +272,7 @@ watch(
 		:width="props.width ? `${props.width}px` : undefined"
 		:content-class="$style.popover"
 		:open="props.show"
-		:teleported="false"
+		:teleported="teleported"
 		:enable-scrolling="false"
 		data-test-id="resource-locator-dropdown"
 	>
@@ -288,6 +291,7 @@ watch(
 				<N8nInput
 					ref="searchRef"
 					:model-value="props.filter"
+					size="medium"
 					:clearable="true"
 					:placeholder="
 						props.allowNewResources.label
@@ -303,7 +307,7 @@ watch(
 				</N8nInput>
 			</div>
 			<div
-				v-if="props.filterRequired && !props.filter && !props.errorView && !props.loading"
+				v-if="props.filterRequired && !props.filter && !props.errorView"
 				:class="$style.searchRequired"
 			>
 				{{ i18n.baseText('resourceLocator.mode.list.searchRequired') }}
@@ -361,24 +365,25 @@ watch(
 				>
 					<div :class="$style.resourceNameContainer">
 						<span>{{ result.name }}</span>
-						<div :class="$style.urlLink">
-							<N8nIcon
-								v-if="showHoverUrl && result.url && hoverIndex === i + 1"
-								icon="external-link"
-								:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
-								@click="openUrl($event, result.url)"
-							/>
-						</div>
-						<span v-if="result.isArchived" :class="$style.badgesContainer">
-							<N8nBadge class="ml-3xs" theme="tertiary" bold data-test-id="workflow-archived-tag">
-								{{ i18n.baseText('workflows.item.archived') }}
-							</N8nBadge>
-						</span>
 						<slot
 							name="item-badge"
 							:item="result"
 							:is-hovered="showHoverUrl && hoverIndex === i + 1"
 						></slot>
+						<span v-if="result.isArchived" :class="$style.badgesContainer">
+							<N8nBadge class="ml-3xs" theme="tertiary" bold data-test-id="workflow-archived-tag">
+								{{ i18n.baseText('workflows.item.archived') }}
+							</N8nBadge>
+						</span>
+						<div :class="$style.urlLink">
+							<N8nIcon
+								v-if="showHoverUrl && result.url && hoverIndex === i + 1"
+								icon="external-link"
+								size="small"
+								:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
+								@click="openUrl($event, result.url)"
+							/>
+						</div>
 					</div>
 				</div>
 				<div v-if="props.loading && !props.errorView">
@@ -488,10 +493,9 @@ watch(
 
 .searchRequired {
 	height: 50px;
-	margin-top: 40px;
 	padding-left: var(--spacing--xs);
 	font-size: var(--font-size--xs);
-	color: var(--color--text);
+	color: var(--color--text--tint-1);
 	display: flex;
 	align-items: center;
 }
@@ -501,7 +505,7 @@ watch(
 	align-items: center;
 	font-size: var(--font-size--3xs);
 	color: var(--color--text);
-	margin-left: auto;
+	margin-left: var(--spacing--2xs);
 
 	&:hover {
 		color: var(--color--primary);
@@ -511,7 +515,7 @@ watch(
 .badgesContainer {
 	display: inline-flex;
 	align-items: center;
-	margin-left: auto;
+	margin-left: var(--spacing--2xs);
 }
 
 .resourceNameContainer {
@@ -526,6 +530,8 @@ watch(
 .resourceNameContainer > :first-child {
 	overflow: hidden;
 	text-overflow: ellipsis;
+	flex: 1;
+	min-width: 0;
 }
 
 .searchIcon {

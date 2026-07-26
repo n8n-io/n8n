@@ -55,6 +55,14 @@ export async function getBaseAccessToken(
 	ctx.base = await this.helpers.httpRequest(options);
 }
 
+export function escapeSqlString(value: string): string {
+	return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+}
+
+export function escapeSqlIdentifier(value: string): string {
+	return value.replace(/`/g, '``');
+}
+
 function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
 	const endpointVariables: IEndpointVariables = {};
 	endpointVariables.access_token = ctx?.base?.access_token;

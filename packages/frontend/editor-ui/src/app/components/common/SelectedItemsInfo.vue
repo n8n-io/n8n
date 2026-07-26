@@ -43,15 +43,18 @@ const handleClearSelection = () => {
 		<span>
 			{{ getSelectedText() }}
 		</span>
+		<!-- Custom bulk actions; defaults to the delete button for existing consumers -->
+		<slot name="actions">
+			<N8nButton
+				variant="subtle"
+				data-test-id="delete-selected-button"
+				:label="i18n.baseText('generic.delete')"
+				:class="$style.button"
+				@click="handleDeleteSelected"
+			/>
+		</slot>
 		<N8nButton
-			type="tertiary"
-			data-test-id="delete-selected-button"
-			:label="i18n.baseText('generic.delete')"
-			:class="$style.button"
-			@click="handleDeleteSelected"
-		/>
-		<N8nButton
-			type="tertiary"
+			variant="subtle"
 			data-test-id="clear-selection-button"
 			:label="getClearSelectionText()"
 			:class="$style.button"

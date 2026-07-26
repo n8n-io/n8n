@@ -4,8 +4,10 @@ import { ADD_ROW_ROW_ID } from '@/features/core/dataTable/constants';
 
 export const useDataTableSelection = ({
 	gridApi,
+	readOnly = computed(() => false),
 }: {
 	gridApi: Ref<GridApi>;
+	readOnly?: Ref<boolean>;
 }) => {
 	const selectedRowIds = ref<Set<number>>(new Set());
 	const selectedCount = computed(() => selectedRowIds.value.size);
@@ -14,7 +16,8 @@ export const useDataTableSelection = ({
 		mode: 'multiRow',
 		enableClickSelection: false,
 		checkboxes: (params) => params.data?.id !== ADD_ROW_ROW_ID,
-		isRowSelectable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
+		isRowSelectable: (params) => !readOnly.value && params.data?.id !== ADD_ROW_ROW_ID,
+		hideDisabledCheckboxes: false,
 	};
 
 	const onSelectionChanged = () => {

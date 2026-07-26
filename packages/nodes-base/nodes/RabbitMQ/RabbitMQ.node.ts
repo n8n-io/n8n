@@ -27,7 +27,7 @@ export class RabbitMQ implements INodeType {
 		name: 'rabbitmq',
 		icon: 'file:rabbitmq.svg',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Sends messages to a RabbitMQ topic',
 		defaults: {
 			name: 'RabbitMQ',
@@ -76,7 +76,7 @@ export class RabbitMQ implements INodeType {
 				default: 'sendMessage',
 				displayOptions: {
 					show: {
-						'@version': [1.1],
+						'@version': [{ _cnd: { gte: 1.1 } }],
 					},
 				},
 				options: [
@@ -395,6 +395,7 @@ export class RabbitMQ implements INodeType {
 				return [items];
 			}
 			const mode = (this.getNodeParameter('mode', 0) as string) || 'queue';
+			const nodeVersion = this.getNode().typeVersion;
 			const returnItems: INodeExecutionData[] = [];
 			if (mode === 'queue') {
 				const queue = this.getNodeParameter('queue', 0) as string;
@@ -466,7 +467,6 @@ export class RabbitMQ implements INodeType {
 				await channel.connection.close();
 			} else if (mode === 'exchange') {
 				const exchange = this.getNodeParameter('exchange', 0) as string;
-				const routingKey = this.getNodeParameter('routingKey', 0) as string;
 
 				const options = this.getNodeParameter('options', 0, {}) as Options;
 
@@ -478,6 +478,11 @@ export class RabbitMQ implements INodeType {
 
 				const exchangePromises = [];
 				for (let i = 0; i < items.length; i++) {
+					const routingKey = this.getNodeParameter(
+						'routingKey',
+						nodeVersion >= 1.2 ? i : 0,
+					) as string;
+
 					if (sendInputData) {
 						message = JSON.stringify(items[i].json);
 					} else {

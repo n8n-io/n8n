@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
@@ -9,9 +9,7 @@ import type {
 	MessageEventBusDestinationOptions,
 	INodeParameters,
 	NodeParameterValueType,
-	MessageEventBusDestinationSentryOptions,
-	MessageEventBusDestinationSyslogOptions,
-	MessageEventBusDestinationWebhookOptions,
+	INodeProperties,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -21,13 +19,14 @@ import {
 	MessageEventBusDestinationTypeNames,
 	defaultMessageEventBusDestinationSyslogOptions,
 	defaultMessageEventBusDestinationSentryOptions,
+	NodeHelpers,
 } from 'n8n-workflow';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 
 import { useLogStreamingStore } from '../logStreaming.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import type { IMenuItem, IUpdateInformation, ModalKey } from '@/Interface';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
@@ -36,7 +35,7 @@ import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
 import { useUIStore } from '@/app/stores/ui.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { destinationToFakeINodeUi } from '../logStreaming.utils';
+import { destinationToFakeINodeUi, isDestinationComplete } from '../logStreaming.utils';
 import type { BaseTextKey } from '@n8n/i18n';
 import SaveButton from '@/app/components/SaveButton.vue';
 import EventSelection from './EventSelection.vue';
@@ -60,11 +59,6 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
-import {
-	injectWorkflowState,
-	type WorkflowStateBusEvents,
-	workflowStateEventBus,
-} from '@/app/composables/useWorkflowState';
 
 defineOptions({ name: 'EventDestinationSettingsModal' });
 
@@ -86,9 +80,12 @@ const i18n = useI18n();
 const { confirm } = useMessage();
 const telemetry = useTelemetry();
 const logStreamingStore = useLogStreamingStore();
-const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
-const workflowState = injectWorkflowState();
+// The log-streaming settings modal can open outside the workflow editor, where
+// no workflow document is provided. Re-provide the resolved document store so
+// the reused NDV parameter components resolve a valid scoped store, and derive
+// this modal's own NDV store from it (it cannot inject what it provides).
+const workflowDocumentStore = provideWorkflowDocumentStore();
+const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 const uiStore = useUIStore();
 
 const unchanged = ref(!isNew);
@@ -166,23 +163,48 @@ const canManageLogStreaming = computed(() =>
 	hasPermission(['rbac'], { rbac: { scope: 'logStreaming:manage' } }),
 );
 
-function onUpdateNodeProperties(event: WorkflowStateBusEvents['updateNodeProperties']) {
-	const updateInformation = event[1];
-	if (updateInformation.name === destination.id) {
-		if ('credentials' in updateInformation.properties) {
-			unchanged.value = false;
-			nodeParameters.value.credentials = updateInformation.properties
-				.credentials as NodeParameterValueType;
-		}
+const isFormValid = computed(() => {
+	if (isTypeAbstract.value) return false;
+
+	let parameterDescription: INodeProperties[];
+	if (isTypeWebhook.value) {
+		parameterDescription = webhookDescription.value;
+	} else if (isTypeSentry.value) {
+		parameterDescription = sentryDescription.value;
+	} else if (isTypeSyslog.value) {
+		parameterDescription = syslogDescription.value;
+	} else {
+		return false;
 	}
-}
+
+	const issues = NodeHelpers.getNodeParametersIssues(parameterDescription, node.value, null);
+
+	//	No issues - then we are valid!
+	return issues === null;
+});
+
+const destinationNode = computed(() =>
+	workflowDocumentStore.value.getNodeByName(destination.id ?? ''),
+);
+
+watch(
+	() =>
+		Object.keys(destinationNode.value?.credentials ?? {}).length === 0
+			? null
+			: destinationNode.value?.credentials,
+	(newCredentials) => {
+		unchanged.value = false;
+		if (newCredentials) {
+			nodeParameters.value.credentials = newCredentials as unknown as NodeParameterValueType;
+		} else {
+			nodeParameters.value.credentials = {};
+		}
+	},
+);
 
 onMounted(() => {
 	setupNode(Object.assign(deepCopy(defaultMessageEventBusDestinationOptions), destination));
-	workflowStateEventBus.on('updateNodeProperties', onUpdateNodeProperties);
 });
-
-onUnmounted(() => workflowStateEventBus.off('updateNodeProperties', onUpdateNodeProperties));
 
 function onInput() {
 	unchanged.value = false;
@@ -200,9 +222,9 @@ function onLabelChange(value: string) {
 }
 
 function setupNode(options: MessageEventBusDestinationOptions) {
-	workflowsStore.removeNode(node.value);
-	ndvStore.setActiveNodeName(options.id ?? 'thisshouldnothappen', 'other');
-	workflowsStore.addNode(destinationToFakeINodeUi(options));
+	workflowDocumentStore.value.removeNode(node.value);
+	ndvStore.value.setActiveNodeName(options.id ?? 'thisshouldnothappen', 'other');
+	workflowDocumentStore.value.addNode(destinationToFakeINodeUi(options));
 	nodeParameters.value = options as INodeParameters;
 	logStreamingStore.items[destination.id!].destination = options;
 }
@@ -267,7 +289,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 	}
 
 	nodeParameters.value = deepCopy(nodeParametersCopy);
-	workflowState.updateNodeProperties({
+	workflowDocumentStore.value.updateNodeProperties({
 		name: node.value.name,
 		properties: { parameters: nodeParameters.value, position: [0, 0] },
 	});
@@ -301,24 +323,24 @@ async function removeThis() {
 	} else {
 		callEventBus('remove', destination.id);
 		uiStore.closeModal(LOG_STREAM_MODAL_KEY);
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 	}
 }
 
 function onModalClose() {
 	if (!hasOnceBeenSaved.value) {
-		workflowsStore.removeNode(node.value);
+		workflowDocumentStore.value.removeNode(node.value);
 		if (nodeParameters.value.id && typeof nodeParameters.value.id !== 'object') {
 			logStreamingStore.removeDestination(nodeParameters.value.id.toString());
 		}
 	}
-	ndvStore.unsetActiveNodeName();
+	ndvStore.value.unsetActiveNodeName();
 	callEventBus('closing', destination.id);
-	uiStore.stateIsDirty = false;
+	uiStore.markStateClean();
 }
 
 async function saveDestination() {
-	if (unchanged.value || !destination.id) {
+	if (unchanged.value || !destination.id || !isFormValid.value) {
 		return;
 	}
 	const saveResult = await logStreamingStore.saveDestination(nodeParameters.value);
@@ -327,7 +349,7 @@ async function saveDestination() {
 		testMessageSent.value = false;
 		unchanged.value = true;
 		callEventBus('destinationWasSaved', destination.id);
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 
 		const destinationType = (
 			nodeParameters.value.__type && typeof nodeParameters.value.__type !== 'object'
@@ -337,31 +359,10 @@ async function saveDestination() {
 			.replace('$MessageEventBusDestination', '')
 			.toLowerCase();
 
-		const isComplete = () => {
-			if (isTypeWebhook.value) {
-				const webhookDestination = destination as MessageEventBusDestinationWebhookOptions;
-				return webhookDestination.url !== '';
-			} else if (isTypeSentry.value) {
-				const sentryDestination = destination as MessageEventBusDestinationSentryOptions;
-				return sentryDestination.dsn !== '';
-			} else if (isTypeSyslog.value) {
-				const syslogDestination = destination as MessageEventBusDestinationSyslogOptions;
-				return (
-					syslogDestination.host !== '' &&
-					syslogDestination.port !== undefined &&
-					// @ts-expect-error TODO: fix this typing
-					syslogDestination.protocol !== '' &&
-					syslogDestination.facility !== undefined &&
-					syslogDestination.app_name !== ''
-				);
-			}
-			return false;
-		};
-
 		telemetry.track('User updated log streaming destination', {
 			instance_id: useRootStore().instanceId,
 			destination_type: destinationType,
-			is_complete: isComplete(),
+			is_complete: isDestinationComplete(nodeParameters.value),
 			is_active: destination.enabled,
 		});
 	}
@@ -413,6 +414,7 @@ const { width } = useElementSize(defNameRef);
 					</div>
 					<div :class="$style.destinationActions">
 						<N8nButton
+							variant="subtle"
 							v-if="nodeParameters && hasOnceBeenSaved && unchanged"
 							:icon="testMessageSent ? (testMessageResult ? 'check' : 'triangle-alert') : undefined"
 							:title="
@@ -420,7 +422,6 @@ const { width } = useElementSize(defNameRef);
 									? 'Event sent and returned OK'
 									: 'Event returned with error'
 							"
-							type="tertiary"
 							label="Send Test-Event"
 							:disabled="!hasOnceBeenSaved || !unchanged"
 							data-test-id="destination-test-button"
@@ -428,10 +429,10 @@ const { width } = useElementSize(defNameRef);
 						/>
 						<template v-if="canManageLogStreaming">
 							<N8nIconButton
+								variant="subtle"
 								v-if="nodeParameters && hasOnceBeenSaved"
 								:title="i18n.baseText('settings.log-streaming.delete')"
 								icon="trash-2"
-								type="tertiary"
 								:disabled="isSaving"
 								:loading="isDeleting"
 								data-test-id="destination-delete-button"
@@ -439,7 +440,7 @@ const { width } = useElementSize(defNameRef);
 							/>
 							<SaveButton
 								:saved="unchanged && hasOnceBeenSaved"
-								:disabled="isTypeAbstract || unchanged"
+								:disabled="unchanged || !isFormValid"
 								:saving-label="i18n.baseText('settings.log-streaming.saving')"
 								data-test-id="destination-save-button"
 								@click="saveDestination"

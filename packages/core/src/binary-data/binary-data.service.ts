@@ -1,4 +1,6 @@
 import { Logger } from '@n8n/backend-common';
+import { binaryToBuffer } from '@n8n/backend-network';
+import { FsByteStore } from '@n8n/blob-storage';
 import { Service } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
@@ -11,8 +13,8 @@ import type { Readable } from 'stream';
 import { ErrorReporter } from '@/errors';
 
 import { BinaryDataConfig } from './binary-data.config';
+import { BinaryDataBlobManager } from './blob.manager';
 import type { BinaryData } from './types';
-import { binaryToBuffer } from './utils';
 import { InvalidManagerError } from '../errors/invalid-manager.error';
 
 @Service()
@@ -36,12 +38,15 @@ export class BinaryDataService {
 
 		this.mode = config.mode === 'filesystem' ? 'filesystem-v2' : config.mode;
 
-		const { FileSystemManager } = await import('./file-system.manager');
-		this.managers.filesystem = new FileSystemManager(config.localStoragePath, this.errorReporter);
+		const fsByteStore = new FsByteStore({
+			storagePath: config.localStoragePath,
+			reportError: (error) => this.errorReporter.error(error),
+		});
+		this.managers.filesystem = new BinaryDataBlobManager(fsByteStore, this.errorReporter);
 		this.managers['filesystem-v2'] = this.managers.filesystem;
 		await this.managers.filesystem.init();
 
-		// DB and S3 managers are set via `setManager()` from `cli`
+		// DB, S3, and Azure managers are set via `setManager()` from `cli`
 	}
 
 	createSignedToken(binaryData: IBinaryData, expiresIn: TimeUnitValue = '1 day') {
@@ -73,6 +78,7 @@ export class BinaryDataService {
 		if (!manager) {
 			const { size } = await stat(filePath);
 			binaryData.fileSize = prettyBytes(size);
+			binaryData.bytes = size;
 			binaryData.data = await readFile(filePath, { encoding: BINARY_ENCODING });
 
 			return binaryData;
@@ -87,6 +93,7 @@ export class BinaryDataService {
 
 		binaryData.id = this.createBinaryDataId(fileId);
 		binaryData.fileSize = prettyBytes(fileSize);
+		binaryData.bytes = fileSize;
 		binaryData.data = this.mode; // clear binary data from memory
 
 		return binaryData;
@@ -103,6 +110,7 @@ export class BinaryDataService {
 			const buffer = await binaryToBuffer(bufferOrStream);
 			binaryData.data = buffer.toString(BINARY_ENCODING);
 			binaryData.fileSize = prettyBytes(buffer.length);
+			binaryData.bytes = buffer.length;
 
 			return binaryData;
 		}
@@ -116,6 +124,7 @@ export class BinaryDataService {
 
 		binaryData.id = this.createBinaryDataId(fileId);
 		binaryData.fileSize = prettyBytes(fileSize);
+		binaryData.bytes = fileSize;
 		binaryData.data = this.mode; // clear binary data from memory
 
 		return binaryData;

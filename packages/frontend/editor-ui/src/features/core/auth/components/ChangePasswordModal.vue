@@ -8,8 +8,9 @@ import { createFormEventBus } from '@n8n/design-system/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { IFormInputs, IFormInput, FormFieldValueUpdate, FormValues } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
-import { N8nButton, N8nFormInputs } from '@n8n/design-system';
+import { N8nButton, N8nFormInputs, createPasswordRules } from '@n8n/design-system';
 const config = ref<IFormInputs | null>(null);
 const formBus = createFormEventBus();
 const modalBus = createEventBus();
@@ -19,6 +20,8 @@ const loading = ref(false);
 const i18n = useI18n();
 const { showMessage, showError } = useToast();
 const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
+const passwordMinLength = settingsStore.userManagement.passwordMinLength ?? 8;
 
 const passwordsMatch = (value: string | number | boolean | null | undefined) => {
 	if (typeof value !== 'string') {
@@ -96,8 +99,10 @@ onMounted(() => {
 				label: i18n.baseText('auth.newPassword'),
 				type: 'password',
 				required: true,
-				validationRules: [{ name: 'DEFAULT_PASSWORD_RULES' }],
-				infoText: i18n.baseText('auth.defaultPasswordRequirements'),
+				validationRules: [createPasswordRules(passwordMinLength)],
+				infoText: i18n.baseText('auth.defaultPasswordRequirements', {
+					interpolate: { minimum: passwordMinLength },
+				}),
 				autocomplete: 'new-password',
 				capitalize: true,
 			},

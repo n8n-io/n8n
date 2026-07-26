@@ -2,6 +2,7 @@ import { safeJoinPath } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { promises as fs } from 'fs';
+import { InstanceSettings } from 'n8n-core';
 
 @Service()
 export class DataTableFileCleanupService {
@@ -9,7 +10,10 @@ export class DataTableFileCleanupService {
 
 	private cleanupInterval?: NodeJS.Timeout;
 
-	constructor(private readonly globalConfig: GlobalConfig) {
+	constructor(
+		private readonly globalConfig: GlobalConfig,
+		private readonly instanceSettings: InstanceSettings,
+	) {
 		this.uploadDir = this.globalConfig.dataTable.uploadDir;
 	}
 
@@ -24,6 +28,8 @@ export class DataTableFileCleanupService {
 
 	async start() {
 		// Run cleanup periodically to delete orphaned files
+		if (this.instanceSettings.instanceType !== 'main') return;
+
 		this.cleanupInterval = setInterval(() => {
 			void this.cleanupOrphanedFiles();
 		}, this.globalConfig.dataTable.cleanupIntervalMs);

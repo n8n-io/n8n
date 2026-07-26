@@ -12,7 +12,7 @@ import { mfaEventBus } from '../auth.eventBus';
 import { useToast } from '@/app/composables/useToast';
 //@ts-ignore
 import QrcodeVue from 'qrcode.vue';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import router from '@/app/router';
@@ -250,7 +250,7 @@ onMounted(async () => {
 				</N8nInfoTip>
 				<div>
 					<N8nButton
-						type="primary"
+						variant="solid"
 						icon="hard-drive-download"
 						float="right"
 						:label="i18n.baseText('mfa.setup.step2.button.download')"

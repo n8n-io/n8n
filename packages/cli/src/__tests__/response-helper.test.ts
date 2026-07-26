@@ -1,5 +1,5 @@
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { sendErrorResponse } from '@/response-helper';
@@ -9,8 +9,8 @@ describe('sendErrorResponse', () => {
 
 	beforeEach(() => {
 		mockResponse = mock<Response>({
-			status: jest.fn().mockReturnThis(),
-			json: jest.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
 		});
 	});
 

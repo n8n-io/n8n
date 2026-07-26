@@ -4,9 +4,10 @@ import { Time } from '@n8n/constants';
 import type { ExecutionEntity } from '@n8n/db';
 import { ExecutionRepository, DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { BinaryDataService, InstanceSettings } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus, IWorkflowBase } from 'n8n-workflow';
 
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 
 import {
@@ -34,7 +35,7 @@ describe('softDeleteOnPruningCycle()', () => {
 			instanceSettings,
 			Container.get(DbConnection),
 			Container.get(ExecutionRepository),
-			mockInstance(BinaryDataService),
+			mockInstance(ExecutionPersistence),
 			executionsConfig,
 		);
 

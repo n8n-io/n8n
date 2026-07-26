@@ -1,5 +1,6 @@
-import { reactive } from 'vue';
+import { reactive, computed } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import userEvent from '@testing-library/user-event';
 import type { NodeError } from 'n8n-workflow';
 import { mockedStore } from '@/__tests__/utils';
@@ -9,6 +10,8 @@ import NodeErrorView from './NodeErrorView.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 const mockRouterResolve = vi.fn(() => ({
@@ -29,12 +32,31 @@ Object.defineProperty(window, 'open', {
 	writable: true,
 });
 
+vi.mock('@/app/composables/useEditorContext', async () => {
+	const { computed } = await import('vue');
+	return {
+		useEditorContext: () => ({
+			aiAssistant: computed(() => true),
+			aiBuilder: computed(() => true),
+			askAi: computed(() => true),
+			instanceAi: computed(() => false),
+			readOnly: computed(() => false),
+		}),
+	};
+});
+
 let mockChatPanelStore: ReturnType<typeof mockedStore<typeof useChatPanelStore>>;
 let mockNodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 let mockNDVStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 let mockWorkflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 
-const renderComponent = createComponentRenderer(NodeErrorView);
+const renderComponent = createComponentRenderer(NodeErrorView, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
+});
 
 describe('NodeErrorView.vue', () => {
 	let error: NodeError;
@@ -43,8 +65,9 @@ describe('NodeErrorView.vue', () => {
 		createTestingPinia();
 		mockChatPanelStore = mockedStore(useChatPanelStore);
 		mockNodeTypeStore = mockedStore(useNodeTypesStore);
-		mockNDVStore = mockedStore(useNDVStore);
 		mockWorkflowsStore = mockedStore(useWorkflowsStore);
+		mockWorkflowsStore.workflowId = 'test-workflow-id';
+		mockNDVStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
 
 		//@ts-expect-error
 		error = {
@@ -118,7 +141,7 @@ describe('NodeErrorView.vue', () => {
 			hidden: true,
 		}));
 
-		mockChatPanelStore.canShowAiButtonOnCanvas = true;
+		mockChatPanelStore.isEditableCanvasView = true;
 
 		const { queryByTestId } = renderComponent({
 			props: {
@@ -177,7 +200,7 @@ describe('NodeErrorView.vue', () => {
 	});
 
 	it('does not renders open node button when the error is in sub node', () => {
-		mockChatPanelStore.canShowAiButtonOnCanvas = true;
+		mockChatPanelStore.isEditableCanvasView = true;
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: {
 				error,
@@ -217,7 +240,11 @@ describe('NodeErrorView.vue', () => {
 
 		it('opens new window when error has different workflow and execution IDs', async () => {
 			mockWorkflowsStore.workflowId = 'current-workflow-id';
-			mockWorkflowsStore.getWorkflowExecution = {
+			const mockExecutionStateStore = mockedStore(
+				useWorkflowExecutionStateStore,
+				createWorkflowDocumentId('current-workflow-id'),
+			) as unknown as { activeExecution: IExecutionResponse | null };
+			mockExecutionStateStore.activeExecution = {
 				id: 'current-execution-id',
 			} as IExecutionResponse;
 
@@ -241,7 +268,7 @@ describe('NodeErrorView.vue', () => {
 			expect(mockRouterResolve).toHaveBeenCalledWith({
 				name: 'ExecutionPreview',
 				params: {
-					name: 'different-workflow-id',
+					workflowId: 'different-workflow-id',
 					executionId: 'different-execution-id',
 					nodeId: 'd1ce5dc9-f9ae-4ac6-84e5-0696ba175dd9',
 				},
@@ -251,7 +278,12 @@ describe('NodeErrorView.vue', () => {
 
 		it('sets active node name when error is in current workflow/execution', async () => {
 			mockWorkflowsStore.workflowId = 'current-workflow-id';
-			mockWorkflowsStore.getWorkflowExecution = {
+			mockNDVStore = mockedStore(useNDVStore, createWorkflowDocumentId('current-workflow-id'));
+			const mockExecutionStateStore = mockedStore(
+				useWorkflowExecutionStateStore,
+				createWorkflowDocumentId('current-workflow-id'),
+			) as unknown as { activeExecution: IExecutionResponse | null };
+			mockExecutionStateStore.activeExecution = {
 				id: 'current-execution-id',
 			} as IExecutionResponse;
 

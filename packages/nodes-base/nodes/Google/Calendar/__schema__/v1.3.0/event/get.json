@@ -47,9 +47,15 @@
         "kind": {
             "type": "string"
         },
+        "location": {
+            "type": "string"
+        },
         "organizer": {
             "type": "object",
             "properties": {
+                "displayName": {
+                    "type": "string"
+                },
                 "email": {
                     "type": "string"
                 },
@@ -90,5 +96,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

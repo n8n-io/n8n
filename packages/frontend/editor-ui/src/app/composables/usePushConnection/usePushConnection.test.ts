@@ -33,6 +33,7 @@ vi.mock('@/app/composables/usePushConnection/handlers', () => ({
 	sendWorkerStatusMessage: vi.fn(),
 	sendConsoleMessage: vi.fn(),
 	workflowFailedToActivate: vi.fn(),
+	workflowPartiallyActivated: vi.fn(),
 	executionFinished: vi.fn(),
 	executionRecovered: vi.fn(),
 	workflowActivated: vi.fn(),

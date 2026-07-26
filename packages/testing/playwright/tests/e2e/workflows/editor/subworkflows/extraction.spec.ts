@@ -9,53 +9,32 @@ const EDIT_FIELDS_NAMES = [
 	'Edit Fields5',
 ];
 
-test.describe('Subworkflow Extraction', () => {
-	test.beforeEach(async ({ n8n }) => {
-		await n8n.start.fromImportedWorkflow('Subworkflow-extraction-workflow.json');
+test.describe(
+	'Subworkflow Extraction',
+	{
+		annotation: [{ type: 'owner', description: 'Catalysts' }],
+	},
+	() => {
+		test.beforeEach(async ({ n8n }) => {
+			await n8n.start.fromImportedWorkflow('Subworkflow-extraction-workflow.json');
 
-		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(7);
-		await n8n.canvas.clickZoomToFitButton();
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(7);
+			await n8n.canvas.clickZoomToFitButton();
 
-		await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
-			'Workflow executed successfully',
-		);
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+				'Workflow executed successfully',
+			);
 
-		await n8n.canvas.deselectAll();
-	});
-
-	test.describe('can extract a valid selection and still execute the workflow', () => {
-		test('should extract a node and succeed execution, and then undo and succeed executions', async ({
-			n8n,
-		}) => {
-			for (const name of EDIT_FIELDS_NAMES) {
-				await n8n.canvas.rightClickNode(name);
-
-				await n8n.canvas.clickContextMenuAction('Convert node to sub-workflow');
-				await n8n.canvas.convertToSubworkflowModal.waitForModal();
-				await n8n.canvas.convertToSubworkflowModal.clickSubmitButton();
-				await n8n.canvas.convertToSubworkflowModal.waitForClose();
-
-				await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
-					'Workflow executed successfully',
-				);
-			}
-
-			for (let i = 0; i < EDIT_FIELDS_NAMES.length; i++) {
-				await n8n.canvas.hitUndo();
-
-				await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
-					'Workflow executed successfully',
-				);
-			}
+			await n8n.canvas.deselectAll();
 		});
 
-		test('should extract all nodes besides trigger and succeed execution', async ({ n8n }) => {
-			await n8n.canvas.nodeByName(EDIT_FIELDS_NAMES[0]).click();
+		test('should extract a single node, succeed execution, and undo successfully', async ({
+			n8n,
+		}) => {
+			await n8n.canvas.rightClickNode(EDIT_FIELDS_NAMES[0]);
 
-			await n8n.canvas.extendSelectionWithArrows('right');
-
-			await n8n.canvas.openCanvasContextMenu();
-			await n8n.canvas.clickContextMenuAction('Convert 6 nodes to sub-workflow');
+			await expect(n8n.canvas.getContextMenuItem('extract_sub_workflow')).toBeVisible();
+			await n8n.canvas.clickContextMenuAction('extract_sub_workflow');
 			await n8n.canvas.convertToSubworkflowModal.waitForModal();
 			await n8n.canvas.convertToSubworkflowModal.clickSubmitButton();
 			await n8n.canvas.convertToSubworkflowModal.waitForClose();
@@ -63,6 +42,75 @@ test.describe('Subworkflow Extraction', () => {
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				'Workflow executed successfully',
 			);
+
+			await n8n.canvas.hitUndo();
+
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+				'Workflow executed successfully',
+			);
 		});
-	});
-});
+
+		test('should extract all nodes besides trigger, succeed execution, and undo successfully', async ({
+			n8n,
+		}) => {
+			await n8n.canvas.nodeByName(EDIT_FIELDS_NAMES[0]).click();
+
+			await n8n.canvas.extendSelectionWithArrows('right');
+
+			await n8n.canvas.openCanvasContextMenu();
+			await n8n.canvas.clickContextMenuAction('extract_sub_workflow');
+			await n8n.canvas.convertToSubworkflowModal.waitForModal();
+			await n8n.canvas.convertToSubworkflowModal.clickSubmitButton();
+			await n8n.canvas.convertToSubworkflowModal.waitForClose();
+
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+				'Workflow executed successfully',
+			);
+
+			await n8n.canvas.hitUndo();
+
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+				'Workflow executed successfully',
+			);
+		});
+
+		test.describe('disconnected branch extraction (ADO-4679)', () => {
+			test.beforeEach(async ({ n8n }) => {
+				await n8n.start.fromImportedWorkflow('Subworkflow-extraction-disconnected.json');
+
+				await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
+				await n8n.canvas.clickZoomToFitButton();
+			});
+
+			test('should extract a disconnected branch and connect it properly', async ({ n8n }) => {
+				await n8n.canvas.nodeByName('Edit Fields Disconnected 1').click();
+				await n8n.canvas.extendSelectionWithArrows('right');
+
+				await n8n.canvas.openCanvasContextMenu();
+				await n8n.canvas.clickContextMenuAction('extract_sub_workflow');
+				await n8n.canvas.convertToSubworkflowModal.waitForModal();
+				await n8n.canvas.convertToSubworkflowModal.clickSubmitButton();
+				await n8n.canvas.convertToSubworkflowModal.waitForClose();
+
+				const executeWorkflowNode = n8n.canvas.getCanvasNodes().filter({
+					hasText: 'Call My Sub-workflow',
+				});
+				await expect(executeWorkflowNode).toHaveCount(1);
+
+				await n8n.canvas.nodeByName('Call My Sub-workflow').waitFor({ state: 'visible' });
+				await n8n.canvas.connectNodesByDrag(
+					"When clicking 'Execute workflow'",
+					'Call My Sub-workflow',
+				);
+
+				await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+					'Workflow executed successfully',
+				);
+
+				await n8n.canvas.openNode('Call My Sub-workflow');
+				await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toContainText('lal');
+				await n8n.ndv.close();
+			});
+		});
+	},
+);

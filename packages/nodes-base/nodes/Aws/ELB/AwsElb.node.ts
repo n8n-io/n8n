@@ -294,7 +294,7 @@ export class AwsElb implements INodeType {
 							'/?Action=RemoveListenerCertificates&' + params.join('&'),
 						);
 
-						responseData = { sucess: true };
+						responseData = { success: true };
 					}
 				}
 

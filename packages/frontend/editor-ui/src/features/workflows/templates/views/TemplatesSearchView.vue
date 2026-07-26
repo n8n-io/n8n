@@ -12,7 +12,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useToast } from '@/app/composables/useToast';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, onBeforeRouteLeave, useRouter } from 'vue-router';
@@ -345,9 +345,8 @@ watch(workflows, (newWorkflows) => {
 				</div>
 				<div :class="$style.button">
 					<N8nButton
+						variant="subtle"
 						size="large"
-						type="secondary"
-						element="a"
 						:href="CREATOR_HUB_URL"
 						:label="i18n.baseText('templates.shareWorkflow')"
 						target="_blank"

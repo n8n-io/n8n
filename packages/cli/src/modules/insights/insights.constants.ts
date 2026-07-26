@@ -1,3 +1,9 @@
+/** Default for `N8N_INSIGHTS_MAX_AGE_DAYS`; also used when the configured value is invalid or not a finite number ≥ 1. */
+export const INSIGHTS_MAX_AGE_DAYS_DEFAULT = 365;
+
+/** Maximum allowed value for `N8N_INSIGHTS_MAX_AGE_DAYS` when pruning (2 years). */
+export const INSIGHTS_MAX_AGE_DAYS_CAP = 730;
+
 export const INSIGHTS_DATE_RANGE_KEYS = [
 	'day',
 	'week',

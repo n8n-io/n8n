@@ -10,7 +10,7 @@ import {
 } from '@n8n/typeorm';
 import { Length } from 'class-validator';
 import { IConnections, IDataObject, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
-import type { INode } from 'n8n-workflow';
+import type { INode, IWorkflowGroup } from 'n8n-workflow';
 
 import { JsonColumn, WithTimestampsAndStringId, dbType } from './abstract-entity';
 import { type Folder } from './folder';
@@ -19,7 +19,6 @@ import type { TagEntity } from './tag-entity';
 import type { TestRun } from './test-run.ee';
 import type { ISimplifiedPinData, IWorkflowDb } from './types-db';
 import type { WorkflowHistory } from './workflow-history';
-import type { WorkflowStatistics } from './workflow-statistics';
 import type { WorkflowTagMapping } from './workflow-tag-mapping';
 import { objectRetriever, sqlite } from '../utils/transformers';
 
@@ -71,6 +70,9 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	})
 	meta?: WorkflowFEMeta;
 
+	@JsonColumn({ default: '[]' })
+	nodeGroups: IWorkflowGroup[];
+
 	@ManyToMany('TagEntity', 'workflows')
 	@JoinTable({
 		name: 'workflows_tags', // table name for the junction table of this relation
@@ -90,10 +92,6 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 
 	@OneToMany('SharedWorkflow', 'workflow')
 	shared: SharedWorkflow[];
-
-	@OneToMany('WorkflowStatistics', 'workflow')
-	@JoinColumn({ referencedColumnName: 'workflow' })
-	statistics: WorkflowStatistics[];
 
 	@Column({
 		type: dbType === 'sqlite' ? 'text' : 'json',
@@ -129,4 +127,12 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 
 	@OneToMany('TestRun', 'workflow')
 	testRuns: TestRun[];
+
+	/**
+	 * Optional lineage id used by package import to match re-imports when it
+	 * differs from this workflow's local id.
+	 */
+	@Index()
+	@Column({ type: 'varchar', nullable: true })
+	sourceWorkflowId: string | null;
 }

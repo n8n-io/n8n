@@ -3,6 +3,14 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class TemplatesPage extends BasePage {
+	async goto(): Promise<void> {
+		await this.page.goto('/templates');
+	}
+
+	getPageHeading(): Locator {
+		return this.page.getByRole('heading', { name: /workflow.*templates/i });
+	}
+
 	getTemplateCards(): Locator {
 		return this.page.getByTestId('template-card');
 	}
@@ -23,6 +31,10 @@ export class TemplatesPage extends BasePage {
 		return this.page.getByTestId('template-description');
 	}
 
+	getDescriptionImages(): Locator {
+		return this.getDescription().locator('img');
+	}
+
 	getSearchInput(): Locator {
 		return this.page.getByTestId('template-search-input');
 	}
@@ -40,7 +52,7 @@ export class TemplatesPage extends BasePage {
 	}
 
 	getCategoryFilter(category: string): Locator {
-		return this.page.getByTestId(`template-filter-${category}`);
+		return this.page.getByTestId(`template-filter-${category}`).locator('[role="checkbox"]');
 	}
 
 	getTemplateCountLabel(): Locator {

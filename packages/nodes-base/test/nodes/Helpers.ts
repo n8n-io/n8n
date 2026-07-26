@@ -20,6 +20,9 @@ export const createMockExecuteFunction = <T = IExecuteFunctions>(
 		getNode() {
 			return nodeMock;
 		},
+		getWorkflow() {
+			return { id: 'test-workflow-id', name: 'Test Workflow', active: false };
+		},
 		continueOnFail() {
 			return continueBool;
 		},

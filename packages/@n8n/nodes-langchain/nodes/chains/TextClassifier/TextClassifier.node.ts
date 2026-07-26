@@ -11,7 +11,8 @@ import type {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { getBatchingOptionFields } from '@utils/sharedFields';
+import { getBatchingOptionFields } from '@n8n/ai-utilities';
+import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 
 import { processItem } from './processItem';
 
@@ -32,7 +33,7 @@ export class TextClassifier implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Text Classifier',
 		name: 'textClassifier',
-		icon: 'fa:tags',
+		icon: 'node:text-classifier',
 		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1],
@@ -63,6 +64,13 @@ export class TextClassifier implements INodeType {
 			},
 		],
 		outputs: `={{(${configuredOutputs})($parameter)}}`,
+		builderHint: {
+			inputs: {
+				ai_languageModel: { required: true },
+			},
+			searchHint:
+				'Each category defined creates a separate output branch. Output 0 corresponds to the first category, output 1 to the second, and so on. Use .output(index).to() to connect from a specific category. @example textClassifier.output(0).to(nodeA) and textClassifier.output(1).to(nodeB)',
+		},
 		properties: [
 			{
 				displayName: 'Text to Classify',
@@ -259,7 +267,7 @@ export class TextClassifier implements INodeType {
 				batchResults.forEach((response, batchItemIndex) => {
 					const index = i + batchItemIndex;
 					if (response.status === 'rejected') {
-						const error = response.reason as Error;
+						const error = wrapLangChainParserError(response.reason, this.getNode(), index);
 						if (this.continueOnFail()) {
 							returnData[0].push({
 								json: { error: error.message },
@@ -267,7 +275,7 @@ export class TextClassifier implements INodeType {
 							});
 							return;
 						} else {
-							throw new NodeOperationError(this.getNode(), error.message);
+							throw new NodeOperationError(this.getNode(), error);
 						}
 					} else {
 						const output = response.value;
@@ -308,16 +316,17 @@ export class TextClassifier implements INodeType {
 					});
 					if (fallback === 'other' && output.fallback) returnData[returnData.length - 1].push(item);
 				} catch (error) {
+					const executionError = wrapLangChainParserError(error, this.getNode(), itemIndex);
 					if (this.continueOnFail()) {
 						returnData[0].push({
-							json: { error: error.message },
+							json: { error: executionError.message },
 							pairedItem: { item: itemIndex },
 						});
 
 						continue;
 					}
 
-					throw error;
+					throw executionError;
 				}
 			}
 		}

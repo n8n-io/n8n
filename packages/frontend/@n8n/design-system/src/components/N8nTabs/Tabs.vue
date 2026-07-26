@@ -6,6 +6,7 @@ import type { TabOptions } from '../../types';
 import N8nIcon from '../N8nIcon';
 import Tag from '../N8nTag/Tag.vue';
 import N8nTooltip from '../N8nTooltip';
+import PreviewTag from '../PreviewTag/PreviewTag.vue';
 
 interface TabsProps {
 	modelValue?: Value;
@@ -86,7 +87,7 @@ const scrollRight = () => scroll(50);
 		<div v-if="canScrollRight" :class="$style.next" @click="scrollRight">
 			<N8nIcon :class="$style.positionIcon" icon="chevron-right" size="small" />
 		</div>
-		<div ref="tabs" :class="$style.tabs">
+		<div ref="tabs" role="tablist" :class="$style.tabs">
 			<div
 				v-for="option in options"
 				:id="option.value.toString()"
@@ -106,13 +107,15 @@ const scrollRight = () => scroll(50);
 						:class="[$style.link, $style.tab, option.label ? '' : $style.noText]"
 						@click="() => handleTabClick(option.value)"
 					>
-						<div>
+						<div :class="$style.externalLinkContent">
 							{{ option.label }}
 							<N8nIcon
 								:class="$style.external"
 								:icon="option.icon ?? 'external-link'"
 								size="small"
 							/>
+							<PreviewTag v-if="option.preview" />
+							<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 						</div>
 					</a>
 					<RouterLink
@@ -125,10 +128,14 @@ const scrollRight = () => scroll(50);
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
+						<PreviewTag v-if="option.preview" />
 						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 					</RouterLink>
 					<div
 						v-else
+						role="tab"
+						tabindex="0"
+						:aria-selected="modelValue === option.value"
 						:class="{
 							[$style.tab]: true,
 							[$style.activeTab]: modelValue === option.value,
@@ -136,6 +143,8 @@ const scrollRight = () => scroll(50);
 							[$style.dangerTab]: option.variant === 'danger',
 						}"
 						@click="() => handleTabClick(option.value)"
+						@keydown.enter.prevent="() => handleTabClick(option.value)"
+						@keydown.space.prevent="() => handleTabClick(option.value)"
 					>
 						<N8nIcon
 							v-if="option.icon && option.iconPosition !== 'right'"
@@ -153,6 +162,7 @@ const scrollRight = () => scroll(50);
 							:class="$style.icon"
 							size="small"
 						/>
+						<PreviewTag v-if="option.preview" />
 						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 					</div>
 				</N8nTooltip>
@@ -213,6 +223,13 @@ const scrollRight = () => scroll(50);
 		color: var(--color--primary);
 	}
 
+	/* Inset outline so the ring isn't clipped by the scroll container and adds no layout shift. */
+	&:focus-visible {
+		outline: var(--border-width) solid var(--focus--border-color);
+		outline-offset: calc(-1 * var(--border-width));
+		border-radius: var(--radius--3xs);
+	}
+
 	span + span {
 		margin-left: var(--spacing--4xs);
 	}
@@ -261,6 +278,16 @@ const scrollRight = () => scroll(50);
 
 	.noText & {
 		display: block;
+		margin-left: 0;
+	}
+}
+
+.externalLinkContent {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+
+	.external {
 		margin-left: 0;
 	}
 }

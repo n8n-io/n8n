@@ -13,7 +13,9 @@ export const WebSocketState = {
 	OPEN: 1,
 	CLOSING: 2,
 	CLOSED: 3,
-};
+} as const;
+
+export type WebSocketStateType = 0 | 1 | 2 | 3;
 
 /**
  * Creates a WebSocket connection to the server. Uses reconnection logic

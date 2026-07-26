@@ -1,4 +1,8 @@
-import { CreateVariableRequestDto, UpdateVariableRequestDto } from '@n8n/api-types';
+import {
+	CreateVariableRequestDto,
+	UpdateVariableRequestDto,
+	NEW_VARIABLE_KEY_REGEX,
+} from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { User, Variables } from '@n8n/db';
 import { generateNanoId, VariablesRepository } from '@n8n/db';
@@ -9,6 +13,7 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
+import { VariableValidationError } from '@/errors/variable-validation.error';
 import { EventService } from '@/events/event.service';
 import { CacheService } from '@/services/cache/cache.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -268,6 +273,17 @@ export class VariablesService {
 		);
 		if (!userHasRightOnExistingVariable) {
 			throw new ForbiddenError('You are not allowed to update this variable');
+		}
+
+		// Enforce strict format when changing the key (must be valid JavaScript identifier)
+		const isChangingLegacyInvalidVariableKeyToNewInvalidOne =
+			variable.key &&
+			variable.key !== existingVariable.key &&
+			!NEW_VARIABLE_KEY_REGEX.test(variable.key);
+		if (isChangingLegacyInvalidVariableKeyToNewInvalidOne) {
+			throw new VariableValidationError(
+				"When changing the variable key, it can only contain letters, numbers, and underscores (A-Za-z0-9_). Existing keys that don't follow this rule can be kept as-is for backwards-compatibility",
+			);
 		}
 
 		// Project id can be undefined (not provided, keep the existing) or null (move to global scope) or a string (move to project)

@@ -1,0 +1,12 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`N8nHoverCard > should render correctly with default props 1`] = `
+"<mock-hover-card-root data-open="undefined">
+  <mock-hover-card-trigger class=""><button>Trigger</button></mock-hover-card-trigger>
+  <mock-hover-card-portal disabled="false">
+    <mock-hover-card-content avoid-collisions="true" collision-padding="5" force-mount="false">
+      <div>Hover content</div>
+    </mock-hover-card-content>
+  </mock-hover-card-portal>
+</mock-hover-card-root>"
+`;

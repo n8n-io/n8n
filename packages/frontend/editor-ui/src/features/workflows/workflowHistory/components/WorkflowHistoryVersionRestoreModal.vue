@@ -2,7 +2,7 @@
 import { useI18n } from '@n8n/i18n';
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import type { ButtonType } from '@n8n/design-system';
+import type { ButtonVariant } from '@n8n/design-system';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
@@ -14,7 +14,7 @@ const props = defineProps<{
 		beforeClose: () => void;
 		buttons: Array<{
 			text: string;
-			type: ButtonType;
+			variant: ButtonVariant;
 			action: () => void;
 		}>;
 	};
@@ -61,7 +61,7 @@ const closeModal = () => {
 					v-for="(button, index) in props.data.buttons"
 					:key="index"
 					size="medium"
-					:type="button.type"
+					:variant="button.variant"
 					@click="
 						() => {
 							button.action();

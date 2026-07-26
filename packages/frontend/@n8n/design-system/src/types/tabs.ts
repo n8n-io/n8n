@@ -14,4 +14,5 @@ export interface TabOptions<Value extends string | number> {
 	to?: RouteLocationRaw;
 	notification?: boolean;
 	tag?: string;
+	preview?: boolean;
 }

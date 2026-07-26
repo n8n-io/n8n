@@ -3,8 +3,10 @@ import SourceControlInitializationErrorMessage from '@/features/integrations/sou
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
+import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
-import type { UserManagementAuthenticationMethod } from '@/Interface';
+
+import type { AuthenticationMethod } from '@n8n/api-types';
 import {
 	registerModuleModals,
 	registerModuleProjectTabs,
@@ -16,8 +18,9 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -28,6 +31,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { h } from 'vue';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 export const state = {
@@ -45,7 +49,6 @@ export async function initializeCore() {
 	}
 
 	const settingsStore = useSettingsStore();
-	const versionsStore = useVersionsStore();
 	const usersStore = useUsersStore();
 	const ssoStore = useSSOStore();
 
@@ -71,8 +74,8 @@ export async function initializeCore() {
 	}
 
 	ssoStore.initialize({
-		authenticationMethod: settingsStore.userManagement
-			.authenticationMethod as UserManagementAuthenticationMethod,
+		authenticationMethod: settingsStore.userManagement.authenticationMethod as AuthenticationMethod,
+		managedByEnv: settingsStore.settings.sso.managedByEnv,
 		config: settingsStore.settings.sso,
 		features: {
 			saml: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],
@@ -80,8 +83,6 @@ export async function initializeCore() {
 			oidc: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc],
 		},
 	});
-
-	versionsStore.initialize(settingsStore.settings.versionNotifications);
 
 	if (!settingsStore.isPreviewMode) {
 		await usersStore.initialize();
@@ -115,11 +116,23 @@ export async function initializeAuthenticatedFeatures(
 	const rootStore = useRootStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const cloudPlanStore = useCloudPlanStore();
+	cloudPlanStore.setIsInstanceOwner(() => hasPermission(['instanceOwner']));
 	const projectsStore = useProjectsStore();
 	const rolesStore = useRolesStore();
 	const bannersStore = useBannersStore();
 	const versionsStore = useVersionsStore();
 	const dataTableStore = useDataTableStore();
+	const favoritesStore = useFavoritesStore();
+	const uiStore = useUIStore();
+
+	// Provide the modal-open actions to the stores that were decoupled from `ui.store`,
+	// so they can open modals without importing it.
+	const modalOpeners = {
+		openModal: uiStore.openModal,
+		openModalWithData: uiStore.openModalWithData,
+	};
+	usersStore.registerModalOpeners(modalOpeners);
+	versionsStore.registerModalOpeners(modalOpeners);
 
 	if (!settingsStore.isPreviewMode) {
 		usersStore.setUserQuota(settingsStore.userManagement.quota);
@@ -159,13 +172,11 @@ export async function initializeAuthenticatedFeatures(
 		void cloudPlanStore
 			.initialize()
 			.then(() => {
-				if (cloudPlanStore.userIsTrialing) {
+				if (cloudPlanStore.shouldShowBanner) {
 					if (cloudPlanStore.trialExpired) {
 						bannersStore.pushBannerToStack('TRIAL_OVER');
 					} else {
-						if (!cloudPlanStore.isTrialUpgradeOnSidebar) {
-							bannersStore.pushBannerToStack('TRIAL');
-						}
+						bannersStore.pushBannerToStack('TRIAL');
 					}
 				} else if (cloudPlanStore.currentUserCloudInfo?.confirmed === false) {
 					bannersStore.pushBannerToStack('EMAIL_CONFIRMATION');
@@ -196,6 +207,7 @@ export async function initializeAuthenticatedFeatures(
 
 	// Don't check for new versions in preview mode or demo view (ex: executions iframe)
 	if (!settingsStore.isPreviewMode && routeName !== VIEWS.DEMO) {
+		versionsStore.initialize(settingsStore.settings.versionNotifications);
 		void versionsStore.checkForNewVersions();
 	}
 
@@ -206,11 +218,22 @@ export async function initializeAuthenticatedFeatures(
 		rolesStore.fetchRoles(),
 	]);
 
+	await projectsStore.refreshCurrentProject();
+
+	void favoritesStore.fetchFavorites();
+
 	// Initialize modules
 	registerModuleResources();
 	registerModuleProjectTabs();
 	registerModuleModals();
 	registerModuleSettingsPages();
+
+	// Initialize run data worker and load node types
+	if (isDataWorkerEnabled()) {
+		const coordinator = await import('@/app/workers');
+		await coordinator.initialize({ version: settingsStore.settings.versionCli });
+		await coordinator.loadNodeTypes(rootStore.baseUrl);
+	}
 
 	authenticatedFeaturesInitialized = true;
 }
@@ -225,15 +248,42 @@ function registerAuthenticationHooks() {
 	const telemetry = useTelemetry();
 	const RBACStore = useRBACStore();
 	const settingsStore = useSettingsStore();
+	const ssoStore = useSSOStore();
+	const favoritesStore = useFavoritesStore();
 
 	usersStore.registerLoginHook(async (user) => {
 		await settingsStore.getSettings();
 
+		// Re-initialize SSO store with authenticated settings.
+		// Before login, public settings omit callbackUrl, leaving it empty.
+		// Without this, navigating to SSO settings after login shows an empty redirect URL.
+		ssoStore.initialize({
+			authenticationMethod: settingsStore.userManagement
+				.authenticationMethod as AuthenticationMethod,
+			managedByEnv: settingsStore.settings.sso.managedByEnv,
+			config: settingsStore.settings.sso,
+			features: {
+				saml: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],
+				ldap: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Ldap],
+				oidc: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc],
+			},
+		});
+
 		RBACStore.setGlobalScopes(user.globalScopes ?? []);
-		telemetry.identify(rootStore.instanceId, user.id, rootStore.versionCli);
-		postHogStore.init(user.featureFlags);
+		telemetry.identify({
+			instanceId: rootStore.instanceId,
+			versionCli: rootStore.versionCli,
+			userId: user.id,
+			userRole: user.role,
+		});
+		try {
+			postHogStore.init(user.featureFlags);
+		} catch (e) {
+			// don't let posthog failing prevent further function calls
+			console.error(e);
+		}
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
-		void settingsStore.getModuleSettings();
+		await settingsStore.getModuleSettings();
 		void bannersStore.loadDynamicBanners();
 	});
 
@@ -244,5 +294,6 @@ function registerAuthenticationHooks() {
 		cloudPlanStore.reset();
 		telemetry.reset();
 		RBACStore.setGlobalScopes([]);
+		favoritesStore.reset();
 	});
 }

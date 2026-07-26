@@ -1,21 +1,34 @@
-import { ref, type Ref } from 'vue';
+import { ref, toValue, type MaybeRef } from 'vue';
 
-export function useFileDrop(canAcceptFiles: Ref<boolean>, onFilesDropped: (files: File[]) => void) {
+export function useFileDrop(
+	canAcceptFiles: MaybeRef<boolean>,
+	onFilesDropped: (files: File[]) => void,
+	acceptedTypes?: MaybeRef<string[]>,
+) {
 	const isDragging = ref(false);
+	const isDraggingUnsupported = ref(false);
 
 	function handleDragEnter(e: DragEvent) {
-		if (!canAcceptFiles.value) {
+		if (!toValue(canAcceptFiles)) {
 			return;
 		}
 
 		// Check if dragging files (not text or other content)
 		if (e.dataTransfer?.types.includes('Files')) {
 			isDragging.value = true;
+
+			const accepted = toValue(acceptedTypes);
+			if (accepted && e.dataTransfer.items) {
+				const fileItems = Array.from(e.dataTransfer.items).filter((i) => i.kind === 'file');
+				isDraggingUnsupported.value =
+					fileItems.length > 0 &&
+					fileItems.every((i) => i.type !== '' && !accepted.includes(i.type));
+			}
 		}
 	}
 
 	function handleDragLeave(e: DragEvent) {
-		if (!canAcceptFiles.value) {
+		if (!toValue(canAcceptFiles)) {
 			return;
 		}
 
@@ -28,10 +41,11 @@ export function useFileDrop(canAcceptFiles: Ref<boolean>, onFilesDropped: (files
 		}
 
 		isDragging.value = false;
+		isDraggingUnsupported.value = false;
 	}
 
 	function handleDragOver(e: DragEvent) {
-		if (!canAcceptFiles.value) {
+		if (!toValue(canAcceptFiles)) {
 			return;
 		}
 
@@ -43,8 +57,9 @@ export function useFileDrop(canAcceptFiles: Ref<boolean>, onFilesDropped: (files
 		e.preventDefault();
 		e.stopPropagation();
 		isDragging.value = false;
+		isDraggingUnsupported.value = false;
 
-		if (!canAcceptFiles.value) {
+		if (!toValue(canAcceptFiles)) {
 			return;
 		}
 
@@ -57,7 +72,7 @@ export function useFileDrop(canAcceptFiles: Ref<boolean>, onFilesDropped: (files
 	}
 
 	function handlePaste(e: ClipboardEvent) {
-		if (!canAcceptFiles.value) {
+		if (!toValue(canAcceptFiles)) {
 			return;
 		}
 
@@ -88,6 +103,7 @@ export function useFileDrop(canAcceptFiles: Ref<boolean>, onFilesDropped: (files
 
 	return {
 		isDragging,
+		isDraggingUnsupported,
 		handleDragEnter,
 		handleDragLeave,
 		handleDragOver,

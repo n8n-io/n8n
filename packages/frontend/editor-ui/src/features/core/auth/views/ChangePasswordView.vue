@@ -5,17 +5,21 @@ import { useRouter } from 'vue-router';
 import AuthView from './AuthView.vue';
 
 import { useI18n } from '@n8n/i18n';
+import { createPasswordRules } from '@n8n/design-system';
 import { useToast } from '@/app/composables/useToast';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
 import type { FormFieldValueUpdate, IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH, VIEWS } from '@/app/constants';
 
 const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
 
 const locale = useI18n();
 const toast = useToast();
 const router = useRouter();
+const passwordMinLength = settingsStore.userManagement.passwordMinLength ?? 8;
 
 const password = ref('');
 const loading = ref(false);
@@ -99,8 +103,10 @@ onMounted(async () => {
 					label: locale.baseText('auth.newPassword'),
 					type: 'password',
 					required: true,
-					validationRules: [{ name: 'DEFAULT_PASSWORD_RULES' }],
-					infoText: locale.baseText('auth.defaultPasswordRequirements'),
+					validationRules: [createPasswordRules(passwordMinLength)],
+					infoText: locale.baseText('auth.defaultPasswordRequirements', {
+						interpolate: { minimum: passwordMinLength },
+					}),
 					autocomplete: 'new-password',
 					capitalize: true,
 				},

@@ -10,11 +10,11 @@ import type {
 	EngineRequest,
 } from 'n8n-workflow';
 
+import type { RequestResponseMetadata } from '@utils/agent-execution';
 import { textInput, toolDescription } from '@utils/descriptions';
 
 import { getInputs } from '../utils';
 import { toolsAgentProperties } from '../agents/ToolsAgent/V3/description';
-import type { RequestResponseMetadata } from '../agents/ToolsAgent/V3/execute';
 import { toolsAgentExecute } from '../agents/ToolsAgent/V3/execute';
 
 export class AgentToolV3 implements INodeType {
@@ -34,6 +34,18 @@ export class AgentToolV3 implements INodeType {
 				})($parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true, $parameter.needsFallback !== undefined && $parameter.needsFallback === true)
 			}}`,
 			outputs: [NodeConnectionTypes.AiTool],
+			builderHint: {
+				...baseDescription.builderHint,
+				inputs: {
+					ai_languageModel: { required: true },
+					ai_memory: { required: false },
+					ai_tool: { required: false },
+					ai_outputParser: {
+						required: false,
+						displayOptions: { show: { hasOutputParser: [true] } },
+					},
+				},
+			},
 			properties: [
 				toolDescription,
 				{
@@ -45,6 +57,10 @@ export class AgentToolV3 implements INodeType {
 					type: 'boolean',
 					default: false,
 					noDataExpression: true,
+					builderHint: {
+						propertyHint:
+							'Set to `true` when you need structured JSON output. The agent then requires an `outputParser` entry in its `subnodes` config (typically an `outputParserStructured` node defined via the `outputParser({...})` SDK factory). With `hasOutputParser: false` the agent returns a plain string in `$json.output`.',
+					},
 				},
 				{
 					displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionTypes.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,

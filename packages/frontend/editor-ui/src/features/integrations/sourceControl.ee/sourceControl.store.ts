@@ -7,6 +7,9 @@ import * as vcApi from './sourceControl.api';
 import type { SourceControlPreferences, SshKeyTypes } from './sourceControl.types';
 import type { TupleToUnion } from '@/app/utils/typeHelpers';
 import type { SourceControlledFile } from '@n8n/api-types';
+import type { AutoPublishMode } from 'n8n-workflow';
+
+const DEFAULT_BRANCH_COLOR = '#5296D6';
 
 export const useSourceControlStore = defineStore('sourceControl', () => {
 	const rootStore = useRootStore();
@@ -26,7 +29,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		branches: [],
 		repositoryUrl: '',
 		branchReadOnly: false,
-		branchColor: '#5296D6',
+		branchColor: DEFAULT_BRANCH_COLOR,
 		connected: false,
 		publicKey: '',
 		keyGeneratorType: 'ed25519',
@@ -45,15 +48,15 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		force: boolean;
 	}) => {
 		state.commitMessage = data.commitMessage;
-		await vcApi.pushWorkfolder(rootStore.restApiContext, {
+		return await vcApi.pushWorkfolder(rootStore.restApiContext, {
 			force: data.force,
 			commitMessage: data.commitMessage,
 			fileNames: data.fileNames,
 		});
 	};
 
-	const pullWorkfolder = async (force: boolean) => {
-		return await vcApi.pullWorkfolder(rootStore.restApiContext, { force });
+	const pullWorkfolder = async (force: boolean, autoPublish: AutoPublishMode) => {
+		return await vcApi.pullWorkfolder(rootStore.restApiContext, { force, autoPublish });
 	};
 
 	const setPreferences = (data: Partial<SourceControlPreferences>) => {
@@ -62,8 +65,8 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 
 	const makePreferencesAction =
 		(action: typeof vcApi.savePreferences) =>
-		async (preferences: Partial<SourceControlPreferences>) => {
-			const data = await action(rootStore.restApiContext, preferences);
+		async (preferencesUpdate: Partial<SourceControlPreferences>) => {
+			const data = await action(rootStore.restApiContext, preferencesUpdate);
 			setPreferences(data);
 		};
 
@@ -83,24 +86,39 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 
 	const disconnect = async (keepKeyPair: boolean) => {
 		await vcApi.disconnect(rootStore.restApiContext, keepKeyPair);
-		setPreferences({ connected: false, branches: [] });
+
+		// Connection related preferences are intentionally ommited here.
+		// This allows users to disconnect and reconnect when troubleshooting issues.
+		setPreferences({
+			connected: false,
+			branches: [],
+			branchName: '',
+			currentBranch: '',
+			branchReadOnly: false,
+			branchColor: DEFAULT_BRANCH_COLOR,
+		});
 	};
 
 	const generateKeyPair = async (keyGeneratorType?: TupleToUnion<SshKeyTypes>) => {
 		await vcApi.generateKeyPair(rootStore.restApiContext, keyGeneratorType);
 		const data = await vcApi.getPreferences(rootStore.restApiContext); // To be removed once the API is updated
 
-		preferences.publicKey = data.publicKey;
+		const publicKey = 'publicKey' in data ? data.publicKey : undefined;
+		preferences.publicKey = publicKey;
 
-		return { publicKey: data.publicKey };
+		return { publicKey };
 	};
 
 	const getStatus = async () => {
 		return await vcApi.getStatus(rootStore.restApiContext);
 	};
 
-	const getAggregatedStatus = async () => {
-		return await vcApi.getAggregatedStatus(rootStore.restApiContext);
+	const getAggregatedStatus = async (options?: {
+		direction: 'push' | 'pull';
+		preferLocalVersion: boolean;
+		verbose: boolean;
+	}) => {
+		return await vcApi.getAggregatedStatus(rootStore.restApiContext, options);
 	};
 
 	const getRemoteWorkflow = async (workflowId: string) => {

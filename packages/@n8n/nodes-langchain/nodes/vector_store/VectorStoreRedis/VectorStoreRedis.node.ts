@@ -1,6 +1,5 @@
 import type { EmbeddingsInterface } from '@langchain/core/embeddings';
-import { RedisVectorStore } from '@langchain/redis';
-import type { RedisVectorStoreConfig } from '@langchain/redis/dist/vectorstores';
+import { RedisVectorStore, type RedisVectorStoreConfig } from '@langchain/redis';
 import {
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
@@ -11,7 +10,7 @@ import {
 import type { RedisClientOptions } from 'redis';
 import { createClient } from 'redis';
 
-import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
+import { createVectorStoreNode } from '@n8n/ai-utilities';
 
 /**
  * Constants for the name of the credentials and Node parameters.
@@ -164,7 +163,9 @@ type IFunctionsContext = IExecuteFunctions | ISupplyDataFunctions | ILoadOptions
  * @param context - The context.
  * @returns the Redis client for the node.
  */
-export async function getRedisClient(context: IFunctionsContext) {
+export async function getRedisClient(
+	context: IFunctionsContext,
+): Promise<ReturnType<typeof createClient> | null> {
 	const credentials = await context.getCredentials(REDIS_CREDENTIALS);
 
 	// Create client configuration object

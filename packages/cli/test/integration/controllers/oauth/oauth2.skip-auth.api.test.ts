@@ -5,8 +5,12 @@
  * because skipAuthOnOAuthCallback is evaluated at module load time.
  */
 
-// Set environment variable before any imports
-process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK = 'true';
+// Set the env var before imports. Vitest hoists `import`s above top-level statements, so a plain
+// assignment would run *after* the oauth module reads `skipAuthOnOAuthCallback`. `vi.hoisted` runs
+// before the imports.
+vi.hoisted(() => {
+	process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK = 'true';
+});
 
 import { testDb } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, User } from '@n8n/db';
@@ -73,15 +77,15 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 	describe('OAuth callback without authentication', () => {
 		it('should handle OAuth callback without authentication when skipAuthOnOAuthCallback is enabled', async () => {
 			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
-			const renderSpy = (Response.render = jest.fn(function () {
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = (Response.render = vi.fn(function (this: { end: () => void }) {
 				this.end();
 			}));
 
 			// Step 1: Owner initiates OAuth flow (authenticated)
 			await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
 
-			const [_, state] = csrfSpy.mock.results[0].value;
+			const [_, state] = await csrfSpy.mock.results[0].value;
 
 			// Step 2: Mock external OAuth provider response
 			nock('https://test.domain')
@@ -105,7 +109,7 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 				credential,
 				credential.type,
 			);
-			expect(updatedCredential.getData()).toEqual({
+			expect(await updatedCredential.getData()).toEqual({
 				...credentialData,
 				oauthTokenData: { access_token: 'new_access_token' },
 			});
@@ -113,15 +117,15 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 
 		it('should allow callback completion by any user when skipAuthOnOAuthCallback is enabled', async () => {
 			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
-			const renderSpy = (Response.render = jest.fn(function () {
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = (Response.render = vi.fn(function (this: { end: () => void }) {
 				this.end();
 			}));
 
 			// Step 1: Owner initiates OAuth flow
 			await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
 
-			const [_, state] = csrfSpy.mock.results[0].value;
+			const [_, state] = await csrfSpy.mock.results[0].value;
 
 			// Step 2: Mock external OAuth provider response
 			nock('https://test.domain')
@@ -146,7 +150,7 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 				credential,
 				credential.type,
 			);
-			expect(updatedCredential.getData()).toEqual({
+			expect(await updatedCredential.getData()).toEqual({
 				...credentialData,
 				oauthTokenData: { access_token: 'different_user_token' },
 			});
@@ -155,9 +159,6 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 
 	describe('OAuth flow initiation', () => {
 		it('should return a valid auth URL when the auth flow is initiated', async () => {
-			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
-
 			const response = await ownerAgent
 				.get('/oauth2-credential/auth')
 				.query({ id: credential.id })
@@ -167,22 +168,32 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 			expect(authUrl.hostname).toBe('test.domain');
 			expect(authUrl.pathname).toBe('/oauth2/auth');
 
-			expect(csrfSpy).toHaveBeenCalled();
-			const [__, state] = csrfSpy.mock.results[0].value;
-			expect(parseQs(authUrl.search.slice(1))).toEqual({
+			const queryParams = parseQs(authUrl.search.slice(1));
+			expect(queryParams).toMatchObject({
 				access_type: 'offline',
 				client_id: 'client_id',
 				redirect_uri: 'http://localhost:5678/rest/oauth2-credential/callback',
 				response_type: 'code',
-				state,
 				scope: 'openid',
 			});
+
+			// Verify state is base64-encoded and contains expected structure. The CSRF
+			// payload now lives server-side in the per-flow cache, not in the URL state.
+			expect(queryParams.state).toBeDefined();
+			const decodedState = JSON.parse(
+				Buffer.from(queryParams.state as string, 'base64').toString(),
+			);
+			expect(decodedState).toMatchObject({
+				token: expect.any(String),
+				createdAt: expect.any(Number),
+			});
+			expect(decodedState.data).toBeUndefined();
 		});
 	});
 
 	describe('Error handling', () => {
 		it('should still validate CSRF state even when skipAuthOnOAuthCallback is enabled', async () => {
-			const renderSpy = (Response.render = jest.fn(function () {
+			const renderSpy = (Response.render = vi.fn(function (this: { end: () => void }) {
 				this.end();
 			}));
 
@@ -202,15 +213,15 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 
 		it('should handle OAuth provider errors gracefully', async () => {
 			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
-			const renderSpy = (Response.render = jest.fn(function () {
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = (Response.render = vi.fn(function (this: { end: () => void }) {
 				this.end();
 			}));
 
 			// Initiate OAuth flow
 			await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
 
-			const [_, state] = csrfSpy.mock.results[0].value;
+			const [_, state] = await csrfSpy.mock.results[0].value;
 
 			// Mock OAuth provider returning an error
 			nock('https://test.domain').post('/oauth2/token').reply(400, {
@@ -236,15 +247,15 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 	describe('Security validation', () => {
 		it('should not skip CSRF token validation when skipAuthOnOAuthCallback is enabled', async () => {
 			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
-			const renderSpy = (Response.render = jest.fn(function () {
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = (Response.render = vi.fn(function (this: { end: () => void }) {
 				this.end();
 			}));
 
 			// Initiate OAuth flow to get a valid state
 			await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
 
-			const [__, state] = csrfSpy.mock.results[0].value;
+			const [__, state] = await csrfSpy.mock.results[0].value;
 
 			// Tamper with the state (decrypt, modify, re-encrypt would be needed)
 			// For this test, we'll use a completely different valid-looking but wrong state

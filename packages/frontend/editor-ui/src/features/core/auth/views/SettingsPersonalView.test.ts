@@ -1,16 +1,15 @@
-import userEvent from '@testing-library/user-event';
 import { createPinia } from 'pinia';
-import { waitAllPromises } from '@/__tests__/utils';
+import { waitFor } from '@testing-library/vue';
+import { waitAllPromises, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import SettingsPersonalView from './SettingsPersonalView.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
-import { ROLE } from '@n8n/api-types';
+import { AuthenticationMethod, ROLE } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import { UserManagementAuthenticationMethod } from '@/Interface';
 
 let pinia: ReturnType<typeof createPinia>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
@@ -54,7 +53,7 @@ describe('SettingsPersonalView', () => {
 
 		await settingsStore.getSettings();
 		ssoStore.initialize({
-			authenticationMethod: UserManagementAuthenticationMethod.Email,
+			authenticationMethod: AuthenticationMethod.Email,
 			config: settingsStore.settings.sso,
 			features: {
 				saml: true,
@@ -163,30 +162,53 @@ describe('SettingsPersonalView', () => {
 		});
 	});
 
+	describe('when signed in via LDAP', () => {
+		beforeEach(() => {
+			vi.spyOn(ssoStore, 'isEnterpriseLdapEnabled', 'get').mockReturnValue(true);
+			vi.spyOn(settingsStore, 'isMfaFeatureEnabled', 'get').mockReturnValue(true);
+			usersStore.usersById[currentUser.id] = { ...currentUser, signInType: 'ldap' };
+		});
+
+		it('should let a member configure MFA while hiding password change', async () => {
+			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(false);
+
+			const { queryByTestId, getAllByRole } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			// LDAP has no native 2FA, so n8n's own MFA stays configurable...
+			expect(queryByTestId('mfa-section')).toBeInTheDocument();
+			// ...but password/email remain managed externally.
+			expect(queryByTestId('change-password-link')).not.toBeInTheDocument();
+			expect(
+				getAllByRole('textbox').find((el) => el.getAttribute('type') === 'email'),
+			).toBeDisabled();
+		});
+	});
+
 	test.each([
 		['Default', ROLE.Default, false, 'Default role for new users'],
 		['Member', ROLE.Member, false, 'Create and manage own workflows and credentials'],
-		[
-			'Admin',
-			ROLE.Admin,
-			false,
-			'Full access to manage workflows,tags, credentials, projects, users and more',
-		],
+		['Admin', ROLE.Admin, false, 'Full access to manage workflows'],
 		['Owner', ROLE.Owner, false, 'Manage everything'],
 		['Owner', ROLE.Owner, true, 'Manage everything and access Cloud dashboard'],
-	])('should show %s user role information', async (label, role, hasCloudPlan, tooltipText) => {
-		vi.spyOn(cloudPlanStore, 'hasCloudPlan', 'get').mockReturnValue(hasCloudPlan);
-		vi.spyOn(usersStore, 'globalRoleName', 'get').mockReturnValue(role);
+	])(
+		'should show %s user role information with tooltip',
+		async (label, role, hasCloudPlan, expectedTooltip) => {
+			vi.spyOn(cloudPlanStore, 'hasCloudPlan', 'get').mockReturnValue(hasCloudPlan);
+			vi.spyOn(usersStore, 'globalRoleName', 'get').mockReturnValue(role);
 
-		const { queryByTestId, getByText } = renderComponent({ pinia });
-		await waitAllPromises();
+			const { queryByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
 
-		expect(queryByTestId('current-user-role')).toBeVisible();
-		expect(queryByTestId('current-user-role')).toHaveTextContent(label);
+			const roleElement = queryByTestId('current-user-role');
+			expect(roleElement).toBeVisible();
+			expect(roleElement).toHaveTextContent(label);
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		await userEvent.hover(queryByTestId('current-user-role')!);
-
-		expect(getByText(tooltipText)).toBeVisible();
-	});
+			// Hover and verify tooltip content
+			if (roleElement) {
+				await hoverTooltipTrigger(roleElement);
+				await waitFor(() => expect(getTooltip()).toHaveTextContent(expectedTooltip));
+			}
+		},
+	);
 });

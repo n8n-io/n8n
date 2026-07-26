@@ -41,13 +41,14 @@ export class InsightsController {
 	@GlobalScope('insights:list')
 	@Licensed('feat:insights:viewDashboard')
 	async getInsightsByWorkflow(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: ListInsightsWorkflowQueryDto,
 	): Promise<InsightsByWorkflow> {
 		const { startDate, endDate } = this.prepareDateFilters(query);
 
 		return await this.insightsService.getInsightsByWorkflow({
+			user: req.user,
 			skip: query.skip,
 			take: query.take,
 			sortBy: query.sortBy,
@@ -100,16 +101,10 @@ export class InsightsController {
 	}
 
 	private validateQueryDates(query: InsightsDateFilterDto | ListInsightsWorkflowQueryDto) {
-		const inThePast = (date?: Date) => !date || date <= new Date();
-		const dateInThePastSchema = z.coerce
-			.date()
-			.optional()
-			.refine(inThePast, { message: 'must be in the past' });
-
 		const schema = z
 			.object({
-				startDate: dateInThePastSchema,
-				endDate: dateInThePastSchema,
+				startDate: z.coerce.date().optional(),
+				endDate: z.coerce.date().optional(),
 			})
 			.refine(
 				(data) => {

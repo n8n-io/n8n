@@ -15,6 +15,7 @@ import {
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useRolesStore } from '@/app/stores/roles.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
@@ -83,6 +84,7 @@ const themeOptions = ref<Array<{ name: ThemeOption; label: BaseTextKey }>>([
 
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
+const rolesStore = useRolesStore();
 const settingsStore = useSettingsStore();
 const ssoStore = useSSOStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -91,13 +93,21 @@ const currentUser = computed((): IUser | null => {
 	return usersStore.currentUser;
 });
 
+const isManagedByEnv = computed((): boolean => {
+	return currentUser.value?.isManagedByEnv ?? false;
+});
+
+const isLdapCurrentAuthMethod = computed((): boolean => {
+	return ssoStore.isEnterpriseLdapEnabled && currentUser.value?.signInType === 'ldap';
+});
+
 const isExternalAuthEnabled = computed((): boolean => {
-	const isLdapEnabled =
-		ssoStore.isEnterpriseLdapEnabled && currentUser.value?.signInType === 'ldap';
 	const isSamlEnabled = ssoStore.isSamlLoginEnabled && ssoStore.isDefaultAuthenticationSaml;
 	const isOidcEnabled =
-		ssoStore.isEnterpriseOidcEnabled && currentUser.value?.signInType === 'oidc';
-	return isLdapEnabled || isSamlEnabled || isOidcEnabled;
+		ssoStore.isEnterpriseOidcEnabled &&
+		ssoStore.isOidcLoginEnabled &&
+		currentUser.value?.signInType === 'oidc';
+	return isLdapCurrentAuthMethod.value || isSamlEnabled || isOidcEnabled;
 });
 
 const isPersonalSecurityEnabled = computed((): boolean => {
@@ -114,6 +124,18 @@ const isMfaFeatureEnabled = computed((): boolean => {
 	return settingsStore.isMfaFeatureEnabled;
 });
 
+// Unlike SAML/OIDC, LDAP has no native 2FA, so n8n's own 2FA must stay
+// configurable for LDAP users even though password management is external.
+const canConfigureMfa = computed((): boolean => {
+	return (
+		isMfaFeatureEnabled.value && (isPersonalSecurityEnabled.value || isLdapCurrentAuthMethod.value)
+	);
+});
+
+const isSecuritySectionVisible = computed((): boolean => {
+	return !isManagedByEnv.value && (isPersonalSecurityEnabled.value || canConfigureMfa.value);
+});
+
 const hasAnyPersonalisationChanges = computed((): boolean => {
 	return currentSelectedTheme.value !== uiStore.theme;
 });
@@ -122,36 +144,47 @@ const hasAnyChanges = computed(() => {
 	return hasAnyBasicInfoChanges.value || hasAnyPersonalisationChanges.value;
 });
 
-const roles = computed<Record<Role, RoleContent>>(() => ({
-	[ROLE.Default]: {
-		name: i18n.baseText('auth.roles.default'),
-		description: i18n.baseText('settings.personal.role.tooltip.default'),
-	},
-	[ROLE.Member]: {
-		name: i18n.baseText('auth.roles.member'),
-		description: i18n.baseText('settings.personal.role.tooltip.member'),
-	},
-	[ROLE.ChatUser]: {
-		name: i18n.baseText('auth.roles.chatUser'),
-		description: i18n.baseText('settings.personal.role.tooltip.chatUser'),
-	},
-	[ROLE.Admin]: {
-		name: i18n.baseText('auth.roles.admin'),
-		description: i18n.baseText('settings.personal.role.tooltip.admin'),
-	},
-	[ROLE.Owner]: {
-		name: i18n.baseText('auth.roles.owner'),
-		description: i18n.baseText('settings.personal.role.tooltip.owner', {
-			interpolate: {
-				cloudAccess: cloudPlanStore.hasCloudPlan
-					? i18n.baseText('settings.personal.role.tooltip.cloud')
-					: '',
-			},
-		}),
-	},
-}));
+const currentUserRole = computed<RoleContent>(() => {
+	const knownRoles: Partial<Record<Role, RoleContent>> = {
+		[ROLE.Default]: {
+			name: i18n.baseText('auth.roles.default'),
+			description: i18n.baseText('settings.personal.role.tooltip.default'),
+		},
+		[ROLE.Member]: {
+			name: i18n.baseText('auth.roles.member'),
+			description: i18n.baseText('settings.personal.role.tooltip.member'),
+		},
+		[ROLE.ChatUser]: {
+			name: i18n.baseText('auth.roles.chatUser'),
+			description: i18n.baseText('settings.personal.role.tooltip.chatUser'),
+		},
+		[ROLE.Admin]: {
+			name: i18n.baseText('auth.roles.admin'),
+			description: i18n.baseText('settings.personal.role.tooltip.admin'),
+		},
+		[ROLE.Owner]: {
+			name: i18n.baseText('auth.roles.owner'),
+			description: i18n.baseText('settings.personal.role.tooltip.owner', {
+				interpolate: {
+					cloudAccess: cloudPlanStore.hasCloudPlan
+						? i18n.baseText('settings.personal.role.tooltip.cloud')
+						: '',
+				},
+			}),
+		},
+	};
 
-const currentUserRole = computed<RoleContent>(() => roles.value[usersStore.globalRoleName]);
+	const globalRoleName = usersStore.globalRoleName;
+	const knownRole = knownRoles[globalRoleName as Role];
+	if (knownRole) return knownRole;
+
+	// Custom instance role: show its display name, without a preset tooltip.
+	const customRole = rolesStore.processedInstanceRoles.find((r) => r.slug === globalRoleName);
+	return {
+		name: customRole?.displayName ?? globalRoleName,
+		description: customRole?.description ?? '',
+	};
+});
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.personal.personalSettings'));
@@ -165,7 +198,7 @@ onMounted(() => {
 				required: true,
 				autocomplete: 'given-name',
 				capitalize: true,
-				disabled: isExternalAuthEnabled.value,
+				disabled: isManagedByEnv.value || isExternalAuthEnabled.value,
 			},
 		},
 		{
@@ -177,7 +210,7 @@ onMounted(() => {
 				required: true,
 				autocomplete: 'family-name',
 				capitalize: true,
-				disabled: isExternalAuthEnabled.value,
+				disabled: isManagedByEnv.value || isExternalAuthEnabled.value,
 			},
 		},
 		{
@@ -190,7 +223,7 @@ onMounted(() => {
 				validationRules: [{ name: 'VALID_EMAIL' }],
 				autocomplete: 'email',
 				capitalize: true,
-				disabled: !isPersonalSecurityEnabled.value,
+				disabled: isManagedByEnv.value || !isPersonalSecurityEnabled.value,
 			},
 		},
 	];
@@ -348,7 +381,7 @@ onBeforeUnmount(() => {
 			<div v-if="currentUser" :class="$style.user">
 				<span :class="$style.username" data-test-id="current-user-name">
 					<N8nText color="text-base" bold>{{ currentUser.fullName }}</N8nText>
-					<N8nTooltip placement="bottom">
+					<N8nTooltip placement="bottom" :disabled="!currentUserRole.description">
 						<template #content>{{ currentUserRole.description }}</template>
 						<N8nText :class="$style.tooltip" color="text-light" data-test-id="current-user-role">{{
 							currentUserRole.name
@@ -368,6 +401,11 @@ onBeforeUnmount(() => {
 					i18n.baseText('settings.personal.basicInformation')
 				}}</N8nHeading>
 			</div>
+			<N8nNotice
+				v-if="isManagedByEnv"
+				:content="i18n.baseText('settings.personal.managedByEnv')"
+				data-test-id="managed-by-env-notice"
+			/>
 			<div data-test-id="personal-data-form">
 				<N8nFormInputs
 					v-if="formInputs"
@@ -379,18 +417,18 @@ onBeforeUnmount(() => {
 				/>
 			</div>
 		</div>
-		<div v-if="isPersonalSecurityEnabled">
+		<div v-if="isSecuritySectionVisible">
 			<div class="mb-s">
 				<N8nHeading size="large">{{ i18n.baseText('settings.personal.security') }}</N8nHeading>
 			</div>
-			<div class="mb-s">
+			<div v-if="isPersonalSecurityEnabled" class="mb-s">
 				<N8nInputLabel :label="i18n.baseText('auth.password')">
 					<N8nLink data-test-id="change-password-link" @click="openPasswordModal">{{
 						i18n.baseText('auth.changePassword')
 					}}</N8nLink>
 				</N8nInputLabel>
 			</div>
-			<div v-if="isMfaFeatureEnabled" data-test-id="mfa-section">
+			<div v-if="canConfigureMfa" data-test-id="mfa-section">
 				<div class="mb-xs">
 					<N8nInputLabel :label="i18n.baseText('settings.personal.mfa.section.title')" />
 					<N8nText :bold="false" :class="$style.infoText">
@@ -410,17 +448,17 @@ onBeforeUnmount(() => {
 				/>
 
 				<N8nButton
+					variant="subtle"
 					v-if="mfaDisabled"
 					:class="$style.button"
-					type="tertiary"
 					:label="i18n.baseText('settings.personal.mfa.button.enabled')"
 					data-test-id="enable-mfa-button"
 					@click="onMfaEnableClick"
 				/>
 				<N8nButton
+					variant="subtle"
 					v-else
 					:class="$style.disableMfaButton"
-					type="tertiary"
 					:label="i18n.baseText('settings.personal.mfa.button.disabled')"
 					data-test-id="disable-mfa-button"
 					@click="onMfaDisableClick"

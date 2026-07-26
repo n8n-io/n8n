@@ -1,105 +1,200 @@
+import moment from 'moment-timezone';
 import type { INode } from 'n8n-workflow';
-import * as n8nWorkflow from 'n8n-workflow';
 
 import {
 	intervalToRecurrence,
 	recurrenceCheck,
+	resetStaleRecurrence,
 	toCronExpression,
 	validateInterval,
 } from '../GenericFunctions';
-import type { IRecurrenceRule, ScheduleInterval } from '../SchedulerInterface';
+import type { ScheduleInterval } from '../SchedulerInterface';
+import type { Mock } from 'vitest';
+
+vi.mock('moment-timezone');
+const mockedMoment = vi.mocked(moment);
+
+function mockMomentTz(values: {
+	hour?: number;
+	dayOfYear?: number;
+	week?: number;
+	month?: number;
+	year?: number;
+}) {
+	const tzObj = {
+		hour: () => values.hour ?? 0,
+		dayOfYear: () => values.dayOfYear ?? 1,
+		week: () => values.week ?? 1,
+		month: () => values.month ?? 0,
+		year: () => values.year ?? 0,
+	};
+	(mockedMoment.tz as unknown as Mock).mockReturnValue(tzObj);
+}
+
+// Cron expressions are 6 fields: `<sec> <min> <hr> <dom> <mon> <dow>`.
+// Fields the user does not explicitly pin (e.g. `triggerAtMinute`) are
+// filled in by `stableInt(seed, label, ...)`; every other field comes
+// from the input interval.
+//
+// For `seed = 'test-key'`, `stableInt` produces:
+//   second=56, minute=19, hour=14, dayOfMonth=22
+const TEST_SEED = 'test-key';
 
 describe('toCronExpression', () => {
-	Object.defineProperty(n8nWorkflow, 'randomInt', {
-		value: (min: number, max: number) => Math.floor((min + max) / 2),
-	});
-
 	it('should return cron expression for cronExpression field', () => {
-		const result = toCronExpression({
-			field: 'cronExpression',
-			expression: '1 2 3 * * *',
-		});
+		// All fields are user-provided literally — no filler.
+		const result = toCronExpression(
+			{
+				field: 'cronExpression',
+				expression: '1 2 3 * * *',
+			},
+			TEST_SEED,
+		);
 		expect(result).toEqual('1 2 3 * * *');
 	});
 
 	it('should return cron expression for seconds interval', () => {
-		const result = toCronExpression({
-			field: 'seconds',
-			secondsInterval: 10,
-		});
+		// Sub-minute schedules use `*/N`; no filler needed.
+		const result = toCronExpression(
+			{
+				field: 'seconds',
+				secondsInterval: 10,
+			},
+			TEST_SEED,
+		);
 		expect(result).toEqual('*/10 * * * * *');
 	});
 
 	it('should return cron expression for minutes interval', () => {
-		const result = toCronExpression({
-			field: 'minutes',
-			minutesInterval: 30,
-		});
-		expect(result).toEqual('30 */30 * * * *');
+		// sec=56 is filler; */30 comes from `minutesInterval`.
+		const result = toCronExpression(
+			{
+				field: 'minutes',
+				minutesInterval: 30,
+			},
+			TEST_SEED,
+		);
+		expect(result).toEqual('56 */30 * * * *');
 	});
 
 	it('should return cron expression for hours interval', () => {
-		const result = toCronExpression({
-			field: 'hours',
-			hoursInterval: 3,
-			triggerAtMinute: 22,
-		});
-		expect(result).toEqual('30 22 */3 * * *');
+		// sec=56 is filler; min=22 from `triggerAtMinute`; */3 from `hoursInterval`.
+		const result = toCronExpression(
+			{
+				field: 'hours',
+				hoursInterval: 3,
+				triggerAtMinute: 22,
+			},
+			TEST_SEED,
+		);
+		expect(result).toEqual('56 22 */3 * * *');
 
-		const result1 = toCronExpression({
-			field: 'hours',
-			hoursInterval: 3,
-		});
-		expect(result1).toEqual('30 30 */3 * * *');
+		// No `triggerAtMinute`, so min=19 is also filler.
+		const result1 = toCronExpression(
+			{
+				field: 'hours',
+				hoursInterval: 3,
+			},
+			TEST_SEED,
+		);
+		expect(result1).toEqual('56 19 */3 * * *');
+
+		const result2 = toCronExpression(
+			{
+				field: 'hours',
+				hoursInterval: 18,
+			},
+			TEST_SEED,
+		);
+		expect(result2).toEqual('56 19 * * * *');
 	});
 
 	it('should return cron expression for days interval', () => {
-		const result = toCronExpression({
-			field: 'days',
-			daysInterval: 4,
-			triggerAtMinute: 30,
-			triggerAtHour: 10,
-		});
-		expect(result).toEqual('30 30 10 * * *');
+		// sec=56 is filler; min=30 and hr=10 from `triggerAtMinute`/`triggerAtHour`.
+		const result = toCronExpression(
+			{
+				field: 'days',
+				daysInterval: 4,
+				triggerAtMinute: 30,
+				triggerAtHour: 10,
+			},
+			TEST_SEED,
+		);
+		expect(result).toEqual('56 30 10 * * *');
 
-		const result1 = toCronExpression({
-			field: 'days',
-			daysInterval: 4,
-		});
-		expect(result1).toEqual('30 30 12 * * *');
+		// Nothing pinned, so sec=56 / min=19 / hr=14 are all filler.
+		const result1 = toCronExpression(
+			{
+				field: 'days',
+				daysInterval: 4,
+			},
+			TEST_SEED,
+		);
+		expect(result1).toEqual('56 19 14 * * *');
 	});
 
 	it('should return cron expression for weeks interval', () => {
-		const result = toCronExpression({
-			field: 'weeks',
-			weeksInterval: 2,
-			triggerAtMinute: 0,
-			triggerAtHour: 9,
-			triggerAtDay: [1, 3, 5],
-		});
-		expect(result).toEqual('30 0 9 * * 1,3,5');
-		const result1 = toCronExpression({
-			field: 'weeks',
-			weeksInterval: 2,
-			triggerAtDay: [1, 3, 5],
-		});
-		expect(result1).toEqual('30 30 12 * * 1,3,5');
+		// sec=56 is filler; the rest come from `triggerAtMinute`/`triggerAtHour`/`triggerAtDay`.
+		const result = toCronExpression(
+			{
+				field: 'weeks',
+				weeksInterval: 2,
+				triggerAtMinute: 0,
+				triggerAtHour: 9,
+				triggerAtDay: [1, 3, 5],
+			},
+			TEST_SEED,
+		);
+		expect(result).toEqual('56 0 9 * * 1,3,5');
+		// Only `triggerAtDay` pinned, so sec=56 / min=19 / hr=14 are all filler.
+		const result1 = toCronExpression(
+			{
+				field: 'weeks',
+				weeksInterval: 2,
+				triggerAtDay: [1, 3, 5],
+			},
+			TEST_SEED,
+		);
+		expect(result1).toEqual('56 19 14 * * 1,3,5');
 	});
 
 	it('should return cron expression for months interval', () => {
-		const result = toCronExpression({
-			field: 'months',
-			monthsInterval: 3,
-			triggerAtMinute: 0,
-			triggerAtHour: 0,
-			triggerAtDayOfMonth: 1,
-		});
-		expect(result).toEqual('30 0 0 1 */3 *');
-		const result1 = toCronExpression({
-			field: 'months',
-			monthsInterval: 3,
-		});
-		expect(result1).toEqual('30 30 12 15 */3 *');
+		// sec=56 is filler; min/hr/dom come from triggerAt*.
+		const result = toCronExpression(
+			{
+				field: 'months',
+				monthsInterval: 3,
+				triggerAtMinute: 0,
+				triggerAtHour: 0,
+				triggerAtDayOfMonth: 1,
+			},
+			TEST_SEED,
+		);
+		expect(result).toEqual('56 0 0 1 */3 *');
+		// Nothing pinned, so sec=56 / min=19 / hr=14 / dom=22 are all filler.
+		const result1 = toCronExpression(
+			{
+				field: 'months',
+				monthsInterval: 3,
+			},
+			TEST_SEED,
+		);
+		expect(result1).toEqual('56 19 14 22 */3 *');
+	});
+
+	it('should keep `*/N` for month intervals that divide 12, and fire monthly otherwise', () => {
+		// Divisors of 12 keep their calendar-anchored cron unchanged.
+		for (const months of [1, 2, 3, 4, 6, 12]) {
+			expect(toCronExpression({ field: 'months', monthsInterval: months }, TEST_SEED)).toEqual(
+				`56 19 14 22 */${months} *`,
+			);
+		}
+		// Non-divisors fire every month; recurrenceCheck enforces the elapsed-months gap.
+		for (const months of [5, 7, 8, 13, 24]) {
+			expect(toCronExpression({ field: 'months', monthsInterval: months }, TEST_SEED)).toEqual(
+				'56 19 14 22 * *',
+			);
+		}
 	});
 });
 
@@ -158,7 +253,7 @@ describe('validateInterval', () => {
 			(_field, interval, expectedDescription) => {
 				try {
 					validateInterval(mockNode, 0, interval);
-					fail('Expected validateInterval to throw an error');
+					expect.fail('Expected validateInterval to throw an error');
 				} catch (error) {
 					expect(error.message).toBe('Invalid interval');
 					expect(error.description).toBe(expectedDescription);
@@ -175,6 +270,7 @@ describe('recurrenceCheck', () => {
 	});
 
 	it('should return false if intervalSize is falsey', () => {
+		mockMomentTz({ dayOfYear: 10 });
 		const result = recurrenceCheck(
 			{
 				activated: true,
@@ -188,18 +284,358 @@ describe('recurrenceCheck', () => {
 		expect(result).toBe(false);
 	});
 
-	it('should return true only once for a day cron', () => {
-		const recurrence: IRecurrenceRule = {
+	it('should return true on first execution when lastExecution is undefined', () => {
+		mockMomentTz({ dayOfYear: 100 });
+		const recurrenceRules: number[] = [];
+		const result = recurrenceCheck(
+			{ activated: true, index: 0, intervalSize: 3, typeInterval: 'days' },
+			recurrenceRules,
+			'UTC',
+		);
+		expect(result).toBe(true);
+		expect(recurrenceRules[0]).toBe(100);
+	});
+
+	it('should treat a persisted null (reset slot) as a first execution', () => {
+		mockMomentTz({ dayOfYear: 100 });
+		const recurrenceRules: Array<number | null> = [null];
+		const result = recurrenceCheck(
+			{ activated: true, index: 0, intervalSize: 3, typeInterval: 'days' },
+			recurrenceRules,
+			'UTC',
+		);
+		expect(result).toBe(true);
+		expect(recurrenceRules[0]).toBe(100);
+	});
+
+	it('should not trigger again on the same day', () => {
+		mockMomentTz({ dayOfYear: 100 });
+		const recurrenceRules: number[] = [];
+		recurrenceCheck(
+			{ activated: true, index: 0, intervalSize: 2, typeInterval: 'days' },
+			recurrenceRules,
+			'UTC',
+		);
+		const result = recurrenceCheck(
+			{ activated: true, index: 0, intervalSize: 2, typeInterval: 'days' },
+			recurrenceRules,
+			'UTC',
+		);
+		expect(result).toBe(false);
+	});
+
+	describe('hours', () => {
+		it('should trigger when exactly on time', () => {
+			mockMomentTz({ hour: 5 });
+			const recurrenceRules = [2]; // lastExecution = hour 2, interval = 3
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 3, typeInterval: 'hours' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(true);
+			expect(recurrenceRules[0]).toBe(5);
+		});
+
+		it('should not trigger before interval has elapsed', () => {
+			mockMomentTz({ hour: 4 });
+			const recurrenceRules = [2];
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 3, typeInterval: 'hours' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(false);
+		});
+
+		it('should recover after a missed execution', () => {
+			mockMomentTz({ hour: 8 });
+			const recurrenceRules = [2]; // missed hour 5, now at hour 8
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 3, typeInterval: 'hours' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(true);
+			expect(recurrenceRules[0]).toBe(8);
+		});
+
+		it('should handle wrap-around (e.g., 23 → 2)', () => {
+			mockMomentTz({ hour: 2 });
+			const recurrenceRules = [23]; // lastExecution = 23, interval = 3, expected = 2
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 3, typeInterval: 'hours' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(true);
+		});
+
+		it('should not trigger before interval on wrap-around', () => {
+			mockMomentTz({ hour: 0 });
+			const recurrenceRules = [23]; // only 1 hour elapsed, need 3
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 3, typeInterval: 'hours' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(false);
+		});
+	});
+
+	describe('days', () => {
+		it('should trigger when exactly on time', () => {
+			mockMomentTz({ dayOfYear: 24 });
+			const recurrenceRules = [21]; // lastExecution = day 21, interval = 3
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 3, typeInterval: 'days' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(true);
+			expect(recurrenceRules[0]).toBe(24);
+		});
+
+		it('should not trigger before interval has elapsed', () => {
+			mockMomentTz({ dayOfYear: 23 });
+			const recurrenceRules = [21];
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 3, typeInterval: 'days' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(false);
+		});
+
+		it('should recover after a missed execution', () => {
+			mockMomentTz({ dayOfYear: 30 });
+			const recurrenceRules = [21]; // missed day 24, now at day 30
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 3, typeInterval: 'days' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(true);
+			expect(recurrenceRules[0]).toBe(30);
+		});
+
+		it('should handle wrap-around at year boundary', () => {
+			mockMomentTz({ dayOfYear: 3 });
+			const recurrenceRules = [363]; // interval = 5, elapsed = (3-363+365)%365 = 5
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 5, typeInterval: 'days' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(true);
+		});
+
+		it('should not trigger before interval on wrap-around', () => {
+			mockMomentTz({ dayOfYear: 2 });
+			const recurrenceRules = [363]; // elapsed = (2-363+365)%365 = 4, need 5
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 5, typeInterval: 'days' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(false);
+		});
+
+		it('should reproduce the exact bug from NODE-4831 (Indeed scenario)', () => {
+			// Workflow set to "every 3 days", last fired on day 21, missed day 24
+			// Now on day 25 — should fire but currently doesn't
+			mockMomentTz({ dayOfYear: 25 });
+			const recurrenceRules = [21];
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 3, typeInterval: 'days' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(true);
+		});
+	});
+
+	describe('weeks', () => {
+		it('should trigger when exactly on time', () => {
+			mockMomentTz({ week: 8 });
+			const recurrenceRules = [6]; // lastExecution = week 6, interval = 2
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 2, typeInterval: 'weeks' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(true);
+			expect(recurrenceRules[0]).toBe(8);
+		});
+
+		it('should not trigger before interval has elapsed', () => {
+			mockMomentTz({ week: 7 });
+			const recurrenceRules = [6];
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 2, typeInterval: 'weeks' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(false);
+		});
+
+		it('should recover after a missed execution', () => {
+			mockMomentTz({ week: 10 });
+			const recurrenceRules = [6]; // missed week 8, now at week 10
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 2, typeInterval: 'weeks' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(true);
+			expect(recurrenceRules[0]).toBe(10);
+		});
+
+		it('should allow re-trigger on multiple days in the same week', () => {
+			mockMomentTz({ week: 10 });
+			const recurrenceRules = [10]; // same week as lastExecution
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 2, typeInterval: 'weeks' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(true);
+		});
+
+		it('should handle wrap-around at year boundary', () => {
+			mockMomentTz({ week: 2 });
+			const recurrenceRules = [50]; // elapsed = (2-50+52)%52 = 4, interval = 3
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 3, typeInterval: 'weeks' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(true);
+		});
+	});
+
+	describe('months', () => {
+		it('should trigger when exactly on time', () => {
+			mockMomentTz({ month: 5 });
+			const recurrenceRules = [2]; // lastExecution = month 2, interval = 3
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 3, typeInterval: 'months' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(true);
+			expect(recurrenceRules[0]).toBe(5);
+		});
+
+		it('should not trigger before interval has elapsed', () => {
+			mockMomentTz({ month: 3 });
+			const recurrenceRules = [2];
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 3, typeInterval: 'months' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(false);
+		});
+
+		it('should recover after a missed execution', () => {
+			mockMomentTz({ month: 8 });
+			const recurrenceRules = [2]; // missed month 5, now at month 8
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 3, typeInterval: 'months' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(true);
+			expect(recurrenceRules[0]).toBe(8);
+		});
+
+		it('should handle wrap-around across the year boundary (month 10 → month 1)', () => {
+			mockMomentTz({ month: 1, year: 1 }); // absolute month = 13
+			const recurrenceRules = [10]; // last fired month 10 of year 0; elapsed = 13-10 = 3
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 3, typeInterval: 'months' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(true);
+		});
+
+		it('should not trigger before interval across the year boundary', () => {
+			mockMomentTz({ month: 0, year: 1 }); // absolute month = 12
+			const recurrenceRules = [10]; // last fired month 10 of year 0; elapsed = 12-10 = 2, need 3
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 3, typeInterval: 'months' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(false);
+		});
+
+		it('should keep firing "every 12 months" after the first execution', () => {
+			const recurrenceRules: number[] = [];
+			const rule = {
+				activated: true,
+				index: 0,
+				intervalSize: 12,
+				typeInterval: 'months',
+			} as const;
+
+			mockMomentTz({ month: 0, year: 1 }); // first January
+			expect(recurrenceCheck(rule, recurrenceRules, 'UTC')).toBe(true);
+
+			mockMomentTz({ month: 11, year: 1 }); // 11 months later, not yet due
+			expect(recurrenceCheck(rule, recurrenceRules, 'UTC')).toBe(false);
+
+			mockMomentTz({ month: 0, year: 2 }); // 12 months later, next January
+			expect(recurrenceCheck(rule, recurrenceRules, 'UTC')).toBe(true);
+		});
+	});
+
+	describe('schedule change recovery (NODE-4625)', () => {
+		it('should recover when interval is changed and lastExecution is stale', () => {
+			// Was "every 5 days", changed to "every 3 days". lastExecution=day 21 from old schedule.
+			// Now on day 25 — enough time has passed for the new 3-day interval.
+			mockMomentTz({ dayOfYear: 25 });
+			const recurrenceRules = [21];
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 3, typeInterval: 'days' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(true);
+			expect(recurrenceRules[0]).toBe(25);
+		});
+	});
+
+	describe('stale value left by a type change from days to hours', () => {
+		const hoursRule = {
 			activated: true,
 			index: 0,
-			intervalSize: 2,
-			typeInterval: 'days',
-		};
-		const recurrenceRules: number[] = [];
-		const result1 = recurrenceCheck(recurrence, recurrenceRules, 'UTC');
-		expect(result1).toBe(true);
-		const result2 = recurrenceCheck(recurrence, recurrenceRules, 'UTC');
-		expect(result2).toBe(false);
+			intervalSize: 3,
+			typeInterval: 'hours',
+		} as const;
+
+		it('never fires when a day-of-year value lingers under an hours rule', () => {
+			// staticData holds a day-of-year (200) at index 0 from a previous "every 3 days"
+			// schedule. Read as an hour, it blocks the trigger across every hour of the day.
+			const recurrenceRules = [200];
+			let everFires = false;
+			for (let h = 0; h < 24; h++) {
+				mockMomentTz({ hour: h });
+				if (recurrenceCheck(hoursRule, [...recurrenceRules], 'UTC')) everFires = true;
+			}
+			expect(everFires).toBe(false);
+		});
+
+		it('fires again once resetStaleRecurrence clears the stale value', () => {
+			const recurrenceRules: number[] = [200];
+			resetStaleRecurrence({ recurrenceRules, recurrenceRuleSignatures: [] }, [
+				{ recurrence: hoursRule },
+			]);
+			mockMomentTz({ hour: 0 });
+			expect(recurrenceCheck(hoursRule, recurrenceRules, 'UTC')).toBe(true);
+		});
 	});
 });
 
@@ -325,5 +761,86 @@ describe('intervalToRecurrence', () => {
 			intervalSize: 3,
 			typeInterval: 'months',
 		});
+	});
+});
+
+describe('resetStaleRecurrence', () => {
+	const daysRule = {
+		activated: true,
+		index: 0,
+		intervalSize: 3,
+		typeInterval: 'days',
+	} as const;
+
+	it('keeps an in-range value and backfills the signature on upgrade', () => {
+		// No signature yet (pre-upgrade) + a value still valid for its type: the
+		// schedule is healthy, so keep its cadence and only record the signature.
+		const staticData = { recurrenceRules: [200], recurrenceRuleSignatures: [] as string[] };
+		resetStaleRecurrence(staticData, [{ recurrence: daysRule }]);
+		expect(staticData.recurrenceRules[0]).toBe(200);
+		expect(staticData.recurrenceRuleSignatures[0]).toBe('days:3');
+	});
+
+	it('clears an out-of-range value and records the signature on upgrade', () => {
+		// No signature yet + a value impossible for the type (200 as an hour): this
+		// is the stale wrong-unit state that blocks the trigger, so clear it.
+		const staticData = { recurrenceRules: [200], recurrenceRuleSignatures: [] as string[] };
+		resetStaleRecurrence(staticData, [
+			{ recurrence: { activated: true, index: 0, intervalSize: 3, typeInterval: 'hours' } },
+		]);
+		expect(staticData.recurrenceRules[0]).toBeUndefined();
+		expect(staticData.recurrenceRuleSignatures[0]).toBe('hours:3');
+	});
+
+	it('clears a months value on upgrade (absolute-month encoding is new)', () => {
+		// Old 0-11 month index is meaningless under the new absolute count.
+		const staticData = { recurrenceRules: [5], recurrenceRuleSignatures: [] as string[] };
+		resetStaleRecurrence(staticData, [
+			{ recurrence: { activated: true, index: 0, intervalSize: 2, typeInterval: 'months' } },
+		]);
+		expect(staticData.recurrenceRules[0]).toBeUndefined();
+		expect(staticData.recurrenceRuleSignatures[0]).toBe('months:2');
+	});
+
+	it('leaves the stored value intact when the signature is unchanged', () => {
+		const staticData = { recurrenceRules: [21], recurrenceRuleSignatures: ['days:3'] };
+		resetStaleRecurrence(staticData, [{ recurrence: daysRule }]);
+		expect(staticData.recurrenceRules[0]).toBe(21);
+		expect(staticData.recurrenceRuleSignatures[0]).toBe('days:3');
+	});
+
+	it('clears the stored value when the interval type changes', () => {
+		const staticData = { recurrenceRules: [200], recurrenceRuleSignatures: ['days:3'] };
+		resetStaleRecurrence(staticData, [
+			{ recurrence: { activated: true, index: 0, intervalSize: 3, typeInterval: 'hours' } },
+		]);
+		expect(staticData.recurrenceRules[0]).toBeUndefined();
+		expect(staticData.recurrenceRuleSignatures[0]).toBe('hours:3');
+	});
+
+	it('clears the stored value when the interval size changes', () => {
+		const staticData = { recurrenceRules: [21], recurrenceRuleSignatures: ['days:3'] };
+		resetStaleRecurrence(staticData, [
+			{ recurrence: { activated: true, index: 0, intervalSize: 5, typeInterval: 'days' } },
+		]);
+		expect(staticData.recurrenceRules[0]).toBeUndefined();
+		expect(staticData.recurrenceRuleSignatures[0]).toBe('days:5');
+	});
+
+	it('clears value and signature when a rule becomes non-recurring', () => {
+		const staticData = { recurrenceRules: [21], recurrenceRuleSignatures: ['days:3'] };
+		resetStaleRecurrence(staticData, [{ recurrence: { activated: false } }]);
+		expect(staticData.recurrenceRules[0]).toBeUndefined();
+		expect(staticData.recurrenceRuleSignatures[0]).toBeUndefined();
+	});
+
+	it('trims entries left by a previous config with more intervals', () => {
+		const staticData = {
+			recurrenceRules: [21, 5, 9],
+			recurrenceRuleSignatures: ['days:3', 'hours:2', 'weeks:4'],
+		};
+		resetStaleRecurrence(staticData, [{ recurrence: daysRule }]);
+		expect(staticData.recurrenceRules).toEqual([21]);
+		expect(staticData.recurrenceRuleSignatures).toEqual(['days:3']);
 	});
 });

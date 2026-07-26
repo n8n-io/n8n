@@ -8,11 +8,9 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
-import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import {
 	DUPLICATE_MODAL_KEY,
 	EXECUTE_WORKFLOW_NODE_TYPE,
@@ -24,6 +22,7 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import type { IWorkflowToShare } from '@/Interface';
 import { saveAs } from 'file-saver';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { CommandGroup, CommandBarItem } from '../types';
 import uniqBy from 'lodash/uniqBy';
 import { nodeViewEventBus } from '@/app/event-bus';
@@ -33,7 +32,6 @@ const ITEM_ID = {
 	OPEN_CREDENTIAL: 'open-credential',
 	OPEN_SUB_WORKFLOW: 'open-sub-workflow',
 	TEST_WORKFLOW: 'test-workflow',
-	SAVE_WORKFLOW: 'save-workflow',
 	SELECT_ALL: 'select-all',
 	OPEN_WORKFLOW_SETTINGS: 'open-workflow-settings',
 	TIDY_UP_WORKFLOW: 'tidy-up-workflow',
@@ -52,27 +50,28 @@ const ITEM_ID = {
 
 export function useWorkflowCommands(): CommandGroup {
 	const i18n = useI18n();
-	const { editableWorkflow } = useCanvasOperations();
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
 	const tagsStore = useTagsStore();
 	const workflowsStore = useWorkflowsStore();
 	const sourceControlStore = useSourceControlStore();
+	const collaborationStore = useCollaborationStore();
+
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const router = useRouter();
 
 	const runWorkflow = useRunWorkflow({ router });
 
-	const workflowHelpers = useWorkflowHelpers();
 	const telemetry = useTelemetry();
-	const workflowSaving = useWorkflowSaving({ router });
 
-	const isReadOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
-	const isWorkflowSaving = computed(() => uiStore.isActionActive.workflowSaving);
-	const isArchived = computed(() => workflowsStore.workflow.isArchived);
+	const isReadOnly = computed(
+		() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
+	);
+	const isArchived = computed(() => workflowDocumentStore.value.isArchived);
 
 	const workflowPermissions = computed(
-		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,
+		() => getResourcePermissions(workflowDocumentStore.value.scopes).workflow,
 	);
 
 	const hasPermission = (permission: keyof typeof workflowPermissions.value) =>
@@ -81,7 +80,9 @@ export function useWorkflowCommands(): CommandGroup {
 
 	const credentialCommands = computed<CommandBarItem[]>(() => {
 		const credentials = uniqBy(
-			editableWorkflow.value.nodes.map((node) => Object.values(node.credentials ?? {})).flat(),
+			workflowDocumentStore.value.allNodes
+				.map((node) => Object.values(node.credentials ?? {}))
+				.flat(),
 			(cred) => cred.id,
 		);
 		if (credentials.length === 0) {
@@ -116,37 +117,6 @@ export function useWorkflowCommands(): CommandGroup {
 	const canvasActions = computed<CommandBarItem[]>(() => [
 		...(hasPermission('update') && !isArchived.value
 			? [
-					...(!isWorkflowSaving.value
-						? [
-								{
-									id: ITEM_ID.SAVE_WORKFLOW,
-									title: {
-										component: CommandBarItemTitle,
-										props: {
-											title: i18n.baseText('commandBar.workflow.save'),
-											shortcut: {
-												metaKey: true,
-												keys: ['s'],
-											},
-										},
-									},
-									keywords: [i18n.baseText('commandBar.workflow.save')],
-									section: i18n.baseText('commandBar.sections.workflow'),
-									handler: async () => {
-										const saved = await workflowSaving.saveCurrentWorkflow();
-										if (saved) {
-											canvasEventBus.emit('saved:workflow');
-										}
-									},
-									icon: {
-										component: N8nIcon,
-										props: {
-											icon: 'save',
-										},
-									},
-								},
-							]
-						: []),
 					{
 						id: ITEM_ID.PUBLISH_WORKFLOW,
 						title: i18n.baseText('commandBar.workflow.publish'),
@@ -311,8 +281,10 @@ export function useWorkflowCommands(): CommandGroup {
 								name: DUPLICATE_MODAL_KEY,
 								data: {
 									id: workflowsStore.workflowId,
-									name: editableWorkflow.value.name,
-									tags: editableWorkflow.value.tags,
+									name: workflowDocumentStore.value.name,
+									tags: workflowDocumentStore.value.tags,
+									// Place the copy in the source workflow's folder
+									parentFolderId: workflowDocumentStore.value.parentFolder?.id,
 								},
 							});
 						},
@@ -328,7 +300,7 @@ export function useWorkflowCommands(): CommandGroup {
 	]);
 
 	const subworkflowCommands = computed<CommandBarItem[]>(() => {
-		const subworkflows = editableWorkflow.value.nodes
+		const subworkflows = workflowDocumentStore.value.allNodes
 			.filter((node) => node.type === EXECUTE_WORKFLOW_NODE_TYPE)
 			.map((node) => node?.parameters?.workflowId)
 			.filter(
@@ -353,7 +325,7 @@ export function useWorkflowCommands(): CommandGroup {
 						handler: () => {
 							const { href } = router.resolve({
 								name: VIEWS.WORKFLOW,
-								params: { name: workflow.id },
+								params: { workflowId: workflow.id },
 							});
 							window.open(href, '_blank', 'noreferrer');
 						},
@@ -376,7 +348,7 @@ export function useWorkflowCommands(): CommandGroup {
 				title: i18n.baseText('commandBar.workflow.download'),
 				section: i18n.baseText('commandBar.sections.workflow'),
 				handler: async () => {
-					const workflowData = await workflowHelpers.getWorkflowDataToSave();
+					const workflowData = workflowDocumentStore.value.serialize();
 					const { tags, ...data } = workflowData;
 					const exportData: IWorkflowToShare = {
 						...data,
@@ -391,7 +363,7 @@ export function useWorkflowCommands(): CommandGroup {
 					const blob = new Blob([JSON.stringify(exportData, null, 2)], {
 						type: 'application/json;charset=utf-8',
 					});
-					let name = editableWorkflow.value.name || 'unsaved_workflow';
+					let name = workflowDocumentStore.value.name || 'unsaved_workflow';
 					name = name.replace(/[^a-z0-9]/gi, '_');
 					telemetry.track('User exported workflow', { workflow_id: workflowData.id });
 					saveAs(blob, name + '.json');
@@ -411,6 +383,10 @@ export function useWorkflowCommands(): CommandGroup {
 	});
 
 	const importCommands = computed<CommandBarItem[]>(() => {
+		if (!hasPermission('update') || isArchived.value) {
+			return [];
+		}
+
 		return [
 			{
 				id: ITEM_ID.IMPORT_WORKFLOW_FROM_URL,

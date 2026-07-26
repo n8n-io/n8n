@@ -1,0 +1,7 @@
+// Pulls element-plus's default slider styles into the bundle. Without this
+// the runway, button, and bar render at 0px height because the el-slider
+// component CSS isn't auto-imported elsewhere in the design system.
+//
+// Component-level brand-token overrides (e.g. setting --el-slider-main-bg-color
+// to --color--primary) live wherever <ElSlider> is used.
+@use 'element-plus/theme-chalk/src/slider';

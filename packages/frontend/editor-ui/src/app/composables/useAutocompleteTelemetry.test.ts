@@ -14,11 +14,14 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: trackSpy })),
 }));
 
+const mockNdvStoreValue = {
+	activeNode: { type: 'n8n-nodes-base.test' },
+	setAutocompleteOnboarded: setAutocompleteOnboardedSpy,
+};
+
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
-	useNDVStore: vi.fn(() => ({
-		activeNode: { type: 'n8n-nodes-base.test' },
-		setAutocompleteOnboarded: setAutocompleteOnboardedSpy,
-	})),
+	useNDVStore: vi.fn(() => mockNdvStoreValue),
+	injectNDVStore: vi.fn(() => ({ value: mockNdvStoreValue })),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -28,12 +31,15 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 describe('useAutocompleteTelemetry', () => {
+	const editors: EditorView[] = [];
+
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		editors.splice(0).forEach((editor) => editor.destroy());
 	});
 
 	const getEditor = (defaultDoc = '') => {
@@ -43,8 +49,10 @@ describe('useAutocompleteTelemetry', () => {
 			extensions: [extensionCompartment.of([])],
 		});
 		const editorRoot = document.createElement('div');
+		const editor = new EditorView({ parent: editorRoot, state });
+		editors.push(editor);
 		return {
-			editor: new EditorView({ parent: editorRoot, state }),
+			editor,
 			editorRoot,
 			compartment: extensionCompartment,
 		};

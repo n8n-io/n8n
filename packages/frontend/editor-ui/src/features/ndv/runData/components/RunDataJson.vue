@@ -7,7 +7,7 @@ import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { isString } from '@/app/utils/typeGuards';
 import { shorten } from '@/app/utils/typesUtils';
 import type { INodeUi } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/app/utils/mappingUtils';
 import { nonExistingJsonPath } from '@/app/constants';
@@ -16,6 +16,7 @@ import TextWithHighlights from './TextWithHighlights.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useElementSize } from '@vueuse/core';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const LazyRunDataJsonActions = defineAsyncComponent(
 	async () => await import('@/features/ndv/runData/components/RunDataJsonActions.vue'),
@@ -42,7 +43,8 @@ const props = withDefaults(
 	},
 );
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
@@ -56,7 +58,7 @@ const { height } = useElementSize(jsonDataContainer);
 
 const jsonData = computed(() => executionDataToJson(props.inputData));
 
-const highlight = computed(() => ndvStore.highlightDraggables);
+const highlight = computed(() => ndvStore.value.highlightDraggables);
 
 const getShortKey = (el: HTMLElement) => {
 	if (!el) {
@@ -73,29 +75,30 @@ const getJsonParameterPath = (path: string) => {
 		nodeName: props.node.name,
 		distanceFromActive: props.distanceFromActive,
 		path: subPath,
+		binaryMode: workflowDocumentStore?.value?.settings?.binaryMode,
 	});
 };
 
-const canDraggableDrop = computed(() => ndvStore.canDraggableDrop);
-const draggableStickyPosition = computed(() => ndvStore.draggableStickyPos);
+const canDraggableDrop = computed(() => ndvStore.value.canDraggableDrop);
+const draggableStickyPosition = computed(() => ndvStore.value.draggableStickyPos);
 
 const onDragStart = (el: HTMLElement, data?: string) => {
 	if (el?.dataset.path) {
 		draggingPath.value = el.dataset.path;
 	}
 
-	ndvStore.draggableStartDragging({
+	ndvStore.value.draggableStartDragging({
 		type: 'mapping',
 		data: data ?? '',
 		dimensions: el?.getBoundingClientRect() ?? null,
 	});
-	ndvStore.resetMappingTelemetry();
+	ndvStore.value.resetMappingTelemetry();
 };
 
 const onDragEnd = (el: HTMLElement) => {
-	ndvStore.draggableStopDragging();
+	ndvStore.value.draggableStopDragging();
 	draggingPath.value = null;
-	const mappingTelemetry = ndvStore.mappingTelemetry;
+	const mappingTelemetry = ndvStore.value.mappingTelemetry;
 	const telemetryPayload = {
 		src_node_type: props.node.type,
 		src_field_name: el.dataset.name ?? '',

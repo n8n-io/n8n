@@ -22,6 +22,7 @@ export class GoogleTasks implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Tasks API',
+		schemaPath: 'Google/Task',
 		defaults: {
 			name: 'Google Tasks',
 		},

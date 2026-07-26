@@ -21,7 +21,7 @@ import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
 mockInstance(License, {
-	getUsersLimit: jest.fn().mockReturnValue(-1),
+	getUsersLimit: vi.fn().mockReturnValue(-1),
 });
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
@@ -46,6 +46,35 @@ describe('With license unlimited quota:users', () => {
 		test('should fail due to invalid API Key', async () => {
 			const authOwnerAgent = testServer.publicApiAgentWithApiKey('invalid-key');
 			await authOwnerAgent.get('/users').expect(401);
+		});
+
+		test('should allow global user list for a member API key with user:list scope', async () => {
+			const member = await createMemberWithApiKey();
+			await createUser();
+
+			const response = await testServer.publicApiAgentFor(member).get('/users').expect(200);
+
+			expect(response.body.data.length).toBe(2);
+		});
+
+		test('should allow member to list users of a project they belong to', async () => {
+			const [member, otherMember] = await Promise.all([createMemberWithApiKey(), createMember()]);
+			const project = await createTeamProject();
+			await Promise.all([
+				linkUserToProject(member, project, 'project:viewer'),
+				linkUserToProject(otherMember, project, 'project:viewer'),
+			]);
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.get('/users')
+				.query({ projectId: project.id })
+				.expect(200);
+
+			expect(response.body.data.length).toBe(2);
+			expect(response.body.data.map((u: User) => u.id)).toEqual(
+				expect.arrayContaining([member.id, otherMember.id]),
+			);
 		});
 
 		test('should return all users', async () => {
@@ -84,6 +113,38 @@ describe('With license unlimited quota:users', () => {
 				expect(createdAt).toBeDefined();
 				expect(updatedAt).toBeDefined();
 			}
+		});
+
+		it('should return 404 when caller has no access to the project', async () => {
+			const [member, otherMember] = await Promise.all([createMemberWithApiKey(), createMember()]);
+			const project = await createTeamProject();
+			await linkUserToProject(otherMember, project, 'project:viewer');
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.get('/users')
+				.query({ projectId: project.id });
+
+			expect(response.status).toBe(404);
+		});
+
+		it('should return project members when caller belongs to the project', async () => {
+			const [member, otherMember] = await Promise.all([createMemberWithApiKey(), createMember()]);
+			const project = await createTeamProject();
+			await Promise.all([
+				linkUserToProject(member, project, 'project:viewer'),
+				linkUserToProject(otherMember, project, 'project:viewer'),
+			]);
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.get('/users')
+				.query({ projectId: project.id });
+
+			expect(response.status).toBe(200);
+			expect(response.body.data.map((u: User) => u.id)).toEqual(
+				expect.arrayContaining([member.id, otherMember.id]),
+			);
 		});
 
 		it('should return users filtered by project ID', async () => {
@@ -230,7 +291,7 @@ describe('With license without quota:users', () => {
 	let authOwnerAgent: SuperAgentTest;
 
 	beforeEach(async () => {
-		mockInstance(License, { getUsersLimit: jest.fn().mockReturnValue(null) });
+		mockInstance(License, { getUsersLimit: vi.fn().mockReturnValue(null) });
 
 		const owner = await createOwnerWithApiKey();
 		authOwnerAgent = testServer.publicApiAgentFor(owner);

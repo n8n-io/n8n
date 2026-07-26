@@ -1,5 +1,10 @@
 import { ChatCohere } from '@langchain/cohere';
 import type { LLMResult } from '@langchain/core/outputs';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -7,10 +12,7 @@ import type {
 	SupplyData,
 } from 'n8n-workflow';
 
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 
 export function tokensUsageParser(result: LLMResult): {
 	completionTokens: number;
@@ -121,6 +123,10 @@ export class LmChatCohere implements INodeType {
 					},
 				},
 				default: 'command-a-03-2025',
+				builderHint: {
+					propertyHint:
+						'Default to the latest Cohere Command A model (command-a-03-2025). Avoid command-r and command-light legacy variants.',
+				},
 			},
 			{
 				displayName: 'Options',
@@ -171,7 +177,7 @@ export class LmChatCohere implements INodeType {
 		});
 
 		return {
-			response: model,
+			response: wrapChatModelMessageInput(model),
 		};
 	}
 }

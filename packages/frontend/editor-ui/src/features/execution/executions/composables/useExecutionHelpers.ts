@@ -78,7 +78,7 @@ export function useExecutionHelpers() {
 	function openExecutionInNewTab(executionId: string, workflowId: string): void {
 		const route = router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
-			params: { name: workflowId, executionId },
+			params: { workflowId, executionId },
 		});
 
 		window.open(route.href, '_blank');
@@ -95,10 +95,13 @@ export function useExecutionHelpers() {
 
 		const { workflowId, executionId } = info;
 
+		// Rendered as a real `<a href target="_blank">`, so the URL must include the
+		// router base (N8N_PATH). Use `.href` (base-included), not `.fullPath`, else the
+		// base is dropped and the link 404s under a sub-path (cf. openExecutionInNewTab).
 		return router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
-			params: { name: workflowId, executionId },
-		}).fullPath;
+			params: { workflowId, executionId },
+		}).href;
 	}
 
 	function trackOpeningRelatedExecution(

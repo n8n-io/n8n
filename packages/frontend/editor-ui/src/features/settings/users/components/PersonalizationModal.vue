@@ -79,6 +79,7 @@ import {
 	REPORTED_SOURCE_EVENT,
 	REPORTED_SOURCE_OTHER,
 	REPORTED_SOURCE_OTHER_KEY,
+	REPORTED_SOURCE_LLM,
 } from '../users.constants';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
 import { useToast } from '@/app/composables/useToast';
@@ -519,6 +520,10 @@ const survey = computed<IFormInputs>(
 						{
 							label: 'YouTube',
 							value: REPORTED_SOURCE_YOUTUBE,
+						},
+						{
+							label: 'ChatGPT / LLM',
+							value: REPORTED_SOURCE_LLM,
 						},
 						{
 							label: i18n.baseText('personalizationModal.friendWordOfMouth'),

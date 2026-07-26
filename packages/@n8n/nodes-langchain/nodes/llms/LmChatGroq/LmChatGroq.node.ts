@@ -1,17 +1,17 @@
 import { ChatGroq } from '@langchain/groq';
 import {
+	getProxyAgent,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
+import {
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { getProxyAgent } from '@utils/httpProxyAgent';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatGroq implements INodeType {
 	description: INodeTypeDescription = {
@@ -101,6 +101,10 @@ export class LmChatGroq implements INodeType {
 				description:
 					'The model which will generate the completion. <a href="https://console.groq.com/docs/models">Learn more</a>.',
 				default: 'llama3-8b-8192',
+				builderHint: {
+					propertyHint:
+						'Default to a flagship model on Groq (openai/gpt-oss-120b, llama-3.3-70b-versatile, or moonshotai/kimi-k2-instruct-0905). Avoid the legacy llama3-8b-8192 default and older llama3/llama-2 variants.',
+				},
 			},
 			{
 				displayName: 'Options',

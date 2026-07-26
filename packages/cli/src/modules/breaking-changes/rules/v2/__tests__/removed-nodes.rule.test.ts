@@ -6,7 +6,7 @@ describe('RemovedNodesRule', () => {
 	let rule: RemovedNodesRule;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		rule = new RemovedNodesRule();
 	});
 

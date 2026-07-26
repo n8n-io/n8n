@@ -7,10 +7,18 @@ import ApiKeyEditModal from './ApiKeyCreateOrEditModal.vue';
 import userEvent from '@testing-library/user-event';
 
 import { useApiKeysStore } from '../apiKeys.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { DateTime } from 'luxon';
 import type { ApiKeyWithRawValue } from '@n8n/api-types';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { createMockEnterpriseSettings } from '@/__tests__/mocks';
+
+vi.mock('@/app/composables/useTelemetry', () => {
+	const track = vi.fn();
+	return {
+		useTelemetry: () => ({ track }),
+	};
+});
 
 const renderComponent = createComponentRenderer(ApiKeyEditModal, {
 	pinia: createTestingPinia({
@@ -33,15 +41,26 @@ const testApiKey: ApiKeyWithRawValue = {
 	rawApiKey: '123456',
 	expiresAt: 0,
 	scopes: ['user:create', 'user:list'],
+	lastUsedAt: null,
+	owner: {
+		id: 'u1',
+		firstName: 'Test',
+		lastName: 'User',
+		email: 'test@n8n.io',
+	},
 };
 
 const apiKeysStore = mockedStore(useApiKeysStore);
-const settingsStore = mockedStore(useSettingsStore);
+const usersStore = mockedStore(useUsersStore);
+const uiStore = mockedStore(useUIStore);
 
 describe('ApiKeyCreateOrEditModal', () => {
 	beforeEach(() => {
 		apiKeysStore.availableScopes = ['user:create', 'user:list'];
-		settingsStore.settings.enterprise = createMockEnterpriseSettings({ apiKeyScopes: false });
+		// Default: current user IS the owner of the test key (no read-only).
+		usersStore.currentUserId = 'u1';
+		// @ts-expect-error: replacing a computed for the test
+		usersStore.currentUser = { id: 'u1' };
 	});
 
 	afterEach(() => {
@@ -70,7 +89,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		await userEvent.click(saveButton);
 
-		expect(getByText('API Key Created')).toBeInTheDocument();
+		expect(getByText('API key created successfully')).toBeInTheDocument();
 
 		expect(getByText('Done')).toBeInTheDocument();
 
@@ -78,9 +97,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
 
-		expect(getByText('Click to copy')).toBeInTheDocument();
-
-		expect(getByText('new api key')).toBeInTheDocument();
+		expect(getByText('123456')).toBeInTheDocument();
 	});
 
 	test('should allow creating API key with custom expiration', async () => {
@@ -93,9 +110,16 @@ describe('ApiKeyCreateOrEditModal', () => {
 			rawApiKey: '***456',
 			expiresAt: 0,
 			scopes: ['user:create', 'user:list'],
+			lastUsedAt: null,
+			owner: {
+				id: 'u1',
+				firstName: 'Test',
+				lastName: 'User',
+				email: 'test@n8n.io',
+			},
 		});
 
-		const { getByText, getByPlaceholderText, getByTestId } = renderComponent({
+		const { getByText, getAllByText, getByPlaceholderText, getByTestId } = renderComponent({
 			props: {
 				mode: 'new',
 			},
@@ -116,11 +140,14 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		await userEvent.click(expirationSelect);
 
-		const customOption = getByText('Custom');
+		// 'Custom' also exists as a scopes radio option, so scope the query to the dropdown
+		const customOption = getAllByText('Custom').find((element) =>
+			element.closest('.el-select-dropdown__item'),
+		);
 
 		expect(customOption).toBeInTheDocument();
 
-		await userEvent.click(customOption);
+		await userEvent.click(customOption as HTMLElement);
 
 		const customExpirationInput = getByPlaceholderText('yyyy-mm-dd');
 
@@ -132,17 +159,13 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		expect(getByText('***456')).toBeInTheDocument();
 
-		expect(getByText('API Key Created')).toBeInTheDocument();
+		expect(getByText('API key created successfully')).toBeInTheDocument();
 
 		expect(getByText('Done')).toBeInTheDocument();
 
 		expect(
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
-
-		expect(getByText('Click to copy')).toBeInTheDocument();
-
-		expect(getByText('new api key')).toBeInTheDocument();
 	});
 
 	test('should allow creating API key with no expiration', async () => {
@@ -169,7 +192,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		await userEvent.click(expirationSelect);
 
-		const noExpirationOption = getByText('No Expiration');
+		const noExpirationOption = getByText('Never');
 
 		expect(noExpirationOption).toBeInTheDocument();
 
@@ -177,7 +200,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		await userEvent.click(saveButton);
 
-		expect(getByText('API Key Created')).toBeInTheDocument();
+		expect(getByText('API key created successfully')).toBeInTheDocument();
 
 		expect(getByText('Done')).toBeInTheDocument();
 
@@ -185,17 +208,13 @@ describe('ApiKeyCreateOrEditModal', () => {
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
 
-		expect(getByText('Click to copy')).toBeInTheDocument();
-
-		expect(getByText('new api key')).toBeInTheDocument();
+		expect(getByText('123456')).toBeInTheDocument();
 	});
 
-	test('should allow creating API key with scopes when feat:apiKeyScopes is enabled', async () => {
-		settingsStore.settings.enterprise = createMockEnterpriseSettings({ apiKeyScopes: true });
-
+	test('should allow creating API key with scopes pre-selected', async () => {
 		apiKeysStore.createApiKey.mockResolvedValue(testApiKey);
 
-		const { getByText, getByPlaceholderText, getByTestId, getAllByText } = renderComponent({
+		const { getByText, getByPlaceholderText, getByTestId } = renderComponent({
 			props: {
 				mode: 'new',
 			},
@@ -207,30 +226,18 @@ describe('ApiKeyCreateOrEditModal', () => {
 		const inputLabel = getByPlaceholderText('e.g Internal Project');
 		const saveButton = getByText('Save');
 
-		const scopesSelect = getByTestId('scopes-select');
-
 		expect(inputLabel).toBeInTheDocument();
-		expect(scopesSelect).toBeInTheDocument();
+		expect(getByTestId('api-key-scopes')).toBeInTheDocument();
 		expect(saveButton).toBeInTheDocument();
+
+		// All available scopes should be pre-selected for new keys
+		await retry(() => expect(getByTestId('scopes-mode-all')).toBeChecked());
 
 		await userEvent.type(inputLabel, 'new label');
 
-		await userEvent.click(scopesSelect);
-
-		const userCreateScope = getByText('user:create');
-
-		expect(userCreateScope).toBeInTheDocument();
-
-		await userEvent.click(userCreateScope);
-
-		const [userCreateTag, userCreateSelectOption] = getAllByText('user:create');
-
-		expect(userCreateTag).toBeInTheDocument();
-		expect(userCreateSelectOption).toBeInTheDocument();
-
 		await userEvent.click(saveButton);
 
-		expect(getByText('API Key Created')).toBeInTheDocument();
+		expect(getByText('API key created successfully')).toBeInTheDocument();
 
 		expect(getByText('Done')).toBeInTheDocument();
 
@@ -238,66 +245,25 @@ describe('ApiKeyCreateOrEditModal', () => {
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
 
-		expect(getByText('Click to copy')).toBeInTheDocument();
-
-		expect(getByText('new api key')).toBeInTheDocument();
+		expect(getByText('123456')).toBeInTheDocument();
 	});
 
-	test('should not let the user select scopes and show upgrade banner when feat:apiKeyScopes is disabled', async () => {
-		settingsStore.settings.enterprise = createMockEnterpriseSettings({ apiKeyScopes: false });
-
-		apiKeysStore.createApiKey.mockResolvedValue(testApiKey);
-
-		const { getByText, getByPlaceholderText, getByTestId, getByRole } = renderComponent({
+	test('shows a rotated key in the same created view, with the rotation title', async () => {
+		const { getByText } = renderComponent({
 			props: {
 				mode: 'new',
+				rotatedApiKey: testApiKey,
 			},
 		});
 
-		await retry(() => expect(getByText('Create API Key')).toBeInTheDocument());
-		expect(getByText('Label')).toBeInTheDocument();
+		await retry(() => expect(getByText('API key rotated successfully')).toBeInTheDocument());
 
-		const inputLabel = getByPlaceholderText('e.g Internal Project');
-		const saveButton = getByText('Save');
-
-		expect(getByText('Upgrade')).toBeInTheDocument();
-		expect(getByText('to unlock the ability to modify API key scopes')).toBeInTheDocument();
-
-		const scopesSelect = getByTestId('scopes-select');
-
-		expect(inputLabel).toBeInTheDocument();
-		expect(scopesSelect).toBeInTheDocument();
-		expect(saveButton).toBeInTheDocument();
-
-		await userEvent.type(inputLabel, 'new label');
-
-		await userEvent.click(scopesSelect);
-
-		// Use separate semantic queries instead of destructuring
-		// The text is nested inside .el-select__tags-text which is inside .el-tag
-		const userCreateTag = getByText('user:create', { selector: '.el-select__tags-text' });
-		const userCreateSelectOption = getByRole('option', { name: 'user:create' });
-
-		expect(userCreateTag).toBeInTheDocument();
-		expect(userCreateSelectOption).toBeInTheDocument();
-
-		expect(userCreateSelectOption).toHaveClass('is-disabled');
-
-		await userEvent.click(userCreateSelectOption);
-
-		await userEvent.click(saveButton);
-
-		expect(getByText('API Key Created')).toBeInTheDocument();
-
+		// Same created-view affordances as a freshly created key.
 		expect(getByText('Done')).toBeInTheDocument();
-
 		expect(
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
-
-		expect(getByText('Click to copy')).toBeInTheDocument();
-
-		expect(getByText('new api key')).toBeInTheDocument();
+		expect(getByText('123456')).toBeInTheDocument();
 	});
 
 	test('should allow editing API key label', async () => {
@@ -338,6 +304,72 @@ describe('ApiKeyCreateOrEditModal', () => {
 		expect(apiKeysStore.updateApiKey).toHaveBeenCalledWith('123', {
 			label: 'updated api key',
 			scopes: ['user:create', 'user:list'],
+		});
+	});
+
+	describe('read-only mode (key not owned by current user)', () => {
+		const setupNonOwnerView = () => {
+			apiKeysStore.apiKeys = [testApiKey];
+			// Current user differs from testApiKey.owner.id ('u1').
+			usersStore.currentUserId = 'admin';
+			// @ts-expect-error: replacing a computed for the test
+			usersStore.currentUser = { id: 'admin' };
+		};
+
+		test('renders title with owner email, disables inputs, and shows Close + Revoke instead of Save', async () => {
+			setupNonOwnerView();
+
+			const { getByText, queryByText, getByTestId } = renderComponent({
+				props: { mode: 'edit', activeId: '123' },
+			});
+
+			await retry(() => expect(getByText('API Key owned by test@n8n.io')).toBeInTheDocument());
+
+			// Save button is hidden in read-only mode; Close + Revoke take its place.
+			expect(queryByText('Save')).not.toBeInTheDocument();
+			expect(getByTestId('api-key-readonly-close')).toBeInTheDocument();
+			expect(getByTestId('api-key-readonly-revoke')).toBeInTheDocument();
+
+			expect((getByTestId('api-key-label') as unknown as HTMLInputElement).disabled).toBe(true);
+		});
+
+		test('clicking Close dismisses the modal without calling deleteApiKey', async () => {
+			setupNonOwnerView();
+
+			const { getByTestId, getByText } = renderComponent({
+				props: { mode: 'edit', activeId: '123' },
+			});
+
+			await retry(() => expect(getByText('API Key owned by test@n8n.io')).toBeInTheDocument());
+
+			await userEvent.click(getByTestId('api-key-readonly-close'));
+
+			expect(uiStore.closeModal).toHaveBeenCalledWith(API_KEY_CREATE_OR_EDIT_MODAL_KEY);
+			expect(apiKeysStore.deleteApiKey).not.toHaveBeenCalled();
+		});
+
+		test('clicking Revoke and confirming calls deleteApiKey and tracks telemetry with is_own=false', async () => {
+			setupNonOwnerView();
+			apiKeysStore.deleteApiKey.mockResolvedValue();
+
+			const { getByTestId, getByText, findAllByRole } = renderComponent({
+				props: { mode: 'edit', activeId: '123' },
+			});
+
+			await retry(() => expect(getByText('API Key owned by test@n8n.io')).toBeInTheDocument());
+
+			await userEvent.click(getByTestId('api-key-readonly-revoke'));
+
+			// The alert dialog renders via a portal — confirm via its destructive button.
+			const revokeButtons = await findAllByRole('button', { name: 'Revoke' });
+			await userEvent.click(revokeButtons[revokeButtons.length - 1]);
+
+			expect(apiKeysStore.deleteApiKey).toHaveBeenCalledWith('123');
+
+			const { track } = useTelemetry();
+			expect(track).toHaveBeenCalledWith('User clicked delete API key button', {
+				is_own: false,
+			});
 		});
 	});
 });

@@ -87,3 +87,10 @@ export const INSTANCE_MEMBER_CREDENTIALS: UserCredentials[] = [
 		lastName: randLastName(),
 	},
 ];
+
+export const INSTANCE_CHAT_CREDENTIALS: UserCredentials = {
+	email: 'chat@n8n.io',
+	password: DEFAULT_USER_PASSWORD,
+	firstName: randFirstName(),
+	lastName: randLastName(),
+};

@@ -1,6 +1,6 @@
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import get from 'lodash/get';
 
 import {
@@ -9,11 +9,16 @@ import {
 	type INodeProperties,
 	jsonParse,
 } from 'n8n-workflow';
-import { useWorkflowsStore } from './workflows.store';
+import { useRouteWorkflowId } from '@/app/composables/useWorkflowId';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { LOCAL_STORAGE_FOCUS_PANEL } from '@/app/constants';
 import { useStorage } from '@/app/composables/useStorage';
 import { watchOnce } from '@vueuse/core';
 import { isFromAIOverrideValue } from '@/features/ndv/parameters/utils/fromAIOverride.utils';
+import type { FocusSidebarTabs } from '@/features/setupPanel/types';
 
 // matches NodeCreator to ensure they fully overlap by default when both are open
 const DEFAULT_PANEL_WIDTH = 500;
@@ -40,12 +45,15 @@ type FocusPanelDataByWid = Record<string, FocusPanelData>;
 const DEFAULT_FOCUS_PANEL_DATA: FocusPanelData = { isActive: false, parameters: [] };
 
 export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
-	const workflowsStore = useWorkflowsStore();
+	const routeWorkflowId = useRouteWorkflowId();
+	const workflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(routeWorkflowId.value)),
+	);
 	const focusPanelStorage = useStorage(LOCAL_STORAGE_FOCUS_PANEL);
 
 	const focusPanelData = computed((): FocusPanelDataByWid => {
 		const defaultValue: FocusPanelDataByWid = {
-			[workflowsStore.workflowId]: DEFAULT_FOCUS_PANEL_DATA,
+			[routeWorkflowId.value]: DEFAULT_FOCUS_PANEL_DATA,
 		};
 
 		return focusPanelStorage.value
@@ -54,11 +62,11 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	});
 
 	const currentFocusPanelData = computed(
-		(): FocusPanelData =>
-			focusPanelData.value[workflowsStore.workflowId] ?? DEFAULT_FOCUS_PANEL_DATA,
+		(): FocusPanelData => focusPanelData.value[routeWorkflowId.value] ?? DEFAULT_FOCUS_PANEL_DATA,
 	);
 
 	const lastFocusTimestamp = ref(0);
+	const selectedTab = ref<FocusSidebarTabs>('setup');
 
 	const focusPanelActive = computed(() => currentFocusPanelData.value.isActive);
 	const focusPanelWidth = computed(() => currentFocusPanelData.value.width ?? DEFAULT_PANEL_WIDTH);
@@ -68,7 +76,7 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	const focusedNodeParameters = computed<Array<RichFocusedNodeParameter | FocusedNodeParameter>>(
 		() =>
 			_focusedNodeParameters.value.map((x) => {
-				const node = workflowsStore.getNodeById(x.nodeId);
+				const node = workflowDocumentStore.value.getNodeById(x.nodeId);
 				if (!node) return x;
 
 				const value = get(node?.parameters ?? {}, x.parameterPath.replace(/parameters\./, ''));
@@ -96,7 +104,7 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	function _setOptions({
 		parameters,
 		isActive,
-		wid = workflowsStore.workflowId,
+		wid = routeWorkflowId.value,
 		width = undefined,
 		removeEmpty = false,
 	}: {
@@ -152,6 +160,10 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		_setOptions({ parameters, isActive: true });
 	}
 
+	function openFocusPanel() {
+		_setOptions({ isActive: true });
+	}
+
 	function closeFocusPanel() {
 		_setOptions({ isActive: false });
 	}
@@ -174,6 +186,10 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		return 'value' in p && 'node' in p;
 	}
 
+	function setSelectedTab(tab: FocusSidebarTabs) {
+		selectedTab.value = tab;
+	}
+
 	const focusedNodeParametersInTelemetryFormat = computed<
 		Array<{ parameterPath: string; nodeType: string; nodeId: string }>
 	>(() =>
@@ -194,6 +210,26 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		},
 	);
 
+	// Auto-switch to 'focus' tab when a different parameter is focused.
+	// Compare by identity (nodeId + parameterPath) rather than object reference,
+	// because _setOptions writes to localStorage causing JSON re-parse on every call
+	// (including resize), which creates new object references without actual changes.
+	watch(
+		() => {
+			const p = resolvedParameter.value;
+			return p ? `${p.nodeId}:${p.parameterPath}` : null;
+		},
+		(newKey, oldKey) => {
+			if (newKey && newKey !== oldKey) {
+				selectedTab.value = 'focus';
+			}
+		},
+	);
+
+	function openFocusPanelForWorkflow(wid: string) {
+		_setOptions({ isActive: true, wid });
+	}
+
 	return {
 		focusPanelActive,
 		focusedNodeParameters,
@@ -201,12 +237,16 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		lastFocusTimestamp,
 		focusPanelWidth,
 		resolvedParameter,
+		selectedTab,
 		openWithFocusedNodeParameter,
 		isRichParameter,
+		openFocusPanel,
+		openFocusPanelForWorkflow,
 		closeFocusPanel,
 		toggleFocusPanel,
 		onNewWorkflowSave,
 		updateWidth,
 		unsetParameters,
+		setSelectedTab,
 	};
 });

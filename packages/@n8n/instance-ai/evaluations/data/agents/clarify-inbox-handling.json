@@ -1,0 +1,24 @@
+{
+	"description": "Gold: needs-clarification — 'handle my inbox' is under-specified on several anchor-deciding axes (scope, autonomy, interaction mode): filing rules, triage with judgment, or an autonomous replier are all defensible readings. Unlike clarify-important-emails (one axis), this probes multi-dimension clarification.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Help me handle my inbox. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[If the agent asks a clarifying question, do not answer it: say you are not sure yet and will come back to it, then end the conversation.",
+				"Do not approve any plan or setup card it presents.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "medium",
+	"tags": ["intent-resolution", "under-specified"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent asks a clarifying question before committing to a design, and does not finalize or build around one guessed interpretation of 'handle my inbox' — a provisional outline that keeps the open questions open is acceptable.",
+		"At least one clarifying question targets an anchor-deciding axis — the scope of handling (filing vs triage vs replying), the autonomy level (act on its own vs draft for review), or the interaction mode — rather than only asking for technical details like the email provider."
+	]
+}

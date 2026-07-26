@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
 import { SourceControlledFileSchema } from '../../schemas/source-controlled-file.schema';
+import { Z } from '../../zod-class';
 
 export class PushWorkFolderRequestDto extends Z.class({
 	force: z.boolean().optional(),

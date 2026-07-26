@@ -1,36 +1,37 @@
+import { ContextualCompressionRetriever } from '@langchain/classic/retrievers/contextual_compression';
 import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import { VectorStore } from '@langchain/core/vectorstores';
-import { ContextualCompressionRetriever } from '@langchain/classic/retrievers/contextual_compression';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import { RetrieverVectorStore } from '../RetrieverVectorStore.node';
 
 const mockLogger = {
-	debug: jest.fn(),
-	info: jest.fn(),
-	warn: jest.fn(),
-	error: jest.fn(),
+	debug: vi.fn(),
+	info: vi.fn(),
+	warn: vi.fn(),
+	error: vi.fn(),
 };
 
 describe('RetrieverVectorStore', () => {
 	let retrieverNode: RetrieverVectorStore;
-	let mockContext: jest.Mocked<ISupplyDataFunctions>;
+	let mockContext: Mocked<ISupplyDataFunctions>;
 
 	beforeEach(() => {
 		retrieverNode = new RetrieverVectorStore();
 		mockContext = {
 			logger: mockLogger,
-			getNodeParameter: jest.fn(),
-			getInputConnectionData: jest.fn(),
-		} as unknown as jest.Mocked<ISupplyDataFunctions>;
-		jest.clearAllMocks();
+			getNodeParameter: vi.fn(),
+			getInputConnectionData: vi.fn(),
+		} as unknown as Mocked<ISupplyDataFunctions>;
+		vi.clearAllMocks();
 	});
 
 	describe('supplyData', () => {
 		it('should create a retriever from a basic VectorStore', async () => {
 			const mockVectorStore = Object.create(VectorStore.prototype) as VectorStore;
-			mockVectorStore.asRetriever = jest.fn().mockReturnValue({ test: 'retriever' });
+			mockVectorStore.asRetriever = vi.fn().mockReturnValue({ test: 'retriever' });
 
 			mockContext.getNodeParameter.mockImplementation((param, _itemIndex, defaultValue) => {
 				if (param === 'topK') return 4;
@@ -51,7 +52,7 @@ describe('RetrieverVectorStore', () => {
 
 		it('should create a retriever with custom topK parameter', async () => {
 			const mockVectorStore = Object.create(VectorStore.prototype) as VectorStore;
-			mockVectorStore.asRetriever = jest.fn().mockReturnValue({ test: 'retriever' });
+			mockVectorStore.asRetriever = vi.fn().mockReturnValue({ test: 'retriever' });
 
 			mockContext.getNodeParameter.mockImplementation((param, _itemIndex, defaultValue) => {
 				if (param === 'topK') return 10;
@@ -67,7 +68,7 @@ describe('RetrieverVectorStore', () => {
 
 		it('should create a ContextualCompressionRetriever when input contains reranker and vectorStore', async () => {
 			const mockVectorStore = Object.create(VectorStore.prototype) as VectorStore;
-			mockVectorStore.asRetriever = jest.fn().mockReturnValue({ test: 'base-retriever' });
+			mockVectorStore.asRetriever = vi.fn().mockReturnValue({ test: 'base-retriever' });
 
 			const mockReranker = {} as BaseDocumentCompressor;
 
@@ -94,7 +95,7 @@ describe('RetrieverVectorStore', () => {
 
 		it('should create a ContextualCompressionRetriever with custom topK when using reranker', async () => {
 			const mockVectorStore = Object.create(VectorStore.prototype) as VectorStore;
-			mockVectorStore.asRetriever = jest.fn().mockReturnValue({ test: 'base-retriever' });
+			mockVectorStore.asRetriever = vi.fn().mockReturnValue({ test: 'base-retriever' });
 
 			const mockReranker = {} as BaseDocumentCompressor;
 
@@ -117,7 +118,7 @@ describe('RetrieverVectorStore', () => {
 
 		it('should use default topK value when parameter is not provided', async () => {
 			const mockVectorStore = Object.create(VectorStore.prototype) as VectorStore;
-			mockVectorStore.asRetriever = jest.fn().mockReturnValue({ test: 'retriever' });
+			mockVectorStore.asRetriever = vi.fn().mockReturnValue({ test: 'retriever' });
 
 			mockContext.getNodeParameter.mockImplementation((_param, _itemIndex, defaultValue) => {
 				return defaultValue;

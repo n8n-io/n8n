@@ -7,9 +7,9 @@ import type {
 	WorkflowEntity,
 } from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
-import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { IRun } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { InsightsMetadata } from '../database/entities/insights-metadata';
 import type { InsightsMetadataRepository } from '../database/repositories/insights-metadata.repository';
@@ -42,11 +42,11 @@ describe('initialization safeguards', () => {
 	});
 
 	beforeEach(() => {
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 	});
 
 	afterEach(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	test('does not collect events when not initialized', async () => {
@@ -115,7 +115,7 @@ describe('initialization safeguards', () => {
 		insightsCollectionService.scheduleFlushing();
 
 		// ASSERT - setTimeout should not have been called
-		expect(jest.getTimerCount()).toBe(0);
+		expect(vi.getTimerCount()).toBe(0);
 	});
 });
 
@@ -153,6 +153,37 @@ describe('calculateTimeSaved', () => {
 		// @ts-ignore-next-line
 		const timeSaved = insightsCollectionService.calculateTimeSaved(ctx);
 		expect(timeSaved).toBe(10);
+	});
+
+	test('does not record time saved for error mode executions', async () => {
+		const insightsRawRepository = mock<InsightsRawRepository>();
+		const service = new InsightsCollectionService(
+			mock<SharedWorkflowRepository>(),
+			insightsRawRepository,
+			mock<InsightsMetadataRepository>(),
+			mock<InsightsConfig>(),
+			mockLogger(),
+		);
+		service.init();
+
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
+		ctx.workflow.settings = {
+			timeSavedMode: 'fixed',
+			timeSavedPerExecution: 10,
+		};
+		ctx.runData = mock<IRun>({
+			mode: 'error',
+			status: 'success',
+			startedAt: DateTime.utc().toJSDate(),
+			stoppedAt: DateTime.utc().plus({ minutes: 10 }).toJSDate(),
+		});
+
+		await service.handleWorkflowExecuteAfter(ctx);
+
+		const buffered = [...service['bufferedInsights']];
+		expect(buffered.some((insight) => insight.type === 'time_saved_min')).toBe(false);
+		expect(buffered.some((insight) => insight.type === 'success')).toBe(true);
+		expect(buffered.some((insight) => insight.type === 'runtime_ms')).toBe(true);
 	});
 
 	test('returns the node time saved when the time saved mode is dynamic', () => {

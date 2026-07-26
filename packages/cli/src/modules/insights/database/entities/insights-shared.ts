@@ -1,3 +1,5 @@
+import { invert } from '@/utils/inverter';
+
 function isValid<T extends Record<number | string | symbol, unknown>>(
 	value: number | string | symbol,
 	constant: T,
@@ -5,6 +7,9 @@ function isValid<T extends Record<number | string | symbol, unknown>>(
 	return Object.keys(constant).includes(value.toString());
 }
 
+export type PeriodUnit = keyof typeof PeriodUnitToNumber;
+
+export type PeriodUnitNumber = (typeof PeriodUnitToNumber)[PeriodUnit];
 // Periods
 export const PeriodUnitToNumber = {
 	hour: 0,
@@ -12,16 +17,8 @@ export const PeriodUnitToNumber = {
 	week: 2,
 } as const;
 
-export type PeriodUnit = keyof typeof PeriodUnitToNumber;
+export const NumberToPeriodUnit = invert(PeriodUnitToNumber);
 
-export type PeriodUnitNumber = (typeof PeriodUnitToNumber)[PeriodUnit];
-export const NumberToPeriodUnit = Object.entries(PeriodUnitToNumber).reduce(
-	(acc, [key, value]: [PeriodUnit, PeriodUnitNumber]) => {
-		acc[value] = key;
-		return acc;
-	},
-	{} as Record<PeriodUnitNumber, PeriodUnit>,
-);
 export function isValidPeriodNumber(value: number) {
 	return isValid(value, NumberToPeriodUnit);
 }
@@ -37,13 +34,7 @@ export const TypeToNumber = {
 export type TypeUnit = keyof typeof TypeToNumber;
 
 export type TypeUnitNumber = (typeof TypeToNumber)[TypeUnit];
-export const NumberToType = Object.entries(TypeToNumber).reduce(
-	(acc, [key, value]: [TypeUnit, TypeUnitNumber]) => {
-		acc[value] = key;
-		return acc;
-	},
-	{} as Record<TypeUnitNumber, TypeUnit>,
-);
+export const NumberToType = invert(TypeToNumber);
 
 export function isValidTypeNumber(value: number) {
 	return isValid(value, NumberToType);
