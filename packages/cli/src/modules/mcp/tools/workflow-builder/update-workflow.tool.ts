@@ -294,10 +294,6 @@ const outputSchema = {
 	name: z.string().optional(),
 	nodeCount: z.number().optional(),
 	url: z.string().optional(),
-	nodes: z.array(z.unknown()).optional(),
-	active: z.boolean().optional(),
-	updatedAt: z.union([z.string(), z.date()]).optional(),
-	versionId: z.string().optional(),
 	appliedOperations: z.number().optional().describe('Number of operations applied.'),
 	autoAssignedCredentials: z
 		.array(
@@ -567,12 +563,30 @@ export const createUpdateWorkflowTool = (
 		};
 
 		let updateAttempted = false;
+		let hasGraphOps = false;
 		let expectedWorkflow: { nodes: unknown; connections: unknown } | null = null;
 		let existingWorkflow: Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>> | null =
 			null;
 
 		try {
 			const strictOperations = parseStrictOperations(operations);
+
+			hasGraphOps = strictOperations.some((op) =>
+				[
+					'addNode',
+					'removeNode',
+					'updateNodeParameters',
+					'setNodeParameters',
+					'addConnection',
+					'removeConnection',
+					'setNodeCredential',
+					'setNodeGroups',
+					'addNodeGroup',
+					'updateNodeGroup',
+					'removeNodeGroup',
+					'setNodeSettings',
+				].includes(op.type),
+			);
 
 			// Defense in depth: with the flag off, the published schema already
 			// rejects these op types at the enum level; this guards against the
@@ -923,7 +937,10 @@ export const createUpdateWorkflowTool = (
 				// process's write could still cause a false positive recovery, but this is
 				// acceptable because the workflow was indeed updated (just not by our call).
 				// The client can verify via get_workflow if needed.
-				if (persisted && (matchesExpected || wasTouched)) {
+				const recovered = hasGraphOps
+					? (matchesExpected ?? wasTouched) // graph ops: either signal works
+					: wasTouched; // non‑graph ops: need a real write
+				if (persisted && recovered) {
 					const baseUrl = urlService.getInstanceBaseUrl();
 					const workflowUrl = `${baseUrl}/workflow/${persisted.id}`;
 

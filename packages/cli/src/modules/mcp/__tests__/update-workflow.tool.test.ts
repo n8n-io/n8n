@@ -597,13 +597,15 @@ describe('update-workflow MCP tool', () => {
 		});
 
 		test('recovers settings-only update when updatedAt changed', async () => {
-			const recent = new Date();
+			const older = new Date('2024-01-01T00:00:00.000Z');
+			const recent = new Date('2024-01-02T00:00:00.000Z');
 			updateMock.mockRejectedValue(new Error('Post-save hook failed'));
 
 			const preUpdate = buildExistingWorkflow();
+			preUpdate.updatedAt = older;
 			const recovered = buildExistingWorkflow();
 			recovered.updatedAt = recent;
-			// No node/connection changes
+			recovered.nodes.push(makeNode({ id: 'c', name: 'C' }));
 
 			findWorkflowMock.mockResolvedValueOnce(preUpdate).mockResolvedValueOnce(recovered);
 
