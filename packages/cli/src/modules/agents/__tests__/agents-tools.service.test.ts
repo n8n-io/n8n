@@ -217,5 +217,34 @@ describe('AgentsToolsService', () => {
 				{ nodeId: 'n8n-nodes-base.gmail', version: '2.1', resource: 'message' },
 			]);
 		});
+
+		it.each(['sendAndWait', 'dispatchAndWait'])(
+			'rejects unsupported operation %s before reading its node schema',
+			async (operation) => {
+				const { service, nodeCatalogService } = makeService();
+
+				const result = await getTypesTool(service).handler!(
+					{
+						nodeIds: [
+							{
+								nodeId: 'n8n-nodes-base.slackTool',
+								version: 2.2,
+								resource: 'message',
+								operation,
+							},
+						],
+					},
+					ctx,
+				);
+
+				expect(nodeCatalogService.getNodeTypes).not.toHaveBeenCalled();
+				expect(result).toEqual({
+					results: expect.stringContaining(`Operation "${operation}"`),
+				});
+				expect(result).toEqual({
+					results: expect.stringContaining('requireApproval: true'),
+				});
+			},
+		);
 	});
 });

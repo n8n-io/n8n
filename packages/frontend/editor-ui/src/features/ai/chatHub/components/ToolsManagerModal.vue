@@ -22,7 +22,8 @@ import {
 } from '@n8n/api-types';
 import type { ChatHubToolDto } from '@n8n/api-types';
 import { computed, ref, watch } from 'vue';
-import { DEBOUNCE_TIME, getDebounceTime, MODAL_CONFIRM } from '@/app/constants';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME, MODAL_CONFIRM } from '@/app/constants';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';

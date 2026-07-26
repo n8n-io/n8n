@@ -237,6 +237,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			thinking: thinking || undefined,
 			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
 			...(status && { status }),
+			...(msg.executionId ? { executionId: msg.executionId } : {}),
 		};
 		setMessageInteractives(chatMessage, interactives);
 		result.push(chatMessage);

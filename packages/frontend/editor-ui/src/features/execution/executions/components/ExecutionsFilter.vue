@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import AnnotationTagsDropdown from '@/features/shared/tags/components/AnnotationTagsDropdown.ee.vue';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { EnterpriseEditionFeature } from '@/app/constants';

@@ -134,7 +134,7 @@ catalog:
   eslint-plugin-n8n-nodes-base: ^1.16.7
   express: 5.1.0
   fast-check: ^3.23.2
-  fast-glob: 3.2.12
+  fast-glob: 3.3.3
   fast-json-patch: ^3.1.1
   fastest-levenshtein: 1.0.16
   fflate: 0.8.3
@@ -192,7 +192,7 @@ catalog:
   ssh2: 1.15.0
   stream-json: 1.9.1
   stylelint: ^16.23.0
-  tar: 7.5.17
+  tar: 7.5.19
   testcontainers: ^11.13.0
   ts-morph: ^27.0.2
   tsdown: ^0.16.5

@@ -48,6 +48,24 @@ describe('toPackagesError', () => {
 		expect(hint).toContain('w1, w2');
 	});
 
+	it('lists variable-unresolved issues for a 422', () => {
+		const result = toPackagesError(
+			new ApiError(422, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'variable-unresolved',
+						name: 'var1',
+						usedByWorkflows: ['w1', 'w2'],
+					},
+				],
+			}),
+		);
+
+		const hint = (result as ApiError).hint ?? '';
+		expect(hint).toContain('variable "var1" unresolved');
+		expect(hint).toContain('w1, w2');
+	});
+
 	it('leaves other ApiErrors without issue details unchanged', () => {
 		const error = new ApiError(400, 'Bad request');
 		expect(toPackagesError(error)).toBe(error);

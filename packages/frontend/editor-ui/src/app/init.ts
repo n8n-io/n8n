@@ -6,7 +6,7 @@ import { useToast } from '@/app/composables/useToast';
 import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 
-import type { UserManagementAuthenticationMethod } from '@/Interface';
+import type { AuthenticationMethod } from '@n8n/api-types';
 import {
 	registerModuleModals,
 	registerModuleProjectTabs,
@@ -20,9 +20,11 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { getPersonalizedNodeTypes } from '@/features/settings/users/users.utils';
 import { useVersionsStore } from '@/app/stores/versions.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useI18n } from '@n8n/i18n';
@@ -73,8 +75,7 @@ export async function initializeCore() {
 	}
 
 	ssoStore.initialize({
-		authenticationMethod: settingsStore.userManagement
-			.authenticationMethod as UserManagementAuthenticationMethod,
+		authenticationMethod: settingsStore.userManagement.authenticationMethod as AuthenticationMethod,
 		managedByEnv: settingsStore.settings.sso.managedByEnv,
 		config: settingsStore.settings.sso,
 		features: {
@@ -116,12 +117,30 @@ export async function initializeAuthenticatedFeatures(
 	const rootStore = useRootStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const cloudPlanStore = useCloudPlanStore();
+	cloudPlanStore.setIsInstanceOwner(() => hasPermission(['instanceOwner']));
 	const projectsStore = useProjectsStore();
 	const rolesStore = useRolesStore();
 	const bannersStore = useBannersStore();
 	const versionsStore = useVersionsStore();
 	const dataTableStore = useDataTableStore();
 	const favoritesStore = useFavoritesStore();
+	const uiStore = useUIStore();
+
+	// Provide the modal-open actions to the stores that were decoupled from `ui.store`,
+	// so they can open modals without importing it.
+	const modalOpeners = {
+		openModal: uiStore.openModal,
+		openModalWithData: uiStore.openModalWithData,
+	};
+	usersStore.registerModalOpeners(modalOpeners);
+	versionsStore.registerModalOpeners(modalOpeners);
+
+	// Provide the app-side capabilities `users.store` no longer imports directly
+	// after moving into `@n8n/stores` (RBAC check + survey-to-node-types mapping).
+	usersStore.setPermissionsResolvers({
+		listUsers: () => hasPermission(['rbac'], { rbac: { scope: 'user:list' } }),
+	});
+	usersStore.setNodeTypesResolver(getPersonalizedNodeTypes);
 
 	if (!settingsStore.isPreviewMode) {
 		usersStore.setUserQuota(settingsStore.userManagement.quota);
@@ -248,7 +267,7 @@ function registerAuthenticationHooks() {
 		// Without this, navigating to SSO settings after login shows an empty redirect URL.
 		ssoStore.initialize({
 			authenticationMethod: settingsStore.userManagement
-				.authenticationMethod as UserManagementAuthenticationMethod,
+				.authenticationMethod as AuthenticationMethod,
 			managedByEnv: settingsStore.settings.sso.managedByEnv,
 			config: settingsStore.settings.sso,
 			features: {

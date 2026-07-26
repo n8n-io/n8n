@@ -127,7 +127,7 @@ const mountView = async () => {
 			stubs: {
 				ProjectHeader: { template: '<div><slot /></div>' },
 				InsightsSummary: true,
-				N8nActionBox: { template: '<div />' },
+				N8nEmptyState: { template: '<div />' },
 			},
 		},
 	});

@@ -1,15 +1,25 @@
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowsConfig } from '@n8n/config';
 import type {
+	WorkflowEntity,
+	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationTriggerStatusRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-import type { ErrorReporter, InstanceSettings, Span, Tracing } from 'n8n-core';
+import type {
+	ActiveWorkflowTriggers,
+	ErrorReporter,
+	InstanceSettings,
+	Span,
+	Tracing,
+} from 'n8n-core';
 
 import type { EventService } from '@/events/event.service';
 import type { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 
+import type { WorkflowPublicationLifecycleLock } from '../workflow-publication-lifecycle-lock';
 import type { WorkflowPublicationOutboxConsumer } from '../workflow-publication-outbox-consumer';
 import { WorkflowPublicationReconciler } from '../workflow-publication-reconciler.service';
 
@@ -26,6 +36,9 @@ const instanceSettings = mock<InstanceSettings>({ isLeader: true });
 const errorReporter = mock<ErrorReporter>();
 const tracing = mock<Tracing>();
 const eventService = mock<EventService>();
+const lifecycleLock = mock<WorkflowPublicationLifecycleLock>();
+const workflowRepository = mock<WorkflowRepository>();
+const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
 
 let service: WorkflowPublicationReconciler;
 
@@ -47,8 +60,15 @@ beforeEach(() => {
 	});
 	triggerStatusRepository.findActivatedInMemoryTriggers.mockResolvedValue([]);
 	outboxRepository.enqueueByWorkflowIds.mockResolvedValue();
+	outboxRepository.findInFlightByWorkflowId.mockResolvedValue(null);
+	outboxRepository.findVersionSkewedWorkflowIds.mockResolvedValue([]);
 	outboxConsumer.drainPending.mockResolvedValue(0);
 	setRegistered({});
+	activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue([]);
+	activeWorkflowTriggers.remove.mockResolvedValue(true);
+	workflowRepository.getActiveIds.mockResolvedValue([]);
+	workflowRepository.findOneBy.mockResolvedValue(null);
+	lifecycleLock.runExclusive.mockImplementation(async (_workflowId, fn) => await fn());
 	service = new WorkflowPublicationReconciler(
 		logger,
 		config,
@@ -60,6 +80,9 @@ beforeEach(() => {
 		errorReporter,
 		tracing,
 		eventService,
+		lifecycleLock,
+		workflowRepository,
+		activeWorkflowTriggers,
 	);
 });
 
@@ -70,9 +93,9 @@ afterEach(() => {
 
 describe('WorkflowPublicationReconciler', () => {
 	describe('init', () => {
-		it('schedules reconciliation at the configured interval when leader', () => {
+		it('schedules reconciliation at the configured interval when leader', async () => {
 			service.init();
-			vi.advanceTimersByTime(5_000);
+			await vi.advanceTimersByTimeAsync(5_000);
 
 			expect(triggerStatusRepository.findActivatedInMemoryTriggers).toHaveBeenCalled();
 		});
@@ -156,6 +179,19 @@ describe('WorkflowPublicationReconciler', () => {
 			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-2']);
 		});
 
+		it('re-enqueues a workflow whose published version diverged from the active version', async () => {
+			outboxRepository.findVersionSkewedWorkflowIds.mockResolvedValue(['wf-skew']);
+
+			await service.reconcile();
+
+			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-skew']);
+			expect(outboxConsumer.drainPending).toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-publication-reconciliation',
+				expect.objectContaining({ result: 'success', versionSkewCount: 1, deficientCount: 0 }),
+			);
+		});
+
 		it('catches and reports errors without throwing', async () => {
 			triggerStatusRepository.findActivatedInMemoryTriggers.mockRejectedValue(
 				new Error('DB error'),
@@ -175,6 +211,69 @@ describe('WorkflowPublicationReconciler', () => {
 			await service.reconcile();
 
 			expect(triggerStatusRepository.findActivatedInMemoryTriggers).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('surplus (ghost) triggers', () => {
+		/** A registered workflow that is no longer published: the ghost scenario. */
+		function setGhost(workflowId: string) {
+			activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue([workflowId]);
+			workflowRepository.getActiveIds.mockResolvedValue([]);
+			workflowRepository.findOneBy.mockResolvedValue({
+				id: workflowId,
+				activeVersionId: null,
+			} as WorkflowEntity);
+		}
+
+		it('tears down ghost triggers under the workflow lock and reports the surplus', async () => {
+			setGhost('wf-ghost');
+
+			await service.reconcile();
+
+			expect(lifecycleLock.runExclusive).toHaveBeenCalledWith('wf-ghost', expect.any(Function));
+			expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-ghost');
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-publication-reconciliation',
+				expect.objectContaining({ result: 'success', surplusCount: 1 }),
+			);
+		});
+
+		it('leaves a registered workflow that is still published alone', async () => {
+			activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue(['wf-1']);
+			workflowRepository.getActiveIds.mockResolvedValue(['wf-1']);
+
+			await service.reconcile();
+
+			expect(activeWorkflowTriggers.remove).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-publication-reconciliation',
+				expect.objectContaining({ surplusCount: 0 }),
+			);
+		});
+
+		it('leaves a workflow with an in-flight record for that publication to handle', async () => {
+			setGhost('wf-ghost');
+			outboxRepository.findInFlightByWorkflowId.mockResolvedValue(
+				mock<WorkflowPublicationOutbox>({ workflowId: 'wf-ghost' }),
+			);
+
+			await service.reconcile();
+
+			expect(activeWorkflowTriggers.remove).not.toHaveBeenCalled();
+		});
+
+		it('re-checks under the lock and skips a workflow republished since detection', async () => {
+			setGhost('wf-ghost');
+			// By the time the lock is acquired, a publish has completed: the workflow
+			// is active again and its registered triggers are current, not ghosts.
+			workflowRepository.findOneBy.mockResolvedValue({
+				id: 'wf-ghost',
+				activeVersionId: 'v-2',
+			} as WorkflowEntity);
+
+			await service.reconcile();
+
+			expect(activeWorkflowTriggers.remove).not.toHaveBeenCalled();
 		});
 	});
 
