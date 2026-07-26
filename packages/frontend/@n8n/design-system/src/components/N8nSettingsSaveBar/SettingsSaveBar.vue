@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useEventListener } from '@vueuse/core';
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
@@ -24,9 +25,12 @@ export interface SettingsSaveBarProps {
 	/**
 	 * Floats the bar 24px above the bottom of the scrollport while there is more content below
 	 * the fold; once the user reaches the end of the page (or the page is shorter than the
-	 * scrollport) the bar settles into its natural in-flow position after the last settings row.
-	 * Contract: render the bar as the last child of the settings content column — plain
-	 * `position: sticky` does the rest, no host wiring needed.
+	 * scrollport) the bar settles into its natural in-flow position after the last settings
+	 * row. While resting in flow it is not overlaying anything, so it sheds its overlay chrome
+	 * (surface, border, shadow) and reads as part of the page; the chrome fades back in the
+	 * moment it detaches. Contract: render the bar as the last child of the settings content
+	 * column, and keep the page's bottom padding on the content inside the scroll container
+	 * (as N8nSettingsLayout does), not on the scroll container itself — see `.floating`.
 	 */
 	floating?: boolean;
 	/** Allow Cmd/Ctrl+S to trigger a save while the bar is visible and enabled. */
@@ -48,6 +52,57 @@ const props = withDefaults(defineProps<SettingsSaveBarProps>(), {
 
 const emit = defineEmits<{ save: []; discard: [] }>();
 
+const barElement = ref<HTMLElement | null>(null);
+
+/*
+ * Whether the floating bar is currently stuck (hovering over content) rather than resting in
+ * its natural in-flow position. CSS cannot detect an engaged `position: sticky`, and an
+ * IntersectionObserver cannot either (browsers pin sticky relative to the scroller's content
+ * box, so no fixed rootMargin is correct across scrollers). Instead we measure directly: the
+ * bar is stuck exactly when it renders above its natural flow position, and since it is the
+ * last child of the settings column, that flow position is its parent's content-box bottom
+ * (sticky preserves the element's space in flow, so the parent's height is state-independent).
+ */
+const stuck = ref(false);
+let layoutObserver: ResizeObserver | null = null;
+
+function measureStuck() {
+	const bar = barElement.value;
+	const parent = bar?.parentElement;
+	if (!props.floating || !bar || !parent) {
+		stuck.value = false;
+		return;
+	}
+	const parentStyle = getComputedStyle(parent);
+	const flowBottom =
+		parent.getBoundingClientRect().bottom -
+		Number.parseFloat(parentStyle.paddingBottom) -
+		Number.parseFloat(parentStyle.borderBottomWidth);
+	stuck.value = bar.getBoundingClientRect().bottom < flowBottom - 1;
+}
+
+function observeLayout() {
+	layoutObserver?.disconnect();
+	layoutObserver = null;
+	measureStuck();
+	const parent = barElement.value?.parentElement;
+	if (!props.floating || !parent || typeof ResizeObserver === 'undefined') return;
+	// Page length can change without a scroll (rows expanding, content loading).
+	layoutObserver = new ResizeObserver(measureStuck);
+	layoutObserver.observe(parent);
+}
+
+watch([() => props.visible, () => props.floating], async () => {
+	await nextTick();
+	observeLayout();
+});
+onMounted(observeLayout);
+onBeforeUnmount(() => layoutObserver?.disconnect());
+
+// Capture phase so scrolls of any ancestor scroller are seen, not just the window.
+useEventListener(window, 'scroll', measureStuck, { capture: true, passive: true });
+useEventListener(window, 'resize', measureStuck, { passive: true });
+
 // Cmd/Ctrl+S submits the same way the Save button does. Guarded so it never fires while
 // hidden, saving, or disabled. `useEventListener` auto-detaches on unmount.
 function onKeydown(event: KeyboardEvent) {
@@ -62,10 +117,11 @@ useEventListener(window, 'keydown', onKeydown);
 </script>
 
 <template>
-	<Transition name="n8n-settings-save-bar">
+	<Transition name="n8n-settings-save-bar" @after-enter="measureStuck">
 		<div
 			v-if="visible"
-			:class="[$style.bar, { [$style.floating]: floating }]"
+			ref="barElement"
+			:class="[$style.bar, { [$style.floating]: floating, [$style.docked]: floating && !stuck }]"
 			role="region"
 			:aria-label="message"
 			aria-live="polite"
@@ -151,6 +207,23 @@ $slide-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	 */
 	border-radius: 0.75rem; /* 12px */
 	box-shadow: var(--shadow--xl);
+	/* Chrome fade between the stuck (overlay) and docked (part-of-the-page) states. */
+	transition:
+		background-color 150ms ease,
+		border-color 150ms ease,
+		box-shadow 150ms ease;
+}
+
+/*
+ * Docked: the floating bar resting in its natural in-flow position at the end of the page.
+ * It is not overlaying any content there, so the overlay chrome would be a lie — the surface,
+ * border, and shadow dissolve and the bar reads as the page's own closing row. Content
+ * geometry is untouched, so nothing shifts when the chrome fades back in on detach.
+ */
+.docked {
+	background: transparent;
+	border-color: transparent;
+	box-shadow: none;
 }
 
 .floating {
@@ -158,13 +231,18 @@ $slide-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	bottom: var(--spacing--lg);
 	z-index: 2;
 	/*
-	 * Native sticky mechanics carry the whole behavior (see the `floating` prop docs): while the
-	 * bar's natural position is below the fold it floats 24px above the scrollport bottom, and
-	 * when the user scrolls to the end of the page — or the page is shorter than the scrollport —
-	 * it docks into flow after the last settings row. The top margin is the docked bar's gap from
-	 * that row.
+	 * Native sticky mechanics carry the positional behavior (see the `floating` prop docs):
+	 * while the bar's natural position is below the fold it floats 24px above the scrollport
+	 * bottom, and when the user scrolls to the end of the page — or the page is shorter than
+	 * the scrollport — it docks into flow after the last settings row. No own top margin:
+	 * docked, the bar is spaced by the settings column's gap, like any other child of the page.
+	 *
+	 * Hosting contract for docking to work: the page's bottom padding must live on the content
+	 * INSIDE the scroll container (>= this 24px inset; N8nSettingsLayout's 2xl qualifies), not
+	 * on the scroll container itself. Chrome pins sticky insets inside the scroller's own
+	 * padding, so scroller bottom padding pushes the pin line above the bar's flow position
+	 * and the bar would hover forever instead of settling at the end of the page.
 	 */
-	margin-block-start: var(--spacing--lg);
 }
 
 /*
