@@ -207,23 +207,37 @@ $slide-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	 */
 	border-radius: 0.75rem; /* 12px */
 	box-shadow: var(--shadow--xl);
-	/* Chrome fade between the stuck (overlay) and docked (part-of-the-page) states. */
+	/*
+	 * Chrome fade + padding tuck between the stuck (overlay) and docked (part-of-the-page)
+	 * states, on the DS's standard pair for interface state transitions (snappy + ease-out).
+	 */
 	transition:
-		background-color 150ms ease,
-		border-color 150ms ease,
-		box-shadow 150ms ease;
+		background-color var(--duration--snappy) var(--easing--ease-out),
+		border-color var(--duration--snappy) var(--easing--ease-out),
+		box-shadow var(--duration--snappy) var(--easing--ease-out),
+		padding var(--duration--snappy) var(--easing--ease-out);
+
+	@media (prefers-reduced-motion: reduce) {
+		/* Keep the color/shadow fades (not motion), drop the padding movement. */
+		transition:
+			background-color var(--duration--snappy) linear,
+			border-color var(--duration--snappy) linear,
+			box-shadow var(--duration--snappy) linear;
+	}
 }
 
 /*
  * Docked: the floating bar resting in its natural in-flow position at the end of the page.
  * It is not overlaying any content there, so the overlay chrome would be a lie — the surface,
- * border, and shadow dissolve and the bar reads as the page's own closing row. Content
- * geometry is untouched, so nothing shifts when the chrome fades back in on detach.
+ * border, and shadow dissolve and the bar reads as the page's own closing row. The content
+ * tucks in with doubled side padding (only the padding is overridden, not the derived
+ * overhang, so the invisible surface box stays put and just the content moves).
  */
 .docked {
 	background: transparent;
 	border-color: transparent;
 	box-shadow: none;
+	padding-inline: calc(2 * var(--n8n-settings-save-bar--padding-inline));
 }
 
 .floating {
