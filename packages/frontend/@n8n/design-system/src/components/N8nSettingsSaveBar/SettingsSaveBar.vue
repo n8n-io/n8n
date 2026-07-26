@@ -8,7 +8,10 @@ import N8nText from '../N8nText';
 export interface SettingsSaveBarProps {
 	/** Controls show/hide. Animates a slide-up on appear and a slide-down on disappear. */
 	visible?: boolean;
-	/** Status message shown next to the warning icon. */
+	/**
+	 * Status message shown next to the warning icon. Always a single line — overflow truncates
+	 * with an ellipsis. Prefer the default copy; override only when the page has a real reason to.
+	 */
 	message?: string;
 	/** Primary button label. */
 	saveLabel?: string;
@@ -73,7 +76,9 @@ useEventListener(window, 'keydown', onKeydown);
 					<span :class="$style.statusIcon" aria-hidden="true">
 						<N8nIcon icon="triangle-alert" size="medium" />
 					</span>
-					<N8nText size="medium" color="text-dark">{{ message }}</N8nText>
+					<N8nText size="medium" color="text-dark" :class="$style.statusMessage">
+						{{ message }}
+					</N8nText>
 				</slot>
 			</div>
 			<div :class="$style.actions">
@@ -188,6 +193,13 @@ $slide-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	align-items: center;
 	justify-content: center;
 	color: var(--icon-color);
+}
+
+/* The bar is always one line tall: the status message never wraps, it truncates. */
+.statusMessage {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 }
 
 /* Slide-up + fade-in on appear, slide-down + fade-out on disappear. */

@@ -26,7 +26,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'The explicit-save affordance for high-impact instance settings. It stays hidden until there are unsaved changes, then slides up showing an "Unsaved changes" status on the left plus Discard (outline) and Save (solid) actions on the right — the primary action sits on the far right, consistent with dialogs. It is presentational: the consumer owns `visible` (bind it to a dirty flag), `saving`, and reacts to `save`/`discard`. On a successful save, hide the bar and confirm through the existing app notification (`useToast().showMessage` in the app). The bar is a gently rounded (12px) bordered rectangle with a prominent shadow that spans its container — the settings content column — plus its own 12px side padding (720px column → 744px bar), so it sits a touch proud of the column while its inner edges align exactly with the settings rows: the status message starts on the rows\' left edge and the Save button ends on their right edge. Render it as the last child of the settings content column; set `floating` to make it float 24px above the bottom of the scrollport while there is more content below the fold — at the end of the page (or on pages shorter than the scrollport) it settles into flow after the last settings row. Plain `position: sticky`, no host wiring needed. Mirrors Figma 5991:7910.',
+					'The explicit-save affordance for high-impact instance settings. It stays hidden until there are unsaved changes, then slides up showing an "Unsaved changes" status on the left plus Discard (outline) and Save (solid) actions on the right — the primary action sits on the far right, consistent with dialogs. The bar is always one line tall: the status message never wraps, it truncates with an ellipsis. Keep the default "Unsaved changes" copy unless the page has a strong reason to differ. It is presentational: the consumer owns `visible` (bind it to a dirty flag), `saving`, and reacts to `save`/`discard`. On a successful save, hide the bar and confirm through the existing app notification (`useToast().showMessage` in the app). The bar is a gently rounded (12px) bordered rectangle with a prominent shadow that spans its container — the settings content column — plus its own 12px side padding (720px column → 744px bar), so it sits a touch proud of the column while its inner edges align exactly with the settings rows: the status message starts on the rows\' left edge and the Save button ends on their right edge. Render it as the last child of the settings content column; set `floating` to make it float 24px above the bottom of the scrollport while there is more content below the fold — at the end of the page (or on pages shorter than the scrollport) it settles into flow after the last settings row. Plain `position: sticky`, no host wiring needed. Mirrors Figma 5991:7910.',
 			},
 		},
 	},
@@ -52,7 +52,7 @@ export const Playground: Story = {
 			return { args };
 		},
 		template: `
-			<div style="max-width: 48rem;">
+			<div style="max-width: 48rem; padding: var(--spacing--lg);">
 				<N8nSettingsSaveBar v-bind="args" @save="() => {}" @discard="() => {}" />
 			</div>
 		`,
@@ -107,48 +107,6 @@ export const Floating: Story = {
 	},
 };
 
-export const DockedAtEnd: Story = {
-	render: () => ({
-		components: {
-			N8nSettingsSaveBar,
-			N8nSettingsSection,
-			N8nSettingsRowGroup,
-			N8nSettingsRow,
-			N8nInput,
-		},
-		setup() {
-			const value = ref('');
-			const panel = ref<HTMLElement | null>(null);
-			onMounted(() => {
-				if (panel.value) panel.value.scrollTop = panel.value.scrollHeight;
-			});
-			return { value, panel };
-		},
-		template: `
-			<div ref="panel" style="height: 22rem; overflow-y: auto; padding: var(--spacing--lg); box-sizing: border-box; background: var(--background--subtle); border-radius: var(--radius--md);">
-				<div style="max-width: 45rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--spacing--lg);">
-					<N8nSettingsSection title="Webhook" description="The panel starts scrolled to the very end.">
-						<N8nSettingsRowGroup>
-							<N8nSettingsRow v-for="n in 6" :key="n" :title="'Setting ' + n" description="A high-impact instance setting that requires an explicit save." :action-fill="true">
-								<template #action><N8nInput v-model="value" placeholder="Edit me" /></template>
-							</N8nSettingsRow>
-						</N8nSettingsRowGroup>
-					</N8nSettingsSection>
-					<N8nSettingsSaveBar floating :visible="true" @save="() => {}" @discard="() => {}" />
-				</div>
-			</div>
-		`,
-	}),
-	parameters: {
-		docs: {
-			description: {
-				story:
-					'Corner case: the end-of-page resting state. The panel starts scrolled to the very end, so the floating bar is DOCKED — sitting in flow 24px below the last settings row instead of hovering over content. Scroll up a little and it detaches back into its floating position. This is the moment where floating and in-flow behavior hand over to each other; judge whether the docked resting spot feels natural.',
-			},
-		},
-	},
-};
-
 export const ShortPage: Story = {
 	render: () => ({
 		components: {
@@ -197,18 +155,18 @@ export const AppearsAtPageEnd: Story = {
 			N8nInput,
 		},
 		setup() {
-			const saved = 'https://collector.internal';
-			const draft = ref(saved);
-			const dirty = computed(() => draft.value !== saved);
+			const saved = ref(Array.from({ length: 6 }, () => 'https://collector.internal'));
+			const draft = ref([...saved.value]);
+			const dirty = computed(() => draft.value.some((value, i) => value !== saved.value[i]));
 			const panel = ref<HTMLElement | null>(null);
 			onMounted(() => {
 				if (panel.value) panel.value.scrollTop = panel.value.scrollHeight;
 			});
 			const onDiscard = () => {
-				draft.value = saved;
+				draft.value = [...saved.value];
 			};
 			const onSave = () => {
-				draft.value = saved;
+				saved.value = [...draft.value];
 				confirmSaved('Settings saved');
 			};
 			return { draft, dirty, panel, onDiscard, onSave };
@@ -216,13 +174,10 @@ export const AppearsAtPageEnd: Story = {
 		template: `
 			<div ref="panel" style="height: 22rem; overflow-y: auto; padding: var(--spacing--lg); box-sizing: border-box; background: var(--background--subtle); border-radius: var(--radius--md);">
 				<div style="max-width: 45rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--spacing--lg);">
-					<N8nSettingsSection title="Webhook" description="You are already at the end of the page. Edit the LAST field to reveal the bar.">
+					<N8nSettingsSection title="Webhook" description="You start scrolled to the end of the page. Edit any field to reveal the bar.">
 						<N8nSettingsRowGroup>
-							<N8nSettingsRow v-for="n in 5" :key="n" :title="'Setting ' + n" description="A high-impact instance setting that requires an explicit save." :action-fill="true">
-								<template #action><N8nInput :model-value="''" placeholder="Scroll target" /></template>
-							</N8nSettingsRow>
-							<N8nSettingsRow title="OTLP endpoint" description="Edit me — the bar appears while you are at the page end." :action-fill="true">
-								<template #action><N8nInput v-model="draft" /></template>
+							<N8nSettingsRow v-for="n in 6" :key="n" :title="'Setting ' + n" description="A high-impact instance setting that requires an explicit save." :action-fill="true">
+								<template #action><N8nInput v-model="draft[n - 1]" /></template>
 							</N8nSettingsRow>
 						</N8nSettingsRowGroup>
 					</N8nSettingsSection>
@@ -235,69 +190,7 @@ export const AppearsAtPageEnd: Story = {
 		docs: {
 			description: {
 				story:
-					'Corner case: the bar APPEARS while the user is already scrolled to the very end. Mounting the bar makes the page taller, so it slides in floating 24px above the panel bottom — briefly overlapping the tail of the content — and a small extra scroll docks it below the last row. Judge whether that momentary overlap is acceptable; the alternative (pages permanently reserving bottom padding for a bar that is usually hidden) is what this design avoids. Discard or Save hides the bar again, shrinking the page back.',
-			},
-		},
-	},
-};
-
-export const NarrowColumn: Story = {
-	render: () => ({
-		components: {
-			N8nSettingsSaveBar,
-			N8nSettingsSection,
-			N8nSettingsRowGroup,
-			N8nSettingsRow,
-			N8nInput,
-		},
-		setup() {
-			const value = ref('');
-			return { value };
-		},
-		template: `
-			<div style="max-width: 22.5rem; padding: var(--spacing--lg); display: flex; flex-direction: column; gap: var(--spacing--lg);">
-				<N8nSettingsSection title="Webhook" description="A 360px column, e.g. a split view or a small window.">
-					<N8nSettingsRowGroup>
-						<N8nSettingsRow title="Endpoint" description="A high-impact setting." :action-fill="true">
-							<template #action><N8nInput v-model="value" placeholder="Edit me" /></template>
-						</N8nSettingsRow>
-					</N8nSettingsRowGroup>
-				</N8nSettingsSection>
-				<N8nSettingsSaveBar :visible="true" @save="() => {}" @discard="() => {}" />
-			</div>
-		`,
-	}),
-	parameters: {
-		docs: {
-			description: {
-				story:
-					'Corner case: a narrow settings column (360px). The bar sizes off the column, so it shrinks with it while keeping its 12px side overhang; the status message wraps first (its box may shrink), while the action buttons keep their intrinsic size. Judge whether the wrapped layout is acceptable at this width or whether the bar should stack its rows on narrow columns.',
-			},
-		},
-	},
-};
-
-export const LongLabels: Story = {
-	render: () => ({
-		components: { N8nSettingsSaveBar },
-		template: `
-			<div style="max-width: 45rem; padding: var(--spacing--lg);">
-				<N8nSettingsSaveBar
-					:visible="true"
-					message="You have unsaved changes to the collector connection and tracing configuration"
-					save-label="Save and apply configuration"
-					discard-label="Discard all pending changes"
-					@save="() => {}"
-					@discard="() => {}"
-				/>
-			</div>
-		`,
-	}),
-	parameters: {
-		docs: {
-			description: {
-				story:
-					'Corner case: verbose copy (long status message and long button labels, e.g. after translation). The status text wraps within its flexible box while the buttons keep their intrinsic width; nothing truncates silently. Judge whether multi-line status text is acceptable or whether the message should truncate with an ellipsis.',
+					'Corner case: the bar appears while the user is already scrolled to the very end. Mounting the bar makes the page taller, so it slides in floating 24px above the panel bottom — briefly overlapping the tail of the content — and a small extra scroll docks it below the last row. Discard or Save hides the bar again, shrinking the page back.',
 			},
 		},
 	},
@@ -334,7 +227,7 @@ export const Interactive: Story = {
 			return { draft, saving, dirty, onSave, onDiscard };
 		},
 		template: `
-			<div style="max-width: 45rem; display: flex; flex-direction: column; gap: var(--spacing--lg);">
+			<div style="max-width: 45rem; padding: var(--spacing--lg); display: flex; flex-direction: column; gap: var(--spacing--lg);">
 				<N8nSettingsSection title="Collector connection" description="Edit the endpoint to reveal the save bar. Discard reverts it; Save confirms with the app notification.">
 					<N8nSettingsRowGroup>
 						<N8nSettingsRow title="OTLP endpoint" description="Where to send OTLP traces." :action-fill="true">
