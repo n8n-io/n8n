@@ -9,7 +9,7 @@
 # next to a live get-n8n.sh setup.
 #
 # shellcheck disable=SC2015  # `<assert> && pass || fail` is safe: pass never fails
-# shellcheck disable=SC2329  # teardown is invoked via trap
+# shellcheck disable=SC2329,SC2317  # teardown is invoked via trap (code differs by shellcheck version)
 set -u
 
 SCRIPT="$(cd "$(dirname "$0")" && pwd)/get-n8n.sh"

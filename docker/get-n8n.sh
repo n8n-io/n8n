@@ -262,8 +262,9 @@ compose() {
 }
 
 do_upgrade() {
-	[ -f "${N8N_DIR}/.env" ] && [ -f "${N8N_DIR}/compose.yml" ] ||
+	if [ ! -f "${N8N_DIR}/.env" ] || [ ! -f "${N8N_DIR}/compose.yml" ]; then
 		fail "no existing install found in ${N8N_DIR} — run without --upgrade to install."
+	fi
 
 	target="${REQUESTED_VERSION:-${DEFAULT_N8N_VERSION}}"
 	current="$(sed -n 's/^N8N_VERSION=//p' "${N8N_DIR}/.env")"
