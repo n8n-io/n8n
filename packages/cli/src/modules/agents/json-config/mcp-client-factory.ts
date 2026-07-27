@@ -164,6 +164,7 @@ export interface BuildMcpClientDeps {
 	 * warning is emitted from the agent runtime as a `warning` stream chunk.
 	 */
 	onConnectionFailed?: (event: { server: string; error: string }) => void;
+	onToolCallSettled?: McpServerConfig['onToolCallSettled'];
 }
 
 /**
@@ -178,7 +179,14 @@ export async function buildMcpClientForServer(
 	server: AgentJsonMcpServerConfig,
 	deps: BuildMcpClientDeps,
 ): Promise<McpClient> {
-	const { credentialProvider, oauthService, projectId, proxyFetch, onConnectionFailed } = deps;
+	const {
+		credentialProvider,
+		oauthService,
+		projectId,
+		proxyFetch,
+		onConnectionFailed,
+		onToolCallSettled,
+	} = deps;
 	const { McpClient } = await import('@n8n/agents');
 
 	const { headers: initialHeaders, credentialData } = await deriveAuthHeaders(
@@ -212,6 +220,7 @@ export async function buildMcpClientForServer(
 		fetch: authFetch,
 		toolFilter: server.toolFilter,
 		requireApproval: mapApprovalToSdk(server.approval),
+		...(onToolCallSettled !== undefined && { onToolCallSettled }),
 		...(server.connectionTimeoutMs !== undefined && {
 			connectionTimeoutMs: server.connectionTimeoutMs,
 		}),

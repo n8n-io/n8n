@@ -12,7 +12,8 @@ import type { CronExpression } from 'n8n-workflow';
  */
 
 /**
- * A 6-field cron expression (seconds included) evaluated in an IANA timezone.
+ * A 5- or 6-field cron expression (seconds optional) evaluated in an IANA timezone.
+ * A 5-field expression is treated as seconds = 0.
  * Wall-clock: fires at the given local time, so DST shifts the absolute instant.
  * `timezone === null` means the instance default, resolved by the caller before
  * the math runs.

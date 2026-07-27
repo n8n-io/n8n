@@ -1,3 +1,7 @@
+export { AgentEvalDatasetRepository } from './agent-eval-dataset.repository.ee';
+export { AgentEvalRunRepository } from './agent-eval-run.repository.ee';
+export { AgentEvalResultRepository } from './agent-eval-result.repository.ee';
+export { AgentEvalRatingRepository } from './agent-eval-rating.repository.ee';
 export { AnnotationTagMappingRepository } from './annotation-tag-mapping.repository.ee';
 export { AnnotationTagRepository } from './annotation-tag.repository.ee';
 export { AiBuilderTemporaryWorkflowRepository } from './ai-builder-temporary-workflow.repository';
@@ -31,6 +35,7 @@ export { FolderRepository } from './folder.repository';
 export { FolderTagMappingRepository } from './folder-tag-mapping.repository';
 export { ScopeRepository } from './scope.repository';
 export { InvalidAuthTokenRepository } from './invalid-auth-token.repository';
+export { InstanceCredentialAssignmentRepository } from './instance-credential-assignment.repository';
 export { LicenseMetricsRepository } from './license-metrics.repository';
 export { ProjectRelationRepository } from './project-relation.repository';
 export { ProjectRepository, type ProjectListOptions } from './project.repository';
@@ -74,8 +79,12 @@ export { WorkflowPublishHistoryRepository } from './workflow-publish-history.rep
 export {
 	WorkflowReviewRequestRepository,
 	type InboxCursor,
+	type WorkflowReviewRequestForWorkflow,
 } from './workflow-review-request.repository';
-export { WorkflowReviewRequestWorkflowRepository } from './workflow-review-request-workflow.repository';
+export {
+	WorkflowReviewRequestWorkflowRepository,
+	type WorkflowReviewRequestLinkedWorkflow,
+} from './workflow-review-request-workflow.repository';
 export { WorkflowReviewRequestReviewerRepository } from './workflow-review-request-reviewer.repository';
 export { WorkflowReviewRequestAuthorRepository } from './workflow-review-request-author.repository';
 export {

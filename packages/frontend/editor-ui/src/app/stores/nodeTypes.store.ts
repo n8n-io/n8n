@@ -565,6 +565,8 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		isConfigurableNode,
 		communityNodesAndActions,
 		communityNodeType,
+		officialCommunityNodeTypes,
+		unofficialCommunityNodeTypes,
 		fetchCommunityNodePreviews,
 		getResourceMapperFields,
 		getLocalResourceMapperFields,

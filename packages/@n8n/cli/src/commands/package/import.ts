@@ -10,7 +10,7 @@ export default class PackageImport extends BaseCommand {
 
 	static override examples = [
 		'<%= config.bin %> package import --file=export.n8np',
-		'<%= config.bin %> package import --file=export.n8np --project=<id> --workflow-conflict-policy=skip',
+		'<%= config.bin %> package import --file=export.n8np --project-id=<id> --workflow-conflict-policy=skip',
 		'<%= config.bin %> package import --file=export.n8np --workflow-conflict-policy=fail --credential-missing-mode=must-preexist',
 		'<%= config.bin %> package import --file=export.n8np --workflow-conflict-policy=fail --bindings=\'{"credentials":{"<sourceId>":"<targetId>"}}\'',
 	];
@@ -18,11 +18,14 @@ export default class PackageImport extends BaseCommand {
 	static override flags = {
 		...BaseCommand.baseFlags,
 		file: Flags.string({ description: 'Path to the .n8np package file', required: true }),
-		project: Flags.string({
+		projectId: Flags.string({
+			char: 'p',
 			description: 'Target project ID (defaults to your personal project)',
+			aliases: ['project-id', 'project'],
 		}),
-		folder: Flags.string({
+		folderId: Flags.string({
 			description: 'Target folder ID within the project (defaults to the project root)',
+			aliases: ['folder-id', 'folder'],
 		}),
 		workflowConflictPolicy: Flags.string({
 			description: 'What to do when a workflow already exists in the target project',
@@ -107,8 +110,8 @@ export default class PackageImport extends BaseCommand {
 				result = await client.importPackage(
 					{ buffer, filename: path.basename(flags.file) },
 					{
-						projectId: flags.project,
-						folderId: flags.folder,
+						projectId: flags.projectId,
+						folderId: flags.folderId,
 						workflowConflictPolicy: flags.workflowConflictPolicy,
 						workflowPublishingPolicy: flags.workflowPublishingPolicy,
 						workflowIdPolicy: flags.workflowIdPolicy,

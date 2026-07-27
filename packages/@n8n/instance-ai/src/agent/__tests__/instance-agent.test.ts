@@ -640,6 +640,7 @@ describe('createInstanceAgent', () => {
 
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
 			mode: 'adaptive',
+			effort: 'medium',
 		});
 	});
 

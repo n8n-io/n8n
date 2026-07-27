@@ -122,9 +122,6 @@ const hasOpenApproval = computed(() => openInteractive.value?.toolName === APPRO
 const hasOpenInteractiveQuestion = computed(
 	() => hasOpenInteraction.value && !hasOpenApproval.value,
 );
-const areConfigurationActionsDisabled = computed(
-	() => isStreaming.value || isPreparingToSend.value || hasOpenInteraction.value,
-);
 
 const chatPlaceholder = computed(() =>
 	hasOpenApproval.value
@@ -258,7 +255,6 @@ onBeforeUnmount(() => {
 		/>
 
 		<div :class="$style.inputArea">
-			<slot name="above-input" :disabled="areConfigurationActionsDisabled" />
 			<ChatInputBase
 				v-model="inputText"
 				:placeholder="chatPlaceholder"

@@ -6,6 +6,14 @@ export const INSTANCE_AI_SETTINGS_VIEW = 'InstanceAiSettings';
 export const INSTANCE_AI_PROJECT_ID_QUERY = 'projectId';
 /** Entry-point source carried into the empty view when a hand-off can't create a thread yet. */
 export const INSTANCE_AI_SOURCE_QUERY = 'source';
+
+/** Brand names, deliberately not translated; single source for dialogs and settings rows. */
+export const SANDBOX_PROVIDER_LABELS = {
+	daytona: 'Daytona',
+	'n8n-sandbox': 'n8n Sandbox Service',
+} as const;
+
+export type InstanceAiConnectionKind = 'model' | 'sandbox' | 'search';
 export const INSTANCE_AI_NEW_VIEW = 'InstanceAiNew';
 export const INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY = 'instanceAiAgentBuilderTarget';
 export const NEW_CONVERSATION_TITLE = 'New conversation';

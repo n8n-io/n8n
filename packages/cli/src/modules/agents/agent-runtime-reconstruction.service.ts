@@ -371,6 +371,13 @@ export class AgentRuntimeReconstructionService {
 						error: event.error,
 					});
 				},
+				...(instrumentation?.onMcpToolCallSettled !== undefined && {
+					onToolCallSettled: async (event) =>
+						await instrumentation.onMcpToolCallSettled?.({
+							serverName: server.name,
+							...event,
+						}),
+				}),
 			});
 
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
