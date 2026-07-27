@@ -7,7 +7,12 @@
 
 import type { CallExpression, MemberExpression, Node, Program } from 'estree';
 
-import { FORBIDDEN_NODE_TYPES, DANGEROUS_GLOBALS, parseSDKCode } from '../../ast-interpreter';
+import {
+	FORBIDDEN_NODE_TYPES,
+	DANGEROUS_GLOBALS,
+	getSafeJSONMethod,
+	parseSDKCode,
+} from '../../ast-interpreter';
 import { dedupeSourceLintIssues, walkAst } from '../ast-walk';
 import { isEmbeddedCodePropertyValue } from '../code-node/extract-snippets';
 import type { SourceLintIssue } from '../types';
@@ -41,33 +46,34 @@ const SDK_FLUENT_METHODS = new Set([
 	'group',
 ]);
 
+/** An `as const` occurrence in prepared source (1-based line, 0-based column). */
+export interface AsConstMatch {
+	line: number;
+	column: number;
+}
+
 /**
  * Strip imports and common TS-only syntax so acorn can parse agent source.
  * Replacements preserve line count (and roughly column positions) so AST
  * `loc` values still match the original file.
+ *
+ * `as const` matches are collected after the strips above run, so their
+ * coordinates share the AST's coordinate space — this lets callers tell a
+ * real assertion apart from text inside a string/template (jsCode, sticky).
  */
 export function prepareSourceForLint(source: string): {
 	code: string;
-	asConstLines: number[];
+	asConstMatches: AsConstMatch[];
 } {
-	const asConstLines: number[] = [];
-	const lines = source.split(/\r?\n/);
-	for (let i = 0; i < lines.length; i++) {
-		if (/\bas\s+const\b/.test(lines[i] ?? '')) {
-			asConstLines.push(i + 1);
-		}
-	}
-
 	let code = source;
 	const blankSameLines = (match: string): string => '\n'.repeat((match.match(/\n/g) ?? []).length);
 	const spaces = (match: string): string => ' '.repeat(match.length);
 
 	code = code.replace(/^\s*import\s[\s\S]*?from\s+['"][^'"]+['"];?\s*$/gm, blankSameLines);
 	code = code.replace(/^\s*import\s+type\s[\s\S]*?;?\s*$/gm, blankSameLines);
-	code = code.replace(/\bas\s+const\b/g, spaces);
-	code = code.replace(/\bas\s+[A-Za-z_$][\w$.<>,\s|&[\]?]*/g, spaces);
-	code = code.replace(/\bsatisfies\s+[A-Za-z_$][\w$.|<>[\]\s,&?]*/g, spaces);
 	// Narrower than a blanket `: Type` strip — avoids mangling ternaries (`a ? b : c`).
+	// These two are the only non-length-preserving strips; everything below them
+	// shares coordinates with the collected matches and the parsed AST.
 	code = code.replace(
 		/\b((?:const|let|var)\s+[A-Za-z_$][\w$]*)\s*:\s*[A-Za-z_$][\w$.|<>[\]\s,&?]*(?=\s*=)/g,
 		'$1',
@@ -77,7 +83,22 @@ export function prepareSourceForLint(source: string): {
 		'$1',
 	);
 
-	return { code, asConstLines };
+	const asConstMatches: AsConstMatch[] = [];
+	const asConstPattern = /\bas\s+const\b/g;
+	const lines = code.split(/\r?\n/);
+	for (let i = 0; i < lines.length; i++) {
+		asConstPattern.lastIndex = 0;
+		let match: RegExpExecArray | null;
+		while ((match = asConstPattern.exec(lines[i] ?? '')) !== null) {
+			asConstMatches.push({ line: i + 1, column: match.index });
+		}
+	}
+
+	code = code.replace(/\bas\s+const\b/g, spaces);
+	code = code.replace(/\bas\s+[A-Za-z_$][\w$.<>,\s|&[\]?]*/g, spaces);
+	code = code.replace(/\bsatisfies\s+[A-Za-z_$][\w$.|<>[\]\s,&?]*/g, spaces);
+
+	return { code, asConstMatches };
 }
 
 function lineOf(node: Node): number | undefined {
@@ -104,16 +125,57 @@ function directReceiverName(member: MemberExpression): string | undefined {
 	return undefined;
 }
 
+interface SourceRange {
+	startLine: number;
+	startColumn: number;
+	endLine: number;
+	endColumn: number;
+}
+
+/**
+ * Ranges covered by string literals and template literals. An `as const`
+ * match inside one is string content (jsCode snippets, sticky text), not the
+ * TS assertion SDK_AS_CONST targets.
+ */
+function stringContentRanges(ast: Program): SourceRange[] {
+	const ranges: SourceRange[] = [];
+	walkAst(ast, (node) => {
+		const isString =
+			node.type === 'TemplateLiteral' ||
+			(node.type === 'Literal' && typeof node.value === 'string');
+		if (!isString || !node.loc) return;
+		ranges.push({
+			startLine: node.loc.start.line,
+			startColumn: node.loc.start.column,
+			endLine: node.loc.end.line,
+			endColumn: node.loc.end.column,
+		});
+	});
+	return ranges;
+}
+
+function rangeContains(range: SourceRange, line: number, column: number): boolean {
+	if (line < range.startLine || line > range.endLine) return false;
+	if (line === range.startLine && column < range.startColumn) return false;
+	if (line === range.endLine && column >= range.endColumn) return false;
+	return true;
+}
+
 /** Lint a prepared, parsed SDK AST (imports/TS already stripped). */
-export function lintWorkflowSdkAst(ast: Program, asConstLines: number[] = []): SourceLintIssue[] {
+export function lintWorkflowSdkAst(
+	ast: Program,
+	asConstMatches: AsConstMatch[] = [],
+): SourceLintIssue[] {
 	const issues: SourceLintIssue[] = [];
 
-	for (const line of asConstLines) {
+	const stringRanges = stringContentRanges(ast);
+	for (const match of asConstMatches) {
+		if (stringRanges.some((range) => rangeContains(range, match.line, match.column))) continue;
 		issues.push({
 			code: 'SDK_AS_CONST',
 			message:
 				'`as const` is TypeScript-only and the workflow parser cannot interpret it. Remove the assertion.',
-			line,
+			line: match.line,
 			lintTarget: 'sdk',
 		});
 	}
@@ -155,7 +217,14 @@ export function lintWorkflowSdkAst(ast: Program, asConstLines: number[] = []): S
 				const isPropertyName =
 					parent?.type === 'MemberExpression' && parent.property === node && !parent.computed;
 				const isObjectKey = parent?.type === 'Property' && parent.key === node;
-				if (!isPropertyName && !isObjectKey) {
+				// Mirrors the interpreter: safe global methods (e.g. JSON.stringify) are allowed.
+				const isSafeMethodObject =
+					parent?.type === 'MemberExpression' &&
+					parent.object === node &&
+					!parent.computed &&
+					parent.property.type === 'Identifier' &&
+					getSafeJSONMethod(node.name, parent.property.name) !== undefined;
+				if (!isPropertyName && !isObjectKey && !isSafeMethodObject) {
 					issues.push({
 						code: 'SDK_FORBIDDEN_CONSTRUCT',
 						message: `Global '${node.name}' is unavailable in SDK builder code. Move runtime logic to a Code node or expr().`,
@@ -277,22 +346,22 @@ export function lintWorkflowSdkAst(ast: Program, asConstLines: number[] = []): S
  * Lint workflow SDK builder source. Skips jsCode / pythonCode property values.
  */
 export function lintWorkflowSdkSource(source: string): SourceLintIssue[] {
-	const { code, asConstLines } = prepareSourceForLint(source);
+	const { code, asConstMatches } = prepareSourceForLint(source);
 
 	let ast: Program;
 	try {
 		ast = parseSDKCode(code);
 	} catch {
 		return dedupeSourceLintIssues(
-			asConstLines.map((line) => ({
+			asConstMatches.map((match) => ({
 				code: 'SDK_AS_CONST',
 				message:
 					'`as const` is TypeScript-only and the workflow parser cannot interpret it. Remove the assertion.',
-				line,
+				line: match.line,
 				lintTarget: 'sdk' as const,
 			})),
 		);
 	}
 
-	return lintWorkflowSdkAst(ast, asConstLines);
+	return lintWorkflowSdkAst(ast, asConstMatches);
 }

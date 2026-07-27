@@ -22,6 +22,12 @@ const HTTP_MODULES = new Set([
 
 const FORBIDDEN_MODULE_PREFIXES = ['luxon', 'openai', '@openai/', 'langchain', '@langchain/'];
 
+/**
+ * $input methods rejected at runtime in runOnceForEachItem mode — mirrors
+ * validateNoDisallowedMethodsInRunForEach in nodes-base/Code.
+ */
+const EACH_ITEM_DISALLOWED_INPUT_METHODS = new Set(['first', 'last', 'all', 'itemMatching']);
+
 export interface LintJsCodeOptions {
 	mode?: CodeExecutionMode;
 	nodeName?: string;
@@ -100,7 +106,7 @@ export function lintJsCode(jsCode: string, options: LintJsCodeOptions = {}): Sou
 	const namePrefix = options.nodeName ? `'${options.nodeName}' ` : '';
 	let sawNetwork = false;
 	let sawForbiddenImport = false;
-	let sawInputAll = false;
+	let disallowedInputMethod: string | undefined;
 
 	walkAst(ast, (node) => {
 		if (node.type === 'ImportDeclaration') {
@@ -129,11 +135,12 @@ export function lintJsCode(jsCode: string, options: LintJsCodeOptions = {}): Sou
 				call.callee.type === 'MemberExpression' &&
 				!call.callee.computed &&
 				call.callee.property.type === 'Identifier' &&
-				call.callee.property.name === 'all' &&
+				EACH_ITEM_DISALLOWED_INPUT_METHODS.has(call.callee.property.name) &&
 				call.callee.object.type === 'Identifier' &&
-				call.callee.object.name === '$input'
+				call.callee.object.name === '$input' &&
+				disallowedInputMethod === undefined
 			) {
-				sawInputAll = true;
+				disallowedInputMethod = call.callee.property.name;
 			}
 
 			const required = moduleSpecifierFromCall(call);
@@ -177,12 +184,12 @@ export function lintJsCode(jsCode: string, options: LintJsCodeOptions = {}): Sou
 		});
 	}
 
-	if (options.mode === 'runOnceForEachItem' && sawInputAll) {
+	if (options.mode === 'runOnceForEachItem' && disallowedInputMethod !== undefined) {
 		issues.push({
 			code: 'CODE_MODE_API_MISUSE',
 			message:
-				`${namePrefix}uses mode: 'runOnceForEachItem' but calls $input.all(). ` +
-				'$input.all() is only available in runOnceForAllItems (the default). ' +
+				`${namePrefix}uses mode: 'runOnceForEachItem' but calls $input.${disallowedInputMethod}(). ` +
+				`$input.${disallowedInputMethod}() is only available in runOnceForAllItems (the default). ` +
 				'Switch mode to runOnceForAllItems, or use $input.item / $json for per-item work.',
 			lintTarget: 'jsCode',
 			nodeName: options.nodeName,

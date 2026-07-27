@@ -128,6 +128,118 @@ describe('Validation', () => {
 			// Subnodes should NOT be flagged as disconnected (they connect TO their parent via AI connections)
 			expect(disconnectedWarnings).toHaveLength(0);
 		});
+
+		it.each(['n8n-nodes-base.cron', 'n8n-nodes-base.start', 'n8n-nodes-base.emailReadImap'])(
+			'should treat %s as a trigger (canonical trigger detection)',
+			(type) => {
+				const result = validateWorkflow({
+					id: 'test-id',
+					name: 'Test',
+					nodes: [{ id: '1', name: 'Entry', type, typeVersion: 1, position: [0, 0] }],
+					connections: {},
+				});
+
+				expect(result.warnings.filter((w) => w.code === 'MISSING_TRIGGER')).toHaveLength(0);
+				expect(result.warnings.filter((w) => w.code === 'DISCONNECTED_NODE')).toHaveLength(0);
+			},
+		);
+
+		it('should warn when two sources connect to the same single-value AI input', () => {
+			const result = validateWorkflow({
+				id: 'test-id',
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: '2',
+						name: 'Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 1,
+						position: [200, 0],
+						parameters: {},
+					},
+					{
+						id: '3',
+						name: 'Model A',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [0, 200],
+						parameters: {},
+					},
+					{
+						id: '4',
+						name: 'Model B',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [200, 200],
+						parameters: {},
+					},
+				],
+				connections: {
+					Trigger: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					'Model A': {
+						ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+					},
+					'Model B': {
+						ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+					},
+				},
+			});
+
+			const duplicateWarnings = result.warnings.filter(
+				(w) => w.code === 'DUPLICATE_SUBNODE_CONNECTION',
+			);
+			expect(duplicateWarnings).toHaveLength(1);
+			expect(duplicateWarnings[0].message).toContain('ai_languageModel');
+			expect(duplicateWarnings[0].message).toContain('Model A');
+			expect(duplicateWarnings[0].message).toContain('Model B');
+		});
+
+		it('should not warn for a single connection to a single-value AI input', () => {
+			const result = validateWorkflow({
+				id: 'test-id',
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: '2',
+						name: 'Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 1,
+						position: [200, 0],
+						parameters: {},
+					},
+					{
+						id: '3',
+						name: 'Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [0, 200],
+						parameters: {},
+					},
+				],
+				connections: {
+					Trigger: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					Model: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+				},
+			});
+
+			expect(result.warnings.filter((w) => w.code === 'DUPLICATE_SUBNODE_CONNECTION')).toHaveLength(
+				0,
+			);
+		});
 	});
 
 	describe('ValidationError', () => {

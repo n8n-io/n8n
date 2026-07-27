@@ -10,6 +10,7 @@ import { resolveMainInputCount } from './node-port-resolvers/resolve-main-input-
 import { resolveMainOutputCount } from './node-port-resolvers/resolve-main-output-count';
 import { isStickyNoteType, isHttpRequestType } from '../constants/node-types';
 import type { WorkflowBuilder, WorkflowJSON } from '../types/base';
+import { isTriggerNodeType } from '../utils/trigger-detection';
 import { containsPlaceholderMarker } from '../workflow-builder/string-utils';
 
 /**
@@ -35,6 +36,7 @@ export type ValidationErrorCode =
 	| 'INVALID_INPUT_INDEX'
 	| 'INVALID_OUTPUT_INDEX'
 	| 'SUBNODE_NOT_CONNECTED'
+	| 'DUPLICATE_SUBNODE_CONNECTION'
 	| 'SUBNODE_PARAMETER_MISMATCH'
 	| 'UNSUPPORTED_SUBNODE_INPUT'
 	| 'MISSING_REQUIRED_INPUT'
@@ -128,22 +130,6 @@ export interface ValidationOptions {
 	validateSchema?: boolean;
 	/** Optional node types provider for dynamic input index validation */
 	nodeTypesProvider?: INodeTypes;
-}
-
-/**
- * Check if a node type is a trigger
- */
-function isTriggerNode(type: string): boolean {
-	return (
-		type.includes('Trigger') ||
-		type.includes('trigger') ||
-		type.includes('Webhook') ||
-		type.includes('webhook') ||
-		type.includes('Schedule') ||
-		type.includes('schedule') ||
-		type.includes('Poll') ||
-		type.includes('poll')
-	);
 }
 
 /**
@@ -245,7 +231,9 @@ function reconstructSubnodesFromConnections(
 								subnodes[subnodeField] = [subnodeConfig];
 							}
 						} else {
-							// For single-value types, just set directly
+							// Single-value types keep the last connection; duplicates are
+							// surfaced by checkDuplicateSingleValueAiConnections instead of
+							// being silently dropped here.
 							subnodes[subnodeField] = subnodeConfig;
 						}
 					}
@@ -256,6 +244,48 @@ function reconstructSubnodesFromConnections(
 
 	// Return undefined if no subnodes were found
 	return Object.keys(subnodes).length > 0 ? subnodes : undefined;
+}
+
+/**
+ * Single-value AI inputs (model, memory, embedding, …) accept exactly one connection
+ * at runtime. Subnode reconstruction keeps only the last source, so surface duplicates
+ * here instead of letting an earlier malformed subnode escape validation.
+ */
+function checkDuplicateSingleValueAiConnections(
+	json: WorkflowJSON,
+	warnings: ValidationWarning[],
+): void {
+	const firstSourceByInput = new Map<string, string>();
+	const warnedInputs = new Set<string>();
+
+	for (const [sourceNodeName, nodeConnections] of Object.entries(json.connections)) {
+		for (const connType of AI_CONNECTION_TYPES) {
+			if (AI_ARRAY_TYPES.has(connType)) continue;
+			const aiConns = nodeConnections[connType as keyof typeof nodeConnections];
+			if (!aiConns || !Array.isArray(aiConns)) continue;
+
+			for (const outputs of aiConns) {
+				if (!outputs) continue;
+				for (const conn of outputs) {
+					const key = `${conn.node}:${connType}`;
+					const firstSource = firstSourceByInput.get(key);
+					if (firstSource === undefined) {
+						firstSourceByInput.set(key, sourceNodeName);
+						continue;
+					}
+					if (firstSource === sourceNodeName || warnedInputs.has(key)) continue;
+					warnedInputs.add(key);
+					warnings.push(
+						new ValidationWarning(
+							'DUPLICATE_SUBNODE_CONNECTION',
+							`'${conn.node}' has multiple '${connType}' connections ('${firstSource}' and '${sourceNodeName}'), but this input accepts only one. Remove the extra connection.`,
+							conn.node,
+						),
+					);
+				}
+			}
+		}
+	}
 }
 
 /**
@@ -325,7 +355,7 @@ function findDisconnectedNodes(json: WorkflowJSON): string[] {
 		if (hasIncoming.has(node.name)) continue;
 
 		// Skip trigger nodes - they don't need incoming connections
-		if (isTriggerNode(node.type)) continue;
+		if (isTriggerNodeType(node.type)) continue;
 
 		// Skip sticky notes - they don't participate in data flow
 		if (isStickyNoteType(node.type)) continue;
@@ -376,7 +406,7 @@ export function validateWorkflow(
 
 	// Check for trigger node
 	if (!options.allowNoTrigger) {
-		const hasTrigger = json.nodes.some((node) => isTriggerNode(node.type));
+		const hasTrigger = json.nodes.some((node) => isTriggerNodeType(node.type));
 		if (!hasTrigger) {
 			warnings.push(
 				new ValidationWarning(
@@ -517,6 +547,9 @@ export function validateWorkflow(
 
 	// Merge node input-count consistency
 	checkMergeNodeInputCount(json, warnings);
+
+	// Duplicate connections to single-value AI inputs
+	checkDuplicateSingleValueAiConnections(json, warnings);
 
 	return {
 		valid: errors.length === 0,
@@ -1288,7 +1321,7 @@ function checkNodeInputIndices(
 				if (mainInputCount === undefined) continue;
 
 				// Check if the input index is valid
-				if (targetInputIndex >= mainInputCount) {
+				if (targetInputIndex < 0 || targetInputIndex >= mainInputCount) {
 					const warnKey = `${targetNodeName}:${targetInputIndex}`;
 					if (!warnedInputs.has(warnKey)) {
 						warnedInputs.add(warnKey);

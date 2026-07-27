@@ -60,6 +60,34 @@ export default workflow('id', 'name').add(start);
 		expect(lintWorkflowSdkSource(source).map((i) => i.code)).toContain('SDK_AS_CONST');
 	});
 
+	it('does not flag as const inside jsCode template literals', () => {
+		const source = `
+const transform = node({
+  type: 'n8n-nodes-base.code',
+  version: 2,
+  config: {
+    name: 'Transform',
+    parameters: {
+      jsCode: \`
+// cast the value as const before returning
+return $input.all();
+\`.trim(),
+    },
+  },
+});
+export default workflow('id', 'name').add(transform);
+`;
+		expect(lintWorkflowSdkSource(source).map((i) => i.code)).not.toContain('SDK_AS_CONST');
+	});
+
+	it('does not flag as const inside string literals', () => {
+		const source = `
+const note = 'avoid as const in workflow files';
+export default workflow('id', 'name').add(start);
+`;
+		expect(lintWorkflowSdkSource(source).map((i) => i.code)).not.toContain('SDK_AS_CONST');
+	});
+
 	it('flags placeholder wrapped in expr', () => {
 		const source = `
 const n = node({
@@ -127,6 +155,32 @@ export default workflow('id', 'name').add(n);
 		const mapIssues = lintWorkflowSdkSource(source).filter((i) => i.message.includes("'.map()'"));
 		expect(mapIssues).toHaveLength(0);
 	});
+
+	it('does not flag JSON.stringify in builder code', () => {
+		const source = `
+const payload = JSON.stringify({ a: 1 });
+export default workflow('id', 'name').add(start);
+`;
+		expect(lintWorkflowSdkSource(source).map((i) => i.code)).not.toContain(
+			'SDK_FORBIDDEN_CONSTRUCT',
+		);
+	});
+
+	it('still flags raw JSON identifier access', () => {
+		const source = `
+const payload = JSON;
+export default workflow('id', 'name').add(start);
+`;
+		expect(lintWorkflowSdkSource(source).map((i) => i.code)).toContain('SDK_FORBIDDEN_CONSTRUCT');
+	});
+
+	it('still flags JSON.parse', () => {
+		const source = `
+const payload = JSON.parse('{"x":42}');
+export default workflow('id', 'name').add(start);
+`;
+		expect(lintWorkflowSdkSource(source).map((i) => i.code)).toContain('SDK_FORBIDDEN_CONSTRUCT');
+	});
 });
 
 describe('prepareSourceForLint', () => {
@@ -140,7 +194,7 @@ export default workflow('id', 'name');
 `;
 		const prepared = prepareSourceForLint(source);
 		expect(prepared.code.includes('import')).toBe(false);
-		expect(prepared.asConstLines).toEqual([5]);
+		expect(prepared.asConstMatches).toEqual([{ line: 5, column: 20 }]);
 		const asConstLine = prepared.code.split(/\r?\n/)[4];
 		expect(asConstLine).toContain("const mode = 'list'");
 	});

@@ -11,7 +11,7 @@ import type { SourceLintIssue } from './types';
  * Parses the prepared source once and shares the AST across passes.
  */
 export function lintWorkflowSource(source: string): SourceLintIssue[] {
-	const { code, asConstLines } = prepareSourceForLint(source);
+	const { code, asConstMatches } = prepareSourceForLint(source);
 
 	let ast;
 	try {
@@ -19,17 +19,17 @@ export function lintWorkflowSource(source: string): SourceLintIssue[] {
 	} catch {
 		// Still surface `as const` findings when the file does not parse.
 		return dedupeSourceLintIssues(
-			asConstLines.map((line) => ({
+			asConstMatches.map((match) => ({
 				code: 'SDK_AS_CONST',
 				message:
 					'`as const` is TypeScript-only and the workflow parser cannot interpret it. Remove the assertion.',
-				line,
+				line: match.line,
 				lintTarget: 'sdk' as const,
 			})),
 		);
 	}
 
-	const sdkIssues = lintWorkflowSdkAst(ast, asConstLines);
+	const sdkIssues = lintWorkflowSdkAst(ast, asConstMatches);
 	const parents = buildParentMap(ast);
 	const snippets = extractEmbeddedCodeSnippets(ast, code, parents);
 

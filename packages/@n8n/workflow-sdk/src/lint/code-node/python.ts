@@ -4,6 +4,9 @@ import type { SourceLintIssue } from '../types';
 const PYTHON_NETWORK_IMPORT =
 	/(?:^|\n)\s*(?:import|from)\s+(?:requests|urllib(?:\.[\w.]+)?|httpx|aiohttp|http\.client)\b/m;
 
+/** `from http import client` is equivalent to `import http.client`. */
+const PYTHON_NETWORK_FROM_IMPORT = /(?:^|\n)\s*from\s+http\s+import\s+client\b/m;
+
 export interface LintPythonCodeOptions {
 	nodeName?: string;
 }
@@ -20,7 +23,7 @@ export function lintPythonCode(
 	const issues: SourceLintIssue[] = [];
 	const namePrefix = options.nodeName ? `'${options.nodeName}' ` : '';
 
-	if (PYTHON_NETWORK_IMPORT.test(pythonCode)) {
+	if (PYTHON_NETWORK_IMPORT.test(pythonCode) || PYTHON_NETWORK_FROM_IMPORT.test(pythonCode)) {
 		issues.push({
 			code: 'CODE_NODE_NETWORK_CALL',
 			message:
