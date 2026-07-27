@@ -1143,12 +1143,14 @@ async function initialize() {
 	// fresh data anyway. Only events arriving during this init need replaying.
 	pendingExternalRefresh.value = false;
 	try {
-		// Flush any pending/in-flight save for the previous agent before we tear
-		// down its state — without this, an autosave scheduled by edits in the
-		// previous agent could land after we've already swapped to the new one.
-		// The save itself snapshots agentId at schedule-time, so the persisted
-		// data is correct; settling here keeps localConfig/agent state consistent.
-		await settleAutosave();
+		// Persist a pending MCP toggle before the new agent can replace its
+		// snapshot. Other pending edits remain governed by their existing
+		// switch/revert behavior.
+		await Promise.all([
+			configAutosave.settleAutosave(),
+			skillAutosave.settleAutosave(),
+			mcpAutosave.flushAutosave(),
+		]);
 		// Drop any per-agent telemetry state from the previous agent — an in-flight
 		// save for the previous agent would've already flushed pending edits before
 		// we got here, and a scheduled-but-not-fired save wouldn't flush correctly

@@ -156,6 +156,32 @@ describe('AgentMcpAccessService', () => {
 			expect(result.updatedCount).toBe(2);
 		});
 
+		it('chunks large updates to stay within database parameter limits', async () => {
+			projectScopeService.getProjectIds.mockResolvedValue(null);
+			const candidates = Array.from({ length: 600 }, (_, index) =>
+				candidate(`a${index}`, `p${index}`, false),
+			);
+			agentRepository.findMcpAvailabilityCandidates.mockResolvedValue(candidates);
+
+			const result = await service.bulkSetAvailableInMCP(user, {
+				availableInMCP: true,
+				allAgents: true,
+			} as never);
+
+			expect(agentRepository.setAvailableInMCP).toHaveBeenCalledTimes(2);
+			expect(agentRepository.setAvailableInMCP).toHaveBeenNthCalledWith(
+				1,
+				candidates.slice(0, 500).map(({ id }) => id),
+				true,
+			);
+			expect(agentRepository.setAvailableInMCP).toHaveBeenNthCalledWith(
+				2,
+				candidates.slice(500).map(({ id }) => id),
+				true,
+			);
+			expect(result.updatedCount).toBe(600);
+		});
+
 		it('does not load agents from a project the user cannot update', async () => {
 			projectScopeService.getProjectIds.mockResolvedValue([]);
 

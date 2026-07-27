@@ -8,6 +8,8 @@ import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
 
+const BULK_CHUNK_SIZE = 500;
+
 type BulkSetAvailableInMCPResult = {
 	updatedCount: number;
 	/** Only present when the request targeted explicit `agentIds`. */
@@ -72,10 +74,13 @@ export class AgentMcpAccessService {
 		const unchanged = accessible.filter((agent) => agent.availableInMCP === dto.availableInMCP);
 		const toUpdate = accessible.filter((agent) => agent.availableInMCP !== dto.availableInMCP);
 
-		await this.agentRepository.setAvailableInMCP(
-			toUpdate.map((agent) => agent.id),
-			dto.availableInMCP,
-		);
+		const agentIds = toUpdate.map((agent) => agent.id);
+		for (let start = 0; start < agentIds.length; start += BULK_CHUNK_SIZE) {
+			await this.agentRepository.setAvailableInMCP(
+				agentIds.slice(start, start + BULK_CHUNK_SIZE),
+				dto.availableInMCP,
+			);
+		}
 
 		return {
 			updatedCount: toUpdate.length,
