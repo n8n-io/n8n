@@ -1,13 +1,11 @@
 import type { WorkQueue } from './work-queue.types';
 
 /**
- * In-memory `WorkQueue` — the default until a Redis-backed impl lands. When a
- * handler is registered it dispatches messages sequentially on a microtask.
- *
- * `messages` records everything published so tests can assert on it; `drain()`
- * resolves once the queue has been fully processed.
+ * In-memory `WorkQueue`. When a handler is registered it dispatches messages
+ * sequentially on a microtask.
  */
 export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
+	/** Everything ever published, retained so tests can assert on it. */
 	readonly messages: TMessage[] = [];
 
 	private pending: TMessage[] = [];

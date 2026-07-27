@@ -29,7 +29,6 @@ async function main(): Promise<void> {
 		);
 	}
 
-	// Two logical queues so step floods can't starve orchestration (or vice versa).
 	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
 	const stepQueue = new InMemoryWorkQueue<StepMessage>();
 

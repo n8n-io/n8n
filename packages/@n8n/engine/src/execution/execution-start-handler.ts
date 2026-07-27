@@ -41,7 +41,6 @@ export class ExecutionStartHandler {
 			status: 'completed',
 		});
 
-		// Plan the successors. Create a step for each and enqueue it for processing.
 		const successorNodeIds = getSuccessorNodeIds(execution.graph, trigger.id);
 		for (const nodeId of successorNodeIds) {
 			const { id: stepId } = await this.stepStore.createStep({

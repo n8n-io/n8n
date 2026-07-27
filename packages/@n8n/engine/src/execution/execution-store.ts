@@ -11,7 +11,7 @@ export interface NewExecutionRecord {
 	triggerPayload: JsonObject | null;
 }
 
-/** A full execution as loaded by a worker. */
+/** A full execution record. */
 export interface ExecutionRecord {
 	id: string;
 	workflowId: string;

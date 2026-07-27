@@ -1,10 +1,8 @@
 /**
  * Thrown when the engine reaches a code path that isn't implemented yet.
  *
- * The engine deliberately avoids `n8n-workflow`/`@n8n/core`, so we can't use
- * n8n's shared error classes here. TODO(CAT-3799): consolidate the engine's
- * local error types into a shared, dependency-light lib when we extract common
- * code.
+ * Local because the engine avoids depending on `n8n-workflow`/`@n8n/core`.
+ * TODO(CAT-3799): move the engine's error types to a shared lib.
  */
 export class UnimplementedError extends Error {
 	constructor(message: string) {
