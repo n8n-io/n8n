@@ -389,6 +389,9 @@ export interface BuildWorkflowConfig {
 	/** False for answer-only cases: ending the conversation without a saved
 	 *  workflow is then a valid outcome, not a failed build. Defaults to true. */
 	workflowExpected?: boolean;
+	/** Computer-use browser fixture, provisioned to the thread before the first
+	 *  message so the FixtureAdapter replays it (goal: computer-use-evals). */
+	browserFixture?: Record<string, unknown>;
 }
 
 /** A case needs a workflow iff something judges one: execution scenarios or

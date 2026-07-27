@@ -16,6 +16,7 @@ import {
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalAgentExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
+	InstanceAiEvalBrowserFixtureRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
 } from '@n8n/api-types';
@@ -971,7 +972,7 @@ export class InstanceAiController {
 	async setThreadBrowserFixture(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Body payload: { threadId: string; fixture: unknown },
+		@Body payload: InstanceAiEvalBrowserFixtureRequest,
 	) {
 		this.requireInstanceAiEnabled();
 		// A fixture is only ever replayed when this n8n runs in fixture mode. If it

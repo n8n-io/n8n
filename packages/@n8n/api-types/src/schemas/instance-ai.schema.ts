@@ -1711,6 +1711,15 @@ export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
 	credentialIds: z.array(z.string().min(1)).max(50),
 }) {}
 
+/** Register a recorded browser fixture for a build thread (goal:
+ *  computer-use-evals). The eval harness POSTs the case's page-state bundle here
+ *  before the first message; the FixtureAdapter replays it for that thread. */
+export class InstanceAiEvalBrowserFixtureRequest extends Z.class({
+	threadId: z.string().uuid(),
+	/** Opaque page-state bundle; the FixtureAdapter validates its shape/version on replay. */
+	fixture: z.record(z.unknown()),
+}) {}
+
 /** A workflow a conversation seed references, recreated at its given id so the
  *  seeded history resolves. Content is opaque here; the server validates it. */
 const instanceAiEvalSeedWorkflowSchema = z.object({

@@ -166,6 +166,9 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	// reach this check; classified only to keep the map schema-complete.
 	buildExpectations: 'supported',
 	credentials: 'orchestrator-only',
+	// Provisioned to the thread by the harness (like credentials); the `claude -p`
+	// MCP path can't serve a browser fixture, so CU cases are skipped there.
+	browserFixture: 'orchestrator-only',
 	seedFile: 'orchestrator-only',
 	priorConversation: 'orchestrator-only',
 	seedThread: 'orchestrator-only',

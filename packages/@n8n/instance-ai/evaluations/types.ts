@@ -232,6 +232,10 @@ export interface WorkflowTestCase {
 	 *  absence and content ("an agent was created and no workflow", "the agent instructions mention
 	 *  escalating refunds"). Also run in prebuilt/MCP runs. Counted toward the pass rate. */
 	outcomeExpectations?: string[];
+	/** Computer-use browser fixture (goal: computer-use-evals): a recorded page-state
+	 *  bundle the harness provisions to the run's thread so the FixtureAdapter replays
+	 *  it (no real browser). Rides the case file like `credentials`. */
+	browserFixture?: Record<string, unknown>;
 	/**
 	 * Credentials visible to this case's build. Created for real before the build
 	 * and pinned as the thread's entire credential view — cases without this

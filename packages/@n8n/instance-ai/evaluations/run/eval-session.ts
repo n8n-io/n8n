@@ -144,6 +144,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						priorConversation: buildArgs.priorConversation,
 						seedThread: buildArgs.seedThread,
 						executionScenarios: buildArgs.executionScenarios,
+						browserFixture: buildArgs.browserFixture,
 						createdCredentialIds: lane.createdCredentialIds,
 						timeoutMs: buildArgs.timeoutMs,
 						preRunWorkflowIds: lane.preRunWorkflowIds,
