@@ -246,6 +246,7 @@ export default defineConfig(
 			'./src/permissions.ee/check-access.ts',
 			'./src/scheduling/durable-job-provisioner.ts',
 			'./src/scheduling/durable-scheduler.ts',
+			'./src/scheduling/poll-trigger-node/poll-trigger-job-registrar.ts',
 			'./src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts',
 			'./src/security-audit/risk-reporters/credentials-risk-reporter.ts',
 			'./src/services/role-cache.service.ts',

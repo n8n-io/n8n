@@ -19,6 +19,7 @@ import type { IConnections, INode } from 'n8n-workflow';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import type { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -98,6 +99,7 @@ describe('WorkflowService', () => {
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
+				mock(), // pollTriggerJobRegistrar
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 			);
@@ -365,6 +367,7 @@ describe('WorkflowService', () => {
 				redactionEnforcementServiceMock, // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
+				mock(), // pollTriggerJobRegistrar
 				mock(), // workflowPublishedVersionRepository
 				workflowHookContextServiceMock, // workflowHookContextService
 			);
@@ -1013,6 +1016,7 @@ describe('WorkflowService', () => {
 		let eventServiceMock: MockProxy<EventService>;
 		let scheduleTriggerJobRegistrarMock: MockProxy<ScheduleTriggerJobRegistrar>;
 		let workflowHookContextServiceMock: MockProxy<WorkflowHookContextService>;
+		let pollTriggerJobRegistrarMock: MockProxy<PollTriggerJobRegistrar>;
 
 		const WORKFLOW_ID = 'workflow-1';
 		const PREVIOUS_VERSION_ID = 'v1';
@@ -1056,6 +1060,7 @@ describe('WorkflowService', () => {
 			eventServiceMock = mock<EventService>();
 			scheduleTriggerJobRegistrarMock = mock();
 			workflowHookContextServiceMock = mock<WorkflowHookContextService>();
+			pollTriggerJobRegistrarMock = mock();
 
 			workflowRepositoryMock.create.mockImplementation(
 				(data) => Object.assign(new WorkflowEntity(), data) as WorkflowEntity,
@@ -1090,6 +1095,7 @@ describe('WorkflowService', () => {
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
 				scheduleTriggerJobRegistrarMock, // scheduleTriggerJobRegistrar
+				pollTriggerJobRegistrarMock, // pollTriggerJobRegistrar
 				mock(), // workflowPublishedVersionRepository
 				workflowHookContextServiceMock, // workflowHookContextService
 			);
@@ -1306,6 +1312,10 @@ describe('WorkflowService', () => {
 				trx,
 				WORKFLOW_ID,
 			);
+			expect(pollTriggerJobRegistrarMock.removeWorkflowInTransaction).toHaveBeenCalledWith(
+				trx,
+				WORKFLOW_ID,
+			);
 			// in-memory teardown is left to the leader, not run here
 			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
 		});
@@ -1432,6 +1442,7 @@ describe('WorkflowService', () => {
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
+				mock(), // pollTriggerJobRegistrar
 				workflowPublishedVersionRepositoryMock, // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 			);
@@ -1575,6 +1586,7 @@ describe('WorkflowService', () => {
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
+				mock(), // pollTriggerJobRegistrar
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 			);
@@ -1693,6 +1705,7 @@ describe('WorkflowService', () => {
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
+				mock(), // pollTriggerJobRegistrar
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 			);

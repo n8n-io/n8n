@@ -82,6 +82,7 @@ export class AgentIntegrationsController {
 			agentId,
 			agent.projectId,
 			req.user,
+			'channel_connect',
 			undefined,
 			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);
