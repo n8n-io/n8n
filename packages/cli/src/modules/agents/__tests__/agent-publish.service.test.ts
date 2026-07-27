@@ -198,6 +198,8 @@ describe('AgentPublishService', () => {
 			projectId,
 			expect.anything(),
 			expect.anything(),
+			'publish',
+			undefined,
 		);
 		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
 		expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
@@ -289,6 +291,8 @@ describe('AgentPublishService', () => {
 			projectId,
 			new Map([['task-1', task]]),
 			expect.anything(),
+			'publish',
+			undefined,
 		);
 		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
 
