@@ -989,6 +989,7 @@ describe('project shell import', () => {
 					{
 						type: 'variable-limit-exceeded',
 						limit: 1,
+						remaining: 1,
 						requested: 2,
 						names: ['VAR_A', 'VAR_B'],
 						usedByWorkflows: ['WFA', 'WFB'],

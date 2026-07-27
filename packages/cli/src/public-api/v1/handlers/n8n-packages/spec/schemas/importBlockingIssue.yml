@@ -215,6 +215,7 @@ oneOf:
     required:
       - type
       - limit
+      - remaining
       - requested
       - names
       - usedByWorkflows
@@ -226,6 +227,11 @@ oneOf:
       limit:
         type: integer
         description: The instance variable quota.
+      remaining:
+        type: integer
+        description: >-
+          Variable rows still available under the quota. The import is blocked because `requested`
+          exceeds this, not because it exceeds `limit`.
       requested:
         type: integer
         description: Number of new variable rows the import would create (destination-deduplicated).

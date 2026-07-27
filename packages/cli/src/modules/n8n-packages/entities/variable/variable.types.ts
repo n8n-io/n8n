@@ -46,6 +46,7 @@ export interface VariableCreation {
 
 export interface VariableLimitFailure {
 	limit: number;
+	remaining: number;
 	requested: number;
 	names: string[];
 	usedByWorkflows: string[];
@@ -64,7 +65,15 @@ export function dedupeCreationsByDestination(creations: VariableCreation[]): Var
 		const key = creation.projectId
 			? `project:${creation.projectId}:${creation.name}`
 			: `global:${creation.name}`;
-		if (!byDestination.has(key)) byDestination.set(key, creation);
+		const existing = byDestination.get(key);
+		if (!existing) {
+			// Copied because the caller goes on to apply these creations.
+			byDestination.set(key, { ...creation, usedByWorkflows: [...creation.usedByWorkflows] });
+			continue;
+		}
+		existing.usedByWorkflows = [
+			...new Set([...existing.usedByWorkflows, ...creation.usedByWorkflows]),
+		].sort();
 	}
 	return [...byDestination.values()];
 }
@@ -78,6 +87,7 @@ export function computeVariableLimitFailure(
 	if (creations.length <= quota.remaining) return undefined;
 	return {
 		limit: quota.limit,
+		remaining: quota.remaining,
 		requested: creations.length,
 		names: [...new Set(creations.map((creation) => creation.name))].sort(),
 		usedByWorkflows: [...new Set(creations.flatMap((creation) => creation.usedByWorkflows))].sort(),

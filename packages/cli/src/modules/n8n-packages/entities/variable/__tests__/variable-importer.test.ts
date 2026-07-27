@@ -371,6 +371,7 @@ describe('VariableImporter', () => {
 				]),
 			).resolves.toEqual({
 				limit: 5,
+				remaining: 1,
 				requested: 2,
 				names: ['API_KEY', 'API_TOKEN'],
 				usedByWorkflows: ['wf-1', 'wf-2'],
@@ -387,6 +388,24 @@ describe('VariableImporter', () => {
 			).resolves.toBeUndefined();
 		});
 
+		it('keeps every scope behind a shared destination in the reported workflows', async () => {
+			const { importer, variablesService } = makeImporter();
+			variablesService.getRemainingVariableQuota.mockResolvedValue({ limit: 1, remaining: 0 });
+
+			await expect(
+				importer.quotaFailure([
+					{ name: 'SHARED_URL', usedByWorkflows: ['wf-2'] },
+					{ name: 'SHARED_URL', usedByWorkflows: ['wf-1'] },
+				]),
+			).resolves.toEqual({
+				limit: 1,
+				remaining: 0,
+				requested: 1,
+				names: ['SHARED_URL'],
+				usedByWorkflows: ['wf-1', 'wf-2'],
+			});
+		});
+
 		it('counts the same name in two projects as two rows', async () => {
 			const { importer, variablesService } = makeImporter();
 			variablesService.getRemainingVariableQuota.mockResolvedValue({ limit: 1, remaining: 1 });
@@ -395,6 +414,7 @@ describe('VariableImporter', () => {
 				importer.quotaFailure([creation('API_KEY', 'proj-a'), creation('API_KEY', 'proj-b')]),
 			).resolves.toEqual({
 				limit: 1,
+				remaining: 1,
 				requested: 2,
 				names: ['API_KEY'],
 				usedByWorkflows: ['wf-1'],
