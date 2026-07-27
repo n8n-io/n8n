@@ -14,7 +14,6 @@ const manualTrigger: INode = {
 	parameters: {},
 };
 
-/** Build a minimal IWorkflowBase for conversion tests. */
 function workflow(overrides: Partial<IWorkflowBase>): IWorkflowBase {
 	return {
 		id: 'wf-1',
