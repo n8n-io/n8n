@@ -1,0 +1,25 @@
+{
+	"description": "Tolerance case: gold accepts {anchor: agent, embedsOther: true} or {anchor: wf, embedsOther: true}. The open-ended incident investigation must land on an agent primitive one way or the other; a fixed pipeline with no open-ended step is wrong.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Automate a bot that investigates production incidents end-to-end. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"complexity": "medium",
+	"tags": ["intent-resolution", "false-friend", "surface-vocab", "tolerance"],
+	"datasets": ["agents", "agents-tolerance"],
+	"processExpectations": [
+		"The agent proposes handling the open-ended incident investigation with an agent primitive in one of two accepted shapes: an n8n Agent (possibly invoking workflows as tools), or a workflow whose investigation step is an embedded agent; a fixed pipeline with no open-ended step is wrong.",
+		"The proposal grounds the design in the reasoning-dominated, end-to-end nature of the investigation, not in the request's 'automate' vocabulary."
+	],
+	"messageBudget": 4
+}

@@ -5,20 +5,21 @@ import type {
 	ActionResultRequestDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type {
 	ILoadOptions,
 	IWorkflowExecuteAdditionalData,
 	INodePropertyOptions,
 	NodeParameterValueType,
 } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { DynamicNodeParametersController } from '@/controllers/dynamic-node-parameters.controller';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import * as AdditionalData from '@/workflow-execute-additional-data';
 
 describe('DynamicNodeParametersController', () => {
-	let service: jest.Mocked<DynamicNodeParametersService>;
+	let service: Mocked<DynamicNodeParametersService>;
 	let controller: DynamicNodeParametersController;
 	let mockUser: { id: string };
 	let baseAdditionalData: IWorkflowExecuteAdditionalData;
@@ -30,7 +31,7 @@ describe('DynamicNodeParametersController', () => {
 		mockUser = { id: 'user123' };
 		baseAdditionalData = mock<IWorkflowExecuteAdditionalData>();
 
-		jest.spyOn(AdditionalData, 'getBase').mockResolvedValue(baseAdditionalData);
+		vi.spyOn(AdditionalData, 'getBase').mockResolvedValue(baseAdditionalData);
 	});
 
 	describe('getOptions', () => {
@@ -63,7 +64,7 @@ describe('DynamicNodeParametersController', () => {
 			expect(result).toEqual(expectedResult);
 		});
 
-		it('should call getOptionsViaLoadOptions when loadOptions is provided', async () => {
+		it('should call getOptionsViaLoadOptionsByPath when loadOptions is provided', async () => {
 			const loadOptions: ILoadOptions = {
 				routing: {
 					operations: {},
@@ -76,12 +77,12 @@ describe('DynamicNodeParametersController', () => {
 			const req = { user: mockUser } as AuthenticatedRequest;
 
 			const expectedResult: INodePropertyOptions[] = [{ name: 'test', value: 'value' }];
-			service.getOptionsViaLoadOptions.mockResolvedValue(expectedResult);
+			service.getOptionsViaLoadOptionsByPath.mockResolvedValue(expectedResult);
 
 			const result = await controller.getOptions(req, mock(), payload);
 
-			expect(service.getOptionsViaLoadOptions).toHaveBeenCalledWith(
-				loadOptions,
+			expect(service.getOptionsViaLoadOptionsByPath).toHaveBeenCalledWith(
+				'/test/path',
 				baseAdditionalData,
 				{ name: 'TestNode', version: 1 },
 				{},

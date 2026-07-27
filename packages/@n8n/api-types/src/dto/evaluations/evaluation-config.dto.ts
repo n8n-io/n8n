@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { LLM_JUDGE_PROVIDER_NODE_TYPES } from './llm-judge-providers';
+
 export const metricOutputTypeSchema = z.enum(['numeric', 'boolean']);
 
 export const expressionMetricConfigSchema = z.object({
@@ -18,8 +20,15 @@ export const llmJudgeMetricInputsSchema = z.object({
 export const llmJudgeMetricConfigSchema = z
 	.object({
 		preset: llmJudgeMetricPresetSchema,
-		prompt: z.string().min(1),
-		provider: z.string().min(1),
+		// Optional override. When omitted, the compiled Set Metrics node falls
+		// back to the per-preset canned prompt declared in
+		// `nodes-base/Evaluation/Description.node.ts` (`promptFieldForMetric`).
+		prompt: z.string().min(1).optional(),
+		// The chat-model node type of the LLM judge (e.g.
+		// `@n8n/n8n-nodes-langchain.lmChatOpenAi`). Callers that only know the
+		// credential can omit it upstream and have it derived; by the time a config
+		// reaches this schema the provider is always resolved.
+		provider: z.enum(LLM_JUDGE_PROVIDER_NODE_TYPES),
 		credentialId: z.string().min(1),
 		model: z.string().min(1),
 		outputType: metricOutputTypeSchema,
@@ -45,6 +54,32 @@ export const llmJudgeMetricConfigSchema = z
 export type LlmJudgeMetricPreset = z.infer<typeof llmJudgeMetricPresetSchema>;
 export type LlmJudgeMetricInputs = z.infer<typeof llmJudgeMetricInputsSchema>;
 
+// Deterministic scorers reuse the Set Metrics node's built-in handlers
+// (string-distance, equality, set-equality). The DTO carries only the input
+// mappings; the workflow compiler emits a Set Metrics node with the matching
+// `metric` value so all calculation logic stays in nodes-base.
+export const textComparisonMetricInputsSchema = z.object({
+	actualAnswer: z.string().min(1),
+	expectedAnswer: z.string().min(1),
+});
+
+export const toolsUsedMetricInputsSchema = z.object({
+	// Comma-separated tool names — matches the Set Metrics node's input shape.
+	expectedTools: z.string().min(1),
+	// n8n expression that resolves to the agent's `intermediateSteps` array.
+	intermediateSteps: z.string().min(1),
+});
+
+export const stringSimilarityMetricConfigSchema = z.object({
+	inputs: textComparisonMetricInputsSchema,
+});
+export const categorizationMetricConfigSchema = z.object({
+	inputs: textComparisonMetricInputsSchema,
+});
+export const toolsUsedMetricConfigSchema = z.object({
+	inputs: toolsUsedMetricInputsSchema,
+});
+
 export const evaluationMetricSchema = z.discriminatedUnion('type', [
 	z.object({
 		id: z.string().min(1),
@@ -57,6 +92,24 @@ export const evaluationMetricSchema = z.discriminatedUnion('type', [
 		name: z.string().min(1),
 		type: z.literal('llm_judge'),
 		config: llmJudgeMetricConfigSchema,
+	}),
+	z.object({
+		id: z.string().min(1),
+		name: z.string().min(1),
+		type: z.literal('string_similarity'),
+		config: stringSimilarityMetricConfigSchema,
+	}),
+	z.object({
+		id: z.string().min(1),
+		name: z.string().min(1),
+		type: z.literal('categorization'),
+		config: categorizationMetricConfigSchema,
+	}),
+	z.object({
+		id: z.string().min(1),
+		name: z.string().min(1),
+		type: z.literal('tools_used'),
+		config: toolsUsedMetricConfigSchema,
 	}),
 ]);
 

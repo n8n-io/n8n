@@ -7,23 +7,24 @@ import type { DaemonController, DaemonStatus, StatusSnapshot } from './daemon-co
 
 const STATUS_LABELS: Record<DaemonStatus, string> = {
 	connected: '', // set dynamically with URL
-	waiting: '◌  Waiting for connection',
-	starting: '○  Starting...',
-	disconnected: '✕  Disconnected — reconnecting',
-	stopped: '■  Stopped',
+	connecting: '○  Connecting...',
+	disconnected: '✕  Disconnected',
+	error: '✕  Error',
 };
 
+const ICON_NAMES: Record<DaemonStatus, string> = {
+	connected: 'tray-connected',
+	connecting: 'tray-waiting',
+	disconnected: 'tray-disconnected',
+	error: 'tray-disconnected',
+};
+
+const iconCache = new Map<DaemonStatus, Electron.NativeImage>();
+
 function createNativeImage(status: DaemonStatus): Electron.NativeImage {
-	const names: Record<DaemonStatus, string> = {
-		connected: 'tray-connected',
-		waiting: 'tray-waiting',
-		starting: 'tray-waiting',
-		disconnected: 'tray-disconnected',
-		stopped: 'tray-stopped',
-	};
 	const assetsDir = path.join(app.getAppPath(), 'assets');
-	const path1x = path.join(assetsDir, `${names[status]}.png`);
-	const path2x = path.join(assetsDir, `${names[status]}@2x.png`);
+	const path1x = path.join(assetsDir, `${ICON_NAMES[status]}.png`);
+	const path2x = path.join(assetsDir, `${ICON_NAMES[status]}@2x.png`);
 
 	logger.debug('Loading tray icon', { status, path: path1x });
 
@@ -47,6 +48,14 @@ function createNativeImage(status: DaemonStatus): Electron.NativeImage {
 	return img;
 }
 
+function getTrayIcon(status: DaemonStatus): Electron.NativeImage {
+	const cached = iconCache.get(status);
+	if (cached) return cached;
+	const created = createNativeImage(status);
+	iconCache.set(status, created);
+	return created;
+}
+
 function buildStatusLabel(snapshot: StatusSnapshot): string {
 	if (snapshot.status === 'connected' && snapshot.connectedUrl) {
 		return `●  Connected to ${snapshot.connectedUrl}`;
@@ -55,15 +64,12 @@ function buildStatusLabel(snapshot: StatusSnapshot): string {
 }
 
 function buildMenu(
-	controller: DaemonController,
 	snapshot: StatusSnapshot,
 	onSettings: () => void,
-	onStartDaemon: () => void,
 	onQuit: () => void,
 	onDisconnect: () => void,
 ): Menu {
-	const running = controller.isRunning();
-	const connected = snapshot.status === 'connected';
+	const sessionActive = snapshot.status === 'connected' || snapshot.status === 'connecting';
 	return Menu.buildFromTemplate([
 		{
 			label: buildStatusLabel(snapshot),
@@ -71,18 +77,8 @@ function buildMenu(
 		},
 		{ type: 'separator' },
 		{
-			label: running ? 'Stop Daemon' : 'Start Daemon',
-			click: () => {
-				if (running) {
-					void controller.stop();
-				} else {
-					onStartDaemon();
-				}
-			},
-		},
-		{
 			label: 'Disconnect',
-			visible: connected,
+			visible: sessionActive,
 			click: onDisconnect,
 		},
 		{ type: 'separator' },
@@ -101,19 +97,16 @@ function buildMenu(
 export function createTray(
 	controller: DaemonController,
 	onSettings: () => void,
-	onStartDaemon: () => void,
 	onQuit: () => void,
 	onDisconnect: () => void,
 ): Tray {
-	const tray = new Tray(createNativeImage('stopped'));
+	const tray = new Tray(getTrayIcon('disconnected'));
 	tray.setToolTip('n8n Gateway');
 
 	const update = (snapshot: StatusSnapshot): void => {
 		logger.debug('Tray updating', { status: snapshot.status, connectedUrl: snapshot.connectedUrl });
-		tray.setImage(createNativeImage(snapshot.status));
-		tray.setContextMenu(
-			buildMenu(controller, snapshot, onSettings, onStartDaemon, onQuit, onDisconnect),
-		);
+		tray.setImage(getTrayIcon(snapshot.status));
+		tray.setContextMenu(buildMenu(snapshot, onSettings, onQuit, onDisconnect));
 	};
 
 	controller.on('statusChanged', update);

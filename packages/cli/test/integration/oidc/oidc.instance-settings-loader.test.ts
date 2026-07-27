@@ -3,7 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { SsoInstanceSettingsLoader } from '@/instance-settings-loader/loaders/sso.instance-settings-loader';
+import { SsoInstanceSettingsLoader } from '@/instance-settings-loader/loaders/sso/sso.instance-settings-loader';
 import { PROVISIONING_PREFERENCES_DB_KEY } from '@/modules/provisioning.ee/constants';
 import { OIDC_PREFERENCES_DB_KEY } from '@/modules/sso-oidc/constants';
 import { OidcService } from '@/modules/sso-oidc/oidc.service.ee';
@@ -17,7 +17,7 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-describe('SsoInstanceSettingsLoader → OidcService roundtrip', () => {
+describe('SsoInstanceSettingsLoader → OIDC', () => {
 	let originalConfig: Record<string, unknown>;
 
 	beforeEach(() => {

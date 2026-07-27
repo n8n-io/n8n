@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 
 import { resolveEventLogPath, type EventLogProcessType } from '../resolve-event-log-path';
 
-jest.unmock('node:fs');
+vi.unmock('node:fs');
 
 describe('resolveEventLogPath', () => {
 	let tempDir: string;

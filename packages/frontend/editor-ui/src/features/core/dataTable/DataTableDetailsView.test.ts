@@ -11,6 +11,10 @@ import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/
 
 vi.mock('@/app/composables/useToast');
 vi.mock('vue-router');
+vi.mock('@/app/api/workflow-dependencies', () => ({
+	getResourceDependencyCounts: vi.fn().mockResolvedValue({}),
+	getResourceDependencies: vi.fn().mockResolvedValue({}),
+}));
 vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: vi.fn(() => ({
 		set: vi.fn(),

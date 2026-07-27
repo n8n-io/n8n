@@ -15,11 +15,20 @@ export function serializePublicApiError(descriptor: HttpErrorDescriptor): {
 	body: { message: string };
 } {
 	switch (descriptor.kind) {
-		case HttpErrorKind.responseError:
+		case HttpErrorKind.responseError: {
+			const body: { message: string } & Record<string, unknown> = {
+				message: descriptor.message,
+			};
+			// Blocking-issue errors (package import) expose the structured list so
+			// clients can see every blocker; the rest of `meta` stays internal.
+			if (descriptor.meta?.issues !== undefined) {
+				body.issues = descriptor.meta.issues;
+			}
 			return {
 				status: descriptor.status,
-				body: { message: descriptor.message },
+				body,
 			};
+		}
 		case HttpErrorKind.userError:
 			return {
 				status: 400,

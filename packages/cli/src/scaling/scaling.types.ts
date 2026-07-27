@@ -25,6 +25,9 @@ export type JobData = {
 	projectId?: string;
 	projectName?: string;
 
+	/** Manual-execution identity, so offloaded manual runs resolve private credentials on the worker. */
+	encryptedRunnerIdentity?: string;
+
 	// MCP-specific fields for queue mode support
 	/** Whether this execution was triggered by an MCP tool call. */
 	isMcpExecution?: boolean;

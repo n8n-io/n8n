@@ -48,8 +48,8 @@ let testCredentialId: string;
 describe('Resource Access Control Matrix Tests', () => {
 	beforeAll(async () => {
 		mockInstance(UserManagementMailer, {
-			invite: jest.fn(),
-			passwordReset: jest.fn(),
+			invite: vi.fn(),
+			passwordReset: vi.fn(),
 		});
 
 		// Create foundation users

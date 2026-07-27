@@ -256,7 +256,9 @@ const scrollByDirectionSchema = z.object({
 
 const browserScrollSchema = z
 	.discriminatedUnion('mode', [scrollToElementSchema, scrollByDirectionSchema])
-	.describe('Scroll an element into view, or scroll the page by direction/amount');
+	.describe(
+		'Scroll an element into view, or scroll the page by direction/amount in pixels. Always use an element if possible.',
+	);
 
 const browserScrollOutputSchema = withSnapshotEnvelope({
 	scrolled: z.boolean(),

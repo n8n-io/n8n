@@ -24,7 +24,7 @@ describe('EncryptionKeyController', () => {
 	const keyManagerService = mockInstance(KeyManagerService);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('GET /encryption/keys', () => {

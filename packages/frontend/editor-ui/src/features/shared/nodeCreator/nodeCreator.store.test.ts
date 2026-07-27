@@ -19,6 +19,8 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createWorkflowDocumentId,
@@ -68,6 +70,15 @@ vi.mock('@/app/utils/nodeIcon', () => {
 	};
 });
 
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		useWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+		useRouteWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+	};
+});
+
 const mockedPrepareCommunityNodeDetailsViewStack = vi.mocked(prepareCommunityNodeDetailsViewStack);
 const mockedGetNodeIconSource = vi.mocked(getNodeIconSource);
 
@@ -90,7 +101,7 @@ describe('useNodeCreatorStore', () => {
 		mockUseWorkflowDocumentStore = mockedStore(() =>
 			useWorkflowDocumentStore(createWorkflowDocumentId('test-wf-id')),
 		);
-		mockUseNDVStore = mockedStore(useNDVStore);
+		mockUseNDVStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-wf-id'));
 		mockUseViewStacks = mockedStore(useViewStacks);
 
 		mockUseWorkflowsStore.getNodeByName = vi.fn((name?: string) => {
@@ -128,6 +139,30 @@ describe('useNodeCreatorStore', () => {
 			source,
 			nodes_panel_session_id: getSessionId(now),
 			workflow_id,
+		});
+	});
+
+	describe('AI Gateway config warmup', () => {
+		it('fetches the gateway config when AI Gateway is enabled', () => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.isAiGatewayEnabled = true;
+			const aiGatewayStore = mockedStore(useAiGatewayStore);
+			aiGatewayStore.fetchConfig = vi.fn();
+
+			nodeCreatorStore.onCreatorOpened({ source, mode, workflow_id });
+
+			expect(aiGatewayStore.fetchConfig).toHaveBeenCalled();
+		});
+
+		it('does not fetch the gateway config when AI Gateway is disabled', () => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.isAiGatewayEnabled = false;
+			const aiGatewayStore = mockedStore(useAiGatewayStore);
+			aiGatewayStore.fetchConfig = vi.fn();
+
+			nodeCreatorStore.onCreatorOpened({ source, mode, workflow_id });
+
+			expect(aiGatewayStore.fetchConfig).not.toHaveBeenCalled();
 		});
 	});
 
@@ -328,6 +363,7 @@ describe('useNodeCreatorStore', () => {
 			nodeCreatorStore.openNodeCreatorForConnectingNode({
 				connection,
 				eventSource: 'plus_endpoint',
+				workflowId: 'test-wf-id',
 			});
 
 			expect(nodeCreatorStore.selectedView).toEqual(AI_UNCATEGORIZED_CATEGORY);
@@ -349,6 +385,7 @@ describe('useNodeCreatorStore', () => {
 				connection,
 				eventSource: 'plus_endpoint',
 				nodeCreatorView: REGULAR_NODE_CREATOR_VIEW,
+				workflowId: 'test-wf-id',
 			});
 
 			expect(nodeCreatorStore.selectedView).toEqual(REGULAR_NODE_CREATOR_VIEW);
@@ -370,6 +407,7 @@ describe('useNodeCreatorStore', () => {
 				connection,
 				eventSource: 'plus_endpoint',
 				nodeCreatorView: REGULAR_NODE_CREATOR_VIEW,
+				workflowId: 'test-wf-id',
 			});
 
 			expect(nodeCreatorStore.selectedView).toEqual(REGULAR_NODE_CREATOR_VIEW);
@@ -385,6 +423,7 @@ describe('useNodeCreatorStore', () => {
 				connection,
 				eventSource: 'plus_endpoint',
 				nodeCreatorView: REGULAR_NODE_CREATOR_VIEW,
+				workflowId: 'test-wf-id',
 			});
 
 			expect(nodeCreatorStore.selectedView).not.toEqual(REGULAR_NODE_CREATOR_VIEW);
@@ -419,6 +458,54 @@ describe('useNodeCreatorStore', () => {
 		});
 	});
 
+	describe('openNodeCreatorForActions', () => {
+		const evalNodeType = 'n8n-nodes-base.evaluation';
+		const evalNodeDisplayName = 'Evaluation';
+
+		it('does nothing when node is not found in allNodeCreatorNodes', () => {
+			nodeCreatorStore.mergedNodes = [];
+
+			nodeCreatorStore.openNodeCreatorForActions('wf-id', evalNodeType);
+
+			expect(nodeCreatorStore.isCreateNodeActive).toBe(false);
+		});
+
+		it('stores pending view stack and opens creator when node is found', () => {
+			nodeCreatorStore.mergedNodes = [
+				{ name: evalNodeType, displayName: evalNodeDisplayName } as SimplifiedNodeType,
+			];
+			nodeCreatorStore.actions = {
+				[evalNodeType]: [{ actionKey: 'setOutputs', displayName: 'Set Outputs' }],
+			} as unknown as ActionsRecord<SimplifiedNodeType[]>;
+
+			nodeCreatorStore.openNodeCreatorForActions('wf-id', evalNodeType);
+
+			expect(nodeCreatorStore.isCreateNodeActive).toBe(true);
+			expect(nodeCreatorStore.selectedView).toBe(REGULAR_NODE_CREATOR_VIEW);
+			const pending = nodeCreatorStore.consumePendingInitialViewStack();
+			expect(pending).toMatchObject({
+				mode: 'actions',
+				rootView: 'Regular',
+				subcategory: '*',
+				title: evalNodeDisplayName,
+			});
+		});
+
+		it('consumePendingInitialViewStack returns stack and clears it', () => {
+			nodeCreatorStore.mergedNodes = [
+				{ name: evalNodeType, displayName: evalNodeDisplayName } as SimplifiedNodeType,
+			];
+			nodeCreatorStore.actions = {};
+
+			nodeCreatorStore.openNodeCreatorForActions('wf-id', evalNodeType);
+
+			const first = nodeCreatorStore.consumePendingInitialViewStack();
+			expect(first).not.toBeNull();
+			const second = nodeCreatorStore.consumePendingInitialViewStack();
+			expect(second).toBeNull();
+		});
+	});
+
 	describe('openNodeCreatorWithNode', () => {
 		const nodeName = 'test-node';
 		const nodeType = {
@@ -434,7 +521,7 @@ describe('useNodeCreatorStore', () => {
 			mockUseNodeTypesStore.getNodeType = vi.fn();
 			mockUseNodeTypesStore.communityNodeType = vi.fn();
 
-			await nodeCreatorStore.openNodeCreatorWithNode(nodeName);
+			await nodeCreatorStore.openNodeCreatorWithNode('test-wf-id', nodeName);
 
 			expect(mockUseNDVStore.unsetActiveNodeName).not.toHaveBeenCalled();
 			expect(mockUseNodeTypesStore.getNodeType).not.toHaveBeenCalled();
@@ -450,7 +537,7 @@ describe('useNodeCreatorStore', () => {
 			mockUseNodeTypesStore.getNodeType = vi.fn(() => null);
 			mockUseNodeTypesStore.communityNodeType = vi.fn(() => undefined);
 
-			await nodeCreatorStore.openNodeCreatorWithNode(nodeName);
+			await nodeCreatorStore.openNodeCreatorWithNode('test-wf-id', nodeName);
 
 			expect(mockUseNDVStore.unsetActiveNodeName).toHaveBeenCalled();
 			expect(mockUseNodeTypesStore.getNodeType).toHaveBeenCalledWith('test-type');
@@ -476,7 +563,7 @@ describe('useNodeCreatorStore', () => {
 				],
 			} as ActionsRecord<SimplifiedNodeType[]>;
 
-			await nodeCreatorStore.openNodeCreatorWithNode(nodeName);
+			await nodeCreatorStore.openNodeCreatorWithNode('test-wf-id', nodeName);
 			expect(mockUseNDVStore.unsetActiveNodeName).toHaveBeenCalled();
 			expect(mockUseNodeTypesStore.getNodeType).toHaveBeenCalledWith('test-type');
 			expect(nodeCreatorStore.isCreateNodeActive).toBe(true);
@@ -524,7 +611,7 @@ describe('useNodeCreatorStore', () => {
 				[nodeType.name]: [],
 			};
 
-			await nodeCreatorStore.openNodeCreatorWithNode(nodeName);
+			await nodeCreatorStore.openNodeCreatorWithNode('test-wf-id', nodeName);
 
 			expect(mockUseNDVStore.unsetActiveNodeName).toHaveBeenCalled();
 			expect(mockUseNodeTypesStore.getNodeType).toHaveBeenCalledWith('test-type');
@@ -562,7 +649,7 @@ describe('useNodeCreatorStore', () => {
 
 			nodeCreatorStore.actions = {};
 
-			await nodeCreatorStore.openNodeCreatorWithNode(nodeName);
+			await nodeCreatorStore.openNodeCreatorWithNode('test-wf-id', nodeName);
 
 			expect(mockedPrepareCommunityNodeDetailsViewStack).toHaveBeenCalledWith(
 				{

@@ -1,5 +1,6 @@
 import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
+import type { Mock } from 'vitest';
 
 import {
 	buildFilesystemResource,
@@ -9,14 +10,14 @@ import {
 } from './fs-utils';
 import * as config from '../../config';
 
-jest.mock('node:fs/promises');
+vi.mock('node:fs/promises');
 
 const BASE = '/base';
 const enoent = (): Error => Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
 
 function mockRealpath(entries: Array<[string, string]>): void {
 	const map = new Map(entries);
-	(fs.realpath as jest.Mock).mockImplementation(async (p: string) => {
+	(fs.realpath as Mock).mockImplementation(async (p: string) => {
 		if (map.has(p)) return await Promise.resolve(map.get(p)!);
 		throw enoent();
 	});
@@ -24,7 +25,7 @@ function mockRealpath(entries: Array<[string, string]>): void {
 
 function mockLstat(entries: Array<[string, Partial<Stats>]>): void {
 	const map = new Map(entries);
-	jest.mocked(fs.lstat).mockImplementation(async (p) => {
+	vi.mocked(fs.lstat).mockImplementation(async (p) => {
 		const entry = map.get(p as string);
 		if (entry) return await Promise.resolve(entry as Stats);
 		throw enoent();
@@ -33,7 +34,7 @@ function mockLstat(entries: Array<[string, Partial<Stats>]>): void {
 
 function mockReadlink(entries: Array<[string, string]>): void {
 	const map = new Map(entries);
-	(fs.readlink as jest.Mock).mockImplementation(async (p: string) => {
+	(fs.readlink as Mock).mockImplementation(async (p: string) => {
 		if (map.has(p)) return await Promise.resolve(map.get(p)!);
 		throw enoent();
 	});
@@ -41,10 +42,10 @@ function mockReadlink(entries: Array<[string, string]>): void {
 
 describe('resolveSafePath', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		// Default: only base exists; everything else is ENOENT
 		mockRealpath([[BASE, BASE]]);
-		jest.mocked(fs.lstat).mockRejectedValue(enoent());
+		vi.mocked(fs.lstat).mockRejectedValue(enoent());
 	});
 
 	it('resolves a simple path within the base directory', async () => {
@@ -147,7 +148,7 @@ describe('resolveSafePath', () => {
 		const parentDir = settingsDir.replace(/\/[^/]+$/, '');
 		const sneakyLink = `${parentDir}/sneaky-link`;
 		// Identity realpath by default; only the symlink diverges
-		(fs.realpath as jest.Mock).mockImplementation(async (p: string) => {
+		(fs.realpath as Mock).mockImplementation(async (p: string) => {
 			if (p === sneakyLink) return await Promise.resolve(settingsDir);
 			return await Promise.resolve(p);
 		});
@@ -174,8 +175,8 @@ describe('isLikelyBinaryContent', () => {
 
 describe('resolveReadablePath', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
-		jest.mocked(fs.lstat).mockRejectedValue(enoent());
+		vi.resetAllMocks();
+		vi.mocked(fs.lstat).mockRejectedValue(enoent());
 	});
 
 	it('throws when a symlink resolves into an excluded directory segment', async () => {
@@ -195,10 +196,10 @@ describe('buildFilesystemResource — settings self-protection', () => {
 	const settingsFile = config.getSettingsFilePath();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		// Base dir is the settings directory's parent (so the path is reachable)
 		const parentDir = settingsDir.replace(/\/[^/]+$/, '');
-		(fs.realpath as jest.Mock).mockImplementation(async (p: string) => {
+		(fs.realpath as Mock).mockImplementation(async (p: string) => {
 			if (p === parentDir) return await Promise.resolve(parentDir);
 			throw enoent();
 		});
@@ -221,7 +222,7 @@ describe('buildFilesystemResource — settings self-protection', () => {
 	});
 
 	it('does not throw for unrelated paths', async () => {
-		(fs.realpath as jest.Mock).mockImplementation(async (p: string) => {
+		(fs.realpath as Mock).mockImplementation(async (p: string) => {
 			if (p === BASE) return await Promise.resolve(BASE);
 			throw enoent();
 		});

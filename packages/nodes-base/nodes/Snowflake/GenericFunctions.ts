@@ -1,8 +1,10 @@
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { createPrivateKey } from 'crypto';
 import pick from 'lodash/pick';
+import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import type snowflake from 'snowflake-sdk';
 
-import { formatPrivateKey } from '@utils/utilities';
+import { routeBinaryProperties } from '@utils/binary';
 
 const commonConnectionFields = [
 	'account',
@@ -15,7 +17,7 @@ const commonConnectionFields = [
 
 export type SnowflakeCredential = Pick<
 	snowflake.ConnectionOptions,
-	(typeof commonConnectionFields)[number]
+	(typeof commonConnectionFields)[number] | 'host'
 > &
 	(
 		| {
@@ -29,10 +31,14 @@ export type SnowflakeCredential = Pick<
 				privateKey: string;
 				passphrase?: string;
 		  }
+		| {
+				authentication: 'oauth2';
+				token: string;
+		  }
 	);
 
 const extractPrivateKey = (credential: { privateKey: string; passphrase?: string }) => {
-	const key = formatPrivateKey(credential.privateKey);
+	const key = formatPemBlock(credential.privateKey);
 
 	if (!credential.passphrase) return key;
 
@@ -48,12 +54,24 @@ const extractPrivateKey = (credential: { privateKey: string; passphrase?: string
 	}) as string;
 };
 
-export const getConnectionOptions = (credential: SnowflakeCredential) => {
+export const getConnectionOptions = (credential: SnowflakeCredential, nodeVersion?: number) => {
 	const connectionOptions: snowflake.ConnectionOptions = pick(credential, commonConnectionFields);
+	if (typeof nodeVersion === 'number' && nodeVersion >= 1.1) {
+		// Return DATE/TIME/TIMESTAMP columns as strings so node output stays JSON-safe
+		connectionOptions.fetchAsString = ['Date'];
+	}
+	// Keep host out of commonConnectionFields so blank values can be trimmed and skipped.
+	const originHostname = credential.host?.trim();
+	if (originHostname) {
+		connectionOptions.host = originHostname;
+	}
 	if (credential.authentication === 'keyPair') {
 		connectionOptions.authenticator = 'SNOWFLAKE_JWT';
 		connectionOptions.username = credential.username;
 		connectionOptions.privateKey = extractPrivateKey(credential);
+	} else if (credential.authentication === 'oauth2') {
+		connectionOptions.authenticator = 'OAUTH';
+		connectionOptions.token = credential.token;
 	} else {
 		connectionOptions.username = credential.username;
 		connectionOptions.password = credential.password;
@@ -111,11 +129,7 @@ export function escapeSnowflakeObjectIdentifier(identifier: string): string {
 	return parts.map(escapeSnowflakeIdentifier).join('.');
 }
 
-export async function execute(
-	conn: snowflake.Connection,
-	sqlText: string,
-	binds: snowflake.InsertBinds,
-) {
+export async function execute(conn: snowflake.Connection, sqlText: string, binds: snowflake.Binds) {
 	return await new Promise<any[] | undefined>((resolve, reject) => {
 		conn.execute({
 			sqlText,
@@ -123,4 +137,35 @@ export async function execute(
 			complete: (error, _, rows) => (error ? reject(error) : resolve(rows)),
 		});
 	});
+}
+
+export async function prepareQueryResults(
+	this: IExecuteFunctions,
+	rows: IDataObject[] | undefined,
+	itemIndex: number,
+	nodeVersion: number,
+): Promise<INodeExecutionData[]> {
+	if (nodeVersion < 1.1) {
+		return this.helpers.constructExecutionMetaData(
+			this.helpers.returnJsonArray(rows as IDataObject[]),
+			{ itemData: { item: itemIndex } },
+		);
+	}
+
+	const returnData: INodeExecutionData[] = [];
+	for (const row of rows ?? []) {
+		// BINARY columns arrive as Buffers; route them to the item's binary output
+		const { json, binary } = await routeBinaryProperties.call(this, row);
+		const executionData = this.helpers.constructExecutionMetaData(
+			this.helpers.returnJsonArray(json),
+			{ itemData: { item: itemIndex } },
+		);
+		for (const entry of executionData) {
+			if (Object.keys(binary).length) {
+				entry.binary = binary;
+			}
+			returnData.push(entry);
+		}
+	}
+	return returnData;
 }

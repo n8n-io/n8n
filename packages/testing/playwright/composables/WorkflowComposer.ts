@@ -63,25 +63,24 @@ export class WorkflowComposer {
 	 * @param tag - Optional tag to add to the workflow
 	 */
 	async duplicateWorkflow(name: string, tag?: string): Promise<void> {
-		await this.n8n.workflowSettingsModal.getWorkflowMenu().click();
-		await this.n8n.workflowSettingsModal.getDuplicateMenuItem().click();
+		await this.n8n.workflowMenu.openDuplicate();
 
-		const modal = this.n8n.workflowSettingsModal.getDuplicateModal();
+		const modal = this.n8n.workflowMenu.getDuplicateModal();
 		await expect(modal).toBeVisible();
 
-		const nameInput = this.n8n.workflowSettingsModal.getDuplicateNameInput();
+		const nameInput = this.n8n.workflowMenu.getDuplicateNameInput();
 		await expect(nameInput).toBeVisible();
 		await nameInput.press('ControlOrMeta+a');
 		await nameInput.fill(name);
 
 		if (tag) {
-			const tagsInput = this.n8n.workflowSettingsModal.getDuplicateTagsInput();
+			const tagsInput = this.n8n.workflowMenu.getDuplicateTagsInput();
 			await tagsInput.fill(tag);
 			await tagsInput.press('Enter');
 			await tagsInput.press('Escape');
 		}
 
-		const saveButton = this.n8n.workflowSettingsModal.getDuplicateSaveButton();
+		const saveButton = this.n8n.workflowMenu.getDuplicateSaveButton();
 		await expect(saveButton).toBeVisible();
 		await saveButton.click();
 	}
@@ -134,7 +133,7 @@ export class WorkflowComposer {
 		await this.n8n.resourceMoveModal.getFolderSelect().locator('input').click();
 		await this.n8n.page.keyboard.type(folderName, { delay: 50 });
 
-		const folderOption = this.n8n.page.getByTestId('move-to-folder-option').getByText(folderName);
+		const folderOption = this.n8n.resourceMoveModal.getFolderOption(folderName);
 		await folderOption.waitFor({ state: 'visible' });
 		await folderOption.click();
 	}

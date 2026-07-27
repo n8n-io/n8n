@@ -6,10 +6,12 @@ import { useTagsStore } from '../../tags.store';
 import TagsManager from './TagsManager.vue';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import { TAGS_MANAGER_MODAL_KEY } from '../../tags.constants';
+import { useTagPermissions } from '../../useTagPermissions';
 
 const i18n = useI18n();
 const { showError, showMessage } = useToast();
 const tagsStore = useTagsStore();
+const { canCreate, canUpdate, canDelete } = useTagPermissions();
 
 const tags = computed(() => tagsStore.allTags);
 const isLoading = computed(() => tagsStore.isLoading);
@@ -89,6 +91,9 @@ async function deleteTag(id: string): Promise<boolean> {
 		:modal-key="TAGS_MANAGER_MODAL_KEY"
 		:tags="tags"
 		:is-loading="isLoading"
+		:can-create="canCreate"
+		:can-update="canUpdate"
+		:can-delete="canDelete"
 		:on-fetch-tags="fetchTags"
 		:on-create-tag="createTag"
 		:on-update-tag="updateTag"

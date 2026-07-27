@@ -1,0 +1,151 @@
+type: object
+additionalProperties: false
+description: >
+  Full SAML SSO configuration. Every field must be provided; use empty strings or
+  empty arrays when a value is unset. Partial updates are not supported.
+required:
+  - mapping
+  - metadata
+  - metadataUrl
+  - ignoreSSL
+  - loginBinding
+  - loginEnabled
+  - loginLabel
+  - authnRequestsSigned
+  - wantAssertionsSigned
+  - wantMessageSigned
+  - signingPrivateKey
+  - signingCertificate
+  - acsBinding
+  - signatureConfig
+  - relayState
+properties:
+  mapping:
+    type: object
+    description: Mapping of SAML attributes to n8n user fields. Use empty strings / empty arrays for unused attributes.
+    additionalProperties: false
+    required:
+      - email
+      - firstName
+      - lastName
+      - userPrincipalName
+      - n8nInstanceRole
+      - n8nProjectRoles
+    properties:
+      email:
+        type: string
+        description: SAML attribute mapped to the user's email.
+      firstName:
+        type: string
+        description: SAML attribute mapped to the user's first name.
+      lastName:
+        type: string
+        description: SAML attribute mapped to the user's last name.
+      userPrincipalName:
+        type: string
+        description: SAML attribute mapped to the user's principal name.
+      n8nInstanceRole:
+        type: string
+        description: SAML attribute mapped to the n8n instance role. Use an empty string when unused.
+      n8nProjectRoles:
+        type: array
+        items:
+          type: string
+        description: >
+          SAML attributes mapped to n8n project roles, formatted as `<projectId>:<role>`.
+          Use an empty array when unused.
+  metadata:
+    type: string
+    description: >
+      Identity provider metadata in XML format. Use an empty string to clear stored metadata
+      (also clears metadataUrl when no URL is provided). Use the redaction placeholder from a
+      prior GET to leave an existing value unchanged.
+  metadataUrl:
+    type: string
+    description: >
+      URL to fetch identity provider metadata from. Use an empty string to clear a stored URL.
+  ignoreSSL:
+    type: boolean
+    description: Whether to ignore SSL certificate errors when fetching metadata from a URL.
+    example: false
+  loginBinding:
+    type: string
+    enum: [redirect, post]
+    description: SAML login request binding.
+    example: redirect
+  loginEnabled:
+    type: boolean
+    description: Whether SAML login is enabled.
+    example: false
+  loginLabel:
+    type: string
+    description: Label shown on the SAML login button.
+    example: SAML
+  authnRequestsSigned:
+    type: boolean
+    description: Whether authentication requests are signed.
+    example: false
+  wantAssertionsSigned:
+    type: boolean
+    description: Whether signed assertions are required.
+    example: true
+  wantMessageSigned:
+    type: boolean
+    description: Whether signed SAML messages are required.
+    example: true
+  signingPrivateKey:
+    type: string
+    description: >
+      PEM-encoded private key for signing SAML AuthnRequests. Use an empty string to clear
+      an existing key, or the redaction placeholder from a prior GET to leave it unchanged.
+  signingCertificate:
+    type: string
+    description: >
+      PEM-encoded certificate containing the public key matching the signing private key.
+      Use an empty string when unused or to clear an existing certificate.
+  acsBinding:
+    type: string
+    enum: [redirect, post]
+    description: Assertion Consumer Service binding.
+    example: post
+  signatureConfig:
+    type: object
+    description: Configuration for the signature in SAML requests and responses.
+    additionalProperties: false
+    required:
+      - prefix
+      - location
+    properties:
+      prefix:
+        type: string
+        example: ds
+      location:
+        type: object
+        additionalProperties: false
+        required:
+          - reference
+          - action
+        properties:
+          reference:
+            type: string
+            example: /samlp:Response/saml:Issuer
+          action:
+            type: string
+            enum: [before, after, prepend, append]
+            example: after
+  relayState:
+    type: string
+    description: Default relay state value for SAML requests. Use an empty string when unused.
+    example: https://n8n.example.com
+  entityID:
+    type: string
+    description: >
+      Service provider entity ID. Returned by GET for convenience; ignored on write so a GET
+      response can be sent back as a PUT body.
+    example: https://n8n.example.com/rest/sso/saml/metadata
+  returnUrl:
+    type: string
+    description: >
+      Assertion Consumer Service return URL. Returned by GET for convenience; ignored on write
+      so a GET response can be sent back as a PUT body.
+    example: https://n8n.example.com/rest/sso/saml/acs

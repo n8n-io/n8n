@@ -1,5 +1,4 @@
 import { vi } from 'vitest';
-import type { MockInstance } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -11,6 +10,17 @@ import { workflowVersionDataFactory } from '../__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
 import type { IUser } from 'n8n-workflow';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+
+vi.mock('@/app/views/NodeView.vue', () => ({
+	default: {
+		name: 'NodeViewStub',
+		template: '<div data-test-id="node-view-stub" />',
+	},
+}));
 
 const actionTypes: WorkflowHistoryActionTypes = ['restore', 'clone', 'open', 'download'];
 const actions: Array<UserAction<IUser>> = actionTypes.map((value) => ({
@@ -23,7 +33,6 @@ const renderComponent = createComponentRenderer(WorkflowHistoryContent);
 
 let pinia: ReturnType<typeof createPinia>;
 let projectsStore: ReturnType<typeof useProjectsStore>;
-let postMessageSpy: MockInstance;
 
 describe('WorkflowHistoryContent', () => {
 	beforeEach(() => {
@@ -33,14 +42,6 @@ describe('WorkflowHistoryContent', () => {
 
 		// Mock currentProjectId for all tests
 		vi.spyOn(projectsStore, 'currentProjectId', 'get').mockReturnValue('test-project-id');
-
-		postMessageSpy = vi.fn();
-		Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {
-			writable: true,
-			value: {
-				postMessage: postMessageSpy,
-			},
-		});
 	});
 
 	it('should render version data with action toggle', () => {
@@ -88,10 +89,13 @@ describe('WorkflowHistoryContent', () => {
 		]);
 	});
 
-	it('should pass proper workflow data to WorkflowPreview component', async () => {
+	it('should hydrate the scoped preview document from the version, without pin data', async () => {
 		const workflowVersion = workflowVersionDataFactory();
-		const workflow = { pinData: {} } as IWorkflowDb;
-		renderComponent({
+		const workflow = {
+			id: 'history-workflow',
+			pinData: { 'Some Node': [{ json: { pinned: true } }] },
+		} as unknown as IWorkflowDb;
+		const { getByTestId } = renderComponent({
 			pinia,
 			props: {
 				workflow,
@@ -100,9 +104,14 @@ describe('WorkflowHistoryContent', () => {
 			},
 		});
 
-		window.postMessage('{"command":"n8nReady"}', '*');
-		await waitFor(() => {
-			expect(postMessageSpy).toHaveBeenCalledWith(expect.not.stringContaining('pinData'), '*');
-		});
+		await waitFor(() => expect(getByTestId('node-view-stub')).toBeInTheDocument());
+
+		const previewDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId('history-workflow', `history-preview-${workflowVersion.versionId}`),
+		);
+		expect(previewDocumentStore.getPinDataSnapshot()).toEqual({});
+		expect(previewDocumentStore.allNodes.map((node) => node.name)).toEqual(
+			workflowVersion.nodes.map((node) => node.name),
+		);
 	});
 });

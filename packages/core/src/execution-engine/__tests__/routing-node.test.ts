@@ -1,5 +1,5 @@
-import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
+import { Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
 import type {
 	DeclarativeRestApiSettings,
 	ICredentialDataDecryptedObject,
@@ -19,9 +19,9 @@ import type {
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
+	ICredentialsDecrypted,
 } from 'n8n-workflow';
-import { Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
-import type { ICredentialsDecrypted } from 'n8n-workflow/src';
+import { mock } from 'vitest-mock-extended';
 
 import * as executionContexts from '@/execution-engine/node-execution-context';
 import { DirectoryLoader } from '@/nodes-loader';
@@ -779,6 +779,78 @@ describe('RoutingNode', () => {
 				expect(result).toEqual(testData.output);
 			});
 		}
+
+		describe('when a routed property name is an inherited object member', () => {
+			// Guard the shared prototype so a regression here cannot cascade to other tests.
+			const hadOwnCall = Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call');
+			afterEach(() => {
+				if (!hadOwnCall) {
+					delete (Object.prototype.toString as unknown as { call?: unknown }).call;
+				}
+			});
+
+			it('keeps built-in object prototypes intact', () => {
+				const nodeTypeProperties: INodeProperties = {
+					displayName: 'Value',
+					name: 'value',
+					type: 'string',
+					routing: {
+						send: {
+							property: 'toString.call',
+							type: 'body',
+							value: 'x',
+						},
+					},
+					default: '',
+				};
+				node.parameters = {};
+				nodeType.description.properties = [nodeTypeProperties];
+
+				const workflow = new Workflow({
+					nodes: workflowData.nodes,
+					connections: workflowData.connections,
+					active: false,
+					nodeTypes,
+				});
+
+				const executeFunctions = mock<executionContexts.ExecuteContext>();
+				Object.assign(executeFunctions, {
+					runIndex,
+					additionalData,
+					workflow,
+					node,
+					mode,
+					connectionInputData,
+					runExecutionData,
+					nodeType,
+				});
+				const routingNode = new RoutingNode(executeFunctions, nodeType);
+
+				const executeSingleFunctions = getExecuteSingleFunctions(
+					workflow,
+					runExecutionData,
+					runIndex,
+					node,
+					itemIndex,
+				);
+
+				const result = routingNode.getRequestOptionsFromParameters(
+					executeSingleFunctions,
+					nodeTypeProperties,
+					itemIndex,
+					runIndex,
+					path,
+					{},
+				);
+
+				// Prototype untouched; the value lands as an own property on the request body.
+				expect(Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call')).toBe(false);
+				expect(Object.prototype.toString.call([])).toBe('[object Array]');
+				expect((result?.options.body as { toString?: { call?: unknown } }).toString?.call).toBe(
+					'x',
+				);
+			});
+		});
 	});
 
 	describe('runNode', () => {
@@ -2251,9 +2323,11 @@ describe('RoutingNode', () => {
 					itemIndex,
 				);
 
-				jest
-					.spyOn(executionContexts, 'ExecuteSingleContext')
-					.mockReturnValue(executeSingleFunctions);
+				vi.spyOn(executionContexts, 'ExecuteSingleContext').mockImplementation(function (
+					this: executionContexts.ExecuteSingleContext,
+				) {
+					return executeSingleFunctions as never;
+				} as never);
 
 				const numberOfItems = testData.input.specialTestOptions?.numberOfItems ?? 1;
 				if (!inputData.main[0] || inputData.main[0].length !== numberOfItems) {
@@ -2264,7 +2338,7 @@ describe('RoutingNode', () => {
 				}
 
 				const workflowPackage = await import('n8n-workflow');
-				const spy = jest.spyOn(workflowPackage, 'sleep').mockReturnValue(
+				const spy = vi.spyOn(workflowPackage, 'sleep').mockReturnValue(
 					new Promise((resolve) => {
 						resolve();
 					}),
@@ -2426,7 +2500,11 @@ describe('RoutingNode', () => {
 						node,
 						itemIndex + iteration,
 					);
-					jest.spyOn(executionContexts, 'ExecuteSingleContext').mockReturnValue(context);
+					vi.spyOn(executionContexts, 'ExecuteSingleContext').mockImplementation(function (
+						this: executionContexts.ExecuteSingleContext,
+					) {
+						return context as never;
+					} as never);
 					currentItemIndex = context.getItemIndex();
 				}
 
@@ -2510,7 +2588,11 @@ describe('RoutingNode', () => {
 			// @ts-expect-error overwriting a method
 			executeSingleFunctions.getNodeParameter = (parameterName: string) =>
 				originalGetNodeParameter(parameterName) ?? {};
-			jest.spyOn(executionContexts, 'ExecuteSingleContext').mockReturnValue(executeSingleFunctions);
+			vi.spyOn(executionContexts, 'ExecuteSingleContext').mockImplementation(function (
+				this: executionContexts.ExecuteSingleContext,
+			) {
+				return executeSingleFunctions as never;
+			} as never);
 
 			const mockCredentials = mock<ICredentialsDecrypted>({
 				id: 'cred-1',

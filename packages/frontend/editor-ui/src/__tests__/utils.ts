@@ -1,7 +1,7 @@
 import { within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ISettingsState } from '@/Interface';
-import { UserManagementAuthenticationMethod } from '@/Interface';
+import { AuthenticationMethod } from '@n8n/api-types';
 import { defaultSettings } from './defaults';
 import type { Mock } from 'vitest';
 import type { Store, StoreDefinition } from 'pinia';
@@ -45,7 +45,7 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 	userManagement: {
 		showSetupOnFirstLoad: false,
 		smtpSetup: false,
-		authenticationMethod: UserManagementAuthenticationMethod.Email,
+		authenticationMethod: AuthenticationMethod.Email,
 		quota: defaultSettings.userManagement.quota,
 		passwordMinLength: 8,
 	},
@@ -100,8 +100,9 @@ export const getSelectedDropdownValue = async (items: NodeListOf<Element>) => {
  *
  * @see https://pinia.vuejs.org/cookbook/testing.html#Mocking-the-returned-value-of-an-action
  */
-export const mockedStore = <TStoreDef extends () => unknown>(
+export const mockedStore = <TStoreDef extends (...args: never[]) => unknown>(
 	useStore: TStoreDef,
+	...args: Parameters<TStoreDef>
 ): TStoreDef extends StoreDefinition<infer Id, infer State, infer Getters, infer Actions>
 	? Store<
 			Id,
@@ -117,10 +118,12 @@ export const mockedStore = <TStoreDef extends () => unknown>(
 		}
 	: ReturnType<TStoreDef> => {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	return useStore() as any;
+	return useStore(...args) as any;
 };
 
-export type MockedStore<T extends () => unknown> = ReturnType<typeof mockedStore<T>>;
+export type MockedStore<T extends (...args: never[]) => unknown> = ReturnType<
+	typeof mockedStore<T>
+>;
 
 export type Emitter = (event: string, ...args: unknown[]) => void;
 export type Emitters<T extends string> = Record<

@@ -9,8 +9,9 @@ import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { nonExistingJsonPath, PopOutWindowKey } from '@/app/constants';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { nonExistingJsonPath } from '@/app/constants';
+import { PopOutWindowKey } from '@n8n/composables/injectionKeys';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { inject, computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
@@ -49,7 +50,7 @@ const clipboard = useClipboard();
 
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
-const { activeNode } = ndvStore;
+const activeNode = computed(() => ndvStore.value.activeNode);
 const pinnedData = usePinnedData(activeNode);
 const { showToast } = useToast();
 const telemetry = useTelemetry();
@@ -179,7 +180,7 @@ function handleCopyClick(commandData: { command: string }) {
 	}[commandData.command];
 
 	telemetry.track('User copied ndv data', {
-		node_type: activeNode?.type,
+		node_type: activeNode.value?.type,
 		push_ref: props.pushRef,
 		run_index: props.runIndex,
 		view: 'json',

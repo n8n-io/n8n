@@ -69,7 +69,7 @@ export function buildSharedForCredential(
 
 export async function getCredential(credentialId: string): Promise<CredentialsEntity | null> {
 	return await Container.get(CredentialsRepository).findOne({
-		where: { id: credentialId },
+		where: { id: credentialId, usageScope: 'project' },
 		relations: ['shared', 'shared.project'],
 	});
 }
@@ -96,12 +96,28 @@ export async function getSharedCredentials(
  * resolution, validation, and encryption.
  */
 export async function saveCredential(
-	payload: { type: string; name: string; data: ICredentialDataDecryptedObject; projectId?: string },
+	payload: {
+		type: string;
+		name: string;
+		data: ICredentialDataDecryptedObject;
+		projectId?: string;
+		isResolvable?: boolean;
+	},
 	user: User,
 ): Promise<PublicApiCredentialResponse> {
 	const { scopes: _scopes, ...credential } = await Container.get(
 		CredentialsService,
-	).createUnmanagedCredential({ ...payload, projectId: payload.projectId ?? undefined }, user);
+	).createUnmanagedCredential(
+		{
+			type: payload.type,
+			name: payload.name,
+			data: payload.data,
+			projectId: payload.projectId,
+			isResolvable: payload.isResolvable,
+			usageScope: 'project',
+		},
+		user,
+	);
 
 	const project = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
 		credential.id,
@@ -115,6 +131,7 @@ export async function saveCredential(
 		projectId: project?.id,
 		projectType: project?.type,
 		isDynamic: credential.isResolvable ?? false,
+		jweEnabled: payload.data.jweEnabled === true,
 	});
 
 	const credentialForApi = {
@@ -438,28 +455,36 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 						properties: {
 							[dependantName]: conditionalValue,
 						},
+						// Require the controlling field in the `if` so the condition only
+						// matches when it is actually present and equal. Without this, an
+						// absent controlling field makes `properties` vacuously true and the
+						// `then` block would fire unexpectedly.
+						required: [dependantName],
 					},
 					then: {
-						allOf: [],
-					},
-					else: {
 						allOf: [],
 					},
 				};
 				resolveProperties.push(dependencyKey);
 			}
 
-			propertyRequiredDependencies[dependencyKey].then?.allOf.push({ required: [property.name] });
-			propertyRequiredDependencies[dependencyKey].else?.allOf.push({
-				not: { required: [property.name] },
-			});
-			// remove global required
+			// Only enforce a field as required when the credential actually marks it `required`.
+			if (property.required) {
+				propertyRequiredDependencies[dependencyKey].then?.allOf.push({
+					required: [property.name],
+				});
+			}
+			// Requiredness is now conditional, so drop it from the global required list.
 			requiredFields = requiredFields.filter((field) => field !== property.name);
 		}
 	});
 	Object.assign(jsonSchema, { required: requiredFields });
 
-	jsonSchema.allOf = Object.values(propertyRequiredDependencies);
+	// Drop conditionals that ended up with no required fields, so credentials whose
+	// conditional fields are all optional produce no `allOf` constraints.
+	jsonSchema.allOf = Object.values(propertyRequiredDependencies).filter(
+		(dependency) => (dependency.then?.allOf.length ?? 0) > 0,
+	);
 
 	if (!jsonSchema.allOf.length) {
 		delete jsonSchema.allOf;

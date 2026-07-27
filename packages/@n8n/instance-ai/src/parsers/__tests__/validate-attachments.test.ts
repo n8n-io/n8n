@@ -97,7 +97,7 @@ describe('validateAttachmentMimeTypes', () => {
 				{ data: '', mimeType: 'application/zip', fileName: 'a.zip' },
 				{ data: '', mimeType: 'video/mp4', fileName: 'b.mp4' },
 			]);
-			fail('expected error to be thrown');
+			expect.fail('expected error to be thrown');
 		} catch (caught) {
 			expect(caught).toBeInstanceOf(UnsupportedAttachmentError);
 			const error = caught as UnsupportedAttachmentError;

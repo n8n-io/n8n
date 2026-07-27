@@ -7,6 +7,7 @@ import type {
 } from './chat-hub';
 import type { QuickConnectOption } from './quick-connect';
 import type { InsightsDateRange } from './schemas/insights.schema';
+import type { WorkflowReviewsPolicy } from './workflow-reviews-policy';
 
 export interface IVersionNotificationSettings {
 	enabled: boolean;
@@ -28,7 +29,15 @@ export interface ITelemetrySettings {
 	config?: ITelemetryClientConfig;
 }
 
-export type AuthenticationMethod = 'email' | 'ldap' | 'saml' | 'oidc' | 'token-exchange';
+export const AuthenticationMethod = {
+	Email: 'email',
+	Ldap: 'ldap',
+	Saml: 'saml',
+	Oidc: 'oidc',
+	TokenExchange: 'token-exchange',
+} as const;
+
+export type AuthenticationMethod = (typeof AuthenticationMethod)[keyof typeof AuthenticationMethod];
 
 export interface IUserManagementSettings {
 	quota: number;
@@ -66,6 +75,8 @@ export interface IEnterpriseSettings {
 	customRoles: boolean;
 	personalSpacePolicy: boolean;
 	dataRedaction: boolean;
+	otelCustomSpanAttributes: boolean;
+	workflowReviews: boolean;
 }
 
 export interface FrontendSettings {
@@ -97,6 +108,7 @@ export interface FrontendSettings {
 	timezone: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
+	urlBaseWebhookTest: string;
 	versionCli: string;
 	nodeJsVersion: string;
 	nodeEnv: string | undefined;
@@ -105,7 +117,7 @@ export interface FrontendSettings {
 	authCookie: {
 		secure: boolean;
 	};
-	binaryDataMode: 'default' | 'filesystem' | 's3' | 'database';
+	binaryDataMode: 'default' | 'filesystem' | 's3' | 'azure' | 'database';
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev' | 'rc';
 	n8nMetadata?: {
 		userId?: string;
@@ -115,6 +127,9 @@ export interface FrontendSettings {
 	dynamicBanners: {
 		endpoint: string;
 		enabled: boolean;
+		filters: {
+			publishedWorkflowCount: number;
+		};
 	};
 	instanceId: string;
 	telemetry: ITelemetrySettings;
@@ -162,6 +177,7 @@ export interface FrontendSettings {
 	};
 	workflowTagsDisabled: boolean;
 	workflowsAutosaveDisabled: boolean;
+	useWorkflowPublicationService: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	previewMode: boolean;
@@ -209,8 +225,12 @@ export interface FrontendSettings {
 		enabled: boolean;
 		enforced: boolean;
 	};
+	workflowReviews?: WorkflowReviewsPolicy;
 	folders: {
 		enabled: boolean;
+	};
+	collaboration: {
+		crdt: 'off' | 'local' | 'server';
 	};
 	banners: {
 		dismissed: string[];
@@ -245,6 +265,27 @@ export interface FrontendSettings {
 	easyAIWorkflowOnboarded: boolean;
 	evaluation: {
 		quota: number;
+		/**
+		 * Operator override (`N8N_EVAL_COLLECTIONS_ENABLED`) that force-enables the
+		 * eval-collections surface. Surfaced here so the frontend gate works even
+		 * when the in-browser PostHog client is disabled (telemetry off), where the
+		 * `084_eval_collections` flag would otherwise never resolve.
+		 */
+		collectionsEnabled: boolean;
+		/**
+		 * Operator override (`N8N_CONFIG_EVALS_ENABLED`) that force-enables the
+		 * config-based evals surface. Surfaced here so the in-editor gate works
+		 * even when the browser PostHog client is disabled (telemetry off), where
+		 * the `088_config_evaluations` flag would otherwise never resolve.
+		 */
+		configEvalsEnabled: boolean;
+		/**
+		 * Operator override (`N8N_AGENT_EVALS_ENABLED`) that force-enables the
+		 * agent-evals surface. Surfaced here so the frontend gate works even when
+		 * the in-browser PostHog client is disabled (telemetry off), where the
+		 * `101_agent_evals` flag would otherwise never resolve.
+		 */
+		agentEvalsEnabled: boolean;
 	};
 
 	/** Backend modules that were initialized during startup. */
@@ -265,6 +306,7 @@ export type FrontendModuleSettings = {
 		summary: boolean;
 		dashboard: boolean;
 		dateRanges: InsightsDateRange[];
+		earliestDataDate: string | null;
 	};
 
 	/**
@@ -275,6 +317,8 @@ export type FrontendModuleSettings = {
 		mcpAccessEnabled: boolean;
 		/** Whether MCP settings are managed via environment variables. */
 		mcpManagedByEnv: boolean;
+		/** Public URL of the instance MCP server endpoint. */
+		serverUrl?: string;
 	};
 
 	/**
@@ -293,8 +337,14 @@ export type FrontendModuleSettings = {
 	'instance-ai'?: {
 		enabled: boolean;
 		localGatewayDisabled: boolean;
+		browserUseEnabled: boolean;
 		proxyEnabled: boolean;
 		cloudManaged: boolean;
+		sandboxEnabled: boolean;
+		workflowBuilderAvailable: boolean;
+		sandboxUnavailableReason: string | null;
+		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
+		runDebugEnabled: boolean;
 	};
 
 	/**
@@ -319,6 +369,14 @@ export type FrontendModuleSettings = {
 	};
 
 	/**
+	 * Client settings for the OpenTelemetry module.
+	 */
+	otel?: {
+		/** Whether OpenTelemetry tracing is enabled on this instance. */
+		enabled: boolean;
+	};
+
+	/**
 	 * Client settings for the agents module.
 	 */
 	agents?: {
@@ -326,9 +384,18 @@ export type FrontendModuleSettings = {
 		 * Enabled agent sub-feature modules. Each token unlocks a specific
 		 * capability inside the agents module (see the backend's
 		 * `AGENTS_MODULE_NAMES` for the known set). Controlled via
-		 * `N8N_AGENTS_MODULES` (comma-separated).
+		 * `N8N_AGENTS_MODULES`
 		 */
 		modules: string[];
+		/**
+		 * Whether the agent knowledge base is enabled. True when the backend's
+		 * Daytona sandbox env vars (`N8N_AGENTS_AI_SANDBOX_ENABLED=true` +
+		 * `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona`) are set, OR the AI Assistant
+		 * proxy is available.
+		 */
+		knowledgeBaseEnabled: boolean;
+		/** Whether the AI Assistant proxy is available to the agents module. */
+		proxyEnabled: boolean;
 	};
 };
 

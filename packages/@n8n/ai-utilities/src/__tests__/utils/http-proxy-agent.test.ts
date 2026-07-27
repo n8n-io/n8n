@@ -1,15 +1,20 @@
 import { Agent, ProxyAgent } from 'undici';
+import type { MockedFunction } from 'vitest';
 
 import { getProxyAgent, proxyFetch } from 'src/utils/http-proxy-agent';
 
 // Mock the dependencies
-jest.mock('undici', () => ({
-	Agent: jest.fn().mockImplementation((options) => ({ type: 'Agent', options })),
-	ProxyAgent: jest.fn().mockImplementation((options) => ({ type: 'ProxyAgent', options })),
+vi.mock('undici', () => ({
+	Agent: vi.fn(function (options) {
+		return { type: 'Agent', options };
+	}),
+	ProxyAgent: vi.fn(function (options) {
+		return { type: 'ProxyAgent', options };
+	}),
 }));
 
 // Mock global fetch
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 describe('getProxyAgent', () => {
 	// Store original environment variables
@@ -17,7 +22,7 @@ describe('getProxyAgent', () => {
 
 	// Reset environment variables before each test
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		process.env = { ...originalEnv };
 		delete process.env.HTTP_PROXY;
 		delete process.env.http_proxy;
@@ -240,16 +245,42 @@ describe('getProxyAgent', () => {
 			expect(Agent).toHaveBeenCalled();
 		});
 	});
+
+	describe('secure lookup', () => {
+		it('should build an Agent with the lookup on connect when no proxy is configured', () => {
+			const lookup = vi.fn();
+
+			const agent = getProxyAgent('https://api.openai.com/v1', undefined, lookup);
+
+			expect(Agent).toHaveBeenCalledWith(expect.objectContaining({ connect: { lookup } }));
+			expect(agent).toEqual(expect.objectContaining({ type: 'Agent' }));
+			expect(ProxyAgent).not.toHaveBeenCalled();
+		});
+
+		it('should not attach the lookup to a ProxyAgent when a proxy is configured', () => {
+			const proxyUrl = 'https://proxy.example.com:8080';
+			process.env.HTTPS_PROXY = proxyUrl;
+			const lookup = vi.fn();
+
+			getProxyAgent('https://api.openai.com/v1', undefined, lookup);
+
+			expect(ProxyAgent).toHaveBeenCalledWith(expect.objectContaining({ uri: proxyUrl }));
+			expect(ProxyAgent).not.toHaveBeenCalledWith(
+				expect.objectContaining({ connect: expect.anything() }),
+			);
+			expect(Agent).not.toHaveBeenCalled();
+		});
+	});
 });
 
 describe('proxyFetch', () => {
 	// Store original environment variables
 	const originalEnv = { ...process.env };
-	const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
+	const mockFetch = global.fetch as MockedFunction<typeof fetch>;
 
 	// Reset environment variables and mocks before each test
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		process.env = { ...originalEnv };
 		delete process.env.HTTP_PROXY;
 		delete process.env.http_proxy;

@@ -19,6 +19,7 @@ import {
 	isAllowedSDKFunction,
 	isAutoRenameableSDKFunction,
 	isAllowedMethod,
+	allowedMethodNames,
 	getSafeJSONMethod,
 	getSafeStringMethod,
 } from './validators';
@@ -93,9 +94,10 @@ class SDKInterpreter {
 		// Only allow const declarations
 		if (node.kind !== 'const') {
 			throw new SecurityError(
-				`'${node.kind}' declarations are not allowed. Use 'const' only.`,
+				node.kind,
 				node.loc ?? undefined,
 				this.sourceCode,
+				`'${node.kind}' declarations are not allowed. Use 'const' only.`,
 			);
 		}
 
@@ -121,10 +123,11 @@ class SDKInterpreter {
 					continue;
 				}
 				throw new SecurityError(
-					`'${name}' is a reserved SDK function name and cannot be used as a variable name. ` +
-						`Use a different name like 'my${name.charAt(0).toUpperCase() + name.slice(1)}'.`,
+					name,
 					declarator.loc ?? undefined,
 					this.sourceCode,
+					`'${name}' is a reserved SDK function name and cannot be used as a variable name. ` +
+						`Use a different name like 'my${name.charAt(0).toUpperCase() + name.slice(1)}'.`,
 				);
 			}
 
@@ -268,9 +271,13 @@ class SDKInterpreter {
 			// Validate method name against allowlist
 			if (!isAllowedMethod(methodName)) {
 				throw new SecurityError(
-					`Method '${methodName}' is not an allowed SDK method`,
+					methodName,
 					memberExpr.property.loc ?? undefined,
 					this.sourceCode,
+					`Method '${methodName}' is not an allowed SDK method. ` +
+						`Allowed methods: ${allowedMethodNames().join(', ')}. ` +
+						'Native array/string methods are not available in SDK code; ' +
+						'use a Code node or an n8n expression for runtime logic.',
 				);
 			}
 
@@ -411,14 +418,16 @@ class SDKInterpreter {
 	private visitIdentifier(node: ESTree.Identifier): unknown {
 		const name = node.name;
 
-		// Check for dangerous globals
-		validateIdentifier(name, this.getVariableNames(), node, this.sourceCode);
-
-		// Check if it's a declared variable (including auto-renamed ones)
+		// Locally declared variables shadow the dangerous-globals blocklist,
+		// so a user-declared `const fetch = node(...)` resolves to their value
+		// rather than being rejected as access to the real `fetch` global.
 		const resolvedName = this.renamedVariables.get(name) ?? name;
 		if (this.variables.has(resolvedName)) {
 			return this.variables.get(resolvedName);
 		}
+
+		// Check for dangerous globals (only when not shadowed by a local)
+		validateIdentifier(name, this.getVariableNames(), node, this.sourceCode);
 
 		// Check if it's an SDK function
 		if (this.sdkFunctions.has(name)) {

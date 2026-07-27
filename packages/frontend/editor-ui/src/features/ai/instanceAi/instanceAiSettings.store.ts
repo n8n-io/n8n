@@ -11,9 +11,17 @@ import {
 	updatePreferences,
 	fetchModelCredentials,
 	fetchServiceCredentials,
+	fetchInstanceModelCredentials,
 } from './instanceAi.settings.api';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { createGatewayLink, disconnectGatewaySession, getGatewayStatus } from './instanceAi.api';
+import {
+	createBrowserLink,
+	createGatewayLink,
+	disconnectBrowserSession,
+	disconnectGatewaySession,
+	getBrowserStatus,
+	getGatewayStatus,
+} from './instanceAi.api';
 import type {
 	FrontendModuleSettings,
 	InstanceAiAdminSettingsResponse,
@@ -26,6 +34,12 @@ import type {
 	ToolCategory,
 } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
+import {
+	BROWSER_USE_CONNECTION_TYPE,
+	COMPUTER_USE_CONNECTION_TYPE,
+	type BrowserUseConnectionType,
+	type ComputerUseConnectionType,
+} from './constants';
 
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
 	const rootStore = useRootStore();
@@ -38,6 +52,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const preferences = ref<InstanceAiUserPreferencesResponse | null>(null);
 	const credentials = ref<InstanceAiModelCredential[]>([]);
 	const serviceCredentials = ref<InstanceAiModelCredential[]>([]);
+	const instanceModelCredentials = ref<InstanceAiModelCredential[]>([]);
 	const draft = reactive<InstanceAiAdminSettingsUpdateRequest>({});
 	const preferencesDraft = reactive<InstanceAiUserPreferencesUpdateRequest>({});
 
@@ -76,6 +91,14 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const gatewayHostIdentifier = ref<string | null>(null);
 	const gatewayToolCategories = ref<ToolCategory[]>([]);
 	const isGatewayConnected = computed(() => gatewayConnected.value);
+
+	const browserConnected = ref(false);
+	const browserConnectedAt = ref<string | null>(null);
+	const browserToolCategories = ref<ToolCategory[]>([]);
+	const browserStatusLoaded = ref(false);
+	const browserConnectUrl = ref<string | null>(null);
+	const browserConnectUrlExpiresAt = ref<string | null>(null);
+	let browserConnectUrlRequestId = 0;
 	const activeDirectory = computed(() => gatewayDirectory.value);
 	const isInstanceAiDisabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.enabled !== true,
@@ -87,11 +110,23 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isLocalGatewayDisabled = computed(
 		() => isLocalGatewayDisabledByAdmin.value || preferences.value?.localGatewayDisabled === true,
 	);
+	const isBrowserUseEnabledByAdmin = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.browserUseEnabled === true,
+	);
 	const isProxyEnabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.proxyEnabled === true,
 	);
 	const isCloudManaged = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.cloudManaged === true,
+	);
+	const isSandboxEnabled = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.sandboxEnabled === true,
+	);
+	const isWorkflowBuilderAvailable = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.workflowBuilderAvailable ?? true,
+	);
+	const sandboxUnavailableReason = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.sandboxUnavailableReason ?? null,
 	);
 
 	const isDirty = computed(() => {
@@ -107,8 +142,17 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		const merged: NonNullable<FrontendModuleSettings['instance-ai']> = {
 			enabled: adminRes.enabled,
 			localGatewayDisabled: adminRes.localGatewayDisabled ?? prev?.localGatewayDisabled ?? false,
+			browserUseEnabled: adminRes.browserUseEnabled ?? prev?.browserUseEnabled ?? true,
 			proxyEnabled: prev?.proxyEnabled ?? false,
 			cloudManaged: prev?.cloudManaged ?? false,
+			sandboxEnabled: adminRes.sandboxEnabled,
+			workflowBuilderAvailable: adminRes.sandboxEnabled
+				? (prev?.workflowBuilderAvailable ?? true)
+				: false,
+			sandboxUnavailableReason: adminRes.sandboxEnabled
+				? (prev?.sandboxUnavailableReason ?? null)
+				: null,
+			runDebugEnabled: prev?.runDebugEnabled ?? false,
 		};
 		settingsStore.moduleSettings = {
 			...ms,
@@ -132,17 +176,22 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			const [s, p] = await Promise.all(promises);
 			settings.value = s;
 			preferences.value = p;
-			if (!isProxyEnabled.value) {
+			if (!isProxyEnabled.value && !isCloudManaged.value) {
 				const credPromises: [
+					Promise<InstanceAiModelCredential[]>,
 					Promise<InstanceAiModelCredential[]>,
 					Promise<InstanceAiModelCredential[]>,
 				] = [
 					fetchModelCredentials(rootStore.restApiContext),
 					canManage.value ? fetchServiceCredentials(rootStore.restApiContext) : Promise.resolve([]),
+					canManage.value
+						? fetchInstanceModelCredentials(rootStore.restApiContext)
+						: Promise.resolve([]),
 				];
-				const [c, sc] = await Promise.all(credPromises);
+				const [c, sc, imc] = await Promise.all(credPromises);
 				credentials.value = c;
 				serviceCredentials.value = sc;
+				instanceModelCredentials.value = imc;
 			}
 			clearDraft();
 		} catch {
@@ -235,18 +284,20 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	type ConnectionStatus = 'connected' | 'waiting' | 'disconnected';
 
 	interface SidebarConnection {
-		type: 'computer-use' | 'browser-use';
+		type: ComputerUseConnectionType | BrowserUseConnectionType;
 		name: string;
 		subtitle: string;
 		status: ConnectionStatus;
 	}
 
-	const hasBrowserCategory = computed(() =>
-		gatewayToolCategories.value.some((c) => c.name === 'browser'),
+	const isGatewayBrowserCategoryEnabled = computed(
+		() => gatewayToolCategories.value.find((c) => c.name === 'browser')?.enabled === true,
 	);
 
+	/** Connected through either channel: direct extension session or daemon browser category. */
 	const isBrowserUseConnected = computed(
-		() => gatewayToolCategories.value.find((c) => c.name === 'browser')?.enabled === true,
+		() =>
+			browserConnected.value || (gatewayConnected.value && isGatewayBrowserCategoryEnabled.value),
 	);
 
 	const connections = computed<SidebarConnection[]>(() => {
@@ -254,7 +305,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 
 		if (!isLocalGatewayDisabled.value) {
 			result.push({
-				type: 'computer-use',
+				type: COMPUTER_USE_CONNECTION_TYPE,
 				name: gatewayDirectory.value ?? i18n.baseText('instanceAi.connections.add.computerUse'),
 				subtitle: gatewayConnected.value
 					? i18n.baseText('instanceAi.connections.types.computerUse.subtitle')
@@ -263,11 +314,15 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			});
 		}
 
-		if (gatewayConnected.value && hasBrowserCategory.value) {
+		if (isBrowserUseEnabledByAdmin.value) {
 			result.push({
-				type: 'browser-use',
-				name: 'Google Chrome',
-				subtitle: i18n.baseText('instanceAi.connections.types.browserUse.subtitle'),
+				type: BROWSER_USE_CONNECTION_TYPE,
+				name: isBrowserUseConnected.value
+					? 'Google Chrome'
+					: i18n.baseText('instanceAi.connections.add.browserUse'),
+				subtitle: isBrowserUseConnected.value
+					? i18n.baseText('instanceAi.connections.types.browserUse.subtitle')
+					: i18n.baseText('instanceAi.connections.row.status.disconnected'),
 				status: isBrowserUseConnected.value ? 'connected' : 'disconnected',
 			});
 		}
@@ -358,6 +413,64 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		}
 	}
 
+	// ── Browser Use (direct channel) ──────────────────────────────────────
+
+	async function fetchBrowserStatus(): Promise<void> {
+		try {
+			const status = await getBrowserStatus(rootStore.restApiContext);
+			browserConnected.value = status.connected;
+			browserConnectedAt.value = status.connectedAt;
+			browserToolCategories.value = status.toolCategories ?? [];
+		} catch {
+		} finally {
+			browserStatusLoaded.value = true;
+		}
+	}
+
+	function clearBrowserConnectUrl(): void {
+		browserConnectUrlRequestId++;
+		browserConnectUrl.value = null;
+		browserConnectUrlExpiresAt.value = null;
+	}
+
+	/**
+	 * Fetch a fresh opaque extension connect URL from the server. The URL is
+	 * stored (not displayed) so the setup modal can open it on user click.
+	 */
+	async function fetchBrowserConnectUrl(): Promise<string | null> {
+		const requestId = ++browserConnectUrlRequestId;
+		try {
+			const result = await createBrowserLink(rootStore.restApiContext);
+			if (requestId !== browserConnectUrlRequestId) return null;
+			browserConnectUrl.value = result.connectUrl;
+			browserConnectUrlExpiresAt.value = result.expiresAt;
+			return result.connectUrl;
+		} catch {
+			toast.showError(
+				new Error(i18n.baseText('instanceAi.browserUse.connectLinkError.message')),
+				i18n.baseText('instanceAi.browserUse.connectLinkError.title'),
+			);
+			return null;
+		}
+	}
+
+	/** Tears down the direct browser session on the server. */
+	async function disconnectBrowserUse(): Promise<void> {
+		try {
+			await disconnectBrowserSession(rootStore.restApiContext);
+		} catch {
+			toast.showError(
+				new Error(i18n.baseText('instanceAi.browserUse.disconnectError.message')),
+				i18n.baseText('instanceAi.browserUse.disconnectError.title'),
+			);
+			return;
+		}
+		clearBrowserConnectUrl();
+		browserConnected.value = false;
+		browserConnectedAt.value = null;
+		browserToolCategories.value = [];
+	}
+
 	// ── Connect to local daemon ──────────────────────────────────────────
 	// The daemon is only contacted in response to an explicit user action.
 	// Once paired, the backend keeps the connection alive on its own.
@@ -416,20 +529,30 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		if (removeGatewayPushListener) return;
 		const pushStore = usePushConnectionStore();
 		removeGatewayPushListener = pushStore.addEventListener((message) => {
-			if (message.type !== 'instanceAiGatewayStateChanged') return;
-			gatewayConnected.value = message.data.connected;
-			gatewayDirectory.value = message.data.directory;
-			gatewayHostIdentifier.value = message.data.hostIdentifier ?? null;
-			gatewayToolCategories.value = message.data.toolCategories ?? [];
-			if (message.data.connected) {
-				markGatewayEverConnected();
+			if (message.type === 'instanceAiGatewayStateChanged') {
+				gatewayConnected.value = message.data.connected;
+				gatewayDirectory.value = message.data.directory;
+				gatewayHostIdentifier.value = message.data.hostIdentifier ?? null;
+				gatewayToolCategories.value = message.data.toolCategories ?? [];
+				if (message.data.connected) {
+					markGatewayEverConnected();
+				}
+				return;
+			}
+			if (message.type === 'instanceAiBrowserStateChanged') {
+				browserConnected.value = message.data.connected;
+				browserConnectedAt.value = message.data.connectedAt;
+				browserToolCategories.value = message.data.toolCategories ?? [];
 			}
 		});
 
 		stopPushReconnectWatch = watch(
 			() => pushStore.isConnected,
 			(now, prev) => {
-				if (now && !prev) void fetchGatewayStatus();
+				if (now && !prev) {
+					void fetchGatewayStatus();
+					void fetchBrowserStatus();
+				}
 			},
 		);
 	}
@@ -487,6 +610,15 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		}
 	}
 
+	async function refreshInstanceModelCredentials(): Promise<void> {
+		if (isProxyEnabled.value || !canManage.value) return;
+		try {
+			instanceModelCredentials.value = await fetchInstanceModelCredentials(
+				rootStore.restApiContext,
+			);
+		} catch {}
+	}
+
 	async function refreshModuleSettings(): Promise<void> {
 		const promises: Array<Promise<unknown>> = [settingsStore.getModuleSettings()];
 		if (!preferences.value) {
@@ -505,6 +637,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		preferences,
 		credentials,
 		serviceCredentials,
+		instanceModelCredentials,
 		draft,
 		preferencesDraft,
 		isLoading,
@@ -536,7 +669,11 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isInstanceAiDisabled,
 		isLocalGatewayDisabled,
 		isLocalGatewayDisabledByAdmin,
+		isBrowserUseEnabledByAdmin,
 		isProxyEnabled,
+		isSandboxEnabled,
+		isWorkflowBuilderAvailable,
+		sandboxUnavailableReason,
 		fetchGatewayStatus,
 		connectLocalGateway,
 		isCloudManaged,
@@ -545,7 +682,19 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		fetchSetupCommand,
 		clearSetupCommand,
 		refreshCredentials,
+		refreshInstanceModelCredentials,
 		refreshModuleSettings,
+		// Browser Use (direct channel)
+		browserConnected,
+		browserConnectedAt,
+		browserToolCategories,
+		browserStatusLoaded,
+		browserConnectUrl,
+		browserConnectUrlExpiresAt,
+		fetchBrowserStatus,
+		fetchBrowserConnectUrl,
+		clearBrowserConnectUrl,
+		disconnectBrowserUse,
 		// Sidebar connections
 		connections,
 		isBrowserUseConnected,

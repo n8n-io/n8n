@@ -11,10 +11,10 @@ describe('LangchainHistoryAdapter', () => {
 	});
 
 	const createMockHistory = (messages: Message[] = []): ChatHistory => ({
-		getMessages: jest.fn().mockResolvedValue([...messages]),
-		addMessage: jest.fn().mockResolvedValue(undefined),
-		addMessages: jest.fn().mockResolvedValue(undefined),
-		clear: jest.fn().mockResolvedValue(undefined),
+		getMessages: vi.fn().mockResolvedValue([...messages]),
+		addMessage: vi.fn().mockResolvedValue(undefined),
+		addMessages: vi.fn().mockResolvedValue(undefined),
+		clear: vi.fn().mockResolvedValue(undefined),
 	});
 
 	describe('getMessages', () => {

@@ -58,7 +58,7 @@ const { height } = useElementSize(jsonDataContainer);
 
 const jsonData = computed(() => executionDataToJson(props.inputData));
 
-const highlight = computed(() => ndvStore.highlightDraggables);
+const highlight = computed(() => ndvStore.value.highlightDraggables);
 
 const getShortKey = (el: HTMLElement) => {
 	if (!el) {
@@ -79,26 +79,26 @@ const getJsonParameterPath = (path: string) => {
 	});
 };
 
-const canDraggableDrop = computed(() => ndvStore.canDraggableDrop);
-const draggableStickyPosition = computed(() => ndvStore.draggableStickyPos);
+const canDraggableDrop = computed(() => ndvStore.value.canDraggableDrop);
+const draggableStickyPosition = computed(() => ndvStore.value.draggableStickyPos);
 
 const onDragStart = (el: HTMLElement, data?: string) => {
 	if (el?.dataset.path) {
 		draggingPath.value = el.dataset.path;
 	}
 
-	ndvStore.draggableStartDragging({
+	ndvStore.value.draggableStartDragging({
 		type: 'mapping',
 		data: data ?? '',
 		dimensions: el?.getBoundingClientRect() ?? null,
 	});
-	ndvStore.resetMappingTelemetry();
+	ndvStore.value.resetMappingTelemetry();
 };
 
 const onDragEnd = (el: HTMLElement) => {
-	ndvStore.draggableStopDragging();
+	ndvStore.value.draggableStopDragging();
 	draggingPath.value = null;
-	const mappingTelemetry = ndvStore.mappingTelemetry;
+	const mappingTelemetry = ndvStore.value.mappingTelemetry;
 	const telemetryPayload = {
 		src_node_type: props.node.type,
 		src_field_name: el.dataset.name ?? '',

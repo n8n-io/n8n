@@ -11,7 +11,7 @@ const nvdStore = injectNDVStore();
 const dataTableStore = useDataTableStore();
 
 const calloutType = computed(() => {
-	if (!DATA_TABLE_NODES.includes(nvdStore.activeNode?.type ?? '')) {
+	if (!DATA_TABLE_NODES.includes(nvdStore.value.activeNode?.type ?? '')) {
 		return null;
 	}
 

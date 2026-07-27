@@ -121,6 +121,9 @@ function determineReleaseType(currentVersion) {
 	if (currentVersion.includes('-rc.')) {
 		return 'rc';
 	}
+	if (currentVersion.includes('-exp')) {
+		return 'rc';
+	}
 	return 'stable';
 }
 

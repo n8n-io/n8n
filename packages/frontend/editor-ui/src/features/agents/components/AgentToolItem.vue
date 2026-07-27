@@ -16,6 +16,7 @@ import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { computed, useCssModule, useAttrs } from 'vue';
 
 import ToolConnectedBadge from './ToolConnectedBadge.vue';
+import ToolApprovalBadge from './ToolApprovalBadge.vue';
 import ToolCredsMissingChip from './ToolCredsMissingChip.vue';
 
 const props = defineProps<{
@@ -24,6 +25,7 @@ const props = defineProps<{
 	mode: 'configured' | 'available';
 	/** When true, surfaces an "Add credentials" warning chip instead of "✓ Connected". */
 	missingCredentials?: boolean;
+	requireApproval?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -82,7 +84,10 @@ const displayName = computed(() => {
 					data-test-id="agent-tool-add-credentials-chip"
 					@click="emit('configure')"
 				/>
-				<ToolConnectedBadge v-else />
+				<template v-else>
+					<ToolApprovalBadge v-if="requireApproval" />
+					<ToolConnectedBadge />
+				</template>
 
 				<N8nTooltip :content="i18n.baseText('agents.tools.configure')">
 					<N8nIconButton icon="settings" variant="ghost" text @click="emit('configure')" />

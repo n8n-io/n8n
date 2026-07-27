@@ -6,10 +6,15 @@ import {
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 
+export type PreExecutionAdditionalData = Pick<
+	IWorkflowExecuteAdditionalData,
+	'executionId' | 'encryptedRunnerIdentity'
+>;
+
 export function assertExecutionDataExists(
 	executionData: IRunExecutionData['executionData'],
 	workflow: Workflow,
-	additionalData: IWorkflowExecuteAdditionalData | undefined,
+	additionalData: PreExecutionAdditionalData | undefined,
 	mode: WorkflowExecuteMode,
 ): asserts executionData is NonNullable<IRunExecutionData['executionData']> {
 	if (!executionData) {

@@ -1,4 +1,9 @@
-import { createModel, generateTitleFromMessage } from '@n8n/agents';
+import {
+	createModel,
+	generateTitleFromMessage,
+	type BuiltTelemetry,
+	type Telemetry,
+} from '@n8n/agents';
 
 import type { ModelConfig } from '../types';
 
@@ -13,6 +18,13 @@ export function truncateToTitle(message: string): string {
 	return (lastSpace > 20 ? truncated.slice(0, lastSpace) : truncated) + '\u2026';
 }
 
+async function resolveBuiltTelemetry(
+	telemetry: BuiltTelemetry | Telemetry | undefined,
+): Promise<BuiltTelemetry | undefined> {
+	if (!telemetry) return undefined;
+	return 'build' in telemetry ? await telemetry.build() : telemetry;
+}
+
 /**
  * Generate a polished thread title via a lightweight LLM call.
  * Returns the cleaned title string or null on failure.
@@ -23,10 +35,14 @@ export function truncateToTitle(message: string): string {
 export async function generateTitleForRun(
 	modelId: ModelConfig,
 	userMessage: string,
+	options?: { telemetry?: BuiltTelemetry | Telemetry },
 ): Promise<string | null> {
 	try {
 		const model = createModel(modelId);
-		return await generateTitleFromMessage(model, userMessage);
+		const telemetry = await resolveBuiltTelemetry(options?.telemetry);
+		return await generateTitleFromMessage(model, userMessage, {
+			...(telemetry ? { telemetry } : {}),
+		});
 	} catch {
 		return null;
 	}

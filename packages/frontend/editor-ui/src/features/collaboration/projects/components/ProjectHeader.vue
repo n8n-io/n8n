@@ -20,7 +20,8 @@ import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
-import { NEW_AGENT_VIEW } from '@/features/agents/constants';
+import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
+import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
 import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -79,6 +80,8 @@ const headerIcon = computed((): IconOrEmoji => {
 });
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
+
+const { canCreate: canCreateAgent } = useAgentPermissions(() => homeProject.value?.id);
 
 const isPersonalProject = computed(() => {
 	return homeProject.value?.type === ProjectTypes.Personal;
@@ -193,6 +196,7 @@ const createVariableButton = computed(() => ({
 	size: 'mini' as const,
 	disabled:
 		sourceControlStore.preferences.branchReadOnly ||
+		!settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables] ||
 		(!projectVariablePermissions.value.create && !globalVariablesPermissions.value.create),
 }));
 
@@ -200,7 +204,7 @@ const createAgentButton = computed(() => ({
 	value: ACTION_TYPES.AGENT,
 	label: i18n.baseText('projects.header.create.agent'),
 	size: 'mini' as const,
-	disabled: sourceControlStore.preferences.branchReadOnly,
+	disabled: !canCreateAgent.value,
 }));
 
 const selectedMainButtonType = computed(() => {
@@ -295,7 +299,7 @@ const menu = computed(() => {
 		items.push({
 			value: ACTION_TYPES.AGENT,
 			label: i18n.baseText('projects.header.create.agent'),
-			disabled: sourceControlStore.preferences.branchReadOnly,
+			disabled: !canCreateAgent.value,
 		});
 	}
 
@@ -379,7 +383,7 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 	},
 	[ACTION_TYPES.AGENT]: (projectId, source) => {
 		agentTelemetry.trackClickedNewAgent(source);
-		void router.push({ name: NEW_AGENT_VIEW, query: { projectId } });
+		void router.push(instanceAiCreateAgentRoute(projectId));
 	},
 } as const;
 
@@ -493,6 +497,7 @@ const onSelect = (action: string, source: CreateSource) => {
 					v-if="isTeamProject"
 					:class="[$style.favoriteBtn, isProjectFavorited && $style.favoriteBtnActive]"
 					:icon="favoriteIcon"
+					:aria-label="i18n.baseText(isProjectFavorited ? 'favorites.remove' : 'favorites.add')"
 					variant="ghost"
 					size="medium"
 					data-test-id="project-favorite-btn"

@@ -3,8 +3,8 @@ import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { EventService } from '@/events/event.service';
-import { EventRelay } from '@/events/relays/event-relay';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import { EventRelay } from '@/events/relays/event-relay';
 import { UserManagementMailer } from '@/user-management/email';
 
 /**
@@ -50,7 +50,7 @@ export class WorkflowFailureNotificationEventRelay extends EventRelay {
 			// Get the user to send email to
 			const user = await this.userRepository.findOneBy({ id: userId });
 
-			if (!user || !user.email) {
+			if (!user?.email) {
 				this.logger.warn(
 					'Cannot send first production failure email - user not found or no email',
 					{

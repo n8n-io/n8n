@@ -1,6 +1,9 @@
 import { computed, ref, toRef } from 'vue';
 import { useUIStore } from '../stores/ui.store';
 
+// Matches `$sidebar-width` in `app/css/_variables.scss`.
+export const COLLAPSED_MAIN_SIDEBAR_WIDTH = 42;
+
 export function useSidebarLayout() {
 	const uiStore = useUIStore();
 	const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed ?? false);

@@ -10,12 +10,12 @@ describe('getDateRangesCommonTableExpressionQuery', () => {
 	const now = DateTime.utc(2025, 10, 8, 8, 51, 27);
 
 	beforeEach(() => {
-		jest.useFakeTimers();
-		jest.setSystemTime(now.toJSDate());
+		vi.useFakeTimers();
+		vi.setSystemTime(now.toJSDate());
 	});
 
 	afterEach(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	describe.each<[DatabaseConfig['type'], string]>([

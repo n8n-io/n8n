@@ -48,6 +48,31 @@ export function redactSecrets(value: unknown, depth = 0): unknown {
 	return value;
 }
 
+// Content-based redaction: `redactSecrets` only masks secret-shaped keys, but a
+// tool error arrives as a flat string where a token can sit inline. Order matters.
+const SECRET_TEXT_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
+	// Authorization header: keep the scheme word, mask the credential token.
+	[
+		/\b((?:proxy-)?authorization\s*[:=]\s*)((?:bearer|basic|digest|negotiate)\s+)?\S+/gi,
+		'$1$2[REDACTED]',
+	],
+	// Standalone "Bearer <token>" / "Basic <creds>".
+	[/\b(bearer|basic)\s+[\w.+/=~-]+/gi, '$1 [REDACTED]'],
+	// Secret-shaped key/value pairs: "api_key=abc", '"token":"abc"'.
+	[
+		/\b(api[-_]?key|access[-_]?key|x-api-key|access[-_]?token|refresh[-_]?token|client[-_]?secret|private[-_]?key|secret|token|password|passwd|cookie|set-cookie|session[-_]?id)("?\s*[:=]\s*"?)[^\s"',&}]+/gi,
+		'$1$2[REDACTED]',
+	],
+];
+
+/** Mask secrets embedded inline in free text (e.g. a token in a tool-error string). */
+export function redactSecretsInText(text: string): string {
+	return SECRET_TEXT_PATTERNS.reduce(
+		(acc, [pattern, replacement]) => acc.replace(pattern, replacement),
+		text,
+	);
+}
+
 /**
  * Truncates serializable values to a max stringified length, redacting
  * secrets first. Returns the redacted value when it fits, the truncated

@@ -8,23 +8,24 @@ import {
 	isBase64,
 	validateJSON,
 } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
 const mockExecuteHookFunctions = {
-	getNodeParameter: jest.fn().mockImplementation((param: string) => {
+	getNodeParameter: vi.fn().mockImplementation((param: string) => {
 		if (param === 'authentication') return 'accessToken';
 		return undefined;
 	}),
-	getCredentials: jest.fn().mockResolvedValue({
+	getCredentials: vi.fn().mockResolvedValue({
 		server: 'https://api.github.com',
 	}),
 	helpers: {
-		requestWithAuthentication: jest.fn(),
+		requestWithAuthentication: vi.fn(),
 	},
-	getCurrentNodeParameter: jest.fn(),
-	getWebhookName: jest.fn(),
-	getWebhookDescription: jest.fn(),
-	getNodeWebhookUrl: jest.fn(),
-	getNode: jest.fn().mockReturnValue({
+	getCurrentNodeParameter: vi.fn(),
+	getWebhookName: vi.fn(),
+	getWebhookDescription: vi.fn(),
+	getNodeWebhookUrl: vi.fn(),
+	getNode: vi.fn().mockReturnValue({
 		id: 'test-node-id',
 		name: 'test-node',
 	}),
@@ -32,7 +33,7 @@ const mockExecuteHookFunctions = {
 
 describe('GenericFunctions', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('githubApiRequest', () => {
@@ -42,7 +43,7 @@ describe('GenericFunctions', () => {
 			const body = {};
 			const responseData = { id: 123, name: 'test-repo' };
 
-			(mockExecuteHookFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -67,9 +68,7 @@ describe('GenericFunctions', () => {
 			const body = {};
 			const error = new Error('API Error');
 
-			(mockExecuteHookFunctions.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
-				error,
-			);
+			(mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mockRejectedValue(error);
 
 			await expect(
 				githubApiRequest.call(mockExecuteHookFunctions, method, endpoint, body),
@@ -85,7 +84,7 @@ describe('GenericFunctions', () => {
 			const branch = 'main';
 			const responseData = { sha: 'abc123' };
 
-			(mockExecuteHookFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -116,7 +115,7 @@ describe('GenericFunctions', () => {
 			const filePath = 'README.md';
 			const responseData = {};
 
-			(mockExecuteHookFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -135,7 +134,7 @@ describe('GenericFunctions', () => {
 			const responseData1 = [{ id: 1, title: 'Issue 1' }];
 			const responseData2 = [{ id: 2, title: 'Issue 2' }];
 
-			(mockExecuteHookFunctions.helpers.requestWithAuthentication as jest.Mock)
+			(mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock)
 				.mockResolvedValueOnce({ headers: { link: 'next' }, body: responseData1 })
 				.mockResolvedValueOnce({ headers: {}, body: responseData2 });
 

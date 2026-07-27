@@ -14,7 +14,12 @@ import type { CompletionSource, CompletionResult } from '@codemirror/autocomplet
 import { CompletionContext } from '@codemirror/autocomplete';
 import { EditorState } from '@codemirror/state';
 import { n8nLang } from '@/features/shared/editors/plugins/codemirror/n8nLang';
-import { LUXON_RECOMMENDED_OPTIONS, STRING_RECOMMENDED_OPTIONS } from './constants';
+import {
+	LUXON_RECOMMENDED_OPTIONS,
+	STRING_RECOMMENDED_OPTIONS,
+	WORKFLOW_DOCUMENT_FACET,
+} from './constants';
+
 import uniqBy from 'lodash/uniqBy';
 
 beforeEach(async () => {
@@ -107,7 +112,7 @@ export async function completions(docWithCursor: string, explicit = false) {
 	const state = EditorState.create({
 		doc,
 		selection: { anchor: cursorPosition },
-		extensions: [n8nLang()],
+		extensions: [n8nLang(), WORKFLOW_DOCUMENT_FACET.of('test@latest')],
 	});
 
 	const context = new CompletionContext(state, cursorPosition, explicit);

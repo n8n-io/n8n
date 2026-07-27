@@ -41,7 +41,7 @@ import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable } from '@t
 import { useThrottleFn } from '@vueuse/core';
 import { ElOption, ElSelect, ElSkeletonItem } from 'element-plus';
 import get from 'lodash/get';
-import { computed, h, ref, shallowRef, useSlots, watch } from 'vue';
+import { computed, h, shallowRef, useSlots, watch } from 'vue';
 
 import N8nCheckbox from '@n8n/design-system/v2/components/Checkbox/Checkbox.vue';
 
@@ -296,21 +296,21 @@ function getRowId(originalRow: T, index: number, parent?: Row<T>): string {
 }
 
 function handleRowSelectionChange(updaterOrValue: Updater<RowSelectionState>) {
-	if (typeof updaterOrValue === 'function') {
-		rowSelection.value = updaterOrValue(rowSelection.value);
-	} else {
-		rowSelection.value = updaterOrValue;
-	}
+	const newValue =
+		typeof updaterOrValue === 'function' ? updaterOrValue(rowSelection.value) : updaterOrValue;
 
 	if (props.returnObject) {
-		selection.value = Object.keys(rowSelection.value).map((id) => table.getRow(id).original);
+		selection.value = Object.keys(newValue).map((id) => table.getRow(id).original);
 	} else {
-		selection.value = Object.keys(rowSelection.value);
+		selection.value = Object.keys(newValue);
 	}
 }
 
 const selection = defineModel<string[] | T[]>('selection');
-const rowSelection = ref(
+
+// Derived from the selection model so external writes (e.g. a parent
+// clearing it) reach the row checkboxes
+const rowSelection = computed(() =>
 	(selection.value ?? []).reduce<RowSelectionState>((acc, item, index) => {
 		const key = typeof item === 'string' ? item : getRowId(item, index);
 		acc[key] = true;

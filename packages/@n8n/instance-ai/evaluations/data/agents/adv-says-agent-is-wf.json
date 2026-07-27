@@ -1,0 +1,26 @@
+{
+	"description": "False friend: says 'agent', behavior is a fixed daily pipeline. Gold: {anchor: wf, embedsOther: false} — the request should be BUILT as a scheduled workflow despite the word 'agent'.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build an AI agent that emails me the Berlin weather every morning. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"complexity": "medium",
+	"tags": ["intent-resolution", "false-friend", "surface-vocab"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"Despite the request saying 'AI agent', the agent proposes a fixed scheduled workflow (schedule trigger, weather fetch, email) and does not propose creating an n8n Agent.",
+		"The proposed design composes the email with at most a single bounded step — it does not include an AI Agent node or open-ended agent step.",
+		"The proposal justifies the workflow choice by the fixed schedule-fetch-email shape of the task, not by deferring to the request's 'AI agent' vocabulary."
+	],
+	"messageBudget": 4
+}

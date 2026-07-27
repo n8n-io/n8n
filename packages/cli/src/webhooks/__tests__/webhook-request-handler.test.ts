@@ -1,8 +1,10 @@
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { type Response } from 'express';
-import { mock } from 'jest-mock-extended';
 import { isWebhookHtmlSandboxingDisabled, getHtmlSandboxCSP } from 'n8n-core';
-import { randomString } from 'n8n-workflow';
+import { OperationalError, randomString } from 'n8n-workflow';
 import type { IHttpRequestMethods } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
@@ -13,13 +15,14 @@ import type {
 	WebhookRequest,
 } from '@/webhooks/webhook.types';
 
-jest.mock('n8n-core', () => ({
-	...jest.requireActual('n8n-core'),
-	isWebhookHtmlSandboxingDisabled: jest.fn().mockReturnValue(false),
-	getHtmlSandboxCSP: jest.fn().mockReturnValue('sandbox allow-downloads allow-forms allow-modals'),
+vi.mock('n8n-core', async () => ({
+	...(await vi.importActual<typeof import('n8n-core')>('n8n-core')),
+	isWebhookHtmlSandboxingDisabled: vi.fn().mockReturnValue(false),
+	getHtmlSandboxCSP: vi.fn().mockReturnValue('sandbox allow-downloads allow-forms allow-modals'),
 }));
 
 describe('WebhookRequestHandler', () => {
+	const logger = mockInstance(Logger);
 	const webhookManager = mock<Required<IWebhookManager>>();
 	const handler = createWebhookHandlerFor(webhookManager) as (
 		req: WebhookRequest | WebhookOptionsRequest,
@@ -27,7 +30,7 @@ describe('WebhookRequestHandler', () => {
 	) => Promise<void>;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('should throw for unsupported methods', async () => {
@@ -209,6 +212,31 @@ describe('WebhookRequestHandler', () => {
 			});
 		});
 
+		it('should log the underlying error cause when execution fails', async () => {
+			const req = mock<WebhookRequest>({
+				path: '/webhook/abc',
+				method: 'GET',
+				params: { path: 'abc' },
+			});
+
+			const res = mock<Response>();
+			res.status.mockReturnValue(res);
+
+			const rootCause = new Error('SQLITE_BUSY: database is locked');
+			const wrapper = new OperationalError('There was a problem executing the workflow', {
+				cause: rootCause,
+			});
+
+			webhookManager.executeWebhook.mockRejectedValueOnce(wrapper);
+
+			await handler(req, res);
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Error in handling webhook request GET /webhook/abc: There was a problem executing the workflow',
+				expect.objectContaining({ error: wrapper }),
+			);
+		});
+
 		it('should not throw when legacy response headers contain invalid names', async () => {
 			const req = mock<WebhookRequest>({
 				path: '/',
@@ -307,7 +335,7 @@ describe('WebhookRequestHandler', () => {
 		});
 
 		it('should not set CSP sandbox header when sandboxing is disabled', async () => {
-			jest.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValueOnce(true);
+			vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValueOnce(true);
 
 			const req = mock<WebhookRequest>({
 				path: '/',

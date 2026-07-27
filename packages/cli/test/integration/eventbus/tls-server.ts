@@ -1,7 +1,7 @@
-import * as tls from 'tls';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
+import * as tls from 'tls';
 
 export class TlsSyslogServer {
 	private server: tls.Server | null = null;

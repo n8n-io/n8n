@@ -685,7 +685,7 @@ describe('ChatView', () => {
 				previousMessageId: messageIdFromApi,
 			});
 
-			await user.click(await rendered.findByRole('button', { name: /stop generating/i }));
+			await user.click(await rendered.findByRole('button', { name: /stop/i }));
 
 			expect(chatApi.stopGenerationApi).toHaveBeenCalledWith(
 				expect.anything(),

@@ -2,8 +2,8 @@ import type { Document } from '@langchain/core/documents';
 
 /**
  * Metadata fields stored in the vector store per document.
- * Includes 'loc' prefix to capture flattened LangChain PDF page location fields
- * (e.g. "loc.pageNumber", "loc.lines.from") added by PDFLoader when splitPages is enabled.
+ * Includes 'loc' prefix to capture flattened PDF page location fields
+ * (e.g. "loc.pageNumber", "loc.lines.from") added by N8nPdfLoader when splitPages is enabled.
  */
 const CHAT_HUB_INSERT_METADATA_KEYS = new Set(['loc', 'fileName', 'agentId', 'fileKnowledgeId']);
 

@@ -5,11 +5,11 @@
  * identifying exactly which methods were added, removed, or modified.
  */
 
-import { execFileSync } from 'node:child_process';
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { Project, type SourceFile } from 'ts-morph';
+
+import { getFileAtRef } from '../utils/git-operations.js';
 
 export interface MethodChange {
 	className: string;
@@ -25,34 +25,9 @@ export interface FileDiffResult {
 	parseTimeMs: number;
 }
 
-/**
- * Get the git root directory
- */
-function getGitRoot(): string {
-	return execFileSync('git', ['rev-parse', '--show-toplevel'], {
-		encoding: 'utf-8',
-	}).trim();
-}
-
-/**
- * Get file content from git at a specific ref
- */
+/** Content of a file at a git ref (shared impl in git-operations). */
 function getGitFileContent(filePath: string, ref: string = 'HEAD'): string | null {
-	try {
-		// Resolve to absolute path
-		const absolutePath = path.resolve(filePath);
-
-		// Get git root and make path relative to it
-		const gitRoot = getGitRoot();
-		const relativePath = path.relative(gitRoot, absolutePath);
-
-		return execFileSync('git', ['show', `${ref}:${relativePath}`], {
-			encoding: 'utf-8',
-			stdio: ['pipe', 'pipe', 'pipe'],
-		});
-	} catch {
-		return null; // File doesn't exist at that ref
-	}
+	return getFileAtRef(filePath, ref);
 }
 
 /**

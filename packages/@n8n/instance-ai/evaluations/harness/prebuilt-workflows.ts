@@ -70,13 +70,31 @@ export function pickPrebuiltWorkflowId(
 }
 
 /**
+ * Split test cases by whether the manifest provides a build for them. Cases with
+ * no workflow in the manifest are skipped (the caller logs them) rather than
+ * silently orchestrator-built, which would mix builders in one result set.
+ */
+export function partitionByPrebuiltCoverage<T extends { fileSlug: string }>(
+	cases: T[],
+	manifest: PrebuiltManifest,
+): { covered: T[]; skipped: T[] } {
+	const covered: T[] = [];
+	const skipped: T[] = [];
+	for (const testCase of cases) {
+		if ((manifest[testCase.fileSlug]?.length ?? 0) > 0) covered.push(testCase);
+		else skipped.push(testCase);
+	}
+	return { covered, skipped };
+}
+
+/**
  * Build a BuildResult for a workflow that already exists in the n8n instance.
  * Used by --prebuilt-workflows mode to skip the orchestrator and verify a
  * workflow built by some other tool (e.g. an MCP-driven session).
  *
  * `createdWorkflowIds` is intentionally left empty: cleanupBuild() iterates
  * that array and would delete the workflow otherwise. Prebuilt workflows
- * are owned by the caller, not the eval run.
+ * are owned by the caller unless they opt into cleanupPrebuiltWorkflows().
  */
 export async function fetchPrebuiltBuild(
 	client: N8nClient,
@@ -102,4 +120,29 @@ export async function fetchPrebuiltBuild(
 			createdDataTableIds: [],
 		};
 	}
+}
+
+/** Explicit opt-in cleanup for workflows supplied via --prebuilt-workflows. */
+export async function cleanupPrebuiltWorkflows(
+	client: N8nClient,
+	workflowIds: Iterable<string>,
+	logger: EvalLogger,
+): Promise<void> {
+	const uniqueWorkflowIds = [...new Set(workflowIds)];
+	if (uniqueWorkflowIds.length === 0) return;
+
+	let deleted = 0;
+	for (const workflowId of uniqueWorkflowIds) {
+		try {
+			await client.deleteWorkflow(workflowId);
+			deleted++;
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			logger.warn(`Failed to delete prebuilt workflow ${workflowId}: ${message}`);
+		}
+	}
+
+	logger.info(
+		`Deleted ${String(deleted)}/${String(uniqueWorkflowIds.length)} prebuilt workflow(s)`,
+	);
 }

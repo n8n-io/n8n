@@ -1,5 +1,5 @@
 import { DynamicTool } from '@langchain/core/tools';
-import { ApplicationError, NodeOperationError, sleepWithAbort } from 'n8n-workflow';
+import { NodeOperationError, sleepWithAbort, UnexpectedError } from 'n8n-workflow';
 import type {
 	ISupplyDataFunctions,
 	INodeExecutionData,
@@ -190,6 +190,31 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			expect(result).toContain('There was an error');
 			expect(context.addOutputData).toHaveBeenCalled();
+		});
+
+		it('should throw on tool error when manualLogging is false so the engine records the failure', async () => {
+			const toolParams = {
+				ctx: context,
+				name: 'TestTool',
+				description: 'Test Description',
+				itemIndex: 0,
+				manualLogging: false,
+			};
+
+			vi.spyOn(context, 'executeWorkflow').mockRejectedValueOnce(
+				new Error('Workflow execution failed'),
+			);
+			vi.spyOn(context, 'addInputData').mockReturnValue({ index: 0 });
+			vi.spyOn(context, 'getNodeParameter').mockReturnValue('database');
+			vi.spyOn(context, 'getWorkflowDataProxy').mockReturnValue({
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData);
+			vi.spyOn(context, 'cloneWith').mockReturnValue(context);
+
+			const tool = await service.createTool(toolParams);
+
+			await expect(tool.func('test query')).rejects.toThrow(/Workflow execution failed/);
 		});
 	});
 
@@ -887,7 +912,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			const executeWorkflowMock = vi.fn().mockImplementation(() => {
 				// Simulate abort during execution
 				abortController.abort();
-				throw new ApplicationError('Workflow execution failed');
+				throw new UnexpectedError('Workflow execution failed');
 			});
 
 			const contextWithRetryNode = createAbortSignalContext(

@@ -86,7 +86,7 @@ const getColumnTypeOptions = (compatibleTypes: ColumnType[]) => {
 };
 
 const validateColumnName = (columnName: string): string | undefined => {
-	if (DATA_TABLE_SYSTEM_COLUMNS.includes(columnName)) {
+	if (DATA_TABLE_SYSTEM_COLUMNS.some((sc) => sc.toLowerCase() === columnName.toLowerCase())) {
 		return i18n.baseText('dataTable.import.systemColumnName', {
 			interpolate: { columnName },
 		});
@@ -199,9 +199,34 @@ const reset = (clearTableName = false) => {
 	creationMode.value = 'select';
 };
 
-const handleFileChange = (uploadFile: UploadFile) => {
-	if (uploadFile.raw) {
-		selectedFile.value = uploadFile.raw;
+const deriveNameFromFileName = (fileName: string): string => {
+	return fileName
+		.replace(/\.csv$/i, '')
+		.replace(/[^a-zA-Z0-9]+/g, ' ')
+		.trim()
+		.slice(0, 128)
+		.trim();
+};
+
+const handleFileChange = async (uploadFile: UploadFile) => {
+	if (!uploadFile.raw) return;
+	const file = uploadFile.raw;
+	selectedFile.value = file;
+	if (dataTableName.value) return;
+
+	const baseName = deriveNameFromFileName(file.name);
+	if (!baseName) return;
+
+	const projectId = route.params.projectId as string;
+	try {
+		const suggested = await dataTableStore.findAvailableDataTableName(baseName, projectId);
+		if (selectedFile.value === file && !dataTableName.value) {
+			dataTableName.value = suggested;
+		}
+	} catch {
+		if (selectedFile.value === file && !dataTableName.value) {
+			dataTableName.value = baseName;
+		}
 	}
 };
 
@@ -231,11 +256,6 @@ const uploadFile = async () => {
 				csvColumnName: col.name,
 			};
 		});
-
-		if (!dataTableName.value) {
-			const fileName = selectedFile.value.name.replace(/\.csv$/i, '');
-			dataTableName.value = fileName;
-		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataTable.upload.error'));
 		reset();

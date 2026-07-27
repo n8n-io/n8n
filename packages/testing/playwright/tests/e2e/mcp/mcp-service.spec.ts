@@ -19,7 +19,7 @@ import { test, expect } from '../../../fixtures/base';
  * Builder tools (enabled via N8N_MCP_BUILDER_ENABLED):
  * - search_nodes: Search for n8n nodes by service name/trigger type
  * - get_node_types: Get TypeScript type definitions for nodes
- * - get_suggested_nodes: Get curated node recommendations by category
+ * - get_workflow_best_practices: Get best-practices guidance for a workflow technique
  * - validate_workflow: Validate n8n Workflow SDK code
  * - create_workflow_from_code: Create a workflow from validated SDK code
  * - archive_workflow: Archive a workflow by ID
@@ -299,7 +299,7 @@ test.describe(
 				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
-				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId);
+				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, 'production');
 
 				expect(result.status).toBe('started');
 				expect(result.executionId).toBeTruthy();
@@ -309,7 +309,11 @@ test.describe(
 				const { apiKey } = await api.rotateMcpApiKey();
 				const fakeWorkflowId = 'nonexistent-workflow-id-12345';
 
-				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, fakeWorkflowId);
+				const result = await api.mcp.internalMcpExecuteWorkflow(
+					apiKey,
+					fakeWorkflowId,
+					'production',
+				);
 
 				expect(result.status).toBe('error');
 				expect(result.error).toBeTruthy();
@@ -322,7 +326,7 @@ test.describe(
 				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
-				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId);
+				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, 'production');
 
 				expect(result.status).toBe('error');
 				expect(result.error).toBeTruthy();
@@ -335,7 +339,7 @@ test.describe(
 				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
-				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, {
+				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, 'production', {
 					type: 'webhook',
 					webhookData: {
 						method: 'POST',
@@ -357,7 +361,11 @@ test.describe(
 
 				const { apiKey } = await api.rotateMcpApiKey();
 
-				const execResult = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId);
+				const execResult = await api.mcp.internalMcpExecuteWorkflow(
+					apiKey,
+					workflowId,
+					'production',
+				);
 				expect(execResult.status).toBe('started');
 				expect(execResult.executionId).toBeTruthy();
 

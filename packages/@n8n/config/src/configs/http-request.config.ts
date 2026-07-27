@@ -27,4 +27,12 @@ export class HttpRequestConfig {
 	 */
 	@Env('N8N_GLOBAL_USER_AGENT_VALUE')
 	globalUserAgentValue: string = '';
+
+	/**
+	 * Inactivity timeout (ms) for reading an HTTP response body, since the request
+	 * `timeout` only covers the response headers. Resets on each received chunk, so
+	 * it bounds a stalled body without interrupting a slow-but-progressing download.
+	 */
+	@Env('N8N_HTTP_RESPONSE_BODY_READ_TIMEOUT')
+	responseBodyReadTimeout: number = 300_000;
 }

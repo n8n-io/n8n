@@ -1,6 +1,6 @@
 import { CredentialsEntity, CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
 
@@ -9,7 +9,7 @@ const repository = Container.get(CredentialsRepository);
 
 describe('CredentialsRepository', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('findMany', () => {
@@ -59,6 +59,21 @@ describe('CredentialsRepository', () => {
 				CredentialsEntity,
 				expect.objectContaining({
 					select: expect.arrayContaining(['isGlobal']),
+				}),
+			);
+		});
+	});
+
+	describe('findStartingWith', () => {
+		it('only searches project credential names', async () => {
+			entityManager.find.mockResolvedValueOnce([]);
+
+			await repository.findStartingWith('API key');
+
+			expect(entityManager.find).toHaveBeenCalledWith(
+				CredentialsEntity,
+				expect.objectContaining({
+					where: expect.objectContaining({ usageScope: 'project' }),
 				}),
 			);
 		});
@@ -240,6 +255,7 @@ describe('CredentialsRepository', () => {
 
 			// ASSERT
 			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
+				usageScope: 'project',
 				shared: { project: { type: 'personal' } },
 			});
 			expect(credentials).toHaveLength(2);
@@ -271,6 +287,7 @@ describe('CredentialsRepository', () => {
 
 			// ASSERT
 			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
+				usageScope: 'project',
 				shared: { project: { sharedWorkflows: { workflowId } } },
 			});
 			expect(credentials).toHaveLength(2);
@@ -303,6 +320,7 @@ describe('CredentialsRepository', () => {
 
 			// ASSERT
 			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
+				usageScope: 'project',
 				shared: { projectId },
 			});
 			expect(credentials).toHaveLength(2);

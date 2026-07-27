@@ -17,6 +17,14 @@ import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
+import {
+	type CanvasConnectionReplacement,
+	createInputConnectionHandle,
+	getNodeConnectionReplacements,
+	getPrimaryConnectionForNewNode,
+	mapCanvasConnectionsToLegacyConnections,
+	replaceCanvasConnection,
+} from '@/app/composables/canvasConnectionReplacement.utils';
 import { useDataSchema } from '@/app/composables/useDataSchema';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
@@ -25,25 +33,27 @@ import { type PinDataSource, usePinnedData } from '@/app/composables/usePinnedDa
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
+import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormalization';
 import { getExecutionErrorToastConfiguration } from '@/features/execution/executions/executions.utils';
 import {
 	EnterpriseEditionFeature,
-	FORM_TRIGGER_NODE_TYPE,
-	MCP_TRIGGER_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
-	WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
 import {
 	AddConnectionCommand,
 	AddNodeCommand,
+	AddNodeGroupCommand,
 	MoveNodeCommand,
 	RemoveConnectionCommand,
 	RemoveNodeCommand,
+	RemoveNodeGroupCommand,
 	RenameNodeCommand,
 	ReplaceNodeParametersCommand,
+	UpdateNodeGroupCommand,
 } from '@/app/models/history';
+import * as workflowsApi from '@/app/api/workflows';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
@@ -56,6 +66,10 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	disposeWorkflowExecutionStateStore,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 import type {
 	CanvasConnection,
 	CanvasConnectionCreateData,
@@ -75,6 +89,7 @@ import {
 import * as NodeViewUtils from '@/app/utils/nodeViewUtils';
 import {
 	GRID_SIZE,
+	AGENT_NODE_SIZE,
 	CONFIGURABLE_NODE_SIZE,
 	CONFIGURATION_NODE_SIZE,
 	DEFAULT_NODE_SIZE,
@@ -82,8 +97,11 @@ import {
 	generateOffsets,
 	getNodesGroupSize,
 	PUSH_NODES_OFFSET,
+	HORIZONTAL_NODE_STEP,
+	NODE_X_SPACING,
 	doRectsOverlap,
 } from '@/app/utils/nodeViewUtils';
+import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
 import type { Connection } from '@vue-flow/core';
 import type {
 	IConnection,
@@ -104,6 +122,7 @@ import type {
 	NodeConnectionType,
 	INodeParameters,
 	INodeFilter,
+	IWorkflowGroup,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -112,11 +131,10 @@ import {
 	TelemetryHelpers,
 	isCommunityPackageName,
 	isHitlToolType,
-	resolveNodeWebhookId,
 } from 'n8n-workflow';
 import { computed, nextTick, ref, type DeepReadonly } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
 import { ensureNodePosition, sanitizeConnections } from '@/app/utils/workflowUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -128,6 +146,7 @@ import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { useCanvasNodeGroupOperationGuards } from '@/features/workflows/canvas/composables/useCanvasNodeGroupOperationGuards';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/app/types/telemetry';
 import { useRoute, useRouter } from 'vue-router';
@@ -137,10 +156,11 @@ import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.ut
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
 import { useClipboard } from '@vueuse/core';
+import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
 import {
-	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	pinDataToExecutionData,
+	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
 
@@ -172,16 +192,42 @@ type AddNodeOptions = AddNodesBaseOptions & {
 	actionName?: string;
 };
 
+/**
+ * Rendered-width estimate for the multi-node sequential placement step, so a
+ * bulk-added node doesn't overlap a wide neighbor. The agent card
+ * (AGENT_NODE_SIZE) and default widths are exact; configurable nodes render at
+ * a dynamic width (see calculateNodeSize) that no constant matches, so
+ * CONFIGURABLE_NODE_SIZE is an overlap-safe estimate only — exact configurable
+ * spacing needs the measured width and is tracked as a follow-up.
+ */
+function getPlacementNodeWidth(node: INodeUi, nodeTypeDescription: INodeTypeDescription): number {
+	if (isAgentNodeV2(node)) {
+		return AGENT_NODE_SIZE[0];
+	}
+
+	// A dynamic-inputs expression (e.g. AI Agent) or any non-main input means the
+	// node renders at the wider configurable size.
+	const { inputs } = nodeTypeDescription;
+	const hasNonMainInput =
+		Array.isArray(inputs) &&
+		NodeHelpers.getConnectionTypes(inputs).some((input) => input !== NodeConnectionTypes.Main);
+
+	if (typeof inputs === 'string' || hasNonMainInput) {
+		return CONFIGURABLE_NODE_SIZE[0];
+	}
+
+	return DEFAULT_NODE_SIZE[0];
+}
+
 export function useCanvasOperations() {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = injectWorkflowState();
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const uiStore = useUIStore();
-	const ndvStore = useNDVStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const canvasStore = useCanvasStore();
+	const agentNodeCanvasGeometryStore = useAgentNodeCanvasGeometryStore();
 	const settingsStore = useSettingsStore();
 	const tagsStore = useTagsStore();
 	const nodeCreatorStore = useNodeCreatorStore();
@@ -192,18 +238,32 @@ export function useCanvasOperations() {
 	const templatesStore = useTemplatesStore();
 	const focusPanelStore = useFocusPanelStore();
 	const setupPanelStore = useSetupPanelStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	// `useCanvasOperations` runs in out-of-tree contexts (push/socket handlers,
+	// router guards) as well as inside the editor, so derive the NDV store from
+	// the document store (which keeps a fallback) rather than injectNDVStore().
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 
 	const i18n = useI18n();
 	const toast = useToast();
 	const workflowHelpers = useWorkflowHelpers();
 	const nodeHelpers = useNodeHelpers();
+	const {
+		requireNodeTypeDescription,
+		resolveNodeParameters,
+		resolveNodeWebhook,
+		normalizeWorkflowData,
+	} = useWorkflowNormalization();
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const clipboard = useClipboard();
 	const { uniqueNodeName } = useUniqueNodeName();
+	const {
+		isConnectionRemovalAllowedForNodeGroups,
+		isConnectionReplacementAllowedForNodeGroups,
+		isNodeReplacementAllowedForNodeGroups,
+		applyNodeGroupAutoExtend,
+	} = useCanvasNodeGroupOperationGuards();
 
 	const router = useRouter();
 	const route = useRoute();
@@ -221,6 +281,12 @@ export function useCanvasOperations() {
 	const triggerNodes = computed<INodeUi[]>(() => {
 		return workflowDocumentStore.value.workflowTriggerNodes;
 	});
+
+	const lastInteractedWithNode = computed(() =>
+		uiStore.lastInteractedWithNodeId
+			? workflowDocumentStore.value.getNodeById(uiStore.lastInteractedWithNodeId)
+			: null,
+	);
 
 	/**
 	 * Node operations
@@ -379,14 +445,19 @@ export function useCanvasOperations() {
 		}
 
 		// Update also last selected node and execution data
-		workflowsStore.renameNodeSelectedAndExecution({ old: currentName, new: newName });
+		useWorkflowExecutionStateStore(
+			workflowDocumentStore.value.documentId,
+		).renameActiveExecutionNode({
+			old: currentName,
+			new: newName,
+		});
 
 		workflowDocumentStore.value.setNodes(Object.values(workflow.nodes));
 		workflowDocumentStore.value.setConnections(workflow.connectionsBySourceNode);
 
-		const isRenamingActiveNode = ndvStore.activeNodeName === currentName;
+		const isRenamingActiveNode = ndvStore.value.activeNodeName === currentName;
 		if (isRenamingActiveNode) {
-			ndvStore.setActiveNodeName(newName, 'other');
+			ndvStore.value.setActiveNodeName(newName, 'other');
 		}
 
 		if (trackHistory && trackBulk) {
@@ -400,7 +471,10 @@ export function useCanvasOperations() {
 		await renameNode(currentName, previousName);
 	}
 
-	function connectAdjacentNodes(id: string, { trackHistory = false } = {}) {
+	function connectAdjacentNodes(
+		id: string,
+		{ trackHistory = false, validateNodeGroups = true } = {},
+	) {
 		const node = workflowDocumentStore.value.getNodeById(id);
 
 		if (!node) {
@@ -454,20 +528,23 @@ export function useCanvasOperations() {
 						);
 					}
 
-					createConnection({
-						source: incomingNodeId,
-						sourceHandle: createCanvasConnectionHandleString({
-							mode: CanvasConnectionMode.Output,
-							type,
-							index: incomingConnection.index,
-						}),
-						target: outgoingNodeId,
-						targetHandle: createCanvasConnectionHandleString({
-							mode: CanvasConnectionMode.Input,
-							type,
-							index: outgoingConnection.index,
-						}),
-					});
+					createConnection(
+						{
+							source: incomingNodeId,
+							sourceHandle: createCanvasConnectionHandleString({
+								mode: CanvasConnectionMode.Output,
+								type,
+								index: incomingConnection.index,
+							}),
+							target: outgoingNodeId,
+							targetHandle: createCanvasConnectionHandleString({
+								mode: CanvasConnectionMode.Input,
+								type,
+								index: outgoingConnection.index,
+							}),
+						},
+						{ validateNodeGroups },
+					);
 				}
 			}
 		}
@@ -479,6 +556,8 @@ export function useCanvasOperations() {
 			return;
 		}
 
+		const wasTrigger = nodeTypesStore.isTriggerNode(node.type);
+
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
@@ -487,11 +566,36 @@ export function useCanvasOperations() {
 			uiStore.lastInteractedWithNodeId = undefined;
 		}
 
-		connectAdjacentNodes(id, { trackHistory });
+		connectAdjacentNodes(id, { trackHistory, validateNodeGroups: false });
 		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
 
-		workflowsStore.clearNodeExecutionData(node.name);
+		// Snapshot the group first so its membership change is reverted with the node.
+		const groupBeforeDelete = trackHistory
+			? workflowDocumentStore.value.getGroupForNode(id)
+			: undefined;
+		const groupSnapshot = groupBeforeDelete
+			? { ...groupBeforeDelete, nodeIds: [...groupBeforeDelete.nodeIds] }
+			: undefined;
+
+		useWorkflowExecutionStateStore(
+			workflowDocumentStore.value.documentId,
+		).clearActiveNodeExecutionData(node.name);
 		workflowDocumentStore.value.removeNodeById(id);
+
+		if (groupSnapshot) {
+			const groupAfterDelete = workflowDocumentStore.value.getGroupById(groupSnapshot.id);
+			if (!groupAfterDelete) {
+				historyStore.pushCommandToUndo(new RemoveNodeGroupCommand(groupSnapshot, Date.now()));
+			} else {
+				historyStore.pushCommandToUndo(
+					new UpdateNodeGroupCommand(
+						groupSnapshot,
+						{ ...groupAfterDelete, nodeIds: [...groupAfterDelete.nodeIds] },
+						Date.now(),
+					),
+				);
+			}
+		}
 
 		if (trackHistory) {
 			historyStore.pushCommandToUndo(new RemoveNodeCommand(node, Date.now()));
@@ -499,6 +603,12 @@ export function useCanvasOperations() {
 			if (trackBulk) {
 				historyStore.stopRecordingUndo();
 			}
+		}
+
+		// Removing a trigger node can flip private-credential validity on every
+		// other node — re-evaluate credential issues across the workflow.
+		if (wasTrigger) {
+			nodeHelpers.updateNodesCredentialsIssues();
 		}
 
 		trackDeleteNode(id);
@@ -529,36 +639,28 @@ export function useCanvasOperations() {
 
 		if (node.type === STICKY_NODE_TYPE) {
 			telemetry.track('User deleted workflow note', {
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowDocumentStore.value.workflowId,
 			});
 		} else {
 			void externalHooks.run('node.deleteNode', { node });
 			telemetry.track('User deleted node', {
 				node_type: node.type,
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowDocumentStore.value.workflowId,
 			});
 		}
 	}
 
-	function replaceNodeConnections(
-		previousId: string,
-		newId: string,
-		{ trackHistory = false, trackBulk = true, replaceInputs = true, replaceOutputs = true } = {},
-	) {
-		const previousNode = workflowDocumentStore.value.getNodeById(previousId);
-		const newNode = workflowDocumentStore.value.getNodeById(newId);
-
-		if (!previousNode || !newNode) {
-			return;
-		}
-
+	function getNodeConnectionPairs(
+		previousNode: INodeUi,
+		{ replaceInputs = true, replaceOutputs = true } = {},
+	): Array<[IConnection, IConnection]> {
 		const inputNodeNames = replaceInputs
 			? uniq(workflowDocumentStore.value.getParentNodes(previousNode.name, 'ALL', 1))
 			: [];
 		const outputNodeNames = replaceOutputs
 			? uniq(workflowDocumentStore.value.getChildNodes(previousNode.name, 'ALL', 1))
 			: [];
-		const connectionPairs = [
+		return [
 			...(workflowDocumentStore.value.getConnectionsBetweenNodes(inputNodeNames, [
 				previousNode.name,
 			]) ?? []),
@@ -567,6 +669,27 @@ export function useCanvasOperations() {
 				outputNodeNames,
 			) ?? []),
 		];
+	}
+
+	function replaceNodeConnections(
+		previousId: string,
+		newId: string,
+		{
+			trackHistory = false,
+			trackBulk = true,
+			replaceInputs = true,
+			replaceOutputs = true,
+			validateNodeGroups = true,
+		} = {},
+	) {
+		const previousNode = workflowDocumentStore.value.getNodeById(previousId);
+		const newNode = workflowDocumentStore.value.getNodeById(newId);
+
+		if (!previousNode || !newNode) {
+			return;
+		}
+
+		const connectionPairs = getNodeConnectionPairs(previousNode, { replaceInputs, replaceOutputs });
 
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
@@ -580,7 +703,6 @@ export function useCanvasOperations() {
 				targetNode,
 				pair,
 			);
-			deleteConnection(oldCanvasConnection, { trackHistory, trackBulk: false });
 
 			const newSourceIConnection = {
 				...pair[0],
@@ -601,8 +723,14 @@ export function useCanvasOperations() {
 					newSourceIConnection,
 					newTargetIConnection,
 				)
-			)
+			) {
+				deleteConnection(oldCanvasConnection, {
+					trackHistory,
+					trackBulk: false,
+					validateNodeGroups,
+				});
 				continue;
+			}
 
 			const newCanvasConnection = mapLegacyConnectionToCanvasConnection(
 				newSourceNode,
@@ -610,7 +738,29 @@ export function useCanvasOperations() {
 				[newSourceIConnection, newTargetIConnection],
 			);
 
-			createConnection(newCanvasConnection, { trackHistory });
+			let didReplace = false;
+			if (validateNodeGroups) {
+				didReplace = replaceConnectionWithConnections({
+					connectionToRemove: oldCanvasConnection,
+					addBeforeRemoval: [],
+					addAfterRemoval: [newCanvasConnection],
+					trackHistory,
+				});
+			} else {
+				deleteConnection(oldCanvasConnection, {
+					trackHistory,
+					trackBulk: false,
+					validateNodeGroups: false,
+				});
+				createConnection(newCanvasConnection, {
+					trackHistory,
+					validateNodeGroups: false,
+				});
+				didReplace = true;
+			}
+
+			if (!didReplace) continue;
+
 			revalidateNodeInputConnections(newCanvasConnection.target);
 			revalidateNodeOutputConnections(newCanvasConnection.source);
 		}
@@ -618,6 +768,83 @@ export function useCanvasOperations() {
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
 		}
+	}
+
+	function replaceGroupedNodeConnections(
+		previousNode: INodeUi,
+		newNode: INodeUi,
+		{ trackHistory = false } = {},
+	): boolean {
+		const group = workflowDocumentStore.value.getGroupForNode(previousNode.id);
+		if (!group) return false;
+
+		const replacement = getNodeConnectionReplacements({
+			previousNode,
+			newNode,
+			connectionPairs: getNodeConnectionPairs(previousNode),
+			getNodeByName: workflowDocumentStore.value.getNodeByName,
+			isConnectionAllowed,
+		});
+		const connectionsToRemove = mapCanvasConnectionsToLegacyConnections(
+			replacement.connectionsToRemove,
+			workflowDocumentStore.value,
+		);
+		const connectionsToAdd = mapCanvasConnectionsToLegacyConnections(
+			replacement.connectionsToAdd,
+			workflowDocumentStore.value,
+		);
+		if (!connectionsToRemove || !connectionsToAdd) return false;
+
+		const nodeIds = uniq([
+			previousNode.id,
+			newNode.id,
+			...replacement.connectionsToRemove.flatMap(({ source, target }) => [source, target]),
+			...replacement.connectionsToAdd.flatMap(({ source, target }) => [source, target]),
+		]);
+
+		const isReplacementAllowed = isNodeReplacementAllowedForNodeGroups({
+			previousNodeId: previousNode.id,
+			newNodeId: newNode.id,
+			nodeIds,
+			connectionsToRemove,
+			connectionsToAdd,
+			connectionsBySourceNode: workflowDocumentStore.value.connectionsBySourceNode,
+		});
+		if (!isReplacementAllowed) return false;
+
+		const groupBeforeReplace = { ...group, nodeIds: [...group.nodeIds] };
+		workflowDocumentStore.value.replaceNodeInGroup(group.id, previousNode.id, newNode.id);
+		if (trackHistory) {
+			const groupAfterReplace = workflowDocumentStore.value.getGroupById(group.id);
+			if (groupAfterReplace) {
+				historyStore.pushCommandToUndo(
+					new UpdateNodeGroupCommand(
+						groupBeforeReplace,
+						{ ...groupAfterReplace, nodeIds: [...groupAfterReplace.nodeIds] },
+						Date.now(),
+					),
+				);
+			}
+		}
+
+		for (const connection of replacement.connectionsToRemove) {
+			deleteConnection(connection, {
+				trackHistory,
+				trackBulk: false,
+				validateNodeGroups: false,
+			});
+		}
+
+		for (const connection of replacement.connectionsToAdd) {
+			createConnection(connection, {
+				trackHistory,
+				validateNodeGroups: false,
+			});
+			revalidateNodeInputConnections(connection.target);
+			revalidateNodeOutputConnections(connection.source);
+		}
+
+		return true;
 	}
 
 	function setNodeActive(id: string, source: TelemetryNdvSource) {
@@ -631,11 +858,11 @@ export function useCanvasOperations() {
 	}
 
 	function setNodeActiveByName(name: string, source: TelemetryNdvSource) {
-		ndvStore.setActiveNodeName(name, source);
+		ndvStore.value.setActiveNodeName(name, source);
 	}
 
 	function clearNodeActive() {
-		ndvStore.unsetActiveNodeName();
+		ndvStore.value.unsetActiveNodeName();
 	}
 
 	function setNodeParameters(id: string, parameters: Record<string, unknown>) {
@@ -725,26 +952,6 @@ export function useCanvasOperations() {
 		}
 	}
 
-	function requireNodeTypeDescription(
-		type: INodeUi['type'],
-		version?: INodeUi['typeVersion'],
-	): INodeTypeDescription {
-		return (
-			nodeTypesStore.getNodeType(type, version) ??
-			nodeTypesStore.communityNodeType(type)?.nodeDescription ?? {
-				properties: [],
-				displayName: type,
-				name: type,
-				group: [],
-				description: '',
-				version: version ?? 1,
-				defaults: {},
-				inputs: [],
-				outputs: [],
-			}
-		);
-	}
-
 	async function addNodes(
 		nodes: AddedNodesAndConnections['nodes'],
 		{ viewport, ...options }: AddNodesOptions = {},
@@ -811,9 +1018,13 @@ export function useCanvasOperations() {
 				continue;
 			}
 
-			// When we're adding multiple nodes, increment the X position for the next one
+			// When we're adding multiple nodes, place the next one a constant
+			// NODE_X_SPACING gap past this node's right edge — using its actual width
+			// so the gap stays 128 even next to a wide agent/configurable node.
 			insertPosition = [
-				lastAddedNode.position[0] + DEFAULT_NODE_SIZE[0] * 2 + GRID_SIZE,
+				lastAddedNode.position[0] +
+					getPlacementNodeWidth(lastAddedNode, nodeTypeDescription) +
+					NODE_X_SPACING,
 				lastAddedNode.position[1],
 			];
 		}
@@ -866,6 +1077,17 @@ export function useCanvasOperations() {
 		}
 	}
 
+	function showMaxNodeTypeErrorToast(nodeTypeDescription: INodeTypeDescription) {
+		toast.showMessage({
+			type: 'error',
+			title: i18n.baseText('nodeView.showMessage.showMaxNodeTypeError.title'),
+			message: i18n.baseText('nodeView.showMessage.showMaxNodeTypeError.message', {
+				adjustToNumber: nodeTypeDescription.maxNodes,
+				interpolate: { nodeTypeDataDisplayName: nodeTypeDescription.displayName },
+			}),
+		});
+	}
+
 	function addNode(
 		node: AddNodeDataWithTypeVersion,
 		nodeTypeDescription: INodeTypeDescription,
@@ -878,6 +1100,13 @@ export function useCanvasOperations() {
 		});
 		if (!nodeData) {
 			throw new Error(i18n.baseText('nodeViewV2.showError.failedToCreateNode'));
+		}
+		if (isAgentNodeV2(nodeData) && !options.keepPristine) {
+			agentNodeCanvasGeometryStore.setPendingCenterY(
+				workflowDocumentStore.value.workflowId,
+				nodeData.id,
+				nodeData.position[1] + AGENT_NODE_SIZE[1] / 2,
+			);
 		}
 
 		workflowDocumentStore.value.addNode(nodeData);
@@ -899,6 +1128,12 @@ export function useCanvasOperations() {
 			nodeHelpers.updateNodeParameterIssues(nodeData);
 			nodeHelpers.updateNodeCredentialIssues(nodeData);
 			nodeHelpers.updateNodeInputIssues(nodeData);
+
+			// Adding a trigger node can flip private-credential validity on every
+			// other node — re-evaluate credential issues across the workflow.
+			if (nodeTypesStore.isTriggerNode(nodeData.type)) {
+				nodeHelpers.updateNodesCredentialsIssues();
+			}
 
 			const isStickyNode = nodeData.type === STICKY_NODE_TYPE;
 			const nextView =
@@ -924,7 +1159,7 @@ export function useCanvasOperations() {
 				} else if (nextView === 'zoomed_view') {
 					experimentalNdvStore.setNodeNameToBeFocused(nodeData.name);
 				} else if (nextView === 'ndv') {
-					ndvStore.setActiveNodeName(nodeData.name, 'added_new_node');
+					ndvStore.value.setActiveNodeName(nodeData.name, 'added_new_node');
 				}
 			}
 		});
@@ -941,13 +1176,23 @@ export function useCanvasOperations() {
 		deleteNode(node.id);
 	}
 
+	function replaceConnectionWithConnections(replacement: CanvasConnectionReplacement): boolean {
+		return replaceCanvasConnection({
+			...replacement,
+			workflowDocumentStore: workflowDocumentStore.value,
+			createConnection,
+			deleteConnection,
+			isConnectionAllowed,
+			enforceNodeGroupConnectionPolicy,
+		});
+	}
+
 	function createConnectionToLastInteractedWithNode(node: INodeUi, options: AddNodeOptions = {}) {
-		const lastInteractedWithNode = uiStore.lastInteractedWithNode;
-		if (!lastInteractedWithNode) {
+		if (!lastInteractedWithNode.value) {
 			return;
 		}
 		const isNewHitlToolNode = isHitlToolType(node.type);
-		const lastInteractedWithNodeId = lastInteractedWithNode.id;
+		const lastInteractedWithNodeId = lastInteractedWithNode.value.id;
 		const lastInteractedWithNodeConnection = uiStore.lastInteractedWithNodeConnection;
 		const lastInteractedWithNodeHandle = uiStore.lastInteractedWithNodeHandle;
 		if (isNewHitlToolNode && lastInteractedWithNodeConnection) {
@@ -955,30 +1200,26 @@ export function useCanvasOperations() {
 				lastInteractedWithNodeHandle,
 			);
 			const nodeId = node.id;
-			const nodeHandle = createCanvasConnectionHandleString({
-				mode: CanvasConnectionMode.Input,
-				type: connectionType,
-				index: 0,
-			});
-			// create connection from master(e.g. agent) node to hitl node
-			const connectionFromHitl: Connection = {
+			const nodeHandle = createInputConnectionHandle(connectionType);
+			const connectionFromHitlToTarget: Connection = {
 				target: lastInteractedWithNodeConnection.target,
 				targetHandle: lastInteractedWithNodeConnection.targetHandle,
 				source: nodeId,
 				sourceHandle: nodeHandle,
 			};
-			createConnection(connectionFromHitl);
 
-			// delete existing connection from agent node to tool node
-			deleteConnection(lastInteractedWithNodeConnection);
-
-			const connection: Connection = {
+			const connectionFromSourceToHitl: Connection = {
 				source: lastInteractedWithNodeConnection.source,
 				sourceHandle: lastInteractedWithNodeConnection.sourceHandle,
 				target: nodeId,
 				targetHandle: nodeHandle,
 			};
-			createConnection(connection);
+			replaceConnectionWithConnections({
+				connectionToRemove: lastInteractedWithNodeConnection,
+				addBeforeRemoval: [connectionFromHitlToTarget],
+				addAfterRemoval: [connectionFromSourceToHitl],
+				trackHistory: options.trackHistory,
+			});
 
 			return;
 		}
@@ -988,84 +1229,35 @@ export function useCanvasOperations() {
 			trackBulk: false,
 		};
 
-		// If we have a specific endpoint to connect to
-		if (lastInteractedWithNodeHandle) {
-			const { type: connectionType, mode } = parseCanvasConnectionHandleString(
-				lastInteractedWithNodeHandle,
-			);
-
-			const nodeId = node.id;
-			const nodeHandle = createCanvasConnectionHandleString({
-				mode: CanvasConnectionMode.Input,
-				type: connectionType,
-				index: 0,
-			});
-
-			if (mode === CanvasConnectionMode.Input) {
-				createConnection(
-					{
-						source: nodeId,
-						sourceHandle: nodeHandle,
-						target: lastInteractedWithNodeId,
-						targetHandle: lastInteractedWithNodeHandle,
-					},
-					trackOptions,
-				);
-			} else {
-				createConnection(
-					{
-						source: lastInteractedWithNodeId,
-						sourceHandle: lastInteractedWithNodeHandle,
-						target: nodeId,
-						targetHandle: nodeHandle,
-					},
-					trackOptions,
-				);
-			}
-		} else {
-			// If a node is last selected then connect between the active and its child ones
-			// Connect active node to the newly created one
-			createConnection(
-				{
-					source: lastInteractedWithNodeId,
-					sourceHandle: createCanvasConnectionHandleString({
-						mode: CanvasConnectionMode.Output,
-						type: NodeConnectionTypes.Main,
-						index: 0,
-					}),
-					target: node.id,
-					targetHandle: createCanvasConnectionHandleString({
-						mode: CanvasConnectionMode.Input,
-						type: NodeConnectionTypes.Main,
-						index: 0,
-					}),
-				},
-				trackOptions,
-			);
-		}
+		const primaryConnection = getPrimaryConnectionForNewNode(
+			node,
+			lastInteractedWithNodeId,
+			lastInteractedWithNodeHandle,
+		);
 
 		if (lastInteractedWithNodeConnection) {
-			deleteConnection(lastInteractedWithNodeConnection, trackOptions);
-
 			const targetNode = workflowDocumentStore.value.getNodeById(
 				lastInteractedWithNodeConnection.target,
 			);
 			if (targetNode) {
-				createConnection(
-					{
-						source: node.id,
-						sourceHandle: createCanvasConnectionHandleString({
-							mode: CanvasConnectionMode.Input,
-							type: NodeConnectionTypes.Main,
-							index: 0,
-						}),
-						target: lastInteractedWithNodeConnection.target,
-						targetHandle: lastInteractedWithNodeConnection.targetHandle,
-					},
-					trackOptions,
-				);
+				replaceConnectionWithConnections({
+					connectionToRemove: lastInteractedWithNodeConnection,
+					addBeforeRemoval: [primaryConnection],
+					addAfterRemoval: [
+						{
+							source: node.id,
+							sourceHandle: createInputConnectionHandle(NodeConnectionTypes.Main),
+							target: lastInteractedWithNodeConnection.target,
+							targetHandle: lastInteractedWithNodeConnection.targetHandle,
+						},
+					],
+					trackHistory: trackOptions.trackHistory,
+				});
+				return;
 			}
 		}
+
+		createConnection(primaryConnection, trackOptions);
 	}
 
 	function trackAddNode(nodeData: INodeUi, options: AddNodeOptions, nextView?: TelemetryNdvType) {
@@ -1080,7 +1272,7 @@ export function useCanvasOperations() {
 
 	function trackAddStickyNoteNode() {
 		telemetry.track('User inserted workflow note', {
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 		});
 	}
 
@@ -1101,11 +1293,9 @@ export function useCanvasOperations() {
 			node_type: nodeData.type,
 			node_version: nodeData.typeVersion,
 			is_auto_add: options.isAutoAdd,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 			drag_and_drop: options.dragAndDrop,
-			input_node_type: uiStore.lastInteractedWithNode
-				? uiStore.lastInteractedWithNode.type
-				: undefined,
+			input_node_type: lastInteractedWithNode.value?.type,
 			resource,
 			operation,
 			action: options.actionName,
@@ -1202,18 +1392,6 @@ export function useCanvasOperations() {
 		return nodeVersion;
 	}
 
-	function resolveNodeParameters(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
-		const nodeParameters = NodeHelpers.getNodeParameters(
-			nodeTypeDescription?.properties ?? [],
-			node.parameters,
-			true,
-			false,
-			node,
-			nodeTypeDescription,
-		);
-		node.parameters = nodeParameters ?? {};
-	}
-
 	function resolveNodePosition(
 		node: Omit<INodeUi, 'position'> & { position?: INodeUi['position'] },
 		nodeTypeDescription: INodeTypeDescription,
@@ -1223,7 +1401,6 @@ export function useCanvasOperations() {
 		// - clicking the plus button of a node handle
 		// - dragging an edge / connection of a node handle
 		// - selecting a node, adding a node via the node creator
-		const lastInteractedWithNode = uiStore.lastInteractedWithNode;
 		// Available when clicking the plus button of a node edge / connection
 		const lastInteractedWithNodeConnection = uiStore.lastInteractedWithNodeConnection;
 		// Available when dragging an edge / connection from a node
@@ -1247,13 +1424,13 @@ export function useCanvasOperations() {
 			});
 		}
 
-		if (lastInteractedWithNode) {
+		if (lastInteractedWithNode.value) {
 			const lastInteractedWithNodeTypeDescription = nodeTypesStore.getNodeType(
-				lastInteractedWithNode.type,
-				lastInteractedWithNode.typeVersion,
+				lastInteractedWithNode.value.type,
+				lastInteractedWithNode.value.typeVersion,
 			);
 			const lastInteractedWithNodeObject = workflowDocumentStore.value.getNodeByName(
-				lastInteractedWithNode.name,
+				lastInteractedWithNode.value.name,
 			);
 
 			const newNodeInsertPosition = uiStore.lastCancelledConnectionPosition;
@@ -1290,12 +1467,12 @@ export function useCanvasOperations() {
 						// X position: same as the tool node, slightly shifted to the left because of the size difference
 						// Y position: halfway between source and target nodes
 						const sourceY = toolUserNode.position[1];
-						const targetY = lastInteractedWithNode.position[1];
+						const targetY = lastInteractedWithNode.value.position[1];
 						const yDiff = (targetY - sourceY) / 2;
 						const middleY = sourceY + yDiff;
 
 						position = [
-							lastInteractedWithNode.position[0] - CONFIGURABLE_NODE_SIZE[0] / 2,
+							lastInteractedWithNode.value.position[0] - CONFIGURABLE_NODE_SIZE[0] / 2,
 							middleY,
 						];
 
@@ -1304,11 +1481,11 @@ export function useCanvasOperations() {
 							// slightly move the tool node vertically
 							const verticalOffset = PUSH_NODES_OFFSET / 2;
 							updateNodePosition(
-								lastInteractedWithNode.id,
+								lastInteractedWithNode.value.id,
 								{
-									x: lastInteractedWithNode.position[0],
+									x: lastInteractedWithNode.value.position[0],
 									y:
-										lastInteractedWithNode.position[1] +
+										lastInteractedWithNode.value.position[1] +
 										(yDiff > 0 ? verticalOffset : -verticalOffset),
 								},
 								{ trackHistory: true },
@@ -1380,15 +1557,15 @@ export function useCanvasOperations() {
 					const newNodeSize: [number, number] = isNewNodeConfigurable
 						? CONFIGURABLE_NODE_SIZE
 						: DEFAULT_NODE_SIZE;
-					// Calculate shift margin: base offset plus extra width for configurable nodes
-					// For standard nodes: PUSH_NODES_OFFSET (208)
-					// For configurable nodes: PUSH_NODES_OFFSET + (configurable width - default width)
+					// Calculate shift margin: base horizontal step plus extra width for configurable nodes
+					// For standard nodes: HORIZONTAL_NODE_STEP (224, matches auto-layout)
+					// For configurable nodes: HORIZONTAL_NODE_STEP + (configurable width - default width)
 					const extraWidth = isNewNodeConfigurable
 						? CONFIGURABLE_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0]
 						: 0;
-					const shiftMargin = PUSH_NODES_OFFSET + extraWidth;
+					const shiftMargin = HORIZONTAL_NODE_STEP + extraWidth;
 
-					shiftDownstreamNodesPosition(lastInteractedWithNode.name, shiftMargin, {
+					shiftDownstreamNodesPosition(lastInteractedWithNode.value.name, shiftMargin, {
 						trackHistory: true,
 						nodeSize: newNodeSize,
 					});
@@ -1446,34 +1623,49 @@ export function useCanvasOperations() {
 					);
 
 					position = [
-						lastInteractedWithNode.position[0] +
+						lastInteractedWithNode.value.position[0] +
 							(CONFIGURABLE_NODE_SIZE[0] / lastInteractedWithNodeWidthDivisions) *
 								(scopedConnectionIndex + 1) -
 							nodeSize[0] / 2 -
 							customOffset,
-						lastInteractedWithNode.position[1] + PUSH_NODES_OFFSET,
+						lastInteractedWithNode.value.position[1] + PUSH_NODES_OFFSET,
 					];
 				} else {
 					// When the node has only main outputs, mixed outputs, or no outputs at all
 					// We want to place the new node directly to the right of the last interacted with node.
 
-					let pushOffset = PUSH_NODES_OFFSET;
-					if (
+					let pushOffset = HORIZONTAL_NODE_STEP;
+					if (isAgentNodeV2(lastInteractedWithNodeObject)) {
+						// The agent card is wider than a default node, so offset by its width
+						// to keep the standard gap to its right edge
+						pushOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
+					} else if (
 						lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionTypes.Main)
 					) {
 						// If the node has scoped inputs, push it down a bit more
 						pushOffset += 140;
 					}
+					const measuredSourceHeight = isAgentNodeV2(lastInteractedWithNodeObject)
+						? agentNodeCanvasGeometryStore.getNodeHeight(
+								workflowDocumentStore.value.workflowId,
+								lastInteractedWithNodeObject.id,
+							)
+						: undefined;
+					const sourceNodeHeight =
+						measuredSourceHeight ??
+						(isAgentNodeV2(lastInteractedWithNodeObject)
+							? AGENT_NODE_SIZE[1]
+							: DEFAULT_NODE_SIZE[1]);
+					const targetNodeHeight = isAgentNodeV2(node) ? AGENT_NODE_SIZE[1] : nodeSize[1];
+					const centeredY =
+						lastInteractedWithNode.value.position[1] + (sourceNodeHeight - targetNodeHeight) / 2;
 
 					// If a node is active then add the new node directly after the current one
-					position = [
-						lastInteractedWithNode.position[0] + pushOffset,
-						lastInteractedWithNode.position[1] + yOffset,
-					];
+					position = [lastInteractedWithNode.value.position[0] + pushOffset, centeredY + yOffset];
 
 					// When inserting via edge plus button, keep Y aligned to preserve vertical line
 					if (lastInteractedWithNodeConnection) {
-						position = [position[0], lastInteractedWithNode.position[1]];
+						position = [position[0], centeredY];
 					}
 				}
 			}
@@ -1503,18 +1695,6 @@ export function useCanvasOperations() {
 		const localizedName = i18n.localizeNodeName(rootStore.defaultLocale, node.name, node.type);
 
 		node.name = uniqueNodeName(localizedName);
-	}
-
-	function resolveNodeWebhook(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
-		resolveNodeWebhookId(node, nodeTypeDescription);
-
-		// if it's a webhook and the path is empty set the UUID as the default path
-		if (
-			[WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, MCP_TRIGGER_NODE_TYPE].includes(node.type) &&
-			node.parameters.path === ''
-		) {
-			node.parameters.path = node.webhookId as string;
-		}
 	}
 
 	/**
@@ -1777,10 +1957,10 @@ export function useCanvasOperations() {
 			if (associatedWithMovedNode) {
 				// Sticky has nodes that will move - check if new node will be close enough to the sticky
 				const newNodeRightEdge = insertX + nodeSize[0];
-				// If the new node's right edge is within 2/3 of PUSH_NODES_OFFSET from the sticky's left edge,
+				// If the new node's right edge is within 2/3 of the horizontal step from the sticky's left edge,
 				// stretch the sticky to include the new node
 				const isNewNodeCloseToSticky =
-					newNodeRightEdge > stickyLeftEdge + (2 * PUSH_NODES_OFFSET) / 3;
+					newNodeRightEdge > stickyLeftEdge + (2 * HORIZONTAL_NODE_STEP) / 3;
 
 				if (isNewNodeCloseToSticky) {
 					// New node is close enough to sticky - move AND stretch
@@ -1867,9 +2047,14 @@ export function useCanvasOperations() {
 		if (!sourceNode) return;
 
 		// Calculate insertion position (to the right of source node)
-		// Use PUSH_NODES_OFFSET to match the actual position where nodes are placed
+		// Use HORIZONTAL_NODE_STEP to match the actual position where nodes are placed,
+		// including the wider agent card offset applied in resolveNodePosition
+		let insertOffset = HORIZONTAL_NODE_STEP;
+		if (isAgentNodeV2(sourceNode)) {
+			insertOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
+		}
 		const insertPosition: XYPosition = [
-			sourceNode.position[0] + PUSH_NODES_OFFSET,
+			sourceNode.position[0] + insertOffset,
 			sourceNode.position[1],
 		];
 
@@ -1918,23 +2103,55 @@ export function useCanvasOperations() {
 	 * Connection operations
 	 */
 
+	// Checks a connection change against node groups and applies any required
+	// auto-extend, returning whether the change may proceed. When tracking
+	// history, the auto-extend is recorded so undo restores the smaller group.
+	function enforceNodeGroupConnectionPolicy(params: {
+		nodeIds: string[];
+		connectionsToRemove?: Array<[IConnection, IConnection]>;
+		connectionsToAdd?: Array<[IConnection, IConnection]>;
+		trackHistory?: boolean;
+	}): boolean {
+		const decision = isConnectionReplacementAllowedForNodeGroups({
+			nodeIds: params.nodeIds,
+			connectionsToRemove: params.connectionsToRemove ?? [],
+			connectionsToAdd: params.connectionsToAdd ?? [],
+			connectionsBySourceNode: workflowDocumentStore.value.connectionsBySourceNode,
+		});
+		switch (decision.outcome) {
+			case 'abort':
+				return false;
+			case 'auto-extend': {
+				const { group } = decision.autoExtend;
+				const groupBeforeExtend = { ...group, nodeIds: [...group.nodeIds] };
+				applyNodeGroupAutoExtend(decision.autoExtend);
+				if (params.trackHistory) {
+					const groupAfterExtend = workflowDocumentStore.value.getGroupById(group.id);
+					if (groupAfterExtend) {
+						historyStore.pushCommandToUndo(
+							new UpdateNodeGroupCommand(
+								groupBeforeExtend,
+								{ ...groupAfterExtend, nodeIds: [...groupAfterExtend.nodeIds] },
+								Date.now(),
+							),
+						);
+					}
+				}
+				return true;
+			}
+			case 'proceed':
+				return true;
+		}
+	}
+
 	function createConnection(
 		connection: Connection,
-		{ trackHistory = false, keepPristine = false } = {},
+		{ trackHistory = false, keepPristine = false, validateNodeGroups = true } = {},
 	) {
 		const sourceNode = workflowDocumentStore.value.getNodeById(connection.source);
 		const targetNode = workflowDocumentStore.value.getNodeById(connection.target);
 		if (!sourceNode || !targetNode) {
 			return;
-		}
-
-		if (trackHistory) {
-			historyStore.pushCommandToUndo(
-				new AddConnectionCommand(
-					mapCanvasConnectionToLegacyConnection(sourceNode, targetNode, connection),
-					Date.now(),
-				),
-			);
 		}
 
 		const mappedConnection = mapCanvasConnectionToLegacyConnection(
@@ -1947,9 +2164,37 @@ export function useCanvasOperations() {
 			return;
 		}
 
+		// Own a bulk so a group auto-extend bundles with the connection into one undo step.
+		const ownsBulk = trackHistory && validateNodeGroups && historyStore.currentBulkAction === null;
+		if (ownsBulk) {
+			historyStore.startRecordingUndo();
+		}
+
+		if (
+			validateNodeGroups &&
+			!enforceNodeGroupConnectionPolicy({
+				nodeIds: [sourceNode.id, targetNode.id],
+				connectionsToAdd: [mappedConnection],
+				trackHistory,
+			})
+		) {
+			if (ownsBulk) {
+				historyStore.stopRecordingUndo();
+			}
+			return;
+		}
+
+		if (trackHistory) {
+			historyStore.pushCommandToUndo(new AddConnectionCommand(mappedConnection, Date.now()));
+		}
+
 		workflowDocumentStore.value.addConnection({
 			connection: mappedConnection,
 		});
+
+		if (ownsBulk) {
+			historyStore.stopRecordingUndo();
+		}
 
 		void nextTick(() => {
 			nodeHelpers.updateNodeInputIssues(sourceNode);
@@ -1971,7 +2216,9 @@ export function useCanvasOperations() {
 			return;
 		}
 
-		deleteConnection(mapLegacyConnectionToCanvasConnection(sourceNode, targetNode, connection));
+		deleteConnection(mapLegacyConnectionToCanvasConnection(sourceNode, targetNode, connection), {
+			validateNodeGroups: false,
+		});
 	}
 
 	function deleteConnectionsByNodeId(
@@ -2025,7 +2272,7 @@ export function useCanvasOperations() {
 										index: connectionData.index,
 									}),
 								},
-								{ trackHistory, trackBulk: false },
+								{ trackHistory, trackBulk: false, validateNodeGroups: false },
 							);
 						}
 					}
@@ -2042,7 +2289,7 @@ export function useCanvasOperations() {
 
 	function deleteConnection(
 		connection: Connection,
-		{ trackHistory = false, trackBulk = true } = {},
+		{ trackHistory = false, trackBulk = true, validateNodeGroups = true } = {},
 	) {
 		const sourceNode = workflowDocumentStore.value.getNodeById(connection.source);
 		const targetNode = workflowDocumentStore.value.getNodeById(connection.target);
@@ -2055,6 +2302,17 @@ export function useCanvasOperations() {
 			targetNode,
 			connection,
 		);
+
+		if (
+			validateNodeGroups &&
+			!isConnectionRemovalAllowedForNodeGroups({
+				nodeIds: [sourceNode.id, targetNode.id],
+				connection: mappedConnection,
+				connectionsBySourceNode: workflowDocumentStore.value.connectionsBySourceNode,
+			})
+		) {
+			return;
+		}
 
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
@@ -2079,8 +2337,16 @@ export function useCanvasOperations() {
 	}
 
 	function revertDeleteConnection(connection: [IConnection, IConnection]) {
-		workflowDocumentStore.value.addConnection({
-			connection,
+		const sourceNode = workflowDocumentStore.value.getNodeByName(connection[0].node);
+		const targetNode = workflowDocumentStore.value.getNodeByName(connection[1].node);
+
+		if (!sourceNode || !targetNode) {
+			return;
+		}
+
+		// Undo restores an already-valid state, so don't re-gate it on group validation.
+		createConnection(mapLegacyConnectionToCanvasConnection(sourceNode, targetNode, connection), {
+			validateNodeGroups: false,
 		});
 	}
 
@@ -2122,7 +2388,7 @@ export function useCanvasOperations() {
 						connection.data.target,
 					)
 				) {
-					void nextTick(() => deleteConnection(connection));
+					void nextTick(() => deleteConnection(connection, { validateNodeGroups: false }));
 				}
 			}
 		});
@@ -2303,23 +2569,45 @@ export function useCanvasOperations() {
 	 * Workspace operations
 	 */
 
-	function resetWorkspace() {
+	function resetWorkspace(outgoingWorkflowId?: string) {
+		// The workflow being torn down. Dispose-first callers (route already on the
+		// next workflow) pass it explicitly; otherwise it is the current workflow.
+		const workflowId = outgoingWorkflowId ?? workflowsStore.workflowId;
+
 		// Reset node creator
-		nodeCreatorStore.setNodeCreatorState({ createNodeActive: false });
+		nodeCreatorStore.setNodeCreatorState({
+			workflowId,
+			createNodeActive: false,
+		});
+
+		const executionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowId),
+		);
 
 		// Make sure that if there is a waiting test-webhook, it gets removed
-		if (workflowsStore.executionWaitingForWebhook) {
+		if (executionStateStore.executionWaitingForWebhook) {
 			try {
-				void workflowsStore.removeTestWebhook(workflowsStore.workflowId);
+				void workflowsStore.removeTestWebhook(workflowId);
 			} catch (error) {}
 		}
 
-		// Reset editable workflow state
-		workflowsStore.resetWorkflow();
-		workflowState.resetState();
-		workflowsStore.clearCurrentWorkflowExecutions();
-		workflowState.setActiveExecutionId(undefined);
-		workflowsStore.setLastSuccessfulExecution(null);
+		// Reset editable workflow execution state. This must run BEFORE resetWorkflow()
+		// — it targets the per-workflow execution-state store keyed on workflowId, and
+		// resetWorkflow() empties that id.
+		//
+		// Disposes every tracked executionData store + IN_PROGRESS placeholder and clears
+		// all session-level fields, then disposes the per-workflow store so pinia state
+		// doesn't accumulate one entry per workflow opened in this session. Runs
+		// unconditionally so the shared empty-id store (unsaved workflows) is reset too —
+		// otherwise its execution state / executing-node queue would leak across resets.
+		executionStateStore.resetExecutionState();
+		disposeWorkflowExecutionStateStore(executionStateStore);
+		useBuilderStore().resetManualExecutionStats();
+
+		// `resetExecutionState()` above already empties currentWorkflowExecutions and
+		// the last-successful reference (and disposes the tracked executionData
+		// stores), so no separate clear is needed here.
+		workflowsStore.resetWorkflow(workflowId);
 
 		// Reset actions
 		uiStore.resetLastInteractedWith();
@@ -2336,25 +2624,10 @@ export function useCanvasOperations() {
 		const { workflowDocumentStore: initializedDocumentStore } =
 			await workflowHelpers.initState(data);
 
-		// Filter out nodes with missing type to prevent canvas rendering crashes
-		const validNodes = data.nodes
-			.filter((node) => !!node.type)
-			.map((node) => ({ ...node, position: ensureNodePosition(node.position) }));
-		const validNodeNames = validNodes.map((node) => node.name);
+		const { nodes, connections } = normalizeWorkflowData(data);
 
-		validNodes.forEach((node) => {
-			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
-			const isInstalledNode = nodeTypesStore.getIsNodeInstalled(node.type);
-			nodeHelpers.matchCredentials(node);
-			// skip this step because nodeTypeDescription is missing for unknown nodes
-			if (isInstalledNode) {
-				resolveNodeParameters(node, nodeTypeDescription);
-				resolveNodeWebhook(node, nodeTypeDescription);
-			}
-		});
-
-		initializedDocumentStore.setNodes(validNodes);
-		initializedDocumentStore.setConnections(sanitizeConnections(data.connections, validNodeNames));
+		initializedDocumentStore.setNodes(nodes);
+		initializedDocumentStore.setConnections(connections);
 
 		return { workflowDocumentStore: initializedDocumentStore };
 	}
@@ -2400,13 +2673,14 @@ export function useCanvasOperations() {
 		}
 	}
 
+	// Joins the caller's undo bulk instead of opening its own.
 	async function addImportedNodesToWorkflow(
 		data: WorkflowDataUpdate,
 		{
-			trackBulk = true,
 			trackHistory = false,
 			viewport = DEFAULT_VIEWPORT_BOUNDARIES,
 			setStateDirty = true,
+			showMaxNodeTypeError = false,
 		} = {},
 	): Promise<WorkflowDataUpdate> {
 		// Because nodes with the same name maybe already exist, it could
@@ -2432,6 +2706,7 @@ export function useCanvasOperations() {
 		let oldName: string;
 		let newName: string;
 		const createNodes: INode[] = [];
+		const skippedMaxNodeTypes = new Map<string, INodeTypeDescription>();
 
 		await nodeHelpers.loadNodesProperties(
 			data.nodes.map((node) => ({ name: node.type, version: node.typeVersion })),
@@ -2445,6 +2720,12 @@ export function useCanvasOperations() {
 					// add the name of the existing node
 					// that this one gets linked up instead.
 					nodeNameTable[node.name] = nodeTypesCount[node.type].nodeNames[0];
+					if (showMaxNodeTypeError) {
+						const nodeTypeDescription = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+						if (nodeTypeDescription) {
+							skippedMaxNodeTypes.set(node.type, nodeTypeDescription);
+						}
+					}
 					return;
 				} else {
 					// Node can be created but increment the
@@ -2466,6 +2747,10 @@ export function useCanvasOperations() {
 
 			createNodes.push(node);
 		});
+
+		if (showMaxNodeTypeError) {
+			skippedMaxNodeTypes.forEach(showMaxNodeTypeErrorToast);
+		}
 
 		// Get only the connections of the nodes that get created
 		const newConnections: IConnections = {};
@@ -2566,10 +2851,6 @@ export function useCanvasOperations() {
 		}
 
 		// Add the nodes with the changed node names, expressions and connections
-		if (trackBulk && trackHistory) {
-			historyStore.startRecordingUndo();
-		}
-
 		await addNodes(Object.values(tempWorkflow.nodes), {
 			trackBulk: false,
 			trackHistory,
@@ -2583,10 +2864,6 @@ export function useCanvasOperations() {
 			),
 			{ trackBulk: false, trackHistory, keepPristine: true },
 		);
-
-		if (trackBulk && trackHistory) {
-			historyStore.stopRecordingUndo();
-		}
 
 		if (setStateDirty) {
 			uiStore.markStateDirty();
@@ -2625,6 +2902,10 @@ export function useCanvasOperations() {
 
 		// If it is JSON check if it looks on the first look like data we can use
 		if (!workflowData.hasOwnProperty('nodes') || !workflowData.hasOwnProperty('connections')) {
+			toast.showError(
+				new Error(i18n.baseText('nodeView.showError.importWorkflowData.invalidStructure')),
+				i18n.baseText('nodeView.showError.importWorkflowData.title'),
+			);
 			return {};
 		}
 
@@ -2656,6 +2937,9 @@ export function useCanvasOperations() {
 			workflowData.connections = sanitizeConnections(workflowData.connections, validNodeNames);
 		}
 
+		// Bundle nodes, connections and groups into one undo step
+		const ownsImportBulk = trackBulk && trackHistory;
+
 		try {
 			const nodeIdMap: { [prev: string]: string } = {};
 			if (workflowData.nodes) {
@@ -2674,14 +2958,17 @@ export function useCanvasOperations() {
 
 					// Generate new webhookId
 					if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
-						if (node.webhookId) {
-							nodeHelpers.assignWebhookId(node);
+						const previousWebhookId = node.webhookId;
+						const pathMatchedWebhookId = node.parameters.path === previousWebhookId;
+						const optionsPathMatchedWebhookId =
+							(node.parameters.options as IDataObject)?.path === previousWebhookId;
 
-							if (node.parameters.path) {
-								node.parameters.path = node.webhookId;
-							} else if ((node.parameters.options as IDataObject)?.path) {
-								(node.parameters.options as IDataObject).path = node.webhookId;
-							}
+						nodeHelpers.assignWebhookId(node);
+
+						if (pathMatchedWebhookId) {
+							node.parameters.path = node.webhookId;
+						} else if (optionsPathMatchedWebhookId) {
+							(node.parameters.options as IDataObject).path = node.webhookId;
 						}
 					}
 
@@ -2696,6 +2983,18 @@ export function useCanvasOperations() {
 						nodeHelpers.assignNodeId(node);
 					}
 				});
+			}
+
+			// Remap nodeGroup nodeIds to new node IDs
+			if (regenerateIds && workflowData.nodeGroups?.length) {
+				const oldToNewIdMap = new Map(
+					Object.entries(nodeIdMap).map(([newId, previousId]) => [previousId, newId]),
+				);
+
+				workflowData.nodeGroups = workflowData.nodeGroups.map((group) => ({
+					...group,
+					nodeIds: group.nodeIds.map((id) => oldToNewIdMap.get(id) ?? id),
+				}));
 			}
 
 			removeUnknownCredentials(workflowData);
@@ -2719,18 +3018,18 @@ export function useCanvasOperations() {
 
 					if (source === 'paste') {
 						telemetry.track('User pasted nodes', {
-							workflow_id: workflowsStore.workflowId,
+							workflow_id: workflowDocumentStore.value.workflowId,
 							node_graph_string: nodeGraph,
 						});
 					} else if (source === 'duplicate') {
 						telemetry.track('User duplicated nodes', {
-							workflow_id: workflowsStore.workflowId,
+							workflow_id: workflowDocumentStore.value.workflowId,
 							node_graph_string: nodeGraph,
 						});
 					} else {
 						telemetry.track('User imported workflow', {
 							source,
-							workflow_id: workflowsStore.workflowId,
+							workflow_id: workflowDocumentStore.value.workflowId,
 							node_graph_string: nodeGraph,
 						});
 					}
@@ -2756,12 +3055,26 @@ export function useCanvasOperations() {
 				),
 			);
 
-			await addImportedNodesToWorkflow(workflowData, {
-				trackBulk,
+			if (ownsImportBulk) {
+				historyStore.startRecordingUndo();
+			}
+
+			const importResult = await addImportedNodesToWorkflow(workflowData, {
 				trackHistory,
 				viewport,
 				setStateDirty,
+				showMaxNodeTypeError: source === 'paste' || source === 'duplicate',
 			});
+
+			applyImportedNodeGroups(
+				workflowData.nodeGroups,
+				new Set(importResult.nodes?.map((node) => node.id).filter(isPresent) ?? []),
+				{ setStateDirty, trackHistory },
+			);
+
+			if (ownsImportBulk) {
+				historyStore.stopRecordingUndo();
+			}
 
 			if (importTags && settingsStore.areTagsEnabled && Array.isArray(workflowData.tags)) {
 				await importWorkflowTags(workflowData);
@@ -2776,6 +3089,9 @@ export function useCanvasOperations() {
 
 			return workflowData;
 		} catch (error) {
+			if (ownsImportBulk) {
+				historyStore.stopRecordingUndo();
+			}
 			console.error(error); // leaving to help make debugging future issues easier
 			toast.showError(error, i18n.baseText('nodeView.showError.importWorkflowData.title'));
 			return {};
@@ -2789,17 +3105,26 @@ export function useCanvasOperations() {
 		const workflowTags = workflowData.tags as ITag[];
 		const notFound = workflowTags.filter((tag) => !tagNames.has(tag.name));
 
-		const creatingTagPromises: Array<Promise<ITag>> = [];
-		for (const tag of notFound) {
-			const creationPromise = tagsStore.create(tag.name).then((newTag: ITag) => {
-				allTags.push(newTag);
-				return newTag;
-			});
+		// Tag creation is scope-gated (tag:create). A user may be allowed to import
+		// a workflow without being able to create tags — don't let that abort the
+		// whole import. Link the tags that succeed and warn about the rest.
+		const results = await Promise.allSettled(
+			notFound.map(async (tag) => await tagsStore.create(tag.name)),
+		);
 
-			creatingTagPromises.push(creationPromise);
+		for (const result of results) {
+			if (result.status === 'fulfilled') {
+				allTags.push(result.value);
+			}
 		}
 
-		await Promise.all(creatingTagPromises);
+		if (results.some((result) => result.status === 'rejected')) {
+			toast.showToast({
+				title: i18n.baseText('nodeView.showMessage.importWorkflowTags.title'),
+				message: i18n.baseText('nodeView.showMessage.importWorkflowTags.message'),
+				type: 'warning',
+			});
+		}
 
 		const tagIds = workflowTags.reduce((accu: string[], imported: ITag) => {
 			const tag = allTags.find((t) => t.name === imported.name);
@@ -2836,25 +3161,80 @@ export function useCanvasOperations() {
 		return workflowData;
 	}
 
+	function getNodeGroupsFullyContainedInSelection(
+		nodeIds: Set<string>,
+		groups: IWorkflowGroup[],
+	): IWorkflowGroup[] {
+		return groups
+			.filter(
+				(group) => group.nodeIds.length > 0 && group.nodeIds.every((nodeId) => nodeIds.has(nodeId)),
+			)
+			.map((group) => ({
+				...group,
+				nodeIds: [...group.nodeIds],
+			}));
+	}
+
+	function applyImportedNodeGroups(
+		nodeGroups: IWorkflowGroup[] | undefined,
+		importedNodeIds: Set<string>,
+		{
+			setStateDirty = true,
+			trackHistory = false,
+		}: { setStateDirty?: boolean; trackHistory?: boolean } = {},
+	) {
+		if (!nodeGroups?.length || importedNodeIds.size === 0 || !workflowDocumentStore.value) {
+			return;
+		}
+
+		const groupsToImport = getNodeGroupsFullyContainedInSelection(importedNodeIds, nodeGroups);
+		const existingGroupNames = new Set(
+			workflowDocumentStore.value.allGroups.map((group) => group.name),
+		);
+
+		for (const group of groupsToImport) {
+			const name = existingGroupNames.has(group.name)
+				? workflowDocumentStore.value.getNextDefaultName(group.name)
+				: group.name;
+
+			// Imported groups start collapsed: their stored positions describe the
+			// collapsed layout (push offsets are view-only and not serialized), so
+			// expanding them without a live push would overlap surrounding nodes.
+			const createdGroup = workflowDocumentStore.value.createGroup(group.nodeIds, name, {
+				markDirty: setStateDirty,
+				startCollapsed: true,
+				description: group.description,
+			});
+			if (trackHistory) {
+				historyStore.pushCommandToUndo(new AddNodeGroupCommand(createdGroup, Date.now()));
+			}
+			existingGroupNames.add(name);
+		}
+	}
+
 	function getNodesToSave(nodes: INode[]): WorkflowData {
 		if (!workflowDocumentStore.value) {
 			throw new Error('Cannot serialize nodes: workflow document store is unavailable');
 		}
 
-		const data = {
+		const exportedPinData: IPinData = {};
+		const data: WorkflowData = {
 			nodes: [] as INodeUi[],
 			connections: {} as IConnections,
-			pinData: {} as IPinData,
-		} satisfies WorkflowData;
+			pinData: exportedPinData,
+		};
 
+		const exportedNodeIds = new Set(nodes.map((node) => node.id));
 		const exportedNodeNames = new Set<string>();
 
 		for (const node of nodes) {
 			const nodeSaveData = serializeNode(nodeTypesStore, node);
-			const pinDataForNode = pinDataToExecutionData(workflowDocumentStore.value.pinData)[node.name];
+			const pinDataForNode = pinDataToExecutionData(
+				workflowDocumentStore.value.pinnedDataByNodeName,
+			)[node.name];
 
 			if (pinDataForNode) {
-				data.pinData[node.name] = pinDataForNode as IPinData[string];
+				exportedPinData[node.name] = pinDataForNode as IPinData[string];
 			}
 
 			if (
@@ -2872,6 +3252,14 @@ export function useCanvasOperations() {
 		}
 
 		data.connections = getConnectionsForNodes(data.nodes, exportedNodeNames);
+
+		const nodeGroups = getNodeGroupsFullyContainedInSelection(
+			exportedNodeIds,
+			workflowDocumentStore.value.allGroups,
+		);
+		if (nodeGroups.length > 0) {
+			data.nodeGroups = nodeGroups;
+		}
 
 		workflowHelpers.removeForeignCredentialsFromWorkflow(data, credentialsStore.allCredentials);
 
@@ -2955,7 +3343,7 @@ export function useCanvasOperations() {
 
 		telemetry.track('User copied nodes', {
 			node_types: workflowData.nodes.map((node) => node.type),
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 		});
 	}
 
@@ -2985,18 +3373,22 @@ export function useCanvasOperations() {
 			toast.showMessage({ title, message, type: 'error', duration: 0 });
 		}
 
-		await initializeWorkspace(data.workflowData);
+		const { workflowDocumentStore: openedDocumentStore } = await initializeWorkspace(
+			data.workflowData,
+		);
 
-		workflowState.setWorkflowExecutionData(data);
+		useWorkflowExecutionStateStore(openedDocumentStore.documentId).setWorkflowExecutionData(data);
 
 		if (!['manual', 'evaluation'].includes(data.mode)) {
-			workflowDocumentStore.value.setPinData({});
+			// Clear on the store initializeWorkspace just populated — injection
+			// may resolve to a different store than the one initState wrote to.
+			openedDocumentStore.setPinData({});
 		}
 
 		if (nodeId) {
 			const node = workflowDocumentStore.value.getNodeById(nodeId);
 			if (node) {
-				ndvStore.setActiveNodeName(node.name, 'other');
+				ndvStore.value.setActiveNodeName(node.name, 'other');
 			} else {
 				toast.showError(
 					new Error(`Node with id "${nodeId}" could not be found!`),
@@ -3047,7 +3439,8 @@ export function useCanvasOperations() {
 			workflowDocumentStore.value.setConnections(workflow.connections);
 		}
 		await addNodes(convertedNodes ?? [], { keepPristine: true });
-		const workflowData = await workflowState.getNewWorkflowData(
+		const workflowData = await workflowsApi.getNewWorkflowData(
+			rootStore.restApiContext,
 			name,
 			projectsStore.currentProjectId,
 		);
@@ -3092,12 +3485,31 @@ export function useCanvasOperations() {
 			historyStore.startRecordingUndo();
 		}
 
-		const [x, y] = previousNode.position;
-		updateNodePosition(newId, { x, y }, { trackHistory });
-		replaceNodeConnections(previousId, newId, {
-			trackBulk: false,
-			trackHistory,
-		});
+		const moveNewNodeToPreviousPosition = () => {
+			const [x, y] = previousNode.position;
+			updateNodePosition(newId, { x, y }, { trackHistory });
+		};
+
+		const previousGroup = workflowDocumentStore.value.getGroupForNode(previousId);
+		if (previousGroup) {
+			const didReplaceConnections = replaceGroupedNodeConnections(previousNode, newNode, {
+				trackHistory,
+			});
+			if (!didReplaceConnections) {
+				if (trackHistory && trackBulk) {
+					historyStore.stopRecordingUndo();
+				}
+				return;
+			}
+			moveNewNodeToPreviousPosition();
+		} else {
+			moveNewNodeToPreviousPosition();
+			replaceNodeConnections(previousId, newId, {
+				trackBulk: false,
+				trackHistory,
+			});
+		}
+
 		deleteNode(previousId, { trackHistory, trackBulk: false });
 
 		uiStore.markStateDirty();
@@ -3208,7 +3620,9 @@ export function useCanvasOperations() {
 		canvasStore.startLoading();
 		canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
 
-		workflowsStore.clearCurrentWorkflowExecutions();
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).clearCurrentWorkflowExecutions();
 		executionsStore.activeExecution = null;
 
 		let data: IWorkflowTemplate | undefined;
@@ -3271,7 +3685,9 @@ export function useCanvasOperations() {
 		canvasStore.startLoading();
 		canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
 
-		workflowsStore.clearCurrentWorkflowExecutions();
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).clearCurrentWorkflowExecutions();
 		executionsStore.activeExecution = null;
 
 		uiStore.isBlankRedirect = true;

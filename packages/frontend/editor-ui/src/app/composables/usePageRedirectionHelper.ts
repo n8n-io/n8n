@@ -20,15 +20,14 @@ export function usePageRedirectionHelper() {
 	 * Otherwise, it redirect them to our docs.
 	 */
 	const goToVersions = async () => {
-		let versionsLink = versionsStore.infoUrl;
-
 		if (usersStore.isInstanceOwner && settingsStore.isCloudDeployment) {
-			versionsLink = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
+			location.href = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
 				redirectionPath: '/manage',
 			});
+			return;
 		}
 
-		location.href = versionsLink;
+		window.open(versionsStore.infoUrl, '_blank', 'noopener');
 	};
 
 	const goToDashboard = async () => {

@@ -1,6 +1,19 @@
-import { McpConnection } from '../runtime/mcp-connection';
+import { McpConnection } from '../runtime/mcp/mcp-connection';
+import { ensureUniqueMcpToolNames } from '../runtime/mcp/mcp-tool-resolver';
 import type { McpServerConfig, McpVerifyResult } from '../types/sdk/mcp';
 import type { BuiltTool } from '../types/sdk/tool';
+
+function formatErrorWithCause(error: unknown): string {
+	const stringify = (obj: unknown) => (obj instanceof Error ? obj.message : String(obj));
+	if (!(error instanceof Error)) return stringify(error);
+
+	const messages: string[] = [error.message];
+	if (error.cause) {
+		messages.push(stringify(error.cause));
+	}
+
+	return messages.join('. ');
+}
 
 /**
  * Manages connections to one or more MCP servers and exposes their tools
@@ -39,10 +52,8 @@ export class McpClient {
 	/**
 	 * @param configs - Server configurations. Each must have either `url` or `command`.
 	 *   Duplicate names within the list are rejected.
-	 * @param requireToolApproval - When true, every tool from every server is wrapped
-	 *   with a human-approval gate (requires `.checkpoint()` on the Agent).
 	 */
-	constructor(configs: McpServerConfig[], requireToolApproval = false) {
+	constructor(configs: McpServerConfig[]) {
 		for (const cfg of configs) {
 			if (!cfg.url && !cfg.command) {
 				throw new Error(
@@ -63,7 +74,7 @@ export class McpClient {
 		}
 
 		this.configs = configs;
-		this.connections = configs.map((cfg) => new McpConnection(cfg, requireToolApproval));
+		this.connections = configs.map((cfg) => new McpConnection(cfg));
 	}
 
 	/**
@@ -193,36 +204,15 @@ export class McpClient {
 			const details = failed
 				.map((x) => {
 					const reason =
-						x.result.status === 'rejected'
-							? x.result.reason instanceof Error
-								? x.result.reason.message
-								: String(x.result.reason)
-							: '';
+						x.result.status === 'rejected' ? formatErrorWithCause(x.result.reason) : '';
 					return `${x.name}: ${reason}`;
 				})
-				.join('; ');
-			throw new Error(`MCP connection failed — ${details}`);
+				.join('\n\t');
+			throw new Error(`MCP connection failed:\n\t${details}`);
 		}
 
 		const tools = settled.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
-
-		const seen = new Set<string>();
-		const duplicates: string[] = [];
-		for (const tool of tools) {
-			if (seen.has(tool.name)) {
-				duplicates.push(tool.name);
-			}
-			seen.add(tool.name);
-		}
-
-		if (duplicates.length > 0) {
-			await Promise.allSettled(connectedConnections.map(async (c) => await c.disconnect()));
-			throw new Error(
-				`MCP tool name collision — the following tool names resolve to duplicates: ${duplicates.join(', ')}`,
-			);
-		}
-
-		return tools;
+		return ensureUniqueMcpToolNames(tools);
 	}
 
 	private async doClose(): Promise<void> {

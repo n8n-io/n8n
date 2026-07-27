@@ -14,16 +14,27 @@ import {
 	parseErrorMetadata,
 	type RelatedExecution,
 	type INodeExecutionData,
+	type IWorkflowGroup,
 	createEmptyRunExecutionData,
 	createRunExecutionData,
 } from 'n8n-workflow';
-import type {
-	LogEntry,
-	LogEntrySelection,
-	LogTreeCreationContext,
-	LogTreeFilter,
+import {
+	type GroupBoundaryRunData,
+	type LogEntry,
+	type LogEntrySelection,
+	type LogTreeCreationContext,
+	type LogTreeFilter,
+	type NodeLogEntry,
+	type GroupLogEntry,
+	isNodeLog,
+	isGroupLog,
 } from './logs.types';
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
+import type {
+	GroupExecutionStatus,
+	NodeExecutionSnapshot,
+} from '@/features/workflows/canvas/canvas.types';
+import { aggregateGroupExecution } from '@/features/workflows/canvas/composables/useCanvasMapping.groups';
 import { type ChatMessage } from '@n8n/chat/types';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
@@ -59,8 +70,9 @@ function createNode(
 	runIndex: number,
 	runData: ITaskData | undefined,
 	children: LogEntry[] = [],
-): LogEntry {
+): NodeLogEntry {
 	return {
+		type: 'node',
 		parent: context.parent,
 		node,
 		// The ID consists of workflow ID, node ID and run index (including ancestor's), which
@@ -101,6 +113,7 @@ function getChildNodes(
 			executionId: subExecutionLocator.executionId,
 			data: subWorkflowRunData,
 			isSubExecution: true,
+			nodeGroups: context.subWorkflowNodeGroups[subExecutionLocator.workflowId] ?? [],
 		});
 	}
 
@@ -183,8 +196,82 @@ export function getSubtreeTotalConsumedTokens(
 	return calculate(treeNode);
 }
 
+/**
+ * Aggregate timing for a group segment: summed execution time of its member
+ * node runs, and the start time of the first one. Pass `now` to count elapsed
+ * time for still-running members so the total ticks up during live executions.
+ */
+export function getGroupTiming(
+	group: GroupLogEntry,
+	now?: number,
+): { startTime: number; executionTime: number } | undefined {
+	let startTime: number | undefined;
+	let executionTime = 0;
+
+	for (const child of group.children) {
+		if (!isNodeLog(child) || child.runData === undefined) {
+			continue;
+		}
+
+		const memberRunData = child.runData;
+		const isActive =
+			memberRunData.executionStatus === 'running' || memberRunData.executionStatus === 'waiting';
+
+		executionTime +=
+			isActive && now !== undefined
+				? Math.max(0, now - memberRunData.startTime)
+				: memberRunData.executionTime;
+		startTime =
+			startTime === undefined
+				? memberRunData.startTime
+				: Math.min(startTime, memberRunData.startTime);
+	}
+
+	return startTime === undefined ? undefined : { startTime, executionTime };
+}
+
+/** Build the per-member snapshot the group rollup consumes, from a member's run data. */
+function snapshotFromRunData(runData: ITaskData | undefined): NodeExecutionSnapshot {
+	const status = runData?.executionStatus;
+	return {
+		running: status === 'running',
+		waitingForNext: false,
+		waiting: undefined,
+		// Crashed nodes carry no error object but must not read as success (mirrors canvas)
+		hasExecutionError: status === 'error' || status === 'crashed' || Boolean(runData?.error),
+		hasValidationError: false,
+		status,
+		dirty: false,
+		iterations: 0,
+	};
+}
+
+/**
+ * Aggregate execution status for a group segment. Groups have no run data of
+ * their own, so reuse the canvas group rollup (`aggregateGroupExecution`) over
+ * the members' run data, keeping the logs badge consistent with the canvas one.
+ */
+export function getGroupExecutionStatus(group: GroupLogEntry): GroupExecutionStatus | undefined {
+	const snapshots = new Map<string, NodeExecutionSnapshot>();
+
+	function collect(entries: LogEntry[]) {
+		for (const entry of entries) {
+			if (isNodeLog(entry)) {
+				snapshots.set(entry.id, snapshotFromRunData(entry.runData));
+			}
+			collect(entry.children);
+		}
+	}
+	collect(group.children);
+
+	return aggregateGroupExecution(
+		[...snapshots.keys()],
+		(id) => snapshots.get(id) ?? snapshotFromRunData(undefined),
+	);
+}
+
 function findLogEntryToAutoSelect(subTree: LogEntry[]): LogEntry | undefined {
-	const entryWithError = findLogEntryRec((e) => !!e.runData?.error, subTree);
+	const entryWithError = findLogEntryRec((e) => isNodeLog(e) && !!e.runData?.error, subTree);
 
 	if (entryWithError) {
 		return entryWithError;
@@ -192,8 +279,11 @@ function findLogEntryToAutoSelect(subTree: LogEntry[]): LogEntry | undefined {
 
 	const entryForAiAgent = findLogEntryRec(
 		(entry) =>
-			entry.node.type === AGENT_LANGCHAIN_NODE_TYPE ||
-			(entry.parent?.node.type === AGENT_LANGCHAIN_NODE_TYPE && isPlaceholderLog(entry.parent)),
+			(isNodeLog(entry) && entry.node.type === AGENT_LANGCHAIN_NODE_TYPE) ||
+			(entry.parent !== undefined &&
+				isNodeLog(entry.parent) &&
+				entry.parent.node.type === AGENT_LANGCHAIN_NODE_TYPE &&
+				isPlaceholderLog(entry.parent)),
 		subTree,
 	);
 
@@ -278,6 +368,206 @@ function createLogTreeRec(
 		)
 		.sort(sortLogEntries);
 
+	// Group view filters to a single root node's subtree, so skip group folding there
+	return filter === undefined ? groupContiguousEntries(result, context) : result;
+}
+
+function isMemberNodeName(
+	name: string,
+	memberIds: Set<string>,
+	workflow: LogTreeCreationContext['workflow'],
+): boolean {
+	const node = workflow.getNode(name);
+	return node !== null && memberIds.has(node.id);
+}
+
+function computeGroupBoundaries(
+	group: GroupLogEntry,
+	context: LogTreeCreationContext,
+): GroupLogEntry['boundaries'] {
+	const memberIds = new Set(group.group.nodeIds);
+	const executedChildren = group.children.filter(
+		(c): c is NodeLogEntry => isNodeLog(c) && c.runData !== undefined,
+	);
+
+	const inputs: GroupBoundaryRunData[] = [];
+	const outputs: GroupBoundaryRunData[] = [];
+	// One entry per distinct boundary crossing (edge), deduped so loops don't multiply them
+	const seenInputEdges = new Set<string>();
+	// Output edges map to their slot in `outputs` so a later run can replace it (see upsertOutput)
+	const outputEdgeIndex = new Map<string, number>();
+	// Disambiguate the selector label when one member node has several crossings on the same side
+	const inputLabelCount = new Map<string, number>();
+	const outputLabelCount = new Map<string, number>();
+
+	function makeLabel(counts: Map<string, number>, nodeId: string, name: string): string {
+		const seen = counts.get(nodeId) ?? 0;
+		counts.set(nodeId, seen + 1);
+		return seen === 0 ? name : `${name} (${seen + 1})`;
+	}
+
+	function upsertOutput(edge: string, entry: NodeLogEntry, id: string, overrideOutputs?: number[]) {
+		const existing = outputEdgeIndex.get(edge);
+		if (existing !== undefined) {
+			// Children iterate in run order, so a repeated edge means a later run supersedes an
+			// earlier one (a loop's group-leaving output only carries data on its final run).
+			outputs[existing] = { ...outputs[existing], id, entry };
+			return;
+		}
+		outputEdgeIndex.set(edge, outputs.length);
+		outputs.push({
+			id,
+			label: makeLabel(outputLabelCount, entry.node.id, entry.node.name),
+			entry,
+			overrideOutputs,
+		});
+	}
+
+	for (const child of executedChildren) {
+		const sources = child.runData?.source ?? [];
+
+		// Input crossings: each incoming connection from a non-member is its own input
+		if (sources.length === 0) {
+			// Entry/trigger member: data originates inside the group here
+			const edge = `${child.node.id}|origin`;
+			if (!seenInputEdges.has(edge)) {
+				seenInputEdges.add(edge);
+				inputs.push({
+					id: `${child.id}:in`,
+					label: makeLabel(inputLabelCount, child.node.id, child.node.name),
+					entry: child,
+				});
+			}
+		}
+
+		sources.forEach((source, index) => {
+			if (!source || isMemberNodeName(source.previousNode, memberIds, context.workflow)) {
+				return;
+			}
+
+			const edge = `${child.node.id}|${source.previousNode}|${source.previousNodeOutput ?? 0}`;
+			if (seenInputEdges.has(edge)) {
+				return;
+			}
+
+			seenInputEdges.add(edge);
+			inputs.push({
+				id: `${child.id}:in:${index}`,
+				label: makeLabel(inputLabelCount, child.node.id, child.node.name),
+				entry: child,
+				sourceIndex: index,
+			});
+		});
+
+		// Output crossings: each output branch leaving the group, plus terminal members
+		const mainConnections = context.workflow.connectionsBySourceNode[child.node.name]?.main ?? [];
+		const isTerminal = mainConnections.every((targets) => (targets ?? []).length === 0);
+
+		if (isTerminal) {
+			upsertOutput(`${child.node.id}|out`, child, `${child.id}:out`);
+		}
+
+		mainConnections.forEach((targets, outputIndex) => {
+			const leavesGroup = (targets ?? []).some(
+				(t) => t && !isMemberNodeName(t.node, memberIds, context.workflow),
+			);
+			if (!leavesGroup) {
+				return;
+			}
+
+			// Only scope to a branch when the node has more than one output
+			upsertOutput(
+				`${child.node.id}|out|${outputIndex}`,
+				child,
+				`${child.id}:out:${outputIndex}`,
+				mainConnections.length > 1 ? [outputIndex] : undefined,
+			);
+		});
+	}
+
+	// Fallbacks keep a selectable IO pane even when no crossing is detected
+	if (inputs.length === 0 && executedChildren.length > 0) {
+		const first = executedChildren[0];
+		inputs.push({ id: first.id, label: first.node.name, entry: first });
+	}
+
+	if (outputs.length === 0 && executedChildren.length > 0) {
+		const last = executedChildren[executedChildren.length - 1];
+		outputs.push({ id: last.id, label: last.node.name, entry: last });
+	}
+
+	return { inputs, outputs };
+}
+
+function finalizeGroupEntry(group: GroupLogEntry, context: LogTreeCreationContext): void {
+	group.hasError = getGroupExecutionStatus(group) === 'error';
+	group.boundaries = computeGroupBoundaries(group, context);
+}
+
+/**
+ * Groups consecutive top-level entries from the same canvas group into execution
+ * segments. The same group may produce multiple segments if its entries are
+ * separated by other groups or ungrouped entries.
+ */
+function groupContiguousEntries(entries: LogEntry[], context: LogTreeCreationContext): LogEntry[] {
+	if (context.nodeGroups.length === 0) {
+		return entries;
+	}
+
+	const nodeIdToGroup = new Map<string, IWorkflowGroup>();
+	for (const group of context.nodeGroups) {
+		for (const nodeId of group.nodeIds) {
+			nodeIdToGroup.set(nodeId, group);
+		}
+	}
+
+	const result: LogEntry[] = [];
+	const segmentCountByGroup = new Map<string, number>();
+	let current: GroupLogEntry | undefined;
+
+	for (const entry of entries) {
+		const group = isNodeLog(entry) ? nodeIdToGroup.get(entry.node.id) : undefined;
+
+		if (group === undefined) {
+			current = undefined;
+			result.push(entry);
+			continue;
+		}
+
+		if (current === undefined || current.group.id !== group.id) {
+			const segmentIndex = segmentCountByGroup.get(group.id) ?? 0;
+			segmentCountByGroup.set(group.id, segmentIndex + 1);
+			// Ancestor run indexes (like node ids) keep repeated sub-executions of the same group distinct
+			const runPath = [...context.ancestorRunIndexes, segmentIndex].join(':');
+			current = {
+				type: 'group',
+				group,
+				segmentIndex,
+				hasError: false,
+				boundaries: { inputs: [], outputs: [] },
+				parent: context.parent,
+				id: `${context.workflow.id}:group:${group.id}:${runPath}`,
+				children: [],
+				runIndex: 0,
+				consumedTokens: emptyTokenUsageData,
+				workflow: context.workflow,
+				executionId: context.executionId,
+				execution: context.data,
+				isSubExecution: context.isSubExecution,
+			};
+			result.push(current);
+		}
+
+		entry.parent = current;
+		current.children.push(entry);
+	}
+
+	for (const entry of result) {
+		if (isGroupLog(entry)) {
+			finalizeGroupEntry(entry, context);
+		}
+	}
+
 	return result;
 }
 
@@ -287,6 +577,8 @@ export function createLogTree(
 	workflows: Record<string, Workflow> = {},
 	subWorkflowData: Record<string, IRunExecutionData> = {},
 	filter?: LogTreeFilter,
+	nodeGroups: IWorkflowGroup[] = [],
+	subWorkflowNodeGroups: Record<string, IWorkflowGroup[]> = {},
 ): LogEntry[] {
 	return createLogTreeRec(filter, {
 		parent: undefined,
@@ -297,6 +589,8 @@ export function createLogTree(
 		data: response.data ?? createEmptyRunExecutionData(),
 		subWorkflowData,
 		isSubExecution: false,
+		nodeGroups,
+		subWorkflowNodeGroups,
 	});
 }
 
@@ -335,13 +629,15 @@ export function findSelectedLogEntry(
 			return undefined;
 		case 'selected': {
 			const found = findLogEntryRec((e) => e.id === selection.entry.id, entries);
+			const target = selection.entry;
 
-			if (found === undefined && !isExecuting) {
-				for (let runIndex = selection.entry.runIndex - 1; runIndex >= 0; runIndex--) {
+			if (found === undefined && !isExecuting && isNodeLog(target)) {
+				for (let runIndex = target.runIndex - 1; runIndex >= 0; runIndex--) {
 					const fallback = findLogEntryRec(
 						(e) =>
-							e.workflow.id === selection.entry.workflow.id &&
-							e.node.id === selection.entry.node.id &&
+							isNodeLog(e) &&
+							e.workflow.id === target.workflow.id &&
+							e.node.id === target.node.id &&
 							e.runIndex === runIndex,
 						entries,
 					);
@@ -384,21 +680,25 @@ export function getEntryAtRelativeIndex(
 }
 
 function sortLogEntries(a: LogEntry, b: LogEntry): number {
-	if (a.runData === undefined) {
+	// Group entries (and placeholder nodes) carry no run data; sort by their first child instead
+	const aRunData = isNodeLog(a) ? a.runData : undefined;
+	const bRunData = isNodeLog(b) ? b.runData : undefined;
+
+	if (aRunData === undefined) {
 		return a.children.length > 0 ? sortLogEntries(a.children[0], b) : 0;
 	}
 
-	if (b.runData === undefined) {
+	if (bRunData === undefined) {
 		return b.children.length > 0 ? sortLogEntries(a, b.children[0]) : 0;
 	}
 
 	// We rely on execution index only when startTime is different
 	// Because it is reset to 0 when execution is waited, and therefore not necessarily unique
-	if (a.runData.startTime === b.runData.startTime) {
-		return a.runData.executionIndex - b.runData.executionIndex;
+	if (aRunData.startTime === bRunData.startTime) {
+		return aRunData.executionIndex - bRunData.executionIndex;
 	}
 
-	return a.runData.startTime - b.runData.startTime;
+	return aRunData.startTime - bRunData.startTime;
 }
 
 export function mergeStartData(
@@ -465,13 +765,14 @@ export function hasSubExecution(entry: LogEntry): boolean {
 }
 
 export function findSubExecutionLocator(entry: LogEntry): RelatedExecution | undefined {
-	const metadata = entry.runData?.metadata?.subExecution;
+	const runData = isNodeLog(entry) ? entry.runData : undefined;
+	const metadata = runData?.metadata?.subExecution;
 
 	if (metadata) {
 		return { workflowId: metadata.workflowId, executionId: metadata.executionId };
 	}
 
-	return parseErrorMetadata(entry.runData?.error)?.subExecution;
+	return parseErrorMetadata(runData?.error)?.subExecution;
 }
 
 export function getDefaultCollapsedEntries(entries: LogEntry[]): Record<string, boolean> {
@@ -480,6 +781,11 @@ export function getDefaultCollapsedEntries(entries: LogEntry[]): Record<string, 
 	function collect(children: LogEntry[]) {
 		for (const entry of children) {
 			if (hasSubExecution(entry) && entry.children.length === 0) {
+				ret[entry.id] = true;
+			}
+
+			// Groups start collapsed unless a descendant execution errored
+			if (isGroupLog(entry) && !entry.hasError) {
 				ret[entry.id] = true;
 			}
 
@@ -675,11 +981,16 @@ export async function processFiles(data: File[] | undefined) {
 }
 
 export function isSubNodeLog(logEntry: LogEntry): boolean {
-	return logEntry.parent !== undefined && logEntry.parent.executionId === logEntry.executionId;
+	// A group parent is a visual wrapper, not an execution parent
+	return (
+		logEntry.parent !== undefined &&
+		isNodeLog(logEntry.parent) &&
+		logEntry.parent.executionId === logEntry.executionId
+	);
 }
 
 export function isPlaceholderLog(treeNode: LogEntry): boolean {
-	return treeNode.runData === undefined;
+	return isNodeLog(treeNode) && treeNode.runData === undefined;
 }
 
 /**

@@ -3,13 +3,15 @@
 These tests cover the `/instance-ai` UI and exercise the end-to-end agent flow
 (chat, tool calls, workflow preview). They're tagged
 `@capability:proxy` because the standard CI run uses a MockServer proxy to
-record/replay LLM traffic instead of hitting the real Anthropic API.
+record/replay LLM traffic instead of hitting the real Anthropic API. The shared
+fixture also starts the sandbox service that the workflow builder requires.
 
 ## Two run modes
 
 ### CI / container mode (default)
 
-Spins up an n8n container plus a MockServer proxy. The proxy either:
+Spins up an n8n container plus the MockServer proxy and sandbox service. The
+proxy either:
 
 - **Replays** previously-recorded responses from `expectations/instance-ai/<test-slug>/`
   when no real Anthropic key is present (the default in CI).
@@ -87,8 +89,8 @@ call goes straight to Anthropic.
 ## Adding a new test
 
 1. Write the test against fixtures from `./fixtures` (not the base playwright
-   fixture). The `instanceAiTestConfig` brings in the `@capability:proxy`
-   services and the env vars n8n needs.
+   fixture). The `instanceAiTestConfig` brings in the proxy and sandbox
+   services plus the env vars n8n needs.
 2. Iterate in **local-build mode** until the test passes against real
    Anthropic.
 3. Refresh recorded expectations:

@@ -69,6 +69,9 @@ const iframeSrc = computed(() => {
 	if (props.canExecute) {
 		params.set('canExecute', 'true');
 	}
+	if (!props.canOpenNDV) {
+		params.set('canOpenNDV', 'false');
+	}
 	const qs = params.toString();
 	return qs ? `${basePath}?${qs}` : basePath;
 });
@@ -290,7 +293,11 @@ const reloadExecution = () => {
 	loadExecution();
 };
 
-defineExpose({ iframeRef, reloadExecution });
+const requestFitView = () => {
+	iframeRef.value?.contentWindow?.postMessage?.(JSON.stringify({ command: 'fitView' }), '*');
+};
+
+defineExpose({ iframeRef, reloadExecution, requestFitView });
 </script>
 
 <template>

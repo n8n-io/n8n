@@ -1,5 +1,5 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import {
 	Kafka,
 	logLevel,
@@ -16,38 +16,44 @@ import { NodeOperationError, type IRun } from 'n8n-workflow';
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import { KafkaTrigger } from '../KafkaTrigger.node';
+import type { Mock, Mocked } from 'vitest';
+import type * as _importType0 from 'n8n-workflow';
 
-jest.mock('kafkajs');
-jest.mock('@kafkajs/confluent-schema-registry');
-jest.mock('n8n-workflow', () => {
-	const actual = jest.requireActual('n8n-workflow');
+vi.mock('kafkajs');
+vi.mock('@kafkajs/confluent-schema-registry');
+vi.mock('n8n-workflow', async () => {
+	const actual = await vi.importActual<typeof _importType0>('n8n-workflow');
 	return {
 		...actual,
-		sleep: jest.fn().mockResolvedValue(undefined),
+		sleep: vi.fn().mockResolvedValue(undefined),
 	};
 });
 
 describe('KafkaTrigger Node', () => {
-	let mockKafka: jest.Mocked<Kafka>;
-	let mockRegistry: jest.Mocked<SchemaRegistry>;
-	let mockConsumerConnect: jest.Mock;
-	let mockConsumerSubscribe: jest.Mock;
-	let mockConsumerRun: jest.Mock;
-	let mockConsumerDisconnect: jest.Mock;
-	let mockConsumerCreate: jest.Mock;
-	let mockRegistryDecode: jest.Mock;
+	let mockKafka: Mocked<Kafka>;
+	let mockRegistry: Mocked<SchemaRegistry>;
+	let mockConsumerConnect: Mock;
+	let mockConsumerSubscribe: Mock;
+	let mockConsumerRun: Mock;
+	let mockConsumerDisconnect: Mock;
+	let mockConsumerCreate: Mock;
+	let mockRegistryDecode: Mock;
 	let publishMessage: (message: Partial<KafkaMessage>) => Promise<void>;
+	// Records the handlers registered via consumer.on(event, handler) so tests can
+	// fire lifecycle events (e.g. a consumer crash) the way kafkajs would at runtime.
+	let consumerEventHandlers: Record<string, (event: unknown) => unknown>;
 
 	beforeEach(() => {
+		consumerEventHandlers = {};
 		const mockEachMessageHolder = {
-			handler: jest.fn(async () => {}) as jest.Mocked<EachMessageHandler>,
+			handler: vi.fn(async () => {}) as Mocked<EachMessageHandler>,
 		};
 		const mockEachBatchHolder = {
-			handler: jest.fn(async () => {}) as jest.Mocked<EachBatchHandler>,
+			handler: vi.fn(async () => {}) as Mocked<EachBatchHandler>,
 		};
-		mockConsumerConnect = jest.fn();
-		mockConsumerSubscribe = jest.fn();
-		mockConsumerRun = jest.fn(({ eachMessage, eachBatch }: ConsumerRunConfig) => {
+		mockConsumerConnect = vi.fn();
+		mockConsumerSubscribe = vi.fn();
+		mockConsumerRun = vi.fn(({ eachMessage, eachBatch }: ConsumerRunConfig) => {
 			if (eachMessage) {
 				mockEachMessageHolder.handler = eachMessage;
 			}
@@ -55,14 +61,17 @@ describe('KafkaTrigger Node', () => {
 				mockEachBatchHolder.handler = eachBatch;
 			}
 		});
-		mockConsumerDisconnect = jest.fn();
-		mockConsumerCreate = jest.fn(() =>
+		mockConsumerDisconnect = vi.fn();
+		mockConsumerCreate = vi.fn(() =>
 			mock<Consumer>({
 				connect: mockConsumerConnect,
 				subscribe: mockConsumerSubscribe,
 				run: mockConsumerRun,
 				disconnect: mockConsumerDisconnect,
-				on: jest.fn(() => jest.fn()),
+				on: vi.fn((event: string, handler: (event: unknown) => unknown) => {
+					consumerEventHandlers[event] = handler;
+					return vi.fn();
+				}),
 				events: {
 					CONNECT: 'consumer.connect',
 					GROUP_JOIN: 'consumer.group_join',
@@ -101,13 +110,13 @@ describe('KafkaTrigger Node', () => {
 					offsetLag: () => '0',
 					offsetLagLow: () => '0',
 				},
-				resolveOffset: jest.fn(),
-				heartbeat: jest.fn(),
-				commitOffsetsIfNecessary: jest.fn(),
-				uncommittedOffsets: jest.fn(),
-				isRunning: jest.fn(() => true),
-				isStale: jest.fn(() => false),
-				pause: jest.fn(),
+				resolveOffset: vi.fn(),
+				heartbeat: vi.fn(),
+				commitOffsetsIfNecessary: vi.fn(),
+				uncommittedOffsets: vi.fn(),
+				isRunning: vi.fn(() => true),
+				isStale: vi.fn(() => false),
+				pause: vi.fn(),
 			});
 		};
 
@@ -132,13 +141,13 @@ describe('KafkaTrigger Node', () => {
 					offsetLag: () => '0',
 					offsetLagLow: () => '0',
 				},
-				resolveOffset: jest.fn(),
-				heartbeat: jest.fn(),
-				commitOffsetsIfNecessary: jest.fn(),
-				uncommittedOffsets: jest.fn(),
-				isRunning: jest.fn(() => true),
-				isStale: jest.fn(() => false),
-				pause: jest.fn(),
+				resolveOffset: vi.fn(),
+				heartbeat: vi.fn(),
+				commitOffsetsIfNecessary: vi.fn(),
+				uncommittedOffsets: vi.fn(),
+				isRunning: vi.fn(() => true),
+				isStale: vi.fn(() => false),
+				pause: vi.fn(),
 			});
 		};
 
@@ -149,13 +158,17 @@ describe('KafkaTrigger Node', () => {
 			consumer: mockConsumerCreate,
 		});
 
-		mockRegistryDecode = jest.fn().mockResolvedValue({ data: 'decoded-data' });
+		mockRegistryDecode = vi.fn().mockResolvedValue({ data: 'decoded-data' });
 		mockRegistry = mock<SchemaRegistry>({
 			decode: mockRegistryDecode,
 		});
 
-		(Kafka as jest.Mock).mockReturnValue(mockKafka);
-		(SchemaRegistry as jest.Mock).mockReturnValue(mockRegistry);
+		(Kafka as Mock).mockImplementation(function () {
+			return mockKafka;
+		});
+		(SchemaRegistry as Mock).mockImplementation(function () {
+			return mockRegistry;
+		});
 	});
 
 	it('should connect to Kafka and subscribe to topic', async () => {
@@ -210,6 +223,88 @@ describe('KafkaTrigger Node', () => {
 
 		await close();
 		expect(mockConsumerDisconnect).toHaveBeenCalled();
+	});
+
+	// A Kafka Trigger that loses its consumer after start-up (e.g. a compressed
+	// batch it cannot decode throws a non-retriable error, or a group-ACL denial)
+	// must surface an error to the execution instead of hanging on "Waiting..."
+	// forever. Non-retriable crashes are routed to emitError; retriable ones are
+	// left to the client's auto-restart.
+	describe('surfaces async consumer failures instead of hanging', () => {
+		const fireCrash = async (
+			restart: boolean,
+			message = 'KafkaJSNotImplemented: LZ4 compression not implemented',
+		) => {
+			const crashHandler = consumerEventHandlers['consumer.crash'];
+			expect(crashHandler).toBeDefined();
+			await crashHandler({
+				id: 0,
+				type: 'consumer.crash',
+				timestamp: 0,
+				payload: {
+					error: new Error(message),
+					groupId: 'test-group',
+					restart,
+				},
+			});
+		};
+
+		const startTrigger = async () =>
+			await testTriggerNode(KafkaTrigger, {
+				mode: 'trigger',
+				node: {
+					typeVersion: 1.3,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						options: { fromBeginning: true },
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: true,
+					authentication: false,
+				},
+			});
+
+		it('surfaces an unsupported-compression crash with an actionable error', async () => {
+			const { emitError } = await startTrigger();
+
+			await fireCrash(false);
+
+			expect(emitError).toHaveBeenCalledTimes(1);
+			const surfaced = emitError.mock.calls[0][0];
+			expect(surfaced).toBeInstanceOf(NodeOperationError);
+			expect(surfaced.message).toMatch(/unsupported compression codec/i);
+		});
+
+		it('surfaces other non-retriable crashes with the original error', async () => {
+			const { emitError } = await startTrigger();
+
+			await fireCrash(false, 'Broker: Group authorization failed');
+
+			expect(emitError).toHaveBeenCalledTimes(1);
+			expect(emitError.mock.calls[0][0].message).toBe('Broker: Group authorization failed');
+		});
+
+		it('does not surface a retriable crash (kafkajs auto-restarts)', async () => {
+			const { emitError } = await startTrigger();
+
+			await fireCrash(true);
+
+			expect(emitError).not.toHaveBeenCalled();
+		});
+
+		it('does not surface a crash that happens during teardown', async () => {
+			const { emitError, close } = await startTrigger();
+
+			await close();
+			await fireCrash(false);
+
+			expect(emitError).not.toHaveBeenCalled();
+		});
 	});
 
 	it('should handle authentication when credentials are provided', async () => {
@@ -305,6 +400,178 @@ describe('KafkaTrigger Node', () => {
 				},
 			],
 		]);
+	});
+
+	it('should use the schema registry credential when selected', async () => {
+		const { emit } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				credentials: {
+					kafka: { id: '1', name: 'Kafka account' },
+					schemaRegistryApi: { id: '2', name: 'Schema Registry account' },
+				},
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: true,
+					schemaRegistryUrl: '',
+					options: { parallelProcessing: true },
+				},
+			},
+			credentials: {
+				kafka: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+				schemaRegistryApi: {
+					url: 'https://schema-registry.local:8081',
+					authentication: 'basicAuth',
+					username: 'registry-user',
+					password: 'registry-password',
+				},
+			},
+		});
+
+		await publishMessage({
+			value: Buffer.from('test-message'),
+		});
+
+		expect(SchemaRegistry).toHaveBeenCalledWith({
+			host: 'https://schema-registry.local:8081',
+			auth: { username: 'registry-user', password: 'registry-password' },
+		});
+		expect(mockRegistryDecode).toHaveBeenCalledWith(Buffer.from('test-message'));
+		expect(emit).toHaveBeenCalledWith([
+			[
+				{
+					json: {
+						message: { data: 'decoded-data' },
+						topic: 'test-topic',
+					},
+				},
+			],
+		]);
+	});
+
+	it('should use the schema registry credential without auth when authentication is none', async () => {
+		await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				credentials: {
+					kafka: { id: '1', name: 'Kafka account' },
+					schemaRegistryApi: { id: '2', name: 'Schema Registry account' },
+				},
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: true,
+					schemaRegistryUrl: '',
+					options: { parallelProcessing: true },
+				},
+			},
+			credentials: {
+				kafka: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+				schemaRegistryApi: {
+					url: 'https://unauthenticated-registry.local:8081',
+					authentication: 'none',
+				},
+			},
+		});
+
+		expect(SchemaRegistry).toHaveBeenCalledWith({
+			host: 'https://unauthenticated-registry.local:8081',
+		});
+	});
+
+	it('should emit the original message and log a sanitized warning when decoding fails', async () => {
+		mockRegistryDecode.mockRejectedValue(
+			Object.assign(
+				new Error(
+					'request to https://registry-user:registry-password@schema-registry.local:8081/schemas/ids/1 failed',
+				),
+				{ status: 404 },
+			),
+		);
+
+		const { emit, logger } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: true,
+					schemaRegistryUrl: 'http://localhost:8081',
+					options: { parallelProcessing: true },
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		await publishMessage({
+			value: Buffer.from('raw-message'),
+		});
+
+		expect(mockRegistryDecode).toHaveBeenCalledWith(Buffer.from('raw-message'));
+		// The raw message is still emitted
+		expect(emit).toHaveBeenCalledWith([
+			[{ json: { message: 'raw-message', topic: 'test-topic' } }],
+		]);
+		// The warning is sanitized: message with URL userinfo redacted plus status,
+		// never the raw error object
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Could not decode message with Schema Registry, returning original message',
+			{
+				message: 'request to https://***@schema-registry.local:8081/schemas/ids/1 failed',
+				status: 404,
+			},
+		);
+	});
+
+	it('should fail activation when the schema registry credential is missing the password', async () => {
+		await expect(
+			testTriggerNode(KafkaTrigger, {
+				mode: 'trigger',
+				node: {
+					credentials: {
+						kafka: { id: '1', name: 'Kafka account' },
+						schemaRegistryApi: { id: '2', name: 'Schema Registry account' },
+					},
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: true,
+						schemaRegistryUrl: '',
+						options: { parallelProcessing: true },
+					},
+				},
+				credentials: {
+					kafka: {
+						brokers: 'localhost:9092',
+						clientId: 'n8n-kafka',
+						ssl: false,
+						authentication: false,
+					},
+					schemaRegistryApi: {
+						url: 'https://schema-registry.local:8081',
+						authentication: 'basicAuth',
+						username: 'registry-user',
+						password: '',
+					},
+				},
+			}),
+		).rejects.toThrow('Username and password are required for Schema Registry Basic Auth');
 	});
 
 	it('should parse JSON message when jsonParseMessage is true', async () => {
@@ -855,7 +1122,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should register event listeners on consumer', async () => {
-		const mockOn = jest.fn(() => jest.fn());
+		const mockOn = vi.fn(() => vi.fn());
 		mockConsumerCreate.mockReturnValueOnce(
 			mock<Consumer>({
 				connect: mockConsumerConnect,
@@ -911,17 +1178,17 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should clean up event listeners on close', async () => {
-		const mockRemoveListener1 = jest.fn();
-		const mockRemoveListener2 = jest.fn();
-		const mockRemoveListener3 = jest.fn();
-		const mockRemoveListener4 = jest.fn();
-		const mockRemoveListener5 = jest.fn();
-		const mockRemoveListener6 = jest.fn();
-		const mockRemoveListener7 = jest.fn();
-		const mockRemoveListener8 = jest.fn();
-		const mockRemoveListener9 = jest.fn();
+		const mockRemoveListener1 = vi.fn();
+		const mockRemoveListener2 = vi.fn();
+		const mockRemoveListener3 = vi.fn();
+		const mockRemoveListener4 = vi.fn();
+		const mockRemoveListener5 = vi.fn();
+		const mockRemoveListener6 = vi.fn();
+		const mockRemoveListener7 = vi.fn();
+		const mockRemoveListener8 = vi.fn();
+		const mockRemoveListener9 = vi.fn();
 
-		const mockOn = jest
+		const mockOn = vi
 			.fn()
 			.mockReturnValueOnce(mockRemoveListener1)
 			.mockReturnValueOnce(mockRemoveListener2)
@@ -933,7 +1200,7 @@ describe('KafkaTrigger Node', () => {
 			.mockReturnValueOnce(mockRemoveListener8)
 			.mockReturnValueOnce(mockRemoveListener9);
 
-		const mockConsumerStop = jest.fn();
+		const mockConsumerStop = vi.fn();
 
 		mockConsumerCreate.mockReturnValueOnce(
 			mock<Consumer>({
@@ -1656,12 +1923,12 @@ describe('KafkaTrigger Node', () => {
 				},
 			});
 
-			const mockResolveOffset = jest.fn();
-			const mockHeartbeat = jest.fn();
+			const mockResolveOffset = vi.fn();
+			const mockHeartbeat = vi.fn();
 
 			// Simulate consumer stopping after first message
 			let messageCount = 0;
-			const mockIsRunning = jest.fn(() => {
+			const mockIsRunning = vi.fn(() => {
 				messageCount++;
 				return messageCount <= 1; // Returns true for first message, false after
 			});
@@ -1705,11 +1972,11 @@ describe('KafkaTrigger Node', () => {
 				},
 				resolveOffset: mockResolveOffset,
 				heartbeat: mockHeartbeat,
-				commitOffsetsIfNecessary: jest.fn(),
-				uncommittedOffsets: jest.fn(),
+				commitOffsetsIfNecessary: vi.fn(),
+				uncommittedOffsets: vi.fn(),
 				isRunning: mockIsRunning,
-				isStale: jest.fn(() => false),
-				pause: jest.fn(),
+				isStale: vi.fn(() => false),
+				pause: vi.fn(),
 			});
 
 			// Should only process first message before isRunning returns false
@@ -1748,12 +2015,12 @@ describe('KafkaTrigger Node', () => {
 				},
 			});
 
-			const mockResolveOffset = jest.fn();
-			const mockHeartbeat = jest.fn();
+			const mockResolveOffset = vi.fn();
+			const mockHeartbeat = vi.fn();
 
 			// Simulate partition becoming stale after first message (rebalance occurred)
 			let messageCount = 0;
-			const mockIsStale = jest.fn(() => {
+			const mockIsStale = vi.fn(() => {
 				messageCount++;
 				return messageCount > 1; // Returns false for first message, true after
 			});
@@ -1797,11 +2064,11 @@ describe('KafkaTrigger Node', () => {
 				},
 				resolveOffset: mockResolveOffset,
 				heartbeat: mockHeartbeat,
-				commitOffsetsIfNecessary: jest.fn(),
-				uncommittedOffsets: jest.fn(),
-				isRunning: jest.fn(() => true),
+				commitOffsetsIfNecessary: vi.fn(),
+				uncommittedOffsets: vi.fn(),
+				isRunning: vi.fn(() => true),
 				isStale: mockIsStale,
-				pause: jest.fn(),
+				pause: vi.fn(),
 			});
 
 			// Should only process first message before isStale returns true
@@ -1956,8 +2223,8 @@ describe('KafkaTrigger Node', () => {
 				},
 			});
 
-			const mockResolveOffset = jest.fn();
-			const mockHeartbeat = jest.fn();
+			const mockResolveOffset = vi.fn();
+			const mockHeartbeat = vi.fn();
 
 			await eachBatchHandler!({
 				batch: {
@@ -1998,11 +2265,11 @@ describe('KafkaTrigger Node', () => {
 				},
 				resolveOffset: mockResolveOffset,
 				heartbeat: mockHeartbeat,
-				commitOffsetsIfNecessary: jest.fn(),
-				uncommittedOffsets: jest.fn(),
-				isRunning: jest.fn(() => true),
-				isStale: jest.fn(() => false),
-				pause: jest.fn(),
+				commitOffsetsIfNecessary: vi.fn(),
+				uncommittedOffsets: vi.fn(),
+				isRunning: vi.fn(() => true),
+				isStale: vi.fn(() => false),
+				pause: vi.fn(),
 			});
 
 			// Should process all 3 messages

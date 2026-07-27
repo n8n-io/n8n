@@ -6,7 +6,6 @@ import {
 	ADVANCED_SECTION_KEY,
 	AGENT_SECTION_KEY,
 	CONFIG_JSON_SECTION_KEY,
-	EVALS_SECTION_KEY,
 	EXECUTIONS_SECTION_KEY,
 } from '../constants';
 import type { AgentJsonConfig } from '../types';
@@ -64,7 +63,6 @@ describe('AgentConfigTree', () => {
 			'triggers',
 			'tools',
 			'skills',
-			EVALS_SECTION_KEY,
 			EXECUTIONS_SECTION_KEY,
 			CONFIG_JSON_SECTION_KEY,
 		]);

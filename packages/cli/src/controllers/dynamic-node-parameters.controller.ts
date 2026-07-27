@@ -52,8 +52,8 @@ export class DynamicNodeParametersController {
 		}
 
 		if (loadOptions) {
-			return await this.dynamicNodeParametersService.getOptionsViaLoadOptions(
-				loadOptions,
+			return await this.dynamicNodeParametersService.getOptionsViaLoadOptionsByPath(
+				path,
 				additionalData,
 				nodeTypeAndVersion,
 				currentNodeParameters,

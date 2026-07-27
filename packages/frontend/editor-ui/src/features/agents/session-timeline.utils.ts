@@ -1,11 +1,18 @@
+import type { BaseTextKey } from '@n8n/i18n';
 import type { EventKind, IdleRange, TimelineItem } from './session-timeline.types';
 import type { AgentExecution } from './composables/useAgentThreadsApi';
-import { formatToolNameForDisplay } from './utils/toolDisplayName';
+import { isDelegateSubAgentTool } from './utils/delegate-tool';
+import { formatToolNameForDisplay, getToolNameTranslationKey } from './utils/toolDisplayName';
 
 export const IDLE_THRESHOLD_MS = 10 * 60 * 1000;
 
 export function endTimestampOf(item: TimelineItem): number {
 	return item.endTimestamp ?? item.timestamp;
+}
+
+/** A `delegate_subagent` tool call — rendered as a sub-agent (bot icon) rather than a plain tool. */
+export function isSubAgentTimelineItem(item: TimelineItem): boolean {
+	return item.kind === 'tool' && isDelegateSubAgentTool(item.toolName);
 }
 
 export function computeIdleRanges(items: TimelineItem[]): IdleRange[] {
@@ -32,6 +39,21 @@ export function itemFilterKey(item: TimelineItem): string {
 
 export type TimelineLabelResolver = (key: string) => string;
 
+function searchableValueText(value: unknown): string | undefined {
+	if (value === undefined) return undefined;
+	if (value === null) return 'null';
+	if (typeof value === 'string') return value;
+	if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+		return String(value);
+	}
+
+	try {
+		return JSON.stringify(value) ?? String(value);
+	} catch {
+		return String(value);
+	}
+}
+
 export function timelineItemSearchText(
 	item: TimelineItem,
 	labelForKey: TimelineLabelResolver,
@@ -39,13 +61,22 @@ export function timelineItemSearchText(
 	const parts: Array<string | undefined> = [];
 
 	parts.push(labelForKey(itemFilterKey(item)));
-	if (item.kind === 'working-memory') {
-		parts.push(labelForKey('working-memory-updated'));
-	} else if (item.kind === 'suspension') {
+	if (item.kind === 'suspension') {
 		parts.push(labelForKey('suspension-waiting'));
 	}
+	if (item.kind === 'tool' && item.isUserFeedback) {
+		parts.push(labelForKey('user-feedback'));
+	}
 
-	parts.push(item.content, item.toolName, item.workflowName, item.nodeDisplayName);
+	parts.push(
+		item.content,
+		item.toolName,
+		item.workflowName,
+		item.nodeDisplayName,
+		item.subAgentName,
+		searchableValueText(item.toolInput),
+		searchableValueText(item.toolOutput),
+	);
 	if (item.toolName) parts.push(formatToolNameForDisplay(item.toolName));
 
 	const toolKey = builtinToolLabelKey(item.toolName, item.toolOutput);
@@ -101,7 +132,6 @@ const COLOR_MAP: Record<EventKind, string> = {
 	tool: 'var(--color--success)',
 	node: 'var(--color--text)',
 	workflow: 'var(--color--primary)',
-	'working-memory': 'var(--color--foreground--shade-1)',
 	suspension: 'var(--color--warning)',
 };
 
@@ -115,7 +145,6 @@ const CHART_BLOCK_COLOR_MAP: Record<EventKind, string> = {
 	tool: 'var(--color--green-600)',
 	node: 'var(--color--neutral-600)',
 	workflow: 'var(--color--orange-600)',
-	'working-memory': 'var(--color--mint-600)',
 	suspension: 'var(--color--yellow-600)',
 };
 
@@ -123,45 +152,11 @@ export function chartBlockColor(kind: EventKind): string {
 	return CHART_BLOCK_COLOR_MAP[kind];
 }
 
-/**
- * i18n keys for built-in tools that should render as a friendly label rather
- * than their raw machine name. Returns `null` for any tool not in the map so
- * callers fall back to the raw `toolName`.
- */
-export type BuiltinToolLabelKey =
-	| 'agentSessions.timeline.tool.richInteraction'
-	| 'agentSessions.timeline.tool.richInteractionDisplay';
-
-/**
- * Resolve the i18n label for a tool entry. Some built-in tools (currently
- * `rich_interaction`) have two semantically distinct modes — interactive
- * (suspends, awaits user input) vs display-only (renders a card and the
- * agent continues). We pick the label based on the recorded output: the
- * `rich_interaction` handler returns `{ displayOnly: true }` to mark a
- * display-only call, and a button/select payload (after the user clicks)
- * for the interactive case.
- */
 export function builtinToolLabelKey(
 	toolName: string | undefined,
-	output?: unknown,
-): BuiltinToolLabelKey | null {
-	switch (toolName) {
-		case 'rich_interaction':
-			return isDisplayOnlyOutput(output)
-				? 'agentSessions.timeline.tool.richInteractionDisplay'
-				: 'agentSessions.timeline.tool.richInteraction';
-		default:
-			return null;
-	}
-}
-
-function isDisplayOnlyOutput(output: unknown): boolean {
-	return (
-		typeof output === 'object' &&
-		output !== null &&
-		'displayOnly' in output &&
-		(output as { displayOnly: unknown }).displayOnly === true
-	);
+	_output?: unknown,
+): BaseTextKey | null {
+	return getToolNameTranslationKey(toolName) ?? null;
 }
 
 export function formatDuration(ms: number): string {
@@ -203,12 +198,6 @@ interface RawTextEvent {
 	endTime?: number;
 }
 
-interface RawMemoryEvent {
-	type: 'working-memory';
-	content: string;
-	timestamp: number;
-}
-
 interface RawSuspensionEvent {
 	type: 'suspension';
 	toolName: string;
@@ -216,7 +205,7 @@ interface RawSuspensionEvent {
 	timestamp: number;
 }
 
-type RawEvent = RawToolCallEvent | RawTextEvent | RawMemoryEvent | RawSuspensionEvent;
+type RawEvent = RawToolCallEvent | RawTextEvent | RawSuspensionEvent;
 
 /**
  * Cast the loose API timeline shape (`Record<string, unknown> & { type }`)
@@ -230,6 +219,9 @@ function timelineEvents(exec: AgentExecution): RawEvent[] {
 
 export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): TimelineItem[] {
 	const items: TimelineItem[] = [];
+	// Tool calls recorded AFTER a suspension of the same toolCallId are the
+	// resumed segment's record of the user's answer, not a fresh tool call.
+	const suspendedToolCallIds = new Set<string>();
 	for (const exec of executions) {
 		const isResumed = exec.hitlStatus === 'resumed';
 		let resumedTagUsed = false;
@@ -261,6 +253,11 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 			} else if (event.type === 'tool-call') {
 				const isWorkflow = event.kind === 'workflow';
 				const isNode = event.kind === 'node';
+				const isUserFeedback =
+					!isWorkflow &&
+					!isNode &&
+					event.toolCallId !== undefined &&
+					suspendedToolCallIds.has(event.toolCallId);
 				items.push({
 					kind: isWorkflow ? 'workflow' : isNode ? 'node' : 'tool',
 					executionId: exec.id,
@@ -279,15 +276,10 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					nodeTypeVersion: isNode ? event.nodeTypeVersion : undefined,
 					nodeDisplayName: isNode ? event.nodeDisplayName : undefined,
 					nodeParameters: isNode ? event.nodeParameters : undefined,
-				});
-			} else if (event.type === 'working-memory') {
-				items.push({
-					kind: 'working-memory',
-					executionId: exec.id,
-					content: event.content,
-					timestamp: event.timestamp ?? 0,
+					...(isUserFeedback && { isUserFeedback: true }),
 				});
 			} else if (event.type === 'suspension') {
+				if (event.toolCallId) suspendedToolCallIds.add(event.toolCallId);
 				items.push({
 					kind: 'suspension',
 					executionId: exec.id,

@@ -1,4 +1,4 @@
-import { UPDATE_WORKING_MEMORY_TOOL_NAME, type AgentMessage, type StreamChunk } from '@n8n/agents';
+import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import type {
 	AgentPersistedMessageContentPart,
 	AgentSseEvent,
@@ -6,31 +6,12 @@ import type {
 	ToolSuspendedPayload,
 } from '@n8n/api-types';
 import type { Response } from 'express';
+import { LoggerProxy } from 'n8n-workflow';
 
 export type FlushableResponse = Response & { flush?: () => void };
 
-/**
- * Side-effect callbacks for the agent builder. Keyed off discrete tool events
- * — no more `messageId` turn tracking. `toolInputStart` lets the builder
- * remember which tool is currently streaming arguments so it can route
- * `toolInputDelta` text into the right side-effect (e.g. `code-delta`).
- */
-export interface ToolEventCallbacks {
-	toolInputStart?: (toolName: string) => void;
-	toolInputDelta?: (toolCallId: string, delta: string) => void;
-	toolResult?: (toolName: string) => void;
-}
-
 interface ChunkHandlerCtx {
 	send: (e: AgentSseEvent) => void;
-	onToolEvent?: ToolEventCallbacks;
-	/**
-	 * Tool-call ids belonging to the SDK-internal working-memory tool. The id
-	 * Set is needed because `tool-input-delta` chunks carry only the id, not
-	 * the tool name — we capture the id on `tool-input-start` / `tool-call`
-	 * and use it to drop the matching streamed memory content.
-	 */
-	workingMemoryToolCallIds: Set<string>;
 }
 
 /**
@@ -110,51 +91,6 @@ function emitTextLikeChunk(
  * SSE-emit a tool-* chunk and fire any matching builder side-effect callback.
  * Returns `{ suspended: true }` when the chunk was `tool-call-suspended`.
  */
-/**
- * Working memory is implemented as an SDK tool, but n8n surfaces it as a
- * distinct memory event in the chat UI rather than a regular tool step.
- * Returns `true` when the chunk was handled and should not flow through the
- * regular tool emission path.
- */
-function handleWorkingMemoryChunk(
-	chunk: Extract<
-		StreamChunk,
-		{
-			type:
-				| 'tool-input-start'
-				| 'tool-input-delta'
-				| 'tool-call'
-				| 'tool-execution-start'
-				| 'tool-result';
-		}
-	>,
-	ctx: ChunkHandlerCtx,
-): boolean {
-	const { send, workingMemoryToolCallIds } = ctx;
-	const isWmName = 'toolName' in chunk && chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME;
-
-	if (chunk.type === 'tool-input-delta') {
-		return workingMemoryToolCallIds.has(chunk.toolCallId);
-	}
-	if (!isWmName) return false;
-
-	if (chunk.type === 'tool-input-start' || chunk.type === 'tool-call') {
-		workingMemoryToolCallIds.add(chunk.toolCallId);
-		return true;
-	}
-	if (chunk.type === 'tool-execution-start') return true;
-	if (chunk.type === 'tool-result') {
-		if (chunk.isError) {
-			const errMsg = chunk.output instanceof Error ? chunk.output.message : String(chunk.output);
-			send({ type: 'error', message: `Working memory update failed: ${errMsg}` });
-		} else {
-			send({ type: 'working-memory-update', toolName: chunk.toolName });
-		}
-		return true;
-	}
-	return false;
-}
-
 function emitToolChunk(
 	chunk: Extract<
 		StreamChunk,
@@ -164,17 +100,14 @@ function emitToolChunk(
 				| 'tool-input-delta'
 				| 'tool-call'
 				| 'tool-execution-start'
+				| 'tool-execution-end'
 				| 'tool-result'
 				| 'tool-call-suspended';
 		}
 	>,
 	ctx: ChunkHandlerCtx,
 ): { suspended: boolean } {
-	const { send, onToolEvent } = ctx;
-
-	if (chunk.type !== 'tool-call-suspended' && handleWorkingMemoryChunk(chunk, ctx)) {
-		return { suspended: false };
-	}
+	const { send } = ctx;
 
 	switch (chunk.type) {
 		case 'tool-input-start':
@@ -183,12 +116,10 @@ function emitToolChunk(
 				toolCallId: chunk.toolCallId,
 				toolName: chunk.toolName,
 			});
-			onToolEvent?.toolInputStart?.(chunk.toolName);
 			break;
 		case 'tool-input-delta':
 			if (chunk.delta) {
 				send({ type: 'tool-input-delta', toolCallId: chunk.toolCallId, delta: chunk.delta });
-				onToolEvent?.toolInputDelta?.(chunk.toolCallId, chunk.delta);
 			}
 			break;
 		case 'tool-call':
@@ -204,18 +135,30 @@ function emitToolChunk(
 				type: 'tool-execution-start',
 				toolCallId: chunk.toolCallId,
 				toolName: chunk.toolName,
+				startTime: chunk.startTime,
 			});
 			break;
-		case 'tool-result':
+		case 'tool-execution-end':
+			send({
+				type: 'tool-execution-end',
+				toolCallId: chunk.toolCallId,
+				toolName: chunk.toolName,
+				isError: chunk.isError,
+				endTime: chunk.endTime,
+			});
+			break;
+		case 'tool-result': {
+			const toolResultChunk = chunk as typeof chunk & { canceled?: boolean };
 			send({
 				type: 'tool-result',
 				toolCallId: chunk.toolCallId,
 				toolName: chunk.toolName,
 				output: chunk.output,
 				...(chunk.isError !== undefined && { isError: chunk.isError }),
+				...(toolResultChunk.canceled !== undefined && { canceled: toolResultChunk.canceled }),
 			});
-			onToolEvent?.toolResult?.(chunk.toolName);
 			break;
+		}
 		case 'tool-call-suspended': {
 			const payload: ToolSuspendedPayload = {
 				toolCallId: chunk.toolCallId,
@@ -257,6 +200,7 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 		case 'tool-input-delta':
 		case 'tool-call':
 		case 'tool-execution-start':
+		case 'tool-execution-end':
 		case 'tool-result':
 		case 'tool-call-suspended':
 			return emitToolChunk(chunk, ctx);
@@ -266,7 +210,7 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 			return { suspended: false };
 		}
 		case 'error': {
-			const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
+			const errMsg = stringifyError(chunk.error);
 			ctx.send({ type: 'error', message: errMsg });
 			return { suspended: false };
 		}
@@ -275,12 +219,23 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 	}
 }
 
+function stringifyError(error: unknown): string {
+	try {
+		if (error instanceof Error) {
+			return error.message;
+		}
+		if (typeof error === 'object') {
+			return JSON.stringify(error, null, 2);
+		}
+		return `Error: ${String(error)}`;
+	} catch (e) {
+		LoggerProxy.warn('Failed to stringify agent streaming error', { error });
+	}
+	return 'Unknown error';
+}
+
 /**
  * Pump SDK stream chunks through a typed AgentSseEvent stream.
- *
- * Side-effects (`config-updated` / `tool-updated` / `code-delta`) for the
- * agent builder are surfaced via the `onToolEvent` callback so the chat path
- * can ignore them.
  *
  * Returns `true` when a suspension was emitted (the run paused), `false`
  * otherwise.
@@ -288,13 +243,8 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 export async function pumpChunks(
 	chunks: AsyncIterable<StreamChunk>,
 	send: (e: AgentSseEvent) => void,
-	onToolEvent?: ToolEventCallbacks,
 ): Promise<boolean> {
-	const ctx: ChunkHandlerCtx = {
-		send,
-		onToolEvent,
-		workingMemoryToolCallIds: new Set<string>(),
-	};
+	const ctx: ChunkHandlerCtx = { send };
 
 	for await (const chunk of chunks) {
 		const { suspended } = emitChunkEvents(chunk, ctx);

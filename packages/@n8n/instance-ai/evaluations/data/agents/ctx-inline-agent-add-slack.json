@@ -1,0 +1,26 @@
+{
+	"description": "Paradigm continuity inside an agent context: after an agent design is on the table, an incremental capability request ('also Slack me when it escalates') stays a tool/capability on that agent — not a separate spawned workflow and not a reason to re-anchor the design. Mirror of ctx-followup-schedule-edit on the agent side.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "A support assistant our customers chat with — it answers their product questions and escalates to a human when it can't help. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[After the assistant lays out its approach, ask for exactly one change: also send me a Slack message whenever it escalates to a human.",
+				"Do not approve any plan, setup card, or build confirmation.",
+				"Once the change is reflected in the approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["intent-resolution", "inline", "paradigm-continuity", "chat"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent calls the load_skill tool with the intent-recognition skill at most once in the whole conversation, before proposing the initial design — and does not load it again for the follow-up Slack-notification request.",
+		"The initial proposal is agent-anchored: an n8n Agent — a conversational support assistant that answers product questions and decides when to escalate — not a fixed workflow pipeline.",
+		"The Slack notification request is treated as an added capability/tool of the proposed n8n Agent — the agent does not re-classify the automation, re-anchor to a workflow design, or propose a separate second automation for the notification."
+	]
+}

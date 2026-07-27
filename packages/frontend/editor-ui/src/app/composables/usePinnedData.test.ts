@@ -95,7 +95,7 @@ describe('usePinnedData', () => {
 
 			expect(() => setData(testData, 'pin-icon-click')).not.toThrow();
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
-			expect(workflowDocumentStore.pinData?.[node.value.name]).toEqual(testData);
+			expect(workflowDocumentStore.pinnedDataByNodeName?.[node.value.name]).toEqual(testData);
 		});
 
 		it('should throw and not pin data when input contains the trimmed-execution-data marker', () => {
@@ -117,7 +117,7 @@ describe('usePinnedData', () => {
 			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
-			expect(workflowDocumentStore.pinData?.[node.value.name]).toBeUndefined();
+			expect(workflowDocumentStore.pinnedDataByNodeName?.[node.value.name]).toBeUndefined();
 			expect(trackSpy).toHaveBeenCalledWith(
 				'Ndv data pinning failure',
 				expect.objectContaining({ error_type: 'trimmed-data' }),
@@ -135,7 +135,7 @@ describe('usePinnedData', () => {
 			unsetData('context-menu');
 
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
-			expect(workflowDocumentStore.pinData?.[node.value.name]).toBeUndefined();
+			expect(workflowDocumentStore.pinnedDataByNodeName?.[node.value.name]).toBeUndefined();
 		});
 	});
 

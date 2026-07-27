@@ -2,20 +2,21 @@ import { Readable } from 'stream';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { binaryToStringWithEncodingDetection } from '../buffer-decoding';
+import type { MockedFunction } from 'vitest';
 
 describe('buffer-decoding utils', () => {
 	let mockHelpers: IExecuteFunctions['helpers'];
-	let mockBinaryToString: jest.MockedFunction<
+	let mockBinaryToString: MockedFunction<
 		(body: Buffer | Readable, encoding?: BufferEncoding) => Promise<string>
 	>;
-	let mockBinaryToBuffer: jest.MockedFunction<(body: Buffer | Readable) => Promise<Buffer>>;
-	let mockDetectBinaryEncoding: jest.MockedFunction<(buffer: Buffer) => string>;
+	let mockBinaryToBuffer: MockedFunction<(body: Buffer | Readable) => Promise<Buffer>>;
+	let mockDetectBinaryEncoding: MockedFunction<(buffer: Buffer) => string>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		mockBinaryToString = jest.fn();
-		mockBinaryToBuffer = jest.fn();
-		mockDetectBinaryEncoding = jest.fn();
+		vi.clearAllMocks();
+		mockBinaryToString = vi.fn();
+		mockBinaryToBuffer = vi.fn();
+		mockDetectBinaryEncoding = vi.fn();
 		mockHelpers = {
 			binaryToString: mockBinaryToString,
 			binaryToBuffer: mockBinaryToBuffer,

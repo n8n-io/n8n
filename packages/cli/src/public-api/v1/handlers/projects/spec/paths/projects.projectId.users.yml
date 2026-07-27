@@ -1,5 +1,6 @@
 get:
   x-eov-operation-id: getProjectUsers
+  x-required-scope: user:list
   x-eov-operation-handler: v1/handlers/projects/projects.handler
   tags:
     - Projects
@@ -29,6 +30,7 @@ get:
       $ref: '../../../../shared/spec/responses/notFound.yml'
 post:
   x-eov-operation-id: addUsersToProject
+  x-required-scope: project:update
   x-eov-operation-handler: v1/handlers/projects/projects.handler
   tags:
     - Projects

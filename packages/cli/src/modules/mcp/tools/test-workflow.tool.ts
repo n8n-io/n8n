@@ -1,6 +1,7 @@
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { normalizePinData } from '@n8n/workflow-sdk';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	type INode,
 	type IPinData,
@@ -8,23 +9,22 @@ import {
 	type IWorkflowExecutionDataProcess,
 	createRunExecutionData,
 	jsonStringify,
-	ensureError,
 	isTriggerNode,
 } from 'n8n-workflow';
 import z from 'zod';
+
+import type { ActiveExecutions } from '@/active-executions';
+import type { McpService } from '@/modules/mcp/mcp.service';
+import type { NodeTypes } from '@/node-types';
+import type { Telemetry } from '@/telemetry';
+import type { WorkflowRunner } from '@/workflow-runner';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { waitForExecutionResult, WORKFLOW_EXECUTION_TIMEOUT_MS } from './execution-utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
-
-import type { ActiveExecutions } from '@/active-executions';
-import type { NodeTypes } from '@/node-types';
-import type { McpService } from '@/modules/mcp/mcp.service';
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowRunner } from '@/workflow-runner';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to test'),

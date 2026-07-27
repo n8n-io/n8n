@@ -65,8 +65,8 @@ test.describe(
 			await expect(errorAction).toBeVisible();
 			await errorAction.click();
 
-			await expect(n8n.page.getByTestId('workflow-settings-dialog')).toBeVisible();
-			await expect(n8n.page.getByTestId('workflow-settings-error-workflow')).toBeVisible();
+			await expect(n8n.workflowSettingsModal.getModal()).toBeVisible();
+			await expect(n8n.workflowSettingsModal.getErrorWorkflowField()).toBeVisible();
 		});
 
 		test('should open workflow settings modal when time saved action is clicked', async ({
@@ -83,7 +83,7 @@ test.describe(
 			await expect(timeAction).toBeVisible();
 			await timeAction.click();
 
-			await expect(n8n.page.getByTestId('workflow-settings-dialog')).toBeVisible();
+			await expect(n8n.workflowSettingsModal.getModal()).toBeVisible();
 		});
 
 		test('should allow ignoring individual actions', async ({ n8n }) => {
@@ -95,10 +95,10 @@ test.describe(
 			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
 
 			await expect(n8n.canvas.getProductionChecklistActionItem().first()).toContainText('error');
-			await n8n.canvas.getProductionChecklistActionItem().first().getByTitle('Ignore').click();
+			await n8n.canvas.ignoreProductionChecklistAction();
 			await expect(n8n.canvas.getErrorActionItem()).toBeHidden();
 
-			await n8n.page.locator('body').click({ position: { x: 0, y: 0 } });
+			await n8n.canvas.clickOutsideModal();
 			await n8n.canvas.clickProductionChecklistButton();
 
 			await expect(n8n.canvas.getErrorActionItem()).toBeHidden();
@@ -136,17 +136,12 @@ test.describe(
 
 			await n8n.workflowSettingsModal.selectErrorWorkflow('Error Handler');
 			await n8n.workflowSettingsModal.clickSave();
-			await expect(n8n.page.getByTestId('workflow-settings-dialog')).toBeHidden();
+			await expect(n8n.workflowSettingsModal.getModal()).toBeHidden();
 
 			await n8n.canvas.clickProductionChecklistButton();
 			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
 
-			await expect(
-				n8n.canvas
-					.getProductionChecklistActionItem()
-					.first()
-					.locator('svg[data-icon="circle-check"]'),
-			).toBeVisible();
+			await expect(n8n.canvas.getProductionChecklistActionCompletedIcon()).toBeVisible();
 		});
 
 		test('should allow ignoring all actions with confirmation', async ({ n8n }) => {
@@ -159,11 +154,7 @@ test.describe(
 
 			await n8n.canvas.clickProductionChecklistIgnoreAll();
 
-			await expect(n8n.page.locator('.el-message-box')).toBeVisible();
-			await n8n.page
-				.locator('.el-message-box__btns button')
-				.filter({ hasText: /ignore for all workflows/i })
-				.click();
+			await n8n.canvas.confirmIgnoreAllForAllWorkflows();
 
 			await expect(n8n.canvas.getProductionChecklistButton()).toBeHidden();
 		});

@@ -41,5 +41,25 @@ ruleTester.run('no-error-instance-in-to-throw', NoErrorInstanceInToThrowRule, {
 			code: 'expect(() => foo()).toThrow(new TypeError())',
 			errors: [{ messageId: 'noErrorInstance', data: { className: 'TypeError' } }],
 		},
+		{
+			code: "expect(() => foo()).toThrowError(new Error('bad'))",
+			errors: [{ messageId: 'noErrorInstance', data: { className: 'Error' } }],
+		},
+		{
+			code: "expect(() => foo()).toThrowError(new NodeOperationError(node, 'bad'))",
+			errors: [{ messageId: 'noErrorInstance', data: { className: 'NodeOperationError' } }],
+		},
+		{
+			code: "await expect(foo()).rejects.toThrowError(new Error('bad'))",
+			errors: [{ messageId: 'noErrorInstance', data: { className: 'Error' } }],
+		},
+		{
+			code: "await expect(foo()).rejects.toThrowError(new NodeOperationError(node, 'message'))",
+			errors: [{ messageId: 'noErrorInstance', data: { className: 'NodeOperationError' } }],
+		},
+		{
+			code: 'expect(() => foo()).toThrowError(new TypeError())',
+			errors: [{ messageId: 'noErrorInstance', data: { className: 'TypeError' } }],
+		},
 	],
 });

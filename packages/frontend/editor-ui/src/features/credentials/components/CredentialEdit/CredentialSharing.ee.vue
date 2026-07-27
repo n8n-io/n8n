@@ -24,7 +24,7 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { getResourcePermissions } from '@n8n/permissions';
 
-import { N8nActionBox, N8nInfoTip } from '@n8n/design-system';
+import { N8nEmptyState, N8nInfoTip } from '@n8n/design-system';
 type Props = {
 	credentialId: string;
 	credentialData: ICredentialDataDecryptedObject;
@@ -34,7 +34,10 @@ type Props = {
 	isSharedGlobally?: boolean;
 };
 
-const props = withDefaults(defineProps<Props>(), { credential: null, isSharedGlobally: false });
+const props = withDefaults(defineProps<Props>(), {
+	credential: null,
+	isSharedGlobally: false,
+});
 
 const emit = defineEmits<{
 	'update:modelValue': [value: ProjectSharingData[]];
@@ -137,7 +140,7 @@ function goToUpgrade() {
 <template>
 	<div :class="$style.container">
 		<div v-if="!isSharingEnabled">
-			<N8nActionBox
+			<N8nEmptyState
 				:heading="
 					i18n.baseText(uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.title)
 				"

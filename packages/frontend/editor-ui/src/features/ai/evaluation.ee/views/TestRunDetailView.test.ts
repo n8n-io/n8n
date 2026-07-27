@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
+import { VIEWS } from '@/app/constants';
 import { useEvaluationStore } from '../evaluation.store';
 import TestRunDetailView from './TestRunDetailView.vue';
 import type { TestCaseExecutionRecord, TestRunRecord } from '../evaluation.api';
@@ -31,6 +32,7 @@ const mockRouter = {
 		},
 	},
 	back: vi.fn(),
+	push: vi.fn(),
 	resolve: vi.fn(() => ({ href: '/test-execution-url' })),
 };
 
@@ -204,10 +206,22 @@ describe('TestRunDetailView', () => {
 		});
 	});
 
-	it('does not render a partial-failure callout (the redesign drops it)', async () => {
+	it('renders the execution view link on failed cases alongside the rerun button', async () => {
+		// mockTestCases has one success and one error case, both with an
+		// executionId. The link must show for both so a failed case is still
+		// clickable through to its execution; only the failed case also gets
+		// the rerun button.
+		const { getAllByTestId } = renderComponent();
+		await waitFor(() => {
+			expect(getAllByTestId('test-case-view-link')).toHaveLength(mockTestCases.length);
+			expect(getAllByTestId('test-case-rerun-button')).toHaveLength(1);
+		});
+	});
+
+	it('does not render a partial-failure callout — failures are surfaced per-card via RunStatusPill', async () => {
 		const { container, queryByText } = renderComponent();
 		await waitFor(() => {
-			expect(container.querySelector('[data-test-id="test-definition-run-detail"]')).toBeTruthy();
+			expect(container.querySelector('[data-test-id="run-status-pill"]')).toBeTruthy();
 		});
 		expect(queryByText('Finished with errors')).toBeNull();
 	});
@@ -302,6 +316,128 @@ describe('TestRunDetailView', () => {
 			// run between us and the previous completed run did not displace
 			// the comparison.
 			expect(badges.length).toBe(2);
+		});
+	});
+
+	it('routes to the new run detail using the testRunId returned by startTestRun (no dependency on fetchTestRuns picking up the row)', async () => {
+		// Regression for the race where the BE created the test-run row in
+		// fire-and-forget mode and the immediate FE refetch sometimes
+		// happened before the row was visible — the old diffing fallback
+		// then found nothing and routed back to the edit page. With the BE
+		// now awaiting the row insert and surfacing `testRunId`, navigation
+		// must use that id directly. The fresh `createTestingPinia` below
+		// is intentional: the file's shared pinia carries spies set up in
+		// `beforeEach`, and re-spying `startTestRun` against that shared
+		// store interacts badly with the existing `clearAllMocks` cycle —
+		// owning the pinia for this test isolates the path under test.
+		const localPinia = createTestingPinia({
+			initialState: {
+				evaluation: {
+					testRunsById: {
+						'test-run-id': mockTestRun,
+						'previous-run-id': mockPreviousRun,
+					},
+				},
+				workflows: {
+					workflowsById: { 'test-workflow-id': mockWorkflow },
+				},
+			},
+			stubActions: false,
+		});
+		const localStore = useEvaluationStore(localPinia);
+		const startSpy = vi.spyOn(localStore, 'startTestRun').mockResolvedValue({
+			success: true,
+			testRunId: 'freshly-created-run-id',
+		});
+		// Stale fetch (no new row) on purpose — proves routing uses the
+		// API response, not the refetch list.
+		vi.spyOn(localStore, 'fetchTestRuns').mockResolvedValue([mockTestRun, mockPreviousRun]);
+		vi.spyOn(localStore, 'fetchTestCaseExecutions').mockImplementation(async () => {
+			localStore.testCaseExecutionsById = mockTestCases.reduce(
+				(acc, testCase) => {
+					acc[testCase.id] = testCase as TestCaseExecutionRecord;
+					return acc;
+				},
+				{} as Record<string, TestCaseExecutionRecord>,
+			);
+			return mockTestCases as TestCaseExecutionRecord[];
+		});
+		vi.mocked(localStore.getTestRun).mockResolvedValue(mockTestRun);
+
+		const { getByTestId } = renderComponent({
+			pinia: localPinia,
+			global: { provide: { [WorkflowIdKey]: computed(() => 'test-workflow-id') } },
+		});
+
+		const rerunButton = await waitFor(() => getByTestId('test-case-rerun-button'));
+		await fireEvent.click(rerunButton);
+
+		// mockTestRun has no evaluationConfigId, so options should be undefined
+		await waitFor(() => expect(startSpy).toHaveBeenCalledWith('test-workflow-id', undefined));
+		await waitFor(() => {
+			expect(mockRouter.push).toHaveBeenCalledWith({
+				name: VIEWS.EVALUATION_RUNS_DETAIL,
+				params: { workflowId: 'test-workflow-id', runId: 'freshly-created-run-id' },
+			});
+		});
+	});
+
+	it('re-runs with config args when the run has an evaluationConfigId', async () => {
+		const runWithConfig: TestRunRecord = {
+			...mockTestRun,
+			evaluationConfigId: 'config-abc',
+		};
+		const localPinia = createTestingPinia({
+			initialState: {
+				evaluation: {
+					testRunsById: {
+						'test-run-id': runWithConfig,
+						'previous-run-id': mockPreviousRun,
+					},
+				},
+				workflows: {
+					workflowsById: { 'test-workflow-id': mockWorkflow },
+				},
+			},
+			stubActions: false,
+		});
+		const localStore = useEvaluationStore(localPinia);
+		const startSpy = vi.spyOn(localStore, 'startTestRun').mockResolvedValue({
+			success: true,
+			testRunId: 'config-run-id',
+		});
+		vi.spyOn(localStore, 'fetchTestRuns').mockResolvedValue([runWithConfig, mockPreviousRun]);
+		vi.spyOn(localStore, 'fetchTestCaseExecutions').mockImplementation(async () => {
+			localStore.testCaseExecutionsById = mockTestCases.reduce(
+				(acc, testCase) => {
+					acc[testCase.id] = testCase as TestCaseExecutionRecord;
+					return acc;
+				},
+				{} as Record<string, TestCaseExecutionRecord>,
+			);
+			return mockTestCases as TestCaseExecutionRecord[];
+		});
+		vi.mocked(localStore.getTestRun).mockResolvedValue(runWithConfig);
+
+		const { getByTestId } = renderComponent({
+			pinia: localPinia,
+			global: { provide: { [WorkflowIdKey]: computed(() => 'test-workflow-id') } },
+		});
+
+		const rerunButton = await waitFor(() => getByTestId('test-case-rerun-button'));
+		await fireEvent.click(rerunButton);
+
+		await waitFor(() =>
+			expect(startSpy).toHaveBeenCalledWith('test-workflow-id', {
+				evaluationConfigId: 'config-abc',
+				compileFromConfig: true,
+			}),
+		);
+		await waitFor(() => {
+			expect(mockRouter.push).toHaveBeenCalledWith({
+				name: VIEWS.EVALUATION_RUNS_DETAIL,
+				params: { workflowId: 'test-workflow-id', runId: 'config-run-id' },
+			});
 		});
 	});
 

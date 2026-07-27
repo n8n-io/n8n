@@ -44,6 +44,7 @@ describe('createEngineRequests', () => {
 				id: 'call_123',
 				metadata: {
 					itemIndex: 0,
+					toolName: 'calculator',
 				},
 			});
 		});
@@ -78,6 +79,7 @@ describe('createEngineRequests', () => {
 				id: 'call_123',
 				metadata: {
 					itemIndex: 1,
+					toolName: 'calculator',
 				},
 			});
 			expect(result[1]).toEqual({
@@ -88,6 +90,7 @@ describe('createEngineRequests', () => {
 				id: 'call_124',
 				metadata: {
 					itemIndex: 1,
+					toolName: 'search',
 				},
 			});
 		});

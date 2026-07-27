@@ -2,11 +2,12 @@ import { describe, it, expect, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { fireEvent } from '@testing-library/vue';
 import { TabsRoot } from 'reka-ui';
+import { readFileSync } from 'node:fs';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import type { ArtifactTab } from '../useCanvasPreview';
 
-vi.mock('@/app/composables/useClipboard', () => ({
+vi.mock('@n8n/composables/useClipboard', () => ({
 	useClipboard: () => ({ copy: vi.fn() }),
 }));
 
@@ -36,15 +37,20 @@ const Wrapper = defineComponent({
 	props: {
 		tabs: { type: Array as () => ArtifactTab[], required: true },
 		activeTabId: { type: String, default: undefined },
+		isExpanded: { type: Boolean, default: false },
+		previewToggleLabel: { type: String, default: undefined },
 	},
-	emits: ['close'],
+	emits: ['togglePreview', 'toggleExpanded'],
 	setup(props, { emit }) {
 		return () =>
 			h(TabsRoot, { modelValue: props.activeTabId }, () =>
 				h(InstanceAiPreviewTabBar, {
 					tabs: props.tabs,
 					activeTabId: props.activeTabId,
-					onClose: () => emit('close'),
+					isExpanded: props.isExpanded,
+					previewToggleLabel: props.previewToggleLabel,
+					onTogglePreview: () => emit('togglePreview'),
+					onToggleExpanded: () => emit('toggleExpanded'),
 				}),
 			);
 	},
@@ -83,17 +89,58 @@ describe('InstanceAiPreviewTabBar', () => {
 		expect(inactive?.getAttribute('data-state')).toBe('inactive');
 	});
 
-	it('emits close when the collapse button is clicked', async () => {
+	it('emits toggleExpanded when the expand button is clicked', async () => {
 		const { container, emitted } = renderComponent({
 			props: { tabs: [workflowTab], activeTabId: 'wf-1' },
 		});
 
-		const collapseButton = container.querySelector<HTMLButtonElement>(
-			'[data-test-id="instance-ai-preview-close"]',
+		const expandButton = container.querySelector<HTMLButtonElement>(
+			'[data-test-id="instance-ai-preview-expand-toggle"]',
 		);
-		expect(collapseButton).not.toBeNull();
-		await fireEvent.click(collapseButton!);
+		expect(expandButton).not.toBeNull();
+		expect(expandButton).toHaveAttribute('aria-label', 'Expand panel');
+		await fireEvent.click(expandButton!);
 
-		expect(emitted().close).toBeTruthy();
+		expect(emitted().toggleExpanded).toBeTruthy();
+	});
+
+	it('emits togglePreview when the preview toggle is clicked', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: {
+				tabs: [workflowTab],
+				activeTabId: 'wf-1',
+				previewToggleLabel: 'Hide artifacts preview',
+			},
+		});
+
+		const toggleButton = getByTestId('instance-ai-artifacts-preview-toggle');
+		expect(toggleButton).toHaveAttribute('aria-label', 'Hide artifacts preview');
+		expect(toggleButton).toHaveAttribute('aria-pressed', 'true');
+
+		await fireEvent.click(toggleButton);
+
+		expect(emitted().togglePreview).toBeTruthy();
+	});
+
+	it('labels the size toggle as collapse when the panel is expanded', () => {
+		const { container } = renderComponent({
+			props: { tabs: [workflowTab], activeTabId: 'wf-1', isExpanded: true },
+		});
+
+		const collapseButton = container.querySelector<HTMLButtonElement>(
+			'[data-test-id="instance-ai-preview-expand-toggle"]',
+		);
+
+		expect(collapseButton).not.toBeNull();
+		expect(collapseButton).toHaveAttribute('aria-label', 'Collapse panel');
+	});
+
+	it('does not fade the left edge of artifact tabs', () => {
+		const source = readFileSync(
+			'src/features/ai/instanceAi/components/InstanceAiPreviewTabBar.vue',
+			'utf8',
+		);
+
+		expect(source).not.toContain('--left--fade');
 	});
 });

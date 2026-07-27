@@ -1,5 +1,16 @@
 const MODELS_DEV_URL = 'https://models.dev/api.json';
 
+const MODELS_DEV_PROVIDER_ALIASES: Record<string, string> = {
+	'amazon-bedrock': 'aws-bedrock',
+	azure: 'azure-openai',
+	'azure-cognitive-services': 'azure-openai',
+};
+
+const AGENT_PROVIDER_NAMES: Record<string, string> = {
+	'aws-bedrock': 'AWS Bedrock',
+	'azure-openai': 'Azure OpenAI',
+};
+
 /** Cost per million tokens. */
 export interface ModelCost {
 	/** Cost per million input tokens (USD). */
@@ -26,6 +37,8 @@ export interface ModelInfo {
 	id: string;
 	/** Human-readable name (e.g. 'Claude Sonnet 4.5'). */
 	name: string;
+	/** Release date in ISO date format when available from models.dev. */
+	releaseDate?: string;
 	/** Whether the model supports reasoning / thinking. */
 	reasoning: boolean;
 	/** Whether the model supports tool calling. */
@@ -52,8 +65,10 @@ export type ProviderCatalog = Record<string, ProviderInfo>;
 interface ModelsDevModel {
 	id: string;
 	name: string;
+	release_date?: string;
 	reasoning?: boolean;
 	tool_call?: boolean;
+	status?: string;
 	cost?: { input?: number; output?: number; cache_read?: number; cache_write?: number };
 	limit?: { context?: number; output?: number };
 }
@@ -62,6 +77,37 @@ interface ModelsDevProvider {
 	id: string;
 	name: string;
 	models?: Record<string, ModelsDevModel>;
+}
+
+function toAgentProviderId(modelsDevProviderId: string): string {
+	return MODELS_DEV_PROVIDER_ALIASES[modelsDevProviderId] ?? modelsDevProviderId;
+}
+
+const LATEST_NAME_SUFFIX = /\s*\(latest\)$/i;
+
+/**
+ * models.dev names versionless alias models with a " (latest)" suffix
+ * (e.g. `claude-opus-4-5` → "Claude Opus 4.5 (latest)"), which quickly goes
+ * stale as newer models ship. Strip the suffix from every model name, and when
+ * a pinned snapshot shares the resulting name with an alias (e.g.
+ * `claude-opus-4-5-20251101` "Claude Opus 4.5"), drop the snapshot so the
+ * alias is the single entry for that model.
+ */
+function normalizeLatestModelNames(models: Record<string, ModelInfo>): void {
+	const aliasNames = new Set<string>();
+	for (const model of Object.values(models)) {
+		if (LATEST_NAME_SUFFIX.test(model.name)) {
+			aliasNames.add(model.name.replace(LATEST_NAME_SUFFIX, ''));
+		}
+	}
+
+	for (const [modelId, model] of Object.entries(models)) {
+		if (LATEST_NAME_SUFFIX.test(model.name)) {
+			model.name = model.name.replace(LATEST_NAME_SUFFIX, '');
+		} else if (aliasNames.has(model.name)) {
+			delete models[modelId];
+		}
+	}
 }
 
 /**
@@ -93,9 +139,13 @@ export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
 
 		const models: Record<string, ModelInfo> = {};
 		for (const [modelId, model] of Object.entries(provider.models)) {
+			// Deprecated models still 404 at call time when the provider retires
+			// them, so never offer them.
+			if (model.status === 'deprecated') continue;
 			const info: ModelInfo = {
 				id: model.id,
 				name: model.name,
+				...(model.release_date !== undefined && { releaseDate: model.release_date }),
 				reasoning: model.reasoning ?? false,
 				toolCall: model.tool_call ?? false,
 			};
@@ -116,11 +166,21 @@ export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
 			models[modelId] = info;
 		}
 
-		catalog[key] = {
-			id: provider.id,
-			name: provider.name,
-			models,
+		if (Object.keys(models).length === 0) continue;
+
+		const providerId = toAgentProviderId(key);
+		catalog[providerId] = {
+			id: providerId,
+			name: catalog[providerId]?.name ?? AGENT_PROVIDER_NAMES[providerId] ?? provider.name,
+			models: {
+				...(catalog[providerId]?.models ?? {}),
+				...models,
+			},
 		};
+	}
+
+	for (const provider of Object.values(catalog)) {
+		normalizeLatestModelNames(provider.models);
 	}
 
 	return catalog;
@@ -174,13 +234,57 @@ export async function getModelCost(modelId: string): Promise<ModelCost | undefin
 }
 
 /**
+ * models.dev's `cacheWrite` rate encodes Anthropic's 5-minute-TTL write premium
+ * (1.25x base input). A 1h breakpoint costs ~1.6x more to write (2x vs 1.25x base
+ * input), so scale the catalog rate when the caller reports a 1h TTL. Only
+ * Anthropic populates `inputTokenDetails.cacheWrite`, so this is safe to apply
+ * unconditionally — it's a no-op whenever there are no cache-write tokens.
+ */
+function resolveCacheWriteRate(
+	cost: ModelCost,
+	anthropicCacheTtl: '5m' | '1h' | undefined,
+): number {
+	const isOneHour = anthropicCacheTtl === '1h';
+	return cost.cacheWrite !== undefined
+		? cost.cacheWrite * (isOneHour ? 1.6 : 1)
+		: cost.input * (isOneHour ? 2 : 1.25);
+}
+
+/**
  * Compute the cost in USD from token usage and per-million-token pricing.
+ * When `usage.inputTokenDetails` is present, prompt tokens are billed per
+ * cache tier (no-cache / cache read / cache write) using the catalog's cache
+ * rates. When a tier's catalog rate is unavailable, cache reads fall back to
+ * the flat input rate; cache writes fall back to the input rate scaled by
+ * Anthropic's write premium (see {@link resolveCacheWriteRate}).
+ * `anthropicCacheTtl` scales the cache-write rate for Anthropic's 1h tier;
+ * ignored when there are no cache-write tokens.
  */
 export function computeCost(
-	usage: { promptTokens: number; completionTokens: number },
+	usage: {
+		promptTokens: number;
+		completionTokens: number;
+		inputTokenDetails?: { noCache?: number; cacheRead?: number; cacheWrite?: number };
+	},
 	cost: ModelCost,
+	options?: { anthropicCacheTtl?: '5m' | '1h' },
 ): number {
-	const inputCost = (usage.promptTokens / 1_000_000) * cost.input;
+	const details = usage.inputTokenDetails;
+	let inputCost: number;
+	if (details) {
+		const noCache = details.noCache ?? 0;
+		const cacheRead = details.cacheRead ?? 0;
+		const cacheWrite = details.cacheWrite ?? 0;
+		// Any prompt tokens not covered by the breakdown are billed at the full input rate.
+		const remaining = Math.max(usage.promptTokens - (noCache + cacheRead + cacheWrite), 0);
+		inputCost =
+			((noCache + remaining) / 1_000_000) * cost.input +
+			(cacheRead / 1_000_000) * (cost.cacheRead ?? cost.input) +
+			(cacheWrite / 1_000_000) * resolveCacheWriteRate(cost, options?.anthropicCacheTtl);
+	} else {
+		inputCost = (usage.promptTokens / 1_000_000) * cost.input;
+	}
+
 	const outputCost = (usage.completionTokens / 1_000_000) * cost.output;
 	return inputCost + outputCost;
 }

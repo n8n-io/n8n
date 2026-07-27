@@ -149,8 +149,12 @@ const unsafeObjectProperties = new Set([
 ]);
 
 export function __sanitize(value: unknown): unknown {
-	if (typeof value === 'string' && unsafeObjectProperties.has(value)) {
-		throw new ExpressionError(`Cannot access "${value}" due to security concerns`);
+	// Symbols are not string-coercible and fall outside the denylist; pass through.
+	if (typeof value === 'symbol') return value;
+	// Coerce once and return the string so the caller uses the already-checked key.
+	const key = String(value);
+	if (unsafeObjectProperties.has(key)) {
+		throw new ExpressionError(`Cannot access "${key}" due to security concerns`);
 	}
-	return value;
+	return key;
 }

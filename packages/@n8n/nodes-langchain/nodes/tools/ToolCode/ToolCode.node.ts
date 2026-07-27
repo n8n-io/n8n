@@ -121,6 +121,14 @@ function getTool(
 			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json: { response } }]]);
 		}
 
+		// When invoked from `execute` (log=false) the engine, not the agent, is
+		// driving execution: throw so workflow-execute can record the error
+		// against the tool run. Continue-on-fail for AI tools still lets the
+		// agent receive the error and decide whether to retry.
+		if (executionError && !log) {
+			throw executionError;
+		}
+
 		return response;
 	};
 

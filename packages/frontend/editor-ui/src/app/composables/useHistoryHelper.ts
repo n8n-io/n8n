@@ -1,11 +1,12 @@
 import { MAIN_HEADER_TABS } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import type { WorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import type { Undoable } from '@/app/models/history';
 import { BulkCommand, Command } from '@/app/models/history';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useUIStore } from '@/app/stores/ui.store';
 
-import { onMounted, onUnmounted, nextTick } from 'vue';
+import { onMounted, onUnmounted, nextTick, computed, type Ref } from 'vue';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { getNodeViewTab } from '@/app/utils/nodeViewUtils';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
@@ -14,10 +15,15 @@ import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.u
 
 const ELEMENT_UI_OVERLAY_SELECTOR = '.el-overlay';
 
-export function useHistoryHelper(activeRoute: RouteLocationNormalizedLoaded) {
+export function useHistoryHelper(
+	activeRoute: RouteLocationNormalizedLoaded,
+	workflowDocumentId: Readonly<Ref<WorkflowDocumentId | null>>,
+) {
 	const telemetry = useTelemetry();
 
-	const ndvStore = useNDVStore();
+	const ndvStore = computed(() =>
+		workflowDocumentId.value ? useNDVStore(workflowDocumentId.value) : null,
+	);
 	const historyStore = useHistoryStore();
 	const uiStore = useUIStore();
 
@@ -91,7 +97,7 @@ export function useHistoryHelper(activeRoute: RouteLocationNormalizedLoaded) {
 	}
 
 	function trackUndoAttempt() {
-		const activeNode = ndvStore.activeNode;
+		const activeNode = ndvStore.value?.activeNode;
 		if (activeNode) {
 			telemetry?.track('User hit undo in NDV', { node_type: activeNode.type });
 		}
@@ -110,7 +116,7 @@ export function useHistoryHelper(activeRoute: RouteLocationNormalizedLoaded) {
 
 	function handleKeyDown(event: KeyboardEvent) {
 		const currentNodeViewTab = getNodeViewTab(activeRoute);
-		const isNDVOpen = ndvStore.isNDVOpen;
+		const isNDVOpen = ndvStore.value?.isNDVOpen;
 		const isAnyModalOpen = uiStore.isAnyModalOpen || isMessageDialogOpen();
 		const undoKeysPressed = isCtrlKeyPressed(event) && event.key.toLowerCase() === 'z';
 

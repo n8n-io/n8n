@@ -1,6 +1,6 @@
 import type { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type WebSocket from 'ws';
 
 import { WsStatusCodes } from '@/constants';
@@ -23,7 +23,7 @@ describe('TaskBrokerWsServer', () => {
 
 	describe('heartbeat timer', () => {
 		it('should set up heartbeat timer on server start', async () => {
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 
 			const server = new TaskBrokerWsServer(
 				mock(),
@@ -45,8 +45,8 @@ describe('TaskBrokerWsServer', () => {
 		});
 
 		it('should clear heartbeat timer on server stop', async () => {
-			jest.spyOn(global, 'setInterval');
-			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+			vi.spyOn(global, 'setInterval');
+			const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
 
 			const server = new TaskBrokerWsServer(
 				mock(),
@@ -64,7 +64,7 @@ describe('TaskBrokerWsServer', () => {
 		});
 
 		it('should close connection with protocol error code when heartbeat check fails', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			const server = new TaskBrokerWsServer(
 				mock(),
 				mock(),
@@ -80,14 +80,14 @@ describe('TaskBrokerWsServer', () => {
 
 			server.start();
 
-			jest.advanceTimersByTime(30 * Time.seconds.toMilliseconds);
+			vi.advanceTimersByTime(30 * Time.seconds.toMilliseconds);
 
 			await Promise.resolve();
 
 			expect(ws.close).toHaveBeenCalledWith(WsStatusCodes.CloseProtocolError);
 
 			await server.stop();
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 	});
 

@@ -1,0 +1,4 @@
+{
+	"id": "http-bearer-auth",
+	"prompt": "Build a workflow that runs manually, calls GET https://api.example.com/v1/items with a Bearer token, and writes the response to a file. Configure all nodes completely and don't ask me for credentials — I'll set them up later."
+}

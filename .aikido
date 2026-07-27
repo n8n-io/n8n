@@ -1,0 +1,21 @@
+# Aikido scan configuration
+# https://help.aikido.dev/code-scanning/scanning-practices/ignore-via-code-with-aikido-files
+# Path matching is plain substring against the full file path (no globs),
+# so fragment entries below act as suffix/segment wildcards.
+
+exclude:
+  paths:
+    # Machine-generated instance-AI expectation traces. Contain ephemeral
+    # credential reference IDs (nanoids) that re-trip the secrets scanner
+    # on every regeneration. No secret material.
+    - packages/testing/playwright/expectations
+
+    # Test code repo-wide. Fixtures routinely contain synthetic PEM blocks,
+    # basic-auth strings, and deliberately fake keys (including the secret
+    # scrubber's own tests). Verified 0/20 true-positive rate to date.
+    - .test.ts
+    - __tests__/
+    - /test/
+
+    # Test fixtures by convention.
+    - .fixture.ts

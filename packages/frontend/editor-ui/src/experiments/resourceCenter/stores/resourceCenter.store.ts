@@ -14,7 +14,6 @@ import { OPEN_AI_API_CREDENTIAL_TYPE, deepCopy } from 'n8n-workflow';
 import { quickStartWorkflows } from '../data/quickStartWorkflows';
 
 const LOCAL_STORAGE_CREDENTIAL_KEY = 'N8N_READY_TO_RUN_OPENAI_CREDENTIAL_ID';
-const TOOLTIP_STORAGE_KEY = 'n8n-resourceCenter-tooltipDismissed';
 const SIDEBAR_AUTO_EXPANDED_KEY = 'n8n-resourceCenter-sidebarAutoExpanded';
 
 export const useResourceCenterStore = defineStore('resourceCenter', () => {
@@ -26,7 +25,6 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 	const router = useRouter();
 
 	const isLoadingTemplates = ref(false);
-	const hasTooltipBeenDismissed = ref(localStorage.getItem(TOOLTIP_STORAGE_KEY) === 'true');
 	const hasSidebarBeenAutoExpanded = ref(
 		localStorage.getItem(SIDEBAR_AUTO_EXPANDED_KEY) === 'true',
 	);
@@ -36,23 +34,6 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 			RESOURCE_CENTER_EXPERIMENT.name,
 			RESOURCE_CENTER_EXPERIMENT.variant,
 		);
-
-	const shouldShowResourceCenterTooltip = computed(() => {
-		return isFeatureEnabled() && !hasTooltipBeenDismissed.value;
-	});
-
-	function markResourceCenterTooltipDismissed() {
-		hasTooltipBeenDismissed.value = true;
-		localStorage.setItem(TOOLTIP_STORAGE_KEY, 'true');
-	}
-
-	function trackResourceCenterTooltipView() {
-		telemetry.track('User viewed resource center tooltip');
-	}
-
-	function trackResourceCenterTooltipDismiss() {
-		telemetry.track('User dismissed resource center tooltip');
-	}
 
 	async function fetchTemplateById(templateId: number): Promise<ITemplatesWorkflowFull | null> {
 		try {
@@ -142,17 +123,13 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 	return {
 		isFeatureEnabled,
 		isLoadingTemplates,
-		shouldShowResourceCenterTooltip,
 		shouldAutoExpandSidebar,
 		fetchTemplateById,
 		loadTemplates,
 		getTemplateRoute,
 		createAndOpenQuickStartWorkflow,
-		markResourceCenterTooltipDismissed,
 		markSidebarAutoExpanded,
 		trackResourceCenterView,
-		trackResourceCenterTooltipView,
-		trackResourceCenterTooltipDismiss,
 		trackTileClick,
 	};
 });

@@ -1,25 +1,26 @@
 import type { Logger } from '@n8n/backend-common';
+import type { Mocked } from 'vitest';
 
 import { HttpHeaderExtractor } from '../http-header-extractor';
 import { createOptions, createTriggerItem } from './utils';
 
 describe('HttpHeaderExtractor', () => {
 	let extractor: HttpHeaderExtractor;
-	let mockLogger: jest.Mocked<Logger>;
+	let mockLogger: Mocked<Logger>;
 
 	beforeAll(() => {
 		mockLogger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-		} as unknown as jest.Mocked<Logger>;
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+		} as unknown as Mocked<Logger>;
 
 		extractor = new HttpHeaderExtractor(mockLogger);
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('isApplicableToTriggerNode', () => {

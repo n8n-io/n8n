@@ -1,10 +1,9 @@
 import type { GatewayConfig } from '@n8n/computer-use/config';
-import type { DaemonOptions } from '@n8n/computer-use/daemon';
-import { startDaemon } from '@n8n/computer-use/daemon';
-import type { GatewaySession } from '@n8n/computer-use/gateway-session';
+import { GatewayClient } from '@n8n/computer-use/gateway-client';
+import { GatewaySession } from '@n8n/computer-use/gateway-session';
 import { logger } from '@n8n/computer-use/logger';
+import { SettingsStore } from '@n8n/computer-use/settings-store';
 import { EventEmitter } from 'node:events';
-import type * as http from 'node:http';
 
 import type { DaemonStatus, StatusSnapshot } from '../shared/types';
 
@@ -15,108 +14,121 @@ export interface DaemonControllerEvents {
 }
 
 export class DaemonController extends EventEmitter<DaemonControllerEvents> {
-	private server: http.Server | null = null;
-	private _port: number | null = null;
-	private _status: DaemonStatus = 'stopped';
+	private client: GatewayClient | null = null;
+	private session: GatewaySession | null = null;
+	private settingsStore: SettingsStore | null = null;
+	private _status: DaemonStatus = 'disconnected';
 	private _connectedUrl: string | null = null;
-	private _connectedAt: string | null = null;
+	private _lastError: string | null = null;
 
 	getSnapshot(): StatusSnapshot {
 		return {
 			status: this._status,
 			connectedUrl: this._connectedUrl,
-			connectedAt: this._connectedAt,
+			lastError: this._lastError,
 		};
 	}
 
-	isRunning(): boolean {
-		return this._status !== 'stopped';
+	private async getSettingsStore(): Promise<SettingsStore> {
+		this.settingsStore = this.settingsStore ?? (await SettingsStore.create());
+		return this.settingsStore;
 	}
 
-	start(
-		config: GatewayConfig,
-		confirmConnect: (url: string, session: GatewaySession) => boolean,
-	): void {
-		if (this.server) {
-			logger.debug('Daemon start requested but already running — ignoring');
-			return;
-		}
-
-		this._port = config.port;
-		logger.debug('Daemon starting', { port: config.port });
-
-		this.setStatus('starting');
-
-		const options: DaemonOptions = {
-			managedMode: true,
-			confirmConnect,
-			confirmResourceAccess: () => 'denyOnce' as const,
-			onStatusChange: (status, url) => {
-				if (status === 'connected') {
-					logger.info('Daemon connected', { url });
-					this._connectedUrl = url ?? null;
-					this._connectedAt = new Date().toISOString();
-					this.setStatus('connected');
-				} else {
-					logger.info('Daemon disconnected');
-					this._connectedUrl = null;
-					this._connectedAt = null;
-					this.setStatus('disconnected');
-				}
-			},
-		};
-		this.server = startDaemon(config, options);
-
-		// Server is now listening (or will be shortly) — mark as waiting
-		this.server.once('listening', () => {
-			if (this._status === 'starting') {
-				this.setStatus('waiting');
-			}
-		});
-
-		this.server.once('error', (e: Error) => {
-			logger.error('Daemon server error', { error: e.message });
-			this.server = null;
-			this.setStatus('stopped');
-		});
-	}
-
-	async disconnectClient(): Promise<void> {
-		logger.debug('Disconnecting client');
-		if (!this.server || this._port === null) return;
-		try {
-			await fetch(`http://localhost:${this._port}/disconnect`, { method: 'POST' });
-		} catch {
-			// Server may be unreachable — ignore
-		}
-	}
-
-	async stop(): Promise<void> {
-		logger.debug('Daemon stopping');
-
-		if (!this.server) {
-			this.setStatus('stopped');
-			return;
-		}
-
-		if (this._port !== null) {
+	private async closeCurrentConnection(options: { preserveServerSession: boolean }): Promise<void> {
+		if (this.client) {
 			try {
-				await fetch(`http://localhost:${this._port}/disconnect`, { method: 'POST' });
-			} catch {
-				// Server may already be unreachable — proceed with close
+				if (options.preserveServerSession) {
+					await this.client.stop();
+				} else {
+					await this.client.disconnect();
+				}
+			} catch (error) {
+				logger.warn('Gateway teardown failed', {
+					error: error instanceof Error ? error.message : String(error),
+				});
 			}
 		}
 
-		await new Promise<void>((resolve) => {
-			this.server!.close(() => {
-				this.server = null;
-				this._port = null;
-				this._connectedUrl = null;
-				this._connectedAt = null;
-				this.setStatus('stopped');
-				resolve();
-			});
+		if (this.session) {
+			await this.session.flush();
+		}
+
+		this.client = null;
+		this.session = null;
+		this._connectedUrl = null;
+	}
+
+	private formatErrorMessage(error: unknown): string {
+		if (error instanceof Error) return error.message;
+		if (typeof error === 'string') return error;
+		try {
+			return JSON.stringify(error);
+		} catch {
+			return String(error);
+		}
+	}
+
+	async connect(config: GatewayConfig, url: string, apiKey: string): Promise<void> {
+		const normalizedUrl = url.replace(/\/$/, '');
+		logger.debug('Direct gateway connect requested', { url: normalizedUrl });
+
+		this.setStatus('connecting');
+		this._lastError = null;
+
+		await this.closeCurrentConnection({ preserveServerSession: true });
+		const store = await this.getSettingsStore();
+		const defaults = store.getDefaults(config);
+		const session = new GatewaySession(defaults, store);
+		const client = new GatewayClient({
+			url: normalizedUrl,
+			apiKey,
+			config,
+			session,
+			confirmResourceAccess: () => 'denyOnce',
+			onPersistentFailure: () => {
+				this.afterGatewayPersistentFailure();
+			},
+			onDisconnected: () => {
+				this.afterGatewayDisconnected();
+			},
 		});
+
+		try {
+			await client.start();
+			this.client = client;
+			this.session = session;
+			this._connectedUrl = normalizedUrl;
+			this.setStatus('connected');
+		} catch (error) {
+			this._lastError = this.formatErrorMessage(error);
+			this.clearConnectionState('error');
+			throw new Error(this._lastError);
+		}
+	}
+
+	async disconnect(): Promise<void> {
+		await this.closeCurrentConnection({ preserveServerSession: false });
+		this.setStatus('disconnected');
+	}
+
+	private afterGatewayPersistentFailure(): void {
+		this._lastError = 'Gateway authentication failed repeatedly';
+		void this.closeCurrentConnection({ preserveServerSession: true }).finally(() => {
+			this.setStatus('error');
+		});
+	}
+
+	private afterGatewayDisconnected(): void {
+		void this.closeCurrentConnection({ preserveServerSession: true }).finally(() => {
+			this.setStatus('disconnected');
+		});
+	}
+
+	private clearConnectionState(status: DaemonStatus): void {
+		this.client = null;
+		this.session = null;
+		this._connectedUrl = null;
+		this.setStatus(status);
 	}
 
 	private setStatus(status: DaemonStatus): void {

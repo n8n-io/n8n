@@ -15,7 +15,7 @@ const inputSchema = z.object({
 export const writeFileTool: ToolDefinition<typeof inputSchema> = {
 	name: 'write_file',
 	description:
-		'Create a new file with the given content. Overwrites if the file already exists. Content must not exceed 512 KB.',
+		'Create a new file with the given content. Overwrites if the file already exists. Content must not exceed 1 MB.',
 	inputSchema,
 	annotations: {},
 	async getAffectedResources({ filePath }, { dir }) {

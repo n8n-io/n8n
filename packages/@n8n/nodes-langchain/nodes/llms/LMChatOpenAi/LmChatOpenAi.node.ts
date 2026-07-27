@@ -1,6 +1,7 @@
 import { ChatOpenAI, type ChatOpenAIFields, type ClientOptions } from '@langchain/openai';
 import pick from 'lodash/pick';
 import {
+	assertCredentialAllowsUrl,
 	NodeConnectionTypes,
 	type INodeProperties,
 	type IDataObject,
@@ -10,8 +11,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
-import { mergeCustomHeaders } from '@utils/helpers';
+import { getCustomCredentialHeader, mergeCustomHeaders } from '@utils/helpers';
 
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 import {
@@ -759,7 +759,13 @@ export class LmChatOpenAi implements INodeType {
 		};
 
 		if (options.baseURL) {
-			checkDomainRestrictions(this, credentials, options.baseURL);
+			assertCredentialAllowsUrl({
+				node: this.getNode(),
+				credentialData: credentials,
+				url: options.baseURL,
+				pinnedUrl: typeof credentials.url === 'string' ? credentials.url : undefined,
+				surface: 'OpenAI',
+			});
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;
@@ -772,6 +778,7 @@ export class LmChatOpenAi implements INodeType {
 				bodyTimeout: timeout,
 			}),
 		};
+		const customHeader = getCustomCredentialHeader(credentials);
 		configuration.defaultHeaders = mergeCustomHeaders(
 			credentials,
 			(configuration.defaultHeaders ?? {}) as Record<string, string>,
@@ -805,7 +812,9 @@ export class LmChatOpenAi implements INodeType {
 			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
-			callbacks: [new N8nLlmTracing(this)],
+			callbacks: [
+				new N8nLlmTracing(this, { redactedHeaders: customHeader ? [customHeader.name] : [] }),
+			],
 			modelKwargs,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 			// Set to false to ensure compatibility with OpenAI-compatible backends (LM Studio, vLLM, etc.)

@@ -25,7 +25,7 @@ describe('useFolders', () => {
 		vi.clearAllMocks();
 	});
 
-	const { validateFolderName, onDragStart, onDragEnd } = useFolders();
+	const { validateFolderName, onDragStart, onDragEnd, handleDrop } = useFolders();
 
 	describe('validateFolderName', () => {
 		describe('Valid folder names', () => {
@@ -204,6 +204,61 @@ describe('useFolders', () => {
 			expect(document.body.classList.contains('dragging-resource')).toBe(false);
 			expect(mockFoldersStore.draggedElement).toBeNull();
 			expect(mockFoldersStore.activeDropTarget).toBeNull();
+		});
+	});
+
+	describe('handleDrop', () => {
+		it('should return a valid drag and drop pair for a valid folder to folder drop', () => {
+			const element = document.createElement('div');
+			element.setAttribute('data-target', 'folder');
+			element.setAttribute('data-resourceid', 'folder-456');
+			element.setAttribute('data-resourcename', 'Target Folder');
+			document.body.appendChild(element);
+
+			document.body.classList.add('dragging-resource');
+			const expectedDraggedResource = { type: 'folder', id: 'folder-123', name: 'Some Folder' };
+			mockFoldersStore.draggedElement = expectedDraggedResource;
+
+			const expectedDropTarget = {
+				type: 'folder',
+				id: 'folder-456',
+				name: 'Target Folder',
+			};
+
+			mockFoldersStore.activeDropTarget = expectedDropTarget;
+
+			const result = handleDrop({
+				target: element,
+				preventDefault: vi.fn(),
+			} as unknown as MouseEvent);
+
+			expect(result).to.deep.equal({
+				draggedResource: expectedDraggedResource,
+				dropTarget: expectedDropTarget,
+			});
+
+			document.body.removeChild(element);
+		});
+
+		it('should not allow dropping a folder onto itself', () => {
+			const element = document.createElement('div');
+			element.setAttribute('data-target', 'folder');
+			element.setAttribute('data-resourceid', 'folder-123');
+			element.setAttribute('data-resourcename', 'Test');
+			document.body.appendChild(element);
+
+			document.body.classList.add('dragging-resource');
+			mockFoldersStore.draggedElement = { type: 'folder', id: 'folder-123', name: 'Test' };
+			mockFoldersStore.activeDropTarget = { type: 'folder', id: 'folder-123', name: 'Test' };
+
+			const result = handleDrop({
+				target: element,
+				preventDefault: vi.fn(),
+			} as unknown as MouseEvent);
+
+			expect(result).to.deep.equal({});
+
+			document.body.removeChild(element);
 		});
 	});
 });

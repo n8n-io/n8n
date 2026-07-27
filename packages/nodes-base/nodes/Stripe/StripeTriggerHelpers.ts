@@ -1,74 +1,86 @@
-import { createHmac, timingSafeEqual } from 'crypto';
+import { createHmac } from 'crypto';
 import type { IWebhookFunctions } from 'n8n-workflow';
 
-export async function verifySignature(this: IWebhookFunctions): Promise<boolean> {
+import { verifySignature as verifySignatureGeneric } from '../../utils/webhook-signature-verification';
+
+function getSignatureHeaderValue(signature: string | null, key: 't' | 'v1') {
+	if (!signature) {
+		return null;
+	}
+
+	let value: string | null = null;
+
+	for (const element of signature.split(',')) {
+		const trimmedElement = element.trim();
+		if (trimmedElement.startsWith(`${key}=`)) {
+			value = trimmedElement.substring(key.length + 1);
+		}
+	}
+
+	return value;
+}
+
+async function getSigningSecret(this: IWebhookFunctions): Promise<string | null> {
+	const webhookData = this.getWorkflowStaticData('node');
+	const webhookSecret = webhookData.webhookSecret;
+
+	if (typeof webhookSecret === 'string' && webhookSecret !== '') {
+		return webhookSecret;
+	}
+
 	const credential = await this.getCredentials('stripeApi');
-	if (!credential?.signatureSecret) {
-		return true; // No signature secret provided, skip verification
+	const credentialSecret = credential?.signatureSecret;
+
+	if (typeof credentialSecret === 'string' && credentialSecret !== '') {
+		return credentialSecret;
+	}
+
+	return null;
+}
+
+export async function verifySignature(this: IWebhookFunctions): Promise<boolean> {
+	let signingSecret: string | null;
+
+	try {
+		signingSecret = await getSigningSecret.call(this);
+	} catch (error) {
+		return false;
 	}
 
 	const req = this.getRequestObject();
 
-	const signature = req.header('stripe-signature');
-	if (!signature) {
-		return false;
+	if (!signingSecret) {
+		return true;
 	}
 
-	// Parse the Stripe signature header
-	const elements = signature.split(',');
-	let timestamp: string | undefined;
-	let signatureValue: string | undefined;
+	const getSignatureHeader = () => {
+		const signature = req.header('stripe-signature');
+		return typeof signature === 'string' ? signature : null;
+	};
+	const getTimestamp = () => getSignatureHeaderValue(getSignatureHeader(), 't');
 
-	for (const element of elements) {
-		if (element.startsWith('t=')) {
-			timestamp = element.substring(2);
-		} else if (element.startsWith('v1=')) {
-			signatureValue = element.substring(3);
-		}
-	}
+	return verifySignatureGeneric({
+		getExpectedSignature: () => {
+			if (!signingSecret || req.rawBody === undefined || req.rawBody === null) {
+				return null;
+			}
 
-	if (!timestamp || !signatureValue) {
-		return false;
-	}
+			const timestamp = getTimestamp();
+			if (!timestamp) {
+				return null;
+			}
 
-	// Verify timestamp
-	const currentTimestamp = Math.floor(Date.now() / 1000);
-	const webhookTimestamp = parseInt(timestamp, 10);
-	const TIMESTAMP_TOLERANCE_SECONDS = 300; // 5 minutes
-
-	if (Math.abs(currentTimestamp - webhookTimestamp) > TIMESTAMP_TOLERANCE_SECONDS) {
-		return false;
-	}
-
-	try {
-		if (typeof credential.signatureSecret !== 'string') {
-			return false;
-		}
-
-		if (!req.rawBody) {
-			return false;
-		}
-
-		let rawBodyString: string;
-		if (Buffer.isBuffer(req.rawBody)) {
-			rawBodyString = req.rawBody.toString();
-		} else {
-			rawBodyString = typeof req.rawBody === 'string' ? req.rawBody : JSON.stringify(req.rawBody);
-		}
-
-		const signedPayload = `${timestamp}.${rawBodyString}`;
-		const hmac = createHmac('sha256', credential.signatureSecret);
-		hmac.update(signedPayload);
-		const computedSignature = hmac.digest('hex');
-
-		const computedBuffer = Buffer.from(computedSignature);
-		const providedBuffer = Buffer.from(signatureValue);
-
-		return (
-			computedBuffer.length === providedBuffer.length &&
-			timingSafeEqual(computedBuffer, providedBuffer)
-		);
-	} catch (error) {
-		return false;
-	}
+			const rawBodyString = Buffer.isBuffer(req.rawBody)
+				? req.rawBody.toString()
+				: typeof req.rawBody === 'string'
+					? req.rawBody
+					: JSON.stringify(req.rawBody);
+			const signedPayload = `${timestamp}.${rawBodyString}`;
+			const hmac = createHmac('sha256', signingSecret);
+			hmac.update(signedPayload);
+			return hmac.digest('hex');
+		},
+		getActualSignature: () => getSignatureHeaderValue(getSignatureHeader(), 'v1'),
+		getTimestamp,
+	});
 }

@@ -35,6 +35,44 @@ describe('Image Analyze Operation', () => {
 		vi.resetAllMocks();
 	});
 
+	describe('empty text validation', () => {
+		it('should throw error when text is empty', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params = {
+					modelId: 'gpt-4o',
+					text: '',
+					inputType: 'url',
+					imageUrls: 'https://example.com/image.jpg',
+					simplify: true,
+					options: {},
+				};
+				return params[paramName as keyof typeof params];
+			});
+
+			await expect(execute.call(mockExecuteFunctions, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should throw error when text is whitespace-only', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params = {
+					modelId: 'gpt-4o',
+					text: '   ',
+					inputType: 'url',
+					imageUrls: 'https://example.com/image.jpg',
+					simplify: true,
+					options: {},
+				};
+				return params[paramName as keyof typeof params];
+			});
+
+			await expect(execute.call(mockExecuteFunctions, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+	});
+
 	describe('successful execution with URL input', () => {
 		beforeEach(() => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
@@ -538,7 +576,7 @@ describe('Image Analyze Operation', () => {
 			});
 		});
 
-		it('should use default text when not specified', async () => {
+		it('should throw error when text is not specified (defaults to empty)', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(paramName: string, _index: number, defaultValue?: any) => {
 					const params: Record<string, any> = {
@@ -550,45 +588,16 @@ describe('Image Analyze Operation', () => {
 					};
 
 					if (paramName === 'text') {
-						return defaultValue; // Should return empty string as default
+						return defaultValue; // Returns empty string as default
 					}
 
 					return params[paramName];
 				},
 			);
 
-			const mockResponse = {
-				id: 'response-default-text',
-				status: 'completed',
-				output: [
-					{
-						type: 'message',
-						role: 'assistant',
-						content: [{ type: 'output_text', text: 'Analysis with default text.' }],
-					},
-				],
-			} as ChatResponse;
-
-			apiRequestSpy.mockResolvedValue(mockResponse);
-
-			await execute.call(mockExecuteFunctions, 0);
-
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
-				body: expect.objectContaining({
-					input: [
-						{
-							role: 'user',
-							content: [
-								{
-									type: 'input_text',
-									text: '',
-								},
-								expect.any(Object),
-							],
-						},
-					],
-				}),
-			});
+			await expect(execute.call(mockExecuteFunctions, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
 		});
 
 		it('should use default maxTokens when not specified in options', async () => {

@@ -127,9 +127,8 @@ export function getMappedSamlAttributesFromFlowResult(
 		missingAttributes: [] as string[],
 		rawAttributes: {},
 	};
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
 	if (flowResult?.extract?.attributes) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const attributes = flowResult.extract.attributes as { [key: string]: string | string[] };
 		result.rawAttributes = attributes as Record<string, unknown>;
 		// TODO:SAML: fetch mapped attributes from flowResult.extract.attributes and create or login user
