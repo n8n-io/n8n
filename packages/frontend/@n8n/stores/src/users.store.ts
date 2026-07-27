@@ -12,6 +12,7 @@ import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
 import type { AssignableGlobalRole } from '@n8n/permissions';
 import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
 import * as mfaApi from '@n8n/rest-api-client/api/mfa';
+import * as ssoApi from '@n8n/rest-api-client/api/sso';
 import type {
 	UpdateGlobalRolePayload,
 	IUserResponse,
@@ -19,7 +20,6 @@ import type {
 	CurrentUserResponse,
 	IPersonalizationLatestVersion,
 } from '@n8n/rest-api-client/api/users';
-import * as ssoApi from '@n8n/rest-api-client/api/sso';
 import * as usersApi from '@n8n/rest-api-client/api/users';
 import { useAsyncState } from '@vueuse/core';
 import { defineStore } from 'pinia';

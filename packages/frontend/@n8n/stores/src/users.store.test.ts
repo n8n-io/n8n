@@ -5,15 +5,15 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from './users.store';
 
-const { loginCurrentUser, inviteUsers, login, logout, oidcLogout, getUsers } = vi.hoisted(() => {
+const { loginCurrentUser, inviteUsers, login, logout, getUsers, oidcLogout } = vi.hoisted(() => {
 	return {
 		loginCurrentUser: vi.fn(),
 		identify: vi.fn(),
 		inviteUsers: vi.fn(),
 		login: vi.fn(),
 		logout: vi.fn(),
-		oidcLogout: vi.fn(),
 		getUsers: vi.fn(),
+		oidcLogout: vi.fn(),
 	};
 });
 
