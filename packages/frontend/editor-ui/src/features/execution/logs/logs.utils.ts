@@ -95,9 +95,8 @@ function getChildNodes(
 	runIndex: number | undefined,
 	context: LogTreeCreationContext,
 ) {
-	// A completed run carries its sub-execution in task metadata; a run whose
-	// sub-workflow is still in flight has none yet, so fall back to the live
-	// registry keyed by this node run.
+	// A completed run carries its sub-execution in task metadata; one still in
+	// flight has none, so fall back to the live registry.
 	const subExecutionLocator =
 		findSubExecutionLocator(treeNode) ??
 		context.liveSubExecutions[liveSubExecutionKey(context.executionId, node.name, runIndex ?? 0)];
@@ -772,9 +771,8 @@ export function hasSubExecution(entry: LogEntry): boolean {
 }
 
 /**
- * Key a still-running sub-execution is registered under: the node run that
- * started it, scoped by the execution that run belongs to so nested
- * sub-workflows stay distinct.
+ * Key for a still-running sub-execution: the node run that started it, scoped by
+ * its execution so nested sub-workflows stay distinct.
  */
 export function liveSubExecutionKey(executionId: string, nodeName: string, runIndex: number) {
 	return `${executionId}:${nodeName}:${runIndex}`;

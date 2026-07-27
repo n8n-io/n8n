@@ -1764,6 +1764,61 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.sendChunk).toHaveLength(0);
 		});
 
+		it('installs no push handlers without a push ref', async () => {
+			await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+			await lifecycleHooks.runHook('nodeExecuteBefore', [
+				'test-node',
+				{ startTime: 0, executionIndex: 0, source: [] },
+			]);
+
+			expect(push.send).not.toHaveBeenCalled();
+		});
+
+		describe('when the parent run carries a push ref', () => {
+			const subExecutionParent = {
+				executionId: 'parent-execution-id',
+				nodeName: 'Execute Sub-workflow',
+				runIndex: 2,
+			};
+
+			beforeEach(() => {
+				lifecycleHooks = getLifecycleHooksForSubExecutions({
+					mode: 'manual',
+					executionId,
+					workflowData,
+					pushRef,
+					subExecutionParent,
+				});
+			});
+
+			it('reports the node run that started it, so the editor can bind it', async () => {
+				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'executionStarted',
+						data: expect.objectContaining({ executionId, parent: subExecutionParent }),
+					}),
+					pushRef,
+				);
+			});
+
+			it('pushes its node events', async () => {
+				await lifecycleHooks.runHook('nodeExecuteBefore', [
+					'test-node',
+					{ startTime: 0, executionIndex: 0, source: [] },
+				]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'nodeExecuteBefore',
+						data: expect.objectContaining({ executionId, nodeName: 'test-node' }),
+					}),
+					pushRef,
+				);
+			});
+		});
+
 		describe('when parentExecution is provided', () => {
 			const parentWorkflowId = 'parent-workflow-id';
 			const parentExecutionId = 'parent-execution-id';

@@ -558,10 +558,8 @@ async function startExecution(
 			workflowId: workflowData.id,
 			workflowSettings,
 		});
-		// Editor-started runs stream their sub-executions' lifecycle events to the
-		// same push session, so the parent's canvas and log view can follow them
-		// live. `parentExecutionId` is the execution containing the node that
-		// started this one — the editor needs it to tell whether the sub-execution
+		// Editor-started runs stream their sub-executions to the same push session.
+		// The editor needs the calling execution to tell whether a sub-execution
 		// belongs to the run it is watching.
 		const parentExecutionId = additionalData.executionId;
 		additionalDataIntegrated.pushRef = additionalData.pushRef;

@@ -5,10 +5,9 @@ import { useExecutingNode } from '@/app/composables/useExecutingNode';
 export type SubExecutionLink = {
 	executionId: string;
 	workflowId: string;
-	/** Execution containing the node that started this one. */
 	parentExecutionId: string;
 	parentNodeName: string;
-	/** Run of that node — one sub-execution per iteration when it runs in a loop. */
+	/** One sub-execution per iteration when the node runs in a loop. */
 	parentNodeRunIndex: number;
 };
 
@@ -17,18 +16,12 @@ function parentNodeKey(parentExecutionId: string, parentNodeName: string) {
 }
 
 /**
- * Tracks the sub-workflow executions belonging to the run a document is watching.
+ * Tracks the sub-workflow executions of the run a document is watching. Their
+ * node events arrive under their own execution id, so registering them here is
+ * what lets the push handlers accept them instead of discarding them as foreign.
  *
- * A sub-workflow runs as its own execution, so its live node events arrive under
- * its own execution id. Registering them here is what lets the push handlers
- * accept those events instead of discarding them as foreign, the canvas mirror
- * them, and the log view nest them under the node that started them — all while
- * the run is still in flight.
- *
- * Only the newest sub-execution per parent node is kept. A node executing a
- * sub-workflow in a loop (or once per input item) produces one sub-execution per
- * iteration, and the canvas has a single node per name to show them on, so
- * superseded iterations are dropped rather than piling up.
+ * Only the newest sub-execution per parent node is kept: the canvas has one node
+ * per name, so superseded loop iterations are dropped rather than piling up.
  */
 export function useSubExecutions() {
 	const byExecutionId = ref(new Map<string, SubExecutionLink>());
@@ -36,11 +29,9 @@ export function useSubExecutions() {
 	const currentByParentNode = ref(new Map<string, string>());
 
 	/**
-	 * Node currently executing inside a sub-execution. Kept apart from the parent
-	 * run's queue: the two executions number their node events independently, so
-	 * sharing one queue would make them fight over which node is current — and the
-	 * node executing the sub-workflow should keep its own indicator while its
-	 * child advances.
+	 * Node currently executing inside a sub-execution. Separate from the parent
+	 * run's queue, which numbers its node events independently and whose calling
+	 * node stays running while the child advances.
 	 */
 	const executingNode = useExecutingNode();
 
@@ -82,9 +73,8 @@ export function useSubExecutions() {
 	}
 
 	/**
-	 * Registers a sub-execution, superseding the previous one started by the same
-	 * parent node. Returns the ids it superseded — that iteration plus everything
-	 * it started in turn — so the caller can dispose their data.
+	 * Registers a sub-execution, superseding the previous one from the same parent
+	 * node. Returns the superseded ids (and their descendants) to dispose.
 	 */
 	function register(link: SubExecutionLink): string[] {
 		const key = parentNodeKey(link.parentExecutionId, link.parentNodeName);

@@ -9,14 +9,10 @@ import type { IWorkflowDb } from '@/Interface';
 import type { PushHandlerOptions } from './types';
 
 /**
- * Registers a starting sub-workflow execution against the run being watched and
- * seeds its execution-data store, so its node events have somewhere to land.
- *
- * The store is seeded with the sub-workflow's own node snapshot when it is the
- * workflow on the canvas — a workflow calling itself — because that is what lets
- * the canvas mirror the sub-execution's progress. For any other sub-workflow the
- * editor has no node snapshot to hand, so the store carries run data only; the
- * log view resolves the graph it needs separately.
+ * Registers a starting sub-workflow execution and seeds its data store so its
+ * node events have somewhere to land. Seeded with the canvas's node snapshot for
+ * a workflow calling itself, which is what lets the canvas mirror it; any other
+ * sub-workflow carries run data only and the log view resolves its graph itself.
  */
 function startSubExecution(
 	data: ExecutionStarted['data'],
@@ -74,10 +70,9 @@ export async function executionStarted(
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 	const isIframe = window !== window.parent;
 
-	// A sub-workflow execution of the run being watched. It is its own execution,
-	// so it gets its own data store rather than the pending/active slots — and it
-	// must not go through the checks below, whose whole point is to keep another
-	// workflow's execution from hijacking those slots.
+	// Its own execution, so it gets its own data store rather than the
+	// pending/active slots — and must skip the checks below, which exist to stop
+	// another workflow's execution from hijacking those slots.
 	if (data.parent) {
 		startSubExecution(data, data.parent, documentId);
 		return;

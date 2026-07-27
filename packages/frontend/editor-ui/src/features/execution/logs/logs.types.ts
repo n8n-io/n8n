@@ -72,9 +72,8 @@ export interface LogTreeCreationContext {
 	subWorkflowNodeGroups: Record<string, IWorkflowGroup[]>;
 	/**
 	 * Sub-executions still in flight, keyed by the node run that started them (see
-	 * `liveSubExecutionKey`). A node whose sub-workflow has not returned yet has no
-	 * `subExecution` metadata to locate it by, so this is what lets the log view
-	 * nest a sub-execution while it is still running.
+	 * `liveSubExecutionKey`). Such a run has no `subExecution` metadata yet, so
+	 * this is what lets the log view nest it mid-flight.
 	 */
 	liveSubExecutions: Record<string, RelatedExecution>;
 }

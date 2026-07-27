@@ -191,8 +191,8 @@ export class JobProcessor {
 		);
 		additionalData.hooks = lifecycleHooks;
 
-		// Mirrors the worker's own push gate above: sub-executions stream their
-		// lifecycle events to the session only when this execution does too.
+		// Mirrors the worker's push gate above: sub-executions push only when this
+		// execution does.
 		if (pushRef && execution.mode === 'manual') {
 			additionalData.pushRef = pushRef;
 		}

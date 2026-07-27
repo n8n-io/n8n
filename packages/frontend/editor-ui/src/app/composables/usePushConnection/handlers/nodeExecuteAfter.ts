@@ -20,10 +20,8 @@ export async function nodeExecuteAfter(
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 	const assistantStore = useAssistantStore();
 
-	// Ignore node events that don't belong to the execution this document is
-	// tracking, or to one of its sub-executions — a concurrent execution's node
-	// must not write into this document's data or fire its side effects (form
-	// popups, tracking, assistant).
+	// Ignore events for anything but the tracked execution or its sub-executions,
+	// so a concurrent run can't write here or fire side effects.
 	const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
 	const isSubExecution = workflowExecutionStateStore.isTrackedSubExecution(pushData.executionId);
 	if (activeExecutionId !== pushData.executionId && !isSubExecution) {
@@ -72,9 +70,8 @@ export async function nodeExecuteAfter(
 		: workflowExecutionStateStore.executingNode;
 	queue.removeExecutingNode(pushData.nodeName);
 
-	// Side effects. A form waiting inside a sub-workflow still needs its popup —
-	// it is the user this run is waiting on. Telemetry and the assistant are
-	// scoped to the workflow on screen, so they only cover its own nodes.
+	// A form waiting inside a sub-workflow still needs its popup. Telemetry and
+	// the assistant are scoped to the workflow on screen, so they skip it.
 	if (pushData.data.executionStatus === 'waiting' && pushData.data.metadata?.resumeFormUrl) {
 		openFormPopupWindow(pushData.data.metadata.resumeFormUrl);
 	} else if (pushData.data.executionStatus !== 'waiting' && !isSubExecution) {

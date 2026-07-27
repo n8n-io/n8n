@@ -486,10 +486,8 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		}
 
 		/**
-		 * Settles this execution's terminal status without touching its run data.
-		 * For an execution whose data arrived purely from live pushes — a
-		 * sub-execution of the run being watched — there is no authoritative copy to
-		 * re-fetch, so the accumulated data must survive the status change.
+		 * Settles the terminal status without touching run data. A sub-execution's
+		 * data comes purely from live pushes, so it must survive the status change.
 		 */
 		function setExecutionStatus(status: ExecutionStatus, stoppedAt: Date) {
 			if (!execution.value) return;

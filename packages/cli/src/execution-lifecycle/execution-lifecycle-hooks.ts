@@ -152,10 +152,7 @@ type HooksSetupParameters = {
 	parentExecution?: RelatedExecution;
 	source?: IWorkflowExecutionDataProcess['source'];
 	suppressErrorWorkflow?: IWorkflowExecutionDataProcess['suppressErrorWorkflow'];
-	/**
-	 * Node run that started this execution as a sub-workflow. Reported to the
-	 * editor so it can attribute this execution's live events to that node run.
-	 */
+	/** Node run that started this execution as a sub-workflow. */
 	subExecutionParent?: SubExecutionParent;
 };
 
@@ -416,9 +413,8 @@ function hookFunctionsPush(
 		// empty runData rather than skipping the push or leaking unredacted data.
 		let runDataToStringify: IRunData = {};
 		const hasRunData = data?.resultData.runData && Object.keys(data.resultData.runData).length > 0;
-		// Resolved only when there is run data to redact. An execution that starts
-		// empty — every sub-execution, and every run that isn't a retry or resume —
-		// would otherwise pay a user lookup it never reads.
+		// Only needed to redact run data, so an execution that starts empty (every
+		// sub-execution) skips the lookup.
 		const user = hasRunData ? await getUser() : null;
 
 		if (hasRunData && user) {
@@ -806,13 +802,9 @@ export type SubExecutionHooksOptions = {
 	parentExecution?: RelatedExecution;
 	projectId?: string;
 	projectName?: string;
-	/**
-	 * Push session watching the root execution, present only when an editor
-	 * started it. Set to also stream this sub-execution's lifecycle events to
-	 * that session.
-	 */
+	/** Set to stream this sub-execution's lifecycle events to the editor too. */
 	pushRef?: string;
-	/** Node run that started this sub-execution — see {@link SubExecutionParent}. */
+	/** Node run that started this sub-execution. */
 	subExecutionParent?: SubExecutionParent;
 };
 
@@ -840,10 +832,9 @@ export function getLifecycleHooksForSubExecutions({
 	hookFunctionsSaveProgress(hooks, { saveSettings });
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);
-	// A sub-execution is its own execution, so without this the editor watching
-	// the parent run would never hear about it and the sub-workflow's branch
-	// would stay idle on the canvas until the parent node returned. No-ops when
-	// `pushRef` is unset, which is the case for every production run.
+	// Without this the editor never hears about the sub-execution, leaving its
+	// branch idle until the calling node returns. No-ops without a `pushRef`,
+	// i.e. for every production run.
 	hookFunctionsPush(hooks, { saveSettings, pushRef, subExecutionParent }, userId);
 	Container.get(ModulesHooksRegistry).addHooks(hooks);
 	return hooks;
