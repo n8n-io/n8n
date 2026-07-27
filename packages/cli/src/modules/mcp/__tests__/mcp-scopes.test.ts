@@ -78,9 +78,12 @@ describe('getAllowedToolNames', () => {
 		expect(getAllowedToolNames(['tool:listWorkflows', 'openid'])).toEqual(new Set());
 	});
 
-	it('allows integration updates with agent:write but not agent:publish alone', () => {
-		expect(getAllowedToolNames(['agent:write'])).toContain('update_agent_integration');
-		expect(getAllowedToolNames(['agent:publish'])).not.toContain('update_agent_integration');
+	it('allows integration updates and publishing with agent:write', () => {
+		const allowed = getAllowedToolNames(['agent:write']);
+
+		expect(allowed).toContain('update_agent_integration');
+		expect(allowed).toContain('publish_agent');
+		expect(allowed).toContain('unpublish_agent');
 	});
 });
 

@@ -3315,7 +3315,6 @@
 	"settings.mcp.oAuthClients.scope.execution.read": "Get execution details",
 	"settings.mcp.oAuthClients.scope.agent.read": "List and read agents",
 	"settings.mcp.oAuthClients.scope.agent.write": "Create and update agents",
-	"settings.mcp.oAuthClients.scope.agent.publish": "Publish and unpublish agents",
 	"settings.mcp.oAuthClients.scope.credential.read": "List credentials",
 	"settings.mcp.oAuthClients.scope.dataTable.read": "List data tables",
 	"settings.mcp.oAuthClients.scope.dataTable.write": "Create and update data tables",

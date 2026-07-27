@@ -65,9 +65,9 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'validate_agent',
 		'get_agent_builder_reference',
 		'update_agent_integration',
+		'publish_agent',
+		'unpublish_agent',
 	],
-	// Publishing flips what runs live, so it is a separate consent grant from editing drafts.
-	'agent:publish': ['publish_agent', 'unpublish_agent'],
 	// explore_node_resources queries external services with stored credentials,
 	// so it must sit behind the credential scope rather than a workflow one.
 	'credential:read': ['list_credentials', 'list_n8n_connect_services', 'explore_node_resources'],
@@ -110,7 +110,6 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 export const AGENT_TOOLS: ReadonlySet<string> = new Set([
 	...TOOLS_BY_SCOPE['agent:read'],
 	...TOOLS_BY_SCOPE['agent:write'],
-	...TOOLS_BY_SCOPE['agent:publish'],
 ]);
 
 function isMcpScope(scope: string): scope is McpScope {
