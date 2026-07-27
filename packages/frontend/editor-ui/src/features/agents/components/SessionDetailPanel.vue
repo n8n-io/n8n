@@ -20,9 +20,9 @@ import RichInteractionCard from './RichInteractionCard.vue';
 import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
 import type { TimelineItem } from '../session-timeline.types';
-import { builtinToolLabelKey, isSubAgentTimelineItem } from '../session-timeline.utils';
+import { isSubAgentTimelineItem } from '../session-timeline.utils';
 import { delegateLabel } from '../utils/delegate-tool';
-import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 
 const i18n = useI18n();
 const router = useRouter();
@@ -136,8 +136,7 @@ function highlightJson(value: unknown, indent = 0): string {
 const toolDisplayName = computed((): string => {
 	if (!props.item || (props.item.kind !== 'tool' && props.item.kind !== 'suspension')) return '';
 	if (props.item.isUserFeedback) return i18n.baseText('agentSessions.timeline.userFeedback');
-	const key = builtinToolLabelKey(props.item.toolName, props.item.toolOutput);
-	return key ? i18n.baseText(key) : formatToolNameForDisplay(props.item.toolName);
+	return resolveToolNameForDisplay(props.item.toolName, i18n.baseText);
 });
 
 const isSubAgent = computed((): boolean =>

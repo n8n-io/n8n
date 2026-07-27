@@ -10,6 +10,10 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | ---- | ------- | ------- | ---- |
 | [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) | 6 |  | BASE TABLE |
 | [public.agent_checkpoints](public.agent_checkpoints.md) | 6 |  | BASE TABLE |
+| [public.agent_eval_dataset](public.agent_eval_dataset.md) | 10 |  | BASE TABLE |
+| [public.agent_eval_rating](public.agent_eval_rating.md) | 8 |  | BASE TABLE |
+| [public.agent_eval_result](public.agent_eval_result.md) | 15 |  | BASE TABLE |
+| [public.agent_eval_run](public.agent_eval_run.md) | 14 |  | BASE TABLE |
 | [public.agent_execution](public.agent_execution.md) | 19 |  | BASE TABLE |
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 17 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 8 |  | BASE TABLE |
@@ -17,7 +21,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_task_definition](public.agent_task_definition.md) | 7 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
 | [public.agent_task_snapshot](public.agent_task_snapshot.md) | 8 |  | BASE TABLE |
-| [public.agents](public.agents.md) | 11 |  | BASE TABLE |
+| [public.agents](public.agents.md) | 12 |  | BASE TABLE |
 | [public.agents_memory_entries](public.agents_memory_entries.md) | 13 |  | BASE TABLE |
 | [public.agents_memory_entry_cursors](public.agents_memory_entry_cursors.md) | 6 |  | BASE TABLE |
 | [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) | 6 |  | BASE TABLE |
@@ -40,7 +44,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.chat_hub_sessions](public.chat_hub_sessions.md) | 13 |  | BASE TABLE |
 | [public.chat_hub_tools](public.chat_hub_tools.md) | 9 |  | BASE TABLE |
 | [public.credential_dependency](public.credential_dependency.md) | 5 |  | BASE TABLE |
-| [public.credentials_entity](public.credentials_entity.md) | 11 |  | BASE TABLE |
+| [public.credentials_entity](public.credentials_entity.md) | 12 |  | BASE TABLE |
 | [public.data_table](public.data_table.md) | 5 |  | BASE TABLE |
 | [public.data_table_column](public.data_table_column.md) | 7 |  | BASE TABLE |
 | [public.deployment_key](public.deployment_key.md) | 7 |  | BASE TABLE |
@@ -77,6 +81,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_ai_thread_grants](public.instance_ai_thread_grants.md) | 5 |  | BASE TABLE |
 | [public.instance_ai_threads](public.instance_ai_threads.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_workflow_snapshots](public.instance_ai_workflow_snapshots.md) | 7 |  | BASE TABLE |
+| [public.instance_credential_assignment](public.instance_credential_assignment.md) | 4 |  | BASE TABLE |
 | [public.instance_version_history](public.instance_version_history.md) | 5 |  | BASE TABLE |
 | [public.invalid_auth_token](public.invalid_auth_token.md) | 2 |  | BASE TABLE |
 | [public.mcp_registry_server](public.mcp_registry_server.md) | 7 |  | BASE TABLE |
@@ -150,6 +155,13 @@ erDiagram
 
 "public.agent_chat_subscriptions" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_checkpoints" }o--o| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_eval_dataset" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.agent_eval_dataset" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_eval_rating" }o--o| "public.user" : "FOREIGN KEY (#quot;ratedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.agent_eval_rating" }o--|| "public.agent_eval_result" : "FOREIGN KEY (#quot;resultId#quot;) REFERENCES agent_eval_result(id) ON DELETE CASCADE"
+"public.agent_eval_result" }o--|| "public.agent_eval_run" : "FOREIGN KEY (#quot;runId#quot;) REFERENCES agent_eval_run(id) ON DELETE CASCADE"
+"public.agent_eval_run" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.agent_eval_run" }o--|| "public.agent_eval_dataset" : "FOREIGN KEY (#quot;datasetId#quot;) REFERENCES agent_eval_dataset(id) ON DELETE CASCADE"
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
@@ -251,6 +263,7 @@ erDiagram
 "public.instance_ai_thread_grants" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.instance_ai_thread_grants" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.instance_credential_assignment" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE RESTRICT"
 "public.oauth_access_tokens" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.oauth_access_tokens" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;clientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
 "public.oauth_authorization_codes" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
@@ -329,6 +342,61 @@ erDiagram
   boolean expired
   varchar_255_ runId
   text state
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agent_eval_dataset" {
+  varchar_36_ agentId FK
+  json columnMapping
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  json datasetRef
+  varchar_32_ datasetSource
+  text description
+  varchar_36_ id
+  varchar_128_ name
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agent_eval_rating" {
+  text comment
+  json correction
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  uuid ratedById FK
+  varchar_36_ resultId FK
+  timestamp_3__with_time_zone updatedAt
+  varchar_8_ vote
+}
+"public.agent_eval_result" {
+  timestamp_3__with_time_zone completedAt
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ errorCode
+  json errorDetails
+  varchar_36_ id
+  json input
+  json metrics
+  json output
+  timestamp_3__with_time_zone runAt
+  varchar_36_ runId FK
+  integer runIndex
+  varchar_255_ sourceRowId
+  varchar status
+  json toolCalls
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agent_eval_run" {
+  varchar_36_ agentVersionId
+  boolean cancelRequested
+  timestamp_3__with_time_zone completedAt
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  varchar_36_ datasetId FK
+  varchar_255_ errorCode
+  json errorDetails
+  varchar_36_ id
+  json metrics
+  timestamp_3__with_time_zone runAt
+  varchar_255_ runningInstanceId
+  varchar status
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_execution" {
@@ -421,6 +489,7 @@ erDiagram
 }
 "public.agents" {
   varchar_36_ activeVersionId FK
+  boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   json integrations
@@ -658,6 +727,7 @@ erDiagram
   varchar_16_ resolverId FK
   varchar_128_ type
   timestamp_3__with_time_zone updatedAt
+  varchar_16_ usageScope
 }
 "public.data_table" {
   timestamp_3__with_time_zone createdAt
@@ -998,6 +1068,12 @@ erDiagram
   varchar status
   timestamp_3__with_time_zone updatedAt
   varchar_255_ workflowName
+}
+"public.instance_credential_assignment" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ credentialId FK
+  varchar_128_ credentialUseId
+  timestamp_3__with_time_zone updatedAt
 }
 "public.instance_version_history" {
   timestamp_3__with_time_zone createdAt

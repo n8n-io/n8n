@@ -1,8 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { computed, ref } from 'vue';
 
-import { useAgentCapabilitiesActions } from './useAgentCapabilitiesActions';
-import type { AgentJsonConfig, AgentJsonToolConfig, AgentResource, AgentSkill } from '../types';
+import {
+	useAgentCapabilitiesActions,
+	type AgentCapabilitiesTelemetry,
+} from './useAgentCapabilitiesActions';
+import type {
+	AgentJsonConfig,
+	AgentJsonMcpServerConfig,
+	AgentJsonToolConfig,
+	AgentResource,
+	AgentSkill,
+} from '../types';
 
 const { openModalWithData } = vi.hoisted(() => ({ openModalWithData: vi.fn() }));
 
@@ -35,7 +44,10 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 	} as AgentJsonConfig;
 }
 
-function makeActions(overrides: Partial<AgentJsonConfig> = {}) {
+function makeActions(
+	overrides: Partial<AgentJsonConfig> = {},
+	telemetry?: AgentCapabilitiesTelemetry,
+) {
 	const scheduleConfigUpdate = vi.fn();
 	const scheduleSkillSave = vi.fn();
 	const agent = ref<AgentResource | null>(null);
@@ -48,6 +60,7 @@ function makeActions(overrides: Partial<AgentJsonConfig> = {}) {
 		connectedTriggers: ref<string[]>([]),
 		scheduleConfigUpdate,
 		scheduleSkillSave,
+		telemetry,
 	});
 	return { actions, scheduleConfigUpdate, scheduleSkillSave, agent, agentId };
 }
@@ -158,5 +171,49 @@ describe('useAgentCapabilitiesActions', () => {
 			skillId: 's1',
 			skill: expect.objectContaining({ instructions: 'Edited.' }),
 		});
+	});
+
+	it('tracks tool removal when onRemoveTool removes a tool ref', () => {
+		const removedTool = {
+			type: 'node',
+			name: 'get_dates',
+		} as AgentJsonToolConfig;
+		const trackRemovedTool = vi.fn();
+		const { actions, scheduleConfigUpdate } = makeActions(
+			{ tools: [removedTool] },
+			{ trackRemovedTool },
+		);
+
+		actions.onRemoveTool(0);
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ tools: [] });
+		expect(trackRemovedTool).toHaveBeenCalledWith(removedTool);
+	});
+
+	it('tracks MCP server removal from the tool-config modal', () => {
+		const mcpServer: AgentJsonMcpServerConfig = {
+			name: 'srv',
+			url: 'https://mcp.example.com',
+			authentication: 'none',
+			transport: 'streamableHttp',
+		};
+		const trackRemovedMcpServer = vi.fn();
+		const { actions, scheduleConfigUpdate } = makeActions(
+			{
+				tools: [{ type: 'node', name: 'get_dates' } as AgentJsonToolConfig],
+				mcpServers: [mcpServer],
+			},
+			{ trackRemovedMcpServer },
+		);
+
+		actions.onOpenToolFromList(1);
+
+		const modalData = openModalWithData.mock.calls[0][0] as {
+			data: { onRemove?: () => void };
+		};
+		modalData.data.onRemove?.();
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ mcpServers: [] });
+		expect(trackRemovedMcpServer).toHaveBeenCalledWith(mcpServer);
 	});
 });
