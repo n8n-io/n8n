@@ -4,8 +4,8 @@ description: >-
   Generate or review Vue single-file components that follow design-system v2
   conventions. Use when authoring or reviewing components under
   packages/frontend/@n8n/design-system/src/v2, building on Reka UI, or when the
-  user asks for Vue SFC structure, props API, a11y, test IDs, or styling that
-  should match Tree.
+  user asks for Vue SFC structure, props API (controlled/uncontrolled), a11y,
+  test IDs, Storybook stories, or styling that should match Tree.
 ---
 
 # Vue component conventions
@@ -41,6 +41,12 @@ For token/component reuse and styleguide docs, also follow
   omitted attrs). Never attach each root prop one-by-one.
 - **Third-party types** — Extend types exported by Reka UI (or the headless
   library). Never redefine or duplicate those types locally.
+- **Controlled / uncontrolled** — Stateful values must support both modes:
+  controlled via `modelValue` + `update:modelValue` (`v-model`), uncontrolled
+  via `defaultValue` (and matching pairs like `expanded` /
+  `defaultExpanded` when needed). Prefer Reka’s built-in dual API when wrapping
+  Reka; otherwise mirror Tree / RadioGroup. Document both props in the
+  component spec.
 - **Size prop** — Default size value must be named `'default'`. Options look like
   `'small' | 'default' | 'medium'` (etc.). Never treat another size (e.g.
   `'medium'`) as the implicit default.
@@ -49,6 +55,13 @@ For token/component reuse and styleguide docs, also follow
 - **Computed** — Avoid `computed` unless there is clear, non-trivial value
   (expensive derivation reused in multiple places). Prefer inline expressions or
   simple methods.
+
+### Stories
+
+- **Controlled / uncontrolled stories** — Add a Storybook story that demos both
+  modes side-by-side (see `RadioGroup.stories.ts` → `ControlledUncontrolled`).
+  Controlled: parent `v-model` plus a way to set the value externally.
+  Uncontrolled: `defaultValue` only, parent does not track changes.
 
 ### Markup & accessibility
 
@@ -63,6 +76,10 @@ For token/component reuse and styleguide docs, also follow
 
 - **Design tokens only** — Use tokens from `_primitives.scss` and `_tokens.scss`.
   Hard-coded colours, spacing, radii, font sizes, shadows, etc. are forbidden.
+- **No `:global`** — Do not use `:global(...)` in component CSS. Keep styles
+  scoped to the component (CSS modules / scoped selectors). Style child parts
+  via component classes, slots, or props — not by piercing into other
+  components’ markup.
 - **CSS hygiene** — Do not restate rules already provided by base styles (e.g.
   `box-sizing: border-box`, `font-family: inherit`, `color: inherit`, `margin: 0`).
 - **Focus styles** — Use shared focus styles from `_focus.scss`. Do not invent
@@ -75,8 +92,11 @@ For token/component reuse and styleguide docs, also follow
 - [ ] Patterns match Tree (structure, prop forwarding, composition)
 - [ ] Shared logic reused from `@n8n/utils` when available
 - [ ] Root props spread; third-party types extended, not duplicated
+- [ ] Stateful values support controlled (`modelValue`) and uncontrolled
+      (`defaultValue`); Storybook has a Controlled/Uncontrolled story
 - [ ] Size default is `'default'`; state modifiers use SMACSS `is*` names
 - [ ] No `as` / `!`; `computed` only when justified
 - [ ] ARIA + keyboard support verified; `data-test-id` on interactive/key nodes
 - [ ] User-facing strings internationalised
-- [ ] Tokens only; no redundant base CSS; shared focus styles; no transitions
+- [ ] Tokens only; no `:global`; no redundant base CSS; shared focus styles;
+      no transitions
