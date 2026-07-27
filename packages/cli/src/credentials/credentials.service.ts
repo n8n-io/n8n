@@ -797,7 +797,7 @@ export class CredentialsService {
 		// every time anybody changes anything on the credentials even if it is just the name.
 		// Exception: when toggling to private (Static→Private), the shared token must be cleared.
 		if (decryptedData.oauthTokenData && !options?.clearOauthTokenData) {
-			// @ts-ignore
+			// @ts-expect-error data is typed as encrypted string
 			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
 		}
 
