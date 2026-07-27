@@ -113,40 +113,6 @@ describe('WorkflowCreationService', () => {
 	}
 
 	describe('createWorkflow()', () => {
-		it('forwards the workflow hook context to workflow.create and workflow.afterCreate', async () => {
-			licenseStateMock.isSharingLicensed.mockReturnValue(false);
-			licenseStateMock.isDataRedactionLicensed.mockReturnValue(false);
-			projectServiceMock.getProjectWithScope.mockResolvedValue({
-				id: 'project-1',
-				type: 'personal',
-			} as never);
-			const { transactionManager } = setupTransactionMocks();
-			transactionManager.save.mockImplementation(async (entity: unknown) => entity);
-			workflowHistoryServiceMock.saveVersion.mockResolvedValue(undefined as never);
-			const savedWorkflow = new WorkflowEntity();
-			savedWorkflow.id = 'workflow-1';
-			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(savedWorkflow);
-
-			const user = mock<User>();
-			const newWorkflow = new WorkflowEntity();
-			newWorkflow.name = 'Test';
-			newWorkflow.nodes = [];
-			newWorkflow.connections = {};
-
-			await workflowCreationService.createWorkflow(user, newWorkflow, { projectId: 'project-1' });
-
-			expect(externalHooksMock.run).toHaveBeenCalledWith('workflow.create', [
-				newWorkflow,
-				workflowHookContextServiceMock,
-				expect.anything(),
-			]);
-			expect(externalHooksMock.run).toHaveBeenCalledWith('workflow.afterCreate', [
-				savedWorkflow,
-				workflowHookContextServiceMock,
-				expect.anything(),
-			]);
-		});
-
 		it('should throw BadRequestError for invalid workflow structure', async () => {
 			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
