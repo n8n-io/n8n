@@ -38,10 +38,8 @@ export interface StoredAttachmentRef {
 
 /**
  * One directory per attachment, so deleting a single file never touches
- * others. Everything agent-related lives under `agents/<agentId>/` (next to
- * `knowledge-files/`) so support can localize disk usage per agent; inline
- * agents have no `agents` row and share the `agents/inline/` directory (a
- * real agent id is a 16-char nano ID, so `inline` cannot collide).
+ * others. Inline agents share the `agents/inline/` directory (a real agent id
+ * is a 16-char nano ID, so `inline` cannot collide).
  */
 function buildAttachmentFileLocation(agentId: string | null, attachmentId: string) {
 	return FileLocation.ofCustom({
@@ -164,8 +162,7 @@ export class AgentChatAttachmentService {
 	/**
 	 * `BuiltFileStore` for an agent runtime. Lookups are scoped to the agent +
 	 * project, so a fileId from another conversation resolves to nothing.
-	 * `provider` drives capability gating: media types the provider's models
-	 * can't accept stay reference-only and reach the model as text metadata.
+	 * `provider` drives capability gating of hydration.
 	 */
 	getFileStore(scope: { agentId: string; projectId: string }, provider: string): BuiltFileStore {
 		return {

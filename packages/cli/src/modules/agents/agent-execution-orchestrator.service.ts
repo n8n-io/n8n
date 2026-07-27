@@ -40,7 +40,7 @@ export interface ExecuteForChatConfig {
 	user: User;
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
-	/** Already-stored attachments to include as file parts on the user turn. */
+	/** Stored attachments to include as file parts on the user turn. */
 	attachments?: StoredAttachmentRef[];
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
@@ -52,7 +52,6 @@ export interface ExecuteForChatPublishedConfig {
 	message: string;
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
-	/** Already-stored attachments to include as file parts on the user turn. */
 	attachments?: StoredAttachmentRef[];
 	integrationType?: string;
 	// No `user` field here: a published chat integration (Slack, Telegram, …)
@@ -129,7 +128,6 @@ export interface StreamChatResponseConfig {
 	agentId: string;
 	userId?: string;
 	message: string;
-	/** Already-stored attachments to include as file parts on the user turn. */
 	attachments?: StoredAttachmentRef[];
 	memory: AgentMemoryScope;
 	projectId: string;

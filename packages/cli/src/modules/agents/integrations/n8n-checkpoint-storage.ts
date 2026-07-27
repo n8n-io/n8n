@@ -14,11 +14,7 @@ import { strict } from 'node:assert';
 
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 
-/**
- * Hydrated attachment bytes must never reach the checkpoint state JSON —
- * file parts with a fileRef are stored reference-only (a `Uint8Array` would
- * also not survive JSON round-tripping).
- */
+/** File parts are checkpointed reference-only (a `Uint8Array` would not survive JSON round-tripping). */
 function stripStateFileData(state: SerializableAgentState): SerializableAgentState {
 	if (!state.messageList) return state;
 	return {

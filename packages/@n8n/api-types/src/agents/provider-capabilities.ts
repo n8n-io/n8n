@@ -65,8 +65,7 @@ export interface ProviderCapabilities {
 	/**
 	 * Conservative per-provider defaults (deliberately provider-level, not
 	 * per-model): a media-type family is only enabled where the provider's
-	 * current chat models broadly accept it. Files outside these families are
-	 * still stored — the agent sees them as text metadata with a fileId handle.
+	 * current chat models broadly accept it.
 	 */
 	attachments: ProviderAttachmentCapabilities;
 }

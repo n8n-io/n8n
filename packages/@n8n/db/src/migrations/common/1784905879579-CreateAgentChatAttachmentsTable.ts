@@ -12,9 +12,7 @@ export class CreateAgentChatAttachmentsTable1784905879579 implements ReversibleM
 		await createTable('agent_chat_attachments')
 			.withColumns(
 				column('id').varchar(16).primary.comment('Application-generated n8n nano ID'),
-				// FK to agents.id, which is declared varchar(36); the column type
-				// mirrors the referenced primary key. Nullable: inline agents have
-				// no agents row, so their attachments scope by projectId + threadId.
+				// varchar(36) mirrors the referenced agents.id primary key.
 				column('agentId')
 					.varchar(36)
 					.comment('Agent the attachment was sent to, when persisted'),

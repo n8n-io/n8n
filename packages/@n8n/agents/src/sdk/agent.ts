@@ -354,11 +354,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
-	/**
-	 * Inject the host file store used to hydrate file-reference content parts
-	 * (`ContentFile.fileRef`) into bytes before LLM calls. Without a store,
-	 * reference-only file parts reach the model as text metadata.
-	 */
+	/** Inject the host store that hydrates file-reference content parts before LLM calls. */
 	fileStore(store: BuiltFileStore): this {
 		this.fileStoreValue = store;
 		return this;

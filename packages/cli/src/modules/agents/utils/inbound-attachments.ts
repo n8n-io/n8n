@@ -37,11 +37,7 @@ export async function resolveInboundMimeType(
 /**
  * Build the user turn for a message with attachments: one text part (when
  * text is present) followed by a reference-only file part per attachment.
- *
- * No capability gating happens here — every attachment becomes a file part
- * carrying only its `fileRef`. The runtime hydrates the parts the current
- * model supports (via the injected `BuiltFileStore`) and presents the rest to
- * the model as text metadata with the fileId handle.
+ * Capability gating happens later, at hydration.
  */
 export function buildInboundUserMessage(
 	text: string,

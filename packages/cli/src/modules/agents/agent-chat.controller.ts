@@ -185,10 +185,8 @@ export class AgentChatController {
 				send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
 			}
 		} catch (error) {
-			// A turn that failed before any execution was recorded persisted nothing
-			// that references its attachments — remove them so they can't accumulate
-			// under thread ids that may never exist. Best-effort: the error the user
-			// sees is the run failure, not the cleanup.
+			// No execution recorded means nothing references this turn's attachments —
+			// remove them so failed turns can't accumulate orphans. Best-effort.
 			if (!executionId && storedAttachments?.length) {
 				await this.agentChatAttachmentService
 					.deleteByIds(storedAttachments.map((ref) => ref.id))

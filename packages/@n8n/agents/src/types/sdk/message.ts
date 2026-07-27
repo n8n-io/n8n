@@ -64,8 +64,7 @@ export type ContentReasoning = ContentMetadata & {
 
 /**
  * Reference to file bytes held in a host-provided store (see `BuiltFileStore`).
- * Only the reference is persisted; bytes are hydrated into `ContentFile.data`
- * by the runtime before each LLM call.
+ * Only the reference is persisted.
  */
 export interface ContentFileRef {
 	/** Stable identifier resolvable by the injected file store. */
@@ -92,9 +91,8 @@ export type ContentFile = ContentMetadata & {
 	 * as base64 encoded strings. If the API returns binary data, the file data should
 	 * be returned as binary data.
 	 *
-	 * Absent on reference-only parts: blocks carrying a `fileRef` are stored
-	 * without bytes and hydrated by the runtime; a block that still has no
-	 * `data` at LLM-call time is presented to the model as text metadata.
+	 * Absent on reference-only parts (`fileRef` set); hydrated by the runtime
+	 * before LLM calls.
 	 */
 	data?: Uint8Array | ArrayBuffer | Buffer | string;
 

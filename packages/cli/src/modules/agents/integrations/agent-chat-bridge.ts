@@ -339,11 +339,9 @@ export class AgentChatBridge {
 				statusHandle,
 			});
 		} catch (error) {
-			// The execution generator is lazy, so a throw before consumption started
-			// means nothing ran — and nothing references this turn's attachments.
-			// Remove them so they can't accumulate. Best-effort: the caller's error
-			// handling owns the user-facing reply. Once consumption starts, the turn
-			// may be persisted, so its attachments must stay.
+			// The execution generator is lazy: a throw before consumption started means
+			// nothing ran and nothing references this turn's attachments — remove them
+			// (best-effort). Once consumption starts, the turn may be persisted.
 			if (!consumeStarted && attachments.length > 0) {
 				await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
 			}

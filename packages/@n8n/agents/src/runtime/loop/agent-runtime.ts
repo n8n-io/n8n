@@ -90,10 +90,7 @@ export interface AgentRuntimeConfig {
 	};
 	providerTools?: BuiltProviderTool[];
 	memory?: BuiltMemory;
-	/**
-	 * Host store resolving file-reference content parts to bytes. When unset,
-	 * reference-only file parts reach the model as text metadata.
-	 */
+	/** Host store resolving file-reference content parts to bytes before LLM calls. */
 	fileStore?: BuiltFileStore;
 	observationLog?: ObservationLogMemoryConfig;
 	observationalMemory?: ObservationalMemoryConfig;
@@ -343,8 +340,6 @@ export class AgentRuntime {
 
 		const list = AgentMessageList.deserialize(state.messageList);
 		this.context.hydrateDeferredToolsFromList(list);
-		// Checkpoints persist file parts reference-only (bytes are stripped on
-		// save), so reload them for the LLM calls of the resumed turn.
 		await hydrateFileParts(list.messages(), this.config.fileStore);
 
 		const toolForValidation = this.context
@@ -500,8 +495,6 @@ export class AgentRuntime {
 
 		const list = AgentMessageList.deserialize(state.messageList);
 		this.context.hydrateDeferredToolsFromList(list);
-		// Checkpoints persist file parts reference-only (bytes are stripped on
-		// save), so reload them for the LLM calls of the resumed turn.
 		await hydrateFileParts(list.messages(), this.config.fileStore);
 
 		let abortScope: AgentAbortScope | undefined;
