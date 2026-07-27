@@ -159,6 +159,9 @@ export {
 	type ValidationErrorCode,
 	validateNodeConfig,
 	type SchemaValidationResult,
+	INFORMATIONAL_VALIDATION_CODES,
+	isInformationalValidationCode,
+	partitionValidationIssues,
 } from './validation';
 
 // Code generation

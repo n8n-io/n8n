@@ -263,6 +263,7 @@ describe('Instance AI runtime skills', () => {
 			'read_file',
 			'write_file',
 			'edit_file',
+			'execute_command',
 			'build-workflow',
 			'workflows',
 			'nodes',
@@ -273,6 +274,7 @@ describe('Instance AI runtime skills', () => {
 		]);
 		expect(skill?.description).toContain('Load before calling build-workflow');
 		expect(skill?.description).toContain('Default path for all single-workflow work');
+		expect(skill?.description).toContain('workflow-sdk validate');
 		expect(skill?.description).toContain('load data-table-manager first');
 		expect(skill?.description).toContain('Do not load planning or create-tasks first');
 
@@ -280,6 +282,10 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('## Routing');
 		expect(loaded?.instructions).toContain('build-workflow');
 		expect(loaded?.instructions).toContain('filePath');
+		expect(loaded?.instructions).toContain('workspace_write_file');
+		expect(loaded?.instructions).toContain(
+			'node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate',
+		);
 		expect(loaded?.instructions).toContain('workspace source file');
 		expect(loaded?.instructions).toContain('nodes(action="suggested")');
 		expect(loaded?.instructions).toContain('nodes(action="search")');

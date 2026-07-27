@@ -19,6 +19,12 @@ export {
 	type SchemaValidationResult,
 } from './schema-validator';
 
+export {
+	INFORMATIONAL_VALIDATION_CODES,
+	isInformationalValidationCode,
+	partitionValidationIssues,
+} from './informational-codes';
+
 /**
  * Validation error codes
  */

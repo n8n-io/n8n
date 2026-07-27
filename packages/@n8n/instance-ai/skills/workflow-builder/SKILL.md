@@ -3,15 +3,17 @@ name: workflow-builder
 description: >-
   Load before calling build-workflow. Default path for all single-workflow
   work: new one-off workflows, existing-workflow edits, verification repairs,
-  and workflow-local data tables. Write or edit a workspace source file, then
-  call build-workflow with filePath. When the workflow creates or writes Data
-  Tables, load data-table-manager first, then this skill. Do not load planning
-  or create-tasks first. Load planning only when multiple coordinated workflows
+  and workflow-local data tables. Write or edit a workspace source file, run
+  workflow-sdk validate via workspace_execute_command, then call build-workflow
+  with filePath. When the workflow creates or writes Data Tables, load
+  data-table-manager first, then this skill. Do not load planning or
+  create-tasks first. Load planning only when multiple coordinated workflows
   or shared cross-task data tables require a dependency-aware task graph.
 recommended_tools:
   - read_file
   - write_file
   - edit_file
+  - execute_command
   - build-workflow
   - workflows
   - nodes
@@ -32,13 +34,12 @@ You are an expert n8n workflow builder. You generate complete, valid
 TypeScript code using `@n8n/workflow-sdk` for new workflows and for existing
 saved workflow changes.
 
-For new single-workflow requests, build directly with
-`build-workflow({ filePath, sourceCode })` — the complete TypeScript SDK
-source in `sourceCode`; the tool writes the file and builds in one call. For
+Always write the complete TypeScript SDK source with
+`workspace_write_file` first, then call `build-workflow({ filePath })`. For
 existing saved workflow edits, call `workflows(action="get-as-code",
-workflowId)`, apply the edit to the returned code, then call
-`build-workflow({ filePath, workflowId, sourceCode })` the first time — all
-edits go through a workspace source file and `build-workflow`. Do not load
+workflowId)`, apply the edit to the returned code, write it to the file, then
+call `build-workflow({ filePath, workflowId })` the first time — all edits go
+through a workspace source file and `build-workflow`. Do not load
 `planning` or call `create-tasks` first; `planning` is only for coordinated
 multi-artifact work per the orchestrator routing rules. Do not create a plan
 just for verification.
@@ -60,16 +61,14 @@ editing anything — never guess at the cause or change the node on a hunch.
 When called with failure details for an existing workflow, start from the
 workspace source file if one is available in the conversation or tool output. If
 you only have a saved n8n workflow ID, use `workflows(action="get-as-code")`,
-make the smallest requested edit to the returned code, then call
-`build-workflow` once with `filePath` (a stable
-`src/workflows/<name>.workflow.ts` path), `workflowId`, and the full edited
-code as `sourceCode`. Later repairs should reuse the same `filePath`;
+make the smallest requested edit to the returned code, write it to a stable
+`src/workflows/<name>.workflow.ts` path, then call `build-workflow` once with
+`filePath` and `workflowId`. Later repairs should reuse the same `filePath`;
 `build-workflow` remembers the bound workflow ID.
 
 For repairs, prefer editing the workspace file directly with file tools
 (`workspace_str_replace_file`) and calling `build-workflow` again with the same
-`filePath` alone — cheaper than resending full source. `sourceCode` must always
-be the complete source when used; never send string patches or fragments.
+`filePath`.
 
 ## Escalation
 
@@ -184,12 +183,9 @@ build → publish → assign steps. Do not create one before the user opts in.
    `workflows(action="get-as-code", workflowId)`, apply your edit to the
    returned code, and pass the n8n `workflowId` only on the first
    `build-workflow` call.
-6. Produce complete TypeScript SDK code. For a new or fully rewritten source
-   file, do NOT write it with `workspace_write_file` — pass it directly as
-   `sourceCode` on the `build-workflow` call (the tool writes `filePath` and
-   builds in one step; a separate write call wastes a full round-trip). Use
-   file tools only to selectively edit an existing `.workflow.ts` for
-   follow-up changes and repairs. Do not put secrets in the source file.
+6. Produce complete TypeScript SDK code and write it with
+   `workspace_write_file` (new/full rewrite) or `workspace_str_replace_file`
+   (targeted edit). Do not put secrets in the source file.
    Before building, decide whether verification needs branch fixtures. When a
    live or nondeterministic upstream node (such as HTTP Request, search/list
    lookups, weather feeds, or AI classifiers) feeds IF/Switch logic and
@@ -198,12 +194,21 @@ build → publish → assign steps. Do not create one before the user opts in.
    and later `fixtureOverrides` can exercise those scenarios. Do not simulate
    every external read by default; use this when branch coverage or deterministic
    proof depends on controlling the upstream data.
-7. Call `build-workflow` with `filePath` (plus `sourceCode` for new or fully
-   rewritten source).
+7. Before the first `build-workflow` (and again after substantive edits), run
+   SDK validation on the workspace source file via
+   `workspace_execute_command`:
+   `node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate <filePath>`
+   Output is lint-style (`line  severity  code  message`); fix every `error`
+   row. Warnings do not block the save and the command may still exit 0, but
+   they flag defects that surface at run time — resolve or consciously dismiss
+   each one. A clean validate run does not guarantee `build-workflow` will
+   succeed (no full node-type registry in the sandbox CLI), so still call
+   `build-workflow`.
+8. Call `build-workflow` with the `filePath` you wrote.
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
    task's final deliverable.
-8. Trace wiring before declaring done. For IF, Switch, Merge, AI-agent, loop, or
+9. Trace wiring before declaring done. For IF, Switch, Merge, AI-agent, loop, or
    multi-workflow wiring, trace each branch from source to target. Confirm IF
    branches are wired on the workflow builder (`.to(ifNode).onTrue(...).onFalse(...)`
    or `.to(ifNode.onTrue(...).onFalse(...))`), not as standalone calls on the IF
@@ -213,15 +218,15 @@ build → publish → assign steps. Do not create one before the user opts in.
    every requested side effect is on a wired branch. Switch outputs use zero-based
    `.onCase(index, target)`, Merge modes match the data shape, and sub-nodes are
    attached to the correct parent.
-9. Fix errors by editing the same workspace source file and calling
-    `build-workflow` again with the same `filePath`. Save again before any
-    verification step.
-10. Modify existing workflows by editing the workspace `.workflow.ts` source
+10. Fix errors by editing the same workspace source file, re-running
+    `workflow-sdk validate` on that file, then calling `build-workflow` again
+    with the same `filePath`. Save again before any verification step.
+11. Modify existing workflows by editing the workspace `.workflow.ts` source
     file. If the file was created from `workflows(action="get-as-code")`, pass
     the real n8n `workflowId` on the first `build-workflow` call so the file is
     bound to the saved workflow. Never pass local SDK workflow IDs as n8n
     workflow IDs.
-11. After a successful direct `build-workflow` result, if the tool output
+12. After a successful direct `build-workflow` result, if the tool output
     contains `postBuildFlow.required: true`, follow the inlined
     `postBuildFlow.instructions` from that output (do not load `post-build-flow`
     separately) before verification, setup, error-workflow follow-up,

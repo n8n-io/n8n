@@ -1,3 +1,5 @@
+import { partitionValidationIssues } from '@n8n/workflow-sdk';
+
 export interface ValidationWarning {
 	code: string;
 	message: string;
@@ -21,23 +23,7 @@ export function partitionWarnings(warnings: ValidationWarning[]): {
 	errors: ValidationWarning[];
 	informational: ValidationWarning[];
 } {
-	// auto_imported_sdk_symbols marks a recovered build; it must not fail validation.
-	const informationalCodes = new Set([
-		'MISSING_TRIGGER',
-		'DISCONNECTED_NODE',
-		'auto_imported_sdk_symbols',
-	]);
-
-	const errors: ValidationWarning[] = [];
-	const informational: ValidationWarning[] = [];
-
-	for (const warning of warnings) {
-		if (informationalCodes.has(warning.code)) {
-			informational.push(warning);
-		} else {
-			errors.push(warning);
-		}
-	}
-
-	return { errors, informational };
+	// Codes come from @n8n/workflow-sdk INFORMATIONAL_VALIDATION_CODES so the
+	// CLI `validate` exit code and the build-workflow save gate stay aligned.
+	return partitionValidationIssues(warnings);
 }
