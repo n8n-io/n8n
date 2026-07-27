@@ -78,5 +78,18 @@ describe('package-layout', () => {
 		it('returns null for a project-root workflow even when its project has no folder entry', () => {
 			expect(deriveParentFolderId('projects/unknown/workflows/wf', map)).toBeNull();
 		});
+
+		it('splits on the LAST /workflows/ so a folder literally named "workflows" resolves correctly', () => {
+			// A folder named "workflows" keeps its bare slug when its parent has no directly-contained
+			// workflows; a workflow inside it must resolve to that folder, not its grandparent.
+			const withWorkflowsFolder = new Map([
+				['folders/a', 'A'],
+				['folders/a/workflows', 'W'],
+			]);
+			expect(deriveParentFolderId('folders/a/workflows/workflows/wf', withWorkflowsFolder)).toBe(
+				'W',
+			);
+			expect(deriveParentFolderId('folders/a/workflows/wf', withWorkflowsFolder)).toBe('A');
+		});
 	});
 });

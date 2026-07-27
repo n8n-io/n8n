@@ -14,19 +14,20 @@ import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { AiService } from '@/services/ai.service';
+import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
 
 import { AiController, type FlushableResponse } from '../ai.controller';
 
 describe('AiController', () => {
 	const aiService = mock<AiService>();
 	const workflowBuilderService = mock<WorkflowBuilderService>();
+	const freeAiCreditsService = mock<FreeAiCreditsService>();
 	const aiUsageService = mock<AiUsageService>();
 	const aiGatewayService = mock<AiGatewayService>();
 	const controller = new AiController(
 		aiService,
 		workflowBuilderService,
-		mock(),
-		mock(),
+		freeAiCreditsService,
 		aiUsageService,
 		aiGatewayService,
 	);

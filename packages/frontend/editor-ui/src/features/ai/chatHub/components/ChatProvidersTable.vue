@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nActionToggle,
 	N8nButton,
 	N8nDataTableServer,
@@ -148,7 +148,7 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 					</N8nTooltip>
 				</div>
 			</div>
-			<N8nActionBox
+			<N8nEmptyState
 				v-if="!props.settings"
 				:heading="i18n.baseText('settings.chatHub.providers.table.empty.title')"
 				:description="i18n.baseText('settings.chatHub.providers.table.empty.description')"

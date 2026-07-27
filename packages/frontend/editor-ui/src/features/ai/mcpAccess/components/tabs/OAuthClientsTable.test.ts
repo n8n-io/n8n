@@ -1,4 +1,4 @@
-import { within } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -13,9 +13,31 @@ vi.mock('@/app/components/TimeAgo.vue', () => ({
 	},
 }));
 
-vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
-	useMCPStore: () => ({
+const { mockMcpStore, mockHasScope } = vi.hoisted(() => ({
+	mockMcpStore: {
 		openConnectPopover: vi.fn(),
+		oauthClientsOwnership: 'mine' as 'mine' | 'all',
+		oauthClientTotals: { mine: 0 } as { mine: number; all?: number },
+		oauthClientsPage: 0,
+		oauthClientsPageSize: 10,
+		oauthClientsCount: 0,
+		oauthClientOwners: [] as Array<{
+			id: string;
+			firstName: string | null;
+			lastName: string | null;
+			email: string;
+		}>,
+	},
+	mockHasScope: vi.fn().mockReturnValue(false),
+}));
+
+vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
+	useMCPStore: () => mockMcpStore,
+}));
+
+vi.mock('@n8n/stores/rbac.store', () => ({
+	useRBACStore: () => ({
+		hasScope: mockHasScope,
 	}),
 }));
 
@@ -26,6 +48,13 @@ const createComponent = createComponentRenderer(OAuthClientsTable, {
 describe('OAuthClientsTable', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
+		mockHasScope.mockReturnValue(false);
+		mockMcpStore.oauthClientsOwnership = 'mine';
+		mockMcpStore.oauthClientTotals = { mine: 0 };
+		mockMcpStore.oauthClientsPage = 0;
+		mockMcpStore.oauthClientsPageSize = 10;
+		mockMcpStore.oauthClientsCount = 0;
+		mockMcpStore.oauthClientOwners = [];
 	});
 
 	describe('Loading state', () => {
@@ -43,16 +72,38 @@ describe('OAuthClientsTable', () => {
 	});
 
 	describe('Empty state', () => {
-		it('should render empty state when clients array is empty', () => {
-			const { getByTestId } = createComponent({
+		it('should show only the empty state (no toolbar/table) when there are no clients', () => {
+			const { getByTestId, queryByTestId } = createComponent({
 				props: {
 					clients: [],
 					loading: false,
 				},
 			});
 
-			expect(getByTestId('mcp-workflow-table-empty-state')).toBeVisible();
-			expect(getByTestId('mcp-workflow-table-empty-state-description')).toBeVisible();
+			const empty = getByTestId('mcp-clients-empty');
+			expect(empty).toBeVisible();
+			expect(empty).toHaveTextContent('No clients connected yet');
+			expect(empty).toHaveTextContent('Clients you connect will appear here');
+			// The tabs, search/filters and table are hidden when there are no clients.
+			expect(queryByTestId('mcp-clients-search')).not.toBeInTheDocument();
+			expect(queryByTestId('oauth-clients-data-table')).not.toBeInTheDocument();
+		});
+
+		it('should keep the tabs for a manager with no own clients but clients under All', () => {
+			mockHasScope.mockReturnValue(true);
+			mockMcpStore.oauthClientTotals = { mine: 0, all: 3 };
+
+			const { getByTestId, queryByTestId } = createComponent({
+				props: {
+					// The Mine view is empty, but clients exist under All.
+					clients: [],
+					loading: false,
+				},
+			});
+
+			// No standalone empty state: the tabs must stay so the manager can switch to All.
+			expect(queryByTestId('mcp-clients-empty')).not.toBeInTheDocument();
+			expect(getByTestId('mcp-clients-tabs')).toBeVisible();
 		});
 	});
 
@@ -126,6 +177,139 @@ describe('OAuthClientsTable', () => {
 		});
 	});
 
+	describe('Mine/All tabs', () => {
+		it('should not render tabs for users without mcp:manage', () => {
+			const { queryByTestId } = createComponent({
+				props: {
+					clients: [createOAuthClient()],
+					loading: false,
+				},
+			});
+
+			expect(queryByTestId('mcp-clients-tabs')).not.toBeInTheDocument();
+		});
+
+		it('should render tabs with unfiltered totals for managers', () => {
+			mockHasScope.mockReturnValue(true);
+			mockMcpStore.oauthClientTotals = { mine: 2, all: 5 };
+
+			const { getByTestId } = createComponent({
+				props: {
+					clients: [createOAuthClient()],
+					loading: false,
+				},
+			});
+
+			const tabs = getByTestId('mcp-clients-tabs');
+			expect(tabs).toHaveTextContent('Mine');
+			expect(tabs).toHaveTextContent('2');
+			expect(tabs).toHaveTextContent('All');
+			expect(tabs).toHaveTextContent('5');
+		});
+
+		it('should emit update:ownership when switching tabs', async () => {
+			mockHasScope.mockReturnValue(true);
+			mockMcpStore.oauthClientTotals = { mine: 1, all: 2 };
+
+			const { getByText, emitted } = createComponent({
+				props: {
+					clients: [createOAuthClient()],
+					loading: false,
+				},
+			});
+
+			await userEvent.click(getByText('All'));
+
+			expect(emitted('update:ownership')).toEqual([['all']]);
+		});
+	});
+
+	describe('Search and filters', () => {
+		beforeEach(() => {
+			// disable the search debounce so assertions can run synchronously
+			sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '0');
+		});
+
+		afterEach(() => {
+			sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
+		});
+
+		it('should emit the debounced search term so the parent can filter server-side', async () => {
+			mockMcpStore.oauthClientsCount = 2;
+
+			const { getByTestId, emitted } = createComponent({
+				props: {
+					clients: [
+						createOAuthClient({ id: 'client-1', name: 'Claude Code' }),
+						createOAuthClient({ id: 'client-2', name: 'Cursor' }),
+					],
+					loading: false,
+				},
+			});
+
+			await userEvent.type(getByTestId('mcp-clients-search'), 'cursor');
+
+			await waitFor(() => {
+				const emissions = emitted('update:filters') as Array<[{ search: string }]>;
+				expect(emissions).toBeTruthy();
+				expect(emissions[emissions.length - 1][0].search).toBe('cursor');
+			});
+		});
+
+		it('should show a no-results message when a search filters the set to empty', async () => {
+			// Start with a client so the toolbar (and its search) is available.
+			mockMcpStore.oauthClientsCount = 1;
+
+			const { getByTestId, rerender } = createComponent({
+				props: {
+					clients: [createOAuthClient({ name: 'Claude Code' })],
+					loading: false,
+				},
+			});
+
+			await userEvent.type(getByTestId('mcp-clients-search'), 'nothing matches this');
+
+			// The server matched nothing: the parent pushes an empty result set back.
+			mockMcpStore.oauthClientsCount = 0;
+			await rerender({ clients: [], loading: false });
+
+			await waitFor(() => {
+				expect(getByTestId('mcp-clients-no-results')).toBeVisible();
+			});
+		});
+	});
+
+	describe('Connected by column', () => {
+		it('should not render the owner column in the mine view', () => {
+			const { queryByTestId } = createComponent({
+				props: {
+					clients: [createOAuthClient()],
+					loading: false,
+				},
+			});
+
+			expect(queryByTestId('mcp-client-owner-cell')).not.toBeInTheDocument();
+		});
+
+		it('should render the owner in the all view', () => {
+			mockHasScope.mockReturnValue(true);
+			mockMcpStore.oauthClientsOwnership = 'all';
+
+			const { getByTestId } = createComponent({
+				props: {
+					clients: [
+						createOAuthClient({
+							owner: { id: 'user-1', firstName: 'Jane', lastName: 'Doe', email: 'jane@n8n.io' },
+						}),
+					],
+					loading: false,
+				},
+			});
+
+			expect(getByTestId('mcp-client-owner-cell')).toHaveTextContent('Jane Doe');
+		});
+	});
+
 	describe('Actions', () => {
 		it('should emit revokeClient event when the revoke button is clicked', async () => {
 			const client = createOAuthClient({ name: 'Client to Revoke' });
@@ -170,21 +354,19 @@ describe('OAuthClientsTable', () => {
 			const modal = document.querySelector('[data-test-id="mcp-client-details-modal"]');
 			expect(modal).not.toBeNull();
 
-			// granted scope tokens are grouped per resource, with read/write tags
-			const workflowGroup = within(modal as HTMLElement).getByTestId(
-				'mcp-client-details-group-workflow',
-			);
-			expect(workflowGroup).toHaveTextContent('Workflow');
-			expect(workflowGroup).toHaveTextContent('workflow:read');
-			expect(workflowGroup).toHaveTextContent('workflow:write');
-			expect(workflowGroup).toHaveTextContent('Read');
-			expect(workflowGroup).toHaveTextContent('Write');
-
-			const executionGroup = within(modal as HTMLElement).getByTestId(
-				'mcp-client-details-group-execution',
-			);
-			expect(executionGroup).toHaveTextContent('Execution');
-			expect(executionGroup).toHaveTextContent('execution:read');
+			// access is listed plainly, one human-readable line per granted scope
+			expect(
+				within(modal as HTMLElement).getByTestId('mcp-client-details-access'),
+			).toBeInTheDocument();
+			expect(
+				within(modal as HTMLElement).getByTestId('mcp-client-details-scope-workflow:read'),
+			).toBeInTheDocument();
+			expect(
+				within(modal as HTMLElement).getByTestId('mcp-client-details-scope-workflow:write'),
+			).toBeInTheDocument();
+			expect(
+				within(modal as HTMLElement).getByTestId('mcp-client-details-scope-execution:read'),
+			).toBeInTheDocument();
 		});
 
 		it('should emit revokeClient from the details modal revoke button', async () => {

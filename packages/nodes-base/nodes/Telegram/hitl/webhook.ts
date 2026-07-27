@@ -128,6 +128,7 @@ export async function telegramSendAndWaitWebhook(
 		.filter(Boolean);
 
 	if (!isAuthorizedResponder(from, approverIds)) {
+		this.logHitlResponse({ approved: parsed.decision === 'a', authorized: false });
 		try {
 			await apiRequest.call(this, 'POST', 'answerCallbackQuery', {
 				callback_query_id: callbackQueryId,
@@ -156,6 +157,7 @@ export async function telegramSendAndWaitWebhook(
 	const chatId = callbackQuery.message?.chat?.id;
 	const messageId = callbackQuery.message?.message_id;
 	const approved = parsed.decision === 'a';
+	this.logHitlResponse({ approved, authorized: true });
 	const postDecisionBehavior = options.postDecisionBehavior ?? 'showOutcome';
 
 	if (chatId !== undefined && messageId !== undefined) {

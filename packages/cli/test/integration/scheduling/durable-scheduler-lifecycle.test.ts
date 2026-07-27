@@ -9,6 +9,7 @@ import { Tracing } from 'n8n-core';
 
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
+import { PollTriggerTaskHandler } from '@/scheduling/poll-trigger-node/poll-trigger-task-handler';
 import { ScheduleTriggerTaskHandler } from '@/scheduling/schedule-trigger-node/schedule-trigger-task-handler';
 
 import { retryUntil } from '../shared/retry-until';
@@ -73,9 +74,8 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 			instanceSettings,
 			globalConfig,
 			Container.get(Tracing),
-			// The auto-registered schedule-trigger handler is harmless here: no
-			// schedule-trigger occurrences are seeded, so it never fires.
 			Container.get(ScheduleTriggerTaskHandler),
+			Container.get(PollTriggerTaskHandler),
 			Container.get(PrometheusSchedulerMetricsService),
 		);
 	};
@@ -83,8 +83,9 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 	it('runs the loops on a main and fires a due job end to end', async () => {
 		scheduler = buildScheduler({ enabled: true });
 		scheduler.registerTaskHandler(TASK_TYPE, {
-			execute: async (task) => {
+			execute: async (task, report) => {
 				executed.push(task);
+				return report.notDispatched();
 			},
 		});
 
@@ -106,8 +107,9 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 	it('does nothing when the flag is off, leaving occurrences untouched', async () => {
 		scheduler = buildScheduler({ enabled: false });
 		scheduler.registerTaskHandler(TASK_TYPE, {
-			execute: async (task) => {
+			execute: async (task, report) => {
 				executed.push(task);
+				return report.notDispatched();
 			},
 		});
 
@@ -128,8 +130,9 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 	it('stays disabled on a worker even with the flag on', async () => {
 		scheduler = buildScheduler({ enabled: true, instanceType: 'worker' });
 		scheduler.registerTaskHandler(TASK_TYPE, {
-			execute: async (task) => {
+			execute: async (task, report) => {
 				executed.push(task);
+				return report.notDispatched();
 			},
 		});
 

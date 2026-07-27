@@ -97,6 +97,10 @@ export async function disconnectMyConnection(context: IRestApiContext, id: strin
 	await makeRestApiRequest(context, 'DELETE', `/credentials/${id}/my-connection`);
 }
 
+export async function disconnectOauthToken(context: IRestApiContext, id: string): Promise<void> {
+	await makeRestApiRequest(context, 'DELETE', `/credentials/${id}/oauth-token`);
+}
+
 export async function updateCredential(
 	context: IRestApiContext,
 	id: string,

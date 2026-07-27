@@ -5,10 +5,13 @@ import { computed, ref } from 'vue';
 
 import type { CompareMetricGroup, CompareVersion } from '../../composables/useCompareData';
 import GroupedMetricChart from '../shared/GroupedMetricChart.vue';
+import MetricCriteria from './MetricCriteria.vue';
 
 const props = defineProps<{
 	metricGroups: CompareMetricGroup[];
 	versions: CompareVersion[];
+	// metric name → its custom LLM-judge prompt, when configured.
+	metricPrompts?: Record<string, string>;
 }>();
 
 const i18n = useI18n();
@@ -59,6 +62,7 @@ const letters = computed(() => props.versions.map((version) => version.letter));
 				<N8nText size="small" bold color="text-base" :class="$style.panelHeading">
 					{{ group.label }}
 				</N8nText>
+				<MetricCriteria :metric-key="group.key" :prompt="metricPrompts?.[group.key]" />
 				<GroupedMetricChart
 					variant="detailed"
 					:groups="[{ label: group.label, values: group.values, letters }]"

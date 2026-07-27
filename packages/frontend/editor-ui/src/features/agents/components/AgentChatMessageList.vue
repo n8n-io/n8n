@@ -27,13 +27,25 @@ const props = defineProps<{
 	messages: ChatMessage[];
 	messagingState: 'idle' | 'waitingFirstChunk' | 'receiving';
 	projectId?: string;
+	agentId?: string;
+	sessionId?: string;
+	canSendToAssistant?: boolean;
 }>();
 
 const emit = defineEmits<{
 	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
+	sendToAssistant: [executionId?: string];
 }>();
 
 const i18n = useI18n();
+const canSendToAssistant = computed(() =>
+	Boolean(props.canSendToAssistant && props.agentId && props.sessionId),
+);
+
+function onFixWithAssistant(group: DisplayGroup) {
+	const executionId = group.kind === 'toolRun' ? group.executionId : group.message.executionId;
+	emit('sendToAssistant', executionId);
+}
 
 function onInteractiveSubmit(payload: InteractivePayload, resumeData: unknown) {
 	// Cards without a runId are disabled at the card level (see InteractiveCard).
@@ -414,6 +426,9 @@ onBeforeUnmount(() => {
 						v-if="group.toolCalls.length"
 						:tool-calls="group.toolCalls"
 						:project-id="projectId"
+						:can-fix-with-assistant="canSendToAssistant"
+						:execution-id="group.executionId"
+						@fix-with-assistant="onFixWithAssistant(group)"
 					/>
 					<template v-for="tc in group.toolCalls" :key="`wait-${tc.toolCallId}`">
 						<N8nText
@@ -464,7 +479,9 @@ onBeforeUnmount(() => {
 							:content="getAssistantRunContent(group.id)"
 							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
 							:is-speaking="isSpeakingMessage(group.id)"
+							:can-send-to-assistant="canSendToAssistant"
 							@read-aloud="toggleReadAloud(group.id)"
+							@send-to-assistant="emit('sendToAssistant')"
 						/>
 					</div>
 					<AgentTypingIndicator
@@ -493,6 +510,9 @@ onBeforeUnmount(() => {
 						v-if="group.message.toolCalls?.length"
 						:tool-calls="group.message.toolCalls"
 						:project-id="projectId"
+						:can-fix-with-assistant="canSendToAssistant"
+						:execution-id="group.message.executionId"
+						@fix-with-assistant="onFixWithAssistant(group)"
 					/>
 					<template v-for="tc in group.message.toolCalls ?? []" :key="`wait-${tc.toolCallId}`">
 						<N8nText
@@ -548,7 +568,9 @@ onBeforeUnmount(() => {
 							:content="getAssistantRunContent(group.id)"
 							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
 							:is-speaking="isSpeakingMessage(group.id)"
+							:can-send-to-assistant="canSendToAssistant"
 							@read-aloud="toggleReadAloud(group.id)"
+							@send-to-assistant="emit('sendToAssistant')"
 						/>
 						<AgentChatMemoryUsed
 							:memories="getMemoriesUsedInAssistantRun(group.id)"

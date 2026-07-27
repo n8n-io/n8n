@@ -72,6 +72,95 @@ describe('compileWorkflowSource', () => {
 		);
 	});
 
+	it('strips null top-level node keys and coerces parameters to an object', async () => {
+		const workflow = {
+			name: 'JSON workflow',
+			nodes: [
+				{
+					id: 'http-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [0, 0] as [number, number],
+					parameters: null,
+					credentials: null,
+					webhookId: null,
+					notes: null,
+				},
+				{
+					id: 'slack-1',
+					name: 'Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2.2,
+					position: [200, 0] as [number, number],
+					parameters: {},
+					credentials: {
+						slackApi: { id: null, name: 'Slack account' },
+					},
+				},
+			],
+			connections: {},
+		};
+		const context = makeContext();
+
+		const result = await compileWorkflowSource(
+			context,
+			'src/workflows/json.workflow.json',
+			JSON.stringify(workflow),
+		);
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+
+		const httpNode = result.workflow.nodes[0];
+		expect(httpNode).not.toHaveProperty('credentials');
+		expect(httpNode).not.toHaveProperty('webhookId');
+		expect(httpNode).not.toHaveProperty('notes');
+		expect(httpNode?.parameters).toEqual({});
+
+		const slackNode = result.workflow.nodes[1];
+		expect(slackNode?.credentials).toEqual({
+			slackApi: { id: null, name: 'Slack account' },
+		});
+	});
+
+	it('strips null top-level node keys from sandbox build output', async () => {
+		const workflow = {
+			name: 'TS workflow',
+			nodes: [
+				{
+					id: 'manual-1',
+					name: 'Manual Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+					credentials: null,
+					webhookId: null,
+				},
+			],
+			connections: {},
+		};
+		vi.mocked(runInSandbox).mockResolvedValue({
+			exitCode: 0,
+			stdout: JSON.stringify({ success: true, workflow, warnings: [] }),
+			stderr: '',
+		});
+
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/main.workflow.ts',
+			'workflow source',
+		);
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+
+		const node = result.workflow.nodes[0];
+		expect(node).not.toHaveProperty('credentials');
+		expect(node).not.toHaveProperty('webhookId');
+	});
+
 	it('runs TypeScript workflow sources through the sandbox tsx build runner', async () => {
 		const workflow = {
 			name: 'TS workflow',
@@ -113,7 +202,7 @@ describe('compileWorkflowSource', () => {
 		expect(runInSandbox).toHaveBeenCalledWith(
 			context.workspace,
 			"node --import tsx build.mjs '/home/daytona/workspace/src/workflows/main.workflow.ts'",
-			'/home/daytona/workspace',
+			{ cwd: '/home/daytona/workspace', abortSignal: undefined },
 		);
 		expect(result).toMatchObject({
 			success: true,
@@ -164,6 +253,41 @@ describe('compileWorkflowSource', () => {
 			editable: false,
 		});
 		expect(runInSandbox).not.toHaveBeenCalled();
+	});
+
+	it('rethrows AbortError from sandbox execution instead of converting to a build failure', async () => {
+		const abortError = new Error('This operation was aborted');
+		abortError.name = 'AbortError';
+		vi.mocked(runInSandbox).mockRejectedValue(abortError);
+
+		await expect(
+			compileWorkflowSource(makeContext(), 'src/workflows/main.workflow.ts', 'workflow source'),
+		).rejects.toMatchObject({ name: 'AbortError' });
+	});
+
+	it('forwards abortSignal into the sandbox runner', async () => {
+		const controller = new AbortController();
+		vi.mocked(runInSandbox).mockResolvedValue({
+			exitCode: 0,
+			stdout: JSON.stringify({
+				success: true,
+				workflow: { name: 'TS workflow', nodes: [], connections: {} },
+				warnings: [],
+			}),
+			stderr: '',
+		});
+
+		await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/main.workflow.ts',
+			'workflow source',
+			controller.signal,
+		);
+
+		expect(runInSandbox).toHaveBeenCalledWith(expect.anything(), expect.any(String), {
+			cwd: '/home/daytona/workspace',
+			abortSignal: controller.signal,
+		});
 	});
 });
 

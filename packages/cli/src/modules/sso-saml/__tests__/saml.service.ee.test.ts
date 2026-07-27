@@ -809,6 +809,46 @@ describe('SamlService', () => {
 			expect(samlService.samlPreferences.metadataUrl).toBe(metadataUrlTestData);
 		});
 
+		test('clears metadata and metadataUrl when set to empty strings', async () => {
+			await samlService.loadPreferencesWithoutValidation({
+				metadata: '<xml>existing</xml>',
+				metadataUrl: 'https://idp.example.com/metadata',
+			});
+
+			await samlService.loadPreferencesWithoutValidation({
+				metadata: '',
+				metadataUrl: '',
+			});
+
+			expect(samlService.samlPreferences.metadata).toBe('');
+			expect(samlService.samlPreferences.metadataUrl).toBeUndefined();
+		});
+
+		test('clears metadataUrl when empty string is provided alone', async () => {
+			await samlService.loadPreferencesWithoutValidation({
+				metadataUrl: 'https://idp.example.com/metadata',
+			});
+
+			await samlService.loadPreferencesWithoutValidation({
+				metadataUrl: '',
+			});
+
+			expect(samlService.samlPreferences.metadataUrl).toBeUndefined();
+		});
+
+		test('clears metadataUrl when XML metadata is provided without a URL', async () => {
+			await samlService.loadPreferencesWithoutValidation({
+				metadataUrl: 'https://idp.example.com/metadata',
+			});
+
+			await samlService.loadPreferencesWithoutValidation({
+				metadata: '<xml>new</xml>',
+			});
+
+			expect(samlService.samlPreferences.metadata).toBe('<xml>new</xml>');
+			expect(samlService.samlPreferences.metadataUrl).toBeUndefined();
+		});
+
 		test('does throw `InvalidSamlMetadataError` in case saml login is turned on and no valid metadata is available', async () => {
 			await samlService.loadPreferencesWithoutValidation({
 				metadata: 'not valid data',

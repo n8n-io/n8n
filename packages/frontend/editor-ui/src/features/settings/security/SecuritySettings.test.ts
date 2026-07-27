@@ -35,7 +35,7 @@ vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
 	useEnvFeatureFlag: () => ({ check: { value: checkEnvFeatureFlag } }),
 }));
 
-const pinia = createTestingPinia();
+const pinia = createTestingPinia({ stubActions: false });
 
 const renderView = createComponentRenderer(SecuritySettings, {
 	pinia,
@@ -868,6 +868,7 @@ describe('SecuritySettings', () => {
 				expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
 					workflowReviews: { enabled: true },
 				});
+				expect(settingsStore.settings.workflowReviews).toEqual({ enabled: true });
 			});
 		});
 
@@ -914,6 +915,7 @@ describe('SecuritySettings', () => {
 				expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
 					workflowReviews: { enabled: false },
 				});
+				expect(settingsStore.settings.workflowReviews).toEqual({ enabled: false });
 			});
 		});
 

@@ -143,6 +143,7 @@ function emitScopes(scopes: S[]) {
 type ScopeModeOption = {
 	value: ScopeSelectionMode;
 	label: string;
+	description: string;
 	'data-test-id': string;
 };
 
@@ -150,19 +151,28 @@ const modeOptions = computed<ScopeModeOption[]>(() => [
 	{
 		value: 'all',
 		label: baseText('all'),
+		description: baseText('allDescription'),
 		'data-test-id': 'scopes-mode-all',
 	},
 	{
 		value: 'readOnly',
 		label: baseText('readOnly'),
+		description: baseText('readOnlyDescription'),
 		'data-test-id': 'scopes-mode-read-only',
 	},
 	{
 		value: 'custom',
 		label: baseText('custom'),
+		description: baseText('customDescription'),
 		'data-test-id': 'scopes-mode-custom',
 	},
 ]);
+
+function onModeCardClick(value: ScopeSelectionMode) {
+	if (props.disabled || value === mode.value) return;
+	mode.value = value;
+	onModeChange(value);
+}
 
 function onModeChange(newMode: string | undefined) {
 	if (newMode === undefined) {
@@ -254,16 +264,31 @@ function toggleScope(scope: S, checked: boolean) {
 </script>
 
 <template>
-	<div :data-test-id="rootTestId">
-		<N8nInputLabel :label="baseText('label')" color="text-dark">
+	<div :class="$style.selector" :data-test-id="rootTestId">
+		<N8nInputLabel :label="baseText('label')" size="small" color="text-dark">
 			<N8nRadioGroup
 				v-model="mode"
+				orientation="vertical"
 				:disabled="disabled"
 				:aria-label="baseText('label')"
 				data-test-id="scopes-mode-radio"
+				:class="$style.modes"
 				@update:model-value="onModeChange"
 			>
-				<N8nRadioGroupItem v-for="option in modeOptions" :key="option.value" v-bind="option" />
+				<div
+					v-for="option in modeOptions"
+					:key="option.value"
+					:class="[$style.modeCard, mode === option.value && $style.modeCardActive]"
+					@click="onModeCardClick(option.value)"
+				>
+					<N8nRadioGroupItem
+						:value="option.value"
+						:label="option.label"
+						:description="option.description"
+						:disabled="disabled"
+						:data-test-id="option['data-test-id']"
+					/>
+				</div>
 			</N8nRadioGroup>
 		</N8nInputLabel>
 
@@ -289,6 +314,7 @@ function toggleScope(scope: S, checked: boolean) {
 			<template v-if="treeExpanded">
 				<N8nInput
 					v-model="searchTerm"
+					size="small"
 					clearable
 					:placeholder="baseText('search.placeholder')"
 					:aria-label="baseText('search.placeholder')"
@@ -396,6 +422,31 @@ function toggleScope(scope: S, checked: boolean) {
 </template>
 
 <style module lang="scss">
+/* Option and checkbox labels render at 12px here, one step below the body copy. */
+.selector {
+	--radio-group-item--label--font-size: var(--font-size--2xs);
+	--checkbox--label--font-size: var(--font-size--2xs);
+}
+
+.modes {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--xs);
+}
+
+.modeCard {
+	padding: var(--spacing--2xs) var(--spacing--xs) var(--spacing--xs);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	cursor: pointer;
+}
+
+.modeCardActive {
+	background: var(--color--background--light-2);
+	border-color: var(--color--primary);
+}
+
 .customSection {
 	display: flex;
 	flex-direction: column;
@@ -412,8 +463,8 @@ function toggleScope(scope: S, checked: boolean) {
 	border: none;
 	cursor: pointer;
 	color: var(--color--text);
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--regular);
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--medium);
 	text-align: left;
 
 	&:focus-visible {
@@ -425,15 +476,22 @@ function toggleScope(scope: S, checked: boolean) {
 .groups {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
 	max-height: 320px;
 	overflow-y: auto;
 }
 
+/* Compact rows (~24px pitch): the ghost toggle is the tallest thing in the row,
+   so cap it instead of padding the whole row. */
 .groupHeader {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
+	min-height: var(--spacing--lg);
+
+	> button:first-child {
+		--button--height: var(--spacing--lg);
+		width: var(--spacing--lg);
+	}
 }
 
 .tools-tag {
@@ -511,8 +569,8 @@ function toggleScope(scope: S, checked: boolean) {
 .scopeList {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--2xs) 0 var(--spacing--2xs) var(--spacing--2xl);
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--3xs) 0 var(--spacing--2xs) var(--spacing--2xl);
 }
 
 .scopeRow {

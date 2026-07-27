@@ -8,6 +8,10 @@ export type GraphRequestError = {
 	message?: string;
 	code?: string;
 	error?: { error?: GraphRequestError };
+	// Once `httpRequestWithAuthentication` has already wrapped a failure in a
+	// NodeApiError (the normal case for a real request), Graph's parsed body
+	// lives here instead of under `error.error`.
+	context?: { data?: { error?: GraphRequestError } };
 };
 
 /** Normalizes Graph's inconsistent status-code fields (string, number, or absent) into a clean number. */
@@ -26,10 +30,16 @@ export function toGraphBaseUrl(graphApiBaseUrl: unknown): string {
 	return base.replace(/\/+$/, '');
 }
 
-/** Graph nests its real error one level under `error.error`; unwraps it while preserving the outer status code. */
+/**
+ * Graph nests its real error one level under `error.error` on a raw HTTP client error, or
+ * under `context.data.error` once n8n has already wrapped the failure in a NodeApiError
+ * (the case for every request that goes through `httpRequestWithAuthentication`). Unwraps
+ * whichever is present while preserving the outer status code.
+ */
 export function unwrapGraphError(error: GraphRequestError): GraphRequestError {
-	if (!error.error?.error) return error;
-	return { ...error.error.error, statusCode: error.statusCode };
+	const nested = error.error?.error ?? error.context?.data?.error;
+	if (!nested) return error;
+	return { ...nested, statusCode: error.statusCode };
 }
 
 /** Builds the `REQUIRED_PERMISSIONS` lookup key for a resource/operation pair. */

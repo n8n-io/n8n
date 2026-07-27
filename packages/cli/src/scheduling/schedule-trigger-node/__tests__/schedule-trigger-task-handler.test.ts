@@ -3,7 +3,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { ExecutionEntity, ExecutionRepository, Project } from '@n8n/db';
-import type { ClaimedTask } from '@n8n/scheduler';
+import { createDispatchReporter, type ClaimedTask } from '@n8n/scheduler';
 import type { ErrorReporter } from 'n8n-core';
 import type { INode, IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
@@ -45,6 +45,8 @@ describe('ScheduleTriggerTaskHandler', () => {
 
 	// The executor's dispatch-marker callback; cleared each test by vi.clearAllMocks().
 	const onDispatch = vi.fn();
+	// The reporter the executor hands to `execute`; `dispatched()` fires the spy above.
+	const report = createDispatchReporter(onDispatch);
 
 	const triggerNode = mock<INode>({ id: 'node-1', name: 'Schedule Trigger', disabled: false });
 
@@ -97,7 +99,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 
 	describe('handoff', () => {
 		test('creates a trigger execution with the occurrence-derived dedup key', async () => {
-			await handler.execute(buildTask(), onDispatch);
+			await handler.execute(buildTask(), report);
 
 			expect(triggerExecutionContextFactory.loadPublishedWorkflowData).toHaveBeenCalledWith('wf-1');
 			expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
@@ -113,7 +115,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 		});
 
 		test('stamps the trigger item from the occurrence instant in the workflow timezone', async () => {
-			await handler.execute(buildTask(), onDispatch);
+			await handler.execute(buildTask(), report);
 
 			const [, , data] = workflowExecutionService.runWorkflow.mock.calls[0];
 			expect(data[0][0].json).toMatchObject({
@@ -127,7 +129,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 				buildWorkflowData({ settings: {} }),
 			);
 
-			await handler.execute(buildTask(), onDispatch);
+			await handler.execute(buildTask(), report);
 
 			const [, , data] = workflowExecutionService.runWorkflow.mock.calls[0];
 			expect(data[0][0].json).toMatchObject({
@@ -141,7 +143,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 				buildWorkflowData({ settings: { timezone: 'DEFAULT' } }),
 			);
 
-			await handler.execute(buildTask(), onDispatch);
+			await handler.execute(buildTask(), report);
 
 			const [, , data] = workflowExecutionService.runWorkflow.mock.calls[0];
 			// 'DEFAULT' is a sentinel, not a Moment zone: it must not leak into the
@@ -153,7 +155,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 		});
 
 		test('builds additional data for the published workflow like the activation path', async () => {
-			await handler.execute(buildTask(), onDispatch);
+			await handler.execute(buildTask(), report);
 
 			expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({
 				workflowId: 'wf-1',
@@ -162,7 +164,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 		});
 
 		test('emits workflow-executed for the new execution', async () => {
-			await handler.execute(buildTask(), onDispatch);
+			await handler.execute(buildTask(), report);
 
 			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('wf-1');
 			expect(eventService.emit).toHaveBeenCalledWith('workflow-executed', {
@@ -184,7 +186,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 				return await Promise.resolve('exec-1');
 			});
 
-			await handler.execute(buildTask(), onDispatch);
+			await handler.execute(buildTask(), report);
 
 			expect(onDispatch).toHaveBeenCalledTimes(1);
 			expect(reportedAt).toBe('before'); // not yet called while runWorkflow is in flight
@@ -199,9 +201,9 @@ describe('ScheduleTriggerTaskHandler', () => {
 				mock<ExecutionEntity>({ id: 'exec-0', status: 'running' }),
 			);
 
-			await expect(
-				handler.execute(buildTask({ attempts: 1 }), onDispatch),
-			).resolves.toBeUndefined();
+			// The handler resolves with a dispatch decision (here: notDispatched) rather
+			// than throwing, so the executor completes the occurrence.
+			await expect(handler.execute(buildTask({ attempts: 1 }), report)).resolves.toBeDefined();
 
 			expect(executionRepository.findOne).toHaveBeenCalledWith({
 				where: { deduplicationKey: '7:2026-07-06T07:30:00.000Z' },
@@ -226,7 +228,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 		test('rejects a task whose payload is missing workflowId or nodeId', async () => {
 			const task = buildTask({ payload: { nodeId: 'node-1' } });
 
-			await expect(handler.execute(task, onDispatch)).rejects.toThrow(UnexpectedError);
+			await expect(handler.execute(task, report)).rejects.toThrow(UnexpectedError);
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
 		});
 
@@ -234,7 +236,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 			const error = new UnexpectedError('Published version not found for workflow');
 			triggerExecutionContextFactory.loadPublishedWorkflowData.mockRejectedValue(error);
 
-			await expect(handler.execute(buildTask(), onDispatch)).rejects.toThrow(error);
+			await expect(handler.execute(buildTask(), report)).rejects.toThrow(error);
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
 		});
 
@@ -243,7 +245,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 				buildWorkflowData({ nodes: [] }),
 			);
 
-			await expect(handler.execute(buildTask(), onDispatch)).rejects.toThrow(
+			await expect(handler.execute(buildTask(), report)).rejects.toThrow(
 				'missing or disabled in the published workflow',
 			);
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
@@ -254,7 +256,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 				buildWorkflowData({ nodes: [mock<INode>({ id: 'node-1', disabled: true })] }),
 			);
 
-			await expect(handler.execute(buildTask(), onDispatch)).rejects.toThrow(
+			await expect(handler.execute(buildTask(), report)).rejects.toThrow(
 				'missing or disabled in the published workflow',
 			);
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
@@ -264,7 +266,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 			const error = new Error('db unavailable');
 			workflowExecutionService.runWorkflow.mockRejectedValue(error);
 
-			await expect(handler.execute(buildTask(), onDispatch)).rejects.toThrow(error);
+			await expect(handler.execute(buildTask(), report)).rejects.toThrow(error);
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});

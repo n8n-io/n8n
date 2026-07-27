@@ -587,6 +587,31 @@ describe('CredentialResolverWorkflowService', () => {
 				expect(result.map((s) => s.credentialId)).toEqual(['cred-sub']);
 			});
 
+			it('follows Workflow Retriever (retrieverWorkflow) references', async () => {
+				mockWorkflowsById({
+					'workflow-1': createMockWorkflow({
+						id: 'workflow-1',
+						nodes: [
+							createExecuteWorkflowNode(
+								{ value: 'sub-1' },
+								{ type: '@n8n/n8n-nodes-langchain.retrieverWorkflow' },
+							),
+						],
+						settings: { credentialResolverId: 'resolver-1' },
+					}),
+					'sub-1': createMockWorkflow({
+						id: 'sub-1',
+						nodes: [nodeWithCredential('cred-sub')],
+						settings: { credentialResolverId: 'resolver-1' },
+					}),
+				});
+				mockFindReturning([createMockCredential({ id: 'cred-sub' })]);
+
+				const result = await service.getWorkflowStatus('workflow-1', credentialContext);
+
+				expect(result.map((s) => s.credentialId)).toEqual(['cred-sub']);
+			});
+
 			it('handles cycles and self-references without re-processing workflows', async () => {
 				mockWorkflowsById({
 					'workflow-1': createMockWorkflow({

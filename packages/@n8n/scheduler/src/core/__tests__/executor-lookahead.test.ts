@@ -104,10 +104,11 @@ describe('executor claims far enough ahead to fire on time', () => {
 		const registry = new TaskHandlerRegistry();
 		const firedAt = new Map<string, number>();
 		registry.register(TASK_TYPE, {
-			execute: async (t, onDispatch) => {
+			execute: async (t, report) => {
 				firedAt.set(t.id, Date.now());
-				onDispatch();
+				const decision = report.dispatched();
 				await Promise.resolve();
+				return decision;
 			},
 		});
 

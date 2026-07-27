@@ -314,6 +314,15 @@ DI, configuration and instance identity, and routes the scheduler's events to th
 logger. While `N8N_SCHEDULER_ENABLED` is off, the previous in-memory engine stays
 in place; turning the flag off again is the rollback.
 
+The boundary this section describes is enforced, not just documented.
+`src/__tests__/dependency-purity.test.ts` fails if the package ever gains a
+forbidden dependency, whether a new `package.json` entry outside the allowlist or
+an `import` of something effectful (`@n8n/db`, TypeORM, `n8n-core`, the DI
+container, the `cli` package, or a Node I/O built-in). Its opening doc comment is
+the living explanation of the approach: why scheduling is split from execution and
+storage, why each excluded dependency is excluded, and how far the idea could be
+taken. Read it first if you want the reasoning behind the split above.
+
 ## Good to know
 
 A few things that are not obvious from the code but save a lot of confusion.
@@ -383,3 +392,22 @@ A few things that are not obvious from the code but save a lot of confusion.
   handler that runs longer than its lease risks being recovered and re-run. A
   heartbeat that extends the lease while a handler is genuinely still working would
   lift that constraint.
+
+### Exploring the idea: a standalone `@n8n/scheduler-worker`
+
+Pushed all the way, that host module becomes its own deployable worker. On a due
+task it does not run the workflow, it creates an execution and enqueues a job (Bull
+and Redis) for the regular workers, so the real work is decomposing `cli`. The
+result is far leaner than `cli`, which bundles every node's dependencies (1Password,
+S3, and more). The worker only needs:
+
+| Needs | Package | Pulls in |
+| --- | --- | --- |
+| Core logic | `@n8n/scheduler` | luxon, cron-parser |
+| Task store + transactions | `@n8n/db` | `@n8n/typeorm` + a database driver |
+| Enqueue executions (a new, extracted publisher) | `@n8n/…-publisher` | Bull + ioredis, execution writes, trigger-context |
+| Logging + lifecycle | `@n8n/backend-common` | winston |
+| Wiring + types | `@n8n/config`, `@n8n/di`, `@n8n/decorators`, `n8n-workflow` | reflect-metadata |
+| Instance identity (today) | `n8n-core` | the execution engine, unless extracted |
+
+Full reasoning in the doc comment of `src/__tests__/dependency-purity.test.ts`.

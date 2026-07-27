@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { ClaimedTask, TaskHandler } from '@n8n/scheduler';
+import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
 import { ErrorReporter } from 'n8n-core';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
@@ -46,7 +46,7 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 		this.logger = this.logger.scoped('scheduler');
 	}
 
-	async execute(task: ClaimedTask, onDispatch: () => void): Promise<void> {
+	async execute(task: ClaimedTask, report: DispatchReporter): Promise<DispatchDecision> {
 		const { workflowId, nodeId } = this.parsePayload(task);
 		const workflowData =
 			await this.triggerExecutionContextFactory.loadPublishedWorkflowData(workflowId);
@@ -67,9 +67,8 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 			workflowSettings: workflowData.settings,
 		});
 
-		let executionId: string;
 		try {
-			executionId = await this.workflowExecutionService.runWorkflow(
+			const executionId = await this.workflowExecutionService.runWorkflow(
 				workflowData,
 				node,
 				[[item]],
@@ -79,7 +78,7 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 				deduplicationKey,
 			);
 
-			onDispatch();
+			const decision = report.dispatched();
 
 			const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
 				this.ownershipService,
@@ -102,11 +101,16 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 				executionId,
 				deduplicationKey,
 			});
+
+			return decision;
 		} catch (error) {
 			if (!(error instanceof DuplicateExecutionError)) {
 				throw error;
 			}
+			// The effect already exists from a prior delivery; this occurrence hands off
+			// nothing new, so it reports no dispatch and the executor writes no marker.
 			await this.recordExistingHandoff(task, error);
+			return report.notDispatched();
 		}
 	}
 

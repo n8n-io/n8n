@@ -51,14 +51,14 @@ const n8nConnectSchema = z
 	.object({
 		credentialTypes: z
 			.array(z.string())
-			.describe('Credential type names that n8n Connect can provide (e.g. "openAiApi").'),
+			.describe('Credential type names that n8n credits can provide (e.g. "openAiApi").'),
 		nodes: z
 			.array(z.string())
-			.describe('Node types covered by n8n Connect (e.g. "@n8n/n8n-nodes-langchain.openAi").'),
+			.describe('Node types covered by n8n credits (e.g. "@n8n/n8n-nodes-langchain.openAi").'),
 	})
 	.optional()
 	.describe(
-		`Present when n8n Connect is available for this instance. Omitted otherwise. Candidate coverage only — actual eligibility for a managed credential also depends on the node action, minimum type version, and hidden properties; call ${LIST_N8N_CONNECT_SERVICES_TOOL_NAME} for the authoritative contract.`,
+		`Present when n8n credits is available for this instance. Omitted otherwise. Candidate coverage only — actual eligibility for a managed credential also depends on the node action, minimum type version, and hidden properties; call ${LIST_N8N_CONNECT_SERVICES_TOOL_NAME} for the authoritative contract.`,
 	);
 
 const outputSchema = {

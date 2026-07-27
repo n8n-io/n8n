@@ -6,8 +6,14 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { VIEWS } from '@/app/constants';
 
 import { useEvalCollectionsStore } from '../evalCollections.store';
+import { useEvaluationStore } from '../evaluation.store';
 import type { EvaluationCollectionDetail } from '../evalCollections.types';
 import CompareCollectionView from './CompareCollectionView.vue';
+
+const track = vi.fn();
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
 
 const routerReplace = vi.fn();
 vi.mock('vue-router', async (importOriginal) => ({
@@ -82,17 +88,28 @@ const renderComponent = createComponentRenderer(CompareCollectionView, {
 
 describe('CompareCollectionView', () => {
 	let store: ReturnType<typeof useEvalCollectionsStore>;
+	let evaluationStore: ReturnType<typeof useEvaluationStore>;
 
 	beforeEach(() => {
 		flagState.enabled = true;
 		routerReplace.mockClear();
+		track.mockClear();
 		store = useEvalCollectionsStore();
+		evaluationStore = useEvaluationStore();
 		store.stopPolling = vi.fn() as unknown as typeof store.stopPolling;
+		// Per-case fetch is stubbed to a no-op by default so useCompareCases
+		// doesn't hit the network; tests that assert on cases seed the map.
+		evaluationStore.fetchTestCaseExecutions = vi.fn(
+			async () => [],
+		) as unknown as typeof evaluationStore.fetchTestCaseExecutions;
 		// Hard-replace the shared testing pinia's maps so a prior test's cached
 		// detail doesn't leak in (object-form `$patch` deep-merges stale keys).
 		store.$patch((state) => {
 			state.collectionDetailById = {};
 			state.loadingDetail = {};
+		});
+		evaluationStore.$patch((state) => {
+			state.testCaseExecutionsById = {};
 		});
 	});
 
@@ -137,6 +154,33 @@ describe('CompareCollectionView', () => {
 		);
 		expect(container.querySelector('[data-test-id="compare-score-chart"]')).not.toBeNull();
 		expect(container.textContent).toContain('Tone tuning experiment');
+	});
+
+	it('renders the compare tabs and fires the compare-opened event once data loads', async () => {
+		store.fetchCollectionDetail = vi.fn(async () => {
+			store.$patch({ collectionDetailById: { 'col-1': DETAIL } });
+			return DETAIL;
+		}) as unknown as typeof store.fetchCollectionDetail;
+
+		const { container } = renderComponent();
+
+		await waitFor(() =>
+			expect(container.querySelector('[data-test-id="compare-tabs"]')).not.toBeNull(),
+		);
+		await waitFor(() =>
+			expect(track).toHaveBeenCalledWith(
+				'Eval collection compared opened',
+				expect.objectContaining({
+					workflow_id: 'wf-1',
+					collection_id: 'col-1',
+					version_count: 2,
+				}),
+			),
+		);
+		// fired exactly once for the collection
+		expect(track.mock.calls.filter((c) => c[0] === 'Eval collection compared opened')).toHaveLength(
+			1,
+		);
 	});
 
 	it('shows the not-found state when the collection has no detail', async () => {

@@ -225,7 +225,7 @@ describe('FrontendService', () => {
 	};
 
 	beforeEach(() => {
-		originalEnv = process.env;
+		originalEnv = { ...process.env };
 		vi.clearAllMocks();
 		globalConfig.diagnostics.enabled = false;
 	});
@@ -245,6 +245,22 @@ describe('FrontendService', () => {
 					settingsMode: 'authenticated',
 				}),
 			);
+		});
+
+		it('should refresh the workflow reviews policy on every settings fetch', async () => {
+			process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
+			licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
+			workflowReviewPolicyService.get
+				.mockResolvedValueOnce({ enabled: true })
+				.mockResolvedValueOnce({ enabled: false });
+			const { service } = createMockService();
+
+			const initialSettings = await service.getSettings();
+			expect(initialSettings.workflowReviews).toEqual({ enabled: true });
+
+			const refreshedSettings = await service.getSettings();
+			expect(refreshedSettings.workflowReviews).toEqual({ enabled: false });
+			expect(workflowReviewPolicyService.get).toHaveBeenCalledTimes(2);
 		});
 
 		it('should cache dynamic banner filters for 30 seconds', async () => {

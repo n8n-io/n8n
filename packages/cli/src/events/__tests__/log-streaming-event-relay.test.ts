@@ -63,7 +63,7 @@ describe('LogStreamingEventRelay', () => {
 					lastName: 'User',
 					role: { slug: 'global:admin' },
 				},
-				projectId: 'proj-brie',
+				projectIds: ['proj-brie', 'proj-stilton'],
 				folderId: 'folder-cheese',
 				workflowIds: ['wf-cheddar', 'wf-brie'],
 				options: {
@@ -72,9 +72,11 @@ describe('LogStreamingEventRelay', () => {
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
 					workflowPublishingPolicy: 'preserve-published-state',
+					missingNodeTypeMode: 'fail',
 					dataTableMatchingMode: 'by-id',
 					dataTableMissingMode: 'create',
 					dataTableSchemaConflictPolicy: 'keep-existing',
+					variableMissingMode: 'do-nothing',
 				},
 				packageSourceId: 'source-instance-1',
 				packageVersion: '1',
@@ -100,6 +102,11 @@ describe('LogStreamingEventRelay', () => {
 						created: 1,
 						requirements: 1,
 					},
+					variables: {
+						matched: 0,
+						missing: 1,
+						requirements: 1,
+					},
 				},
 			};
 
@@ -113,7 +120,7 @@ describe('LogStreamingEventRelay', () => {
 					_firstName: 'Import',
 					_lastName: 'User',
 					globalRole: 'global:admin',
-					projectId: 'proj-brie',
+					projectIds: ['proj-brie', 'proj-stilton'],
 					folderId: 'folder-cheese',
 					workflowIds: ['wf-cheddar', 'wf-brie'],
 					options: {
@@ -122,9 +129,11 @@ describe('LogStreamingEventRelay', () => {
 						credentialMatchingMode: 'id-only',
 						credentialMissingMode: 'must-preexist',
 						workflowPublishingPolicy: 'preserve-published-state',
+						missingNodeTypeMode: 'fail',
 						dataTableMatchingMode: 'by-id',
 						dataTableMissingMode: 'create',
 						dataTableSchemaConflictPolicy: 'keep-existing',
+						variableMissingMode: 'do-nothing',
 					},
 					packageSourceId: 'source-instance-1',
 					packageVersion: '1',
@@ -155,6 +164,7 @@ describe('LogStreamingEventRelay', () => {
 					folders: 1,
 					credentials: 1,
 					dataTables: 1,
+					variables: 1,
 				},
 			};
 

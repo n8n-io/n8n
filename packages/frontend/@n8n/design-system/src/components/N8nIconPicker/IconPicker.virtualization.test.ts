@@ -47,6 +47,27 @@ const router = createRouter({
 });
 
 describe('IconPicker virtualization', () => {
+	it('reserves the estimated row height while lazy icons render', async () => {
+		const { getByTestId, findAllByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'icon-1' },
+				buttonTooltip: 'Select an icon',
+			},
+			global: {
+				plugins: [router],
+				stubs: ['N8nButton', 'N8nIcon'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+
+		const [icon] = await findAllByTestId('icon-picker-icon');
+		const row = icon.closest('[class*="iconGridRow"]');
+
+		expect(row).not.toBeNull();
+		expect(row).toHaveStyle({ minHeight: 'var(--height--md)' });
+	});
+
 	it('renders only visible icon rows in browse mode', async () => {
 		const { getByTestId } = render(IconPicker, {
 			props: {
