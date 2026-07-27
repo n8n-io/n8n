@@ -48,8 +48,10 @@ describe('N8nClient packages', () => {
 
 			const result = await client.exportPackage({ workflowIds: ['a', 'b'] });
 
-			expect(Buffer.isBuffer(result)).toBe(true);
-			expect(result.equals(Buffer.from([1, 2, 3]))).toBe(true);
+			expect(Buffer.isBuffer(result.archive)).toBe(true);
+			expect(result.archive.equals(Buffer.from([1, 2, 3]))).toBe(true);
+			// Older servers omit the counts header.
+			expect(result.counts).toBeUndefined();
 
 			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(url).toBe('https://n8n.example.com/api/v1/n8n-packages/export');
@@ -61,12 +63,24 @@ describe('N8nClient packages', () => {
 
 			const result = await client.exportPackage({ projectIds: ['proj-1', 'proj-2'] });
 
-			expect(Buffer.isBuffer(result)).toBe(true);
-			expect(result.equals(Buffer.from([4, 5, 6]))).toBe(true);
+			expect(Buffer.isBuffer(result.archive)).toBe(true);
+			expect(result.archive.equals(Buffer.from([4, 5, 6]))).toBe(true);
 
 			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(url).toBe('https://n8n.example.com/api/v1/n8n-packages/export');
 			expect(init.body).toBe(JSON.stringify({ projectIds: ['proj-1', 'proj-2'] }));
+		});
+
+		it('parses the X-N8n-Export-Counts header into counts when the server sends it', async () => {
+			const counts = { workflows: 2, folders: 1, credentials: 0, dataTables: 0, variables: 0 };
+			const response = binaryResponse(200, new Uint8Array([1, 2, 3]));
+			response.headers.set('X-N8n-Export-Counts', JSON.stringify(counts));
+			fetchMock.mockResolvedValue(response);
+
+			const result = await client.exportPackage({ workflowIds: ['a'] });
+
+			expect(result.counts).toEqual(counts);
+			expect(result.archive.equals(Buffer.from([1, 2, 3]))).toBe(true);
 		});
 
 		it('includes folderIds in the body when provided', async () => {

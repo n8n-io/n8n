@@ -1,4 +1,5 @@
 import type { User } from '@n8n/db';
+import type { Readable } from 'node:stream';
 
 import type { DataTableResolutionFailure } from './entities/data-table/data-table.types';
 import type {
@@ -244,6 +245,16 @@ export type ExportPackageEventCounts = {
 	dataTables: number;
 	variables: number;
 };
+
+/**
+ * Result of an export: the archive stream plus the true per-entity counts of
+ * what actually ended up in the package (after folder bundling and
+ * auto-inclusion). Consumers surface these instead of the requested id counts.
+ */
+export interface ExportPackageResult {
+	stream: Readable;
+	counts: ExportPackageEventCounts;
+}
 
 export interface ImportedWorkflowSummary {
 	sourceWorkflowId: string;

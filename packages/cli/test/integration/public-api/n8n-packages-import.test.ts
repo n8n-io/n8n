@@ -201,6 +201,7 @@ describe('POST /n8n-packages/import', () => {
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
 			.field('workflowConflictPolicy', 'fail')
+			.field('workflowIdPolicy', 'new')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);

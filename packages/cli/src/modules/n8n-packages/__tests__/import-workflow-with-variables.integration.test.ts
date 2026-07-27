@@ -78,7 +78,7 @@ async function importPackage(params: ImportParams) {
 }
 
 async function exportWorkflowPackage(user: User, workflowId: string): Promise<Buffer> {
-	const stream = await service.exportPackage({
+	const { stream } = await service.exportPackage({
 		user,
 		workflowIds: [workflowId],
 		includeVariableValues: true,

@@ -226,7 +226,7 @@ describe('workflow package import — with data tables', () => {
 				references: [{ dataTableId: sourceTable.id }],
 			});
 
-			const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+			const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 			const packageBuffer = await streamToBuffer(stream);
 
 			// Simulate importing on another instance: ids are global, so the source
@@ -716,7 +716,7 @@ describe('workflow package import — with data tables', () => {
 				parentFolder: folder,
 			});
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [],
 				folderIds: [folder.id],
