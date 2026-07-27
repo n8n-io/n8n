@@ -23,17 +23,17 @@ import { createCasePipeline, type CasePipeline } from './case-pipeline';
 import { LaneAllocator } from './lane-allocator';
 import type { CliArgs } from '../cli/args';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
-import type { EvalLogger } from '../harness/logger';
-import type { PrebuiltManifest } from '../harness/prebuilt-workflows';
+import { executeAgentScenario } from '../harness/agent-execution';
 import {
 	buildWorkflow,
-	cleanupBuild,
-	executeAgentScenario,
-	executeScenario,
 	workflowExpectedForCase,
 	type BuildResult,
-	type ScenarioSeedContext,
-} from '../harness/runner';
+} from '../harness/build-workflow';
+import { cleanupBuild } from '../harness/cleanup';
+import type { EvalLogger } from '../harness/logger';
+import type { PrebuiltManifest } from '../harness/prebuilt-workflows';
+import { executeScenario } from '../harness/scenario-execution';
+import type { ScenarioSeedContext } from '../harness/seed-tables';
 import type {
 	BuildExpectationResult,
 	ExecutionScenario,
