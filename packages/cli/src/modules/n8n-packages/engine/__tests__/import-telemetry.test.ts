@@ -209,25 +209,35 @@ describe('emitPackageImportedEvent', () => {
 		});
 	});
 
-	it('counts a name this import both created and skipped only once', () => {
+	it('reconciles the names of every scope together before counting them', () => {
 		const eventService = mock<EventService>();
-		const raced = scope({
-			projectId: 'P1',
-			outcomes: [outcome('wf1', 'WF1', 'created')],
-			credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
-			variables: { matched: 0, missing: 1, requirements: 1, created: 1 },
-		});
-		// Two creations wanted the same destination: the first stubbed it, the second found it
-		// occupied. The row is ours, so it belongs to `created` and must not also count as matched.
-		raced.imported.variableResult.skippedExisting = [...raced.imported.variableResult.stubbed];
 
-		emitPackageImportedEvent(eventService, { request, manifest, scopes: [raced] });
+		emitPackageImportedEvent(eventService, {
+			request,
+			manifest,
+			scopes: [
+				// Both scopes need the same name: the first creates it, so the second finds the
+				// destination occupied and skips. Only one row exists, and nothing pre-existed.
+				scope({
+					projectId: 'P1',
+					outcomes: [outcome('wf1', 'WF1', 'created')],
+					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
+					variables: { matched: 0, missing: 1, requirements: 1, created: 1 },
+				}),
+				scope({
+					projectId: 'P2',
+					outcomes: [outcome('wf2', 'WF2', 'created')],
+					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
+					variables: { matched: 0, missing: 1, requirements: 1, created: 0, existing: 1 },
+				}),
+			],
+		});
 
 		expect(lastImportedPayload(eventService).counts.variables).toEqual({
 			matched: 0,
 			missing: 0,
 			created: 1,
-			requirements: 1,
+			requirements: 2,
 		});
 	});
 

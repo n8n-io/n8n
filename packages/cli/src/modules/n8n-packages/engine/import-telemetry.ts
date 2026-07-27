@@ -6,6 +6,7 @@ import type { VariableImportRequest } from '../entities/variable/variable.types'
 import type { WorkflowImportOutcome } from '../entities/workflow/workflow-import.types';
 import type { ImportContext, ImportPackageRequest } from '../n8n-packages.types';
 import type { ImportOrchestrationResult } from './import-orchestrator';
+import { reconcileVariableSummary } from './import-result';
 import type { PackageManifest } from '../spec/manifest.schema';
 
 export interface PackageImportScope {
@@ -58,20 +59,16 @@ export function emitPackageImportedEvent(
 		(total, { variableRequest }) => total + (variableRequest.requirements?.length ?? 0),
 		0,
 	);
-	const variablesMatched = scopes.reduce((total, { imported }) => {
-		const stubbed = new Set(imported.variableResult.stubbed);
-		const preexisting = imported.variableResult.skippedExisting.filter(
-			(name) => !stubbed.has(name),
-		);
-		return total + imported.variablePlan.matched.length + preexisting.length;
-	}, 0);
-	const variablesMissing = scopes.reduce((total, { imported }) => {
-		const filled = new Set([
-			...imported.variableResult.stubbed,
-			...imported.variableResult.skippedExisting,
-		]);
-		return total + imported.variablePlan.missing.filter(({ name }) => !filled.has(name)).length;
-	}, 0);
+	// Reconciled once across every scope, by the same helper the API response uses, so a name one
+	// scope stubbed and another found occupied is not also reported as pre-existing.
+	const variableSummary = reconcileVariableSummary({
+		matched: scopes.flatMap(({ imported }) => imported.variablePlan.matched),
+		missing: scopes.flatMap(({ imported }) =>
+			imported.variablePlan.missing.map(({ name }) => name),
+		),
+		stubbed: scopes.flatMap(({ imported }) => imported.variableResult.stubbed),
+		skipped: scopes.flatMap(({ imported }) => imported.variableResult.skippedExisting),
+	});
 	const variablesCreated = scopes.reduce(
 		(total, { imported }) => total + imported.variableResult.createdCount,
 		0,
@@ -121,8 +118,8 @@ export function emitPackageImportedEvent(
 				requirements: dataTableRequirements,
 			},
 			variables: {
-				matched: variablesMatched,
-				missing: variablesMissing,
+				matched: variableSummary.matched.length,
+				missing: variableSummary.missing.length,
 				created: variablesCreated,
 				requirements: variableRequirements,
 			},
