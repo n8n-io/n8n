@@ -92,11 +92,7 @@ export function isEmailCurrentAuthenticationMethod(): boolean {
 	return getCurrentAuthenticationMethod() === 'email';
 }
 
-/**
- * Only one SSO method can be enabled at a time (in addition to email). Throws a
- * `BadRequestError` if the caller is trying to enable `method` while a different
- * SSO method is currently active.
- */
+/** Only one authentication method (`email` or a single SSO method) can be active at a time. */
 export function assertAuthenticationMethodCanBeEnabled(
 	method: Extract<AuthProviderType, 'ldap' | 'saml' | 'oidc'>,
 ): void {
