@@ -5,6 +5,7 @@ import {
 	ApiKeyScope,
 	ApiResponse,
 	ApiSummary,
+	ApiTags,
 	Body,
 	ControllerRegistryMetadata,
 	Get,
@@ -234,13 +235,14 @@ describe('public-api-route-resolver', () => {
 			expect(resolvePublicApiRoutes()).toEqual([]);
 		});
 
-		it('resolves request/response DTOs, scope, summary, description, and error responses from decorator metadata', () => {
+		it('resolves request/response DTOs, scope, summary, description, tags, and error responses from decorator metadata', () => {
 			class WidgetsPublicController {
 				@Post('/')
 				@ApiKeyScope({ anyOf: ['tag:create', 'tag:update'] })
-				@ApiResponse(WidgetResponseDto)
 				@ApiSummary('Create a widget')
 				@ApiDescription('Create a widget.')
+				@ApiTags(['Widgets'])
+				@ApiResponse(WidgetResponseDto)
 				@ApiErrorResponse(409)
 				method(@Body _body: WidgetBodyDto, @Query _query: WidgetQueryDto) {}
 			}
@@ -254,6 +256,7 @@ describe('public-api-route-resolver', () => {
 			expect(route.responseDto).toBe(WidgetResponseDto);
 			expect(route.apiKeyScope).toEqual({ anyOf: ['tag:create', 'tag:update'] });
 			expect(route.summary).toBe('Create a widget');
+			expect(route.tags).toEqual(['Widgets']);
 			expect(route.description).toBe('Create a widget.');
 			expect(route.errorResponses).toEqual([409]);
 		});

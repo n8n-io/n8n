@@ -6,6 +6,7 @@ import {
 	ApiKeyScope,
 	ApiResponse,
 	ApiSummary,
+	ApiTags,
 	Get,
 	Param,
 	ProjectScope,
@@ -31,6 +32,7 @@ export class WorkflowsPublicController {
 	@ApiDescription(
 		'Returns a paginated list of workflow versions (version IDs and metadata) for a workflow.',
 	)
+	@ApiTags(['Workflow'])
 	@ApiResponse(WorkflowVersionHistoryListPublicDto)
 	@ApiErrorResponse(404)
 	async getWorkflowHistory(
