@@ -1,5 +1,7 @@
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { StorageLocation } from '@n8n/blob-storage';
 import { z } from 'zod';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { hasControlCharacter } from './agent-knowledge-storage';
 
@@ -186,7 +188,9 @@ export type ReadKnowledgeRequest = z.infer<typeof readKnowledgeInputSchema>;
 export interface AgentKnowledgeFileReference {
 	file: string;
 	fileId: string;
-	binaryDataId: string;
+	agentId: string;
+	storedAt: StorageLocation;
+	storageKey: string;
 	displayName: string;
 	mimeType: string;
 	fileSizeBytes: number;

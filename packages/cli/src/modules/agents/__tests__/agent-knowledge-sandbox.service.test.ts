@@ -3,10 +3,11 @@ import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import type { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'vitest-mock-extended';
-import type { BinaryDataService, InstanceSettings } from 'n8n-core';
+import type { InstanceSettings } from 'n8n-core';
 
 import type { AiService } from '../../../services/ai.service';
 
+import type { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentFile } from '../entities/agent-file.entity';
 import { KNOWLEDGE_MIRROR_FILES_DIR } from '../agent-knowledge-storage';
@@ -103,10 +104,10 @@ function makeAgentRepository(): ReturnType<typeof mock<AgentRepository>> {
 	return repository;
 }
 
-function makeBinaryDataService(): Mocked<BinaryDataService> {
-	const service = mock<BinaryDataService>();
-	service.getAsBuffer.mockResolvedValue(Buffer.from('mock file content'));
-	return service;
+function makeKnowledgeFileStore(): Mocked<AgentKnowledgeFileStore> {
+	const store = mock<AgentKnowledgeFileStore>();
+	store.readAsBuffer.mockResolvedValue(Buffer.from('mock file content'));
+	return store;
 }
 
 function makeService(
@@ -116,7 +117,7 @@ function makeService(
 	instanceSettings: InstanceSettings = mock<InstanceSettings>({ instanceId }),
 	agentFileRepository: AgentFileRepository = mock<AgentFileRepository>(),
 	agentRepository: AgentRepository = makeAgentRepository(),
-	binaryDataService: BinaryDataService = makeBinaryDataService(),
+	agentKnowledgeFileStore: AgentKnowledgeFileStore = makeKnowledgeFileStore(),
 ): AgentKnowledgeSandboxService {
 	return new AgentKnowledgeSandboxService(
 		{
@@ -135,7 +136,7 @@ function makeService(
 		instanceSettings,
 		agentFileRepository,
 		agentRepository,
-		binaryDataService,
+		agentKnowledgeFileStore,
 	);
 }
 
@@ -145,7 +146,8 @@ function makeAgentFile(overrides: Partial<AgentFile> = {}): AgentFile {
 	return {
 		id,
 		agentId,
-		binaryDataId: `filesystem-v2:agents/${agentId}/knowledge-files/${id}/binary_data/uuid`,
+		storedAt: 'fs',
+		storageKey: `agents/${agentId}/knowledge-files/${id}/content`,
 		fileName,
 		mimeType: 'text/plain',
 		fileSizeBytes: 100,
@@ -526,7 +528,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			]);
 			const agentRepository = makeAgentRepository();
 			agentRepository.existsBy.mockResolvedValue(true);
-			const binaryDataService = makeBinaryDataService();
+			const agentKnowledgeFileStore = makeKnowledgeFileStore();
 			const service = makeService(
 				{},
 				mock<Logger>(),
@@ -534,30 +536,30 @@ describe('AgentKnowledgeSandboxService', () => {
 				mock<InstanceSettings>({ instanceId }),
 				agentFileRepository,
 				agentRepository,
-				binaryDataService,
+				agentKnowledgeFileStore,
 			);
 
 			await service.searchKnowledge(projectId, agentId, { pattern: 'foo' });
 			let commands = sandbox.process.executeCommand.mock.calls.map(([command]) => command);
 			expect(commands.filter(isManifestReadCommand)).toHaveLength(1);
 			expect(commands.filter(isMirrorSyncCommand)).toHaveLength(1);
-			expect(binaryDataService.getAsBuffer).toHaveBeenCalledTimes(2);
+			expect(agentKnowledgeFileStore.readAsBuffer).toHaveBeenCalledTimes(2);
 			expect(sandbox.fs.uploadFiles).toHaveBeenCalledTimes(1);
 			manifestState = 'doc1.txt\ndoc2.txt\n';
 
 			sandbox.process.executeCommand.mockClear();
-			binaryDataService.getAsBuffer.mockClear();
+			agentKnowledgeFileStore.readAsBuffer.mockClear();
 			sandbox.fs.uploadFiles.mockClear();
 			await service.searchKnowledge(projectId, agentId, { pattern: 'bar' });
 			commands = sandbox.process.executeCommand.mock.calls.map(([command]) => command);
 			expect(commands.filter(isManifestReadCommand)).toHaveLength(0);
 			expect(commands.filter(isMirrorSyncCommand)).toHaveLength(0);
 			expect(commands).toHaveLength(1);
-			expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
+			expect(agentKnowledgeFileStore.readAsBuffer).not.toHaveBeenCalled();
 			expect(sandbox.fs.uploadFiles).not.toHaveBeenCalled();
 
 			sandbox.process.executeCommand.mockClear();
-			binaryDataService.getAsBuffer.mockClear();
+			agentKnowledgeFileStore.readAsBuffer.mockClear();
 			sandbox.fs.uploadFiles.mockClear();
 			agentFileRepository.findByAgentId.mockResolvedValue([
 				makeMirrorFile('file-1', 'doc1.txt'),
@@ -572,7 +574,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			// Only the newly-added name should be fetched and staged for move —
 			// the manifest rewrite (which always lists every expected name) is
 			// a separate, later part of the finalize command.
-			expect(binaryDataService.getAsBuffer).toHaveBeenCalledTimes(1);
+			expect(agentKnowledgeFileStore.readAsBuffer).toHaveBeenCalledTimes(1);
 			expect(syncCommands[0]).toContain('.tmp-doc3.txt');
 			expect(syncCommands[0]).not.toContain('.tmp-doc1.txt');
 			expect(syncCommands[0]).not.toContain('.tmp-doc2.txt');
@@ -593,8 +595,10 @@ describe('AgentKnowledgeSandboxService', () => {
 			]);
 			const agentRepository = makeAgentRepository();
 			agentRepository.existsBy.mockResolvedValue(true);
-			const binaryDataService = makeBinaryDataService();
-			binaryDataService.getAsBuffer.mockResolvedValue(Buffer.alloc(MIRROR_UPLOAD_BATCH_BYTES));
+			const agentKnowledgeFileStore = makeKnowledgeFileStore();
+			agentKnowledgeFileStore.readAsBuffer.mockResolvedValue(
+				Buffer.alloc(MIRROR_UPLOAD_BATCH_BYTES),
+			);
 			const service = makeService(
 				{},
 				mock<Logger>(),
@@ -602,7 +606,7 @@ describe('AgentKnowledgeSandboxService', () => {
 				mock<InstanceSettings>({ instanceId }),
 				agentFileRepository,
 				agentRepository,
-				binaryDataService,
+				agentKnowledgeFileStore,
 			);
 
 			await service.searchKnowledge(projectId, agentId, { pattern: 'foo' });
@@ -670,7 +674,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			);
 		});
 
-		it('skips a file that fails to load from binary data storage and retries it next sync', async () => {
+		it('skips a file that fails to load from the knowledge file store and retries it next sync', async () => {
 			const sandbox = makeSandbox('started');
 			sandbox.process.executeCommand.mockResolvedValue({
 				exitCode: 0,
@@ -681,8 +685,8 @@ describe('AgentKnowledgeSandboxService', () => {
 			agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
 			const agentRepository = makeAgentRepository();
 			agentRepository.existsBy.mockResolvedValue(true);
-			const binaryDataService = makeBinaryDataService();
-			binaryDataService.getAsBuffer.mockRejectedValueOnce(new Error('missing on disk'));
+			const agentKnowledgeFileStore = makeKnowledgeFileStore();
+			agentKnowledgeFileStore.readAsBuffer.mockRejectedValueOnce(new Error('missing on disk'));
 			const logger = mock<Logger>();
 			const service = makeService(
 				{},
@@ -691,7 +695,7 @@ describe('AgentKnowledgeSandboxService', () => {
 				mock<InstanceSettings>({ instanceId }),
 				agentFileRepository,
 				agentRepository,
-				binaryDataService,
+				agentKnowledgeFileStore,
 			);
 
 			await expect(
@@ -706,12 +710,12 @@ describe('AgentKnowledgeSandboxService', () => {
 
 			// The failed file was left out of the cached manifest, so the next
 			// sync's expected hash mismatches and it retries — this time
-			// `getAsBuffer` succeeds (the mock's default resolves).
+			// `readAsBuffer` succeeds (the mock's default resolves).
 			await expect(
 				service.searchKnowledge(projectId, agentId, { pattern: 'bar' }),
 			).resolves.toBeDefined();
 
-			expect(binaryDataService.getAsBuffer).toHaveBeenCalledTimes(2);
+			expect(agentKnowledgeFileStore.readAsBuffer).toHaveBeenCalledTimes(2);
 			expect(sandbox.fs.uploadFiles).toHaveBeenCalledTimes(1);
 		});
 	});
