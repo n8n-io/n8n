@@ -46,7 +46,7 @@ describe('workflow package export', () => {
 	});
 
 	async function exportSingleWorkflow(user: User, workflowId: string) {
-		const stream = await service.exportPackage({ user, workflowIds: [workflowId] });
+		const { stream } = await service.exportPackage({ user, workflowIds: [workflowId] });
 		return await readExport(stream);
 	}
 
@@ -100,7 +100,7 @@ describe('workflow package export', () => {
 			const wfA = await createWorkflow({ name: 'Alpha', nodes: [], connections: {} }, project);
 			const wfB = await createWorkflow({ name: 'Beta', nodes: [], connections: {} }, project);
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [wfA.id, wfB.id],
 			});
@@ -149,7 +149,7 @@ describe('workflow package export', () => {
 				project,
 			);
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [wfA.id, wfB.id],
 			});
@@ -173,7 +173,7 @@ describe('workflow package export', () => {
 			const wfA = await createWorkflow({ name: 'Duplicate', nodes: [], connections: {} }, project);
 			const wfB = await createWorkflow({ name: 'Duplicate', nodes: [], connections: {} }, project);
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [wfA.id, wfB.id],
 			});
@@ -220,7 +220,7 @@ describe('workflow package export', () => {
 				'2 workflow dependencies not included in the package',
 			);
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [workflowA.id, workflowB.id, workflowC.id],
 			});
@@ -274,7 +274,7 @@ describe('workflow package export', () => {
 				service.exportPackage({ user: owner, workflowIds: [parent.id] }),
 			).rejects.toThrow('workflow dependency not included in the package');
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [parent.id, child.id],
 			});
@@ -326,7 +326,7 @@ describe('workflow package export', () => {
 				service.exportPackage({ user: owner, workflowIds: [parent.id] }),
 			).rejects.toThrow('workflow dependency not included in the package');
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [parent.id, child.id],
 			});
@@ -364,7 +364,7 @@ describe('workflow package export', () => {
 				service.exportPackage({ user: owner, workflowIds: [parent.id] }),
 			).rejects.toThrow('workflow dependency not included in the package');
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [parent.id, errorHandler.id],
 			});
@@ -393,7 +393,7 @@ describe('workflow package export', () => {
 				subWorkflowId: child.id,
 			});
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [parentA.id, parentB.id, child.id],
 			});
@@ -473,7 +473,7 @@ describe('workflow package export', () => {
 				subWorkflowId: workflowB.id,
 			});
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [workflowA.id],
 				missingWorkflowDependencyPolicy: 'include-in-package',
@@ -554,7 +554,7 @@ describe('workflow package export', () => {
 			];
 			await Container.get(WorkflowRepository).save(workflowA);
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [workflowA.id],
 				missingWorkflowDependencyPolicy: 'include-in-package',
@@ -591,7 +591,7 @@ describe('workflow package export', () => {
 			];
 			await Container.get(WorkflowRepository).save(workflowA);
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [workflowA.id, workflowB.id],
 			});
