@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount } from 'vue';
+import { computed, onBeforeUnmount, reactive } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useI18n } from '@n8n/i18n';
 import type { ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
 import { formatBytes } from '@/app/utils/typesUtils';
 
@@ -12,6 +13,12 @@ const props = defineProps<{
 }>();
 
 const rootStore = useRootStore();
+const i18n = useI18n();
+
+// Thumbnails whose bytes are gone from the server (e.g. pruned binary data):
+// their <img> requests 404, and the browser's broken-image glyph is replaced
+// with an explanatory chip.
+const unavailableKeys = reactive(new Set<string>());
 
 // Memoized per File so recomputations reuse the same URL instead of leaking a
 // fresh blob URL on every re-render.
@@ -72,8 +79,20 @@ onBeforeUnmount(() => {
 <template>
 	<div :class="$style.attachments" data-testid="agent-chat-message-attachments">
 		<template v-for="item in items" :key="item.key">
+			<span
+				v-if="unavailableKeys.has(item.key)"
+				:class="[$style.fileChip, $style.unavailable]"
+				:title="item.attachment.fileName"
+				data-testid="agent-chat-attachment-unavailable"
+			>
+				<N8nIcon icon="triangle-alert" size="small" />
+				<span :class="$style.fileName">{{ item.attachment.fileName }}</span>
+				<span :class="$style.fileSize">
+					{{ i18n.baseText('agents.chat.attachments.unavailable') }}
+				</span>
+			</span>
 			<a
-				v-if="item.imageSrc"
+				v-else-if="item.imageSrc"
 				:href="item.href"
 				target="_blank"
 				rel="noopener noreferrer"
@@ -81,7 +100,12 @@ onBeforeUnmount(() => {
 				:title="item.attachment.fileName"
 				@click="!item.href && $event.preventDefault()"
 			>
-				<img :src="item.imageSrc" :alt="item.attachment.fileName" :class="$style.thumbnail" />
+				<img
+					:src="item.imageSrc"
+					:alt="item.attachment.fileName"
+					:class="$style.thumbnail"
+					@error="item.href && unavailableKeys.add(item.key)"
+				/>
 			</a>
 			<component
 				:is="item.href ? 'a' : 'span'"
@@ -155,5 +179,10 @@ onBeforeUnmount(() => {
 .fileSize {
 	color: var(--text-color--subtler);
 	white-space: nowrap;
+}
+
+.unavailable {
+	color: var(--color--text--tint-1);
+	cursor: default;
 }
 </style>

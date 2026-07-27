@@ -7105,6 +7105,7 @@
 	"agents.chat.input.placeholder": "Type a message...",
 	"agents.chat.attachments.tooLarge": "{fileName} exceeds the {limit} MB attachment limit",
 	"agents.chat.attachments.tooMany": "You can attach up to {limit} files per message",
+	"agents.chat.attachments.unavailable": "No longer available",
 	"agents.chat.answerQuestionPlaceholder": "Answer the question above to continue",
 	"agents.chat.misconfigured.title": "This agent isn't ready to run yet",
 	"agents.chat.misconfigured.issuesPrefix": "Check:",
