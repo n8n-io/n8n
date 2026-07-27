@@ -430,8 +430,13 @@ const commonStubs = {
 	AgentBuilderPreviewHeader: {
 		name: 'AgentBuilderPreviewHeader',
 		template: '<div data-testid="stub-agent-builder-preview-header"></div>',
-		props: ['breadcrumbItems', 'sessionTitle', 'sessionId', 'sessionOptions'],
-		emits: ['breadcrumb-select', 'session-select', 'new-chat', 'close-preview'],
+		props: ['breadcrumbItems', 'sessionTitle', 'sessionOptions', 'traceOpen'],
+		emits: ['breadcrumb-select', 'session-select', 'new-chat', 'close-preview', 'toggle-trace'],
+	},
+	AgentSessionTimelinePanel: {
+		name: 'AgentSessionTimelinePanel',
+		template: '<div data-testid="stub-agent-session-timeline-panel" />',
+		props: ['projectId', 'agentId', 'threadId'],
 	},
 	// Stub each panel that the editor column dispatches to. These panels pull
 	// in stores / composables (users, credentials, sessions list)
@@ -654,7 +659,6 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(preview.exists()).toBe(true);
 		expect(preview.props('effectiveSessionId')).toBe('thread-1');
 		expect(header.exists()).toBe(true);
-		expect(header.props('sessionId')).toBe('thread-1');
 		expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
@@ -697,6 +701,38 @@ describe('AgentBuilderView — preview routing', () => {
 				section: expect.anything(),
 			}),
 		});
+	});
+
+	it('toggles between the preview chat and the session trace in the same frame', async () => {
+		routeName = 'AgentPreviewView';
+		routeQuery.continueSessionId = 'thread-1';
+
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderPreviewHeader' });
+
+		// Starts on chat.
+		expect(wrapper.findComponent({ name: 'AgentPreviewChatPage' }).exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentSessionTimelinePanel' }).exists()).toBe(false);
+		expect(header.props('traceOpen')).toBe(false);
+
+		// Open the trace: chat unmounts, panel mounts with the active session.
+		header.vm.$emit('toggle-trace');
+		await flushPromises();
+
+		const panel = wrapper.findComponent({ name: 'AgentSessionTimelinePanel' });
+		expect(panel.exists()).toBe(true);
+		expect(panel.props('threadId')).toBe('thread-1');
+		expect(wrapper.findComponent({ name: 'AgentPreviewChatPage' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentBuilderPreviewHeader' }).props('traceOpen')).toBe(
+			true,
+		);
+
+		// Toggle back to chat.
+		header.vm.$emit('toggle-trace');
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentPreviewChatPage' }).exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentSessionTimelinePanel' }).exists()).toBe(false);
 	});
 
 	it('sends the active preview session to instance AI from the preview page', async () => {

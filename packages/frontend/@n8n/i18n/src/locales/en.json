@@ -7595,6 +7595,7 @@
 	"agents.builder.validation.issue.tool.custom.missingReference": "This tool's code is missing",
 	"agents.builder.validation.issue.tool.node.missingReference": "This node type isn't available on this instance",
 	"agents.builder.validation.issue.mcpServer.incompatibleCredential": "The credential type doesn't match the server's authentication method",
+	"agents.builder.preview.backToChat": "Back to chat",
 	"agents.builder.preview.viewSession": "View session trace",
 	"agents.builder.preview.close.ariaLabel": "Close preview",
 	"agents.builder.executions.count": "{count} session | {count} sessions",
