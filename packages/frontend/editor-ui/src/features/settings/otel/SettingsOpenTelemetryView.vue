@@ -215,27 +215,87 @@ function syncConnectivityTimeoutInput() {
 	connectivityTimeoutInput.value = String(otelStore.settings.startupConnectivityTimeoutMs);
 }
 
+/** Parse a rate accepting both decimal separators; null when not a number (incl. empty). */
+function parseSampleRate(text: string): number | null {
+	const trimmed = text.trim();
+	if (!trimmed) return null;
+	const parsed = Number(trimmed.replace(',', '.'));
+	return Number.isFinite(parsed) ? Math.min(1, Math.max(0, parsed)) : null;
+}
+
+function parseConnectivityTimeout(text: string): number | null {
+	const trimmed = text.trim();
+	if (!trimmed) return null;
+	const parsed = Number(trimmed);
+	return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : null;
+}
+
 function commitSampleRate() {
-	// Accept both decimal separators regardless of locale.
-	const parsed = Number(sampleRateInput.value.trim().replace(',', '.'));
-	if (Number.isFinite(parsed)) {
-		otelStore.settings.tracesSampleRate = Math.min(1, Math.max(0, parsed));
+	const parsed = parseSampleRate(sampleRateInput.value);
+	if (parsed !== null) {
+		otelStore.settings.tracesSampleRate = parsed;
 	}
 	syncSampleRateInput();
 }
 
 function commitConnectivityTimeout() {
-	const parsed = Number(connectivityTimeoutInput.value.trim());
-	if (Number.isFinite(parsed)) {
-		otelStore.settings.startupConnectivityTimeoutMs = Math.max(0, Math.round(parsed));
+	const parsed = parseConnectivityTimeout(connectivityTimeoutInput.value);
+	if (parsed !== null) {
+		otelStore.settings.startupConnectivityTimeoutMs = parsed;
 	}
 	syncConnectivityTimeoutInput();
 }
 
-// Keep the formatted display in sync when the store changes underneath
-// (discard, save response, env-managed refresh).
-watch(() => otelStore.settings.tracesSampleRate, syncSampleRateInput);
-watch(() => otelStore.settings.startupConnectivityTimeoutMs, syncConnectivityTimeoutInput);
+// Arrow-key stepping, mirroring the native number-input affordance these text inputs replaced
+// (steps match the previous N8nInputNumber config: 0.01 for the rate, 100ms for the timeout).
+function stepSampleRate(direction: 1 | -1) {
+	const current = parseSampleRate(sampleRateInput.value) ?? otelStore.settings.tracesSampleRate;
+	const next = Math.min(1, Math.max(0, Math.round((current + direction * 0.01) * 100) / 100));
+	otelStore.settings.tracesSampleRate = next;
+	syncSampleRateInput();
+}
+
+function stepConnectivityTimeout(direction: 1 | -1) {
+	const current =
+		parseConnectivityTimeout(connectivityTimeoutInput.value) ??
+		otelStore.settings.startupConnectivityTimeoutMs;
+	otelStore.settings.startupConnectivityTimeoutMs = Math.max(0, current + direction * 100);
+	syncConnectivityTimeoutInput();
+}
+
+// Commit parseable drafts to the store as the user types, so dirty state (and the save bar)
+// reacts live like every other field. The display is NOT reformatted here — that would fight
+// the caret mid-edit; blur/Enter does the reformat.
+watch(sampleRateInput, (text) => {
+	const parsed = parseSampleRate(text);
+	if (parsed !== null) {
+		otelStore.settings.tracesSampleRate = parsed;
+	}
+});
+watch(connectivityTimeoutInput, (text) => {
+	const parsed = parseConnectivityTimeout(text);
+	if (parsed !== null) {
+		otelStore.settings.startupConnectivityTimeoutMs = parsed;
+	}
+});
+
+// Keep the formatted display in sync when the store changes underneath (discard, save
+// response, env-managed refresh) — but not when the change came from the draft being typed
+// above, which would clobber the caret with a reformat on every keystroke.
+watch(
+	() => otelStore.settings.tracesSampleRate,
+	(value) => {
+		if (parseSampleRate(sampleRateInput.value) !== value) syncSampleRateInput();
+	},
+);
+watch(
+	() => otelStore.settings.startupConnectivityTimeoutMs,
+	(value) => {
+		if (parseConnectivityTimeout(connectivityTimeoutInput.value) !== value) {
+			syncConnectivityTimeoutInput();
+		}
+	},
+);
 
 const testTraceSubtitle = computed(() => {
 	if (otelStore.testState === 'sent') {
@@ -457,6 +517,8 @@ watch(
 									data-test-id="otel-connectivity-timeout"
 									@blur="commitConnectivityTimeout"
 									@keydown.enter="commitConnectivityTimeout"
+									@keydown.up.prevent="stepConnectivityTimeout(1)"
+									@keydown.down.prevent="stepConnectivityTimeout(-1)"
 								/>
 								<span :class="$style.slug">
 									{{ i18n.baseText('settings.opentelemetry.startupConnectivityTimeoutMs.slug') }}
@@ -521,6 +583,8 @@ watch(
 									data-test-id="otel-sample-rate"
 									@blur="commitSampleRate"
 									@keydown.enter="commitSampleRate"
+									@keydown.up.prevent="stepSampleRate(1)"
+									@keydown.down.prevent="stepSampleRate(-1)"
 								/>
 								<span :class="$style.slug">
 									{{
