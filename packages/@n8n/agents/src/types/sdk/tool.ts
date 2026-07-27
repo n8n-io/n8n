@@ -40,6 +40,8 @@ export interface ToolExecutionContext {
 export interface ToolContext {
 	/** AI SDK tool call ID for the current local tool execution. */
 	toolCallId?: string;
+	/** Exact model-facing name of the tool being executed. */
+	toolName?: string;
 	/** Agent run ID and persistence scope for the current execution. */
 	runId?: string;
 	/** Current persisted thread scope when the run is backed by memory. */
@@ -67,6 +69,8 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	cancellation?: { message: string };
 	/** AI SDK tool call ID for the current local tool execution. */
 	toolCallId?: string;
+	/** Exact model-facing name of the tool being executed. */
+	toolName?: string;
 	/** Agent run ID for the current execution. */
 	runId?: string;
 	/** Current persisted thread scope when the run is backed by memory. */
@@ -122,6 +126,8 @@ export interface BuiltTool {
 	readonly mcpTool?: boolean;
 	/** Name of the MCP server this tool belongs to. Set when mcpTool is true. */
 	readonly mcpServerName?: string;
+	/** Original, unprefixed tool name reported by the MCP server. */
+	readonly mcpToolName?: string;
 	/**
 	 * Provider-specific options forwarded to the AI SDK's `tool()` call.
 	 * Keyed by provider name (e.g. `anthropic`, `openai`).

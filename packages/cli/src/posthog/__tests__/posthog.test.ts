@@ -219,6 +219,7 @@ describe('PostHog', () => {
 				// Mutated per test; reset so test ordering doesn't leak override
 				// state into unrelated cases.
 				globalConfig.evaluation.collectionsEnabled = false;
+				globalConfig.evaluation.configEvalsEnabled = false;
 				globalConfig.evaluation.agentEvalsEnabled = false;
 			});
 
@@ -232,6 +233,18 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toMatchObject({ '084_eval_collections': true });
+			});
+
+			it('force-enables the config-evaluations variant when N8N_CONFIG_EVALS_ENABLED is set', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+				globalConfig.evaluation.configEvalsEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({ '088_config_evaluations': 'variant' });
 			});
 
 			it('leaves flags untouched when no override is configured', async () => {

@@ -813,6 +813,197 @@ describe('OAuth2CredentialController', () => {
 			expect(oauthService.encryptAndSaveData).toHaveBeenCalled();
 		});
 
+		it('should send code_verifier for authorization code flow when PKCE is enabled', async () => {
+			const now = 1_700_000_000_000;
+			vi.spyOn(Date, 'now').mockReturnValue(now);
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetToken = vi.fn().mockResolvedValue({
+				data: {
+					access_token: 'new_token',
+					expires_at: 'provider-expiry',
+					expires_in: 3600,
+				},
+			});
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { code: { getToken: mockGetToken } } as any;
+			});
+
+			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockState = {
+				token: 'token',
+				cid: '1',
+				userId: '123',
+				origin: 'static-credential' as const,
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			oauthService.resolveCredential.mockResolvedValueOnce([
+				mockResolvedCredential,
+				{ csrfSecret: 'csrf-secret', codeVerifier: 'code_verifier' },
+				{
+					clientId: 'client_id',
+					clientSecret: 'client_secret',
+					authUrl: 'https://example.domain/oauth2/auth',
+					accessTokenUrl: 'https://example.domain/oauth2/token',
+					scope: 'openid',
+					grantType: 'authorizationCode',
+					authentication: 'header',
+					usePkce: true,
+				},
+				mockState,
+				{ csrfSecret: 'csrf-secret', codeVerifier: 'code_verifier' },
+			]);
+			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+			externalHooks.run.mockResolvedValue(undefined);
+
+			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+				query: {
+					code: 'auth_code',
+					state: validState,
+				},
+				originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+			});
+
+			await controller.handleCallback(req, res);
+
+			expect(mockGetToken).toHaveBeenCalledWith(
+				expect.stringContaining('code=auth_code'),
+				expect.objectContaining({
+					body: { code_verifier: 'code_verifier' },
+				}),
+			);
+			expect(oauthService.encryptAndSaveData).toHaveBeenCalledWith(
+				mockResolvedCredential,
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({
+						expires_at: 'provider-expiry',
+						n8n_expires_at: String(now + 3_600_000),
+					}),
+				}),
+			);
+		});
+
+		it('should send code_verifier with client authentication fields for body-authenticated authorization code flow', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetToken = vi.fn().mockResolvedValue({
+				data: { access_token: 'new_token' },
+			});
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { code: { getToken: mockGetToken } } as any;
+			});
+
+			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			oauthService.resolveCredential.mockResolvedValueOnce([
+				mockResolvedCredential,
+				{ csrfSecret: 'csrf-secret', codeVerifier: 'code_verifier' },
+				{
+					clientId: 'client_id',
+					clientSecret: 'client_secret',
+					authUrl: 'https://example.domain/oauth2/auth',
+					accessTokenUrl: 'https://example.domain/oauth2/token',
+					grantType: 'authorizationCode',
+					authentication: 'body',
+					usePkce: true,
+				},
+				{
+					token: 'token',
+					cid: '1',
+					userId: '123',
+					origin: 'static-credential',
+					createdAt: timestamp,
+					data: 'encrypted-data',
+				},
+				{ csrfSecret: 'csrf-secret', codeVerifier: 'code_verifier' },
+			]);
+			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+			externalHooks.run.mockResolvedValue(undefined);
+
+			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+				query: { code: 'auth_code', state: validState },
+				originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+			});
+
+			await controller.handleCallback(req, res);
+
+			expect(mockGetToken).toHaveBeenCalledWith(
+				expect.stringContaining('code=auth_code'),
+				expect.objectContaining({
+					body: {
+						code_verifier: 'code_verifier',
+						client_id: 'client_id',
+						client_secret: 'client_secret',
+					},
+				}),
+			);
+			expect(oauthService.encryptAndSaveData).toHaveBeenCalledWith(
+				mockResolvedCredential,
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({ access_token: 'new_token' }),
+				}),
+			);
+		});
+
+		it('should preserve the existing absolute expiry when the token response omits expires_in', async () => {
+			const now = 1_700_000_000_000;
+			const existingExpiresAt = String(now + 60_000);
+			vi.spyOn(Date, 'now').mockReturnValue(now);
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: { getToken: vi.fn().mockResolvedValue({ data: { access_token: 'new_token' } }) },
+				} as any;
+			});
+
+			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			oauthService.resolveCredential.mockResolvedValueOnce([
+				mockResolvedCredential,
+				{
+					oauthTokenData: {
+						access_token: 'old_token',
+						expires_in: 3600,
+						n8n_expires_at: existingExpiresAt,
+					},
+				},
+				{
+					clientId: 'client_id',
+					clientSecret: 'client_secret',
+					authUrl: 'https://example.domain/oauth2/auth',
+					accessTokenUrl: 'https://example.domain/oauth2/token',
+					grantType: 'authorizationCode',
+					authentication: 'header',
+				},
+				{
+					token: 'token',
+					cid: '1',
+					userId: '123',
+					origin: 'static-credential',
+					createdAt: timestamp,
+					data: 'encrypted-data',
+				},
+				{ csrfSecret: 'csrf-secret' },
+			]);
+			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+			externalHooks.run.mockResolvedValue(undefined);
+
+			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+				query: { code: 'auth_code', state: validState },
+				originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+			});
+
+			await controller.handleCallback(req, res);
+
+			expect(oauthService.encryptAndSaveData).toHaveBeenCalledWith(
+				mockResolvedCredential,
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({
+						access_token: 'new_token',
+						expires_in: 3600,
+						n8n_expires_at: existingExpiresAt,
+					}),
+				}),
+			);
+		});
+
 		it('should handle body authentication method', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetToken = vi.fn().mockResolvedValue({

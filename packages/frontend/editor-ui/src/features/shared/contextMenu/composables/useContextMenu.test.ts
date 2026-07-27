@@ -170,6 +170,18 @@ describe('useContextMenu', () => {
 
 			expect(actions.value.some((action) => action.id === 'focus_ai_on_selected')).toBe(false);
 		});
+
+		// Regression for ADO-5013: the focused-nodes experiment is cloud-only —
+		// the store-level gate (see focusedNodes.store.ts) turns the feature off
+		// on self-hosted instances even when AI is licensed and the experiment is on.
+		it('hides "Focus AI on selected" when the focused-nodes feature is off (e.g. self-hosted)', () => {
+			vi.spyOn(focusedNodesStore, 'isFeatureEnabled', 'get').mockReturnValue(false);
+
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: selectedNodes.map((n) => n.id) });
+
+			expect(actions.value.some((action) => action.id === 'focus_ai_on_selected')).toBe(false);
+		});
 	});
 
 	describe('group_nodes gating', () => {

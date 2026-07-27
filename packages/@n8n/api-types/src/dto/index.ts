@@ -267,6 +267,15 @@ export {
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';
+export {
+	WorkflowHistoryListItemDto,
+	workflowHistoryListItemSchema,
+} from './workflow-history/workflow-history-list-item.dto';
+export { ListWorkflowHistoryQueryDto } from './workflow-history/list-workflow-history-query.dto';
+export {
+	WorkflowVersionHistoryListPublicDto,
+	workflowVersionListItemPublicSchema,
+} from './workflow-history/workflow-version-history-public.dto';
 
 export { UpdateExternalSecretsSettingsDto } from './secrets-provider/update-external-secrets-settings.dto';
 export { CreateSecretsProviderConnectionDto } from './secrets-provider/create-secrets-provider-connection.dto';
@@ -293,7 +302,10 @@ export {
 export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';
 
 export { CreateWorkflowReviewRequestDto } from './workflow-reviews/create-workflow-review-request.dto';
+export { GetWorkflowReviewEligibleReviewersQueryDto } from './workflow-reviews/get-eligible-reviewers-query.dto';
 export { ListWorkflowReviewRequestsQueryDto } from './workflow-reviews/list-workflow-review-requests-query.dto';
+export { UpdateWorkflowReviewRequestVersionDto } from './workflow-reviews/update-workflow-review-request-version.dto';
+export * from './workflow-reviews/list-workflow-review-inbox.dto';
 
 export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';

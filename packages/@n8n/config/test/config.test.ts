@@ -276,6 +276,7 @@ describe('GlobalConfig', () => {
 			mcp: 'mcp',
 			mcpAppsEnabled: false,
 			mcpBuilderEnabled: true,
+			mcpCanvasGroupsEnabled: false,
 			mcpMaxRegisteredClients: 5000,
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
@@ -463,11 +464,13 @@ describe('GlobalConfig', () => {
 			minIntervalSeconds: 0,
 			maxConcurrentPasses: 10,
 			triggerNodeMode: 'legacy',
+			enabledForPollTriggers: false,
 			allowSkipDurableScheduler: false,
 			maxAttempts: 5,
 		},
 		evaluation: {
 			collectionsEnabled: false,
+			configEvalsEnabled: false,
 			agentEvalsEnabled: false,
 		},
 		generic: {

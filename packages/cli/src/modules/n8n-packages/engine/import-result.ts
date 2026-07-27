@@ -79,7 +79,9 @@ export function assertPackageImportApiKeyScopes(
 	}
 }
 
-/** Keeps only the requirements used by the imported workflows, trimming `usedByWorkflows` to match. */
+/**
+ * Keeps only the requirements used by the imported workflows, trimming `usedByWorkflows` to match.
+ */
 export function identifyRequirements<T extends { usedByWorkflows: string[] }>(
 	requirements: T[] | undefined,
 	workflows: PreparedWorkflow[],

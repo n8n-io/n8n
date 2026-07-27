@@ -3,7 +3,7 @@ import { pickVariableForProject } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
-import { variableBlockingFailures } from './variable-missing-policy';
+import { variableBlockingFailures } from './variable-missing-mode';
 import { createFailure } from './variable.types';
 import type {
 	VariableImportPlan,
@@ -49,11 +49,11 @@ export class VariableImporter {
 		return { matched, missing };
 	}
 
-	/** Classifies which unresolved requirements block the import under the chosen missing policy. */
+	/** Classifies which unresolved requirements block the import under the chosen missing mode. */
 	blockingFailures(
 		request: VariableImportRequest,
 		plan: VariableImportPlan,
 	): VariableResolutionFailure[] {
-		return variableBlockingFailures(request.missingPolicy, plan);
+		return variableBlockingFailures(request.missingMode, plan);
 	}
 }

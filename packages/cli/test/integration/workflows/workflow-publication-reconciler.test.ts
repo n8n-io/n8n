@@ -1,4 +1,5 @@
 import {
+	createWorkflowHistory,
 	createWorkflowWithHistory,
 	mockInstance,
 	setActiveVersion,
@@ -237,6 +238,106 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		await reconciler.reconcile();
 
 		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
+	});
+
+	test('heals a published-version mapping rolled back to an older version', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('skew');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+
+		// A parameter-only newer version is published: the trigger node set is
+		// identical, so no node-id diff can distinguish the two versions.
+		const newVersionId = 'version-2-param-only';
+		await createWorkflowHistory(workflow, owner, undefined, {
+			versionId: newVersionId,
+			nodes: [{ ...trigger, parameters: { rule: { interval: [{ field: 'hours' }] } } }],
+		});
+		await setActiveVersion(workflow.id, newVersionId);
+		await outboxRepository.enqueue(workflow.id, newVersionId);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBe(newVersionId);
+
+		// A stalled processor (zombie writer) rolls the mapping back to the old
+		// version after its record already resolved: no in-flight record remains,
+		// and the running trigger's node id still matches the desired one.
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+
+		await reconciler.reconcile();
+
+		// The skew check enqueued a third record and the drain converged the
+		// mapping back to the active version.
+		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBe(newVersionId);
+		expect(await outboxRepository.countBy({ workflowId: workflow.id })).toBe(3);
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	test('removes a published-version mapping left behind by a missed unpublish', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('missed-unpublish');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+
+		// An unpublish fully applied elsewhere (triggers down, status rows
+		// cleared, record terminal), after which a zombie writer restored the
+		// mapping row: no node-id detection has anything to see — only the
+		// version comparison can find the stale mapping.
+		await Container.get(WorkflowRepository).update(workflow.id, { activeVersionId: null });
+		await activeWorkflowTriggers.remove(workflow.id);
+		await triggerStatusRepository.delete({ workflowId: workflow.id });
+		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBe(
+			workflow.versionId,
+		);
+
+		await reconciler.reconcile();
+
+		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBeNull();
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	test('leaves a skewed workflow with an in-flight publication for that record to converge', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('skew-in-flight');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+
+		// Mid-flight publish of a parameter-only new version: `activeVersionId`
+		// commits together with the pending record, and the mapping still points
+		// at the old version. Expected skew — that record owns convergence.
+		const newVersionId = 'version-2-in-flight';
+		await createWorkflowHistory(workflow, owner, undefined, {
+			versionId: newVersionId,
+			nodes: [{ ...trigger, parameters: { rule: { interval: [{ field: 'hours' }] } } }],
+		});
+		await setActiveVersion(workflow.id, newVersionId);
+		await outboxRepository.enqueue(workflow.id, newVersionId);
+
+		expect(await outboxRepository.findVersionSkewedWorkflowIds()).not.toContain(workflow.id);
+
+		await reconciler.reconcile();
+
+		// Untouched: the mapping still points at the old version and the pending
+		// record is still pending — reconciliation neither enqueued nor drained.
+		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBe(
+			workflow.versionId,
+		);
+		expect((await outboxRepository.findInFlightByWorkflowId(workflow.id))?.status).toBe('pending');
+
+		// The exclusion also holds while the record is being processed (in_progress).
+		await outboxRepository.claimNextPendingRecord();
+		expect(await outboxRepository.findVersionSkewedWorkflowIds()).not.toContain(workflow.id);
 	});
 
 	test('a pass with nothing missing enqueues no work', async () => {

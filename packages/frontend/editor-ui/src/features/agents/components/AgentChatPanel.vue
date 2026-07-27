@@ -45,7 +45,7 @@ const emit = defineEmits<{
 	'initial-consumed': [];
 	back: [];
 	'open-build': [];
-	'send-to-assistant': [];
+	'send-to-assistant': [executionId?: string];
 }>();
 
 const locale = useI18n();
@@ -119,9 +119,6 @@ const hasOpenInteraction = computed(() => openInteractive.value !== undefined);
 const hasOpenApproval = computed(() => openInteractive.value?.toolName === APPROVAL_TOOL_NAME);
 const hasOpenInteractiveQuestion = computed(
 	() => hasOpenInteraction.value && !hasOpenApproval.value,
-);
-const areConfigurationActionsDisabled = computed(
-	() => isStreaming.value || isPreparingToSend.value || hasOpenInteraction.value,
 );
 
 const chatPlaceholder = computed(() =>
@@ -221,11 +218,10 @@ onBeforeUnmount(() => {
 			:session-id="continueSessionId"
 			:can-send-to-assistant="canSendToAssistant"
 			@resume="resume"
-			@send-to-assistant="emit('send-to-assistant')"
+			@send-to-assistant="emit('send-to-assistant', $event)"
 		/>
 
 		<div :class="$style.inputArea">
-			<slot name="above-input" :disabled="areConfigurationActionsDisabled" />
 			<ChatInputBase
 				v-model="inputText"
 				:placeholder="chatPlaceholder"

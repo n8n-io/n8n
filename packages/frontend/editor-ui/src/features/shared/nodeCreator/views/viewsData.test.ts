@@ -19,7 +19,7 @@ const getNodeType = vi.fn();
 const aiTransformNode = mockNodeTypeDescription({ name: AI_TRANSFORM_NODE_TYPE });
 const messageAnAgentNode = mockNodeTypeDescription({
 	name: MESSAGE_AN_AGENT_NODE_TYPE,
-	displayName: 'AI Agent',
+	displayName: 'AI Agent V1',
 	hidden: true,
 });
 
@@ -141,6 +141,24 @@ describe('viewsData', () => {
 			const messageAgentItem = result.items.find((item) => item.key === MESSAGE_AN_AGENT_NODE_TYPE);
 
 			expect(messageAgentItem).toBeUndefined();
+		});
+
+		test('should not mutate the shared template repository parameters', () => {
+			const templatesStore = useTemplatesStore();
+			const sharedParams = new URLSearchParams({ test: 'value' });
+			vi.spyOn(templatesStore, 'websiteTemplateRepositoryParameters', 'get').mockReturnValue(
+				sharedParams,
+			);
+
+			AIView([]);
+			AIView([]);
+
+			expect(sharedParams.has('utm_user_role')).toBe(false);
+
+			const [lastCallParams] = vi
+				.mocked(templatesStore.constructTemplateRepositoryURL)
+				.mock.calls.at(-1)!;
+			expect(lastCallParams.toString()).toBe('test=value&utm_user_role=AdvancedAI');
 		});
 	});
 
