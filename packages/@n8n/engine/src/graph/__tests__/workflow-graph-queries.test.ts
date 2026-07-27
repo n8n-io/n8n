@@ -10,11 +10,11 @@ const graph: WorkflowGraph = {
 		{ id: 'b', name: 'B', type: 'v1-node' },
 	],
 	edges: [
-		{ from: 'trigger', to: 'a' },
-		{ from: 'trigger', to: 'b' },
+		{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 },
+		{ from: 'trigger', to: 'b', outputIndex: 0, inputIndex: 0 },
 		// Same target from a second output slot — must not be reported twice.
-		{ from: 'trigger', to: 'a', outputIndex: 1 },
-		{ from: 'a', to: 'b' },
+		{ from: 'trigger', to: 'a', outputIndex: 1, inputIndex: 0 },
+		{ from: 'a', to: 'b', outputIndex: 0, inputIndex: 0 },
 	],
 };
 

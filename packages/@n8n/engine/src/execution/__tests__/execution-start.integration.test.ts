@@ -21,7 +21,7 @@ const graph: WorkflowGraph = {
 		{ id: 'trigger', name: 'Manual Trigger', type: 'trigger' },
 		{ id: 'step-a', name: 'A', type: 'v1-node' },
 	],
-	edges: [{ from: 'trigger', to: 'step-a' }],
+	edges: [{ from: 'trigger', to: 'step-a', outputIndex: 0, inputIndex: 0 }],
 };
 
 describe('execution start (integration)', () => {

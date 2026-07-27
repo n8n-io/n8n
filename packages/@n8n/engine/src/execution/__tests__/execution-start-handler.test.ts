@@ -35,8 +35,8 @@ describe('ExecutionStartHandler', () => {
 				{ id: 'b', name: 'B', type: 'v1-node' },
 			],
 			edges: [
-				{ from: 'trigger', to: 'a' },
-				{ from: 'trigger', to: 'b' },
+				{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'trigger', to: 'b', outputIndex: 0, inputIndex: 0 },
 			],
 		};
 		const executionStore = makeExecutionStore({
