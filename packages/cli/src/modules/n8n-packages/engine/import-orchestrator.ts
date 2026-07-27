@@ -184,6 +184,11 @@ export class ImportOrchestrator {
 		} = plan;
 		const { context, credentialRequest, options } = input;
 
+		// Variables go first: stub creation is the only apply step that can still fail after the
+		// blocking-issue gate (a near-quota race), and it depends on nothing below — applying it
+		// before any other write keeps a quota-raced workflow-package import from persisting anything.
+		const variableResult = await this.variableImporter.apply(context, variablePlan);
+
 		const folderSummaries = await this.folderImporter.apply(folderContext, folderPlan);
 
 		const credentialResult = await this.credentialImporter.apply(
@@ -193,7 +198,6 @@ export class ImportOrchestrator {
 		);
 
 		await this.dataTableImporter.apply(context, dataTablePlan);
-		const variableResult = await this.variableImporter.apply(context, variablePlan);
 		const publishBlocked = new Map<string, WorkflowPublishingBlockedReason>();
 		for (const sourceWorkflowId of workflowsBlockedFromPublish(
 			credentialRequest.requirements,

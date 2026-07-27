@@ -1,7 +1,13 @@
 import { mock } from 'vitest-mock-extended';
 
+import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
+
+import type { CredentialImporter } from '../../entities/credential/credential-importer';
+import type { DataTableImporter } from '../../entities/data-table/data-table-importer';
+import type { FolderImporter } from '../../entities/folder/folder-importer';
 import type { VariableImporter } from '../../entities/variable/variable-importer';
 import type { VariableCreation } from '../../entities/variable/variable.types';
+import type { WorkflowImporter } from '../../entities/workflow/workflow-importer';
 import type { BlockingIssue } from '../../n8n-packages.types';
 import { ImportOrchestrator, type ImportPlan } from '../import-orchestrator';
 
@@ -119,6 +125,48 @@ describe('ImportOrchestrator', () => {
 
 			expect(issuesOf(error)).toHaveLength(2);
 			expect(issuesOf(error)[1]).toMatchObject({ type: 'variable-limit-exceeded' });
+		});
+	});
+
+	describe('apply', () => {
+		it('writes nothing else when stub creation fails, because variables are applied first', async () => {
+			const credentialImporter = mock<CredentialImporter>();
+			const dataTableImporter = mock<DataTableImporter>();
+			const variableImporter = mock<VariableImporter>();
+			const folderImporter = mock<FolderImporter>();
+			const workflowImporter = mock<WorkflowImporter>();
+			const orchestrator = new ImportOrchestrator(
+				credentialImporter,
+				dataTableImporter,
+				variableImporter,
+				folderImporter,
+				workflowImporter,
+				mock(),
+				mock(),
+			);
+			// The quota preflight passed, but a concurrent writer consumed the last slot since.
+			variableImporter.apply.mockRejectedValue(
+				new VariableCountLimitReachedError('Variables limit reached'),
+			);
+			const plan = {
+				input: {
+					context: { user: mock(), projectId: 'proj-1', folderId: null },
+					credentialRequest: { requirements: [] },
+					options: {},
+				},
+				variablePlan: {
+					matched: [],
+					missing: [{ name: 'API_KEY', usedByWorkflows: ['wf-1'] }],
+					creations: [{ name: 'API_KEY', projectId: 'proj-1', usedByWorkflows: ['wf-1'] }],
+				},
+			} as unknown as ImportPlan;
+
+			await expect(orchestrator.apply(plan)).rejects.toThrow('Variables limit reached');
+
+			expect(folderImporter.apply).not.toHaveBeenCalled();
+			expect(credentialImporter.apply).not.toHaveBeenCalled();
+			expect(dataTableImporter.apply).not.toHaveBeenCalled();
+			expect(workflowImporter.apply).not.toHaveBeenCalled();
 		});
 	});
 });
