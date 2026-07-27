@@ -1,6 +1,8 @@
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { FileNotFoundError } from 'n8n-core';
+
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -25,6 +27,7 @@ function makeController() {
 	const agentsBuilderService = mock<AgentsBuilderService>();
 	const agentValidationService = mock<AgentValidationService>();
 	const agentExecutionService = mock<AgentExecutionService>();
+	const agentChatAttachmentService = mock<AgentChatAttachmentService>();
 	agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
 
 	const controller = new AgentChatController(
@@ -35,7 +38,7 @@ function makeController() {
 		mock<CredentialsService>(),
 		agentExecutionService,
 		agentsService as unknown as AgentsService,
-		mock<AgentChatAttachmentService>(),
+		agentChatAttachmentService,
 	);
 
 	return {
@@ -43,6 +46,7 @@ function makeController() {
 		agentExecutionOrchestratorService,
 		agentValidationService,
 		agentExecutionService,
+		agentChatAttachmentService,
 		agentsService: {
 			findById: agentsService.findById,
 			getConversationHistory: agentExecutionOrchestratorService.getConversationHistory,
@@ -189,5 +193,30 @@ describe('AgentChatController SSE done payload', () => {
 			type: 'done',
 			executionId: 'exec-resume-1',
 		});
+	});
+});
+
+describe('AgentChatController attachment download', () => {
+	it('returns 404 when the attachment bytes are gone from storage', async () => {
+		const { controller, agentsService, agentChatAttachmentService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentChatAttachmentService.getForAgent.mockResolvedValue({
+			id: 'att-1',
+			mimeType: 'image/png',
+			fileName: 'photo.png',
+			fileSizeBytes: 33,
+		} as never);
+		agentChatAttachmentService.getStream.mockRejectedValue(
+			new FileNotFoundError('filesystem-v2:agent-chat-attachments/p1/att-1'),
+		);
+
+		const req = {
+			params: { projectId: 'p1', agentId: 'agent-1', attachmentId: 'att-1' },
+		} as never;
+		const res = { setHeader: vi.fn() } as never;
+
+		await expect(controller.getChatAttachment(req, res)).rejects.toThrow(NotFoundError);
+		// Headers must not be written for a failed stream open.
+		expect((res as { setHeader: ReturnType<typeof vi.fn> }).setHeader).not.toHaveBeenCalled();
 	});
 });

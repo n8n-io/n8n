@@ -12,7 +12,7 @@ import { Body, Delete, Get, Param, Post, ProjectScope, RestController } from '@n
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import { randomUUID } from 'crypto';
 import type { Response } from 'express';
-import { getHtmlSandboxCSP } from 'n8n-core';
+import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -282,6 +282,19 @@ export class AgentChatController {
 		});
 		if (!attachment) throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 
+		// Open the stream before writing headers: bytes can be gone while the row
+		// remains (out-of-band storage cleanup), and that must surface as a clean
+		// 404 rather than a half-written response.
+		let stream: Awaited<ReturnType<AgentChatAttachmentService['getStream']>>;
+		try {
+			stream = await this.agentChatAttachmentService.getStream(attachment);
+		} catch (error) {
+			if (error instanceof FileNotFoundError) {
+				throw new NotFoundError(`Attachment "${attachmentId}" is no longer available`);
+			}
+			throw error;
+		}
+
 		res.setHeader('Content-Type', attachment.mimeType);
 		res.setHeader('Content-Length', attachment.fileSizeBytes);
 		res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -297,7 +310,6 @@ export class AgentChatController {
 			);
 		}
 
-		const stream = await this.agentChatAttachmentService.getStream(attachment);
 		return await new Promise<void>((resolve, reject) => {
 			stream.on('end', resolve);
 			stream.on('error', reject);
