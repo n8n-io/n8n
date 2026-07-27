@@ -1,7 +1,23 @@
 import { mock } from 'vitest-mock-extended';
-import type { ISupplyDataFunctions } from 'n8n-workflow';
+import type { ILocalLoadOptionsFunctions, ISupplyDataFunctions } from 'n8n-workflow';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
-import { getWorkflowInputValues } from '../GenericFunctions';
+import { getWorkflowInputValues, loadWorkflowInputMappings } from '../GenericFunctions';
+
+describe('loadWorkflowInputMappings', () => {
+	it('loads the draft subworkflow trigger (does not prefer active version)', async () => {
+		const localLoadOptions = mock<ILocalLoadOptionsFunctions>();
+		localLoadOptions.getWorkflowNodeContext.mockResolvedValue(null);
+
+		await loadWorkflowInputMappings.call(localLoadOptions);
+
+		expect(localLoadOptions.getWorkflowNodeContext).toHaveBeenCalledWith(
+			EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+		);
+		expect(localLoadOptions.getWorkflowNodeContext).toHaveBeenCalledTimes(1);
+		expect(localLoadOptions.getWorkflowNodeContext.mock.calls[0]).toHaveLength(1);
+	});
+});
 
 describe('getWorkflowInputValues', () => {
 	const supplyDataFunctions = mock<ISupplyDataFunctions>();

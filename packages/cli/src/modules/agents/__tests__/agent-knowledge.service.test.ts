@@ -167,7 +167,12 @@ describe('AgentKnowledgeService', () => {
 	});
 
 	it('stores text and PDF files via BinaryDataService, creates DB rows, and cleans temp files', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		// activeVersionId: null — unpublished agents may upload knowledge files
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: agentId,
+			projectId,
+			activeVersionId: null,
+		} as never);
 		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
 		const textFilePath = path.join(tempDirectory, 'notes.txt');
 		const pdfFilePath = path.join(tempDirectory, 'report.pdf');
@@ -448,57 +453,15 @@ describe('AgentKnowledgeService', () => {
 		expect(binaryDataService.deleteMany).not.toHaveBeenCalled();
 	});
 
-	describe('published-only gating', () => {
-		it('rejects uploads for an unpublished agent', async () => {
-			agentRepository.findByIdAndProjectId.mockResolvedValue({
-				id: agentId,
-				projectId,
-				activeVersionId: null,
-			} as never);
+	it('delegates warmup to the sandbox service for an unpublished agent', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: agentId,
+			projectId,
+			activeVersionId: null,
+		} as never);
 
-			await expect(service.uploadFiles(agentId, projectId, [makeMulterFile()])).rejects.toThrow(
-				'Knowledge base is only available for published agents. Publish the agent first.',
-			);
-			expect(agentFileRepository.all()).toEqual([]);
-			expect(binaryDataService.store).not.toHaveBeenCalled();
-		});
-
-		it('rejects warmup for an unpublished agent', async () => {
-			agentRepository.findByIdAndProjectId.mockResolvedValue({
-				id: agentId,
-				projectId,
-				activeVersionId: null,
-			} as never);
-
-			await expect(service.warmSandbox(agentId, projectId)).rejects.toThrow(
-				'Knowledge base is only available for published agents. Publish the agent first.',
-			);
-			expect(agentKnowledgeSandboxService.warmSandbox).not.toHaveBeenCalled();
-		});
-
-		it('allows warmup for a published agent', async () => {
-			agentRepository.findByIdAndProjectId.mockResolvedValue({
-				id: agentId,
-				projectId,
-				activeVersionId: 'version-1',
-			} as never);
-
-			await expect(service.warmSandbox(agentId, projectId)).resolves.toBeUndefined();
-			expect(agentKnowledgeSandboxService.warmSandbox).toHaveBeenCalledWith(projectId, agentId);
-		});
-
-		it('still lists and deletes files for an unpublished agent', async () => {
-			agentRepository.findByIdAndProjectId.mockResolvedValue({
-				id: agentId,
-				projectId,
-				activeVersionId: null,
-			} as never);
-			await agentFileRepository.save(makeAgentFile({ id: 'file-1' }));
-
-			await expect(service.listFiles(agentId, projectId)).resolves.toHaveLength(1);
-			await expect(service.deleteFile(agentId, projectId, 'file-1')).resolves.toBeUndefined();
-			expect(agentFileRepository.all()).toEqual([]);
-		});
+		await expect(service.warmSandbox(agentId, projectId)).resolves.toBeUndefined();
+		expect(agentKnowledgeSandboxService.warmSandbox).toHaveBeenCalledWith(projectId, agentId);
 	});
 
 	it('invalidates and pre-warms the mirror after a successful upload', async () => {
