@@ -6,7 +6,6 @@ import path from 'path';
 import {
 	extractScopeFromEovHandlerChain,
 	loadPublicControllerScopeMap,
-	publicApiRouteKey,
 	resolvePublicApiImplementedScope,
 } from '../../shared/public-api-scope-lookup';
 
@@ -118,23 +117,23 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 			const tag = typeof tags[0] === 'string' ? tags[0] : 'Other';
 
 			let eovHandlerScope: ApiKeyScope | undefined;
-			if (hasEovHandler) {
-				let handlerModule = handlerCache.get(handlerPath);
+			if (isEovRouted) {
+				let handlerModule = handlerCache.get(eovHandlerPath);
 				if (!handlerModule) {
 					try {
-						const fullHandlerPath = path.join(publicApiRoot, `${handlerPath}.js`);
+						const fullHandlerPath = path.join(publicApiRoot, `${eovHandlerPath}.js`);
 						const imported: unknown = await import(fullHandlerPath);
 						if (!isRecord(imported)) continue;
 						const loaded = isRecord(imported.default) ? imported.default : imported;
 						if (!isRecord(loaded)) continue;
 						handlerModule = loaded;
-						handlerCache.set(handlerPath, handlerModule);
+						handlerCache.set(eovHandlerPath, handlerModule);
 					} catch {
 						continue;
 					}
 				}
 
-				const middlewareChain = handlerModule[eovOperationId];
+				const middlewareChain = handlerModule[operationId];
 				eovHandlerScope = Array.isArray(middlewareChain)
 					? extractScopeFromEovHandlerChain(middlewareChain)
 					: undefined;

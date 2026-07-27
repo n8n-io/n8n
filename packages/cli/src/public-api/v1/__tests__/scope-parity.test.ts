@@ -4,12 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'yaml';
 
-import {
-	extractScopeFromEovHandlerChain,
-	loadPublicControllerScopeMap,
-	publicApiRouteKey,
-	resolvePublicApiImplementedScope,
-} from '../shared/public-api-scope-lookup';
+import { extractScopeFromEovHandlerChain } from '../shared/public-api-scope-lookup';
 
 import '../controllers';
 
@@ -66,15 +61,18 @@ async function loadEovOperations(): Promise<Operation[]> {
 	for (const [pathStr, methods] of Object.entries(paths)) {
 		for (const method of HTTP_METHODS) {
 			const op = methods[method];
+			if (!op) continue;
 			// Decorator-routed operations should be skipped here.
-			if (op?.['x-decorator-routed']) continue;
-			if (!op?.['x-eov-operation-id'] || !op?.['x-eov-operation-handler']) continue;
+			if (op['x-decorator-routed']) continue;
+			const operationId = op['x-eov-operation-id'];
+			const handlerPath = op['x-eov-operation-handler'];
+			if (!operationId || !handlerPath) continue;
 			ops.push({
 				source: 'eov',
 				pathStr,
 				method,
 				operationId,
-				handlerPath: op['x-eov-operation-handler'] ?? null,
+				handlerPath,
 				requiredScope: op['x-required-scope'] ?? null,
 			});
 		}
@@ -126,11 +124,9 @@ function normalizeScopeSet(scope: string | undefined): string {
 
 describe('Public API scope parity', () => {
 	let ops: Operation[];
-	let controllerScopes: Map<string, string | undefined>;
 
 	beforeAll(async () => {
 		ops = await loadOperations();
-		controllerScopes = loadPublicControllerScopeMap();
 	});
 
 	test('openapi.yml tags are sorted alphabetically by name', () => {
@@ -154,10 +150,10 @@ describe('Public API scope parity', () => {
 			if (op.source !== 'eov' || op.requiredScope === null) continue;
 			const handlerScope = await loadHandlerScope(op.handlerPath, op.operationId);
 			const expected = op.requiredScope === 'none' ? undefined : op.requiredScope;
-			if (normalizeScopeSet(implemented) !== normalizeScopeSet(expected)) {
+			if (normalizeScopeSet(handlerScope) !== normalizeScopeSet(expected)) {
 				mismatches.push(
 					`${op.method.toUpperCase()} ${op.pathStr}: YAML says "${op.requiredScope}", implemented scope is "${
-						implemented ?? 'none'
+						handlerScope ?? 'none'
 					}"`,
 				);
 			}
