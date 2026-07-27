@@ -1,0 +1,20 @@
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_8c0bb2d06aee91::t_b2e857089ef3fa 7
+  s_8c0bb2d06aee91::t_39af062b83fd67 182-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d79947f937c493772cc46a87952648bdce746f63",
+  "prompts": {},
+  "sessions": {
+    "s_8c0bb2d06aee91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85a4af57-2b95-4cba-9ff4-c0e63bb251d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
