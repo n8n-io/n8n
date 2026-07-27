@@ -2,7 +2,7 @@ import type { GraphNode, WorkflowGraph } from '@n8n/engine';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 
 import { UnsupportedWorkflowError } from './errors';
-import type { V1NodeStepConfig } from './v1-node-step-config';
+import type { V1NodeStepConfig } from './types';
 
 const MANUAL_TRIGGER_TYPE = 'n8n-nodes-base.manualTrigger';
 
@@ -39,12 +39,19 @@ export class V1WorkflowConverter {
 			);
 		}
 
+		if (node.onError === 'continueErrorOutput') {
+			throw new UnsupportedWorkflowError(
+				`Node "${node.name}" uses onError=continueErrorOutput, which is not supported yet.`,
+			);
+		}
+
 		const config: V1NodeStepConfig = {
 			nodeType: node.type,
 			typeVersion: node.typeVersion,
 			parameters: node.parameters,
-			continueOnFail: node.continueOnFail ?? false,
+			continueOnFail: node.continueOnFail === true || node.onError === 'continueRegularOutput',
 		};
+
 		return { id: node.id, name: node.name, type: 'v1-node', config };
 	}
 
