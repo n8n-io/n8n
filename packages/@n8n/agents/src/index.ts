@@ -66,6 +66,7 @@ export type {
 	ResumeOptions,
 	McpServerConfig,
 	McpToolCallSettledEvent,
+	McpConnectionFailedEvent,
 	McpVerifyResult,
 	ModelConfig,
 	ExecutionOptions,

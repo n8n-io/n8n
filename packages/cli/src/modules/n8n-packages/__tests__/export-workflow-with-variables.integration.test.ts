@@ -61,7 +61,7 @@ describe('workflow package export — with variables', () => {
 			variableNames: ['API_URL'],
 		});
 
-		const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+		const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 		const { manifest, entries } = await readExport(stream);
 
 		expect(manifest.variables).toEqual([
@@ -106,7 +106,7 @@ describe('workflow package export — with variables', () => {
 			variableNames: ['API_URL'],
 		});
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [workflow.id],
 			includeVariableValues: false,
@@ -145,7 +145,7 @@ describe('workflow package export — with variables', () => {
 			variableNames: ['API_URL'],
 		});
 
-		const stream = await service.exportPackage({ user: member, workflowIds: [workflow.id] });
+		const { stream } = await service.exportPackage({ user: member, workflowIds: [workflow.id] });
 		const { manifest, entries } = await readExport(stream);
 
 		expect(manifest.variables).toEqual([
@@ -190,7 +190,7 @@ describe('workflow package export — with variables', () => {
 			variableNames: ['API_URL'],
 		});
 
-		const stream = await service.exportPackage({ user: member, workflowIds: [workflow.id] });
+		const { stream } = await service.exportPackage({ user: member, workflowIds: [workflow.id] });
 		const { manifest, entries } = await readExport(stream);
 
 		expect(manifest).not.toHaveProperty('variables');
@@ -218,7 +218,7 @@ describe('workflow package export — with variables', () => {
 			variableNames: ['API_URL'],
 		});
 
-		const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+		const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 		const { manifest, entries } = await readExport(stream);
 
 		// The catalog carries the project-scoped variable's id, not the global one's.
@@ -261,7 +261,7 @@ describe('workflow package export — with variables', () => {
 			variableNames: ['SHARED_VAR'],
 		});
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [wfA.id, wfB.id],
 		});
@@ -285,7 +285,7 @@ describe('workflow package export — with variables', () => {
 			variableNames: ['legacy-key'],
 		});
 
-		const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+		const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 		const { manifest, entries } = await readExport(stream);
 
 		expect(manifest.variables).toEqual([
@@ -311,7 +311,7 @@ describe('workflow package export — with variables', () => {
 			variableNames: ['DOES_NOT_EXIST'],
 		});
 
-		const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+		const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 		const { manifest, entries } = await readExport(stream);
 
 		expect(manifest).not.toHaveProperty('variables');
@@ -338,7 +338,7 @@ describe('workflow package export — with variables', () => {
 		const sharee = await createMember();
 		await shareWorkflowWithUsers(workflow, [sharee]);
 
-		const stream = await service.exportPackage({ user: sharee, workflowIds: [workflow.id] });
+		const { stream } = await service.exportPackage({ user: sharee, workflowIds: [workflow.id] });
 		const { manifest, entries } = await readExport(stream);
 
 		expect(manifest).not.toHaveProperty('variables');
@@ -388,7 +388,7 @@ describe('workflow package export — with variables', () => {
 			variableNames: ['PROJECT_ONLY'],
 		});
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [wfA.id, wfB.id],
 		});
@@ -418,7 +418,7 @@ describe('workflow package export — with variables', () => {
 			variableNames: ['API_URL'],
 		});
 
-		const stream = await service.exportPackage({ user: owner, projectIds: [project.id] });
+		const { stream } = await service.exportPackage({ user: owner, projectIds: [project.id] });
 		const { manifest, entries } = await readExport(stream);
 
 		const projectEntry = manifest.projects!.find((entry) => entry.id === project.id)!;
@@ -448,7 +448,7 @@ describe('workflow package export — with variables', () => {
 		// The sharee can reach the workflow via the direct share, but has no
 		// access to the owner project's variables. The export must still succeed
 		// with a requirements-only entry carrying no value.
-		const stream = await service.exportPackage({ user: sharee, workflowIds: [workflow.id] });
+		const { stream } = await service.exportPackage({ user: sharee, workflowIds: [workflow.id] });
 		const { manifest, entries } = await readExport(stream);
 
 		expect(manifest).not.toHaveProperty('variables');
@@ -488,7 +488,7 @@ describe('workflow package export — with variables', () => {
 				variableNames: [],
 			});
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [workflow.id],
 				canExportVariableValues: false,
@@ -509,7 +509,7 @@ describe('workflow package export — with variables', () => {
 				variableNames: ['API_URL'],
 			});
 
-			const stream = await service.exportPackage({
+			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [workflow.id],
 				includeVariableValues: false,

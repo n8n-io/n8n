@@ -11,6 +11,14 @@ export type {
 	WorkflowGraph,
 } from './graph';
 
+export type {
+	ExternalDependencies,
+	IStepExecutor,
+	StepExecutionContext,
+	StepExecutionRequest,
+	StepExecutionResult,
+} from './dependencies';
+
 export { AllowAllAdmittance, AdmittanceRejectedError } from './admittance';
 export type {
 	AdmittanceDecision,
@@ -30,6 +38,9 @@ export type {
 	ExecutionStatus,
 	ExecutionStore,
 	NewExecutionRecord,
+	NewStepRecord,
+	StepStatus,
+	StepStore,
 } from './execution';
 
-export { createDataSource, TypeOrmExecutionStore } from './database';
+export { createDataSource, TypeOrmExecutionStore, TypeOrmStepStore } from './database';

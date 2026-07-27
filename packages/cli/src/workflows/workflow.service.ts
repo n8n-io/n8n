@@ -11,6 +11,7 @@ import {
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublishedVersionRepository,
 	ProjectRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -38,13 +39,14 @@ import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-v
 import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { ExternalHooks } from '@/external-hooks';
+import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
+import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -90,6 +92,8 @@ export class WorkflowService {
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 		private readonly workflowPublicationNotifier: WorkflowPublicationNotifier,
 		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
+		private readonly pollTriggerJobRegistrar: PollTriggerJobRegistrar,
+		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 	) {}
 
 	async getMany(
@@ -517,7 +521,10 @@ export class WorkflowService {
 		}
 
 		// Run external hook after all validation has passed, right before persisting
-		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
+		await this.externalHooks.run('workflow.update', [
+			workflowUpdateData,
+			toWorkflowLifecycleHookActor(user),
+		]);
 
 		const fieldsToUpdate = [
 			'name',
@@ -601,7 +608,10 @@ export class WorkflowService {
 				requestOrder: tagIds,
 			});
 		}
-		await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
+		await this.externalHooks.run('workflow.afterUpdate', [
+			updatedWorkflow,
+			toWorkflowLifecycleHookActor(user),
+		]);
 
 		const settingsChangesDetail = this.calculateSettingsChanges(
 			workflow.settings,
@@ -825,7 +835,10 @@ export class WorkflowService {
 		});
 
 		try {
-			await this.externalHooks.run('workflow.activate', [candidateWorkflow]);
+			await this.externalHooks.run('workflow.activate', [
+				candidateWorkflow,
+				toWorkflowLifecycleHookActor(user),
+			]);
 		} catch (error) {
 			throw new WorkflowActivationBadRequestError(ensureError(error).message, {
 				nodeId: getErrorNodeId(error),
@@ -985,7 +998,10 @@ export class WorkflowService {
 		}
 
 		try {
-			await this.externalHooks.run('workflow.deactivate', [workflow]);
+			await this.externalHooks.run('workflow.deactivate', [
+				workflow,
+				toWorkflowLifecycleHookActor(user),
+			]);
 		} catch (error) {
 			throw new WorkflowDeactivationBadRequestError(ensureError(error).message, {
 				description: getErrorDescription(error),
@@ -1037,7 +1053,10 @@ export class WorkflowService {
 	 * nothing and returns void.
 	 */
 	async delete(user: User, workflowId: string, force = false): Promise<WorkflowEntity | undefined> {
-		await this.externalHooks.run('workflow.delete', [workflowId]);
+		await this.externalHooks.run('workflow.delete', [
+			workflowId,
+			toWorkflowLifecycleHookActor(user),
+		]);
 
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
@@ -1047,11 +1066,24 @@ export class WorkflowService {
 			return;
 		}
 
-		if (
-			this.globalConfig.workflows.useWorkflowPublicationService &&
-			workflow.activeVersionId !== null
-		) {
-			throw new ConflictError('Cannot delete a published workflow. Unpublish it before deleting.');
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			if (workflow.activeVersionId !== null) {
+				throw new ConflictError(
+					'Cannot delete a published workflow. Unpublish it before deleting.',
+				);
+			}
+
+			// Unpublishing clears `activeVersionId` synchronously but defers trigger
+			// teardown to the outbox consumer, which removes the published-version
+			// mapping only once teardown succeeds. That mapping's FK to the workflow
+			// is RESTRICT, so deleting before it is gone would fail at the DB level.
+			const pendingPublishedVersionId =
+				await this.workflowPublishedVersionRepository.getPublishedVersionId(workflowId);
+			if (pendingPublishedVersionId !== null) {
+				throw new ConflictError(
+					'Workflow is still being unpublished. Please try again in a few moments.',
+				);
+			}
 		}
 
 		if (!workflow.isArchived && !force) {
@@ -1071,7 +1103,10 @@ export class WorkflowService {
 		await this.workflowRepository.delete(workflowId);
 
 		this.eventService.emit('workflow-deleted', { user, workflowId, publicApi: false });
-		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
+		await this.externalHooks.run('workflow.afterDelete', [
+			workflowId,
+			toWorkflowLifecycleHookActor(user),
+		]);
 
 		return workflow;
 	}
@@ -1138,7 +1173,10 @@ export class WorkflowService {
 			workflowId,
 			publicApi: options?.publicApi ?? false,
 		});
-		await this.externalHooks.run('workflow.afterArchive', [workflowId]);
+		await this.externalHooks.run('workflow.afterArchive', [
+			workflowId,
+			toWorkflowLifecycleHookActor(user),
+		]);
 
 		return workflow;
 	}
@@ -1173,7 +1211,10 @@ export class WorkflowService {
 			workflowId,
 			publicApi: options?.publicApi ?? false,
 		});
-		await this.externalHooks.run('workflow.afterUnarchive', [workflowId]);
+		await this.externalHooks.run('workflow.afterUnarchive', [
+			workflowId,
+			toWorkflowLifecycleHookActor(user),
+		]);
 
 		return workflow;
 	}
@@ -1489,6 +1530,7 @@ export class WorkflowService {
 			// waiting on the leader's outbox handler: a lost hand-off would otherwise
 			// leave them firing a workflow already marked inactive.
 			await this.scheduleTriggerJobRegistrar.removeWorkflowInTransaction(trx, workflowId);
+			await this.pollTriggerJobRegistrar.removeWorkflowInTransaction(trx, workflowId);
 		});
 
 		// Wake the leader now that the record is committed, so it drains without
