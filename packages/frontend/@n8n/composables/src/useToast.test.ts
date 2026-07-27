@@ -1,19 +1,37 @@
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { APP_Z_INDEXES } from '@n8n/frontend-constants/z-indexes';
-import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor, within } from '@testing-library/vue';
 import { ElNotification } from 'element-plus';
 import { vi } from 'vitest';
 import { h, defineComponent } from 'vue';
 
+import type { NotificationOptions } from './notificationTypes';
 import { useTelemetry } from './useTelemetry';
-import { useToast, setNotify } from './useToast';
+import { useToast, registerNotificationState, setNotify } from './useToast';
 
 vi.mock('./useTelemetry');
 
 // Register the real element-plus notification function for integration tests.
 setNotify(ElNotification);
+
+/**
+ * Stands in for the notifications store, which this package no longer imports
+ * (N8N-100). Mutable so tests can flip suppression; `useToast` reads the fields
+ * per call, so mutating after `useToast()` takes effect without re-creating it.
+ */
+const notificationState = {
+	areNotificationsSuppressed: false,
+	allowErrorNotificationsWhenSuppressed: false,
+	pendingNotificationsForViews: {} as Partial<Record<VIEWS, NotificationOptions[]>>,
+	setNotificationsForView: vi.fn(),
+};
+registerNotificationState(() => notificationState);
+
+function suppressNotifications({ allowErrors }: { allowErrors: boolean }) {
+	notificationState.areNotificationsSuppressed = true;
+	notificationState.allowErrorNotificationsWhenSuppressed = allowErrors;
+}
 
 const route = vi.hoisted(() => ({
 	name: '' as string | symbol,
@@ -38,6 +56,11 @@ describe('useToast', () => {
 		document.body.appendChild(appEl);
 
 		createTestingPinia();
+
+		notificationState.areNotificationsSuppressed = false;
+		notificationState.allowErrorNotificationsWhenSuppressed = false;
+		notificationState.pendingNotificationsForViews = {};
+		notificationState.setNotificationsForView.mockClear();
 
 		telemetryTrackSpy = vi.fn();
 		vi.mocked(useTelemetry).mockReturnValue({
@@ -239,9 +262,7 @@ describe('useToast', () => {
 
 	describe('notification suppression', () => {
 		it('should not render non-error notification when notifications are suppressed', async () => {
-			const notificationsStore = useNotificationsStore();
-			notificationsStore.areNotificationsSuppressed = true;
-			notificationsStore.allowErrorNotificationsWhenSuppressed = true;
+			suppressNotifications({ allowErrors: true });
 
 			toast.showMessage({ message: 'Should not appear', title: 'Suppressed' });
 
@@ -258,9 +279,7 @@ describe('useToast', () => {
 		});
 
 		it('should not render error notification when notifications are suppressed and errors are not allowed', async () => {
-			const notificationsStore = useNotificationsStore();
-			notificationsStore.areNotificationsSuppressed = true;
-			notificationsStore.allowErrorNotificationsWhenSuppressed = false;
+			suppressNotifications({ allowErrors: false });
 
 			toast.showMessage({
 				message: 'Error should not appear',
@@ -280,9 +299,7 @@ describe('useToast', () => {
 		});
 
 		it('should render error notification when notifications are suppressed and errors are allowed', async () => {
-			const notificationsStore = useNotificationsStore();
-			notificationsStore.areNotificationsSuppressed = true;
-			notificationsStore.allowErrorNotificationsWhenSuppressed = true;
+			suppressNotifications({ allowErrors: true });
 
 			toast.showMessage({
 				message: 'Error should appear',
@@ -300,9 +317,7 @@ describe('useToast', () => {
 		});
 
 		it('should track telemetry for allowed suppressed error notification', async () => {
-			const notificationsStore = useNotificationsStore();
-			notificationsStore.areNotificationsSuppressed = true;
-			notificationsStore.allowErrorNotificationsWhenSuppressed = true;
+			suppressNotifications({ allowErrors: true });
 
 			toast.showMessage({
 				message: 'Allowed error tracked',
@@ -386,6 +401,33 @@ describe('useToast', () => {
 			expect(notifySpy).toHaveBeenCalledWith(
 				expect.objectContaining({ zIndex: APP_Z_INDEXES.TOASTS }),
 			);
+		});
+	});
+
+	// The only path that reads `pendingNotificationsForViews` and calls
+	// `setNotificationsForView`, so it is what proves the injected notification
+	// state is wired end to end. Previously untested.
+	describe('showNotificationForViews', () => {
+		it('renders the queued notifications for a view and clears the queue', async () => {
+			notificationState.pendingNotificationsForViews = {
+				[VIEWS.WORKFLOW]: [{ message: 'Queued message', title: 'Queued title' }],
+			};
+
+			toast.showNotificationForViews([VIEWS.WORKFLOW]);
+
+			await waitFor(() => {
+				expect(screen.getByRole('alert')).toBeVisible();
+				expect(
+					within(screen.getByRole('alert')).getByRole('heading', { level: 2 }),
+				).toHaveTextContent('Queued title');
+			});
+			expect(notificationState.setNotificationsForView).toHaveBeenCalledWith(VIEWS.WORKFLOW, []);
+		});
+
+		it('does nothing when the view has no queued notifications', () => {
+			toast.showNotificationForViews([VIEWS.WORKFLOW]);
+
+			expect(notificationState.setNotificationsForView).not.toHaveBeenCalled();
 		});
 	});
 });

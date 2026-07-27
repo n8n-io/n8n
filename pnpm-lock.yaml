@@ -4981,9 +4981,6 @@ importers:
       '@n8n/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@n8n/stores':
-        specifier: workspace:*
-        version: link:../stores
       '@vueuse/core':
         specifier: catalog:frontend
         version: 14.3.0(vue@3.5.26(typescript@6.0.2))
@@ -5350,21 +5347,9 @@ importers:
 
   packages/frontend/@n8n/frontend-utils:
     dependencies:
-      '@n8n/api-types':
-        specifier: workspace:*
-        version: link:../../../@n8n/api-types
-      '@vueuse/core':
-        specifier: catalog:frontend
-        version: 14.3.0(vue@3.5.26(typescript@6.0.2))
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../../../workflow
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
-      vue-router:
-        specifier: catalog:frontend
-        version: 4.5.0(vue@3.5.26(typescript@6.0.2))
       xss:
         specifier: 'catalog:'
         version: 1.0.15
@@ -5372,9 +5357,6 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
-      '@n8n/telemetry':
-        specifier: workspace:*
-        version: link:../../../@n8n/telemetry
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
@@ -5530,15 +5512,15 @@ importers:
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../../@n8n/api-types
+      '@n8n/composables':
+        specifier: workspace:*
+        version: link:../composables
       '@n8n/constants':
         specifier: workspace:*
         version: link:../../../@n8n/constants
       '@n8n/frontend-constants':
         specifier: workspace:*
         version: link:../frontend-constants
-      '@n8n/frontend-utils':
-        specifier: workspace:*
-        version: link:../frontend-utils
       '@n8n/i18n':
         specifier: workspace:*
         version: link:../i18n

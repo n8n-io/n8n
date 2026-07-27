@@ -27,16 +27,11 @@
     "format:check": "biome ci . && prettier --check . --ignore-path ../../../../.prettierignore"
   },
   "dependencies": {
-    "@n8n/api-types": "workspace:*",
-    "@vueuse/core": "catalog:frontend",
-    "n8n-workflow": "workspace:*",
     "vue": "catalog:frontend",
-    "vue-router": "catalog:frontend",
     "xss": "catalog:"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
-    "@n8n/telemetry": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@testing-library/jest-dom": "catalog:frontend",

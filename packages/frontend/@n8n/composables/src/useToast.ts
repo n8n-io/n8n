@@ -2,13 +2,23 @@ import { VIEWS } from '@n8n/frontend-constants/views';
 import { APP_Z_INDEXES } from '@n8n/frontend-constants/z-indexes';
 import { sanitizeHtml } from '@n8n/frontend-utils/htmlUtils';
 import { useI18n } from '@n8n/i18n';
-import type { NotificationOptions } from '@n8n/stores/notifications.store';
-import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 
+import type {
+	NotificationOptions,
+	NotificationType,
+	ToastNotificationState,
+} from './notificationTypes';
 import { useExternalHooks } from './useExternalHooks';
 import { useTelemetry } from './useTelemetry';
+
+export type {
+	NotificationOptions,
+	NotificationPosition,
+	NotificationType,
+	ToastNotificationState,
+} from './notificationTypes';
 
 /**
  * Handle returned by the notification function. Declared locally so the DTS
@@ -17,9 +27,6 @@ import { useTelemetry } from './useTelemetry';
 export interface NotificationHandle {
 	close: () => void;
 }
-
-/** Notification severity — mirrors `MessageBoxState['type']` from element-plus. */
-export type NotificationType = '' | 'success' | 'warning' | 'info' | 'error';
 
 /**
  * Notification function contract — matches `ElNotification` from element-plus.
@@ -43,6 +50,32 @@ export function setNotify(fn: NotifyFn): void {
 const noopHandle: NotificationHandle = { close() {} };
 const noopNotify: NotifyFn = () => noopHandle;
 
+let registeredNotificationState: (() => ToastNotificationState) | undefined;
+
+/**
+ * Register the notification state (in the app, the notifications store). Called
+ * once at bootstrap by `editor-ui`, as a thunk rather than a value because a
+ * Pinia store can only be resolved once the app is installed.
+ *
+ * Injecting it is what keeps this package below the stores tier: importing
+ * `@n8n/stores` here would close a build-fatal `stores → composables` cycle.
+ */
+export function registerNotificationState(provider: () => ToastNotificationState): void {
+	registeredNotificationState = provider;
+}
+
+/**
+ * Used when nothing has been registered (tests that never bootstrap the app).
+ * Nothing is suppressed and no view has queued notifications, so toasts behave
+ * as they do with suppression off — never throwing or swallowing silently.
+ */
+const noopNotificationState: ToastNotificationState = {
+	areNotificationsSuppressed: false,
+	allowErrorNotificationsWhenSuppressed: false,
+	pendingNotificationsForViews: {},
+	setNotificationsForView() {},
+};
+
 const stickyNotificationQueue: NotificationHandle[] = [];
 
 export function useToast() {
@@ -54,7 +87,7 @@ export function useToast() {
 		const id = route?.params?.workflowId;
 		return (Array.isArray(id) ? id[0] : id) ?? '';
 	});
-	const notificationsStore = useNotificationsStore();
+	const notificationState = registeredNotificationState?.() ?? noopNotificationState;
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
 
@@ -65,8 +98,8 @@ export function useToast() {
 	}
 
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
-		const suppressed = notificationsStore.areNotificationsSuppressed;
-		const allowErrors = notificationsStore.allowErrorNotificationsWhenSuppressed;
+		const suppressed = notificationState.areNotificationsSuppressed;
+		const allowErrors = notificationState.allowErrorNotificationsWhenSuppressed;
 		if (suppressed && !(allowErrors && messageData.type === 'error')) {
 			return { close: () => {} } as NotificationHandle;
 		}
@@ -242,7 +275,7 @@ export function useToast() {
 	function showNotificationForViews(views: VIEWS[]) {
 		const notifications: NotificationOptions[] = [];
 		views.forEach((view) => {
-			notifications.push(...(notificationsStore.pendingNotificationsForViews[view] ?? []));
+			notifications.push(...(notificationState.pendingNotificationsForViews[view] ?? []));
 		});
 		if (notifications.length) {
 			notifications.forEach((notification) => {
@@ -252,7 +285,7 @@ export function useToast() {
 				}, 5);
 			});
 			// Clear the queue once all notifications are shown
-			notificationsStore.setNotificationsForView(VIEWS.WORKFLOW, []);
+			notificationState.setNotificationsForView(VIEWS.WORKFLOW, []);
 		}
 	}
 
