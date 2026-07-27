@@ -135,7 +135,7 @@ export class CanvasComposer {
 	 * @returns The workflow URL after save
 	 */
 	async waitForWorkflowSaveAndUrl(): Promise<string> {
-		const isNewWorkflow = this.n8n.page.url().includes('/workflow/new');
+		const isNewWorkflow = this.n8n.navigate.currentUrl().includes('/workflow/new');
 
 		if (isNewWorkflow) {
 			await this.n8n.canvas.waitForSaveWorkflowCompleted();
@@ -145,6 +145,6 @@ export class CanvasComposer {
 			await this.n8n.canvas.waitForSaveWorkflowCompleted();
 		}
 
-		return this.n8n.page.url();
+		return this.n8n.navigate.currentUrl();
 	}
 }
