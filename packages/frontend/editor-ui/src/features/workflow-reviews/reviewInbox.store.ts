@@ -8,7 +8,12 @@ import { computed, ref } from 'vue';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import { fetchWorkflowReviewInbox, fetchWorkflowReviewInboxSummary } from './workflowReviews.api';
+import {
+	decideWorkflowReviewRequest,
+	fetchWorkflowReviewInbox,
+	fetchWorkflowReviewInboxSummary,
+	type WorkflowReviewDecisionInput,
+} from './workflowReviews.api';
 
 const DEFAULT_LIMIT = 15;
 
@@ -158,6 +163,26 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		await fetchList({ reset: true });
 	}
 
+	/**
+	 * Submit a decision and patch the affected item in place. An approved item
+	 * stays in the open list (and selected) until the next fetch drops it.
+	 */
+	async function decideOnReview(id: string, decision: WorkflowReviewDecisionInput) {
+		const summary = await decideWorkflowReviewRequest(rootStore.restApiContext, id, { decision });
+
+		const item = items.value.find((candidate) => candidate.id === id);
+		if (item) {
+			item.decision = summary.decision;
+			item.state = summary.state;
+			item.updatedAt = summary.updatedAt;
+		}
+
+		if (summary.state === 'closed') {
+			openCount.value = Math.max(0, openCount.value - 1);
+			closedCount.value += 1;
+		}
+	}
+
 	function selectItem(id: string) {
 		selectedId.value = id;
 	}
@@ -203,6 +228,7 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		fetchList,
 		loadMore,
 		setActiveState,
+		decideOnReview,
 		selectItem,
 		clearSelection,
 		reset,

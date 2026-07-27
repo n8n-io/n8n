@@ -1,3 +1,4 @@
+import type { WorkflowReviewInboxItem } from '@n8n/api-types';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -224,6 +225,111 @@ describe('useReviewInboxStore', () => {
 		resolveMore({ data: [], nextCursor: null, hasMore: false });
 		await loadMore;
 		expect(store.loadingMore).toBe(false);
+	});
+
+	describe('decideOnReview', () => {
+		const openItem: WorkflowReviewInboxItem = {
+			id: 'req-1',
+			projectId: 'proj-1',
+			title: 'Review',
+			workflowName: 'My workflow',
+			workflowVersionId: null,
+			requester: null,
+			reviewers: [],
+			decision: 'pending',
+			state: 'open',
+			createdAt: '2024-01-01T00:00:00.000Z',
+			updatedAt: '2024-01-01T00:00:00.000Z',
+		};
+
+		async function seedStoreWithOpenItem() {
+			vi.mocked(workflowReviewsApi.fetchWorkflowReviewInboxSummary).mockResolvedValue({
+				open: 2,
+				closed: 5,
+			});
+			vi.mocked(workflowReviewsApi.fetchWorkflowReviewInbox).mockResolvedValue({
+				// Fresh copy: the store patches items in place.
+				data: [{ ...openItem }],
+				nextCursor: null,
+				hasMore: false,
+			});
+
+			const store = useReviewInboxStore();
+			await store.probeInbox();
+			store.selectItem('req-1');
+			return store;
+		}
+
+		it('patches the approved item in place, adjusts counts, and keeps the selection', async () => {
+			const store = await seedStoreWithOpenItem();
+			vi.mocked(workflowReviewsApi.decideWorkflowReviewRequest).mockResolvedValue({
+				id: 'req-1',
+				state: 'closed',
+				decision: 'approved',
+				workflowVersionId: null,
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-02T00:00:00.000Z',
+			});
+
+			await store.decideOnReview('req-1', 'approved');
+
+			expect(workflowReviewsApi.decideWorkflowReviewRequest).toHaveBeenCalledWith(
+				expect.anything(),
+				'req-1',
+				{ decision: 'approved' },
+			);
+			expect(store.items).toEqual([
+				expect.objectContaining({
+					id: 'req-1',
+					state: 'closed',
+					decision: 'approved',
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				}),
+			]);
+			expect(store.openCount).toBe(1);
+			expect(store.closedCount).toBe(6);
+			expect(store.selectedId).toBe('req-1');
+			expect(store.selectedItem).toEqual(expect.objectContaining({ id: 'req-1' }));
+		});
+
+		it('patches only the decision when changes are requested', async () => {
+			const store = await seedStoreWithOpenItem();
+			vi.mocked(workflowReviewsApi.decideWorkflowReviewRequest).mockResolvedValue({
+				id: 'req-1',
+				state: 'open',
+				decision: 'changes_requested',
+				workflowVersionId: null,
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-02T00:00:00.000Z',
+			});
+
+			await store.decideOnReview('req-1', 'changes_requested');
+
+			expect(store.items).toEqual([
+				expect.objectContaining({
+					id: 'req-1',
+					state: 'open',
+					decision: 'changes_requested',
+				}),
+			]);
+			expect(store.openCount).toBe(2);
+			expect(store.closedCount).toBe(5);
+		});
+
+		it('rethrows an API error and leaves the state untouched', async () => {
+			const store = await seedStoreWithOpenItem();
+			vi.mocked(workflowReviewsApi.decideWorkflowReviewRequest).mockRejectedValue(
+				new Error('forbidden'),
+			);
+
+			await expect(store.decideOnReview('req-1', 'approved')).rejects.toThrow('forbidden');
+
+			expect(store.items).toEqual([
+				expect.objectContaining({ state: 'open', decision: 'pending' }),
+			]);
+			expect(store.openCount).toBe(2);
+			expect(store.closedCount).toBe(5);
+		});
 	});
 
 	it('does not treat a failed list fetch as an empty inbox', async () => {

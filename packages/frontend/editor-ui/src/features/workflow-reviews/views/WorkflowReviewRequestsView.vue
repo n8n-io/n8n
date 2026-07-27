@@ -1,15 +1,16 @@
 <script lang="ts" setup>
-import { onMounted, onUnmounted } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { WorkflowReviewRequestState } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
 
 import WorkflowReviewRequestsSidebar from '../components/WorkflowReviewRequestsSidebar.vue';
 import { useReviewInboxStore } from '../reviewInbox.store';
+import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 
 const store = useReviewInboxStore();
 const {
@@ -53,6 +54,27 @@ async function onLoadMore() {
 		await store.loadMore();
 	} catch (error) {
 		await handleListError(error);
+	}
+}
+
+const deciding = ref(false);
+
+async function onDecide(id: string, decision: WorkflowReviewDecisionInput) {
+	deciding.value = true;
+	try {
+		await store.decideOnReview(id, decision);
+	} catch (error) {
+		showError(error, 'Could not submit review decision');
+		// R2 (P2): the decision failed because someone else already decided (409), so
+		// refetch — otherwise the item keeps showing as open and every retry re-fails.
+		// See LIGO-786_review.md
+		try {
+			await store.fetchList({ reset: true });
+		} catch (refetchError) {
+			handleListError(refetchError);
+		}
+	} finally {
+		deciding.value = false;
 	}
 }
 
@@ -115,14 +137,36 @@ onUnmounted(() => {
 
 				<div :class="$style.mainBody">
 					<N8nLoading v-if="!probeSettled" :loading="true" :rows="3" />
-					<N8nText
-						v-else-if="selectedItem"
-						color="text-light"
-						size="medium"
-						data-test-id="workflow-review-request-detail-stub"
-					>
-						{{ i18n.baseText('workflowReviews.detail.placeholder') }}
-					</N8nText>
+					<div v-else-if="selectedItem">
+						<N8nText
+							color="text-light"
+							size="medium"
+							data-test-id="workflow-review-request-detail-stub"
+						>
+							{{ i18n.baseText('workflowReviews.detail.placeholder') }}
+						</N8nText>
+						<!-- TODO(LIGO-892): placeholder actions with intentionally hardcoded copy.
+							Real design: disabled-with-explanation for non-admin authors ("you
+							contributed a version to this review"), i18n, and a `viewerCanDecide`
+							capability field from the backend. -->
+						<div v-if="selectedItem.state === 'open'" :class="$style.decisionActions">
+							<N8nButton
+								:disabled="deciding"
+								data-test-id="workflow-review-approve-button"
+								@click="onDecide(selectedItem.id, 'approved')"
+							>
+								Approve
+							</N8nButton>
+							<N8nButton
+								type="secondary"
+								:disabled="deciding"
+								data-test-id="workflow-review-request-changes-button"
+								@click="onDecide(selectedItem.id, 'changes_requested')"
+							>
+								Request changes
+							</N8nButton>
+						</div>
+					</div>
 					<N8nText
 						v-else-if="!showSidebar"
 						color="text-light"
@@ -183,5 +227,11 @@ onUnmounted(() => {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
+}
+
+.decisionActions {
+	display: flex;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--sm);
 }
 </style>
