@@ -67,6 +67,14 @@ function isEnvManaged(field: keyof typeof OTEL_FIELD_ENV_VARS): boolean {
 	return otelStore.envManagedFields.includes(field);
 }
 
+// State-first copy: the row tells the admin whether tracing is live right now,
+// instead of describing what the disabled state would mean hypothetically.
+const statusDescription = computed(() =>
+	otelStore.settings.enabled
+		? i18n.baseText('settings.opentelemetry.status.enabledDescription')
+		: i18n.baseText('settings.opentelemetry.status.disabledDescription'),
+);
+
 function envTooltip(field: keyof typeof OTEL_FIELD_ENV_VARS): string {
 	const envVariable = i18n.baseText('settings.opentelemetry.envVarTooltip', {
 		interpolate: { envVar: OTEL_FIELD_ENV_VARS[field] },
@@ -349,7 +357,7 @@ watch(
 				<N8nSettingsRowGroup>
 					<OtelSettingsRow
 						:title="i18n.baseText('settings.opentelemetry.status.label')"
-						:description="i18n.baseText('settings.opentelemetry.enable.description')"
+						:description="statusDescription"
 						:env-tooltip="envTooltip('enabled')"
 					>
 						<template #action>
