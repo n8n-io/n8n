@@ -13,8 +13,9 @@ import { OidcService } from '@/modules/sso-oidc/oidc.service.ee';
 import { SamlService } from '@/modules/sso-saml/saml.service.ee';
 import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
-import { sampleConfig as sampleSamlConfig } from '../saml/sample-metadata';
 import { setupTestServer } from '@test-integration/utils';
+
+import { sampleConfig as sampleSamlConfig } from '../saml/sample-metadata';
 
 // OIDC config writes validate the provider by running discovery against the discovery
 // endpoint. Stub it so the tests exercise our handler without hitting the network.
@@ -66,6 +67,7 @@ describe('OIDC SSO configuration in Public API', () => {
 
 	afterEach(async () => {
 		setManagedByEnv(false);
+		await Container.get(SamlService).reset();
 		await setCurrentAuthenticationMethod('email');
 	});
 
