@@ -1,5 +1,5 @@
 import type { ByteStore } from '@n8n/blob-storage';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse, UnexpectedError, type Logger } from 'n8n-workflow';
 import { createReadStream } from 'node:fs';
 import type { Readable } from 'node:stream';
 import { v4 as uuid } from 'uuid';
@@ -25,6 +25,7 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 	constructor(
 		private readonly byteStore: ByteStore,
 		private readonly errorReporter: ErrorReporter,
+		private readonly logger?: Logger,
 	) {}
 
 	async init() {
@@ -77,7 +78,15 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 	}
 
 	async deleteManyByFileId(ids: string[]) {
-		if (!this.byteStore.deletePrefix) return;
+		if (!this.byteStore.deletePrefix) {
+			// Deletion is delegated to the backend (e.g. bucket lifecycle policies),
+			// so the caller's cleanup intent is not carried out here.
+			this.logger?.warn(
+				`Binary data byte store cannot delete by prefix; skipped deleting ${ids.length} file(s)`,
+				{ fileIds: ids },
+			);
+			return;
+		}
 
 		const locations = ids.flatMap((id) => {
 			try {

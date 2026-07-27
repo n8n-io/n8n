@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
+import { formatBytes } from '@/app/utils/typesUtils';
 
 const props = defineProps<{
 	attachments: ChatMessageAttachment[];
@@ -12,12 +13,23 @@ const props = defineProps<{
 
 const rootStore = useRootStore();
 
-const objectUrls: string[] = [];
+// Memoized per File so recomputations reuse the same URL instead of leaking a
+// fresh blob URL on every re-render.
+const objectUrlsByFile = new Map<File, string>();
+
+function objectUrlFor(file: File): string {
+	let url = objectUrlsByFile.get(file);
+	if (!url) {
+		url = URL.createObjectURL(file);
+		objectUrlsByFile.set(file, url);
+	}
+	return url;
+}
 
 function downloadUrl(attachment: ChatMessageAttachment): string | undefined {
 	if (!attachment.fileId) return undefined;
 	const { baseUrl } = rootStore.restApiContext;
-	return `${baseUrl}/projects/${props.projectId}/agents/v2/${props.agentId}/chat/attachments/${attachment.fileId}`;
+	return `${baseUrl}/projects/${encodeURIComponent(props.projectId)}/agents/v2/${encodeURIComponent(props.agentId)}/chat/attachments/${encodeURIComponent(attachment.fileId)}`;
 }
 
 function isImage(attachment: ChatMessageAttachment): boolean {
@@ -39,8 +51,7 @@ const items = computed<RenderAttachment[]>(() =>
 			if (href) {
 				imageSrc = href;
 			} else if (attachment.file) {
-				imageSrc = URL.createObjectURL(attachment.file);
-				objectUrls.push(imageSrc);
+				imageSrc = objectUrlFor(attachment.file);
 			}
 		}
 		return {
@@ -52,15 +63,9 @@ const items = computed<RenderAttachment[]>(() =>
 	}),
 );
 
-function formatSize(bytes: number | undefined): string {
-	if (bytes === undefined) return '';
-	if (bytes < 1024) return `${bytes} B`;
-	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 onBeforeUnmount(() => {
-	for (const url of objectUrls) URL.revokeObjectURL(url);
+	for (const url of objectUrlsByFile.values()) URL.revokeObjectURL(url);
+	objectUrlsByFile.clear();
 });
 </script>
 
@@ -89,7 +94,7 @@ onBeforeUnmount(() => {
 				<N8nIcon icon="paperclip" size="small" />
 				<span :class="$style.fileName">{{ item.attachment.fileName }}</span>
 				<span v-if="item.attachment.sizeBytes !== undefined" :class="$style.fileSize">
-					{{ formatSize(item.attachment.sizeBytes) }}
+					{{ formatBytes(item.attachment.sizeBytes) }}
 				</span>
 			</component>
 		</template>

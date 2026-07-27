@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, In, Repository } from '@n8n/typeorm';
 
 import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 
@@ -27,5 +27,9 @@ export class AgentChatAttachmentRepository extends Repository<AgentChatAttachmen
 
 	async findByThreadId(threadId: string): Promise<AgentChatAttachment[]> {
 		return await this.findBy({ threadId });
+	}
+
+	async findByIds(ids: string[]): Promise<AgentChatAttachment[]> {
+		return await this.findBy({ id: In(ids) });
 	}
 }

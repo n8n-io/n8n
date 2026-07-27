@@ -343,6 +343,9 @@ export class AgentRuntime {
 
 		const list = AgentMessageList.deserialize(state.messageList);
 		this.context.hydrateDeferredToolsFromList(list);
+		// Checkpoints persist file parts reference-only (bytes are stripped on
+		// save), so reload them for the LLM calls of the resumed turn.
+		await hydrateFileParts(list.messages(), this.config.fileStore);
 
 		const toolForValidation = this.context
 			.getCurrentTools(state.persistence)
@@ -497,6 +500,9 @@ export class AgentRuntime {
 
 		const list = AgentMessageList.deserialize(state.messageList);
 		this.context.hydrateDeferredToolsFromList(list);
+		// Checkpoints persist file parts reference-only (bytes are stripped on
+		// save), so reload them for the LLM calls of the resumed turn.
+		await hydrateFileParts(list.messages(), this.config.fileStore);
 
 		let abortScope: AgentAbortScope | undefined;
 		try {

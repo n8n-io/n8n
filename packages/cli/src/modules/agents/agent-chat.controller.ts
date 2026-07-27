@@ -4,6 +4,7 @@ import {
 	type AgentChatMessagesResponse,
 	AgentChatResumeDto,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
+	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	N8N_CHAT_INTEGRATION_TYPE,
 	ViewableMimeTypes,
 } from '@n8n/api-types';
@@ -12,6 +13,7 @@ import { Body, Delete, Get, Param, Post, ProjectScope, RestController } from '@n
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import { randomUUID } from 'crypto';
 import type { Response } from 'express';
+import { pipeline } from 'node:stream/promises';
 import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -60,29 +62,40 @@ export class AgentChatController {
 		if (!attachments?.length) return undefined;
 
 		const stored: StoredAttachmentRef[] = [];
-		for (const attachment of attachments) {
-			const data = Buffer.from(attachment.data, 'base64');
-			if (data.byteLength === 0 || data.byteLength > MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES) {
-				throw new BadRequestError(`Attachment "${attachment.fileName}" exceeds the 10 MB limit`);
-			}
+		try {
+			for (const attachment of attachments) {
+				const data = Buffer.from(attachment.data, 'base64');
+				if (data.byteLength === 0) {
+					throw new BadRequestError(`Attachment "${attachment.fileName}" is empty`);
+				}
+				if (data.byteLength > MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES) {
+					throw new BadRequestError(
+						`Attachment "${attachment.fileName}" exceeds the ${MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB} MB limit`,
+					);
+				}
 
-			const mimeType = await resolveInboundMimeType(attachment.mimeType, data);
-			const row = await this.agentChatAttachmentService.storeInbound({
-				agentId,
-				projectId,
-				threadId,
-				resourceId,
-				source: 'chat',
-				fileName: attachment.fileName,
-				mimeType,
-				data,
-			});
-			stored.push({
-				id: row.id,
-				fileName: row.fileName,
-				mimeType: row.mimeType,
-				sizeBytes: row.fileSizeBytes,
-			});
+				const mimeType = await resolveInboundMimeType(attachment.mimeType, data);
+				const row = await this.agentChatAttachmentService.storeInbound({
+					agentId,
+					projectId,
+					threadId,
+					resourceId,
+					source: 'chat',
+					fileName: attachment.fileName,
+					mimeType,
+					data,
+				});
+				stored.push({
+					id: row.id,
+					fileName: row.fileName,
+					mimeType: row.mimeType,
+					sizeBytes: row.fileSizeBytes,
+				});
+			}
+		} catch (error) {
+			// Nothing references the already-stored attachments of a rejected message.
+			await this.agentChatAttachmentService.deleteByIds(stored.map((ref) => ref.id));
+			throw error;
 		}
 		return stored;
 	}
@@ -140,8 +153,10 @@ export class AgentChatController {
 			return;
 		}
 
+		let executionId: string | undefined;
+		let storedAttachments: StoredAttachmentRef[] | undefined;
 		try {
-			const storedAttachments = await this.storeChatAttachments({
+			storedAttachments = await this.storeChatAttachments({
 				attachments,
 				agentId,
 				projectId,
@@ -149,7 +164,6 @@ export class AgentChatController {
 				resourceId: draftChatMemoryResourceId(req.user.id),
 			});
 
-			let executionId: string | undefined;
 			const suspended = await pumpChunks(
 				this.agentExecutionOrchestratorService.executeForChat({
 					agentId,
@@ -171,6 +185,15 @@ export class AgentChatController {
 				send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
 			}
 		} catch (error) {
+			// A turn that failed before any execution was recorded persisted nothing
+			// that references its attachments — remove them so they can't accumulate
+			// under thread ids that may never exist. Best-effort: the error the user
+			// sees is the run failure, not the cleanup.
+			if (!executionId && storedAttachments?.length) {
+				await this.agentChatAttachmentService
+					.deleteByIds(storedAttachments.map((ref) => ref.id))
+					.catch(() => {});
+			}
 			const errorMessage = error instanceof Error ? error.message : 'Chat failed';
 			send({ type: 'error', message: errorMessage });
 		}
@@ -310,11 +333,20 @@ export class AgentChatController {
 			);
 		}
 
-		return await new Promise<void>((resolve, reject) => {
-			stream.on('end', resolve);
-			stream.on('error', reject);
-			stream.pipe(res);
-		});
+		// pipeline destroys the source when the client disconnects mid-transfer,
+		// so aborted downloads don't leak file descriptors or object-store sockets.
+		try {
+			await pipeline(stream, res);
+		} catch (error) {
+			if (
+				error instanceof Error &&
+				'code' in error &&
+				error.code === 'ERR_STREAM_PREMATURE_CLOSE'
+			) {
+				return;
+			}
+			throw error;
+		}
 	}
 
 	@Delete('/:agentId/chat/messages')

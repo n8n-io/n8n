@@ -341,7 +341,11 @@ export abstract class BaseCommand<F = never> {
 			if (objectStoreService) {
 				binaryDataService.setManager(
 					's3',
-					new BinaryDataBlobManager(new S3ByteStore(objectStoreService), this.errorReporter),
+					new BinaryDataBlobManager(
+						new S3ByteStore(objectStoreService),
+						this.errorReporter,
+						this.logger,
+					),
 				);
 			}
 		} catch {
@@ -356,7 +360,11 @@ export abstract class BaseCommand<F = never> {
 			if (azureBlobService) {
 				binaryDataService.setManager(
 					'azure',
-					new BinaryDataBlobManager(new AzureByteStore(azureBlobService), this.errorReporter),
+					new BinaryDataBlobManager(
+						new AzureByteStore(azureBlobService),
+						this.errorReporter,
+						this.logger,
+					),
 				);
 			}
 		} catch {

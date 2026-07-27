@@ -4,6 +4,7 @@ import { z } from 'zod';
 import {
 	MAX_AGENT_CHAT_ATTACHMENT_BASE64_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
+	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 } from './agent-chat-attachments.constants';
@@ -132,11 +133,14 @@ export class UpdateAgentSkillDto extends Z.class(updateAgentSkillShape) {
 export const agentChatAttachmentSchema = z.object({
 	fileName: z.string().min(1).max(MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH),
 	mimeType: z.string().min(1).max(MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH),
-	// Base64; cap sized so the decoded payload stays within the 10 MB limit.
+	// Base64; cap sized so the decoded payload stays within the size limit.
 	data: z
 		.string()
 		.min(1)
-		.max(MAX_AGENT_CHAT_ATTACHMENT_BASE64_LENGTH, 'Attachment exceeds 10 MB limit'),
+		.max(
+			MAX_AGENT_CHAT_ATTACHMENT_BASE64_LENGTH,
+			`Attachment exceeds ${MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB} MB limit`,
+		),
 });
 
 export type AgentChatAttachmentPayload = z.infer<typeof agentChatAttachmentSchema>;

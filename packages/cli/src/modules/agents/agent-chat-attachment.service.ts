@@ -100,7 +100,14 @@ export class AgentChatAttachmentService {
 			});
 			return await this.repository.save(attachment);
 		} catch (error) {
-			await this.binaryDataService.deleteManyByBinaryDataId([stored.id]).catch(() => {});
+			await this.binaryDataService
+				.deleteManyByBinaryDataId([stored.id])
+				.catch((cleanupError: unknown) =>
+					this.logger.warn('Failed to delete agent chat attachment bytes', {
+						binaryDataId: stored.id,
+						error: cleanupError,
+					}),
+				);
 			throw error;
 		}
 	}
@@ -115,6 +122,17 @@ export class AgentChatAttachmentService {
 
 	async getStream(attachment: AgentChatAttachment): Promise<Readable> {
 		return await this.binaryDataService.getAsStream(attachment.binaryDataId);
+	}
+
+	/**
+	 * Compensating cleanup for a turn that failed before anything referenced its
+	 * attachments — removes only the given rows, never the rest of the thread.
+	 */
+	async deleteByIds(attachmentIds: string[]): Promise<void> {
+		if (attachmentIds.length === 0) return;
+		await this.deleteAttachments(await this.repository.findByIds(attachmentIds), {
+			attachmentIds: attachmentIds.join(','),
+		});
 	}
 
 	async deleteByThread(threadId: string): Promise<void> {

@@ -1,6 +1,7 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import {
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
+	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 } from '@n8n/api-types';
 import { Container } from '@n8n/di';
@@ -304,6 +305,7 @@ export class AgentChatBridge {
 			this.messageContextBridge.resolveSubject(message),
 		]);
 		const statusHandle = onceStatusHandle(bridgeExecutionContext.statusHandle);
+		let consumeStarted = false;
 		try {
 			await this.messageContextBridge.updateLatest(threadId.id, message.author.userId, thread, {
 				messageId: message.id,
@@ -331,10 +333,21 @@ export class AgentChatBridge {
 				integrationType: this.integration.type,
 			});
 
+			consumeStarted = true;
 			await this.streamConsumer.consume(stream, thread, {
 				forceBuffered: bridgeExecutionContext.forceBuffered,
 				statusHandle,
 			});
+		} catch (error) {
+			// The execution generator is lazy, so a throw before consumption started
+			// means nothing ran — and nothing references this turn's attachments.
+			// Remove them so they can't accumulate. Best-effort: the caller's error
+			// handling owns the user-facing reply. Once consumption starts, the turn
+			// may be persisted, so its attachments must stay.
+			if (!consumeStarted && attachments.length > 0) {
+				await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
+			}
+			throw error;
 		} finally {
 			statusRetry.abort();
 			// The stream consumer clears the status right before the first response;
@@ -377,7 +390,9 @@ export class AgentChatBridge {
 					attachment.size !== undefined &&
 					attachment.size > MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES
 				) {
-					attachmentNotes.push(`[Attachment "${name}" was skipped: larger than 10 MB]`);
+					attachmentNotes.push(
+						`[Attachment "${name}" was skipped: larger than ${MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB} MB]`,
+					);
 					continue;
 				}
 
@@ -387,7 +402,9 @@ export class AgentChatBridge {
 					continue;
 				}
 				if (data.byteLength > MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES) {
-					attachmentNotes.push(`[Attachment "${name}" was skipped: larger than 10 MB]`);
+					attachmentNotes.push(
+						`[Attachment "${name}" was skipped: larger than ${MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB} MB]`,
+					);
 					continue;
 				}
 

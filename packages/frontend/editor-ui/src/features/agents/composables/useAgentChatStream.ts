@@ -536,7 +536,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			body.attachments = await Promise.all(
 				files.map(async (file) => {
 					const encoded = await convertFileToBinaryData(file);
-					return { fileName: file.name, mimeType: file.type, data: encoded.data };
+					// Browsers report an empty type for unrecognized extensions; the
+					// backend requires a non-empty mime type and sniffs the real one.
+					return {
+						fileName: file.name,
+						mimeType: file.type || 'application/octet-stream',
+						data: encoded.data,
+					};
 				}),
 			);
 		}
@@ -669,7 +675,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			...(files?.length && {
 				attachments: files.map((file) => ({
 					fileName: file.name,
-					mimeType: file.type,
+					mimeType: file.type || 'application/octet-stream',
 					sizeBytes: file.size,
 					file,
 				})),
