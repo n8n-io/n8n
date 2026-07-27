@@ -71,6 +71,11 @@ export const AGENT_MODEL_PROVIDER_DEFINITIONS = {
 		credentialTypes: ['basetenApi'],
 		isAggregator: true,
 	},
+	fireworks: {
+		displayName: 'Fireworks',
+		credentialTypes: ['fireworksApi'],
+		isAggregator: true,
+	},
 	deepseek: {
 		displayName: 'DeepSeek',
 		credentialTypes: ['deepSeekApi'],

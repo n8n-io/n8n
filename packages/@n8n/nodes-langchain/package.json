@@ -57,6 +57,7 @@
       "dist/credentials/CohereApi.credentials.js",
       "dist/credentials/DaytonaApi.credentials.js",
       "dist/credentials/DeepSeekApi.credentials.js",
+      "dist/credentials/FireworksApi.credentials.js",
       "dist/credentials/GooglePalmApi.credentials.js",
       "dist/credentials/GroqApi.credentials.js",
       "dist/credentials/HuggingFaceApi.credentials.js",

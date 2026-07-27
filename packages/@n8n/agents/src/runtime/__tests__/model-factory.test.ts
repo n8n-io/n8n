@@ -355,6 +355,17 @@ describe('createModel', () => {
 			expect(model.baseURL).toBe('https://inference.baseten.co/v1');
 		});
 
+		it('should create model for fireworks via openai-compatible', () => {
+			const model = createModel({
+				id: 'fireworks/accounts/fireworks/models/llama-v3p1-70b-instruct',
+				apiKey: 'fw-test',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('fireworks');
+			expect(model.modelId).toBe('accounts/fireworks/models/llama-v3p1-70b-instruct');
+			expect(model.apiKey).toBe('fw-test');
+			expect(model.baseURL).toBe('https://api.fireworks.ai/inference/v1');
+		});
+
 		it('should create model for nvidia', () => {
 			const model = createModel({
 				id: 'nvidia/nvidia/llama-3.3-nemotron-super-49b-v1',

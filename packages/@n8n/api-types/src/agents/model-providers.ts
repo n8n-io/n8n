@@ -8,6 +8,7 @@ export const AGENT_MODEL_PROVIDERS = [
 	'groq',
 	'openrouter',
 	'baseten',
+	'fireworks',
 	'deepseek',
 	'cohere',
 	'mistral',

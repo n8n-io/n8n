@@ -16,6 +16,7 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 		baseURL: z.string().min(1, 'baseURL is required'),
 	}),
 	baseten: apiKeyCreds,
+	fireworks: apiKeyCreds,
 	anthropic: apiKeyCreds,
 	google: apiKeyCreds,
 	xai: apiKeyCreds,

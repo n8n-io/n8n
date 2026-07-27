@@ -110,6 +110,19 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			})(model);
 		},
 	},
+	fireworks: {
+		// OpenAI-compatible HTTP; avoids @ai-sdk/fireworks v4 model types in the v3 registry.
+		build: (creds, model, fetch) => {
+			const { createOpenAICompatible } =
+				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
+			return createOpenAICompatible({
+				name: 'fireworks',
+				baseURL: creds.baseURL ?? 'https://api.fireworks.ai/inference/v1',
+				apiKey: creds.apiKey,
+				fetch,
+			})(model);
+		},
+	},
 	anthropic: {
 		build: (creds, model, fetch) => {
 			const { createAnthropic } =

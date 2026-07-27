@@ -82,6 +82,7 @@ const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
 	xAiApi: 'xai',
 	openRouterApi: 'openrouter',
 	basetenApi: 'baseten',
+	fireworksApi: 'fireworks',
 	cohereApi: 'cohere',
 } satisfies Record<(typeof INSTANCE_AI_MODEL_CREDENTIAL_TYPES)[number], string>;
 
@@ -91,6 +92,7 @@ const URL_FIELD_MAP: Record<string, string> = {
 	anthropicApi: 'url',
 	googlePalmApi: 'host',
 	basetenApi: 'url',
+	fireworksApi: 'url',
 };
 
 function requireConnectionValue(

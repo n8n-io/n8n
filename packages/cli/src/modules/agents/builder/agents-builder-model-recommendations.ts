@@ -15,6 +15,7 @@ const RECOMMENDED_PROVIDERS: RecommendedProvider[] = [
 	{ id: 'xai', label: 'xAI' },
 	{ id: 'google', label: 'Gemini' },
 	{ id: 'baseten', label: 'Baseten' },
+	{ id: 'fireworks', label: 'Fireworks' },
 ];
 
 let modelRecommendationsSection: string | null | undefined;
