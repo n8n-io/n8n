@@ -1,4 +1,8 @@
-import type { AgentJsonConfig, AgentJsonToolConfig } from '@n8n/api-types';
+import {
+	agentEvalDraftCaseSchema,
+	type AgentJsonConfig,
+	type AgentJsonToolConfig,
+} from '@n8n/api-types';
 import { z } from 'zod';
 
 import {
@@ -8,28 +12,14 @@ import {
 	type DimensionTuple,
 } from './dimensions';
 
-/** A single draft case: what to send the agent + a plain-language check. */
-export interface AgentEvalDraftCase {
-	/** A realistic end-user message to send the agent. */
-	input: string;
-	/** Plain-language description of what a good response should do. */
-	whatToCheck: string;
-}
-
-// Structural only: blank/whitespace fields are trimmed and dropped by the
-// service, so a single bad case doesn't invalidate an otherwise-good batch.
-const draftCaseSchema = z.object({
-	input: z.string(),
-	whatToCheck: z.string(),
-});
-
 /**
- * Structured-output schema for the generation call. Wrapping the array in an
- * object (rather than a bare array) is more reliable across providers' JSON
- * modes.
+ * LLM-output envelope for the generation call. Kept local — it's a parsing
+ * detail, not an FE/BE contract. Wrapping the array in an object (rather than a
+ * bare array) is more reliable across providers' JSON modes; the per-case shape
+ * is the shared `agentEvalDraftCaseSchema`.
  */
 export const generatedCasesSchema = z.object({
-	cases: z.array(draftCaseSchema),
+	cases: z.array(agentEvalDraftCaseSchema),
 });
 
 // Bound the prompt so token cost stays predictable regardless of how large the

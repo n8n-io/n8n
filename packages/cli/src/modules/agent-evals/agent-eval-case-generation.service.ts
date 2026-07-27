@@ -1,6 +1,13 @@
 import type { Agent } from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
-import { AGENT_EVALS_FLAG, MANAGED_CREDENTIAL_TOKEN, type AgentJsonConfig } from '@n8n/api-types';
+import {
+	AGENT_EVALS_FLAG,
+	MANAGED_CREDENTIAL_TOKEN,
+	type AgentEvalDraftCase,
+	type AgentJsonConfig,
+	type GenerateDraftCasesOptions,
+	type GenerateDraftCasesResult,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { AgentEvalDatasetRepository } from '@n8n/db';
@@ -20,7 +27,6 @@ import {
 	CASE_GENERATION_SYSTEM_PROMPT,
 	deriveCapabilities,
 	generatedCasesSchema,
-	type AgentEvalDraftCase,
 } from './case-generation/case-generation-prompt';
 import { sampleDimensionTuples } from './case-generation/dimensions';
 import { isSupportedAgentProvider } from '../agents/json-config/credential-field-mapping';
@@ -48,19 +54,6 @@ const CRITERIA_COLUMN = 'criteria';
 // How many name variants ("… (2)", "… (3)") to try before giving up on a
 // per-project name clash.
 const MAX_NAME_ATTEMPTS = 20;
-
-export interface GenerateDraftCasesOptions {
-	/** How many cases to generate (clamped to [1, 20]). Defaults to 6. */
-	count?: number;
-	/** Dataset/table name; defaults to one derived from the agent name. */
-	datasetName?: string;
-}
-
-export interface GenerateDraftCasesResult {
-	datasetId: string;
-	dataTableId: string;
-	cases: AgentEvalDraftCase[];
-}
 
 /**
  * Generates a handful of realistic draft eval cases from an agent's config
