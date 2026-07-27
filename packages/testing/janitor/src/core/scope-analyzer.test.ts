@@ -115,7 +115,6 @@ describe('computeScope', () => {
 			['pnpm-lock.yaml', 'pnpm-lock.yaml'],
 			['root package.json', 'package.json'],
 			['@n8n/db entity', 'packages/@n8n/db/src/entities/user.entity.ts'],
-			['@n8n/api-types schema', 'packages/@n8n/api-types/src/agents/agent-json-config.schema.ts'],
 			['workflow source', 'packages/workflow/src/Workflow.ts'],
 			['core source', 'packages/core/src/x.ts'],
 		])('bails to full on %s even when nothing changed in-package', (_label, changed) => {
@@ -157,6 +156,56 @@ describe('computeScope', () => {
 				changedFiles: ['packages/nodes-base/nodes/Slack/Slack.node.ts'],
 			});
 			expect(result.kind).toBe('skip');
+		});
+	});
+
+	describe('affected by upstream dependency', () => {
+		it('runs full when the package is in affectedPackages but has no in-package changes', () => {
+			const rootDir = makePackageDir('packages/cli');
+			const result = computeScope({
+				packageDir: 'packages/cli',
+				rootDir,
+				changedFiles: ['packages/@n8n/api-types/src/agents/agent-json-config.schema.ts'],
+				packageName: 'n8n',
+				affectedPackages: ['@n8n/api-types', 'n8n'],
+			});
+			expect(result.kind).toBe('full');
+			expect(formatScope(result)).toBe('RUN_FULL');
+		});
+
+		it('still SKIPs when the package is NOT in affectedPackages', () => {
+			const rootDir = makePackageDir('packages/cli');
+			const result = computeScope({
+				packageDir: 'packages/cli',
+				rootDir,
+				changedFiles: ['packages/@n8n/some-unrelated/src/x.ts'],
+				packageName: 'n8n',
+				affectedPackages: ['@n8n/some-unrelated'],
+			});
+			expect(result.kind).toBe('skip');
+		});
+
+		it('SKIPs (back-compat) when affectedPackages is not provided', () => {
+			const rootDir = makePackageDir('packages/cli');
+			const result = computeScope({
+				packageDir: 'packages/cli',
+				rootDir,
+				changedFiles: ['packages/@n8n/api-types/src/agents/agent-json-config.schema.ts'],
+				packageName: 'n8n',
+			});
+			expect(result.kind).toBe('skip');
+		});
+
+		it('does not override a scoped result when in-package files also changed', () => {
+			const rootDir = makePackageDir('packages/cli');
+			const result = computeScope({
+				packageDir: 'packages/cli',
+				rootDir,
+				changedFiles: ['packages/cli/src/a.ts'],
+				packageName: 'n8n',
+				affectedPackages: ['@n8n/api-types', 'n8n'],
+			});
+			expect(result).toEqual({ kind: 'scoped', files: ['packages/cli/src/a.ts'] });
 		});
 	});
 });

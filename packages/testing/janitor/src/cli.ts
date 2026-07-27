@@ -620,6 +620,58 @@ function readChangedFiles(options: CliOptions): string[] | null {
 	return files.length > 0 ? files : null;
 }
 
+/**
+ * Read the affected-package list from --affected-packages or $AFFECTED_PACKAGES
+ * (space-, comma- or newline-separated package names, as emitted by
+ * `affected-packages`). Returns null when neither is set.
+ */
+function readAffectedPackagesEnv(options: CliOptions): string[] | null {
+	const flag = options.affectedPackages;
+	const env = process.env.AFFECTED_PACKAGES;
+	if (flag === undefined && env === undefined) return null;
+	const names = (flag ?? env ?? '')
+		.split(/[\s,]+/)
+		.map((s) => s.trim())
+		.filter((s) => s.length > 0);
+	return names.length > 0 ? names : null;
+}
+
+/** Read a package's own name from its package.json, or undefined if unreadable. */
+function readPackageName(packageDir: string): string | undefined {
+	try {
+		const pkg = JSON.parse(fs.readFileSync(path.join(packageDir, 'package.json'), 'utf-8')) as {
+			name?: unknown;
+		};
+		return typeof pkg.name === 'string' ? pkg.name : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Resolve the affected-package set for scoping. Prefer the list CI already
+ * computed ($AFFECTED_PACKAGES) so the scoping decision matches the job-listing
+ * decision. When absent (e.g. env not wired), recompute from CHANGED_FILES so
+ * correctness doesn't depend on the workflow plumbing.
+ */
+function resolveAffectedPackages(
+	options: CliOptions,
+	rootDir: string,
+	changedFiles: string[] | null,
+): string[] | null {
+	const fromEnv = readAffectedPackagesEnv(options);
+	if (fromEnv !== null) return fromEnv;
+	if (changedFiles === null) return null;
+	// Best-effort recompute. Never let a graph-analysis failure break scoping
+	// for every package — degrade to "no signal" (skip on no local changes).
+	try {
+		return affectedPackages({ rootDir, changedFiles });
+	} catch (error) {
+		console.warn(`[janitor] Could not compute affected packages: ${(error as Error).message}`);
+		return null;
+	}
+}
+
 function runAffectedPackages(options: CliOptions): void {
 	const result = affectedPackages({
 		rootDir: findWorkspaceRoot(process.cwd()),
@@ -630,21 +682,29 @@ function runAffectedPackages(options: CliOptions): void {
 
 function runTestScopedCmd(options: CliOptions): void {
 	const packageDir = options.packageDir ?? process.cwd();
+	const rootDir = findWorkspaceRoot(process.cwd());
 	const changedFiles = readChangedFiles(options);
 	const exitCode = runTestScoped({
 		packageDir,
-		rootDir: findWorkspaceRoot(process.cwd()),
+		rootDir,
 		changedFiles,
+		packageName: readPackageName(packageDir),
+		affectedPackages: resolveAffectedPackages(options, rootDir, changedFiles),
 		passthroughArgs: options.passthroughArgs,
 	});
 	process.exit(exitCode);
 }
 
 function runScope(options: CliOptions): void {
+	const packageDir = options.packageDir ?? process.cwd();
+	const rootDir = findWorkspaceRoot(process.cwd());
+	const changedFiles = readChangedFiles(options);
 	const result = computeScope({
-		packageDir: options.packageDir ?? process.cwd(),
-		changedFiles: readChangedFiles(options),
-		rootDir: findWorkspaceRoot(process.cwd()),
+		packageDir,
+		changedFiles,
+		rootDir,
+		packageName: readPackageName(packageDir),
+		affectedPackages: resolveAffectedPackages(options, rootDir, changedFiles),
 	});
 	console.log(formatScope(result));
 }
