@@ -18,7 +18,6 @@ import type {
 	IUser,
 	CurrentUserResponse,
 	IPersonalizationLatestVersion,
-	IPersonalizationSurveyVersions,
 } from '@n8n/rest-api-client/api/users';
 import * as usersApi from '@n8n/rest-api-client/api/users';
 import { useAsyncState } from '@vueuse/core';
@@ -38,13 +37,6 @@ import { useRootStore } from './useRootStore';
  * `users.constants`; kept as a literal so the store carries no `@/app` import.
  */
 const PERSONALIZATION_MODAL_KEY = 'personalization';
-
-/**
- * Resolves a user's personalization-survey answers to recommended node types.
- * Injected by the app (see `app/init.ts`) so the store avoids importing the
- * node-type constants that the real implementation depends on.
- */
-type PersonalizedNodeTypesResolver = (answers: IPersonalizationSurveyVersions) => string[];
 
 const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
@@ -92,12 +84,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const canListUsers = ref<() => boolean>(() => false);
 	const setPermissionsResolvers = (resolvers: { listUsers: () => boolean }) => {
 		canListUsers.value = resolvers.listUsers;
-	};
-
-	// Maps a user's personalization-survey answers to recommended node types.
-	const nodeTypesResolver = ref<PersonalizedNodeTypesResolver>(() => []);
-	const setNodeTypesResolver = (resolver: PersonalizedNodeTypesResolver) => {
-		nodeTypesResolver.value = resolver;
 	};
 
 	// Stores
@@ -153,19 +139,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 			currentUser.value.settings.dismissedCallouts[callout] = true;
 		}
 	};
-
-	const personalizedNodeTypes = computed(() => {
-		const user = currentUser.value;
-		if (!user) {
-			return [];
-		}
-
-		const answers = user.personalizationAnswers;
-		if (!answers) {
-			return [];
-		}
-		return nodeTypesResolver.value(answers);
-	});
 
 	const usersLimitNotReached = computed(
 		(): boolean => userQuota.value === -1 || userQuota.value > allUsers.value.length,
@@ -511,7 +484,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		isAdminOrOwner,
 		mfaEnabled,
 		globalRoleName,
-		personalizedNodeTypes,
 		userClaimedAiCredits,
 		isEasyAIWorkflowOnboardingDone,
 		canUserUpdateVersion,
@@ -526,7 +498,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		registerLogoutHook,
 		registerModalOpeners,
 		setPermissionsResolvers,
-		setNodeTypesResolver,
 		createOwner,
 		validateSignupToken,
 		acceptInvitation,
