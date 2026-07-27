@@ -33,8 +33,9 @@ import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import { AgentExecutionService } from '../agent-execution.service';
 import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
+import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
@@ -72,6 +73,9 @@ vi.mock('../json-config/mcp-client-factory', () => ({
 
 beforeEach(() => {
 	Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
+	// Every top-level runtime now gets the own-sessions tools, which resolve the
+	// execution service from the container.
+	Container.set(AgentExecutionService, mock<AgentExecutionService>());
 });
 
 function getInjectedToolNames(): string[] {

@@ -129,17 +129,22 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 	/**
 	 * Paginated thread listing sorted by updatedAt DESC.
 	 * Uses cursor-based pagination where the cursor is the updatedAt ISO string
-	 * of the last item on the previous page.
+	 * of the last item on the previous page. Pass `createdByResourceId` to
+	 * restrict the page to one caller's own sessions.
 	 */
 	async findByProjectIdPaginated(
 		projectId: string,
 		agentId: string,
 		limit: number,
 		cursor?: string,
+		createdByResourceId?: string,
 	): Promise<AgentExecutionThreadPage> {
 		const where: Record<string, unknown> = { projectId, agentId };
 		if (cursor) {
 			where.updatedAt = LessThan(new Date(cursor));
+		}
+		if (createdByResourceId !== undefined) {
+			where.createdByResourceId = createdByResourceId;
 		}
 
 		const threads = await this.find({

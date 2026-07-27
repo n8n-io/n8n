@@ -1,16 +1,16 @@
-import type { Mocked } from 'vitest';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { QueryFailedError } from '@n8n/typeorm';
-import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { Telemetry } from '@/telemetry';
 
 import { AgentExecutionService } from '../agent-execution.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
-import type { MessageRecord } from '../execution-recorder';
 import type { AgentExecutionLogStore } from '../execution-log/agent-execution-log-store';
+import type { MessageRecord } from '../execution-recorder';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
@@ -577,6 +577,25 @@ describe('AgentExecutionService', () => {
 				expect.objectContaining({
 					turn_status: 'succeeded',
 				}),
+			);
+		});
+	});
+
+	describe('getThreads', () => {
+		it('narrows the page to one caller when a resource id is supplied', async () => {
+			agentExecutionThreadRepository.findByProjectIdPaginated.mockResolvedValue({
+				threads: [],
+				nextCursor: null,
+			});
+
+			await service.getThreads('project-1', 'agent-1', 20, undefined, 'draft-chat:user-1');
+
+			expect(agentExecutionThreadRepository.findByProjectIdPaginated).toHaveBeenCalledWith(
+				'project-1',
+				'agent-1',
+				20,
+				undefined,
+				'draft-chat:user-1',
 			);
 		});
 	});
