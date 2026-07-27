@@ -16,7 +16,11 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useBugReporting } from '@/app/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useKeybindings } from '@/app/composables/useKeybindings';
-import { useSidebarLayout } from '@/app/composables/useSidebarLayout';
+import {
+	MAX_SIDEBAR_WIDTH,
+	MIN_SIDEBAR_WIDTH,
+	useSidebarLayout,
+} from '@/app/composables/useSidebarLayout';
 import { useSettingsItems } from '@/app/composables/useSettingsItems';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import MainSidebarHeader from '@/app/components/MainSidebarHeader.vue';
@@ -346,8 +350,8 @@ useKeybindings({
 		:width="sidebarWidth"
 		:style="isCollapsed ? {} : { width: `${sidebarWidth}px` }"
 		:supported-directions="['right']"
-		:min-width="200"
-		:max-width="500"
+		:min-width="MIN_SIDEBAR_WIDTH"
+		:max-width="MAX_SIDEBAR_WIDTH"
 		:grid-size="8"
 		@resizestart="onResizeStart"
 		@resize="onResize"
