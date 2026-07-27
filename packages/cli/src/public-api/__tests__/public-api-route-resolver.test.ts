@@ -39,8 +39,6 @@ function markPublicApiController(controllerClass: Controller, basePath: `/${stri
 
 describe('public-api-route-resolver', () => {
 	beforeEach(() => {
-		// A fresh registry per test, isolated from any real @PublicApiController that may already
-		// be registered elsewhere in this process.
 		Container.set(ControllerRegistryMetadata, new ControllerRegistryMetadata());
 	});
 

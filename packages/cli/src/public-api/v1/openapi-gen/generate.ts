@@ -27,7 +27,7 @@ export interface GeneratedArtifact {
  * Lower-cased first char matches the existing hand-written schema-file convention (`tag.yml`)
  * E.g. `TagListPublic` -> `tagListPublic.generated.yml`.
  * `.generated.` marks it build-owned.
- **/
+ */
 function schemaFileName(componentName: string): string {
 	return `${componentName[0].toLowerCase()}${componentName.slice(1)}.generated.yml`;
 }

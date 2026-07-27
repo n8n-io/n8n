@@ -1,6 +1,5 @@
 import RefParser from '@apidevtools/json-schema-ref-parser';
 import { API_KEY_RESOURCES, type ApiKeyScope } from '@n8n/permissions';
-import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'yaml';
@@ -27,11 +26,6 @@ type Operation = {
 	pathStr: string;
 	method: Method;
 	operationId: string;
-	/**
-	 * Null for a decorator-routed operation. Its `x-eov-operation-handler` is an unreachable stub
-	 * (needed so express-openapi-validator's handler installer doesn't error on it), not a real
-	 * handler to compare scope against - see `decorator-routed.handler.ts`.
-	 */
 	handlerPath: string | null;
 	requiredScope: string | null;
 };
@@ -133,17 +127,17 @@ describe('Public API scope parity', () => {
 		for (const op of ops) {
 			if (op.requiredScope === null) continue;
 
-			// A route must be defined by a real eov handler XOR a @PublicApiController,
-			// never both - otherwise the enforced scope is ambiguous. `op.handlerPath` is
-			// already null for decorator-routed operations (their eov handler is a stub), so
-			// this only trips for a genuine eov handler left in place alongside a controller.
-			assert(
-				!(
-					op.handlerPath !== null && controllerScopes.has(publicApiRouteKey(op.method, op.pathStr))
-				),
-				`${op.method.toUpperCase()} ${op.pathStr} is defined by both an eov handler and a @PublicApiController. ` +
-					'Remove the eov handler (its `x-eov-operation-handler` in the OpenAPI spec and the handler middleware) and keep the @PublicApiController.',
-			);
+			// A route must be defined by the eov handler XOR a @PublicApiController,
+			// never both — otherwise the enforced scope is ambiguous.
+			if (
+				op.handlerPath !== null &&
+				controllerScopes.has(publicApiRouteKey(op.method, op.pathStr))
+			) {
+				throw new Error(
+					`${op.method.toUpperCase()} ${op.pathStr} is defined by both an eov handler and a @PublicApiController. ` +
+						'Remove the eov handler (its `x-eov-operation-handler` in the OpenAPI spec and the handler middleware) and keep the @PublicApiController.',
+				);
+			}
 
 			const eovHandlerScope =
 				op.handlerPath !== null

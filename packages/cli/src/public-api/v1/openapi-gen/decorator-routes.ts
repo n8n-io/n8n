@@ -46,7 +46,9 @@ function capitalize(value: string): string {
 export type NamedResponseDto = ResponseDtoClass & { schema: z.ZodTypeAny; name: string };
 
 function hasNamedSchema(dto: unknown): dto is NamedResponseDto {
-	if (dto === null || (typeof dto !== 'object' && typeof dto !== 'function')) return false;
+	if (dto === null || (typeof dto !== 'object' && typeof dto !== 'function')) {
+		return false;
+	}
 	return 'schema' in dto && 'name' in dto && typeof dto.name === 'string';
 }
 
@@ -176,7 +178,9 @@ export interface GeneratedDecoratorOperation {
 export function getDecoratorGeneratedOperations(
 	resolveSchema: SchemaResolver = inlineResolver,
 ): GeneratedDecoratorOperation[] {
-	return resolvePublicApiRoutes().map((route) => {
+	const publicApiRoutes = resolvePublicApiRoutes();
+
+	return publicApiRoutes.map((route) => {
 		const pathKey = toOpenApiPath(route.path);
 		const { parameters, requestQuery } = buildQueryConfig(route);
 		const resource = resourceSegment(route.path);

@@ -22,7 +22,7 @@ if (publicApiEnabled) {
 	createPublicApiDirectory();
 	copySwaggerTheme();
 
-	// Must run before bundleOpenApiSpecs(), any Zod-generated path fragments need to already be ready to bundle.
+	// Must run before bundleOpenApiSpecs(), Zod-generated path fragments need to exist to be bundled.
 	await generateOpenApiDocs();
 
 	bundleOpenApiSpecs();
@@ -63,8 +63,8 @@ function copySwaggerTheme() {
 	shell.cp('-r', swaggerTheme.source, swaggerTheme.destination);
 }
 
-// Generates the subset of openapi.yml's paths that have opted into being produced from @n8n/api-types Zod DTOs
-// instead of hand-written YAML. Imports the already-compiled dist output rather than the .ts source — by the time
+// Generates the subset of paths that have opted into automatic generation via the `@PublicApiController` decorator
+// rather than being defined as hand-written YAML. Imports the already-compiled dist output rather than the .ts source — by the time
 // build:data runs, `tsc` has already emitted it and build.mjs has no TS loader.
 async function generateOpenApiDocs() {
 	const generatorPath = path.resolve(

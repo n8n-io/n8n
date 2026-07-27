@@ -103,21 +103,21 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 			// Decorator-routed operations (@PublicApiController) carry x-eov-* fields
 			// but they point at an unreachable stub, not a real handler, `x-decorator-routed`
 			// is the actual signal to tell them apart.
-			const isEovRouted =
+			const hasEovHandler =
 				operation['x-decorator-routed'] !== true &&
 				typeof eovOperationId === 'string' &&
 				typeof eovHandlerPath === 'string';
 
 			// Decorator-routed operations carry a plain `operationId` and `x-required-scope`,
 			// generated straight from decorator metadata.
-			const operationId = isEovRouted ? eovOperationId : operation.operationId;
+			const operationId = hasEovHandler ? eovOperationId : operation.operationId;
 			if (typeof operationId !== 'string') continue;
 
 			const tags = Array.isArray(operation.tags) ? operation.tags : [];
 			const tag = typeof tags[0] === 'string' ? tags[0] : 'Other';
 
 			let eovHandlerScope: ApiKeyScope | undefined;
-			if (isEovRouted) {
+			if (hasEovHandler) {
 				let handlerModule = handlerCache.get(eovHandlerPath);
 				if (!handlerModule) {
 					try {
