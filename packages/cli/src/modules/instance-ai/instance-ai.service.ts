@@ -9,6 +9,7 @@ import type {
 import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
@@ -5551,11 +5552,26 @@ export class InstanceAiService {
 			}
 		}
 
+		// Whether any requested credential is a recipe-driven Templated Custom Auth
+		// one (guided inline setup), to compare completion against modal-based types.
+		const credentialRequests: unknown[] = Array.isArray(payload.credentialRequests)
+			? payload.credentialRequests
+			: [];
+		const containsTemplatedCred = credentialRequests.some(
+			(request) =>
+				typeof request === 'object' &&
+				request !== null &&
+				(('credentialType' in request &&
+					request.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) ||
+					('setupHint' in request && request.setupHint != null)),
+		);
+
 		this.telemetry.track('Builder asked for input', {
 			thread_id: threadId,
 			input_thread_id: inputThreadId,
 			type,
 			num_steps: numSteps,
+			contains_templated_cred: containsTemplatedCred,
 		});
 	}
 

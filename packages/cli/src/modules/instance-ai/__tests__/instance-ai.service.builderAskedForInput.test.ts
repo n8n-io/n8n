@@ -126,7 +126,42 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 
 		expect(service.telemetry.track).toHaveBeenCalledWith(
 			'Builder asked for input',
-			expect.objectContaining({ type: 'setup', num_steps: 3 }),
+			expect.objectContaining({ type: 'setup', num_steps: 3, contains_templated_cred: false }),
+		);
+	});
+
+	it('flags credential setups that include a Templated Custom Auth request', () => {
+		const service = makeService();
+
+		service.trackConfirmationRequest('thread-a', {
+			payload: {
+				credentialRequests: [
+					{ credentialType: 'httpHeaderAuth' },
+					{ credentialType: 'httpTemplatedCustomAuth', setupHint: { template: {} } },
+				],
+			},
+		});
+
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			'Builder asked for input',
+			expect.objectContaining({
+				type: 'credential-setup',
+				num_steps: 2,
+				contains_templated_cred: true,
+			}),
+		);
+	});
+
+	it('does not flag credential setups with only plain credential requests', () => {
+		const service = makeService();
+
+		service.trackConfirmationRequest('thread-a', {
+			payload: { credentialRequests: [{ credentialType: 'httpHeaderAuth' }] },
+		});
+
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			'Builder asked for input',
+			expect.objectContaining({ type: 'credential-setup', contains_templated_cred: false }),
 		);
 	});
 });
