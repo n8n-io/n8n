@@ -18,7 +18,7 @@ import {
 	VERIFY_INACTIVITY_TIMEOUT_MS,
 	verifyChecklist,
 } from '../checklist/verifier';
-import type { VerificationArtifact } from '../harness/runner';
+import type { VerificationArtifact } from '../harness/scenario-execution';
 import type { ChecklistItem } from '../types';
 
 const mockCreateEvalAgent = vi.mocked(createEvalAgent);
