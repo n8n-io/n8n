@@ -1,0 +1,228 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createTestingPinia } from '@pinia/testing';
+import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
+
+import { mockedStore } from '@/__tests__/utils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import type { IWorkflowDb } from '@/Interface';
+
+import { isWorkflowCompatibleWithAgentTools, useAgentToolCatalog } from './useAgentToolCatalog';
+
+vi.mock('virtual:node-popularity-data', () => ({
+	default: [
+		{ id: 'n8n-nodes-base.slack', popularity: 100 },
+		{ id: '@n8n/n8n-nodes-langchain.openAi', popularity: 45 },
+		{ id: '@n8n/n8n-nodes-langchain.toolCode', popularity: 30 },
+		{ id: 'mcpClientTool', popularity: 20 },
+		{ id: 'toolCalculator', popularity: 10 },
+	],
+}));
+
+function makeNodeType(
+	overrides: Partial<INodeTypeDescription> & Pick<INodeTypeDescription, 'name' | 'displayName'>,
+): INodeTypeDescription {
+	return {
+		group: ['output'],
+		version: 1,
+		description: overrides.displayName,
+		defaults: { name: overrides.displayName },
+		inputs: [],
+		outputs: [{ type: NodeConnectionTypes.AiTool }],
+		properties: [],
+		credentials: [],
+		...overrides,
+	};
+}
+
+const SLACK = makeNodeType({
+	name: 'n8n-nodes-base.slack',
+	displayName: 'Slack',
+	credentials: [{ name: 'slackApi', required: true }],
+});
+
+const CODE_TOOL = makeNodeType({
+	name: '@n8n/n8n-nodes-langchain.toolCode',
+	displayName: 'Code Tool',
+	codex: {
+		categories: ['AI'],
+		subcategories: { AI: ['Tools'], Tools: ['Recommended Tools'] },
+	},
+});
+
+const OPENAI = makeNodeType({
+	name: '@n8n/n8n-nodes-langchain.openAi',
+	displayName: 'OpenAI',
+	inputs: ['main'],
+});
+
+const MCP = makeNodeType({
+	name: 'mcpClientTool',
+	displayName: 'GitHub MCP',
+});
+
+const CALCULATOR = makeNodeType({
+	name: 'toolCalculator',
+	displayName: 'Calculator',
+});
+
+const SUBAGENT = makeNodeType({
+	name: 'n8n-nodes-base.subagent',
+	displayName: 'Subagent',
+	inputs: ['main'],
+});
+
+const HIDDEN_CHAT_TOOL = makeNodeType({
+	name: '@n8n/n8n-nodes-langchain.chatTool',
+	displayName: 'Chat Tool',
+});
+
+function makeWorkflow(overrides: Partial<IWorkflowDb> = {}): IWorkflowDb {
+	return {
+		id: 'wf-1',
+		name: 'Daily sales digest',
+		description: 'Ship a summary',
+		active: true,
+		isArchived: false,
+		createdAt: '2026-01-01T00:00:00Z',
+		updatedAt: '2026-01-02T00:00:00Z',
+		versionId: 'v-1',
+		activeVersionId: null,
+		nodes: [
+			{
+				id: 't',
+				name: 'Manual Trigger',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+		],
+		connections: {},
+		...overrides,
+	} as IWorkflowDb;
+}
+
+describe('useAgentToolCatalog', () => {
+	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
+
+	const allTypes = [SLACK, CODE_TOOL, OPENAI, MCP, CALCULATOR, SUBAGENT, HIDDEN_CHAT_TOOL];
+
+	beforeEach(() => {
+		createTestingPinia({ stubActions: false });
+		nodeTypesStore = mockedStore(useNodeTypesStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
+
+		nodeTypesStore.getNodeType = vi.fn().mockImplementation((name: string) => {
+			return allTypes.find((nt) => nt.name === name) ?? null;
+		});
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: allTypes.map((nt) => nt.name),
+		};
+		workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([]);
+	});
+
+	it('includes AiTool node types and vendor providers, excluding input-taking and hidden types', () => {
+		const { availableToolTypes } = useAgentToolCatalog();
+		const names = availableToolTypes.value.map((nt) => nt.name);
+
+		expect(names).toContain(SLACK.name);
+		expect(names).toContain(CODE_TOOL.name);
+		expect(names).toContain(OPENAI.name);
+		expect(names).toContain(MCP.name);
+		expect(names).toContain(CALCULATOR.name);
+		expect(names).not.toContain(SUBAGENT.name);
+		expect(names).not.toContain(HIDDEN_CHAT_TOOL.name);
+	});
+
+	it('orders MCP, then AI tools, then n8n tools, then the rest by popularity', () => {
+		const { availableToolTypes } = useAgentToolCatalog();
+		const names = availableToolTypes.value.map((nt) => nt.name);
+
+		expect(names.indexOf(MCP.name)).toBeLessThan(names.indexOf(OPENAI.name));
+		expect(names.indexOf(OPENAI.name)).toBeLessThan(names.indexOf(CODE_TOOL.name));
+		expect(names.indexOf(CALCULATOR.name)).toBeLessThan(names.indexOf(CODE_TOOL.name));
+		expect(names.indexOf(CODE_TOOL.name)).toBeLessThan(names.indexOf(SLACK.name));
+	});
+
+	it('loads and filters project workflows for agent-tool compatibility', async () => {
+		const compatible = makeWorkflow({ id: 'ok' });
+		const archived = makeWorkflow({ id: 'archived', isArchived: true });
+		const waitBody = makeWorkflow({
+			id: 'wait',
+			nodes: [
+				{
+					id: 't',
+					name: 'Manual Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'w',
+					name: 'Wait',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+		});
+		workflowsListStore.searchWorkflows = vi
+			.fn()
+			.mockResolvedValue([compatible, archived, waitBody]);
+
+		const { availableWorkflows, loadWorkflows } = useAgentToolCatalog();
+		await loadWorkflows('p-1');
+
+		expect(availableWorkflows.value.map((wf) => wf.id)).toEqual(['ok']);
+	});
+});
+
+describe('isWorkflowCompatibleWithAgentTools', () => {
+	it('requires a supported trigger and no incompatible body nodes', () => {
+		expect(isWorkflowCompatibleWithAgentTools(makeWorkflow())).toBe(true);
+		expect(
+			isWorkflowCompatibleWithAgentTools(
+				makeWorkflow({
+					nodes: [
+						{
+							id: 't',
+							name: 'Cron',
+							type: 'n8n-nodes-base.scheduleTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+				}),
+			),
+		).toBe(false);
+		expect(
+			isWorkflowCompatibleWithAgentTools(
+				makeWorkflow({
+					nodes: [
+						{
+							id: 't',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: 'f',
+							name: 'Form',
+							type: 'n8n-nodes-base.form',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+				}),
+			),
+		).toBe(false);
+	});
+});
