@@ -420,8 +420,33 @@ describe('useWorkflowDocumentRenderData — subworkflowProgressByNodeId', () => 
 			currentNodeName: 'Child Node',
 			currentNodeIndex: 2,
 			totalNodes: 5,
-			phase: 'running',
 		});
+	});
+
+	it('returns a stable reference when only the phase changes', () => {
+		const { docId } = setupWorkflow('wf-subwf-stable', [{ id: 'a', name: 'Alpha' }]);
+		setActiveExecution(docId, [alpha()], {});
+		const { renderData } = createRenderData(docId);
+		const store = useSubworkflowProgressStore();
+
+		const payload = {
+			parentExecutionId: `exec-${docId}`,
+			parentNodeName: 'Alpha',
+			executionId: 'child-1',
+			currentNodeName: 'Child Node',
+			currentNodeIndex: 2,
+			totalNodes: 5,
+		};
+		store.updateProgress({ ...payload, phase: 'running' });
+		const first = renderData.subworkflowProgressByNodeId.get('a')?.value;
+
+		// A running -> success flip on the same node must not yield a new object,
+		// otherwise every push re-maps the whole canvas (and the label flickers).
+		store.updateProgress({ ...payload, phase: 'success' });
+		const second = renderData.subworkflowProgressByNodeId.get('a')?.value;
+
+		expect(first).toBeDefined();
+		expect(second).toBe(first);
 	});
 });
 

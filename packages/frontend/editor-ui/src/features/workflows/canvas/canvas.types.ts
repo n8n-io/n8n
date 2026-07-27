@@ -142,11 +142,13 @@ export interface CanvasNodeData {
 		waiting?: string;
 		running: boolean;
 		waitingForNext?: boolean;
+		// `phase` is deliberately not surfaced here: nothing renders it, and
+		// including it would make otherwise-identical progress snapshots compare
+		// unequal, re-mapping the whole canvas on every push.
 		subworkflowProgress?: {
 			currentNodeName?: string;
 			currentNodeIndex: number;
 			totalNodes: number;
-			phase: 'running' | 'success' | 'error';
 		};
 	};
 	runData: {
