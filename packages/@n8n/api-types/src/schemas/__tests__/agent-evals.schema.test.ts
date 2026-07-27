@@ -1,11 +1,13 @@
 import {
 	agentEvalColumnMappingSchema,
+	agentEvalDraftCaseSchema,
 	agentEvalResultStatusSchema,
 	agentEvalRunStatusSchema,
 	agentEvalVoteSchema,
 	createAgentEvalDatasetSchema,
 	CreateAgentEvalRatingDto,
 	CreateAgentEvalRunDto,
+	GenerateDraftCasesOptionsDto,
 	UpdateAgentEvalDatasetDto,
 } from '../agent-evals.schema';
 
@@ -161,7 +163,57 @@ describe('CreateAgentEvalRatingDto', () => {
 		).toBe(true);
 	});
 
+	it('accepts a nested JSON correction', () => {
+		expect(
+			CreateAgentEvalRatingDto.safeParse({
+				vote: 'down',
+				correction: { output: { text: 'x', items: [1, 'two', true, null] }, score: 3 },
+			}).success,
+		).toBe(true);
+	});
+
+	it('rejects a correction with a non-JSON leaf', () => {
+		expect(
+			CreateAgentEvalRatingDto.safeParse({
+				vote: 'down',
+				correction: { output: () => 'not json' },
+			}).success,
+		).toBe(false);
+	});
+
 	it('rejects an invalid vote', () => {
 		expect(CreateAgentEvalRatingDto.safeParse({ vote: 'maybe' }).success).toBe(false);
+	});
+});
+
+describe('agentEvalDraftCaseSchema', () => {
+	it('accepts a valid draft case', () => {
+		expect(
+			agentEvalDraftCaseSchema.safeParse({
+				input: 'Reset my password',
+				whatToCheck: 'Explains steps',
+			}).success,
+		).toBe(true);
+	});
+
+	it('rejects a draft case missing whatToCheck', () => {
+		expect(agentEvalDraftCaseSchema.safeParse({ input: 'Reset my password' }).success).toBe(false);
+	});
+});
+
+describe('GenerateDraftCasesOptionsDto', () => {
+	it('accepts an empty options body', () => {
+		expect(GenerateDraftCasesOptionsDto.safeParse({}).success).toBe(true);
+	});
+
+	it('accepts count and datasetName', () => {
+		expect(
+			GenerateDraftCasesOptionsDto.safeParse({ count: 6, datasetName: 'Support' }).success,
+		).toBe(true);
+	});
+
+	it('rejects a non-positive or non-integer count', () => {
+		expect(GenerateDraftCasesOptionsDto.safeParse({ count: 0 }).success).toBe(false);
+		expect(GenerateDraftCasesOptionsDto.safeParse({ count: 2.5 }).success).toBe(false);
 	});
 });

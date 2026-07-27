@@ -1,7 +1,24 @@
+import type { JsonObject, JsonValue } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { datasetRefSchema, type DatasetRef } from '../dto/evaluations/evaluation-config.dto';
 import { Z } from '../zod-class';
+
+// A JSON blob that flows from a request into persistence must infer to the
+// repository's `JsonObject`, not `Record<string, unknown>` — the latter permits
+// non-JSON leaves and isn't assignable to `JsonObject` without a cast. Recursive
+// so nested values are validated too.
+const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
+	z.union([
+		z.string(),
+		z.number(),
+		z.boolean(),
+		z.null(),
+		z.record(z.string(), jsonValueSchema),
+		z.array(jsonValueSchema),
+	]),
+);
+const jsonObjectSchema: z.ZodType<JsonObject> = z.record(z.string(), jsonValueSchema);
 
 // PostHog rollout flag id gating the agent-evals feature surface. Every new
 // agent-eval endpoint + frontend entry point consults this; the flag-off
@@ -94,7 +111,7 @@ export class CreateAgentEvalRunDto extends Z.class(createAgentEvalRunShape) {}
 const createAgentEvalRatingShape = {
 	vote: agentEvalVoteSchema,
 	comment: z.string().optional(),
-	correction: z.record(z.string(), z.unknown()).optional(),
+	correction: jsonObjectSchema.optional(),
 };
 export const createAgentEvalRatingSchema = z.object(createAgentEvalRatingShape);
 export type CreateAgentEvalRatingPayload = z.infer<typeof createAgentEvalRatingSchema>;
@@ -165,4 +182,38 @@ export type AgentEvalRatingRecord = {
 // A run with its per-case results — the "open a run" view.
 export type AgentEvalRunDetail = AgentEvalRunRecord & {
 	results: AgentEvalResultRecord[];
+};
+
+// ---------------------------------------------------------------------------
+// Case generation. The AI case-generation service drafts cases from an agent's
+// config; these types are the shared contract for its request/response so the
+// generate endpoint and editor-ui use one definition (the service impl and its
+// synthesis logic live in the backend).
+// ---------------------------------------------------------------------------
+
+/**
+ * A single AI-generated draft eval case: a realistic end-user input plus a
+ * plain-language "what to check". Drafts have no gold answer and are never
+ * auto-graded — the user edits them before saving as a dataset.
+ */
+export const agentEvalDraftCaseSchema = z.object({
+	input: z.string().min(1),
+	whatToCheck: z.string().min(1),
+});
+export type AgentEvalDraftCase = z.infer<typeof agentEvalDraftCaseSchema>;
+
+// Request body for the generate-cases endpoint. `count` is a positive int; the
+// service clamps it to its supported maximum rather than rejecting.
+const generateDraftCasesOptionsShape = {
+	count: z.number().int().min(1).optional(),
+	datasetName: z.string().min(1).optional(),
+};
+export const generateDraftCasesOptionsSchema = z.object(generateDraftCasesOptionsShape);
+export type GenerateDraftCasesOptions = z.infer<typeof generateDraftCasesOptionsSchema>;
+export class GenerateDraftCasesOptionsDto extends Z.class(generateDraftCasesOptionsShape) {}
+
+export type GenerateDraftCasesResult = {
+	datasetId: string;
+	dataTableId: string;
+	cases: AgentEvalDraftCase[];
 };

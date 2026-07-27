@@ -579,6 +579,9 @@ export {
 	CreateAgentEvalRunDto,
 	createAgentEvalRatingSchema,
 	CreateAgentEvalRatingDto,
+	agentEvalDraftCaseSchema,
+	generateDraftCasesOptionsSchema,
+	GenerateDraftCasesOptionsDto,
 } from './schemas/agent-evals.schema';
 export type {
 	AgentEvalColumnMapping,
@@ -594,6 +597,9 @@ export type {
 	AgentEvalResultRecord,
 	AgentEvalRatingRecord,
 	AgentEvalRunDetail,
+	AgentEvalDraftCase,
+	GenerateDraftCasesOptions,
+	GenerateDraftCasesResult,
 } from './schemas/agent-evals.schema';
 
 export {
