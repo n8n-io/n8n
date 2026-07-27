@@ -14,6 +14,7 @@ import { deepCopy, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
@@ -193,6 +194,58 @@ export class AgentPublishService {
 		this.logger.debug('Published SDK agent', { agentId, projectId, userId: user.id });
 
 		return versionId ? { agent } : { agent, draftValidation: validation };
+	}
+
+	/**
+	 * Fail-fast publishability check for channel-connect flows. Call before
+	 * any side effect (persisting an integration, creating a Slack app, etc.)
+	 * so a half-baked draft cannot leave orphaned credential/integration state
+	 * behind a failed auto-publish. Mirrors the draft validation in
+	 * {@link publishAgent}, including task bodies and optional draft-integration
+	 * filtering.
+	 */
+	async assertDraftPublishable(
+		agent: Agent,
+		projectId: string,
+		user: User,
+		options: { ignoreDraftIntegrations?: boolean } = {},
+	): Promise<void> {
+		const credentialProvider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			user,
+		);
+		const tasks = new Map(
+			(await this.agentTaskRepository.findByAgentId(agent.id)).map((task) => [task.id, task]),
+		);
+		const baseIntegrations = agent.integrations ?? [];
+		const integrations = options.ignoreDraftIntegrations
+			? baseIntegrations.filter((integration) => !isDraftIntegration(integration))
+			: baseIntegrations;
+
+		const validation = options.ignoreDraftIntegrations
+			? await this.agentValidationService.validateAgentEntityConfiguration(
+					agent,
+					projectId,
+					tasks,
+					credentialProvider,
+					'publish',
+					integrations,
+				)
+			: await this.agentValidationService.validateAgentEntityConfiguration(
+					agent,
+					projectId,
+					tasks,
+					credentialProvider,
+					'publish',
+				);
+
+		if (validation.status !== 'valid') {
+			const paths = validation.issues.map((issue) => issue.path).join(', ');
+			throw new BadRequestError(
+				`Agent configuration is incomplete. Fix these before connecting a channel: ${paths}`,
+			);
+		}
 	}
 
 	/**

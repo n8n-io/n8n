@@ -27,10 +27,20 @@ export function getTrustedOAuthOrigins(editorBaseUrl: string): string[] {
 	return [...origins];
 }
 
+function isOAuthErrorPayload(data: unknown): boolean {
+	return (
+		typeof data === 'object' &&
+		data !== null &&
+		'type' in data &&
+		(data as { type: unknown }).type === OAUTH_CALLBACK_ERROR
+	);
+}
+
 /**
  * Validate an incoming `window` `message` event and return the OAuth result it
  * carries, or `null` when the event should be ignored (untrusted origin or an
- * unrelated payload).
+ * unrelated payload). Accepts the legacy string `'error'` and the structured
+ * `{ type: 'error', message }` payload from `oauth-error-callback`.
  */
 export function parseOAuthCallbackMessage(
 	event: MessageEvent,
@@ -38,6 +48,26 @@ export function parseOAuthCallbackMessage(
 ): OAuthCallbackResult | null {
 	if (!trustedOrigins.includes(event.origin)) return null;
 	if (event.data === OAUTH_CALLBACK_SUCCESS) return OAUTH_CALLBACK_SUCCESS;
-	if (event.data === OAUTH_CALLBACK_ERROR) return OAUTH_CALLBACK_ERROR;
+	if (event.data === OAUTH_CALLBACK_ERROR || isOAuthErrorPayload(event.data)) {
+		return OAUTH_CALLBACK_ERROR;
+	}
 	return null;
+}
+
+/**
+ * Extract an actionable error message from an OAuth callback BroadcastChannel /
+ * postMessage payload when present.
+ */
+export function getOAuthCallbackErrorMessage(data: unknown): string {
+	if (
+		typeof data === 'object' &&
+		data !== null &&
+		'type' in data &&
+		(data as { type: unknown }).type === OAUTH_CALLBACK_ERROR &&
+		'message' in data &&
+		typeof (data as { message: unknown }).message === 'string'
+	) {
+		return (data as { message: string }).message.trim();
+	}
+	return '';
 }

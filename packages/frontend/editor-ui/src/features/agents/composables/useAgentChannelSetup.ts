@@ -9,6 +9,8 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 
+import { getOAuthCallbackErrorMessage } from '@/features/credentials/composables/oauthCallback';
+
 import type { AgentCredentialOption } from '../components/AgentCredentialSelect.vue';
 import { createSlackAgentApp } from './useAgentApi';
 
@@ -186,7 +188,9 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 		return popup;
 	}
 
-	async function waitForSlackAppSetupCompletion(popup: Window): Promise<boolean> {
+	async function waitForSlackAppSetupCompletion(
+		popup: Window,
+	): Promise<{ connected: boolean; errorMessage?: string }> {
 		return await new Promise((resolve) => {
 			const oauthChannel = new BroadcastChannel('oauth-callback');
 			let activePoll: Promise<void> | null = null;
@@ -198,14 +202,14 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 				} catch {}
 			};
 
-			const settle = (success: boolean) => {
+			const settle = (connected: boolean, errorMessage?: string) => {
 				if (settled) return;
 				settled = true;
 				window.clearInterval(pollInterval);
 				window.clearTimeout(timeout);
 				oauthChannel.close();
-				if (success) closePopup();
-				resolve(success);
+				if (connected) closePopup();
+				resolve(errorMessage ? { connected, errorMessage } : { connected });
 			};
 
 			const pollStatus = async () => {
@@ -237,7 +241,17 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 			const timeout = window.setTimeout(() => settle(false), SLACK_APP_SETUP_TIMEOUT_MS);
 
 			oauthChannel.addEventListener('message', (event: MessageEvent) => {
-				settle(event.data === 'success');
+				if (event.data === 'success') {
+					settle(true);
+					return;
+				}
+				// Structured `{ type: 'error', message }` from oauth-error-callback,
+				// or the legacy string `'error'`. Prefer the actionable message when
+				// present so the modal can surface pre-flight / publish failures.
+				const errorMessage = getOAuthCallbackErrorMessage(event.data);
+				if (errorMessage || event.data === 'error') {
+					settle(false, errorMessage || undefined);
+				}
 			});
 
 			void pollStatus();
@@ -248,6 +262,9 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 		appConfigurationToken: string,
 		onConnected: () => void | Promise<void>,
 	): Promise<boolean> {
+		// createSlackAgentApp throws ResponseError with the BadRequest body when
+		// the backend pre-flight rejects a half-baked agent config — that message
+		// propagates to AgentChannelSlackSetup's catch as error.message.
 		const { installUrl } = await createSlackAgentApp(
 			rootStore.restApiContext,
 			projectId.value,
@@ -255,9 +272,9 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 			appConfigurationToken,
 		);
 		const popup = openSlackAppAuthorizationPopup(installUrl);
-		const connected = await waitForSlackAppSetupCompletion(popup);
+		const { connected, errorMessage } = await waitForSlackAppSetupCompletion(popup);
 		if (!connected) {
-			throw new Error('Slack app installation was not completed');
+			throw new Error(errorMessage || 'Slack app installation was not completed');
 		}
 
 		await options.fetchStatus(['slack']);

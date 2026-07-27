@@ -75,6 +75,10 @@ export class AgentIntegrationsController {
 			);
 		}
 
+		await this.agentPublishService.assertDraftPublishable(agent, agent.projectId, req.user, {
+			ignoreDraftIntegrations: true,
+		});
+
 		await this.agentIntegrationPersistenceService.saveCredentialIntegration(agent, integration, {
 			broadcast: false,
 		});

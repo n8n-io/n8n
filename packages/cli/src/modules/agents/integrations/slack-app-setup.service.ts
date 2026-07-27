@@ -147,6 +147,10 @@ export class SlackAppSetupService {
 		}
 
 		const agent = await this.getAgent(options.agentId, options.projectId);
+		// Shared channel-connect pre-flight
+		await this.agentPublishService.assertDraftPublishable(agent, options.projectId, options.user, {
+			ignoreDraftIntegrations: true,
+		});
 		const redirectUrl = this.callbackUrl(options.projectId, options.agentId);
 		const manifest = this.buildManifest(agent.name, options.projectId, options.agentId, {
 			redirectUrl,
@@ -203,7 +207,8 @@ export class SlackAppSetupService {
 	}
 
 	async completeInstall(options: CompleteSlackAppInstallOptions): Promise<void> {
-		const session = await this.consumeSession(options.state);
+		// Peek (don't consume) so a failed pre-flight leaves the one-time state intact.
+		const session = await this.peekSession(options.state);
 		if (session.projectId !== options.projectId || session.agentId !== options.agentId) {
 			throw new BadRequestError('Slack app setup state does not match this agent');
 		}
@@ -217,6 +222,14 @@ export class SlackAppSetupService {
 		}
 
 		const agent = await this.getAgent(session.agentId, session.projectId);
+		await this.agentPublishService.assertDraftPublishable(agent, session.projectId, user, {
+			ignoreDraftIntegrations: true,
+		});
+
+		// Consume only after the pre-flight passes so concurrent/retry callbacks
+		// can't race past a failed validation with a burned state.
+		await this.consumeSession(options.state);
+
 		const tokenResponse = await this.callSlackApi(
 			'oauth.v2.access',
 			{
@@ -348,10 +361,25 @@ export class SlackAppSetupService {
 		}
 	}
 
+	/** Read the setup session without deleting it (for pre-flight checks). */
+	private async peekSession(state: string): Promise<SlackAppSetupSession> {
+		return await this.readSession(state, { consume: false });
+	}
+
+	/** Read and delete the setup session (one-time use after pre-flight). */
 	private async consumeSession(state: string): Promise<SlackAppSetupSession> {
+		return await this.readSession(state, { consume: true });
+	}
+
+	private async readSession(
+		state: string,
+		options: { consume: boolean },
+	): Promise<SlackAppSetupSession> {
 		const key = this.cacheKey(state);
 		const cached = await this.cacheService.get<unknown>(key);
-		await this.cacheService.delete(key);
+		if (options.consume) {
+			await this.cacheService.delete(key);
+		}
 		if (typeof cached !== 'string') {
 			throw new BadRequestError('Slack app setup state has expired or is invalid');
 		}

@@ -152,4 +152,50 @@ describe('useAgentChannelSetup', () => {
 		vi.unstubAllGlobals();
 		vi.restoreAllMocks();
 	});
+
+	it('surfaces the structured OAuth error message when the Slack callback reports failure', async () => {
+		vi.useFakeTimers();
+
+		type MessageHandler = (event: MessageEvent) => void;
+		let messageHandler: MessageHandler | undefined;
+		class FakeBroadcastChannel {
+			addEventListener(_type: string, handler: MessageHandler) {
+				messageHandler = handler;
+			}
+			close() {}
+			postMessage() {}
+		}
+		vi.stubGlobal('BroadcastChannel', FakeBroadcastChannel);
+
+		const fakePopup = { closed: false, close: vi.fn() };
+		vi.spyOn(window, 'open').mockReturnValue(fakePopup as unknown as Window);
+
+		const { setupSlackApp } = useAgentChannelSetup({
+			projectId: () => 'artifact-project',
+			agentId: () => 'agent-1',
+			currentIntegration: null,
+			connectedCredentials: {},
+			fetchStatus: vi.fn().mockResolvedValue(undefined),
+			isIntegrationConnected: () => false,
+		});
+
+		const setupPromise = setupSlackApp('token', vi.fn());
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(messageHandler).toBeDefined();
+		messageHandler?.({
+			data: {
+				type: 'error',
+				message: 'Agent configuration is incomplete. Fix these before connecting a channel: model',
+			},
+		} as MessageEvent);
+
+		await expect(setupPromise).rejects.toThrow(
+			'Agent configuration is incomplete. Fix these before connecting a channel: model',
+		);
+
+		vi.useRealTimers();
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
 });

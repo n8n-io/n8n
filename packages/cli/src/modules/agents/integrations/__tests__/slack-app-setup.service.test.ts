@@ -72,7 +72,9 @@ describe('SlackAppSetupService', () => {
 	let agentIntegrationPersistenceService: Mocked<
 		Pick<AgentIntegrationPersistenceService, 'saveCredentialIntegration'>
 	>;
-	let agentPublishService: Mocked<Pick<AgentPublishService, 'publishAgent'>>;
+	let agentPublishService: Mocked<
+		Pick<AgentPublishService, 'publishAgent' | 'assertDraftPublishable'>
+	>;
 	let chatIntegrationService: Mocked<ChatIntegrationService>;
 	let service: SlackAppSetupService;
 
@@ -107,7 +109,10 @@ describe('SlackAppSetupService', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
 		agentIntegrationPersistenceService =
 			mock<Pick<AgentIntegrationPersistenceService, 'saveCredentialIntegration'>>();
-		agentPublishService = mock<Pick<AgentPublishService, 'publishAgent'>>();
+		agentPublishService =
+			mock<Pick<AgentPublishService, 'publishAgent' | 'assertDraftPublishable'>>();
+		// Default to a publishable agent so existing happy-path tests pass.
+		agentPublishService.assertDraftPublishable.mockResolvedValue(undefined);
 		chatIntegrationService = mock<ChatIntegrationService>();
 		const urlService = mock<UrlService>();
 		urlService.getWebhookBaseUrl.mockReturnValue('https://hooks.example/');
@@ -462,5 +467,77 @@ describe('SlackAppSetupService', () => {
 		).rejects.toThrow(BadRequestError);
 		expect(credentialsService.createUnmanagedCredential).not.toHaveBeenCalled();
 		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
+	});
+
+	it('createApp throws and does not call the Slack API when the agent config is invalid', async () => {
+		agentPublishService.assertDraftPublishable.mockRejectedValueOnce(
+			new BadRequestError(
+				'Agent configuration is incomplete. Fix these before connecting a channel: instructions, model',
+			),
+		);
+
+		await expect(
+			service.createApp({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				appConfigurationToken: 'xoxe-config',
+				user,
+			}),
+		).rejects.toThrow(BadRequestError);
+
+		expect(agentPublishService.assertDraftPublishable).toHaveBeenCalledWith(
+			agent,
+			'project-1',
+			user,
+			{ ignoreDraftIntegrations: true },
+		);
+		// No Slack-side side effect: the manifest create call never fired and
+		// no setup session was cached, so retry starts from a clean slate.
+		expect(requestMock).not.toHaveBeenCalled();
+		expect(cacheService.set).not.toHaveBeenCalled();
+		expect(credentialsService.createUnmanagedCredential).not.toHaveBeenCalled();
+		expect(agentIntegrationPersistenceService.saveCredentialIntegration).not.toHaveBeenCalled();
+	});
+
+	it('completeInstall throws and does not create the credential or integration when the agent config is invalid', async () => {
+		// createApp passes its pre-flight (valid at that point)...
+		requestMock.mockResolvedValueOnce(slackAppCreatedResponse());
+		const { installUrl } = await service.createApp({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			appConfigurationToken: 'xoxe-config',
+			user,
+		});
+		const state = new URL(installUrl).searchParams.get('state') ?? '';
+		const cacheKey = `agents:slack-app-setup:${state}`;
+		expect(cacheStore.has(cacheKey)).toBe(true);
+		userRepository.findOne.mockResolvedValue(user);
+
+		// ...but the draft was edited to an invalid state during the OAuth round-trip.
+		agentPublishService.assertDraftPublishable.mockRejectedValueOnce(
+			new BadRequestError(
+				'Agent configuration is incomplete. Fix these before connecting a channel: model',
+			),
+		);
+
+		await expect(
+			service.completeInstall({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				code: 'slack-code',
+				state,
+			}),
+		).rejects.toThrow(BadRequestError);
+
+		// No orphaned credential or integration record left behind.
+		expect(credentialsService.createUnmanagedCredential).not.toHaveBeenCalled();
+		expect(agentIntegrationPersistenceService.saveCredentialIntegration).not.toHaveBeenCalled();
+		expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
+		// Pre-flight failed before consume — setup state remains so a retry after
+		// fixing the config can reuse the same callback (Slack code still unused).
+		expect(cacheService.delete).not.toHaveBeenCalled();
+		expect(cacheStore.has(cacheKey)).toBe(true);
+		expect(requestMock).toHaveBeenCalledTimes(1); // only apps.manifest.create from createApp
 	});
 });

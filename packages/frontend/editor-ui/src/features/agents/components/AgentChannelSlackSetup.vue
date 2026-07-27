@@ -77,6 +77,7 @@ const showAppConfigurationToken = shallowRef(false);
 const setupLoading = shallowRef(false);
 const disconnectLoading = shallowRef(false);
 const setupError = shallowRef<'invalidToken' | 'generic' | null>(null);
+const setupErrorMessage = shallowRef('');
 const manualConfigurationOpen = shallowRef(false);
 const slackAppManifest = shallowRef('');
 const manifestLoading = shallowRef(false);
@@ -166,6 +167,7 @@ async function installSlackApp() {
 
 	setupLoading.value = true;
 	setupError.value = null;
+	setupErrorMessage.value = '';
 	try {
 		const completed = await props.setupSlackApp(token);
 		if (completed) {
@@ -173,6 +175,8 @@ async function installSlackApp() {
 		}
 	} catch (error) {
 		setupError.value = isInvalidSlackTokenError(error) ? 'invalidToken' : 'generic';
+		setupErrorMessage.value =
+			error instanceof Error && error.message.length > 0 ? error.message : '';
 	} finally {
 		setupLoading.value = false;
 	}
@@ -320,6 +324,14 @@ defineExpose({ credentialId, validationError: null });
 						>
 							{{ i18n.baseText('agents.channels.slack.setup.installApp.error') }}
 						</N8nText>
+						<N8nText
+							v-if="setupError === 'generic' && setupErrorMessage"
+							:class="$style.setupErrorDetail"
+							size="small"
+							data-testid="slack-app-setup-error-detail"
+						>
+							{{ setupErrorMessage }}
+						</N8nText>
 					</template>
 				</div>
 			</template>
@@ -446,6 +458,11 @@ defineExpose({ credentialId, validationError: null });
 
 .setupError {
 	color: var(--color--danger);
+}
+
+.setupErrorDetail {
+	color: var(--color--danger);
+	margin-top: var(--spacing--3xs);
 }
 
 .tokenInputContainer,
