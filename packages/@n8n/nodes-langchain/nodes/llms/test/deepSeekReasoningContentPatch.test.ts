@@ -13,10 +13,16 @@ import { convertMessagesToCompletionsMessageParams } from '@langchain/openai';
  * `patches/@langchain__openai@1.4.4.patch` (registered in the root package.json's
  * `pnpm.patchedDependencies`). This test exercises the real, patched package
  * directly, so it fails loudly if that patch is ever lost or stops applying.
+ *
+ * The patch is scoped narrowly: only assistant messages with `tool_calls`
+ * (DeepSeek's actual requirement), and only when `model` looks like a DeepSeek
+ * model, so other `ChatOpenAI`-compatible providers (OpenRouter, xAI, custom
+ * base URLs) are unaffected even if their API happens to return a
+ * `reasoning_content` field too.
  */
 describe('@langchain/openai reasoning_content passthrough patch', () => {
-	it('re-emits assistant reasoning_content on outbound completions requests', () => {
-		const message = new AIMessage({
+	const toolCallMessage = () =>
+		new AIMessage({
 			content: '',
 			tool_calls: [{ id: 'call_abc', name: 'get_weather', args: { location: 'NYC' } }],
 			additional_kwargs: {
@@ -24,7 +30,11 @@ describe('@langchain/openai reasoning_content passthrough patch', () => {
 			},
 		});
 
-		const [result] = convertMessagesToCompletionsMessageParams({ messages: [message] });
+	it('re-emits assistant reasoning_content on outbound completions requests for a DeepSeek model', () => {
+		const [result] = convertMessagesToCompletionsMessageParams({
+			messages: [toolCallMessage()],
+			model: 'deepseek-reasoner',
+		});
 
 		expect(result).toMatchObject({
 			role: 'assistant',
@@ -32,10 +42,47 @@ describe('@langchain/openai reasoning_content passthrough patch', () => {
 		});
 	});
 
-	it('does not add reasoning_content when the AIMessage has none', () => {
-		const message = new AIMessage({ content: 'hello' });
+	it('does not add reasoning_content when the model is not DeepSeek', () => {
+		const [result] = convertMessagesToCompletionsMessageParams({
+			messages: [toolCallMessage()],
+			model: 'gpt-4o',
+		});
 
-		const [result] = convertMessagesToCompletionsMessageParams({ messages: [message] });
+		expect(result).not.toHaveProperty('reasoning_content');
+	});
+
+	it('does not add reasoning_content when the model is undefined', () => {
+		const [result] = convertMessagesToCompletionsMessageParams({ messages: [toolCallMessage()] });
+
+		expect(result).not.toHaveProperty('reasoning_content');
+	});
+
+	it('does not add reasoning_content on a DeepSeek message with no tool_calls', () => {
+		const message = new AIMessage({
+			content: 'The weather in NYC is sunny.',
+			additional_kwargs: {
+				reasoning_content: 'The user wants the weather, I already have the answer.',
+			},
+		});
+
+		const [result] = convertMessagesToCompletionsMessageParams({
+			messages: [message],
+			model: 'deepseek-reasoner',
+		});
+
+		expect(result).not.toHaveProperty('reasoning_content');
+	});
+
+	it('does not add reasoning_content when the AIMessage has none', () => {
+		const message = new AIMessage({
+			content: '',
+			tool_calls: [{ id: 'call_abc', name: 'get_weather', args: { location: 'NYC' } }],
+		});
+
+		const [result] = convertMessagesToCompletionsMessageParams({
+			messages: [message],
+			model: 'deepseek-reasoner',
+		});
 
 		expect(result).not.toHaveProperty('reasoning_content');
 	});
