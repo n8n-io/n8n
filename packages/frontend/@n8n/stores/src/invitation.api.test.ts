@@ -1,7 +1,7 @@
-import { acceptInvitation } from '../invitation.api';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
-import { v4 as uuidv4 } from 'uuid';
+
+import { acceptInvitation } from './invitation.api';
 
 vi.mock('@n8n/rest-api-client', () => ({
 	makeRestApiRequest: vi.fn(),
@@ -24,7 +24,7 @@ describe('invitation.api', () => {
 				password: 'Password123!',
 			};
 
-			vi.mocked(makeRestApiRequest).mockResolvedValue({ id: uuidv4() } as never);
+			vi.mocked(makeRestApiRequest).mockResolvedValue({ id: 'test-user-id' } as never);
 
 			await acceptInvitation(mockContext, params);
 
