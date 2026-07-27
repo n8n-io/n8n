@@ -604,6 +604,7 @@ export const createUpdateWorkflowTool = (
 			const result = applyOperations(
 				toWorkflowSlice(existingWorkflow, { includeTags: hasTagOperations }),
 				strictOperations,
+				{ canvasGroupsEnabled: options.canvasGroupsEnabled },
 			);
 
 			if (!result.success) {

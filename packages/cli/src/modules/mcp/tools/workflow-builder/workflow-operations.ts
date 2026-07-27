@@ -389,6 +389,12 @@ interface WorkflowSlice {
 	tagNames?: string[];
 }
 
+export interface SkippedOperation {
+	opIndex: number;
+	type: PartialUpdateOperation['type'];
+	reason: string;
+}
+
 export interface ApplyOperationsSuccess {
 	success: true;
 	workflow: WorkflowSlice;
@@ -400,6 +406,11 @@ export interface ApplyOperationsSuccess {
 	 * `workflow.nodeGroups` must be persisted rather than preserved-on-omit.
 	 */
 	nodeGroupsChanged: boolean;
+	/**
+	 * Operations of a type in `NON_FATAL_OPERATION_TYPES` that failed and were
+	 * skipped instead of aborting the batch. Empty when none were skipped.
+	 */
+	skippedOperations: SkippedOperation[];
 }
 
 export interface ApplyOperationsFailure {
@@ -1074,11 +1085,24 @@ const OPERATION_HANDLERS: { [K in PartialUpdateOperation['type']]: OpHandler<K> 
  * Returns the mutated clone on success, or the first failure with the offending op index.
  *
  * The function never mutates the input.
+ *
+ * With `{ canvasGroupsEnabled: true }`, a failing operation of a type in
+ * `NON_FATAL_OPERATION_TYPES` does not abort the batch — it is skipped and recorded
+ * in the result's `skippedOperations` instead, and the remaining operations still
+ * apply. With the flag off (or omitted), every operation is fatal, matching the
+ * historical behavior exactly.
  */
 export function applyOperations(
 	input: WorkflowSlice,
 	operations: PartialUpdateOperation[],
+	options: { canvasGroupsEnabled?: boolean } = {},
 ): ApplyOperationsResult {
+	const nonFatalOperationTypes = options.canvasGroupsEnabled
+		? NON_FATAL_OPERATION_TYPES
+		: new Set<PartialUpdateOperation['type']>();
+
+	const skippedOperations: SkippedOperation[] = [];
+
 	const workflow = cloneWorkflow(input);
 	const ctx: ApplyContext = {
 		workflow,
@@ -1097,6 +1121,10 @@ export function applyOperations(
 
 		const error = handler(op, ctx);
 		if (error) {
+			if (nonFatalOperationTypes.has(op.type)) {
+				skippedOperations.push({ opIndex: i, type: op.type, reason: error });
+				continue;
+			}
 			return fail(i, error);
 		}
 	}
@@ -1111,6 +1139,7 @@ export function applyOperations(
 		addedNodeNames: [...ctx.addedNodeNames],
 		tagNames: ctx.tagSet !== null ? [...ctx.tagSet] : undefined,
 		nodeGroupsChanged: ctx.nodeGroupsChanged,
+		skippedOperations,
 	};
 }
 
