@@ -114,6 +114,11 @@ const submit = async () => {
 
 	try {
 		const workflowVersionId = await props.flushSave();
+
+		// Navigated away while saving: flushSave reads the version of the workflow
+		// that is open now, so pairing it with the pinned id would mismatch.
+		if (props.workflowId !== workflowId) return;
+
 		if (!workflowVersionId) {
 			toast.showError(
 				new Error(i18n.baseText('workflowReviews.submitForReview.error.save')),
@@ -145,6 +150,11 @@ const submit = async () => {
 			// The conflict proves an open review this client didn't know about — lock
 			// immediately and hand off to the update-review dialog.
 			void reviewStatusStore.fetchStatus(workflowId);
+
+			// Navigated away mid-flight: the conflict belongs to the pinned workflow,
+			// so the update-review dialog must not open for the current one.
+			if (props.workflowId !== workflowId) return;
+
 			emit('update:open', false);
 			emit('conflict');
 			return;
