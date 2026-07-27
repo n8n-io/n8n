@@ -36,7 +36,10 @@ import {
 	createOwnerWithApiKey,
 	createUser,
 } from '../shared/db/users';
-import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
+import {
+	createManyWorkflowHistoryItems,
+	createWorkflowHistoryItem,
+} from '../shared/db/workflow-history';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -916,15 +919,7 @@ describe('GET /workflows/:id/history', () => {
 
 	test('should retrieve workflow version history', async () => {
 		const workflow = await createWorkflow({}, owner);
-		const versions = await Promise.all(
-			new Array(5).fill(undefined).map(
-				async (_, i) =>
-					await createWorkflowHistoryItem(workflow.id, {
-						createdAt: new Date(Date.now() + i),
-						name: `Version ${i}`,
-					}),
-			),
-		);
+		const versions = await createManyWorkflowHistoryItems(workflow.id, 5);
 
 		const last = versions.sort((a, b) => b.createdAt.valueOf() - a.createdAt.valueOf())[0];
 
@@ -946,14 +941,7 @@ describe('GET /workflows/:id/history', () => {
 
 	test('should paginate with limit and cursor', async () => {
 		const workflow = await createWorkflow({}, owner);
-		await Promise.all(
-			new Array(5).fill(undefined).map(
-				async (_, i) =>
-					await createWorkflowHistoryItem(workflow.id, {
-						createdAt: new Date(Date.now() + i),
-					}),
-			),
-		);
+		await createManyWorkflowHistoryItems(workflow.id, 5);
 
 		const firstPage = await authOwnerAgent.get(`/workflows/${workflow.id}/history`).query({
 			limit: '2',
@@ -981,14 +969,7 @@ describe('GET /workflows/:id/history', () => {
 
 	test('should paginate with limit and offset', async () => {
 		const workflow = await createWorkflow({}, owner);
-		await Promise.all(
-			new Array(5).fill(undefined).map(
-				async (_, i) =>
-					await createWorkflowHistoryItem(workflow.id, {
-						createdAt: new Date(Date.now() + i),
-					}),
-			),
-		);
+		await createManyWorkflowHistoryItems(workflow.id, 5);
 
 		const firstPage = await authOwnerAgent.get(`/workflows/${workflow.id}/history`).query({
 			limit: '2',
