@@ -212,9 +212,6 @@ describe('SettingsMCPAgentsView', () => {
 			mockAgentPages([createAgent({ id: '1', name: 'Agent 1' })]);
 			mcpStore.toggleAgentsMcpAccess.mockResolvedValue({
 				updatedCount: 2,
-				unchangedCount: 0,
-				skippedCount: 0,
-				failedCount: 0,
 				updatedIds: ['agent-1', 'agent-2'],
 				unchangedIds: [],
 			});

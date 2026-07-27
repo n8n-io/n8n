@@ -19,12 +19,8 @@ export class AgentMcpAccessController {
 	constructor(private readonly agentMcpAccessService: AgentMcpAccessService) {}
 
 	@Get('/')
-	async getMcpEligibleAgents(
-		req: AuthenticatedRequest,
-		res: Response,
-		@Query query: ListAgentsQueryDto,
-	) {
-		res.json(await this.agentMcpAccessService.getEligibleAgents(req.user, query));
+	async getMcpAgents(req: AuthenticatedRequest, res: Response, @Query query: ListAgentsQueryDto) {
+		res.json(await this.agentMcpAccessService.getAgents(req.user, query));
 	}
 
 	@Patch('/toggle-access')

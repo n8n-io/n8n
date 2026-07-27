@@ -35,7 +35,11 @@ export type ToggleAgentsMcpAccessTarget =
 	| { projectId: string }
 	| { allAgents: true };
 
-export type ToggleAgentsMcpAccessResponse = ToggleWorkflowsMcpAccessResponse;
+export type ToggleAgentsMcpAccessResponse = {
+	updatedCount: number;
+	updatedIds?: string[];
+	unchangedIds?: string[];
+};
 
 export async function getMcpSettings(context: IRestApiContext): Promise<McpSettingsResponse> {
 	return await makeRestApiRequest(context, 'GET', '/mcp/settings');
@@ -165,11 +169,16 @@ export async function toggleAgentsMcpAccessApi(
 	});
 }
 
-export async function fetchMcpEligibleAgents(
+export async function fetchMcpAgents(
 	context: IRestApiContext,
-	options?: { take?: number; skip?: number; query?: string },
+	options?: { take?: number; skip?: number; query?: string; availableInMCP?: boolean },
 ): Promise<{ count: number; data: Agent[] }> {
 	const params: Record<string, string | number> = {};
+	const query = options?.query?.trim();
+	const filter = {
+		...(query ? { query } : {}),
+		...(options?.availableInMCP !== undefined ? { availableInMCP: options.availableInMCP } : {}),
+	};
 
 	if (options?.take !== undefined) {
 		params.take = options.take;
@@ -177,8 +186,8 @@ export async function fetchMcpEligibleAgents(
 	if (options?.skip !== undefined) {
 		params.skip = options.skip;
 	}
-	if (options?.query) {
-		params.filter = JSON.stringify({ query: options.query });
+	if (Object.keys(filter).length > 0) {
+		params.filter = JSON.stringify(filter);
 	}
 
 	return await getFullApiResponse<Agent[]>(context, 'GET', '/mcp/agents', params);

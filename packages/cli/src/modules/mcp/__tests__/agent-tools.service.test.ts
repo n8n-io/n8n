@@ -3,7 +3,7 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
-import { ProjectRelationRepository, User } from '@n8n/db';
+import { User } from '@n8n/db';
 import type { Mock } from 'vitest';
 
 vi.mock('@/permissions.ee/check-access', () => ({
@@ -42,6 +42,7 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 
@@ -107,7 +108,7 @@ describe('McpAgentToolsService', () => {
 	const mcpRegistryService = mockInstance(McpRegistryService);
 	const outboundHttp = mockInstance(OutboundHttp);
 	const urlService = mockInstance(UrlService);
-	const projectRelationRepository = mockInstance(ProjectRelationRepository);
+	const projectScopeService = mockInstance(ProjectScopeService);
 
 	const service = new McpAgentToolsService(
 		telemetry,
@@ -132,7 +133,7 @@ describe('McpAgentToolsService', () => {
 		mockInstance(SsrfProtectionConfig),
 		mockInstance(SsrfProtectionService),
 		urlService,
-		projectRelationRepository,
+		projectScopeService,
 	);
 
 	let tools: Map<string, RegisteredTool>;
@@ -144,6 +145,7 @@ describe('McpAgentToolsService', () => {
 		agentsService.findByIdForUser.mockResolvedValue(agentEntity());
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([] as never);
 		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.test');
+		projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
 
 		tools = new Map();
 		registerResource = vi.fn();
@@ -760,24 +762,13 @@ describe('McpAgentToolsService', () => {
 
 	describe('search_agents', () => {
 		it('only searches projects where the user has agent:list', async () => {
-			projectRelationRepository.findAllByUser.mockResolvedValue([
-				{ projectId: 'project-1' },
-				{ projectId: 'project-2' },
-			] as never);
-			userHasScopesMock.mockImplementation(
-				async (
-					_user: User,
-					_scopes: string[],
-					_global: boolean,
-					{ projectId }: { projectId: string },
-				) => projectId === 'project-1',
-			);
 			agentsService.findSummariesInProjects.mockResolvedValue([
 				agentEntity({ id: 'agent-1', projectId: 'project-1' }),
 			]);
 
 			const result = await callTool('search_agents', {});
 
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:list']);
 			expect(agentsService.findSummariesInProjects).toHaveBeenCalledWith(
 				['project-1'],
 				expect.any(Object),
@@ -786,6 +777,18 @@ describe('McpAgentToolsService', () => {
 			expect(result.structuredContent.data).toEqual([
 				expect.objectContaining({ id: 'agent-1', projectId: 'project-1', availableInMCP: true }),
 			]);
+		});
+
+		it('searches without a project restriction for global agent:list', async () => {
+			projectScopeService.getProjectIds.mockResolvedValue(null);
+			agentsService.findSummariesInProjects.mockResolvedValue([
+				agentEntity({ id: 'agent-1', projectId: 'project-2' }),
+			]);
+
+			const result = await callTool('search_agents', {});
+
+			expect(agentsService.findSummariesInProjects).toHaveBeenCalledWith(null, expect.any(Object));
+			expect(result.structuredContent).toMatchObject({ ok: true, count: 1 });
 		});
 
 		it('pushes query, publishedOnly, excludeAgentId, and limit filters into the lookup', async () => {

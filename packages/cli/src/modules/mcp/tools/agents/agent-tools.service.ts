@@ -21,7 +21,7 @@ import {
 } from '@n8n/api-types';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
-import { ProjectRelationRepository, type User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
@@ -55,6 +55,7 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
@@ -362,7 +363,7 @@ export class McpAgentToolsService {
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly urlService: UrlService,
-		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly projectScopeService: ProjectScopeService,
 	) {}
 
 	/**
@@ -434,12 +435,12 @@ export class McpAgentToolsService {
 			},
 			handler: async (input: SearchAgentsInput) =>
 				await this.run(user, 'search_agents', { projectId: input.projectId }, async () => {
-					let projectIds: string[];
+					let projectIds: string[] | null;
 					if (input.projectId) {
 						await this.assertScope(user, input.projectId, 'agent:list');
 						projectIds = [input.projectId];
 					} else {
-						projectIds = await this.listProjectIdsWithAgentList(user);
+						projectIds = await this.projectScopeService.getProjectIds(user, ['agent:list']);
 					}
 					const agents = await this.agentsService.findSummariesInProjects(projectIds, {
 						query: input.query?.trim() || undefined,
@@ -930,18 +931,6 @@ export class McpAgentToolsService {
 					configSchema: AGENT_CONFIG_JSON_SCHEMA,
 				})),
 		};
-	}
-
-	/** Projects from the user's relations where the user holds agent:list. */
-	private async listProjectIdsWithAgentList(user: User): Promise<string[]> {
-		const relations = await this.projectRelationRepository.findAllByUser(user.id);
-		const projectIds = [...new Set(relations.map((relation) => relation.projectId))];
-		const allowed = await Promise.all(
-			projectIds.map(
-				async (projectId) => await userHasScopes(user, ['agent:list'], false, { projectId }),
-			),
-		);
-		return projectIds.filter((_, index) => allowed[index]);
 	}
 
 	private async getAgentSnapshot(user: User, agent: Agent) {

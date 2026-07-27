@@ -74,10 +74,6 @@ function focusOnInput() {
 	selectRef.value?.focusOnInput();
 }
 
-function removeOption(value: string) {
-	agentOptions.value = agentOptions.value.filter((option) => option.id !== value);
-}
-
 function onVisibleChange(visible: boolean) {
 	isDropdownVisible.value = visible;
 }
@@ -97,7 +93,6 @@ onMounted(async () => {
 
 defineExpose({
 	focusOnInput,
-	removeOption,
 });
 </script>
 
@@ -124,7 +119,12 @@ defineExpose({
 			<N8nOption v-if="showEmptyState" value="" disabled :class="$style['empty-option']">
 				{{ i18n.baseText('settings.mcp.connectAgents.emptyState') }}
 			</N8nOption>
-			<N8nOption v-for="agent in agentOptions" :key="agent.id" :value="agent.id" :label="agent.name">
+			<N8nOption
+				v-for="agent in agentOptions"
+				:key="agent.id"
+				:value="agent.id"
+				:label="agent.name"
+			>
 				<div :class="$style.option">
 					<N8nText :class="$style.truncate">{{ projectName(agent) }}</N8nText>
 					<span :class="$style.separator">/</span>

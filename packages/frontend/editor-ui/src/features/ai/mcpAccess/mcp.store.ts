@@ -17,7 +17,7 @@ import {
 	fetchInstanceMcpClientStats,
 	deleteOAuthClient,
 	fetchMcpEligibleWorkflows,
-	fetchMcpEligibleAgents,
+	fetchMcpAgents,
 	getAllowedRedirectUris,
 	updateAllowedRedirectUris,
 	type ToggleWorkflowsMcpAccessResponse,
@@ -25,7 +25,6 @@ import {
 	type ToggleAgentsMcpAccessResponse,
 	type ToggleAgentsMcpAccessTarget,
 } from '@/features/ai/mcpAccess/mcp.api';
-import { listAgentsPageGlobal } from '@/features/agents/composables/useAgentApi';
 import type { Agent } from '@/features/agents/agent.types';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -113,11 +112,10 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		page = 1,
 		pageSize = 50,
 	): Promise<{ data: Agent[]; count: number }> {
-		const { data, count } = await listAgentsPageGlobal(rootStore.restApiContext, {
+		const { data, count } = await fetchMcpAgents(rootStore.restApiContext, {
 			skip: (page - 1) * pageSize,
 			take: pageSize,
-			sortBy: 'updatedAt:desc',
-			filter: { availableInMCP: true },
+			availableInMCP: true,
 		});
 		return { data, count };
 	}
@@ -370,7 +368,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		skip?: number;
 		query?: string;
 	}): Promise<{ count: number; data: Agent[] }> {
-		return await fetchMcpEligibleAgents(rootStore.restApiContext, options);
+		return await fetchMcpAgents(rootStore.restApiContext, options);
 	}
 
 	function openConnectPopover(): void {

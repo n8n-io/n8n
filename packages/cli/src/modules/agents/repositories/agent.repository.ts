@@ -36,10 +36,10 @@ export class AgentRepository extends Repository<Agent> {
 	 * filters and the limit into the query.
 	 */
 	async findSummariesByProjectIds(
-		projectIds: string[],
+		projectIds: string[] | null,
 		options: AgentSummaryFilters = {},
 	): Promise<AgentSummary[]> {
-		if (projectIds.length === 0) return [];
+		if (projectIds?.length === 0) return [];
 
 		const query = this.createQueryBuilder('agent')
 			.select([
@@ -50,9 +50,11 @@ export class AgentRepository extends Repository<Agent> {
 				'agent.availableInMCP',
 				'agent.updatedAt',
 			])
-			.where('agent.projectId IN (:...projectIds)', { projectIds })
 			.orderBy('agent.updatedAt', 'DESC');
 
+		if (projectIds !== null) {
+			query.where('agent.projectId IN (:...projectIds)', { projectIds });
+		}
 		if (options.query) {
 			query.andWhere('LOWER(agent.name) LIKE LOWER(:query)', { query: `%${options.query}%` });
 		}
@@ -70,18 +72,20 @@ export class AgentRepository extends Repository<Agent> {
 	}
 
 	async findByProjectIdsPaginated(
-		projectIds: string[],
+		projectIds: string[] | null,
 		options: ListAgentsQueryDto,
 	): Promise<{ count: number; data: Agent[] }> {
-		if (projectIds.length === 0) return { count: 0, data: [] };
+		if (projectIds?.length === 0) return { count: 0, data: [] };
 
 		const query = this.createQueryBuilder('agent')
 			.leftJoinAndSelect('agent.activeVersion', 'activeVersion')
 			// The home project rides along so cross-project lists (overview page,
 			// MCP settings) can label each agent without extra lookups.
-			.leftJoinAndSelect('agent.project', 'project')
-			.where('agent.projectId IN (:...projectIds)', { projectIds });
+			.leftJoinAndSelect('agent.project', 'project');
 
+		if (projectIds !== null) {
+			query.where('agent.projectId IN (:...projectIds)', { projectIds });
+		}
 		this.applyFilters(query, options.filter);
 		this.applySorting(query, options.sortBy);
 		query.skip(options.skip).take(options.take);
@@ -169,13 +173,21 @@ export class AgentRepository extends Repository<Agent> {
 	}
 
 	async findMcpAvailabilityCandidates(
-		where: { ids: string[] } | { projectIds: string[] },
+		where: { ids: string[] } | { projectIds: string[] } | { all: true },
 	): Promise<Array<Pick<Agent, 'id' | 'projectId' | 'availableInMCP'>>> {
-		const criteria = 'ids' in where ? { id: In(where.ids) } : { projectId: In(where.projectIds) };
-		if (('ids' in where ? where.ids : where.projectIds).length === 0) return [];
+		if ('ids' in where && where.ids.length === 0) return [];
+		if ('projectIds' in where && where.projectIds.length === 0) return [];
+
+		const criteria =
+			'ids' in where
+				? { id: In(where.ids) }
+				: 'projectIds' in where
+					? { projectId: In(where.projectIds) }
+					: undefined;
+
 		return await this.find({
 			select: ['id', 'projectId', 'availableInMCP'],
-			where: criteria,
+			...(criteria ? { where: criteria } : {}),
 		});
 	}
 

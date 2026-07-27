@@ -176,7 +176,7 @@ export class AgentsService {
 	 * filters and limit applied in the database.
 	 */
 	async findSummariesInProjects(
-		projectIds: string[],
+		projectIds: string[] | null,
 		options: AgentSummaryFilters = {},
 	): Promise<AgentSummary[]> {
 		return await this.agentRepository.findSummariesByProjectIds(projectIds, options);

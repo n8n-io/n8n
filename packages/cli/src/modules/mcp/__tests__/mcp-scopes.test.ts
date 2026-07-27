@@ -77,6 +77,11 @@ describe('getAllowedToolNames', () => {
 	it('ignores unknown scopes', () => {
 		expect(getAllowedToolNames(['tool:listWorkflows', 'openid'])).toEqual(new Set());
 	});
+
+	it('allows integration updates with agent:write but not agent:publish alone', () => {
+		expect(getAllowedToolNames(['agent:write'])).toContain('update_agent_integration');
+		expect(getAllowedToolNames(['agent:publish'])).not.toContain('update_agent_integration');
+	});
 });
 
 describe('McpService scope enforcement', () => {
@@ -153,15 +158,6 @@ describe('McpService scope enforcement', () => {
 			(name) => !registered.has(name) && !AGENT_TOOLS.has(name),
 		);
 		expect(unregistered).toEqual([]);
-	});
-
-	it('AGENT_TOOLS matches the agent scope map entries (drift guard)', () => {
-		const mappedAgentTools = new Set([
-			...TOOLS_BY_SCOPE['agent:read'],
-			...TOOLS_BY_SCOPE['agent:write'],
-			...TOOLS_BY_SCOPE['agent:publish'],
-		]);
-		expect(new Set(AGENT_TOOLS)).toEqual(mappedAgentTools);
 	});
 
 	it('BUILDER_TOOLS matches the tools gated behind the builder flag (drift guard)', async () => {

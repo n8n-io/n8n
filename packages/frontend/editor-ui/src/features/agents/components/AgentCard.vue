@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import dateformat from 'dateformat';
 import {
 	N8nActionToggle,
@@ -62,6 +62,10 @@ const mcpToggleStatus = ref<boolean | null>(null);
 const isAvailableInMCP = computed(
 	() => mcpToggleStatus.value ?? props.agent.availableInMCP ?? false,
 );
+
+watch([() => props.agent, () => props.agent.availableInMCP], () => {
+	mcpToggleStatus.value = null;
+});
 
 const showMcpIndicator = computed(() => isMcpEnabled.value && isAvailableInMCP.value);
 

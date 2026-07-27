@@ -64,11 +64,10 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'discover_agent_assets',
 		'validate_agent',
 		'get_agent_builder_reference',
+		'update_agent_integration',
 	],
-	// Publishing flips what runs live, so it is a separate consent grant from
-	// editing drafts. update_agent_integration sits here because connecting an
-	// integration publishes the current draft.
-	'agent:publish': ['publish_agent', 'unpublish_agent', 'update_agent_integration'],
+	// Publishing flips what runs live, so it is a separate consent grant from editing drafts.
+	'agent:publish': ['publish_agent', 'unpublish_agent'],
 	// explore_node_resources queries external services with stored credentials,
 	// so it must sit behind the credential scope rather than a workflow one.
 	'credential:read': ['list_credentials', 'list_n8n_connect_services', 'explore_node_resources'],
@@ -108,27 +107,10 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'search_folders',
 ]);
 
-/**
- * Tools only registered when the agents module is active (and the builder is
- * enabled). Keep in sync with `registerTools` in
- * `tools/agents/agent-tools.service.ts` — the drift-guard test in
- * `__tests__/agent-tools.service.test.ts` fails when they diverge.
- */
 export const AGENT_TOOLS: ReadonlySet<string> = new Set([
-	'search_agents',
-	'get_agent',
-	'create_agent',
-	'mutate_agent',
-	'validate_agent',
-	'publish_agent',
-	'unpublish_agent',
-	'revert_agent',
-	'list_agent_versions',
-	'delete_agent',
-	'discover_agent_assets',
-	'verify_agent_mcp_server',
-	'update_agent_integration',
-	'get_agent_builder_reference',
+	...TOOLS_BY_SCOPE['agent:read'],
+	...TOOLS_BY_SCOPE['agent:write'],
+	...TOOLS_BY_SCOPE['agent:publish'],
 ]);
 
 function isMcpScope(scope: string): scope is McpScope {

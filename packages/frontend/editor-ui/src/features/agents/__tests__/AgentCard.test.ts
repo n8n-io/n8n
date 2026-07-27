@@ -303,4 +303,20 @@ describe('AgentCard', () => {
 		expect(mcpStoreMock.toggleAgentMcpAccess).toHaveBeenCalledWith('agent-1', true);
 		expect(trackMcpAccessEnabledForAgentMock).toHaveBeenCalledWith('agent-1');
 	});
+
+	it('uses refreshed MCP availability after an optimistic toggle', async () => {
+		enableMcp();
+		const wrapper = await renderComponent(createAgent({ availableInMCP: true }));
+
+		await wrapper.find('[data-action="toggleMCPAccess"]').trigger('click');
+		expect(wrapper.find('[data-action="toggleMCPAccess"]').text()).toBe(
+			'agents.list.actions.enableMCPAccess',
+		);
+
+		await wrapper.setProps({ agent: createAgent({ availableInMCP: true }) });
+
+		expect(wrapper.find('[data-action="toggleMCPAccess"]').text()).toBe(
+			'agents.list.actions.disableMCPAccess',
+		);
+	});
 });

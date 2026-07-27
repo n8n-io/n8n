@@ -1,18 +1,15 @@
 import type { ListAgentsQueryDto, UpdateAgentsMcpAvailabilityDto } from '@n8n/api-types';
-import { ProjectRelationRepository, type User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
 
 type BulkSetAvailableInMCPResult = {
 	updatedCount: number;
-	unchangedCount: number;
-	skippedCount: number;
-	failedCount: number;
 	/** Only present when the request targeted explicit `agentIds`. */
 	updatedIds?: string[];
 	unchangedIds?: string[];
@@ -20,29 +17,32 @@ type BulkSetAvailableInMCPResult = {
 
 /**
  * Grants and revokes per-agent MCP availability (the `availableInMCP` flag),
- * mirroring the per-workflow flow in `McpSettingsService`. Permission checks
- * happen here — per project, against the `agent:update` scope — because the
- * REST routes have no project in their URL for a `@ProjectScope` gate.
+ * mirroring the per-workflow flow in `McpSettingsService`. Project access is
+ * resolved here because the REST routes have no project in their URL for a
+ * `@ProjectScope` gate.
  */
 @Service()
 export class AgentMcpAccessService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
-		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly projectScopeService: ProjectScopeService,
 	) {}
 
 	/**
-	 * Paginated list of agents the user may expose to MCP (not yet available,
-	 * in projects where the user holds `agent:update`).
+	 * Paginated list of agents in projects where the user holds `agent:update`.
+	 * Defaults to agents that are not yet available to MCP.
 	 */
-	async getEligibleAgents(
+	async getAgents(
 		user: User,
 		options: ListAgentsQueryDto,
 	): Promise<{ count: number; data: Agent[] }> {
-		const projectIds = await this.getProjectIdsWithUpdateScope(user);
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:update']);
 		return await this.agentRepository.findByProjectIdsPaginated(projectIds, {
 			...options,
-			filter: { ...options.filter, availableInMCP: false },
+			filter: {
+				...options.filter,
+				availableInMCP: options.filter?.availableInMCP ?? false,
+			},
 		});
 	}
 
@@ -54,18 +54,20 @@ export class AgentMcpAccessService {
 			(target) => target !== undefined,
 		);
 		if (targets.length !== 1) {
-			throw new BadRequestError(
-				'Provide exactly one of "agentIds", "projectId", or "allAgents".',
-			);
+			throw new BadRequestError('Provide exactly one of "agentIds", "projectId", or "allAgents".');
 		}
 
-		const candidates = await this.resolveCandidates(user, dto);
-		const allowedProjectIds = await this.filterProjectIdsByUpdateScope(user, [
-			...new Set(candidates.map((agent) => agent.projectId)),
-		]);
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:update']);
+		const allowedProjectIds = projectIds === null ? null : new Set(projectIds);
+		if (dto.projectId && allowedProjectIds !== null && !allowedProjectIds.has(dto.projectId)) {
+			return { updatedCount: 0 };
+		}
 
-		const accessible = candidates.filter((agent) => allowedProjectIds.has(agent.projectId));
-		const skippedCount = candidates.length - accessible.length;
+		const candidates = await this.resolveCandidates(dto, projectIds);
+		const accessible =
+			allowedProjectIds === null
+				? candidates
+				: candidates.filter((agent) => allowedProjectIds.has(agent.projectId));
 
 		const unchanged = accessible.filter((agent) => agent.availableInMCP === dto.availableInMCP);
 		const toUpdate = accessible.filter((agent) => agent.availableInMCP !== dto.availableInMCP);
@@ -77,9 +79,6 @@ export class AgentMcpAccessService {
 
 		return {
 			updatedCount: toUpdate.length,
-			unchangedCount: unchanged.length,
-			skippedCount,
-			failedCount: 0,
 			...(dto.agentIds
 				? {
 						updatedIds: toUpdate.map((agent) => agent.id),
@@ -90,8 +89,8 @@ export class AgentMcpAccessService {
 	}
 
 	private async resolveCandidates(
-		user: User,
 		dto: UpdateAgentsMcpAvailabilityDto,
+		projectIds: string[] | null,
 	): Promise<Array<Pick<Agent, 'id' | 'projectId' | 'availableInMCP'>>> {
 		if (dto.agentIds) {
 			return await this.agentRepository.findMcpAvailabilityCandidates({
@@ -99,28 +98,14 @@ export class AgentMcpAccessService {
 			});
 		}
 
-		const projectIds = dto.projectId
-			? [dto.projectId]
-			: (await this.projectRelationRepository.findAllByUser(user.id)).map((pr) => pr.projectId);
+		if (dto.projectId) {
+			return await this.agentRepository.findMcpAvailabilityCandidates({
+				projectIds: [dto.projectId],
+			});
+		}
 
-		return await this.agentRepository.findMcpAvailabilityCandidates({ projectIds });
-	}
-
-	private async getProjectIdsWithUpdateScope(user: User): Promise<string[]> {
-		const projectRelations = await this.projectRelationRepository.findAllByUser(user.id);
-		const projectIds = [...new Set(projectRelations.map((pr) => pr.projectId))];
-		return [...(await this.filterProjectIdsByUpdateScope(user, projectIds))];
-	}
-
-	private async filterProjectIdsByUpdateScope(
-		user: User,
-		projectIds: string[],
-	): Promise<Set<string>> {
-		const allowed = await Promise.all(
-			projectIds.map(
-				async (projectId) => await userHasScopes(user, ['agent:update'], false, { projectId }),
-			),
+		return await this.agentRepository.findMcpAvailabilityCandidates(
+			projectIds === null ? { all: true } : { projectIds },
 		);
-		return new Set(projectIds.filter((_, index) => allowed[index]));
 	}
 }
