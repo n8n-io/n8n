@@ -1324,6 +1324,77 @@ describe('buildFromJson()', () => {
 			expect(buildMcpClient.mock.calls[0][0]).toMatchObject({ name: 'github' });
 			expect(buildMcpClient.mock.calls[1][0]).toMatchObject({ name: 'fs' });
 		});
+
+		it('skips a draft server with an empty url', async () => {
+			const buildMcpClient = vi.fn().mockImplementation(async () => ({ close: vi.fn() }) as never);
+			await buildFromJson(
+				makeConfig({
+					mcpServers: [
+						{ name: 'github', url: '', transport: 'streamableHttp', authentication: 'none' },
+					],
+				}),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					buildMcpClient,
+				},
+			);
+
+			expect(buildMcpClient).not.toHaveBeenCalled();
+		});
+
+		it('skips a draft server that requires a credential but was skipped', async () => {
+			const buildMcpClient = vi.fn().mockImplementation(async () => ({ close: vi.fn() }) as never);
+			await buildFromJson(
+				makeConfig({
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://api.example.test/mcp',
+							transport: 'streamableHttp',
+							authentication: 'bearerAuth',
+						},
+					],
+				}),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					buildMcpClient,
+				},
+			);
+
+			expect(buildMcpClient).not.toHaveBeenCalled();
+		});
+
+		it('connects a server that requires a credential once one is set', async () => {
+			const buildMcpClient = vi.fn().mockImplementation(async () => ({ close: vi.fn() }) as never);
+			await buildFromJson(
+				makeConfig({
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://api.example.test/mcp',
+							transport: 'streamableHttp',
+							authentication: 'bearerAuth',
+							credential: 'cred-1',
+						},
+					],
+				}),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					buildMcpClient,
+				},
+			);
+
+			expect(buildMcpClient).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	// -------------------------------------------------------------------------

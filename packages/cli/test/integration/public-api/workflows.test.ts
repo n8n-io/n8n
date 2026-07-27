@@ -27,6 +27,7 @@ import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { saveCredential } from '../shared/db/credentials';
+import { createFolder } from '../shared/db/folders';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { createTag } from '../shared/db/tags';
 import {
@@ -63,6 +64,15 @@ const license = testServer.license;
 const globalConfig = Container.get(GlobalConfig);
 
 mockInstance(ExecutionService);
+
+// The API response omits the parent folder, so read the persisted placement directly.
+const getStoredParentFolderId = async (workflowId: string) => {
+	const stored = await workflowRepository.findOne({
+		where: { id: workflowId },
+		relations: { parentFolder: true },
+	});
+	return stored?.parentFolder?.id ?? null;
+};
 
 beforeAll(async () => {
 	owner = await createOwnerWithApiKey();
@@ -1611,6 +1621,28 @@ describe('POST /workflows', () => {
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
 	});
 
+	test.each([
+		{ key: 'binaryMode', value: 'combined' },
+		{ key: 'credentialResolverId', value: 'some-resolver-id' },
+	] as const)('should ignore $key when creating a workflow', async ({ key, value }) => {
+		const payload = {
+			...mockPostWorkflowPayload(),
+			settings: {
+				executionOrder: 'v1',
+				[key]: value,
+			},
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings[key]).toBeUndefined();
+
+		const workflow = await workflowRepository.findOneBy({ id: response.body.id });
+
+		expect(workflow?.settings?.[key]).toBeUndefined();
+	});
+
 	test('should create workflow with node groups', async () => {
 		const payload = {
 			name: 'grouped',
@@ -1696,6 +1728,7 @@ describe('POST /workflows', () => {
 				saveDataSuccessExecution: 'all',
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
+				timeSavedMode: 'dynamic',
 			},
 		};
 
@@ -1803,6 +1836,60 @@ describe('POST /workflows', () => {
 		const found = response.body.nodes.find((node: INode) => STARTING_NODES.includes(node.type));
 
 		expect(found).toBeUndefined();
+	});
+
+	describe('parentFolderId placement', () => {
+		test('should place the new workflow in the given folder', async () => {
+			const folder = await createFolder(memberPersonalProject, { name: 'Target Folder' });
+
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), parentFolderId: folder.id });
+
+			expect(response.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(response.body.id)).toBe(folder.id);
+		});
+
+		test('should default to the project root when parentFolderId is omitted', async () => {
+			const response = await authMemberAgent.post('/workflows').send(mockPostWorkflowPayload());
+
+			expect(response.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(response.body.id)).toBeNull();
+		});
+
+		test('should place the new workflow at the project root when parentFolderId is null', async () => {
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), parentFolderId: null });
+
+			expect(response.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(response.body.id)).toBeNull();
+		});
+
+		test('should reject a non-existent parentFolderId', async () => {
+			const name = 'reject-nonexistent-no-orphan';
+
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(name), parentFolderId: 'does-not-exist' });
+
+			expect(response.statusCode).toBe(404);
+			// The folder is validated before the workflow is persisted, so nothing is created.
+			expect(await workflowRepository.findOneBy({ name })).toBeNull();
+		});
+
+		test('should reject a parentFolderId from another project', async () => {
+			const name = 'reject-cross-project-no-orphan';
+			const otherProject = await createTeamProject();
+			const otherFolder = await createFolder(otherProject, { name: 'Other Project Folder' });
+
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(name), parentFolderId: otherFolder.id });
+
+			expect(response.statusCode).toBe(404);
+			expect(await workflowRepository.findOneBy({ name })).toBeNull();
+		});
 	});
 });
 
@@ -2071,9 +2158,9 @@ describe('PUT /workflows/:id', () => {
 				},
 				{
 					id: 'uuid-1234',
-					parameters: {},
-					name: 'Cron',
-					type: 'n8n-nodes-base.cron',
+					parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
 					position: [400, 300],
 					customTelemetryTags: {
@@ -2155,9 +2242,9 @@ describe('PUT /workflows/:id', () => {
 			nodes: [
 				{
 					id: 'uuid-updated',
-					parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
-					name: 'Updated Cron',
-					type: 'n8n-nodes-base.cron',
+					parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
+					name: 'Updated Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
 					position: [300, 400],
 				},
@@ -2220,6 +2307,42 @@ describe('PUT /workflows/:id', () => {
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 	});
 
+	test.each([
+		{ key: 'binaryMode', original: 'combined', attempted: 'separate' },
+		{
+			key: 'credentialResolverId',
+			original: 'original-resolver-id',
+			attempted: 'attempted-new-resolver-id',
+		},
+	] as const)(
+		'should ignore $key when updating a workflow',
+		async ({ key, original, attempted }) => {
+			const workflow = await createWorkflowWithHistory(
+				{ settings: { executionOrder: 'v1', [key]: original } },
+				member,
+			);
+
+			const payload = {
+				name: workflow.name,
+				nodes: workflow.nodes,
+				connections: workflow.connections,
+				settings: {
+					executionOrder: 'v1',
+					[key]: attempted,
+				},
+			};
+
+			const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.settings[key]).toBe(original);
+
+			const workflowAfter = await workflowRepository.findOneBy({ id: workflow.id });
+
+			expect(workflowAfter?.settings?.[key]).toBe(original);
+		},
+	);
+
 	test('should update non-owned workflow if owner', async () => {
 		const workflow = await createWorkflowWithHistory({}, member);
 
@@ -2236,9 +2359,9 @@ describe('PUT /workflows/:id', () => {
 				},
 				{
 					id: 'uuid-2',
-					parameters: {},
-					name: 'Cron',
-					type: 'n8n-nodes-base.cron',
+					parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
 					position: [400, 300],
 				},
@@ -2252,6 +2375,7 @@ describe('PUT /workflows/:id', () => {
 				saveDataSuccessExecution: 'all',
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
+				timeSavedMode: 'dynamic',
 				callerPolicy: 'workflowsFromSameOwner',
 				availableInMCP: false,
 			},
@@ -2619,6 +2743,122 @@ describe('PUT /workflows/:id', () => {
 			await expect(
 				workflowHistoryRepository.count({ where: { workflowId: workflow.id } }),
 			).resolves.toBe(historyCountBeforeUpdate);
+		});
+	});
+
+	describe('parentFolderId placement', () => {
+		const triggerNode = {
+			id: 'uuid-1234',
+			parameters: {},
+			name: 'Start',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [240, 300],
+		} as const;
+
+		const updatePayload = (name: string) => ({
+			name,
+			nodes: [triggerNode],
+			connections: {},
+			settings: { executionOrder: 'v1' },
+		});
+
+		test('should move an existing workflow into the given folder', async () => {
+			const workflow = await createWorkflowWithHistory({}, member);
+			const folder = await createFolder(memberPersonalProject, { name: 'Move Target' });
+
+			const response = await authMemberAgent
+				.put(`/workflows/${workflow.id}`)
+				.send({ ...updatePayload(workflow.name), parentFolderId: folder.id });
+
+			expect(response.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(workflow.id)).toBe(folder.id);
+		});
+
+		test('should move a workflow back to the project root when parentFolderId is null', async () => {
+			const workflow = await createWorkflowWithHistory({}, member);
+			const folder = await createFolder(memberPersonalProject, { name: 'Round Trip Folder' });
+
+			// Move the workflow into the folder first.
+			const intoFolderResponse = await authMemberAgent
+				.put(`/workflows/${workflow.id}`)
+				.send({ ...updatePayload(workflow.name), parentFolderId: folder.id });
+
+			expect(intoFolderResponse.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(workflow.id)).toBe(folder.id);
+
+			// Sending null should move it back out to the project root.
+			const toRootResponse = await authMemberAgent
+				.put(`/workflows/${workflow.id}`)
+				.send({ ...updatePayload(workflow.name), parentFolderId: null });
+
+			expect(toRootResponse.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(workflow.id)).toBeNull();
+		});
+
+		test('should leave the workflow in its folder when parentFolderId is omitted', async () => {
+			const workflow = await createWorkflowWithHistory({}, member);
+			const folder = await createFolder(memberPersonalProject, { name: 'Untouched Folder' });
+
+			// Move the workflow into the folder first.
+			const intoFolderResponse = await authMemberAgent
+				.put(`/workflows/${workflow.id}`)
+				.send({ ...updatePayload(workflow.name), parentFolderId: folder.id });
+
+			expect(intoFolderResponse.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(workflow.id)).toBe(folder.id);
+
+			// Updating without parentFolderId must not move the workflow out of the folder.
+			const omittedResponse = await authMemberAgent
+				.put(`/workflows/${workflow.id}`)
+				.send(updatePayload(workflow.name));
+
+			expect(omittedResponse.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(workflow.id)).toBe(folder.id);
+		});
+
+		test('should reject a non-existent parentFolderId', async () => {
+			const workflow = await createWorkflowWithHistory({}, member);
+			const folder = await createFolder(memberPersonalProject, { name: 'Existing Folder' });
+
+			// Place the workflow in a folder first, so the rejection assertion proves the
+			// placement is left untouched rather than merely reading the initial root state.
+			const intoFolderResponse = await authMemberAgent
+				.put(`/workflows/${workflow.id}`)
+				.send({ ...updatePayload(workflow.name), parentFolderId: folder.id });
+
+			expect(intoFolderResponse.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(workflow.id)).toBe(folder.id);
+
+			const response = await authMemberAgent
+				.put(`/workflows/${workflow.id}`)
+				.send({ ...updatePayload(workflow.name), parentFolderId: 'does-not-exist' });
+
+			expect(response.statusCode).toBe(404);
+			expect(await getStoredParentFolderId(workflow.id)).toBe(folder.id);
+		});
+
+		test('should reject a parentFolderId from another project', async () => {
+			const workflow = await createWorkflowWithHistory({}, member);
+			const folder = await createFolder(memberPersonalProject, { name: 'Existing Folder' });
+			const otherProject = await createTeamProject();
+			const otherFolder = await createFolder(otherProject, { name: 'Other Project Folder' });
+
+			// Place the workflow in a folder first, so the rejection assertion proves the
+			// placement is left untouched rather than merely reading the initial root state.
+			const intoFolderResponse = await authMemberAgent
+				.put(`/workflows/${workflow.id}`)
+				.send({ ...updatePayload(workflow.name), parentFolderId: folder.id });
+
+			expect(intoFolderResponse.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(workflow.id)).toBe(folder.id);
+
+			const response = await authMemberAgent
+				.put(`/workflows/${workflow.id}`)
+				.send({ ...updatePayload(workflow.name), parentFolderId: otherFolder.id });
+
+			expect(response.statusCode).toBe(404);
+			expect(await getStoredParentFolderId(workflow.id)).toBe(folder.id);
 		});
 	});
 });

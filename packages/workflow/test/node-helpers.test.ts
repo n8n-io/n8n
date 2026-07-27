@@ -3730,6 +3730,30 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(testData.output.noneDisplayedTrue.defaultsTrue);
 			});
 		}
+
+		test('does not treat showOnDeployment as a parameter dependency', () => {
+			const properties: INodeProperties[] = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [{ name: 'Read', value: 'read' }],
+					default: 'read',
+				},
+				{
+					displayName: 'Cloud notice',
+					name: 'cloudNotice',
+					type: 'notice',
+					default: '',
+					displayOptions: {
+						show: { operation: ['read'] },
+						showOnDeployment: 'cloud',
+					},
+				},
+			];
+
+			expect(() => getNodeParameters(properties, {}, true, false, null, null)).not.toThrow();
+		});
 	});
 
 	describe('isSubNodeType', () => {
@@ -6387,7 +6411,6 @@ describe('NodeHelpers', () => {
 				version: 0,
 				defaults: {
 					name: '',
-					color: '',
 				},
 				inputs: [NodeConnectionTypes.Main],
 				properties: [],
@@ -6407,7 +6430,6 @@ describe('NodeHelpers', () => {
 				version: 0,
 				defaults: {
 					name: '',
-					color: '',
 				},
 				inputs: [NodeConnectionTypes.Main],
 				properties: [],
@@ -6427,7 +6449,6 @@ describe('NodeHelpers', () => {
 				version: 0,
 				defaults: {
 					name: '',
-					color: '',
 				},
 				inputs: [NodeConnectionTypes.Main],
 				properties: [],
@@ -6447,7 +6468,6 @@ describe('NodeHelpers', () => {
 				version: 0,
 				defaults: {
 					name: '',
-					color: '',
 				},
 				inputs: [NodeConnectionTypes.Main],
 				properties: [],
@@ -7117,7 +7137,7 @@ describe('NodeHelpers', () => {
 		// identity, not by the generic "contains trigger" heuristic.
 		test.each([
 			'n8n-nodes-base.webhook',
-			'n8n-nodes-base.cron',
+			'n8n-nodes-base.scheduleTrigger',
 			'n8n-nodes-base.emailReadImap',
 			'n8n-nodes-base.telegramBot',
 			'n8n-nodes-base.start',

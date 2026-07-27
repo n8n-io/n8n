@@ -16,7 +16,10 @@ import { PackageExportBlockedError } from '../entities/package-export.errors';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { FORMAT_VERSION } from '../spec/constants';
 import { readExport } from './utils/tar-support';
-import { buildWorkflowCallingSubWorkflow } from './utils/test-builders';
+import {
+	buildWorkflowCallingSubWorkflow,
+	buildWorkflowUsingErrorWorkflow,
+} from './utils/test-builders';
 
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages']);
@@ -108,6 +111,58 @@ describe('workflow package export', () => {
 			}
 		});
 
+		it('folds node type usage into manifest.requirements.nodeTypes', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const trigger = (id: string) => ({
+				id,
+				name: `Trigger ${id}`,
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			});
+			const wfA = await createWorkflow(
+				{ name: 'Alpha', nodes: [trigger('t1')], connections: {} },
+				project,
+			);
+			const wfB = await createWorkflow(
+				{
+					name: 'Beta',
+					nodes: [
+						trigger('t2'),
+						{
+							id: 's1',
+							name: 'Set',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3.4,
+							position: [200, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+				},
+				project,
+			);
+
+			const stream = await service.exportPackage({
+				user: owner,
+				workflowIds: [wfA.id, wfB.id],
+			});
+			const { manifest } = await readExport(stream);
+
+			expect(manifest.requirements).toEqual({
+				nodeTypes: [
+					{
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						usedByWorkflows: [wfA.id, wfB.id],
+					},
+					{ type: 'n8n-nodes-base.set', typeVersion: 3.4, usedByWorkflows: [wfB.id] },
+				],
+			});
+		});
+
 		it('disambiguates targets when two workflows share a name', async () => {
 			const owner = await createOwner();
 			const project = await createTeamProject('Project A', owner);
@@ -134,7 +189,7 @@ describe('workflow package export', () => {
 			}
 		});
 
-		it('blocks workflow exports when static sub-workflows are not explicitly selected', async () => {
+		it('blocks workflow exports when workflow dependencies are not explicitly selected', async () => {
 			const owner = await createOwner();
 			const project = await createTeamProject('Project A', owner);
 			const workflowC = await createWorkflow(
@@ -158,7 +213,7 @@ describe('workflow package export', () => {
 			});
 			await expect(missingDependencyExport).rejects.toThrow(PackageExportBlockedError);
 			await expect(missingDependencyExport).rejects.toThrow(
-				'sub-workflow dependency not included in the package',
+				'2 workflow dependencies not included in the package',
 			);
 
 			const stream = await service.exportPackage({
@@ -173,7 +228,186 @@ describe('workflow package export', () => {
 			for (const entry of manifest.workflows!) {
 				expect(entries.find((e) => e.name === `${entry.target}/workflow.json`)).toBeDefined();
 			}
-			expect(manifest.requirements).toBeUndefined();
+			expect(manifest.requirements?.workflows).toHaveLength(2);
+			expect(manifest.requirements?.workflows).toEqual(
+				expect.arrayContaining([
+					{ id: workflowB.id, name: workflowB.name, usedByWorkflows: [workflowA.id] },
+					{ id: workflowC.id, name: workflowC.name, usedByWorkflows: [workflowB.id] },
+				]),
+			);
+		});
+
+		it('blocks exports when a legacy Execute Sub-workflow node statically references a missing workflow', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const child = await createWorkflow(
+				{ name: 'Legacy Child', nodes: [], connections: {} },
+				project,
+			);
+			// Legacy v1 stores the sub-workflow id as a plain string, not a resource-locator.
+			const parent = await createWorkflow(
+				{
+					name: 'Legacy Parent',
+					nodes: [
+						{
+							id: 'execute-legacy',
+							name: 'Execute Workflow',
+							type: 'n8n-nodes-base.executeWorkflow',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: { workflowId: child.id },
+						},
+					],
+					connections: {},
+				},
+				project,
+			);
+
+			await expect(
+				service.exportPackage({ user: owner, workflowIds: [parent.id] }),
+			).rejects.toThrow(PackageExportBlockedError);
+			await expect(
+				service.exportPackage({ user: owner, workflowIds: [parent.id] }),
+			).rejects.toThrow('workflow dependency not included in the package');
+
+			const stream = await service.exportPackage({
+				user: owner,
+				workflowIds: [parent.id, child.id],
+			});
+			const { manifest } = await readExport(stream);
+
+			expect(manifest.requirements).toEqual({
+				workflows: [{ id: child.id, name: child.name, usedByWorkflows: [parent.id] }],
+				nodeTypes: [
+					{
+						type: 'n8n-nodes-base.executeWorkflow',
+						typeVersion: 1,
+						usedByWorkflows: [parent.id],
+					},
+				],
+			});
+		});
+
+		it('exports Tool Workflow requirements and blocks when the target workflow is missing', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const child = await createWorkflow(
+				{ name: 'Tool Child', nodes: [], connections: {} },
+				project,
+			);
+			const parent = await createWorkflow(
+				{
+					name: 'Tool Parent',
+					nodes: [
+						{
+							id: 'tool-workflow',
+							name: 'Call workflow',
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							typeVersion: 2.2,
+							position: [0, 0],
+							parameters: {
+								workflowId: { __rl: true, mode: 'list', value: child.id },
+							},
+						},
+					],
+					connections: {},
+				},
+				project,
+			);
+
+			await expect(
+				service.exportPackage({ user: owner, workflowIds: [parent.id] }),
+			).rejects.toThrow(PackageExportBlockedError);
+			await expect(
+				service.exportPackage({ user: owner, workflowIds: [parent.id] }),
+			).rejects.toThrow('workflow dependency not included in the package');
+
+			const stream = await service.exportPackage({
+				user: owner,
+				workflowIds: [parent.id, child.id],
+			});
+			const { manifest } = await readExport(stream);
+
+			expect(manifest.requirements).toEqual({
+				workflows: [{ id: child.id, name: child.name, usedByWorkflows: [parent.id] }],
+				nodeTypes: [
+					{
+						type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+						typeVersion: 2.2,
+						usedByWorkflows: [parent.id],
+					},
+				],
+			});
+		});
+
+		it('exports error workflow requirements and blocks when the target workflow is missing', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const errorHandler = await createWorkflow(
+				{ name: 'Error Handler', nodes: [], connections: {} },
+				project,
+			);
+			const parent = await buildWorkflowUsingErrorWorkflow({
+				name: 'Parent',
+				project,
+				errorWorkflowId: errorHandler.id,
+			});
+
+			await expect(
+				service.exportPackage({ user: owner, workflowIds: [parent.id] }),
+			).rejects.toThrow(PackageExportBlockedError);
+			await expect(
+				service.exportPackage({ user: owner, workflowIds: [parent.id] }),
+			).rejects.toThrow('workflow dependency not included in the package');
+
+			const stream = await service.exportPackage({
+				user: owner,
+				workflowIds: [parent.id, errorHandler.id],
+			});
+			const { manifest } = await readExport(stream);
+
+			expect(manifest.requirements).toEqual({
+				workflows: [{ id: errorHandler.id, name: errorHandler.name, usedByWorkflows: [parent.id] }],
+			});
+		});
+
+		it('groups workflow requirements by referenced workflow', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const child = await createWorkflow(
+				{ name: 'Shared Child', nodes: [], connections: {} },
+				project,
+			);
+			const parentA = await buildWorkflowCallingSubWorkflow({
+				name: 'Parent A',
+				project,
+				subWorkflowId: child.id,
+			});
+			const parentB = await buildWorkflowCallingSubWorkflow({
+				name: 'Parent B',
+				project,
+				subWorkflowId: child.id,
+			});
+
+			const stream = await service.exportPackage({
+				user: owner,
+				workflowIds: [parentA.id, parentB.id, child.id],
+			});
+			const { manifest } = await readExport(stream);
+			const expectedUsedByWorkflows = manifest
+				.workflows!.map(({ id }) => id)
+				.filter((id) => id === parentA.id || id === parentB.id);
+
+			expect(manifest.requirements).toEqual({
+				workflows: [{ id: child.id, name: child.name, usedByWorkflows: expectedUsedByWorkflows }],
+				nodeTypes: [
+					{
+						type: 'n8n-nodes-base.executeWorkflow',
+						typeVersion: 1,
+						usedByWorkflows: [parentA.id, parentB.id],
+					},
+				],
+			});
 		});
 
 		it('allows circular sub-workflow references when both workflows are selected', async () => {
@@ -209,7 +443,10 @@ describe('workflow package export', () => {
 			expect(manifest.workflows!.map(({ id }) => id).sort()).toEqual(
 				[workflowA.id, workflowB.id].sort(),
 			);
-			expect(manifest.requirements).toBeUndefined();
+			expect(manifest.requirements?.workflows).toEqual([
+				{ id: workflowB.id, name: workflowB.name, usedByWorkflows: [workflowA.id] },
+				{ id: workflowA.id, name: workflowA.name, usedByWorkflows: [workflowB.id] },
+			]);
 		});
 	});
 

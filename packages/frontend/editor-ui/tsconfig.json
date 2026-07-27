@@ -8,12 +8,14 @@
 			"../@n8n/composables/src",
 			"../@n8n/chat/src",
 			"../@n8n/design-system/src",
-			"../@n8n/frontend-module-sdk/src"
+			"../@n8n/frontend-module-sdk/src",
+			"../@n8n/frontend-utils/src"
 		],
 		"noEmit": true,
 		"types": [
 			"vitest/globals",
 			"unplugin-icons/types/vue",
+			"vite-svg-loader",
 			"../@n8n/design-system/src/shims-modules.d.ts"
 		],
 		"paths": {
@@ -22,6 +24,7 @@
 			"@n8n/composables*": ["../@n8n/composables/src*"],
 			"@n8n/constants*": ["../../@n8n/constants/src*"],
 			"@n8n/frontend-module-sdk": ["../@n8n/frontend-module-sdk/src/index.ts"],
+			"@n8n/frontend-utils*": ["../@n8n/frontend-utils/src*"],
 			"@n8n/chat*": ["../@n8n/chat/src*"],
 			"@n8n/chat-hub*": ["../../@n8n/chat-hub/src*"],
 			"@n8n/design-system*": ["../@n8n/design-system/src*"],

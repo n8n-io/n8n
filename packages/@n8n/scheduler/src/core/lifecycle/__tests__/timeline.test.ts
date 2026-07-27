@@ -1,4 +1,4 @@
-import { executorLookaheadSeconds } from '../lookahead';
+import { pollLookaheadSeconds } from '../lookahead';
 import { Timeline } from '../timeline';
 
 const INTERVAL = 10_000;
@@ -56,14 +56,14 @@ describe('Timeline', () => {
 
 			expect(maxGap).toBe(INTERVAL * (1 + 2 * JITTER)); // 12_000
 			// The lookahead must cover the widest gap, and does so exactly (tight, not padded).
-			expect(executorLookaheadSeconds(INTERVAL / 1_000, JITTER) * 1_000).toBe(maxGap);
+			expect(pollLookaheadSeconds(INTERVAL / 1_000, JITTER) * 1_000).toBe(maxGap);
 		});
 
 		it('covers every gap under arbitrary jitter, coupling the timeline and the lookahead', () => {
 			// A spread of jitter draws, including the extremes that reach the bound. If either
 			// the jitter span or the lookahead formula drifts out of step, a gap escapes here.
 			const draws = [0, 1, 0.5, 0.9, 0.1, 1, 0, 0.3, 0.7, 0, 1, 0.5];
-			const lookaheadMs = executorLookaheadSeconds(INTERVAL / 1_000, JITTER) * 1_000;
+			const lookaheadMs = pollLookaheadSeconds(INTERVAL / 1_000, JITTER) * 1_000;
 
 			for (const gap of gaps(fires(timelineWith([0.5, ...draws]), draws.length + 1))) {
 				expect(gap).toBeLessThanOrEqual(lookaheadMs);

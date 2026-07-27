@@ -60,12 +60,11 @@ import {
 	CUSTOM_API_CALL_KEY,
 	DEBOUNCE_TIME,
 	ExpressionLocalResolveContextSymbol,
-	getDebounceTime,
 	HTML_NODE_TYPE,
 	NODES_USING_CODE_NODE_EDITOR,
 } from '@/app/constants';
 
-import { useDebounce } from '@/app/composables/useDebounce';
+import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';

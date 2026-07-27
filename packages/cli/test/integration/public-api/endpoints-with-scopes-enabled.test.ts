@@ -78,9 +78,9 @@ describe('Public API endpoints with API key scopes', () => {
 		// N8N_ENV_FEAT_TOKEN_EXCHANGE env flag. We register it directly here to test
 		// the auth layer in isolation without triggering the full module boot.
 		const { ScopedJwtStrategy } = await import(
-			'@/modules/token-exchange/services/scoped-jwt.strategy'
+			'@/modules/token-exchange/services/scoped-jwt.strategy.js'
 		);
-		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry');
+		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry.js');
 		Container.get(AuthStrategyRegistry).register(Container.get(ScopedJwtStrategy));
 	});
 
@@ -1684,9 +1684,9 @@ describe('Public API endpoints with API key scopes', () => {
 							},
 							{
 								id: 'uuid-1234',
-								parameters: {},
-								name: 'Cron',
-								type: 'n8n-nodes-base.cron',
+								parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
+								name: 'Schedule Trigger',
+								type: 'n8n-nodes-base.scheduleTrigger',
 								typeVersion: 1,
 								position: [400, 300],
 							},
@@ -1765,9 +1765,9 @@ describe('Public API endpoints with API key scopes', () => {
 							},
 							{
 								id: 'uuid-1234',
-								parameters: {},
-								name: 'Cron',
-								type: 'n8n-nodes-base.cron',
+								parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
+								name: 'Schedule Trigger',
+								type: 'n8n-nodes-base.scheduleTrigger',
 								typeVersion: 1,
 								position: [400, 300],
 							},

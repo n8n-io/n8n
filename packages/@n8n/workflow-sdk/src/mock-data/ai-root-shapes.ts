@@ -25,7 +25,6 @@ const VENDOR_AI_ROOT_NODE_TYPES = new Set<string>([
 
 const AI_ROOT_NODE_TYPES = new Set<string>([
 	AGENT_NODE_TYPE,
-	'@n8n/n8n-nodes-langchain.openAiAssistant',
 	'@n8n/n8n-nodes-langchain.chainLlm',
 	'@n8n/n8n-nodes-langchain.chainRetrievalQa',
 	'@n8n/n8n-nodes-langchain.chainSummarization',

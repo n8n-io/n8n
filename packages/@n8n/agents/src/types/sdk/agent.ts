@@ -386,4 +386,11 @@ export interface SerializableAgentState {
 export type AgentPersistenceOptions = {
 	threadId: string;
 	resourceId: string;
+	/**
+	 * The host application's own run id (distinct from the agent-SDK runId that
+	 * keys checkpoints). Persisted with checkpoints so host-side recovery (e.g.
+	 * Instance AI's interrupted-run sweep) can match a checkpoint to its run
+	 * exactly instead of guessing by recency.
+	 */
+	hostRunId?: string;
 };

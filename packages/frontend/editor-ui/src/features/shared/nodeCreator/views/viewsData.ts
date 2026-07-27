@@ -162,9 +162,9 @@ function getEvaluationNode(
 			...evaluationNode,
 			properties: {
 				...evaluationNode.properties,
+				iconColor: 'neutral',
 				defaults: {
 					name: 'Evaluation',
-					color: '#c3c9d5',
 				},
 			},
 		},
@@ -180,18 +180,8 @@ function getMessageAnAgentNode(
 	const node = nodeTypesStore.getNodeType(MESSAGE_AN_AGENT_NODE_TYPE);
 	if (!node) return [];
 
-	const view = getNodeView(node);
-	return [
-		{
-			...view,
-			properties: {
-				...view.properties,
-				tag: {
-					preview: true,
-				},
-			},
-		},
-	];
+	// The early-preview tag is attached centrally in `applyNodeTags`.
+	return [getNodeView(node)];
 }
 
 export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
@@ -402,9 +392,9 @@ export function TriggerView() {
 					displayName: 'When running evaluation',
 					description: 'Run a dataset through your workflow to test performance',
 					icon: 'fa:check-double',
+					iconColor: 'neutral',
 					defaults: {
 						name: 'Evaluation',
-						color: '#c3c9d5',
 					},
 				},
 			}

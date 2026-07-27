@@ -56,9 +56,7 @@ const SESSION_KEY_SCOPING_MIN_VERSION: Record<string, number> = {
 	'@n8n/n8n-nodes-langchain.memoryPostgresChat': 1.4,
 	'@n8n/n8n-nodes-langchain.memoryRedisChat': 1.6,
 	'@n8n/n8n-nodes-langchain.memoryMongoDbChat': 1.1,
-	'@n8n/n8n-nodes-langchain.memoryMotorhead': 1.4,
 	'@n8n/n8n-nodes-langchain.memoryXata': 1.5,
-	'@n8n/n8n-nodes-langchain.memoryZep': 1.4,
 };
 
 function shouldScopeSessionKey(ctx: ISupplyDataFunctions | IWebhookFunctions): boolean {
@@ -219,18 +217,15 @@ export const getConnectedTools = async (
 				const tools = toolOrToolkit.tools;
 				// Add metadata to each tool from the toolkit
 				return tools.map((tool) => {
-					const sourceNode = parentNodes[index] ?? tool.name;
-
 					tool.metadata ??= {};
 					tool.metadata.isFromToolkit = true;
-					tool.metadata.sourceNodeName = sourceNode?.name;
+					tool.metadata.sourceNodeName = parentNodes[index]?.name ?? tool.name;
 					return tool;
 				});
 			} else {
-				const sourceNode = parentNodes[index] ?? toolOrToolkit.name;
 				toolOrToolkit.metadata ??= {};
 				toolOrToolkit.metadata.isFromToolkit = false;
-				toolOrToolkit.metadata.sourceNodeName = sourceNode?.name;
+				toolOrToolkit.metadata.sourceNodeName = parentNodes[index]?.name ?? toolOrToolkit.name;
 			}
 
 			return toolOrToolkit;

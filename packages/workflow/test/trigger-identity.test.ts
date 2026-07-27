@@ -1,7 +1,6 @@
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
 } from '../src/constants';
@@ -13,15 +12,12 @@ const hooksParameters = {
 };
 
 describe('classifyTriggerIdentity', () => {
-	it.each([MANUAL_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE])(
-		'classifies %s as providing the n8n identity only',
-		(type) => {
-			expect(classifyTriggerIdentity(type, {})).toEqual({
-				providesN8nIdentity: true,
-				providesExternalIdentity: false,
-			});
-		},
-	);
+	it('classifies the Manual Trigger as providing the n8n identity only', () => {
+		expect(classifyTriggerIdentity(MANUAL_TRIGGER_NODE_TYPE, {})).toEqual({
+			providesN8nIdentity: true,
+			providesExternalIdentity: false,
+		});
+	});
 
 	it('classifies a sub-workflow trigger as providing both identities', () => {
 		expect(classifyTriggerIdentity(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, {})).toEqual({
@@ -63,6 +59,16 @@ describe('classifyTriggerIdentity', () => {
 	describe('other triggers', () => {
 		it('provides the external identity only when a context establishment hook is configured', () => {
 			expect(classifyTriggerIdentity('n8n-nodes-base.webhook', hooksParameters)).toEqual({
+				providesN8nIdentity: false,
+				providesExternalIdentity: true,
+			});
+		});
+
+		it('provides the external identity when the version field was stripped on save', () => {
+			// `executionsHooksVersion` is a hidden default and is not serialized into
+			// saved workflows, so the hooks must still be recognized without it.
+			const { executionsHooksVersion, ...withoutVersion } = hooksParameters;
+			expect(classifyTriggerIdentity('n8n-nodes-base.webhook', withoutVersion)).toEqual({
 				providesN8nIdentity: false,
 				providesExternalIdentity: true,
 			});

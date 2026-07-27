@@ -72,15 +72,20 @@ describe('workflow package export — with data tables', () => {
 			const { manifest, entries } = await readExport(stream);
 
 			expect(manifest.requirements).toEqual({
+				nodeTypes: expect.any(Array),
 				dataTables: [
 					{
 						id: dataTable.id,
 						name: 'Customers',
-						sourceProjectId: project.id,
 						usedByWorkflows: [workflow.id],
 					},
 				],
 			});
+
+			// The manifest also points at the schema file, so import can create the table.
+			expect(manifest.dataTables).toEqual([
+				{ id: dataTable.id, name: 'Customers', target: 'data-tables/customers' },
+			]);
 
 			const dataTableFile = entries.find((e) => e.name === 'data-tables/customers/data-table.json');
 			expect(dataTableFile).toBeDefined();
@@ -173,7 +178,6 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					sourceProjectId: project.id,
 					usedByWorkflows: [workflow.id],
 				},
 			]);
@@ -293,7 +297,6 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					sourceProjectId: salesProject.id,
 					usedByWorkflows: [workflow.id],
 				},
 			]);
@@ -326,7 +329,6 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					sourceProjectId: project.id,
 					usedByWorkflows: [workflow.id],
 				},
 			]);
@@ -360,7 +362,6 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					sourceProjectId: foreignProject.id,
 					usedByWorkflows: [workflow.id],
 				},
 			]);
@@ -387,7 +388,6 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					sourceProjectId: project.id,
 					usedByWorkflows: [workflow.id],
 				},
 			]);
@@ -413,7 +413,6 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					sourceProjectId: personalProject.id,
 					usedByWorkflows: [workflow.id],
 				},
 			]);

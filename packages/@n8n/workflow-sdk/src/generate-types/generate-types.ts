@@ -1919,10 +1919,13 @@ export function getPropertiesForCombination(
  */
 interface VersionCondition {
 	_cnd: {
+		eq?: number;
+		not?: number;
 		gt?: number;
 		gte?: number;
 		lt?: number;
 		lte?: number;
+		between?: { from: number; to: number };
 	};
 }
 
@@ -1937,11 +1940,14 @@ function versionMatchesCondition(version: number, condition: number | VersionCon
 
 	// It's a conditional expression like { _cnd: { gte: 3.1 } }
 	if (condition._cnd) {
-		const { gt, gte, lt, lte } = condition._cnd;
+		const { eq, not, gt, gte, lt, lte, between } = condition._cnd;
+		if (eq !== undefined && version !== eq) return false;
+		if (not !== undefined && version === not) return false;
 		if (gt !== undefined && !(version > gt)) return false;
 		if (gte !== undefined && !(version >= gte)) return false;
 		if (lt !== undefined && !(version < lt)) return false;
 		if (lte !== undefined && !(version <= lte)) return false;
+		if (between !== undefined && !(version >= between.from && version <= between.to)) return false;
 		return true;
 	}
 

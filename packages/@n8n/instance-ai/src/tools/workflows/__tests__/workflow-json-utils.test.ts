@@ -10,10 +10,10 @@ import {
 } from '../workflow-json-utils';
 
 describe('trigger detection', () => {
-	it('classifies suffix-less trigger types via the canonical n8n-workflow detection', () => {
-		// These have no "Trigger" suffix — the old local heuristic missed them.
+	it('classifies special trigger types via the canonical n8n-workflow detection', () => {
+		// These include types that a local suffix-only heuristic would miss.
 		expect(isTriggerNodeType('n8n-nodes-base.webhook')).toBe(true);
-		expect(isTriggerNodeType('n8n-nodes-base.cron')).toBe(true);
+		expect(isTriggerNodeType('n8n-nodes-base.scheduleTrigger')).toBe(true);
 		expect(isTriggerNodeType('n8n-nodes-base.emailReadImap')).toBe(true);
 	});
 

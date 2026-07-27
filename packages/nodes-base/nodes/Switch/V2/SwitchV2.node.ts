@@ -18,9 +18,9 @@ export class SwitchV2 implements INodeType {
 		this.description = {
 			...baseDescription,
 			version: [2],
+			iconColor: 'green',
 			defaults: {
 				name: 'Switch',
-				color: '#506000',
 			},
 			inputs: [NodeConnectionTypes.Main],
 

@@ -4,7 +4,7 @@ import type { IResourceLocatorResultExpanded, IUpdateInformation } from '@/Inter
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import ExpressionParameterInput from '../ExpressionParameterInput.vue';
 import ParameterIssues from '../ParameterIssues.vue';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
@@ -636,7 +636,12 @@ onBeforeUnmount(() => {
 	}
 });
 
-onClickOutside(dropdownRef as Ref<VueInstance>, hideResourceDropdown);
+onClickOutside(dropdownRef as Ref<VueInstance>, (event) => {
+	if (event.target instanceof HTMLElement && dropdownRef.value?.isWithinDropdown(event.target)) {
+		return;
+	}
+	hideResourceDropdown();
+});
 
 function setWidth() {
 	if (containerRef.value) {

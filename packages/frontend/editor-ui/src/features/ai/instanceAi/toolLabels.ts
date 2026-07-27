@@ -122,7 +122,8 @@ export function getToolIcon(toolName: string): IconName {
 		return 'workflow';
 	}
 	if (toolName.includes('credential')) return 'key-round';
-	return 'settings';
+	// Fallback for tools without a dedicated mapping.
+	return 'wrench';
 }
 
 /**

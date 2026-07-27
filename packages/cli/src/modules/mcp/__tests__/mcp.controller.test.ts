@@ -22,6 +22,7 @@ mcpServerMiddlewareService.getAuthMiddleware.mockReturnValue(mockAuthMiddleware)
 Container.set(McpServerMiddlewareService, mcpServerMiddlewareService);
 
 import { McpConfig } from '../mcp.config';
+import { McpProtectedResource } from '../mcp-protected-resource';
 import type { McpController as McpControllerType, FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
 import { McpSettingsService } from '../mcp.settings.service';
@@ -41,6 +42,7 @@ vi.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
 
 type AuthenticatedMcpRequest = AuthenticatedRequest & {
 	mcpAuthType?: UserConnectedToMCPEventPayload['auth_type'];
+	mcpClientId?: string;
 };
 
 const createReq = (overrides: Partial<AuthenticatedMcpRequest> = {}): AuthenticatedMcpRequest =>
@@ -63,6 +65,13 @@ describe('McpController', () => {
 		resolveMcpAppsVariant: vi.fn(),
 	} as unknown as McpService;
 	const mcpSettingsService = { getEnabled: vi.fn() } as unknown as McpSettingsService;
+	const mcpProtectedResource = {
+		getProtectedResourceMetadataUrl: vi
+			.fn()
+			.mockReturnValue(
+				'https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http',
+			),
+	} as unknown as McpProtectedResource;
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
@@ -80,11 +89,12 @@ describe('McpController', () => {
 		Container.set(Telemetry, telemetry);
 		Container.set(McpService, mcpService);
 		Container.set(McpSettingsService, mcpSettingsService);
+		Container.set(McpProtectedResource, mcpProtectedResource);
 		// Real repositories can't be auto-constructed by DI without a DataSource.
 		Container.set(ApiKeyRepository, mock<ApiKeyRepository>());
 
 		// Imported here (not statically) so the Container.set above runs first.
-		({ McpController } = await import('../mcp.controller'));
+		({ McpController } = await import('../mcp.controller.js'));
 		controller = Container.get(McpController);
 	});
 
@@ -280,7 +290,10 @@ describe('McpController', () => {
 
 		await controller.discoverAuthSchemeHead(req, res);
 
-		expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+		expect(res.header).toHaveBeenCalledWith(
+			'WWW-Authenticate',
+			'Bearer realm="n8n MCP Server", resource_metadata="https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http"',
+		);
 		expect(res.status).toHaveBeenCalledWith(401);
 		expect(res.end).toHaveBeenCalled();
 	});

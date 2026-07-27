@@ -57,9 +57,9 @@ export class ChainSummarizationV2 implements INodeType {
 		this.description = {
 			...baseDescription,
 			version: [2, 2.1],
+			iconColor: 'gray',
 			defaults: {
 				name: 'Summarization Chain',
-				color: '#909298',
 			},
 
 			inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,

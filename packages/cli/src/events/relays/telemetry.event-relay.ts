@@ -212,8 +212,44 @@ export class TelemetryEventRelay extends EventRelay {
 				this.instanceAiMcpRegistryConnectionCreated(event),
 			'instance-ai-mcp-registry-connection-deleted': (event) =>
 				this.instanceAiMcpRegistryConnectionDeleted(event),
+			'hitl-response-actioned': (event) => this.hitlResponseActioned(event),
 		});
 	}
+
+	// #region HITL
+
+	private hitlResponseActioned({
+		nodeType,
+		approved,
+		authorized,
+		response_mode,
+		advanced_email,
+	}: RelayEventMap['hitl-response-actioned']) {
+		const props: {
+			node_type: string;
+			is_approved: boolean;
+			is_authorized?: boolean;
+			response_mode?: string;
+			is_advanced_email?: boolean;
+		} = {
+			node_type: nodeType,
+			is_approved: approved,
+		};
+		// Email nodes cannot identify the responder, so they omit `authorized`.
+		if (authorized !== undefined) {
+			props.is_authorized = authorized;
+		}
+		// The following two are only set by email nodes; chat nodes omit them.
+		if (response_mode !== undefined) {
+			props.response_mode = response_mode;
+		}
+		if (advanced_email !== undefined) {
+			props.is_advanced_email = advanced_email;
+		}
+		this.telemetry.track('Advanced HITL response actioned', props);
+	}
+
+	// #endregion
 
 	// #region Instance AI MCP
 
@@ -1040,12 +1076,23 @@ export class TelemetryEventRelay extends EventRelay {
 			credential_matching_mode: options.credentialMatchingMode,
 			credential_missing_mode: options.credentialMissingMode,
 			workflow_publishing_policy: options.workflowPublishingPolicy,
+			missing_node_type_mode: options.missingNodeTypeMode,
+			data_table_matching_mode: options.dataTableMatchingMode,
+			data_table_missing_mode: options.dataTableMissingMode,
+			data_table_schema_conflict_policy: options.dataTableSchemaConflictPolicy,
+			variable_missing_mode: options.variableMissingMode,
 			workflows_created: counts.workflows.created,
 			workflows_updated: counts.workflows.updated,
 			workflows_skipped: counts.workflows.skipped,
 			credentials_matched: counts.credentials.matched,
 			credentials_created: counts.credentials.created,
 			credentials_required: counts.credentials.requirements,
+			data_tables_matched: counts.dataTables.matched,
+			data_tables_created: counts.dataTables.created,
+			data_tables_required: counts.dataTables.requirements,
+			variables_matched: counts.variables.matched,
+			variables_missing: counts.variables.missing,
+			variables_required: counts.variables.requirements,
 		});
 	}
 
@@ -1056,6 +1103,7 @@ export class TelemetryEventRelay extends EventRelay {
 			folder_count: counts.folders,
 			credential_count: counts.credentials,
 			data_table_count: counts.dataTables,
+			variable_count: counts.variables,
 		});
 	}
 
@@ -1555,7 +1603,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private async getOtelTelemetryInfo() {
-		const { OtelConfig } = await import('@/modules/otel/otel.config');
+		const { OtelConfig } = await import('@/modules/otel/otel.config.js');
 		const otelConfig = Container.get(OtelConfig);
 
 		return {

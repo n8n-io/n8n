@@ -6,10 +6,13 @@ import { SCHEDULER_ATTRIBUTES, SCHEDULER_FIRE_OUTCOME } from '../../observabilit
 import type { SchedulerMetrics } from '../../observability/metrics';
 import { SpanStatus, type Span, type Tracer } from '../../observability/tracer';
 import { InvalidLifecycleOptionsError } from '../errors';
+import { DEFAULT_EXECUTOR_OPTIONS } from '../executor';
 import { createScheduler, DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS } from '../factory';
 import type { SchedulerDeps, SchedulerEvent, SchedulerTaskStore } from '../factory';
-import { PASS_TIMED_OUT } from '../lifecycle';
+import { DEFAULT_LIFECYCLE_OPTIONS, PASS_TIMED_OUT, pollLookaheadSeconds } from '../lifecycle';
+import { DEFAULT_MATERIALIZER_OPTIONS } from '../materializer';
 import type { MaterializerTransaction, RunInTransaction } from '../materializer';
+import type { ExpiredLeaseRow } from '../reaper';
 import { DEFAULT_RETENTION_OPTIONS } from '../retention';
 import type { ClaimedTask, ScheduledJob } from '../types';
 
@@ -36,6 +39,7 @@ const makeTracer = () => {
 /** Compose a scheduler over mocks, with non-default retention windows. */
 function makeScheduler(deps: Partial<SchedulerDeps> = {}) {
 	const taskStore = mock<SchedulerTaskStore>();
+	taskStore.markDispatched.mockResolvedValue(1);
 	const onEvent = vi.fn<(event: SchedulerEvent) => void>();
 	const materializerTransaction: RunInTransaction = vi.fn();
 	const scheduler = createScheduler({
@@ -179,6 +183,52 @@ describe('createScheduler executor config', () => {
 	});
 });
 
+// The lookahead createScheduler derives for the materializer: the poll's own
+// worst-case tick gap plus the executor's lookahead (defaults: 10s·1.2 + 5s = 17s).
+const DERIVED_MATERIALIZER_LOOKAHEAD_SECONDS =
+	pollLookaheadSeconds(
+		DEFAULT_LIFECYCLE_OPTIONS.materializerIntervalSeconds,
+		DEFAULT_LIFECYCLE_OPTIONS.jitterRatio,
+	) + DEFAULT_EXECUTOR_OPTIONS.lookaheadSeconds;
+
+const MATERIALIZER_WINDOW_WARNING =
+	'Scheduler materializer lookahead exceeds the window; jobs may be reclaimed with nothing to plan';
+
+describe('createScheduler materializer config', () => {
+	it('emits a warn event at composition when the derived lookahead exceeds the window', () => {
+		// A window shorter than the derived lookahead: materialization degrades to
+		// reclaiming a job every poll with nothing new to plan.
+		const { onEvent } = makeScheduler({ materializer: { windowSeconds: 5 } });
+
+		expect(onEvent).toHaveBeenCalledWith({
+			level: 'warn',
+			message: MATERIALIZER_WINDOW_WARNING,
+			context: { lookaheadSeconds: DERIVED_MATERIALIZER_LOOKAHEAD_SECONDS, windowSeconds: 5 },
+		});
+	});
+
+	it('stays silent at the boundary where the window exactly equals the lookahead', () => {
+		// A job claimed at `now + lookahead == windowEnd` still records its own
+		// occurrence, so equality is not yet degenerate: warn only past the window.
+		const { onEvent } = makeScheduler({
+			materializer: { windowSeconds: DERIVED_MATERIALIZER_LOOKAHEAD_SECONDS },
+		});
+
+		expect(onEvent).not.toHaveBeenCalledWith(
+			expect.objectContaining({ message: MATERIALIZER_WINDOW_WARNING }),
+		);
+	});
+
+	it('stays silent when the window comfortably covers the lookahead', () => {
+		// The default 60s window against the ~17s derived lookahead: no warning.
+		const { onEvent } = makeScheduler();
+
+		expect(onEvent).not.toHaveBeenCalledWith(
+			expect.objectContaining({ message: MATERIALIZER_WINDOW_WARNING }),
+		);
+	});
+});
+
 /** A task claimed for this host whose `runAt` has passed, so it fires on the next tick. */
 const claimedTask = (overrides: Partial<ClaimedTask> = {}): ClaimedTask => ({
 	id: '1',
@@ -191,6 +241,13 @@ const claimedTask = (overrides: Partial<ClaimedTask> = {}): ClaimedTask => ({
 	attempts: 0,
 	maxAttempts: 3,
 	leaseEpoch: 1,
+	...overrides,
+});
+
+/** An expired-lease row for the reaper; pre-dispatch (`dispatchedAt` null) by default. */
+const expiredRow = (overrides: Partial<ExpiredLeaseRow> = {}): ExpiredLeaseRow => ({
+	...claimedTask(),
+	dispatchedAt: null,
 	...overrides,
 });
 
@@ -232,7 +289,7 @@ describe('createScheduler execute', () => {
 			id: '1',
 			claimedEpoch: 1,
 		});
-		expect(taskStore.markStarted).not.toHaveBeenCalled();
+		expect(taskStore.beginDispatch).not.toHaveBeenCalled();
 	});
 
 	it('routes a mid-fire failure to an error event and leaves the row to the reaper', async () => {
@@ -240,7 +297,7 @@ describe('createScheduler execute', () => {
 		scheduler.registerTaskHandler('test-task', { execute: vi.fn() });
 		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
 		// The outcome write fails outside the handler-failure path.
-		taskStore.markStarted.mockRejectedValue(new Error('db down'));
+		taskStore.beginDispatch.mockRejectedValue(new Error('db down'));
 
 		await scheduler.execute();
 
@@ -345,6 +402,27 @@ describe('createScheduler materialize', () => {
 			message: 'Scheduler materializer skipped occurrences that were already recorded',
 			context: { planned: 1, recorded: 0 },
 		});
+	});
+
+	it('claims jobs ahead of due by the materializer tick gap plus the executor lookahead', async () => {
+		// Regression guard for window-boundary dispatch lag: the materializer polls on a
+		// fixed, jittered tick, so claiming strictly at `nextRunAt <= now` would notice a
+		// boundary job a whole tick late. createScheduler must derive the claim lookahead,
+		// wide enough that the recorded row also reaches the executor before it fires, not
+		// leave it 0.
+		const tx = mock<MaterializerTransaction>();
+		tx.claimDueJobs.mockResolvedValue(undefined);
+		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
+		const { scheduler } = makeScheduler({ materializerTransaction });
+
+		await scheduler.materialize();
+
+		const expectedLookaheadMs = DERIVED_MATERIALIZER_LOOKAHEAD_SECONDS * 1000;
+		expect(expectedLookaheadMs).toBeGreaterThan(0);
+		expect(tx.claimDueJobs).toHaveBeenCalledWith(
+			DEFAULT_MATERIALIZER_OPTIONS.batchSize,
+			expectedLookaheadMs,
+		);
 	});
 });
 
@@ -595,7 +673,7 @@ describe('createScheduler late dispatch', () => {
 		taskStore.claimDueTasks.mockResolvedValue([
 			claimedTask({ runAt: new Date('2020-01-01T00:00:00.000Z') }),
 		]);
-		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.markDispatched.mockResolvedValue(1);
 		taskStore.completeTask.mockResolvedValue(1);
 
 		await scheduler.execute();
@@ -628,7 +706,7 @@ describe('createScheduler late dispatch', () => {
 		taskStore.claimDueTasks.mockResolvedValue([
 			claimedTask({ runAt: new Date('2020-01-01T00:00:00.000Z') }),
 		]);
-		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.markDispatched.mockResolvedValue(1);
 		taskStore.completeTask.mockResolvedValue(1);
 
 		await scheduler.execute();
@@ -803,7 +881,7 @@ describe('createScheduler pass timeout and overlap', () => {
 			id: '1',
 			claimedEpoch: 1,
 		});
-		expect(taskStore.markStarted).not.toHaveBeenCalled();
+		expect(taskStore.beginDispatch).not.toHaveBeenCalled();
 
 		await scheduler.stop();
 	});
@@ -901,7 +979,7 @@ describe('createScheduler reap', () => {
 	it('routes a row recovery failure to an error event and finishes the sweep', async () => {
 		const { scheduler, taskStore, onEvent } = makeScheduler();
 		taskStore.findExpiredLeases.mockResolvedValue([
-			{ id: '7', attempts: 0, maxAttempts: 3, leaseEpoch: 1 },
+			expiredRow({ id: '7', attempts: 0, maxAttempts: 3, leaseEpoch: 1 }),
 		]);
 		taskStore.reclaimExpired.mockRejectedValue(new Error('deadlock'));
 
@@ -918,7 +996,7 @@ describe('createScheduler reap', () => {
 	it('routes a dead-lettered task to a warn event carrying the task identity', async () => {
 		const { scheduler, taskStore, onEvent } = makeScheduler();
 		taskStore.findExpiredLeases.mockResolvedValue([
-			{ id: '7', attempts: 2, maxAttempts: 3, leaseEpoch: 1 },
+			expiredRow({ id: '7', attempts: 2, maxAttempts: 3, leaseEpoch: 1 }),
 		]);
 		taskStore.deadLetterExpired.mockResolvedValue(1);
 
@@ -1067,7 +1145,7 @@ describe('createScheduler tracing', () => {
 		const { scheduler, taskStore } = makeScheduler({ tracer });
 		scheduler.registerTaskHandler('test-task', { execute: vi.fn().mockResolvedValue(undefined) });
 		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
-		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.beginDispatch.mockResolvedValue(1);
 		taskStore.completeTask.mockResolvedValue(1);
 
 		await scheduler.execute();
@@ -1098,9 +1176,9 @@ describe('createScheduler tracing', () => {
 		// the wrong attribute key cannot slip past these assertions: two leases with
 		// attempts left are reclaimed, one out of attempts is dead-lettered.
 		taskStore.findExpiredLeases.mockResolvedValue([
-			{ id: '7', attempts: 0, maxAttempts: 3, leaseEpoch: 1 },
-			{ id: '8', attempts: 0, maxAttempts: 3, leaseEpoch: 1 },
-			{ id: '9', attempts: 2, maxAttempts: 3, leaseEpoch: 1 },
+			expiredRow({ id: '7', attempts: 0, maxAttempts: 3, leaseEpoch: 1 }),
+			expiredRow({ id: '8', attempts: 0, maxAttempts: 3, leaseEpoch: 1 }),
+			expiredRow({ id: '9', attempts: 2, maxAttempts: 3, leaseEpoch: 1 }),
 		]);
 		taskStore.reclaimExpired.mockResolvedValue(1);
 		taskStore.deadLetterExpired.mockResolvedValue(1);
@@ -1296,7 +1374,7 @@ describe('createScheduler metrics', () => {
 		const metrics = mock<SchedulerMetrics>();
 		const { scheduler, taskStore } = makeScheduler({ metrics });
 		taskStore.findExpiredLeases.mockResolvedValue([
-			{ id: '7', attempts: 2, maxAttempts: 3, leaseEpoch: 1 },
+			expiredRow({ id: '7', attempts: 2, maxAttempts: 3, leaseEpoch: 1 }),
 		]);
 		taskStore.deadLetterExpired.mockResolvedValue(1);
 
@@ -1329,7 +1407,7 @@ describe('createScheduler metrics', () => {
 		scheduler.registerTaskHandler('test-task', { execute: vi.fn().mockResolvedValue(undefined) });
 		// A task due in the past fires on the next timer tick.
 		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
-		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.beginDispatch.mockResolvedValue(1);
 		taskStore.completeTask.mockResolvedValue(1);
 
 		await scheduler.execute();
@@ -1351,7 +1429,7 @@ describe('createScheduler metrics', () => {
 		});
 		// Single attempt: the first failure exhausts it.
 		taskStore.claimDueTasks.mockResolvedValue([claimedTask({ attempts: 0, maxAttempts: 1 })]);
-		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.beginDispatch.mockResolvedValue(1);
 		taskStore.failTaskTerminal.mockResolvedValue(1);
 
 		await scheduler.execute();
@@ -1371,7 +1449,7 @@ describe('createScheduler metrics', () => {
 		});
 		// Attempts remain, so the failure reschedules rather than fails terminally.
 		taskStore.claimDueTasks.mockResolvedValue([claimedTask({ attempts: 0, maxAttempts: 3 })]);
-		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.beginDispatch.mockResolvedValue(1);
 		taskStore.rescheduleTask.mockResolvedValue(1);
 
 		await scheduler.execute();
@@ -1404,7 +1482,7 @@ describe('createScheduler metrics', () => {
 		const execute = vi.fn().mockResolvedValue(undefined);
 		scheduler.registerTaskHandler('test-task', { execute });
 		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
-		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.beginDispatch.mockResolvedValue(1);
 		taskStore.completeTask.mockResolvedValue(1);
 
 		await scheduler.execute();

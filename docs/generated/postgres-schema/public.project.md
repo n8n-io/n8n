@@ -9,7 +9,7 @@
 | customTelemetryTags | json | '[]'::json | false |  |  |  |
 | description | varchar(512) |  | true |  |  |  |
 | icon | json |  | true |  |  |  |
-| id | varchar(36) |  | false | [public.agent_execution_threads](public.agent_execution_threads.md) [public.agents](public.agents.md) [public.data_table](public.data_table.md) [public.folder](public.folder.md) [public.insights_metadata](public.insights_metadata.md) [public.instance_ai_threads](public.instance_ai_threads.md) [public.project_relation](public.project_relation.md) [public.project_secrets_provider_access](public.project_secrets_provider_access.md) [public.role_mapping_rule_project](public.role_mapping_rule_project.md) [public.shared_credentials](public.shared_credentials.md) [public.shared_workflow](public.shared_workflow.md) [public.variables](public.variables.md) |  |  |
+| id | varchar(36) |  | false | [public.agent_execution_threads](public.agent_execution_threads.md) [public.agents](public.agents.md) [public.data_table](public.data_table.md) [public.folder](public.folder.md) [public.insights_metadata](public.insights_metadata.md) [public.instance_ai_threads](public.instance_ai_threads.md) [public.project_relation](public.project_relation.md) [public.project_secrets_provider_access](public.project_secrets_provider_access.md) [public.role_mapping_rule_project](public.role_mapping_rule_project.md) [public.shared_credentials](public.shared_credentials.md) [public.shared_workflow](public.shared_workflow.md) [public.variables](public.variables.md) [public.workflow_review_request](public.workflow_review_request.md) |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | type | varchar(36) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -51,6 +51,7 @@ erDiagram
 "public.shared_credentials" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.shared_workflow" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.variables" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.workflow_review_request" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
 "public.project" {
   timestamp_3__with_time_zone createdAt
@@ -181,6 +182,20 @@ erDiagram
   varchar_36_ projectId FK
   varchar_50_ type
   text value
+}
+"public.workflow_review_request" {
+  timestamp_3__with_time_zone approvedAt
+  uuid closedById FK
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  varchar_50_ decision
+  text description
+  varchar_36_ id
+  varchar_36_ projectId FK
+  varchar_16_ state
+  varchar_255_ title
+  timestamp_3__with_time_zone updatedAt
+  uuid updatedById FK
 }
 ```
 

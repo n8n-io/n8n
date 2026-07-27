@@ -1,6 +1,6 @@
 {
 	"id": "267",
-	"name": "Item Lists sort",
+	"name": "Sort",
 	"active": false,
 	"nodes": [
 		{
@@ -23,7 +23,6 @@
 		},
 		{
 			"parameters": {
-				"operation": "sort",
 				"sortFieldsUi": {
 					"sortField": [
 						{
@@ -35,13 +34,12 @@
 			},
 			"id": "37efad47-7f66-4617-9fc1-c7f40fe2c860",
 			"name": "ByIdAsc",
-			"type": "n8n-nodes-base.itemLists",
+			"type": "n8n-nodes-base.sort",
 			"typeVersion": 1,
 			"position": [0, 176]
 		},
 		{
 			"parameters": {
-				"operation": "sort",
 				"sortFieldsUi": {
 					"sortField": [
 						{
@@ -58,19 +56,18 @@
 			},
 			"id": "f6e5eeba-f9d1-43be-811d-5b3eabb521d5",
 			"name": "ByCharDescIdDesc",
-			"type": "n8n-nodes-base.itemLists",
+			"type": "n8n-nodes-base.sort",
 			"typeVersion": 1,
 			"position": [0, 368]
 		},
 		{
 			"parameters": {
-				"operation": "sort",
 				"type": "code",
 				"code": "// The two items to compare are in the variables a and b\n// Access the fields in a.json and b.json\n// Return -1 if a should go before b\n// Return 1 if b should go before a\n// Return 0 if there's no difference\n\nfieldName = 'id';\n\nif (a.json[fieldName] < b.json[fieldName]) {\n\t\treturn -1;\n}\nif (a.json[fieldName] > b.json[fieldName]) {\n\t\treturn 1;\n}\nreturn 0;"
 			},
 			"id": "bc23786c-4413-4ecc-b4c2-dc9d9a238af6",
 			"name": "ByCode",
-			"type": "n8n-nodes-base.itemLists",
+			"type": "n8n-nodes-base.sort",
 			"typeVersion": 1,
 			"position": [0, 560]
 		},

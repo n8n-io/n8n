@@ -5,6 +5,7 @@ import { Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { AiService } from '@/services/ai.service';
 
 import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import { AgentKnowledgeService } from './agent-knowledge.service';
@@ -15,6 +16,7 @@ export class AgentSandboxController {
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly logger: Logger,
 		private readonly agentsConfig: AgentsConfig,
+		private readonly aiService: AiService,
 	) {}
 
 	@Post('/:agentId/sandbox/knowledge/warmup')
@@ -34,8 +36,12 @@ export class AgentSandboxController {
 		return { accepted: true };
 	}
 
+	private isKnowledgeBaseEnabled(): boolean {
+		return isAgentKnowledgeBaseEnabled(this.agentsConfig, this.aiService.isProxyEnabled());
+	}
+
 	private assertKnowledgeBaseEnabled() {
-		if (!isAgentKnowledgeBaseEnabled(this.agentsConfig)) {
+		if (!this.isKnowledgeBaseEnabled()) {
 			throw new NotFoundError('Agent knowledge base is not enabled');
 		}
 	}
@@ -45,7 +51,7 @@ export class AgentSandboxController {
 		agentId: string,
 	): Promise<void> {
 		try {
-			if (!isAgentKnowledgeBaseEnabled(this.agentsConfig)) return;
+			if (!this.isKnowledgeBaseEnabled()) return;
 			await this.agentKnowledgeService.warmSandbox(agentId, projectId);
 		} catch (error) {
 			this.logger.warn('Failed to warm agent knowledge sandbox', {

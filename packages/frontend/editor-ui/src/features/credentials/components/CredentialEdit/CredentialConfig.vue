@@ -18,6 +18,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import {
 	BUILTIN_CREDENTIALS_DOCS_URL,
 	DOCS_DOMAIN,
+	END_USER_CREDENTIALS_DOCS_URL,
 	EnterpriseEditionFeature,
 	NEW_ASSISTANT_SESSION_MODAL,
 } from '@/app/constants';
@@ -464,6 +465,9 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					data-test-id="end-user-credential-connect-subtext"
 				>
 					{{ i18n.baseText('credentialEdit.credentialConfig.endUserCredential.connectSubtext') }}
+					<N8nLink bold :to="END_USER_CREDENTIALS_DOCS_URL" size="small">
+						{{ i18n.baseText('generic.learnMore') }}
+					</N8nLink>
 				</N8nInfoTip>
 
 				<Banner

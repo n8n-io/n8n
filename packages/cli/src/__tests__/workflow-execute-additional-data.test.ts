@@ -37,7 +37,7 @@ import {
 	SubworkflowPolicyChecker,
 } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
-import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
+import { AgentWorkflowExecutionService } from '@/modules/agents/agent-workflow-execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
@@ -124,7 +124,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	mockInstance(Telemetry);
 	const workflowRepository = mockInstance(WorkflowRepository);
 	const activeExecutions = mockInstance(ActiveExecutions);
-	mockInstance(CredentialsPermissionChecker);
+	const credentialsPermissionChecker = mockInstance(CredentialsPermissionChecker);
 	mockInstance(SubworkflowPolicyChecker);
 	mockInstance(WorkflowStatisticsService);
 	mockInstance(WorkflowPublishHistoryRepository);
@@ -163,8 +163,12 @@ describe('WorkflowExecuteAdditionalData', () => {
 		const runWithData = getMockRun({
 			lastNodeOutput: [[{ json: { test: 1 } }]],
 		});
+		const ownershipService = mockInstance(OwnershipService);
 
 		beforeEach(() => {
+			// Both this and the executeAgent describe call mockInstance(OwnershipService),
+			// which each Container.set a fresh mock. Re-bind ours so the source resolves it.
+			Container.set(OwnershipService, ownershipService);
 			workflowRepository.get.mockResolvedValue(
 				mock<WorkflowEntity>({
 					id: EXECUTION_ID,
@@ -182,6 +186,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 			);
 			activeExecutions.add.mockResolvedValue(EXECUTION_ID);
 			processRunExecutionData.mockReturnValue(getCancelablePromise(runWithData));
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(
+				mock<Project>({ id: 'project-id-1', name: 'Mock Project' }),
+			);
 		});
 
 		it('should execute workflow, return data and execution id', async () => {
@@ -264,6 +271,100 @@ describe('WorkflowExecuteAdditionalData', () => {
 			);
 
 			expect(getVariablesSpy).toHaveBeenCalledWith(workflowId, undefined);
+		});
+
+		describe('credential permission check routing', () => {
+			const subWorkflowData = () =>
+				mock<IWorkflowBase>({
+					id: 'sub-id',
+					name: 'Sub Workflow',
+					nodes: [],
+					connections: {},
+					staticData: {},
+					settings: {},
+				});
+
+			beforeEach(() => {
+				vi.mocked(credentialsPermissionChecker.check).mockClear();
+				vi.mocked(credentialsPermissionChecker.checkForUser).mockClear();
+				vi.mocked(WorkflowExecute).mockClear();
+			});
+
+			it('checks credentials against the triggering user for an inline sub-workflow', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+						parentWorkflowId: 'parent-1',
+					}),
+				);
+
+				expect(credentialsPermissionChecker.checkForUser).toHaveBeenCalledTimes(1);
+				expect(vi.mocked(credentialsPermissionChecker.checkForUser).mock.calls[0][0]).toBe(
+					'user-1',
+				);
+				expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
+			});
+
+			it('checks credentials against the project for a database sub-workflow', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'db-id', code: undefined }),
+					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+					}),
+				);
+
+				expect(credentialsPermissionChecker.check).toHaveBeenCalled();
+				expect(credentialsPermissionChecker.checkForUser).not.toHaveBeenCalled();
+			});
+
+			it('falls back to the project check for an inline sub-workflow without a triggering user', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					mock<IWorkflowExecuteAdditionalData>({ userId: undefined }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+						parentWorkflowId: 'parent-1',
+					}),
+				);
+
+				expect(credentialsPermissionChecker.check).toHaveBeenCalled();
+				expect(credentialsPermissionChecker.checkForUser).not.toHaveBeenCalled();
+			});
+
+			it('preserves the triggering user in the sub-workflow additional data for inline sub-workflows so nested inline calls stay scoped to that user', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+						parentWorkflowId: 'parent-1',
+					}),
+				);
+
+				const integratedAdditionalData = vi.mocked(WorkflowExecute).mock.calls[0][0];
+				expect(integratedAdditionalData.userId).toBe('user-1');
+			});
+
+			it('does not carry the triggering user into a database sub-workflow (runs under its own project scope)', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'db-id', code: undefined }),
+					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+					}),
+				);
+
+				const integratedAdditionalData = vi.mocked(WorkflowExecute).mock.calls[0][0];
+				expect(integratedAdditionalData.userId).toBeUndefined();
+			});
 		});
 
 		describe('sub-workflow dynamic credential reporting', () => {
@@ -1232,7 +1333,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 	describe('executeAgent', () => {
 		const ownershipService = mockInstance(OwnershipService);
-		const agentExecutionOrchestratorService = mockInstance(AgentExecutionOrchestratorService);
+		const agentWorkflowExecutionService = mockInstance(AgentWorkflowExecutionService);
 
 		const AGENT_ID = 'agent-id';
 		const MESSAGE = 'hello';
@@ -1241,8 +1342,11 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 		beforeEach(() => {
 			vi.clearAllMocks();
-			agentExecutionOrchestratorService.executeForWorkflow.mockResolvedValue(
-				mock<Awaited<ReturnType<typeof agentExecutionOrchestratorService.executeForWorkflow>>>(),
+			// Both this and the getBase describe call mockInstance(OwnershipService),
+			// which each Container.set a fresh mock. Re-bind ours so the source resolves it.
+			Container.set(OwnershipService, ownershipService);
+			agentWorkflowExecutionService.executeForWorkflow.mockResolvedValue(
+				mock<Awaited<ReturnType<typeof agentWorkflowExecutionService.executeForWorkflow>>>(),
 			);
 		});
 
@@ -1258,8 +1362,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			await executeAgent({ inlineAgent }, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'trigger');
 
-			expect(agentExecutionOrchestratorService.executeForWorkflow).not.toHaveBeenCalled();
-			expect(agentExecutionOrchestratorService.executeInlineForWorkflow).toHaveBeenCalledWith(
+			expect(agentWorkflowExecutionService.executeForWorkflow).not.toHaveBeenCalled();
+			expect(agentWorkflowExecutionService.executeInlineForWorkflow).toHaveBeenCalledWith(
 				inlineAgent,
 				MESSAGE,
 				EXEC_ID,
@@ -1284,7 +1388,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			await executeAgent({ inlineAgent }, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual');
 
-			expect(agentExecutionOrchestratorService.executeInlineForWorkflow).toHaveBeenCalledWith(
+			expect(agentWorkflowExecutionService.executeInlineForWorkflow).toHaveBeenCalledWith(
 				inlineAgent,
 				MESSAGE,
 				EXEC_ID,
@@ -1314,7 +1418,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			);
 
 			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
-			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
+			expect(agentWorkflowExecutionService.executeForWorkflow).toHaveBeenCalledWith(
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
@@ -1349,7 +1453,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				outputSchema,
 			);
 
-			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
+			expect(agentWorkflowExecutionService.executeForWorkflow).toHaveBeenCalledWith(
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
@@ -1387,7 +1491,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				workflowContext,
 			);
 
-			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
+			expect(agentWorkflowExecutionService.executeForWorkflow).toHaveBeenCalledWith(
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
@@ -1420,7 +1524,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			);
 
 			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('workflow-1');
-			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
+			expect(agentWorkflowExecutionService.executeForWorkflow).toHaveBeenCalledWith(
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
@@ -1446,7 +1550,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				'Cannot execute agent without a projectId or workflowId in additional data',
 			);
 			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
-			expect(agentExecutionOrchestratorService.executeForWorkflow).not.toHaveBeenCalled();
+			expect(agentWorkflowExecutionService.executeForWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('throws when workflowId is missing even if projectId is present', async () => {
@@ -1459,7 +1563,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			await expect(
 				executeAgent({ agentId: AGENT_ID }, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual'),
 			).rejects.toThrow('Cannot execute agent without a workflowId in additional data');
-			expect(agentExecutionOrchestratorService.executeForWorkflow).not.toHaveBeenCalled();
+			expect(agentWorkflowExecutionService.executeForWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('executes for trigger runs without any user', async () => {
@@ -1482,7 +1586,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			);
 
 			expect(ownershipService.getPersonalProjectOwnerCached).not.toHaveBeenCalled();
-			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
+			expect(agentWorkflowExecutionService.executeForWorkflow).toHaveBeenCalledWith(
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
@@ -1513,8 +1617,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 					mode,
 				);
 
-				// AgentExecutionOrchestratorService.executeForWorkflow should use draft mode.
-				expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
+				// AgentWorkflowExecutionService.executeForWorkflow should use draft mode.
+				expect(agentWorkflowExecutionService.executeForWorkflow).toHaveBeenCalledWith(
 					AGENT_ID,
 					MESSAGE,
 					EXEC_ID,
@@ -1547,8 +1651,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			await executeAgent({ agentId: AGENT_ID }, MESSAGE, EXEC_ID, THREAD_ID, additionalData, mode);
 
-			// AgentExecutionOrchestratorService.executeForWorkflow should use draft mode.
-			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
+			// AgentWorkflowExecutionService.executeForWorkflow should use draft mode.
+			expect(agentWorkflowExecutionService.executeForWorkflow).toHaveBeenCalledWith(
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,

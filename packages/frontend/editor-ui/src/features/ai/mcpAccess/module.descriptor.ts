@@ -40,7 +40,7 @@ export const MCPModule: FrontendModuleDescription = {
 			route: { to: { name: MCP_SETTINGS_VIEW } },
 			get available() {
 				return hasPermission(['rbac'], {
-					rbac: { scope: ['mcp:oauth', 'mcpApiKey:create', 'mcpApiKey:rotate'] },
+					rbac: { scope: ['mcp:manage', 'mcp:oauth', 'mcpApiKey:create', 'mcpApiKey:rotate'] },
 				});
 			},
 		},

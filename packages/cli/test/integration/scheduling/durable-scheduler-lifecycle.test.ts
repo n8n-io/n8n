@@ -83,8 +83,9 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 	it('runs the loops on a main and fires a due job end to end', async () => {
 		scheduler = buildScheduler({ enabled: true });
 		scheduler.registerTaskHandler(TASK_TYPE, {
-			execute: async (task) => {
+			execute: async (task, report) => {
 				executed.push(task);
+				return report.notDispatched();
 			},
 		});
 
@@ -106,8 +107,9 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 	it('does nothing when the flag is off, leaving occurrences untouched', async () => {
 		scheduler = buildScheduler({ enabled: false });
 		scheduler.registerTaskHandler(TASK_TYPE, {
-			execute: async (task) => {
+			execute: async (task, report) => {
 				executed.push(task);
+				return report.notDispatched();
 			},
 		});
 
@@ -128,8 +130,9 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 	it('stays disabled on a worker even with the flag on', async () => {
 		scheduler = buildScheduler({ enabled: true, instanceType: 'worker' });
 		scheduler.registerTaskHandler(TASK_TYPE, {
-			execute: async (task) => {
+			execute: async (task, report) => {
 				executed.push(task);
+				return report.notDispatched();
 			},
 		});
 

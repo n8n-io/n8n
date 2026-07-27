@@ -36,7 +36,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		const useRedis = backend === 'redis' || (backend === 'auto' && mode === 'queue');
 
 		if (useRedis) {
-			const { RedisClientService } = await import('../redis-client.service');
+			const { RedisClientService } = await import('../redis-client.service.js');
 			const redisClientService = Container.get(RedisClientService);
 
 			const prefixBase = this.globalConfig.redis.prefix;
@@ -52,7 +52,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 				extraOptions: { keyPrefix: prefix },
 			});
 
-			const { redisStoreUsingClient } = await import('@/services/cache/redis.cache-manager');
+			const { redisStoreUsingClient } = await import('@/services/cache/redis.cache-manager.js');
 			const redisStore = redisStoreUsingClient(redisClient, {
 				ttl: this.globalConfig.cache.redis.ttl,
 			});

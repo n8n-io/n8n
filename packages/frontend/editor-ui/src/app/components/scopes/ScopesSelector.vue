@@ -14,6 +14,7 @@ import {
 	N8nInputLabel,
 	N8nRadioGroup,
 	N8nRadioGroupItem,
+	N8nTooltip,
 } from '@n8n/design-system';
 
 import {
@@ -40,6 +41,13 @@ const props = withDefaults(
 		rootTestId?: string;
 		readActions?: readonly string[];
 		disabled?: boolean;
+		/**
+		 * Tool names each scope unlocks. When provided, group rows show a tool
+		 * count pill whose popover lists the tools enabled by the current
+		 * selection. Expected i18n keys under the prefix: `.tools.count`,
+		 * `.tools.enabledOf`.
+		 */
+		scopeTools?: Record<string, string[]>;
 	}>(),
 	{
 		rootTestId: 'scopes-selector',
@@ -104,9 +112,14 @@ const filteredGroups = computed<Array<{ group: ScopeGroup<S>; visibleScopes: S[]
 		.filter((entry) => entry.visibleScopes.length > 0);
 });
 
-function baseText(suffix: string, interpolate?: Record<string, string | number>): string {
+function baseText(
+	suffix: string,
+	interpolate?: Record<string, string | number>,
+	adjustToNumber?: number,
+): string {
 	return i18n.baseText(`${props.i18nKeyPrefix}.${suffix}` as BaseTextKey, {
 		interpolate,
+		adjustToNumber,
 	});
 }
 
@@ -179,6 +192,34 @@ function toggleGroupExpanded(group: ScopeGroup<S>) {
 		expanded.add(group.key);
 	}
 	expandedGroups.value = expanded;
+}
+
+// Per-group tool data: every tool the group unlocks plus which of those the
+// current selection enables. Computed once per reactive change and read via
+// O(1) lookups in the template, rather than rebuilding a Set on every call.
+const groupToolData = computed(() => {
+	const data = new Map<string, { tools: string[]; enabled: Set<string> }>();
+	if (!props.scopeTools) return data;
+	for (const group of groupedScopes.value) {
+		const tools = new Set<string>();
+		const enabled = new Set<string>();
+		for (const scope of group.scopes) {
+			for (const tool of props.scopeTools[scope] ?? []) {
+				tools.add(tool);
+				if (selectedSet.value.has(scope)) enabled.add(tool);
+			}
+		}
+		data.set(group.key, { tools: [...tools], enabled });
+	}
+	return data;
+});
+
+function groupTools(group: ScopeGroup<S>): string[] {
+	return groupToolData.value.get(group.key)?.tools ?? [];
+}
+
+function groupEnabledTools(group: ScopeGroup<S>): Set<string> {
+	return groupToolData.value.get(group.key)?.enabled ?? new Set();
 }
 
 function isGroupChecked(group: ScopeGroup<S>): boolean {
@@ -279,6 +320,57 @@ function toggleScope(scope: S, checked: boolean) {
 								:data-test-id="`scope-group-${group.key}`"
 								@update:model-value="(checked: boolean) => toggleGroup(group, checked)"
 							/>
+							<N8nTooltip
+								v-if="groupTools(group).length > 0"
+								placement="right"
+								:show-after="150"
+								:content-class="$style['tools-tooltip']"
+							>
+								<template #content>
+									<div
+										:class="$style['tools-popover']"
+										:data-test-id="`scope-group-tools-popover-${group.key}`"
+									>
+										<div :class="$style['tools-popover-header']">
+											{{
+												baseText('tools.enabledOf', {
+													enabled: groupEnabledTools(group).size,
+													total: groupTools(group).length,
+												})
+											}}
+										</div>
+										<div
+											v-for="tool in groupTools(group)"
+											:key="tool"
+											:class="[
+												$style['tool-row'],
+												{ [$style['tool-row-disabled']]: !groupEnabledTools(group).has(tool) },
+											]"
+										>
+											<N8nIcon
+												:icon="groupEnabledTools(group).has(tool) ? 'check' : 'circle'"
+												size="xsmall"
+												:class="$style['tool-icon']"
+											/>
+											<span :class="$style['tool-name']">{{ tool }}</span>
+										</div>
+									</div>
+								</template>
+								<span
+									:class="$style['tools-tag']"
+									tabindex="0"
+									:data-test-id="`scope-group-tools-${group.key}`"
+								>
+									<N8nIcon icon="wrench" size="xsmall" />
+									{{
+										baseText(
+											'tools.count',
+											{ count: groupTools(group).length },
+											groupTools(group).length,
+										)
+									}}
+								</span>
+							</N8nTooltip>
 						</div>
 						<div v-if="isGroupExpanded(group)" :class="$style.scopeList">
 							<div v-for="scope in visibleScopes" :key="scope" :class="$style.scopeRow">
@@ -342,6 +434,78 @@ function toggleScope(scope: S, checked: boolean) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
+}
+
+.tools-tag {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	margin-left: var(--spacing--2xs);
+	padding: var(--spacing--5xs) var(--spacing--2xs);
+	border-radius: var(--radius--full);
+	border: var(--border);
+	background-color: var(--color--background--light-2);
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--medium);
+	cursor: default;
+	transition:
+		color 150ms ease-out,
+		border-color 150ms ease-out;
+
+	&:hover,
+	&:focus-visible {
+		border-color: var(--color--primary);
+		color: var(--color--text--shade-1);
+	}
+}
+
+/* the shared tooltip caps content at 180px and centers it; tool identifiers need more room */
+:global(.n8n-tooltip).tools-tooltip {
+	max-width: 320px;
+	align-items: flex-start;
+}
+
+.tools-popover {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	width: max-content;
+	max-width: 100%;
+	max-height: 320px;
+	overflow-y: auto;
+	padding: var(--spacing--4xs);
+}
+
+.tools-popover-header {
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--bold);
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--color--text--tint-1);
+	margin-bottom: var(--spacing--4xs);
+}
+
+.tool-row {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+
+	.tool-icon {
+		color: var(--color--primary);
+	}
+}
+
+.tool-row-disabled {
+	.tool-icon,
+	.tool-name {
+		color: var(--color--text--tint-1);
+	}
+}
+
+.tool-name {
+	font-family: var(--font-family--monospace);
+	font-size: var(--font-size--3xs);
 }
 
 .scopeList {

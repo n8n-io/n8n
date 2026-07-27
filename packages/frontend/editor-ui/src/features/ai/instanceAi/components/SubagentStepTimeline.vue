@@ -15,6 +15,7 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed } from 'vue';
+import { HIDDEN_TOOLS } from '../agentTimeline.utils';
 import { getToolIcon, useToolLabel } from '../toolLabels';
 import ButtonLike from './ButtonLike.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
@@ -36,9 +37,6 @@ const i18n = useI18n();
 const { getToolLabel, getToggleLabel, getHideLabel } = useToolLabel();
 
 const CODE_BLOCK_PATTERN = /```/;
-
-/** Tool calls that are internal and should not be shown in the step timeline. */
-const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
 
 interface TimelineStep {
 	type: 'tool-call' | 'text';

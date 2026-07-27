@@ -51,13 +51,12 @@
 		},
 		{
 			"parameters": {
-				"mode": "jsonToBinary",
-				"convertAllData": false,
-				"options": { "useRawData": true }
+				"operation": "toJson",
+				"options": {}
 			},
-			"name": "Move Binary Data",
-			"type": "n8n-nodes-base.moveBinaryData",
-			"typeVersion": 1,
+			"name": "Convert to File",
+			"type": "n8n-nodes-base.convertToFile",
+			"typeVersion": 1.1,
 			"position": [440, 0],
 			"id": "221e00ed-8c9b-4313-a4d6-b87c64b09d80"
 		},
@@ -78,8 +77,8 @@
 		"When clicking ‘Execute workflow’": {
 			"main": [[{ "node": "Edit Fields", "type": "main", "index": 0 }]]
 		},
-		"Move Binary Data": { "main": [[{ "node": "Azure Storage", "type": "main", "index": 0 }]] },
-		"Edit Fields": { "main": [[{ "node": "Move Binary Data", "type": "main", "index": 0 }]] }
+		"Convert to File": { "main": [[{ "node": "Azure Storage", "type": "main", "index": 0 }]] },
+		"Edit Fields": { "main": [[{ "node": "Convert to File", "type": "main", "index": 0 }]] }
 	},
 	"pinData": {
 		"Azure Storage": [

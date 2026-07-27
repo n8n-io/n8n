@@ -6,7 +6,7 @@ import { useToast } from '@/app/composables/useToast';
 import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 
-import type { UserManagementAuthenticationMethod } from '@/Interface';
+import type { AuthenticationMethod } from '@n8n/api-types';
 import {
 	registerModuleModals,
 	registerModuleProjectTabs,
@@ -18,8 +18,9 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -73,8 +74,7 @@ export async function initializeCore() {
 	}
 
 	ssoStore.initialize({
-		authenticationMethod: settingsStore.userManagement
-			.authenticationMethod as UserManagementAuthenticationMethod,
+		authenticationMethod: settingsStore.userManagement.authenticationMethod as AuthenticationMethod,
 		managedByEnv: settingsStore.settings.sso.managedByEnv,
 		config: settingsStore.settings.sso,
 		features: {
@@ -122,6 +122,15 @@ export async function initializeAuthenticatedFeatures(
 	const versionsStore = useVersionsStore();
 	const dataTableStore = useDataTableStore();
 	const favoritesStore = useFavoritesStore();
+	const uiStore = useUIStore();
+
+	// Provide the modal-open actions to the stores that were decoupled from `ui.store`,
+	// so they can open modals without importing it.
+	usersStore.registerModalOpener(uiStore.openModal);
+	versionsStore.registerModalOpeners({
+		openModal: uiStore.openModal,
+		openModalWithData: uiStore.openModalWithData,
+	});
 
 	if (!settingsStore.isPreviewMode) {
 		usersStore.setUserQuota(settingsStore.userManagement.quota);
@@ -248,7 +257,7 @@ function registerAuthenticationHooks() {
 		// Without this, navigating to SSO settings after login shows an empty redirect URL.
 		ssoStore.initialize({
 			authenticationMethod: settingsStore.userManagement
-				.authenticationMethod as UserManagementAuthenticationMethod,
+				.authenticationMethod as AuthenticationMethod,
 			managedByEnv: settingsStore.settings.sso.managedByEnv,
 			config: settingsStore.settings.sso,
 			features: {

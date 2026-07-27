@@ -67,7 +67,7 @@ export class NodeTestHarness {
 
 	setupTests(options: TestOptions = {}) {
 		const workflowFilenames =
-			options.workflowFiles?.map((fileName) => path.join(this.relativePath, fileName)) ??
+			options.workflowFiles?.map((fileName) => path.posix.join(this.relativePath, fileName)) ??
 			this.workflowFilenames;
 
 		const tests = this.workflowToTests(workflowFilenames, options);
@@ -150,7 +150,7 @@ export class NodeTestHarness {
 
 	@Memoized
 	private get relativePath() {
-		return path.relative(this.packageDir, this.testDir);
+		return path.relative(this.packageDir, this.testDir).split(path.sep).join(path.posix.sep);
 	}
 
 	@Memoized
@@ -236,6 +236,9 @@ export class NodeTestHarness {
 			encryptedRunnerIdentity: undefined,
 		});
 		additionalData.credentialsHelper = credentialsHelper;
+		// Prevent the auto-mocked property from being truthy so credential and
+		// request helpers don't take the eval-mock code path.
+		(additionalData as unknown as Record<string, unknown>).evalLlmMockHandler = undefined;
 
 		let executionData: IRun;
 		const runExecutionData = createRunExecutionData({

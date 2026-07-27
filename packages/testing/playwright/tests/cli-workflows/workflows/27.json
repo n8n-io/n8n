@@ -332,142 +332,156 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 8 Seconds",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [440, 310],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "b1a45946-ff9a-483d-99b3-42f6dc8d6471"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 8 Seconds1",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [710, 340],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "f780613f-41a1-4c01-b7b5-0143f87c6f3a"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 8 Seconds2",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [980, 460],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "51af53ab-592e-4417-9601-92c4714c1980"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 8 Seconds3",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [1240, 460],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "d5bfeee6-1a7e-4353-a20f-4ed4b5cba689"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 8 Seconds4",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [1570, 460],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "9ab01733-73f7-498e-a969-9515ad2b5e32"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 8 Seconds5",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [1890, 460],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "aa025cf9-c5e5-4f3b-bb62-3197d973011c"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 8 Seconds6",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [2210, 460],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "9d4d54c4-f642-4e4c-b717-10387a49989d"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 8 Seconds7",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [980, 660],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "d724d742-235c-43df-ba81-619d2f840dd5"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 8 Seconds8",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [1240, 660],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "d0b9f5e5-c66c-479b-bf37-c04b2643742f"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 8 Seconds9",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [1550, 660],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "3950ee56-9ec9-4e78-ada3-857ab17aba27"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 8 Seconds10",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [1890, 660],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "c3728ed7-486c-4a6d-865e-08a21426368c"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 8 Seconds11",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [2210, 660],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "021dbc08-7d4e-4867-808c-58f6844c6634"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 8 Seconds12",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [2530, 660],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "be53074b-6bfd-4fef-b359-034dd3be06f4"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 8 Seconds13",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [700, 660],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "ce69e0ce-50d7-416f-9349-dc3b5e378fd3"
 		}
 	],

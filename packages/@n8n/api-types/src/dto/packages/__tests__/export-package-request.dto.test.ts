@@ -85,4 +85,65 @@ describe('ExportPackageRequestDto', () => {
 			expect(ExportPackageRequestDto.safeParse(request).success).toBe(false);
 		});
 	});
+
+	describe('includeVariableValues', () => {
+		it('defaults to true when omitted', () => {
+			const result = ExportPackageRequestDto.safeParse({ workflowIds: ['wf-1'] });
+			expect(result.success).toBe(true);
+			if (result.success) expect(result.data.includeVariableValues).toBe(true);
+		});
+
+		it.each([true, false])('accepts explicit %s', (includeVariableValues) => {
+			const result = ExportPackageRequestDto.safeParse({
+				workflowIds: ['wf-1'],
+				includeVariableValues,
+			});
+			expect(result.success).toBe(true);
+			if (result.success) expect(result.data.includeVariableValues).toBe(includeVariableValues);
+		});
+
+		it.each([
+			{ name: 'string value', includeVariableValues: 'false' },
+			{ name: 'numeric value', includeVariableValues: 0 },
+			{ name: 'null value', includeVariableValues: null },
+		])('rejects $name', ({ includeVariableValues }) => {
+			const result = ExportPackageRequestDto.safeParse({
+				workflowIds: ['wf-1'],
+				includeVariableValues,
+			});
+			expect(result.success).toBe(false);
+		});
+	});
+
+	describe('missingWorkflowDependencyPolicy', () => {
+		it.each(['fail', 'reference-only', 'include-in-package'])(
+			'accepts %s',
+			(missingWorkflowDependencyPolicy) => {
+				const result = ExportPackageRequestDto.safeParse({
+					workflowIds: ['wf-1'],
+					missingWorkflowDependencyPolicy,
+				});
+
+				expect(result.success).toBe(true);
+			},
+		);
+
+		it('defaults to fail', () => {
+			const result = ExportPackageRequestDto.safeParse({ workflowIds: ['wf-1'] });
+
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.missingWorkflowDependencyPolicy).toBe('fail');
+			}
+		});
+
+		it('rejects unknown values', () => {
+			const result = ExportPackageRequestDto.safeParse({
+				workflowIds: ['wf-1'],
+				missingWorkflowDependencyPolicy: 'skip',
+			});
+
+			expect(result.success).toBe(false);
+		});
+	});
 });

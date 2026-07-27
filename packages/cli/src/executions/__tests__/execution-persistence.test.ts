@@ -67,6 +67,7 @@ describe('ExecutionPersistence', () => {
 			raw: {},
 		});
 		mockTx.update.mockResolvedValue({ affected: 1, generatedMaps: [], raw: {} });
+		mockTx.delete.mockResolvedValue({ affected: 1, raw: {} });
 		return mockTx;
 	};
 
@@ -147,7 +148,7 @@ describe('ExecutionPersistence', () => {
 				);
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'execution-data-write',
-					expect.objectContaining({ jsonSizeBytes: 4321 }),
+					expect.objectContaining({ jsonSizeBytes: 4321, workflowId: 'workflow-123' }),
 				);
 			});
 
@@ -375,6 +376,104 @@ describe('ExecutionPersistence', () => {
 						deduplicationKey: 'wf-1:node-1:1700000000000',
 					}),
 				);
+			});
+		});
+
+		describe('tombstone reclaim', () => {
+			// A sibling test leaves `jsonStore.write` rejecting, and `vi.clearAllMocks()` does not
+			// reset implementations; restore a resolving write so the fs create path succeeds.
+			beforeEach(() => {
+				jsonStore.write.mockResolvedValue(123);
+			});
+
+			const payloadWithKey: CreateExecutionPayload = {
+				...createPayload,
+				deduplicationKey: 'wf-1:node-1:1700000000000',
+			};
+
+			const mockTombstone = (storedAt: 'db' | 'fs' | 's3' | 'az') =>
+				({
+					id: 'exec-old',
+					workflowId: 'workflow-123',
+					storedAt,
+				}) as unknown as ExecutionEntity;
+
+			it('deletes a reclaimed fs-mode tombstone data blob after the replacement commits', async () => {
+				const fsPersistence = createPersistenceService('fs');
+				const mockTx = createMockTransaction();
+				// A prior attempt left an orphaned `new` tombstone under this key, stored on fs.
+				mockTx.findOne.mockResolvedValue(mockTombstone('fs'));
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				const executionId = await fsPersistence.create(payloadWithKey);
+
+				expect(executionId).toBe('exec-1');
+				// The tombstone DB row is deleted inside the transaction, scoped to `new`...
+				expect(mockTx.delete).toHaveBeenCalledWith(ExecutionEntity, {
+					id: 'exec-old',
+					status: 'new',
+				});
+				// ...and its out-of-band blob is cleared after commit, keyed by the old (tombstone) id.
+				expect(jsonStore.delete).toHaveBeenCalledWith([
+					{ workflowId: 'workflow-123', executionId: 'exec-old', storedAt: 'fs' },
+				]);
+			});
+
+			it('does not touch the blob store when the reclaimed tombstone was db-stored', async () => {
+				const dbPersistence = createPersistenceService('db');
+				const mockTx = createMockTransaction();
+				mockTx.findOne.mockResolvedValue(mockTombstone('db'));
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await dbPersistence.create(payloadWithKey);
+
+				// db-stored data cascaded with the row delete; nothing to clear out of band.
+				expect(mockTx.delete).toHaveBeenCalledWith(ExecutionEntity, {
+					id: 'exec-old',
+					status: 'new',
+				});
+				expect(jsonStore.delete).not.toHaveBeenCalled();
+			});
+
+			it('does not clear the blob when the tombstone advanced out of `new` before the delete', async () => {
+				const fsPersistence = createPersistenceService('fs');
+				const mockTx = createMockTransaction();
+				// The tombstone was `new` at read, but a worker started it before the delete,
+				// so the `status: 'new'`-scoped delete affects no row.
+				mockTx.findOne.mockResolvedValue(mockTombstone('fs'));
+				mockTx.delete.mockResolvedValue({ affected: 0, raw: {} });
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await fsPersistence.create(payloadWithKey);
+
+				// No row was removed, so the in-flight execution's blob is left in place.
+				expect(jsonStore.delete).not.toHaveBeenCalled();
+			});
+
+			it('reports but does not fail the create when the post-commit blob cleanup fails', async () => {
+				const fsPersistence = createPersistenceService('fs');
+				const mockTx = createMockTransaction();
+				mockTx.findOne.mockResolvedValue(mockTombstone('fs'));
+				executionRepository.manager.transaction = createMockTx(mockTx);
+				const cleanupError = new Error('blob store down');
+				jsonStore.delete.mockRejectedValueOnce(cleanupError);
+
+				// The new execution is committed, so a failed orphan cleanup is reported, not thrown.
+				const executionId = await fsPersistence.create(payloadWithKey);
+
+				expect(executionId).toBe('exec-1');
+				expect(errorReporter.error).toHaveBeenCalledWith(cleanupError, expect.anything());
+			});
+
+			it('skips the tombstone lookup and cleanup entirely without a deduplicationKey', async () => {
+				const fsPersistence = createPersistenceService('fs');
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await fsPersistence.create(createPayload); // no deduplicationKey
+
+				expect(mockTx.findOne).not.toHaveBeenCalled();
+				expect(jsonStore.delete).not.toHaveBeenCalled();
 			});
 		});
 	});
@@ -1044,7 +1143,7 @@ describe('ExecutionPersistence', () => {
 				);
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'execution-data-write',
-					expect.objectContaining({ jsonSizeBytes: 2048 }),
+					expect.objectContaining({ jsonSizeBytes: 2048, workflowId: 'wf-1' }),
 				);
 			});
 
@@ -1069,7 +1168,7 @@ describe('ExecutionPersistence', () => {
 				);
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'execution-data-write',
-					expect.objectContaining({ jsonSizeBytes: 1536 }),
+					expect.objectContaining({ jsonSizeBytes: 1536, workflowId: 'wf-1' }),
 				);
 			});
 
@@ -1756,6 +1855,115 @@ describe('ExecutionPersistence', () => {
 		});
 	});
 
+	describe('hardDeleteByWorkflowId', () => {
+		const executionPersistence = createPersistenceService('db');
+
+		const executionRow = (id: string, storedAt: 'db' | 'fs' = 'db') =>
+			Object.assign(new ExecutionEntity(), { id, workflowId: 'wf-1', storedAt });
+
+		it('should delete executions in batches until none remain, including soft-deleted ones', async () => {
+			executionRepository.find
+				.mockResolvedValueOnce([executionRow('exec-1'), executionRow('exec-2', 'fs')])
+				.mockResolvedValueOnce([executionRow('exec-3')])
+				.mockResolvedValueOnce([]);
+
+			await executionPersistence.hardDeleteByWorkflowId('wf-1');
+
+			expect(executionRepository.find).toHaveBeenCalledTimes(3);
+			expect(executionRepository.find).toHaveBeenCalledWith({
+				select: ['id', 'workflowId', 'storedAt'],
+				where: { workflowId: 'wf-1' },
+				take: 500,
+				withDeleted: true,
+			});
+			expect(executionRepository.deleteByIds).toHaveBeenNthCalledWith(1, ['exec-1', 'exec-2']);
+			expect(executionRepository.deleteByIds).toHaveBeenNthCalledWith(2, ['exec-3']);
+			expect(binaryDataService.deleteMany).toHaveBeenCalledTimes(2);
+			expect(jsonStore.delete).toHaveBeenNthCalledWith(1, [
+				{ executionId: 'exec-2', workflowId: 'wf-1', storedAt: 'fs' },
+			]);
+		});
+
+		it('should delete nothing when the workflow has no executions', async () => {
+			executionRepository.find.mockResolvedValueOnce([]);
+
+			await executionPersistence.hardDeleteByWorkflowId('wf-1');
+
+			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+			expect(binaryDataService.deleteMany).not.toHaveBeenCalled();
+			expect(jsonStore.delete).not.toHaveBeenCalled();
+		});
+
+		it('should propagate a batch failure without deleting further batches', async () => {
+			executionRepository.find
+				.mockResolvedValueOnce([executionRow('exec-1')])
+				.mockResolvedValueOnce([executionRow('exec-2')]);
+			executionRepository.deleteByIds
+				.mockResolvedValueOnce(mock())
+				.mockRejectedValueOnce(new Error('connection lost'));
+
+			await expect(executionPersistence.hardDeleteByWorkflowId('wf-1')).rejects.toThrow(
+				'connection lost',
+			);
+
+			// first batch was deleted before the failure; retrying resumes from the rest
+			expect(executionRepository.deleteByIds).toHaveBeenNthCalledWith(1, ['exec-1']);
+			expect(executionRepository.deleteByIds).toHaveBeenNthCalledWith(2, ['exec-2']);
+			expect(executionRepository.find).toHaveBeenCalledTimes(2);
+		});
+
+		it('should throw instead of looping on when executions keep being added', async () => {
+			const sqlitePersistence = createPersistenceService('db', 'sqlite');
+			executionRepository.find.mockResolvedValue([executionRow('exec-1')]);
+
+			await expect(sqlitePersistence.hardDeleteByWorkflowId('wf-1')).rejects.toThrow(
+				'executions keep being added',
+			);
+
+			expect(executionRepository.find).toHaveBeenCalledTimes(20_001); // fixed per-run batch cap + final probe
+			expect(executionRepository.query).not.toHaveBeenCalled(); // no catalog estimate outside Postgres
+			executionRepository.find.mockReset();
+		});
+
+		it('should succeed when the deletion converges exactly on the last allowed batch', async () => {
+			const sqlitePersistence = createPersistenceService('db', 'sqlite');
+			for (let i = 0; i < 20_000; i++) {
+				executionRepository.find.mockResolvedValueOnce([executionRow('exec-1')]);
+			}
+			executionRepository.find.mockResolvedValue([]); // final probe finds none left
+
+			await expect(sqlitePersistence.hardDeleteByWorkflowId('wf-1')).resolves.toBeUndefined();
+
+			expect(executionRepository.find).toHaveBeenCalledTimes(20_001); // 20k full batches + final probe
+			executionRepository.find.mockReset();
+		});
+
+		it('should scale the safeguard cap with the table-size estimate on Postgres', async () => {
+			executionRepository.query.mockResolvedValueOnce([{ estimate: '10000000' }]);
+			executionRepository.find.mockResolvedValue([executionRow('exec-1')]);
+
+			await expect(executionPersistence.hardDeleteByWorkflowId('wf-1')).rejects.toThrow(
+				'executions keep being added',
+			);
+
+			// 2 x 10M estimate / 500 per batch = 40k batches, + final probe
+			expect(executionRepository.find).toHaveBeenCalledTimes(40_001);
+			executionRepository.find.mockReset();
+		});
+
+		it('should fall back to the fixed cap when the Postgres estimate is unavailable', async () => {
+			executionRepository.query.mockResolvedValueOnce([{ estimate: '-1' }]); // never-analyzed table
+			executionRepository.find.mockResolvedValue([executionRow('exec-1')]);
+
+			await expect(executionPersistence.hardDeleteByWorkflowId('wf-1')).rejects.toThrow(
+				'executions keep being added',
+			);
+
+			expect(executionRepository.find).toHaveBeenCalledTimes(20_001);
+			executionRepository.find.mockReset();
+		});
+	});
+
 	describe('deleteUnsaved', () => {
 		const target = { workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'db' as const };
 
@@ -1823,7 +2031,12 @@ describe('ExecutionPersistence', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'execution-data-write',
-				expect.objectContaining({ mode: 'db', success: true, durationMs: expect.any(Number) }),
+				expect.objectContaining({
+					mode: 'db',
+					workflowId: 'workflow-123',
+					success: true,
+					durationMs: expect.any(Number),
+				}),
 			);
 		});
 
@@ -1836,7 +2049,7 @@ describe('ExecutionPersistence', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'execution-data-write',
-				expect.objectContaining({ mode: 'db', success: false }),
+				expect.objectContaining({ mode: 'db', workflowId: 'workflow-123', success: false }),
 			);
 		});
 

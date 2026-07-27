@@ -37,10 +37,7 @@ export const AI_ASSISTANT_SDK_VERSION = aiAssistantPackageJson.version;
 export const WORKFLOW_SDK_VERSION = workflowSdkPackageJson.version;
 export const N8N_RELEASE_DATE = statSync(packageJsonPath).mtime;
 
-export const STARTING_NODES = [
-	'@n8n/n8n-nodes-langchain.manualChatTrigger',
-	'n8n-nodes-base.manualTrigger',
-];
+export const STARTING_NODES = ['n8n-nodes-base.manualTrigger'];
 
 export const TRIGGER_COUNT_EXCLUDED_NODES = [
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
@@ -120,6 +117,25 @@ export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'googleSheetsOAuth2Api',
 	'googleBigQueryOAuth2Api',
 	'zendeskOAuth2Api',
+	'gmailOAuth2',
+	'gSuiteAdminOAuth2Api',
+	'googleAdsOAuth2Api',
+	'googleAnalyticsOAuth2',
+	'googleBooksOAuth2Api',
+	'googleBusinessProfileOAuth2Api',
+	'googleChatOAuth2Api',
+	'googleCloudNaturalLanguageOAuth2Api',
+	'googleContactsOAuth2Api',
+	'googleDocsOAuth2Api',
+	'googleDriveOAuth2Api',
+	'googleFirebaseCloudFirestoreOAuth2Api',
+	'googleFirebaseRealtimeDatabaseOAuth2Api',
+	'googlePerspectiveOAuth2Api',
+	'googleSheetsTriggerOAuth2Api',
+	'googleSlidesOAuth2Api',
+	'googleTasksOAuth2Api',
+	'googleTranslateOAuth2Api',
+	'youTubeOAuth2Api',
 ];
 
 export const ARTIFICIAL_TASK_DATA = {

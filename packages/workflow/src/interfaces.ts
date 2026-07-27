@@ -846,8 +846,6 @@ export interface BinaryHelperFunctions {
 		mimeType?: string,
 	): Promise<IBinaryData>;
 	setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData>;
-	/** @deprecated */
-	copyBinaryFile(): Promise<never>;
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
 	binaryToString(body: Buffer | Readable, encoding?: BufferEncoding): Promise<string>;
 	getBinaryPath(binaryDataId: string): string;
@@ -1191,6 +1189,14 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getInputSourceData(inputIndex?: number, connectionType?: NodeConnectionType): ISourceData;
 	getExecutionCancelSignal(): AbortSignal | undefined;
 	onExecutionCancellation(handler: () => unknown): void;
+	/**
+	 * Registers a handler run when the execution ends (success, failure, or
+	 * cancellation) — not when it pauses into the waiting state. May fire more
+	 * than once, so handlers must be idempotent; errors they throw are caught
+	 * and logged. Unavailable in contexts without lifecycle hooks, so callers
+	 * need their own fallback cleanup.
+	 */
+	onExecutionFinish?(handler: () => unknown): void;
 	logAiEvent(eventName: AiEvent, msg?: string): void;
 };
 
@@ -1322,6 +1328,8 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 		getExecutionCancelSignal(): AbortSignal | undefined;
 		onExecutionCancellation(handler: () => unknown): void;
+		/** See {@link BaseExecutionFunctions.onExecutionFinish} */
+		onExecutionFinish?(handler: () => unknown): void;
 		logAiEvent(eventName: AiEvent, msg?: string): void;
 		addExecutionHints(...hints: NodeExecutionHint[]): void;
 		cloneWith(replacements: {
@@ -1469,6 +1477,13 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
 	validateCookieAuth(cookieValue: string): Promise<IUser>;
+	/** Emits telemetry for an advanced HITL response actioned via this webhook. */
+	logHitlResponse(
+		payload: Pick<
+			HitlResponseTelemetryPayload,
+			'approved' | 'authorized' | 'response_mode' | 'advanced_email'
+		>,
+	): void;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
@@ -1551,8 +1566,14 @@ export interface IPairedItemData {
 }
 
 export const ChatNodeMessageType = {
+	MESSAGE: 'message',
 	WITH_BUTTONS: 'with-buttons',
 } as const;
+
+export type ChatNodeMessageRegular = {
+	type: typeof ChatNodeMessageType.MESSAGE;
+	text: string;
+};
 
 export type ChatNodeMessageButtonType = 'primary' | 'secondary';
 
@@ -1715,8 +1736,6 @@ export type NodePropertyTypes =
 	| 'workflowSelector'
 	| 'agentSelector';
 
-export type CodeAutocompleteTypes = 'function' | 'functionItem';
-
 export type EditorType = 'codeNodeEditor' | 'jsEditor' | 'htmlEditor' | 'sqlEditor' | 'cssEditor';
 export type CodeNodeEditorLanguage = (typeof CODE_LANGUAGES)[number];
 export type CodeExecutionMode = (typeof CODE_EXECUTION_MODES)[number];
@@ -1768,7 +1787,6 @@ export interface INodePropertyTypeOptions {
 	};
 	containerClass?: string; // Supported by: notice
 	alwaysOpenEditWindow?: boolean; // Supported by: json
-	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
 	editor?: EditorType; // Supported by: string
 	editorIsReadOnly?: boolean; // Supported by: string
 	sqlDialect?: SQLDialect; // Supported by: sqlEditor
@@ -1882,6 +1900,7 @@ export type DisplayCondition =
 export type NodeFeatures = Record<string, boolean>;
 export type FeatureCondition = { '@version': Array<number | DisplayCondition> };
 export type NodeFeaturesDefinition = Record<string, FeatureCondition>;
+export type DeploymentCondition = 'cloud' | 'hosted';
 
 export interface IDisplayOptions {
 	hide?: {
@@ -1894,6 +1913,11 @@ export interface IDisplayOptions {
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};
 
+	showOnDeployment?: DeploymentCondition;
+
+	/**
+	 * @deprecated Use showOnDeployment instead
+	 */
 	hideOnCloud?: boolean;
 }
 export interface ICredentialsDisplayOptions {
@@ -1905,6 +1929,11 @@ export interface ICredentialsDisplayOptions {
 		[key: string]: NodeParameterValue[] | undefined;
 	};
 
+	showOnDeployment?: DeploymentCondition;
+
+	/**
+	 * @deprecated Use showOnDeployment instead
+	 */
 	hideOnCloud?: boolean;
 }
 
@@ -2125,7 +2154,11 @@ export interface InlineAgentPayload {
 		credential?: string;
 		instructions?: string;
 		tools?: IDataObject[];
+		mcpServers?: IDataObject[];
+		skills?: Array<{ type?: string; id?: string }>;
 	};
+	/** Skill bodies keyed by the ids `config.skills` references. */
+	skills?: Record<string, IDataObject>;
 }
 
 /** Which agent to execute: a saved agent by id, or an inline definition. */
@@ -2174,6 +2207,8 @@ export interface ExecuteAgentWorkflowContext {
 	workflowName?: string;
 	/** Name of the node that invoked the agent */
 	callingNodeName: string;
+	/** ID of the node that invoked the agent */
+	callingNodeId?: string;
 	/** The calling node's input items, already scoped per {@link ExecuteAgentInfo.inputDataScope}. */
 	inputData?: INodeExecutionData[];
 	/** Which slice {@link inputData} represents. */
@@ -2735,10 +2770,6 @@ export interface INodeOutputConfiguration {
 export type ExpressionString = `={{${string}}}`;
 
 export type NodeDefaults = Partial<{
-	/**
-	 * @deprecated Use {@link INodeTypeBaseDescription.iconColor|iconColor} instead. `iconColor` supports dark mode and uses preset colors from n8n's design system.
-	 */
-	color: string;
 	name: string;
 }>;
 
@@ -3291,6 +3322,7 @@ export interface IWorkflowGroup {
 	id: string;
 	name: string;
 	nodeIds: string[];
+	description?: string;
 }
 
 export interface IWorkflowBase {
@@ -3463,6 +3495,28 @@ type AiEventPayload = {
 	nodeType?: string;
 };
 
+/** Telemetry emitted when an advanced HITL (human-in-the-loop) response is actioned. */
+export type HitlResponseTelemetryPayload = {
+	nodeType: string;
+	/** The decision the responder made. */
+	approved: boolean;
+	/**
+	 * Whether the responder was on the node's approver allow-list (empty list = anyone).
+	 * Only chat nodes set this; email/confirmation-page nodes cannot identify the
+	 * responder and omit it.
+	 */
+	authorized?: boolean;
+	/**
+	 * How an email responder actioned the request: `confirmation_page` (the
+	 * double-confirm POST) or `direct_link` (a one-click email button GET). Only
+	 * email nodes set this; chat nodes omit it.
+	 */
+	response_mode?: 'confirmation_page' | 'direct_link';
+	advanced_email?: boolean;
+	executionId?: string;
+	workflowId?: string;
+};
+
 export type AgentRequestQuery = { [nodeName: string]: Record<string, unknown> | string };
 // Used to transport an agent request for partial execution
 export interface AiAgentRequest {
@@ -3524,6 +3578,7 @@ export interface IWorkflowExecuteAdditionalData {
 	projectId?: string;
 	variables: IDataObject;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
+	logHitlResponse?: (payload: HitlResponseTelemetryPayload) => void;
 	parentCallbackManager?: CallbackManager;
 	/**
 	 * The execution mode of the root (top-level) workflow. Used to propagate manual

@@ -11,7 +11,9 @@ const {
 	mockNodeTypesStore,
 	mockCanvasOperations,
 	mockTelemetry,
+	mockGroupTelemetry,
 	mockHistoryStore,
+	mockUIStore,
 } = vi.hoisted(() => ({
 	mockWorkflowsStore: {
 		workflowId: 'parent-workflow-id',
@@ -25,16 +27,25 @@ const {
 		parentFolder: null as { id: string } | null,
 		getNodeById: vi.fn(),
 		getNodeByName: vi.fn(),
+		getParentNodes: vi.fn().mockReturnValue([]),
 		getChildNodes: vi.fn().mockReturnValue([]),
-		getExpressionHandler: vi.fn().mockReturnValue({}),
+		getExpressionHandler: vi.fn().mockReturnValue(undefined),
 		getGroupForNode: vi.fn(),
 		getGroupById: vi.fn(),
 		addNodesToGroup: vi.fn(),
+		deleteGroup: vi.fn(),
 	},
 	mockNodeTypesStore: {
 		getNodeType: vi.fn().mockReturnValue({
+			displayName: 'Set',
+			name: 'n8n-nodes-base.set',
+			group: ['transform'],
+			version: 1,
+			description: '',
+			defaults: { name: 'Set' },
 			inputs: ['main'],
 			outputs: ['main'],
+			properties: [],
 		}),
 	},
 	mockCanvasOperations: {
@@ -46,10 +57,18 @@ const {
 	mockTelemetry: {
 		track: vi.fn(),
 	},
+	mockGroupTelemetry: {
+		trackUngrouped: vi.fn(),
+	},
 	mockHistoryStore: {
 		startRecordingUndo: vi.fn(),
 		stopRecordingUndo: vi.fn(),
 		pushCommandToUndo: vi.fn(),
+	},
+	mockUIStore: {
+		resetLastInteractedWith: vi.fn(),
+		markStateDirty: vi.fn(),
+		openModalWithData: vi.fn(),
 	},
 }));
 
@@ -70,11 +89,7 @@ vi.mock('@/app/composables/useCanvasOperations', () => ({
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
-	useUIStore: vi.fn().mockReturnValue({
-		resetLastInteractedWith: vi.fn(),
-		markStateDirty: vi.fn(),
-		openModalWithData: vi.fn(),
-	}),
+	useUIStore: vi.fn().mockReturnValue(mockUIStore),
 }));
 
 vi.mock('@/app/stores/history.store', () => ({
@@ -92,6 +107,10 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue(mockTelemetry),
 }));
 
+vi.mock('@/features/workflows/canvas/composables/useCanvasNodeGroupTelemetry', () => ({
+	useCanvasNodeGroupTelemetry: vi.fn().mockReturnValue(mockGroupTelemetry),
+}));
+
 vi.mock('@n8n/i18n', () => ({
 	useI18n: vi.fn().mockReturnValue({
 		baseText: vi.fn().mockImplementation((key: string) => key),
@@ -105,7 +124,7 @@ vi.mock('vue-router', () => ({
 }));
 
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
-import { UpdateNodeGroupCommand } from '@/app/models/history';
+import { RemoveNodeGroupCommand, UpdateNodeGroupCommand } from '@/app/models/history';
 
 function makeNode(name: string, position: [number, number] = [0, 0]): INodeUi {
 	return {
@@ -121,6 +140,22 @@ function makeNode(name: string, position: [number, number] = [0, 0]): INodeUi {
 	} as INodeUi;
 }
 
+function setWorkflowNodes(nodes: INodeUi[]) {
+	mockWorkflowDocumentStore.allNodes = nodes;
+	const nodesById = new Map(nodes.map((node) => [node.id, node]));
+	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
+
+	mockWorkflowDocumentStore.getNodeById.mockImplementation((id: string) => nodesById.get(id));
+	mockWorkflowDocumentStore.getNodeByName.mockImplementation(
+		(name: string) => nodesByName.get(name) ?? null,
+	);
+}
+
+function mockSuccessfulWorkflowCreation() {
+	mockWorkflowsStore.createNewWorkflow.mockResolvedValue({ id: 'new-id', versionId: 'v1' });
+	mockWorkflowsStore.publishWorkflow.mockResolvedValue(undefined);
+}
+
 describe('useWorkflowExtraction', () => {
 	beforeEach(() => {
 		const pinia = createTestingPinia({ stubActions: false });
@@ -133,10 +168,23 @@ describe('useWorkflowExtraction', () => {
 		mockCanvasOperations.deleteNodes.mockClear();
 		mockCanvasOperations.replaceNodeParameters.mockClear();
 		mockTelemetry.track.mockClear();
+		mockGroupTelemetry.trackUngrouped.mockClear();
+		mockUIStore.resetLastInteractedWith.mockClear();
+		mockUIStore.markStateDirty.mockClear();
+		mockUIStore.openModalWithData.mockClear();
+		mockWorkflowDocumentStore.getNodeById.mockReset();
+		mockWorkflowDocumentStore.getNodeByName.mockReset();
+		mockWorkflowDocumentStore.getParentNodes.mockReset();
+		mockWorkflowDocumentStore.getParentNodes.mockReturnValue([]);
+		mockWorkflowDocumentStore.getChildNodes.mockReset();
 		mockWorkflowDocumentStore.getChildNodes.mockReturnValue([]);
+		mockWorkflowDocumentStore.getExpressionHandler.mockReset();
+		mockWorkflowDocumentStore.getExpressionHandler.mockReturnValue(undefined);
 		mockWorkflowDocumentStore.getGroupForNode.mockReset();
 		mockWorkflowDocumentStore.getGroupById.mockReset();
 		mockWorkflowDocumentStore.addNodesToGroup.mockReset();
+		mockWorkflowDocumentStore.deleteGroup.mockReset();
+		mockNodeTypesStore.getNodeType.mockClear();
 		mockHistoryStore.startRecordingUndo.mockClear();
 		mockHistoryStore.stopRecordingUndo.mockClear();
 		mockHistoryStore.pushCommandToUndo.mockClear();
@@ -152,6 +200,50 @@ describe('useWorkflowExtraction', () => {
 
 			expect(mockTelemetry.track).not.toHaveBeenCalled();
 		});
+
+		it('includes attached sub-nodes when starting extraction', () => {
+			const nodeA = makeNode('A', [0, 0]);
+			const agentB = makeNode('Agent B', [200, 0]);
+			const agentC = makeNode('Agent C', [400, 0]);
+			const model = makeNode('Model', [200, 120]);
+
+			setWorkflowNodes([nodeA, agentB, agentC, model]);
+			mockWorkflowDocumentStore.connectionsBySourceNode = {
+				A: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Agent B', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				'Agent B': {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Agent C', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				Model: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[{ node: 'Agent B', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+					],
+				},
+			};
+			mockWorkflowDocumentStore.getParentNodes.mockImplementation((nodeName, type) => {
+				if (nodeName === 'Agent B' && type === 'ALL_NON_MAIN') return ['Model'];
+				return [];
+			});
+
+			const { extractWorkflow } = useWorkflowExtraction();
+
+			extractWorkflow([agentB.id]);
+
+			expect(mockUIStore.openModalWithData).toHaveBeenCalledTimes(1);
+			const modalData = mockUIStore.openModalWithData.mock.calls[0][0].data as {
+				subGraph: INodeUi[];
+				selection: { start?: string; end?: string };
+			};
+			expect(modalData.subGraph.map((node) => node.name).sort()).toEqual(
+				['Agent B', 'Model'].sort(),
+			);
+			expect(modalData.selection).toEqual({ start: 'Agent B', end: 'Agent B' });
+		});
 	});
 
 	describe('extractNodesIntoSubworkflow', () => {
@@ -160,7 +252,7 @@ describe('useWorkflowExtraction', () => {
 			const nodeB = makeNode('B', [200, 0]);
 			const nodeC = makeNode('C', [400, 0]); // outside the extracted selection
 
-			mockWorkflowDocumentStore.allNodes = [nodeA, nodeB, nodeC];
+			setWorkflowNodes([nodeA, nodeB, nodeC]);
 			mockWorkflowDocumentStore.connectionsBySourceNode = {
 				A: {
 					[NodeConnectionTypes.Main]: [
@@ -172,11 +264,7 @@ describe('useWorkflowExtraction', () => {
 				},
 			};
 
-			mockWorkflowsStore.createNewWorkflow.mockResolvedValue({
-				id: 'new-id',
-				versionId: 'v1',
-			});
-			mockWorkflowsStore.publishWorkflow.mockResolvedValue(undefined);
+			mockSuccessfulWorkflowCreation();
 
 			const { extractNodesIntoSubworkflow } = useWorkflowExtraction();
 
@@ -209,9 +297,18 @@ describe('useWorkflowExtraction', () => {
 		it('records the Execute Workflow node joining the group as undoable history', async () => {
 			const nodeA = makeNode('A', [0, 0]);
 			const nodeB = makeNode('B', [200, 0]);
-			const group = { id: 'g1', name: 'Group 1', nodeIds: [nodeA.id, nodeB.id] };
+			const nodeC = makeNode('C', [400, 0]); // survives, so the group is kept
+			const group = { id: 'g1', name: 'Group 1', nodeIds: [nodeA.id, nodeB.id, nodeC.id] };
 
-			mockWorkflowDocumentStore.allNodes = [nodeA, nodeB];
+			setWorkflowNodes([nodeA, nodeB, nodeC]);
+			mockWorkflowDocumentStore.connectionsBySourceNode = {
+				A: {
+					[NodeConnectionTypes.Main]: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				B: {
+					[NodeConnectionTypes.Main]: [[{ node: 'C', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
 			mockWorkflowDocumentStore.getGroupForNode.mockImplementation((nodeId: string) =>
 				group.nodeIds.includes(nodeId) ? group : undefined,
 			);
@@ -219,12 +316,11 @@ describe('useWorkflowExtraction', () => {
 				.mockReturnValueOnce({ ...group })
 				.mockReturnValueOnce({ ...group, nodeIds: [...group.nodeIds, 'execute-node-id'] });
 
-			mockWorkflowsStore.createNewWorkflow.mockResolvedValue({ id: 'new-id', versionId: 'v1' });
-			mockWorkflowsStore.publishWorkflow.mockResolvedValue(undefined);
+			mockSuccessfulWorkflowCreation();
 
 			const { extractNodesIntoSubworkflow } = useWorkflowExtraction();
 
-			await extractNodesIntoSubworkflow({ start: 'A', end: undefined }, [nodeA, nodeB], 'Sub');
+			await extractNodesIntoSubworkflow({ start: 'A', end: 'B' }, [nodeA, nodeB], 'Sub');
 
 			expect(mockWorkflowDocumentStore.addNodesToGroup).toHaveBeenCalledWith(group.id, [
 				'execute-node-id',
@@ -236,8 +332,244 @@ describe('useWorkflowExtraction', () => {
 				| UpdateNodeGroupCommand
 				| undefined;
 			expect(groupCommand).toBeInstanceOf(UpdateNodeGroupCommand);
-			expect(groupCommand?.before.nodeIds).toEqual([nodeA.id, nodeB.id]);
-			expect(groupCommand?.after.nodeIds).toEqual([nodeA.id, nodeB.id, 'execute-node-id']);
+			expect(groupCommand?.before.nodeIds).toEqual([nodeA.id, nodeB.id, nodeC.id]);
+			expect(groupCommand?.after.nodeIds).toEqual([
+				nodeA.id,
+				nodeB.id,
+				nodeC.id,
+				'execute-node-id',
+			]);
+		});
+
+		it('dissolves the group when every group member is extracted', async () => {
+			const nodeA = makeNode('A', [0, 0]);
+			const nodeB = makeNode('B', [200, 0]);
+			const group = { id: 'g1', name: 'Group 1', nodeIds: [nodeA.id, nodeB.id] };
+
+			setWorkflowNodes([nodeA, nodeB]);
+			mockWorkflowDocumentStore.connectionsBySourceNode = {
+				A: {
+					[NodeConnectionTypes.Main]: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+			mockWorkflowDocumentStore.getGroupForNode.mockImplementation((nodeId: string) =>
+				group.nodeIds.includes(nodeId) ? group : undefined,
+			);
+			mockWorkflowDocumentStore.getGroupById.mockReturnValue({
+				...group,
+				nodeIds: [...group.nodeIds],
+			});
+
+			mockSuccessfulWorkflowCreation();
+
+			const { extractNodesIntoSubworkflow } = useWorkflowExtraction();
+
+			await extractNodesIntoSubworkflow({ start: 'A', end: 'B' }, [nodeA, nodeB], 'Sub');
+
+			expect(mockWorkflowDocumentStore.deleteGroup).toHaveBeenCalledWith(group.id);
+
+			expect(mockWorkflowDocumentStore.addNodesToGroup).not.toHaveBeenCalled();
+
+			const removeCommand = mockHistoryStore.pushCommandToUndo.mock.calls
+				.map(([command]) => command)
+				.find((command) => command instanceof RemoveNodeGroupCommand) as
+				| RemoveNodeGroupCommand
+				| undefined;
+			expect(removeCommand).toBeInstanceOf(RemoveNodeGroupCommand);
+			expect(removeCommand?.group.nodeIds).toEqual([nodeA.id, nodeB.id]);
+
+			expect(mockGroupTelemetry.trackUngrouped).toHaveBeenCalledWith(
+				expect.objectContaining({ id: group.id }),
+				'sub-workflow-extraction',
+			);
+		});
+
+		it('keeps the group when only some members are extracted', async () => {
+			const nodeA = makeNode('A', [0, 0]);
+			const nodeB = makeNode('B', [200, 0]);
+			const nodeC = makeNode('C', [400, 0]);
+			const group = { id: 'g1', name: 'Group 1', nodeIds: [nodeA.id, nodeB.id, nodeC.id] };
+
+			setWorkflowNodes([nodeA, nodeB, nodeC]);
+			mockWorkflowDocumentStore.connectionsBySourceNode = {
+				A: {
+					[NodeConnectionTypes.Main]: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				B: {
+					[NodeConnectionTypes.Main]: [[{ node: 'C', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+			mockWorkflowDocumentStore.getGroupForNode.mockImplementation((nodeId: string) =>
+				group.nodeIds.includes(nodeId) ? group : undefined,
+			);
+			mockWorkflowDocumentStore.getGroupById
+				.mockReturnValueOnce({ ...group, nodeIds: [...group.nodeIds] })
+				.mockReturnValueOnce({ ...group, nodeIds: [...group.nodeIds, 'execute-node-id'] });
+
+			mockSuccessfulWorkflowCreation();
+
+			const { extractNodesIntoSubworkflow } = useWorkflowExtraction();
+
+			await extractNodesIntoSubworkflow({ start: 'A', end: 'B' }, [nodeA, nodeB], 'Sub');
+
+			expect(mockWorkflowDocumentStore.addNodesToGroup).toHaveBeenCalledWith(group.id, [
+				'execute-node-id',
+			]);
+
+			expect(mockWorkflowDocumentStore.deleteGroup).not.toHaveBeenCalled();
+			expect(mockGroupTelemetry.trackUngrouped).not.toHaveBeenCalled();
+		});
+
+		it('copies shared sub-nodes into the sub-workflow but keeps them in the parent', async () => {
+			const nodeA = makeNode('A', [0, 0]);
+			const agentB = makeNode('Agent B', [200, 0]);
+			const agentC = makeNode('Agent C', [400, 0]);
+			agentC.parameters = { value: '={{ $("Model").item.json.foo }}' };
+			const model = makeNode('Model', [200, 120]);
+			const agentGroup = { id: 'agents', name: 'Agents', nodeIds: [agentB.id, agentC.id] };
+			const modelGroup = { id: 'models', name: 'Models', nodeIds: [model.id] };
+
+			setWorkflowNodes([nodeA, agentB, agentC, model]);
+			mockWorkflowDocumentStore.getGroupForNode.mockImplementation((nodeId: string) => {
+				if (agentGroup.nodeIds.includes(nodeId)) return agentGroup;
+				if (modelGroup.nodeIds.includes(nodeId)) return modelGroup;
+				return undefined;
+			});
+			mockWorkflowDocumentStore.getGroupById
+				.mockReturnValueOnce({ ...agentGroup })
+				.mockReturnValueOnce({
+					...agentGroup,
+					nodeIds: [...agentGroup.nodeIds, 'execute-node-id'],
+				});
+			mockWorkflowDocumentStore.connectionsBySourceNode = {
+				A: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Agent B', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				'Agent B': {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Agent C', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				Model: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[
+							{ node: 'Agent B', type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+							{ node: 'Agent C', type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+						],
+					],
+				},
+			};
+			mockWorkflowDocumentStore.getChildNodes.mockImplementation((nodeName, type) => {
+				if (nodeName === 'Agent B' && type === NodeConnectionTypes.Main) return ['Agent C'];
+				if (nodeName === 'Agent B' && type === 'ALL') return ['Agent C'];
+				return [];
+			});
+			mockSuccessfulWorkflowCreation();
+
+			const { extractNodesIntoSubworkflow } = useWorkflowExtraction();
+
+			await extractNodesIntoSubworkflow(
+				{ start: 'Agent B', end: 'Agent B' },
+				[agentB, model],
+				'Sub',
+			);
+
+			const created = mockWorkflowsStore.createNewWorkflow.mock.calls[0][0] as WorkflowDataCreate;
+			expect((created.nodes ?? []).map((node: INode) => node.name)).toEqual(
+				expect.arrayContaining(['Agent B', 'Model']),
+			);
+
+			const modelConnections =
+				created.connections?.Model?.[NodeConnectionTypes.AiLanguageModel]?.[0] ?? [];
+			expect(modelConnections.map((connection) => connection.node)).toEqual(['Agent B']);
+			expect(mockCanvasOperations.deleteNodes.mock.calls[0][0]).toEqual([agentB.id]);
+			expect(mockWorkflowDocumentStore.addNodesToGroup).toHaveBeenCalledWith(agentGroup.id, [
+				'execute-node-id',
+			]);
+			expect(mockCanvasOperations.replaceNodeParameters).not.toHaveBeenCalled();
+		});
+
+		it('removes unshared extracted sub-nodes from the parent', async () => {
+			const nodeA = makeNode('A', [0, 0]);
+			const agentB = makeNode('Agent B', [200, 0]);
+			const agentC = makeNode('Agent C', [400, 0]);
+			const memory = makeNode('Memory', [200, 120]);
+
+			setWorkflowNodes([nodeA, agentB, agentC, memory]);
+			mockWorkflowDocumentStore.connectionsBySourceNode = {
+				A: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Agent B', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				'Agent B': {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Agent C', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				Memory: {
+					[NodeConnectionTypes.AiMemory]: [
+						[{ node: 'Agent B', type: NodeConnectionTypes.AiMemory, index: 0 }],
+					],
+				},
+			};
+			mockWorkflowDocumentStore.getChildNodes.mockImplementation((nodeName, type) => {
+				if (nodeName === 'Agent B' && type === NodeConnectionTypes.Main) return ['Agent C'];
+				if (nodeName === 'Agent B' && type === 'ALL') return ['Agent C'];
+				return [];
+			});
+			mockSuccessfulWorkflowCreation();
+
+			const { extractNodesIntoSubworkflow } = useWorkflowExtraction();
+
+			await extractNodesIntoSubworkflow(
+				{ start: 'Agent B', end: 'Agent B' },
+				[agentB, memory],
+				'Sub',
+			);
+
+			const created = mockWorkflowsStore.createNewWorkflow.mock.calls[0][0] as WorkflowDataCreate;
+			const memoryConnections =
+				created.connections?.Memory?.[NodeConnectionTypes.AiMemory]?.[0] ?? [];
+			expect(memoryConnections.map((connection) => connection.node)).toEqual(['Agent B']);
+			expect(mockCanvasOperations.deleteNodes.mock.calls[0][0]).toEqual([agentB.id, memory.id]);
+		});
+
+		it('keeps sub-nodes that feed preserved shared sub-nodes in the parent', async () => {
+			const agentB = makeNode('Agent B', [200, 0]);
+			const agentC = makeNode('Agent C', [400, 0]);
+			const model = makeNode('Model', [200, 120]);
+			const parser = makeNode('Parser', [200, 240]);
+
+			setWorkflowNodes([agentB, agentC, model, parser]);
+			mockWorkflowDocumentStore.connectionsBySourceNode = {
+				Model: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[
+							{ node: 'Agent B', type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+							{ node: 'Agent C', type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+						],
+					],
+				},
+				Parser: {
+					[NodeConnectionTypes.AiOutputParser]: [
+						[{ node: 'Model', type: NodeConnectionTypes.AiOutputParser, index: 0 }],
+					],
+				},
+			};
+			mockSuccessfulWorkflowCreation();
+
+			const { extractNodesIntoSubworkflow } = useWorkflowExtraction();
+
+			await extractNodesIntoSubworkflow(
+				{ start: undefined, end: undefined },
+				[agentB, model, parser],
+				'Sub',
+			);
+
+			expect(mockCanvasOperations.deleteNodes.mock.calls[0][0]).toEqual([agentB.id]);
 		});
 	});
 });

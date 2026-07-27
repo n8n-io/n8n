@@ -180,13 +180,18 @@ export class McpConnection {
 		return false;
 	}
 
-	async callTool(name: string, args: Record<string, unknown>): Promise<McpCallToolResult> {
+	async callTool(
+		name: string,
+		args: Record<string, unknown>,
+		options?: { abortSignal?: AbortSignal },
+	): Promise<McpCallToolResult> {
 		if (!this.client) throw new Error('MCP client not initialized; connect() must be called first');
 		const { CallToolResultSchema } = await loadMcpSdk();
 		try {
 			const result = (await this.client.callTool(
 				{ name, arguments: args },
 				CallToolResultSchema,
+				options?.abortSignal ? { signal: options.abortSignal } : undefined,
 			)) as McpCallToolResult;
 			await this.notifyToolCallSettled({ toolName: name, success: result.isError !== true });
 			return result;

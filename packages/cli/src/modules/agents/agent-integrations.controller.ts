@@ -77,7 +77,7 @@ export class AgentIntegrationsController {
 		await this.agentIntegrationPersistenceService.saveCredentialIntegration(agent, integration, {
 			broadcast: false,
 		});
-		const publishedAgent = await this.agentPublishService.publishAgent(
+		const { agent: publishedAgent, draftValidation } = await this.agentPublishService.publishAgent(
 			agentId,
 			agent.projectId,
 			req.user,
@@ -93,6 +93,7 @@ export class AgentIntegrationsController {
 				publishedAgent,
 				agent.projectId,
 				req.user,
+				draftValidation,
 			),
 		};
 	}

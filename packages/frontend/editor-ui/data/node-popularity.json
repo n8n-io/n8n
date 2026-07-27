@@ -391,10 +391,7 @@
 		"id": "n8n-nodes-sendit.sendIt",
 		"popularity": 0
 	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStoreSupabaseInsert",
-		"popularity": 0
-	},
+
 	{
 		"id": "@leadtributor/n8n-nodes-leadtributor.leadtributor",
 		"popularity": 0
@@ -1883,10 +1880,7 @@
 		"id": "n8n-nodes-fyo.fyo",
 		"popularity": 0.108
 	},
-	{
-		"id": "n8n-nodes-base.cron",
-		"popularity": 0
-	},
+
 	{
 		"id": "n8n-nodes-resend.resend",
 		"popularity": 0.482
@@ -2631,10 +2625,7 @@
 		"id": "n8n-nodes-nimbasms.nimbaSMS",
 		"popularity": 0.108
 	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.memoryMotorhead",
-		"popularity": 0.108
-	},
+
 	{
 		"id": "n8n-nodes-screenshotbase.screenshotBase",
 		"popularity": 0
@@ -3327,10 +3318,7 @@
 		"id": "n8n-nodes-base.githubTool",
 		"popularity": 0.496
 	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.toolSerpApi",
-		"popularity": 0.289
-	},
+
 	{
 		"id": "n8n-nodes-base.wooCommerce",
 		"popularity": 0.505

@@ -42,6 +42,23 @@ export class DurableLogMetrics {
 		cursorAgeEventsMax: 0,
 	};
 
+	/** History read counters (fold-on-read path). */
+	history = {
+		/** getRichMessages reads that derived trees from the durable log. */
+		foldReads: 0,
+		foldLatencyMsTotal: 0,
+		/** Agent trees derived from the log across those reads. */
+		treesDerived: 0,
+	};
+
+	/** Interrupted-run sweep (phase 3). */
+	sweep = {
+		runsExamined: 0,
+		runsMarkedInterrupted: 0,
+		runsCrashResumed: 0,
+		toolInterruptedFacts: 0,
+	};
+
 	constructor(private readonly eventService: EventService) {}
 
 	recordDrainBatch(rows: number, bytes: number): void {
@@ -79,6 +96,13 @@ export class DurableLogMetrics {
 		});
 	}
 
+	recordFoldRead(latencyMs: number, trees: number): void {
+		this.history.foldReads++;
+		this.history.foldLatencyMsTotal += latencyMs;
+		this.history.treesDerived += trees;
+		this.eventService.emit('instance-ai-history-folded', { latencyMs, trees });
+	}
+
 	/**
 	 * The parser is pure module code and keeps its own counter
 	 * (messageParserStats); this only forwards new activations to the
@@ -86,5 +110,19 @@ export class DurableLogMetrics {
 	 */
 	notifyParserFallbacks(count: number): void {
 		if (count > 0) this.eventService.emit('instance-ai-parser-fallback', { count });
+	}
+
+	recordSweepRunExamined(): void {
+		this.sweep.runsExamined++;
+	}
+
+	recordSweepToolInterruptedFact(): void {
+		this.sweep.toolInterruptedFacts++;
+	}
+
+	recordSweepOutcome(outcome: 'interrupted' | 'crash-resumed', toolInterruptedFacts: number): void {
+		if (outcome === 'interrupted') this.sweep.runsMarkedInterrupted++;
+		else this.sweep.runsCrashResumed++;
+		this.eventService.emit('instance-ai-run-swept', { outcome, toolInterruptedFacts });
 	}
 }

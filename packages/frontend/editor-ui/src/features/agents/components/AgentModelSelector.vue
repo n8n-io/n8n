@@ -48,6 +48,7 @@ const {
 	projectId,
 	warnMissingCredentials = false,
 	disabled = false,
+	credentialModalAppendToBody = false,
 } = defineProps<{
 	selectedModel: AgentModelOption | null;
 	credentials: AgentCredentialsByProvider | null;
@@ -56,6 +57,7 @@ const {
 	projectId: string;
 	warnMissingCredentials?: boolean;
 	disabled?: boolean;
+	credentialModalAppendToBody?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -347,7 +349,10 @@ function openNewCredential(credentialType: string) {
 			undefined,
 			undefined,
 			undefined,
-			{ hideAskAssistant: true },
+			{
+				hideAskAssistant: true,
+				...(credentialModalAppendToBody ? { appendToBody: true } : {}),
+			},
 		);
 	}
 }
@@ -369,6 +374,7 @@ function openCredentialsSelectorOrCreate(provider: AgentModelProvider, credentia
 			displayName: getCredentialTypeDisplayName(credentialType),
 			initialValue: credentials?.[provider] ?? null,
 			onSelect: (credentialId: string | null) => emit('selectCredential', provider, credentialId),
+			...(credentialModalAppendToBody ? { appendToBody: true } : {}),
 		},
 	});
 }

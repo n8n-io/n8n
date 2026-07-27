@@ -36,7 +36,9 @@ import { shouldAutoPublishWorkflow, jsonParse, UnexpectedError, UserError } from
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { IWorkflowToImport } from '@/interfaces';
 import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
@@ -49,7 +51,7 @@ import { RedactionEnforcementService } from '@/modules/redaction/redaction-enfor
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
-import { validateWorkflowNodeGroups } from '@/workflow-helpers';
+import { validateWorkflowNodeGroups, sanitizeNodeGroupDescriptions } from '@/workflow-helpers';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -145,6 +147,8 @@ export class SourceControlImportService {
 		private readonly dataTableDDLService: DataTableDDLService,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 		private readonly dataTableSizeValidator: DataTableSizeValidator,
+		private readonly activeWorkflowManager: ActiveWorkflowManager,
+		private readonly executionPersistence: ExecutionPersistence,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -785,6 +789,10 @@ export class SourceControlImportService {
 				`Workflow file ${candidate.file} has invalid nodeGroups, resetting to empty`,
 			);
 			importedWorkflow.nodeGroups = [];
+		}
+
+		for (const warning of sanitizeNodeGroupDescriptions(importedWorkflow)) {
+			this.logger.warn(`Workflow file ${candidate.file}: ${warning}`);
 		}
 
 		const { versionId, nodes, connections, id, owner, nodeGroups } = importedWorkflow;
@@ -1663,7 +1671,11 @@ export class SourceControlImportService {
 
 	async deleteWorkflowsNotInWorkfolder(user: User, candidates: SourceControlledFile[]) {
 		for (const candidate of candidates) {
-			await this.workflowService.delete(user, candidate.id, true);
+			try {
+				await this.workflowService.delete(user, candidate.id, true);
+			} catch (error) {
+				throw this.deletionError('workflow', [candidate], error);
+			}
 		}
 	}
 
@@ -1701,9 +1713,27 @@ export class SourceControlImportService {
 		}
 		const candidateIds = candidates.map((c) => c.id);
 
-		await this.folderRepository.delete({
-			id: In(candidateIds),
-		});
+		try {
+			// Deleting a folder cascades to its subfolders and any workflows still
+			// inside the hierarchy, so those workflows must be prepared first.
+			const folderIds = [...candidateIds];
+			for (const folderId of candidateIds) {
+				folderIds.push(...(await this.folderRepository.getAllFolderIdsInHierarchy(folderId)));
+			}
+			const workflows = await this.workflowRepository.find({
+				select: ['id'],
+				where: { parentFolder: { id: In(folderIds) } },
+			});
+			await this.deactivateWorkflowsAndHardDeleteExecutions(
+				workflows.map((workflow) => workflow.id),
+			);
+
+			await this.folderRepository.delete({
+				id: In(candidateIds),
+			});
+		} catch (error) {
+			throw this.deletionError('folder', candidates, error);
+		}
 	}
 
 	async deleteTeamProjectsNotInWorkfolder(candidates: SourceControlledFile[]) {
@@ -1712,9 +1742,81 @@ export class SourceControlImportService {
 		}
 		const candidateIds = candidates.map((c) => c.id);
 
-		await this.projectRepository.delete({
-			id: In(candidateIds),
-		});
+		try {
+			// Deleting a project cascades to its folders and workflows. Workflows are
+			// normally deleted individually before this point, but any still owned by
+			// the project (e.g. skipped for lack of permission) must be prepared for
+			// deletion via the cascade.
+			const ownedWorkflows = await this.sharedWorkflowRepository.find({
+				select: ['workflowId'],
+				where: { projectId: In(candidateIds), role: 'workflow:owner' },
+			});
+			await this.deactivateWorkflowsAndHardDeleteExecutions(
+				ownedWorkflows.map((sw) => sw.workflowId),
+			);
+
+			await this.projectRepository.delete({
+				id: In(candidateIds),
+			});
+		} catch (error) {
+			throw this.deletionError('project', candidates, error);
+		}
+	}
+
+	/**
+	 * Deactivate the given workflows and hard-delete all their executions.
+	 * To be called right before the workflows are removed via FK cascade
+	 * (project/folder deletion): without it, the cascade can hit a DB statement
+	 * timeout on large execution histories, and active workflows would keep
+	 * their triggers registered in memory.
+	 *
+	 * Not using `WorkflowService.delete` here: it only deletes workflows the
+	 * pulling user holds `workflow:delete` on, and the pull already ran it for
+	 * those (see `deleteWorkflowsNotInWorkfolder`). Any workflow still standing
+	 * was skipped by that permission check, yet the FK cascade below deletes it
+	 * regardless — so we do the physical cleanup directly beforehand. Deletion
+	 * hooks (`workflow.delete`/`workflow.afterDelete`) and the `workflow-deleted`
+	 * event don't fire for these workflows — a pre-existing gap for any
+	 * cascade-deleted workflow.
+	 *
+	 * REVIEW(question): should we instead extract the permission-free part of
+	 * `WorkflowService.delete` (deactivate + drain + delete row + hooks/events)
+	 * into an internal method and call it here? That would restore hook/event
+	 * parity, at the cost of refactoring a hot service for this edge path.
+	 */
+	private async deactivateWorkflowsAndHardDeleteExecutions(workflowIds: string[]) {
+		for (const workflowId of workflowIds) {
+			const workflow = await this.workflowRepository.findOne({
+				select: ['id', 'active'],
+				where: { id: workflowId },
+			});
+			if (!workflow) continue;
+
+			if (workflow.active) {
+				await this.activeWorkflowManager.remove(workflow.id);
+			}
+			await this.executionPersistence.hardDeleteByWorkflowId(workflow.id);
+		}
+	}
+
+	/** Contextual error for a failed deletion during pull, so the operator learns which resource to look at. */
+	private deletionError(
+		type: 'workflow' | 'folder' | 'project',
+		candidates: SourceControlledFile[],
+		error: unknown,
+	) {
+		const maxListed = 10; // keep the message readable when a pull deletes many resources
+		const resources = candidates
+			.slice(0, maxListed)
+			.map((c) => `"${c.name}" (${c.id})`)
+			.join(', ');
+		const overflow =
+			candidates.length > maxListed ? ` and ${candidates.length - maxListed} more` : '';
+		const message = `Failed to delete ${type}(s) ${resources}${overflow} while pulling from source control: ${ensureError(error).message}`;
+		// report centrally: the controller rewraps this as a 4xx, which would
+		// otherwise hide an unexpected server-side failure from monitoring
+		this.errorReporter.error(ensureError(error), { extra: { message } });
+		return new UnexpectedError(message, { cause: error });
 	}
 
 	/**

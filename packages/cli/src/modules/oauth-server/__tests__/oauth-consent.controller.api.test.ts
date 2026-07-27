@@ -64,6 +64,9 @@ describe('GET /rest/consent/details', () => {
 			clientId: 'test-client-id',
 			redirectUri: 'https://example.com/callback',
 			scopes: [...MCP_INSTANCE_SCOPES],
+			scopeTools: expect.objectContaining({
+				'workflow:read': expect.arrayContaining(['search_workflows']),
+			}),
 		});
 	});
 
@@ -405,7 +408,7 @@ describe('POST /rest/consent/approve', () => {
 		expect(response.statusCode).toBe(200);
 
 		const { UserConsentRepository } = await import(
-			'../database/repositories/oauth-user-consent.repository'
+			'../database/repositories/oauth-user-consent.repository.js'
 		);
 		const userConsentRepository = Container.get(UserConsentRepository);
 		const consent = await userConsentRepository.findOne({
@@ -428,7 +431,7 @@ describe('POST /rest/consent/approve', () => {
 		expect(response.statusCode).toBe(200);
 
 		const { UserConsentRepository } = await import(
-			'../database/repositories/oauth-user-consent.repository'
+			'../database/repositories/oauth-user-consent.repository.js'
 		);
 		const userConsentRepository = Container.get(UserConsentRepository);
 		const consent = await userConsentRepository.findOne({

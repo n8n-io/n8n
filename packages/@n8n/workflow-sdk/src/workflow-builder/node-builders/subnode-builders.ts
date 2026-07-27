@@ -381,7 +381,7 @@ export function retriever<TNode extends NodeInput>(
  * Create a document loader subnode instance.
  *
  * Use this for nodes that output `ai_document` connection type,
- * such as Default Data Loader, Binary Input Loader, etc.
+ * such as Default Data Loader, etc.
  *
  * @example
  * ```typescript

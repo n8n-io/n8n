@@ -62,7 +62,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [insights_raw](insights_raw.md) | 5 |  | table |
 | [installed_nodes](installed_nodes.md) | 4 |  | table |
 | [installed_packages](installed_packages.md) | 6 |  | table |
-| [instance_ai_checkpoints](instance_ai_checkpoints.md) | 8 |  | table |
+| [instance_ai_checkpoints](instance_ai_checkpoints.md) | 9 |  | table |
 | [instance_ai_events](instance_ai_events.md) | 7 |  | table |
 | [instance_ai_iteration_logs](instance_ai_iteration_logs.md) | 6 |  | table |
 | [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) | 7 |  | table |
@@ -94,7 +94,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [role_mapping_rule_project](role_mapping_rule_project.md) | 2 |  | table |
 | [role_scope](role_scope.md) | 2 |  | table |
 | [scheduled_job](scheduled_job.md) | 19 |  | table |
-| [scheduled_task](scheduled_task.md) | 16 |  | table |
+| [scheduled_task](scheduled_task.md) | 17 |  | table |
 | [scope](scope.md) | 3 |  | table |
 | [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
 | [settings](settings.md) | 3 |  | table |
@@ -119,6 +119,10 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_publication_trigger_status](workflow_publication_trigger_status.md) | 8 |  | table |
 | [workflow_publish_history](workflow_publish_history.md) | 6 |  | table |
 | [workflow_published_version](workflow_published_version.md) | 4 |  | table |
+| [workflow_review_request](workflow_review_request.md) | 12 |  | table |
+| [workflow_review_request_authors](workflow_review_request_authors.md) | 2 |  | table |
+| [workflow_review_request_reviewers](workflow_review_request_reviewers.md) | 2 |  | table |
+| [workflow_review_request_workflow](workflow_review_request_workflow.md) | 4 |  | table |
 | [workflow_statistics](workflow_statistics.md) | 7 |  | table |
 | [workflows_tags](workflows_tags.md) | 2 |  | table |
 
@@ -284,6 +288,17 @@ erDiagram
 "workflow_published_version" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "workflow_published_version" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_published_version" }o--|| "workflow_history" : "FOREIGN KEY (publishedVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request" }o--o| "user" : "FOREIGN KEY (closedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"workflow_review_request" }o--o| "user" : "FOREIGN KEY (updatedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"workflow_review_request" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"workflow_review_request" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_authors" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_authors" |o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_reviewers" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_reviewers" |o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_workflow" }o--o| "workflow_history" : "FOREIGN KEY (workflowVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"workflow_review_request_workflow" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_workflow" }o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflows_tags" |o--|| "tag_entity" : "FOREIGN KEY (tagId) REFERENCES tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflows_tags" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
@@ -806,6 +821,7 @@ erDiagram
 "instance_ai_checkpoints" {
   datetime_3_ createdAt
   datetime_3_ expiredAt
+  VARCHAR_64_ hostRunId
   varchar_255_ key PK
   varchar_255_ resourceId
   varchar_255_ runId
@@ -1119,6 +1135,7 @@ erDiagram
   INTEGER attempts
   varchar_255_ claimedBy
   datetime_3_ createdAt
+  datetime_3_ dispatchedAt
   TEXT errorMessage
   datetime_3_ finishedAt
   INTEGER id
@@ -1367,6 +1384,34 @@ erDiagram
   varchar_36_ publishedVersionId FK
   datetime_3_ updatedAt
   varchar_36_ workflowId PK
+}
+"workflow_review_request" {
+  datetime_3_ approvedAt
+  varchar closedById FK
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_50_ decision
+  TEXT description
+  varchar_36_ id PK
+  varchar_36_ projectId FK
+  varchar_16_ state
+  varchar_255_ title
+  datetime_3_ updatedAt
+  varchar updatedById FK
+}
+"workflow_review_request_authors" {
+  varchar userId PK
+  varchar_36_ workflowReviewRequestId PK
+}
+"workflow_review_request_reviewers" {
+  varchar userId PK
+  varchar_36_ workflowReviewRequestId PK
+}
+"workflow_review_request_workflow" {
+  varchar_36_ id PK
+  varchar_36_ workflowId FK
+  varchar_36_ workflowReviewRequestId FK
+  varchar_36_ workflowVersionId FK
 }
 "workflow_statistics" {
   INTEGER count

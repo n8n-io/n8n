@@ -45,6 +45,12 @@ export interface ProtectedResource {
 	scopes: string[];
 
 	/**
+	 * Tool names unlocked by each grantable scope, for display on the consent
+	 * screen. Omit when the resource has no per-tool scope mapping.
+	 */
+	getScopeTools?(): Record<string, string[]>;
+
+	/**
 	 * Fallback audience for token requests that omit an RFC 8707 `resource`
 	 * parameter (pre-8707 clients). At most one registered resource may be the
 	 * default.

@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, ExecuteAgentData, NodeParameterValueType } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { getNodeParameters, NodeOperationError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -245,6 +245,27 @@ describe('MessageAnAgent Node', () => {
 			},
 		};
 
+		it('uses inline defaults when legacy advanced values are still saved', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
+			mockParams({
+				agentSource: 'inline',
+				inlineAgent,
+				'advanced.invokeMode': 'perItem',
+				advanced: { allowOtherNodesData: true },
+			});
+			executeFunctions.executeAgent.mockResolvedValue({ ...mockAgentResult, session: null });
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.executeAgent).toHaveBeenCalledTimes(1);
+			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+				expect.objectContaining({ inputDataScope: 'all', exposeWorkflowData: false }),
+				'Hello agent',
+				'exec-123',
+				0,
+			);
+		});
+
 		it('passes the inline definition and never resolves its embedded expressions', async () => {
 			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
 			mockParams({ agentSource: 'inline', inlineAgent });
@@ -268,6 +289,36 @@ describe('MessageAnAgent Node', () => {
 			);
 			const [source] = executeFunctions.executeAgent.mock.calls[0];
 			expect(source).not.toHaveProperty('agentId');
+		});
+
+		it('passes an inline definition with embedded skills through wholesale', async () => {
+			const inlineAgentWithSkills = {
+				config: {
+					...inlineAgent.config,
+					skills: [{ type: 'skill', id: 'skill_triage' }],
+				},
+				skills: {
+					skill_triage: {
+						name: 'Triage',
+						description: 'Triage incoming requests',
+						instructions: 'Categorize the request and route it.',
+					},
+				},
+			};
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({ agentSource: 'inline', inlineAgent: inlineAgentWithSkills });
+			executeFunctions.executeAgent.mockResolvedValue({ ...mockAgentResult, session: null });
+
+			await node.execute.call(executeFunctions);
+
+			// The sibling skills record (bodies) rides along with the config refs —
+			// validation and ref/body joining happen in the execution layer.
+			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+				expect.objectContaining({ inlineAgent: inlineAgentWithSkills }),
+				'Hello agent',
+				'exec-123',
+				0,
+			);
 		});
 
 		it('passes a session id override through for inline agents (thread memory)', async () => {
@@ -632,6 +683,12 @@ describe('MessageAnAgent Node', () => {
 });
 
 describe('MessageAnAgent versioning', () => {
+	it('uses AI Agent V1 as the display and default name', () => {
+		expect(baseDescription.displayName).toBe('AI Agent V1');
+		expect(new MessageAnAgentV1(baseDescription).description.defaults.name).toBe('AI Agent V1');
+		expect(new MessageAnAgentV2(baseDescription).description.defaults.name).toBe('AI Agent V1');
+	});
+
 	it('exposes v1 and v2 with v2 as the default', () => {
 		const versioned = new MessageAnAgent();
 
@@ -648,12 +705,71 @@ describe('MessageAnAgent versioning', () => {
 		expect(v1.methods?.listSearch?.listAgents).toBeDefined();
 	});
 
+	it('keeps advanced parameters when resolving v1 workflows', () => {
+		const v1 = new MessageAnAgentV1(baseDescription);
+
+		const parameters = getNodeParameters(
+			v1.description.properties,
+			{
+				agentId: { __rl: true, mode: 'id', value: 'agent-1' },
+				message: 'Hello',
+				useStructuredOutput: false,
+				advanced: {
+					invokeMode: 'perItem',
+					sessionId: 'thread-1',
+					allowOtherNodesData: true,
+				},
+			},
+			false,
+			false,
+			{ typeVersion: 1 },
+			v1.description,
+		);
+
+		expect(parameters?.advanced).toEqual({
+			invokeMode: 'perItem',
+			sessionId: 'thread-1',
+			allowOtherNodesData: true,
+		});
+	});
+
 	it('uses the agentSelector picker on v2', () => {
 		const v2 = new MessageAnAgentV2(baseDescription);
 		const agentId = v2.description.properties.find((p) => p.name === 'agentId');
 
 		expect(v2.description.version).toBe(2);
 		expect(agentId?.type).toBe('agentSelector');
+	});
+
+	it('resolves parameters for a newly added v2 node', () => {
+		const v2 = new MessageAnAgentV2(baseDescription);
+
+		expect(() =>
+			getNodeParameters(
+				v2.description.properties,
+				{
+					agentSource: 'referenced',
+					agentId: { __rl: true, mode: 'list', value: '' },
+					inlineAgent: {},
+					message: '',
+					useStructuredOutput: false,
+					advanced: {},
+				},
+				false,
+				false,
+				{ typeVersion: 2 },
+				v2.description,
+			),
+		).not.toThrow();
+	});
+
+	it('keeps agentSource hidden with a referenced default on v2', () => {
+		const v2 = new MessageAnAgentV2(baseDescription);
+		const agentSource = v2.description.properties.find((p) => p.name === 'agentSource');
+
+		expect(agentSource?.type).toBe('hidden');
+		expect(agentSource?.default).toBe('referenced');
+		expect(agentSource?.displayOptions).toBeUndefined();
 	});
 
 	it('keeps the same message field on both versions', () => {

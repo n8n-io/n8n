@@ -427,7 +427,11 @@ describe('InProcessEventBus', () => {
 
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'relay-instance-ai-event',
-				payload: { threadId: 'thread-1', storedEvent: { id: 1, event } },
+				payload: {
+					threadId: 'thread-1',
+					// publish() stamps the publish time onto the event
+					storedEvent: { id: 1, event: { ...event, ts: expect.any(Number) } },
+				},
 			});
 		});
 
@@ -534,7 +538,8 @@ describe('InProcessEventBus', () => {
 			bus.publish(threadId, event);
 			const call = eventLog.publish.mock.calls.at(-1)!;
 			expect(call[0]).toBe(threadId);
-			expect(call[1]).toBe(event);
+			// publish() stamps `ts` onto a copy before handing it to the log
+			expect(call[1]).toEqual({ ...event, ts: expect.any(Number) });
 			return call[2] as EmitFn;
 		}
 

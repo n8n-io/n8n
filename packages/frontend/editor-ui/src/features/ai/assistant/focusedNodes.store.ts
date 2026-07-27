@@ -9,7 +9,8 @@ import {
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDebounceFn } from '@vueuse/core';
-import { DEBOUNCE_TIME, FOCUSED_NODES_EXPERIMENT, getDebounceTime } from '@/app/constants';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME, FOCUSED_NODES_EXPERIMENT } from '@/app/constants';
 import type {
 	FocusedNode,
 	FocusedNodeState,

@@ -52,9 +52,9 @@ const versionDescription: INodeTypeDescription = {
 	version: 1,
 	description: 'Allows you to manipulate date and time values',
 	subtitle: '={{$parameter["action"]}}',
+	iconColor: 'green',
 	defaults: {
 		name: 'Date & Time',
-		color: '#408000',
 	},
 	inputs: [NodeConnectionTypes.Main],
 	outputs: [NodeConnectionTypes.Main],

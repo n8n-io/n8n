@@ -129,6 +129,16 @@ export type UserCalledMCPToolEventPayload = {
 	};
 };
 
+/**
+ * n8n Connect coverage snapshot surfaced in tool output when the
+ * gateway is available: the credential and node types it can provide managed
+ * credentials for.
+ */
+export type N8nConnectCoverage = {
+	credentialTypes: string[];
+	nodes: string[];
+};
+
 export type MCPTriggersMap = {
 	[K in keyof typeof SUPPORTED_PRODUCTION_MCP_TRIGGERS]: INode[];
 };

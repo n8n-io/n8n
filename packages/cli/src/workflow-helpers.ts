@@ -4,7 +4,9 @@ import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	formatWorkflowStructureIssuePath,
+	GROUP_DESCRIPTION_MAX_LENGTH,
 	isSafeObjectProperty,
+	normalizeGroupDescription,
 	resolveNodeWebhookId,
 	resolveVariables,
 	safeParseWorkflowStructure,
@@ -202,8 +204,8 @@ function nodeGroupValidationError(
 /**
  * Validates nodeGroups.
  *
- * Basic checks (always run): unique group IDs, unique group names, all referenced
- * node IDs exist, and each node belongs to at most one group.
+ * Basic checks (always run): unique group IDs, unique group names, at least one
+ * member, all referenced node IDs exist, and each node belongs to at most one group.
  *
  * Full checks (run only when `getNodeType` is non-null): each group must satisfy
  * the same grouping rules the canvas enforces — no triggers, a single connected
@@ -243,6 +245,10 @@ export function validateWorkflowNodeGroups(
 		}
 		seenGroupNames.add(group.name);
 
+		if (group.nodeIds.length === 0) {
+			throw new BadRequestError(`Group "${group.name}" has no members.`);
+		}
+
 		for (const nodeId of group.nodeIds) {
 			// All referenced nodes must exist
 			if (!nodeIds.has(nodeId)) {
@@ -278,6 +284,42 @@ export function validateWorkflowNodeGroups(
 			throw nodeGroupValidationError(group, result);
 		}
 	}
+}
+
+/**
+ * Normalizes group descriptions on import, mutating in place.
+ *
+ * Authoring paths (internal REST + public API) reject invalid or over-cap
+ * descriptions via their DTOs. Import paths accept arbitrary JSON, so instead of
+ * rejecting they drop non-string descriptions and truncate over-long ones —
+ * keeping the import lenient while honouring the plain-text, capped contract.
+ * Returns a warning per adjusted group so callers can surface it.
+ */
+export function sanitizeNodeGroupDescriptions(
+	workflow: Pick<IWorkflowBase, 'nodeGroups'>,
+): string[] {
+	const warnings: string[] = [];
+	for (const group of workflow.nodeGroups ?? []) {
+		// Imported JSON is untyped at runtime despite the `string` contract.
+		const original: unknown = group.description;
+		if (original === undefined) continue;
+
+		const normalized = normalizeGroupDescription(original);
+		if (normalized === original) continue;
+
+		if (normalized === undefined) {
+			delete group.description;
+			if (typeof original !== 'string') {
+				warnings.push(`Group "${group.name}" description was not plain text and was removed.`);
+			}
+		} else {
+			group.description = normalized;
+			warnings.push(
+				`Group "${group.name}" description exceeded ${GROUP_DESCRIPTION_MAX_LENGTH} characters and was truncated.`,
+			);
+		}
+	}
+	return warnings;
 }
 
 /**

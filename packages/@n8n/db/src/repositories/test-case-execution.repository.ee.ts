@@ -78,12 +78,16 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 	}
 
 	/**
-	 * Seeds N pending test case rows for a run, indexed sequentially. Used at
-	 * the start of `runTest` so the FE can render a placeholder card per case
-	 * before any actual evaluation has happened.
+	 * Seeds pending test case rows for a run, one per entry in `runIndices`.
+	 * Each row's `runIndex` is set to the corresponding value from the list so
+	 * it always reflects the original dataset position — even for filtered runs
+	 * where only a subset of rows is executed. The FE maps results back by
+	 * `runIndex`, so preserving the original index is critical.
+	 *
+	 * For a full run (all rows), pass `[0, 1, 2, …, N-1]`.
 	 */
-	async createPendingBatch(testRunId: string, count: number): Promise<TestCaseExecution[]> {
-		const rows = Array.from({ length: count }, (_, runIndex) =>
+	async createPendingBatch(testRunId: string, runIndices: number[]): Promise<TestCaseExecution[]> {
+		const rows = runIndices.map((runIndex) =>
 			this.create({
 				testRun: { id: testRunId },
 				status: 'new',

@@ -44,14 +44,21 @@ export type {
 	ProvisionedJob,
 	ProvisionSummary,
 } from './provisioning';
-export type { ExecutorOptions, TaskHandler } from './executor';
+export { createDispatchReporter } from './executor';
+export type {
+	ExecutorOptions,
+	TaskHandler,
+	DispatchReporter,
+	DispatchDecision,
+} from './executor';
+export { DEFAULT_MATERIALIZER_OPTIONS, materialize } from './materializer';
 export type {
 	MaterializerOptions,
 	MaterializerSummary,
 	NewOccurrence,
 	RunInTransaction,
 } from './materializer';
-export { executorLookaheadSeconds } from './lifecycle';
+export { pollLookaheadSeconds } from './lifecycle';
 export type { ConcurrencyMode, LifecycleOptions } from './lifecycle';
 export type { ReaperOptions, ReapResult } from './reaper';
 export type { RetentionOptions, RetentionSummary } from './retention';

@@ -64,6 +64,7 @@ describe('research tool', () => {
 			expect(context.webResearchService!.search).toHaveBeenCalledWith('n8n docs', {
 				maxResults: undefined,
 				includeDomains: undefined,
+				abortSignal: undefined,
 			});
 			expect(result).toEqual(searchResponse);
 		});
@@ -88,6 +89,7 @@ describe('research tool', () => {
 			expect(context.webResearchService!.search).toHaveBeenCalledWith('stripe api', {
 				maxResults: 10,
 				includeDomains: ['docs.stripe.com'],
+				abortSignal: undefined,
 			});
 		});
 

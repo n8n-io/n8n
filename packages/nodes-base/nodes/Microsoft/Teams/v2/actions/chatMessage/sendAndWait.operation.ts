@@ -6,7 +6,7 @@ import {
 } from '../../../../../../utils/sendAndWait/utils';
 import { createUtmCampaignLink } from '../../../../../../utils/utilities';
 import { chatRLC } from '../../descriptions';
-import { microsoftApiRequest, SP_HIDE } from '../../transport';
+import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
 import { throwIfChatUnsupported } from './sharedGuard';
 
 export const description: INodeProperties[] = getSendAndWaitProperties(
@@ -57,7 +57,10 @@ export async function execute(this: IExecuteFunctions, i: number, instanceId: st
 		},
 	};
 
-	// OAuth2-only path (chatMessage is hidden + guarded under SP by throwIfChatUnsupported
-	// above), so `chatId` is interpolated raw without buildTeamsPath by design.
-	return await microsoftApiRequest.call(this, 'POST', `/v1.0/chats/${chatId}/messages`, body);
+	return await microsoftApiRequest.call(
+		this,
+		'POST',
+		buildTeamsPath.call(this, ['/v1.0/chats/', { id: chatId }, '/messages']),
+		body,
+	);
 }

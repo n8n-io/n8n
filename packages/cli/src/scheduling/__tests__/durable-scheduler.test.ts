@@ -12,7 +12,7 @@ import { DurableScheduler } from '../durable-scheduler';
 import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-node/schedule-trigger-task';
 import type { ScheduleTriggerTaskHandler } from '../schedule-trigger-node/schedule-trigger-task-handler';
 
-// Keep the real exports (e.g. executorLookaheadSeconds) so the wiring is tested
+// Keep the real exports (e.g. pollLookaheadSeconds) so the wiring is tested
 // against the actual formula; only the scheduler factory is stubbed.
 vi.mock('@n8n/scheduler', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/scheduler')>()),

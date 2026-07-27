@@ -7,25 +7,28 @@ import type { IUpdateInformation } from '@/Interface';
 import type { RudderStack } from './telemetry.types';
 import {
 	APPEND_ATTRIBUTION_DEFAULT_PATH,
+	GOOGLE_GMAIL_NODE_TYPE,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	SLACK_NODE_TYPE,
 	TELEGRAM_NODE_TYPE,
 	POSTHOG_EVENTS_BLACKLIST,
 } from '@/app/constants';
+import {
+	setTelemetry,
+	TelemetryKey,
+	type Telemetry,
+	type TelemetryIdentifyOptions,
+} from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 
-export type TelemetryIdentifyOptions = {
-	instanceId: string;
-	userId?: string;
-	projectId?: string;
-	versionCli?: string;
-	userRole?: string;
-};
+// `Telemetry` is the shared contract; consumers annotate with it. The concrete
+// implementation below is registered as the app's instance at bootstrap.
+export type { Telemetry, TelemetryIdentifyOptions } from '@n8n/composables/useTelemetry';
 
-export class Telemetry {
+export class TelemetryService implements Telemetry {
 	private pageEventQueue: Array<{ route: RouteLocation }>;
 
 	private previousPath: string;
@@ -210,6 +213,16 @@ export class Telemetry {
 					toValue: change.value,
 				});
 			}
+
+			// Advanced HITL (one-tap approval) opt-in toggles, tracked per node.
+			const advancedHitlPathMap: { [key: string]: string[] } = {
+				[SLACK_NODE_TYPE]: ['parameters.captureResponder'],
+				[TELEGRAM_NODE_TYPE]: ['parameters.chatApproval'],
+				[GOOGLE_GMAIL_NODE_TYPE]: ['parameters.advancedEmail', 'parameters.confirmationPage'],
+			};
+			if (advancedHitlPathMap[nodeType]?.includes(change.name) && change.value === true) {
+				this.track('User enabled advanced HITL', { node_type: nodeType });
+			}
 		}
 	}
 
@@ -268,10 +281,15 @@ export class Telemetry {
 	}
 }
 
-export const telemetry = new Telemetry();
+export const telemetry = new TelemetryService();
+
+// Register the instance so package-side `useTelemetry` (@n8n/composables) can
+// resolve it from any context, including outside of component setup.
+setTelemetry(telemetry);
 
 export const TelemetryPlugin: Plugin = {
 	install(app) {
 		app.config.globalProperties.$telemetry = telemetry;
+		app.provide(TelemetryKey, telemetry);
 	},
 };

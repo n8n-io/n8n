@@ -91,14 +91,16 @@ const searchTypesAction = z.object({
 		.boolean()
 		.optional()
 		.describe(
-			'When true, ignore `query` and return every credential type supported by n8n Connect. Use to answer "which credential types support n8n Connect?".',
+			'When true, ignore `query` and return every credential type supported by n8n credits. Use to answer "which credential types support n8n credits?".',
 		),
 });
 
 const setupAction = z.object({
 	action: z
 		.literal('setup')
-		.describe('Open the credential setup UI for the user to create or select credentials'),
+		.describe(
+			'Open the credential setup card for the user to create or select credentials. The card is only visible while this call is pending — any returned result means the interaction already finished. A `success` result with a `credentials` map means setup is complete (an existing credential may have been auto-selected with no user action): confirm the credentials are ready and do not tell the user a card is open or that they must authorize.',
+		),
 	credentials: z
 		.array(
 			z.object({
@@ -478,9 +480,14 @@ async function handleSetup(
 	}
 
 	// State 5: Approved with credential selections
+	const selectedCredentials = resumeData.credentials ?? {};
+	const hasSelections = Object.keys(selectedCredentials).length > 0;
 	return {
 		success: true,
-		credentials: resumeData.credentials,
+		credentials: selectedCredentials,
+		message: hasSelections
+			? 'Credential setup is complete — the credentials in the map above are selected and ready to use. The setup card is no longer open and no user action (such as OAuth authorization) is needed; confirm the outcome to the user.'
+			: 'The setup interaction finished without any credential selected. The setup card is no longer open — do not tell the user a card is open or waiting; report the outcome and ask how they want to proceed.',
 	};
 }
 

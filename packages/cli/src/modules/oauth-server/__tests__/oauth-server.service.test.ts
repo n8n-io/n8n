@@ -22,6 +22,7 @@ import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import type { UrlService } from '@/services/url.service';
+import { UserManagementMailer } from '@/user-management/email';
 
 const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
 const TEST_RESOURCE_URL = 'https://n8n.example.com/mcp-server/http';
@@ -33,6 +34,7 @@ let tokenService: Mocked<OAuthTokenService>;
 let authorizationCodeService: Mocked<OAuthAuthorizationCodeService>;
 let service: OAuthServerService;
 let userConsentRepository: Mocked<UserConsentRepository>;
+let mailer: Mocked<UserManagementMailer>;
 let getAllowedRedirectUris: Mock<() => Promise<string[]>>;
 
 describe('OAuthServerService', () => {
@@ -43,6 +45,7 @@ describe('OAuthServerService', () => {
 		tokenService = mockInstance(OAuthTokenService);
 		authorizationCodeService = mockInstance(OAuthAuthorizationCodeService);
 		userConsentRepository = mockInstance(UserConsentRepository);
+		mailer = mockInstance(UserManagementMailer);
 		getAllowedRedirectUris = vi.fn<(...args: []) => Promise<string[]>>().mockResolvedValue([]);
 
 		const resourceRegistry = new ProtectedResourceRegistry(mock<Logger>());
@@ -65,6 +68,7 @@ describe('OAuthServerService', () => {
 			authorizationCodeService,
 			userConsentRepository,
 			resourceRegistry,
+			mailer,
 		);
 	});
 
@@ -884,22 +888,114 @@ describe('OAuthServerService', () => {
 	});
 
 	describe('deleteClient', () => {
-		it('should delete client when user has consent', async () => {
+		// The GC step deletes the client through a single conditional query
+		// (`DELETE ... WHERE id = :clientId AND NOT EXISTS (<remaining consents>)`),
+		// so both repositories are driven via query builders rather than the
+		// repository `delete()` shortcut. `affected` decides whether the client
+		// row was actually removed.
+		const mockGarbageCollect = (affected: number) => {
+			(userConsentRepository as any).metadata = { tableName: 'oauth_user_consents' };
+			const execute = vi.fn().mockResolvedValue({ affected });
+			(oauthClientRepository.createQueryBuilder as unknown as Mock).mockReturnValue({
+				delete: () => ({ from: () => ({ where: () => ({ execute }) }) }),
+			});
+			return execute;
+		};
+
+		it("should revoke only the user's grant and keep the client while other consents remain", async () => {
 			const client = {
 				id: 'client-123',
 				name: 'Test Client',
 			} as OAuthClient;
 
 			oauthClientRepository.findOne.mockResolvedValue(client);
-			userConsentRepository.findOneBy.mockResolvedValue({
+			userConsentRepository.findOne.mockResolvedValue({
 				userId: 'user-456',
 				clientId: 'client-123',
+				user: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
 			} as any);
-			oauthClientRepository.delete.mockResolvedValue({} as any);
+			const execute = mockGarbageCollect(0);
 
 			await service.deleteClient('client-123', 'user-456');
 
-			expect(oauthClientRepository.delete).toHaveBeenCalledWith({ id: 'client-123' });
+			expect(tokenService.revokeAllTokensForGrant).toHaveBeenCalledWith('client-123', 'user-456');
+			expect(authorizationCodeService.deleteForGrant).toHaveBeenCalledWith(
+				'client-123',
+				'user-456',
+			);
+			expect(userConsentRepository.delete).toHaveBeenCalledWith({
+				clientId: 'client-123',
+				userId: 'user-456',
+			});
+			expect(execute).toHaveBeenCalled();
+		});
+
+		it('should garbage-collect the client when the last consent is revoked', async () => {
+			const client = {
+				id: 'client-123',
+				name: 'Test Client',
+			} as OAuthClient;
+
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			userConsentRepository.findOne.mockResolvedValue({
+				userId: 'user-456',
+				clientId: 'client-123',
+				user: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
+			} as any);
+			const execute = mockGarbageCollect(1);
+
+			await service.deleteClient('client-123', 'user-456');
+
+			expect(userConsentRepository.delete).toHaveBeenCalledWith({
+				clientId: 'client-123',
+				userId: 'user-456',
+			});
+			expect(execute).toHaveBeenCalled();
+		});
+
+		it('should notify the grant owner by email when someone else revokes their client', async () => {
+			const client = {
+				id: 'client-123',
+				name: 'Test Client',
+			} as OAuthClient;
+
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			userConsentRepository.findOne.mockResolvedValue({
+				userId: 'user-456',
+				clientId: 'client-123',
+				user: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
+			} as any);
+			userConsentRepository.countBy.mockResolvedValue(1);
+			mailer.notifyMcpClientRevoked.mockResolvedValue({ emailSent: true });
+
+			const revoker = { id: 'admin-1', email: 'admin@n8n.io' } as any;
+			await service.deleteClient('client-123', 'user-456', revoker);
+
+			expect(mailer.notifyMcpClientRevoked).toHaveBeenCalledWith({
+				clientName: 'Test Client',
+				owner: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
+				revoker,
+			});
+		});
+
+		it('should not send an email when users revoke their own client', async () => {
+			const client = {
+				id: 'client-123',
+				name: 'Test Client',
+			} as OAuthClient;
+
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			userConsentRepository.findOne.mockResolvedValue({
+				userId: 'user-456',
+				clientId: 'client-123',
+				user: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
+			} as any);
+			userConsentRepository.countBy.mockResolvedValue(1);
+
+			const revoker = { id: 'user-456', email: 'owner@n8n.io' } as any;
+			await service.deleteClient('client-123', 'user-456', revoker);
+
+			expect(mailer.notifyMcpClientRevoked).not.toHaveBeenCalled();
 		});
 
 		it('should throw when client does not exist', async () => {
@@ -919,7 +1015,7 @@ describe('OAuthServerService', () => {
 			} as OAuthClient;
 
 			oauthClientRepository.findOne.mockResolvedValue(client);
-			userConsentRepository.findOneBy.mockResolvedValue(null);
+			userConsentRepository.findOne.mockResolvedValue(null);
 
 			await expect(service.deleteClient('client-123', 'other-user')).rejects.toThrow(
 				'OAuth client with ID client-123 not found',
@@ -1080,6 +1176,7 @@ describe('OAuthServerService', () => {
 				authorizationCodeService,
 				userConsentRepository,
 				multiRegistry,
+				mailer,
 			);
 
 			expect(
@@ -1108,6 +1205,7 @@ describe('OAuthServerService', () => {
 				urlService,
 				mock<McpSettingsService>(),
 				mcpConfig,
+				mock<GlobalConfig>(),
 			);
 			expect(mcpResource.getResourceUrl()).toBe('https://n8n-mcp.example.com/mcp-server/http');
 
@@ -1123,6 +1221,7 @@ describe('OAuthServerService', () => {
 				authorizationCodeService,
 				userConsentRepository,
 				configuredRegistry,
+				mailer,
 			);
 		};
 

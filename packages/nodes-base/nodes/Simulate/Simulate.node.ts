@@ -25,9 +25,9 @@ export class Simulate implements INodeType {
 		description: 'Simulate a node',
 		subtitle: '={{$parameter.subtitle || undefined}}',
 		icon: 'fa:arrow-right',
+		iconColor: 'neutral',
 		defaults: {
 			name: 'Simulate',
-			color: '#b0b0b0',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],

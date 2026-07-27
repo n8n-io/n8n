@@ -118,7 +118,7 @@ const renderComponent = createComponentRenderer(NodeSetupCard);
 const createCredentialState = (overrides: Partial<NodeSetupState> = {}): NodeSetupState => ({
 	node: createTestNode({
 		name: 'OpenAI',
-		type: 'n8n-nodes-base.openAi',
+		type: '@n8n/n8n-nodes-langchain.openAi',
 		parameters: {},
 	}) as INodeUi,
 	credentialType: 'openAiApi',
@@ -132,7 +132,7 @@ const createCredentialState = (overrides: Partial<NodeSetupState> = {}): NodeSet
 	allNodesUsingCredential: [
 		createTestNode({
 			name: 'OpenAI',
-			type: 'n8n-nodes-base.openAi',
+			type: '@n8n/n8n-nodes-langchain.openAi',
 		}) as INodeUi,
 	],
 	...overrides,
@@ -189,7 +189,7 @@ describe('NodeSetupCard', () => {
 						state: createCredentialState({
 							node: createTestNode({
 								name: 'My OpenAI Node',
-								type: 'n8n-nodes-base.openAi',
+								type: '@n8n/n8n-nodes-langchain.openAi',
 							}) as INodeUi,
 						}),
 						expanded: true,
@@ -234,8 +234,11 @@ describe('NodeSetupCard', () => {
 			it('should show nodes hint when credential is used by multiple nodes', () => {
 				const state = createCredentialState({
 					allNodesUsingCredential: [
-						createTestNode({ name: 'OpenAI', type: 'n8n-nodes-base.openAi' }) as INodeUi,
-						createTestNode({ name: 'GPT Node', type: 'n8n-nodes-base.openAi' }) as INodeUi,
+						createTestNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.openAi' }) as INodeUi,
+						createTestNode({
+							name: 'GPT Node',
+							type: '@n8n/n8n-nodes-langchain.openAi',
+						}) as INodeUi,
 					],
 				});
 
@@ -249,7 +252,7 @@ describe('NodeSetupCard', () => {
 			it('should not show nodes hint when credential is used by a single node', () => {
 				const state = createCredentialState({
 					allNodesUsingCredential: [
-						createTestNode({ name: 'OpenAI', type: 'n8n-nodes-base.openAi' }) as INodeUi,
+						createTestNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.openAi' }) as INodeUi,
 					],
 				});
 

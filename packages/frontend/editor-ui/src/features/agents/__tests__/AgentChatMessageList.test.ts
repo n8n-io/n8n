@@ -99,6 +99,33 @@ describe('AgentChatMessageList', () => {
 		expect(speakSpy).toHaveBeenCalledTimes(1);
 	});
 
+	it('shows send-to-assistant for preview assistant messages and re-emits clicks', async () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-1',
+						role: 'assistant',
+						content: 'Agent reply',
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+				agentId: 'agent-1',
+				sessionId: 'thread-1',
+				canSendToAssistant: true,
+			},
+		});
+
+		expect(wrapper.find('[data-test-id="agent-chat-message-send-to-assistant"]').exists()).toBe(
+			true,
+		);
+
+		await wrapper.find('[data-test-id="agent-chat-message-send-to-assistant"]').trigger('click');
+
+		expect(wrapper.emitted('sendToAssistant')).toHaveLength(1);
+	});
+
 	it('does not render actions for user text messages', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {

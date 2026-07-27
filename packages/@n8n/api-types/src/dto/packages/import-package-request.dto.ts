@@ -12,7 +12,12 @@ export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
 	'workflowConflictPolicy',
 	'workflowPublishingPolicy',
 	'workflowIdPolicy',
+	'missingNodeTypeMode',
 	'folderConflictPolicy',
+	'dataTableMatchingMode',
+	'dataTableMissingMode',
+	'dataTableSchemaConflictPolicy',
+	'variableMissingMode',
 ] as const;
 
 /** Multipart text fields: empty / whitespace-only values become `undefined`. */
@@ -73,5 +78,16 @@ export class ImportPackageRequestDto extends Z.class({
 		.optional()
 		.default('preserve-published-state'),
 	workflowIdPolicy: z.enum(['new', 'source']).optional().default('new'),
+	missingNodeTypeMode: z.enum(['fail', 'import-anyway']).optional().default('fail'),
 	folderConflictPolicy: z.enum(['merge', 'fail']).optional().default('merge'),
+	dataTableMatchingMode: z.enum(['by-id']).optional().default('by-id'),
+	dataTableMissingMode: z
+		.enum(['create', 'must-preexist', 'do-nothing'])
+		.optional()
+		.default('create'),
+	dataTableSchemaConflictPolicy: z
+		.enum(['keep-existing', 'fail'])
+		.optional()
+		.default('keep-existing'),
+	variableMissingMode: z.enum(['do-nothing', 'must-preexist']).optional().default('do-nothing'),
 }) {}

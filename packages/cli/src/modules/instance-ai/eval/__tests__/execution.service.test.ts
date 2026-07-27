@@ -870,7 +870,7 @@ describe('EvalExecutionService', () => {
 						{
 							id: 'broken-node',
 							name: 'Transcribe Audio',
-							type: 'n8n-nodes-base.openAi',
+							type: '@n8n/n8n-nodes-langchain.openAi',
 							typeVersion: 1.1,
 							position: [0, 0],
 							parameters: {},

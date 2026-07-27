@@ -1,10 +1,10 @@
-// Push selected on-disk eval cases (data/workflows/*.json) UP into a curated
+// Push selected on-disk eval cases (data/workflows/*.json) UP into a
 // lang-tracer suite over the REST API, upserting: create missing, update changed,
 // leave unchanged, skip unsupported. The inverse of `--source langtracer` (which
-// pulls a suite down). Env: LANGTRACER_URL + LANGTRACER_API_KEY (see .env.eval).
+// pulls a suite down). Env: LANGTRACER_URL + LANGTRACER_API_KEY (repo-root .env.local).
 //
-//   dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --changed
-//   dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building ai-quote-carousel ...
+//   dotenvx run -f ../../../.env.local -- pnpm eval:langtracer-push --suite baseline --changed
+//   dotenvx run -f ../../../.env.local -- pnpm eval:langtracer-push --suite baseline my-new-case ...
 //   ... --dry-run   # plan only, no writes
 
 import { execFileSync } from 'node:child_process';
@@ -171,9 +171,12 @@ async function main() {
 		throw new Error(`suite "${args.suite}" not found. Available: ${known || '(none)'}.`);
 	}
 
-	// Select disk cases: loader applies --filter/--exclude/--tier; then narrow to the
-	// exact slugs from positional args + --changed (if either was given).
-	const all = loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
+	// Select disk cases: loader applies --filter/--exclude, --tier narrows by the
+	// case's datasets (mirrors data/source.ts); then narrow to the exact slugs
+	// from positional args + --changed (if either was given).
+	const loaded = loadWorkflowTestCasesWithFiles(args.filter, args.exclude);
+	const tier = args.tier;
+	const all = tier ? loaded.filter((c) => c.testCase.datasets.includes(tier)) : loaded;
 	const exactSlugs = new Set([...args.slugs, ...(args.changed ? gitChangedSlugs() : [])]);
 	const selected = exactSlugs.size > 0 ? all.filter((c) => exactSlugs.has(c.fileSlug)) : all;
 

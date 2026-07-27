@@ -1,10 +1,5 @@
 import { computed, toValue, type ComputedRef, type MaybeRefOrGetter } from 'vue';
-import {
-	CHAT_TRIGGER_NODE_TYPE,
-	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
-	getParentNodes,
-	mapConnectionsByDestination,
-} from 'n8n-workflow';
+import { CHAT_TRIGGER_NODE_TYPE, getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import {
@@ -48,6 +43,9 @@ export function useSliceInputs(options?: UseSliceInputsOptions): ComputedRef<Sli
 			withFallback(result, allNodes, connections, probeNode);
 
 		const exec = pickUserExecution([
+			// A user-chosen seed execution (from the Tests list) wins so the detail
+			// form prefills from exactly the execution they picked.
+			wizardStore.seedExecution,
 			workflowExecutionStateStore.value.activeExecution,
 			workflowExecutionStateStore.value.lastSuccessfulExecution,
 			toValue(options?.fallbackExecution),
@@ -79,10 +77,6 @@ export function useSliceInputs(options?: UseSliceInputsOptions): ComputedRef<Sli
 // output column; otherwise `input` keeps `helpfulness.userQuery` lookups working.
 export const FALLBACK_INPUT_FIELD_NAME = 'input';
 const CHAT_TRIGGER_FALLBACK_FIELD_NAME = 'chatInput';
-const CHAT_TRIGGER_NODE_TYPES = new Set<string>([
-	CHAT_TRIGGER_NODE_TYPE,
-	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
-]);
 
 function withFallback(
 	result: SliceInputs,
@@ -110,7 +104,7 @@ function pickFallbackFieldName(
 	const byName = new Map(allNodes.map((n) => [n.name, n]));
 	for (const name of chain) {
 		const node = byName.get(name);
-		if (node && CHAT_TRIGGER_NODE_TYPES.has(node.type)) {
+		if (node && node.type === CHAT_TRIGGER_NODE_TYPE) {
 			return CHAT_TRIGGER_FALLBACK_FIELD_NAME;
 		}
 	}
@@ -133,12 +127,16 @@ function pickUserExecution(
 	return undefined;
 }
 
-function readFirstOutputItem(runData: RunData, nodeName: string) {
+export function readFirstOutputItem(runData: RunData, nodeName: string) {
 	const task = runData[nodeName]?.[0];
 	return task?.data?.main?.[0]?.[0]?.json;
 }
 
-function readFirstInputItemViaGraph(runData: RunData, connections: Connections, nodeName: string) {
+export function readFirstInputItemViaGraph(
+	runData: RunData,
+	connections: Connections,
+	nodeName: string,
+) {
 	const byDest = mapConnectionsByDestination(connections);
 	const parents = getParentNodes(byDest, nodeName, 'main', 1);
 	const parent = parents[0];

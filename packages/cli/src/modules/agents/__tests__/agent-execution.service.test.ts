@@ -417,6 +417,28 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
+	describe('findLatestSuspendedRun', () => {
+		it('delegates to the repository and returns its result', async () => {
+			const suspended = { id: 'execution-1', source: 'telegram' } as AgentExecution;
+			agentExecutionRepository.findLatestSuspendedByThreadId.mockResolvedValue(suspended);
+
+			const result = await service.findLatestSuspendedRun('thread-1');
+
+			expect(agentExecutionRepository.findLatestSuspendedByThreadId).toHaveBeenCalledWith(
+				'thread-1',
+			);
+			expect(result).toBe(suspended);
+		});
+
+		it('returns null when there is no suspended execution in the thread', async () => {
+			agentExecutionRepository.findLatestSuspendedByThreadId.mockResolvedValue(null);
+
+			const result = await service.findLatestSuspendedRun('thread-1');
+
+			expect(result).toBeNull();
+		});
+	});
+
 	describe('deleteThread', () => {
 		it('cleans SDK memory before deleting the execution thread', async () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue({

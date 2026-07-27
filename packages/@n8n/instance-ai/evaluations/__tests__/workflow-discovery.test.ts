@@ -3,26 +3,17 @@ import type { Mock } from 'vitest';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import { buildAgentOutcome } from '../outcome/workflow-discovery';
 import type { EventOutcome } from '../types';
+import { workflow } from './fixtures';
 
 const emptyEventOutcome: EventOutcome = {
 	workflowIds: [],
 	executionIds: [],
 	dataTableIds: [],
+	artifactRefs: [],
 	finalText: '',
 	toolCalls: [],
 	agentActivities: [],
 };
-
-function workflow(id: string): WorkflowResponse {
-	return {
-		id,
-		name: `Workflow ${id}`,
-		active: false,
-		versionId: `version-${id}`,
-		nodes: [],
-		connections: {},
-	};
-}
 
 function clientWithWorkflows(workflows: WorkflowResponse[]): {
 	client: N8nClient;

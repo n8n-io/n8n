@@ -9,7 +9,7 @@ test.describe(
 		test.describe('NDV callout', () => {
 			test('should show callout and open template on click', async ({ n8n }) => {
 				await n8n.start.fromBlankCanvas();
-				await n8n.canvas.addNode('Zep Vector Store', {
+				await n8n.canvas.addNode('Simple Vector Store', {
 					action: 'Add documents to vector store',
 					closeNDV: false,
 				});

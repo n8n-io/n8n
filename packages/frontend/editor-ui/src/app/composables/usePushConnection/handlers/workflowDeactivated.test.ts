@@ -86,4 +86,35 @@ describe('workflowDeactivated', () => {
 
 		expect(workflowDocumentStore.publicationStatus).toBe('partial');
 	});
+
+	// Regression: INS-859 (deactivation sibling of the activation fix in #34095).
+	// `activeVersionId` is part of the conflict checksum (WORKFLOW_CHECKSUM_FIELDS in
+	// packages/workflow/src/workflow-checksum.ts), so deactivating a published workflow changes
+	// its server-side checksum. When the deactivation lands while the editor has unsaved edits,
+	// the stored `expectedChecksum` must be refreshed — otherwise the next autosave sends the
+	// pre-deactivation checksum and the backend's `_detectConflicts` rejects it with a false 409
+	// ("Workflow was changed by someone else"). The dirty branch used to null the active state
+	// without refreshing the checksum; this pins that gap.
+	it('refreshes the editor checksum on deactivation even when there are unsaved changes', async () => {
+		// Editor holds the pre-deactivation checksum.
+		workflowDocumentStore.setChecksum('checksum-before-deactivate');
+
+		// User dragged a node → workspace is dirty, autosave pending.
+		mockUiStore.stateIsDirty = true;
+
+		// Deactivation lands: server checksum now reflects the cleared activeVersionId.
+		mockFetchWorkflow.mockResolvedValue({
+			id: 'wf-123',
+			activeVersionId: null,
+			checksum: 'checksum-after-deactivate',
+		});
+
+		await workflowDeactivated(makeEvent(), options);
+
+		// The stored expectedChecksum must be the post-deactivation value; otherwise the next
+		// autosave 409s with "Workflow was changed by someone else".
+		expect(workflowDocumentStore.checksum).toBe('checksum-after-deactivate');
+		// The in-progress edits must survive: reconcile the checksum, never re-hydrate.
+		expect(mockInitializeWorkspace).not.toHaveBeenCalled();
+	});
 });

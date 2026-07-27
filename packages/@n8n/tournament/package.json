@@ -1,6 +1,6 @@
 {
   "name": "@n8n/tournament",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Output compatible rewrite of riot tmpl",
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -44,7 +44,7 @@
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:typescript"
   },
   "dependencies": {
     "ast-types": "^0.16.1",

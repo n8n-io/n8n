@@ -121,6 +121,15 @@ function makeCredentialRequests(count: number): InstanceAiCredentialRequest[] {
 	}));
 }
 
+/** Creates requests with exactly one existing credential (auto-selected on init) */
+function makeCredentialRequestsWithSingleExisting(count: number): InstanceAiCredentialRequest[] {
+	return Array.from({ length: count }, (_, i) => ({
+		credentialType: `type${i + 1}`,
+		reason: `Reason for type ${i + 1}`,
+		existingCredentials: [{ id: `existing-${i + 1}`, name: `Existing Cred ${i + 1}` }],
+	}));
+}
+
 /** Creates requests with existing credentials (shows dropdown picker) */
 function makeCredentialRequestsWithExisting(count: number): InstanceAiCredentialRequest[] {
 	return Array.from({ length: count }, (_, i) => ({
@@ -372,6 +381,31 @@ describe('InstanceAiCredentialSetup', () => {
 				kind: 'credentialSelection',
 				credentials: { type1: 'cred-123' },
 			});
+			expect(getByText('instanceAi.credential.allSelected')).toBeTruthy();
+		});
+
+		it('auto-submits a single pre-selected existing credential without user input', async () => {
+			const requests = makeCredentialRequestsWithSingleExisting(1);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByText } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			// The single existing credential is auto-selected on init and
+			// submitted without any user interaction.
+			await vi.waitFor(() => {
+				expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+					kind: 'credentialSelection',
+					credentials: { type1: 'existing-1' },
+				});
+			});
+			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'approved');
 			expect(getByText('instanceAi.credential.allSelected')).toBeTruthy();
 		});
 

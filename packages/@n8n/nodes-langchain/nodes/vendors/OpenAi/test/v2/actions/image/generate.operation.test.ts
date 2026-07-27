@@ -16,7 +16,7 @@ describe('Image Generate Operation', () => {
 		mock<INode>({
 			id: 'test-node',
 			name: 'OpenAI Image Generate',
-			type: 'n8n-nodes-base.openAi',
+			type: '@n8n/n8n-nodes-langchain.openAi',
 			typeVersion,
 			position: [0, 0],
 			parameters: {},

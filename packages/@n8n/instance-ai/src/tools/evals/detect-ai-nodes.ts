@@ -16,7 +16,6 @@ const EVALUATION_TYPES = new Set<string>([
 const ROOT_AI_TYPES = new Set<string>([
 	// Agents and chains.
 	`${LANGCHAIN_TYPE_PREFIX}agent`,
-	`${LANGCHAIN_TYPE_PREFIX}openAiAssistant`,
 	`${LANGCHAIN_TYPE_PREFIX}chainLlm`,
 	`${LANGCHAIN_TYPE_PREFIX}chainRetrievalQa`,
 	`${LANGCHAIN_TYPE_PREFIX}chainSummarization`,

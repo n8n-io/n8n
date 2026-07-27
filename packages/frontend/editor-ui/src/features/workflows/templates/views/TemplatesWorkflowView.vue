@@ -69,14 +69,10 @@ const startWithAi = async () => {
 		i18n.baseText('instanceAi.launch.template.message', {
 			interpolate: { name: template.value.name, id: templateId.value },
 		}),
-		undefined,
-		undefined,
 		{
-			launch: {
-				source: 'template-view',
-				origin: 'internal',
-				sourceContext: { templateId: templateId.value, templateName: template.value.name },
-			},
+			source: 'template-view',
+			origin: 'internal',
+			sourceContext: { templateId: templateId.value, templateName: template.value.name },
 		},
 	);
 };

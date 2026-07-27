@@ -54,7 +54,7 @@ describe('getToolIcon', () => {
 	});
 
 	test('returns default icon for removed delegate tool', () => {
-		expect(getToolIcon('delegate')).toBe('settings');
+		expect(getToolIcon('delegate')).toBe('wrench');
 	});
 
 	test('returns share for tools ending with -with-agent', () => {
@@ -84,7 +84,7 @@ describe('getToolIcon', () => {
 	});
 
 	test('treats removed plan tool as an ordinary unknown icon', () => {
-		expect(getToolIcon('plan')).toBe('settings');
+		expect(getToolIcon('plan')).toBe('wrench');
 	});
 
 	test('returns key-round for credential tools', () => {
@@ -110,8 +110,8 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('n8n-docs')).toBe('book-open');
 	});
 
-	test('returns settings as default', () => {
-		expect(getToolIcon('unknown-tool')).toBe('settings');
+	test('returns wrench as default', () => {
+		expect(getToolIcon('unknown-tool')).toBe('wrench');
 	});
 });
 

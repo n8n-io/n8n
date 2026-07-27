@@ -1,61 +1,74 @@
 import type {
 	BuiltTelemetry,
 	CredentialProvider,
+	MemoryTaskUsageReport,
 	ModelConfig,
+	ScopedMemoryTaskEvent,
 	SerializableAgentState,
 	StreamChunk,
 	StreamResult,
 	Telemetry,
 	Agent as RuntimeAgent,
 } from '@n8n/agents';
+import { createObservationLogObserveFn, createObservationLogReflectFn } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { applyAgentThinking, tokenUsageToBuilderUsageItems } from '@n8n/instance-ai';
 import { IsNull } from '@n8n/typeorm';
 import { jsonParse } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeCatalogService } from '@/node-catalog';
 
+import { InstanceAiCreditService } from '../../instance-ai/instance-ai-credit.service';
 import { AgentsService } from '../agents.service';
-import { composeJsonConfig } from '../json-config/agent-config-composition';
+import { buildAgentPreviewPath } from './agent-builder-preview-path';
+import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
+import { buildBuilderPrompt } from './agents-builder-prompts';
+import { AgentsBuilderToolsService } from './agents-builder-tools.service';
+import { BuilderCheckpointUnavailableError } from './errors';
+import { getBuilderRuntimeSkills } from './skills';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentJsonConfig } from '@n8n/api-types';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 import { streamAgentChunks } from '../utils/agent-stream';
-import { buildAgentPreviewPath } from './agent-builder-preview-path';
-import { buildBuilderPrompt } from './agents-builder-prompts';
-import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';
-import { BuilderCheckpointUnavailableError } from './errors';
-import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
-import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
-import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
-import { getBuilderRuntimeSkills } from './skills';
 
 interface FindSuspendedCheckpointOptions {
 	includeUnscoped?: boolean;
 }
 
-/** Options for a builder session that isn't the default agents-UI chat (e.g. an instance-AI sub-agent). */
-export interface BuilderSessionOptions {
-	/** Persistence thread id for this builder session. */
+/**
+ * Builder session options for the agent-builder sub-agent. `AgentsBuilderService`
+ * only ever streams for Instance AI's build-agent tool, so every field the
+ * host has already resolved (model, billing identity, telemetry) is required
+ * rather than falling back to the builder's own settings/tracing chains.
+ */
+export interface InstanceAiBuilderSessionOptions {
+	/** Persistence thread id for this builder session (e.g. `ia-builder:<instanceThreadId>:<agentId>`). */
 	threadId: string;
+	/** The visible Instance AI thread this build turn belongs to — builder OM usage is billed against this thread. */
+	hostThreadId: string;
+	/** The Instance AI run id this build turn belongs to — used for OM billing dedupe. */
+	runId: string;
 	/** Extra text appended to the builder prompt (e.g. instance-AI sub-agent rules). */
 	instructionsAddendum?: string;
-	/**
-	 * Overrides model resolution for this session — when set, the builder runs
-	 * on this model directly instead of `AgentsBuilderSettingsService.resolveModelConfig`.
-	 * Used by hosts (e.g. instance AI) that already resolved a model upstream.
-	 */
-	modelConfig?: ModelConfig;
+	/** Host-resolved model for the builder run — Instance AI's orchestrator model. */
+	modelConfig: ModelConfig;
 	/**
 	 * Host-provided telemetry for this session (e.g. instance AI's parent-trace
 	 * telemetry). When set, it replaces the builder's own LangSmith wiring so
 	 * sub-agent spans join the host trace.
 	 */
 	telemetry?: Telemetry | BuiltTelemetry;
+	/**
+	 * Host's memory-task lease hook (`InstanceAiTraceContext.onMemoryTaskEvent`).
+	 * When set, registered on the builder agent via `Agent.memoryTaskObserver()`
+	 * so the builder's own observational-memory task events retain/release the
+	 * host trace's telemetry provider, keeping its memory LLM spans exportable
+	 * after the host trace's root finalizes.
+	 */
+	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
 }
 
 @Service()
@@ -66,10 +79,9 @@ export class AgentsBuilderService {
 		private readonly nodeCatalogService: NodeCatalogService,
 		private readonly agentsBuilderToolsService: AgentsBuilderToolsService,
 		private readonly n8nMemory: N8nMemory,
-		private readonly builderSettings: AgentsBuilderSettingsService,
+		private readonly instanceAiCreditService: InstanceAiCreditService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly agentCheckpointRepository: AgentCheckpointRepository,
-		private readonly agentsConfig: AgentsConfig,
 	) {}
 
 	// ---------------------------------------------------------------------------
@@ -82,7 +94,7 @@ export class AgentsBuilderService {
 		message: string,
 		credentialProvider: CredentialProvider,
 		user: User,
-		session: BuilderSessionOptions,
+		session: InstanceAiBuilderSessionOptions,
 	): AsyncGenerator<StreamChunk> {
 		const builder = await this.createBuilderAgent(
 			agentId,
@@ -121,7 +133,7 @@ export class AgentsBuilderService {
 		resumeData: unknown,
 		credentialProvider: CredentialProvider,
 		user: User,
-		session: BuilderSessionOptions,
+		session: InstanceAiBuilderSessionOptions,
 	): AsyncGenerator<StreamChunk> {
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
 		if (checkpointStatus.status === 'expired') {
@@ -180,7 +192,7 @@ export class AgentsBuilderService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		user: User,
-		session: BuilderSessionOptions,
+		session: InstanceAiBuilderSessionOptions,
 	): Promise<RuntimeAgent> {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) {
@@ -196,34 +208,14 @@ export class AgentsBuilderService {
 			});
 		});
 
-		// Resolve the model the builder should run on. When the session already
-		// carries a host-resolved model (e.g. instance AI's sub-agent), use it
-		// directly and skip the builder's own settings chain entirely — no
-		// `BuilderNotConfiguredError` is possible on this path, and there is no
-		// tracing-proxy config to forward since it isn't the builder's own proxy.
-		// Hosts that want tracing on this path pass `session.telemetry` instead.
-		const { config: modelConfig, tracingProxyConfig } = session.modelConfig
-			? { config: session.modelConfig, tracingProxyConfig: undefined }
-			: await this.builderSettings.resolveModelConfig(user);
+		// Instance AI already resolved the run's model upstream; the builder
+		// always runs on it directly.
+		const modelConfig = session.modelConfig;
 
-		const currentConfig = composeJsonConfig(agent) as unknown as AgentJsonConfig | null;
-		const currentToolsMap = agent.tools ?? {};
-		const toolList =
-			Object.entries(currentToolsMap)
-				.map(([id, t]) => `- ${id}: ${t.descriptor.name} -- ${t.descriptor.description}`)
-				.join('\n') || '(none)';
-
-		const configJson = currentConfig ? JSON.stringify(currentConfig, null, 2) : '(no config yet)';
 		const modelRecommendationsSection = await getModelRecommendationsSection();
-		const enabledModules = this.agentsConfig.modules;
 		const instructions = buildBuilderPrompt({
-			configJson,
-			configHash: getAgentConfigHash(currentConfig),
-			configUpdatedAt: agent.updatedAt.toISOString(),
-			toolList,
 			agentPreviewPath: buildAgentPreviewPath(projectId, agentId),
 			modelRecommendationsSection,
-			enabledModules,
 		});
 		const finalInstructions = session.instructionsAddendum
 			? `${instructions}\n\n${session.instructionsAddendum}`
@@ -239,33 +231,52 @@ export class AgentsBuilderService {
 
 		const { Agent, Memory } = await import('@n8n/agents');
 
+		const onMemoryUsage = async (report: MemoryTaskUsageReport) => {
+			try {
+				const items = tokenUsageToBuilderUsageItems(report.model, report.usage);
+				if (items.length === 0) return;
+				await this.instanceAiCreditService.claimRunUsage(
+					user,
+					session.hostThreadId,
+					`${session.runId}:agent-builder:${agentId}:memory:${report.task}:${report.reportId}`,
+					items,
+					'completed',
+				);
+			} catch (error) {
+				this.logger.warn('Failed to claim agent-builder observational-memory usage', {
+					agentId,
+					hostThreadId: session.hostThreadId,
+					runId: session.runId,
+					task: report.task,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		};
+
 		const builderMemory = new Memory()
 			.storage(this.n8nMemory.getImplementation(agentId))
-			.observationalMemory();
+			.observationalMemory({
+				observe: createObservationLogObserveFn(modelConfig, { onUsage: onMemoryUsage }),
+				reflect: createObservationLogReflectFn(modelConfig, { onUsage: onMemoryUsage }),
+			});
 
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
+			.promptCaching({ anthropic: { ttl: '5m' } })
 			.instructions(finalInstructions)
 			.skills(runtimeSkills)
 			.memory(builderMemory)
 			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))
 			.configuration({ maxIterations: 30 });
 
-		const telemetry =
-			session.telemetry ??
-			(await buildBuilderTelemetry({
-				agentId,
-				projectId,
-				userId: user.id,
-				threadId: session.threadId,
-				model: modelConfig,
-				tracingProxyConfig,
-			}));
-		if (telemetry) builder.telemetry(telemetry);
+		if (session.telemetry) builder.telemetry(session.telemetry);
+		if (session.memoryTaskObserver) builder.memoryTaskObserver(session.memoryTaskObserver);
 
 		for (const tool of [...tools.json, ...tools.shared]) {
 			builder.tool(tool);
 		}
+
+		applyAgentThinking(builder, modelConfig);
 
 		return builder;
 	}

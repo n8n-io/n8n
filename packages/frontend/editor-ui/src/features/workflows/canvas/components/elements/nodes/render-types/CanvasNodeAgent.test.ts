@@ -296,5 +296,25 @@ describe('CanvasNodeAgent', () => {
 			expect(getByTestId('canvas-node-agent-model')).toBeInTheDocument();
 			expect(queryByTestId('agent-picker-stub')).toBeNull();
 		});
+
+		it('renders skill chips from the embedded skill refs and bodies', () => {
+			const { getByText, getAllByTestId } = renderWithInlineAgent({
+				config: {
+					...inlineAgent.config,
+					skills: [{ type: 'skill', id: 'skill_triage' }],
+				},
+				skills: {
+					skill_triage: {
+						name: 'Triage',
+						description: 'Triage incoming requests',
+						instructions: 'Categorize the request and route it.',
+					},
+				},
+			});
+
+			expect(getByText('Triage')).toBeInTheDocument();
+			// Tool chip + skill chip.
+			expect(getAllByTestId('canvas-node-agent-chip')).toHaveLength(2);
+		});
 	});
 });

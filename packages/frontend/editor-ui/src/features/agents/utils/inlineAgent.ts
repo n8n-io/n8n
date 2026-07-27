@@ -1,4 +1,5 @@
 import type { AgentCapabilitySummary, InlineAgentConfig } from '@n8n/api-types';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import type { INodeUi } from '@/Interface';
 
@@ -43,6 +44,22 @@ export function createDefaultInlineAgent(): InlineAgentConfig {
 }
 
 /**
+ * Mirror of the backend's `generateAgentResourceId('skill', …)` for inline
+ * agents, whose skill ids are minted client-side (there is no entity to POST
+ * to). Same `skill_<nanoid>` format, same collision retry.
+ */
+export function generateInlineSkillId(existingIds: Iterable<string> = []): string {
+	const existing = new Set(existingIds);
+
+	for (let attempt = 0; attempt < 10; attempt++) {
+		const id = `skill_${generateNanoId()}`;
+		if (!existing.has(id)) return id;
+	}
+
+	throw new Error('Could not generate unique skill id');
+}
+
+/**
  * Shape an inline config like a saved agent's capability summary so surfaces
  * (canvas card chips, model row) can reuse the saved-agent rendering.
  */
@@ -52,6 +69,16 @@ export function inlineAgentToCapabilitySummary(
 ): AgentCapabilitySummary {
 	const { config } = inlineAgent;
 	const parsedModel = config.model ? parseModelString(config.model) : null;
+	// The parameter JSON is unvalidated until execution: tolerate a non-array
+	// `skills` and skip malformed refs instead of crashing the canvas render
+	// (same contract as `toCapabilitySummaryTools`). Bodies are resolved by own
+	// key only, so ids like "constructor" can't surface prototype members; the
+	// id fallback also covers a body an external edit removed — the editor
+	// prunes the reverse case (orphan bodies) on write.
+	const skillBodies = inlineAgent.skills ?? {};
+	const skillRefs = (Array.isArray(config.skills) ? config.skills : []).filter(
+		(ref) => typeof ref?.id === 'string' && ref.id !== '',
+	);
 
 	return {
 		id: `inline:${nodeId}`,
@@ -60,7 +87,10 @@ export function inlineAgentToCapabilitySummary(
 		channels: [],
 		tools: toCapabilitySummaryTools(config.tools),
 		mcpServers: (config.mcpServers ?? []).map((server) => ({ name: server.name })),
-		skills: [],
+		skills: skillRefs.map((ref) => ({
+			id: ref.id,
+			name: (Object.hasOwn(skillBodies, ref.id) ? skillBodies[ref.id]?.name : undefined) ?? ref.id,
+		})),
 		tasks: [],
 	};
 }

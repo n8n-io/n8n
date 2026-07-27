@@ -26,7 +26,7 @@ vi.mock('./useSecretsProviderConnection.ee', () => ({
 	useSecretsProviderConnection: () => mockConnection,
 }));
 
-vi.mock('@/app/stores/rbac.store', () => ({
+vi.mock('@n8n/stores/rbac.store', () => ({
 	useRBACStore: vi.fn(() => ({
 		hasScope: mockHasScope,
 	})),

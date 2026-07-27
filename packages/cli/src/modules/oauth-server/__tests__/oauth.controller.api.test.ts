@@ -146,6 +146,47 @@ describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
 	});
 });
 
+describe('GET /.well-known/oauth-protected-resource (bare path)', () => {
+	test('resolves to the default registered resource', async () => {
+		const response = await testServer.restlessAgent.get('/.well-known/oauth-protected-resource');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({
+			resource: expect.stringContaining('/mcp-server/http'),
+			bearer_methods_supported: ['header'],
+			authorization_servers: [expect.any(String)],
+			...(SUPPORTED_SCOPES.length > 0 && { scopes_supported: SUPPORTED_SCOPES }),
+		});
+	});
+
+	test('matches the resource-scoped metadata for the default resource', async () => {
+		const bareResponse = await testServer.restlessAgent.get(
+			'/.well-known/oauth-protected-resource',
+		);
+		const scopedResponse = await testServer.restlessAgent.get(
+			'/.well-known/oauth-protected-resource/mcp-server/http',
+		);
+
+		expect(bareResponse.statusCode).toBe(200);
+		expect(bareResponse.body).toEqual(scopedResponse.body);
+	});
+
+	test('is accessible without authentication', async () => {
+		const response = await testServer.restlessAgent.get('/.well-known/oauth-protected-resource');
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('responds to OPTIONS with CORS headers', async () => {
+		const response = await testServer.restlessAgent.options(
+			'/.well-known/oauth-protected-resource',
+		);
+
+		expect(response.statusCode).toBe(204);
+		expect(response.headers['access-control-allow-origin']).toBe('*');
+	});
+});
+
 describe('POST /mcp-oauth/register', () => {
 	beforeEach(async () => {
 		await mcpSettingsService.setEnabled(true);
@@ -298,7 +339,7 @@ describe('POST /mcp-oauth/register', () => {
 	});
 
 	test('should reject with descriptive server_error on the post-insert rollback (race path)', async () => {
-		const { OAuthServerService } = await import('../oauth-server.service');
+		const { OAuthServerService } = await import('../oauth-server.service.js');
 		const globalConfig = Container.get(GlobalConfig);
 		const originalLimit = globalConfig.endpoints.mcpMaxRegisteredClients;
 		globalConfig.endpoints.mcpMaxRegisteredClients = 1;
@@ -805,7 +846,7 @@ describe('IP rate limit configuration', () => {
 	let OAuthController: typeof OAuthControllerClass;
 
 	beforeAll(async () => {
-		({ OAuthController } = await import('../oauth.controller'));
+		({ OAuthController } = await import('../oauth.controller.js'));
 	});
 
 	test('applies the configured limits to the shared OAuth endpoints', () => {
@@ -829,6 +870,8 @@ describe('IP rate limit configuration', () => {
 		'metadataOptions',
 		'protectedResourceMetadata',
 		'protectedResourceMetadataOptions',
+		'defaultProtectedResourceMetadata',
+		'defaultProtectedResourceMetadataOptions',
 	])('applies the configured well-known limit to %s', (handlerName) => {
 		const config = Container.get(OAuthServerConfig);
 		const routeMetadata = Container.get(ControllerRegistryMetadata).getRouteMetadata(
