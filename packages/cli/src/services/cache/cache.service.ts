@@ -3,7 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 import { caching } from 'cache-manager';
-import { jsonStringify, UserError } from 'n8n-workflow';
+import { jsonParse, jsonStringify, UserError } from 'n8n-workflow';
 
 import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
 import { REDIS_TTL_KEY_MISSING } from '@/services/cache/cache.constants';
@@ -23,6 +23,8 @@ type CacheEvents = {
 
 @Service()
 export class CacheService extends TypedEmitter<CacheEvents> {
+	private readonly takeLocks = new Map<string, Promise<void>>();
+
 	constructor(private readonly globalConfig: GlobalConfig) {
 		super();
 	}
@@ -208,6 +210,40 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		}
 
 		return fallbackValue;
+	}
+
+	/**
+	 * Atomically retrieve and delete a primitive value.
+	 */
+	async take<T = unknown>(key: string): Promise<T | undefined> {
+		if (!this.cache) await this.init();
+		if (!key?.length) return;
+
+		if (this.cache.kind === 'redis') {
+			const value = await this.cache.store.client.getdel(key);
+			return value === null ? undefined : jsonParse<T>(value);
+		}
+
+		const previous = this.takeLocks.get(key) ?? Promise.resolve();
+		let release: () => void;
+		const current = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		this.takeLocks.set(key, current);
+		await previous;
+
+		try {
+			const value = await this.cache.store.get<T>(key);
+			if (value !== undefined) {
+				await this.cache.store.del(key);
+			}
+			return value;
+		} finally {
+			release!();
+			if (this.takeLocks.get(key) === current) {
+				this.takeLocks.delete(key);
+			}
+		}
 	}
 
 	/**

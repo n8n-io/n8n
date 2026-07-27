@@ -207,8 +207,7 @@ export class SlackAppSetupService {
 	}
 
 	async completeInstall(options: CompleteSlackAppInstallOptions): Promise<void> {
-		// Peek (don't consume) so a failed pre-flight leaves the one-time state intact.
-		const session = await this.peekSession(options.state);
+		const { session, cachedSession } = await this.consumeSession(options.state);
 		if (session.projectId !== options.projectId || session.agentId !== options.agentId) {
 			throw new BadRequestError('Slack app setup state does not match this agent');
 		}
@@ -222,13 +221,18 @@ export class SlackAppSetupService {
 		}
 
 		const agent = await this.getAgent(session.agentId, session.projectId);
-		await this.agentPublishService.assertDraftPublishable(agent, session.projectId, user, {
-			ignoreDraftIntegrations: true,
-		});
-
-		// Consume only after the pre-flight passes so concurrent/retry callbacks
-		// can't race past a failed validation with a burned state.
-		await this.consumeSession(options.state);
+		try {
+			await this.agentPublishService.assertDraftPublishable(agent, session.projectId, user, {
+				ignoreDraftIntegrations: true,
+			});
+		} catch (error) {
+			await this.cacheService.set(
+				this.cacheKey(options.state),
+				cachedSession,
+				SLACK_APP_SETUP_TTL_MS,
+			);
+			throw error;
+		}
 
 		const tokenResponse = await this.callSlackApi(
 			'oauth.v2.access',
@@ -269,20 +273,25 @@ export class SlackAppSetupService {
 			credentialId: credential.id,
 		} satisfies AgentIntegrationConfig;
 
+		const previousIntegrations = agent.integrations;
+		const previousVersionId = agent.versionId;
 		await this.agentIntegrationPersistenceService.saveCredentialIntegration(agent, integration, {
 			broadcast: false,
 		});
-		await this.agentPublishService.publishAgent(
-			session.agentId,
-			session.projectId,
-			user,
-			'slack_setup',
-			undefined,
-			{
+		await this.agentPublishService
+			.publishAgent(session.agentId, session.projectId, user, 'slack_setup', undefined, {
 				syncIntegrations: false,
 				ignoreDraftIntegrations: true,
-			},
-		);
+			})
+			.catch(async (error: unknown) => {
+				await this.credentialsService.delete(user, credential.id);
+				await this.agentIntegrationPersistenceService.restoreCredentialIntegrationState(
+					agent.id,
+					previousIntegrations,
+					previousVersionId,
+				);
+				throw error;
+			});
 		await this.chatIntegrationService.connect(session.agentId, integration, session.projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(
 			session.agentId,
@@ -361,25 +370,10 @@ export class SlackAppSetupService {
 		}
 	}
 
-	/** Read the setup session without deleting it (for pre-flight checks). */
-	private async peekSession(state: string): Promise<SlackAppSetupSession> {
-		return await this.readSession(state, { consume: false });
-	}
-
-	/** Read and delete the setup session (one-time use after pre-flight). */
-	private async consumeSession(state: string): Promise<SlackAppSetupSession> {
-		return await this.readSession(state, { consume: true });
-	}
-
-	private async readSession(
+	private async consumeSession(
 		state: string,
-		options: { consume: boolean },
-	): Promise<SlackAppSetupSession> {
-		const key = this.cacheKey(state);
-		const cached = await this.cacheService.get<unknown>(key);
-		if (options.consume) {
-			await this.cacheService.delete(key);
-		}
+	): Promise<{ session: SlackAppSetupSession; cachedSession: string }> {
+		const cached = await this.cacheService.take<unknown>(this.cacheKey(state));
 		if (typeof cached !== 'string') {
 			throw new BadRequestError('Slack app setup state has expired or is invalid');
 		}
@@ -388,7 +382,7 @@ export class SlackAppSetupService {
 			const decrypted = await this.cipher.decryptV2(cached);
 			const session = jsonParse<unknown>(decrypted, { fallbackValue: null });
 			if (hasSessionShape(session)) {
-				return session;
+				return { session, cachedSession: cached };
 			}
 		} catch {}
 

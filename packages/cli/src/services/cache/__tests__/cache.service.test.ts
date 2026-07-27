@@ -202,6 +202,18 @@ for (const backend of ['memory', 'redis'] as const) {
 			}
 		});
 
+		describe('take', () => {
+			test('should return a value only once across concurrent callers', async () => {
+				await cacheService.set('key', 'value');
+
+				const results = await Promise.all([cacheService.take('key'), cacheService.take('key')]);
+
+				expect(results).toEqual(expect.arrayContaining(['value', undefined]));
+				expect(results.filter((value) => value === 'value')).toHaveLength(1);
+				await expect(cacheService.get('key')).resolves.toBeUndefined();
+			});
+		});
+
 		describe('delete', () => {
 			test('should delete a key', async () => {
 				await cacheService.set('key', 'value');

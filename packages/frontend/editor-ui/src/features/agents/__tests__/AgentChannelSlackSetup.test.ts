@@ -79,7 +79,10 @@ describe('AgentChannelSlackSetup', () => {
 		});
 
 		// Type a token so the install button becomes enabled.
-		const tokenInput = getByTestId('slack-app-configuration-token').querySelector('input');
+		// N8nInput forwards data-* attrs onto the native <input>.
+		const tokenField = getByTestId('slack-app-configuration-token');
+		const tokenInput =
+			tokenField instanceof HTMLInputElement ? tokenField : tokenField.querySelector('input');
 		await fireEvent.update(tokenInput!, 'xoxe-config-token');
 
 		// Trigger the install.

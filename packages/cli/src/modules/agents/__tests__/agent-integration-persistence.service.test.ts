@@ -193,6 +193,27 @@ describe('AgentIntegrationPersistenceService', () => {
 		).rejects.toThrow(UserError);
 	});
 
+	it('restores integrations and draft version after a failed follow-up operation', async () => {
+		const { service, agentRepository, runtimeCacheService } = makeService();
+		const previousIntegrations = [{ type: 'slack' as const, credentialId: '' }];
+		const agent = makeAgent({
+			versionId: 'changed-version',
+			integrations: [{ type: 'slack', credentialId: 'slack-1' }],
+		});
+
+		await service.restoreCredentialIntegrationState(
+			agent.id,
+			previousIntegrations,
+			'previous-version',
+		);
+
+		expect(agentRepository.update).toHaveBeenCalledWith(agentId, {
+			integrations: previousIntegrations,
+			versionId: 'previous-version',
+		});
+		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+	});
+
 	it('returns the agent unchanged when removing from an empty list', async () => {
 		const { service, agentRepository, chatIntegrationService } = makeService();
 		const agent = makeAgent();

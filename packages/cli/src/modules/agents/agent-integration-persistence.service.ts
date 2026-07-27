@@ -101,6 +101,20 @@ export class AgentIntegrationPersistenceService {
 	}
 
 	/**
+	 * Narrowly restore the integration state captured before a failed
+	 * follow-up operation. Updates only `integrations` and `versionId` so a
+	 * compensating save cannot overwrite concurrent edits to other columns.
+	 */
+	async restoreCredentialIntegrationState(
+		agentId: string,
+		integrations: AgentIntegrationConfig[],
+		versionId: string | null,
+	): Promise<void> {
+		await this.agentRepository.update(agentId, { integrations, versionId });
+		this.runtimeCacheService.clearRuntimes(agentId);
+	}
+
+	/**
 	 * Remove a credential integration from the agent.
 	 */
 	async removeCredentialIntegration(

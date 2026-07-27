@@ -3,6 +3,11 @@ export const OAUTH_CALLBACK_ERROR = 'error';
 
 export type OAuthCallbackResult = typeof OAUTH_CALLBACK_SUCCESS | typeof OAUTH_CALLBACK_ERROR;
 
+interface OAuthErrorPayload {
+	type: typeof OAUTH_CALLBACK_ERROR;
+	message?: unknown;
+}
+
 /**
  * The OAuth callback page is served by the n8n backend and notifies the editor
  * UI that the flow finished. It signals completion over two channels:
@@ -27,12 +32,12 @@ export function getTrustedOAuthOrigins(editorBaseUrl: string): string[] {
 	return [...origins];
 }
 
-function isOAuthErrorPayload(data: unknown): boolean {
+function isOAuthErrorPayload(data: unknown): data is OAuthErrorPayload {
 	return (
 		typeof data === 'object' &&
 		data !== null &&
 		'type' in data &&
-		(data as { type: unknown }).type === OAUTH_CALLBACK_ERROR
+		data.type === OAUTH_CALLBACK_ERROR
 	);
 }
 
@@ -59,15 +64,8 @@ export function parseOAuthCallbackMessage(
  * postMessage payload when present.
  */
 export function getOAuthCallbackErrorMessage(data: unknown): string {
-	if (
-		typeof data === 'object' &&
-		data !== null &&
-		'type' in data &&
-		(data as { type: unknown }).type === OAUTH_CALLBACK_ERROR &&
-		'message' in data &&
-		typeof (data as { message: unknown }).message === 'string'
-	) {
-		return (data as { message: string }).message.trim();
+	if (isOAuthErrorPayload(data) && typeof data.message === 'string') {
+		return data.message.trim();
 	}
 	return '';
 }

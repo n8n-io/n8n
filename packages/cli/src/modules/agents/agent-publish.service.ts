@@ -210,35 +210,16 @@ export class AgentPublishService {
 		user: User,
 		options: { ignoreDraftIntegrations?: boolean } = {},
 	): Promise<void> {
-		const credentialProvider = new AgentsCredentialProvider(
-			this.credentialsService,
-			projectId,
-			user,
-		);
 		const tasks = new Map(
 			(await this.agentTaskRepository.findByAgentId(agent.id)).map((task) => [task.id, task]),
 		);
-		const baseIntegrations = agent.integrations ?? [];
-		const integrations = options.ignoreDraftIntegrations
-			? baseIntegrations.filter((integration) => !isDraftIntegration(integration))
-			: baseIntegrations;
-
-		const validation = options.ignoreDraftIntegrations
-			? await this.agentValidationService.validateAgentEntityConfiguration(
-					agent,
-					projectId,
-					tasks,
-					credentialProvider,
-					'publish',
-					integrations,
-				)
-			: await this.agentValidationService.validateAgentEntityConfiguration(
-					agent,
-					projectId,
-					tasks,
-					credentialProvider,
-					'publish',
-				);
+		const validation = await this.validateDraftForPublish(
+			agent,
+			projectId,
+			user,
+			tasks,
+			options.ignoreDraftIntegrations,
+		);
 
 		if (validation.status !== 'valid') {
 			const paths = validation.issues.map((issue) => issue.path).join(', ');
@@ -246,6 +227,39 @@ export class AgentPublishService {
 				`Agent configuration is incomplete. Fix these before connecting a channel: ${paths}`,
 			);
 		}
+	}
+
+	/**
+	 * Shared draft validation: credential provider, optional draft-integration
+	 * filtering, and entity validation. Used by both {@link assertDraftPublishable}
+	 * (pre-flight) and {@link assertPublishable} (authoritative publish guard,
+	 * non-history branch) so the two paths cannot drift.
+	 */
+	private async validateDraftForPublish(
+		agent: Agent,
+		projectId: string,
+		user: User,
+		tasks: ReadonlyMap<string, AgentTask>,
+		ignoreDraftIntegrations?: boolean,
+	): Promise<AgentConfigValidationResponse> {
+		const credentialProvider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			user,
+		);
+		const baseIntegrations = agent.integrations ?? [];
+		const integrationsOverride = ignoreDraftIntegrations
+			? baseIntegrations.filter((integration) => !isDraftIntegration(integration))
+			: undefined;
+
+		return await this.agentValidationService.validateAgentEntityConfiguration(
+			agent,
+			projectId,
+			tasks,
+			credentialProvider,
+			'publish',
+			integrationsOverride,
+		);
 	}
 
 	/**
@@ -283,21 +297,7 @@ export class AgentPublishService {
 					integrations,
 					credentialProvider,
 				)
-			: ignoreDraftIntegrations
-				? await this.agentValidationService.validateAgentEntityConfiguration(
-						agent,
-						projectId,
-						tasks,
-						credentialProvider,
-						'publish',
-						integrations,
-					)
-				: await this.agentValidationService.validateAgentEntityConfiguration(
-						agent,
-						projectId,
-						tasks,
-						credentialProvider,
-					);
+			: await this.validateDraftForPublish(agent, projectId, user, tasks, ignoreDraftIntegrations);
 
 		requireValidValidation(validation);
 		return validation;

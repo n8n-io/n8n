@@ -79,17 +79,24 @@ export class AgentIntegrationsController {
 			ignoreDraftIntegrations: true,
 		});
 
+		const previousIntegrations = agent.integrations;
+		const previousVersionId = agent.versionId;
 		await this.agentIntegrationPersistenceService.saveCredentialIntegration(agent, integration, {
 			broadcast: false,
 		});
-		const { agent: publishedAgent, draftValidation } = await this.agentPublishService.publishAgent(
-			agentId,
-			agent.projectId,
-			req.user,
-			'channel_connect',
-			undefined,
-			{ syncIntegrations: false, ignoreDraftIntegrations: true },
-		);
+		const { agent: publishedAgent, draftValidation } = await this.agentPublishService
+			.publishAgent(agentId, agent.projectId, req.user, 'channel_connect', undefined, {
+				syncIntegrations: false,
+				ignoreDraftIntegrations: true,
+			})
+			.catch(async (error: unknown) => {
+				await this.agentIntegrationPersistenceService.restoreCredentialIntegrationState(
+					agent.id,
+					previousIntegrations,
+					previousVersionId,
+				);
+				throw error;
+			});
 		await this.chatIntegrationService.connect(agentId, integration, agent.projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(agentId, integration, 'connect');
 
@@ -148,7 +155,7 @@ export class AgentIntegrationsController {
 	) {
 		const { code, state, error, error_description: errorDescription } = req.query;
 		if (error) {
-			return res.render('oauth-error-callback', {
+			return res.render('slack-oauth-error-callback', {
 				error: {
 					message: error,
 					...(errorDescription ? { reason: errorDescription } : {}),
@@ -156,7 +163,7 @@ export class AgentIntegrationsController {
 			});
 		}
 		if (!code || !state) {
-			return res.render('oauth-error-callback', {
+			return res.render('slack-oauth-error-callback', {
 				error: { message: 'Insufficient parameters for Slack app setup callback.' },
 			});
 		}
@@ -172,7 +179,7 @@ export class AgentIntegrationsController {
 		} catch (callbackError) {
 			const message =
 				callbackError instanceof Error ? callbackError.message : 'Slack app setup failed';
-			return res.render('oauth-error-callback', {
+			return res.render('slack-oauth-error-callback', {
 				error: { message },
 			});
 		}
