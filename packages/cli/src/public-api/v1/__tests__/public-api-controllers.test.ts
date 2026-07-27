@@ -13,8 +13,10 @@ function listPublicControllerFiles(): string[] {
 }
 
 function importedControllerModules(indexSource: string): Set<string> {
+	const SIDE_EFFECT_IMPORT_REGEX = /import\s+['"]\.\/([^'"]+)['"]/g;
+
 	return new Set(
-		[...indexSource.matchAll(/import\s+['"]\.\/([^'"]+)['"]/g)].map((match) => {
+		[...indexSource.matchAll(SIDE_EFFECT_IMPORT_REGEX)].map((match) => {
 			const specifier = match[1];
 			return specifier.endsWith('.ts') ? specifier : `${specifier}.ts`;
 		}),
@@ -45,11 +47,12 @@ describe('Public API controller registration', () => {
 	});
 
 	test('every @PublicApiController is declared in controllers/*.public.controller.ts', () => {
+		const PUBLIC_API_CONTROLLER_DECORATOR_REGEX = /@PublicApiController\s*\(/;
 		const unexpected: string[] = [];
 
 		for (const filePath of walkTsFiles(PUBLIC_API_ROOT)) {
 			const source = fs.readFileSync(filePath, 'utf8');
-			if (!/@PublicApiController\s*\(/.test(source)) continue;
+			if (!PUBLIC_API_CONTROLLER_DECORATOR_REGEX.test(source)) continue;
 
 			const relative = path.relative(PUBLIC_API_ROOT, filePath);
 			const inControllersDir = path.dirname(filePath) === CONTROLLERS_DIR;
