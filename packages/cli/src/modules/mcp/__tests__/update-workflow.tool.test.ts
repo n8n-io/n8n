@@ -573,7 +573,6 @@ describe('update-workflow MCP tool', () => {
 				],
 			});
 
-			const response = parseResult(result);
 			expect(result.isError).toBe(true);
 			expect(postSaveMetrics.incrementPostSaveFailure).not.toHaveBeenCalled();
 			expect(logger.error).toHaveBeenCalledWith(
