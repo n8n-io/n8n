@@ -14,7 +14,7 @@ describe('ImportPackageRequestDto', () => {
 				bindings: {},
 				workflowConflictPolicy: 'fail',
 				workflowPublishingPolicy: 'preserve-published-state',
-				workflowIdPolicy: 'new',
+				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
@@ -39,7 +39,7 @@ describe('ImportPackageRequestDto', () => {
 				bindings: {},
 				workflowConflictPolicy: 'fail',
 				workflowPublishingPolicy: 'preserve-published-state',
-				workflowIdPolicy: 'new',
+				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
@@ -66,7 +66,7 @@ describe('ImportPackageRequestDto', () => {
 				bindings: {},
 				workflowConflictPolicy: 'new-version',
 				workflowPublishingPolicy: 'preserve-published-state',
-				workflowIdPolicy: 'new',
+				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
@@ -92,7 +92,7 @@ describe('ImportPackageRequestDto', () => {
 				bindings: {},
 				workflowConflictPolicy: 'skip',
 				workflowPublishingPolicy: 'preserve-published-state',
-				workflowIdPolicy: 'new',
+				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
@@ -258,11 +258,11 @@ describe('ImportPackageRequestDto', () => {
 	});
 
 	describe('workflowIdPolicy', () => {
-		it('defaults to "new" when omitted', () => {
+		it('defaults to "source" when omitted', () => {
 			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
 			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.data.workflowIdPolicy).toBe('new');
+				expect(result.data.workflowIdPolicy).toBe('source');
 			}
 		});
 
@@ -327,6 +327,85 @@ describe('ImportPackageRequestDto', () => {
 		{ name: 'unknown workflowConflictPolicy', request: { workflowConflictPolicy: 'overwrite' } },
 	])('rejects $name', ({ request }) => {
 		expect(ImportPackageRequestDto.safeParse(request).success).toBe(false);
+	});
+
+	describe('blank enum fields fall back to their defaults', () => {
+		it('treats an empty-string credentialMatchingMode as unset and defaults it', () => {
+			const result = ImportPackageRequestDto.safeParse({
+				credentialMatchingMode: '',
+				workflowConflictPolicy: 'fail',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.credentialMatchingMode).toBe('id-only');
+			}
+		});
+
+		it('treats a whitespace-only credentialMatchingMode as unset and defaults it', () => {
+			const result = ImportPackageRequestDto.safeParse({
+				credentialMatchingMode: '   ',
+				workflowConflictPolicy: 'fail',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.credentialMatchingMode).toBe('id-only');
+			}
+		});
+
+		it('defaults credentialMatchingMode when omitted', () => {
+			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.credentialMatchingMode).toBe('id-only');
+			}
+		});
+
+		it('preserves an explicit credentialMatchingMode value', () => {
+			const result = ImportPackageRequestDto.safeParse({
+				credentialMatchingMode: 'type-only',
+				workflowConflictPolicy: 'fail',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.credentialMatchingMode).toBe('type-only');
+			}
+		});
+
+		it('still rejects a non-empty invalid credentialMatchingMode value', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({
+					credentialMatchingMode: 'fuzzy-match',
+					workflowConflictPolicy: 'fail',
+				}).success,
+			).toBe(false);
+		});
+
+		// Every optional enum field must treat a blank value as unset and fall back to its default.
+		it.each([
+			{ field: 'credentialMatchingMode', expected: 'id-only' },
+			{ field: 'credentialMissingMode', expected: 'create-stub' },
+			{ field: 'workflowConflictPolicy', expected: 'new-version' },
+			{ field: 'workflowPublishingPolicy', expected: 'preserve-published-state' },
+			{ field: 'workflowIdPolicy', expected: 'source' },
+			{ field: 'missingNodeTypeMode', expected: 'fail' },
+			{ field: 'folderConflictPolicy', expected: 'merge' },
+			{ field: 'dataTableMatchingMode', expected: 'by-id' },
+			{ field: 'dataTableMissingMode', expected: 'create' },
+			{ field: 'dataTableSchemaConflictPolicy', expected: 'keep-existing' },
+			{ field: 'variableMissingMode', expected: 'do-nothing' },
+		] as const)('defaults $field when the value is an empty string', ({ field, expected }) => {
+			const result = ImportPackageRequestDto.safeParse({ [field]: '' });
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data[field]).toBe(expected);
+			}
+		});
+
+		it('still rejects a non-empty invalid value for a blank-coercing enum field', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({ workflowPublishingPolicy: 'not-a-policy' }).success,
+			).toBe(false);
+		});
 	});
 
 	describe('variableMissingMode', () => {

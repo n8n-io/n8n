@@ -131,6 +131,20 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		return await manager.findBy(ScheduledJob, { id: In(ids) });
 	}
 
+	/** Test-only: how many jobs a node currently owns. */
+	async countByWorkflowNode(workflowId: string, nodeId: string): Promise<number> {
+		return await this.count({ where: { workflowId, nodeId } });
+	}
+
+	/** Test-only: sets `nextRunAt` to now, so the next sweep claims the job. */
+	async forceDueNowByWorkflowNode(workflowId: string, nodeId: string): Promise<void> {
+		await this.createQueryBuilder()
+			.update(ScheduledJob)
+			.set({ nextRunAt: () => dbNowLiteral(this.isPostgres) })
+			.where('"workflowId" = :workflowId AND "nodeId" = :nodeId', { workflowId, nodeId })
+			.execute();
+	}
+
 	/**
 	 * Insert new job rows and return one id per input job, in the same order as
 	 * `jobs`, so the caller can zip the ids back to the jobs by index.

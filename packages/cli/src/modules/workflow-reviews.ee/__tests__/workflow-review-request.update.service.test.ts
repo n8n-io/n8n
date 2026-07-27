@@ -106,7 +106,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		// By default, run the critical section against the mocked transaction.
-		dbLockService.withLock.mockImplementation(async (_id, fn) => await fn(tx));
+		dbLockService.withLock.mockImplementation(async (_id, fn) => await fn(tx, {}));
 		collaborationService.broadcastWorkflowReviewStateChanged.mockResolvedValue(undefined);
 	});
 
@@ -298,7 +298,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 			mockSuccessfulUpdatePath();
 			let lockResolved = false;
 			dbLockService.withLock.mockImplementation(async (_id, fn) => {
-				const result = await fn(tx);
+				const result = await fn(tx, {});
 				lockResolved = true;
 				return result;
 			});
