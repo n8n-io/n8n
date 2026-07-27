@@ -4,7 +4,7 @@ import type { SourceType } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { BuiltFileStore, ContentFileRef } from '@n8n/agents';
-import { BinaryDataService, FileLocation } from 'n8n-core';
+import { BinaryDataService, FileLocation, FileNotFoundError } from 'n8n-core';
 import { OperationalError, type IBinaryData } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
@@ -179,10 +179,19 @@ export class AgentChatAttachmentService {
 						mimeType: attachment.mimeType,
 					});
 				} catch (error) {
-					this.logger.warn('Failed to load agent chat attachment bytes', {
-						attachmentId: ref.id,
-						error,
-					});
+					// Missing bytes are an expected lifecycle state (pruned or expired
+					// storage) and recur on every turn of the thread, so they don't
+					// warrant a warning; anything else is a real storage failure.
+					if (error instanceof FileNotFoundError) {
+						this.logger.debug('Agent chat attachment bytes no longer in storage', {
+							attachmentId: ref.id,
+						});
+					} else {
+						this.logger.warn('Failed to load agent chat attachment bytes', {
+							attachmentId: ref.id,
+							error,
+						});
+					}
 					return null;
 				}
 			},
