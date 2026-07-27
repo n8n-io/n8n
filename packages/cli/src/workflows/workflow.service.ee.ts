@@ -365,6 +365,7 @@ export class EnterpriseWorkflowService {
 			where: {
 				id: In(Array.from(credentialIdToWorkflowIds.keys())),
 				isResolvable: true,
+				usageScope: 'project',
 			},
 			select: ['id'],
 		});

@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -41,7 +42,7 @@ onMounted(async () => {
 			i18n.baseText('agents.new.defaultName'),
 		);
 		upsertProjectAgentsListCache(projectId, agent);
-		telemetry.track('User created agent', {
+		telemetry.track(TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, {
 			agent_id: agent.id,
 			source: 'create_blank',
 		});
