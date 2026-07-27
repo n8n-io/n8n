@@ -4,7 +4,6 @@ import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import type { Response } from 'express';
 import { UserError } from 'n8n-workflow';
-import type { Readable } from 'node:stream';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -14,6 +13,7 @@ import {
 	PackageEntityNotFoundError,
 } from '@/modules/n8n-packages/entities/package-export.errors';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import type { ExportPackageResult } from '@/modules/n8n-packages/n8n-packages.types';
 import { classifyPackageFailure } from '@/modules/n8n-packages/package-failure-classifier';
 import { resolveImportPackageUpload } from '@/modules/n8n-packages/utils/import-package-upload';
 
@@ -22,6 +22,9 @@ import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { publicApiCompositeScope } from '../../shared/middlewares/global.middleware';
 
 const PACKAGE_EXPORT_SCOPES = 'project:export,workflow:export';
+
+/** Header carrying the JSON-serialized true per-entity counts of the exported package. */
+const EXPORT_COUNTS_HEADER = 'X-N8n-Export-Counts';
 
 type ExportPackageRequest = AuthenticatedRequest<
 	{},
@@ -80,9 +83,15 @@ function assertPackageImportApiKeyScopes(req: AuthenticatedRequest) {
 	}
 }
 
-async function streamPackageExport(res: Response, stream: Readable): Promise<Response> {
+async function streamPackageExport(
+	res: Response,
+	{ stream, counts }: ExportPackageResult,
+): Promise<Response> {
 	res.setHeader('Content-Type', 'application/gzip');
 	res.setHeader('Content-Disposition', 'attachment; filename="export.n8np"');
+	res.setHeader(EXPORT_COUNTS_HEADER, JSON.stringify(counts));
+	// Cross-origin browser clients can only read the counts header if it's exposed.
+	res.setHeader('Access-Control-Expose-Headers', EXPORT_COUNTS_HEADER);
 
 	return await new Promise<Response>((resolve, reject) => {
 		stream.on('error', reject);
@@ -131,7 +140,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					projectIds,
 				);
 
-				const stream = await Container.get(N8nPackagesService).exportPackage({
+				const exportResult = await Container.get(N8nPackagesService).exportPackage({
 					user: req.user,
 					workflowIds,
 					folderIds,
@@ -141,7 +150,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					missingWorkflowDependencyPolicy: payload.data.missingWorkflowDependencyPolicy,
 				});
 
-				return await streamPackageExport(res, stream);
+				return await streamPackageExport(res, exportResult);
 			} catch (error) {
 				Container.get(EventService).emit('n8n-package-export-failed', {
 					user: req.user,

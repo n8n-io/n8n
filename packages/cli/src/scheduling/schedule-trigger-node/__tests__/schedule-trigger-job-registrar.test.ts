@@ -156,6 +156,27 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			);
 		});
 
+		it('provisions a 5-field custom cron (no seconds) and plans its first fire', async () => {
+			const session = makeRegistrar().createSession();
+			const collector = session.createCollector(workflow, scheduleNode);
+			collector.registerCron(
+				{ expression: '0 9 * * 1-5' as CronExpression, recurrence: { activated: false } },
+				vi.fn(),
+			);
+
+			await session.commit(WORKFLOW_ID, NODE_ID);
+
+			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
+			expect(desired).toHaveLength(1);
+			expect(desired[0].schedule).toEqual({
+				kind: 'cron',
+				cronExpression: '0 9 * * 1-5',
+				timezone: null,
+			});
+			// NOW is Monday 00:00 UTC; a weekday 09:00 cron fires the same day.
+			expect(desired[0].firstRunAt).toEqual(NEXT_NINE);
+		});
+
 		it('a rule keeps its name when rules are inserted before it or reordered', async () => {
 			// A positional name would shift here and needlessly redefine the job,
 			// restarting its clock; the definition-derived name must not move.

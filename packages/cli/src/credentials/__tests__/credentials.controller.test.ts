@@ -62,6 +62,9 @@ describe('CredentialsController', () => {
 		mock(), // externalSecretsConfig
 		mock(), // externalSecretsProviderAccessCheckService
 		mock(), // connectionStatusProxy
+		mock(), // instanceCredentialAssignmentRepository
+		mock(), // instanceCredentialUseRegistry
+		mock(), // dbLockService
 	);
 
 	// Spy on methods that need to be mocked in tests
@@ -69,6 +72,7 @@ describe('CredentialsController', () => {
 	// for isChangingExternalSecretExpression and validateExternalSecretsPermissions
 	let decryptSpy: MockInstance;
 	let createEncryptedDataSpy: MockInstance;
+	let prepareUpdateDataSpy: MockInstance;
 	let getCredentialScopesSpy: MockInstance;
 	let updateSpy: MockInstance;
 	let createUnmanagedCredentialSpy: MockInstance;
@@ -102,6 +106,7 @@ describe('CredentialsController', () => {
 		vi.resetAllMocks();
 		decryptSpy = vi.spyOn(credentialsService, 'decrypt');
 		createEncryptedDataSpy = vi.spyOn(credentialsService, 'createEncryptedData');
+		prepareUpdateDataSpy = vi.spyOn(credentialsService, 'prepareUpdateData');
 		getCredentialScopesSpy = vi.spyOn(credentialsService, 'getCredentialScopes');
 		updateSpy = vi.spyOn(credentialsService, 'update');
 		createUnmanagedCredentialSpy = vi.spyOn(credentialsService, 'createUnmanagedCredential');
@@ -353,6 +358,89 @@ describe('CredentialsController', () => {
 				usesExternalSecrets: false,
 				jweEnabled: false,
 			});
+		});
+
+		it('should accept unchanged false flags when editing an instance credential', async () => {
+			const instanceCredential = mock<CredentialsEntity>({
+				...existingCredential,
+				usageScope: 'instance',
+				shared: [],
+			});
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'apiKey',
+					data: { apiKey: 'updated-key' },
+					isGlobal: false,
+					isResolvable: false,
+				},
+			} as unknown as CredentialRequest.Update;
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(instanceCredential);
+			prepareUpdateDataSpy.mockResolvedValue(ownerReq.body);
+			updateSpy.mockResolvedValue(instanceCredential);
+
+			await expect(credentialsController.updateCredentials(ownerReq)).resolves.toBeDefined();
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				credentialId,
+				ownerReq.user,
+				['credential:update'],
+				{ includeInstanceCredentials: true },
+			);
+		});
+
+		it.each([{ isGlobal: true }, { isResolvable: true }])(
+			'should reject converting an instance credential with %o',
+			async (flag) => {
+				const instanceCredential = mock<CredentialsEntity>({
+					...existingCredential,
+					usageScope: 'instance',
+					shared: [],
+				});
+				const ownerReq = {
+					user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+					params: { credentialId },
+					body: {
+						name: 'Updated Credential',
+						type: 'apiKey',
+						data: { apiKey: 'updated-key' },
+						isGlobal: false,
+						isResolvable: false,
+						...flag,
+					},
+				} as unknown as CredentialRequest.Update;
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(instanceCredential);
+
+				await expect(credentialsController.updateCredentials(ownerReq)).rejects.toThrow(
+					BadRequestError,
+				);
+				expect(updateSpy).not.toHaveBeenCalled();
+			},
+		);
+
+		it('should reject changing the type of an instance credential', async () => {
+			const instanceCredential = mock<CredentialsEntity>({
+				...existingCredential,
+				type: 'apiKey',
+				usageScope: 'instance',
+				shared: [],
+			});
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'httpHeaderAuth',
+					data: { name: 'x-api-key', value: 'secret' },
+				},
+			} as unknown as CredentialRequest.Update;
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(instanceCredential);
+
+			await expect(credentialsController.updateCredentials(ownerReq)).rejects.toThrow(
+				'Provider connection type cannot be changed',
+			);
+			expect(prepareUpdateDataSpy).not.toHaveBeenCalled();
 		});
 
 		it('should emit "credentials-updated" with jweEnabled true when JWE is enabled in payload', async () => {

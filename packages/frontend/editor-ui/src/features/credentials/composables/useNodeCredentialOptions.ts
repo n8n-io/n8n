@@ -69,6 +69,8 @@ export function useNodeCredentialOptions(
 			);
 		});
 
+		options = options.filter((option) => (option.usageScope ?? 'project') === 'project');
+
 		if (node.value?.type === HTTP_REQUEST_NODE_TYPE) {
 			options = options.filter((option) => !option.isManaged);
 		}
