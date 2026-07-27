@@ -6,14 +6,9 @@ import { N8nHoverCard } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
-import {
-	builtinToolLabelKey,
-	formatDuration,
-	isSubAgentTimelineItem,
-	itemFilterKey,
-} from '../session-timeline.utils';
+import { formatDuration, isSubAgentTimelineItem, itemFilterKey } from '../session-timeline.utils';
 import { chartBlockStyleForItem } from '../session-timeline.styles';
-import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';
 
 const props = defineProps<{
@@ -115,8 +110,7 @@ function popoverName(item: TimelineItem): string {
 		case 'agent':
 			return truncate(item.content ?? '', 80);
 		case 'tool': {
-			const key = builtinToolLabelKey(item.toolName, item.toolOutput);
-			return key ? i18n.baseText(key) : formatToolNameForDisplay(item.toolName);
+			return resolveToolNameForDisplay(item.toolName, i18n.baseText);
 		}
 		case 'workflow':
 			return item.workflowName ?? formatToolNameForDisplay(item.toolName);

@@ -1,5 +1,6 @@
 import type { InterruptibleToolContext } from '@n8n/agents';
 import { channelConfigSchema } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
 
 import { buildConfigureChannelTool } from '../configure-channel.tool';
@@ -17,11 +18,18 @@ function makeCtx(overrides?: { resumeData?: unknown }): TestCtx {
 }
 
 describe('configure_channel tool', () => {
+	const track: Mock = vi.fn();
+
+	beforeEach(() => {
+		track.mockClear();
+	});
+
 	function buildTool(availableTypes: string[] = ['slack', 'telegram', 'linear']) {
 		return buildConfigureChannelTool({
 			agentId: 'agent-1',
 			projectId: 'project-1',
 			listChatIntegrationTypes: () => availableTypes,
+			track,
 		});
 	}
 
@@ -100,9 +108,12 @@ describe('configure_channel tool', () => {
 
 		expect(ctx.suspend).not.toHaveBeenCalled();
 		expect(result).toEqual({ connected: true });
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TRIGGER, {
+			trigger_type: 'slack',
+		});
 	});
 
-	it('returns connected: false when the user skips (dismissal)', async () => {
+	it('returns connected: false when the user skips (dismissal), without tracking a trigger', async () => {
 		const ctx = makeCtx({ resumeData: { approved: false } });
 
 		const result = await buildTool().handler!(
@@ -111,5 +122,6 @@ describe('configure_channel tool', () => {
 		);
 
 		expect(result).toEqual({ connected: false });
+		expect(track).not.toHaveBeenCalled();
 	});
 });

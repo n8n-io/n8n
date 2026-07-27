@@ -1,17 +1,18 @@
-import type { CurrentUserResponse } from '@n8n/rest-api-client/api/users';
 import type { FrontendSettings } from '@n8n/api-types';
-import { useUsersStore } from './users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { PERSONALIZATION_MODAL_KEY } from './users.constants';
+import type { CurrentUserResponse } from '@n8n/rest-api-client/api/users';
 import { createPinia, setActivePinia } from 'pinia';
 
-const { loginCurrentUser, inviteUsers, login, logout } = vi.hoisted(() => {
+import { useSettingsStore } from './settings.store';
+import { useUsersStore } from './users.store';
+
+const { loginCurrentUser, inviteUsers, login, logout, getUsers } = vi.hoisted(() => {
 	return {
 		loginCurrentUser: vi.fn(),
 		identify: vi.fn(),
 		inviteUsers: vi.fn(),
 		login: vi.fn(),
 		logout: vi.fn(),
+		getUsers: vi.fn(),
 	};
 });
 
@@ -19,13 +20,14 @@ vi.mock('@n8n/rest-api-client/api/users', () => ({
 	loginCurrentUser,
 	login,
 	logout,
+	getUsers,
 }));
 
 vi.mock('./invitation.api', () => ({
 	inviteUsers,
 }));
 
-vi.mock('@n8n/stores/useRootStore', () => ({
+vi.mock('./useRootStore', () => ({
 	useRootStore: vi.fn(() => ({
 		instanceId: 'test-instance-id',
 	})),
@@ -184,10 +186,8 @@ describe('users.store', () => {
 			const errorHook = vi.fn(() => {
 				throw new Error('Hook failed');
 			});
-			const errorAsyncHook = vi.fn(async () => {
-				throw new Error('Hook failed');
-			});
-			const successAsyncHook = vi.fn(async () => {});
+			const errorAsyncHook = vi.fn().mockRejectedValue(new Error('Hook failed'));
+			const successAsyncHook = vi.fn().mockResolvedValue(undefined);
 			const successHook = vi.fn();
 
 			usersStore.registerLoginHook(errorHook);
@@ -227,7 +227,7 @@ describe('users.store', () => {
 			usersStore.currentUserId = '1';
 		};
 
-		it('opens the personalization modal through the registered opener', async () => {
+		it('opens the personalization modal through the registered opener', () => {
 			const usersStore = useUsersStore();
 			enableSurvey();
 			setCurrentUser(usersStore);
@@ -235,30 +235,31 @@ describe('users.store', () => {
 			const openModal = vi.fn();
 			usersStore.registerModalOpeners({ openModal, openModalWithData: vi.fn() });
 
-			await usersStore.showPersonalizationSurvey();
+			usersStore.showPersonalizationSurvey();
 
-			expect(openModal).toHaveBeenCalledWith(PERSONALIZATION_MODAL_KEY);
+			// The store passes the app's personalization modal key to the injected opener.
+			expect(openModal).toHaveBeenCalledWith('personalization');
 		});
 
-		it('does not open the modal when the survey is disabled', async () => {
+		it('does not open the modal when the survey is disabled', () => {
 			const usersStore = useUsersStore();
 			setCurrentUser(usersStore);
 
 			const openModal = vi.fn();
 			usersStore.registerModalOpeners({ openModal, openModalWithData: vi.fn() });
 
-			await usersStore.showPersonalizationSurvey();
+			usersStore.showPersonalizationSurvey();
 
 			expect(openModal).not.toHaveBeenCalled();
 		});
 
-		it('does not throw when no opener is registered', async () => {
+		it('does not throw when no opener is registered', () => {
 			const usersStore = useUsersStore();
 			enableSurvey();
 			setCurrentUser(usersStore);
 
 			// No registerModalOpeners() — the default no-op opener must not break the flow.
-			await expect(usersStore.showPersonalizationSurvey()).resolves.toBeUndefined();
+			expect(() => usersStore.showPersonalizationSurvey()).not.toThrow();
 		});
 	});
 
@@ -288,10 +289,8 @@ describe('users.store', () => {
 			const errorHook = vi.fn(() => {
 				throw new Error('Hook failed');
 			});
-			const errorAsyncHook = vi.fn(async () => {
-				throw new Error('Hook failed');
-			});
-			const successAsyncHook = vi.fn(async () => {});
+			const errorAsyncHook = vi.fn().mockRejectedValue(new Error('Hook failed'));
+			const successAsyncHook = vi.fn().mockResolvedValue(undefined);
 			const successHook = vi.fn();
 
 			usersStore.registerLogoutHook(errorHook);
@@ -305,6 +304,71 @@ describe('users.store', () => {
 			expect(errorAsyncHook).toHaveBeenCalled();
 			expect(successAsyncHook).toHaveBeenCalled();
 			expect(successHook).toHaveBeenCalled();
+		});
+	});
+
+	describe('personalizedNodeTypes', () => {
+		const setCurrentUserWithAnswers = (
+			usersStore: ReturnType<typeof useUsersStore>,
+			personalizationAnswers?: object,
+		) => {
+			usersStore.usersById['1'] = {
+				...mockUser,
+				isDefaultUser: false,
+				isPendingUser: false,
+				mfaEnabled: false,
+				...(personalizationAnswers ? { personalizationAnswers } : {}),
+			} as never;
+			usersStore.currentUserId = '1';
+		};
+
+		it('returns an empty list when no resolver is registered', () => {
+			const usersStore = useUsersStore();
+			setCurrentUserWithAnswers(usersStore, { version: 'v4' });
+
+			expect(usersStore.personalizedNodeTypes).toEqual([]);
+		});
+
+		it('delegates to the injected resolver when one is registered', () => {
+			const usersStore = useUsersStore();
+			setCurrentUserWithAnswers(usersStore, { version: 'v4' });
+
+			const resolver = vi.fn(() => ['n8n-nodes-base.webhook']);
+			usersStore.setNodeTypesResolver(resolver);
+
+			expect(usersStore.personalizedNodeTypes).toEqual(['n8n-nodes-base.webhook']);
+			expect(resolver).toHaveBeenCalledWith(expect.objectContaining({ version: 'v4' }));
+		});
+
+		it('returns an empty list when the current user has no answers', () => {
+			const usersStore = useUsersStore();
+			setCurrentUserWithAnswers(usersStore);
+
+			const resolver = vi.fn(() => ['n8n-nodes-base.webhook']);
+			usersStore.setNodeTypesResolver(resolver);
+
+			expect(usersStore.personalizedNodeTypes).toEqual([]);
+			expect(resolver).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('fetchUsers', () => {
+		it('does not fetch when the injected permission check denies listing (default)', async () => {
+			const usersStore = useUsersStore();
+
+			await usersStore.fetchUsers();
+
+			expect(getUsers).not.toHaveBeenCalled();
+		});
+
+		it('fetches when the injected permission check allows listing users', async () => {
+			const usersStore = useUsersStore();
+			usersStore.setPermissionsResolvers({ listUsers: () => true });
+			getUsers.mockResolvedValueOnce({ count: 0, items: [] });
+
+			await usersStore.fetchUsers();
+
+			expect(getUsers).toHaveBeenCalled();
 		});
 	});
 });
