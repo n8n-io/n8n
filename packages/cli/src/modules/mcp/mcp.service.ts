@@ -327,6 +327,7 @@ export class McpService {
 			this.urlService.getWebhookBaseUrl(),
 			this.workflowFinderService,
 			this.credentialsService,
+			this.nodeTypes,
 			{
 				webhook: this.globalConfig.endpoints.webhook,
 				webhookTest: this.globalConfig.endpoints.webhookTest,
