@@ -102,6 +102,26 @@ function originLabel(thread: AgentExecutionThread): string {
 	return i18n.baseText('agentSessions.origin.agent');
 }
 
+function originIcon(thread: AgentExecutionThread): string {
+	const source = thread.source?.trim();
+	switch (source) {
+		case 'chat':
+			return 'zap';
+		case 'task':
+			return 'clock';
+		case 'workflow':
+			return 'workflow';
+		case 'slack':
+			return 'slack';
+		case 'telegram':
+			return 'telegram';
+		case 'linear':
+			return 'linear';
+		default:
+			return 'zap';
+	}
+}
+
 function rowActions(thread: AgentExecutionThread): Array<ActionDropdownItem<string>> {
 	const actions: Array<ActionDropdownItem<string>> = [];
 
@@ -218,7 +238,7 @@ async function loadMore() {
 						</td>
 						<td :class="$style.originCell" data-test-id="agent-session-origin">
 							<span :class="$style.originPill" data-test-id="agent-session-origin-pill">
-								<N8nIcon icon="zap" size="large" />
+								<N8nIcon :icon="originIcon(thread)" size="large" />
 								<span>{{ originLabel(thread) }}</span>
 							</span>
 						</td>
