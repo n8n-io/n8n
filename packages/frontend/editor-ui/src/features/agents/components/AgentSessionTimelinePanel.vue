@@ -262,7 +262,9 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 
 		<div :class="$style.panels">
 			<div :class="$style.tablePanel">
-				<div v-if="loading" :class="$style.loading">Loading...</div>
+				<div v-if="loading" :class="$style.loading">
+					{{ i18n.baseText('generic.loadingEllipsis') }}
+				</div>
 				<SessionTimelineTable
 					v-else
 					:items="items"
