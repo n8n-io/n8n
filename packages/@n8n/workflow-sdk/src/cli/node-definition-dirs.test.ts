@@ -24,16 +24,16 @@ afterEach(() => {
 });
 
 describe('resolveNodeDefinitionDirs', () => {
-	it('accepts explicit dirs and reports them as flag-sourced', () => {
+	it('accepts explicit dirs', () => {
 		const first = makeDefinitionDir('base');
 		const second = makeDefinitionDir('langchain');
 
-		const result = resolveNodeDefinitionDirs({
-			explicit: [first, second],
-			workflowDir: tmpRoot,
-		});
-
-		expect(result).toEqual({ dirs: [first, second], source: 'flag' });
+		expect(
+			resolveNodeDefinitionDirs({
+				explicit: [first, second],
+				workflowDir: tmpRoot,
+			}),
+		).toEqual([first, second]);
 	});
 
 	it('drops paths that are missing or lack a nodes/ tree', () => {
@@ -41,12 +41,12 @@ describe('resolveNodeDefinitionDirs', () => {
 		const empty = path.join(tmpRoot, 'empty');
 		fs.mkdirSync(empty);
 
-		const result = resolveNodeDefinitionDirs({
-			explicit: [valid, empty, path.join(tmpRoot, 'does-not-exist')],
-			workflowDir: tmpRoot,
-		});
-
-		expect(result.dirs).toEqual([valid]);
+		expect(
+			resolveNodeDefinitionDirs({
+				explicit: [valid, empty, path.join(tmpRoot, 'does-not-exist')],
+				workflowDir: tmpRoot,
+			}),
+		).toEqual([valid]);
 	});
 
 	it('reads the env var as a delimiter-separated list', () => {
@@ -54,26 +54,22 @@ describe('resolveNodeDefinitionDirs', () => {
 		const second = makeDefinitionDir('langchain');
 		process.env[NODE_DEFINITION_DIRS_ENV_VAR] = [first, second].join(path.delimiter);
 
-		const result = resolveNodeDefinitionDirs({ workflowDir: tmpRoot });
-
-		expect(result).toEqual({ dirs: [first, second], source: 'env' });
+		expect(resolveNodeDefinitionDirs({ workflowDir: tmpRoot })).toEqual([first, second]);
 	});
 
 	it('prefers explicit dirs over the env var', () => {
 		const fromFlag = makeDefinitionDir('flag');
 		process.env[NODE_DEFINITION_DIRS_ENV_VAR] = makeDefinitionDir('env');
 
-		const result = resolveNodeDefinitionDirs({
-			explicit: [fromFlag],
-			workflowDir: tmpRoot,
-		});
-
-		expect(result).toEqual({ dirs: [fromFlag], source: 'flag' });
+		expect(
+			resolveNodeDefinitionDirs({
+				explicit: [fromFlag],
+				workflowDir: tmpRoot,
+			}),
+		).toEqual([fromFlag]);
 	});
 
-	it('reports no dirs when the builtin node packages are not resolvable', () => {
-		const result = resolveNodeDefinitionDirs({ workflowDir: tmpRoot, cwd: tmpRoot });
-
-		expect(result).toEqual({ dirs: [], source: 'none' });
+	it('returns no dirs when the builtin node packages are not resolvable', () => {
+		expect(resolveNodeDefinitionDirs({ workflowDir: tmpRoot, cwd: tmpRoot })).toEqual([]);
 	});
 });

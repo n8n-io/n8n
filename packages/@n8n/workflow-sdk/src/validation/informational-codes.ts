@@ -1,8 +1,9 @@
 /**
  * Validation codes that must not block a save / CLI exit.
  *
- * Shared by the workflow-sdk CLI `validate` command and Instance AI's
- * `partitionWarnings` so the local check predicts the build gate.
+ * Single source of truth for severity: CLI `validate` and Instance AI's
+ * `partitionWarnings` both use this set. Source-lint findings carry no
+ * separate severity field — membership here is what makes them warnings.
  */
 export const INFORMATIONAL_VALIDATION_CODES: ReadonlySet<string> = new Set([
 	'MISSING_TRIGGER',

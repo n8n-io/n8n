@@ -1,6 +1,7 @@
 import type { Node, ObjectExpression, Program, Property } from 'estree';
 
 import { parseSDKCode } from '../ast-interpreter';
+import { walkAst } from './ast-walk';
 
 export type CodeExecutionMode = 'runOnceForAllItems' | 'runOnceForEachItem';
 
@@ -55,32 +56,6 @@ function modeFromObject(obj: ObjectExpression): CodeExecutionMode | undefined {
 	return undefined;
 }
 
-function isEstreeNode(value: unknown): value is Node {
-	return typeof value === 'object' && value !== null && 'type' in value;
-}
-
-function walkWithParent(
-	node: Node,
-	visit: (n: Node, parent: Node | undefined) => void,
-	parent?: Node,
-): void {
-	visit(node, parent);
-	for (const key of Object.keys(node) as Array<keyof Node>) {
-		if (key === 'loc' || key === 'range') continue;
-		const value = node[key];
-		if (!value || typeof value !== 'object') continue;
-		if (Array.isArray(value)) {
-			for (const entry of value) {
-				if (isEstreeNode(entry)) {
-					walkWithParent(entry, visit, node);
-				}
-			}
-		} else if (isEstreeNode(value)) {
-			walkWithParent(value, visit, node);
-		}
-	}
-}
-
 function enclosingObjectExpression(
 	node: Node,
 	parents: ReadonlyMap<Node, Node>,
@@ -103,7 +78,7 @@ export function isEmbeddedCodePropertyValue(node: Node, parent: Node | undefined
 
 export function buildParentMap(ast: Program): Map<Node, Node> {
 	const parents = new Map<Node, Node>();
-	walkWithParent(ast, (node, parent) => {
+	walkAst(ast, (node, parent) => {
 		if (parent) parents.set(node, parent);
 	});
 	return parents;
@@ -119,7 +94,7 @@ export function extractEmbeddedCodeSnippets(
 ): EmbeddedCodeSnippet[] {
 	const snippets: EmbeddedCodeSnippet[] = [];
 
-	walkWithParent(ast, (node) => {
+	walkAst(ast, (node) => {
 		if (node.type !== 'Property' || node.computed) return;
 		const key = propertyKeyName(node.key);
 		if (key !== 'jsCode' && key !== 'pythonCode') return;

@@ -3,10 +3,10 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { resolveNodeDefinitionDirs, NODE_DEFINITION_DIRS_ENV_VAR } from './node-definition-dirs';
-import { lintWorkflowSource, type SourceLintIssue } from './source-lint';
+import { lintWorkflowSource, type SourceLintIssue } from '../lint/lint-workflow-source';
 import type { WorkflowJSON } from '../types/base';
 import {
-	partitionValidationIssues,
+	isInformationalValidationCode,
 	setSchemaBaseDirs,
 	validateWorkflow,
 	type ValidationError,
@@ -26,7 +26,6 @@ interface CollectedIssue {
 	parameterPath?: string;
 	/** 1-based line in the workflow source file, when resolvable */
 	line?: number;
-	severity: 'error' | 'warning';
 	source: 'graph' | 'schema' | 'sdk' | 'jsCode' | 'pythonCode';
 }
 
@@ -131,7 +130,6 @@ function readSourceLines(absolutePath: string): string[] | undefined {
 
 function toCollected(
 	issues: ReadonlyArray<ValidationError | ValidationWarning>,
-	severity: 'error' | 'warning',
 	source: CollectedIssue['source'],
 	sourceLines: string[] | undefined,
 ): CollectedIssue[] {
@@ -148,10 +146,20 @@ function toCollected(
 			nodeName: issue.nodeName,
 			parameterPath,
 			line,
-			severity,
 			source,
 		};
 	});
+}
+
+function sourceLintToCollected(issue: SourceLintIssue): CollectedIssue {
+	return {
+		code: issue.code,
+		message: issue.message,
+		line: issue.line,
+		source: issue.lintTarget,
+		nodeName: issue.nodeName,
+		parameterPath: issue.parameterPath,
+	};
 }
 
 /** Blocking issues report as `error`, informational ones as `warning`. */
@@ -275,13 +283,42 @@ function resolveWorkflowExport(mod: { default?: unknown }): unknown {
 	return exported;
 }
 
+function partitionIssues(issues: CollectedIssue[]): {
+	blocking: CollectedIssue[];
+	informational: CollectedIssue[];
+} {
+	const blocking: CollectedIssue[] = [];
+	const informational: CollectedIssue[] = [];
+	for (const issue of issues) {
+		if (isInformationalValidationCode(issue.code)) {
+			informational.push(issue);
+		} else {
+			blocking.push(issue);
+		}
+	}
+	return { blocking, informational };
+}
+
+function dedupeIssues(issues: CollectedIssue[]): CollectedIssue[] {
+	const seen = new Set<string>();
+	const deduped: CollectedIssue[] = [];
+	for (const issue of issues) {
+		const key = `${issue.code}|${issue.nodeName ?? ''}|${issue.message}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		deduped.push(issue);
+	}
+	return deduped;
+}
+
 /**
  * Validate a workflow SDK TypeScript source file.
  *
  * Mirrors the sandbox build.mjs path: dynamic import → wf.validate() →
  * validateWorkflow(wf.toJSON()) without a nodeTypesProvider. Does not use the
  * AST interpreter (parseWorkflowCodeToBuilder) so results stay faithful to
- * build-workflow.
+ * build-workflow. Source lint is the extra pass that build-workflow does not
+ * run — agents are expected to call this CLI before build-workflow.
  */
 export async function validateCommand(argv: string[] = process.argv.slice(3)): Promise<void> {
 	const { filePath, options } = parseArgs(argv);
@@ -294,10 +331,10 @@ export async function validateCommand(argv: string[] = process.argv.slice(3)): P
 		explicit: options.nodeTypes,
 		workflowDir: path.dirname(absolutePath),
 	});
-	if (nodeDefinitionDirs.dirs.length > 0) {
-		setSchemaBaseDirs(nodeDefinitionDirs.dirs);
+	if (nodeDefinitionDirs.length > 0) {
+		setSchemaBaseDirs(nodeDefinitionDirs);
 	}
-	const unchecked = buildUnchecked(nodeDefinitionDirs.dirs.length > 0);
+	const unchecked = buildUnchecked(nodeDefinitionDirs.length > 0);
 
 	let mod: { default?: unknown };
 	try {
@@ -329,34 +366,15 @@ export async function validateCommand(argv: string[] = process.argv.slice(3)): P
 	const sourceIssues = sourceText.length > 0 ? lintWorkflowSource(sourceText) : [];
 
 	const allIssues: CollectedIssue[] = [
-		...toCollected(graphResult.errors, 'error', 'graph', sourceLines),
-		...toCollected(graphResult.warnings, 'warning', 'graph', sourceLines),
-		...toCollected(schemaResult.errors, 'error', 'schema', sourceLines),
-		...toCollected(schemaResult.warnings, 'warning', 'schema', sourceLines),
-		...sourceIssues.map(
-			(issue: SourceLintIssue): CollectedIssue => ({
-				code: issue.code,
-				message: issue.message,
-				line: issue.line,
-				severity: issue.severity,
-				source: issue.lintTarget,
-				nodeName: issue.nodeName,
-				parameterPath: issue.parameterPath,
-			}),
-		),
+		...toCollected(graphResult.errors, 'graph', sourceLines),
+		...toCollected(graphResult.warnings, 'graph', sourceLines),
+		...toCollected(schemaResult.errors, 'schema', sourceLines),
+		...toCollected(schemaResult.warnings, 'schema', sourceLines),
+		...sourceIssues.map(sourceLintToCollected),
 	];
 
-	// Deduplicate identical issues that both passes can emit (e.g. MISSING_TRIGGER).
-	const seen = new Set<string>();
-	const deduped: CollectedIssue[] = [];
-	for (const issue of allIssues) {
-		const key = `${issue.code}|${issue.nodeName ?? ''}|${issue.message}`;
-		if (seen.has(key)) continue;
-		seen.add(key);
-		deduped.push(issue);
-	}
-
-	const { errors: blocking, informational } = partitionValidationIssues(deduped);
+	const deduped = dedupeIssues(allIssues);
+	const { blocking, informational } = partitionIssues(deduped);
 
 	if (options.json) {
 		console.log(
@@ -366,7 +384,7 @@ export async function validateCommand(argv: string[] = process.argv.slice(3)): P
 				blocking,
 				informational,
 				unchecked,
-				nodeDefinitionDirs: nodeDefinitionDirs.dirs,
+				nodeDefinitionDirs,
 			}),
 		);
 	} else {

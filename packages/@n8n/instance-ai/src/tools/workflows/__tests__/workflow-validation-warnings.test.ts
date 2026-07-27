@@ -13,17 +13,4 @@ describe('partitionWarnings', () => {
 			errors: [warnings[2]],
 		});
 	});
-
-	it('keeps source-lint codes informational via shared SDK partition', () => {
-		const warnings: ValidationWarning[] = [
-			{ code: 'SDK_AS_CONST', message: 'Avoid as const' },
-			{ code: 'CODE_NODE_NETWORK_CALL', message: 'No fetch in Code', nodeName: 'Code' },
-			{ code: 'INVALID_PARAMETER', message: 'Bad parameter', nodeName: 'HTTP Request' },
-		];
-
-		expect(partitionWarnings(warnings)).toEqual({
-			informational: warnings.slice(0, 2),
-			errors: [warnings[2]],
-		});
-	});
 });

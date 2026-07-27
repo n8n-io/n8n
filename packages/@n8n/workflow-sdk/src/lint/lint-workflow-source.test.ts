@@ -1,4 +1,4 @@
-import { lintJsCode } from './code-node-js-lint';
+import { lintJsCode, hasNestedTemplateLiterals } from './code-node-js-lint';
 import { lintPythonCode } from './code-node-python-lint';
 import {
 	lintWorkflowSdkSource,
@@ -21,7 +21,7 @@ branch.onTrue(yes);
 		expect(lintWorkflowSdkSource(source).every((i) => i.lintTarget === 'sdk')).toBe(true);
 	});
 
-	it('flags repeated onFalse overwrites', () => {
+	it('flags repeated onFalse overwrites on the same IF identifier', () => {
 		const issues = lintWorkflowSdkSource(`
 const start = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } });
 const a = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'A' } });
@@ -33,6 +33,29 @@ branch.onFalse(c);
 export default workflow('id', 'name').add(start).to(branch).onTrue(a);
 `);
 		expect(issues.map((i) => i.code)).toContain('SDK_REPEATED_BRANCH_WIRING');
+	});
+
+	it('does not flag fluent onTrue/onFalse across different IF nodes on the workflow chain', () => {
+		const source = `
+const start = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } });
+const a = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'A' } });
+const b = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'B' } });
+const c = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'C' } });
+const d = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'D' } });
+const if1 = ifElse({ version: 2.2, config: { name: 'Check1', parameters: {} } });
+const if2 = ifElse({ version: 2.2, config: { name: 'Check2', parameters: {} } });
+export default workflow('id', 'name')
+  .add(start)
+  .to(if1)
+  .onTrue(a)
+  .onFalse(b)
+  .to(if2)
+  .onTrue(c)
+  .onFalse(d);
+`;
+		expect(lintWorkflowSdkSource(source).map((i) => i.code)).not.toContain(
+			'SDK_REPEATED_BRANCH_WIRING',
+		);
 	});
 
 	it('flags as const', () => {
@@ -178,23 +201,53 @@ describe('lintJsCode', () => {
 			'CODE_NODE_NETWORK_CALL',
 		]);
 	});
+
+	it('does not flag fetch mentioned only in a comment', () => {
+		expect(
+			lintJsCode('// await fetch("https://example.com");\nreturn [];').map((i) => i.code),
+		).toEqual([]);
+	});
+
+	it('flags nested template literals via AST', () => {
+		expect(hasNestedTemplateLiterals('const x = `outer ${`inner`} `;')).toBe(true);
+		expect(hasNestedTemplateLiterals('const x = `plain`;')).toBe(false);
+	});
 });
 
 describe('lintPythonCode', () => {
-	it('flags requests in pythonCode', () => {
+	it('flags requests imports in pythonCode', () => {
 		expect(lintPythonCode('import requests').map((i) => i.code)).toEqual([
 			'CODE_NODE_NETWORK_CALL',
 		]);
 	});
+
+	it('does not flag a variable merely named requests', () => {
+		expect(lintPythonCode('requests = []\nreturn requests').map((i) => i.code)).toEqual([]);
+	});
 });
 
 describe('prepareSourceForLint', () => {
-	it('strips imports', () => {
-		const source = `
-import { workflow } from '@n8n/workflow-sdk';
+	it('strips imports while preserving line numbers for later statements', () => {
+		const source = `import {
+  workflow,
+  node,
+} from '@n8n/workflow-sdk';
+const mode = 'list' as const;
 export default workflow('id', 'name');
 `;
 		const prepared = prepareSourceForLint(source);
 		expect(prepared.code.includes('import')).toBe(false);
+		expect(prepared.asConstLines).toEqual([5]);
+		const asConstLine = prepared.code.split(/\r?\n/)[4];
+		expect(asConstLine).toContain("const mode = 'list'");
+	});
+
+	it('does not mangle ternaries when stripping type annotations', () => {
+		const source = `
+const value = flag ? 'a' : 'b';
+export default workflow('id', 'name');
+`;
+		const prepared = prepareSourceForLint(source);
+		expect(prepared.code).toContain("flag ? 'a' : 'b'");
 	});
 });
