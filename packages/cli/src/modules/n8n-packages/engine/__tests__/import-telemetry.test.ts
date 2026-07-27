@@ -199,11 +199,35 @@ describe('emitPackageImportedEvent', () => {
 			],
 		});
 
+		// The one that already existed is reported as matched, like the API summary does, so all
+		// three requirements are accounted for.
 		expect(lastImportedPayload(eventService).counts.variables).toEqual({
-			matched: 0,
+			matched: 1,
 			missing: 1,
 			created: 1,
 			requirements: 3,
+		});
+	});
+
+	it('counts a name this import both created and skipped only once', () => {
+		const eventService = mock<EventService>();
+		const raced = scope({
+			projectId: 'P1',
+			outcomes: [outcome('wf1', 'WF1', 'created')],
+			credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
+			variables: { matched: 0, missing: 1, requirements: 1, created: 1 },
+		});
+		// Two creations wanted the same destination: the first stubbed it, the second found it
+		// occupied. The row is ours, so it belongs to `created` and must not also count as matched.
+		raced.imported.variableResult.skippedExisting = [...raced.imported.variableResult.stubbed];
+
+		emitPackageImportedEvent(eventService, { request, manifest, scopes: [raced] });
+
+		expect(lastImportedPayload(eventService).counts.variables).toEqual({
+			matched: 0,
+			missing: 0,
+			created: 1,
+			requirements: 1,
 		});
 	});
 

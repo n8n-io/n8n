@@ -54,14 +54,17 @@ export function emitPackageImportedEvent(
 		0,
 	);
 
-	const variablePlans = scopes.map(({ imported }) => imported.variablePlan);
 	const variableRequirements = scopes.reduce(
 		(total, { variableRequest }) => total + (variableRequest.requirements?.length ?? 0),
 		0,
 	);
-	const variablesMatched = variablePlans.reduce((total, plan) => total + plan.matched.length, 0);
-	// Read off the outcome rather than the mode, so a mode that fills only some of what was
-	// missing still counts the rest.
+	const variablesMatched = scopes.reduce((total, { imported }) => {
+		const stubbed = new Set(imported.variableResult.stubbed);
+		const preexisting = imported.variableResult.skippedExisting.filter(
+			(name) => !stubbed.has(name),
+		);
+		return total + imported.variablePlan.matched.length + preexisting.length;
+	}, 0);
 	const variablesMissing = scopes.reduce((total, { imported }) => {
 		const filled = new Set([
 			...imported.variableResult.stubbed,
