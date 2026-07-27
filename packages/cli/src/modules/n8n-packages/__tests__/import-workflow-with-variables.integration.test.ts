@@ -637,7 +637,16 @@ describe('workflow package import — with variables', () => {
 			).rejects.toMatchObject({
 				message: /Import blocked/,
 				meta: {
-					issues: [expect.objectContaining({ type: 'variable-limit-exceeded' })],
+					issues: [
+						{
+							type: 'variable-limit-exceeded',
+							limit: 0,
+							remaining: 0,
+							requested: 1,
+							names: ['API_URL'],
+							usedByWorkflows: [workflow.id],
+						},
+					],
 				},
 			});
 
