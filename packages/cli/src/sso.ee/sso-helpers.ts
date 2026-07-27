@@ -4,6 +4,7 @@ import { isAuthProviderType, SettingsRepository, type AuthProviderType } from '@
 import { Container } from '@n8n/di';
 
 import config from '@/config';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 /**
  * Only one authentication method can be active at a time. This function sets
@@ -89,6 +90,22 @@ export function isSsoCurrentAuthenticationMethod(): boolean {
 
 export function isEmailCurrentAuthenticationMethod(): boolean {
 	return getCurrentAuthenticationMethod() === 'email';
+}
+
+/**
+ * Only one SSO method can be enabled at a time (in addition to email). Throws a
+ * `BadRequestError` if the caller is trying to enable `method` while a different
+ * SSO method is currently active.
+ */
+export function assertAuthenticationMethodCanBeEnabled(
+	method: Extract<AuthProviderType, 'ldap' | 'saml' | 'oidc'>,
+): void {
+	const currentAuthenticationMethod = getCurrentAuthenticationMethod();
+	if (currentAuthenticationMethod !== 'email' && currentAuthenticationMethod !== method) {
+		throw new BadRequestError(
+			`Cannot switch ${method} login enabled state when an authentication method other than email or ${method} is active (current: ${currentAuthenticationMethod})`,
+		);
+	}
 }
 
 export function isSsoJustInTimeProvisioningEnabled(): boolean {
