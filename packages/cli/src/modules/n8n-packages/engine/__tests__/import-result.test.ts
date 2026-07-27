@@ -7,6 +7,7 @@ import type { ImportBindingMap } from '../../n8n-packages.types';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 import {
 	identifyRequirements,
+	reconcileVariableSummary,
 	scopeCredentialBindingsToRequirements,
 	toVariableSummary,
 } from '../import-result';
@@ -115,5 +116,53 @@ describe('toVariableSummary', () => {
 			missing: [],
 			stubbed: [],
 		});
+	});
+});
+
+describe('reconcileVariableSummary', () => {
+	it('does not report a name as matched when this import stubbed it in another scope', () => {
+		// The first scope created the global stub, so the second scope's planned creation found the
+		// destination occupied and skipped. Reporting the name as matched would imply it pre-existed.
+		expect(
+			reconcileVariableSummary({
+				matched: [],
+				missing: ['SHARED_URL', 'SHARED_URL'],
+				stubbed: ['SHARED_URL'],
+				skipped: ['SHARED_URL'],
+			}),
+		).toEqual({ matched: [], missing: [], stubbed: ['SHARED_URL'] });
+	});
+
+	it('reports a name as both matched and stubbed when it pre-existed in only some scopes', () => {
+		expect(
+			reconcileVariableSummary({
+				matched: ['API_URL'],
+				missing: ['API_URL'],
+				stubbed: ['API_URL'],
+				skipped: [],
+			}),
+		).toEqual({ matched: ['API_URL'], missing: [], stubbed: ['API_URL'] });
+	});
+
+	it('counts a skip that no scope stubbed as matched', () => {
+		expect(
+			reconcileVariableSummary({
+				matched: [],
+				missing: ['API_URL'],
+				stubbed: [],
+				skipped: ['API_URL'],
+			}),
+		).toEqual({ matched: ['API_URL'], missing: [], stubbed: [] });
+	});
+
+	it('deduplicates names repeated across scopes', () => {
+		expect(
+			reconcileVariableSummary({
+				matched: ['API_URL', 'API_URL'],
+				missing: ['API_KEY', 'API_KEY'],
+				stubbed: [],
+				skipped: [],
+			}),
+		).toEqual({ matched: ['API_URL'], missing: ['API_KEY'], stubbed: [] });
 	});
 });

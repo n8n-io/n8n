@@ -64,26 +64,39 @@ export function buildImportResult(input: {
 	};
 }
 
-/**
- * Builds the response `variables` summary for a single-destination (workflow/folder) package,
- * keeping the three lists mutually exclusive. A `skippedExisting` name means the destination was
- * occupied between plan and apply (an external write) — it now resolves but this import did not
- * create it, so it moves into `matched`, not `stubbed`.
- */
+export function reconcileVariableSummary(input: {
+	matched: Iterable<string>;
+	missing: Iterable<string>;
+	stubbed: Iterable<string>;
+	skipped: Iterable<string>;
+}): ImportVariableSummary {
+	const matched = new Set(input.matched);
+	const stubbed = new Set(input.stubbed);
+	const skipped = new Set(input.skipped);
+
+	// A skipped creation means the name already existed. If this import stubbed it, we created it,
+	// so it stays in `stubbed`; otherwise it genuinely pre-existed and counts as `matched`.
+	for (const name of skipped) {
+		if (!stubbed.has(name)) matched.add(name);
+	}
+
+	return {
+		matched: [...matched],
+		stubbed: [...stubbed],
+		missing: [...new Set(input.missing)].filter((name) => !stubbed.has(name) && !skipped.has(name)),
+	};
+}
+
 export function toVariableSummary(
 	plan: VariableImportPlan,
 	result: VariableApplyResult,
 ): ImportVariableSummary {
-	const matched = new Set([...plan.matched, ...result.skippedExisting]);
-	const stubbed = new Set(result.stubbed);
-	const skipped = new Set(result.skippedExisting);
-	return {
-		matched: [...matched],
-		stubbed: [...stubbed],
-		missing: plan.missing
-			.map(({ name }) => name)
-			.filter((name) => !stubbed.has(name) && !skipped.has(name)),
-	};
+	return reconcileVariableSummary({
+		matched: plan.matched,
+		missing: plan.missing.map(({ name }) => name),
+		stubbed: result.stubbed,
+		skipped: result.skippedExisting,
+	});
 }
 
 /**
