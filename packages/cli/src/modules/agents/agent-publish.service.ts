@@ -8,6 +8,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { EntityManager } from '@n8n/typeorm';
 import { deepCopy, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -16,6 +17,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
+import { Telemetry } from '@/telemetry';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
@@ -30,6 +32,8 @@ import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
+
+export type AgentPublishSource = 'editor' | 'builder' | 'channel_connect' | 'slack_setup';
 
 export interface PublishAgentOptions {
 	syncIntegrations?: boolean;
@@ -81,12 +85,14 @@ export class AgentPublishService {
 		private readonly subAgentCleanupService: SubAgentCleanupService,
 		private readonly agentValidationService: AgentValidationService,
 		private readonly credentialsService: CredentialsService,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	async publishAgent(
 		agentId: string,
 		projectId: string,
 		user: User,
+		source: AgentPublishSource,
 		versionId?: string,
 		options: PublishAgentOptions = {},
 	): Promise<PublishAgentResult> {
@@ -154,6 +160,16 @@ export class AgentPublishService {
 		});
 
 		this.runtimeCacheService.clearRuntimes(agentId);
+
+		// activeVersionId was just set above (either to targetHistory.versionId or
+		// agent.versionId), so it is never null on this success path.
+		this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_PUBLISHED, {
+			agent_id: agentId,
+			project_id: projectId,
+			user_id: user.id,
+			source,
+			version_id: agent.activeVersionId!,
+		});
 
 		const credentialIntegrations = agent.integrations ?? [];
 		if (credentialIntegrations.length > 0 && options.syncIntegrations !== false) {
@@ -234,7 +250,12 @@ export class AgentPublishService {
 		return validation;
 	}
 
-	async unpublishAgent(agentId: string, projectId: string): Promise<Agent> {
+	async unpublishAgent(
+		agentId: string,
+		projectId: string,
+		user: User,
+		source: 'editor' | 'builder',
+	): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
@@ -249,6 +270,13 @@ export class AgentPublishService {
 		});
 
 		this.runtimeCacheService.clearRuntimes(agentId);
+
+		this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_UNPUBLISHED, {
+			agent_id: agentId,
+			project_id: projectId,
+			user_id: user.id,
+			source,
+		});
 
 		await this.subAgentCleanupService.removeSubAgentFromParents(agentId, projectId);
 

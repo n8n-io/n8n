@@ -11,6 +11,7 @@ import {
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublishedVersionRepository,
 	ProjectRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -90,6 +91,7 @@ export class WorkflowService {
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 		private readonly workflowPublicationNotifier: WorkflowPublicationNotifier,
 		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
+		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 	) {}
 
 	async getMany(
@@ -1062,11 +1064,24 @@ export class WorkflowService {
 			return;
 		}
 
-		if (
-			this.globalConfig.workflows.useWorkflowPublicationService &&
-			workflow.activeVersionId !== null
-		) {
-			throw new ConflictError('Cannot delete a published workflow. Unpublish it before deleting.');
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			if (workflow.activeVersionId !== null) {
+				throw new ConflictError(
+					'Cannot delete a published workflow. Unpublish it before deleting.',
+				);
+			}
+
+			// Unpublishing clears `activeVersionId` synchronously but defers trigger
+			// teardown to the outbox consumer, which removes the published-version
+			// mapping only once teardown succeeds. That mapping's FK to the workflow
+			// is RESTRICT, so deleting before it is gone would fail at the DB level.
+			const pendingPublishedVersionId =
+				await this.workflowPublishedVersionRepository.getPublishedVersionId(workflowId);
+			if (pendingPublishedVersionId !== null) {
+				throw new ConflictError(
+					'Workflow is still being unpublished. Please try again in a few moments.',
+				);
+			}
 		}
 
 		if (!workflow.isArchived && !force) {

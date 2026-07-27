@@ -7,8 +7,7 @@ import {
 import { Z } from '../../zod-class';
 
 /**
- * Inbox list item — extends {@link WorkflowReviewRequestSummary} (the
- * workflow-scoped list payload used by the review-required toggle sync) with the
+ * Inbox list item — extends {@link WorkflowReviewRequestSummary} with the
  * cross-project fields the inbox needs.
  */
 export interface WorkflowReviewInboxItem extends WorkflowReviewRequestSummary {
