@@ -9,7 +9,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'ReplaceAgentFileBinaryDataIdWithStoredAt1784900752603';
+const MIGRATION_NAME = 'ReplaceAgentFileBinaryDataIdWithStoredAt1785186578138';
 
 const FS_KEY =
 	'agents/agent-1/knowledge-files/file-fs/binary_data/11111111-1111-1111-1111-111111111111';

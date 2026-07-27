@@ -231,7 +231,7 @@ import { AddStoredAtToAgentExecution1784815940110 } from '../common/178481594011
 import { AddInstanceCredentials1784815940111 } from '../common/1784815940111-AddInstanceCredentials';
 import { CreateAgentEvalTables1784815940112 } from '../common/1784815940112-CreateAgentEvalTables';
 import { AddAvailableInMcpToAgents1784897791636 } from '../common/1784897791636-AddAvailableInMcpToAgents';
-import { ReplaceAgentFileBinaryDataIdWithStoredAt1784900752603 } from '../common/1784900752603-ReplaceAgentFileBinaryDataIdWithStoredAt';
+import { ReplaceAgentFileBinaryDataIdWithStoredAt1785186578138 } from '../common/1785186578138-ReplaceAgentFileBinaryDataIdWithStoredAt';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -467,6 +467,6 @@ export const postgresMigrations: Migration[] = [
 	AddInstanceCredentials1784815940111,
 	CreateAgentEvalTables1784815940112,
 	AddAvailableInMcpToAgents1784897791636,
-	ReplaceAgentFileBinaryDataIdWithStoredAt1784900752603,
 	ChangeInstalledNodeVersionType1785162364000,
+	ReplaceAgentFileBinaryDataIdWithStoredAt1785186578138,
 ];

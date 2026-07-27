@@ -20,7 +20,7 @@ const LOCATION_BY_MODE: Record<string, string> = {
  * off `binaryDataId` yields a key that resolves as-is. For `db` rows the key is
  * the `binary_data.fileId` holding the bytes.
  */
-export class ReplaceAgentFileBinaryDataIdWithStoredAt1784900752603 implements ReversibleMigration {
+export class ReplaceAgentFileBinaryDataIdWithStoredAt1785186578138 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
 		const {
 			escape,
