@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import type { WorkflowReviewEligibleReviewer } from '../../workflow-review-eligible-reviewer';
 import {
 	type WorkflowReviewRequestSummary,
 	workflowReviewRequestStateSchema,
@@ -14,6 +15,8 @@ export interface WorkflowReviewInboxItem extends WorkflowReviewRequestSummary {
 	projectId: string;
 	title: string;
 	workflowName: string | null;
+	requester: WorkflowReviewEligibleReviewer | null;
+	reviewers: WorkflowReviewEligibleReviewer[];
 }
 
 /**

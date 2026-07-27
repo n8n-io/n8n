@@ -59,6 +59,7 @@ import { AllowAzureStoredAt1784000000034 } from './1784000000034-AllowAzureStore
 import { DropAgentDescriptionFromAgents1784000000037 } from './1784000000037-DropAgentDescriptionFromAgents';
 import { AddRecurringCronScheduleKind1784000000045 } from './1784000000045-AddRecurringCronScheduleKind';
 import { AddAvailableInMcpToAgents1784897791636 } from './1784897791636-AddAvailableInMcpToAgents';
+import { ChangeInstalledNodeVersionType1785162364000 } from './1785162364000-ChangeInstalledNodeVersionType';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -447,6 +448,7 @@ const sqliteMigrations: Migration[] = [
 	AddInstanceCredentials1784815940111,
 	CreateAgentEvalTables1784815940112,
 	AddAvailableInMcpToAgents1784897791636,
+	ChangeInstalledNodeVersionType1785162364000,
 ];
 
 export { sqliteMigrations };

@@ -247,6 +247,14 @@ const scrollRight = () => scroll(50);
 	.small.modern & {
 		padding-inline: 0;
 	}
+
+	/**
+	 * A tag is taller than the label's line box, so it would sit flush against the
+	 * tab's top edge and collide with the inset focus ring.
+	 */
+	.tabs:has(:global(.n8n-tag)) & {
+		padding-top: var(--spacing--4xs);
+	}
 }
 
 .activeTab {

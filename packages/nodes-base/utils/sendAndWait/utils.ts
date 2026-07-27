@@ -224,6 +224,8 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
+		// Advanced-HITL nodes (Slack, Telegram) render these as a section right before "Options".
+		...additionalProperties,
 		{
 			displayName: 'Options',
 			name: 'options',
@@ -291,7 +293,6 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
-		...additionalProperties,
 	];
 
 	return updateDisplayOptions(

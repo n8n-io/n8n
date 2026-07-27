@@ -54,6 +54,7 @@ import { LimitWorkflowVersionTriggerToContent1784000000003 } from './17840000000
 import { AddProjectIdToInstanceAiThread1784000000028 } from './1784000000028-AddProjectIdToInstanceAiThread';
 import { AddExecutionEntityWorkflowStatusIndex1784000000031 } from './1784000000031-AddExecutionEntityWorkflowStatusIndex';
 import { CreateWorkflowStatisticsDeltaTable1784000000043 } from './1784000000043-CreateWorkflowStatisticsDeltaTable';
+import { ChangeInstalledNodeVersionType1785162364000 } from './1785162364000-ChangeInstalledNodeVersionType';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -465,4 +466,5 @@ export const postgresMigrations: Migration[] = [
 	AddInstanceCredentials1784815940111,
 	CreateAgentEvalTables1784815940112,
 	AddAvailableInMcpToAgents1784897791636,
+	ChangeInstalledNodeVersionType1785162364000,
 ];

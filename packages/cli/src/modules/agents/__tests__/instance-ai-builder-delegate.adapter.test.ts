@@ -410,6 +410,15 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 		});
 	});
 
+	describe('INSTANCE_AI_BUILDER_ADDENDUM', () => {
+		it('requires Preview markdown links instead of forbidding them', () => {
+			expect(INSTANCE_AI_BUILDER_ADDENDUM).not.toContain('not visible in this chat');
+			expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('[Preview]');
+			expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('relative path');
+			expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('Do not invent absolute URLs');
+		});
+	});
+
 	describe('resolveAgentName', () => {
 		it('returns the agent display name', async () => {
 			const { delegate, agentsService } = setup();
@@ -472,5 +481,17 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			expect(n8nMemory.getImplementation).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe('INSTANCE_AI_BUILDER_ADDENDUM', () => {
+	it('tells the builder the orchestrator can create workflows and data tables', () => {
+		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain(
+			'The Instance AI orchestrator can create workflows and data tables',
+		);
+		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('never ask the user to create them manually');
+		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain(
+			'the orchestrator will provision them and call you again',
+		);
 	});
 });
