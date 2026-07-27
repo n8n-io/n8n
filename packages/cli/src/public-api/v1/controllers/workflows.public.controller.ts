@@ -1,8 +1,11 @@
 import { ListWorkflowHistoryQueryDto, WorkflowVersionHistoryListPublicDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
+	ApiDescription,
+	ApiErrorResponse,
 	ApiKeyScope,
 	ApiResponse,
+	ApiSummary,
 	Get,
 	Param,
 	ProjectScope,
@@ -24,7 +27,12 @@ export class WorkflowsPublicController {
 	@Get('/:workflowId/history')
 	@ApiKeyScope('workflow:read')
 	@ProjectScope('workflow:read')
+	@ApiSummary('Retrieve workflow version history')
+	@ApiDescription(
+		'Returns a paginated list of workflow versions (version IDs and metadata) for a workflow.',
+	)
 	@ApiResponse(WorkflowVersionHistoryListPublicDto)
+	@ApiErrorResponse(404)
 	async getWorkflowHistory(
 		req: AuthenticatedRequest,
 		_res: Response,

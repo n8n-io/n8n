@@ -1,6 +1,7 @@
 operationId: getTags
 tags:
   - Tags
+summary: Retrieve all tags
 description: Retrieve all tags from your instance.
 x-required-scope: tag:list
 parameters:
@@ -11,7 +12,7 @@ x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
 responses:
   '200':
-    description: Successful response
+    description: Operation successful.
     content:
       application/json:
         schema:

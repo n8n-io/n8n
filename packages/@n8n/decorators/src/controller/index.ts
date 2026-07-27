@@ -5,6 +5,8 @@ export { PublicApiController } from './public-api-controller';
 export { ApiKeyScope } from './api-key-scope';
 export { ApiResponse } from './api-response';
 export { ApiDescription } from './api-description';
+export { ApiSummary } from './api-summary';
+export { ApiErrorResponse } from './api-error-response';
 export { Get, Post, Put, Patch, Delete, Head, Options } from './route';
 export { Middleware } from './middleware';
 export { ControllerRegistryMetadata } from './controller-registry-metadata';
