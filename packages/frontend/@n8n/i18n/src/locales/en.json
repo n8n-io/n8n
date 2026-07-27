@@ -6588,6 +6588,7 @@
 	"instanceAi.credential.setupButton": "Set up credentials",
 	"instanceAi.credential.setupTitle": "Set up {name}",
 	"instanceAi.credential.continueButton": "Continue",
+	"instanceAi.credential.fieldLabel": "{name} credentials",
 	"instanceAi.credential.hint.docsLink": "Get it from {host}",
 	"instanceAi.credential.modal.title": "Set up credentials",
 	"instanceAi.workflowSetup.usedByNodes": "Used by {count} node | Used by {count} nodes",

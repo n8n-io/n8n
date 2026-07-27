@@ -124,7 +124,8 @@ describe('useCredentialForm', () => {
 			expect(form.credentialData.value).toMatchObject({ user: '', password: '' });
 		});
 
-		it('prefers the suggested name over a generated one', async () => {
+		it('prefers the suggested name over a generated one, deduped against clashes', async () => {
+			credentialsStore.getDedupedCredentialName.mockResolvedValue('My login 2');
 			const form = useCredentialForm({
 				mode: 'new',
 				activeId: 'httpBasicAuth',
@@ -133,7 +134,8 @@ describe('useCredentialForm', () => {
 
 			await form.initialize();
 
-			expect(form.credentialName.value).toBe('My login');
+			expect(credentialsStore.getDedupedCredentialName).toHaveBeenCalledWith('My login');
+			expect(form.credentialName.value).toBe('My login 2');
 			expect(credentialsStore.getNewCredentialName).not.toHaveBeenCalled();
 		});
 

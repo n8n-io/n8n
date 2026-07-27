@@ -1,6 +1,8 @@
 import {
 	cleanPlaceholderValue,
+	composeCredentialNameWithUser,
 	deriveServiceIconUrl,
+	deriveServiceName,
 	extractTemplateMarkers,
 	markerPrefix,
 	parsePlaceholderDefs,
@@ -77,6 +79,46 @@ describe('templatedAuth.utils', () => {
 		it('keeps only string values', () => {
 			const raw = JSON.stringify({ api_key: '***', nested: { no: true }, count: 2 });
 			expect(parsePlaceholderValues(raw)).toEqual({ api_key: '***' });
+		});
+	});
+
+	describe('composeCredentialNameWithUser', () => {
+		it('suffixes first name and last initial', () => {
+			expect(
+				composeCredentialNameWithUser('fal.ai API Key', { firstName: 'Jan', lastName: 'Doe' }),
+			).toBe('fal.ai API Key (Jan D)');
+		});
+
+		it('suffixes first name alone when there is no last name', () => {
+			expect(composeCredentialNameWithUser('fal.ai API Key', { firstName: 'Jan' })).toBe(
+				'fal.ai API Key (Jan)',
+			);
+		});
+
+		it('returns the base name when the user has no first name', () => {
+			expect(composeCredentialNameWithUser('fal.ai API Key', { lastName: 'Doe' })).toBe(
+				'fal.ai API Key',
+			);
+			expect(composeCredentialNameWithUser('fal.ai API Key', null)).toBe('fal.ai API Key');
+		});
+	});
+
+	describe('deriveServiceName', () => {
+		it('prefers the recipe suggested name', () => {
+			expect(
+				deriveServiceName({ suggestedName: 'fal.ai API Key', docsUrl: 'https://fal.ai/docs' }),
+			).toBe('fal.ai API Key');
+		});
+
+		it('falls back to the docs host', () => {
+			expect(deriveServiceName({ docsUrl: 'https://replicate.com/account/api-tokens' })).toBe(
+				'replicate.com',
+			);
+		});
+
+		it('returns undefined without a usable source', () => {
+			expect(deriveServiceName({ docsUrl: 'not a url' })).toBeUndefined();
+			expect(deriveServiceName(undefined)).toBeUndefined();
 		});
 	});
 

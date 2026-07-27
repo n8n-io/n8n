@@ -6,7 +6,10 @@ import { useInstanceAiBrowserCredentialSetupExperiment } from '@/experiments/ins
 import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import { deriveServiceIconUrl } from '@/features/credentials/templatedAuth.utils';
+import {
+	deriveServiceIconUrl,
+	deriveServiceName,
+} from '@/features/credentials/templatedAuth.utils';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
@@ -294,6 +297,16 @@ const hasTemplatedHint = computed(
 		currentRequest.value?.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE &&
 		!!currentRequest.value?.setupHint,
 );
+
+// The type-derived selector label would read "Credential for Templated Custom
+// Auth" — name the service from the recipe instead ("fal.ai API Key credentials").
+const credentialsFieldLabel = computed(() => {
+	if (!hasTemplatedHint.value) return undefined;
+	const name = deriveServiceName(currentRequest.value?.setupHint);
+	return name
+		? i18n.baseText('instanceAi.credential.fieldLabel', { interpolate: { name } })
+		: undefined;
+});
 
 /** Service logo: explicit https icon, else the docs page's favicon; hidden
  *  again (generic icon fallback) if the image fails to load. */
@@ -656,6 +669,7 @@ async function handleSetupAutomatically() {
 							hide-issues
 							hide-ask-assistant
 							:inline-credential-actions="hasTemplatedHint"
+							:credentials-field-label="credentialsFieldLabel"
 							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"
 							@create-requested="openCreateCredential"
 						/>

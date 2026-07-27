@@ -456,13 +456,16 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			detectCustomOAuth();
 			return;
 		}
-		credentialName.value =
-			toValue(options.suggestedName) ||
-			(credentialTypeName.value
+		// A host-suggested name still needs the numbering dedup — several users
+		// setting up the same service in one project would otherwise collide.
+		const suggestedName = toValue(options.suggestedName);
+		credentialName.value = suggestedName
+			? await credentialsStore.getDedupedCredentialName(suggestedName)
+			: credentialTypeName.value
 				? await credentialsStore.getNewCredentialName({
 						credentialTypeName: credentialTypeName.value,
 					})
-				: (credentialType.value?.displayName ?? ''));
+				: (credentialType.value?.displayName ?? '');
 		setCredentialPropertyDefaults();
 		if (homeProject.value) {
 			credentialData.value = { ...credentialData.value, homeProject: homeProject.value };

@@ -3,6 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import TemplatedAuthSimpleView from './TemplatedAuthSimpleView.vue';
 
 // ParameterInputExpanded transitively derives the workflow id from the route
@@ -86,12 +87,47 @@ describe('TemplatedAuthSimpleView', () => {
 			props: { credentialData: credentialData() },
 		});
 
-		// masked display of the redacted sentinel is ParameterInput's own domain;
-		// this component's contract is passing the stored values through.
 		const [, apiVersion] = getAllByTestId('templated-auth-value-input');
 		await waitFor(() =>
 			expect(apiVersion.querySelector('input') ?? apiVersion).toHaveValue('202404'),
 		);
+	});
+
+	it('displays the stored redacted sentinel as a full-length mask, like native credential fields', async () => {
+		const { getAllByTestId } = renderComponent({
+			props: { credentialData: credentialData() },
+		});
+
+		// the 3-char `***` sentinel renders as the same blanking value native
+		// fields use, so a redacted secret doesn't show as three dots
+		const [apiKey] = getAllByTestId('templated-auth-value-input');
+		await waitFor(() =>
+			expect(apiKey.querySelector('input') ?? apiKey).toHaveValue(CREDENTIAL_BLANKING_VALUE),
+		);
+	});
+
+	it('keeps the untouched `***` sentinel — not the display mask — when composing', async () => {
+		const { getAllByTestId, emitted } = renderComponent({
+			props: {
+				// api_key is stored redacted; api_version has no stored value yet
+				credentialData: credentialData({
+					placeholderValues: JSON.stringify({ api_key: '***' }),
+				}),
+			},
+		});
+
+		// edit the plain field; the untouched redacted field must round-trip `***`
+		// so the server merges back the stored secret
+		const apiVersionEl = getAllByTestId('templated-auth-value-input')[1];
+		const input = apiVersionEl.querySelector('input') ?? apiVersionEl;
+		await userEvent.type(input, '202501');
+
+		await waitFor(() => {
+			const updates = emitted<[{ name: string; value: string }]>('update');
+			expect(updates).toBeTruthy();
+			const last = updates[updates.length - 1][0];
+			expect(JSON.parse(last.value)).toEqual({ api_key: '***', api_version: '202501' });
+		});
 	});
 
 	it('composes typed values and keeps untouched stored values on update', async () => {

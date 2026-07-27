@@ -83,6 +83,9 @@ type Props = {
 	 *  the host can render a guided inline form (Instance AI Templated Custom
 	 *  Auth recipes). Editing always opens the credential modal. */
 	inlineCredentialActions?: boolean;
+	/** Replaces the type-derived field label ("Credential for X"). Only
+	 *  meaningful with `overrideCredType` (a single credential row). */
+	credentialsFieldLabel?: string;
 	/** Skip the component's own credential fetch on mount. Hosts with a
 	 *  synthetic workflow document (e.g. the tool config modal) own the fetch
 	 *  themselves — the component's own fetch would query the synthetic
@@ -783,6 +786,7 @@ function editCredential(credentialType: string): void {
 }
 
 function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): string {
+	if (props.credentialsFieldLabel) return props.credentialsFieldLabel;
 	if (credentialType.displayName) return credentialType.displayName;
 	const credentialTypeName = credentialTypeNames.value[credentialType.name];
 	const isCredentialOnlyNode = props.node.type.startsWith(CREDENTIAL_ONLY_NODE_PREFIX);

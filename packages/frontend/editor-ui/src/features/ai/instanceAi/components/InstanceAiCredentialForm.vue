@@ -1,8 +1,13 @@
 <script lang="ts" setup>
+import Banner from '@/app/components/Banner.vue';
 import { useToast } from '@/app/composables/useToast';
 import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { probeCredential } from '@/features/credentials/credentials.api';
-import { cleanPlaceholderValue } from '@/features/credentials/templatedAuth.utils';
+import {
+	cleanPlaceholderValue,
+	composeCredentialNameWithUser,
+} from '@/features/credentials/templatedAuth.utils';
 import { useCredentialForm } from '@/features/credentials/composables/useCredentialForm';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -11,7 +16,7 @@ import {
 	type InstanceAiCredentialSetupHint,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { N8nButton, N8nInput, N8nInputLabel, N8nLink, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nInputLabel, N8nLink } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { ICredentialsDecrypted, INodeParameters } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
@@ -53,6 +58,16 @@ const toast = useToast();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const rootStore = useRootStore();
+const usersStore = useUsersStore();
+
+// Suffix the creator's name ("fal.ai API Key (Jan D)") so same-recipe
+// credentials stay tellable-apart in shared projects; initialize() runs the
+// result through the server's numbering dedup for exact clashes.
+const suggestedNameWithUser = computed(() => {
+	const base = props.setupHint.suggestedName || props.suggestedName;
+	if (!base) return undefined;
+	return composeCredentialNameWithUser(base, usersStore.currentUser);
+});
 
 // Shared credential-form controller — same one that drives the edit modal.
 const {
@@ -67,7 +82,7 @@ const {
 	mode: () => 'new',
 	activeId: () => TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	projectId: () => props.projectId,
-	suggestedName: () => props.setupHint.suggestedName || props.suggestedName,
+	suggestedName: () => suggestedNameWithUser.value,
 });
 
 const isLoading = ref(true);
@@ -200,6 +215,15 @@ async function submit() {
 
 <template>
 	<div v-if="!isLoading" :class="$style.form" data-test-id="instance-ai-credential-form">
+		<!-- Same error banner as the credential modal (message + expandable
+		     details, above the fields); the submit button doubles as Retry. -->
+		<Banner
+			v-if="authError"
+			theme="danger"
+			:message="i18n.baseText('credentialEdit.credentialConfig.couldntConnectWithTheseSettings')"
+			:details="authError"
+			data-test-id="credential-test-error"
+		/>
 		<!-- Single secret: the card title already names the service, so a visible
 		     label would repeat it — the label rides as placeholder + aria-label. -->
 		<template v-for="def in placeholderDefs" :key="def.name">
@@ -241,9 +265,6 @@ async function submit() {
 				})
 			}}
 		</N8nLink>
-		<N8nText v-if="authError" color="danger" size="small" data-test-id="credential-test-error">
-			{{ authError }}
-		</N8nText>
 		<div :class="$style.actions">
 			<N8nButton
 				v-if="showBack"

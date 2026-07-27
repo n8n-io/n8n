@@ -4,6 +4,7 @@ import { N8nText, N8nTooltip } from '@n8n/design-system';
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
+import { deriveServiceName } from '@/features/credentials/templatedAuth.utils';
 import InstanceAiCredentialForm from '../../components/InstanceAiCredentialForm.vue';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
@@ -94,6 +95,16 @@ const inlineForm = ref<{ showBack: boolean } | null>(null);
 const hasTemplatedHint = computed(
 	() => credentialType.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE && !!props.section.setupHint,
 );
+
+// The type-derived selector label would read "Credential for Templated Custom
+// Auth" — name the service from the recipe instead ("fal.ai API Key credentials").
+const credentialsFieldLabel = computed(() => {
+	if (!hasTemplatedHint.value) return undefined;
+	const name = deriveServiceName(props.section.setupHint);
+	return name
+		? i18n.baseText('instanceAi.credential.fieldLabel', { interpolate: { name } })
+		: undefined;
+});
 
 const targetNodeNames = computed(() =>
 	props.section.credentialTargetNodes.map((node) => node.name),
@@ -281,6 +292,7 @@ function onParameterValueChanged(update: IUpdateInformation) {
 			hide-issues
 			hide-ask-assistant
 			:inline-credential-actions="hasTemplatedHint"
+			:credentials-field-label="credentialsFieldLabel"
 			@credential-selected="onCredentialSelected"
 			@create-requested="openInlineCreate"
 		>

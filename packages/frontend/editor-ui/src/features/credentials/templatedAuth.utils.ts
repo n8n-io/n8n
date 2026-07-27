@@ -9,6 +9,13 @@ import { jsonParse } from 'n8n-workflow';
 
 const TEMPLATE_MARKER_REGEX = /\{\{\s*([\w.-]+)\s*\}\}/g;
 
+/**
+ * Server-side redaction sentinel for placeholder-value JSON leaves (see
+ * `credentials.service.ts`). An untouched `***` merges back to the stored
+ * secret on save, so it must survive round-trips verbatim.
+ */
+export const TEMPLATED_AUTH_REDACTED_VALUE = '***';
+
 /** Parse a credential's JSON-string field, tolerating blanks and garbage. */
 export function parseTemplatedAuthField<T>(raw: unknown, fallback: T): T {
 	if (typeof raw !== 'string' || raw.trim() === '') return fallback;
@@ -102,6 +109,40 @@ export function parsePlaceholderValues(raw: unknown): Record<string, string> {
 		if (typeof value === 'string') values[key] = value;
 	}
 	return values;
+}
+
+/**
+ * "fal.ai API Key" + user → "fal.ai API Key (Jan D)". Suffixes the creator so
+ * same-recipe credentials stay tellable-apart in shared projects.
+ */
+export function composeCredentialNameWithUser(
+	base: string,
+	user: { firstName?: string | null; lastName?: string | null } | null | undefined,
+): string {
+	const first = user?.firstName?.trim();
+	if (!first) return base;
+	const lastInitial = user?.lastName?.trim().charAt(0) ?? '';
+	return `${base} (${first}${lastInitial ? ` ${lastInitial}` : ''})`;
+}
+
+/**
+ * Human service identity for labels: the recipe's suggested credential name
+ * ("fal.ai API Key"), else the docs page's host ("fal.ai").
+ */
+export function deriveServiceName(
+	setupHint: { suggestedName?: string; docsUrl?: string } | undefined,
+): string | undefined {
+	const suggested = setupHint?.suggestedName?.trim();
+	if (suggested) return suggested;
+	const docsUrl = setupHint?.docsUrl;
+	if (typeof docsUrl === 'string' && /^https?:\/\//.test(docsUrl)) {
+		try {
+			return new URL(docsUrl).host;
+		} catch {
+			return undefined;
+		}
+	}
+	return undefined;
 }
 
 /**

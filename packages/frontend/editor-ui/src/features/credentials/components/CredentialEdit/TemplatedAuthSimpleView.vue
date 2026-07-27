@@ -7,6 +7,7 @@ import {
 	parsePlaceholderDefs,
 	parsePlaceholderValues,
 	parseTemplatedAuthField,
+	TEMPLATED_AUTH_REDACTED_VALUE,
 } from '@/features/credentials/templatedAuth.utils';
 import type { InstanceAiCredentialSetupHint } from '@n8n/api-types';
 import { N8nLink } from '@n8n/design-system';
@@ -16,6 +17,7 @@ import type {
 	INodeProperties,
 	NodeParameterValueType,
 } from 'n8n-workflow';
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 
 /**
@@ -74,9 +76,18 @@ const placeholderProperties = computed<INodeProperties[]>(() =>
 	}),
 );
 
-const parameterValues = computed<Record<string, NodeParameterValueType>>(() => ({
-	...editedValues.value,
-}));
+// Display-only mapping: the stored 3-char `***` sentinel renders as the same
+// full-length mask native credential fields blank to, so redacted secrets
+// don't look suspiciously short. Composition still reads `editedValues`, so
+// an untouched input keeps sending `***` (the server merge-back contract).
+const parameterValues = computed<Record<string, NodeParameterValueType>>(() =>
+	Object.fromEntries(
+		Object.entries(editedValues.value).map(([name, value]) => [
+			name,
+			value === TEMPLATED_AUTH_REDACTED_VALUE ? CREDENTIAL_BLANKING_VALUE : value,
+		]),
+	),
+);
 
 const docsUrl = computed(() => {
 	const url = props.credentialData.docsUrl;

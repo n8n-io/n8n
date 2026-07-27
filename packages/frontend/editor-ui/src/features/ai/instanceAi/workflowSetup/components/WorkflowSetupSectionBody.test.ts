@@ -33,6 +33,7 @@ const workflowDocumentStoreRef = vi.hoisted(() => ({
 const nodeCredentialsMock = vi.hoisted(() => ({
 	emitCredentialSelected: null as ((update: unknown) => void) | null,
 	lastNodeProp: null as unknown,
+	lastFieldLabel: undefined as string | undefined,
 }));
 const parameterListMock = vi.hoisted(() => ({
 	lastHiddenIssuesInputs: undefined as string[] | undefined,
@@ -62,11 +63,12 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', async () => {
 	const { defineComponent, h } = await import('vue');
 	return {
 		default: defineComponent({
-			props: ['node'],
+			props: ['node', 'credentialsFieldLabel'],
 			emits: ['credentialSelected'],
 			setup(props, { emit, slots }) {
 				nodeCredentialsMock.emitCredentialSelected = (update) => emit('credentialSelected', update);
 				nodeCredentialsMock.lastNodeProp = props.node;
+				nodeCredentialsMock.lastFieldLabel = props.credentialsFieldLabel as string | undefined;
 				return () => h('div', { 'data-test-id': 'node-credentials' }, slots['label-postfix']?.());
 			},
 		}),
@@ -163,6 +165,7 @@ describe('WorkflowSetupSectionBody', () => {
 		workflowDocumentStoreRef.current = null;
 		nodeCredentialsMock.emitCredentialSelected = null;
 		nodeCredentialsMock.lastNodeProp = null;
+		nodeCredentialsMock.lastFieldLabel = undefined;
 		parameterListMock.lastHiddenIssuesInputs = undefined;
 		credentialsStore.getCredentialById.mockReturnValue({ id: 'cred-1', name: 'Typeform account' });
 		nodeTypesStore.getNodeType.mockReturnValue({
@@ -230,6 +233,24 @@ describe('WorkflowSetupSectionBody', () => {
 
 		// Empty => nothing hidden => the "required" issue is shown without interaction.
 		expect(parameterListMock.lastHiddenIssuesInputs).toEqual([]);
+	});
+
+	it('labels the credential selector after the recipe service instead of the generic type', async () => {
+		const section = makeWorkflowSetupSection({
+			targetNodeName: 'HTTP Request',
+			credentialType: 'httpTemplatedCustomAuth',
+			setupHint: {
+				suggestedName: 'fal.ai API Key',
+				template: { headers: { Authorization: 'Key {{api_key}}' } },
+				placeholders: [{ name: 'api_key', title: 'API key' }],
+			},
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		renderComponent({ props: { section } });
+		await nextTick();
+
+		expect(nodeCredentialsMock.lastFieldLabel).toBe('fal.ai API Key credentials');
 	});
 
 	it('stores the AI Gateway-managed tag when selected in NodeCredentials', async () => {
