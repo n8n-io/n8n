@@ -232,6 +232,41 @@ describe('AgentChatPanel', () => {
 		expect(chatInput.props('disabled')).toBe(false);
 	});
 
+	it('keeps the stop control available while an interactive card is unresolved', async () => {
+		messagesMock.value = [openInteractiveMessage()];
+
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('isStreaming')).toBe(true);
+		chatInput.vm.$emit('stop');
+		await flushPromises();
+		expect(stopGeneratingMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the stop control available for a non-card suspension', () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					{
+						tool: 'external_action',
+						toolCallId: 'tc-1',
+						runId: 'run-1',
+						state: 'suspended',
+					},
+				],
+			},
+		];
+
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('isStreaming')).toBe(true);
+	});
+
 	it('does not apply a build-specific character limit', () => {
 		const wrapper = mountPanel();
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });

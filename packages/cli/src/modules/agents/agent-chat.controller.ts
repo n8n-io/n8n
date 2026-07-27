@@ -85,6 +85,9 @@ export class AgentChatController {
 			return;
 		}
 
+		const abortController = new AbortController();
+		const abortOnClose = () => abortController.abort();
+		res.once('close', abortOnClose);
 		try {
 			let executionId: string | undefined;
 			const suspended = await pumpChunks(
@@ -100,6 +103,7 @@ export class AgentChatController {
 					onExecutionRecorded: (id) => {
 						executionId = id;
 					},
+					abortSignal: abortController.signal,
 				}),
 				send,
 			);
@@ -107,11 +111,14 @@ export class AgentChatController {
 				send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
 			}
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : 'Chat failed';
-			send({ type: 'error', message: errorMessage });
+			if (!abortController.signal.aborted) {
+				const errorMessage = error instanceof Error ? error.message : 'Chat failed';
+				send({ type: 'error', message: errorMessage });
+			}
+		} finally {
+			res.off('close', abortOnClose);
+			res.end();
 		}
-
-		res.end();
 	}
 
 	@Post('/:agentId/chat/resume', { usesTemplates: true })
@@ -126,6 +133,9 @@ export class AgentChatController {
 		const { runId, toolCallId, resumeData } = payload;
 		const { send } = initSseStream(res);
 
+		const abortController = new AbortController();
+		const abortOnClose = () => abortController.abort();
+		res.once('close', abortOnClose);
 		try {
 			let executionId: string | undefined;
 			const suspended = await pumpChunks(
@@ -141,6 +151,7 @@ export class AgentChatController {
 					onExecutionRecorded: (id) => {
 						executionId = id;
 					},
+					abortSignal: abortController.signal,
 				}),
 				send,
 			);
@@ -148,11 +159,33 @@ export class AgentChatController {
 				send({ type: 'done', ...(executionId ? { executionId } : {}) });
 			}
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : 'Resume failed';
-			send({ type: 'error', message: errorMessage });
+			if (!abortController.signal.aborted) {
+				const errorMessage = error instanceof Error ? error.message : 'Resume failed';
+				send({ type: 'error', message: errorMessage });
+			}
+		} finally {
+			res.off('close', abortOnClose);
+			res.end();
 		}
+	}
 
-		res.end();
+	@Delete('/:agentId/chat/runs/:runId')
+	@ProjectScope('agent:execute')
+	async cancelChatRun(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		@Param('agentId') agentId: string,
+		@Param('runId') runId: string,
+	) {
+		const { projectId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		const cancelled = await this.agentExecutionOrchestratorService.cancelChatRun({
+			agentId,
+			runId,
+			resourceId: draftChatMemoryResourceId(req.user.id),
+		});
+		return { cancelled };
 	}
 
 	@Get('/:agentId/chat/:threadId/messages')

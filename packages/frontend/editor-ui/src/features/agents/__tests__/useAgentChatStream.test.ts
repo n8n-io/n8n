@@ -17,6 +17,7 @@ vi.mock('@/app/composables/useToast', () => ({
 
 const getChatMessagesMock = vi.fn();
 const getTestChatMessagesMock = vi.fn();
+const cancelAgentChatRunMock = vi.fn();
 
 vi.mock('../composables/useAgentApi', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../composables/useAgentApi')>();
@@ -24,6 +25,7 @@ vi.mock('../composables/useAgentApi', async (importOriginal) => {
 		...actual,
 		getChatMessages: (...args: unknown[]) => getChatMessagesMock(...args),
 		getTestChatMessages: (...args: unknown[]) => getTestChatMessagesMock(...args),
+		cancelAgentChatRun: (...args: unknown[]) => cancelAgentChatRunMock(...args),
 	};
 });
 
@@ -67,6 +69,26 @@ function makeInterruptedSseResponse(events: AgentSseEvent[]): Response {
 	});
 }
 
+function makeAbortableSseResponse(events: AgentSseEvent[], signal: AbortSignal | null): Response {
+	const encoder = new TextEncoder();
+	const stream = new ReadableStream<Uint8Array>({
+		start(controller) {
+			for (const event of events) {
+				controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+			}
+			signal?.addEventListener(
+				'abort',
+				() => controller.error(new DOMException('Aborted', 'AbortError')),
+				{ once: true },
+			);
+		},
+	});
+	return new Response(stream, {
+		status: 200,
+		headers: { 'Content-Type': 'text/event-stream' },
+	});
+}
+
 function buildHook(continueSessionId?: string) {
 	return useAgentChatStream({
 		projectId: ref('p1'),
@@ -85,6 +107,9 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		vi.stubGlobal('localStorage', {
 			getItem: vi.fn(() => ''),
 		});
+		cancelAgentChatRunMock.mockReset();
+		cancelAgentChatRunMock.mockResolvedValue({ cancelled: true });
+		getTestChatMessagesMock.mockReset();
 	});
 
 	afterEach(() => {
@@ -232,6 +257,342 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		const assistant = hook.messages.value[1];
 		expect(assistant.interactive?.resolvedValue).toEqual({ approved: true });
 		expect(assistant.status).toBe('success');
+	});
+
+	it('cancels an open chat interaction before steering with a new message', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				makeSseResponse([
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-question',
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						input: {
+							action: 'respond',
+							input: {
+								message: {
+									card: {
+										components: [{ type: 'button', label: 'Continue', value: 'continue' }],
+									},
+								},
+							},
+						},
+					},
+					{
+						type: 'tool-call-suspended',
+						payload: {
+							toolCallId: 'tc-question',
+							runId: 'run-question',
+							toolName: N8N_CHAT_ACTION_TOOL_NAME,
+							input: { type: 'integration_action' },
+						},
+					},
+				]),
+			)
+			.mockResolvedValueOnce(makeSseResponse([{ type: 'done' }]));
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('ask me a question');
+		await hook.cancelAndSteer('take another approach');
+
+		expect(fetchMock).toHaveBeenNthCalledWith(
+			2,
+			'http://localhost:5678/projects/p1/agents/v2/a1/chat/resume',
+			expect.objectContaining({
+				body: JSON.stringify({
+					runId: 'run-question',
+					toolCallId: 'tc-question',
+					resumeData: {
+						_type: 'agent.cancellation',
+						message: 'take another approach',
+					},
+				}),
+			}),
+		);
+	});
+
+	it('cancels an idle suspended interaction and settles its UI state', async () => {
+		globalThis.fetch = vi.fn(async () =>
+			makeSseResponse([
+				{
+					type: 'tool-call',
+					toolCallId: 'tc-approval',
+					toolName: 'calculator',
+					input: { input: '2 + 2' },
+				},
+				{
+					type: 'tool-call-suspended',
+					payload: {
+						toolCallId: 'tc-approval',
+						runId: 'run-approval',
+						toolName: 'calculator',
+						input: {
+							type: 'approval',
+							toolName: 'calculator',
+							args: { input: '2 + 2' },
+						},
+					},
+				},
+			]),
+		) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('calculate 2 + 2');
+		await hook.stopGenerating();
+
+		expect(cancelAgentChatRunMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			'run-approval',
+		);
+		const assistant = hook.messages.value[1];
+		expect(assistant.toolCalls?.[0]).toMatchObject({ state: 'cancelled', canceled: true });
+		expect(assistant.interactive?.resolvedAt).toBeDefined();
+		expect(assistant.status).toBe('success');
+	});
+
+	it('cancels a suspended checkpoint when stopping before its stream closes', async () => {
+		const fetchMock = vi.fn(async (_url: string, init: RequestInit) =>
+			makeAbortableSseResponse(
+				[
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-approval',
+						toolName: 'calculator',
+						input: { input: '2 + 2' },
+					},
+					{
+						type: 'tool-call-suspended',
+						payload: {
+							toolCallId: 'tc-approval',
+							runId: 'run-approval',
+							toolName: 'calculator',
+							input: {
+								type: 'approval',
+								toolName: 'calculator',
+								args: { input: '2 + 2' },
+							},
+						},
+					},
+				],
+				init.signal ?? null,
+			),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildHook();
+		const send = hook.sendMessage('calculate 2 + 2');
+		await vi.waitFor(() => expect(hook.messages.value[1]?.toolCalls?.[0].state).toBe('suspended'));
+		await hook.stopGenerating();
+		await send;
+
+		expect(cancelAgentChatRunMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			'run-approval',
+		);
+		expect(hook.messages.value[1].toolCalls?.[0].state).toBe('cancelled');
+	});
+
+	it('cancels an idle suspension that does not render an interactive card', async () => {
+		globalThis.fetch = vi.fn(async () =>
+			makeSseResponse([
+				{
+					type: 'tool-call',
+					toolCallId: 'tc-external',
+					toolName: 'external_action',
+					input: { channel: 'external' },
+				},
+				{
+					type: 'tool-call-suspended',
+					payload: {
+						toolCallId: 'tc-external',
+						runId: 'run-external',
+						toolName: 'external_action',
+						input: { type: 'integration_action' },
+					},
+				},
+			]),
+		) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('wait for external approval');
+		await hook.stopGenerating();
+
+		expect(cancelAgentChatRunMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			'run-external',
+		);
+		expect(hook.messages.value[1].toolCalls?.[0].state).toBe('cancelled');
+	});
+
+	it('settles every suspended tool call belonging to a cancelled run', async () => {
+		globalThis.fetch = vi.fn(async () =>
+			makeSseResponse([
+				{
+					type: 'tool-call',
+					toolCallId: 'tc-first',
+					toolName: 'external_action',
+					input: { value: 'first' },
+				},
+				{
+					type: 'tool-call',
+					toolCallId: 'tc-second',
+					toolName: 'external_action',
+					input: { value: 'second' },
+				},
+				{
+					type: 'tool-call-suspended',
+					payload: {
+						toolCallId: 'tc-first',
+						runId: 'run-parallel',
+						toolName: 'external_action',
+						input: { type: 'integration_action' },
+					},
+				},
+				{
+					type: 'tool-call-suspended',
+					payload: {
+						toolCallId: 'tc-second',
+						runId: 'run-parallel',
+						toolName: 'external_action',
+						input: { type: 'integration_action' },
+					},
+				},
+			]),
+		) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('wait for both actions');
+		await hook.stopGenerating();
+
+		expect(hook.messages.value[1].toolCalls).toEqual([
+			expect.objectContaining({ toolCallId: 'tc-first', state: 'cancelled', canceled: true }),
+			expect.objectContaining({ toolCallId: 'tc-second', state: 'cancelled', canceled: true }),
+		]);
+	});
+
+	it('does not reopen a submitted HITL card when its resumed stream is stopped', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				makeSseResponse([
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-approval',
+						toolName: 'calculator',
+						input: { input: '2 + 2' },
+					},
+					{
+						type: 'tool-call-suspended',
+						payload: {
+							toolCallId: 'tc-approval',
+							runId: 'run-approval',
+							toolName: 'calculator',
+							input: {
+								type: 'approval',
+								toolName: 'calculator',
+								args: { input: '2 + 2' },
+							},
+						},
+					},
+				]),
+			)
+			.mockImplementationOnce(
+				async (_url: string, init: RequestInit) =>
+					await new Promise<Response>((_resolve, reject) => {
+						init.signal?.addEventListener(
+							'abort',
+							() => reject(new DOMException('Aborted', 'AbortError')),
+							{ once: true },
+						);
+					}),
+			);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('calculate 2 + 2');
+		const resume = hook.resume({
+			runId: 'run-approval',
+			toolCallId: 'tc-approval',
+			resumeData: { approved: false },
+		});
+		await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+		hook.stopGenerating();
+		await resume;
+
+		const assistant = hook.messages.value[1];
+		expect(assistant.toolCalls?.[0].state).toBe('done');
+		expect(assistant.interactive?.resolvedAt).toBeDefined();
+		expect(assistant.status).toBe('success');
+	});
+
+	it('reconciles a failed resume against the backend suspension state', async () => {
+		const approvalInput = {
+			type: 'approval' as const,
+			toolName: 'calculator',
+			args: { input: '2 + 2' },
+		};
+		globalThis.fetch = vi
+			.fn()
+			.mockResolvedValueOnce(
+				makeSseResponse([
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-approval',
+						toolName: 'calculator',
+						input: { input: '2 + 2' },
+					},
+					{
+						type: 'tool-call-suspended',
+						payload: {
+							toolCallId: 'tc-approval',
+							runId: 'run-approval',
+							toolName: 'calculator',
+							input: approvalInput,
+						},
+					},
+				]),
+			)
+			.mockResolvedValueOnce(
+				makeSseResponse([{ type: 'error', message: 'This action has already been handled' }]),
+			) as unknown as typeof fetch;
+		getTestChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'm1',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolName: 'calculator',
+							toolCallId: 'tc-approval',
+							input: approvalInput,
+						},
+					],
+				},
+			],
+			openSuspensions: [],
+		});
+
+		const hook = buildHook();
+		await hook.sendMessage('calculate 2 + 2');
+		await hook.resume({
+			runId: 'run-approval',
+			toolCallId: 'tc-approval',
+			resumeData: { approved: false },
+		});
+
+		expect(getTestChatMessagesMock).toHaveBeenCalled();
+		const assistant = hook.messages.value[0];
+		expect(assistant.interactive).toBeUndefined();
+		expect(assistant.toolCalls?.[0].state).toBe('cancelled');
 	});
 
 	it('breaks out of the consume loop on `done` so isStreaming flips back to false', async () => {
@@ -610,6 +971,40 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistantMsgs[0].status).toBe('error');
 		expect(assistantMsgs[0].toolCalls?.[0].state).toBe('error');
 		expect(assistantMsgs[1]).toMatchObject({ content: 'Tool failed', status: 'error' });
+	});
+
+	it('retires a suspended interaction when its run emits an error', async () => {
+		const events: AgentSseEvent[] = [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-approval',
+				toolName: 'calculator',
+				input: { input: '2 + 2' },
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-approval',
+					runId: 'run-approval',
+					toolName: 'calculator',
+					input: {
+						type: 'approval',
+						toolName: 'calculator',
+						args: { input: '2 + 2' },
+					},
+				},
+			},
+			{ type: 'error', message: 'Run failed', errorCode: 'runtime_error' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('calculate 2 + 2');
+
+		const assistant = hook.messages.value[1];
+		expect(assistant.status).toBe('error');
+		expect(assistant.toolCalls?.[0].state).toBe('error');
+		expect(assistant.interactive).toBeUndefined();
 	});
 
 	it('flips a ToolCall from pending → running on tool-execution-start, then to done on tool-result', async () => {

@@ -11,6 +11,7 @@ import AgentChatMessageList from './AgentChatMessageList.vue';
 import type { AgentJsonConfig } from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
+import { TOOL_CALL_STATE } from '../constants';
 
 const props = withDefaults(
 	defineProps<{
@@ -122,6 +123,13 @@ const hasOpenApproval = computed(() => openInteractive.value?.toolName === APPRO
 const hasOpenInteractiveQuestion = computed(
 	() => hasOpenInteraction.value && !hasOpenApproval.value,
 );
+const hasOpenSuspension = computed(() =>
+	messages.value.some((message) =>
+		message.toolCalls?.some(
+			(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
+		),
+	),
+);
 
 const chatPlaceholder = computed(() =>
 	hasOpenApproval.value
@@ -183,7 +191,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-	stopGenerating();
+	if (isStreaming.value) void stopGenerating();
 });
 </script>
 
@@ -258,7 +266,7 @@ onBeforeUnmount(() => {
 			<ChatInputBase
 				v-model="inputText"
 				:placeholder="chatPlaceholder"
-				:is-streaming="messagingState === 'receiving'"
+				:is-streaming="isStreaming || hasOpenInteraction || hasOpenSuspension"
 				:can-submit="
 					!hasOpenApproval && !isStreaming && !isPreparingToSend && inputText.trim().length > 0
 				"

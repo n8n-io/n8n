@@ -85,6 +85,7 @@ describe('AgentChatController route access scopes', () => {
 	it.each([
 		['chat', 'agent:execute'],
 		['chatResume', 'agent:execute'],
+		['cancelChatRun', 'agent:execute'],
 		['getChatMessages', 'agent:read'],
 		['getTestChatMessages', 'agent:read'],
 		['clearTestChatMessages', 'agent:update'],
@@ -204,6 +205,85 @@ describe('AgentChatController SSE done payload', () => {
 		expect(events).toContainEqual({
 			type: 'done',
 			executionId: 'exec-resume-1',
+		});
+	});
+
+	it.each([
+		{
+			name: 'new chat',
+			start: async (controller: AgentChatController, res: FlushableResponse) =>
+				await controller.chat(
+					{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+					res,
+					'agent-1',
+					{ message: 'hi' } as never,
+				),
+			method: 'executeForChat' as const,
+		},
+		{
+			name: 'resumed chat',
+			start: async (controller: AgentChatController, res: FlushableResponse) =>
+				await controller.chatResume(
+					{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+					res,
+					'agent-1',
+					{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } } as never,
+				),
+			method: 'resumeForChat' as const,
+		},
+	])('aborts the $name when its SSE response closes early', async ({ start, method }) => {
+		const { controller, agentExecutionOrchestratorService, agentExecutionService } =
+			makeController();
+		agentExecutionService.findThreadById.mockResolvedValue(null);
+
+		let receivedSignal: AbortSignal | undefined;
+		let releaseRun = () => {};
+		let markStarted = () => {};
+		const runStarted = new Promise<void>((resolve) => {
+			markStarted = resolve;
+		});
+		const runBlocked = new Promise<void>((resolve) => {
+			releaseRun = resolve;
+		});
+		agentExecutionOrchestratorService[method].mockImplementation(async function* (config) {
+			receivedSignal = (config as { abortSignal?: AbortSignal }).abortSignal;
+			markStarted();
+			await runBlocked;
+			yield* [];
+		});
+
+		const res = makeSseResponse([]);
+		const request = start(controller, res);
+		await runStarted;
+		(res as unknown as EventEmitter).emit('close');
+		releaseRun();
+		await request;
+
+		expect(receivedSignal?.aborted).toBe(true);
+	});
+});
+
+describe('AgentChatController HITL cancellation', () => {
+	it('cancels a suspended run for the current preview user', async () => {
+		const { controller, agentExecutionOrchestratorService, agentsService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentExecutionOrchestratorService.cancelChatRun.mockResolvedValue(true);
+
+		await expect(
+			controller.cancelChatRun(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+				} as never,
+				'agent-1',
+				'run-1',
+			),
+		).resolves.toEqual({ cancelled: true });
+
+		expect(agentExecutionOrchestratorService.cancelChatRun).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			runId: 'run-1',
+			resourceId: 'draft-chat:user-1',
 		});
 	});
 });

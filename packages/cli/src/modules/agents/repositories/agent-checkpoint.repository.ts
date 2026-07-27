@@ -22,6 +22,15 @@ export class AgentCheckpointRepository extends Repository<AgentCheckpoint> {
 		return (result.affected ?? 0) > 0;
 	}
 
+	async cancelSuspended(runId: string, agentId: string, suspendedState: string): Promise<boolean> {
+		const result = await this.update(
+			{ runId, agentId, expired: false, state: suspendedState },
+			{ expired: true, state: null },
+		);
+
+		return (result.affected ?? 0) > 0;
+	}
+
 	async markExpired(olderThan: Date): Promise<number> {
 		const result = await this.createQueryBuilder()
 			.update()
