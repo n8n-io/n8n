@@ -1,6 +1,6 @@
 operationId: getWorkflowHistory
 tags:
-  - Workflows
+  - Workflow
 summary: Retrieve workflow version history
 description: Returns a paginated list of workflow versions (version IDs and
   metadata) for a workflow.

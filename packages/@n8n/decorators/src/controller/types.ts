@@ -57,6 +57,8 @@ export interface RouteMetadata {
 	summary?: string;
 	/** OpenAPI operation description. */
 	description?: string;
+	/** OpenAPI operation tags, declared explicitly - never inferred from the URL path. */
+	tags?: string[];
 	/** Additional non-2xx status codes this route can return, beyond the ones inferred automatically. */
 	errorResponses?: number[];
 	args: Arg[];

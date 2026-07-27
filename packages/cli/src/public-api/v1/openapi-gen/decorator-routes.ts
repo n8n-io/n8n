@@ -48,13 +48,26 @@ function toOpenApiPath(path: string): string {
 	return path.replace(/:([A-Za-z0-9_]+)/g, '{$1}');
 }
 
-/** First non-empty path segment, used both as the output directory and the OpenAPI tag. */
+/** First non-empty path segment, used as the output directory. */
 function resourceSegment(path: string): string {
 	return path.split('/').find(Boolean) ?? 'root';
 }
 
-function capitalize(value: string): string {
-	return value.length ? value[0].toUpperCase() + value.slice(1) : value;
+/**
+ * OpenAPI tags are declared explicitly via `@ApiTags`, never guessed from the URL - a route's
+ * resource segment doesn't reliably match the project's established tag names (e.g. `/workflows`
+ * groups under the singular `Workflow`, not a pluralized `Workflows`). Throws rather than falling
+ * back to a guess, so a missing `@ApiTags` fails generation instead of silently fragmenting the
+ * doc's tag groups.
+ */
+function resolveTags(route: ResolvedPublicApiRoute): string[] {
+	if (!route.tags?.length) {
+		throw new UnexpectedError(
+			`Public API route ${route.controllerName}.${route.handlerName} has no @ApiTags declared - ` +
+				'add one so the generated operation groups under an explicit, correct tag.',
+		);
+	}
+	return route.tags;
 }
 
 /** A `ResponseDtoClass` narrowed to the two fields the generator actually reads off it. */
@@ -218,7 +231,7 @@ export function getDecoratorGeneratedOperations(
 			method: route.method,
 			path: pathKey,
 			operationId: route.handlerName,
-			tags: [capitalize(resource)],
+			tags: resolveTags(route),
 			...(route.summary ? { summary: route.summary } : {}),
 			...(route.description ? { description: route.description } : {}),
 			...(route.apiKeyScope

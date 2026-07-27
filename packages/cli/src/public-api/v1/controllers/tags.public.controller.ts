@@ -5,6 +5,7 @@ import {
 	ApiKeyScope,
 	ApiResponse,
 	ApiSummary,
+	ApiTags,
 	Get,
 	PublicApiController,
 	Query,
@@ -23,6 +24,7 @@ export class TagsPublicController {
 	@ApiKeyScope('tag:list')
 	@ApiSummary('Retrieve all tags')
 	@ApiDescription('Retrieve all tags from your instance.')
+	@ApiTags(['Tags'])
 	@ApiResponse(TagListPublicDto)
 	async getTags(
 		_req: AuthenticatedRequest,

@@ -6,6 +6,7 @@ export { ApiKeyScope } from './api-key-scope';
 export { ApiResponse } from './api-response';
 export { ApiDescription } from './api-description';
 export { ApiSummary } from './api-summary';
+export { ApiTags } from './api-tags';
 export { ApiErrorResponse } from './api-error-response';
 export { Get, Post, Put, Patch, Delete, Head, Options } from './route';
 export { Middleware } from './middleware';

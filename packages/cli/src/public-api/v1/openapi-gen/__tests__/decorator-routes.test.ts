@@ -1,4 +1,10 @@
-import { ApiErrorResponse, ApiSummary, ControllerRegistryMetadata, Get } from '@n8n/decorators';
+import {
+	ApiErrorResponse,
+	ApiSummary,
+	ApiTags,
+	ControllerRegistryMetadata,
+	Get,
+} from '@n8n/decorators';
 import type { Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
@@ -26,6 +32,7 @@ describe('getDecoratorGeneratedOperations', () => {
 		class WidgetsPublicController {
 			@Get('/')
 			@ApiSummary('List widgets')
+			@ApiTags(['Widgets'])
 			method() {}
 		}
 		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
@@ -38,6 +45,7 @@ describe('getDecoratorGeneratedOperations', () => {
 	it('omits summary when @ApiSummary is absent', () => {
 		class WidgetsPublicController {
 			@Get('/')
+			@ApiTags(['Widgets'])
 			method() {}
 		}
 		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
@@ -47,9 +55,36 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(operation.config.summary).toBeUndefined();
 	});
 
+	it('uses the tags declared via @ApiTags', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiTags(['Widgets', 'Beta'])
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.tags).toEqual(['Widgets', 'Beta']);
+	});
+
+	it('throws when @ApiTags is absent, rather than guessing a tag from the URL', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		expect(() => getDecoratorGeneratedOperations()).toThrow(UnexpectedError);
+		expect(() => getDecoratorGeneratedOperations()).toThrow(
+			/WidgetsPublicController\.method has no @ApiTags declared/,
+		);
+	});
+
 	it('$refs the matching shared response file for a declared @ApiErrorResponse', () => {
 		class WidgetsPublicController {
 			@Get('/:id')
+			@ApiTags(['Widgets'])
 			@ApiErrorResponse(404)
 			method() {}
 		}
@@ -65,6 +100,7 @@ describe('getDecoratorGeneratedOperations', () => {
 	it('$refs a shared response file for each stacked @ApiErrorResponse', () => {
 		class WidgetsPublicController {
 			@Get('/')
+			@ApiTags(['Widgets'])
 			@ApiErrorResponse(404)
 			@ApiErrorResponse(409)
 			method() {}
@@ -84,6 +120,7 @@ describe('getDecoratorGeneratedOperations', () => {
 	it('throws for an @ApiErrorResponse status with no shared response file mapped', () => {
 		class WidgetsPublicController {
 			@Get('/')
+			@ApiTags(['Widgets'])
 			@ApiErrorResponse(418)
 			method() {}
 		}

@@ -36,6 +36,7 @@ export interface ResolvedPublicApiRoute {
 	apiKeyScope?: ApiKeyScopeRequirement;
 	summary?: string;
 	description?: string;
+	tags?: string[];
 	errorResponses?: number[];
 }
 
@@ -145,6 +146,7 @@ export function resolvePublicApiRoutes(): ResolvedPublicApiRoute[] {
 				apiKeyScope: route.apiKeyScope,
 				summary: route.summary,
 				description: route.description,
+				tags: route.tags,
 				errorResponses: route.errorResponses,
 			});
 		}
