@@ -1,20 +1,18 @@
 import RefParser from '@apidevtools/json-schema-ref-parser';
 import { API_KEY_RESOURCES, type ApiKeyScope } from '@n8n/permissions';
+import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'yaml';
 
-import { extractScopeFromEovHandlerChain } from '../shared/public-api-scope-lookup';
+import {
+	extractScopeFromEovHandlerChain,
+	loadPublicControllerScopeMap,
+	publicApiRouteKey,
+	resolvePublicApiImplementedScope,
+} from '../shared/public-api-scope-lookup';
 
 import '../controllers';
-
-// Side-effect import that populates ControllerRegistryMetadata so resolvePublicApiRoutes()
-// sees every @PublicApiController route.
-import '@/public-api/v1/controllers';
-import {
-	resolvePublicApiRoutes,
-	scopeRequirementToString,
-} from '@/public-api/public-api-route-resolver';
 
 vi.unmock('node:fs');
 
@@ -25,26 +23,18 @@ const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;
 
 type Method = (typeof HTTP_METHODS)[number];
 
-/**
- * Two routing styles coexist long-term (see `.agents/skills/public-api/SKILL.md`): legacy
- * eov/hand-written-YAML endpoints, and `@PublicApiController` decorator-routed ones. Every
- * assertion below has to cover both.
- **/
-type Operation =
-	| {
-			source: 'eov';
-			pathStr: string;
-			method: Method;
-			operationId: string;
-			handlerPath: string;
-			requiredScope: string | null;
-	  }
-	| {
-			source: 'decorator';
-			pathStr: string;
-			method: Method;
-			requiredScope: string | null;
-	  };
+type Operation = {
+	pathStr: string;
+	method: Method;
+	operationId: string;
+	/**
+	 * Null for a decorator-routed operation. Its `x-eov-operation-handler` is an unreachable stub
+	 * (needed so express-openapi-validator's handler installer doesn't error on it), not a real
+	 * handler to compare scope against - see `decorator-routed.handler.ts`.
+	 */
+	handlerPath: string | null;
+	requiredScope: string | null;
+};
 
 type RawOperation = {
 	operationId?: string;
@@ -54,7 +44,7 @@ type RawOperation = {
 	'x-decorator-routed'?: boolean;
 };
 
-async function loadEovOperations(): Promise<Operation[]> {
+async function loadOperations(): Promise<Operation[]> {
 	const spec = await RefParser.dereference(OPENAPI_SPEC_PATH);
 	const paths = (spec as { paths?: Record<string, Record<string, RawOperation>> }).paths ?? {};
 	const ops: Operation[] = [];
@@ -62,17 +52,25 @@ async function loadEovOperations(): Promise<Operation[]> {
 		for (const method of HTTP_METHODS) {
 			const op = methods[method];
 			if (!op) continue;
-			// Decorator-routed operations should be skipped here.
-			if (op['x-decorator-routed']) continue;
-			const operationId = op['x-eov-operation-id'];
-			const handlerPath = op['x-eov-operation-handler'];
-			if (!operationId || !handlerPath) continue;
+
+			const isDecoratorRouted = op['x-decorator-routed'] === true;
+			// A decorator-routed operation carries its real operationId as a plain `operationId`,
+			// plus a stub `x-eov-operation-id: unreachable` that exists only to satisfy eov - prefer
+			// the real one for these instead of the usual eov-first fallback.
+			const operationId = isDecoratorRouted
+				? op.operationId
+				: (op['x-eov-operation-id'] ?? op.operationId);
+			if (!operationId) {
+				throw new Error(
+					`Missing operationId / x-eov-operation-id for ${method.toUpperCase()} ${pathStr}`,
+				);
+			}
+
 			ops.push({
-				source: 'eov',
 				pathStr,
 				method,
 				operationId,
-				handlerPath,
+				handlerPath: isDecoratorRouted ? null : (op['x-eov-operation-handler'] ?? null),
 				requiredScope: op['x-required-scope'] ?? null,
 			});
 		}
@@ -80,22 +78,7 @@ async function loadEovOperations(): Promise<Operation[]> {
 	return ops;
 }
 
-function loadDecoratorOperations(): Operation[] {
-	return resolvePublicApiRoutes().map((route) => ({
-		source: 'decorator',
-		pathStr: route.path,
-		method: route.method as Method,
-		requiredScope: route.apiKeyScope ? scopeRequirementToString(route.apiKeyScope) : 'none',
-	}));
-}
-
-async function loadOperations(): Promise<Operation[]> {
-	const eovOps = await loadEovOperations();
-	const decoratorOps = loadDecoratorOperations();
-	return [...eovOps, ...decoratorOps];
-}
-
-async function loadHandlerScope(
+async function loadEovHandlerScope(
 	handlerPath: string,
 	operationId: string,
 ): Promise<ApiKeyScope | undefined> {
@@ -124,9 +107,11 @@ function normalizeScopeSet(scope: string | undefined): string {
 
 describe('Public API scope parity', () => {
 	let ops: Operation[];
+	let controllerScopes: Map<string, string | undefined>;
 
 	beforeAll(async () => {
 		ops = await loadOperations();
+		controllerScopes = loadPublicControllerScopeMap();
 	});
 
 	test('openapi.yml tags are sorted alphabetically by name', () => {
@@ -143,17 +128,40 @@ describe('Public API scope parity', () => {
 		expect(missing.map((m) => `${m.method.toUpperCase()} ${m.pathStr}`)).toEqual([]);
 	});
 
-	test('every x-required-scope matches the handler middleware __apiKeyScope', async () => {
+	test('every x-required-scope matches eov handler or @PublicApiController @ApiKeyScope', async () => {
 		const mismatches: string[] = [];
 		for (const op of ops) {
-			// Decorator routes have no separate handler middleware to compare against, skip these
-			if (op.source !== 'eov' || op.requiredScope === null) continue;
-			const handlerScope = await loadHandlerScope(op.handlerPath, op.operationId);
+			if (op.requiredScope === null) continue;
+
+			// A route must be defined by a real eov handler XOR a @PublicApiController,
+			// never both - otherwise the enforced scope is ambiguous. `op.handlerPath` is
+			// already null for decorator-routed operations (their eov handler is a stub), so
+			// this only trips for a genuine eov handler left in place alongside a controller.
+			assert(
+				!(
+					op.handlerPath !== null && controllerScopes.has(publicApiRouteKey(op.method, op.pathStr))
+				),
+				`${op.method.toUpperCase()} ${op.pathStr} is defined by both an eov handler and a @PublicApiController. ` +
+					'Remove the eov handler (its `x-eov-operation-handler` in the OpenAPI spec and the handler middleware) and keep the @PublicApiController.',
+			);
+
+			const eovHandlerScope =
+				op.handlerPath !== null
+					? await loadEovHandlerScope(op.handlerPath, op.operationId)
+					: undefined;
+
+			const implemented = resolvePublicApiImplementedScope(
+				controllerScopes,
+				op.method,
+				op.pathStr,
+				eovHandlerScope,
+			);
+
 			const expected = op.requiredScope === 'none' ? undefined : op.requiredScope;
-			if (normalizeScopeSet(handlerScope) !== normalizeScopeSet(expected)) {
+			if (normalizeScopeSet(implemented) !== normalizeScopeSet(expected)) {
 				mismatches.push(
 					`${op.method.toUpperCase()} ${op.pathStr}: YAML says "${op.requiredScope}", implemented scope is "${
-						handlerScope ?? 'none'
+						implemented ?? 'none'
 					}"`,
 				);
 			}
