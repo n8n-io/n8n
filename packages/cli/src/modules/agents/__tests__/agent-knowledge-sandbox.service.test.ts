@@ -146,6 +146,7 @@ function makeAgentFile(overrides: Partial<AgentFile> = {}): AgentFile {
 		id,
 		agentId,
 		storedAt: 'fs',
+		storageKey: `agents/${agentId}/knowledge-files/${id}/content`,
 		fileName,
 		mimeType: 'text/plain',
 		fileSizeBytes: 100,

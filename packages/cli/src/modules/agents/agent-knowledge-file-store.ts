@@ -10,8 +10,8 @@ import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
-type AgentKnowledgeFileRef = { agentId: string; fileId: string };
-type StoredAgentKnowledgeFileRef = AgentKnowledgeFileRef & { storedAt: StorageLocation };
+/** Where a knowledge file's bytes live, as recorded on its `agent_files` row. */
+type StoredAgentKnowledgeFile = { storedAt: StorageLocation; storageKey: string };
 
 @Service()
 export class AgentKnowledgeFileFsByteStore extends FsByteStore {
@@ -28,6 +28,9 @@ export class AgentKnowledgeFileFsByteStore extends FsByteStore {
  * always available; `s3` and `az` are registered at module init when configured.
  * When execution data storage mode is `database`, writes fall back to `fs`.
  * In multi-main deployments that fallback path must be on a shared filesystem.
+ *
+ * Keys are generated on write and persisted, so files written by the former
+ * BinaryDataService layout keep resolving under their original key.
  */
 @Service()
 export class AgentKnowledgeFileStore {
@@ -60,27 +63,28 @@ export class AgentKnowledgeFileStore {
 	}
 
 	async write(
-		ref: AgentKnowledgeFileRef,
+		ref: { agentId: string; fileId: string },
 		body: Buffer | Readable,
 		metadata: PreWriteBlobMetadata,
-	): Promise<StorageLocation> {
-		const loc = this.writeLocation;
-		await this.getByteStore(loc).write(this.key(ref), body, metadata);
-		return loc;
+	): Promise<StoredAgentKnowledgeFile> {
+		const storedAt = this.writeLocation;
+		const storageKey = this.newKeyFor(ref);
+		await this.getByteStore(storedAt).write(storageKey, body, metadata);
+		return { storedAt, storageKey };
 	}
 
-	async readAsBuffer(ref: StoredAgentKnowledgeFileRef): Promise<Buffer | null> {
-		return await this.getByteStore(ref.storedAt).read(this.key(ref));
+	async readAsBuffer(file: StoredAgentKnowledgeFile): Promise<Buffer | null> {
+		return await this.getByteStore(file.storedAt).read(file.storageKey);
 	}
 
-	async delete(refs: StoredAgentKnowledgeFileRef[]): Promise<void> {
-		if (refs.length === 0) return;
+	async delete(files: StoredAgentKnowledgeFile[]): Promise<void> {
+		if (files.length === 0) return;
 
-		const groups = new Map<StorageLocation, StoredAgentKnowledgeFileRef[]>();
-		for (const ref of refs) {
-			const group = groups.get(ref.storedAt) ?? [];
-			group.push(ref);
-			groups.set(ref.storedAt, group);
+		const groups = new Map<StorageLocation, StoredAgentKnowledgeFile[]>();
+		for (const file of files) {
+			const group = groups.get(file.storedAt) ?? [];
+			group.push(file);
+			groups.set(file.storedAt, group);
 		}
 
 		await Promise.all(
@@ -93,12 +97,12 @@ export class AgentKnowledgeFileStore {
 					});
 					return;
 				}
-				await store.delete(group.map((ref) => this.key(ref)));
+				await store.delete(group.map((file) => file.storageKey));
 			}),
 		);
 	}
 
-	private key(ref: AgentKnowledgeFileRef) {
+	private newKeyFor(ref: { agentId: string; fileId: string }) {
 		return [
 			'agents',
 			encodeURIComponent(ref.agentId),

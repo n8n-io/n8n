@@ -20,6 +20,7 @@ const mobyDickFile: AgentKnowledgeFileReference = {
 	fileId: 'file-1',
 	agentId: 'agent-1',
 	storedAt: 'fs',
+	storageKey: 'agents/agent-1/knowledge-files/file-1/content',
 	displayName: 'moby-dick.txt',
 	mimeType: 'text/plain',
 	fileSizeBytes: 123,

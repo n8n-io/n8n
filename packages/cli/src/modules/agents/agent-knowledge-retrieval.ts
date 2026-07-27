@@ -190,6 +190,7 @@ export interface AgentKnowledgeFileReference {
 	fileId: string;
 	agentId: string;
 	storedAt: StorageLocation;
+	storageKey: string;
 	displayName: string;
 	mimeType: string;
 	fileSizeBytes: number;

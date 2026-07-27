@@ -104,7 +104,7 @@ export class AgentKnowledgeService {
 
 		await this.agentFileRepository.delete({ id: fileId, agentId });
 		await this.agentKnowledgeFileStore
-			.delete([{ agentId, fileId: file.id, storedAt: file.storedAt }])
+			.delete([{ storedAt: file.storedAt, storageKey: file.storageKey }])
 			.catch((error) => {
 				this.logger.warn('Failed to delete knowledge file blob', {
 					agentId,
@@ -123,9 +123,8 @@ export class AgentKnowledgeService {
 			await this.agentKnowledgeFileStore
 				.delete(
 					files.map((file) => ({
-						agentId,
-						fileId: file.id,
 						storedAt: file.storedAt,
+						storageKey: file.storageKey,
 					})),
 				)
 				.catch((error) => {
@@ -149,15 +148,15 @@ export class AgentKnowledgeService {
 		const storageFileName = storageFileNameForOriginalFileName(file.originalname);
 		const content = await this.prepareUploadContent(file);
 
-		const storedAt = await this.agentKnowledgeFileStore.write({ agentId, fileId }, content, {
+		const stored = await this.agentKnowledgeFileStore.write({ agentId, fileId }, content, {
 			fileName: storageFileName,
 			mimeType: file.mimetype,
 		});
 
 		try {
-			return await this.saveAgentFile(agentId, fileId, file, storedAt);
+			return await this.saveAgentFile(agentId, fileId, file, stored);
 		} catch (error) {
-			await this.agentKnowledgeFileStore.delete([{ agentId, fileId, storedAt }]).catch(() => {});
+			await this.agentKnowledgeFileStore.delete([stored]).catch(() => {});
 			if (isUniqueConstraintError(error)) {
 				throw this.duplicateFileNameError(file.originalname);
 			}
@@ -169,12 +168,13 @@ export class AgentKnowledgeService {
 		agentId: string,
 		fileId: string,
 		file: Express.Multer.File,
-		storedAt: StorageLocation,
+		stored: { storedAt: StorageLocation; storageKey: string },
 	): Promise<AgentFile> {
 		const agentFile = this.agentFileRepository.create({
 			id: fileId,
 			agentId,
-			storedAt,
+			storedAt: stored.storedAt,
+			storageKey: stored.storageKey,
 			fileName: file.originalname,
 			mimeType: file.mimetype,
 			fileSizeBytes: file.size,
@@ -200,7 +200,7 @@ export class AgentKnowledgeService {
 	private async cleanupUploadedFiles(files: AgentFile[]): Promise<void> {
 		for (const file of files) {
 			await this.agentKnowledgeFileStore
-				.delete([{ agentId: file.agentId, fileId: file.id, storedAt: file.storedAt }])
+				.delete([{ storedAt: file.storedAt, storageKey: file.storageKey }])
 				.catch(() => {});
 			await this.agentFileRepository.delete({ id: file.id, agentId: file.agentId }).catch(() => {});
 		}

@@ -559,9 +559,8 @@ export class AgentKnowledgeSandboxService {
 
 			try {
 				const buffer = await this.agentKnowledgeFileStore.readAsBuffer({
-					agentId: file.agentId,
-					fileId: file.fileId,
 					storedAt: file.storedAt,
+					storageKey: file.storageKey,
 				});
 				if (!buffer) {
 					this.logger.warn('Failed to load agent knowledge file for mirror sync', {
@@ -650,6 +649,7 @@ export class AgentKnowledgeSandboxService {
 			fileId: file.id,
 			agentId: file.agentId,
 			storedAt: file.storedAt,
+			storageKey: file.storageKey,
 			displayName: file.fileName,
 			mimeType: file.mimeType,
 			fileSizeBytes: file.fileSizeBytes,

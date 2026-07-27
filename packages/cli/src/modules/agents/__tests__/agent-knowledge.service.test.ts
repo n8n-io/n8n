@@ -65,6 +65,7 @@ function makeAgentFile(overrides: Partial<AgentFile> = {}): AgentFile {
 		id: 'file-1',
 		agentId,
 		storedAt: 'fs',
+		storageKey: `agents/${agentId}/knowledge-files/${overrides.id ?? 'file-1'}/content`,
 		fileName: 'first.txt',
 		mimeType: 'text/plain',
 		fileSizeBytes: 4,
@@ -84,6 +85,7 @@ class InMemoryAgentFileRepository {
 			id: input.id ?? 'generated-id',
 			agentId: input.agentId ?? agentId,
 			storedAt: input.storedAt ?? 'fs',
+			storageKey: input.storageKey ?? '',
 			fileName: input.fileName ?? '',
 			mimeType: input.mimeType ?? '',
 			fileSizeBytes: input.fileSizeBytes ?? 0,
@@ -143,9 +145,12 @@ describe('AgentKnowledgeService', () => {
 		agentFileRepository = new InMemoryAgentFileRepository();
 		agentKnowledgeSandboxService = mock<AgentKnowledgeSandboxService>();
 		agentKnowledgeFileStore = mock<AgentKnowledgeFileStore>();
-		agentKnowledgeFileStore.write.mockImplementation(async (_ref, content) => {
+		agentKnowledgeFileStore.write.mockImplementation(async (ref, content) => {
 			await drainIfStream(content);
-			return 'fs';
+			return {
+				storedAt: 'fs',
+				storageKey: `agents/${ref.agentId}/knowledge-files/${ref.fileId}/content`,
+			};
 		});
 		agentKnowledgeFileStore.delete.mockResolvedValue(undefined);
 		logger = mock<Logger>();
@@ -239,9 +244,12 @@ describe('AgentKnowledgeService', () => {
 		await writeFile(secondPath, 'world');
 		agentKnowledgeFileStore.write
 			.mockReset()
-			.mockImplementationOnce(async (_ref, content) => {
+			.mockImplementationOnce(async (ref, content) => {
 				await drainIfStream(content);
-				return 'fs';
+				return {
+					storedAt: 'fs',
+					storageKey: `agents/${ref.agentId}/knowledge-files/${ref.fileId}/content`,
+				};
 			})
 			.mockImplementationOnce(async (_ref, content) => {
 				await drainIfStream(content);
@@ -262,7 +270,7 @@ describe('AgentKnowledgeService', () => {
 
 		expect(agentFileRepository.all()).toEqual([]);
 		expect(agentKnowledgeFileStore.delete).toHaveBeenCalledWith([
-			expect.objectContaining({ agentId, storedAt: 'fs' }),
+			expect.objectContaining({ storedAt: 'fs', storageKey: expect.any(String) }),
 		]);
 	});
 
@@ -351,7 +359,7 @@ describe('AgentKnowledgeService', () => {
 
 		expect(agentFileRepository.all()).toEqual([]);
 		expect(agentKnowledgeFileStore.delete).toHaveBeenCalledWith([
-			{ agentId, fileId: 'file-1', storedAt: 'fs' },
+			{ storedAt: 'fs', storageKey: `agents/${agentId}/knowledge-files/file-1/content` },
 		]);
 	});
 
@@ -385,8 +393,8 @@ describe('AgentKnowledgeService', () => {
 
 		expect(agentFileRepository.all()).toEqual([]);
 		expect(agentKnowledgeFileStore.delete).toHaveBeenCalledWith([
-			{ agentId, fileId: 'file-1', storedAt: 'fs' },
-			{ agentId, fileId: 'file-2', storedAt: 's3' },
+			{ storedAt: 'fs', storageKey: `agents/${agentId}/knowledge-files/file-1/content` },
+			{ storedAt: 's3', storageKey: `agents/${agentId}/knowledge-files/file-2/content` },
 		]);
 	});
 

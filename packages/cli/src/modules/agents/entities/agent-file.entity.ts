@@ -7,6 +7,7 @@ import { Agent } from './agent.entity';
 @Entity({ name: 'agent_files' })
 @Index(['agentId', 'createdAt'])
 @Index(['agentId', 'fileName'], { unique: true })
+@Index(['agentId', 'storageKey'], { unique: true })
 export class AgentFile extends WithTimestampsAndStringId {
 	@ManyToOne(() => Agent, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'agentId' })
@@ -21,6 +22,14 @@ export class AgentFile extends WithTimestampsAndStringId {
 	 */
 	@Column({ type: 'varchar', length: 2, nullable: false, default: 'fs' })
 	storedAt: StorageLocation;
+
+	/**
+	 * Byte-store key addressing the bytes within `storedAt`. Persisted rather
+	 * than derived, so files written under the former BinaryDataService layout
+	 * keep resolving after the storage migration.
+	 */
+	@Column({ type: 'text' })
+	storageKey: string;
 
 	// fileName/mimeType/fileSizeBytes are intentionally denormalized rather than
 	// joined from storage metadata: we keep the original user-facing values,

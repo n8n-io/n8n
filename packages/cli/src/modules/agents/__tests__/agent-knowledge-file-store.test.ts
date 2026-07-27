@@ -41,18 +41,32 @@ describe('AgentKnowledgeFileStore', () => {
 
 	it('falls back to fs when execution data storage mode is database and round-trips bytes', async () => {
 		const body = Buffer.from('knowledge-bytes', 'utf-8');
-		const ref = { agentId: 'agent-1', fileId: 'file-1' };
 
-		const storedAt = await store.write(ref, body, {
+		const stored = await store.write({ agentId: 'agent-1', fileId: 'file-1' }, body, {
 			fileName: 'notes.txt',
 			mimeType: 'text/plain',
 		});
 
-		expect(storedAt).toBe('fs');
+		expect(stored).toEqual({
+			storedAt: 'fs',
+			storageKey: 'agents/agent-1/knowledge-files/file-1/content',
+		});
 		expect(logger.warn).toHaveBeenCalledWith(
 			"Execution data storage mode is 'database'; agent knowledge files will be stored on the local filesystem. In multi-main deployments this path must be on a shared filesystem.",
 		);
-		await expect(store.readAsBuffer({ ...ref, storedAt: 'fs' })).resolves.toEqual(body);
+		await expect(store.readAsBuffer(stored)).resolves.toEqual(body);
+	});
+
+	it('reads a blob stored under the legacy BinaryDataService key', async () => {
+		const body = Buffer.from('legacy-bytes', 'utf-8');
+		const legacyKey =
+			'agents/agent-1/knowledge-files/file-1/binary_data/2f1b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
+		const fsByteStore = new FsByteStore({ storagePath, reportError: () => {} });
+		await fsByteStore.write(legacyKey, body);
+
+		await expect(store.readAsBuffer({ storedAt: 'fs', storageKey: legacyKey })).resolves.toEqual(
+			body,
+		);
 	});
 
 	it('writes to a registered s3 location when modeTag is s3', async () => {
@@ -65,37 +79,42 @@ describe('AgentKnowledgeFileStore', () => {
 		store.registerByteStore('s3', s3Store);
 
 		const body = Buffer.from('s3-bytes', 'utf-8');
-		const ref = { agentId: 'agent-1', fileId: 'file-2' };
 
-		const storedAt = await store.write(ref, body, { mimeType: 'text/plain' });
+		const stored = await store.write({ agentId: 'agent-1', fileId: 'file-2' }, body, {
+			mimeType: 'text/plain',
+		});
 
-		expect(storedAt).toBe('s3');
-		await expect(store.readAsBuffer({ ...ref, storedAt: 's3' })).resolves.toEqual(body);
+		expect(stored.storedAt).toBe('s3');
+		await expect(store.readAsBuffer(stored)).resolves.toEqual(body);
 	});
 
 	it('returns null for a missing blob and throws for an unregistered storedAt', async () => {
 		await expect(
-			store.readAsBuffer({ agentId: 'agent-1', fileId: 'missing', storedAt: 'fs' }),
+			store.readAsBuffer({
+				storedAt: 'fs',
+				storageKey: 'agents/a/knowledge-files/missing/content',
+			}),
 		).resolves.toBeNull();
 
 		await expect(
-			store.readAsBuffer({ agentId: 'agent-1', fileId: 'file-1', storedAt: 's3' }),
+			store.readAsBuffer({ storedAt: 's3', storageKey: 'agents/a/knowledge-files/f/content' }),
 		).rejects.toThrow(UnexpectedError);
 	});
 
 	it('deletes registered blobs and skips unregistered locations without throwing', async () => {
-		const kept = { agentId: 'agent-1', fileId: 'keep' };
 		const body = Buffer.from('delete-me', 'utf-8');
-		await store.write(kept, body, { mimeType: 'text/plain' });
+		const kept = await store.write({ agentId: 'agent-1', fileId: 'keep' }, body, {
+			mimeType: 'text/plain',
+		});
 
 		await expect(
 			store.delete([
-				{ ...kept, storedAt: 'fs' },
-				{ agentId: 'agent-1', fileId: 'orphan', storedAt: 's3' },
+				kept,
+				{ storedAt: 's3', storageKey: 'agents/agent-1/knowledge-files/orphan/content' },
 			]),
 		).resolves.toBeUndefined();
 
-		await expect(store.readAsBuffer({ ...kept, storedAt: 'fs' })).resolves.toBeNull();
+		await expect(store.readAsBuffer(kept)).resolves.toBeNull();
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Skipped deleting agent knowledge files for unconfigured storage',
 			expect.objectContaining({ storedAt: 's3', count: 1 }),
