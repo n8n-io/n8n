@@ -4433,6 +4433,17 @@ export class InstanceAiService {
 		// reflect this run's config and can't leak another run's server names.
 		if (mcpConnectionFailures.length > 0) {
 			const names = mcpConnectionFailures.map((f) => f.server).join(', ');
+			for (const failure of mcpConnectionFailures) {
+				this.errorReporter.error(
+					new Error(`MCP server "${failure.server}" failed to connect: ${failure.error}`),
+					{
+						level: 'warning',
+						tags: { component: 'instance-ai-mcp', server: failure.server },
+						extra: { runId, threadId, server: failure.server, error: failure.error },
+						shouldIsolate: true,
+					},
+				);
+			}
 			this.eventBus.publish(threadId, {
 				type: 'status',
 				runId,
