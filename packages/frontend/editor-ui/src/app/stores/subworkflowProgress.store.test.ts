@@ -94,6 +94,23 @@ describe('subworkflowProgress.store', () => {
 		expect(store.getFor('p1', 'B')).toBeDefined();
 	});
 
+	it('ignores a clear from a stale child execution', () => {
+		store.setStarted({
+			parentExecutionId: 'p1',
+			parentNodeName: 'A',
+			executionId: 'c2',
+			totalNodes: 1,
+		});
+
+		// A late "finished" from the previous child must not wipe the live entry.
+		store.clear({ parentExecutionId: 'p1', parentNodeName: 'A', executionId: 'c1' });
+		expect(store.getFor('p1', 'A')).toMatchObject({ executionId: 'c2' });
+
+		// The matching child's "finished" clears it.
+		store.clear({ parentExecutionId: 'p1', parentNodeName: 'A', executionId: 'c2' });
+		expect(store.getFor('p1', 'A')).toBeUndefined();
+	});
+
 	it('reset wipes all entries', () => {
 		store.setStarted({
 			parentExecutionId: 'p1',
