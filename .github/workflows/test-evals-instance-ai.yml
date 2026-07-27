@@ -485,6 +485,7 @@ jobs:
           EVALS_OPENROUTER_KEY: ${{ secrets.EVALS_OPENROUTER_KEY }}
           EVALS_XAI_KEY: ${{ secrets.EVALS_XAI_KEY }}
           EVALS_BASETEN_KEY: ${{ secrets.EVALS_BASETEN_KEY }}
+          EVALS_FIREWORKS_KEY: ${{ secrets.EVALS_FIREWORKS_KEY }}
           DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
