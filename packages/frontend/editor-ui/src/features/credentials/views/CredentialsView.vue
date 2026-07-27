@@ -195,7 +195,8 @@ const onFilter = (resource: Resource, newFilters: BaseFilters, matches: boolean)
 const maybeCreateCredential = () => {
 	if (props.credentialId === 'create') {
 		if (projectPermissions.value.credential.create) {
-			uiStore.openModal(CREDENTIAL_SELECT_MODAL_KEY);
+			// Modal data persists across opens, so clear the instance-only preset.
+			uiStore.openModalWithData({ name: CREDENTIAL_SELECT_MODAL_KEY, data: {} });
 		} else {
 			void router.replace({ name: VIEWS.HOMEPAGE });
 		}
