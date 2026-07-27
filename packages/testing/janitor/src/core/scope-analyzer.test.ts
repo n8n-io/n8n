@@ -115,6 +115,7 @@ describe('computeScope', () => {
 			['pnpm-lock.yaml', 'pnpm-lock.yaml'],
 			['root package.json', 'package.json'],
 			['@n8n/db entity', 'packages/@n8n/db/src/entities/user.entity.ts'],
+			['@n8n/api-types schema', 'packages/@n8n/api-types/src/agents/agent-json-config.schema.ts'],
 			['workflow source', 'packages/workflow/src/Workflow.ts'],
 			['core source', 'packages/core/src/x.ts'],
 		])('bails to full on %s even when nothing changed in-package', (_label, changed) => {

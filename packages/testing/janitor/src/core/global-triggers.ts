@@ -21,6 +21,11 @@ export const GLOBAL_TRIGGER_FILES = new Set(['pnpm-lock.yaml', 'package.json']);
  * the workspace to full rather than silently skip:
  *   - `packages/@n8n/db/` — schema + entities resolved through the DI container
  *     by every consuming package's integration tests.
+ *   - `packages/@n8n/api-types/` — shared request/response + config contracts
+ *     imported by ~everything (cli, frontend, nodes-base); a schema change that
+ *     keeps the same type signature (e.g. relaxing a Zod validator) is invisible
+ *     to a downstream import-graph walk, so a dependent's stale test is skipped
+ *     rather than re-run.
  *   - `packages/workflow/`, `packages/core/` — universal sinks imported by
  *     ~everything; a behaviour change that keeps the same type signature is not
  *     visible to a downstream import-graph walk (typecheck only catches the
@@ -31,6 +36,7 @@ export const GLOBAL_TRIGGER_FILES = new Set(['pnpm-lock.yaml', 'package.json']);
  */
 export const GLOBAL_TRIGGER_PREFIXES = [
 	'packages/@n8n/db/',
+	'packages/@n8n/api-types/',
 	'packages/workflow/',
 	'packages/core/',
 ];
