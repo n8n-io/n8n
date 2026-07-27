@@ -120,7 +120,7 @@ type ExternalHooksMap = {
 		actor?: WorkflowLifecycleHookActor,
 	];
 	'workflow.deactivate': [
-		updatedWorkflow: IWorkflowBase,
+		deactivatedWorkflow: IWorkflowBase,
 		workflowContext: WorkflowHookContextService,
 		actor?: WorkflowLifecycleHookActor,
 	];
