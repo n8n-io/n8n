@@ -22,7 +22,7 @@ n8n-cli package export -w abc --include-variable-values=false -o export.n8np
 | Flag | Description |
 |------|-------------|
 | `-w, --workflow-id` | Workflow ID to include. Repeat the flag to export several. |
-| `-f, --folder-id` | Folder ID to include with its nested folders. Repeat the flag to export several. |
+| `--folder-id` | Folder ID to include with its nested folders. Repeat the flag to export several. |
 | `-p, --project-id` | Project ID to include. Repeat the flag to export several. |
 | `-o, --output` | File to write the package to. Defaults to `export.n8np`. |
 | `--include-variable-values` | `true` (default) or `false`. Whether values of variables referenced by the exported workflows are bundled into the package. When `false`, variables still travel as name/type files (and in the package requirements), just without their values. |
@@ -44,7 +44,7 @@ Import a `.n8np` archive into a project.
 
 ```bash
 n8n-cli package import --file=export.n8np
-n8n-cli package import --file=export.n8np --project=<id> --workflow-conflict-policy=skip
+n8n-cli package import --file=export.n8np --project-id=<id> --workflow-conflict-policy=skip
 n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --credential-missing-mode=must-preexist
 n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --bindings='{"credentials":{"<sourceId>":"<targetId>"}}'
 ```
@@ -53,8 +53,8 @@ n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --bind
 |------|-------------|
 | `--file` | Path to the `.n8np` package file. (required) |
 | `--workflow-conflict-policy` | What to do when a workflow already exists by source ID: `new-version` (default), `fail`, or `skip`. |
-| `--project` | Target project ID. Defaults to your personal project. |
-| `--folder` | Target folder ID within the project. Defaults to the project root. |
+| `-p, --project-id` | Target project ID. Defaults to your personal project. (alias: `--project`) |
+| `--folder-id` | Target folder ID within the project. Defaults to the project root. (alias: `--folder`) |
 | `--workflow-publishing-policy` | Whether imported workflows end up published. `preserve-published-state` (instance default) never publishes drafts — an updated workflow is republished only when it was already published and the package workflow is published too; `match-source` follows the package workflow's published flag; `publish-all` publishes every imported workflow; `unpublish-all` leaves new workflows unpublished and unpublishes updated ones. |
 | `--workflow-id-policy` | Whether imported workflows keep their source ID (`source`) or receive a new one (`new`). |
 | `--missing-node-type-mode` | What to do when a workflow uses a node type — or a version of a node type — this instance does not have. `fail` (instance default) rejects the import before anything is written, listing every missing node type and the workflows that use it; `import-anyway` imports the package, but the affected workflows are never published by the import, regardless of the publishing policy. |
