@@ -425,12 +425,17 @@ export class WorkflowReviewRequestService {
 
 		this.assertRequestUpdatable(request);
 
+		// Resolved before the lock: this query must not run inside the lock
+		// transaction, where it would need a second pooled connection while the
+		// transaction holds one — a deadlock on a single-connection pool.
+		const hasAdminOverride = await this.hasDecisionAdminOverride(user, request.projectId);
+
 		// Fast path: reject a known author before queueing on the lock.
 		const isAuthor = await this.workflowReviewRequestAuthorRepository.isAuthor({
 			workflowReviewRequestId,
 			userId: user.id,
 		});
-		await this.assertDecisionAllowed(user, request, isAuthor);
+		this.assertDecisionAllowed(isAuthor, hasAdminOverride);
 
 		const { request: saved, pinnedVersionId } = await this.dbLockService.withLock(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
@@ -453,7 +458,7 @@ export class WorkflowReviewRequestService {
 					{ workflowReviewRequestId, userId: user.id },
 					tx,
 				);
-				await this.assertDecisionAllowed(user, current, isAuthorNow);
+				this.assertDecisionAllowed(isAuthorNow, hasAdminOverride);
 
 				// Re-read the pinned row too: a concurrent sync that won the lock may
 				// have re-pinned, and the summary must reflect the version being decided on.
@@ -488,14 +493,12 @@ export class WorkflowReviewRequestService {
 	/**
 	 * Authors cannot decide their own review request, unless an admin override
 	 * applies. Called before and again inside the decision lock, since the author
-	 * set can change while the caller waits for the lock.
+	 * set can change while the caller waits for the lock. The override is resolved
+	 * once, pre-lock: the lock guards the author set, not role membership — like
+	 * every other authorization check in `decide`, roles are evaluated up front.
 	 */
-	private async assertDecisionAllowed(
-		user: User,
-		request: WorkflowReviewRequest,
-		isAuthor: boolean,
-	): Promise<void> {
-		if (isAuthor && !(await this.hasDecisionAdminOverride(user, request.projectId))) {
+	private assertDecisionAllowed(isAuthor: boolean, hasAdminOverride: boolean): void {
+		if (isAuthor && !hasAdminOverride) {
 			throw new ForbiddenError('Authors cannot decide on their own review request');
 		}
 	}

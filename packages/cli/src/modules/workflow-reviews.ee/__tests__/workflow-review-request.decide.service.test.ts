@@ -102,6 +102,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 			mock<WorkflowEntity>({ isArchived: false }),
 		);
 		authorRepository.isAuthor.mockResolvedValue(false);
+		projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
 		tx.save.mockImplementation(async (entity) => entity);
 	};
 
@@ -251,12 +252,18 @@ describe('WorkflowReviewRequestService.decide', () => {
 			expect(dbLockService.withLock).not.toHaveBeenCalled();
 		});
 
-		it('skips the override query entirely for non-authors', async () => {
+		it('resolves the admin override once, before taking the lock', async () => {
 			mockSuccessfulDecidePath();
 
 			await service.decide(memberUser(), requestId, approveDto);
 
-			expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
+			// The override query must never run inside the lock transaction: with a
+			// single-connection pool it would deadlock waiting for a second connection.
+			const [overrideOrder] =
+				projectRelationRepository.getAccessibleProjectsByRoles.mock.invocationCallOrder;
+			const [lockOrder] = dbLockService.withLock.mock.invocationCallOrder;
+			expect(overrideOrder).toBeLessThan(lockOrder);
+			expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledOnce();
 		});
 	});
 
