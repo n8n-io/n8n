@@ -421,6 +421,10 @@ describe('useToast', () => {
 					within(screen.getByRole('alert')).getByRole('heading', { level: 2 }),
 				).toHaveTextContent('Queued title');
 			});
+			// Asserts CURRENT behaviour, not correct behaviour: the implementation
+			// clears `VIEWS.WORKFLOW` regardless of the `views` argument, so a caller
+			// passing e.g. `[WORKFLOW, NEW_WORKFLOW]` (`NodeView.vue`) leaves the other
+			// view's queue populated. Pre-existing — unchanged from before this PR.
 			expect(notificationState.setNotificationsForView).toHaveBeenCalledWith(VIEWS.WORKFLOW, []);
 		});
 

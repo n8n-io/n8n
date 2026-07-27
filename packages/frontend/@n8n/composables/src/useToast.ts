@@ -76,6 +76,24 @@ const noopNotificationState: ToastNotificationState = {
 	setNotificationsForView() {},
 };
 
+let warnedAboutMissingNotificationState = false;
+
+function resolveNotificationState(): ToastNotificationState {
+	if (registeredNotificationState) return registeredNotificationState();
+
+	// Falling back means bootstrap never registered. Suppression would then be
+	// ignored rather than honoured — a silent behaviour change — so warn once in
+	// dev, matching `useTelemetry`'s fallback and `versions.store`'s unregistered
+	// modal openers.
+	if (import.meta.env.DEV && !warnedAboutMissingNotificationState) {
+		warnedAboutMissingNotificationState = true;
+		console.warn(
+			'[useToast] No notification state registered; suppression will be ignored. Call registerNotificationState() at app bootstrap.',
+		);
+	}
+	return noopNotificationState;
+}
+
 const stickyNotificationQueue: NotificationHandle[] = [];
 
 export function useToast() {
@@ -87,7 +105,7 @@ export function useToast() {
 		const id = route?.params?.workflowId;
 		return (Array.isArray(id) ? id[0] : id) ?? '';
 	});
-	const notificationState = registeredNotificationState?.() ?? noopNotificationState;
+	const notificationState = resolveNotificationState();
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
 

@@ -49,9 +49,11 @@ describe('package boundary', () => {
 		expect(files.length).toBeGreaterThan(0);
 
 		// Import syntax only — prose mentioning the package (including this file's
-		// own assertions) must not count as a violation.
+		// own assertions) must not count as a violation. Covers `from '…'`,
+		// `import('…')` / `require('…')`, and bare side-effect `import '…'`, which
+		// takes no binding yet would still pull the package in and restore the cycle.
 		const importsStores =
-			/(?:\bfrom\s*|\b(?:import|require)\s*\(\s*)['"]@n8n\/stores(?:\/[^'"]*)?['"]/;
+			/(?:\bfrom\s*|\b(?:import|require)\s*\(\s*|\bimport\s+)['"]@n8n\/stores(?:\/[^'"]*)?['"]/;
 
 		const offenders = files
 			.filter((file) => importsStores.test(readFileSync(file, 'utf8')))
