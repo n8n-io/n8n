@@ -68,6 +68,15 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 
+	// A sub-execution of the tracked run finishing is not the run finishing: it
+	// must not clear the active execution id, re-fetch the run, or toast. Its data
+	// stays on display — the canvas and log view keep showing the sub-workflow's
+	// branch — so only its status and running indicator are settled here.
+	if (workflowExecutionStateStore.isTrackedSubExecution(data.executionId)) {
+		markSubExecutionFinished(data, documentId);
+		return;
+	}
+
 	// Only act on the finish of the execution this document is actually tracking.
 	// Normal match is on the execution id; when the active execution is still
 	// pending (null) because this finish raced ahead of `executionStarted`, fall
@@ -102,6 +111,8 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	// running state. `clearNodeExecutionQueue` also resets `lastAddedExecutingNode`.
 	if (belongsToThisDocument || activeExecutionId === undefined) {
 		workflowExecutionStateStore.executingNode.clearNodeExecutionQueue();
+		// The run is over, so nothing inside its sub-executions can still be running.
+		workflowExecutionStateStore.subExecutingNode.clearNodeExecutionQueue();
 	}
 
 	if (!belongsToThisDocument) {
@@ -238,6 +249,21 @@ export function continueEvaluationLoop(execution: SimplifiedExecution, opts: Pus
 			rerunTriggerNode: true,
 		});
 	}
+}
+
+/**
+ * Settles a finished sub-execution of the tracked run: records its terminal
+ * status on its own store and clears the sub-execution running indicator. The run
+ * data it accumulated from live pushes is kept — it is what the canvas and the
+ * log view show for the sub-workflow's branch, and unlike the tracked run there
+ * is no re-fetch to replace it with.
+ */
+function markSubExecutionFinished(data: ExecutionFinished['data'], documentId: WorkflowDocumentId) {
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+	const executionDataStore = useExecutionDataStore(createExecutionDataId(data.executionId));
+
+	executionDataStore.setExecutionStatus(data.status, new Date());
+	workflowExecutionStateStore.markSubExecutionFinished(data.executionId);
 }
 
 /**

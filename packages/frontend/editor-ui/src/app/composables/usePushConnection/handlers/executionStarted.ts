@@ -1,11 +1,67 @@
-import type { ExecutionStarted } from '@n8n/api-types/push/execution';
+import type { ExecutionStarted, SubExecutionParent } from '@n8n/api-types/push/execution';
 import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { parse } from 'flatted';
 import { createRunExecutionData } from 'n8n-workflow';
 import type { IRunExecutionData } from 'n8n-workflow';
+import type { IWorkflowDb } from '@/Interface';
 import type { PushHandlerOptions } from './types';
+
+/**
+ * Registers a starting sub-workflow execution against the run being watched and
+ * seeds its execution-data store, so its node events have somewhere to land.
+ *
+ * The store is seeded with the sub-workflow's own node snapshot when it is the
+ * workflow on the canvas — a workflow calling itself — because that is what lets
+ * the canvas mirror the sub-execution's progress. For any other sub-workflow the
+ * editor has no node snapshot to hand, so the store carries run data only; the
+ * log view resolves the graph it needs separately.
+ */
+function startSubExecution(
+	data: ExecutionStarted['data'],
+	parent: SubExecutionParent,
+	documentId: PushHandlerOptions['documentId'],
+) {
+	const workflowDocumentStore = useWorkflowDocumentStore(documentId);
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+
+	const registered = workflowExecutionStateStore.registerSubExecution({
+		executionId: data.executionId,
+		workflowId: data.workflowId,
+		parentExecutionId: parent.executionId,
+		parentNodeName: parent.nodeName,
+		parentNodeRunIndex: parent.runIndex,
+	});
+	if (!registered) return;
+
+	const isSameWorkflow = data.workflowId === workflowDocumentStore.workflowId;
+	const workflowData: IWorkflowDb = isSameWorkflow
+		? workflowDocumentStore.getSnapshot()
+		: {
+				id: data.workflowId,
+				name: data.workflowName ?? '',
+				nodes: [],
+				connections: {},
+				active: false,
+				isArchived: false,
+				createdAt: Date.now(),
+				updatedAt: Date.now(),
+				versionId: '',
+				activeVersionId: null,
+			};
+
+	useExecutionDataStore(createExecutionDataId(data.executionId)).setExecution({
+		id: data.executionId,
+		finished: false,
+		mode: data.mode,
+		status: 'running',
+		createdAt: new Date(),
+		startedAt: new Date(data.startedAt),
+		workflowData,
+		data: createRunExecutionData(),
+	});
+}
 
 /**
  * Handles the 'executionStarted' event, which happens when a workflow is executed.
@@ -17,6 +73,15 @@ export async function executionStarted(
 	const workflowDocumentStore = useWorkflowDocumentStore(documentId);
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 	const isIframe = window !== window.parent;
+
+	// A sub-workflow execution of the run being watched. It is its own execution,
+	// so it gets its own data store rather than the pending/active slots — and it
+	// must not go through the checks below, whose whole point is to keep another
+	// workflow's execution from hijacking those slots.
+	if (data.parent) {
+		startSubExecution(data, data.parent, documentId);
+		return;
+	}
 
 	// A single push connection serves the active document, so a concurrent
 	// execution of a *different* workflow (e.g. a scheduled run firing while this

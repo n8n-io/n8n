@@ -191,6 +191,12 @@ export class JobProcessor {
 		);
 		additionalData.hooks = lifecycleHooks;
 
+		// Mirrors the worker's own push gate above: sub-executions stream their
+		// lifecycle events to the session only when this execution does too.
+		if (pushRef && execution.mode === 'manual') {
+			additionalData.pushRef = pushRef;
+		}
+
 		if (pushRef) {
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				pushRef,

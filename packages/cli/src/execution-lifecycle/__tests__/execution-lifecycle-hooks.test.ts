@@ -1735,12 +1735,11 @@ describe('Execution Lifecycle Hooks', () => {
 
 	describe('getLifecycleHooksForSubExecutions', () => {
 		beforeEach(() => {
-			lifecycleHooks = getLifecycleHooksForSubExecutions(
-				'manual',
+			lifecycleHooks = getLifecycleHooksForSubExecutions({
+				mode: 'manual',
 				executionId,
 				workflowData,
-				undefined,
-			);
+			});
 		});
 
 		workflowEventTests();
@@ -1774,13 +1773,12 @@ describe('Execution Lifecycle Hooks', () => {
 			};
 
 			beforeEach(() => {
-				lifecycleHooks = getLifecycleHooksForSubExecutions(
-					'integrated',
+				lifecycleHooks = getLifecycleHooksForSubExecutions({
+					mode: 'integrated',
 					executionId,
 					workflowData,
-					undefined,
 					parentExecution,
-				);
+				});
 			});
 
 			it('should duplicate binary data to parent execution', async () => {

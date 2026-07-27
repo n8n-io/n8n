@@ -5,15 +5,20 @@ import {
 	type IRunExecutionData,
 	type ITaskStartedData,
 	type IWorkflowGroup,
+	type RelatedExecution,
 } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
 	copyExecutionData,
+	copyRunData,
 	createLogTree,
 	findSubExecutionLocator,
+	liveSubExecutionKey,
 	mergeStartData,
 } from '@/features/execution/logs/logs.utils';
 import { useToast } from '@n8n/composables/useToast';
@@ -36,6 +41,7 @@ interface UseLogsExecutionDataOptions {
 export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionDataOptions = {}) {
 	const nodeHelpers = useNodeHelpers();
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
@@ -59,6 +65,103 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	const subWorkflows = ref<Record<string, Workflow>>({});
 	const subWorkflowNodeGroups = ref<Record<string, IWorkflowGroup[]>>({});
 	const workflow = ref<Workflow>();
+
+	// --- live sub-executions ---
+	// A sub-workflow of the run being watched pushes its node events as they
+	// happen, so its subtree can be shown while it is still running instead of
+	// only after the parent node returns. Kept apart from the lazily-fetched data
+	// above, which covers sub-executions that already finished.
+	const liveSubExecutionData = ref<Record<string, IRunExecutionData>>({});
+	const liveSubWorkflows = ref<Record<string, Workflow>>({});
+	const liveSubExecutionLocators = ref<Record<string, RelatedExecution>>({});
+	/** Sub-workflows whose graph is being fetched, so we only ask once. */
+	const requestedSubWorkflowIds = new Set<string>();
+
+	const subExecutionLinks = computed(() => workflowExecutionStateStore.value.subExecutionLinks);
+
+	/**
+	 * Bumps whenever any live sub-execution's data changes, so the throttled
+	 * snapshot below picks up nodes completing inside a sub-workflow.
+	 */
+	const subExecutionDataStamps = computed(() =>
+		subExecutionLinks.value.map(
+			(link) =>
+				useExecutionDataStore(createExecutionDataId(link.executionId))
+					.executionResultDataLastUpdate ?? 0,
+		),
+	);
+
+	/**
+	 * Resolves the graph of a live sub-workflow. A workflow calling itself already
+	 * has it on screen; anything else is fetched once and cached.
+	 */
+	function resolveLiveSubWorkflow(workflowId: string): Workflow | undefined {
+		if (liveSubWorkflows.value[workflowId]) return liveSubWorkflows.value[workflowId];
+
+		if (workflowId === workflowDocumentStore.value.workflowId && workflow.value) {
+			return workflow.value;
+		}
+
+		if (!requestedSubWorkflowIds.has(workflowId)) {
+			requestedSubWorkflowIds.add(workflowId);
+			workflowsListStore
+				.fetchWorkflow(workflowId)
+				.then((fetched) => {
+					liveSubWorkflows.value[workflowId] = new Workflow({
+						...fetched,
+						nodeTypes: nodeTypesStore.getAllNodeTypes(),
+					});
+					subWorkflowNodeGroups.value[workflowId] ??= fetched.nodeGroups ?? [];
+				})
+				.catch(() => {
+					// The subtree stays collapsed until the sub-execution finishes, at
+					// which point the on-expand fetch covers it.
+					requestedSubWorkflowIds.delete(workflowId);
+				});
+		}
+
+		return undefined;
+	}
+
+	function snapshotLiveSubExecutions() {
+		// Resolving a sub-workflow's graph can cost a request, so don't while
+		// nothing is rendering the tree. The snapshot runs again on the next data
+		// change once the view is back.
+		if (isEnabled !== undefined && !isEnabled.value) {
+			return;
+		}
+
+		const data: Record<string, IRunExecutionData> = {};
+		const locators: Record<string, RelatedExecution> = {};
+
+		for (const link of subExecutionLinks.value) {
+			const subWorkflow = resolveLiveSubWorkflow(link.workflowId);
+			if (!subWorkflow) continue;
+
+			// Snapshot rather than the readonly store ref: the tree consumes plain,
+			// non-reactive data.
+			const execution = useExecutionDataStore(
+				createExecutionDataId(link.executionId),
+			).getExecutionSnapshot();
+
+			liveSubWorkflows.value[link.workflowId] = subWorkflow;
+			subWorkflowNodeGroups.value[link.workflowId] ??= execution?.workflowData.nodeGroups ?? [];
+			data[link.executionId] = copyRunData(execution?.data);
+			locators[
+				liveSubExecutionKey(link.parentExecutionId, link.parentNodeName, link.parentNodeRunIndex)
+			] = { workflowId: link.workflowId, executionId: link.executionId };
+		}
+
+		liveSubExecutionData.value = data;
+		liveSubExecutionLocators.value = locators;
+	}
+
+	function resetLiveSubExecutions() {
+		liveSubExecutionData.value = {};
+		liveSubWorkflows.value = {};
+		liveSubExecutionLocators.value = {};
+		requestedSubWorkflowIds.clear();
+	}
 
 	const latestNodeNameById = computed(() =>
 		Object.values(workflow.value?.nodes ?? {}).reduce<Record<string, LatestNodeInfo>>(
@@ -107,11 +210,12 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		return createLogTree(
 			workflow.value,
 			mergedExecutionData,
-			subWorkflows.value,
-			subWorkflowExecData.value,
+			{ ...subWorkflows.value, ...liveSubWorkflows.value },
+			{ ...subWorkflowExecData.value, ...liveSubExecutionData.value },
 			filter?.value,
 			nodeGroups,
 			subWorkflowNodeGroups.value,
+			liveSubExecutionLocators.value,
 		);
 	});
 
@@ -159,6 +263,11 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 			() => currentExecution.value?.status,
 			() => workflowExecutionStateStore.value.activeExecutionResultDataLastUpdate,
 			() => workflowExecutionStateStore.value.activeExecutionStartedData,
+			subExecutionLinks,
+			subExecutionDataStamps,
+			// Opening the view has to snapshot the live sub-executions it skipped
+			// while closed.
+			() => isEnabled?.value,
 		],
 		useThrottleFn(
 			([executionId], [previousExecutionId]) => {
@@ -175,7 +284,10 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 					subWorkflowExecData.value = {};
 					subWorkflows.value = {};
 					subWorkflowNodeGroups.value = {};
+					resetLiveSubExecutions();
 				}
+
+				snapshotLiveSubExecutions();
 			},
 			updateInterval,
 			true,

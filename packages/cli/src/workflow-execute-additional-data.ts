@@ -558,13 +558,29 @@ async function startExecution(
 			workflowId: workflowData.id,
 			workflowSettings,
 		});
-		additionalDataIntegrated.hooks = getLifecycleHooksForSubExecutions(
-			runData.executionMode,
+		// Editor-started runs stream their sub-executions' lifecycle events to the
+		// same push session, so the parent's canvas and log view can follow them
+		// live. `parentExecutionId` is the execution containing the node that
+		// started this one — the editor needs it to tell whether the sub-execution
+		// belongs to the run it is watching.
+		const parentExecutionId = additionalData.executionId;
+		additionalDataIntegrated.pushRef = additionalData.pushRef;
+		additionalDataIntegrated.hooks = getLifecycleHooksForSubExecutions({
+			mode: runData.executionMode,
 			executionId,
 			workflowData,
-			additionalData.userId,
-			options.parentExecution,
-		);
+			userId: additionalData.userId,
+			parentExecution: options.parentExecution,
+			pushRef: additionalData.pushRef,
+			subExecutionParent:
+				parentExecutionId && options.node
+					? {
+							executionId: parentExecutionId,
+							nodeName: options.node.name,
+							runIndex: options.nodeRunIndex ?? 0,
+						}
+					: undefined,
+		});
 		additionalDataIntegrated.executionId = executionId;
 		additionalDataIntegrated.parentCallbackManager = options.parentCallbackManager;
 

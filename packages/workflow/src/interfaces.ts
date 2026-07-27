@@ -3530,6 +3530,12 @@ export interface IWorkflowExecutionDataProcess {
 
 export interface ExecuteWorkflowOptions {
 	node?: INode;
+	/**
+	 * Run index of `node`, so a node executing the sub-workflow repeatedly (in a
+	 * loop or once per item) can be told apart run by run. Reported to the editor
+	 * with the sub-execution's lifecycle events.
+	 */
+	nodeRunIndex?: number;
 	parentWorkflowId: string;
 	inputData?: INodeExecutionData[];
 	loadedWorkflowData?: IWorkflowBase;
@@ -3609,6 +3615,13 @@ export interface IWorkflowExecuteAdditionalData {
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
 	executionId?: string;
 	restartExecutionId?: string;
+	/**
+	 * Push session watching this execution, set only for runs an editor started
+	 * (manual/chat). Propagated into sub-executions so their lifecycle events
+	 * reach the same session and the parent's canvas and log view can follow them
+	 * live.
+	 */
+	pushRef?: string;
 	getRuntimeCredential(
 		runExecutionData: IRunExecutionData,
 		alias: string,

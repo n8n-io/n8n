@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { SubExecutionParent } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { ExecutionRepository, UserRepository } from '@n8n/db';
 import { LifecycleMetadata } from '@n8n/decorators';
@@ -151,6 +152,11 @@ type HooksSetupParameters = {
 	parentExecution?: RelatedExecution;
 	source?: IWorkflowExecutionDataProcess['source'];
 	suppressErrorWorkflow?: IWorkflowExecutionDataProcess['suppressErrorWorkflow'];
+	/**
+	 * Node run that started this execution as a sub-workflow. Reported to the
+	 * editor so it can attribute this execution's live events to that node run.
+	 */
+	subExecutionParent?: SubExecutionParent;
 };
 
 function hookFunctionsWorkflowEvents(
@@ -271,7 +277,7 @@ function buildRedactableExecution(
  */
 function hookFunctionsPush(
 	hooks: ExecutionLifecycleHooks,
-	{ pushRef, retryOf }: HooksSetupParameters,
+	{ pushRef, retryOf, subExecutionParent }: HooksSetupParameters,
 	userId?: string,
 	source?: IWorkflowExecutionDataProcess['source'],
 ) {
@@ -408,9 +414,12 @@ function hookFunctionsPush(
 		// Apply copy-on-write redaction to flattedRunData when retrying/resuming.
 		// Fail-closed: if user cannot be resolved or redaction throws, send
 		// empty runData rather than skipping the push or leaking unredacted data.
-		const user = await getUser();
 		let runDataToStringify: IRunData = {};
 		const hasRunData = data?.resultData.runData && Object.keys(data.resultData.runData).length > 0;
+		// Resolved only when there is run data to redact. An execution that starts
+		// empty — every sub-execution, and every run that isn't a retry or resume —
+		// would otherwise pay a user lookup it never reads.
+		const user = hasRunData ? await getUser() : null;
 
 		if (hasRunData && user) {
 			try {
@@ -451,6 +460,7 @@ function hookFunctionsPush(
 					workflowId,
 					workflowName,
 					flattedRunData: stringify(runDataToStringify),
+					parent: subExecutionParent,
 				},
 			},
 			pushRef,
@@ -788,19 +798,39 @@ function hookFunctionsSaveWorker(
 	});
 }
 
+export type SubExecutionHooksOptions = {
+	mode: WorkflowExecuteMode;
+	executionId: string;
+	workflowData: IWorkflowBase;
+	userId?: string;
+	parentExecution?: RelatedExecution;
+	projectId?: string;
+	projectName?: string;
+	/**
+	 * Push session watching the root execution, present only when an editor
+	 * started it. Set to also stream this sub-execution's lifecycle events to
+	 * that session.
+	 */
+	pushRef?: string;
+	/** Node run that started this sub-execution — see {@link SubExecutionParent}. */
+	subExecutionParent?: SubExecutionParent;
+};
+
 /**
  * Returns ExecutionLifecycleHooks instance for running integrated workflows
  * (Workflows which get started inside of another workflow)
  */
-export function getLifecycleHooksForSubExecutions(
-	mode: WorkflowExecuteMode,
-	executionId: string,
-	workflowData: IWorkflowBase,
-	userId?: string,
-	parentExecution?: RelatedExecution,
-	projectId?: string,
-	projectName?: string,
-): ExecutionLifecycleHooks {
+export function getLifecycleHooksForSubExecutions({
+	mode,
+	executionId,
+	workflowData,
+	userId,
+	parentExecution,
+	projectId,
+	projectName,
+	pushRef,
+	subExecutionParent,
+}: SubExecutionHooksOptions): ExecutionLifecycleHooks {
 	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
@@ -810,6 +840,11 @@ export function getLifecycleHooksForSubExecutions(
 	hookFunctionsSaveProgress(hooks, { saveSettings });
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);
+	// A sub-execution is its own execution, so without this the editor watching
+	// the parent run would never hear about it and the sub-workflow's branch
+	// would stay idle on the canvas until the parent node returned. No-ops when
+	// `pushRef` is unset, which is the case for every production run.
+	hookFunctionsPush(hooks, { saveSettings, pushRef, subExecutionParent }, userId);
 	Container.get(ModulesHooksRegistry).addHooks(hooks);
 	return hooks;
 }
