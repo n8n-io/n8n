@@ -11,6 +11,9 @@ import { versionColorVar } from '../shared/versionPalette';
 const props = defineProps<{
 	versions: CompareVersion[];
 	caseRows: CompareCaseRow[];
+	// While the run is in progress, a case whose input hasn't loaded yet shows a
+	// skeleton rather than a blank cell.
+	isRunning?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -147,7 +150,15 @@ function deltas(row: CompareCaseRow) {
 				@keydown.enter="emit('drilldown', row.index)"
 			>
 				<td :class="$style.num">{{ row.displayIndex }}</td>
-				<td :class="$style.input" :title="row.inputPreview">{{ row.inputPreview }}</td>
+				<td :class="$style.input" :title="row.inputPreview">
+					<span v-if="row.inputPreview">{{ row.inputPreview }}</span>
+					<span
+						v-else-if="isRunning"
+						:class="$style.inputSkeleton"
+						data-test-id="compare-cases-input-skeleton"
+						aria-hidden="true"
+					/>
+				</td>
 				<td v-for="cell in row.cells" :key="cell.versionIndex" :class="$style.score">
 					<span :class="$style.chip">
 						<span :class="$style.dot" :style="{ background: versionColorVar(cell.versionIndex) }" />
@@ -188,6 +199,8 @@ function deltas(row: CompareCaseRow) {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
+
 .table {
 	width: 100%;
 	border-collapse: collapse;
@@ -232,6 +245,18 @@ function deltas(row: CompareCaseRow) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.inputSkeleton {
+	display: inline-block;
+	width: 60%;
+	min-width: 80px;
+	height: 0.9em;
+	vertical-align: middle;
+	border-radius: var(--radius);
+	background: var(--background--subtle);
+	// Shared design-system pulse (reduced-motion handled by the mixin).
+	@include motion.skeleton-pulse;
 }
 
 .score {

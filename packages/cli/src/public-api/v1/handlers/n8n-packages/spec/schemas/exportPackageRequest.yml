@@ -48,8 +48,9 @@ properties:
       - reference-only
       - include-in-package
     description: >-
-      Policy for missing static sub-workflow dependencies. Currently only
-      `fail` is supported; `reference-only` and `include-in-package` are
-      reserved for upcoming export modes.
+      Policy for missing static sub-workflow dependencies. `fail` aborts the
+      export when any static sub-workflow is missing from the package;
+      `include-in-package` automatically adds missing static sub-workflows.
+      `reference-only` is reserved for a future export mode.
     example: fail
     default: fail

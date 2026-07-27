@@ -101,16 +101,17 @@ post:
               enum:
                 - new
                 - source
-              default: new
+              default: source
               description: >
-                Controls the id each newly created workflow receives. `new`
-                (default) mints a fresh id and records the package id as
-                `sourceWorkflowId`, so the same package can be imported
-                repeatedly without id collisions. `source` reuses the package's
-                own workflow id on the target instance. Workflows matched to an
-                existing workflow in the target project (status `updated` or
-                `skipped`) always keep that workflow's current id, regardless
-                of policy.
+                Controls the id each newly created workflow receives. `source`
+                (default) reuses the package's own workflow id on the target
+                instance, which best fits promotion use cases where the same
+                workflow moves between environments. `new` mints a fresh id and
+                records the package id as `sourceWorkflowId`, so the same
+                package can be imported repeatedly without id collisions — best
+                suited to marketplace imports. Workflows matched to an existing
+                workflow in the target project (status `updated` or `skipped`)
+                always keep that workflow's current id, regardless of policy.
             missingNodeTypeMode:
               type: string
               enum:

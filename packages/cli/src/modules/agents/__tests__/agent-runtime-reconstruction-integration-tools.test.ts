@@ -290,6 +290,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<SubAgentCleanupService>(),
 			agentValidationService,
 			credentialsService,
+			telemetry,
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory);
 		agentsService = new AgentsService(
@@ -302,6 +303,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentTaskRepository,
 			mock<SubAgentCleanupService>(),
 			mock<EventService>(),
+			agentExecutionService,
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(

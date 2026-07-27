@@ -14,7 +14,7 @@ describe('ImportPackageRequestDto', () => {
 				bindings: {},
 				workflowConflictPolicy: 'fail',
 				workflowPublishingPolicy: 'preserve-published-state',
-				workflowIdPolicy: 'new',
+				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
@@ -40,7 +40,7 @@ describe('ImportPackageRequestDto', () => {
 				bindings: {},
 				workflowConflictPolicy: 'fail',
 				workflowPublishingPolicy: 'preserve-published-state',
-				workflowIdPolicy: 'new',
+				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
@@ -68,7 +68,7 @@ describe('ImportPackageRequestDto', () => {
 				bindings: {},
 				workflowConflictPolicy: 'new-version',
 				workflowPublishingPolicy: 'preserve-published-state',
-				workflowIdPolicy: 'new',
+				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
@@ -95,7 +95,7 @@ describe('ImportPackageRequestDto', () => {
 				bindings: {},
 				workflowConflictPolicy: 'skip',
 				workflowPublishingPolicy: 'preserve-published-state',
-				workflowIdPolicy: 'new',
+				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
@@ -262,11 +262,11 @@ describe('ImportPackageRequestDto', () => {
 	});
 
 	describe('workflowIdPolicy', () => {
-		it('defaults to "new" when omitted', () => {
+		it('defaults to "source" when omitted', () => {
 			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
 			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.data.workflowIdPolicy).toBe('new');
+				expect(result.data.workflowIdPolicy).toBe('source');
 			}
 		});
 

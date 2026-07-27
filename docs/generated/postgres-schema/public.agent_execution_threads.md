@@ -82,6 +82,7 @@ erDiagram
 }
 "public.agents" {
   varchar_36_ activeVersionId FK
+  boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   json integrations
@@ -107,6 +108,7 @@ erDiagram
   timestamp_3__with_time_zone startedAt
   varchar_16_ status
   timestamp_3__with_time_zone stoppedAt
+  varchar_2_ storedAt
   varchar_128_ threadId FK
   json timeline
   integer totalTokens

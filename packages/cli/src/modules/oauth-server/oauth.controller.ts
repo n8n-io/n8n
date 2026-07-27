@@ -22,11 +22,13 @@ import { UrlService } from '@/services/url.service';
 import { OAuthServerConfig } from './oauth-server.config';
 import { OAuthServerService } from './oauth-server.service';
 import { buildOAuthClientLimitReachedMessage } from './oauth.errors';
+import { OAuthHelpers } from './oauth.helpers';
 
 const oauthServerService = Container.get(OAuthServerService);
 const globalConfig = Container.get(GlobalConfig);
 const oauthServerConfig = Container.get(OAuthServerConfig);
 const logger = Container.get(Logger);
+const urlService = Container.get(UrlService);
 
 /**
  * Pre-check guard for the unauthenticated DCR endpoint. Short-circuits with
@@ -55,6 +57,25 @@ const oauthClientLimitGuard: RequestHandler = async (_req, res, next) => {
 	next();
 };
 
+/**
+ * The SDK's authorization handler redirects request-validation errors (e.g.
+ * missing `code_challenge`) back to the client without the RFC 9207 `iss`
+ * parameter, while our metadata advertises
+ * `authorization_response_iss_parameter_supported`. Wrap `res.location`
+ * (which `res.redirect` sets its target through) so every absolute-URL
+ * redirect from the authorize route carries `iss` matching the advertised
+ * issuer. Internal relative redirects (consent screen) pass through
+ * untouched. Remove once `@modelcontextprotocol/sdk` ships
+ * `authorizationHandler({ issuerUrl })` (on upstream main, unreleased as of
+ * 1.29.0) and the catalog version is bumped past it.
+ */
+const rfc9207IssuerParam: RequestHandler = (_req, res, next) => {
+	const originalLocation = res.location.bind(res);
+	res.location = (url: string) =>
+		originalLocation(OAuthHelpers.setIssuerParam(url, urlService.getInstanceBaseUrl()));
+	next();
+};
+
 // Built once and mounted under both the legacy `/mcp-oauth/*` paths (existing
 // DCR clients hold them in their stored discovery metadata) and the neutral
 // `/oauth/*` paths that future, non-MCP protected resources will advertise.
@@ -80,6 +101,7 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		path: `${basePath}/authorize`,
 		router: authorizeRouter,
 		skipAuth: true,
+		middlewares: [rfc9207IssuerParam],
 		ipRateLimit: createIpRateLimit(
 			oauthServerConfig.rateLimitAuthorize,
 			5 * Time.minutes.toMilliseconds,

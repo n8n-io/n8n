@@ -2980,7 +2980,22 @@ describe('createExecutionAdapter run()', () => {
 			saveManualExecutions: true,
 			saveDataSuccessExecution: 'all',
 			saveDataErrorExecution: 'all',
+			executionTimeout: 300,
 		});
+	});
+
+	it('bounds the execution inside the engine with the wait budget, capped at the max', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			nodes: [],
+		});
+
+		await adapter.run('wf-1', undefined, { timeout: 60_000 });
+		await adapter.run('wf-1', undefined, { timeout: 60 * 60 * 1000 });
+
+		const [firstRun, secondRun] = mockWorkflowRunner.run.mock.calls.map((call) => call[0]);
+		expect(firstRun.workflowData.settings?.executionTimeout).toBe(60);
+		expect(secondRun.workflowData.settings?.executionTimeout).toBe(600);
 	});
 
 	it('attaches Instance AI execution telemetry metadata to workflow runs', async () => {

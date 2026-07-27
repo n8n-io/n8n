@@ -231,6 +231,7 @@ export class AgentsBuilderService {
 			projectId,
 			credentialProvider,
 			user,
+			{ threadId: session.hostThreadId, runId: session.runId },
 		);
 
 		const { Agent, Memory, createPlannerTodosTool } = await import('@n8n/agents');
