@@ -10,6 +10,7 @@
 | fileSizeBytes | integer |  | false |  |  | Uploaded file size in bytes |
 | id | varchar(16) |  | false |  |  | Application-generated n8n nano ID |
 | mimeType | varchar(255) |  | false |  |  |  |
+| storageKey | text |  | false |  |  |  |
 | storedAt | varchar(2) | 'fs'::character varying | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -26,6 +27,7 @@
 | agent_files_fileSizeBytes_not_null | n | NOT NULL "fileSizeBytes" |
 | agent_files_id_not_null | n | NOT NULL id |
 | agent_files_mimeType_not_null | n | NOT NULL "mimeType" |
+| agent_files_storageKey_not_null | n | NOT NULL "storageKey" |
 | agent_files_storedAt_not_null | n | NOT NULL "storedAt" |
 | agent_files_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
@@ -35,6 +37,7 @@
 | ---- | ---------- |
 | IDX_45dafc48fe2ce95eac30fc8ffd | CREATE INDEX "IDX_45dafc48fe2ce95eac30fc8ffd" ON public.agent_files USING btree ("agentId", "createdAt") |
 | IDX_agent_files_agentId_fileName | CREATE UNIQUE INDEX "IDX_agent_files_agentId_fileName" ON public.agent_files USING btree ("agentId", "fileName") |
+| IDX_agent_files_agentId_storageKey | CREATE UNIQUE INDEX "IDX_agent_files_agentId_storageKey" ON public.agent_files USING btree ("agentId", "storageKey") |
 | PK_692920e59217af7d124cd95106f | CREATE UNIQUE INDEX "PK_692920e59217af7d124cd95106f" ON public.agent_files USING btree (id) |
 
 ## Relations
@@ -51,6 +54,7 @@ erDiagram
   integer fileSizeBytes
   varchar_16_ id
   varchar_255_ mimeType
+  text storageKey
   varchar_2_ storedAt
   timestamp_3__with_time_zone updatedAt
 }

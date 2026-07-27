@@ -10,7 +10,13 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
 const MIGRATION_NAME = 'ReplaceAgentFileBinaryDataIdWithStoredAt1784900752603';
-const BINARY_FILE_ID = '11111111-1111-1111-1111-111111111111';
+
+const FS_KEY =
+	'agents/agent-1/knowledge-files/file-fs/binary_data/11111111-1111-1111-1111-111111111111';
+const S3_KEY =
+	'agents/agent-1/knowledge-files/file-s3/binary_data/22222222-2222-2222-2222-222222222222';
+const DB_FILE_ID = '33333333-3333-3333-3333-333333333333';
+const EXECUTION_FILE_ID = '44444444-4444-4444-4444-444444444444';
 
 async function columnNames(context: TestMigrationContext, table: string): Promise<string[]> {
 	if (context.isSqlite) {
@@ -78,88 +84,124 @@ describe('ReplaceAgentFileBinaryDataIdWithStoredAt Migration', () => {
 		);
 	}
 
-	it('keeps existing knowledge files and replaces binaryDataId with storedAt', async () => {
+	async function insertAgentFile(
+		context: TestMigrationContext,
+		data: { id: string; binaryDataId: string },
+	): Promise<void> {
+		const table = context.escape.tableName('agent_files');
+		const now = new Date();
+		await context.runQuery(
+			`INSERT INTO ${table} ("id", "agentId", "binaryDataId", "fileName", "mimeType", "fileSizeBytes", "createdAt", "updatedAt") VALUES (:id, :agentId, :binaryDataId, :fileName, :mimeType, :fileSizeBytes, :createdAt, :updatedAt)`,
+			{
+				id: data.id,
+				agentId: 'agent-1',
+				binaryDataId: data.binaryDataId,
+				fileName: `${data.id}.txt`,
+				mimeType: 'text/plain',
+				fileSizeBytes: 11,
+				createdAt: now,
+				updatedAt: now,
+			},
+		);
+	}
+
+	async function insertBinaryData(
+		context: TestMigrationContext,
+		data: { fileId: string; sourceType: string; sourceId: string },
+	): Promise<void> {
+		const table = context.escape.tableName('binary_data');
+		const now = new Date();
+		await context.runQuery(
+			`INSERT INTO ${table} ("fileId", "sourceType", "sourceId", "data", "mimeType", "fileName", "fileSize", "createdAt", "updatedAt") VALUES (:fileId, :sourceType, :sourceId, :data, :mimeType, :fileName, :fileSize, :createdAt, :updatedAt)`,
+			{
+				fileId: data.fileId,
+				sourceType: data.sourceType,
+				sourceId: data.sourceId,
+				data: Buffer.from('bytes'),
+				mimeType: 'text/plain',
+				fileName: 'notes.txt',
+				fileSize: 5,
+				createdAt: now,
+				updatedAt: now,
+			},
+		);
+	}
+
+	it('converts binaryDataId into storedAt plus storageKey, dropping database-mode files', async () => {
 		const seedContext = createTestMigrationContext(dataSource);
 		try {
 			await insertProject(seedContext, 'project-1');
 			await insertAgent(seedContext, { id: 'agent-1', projectId: 'project-1' });
 
-			const agentFiles = seedContext.escape.tableName('agent_files');
-			const now = new Date();
-			await seedContext.runQuery(
-				`INSERT INTO ${agentFiles} ("id", "agentId", "binaryDataId", "fileName", "mimeType", "fileSizeBytes", "createdAt", "updatedAt") VALUES (:id, :agentId, :binaryDataId, :fileName, :mimeType, :fileSizeBytes, :createdAt, :updatedAt)`,
-				{
-					id: 'file-1',
-					agentId: 'agent-1',
-					binaryDataId: 'filesystem-v2:agents/agent-1/knowledge-files/file-1/binary_data/uuid',
-					fileName: 'notes.txt',
-					mimeType: 'text/plain',
-					fileSizeBytes: 11,
-					createdAt: now,
-					updatedAt: now,
-				},
-			);
+			await insertAgentFile(seedContext, {
+				id: 'file-fs',
+				binaryDataId: `filesystem-v2:${FS_KEY}`,
+			});
+			await insertAgentFile(seedContext, { id: 'file-s3', binaryDataId: `s3:${S3_KEY}` });
+			await insertAgentFile(seedContext, { id: 'file-db', binaryDataId: `database:${DB_FILE_ID}` });
 
-			const binaryData = seedContext.escape.tableName('binary_data');
-			await seedContext.runQuery(
-				`INSERT INTO ${binaryData} ("fileId", "sourceType", "sourceId", "data", "mimeType", "fileName", "fileSize", "createdAt", "updatedAt") VALUES (:fileId, :sourceType, :sourceId, :data, :mimeType, :fileName, :fileSize, :createdAt, :updatedAt)`,
-				{
-					fileId: BINARY_FILE_ID,
-					sourceType: 'agent_file',
-					sourceId: 'file-1',
-					data: Buffer.from('notes'),
-					mimeType: 'text/plain',
-					fileName: 'notes.txt',
-					fileSize: 5,
-					createdAt: now,
-					updatedAt: now,
-				},
-			);
+			await insertBinaryData(seedContext, {
+				fileId: DB_FILE_ID,
+				sourceType: 'agent_file',
+				sourceId: 'file-db',
+			});
+			await insertBinaryData(seedContext, {
+				fileId: EXECUTION_FILE_ID,
+				sourceType: 'execution',
+				sourceId: 'exec-1',
+			});
 		} finally {
 			await seedContext.queryRunner.release();
 		}
 
 		await runSingleMigration(MIGRATION_NAME);
 
-		const assertContext = createTestMigrationContext(dataSource);
+		const context = createTestMigrationContext(dataSource);
 		try {
-			const agentFiles = assertContext.escape.tableName('agent_files');
-			const binaryData = assertContext.escape.tableName('binary_data');
+			const agentFiles = context.escape.tableName('agent_files');
+			const binaryData = context.escape.tableName('binary_data');
 
-			const files = await assertContext.runQuery<Array<{ id: string; storedAt: string }>>(
-				`SELECT "id", "storedAt" FROM ${agentFiles}`,
+			const files = await context.runQuery<
+				Array<{ id: string; storedAt: string; storageKey: string }>
+			>(`SELECT "id", "storedAt", "storageKey" FROM ${agentFiles} ORDER BY "id"`);
+			expect(files).toEqual([
+				{ id: 'file-fs', storedAt: 'fs', storageKey: FS_KEY },
+				{ id: 'file-s3', storedAt: 's3', storageKey: S3_KEY },
+			]);
+
+			// The database-mode file's bytes go with it; unrelated binary data stays.
+			const binaryRows = await context.runQuery<Array<{ fileId: string }>>(
+				`SELECT "fileId" FROM ${binaryData} ORDER BY "fileId"`,
 			);
-			expect(files).toEqual([{ id: 'file-1', storedAt: 'fs' }]);
+			expect(binaryRows).toEqual([{ fileId: EXECUTION_FILE_ID }]);
 
-			const binaryRows = await assertContext.runQuery<Array<{ fileId: string }>>(
-				`SELECT "fileId" FROM ${binaryData}`,
-			);
-			expect(binaryRows).toEqual([{ fileId: BINARY_FILE_ID }]);
-
-			const columns = await columnNames(assertContext, 'agent_files');
+			const columns = await columnNames(context, 'agent_files');
 			expect(columns).not.toContain('binaryDataId');
 		} finally {
-			await assertContext.queryRunner.release();
+			await context.queryRunner.release();
 		}
 	});
 
 	// Declared last: the revert undoes the schema the test above asserts on.
 	describe('down', () => {
-		it('restores binaryDataId and keeps existing rows', async () => {
+		it('rebuilds binaryDataId from storedAt and storageKey', async () => {
 			await undoLastSingleMigration();
 
 			const context = createTestMigrationContext(dataSource);
 			try {
 				const agentFiles = context.escape.tableName('agent_files');
 
-				const files = await context.runQuery<Array<{ id: string }>>(
-					`SELECT "id" FROM ${agentFiles}`,
+				const files = await context.runQuery<Array<{ id: string; binaryDataId: string }>>(
+					`SELECT "id", "binaryDataId" FROM ${agentFiles} ORDER BY "id"`,
 				);
-				expect(files).toEqual([{ id: 'file-1' }]);
+				expect(files).toEqual([
+					{ id: 'file-fs', binaryDataId: `filesystem-v2:${FS_KEY}` },
+					{ id: 'file-s3', binaryDataId: `s3:${S3_KEY}` },
+				]);
 
 				const columns = await columnNames(context, 'agent_files');
-				expect(columns).toContain('binaryDataId');
 				expect(columns).not.toContain('storedAt');
+				expect(columns).not.toContain('storageKey');
 			} finally {
 				await context.queryRunner.release();
 			}
