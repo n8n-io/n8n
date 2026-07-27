@@ -8,6 +8,7 @@ import {
 	AGENT_PREVIEW_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
 	CONTINUE_SESSION_ID_PARAM,
+	EXECUTIONS_SECTION_KEY,
 } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import type { AgentExecutionThread } from '@/features/agents/composables/useAgentThreadsApi';
@@ -88,6 +89,16 @@ function formatDuration(ms: number): string {
 function originLabel(thread: AgentExecutionThread): string {
 	if (thread.parentThreadId) return i18n.baseText('agentSessions.origin.subAgent');
 	if (thread.taskId) return i18n.baseText('agentSessions.origin.task');
+	const source = thread.source?.trim();
+	if (
+		source &&
+		source !== 'chat' &&
+		source !== 'task' &&
+		source !== 'subagent' &&
+		source !== 'workflow'
+	) {
+		return source.charAt(0).toUpperCase() + source.slice(1);
+	}
 	return i18n.baseText('agentSessions.origin.agent');
 }
 
@@ -116,7 +127,10 @@ function openConversation(threadId: string) {
 	const target = {
 		name: AGENT_PREVIEW_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value },
-		query: { [CONTINUE_SESSION_ID_PARAM]: threadId },
+		query: {
+			[CONTINUE_SESSION_ID_PARAM]: threadId,
+			section: EXECUTIONS_SECTION_KEY,
+		},
 	};
 	if (props.openSessionInNewTab) {
 		window.open(router.resolve(target).href, '_blank');

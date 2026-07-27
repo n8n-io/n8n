@@ -95,6 +95,7 @@ vi.mock('@/features/agents/constants', () => ({
 	AGENT_PREVIEW_VIEW: 'AgentPreviewView',
 	AGENT_SESSION_DETAIL_VIEW: 'AgentSessionDetailView',
 	CONTINUE_SESSION_ID_PARAM: 'continueSessionId',
+	EXECUTIONS_SECTION_KEY: '__executions',
 }));
 
 vi.mock('@n8n/api-types', () => ({}));
@@ -174,7 +175,7 @@ describe('AgentSessionsListView', () => {
 		expect(routerPush).toHaveBeenCalledWith({
 			name: 'AgentPreviewView',
 			params: { projectId: 'project-1', agentId: 'agent-1' },
-			query: { continueSessionId: 'thread-1' },
+			query: { continueSessionId: 'thread-1', section: '__executions' },
 		});
 	});
 
@@ -227,5 +228,20 @@ describe('AgentSessionsListView', () => {
 		const traceButton = wrapper.find('[data-test-id="agent-session-view-trace"]');
 		expect(traceButton.exists()).toBe(true);
 		expect(traceButton.attributes('aria-label')).toBe('View session trace');
+	});
+
+	it.each([
+		[{ source: 'slack' }, 'Slack'],
+		[{ source: 'telegram' }, 'Telegram'],
+		[{ source: null }, 'Agent'],
+		[{ source: 'chat' }, 'Agent'],
+		[{ parentThreadId: 'parent-1', source: 'slack' }, 'Sub-agent'],
+		[{ taskId: 'task-1', source: 'slack' }, 'Task'],
+	] as const)('renders origin chip label for %j as %s', async (overrides, expectedLabel) => {
+		const wrapper = await mountView({ threads: [makeThread(overrides)] });
+
+		expect(wrapper.find('[data-test-id="agent-session-origin-pill"]').text()).toContain(
+			expectedLabel,
+		);
 	});
 });
