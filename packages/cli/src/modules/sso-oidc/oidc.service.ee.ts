@@ -293,8 +293,18 @@ export class OidcService {
 				claims.sub,
 			);
 		} catch (error) {
-			this.logger.error('Failed to fetch user info', { cause: safeStringify(error) });
-			throw new BadRequestError('Invalid token');
+			// Some IdPs (e.g. Azure AD with custom API scopes) reject the userinfo request even
+			// though the ID token already carries the same claims, so fall back to those instead
+			// of failing the login outright.
+			const fallbackUserInfo = this.userInfoFromIdTokenClaims(claims);
+			if (!fallbackUserInfo) {
+				this.logger.error('Failed to fetch user info', { cause: safeStringify(error) });
+				throw new BadRequestError('Invalid token');
+			}
+			this.logger.debug('Userinfo endpoint failed, falling back to ID token claims', {
+				cause: safeStringify(error),
+			});
+			userInfo = fallbackUserInfo;
 		}
 
 		if (!userInfo.email) {
@@ -471,8 +481,15 @@ export class OidcService {
 				claims.sub,
 			);
 		} catch (error) {
-			this.logger.error('Failed to fetch user info', { cause: safeStringify(error) });
-			throw new BadRequestError('Invalid token');
+			const fallbackUserInfo = this.userInfoFromIdTokenClaims(claims);
+			if (!fallbackUserInfo) {
+				this.logger.error('Failed to fetch user info', { cause: safeStringify(error) });
+				throw new BadRequestError('Invalid token');
+			}
+			this.logger.debug('Userinfo endpoint failed, falling back to ID token claims', {
+				cause: safeStringify(error),
+			});
+			userInfo = fallbackUserInfo;
 		}
 
 		return {
@@ -500,6 +517,29 @@ export class OidcService {
 			code: typeof e.code === 'string' ? e.code : undefined,
 			message: error instanceof Error ? error.message : safeStringify(error),
 		});
+	}
+
+	/**
+	 * Builds a userinfo-shaped object from ID token claims, for IdPs (e.g. Azure AD with custom
+	 * API scopes) that reject the userinfo request even though the ID token already carries the
+	 * same claims. Returns undefined if the ID token doesn't carry an email, since callers require
+	 * one.
+	 */
+	private userInfoFromIdTokenClaims(
+		claims: Record<string, unknown>,
+	): openidClientTypes.UserInfoResponse | undefined {
+		if (typeof claims.email !== 'string') {
+			return undefined;
+		}
+		return {
+			sub: typeof claims.sub === 'string' ? claims.sub : '',
+			email: claims.email,
+			name: typeof claims.name === 'string' ? claims.name : undefined,
+			given_name: typeof claims.given_name === 'string' ? claims.given_name : undefined,
+			family_name: typeof claims.family_name === 'string' ? claims.family_name : undefined,
+			preferred_username:
+				typeof claims.preferred_username === 'string' ? claims.preferred_username : undefined,
+		};
 	}
 
 	private async applySsoProvisioning(
