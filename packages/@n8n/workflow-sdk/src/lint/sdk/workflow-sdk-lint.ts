@@ -101,8 +101,10 @@ export function prepareSourceForLint(source: string): {
 	return { code, asConstMatches };
 }
 
-function lineOf(node: Node): number | undefined {
-	return node.loc?.start.line;
+/** 1-based line/column from an ESTree loc (Acorn columns are 0-based). */
+function locationOf(node: Node): { line?: number; column?: number } {
+	if (!node.loc) return {};
+	return { line: node.loc.start.line, column: node.loc.start.column + 1 };
 }
 
 function isPlaceholderCall(node: CallExpression): boolean {
@@ -176,6 +178,7 @@ export function lintWorkflowSdkAst(
 			message:
 				'`as const` is TypeScript-only and the workflow parser cannot interpret it. Remove the assertion.',
 			line: match.line,
+			column: match.column + 1,
 			lintTarget: 'sdk',
 		});
 	}
@@ -190,13 +193,13 @@ export function lintWorkflowSdkAst(
 				message:
 					'Statement after `export default workflow(...)` never reaches the builder — nodes/wiring here are dropped. ' +
 					'Compose all `.to()` / `.onTrue()` / `.onFalse()` / `.onCase()` inside the export default chain.',
-				line: lineOf(stmt),
+				...locationOf(stmt),
 				lintTarget: 'sdk',
 			});
 		}
 	}
 
-	const branchCounts = new Map<string, { count: number; line?: number }>();
+	const branchCounts = new Map<string, { count: number; line?: number; column?: number }>();
 
 	walkAst(
 		ast,
@@ -208,7 +211,7 @@ export function lintWorkflowSdkAst(
 				issues.push({
 					code: 'SDK_FORBIDDEN_CONSTRUCT',
 					message: forbidden,
-					line: lineOf(node),
+					...locationOf(node),
 					lintTarget: 'sdk',
 				});
 			}
@@ -228,7 +231,7 @@ export function lintWorkflowSdkAst(
 					issues.push({
 						code: 'SDK_FORBIDDEN_CONSTRUCT',
 						message: `Global '${node.name}' is unavailable in SDK builder code. Move runtime logic to a Code node or expr().`,
-						line: lineOf(node),
+						...locationOf(node),
 						lintTarget: 'sdk',
 					});
 				}
@@ -243,7 +246,7 @@ export function lintWorkflowSdkAst(
 					message:
 						'Do not add sticky() / stickyNote nodes unless the user explicitly asked for canvas notes. ' +
 						'Put explanations in the chat reply instead.',
-					line: lineOf(call),
+					...locationOf(call),
 					lintTarget: 'sdk',
 				});
 			}
@@ -265,7 +268,7 @@ export function lintWorkflowSdkAst(
 						if (prev) {
 							prev.count += 1;
 						} else {
-							branchCounts.set(key, { count: 1, line: lineOf(call) });
+							branchCounts.set(key, { count: 1, ...locationOf(call) });
 						}
 					}
 				}
@@ -276,7 +279,7 @@ export function lintWorkflowSdkAst(
 						message:
 							`'.${method}()' is not available on SDK builder objects. Build strings with template ` +
 							'literals, or do transforms in a Code node / expr().',
-						line: lineOf(call),
+						...locationOf(call),
 						lintTarget: 'sdk',
 					});
 				}
@@ -290,7 +293,7 @@ export function lintWorkflowSdkAst(
 							code: 'SDK_PLACEHOLDER_WRAPPED',
 							message:
 								"Do not wrap placeholder() in expr(). Use placeholder('hint') directly as the parameter value.",
-							line: lineOf(call),
+							...locationOf(call),
 							lintTarget: 'sdk',
 						});
 					}
@@ -301,7 +304,7 @@ export function lintWorkflowSdkAst(
 									code: 'SDK_PLACEHOLDER_WRAPPED',
 									message:
 										'Do not embed placeholder() inside expr()/template strings. Use placeholder() as the direct parameter value.',
-									line: lineOf(call),
+									...locationOf(call),
 									lintTarget: 'sdk',
 								});
 							}
@@ -314,7 +317,7 @@ export function lintWorkflowSdkAst(
 									code: 'SDK_PLACEHOLDER_WRAPPED',
 									message:
 										'Do not wrap placeholder() in an array unless the node definition expects an array and placeholder is a direct element value with no expr() wrapper.',
-									line: lineOf(call),
+									...locationOf(call),
 									lintTarget: 'sdk',
 								});
 							}
@@ -335,6 +338,7 @@ export function lintWorkflowSdkAst(
 				`Repeated \`.${method}()\` (${info.count} times) — each call overwrites the previous target. ` +
 				'Wire once on the workflow builder chain.',
 			line: info.line,
+			column: info.column,
 			lintTarget: 'sdk',
 		});
 	}
@@ -358,6 +362,7 @@ export function lintWorkflowSdkSource(source: string): SourceLintIssue[] {
 				message:
 					'`as const` is TypeScript-only and the workflow parser cannot interpret it. Remove the assertion.',
 				line: match.line,
+				column: match.column + 1,
 				lintTarget: 'sdk' as const,
 			})),
 		);

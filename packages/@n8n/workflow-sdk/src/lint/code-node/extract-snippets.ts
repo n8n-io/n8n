@@ -10,11 +10,14 @@ export interface EmbeddedCodeSnippet {
 	code: string;
 	/** 1-based line of the property value in the prepared source. */
 	line?: number;
+	/** 1-based column of the property value in the prepared source. */
+	column?: number;
 	mode?: CodeExecutionMode;
 }
 
-function lineOf(node: Node): number | undefined {
-	return node.loc?.start.line;
+function locationOf(node: Node): { line?: number; column?: number } {
+	if (!node.loc) return {};
+	return { line: node.loc.start.line, column: node.loc.start.column + 1 };
 }
 
 function propertyKeyName(key: Property['key']): string | undefined {
@@ -106,7 +109,7 @@ export function extractEmbeddedCodeSnippets(
 		snippets.push({
 			parameter: key,
 			code,
-			line: lineOf(node.value),
+			...locationOf(node.value),
 			mode: enclosing ? modeFromObject(enclosing) : undefined,
 		});
 	});

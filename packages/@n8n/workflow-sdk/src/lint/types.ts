@@ -7,7 +7,10 @@ export type LintTarget = 'sdk' | 'jsCode' | 'pythonCode';
 export interface SourceLintIssue {
 	code: string;
 	message: string;
+	/** 1-based line in the workflow source file, when resolvable. */
 	line?: number;
+	/** 1-based column in the workflow source file, when resolvable. */
+	column?: number;
 	lintTarget: LintTarget;
 	/** Set when the issue comes from an embedded Code node snippet in SDK source. */
 	nodeName?: string;

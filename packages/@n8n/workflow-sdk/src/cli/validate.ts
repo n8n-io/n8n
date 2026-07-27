@@ -26,6 +26,8 @@ interface CollectedIssue {
 	parameterPath?: string;
 	/** 1-based line in the workflow source file, when resolvable */
 	line?: number;
+	/** 1-based column in the workflow source file, when resolvable */
+	column?: number;
 	source: 'graph' | 'schema' | 'sdk' | 'jsCode' | 'pythonCode';
 }
 
@@ -108,13 +110,17 @@ function escapeRegExp(value: string): string {
 
 /**
  * Best-effort: locate the `config.name` assignment for a node in the source.
- * Validators don't carry AST locations, so we map nodeName → source line.
+ * Validators don't carry AST locations, so we map nodeName → source line/column.
  */
-function findNodeLine(sourceLines: string[], nodeName: string): number | undefined {
+function findNodeLocation(
+	sourceLines: string[],
+	nodeName: string,
+): { line: number; column: number } | undefined {
 	const pattern = new RegExp(`\\bname:\\s*['"]${escapeRegExp(nodeName)}['"]`);
 	for (let i = 0; i < sourceLines.length; i++) {
-		if (pattern.test(sourceLines[i] ?? '')) {
-			return i + 1;
+		const match = pattern.exec(sourceLines[i] ?? '');
+		if (match) {
+			return { line: i + 1, column: match.index + 1 };
 		}
 	}
 	return undefined;
@@ -138,14 +144,15 @@ function toCollected(
 			'parameterPath' in issue && typeof issue.parameterPath === 'string'
 				? issue.parameterPath
 				: undefined;
-		const line =
-			issue.nodeName && sourceLines ? findNodeLine(sourceLines, issue.nodeName) : undefined;
+		const location =
+			issue.nodeName && sourceLines ? findNodeLocation(sourceLines, issue.nodeName) : undefined;
 		return {
 			code: issue.code,
 			message: issue.message,
 			nodeName: issue.nodeName,
 			parameterPath,
-			line,
+			line: location?.line,
+			column: location?.column,
 			source,
 		};
 	});
@@ -156,6 +163,7 @@ function sourceLintToCollected(issue: SourceLintIssue): CollectedIssue {
 		code: issue.code,
 		message: issue.message,
 		line: issue.line,
+		column: issue.column,
 		source: issue.lintTarget,
 		nodeName: issue.nodeName,
 		parameterPath: issue.parameterPath,
@@ -165,6 +173,7 @@ function sourceLintToCollected(issue: SourceLintIssue): CollectedIssue {
 /** Blocking issues report as `error`, informational ones as `warning`. */
 interface ReportEntry {
 	line?: number;
+	column?: number;
 	severity: 'error' | 'warning';
 	code: string;
 	message: string;
@@ -176,25 +185,40 @@ function toReportEntry(issue: CollectedIssue, severity: ReportEntry['severity'])
 		issue.nodeName && !issue.message.includes(issue.nodeName)
 			? `${issue.nodeName}: ${issue.message}`
 			: issue.message;
-	return { line: issue.line, severity, code: issue.code, message };
+	return {
+		line: issue.line,
+		column: issue.column,
+		severity,
+		code: issue.code,
+		message,
+	};
 }
 
-function byLine(a: ReportEntry, b: ReportEntry): number {
-	return (a.line ?? Number.MAX_SAFE_INTEGER) - (b.line ?? Number.MAX_SAFE_INTEGER);
+function byLocation(a: ReportEntry, b: ReportEntry): number {
+	const lineDiff = (a.line ?? Number.MAX_SAFE_INTEGER) - (b.line ?? Number.MAX_SAFE_INTEGER);
+	if (lineDiff !== 0) return lineDiff;
+	return (a.column ?? Number.MAX_SAFE_INTEGER) - (b.column ?? Number.MAX_SAFE_INTEGER);
 }
 
 function pluralize(count: number, noun: string): string {
 	return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
-/** ESLint-stylish layout: one file header, then `line  severity  code  message` rows. */
+/** ESLint-stylish location: `line:column`, or `-` when unknown. */
+function formatLocation(entry: Pick<ReportEntry, 'line' | 'column'>): string {
+	if (entry.line === undefined) return '-';
+	if (entry.column === undefined) return String(entry.line);
+	return `${entry.line}:${entry.column}`;
+}
+
+/** ESLint-stylish layout: one file header, then `line:col  severity  code  message` rows. */
 function formatReport(file: string, entries: ReportEntry[], unchecked: string[]): string {
 	if (entries.length === 0) {
 		return [file, '  no issues found', '', buildTrailer(unchecked)].join('\n');
 	}
 
-	const sorted = [...entries].sort(byLine);
-	const locations = sorted.map((entry) => (entry.line === undefined ? '-' : String(entry.line)));
+	const sorted = [...entries].sort(byLocation);
+	const locations = sorted.map(formatLocation);
 	const locationWidth = Math.max(...locations.map((location) => location.length));
 	const severityWidth = Math.max(...sorted.map((entry) => entry.severity.length));
 	const codeWidth = Math.max(...sorted.map((entry) => entry.code.length));
@@ -303,7 +327,7 @@ function dedupeIssues(issues: CollectedIssue[]): CollectedIssue[] {
 	const seen = new Set<string>();
 	const deduped: CollectedIssue[] = [];
 	for (const issue of issues) {
-		const key = `${issue.code}|${issue.nodeName ?? ''}|${issue.message}`;
+		const key = `${issue.code}|${issue.nodeName ?? ''}|${issue.line ?? ''}|${issue.column ?? ''}|${issue.message}`;
 		if (seen.has(key)) continue;
 		seen.add(key);
 		deduped.push(issue);

@@ -24,6 +24,7 @@ export function lintWorkflowSource(source: string): SourceLintIssue[] {
 				message:
 					'`as const` is TypeScript-only and the workflow parser cannot interpret it. Remove the assertion.',
 				line: match.line,
+				column: match.column + 1,
 				lintTarget: 'sdk' as const,
 			})),
 		);
@@ -35,7 +36,7 @@ export function lintWorkflowSource(source: string): SourceLintIssue[] {
 
 	const embeddedIssues: SourceLintIssue[] = [];
 	for (const snippet of snippets) {
-		const base = { line: snippet.line };
+		const base = { line: snippet.line, column: snippet.column };
 		if (snippet.parameter === 'jsCode') {
 			embeddedIssues.push(
 				...lintJsCode(snippet.code, { mode: snippet.mode }).map((issue) => ({

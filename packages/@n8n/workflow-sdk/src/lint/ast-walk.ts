@@ -42,7 +42,7 @@ export function dedupeSourceLintIssues(issues: SourceLintIssue[]): SourceLintIss
 	const seen = new Set<string>();
 	const out: SourceLintIssue[] = [];
 	for (const issue of issues) {
-		const key = `${issue.lintTarget}|${issue.code}|${issue.line ?? ''}|${issue.message}`;
+		const key = `${issue.lintTarget}|${issue.code}|${issue.line ?? ''}|${issue.column ?? ''}|${issue.message}`;
 		if (seen.has(key)) continue;
 		seen.add(key);
 		out.push(issue);
