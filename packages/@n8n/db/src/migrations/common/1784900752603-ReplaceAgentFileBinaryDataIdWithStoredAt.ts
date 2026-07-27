@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-type AgentFileRow = { id: string; agentId: string; binaryDataId: string };
+type AgentFileRow = { id: string; binaryDataId: string };
 
 /** BinaryDataService mode prefix -> storage location. */
 const LOCATION_BY_MODE: Record<string, string> = {
@@ -78,70 +78,38 @@ export class ReplaceAgentFileBinaryDataIdWithStoredAt1784900752603 implements Re
 		await createIndex('agent_files', ['agentId', 'binaryDataId'], true);
 	}
 
-	/**
-	 * Splits each `binaryDataId` into its location and key. Rows carrying an
-	 * unrecognized reference cannot be addressed anymore and are deleted, bytes
-	 * included, rather than failing the migration.
-	 */
-	private async convertBinaryDataIds({
-		escape,
-		runQuery,
-		runInBatches,
-		logger,
-		migrationName,
-	}: MigrationContext) {
+	/** Splits each `binaryDataId` into its location and key. */
+	private async convertBinaryDataIds({ escape, runQuery, runInBatches }: MigrationContext) {
 		const agentFiles = escape.tableName('agent_files');
-		const binaryData = escape.tableName('binary_data');
 		const id = escape.columnName('id');
-		const agentId = escape.columnName('agentId');
 		const binaryDataId = escape.columnName('binaryDataId');
 		const storedAt = escape.columnName('storedAt');
 		const storageKey = escape.columnName('storageKey');
-		const sourceType = escape.columnName('sourceType');
-		const sourceId = escape.columnName('sourceId');
-		const unconvertible: AgentFileRow[] = [];
 
 		await runInBatches<AgentFileRow>(
 			// Ordered so the OFFSET window stays stable across batches.
-			`SELECT ${id}, ${agentId}, ${binaryDataId} FROM ${agentFiles} ORDER BY ${id}`,
+			`SELECT ${id}, ${binaryDataId} FROM ${agentFiles} ORDER BY ${id}`,
 			async (rows) => {
 				for (const row of rows) {
-					const separatorIndex = row.binaryDataId?.indexOf(':') ?? -1;
+					const separatorIndex = row.binaryDataId.indexOf(':');
 					const location =
 						separatorIndex === -1
 							? undefined
 							: LOCATION_BY_MODE[row.binaryDataId.slice(0, separatorIndex)];
 
-					if (!location) {
-						unconvertible.push(row);
-						continue;
-					}
-
 					await runQuery(
 						`UPDATE ${agentFiles} SET ${storedAt} = :storedAt, ${storageKey} = :storageKey WHERE ${id} = :id`,
 						{
-							storedAt: location,
-							storageKey: row.binaryDataId.slice(separatorIndex + 1),
+							// Every reference BinaryDataService wrote carries a known mode
+							// prefix. Keep an unrecognized one whole so the row survives
+							// instead of tripping the NOT NULL below; it reads as missing.
+							storedAt: location ?? 'db',
+							storageKey: location ? row.binaryDataId.slice(separatorIndex + 1) : row.binaryDataId,
 							id: row.id,
 						},
 					);
 				}
 			},
 		);
-
-		if (unconvertible.length === 0) return;
-
-		logger.warn(
-			`[${migrationName}] Deleting ${unconvertible.length} agent knowledge file(s) with an unrecognized storage reference`,
-			{ agentIds: [...new Set(unconvertible.map((row) => row.agentId))] },
-		);
-
-		for (const row of unconvertible) {
-			await runQuery(`DELETE FROM ${agentFiles} WHERE ${id} = :id`, { id: row.id });
-			await runQuery(
-				`DELETE FROM ${binaryData} WHERE ${sourceType} = 'agent_file' AND ${sourceId} = :id`,
-				{ id: row.id },
-			);
-		}
 	}
 }

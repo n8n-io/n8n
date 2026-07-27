@@ -165,8 +165,9 @@ describe('ReplaceAgentFileBinaryDataIdWithStoredAt Migration', () => {
 			const files = await context.runQuery<
 				Array<{ id: string; storedAt: string; storageKey: string }>
 			>(`SELECT "id", "storedAt", "storageKey" FROM ${agentFiles} ORDER BY "id"`);
-			// `file-bad` carries an unrecognized reference and is dropped.
+			// `file-bad` carries an unrecognized reference: kept whole rather than dropped.
 			expect(files).toEqual([
+				{ id: 'file-bad', storedAt: 'db', storageKey: 'garbage' },
 				{ id: 'file-db', storedAt: 'db', storageKey: DB_FILE_ID },
 				{ id: 'file-fs', storedAt: 'fs', storageKey: FS_KEY },
 				{ id: 'file-s3', storedAt: 's3', storageKey: S3_KEY },
@@ -198,6 +199,7 @@ describe('ReplaceAgentFileBinaryDataIdWithStoredAt Migration', () => {
 					`SELECT "id", "binaryDataId" FROM ${agentFiles} ORDER BY "id"`,
 				);
 				expect(files).toEqual([
+					{ id: 'file-bad', binaryDataId: 'database:garbage' },
 					{ id: 'file-db', binaryDataId: `database:${DB_FILE_ID}` },
 					{ id: 'file-fs', binaryDataId: `filesystem-v2:${FS_KEY}` },
 					{ id: 'file-s3', binaryDataId: `s3:${S3_KEY}` },
