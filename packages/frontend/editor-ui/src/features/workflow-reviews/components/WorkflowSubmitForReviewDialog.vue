@@ -116,15 +116,17 @@ const submit = async () => {
 		}
 
 		const trimmedDescription = description.value.trim();
-		await createWorkflowReviewRequest(rootStore.restApiContext, {
+		const reviewRequest = await createWorkflowReviewRequest(rootStore.restApiContext, {
 			title: reviewTitle.value.trim(),
 			description: trimmedDescription || undefined,
 			workflows: [{ workflowId: props.workflowId, workflowVersionId }],
 			reviewerUserIds: selectedReviewerId.value ? [selectedReviewerId.value] : undefined,
 		});
 
+		// install the response before clearing the local flag so the
+		// publish gate never opens while a refetch is in flight
+		reviewStatusStore.setOpenReview(props.workflowId, reviewRequest);
 		reviewRequiredStore.setReviewRequired(props.workflowId, false);
-		void reviewStatusStore.fetchStatus(props.workflowId);
 		emit('update:open', false);
 		emit('submitted');
 	} catch (error) {
