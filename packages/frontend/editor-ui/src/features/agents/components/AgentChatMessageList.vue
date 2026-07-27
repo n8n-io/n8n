@@ -429,21 +429,6 @@ onBeforeUnmount(() => {
 		<template v-for="group in displayGroups" :key="group.id">
 			<div v-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
 				<div :class="$style.content">
-					<AiThinkingBlock
-						v-if="group.thinkingSegments.length"
-						:segments="group.thinkingSegments"
-						:active="group.active || group.awaitingInput"
-						:awaiting-input="group.awaitingInput"
-						:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
-						test-id="agent-chat-thinking-block"
-					>
-						<AiReasoningBlock
-							v-for="segment in group.thinkingSegments"
-							:key="segment.id"
-							:entry="segment"
-							:streaming="group.active && segment.endTime === undefined"
-						/>
-					</AiThinkingBlock>
 					<AgentChatToolSteps
 						v-if="group.toolCalls.length"
 						:tool-calls="group.toolCalls"
@@ -485,6 +470,21 @@ onBeforeUnmount(() => {
 							<AgentMarkdownChunk :source="group.finalMessage.content" />
 						</div>
 					</div>
+					<AiThinkingBlock
+						v-if="group.thinkingSegments.length"
+						:segments="group.thinkingSegments"
+						:active="group.active || group.awaitingInput"
+						:awaiting-input="group.awaitingInput"
+						:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
+						test-id="agent-chat-thinking-block"
+					>
+						<AiReasoningBlock
+							v-for="segment in group.thinkingSegments"
+							:key="segment.id"
+							:entry="segment"
+							:streaming="group.active && segment.endTime === undefined"
+						/>
+					</AiThinkingBlock>
 					<div
 						v-if="shouldShowAssistantFooter(group.id)"
 						:class="[
@@ -522,24 +522,6 @@ onBeforeUnmount(() => {
 				:class="[$style.message, group.message.role === 'user' ? $style.user : $style.assistant]"
 			>
 				<div :class="$style.content">
-					<AiThinkingBlock
-						v-if="getMessageThinkingSegments(group.message).length"
-						:segments="getMessageThinkingSegments(group.message)"
-						:active="isThinkingActive(group.message)"
-						:awaiting-input="group.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER"
-						:duration-sec="getThinkingDurationSec(getMessageThinkingSegments(group.message))"
-						test-id="agent-chat-thinking-block"
-					>
-						<AiReasoningBlock
-							v-for="segment in getMessageThinkingSegments(group.message)"
-							:key="segment.id"
-							:entry="segment"
-							:streaming="
-								group.message.status === CHAT_MESSAGE_STATUS.STREAMING &&
-								segment.endTime === undefined
-							"
-						/>
-					</AiThinkingBlock>
 					<AgentChatToolSteps
 						v-if="group.message.toolCalls?.length"
 						:tool-calls="group.message.toolCalls"
@@ -590,6 +572,24 @@ onBeforeUnmount(() => {
 							</div>
 						</template>
 					</template>
+					<AiThinkingBlock
+						v-if="getMessageThinkingSegments(group.message).length"
+						:segments="getMessageThinkingSegments(group.message)"
+						:active="isThinkingActive(group.message)"
+						:awaiting-input="group.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER"
+						:duration-sec="getThinkingDurationSec(getMessageThinkingSegments(group.message))"
+						test-id="agent-chat-thinking-block"
+					>
+						<AiReasoningBlock
+							v-for="segment in getMessageThinkingSegments(group.message)"
+							:key="segment.id"
+							:entry="segment"
+							:streaming="
+								group.message.status === CHAT_MESSAGE_STATUS.STREAMING &&
+								segment.endTime === undefined
+							"
+						/>
+					</AiThinkingBlock>
 					<div
 						v-if="shouldShowAssistantFooter(group.id)"
 						:class="[

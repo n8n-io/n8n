@@ -125,6 +125,69 @@ describe('AgentChatMessageList', () => {
 		expect(wrapper.find('[data-test-id="typing-indicator"]').exists()).toBe(false);
 	});
 
+	it('renders thinking below standalone assistant output', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-reasoning',
+						role: 'assistant',
+						content: 'Final answer',
+						thinkingSegments: [
+							{
+								id: 'reasoning-1',
+								content: 'Inspect the request.',
+							},
+						],
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+
+		const renderOrder = wrapper
+			.findAll('[data-testid="markdown-chunk"], [data-test-id="shared-thinking-block"]')
+			.map((element) => element.attributes('data-testid') ?? element.attributes('data-test-id'));
+		expect(renderOrder).toEqual(['markdown-chunk', 'shared-thinking-block']);
+	});
+
+	it('keeps aggregated thinking below the final output in a tool run', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-tool',
+						role: 'assistant',
+						content: '',
+						thinkingSegments: [{ id: 'reasoning-1', content: 'Choose a tool.' }],
+						toolCalls: [
+							{
+								tool: 'lookup',
+								toolCallId: 'tool-1',
+								state: 'done',
+							},
+						],
+						status: 'success',
+					} satisfies ChatMessage,
+					{
+						id: 'assistant-final',
+						role: 'assistant',
+						content: 'Final answer',
+						thinkingSegments: [{ id: 'reasoning-2', content: 'Check the result.' }],
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+
+		const renderOrder = wrapper
+			.findAll('[data-testid="markdown-chunk"], [data-test-id="shared-thinking-block"]')
+			.map((element) => element.attributes('data-testid') ?? element.attributes('data-test-id'));
+		expect(renderOrder).toEqual(['markdown-chunk', 'shared-thinking-block']);
+	});
+
 	it('passes persisted reasoning duration to the shared thinking block', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {
