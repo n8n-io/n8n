@@ -121,7 +121,7 @@ async function getChatIntegrationToolServices() {
 	const { IntegrationMessageContextService } = await import(
 		'./integrations/integration-message-context.service.js'
 	);
-	// eslint-disable-next-line import-x/no-cycle
+
 	const { ChatIntegrationActionExecutor } = await import(
 		'./integrations/integration-action-executor.js'
 	);
@@ -546,7 +546,9 @@ export class AgentRuntimeReconstructionService {
 
 		agent.tool(createGetEnvironmentTool());
 
-		if (runtimeProfile === 'top-level' && this.agentsConfig.modules.includes('own-sessions')) {
+		// Top-level only: the reads are scoped by the run's caller `resourceId`,
+		// and inline runtimes execute without one.
+		if (runtimeProfile === 'top-level') {
 			agent.tool(
 				createOwnSessionsTools({
 					agentId,

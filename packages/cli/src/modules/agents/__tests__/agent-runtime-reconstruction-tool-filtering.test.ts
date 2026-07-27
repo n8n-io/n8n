@@ -22,8 +22,9 @@ import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import { AgentExecutionService } from '../agent-execution.service';
 import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
+import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { Agent } from '../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
@@ -155,6 +156,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		vi.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
 		Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
+		Container.set(AgentExecutionService, mock<AgentExecutionService>());
 	});
 
 	afterEach(() => {
@@ -257,6 +259,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 		vi.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
 		Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
+		Container.set(AgentExecutionService, mock<AgentExecutionService>());
 	});
 
 	afterEach(() => {

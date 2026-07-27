@@ -50,11 +50,15 @@ function execution(id: string, userMessage: string, assistantText: string): Agen
 	} as AgentExecution;
 }
 
+const callerResourceId = 'draft-chat:user-1';
+const callerCtx = { persistence: { threadId: 'current-thread', resourceId: callerResourceId } };
+
 const detailThread = {
 	id: 't1',
 	title: 'Session 1',
 	sessionNumber: 1,
 	createdAt: new Date('2024-01-01T00:00:00.000Z'),
+	createdByResourceId: callerResourceId,
 } as AgentExecutionThread;
 
 const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
@@ -69,24 +73,67 @@ describe('createOwnSessionsTools', () => {
 
 		const result = (await getToolHandler(buildTool(executionService, 'list_own_sessions'))(
 			{ sinceDays: 7 },
-			{},
+			callerCtx,
 		)) as { sessions: Array<{ threadId: string }> };
 
 		expect(result.sessions).toHaveLength(1);
 		expect(result.sessions[0].threadId).toBe('recent');
 	});
 
-	it('queries threads scoped to the closure project and agent', async () => {
+	it('queries threads scoped to the closure project and agent and the calling resource', async () => {
 		const executionService = mock<AgentExecutionService>();
 		executionService.getThreads.mockResolvedValue({ threads: [], nextCursor: null });
 
-		await getToolHandler(buildTool(executionService, 'list_own_sessions'))({}, {});
+		await getToolHandler(buildTool(executionService, 'list_own_sessions'))({}, callerCtx);
 
 		expect(executionService.getThreads).toHaveBeenCalledWith(
 			projectId,
 			agentId,
 			DEFAULT_SESSION_LIMIT,
+			undefined,
+			callerResourceId,
 		);
+	});
+
+	it.each(['list_own_sessions', 'read_own_session'] as const)(
+		'refuses to read anything from %s when the run has no caller scope',
+		async (toolName) => {
+			const executionService = mock<AgentExecutionService>();
+
+			const result = (await getToolHandler(buildTool(executionService, toolName))(
+				{ threadId: 't1' },
+				{},
+			)) as { errorType: string };
+
+			expect(result.errorType).toBe('NoCallerScope');
+			expect(executionService.getThreads).not.toHaveBeenCalled();
+			expect(executionService.getThreadDetail).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([
+		['another caller', 'draft-chat:user-2'],
+		['nobody, predating attribution', null],
+	])('hides a session created by %s behind the not-found answer', async (_case, createdBy) => {
+		const executionService = mock<AgentExecutionService>();
+		executionService.getThreadDetail.mockResolvedValue({
+			thread: { ...detailThread, createdByResourceId: createdBy } as AgentExecutionThread,
+			executions: [execution('e1', 'their question', 'their answer')],
+		});
+
+		const foreign = await getToolHandler(buildTool(executionService, 'read_own_session'))(
+			{ threadId: 't1' },
+			callerCtx,
+		);
+
+		const missingService = mock<AgentExecutionService>();
+		missingService.getThreadDetail.mockResolvedValue(null);
+		const missing = await getToolHandler(buildTool(missingService, 'read_own_session'))(
+			{ threadId: 't1' },
+			callerCtx,
+		);
+
+		expect(foreign).toEqual(missing);
 	});
 
 	it('returns a not-found error object when the thread detail is missing', async () => {
@@ -95,7 +142,7 @@ describe('createOwnSessionsTools', () => {
 
 		const result = (await getToolHandler(buildTool(executionService, 'read_own_session'))(
 			{ threadId: 'other-agent-thread' },
-			{},
+			callerCtx,
 		)) as { error: string; errorType: string };
 
 		expect(result.errorType).toBe('NotFoundError');
@@ -115,7 +162,7 @@ describe('createOwnSessionsTools', () => {
 
 		const result = (await getToolHandler(buildTool(executionService, 'read_own_session'))(
 			{ threadId: 't1', maxMessages: 2 },
-			{},
+			callerCtx,
 		)) as { messageCount: number; truncated: boolean; messages: Array<{ text?: string }> };
 
 		expect(result.messages).toHaveLength(2);
@@ -162,7 +209,7 @@ describe('createOwnSessionsTools', () => {
 
 		const result = (await getToolHandler(buildTool(executionService, 'read_own_session'))(
 			{ threadId: 't1' },
-			{},
+			callerCtx,
 		)) as { messages: Array<{ toolCalls?: Array<{ name: string; status: string }> }> };
 
 		const toolCalls = result.messages.at(-1)?.toolCalls;
@@ -183,7 +230,7 @@ describe('createOwnSessionsTools', () => {
 
 		const result = (await getToolHandler(buildTool(executionService, 'read_own_session'))(
 			{ threadId: 't1', maxMessages: 100 },
-			{},
+			callerCtx,
 		)) as { messageCount: number; truncated: boolean; messages: Array<{ text?: string }> };
 
 		const totalChars = result.messages.reduce(
@@ -226,7 +273,7 @@ describe('createOwnSessionsTools', () => {
 
 		const result = (await getToolHandler(buildTool(executionService, 'read_own_session'))(
 			{ threadId: 't1', maxMessages: 100 },
-			{},
+			callerCtx,
 		)) as {
 			messageCount: number;
 			truncated: boolean;

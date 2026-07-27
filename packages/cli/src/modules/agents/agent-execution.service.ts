@@ -390,18 +390,23 @@ export class AgentExecutionService {
 	/**
 	 * Get paginated execution threads for an agent.
 	 * Each thread is annotated with the first non-empty user message for preview.
+	 *
+	 * `createdByResourceId` narrows the page to the sessions that caller started;
+	 * omit it for project-scoped views such as the sessions list.
 	 */
 	async getThreads(
 		projectId: string,
 		agentId: string,
 		limit: number,
 		cursor?: string,
+		createdByResourceId?: string,
 	): Promise<{ threads: ThreadListItem[]; nextCursor: string | null }> {
 		const page = await this.agentExecutionThreadRepository.findByProjectIdPaginated(
 			projectId,
 			agentId,
 			limit,
 			cursor,
+			createdByResourceId,
 		);
 
 		if (page.threads.length === 0) {

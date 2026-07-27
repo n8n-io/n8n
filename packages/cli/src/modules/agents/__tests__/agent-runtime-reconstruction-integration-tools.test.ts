@@ -1,4 +1,3 @@
-import type { Mocked } from 'vitest';
 import { type AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type {
@@ -16,13 +15,14 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import type { ExternalHooks } from '@/external-hooks';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { EventService } from '@/events/event.service';
+import type { ExternalHooks } from '@/external-hooks';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { NodeTypes } from '@/node-types';
 import type { OauthService } from '@/oauth/oauth.service';
@@ -35,7 +35,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import { AgentConfigService } from '../agent-config.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
-import type { AgentExecutionService } from '../agent-execution.service';
+import { AgentExecutionService } from '../agent-execution.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -44,11 +44,10 @@ import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentSkillsService } from '../agent-skills.service';
-
 import type { AgentTaskService } from '../agent-task.service';
-import { AgentsService } from '../agents.service';
 import { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentValidationService } from '../agent-validation.service';
+import { AgentsService } from '../agents.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { Agent } from '../entities/agent.entity';
@@ -65,8 +64,8 @@ import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-sna
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
+import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -329,6 +328,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 	describe('integration runtime tools', () => {
 		beforeEach(() => {
 			Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
+			Container.set(AgentExecutionService, agentExecutionService);
 		});
 
 		it('injects each credential integration context/action tool only once', async () => {
@@ -392,6 +392,44 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 
 			expect(toolNames.filter((name) => name === 'slack_context')).toHaveLength(1);
 			expect(toolNames.filter((name) => name === 'slack_action')).toHaveLength(1);
+		});
+
+		it('injects the own-sessions tools without needing an agents module token', async () => {
+			const toolNames: string[] = [];
+			const runtimeAgent = {
+				tool: vi.fn((tool: { name?: string } | Array<{ name?: string }>) => {
+					for (const item of Array.isArray(tool) ? tool : [tool]) {
+						if (item.name) toolNames.push(item.name);
+					}
+				}),
+				on: vi.fn(),
+				hasCheckpointStorage: vi.fn().mockReturnValue(true),
+				checkpoint: vi.fn(),
+			};
+
+			const reconstructionService = makeRuntimeReconstructionService();
+			await (
+				reconstructionService as unknown as {
+					injectRuntimeDependencies(params: Record<string, unknown>): Promise<void>;
+				}
+			).injectRuntimeDependencies({
+				agent: runtimeAgent,
+				agentId,
+				projectId,
+				credentialProvider: mock(),
+				runtimeProfile: 'top-level',
+				config: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Be helpful',
+				},
+				parentAgentIdForDelegation: agentId,
+				subAgentDelegation: { sourcesById: {}, availableSubAgents: [] },
+				credentialIntegrations: [],
+			});
+
+			expect(toolNames).toContain('list_own_sessions');
+			expect(toolNames).toContain('read_own_session');
 		});
 	});
 });
