@@ -1,0 +1,64 @@
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_4cc320b66a133e::t_26cdd2311671fc 568-582
+  s_3c7807b9d7f80d::t_1b47b69e935b4a 679-680
+packages/cli/src/modules/agents/agents.module.ts
+  s_7bce6cc796dd94::t_93136f6326cd2f 37-42,44-46,48-49,56
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_3c7807b9d7f80d::t_e5a6394cce1857 301
+  s_4cc320b66a133e::t_a1e90a23bdb308 360-364,387-395
+packages/@n8n/db/src/migrations/common/1784815940110-AddStoredAtToAgentExecution.ts
+  s_7dc937283b5e7d::t_bc9b2788691af3 4,9-10
+docs/generated/sqlite-schema/agent_execution.md
+  s_7dc937283b5e7d::t_68ace66838558a 9
+docs/generated/postgres-schema/README.md
+  s_7dc937283b5e7d::t_5b9fbdfc4adcfa 13,348
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_3c7807b9d7f80d::t_fea8342d806f5c 100-104
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_7dc937283b5e7d::t_5b9fbdfc4adcfa 110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "5ffe29f34760a1fae28f0ccbff27192daa6f2f7a",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_3c7807b9d7f80d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c9706cbc-44f1-4596-9329-217c0d15396e",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_4cc320b66a133e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fe568249-4fef-423f-ab3d-2376a8675c76",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_7bce6cc796dd94": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c22d2c0a-723c-4a53-bcc7-a59f1adbe2aa",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_7dc937283b5e7d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7b779b49-f3ea-4fcf-868f-d2888dc6e162",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

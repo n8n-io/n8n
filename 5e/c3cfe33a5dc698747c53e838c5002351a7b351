@@ -1,0 +1,28 @@
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_9fd8a945b5e8c9::t_e06ef541d63efc 671
+  s_9fd8a945b5e8c9::t_af9deb61263983 20
+  s_9fd8a945b5e8c9::t_f6e47b7f1c0224 610-613,658
+  s_9fd8a945b5e8c9::t_1c4d0dbe977ee5 641-642,655-657
+  s_9fd8a945b5e8c9::t_902d71de83e3bf 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "5ec3cfe33a5dc698747c53e838c5002351a7b351",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9fd8a945b5e8c9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "df309073-abfa-44a1-941e-8fbf08c840e0",
+        "model": "composer-2.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

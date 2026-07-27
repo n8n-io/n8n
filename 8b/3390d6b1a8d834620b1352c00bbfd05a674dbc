@@ -3,7 +3,7 @@ packages/cli/src/workflows/publication/workflow-publication-status.service.ts
 ---
 {
   "schema_version": "authorship/3.0.0",
-  "git_ai_version": "1.6.14",
+  "git_ai_version": "1.6.15",
   "base_commit_sha": "8b3390d6b1a8d834620b1352c00bbfd05a674dbc",
   "prompts": {},
   "sessions": {

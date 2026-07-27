@@ -1,0 +1,79 @@
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_ca92573e48959e::t_a90b190c21dba1 14,36,39-43,55,58,75,78,95,98,119,133,136,148,151,163,166,179,182,194,197,209,212,229,232,244-248,259,262,275,278,360,371,383,393,398,403-406,418,420,433,435,445-448
+  s_ca92573e48959e::t_0b41f5d0554b7c 9,12-13,17,44,46,116,286,295,307,316,324,330,358,369,381,389,395-397,399
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_ca92573e48959e::t_a18a9ffa397622 521,527,529
+  s_ca92573e48959e::t_11de4c5d9f8c36 590-592,705-707,769-771,859-861,1131-1133
+  s_ca92573e48959e::t_e06d060a750372 45-49
+  s_ca92573e48959e::t_9093947eaa01e7 538-542
+  s_ca92573e48959e::t_7ca37e3a4ebd06 468-469
+  s_ca92573e48959e::t_d1a8d7db45df21 136-138,169-171,206-208,252-254,303-305,355-357,396-398,452-454,501-502,652-654,937-938,1041-1042,1269-1271,1379-1381,1476-1478,1568-1570,1670-1672,1758-1760,1852-1854,1931-1933,1972-1974,2004-2006,2056-2058,2125-2126
+packages/cli/src/scaling/scaling.service.ts
+  s_ca92573e48959e::t_92be65cf856955 33
+  s_ca92573e48959e::t_073ee1de472521 356
+  h_32d8cd6a0d6aad 355,359
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_ca92573e48959e::t_2470bd960cd550 135
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_ca92573e48959e::t_abb89cf4ed8a7b 33
+  s_ca92573e48959e::t_faf62cd9e7092c 165
+  s_ca92573e48959e::t_d25738bf52f778 499
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_ca92573e48959e::t_2bb46aa7a8168a 136
+  s_ca92573e48959e::t_828010a6754e76 12,17-19
+  s_ca92573e48959e::t_3f21e2c54f6eec 160-163
+  s_ca92573e48959e::t_e493555ed8c935 42
+packages/cli/src/scaling/job-processor.ts
+  s_ca92573e48959e::t_f5d9b25352b794 227-232
+  s_ca92573e48959e::t_1904f799d68020 81-83
+  s_ca92573e48959e::t_0994de2cb39dc6 224-226,233
+  s_ca92573e48959e::t_f80b32f20ac689 62
+  s_ca92573e48959e::t_778c0c5bdff886 4,12-13
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_ca92573e48959e::t_7246a89b1f00b6 99
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_ca92573e48959e::t_30cd8ea01cb267 287,301-303
+  s_ca92573e48959e::t_214cd600ac0c95 6-9
+  s_ca92573e48959e::t_b2c71c781c8cfe 142,154,157
+  s_ca92573e48959e::t_e8becd133f9a44 41-45,47,49-50
+  s_ca92573e48959e::t_f525ac9b8a1acf 205-208,210-213,215,219,221,224,226,232,238-245,247,250-256,270-286,288-289,291-300,304
+  s_ca92573e48959e::t_0d43d3b92ba3d7 77,83,85-86,88,92
+  s_ca92573e48959e::t_3fb05d9b9427c0 1-5,54-72,74-76,78-80,84,87,89,91,93-95,97,99-100,103-118,122-125,127-128,130-141,143-146,148-149,153,155-156,158,160-174,176-179,181-190,192-197,260
+  s_ca92573e48959e::t_ee9740c0b3f895 30-37
+  s_ca92573e48959e::t_4e336c71fc013a 220,227-231
+  s_ca92573e48959e::t_6a0805a0aeea30 175,180
+  s_ca92573e48959e::t_db196d1447a197 246
+  s_ca92573e48959e::t_c03fe2b2d4437b 10
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_ca92573e48959e::t_2470bd960cd550 126
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  s_ca92573e48959e::t_b791e36b101065 18-22
+  s_ca92573e48959e::t_f60167d5be2f87 488,491-492,495,504
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_ca92573e48959e::t_2470bd960cd550 141
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_ca92573e48959e::t_272aa71241a83f 88
+  s_ca92573e48959e::t_81645375741195 391-394
+  s_ca92573e48959e::t_231bcf6ef33918 33-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "078f773490613001e75250140c36122c541e30fb",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ca92573e48959e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e8ba4c2-dd2d-4555-a4c5-a44d49431eb4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
