@@ -45,7 +45,7 @@ import {
 	type McpMockToolCall,
 } from './mcp-mock-fetch';
 import { createLlmMockHandler } from './mock-handler';
-import { truncateForLlm } from './request-sanitizer';
+import { redactSecretValuePatterns, truncateForLlm } from './request-sanitizer';
 import { createWebSearchMock } from './web-search-mock';
 
 // ---------------------------------------------------------------------------
@@ -158,9 +158,14 @@ export class EvalAgentExecutionService {
 		// The scenario signal steers seed + mock generation. A fixed case input
 		// doubles as that signal (bounded) so the generated context, per-tool
 		// hints, and mock responses all stay coherent with the message sent.
+		// Secret-value shapes pasted into a case are scrubbed before reaching these
+		// auxiliary LLM calls (which never need the real value); the opening
+		// message the agent actually runs stays verbatim.
 		const scenarioSignal =
 			options.scenarioHints ??
-			(caseInput !== undefined ? truncateForLlm(caseInput, MAX_SCENARIO_HINT_CHARS) : undefined);
+			(caseInput !== undefined
+				? truncateForLlm(redactSecretValuePatterns(caseInput), MAX_SCENARIO_HINT_CHARS)
+				: undefined);
 
 		let seed: InstanceAiEvalAgentScenarioSeed;
 		try {

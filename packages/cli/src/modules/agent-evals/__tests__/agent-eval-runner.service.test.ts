@@ -438,5 +438,11 @@ describe('AgentEvalRunnerService', () => {
 			runRepository.markAllIncompleteAsError.mockRejectedValue(new Error('db down'));
 			await expect(service.cleanupInterruptedRuns()).resolves.toBeUndefined();
 		});
+
+		it('does not sweep in queue mode (never touches another main’s runs)', async () => {
+			globalConfig.executions.mode = 'queue';
+			await service.cleanupInterruptedRuns();
+			expect(runRepository.markAllIncompleteAsError).not.toHaveBeenCalled();
+		});
 	});
 });
