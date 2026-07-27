@@ -714,6 +714,42 @@ function trimTrailingSlash(url: string): string {
 	return url.endsWith('/') ? url.slice(0, -1) : url;
 }
 
+// Carries the OAuth2 access token across the single same-site redirect from the
+// provider callback to the clean form URL, so `code`/`state` never reach the
+// sandboxed form page. The token is otherwise already embedded in the form HTML
+// (the page sends it back as `x-auth-token` on POST), so this is not a new exposure.
+const FORM_OAUTH_COOKIE_NAME = 'n8n-form-oauth';
+
+function formOAuthCookieOptions(req: Request, resourceUrl: string) {
+	// Derive `secure` from the request scheme (honouring x-forwarded-proto, as
+	// buildAbsoluteFormUrl does) rather than config, so the cookie is actually sent
+	// back on the follow-up GET over http in dev while staying Secure over https.
+	const forwardedProto = req.headers['x-forwarded-proto'];
+	const proto = (typeof forwardedProto === 'string' ? forwardedProto.trim() : '') || req.protocol;
+	return {
+		httpOnly: true,
+		sameSite: 'lax' as const, // must be Lax: sent on our own top-level 302 → GET
+		secure: proto === 'https',
+		path: new URL(resourceUrl).pathname, // scope the bearer token to this form
+	};
+}
+
+function setFormOAuthToken(res: Response, req: Request, resourceUrl: string, token: string): void {
+	res.cookie(FORM_OAUTH_COOKIE_NAME, token, {
+		...formOAuthCookieOptions(req, resourceUrl),
+		maxAge: 60_000, // one redirect hop; short by design
+	});
+}
+
+function readFormOAuthToken(req: Request): string | null {
+	const match = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-form-oauth=([^;]+)/);
+	return match ? decodeURIComponent(match[1].trim()) : null;
+}
+
+function clearFormOAuthToken(res: Response, req: Request, resourceUrl: string): void {
+	res.clearCookie(FORM_OAUTH_COOKIE_NAME, formOAuthCookieOptions(req, resourceUrl));
+}
+
 /**
  * Authenticate an `n8nUserAuth` request via:
  * 1. the `n8n-auth` cookie (sent on top-level GET when the user is logged in), or
@@ -746,7 +782,16 @@ async function authenticateFormUserOrRespond(
 					const authorizationResult = await context.completeN8nOAuth2Flow(code, state);
 					if (authorizationResult.valid) {
 						// TODO: exchange the OAuth2 token to a specficly scoped token.
-						return { user: authorizationResult.user, token: authorizationResult.token };
+						// Don't render the form here: the callback URL still carries `code`/`state`,
+						// which must never reach the sandboxed form page. Stash the token in a
+						// one-hop cookie and redirect to the clean resource URL — the follow-up GET
+						// (below) picks up the cookie and renders the form.
+						setFormOAuthToken(res, req, resourceUrl, authorizationResult.token);
+						res.writeHead(302, {
+							Location: resourceUrl,
+						});
+						res.end();
+						return null;
 					}
 					// We fall through to the redirect below to restart the OAuth2 flow if the callback is invalid.
 					context.logger.warn('Form OAuth2 flow failed, restarting', {
@@ -757,6 +802,18 @@ async function authenticateFormUserOrRespond(
 					context.logger.warn('Form OAuth2 flow failed, restarting', {
 						error,
 					});
+				}
+			} else {
+				// Not a provider callback. If we just completed the flow, the token rides in a
+				// one-hop cookie set on the redirect above. Consume it once and render.
+				const cookieToken = readFormOAuthToken(req);
+				if (cookieToken) {
+					clearFormOAuthToken(res, req, resourceUrl);
+					const validation = await context.validateN8nOAuth2Token(cookieToken, resourceUrl);
+					if (validation.valid) {
+						return { user: validation.user, token: cookieToken };
+					}
+					// Stale/invalid cookie — fall through to restart the OAuth2 flow.
 				}
 			}
 
