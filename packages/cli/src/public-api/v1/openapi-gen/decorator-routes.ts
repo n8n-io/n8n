@@ -7,6 +7,7 @@ import '../controllers';
 
 import type { RouteConfig } from '@asteasolutions/zod-to-openapi';
 import type { ResponseDtoClass } from '@n8n/decorators';
+import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { ResolvedPublicApiRoute } from '@/public-api/public-api-route-resolver';
@@ -28,6 +29,20 @@ const SHARED_PAGINATION_PARAMS: Record<string, { $ref: string }> = {
 const UNAUTHORIZED_RESPONSE = { $ref: '../../../../shared/spec/responses/unauthorized.yml' };
 const FORBIDDEN_RESPONSE = { $ref: '../../../../shared/spec/responses/forbidden.yml' };
 const BAD_REQUEST_RESPONSE = { $ref: '../../../../shared/spec/responses/badRequest.yml' };
+
+/**
+ * Status codes an `@ApiErrorResponse` can declare, each backed by the same shared, hand-written
+ * response file the eov-routed handlers already `$ref`. Extending this to a new status code is
+ * just adding its shared response file and a line here - no new decorator needed.
+ */
+const ERROR_RESPONSE_REFS: Record<number, { $ref: string }> = {
+	400: BAD_REQUEST_RESPONSE,
+	401: UNAUTHORIZED_RESPONSE,
+	402: { $ref: '../../../../shared/spec/responses/paymentRequired.yml' },
+	403: FORBIDDEN_RESPONSE,
+	404: { $ref: '../../../../shared/spec/responses/notFound.yml' },
+	409: { $ref: '../../../../shared/spec/responses/conflict.yml' },
+};
 
 function toOpenApiPath(path: string): string {
 	return path.replace(/:([A-Za-z0-9_]+)/g, '{$1}');
@@ -125,8 +140,10 @@ function buildQueryConfig(route: ResolvedPublicApiRoute): {
 /**
  * Response set is derived from what `PublicApiControllerRegistry` actually does at runtime, not
  * invented: auth always 401s, `@ApiKeyScope` always 403s on mismatch, and a body/query DTO always
- * 400s on failed `.safeParse()`. Error response *bodies* (schemas) stay hand-written $refs —
- * generating those is out of scope for this pass.
+ * 400s on failed `.safeParse()`. Anything else - like a 404 from a business-rule lookup that isn't
+ * visible in decorator metadata - has to be declared explicitly via `@ApiErrorResponse`. Error
+ * response *bodies* (schemas) stay hand-written $refs — generating those is out of scope for this
+ * pass.
  */
 function buildResponses(
 	route: ResolvedPublicApiRoute,
@@ -134,7 +151,7 @@ function buildResponses(
 ): RouteConfig['responses'] {
 	const responses: RouteConfig['responses'] = {
 		200: {
-			description: 'Successful response',
+			description: 'Operation successful.',
 			...(route.responseDto && hasNamedSchema(route.responseDto)
 				? {
 						content: {
@@ -153,6 +170,18 @@ function buildResponses(
 	responses[401] = UNAUTHORIZED_RESPONSE;
 	if (route.apiKeyScope) {
 		responses[403] = FORBIDDEN_RESPONSE;
+	}
+
+	for (const status of route.errorResponses ?? []) {
+		const ref = ERROR_RESPONSE_REFS[status];
+		if (!ref) {
+			throw new UnexpectedError(
+				`@ApiErrorResponse(${status}) on ${route.controllerName}.${route.handlerName} has no ` +
+					'matching shared response file in ERROR_RESPONSE_REFS - add one to shared/spec/responses/ ' +
+					'and register it there.',
+			);
+		}
+		responses[status] = ref;
 	}
 
 	return responses;
@@ -190,6 +219,7 @@ export function getDecoratorGeneratedOperations(
 			path: pathKey,
 			operationId: route.handlerName,
 			tags: [capitalize(resource)],
+			...(route.summary ? { summary: route.summary } : {}),
 			...(route.description ? { description: route.description } : {}),
 			...(route.apiKeyScope
 				? { 'x-required-scope': scopeRequirementToString(route.apiKeyScope) }

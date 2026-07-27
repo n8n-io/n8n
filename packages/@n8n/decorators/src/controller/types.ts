@@ -53,8 +53,12 @@ export interface RouteMetadata {
 	accessScope?: AccessScope;
 	apiKeyScope?: ApiKeyScopeRequirement;
 	responseDto?: ResponseDtoClass;
+	/** OpenAPI operation summary (short, one line). */
+	summary?: string;
 	/** OpenAPI operation description. */
 	description?: string;
+	/** Additional non-2xx status codes this route can return, beyond the ones inferred automatically. */
+	errorResponses?: number[];
 	args: Arg[];
 	router?: Router;
 }
