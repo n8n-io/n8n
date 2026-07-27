@@ -1034,6 +1034,7 @@ describe('WorkflowService', () => {
 			workflow.connections = { Draft: {} } as IConnections;
 			workflow.settings = {};
 			workflow.updatedAt = new Date();
+			workflow.activeVersion = makeActiveVersion();
 			Object.assign(workflow, overrides);
 			return workflow;
 		}
@@ -1043,6 +1044,14 @@ describe('WorkflowService', () => {
 			version.versionId = TARGET_VERSION_ID;
 			version.nodes = [{ name: 'Activated node' } as INode];
 			version.connections = { Activated: {} } as IConnections;
+			return version;
+		}
+
+		function makeActiveVersion(): WorkflowHistory {
+			const version = new WorkflowHistory();
+			version.versionId = PREVIOUS_VERSION_ID;
+			version.nodes = [{ name: 'Active node' } as INode];
+			version.connections = { Active: {} } as IConnections;
 			return version;
 		}
 
@@ -1339,8 +1348,9 @@ describe('WorkflowService', () => {
 			expect(workflowPublishHistoryRepositoryMock.addRecord).not.toHaveBeenCalled();
 		});
 
-		test('hook receives the workflow being deactivated and the acting user', async () => {
+		test('hook receives the active version being deactivated and the acting user', async () => {
 			const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+			const activeVersion = workflow.activeVersion as WorkflowHistory;
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
 
 			externalHooksMock.run.mockResolvedValue(undefined);
@@ -1355,17 +1365,58 @@ describe('WorkflowService', () => {
 
 			await workflowService.deactivateWorkflow(user, WORKFLOW_ID);
 
-			expect(externalHooksMock.run).toHaveBeenCalledWith('workflow.deactivate', [
-				workflow,
-				workflowHookContextServiceMock,
-				{
-					id: 'user-1',
-					email: 'actor@example.com',
-					firstName: 'Ada',
-					lastName: 'Lovelace',
-					role: 'global:admin',
-				},
-			]);
+			expect(externalHooksMock.run).toHaveBeenCalledTimes(1);
+			const [hookName, hookArgs] = externalHooksMock.run.mock.calls[0] as [
+				string,
+				[WorkflowEntity, WorkflowHookContextService, WorkflowLifecycleHookActor],
+			];
+			expect(hookName).toBe('workflow.deactivate');
+			const [candidate, context, actor] = hookArgs;
+			expect(candidate.activeVersionId).toBe(PREVIOUS_VERSION_ID);
+			expect(candidate.nodes).toBe(activeVersion.nodes);
+			expect(candidate.connections).toBe(activeVersion.connections);
+			expect(actor).toEqual({
+				id: 'user-1',
+				email: 'actor@example.com',
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+				role: 'global:admin',
+			});
+			expect(context).toBe(workflowHookContextServiceMock);
+		});
+
+		test('hook is not given the draft when it differs from the active version', async () => {
+			const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			externalHooksMock.run.mockResolvedValue(undefined);
+
+			await workflowService.deactivateWorkflow(mock<User>(), WORKFLOW_ID);
+
+			const [, hookArgs] = externalHooksMock.run.mock.calls[0] as [
+				string,
+				[WorkflowEntity, WorkflowHookContextService, WorkflowLifecycleHookActor],
+			];
+			expect(hookArgs[0].nodes).not.toBe(workflow.nodes);
+			expect(hookArgs[0].connections).not.toBe(workflow.connections);
+		});
+
+		test('still deactivates when the active version cannot be read', async () => {
+			const workflow = makeWorkflowEntity({
+				activeVersionId: PREVIOUS_VERSION_ID,
+				activeVersion: null,
+			});
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			externalHooksMock.run.mockResolvedValue(undefined);
+
+			await workflowService.deactivateWorkflow(mock<User>(), WORKFLOW_ID);
+
+			expect(externalHooksMock.run).toHaveBeenCalledTimes(1);
+			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				expect.objectContaining({ active: false, activeVersionId: null }),
+			);
 		});
 
 		test('does not run the hook when the workflow is already inactive', async () => {

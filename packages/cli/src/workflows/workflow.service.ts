@@ -981,9 +981,12 @@ export class WorkflowService {
 	): Promise<WorkflowEntity> {
 		const source = options?.source ?? 'ui';
 		const publicApi = source === 'api';
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-			'workflow:unpublish',
-		]);
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowId,
+			user,
+			['workflow:unpublish'],
+			{ includeActiveVersion: true },
+		);
 
 		if (!workflow) {
 			this.logger.warn('User attempted to deactivate a workflow without permissions', {
@@ -1006,7 +1009,11 @@ export class WorkflowService {
 
 		try {
 			await this.externalHooks.run('workflow.deactivate', [
-				workflow,
+				{
+					...workflow,
+					nodes: workflow.activeVersion?.nodes ?? workflow.nodes,
+					connections: workflow.activeVersion?.connections ?? workflow.connections,
+				},
 				this.workflowHookContextService,
 				toWorkflowLifecycleHookActor(user),
 			]);
