@@ -144,6 +144,7 @@ erDiagram
   integer fileSizeBytes
   varchar_16_ id
   varchar_255_ mimeType
+  text storageKey
   varchar_2_ storedAt
   timestamp_3__with_time_zone updatedAt
 }

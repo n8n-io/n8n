@@ -16,7 +16,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_eval_run](public.agent_eval_run.md) | 14 |  | BASE TABLE |
 | [public.agent_execution](public.agent_execution.md) | 19 |  | BASE TABLE |
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 17 |  | BASE TABLE |
-| [public.agent_files](public.agent_files.md) | 8 |  | BASE TABLE |
+| [public.agent_files](public.agent_files.md) | 9 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 7 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
@@ -446,6 +446,7 @@ erDiagram
   integer fileSizeBytes
   varchar_16_ id
   varchar_255_ mimeType
+  text storageKey
   varchar_2_ storedAt
   timestamp_3__with_time_zone updatedAt
 }
