@@ -236,6 +236,7 @@ export const Interactive: Story = {
 					</N8nSettingsRowGroup>
 				</N8nSettingsSection>
 				<N8nSettingsSaveBar
+					floating
 					:visible="dirty"
 					:saving="saving"
 					@save="onSave"
@@ -248,7 +249,7 @@ export const Interactive: Story = {
 		docs: {
 			description: {
 				story:
-					"The full explicit-save loop: editing the field flips a dirty flag that drives `visible`, so the bar slides up. Discard reverts the draft (hiding the bar); Save shows the loading state, then hides the bar and confirms through n8n's existing bottom-right notification. Cmd/Ctrl+S also saves while the bar is visible.",
+					"The full explicit-save loop: editing the field flips a dirty flag that drives `visible`, so the bar slides up. Discard reverts the draft (hiding the bar); Save shows the loading state, then hides the bar and confirms through n8n's existing bottom-right notification. Cmd/Ctrl+S also saves while the bar is visible. The page is shorter than the viewport, so the floating bar rests in flow in its chrome-less docked look — the same state a real short settings page would show.",
 			},
 		},
 	},

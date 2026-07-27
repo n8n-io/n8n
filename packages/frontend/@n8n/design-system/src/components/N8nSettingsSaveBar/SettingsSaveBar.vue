@@ -74,10 +74,13 @@ function measureStuck() {
 		return;
 	}
 	const parentStyle = getComputedStyle(parent);
+	// The bar's natural (in-flow) border-box bottom: the parent's content-box bottom, minus the
+	// bar's own bottom margin (hosts or global resets may give it one, e.g. Storybook's preview).
 	const flowBottom =
 		parent.getBoundingClientRect().bottom -
 		Number.parseFloat(parentStyle.paddingBottom) -
-		Number.parseFloat(parentStyle.borderBottomWidth);
+		Number.parseFloat(parentStyle.borderBottomWidth) -
+		Number.parseFloat(getComputedStyle(bar).marginBottom);
 	stuck.value = bar.getBoundingClientRect().bottom < flowBottom - 1;
 }
 
