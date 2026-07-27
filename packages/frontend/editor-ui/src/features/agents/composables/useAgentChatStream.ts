@@ -153,6 +153,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		 * that was applied before the round-trip.
 		 */
 		errorEmitted: boolean;
+		/** Set when the stream reaches a valid terminal event. */
+		terminalEventReceived: boolean;
 		/**
 		 * Cursor pointing at the ChatMessage currently being filled by
 		 * text/reasoning/tool-input events. `start-step` / `finish-step`
@@ -248,6 +250,37 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				session.minted.delete(msg);
 			}
 		}
+	}
+
+	function markInFlightStateFailed(session: StreamSession): void {
+		for (const msg of session.minted) {
+			if (msg.status === CHAT_MESSAGE_STATUS.STREAMING) {
+				msg.status = CHAT_MESSAGE_STATUS.ERROR;
+			}
+			for (const toolCall of msg.toolCalls ?? []) {
+				if (
+					toolCall.state === TOOL_CALL_STATE.PENDING ||
+					toolCall.state === TOOL_CALL_STATE.RUNNING
+				) {
+					toolCall.state = TOOL_CALL_STATE.ERROR;
+				}
+			}
+		}
+	}
+
+	function markStreamInterrupted(session: StreamSession): void {
+		settleOpenReasoning(session);
+		dropOrphanMintedBubbles(session);
+		markInFlightStateFailed(session);
+		messages.value.push(
+			reactive<ChatMessage>({
+				id: crypto.randomUUID(),
+				role: 'assistant',
+				content: locale.baseText('agents.chat.streamInterrupted'),
+				toolCalls: [],
+				status: CHAT_MESSAGE_STATUS.ERROR,
+			}),
+		);
 	}
 
 	function handleEvent(
@@ -430,6 +463,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					upsertMessageInteractive(msg, interactive);
 					msg.status = CHAT_MESSAGE_STATUS.AWAITING_USER;
 				}
+				session.terminalEventReceived = true;
 				break;
 			}
 			case 'message':
@@ -450,6 +484,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				session.errorEmitted = true;
 				settleOpenReasoning(session);
 				dropOrphanMintedBubbles(session);
+				markInFlightStateFailed(session);
 				if (event.errorCode === 'agent_misconfigured') {
 					fatalError.value = { message: event.message, missing: event.missing ?? [] };
 				} else {
@@ -463,6 +498,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						}),
 					);
 				}
+				session.terminalEventReceived = true;
 				break;
 			}
 			case 'done':
@@ -472,6 +508,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						msg.executionId = event.executionId;
 					}
 				}
+				session.terminalEventReceived = true;
 				return { done: true };
 			default:
 				break;
@@ -526,6 +563,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	): Promise<{ ok: boolean }> {
 		const session: StreamSession = {
 			errorEmitted: false,
+			terminalEventReceived: false,
 			minted: new Set(),
 			reasoningStartedAt: new Map(),
 			openReasoning: new Map(),
@@ -559,23 +597,26 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 
 			await consumeStream(response, session);
+			if (!session.terminalEventReceived) {
+				transportFailed = true;
+				markStreamInterrupted(session);
+				return { ok: false };
+			}
 			finalizeStream(session);
-		} catch (e) {
-			if (e instanceof DOMException && e.name === 'AbortError') {
+		} catch (error) {
+			if (error instanceof DOMException && error.name === 'AbortError') {
 				finalizeStream(session);
 				// User-initiated abort — surface as a failure so optimistic
 				// callers (resume) restore their pre-flight state instead of
 				// leaving the UI half-committed.
 				return { ok: false };
 			}
-			transportFailed = true;
-			const text = `Error: ${e instanceof Error ? e.message : 'Unknown error'}`;
-			messages.value.push({
-				id: crypto.randomUUID(),
-				role: 'assistant',
-				content: text,
-				status: 'error',
-			});
+			if (session.terminalEventReceived) {
+				finalizeStream(session);
+			} else {
+				transportFailed = true;
+				markStreamInterrupted(session);
+			}
 		} finally {
 			abortController.value = null;
 			isStreaming.value = false;
