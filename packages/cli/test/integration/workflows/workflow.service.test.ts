@@ -91,6 +91,7 @@ beforeAll(async () => {
 		mock(), // redactionEnforcementService
 		mock(), // workflowPublicationNotifier
 		mock(), // scheduleTriggerJobRegistrar
+		workflowPublishedVersionRepository,
 	);
 });
 
@@ -631,6 +632,56 @@ describe('workflow publication outbox', () => {
 				where: { workflowId: workflow.id },
 			});
 			expect(publishedVersionAfter).not.toBeNull();
+		});
+
+		test('should reject deletion while the published-version mapping still exists', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+			// Simulate the outbox consumer having advanced the published version.
+			await workflowPublishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+
+			await workflowService.deactivateWorkflow(owner, workflow.id);
+			await workflowService.archive(owner, workflow.id);
+
+			// Mapping removal is deferred to the consumer, so deleting now must be
+			// rejected gracefully instead of failing on the mapping's RESTRICT FK.
+			await expect(workflowService.delete(owner, workflow.id)).rejects.toThrowError(
+				'Workflow is still being unpublished. Please try again in a few moments.',
+			);
+
+			const notDeleted = await workflowRepository.findOne({ where: { id: workflow.id } });
+			expect(notDeleted).not.toBeNull();
+		});
+
+		test('should delete a previously published workflow once the unpublish has drained', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+			await workflowPublishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+
+			await workflowService.deactivateWorkflow(owner, workflow.id);
+			await workflowService.archive(owner, workflow.id);
+			// Simulate the outbox consumer having completed the unpublish.
+			await workflowPublishedVersionRepository.removePublishedVersion(workflow.id);
+
+			await workflowService.delete(owner, workflow.id);
+
+			const deleted = await workflowRepository.findOne({ where: { id: workflow.id } });
+			expect(deleted).toBeNull();
+		});
+
+		test('should reject deletion of a published workflow', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+
+			await expect(workflowService.delete(owner, workflow.id, true)).rejects.toThrowError(
+				'Cannot delete a published workflow. Unpublish it before deleting.',
+			);
 		});
 	});
 

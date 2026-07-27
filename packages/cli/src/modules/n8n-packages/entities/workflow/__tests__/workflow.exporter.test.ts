@@ -1,5 +1,6 @@
 import type { User, WorkflowEntity } from '@n8n/db';
 import { jsonParse } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -118,9 +119,7 @@ describe('WorkflowExporter', () => {
 		expect(finder.findExistingWorkflowIds).toHaveBeenCalledWith(['missing']);
 	});
 
-	it('writes one entry per finder-returned workflow, even if the request repeats an id', async () => {
-		// The finder is responsible for deduping; the exporter must iterate the
-		// finder's output (not the input ids) so a repeated id can't double-write.
+	it('writes one entry per requested workflow id after deduping repeated ids', async () => {
 		const workflow = makeWorkflow({ id: 'wf-repeated', name: 'Repeated' });
 		const { exporter } = makeExporter([workflow]);
 		const writer = new CapturingWriter();
@@ -137,6 +136,25 @@ describe('WorkflowExporter', () => {
 		expect(writer.files.filter((f) => f.path === 'workflows/repeated/workflow.json')).toHaveLength(
 			1,
 		);
+	});
+
+	it('preserves the requested workflow order even when the finder returns a different order', async () => {
+		const a = makeWorkflow({ id: 'wf-a', name: 'Alpha' });
+		const b = makeWorkflow({ id: 'wf-b', name: 'Beta' });
+		const { exporter } = makeExporter([b, a]);
+		const writer = new CapturingWriter();
+
+		const { entries } = await exporter.export({
+			user,
+			workflowIds: [a.id, b.id],
+			writer,
+		});
+
+		expect(entries.map(({ id }) => id)).toEqual([a.id, b.id]);
+		expect(writer.files.map(({ path }) => path)).toEqual([
+			'workflows/alpha/workflow.json',
+			'workflows/beta/workflow.json',
+		]);
 	});
 
 	it('exports AI Gateway-managed credentials with null ids', async () => {
@@ -292,6 +310,32 @@ describe('WorkflowExporter', () => {
 		expect(requirements.variables).toEqual<WorkflowVariableRequirement[]>([
 			{ workflowId: 'wf-a', variableName: 'VAR_FROM_wf-a' },
 			{ workflowId: 'wf-b', variableName: 'VAR_FROM_wf-b' },
+		]);
+	});
+
+	it('collects each workflow node list into requirements.nodeTypes', async () => {
+		const nodeA: INode = {
+			id: 'n1',
+			name: 'HTTP',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+		const a = makeWorkflow({ id: 'wf-a', nodes: [nodeA] });
+		const b = makeWorkflow({ id: 'wf-b' });
+		const { exporter } = makeExporter([a, b]);
+		const writer = new CapturingWriter();
+
+		const { requirements } = await exporter.export({
+			user,
+			workflowIds: [a.id, b.id],
+			writer,
+		});
+
+		expect(requirements.nodeTypes).toEqual([
+			{ workflowId: 'wf-a', nodes: [nodeA] },
+			{ workflowId: 'wf-b', nodes: [] },
 		]);
 	});
 });

@@ -157,6 +157,7 @@ export class JsTaskRunner extends TaskRunner {
 		this.requireResolver = createRequireResolver({
 			allowedBuiltInModules,
 			allowedExternalModules,
+			secureModules: this.mode === 'secure',
 		});
 
 		if (this.mode === 'secure') this.preventPrototypePollution(allowedExternalModules);

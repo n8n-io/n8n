@@ -17,6 +17,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'securitySettings:manage',
 	'saml:manage',
 	'oidc:manage',
+	'otel:manage',
 	'eventBusDestination:list',
 	'eventBusDestination:read',
 	'eventBusDestination:create',

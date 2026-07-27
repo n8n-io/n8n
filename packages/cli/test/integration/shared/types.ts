@@ -23,6 +23,7 @@ type EndpointGroup =
 	| 'ldap'
 	| 'saml'
 	| 'oidc'
+	| 'otel'
 	| 'sourceControl'
 	| 'eventBus'
 	| 'license'
@@ -53,6 +54,7 @@ type EndpointGroup =
 	| 'mcp'
 	| 'workflowDependencies'
 	| 'encryption-keys'
+	| 'workflow-reviews'
 	| 'test-webhooks';
 
 type ModuleName =
@@ -67,7 +69,8 @@ type ModuleName =
 	| 'ldap'
 	| 'redaction'
 	| 'source-control'
-	| 'token-exchange';
+	| 'token-exchange'
+	| 'workflow-reviews';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

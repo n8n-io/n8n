@@ -22,9 +22,7 @@ import {
 	PROJECT_ADMIN_ROLE_SLUG,
 	isAssignableProjectRoleSlug,
 } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
@@ -122,6 +120,12 @@ export class ProjectService {
 	private get agentKnowledgeService() {
 		return import('@/modules/agents/agent-knowledge.service.js').then(({ AgentKnowledgeService }) =>
 			Container.get(AgentKnowledgeService),
+		);
+	}
+
+	private get agentExecutionService() {
+		return import('@/modules/agents/agent-execution.service.js').then(({ AgentExecutionService }) =>
+			Container.get(AgentExecutionService),
 		);
 	}
 
@@ -234,9 +238,10 @@ export class ProjectService {
 
 		// 8. delete agent knowledge files before project removal cascades delete agent_files rows.
 		if (this.moduleRegistry.isActive('agents')) {
-			const [agentRepository, agentKnowledgeService] = await Promise.all([
+			const [agentRepository, agentKnowledgeService, agentExecutionService] = await Promise.all([
 				this.agentRepository,
 				this.agentKnowledgeService,
+				this.agentExecutionService,
 			]);
 			const agents = await agentRepository.findByProjectId(project.id);
 			for (const agent of agents) {
@@ -251,6 +256,7 @@ export class ProjectService {
 				}
 
 				await agentKnowledgeService.destroySandbox(project.id, agent.id);
+				await agentExecutionService.deleteExecutionLogsForAgent(agent.id);
 			}
 		}
 

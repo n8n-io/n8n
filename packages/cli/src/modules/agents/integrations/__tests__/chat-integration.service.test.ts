@@ -66,6 +66,20 @@ const slackIntegration: AgentIntegrationConfig = {
 	credentialId: 'cred-1',
 };
 
+const linearIntegration: AgentIntegrationConfig = {
+	type: 'linear',
+	credentialId: 'cred-2',
+};
+
+const telegramIntegration: AgentIntegrationConfig = {
+	type: 'telegram',
+	credentialId: 'cred-3',
+	settings: {
+		accessMode: 'public',
+		allowedUsers: [],
+	},
+};
+
 /** Configures a CredentialsService mock so `decryptCredentialForProject` finds `cred`. */
 function mockProjectCredential(
 	credentialsService: ReturnType<typeof mock<CredentialsService>>,
@@ -163,6 +177,24 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 		expect(chatSubscriptionStateService.deleteSubscriptionsForIntegration).toHaveBeenCalledWith(
 			'agent-1',
 			slackIntegration,
+		);
+	});
+
+	it('removes only the requested integration from a mixed channel list', async () => {
+		const agent = makeAgent({ activeVersionId: 'published-version-1' });
+
+		await service.syncToConfig(
+			agent,
+			[slackIntegration, linearIntegration, telegramIntegration],
+			[slackIntegration, telegramIntegration],
+		);
+
+		expect(disconnectSpy).toHaveBeenCalledTimes(1);
+		expect(disconnectSpy).toHaveBeenCalledWith('agent-1', linearIntegration);
+		expect(chatSubscriptionStateService.deleteSubscriptionsForIntegration).toHaveBeenCalledTimes(1);
+		expect(chatSubscriptionStateService.deleteSubscriptionsForIntegration).toHaveBeenCalledWith(
+			'agent-1',
+			linearIntegration,
 		);
 	});
 

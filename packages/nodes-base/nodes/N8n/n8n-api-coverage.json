@@ -5,6 +5,12 @@
 			"status": "covered",
 			"nodeOperation": "audit:generate"
 		},
+		"GET /settings/security-policy": {
+			"status": "gap"
+		},
+		"PUT /settings/security-policy": {
+			"status": "gap"
+		},
 		"GET /credentials": {
 			"status": "gap"
 		},
@@ -127,6 +133,12 @@
 			"status": "covered",
 			"nodeOperation": "workflow:deactivate"
 		},
+		"POST /workflows/{id}/publish": {
+			"status": "gap"
+		},
+		"POST /workflows/{id}/unpublish": {
+			"status": "gap"
+		},
 		"POST /workflows/{id}/archive": {
 			"status": "gap"
 		},
@@ -182,6 +194,9 @@
 			"status": "gap"
 		},
 		"GET /settings/sso/saml": {
+			"status": "gap"
+		},
+		"PUT /settings/sso/saml": {
 			"status": "gap"
 		},
 		"GET /settings/log-streaming/event-types": {

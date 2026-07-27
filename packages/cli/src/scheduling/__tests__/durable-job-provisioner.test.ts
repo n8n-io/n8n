@@ -73,7 +73,7 @@ describe('DurableJobProvisioner', () => {
 			created: [],
 		}));
 		const globalConfig = mock<GlobalConfig>({
-			scheduler: { materializationWindowSeconds: 60 },
+			scheduler: { materializationWindowSeconds: 60, maxAttempts: 5 },
 			generic: { timezone: 'UTC' },
 		});
 		provisioner = new DurableJobProvisioner(
@@ -113,6 +113,7 @@ describe('DurableJobProvisioner', () => {
 					intervalSeconds: null,
 					fireAt: null,
 					nextRunAt: CLOCK,
+					maxAttempts: 5,
 				},
 			]);
 			expect(summary.inserted).toEqual([{ id: 100, name: 'wf:node:0' }]);
@@ -370,6 +371,7 @@ describe('DurableJobProvisioner', () => {
 					intervalSeconds: null,
 					fireAt: null,
 					nextRunAt: CLOCK,
+					maxAttempts: 5,
 					...columns,
 				},
 			]);

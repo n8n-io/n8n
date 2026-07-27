@@ -9,7 +9,7 @@ import { waitingNodeTooltip } from '@/features/execution/executions/executions.u
 import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
 import { computed, inject, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
-import { PopOutWindowKey } from '@/app/constants';
+import { PopOutWindowKey } from '@n8n/composables/injectionKeys';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants/modals';
 import { useUIStore } from '@/app/stores/ui.store';
 import { isSubNodeLog } from '../logs.utils';

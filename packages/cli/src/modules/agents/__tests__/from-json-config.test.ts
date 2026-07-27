@@ -275,7 +275,7 @@ describe('buildFromJson()', () => {
 		const instructions = agent.snapshot.instructions ?? '';
 		expect(instructions).toBe('You are a test agent.');
 		expect(instructions).not.toContain('Extract decisions and action items.');
-		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(true);
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(false);
 		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
 	});
 
@@ -338,15 +338,6 @@ describe('buildFromJson()', () => {
 			content: '# Guide',
 			bytes: 7,
 			sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
-		});
-
-		const listSkills = agent.declaredTools.find((t) => t.name === 'list_skills');
-		const listOutput = (await listSkills!.handler?.({}, {})) as {
-			skills: Array<Record<string, unknown>>;
-		};
-		expect(listOutput?.skills[0]).toMatchObject({
-			name: 'Summarize notes',
-			allowedTools: ['load_workflow'],
 		});
 
 		await expect(loadSkill!.handler?.({ skillId: 'unused_skill' }, {})).resolves.toMatchObject({
@@ -1324,6 +1315,77 @@ describe('buildFromJson()', () => {
 			expect(buildMcpClient.mock.calls[0][0]).toMatchObject({ name: 'github' });
 			expect(buildMcpClient.mock.calls[1][0]).toMatchObject({ name: 'fs' });
 		});
+
+		it('skips a draft server with an empty url', async () => {
+			const buildMcpClient = vi.fn().mockImplementation(async () => ({ close: vi.fn() }) as never);
+			await buildFromJson(
+				makeConfig({
+					mcpServers: [
+						{ name: 'github', url: '', transport: 'streamableHttp', authentication: 'none' },
+					],
+				}),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					buildMcpClient,
+				},
+			);
+
+			expect(buildMcpClient).not.toHaveBeenCalled();
+		});
+
+		it('skips a draft server that requires a credential but was skipped', async () => {
+			const buildMcpClient = vi.fn().mockImplementation(async () => ({ close: vi.fn() }) as never);
+			await buildFromJson(
+				makeConfig({
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://api.example.test/mcp',
+							transport: 'streamableHttp',
+							authentication: 'bearerAuth',
+						},
+					],
+				}),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					buildMcpClient,
+				},
+			);
+
+			expect(buildMcpClient).not.toHaveBeenCalled();
+		});
+
+		it('connects a server that requires a credential once one is set', async () => {
+			const buildMcpClient = vi.fn().mockImplementation(async () => ({ close: vi.fn() }) as never);
+			await buildFromJson(
+				makeConfig({
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://api.example.test/mcp',
+							transport: 'streamableHttp',
+							authentication: 'bearerAuth',
+							credential: 'cred-1',
+						},
+					],
+				}),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					buildMcpClient,
+				},
+			);
+
+			expect(buildMcpClient).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	// -------------------------------------------------------------------------
@@ -1748,11 +1810,20 @@ describe('AgentJsonConfigSchema', () => {
 			).toThrow();
 		});
 
-		it('rejects names with invalid characters', () => {
+		it('preserves human-readable MCP server names', () => {
+			const parsed = AgentJsonConfigSchema.parse({
+				...base,
+				mcpServers: [{ name: 'Linear production (EU)', url: 'https://a.example.test/mcp' }],
+			});
+
+			expect(parsed.mcpServers?.[0].name).toBe('Linear production (EU)');
+		});
+
+		it('rejects whitespace-only MCP server names', () => {
 			expect(() =>
 				AgentJsonConfigSchema.parse({
 					...base,
-					mcpServers: [{ name: 'has spaces', url: 'https://a.example.test/mcp' }],
+					mcpServers: [{ name: '   ', url: 'https://a.example.test/mcp' }],
 				}),
 			).toThrow();
 		});

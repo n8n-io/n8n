@@ -138,6 +138,35 @@ describe('scheduler execution over the storage bindings', () => {
 		expect(recovered.errorMessage).toBe('Lease expired before completion');
 	});
 
+	it('honours maxAttempts: dead-letters once reclaims exhaust the configured limit', async () => {
+		const job = await createJob({ maxAttempts: 3 });
+		const past = new Date(Date.now() - 60_000);
+		await taskRepo.save(
+			taskRepo.create({
+				jobId: job.id,
+				taskType: TASK_TYPE,
+				payload: {},
+				scheduledFor: past,
+				runAt: past,
+				status: 'running',
+				claimedBy: 'main-dead',
+				leaseExpiresAt: new Date(Date.now() - 1000),
+				leaseEpoch: 1,
+				// Already reclaimed twice; this expired lease is the 3rd and last attempt.
+				attempts: 2,
+				maxAttempts: 3,
+			}),
+		);
+
+		const result = await scheduler.reap();
+
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 1 });
+		const failed = await taskRepo.findOneByOrFail({ jobId: job.id });
+		expect(failed.status).toBe('failed');
+		expect(failed.claimedBy).toBe('main-dead');
+		expect(failed.errorMessage).toBe('Lease expired before completion');
+	});
+
 	// Last on purpose: it stops the shared scheduler's executor.
 	it('releases claimed but unfired tasks on stop', async () => {
 		const job = await createJob();

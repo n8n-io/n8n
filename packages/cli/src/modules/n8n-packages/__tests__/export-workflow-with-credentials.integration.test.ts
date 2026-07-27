@@ -76,6 +76,7 @@ describe('workflow package export — with credentials', () => {
 			},
 		]);
 		expect(manifest.requirements).toEqual({
+			nodeTypes: expect.any(Array),
 			credentials: [
 				{
 					id: credential.id,
@@ -195,6 +196,7 @@ describe('workflow package export — with credentials', () => {
 
 		expect(manifest.credentials).toBeUndefined();
 		expect(manifest.requirements).toEqual({
+			nodeTypes: expect.any(Array),
 			credentials: [
 				{
 					id: 'does-not-exist',
@@ -241,6 +243,7 @@ describe('workflow package export — with credentials', () => {
 
 		expect(manifest.credentials).toBeUndefined();
 		expect(manifest.requirements).toEqual({
+			nodeTypes: expect.any(Array),
 			credentials: [
 				{
 					id: credential.id,

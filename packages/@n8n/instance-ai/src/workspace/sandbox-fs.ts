@@ -8,8 +8,10 @@
  * command fallback keeps setup compatible with command-only providers.
  */
 
+import { createAbortError, throwIfAborted } from '@n8n/agents';
 import {
 	runInSandbox as runInSharedSandbox,
+	type RunInSandboxOptions,
 	type SandboxCommandTarget,
 	type SandboxWorkspace as SharedSandboxWorkspace,
 } from '@n8n/agents/sandbox';
@@ -23,13 +25,19 @@ export interface SandboxWorkspace extends SharedSandboxWorkspace {
 		provider?: string;
 		basePath?: string;
 		init?: () => Promise<void>;
-		readFile?: (path: string, options?: { encoding?: BufferEncoding }) => Promise<string | Buffer>;
+		readFile?: (
+			path: string,
+			options?: { encoding?: BufferEncoding; abortSignal?: AbortSignal },
+		) => Promise<string | Buffer>;
 		writeFile: (
 			path: string,
 			content: string | Buffer,
-			options?: { recursive?: boolean },
+			options?: { recursive?: boolean; abortSignal?: AbortSignal },
 		) => Promise<void>;
-		mkdir: (path: string, options?: { recursive?: boolean }) => Promise<void>;
+		mkdir: (
+			path: string,
+			options?: { recursive?: boolean; abortSignal?: AbortSignal },
+		) => Promise<void>;
 	} & NonNullable<SharedSandboxWorkspace['filesystem']>;
 }
 
@@ -42,14 +50,26 @@ export interface SandboxIoRetryOptions {
 	logger?: Pick<Logger, 'warn'>;
 	resourceLabel?: string;
 	retryBackoffBaseMs?: number;
+	abortSignal?: AbortSignal;
 }
 
 function ioResourceLabel(options?: SandboxIoRetryOptions): string {
 	return options?.resourceLabel ?? 'Sandbox file';
 }
 
-async function sleep(ms: number): Promise<void> {
-	await new Promise((resolve) => setTimeout(resolve, ms));
+async function sleep(ms: number, abortSignal?: AbortSignal): Promise<void> {
+	throwIfAborted(abortSignal);
+	await new Promise<void>((resolve, reject) => {
+		const timer = setTimeout(() => {
+			abortSignal?.removeEventListener('abort', onAbort);
+			resolve();
+		}, ms);
+		const onAbort = () => {
+			clearTimeout(timer);
+			reject(createAbortError(abortSignal?.reason));
+		};
+		abortSignal?.addEventListener('abort', onAbort, { once: true });
+	});
 }
 
 // Daytona surfaces upstream gateway failures (e.g. Cloudflare 502/524) as errors with a numeric status.
@@ -66,6 +86,7 @@ export async function retryTransientSandboxIo<T>(
 ): Promise<T> {
 	const baseMs = options?.retryBackoffBaseMs ?? DEFAULT_SANDBOX_IO_RETRY_BACKOFF_BASE_MS;
 	for (let attempt = 1; ; attempt++) {
+		throwIfAborted(options?.abortSignal);
 		try {
 			return await op();
 		} catch (error) {
@@ -75,7 +96,10 @@ export async function retryTransientSandboxIo<T>(
 				attempt,
 				error: formatErrorForLog(error),
 			});
-			await sleep(Math.min(baseMs * 2 ** (attempt - 1), SANDBOX_IO_RETRY_BACKOFF_CAP_MS));
+			await sleep(
+				Math.min(baseMs * 2 ** (attempt - 1), SANDBOX_IO_RETRY_BACKOFF_CAP_MS),
+				options?.abortSignal,
+			);
 		}
 	}
 }
@@ -91,9 +115,9 @@ export async function retryTransientSandboxIo<T>(
 export async function runInSandbox(
 	workspace: SandboxCommandTarget,
 	command: string,
-	cwd?: string,
+	cwdOrOptions?: string | RunInSandboxOptions,
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
-	const result = await runInSharedSandbox(workspace, command, cwd);
+	const result = await runInSharedSandbox(workspace, command, cwdOrOptions);
 
 	const session = getTemplateTelemetrySession(workspace);
 	if (session) {
@@ -122,7 +146,9 @@ export async function writeFileViaSandbox(
 	await retryTransientSandboxIo(
 		async () => {
 			const runWriteCommand = async (command: string) => {
-				const result = await runInSandbox(workspace, command);
+				const result = await runInSandbox(workspace, command, {
+					abortSignal: options?.abortSignal,
+				});
 				if (result.exitCode !== 0) {
 					throw new Error(`Failed to write file ${filePath}: ${result.stderr}`);
 				}
@@ -173,7 +199,10 @@ export async function readFileViaSandbox(
 	options?: SandboxIoRetryOptions,
 ): Promise<string | null> {
 	const result = await retryTransientSandboxIo(
-		async () => await runInSandbox(workspace, `cat '${escapeSingleQuotes(filePath)}' 2>/dev/null`),
+		async () =>
+			await runInSandbox(workspace, `cat '${escapeSingleQuotes(filePath)}' 2>/dev/null`, {
+				abortSignal: options?.abortSignal,
+			}),
 		filePath,
 		options,
 	);

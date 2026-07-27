@@ -192,24 +192,3 @@ describe('extractAgentPreviewHandoffContext', () => {
 		expect(extractAgentPreviewHandoffContext(stored)).toBeUndefined();
 	});
 });
-
-describe('extractAgentPreviewHandoffContext', () => {
-	it('reconstructs the handoff context from the marker', () => {
-		const context = {
-			source: 'agent-preview' as const,
-			agentId: 'agent-1',
-			threadId: 'preview-thread-1',
-			executionId: 'exec-9',
-		};
-		expect(extractAgentPreviewHandoffContext(agentPreviewContextMarker(context))).toEqual(context);
-	});
-
-	it('returns undefined for a message without an agent-preview-context block', () => {
-		expect(extractAgentPreviewHandoffContext('Just a normal message')).toBeUndefined();
-	});
-
-	it('returns undefined when the marker JSON is invalid', () => {
-		const stored = '<agent-preview-context>\nnot json\n\nprose\n</agent-preview-context>';
-		expect(extractAgentPreviewHandoffContext(stored)).toBeUndefined();
-	});
-});

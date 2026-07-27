@@ -76,6 +76,7 @@ When no search provider is available, the `web-search` action is disabled. `fetc
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES` | number | `15` | Minutes an idle Daytona sandbox waits before being stopped. `0` disables auto-stop. |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES` | number | `60` (1 hour) | Minutes a stopped Daytona sandbox waits before being archived to cold storage. `0` uses Daytona's maximum interval. |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES` | number | `10080` (7 days) | Minutes a stopped Daytona sandbox waits before being deleted. Negative disables auto-delete; `0` deletes on stop. Ignored when `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` is true. |
+| `N8N_INSTANCE_AI_SANDBOX_LINK_SDK` | boolean | `false` | Local-dev only. When `1` or `true`, pack the workspace `n8n-workflow` and `@n8n/workflow-sdk` tarballs from the host monorepo into each sandbox after `npm install`, overriding the registry copies. Use when master is ahead of npm (e.g. unreleased exports such as `normalizeNodeShape`). Requires `pnpm build` in `packages/workflow` and `packages/@n8n/workflow-sdk`. Start a new AI thread after changing this — existing sandboxes keep their initialized `node_modules`. |
 
 When sandbox is enabled, Instance AI writes workflow source files in the runtime
 workspace and `build-workflow` runs TypeScript sources through the sandbox
@@ -167,13 +168,15 @@ The event bus transport is selected automatically:
 - **Queue mode**: Redis Pub/Sub — uses n8n's existing Redis connection
 
 Event persistence is controlled by `N8N_INSTANCE_AI_DURABLE_LOG` (default
-`false`). Off, events live only in a bounded in-memory buffer per thread
-(500 events / 2 MB, FIFO-evicted; ids reset on restart, so replay does not
-survive a restart). On, coalesced step-level facts (completed text/reasoning
-blocks, tool calls and results, run lifecycle) are appended to the
-`instance_ai_events` table and replay reads the database; token deltas are
-never persisted. Rows cascade-delete with their thread
-(`N8N_INSTANCE_AI_THREAD_TTL_DAYS`).
+`true` since Gate A of the durable-log rollout; pre-existing runs are
+backfilled by migration). On, coalesced step-level facts (completed
+text/reasoning blocks, tool calls and results, run lifecycle) are appended to
+the `instance_ai_events` table and replay reads the database; token deltas
+are never persisted. Rows cascade-delete with their thread
+(`N8N_INSTANCE_AI_THREAD_TTL_DAYS`). Setting it to `false` is the rollback
+switch until the legacy paths sunset at Gate B: events then live only in a
+bounded in-memory buffer per thread (500 events / 2 MB, FIFO-evicted; ids
+reset on restart, so replay does not survive a restart).
 
 Runtime behavior:
 - One active run per thread. Additional `POST /instance-ai/chat/:threadId`

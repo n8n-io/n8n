@@ -2,20 +2,28 @@ import { EVAL_COLLECTIONS_FLAG } from '@n8n/api-types';
 import { computed } from 'vue';
 
 import { usePostHog } from '@/app/stores/posthog.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 /**
- * Frontend gate for the eval-collections feature surface. Mirrors the
- * `084_eval_collections` PostHog rollout flag that the backend consults to
- * 404 the controller routes. The env override
- * `N8N_EVAL_COLLECTIONS_ENABLED=true` flips PostHog to "enabled for every
- * user on the running main" — useful for local + QA — without round-tripping
- * the cohort layer.
+ * Frontend gate for the eval-collections feature surface, matching the
+ * `084_eval_collections` flag the backend consults to 404 the controller
+ * routes. It combines two independent signals:
  *
- * Coerces PostHog's `boolean | undefined` return to a strict boolean so
- * `v-if="isEvalCollectionsEnabled"` is never undefined-flickering during
- * the initial flag-fetch frame.
+ *  - `settings.evaluation.collectionsEnabled` — the backend-provided operator
+ *    override (`N8N_EVAL_COLLECTIONS_ENABLED`). Delivered in the settings
+ *    payload, so it works even when the in-browser PostHog client never
+ *    initializes (telemetry off), where the flag would otherwise stay false.
+ *  - the PostHog client flag — carries per-cohort rollout when telemetry is on.
+ *
+ * Coerces to a strict boolean so `v-if="isEvalCollectionsEnabled"` never
+ * undefined-flickers during the initial flag-fetch frame.
  */
 export const useEvalCollectionsFlag = () => {
 	const postHog = usePostHog();
-	return computed(() => postHog.isFeatureEnabled(EVAL_COLLECTIONS_FLAG) === true);
+	const settingsStore = useSettingsStore();
+	return computed(
+		() =>
+			settingsStore.settings.evaluation?.collectionsEnabled === true ||
+			postHog.isFeatureEnabled(EVAL_COLLECTIONS_FLAG) === true,
+	);
 };

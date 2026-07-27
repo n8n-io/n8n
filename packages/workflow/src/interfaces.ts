@@ -172,6 +172,7 @@ export interface ICredentialsDecrypted<T extends object = ICredentialDataDecrypt
 	sharedWithProjects?: ProjectSharingData[];
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	usageScope?: 'project' | 'instance';
 }
 
 export interface ICredentialsEncrypted {
@@ -1191,6 +1192,14 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getInputSourceData(inputIndex?: number, connectionType?: NodeConnectionType): ISourceData;
 	getExecutionCancelSignal(): AbortSignal | undefined;
 	onExecutionCancellation(handler: () => unknown): void;
+	/**
+	 * Registers a handler run when the execution ends (success, failure, or
+	 * cancellation) — not when it pauses into the waiting state. May fire more
+	 * than once, so handlers must be idempotent; errors they throw are caught
+	 * and logged. Unavailable in contexts without lifecycle hooks, so callers
+	 * need their own fallback cleanup.
+	 */
+	onExecutionFinish?(handler: () => unknown): void;
 	logAiEvent(eventName: AiEvent, msg?: string): void;
 };
 
@@ -1322,6 +1331,8 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 		getExecutionCancelSignal(): AbortSignal | undefined;
 		onExecutionCancellation(handler: () => unknown): void;
+		/** See {@link BaseExecutionFunctions.onExecutionFinish} */
+		onExecutionFinish?(handler: () => unknown): void;
 		logAiEvent(eventName: AiEvent, msg?: string): void;
 		addExecutionHints(...hints: NodeExecutionHint[]): void;
 		cloneWith(replacements: {
@@ -1832,6 +1843,9 @@ export interface ResourceMapperTypeOptionsBase {
 	// reconciled against the source on node open. A complete-but-drifted schema
 	// still shows the stale-data warning, leaving the refresh up to the user.
 	refreshIncompleteSchemaOnOpen?: boolean;
+	// When true, a complete-but-drifted cached schema is reconciled against the
+	// live source on node open / tab focus (e.g. subworkflow trigger inputs).
+	refreshStaleSchemaOnOpen?: boolean;
 }
 
 // Enforce at least one of resourceMapperMethod or localResourceMapperMethod
@@ -1884,6 +1898,7 @@ export type DisplayCondition =
 export type NodeFeatures = Record<string, boolean>;
 export type FeatureCondition = { '@version': Array<number | DisplayCondition> };
 export type NodeFeaturesDefinition = Record<string, FeatureCondition>;
+export type DeploymentCondition = 'cloud' | 'hosted';
 
 export interface IDisplayOptions {
 	hide?: {
@@ -1896,6 +1911,11 @@ export interface IDisplayOptions {
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};
 
+	showOnDeployment?: DeploymentCondition;
+
+	/**
+	 * @deprecated Use showOnDeployment instead
+	 */
 	hideOnCloud?: boolean;
 }
 export interface ICredentialsDisplayOptions {
@@ -1907,6 +1927,11 @@ export interface ICredentialsDisplayOptions {
 		[key: string]: NodeParameterValue[] | undefined;
 	};
 
+	showOnDeployment?: DeploymentCondition;
+
+	/**
+	 * @deprecated Use showOnDeployment instead
+	 */
 	hideOnCloud?: boolean;
 }
 
@@ -2180,6 +2205,8 @@ export interface ExecuteAgentWorkflowContext {
 	workflowName?: string;
 	/** Name of the node that invoked the agent */
 	callingNodeName: string;
+	/** ID of the node that invoked the agent */
+	callingNodeId?: string;
 	/** The calling node's input items, already scoped per {@link ExecuteAgentInfo.inputDataScope}. */
 	inputData?: INodeExecutionData[];
 	/** Which slice {@link inputData} represents. */
@@ -3297,6 +3324,7 @@ export interface IWorkflowGroup {
 	id: string;
 	name: string;
 	nodeIds: string[];
+	description?: string;
 }
 
 export interface IWorkflowBase {

@@ -6,6 +6,7 @@ import {
 	type INodeParameters,
 	type INodeProperties,
 	type NodeParameterValue,
+	type DeploymentCondition,
 	NodeHelpers,
 	deepCopy,
 } from 'n8n-workflow';
@@ -32,6 +33,7 @@ import {
 } from '@/app/utils/nodeTypesUtils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { reconcileNodeFromAIKeys } from '@/features/ndv/parameters/utils/fromAIOverride.utils';
 
 const hasPublicDisplayCondition = (parameter: INodeProperties, value: boolean) =>
@@ -59,6 +61,7 @@ export function useNodeSettingsParameters() {
 	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
+	const { check: envFeatureFlag } = useEnvFeatureFlag();
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
 	const workflowHelpers = useWorkflowHelpers();
@@ -200,6 +203,14 @@ export function useNodeSettingsParameters() {
 			return false;
 		}
 
+		if (
+			displayKey === 'displayOptions' &&
+			typeof parameter.envFeatureFlag === 'string' &&
+			!envFeatureFlag.value(parameter.envFeatureFlag)
+		) {
+			return false;
+		}
+
 		// Cache node type lookup - used multiple times
 		const nodeType = node ? nodeTypesStore.getNodeType(node.type, node.typeVersion) : null;
 		const nodeTypeValue = node?.type ?? '';
@@ -221,6 +232,16 @@ export function useNodeSettingsParameters() {
 			if (hasPublicDisplayCondition(effectiveParameter, false)) {
 				effectiveParameter = stripPublicDisplayCondition(effectiveParameter);
 			}
+		}
+
+		const deployment: DeploymentCondition = settingsStore.isCloudDeployment ? 'cloud' : 'hosted';
+
+		if (
+			displayKey === 'displayOptions' &&
+			effectiveParameter.displayOptions?.showOnDeployment &&
+			effectiveParameter.displayOptions.showOnDeployment !== deployment
+		) {
+			return false;
 		}
 
 		// Fast path: hide parameters explicitly marked as cloud-only on cloud deployments

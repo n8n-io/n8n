@@ -418,7 +418,7 @@ describe('AiGatewayService', () => {
 					userId: undefined,
 					projectId: 'project-123',
 				}),
-			).rejects.toThrow('Failed to resolve user for AI Gateway attribution.');
+			).rejects.toThrow('Failed to resolve user for n8n credits attribution.');
 		});
 
 		it('embeds executionId and workflowId in gateway URL when both are provided', async () => {

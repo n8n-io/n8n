@@ -1936,15 +1936,17 @@ describe('createInstanceAiTraceContext', () => {
 			handler: vi.fn(),
 		};
 
-		const wrappedTools = tracing!.wrapTools(
-			createToolRegistry([
-				['templates', regularTool as never],
-				['workspace_execute_command', workspaceTool as never],
-			]),
-		);
+		const inputRegistry = createToolRegistry([
+			['templates', regularTool as never],
+			['workspace_execute_command', workspaceTool as never],
+		]);
 
-		expect(wrappedTools.get('templates')).toBe(regularTool);
-		expect(wrappedTools.get('workspace_execute_command')).toBe(workspaceTool);
+		const wrappedTools = tracing!.wrapTools(inputRegistry);
+
+		expect(wrappedTools.get('templates')).toBe(inputRegistry.get('templates'));
+		expect(wrappedTools.get('workspace_execute_command')).toBe(
+			inputRegistry.get('workspace_execute_command'),
+		);
 	});
 
 	it('keeps ad-hoc child spans rooted under the active sub-agent run', async () => {

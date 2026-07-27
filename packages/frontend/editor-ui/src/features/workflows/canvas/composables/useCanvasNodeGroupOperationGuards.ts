@@ -16,7 +16,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useHistoryStore } from '@/app/stores/history.store';
-import { RemoveNodeGroupCommand } from '@/app/models/history';
+import { deleteGroupWithHistory } from '@/features/workflows/canvas/nodeGroups.utils';
 import { useCanvasNodeGroupTelemetry } from './useCanvasNodeGroupTelemetry';
 
 type ConnectionChangeAction = 'add' | 'remove';
@@ -190,9 +190,7 @@ export function useCanvasNodeGroupOperationGuards() {
 				onClick: (event: MouseEvent) => {
 					event.preventDefault();
 					event.stopPropagation();
-					const snapshot = { ...group, nodeIds: [...group.nodeIds] };
-					workflowDocumentStore.value.deleteGroup(group.id);
-					historyStore.pushCommandToUndo(new RemoveNodeGroupCommand(snapshot, Date.now()));
+					deleteGroupWithHistory(group, workflowDocumentStore.value, historyStore);
 					groupTelemetry.trackUngrouped(group, 'update-blocked-toast');
 					notification?.close();
 				},

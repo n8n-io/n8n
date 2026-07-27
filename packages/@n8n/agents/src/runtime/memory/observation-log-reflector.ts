@@ -1,6 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 
 import { uniqueStrings } from './memory-lifecycle';
+import { redactText } from '../../sdk/guardrails';
 import type { AgentExecutionCounter } from '../../types/sdk/agent';
 import type {
 	BuiltObservationLogStore,
@@ -188,10 +189,14 @@ export async function runObservationLogReflector(
 		executionCounter: opts.executionCounter,
 		telemetry: opts.telemetry,
 	});
-	const reflection = normalizeObservationLogReflection(
+	const normalized = normalizeObservationLogReflection(
 		activeObservationLog,
 		withCreatedAt(parseObservationLogReflectionJson(output), now),
 	);
+	const reflection = {
+		...normalized,
+		merge: normalized.merge.map((merge) => ({ ...merge, text: redactText(merge.text).text })),
+	};
 	const result = await memory.applyObservationLogReflection({ observationScopeId }, reflection);
 
 	const remainingTokenCount = countObservationTokens(

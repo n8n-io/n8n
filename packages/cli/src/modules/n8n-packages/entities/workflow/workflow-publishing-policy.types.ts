@@ -23,7 +23,7 @@ export type WorkflowPublishingOutcomeState =
 	| 'blocked'
 	| 'failed';
 
-export type WorkflowPublishingBlockedReason = 'stub-credential';
+export type WorkflowPublishingBlockedReason = 'stub-credential' | 'missing-node-type';
 
 /** Result of applying a publishing policy to one imported workflow. */
 export interface WorkflowPublishingOutcome {

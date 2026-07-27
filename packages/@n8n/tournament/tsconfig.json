@@ -22,7 +22,7 @@
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"types": ["node", "vitest/globals", "vite/client"],
 		"paths": {
-			"esprima-next": ["./node_modules/esprima-next/dist/esm/esprima.d.ts"]
+			"esprima-next": ["./node_modules/esprima-next/dist/esm/esprima"]
 		}
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"],

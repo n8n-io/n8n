@@ -1,5 +1,6 @@
 <script setup lang="ts" generic="T = string, D = never">
 import {
+	DropdownMenuCheckboxItem,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuSub,
@@ -23,10 +24,18 @@ import DropdownMenuSearchableContent from './DropdownMenuSearchableContent.vue';
 defineOptions({ name: 'N8nDropdownMenuItem', inheritAttrs: false });
 
 const props = withDefaults(
-	defineProps<DropdownMenuItemProps<T, D> & { htmlId?: string; disablePointerFocus?: boolean }>(),
+	defineProps<
+		DropdownMenuItemProps<T, D> & {
+			htmlId?: string;
+			disablePointerFocus?: boolean;
+			closeOnSelect?: boolean;
+		}
+	>(),
 	{
 		loadingItemCount: 3,
 		disablePointerFocus: false,
+		checkbox: false,
+		closeOnSelect: true,
 	},
 );
 defineSlots<DropdownMenuItemSlots<T, D>>();
@@ -42,7 +51,6 @@ const $style = useCssModule();
 const portalTarget = inject(DropdownMenuPortalTargetKey, ref(undefined));
 
 const internalSubMenuOpen = ref(false);
-const subContentRef = ref<InstanceType<typeof DropdownMenuSubContent> | null>(null);
 const childrenContainerRef = ref<HTMLElement | null>(null);
 const subContentMaxHeight = ref<string>();
 
@@ -89,8 +97,9 @@ const handleSelect = (value: T) => {
 	emit('select', value);
 };
 
-const handleItemSelect = () => {
+const handleItemSelect = (event: Event) => {
 	if (!props.disabled && !hasSubMenu.value) {
+		if (!props.closeOnSelect) event.preventDefault();
 		emit('select', props.id);
 	}
 };
@@ -221,7 +230,6 @@ onBeforeUnmount(() => {
 
 			<DropdownMenuPortal v-bind="portalTarget ? { to: portalTarget } : {}">
 				<DropdownMenuSubContent
-					ref="subContentRef"
 					:class="$style['sub-content']"
 					:style="subContentMaxHeight ? { maxHeight: subContentMaxHeight } : undefined"
 					:side-offset="1"
@@ -323,6 +331,43 @@ onBeforeUnmount(() => {
 			</DropdownMenuPortal>
 		</DropdownMenuSub>
 
+		<!-- Checkbox item without children -->
+		<DropdownMenuCheckboxItem
+			v-else-if="checkbox"
+			:id="htmlId"
+			:model-value="checked"
+			:aria-selected="highlighted || undefined"
+			@pointermove.capture="handlePointerMove"
+			:disabled="disabled"
+			:data-test-id="testId"
+			:class="[$style.item, props.class, { 'is-disabled': !!disabled }]"
+			@select="handleItemSelect"
+		>
+			<slot name="item-leading" :item="props" :ui="leadingProps">
+				<Icon
+					v-if="icon?.type === 'icon'"
+					:icon="icon.value"
+					:class="[$style['item-leading'], $style.icon]"
+					:color="disabled ? 'text-xlight' : 'text-light'"
+					size="large"
+				/>
+				<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
+					{{ icon.value }}
+				</span>
+			</slot>
+			<slot name="item-label" :item="props" :ui="labelProps">
+				<N8nText
+					:class="$style['item-label']"
+					:title="titleAttr"
+					size="medium"
+					:color="disabled ? 'text-xlight' : 'text-dark'"
+				>
+					{{ label }}
+				</N8nText>
+			</slot>
+			<slot name="item-trailing" :item="props" :ui="trailingProps" />
+		</DropdownMenuCheckboxItem>
+
 		<!-- Regular item without children -->
 		<DropdownMenuItem
 			v-else
@@ -369,6 +414,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style module lang="scss">
+@use '../../css/common/var';
+
 .wrapper {
 	display: contents;
 }
@@ -452,7 +499,7 @@ onBeforeUnmount(() => {
 	border-radius: var(--radius--xs);
 	box-shadow: var(--shadow--md), var(--shadow--outline);
 	background-color: var(--background--surface);
-	z-index: 999999;
+	z-index: var.$index-popper;
 	width: fit-content;
 	min-width: calc(var(--n8n--dropdown-menu-width) / 4);
 	max-width: var(--n8n--dropdown-menu-width);
