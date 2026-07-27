@@ -1406,6 +1406,7 @@
 	"agentSessions.origin.agent": "Agent",
 	"agentSessions.origin.subAgent": "Sub-agent",
 	"agentSessions.goToParentRun": "Go to parent run",
+	"agentSessions.viewTrace": "View session trace",
 	"agentSessions.actions": "Actions",
 	"agentSessions.empty": "No agent sessions",
 	"agentSessions.loadMore": "Load more",
