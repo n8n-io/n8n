@@ -9,10 +9,9 @@ on:
       # Trigger if:
       # - any of the public API files change
       - 'packages/cli/src/public-api/**/*.{css,yaml,yml}'
-      # - the OpenAPI doc generator source changes (API-39: generates some paths/schemas from
-      #   @n8n/api-types Zod DTOs instead of hand-written YAML)
+      # - the OpenAPI doc generator source changes
       - 'packages/cli/src/public-api/v1/openapi-gen/**/*.ts'
-      # - a Zod DTO/schema the generator reads from changes
+      # - a Zod DTO/schema the OpenAPI doc generator reads from changes
       - 'packages/@n8n/api-types/src/dto/**/*.ts'
       - 'packages/@n8n/api-types/src/schemas/**/*.ts'
       # - the build orchestration script that runs the generator changes
@@ -41,12 +40,6 @@ jobs:
       - name: Setup Node.js, install dependencies and build the Public API schema
         uses: ./.github/actions/setup-nodejs
         with:
-          # API-39: the schema is no longer a plain YAML bundle — cli's `build` script runs
-          # `build:data`, which runs the OpenAPI doc generator (packages/cli/src/public-api/v1/
-          # openapi-gen) and needs its own compiled dist output to exist first. So a full build of
-          # n8n (packages/cli) + its dependency graph replaces the previous no-op build + standalone
-          # `build:data` step. Scoped to `n8n...` rather than a full `pnpm build` since this
-          # workflow only needs the Public API schema.
           build-command: 'pnpm --filter n8n... build'
 
       - name: Verify OpenAPI schema exists
