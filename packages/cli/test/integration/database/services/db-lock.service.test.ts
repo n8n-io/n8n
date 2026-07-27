@@ -1,9 +1,16 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { DbConnectionOptions, DbLock, DbLockService } from '@n8n/db';
+import {
+	CredentialsRepository,
+	DbConnectionOptions,
+	DbLock,
+	DbLockService,
+	SettingsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { OperationalError, sleep } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 
 let dbLockService: DbLockService;
 let isPostgres: boolean;
@@ -60,6 +67,82 @@ describe('DbLockService', () => {
 					throw new Error('rollback me');
 				}),
 			).rejects.toThrow('rollback me');
+		});
+
+		it('should roll back credential writes when the settings write fails', async () => {
+			const credentialsRepository = Container.get(CredentialsRepository);
+			const settingsRepository = Container.get(SettingsRepository);
+			const oldCredential = await credentialsRepository.save(
+				credentialsRepository.create({
+					id: randomUUID(),
+					name: 'Old provider connection',
+					type: 'openAiApi',
+					data: 'old-encrypted',
+					usageScope: 'instance',
+				}),
+			);
+			const newCredentialId = randomUUID();
+			const settingsKey = `test.atomic-settings.${randomUUID()}`;
+
+			await expect(
+				dbLockService.withLockContext(DbLock.TEST, async (ctx) => {
+					await credentialsRepository.saveInstanceCredential(
+						credentialsRepository.create({
+							id: newCredentialId,
+							name: 'Atomic provider connection',
+							type: 'openAiApi',
+							data: 'encrypted',
+							usageScope: 'instance',
+						}),
+						ctx,
+					);
+					await credentialsRepository.deleteInstanceCredentialIfUnassigned(oldCredential.id, ctx);
+					await settingsRepository.upsertByKey(settingsKey, '{}', false, ctx);
+					throw new Error('rollback both');
+				}),
+			).rejects.toThrow('rollback both');
+
+			expect(await credentialsRepository.findOneBy({ id: oldCredential.id })).not.toBeNull();
+			expect(await credentialsRepository.findOneBy({ id: newCredentialId })).toBeNull();
+			expect(await settingsRepository.findByKey(settingsKey)).toBeNull();
+		});
+
+		it('should roll back an in-place credential update when the settings write fails', async () => {
+			const credentialsRepository = Container.get(CredentialsRepository);
+			const settingsRepository = Container.get(SettingsRepository);
+			const credential = await credentialsRepository.save(
+				credentialsRepository.create({
+					id: randomUUID(),
+					name: 'Original provider connection',
+					type: 'openAiApi',
+					data: 'old-encrypted',
+					usageScope: 'instance',
+				}),
+			);
+			const settingsKey = `test.atomic-settings.${randomUUID()}`;
+
+			await expect(
+				dbLockService.withLockContext(DbLock.TEST, async (ctx) => {
+					await credentialsRepository.updateInstanceCredential(
+						credential.id,
+						{
+							id: credential.id,
+							name: 'Updated provider connection',
+							type: credential.type,
+							data: 'new-encrypted',
+						},
+						ctx,
+					);
+					await settingsRepository.upsertByKey(settingsKey, '{}', false, ctx);
+					throw new Error('rollback both');
+				}),
+			).rejects.toThrow('rollback both');
+
+			expect(await credentialsRepository.findOneByOrFail({ id: credential.id })).toMatchObject({
+				name: 'Original provider connection',
+				data: 'old-encrypted',
+			});
+			expect(await settingsRepository.findByKey(settingsKey)).toBeNull();
 		});
 	});
 

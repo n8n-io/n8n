@@ -709,11 +709,6 @@ export class AgentKnowledgeSandboxService {
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
-		if (agent.activeVersionId === null) {
-			throw new OperationalError(
-				'Knowledge base is only available for published agents. Publish the agent first.',
-			);
-		}
 
 		const { Daytona } = loadDaytona();
 		const connection = await this.resolveDaytonaConnection(projectId);

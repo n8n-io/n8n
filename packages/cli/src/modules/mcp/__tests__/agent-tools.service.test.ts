@@ -783,6 +783,7 @@ describe('McpAgentToolsService', () => {
 				'agent-1',
 				'project-1',
 				user,
+				'builder',
 				undefined,
 			);
 			expect(result.structuredContent).toEqual({
@@ -807,6 +808,7 @@ describe('McpAgentToolsService', () => {
 				'agent-1',
 				'project-1',
 				user,
+				'builder',
 				'v1',
 			);
 			expect(result.structuredContent).toMatchObject({
@@ -870,7 +872,12 @@ describe('McpAgentToolsService', () => {
 
 			const result = await callTool('unpublish_agent', { agentId: 'agent-1' });
 
-			expect(agentPublishService.unpublishAgent).toHaveBeenCalledWith('agent-1', 'project-1');
+			expect(agentPublishService.unpublishAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				user,
+				'builder',
+			);
 			expect(result.structuredContent).toEqual({
 				ok: true,
 				agentId: 'agent-1',
@@ -1276,8 +1283,9 @@ describe('McpAgentToolsService', () => {
 				'agent-1',
 				'project-1',
 				user,
+				'channel_connect',
 				undefined,
-				{ syncIntegrations: false },
+				{ syncIntegrations: false, ignoreDraftIntegrations: true },
 			);
 			expect(chatIntegrationService.connect).toHaveBeenCalledWith(
 				'agent-1',

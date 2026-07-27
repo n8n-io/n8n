@@ -219,6 +219,7 @@ export class ExecuteWorkflow implements INodeType {
 						multiKeyMatch: false,
 						supportAutoMap: false,
 						showTypeConversionOptions: true,
+						refreshStaleSchemaOnOpen: true,
 					},
 				},
 				displayOptions: {

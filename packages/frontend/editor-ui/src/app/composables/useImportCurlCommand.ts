@@ -400,12 +400,12 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 	}
 
 	if (!Object.keys(httpNodeParameters.options?.redirect.redirect).length) {
-		// @ts-ignore
+		// @ts-expect-error key is not optional in type
 		delete httpNodeParameters.options.redirect;
 	}
 
 	if (!Object.keys(httpNodeParameters.options.response.response).length) {
-		// @ts-ignore
+		// @ts-expect-error key is not optional in type
 		delete httpNodeParameters.options.response;
 	}
 

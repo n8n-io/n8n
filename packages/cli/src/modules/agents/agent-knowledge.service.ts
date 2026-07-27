@@ -24,7 +24,6 @@ import {
 } from './agent-knowledge-storage';
 import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
 import type { AgentFile } from './entities/agent-file.entity';
-import type { Agent } from './entities/agent.entity';
 import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
@@ -63,8 +62,7 @@ export class AgentKnowledgeService {
 		files: Express.Multer.File[],
 	): Promise<AgentFileDto[]> {
 		try {
-			const agent = await this.ensureAgentBelongsToProject(agentId, projectId);
-			this.assertAgentPublished(agent);
+			await this.ensureAgentBelongsToProject(agentId, projectId);
 			if (this.binaryDataConfig.mode === 'default') {
 				throw new OperationalError(
 					'Agent knowledge base requires a persisted binary data storage mode',
@@ -99,8 +97,7 @@ export class AgentKnowledgeService {
 	}
 
 	async warmSandbox(agentId: string, projectId: string): Promise<void> {
-		const agent = await this.ensureAgentBelongsToProject(agentId, projectId);
-		this.assertAgentPublished(agent);
+		await this.ensureAgentBelongsToProject(agentId, projectId);
 		await this.agentKnowledgeSandboxService.warmSandbox(projectId, agentId);
 	}
 
@@ -305,14 +302,6 @@ export class AgentKnowledgeService {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 		return agent;
-	}
-
-	private assertAgentPublished(agent: Agent): void {
-		if (agent.activeVersionId === null) {
-			throw new BadRequestError(
-				'Knowledge base is only available for published agents. Publish the agent first.',
-			);
-		}
 	}
 
 	private async cleanupUploadTempFiles(files: Express.Multer.File[]) {

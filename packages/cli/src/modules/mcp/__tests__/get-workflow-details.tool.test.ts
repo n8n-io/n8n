@@ -1,6 +1,8 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User, type WorkflowEntity } from '@n8n/db';
+import type { INodeTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -18,6 +20,7 @@ vi.mock('../tools/webhook-utils', () => ({
 describe('get-workflow-details MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	const baseWebhookUrl = 'https://example.test';
+	const nodeTypes = mock<INodeTypes>();
 
 	describe('smoke tests', () => {
 		test('it creates tool correctly', () => {
@@ -41,6 +44,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				nodeTypes,
 				endpoints,
 				telemetry,
 				roleService,
@@ -79,6 +83,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				nodeTypes,
 				endpoints,
 				roleService,
 				projectService,
@@ -111,6 +116,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				nodeTypes,
 				endpoints,
 				roleService,
 				projectService,
@@ -141,6 +147,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				nodeTypes,
 				endpoints,
 				roleService,
 				projectService,
@@ -170,6 +177,7 @@ describe('get-workflow-details MCP tool', () => {
 					baseWebhookUrl,
 					wfFinder,
 					credentialsService,
+					nodeTypes,
 					endpoints,
 					roleService,
 					projectService,
@@ -191,6 +199,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				nodeTypes,
 				endpoints,
 				roleService,
 				projectService,
