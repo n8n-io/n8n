@@ -566,21 +566,68 @@ describe('resolve_llm tool', () => {
 	});
 
 	describe('n8n Connect managed credentials', () => {
-		it('defaults to n8n Connect when there is no own credential and the gateway serves the provider', async () => {
+		it('defaults to n8n Connect with the provider default when the gateway allowlists it', async () => {
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
+				{ name: 'Claude Haiku 4.5', value: 'claude-haiku-4-5' },
+			]);
 			const tool = buildResolveLlmTool({
 				credentialProvider: makeProvider([]),
-				modelLookup: makeModelLookup(),
+				modelLookup,
 				isProviderServedByGateway: async (provider) => provider === 'anthropic',
 				freeCredits: makeFreeCredits(),
 			});
 			const result = await tool.handler!({ provider: 'anthropic' }, {});
 
+			// Default model resolved against the gateway allowlist, not blindly from the static default.
 			expect(result).toEqual({
 				ok: true,
 				provider: 'anthropic',
 				model: 'claude-sonnet-4-6',
 				credentialId: AI_GATEWAY_MANAGED_TAG,
 				credentialName: 'n8n Connect',
+			});
+			expect(modelLookup.list).toHaveBeenCalledWith(
+				AI_GATEWAY_MANAGED_TAG,
+				'anthropicApi',
+				'anthropic',
+			);
+		});
+
+		it('falls back to the first allowlisted model when the gateway does not serve the static default', async () => {
+			// Gateway serves the provider but not the provider's static default model.
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'Claude Haiku 4.5', value: 'claude-haiku-4-5' },
+			]);
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([]),
+				modelLookup,
+				isProviderServedByGateway: async (provider) => provider === 'anthropic',
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ provider: 'anthropic' }, {});
+
+			expect(result).toMatchObject({
+				ok: true,
+				provider: 'anthropic',
+				model: 'claude-haiku-4-5',
+				credentialId: AI_GATEWAY_MANAGED_TAG,
+			});
+		});
+
+		it('does not auto-resolve to an un-allowlisted default: reports unknown_model when the gateway lists nothing', async () => {
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([]),
+				modelLookup: makeModelLookup(async () => []),
+				isProviderServedByGateway: async (provider) => provider === 'anthropic',
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ provider: 'anthropic' }, {});
+
+			expect(result).toMatchObject({
+				ok: false,
+				reason: 'unknown_model',
+				provider: 'anthropic',
 			});
 		});
 

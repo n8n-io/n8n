@@ -712,6 +712,77 @@ describe('N8nDropdownMenu', () => {
 				expect(searchInput).toHaveAttribute('placeholder', 'Search items...');
 			});
 		});
+
+		it('should keep the dropdown open when a keepOpen item is selected with the keyboard', async () => {
+			const items: DropdownMenuItemProps[] = [{ id: 'toggle', label: 'Toggle', keepOpen: true }];
+
+			const wrapper = render(DropdownMenu, {
+				props: { items, modelValue: true, searchable: true },
+			});
+
+			await waitFor(() => {
+				expect(document.querySelector('input[type="text"]')).toBeInTheDocument();
+			});
+
+			(document.querySelector('input[type="text"]') as HTMLElement).focus();
+			await userEvent.keyboard('{ArrowDown}'); // highlight the item
+			await userEvent.keyboard('{Enter}'); // select via keyboard
+
+			await waitFor(() => {
+				expect(wrapper.emitted('select')?.[0]).toEqual(['toggle']);
+			});
+			// Still open — keyboard select honors keepOpen, matching click.
+			expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+		});
+
+		it('should close the dropdown when a normal item is selected with the keyboard', async () => {
+			const items: DropdownMenuItemProps[] = [{ id: 'plain', label: 'Plain' }];
+
+			const wrapper = render(DropdownMenu, {
+				props: { items, modelValue: true, searchable: true },
+			});
+
+			await waitFor(() => {
+				expect(document.querySelector('input[type="text"]')).toBeInTheDocument();
+			});
+
+			(document.querySelector('input[type="text"]') as HTMLElement).focus();
+			await userEvent.keyboard('{ArrowDown}');
+			await userEvent.keyboard('{Enter}');
+
+			await waitFor(() => {
+				expect(wrapper.emitted('select')?.[0]).toEqual(['plain']);
+			});
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).not.toBeInTheDocument();
+			});
+		});
+
+		it('should skip section headers during keyboard navigation and never select them', async () => {
+			const items: DropdownMenuItemProps[] = [
+				{ id: 'section', label: 'Section', header: true },
+				{ id: 'option', label: 'Option' },
+			];
+
+			const wrapper = render(DropdownMenu, {
+				props: { items, modelValue: true, searchable: true },
+			});
+
+			await waitFor(() => {
+				expect(document.querySelector('input[type="text"]')).toBeInTheDocument();
+			});
+
+			(document.querySelector('input[type="text"]') as HTMLElement).focus();
+			// First ArrowDown skips the header and lands on the real option.
+			await userEvent.keyboard('{ArrowDown}');
+			await userEvent.keyboard('{Enter}');
+
+			await waitFor(() => {
+				expect(wrapper.emitted('select')?.[0]).toEqual(['option']);
+			});
+			// The header id is never emitted as a selection.
+			expect(wrapper.emitted('select')?.flat()).not.toContain('section');
+		});
 	});
 
 	describe('custom content slot', () => {

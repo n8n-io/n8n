@@ -237,7 +237,10 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 
 	const isAiGatewayManagedAvailable =
 		isAiGatewayManagedSelected ||
-		(aiGateway.isEnabled.value && aiGateway.isCredentialTypeSupported(credentialTypes[0]));
+		(aiGateway.isEnabled.value &&
+			credentialTypes.some((credentialType) =>
+				aiGateway.isCredentialTypeSupported(credentialType),
+			));
 
 	const n8nCreditsItems: MenuItem[] = isAiGatewayManagedAvailable
 		? [

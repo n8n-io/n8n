@@ -87,7 +87,11 @@ export class AgentValidationService {
 	private async isAiGatewayModelSupported(model: string): Promise<boolean> {
 		const provider = getProviderPrefix(model);
 		if (!provider) return false;
-		return (await this.aiGatewayService.getCredentialTypeForProvider(provider)) !== undefined;
+		try {
+			return (await this.aiGatewayService.getCredentialTypeForProvider(provider)) !== undefined;
+		} catch {
+			return false;
+		}
 	}
 
 	/**

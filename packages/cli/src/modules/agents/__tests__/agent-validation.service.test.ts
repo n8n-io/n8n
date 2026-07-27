@@ -200,6 +200,29 @@ describe('AgentValidationService — structured issues', () => {
 		);
 	});
 
+	it('flags the managed tag as incompatible (not throws) when the gateway config lookup fails', async () => {
+		const { service, agentRepository, aiGatewayService } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ ...runnableConfig, credential: AI_GATEWAY_MANAGED_TAG }),
+		);
+		// Licensed but the gateway config is temporarily unavailable → the lookup rejects.
+		aiGatewayService.getCredentialTypeForProvider.mockRejectedValue(
+			new Error('config fetch throttled'),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([]),
+		);
+
+		expect(result.issues).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ code: 'incompatible_credential', path: 'credential' }),
+			]),
+		);
+	});
+
 	it('flags a node tool missing a required credential slot but accepts one with the slot configured and accessible', async () => {
 		const { service, agentRepository, nodeTypes } = makeService();
 		nodeTypes.getByNameAndVersion.mockReturnValue({

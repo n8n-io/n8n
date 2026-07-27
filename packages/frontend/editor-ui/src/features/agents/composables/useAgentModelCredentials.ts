@@ -91,9 +91,10 @@ export function useAgentModelCredentials(userId: string, projectId: MaybeRefOrGe
 			const selectedCredentialId = selectedCredentials.value[provider] ?? null;
 
 			// The n8n Connect managed tag is a valid selection with no matching stored
-			// credential — preserve it instead of falling back to a real credential.
+			// credential — preserve it while n8n Connect still serves the provider,
+			// otherwise fall through to a real credential (license off / provider removed).
 			credentials[provider] =
-				selectedCredentialId === AI_GATEWAY_MANAGED_TAG
+				selectedCredentialId === AI_GATEWAY_MANAGED_TAG && supportsManagedCredits(provider)
 					? AI_GATEWAY_MANAGED_TAG
 					: selectedCredentialId &&
 							providerCredentials.some((credential) => credential.id === selectedCredentialId)

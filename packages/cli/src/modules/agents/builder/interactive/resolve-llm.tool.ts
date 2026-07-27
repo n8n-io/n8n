@@ -129,6 +129,46 @@ async function resolveModelAgainstLookup(
 	};
 }
 
+async function resolveDefaultModelForCredential(
+	credential: CredentialListItem,
+	defaults: LlmProviderDefault,
+	modelLookup: ModelLookup,
+) {
+	// Managed credential: no fallback key, and gateway discovery is authoritative — the
+	// static default may not be on the allowlist — so pick the default (or first served)
+	// model from the gateway's list. Own credentials keep the static default.
+	if (credential.id !== AI_GATEWAY_MANAGED_TAG || !isModelDiscoveryProvider(defaults.provider)) {
+		return toLlmResolution(credential, defaults);
+	}
+
+	let availableModels: Array<{ name: string; value: string }>;
+	try {
+		availableModels = await modelLookup.list(credential.id, credential.type, defaults.provider);
+	} catch (error) {
+		return {
+			ok: false as const,
+			reason: 'model_lookup_failed' as const,
+			provider: defaults.provider,
+			requestedModel: defaults.defaultModel,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+
+	if (availableModels.length === 0) {
+		return {
+			ok: false as const,
+			reason: 'unknown_model' as const,
+			provider: defaults.provider,
+			requestedModel: defaults.defaultModel,
+			availableModels,
+		};
+	}
+
+	const preferred =
+		availableModels.find((m) => m.value === defaults.defaultModel) ?? availableModels[0];
+	return toLlmResolution(credential, defaults, preferred.value);
+}
+
 export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 	return new Tool(BUILDER_TOOLS.RESOLVE_LLM)
 		.description(
@@ -222,7 +262,7 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 					if (model?.trim()) {
 						return await resolveModelAgainstLookup(credential, defaults, model, deps.modelLookup);
 					}
-					return toLlmResolution(credential, defaults);
+					return await resolveDefaultModelForCredential(credential, defaults, deps.modelLookup);
 				}
 
 				if (provider) {
@@ -248,7 +288,7 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 						if (model?.trim()) {
 							return await resolveModelAgainstLookup(credential, defaults, model, deps.modelLookup);
 						}
-						return toLlmResolution(credential, defaults);
+						return await resolveDefaultModelForCredential(credential, defaults, deps.modelLookup);
 					}
 
 					if (
@@ -281,7 +321,7 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 					if (model?.trim()) {
 						return await resolveModelAgainstLookup(credential, defaults, model, deps.modelLookup);
 					}
-					return toLlmResolution(credential, defaults);
+					return await resolveDefaultModelForCredential(credential, defaults, deps.modelLookup);
 				}
 
 				if (llmCredentials.length === 0 && !model?.trim()) {
@@ -299,8 +339,14 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 					const topProvider = LLM_PROVIDER_PRIORITY.find((candidate) => byProvider.has(candidate));
 					const topCredentials = topProvider ? byProvider.get(topProvider) : undefined;
 					if (topProvider && topCredentials?.length === 1) {
+						const resolved = await resolveDefaultModelForCredential(
+							topCredentials[0],
+							LLM_PROVIDER_DEFAULTS[topCredentials[0].type],
+							deps.modelLookup,
+						);
+						if (!resolved.ok) return resolved;
 						return {
-							...toLlmResolution(topCredentials[0], LLM_PROVIDER_DEFAULTS[topCredentials[0].type]),
+							...resolved,
 							autoPicked: true as const,
 							otherProviders: [...byProvider.keys()].filter((other) => other !== topProvider),
 						};

@@ -285,9 +285,11 @@ function onDifficultySelectCredential(
 
 	// The n8n Connect managed tag has no per-difficulty storage until a model is
 	// chosen, so record it in the shared selection to unlock the model list (via
-	// the credentials fallback).
+	// the credentials fallback). Clear any pending own credential for this provider
+	// so the managed tag isn't shadowed when the next model pick is persisted.
 	if (credentialId === AI_GATEWAY_MANAGED_TAG) {
 		selectCredential(provider, credentialId);
+		clearPendingDifficultyCredential(difficulty, provider);
 	}
 
 	const mapping = props.config?.subAgents?.modelsByDifficulty?.[difficulty];

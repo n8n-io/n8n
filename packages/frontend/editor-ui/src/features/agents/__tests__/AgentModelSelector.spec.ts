@@ -292,6 +292,17 @@ describe('AgentModelSelector', () => {
 		expect(getN8nCreditsItem(wrapper, 'anthropic')).toBeUndefined();
 	});
 
+	it('offers n8n credits for a multi-credential-type provider when a non-first type is supported', async () => {
+		aiGatewayState.isEnabled.value = true;
+		// azure-openai exposes ['azureOpenAiApi', 'azureEntraCognitiveServicesOAuth2Api'];
+		// support only the second — the gate must check all types, matching the resolver.
+		aiGatewayState.supportedTypes = new Set(['azureEntraCognitiveServicesOAuth2Api']);
+
+		const wrapper = await mountSelector({ 'azure-openai': null });
+
+		expect(getN8nCreditsItem(wrapper, 'azure-openai')).toBeDefined();
+	});
+
 	it('emits selectCredential with the managed tag when n8n credits is chosen', async () => {
 		aiGatewayState.isEnabled.value = true;
 		aiGatewayState.supportedTypes = new Set(['anthropicApi']);

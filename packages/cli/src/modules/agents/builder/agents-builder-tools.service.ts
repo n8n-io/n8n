@@ -673,8 +673,15 @@ export class AgentsBuilderToolsService {
 			buildResolveLlmTool({
 				credentialProvider,
 				modelLookup,
-				isProviderServedByGateway: async (provider) =>
-					(await this.aiGatewayService.getCredentialTypeForProvider(provider)) !== undefined,
+				isProviderServedByGateway: async (provider) => {
+					try {
+						return (
+							(await this.aiGatewayService.getCredentialTypeForProvider(provider)) !== undefined
+						);
+					} catch {
+						return false;
+					}
+				},
 				freeCredits: {
 					isEligible: () => this.freeAiCreditsService.isEligible(user),
 					claim: async () => {

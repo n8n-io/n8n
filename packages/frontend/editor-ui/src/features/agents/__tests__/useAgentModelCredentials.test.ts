@@ -58,13 +58,41 @@ describe('useAgentModelCredentials — credentialsByProvider', () => {
 		aiGatewayState.supportedTypes = new Set<string>();
 	});
 
-	it('preserves the n8n Connect managed tag as the selected credential', () => {
+	it('preserves the n8n Connect managed tag while it still serves the provider', () => {
 		// No own Anthropic credential, but the managed tag is the stored selection.
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
 		seedSelection({ anthropic: AI_GATEWAY_MANAGED_TAG });
 
 		const { credentialsByProvider } = useAgentModelCredentials('user-1', 'project-1');
 
 		expect(credentialsByProvider.value?.anthropic).toBe(AI_GATEWAY_MANAGED_TAG);
+	});
+
+	it('drops a stale managed tag when n8n Connect no longer serves the provider, falling back to a credential', () => {
+		// License off / provider removed → managed no longer supported, but a real credential exists.
+		aiGatewayState.isEnabled.value = false;
+		aiGatewayState.supportedTypes = new Set<string>();
+		credentialsByType.value = {
+			anthropicApi: [
+				{ id: 'cred-1', name: 'My Anthropic', type: 'anthropicApi', createdAt: '2026-01-01' },
+			],
+		};
+		seedSelection({ anthropic: AI_GATEWAY_MANAGED_TAG });
+
+		const { credentialsByProvider } = useAgentModelCredentials('user-1', 'project-1');
+
+		expect(credentialsByProvider.value?.anthropic).toBe('cred-1');
+	});
+
+	it('drops a stale managed tag to null when unsupported and no credential is available', () => {
+		aiGatewayState.isEnabled.value = false;
+		aiGatewayState.supportedTypes = new Set<string>();
+		seedSelection({ anthropic: AI_GATEWAY_MANAGED_TAG });
+
+		const { credentialsByProvider } = useAgentModelCredentials('user-1', 'project-1');
+
+		expect(credentialsByProvider.value?.anthropic).toBeNull();
 	});
 
 	it('keeps a real selected credential id (unchanged)', () => {
