@@ -283,11 +283,11 @@ describe('AgentBuilderEditorColumn', () => {
 		const settingsWrapper = await mountColumn({ activeMainTab: 'settings' });
 
 		expect(agentWrapper.findAll('[data-testid="agent-settings-card"]')).toHaveLength(0);
-		expect(settingsWrapper.findAll('[data-testid="agent-settings-card"]')).toHaveLength(2);
+		expect(settingsWrapper.findAll('[data-testid="agent-settings-card"]')).toHaveLength(3);
 	});
 
 	it('renders only the episodic memory row in the builder memory card', async () => {
-		const wrapper = await mountColumn({ activeMainTab: 'knowledge' });
+		const wrapper = await mountColumn({ activeMainTab: 'settings' });
 
 		expect(wrapper.text()).toContain('Episodic Memory');
 		expect(wrapper.text()).toContain(
@@ -310,7 +310,7 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(subAgentsPanel.props('disabled')).toBe(false);
 		expect(subAgentsPanel.props('projectId')).toBe('project-1');
 		expect(subAgentsPanel.props('agentId')).toBe('agent-1');
-		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(true);
 		expect(wrapper.findComponent({ name: 'AgentAdvancedPanel' }).exists()).toBe(true);
 	});
 

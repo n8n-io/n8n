@@ -162,6 +162,11 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 						template: '<div data-testid="stub-sub-agents" />',
 						props: ['config', 'disabled', 'projectId', 'agentId'],
 					},
+					AgentMemoryPanel: {
+						name: 'AgentMemoryPanel',
+						template: '<div data-testid="stub-memory" />',
+						props: ['config', 'disabled', 'embedded'],
+					},
 					AgentAdvancedPanel: {
 						name: 'AgentAdvancedPanel',
 						template: '<div data-testid="stub-advanced" />',
@@ -173,6 +178,7 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 		});
 
 		expect(wrapper.findComponent({ name: 'AgentSubAgentsPanel' }).props('disabled')).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).props('disabled')).toBe(true);
 		expect(wrapper.findComponent({ name: 'AgentAdvancedPanel' }).props('disabled')).toBe(true);
 	});
 });
