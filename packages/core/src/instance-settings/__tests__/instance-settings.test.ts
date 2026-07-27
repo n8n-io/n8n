@@ -282,6 +282,17 @@ describe('InstanceSettings', () => {
 				expect(settings.instanceId).toEqual(derivedId);
 			});
 
+			it('should keep derivedInstanceId unchanged when an override is applied', async () => {
+				const derived = settings.derivedInstanceId;
+				expect(derived).toEqual(settings.instanceId);
+
+				process.env.N8N_INSTANCE_ID = 'env-pinned-id';
+				await settings.initialize(mockRepo);
+
+				expect(settings.instanceId).toEqual('env-pinned-id');
+				expect(settings.derivedInstanceId).toEqual(derived);
+			});
+
 			it('should use the winner row when a concurrent insert is ignored', async () => {
 				mockRepo.insertOrIgnore.mockImplementation(async (entity: { type: string }) => {
 					// Simulate conflict only for instance.id
@@ -348,6 +359,32 @@ describe('InstanceSettings', () => {
 				await settings.initialize(mockRepo);
 
 				expect(settings.hmacSignatureSecret).toEqual('winner-hmac');
+			});
+		});
+
+		describe('canSeed: false', () => {
+			it('should not create missing rows and keep the derived values', async () => {
+				const derivedId = settings.instanceId;
+				const derivedHmac = settings.hmacSignatureSecret;
+
+				await settings.initialize(mockRepo, { canSeed: false });
+
+				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalled();
+				expect(settings.instanceId).toEqual(derivedId);
+				expect(settings.hmacSignatureSecret).toEqual(derivedHmac);
+			});
+
+			it('should still adopt env vars and existing DB rows', async () => {
+				process.env.N8N_INSTANCE_ID = 'env-pinned-id';
+				mockRepo.findActiveByType.mockImplementation(async (type: string) =>
+					type === 'signing.hmac' ? { value: 'db-stored-hmac' } : null,
+				);
+
+				await settings.initialize(mockRepo, { canSeed: false });
+
+				expect(settings.instanceId).toEqual('env-pinned-id');
+				expect(settings.hmacSignatureSecret).toEqual('db-stored-hmac');
+				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalled();
 			});
 		});
 	});

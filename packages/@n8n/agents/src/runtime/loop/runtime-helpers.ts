@@ -3,7 +3,7 @@
  * These are extracted here to keep agent-runtime.ts focused on orchestration logic.
  */
 import type { ModelTurnError } from './run-output-sink';
-import type { StreamChunk, TokenUsage } from '../../types';
+import type { StreamChunk, TokenUsage, McpConnectionFailedEvent } from '../../types';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import type { RawProviderError } from '../model/raw-error';
 
@@ -21,6 +21,25 @@ export function normalizeInput(input: AgentMessage[] | string): AgentMessage[] {
 /** Stringify an error value for use in a rejected tool-call block. */
 export function stringifyError(error: unknown): string {
 	return error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+}
+
+/**
+ * Render per-server MCP connection failures into a short, model-facing note
+ * the agent can use to tell the user a server was unavailable. Returns
+ * `undefined` when there are no failures so the volatile system message is
+ * omitted entirely. The note is system-message only — never persisted to
+ * thread memory or shown in the UI.
+ */
+export function formatMcpConnectionNote(
+	failures: readonly McpConnectionFailedEvent[],
+): string | undefined {
+	if (failures.length === 0) return undefined;
+	const lines = failures.map((f) => `- ${f.server}: ${f.error}`).join('\n');
+	return `<mcp-connection-status>
+The following MCP server(s) could not be reached, so their tools are unavailable for this run:
+${lines}
+If this affects the user's request, briefly let them know which server is unavailable.
+</mcp-connection-status>`;
 }
 
 /**

@@ -8,7 +8,7 @@ import {
 	dedupeScenarioSeedTables,
 	reseedScenarioTables,
 	scenariosRequireSerialSeeding,
-} from '../harness/runner';
+} from '../harness/seed-tables';
 import type { ExecutionScenario } from '../types';
 
 // TRUST-311 follow-up: scenario data tables are created EMPTY before the build
