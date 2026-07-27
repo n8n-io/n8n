@@ -583,6 +583,7 @@ watch(
 			</N8nSettingsSection>
 
 			<N8nSettingsSaveBar
+				:class="$style.saveBar"
 				:visible="otelStore.isDirty"
 				:message="i18n.baseText('settings.opentelemetry.unsavedChanges.title')"
 				:save-label="i18n.baseText('settings.opentelemetry.save')"
@@ -635,6 +636,14 @@ watch(
 	display: flex;
 	flex-direction: column;
 	width: 100%;
+}
+
+.saveBar {
+	/*
+	 * Same separation sections keep between each other (32px), so the bar reads as a
+	 * page-level action rather than part of the preceding Tracing section.
+	 */
+	margin-block-start: var(--spacing--xl);
 }
 
 .loading {
