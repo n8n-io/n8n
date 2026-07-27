@@ -18,7 +18,7 @@ import {
 	odataFieldEqualsClause,
 } from '../helpers/utils';
 import { resolveSiteId } from '../site';
-import { microsoftApiRequest } from '../transport';
+import { microsoftApiRequest, microsoftApiRequestAllItems } from '../transport';
 
 /** Keeps the item field hidden until a list is chosen. */
 export const untilListSelected = { list: [''] };
@@ -90,7 +90,7 @@ export async function getItems(
 	});
 }
 
-type ItemsLookupReply = { value?: Array<{ id?: string | number }> };
+type ItemsLookupRow = { id?: string | number };
 
 /**
  * Returns the id of every item whose columns match the given values. Each
@@ -110,24 +110,28 @@ export async function lookupItemIdByColumns(
 		.map((column) => odataFieldEqualsClause(column, values[column]))
 		.join(' and ');
 
-	let response: ItemsLookupReply;
+	// Graph pages filtered results behind @odata.nextLink, and a non-indexed
+	// filter can even return an empty first page while a match waits on a later
+	// one — so a single page can't tell none/one/many apart. Follow the link
+	// until we've collected 2 matches (enough to prove "many") or run out of
+	// pages; the common single-page case still costs exactly one request.
+	let rows: ItemsLookupRow[];
 	try {
-		response = (await microsoftApiRequest.call(
+		rows = (await microsoftApiRequestAllItems.call(
 			this,
+			'value',
 			'GET',
 			`/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}/items`,
 			{},
 			{ $filter: filter },
-			undefined,
+			2,
 			NON_INDEXED_QUERY_HEADERS,
-		)) as ItemsLookupReply;
+		)) as ItemsLookupRow[];
 	} catch (error) {
 		throw nonIndexedFilterThresholdError(this.getNode(), error, filter) ?? error;
 	}
 
-	// One page is enough to tell the callers apart: a >page-size match still
-	// yields length ≥ 2, so the multi-match guard fires (Graph rows carry `id`).
-	return (response.value ?? [])
+	return rows
 		.filter((row): row is { id: string | number } => row.id !== undefined)
 		.map((row) => String(row.id));
 }

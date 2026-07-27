@@ -62,10 +62,18 @@ export async function execute(
 		matchingColumns,
 		values,
 	);
-	if (ids.length !== 1) {
-		// v1's exact wording for "no single item matched" (covers zero and several)
+	if (ids.length === 0) {
+		// v1's exact wording for "no item matched"
 		throw new NodeOperationError(this.getNode(), "The column(s) don't match any existing item", {
 			description: 'Double-check the value(s) for the columns to match and try again',
+		});
+	}
+	if (ids.length > 1) {
+		// Several matched: don't silently update an arbitrary one. Same wording as
+		// Create or Update so the ambiguous-match message is consistent.
+		throw new NodeOperationError(this.getNode(), 'Multiple items match the selected column(s)', {
+			description:
+				'Narrow the matching column(s) so they identify a single item, or remove the duplicates, then try again.',
 		});
 	}
 

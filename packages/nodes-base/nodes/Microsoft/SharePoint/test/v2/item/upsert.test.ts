@@ -9,13 +9,16 @@ import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
 import type * as _importType0 from '../../../v2/transport';
 import * as transport from '../../../v2/transport';
 
-// Real transport module except the network helper, so getSharePointCredentialType
-// keeps its real behavior; only microsoftApiRequest is stubbed.
+// Real transport module except the network helpers, so getSharePointCredentialType
+// keeps its real behavior. microsoftApiRequestAllItems is stubbed too: the item
+// lookup routes through it, and stubbing it lets a test hand back the matched
+// rows directly (its real paging is covered in lookup.test.ts).
 vi.mock('../../../v2/transport', async () => {
 	const originalModule = await vi.importActual<typeof _importType0>('../../../v2/transport');
 	return {
 		...originalModule,
 		microsoftApiRequest: vi.fn(),
+		microsoftApiRequestAllItems: vi.fn(),
 	};
 });
 
@@ -46,6 +49,7 @@ describe('Microsoft SharePoint v2 — Item: Create or Update', () => {
 	let node: MicrosoftSharePointV2;
 	let ctx: DeepMockProxy<IExecuteFunctions>;
 	const apiRequest = transport.microsoftApiRequest as Mock;
+	const apiRequestAllItems = transport.microsoftApiRequestAllItems as Mock;
 
 	const setParams = (params: Record<string, unknown>) => {
 		ctx.getNodeParameter.mockImplementation(
@@ -82,25 +86,26 @@ describe('Microsoft SharePoint v2 — Item: Create or Update', () => {
 
 	it('updates the single matched item and returns the item envelope', async () => {
 		setParams(baseParams({ value: { Title: 'Title 2' }, matchingColumns: ['Title'] }));
+		apiRequestAllItems.mockResolvedValueOnce([{ id: ITEM_ID }]);
 		apiRequest
-			.mockResolvedValueOnce({ value: [{ id: ITEM_ID }] })
 			.mockResolvedValueOnce({ Title: 'Title 2' })
 			.mockResolvedValueOnce({ ...GRAPH_ITEM_REPLY });
 
 		const result = await node.execute.call(ctx);
 
-		expect(apiRequest).toHaveBeenCalledTimes(3);
-		expect(apiRequest).toHaveBeenNthCalledWith(
-			1,
+		// Lookup capped at 2 matches so paged results can't be miscounted.
+		expect(apiRequestAllItems).toHaveBeenCalledWith(
+			'value',
 			'GET',
 			ITEMS_PATH,
 			{},
 			{ $filter: "fields/Title eq 'Title 2'" },
-			undefined,
+			2,
 			{ Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly' },
 		);
+		expect(apiRequest).toHaveBeenCalledTimes(2);
 		expect(apiRequest).toHaveBeenNthCalledWith(
-			2,
+			1,
 			'PATCH',
 			`${ITEMS_PATH}/${ITEM_ID}/fields`,
 			{ Title: 'Title 2' },
@@ -109,7 +114,7 @@ describe('Microsoft SharePoint v2 — Item: Create or Update', () => {
 			{},
 		);
 		expect(apiRequest).toHaveBeenNthCalledWith(
-			3,
+			2,
 			'GET',
 			`${ITEMS_PATH}/${ITEM_ID}`,
 			{},
@@ -121,13 +126,14 @@ describe('Microsoft SharePoint v2 — Item: Create or Update', () => {
 	it('creates a new item when nothing matches, mapping the real column values', async () => {
 		setParams(baseParams({ value: { Title: 'Title 2' }, matchingColumns: ['Title'] }));
 		const created = { id: '2', fields: { Title: 'Title 2' } };
-		apiRequest.mockResolvedValueOnce({ value: [] }).mockResolvedValueOnce(created);
+		apiRequestAllItems.mockResolvedValueOnce([]);
+		apiRequest.mockResolvedValueOnce(created);
 
 		const result = await node.execute.call(ctx);
 
-		expect(apiRequest).toHaveBeenCalledTimes(2);
+		expect(apiRequest).toHaveBeenCalledTimes(1);
 		expect(apiRequest).toHaveBeenNthCalledWith(
-			2,
+			1,
 			'POST',
 			ITEMS_PATH,
 			{ fields: { Title: 'Title 2' } },
@@ -140,22 +146,22 @@ describe('Microsoft SharePoint v2 — Item: Create or Update', () => {
 
 	it('throws and does neither when several items match (AC#2)', async () => {
 		setParams(baseParams({ value: { Title: 'Duplicate' }, matchingColumns: ['Title'] }));
-		apiRequest.mockResolvedValueOnce({ value: [{ id: 'a' }, { id: 'b' }] });
+		apiRequestAllItems.mockResolvedValueOnce([{ id: 'a' }, { id: 'b' }]);
 
 		await expect(node.execute.call(ctx)).rejects.toThrow(
 			'Multiple items match the selected column(s)',
 		);
-		// Only the lookup ran — nothing after it proves neither update nor create.
-		expect(apiRequest).toHaveBeenCalledTimes(1);
+		// Only the lookup ran — no write proves neither update nor create.
+		expect(apiRequest).not.toHaveBeenCalled();
 	});
 
 	it('propagates a lookup failure instead of silently creating (AC#3)', async () => {
 		setParams(baseParams({ value: { Title: 'Title 2' }, matchingColumns: ['Title'] }));
-		apiRequest.mockRejectedValueOnce(new Error('non-indexed column query failed'));
+		apiRequestAllItems.mockRejectedValueOnce(new Error('non-indexed column query failed'));
 
 		await expect(node.execute.call(ctx)).rejects.toThrow('non-indexed column query failed');
-		// One call (the failed lookup) and nothing after it proves no create was attempted.
-		expect(apiRequest).toHaveBeenCalledTimes(1);
+		// The failed lookup and no write proves no create was attempted.
+		expect(apiRequest).not.toHaveBeenCalled();
 	});
 
 	it('creates without a lookup when no matching columns are selected', async () => {
@@ -209,15 +215,13 @@ describe('Microsoft SharePoint v2 — Item: Create or Update', () => {
 				],
 			}),
 		);
-		apiRequest
-			.mockResolvedValueOnce({ value: [{ id: ITEM_ID }] })
-			.mockResolvedValueOnce({})
-			.mockResolvedValueOnce({ ...GRAPH_ITEM_REPLY });
+		apiRequestAllItems.mockResolvedValueOnce([{ id: ITEM_ID }]);
+		apiRequest.mockResolvedValueOnce({}).mockResolvedValueOnce({ ...GRAPH_ITEM_REPLY });
 
 		await node.execute.call(ctx);
 
 		expect(apiRequest).toHaveBeenNthCalledWith(
-			2,
+			1,
 			'PATCH',
 			`${ITEMS_PATH}/${ITEM_ID}/fields`,
 			{ Link: { Url: 'https://example.com', Description: 'Example' } },
