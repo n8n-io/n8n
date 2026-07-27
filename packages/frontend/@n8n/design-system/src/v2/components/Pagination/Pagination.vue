@@ -244,12 +244,7 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 <template>
 	<div
 		v-if="!shouldHide"
-		:class="[
-			'n8n-pagination',
-			$style.paginationContainer,
-			sizeClass,
-			{ [$style.isDisabled]: disabled },
-		]"
+		:class="['n8n-pagination', $style.paginationContainer, sizeClass]"
 		data-test-id="pagination"
 		v-bind="$attrs"
 	>
@@ -440,10 +435,6 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 	}
 }
 
-.isDisabled {
-	pointer-events: none;
-}
-
 .total {
 	color: var(--text-color--subtler);
 	white-space: nowrap;
@@ -458,8 +449,6 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 .jumper {
 	display: inline-flex;
 	align-items: center;
-	flex-shrink: 0;
-	width: max-content;
 	min-height: var(--jumper-height, var(--height--md));
 	border-radius: var(--jumper-radius, var(--radius--3xs));
 	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
@@ -478,25 +467,15 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 }
 
 .jumperPrefix {
-	flex-shrink: 0;
 	padding-inline-start: var(--jumper-inset, var(--spacing--xs));
 	color: var(--text-color--subtler);
-	white-space: nowrap;
-	translate: 0 -1px;
 }
 
 .jumperInput {
-	flex: 0 0 auto;
-	box-sizing: content-box;
-	width: calc(var(--jumper-digits, 1) * 1ch);
-	min-width: 1ch;
 	min-height: var(--jumper-height, var(--height--md));
 	padding-inline: var(--jumper-inset, var(--spacing--xs));
 	border: none;
 	background: transparent;
-	text-align: start;
-	appearance: textfield;
-	-moz-appearance: textfield;
 	field-sizing: content;
 	outline: none;
 
@@ -511,10 +490,8 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 		-webkit-appearance: none;
 		margin: 0;
 	}
-}
 
-@supports (field-sizing: content) {
-	.jumperInput {
+	@supports (field-sizing: content) {
 		width: auto;
 	}
 }

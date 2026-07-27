@@ -38,9 +38,6 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			const container = wrapper.container.firstChild as HTMLElement;
-			expect(container?.className).toContain('isDisabled');
-
 			const buttons = wrapper.container.querySelectorAll('button');
 			expect(buttons.length).toBeGreaterThan(0);
 			buttons.forEach((button) => {
