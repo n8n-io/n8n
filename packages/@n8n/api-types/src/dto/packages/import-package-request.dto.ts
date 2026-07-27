@@ -77,7 +77,7 @@ export class ImportPackageRequestDto extends Z.class({
 		.enum(['preserve-published-state', 'match-source', 'publish-all', 'unpublish-all'])
 		.optional()
 		.default('preserve-published-state'),
-	workflowIdPolicy: z.enum(['new', 'source']).optional().default('new'),
+	workflowIdPolicy: z.enum(['new', 'source']).optional().default('source'),
 	missingNodeTypeMode: z.enum(['fail', 'import-anyway']).optional().default('fail'),
 	folderConflictPolicy: z.enum(['merge', 'fail']).optional().default('merge'),
 	dataTableMatchingMode: z.enum(['by-id']).optional().default('by-id'),
