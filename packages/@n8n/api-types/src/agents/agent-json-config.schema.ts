@@ -236,10 +236,6 @@ export const McpServerConfigSchema = z
 			.string()
 			.min(1)
 			.max(64)
-			.regex(
-				/^[a-zA-Z0-9_-]+$/,
-				'MCP server name can only contain letters, numbers, hyphens, and underscores',
-			)
 			.refine((name) => name.trim().length > 0, 'MCP server name cannot be blank')
 			.describe('Unique display name. The SDK normalizes it when building model-facing tool names'),
 		description: z.string().max(512).optional().describe('Human-readable server description'),

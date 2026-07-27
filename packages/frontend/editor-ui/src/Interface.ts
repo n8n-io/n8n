@@ -653,15 +653,9 @@ export type Modals = {
 
 export type ModalKey = keyof Modals;
 
-/**
- * The modal-opening capability. Stores that need to open modals depend on this
- * pair (mirroring `ui.store`'s surface) and receive it via dependency injection,
- * rather than importing `ui.store` directly. A consumer may use only a subset.
- */
-export interface ModalOpeners {
-	openModal: (name: ModalKey) => void;
-	openModalWithData: (payload: { name: ModalKey; data: Record<string, unknown> }) => void;
-}
+// The modal-opening injection contract moved to `@n8n/stores/modalOpeners`;
+// re-exported here so existing importers stay unchanged.
+export type { ModalOpeners } from '@n8n/stores/modalOpeners';
 
 // `ModalState` is owned by `@n8n/frontend-module-sdk`; re-exported here so existing
 // `@/Interface` importers stay unchanged.
@@ -677,6 +671,7 @@ export interface NewCredentialsModal extends ModalState {
 	contextNode?: INodeUi;
 	hideAskAssistant?: boolean;
 	appendToBody?: boolean;
+	usageScope?: 'project' | 'instance';
 	/** Behavior for the Instance AI credential setup-help button, supplied by the
 	 * surface that opened the modal (an editor capability, or the credentials list).
 	 * Resolves to whether the credential modal should close (false keeps it open for
