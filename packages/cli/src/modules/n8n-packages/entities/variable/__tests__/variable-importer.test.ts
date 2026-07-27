@@ -342,6 +342,13 @@ describe('VariableImporter', () => {
 			usedByWorkflows: ['wf-1'],
 		});
 
+		it('does not read the quota when the import creates nothing', async () => {
+			const { importer, variablesService } = makeImporter();
+
+			await expect(importer.quotaFailure([])).resolves.toBeUndefined();
+			expect(variablesService.getRemainingVariableQuota).not.toHaveBeenCalled();
+		});
+
 		it('returns nothing when the quota is unlimited', async () => {
 			const { importer, variablesService } = makeImporter();
 			variablesService.getRemainingVariableQuota.mockResolvedValue(null);

@@ -78,6 +78,8 @@ export class VariableImporter {
 
 	/** Deduplicates by destination first: one global variable planned by several scopes is one new row. */
 	async quotaFailure(creations: VariableCreation[]): Promise<VariableLimitFailure | undefined> {
+		if (creations.length === 0) return undefined;
+
 		return computeVariableLimitFailure(
 			dedupeCreationsByDestination(creations),
 			await this.variablesService.getRemainingVariableQuota(),
