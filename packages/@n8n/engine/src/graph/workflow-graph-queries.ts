@@ -6,13 +6,14 @@ export function findTriggerNode(graph: WorkflowGraph): GraphNode | undefined {
 }
 
 /**
- * Ids of the nodes directly downstream of `nodeId` via forward edges. Back-edges
- * (loop iterations) are ignored; results are de-duplicated, in edge order.
+ * Ids of the nodes directly downstream of `nodeId`, de-duplicated, in edge order.
+ *
+ * TODO(CAT-3854): validate edge endpoints against `nodes`.
  */
 export function getSuccessorNodeIds(graph: WorkflowGraph, nodeId: string): string[] {
 	const successors: string[] = [];
 	for (const edge of graph.edges) {
-		if (edge.from === nodeId && edge.isBackEdge !== true && !successors.includes(edge.to)) {
+		if (edge.from === nodeId && !successors.includes(edge.to)) {
 			successors.push(edge.to);
 		}
 	}

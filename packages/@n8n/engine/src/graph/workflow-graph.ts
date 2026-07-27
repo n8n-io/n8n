@@ -33,7 +33,11 @@ export interface GraphEdge {
 	outputIndex?: number;
 	/** Which input slot of `to` this edge feeds — multi-input nodes (e.g. Merge). */
 	inputIndex?: number;
-	/** Closes a cycle (loop iteration). */
+	/**
+	 * Closes a cycle (loop iteration).
+	 *
+	 * TODO(CAT-3854): validate that back-edges really close loops.
+	 */
 	isBackEdge?: boolean;
 }
 

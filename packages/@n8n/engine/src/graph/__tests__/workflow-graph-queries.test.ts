@@ -12,8 +12,9 @@ const graph: WorkflowGraph = {
 	edges: [
 		{ from: 'trigger', to: 'a' },
 		{ from: 'trigger', to: 'b' },
+		// Same target from a second output slot — must not be reported twice.
+		{ from: 'trigger', to: 'a', outputIndex: 1 },
 		{ from: 'a', to: 'b' },
-		{ from: 'b', to: 'a', isBackEdge: true },
 	],
 };
 
@@ -34,8 +35,7 @@ describe('getSuccessorNodeIds', () => {
 		expect(getSuccessorNodeIds(graph, 'trigger')).toEqual(['a', 'b']);
 	});
 
-	it('ignores back-edges', () => {
-		// b -> a is a back-edge, so b has no forward successors.
+	it('returns an empty array for a node with no outgoing edges', () => {
 		expect(getSuccessorNodeIds(graph, 'b')).toEqual([]);
 	});
 
