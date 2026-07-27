@@ -25,7 +25,6 @@ export default class PackageExport extends BaseCommand {
 			aliases: ['workflow-id'],
 		}),
 		folderId: Flags.string({
-			char: 'f',
 			description: 'Folder ID to include with its nested folders (repeat for multiple)',
 			multiple: true,
 			aliases: ['folder-id'],
