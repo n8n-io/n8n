@@ -17,7 +17,7 @@ import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import {
 	createRunExecutionData,
 	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
@@ -1019,6 +1019,49 @@ describe('RunData', () => {
 
 			const runSelectorOptionsCount = await findAllByTestId('run-selection-option');
 			expect(runSelectorOptionsCount.length).toBe(2);
+		});
+	});
+
+	describe('search across runs', () => {
+		it('should find items in runs other than the selected one', async () => {
+			// Two runs; the matching item ("banana") only exists in run 1, while the
+			// selected run is run 0 (runIndex defaults to 0). Searching should look
+			// across ALL runs so a builder can check whether an item is present.
+			const runs: ITaskData[] = [
+				{
+					startTime: Date.now(),
+					executionIndex: 0,
+					executionTime: 1,
+					data: { main: [[{ json: { color: 'red', label: 'apple' } }]] },
+					source: [null],
+				},
+				{
+					startTime: Date.now(),
+					executionIndex: 1,
+					executionTime: 1,
+					data: { main: [[{ json: { color: 'blue', label: 'banana' } }]] },
+					source: [null],
+				},
+			];
+
+			const { findByTestId, getByText } = render({
+				displayMode: 'table',
+				runs,
+			});
+
+			// The search box is loaded lazily, wait for it before typing.
+			const searchContainer = await findByTestId('ndv-search-container');
+			const searchInput = within(searchContainer).getByRole('textbox');
+			await userEvent.type(searchInput, 'banana');
+
+			// The matching row lives in run 1. "blue" is a sibling field of the match
+			// (so it is not highlighted) and is only present when that row is shown.
+			await waitFor(
+				() => {
+					expect(getByText('blue')).toBeInTheDocument();
+				},
+				{ timeout: 2000 },
+			);
 		});
 	});
 
