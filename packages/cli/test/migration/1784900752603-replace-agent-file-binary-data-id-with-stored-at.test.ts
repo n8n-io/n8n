@@ -21,7 +21,7 @@ async function columnNames(context: TestMigrationContext, table: string): Promis
 	}
 	const fullName = `${context.tablePrefix}${table}`;
 	const rows = await context.runQuery<Array<{ column_name: string }>>(
-		`SELECT column_name FROM information_schema.columns WHERE table_name = :name`,
+		'SELECT column_name FROM information_schema.columns WHERE table_name = :name',
 		{ name: fullName },
 	);
 	return rows.map((row) => row.column_name);
