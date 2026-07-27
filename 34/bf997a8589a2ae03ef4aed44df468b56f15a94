@@ -12,9 +12,11 @@ packages/cli/src/public-api/v1/__tests__/scope-parity.test.ts
   s_2518c7e469bbd2::t_9723f8e754ab2b 16-23,33-53,62,77,89-104
   s_2518c7e469bbd2::t_6b5716b95d0d2c 105-107
   s_2518c7e469bbd2::t_bf2793fc48f0d0 108,159-161,165
+  h_5d40c27a8fdfd1 109,162,166
 .agents/skills/public-api/SKILL.md
   s_2518c7e469bbd2::t_57fd66cc057f11 54,63-73
   s_2518c7e469bbd2::t_d0bc8d1b2f9629 124-129
+  h_5d40c27a8fdfd1 59-60,130-132
 packages/@n8n/decorators/src/controller/index.ts
   s_2518c7e469bbd2::t_cfac71b93e40c8 15,18,21
 packages/cli/src/public-api/v1/controllers/index.ts
@@ -46,6 +48,11 @@ packages/cli/src/public-api/v1/handlers/tags/spec/paths/getTags.generated.yml
   "git_ai_version": "1.6.15",
   "base_commit_sha": "34bf997a8589a2ae03ef4aed44df468b56f15a94",
   "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
   "sessions": {
     "s_2518c7e469bbd2": {
       "agent_id": {
