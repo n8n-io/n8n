@@ -464,6 +464,7 @@ describe('GlobalConfig', () => {
 			minIntervalSeconds: 0,
 			maxConcurrentPasses: 10,
 			triggerNodeMode: 'legacy',
+			enabledForPollTriggers: false,
 			allowSkipDurableScheduler: false,
 			maxAttempts: 5,
 		},

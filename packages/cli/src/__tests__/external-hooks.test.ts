@@ -5,13 +5,15 @@ import type {
 	CredentialsRepository,
 	SettingsRepository,
 	UserRepository,
+	User,
+	Role,
 } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ExternalHooks } from '@/external-hooks';
+import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 
 // `ExternalHooks` loads hook files via `require(<path>)`. Vitest cannot mock a
 // path that doesn't resolve to a real module, so write a real fixture that
@@ -133,6 +135,60 @@ describe('ExternalHooks', () => {
 			expect(logger.error).toHaveBeenCalledWith(
 				'There was a problem running hook "workflow.create"',
 			);
+		});
+	});
+
+	describe('toWorkflowLifecycleHookActor()', () => {
+		it('should return undefined when there is no acting user', () => {
+			expect(toWorkflowLifecycleHookActor(undefined)).toBeUndefined();
+		});
+
+		it('should project a fully populated user', () => {
+			const user = mock<User>({
+				id: 'user-1',
+				email: 'actor@example.com',
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+				role: mock<Role>({ slug: 'global:admin' }),
+			});
+
+			expect(toWorkflowLifecycleHookActor(user)).toEqual({
+				id: 'user-1',
+				email: 'actor@example.com',
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+				role: 'global:admin',
+			});
+		});
+
+		it('should preserve null email and names for a user without them', () => {
+			const user = mock<User>({
+				id: 'user-1',
+				email: null as unknown as string,
+				firstName: null as unknown as string,
+				lastName: null as unknown as string,
+				role: mock<Role>({ slug: 'global:member' }),
+			});
+
+			expect(toWorkflowLifecycleHookActor(user)).toEqual({
+				id: 'user-1',
+				email: null,
+				firstName: null,
+				lastName: null,
+				role: 'global:member',
+			});
+		});
+
+		it('should leave role undefined when the user has no role', () => {
+			const user = mock<User>({
+				id: 'user-1',
+				email: 'actor@example.com',
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+				role: undefined,
+			});
+
+			expect(toWorkflowLifecycleHookActor(user)?.role).toBeUndefined();
 		});
 	});
 });
