@@ -13,7 +13,11 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
-import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
+import {
+	AgentExecutionService,
+	threadAcceptsWritesFrom,
+	threadBelongsTo,
+} from './agent-execution.service';
 import { messagesToDto } from './agent-message-mapper';
 import { type FlushableResponse, initSseStream, pumpChunks } from './agent-sse-stream';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
@@ -54,13 +58,21 @@ export class AgentChatController {
 
 		const { send } = initSseStream(res);
 
-		// If the client supplied a sessionId and a thread already exists under that id,
-		// the thread must belong to this (project, agent). Otherwise a caller could
-		// append messages to another user's thread. A non-existent id is fine -
-		// executeForChat will create the thread on first persisted message.
+		const resourceId = draftChatMemoryResourceId(req.user.id);
+
+		// If the client supplied a sessionId and a thread already exists under that
+		// id, it must belong to this (project, agent) and to this user — otherwise a
+		// caller could append messages to someone else's session. Both rejections
+		// look like a missing session so the response never confirms that an id
+		// exists. A non-existent id is fine: executeForChat creates the thread on
+		// the first persisted message.
 		if (sessionId) {
 			const existing = await this.agentExecutionService.findThreadById(sessionId);
-			if (existing && !threadBelongsTo(existing, projectId, agentId)) {
+			if (
+				existing &&
+				(!threadBelongsTo(existing, projectId, agentId) ||
+					!threadAcceptsWritesFrom(existing, resourceId))
+			) {
 				send({ type: 'error', message: 'Session not found' });
 				res.end();
 				return;
@@ -93,10 +105,7 @@ export class AgentChatController {
 					projectId,
 					message,
 					user: req.user,
-					memory: {
-						threadId,
-						resourceId: draftChatMemoryResourceId(req.user.id),
-					},
+					memory: { threadId, resourceId },
 					onExecutionRecorded: (id) => {
 						executionId = id;
 					},

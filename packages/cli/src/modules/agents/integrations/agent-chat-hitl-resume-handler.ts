@@ -29,7 +29,7 @@ interface AgentChatHitlResumeHandlerOptions {
 	logger: Logger;
 	callbackStore?: CallbackStore;
 	resolvePlatformThreadId: (thread: Thread<unknown, unknown>) => string;
-	toAgentThreadId: (platformThreadId: string) => InternalThread;
+	findAgentThreadId: (platformThreadId: string) => Promise<InternalThread | null>;
 	getPlatformAgentContext: () => PlatformAgentContext;
 	messageContextBridge: AgentChatMessageContextBridge;
 	streamConsumer: AgentChatStreamConsumer;
@@ -68,13 +68,18 @@ export class AgentChatHitlResumeHandler {
 		// Persist the interacting user / messageId into the thread's message
 		// context so tools running on resume can read it via the message
 		// context store — no need to bolt a duplicate copy onto resumeData.
+		// Resume only ever follows a suspended run, so the session already exists.
+		// Without it there is no thread to attach the context to — the resume
+		// itself runs off the checkpoint's own persistence scope regardless.
 		const platformThreadId = this.options.resolvePlatformThreadId(thread);
-		const threadId = this.options.toAgentThreadId(platformThreadId);
-		await this.options.messageContextBridge.updateLatest(threadId.id, event.user.userId, thread, {
-			messageId: event.messageId,
-			interactingUserId: event.user.userId,
-			...this.options.getPlatformAgentContext(),
-		});
+		const threadId = await this.options.findAgentThreadId(platformThreadId);
+		if (threadId) {
+			await this.options.messageContextBridge.updateLatest(threadId.id, event.user.userId, thread, {
+				messageId: event.messageId,
+				interactingUserId: event.user.userId,
+				...this.options.getPlatformAgentContext(),
+			});
+		}
 
 		await this.cleanUpBeforeResume(event);
 		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData);

@@ -9,6 +9,7 @@ import type { AgentExecutionOrchestratorService } from '../agent-execution-orche
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentTestChatService } from '../agent-test-chat.service';
+import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentsService } from '../agents.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
@@ -120,6 +121,75 @@ describe('AgentChatController chat message history', () => {
 				params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 			} as never),
 		).rejects.toThrow(NotFoundError);
+	});
+});
+
+describe('AgentChatController session ownership', () => {
+	async function chatWithSession(thread: Partial<AgentExecutionThread> | null, userId = 'user-1') {
+		const { controller, agentExecutionOrchestratorService, agentExecutionService } =
+			makeController();
+		agentExecutionService.findThreadById.mockResolvedValue(thread as AgentExecutionThread | null);
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
+			yield* [];
+		});
+
+		const writes: string[] = [];
+		const res = mock<FlushableResponse>();
+		res.write.mockImplementation((chunk: string) => {
+			writes.push(String(chunk));
+			return true;
+		});
+
+		await controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: userId } } as never,
+			res,
+			'agent-1',
+			{ message: 'hi', sessionId: 'thread-1' } as never,
+		);
+
+		return {
+			executed: agentExecutionOrchestratorService.executeForChat.mock.calls.length > 0,
+			events: writes
+				.filter((line) => line.startsWith('data: '))
+				.map((line) => JSON.parse(line.slice(6).trim()) as { type: string; message?: string }),
+		};
+	}
+
+	const otherUsersThread = {
+		projectId: 'project-1',
+		agentId: 'agent-1',
+		createdByResourceId: 'draft-chat:user-2',
+	};
+
+	it('refuses to append to a session started by another user in the same project', async () => {
+		const { executed, events } = await chatWithSession(otherUsersThread);
+
+		expect(executed).toBe(false);
+		expect(events).toContainEqual({ type: 'error', message: 'Session not found' });
+	});
+
+	it('gives the same answer for another user’s session as for one that does not exist', async () => {
+		const denied = await chatWithSession(otherUsersThread);
+		const missing = await chatWithSession({
+			projectId: 'project-2',
+			agentId: 'agent-1',
+			createdByResourceId: null,
+		});
+
+		expect(denied.events).toEqual(missing.events);
+	});
+
+	it.each([
+		['its own creator', 'draft-chat:user-1'],
+		['a session predating attribution', null],
+	])('lets %s continue the conversation', async (_case, createdByResourceId) => {
+		const { executed } = await chatWithSession({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			createdByResourceId,
+		});
+
+		expect(executed).toBe(true);
 	});
 });
 

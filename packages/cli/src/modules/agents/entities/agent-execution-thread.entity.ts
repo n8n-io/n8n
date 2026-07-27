@@ -5,6 +5,9 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 import { AgentHistory } from './agent-history.entity';
 import { Agent } from './agent.entity';
 
+/** Surface that started a session. */
+export type AgentThreadOrigin = 'chat' | 'integration' | 'workflow' | 'task' | 'subagent' | 'test';
+
 /**
  * One conversation between a user and an agent. Aggregates per-session
  * counters (token usage, cost, duration) so the sessions list can render
@@ -18,6 +21,10 @@ import { Agent } from './agent.entity';
  * which stores chat-history state owned by the n8n-memory integration.
  * Both use the same `threadId` value but serve different layers.
  */
+@Index(['agentId', 'origin', 'originRef', 'externalKey'], {
+	unique: true,
+	where: '"externalKey" IS NOT NULL',
+})
 @Entity({ name: 'agent_execution_threads' })
 export class AgentExecutionThread extends WithTimestampsAndStringId {
 	@ManyToOne(() => Agent, { onDelete: 'CASCADE' })
@@ -31,6 +38,32 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 	/** Denormalized for display — avoids joining agents table when listing threads. */
 	@Column({ type: 'varchar', length: 255 })
 	agentName: string;
+
+	/**
+	 * Identity of the conversation this session belongs to. `externalKey` is the
+	 * thread key owned by the origin (a platform thread id, a caller-supplied
+	 * session id); `originRef` namespaces it where the key is only unique within
+	 * something else (the workflow, for workflow threads). Together with
+	 * `agentId` they form the natural key a continuation is looked up by, so
+	 * `id` itself can stay an opaque uuid. Null/empty for origins that mint a
+	 * fresh session per run.
+	 */
+	@Column({ type: 'varchar', length: 32, nullable: true })
+	origin: AgentThreadOrigin | null;
+
+	@Column({ type: 'varchar', length: 255, default: '' })
+	originRef: string;
+
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	externalKey: string | null;
+
+	/**
+	 * Memory `resourceId` of whoever started the session. Immutable once set: a
+	 * shared integration thread has several writers and ownership should not
+	 * depend on who spoke last. Null for threads that predate this column.
+	 */
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	createdByResourceId: string | null;
 
 	/** LLM-generated summary of the first user message. */
 	@Column({ type: 'varchar', length: 255, nullable: true })

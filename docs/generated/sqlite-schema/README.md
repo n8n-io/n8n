@@ -15,7 +15,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_eval_result](agent_eval_result.md) | 15 |  | table |
 | [agent_eval_run](agent_eval_run.md) | 14 |  | table |
 | [agent_execution](agent_execution.md) | 19 |  | table |
-| [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
+| [agent_execution_threads](agent_execution_threads.md) | 21 |  | table |
 | [agent_files](agent_files.md) | 8 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 7 |  | table |
@@ -411,8 +411,12 @@ erDiagram
   varchar_36_ agentId FK
   varchar_255_ agentName
   datetime_3_ createdAt
+  VARCHAR_255_ createdByResourceId
   varchar_8_ emoji
+  VARCHAR_255_ externalKey
   varchar_128_ id PK
+  VARCHAR_32_ origin
+  VARCHAR_255_ originRef
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
   varchar_255_ projectId FK

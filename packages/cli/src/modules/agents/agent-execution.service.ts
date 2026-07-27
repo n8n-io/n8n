@@ -3,19 +3,28 @@ import type { StorageLocation } from '@n8n/blob-storage';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
+import { isUniqueConstraintError } from '@/response-helper';
 import { Telemetry } from '@/telemetry';
 
-import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
+import {
+	AgentExecutionThread,
+	type AgentThreadOrigin,
+} from './entities/agent-execution-thread.entity';
 import { AgentExecution } from './entities/agent-execution.entity';
-import type { MessageRecord } from './execution-recorder';
 import { AgentExecutionLogStore } from './execution-log/agent-execution-log-store';
+import type { MessageRecord } from './execution-recorder';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
-import type { AgentExecutionThreadMetadata } from './repositories/agent-execution-thread.repository';
+import type {
+	AgentExecutionThreadMetadata,
+	AgentThreadNaturalKey,
+} from './repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
+import { AgentRepository } from './repositories/agent.repository';
 
 export interface RecordMessageParams {
 	threadId: string;
@@ -30,6 +39,10 @@ export interface RecordMessageParams {
 	source?: string;
 	/** Optional metadata persisted on the thread when it is first created. */
 	threadMetadata?: AgentExecutionThreadMetadata;
+	/** Surface that started the session, stamped when the thread is first created. */
+	origin?: AgentThreadOrigin;
+	/** Memory resourceId of the caller, recorded as the session's first writer. */
+	resourceId?: string;
 	/** When the run was triggered by a scheduled task, the task's id (stamped on the session). */
 	taskId?: string;
 	/** Published agent_history version that supplied the scheduled task snapshot. */
@@ -39,6 +52,18 @@ export interface RecordMessageParams {
 		runType: AgentRunTelemetryType;
 		configuration: IAgentConfigurationTelemetryProperties;
 	};
+}
+
+export interface ResolveThreadParams {
+	agentId: string;
+	projectId: string;
+	origin: AgentThreadOrigin;
+	/** Namespaces `externalKey` where it is only unique within something else. */
+	originRef?: string;
+	/** Thread key owned by the origin, e.g. a platform thread id. */
+	externalKey: string;
+	/** Recorded as the session's first writer. Defaults to the thread id itself. */
+	resourceId?: string;
 }
 
 export interface ThreadDetail {
@@ -59,12 +84,65 @@ export class AgentExecutionService {
 		private readonly logger: Logger,
 		private readonly agentExecutionRepository: AgentExecutionRepository,
 		private readonly agentExecutionThreadRepository: AgentExecutionThreadRepository,
+		private readonly agentRepository: AgentRepository,
 		private readonly n8nMemory: N8nMemory,
 		private readonly telemetry: Telemetry,
 		private readonly agentExecutionLogStore: AgentExecutionLogStore,
 		private readonly storageConfig: StorageConfig,
 		private readonly errorReporter: ErrorReporter,
 	) {}
+
+	/**
+	 * Thread id to run a conversation under, creating the session record if this
+	 * is the conversation's first run.
+	 *
+	 * Surfaces whose conversations are identified by something outside n8n (a
+	 * Slack thread, a caller-supplied workflow session id) used to derive the
+	 * thread id from those parts and look it up by primary key. They now resolve
+	 * it here instead, so the id itself can be an opaque uuid — threads created
+	 * before that switch are still found, because the migration backfilled their
+	 * key columns from the old composed ids.
+	 *
+	 * Resolution happens before the run so the same id backs both the SDK memory
+	 * thread and the session record. Two messages arriving together therefore
+	 * race to insert; the loser reads back the winner's id rather than forking
+	 * the conversation.
+	 */
+	async resolveThreadIdForKey(params: ResolveThreadParams): Promise<string> {
+		const { agentId, projectId, origin, originRef, externalKey, resourceId } = params;
+		const key = { agentId, origin, originRef, externalKey };
+
+		const existing = await this.agentExecutionThreadRepository.findIdByNaturalKey(key);
+		if (existing) return existing;
+
+		const agentName = await this.agentRepository.findNameByIdAndProjectId(agentId, projectId);
+		if (agentName === null) throw new OperationalError('Agent not found or not accessible.');
+
+		const threadId = randomUUID();
+		try {
+			const { thread } = await this.agentExecutionThreadRepository.findOrCreate({
+				threadId,
+				agentId,
+				agentName,
+				projectId,
+				origin,
+				originRef,
+				externalKey,
+				createdByResourceId: resourceId ?? threadId,
+			});
+			return thread.id;
+		} catch (error) {
+			if (!isUniqueConstraintError(error)) throw error;
+			const raced = await this.agentExecutionThreadRepository.findIdByNaturalKey(key);
+			if (!raced) throw error;
+			return raced;
+		}
+	}
+
+	/** Id of an already-started conversation, without creating one. */
+	async findThreadIdByKey(key: AgentThreadNaturalKey): Promise<string | null> {
+		return await this.agentExecutionThreadRepository.findIdByNaturalKey(key);
+	}
 
 	/**
 	 * Record a single agent run within a thread.
@@ -82,18 +160,22 @@ export class AgentExecutionService {
 			threadMetadata,
 			taskId,
 			taskVersionId,
+			origin,
+			resourceId,
 		} = params;
 
 		// Ensure the thread exists and bump its updatedAt
-		const { thread, created } = await this.agentExecutionThreadRepository.findOrCreate(
+		const { thread, created } = await this.agentExecutionThreadRepository.findOrCreate({
 			threadId,
 			agentId,
 			agentName,
 			projectId,
-			threadMetadata,
+			metadata: threadMetadata,
 			taskId,
 			taskVersionId,
-		);
+			origin,
+			createdByResourceId: resourceId,
+		});
 		if (!created) {
 			await this.agentExecutionThreadRepository.bumpUpdatedAt(threadId);
 			// Sync title from the SDK memory thread if we don't have one yet
@@ -427,4 +509,12 @@ export function threadBelongsTo(
 	if (thread.projectId !== projectId) return false;
 	if (thread.agentId !== agentId) return false;
 	return true;
+}
+
+/**
+ * True if `resourceId` may write to `thread`. Threads predating
+ * `createdByResourceId` have no recorded writer and stay open to their project.
+ */
+export function threadAcceptsWritesFrom(thread: AgentExecutionThread, resourceId: string): boolean {
+	return thread.createdByResourceId === null || thread.createdByResourceId === resourceId;
 }

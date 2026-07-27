@@ -155,6 +155,7 @@ export class SubAgentForegroundRunner {
 				runtimeSource: runtimeSource.source,
 				projectId: context.projectId,
 				threadId,
+				resourceId,
 				parentThreadId: request.parentThreadId,
 				parentAgentId: context.parentAgentId,
 				taskPath,
@@ -209,6 +210,7 @@ export class SubAgentForegroundRunner {
 		projectId: string;
 		/** Unified thread id, shared with the SDK memory thread. */
 		threadId: string;
+		resourceId: string;
 		parentThreadId?: string;
 		parentAgentId?: string;
 		taskPath: SubAgentTaskPath;
@@ -219,6 +221,7 @@ export class SubAgentForegroundRunner {
 			runtimeSource,
 			projectId,
 			threadId,
+			resourceId,
 			parentThreadId,
 			parentAgentId,
 			taskPath,
@@ -235,6 +238,8 @@ export class SubAgentForegroundRunner {
 				userMessage: prompt,
 				record,
 				source: 'subagent',
+				origin: 'subagent',
+				resourceId,
 				threadMetadata: {
 					...(parentThreadId !== undefined ? { parentThreadId } : {}),
 					...(parentAgentId !== undefined ? { parentAgentId } : {}),

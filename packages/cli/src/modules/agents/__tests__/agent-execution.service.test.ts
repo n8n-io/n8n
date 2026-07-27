@@ -1,5 +1,6 @@
 import type { Mocked } from 'vitest';
 import { mockLogger } from '@n8n/backend-test-utils';
+import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
 
@@ -13,6 +14,7 @@ import type { AgentExecutionLogStore } from '../execution-log/agent-execution-lo
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+import type { AgentRepository } from '../repositories/agent.repository';
 
 type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
 
@@ -57,6 +59,7 @@ describe('AgentExecutionService', () => {
 	let agentExecutionRepository: Mocked<AgentExecutionRepository>;
 	let agentExecutionThreadRepository: Mocked<AgentExecutionThreadRepository>;
 	let n8nMemory: Mocked<N8nMemory>;
+	let agentRepository: Mocked<AgentRepository>;
 	let memoryBackend: Mocked<N8nMemoryImplementation>;
 	let telemetry: Mocked<Telemetry>;
 	let agentExecutionLogStore: Mocked<AgentExecutionLogStore>;
@@ -68,6 +71,7 @@ describe('AgentExecutionService', () => {
 
 		agentExecutionRepository = mock<AgentExecutionRepository>();
 		agentExecutionThreadRepository = mock<AgentExecutionThreadRepository>();
+		agentRepository = mock<AgentRepository>();
 		n8nMemory = mock<N8nMemory>();
 		memoryBackend = mock<N8nMemoryImplementation>();
 		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
@@ -80,12 +84,82 @@ describe('AgentExecutionService', () => {
 			mockLogger(),
 			agentExecutionRepository,
 			agentExecutionThreadRepository,
+			agentRepository,
 			n8nMemory,
 			telemetry,
 			agentExecutionLogStore,
 			storageConfig,
 			errorReporter,
 		);
+	});
+
+	describe('resolveThreadIdForKey', () => {
+		const key = {
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			origin: 'integration' as const,
+			externalKey: 'slack:C123:1727000000.001',
+			resourceId: 'integration:slack:U1',
+		};
+
+		it('continues the session already started for this conversation', async () => {
+			// Threads created before opaque ids are found the same way: the migration
+			// backfilled their key columns from the composed id.
+			agentExecutionThreadRepository.findIdByNaturalKey.mockResolvedValue(
+				'agent-1:slack:C123:1727000000.001',
+			);
+
+			await expect(service.resolveThreadIdForKey(key)).resolves.toBe(
+				'agent-1:slack:C123:1727000000.001',
+			);
+			expect(agentExecutionThreadRepository.findOrCreate).not.toHaveBeenCalled();
+		});
+
+		it('starts a session under an opaque id keyed by the conversation', async () => {
+			agentExecutionThreadRepository.findIdByNaturalKey.mockResolvedValue(null);
+			agentRepository.findNameByIdAndProjectId.mockResolvedValue('Support agent');
+			agentExecutionThreadRepository.findOrCreate.mockImplementation(
+				async ({ threadId }) =>
+					({ thread: { id: threadId } as AgentExecutionThread, created: true }) as never,
+			);
+
+			const threadId = await service.resolveThreadIdForKey(key);
+
+			expect(threadId).not.toContain('slack');
+			expect(agentExecutionThreadRepository.findOrCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					threadId,
+					agentId: 'agent-1',
+					agentName: 'Support agent',
+					projectId: 'project-1',
+					origin: 'integration',
+					externalKey: 'slack:C123:1727000000.001',
+					createdByResourceId: 'integration:slack:U1',
+				}),
+			);
+		});
+
+		it('adopts the winner of a concurrent first message instead of forking', async () => {
+			agentExecutionThreadRepository.findIdByNaturalKey
+				.mockResolvedValueOnce(null)
+				.mockResolvedValueOnce('winning-thread');
+			agentRepository.findNameByIdAndProjectId.mockResolvedValue('Support agent');
+			agentExecutionThreadRepository.findOrCreate.mockRejectedValue(
+				new QueryFailedError('insert', undefined, { code: '23505' } as unknown as Error),
+			);
+
+			await expect(service.resolveThreadIdForKey(key)).resolves.toBe('winning-thread');
+		});
+
+		it('rejects when the agent is gone rather than orphaning a session', async () => {
+			agentExecutionThreadRepository.findIdByNaturalKey.mockResolvedValue(null);
+			agentRepository.findNameByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.resolveThreadIdForKey(key)).rejects.toThrow(
+				'Agent not found or not accessible.',
+			);
+			expect(agentExecutionThreadRepository.findOrCreate).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('recordMessage', () => {
@@ -95,6 +169,7 @@ describe('AgentExecutionService', () => {
 				mockLogger(),
 				agentExecutionRepository,
 				agentExecutionThreadRepository,
+				agentRepository,
 				n8nMemory,
 				telemetry,
 				agentExecutionLogStore,
@@ -149,6 +224,7 @@ describe('AgentExecutionService', () => {
 				mockLogger(),
 				agentExecutionRepository,
 				agentExecutionThreadRepository,
+				agentRepository,
 				n8nMemory,
 				telemetry,
 				agentExecutionLogStore,
@@ -218,6 +294,8 @@ describe('AgentExecutionService', () => {
 				userMessage: 'Goal:\nResearch API behavior.',
 				record,
 				source: 'subagent',
+				origin: 'subagent',
+				resourceId: 'draft-chat:user-1',
 				threadMetadata: {
 					parentThreadId: 'parent-thread-1',
 					parentAgentId: 'parent-agent-1',
@@ -225,16 +303,18 @@ describe('AgentExecutionService', () => {
 			});
 
 			expect(agentExecutionThreadRepository.findOrCreate).toHaveBeenCalledWith(
-				'thread-1',
-				'agent-1',
-				'Agent',
-				'project-1',
-				{
-					parentThreadId: 'parent-thread-1',
-					parentAgentId: 'parent-agent-1',
-				},
-				undefined,
-				undefined,
+				expect.objectContaining({
+					threadId: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					projectId: 'project-1',
+					origin: 'subagent',
+					createdByResourceId: 'draft-chat:user-1',
+					metadata: {
+						parentThreadId: 'parent-thread-1',
+						parentAgentId: 'parent-agent-1',
+					},
+				}),
 			);
 		});
 
@@ -259,13 +339,7 @@ describe('AgentExecutionService', () => {
 			});
 
 			expect(agentExecutionThreadRepository.findOrCreate).toHaveBeenCalledWith(
-				'thread-1',
-				'agent-1',
-				'Agent',
-				'project-1',
-				undefined,
-				'task-1',
-				'version-1',
+				expect.objectContaining({ taskId: 'task-1', taskVersionId: 'version-1' }),
 			);
 		});
 

@@ -1,13 +1,38 @@
 import { Service } from '@n8n/di';
 import { DataSource, LessThan, Repository } from '@n8n/typeorm';
 
-import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import {
+	AgentExecutionThread,
+	type AgentThreadOrigin,
+} from '../entities/agent-execution-thread.entity';
 
 const SESSION_NUMBER_RETRY_ATTEMPTS = 3;
 
 export interface AgentExecutionThreadMetadata {
 	parentThreadId?: string;
 	parentAgentId?: string;
+}
+
+/** Identifies the conversation a session continues. See {@link AgentExecutionThread.origin}. */
+export interface AgentThreadNaturalKey {
+	agentId: string;
+	origin: AgentThreadOrigin;
+	originRef?: string;
+	externalKey: string;
+}
+
+export interface FindOrCreateThreadOptions {
+	threadId: string;
+	agentId: string;
+	agentName: string;
+	projectId: string;
+	metadata?: AgentExecutionThreadMetadata;
+	taskId?: string | null;
+	taskVersionId?: string | null;
+	origin?: AgentThreadOrigin;
+	originRef?: string;
+	externalKey?: string | null;
+	createdByResourceId?: string | null;
 }
 
 export interface AgentExecutionThreadPage {
@@ -26,25 +51,11 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 	 * On creation, assigns a stable sessionNumber scoped to the project.
 	 */
 	async findOrCreate(
-		threadId: string,
-		agentId: string,
-		agentName: string,
-		projectId: string,
-		metadata?: AgentExecutionThreadMetadata,
-		taskId?: string | null,
-		taskVersionId?: string | null,
+		options: FindOrCreateThreadOptions,
 	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
 		for (let attempt = 0; ; attempt++) {
 			try {
-				return await this.findOrCreateInSerializableTransaction(
-					threadId,
-					agentId,
-					agentName,
-					projectId,
-					metadata,
-					taskId,
-					taskVersionId,
-				);
+				return await this.findOrCreateInSerializableTransaction(options);
 			} catch (error) {
 				if (attempt >= SESSION_NUMBER_RETRY_ATTEMPTS - 1 || !isRetriableWriteError(error)) {
 					throw error;
@@ -53,15 +64,33 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		}
 	}
 
-	private async findOrCreateInSerializableTransaction(
-		threadId: string,
-		agentId: string,
-		agentName: string,
-		projectId: string,
-		metadata?: AgentExecutionThreadMetadata,
-		taskId?: string | null,
-		taskVersionId?: string | null,
-	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
+	/** Id of the session continuing this conversation, if one was already started. */
+	async findIdByNaturalKey({
+		agentId,
+		origin,
+		originRef,
+		externalKey,
+	}: AgentThreadNaturalKey): Promise<string | null> {
+		const thread = await this.findOne({
+			select: { id: true },
+			where: { agentId, origin, originRef: originRef ?? '', externalKey },
+		});
+		return thread?.id ?? null;
+	}
+
+	private async findOrCreateInSerializableTransaction({
+		threadId,
+		agentId,
+		agentName,
+		projectId,
+		metadata,
+		taskId,
+		taskVersionId,
+		origin,
+		originRef,
+		externalKey,
+		createdByResourceId,
+	}: FindOrCreateThreadOptions): Promise<{ thread: AgentExecutionThread; created: boolean }> {
 		return await this.manager.transaction('SERIALIZABLE', async (entityManager) => {
 			const repository = entityManager.getRepository(AgentExecutionThread);
 			const existing = await repository.findOneBy({ id: threadId });
@@ -87,6 +116,10 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 				sessionNumber,
 				parentThreadId: metadata?.parentThreadId ?? null,
 				parentAgentId: metadata?.parentAgentId ?? null,
+				origin: origin ?? null,
+				originRef: originRef ?? '',
+				externalKey: externalKey ?? null,
+				createdByResourceId: createdByResourceId ?? null,
 			});
 			const saved = await repository.save(thread);
 			return { thread: saved, created: true };

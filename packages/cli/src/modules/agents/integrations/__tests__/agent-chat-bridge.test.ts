@@ -94,6 +94,20 @@ async function* toStream(chunks: StreamChunk[]): AsyncGenerator<StreamChunk> {
 	for (const c of chunks) yield c;
 }
 
+// The bridge resolves the session backing a platform thread through the
+// executor. Echoing the legacy composed id keeps the thread-identity
+// assertions below readable.
+const threadResolution = {
+	resolveThreadId: vi.fn(
+		async ({ agentId, externalKey }: { agentId: string; externalKey: string }) =>
+			`${agentId}:${externalKey}`,
+	),
+	findThreadIdByKey: vi.fn(
+		async ({ agentId, externalKey }: { agentId: string; externalKey: string }) =>
+			`${agentId}:${externalKey}`,
+	),
+};
+
 function makeAgentExecutor(chunks: StreamChunk[]) {
 	const captured: { message: string }[] = [];
 	const executeForChatPublished = vi.fn((config: { message: string }) => {
@@ -101,6 +115,7 @@ function makeAgentExecutor(chunks: StreamChunk[]) {
 		return toStream(chunks);
 	});
 	return {
+		...threadResolution,
 		executeForChatPublished,
 		resumeForChat: vi.fn(() => toStream(chunks)),
 		captured,
@@ -768,6 +783,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const agentExecutor = {
+				...threadResolution,
 				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
@@ -803,6 +819,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
 			const thread = makeThread();
 			const agentExecutor = {
+				...threadResolution,
 				executeForChatPublished: vi.fn(() =>
 					toStream([
 						{ type: 'text-delta', id: 't1', delta: 'Hello' },
@@ -854,6 +871,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
 			const thread = makeThread();
 			const agentExecutor = {
+				...threadResolution,
 				executeForChatPublished: vi.fn(() =>
 					toStream([
 						{ type: 'text-delta', id: 't1', delta: 'Hello' },
@@ -911,6 +929,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
 			const thread = makeThread();
 			const agentExecutor = {
+				...threadResolution,
 				executeForChatPublished: vi.fn(async function* () {
 					await new Promise((resolve) => setTimeout(resolve, 1000));
 					yield { type: 'finish' as const, finishReason: 'stop' as const };
@@ -963,6 +982,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
 			const thread = makeThread();
 			const agentExecutor = {
+				...threadResolution,
 				// Respond (which clears the status) while the initial "Thinking..."
 				// set is still waiting out its retry delay, then keep the stream open
 				// past that delay so the retry would otherwise fire after the clear.
@@ -1025,6 +1045,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
 			const thread = makeThread();
 			const agentExecutor = {
+				...threadResolution,
 				executeForChatPublished: vi.fn(() =>
 					toStream([
 						{ type: 'text-delta', id: 't1', delta: 'Hello' },
@@ -1079,6 +1100,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const agentExecutor = {
+				...threadResolution,
 				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 				resumeForChat: vi.fn(() =>
 					toStream([
@@ -1306,6 +1328,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			registry.register(new StatusHandleTestIntegration());
 
 			const agentExecutor = {
+				...threadResolution,
 				executeForChatPublished: vi.fn(() => {
 					throw new Error('setup failed');
 				}),

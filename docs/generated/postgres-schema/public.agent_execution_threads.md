@@ -7,8 +7,12 @@
 | agentId | varchar(36) |  | false |  | [public.agents](public.agents.md) |  |
 | agentName | varchar(255) |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| createdByResourceId | varchar(255) |  | true |  |  | Memory resourceId of the first writer, e.g. draft-chat:\<userId\> |
 | emoji | varchar(8) |  | true |  |  |  |
+| externalKey | varchar(255) |  | true |  |  | Thread key owned by the origin, e.g. a platform thread id or caller session id |
 | id | varchar(128) |  | false | [public.agent_execution](public.agent_execution.md) |  |  |
+| origin | varchar(32) |  | true |  |  | Surface that started the session: chat/integration/workflow/task/subagent/test |
+| originRef | varchar(255) | ''::character varying | false |  |  | Namespace of externalKey (workflowId for workflow threads); empty when unscoped |
 | parentAgentId | varchar(36) |  | true |  |  | Saved agent id of the parent that delegated this subagent run. |
 | parentThreadId | varchar(128) |  | true |  |  | Parent session thread id that delegated this subagent run. |
 | projectId | varchar(255) |  | false |  | [public.project](public.project.md) |  |
@@ -34,6 +38,7 @@
 | agent_execution_threads_agentName_not_null | n | NOT NULL "agentName" |
 | agent_execution_threads_createdAt_not_null | n | NOT NULL "createdAt" |
 | agent_execution_threads_id_not_null | n | NOT NULL id |
+| agent_execution_threads_originRef_not_null | n | NOT NULL "originRef" |
 | agent_execution_threads_projectId_not_null | n | NOT NULL "projectId" |
 | agent_execution_threads_sessionNumber_not_null | n | NOT NULL "sessionNumber" |
 | agent_execution_threads_totalCompletionTokens_not_null | n | NOT NULL "totalCompletionTokens" |
@@ -48,6 +53,7 @@
 | ---- | ---------- |
 | IDX_0468a9dc35597314e641d4722a | CREATE INDEX "IDX_0468a9dc35597314e641d4722a" ON public.agent_execution_threads USING btree ("agentId") |
 | IDX_0e2f8bf92a7a9c88b89670f701 | CREATE INDEX "IDX_0e2f8bf92a7a9c88b89670f701" ON public.agent_execution_threads USING btree ("projectId") |
+| IDX_agent_execution_threads_agentId_origin_originRef_externalKe | CREATE UNIQUE INDEX "IDX_agent_execution_threads_agentId_origin_originRef_externalKe" ON public.agent_execution_threads USING btree ("agentId", origin, "originRef", "externalKey") WHERE ("externalKey" IS NOT NULL) |
 | IDX_agent_execution_threads_taskVersionId | CREATE INDEX "IDX_agent_execution_threads_taskVersionId" ON public.agent_execution_threads USING btree ("taskVersionId") |
 | PK_22373dbf6ba6929d8ac50093309 | CREATE UNIQUE INDEX "PK_22373dbf6ba6929d8ac50093309" ON public.agent_execution_threads USING btree (id) |
 
@@ -65,8 +71,12 @@ erDiagram
   varchar_36_ agentId FK
   varchar_255_ agentName
   timestamp_3__with_time_zone createdAt
+  varchar_255_ createdByResourceId
   varchar_8_ emoji
+  varchar_255_ externalKey
   varchar_128_ id
+  varchar_32_ origin
+  varchar_255_ originRef
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
   varchar_255_ projectId FK

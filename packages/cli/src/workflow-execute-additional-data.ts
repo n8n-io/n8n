@@ -399,15 +399,14 @@ export async function executeAgent(
 		throw new UnexpectedError('Cannot execute agent without a workflowId in additional data');
 	}
 
-	// Scope session threads by workflow
-	const scopedThreadId = `wf:${additionalData.workflowId}:${threadId}`;
-
 	if (source.inlineAgent) {
+		// Inline runs record no session, so there is no row to look the thread up
+		// on: the composed key stays the only thing that continues them.
 		return await agentWorkflowExecutionService.executeInlineForWorkflow(
 			source.inlineAgent,
 			message,
 			executionId,
-			scopedThreadId,
+			`wf:${additionalData.workflowId}:${threadId}`,
 			projectId,
 			telemetryUserId,
 			isManualOrChatExecution(executionMode) ? 'test' : 'production',
@@ -417,6 +416,17 @@ export async function executeAgent(
 	}
 
 	const useDraftVersion = isManualOrChatExecution(executionMode);
+
+	// The caller's session id is only unique within its workflow, so the workflow
+	// namespaces it on the session record rather than in the thread id.
+	const { AgentExecutionService } = await import('@/modules/agents/agent-execution.service.js');
+	const scopedThreadId = await Container.get(AgentExecutionService).resolveThreadIdForKey({
+		agentId: source.agentId,
+		projectId,
+		origin: 'workflow',
+		originRef: additionalData.workflowId,
+		externalKey: threadId,
+	});
 
 	const result = await agentWorkflowExecutionService.executeForWorkflow(
 		source.agentId,

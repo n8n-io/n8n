@@ -91,8 +91,12 @@ erDiagram
   varchar_36_ agentId FK
   varchar_255_ agentName
   datetime_3_ createdAt
+  VARCHAR_255_ createdByResourceId
   varchar_8_ emoji
+  VARCHAR_255_ externalKey
   varchar_128_ id PK
+  VARCHAR_32_ origin
+  VARCHAR_255_ originRef
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
   varchar_255_ projectId FK

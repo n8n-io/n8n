@@ -15,7 +15,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_eval_result](public.agent_eval_result.md) | 15 |  | BASE TABLE |
 | [public.agent_eval_run](public.agent_eval_run.md) | 14 |  | BASE TABLE |
 | [public.agent_execution](public.agent_execution.md) | 19 |  | BASE TABLE |
-| [public.agent_execution_threads](public.agent_execution_threads.md) | 17 |  | BASE TABLE |
+| [public.agent_execution_threads](public.agent_execution_threads.md) | 21 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 8 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 7 |  | BASE TABLE |
@@ -424,8 +424,12 @@ erDiagram
   varchar_36_ agentId FK
   varchar_255_ agentName
   timestamp_3__with_time_zone createdAt
+  varchar_255_ createdByResourceId
   varchar_8_ emoji
+  varchar_255_ externalKey
   varchar_128_ id
+  varchar_32_ origin
+  varchar_255_ originRef
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
   varchar_255_ projectId FK

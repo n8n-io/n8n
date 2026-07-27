@@ -9,12 +9,18 @@ import { UserError } from 'n8n-workflow';
 import { ExternalHooks } from '@/external-hooks';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
-import { AgentExecutionService, type RecordMessageParams } from './agent-execution.service';
+import {
+	AgentExecutionService,
+	type RecordMessageParams,
+	type ResolveThreadParams,
+} from './agent-execution.service';
 import { AgentRunTracingService, modelIdFromSnapshot } from './agent-run-tracing.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import type { AgentThreadOrigin } from './entities/agent-execution-thread.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import type { AgentThreadNaturalKey } from './repositories/agent-execution-thread.repository';
 import type { ToolRegistry } from './tool-registry';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { streamAgentChunks } from './utils/agent-stream';
@@ -126,6 +132,8 @@ export interface StreamChatResponseConfig {
 	memory: AgentMemoryScope;
 	projectId: string;
 	source?: string;
+	/** Surface that started the session, stamped when the thread is first created. */
+	origin?: AgentThreadOrigin;
 	taskId?: string;
 	taskVersionId?: string;
 	telemetry?: {
@@ -301,6 +309,16 @@ export class AgentExecutionOrchestratorService {
 		}
 	}
 
+	/** See {@link AgentExecutionService.resolveThreadIdForKey}. */
+	async resolveThreadId(params: ResolveThreadParams): Promise<string> {
+		return await this.agentExecutionService.resolveThreadIdForKey(params);
+	}
+
+	/** See {@link AgentExecutionService.findThreadIdByKey}. */
+	async findThreadIdByKey(key: AgentThreadNaturalKey): Promise<string | null> {
+		return await this.agentExecutionService.findThreadIdByKey(key);
+	}
+
 	/**
 	 * Execute an agent for the in-app test chat and yield stream chunks.
 	 */
@@ -332,6 +350,7 @@ export class AgentExecutionOrchestratorService {
 			message,
 			memory,
 			projectId: runtime.projectId,
+			origin: 'chat',
 			telemetry: {
 				runType: 'test',
 				configuration: runtime.telemetryConfiguration,
@@ -370,6 +389,7 @@ export class AgentExecutionOrchestratorService {
 			memory,
 			projectId: runtime.projectId,
 			source: integrationType,
+			origin: 'integration',
 			telemetry: {
 				runType: 'production',
 				configuration: runtime.telemetryConfiguration,
@@ -404,6 +424,7 @@ export class AgentExecutionOrchestratorService {
 			memory,
 			projectId: runtime.projectId,
 			source: 'task',
+			origin: 'task',
 			taskId,
 			taskVersionId,
 			telemetry: {
@@ -438,6 +459,7 @@ export class AgentExecutionOrchestratorService {
 			memory,
 			projectId: runtime.projectId,
 			source: 'task',
+			origin: 'task',
 			taskId,
 			telemetry: {
 				runType: 'test',
@@ -459,6 +481,7 @@ export class AgentExecutionOrchestratorService {
 			memory,
 			projectId,
 			source,
+			origin,
 			taskId,
 			taskVersionId,
 			telemetry,
@@ -521,6 +544,8 @@ export class AgentExecutionOrchestratorService {
 					record: messageRecord,
 					hitlStatus: recorder.suspended ? 'suspended' : undefined,
 					source,
+					origin,
+					resourceId,
 					taskId,
 					taskVersionId,
 					telemetry,

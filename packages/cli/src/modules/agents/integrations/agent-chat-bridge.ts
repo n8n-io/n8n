@@ -34,6 +34,21 @@ interface AgentExecutor {
 		integrationType?: string;
 	}): AsyncGenerator<StreamChunk>;
 
+	/** Session backing this platform thread, started on the first inbound message. */
+	resolveThreadId(params: {
+		agentId: string;
+		projectId: string;
+		origin: 'integration';
+		externalKey: string;
+		resourceId: string;
+	}): Promise<string>;
+
+	findThreadIdByKey(key: {
+		agentId: string;
+		origin: 'integration';
+		externalKey: string;
+	}): Promise<string | null>;
+
 	resumeForChat(config: {
 		agentId: string;
 		projectId: string;
@@ -113,7 +128,7 @@ export class AgentChatBridge {
 			logger,
 			callbackStore: this.callbackStore,
 			resolvePlatformThreadId: this.resolvePlatformThreadId.bind(this),
-			toAgentThreadId: this.toAgentThreadId.bind(this),
+			findAgentThreadId: this.findAgentThreadId.bind(this),
 			getPlatformAgentContext: this.getPlatformAgentContext.bind(this),
 			messageContextBridge: this.messageContextBridge,
 			streamConsumer: this.streamConsumer,
@@ -165,6 +180,8 @@ export class AgentChatBridge {
 			async *resumeForChat(config) {
 				yield* agentService.resumeForChat(config);
 			},
+			resolveThreadId: async (params) => await agentService.resolveThreadId(params),
+			findThreadIdByKey: async (key) => await agentService.findThreadIdByKey(key),
 		};
 		return new AgentChatBridge(
 			chat,
@@ -229,8 +246,26 @@ export class AgentChatBridge {
 		return this.integrationImpl?.formatThreadId?.fromSdk(thread) ?? thread.id;
 	}
 
-	private toAgentThreadId(platformThreadId: string) {
-		return toInternalThreadId(`${this.agentId}:${platformThreadId}`);
+	/** Starts the session when this platform thread has not been seen before. */
+	private async toAgentThreadId(platformThreadId: string, resourceId: string) {
+		return toInternalThreadId(
+			await this.agentService.resolveThreadId({
+				agentId: this.agentId,
+				projectId: this.n8nProjectId,
+				origin: 'integration',
+				externalKey: platformThreadId,
+				resourceId,
+			}),
+		);
+	}
+
+	private async findAgentThreadId(platformThreadId: string) {
+		const threadId = await this.agentService.findThreadIdByKey({
+			agentId: this.agentId,
+			origin: 'integration',
+			externalKey: platformThreadId,
+		});
+		return threadId === null ? null : toInternalThreadId(threadId);
 	}
 
 	/**
@@ -261,7 +296,8 @@ export class AgentChatBridge {
 		if (!text) return;
 
 		const platformThreadId = this.resolvePlatformThreadId(thread);
-		const threadId = this.toAgentThreadId(platformThreadId);
+		const resourceId = integrationMemoryResourceId(this.integration.type, message.author.userId);
+		const threadId = await this.toAgentThreadId(platformThreadId, resourceId);
 		const statusRetry = new AbortController();
 		// Platform status hooks, the lazy `message.subject` fetch, and any
 		// thread-history fetch are all remote round-trips on independent
@@ -295,10 +331,7 @@ export class AgentChatBridge {
 				agentId: this.agentId,
 				projectId: this.n8nProjectId,
 				message: agentInput,
-				memory: {
-					threadId,
-					resourceId: integrationMemoryResourceId(this.integration.type, message.author.userId),
-				},
+				memory: { threadId, resourceId },
 				integrationType: this.integration.type,
 			});
 

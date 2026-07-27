@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_execution_threads" ("id" varchar(128) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "agentName" varchar(255) NOT NULL, "projectId" varchar(255) NOT NULL, "sessionNumber" integer NOT NULL DEFAULT (0), "totalPromptTokens" integer NOT NULL DEFAULT (0), "totalCompletionTokens" integer NOT NULL DEFAULT (0), "totalCost" real NOT NULL DEFAULT (0), "totalDuration" integer NOT NULL DEFAULT (0), "title" varchar(255), "emoji" varchar(8), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "taskId" varchar(32), "taskVersionId" varchar(36), "parentThreadId" varchar(128), "parentAgentId" varchar(36), CONSTRAINT "FK_0e2f8bf92a7a9c88b89670f701c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_0468a9dc35597314e641d4722aa" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_f00b52d74fe11838e1fe086deea" FOREIGN KEY ("taskVersionId") REFERENCES "agent_history" ("versionId") ON DELETE SET NULL)
+CREATE TABLE "agent_execution_threads" ("id" varchar(128) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "agentName" varchar(255) NOT NULL, "projectId" varchar(255) NOT NULL, "sessionNumber" integer NOT NULL DEFAULT (0), "totalPromptTokens" integer NOT NULL DEFAULT (0), "totalCompletionTokens" integer NOT NULL DEFAULT (0), "totalCost" real NOT NULL DEFAULT (0), "totalDuration" integer NOT NULL DEFAULT (0), "title" varchar(255), "emoji" varchar(8), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "taskId" varchar(32), "taskVersionId" varchar(36), "parentThreadId" varchar(128), "parentAgentId" varchar(36), "origin" VARCHAR(32), "originRef" VARCHAR(255) NOT NULL DEFAULT '', "externalKey" VARCHAR(255), "createdByResourceId" VARCHAR(255), CONSTRAINT "FK_0e2f8bf92a7a9c88b89670f701c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_0468a9dc35597314e641d4722aa" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_f00b52d74fe11838e1fe086deea" FOREIGN KEY ("taskVersionId") REFERENCES "agent_history" ("versionId") ON DELETE SET NULL)
 ```
 
 </details>
@@ -18,8 +18,12 @@ CREATE TABLE "agent_execution_threads" ("id" varchar(128) PRIMARY KEY NOT NULL, 
 | agentId | varchar(36) |  | false |  | [agents](agents.md) |  |
 | agentName | varchar(255) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| createdByResourceId | VARCHAR(255) |  | true |  |  |  |
 | emoji | varchar(8) |  | true |  |  |  |
+| externalKey | VARCHAR(255) |  | true |  |  |  |
 | id | varchar(128) |  | false | [agent_execution](agent_execution.md) |  |  |
+| origin | VARCHAR(32) |  | true |  |  |  |
+| originRef | VARCHAR(255) | '' | false |  |  |  |
 | parentAgentId | varchar(36) |  | true |  |  |  |
 | parentThreadId | varchar(128) |  | true |  |  |  |
 | projectId | varchar(255) |  | false |  | [project](project.md) |  |
@@ -49,6 +53,7 @@ CREATE TABLE "agent_execution_threads" ("id" varchar(128) PRIMARY KEY NOT NULL, 
 | ---- | ---------- |
 | IDX_0468a9dc35597314e641d4722a | CREATE INDEX "IDX_0468a9dc35597314e641d4722a" ON "agent_execution_threads" ("agentId")  |
 | IDX_0e2f8bf92a7a9c88b89670f701 | CREATE INDEX "IDX_0e2f8bf92a7a9c88b89670f701" ON "agent_execution_threads" ("projectId")  |
+| IDX_agent_execution_threads_agentId_origin_originRef_externalKey | CREATE UNIQUE INDEX "IDX_agent_execution_threads_agentId_origin_originRef_externalKey" ON "agent_execution_threads" ("agentId", "origin", "originRef", "externalKey") WHERE "externalKey" IS NOT NULL |
 | IDX_agent_execution_threads_taskVersionId | CREATE INDEX "IDX_agent_execution_threads_taskVersionId" ON "agent_execution_threads" ("taskVersionId")  |
 | sqlite_autoindex_agent_execution_threads_1 | PRIMARY KEY (id) |
 
@@ -66,8 +71,12 @@ erDiagram
   varchar_36_ agentId FK
   varchar_255_ agentName
   datetime_3_ createdAt
+  VARCHAR_255_ createdByResourceId
   varchar_8_ emoji
+  VARCHAR_255_ externalKey
   varchar_128_ id PK
+  VARCHAR_32_ origin
+  VARCHAR_255_ originRef
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
   varchar_255_ projectId FK

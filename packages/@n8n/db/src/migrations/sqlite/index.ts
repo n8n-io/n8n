@@ -222,6 +222,7 @@ import { CreateWorkflowReviewRequestTables1784000000052 } from '../common/178400
 import { AddStoredAtToAgentExecution1784815940110 } from '../common/1784815940110-AddStoredAtToAgentExecution';
 import { AddInstanceCredentials1784815940111 } from '../common/1784815940111-AddInstanceCredentials';
 import { CreateAgentEvalTables1784815940112 } from '../common/1784815940112-CreateAgentEvalTables';
+import { AddThreadIdentityToAgentExecutionThreads1785151856791 } from '../common/1785151856791-AddThreadIdentityToAgentExecutionThreads';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -447,6 +448,7 @@ const sqliteMigrations: Migration[] = [
 	AddInstanceCredentials1784815940111,
 	CreateAgentEvalTables1784815940112,
 	AddAvailableInMcpToAgents1784897791636,
+	AddThreadIdentityToAgentExecutionThreads1785151856791,
 ];
 
 export { sqliteMigrations };

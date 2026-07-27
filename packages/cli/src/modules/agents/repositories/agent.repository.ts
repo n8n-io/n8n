@@ -71,6 +71,12 @@ export class AgentRepository extends Repository<Agent> {
 	 * published snapshot (or `null`) in a single query, which is what the publish button uses
 	 * to compute its state (published vs. unpublished, has changes vs. up to date).
 	 */
+	/** Name only — for denormalizing onto a session record without loading the agent. */
+	async findNameByIdAndProjectId(id: string, projectId: string): Promise<string | null> {
+		const agent = await this.findOne({ select: { name: true }, where: { id, projectId } });
+		return agent?.name ?? null;
+	}
+
 	async findByIdAndProjectId(id: string, projectId: string): Promise<Agent | null> {
 		return await this.findOne({
 			where: { id, projectId },

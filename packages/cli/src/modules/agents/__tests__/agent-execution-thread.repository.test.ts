@@ -18,6 +18,13 @@ describe('AgentExecutionThreadRepository', () => {
 	});
 
 	describe('findOrCreate', () => {
+		const baseOptions = {
+			threadId: 'thread-1',
+			agentId: 'agent-1',
+			agentName: 'Support agent',
+			projectId: 'project-1',
+		};
+
 		const makeScopedRepository = (saved: AgentExecutionThread, max = 7) => ({
 			findOneBy: vi.fn().mockResolvedValue(null),
 			createQueryBuilder: vi.fn().mockReturnValue({
@@ -37,12 +44,7 @@ describe('AgentExecutionThreadRepository', () => {
 				return await callback(trx as never);
 			});
 
-			const result = await repository.findOrCreate(
-				'thread-1',
-				'agent-1',
-				'Support agent',
-				'project-1',
-			);
+			const result = await repository.findOrCreate(baseOptions);
 
 			expect(entityManager.transaction).toHaveBeenCalledWith('SERIALIZABLE', expect.any(Function));
 			expect(trx.getRepository).toHaveBeenCalledWith(AgentExecutionThread);
@@ -56,11 +58,15 @@ describe('AgentExecutionThreadRepository', () => {
 				sessionNumber: 8,
 				parentThreadId: null,
 				parentAgentId: null,
+				origin: null,
+				originRef: '',
+				externalKey: null,
+				createdByResourceId: null,
 			});
 			expect(result).toEqual({ thread: saved, created: true });
 		});
 
-		it('stores subagent origin metadata when creating a thread', async () => {
+		it('stores thread identity and parent linkage when creating a thread', async () => {
 			const saved = mock<AgentExecutionThread>({ id: 'thread-1', sessionNumber: 8 });
 			const scopedRepository = makeScopedRepository(saved);
 			const trx = { getRepository: vi.fn().mockReturnValue(scopedRepository) };
@@ -68,22 +74,24 @@ describe('AgentExecutionThreadRepository', () => {
 				return await callback(trx as never);
 			});
 
-			await repository.findOrCreate('thread-1', 'agent-1', 'Support agent', 'project-1', {
-				parentThreadId: 'parent-thread-1',
-				parentAgentId: 'parent-agent-1',
+			await repository.findOrCreate({
+				...baseOptions,
+				metadata: { parentThreadId: 'parent-thread-1', parentAgentId: 'parent-agent-1' },
+				origin: 'integration',
+				externalKey: 'slack:C123:1727000000.001',
+				createdByResourceId: 'integration:slack:U1',
 			});
 
-			expect(scopedRepository.create).toHaveBeenCalledWith({
-				id: 'thread-1',
-				agentId: 'agent-1',
-				agentName: 'Support agent',
-				projectId: 'project-1',
-				taskId: null,
-				taskVersionId: null,
-				sessionNumber: 8,
-				parentThreadId: 'parent-thread-1',
-				parentAgentId: 'parent-agent-1',
-			});
+			expect(scopedRepository.create).toHaveBeenCalledWith(
+				expect.objectContaining({
+					parentThreadId: 'parent-thread-1',
+					parentAgentId: 'parent-agent-1',
+					origin: 'integration',
+					originRef: '',
+					externalKey: 'slack:C123:1727000000.001',
+					createdByResourceId: 'integration:slack:U1',
+				}),
+			);
 		});
 
 		it('stores the published task snapshot version when supplied', async () => {
@@ -94,15 +102,11 @@ describe('AgentExecutionThreadRepository', () => {
 				return await callback(trx as never);
 			});
 
-			await repository.findOrCreate(
-				'thread-1',
-				'agent-1',
-				'Support agent',
-				'project-1',
-				undefined,
-				'task-1',
-				'version-1',
-			);
+			await repository.findOrCreate({
+				...baseOptions,
+				taskId: 'task-1',
+				taskVersionId: 'version-1',
+			});
 
 			expect(scopedRepository.create).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -125,12 +129,7 @@ describe('AgentExecutionThreadRepository', () => {
 					return await callback(trx as never);
 				});
 
-			const result = await repository.findOrCreate(
-				'thread-1',
-				'agent-1',
-				'Support agent',
-				'project-1',
-			);
+			const result = await repository.findOrCreate(baseOptions);
 
 			expect(entityManager.transaction).toHaveBeenCalledTimes(2);
 			expect(result).toEqual({ thread: saved, created: true });

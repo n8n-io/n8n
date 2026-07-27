@@ -37,6 +37,7 @@ import {
 	SubworkflowPolicyChecker,
 } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
+import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import { AgentWorkflowExecutionService } from '@/modules/agents/agent-workflow-execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -1334,11 +1335,13 @@ describe('WorkflowExecuteAdditionalData', () => {
 	describe('executeAgent', () => {
 		const ownershipService = mockInstance(OwnershipService);
 		const agentWorkflowExecutionService = mockInstance(AgentWorkflowExecutionService);
+		const agentExecutionService = mockInstance(AgentExecutionService);
 
 		const AGENT_ID = 'agent-id';
 		const MESSAGE = 'hello';
 		const EXEC_ID = 'exec-id';
 		const THREAD_ID = 'thread-id';
+		const RESOLVED_THREAD_ID = 'resolved-thread-id';
 
 		beforeEach(() => {
 			vi.clearAllMocks();
@@ -1348,6 +1351,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			agentWorkflowExecutionService.executeForWorkflow.mockResolvedValue(
 				mock<Awaited<ReturnType<typeof agentWorkflowExecutionService.executeForWorkflow>>>(),
 			);
+			agentExecutionService.resolveThreadIdForKey.mockResolvedValue(RESOLVED_THREAD_ID);
 		});
 
 		it('routes inline sources to executeInlineForWorkflow with a mode-derived run type', async () => {
@@ -1422,13 +1426,38 @@ describe('WorkflowExecuteAdditionalData', () => {
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
-				`wf:workflow-1:${THREAD_ID}`,
+				RESOLVED_THREAD_ID,
 				'project-1',
 				'user-1',
 				true,
 				undefined,
 				undefined,
 			);
+		});
+
+		it('scopes the caller session id to the calling workflow when resolving the thread', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+			});
+
+			await executeAgent(
+				{ agentId: AGENT_ID },
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				additionalData,
+				'manual',
+			);
+
+			expect(agentExecutionService.resolveThreadIdForKey).toHaveBeenCalledWith({
+				agentId: AGENT_ID,
+				projectId: 'project-1',
+				origin: 'workflow',
+				originRef: 'workflow-1',
+				externalKey: THREAD_ID,
+			});
 		});
 
 		it('forwards the outputSchema to executeForWorkflow', async () => {
@@ -1457,7 +1486,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
-				`wf:workflow-1:${THREAD_ID}`,
+				RESOLVED_THREAD_ID,
 				'project-1',
 				'user-1',
 				true,
@@ -1495,7 +1524,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
-				`wf:workflow-1:${THREAD_ID}`,
+				RESOLVED_THREAD_ID,
 				'project-1',
 				'user-1',
 				true,
@@ -1528,7 +1557,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
-				`wf:workflow-1:${THREAD_ID}`,
+				RESOLVED_THREAD_ID,
 				'project-1',
 				'user-1',
 				true,
@@ -1590,7 +1619,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
-				`wf:workflow-1:${THREAD_ID}`,
+				RESOLVED_THREAD_ID,
 				'project-1',
 				undefined,
 				false,
@@ -1622,7 +1651,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					AGENT_ID,
 					MESSAGE,
 					EXEC_ID,
-					`wf:workflow-1:${THREAD_ID}`,
+					RESOLVED_THREAD_ID,
 					'project-1',
 					'user-1',
 					true,
@@ -1656,7 +1685,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
-				`wf:workflow-1:${THREAD_ID}`,
+				RESOLVED_THREAD_ID,
 				'project-1',
 				'user-1',
 				false,

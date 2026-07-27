@@ -482,7 +482,7 @@ export class AgentTaskService {
 				return;
 			}
 
-			const { message, threadId } = this.buildTaskRunMessage(taskId, snapshot.objective);
+			const { message, threadId } = this.buildTaskRunMessage(snapshot.objective);
 
 			this.logger.info('[AgentTaskService] Task fired', {
 				taskId,
@@ -518,15 +518,13 @@ export class AgentTaskService {
 	 * a fresh thread id. Shared by the scheduled path (published snapshot body)
 	 * and the manual path (live draft body), so the wake-up format stays in sync.
 	 */
-	private buildTaskRunMessage(
-		taskId: string,
-		objective: string,
-	): { message: string; threadId: string } {
+	private buildTaskRunMessage(objective: string): { message: string; threadId: string } {
 		const timezone = this.globalConfig.generic.timezone;
 		const timestamp = DateTime.now().setZone(timezone).toISO() ?? new Date().toISOString();
 		const message = `${objective}\n\nCurrent date and time: ${timestamp} (timezone: ${timezone})`;
-		const threadId = `task-${taskId}-${randomUUID()}`;
-		return { message, threadId };
+		// Every run is a fresh conversation, and the task is already a column on
+		// the session record, so the id carries nothing.
+		return { message, threadId: randomUUID() };
 	}
 
 	/**
@@ -575,7 +573,7 @@ export class AgentTaskService {
 	}
 
 	private async executeNow(task: AgentTask, projectId: string, user: User): Promise<void> {
-		const { message, threadId } = this.buildTaskRunMessage(task.id, task.objective);
+		const { message, threadId } = this.buildTaskRunMessage(task.objective);
 
 		this.logger.info('[AgentTaskService] Manual task run started', {
 			taskId: task.id,
