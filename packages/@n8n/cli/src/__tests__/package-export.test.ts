@@ -22,13 +22,23 @@ interface ExportFlags {
 interface ExportInternals {
 	parse: () => Promise<{ flags: ExportFlags }>;
 	getClient: () => N8nClient;
-	succeed: () => void;
+	succeed: (message: string, ...args: unknown[]) => void;
 	error: (message: string) => never;
 }
 
+const DEFAULT_COUNTS = {
+	workflows: 0,
+	folders: 0,
+	credentials: 0,
+	dataTables: 0,
+	variables: 0,
+};
+
 function stubCommand(
 	flags: ExportFlags,
-	exportPackage = vi.fn().mockResolvedValue(Buffer.from([1, 2, 3])),
+	exportPackage = vi
+		.fn()
+		.mockResolvedValue({ archive: Buffer.from([1, 2, 3]), counts: DEFAULT_COUNTS }),
 ) {
 	const command = new PackageExport([], {} as Config);
 	const internals = command as unknown as ExportInternals;
@@ -231,5 +241,38 @@ describe('package export command', () => {
 
 		await expect(command.run()).rejects.toThrow(/at least one/i);
 		expect(exportPackage).not.toHaveBeenCalled();
+	});
+
+	it('omits a zero folder count from a workflow-only export message', async () => {
+		const exportPackage = vi.fn().mockResolvedValue({
+			archive: Buffer.from([1, 2, 3]),
+			counts: { workflows: 2, folders: 0, credentials: 0, dataTables: 0, variables: 0 },
+		});
+		const { command, internals } = stubCommand(
+			{ workflowId: ['wf-1', 'wf-2'], output: '/tmp/team.n8np' },
+			exportPackage,
+		);
+
+		await command.run();
+
+		const message = vi.mocked(internals.succeed).mock.calls[0][0];
+		expect(message).toBe('Exported 2 workflow(s) to /tmp/team.n8np');
+		expect(message).not.toContain('folder');
+	});
+
+	it('reports the real bundled workflow count for a folder export', async () => {
+		const exportPackage = vi.fn().mockResolvedValue({
+			archive: Buffer.from([1, 2, 3]),
+			counts: { workflows: 3, folders: 1, credentials: 0, dataTables: 0, variables: 0 },
+		});
+		const { command, internals } = stubCommand(
+			{ folderId: ['fld-1'], output: '/tmp/folders.n8np' },
+			exportPackage,
+		);
+
+		await command.run();
+
+		const message = vi.mocked(internals.succeed).mock.calls[0][0];
+		expect(message).toBe('Exported 3 workflow(s), 1 folder(s) to /tmp/folders.n8np');
 	});
 });

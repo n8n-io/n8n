@@ -1032,6 +1032,96 @@ describe('buildSteps', () => {
 		});
 	});
 
+	describe('DeepSeek reasoning_content reconstruction', () => {
+		it('should reconstruct AIMessage with reasoning_content in additional_kwargs', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								deepseek: {
+									reasoningContent: 'The user wants me to add 2+2, I should call the calculator.',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			expect(message.additional_kwargs?.reasoning_content).toBe(
+				'The user wants me to add 2+2, I should call the calculator.',
+			);
+			// Unlike Anthropic thinking, DeepSeek keeps tool_calls (content stays a plain array)
+			expect(message.tool_calls).toHaveLength(1);
+			expect(message.tool_calls?.[0]).toMatchObject({
+				id: 'call_123',
+				name: 'Calculator',
+				type: 'tool_call',
+			});
+		});
+
+		it('should not set additional_kwargs when reasoning_content is absent', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			expect(message.additional_kwargs?.reasoning_content).toBeUndefined();
+		});
+	});
+
 	describe('Tool name resolution', () => {
 		it('should use HITL toolName when HITL metadata is present', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
