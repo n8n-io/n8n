@@ -745,6 +745,19 @@ describe('LmChatAwsBedrock', () => {
 			expect(httpMock).not.toHaveBeenCalled();
 		});
 
+		it('uses the China partition domain for cn regions', async () => {
+			const httpMock = httpMockFor(foundationResponse, profilesResponse);
+			const ctx = createLoadOptionsContext('iam', httpMock);
+			ctx.getCredentials = vi.fn().mockResolvedValue({ region: 'cn-north-1' });
+
+			await node.methods.loadOptions.listModels.call(ctx);
+
+			expect(httpMock).toHaveBeenCalledWith(
+				'aws',
+				expect.objectContaining({ baseURL: 'https://bedrock.cn-north-1.amazonaws.com.cn' }),
+			);
+		});
+
 		it('is exposed as version 1.2 with the merged picker as default', () => {
 			expect(node.description.version).toEqual([1, 1.1, 1.2]);
 			const mergedModelField = node.description.properties.find(
