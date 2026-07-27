@@ -305,6 +305,11 @@ export class OidcService {
 			throw new BadRequestError('Invalid email format');
 		}
 
+		await this.assertProvisioningLoginAllowed(
+			claims as Record<string, unknown>,
+			userInfo as Record<string, unknown>,
+		);
+
 		const openidUser = await this.authIdentityRepository.findOne({
 			where: { providerId: claims.sub, providerType: 'oidc' },
 			relations: {
@@ -516,12 +521,26 @@ export class OidcService {
 		const provisioningConfig = await this.provisioningService.getConfig();
 		const projectRoleMapping = claims[provisioningConfig.scopesProjectsRolesClaimName];
 		const instanceRole = claims[provisioningConfig.scopesInstanceRoleClaimName];
-		if (instanceRole) {
-			await this.provisioningService.provisionInstanceRoleForUser(user, instanceRole);
-		}
+		// Called even when the claim is missing so the configured default condition applies
+		await this.provisioningService.provisionInstanceRoleForUser(user, instanceRole);
 		if (projectRoleMapping) {
 			await this.provisioningService.provisionProjectRolesForUser(user.id, projectRoleMapping);
 		}
+	}
+
+	/**
+	 * Denies the login (before any account is created or session issued) when
+	 * role mapping resolves to Block access.
+	 */
+	private async assertProvisioningLoginAllowed(
+		claims: Record<string, unknown>,
+		userInfo: Record<string, unknown>,
+	) {
+		const provisioningConfig = await this.provisioningService.getConfig();
+		await this.provisioningService.assertSsoLoginAllowed(
+			buildOidcClaimsContext(claims, userInfo),
+			claims[provisioningConfig.scopesInstanceRoleClaimName],
+		);
 	}
 
 	private async broadcastReloadOIDCConfigurationCommand(): Promise<void> {
