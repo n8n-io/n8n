@@ -2,7 +2,6 @@ import type { EventService } from '@/events/event.service';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
-import { variableMissingModeCreates } from '../entities/variable/variable-missing-mode';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { WorkflowImportOutcome } from '../entities/workflow/workflow-import.types';
 import type { ImportContext, ImportPackageRequest } from '../n8n-packages.types';
@@ -61,9 +60,15 @@ export function emitPackageImportedEvent(
 		0,
 	);
 	const variablesMatched = variablePlans.reduce((total, plan) => total + plan.matched.length, 0);
-	const variablesMissing = variableMissingModeCreates(request.variableMissingMode)
-		? 0
-		: variablePlans.reduce((total, plan) => total + plan.missing.length, 0);
+	// Read off the outcome rather than the mode, so a mode that fills only some of what was
+	// missing still counts the rest.
+	const variablesMissing = scopes.reduce((total, { imported }) => {
+		const filled = new Set([
+			...imported.variableResult.stubbed,
+			...imported.variableResult.skippedExisting,
+		]);
+		return total + imported.variablePlan.missing.filter(({ name }) => !filled.has(name)).length;
+	}, 0);
 	const variablesCreated = scopes.reduce(
 		(total, { imported }) => total + imported.variableResult.createdCount,
 		0,
