@@ -16,7 +16,6 @@ import type { VariableImportRequest } from '../entities/variable/variable.types'
 import type { PackageReader } from '../io/package-reader';
 import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ImportPackageRequest, ImportResult } from '../n8n-packages.types';
-import { toImportBlockedError } from './import-blocked.error';
 import { assertPackageImportApiKeyScopes, assertVariableCreationAllowed } from './import-gates';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
@@ -112,14 +111,7 @@ export class WorkflowPackageImporter {
 			options: request,
 		});
 
-		const blockingIssues = [...plan.blockingIssues];
-		const quotaIssue = await this.importOrchestrator.variableQuotaIssue(
-			plan.variablePlan.creations,
-		);
-		if (quotaIssue) blockingIssues.push(quotaIssue);
-		if (blockingIssues.length > 0) {
-			throw toImportBlockedError(blockingIssues);
-		}
+		await this.importOrchestrator.assertNotBlocked([plan]);
 
 		const imported = await this.importOrchestrator.apply(plan);
 

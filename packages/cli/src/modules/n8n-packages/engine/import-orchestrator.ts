@@ -24,7 +24,6 @@ import { FolderImporter } from '../entities/folder/folder-importer';
 import { VariableImporter } from '../entities/variable/variable-importer';
 import type {
 	VariableApplyResult,
-	VariableCreation,
 	VariableImportPlan,
 	VariableImportRequest,
 } from '../entities/variable/variable.types';
@@ -52,6 +51,7 @@ import type {
 	MissingNodeTypeMode,
 	PackageImportBindings,
 } from '../n8n-packages.types';
+import { toImportBlockedError } from './import-blocked.error';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
@@ -103,13 +103,15 @@ export class ImportOrchestrator {
 		private readonly nodeTypes: NodeTypes,
 	) {}
 
-	/**
-	 * The variable quota is instance-wide, so it is checked once for the whole import rather
-	 * than per planned scope: a caller passes every scope's creations and gates on the result.
-	 */
-	async variableQuotaIssue(creations: VariableCreation[]): Promise<BlockingIssue | undefined> {
-		const failure = await this.variableImporter.quotaFailure(creations);
-		return failure ? { type: 'variable-limit-exceeded', ...failure } : undefined;
+	async assertNotBlocked(plans: ImportPlan[]): Promise<void> {
+		const issues = plans.flatMap((plan) => plan.blockingIssues);
+
+		const quotaFailure = await this.variableImporter.quotaFailure(
+			plans.flatMap((plan) => plan.variablePlan.creations),
+		);
+		if (quotaFailure) issues.push({ type: 'variable-limit-exceeded', ...quotaFailure });
+
+		if (issues.length > 0) throw toImportBlockedError(issues);
 	}
 
 	async plan(input: ImportOrchestrationInput): Promise<ImportPlan> {

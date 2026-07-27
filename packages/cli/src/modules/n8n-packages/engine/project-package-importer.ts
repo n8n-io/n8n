@@ -10,7 +10,6 @@ import { ProjectImporter } from '../entities/project/project-importer';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { PackageReader } from '../io/package-reader';
 import type {
-	BlockingIssue,
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
 	ImportPackageRequest,
@@ -18,7 +17,6 @@ import type {
 	PackageImportBindings,
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
-import { toImportBlockedError } from './import-blocked.error';
 import { assertPackageImportApiKeyScopes, assertVariableCreationAllowed } from './import-gates';
 import { deriveVariableScope } from './package-layout';
 import {
@@ -66,7 +64,6 @@ export class ProjectPackageImporter {
 		// Plan and validate every project's contents before writing anything, so a blocking issue in
 		// any project leaves nothing behind — not folders, workflows, nor the project shells.
 		const planned: Array<{ project: ManifestEntry; plan: ImportPlan }> = [];
-		const blockingIssues: BlockingIssue[] = [];
 		for (const project of manifest.projects ?? []) {
 			const input = await this.buildImportContextForProject(
 				request,
@@ -77,17 +74,9 @@ export class ProjectPackageImporter {
 			);
 			const plan = await this.importOrchestrator.plan(input);
 			planned.push({ project, plan });
-			blockingIssues.push(...plan.blockingIssues);
 		}
 
-		const quotaIssue = await this.importOrchestrator.variableQuotaIssue(
-			planned.flatMap(({ plan }) => plan.variablePlan.creations),
-		);
-		if (quotaIssue) blockingIssues.push(quotaIssue);
-
-		if (blockingIssues.length > 0) {
-			throw toImportBlockedError(blockingIssues);
-		}
+		await this.importOrchestrator.assertNotBlocked(planned.map(({ plan }) => plan));
 
 		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan);
 
