@@ -13,14 +13,22 @@ export async function nodeExecuteBefore(
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 
 	// Ignore node events that don't belong to the execution this document is
-	// tracking — otherwise a concurrent execution's node would pollute this
-	// document's spinner queue and execution data.
+	// tracking, or to one of its sub-executions — otherwise a concurrent
+	// execution's node would pollute this document's spinner queue and execution
+	// data.
 	const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
-	if (activeExecutionId !== data.executionId) {
+	const isSubExecution = workflowExecutionStateStore.isTrackedSubExecution(data.executionId);
+	if (activeExecutionId !== data.executionId && !isSubExecution) {
 		return;
 	}
 
-	workflowExecutionStateStore.executingNode.addExecutingNode(data.nodeName, data.sequenceNumber);
+	// A sub-execution advances its own queue: the node that started it stays
+	// running until it returns, and the two executions number their node events
+	// independently.
+	const queue = isSubExecution
+		? workflowExecutionStateStore.subExecutingNode
+		: workflowExecutionStateStore.executingNode;
+	queue.addExecutingNode(data.nodeName, data.sequenceNumber);
 
 	useExecutionDataStore(createExecutionDataId(data.executionId)).addNodeExecutionStartedData(data);
 }
