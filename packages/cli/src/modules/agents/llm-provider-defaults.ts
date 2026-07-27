@@ -60,6 +60,10 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 		provider: 'baseten',
 		defaultModel: 'zai-org/GLM-5.2-Fast',
 	},
+	fireworksApi: {
+		provider: 'fireworks',
+		defaultModel: 'accounts/fireworks/models/llama-v3p1-70b-instruct',
+	},
 	nvidiaApi: {
 		provider: 'nvidia',
 		defaultModel: 'nvidia/llama-3.3-nemotron-super-49b-v1',
@@ -82,6 +86,7 @@ export const LLM_PROVIDER_PRIORITY: string[] = [
 	'cohere',
 	'openrouter',
 	'baseten',
+	'fireworks',
 	'nvidia',
 	'vercel',
 ];

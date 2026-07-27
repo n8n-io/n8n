@@ -2,6 +2,7 @@ import { listAnthropicModels } from './providers/anthropic';
 import { listBasetenModels } from './providers/baseten';
 import { listCohereModels } from './providers/cohere';
 import { listDeepSeekModels } from './providers/deepseek';
+import { listFireworksModels } from './providers/fireworks';
 import { listGoogleModels } from './providers/google';
 import { listGroqModels } from './providers/groq';
 import { listMistralModels } from './providers/mistral';
@@ -28,6 +29,7 @@ export const MODEL_DISCOVERY_PROVIDERS: Record<string, ListModelsFn> = {
 	baseten: listBasetenModels,
 	cohere: listCohereModels,
 	deepseek: listDeepSeekModels,
+	fireworks: listFireworksModels,
 	google: listGoogleModels,
 	groq: listGroqModels,
 	mistral: listMistralModels,
@@ -57,6 +59,7 @@ export { listAnthropicModels } from './providers/anthropic';
 export { listBasetenModels } from './providers/baseten';
 export { listCohereModels } from './providers/cohere';
 export { listDeepSeekModels } from './providers/deepseek';
+export { listFireworksModels } from './providers/fireworks';
 export { listGoogleModels } from './providers/google';
 export { listGroqModels } from './providers/groq';
 export { listMistralModels } from './providers/mistral';

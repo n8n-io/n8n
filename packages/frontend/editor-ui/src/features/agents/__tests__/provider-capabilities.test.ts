@@ -40,6 +40,7 @@ describe('provider-capabilities', () => {
 			'mistral',
 			'openrouter',
 			'baseten',
+			'fireworks',
 			'cohere',
 			'ollama',
 		];
@@ -49,7 +50,7 @@ describe('provider-capabilities', () => {
 	});
 
 	it('marks providers without thinking support as `false`', () => {
-		const noThinking = ['google', 'groq', 'deepseek', 'mistral', 'cohere', 'ollama'];
+		const noThinking = ['google', 'groq', 'deepseek', 'mistral', 'fireworks', 'cohere', 'ollama'];
 		for (const provider of noThinking) {
 			expect(PROVIDER_CAPABILITIES[provider]?.thinking).toBe(false);
 		}

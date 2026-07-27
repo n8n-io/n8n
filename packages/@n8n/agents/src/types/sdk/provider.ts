@@ -6,6 +6,7 @@
 export type Provider =
 	| 'anthropic'
 	| 'baseten'
+	| 'fireworks'
 	| 'cerebras'
 	| 'deepinfra'
 	| 'deepseek'

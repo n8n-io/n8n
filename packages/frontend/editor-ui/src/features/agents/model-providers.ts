@@ -47,6 +47,7 @@ export const AGENT_MODEL_PROVIDER_DEFINITIONS = {
 	groq: { displayName: 'Groq' },
 	openrouter: { displayName: 'OpenRouter', isAggregator: true },
 	baseten: { displayName: 'Baseten', isAggregator: true },
+	fireworks: { displayName: 'Fireworks', isAggregator: true },
 	deepseek: { displayName: 'DeepSeek' },
 	cohere: { displayName: 'Cohere' },
 	mistral: { displayName: 'Mistral' },
