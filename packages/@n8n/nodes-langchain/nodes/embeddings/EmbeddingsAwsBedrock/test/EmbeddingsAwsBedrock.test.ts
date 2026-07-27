@@ -213,6 +213,20 @@ describe('EmbeddingsAwsBedrock', () => {
 				),
 			).rejects.toThrow(UserError);
 		});
+
+		it.each(['[1, 2]', '"text"', '42', 'true', 'null'])(
+			'throws a UserError for non-object additional fields JSON: %s',
+			async (additionalModelRequestFields) => {
+				const node = new EmbeddingsAwsBedrock();
+
+				await expect(
+					node.supplyData.call(
+						mockContext('amazon.titan-embed-text-v2:0', { additionalModelRequestFields }),
+						0,
+					),
+				).rejects.toThrow('Additional Model Request Fields must be a JSON object');
+			},
+		);
 	});
 
 	describe('runtime endpoint override', () => {

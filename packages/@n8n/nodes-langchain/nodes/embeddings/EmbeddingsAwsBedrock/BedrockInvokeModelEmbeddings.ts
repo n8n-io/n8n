@@ -6,8 +6,24 @@ type CohereInputType = 'search_document' | 'search_query';
 
 type EmbeddingResponseBody = {
 	embedding?: number[];
-	embeddings?: number[][] | { float?: number[][] };
+	embeddingsByType?: Partial<Record<string, number[]>>;
+	embeddings?: number[][] | Partial<Record<string, number[][]>>;
 };
+
+// Titan/Cohere return type-keyed embedding maps when the request asks for specific
+// types; with several non-float types there's no single vector to return.
+function selectEmbeddingType<T extends number[] | number[][]>(
+	byType: Partial<Record<string, T>> | undefined,
+): T | undefined {
+	if (byType === undefined) {
+		return undefined;
+	}
+	if (Array.isArray(byType.float)) {
+		return byType.float;
+	}
+	const keyed = Object.values(byType).filter((value): value is T => Array.isArray(value));
+	return keyed.length === 1 ? keyed[0] : undefined;
+}
 
 export type BedrockInvokeModelEmbeddingsParams = {
 	client: BedrockRuntimeClient;
@@ -32,8 +48,7 @@ export class BedrockInvokeModelEmbeddings extends Embeddings {
 	}
 
 	private buildRequestBody(text: string, inputType: CohereInputType): Record<string, unknown> {
-		// Newlines are stripped to keep vectors identical to the previous
-		// @langchain/aws implementation, so existing vector-store data stays comparable.
+		// Strip newlines to keep vectors identical to the previous @langchain/aws behaviour.
 		const cleanedText = text.replace(/\n/g, ' ');
 		if (this.model.includes('cohere.embed')) {
 			return { texts: [cleanedText], input_type: inputType, ...this.additionalModelRequestFields };
@@ -55,7 +70,13 @@ export class BedrockInvokeModelEmbeddings extends Embeddings {
 			if (Array.isArray(body.embedding)) {
 				return body.embedding;
 			}
-			const rows = Array.isArray(body.embeddings) ? body.embeddings : body.embeddings?.float;
+			const titanTyped = selectEmbeddingType(body.embeddingsByType);
+			if (titanTyped) {
+				return titanTyped;
+			}
+			const rows = Array.isArray(body.embeddings)
+				? body.embeddings
+				: selectEmbeddingType(body.embeddings);
 			const first = rows?.[0];
 			if (Array.isArray(first)) {
 				return first;

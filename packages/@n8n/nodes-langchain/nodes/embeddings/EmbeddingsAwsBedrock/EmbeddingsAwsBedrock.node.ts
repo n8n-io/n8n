@@ -16,6 +16,10 @@ import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
 import { BedrockInvokeModelEmbeddings } from './BedrockInvokeModelEmbeddings';
 import { listModels } from './methods/listModels';
 
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 export class EmbeddingsAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Embeddings AWS Bedrock',
@@ -142,13 +146,20 @@ export class EmbeddingsAwsBedrock implements INodeType {
 		let additionalModelRequestFields: Record<string, unknown> | undefined;
 		const additionalFields = options.additionalModelRequestFields?.trim();
 		if (additionalFields && additionalFields !== '{}') {
+			let parsed: unknown;
 			try {
-				additionalModelRequestFields = jsonParse<Record<string, unknown>>(additionalFields);
+				parsed = jsonParse(additionalFields);
 			} catch {
 				throw new UserError('Additional Model Request Fields must be valid JSON', {
 					level: 'warning',
 				});
 			}
+			if (!isJsonObject(parsed)) {
+				throw new UserError('Additional Model Request Fields must be a JSON object', {
+					level: 'warning',
+				});
+			}
+			additionalModelRequestFields = parsed;
 		}
 
 		const embeddings = new BedrockInvokeModelEmbeddings({

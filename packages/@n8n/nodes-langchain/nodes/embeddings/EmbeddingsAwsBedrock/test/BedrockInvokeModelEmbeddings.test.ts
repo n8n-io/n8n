@@ -46,6 +46,34 @@ describe('BedrockInvokeModelEmbeddings', () => {
 			expect(sentBody(send)).toEqual({ inputText: 'line one line two' });
 		});
 
+		it('parses a Titan binary-only embeddingTypes response (no embedding field)', async () => {
+			const { client } = createClient({
+				inputTextTokenCount: 3,
+				embeddingsByType: { binary: [1, 0, 1] },
+			});
+			const embeddings = new BedrockInvokeModelEmbeddings({
+				client,
+				model: 'amazon.titan-embed-text-v2:0',
+				additionalModelRequestFields: { embeddingTypes: ['binary'] },
+			});
+
+			await expect(embeddings.embedQuery('hello')).resolves.toEqual([1, 0, 1]);
+		});
+
+		it('prefers the embedding field over embeddingsByType when both are present', async () => {
+			const { client } = createClient({
+				embedding: [0.1, 0.2],
+				embeddingsByType: { float: [0.1, 0.2], binary: [1, 0] },
+			});
+			const embeddings = new BedrockInvokeModelEmbeddings({
+				client,
+				model: 'amazon.titan-embed-text-v2:0',
+				additionalModelRequestFields: { embeddingTypes: ['float', 'binary'] },
+			});
+
+			await expect(embeddings.embedQuery('hello')).resolves.toEqual([0.1, 0.2]);
+		});
+
 		it('merges additional model request fields into the body', async () => {
 			const { client, send } = createClient({ embedding: [0.1] });
 			const embeddings = new BedrockInvokeModelEmbeddings({
@@ -109,6 +137,39 @@ describe('BedrockInvokeModelEmbeddings', () => {
 			});
 
 			await expect(embeddings.embedQuery('hello')).resolves.toEqual([0.5, 0.6]);
+		});
+
+		it('parses a single non-float embedding_types response (e.g. int8)', async () => {
+			const { client } = createClient({ embeddings: { int8: [[3, -7]] } });
+			const embeddings = new BedrockInvokeModelEmbeddings({
+				client,
+				model: 'cohere.embed-english-v3',
+				additionalModelRequestFields: { embedding_types: ['int8'] },
+			});
+
+			await expect(embeddings.embedQuery('hello')).resolves.toEqual([3, -7]);
+		});
+
+		it('prefers float when multiple embedding types are returned', async () => {
+			const { client } = createClient({ embeddings: { int8: [[3]], float: [[0.5]] } });
+			const embeddings = new BedrockInvokeModelEmbeddings({
+				client,
+				model: 'cohere.embed-english-v3',
+				additionalModelRequestFields: { embedding_types: ['float', 'int8'] },
+			});
+
+			await expect(embeddings.embedQuery('hello')).resolves.toEqual([0.5]);
+		});
+
+		it('rejects an ambiguous multi-type response without float', async () => {
+			const { client } = createClient({ embeddings: { int8: [[3]], binary: [[1]] } });
+			const embeddings = new BedrockInvokeModelEmbeddings({
+				client,
+				model: 'cohere.embed-english-v3',
+				additionalModelRequestFields: { embedding_types: ['int8', 'binary'] },
+			});
+
+			await expect(embeddings.embedQuery('hello')).rejects.toThrow(OperationalError);
 		});
 
 		it('lets additional fields override the default input_type', async () => {
