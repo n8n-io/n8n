@@ -84,6 +84,8 @@ export class AgentIntegrationsController {
 		await this.agentIntegrationPersistenceService.saveCredentialIntegration(agent, integration, {
 			broadcast: false,
 		});
+		const writtenIntegrations = agent.integrations;
+		const writtenVersionId = agent.versionId;
 		const { agent: publishedAgent, draftValidation } = await this.agentPublishService
 			.publishAgent(agentId, agent.projectId, req.user, 'channel_connect', undefined, {
 				syncIntegrations: false,
@@ -92,6 +94,8 @@ export class AgentIntegrationsController {
 			.catch(async (error: unknown) => {
 				await this.agentIntegrationPersistenceService.restoreCredentialIntegrationState(
 					agent.id,
+					writtenIntegrations,
+					writtenVersionId,
 					previousIntegrations,
 					previousVersionId,
 				);

@@ -193,25 +193,66 @@ describe('AgentIntegrationPersistenceService', () => {
 		).rejects.toThrow(UserError);
 	});
 
-	it('restores integrations and draft version after a failed follow-up operation', async () => {
+	it('restores integrations and draft version when the row still matches the written state', async () => {
 		const { service, agentRepository, runtimeCacheService } = makeService();
-		const previousIntegrations = [{ type: 'slack' as const, credentialId: '' }];
-		const agent = makeAgent({
-			versionId: 'changed-version',
-			integrations: [{ type: 'slack', credentialId: 'slack-1' }],
+		const writtenIntegrations = [{ type: 'slack' as const, credentialId: 'slack-1' }];
+		const revertIntegrations = [{ type: 'slack' as const, credentialId: '' }];
+		agentRepository.findIntegrationState.mockResolvedValue({
+			integrations: writtenIntegrations,
+			versionId: 'written-version',
 		});
 
 		await service.restoreCredentialIntegrationState(
-			agent.id,
-			previousIntegrations,
+			agentId,
+			writtenIntegrations,
+			'written-version',
+			revertIntegrations,
 			'previous-version',
 		);
 
 		expect(agentRepository.update).toHaveBeenCalledWith(agentId, {
-			integrations: previousIntegrations,
+			integrations: revertIntegrations,
 			versionId: 'previous-version',
 		});
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+	});
+
+	it('leaves a concurrent edit intact when the row no longer matches the written state', async () => {
+		const { service, agentRepository, runtimeCacheService } = makeService();
+		const writtenIntegrations = [{ type: 'slack' as const, credentialId: 'slack-1' }];
+		const revertIntegrations = [{ type: 'slack' as const, credentialId: '' }];
+		// A concurrent channel/config edit landed after this attempt's save.
+		agentRepository.findIntegrationState.mockResolvedValue({
+			integrations: [{ type: 'telegram', credentialId: 'telegram-1' }],
+			versionId: 'concurrent-version',
+		});
+
+		await service.restoreCredentialIntegrationState(
+			agentId,
+			writtenIntegrations,
+			'written-version',
+			revertIntegrations,
+			'previous-version',
+		);
+
+		expect(agentRepository.update).not.toHaveBeenCalled();
+		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+	});
+
+	it('skips the rollback when the agent no longer exists', async () => {
+		const { service, agentRepository, runtimeCacheService } = makeService();
+		agentRepository.findIntegrationState.mockResolvedValue(null);
+
+		await service.restoreCredentialIntegrationState(
+			agentId,
+			[{ type: 'slack', credentialId: 'slack-1' }],
+			'written-version',
+			[{ type: 'slack', credentialId: '' }],
+			'previous-version',
+		);
+
+		expect(agentRepository.update).not.toHaveBeenCalled();
+		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
 	});
 
 	it('returns the agent unchanged when removing from an empty list', async () => {

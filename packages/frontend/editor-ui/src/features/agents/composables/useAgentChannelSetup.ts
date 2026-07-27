@@ -190,6 +190,7 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 
 	async function waitForSlackAppSetupCompletion(
 		popup: Window,
+		trustedOrigin: string,
 	): Promise<{ connected: boolean; errorMessage?: string }> {
 		return await new Promise((resolve) => {
 			const oauthChannel = new BroadcastChannel('oauth-callback');
@@ -205,11 +206,32 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 			const settle = (connected: boolean, errorMessage?: string) => {
 				if (settled) return;
 				settled = true;
+				window.removeEventListener('message', onWindowMessage);
 				window.clearInterval(pollInterval);
 				window.clearTimeout(timeout);
 				oauthChannel.close();
 				if (connected) closePopup();
 				resolve(errorMessage ? { connected, errorMessage } : { connected });
+			};
+
+			// Shared handler for both the same-origin BroadcastChannel and the
+			// cross-origin `window.postMessage` bridge the callback templates emit.
+			const handleCallbackData = (data: unknown): boolean => {
+				if (data === 'success') {
+					settle(true);
+					return true;
+				}
+				const errorMessage = getOAuthCallbackErrorMessage(data);
+				if (errorMessage || data === 'error') {
+					settle(false, errorMessage || undefined);
+					return true;
+				}
+				return false;
+			};
+
+			const onWindowMessage = (event: MessageEvent) => {
+				if (event.origin !== trustedOrigin) return;
+				handleCallbackData(event.data);
 			};
 
 			const pollStatus = async () => {
@@ -241,18 +263,10 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 			const timeout = window.setTimeout(() => settle(false), SLACK_APP_SETUP_TIMEOUT_MS);
 
 			oauthChannel.addEventListener('message', (event: MessageEvent) => {
-				if (event.data === 'success') {
-					settle(true);
-					return;
-				}
-				// Structured `{ type: 'error', message }` from oauth-error-callback,
-				// or the legacy string `'error'`. Prefer the actionable message when
-				// present so the modal can surface pre-flight / publish failures.
-				const errorMessage = getOAuthCallbackErrorMessage(event.data);
-				if (errorMessage || event.data === 'error') {
-					settle(false, errorMessage || undefined);
-				}
+				handleCallbackData(event.data);
 			});
+			// Cross-origin fallback
+			window.addEventListener('message', onWindowMessage);
 
 			void pollStatus();
 		});
@@ -272,7 +286,10 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 			appConfigurationToken,
 		);
 		const popup = openSlackAppAuthorizationPopup(installUrl);
-		const { connected, errorMessage } = await waitForSlackAppSetupCompletion(popup);
+		const { connected, errorMessage } = await waitForSlackAppSetupCompletion(
+			popup,
+			new URL(installUrl).origin,
+		);
 		if (!connected) {
 			throw new Error(errorMessage || 'Slack app installation was not completed');
 		}

@@ -278,6 +278,8 @@ export class SlackAppSetupService {
 		await this.agentIntegrationPersistenceService.saveCredentialIntegration(agent, integration, {
 			broadcast: false,
 		});
+		const writtenIntegrations = agent.integrations;
+		const writtenVersionId = agent.versionId;
 		await this.agentPublishService
 			.publishAgent(session.agentId, session.projectId, user, 'slack_setup', undefined, {
 				syncIntegrations: false,
@@ -287,6 +289,8 @@ export class SlackAppSetupService {
 				await this.credentialsService.delete(user, credential.id);
 				await this.agentIntegrationPersistenceService.restoreCredentialIntegrationState(
 					agent.id,
+					writtenIntegrations,
+					writtenVersionId,
 					previousIntegrations,
 					previousVersionId,
 				);

@@ -1,4 +1,4 @@
-import type { ListAgentsQueryDto } from '@n8n/api-types';
+import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, In, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
 
@@ -93,6 +93,24 @@ export class AgentRepository extends Repository<Agent> {
 		return await this.createQueryBuilder('agent')
 			.innerJoinAndSelect('agent.activeVersion', 'activeVersion')
 			.getMany();
+	}
+
+	/**
+	 * Fetches only the columns a compensating rollback needs to decide whether
+	 * the row still matches the state written by the attempt that may roll back.
+	 * Scoped to `integrations` + `versionId` so the check doesn't load the full
+	 * entity; `integrations` is compared in memory (see
+	 * {@link AgentIntegrationPersistenceService.restoreCredentialIntegrationState})
+	 * because the JSON column has no portable equality query across
+	 * SQLite/Postgres/MySQL.
+	 */
+	async findIntegrationState(
+		id: string,
+	): Promise<{ integrations: AgentIntegrationConfig[]; versionId: string | null } | null> {
+		return await this.findOne({
+			select: ['integrations', 'versionId'],
+			where: { id },
+		});
 	}
 
 	/**

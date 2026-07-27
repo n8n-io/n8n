@@ -554,7 +554,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 			},
 		]);
 
-		const previousIntegrations = [{ type: 'slack', credentialId: '' }];
+		const previousIntegrations = [{ type: 'slack' as const, credentialId: '' }];
 		const agent = {
 			id: 'agent-1',
 			projectId: 'project-1',
@@ -565,6 +565,10 @@ describe('AgentIntegrationsController integration credentials', () => {
 		};
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
+		agentRepository.findIntegrationState.mockResolvedValue({
+			integrations: previousIntegrations,
+			versionId: 'draft-v1',
+		});
 		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
 		const agentPublishService = mock<AgentPublishService>();
 		agentPublishService.publishAgent.mockRejectedValue(new Error('Publish failed'));
@@ -591,7 +595,13 @@ describe('AgentIntegrationsController integration credentials', () => {
 
 		expect(
 			agentIntegrationPersistenceService.restoreCredentialIntegrationState,
-		).toHaveBeenCalledWith('agent-1', previousIntegrations, 'draft-v1');
+		).toHaveBeenCalledWith(
+			'agent-1',
+			previousIntegrations,
+			'draft-v1',
+			previousIntegrations,
+			'draft-v1',
+		);
 		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
 	});
 

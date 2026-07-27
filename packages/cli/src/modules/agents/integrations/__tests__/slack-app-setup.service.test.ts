@@ -404,13 +404,17 @@ describe('SlackAppSetupService', () => {
 	});
 
 	it('restores the previous integration state when publishing the installed app fails', async () => {
-		const previousIntegrations = [{ type: 'slack', credentialId: '' }];
+		const previousIntegrations = [{ type: 'slack' as const, credentialId: '' }];
 		const rollbackAgent = {
 			...agent,
 			versionId: 'draft-v1',
 			integrations: previousIntegrations,
 		};
 		agentRepository.findByIdAndProjectId.mockResolvedValue(rollbackAgent as never);
+		agentRepository.findIntegrationState.mockResolvedValue({
+			integrations: previousIntegrations,
+			versionId: 'draft-v1',
+		});
 		requestMock.mockResolvedValueOnce(slackAppCreatedResponse()).mockResolvedValueOnce(
 			slackResponse({
 				ok: true,
@@ -440,7 +444,13 @@ describe('SlackAppSetupService', () => {
 		expect(credentialsService.delete).toHaveBeenCalledWith(user, 'cred-slack');
 		expect(
 			agentIntegrationPersistenceService.restoreCredentialIntegrationState,
-		).toHaveBeenCalledWith('agent-1', previousIntegrations, 'draft-v1');
+		).toHaveBeenCalledWith(
+			'agent-1',
+			previousIntegrations,
+			'draft-v1',
+			previousIntegrations,
+			'draft-v1',
+		);
 		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
 	});
 
