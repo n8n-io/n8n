@@ -9,8 +9,6 @@ export {
 	N8N_SANDBOX_HOME,
 	N8N_SANDBOX_WORKSPACE_ROOT,
 	getPromptWorkspaceRoot,
-	getPromptSandboxInstructions,
-	getPromptFilesystemInstructions,
 	getWorkspaceRoot,
 	type SandboxWorkspace,
 } from './workspace-root';

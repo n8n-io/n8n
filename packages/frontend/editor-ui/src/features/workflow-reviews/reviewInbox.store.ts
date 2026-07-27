@@ -21,6 +21,8 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 
 	const probeSettled = ref(false);
 	const hasAnyReviews = ref(false);
+	const openCount = ref(0);
+	const closedCount = ref(0);
 	const items = ref<WorkflowReviewInboxItem[]>([]);
 	const selectedId = ref<string | null>(null);
 	const activeState = ref<WorkflowReviewRequestState>('open');
@@ -69,10 +71,12 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 				return;
 			}
 
-			hasAnyReviews.value = summary.hasAny;
+			openCount.value = summary.open;
+			closedCount.value = summary.closed;
+			hasAnyReviews.value = summary.open + summary.closed > 0;
 			probeSettled.value = true;
 
-			if (summary.hasAny) {
+			if (hasAnyReviews.value) {
 				await fetchList({ reset: true });
 			}
 		} catch (e) {
@@ -167,6 +171,8 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		listRequestSeq += 1;
 		probeSettled.value = false;
 		hasAnyReviews.value = false;
+		openCount.value = 0;
+		closedCount.value = 0;
 		items.value = [];
 		selectedId.value = null;
 		activeState.value = 'open';
@@ -180,6 +186,8 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 	return {
 		probeSettled,
 		hasAnyReviews,
+		openCount,
+		closedCount,
 		items,
 		selectedId,
 		selectedItem,

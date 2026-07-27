@@ -313,6 +313,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 			'agent-1',
 			'project-1',
 			{ id: 'user-1' },
+			'channel_connect',
 			undefined,
 			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);
@@ -426,6 +427,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 			'agent-1',
 			'project-1',
 			{ id: 'user-1' },
+			'channel_connect',
 			undefined,
 			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);

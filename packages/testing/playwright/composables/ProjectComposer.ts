@@ -48,6 +48,6 @@ export class ProjectComposer {
 	}
 
 	extractProjectIdFromPage(beforeWord: string, afterWord: string): string {
-		return this.extractIdFromUrl(this.n8n.page.url(), beforeWord, afterWord);
+		return this.extractIdFromUrl(this.n8n.navigate.currentUrl(), beforeWord, afterWord);
 	}
 }
