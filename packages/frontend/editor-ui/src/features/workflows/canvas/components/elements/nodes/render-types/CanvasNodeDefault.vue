@@ -7,8 +7,8 @@ import type { CanvasNodeDefaultRender } from '../../../../canvas.types';
 import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import { useCanvas } from '../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
+import { useSubworkflowProgressArc } from '../../../../composables/useSubworkflowProgressArc';
 import CanvasNodeSettingsIcons from './parts/CanvasNodeSettingsIcons.vue';
-import CanvasNodeSubworkflowProgress from './parts/CanvasNodeSubworkflowProgress.vue';
 import { useNodePrivateCredential } from '@/features/resolvers/composables/useNodePrivateCredential';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { calculateNodeSize } from '@/app/utils/nodeViewUtils';
@@ -97,6 +97,7 @@ const classes = computed(() => {
 		),
 		[$style.error]: hasExecutionErrors.value,
 		[$style.running]: running,
+		[$style.progress]: running && Boolean(subworkflowProgress.value),
 		[$style.waiting]: waiting,
 		[$style.pinned]: hasSubstitutedOutput.value,
 		[$style.configurable]: renderOptions.value.configurable,
@@ -128,11 +129,35 @@ const nodeSize = computed(() =>
 
 const nodeBorderOpacityStyle = calculateNodeBorderOpacityStyle();
 
+/**
+ * While a sub-workflow runs, the subtitle line carries the live step instead of
+ * the static subtitle. Reusing the line means nothing shifts as the child advances.
+ */
+const displaySubtitle = computed(() => {
+	const currentNodeName = subworkflowProgress.value?.currentNodeName;
+	if (!currentNodeName) return subtitle.value;
+
+	return i18n.baseText('node.subworkflow.progress.running', {
+		interpolate: { nodeName: currentNodeName },
+	});
+});
+
+const { fraction: subworkflowProgressFraction } = useSubworkflowProgressArc(subworkflowProgress);
+
+const subworkflowProgressStyle = computed(() => {
+	if (subworkflowProgressFraction.value <= 0) return {};
+
+	return {
+		'--node--progress--fraction': `${(subworkflowProgressFraction.value * 100).toFixed(2)}%`,
+	};
+});
+
 const styles = computed(() => ({
 	'--canvas-node--width': `${nodeSize.value.width}px`,
 	'--canvas-node--height': `${nodeSize.value.height}px`,
 	'--node--icon--size': `${iconSize.value}px`,
 	...nodeBorderOpacityStyle.value,
+	...subworkflowProgressStyle.value,
 }));
 
 const dataTestId = computed(() => {
@@ -253,10 +278,13 @@ function onActivate(event: MouseEvent) {
 			<div v-if="isRestricted" :class="$style.subtitle" data-test-id="canvas-node-restricted">
 				{{ i18n.baseText('node.restricted') }}
 			</div>
-			<div v-else-if="subtitle && !isNotInstalledCommunityNode" :class="$style.subtitle">
-				{{ subtitle }}
+			<div
+				v-else-if="displaySubtitle && !isNotInstalledCommunityNode"
+				:class="$style.subtitle"
+				:title="displaySubtitle"
+			>
+				{{ displaySubtitle }}
 			</div>
-			<CanvasNodeSubworkflowProgress v-if="subworkflowProgress" :progress="subworkflowProgress" />
 		</div>
 		<CanvasNodeStatusIcons v-if="!isDisabled || isRestricted" :class="$style.statusIcons" />
 	</div>
@@ -422,6 +450,15 @@ function onActivate(event: MouseEvent) {
 }
 .waiting::after {
 	@include styles.status-waiting-animation;
+}
+
+// Own layer, separate from the `.running::after` halo — see the mixin.
+.progress::before {
+	@include styles.status-progress-arc;
+}
+
+.progress {
+	transition: --node--progress--fraction 300ms ease-out;
 }
 
 @include styles.status-animation-definitions;
