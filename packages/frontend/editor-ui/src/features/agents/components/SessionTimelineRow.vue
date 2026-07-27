@@ -47,7 +47,7 @@ const infoText = computed((): string => {
 		case 'tool': {
 			if (it.isUserFeedback) return i18n.baseText('agentSessions.timeline.userFeedback');
 			if (isSubAgent.value) return delegateLabel(i18n, it.subAgentName ?? '');
-			return resolveToolNameForDisplay(it.toolName, i18n.baseText);
+			return resolveToolNameForDisplay(it.toolName, i18n);
 		}
 		case 'workflow':
 			return it.workflowName ?? formatToolNameForDisplay(it.toolName);
