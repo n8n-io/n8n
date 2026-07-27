@@ -1,0 +1,27 @@
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_34811779c9d586::t_7f9b41eaf65590 6,16-22,81-85,115,122,125,128-129,137,140,149-183,191,13,32
+  s_34811779c9d586::t_f33745dec2ee61 1,4,11
+  s_34811779c9d586::t_a749aef77ead3a 12
+  s_34811779c9d586::t_15d480f96db824 31,34,36,40
+  s_34811779c9d586::t_bedf78f7823162 54-57,67-80
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_34811779c9d586::t_7779d427849d9a 1,3
+  s_34811779c9d586::t_d5ef4368b0c074 28-37
+  s_34811779c9d586::t_3b73827e4624f9 93-126,138-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d232ce7af6cab9373ea3aca409cf18c277811d41",
+  "prompts": {},
+  "sessions": {
+    "s_34811779c9d586": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "395804aa-73ad-495d-ad85-228a556bbfab",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
