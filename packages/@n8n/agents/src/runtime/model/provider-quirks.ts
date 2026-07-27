@@ -13,6 +13,8 @@ export interface ProviderQuirks {
 	reasoningReplayKeys?: string[];
 	/** Defaults merged under this provider's namespace into every tool's providerOptions (explicit tool values win). */
 	toolProviderOptionDefaults?: JSONObject;
+	/** Defaults merged under this provider's namespace into every model call (explicit call values win). */
+	callProviderOptionDefaults?: JSONObject;
 	/** Provider defaults to strict JSON Schema validation for structured output; relax for raw user schemas. */
 	relaxStrictJsonSchemaForRawOutput?: boolean;
 	/** Translate the agent's thinking config into this provider's providerOptions namespace. */
@@ -119,10 +121,24 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 			return { baseten: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
 		},
 	},
+	fireworks: {
+		// Fireworks Serverless priority tier: stronger admission during congestion.
+		callProviderOptionDefaults: { service_tier: 'priority' },
+	},
 };
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {
 	return PROVIDER_QUIRKS[providerId as ProviderId] ?? {};
+}
+
+/** Provider/model call defaults keyed for merge into AI SDK `providerOptions`. */
+export function buildCallProviderOptionDefaults(
+	modelId: string,
+): Record<string, Record<string, unknown>> | undefined {
+	const provider = providerIdFromModelId(modelId);
+	const defaults = getProviderQuirks(provider).callProviderOptionDefaults;
+	if (!defaults) return undefined;
+	return { [provider]: defaults };
 }
 
 export function providerIdFromModelId(modelId: string): string {

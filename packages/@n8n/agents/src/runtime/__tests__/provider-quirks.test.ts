@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	GLM_52_DEFAULT_MAX_OUTPUT_TOKENS,
 	applyToolProviderOptionDefaults,
+	buildCallProviderOptionDefaults,
 	getProviderQuirks,
 	resolveDefaultMaxOutputTokens,
 } from '../model/provider-quirks';
@@ -150,6 +151,24 @@ describe('thinkingToProviderOptions', () => {
 		expect(getProviderQuirks('baseten').thinkingToProviderOptions?.({})).toEqual({
 			baseten: { reasoningEffort: 'medium' },
 		});
+	});
+
+	it('fireworks: defaults service_tier to priority', () => {
+		expect(getProviderQuirks('fireworks').callProviderOptionDefaults).toEqual({
+			service_tier: 'priority',
+		});
+	});
+});
+
+describe('buildCallProviderOptionDefaults', () => {
+	it('returns fireworks priority tier defaults for fireworks models', () => {
+		expect(buildCallProviderOptionDefaults('fireworks/accounts/fireworks/models/kimi-k3')).toEqual({
+			fireworks: { service_tier: 'priority' },
+		});
+	});
+
+	it('returns undefined for providers without call defaults', () => {
+		expect(buildCallProviderOptionDefaults('anthropic/claude-sonnet-4-6')).toBeUndefined();
 	});
 });
 
