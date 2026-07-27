@@ -12,15 +12,14 @@ import { ProjectService } from '@/services/project.service.ee';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
-import { variableMissingModeCreates } from '../entities/variable/variable-missing-mode';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { PackageReader } from '../io/package-reader';
 import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ImportPackageRequest, ImportResult } from '../n8n-packages.types';
 import { toImportBlockedError } from './import-blocked.error';
+import { assertPackageImportApiKeyScopes, assertVariableCreationAllowed } from './import-gates';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
-	assertPackageImportApiKeyScopes,
 	buildImportResult,
 	identifyRequirements,
 	toImportedWorkflowSummaries,
@@ -88,10 +87,12 @@ export class WorkflowPackageImporter {
 		};
 
 		const variableRequirements = identifyRequirements(manifest.requirements?.variables, workflows);
-		if (variableRequirements?.length && variableMissingModeCreates(request.variableMissingMode)) {
-			this.assertVariablesLicensed();
-			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['variable:create']);
-		}
+		assertVariableCreationAllowed({
+			licenseState: this.licenseState,
+			apiKeyScopes: request.apiKeyScopes,
+			missingMode: request.variableMissingMode,
+			hasRequirements: (variableRequirements?.length ?? 0) > 0,
+		});
 		const globalPlacement = request.variableParentPolicy === VariableParentPolicy.Global;
 		const variableRequest: VariableImportRequest = {
 			requirements: variableRequirements?.map((requirement) => ({
@@ -146,14 +147,6 @@ export class WorkflowPackageImporter {
 		if (!this.licenseState.isLicensed('feat:folders')) {
 			throw new ForbiddenError(
 				'Your license does not allow folders. Importing a package with folders requires a license that supports folders.',
-			);
-		}
-	}
-
-	private assertVariablesLicensed(): void {
-		if (!this.licenseState.isVariablesLicensed()) {
-			throw new ForbiddenError(
-				'Your license does not allow variables. Importing a package that creates variables requires a license that supports variables.',
 			);
 		}
 	}

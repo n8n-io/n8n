@@ -7,7 +7,6 @@ import { EventService } from '@/events/event.service';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter } from '../entities/project/project-importer';
-import { variableMissingModeCreates } from '../entities/variable/variable-missing-mode';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { PackageReader } from '../io/package-reader';
 import type {
@@ -20,6 +19,7 @@ import type {
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
 import { toImportBlockedError } from './import-blocked.error';
+import { assertPackageImportApiKeyScopes, assertVariableCreationAllowed } from './import-gates';
 import { deriveVariableScope } from './package-layout';
 import {
 	ImportOrchestrator,
@@ -27,7 +27,6 @@ import {
 	type ImportPlan,
 } from './import-orchestrator';
 import {
-	assertPackageImportApiKeyScopes,
 	buildImportResult,
 	identifyRequirements,
 	reconcileVariableSummary,
@@ -221,16 +220,11 @@ export class ProjectPackageImporter {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:import']);
 		}
 
-		if (
-			(manifest.requirements?.variables?.length ?? 0) > 0 &&
-			variableMissingModeCreates(request.variableMissingMode)
-		) {
-			if (!this.licenseState.isVariablesLicensed()) {
-				throw new ForbiddenError(
-					'Your license does not allow variables. Importing a package that creates variables requires a license that supports variables.',
-				);
-			}
-			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['variable:create']);
-		}
+		assertVariableCreationAllowed({
+			licenseState: this.licenseState,
+			apiKeyScopes: request.apiKeyScopes,
+			missingMode: request.variableMissingMode,
+			hasRequirements: (manifest.requirements?.variables?.length ?? 0) > 0,
+		});
 	}
 }

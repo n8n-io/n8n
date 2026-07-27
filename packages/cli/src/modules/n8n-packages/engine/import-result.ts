@@ -1,5 +1,3 @@
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-
 import type { VariableApplyResult, VariableImportPlan } from '../entities/variable/variable.types';
 import type {
 	PreparedWorkflow,
@@ -97,22 +95,6 @@ export function toVariableSummary(
 		stubbed: result.stubbed,
 		skipped: result.skippedExisting,
 	});
-}
-
-/**
- * Asserts the caller's API key carries the scopes the package's contents require (public API only).
- * Internal callers omit `apiKeyScopes` and are authorized by user RBAC alone.
- */
-export function assertPackageImportApiKeyScopes(
-	apiKeyScopes: string[] | undefined,
-	required: string[],
-): void {
-	if (apiKeyScopes === undefined) return;
-	for (const scope of required) {
-		if (!apiKeyScopes.includes(scope)) {
-			throw new ForbiddenError('Forbidden');
-		}
-	}
 }
 
 /**
