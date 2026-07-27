@@ -462,7 +462,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 							>
 								{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.orReadThe') }}
 								<N8nLink :to="documentationUrl" size="small" @click="onDocumentationUrlClick">
-									[{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.docs') }}]
+									{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.docs') }}
 								</N8nLink>
 							</template>
 						</span>
