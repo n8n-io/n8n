@@ -647,6 +647,7 @@ describe('LmChatAwsBedrock', () => {
 				getNodeParameter: vi.fn().mockReturnValue(authentication),
 				getCredentials: vi.fn().mockResolvedValue({ region: 'eu-central-1' }),
 				helpers: { httpRequestWithAuthentication: httpMock },
+				logger: { warn: vi.fn() },
 			}) as unknown as ILoadOptionsFunctions;
 
 		const httpMockFor = (
@@ -705,8 +706,9 @@ describe('LmChatAwsBedrock', () => {
 			expect(httpMock).toHaveBeenCalledWith('awsAssumeRole', expect.anything());
 		});
 
-		it('still lists foundation models when the inference-profiles request fails', async () => {
-			const httpMock = httpMockFor(foundationResponse, Promise.reject(new Error('AccessDenied')));
+		it('still lists foundation models and warns when the inference-profiles request fails', async () => {
+			const failure = new Error('AccessDenied');
+			const httpMock = httpMockFor(foundationResponse, Promise.reject(failure));
 			const ctx = createLoadOptionsContext('iam', httpMock);
 
 			const options = await node.methods.loadOptions.listModels.call(ctx);
@@ -715,15 +717,24 @@ describe('LmChatAwsBedrock', () => {
 				'anthropic.claude-3-haiku-20240307-v1:0',
 				'amazon.nova-pro-v1:0',
 			]);
+			expect(ctx.logger.warn).toHaveBeenCalledWith(
+				'Bedrock model listing: inference-profiles request failed',
+				{ error: failure },
+			);
 		});
 
-		it('still lists inference profiles when the foundation-models request fails', async () => {
-			const httpMock = httpMockFor(Promise.reject(new Error('AccessDenied')), profilesResponse);
+		it('still lists inference profiles and warns when the foundation-models request fails', async () => {
+			const failure = new Error('AccessDenied');
+			const httpMock = httpMockFor(Promise.reject(failure), profilesResponse);
 			const ctx = createLoadOptionsContext('iam', httpMock);
 
 			const options = await node.methods.loadOptions.listModels.call(ctx);
 
 			expect(options.map((o) => o.value)).toEqual(['eu.anthropic.claude-sonnet-4-6-v1:0']);
+			expect(ctx.logger.warn).toHaveBeenCalledWith(
+				'Bedrock model listing: foundation-models request failed',
+				{ error: failure },
+			);
 		});
 
 		it('throws when both list requests fail', async () => {

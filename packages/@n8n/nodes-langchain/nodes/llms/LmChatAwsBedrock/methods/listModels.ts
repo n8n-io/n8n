@@ -41,6 +41,16 @@ export async function listModels(this: ILoadOptionsFunctions): Promise<INodeProp
 	if (foundationModels.status === 'rejected' && inferenceProfiles.status === 'rejected') {
 		throw foundationModels.reason;
 	}
+	if (foundationModels.status === 'rejected') {
+		this.logger.warn('Bedrock model listing: foundation-models request failed', {
+			error: foundationModels.reason,
+		});
+	}
+	if (inferenceProfiles.status === 'rejected') {
+		this.logger.warn('Bedrock model listing: inference-profiles request failed', {
+			error: inferenceProfiles.reason,
+		});
+	}
 
 	const options: INodePropertyOptions[] = [];
 	if (foundationModels.status === 'fulfilled') {
