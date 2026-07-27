@@ -21,17 +21,33 @@ import { UnexpectedError } from 'n8n-workflow';
 import { createSchedulerTracer } from './scheduler-tracer';
 
 /** Identifies one workflow node's jobs, and stamps the rows provisioning inserts. */
-interface ProvisionScope {
+interface WorkflowJobScope {
+	kind: 'workflow';
 	workflowId: string;
 	nodeId: string;
 	taskType: string;
 	payload: Record<string, unknown>;
 }
 
+/**
+ * Identifies a system task's jobs: no owning workflow, matched by `taskType`
+ * instead of `(workflowId, nodeId)`. PoC for the system-tasks migration (see
+ * `notes/builder/durable-scheduler/distributed-scheduler-system-tasks-batch1-spec.md`
+ * §2): reuses the same provision/diff/seed logic as the workflow scope, since
+ * `JobProvisioner<PScope, DScope>` never inspects the scope's shape.
+ */
+interface SystemJobScope {
+	kind: 'system';
+	taskType: string;
+	payload: Record<string, unknown>;
+}
+
+type ProvisionScope = WorkflowJobScope | SystemJobScope;
+
 /** Identifies jobs for deletion: one node's jobs, or one workflow's jobs of a task type. */
 type DeprovisionScope =
-	| Pick<ProvisionScope, 'workflowId' | 'nodeId'>
-	| Pick<ProvisionScope, 'workflowId' | 'taskType'>;
+	| Pick<WorkflowJobScope, 'workflowId' | 'nodeId'>
+	| Pick<WorkflowJobScope, 'workflowId' | 'taskType'>;
 
 /** A job row's schedule columns: one `ScheduleDefinition` flattened for storage. */
 type ScheduleColumns = Pick<
@@ -105,7 +121,24 @@ export class DurableJobProvisioner {
 		payload: Record<string, unknown>,
 		desired: DesiredJob[],
 	): Promise<ProvisionSummary> {
-		return await this.provisioner.provision({ workflowId, nodeId, taskType, payload }, desired);
+		return await this.provisioner.provision(
+			{ kind: 'workflow', workflowId, nodeId, taskType, payload },
+			desired,
+		);
+	}
+
+	/**
+	 * Provision a system task's jobs (no owning workflow) so the stored set
+	 * matches `desired`, matched by name, same as {@link provision}. PoC for the
+	 * system-tasks migration: proves the existing provisioning path generalises
+	 * without changes to `@n8n/scheduler` or the diff/seed logic.
+	 */
+	async provisionSystemJob(
+		taskType: string,
+		payload: Record<string, unknown>,
+		desired: DesiredJob[],
+	): Promise<ProvisionSummary> {
+		return await this.provisioner.provision({ kind: 'system', taskType, payload }, desired);
 	}
 
 	/** Delete all of a node's jobs; their queued tasks cascade away. */
@@ -137,12 +170,8 @@ export class DurableJobProvisioner {
 		await this.jobs.deleteByWorkflowTaskType(manager, workflowId, taskType);
 	}
 
-	private provisionTransaction({
-		workflowId,
-		nodeId,
-		taskType,
-		payload,
-	}: ProvisionScope): RunInProvisionTransaction {
+	private provisionTransaction(scope: ProvisionScope): RunInProvisionTransaction {
+		const { taskType, payload } = scope;
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
 				// Jobs freshly inserted or redefined this pass; their first window is
@@ -150,7 +179,10 @@ export class DurableJobProvisioner {
 				const seededJobIds = new Set<number>();
 				const result = await work({
 					findExisting: async () => {
-						const rows = await this.jobs.findManyByWorkflowNode(manager, workflowId, nodeId);
+						const rows =
+							scope.kind === 'workflow'
+								? await this.jobs.findManyByWorkflowNode(manager, scope.workflowId, scope.nodeId)
+								: await this.jobs.findManyByTaskType(manager, scope.taskType);
 						return rows.map(
 							(row): ExistingJob => ({
 								id: row.id,
@@ -164,8 +196,8 @@ export class DurableJobProvisioner {
 						const rows = desired.map(
 							(job): NewScheduledJob => ({
 								name: job.name,
-								workflowId,
-								nodeId,
+								workflowId: scope.kind === 'workflow' ? scope.workflowId : null,
+								nodeId: scope.kind === 'workflow' ? scope.nodeId : null,
 								taskType,
 								payload,
 								...scheduleColumns(job.schedule),

@@ -1,7 +1,7 @@
 import type { DatabaseConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { DataSource, EntityManager } from '@n8n/typeorm';
-import { In } from '@n8n/typeorm';
+import { In, IsNull } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -63,6 +63,21 @@ describe('ScheduledJobRepository', () => {
 			expect(entityManager.findBy).toHaveBeenCalledWith(ScheduledJob, {
 				workflowId: 'wf',
 				nodeId: 'node',
+			});
+			expect(result).toBe(rows);
+		});
+	});
+
+	describe('findManyByTaskType', () => {
+		it('returns the system jobs of one task type, scoped to no owning workflow', async () => {
+			const rows = [mock<ScheduledJob>({ id: 1 })];
+			entityManager.findBy.mockResolvedValueOnce(rows);
+
+			const result = await repository.findManyByTaskType(entityManager, 'system:poc-heartbeat');
+
+			expect(entityManager.findBy).toHaveBeenCalledWith(ScheduledJob, {
+				taskType: 'system:poc-heartbeat',
+				workflowId: IsNull(),
 			});
 			expect(result).toBe(rows);
 		});
