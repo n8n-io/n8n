@@ -66,6 +66,12 @@ export const setupHintField = z
 						.enum(['password', 'plain'])
 						.optional()
 						.describe('Defaults to password (masked input)'),
+					optional: z
+						.boolean()
+						.optional()
+						.describe(
+							'Set true only when the service documents the value as optional (e.g. an org/region qualifier) — the user may leave it empty, and template entries referencing an empty optional placeholder are omitted from the request. Omit for anything required to authenticate.',
+						),
 				}),
 			)
 			.min(1)
@@ -153,6 +159,16 @@ export function findSetupHintProblems(hint: InstanceAiCredentialSetupHint): stri
 				`placeholder "${placeholder.name}" has a URL in its info — put the obtain-URL in docsUrl (rendered as a clickable link) and keep info as plain text`,
 			);
 		}
+	}
+	// The type defaults to password, so this only trips recipes that explicitly
+	// mark every input plain — which would render every secret in cleartext.
+	if (
+		hint.placeholders.length > 0 &&
+		hint.placeholders.every((placeholder) => placeholder.type === 'plain')
+	) {
+		problems.push(
+			'every placeholder is plain — at least one must be a password (masked) input; omit type or use "password" for the secret',
+		);
 	}
 	const defined = new Set(hint.placeholders.map((placeholder) => placeholder.name));
 	for (const marker of markers) {

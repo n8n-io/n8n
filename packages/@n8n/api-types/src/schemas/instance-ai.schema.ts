@@ -295,6 +295,9 @@ export const credentialPlaceholderDefSchema = z.object({
 	info: z.string().optional(),
 	/** Defaults to `password` (masked input). */
 	type: z.enum(['password', 'plain']).optional(),
+	/** When true the input may be left empty; template entries referencing an
+	 *  empty optional placeholder are omitted from the signed request. */
+	optional: z.boolean().optional(),
 });
 export type InstanceAiCredentialPlaceholderDef = z.infer<typeof credentialPlaceholderDefSchema>;
 

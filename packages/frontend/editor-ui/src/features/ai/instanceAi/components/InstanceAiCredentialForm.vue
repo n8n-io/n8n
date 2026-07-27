@@ -110,11 +110,15 @@ const docsHost = computed(() => {
 function composeGuidedData() {
 	const values: Record<string, string> = {};
 	for (const def of placeholderDefs.value) {
-		values[def.name] = cleanPlaceholderValue(
+		const cleaned = cleanPlaceholderValue(
 			props.setupHint.template,
 			def.name,
 			placeholderValues.value[def.name] ?? '',
 		);
+		// An empty optional stays out of the stored values entirely — a stored ''
+		// would come back redacted (***) and read like a saved secret.
+		if (cleaned === '' && def.optional) continue;
+		values[def.name] = cleaned;
 	}
 	credentialData.value.placeholderValues = JSON.stringify(values, null, 2);
 }
@@ -125,7 +129,9 @@ function onPlaceholderInput(name: string, value: string) {
 }
 
 const canSubmit = computed(() =>
-	placeholderDefs.value.every((def) => (placeholderValues.value[def.name] ?? '').trim() !== ''),
+	placeholderDefs.value.every(
+		(def) => def.optional || (placeholderValues.value[def.name] ?? '').trim() !== '',
+	),
 );
 
 onMounted(async () => {
@@ -231,7 +237,7 @@ async function submit() {
 				v-if="placeholderDefs.length > 1 || def.info"
 				:label="def.title"
 				:tooltip-text="def.info"
-				:required="true"
+				:required="!def.optional"
 				size="medium"
 			>
 				<N8nInput

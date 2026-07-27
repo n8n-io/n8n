@@ -310,7 +310,7 @@ decision after testing.
   `credentials(action="search-types")` with the service name. Pick in this
   order:
   1. A **dedicated credential type** whenever search finds one.
-  2. **Templated Custom Auth** (`httpTemplatedCustomAuth`) for any service
+  2. **Simplified Custom Auth** (`httpTemplatedCustomAuth`) for any service
      without a dedicated type whose auth is expressible as header/query/body
      values — this covers API keys and bearer tokens. When the provider
      documents `Authorization: Bearer <token>`, do NOT reach for

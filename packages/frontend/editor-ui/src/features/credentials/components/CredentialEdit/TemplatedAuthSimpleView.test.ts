@@ -156,6 +156,34 @@ describe('TemplatedAuthSimpleView', () => {
 		});
 	});
 
+	it('leaves empty optional placeholders out of the composed values', async () => {
+		const { getAllByTestId, emitted } = renderComponent({
+			props: {
+				credentialData: credentialData({
+					placeholderDefs: JSON.stringify([
+						{ name: 'api_key', title: 'fal.ai API key', type: 'password' },
+						{ name: 'api_version', title: 'API version', type: 'plain', optional: true },
+					]),
+					// only the required marker has a stored value
+					placeholderValues: JSON.stringify({}),
+				}),
+			},
+		});
+
+		const apiKeyEl = getAllByTestId('templated-auth-value-input')[0];
+		const input = apiKeyEl.querySelector('input') ?? apiKeyEl;
+		await userEvent.type(input, 'new-secret');
+
+		// the untouched empty optional must not be stored as '' — it would come
+		// back redacted and read like a saved secret
+		await waitFor(() => {
+			const updates = emitted<[{ name: string; value: string }]>('update');
+			expect(updates).toBeTruthy();
+			const last = updates[updates.length - 1][0];
+			expect(JSON.parse(last.value)).toEqual({ api_key: 'new-secret' });
+		});
+	});
+
 	it('renders the docs link when the credential stores a documentation URL', () => {
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: {

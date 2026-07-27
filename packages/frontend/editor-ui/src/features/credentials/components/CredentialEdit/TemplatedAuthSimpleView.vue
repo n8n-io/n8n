@@ -69,7 +69,7 @@ const placeholderProperties = computed<INodeProperties[]>(() =>
 			name,
 			type: 'string',
 			default: '',
-			required: true,
+			required: def?.optional !== true,
 			...(def?.info ? { description: def.info } : {}),
 			...(def?.type === 'plain' ? {} : { typeOptions: { password: true } }),
 		};
@@ -108,7 +108,11 @@ function onParameterUpdate(update: IUpdateInformation) {
 	const composed: Record<string, string> = {};
 	for (const marker of markers.value) {
 		const edited = editedValues.value[marker] ?? savedValues.value[marker] ?? '';
-		composed[marker] = cleanPlaceholderValue(template.value, marker, edited);
+		const cleaned = cleanPlaceholderValue(template.value, marker, edited);
+		// An empty optional stays out of the stored values entirely — a stored ''
+		// would come back redacted (***) and read like a saved secret.
+		if (cleaned === '' && defsByName.value.get(marker)?.optional) continue;
+		composed[marker] = cleaned;
 	}
 	emit('update', { name: 'placeholderValues', value: JSON.stringify(composed, null, 2) });
 }

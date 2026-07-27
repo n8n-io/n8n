@@ -119,19 +119,19 @@ const setupAction = z.object({
 					.string()
 					.optional()
 					.describe(
-						'Restrict the recipe to one node — needed when several nodes use Templated Custom Auth for different services.',
+						'Restrict the recipe to one node — needed when several nodes use Simplified Custom Auth for different services.',
 					),
 			}),
 		)
 		.optional()
 		.describe(
-			'Recipes for the Templated Custom Auth credentials the user will create during setup: the card pre-fills the template and asks only for the placeholder values. Provide one per templated credential whose provider auth scheme you know — ground it in the provider documentation, never guess.',
+			'Recipes for the Simplified Custom Auth credentials the user will create during setup: the card pre-fills the template and asks only for the placeholder values. Provide one per templated credential whose provider auth scheme you know — ground it in the provider documentation, never guess.',
 		),
 	allowPlainGenericAuth: z
 		.boolean()
 		.optional()
 		.describe(
-			'Set ONLY when the user explicitly chose a plain generic auth type (Bearer/Header/Query/Custom Auth) for a new credential, or the workflow pre-existed with it. Otherwise setup rejects new plain generic credentials on HTTP Request nodes in favor of Templated Custom Auth.',
+			'Set ONLY when the user explicitly chose a plain generic auth type (Bearer/Header/Query/Custom Auth) for a new credential, or the workflow pre-existed with it. Otherwise setup rejects new plain generic credentials on HTTP Request nodes in favor of Simplified Custom Auth.',
 		),
 });
 

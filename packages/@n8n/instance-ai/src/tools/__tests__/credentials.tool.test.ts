@@ -845,6 +845,65 @@ describe('credentials tool', () => {
 			expect(result).toMatchObject({ error: 'invalid_setup_hint' });
 		});
 
+		it('should reject a setupHint whose placeholders are all plain inputs', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockResolvedValue([]);
+
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [
+						{
+							credentialType: 'httpTemplatedCustomAuth',
+							setupHint: {
+								template: { headers: { Authorization: 'Key {{api_key}}', 'X-Org': '{{org}}' } },
+								placeholders: [
+									{ name: 'api_key', title: 'API key', type: 'plain' as const },
+									{ name: 'org', title: 'Organization', type: 'plain' as const },
+								],
+							},
+						},
+					],
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ error: 'invalid_setup_hint' });
+		});
+
+		it('should accept a setupHint that keeps the secret masked by default type', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockResolvedValue([]);
+
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+			await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [
+						{
+							credentialType: 'httpTemplatedCustomAuth',
+							setupHint: {
+								template: { headers: { Authorization: 'Key {{api_key}}', 'X-Org': '{{org}}' } },
+								placeholders: [
+									{ name: 'api_key', title: 'API key' },
+									{ name: 'org', title: 'Organization', type: 'plain' as const },
+								],
+							},
+						},
+					],
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(suspendFn).toHaveBeenCalledTimes(1);
+		});
+
 		it('should reject a setupHint on a credential type other than Templated Custom Auth', async () => {
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue([]);

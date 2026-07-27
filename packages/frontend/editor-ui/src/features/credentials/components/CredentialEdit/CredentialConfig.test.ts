@@ -1043,7 +1043,7 @@ describe('CredentialConfig', () => {
 			credentialId: 'cred-1',
 			credentialType: {
 				name: 'httpTemplatedCustomAuth',
-				displayName: 'Templated Custom Auth',
+				displayName: 'Simplified Custom Auth',
 				properties: [],
 			},
 			credentialData: {

@@ -57,7 +57,7 @@ Pick in this order:
 
 1. **A dedicated credential type** (`slackApi`, `notionApi`, …) whenever one
    exists — search with `credentials(action="search-types")`.
-2. **Templated Custom Auth** (`httpTemplatedCustomAuth`) for any service
+2. **Simplified Custom Auth** (`httpTemplatedCustomAuth`) for any service
    without a dedicated type whose auth is expressible as header/query/body
    values — which covers API keys and bearer tokens (`Authorization: Bearer
    <token>` becomes `{"headers":{"Authorization":"Bearer {{api_key}}"}}`, not
@@ -67,9 +67,9 @@ Pick in this order:
    only for what a template cannot express: basic auth's base64-encoded pair,
    digest's challenge-response, OAuth flows.
 
-### Credential recipes for Templated Custom Auth
+### Credential recipes for Simplified Custom Auth
 
-When the workflow authenticates a service through Templated Custom Auth,
+When the workflow authenticates a service through Simplified Custom Auth,
 include `credentialHints` in the same `workflows(action="setup")` call so the
 setup card pre-fills the credential and the user only pastes their secret —
 instead of facing an empty JSON template they'd have to decode from the
@@ -80,7 +80,10 @@ during the build — never guess the auth format:
   with `{{placeholder}}` markers where the user's values go.
 - `placeholders` — one entry per marker: `name`, user-facing `title`, `info`
   as short plain text on where to find it (no URLs — that's `docsUrl`'s job),
-  and `type` (`password` unless clearly non-secret).
+  and `type` (`password` unless clearly non-secret; at least one placeholder
+  must stay `password`). Add `optional: true` only when the provider documents
+  the value as optional (e.g. an org/region qualifier) — template entries
+  referencing an empty optional placeholder are omitted from the request.
 - `docsUrl` — the dashboard page where the user CREATES/COPIES the secret
   (e.g. `https://replicate.com/account/api-tokens`), rendered as the card's
   "Get it from" link. Never the API reference documentation.
@@ -126,7 +129,7 @@ Example — fal.ai's docs say requests use `Authorization: Key <FAL_KEY>` and
 
 Never put a real secret in a recipe — the user pastes it in the setup card and
 it is stored redacted in the credential. Add `nodeName` when several nodes use
-Templated Custom Auth for different services. You cannot see the secret, but
+Simplified Custom Auth for different services. You cannot see the secret, but
 once setup reports the credential applied, treat it as fully configured — the
 `{{placeholder}}` markers live only in the template; the stored values replace
 them at request time. If a live test later fails with an auth error, that is

@@ -14,7 +14,9 @@ import { resolveTemplatedAuth } from '../utils/templated-auth';
 export class HttpTemplatedCustomAuth implements ICredentialType {
 	name = 'httpTemplatedCustomAuth';
 
-	displayName = 'Templated Custom Auth';
+	// Display-only name; the internal id stays `httpTemplatedCustomAuth` (it is
+	// persisted in credentials, recipes and the workflow-sdk type unions).
+	displayName = 'Simplified Custom Auth';
 
 	// No documentationUrl on purpose: the generic HTTP Request docs don't cover
 	// this type, and setting one makes the credential modal render a docs banner
