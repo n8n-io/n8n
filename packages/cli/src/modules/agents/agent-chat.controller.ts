@@ -7,6 +7,7 @@ import {
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import { randomUUID } from 'crypto';
+import type { Response } from 'express';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -173,6 +174,7 @@ export class AgentChatController {
 	@ProjectScope('agent:execute')
 	async cancelChatRun(
 		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
 		@Param('agentId') agentId: string,
 		@Param('runId') runId: string,
 	) {

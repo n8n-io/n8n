@@ -275,6 +275,7 @@ describe('AgentChatController HITL cancellation', () => {
 					params: { projectId: 'project-1' },
 					user: { id: 'user-1' },
 				} as never,
+				{} as never,
 				'agent-1',
 				'run-1',
 			),
