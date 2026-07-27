@@ -65,9 +65,17 @@ export const useSubworkflowProgressStore = defineStore(STORES.SUBWORKFLOW_PROGRE
 		progressByKey.value = next;
 	}
 
-	function clear(payload: { parentExecutionId: string; parentNodeName: string }) {
+	function clear(payload: {
+		parentExecutionId: string;
+		parentNodeName: string;
+		executionId?: string;
+	}) {
 		const key = makeKey(payload.parentExecutionId, payload.parentNodeName);
-		if (!progressByKey.value.has(key)) return;
+		const existing = progressByKey.value.get(key);
+		if (!existing) return;
+		// Ignore a terminal event from an older child if a newer one has already
+		// replaced the entry, so a late "finished" can't wipe a live overlay.
+		if (payload.executionId && existing.executionId !== payload.executionId) return;
 		const next = new Map(progressByKey.value);
 		next.delete(key);
 		progressByKey.value = next;
