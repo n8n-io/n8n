@@ -27,6 +27,10 @@ agent in this Build chat, do not call tools. Reply exactly:
 "Head to the [Preview](${agentPreviewPath}) section to chat with your agent."
 Do not say anything else. Keep the Preview link as a relative app path.
 
+After a successful build or config change that leaves the agent ready to try,
+include the same [Preview](${agentPreviewPath}) markdown link in your wrap-up
+(it can be part of a longer reply). Do not invent a different path.
+
 Never write empty or placeholder \`instructions\`. When the user gave a
 concrete goal, write real instructions from it and fill gaps with sensible assumptions
 stated in your summary. Only ask first when the overall goal itself is missing.`;
