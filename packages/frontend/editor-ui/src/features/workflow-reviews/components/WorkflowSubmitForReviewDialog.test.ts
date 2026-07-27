@@ -44,6 +44,7 @@ const renderDialog = async (flushSave = vi.fn().mockResolvedValue('version-1')) 
 		...result,
 		flushSave,
 		reviewRequiredStore,
+		reviewStatusStore,
 		fetchStatusSpy,
 	};
 };
@@ -85,7 +86,7 @@ describe('WorkflowSubmitForReviewDialog', () => {
 	});
 
 	it('submits the flushed version and resets review required after success', async () => {
-		const { getByTestId, flushSave, reviewRequiredStore, fetchStatusSpy, emitted } =
+		const { getByTestId, flushSave, reviewRequiredStore, reviewStatusStore, emitted } =
 			await renderDialog();
 
 		await userEvent.type(getByTestId('workflow-review-title-input'), '  Review payments  ');
@@ -101,7 +102,8 @@ describe('WorkflowSubmitForReviewDialog', () => {
 		});
 		expect(flushSave).toHaveBeenCalledOnce();
 		expect(reviewRequiredStore.isReviewRequired('workflow-1')).toBe(false);
-		expect(fetchStatusSpy).toHaveBeenCalledWith('workflow-1');
+		expect(reviewStatusStore.hasOpenReview('workflow-1')).toBe(true);
+		expect(reviewStatusStore.openReviewRequest('workflow-1')?.id).toBe('review-1');
 		expect(emitted('submitted')).toHaveLength(1);
 		expect(emitted('update:open')).toContainEqual([false]);
 	});
