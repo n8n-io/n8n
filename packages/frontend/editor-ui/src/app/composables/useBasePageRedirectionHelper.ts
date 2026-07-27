@@ -13,7 +13,12 @@ import { N8N_PRICING_PAGE_URL } from '@/app/constants';
  */
 export type UpgradeRedirectGuard = () => Promise<boolean>;
 
-export function usePageRedirectionHelper({ guard }: { guard: UpgradeRedirectGuard }) {
+/**
+ * Injectable page-redirection composable. The app-facing `usePageRedirectionHelper`
+ * wraps this and supplies the guard; this base carries no feature dependency and is
+ * the unit that moves to `@n8n/composables` in N8N-71.
+ */
+export function useBasePageRedirectionHelper({ guard }: { guard: UpgradeRedirectGuard }) {
 	const usersStore = useUsersStore();
 	const cloudPlanStore = useCloudPlanStore();
 	const versionsStore = useVersionsStore();
