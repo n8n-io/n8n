@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useSidebarLayout } from './useSidebarLayout';
+import { MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, useSidebarLayout } from './useSidebarLayout';
 
 // Mock UI Store
 const mockUIStore = {
@@ -93,12 +93,12 @@ describe('useSidebarLayout', () => {
 
 		it('should not resize when collapsed and dragging right below threshold', () => {
 			mockUIStore.sidebarMenuCollapsed = true;
-			mockUIStore.sidebarWidth = 42;
+			mockUIStore.sidebarWidth = 300;
 			const { onResize, sidebarWidth } = useSidebarLayout();
 
 			onResize({ width: 250, x: 80 }); // x < 100
 
-			expect(sidebarWidth.value).toBe(42);
+			expect(sidebarWidth.value).toBe(300);
 			expect(mockUIStore.toggleSidebarMenuCollapse).not.toHaveBeenCalled();
 		});
 
@@ -122,12 +122,54 @@ describe('useSidebarLayout', () => {
 
 		it('should not update width when collapsed', () => {
 			mockUIStore.sidebarMenuCollapsed = true;
-			mockUIStore.sidebarWidth = 42;
+			mockUIStore.sidebarWidth = 300;
 			const { onResize, sidebarWidth } = useSidebarLayout();
 
 			onResize({ width: 350, x: 80 }); // Below threshold
 
-			expect(sidebarWidth.value).toBe(42);
+			expect(sidebarWidth.value).toBe(300);
+		});
+	});
+
+	describe('sidebarWidth sanitization', () => {
+		it('should clamp a stored width below the minimum to the minimum', () => {
+			mockUIStore.sidebarWidth = 42;
+
+			const { sidebarWidth } = useSidebarLayout();
+
+			expect(sidebarWidth.value).toBe(MIN_SIDEBAR_WIDTH);
+		});
+
+		it('should clamp a stored width above the maximum to the maximum', () => {
+			mockUIStore.sidebarWidth = 5000;
+
+			const { sidebarWidth } = useSidebarLayout();
+
+			expect(sidebarWidth.value).toBe(MAX_SIDEBAR_WIDTH);
+		});
+
+		it('should fall back to the minimum when the stored width is not a finite number', () => {
+			mockUIStore.sidebarWidth = NaN;
+
+			const { sidebarWidth } = useSidebarLayout();
+
+			expect(sidebarWidth.value).toBe(MIN_SIDEBAR_WIDTH);
+		});
+
+		it('should keep a stored width within bounds as-is', () => {
+			mockUIStore.sidebarWidth = 350;
+
+			const { sidebarWidth } = useSidebarLayout();
+
+			expect(sidebarWidth.value).toBe(350);
+		});
+
+		it('should write resized widths to the store', () => {
+			const { sidebarWidth } = useSidebarLayout();
+
+			sidebarWidth.value = 400;
+
+			expect(mockUIStore.sidebarWidth).toBe(400);
 		});
 	});
 });
