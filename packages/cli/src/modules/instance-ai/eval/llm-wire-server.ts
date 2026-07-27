@@ -4,6 +4,7 @@ import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 import { type Server } from 'node:http';
 
+import { isMockErrorSentinel } from './mock-handler';
 import {
 	buildOpenAiErrorEnvelope,
 	extractRequestModel,
@@ -35,6 +36,10 @@ export interface InterceptedTurn {
 	 * field as "what the node received"; recording the pre-translation shorthand
 	 * made them misattribute node-side failures to a malformed mock envelope.
 	 * For streamed turns this is the equivalent non-streamed envelope.
+	 *
+	 * Exception: generation/translation failures keep their sentinel shorthand
+	 * (`_evalMockError` / `evalMockGenerationError`) so consumers can still
+	 * attribute mock_issue — a wire envelope would hide it in message content.
 	 */
 	mockResponse: unknown;
 }
@@ -266,6 +271,14 @@ export class LlmWireServer {
 			return;
 		}
 
+		// A handler-returned generation failure carries the `_evalMockError` sentinel
+		// that ledger consumers key on to attribute mock_issue. Translating it into a
+		// vendor envelope buries the sentinel in assistant message content, so record
+		// the shorthand verbatim for this branch — a failed generation has no
+		// meaningful "what the node received" beyond the failure itself.
+		const ledgerBody =
+			mockResponse && isMockErrorSentinel(mockResponse) ? mockResponse.body : wireBody;
+
 		// Ledger write BEFORE the response so consumers see the entry deterministically
 		// after `await fetch(...)`. `requestBody` is stored by reference (express.json
 		// never re-touches it); callers must not mutate. A thrown `onIntercept` never
@@ -277,7 +290,7 @@ export class LlmWireServer {
 				method: synthetic.method ?? 'POST',
 				nodeType: subNode.type,
 				requestBody: req.body,
-				mockResponse: wireBody,
+				mockResponse: ledgerBody,
 			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);

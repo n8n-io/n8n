@@ -216,6 +216,37 @@ describe('LlmWireServer', () => {
 			});
 		});
 
+		it('keeps the _evalMockError sentinel at the ledger top level so mock_issue stays attributable', async () => {
+			const intercepts: InterceptedTurn[] = [];
+			const mockHandler = vi.fn().mockResolvedValue({
+				body: { _evalMockError: true, message: 'Mock generation failed: upstream 429' },
+				headers: {},
+				statusCode: 200,
+			}) as unknown as EvalLlmMockHandler;
+
+			server = new LlmWireServer({
+				logger: mockLogger,
+				mockHandler,
+				rootToSubNode: new Map([['Agent', subNode]]),
+				onIntercept: (t) => intercepts.push(t),
+			});
+			const url = await server.start();
+
+			await postChatCompletion(url, '/eval/Agent/v1/chat/completions', {
+				model: 'gpt-4o',
+				messages: [{ role: 'user', content: 'ping' }],
+			});
+
+			// Consumers test `'_evalMockError' in mockResponse`; a translated chat
+			// envelope would bury the sentinel in choices[0].message.content and the
+			// failure would be misattributed to the builder.
+			expect(intercepts).toHaveLength(1);
+			expect(intercepts[0].mockResponse).toEqual({
+				_evalMockError: true,
+				message: 'Mock generation failed: upstream 429',
+			});
+		});
+
 		it('still returns 200 with a valid envelope when onIntercept throws (ledger failure is isolated)', async () => {
 			const warn = vi.fn();
 			const mockHandler = vi.fn().mockResolvedValue({
