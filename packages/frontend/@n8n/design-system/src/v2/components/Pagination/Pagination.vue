@@ -262,9 +262,7 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 				:aria-label="t('pagination.pageSize')"
 				data-test-id="pagination-sizes"
 				@update:model-value="handlePageSizeUpdate"
-			>
-				<template #prefix>{{ t('pagination.pageSize') }}</template>
-			</N8nSelect>
+			/>
 
 			<PaginationRoot
 				v-else-if="part === 'pager-group'"
