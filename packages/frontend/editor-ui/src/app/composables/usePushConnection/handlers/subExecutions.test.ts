@@ -1,7 +1,7 @@
 /**
  * Live sub-execution mirroring, driven through the push handlers the way the
- * backend drives them: a workflow calling itself reports the sub-workflow's
- * progress under a separate execution id, and the canvas has to light up for it.
+ * backend drives them: a workflow calling itself reports the sub-workflow under a
+ * separate execution id, and the canvas has to light up for it.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
