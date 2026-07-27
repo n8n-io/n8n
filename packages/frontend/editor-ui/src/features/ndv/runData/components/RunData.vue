@@ -498,8 +498,25 @@ const rawInputData = computed(() =>
 	getRawInputData(props.runIndex, currentOutputIndex.value, connectionType.value),
 );
 
+// When searching, gather the items of every run (not just the selected one) so
+// a match present in a non-selected run is still found (ADO-5651). Only live
+// data has multiple runs; pinned data is a single set.
+const searchableInputData = computed(() => {
+	const nodeRunData = currentNodeRunData.value;
+	if (!nodeRunData) return [];
+
+	return nodeRunData.flatMap((_, runIndex) =>
+		getRawInputData(runIndex, currentOutputIndex.value, connectionType.value),
+	);
+});
+
 const unfilteredInputData = computed(() => getPinDataOrLiveData(rawInputData.value));
-const inputData = computed(() => getFilteredData(unfilteredInputData.value));
+const inputData = computed(() => {
+	if (search.value && !isSchemaView.value && !pinnedData.data.value) {
+		return getFilteredData(searchableInputData.value);
+	}
+	return getFilteredData(unfilteredInputData.value);
+});
 const inputDataPage = computed(() => {
 	const offset = pageSize.value * (currentPage.value - 1);
 	return inputData.value.slice(offset, offset + pageSize.value);
