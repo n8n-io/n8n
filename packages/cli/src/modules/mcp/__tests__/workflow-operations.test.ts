@@ -1415,6 +1415,146 @@ describe('applyOperations', () => {
 		});
 	});
 
+	describe('non-fatal operation types', () => {
+		describe('canvasGroupsEnabled off', () => {
+			test('a normal batch with no failures succeeds with no skipped operations', () => {
+				const result = applyOperations(baseWorkflow(), [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+				]);
+				expect(result.success).toBe(true);
+				if (!result.success) return;
+				expect(result.skippedOperations ?? []).toEqual([]);
+			});
+
+			test('a failing group operation still aborts the whole batch', () => {
+				const result = applyOperations(baseWorkflow(), [
+					{ type: 'addNodeGroup', name: 'Group', nodeNames: ['Missing'] },
+				]);
+				expect(result.success).toBe(false);
+				if (result.success) return;
+				expect(result.error).toContain("node 'Missing' in group 'Group' not found");
+				expect(result.opIndex).toBe(0);
+			});
+
+			test('a failing non-group operation still aborts the whole batch', () => {
+				const result = applyOperations(baseWorkflow(), [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+					{ type: 'removeNode', nodeName: 'Missing' },
+				]);
+				expect(result.success).toBe(false);
+				if (result.success) return;
+				expect(result.opIndex).toBe(1);
+			});
+		});
+
+		describe('canvasGroupsEnabled on', () => {
+			test('a failing addNodeGroup is skipped while surrounding operations still apply', () => {
+				const wf = baseWorkflow();
+				const ops: PartialUpdateOperation[] = [
+					{ type: 'addNode', node: { name: 'C', type: 'n8n-nodes-base.set', typeVersion: 1 } },
+					{ type: 'addNodeGroup', name: 'Group', nodeNames: ['Missing'] },
+					{ type: 'addConnection', source: 'A', target: 'C' },
+				];
+				const result = applyOperations(wf, ops, { canvasGroupsEnabled: true });
+				expect(result.success).toBe(true);
+				if (!result.success) return;
+				expect(result.workflow.nodes.some((n) => n.name === 'C')).toBe(true);
+				expect(result.workflow.connections.A?.main?.[0]).toEqual(
+					expect.arrayContaining([expect.objectContaining({ node: 'C' })]),
+				);
+				expect(result.workflow.nodeGroups ?? []).toEqual([]);
+				expect(result.skippedOperations).toEqual([
+					{
+						opIndex: 1,
+						type: 'addNodeGroup',
+						reason: expect.stringContaining("node 'Missing' in group 'Group' not found"),
+					},
+				]);
+			});
+
+			test('a failing non-group operation still aborts the whole batch even with the flag on', () => {
+				const result = applyOperations(
+					baseWorkflow(),
+					[{ type: 'removeNode', nodeName: 'Missing' }],
+					{ canvasGroupsEnabled: true },
+				);
+				expect(result.success).toBe(false);
+				if (result.success) return;
+				expect(result.opIndex).toBe(0);
+			});
+
+			test('two non-fatal failures in the same batch are both skipped, in order', () => {
+				const wf = {
+					...baseWorkflow(),
+					nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a'] }],
+				};
+				const ops: PartialUpdateOperation[] = [
+					{ type: 'addNodeGroup', name: 'Group', nodeNames: ['B'] },
+					{ type: 'updateNodeGroup', groupName: 'Missing', newName: 'X' },
+				];
+				const result = applyOperations(wf, ops, { canvasGroupsEnabled: true });
+				expect(result.success).toBe(true);
+				if (!result.success) return;
+				expect(result.workflow.nodeGroups).toEqual([{ id: 'g1', name: 'Group', nodeIds: ['a'] }]);
+				expect(result.skippedOperations).toEqual([
+					{
+						opIndex: 0,
+						type: 'addNodeGroup',
+						reason: expect.stringContaining("a node group named 'Group' already exists"),
+					},
+					{
+						opIndex: 1,
+						type: 'updateNodeGroup',
+						reason: expect.stringContaining("node group 'Missing' not found"),
+					},
+				]);
+			});
+
+			test('a batch where every operation is a failing group op still succeeds with no groups persisted', () => {
+				const ops: PartialUpdateOperation[] = [
+					{ type: 'addNodeGroup', name: 'Group', nodeNames: ['Missing'] },
+					{ type: 'removeNodeGroup', groupName: 'Missing' },
+				];
+				const result = applyOperations(baseWorkflow(), ops, { canvasGroupsEnabled: true });
+				expect(result.success).toBe(true);
+				if (!result.success) return;
+				expect(result.workflow.nodeGroups ?? []).toEqual([]);
+				expect(result.nodeGroupsChanged).toBe(false);
+				expect(result.skippedOperations).toHaveLength(2);
+			});
+
+			test('skipping a non-fatal operation does not corrupt state for later operations', () => {
+				const ops: PartialUpdateOperation[] = [
+					{ type: 'addNode', node: { name: 'C', type: 'n8n-nodes-base.set', typeVersion: 1 } },
+					{ type: 'addNodeGroup', name: 'Group', nodeNames: ['Missing'] },
+					{ type: 'setNodeParameter', nodeName: 'C', path: '/foo', value: 'bar' },
+				];
+				const result = applyOperations(baseWorkflow(), ops, { canvasGroupsEnabled: true });
+				expect(result.success).toBe(true);
+				if (!result.success) return;
+				expect(result.workflow.nodes.find((n) => n.name === 'C')!.parameters).toEqual({
+					foo: 'bar',
+				});
+				expect(result.skippedOperations).toHaveLength(1);
+			});
+
+			test('opIndex in skippedOperations reflects the original position in the input array', () => {
+				const ops: PartialUpdateOperation[] = [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+					{ type: 'addNode', node: { name: 'C', type: 'n8n-nodes-base.set', typeVersion: 1 } },
+					{ type: 'addNodeGroup', name: 'Group', nodeNames: ['Missing'] },
+					{ type: 'setNodeParameter', nodeName: 'C', path: '/foo', value: 'bar' },
+				];
+				const result = applyOperations(baseWorkflow(), ops, { canvasGroupsEnabled: true });
+				expect(result.success).toBe(true);
+				if (!result.success) return;
+				expect(result.skippedOperations).toEqual([
+					{ opIndex: 2, type: 'addNodeGroup', reason: expect.any(String) },
+				]);
+			});
+		});
+	});
+
 	describe('toWorkflowSlice', () => {
 		test('carries nodeGroups through from the workflow entity', () => {
 			const slice = toWorkflowSlice({

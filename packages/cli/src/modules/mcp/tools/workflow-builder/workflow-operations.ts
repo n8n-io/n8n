@@ -364,6 +364,18 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 
 export type PartialUpdateOperation = z.infer<typeof partialUpdateOperationSchema>;
 
+/**
+ * Operation types whose failure `applyOperations` skips instead of aborting the whole
+ * batch. Groups are cosmetic — nothing about execution depends on them — so a single
+ * invalid group op shouldn't discard an otherwise-good batch of node/connection edits.
+ */
+export const NON_FATAL_OPERATION_TYPES: ReadonlySet<PartialUpdateOperation['type']> = new Set([
+	'setNodeGroups',
+	'addNodeGroup',
+	'removeNodeGroup',
+	'updateNodeGroup',
+]);
+
 interface WorkflowSlice {
 	name: string;
 	description?: string;
