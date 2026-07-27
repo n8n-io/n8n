@@ -227,13 +227,20 @@ export class SlackV2 implements INodeType {
 					});
 				return { results, paginationToken: cursor };
 			},
-			async getUsers(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
-				const users = (await slackApiRequestAllItems.call(
-					this,
-					'members',
-					'GET',
-					'/users.list',
-				)) as Array<{ id: string; name: string }>;
+			async getUsers(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			): Promise<INodeListSearchResult> {
+				const qs = { limit: 200, cursor: paginationToken };
+				const { data: users, cursor } = await slackApiRequestAllItemsWithRateLimit<{
+					id: string;
+					name: string;
+				}>(this, 'members', 'GET', '/users.list', {}, qs, {
+					onFail: 'stop',
+					maxRetries: 2,
+					fallbackDelay: 30_000,
+				});
 				const results: INodeListSearchItems[] = users
 					.map((c) => ({
 						name: c.name,
@@ -250,7 +257,7 @@ export class SlackV2 implements INodeType {
 						if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
 						return 0;
 					});
-				return { results };
+				return { results, paginationToken: cursor };
 			},
 		},
 		loadOptions: {
@@ -258,7 +265,10 @@ export class SlackV2 implements INodeType {
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const users = await slackApiRequestAllItems.call(this, 'members', 'GET', '/users.list');
+				const { data: users } = await slackApiRequestAllItemsWithRateLimit<{
+					id: string;
+					name: string;
+				}>(this, 'members', 'GET', '/users.list', {}, { limit: 200 }, { onFail: 'stop' });
 				for (const user of users) {
 					const userName = user.name;
 					const userId = user.id;
