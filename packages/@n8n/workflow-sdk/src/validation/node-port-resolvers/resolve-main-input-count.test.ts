@@ -1,6 +1,6 @@
 import type { INodeTypes } from 'n8n-workflow';
 
-import { resolveMainInputCount } from './input-resolver';
+import { resolveMainInputCount } from './resolve-main-input-count';
 
 describe('resolveMainInputCount', () => {
 	const createMockProvider = (inputs: unknown): INodeTypes =>

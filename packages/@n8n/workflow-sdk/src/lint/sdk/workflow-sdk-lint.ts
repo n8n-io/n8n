@@ -2,15 +2,15 @@
  * Source-level lint for workflow SDK TypeScript (builder code only).
  *
  * Does not inspect jsCode / pythonCode embedded in Code node configs — those
- * are linted separately by code-node-js-lint and code-node-python-lint.
+ * are linted separately by code-node/js and code-node/python.
  */
 
 import type { CallExpression, MemberExpression, Node, Program } from 'estree';
 
-import { FORBIDDEN_NODE_TYPES, DANGEROUS_GLOBALS, parseSDKCode } from '../ast-interpreter';
-import { dedupeSourceLintIssues, walkAst } from './ast-walk';
-import { isEmbeddedCodePropertyValue } from './extract-code-snippets';
-import type { SourceLintIssue } from './types';
+import { FORBIDDEN_NODE_TYPES, DANGEROUS_GLOBALS, parseSDKCode } from '../../ast-interpreter';
+import { dedupeSourceLintIssues, walkAst } from '../ast-walk';
+import { isEmbeddedCodePropertyValue } from '../code-node/extract-snippets';
+import type { SourceLintIssue } from '../types';
 
 const NATIVE_ARRAY_METHODS = new Set([
 	'map',

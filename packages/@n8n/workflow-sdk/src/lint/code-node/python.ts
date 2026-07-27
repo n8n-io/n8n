@@ -1,4 +1,4 @@
-import type { SourceLintIssue } from './types';
+import type { SourceLintIssue } from '../types';
 
 /** Match real import/from lines — not identifiers that merely contain "requests". */
 const PYTHON_NETWORK_IMPORT =

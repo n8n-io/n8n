@@ -1,9 +1,9 @@
 import * as acorn from 'acorn';
 import type { CallExpression, Node, Program } from 'estree';
 
-import { walkAst } from './ast-walk';
-import type { CodeExecutionMode } from './extract-code-snippets';
-import type { SourceLintIssue } from './types';
+import { walkAst } from '../ast-walk';
+import type { CodeExecutionMode } from './extract-snippets';
+import type { SourceLintIssue } from '../types';
 
 const NETWORK_CALLEE_NAMES = new Set(['fetch', 'axios', 'XMLHttpRequest']);
 

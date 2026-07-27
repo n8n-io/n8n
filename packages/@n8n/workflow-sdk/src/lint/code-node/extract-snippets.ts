@@ -1,7 +1,7 @@
 import type { Node, ObjectExpression, Program, Property } from 'estree';
 
-import { parseSDKCode } from '../ast-interpreter';
-import { walkAst } from './ast-walk';
+import { parseSDKCode } from '../../ast-interpreter';
+import { walkAst } from '../ast-walk';
 
 export type CodeExecutionMode = 'runOnceForAllItems' | 'runOnceForEachItem';
 

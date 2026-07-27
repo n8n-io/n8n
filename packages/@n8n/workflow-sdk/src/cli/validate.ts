@@ -3,7 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { resolveNodeDefinitionDirs, NODE_DEFINITION_DIRS_ENV_VAR } from './node-definition-dirs';
-import { lintWorkflowSource, type SourceLintIssue } from '../lint/lint-workflow-source';
+import { lintWorkflowSource, type SourceLintIssue } from '../lint';
 import type { WorkflowJSON } from '../types/base';
 import {
 	isInformationalValidationCode,

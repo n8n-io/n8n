@@ -4,7 +4,7 @@ import {
 	matchesDisplayOptions as matchesDisplayOptionsCore,
 	type DisplayOptions,
 	type DisplayOptionsContext,
-} from './display-options';
+} from '../display-options';
 
 // Re-export types from display-options for backward compatibility
 export type { DisplayOptions, DisplayOptionsContext };

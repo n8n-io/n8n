@@ -1,4 +1,4 @@
-import { extractEmbeddedCodeSnippetsFromSource } from './extract-code-snippets';
+import { extractEmbeddedCodeSnippetsFromSource } from './extract-snippets';
 
 describe('extractEmbeddedCodeSnippetsFromSource', () => {
 	it('extracts jsCode from a Code node config', () => {

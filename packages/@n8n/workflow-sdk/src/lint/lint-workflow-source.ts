@@ -1,24 +1,10 @@
 import { parseSDKCode } from '../ast-interpreter';
 import { dedupeSourceLintIssues } from './ast-walk';
-import { lintJsCode } from './code-node-js-lint';
-import { lintPythonCode } from './code-node-python-lint';
-import { buildParentMap, extractEmbeddedCodeSnippets } from './extract-code-snippets';
+import { buildParentMap, extractEmbeddedCodeSnippets } from './code-node/extract-snippets';
+import { lintJsCode } from './code-node/js';
+import { lintPythonCode } from './code-node/python';
+import { lintWorkflowSdkAst, prepareSourceForLint } from './sdk/workflow-sdk-lint';
 import type { SourceLintIssue } from './types';
-import { lintWorkflowSdkAst, prepareSourceForLint } from './workflow-sdk-lint';
-
-export type { LintTarget, SourceLintIssue } from './types';
-export {
-	prepareSourceForLint,
-	lintWorkflowSdkSource,
-	lintWorkflowSdkAst,
-} from './workflow-sdk-lint';
-export { lintJsCode, hasNestedTemplateLiterals } from './code-node-js-lint';
-export { lintPythonCode } from './code-node-python-lint';
-export {
-	extractEmbeddedCodeSnippets,
-	extractEmbeddedCodeSnippetsFromSource,
-	isEmbeddedCodePropertyValue,
-} from './extract-code-snippets';
 
 /**
  * Run SDK, embedded JavaScript, and embedded Python linters on a workflow source file.

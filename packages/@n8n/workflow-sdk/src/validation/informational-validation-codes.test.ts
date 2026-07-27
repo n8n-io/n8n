@@ -1,4 +1,4 @@
-import { partitionValidationIssues } from './informational-codes';
+import { partitionValidationIssues } from './informational-validation-codes';
 
 describe('partitionValidationIssues', () => {
 	it('separates blocking from informational codes', () => {

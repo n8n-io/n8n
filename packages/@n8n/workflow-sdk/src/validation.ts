@@ -13,4 +13,7 @@ export {
 	partitionValidationIssues,
 } from './validation/index';
 
-export { validateNodeConfig, type SchemaValidationResult } from './validation/schema-validator';
+export {
+	validateNodeConfig,
+	type SchemaValidationResult,
+} from './validation/node-parameter-schema/schema-validator';
