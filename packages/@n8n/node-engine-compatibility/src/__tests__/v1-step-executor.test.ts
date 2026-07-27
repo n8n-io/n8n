@@ -12,7 +12,6 @@ import { V1StepExecutor } from '../v1-step-executor';
 import { V1WorkflowConverter } from '../v1-workflow-converter';
 import {
 	items,
-	outputItems,
 	stepRequest,
 	testAdditionalDataFactory,
 	testNodeTypes,

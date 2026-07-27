@@ -1,10 +1,4 @@
-import type {
-	JsonObject,
-	JsonValue,
-	StepExecutionRequest,
-	StepExecutionResult,
-	WorkflowGraph,
-} from '@n8n/engine';
+import type { JsonObject, JsonValue, StepExecutionRequest, WorkflowGraph } from '@n8n/engine';
 import type { ExecuteContext } from 'n8n-core';
 import { NoOp } from 'n8n-nodes-base/nodes/NoOp/NoOp.node';
 import type {
@@ -218,6 +212,3 @@ export const stepRequest = (
 });
 
 export const items = (...objects: JsonObject[]): JsonValue => [objects.map((json) => ({ json }))];
-
-export const outputItems = (result: StepExecutionResult) =>
-	result.outputs as unknown as Array<Array<{ json: IDataObject }>>;
