@@ -29,7 +29,7 @@ export class FreeAiCreditsService {
 		return (
 			this.licenseState.isAiCreditsLicensed() &&
 			!!this.globalConfig.aiAssistant.baseUrl &&
-			!this.licenseState.isAiGatewayLicensed() &&
+			!this.globalConfig.aiGateway.enabled &&
 			!user.settings?.userClaimedAiCredits
 		);
 	}

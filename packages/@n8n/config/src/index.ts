@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { AgentsConfig } from './configs/agents.config';
 import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AiBuilderConfig } from './configs/ai-builder.config';
+import { AiGatewayConfig } from './configs/ai-gateway.config';
 import { AiConfig } from './configs/ai.config';
 import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
@@ -196,6 +197,9 @@ export class GlobalConfig {
 
 	@Nested
 	aiAssistant: AiAssistantConfig;
+
+	@Nested
+	aiGateway: AiGatewayConfig;
 
 	@Nested
 	aiBuilder: AiBuilderConfig;

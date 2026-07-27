@@ -1,8 +1,6 @@
 import { AiGatewayConfigDto, type AiGatewayUsageResponse } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
-import { LICENSE_FEATURES } from '@n8n/constants';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -10,7 +8,6 @@ import type { ICredentialDataDecryptedObject, IHttpRequestMethods } from 'n8n-wo
 import { OperationalError, UserError } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { License } from '@/license';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
@@ -55,13 +52,20 @@ export class AiGatewayService {
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly license: License,
-		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly ownershipService: OwnershipService,
 		private readonly userRepository: UserRepository,
 		private readonly urlService: UrlService,
 		private readonly outboundHttp: OutboundHttp,
 	) {}
+
+	/**
+	 * Instance-level n8n Connect enablement (ENV), plus assistant base URL.
+	 * Free budget still comes from the license quota when present.
+	 */
+	isEnabled(): boolean {
+		return this.globalConfig.aiGateway.enabled && !!this.globalConfig.aiAssistant.baseUrl;
+	}
 
 	/**
 	 * Performs a request against the AI Gateway and returns the parsed body.
@@ -143,8 +147,8 @@ export class AiGatewayService {
 		projectId?: string;
 		executionId?: string;
 	}): Promise<ICredentialDataDecryptedObject> {
-		if (!this.licenseState.isAiGatewayLicensed()) {
-			throw new FeatureNotLicensedError(LICENSE_FEATURES.AI_GATEWAY);
+		if (!this.isEnabled()) {
+			throw new UserError('n8n Connect is not enabled on this instance.');
 		}
 
 		const baseUrl = this.requireBaseUrl();
@@ -298,12 +302,12 @@ export class AiGatewayService {
 	}
 
 	/**
-	 * Returns `{ available: true, config }` when the AI Gateway is both licensed
+	 * Returns `{ available: true, config }` when n8n Connect is enabled (ENV)
 	 * AND its config fetches successfully; `{ available: false }` otherwise.
 	 * Never propagates gateway or config errors.
 	 */
 	async isAvailable(): Promise<AiGatewayAvailability> {
-		if (!this.licenseState.isAiGatewayLicensed()) return { available: false };
+		if (!this.isEnabled()) return { available: false };
 		try {
 			const config = await this.getGatewayConfig();
 			return { available: true, config };

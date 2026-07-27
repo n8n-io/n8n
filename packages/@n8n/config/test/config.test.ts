@@ -547,6 +547,9 @@ describe('GlobalConfig', () => {
 		aiAssistant: {
 			baseUrl: '',
 		},
+		aiGateway: {
+			enabled: false,
+		},
 		aiBuilder: {
 			apiKey: '',
 		},

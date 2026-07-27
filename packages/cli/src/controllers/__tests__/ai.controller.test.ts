@@ -39,6 +39,7 @@ describe('AiController', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		aiGatewayService.isEnabled.mockReturnValue(true);
 
 		response.header.mockReturnThis();
 		response.status.mockReturnThis();

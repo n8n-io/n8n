@@ -14,6 +14,7 @@ describe('FreeAiCreditsService', () => {
 	const licenseState = mock<LicenseState>();
 	const globalConfig = mock<GlobalConfig>({
 		aiAssistant: { baseUrl: 'https://ai-assistant.n8n.io' },
+		aiGateway: { enabled: false },
 	});
 	const aiService = mock<AiService>();
 	const credentialsService = mock<CredentialsService>();
@@ -30,12 +31,12 @@ describe('FreeAiCreditsService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		licenseState.isAiCreditsLicensed.mockReturnValue(true);
-		licenseState.isAiGatewayLicensed.mockReturnValue(false);
 		globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+		globalConfig.aiGateway.enabled = false;
 	});
 
 	describe('isEligible', () => {
-		it('returns true when AI credits are licensed, the base URL is set, the gateway is not licensed, and the user has not claimed', () => {
+		it('returns true when AI credits are licensed, the base URL is set, Connect is off, and the user has not claimed', () => {
 			const user = { settings: {} } as User;
 
 			expect(service.isEligible(user)).toBe(true);
@@ -57,8 +58,8 @@ describe('FreeAiCreditsService', () => {
 			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
 		});
 
-		it('returns false when the AI gateway is licensed', () => {
-			licenseState.isAiGatewayLicensed.mockReturnValue(true);
+		it('returns false when n8n Connect is enabled', () => {
+			globalConfig.aiGateway.enabled = true;
 			const user = { settings: {} } as User;
 
 			expect(service.isEligible(user)).toBe(false);
