@@ -1,5 +1,6 @@
 /* eslint-disable n8n-nodes-base/cred-class-name-unsuffixed */
 /* eslint-disable n8n-nodes-base/cred-class-field-name-unsuffixed */
+/* eslint-disable n8n-nodes-base/cred-class-field-documentation-url-missing */
 import type {
 	IAuthenticate,
 	ICredentialType,
@@ -15,7 +16,9 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 
 	displayName = 'Templated Custom Auth';
 
-	documentationUrl = 'httprequest';
+	// No documentationUrl on purpose: the generic HTTP Request docs don't cover
+	// this type, and setting one makes the credential modal render a docs banner
+	// alongside the recipe's own "Get it from <service>" link.
 
 	genericAuth = true;
 
