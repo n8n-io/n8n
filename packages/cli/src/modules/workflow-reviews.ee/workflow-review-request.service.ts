@@ -425,8 +425,7 @@ export class WorkflowReviewRequestService {
 
 		this.assertRequestUpdatable(request);
 
-		// Fast path: reject a known author before queueing on the lock. Authorship is
-		// re-checked inside the lock, which is what actually makes this safe.
+		// Fast path: reject a known author before queueing on the lock.
 		const isAuthor = await this.workflowReviewRequestAuthorRepository.isAuthor({
 			workflowReviewRequestId,
 			userId: user.id,
@@ -447,9 +446,9 @@ export class WorkflowReviewRequestService {
 				}
 				this.assertRequestUpdatable(current);
 
-				// R1 (P1): re-check authorship here — a sync that won the lock first has
+				// Re-check authorship here — a sync that won the lock first has
 				// added its syncer to the author set since the pre-lock check, and that
-				// syncer must not be able to decide. See LIGO-786_review.md
+				// syncer must not be able to decide.
 				const isAuthorNow = await this.workflowReviewRequestAuthorRepository.isAuthor(
 					{ workflowReviewRequestId, userId: user.id },
 					tx,

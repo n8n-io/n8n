@@ -108,9 +108,6 @@ const handleOpenAutoFocus = (event: Event) => {
 const submit = async () => {
 	if (isSubmitDisabled.value) return;
 
-	// R3 (P3): this dialog stays mounted across workflow navigation, so pin the target
-	// up front — a late response must not install this review under another workflow.
-	// See LIGO-786_review.md
 	const workflowId = props.workflowId;
 
 	isSubmitting.value = true;

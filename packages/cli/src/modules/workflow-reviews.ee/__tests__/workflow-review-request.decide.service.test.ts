@@ -191,7 +191,6 @@ describe('WorkflowReviewRequestService.decide', () => {
 			expect(dbLockService.withLock).not.toHaveBeenCalled();
 		});
 
-		// R1 (P1): guards the in-lock re-check. See LIGO-786_review.md
 		it('rejects a caller who became an author while waiting for the lock', async () => {
 			mockSuccessfulDecidePath();
 			// Not an author before the lock, but a version sync won the lock first and

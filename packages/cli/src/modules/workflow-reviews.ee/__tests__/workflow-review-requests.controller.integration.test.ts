@@ -725,8 +725,8 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 			updatedAt: expect.any(String),
 		});
 
-		// R4 (P3): the service relies on `save` (not `update`) so @BeforeUpdate bumps
-		// updatedAt — assert the timestamp actually moves. See LIGO-786_review.md
+		// the service relies on `save` (not `update`) so @BeforeUpdate bumps
+		// updatedAt — assert the timestamp actually moves.
 		expect(new Date(response.body.data.updatedAt).getTime()).toBeGreaterThan(seededUpdatedAt);
 
 		const updated = await requestRepository.findById(request.id);

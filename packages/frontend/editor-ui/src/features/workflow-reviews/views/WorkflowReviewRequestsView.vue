@@ -65,9 +65,8 @@ async function onDecide(id: string, decision: WorkflowReviewDecisionInput) {
 		await store.decideOnReview(id, decision);
 	} catch (error) {
 		showError(error, 'Could not submit review decision');
-		// R2 (P2): the decision failed because someone else already decided (409), so
-		// refetch — otherwise the item keeps showing as open and every retry re-fails.
-		// See LIGO-786_review.md
+		// The decision failed because someone else already decided (409), so refetch.
+		// Otherwise the item keeps showing as open and every retry re-fails.
 		try {
 			await store.fetchList({ reset: true });
 		} catch (refetchError) {
