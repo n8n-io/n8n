@@ -2,6 +2,7 @@ import type { EventService } from '@/events/event.service';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
+import { variableMissingModeCreates } from '../entities/variable/variable-missing-mode';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { WorkflowImportOutcome } from '../entities/workflow/workflow-import.types';
 import type { ImportContext, ImportPackageRequest } from '../n8n-packages.types';
@@ -60,13 +61,9 @@ export function emitPackageImportedEvent(
 		0,
 	);
 	const variablesMatched = variablePlans.reduce((total, plan) => total + plan.matched.length, 0);
-	// Post-apply per-destination missing: under `create-stub` every missing requirement becomes a
-	// creation (created or skipped-resolved), so `missing - creations` is 0; under `do-nothing`
-	// creations is empty and it stays the unresolved count.
-	const variablesMissing = variablePlans.reduce(
-		(total, plan) => total + (plan.missing.length - plan.creations.length),
-		0,
-	);
+	const variablesMissing = variableMissingModeCreates(request.variableMissingMode)
+		? 0
+		: variablePlans.reduce((total, plan) => total + plan.missing.length, 0);
 	const variablesCreated = scopes.reduce(
 		(total, { imported }) => total + imported.variableResult.createdCount,
 		0,
