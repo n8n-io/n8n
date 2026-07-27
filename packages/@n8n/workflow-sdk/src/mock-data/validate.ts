@@ -43,7 +43,14 @@ export function collectPinFieldViolations(
 
 		for (const item of items) {
 			const json = item.json;
-			if (typeof json !== 'object' || json === null || Array.isArray(json)) continue;
+			if (typeof json !== 'object' || json === null || Array.isArray(json)) {
+				// A malformed item (`{"json": "not a row"}`, `{"json": []}`) carries no
+				// field names at all. Under an exact contract that IS the violation —
+				// skipping it let the pin pass validation with rows no downstream
+				// column expression can resolve.
+				if (contract.exact) for (const key of contract.keys) missingKeySet.add(key);
+				continue;
+			}
 			let fields = json as Record<string, unknown>;
 			if (contract.envelopeKey) {
 				const enveloped = fields[contract.envelopeKey];

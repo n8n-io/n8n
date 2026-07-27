@@ -512,6 +512,30 @@ describe('collectPinFieldViolations', () => {
 		expect(collectPinFieldViolations(subset, contexts)).toEqual([]);
 	});
 
+	it.each([
+		['a non-object json payload', 'not a row'],
+		['an array json payload', [] as unknown],
+	])('flags %s under an exact contract as missing every declared key', (_label, json) => {
+		// Skipping malformed items let the pin pass with rows no downstream column
+		// expression can resolve — it must take the correction/failure path instead.
+		expect(collectPinFieldViolations({ 'Get Rows': [{ json }] }, contexts)).toEqual([
+			{
+				nodeName: 'Get Rows',
+				unknownKeys: [],
+				missingKeys: ['id', 'createdAt', 'updatedAt', 'contact_email'],
+				declaredKeys: ['id', 'createdAt', 'updatedAt', 'contact_email'],
+				envelopeKey: undefined,
+			},
+		]);
+	});
+
+	it('leaves malformed items alone when the contract is not exact', () => {
+		// A plain-text agent answer is a legitimate non-object payload.
+		expect(collectPinFieldViolations({ Extract: [{ json: 'plain answer' }] }, contexts)).toEqual(
+			[],
+		);
+	});
+
 	it('accepts empty pins, conforming rows, and nodes without contracts', () => {
 		const pinData = {
 			'Get Rows': [],

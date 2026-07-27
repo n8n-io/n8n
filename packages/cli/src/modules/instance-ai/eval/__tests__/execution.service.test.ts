@@ -105,6 +105,7 @@ import {
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
+	isDataTableRead,
 	partitionAiRoots,
 } from '../workflow-analysis';
 import type { MockHints } from '../workflow-analysis';
@@ -117,6 +118,7 @@ const generateMockHintsMock = vi.mocked(generateMockHints);
 const detectBinaryDependenciesMock = vi.mocked(detectBinaryDependencies);
 const identifyNodesForHintsMock = vi.mocked(identifyNodesForHints);
 const identifyNodesForPinDataMock = vi.mocked(identifyNodesForPinData);
+const isDataTableReadMock = vi.mocked(isDataTableRead);
 const partitionAiRootsMock = vi.mocked(partitionAiRoots);
 const createLlmMockHandlerMock = vi.mocked(createLlmMockHandler);
 const generatePinDataMock = vi.mocked(generatePinData);
@@ -1459,6 +1461,81 @@ describe('EvalExecutionService', () => {
 			expect(result.errors).toEqual(
 				expect.arrayContaining([expect.stringContaining('No trigger or start node')]),
 			);
+		});
+	});
+
+	// ── Data Table column contracts ──────────────────────────────────
+
+	describe('resolveDataTableColumns (via execution)', () => {
+		function makeDataTableNode(dataTableId: unknown): INode {
+			return {
+				id: 'node-dt',
+				name: 'Get Rows',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				position: [200, 0],
+				parameters: { resource: 'row', operation: 'get', dataTableId },
+			} as INode;
+		}
+
+		function makeDataTableWorkflow(dataTableId: unknown) {
+			const node = makeDataTableNode(dataTableId);
+			// The SUT maps these to names, so the mock must yield node objects.
+			identifyNodesForPinDataMock.mockReturnValue([node]);
+			return makeWorkflowEntity({ nodes: [makeStartNode(), node] });
+		}
+
+		beforeEach(() => {
+			isDataTableReadMock.mockImplementation(
+				(node: INode) => node.type === 'n8n-nodes-base.dataTable',
+			);
+			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
+			dataTableService.getColumns.mockResolvedValue([
+				{ name: 'contact_email', type: 'string' },
+			] as never);
+		});
+
+		it('passes an id-mode locator straight through to the column lookup', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeDataTableWorkflow({ __rl: true, mode: 'id', value: 'dt-42' }) as never,
+			);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(dataTableService.getColumns).toHaveBeenCalledWith('dt-42', 'proj-1');
+			expect(generatePinDataMock.mock.calls[0][0].dataTableColumns).toEqual({
+				'Get Rows': [{ name: 'contact_email', type: 'string' }],
+			});
+		});
+
+		it('resolves a name-mode locator to its id before fetching columns', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeDataTableWorkflow({ __rl: true, mode: 'name', value: 'Customers' }) as never,
+			);
+			dataTableService.findDataTablesByNamesInProject.mockResolvedValue([
+				{ id: 'dt-9', name: 'Customers' },
+			]);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			// A name passed to the id lookup used to miss, silently dropping the node
+			// to prompt-only generation with invented column names.
+			expect(dataTableService.findDataTablesByNamesInProject).toHaveBeenCalledWith('proj-1', [
+				'Customers',
+			]);
+			expect(dataTableService.getColumns).toHaveBeenCalledWith('dt-9', 'proj-1');
+		});
+
+		it('degrades to prompt-only generation when no table matches the name', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeDataTableWorkflow({ __rl: true, mode: 'name', value: 'Missing' }) as never,
+			);
+			dataTableService.findDataTablesByNamesInProject.mockResolvedValue([]);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(dataTableService.getColumns).not.toHaveBeenCalled();
+			expect(generatePinDataMock.mock.calls[0][0].dataTableColumns).toBeUndefined();
 		});
 	});
 

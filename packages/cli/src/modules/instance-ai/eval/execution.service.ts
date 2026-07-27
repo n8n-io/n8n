@@ -357,11 +357,34 @@ export class EvalExecutionService {
 		let projectId: string | undefined;
 		for (const node of readNodes) {
 			try {
-				const locator = node.parameters?.dataTableId as { value?: unknown } | string | undefined;
-				const tableId = typeof locator === 'string' ? locator : locator?.value;
-				if (typeof tableId !== 'string' || tableId.length === 0) continue;
+				const locator = node.parameters?.dataTableId as
+					| { mode?: unknown; value?: unknown }
+					| string
+					| undefined;
+				const locatorValue = typeof locator === 'string' ? locator : locator?.value;
+				if (typeof locatorValue !== 'string' || locatorValue.length === 0) continue;
 
 				projectId ??= (await this.ownershipService.getWorkflowProjectCached(workflowEntity.id)).id;
+
+				// `name` mode carries a table name, not an id (the node runtime resolves
+				// it via `resolveDataTableId`) — passing it straight to an id lookup
+				// dropped named tables to prompt-only generation. Exact name match only;
+				// a near-miss still degrades gracefully below.
+				let tableId = locatorValue;
+				if ((typeof locator === 'string' ? 'id' : locator?.mode) === 'name') {
+					const matches = await this.dataTableService.findDataTablesByNamesInProject(projectId, [
+						locatorValue,
+					]);
+					const resolved = matches.at(0)?.id;
+					if (!resolved) {
+						this.logger.warn(
+							`[EvalMock] No Data Table named "${locatorValue}" for node "${node.name}" — pinned rows fall back to prompt-only generation`,
+						);
+						continue;
+					}
+					tableId = resolved;
+				}
+
 				const columns = await this.dataTableService.getColumns(tableId, projectId);
 				columnsByNode[node.name] = columns.map(({ name, type }) => ({ name, type }));
 			} catch (error) {
