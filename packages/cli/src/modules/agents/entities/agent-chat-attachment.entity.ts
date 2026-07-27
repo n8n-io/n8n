@@ -40,7 +40,8 @@ export class AgentChatAttachment extends WithTimestampsAndStringId {
 	resourceId: string | null;
 
 	/**
-	 * BinaryDataService id (e.g. `filesystem-v2:agent-chat-attachments/<projectId>/<id>/binary_data/<uuid>`).
+	 * BinaryDataService id (e.g. `filesystem-v2:agents/<agentId>/attachments/<id>/binary_data/<uuid>`;
+	 * inline agents share `agents/inline/`).
 	 * Not a DB FK — see `BinaryDataService` in `n8n-core` for how the bytes are resolved from this id.
 	 */
 	@Column({ type: 'text' })

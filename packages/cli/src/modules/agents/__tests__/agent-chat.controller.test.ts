@@ -207,7 +207,7 @@ describe('AgentChatController attachment download', () => {
 			fileSizeBytes: 33,
 		} as never);
 		agentChatAttachmentService.getStream.mockRejectedValue(
-			new FileNotFoundError('filesystem-v2:agent-chat-attachments/p1/att-1'),
+			new FileNotFoundError('filesystem-v2:agents/agent-1/attachments/att-1'),
 		);
 
 		const req = {

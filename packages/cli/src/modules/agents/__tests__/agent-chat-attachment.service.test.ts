@@ -21,7 +21,7 @@ describe('AgentChatAttachmentService', () => {
 	describe('storeInbound', () => {
 		it('stores bytes via BinaryDataService and persists a scoped row', async () => {
 			binaryDataService.store.mockResolvedValue({
-				id: 'filesystem-v2:agent-chat-attachments/project-1/att-1/x',
+				id: 'filesystem-v2:agents/agent-1/attachments/att-1/x',
 				data: 'filesystem-v2',
 				mimeType: 'image/png',
 			});
@@ -40,8 +40,17 @@ describe('AgentChatAttachmentService', () => {
 			});
 
 			expect(binaryDataService.store).toHaveBeenCalledTimes(1);
+			expect(binaryDataService.store).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'custom',
+					pathSegments: ['agents', 'agent-1', 'attachments', expect.any(String)],
+				}),
+				expect.anything(),
+				expect.anything(),
+			);
+
 			expect(repository.save).toHaveBeenCalledTimes(1);
-			expect(stored.binaryDataId).toBe('filesystem-v2:agent-chat-attachments/project-1/att-1/x');
+			expect(stored.binaryDataId).toBe('filesystem-v2:agents/agent-1/attachments/att-1/x');
 			expect(stored.fileSizeBytes).toBe(3);
 			expect(stored.source).toBe('chat');
 		});

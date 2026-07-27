@@ -36,10 +36,16 @@ export interface StoredAttachmentRef {
 	sizeBytes: number;
 }
 
-/** One directory per attachment, so deleting a single file never touches others. */
-function buildAttachmentFileLocation(projectId: string, attachmentId: string) {
+/**
+ * One directory per attachment, so deleting a single file never touches
+ * others. Everything agent-related lives under `agents/<agentId>/` (next to
+ * `knowledge-files/`) so support can localize disk usage per agent; inline
+ * agents have no `agents` row and share the `agents/inline/` directory (a
+ * real agent id is a 16-char nano ID, so `inline` cannot collide).
+ */
+function buildAttachmentFileLocation(agentId: string | null, attachmentId: string) {
 	return FileLocation.ofCustom({
-		pathSegments: ['agent-chat-attachments', projectId, attachmentId],
+		pathSegments: ['agents', agentId ?? 'inline', 'attachments', attachmentId],
 		sourceType: ATTACHMENT_SOURCE_TYPE,
 		sourceId: attachmentId,
 	});
@@ -69,7 +75,7 @@ export class AgentChatAttachmentService {
 			fileName: params.fileName,
 		};
 		const stored = await this.binaryDataService.store(
-			buildAttachmentFileLocation(params.projectId, attachmentId),
+			buildAttachmentFileLocation(params.agentId, attachmentId),
 			params.data,
 			binaryData,
 		);
