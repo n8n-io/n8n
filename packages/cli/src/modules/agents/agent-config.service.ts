@@ -2,6 +2,7 @@ import { reconcileNativeWebSearch } from '@n8n/ai-utilities/agent-config';
 import {
 	AgentJsonConfigSchema,
 	findVectorStoreToolNameCollisions,
+	formatAgentConfigZodError,
 	sanitizeAgentJsonConfig,
 	type AgentJsonConfig,
 	type AgentJsonToolConfig,
@@ -66,7 +67,7 @@ export class AgentConfigService {
 
 		const parsed = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(raw));
 		if (!parsed.success) {
-			return { valid: false, error: parsed.error.message };
+			return { valid: false, error: formatAgentConfigZodError(parsed.error) };
 		}
 
 		const config = parsed.data;

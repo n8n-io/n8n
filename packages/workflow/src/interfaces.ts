@@ -172,6 +172,7 @@ export interface ICredentialsDecrypted<T extends object = ICredentialDataDecrypt
 	sharedWithProjects?: ProjectSharingData[];
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	usageScope?: 'project' | 'instance';
 }
 
 export interface ICredentialsEncrypted {
@@ -1480,12 +1481,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getWebhookName(): string;
 	validateCookieAuth(cookieValue: string): Promise<IUser>;
 	/** Emits telemetry for an advanced HITL response actioned via this webhook. */
-	logHitlResponse(
-		payload: Pick<
-			HitlResponseTelemetryPayload,
-			'approved' | 'authorized' | 'response_mode' | 'advanced_email'
-		>,
-	): void;
+	logHitlResponse(payload: { approved: boolean; authorized: boolean }): void;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
@@ -1784,6 +1780,7 @@ export interface INodePropertyTypeOptions {
 		inputFieldMaxLength?: number; // Supported if hasInputField is true
 	};
 	containerClass?: string; // Supported by: notice
+	sectionHeader?: boolean; // Supported by: notice — renders as a section-header divider instead of a notice box
 	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
 	editor?: EditorType; // Supported by: string
@@ -1847,6 +1844,9 @@ export interface ResourceMapperTypeOptionsBase {
 	// reconciled against the source on node open. A complete-but-drifted schema
 	// still shows the stale-data warning, leaving the refresh up to the user.
 	refreshIncompleteSchemaOnOpen?: boolean;
+	// When true, a complete-but-drifted cached schema is reconciled against the
+	// live source on node open / tab focus (e.g. subworkflow trigger inputs).
+	refreshStaleSchemaOnOpen?: boolean;
 }
 
 // Enforce at least one of resourceMapperMethod or localResourceMapperMethod
@@ -3503,19 +3503,8 @@ export type HitlResponseTelemetryPayload = {
 	nodeType: string;
 	/** The decision the responder made. */
 	approved: boolean;
-	/**
-	 * Whether the responder was on the node's approver allow-list (empty list = anyone).
-	 * Only chat nodes set this; email/confirmation-page nodes cannot identify the
-	 * responder and omit it.
-	 */
-	authorized?: boolean;
-	/**
-	 * How an email responder actioned the request: `confirmation_page` (the
-	 * double-confirm POST) or `direct_link` (a one-click email button GET). Only
-	 * email nodes set this; chat nodes omit it.
-	 */
-	response_mode?: 'confirmation_page' | 'direct_link';
-	advanced_email?: boolean;
+	/** Whether the responder was on the node's approver allow-list (empty list = anyone). */
+	authorized: boolean;
 	executionId?: string;
 	workflowId?: string;
 };

@@ -683,6 +683,7 @@ export class McpAgentToolsService {
 							agentId,
 							projectId,
 							user,
+							'builder',
 							versionId,
 						);
 						return {
@@ -785,7 +786,12 @@ export class McpAgentToolsService {
 				await this.run(user, 'unpublish_agent', { agentId }, async () => {
 					const { projectId } = await this.resolveAgent(user, agentId);
 					await this.assertScope(user, projectId, 'agent:unpublish');
-					const agent = await this.agentPublishService.unpublishAgent(agentId, projectId);
+					const agent = await this.agentPublishService.unpublishAgent(
+						agentId,
+						projectId,
+						user,
+						'builder',
+					);
 					return {
 						ok: true,
 						agentId,
@@ -1460,8 +1466,9 @@ export class McpAgentToolsService {
 			input.agentId,
 			projectId,
 			user,
+			'channel_connect',
 			undefined,
-			{ syncIntegrations: false },
+			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);
 		await this.chatIntegrationService.connect(input.agentId, parsed.data, projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(

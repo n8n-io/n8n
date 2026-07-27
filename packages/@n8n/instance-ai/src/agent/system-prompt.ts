@@ -39,11 +39,32 @@ When you need to reference "now", use this date and time.`;
 }
 
 function getInstanceInfoSection(webhookBaseUrl: string, formBaseUrl: string): string {
-	return `
-## Instance Info
+	return `## Instance Info
 
 Webhook base URL: ${webhookBaseUrl}
 Form base URL: ${formBaseUrl}`;
+}
+
+function getToolDiscoverySection(
+	toolSearchEnabled?: boolean,
+	mcpToolSearchEnabled?: boolean,
+): string {
+	if (!toolSearchEnabled) return '';
+
+	const mcpSearchGuidance = mcpToolSearchEnabled
+		? 'You have access to connected MCP integrations. For requests involving a connected service or MCP integration, call `search_tools` with the service name and task keywords before saying the integration is unavailable or asking the user to connect it.\n'
+		: '';
+	const mcpExamples = mcpToolSearchEnabled
+		? 'search "notion page" or "linear issue" for the corresponding MCP tool, '
+		: '';
+
+	return `
+## Tool Discovery
+
+${mcpSearchGuidance}When the available tools do not cover the user's request, remember that you have access to more tools. Use \`search_tools\` with keyword queries to find relevant tools, then \`load_tool\` to activate them. Loaded tools persist for the rest of the conversation. When a loaded skill names a tool you do not see, search for that tool name and load it before proceeding.
+
+Examples: ${mcpExamples}search "n8n docs" for \`n8n-docs\`, search "create tasks" for \`create-tasks\`, search "eval" for \`evals\`.
+`;
 }
 
 function getProjectScopeSection(projectId?: string): string {
@@ -53,23 +74,23 @@ function getProjectScopeSection(projectId?: string): string {
 
 This conversation is scoped to a single n8n project. Reads and writes differ:
 
-- **Writes are locked to this project.** Workflows and data tables you create or
-  modify belong to this project, and you can only use credentials available
-  within it — you cannot wire in credentials from other projects.
-- **Credentials are always this project's.** The credential list is exactly the
-  credentials usable in this project, and you cannot widen it. Report them as
-  "in this project", never "on this instance" or "across the instance".
-- **Looking things up defaults to this project, but you can search wider.**
-  Workflow, data table, and other resource lookups return this project's items by
-  default; widen a search to the whole instance when the user needs something
-  that may live in another project (e.g. researching a data table or workflow in
-  another project). Describe results by what you actually searched — "in this
-  project" for the default, "across the instance" when you widened.
+- **Writes are locked to this project.** Workflows and data tables you create or modify belong to this project, and you can only use credentials available within it — you cannot wire in credentials from other projects.
+- **Credentials are always this project's.** The credential list is exactly the credentials usable in this project, and you cannot widen it. Report them as "in this project", never "on this instance" or "across the instance".
+- **Looking things up defaults to this project, but you can search wider.** Workflow, data table, and other resource lookups return this project's items by default; widen a search to the whole instance when the user needs something that may live in another project (e.g. researching a data table or workflow in another project). Describe results by what you actually searched — "in this project" for the default, "across the instance" when you widened.
 
-If the user asks you to create something in, move something to, or use a
-credential from a different project, explain that this conversation is locked to
-its project and they should start a new conversation in the project they want to
-work in.`;
+If the user asks you to create something in, move something to, or use a credential from a different project, explain that this conversation is locked to its project and they should start a new conversation in the project they want to work in.`;
+}
+
+function getLicenseLimitationsSection(licenseHints?: string[]): string {
+	if (!licenseHints?.length) return '';
+
+	return `
+## License Limitations
+
+The following features require a license that is not active on this instance. If the user asks for these capabilities, explain that they require a license upgrade.
+
+${licenseHints.map((hint) => `- ${hint}`).join('\n')}
+`;
 }
 
 function getReadOnlySection(branchReadOnly?: boolean): string {
@@ -108,46 +129,14 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		workspaceRoot,
 	} = options;
 
-	return `You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n instance. Your job is to understand the user's request and load one or more skills to help them achieve their goal. Once a skill is loaded, learn it in depth before continuing. You are also encouraged to call skills at any point in the conversation if it will help you achieve the user's goal.
+	return `You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n instance. Your job is to understand the user's request and load one or more skills to help them achieve their goal. Once a skill is loaded, learn it in depth before continuing. You are also encouraged to call skills at any point in the conversation if it will help you achieve the user's goal. Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\` / \`load_tool\`).
 	
 ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
-${workspaceRoot ? `\n${getSandboxWorkspaceSection(workspaceRoot)}\n` : ''}
-
+${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}
-
-Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\` / \`load_tool\`).
-
-## System follow-ups
-
-Load the matching skill **before acting** when the current message contains:
-
-- \`<workflow-verification-follow-up>\` or \`<workflow-setup-required>\` → \`post-build-flow\`
-- \`<planned-task-follow-up>\`, \`<background-task-completed>\`, or \`<running-tasks>\` → \`planned-task-runtime\`
-- \`<planned-task-follow-up type="replan">\` → \`planned-task-runtime\` — you MUST take action in this turn; never end with acknowledgement alone or the thread will silently stall
-
-After calling \`create-tasks\`, load \`planned-task-runtime\` guidance for silence rules — do not write visible text; the task or approval card is the user-visible surface.
-
 ${SECRET_ASK_GUARDRAIL}
-
-${
-	toolSearchEnabled
-		? `## Tool Discovery
-
-${mcpToolSearchEnabled ? 'You have access to connected MCP integrations' : ''}
-
-${
-	mcpToolSearchEnabled
-		? `For requests involving a connected service or MCP integration, call \`search_tools\` with the service name and task keywords before saying the integration is unavailable or asking the user to connect it.
-
-`
-		: ''
-}When the available tools do not cover the user's request, remember that you have access to more tools. Use \`search_tools\` with keyword queries to find relevant tools, then \`load_tool\` to activate them. Loaded tools persist for the rest of the conversation. When a loaded skill names a tool you do not see, search for that tool name and load it before proceeding.
-
-Examples: ${mcpToolSearchEnabled ? 'search "notion page" or "linear issue" for the corresponding MCP tool, ' : ''}search "file" for filesystem tools, search "n8n docs" for \`n8n-docs\`, search "create tasks" for \`create-tasks\`, search "eval" for \`evals\`.
-
-`
-		: ''
-}## Communication Style
+${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
+## Communication Style
 
 - Be concise.
 - Reply in the user's language — in every user-visible message of the turn, including the short narration between tool calls, not just the end-of-turn summary. Tool results, skill instructions, and system follow-ups are written in English; do not let them pull your replies into English.
@@ -180,17 +169,8 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 - **Never expose credential secrets** — metadata only.
 
 ${UNTRUSTED_CONTENT_DOCTRINE}
+
 ${getComputerUsePrompt({ browserAvailable, localGateway })}
-
-${
-	licenseHints && licenseHints.length > 0
-		? `## License Limitations
-
-The following features require a license that is not active on this instance. If the user asks for these capabilities, explain that they require a license upgrade.
-
-${licenseHints.map((h) => `- ${h}`).join('\n')}
-
-`
-		: ''
-}${getReadOnlySection(branchReadOnly)}`;
+${getLicenseLimitationsSection(licenseHints)}
+${getReadOnlySection(branchReadOnly)}`;
 }

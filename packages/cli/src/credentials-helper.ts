@@ -33,6 +33,7 @@ import {
 	NodeHelpers,
 	Workflow,
 	UnexpectedError,
+	UserError,
 	isExpression,
 } from 'n8n-workflow';
 
@@ -140,12 +141,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 								node,
 							);
 
-							// @ts-ignore
+							// @ts-expect-error dynamic key on request options
 							if (!requestOptions[outerKey]) {
-								// @ts-ignore
+								// @ts-expect-error dynamic key on request options
 								requestOptions[outerKey] = {};
 							}
-							// @ts-ignore
+							// @ts-expect-error dynamic key on request options
 							requestOptions[outerKey][keyResolved] = valueResolved;
 						});
 					});
@@ -306,6 +307,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 			}
 
 			throw error;
+		}
+
+		// Keep non-project credentials blocked even if an earlier access check is bypassed.
+		if (credential.usageScope !== 'project') {
+			throw new UserError('This credential cannot be used in workflows');
 		}
 
 		return credential;
