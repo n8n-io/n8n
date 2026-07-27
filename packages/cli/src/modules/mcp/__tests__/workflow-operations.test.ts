@@ -1467,7 +1467,7 @@ describe('applyOperations', () => {
 					{
 						opIndex: 1,
 						type: 'addNodeGroup',
-						reason: expect.stringContaining("node 'Missing' in group 'Group' not found"),
+						reason: "node 'Missing' in group 'Group' not found",
 					},
 				]);
 			});
@@ -1500,12 +1500,12 @@ describe('applyOperations', () => {
 					{
 						opIndex: 0,
 						type: 'addNodeGroup',
-						reason: expect.stringContaining("a node group named 'Group' already exists"),
+						reason: "a node group named 'Group' already exists",
 					},
 					{
 						opIndex: 1,
 						type: 'updateNodeGroup',
-						reason: expect.stringContaining("node group 'Missing' not found"),
+						reason: "node group 'Missing' not found",
 					},
 				]);
 			});
@@ -1549,7 +1549,7 @@ describe('applyOperations', () => {
 				expect(result.success).toBe(true);
 				if (!result.success) return;
 				expect(result.skippedOperations).toEqual([
-					{ opIndex: 2, type: 'addNodeGroup', reason: expect.any(String) },
+					{ opIndex: 2, type: 'addNodeGroup', reason: expect.any(String) as string },
 				]);
 			});
 		});
