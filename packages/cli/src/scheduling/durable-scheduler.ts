@@ -9,7 +9,6 @@ import { InstanceSettings, Tracing } from 'n8n-core';
 
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
-import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
 import { createSchedulerTracer } from './scheduler-tracer';
 
 /**
@@ -30,7 +29,6 @@ export class DurableScheduler implements Scheduler {
 		instanceSettings: InstanceSettings,
 		globalConfig: GlobalConfig,
 		tracing: Tracing,
-		scheduleTriggerTaskHandler: ScheduleTriggerTaskHandler,
 		metrics: PrometheusSchedulerMetricsService,
 	) {
 		const config = globalConfig.scheduler;
@@ -82,7 +80,6 @@ export class DurableScheduler implements Scheduler {
 					tracer,
 				})
 			: undefined;
-		this.registerTaskHandler(scheduleTriggerTaskHandler.taskType, scheduleTriggerTaskHandler);
 	}
 
 	registerTaskHandler(taskType: string, handler: TaskHandler): void {

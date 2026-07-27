@@ -44,9 +44,14 @@ export type {
 	ProvisionedJob,
 	ProvisionSummary,
 } from './provisioning';
-export { createDispatchReporter } from './executor';
+export { createDispatchReporter, Executor, TaskHandlerRegistry, PrecisionTimer } from './executor';
+export { DEFAULT_EXECUTOR_OPTIONS } from './executor';
 export type {
 	ExecutorOptions,
+	ExecutorHooks,
+	ExecutorTaskStore,
+	ClaimDueTasksBatch,
+	TimerBackend,
 	TaskHandler,
 	DispatchReporter,
 	DispatchDecision,

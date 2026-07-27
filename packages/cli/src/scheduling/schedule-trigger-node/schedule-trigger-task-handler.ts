@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
+import { Scheduled } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
 import { ErrorReporter } from 'n8n-core';
@@ -46,6 +47,7 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 		this.logger = this.logger.scoped('scheduler');
 	}
 
+	@Scheduled({ type: SCHEDULE_TRIGGER_TASK_TYPE, instanceTypes: ['main'] })
 	async execute(task: ClaimedTask, report: DispatchReporter): Promise<DispatchDecision> {
 		const { workflowId, nodeId } = this.parsePayload(task);
 		const workflowData =
