@@ -59,12 +59,16 @@ export function createFailure(requirement: PackageVariableRequirement): Variable
 	};
 }
 
+export function destinationKey(destination: { name: string; projectId?: string }): string {
+	return destination.projectId
+		? `project:${destination.projectId}:${destination.name}`
+		: `global:${destination.name}`;
+}
+
 export function dedupeCreationsByDestination(creations: VariableCreation[]): VariableCreation[] {
 	const byDestination = new Map<string, VariableCreation>();
 	for (const creation of creations) {
-		const key = creation.projectId
-			? `project:${creation.projectId}:${creation.name}`
-			: `global:${creation.name}`;
+		const key = destinationKey(creation);
 		const existing = byDestination.get(key);
 		if (!existing) {
 			// Copied because the caller goes on to apply these creations.

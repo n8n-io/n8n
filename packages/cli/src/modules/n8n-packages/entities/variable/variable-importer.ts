@@ -12,6 +12,7 @@ import {
 	computeVariableLimitFailure,
 	createFailure,
 	dedupeCreationsByDestination,
+	destinationKey,
 } from './variable.types';
 import type {
 	VariableApplyResult,
@@ -132,11 +133,12 @@ export class VariableImporter {
 	}
 
 	private async variableExistsAtDestination(creation: VariableCreation): Promise<boolean> {
+		const destination = destinationKey(creation);
 		const allVariables = await this.variablesService.getAllCached();
-		return allVariables.some((variable) => {
-			if (variable.key !== creation.name) return false;
-			return creation.projectId ? variable.project?.id === creation.projectId : !variable.project;
-		});
+		return allVariables.some(
+			(variable) =>
+				destinationKey({ name: variable.key, projectId: variable.project?.id }) === destination,
+		);
 	}
 
 	private async assertCanCreate(
