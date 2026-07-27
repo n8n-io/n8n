@@ -10,7 +10,10 @@ import {
 	OIDC_PREFERENCES_DB_KEY,
 } from '@/modules/sso-oidc/constants';
 import { OidcService } from '@/modules/sso-oidc/oidc.service.ee';
+import { SamlService } from '@/modules/sso-saml/saml.service.ee';
+import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
+import { sampleConfig as sampleSamlConfig } from '../saml/sample-metadata';
 import { setupTestServer } from '@test-integration/utils';
 
 // OIDC config writes validate the provider by running discovery against the discovery
@@ -61,8 +64,9 @@ describe('OIDC SSO configuration in Public API', () => {
 		owner = await createOwnerWithApiKey();
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
 		setManagedByEnv(false);
+		await setCurrentAuthenticationMethod('email');
 	});
 
 	describe('GET /settings/sso/oidc', () => {
@@ -338,6 +342,22 @@ describe('OIDC SSO configuration in Public API', () => {
 
 			const read = await testServer.publicApiAgentFor(owner).get('/settings/sso/oidc');
 			expect(read.status).toBe(200);
+		});
+
+		it('rejects with 400 instead of 500 when SAML is already the active authentication method', async () => {
+			testServer.license.enable('feat:oidc');
+			await Container.get(SamlService).setSamlPreferences({
+				...sampleSamlConfig,
+				loginEnabled: true,
+			});
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/sso/oidc')
+				.send({ ...validConfig, loginEnabled: true });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('saml');
 		});
 	});
 });
