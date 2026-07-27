@@ -20,8 +20,8 @@
 import { readFileSync } from 'fs';
 import { z } from 'zod';
 
+import type { BuildResult } from './build-workflow';
 import type { EvalLogger } from './logger';
-import type { BuildResult } from './runner';
 import type { N8nClient } from '../clients/n8n-client';
 
 export const prebuiltManifestSchema = z
