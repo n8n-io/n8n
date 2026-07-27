@@ -596,6 +596,86 @@ describe('McpService', () => {
 			});
 		});
 
+		it('should emit error status and message when a tool returns `isError: true`', async () => {
+			const user = mcpUser();
+			const server = await mcpService.getServer(user, mcpFeatureFlags());
+
+			const output = { data: [], count: 0, error: 'not allowed' };
+			const registered = server.registerTool('handled_tool', { description: 'test' }, async () => ({
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+				structuredContent: output,
+				isError: true,
+			}));
+			const invokeTool = registered.handler as (args: unknown, extra: unknown) => Promise<unknown>;
+
+			await invokeTool({}, {});
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({
+					toolName: 'handled_tool',
+					status: 'error',
+					errorMessage: 'not allowed',
+				}),
+			);
+		});
+
+		it('should emit error status when a tool reports failure via `structuredContent.status`', async () => {
+			// `execute_workflow` returns handled failures as `status: 'error'` in its
+			// structured output without setting `isError`.
+			const user = mcpUser();
+			const server = await mcpService.getServer(user, mcpFeatureFlags());
+
+			const output = { executionId: null, status: 'error', error: 'no published version' };
+			const registered = server.registerTool(
+				'status_err_tool',
+				{ description: 'test' },
+				async () => ({
+					content: [{ type: 'text', text: JSON.stringify(output) }],
+					structuredContent: output,
+				}),
+			);
+			const invokeTool = registered.handler as (args: unknown, extra: unknown) => Promise<unknown>;
+
+			await invokeTool({ workflowId: 'wf-42' }, {});
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({
+					toolName: 'status_err_tool',
+					workflowId: 'wf-42',
+					status: 'error',
+					errorMessage: 'no published version',
+				}),
+			);
+		});
+
+		it('should fall back to text content for the error message when structured output has none', async () => {
+			const user = mcpUser();
+			const server = await mcpService.getServer(user, mcpFeatureFlags());
+
+			const registered = server.registerTool(
+				'text_err_tool',
+				{ description: 'test' },
+				async () => ({
+					content: [{ type: 'text', text: 'plain failure' }],
+					isError: true,
+				}),
+			);
+			const invokeTool = registered.handler as (args: unknown, extra: unknown) => Promise<unknown>;
+
+			await invokeTool({}, {});
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({
+					toolName: 'text_err_tool',
+					status: 'error',
+					errorMessage: 'plain failure',
+				}),
+			);
+		});
+
 		it('should not register builder tools when mcpBuilderEnabled is false', async () => {
 			const user = Object.assign(new User(), { id: 'user-1' });
 			const nodeCatalogService = mockInstance(NodeCatalogService);

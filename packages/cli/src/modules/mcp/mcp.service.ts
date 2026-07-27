@@ -122,6 +122,39 @@ type McpAppTelemetryResolution = {
 	instanceOrigin?: string;
 };
 
+/** Subset of a tool-call result relevant to usage instrumentation. */
+type InstrumentedToolResult = {
+	isError?: boolean;
+	structuredContent?: Record<string, unknown>;
+	content?: Array<Record<string, unknown>>;
+};
+
+/**
+ * Tools report handled failures two ways: MCP's `isError` flag (most tools) or
+ * a `status: 'error'` field in the structured output (`execute_workflow`).
+ * The error message lives in `structuredContent.error`, with the first text
+ * content item as fallback.
+ */
+function getToolCallOutcome(result: InstrumentedToolResult | undefined): {
+	status: 'success' | 'error';
+	errorMessage?: string;
+} {
+	const structured = result?.structuredContent;
+	if (result?.isError !== true && structured?.status !== 'error') return { status: 'success' };
+
+	if (typeof structured?.error === 'string') {
+		return { status: 'error', errorMessage: structured.error };
+	}
+
+	for (const item of result?.content ?? []) {
+		if (item.type === 'text' && typeof item.text === 'string') {
+			return { status: 'error', errorMessage: item.text };
+		}
+	}
+
+	return { status: 'error' };
+}
+
 @Service()
 export class McpService {
 	/**
@@ -261,7 +294,7 @@ export class McpService {
 		server.registerTool = (name, config, handler) => {
 			// `ToolCallback` is a union of 1- and 2-arity signatures, so we invoke it
 			// through a generic callable and narrow the result back to a tool result.
-			const invoke = handler as (...handlerArgs: unknown[]) => Promise<{ isError?: boolean }>;
+			const invoke = handler as (...handlerArgs: unknown[]) => Promise<InstrumentedToolResult>;
 
 			const instrumentedHandler = async (...handlerArgs: unknown[]) => {
 				const toolArgs = handlerArgs[0];
@@ -272,11 +305,13 @@ export class McpService {
 
 				try {
 					const result = await invoke(...handlerArgs);
+					const { status, errorMessage } = getToolCallOutcome(result);
 					eventService.emit('mcp-tool-called', {
 						user: userLike,
 						toolName: name,
 						workflowId,
-						status: result?.isError === true ? 'error' : 'success',
+						status,
+						errorMessage,
 						clientName: clientInfo?.name,
 					});
 					return result;
