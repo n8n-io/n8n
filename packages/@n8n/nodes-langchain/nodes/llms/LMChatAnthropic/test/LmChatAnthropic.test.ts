@@ -807,20 +807,23 @@ describe('LmChatAnthropic', () => {
 			expect(callArgs).not.toHaveProperty('topP');
 		});
 
-		it('should throw NodeOperationError when manual mode is selected on Opus 4.7', async () => {
-			const mockContext = setupMockContext({ typeVersion: 1.5 });
+		it.each(['claude-opus-4-7-20251101', 'claude-opus-4-8'])(
+			'should throw NodeOperationError when manual mode is selected on %s',
+			async (modelName) => {
+				const mockContext = setupMockContext({ typeVersion: 1.5 });
 
-			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'model.value') return 'claude-opus-4-7-20251101';
-				if (paramName === 'options') return { thinkingMode: 'manual', thinkingBudget: 2048 };
-				return undefined;
-			});
+				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model.value') return modelName;
+					if (paramName === 'options') return { thinkingMode: 'manual', thinkingBudget: 2048 };
+					return undefined;
+				});
 
-			await expect(lmChatAnthropic.supplyData.call(mockContext, 0)).rejects.toThrow(
-				NodeOperationError,
-			);
-			expect(MockedChatAnthropic).not.toHaveBeenCalled();
-		});
+				await expect(lmChatAnthropic.supplyData.call(mockContext, 0)).rejects.toThrow(
+					NodeOperationError,
+				);
+				expect(MockedChatAnthropic).not.toHaveBeenCalled();
+			},
+		);
 
 		it('should still emit legacy thinking payload when thinking=true on v1.4', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.4 });
@@ -838,6 +841,32 @@ describe('LmChatAnthropic', () => {
 				expect.objectContaining({
 					invocationKwargs: {
 						thinking: { type: 'enabled', budget_tokens: 1500 },
+						max_tokens: 4096,
+						top_k: undefined,
+						top_p: undefined,
+						temperature: undefined,
+					},
+				}),
+			);
+		});
+
+		it('should use adaptive thinking for Opus 4.8 when thinking=true on v1.4', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.4 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-opus-4-8';
+				if (paramName === 'options')
+					return { thinking: true, thinkingBudget: 1500, maxTokensToSample: 4096 };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					invocationKwargs: {
+						thinking: { type: 'adaptive' },
+						output_config: { effort: 'medium' },
 						max_tokens: 4096,
 						top_k: undefined,
 						top_p: undefined,

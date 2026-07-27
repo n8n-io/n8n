@@ -114,6 +114,11 @@ function modelSupportsSamplingParams(modelName: string): boolean {
 	return false;
 }
 
+function modelRequiresAdaptiveThinking(modelName: string): boolean {
+	const minorVersion = modelName.match(/^claude-opus-4-(\d+)(?:-\d{8})?$/)?.[1];
+	return minorVersion !== undefined && Number(minorVersion) >= 7;
+}
+
 export class LmChatAnthropic implements INodeType {
 	methods = {
 		listSearch: {
@@ -515,15 +520,17 @@ export class LmChatAnthropic implements INodeType {
 			streaming?: boolean;
 		};
 
-		const isOpus47Model = modelName.startsWith('claude-opus-4-7');
+		const requiresAdaptiveThinking = modelRequiresAdaptiveThinking(modelName);
 		const thinkingMode: 'disabled' | 'adaptive' | 'manual' =
 			version >= 1.5
 				? (options.thinkingMode ?? 'disabled')
 				: options.thinking
-					? 'manual'
+					? requiresAdaptiveThinking
+						? 'adaptive'
+						: 'manual'
 					: 'disabled';
 
-		if (thinkingMode === 'manual' && isOpus47Model) {
+		if (thinkingMode === 'manual' && requiresAdaptiveThinking) {
 			throw new NodeOperationError(
 				this.getNode(),
 				`Manual thinking mode is not supported on "${modelName}". Use Thinking Mode = Adaptive (with Effort) instead.`,
