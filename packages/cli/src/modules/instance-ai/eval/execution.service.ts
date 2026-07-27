@@ -63,10 +63,10 @@ import { generatePinData } from './pin-data-generator';
 import {
 	buildVendorLlmRouting,
 	detectBinaryDependencies,
+	emitsDataTableRows,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
-	isDataTableRead,
 	type MockHints,
 	partitionAiRoots,
 	type TriggerBinaryRequirement,
@@ -342,6 +342,10 @@ export class EvalExecutionService {
 	 * (`email` where the table says `contact_email`) and correctly-built
 	 * downstream expressions resolve undefined. Best-effort: a missing table or
 	 * unresolved id degrades that node to prompt-only generation.
+	 *
+	 * Only row-emitting reads qualify — `rowExists`/`rowNotExists` pass the input
+	 * item through, so enforcing table columns on them would demand a fixture the
+	 * real node never emits.
 	 */
 	private async resolveDataTableColumns(
 		workflowEntity: IWorkflowBase,
@@ -349,7 +353,7 @@ export class EvalExecutionService {
 	): Promise<Record<string, DataTableColumnInfo[]> | undefined> {
 		const bypassSet = new Set(bypassNodeNames);
 		const readNodes = workflowEntity.nodes.filter(
-			(node) => bypassSet.has(node.name) && isDataTableRead(node),
+			(node) => bypassSet.has(node.name) && emitsDataTableRows(node),
 		);
 		if (readNodes.length === 0) return undefined;
 

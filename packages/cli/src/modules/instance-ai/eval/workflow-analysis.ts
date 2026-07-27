@@ -94,6 +94,11 @@ const PROTOCOL_BINARY_SUB_NODE_TYPES = new Set([
  * verification runs, so scenario outcomes become a coin flip on build-phase leftovers. */
 const DATA_TABLE_READ_OPERATIONS = new Set(['get', 'rowExists', 'rowNotExists']);
 
+/** Of the read operations, only `get` emits stored rows — `rowExists`/`rowNotExists`
+ *  return the input item passed straight through, so the table's column contract
+ *  does not describe their output. */
+const DATA_TABLE_ROW_EMITTING_OPERATIONS = new Set(['get']);
+
 export function isDataTableRead(node: INode): boolean {
 	if (node.type !== 'n8n-nodes-base.dataTable') return false;
 	const params = node.parameters as { resource?: string; operation?: string } | undefined;
@@ -102,6 +107,15 @@ export function isDataTableRead(node: INode): boolean {
 		(params?.resource ?? 'row') === 'row' &&
 		DATA_TABLE_READ_OPERATIONS.has(params?.operation ?? 'insert')
 	);
+}
+
+/** True for Data Table reads whose output IS stored rows — the only reads a real
+ *  column contract applies to. Still pinned like any other read; they just get
+ *  prompt-only generation instead of enforced column names. */
+export function emitsDataTableRows(node: INode): boolean {
+	if (!isDataTableRead(node)) return false;
+	const params = node.parameters as { operation?: string } | undefined;
+	return DATA_TABLE_ROW_EMITTING_OPERATIONS.has(params?.operation ?? 'insert');
 }
 
 /** Returns nodes that need pin data — AI roots (unless in `exclusionSet`), bypass-protocol nodes, and Data Table reads. */

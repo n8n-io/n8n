@@ -47,6 +47,7 @@ vi.mock('../workflow-analysis', () => ({
 	identifyNodesForHints: vi.fn(),
 	identifyNodesForPinData: vi.fn(),
 	isDataTableRead: vi.fn().mockReturnValue(false),
+	emitsDataTableRows: vi.fn().mockReturnValue(false),
 	detectBinaryDependencies: vi.fn(),
 }));
 
@@ -102,10 +103,10 @@ import { createLlmMockHandler } from '../mock-handler';
 import { generatePinData } from '../pin-data-generator';
 import {
 	detectBinaryDependencies,
+	emitsDataTableRows,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
-	isDataTableRead,
 	partitionAiRoots,
 } from '../workflow-analysis';
 import type { MockHints } from '../workflow-analysis';
@@ -118,7 +119,7 @@ const generateMockHintsMock = vi.mocked(generateMockHints);
 const detectBinaryDependenciesMock = vi.mocked(detectBinaryDependencies);
 const identifyNodesForHintsMock = vi.mocked(identifyNodesForHints);
 const identifyNodesForPinDataMock = vi.mocked(identifyNodesForPinData);
-const isDataTableReadMock = vi.mocked(isDataTableRead);
+const emitsDataTableRowsMock = vi.mocked(emitsDataTableRows);
 const partitionAiRootsMock = vi.mocked(partitionAiRoots);
 const createLlmMockHandlerMock = vi.mocked(createLlmMockHandler);
 const generatePinDataMock = vi.mocked(generatePinData);
@@ -1467,27 +1468,30 @@ describe('EvalExecutionService', () => {
 	// ── Data Table column contracts ──────────────────────────────────
 
 	describe('resolveDataTableColumns (via execution)', () => {
-		function makeDataTableNode(dataTableId: unknown): INode {
+		function makeDataTableNode(dataTableId: unknown, operation = 'get'): INode {
 			return {
 				id: 'node-dt',
 				name: 'Get Rows',
 				type: 'n8n-nodes-base.dataTable',
 				typeVersion: 1,
 				position: [200, 0],
-				parameters: { resource: 'row', operation: 'get', dataTableId },
+				parameters: { resource: 'row', operation, dataTableId },
 			} as INode;
 		}
 
-		function makeDataTableWorkflow(dataTableId: unknown) {
-			const node = makeDataTableNode(dataTableId);
+		function makeDataTableWorkflow(dataTableId: unknown, operation = 'get') {
+			const node = makeDataTableNode(dataTableId, operation);
 			// The SUT maps these to names, so the mock must yield node objects.
 			identifyNodesForPinDataMock.mockReturnValue([node]);
 			return makeWorkflowEntity({ nodes: [makeStartNode(), node] });
 		}
 
 		beforeEach(() => {
-			isDataTableReadMock.mockImplementation(
-				(node: INode) => node.type === 'n8n-nodes-base.dataTable',
+			// Mirrors the real predicate: only `get` emits stored rows.
+			emitsDataTableRowsMock.mockImplementation(
+				(node: INode) =>
+					node.type === 'n8n-nodes-base.dataTable' &&
+					(node.parameters as { operation?: string } | undefined)?.operation === 'get',
 			);
 			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
 			dataTableService.getColumns.mockResolvedValue([
@@ -1525,6 +1529,22 @@ describe('EvalExecutionService', () => {
 			]);
 			expect(dataTableService.getColumns).toHaveBeenCalledWith('dt-9', 'proj-1');
 		});
+
+		it.each(['rowExists', 'rowNotExists'])(
+			'skips the column contract for %s, which emits the input item not table rows',
+			async (operation) => {
+				workflowFinderService.findWorkflowForUser.mockResolvedValue(
+					makeDataTableWorkflow({ __rl: true, mode: 'id', value: 'dt-42' }, operation) as never,
+				);
+
+				await service.executeWithLlmMock('wf-1', makeUser());
+
+				// Enforcing table columns here would demand a fixture the real node
+				// never emits, then blame the resulting mismatch on the builder.
+				expect(dataTableService.getColumns).not.toHaveBeenCalled();
+				expect(generatePinDataMock.mock.calls[0][0].dataTableColumns).toBeUndefined();
+			},
+		);
 
 		it('degrades to prompt-only generation when no table matches the name', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(

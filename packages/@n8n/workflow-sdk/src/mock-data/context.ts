@@ -1,3 +1,5 @@
+import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
+
 import { findEnvelopeKey } from './ai-root-shapes';
 import type {
 	DataTableColumnInfo,
@@ -9,9 +11,6 @@ import type {
 import type { NodeJSON, WorkflowJSON } from '../types/base';
 
 export const INFORMATION_EXTRACTOR_NODE_TYPE = '@n8n/n8n-nodes-langchain.informationExtractor';
-
-/** System columns every Data Table row carries in addition to the user-defined ones. */
-export const DATA_TABLE_SYSTEM_COLUMNS = ['id', 'createdAt', 'updatedAt'];
 
 /**
  * Assemble the per-node contexts the generation prompt is built from.
@@ -65,6 +64,22 @@ export function buildSchemaContexts(
 }
 
 /**
+ * Envelope key the parsed fields sit under, if any. Shared with the prompt
+ * builder so the shape asked for and the shape enforced can't drift: the
+ * extractor always wraps in `output` even when the `__schema__` lookup is
+ * unavailable, while parser targets get theirs from the resolved with-parser
+ * schema variant.
+ */
+export function resolveEnvelopeKey(
+	nodeType: string,
+	schema: Record<string, unknown> | undefined,
+): string | undefined {
+	return (
+		findEnvelopeKey(schema) ?? (nodeType === INFORMATION_EXTRACTOR_NODE_TYPE ? 'output' : undefined)
+	);
+}
+
+/**
  * Derive the field-name contract pinned items are validated against.
  * Data Table columns are exact (real rows always carry every column);
  * schema-declared fields allow a subset (optional fields may be absent).
@@ -86,12 +101,7 @@ function buildDeclaredFieldContract(
 	if (outputParser?.schemaText) {
 		const keys = deriveTopLevelKeys(outputParser.schemaText, outputParser.schemaIsExample);
 		if (keys.length > 0) {
-			// The extractor always wraps in `output`, even when the `__schema__`
-			// lookup is unavailable; parser targets get their envelope from the
-			// resolved with-parser schema variant.
-			const envelopeKey =
-				findEnvelopeKey(schema) ??
-				(nodeType === INFORMATION_EXTRACTOR_NODE_TYPE ? 'output' : undefined);
+			const envelopeKey = resolveEnvelopeKey(nodeType, schema);
 			return { keys, envelopeKey, exact: false, source: 'declared-schema' };
 		}
 	}
