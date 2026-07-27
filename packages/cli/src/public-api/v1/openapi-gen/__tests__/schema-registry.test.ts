@@ -1,9 +1,14 @@
 import { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
+import { Z } from '@n8n/api-types';
 import { z } from 'zod';
 
 // Pulls in zod-extend (via the generate -> decorator-routes import chain) so `.openapi()`/registry
 // metadata is patched onto zod before we build schemas below.
-import { buildArtifactsFromRegistry } from '../generate';
+import { buildArtifactsFromRegistry, registerSharedSchemas } from '../generate';
+
+function makeNamedResponseDto(className: string, shape: Parameters<typeof Z.class>[0]) {
+	return { [className]: class extends Z.class(shape) {} }[className];
+}
 
 /**
  * Proves the shared-schema registry: a schema referenced by more than one operation is emitted once
@@ -75,5 +80,36 @@ describe('shared schema registry', () => {
 
 		expect(artifact.content).toContain('label:');
 		expect(artifact.content).not.toContain('$ref');
+	});
+
+	it('throws if two different shared DTOs are both named the same', () => {
+		// Two distinct classes (different identity) that happen to share a `.name` - not the same
+		// DTO reused, which is the only case that's supposed to count as "shared".
+		const dtoA = makeNamedResponseDto('Widget', { id: z.string() });
+		const dtoB = makeNamedResponseDto('Widget', { label: z.string() });
+
+		const sharedResponseSchemas = new Map([
+			[dtoA, dtoA.schema],
+			[dtoB, dtoB.schema],
+		]);
+
+		expect(() => registerSharedSchemas(new OpenAPIRegistry(), sharedResponseSchemas)).toThrow(
+			/Two different shared response DTOs are both named 'Widget'/,
+		);
+	});
+
+	it('registers two different shared DTOs with different names without colliding', () => {
+		const dtoA = makeNamedResponseDto('Widget', { id: z.string() });
+		const dtoB = makeNamedResponseDto('Gadget', { label: z.string() });
+
+		const sharedResponseSchemas = new Map([
+			[dtoA, dtoA.schema],
+			[dtoB, dtoB.schema],
+		]);
+
+		const registered = registerSharedSchemas(new OpenAPIRegistry(), sharedResponseSchemas);
+
+		expect(registered.get(dtoA)).toBeDefined();
+		expect(registered.get(dtoB)).toBeDefined();
 	});
 });
