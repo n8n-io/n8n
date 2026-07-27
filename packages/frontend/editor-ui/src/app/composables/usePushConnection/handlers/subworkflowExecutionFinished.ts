@@ -5,5 +5,6 @@ export async function subworkflowExecutionFinished({ data }: SubworkflowExecutio
 	useSubworkflowProgressStore().clear({
 		parentExecutionId: data.parentExecutionId,
 		parentNodeName: data.parentNodeName,
+		executionId: data.executionId,
 	});
 }
