@@ -2091,7 +2091,7 @@
 	"node.restricted.instance.title": "Restricted on this instance",
 	"node.restricted.project.title": "Restricted in this project",
 	"node.subworkflow.progress.running": "Running: {nodeName}",
-	"node.subworkflow.progress.count": "{current} / {total}",
+	"node.subworkflow.progress.step": "Step {current}",
 	"node.testStep": "Execute step",
 	"node.disable": "Deactivate",
 	"node.enable": "Activate",
