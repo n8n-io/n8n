@@ -10,6 +10,7 @@ import type {
 import type { InstanceSettings } from 'n8n-core';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
+import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
@@ -20,6 +21,9 @@ import { AgentEvalRunnerService } from '../agent-eval-runner.service';
 
 // Stub the cross-module specifiers the service statically imports so the unit
 // test doesn't pull in the real agents / data-table / instance-ai module graph.
+vi.mock('@/concurrency/concurrency-control.service', () => ({
+	ConcurrencyControlService: class ConcurrencyControlService {},
+}));
 vi.mock('@/modules/agents/repositories/agent.repository', () => ({
 	AgentRepository: class AgentRepository {},
 }));
@@ -87,6 +91,7 @@ describe('AgentEvalRunnerService', () => {
 	let agentRepository: MockProxy<AgentRepository>;
 	let dataTableService: MockProxy<DataTableService>;
 	let evalAgentExecutionService: MockProxy<EvalAgentExecutionService>;
+	let concurrencyControl: MockProxy<ConcurrencyControlService>;
 	let service: AgentEvalRunnerService;
 
 	const dataset = mock<AgentEvalDataset>({
@@ -110,6 +115,7 @@ describe('AgentEvalRunnerService', () => {
 		agentRepository = mock<AgentRepository>();
 		dataTableService = mock<DataTableService>();
 		evalAgentExecutionService = mock<EvalAgentExecutionService>();
+		concurrencyControl = mock<ConcurrencyControlService>();
 
 		datasetRepository.findById.mockResolvedValue(dataset);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
@@ -135,6 +141,7 @@ describe('AgentEvalRunnerService', () => {
 			agentRepository,
 			dataTableService,
 			evalAgentExecutionService,
+			concurrencyControl,
 		);
 	});
 
@@ -307,12 +314,14 @@ describe('AgentEvalRunnerService', () => {
 				],
 				{ success: 1, error: 1 },
 			);
-			// Run serially so the thrown call is deterministically the first case.
-			evalAgentExecutionService.executeWithLlmMock
-				.mockRejectedValueOnce(new Error('transient failure'))
-				.mockResolvedValueOnce(successExec() as never);
+			// Fail deterministically by input (cases run concurrently, so call order
+			// isn't guaranteed): the 'Q1' case throws, the other succeeds.
+			evalAgentExecutionService.executeWithLlmMock.mockImplementation(async (_a, _u, _o, input) => {
+				if (input === 'Q1') throw new Error('transient failure');
+				return successExec() as never;
+			});
 
-			const { finished } = await service.startRun('ds-1', 'proj-1', user, { concurrency: 1 });
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
 			await finished;
 
 			expect(resultRepository.markAsError).toHaveBeenCalledWith(
@@ -353,7 +362,7 @@ describe('AgentEvalRunnerService', () => {
 			resultRepository.countByStatus.mockResolvedValue(counts({ success: 120 }));
 			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
 
-			const { finished } = await service.startRun('ds-1', 'proj-1', user, { concurrency: 10 });
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
 			await finished;
 
 			expect(resultRepository.seedResults).toHaveBeenCalledTimes(1);
@@ -392,12 +401,35 @@ describe('AgentEvalRunnerService', () => {
 			runRepository.isCancellationRequested.mockResolvedValueOnce(false).mockResolvedValue(true);
 			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
 
-			const { finished } = await service.startRun('ds-1', 'proj-1', user, { concurrency: 1 });
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
 			await finished;
 
 			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledTimes(1);
 			expect(runRepository.markAsCancelled).toHaveBeenCalled();
 			expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('concurrency', () => {
+		it('runs each case through the shared evaluation queue and releases the slot', async () => {
+			seedFor(
+				[
+					{ id: 'row-1', question: 'Q1' },
+					{ id: 'row-2', question: 'Q2' },
+				],
+				{ success: 2 },
+			);
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(concurrencyControl.throttle).toHaveBeenCalledTimes(2);
+			expect(concurrencyControl.throttle).toHaveBeenCalledWith(
+				expect.objectContaining({ mode: 'evaluation' }),
+			);
+			expect(concurrencyControl.release).toHaveBeenCalledTimes(2);
+			expect(concurrencyControl.release).toHaveBeenCalledWith({ mode: 'evaluation' });
 		});
 	});
 

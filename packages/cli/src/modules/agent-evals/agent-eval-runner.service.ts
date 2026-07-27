@@ -16,8 +16,8 @@ import type {
 	JsonValue,
 } from 'n8n-workflow';
 import { jsonParse, jsonStringify } from 'n8n-workflow';
-import pLimit from 'p-limit';
 
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -26,8 +26,6 @@ import { DataTableService } from '@/modules/data-table/data-table.service';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-const DEFAULT_CONCURRENCY = 5;
-const MAX_CONCURRENCY = 10;
 const ROW_PAGE_SIZE = 100;
 // Each case is a real agent execution, so a run is capped rather than letting a
 // large table launch thousands of model calls. Raise deliberately if needed.
@@ -60,9 +58,11 @@ export interface AgentEvalRunSummary {
  *
  * Runs on the main process only: the tool-mock substrate reused from the
  * instance-ai eval path carries a closure that cannot cross a queue boundary
- * (see {@link EvalAgentExecutionService}). Cases run in a bounded in-process
- * pool; cross-main *cancellation* is honored via the run's `cancelRequested`
- * flag. Behind the `101_agent_evals` flag.
+ * (see {@link EvalAgentExecutionService}). Cases are throttled through the
+ * shared, license-tiered instance-wide evaluation concurrency queue (the same
+ * one the workflow eval uses), so concurrent runs can't collectively exceed the
+ * plan's limit; cross-main *cancellation* is honored via the run's
+ * `cancelRequested` flag. Behind the `101_agent_evals` flag.
  */
 @Service()
 export class AgentEvalRunnerService {
@@ -76,6 +76,7 @@ export class AgentEvalRunnerService {
 		private readonly agentRepository: AgentRepository,
 		private readonly dataTableService: DataTableService,
 		private readonly evalAgentExecutionService: EvalAgentExecutionService,
+		private readonly concurrencyControl: ConcurrencyControlService,
 	) {}
 
 	/**
@@ -87,7 +88,7 @@ export class AgentEvalRunnerService {
 		datasetId: string,
 		projectId: string,
 		user: User,
-		options: { concurrency?: number; timeoutMs?: number } = {},
+		options: { timeoutMs?: number } = {},
 	): Promise<{ runId: string; finished: Promise<void> }> {
 		// Behind 101_agent_evals. `agentEvalsEnabled` is a force-enable-only operator
 		// override, so this treats it as the sole gate for now. When the REST layer
@@ -165,11 +166,6 @@ export class AgentEvalRunnerService {
 			throw error;
 		}
 
-		const concurrency = Math.max(
-			1,
-			Math.min(MAX_CONCURRENCY, Math.floor(options.concurrency ?? DEFAULT_CONCURRENCY)),
-		);
-
 		const finished = this.executeRun({
 			runId: run.id,
 			agentId: dataset.agentId,
@@ -177,7 +173,6 @@ export class AgentEvalRunnerService {
 			user,
 			cases,
 			seeded,
-			concurrency,
 			timeoutMs: options.timeoutMs,
 		});
 
@@ -206,10 +201,9 @@ export class AgentEvalRunnerService {
 		user: User;
 		cases: ResolvedCase[];
 		seeded: AgentEvalResult[];
-		concurrency: number;
 		timeoutMs?: number;
 	}): Promise<void> {
-		const { runId, cases, seeded, concurrency } = ctx;
+		const { runId, cases, seeded } = ctx;
 		// `seedResults` returns rows in input order, so seeded[index] pairs with
 		// cases[index]. Guard the invariant rather than silently mis-pairing.
 		if (seeded.length !== cases.length) {
@@ -217,17 +211,25 @@ export class AgentEvalRunnerService {
 			return;
 		}
 		try {
-			const limit = pLimit(concurrency);
 			let cancelled = false;
 			const totalUsage: CaseUsage = { inputTokens: 0, outputTokens: 0 };
 
 			await Promise.all(
 				cases.map(async (resolvedCase, index) => {
-					await limit(async () => {
-						const resultRow = seeded[index];
-						// Cooperative cancellation: stop starting new cases once a cancel is
-						// requested (in-flight cases finish). Re-read the flag so a cancel
-						// from another main is seen.
+					const resultRow = seeded[index];
+					// Wait for a slot in the shared, license-tiered evaluation queue —
+					// instance-wide, so concurrent runs (agent or workflow) share one
+					// budget; a no-op when the plan is unlimited. The cancel check runs
+					// after the gate so only slot-holders touch the DB, and the slot is
+					// released on every exit path.
+					await this.concurrencyControl.throttle({
+						mode: 'evaluation',
+						executionId: `${runId}-case-${index}`,
+					});
+					try {
+						// Cooperative cancellation: skip once a cancel is requested (a case
+						// already past the gate finishes). Re-read the flag so a cancel from
+						// another main is seen.
 						if (cancelled || (await this.runRepository.isCancellationRequested(runId))) {
 							cancelled = true;
 							await this.resultRepository.markAsCancelled(resultRow.id);
@@ -238,7 +240,9 @@ export class AgentEvalRunnerService {
 							totalUsage.inputTokens += usage.inputTokens;
 							totalUsage.outputTokens += usage.outputTokens;
 						}
-					});
+					} finally {
+						this.concurrencyControl.release({ mode: 'evaluation' });
+					}
 				}),
 			);
 

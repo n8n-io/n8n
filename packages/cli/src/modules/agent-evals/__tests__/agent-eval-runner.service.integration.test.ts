@@ -12,6 +12,7 @@ import { DataSource } from '@n8n/typeorm';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -34,6 +35,8 @@ vi.mock('@/modules/instance-ai/eval/agent-execution.service', () => ({
 const agentRepository = mock<AgentRepository>();
 const evalAgentExecutionService = mock<EvalAgentExecutionService>();
 const instanceSettings = mock<InstanceSettings>({ hostId: 'main-test' });
+// No-op throttle: this test targets DB persistence, not concurrency policy.
+const concurrencyControl = mock<ConcurrencyControlService>();
 
 let owner: User;
 
@@ -48,6 +51,7 @@ const buildRunner = () =>
 		agentRepository,
 		Container.get(DataTableService),
 		evalAgentExecutionService,
+		concurrencyControl,
 	);
 
 /** Insert a minimal real agent row so `agent_eval_dataset.agentId`'s FK holds. */
