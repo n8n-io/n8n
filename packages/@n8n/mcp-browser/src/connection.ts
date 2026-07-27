@@ -9,6 +9,7 @@ import {
 	type ConnectionLostReason,
 } from './errors';
 import { createLogger } from './logger';
+import type { FixtureBundle } from './adapters/fixture';
 import type {
 	Adapter,
 	BrowserName,
@@ -33,6 +34,10 @@ export interface BrowserConnectionOptions {
 	cdpEndpoint?: string;
 	/** Headers sent when connecting to {@link cdpEndpoint} (e.g. an auth token). */
 	cdpConnectHeaders?: Record<string, string>;
+	/** Fixture bundle for the deterministic `fixture` adapter (eval replay). When
+	 *  omitted with `adapter: 'fixture'`, the bundle is loaded from the
+	 *  `N8N_EVAL_BROWSER_FIXTURES` file. */
+	fixtures?: FixtureBundle;
 }
 
 export class BrowserConnection {
@@ -42,6 +47,7 @@ export class BrowserConnection {
 	private readonly externalRelay?: CDPRelayServer;
 	private readonly externalCdpEndpoint?: string;
 	private readonly cdpConnectHeaders?: Record<string, string>;
+	private readonly externalFixtures?: FixtureBundle;
 	/** Adapter kept alive after an extension-connect timeout so its relay URL remains valid. */
 	private pendingAdapter: Adapter | null = null;
 
@@ -50,6 +56,7 @@ export class BrowserConnection {
 		this.externalRelay = options?.relay;
 		this.externalCdpEndpoint = options?.cdpEndpoint;
 		this.cdpConnectHeaders = options?.cdpConnectHeaders;
+		this.externalFixtures = options?.fixtures;
 
 		// Merge auto-discovery with programmatic overrides
 		const discovery = getDefaultDiscovery().discover();
@@ -96,7 +103,9 @@ export class BrowserConnection {
 		}
 
 		const browser = overrideBrowser ?? this.config.defaultBrowser;
-		if (this.config.mode !== 'remote') {
+		// The fixture adapter replays a recorded bundle — it needs no real
+		// browser binary (that is the point: deterministic eval replay in CI).
+		if (this.config.mode !== 'remote' && this.config.adapter !== 'fixture') {
 			this.requireBrowserAvailable(browser);
 		}
 
@@ -204,6 +213,13 @@ export class BrowserConnection {
 	}
 
 	private async createAdapter(): Promise<Adapter> {
+		if (this.config.adapter === 'fixture') {
+			// Deterministic eval replay — no real browser. Wins over mode: a
+			// fixture run never touches a relay/extension.
+			const { FixtureAdapter, loadFixtureBundleFromEnv } = await import('./adapters/fixture.js');
+			const bundle = this.externalFixtures ?? (await loadFixtureBundleFromEnv());
+			return new FixtureAdapter(bundle);
+		}
 		if (this.config.mode === 'remote') {
 			// Remote mode is only supported by the Playwright adapter
 			const { PlaywrightAdapter } = await import('./adapters/playwright.js');

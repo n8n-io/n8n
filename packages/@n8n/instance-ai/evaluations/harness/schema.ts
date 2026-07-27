@@ -86,6 +86,12 @@ const evalTestCaseObjectSchema = z
 				}),
 			)
 			.optional(),
+		/** Computer-use (browser) fixture bundle — recorded page-states the FIXTURE
+		 *  adapter replays deterministically, no real browser (goal:
+		 *  computer-use-evals). Provisioned to the run's thread before the build, the
+		 *  same way `credentials` are. Opaque here; the adapter validates its shape
+		 *  (matches LangTracer's `CuFixtureBundle`). */
+		browserFixture: z.record(z.unknown()).optional(),
 		/** Synthetic seed file (relative path), resolved + validated at case load.
 		 *  Synthetic fixtures only; real conversations use `seedThread`. */
 		seedFile: z.string().min(1).optional(),

@@ -26,7 +26,7 @@ const browserOverrideSchema = z.object({
 export const configSchema = z.object({
 	defaultBrowser: browserNameSchema.default('chrome'),
 	browsers: z.record(browserNameSchema, browserOverrideSchema).default({}),
-	adapter: z.enum(['playwright', 'agent-browser']).default('agent-browser'),
+	adapter: z.enum(['playwright', 'agent-browser', 'fixture']).default('agent-browser'),
 	mode: z.enum(['local', 'remote']).default('local'),
 });
 
@@ -41,7 +41,7 @@ export interface ResolvedBrowserInfo {
 export interface ResolvedConfig {
 	defaultBrowser: BrowserName;
 	browsers: Map<BrowserName, ResolvedBrowserInfo>;
-	adapter: 'playwright' | 'agent-browser';
+	adapter: 'playwright' | 'agent-browser' | 'fixture';
 	mode: 'local' | 'remote';
 }
 
@@ -125,6 +125,11 @@ export interface Adapter {
 	getPageUrl(pageId: string): string | undefined;
 	// Credential capture
 	getElementValue(pageId: string, target: ElementTarget): Promise<string>;
+	/** Optional: resolve a `[REDACTED:…]` marker directly to its secret value,
+	 *  bypassing HTML re-derivation. Used by the deterministic fixture adapter
+	 *  (eval replay) which carries synthetic secrets but no page HTML. Real
+	 *  adapters omit it → the capture tool falls back to the HTML/sensitivity path. */
+	resolveRedactedSecret?(pageId: string, marker: string): Promise<string | undefined>;
 }
 
 export interface ConnectionState {

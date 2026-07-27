@@ -93,11 +93,14 @@ async function createSession(service: InstanceAiBrowserSessionService) {
 	const sessionId = relayUrl.pathname.split('/').pop()!;
 	const extToken = relayUrl.searchParams.get('token')!;
 	const lastCall = mcpBrowserMock.createBrowserTools.mock.calls.at(-1)!;
-	const cdpToken = (lastCall[1] as { cdpConnectHeaders: Record<string, string> }).cdpConnectHeaders[
-		CDP_TOKEN_HEADER
-	];
+	const options = lastCall[1] as {
+		cdpEndpoint: string;
+		cdpConnectHeaders: Record<string, string>;
+	};
+	const cdpToken = options.cdpConnectHeaders[CDP_TOKEN_HEADER];
+	const cdpEndpoint = options.cdpEndpoint;
 	const relay = mcpBrowserMock.__createdRelays.at(-1)!;
-	return { sessionId, extToken, cdpToken, relay, relayEndpoint, connectUrl };
+	return { sessionId, extToken, cdpToken, cdpEndpoint, relay, relayEndpoint, connectUrl };
 }
 
 describe('InstanceAiBrowserSessionService', () => {
@@ -106,7 +109,7 @@ describe('InstanceAiBrowserSessionService', () => {
 	const push = mock<Push>();
 	const userRepository = mock<UserRepository>();
 	const credentialsService = mock<CredentialsService>();
-	const globalConfig = mock<GlobalConfig>({ port: 5678 });
+	const globalConfig = mock<GlobalConfig>({ port: 5678, listen_address: '::' });
 	const telemetry = mock<Telemetry>();
 	let service: InstanceAiBrowserSessionService;
 
@@ -114,6 +117,7 @@ describe('InstanceAiBrowserSessionService', () => {
 		vi.clearAllMocks();
 		mcpBrowserMock.__createdRelays.length = 0;
 		logger.scoped.mockReturnValue(logger);
+		globalConfig.listen_address = '::';
 		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
 		service = new InstanceAiBrowserSessionService(
 			logger,
@@ -149,6 +153,17 @@ describe('InstanceAiBrowserSessionService', () => {
 			const second = await createSession(service);
 			expect(second.sessionId).toBe(first.sessionId);
 			expect(second.extToken).not.toBe(first.extToken);
+		});
+
+		it('builds the CDP endpoint on the IPv6 loopback when listen_address is IPv6', async () => {
+			const { cdpEndpoint, sessionId } = await createSession(service);
+			expect(cdpEndpoint).toBe(`ws://[::1]:5678/browser-use/cdp/${sessionId}`);
+		});
+
+		it('builds the CDP endpoint on the IPv4 loopback when listen_address is IPv4', async () => {
+			globalConfig.listen_address = '0.0.0.0';
+			const { cdpEndpoint, sessionId } = await createSession(service);
+			expect(cdpEndpoint).toBe(`ws://127.0.0.1:5678/browser-use/cdp/${sessionId}`);
 		});
 	});
 
@@ -283,5 +298,48 @@ describe('InstanceAiBrowserSessionService', () => {
 				user_id: USER_ID,
 			});
 		});
+	});
+});
+
+describe('InstanceAiBrowserSessionService — fixture eval hook (goal: computer-use-evals)', () => {
+	const logger = mock<Logger>();
+	const urlService = mock<UrlService>();
+	const push = mock<Push>();
+	const userRepository = mock<UserRepository>();
+	const credentialsService = mock<CredentialsService>();
+	const globalConfig = mock<GlobalConfig>({ port: 5678, listen_address: '::' });
+	const telemetry = mock<Telemetry>();
+	let service: InstanceAiBrowserSessionService;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		logger.scoped.mockReturnValue(logger);
+		mcpBrowserMock.createBrowserTools.mockReturnValue({
+			tools: [],
+			connection: { connect: vi.fn(async () => undefined), shutdown: vi.fn(async () => undefined) },
+		});
+		service = new InstanceAiBrowserSessionService(
+			logger,
+			urlService,
+			push,
+			userRepository,
+			credentialsService,
+			globalConfig,
+			telemetry,
+		);
+	});
+
+	it('builds an ephemeral fixture MCP server via the fixture adapter', async () => {
+		const server = await service.buildEphemeralFixtureMcpServer('u1');
+		expect(server).toBeDefined();
+		expect(mcpBrowserMock.createBrowserTools).toHaveBeenCalledWith({ adapter: 'fixture' });
+	});
+
+	it('does NOT store the fixture as the user session (normal browser use is untouched)', async () => {
+		await service.buildEphemeralFixtureMcpServer('u1');
+		// The ephemeral server must never leak into the user's real session — a
+		// normal (non-eval) thread on the same account still has no browser session.
+		expect(service.isConnected('u1')).toBe(false);
+		expect(service.findMcpServer('u1')).toBeUndefined();
 	});
 });

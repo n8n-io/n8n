@@ -57,6 +57,13 @@ export class InstanceAiBrowserSessionService {
 
 	private readonly sessionsBySessionId = new Map<string, BrowserSession>();
 
+	/** Per-thread computer-use fixture bundles (eval replay, goal:
+	 *  computer-use-evals). Set by the eval endpoint — called by the HARNESS,
+	 *  which owns the thread id — before the build; consumed (and cleared) when the
+	 *  ephemeral fixture browser is composed for that thread. Falls back to the
+	 *  N8N_EVAL_BROWSER_FIXTURES env-file when none was registered. */
+	private readonly fixtureByThread = new Map<string, unknown>();
+
 	private readonly logger: Logger;
 
 	constructor(
@@ -114,6 +121,51 @@ export class InstanceAiBrowserSessionService {
 
 	isConnected(userId: string): boolean {
 		return this.sessions.get(userId)?.connected ?? false;
+	}
+
+	/** Register a per-thread fixture bundle (eval endpoint, harness-called). */
+	setThreadFixture(threadId: string, fixture: unknown): void {
+		this.fixtureByThread.set(threadId, fixture);
+	}
+
+	/**
+	 * Eval hook (goal: computer-use-evals). Build an EPHEMERAL, deterministic
+	 * fixture-backed browser MCP server for a single eval run — the adapter
+	 * replays a recorded bundle (the harness-registered per-thread fixture, else
+	 * `N8N_EVAL_BROWSER_FIXTURES`), no real browser/extension/CDP relay.
+	 * Deliberately NOT stored in `this.sessions`: fixture replay must apply ONLY
+	 * to the eval run that asked for it (an `evals`-source thread), never to the
+	 * user's normal interactive browser session on the same account. Caller gates
+	 * on the thread being eval-driven.
+	 */
+	async buildEphemeralFixtureMcpServer(
+		userId: string,
+		threadId?: string,
+	): Promise<BrowserLocalMcpServer> {
+		const { createBrowserTools } = await import('@n8n/mcp-browser');
+		// Prefer the fixture the harness registered for THIS thread (via the eval
+		// endpoint); fall back to the N8N_EVAL_BROWSER_FIXTURES env file the adapter
+		// reads when none was registered.
+		const fixtures = threadId ? this.fixtureByThread.get(threadId) : undefined;
+		if (threadId) this.fixtureByThread.delete(threadId);
+		const toolkit = fixtures
+			? createBrowserTools({ adapter: 'fixture' }, { fixtures: fixtures as never })
+			: createBrowserTools({ adapter: 'fixture' });
+
+		const workDir = join(tmpdir(), 'n8n-instance-ai-browser-fixture', userId);
+		await mkdir(workDir, { recursive: true });
+		const toolContext: ToolContext = {
+			dir: workDir,
+			secretsBuffer: createInMemorySecretsBuffer(),
+			createCredential: async (payload: CreateCredentialPayload) =>
+				await this.createCredential(userId, payload),
+		};
+
+		// The fixture adapter connects with no real browser (see mcp-browser
+		// connection.connect: the browser-availability gate is skipped for it).
+		await toolkit.connection.connect();
+		this.logger.info('Ephemeral fixture browser server ready (eval run)', { userId });
+		return new BrowserLocalMcpServer(toolkit, toolContext, this.logger);
 	}
 
 	handleExtensionUpgrade(req: BrowserUseUpgradeRequest): void {
@@ -303,7 +355,13 @@ export class InstanceAiBrowserSessionService {
 	}
 
 	private buildCdpEndpoint(sessionId: string): string {
-		return `ws://127.0.0.1:${this.globalConfig.port}${BROWSER_USE_WS_NAMESPACE}/cdp/${sessionId}`;
+		// The CDP client connects back to this same process over the main HTTP
+		// server's loopback. Match the loopback family to `listen_address`: with
+		// the default IPv6 wildcard (`::`) the server is only reachable via
+		// `[::1]`, and the IPv4 `127.0.0.1` never lands on the socket — the
+		// WebSocket handshake would hang until Playwright's connect timeout.
+		const host = this.globalConfig.listen_address.includes(':') ? '[::1]' : '127.0.0.1';
+		return `ws://${host}:${this.globalConfig.port}${BROWSER_USE_WS_NAMESPACE}/cdp/${sessionId}`;
 	}
 
 	private getPublicWsBaseUrl(): string {

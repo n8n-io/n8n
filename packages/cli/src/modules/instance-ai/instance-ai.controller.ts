@@ -960,6 +960,37 @@ export class InstanceAiController {
 	}
 
 	/**
+	 * Register a computer-use browser fixture for a build thread (goal:
+	 * computer-use-evals). The eval HARNESS (which owns the thread id) POSTs the
+	 * case's recorded page-state bundle here before the first message; the FIXTURE
+	 * adapter replays it for that thread's browser tools. Mirrors the credential
+	 * allowlist above.
+	 */
+	@Post('/eval/browser-fixture')
+	@GlobalScope('instanceAi:eval')
+	async setThreadBrowserFixture(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: { threadId: string; fixture: unknown },
+	) {
+		this.requireInstanceAiEnabled();
+		// A fixture is only ever replayed when this n8n runs in fixture mode. If it
+		// isn't, registering one is a no-op AND the thread would fall through to the
+		// REAL browser — a CI agent driving a live site. Fail loudly instead: the
+		// harness treats a non-404 here as fatal, so the build reds at provisioning
+		// rather than silently going online.
+		if (process.env.N8N_EVAL_BROWSER_ADAPTER !== 'fixture') {
+			throw new BadRequestError(
+				'Case declares a browser fixture but this n8n is not in fixture mode ' +
+					'(set N8N_EVAL_BROWSER_ADAPTER=fixture on the eval instance).',
+			);
+		}
+		await this.assertThreadAccess(req.user.id, payload.threadId);
+		this.browserSessionService.setThreadFixture(payload.threadId, payload.fixture);
+		return { ok: true };
+	}
+
+	/**
 	 * Seed an existing (owned) thread with a previously exported conversation:
 	 * recreate the workflow artifacts the history references (node credentials
 	 * stripped — see `EvalThreadRestoreService`), then write the native message

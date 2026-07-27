@@ -65,6 +65,13 @@ function browserCaptureSecret(
 			let value = '';
 			if ('redactedKey' in args.element) {
 				const { redactedKey } = args.element;
+				// Fast path: an adapter that carries secrets directly (the fixture
+				// adapter, eval replay) resolves the marker without page HTML.
+				const direct = await state.adapter.resolveRedactedSecret?.(pageId, redactedKey);
+				if (direct !== undefined) {
+					context.secretsBuffer.capture(args.credentialsKey, args.field, direct);
+					return formatCallToolResult({ ok: true, fieldsCaptured: [args.field] });
+				}
 				const sensitivity = analyzeHtmlSensitivity(await state.adapter.probePageHtml(pageId));
 				if (sensitivity.ok) {
 					const formatMarker = createRedactionMarkerFormatter(sensitivity.hits);

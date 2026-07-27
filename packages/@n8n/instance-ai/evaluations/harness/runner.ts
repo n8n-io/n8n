@@ -516,6 +516,24 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			);
 		}
 
+		// Computer-use (browser) eval (goal: computer-use-evals): register the
+		// case's recorded browser fixture for this thread before the first message,
+		// so the FIXTURE adapter replays it deterministically (no real browser).
+		// Same provisioning shape as the credential allowlist above.
+		if (config.browserFixture) {
+			try {
+				await client.setThreadBrowserFixture(threadId, config.browserFixture);
+			} catch (error: unknown) {
+				// An older backend without the endpoint degrades to the
+				// N8N_EVAL_BROWSER_FIXTURES env-file fallback; any other failure is fatal.
+				const endpointMissing = error instanceof N8nApiError && error.status === 404;
+				if (!endpointMissing) throw error;
+				logger.info(
+					`  Browser-fixture endpoint unavailable, using env fallback${config.laneTag ?? ''}`,
+				);
+			}
+		}
+
 		// Restore the seed before the first live message. No degraded mode: a
 		// seeded case can't run unseeded, so any restore failure fails the build.
 		if (seed) {

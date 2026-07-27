@@ -639,6 +639,20 @@ export class N8nClient {
 	}
 
 	/**
+	 * Register a computer-use browser fixture for a build thread (goal:
+	 * computer-use-evals). The server's FIXTURE adapter replays this recorded
+	 * bundle for the thread's browser tools. Provisioned before the first message,
+	 * like the credential allowlist.
+	 * POST /rest/instance-ai/eval/browser-fixture
+	 */
+	async setThreadBrowserFixture(threadId: string, fixture: unknown): Promise<void> {
+		await this.fetch('/rest/instance-ai/eval/browser-fixture', {
+			method: 'POST',
+			body: { threadId, fixture },
+		});
+	}
+
+	/**
 	 * Seed an existing thread with a previously exported conversation: the
 	 * referenced workflows are recreated (node credentials stripped server-side)
 	 * and the native message log is written verbatim, so the thread continues

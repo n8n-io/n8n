@@ -2074,6 +2074,11 @@ export class InstanceAiService {
 	) {
 		const memory = this.agentMemory;
 		const boundProjectId = await memory.getThreadProjectId(threadId);
+		// Computer-use eval fixture is scoped to eval-driven threads ONLY (source
+		// 'evals', set by the eval harness/CU driver). A normal interactive thread
+		// on the same account keeps its real browser session even when the fixture
+		// env is set — so eval replay and normal browser use coexist on one n8n.
+		const threadSource = (await memory.getThread(threadId))?.metadata?.source;
 		if (!boundProjectId) {
 			throw new UnexpectedError(
 				`Instance AI thread "${threadId}" has no bound project; it must be created via POST /instance-ai/threads before a run can start`,
@@ -2118,9 +2123,18 @@ export class InstanceAiService {
 		this.gatewayService.applyToolPolicy(user.id);
 		const gatewayMcpServer =
 			!localGatewayDisabledForUser && userGateway?.isConnected ? userGateway : undefined;
-		const browserMcpServer = browserUseEnabledGlobally
-			? this.browserSessionService.findMcpServer(user.id)
-			: undefined;
+		// Eval hook (goal: computer-use-evals): an eval-driven thread (source
+		// 'evals') with N8N_EVAL_BROWSER_ADAPTER=fixture gets an EPHEMERAL
+		// fixture-backed browser server (deterministic replay, no real browser).
+		// Every other thread — normal interactive use — gets the user's real
+		// browser session, so the two coexist on the same instance/account.
+		const useFixtureBrowser =
+			process.env.N8N_EVAL_BROWSER_ADAPTER === 'fixture' && threadSource === 'evals';
+		const browserMcpServer = !browserUseEnabledGlobally
+			? undefined
+			: useFixtureBrowser
+				? await this.browserSessionService.buildEphemeralFixtureMcpServer(user.id, threadId)
+				: this.browserSessionService.findMcpServer(user.id);
 		const localMcpServer = composeLocalMcpServers(gatewayMcpServer, browserMcpServer);
 		if (localMcpServer) {
 			context.localMcpServer = localMcpServer;
