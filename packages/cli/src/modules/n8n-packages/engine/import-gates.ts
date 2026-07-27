@@ -17,6 +17,11 @@ export function assertPackageImportApiKeyScopes(
 	}
 }
 
+/**
+ * Callers decide `hasRequirements`, because each package shape looks at a different set: the
+ * workflow path narrows the manifest's requirement list to the workflows it is importing, while a
+ * project package takes that list whole, since it imports every project the package holds.
+ */
 export function assertVariableCreationAllowed(options: {
 	licenseState: LicenseState;
 	apiKeyScopes: string[] | undefined;
