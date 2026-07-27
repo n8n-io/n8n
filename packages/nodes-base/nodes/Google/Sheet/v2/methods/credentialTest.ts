@@ -33,8 +33,13 @@ export async function googleApiCredentialTest(
 		};
 	}
 
+	// When testing user-configured scopes, don't also pass the sheetV2 default:
+	// getGoogleAccessToken would ignore it, but keeping it out makes it obvious
+	// at the call site that the Sheets-specific scopes play no part here.
+	const service = scopeOverride ? undefined : 'sheetV2';
+
 	try {
-		const tokenRequest = await getGoogleAccessToken.call(this, data, 'sheetV2', scopeOverride);
+		const tokenRequest = await getGoogleAccessToken.call(this, data, service, scopeOverride);
 		if (!tokenRequest.access_token) {
 			return {
 				status: 'Error',

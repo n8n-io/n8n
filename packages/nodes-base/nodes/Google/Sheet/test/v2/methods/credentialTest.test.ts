@@ -78,9 +78,14 @@ describe('googleApiCredentialTest', () => {
 
 			await googleApiCredentialTest.call(testFunctions, httpNodeCredential);
 
-			expect(getGoogleAccessToken).toHaveBeenCalledWith(httpNodeCredential.data, 'sheetV2', [
+			expect(getGoogleAccessToken).toHaveBeenCalledWith(httpNodeCredential.data, undefined, [
 				'https://www.googleapis.com/auth/calendar.readonly',
 			]);
+			expect(getGoogleAccessToken).not.toHaveBeenCalledWith(
+				expect.anything(),
+				'sheetV2',
+				expect.anything(),
+			);
 		});
 
 		it('should split multiple scopes on commas, whitespace, and newlines', async () => {
@@ -97,7 +102,7 @@ describe('googleApiCredentialTest', () => {
 
 			expect(getGoogleAccessToken).toHaveBeenCalledWith(
 				credentialWithMultipleScopes.data,
-				'sheetV2',
+				undefined,
 				[
 					'https://www.googleapis.com/auth/calendar.readonly',
 					'https://www.googleapis.com/auth/gmail.readonly',
