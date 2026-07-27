@@ -212,13 +212,15 @@ $slide-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	box-shadow: var(--shadow--xl);
 	/*
 	 * Chrome fade + padding tuck between the stuck (overlay) and docked (part-of-the-page)
-	 * states, on the DS's standard pair for interface state transitions (snappy + ease-out).
+	 * states. Colors and shadow fade on the DS's standard snappy + ease-out pair; the padding
+	 * tuck is a positional settle, so it rides the spring easing (small single overshoot) —
+	 * color fades must not overshoot (values clamp and band), hence the split.
 	 */
 	transition:
 		background-color var(--duration--snappy) var(--easing--ease-out),
 		border-color var(--duration--snappy) var(--easing--ease-out),
 		box-shadow var(--duration--snappy) var(--easing--ease-out),
-		padding var(--duration--snappy) var(--easing--ease-out);
+		padding var(--duration--snappy) var(--easing--spring);
 
 	@media (prefers-reduced-motion: reduce) {
 		/* Keep the color/shadow fades (not motion), drop the padding movement. */
@@ -233,14 +235,17 @@ $slide-easing: cubic-bezier(0.32, 0.72, 0, 1);
  * Docked: the floating bar resting in its natural in-flow position at the end of the page.
  * It is not overlaying any content there, so the overlay chrome would be a lie — the surface,
  * border, and shadow dissolve and the bar reads as the page's own closing row. The content
- * tucks in with doubled side padding (only the padding is overridden, not the derived
- * overhang, so the invisible surface box stays put and just the content moves).
+ * tucks in to sit exactly on the settings rows' CONTENT line: rows inset their content by the
+ * group's border + the row's --spacing--sm side padding, and the bar's own border cancels the
+ * group's, so overhang + --spacing--sm lands the status icon's left edge on the row text and
+ * the Save button's right edge on the row actions. Only the padding is overridden, not the
+ * derived overhang, so the invisible surface box stays put and just the content moves.
  */
 .docked {
 	background: transparent;
 	border-color: transparent;
 	box-shadow: none;
-	padding-inline: calc(2 * var(--n8n-settings-save-bar--padding-inline));
+	padding-inline: calc(var(--n8n-settings-save-bar--overhang) + var(--spacing--sm));
 }
 
 .floating {
