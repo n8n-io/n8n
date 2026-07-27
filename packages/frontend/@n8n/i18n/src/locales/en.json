@@ -7586,6 +7586,7 @@
 	"agents.builder.validation.issue.tool.node.missingReference": "This node type isn't available on this instance",
 	"agents.builder.validation.issue.mcpServer.incompatibleCredential": "The credential type doesn't match the server's authentication method",
 	"agents.builder.preview.viewSession": "View session",
+	"agents.builder.preview.backToChat": "Back to chat",
 	"agents.builder.preview.close.ariaLabel": "Close preview",
 	"agents.builder.executions.count": "{count} session | {count} sessions",
 	"agents.builder.settings.description": "Configure memory, sub-agent routing, and advanced runtime settings.",
