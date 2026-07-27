@@ -5,13 +5,6 @@ import type { Controller } from './types';
 
 /**
  * Declares the public-facing OpenAPI description for a route.
- *
- * @example
- * ```ts
- * @Get('/')
- * @ApiDescription('Retrieve all tags from your instance.')
- * async getTags() { ... }
- * ```
  */
 export const ApiDescription =
 	(description: string): MethodDecorator =>
