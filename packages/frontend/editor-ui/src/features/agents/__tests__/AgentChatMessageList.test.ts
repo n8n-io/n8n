@@ -27,6 +27,23 @@ vi.mock('@/features/agents/components/AgentMarkdownChunk.vue', () => ({
 	},
 }));
 
+vi.mock('@/features/ai/shared/components/AiThinkingBlock.vue', () => ({
+	default: {
+		name: 'AiThinkingBlock',
+		template:
+			'<section data-test-id="shared-thinking-block" :data-active="active ? \'true\' : \'false\'" :data-duration="durationSec"><slot /></section>',
+		props: ['segments', 'active', 'durationSec'],
+	},
+}));
+
+vi.mock('@/features/ai/shared/components/AiReasoningBlock.vue', () => ({
+	default: {
+		name: 'AiReasoningBlock',
+		template: '<div data-test-id="shared-reasoning-block">{{ entry.content }}</div>',
+		props: ['entry', 'streaming'],
+	},
+}));
+
 vi.mock('@/features/ai/chatHub/components/ChatTypingIndicator.vue', () => ({
 	default: { template: '<div data-test-id="typing-indicator" />' },
 }));
@@ -75,6 +92,65 @@ vi.mock('@n8n/i18n', () => ({
 describe('AgentChatMessageList', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('renders streamed reasoning with the shared thinking components', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-reasoning',
+						role: 'assistant',
+						content: '',
+						thinkingSegments: [
+							{
+								id: 'reasoning-1',
+								content: 'Inspect the request. Then answer.',
+								startTime: 1_000,
+							},
+						],
+						status: 'streaming',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'receiving',
+			},
+		});
+
+		expect(wrapper.find('[data-test-id="shared-thinking-block"]').attributes('data-active')).toBe(
+			'true',
+		);
+		expect(wrapper.find('[data-test-id="shared-reasoning-block"]').text()).toBe(
+			'Inspect the request. Then answer.',
+		);
+		expect(wrapper.find('[data-test-id="typing-indicator"]').exists()).toBe(false);
+	});
+
+	it('passes persisted reasoning duration to the shared thinking block', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-reasoning',
+						role: 'assistant',
+						content: 'Done',
+						thinkingSegments: [
+							{
+								id: 'reasoning-1',
+								content: 'Inspect the request.',
+								startTime: 1_000,
+								endTime: 6_000,
+							},
+						],
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+
+		expect(wrapper.find('[data-test-id="shared-thinking-block"]').attributes('data-duration')).toBe(
+			'5',
+		);
 	});
 
 	it('shows copy and read-aloud actions for assistant text messages', async () => {

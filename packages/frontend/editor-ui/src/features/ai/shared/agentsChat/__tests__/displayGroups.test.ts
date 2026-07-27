@@ -32,6 +32,30 @@ describe('shared agents chat display groups', () => {
 		}
 	});
 
+	it('keeps reasoning segments in order when folding a tool run', () => {
+		const messages: AgentsChatMessage[] = [
+			{
+				id: 'a1',
+				role: 'assistant',
+				content: '',
+				thinkingSegments: [{ id: 'r1', content: 'Plan the search.', startTime: 1, endTime: 2 }],
+				toolCalls: [{ tool: 'search', toolCallId: 'tc1', state: 'done' }],
+			},
+			{
+				id: 'a2',
+				role: 'assistant',
+				content: '',
+				thinkingSegments: [{ id: 'r2', content: 'Review the result.', startTime: 3, endTime: 4 }],
+				toolCalls: [{ tool: 'write', toolCallId: 'tc2', state: 'done' }],
+			},
+		];
+
+		const [group] = buildDisplayGroups(messages);
+		expect(group.kind).toBe('toolRun');
+		if (group.kind !== 'toolRun') return;
+		expect(group.thinkingSegments.map((segment) => segment.id)).toEqual(['r1', 'r2']);
+	});
+
 	it('keeps executionId on folded toolRun groups', () => {
 		const messages: AgentsChatMessage[] = [
 			{ id: 'u1', role: 'user', content: 'start', executionId: 'exec-1' },

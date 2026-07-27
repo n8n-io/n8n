@@ -70,6 +70,35 @@ describe('rebuildInteractiveFromHistory', () => {
 });
 
 describe('convertDbMessages — interactive turn synthesis', () => {
+	it('restores reasoning segments and their timing from history', () => {
+		const [assistant] = convertDbMessages([
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: [
+					{ type: 'reasoning', text: 'Inspect the inputs.', startTime: 1_000, endTime: 2_000 },
+					{ type: 'reasoning', text: 'Form the answer.', startTime: 3_000, endTime: 5_000 },
+					{ type: 'text', text: 'Done' },
+				],
+			},
+		]);
+
+		expect(assistant.thinkingSegments).toEqual([
+			{
+				id: 'assistant-1:reasoning:0',
+				content: 'Inspect the inputs.',
+				startTime: 1_000,
+				endTime: 2_000,
+			},
+			{
+				id: 'assistant-1:reasoning:1',
+				content: 'Form the answer.',
+				startTime: 3_000,
+				endTime: 5_000,
+			},
+		]);
+	});
+
 	it('uses executionId from the persisted message dto', () => {
 		const chat = convertDbMessages([
 			{

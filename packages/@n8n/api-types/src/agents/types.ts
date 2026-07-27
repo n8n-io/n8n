@@ -200,9 +200,9 @@ export interface AgentPersistedMessageContentPart {
 	output?: unknown;
 	canceled?: boolean;
 	error?: string;
-	/** Epoch ms when the tool handler started executing. */
+	/** Epoch ms when this content part started. */
 	startTime?: number;
-	/** Epoch ms when the tool handler settled. */
+	/** Epoch ms when this content part settled. */
 	endTime?: number;
 }
 

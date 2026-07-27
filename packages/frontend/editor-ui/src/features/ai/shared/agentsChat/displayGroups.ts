@@ -1,6 +1,7 @@
 import { summariseToolCall } from './interactiveSummary';
 import { getMessageInteractives } from './messageMappers';
-import type { AgentsChatMessage, InteractivePayload, ToolCall } from './types';
+import { getMessageThinkingSegments } from './thinking';
+import type { AgentsChatMessage, InteractivePayload, ThinkingSegment, ToolCall } from './types';
 
 /**
  * Presentation group for the message list. The builder persists one assistant
@@ -19,7 +20,9 @@ export type DisplayGroup =
 	| {
 			kind: 'toolRun';
 			id: string;
-			thinking: string;
+			thinkingSegments: ThinkingSegment[];
+			active: boolean;
+			awaitingInput: boolean;
 			toolCalls: ToolCall[];
 			/** Interactive cards belonging to messages folded into this group. */
 			interactives: InteractivePayload[];
@@ -130,11 +133,9 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 			const last = groups[groups.length - 1];
 			if (last?.kind === 'toolRun' && canAppendToToolRun(last, message)) {
 				last.toolCalls = appendToolCalls(last.toolCalls, message.toolCalls ?? []);
-				if (message.thinking) {
-					last.thinking = last.thinking
-						? `${last.thinking}\n\n${message.thinking}`
-						: message.thinking;
-				}
+				last.thinkingSegments.push(...getMessageThinkingSegments(message));
+				last.active ||= message.status === 'streaming';
+				last.awaitingInput ||= message.status === 'awaitingUser';
 				last.interactives = appendInteractivePayloads(
 					last.interactives,
 					getMessageInteractives(message),
@@ -145,7 +146,9 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 			groups.push({
 				kind: 'toolRun',
 				id: message.id,
-				thinking: message.thinking ?? '',
+				thinkingSegments: getMessageThinkingSegments(message),
+				active: message.status === 'streaming',
+				awaitingInput: message.status === 'awaitingUser',
 				toolCalls: [...(message.toolCalls ?? [])],
 				interactives: getMessageInteractives(message),
 				...(message.executionId ? { executionId: message.executionId } : {}),
@@ -158,11 +161,9 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 			if (last?.kind === 'toolRun' && canAppendToToolRun(last, message)) {
 				last.finalMessage = message;
 				last.executionId ??= message.executionId;
-				if (message.thinking) {
-					last.thinking = last.thinking
-						? `${last.thinking}\n\n${message.thinking}`
-						: message.thinking;
-				}
+				last.thinkingSegments.push(...getMessageThinkingSegments(message));
+				last.active ||= message.status === 'streaming';
+				last.awaitingInput ||= message.status === 'awaitingUser';
 				if (message.toolCalls?.length) {
 					last.toolCalls = appendToolCalls(last.toolCalls, message.toolCalls);
 				}
