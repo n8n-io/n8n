@@ -105,7 +105,7 @@ export class AgentKnowledgeFileStore {
 				const keys = group.map((file) => file.storageKey);
 
 				if (loc === 'db') {
-					await this.binaryDataRepository.deleteByFileIds(keys);
+					await this.binaryDataRepository.deleteAgentFilesByFileIds(keys);
 					return;
 				}
 

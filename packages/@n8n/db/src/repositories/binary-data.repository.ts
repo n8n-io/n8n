@@ -21,10 +21,11 @@ export class BinaryDataRepository extends Repository<BinaryDataFile> {
 		return file?.data ?? null;
 	}
 
-	async deleteByFileIds(fileIds: string[]): Promise<void> {
+	/** Scoped to `agent_file` so a stale key can never delete execution or chat data. */
+	async deleteAgentFilesByFileIds(fileIds: string[]): Promise<void> {
 		if (fileIds.length === 0) return;
 
-		await this.delete({ fileId: In(fileIds) });
+		await this.delete({ sourceType: 'agent_file', fileId: In(fileIds) });
 	}
 
 	async copyStoredFile(
