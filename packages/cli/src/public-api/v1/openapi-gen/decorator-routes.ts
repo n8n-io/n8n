@@ -6,6 +6,7 @@ import './zod-extend';
 import '../controllers';
 
 import type { RouteConfig } from '@asteasolutions/zod-to-openapi';
+import type { ResponseDtoClass } from '@n8n/decorators';
 import { z } from 'zod';
 
 import type { ResolvedPublicApiRoute } from '@/public-api/public-api-route-resolver';
@@ -40,44 +41,47 @@ function capitalize(value: string): string {
 	return value.length ? value[0].toUpperCase() + value.slice(1) : value;
 }
 
-function hasNamedSchema(dto: unknown): dto is { schema: z.ZodTypeAny; name: string } {
+/** A `ResponseDtoClass` narrowed to the two fields the generator actually reads off it. */
+export type NamedResponseDto = ResponseDtoClass & { schema: z.ZodTypeAny; name: string };
+
+function hasNamedSchema(dto: unknown): dto is NamedResponseDto {
 	if (dto === null || (typeof dto !== 'object' && typeof dto !== 'function')) return false;
 	return 'schema' in dto && 'name' in dto && typeof dto.name === 'string';
 }
 
 /**
  * Lets the generator swap a DTO's inline schema for a registry-registered one, so a schema shared
- * across operations is emitted once and `$ref`d rather than duplicated inline. Called with the
- * component name and the raw schema; returns the schema to actually embed in the operation. The
- * default (identity) keeps every schema inline — the pre-registry behaviour.
+ * across operations is emitted once and `$ref`d rather than duplicated inline. Called with the DTO
+ * class and its raw schema; returns the schema to actually embed in the operation. The default
+ * (identity) keeps every schema inline — the pre-registry behaviour.
  */
-export type SchemaResolver = (componentName: string, schema: z.ZodTypeAny) => z.ZodTypeAny;
+export type SchemaResolver = (dto: NamedResponseDto, schema: z.ZodTypeAny) => z.ZodTypeAny;
 
-const inlineResolver: SchemaResolver = (_componentName, schema) => schema;
+const inlineResolver: SchemaResolver = (_dto, schema) => schema;
 
 /**
  * Response DTOs referenced by more than one decorator route are hoisted into a shared, `$ref`d component
- * instead of inlining at each use site. A single-use schema stays inline. Structural identity isn't assumed: a
- * schema is shared only when the *same DTO class* is reused, this is a deliberate act of extracting a reusable type,
- * not a coincidental shape match.
+ * instead of inlining at each use site. A single-use schema stays inline. Keyed by the DTO *class
+ * reference* itself (not its name) - two unrelated DTOs that happen to share a class name are never
+ * conflated, only reusing the exact same class counts as "shared".
  */
-export function getSharedResponseSchemas(): Map<string, z.ZodTypeAny> {
-	const seen = new Set<string>();
-	const shared = new Map<string, z.ZodTypeAny>();
+export function getSharedResponseSchemas(): Map<NamedResponseDto, z.ZodTypeAny> {
+	const seen = new Set<NamedResponseDto>();
+	const shared = new Map<NamedResponseDto, z.ZodTypeAny>();
 
 	for (const route of resolvePublicApiRoutes()) {
 		if (!route.responseDto || !hasNamedSchema(route.responseDto)) {
 			continue;
 		}
 
-		const { name, schema } = route.responseDto;
+		const dto = route.responseDto;
 
-		if (seen.has(name) && !shared.has(name)) {
+		if (seen.has(dto) && !shared.has(dto)) {
 			// Second sighting: it's reused, so hoist it.
-			shared.set(name, schema);
+			shared.set(dto, dto.schema);
 		} else {
-			// First sighting: remember the name.
-			seen.add(name);
+			// First sighting: remember the class.
+			seen.add(dto);
 		}
 	}
 
@@ -132,7 +136,7 @@ function buildResponses(
 				? {
 						content: {
 							'application/json': {
-								schema: resolveSchema(route.responseDto.name, route.responseDto.schema),
+								schema: resolveSchema(route.responseDto, route.responseDto.schema),
 							},
 						},
 					}

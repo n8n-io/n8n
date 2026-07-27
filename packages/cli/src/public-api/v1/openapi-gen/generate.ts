@@ -1,5 +1,6 @@
 import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
 import type { RouteConfig } from '@asteasolutions/zod-to-openapi';
+import { UnexpectedError } from 'n8n-workflow';
 import fs from 'node:fs';
 import path from 'node:path';
 import { stringify } from 'yaml';
@@ -8,6 +9,7 @@ import type { z } from 'zod';
 import {
 	getDecoratorGeneratedOperations,
 	getSharedResponseSchemas,
+	type NamedResponseDto,
 	type SchemaResolver,
 } from './decorator-routes';
 
@@ -114,18 +116,43 @@ export function buildArtifactsFromRegistry(
  * `@PublicApiController` classes, so a newly decorated route (and any schema it newly shares)
  * extends this automatically.
  */
-export function getGeneratedArtifacts(): GeneratedArtifact[] {
-	const registry = new OpenAPIRegistry();
-	const sharedZodSchemas = new Map<string, z.ZodTypeAny>();
+/**
+ * Registers every shared response DTO as a named component on `registry`, keyed by DTO class
+ * identity (see `getSharedResponseSchemas`) so a schema is only ever "the same" as another when
+ * it's the exact same class. The registry and the generated file name still need a plain string
+ * though, so this guards against two *different* shared DTO classes coincidentally having the
+ * same `.name` and colliding on that string.
+ *
+ * Exported for the collision-guard unit test, which drives it with two hand-built fake DTOs.
+ */
+export function registerSharedSchemas(
+	registry: OpenAPIRegistry,
+	sharedResponseSchemas: Map<NamedResponseDto, z.ZodTypeAny>,
+): Map<NamedResponseDto, z.ZodTypeAny> {
+	const sharedZodSchemas = new Map<NamedResponseDto, z.ZodTypeAny>();
+	const dtoByComponentName = new Map<string, NamedResponseDto>();
 
-	const sharedResponseSchemas = getSharedResponseSchemas();
+	sharedResponseSchemas.forEach((schema, dto) => {
+		const clashing = dtoByComponentName.get(dto.name);
+		if (clashing && clashing !== dto) {
+			throw new UnexpectedError(
+				`Two different shared response DTOs are both named '${dto.name}' - their generated ` +
+					'OpenAPI component names would collide. Rename one of the DTO classes.',
+			);
+		}
+		dtoByComponentName.set(dto.name, dto);
 
-	sharedResponseSchemas.forEach((schema, componentName) => {
-		sharedZodSchemas.set(componentName, registry.register(componentName, schema));
+		sharedZodSchemas.set(dto, registry.register(dto.name, schema));
 	});
 
-	const resolveSchema: SchemaResolver = (componentName, schema) =>
-		sharedZodSchemas.get(componentName) ?? schema;
+	return sharedZodSchemas;
+}
+
+export function getGeneratedArtifacts(): GeneratedArtifact[] {
+	const registry = new OpenAPIRegistry();
+	const sharedZodSchemas = registerSharedSchemas(registry, getSharedResponseSchemas());
+
+	const resolveSchema: SchemaResolver = (dto, schema) => sharedZodSchemas.get(dto) ?? schema;
 
 	const operations = getDecoratorGeneratedOperations(resolveSchema);
 	operations.forEach(({ config }) => registry.registerPath(config));
