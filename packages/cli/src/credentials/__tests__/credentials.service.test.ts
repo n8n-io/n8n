@@ -3850,6 +3850,8 @@ describe('CredentialsService', () => {
 				expect.anything(),
 				{ acceptedStatusCodes: undefined },
 			);
+		});
+	});
 
 	describe('isOAuthCredentialType', () => {
 		it('returns true for the base OAuth1/OAuth2 types', () => {
