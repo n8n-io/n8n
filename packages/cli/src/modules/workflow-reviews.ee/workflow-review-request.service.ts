@@ -1,5 +1,6 @@
 import type {
 	CreateWorkflowReviewRequestDto,
+	DecideWorkflowReviewRequestDto,
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	ListWorkflowReviewRequestsQueryDto,
 	UpdateWorkflowReviewRequestVersionDto,
@@ -16,6 +17,7 @@ import { LicenseState, Logger } from '@n8n/backend-common';
 import {
 	DbLock,
 	DbLockService,
+	ProjectRelationRepository,
 	SharedWorkflowRepository,
 	UserRepository,
 	WorkflowReviewRequestAuthorRepository,
@@ -29,7 +31,12 @@ import {
 	type WorkflowReviewRequestReviewer,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
+import {
+	GLOBAL_ADMIN_ROLE_SLUG,
+	GLOBAL_OWNER_ROLE_SLUG,
+	PROJECT_ADMIN_ROLE_SLUG,
+	hasGlobalScope,
+} from '@n8n/permissions';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
@@ -56,6 +63,7 @@ export class WorkflowReviewRequestService {
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 		private readonly userRepository: UserRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
 		private readonly projectService: ProjectService,
 		private readonly licenseState: LicenseState,
@@ -380,6 +388,136 @@ export class WorkflowReviewRequestService {
 	}
 
 	/**
+	 * Decide an open review request: approve (terminal, closes the request) or
+	 * request changes (the request stays open awaiting a new version).
+	 */
+	async decide(
+		user: User,
+		workflowReviewRequestId: string,
+		dto: DecideWorkflowReviewRequestDto,
+	): Promise<WorkflowReviewRequestSummary> {
+		const policy = await this.workflowReviewPolicyService.get();
+		if (!policy.enabled) {
+			throw new ForbiddenError('Workflow reviews are not enabled for this instance');
+		}
+
+		const request = await this.workflowReviewRequestRepository.findById(workflowReviewRequestId);
+		if (!request) {
+			throw new NotFoundError('Could not find review request');
+		}
+
+		const workflowRows =
+			await this.workflowReviewRequestWorkflowRepository.findByRequestId(workflowReviewRequestId);
+		const workflowRow = workflowRows[0];
+		if (!workflowRow) {
+			throw new NotFoundError('Could not find review request');
+		}
+
+		// 404 (not 403) so callers without access can't probe which requests exist
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowRow.workflowId,
+			user,
+			['workflow:publish'],
+		);
+		if (!workflow) {
+			throw new NotFoundError('Could not find workflow');
+		}
+
+		this.assertRequestUpdatable(request);
+
+		// Fast path: reject a known author before queueing on the lock. Authorship is
+		// re-checked inside the lock, which is what actually makes this safe.
+		const isAuthor = await this.workflowReviewRequestAuthorRepository.isAuthor({
+			workflowReviewRequestId,
+			userId: user.id,
+		});
+		await this.assertDecisionAllowed(user, request, isAuthor);
+
+		const { request: saved, pinnedVersionId } = await this.dbLockService.withLock(
+			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+			async (tx) => {
+				// Re-check under the lock so a decision can't race a concurrent
+				// version sync (which resets the decision to pending) or another decision.
+				const current = await this.workflowReviewRequestRepository.findById(
+					workflowReviewRequestId,
+					tx,
+				);
+				if (!current) {
+					throw new NotFoundError('Could not find review request');
+				}
+				this.assertRequestUpdatable(current);
+
+				// R1 (P1): re-check authorship here — a sync that won the lock first has
+				// added its syncer to the author set since the pre-lock check, and that
+				// syncer must not be able to decide. See LIGO-786_review.md
+				const isAuthorNow = await this.workflowReviewRequestAuthorRepository.isAuthor(
+					{ workflowReviewRequestId, userId: user.id },
+					tx,
+				);
+				await this.assertDecisionAllowed(user, current, isAuthorNow);
+
+				// Re-read the pinned row too: a concurrent sync that won the lock may
+				// have re-pinned, and the summary must reflect the version being decided on.
+				const currentRows = await this.workflowReviewRequestWorkflowRepository.findByRequestId(
+					workflowReviewRequestId,
+					tx,
+				);
+				const currentRow = currentRows.find((row) => row.workflowId === workflowRow.workflowId);
+				if (!currentRow) {
+					throw new NotFoundError('Could not find review request');
+				}
+
+				current.decision = dto.decision;
+				current.updatedById = user.id;
+				if (dto.decision === 'approved') {
+					current.state = 'closed';
+					current.closedById = user.id;
+					current.approvedAt = new Date();
+				}
+
+				// save (not update) so @BeforeUpdate bumps updatedAt
+				const savedRequest = await tx.save(current);
+				return { request: savedRequest, pinnedVersionId: currentRow.workflowVersionId };
+			},
+		);
+
+		this.broadcastReviewStateChanged(workflowRow.workflowId);
+
+		return this.toSummary(saved, pinnedVersionId);
+	}
+
+	/**
+	 * Authors cannot decide their own review request, unless an admin override
+	 * applies. Called before and again inside the decision lock, since the author
+	 * set can change while the caller waits for the lock.
+	 */
+	private async assertDecisionAllowed(
+		user: User,
+		request: WorkflowReviewRequest,
+		isAuthor: boolean,
+	): Promise<void> {
+		if (isAuthor && !(await this.hasDecisionAdminOverride(user, request.projectId))) {
+			throw new ForbiddenError('Authors cannot decide on their own review request');
+		}
+	}
+
+	/**
+	 * Admins may decide reviews they authored. Limitation: only the built-in
+	 * global/project admin roles qualify — custom roles never grant the override.
+	 */
+	private async hasDecisionAdminOverride(user: User, projectId: string): Promise<boolean> {
+		if (user.role.slug === GLOBAL_ADMIN_ROLE_SLUG || user.role.slug === GLOBAL_OWNER_ROLE_SLUG) {
+			return true;
+		}
+
+		const adminProjectIds = await this.projectRelationRepository.getAccessibleProjectsByRoles(
+			user.id,
+			[PROJECT_ADMIN_ROLE_SLUG],
+		);
+		return adminProjectIds.includes(projectId);
+	}
+
+	/**
 	 * Fire-and-forget: the transaction has committed, a failed broadcast
 	 * must not fail the request. Viewers heal via focus/reconnect refetch.
 	 */
@@ -391,7 +529,11 @@ export class WorkflowReviewRequestService {
 			);
 	}
 
-	/** A closed or already-approved request can no longer be re-pinned to a new version. */
+	/**
+	 * A closed or already-approved request can no longer be re-pinned to a new
+	 * version, nor decided again — this is what makes approval terminal, so don't
+	 * relax it for the re-pin case alone.
+	 */
 	private assertRequestUpdatable(request: WorkflowReviewRequest): void {
 		if (request.state === 'closed' || request.decision === 'approved') {
 			throw new ConflictError('The review request is no longer open');
