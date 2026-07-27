@@ -125,7 +125,7 @@ describe('WorkflowReviewRequestsSidebar', () => {
 		{
 			state: 'open' as const,
 			decision: 'pending' as const,
-			label: 'Pending review',
+			label: 'Waiting for review',
 		},
 		{
 			state: 'open' as const,
