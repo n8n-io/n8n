@@ -3,10 +3,12 @@ packages/cli/src/public-api/v1/handlers/decorator-routed.handler.ts
   s_2518c7e469bbd2::t_2272fb74b7eb7f 24-26
 packages/cli/src/public-api/v1/__tests__/scope-parity.test.ts
   s_2518c7e469bbd2::t_be669df4573ae1 60,70-74
+  h_5d40c27a8fdfd1 75
 packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
   s_2518c7e469bbd2::t_c7a1758001a3e7 153-159
 packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
   s_2518c7e469bbd2::t_c99cc09320a2a0 103-112
+  h_5d40c27a8fdfd1 102,113-115
 packages/cli/src/public-api/v1/handlers/tags/spec/paths/getTags.generated.yml
   s_2518c7e469bbd2::t_3a80b2949f66f6 9-11
 ---
