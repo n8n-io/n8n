@@ -14,6 +14,7 @@ import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentEvalRunnerService } from '../agent-eval-runner.service';
 
@@ -31,6 +32,22 @@ vi.mock('@/modules/instance-ai/eval/agent-execution.service', () => ({
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn().mockResolvedValue(true),
 }));
+
+type StatusCounts = {
+	new: number;
+	running: number;
+	success: number;
+	error: number;
+	cancelled: number;
+};
+const counts = (partial: Partial<StatusCounts>): StatusCounts => ({
+	new: 0,
+	running: 0,
+	success: 0,
+	error: 0,
+	cancelled: 0,
+	...partial,
+});
 
 const successExec = (usage = { inputTokens: 3, outputTokens: 7 }) => ({
 	runId: 'exec',
@@ -81,6 +98,7 @@ describe('AgentEvalRunnerService', () => {
 	});
 
 	beforeEach(() => {
+		vi.mocked(userHasScopes).mockResolvedValue(true);
 		globalConfig = {
 			evaluation: { agentEvalsEnabled: true },
 			executions: { mode: 'regular' },
@@ -100,6 +118,12 @@ describe('AgentEvalRunnerService', () => {
 		runRepository.createRun.mockResolvedValue(mock({ id: 'run-1' }));
 		runRepository.isCancellationRequested.mockResolvedValue(false);
 		dataTableService.getProjectIdForDataTable.mockResolvedValue('proj-table');
+		// Columns backing the dataset's mapping (input/expectedOutput/criteria).
+		dataTableService.getColumns.mockResolvedValue([
+			{ name: 'question' },
+			{ name: 'answer' },
+			{ name: 'check' },
+		] as never);
 
 		service = new AgentEvalRunnerService(
 			mock(),
@@ -114,15 +138,16 @@ describe('AgentEvalRunnerService', () => {
 		);
 	});
 
-	const seedFor = (rows: Array<Record<string, unknown>>) => {
+	/** Set up one page of rows + seeded results + a final status count. */
+	const seedFor = (rows: Array<Record<string, unknown>>, endCounts: Partial<StatusCounts> = {}) => {
 		dataTableService.getManyRowsAndCount.mockResolvedValue({
 			count: rows.length,
 			data: rows as never,
 		});
-		// seedResults returns one persisted row per case, in order.
 		resultRepository.seedResults.mockImplementation(async (cases) =>
 			cases.map((_c, i) => mock<AgentEvalResult>({ id: `res-${i}`, status: 'new' })),
 		);
+		resultRepository.countByStatus.mockResolvedValue(counts(endCounts));
 	};
 
 	describe('gating', () => {
@@ -137,6 +162,14 @@ describe('AgentEvalRunnerService', () => {
 		it('refuses in queue mode', async () => {
 			globalConfig.executions.mode = 'queue';
 			await expect(service.startRun('ds-1', 'proj-1', user)).rejects.toThrow('queue mode');
+			expect(runRepository.createRun).not.toHaveBeenCalled();
+		});
+
+		it('rejects when the user cannot run agents in the project', async () => {
+			vi.mocked(userHasScopes).mockResolvedValueOnce(false); // agent:execute check
+			await expect(service.startRun('ds-1', 'proj-1', user)).rejects.toThrow(
+				'permission to run agents',
+			);
 			expect(runRepository.createRun).not.toHaveBeenCalled();
 		});
 
@@ -155,6 +188,23 @@ describe('AgentEvalRunnerService', () => {
 		it('rejects a dataset with no rows', async () => {
 			seedFor([]);
 			await expect(service.startRun('ds-1', 'proj-1', user)).rejects.toThrow('no rows');
+			expect(runRepository.createRun).not.toHaveBeenCalled();
+		});
+
+		it('rejects a dataset that exceeds the case limit', async () => {
+			dataTableService.getManyRowsAndCount.mockResolvedValue({ count: 501, data: [] as never });
+			await expect(service.startRun('ds-1', 'proj-1', user)).rejects.toThrow(
+				'exceeding the 500-case limit',
+			);
+			expect(runRepository.createRun).not.toHaveBeenCalled();
+		});
+
+		it('rejects when a mapped column is missing from the table', async () => {
+			dataTableService.getColumns.mockResolvedValue([
+				{ name: 'answer' },
+				{ name: 'check' },
+			] as never);
+			await expect(service.startRun('ds-1', 'proj-1', user)).rejects.toThrow("input → 'question'");
 			expect(runRepository.createRun).not.toHaveBeenCalled();
 		});
 	});
@@ -177,15 +227,14 @@ describe('AgentEvalRunnerService', () => {
 
 	describe('running cases', () => {
 		it('runs each case with its input verbatim, persists results, aggregates the run', async () => {
-			seedFor([
-				{ id: 'row-1', question: 'What is 2+2?', answer: '4', check: 'is 4' },
-				{ id: 'row-2', question: 'Capital of France?', answer: 'Paris', check: 'is Paris' },
-			]);
+			seedFor(
+				[
+					{ id: 'row-1', question: 'What is 2+2?', answer: '4', check: 'is 4' },
+					{ id: 'row-2', question: 'Capital of France?', answer: 'Paris', check: 'is Paris' },
+				],
+				{ success: 2 },
+			);
 			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
-			resultRepository.findByRunId.mockResolvedValue([
-				mock<AgentEvalResult>({ status: 'success' }),
-				mock<AgentEvalResult>({ status: 'success' }),
-			]);
 
 			const { runId, finished } = await service.startRun('ds-1', 'proj-1', user);
 			await finished;
@@ -219,11 +268,8 @@ describe('AgentEvalRunnerService', () => {
 		});
 
 		it('snapshots input/expectedOutput/criteria onto the seeded case', async () => {
-			seedFor([{ id: 'row-1', question: 'Q', answer: 'A', check: 'C' }]);
+			seedFor([{ id: 'row-1', question: 'Q', answer: 'A', check: 'C' }], { success: 1 });
 			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
-			resultRepository.findByRunId.mockResolvedValue([
-				mock<AgentEvalResult>({ status: 'success' }),
-			]);
 
 			const { finished } = await service.startRun('ds-1', 'proj-1', user);
 			await finished;
@@ -239,9 +285,8 @@ describe('AgentEvalRunnerService', () => {
 		});
 
 		it('records a failed execution as an errored result but still completes the run', async () => {
-			seedFor([{ id: 'row-1', question: 'Q' }]);
+			seedFor([{ id: 'row-1', question: 'Q' }], { error: 1 });
 			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(failExec() as never);
-			resultRepository.findByRunId.mockResolvedValue([mock<AgentEvalResult>({ status: 'error' })]);
 
 			const { finished } = await service.startRun('ds-1', 'proj-1', user);
 			await finished;
@@ -255,18 +300,17 @@ describe('AgentEvalRunnerService', () => {
 		});
 
 		it('isolates a thrown execution error as a per-case error and still completes the run', async () => {
-			seedFor([
-				{ id: 'row-1', question: 'Q1' },
-				{ id: 'row-2', question: 'Q2' },
-			]);
+			seedFor(
+				[
+					{ id: 'row-1', question: 'Q1' },
+					{ id: 'row-2', question: 'Q2' },
+				],
+				{ success: 1, error: 1 },
+			);
 			// Run serially so the thrown call is deterministically the first case.
 			evalAgentExecutionService.executeWithLlmMock
 				.mockRejectedValueOnce(new Error('transient failure'))
 				.mockResolvedValueOnce(successExec() as never);
-			resultRepository.findByRunId.mockResolvedValue([
-				mock<AgentEvalResult>({ status: 'error' }),
-				mock<AgentEvalResult>({ status: 'success' }),
-			]);
 
 			const { finished } = await service.startRun('ds-1', 'proj-1', user, { concurrency: 1 });
 			await finished;
@@ -276,15 +320,13 @@ describe('AgentEvalRunnerService', () => {
 				'execution_failed',
 				expect.objectContaining({ message: 'transient failure' }),
 			);
-			// One thrown case must not abort the batch or error the whole run.
 			expect(resultRepository.markAsCompleted).toHaveBeenCalledTimes(1);
 			expect(runRepository.markAsCompleted).toHaveBeenCalled();
 			expect(runRepository.markAsError).not.toHaveBeenCalled();
 		});
 
 		it('errors an empty-input case without invoking the agent', async () => {
-			seedFor([{ id: 'row-1', question: '   ' }]);
-			resultRepository.findByRunId.mockResolvedValue([mock<AgentEvalResult>({ status: 'error' })]);
+			seedFor([{ id: 'row-1', question: '   ' }], { error: 1 });
 
 			const { finished } = await service.startRun('ds-1', 'proj-1', user);
 			await finished;
@@ -296,19 +338,40 @@ describe('AgentEvalRunnerService', () => {
 				expect.anything(),
 			);
 		});
+
+		it('pages through every row when the table exceeds one page', async () => {
+			const page = (start: number, len: number) =>
+				Array.from({ length: len }, (_, i) => ({ id: `r${start + i}`, question: `Q${start + i}` }));
+			dataTableService.getManyRowsAndCount.mockImplementation(async (_id, _p, dto) =>
+				(dto?.skip ?? 0) === 0
+					? { count: 120, data: page(0, 100) as never }
+					: { count: 120, data: page(100, 20) as never },
+			);
+			resultRepository.seedResults.mockImplementation(async (cases) =>
+				cases.map((_c, i) => mock<AgentEvalResult>({ id: `res-${i}`, status: 'new' })),
+			);
+			resultRepository.countByStatus.mockResolvedValue(counts({ success: 120 }));
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user, { concurrency: 10 });
+			await finished;
+
+			expect(resultRepository.seedResults).toHaveBeenCalledTimes(1);
+			expect(resultRepository.seedResults.mock.calls[0]?.[0]).toHaveLength(120);
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledTimes(120);
+		});
 	});
 
 	describe('cancellation', () => {
 		it('marks cases and the run cancelled when cancellation is requested', async () => {
-			seedFor([
-				{ id: 'row-1', question: 'Q' },
-				{ id: 'row-2', question: 'Q2' },
-			]);
+			seedFor(
+				[
+					{ id: 'row-1', question: 'Q' },
+					{ id: 'row-2', question: 'Q2' },
+				],
+				{ cancelled: 2 },
+			);
 			runRepository.isCancellationRequested.mockResolvedValue(true);
-			resultRepository.findByRunId.mockResolvedValue([
-				mock<AgentEvalResult>({ status: 'cancelled' }),
-				mock<AgentEvalResult>({ status: 'cancelled' }),
-			]);
 
 			const { finished } = await service.startRun('ds-1', 'proj-1', user);
 			await finished;
@@ -321,6 +384,59 @@ describe('AgentEvalRunnerService', () => {
 				expect.objectContaining({ cancelled: 2 }),
 			);
 			expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
+		});
+
+		it('cancels the run when Stop arrives after every case has already started', async () => {
+			seedFor([{ id: 'row-1', question: 'Q' }], { success: 1 });
+			// false while the case runs, true at the post-pool re-check
+			runRepository.isCancellationRequested.mockResolvedValueOnce(false).mockResolvedValue(true);
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user, { concurrency: 1 });
+			await finished;
+
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledTimes(1);
+			expect(runRepository.markAsCancelled).toHaveBeenCalled();
+			expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getRunSummary', () => {
+		it('404s when the run is missing', async () => {
+			runRepository.findById.mockResolvedValue(null);
+			await expect(service.getRunSummary('run-x')).rejects.toThrow('not found');
+		});
+
+		it('reports status + per-status counts from the count query', async () => {
+			runRepository.findById.mockResolvedValue(mock({ id: 'run-1', status: 'completed' }));
+			resultRepository.countByStatus.mockResolvedValue(
+				counts({ success: 3, error: 1, running: 1 }),
+			);
+
+			const summary = await service.getRunSummary('run-1');
+
+			expect(summary).toEqual({
+				runId: 'run-1',
+				status: 'completed',
+				counts: { total: 5, success: 3, error: 1, cancelled: 0, pending: 1 },
+			});
+		});
+	});
+
+	describe('cleanupInterruptedRuns', () => {
+		it('sweeps incomplete runs and never throws', async () => {
+			runRepository.markAllIncompleteAsError.mockResolvedValue({
+				affected: 2,
+				raw: [],
+				generatedMaps: [],
+			});
+			await expect(service.cleanupInterruptedRuns()).resolves.toBeUndefined();
+			expect(runRepository.markAllIncompleteAsError).toHaveBeenCalled();
+		});
+
+		it('swallows a sweep failure so it cannot block startup', async () => {
+			runRepository.markAllIncompleteAsError.mockRejectedValue(new Error('db down'));
+			await expect(service.cleanupInterruptedRuns()).resolves.toBeUndefined();
 		});
 	});
 });

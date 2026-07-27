@@ -65,6 +65,10 @@ import { createWebSearchMock } from './web-search-mock';
 // ---------------------------------------------------------------------------
 
 const DEFAULT_TIMEOUT_MS = 600_000;
+// Case input is used verbatim as the opening message, but as a prompt *signal*
+// for seed + mock generation it is bounded — matching the request schema's cap
+// on `scenarioHints` so a large Data Table cell can't blow up those prompts.
+const MAX_SCENARIO_HINT_CHARS = 2_000;
 const DEFAULT_MAX_ITERATIONS = 25;
 const MAX_ITERATIONS_CAP = 40;
 const MAX_AUTO_APPROVALS = 20;
@@ -151,15 +155,20 @@ export class EvalAgentExecutionService {
 
 		const toolSummaries = summarizeTools(config, agentEntity.tools ?? {}, sanitizeToolName);
 
+		// The scenario signal steers seed + mock generation. A fixed case input
+		// doubles as that signal (bounded) so the generated context, per-tool
+		// hints, and mock responses all stay coherent with the message sent.
+		const scenarioSignal =
+			options.scenarioHints ??
+			(caseInput !== undefined ? truncateForLlm(caseInput, MAX_SCENARIO_HINT_CHARS) : undefined);
+
 		let seed: InstanceAiEvalAgentScenarioSeed;
 		try {
 			seed = await generateAgentScenarioSeed({
 				agentName: config.name,
 				instructions: config.instructions,
 				tools: toolSummaries,
-				// A fixed case input doubles as the scenario signal so the generated
-				// context + tool hints stay coherent with the message actually sent.
-				scenarioHints: options.scenarioHints ?? caseInput,
+				scenarioHints: scenarioSignal,
 			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -176,7 +185,7 @@ export class EvalAgentExecutionService {
 		}
 
 		const mockHandler = createLlmMockHandler({
-			scenarioHints: options.scenarioHints,
+			scenarioHints: scenarioSignal,
 			globalContext: seed.globalContext,
 			nodeHints: seed.toolHints,
 		});
@@ -202,7 +211,7 @@ export class EvalAgentExecutionService {
 				description: server.description,
 			})),
 			agentInstructions: config.instructions,
-			scenarioHints: options.scenarioHints,
+			scenarioHints: scenarioSignal,
 			globalContext: seed.globalContext,
 			serverHints: seed.toolHints,
 			knownToolsByServer,
@@ -242,7 +251,7 @@ export class EvalAgentExecutionService {
 		// search); with native search the tool is never built and this goes unused.
 		const webSearchMock = createWebSearchMock({
 			agentInstructions: config.instructions,
-			scenarioHints: options.scenarioHints,
+			scenarioHints: scenarioSignal,
 			globalContext: seed.globalContext,
 			searchHint: seed.toolHints?.web_search,
 			logger: this.logger,

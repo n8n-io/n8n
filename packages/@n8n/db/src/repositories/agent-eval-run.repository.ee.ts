@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, In, Repository } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
 import { AgentEvalRun } from '../entities';
@@ -78,6 +78,24 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 
 	async findById(id: string): Promise<AgentEvalRun | null> {
 		return await this.findOneBy({ id });
+	}
+
+	/**
+	 * Mark every run still in an incomplete state as errored. Called on startup:
+	 * the runner has no resume mechanism, so a run interrupted by a process
+	 * restart can never continue and would otherwise poll as `running` forever.
+	 * Blanket sweep, mirroring the workflow eval's `markAllIncompleteAsFailed`.
+	 */
+	async markAllIncompleteAsError() {
+		return await this.update(
+			{ status: In(['new', 'running']) },
+			{
+				status: 'error',
+				errorCode: 'interrupted',
+				completedAt: new Date(),
+				runningInstanceId: null,
+			},
+		);
 	}
 
 	/** Lightweight read of just the cross-main cancellation flag for a run. */

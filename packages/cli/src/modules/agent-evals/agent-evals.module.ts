@@ -12,6 +12,9 @@ import { Container } from '@n8n/di';
 export class AgentEvalsModule implements ModuleInterface {
 	async init() {
 		const { AgentEvalRunnerService } = await import('./agent-eval-runner.service.js');
-		Container.get(AgentEvalRunnerService);
+		const runner = Container.get(AgentEvalRunnerService);
+		// The runner can't resume runs interrupted by a restart — sweep any left
+		// over from a previous process so they don't poll as `running` forever.
+		await runner.cleanupInterruptedRuns();
 	}
 }

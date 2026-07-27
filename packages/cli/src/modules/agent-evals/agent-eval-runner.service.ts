@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { AgentEvalDataset, AgentEvalResult, User } from '@n8n/db';
+import type { AgentEvalDataset, AgentEvalResult, AgentEvalRunStatus, User } from '@n8n/db';
 import {
 	AgentEvalDatasetRepository,
 	AgentEvalResultRepository,
@@ -29,6 +29,9 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 const DEFAULT_CONCURRENCY = 5;
 const MAX_CONCURRENCY = 10;
 const ROW_PAGE_SIZE = 100;
+// Each case is a real agent execution, so a run is capped rather than letting a
+// large table launch thousands of model calls. Raise deliberately if needed.
+const MAX_CASES = 500;
 
 /** A dataset row resolved into a runnable case via the dataset's column mapping. */
 interface ResolvedCase {
@@ -47,7 +50,7 @@ interface CaseUsage {
 
 export interface AgentEvalRunSummary {
 	runId: string;
-	status: string;
+	status: AgentEvalRunStatus;
 	counts: { total: number; success: number; error: number; cancelled: number; pending: number };
 }
 
@@ -86,15 +89,25 @@ export class AgentEvalRunnerService {
 		user: User,
 		options: { concurrency?: number; timeoutMs?: number } = {},
 	): Promise<{ runId: string; finished: Promise<void> }> {
-		// Behind 101_agent_evals. Per-cohort PostHog resolution attaches at the REST
-		// layer (which carries the request user); the gate available server-side
-		// here is the operator override.
+		// Behind 101_agent_evals. `agentEvalsEnabled` is a force-enable-only operator
+		// override, so this treats it as the sole gate for now. When the REST layer
+		// lands it must instead resolve the flag per-user via PostHog (which is the
+		// source of truth for cohort rollout) — a rolled-out user shouldn't need the
+		// env var. Until then this stays hard-gated on the override.
 		if (!this.globalConfig.evaluation.agentEvalsEnabled) {
 			throw new BadRequestError('Agent evals are not enabled on this instance.');
 		}
 
 		if (this.globalConfig.executions.mode === 'queue') {
 			throw new BadRequestError('Agent eval runs are not supported in queue mode.');
+		}
+
+		// Authorize up front. `executeWithLlmMock` also checks `agent:execute`, but
+		// it returns an error result rather than throwing — without this a caller
+		// lacking permission would get a created run with every case marked failed
+		// instead of a clean rejection.
+		if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
+			throw new ForbiddenError('You do not have permission to run agents in this project.');
 		}
 
 		const dataset = await this.datasetRepository.findById(datasetId);
@@ -175,8 +188,10 @@ export class AgentEvalRunnerService {
 	async getRunSummary(runId: string): Promise<AgentEvalRunSummary> {
 		const run = await this.runRepository.findById(runId);
 		if (!run) throw new NotFoundError(`Agent eval run ${runId} not found.`);
-		const results = await this.resultRepository.findByRunId(runId);
-		return { runId: run.id, status: run.status, counts: countByStatus(results) };
+		// Count in the DB — this is polled by the UI, so never load the full
+		// per-case rows (input/output/toolCalls JSON) just to tally statuses.
+		const counts = await this.resultRepository.countByStatus(runId);
+		return { runId: run.id, status: run.status, counts: toSummaryCounts(counts) };
 	}
 
 	/**
@@ -195,6 +210,12 @@ export class AgentEvalRunnerService {
 		timeoutMs?: number;
 	}): Promise<void> {
 		const { runId, cases, seeded, concurrency } = ctx;
+		// `seedResults` returns rows in input order, so seeded[index] pairs with
+		// cases[index]. Guard the invariant rather than silently mis-pairing.
+		if (seeded.length !== cases.length) {
+			await this.failRun(runId, `Seeded ${seeded.length} results for ${cases.length} cases`);
+			return;
+		}
 		try {
 			const limit = pLimit(concurrency);
 			let cancelled = false;
@@ -221,18 +242,59 @@ export class AgentEvalRunnerService {
 				}),
 			);
 
-			const results = await this.resultRepository.findByRunId(runId);
-			const metrics: IDataObject = { ...countByStatus(results), usage: { ...totalUsage } };
+			// Re-read the flag once more: a Stop that arrived after every case had
+			// already started is never observed in the loop above, so honor it here
+			// rather than reporting the run as completed with the flag still set.
+			const wasCancelled = cancelled || (await this.runRepository.isCancellationRequested(runId));
 
-			if (cancelled) {
+			const counts = await this.resultRepository.countByStatus(runId);
+			const metrics: IDataObject = { ...toSummaryCounts(counts), usage: { ...totalUsage } };
+
+			if (wasCancelled) {
 				await this.runRepository.markAsCancelled(runId, metrics);
 			} else {
 				await this.runRepository.markAsCompleted(runId, metrics);
 			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			this.logger.error(`[AgentEvalRunner] Run ${runId} failed to complete`, { error: message });
+			await this.failRun(runId, message);
+		}
+	}
+
+	/**
+	 * Mark a run errored, best-effort. `executeRun`'s result is a fire-and-forget
+	 * `finished` promise for REST callers, and `packages/cli` has no
+	 * unhandledRejection handler — so a failure to record the error must never
+	 * reject out of here and crash the process.
+	 */
+	private async failRun(runId: string, message: string): Promise<void> {
+		this.logger.error(`[AgentEvalRunner] Run ${runId} failed to complete`, { error: message });
+		try {
 			await this.runRepository.markAsError(runId, 'run_failed', { message });
+		} catch (markError) {
+			this.logger.error(`[AgentEvalRunner] Could not mark run ${runId} as errored`, {
+				error: markError instanceof Error ? markError.message : String(markError),
+			});
+		}
+	}
+
+	/**
+	 * Mark runs left incomplete by a previous process (the runner has no resume
+	 * mechanism) as errored, so they don't poll as `running` forever. Called on
+	 * module startup; best-effort so it can never block boot.
+	 */
+	async cleanupInterruptedRuns(): Promise<void> {
+		try {
+			const result = await this.runRepository.markAllIncompleteAsError();
+			if (result.affected && result.affected > 0) {
+				this.logger.debug(
+					`[AgentEvalRunner] Marked ${result.affected} interrupted run(s) as errored on startup`,
+				);
+			}
+		} catch (error) {
+			this.logger.error('[AgentEvalRunner] Failed to clean up interrupted runs on startup', {
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 
@@ -320,6 +382,27 @@ export class AgentEvalRunnerService {
 
 		const tableProjectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
 
+		// Validate the mapping against the live columns so a renamed/deleted column
+		// fails loudly here instead of silently turning every case into an
+		// "empty input" error at execution time.
+		const columnNames = new Set(
+			(await this.dataTableService.getColumns(dataTableId, tableProjectId)).map((c) => c.name),
+		);
+		const missing = (
+			[
+				['input', mapping.input],
+				['expectedOutput', mapping.expectedOutput],
+				['criteria', mapping.criteria],
+			] as const
+		)
+			.filter(([, name]) => name && !columnNames.has(name))
+			.map(([role, name]) => `${role} → '${name}'`);
+		if (missing.length > 0) {
+			throw new BadRequestError(
+				`The dataset's column mapping references columns missing from the data table: ${missing.join(', ')}.`,
+			);
+		}
+
 		const rows: DataTableRow[] = [];
 		let skip = 0;
 		for (;;) {
@@ -328,6 +411,13 @@ export class AgentEvalRunnerService {
 				tableProjectId,
 				{ take: ROW_PAGE_SIZE, skip },
 			);
+			// Reject oversized datasets rather than launching thousands of real
+			// agent executions (`count` is the table total, known from page one).
+			if (count > MAX_CASES) {
+				throw new BadRequestError(
+					`The dataset has ${count} rows, exceeding the ${MAX_CASES}-case limit for a single run.`,
+				);
+			}
 			rows.push(...data);
 			skip += data.length;
 			if (data.length === 0 || skip >= count) break;
@@ -349,13 +439,20 @@ export class AgentEvalRunnerService {
 	}
 }
 
-function countByStatus(results: AgentEvalResult[]): AgentEvalRunSummary['counts'] {
+/** Shape the DB per-status counts into the run summary (pending = new + running). */
+function toSummaryCounts(counts: {
+	new: number;
+	running: number;
+	success: number;
+	error: number;
+	cancelled: number;
+}): AgentEvalRunSummary['counts'] {
 	return {
-		total: results.length,
-		success: results.filter((r) => r.status === 'success').length,
-		error: results.filter((r) => r.status === 'error').length,
-		cancelled: results.filter((r) => r.status === 'cancelled').length,
-		pending: results.filter((r) => r.status === 'new' || r.status === 'running').length,
+		total: counts.new + counts.running + counts.success + counts.error + counts.cancelled,
+		success: counts.success,
+		error: counts.error,
+		cancelled: counts.cancelled,
+		pending: counts.new + counts.running,
 	};
 }
 

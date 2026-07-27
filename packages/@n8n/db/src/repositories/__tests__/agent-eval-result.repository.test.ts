@@ -125,4 +125,25 @@ describe('AgentEvalResultRepository', () => {
 			expect(callArgs?.[1]).toEqual({ where: { runId: 'run-1' }, order: { runIndex: 'ASC' } });
 		});
 	});
+
+	describe('countByStatus', () => {
+		it('groups counts by status in the DB and zero-fills missing statuses', async () => {
+			const qb = {
+				select: vi.fn().mockReturnThis(),
+				addSelect: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				groupBy: vi.fn().mockReturnThis(),
+				getRawMany: vi.fn().mockResolvedValue([
+					{ status: 'success', count: '3' },
+					{ status: 'error', count: 1 },
+				]),
+			};
+			(entityManager.createQueryBuilder as Mock).mockReturnValue(qb);
+
+			const result = await repo.countByStatus('run-1');
+
+			expect(qb.where).toHaveBeenCalledWith('result.runId = :runId', { runId: 'run-1' });
+			expect(result).toEqual({ new: 0, running: 0, success: 3, error: 1, cancelled: 0 });
+		});
+	});
 });

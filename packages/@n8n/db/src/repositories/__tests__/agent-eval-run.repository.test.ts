@@ -171,4 +171,20 @@ describe('AgentEvalRunRepository', () => {
 			expect(await repo.isCancellationRequested('run-x')).toBe(false);
 		});
 	});
+
+	describe('markAllIncompleteAsError', () => {
+		it('flips new/running runs to error and clears the running instance', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 3, generatedMaps: [], raw: [] });
+
+			await repo.markAllIncompleteAsError();
+
+			const callArgs = entityManager.update.mock.calls[0];
+			// [1] is the status criteria, [2] the patch applied to matching rows.
+			expect(callArgs?.[2]).toMatchObject({
+				status: 'error',
+				errorCode: 'interrupted',
+				runningInstanceId: null,
+			});
+		});
+	});
 });
