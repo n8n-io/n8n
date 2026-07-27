@@ -1,13 +1,8 @@
-import { useStorage as useStorageComposable } from '@vueuse/core';
-import type { Ref } from 'vue';
-
-export function useStorage(key: string): Ref<string | null> {
-	const data = useStorageComposable(key, null, undefined, { writeDefaults: false });
-
-	// bug in 1.15.1
-	if (data.value === 'undefined') {
-		data.value = null;
-	}
-
-	return data;
-}
+/**
+ * @deprecated Import from `@n8n/frontend-utils/useStorage` instead. This
+ * composable moved into `@n8n/frontend-utils`, which sits below `@n8n/stores`,
+ * so stores can consume it without depending back on the app. This re-export
+ * keeps existing importers — and their `vi.mock` of this path — working, and
+ * will be removed once they are retired. (N8N-100)
+ */
+export { useStorage } from '@n8n/frontend-utils/useStorage';
