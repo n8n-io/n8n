@@ -46,6 +46,7 @@ import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { AgentExecutionService } from './agent-execution.service';
 import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
 import type { AgentRuntimeInstrumentation } from './agent-runtime-instrumentation';
@@ -75,6 +76,7 @@ import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-t
 import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { createGetEnvironmentTool } from './tools/environment-tool';
+import { createOwnSessionsTools } from './tools/own-sessions.tool';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 /**
@@ -543,6 +545,16 @@ export class AgentRuntimeReconstructionService {
 		} = params;
 
 		agent.tool(createGetEnvironmentTool());
+
+		if (runtimeProfile === 'top-level' && this.agentsConfig.modules.includes('own-sessions')) {
+			agent.tool(
+				createOwnSessionsTools({
+					agentId,
+					projectId,
+					executionService: Container.get(AgentExecutionService),
+				}),
+			);
+		}
 
 		if (
 			runtimeProfile !== 'inline' &&

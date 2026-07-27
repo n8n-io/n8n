@@ -1,6 +1,5 @@
 import { Tool } from '@n8n/agents/tool';
 
-import type { AgentKnowledgeSandboxService } from '../../agent-knowledge-sandbox.service';
 import {
 	globKnowledgeFilesInputSchema,
 	MAX_READ_RANGES,
@@ -10,41 +9,14 @@ import {
 	type ReadKnowledgeResult,
 	type SearchKnowledgeResult,
 } from '../../agent-knowledge-retrieval';
-
-interface KnowledgeToolErrorOutput {
-	error: string;
-	errorType: string;
-}
+import type { AgentKnowledgeSandboxService } from '../../agent-knowledge-sandbox.service';
+import { runToolOperation, type ToolErrorOutput } from '../tool-error';
 
 const MODEL_OUTPUT_GLOB_FILE_LIMIT = 20;
 const MODEL_OUTPUT_SEARCH_MATCH_LIMIT = 8;
 const MODEL_OUTPUT_SEARCH_TEXT_CHARS = 240;
 const MODEL_OUTPUT_READ_TEXT_BUDGET = 6_000;
 const MODEL_OUTPUT_READ_RANGE_MIN_CHARS = 800;
-
-function formatKnowledgeToolError(error: unknown): KnowledgeToolErrorOutput {
-	if (error instanceof Error) {
-		return {
-			error: error.message,
-			errorType: error.name,
-		};
-	}
-
-	return {
-		error: String(error),
-		errorType: typeof error,
-	};
-}
-
-async function runKnowledgeTool<T>(
-	operation: () => Promise<T>,
-): Promise<T | KnowledgeToolErrorOutput> {
-	try {
-		return await operation();
-	} catch (error) {
-		return formatKnowledgeToolError(error);
-	}
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -58,7 +30,7 @@ function truncateForModel(text: string, maxChars: number): { text: string; trunc
 	return { text: text.slice(0, maxChars), truncated: true };
 }
 
-function isKnowledgeToolErrorOutput(output: unknown): output is KnowledgeToolErrorOutput {
+function isToolErrorOutput(output: unknown): output is ToolErrorOutput {
 	return (
 		isRecord(output) && typeof output.error === 'string' && typeof output.errorType === 'string'
 	);
@@ -94,7 +66,7 @@ function isReadKnowledgeResult(output: unknown): output is ReadKnowledgeResult {
 }
 
 function toGlobKnowledgeModelOutput(output: unknown): unknown {
-	if (isKnowledgeToolErrorOutput(output) || !isGlobKnowledgeFilesResult(output)) return output;
+	if (isToolErrorOutput(output) || !isGlobKnowledgeFilesResult(output)) return output;
 
 	const files = output.files.map((file) => ({
 		file: file.file,
@@ -113,7 +85,7 @@ function toGlobKnowledgeModelOutput(output: unknown): unknown {
 }
 
 function toSearchKnowledgeModelOutput(output: unknown): unknown {
-	if (isKnowledgeToolErrorOutput(output) || !isSearchKnowledgeResult(output)) return output;
+	if (isToolErrorOutput(output) || !isSearchKnowledgeResult(output)) return output;
 
 	if (output.outputMode === 'files_with_matches') {
 		const files = output.files.slice(0, MODEL_OUTPUT_GLOB_FILE_LIMIT).map((file) => ({
@@ -191,7 +163,7 @@ function toSearchKnowledgeModelOutput(output: unknown): unknown {
 }
 
 function toReadKnowledgeModelOutput(output: unknown): unknown {
-	if (isKnowledgeToolErrorOutput(output) || !isReadKnowledgeResult(output)) return output;
+	if (isToolErrorOutput(output) || !isReadKnowledgeResult(output)) return output;
 
 	const perRangeBudget = Math.max(
 		MODEL_OUTPUT_READ_RANGE_MIN_CHARS,
@@ -252,7 +224,7 @@ export function createKnowledgeRetrievalTools({
 		.input(globKnowledgeFilesInputSchema)
 		.handler(
 			async (input) =>
-				await runKnowledgeTool(
+				await runToolOperation(
 					async () => await sandboxService.globKnowledgeFiles(projectId, agentId, input),
 				),
 		)
@@ -265,7 +237,7 @@ export function createKnowledgeRetrievalTools({
 		.input(searchKnowledgeInputSchema)
 		.handler(
 			async (input) =>
-				await runKnowledgeTool(
+				await runToolOperation(
 					async () => await sandboxService.searchKnowledge(projectId, agentId, input),
 				),
 		)
@@ -278,7 +250,7 @@ export function createKnowledgeRetrievalTools({
 		.input(readKnowledgeInputSchema)
 		.handler(
 			async (input) =>
-				await runKnowledgeTool(
+				await runToolOperation(
 					async () => await sandboxService.readKnowledge(projectId, agentId, input),
 				),
 		)

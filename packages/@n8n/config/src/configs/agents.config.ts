@@ -8,7 +8,7 @@ import { Config, Env } from '../decorators';
  * `N8N_AGENTS_MODULES`. The backend fails fast on unknown tokens so typos
  * surface at startup instead of silently disabling a feature.
  */
-export const AGENTS_MODULE_NAMES = [] as const;
+export const AGENTS_MODULE_NAMES = ['own-sessions'] as const;
 
 export type AgentsModuleName = (typeof AGENTS_MODULE_NAMES)[number];
 
@@ -19,13 +19,8 @@ class AgentsModuleArray extends CommaSeparatedStringArray<AgentsModuleName> {
 		for (const name of this) {
 			const moduleName: string = name;
 			if (!AGENTS_MODULE_NAMES.includes(name)) {
-				const validTokens = AGENTS_MODULE_NAMES.join(', ');
 				throw new Error(
-					`Unknown agents module: "${moduleName}". ${
-						validTokens
-							? `Valid tokens: ${validTokens}.`
-							: 'No agents modules are currently supported.'
-					}`,
+					`Unknown agents module: "${moduleName}". Valid tokens: ${AGENTS_MODULE_NAMES.join(', ')}.`,
 				);
 			}
 		}
