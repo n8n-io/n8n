@@ -22,6 +22,27 @@ vi.mock('@/app/composables/useToast', () => ({
 	}),
 }));
 
+const installNodeMock = vi.hoisted(() => vi.fn());
+vi.mock('@/features/settings/communityNodes/composables/useInstallNode', () => ({
+	useInstallNode: () => ({ installNode: installNodeMock }),
+}));
+
+const isAdminOrOwnerMock = vi.hoisted(() => ({ value: true }));
+vi.mock('@/features/settings/users/users.store', () => ({
+	useUsersStore: () => ({
+		get isAdminOrOwner() {
+			return isAdminOrOwnerMock.value;
+		},
+	}),
+}));
+
+vi.mock('virtual:icons/fa-solid/shield-alt', () => ({
+	default: {
+		name: 'ShieldIcon',
+		template: '<span data-test-id="agent-tool-verified-badge" />',
+	},
+}));
+
 const getWorkflowMock = vi.fn();
 vi.mock('@/app/api/workflows', () => ({
 	getWorkflow: (...args: unknown[]) => getWorkflowMock(...args),
@@ -46,8 +67,8 @@ vi.mock('@n8n/design-system', () => ({
 		install: vi.fn(),
 	},
 	N8nButton: {
-		props: ['variant', 'size'],
-		template: '<button><slot /></button>',
+		props: ['variant', 'size', 'loading', 'disabled'],
+		template: '<button :disabled="disabled"><slot /></button>',
 	},
 	N8nCollapsiblePanel: {
 		props: ['modelValue', 'disableAnimation'],
@@ -86,8 +107,8 @@ vi.mock('@n8n/design-system', () => ({
 		template: '<span><slot /></span>',
 	},
 	N8nTooltip: {
-		props: ['content'],
-		template: '<div><slot /></div>',
+		props: ['content', 'placement'],
+		template: '<div :data-tooltip-content="content"><slot /></div>',
 	},
 }));
 
@@ -306,6 +327,57 @@ const NODE_WITH_INPUTS: INodeTypeDescription = {
 	inputs: ['main'],
 };
 
+// Verified community node shipped as an uninstalled `-preview` entry, with the
+// backend-synthesized `…Tool` variant (outputs = ai_tool, inputs = []).
+const SCRAPERAPI_PREVIEW_TOOL: INodeTypeDescription = {
+	...SLACK,
+	displayName: 'ScraperAPI Tool',
+	name: 'n8n-nodes-scraperapi.scraperApi-previewTool',
+	description: 'Scrape the web with ScraperAPI',
+	defaults: { name: 'ScraperAPI' },
+	credentials: [{ name: 'scraperApiApi', required: true }],
+	codex: { categories: ['AI'], subcategories: { AI: ['Tools'], Tools: ['Other Tools'] } },
+};
+
+const SCRAPERAPI_INSTALLED_TOOL: INodeTypeDescription = {
+	...SCRAPERAPI_PREVIEW_TOOL,
+	name: 'n8n-nodes-scraperapi.scraperApiTool',
+};
+
+const UNOFFICIAL_PREVIEW_TOOL: INodeTypeDescription = {
+	...SLACK,
+	displayName: 'WeirdThing Tool',
+	name: '@acme/n8n-nodes-acme.weirdThing-previewTool',
+	description: 'Do weird things',
+	defaults: { name: 'WeirdThing' },
+	credentials: [],
+	codex: { categories: ['AI'], subcategories: { AI: ['Tools'], Tools: ['Other Tools'] } },
+};
+
+type CommunityEntry = {
+	name: string;
+	packageName: string;
+	isOfficialNode: boolean;
+	isInstalled: boolean;
+	nodeDescription: INodeTypeDescription;
+};
+
+const SCRAPERAPI_COMMUNITY: CommunityEntry = {
+	name: 'n8n-nodes-scraperapi.scraperApi-preview',
+	packageName: 'n8n-nodes-scraperapi',
+	isOfficialNode: true,
+	isInstalled: false,
+	nodeDescription: SCRAPERAPI_PREVIEW_TOOL,
+};
+
+const UNOFFICIAL_COMMUNITY: CommunityEntry = {
+	name: '@acme/n8n-nodes-acme.weirdThing-preview',
+	packageName: '@acme/n8n-nodes-acme',
+	isOfficialNode: false,
+	isInstalled: false,
+	nodeDescription: UNOFFICIAL_PREVIEW_TOOL,
+};
+
 const ElDialogStub = {
 	template: `
 		<div role="dialog">
@@ -369,6 +441,54 @@ function makeWorkflowNode(type: string, name: string): IWorkflowDb['nodes'][numb
 	};
 }
 
+function defaultProps(tools: AgentJsonToolRef[] = [], onConfirm = vi.fn()) {
+	return {
+		props: {
+			modalName: MODAL_NAME,
+			data: { tools, onConfirm },
+		},
+	};
+}
+
+function toolRef(
+	nodeType: string,
+	overrides: Partial<Extract<AgentJsonToolRef, { type: 'node' }>['node']> = {},
+): Extract<AgentJsonToolRef, { type: 'node' }> {
+	return {
+		type: 'node',
+		name: nodeType,
+		node: {
+			nodeType,
+			nodeTypeVersion: 1,
+			credentials: { slackApi: { id: 'c', name: 'cred' } },
+			nodeParameters: {},
+			...overrides,
+		},
+	};
+}
+
+async function typeInSearch(container: Element, value: string) {
+	const input = container.querySelector('input') as HTMLInputElement | null;
+	expect(input).not.toBeNull();
+	await fireEvent.update(input!, value);
+}
+
+function seedCommunityPreviews(entries: CommunityEntry[]) {
+	const store = mockedStore(useNodeTypesStore);
+	const byName = new Map<string, CommunityEntry>();
+	for (const entry of entries) {
+		byName.set(entry.name, entry);
+		byName.set(entry.nodeDescription.name, entry);
+	}
+	store.communityNodeType = vi
+		.fn()
+		.mockImplementation((name: string) => byName.get(name) ?? undefined);
+	store.communityNodesAndActions = {
+		mergedNodes: entries.filter((e) => !e.isOfficialNode).map((e) => e.nodeDescription),
+		actions: {},
+	};
+}
+
 describe('AgentToolsModal', () => {
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
@@ -406,6 +526,14 @@ describe('AgentToolsModal', () => {
 			[NodeConnectionTypes.AiTool]: [SLACK.name, GMAIL.name, GITHUB.name, NODE_WITH_INPUTS.name],
 		};
 
+		// Defaults: no community catalog. Community tests opt in via seedCommunityPreviews.
+		nodeTypesStore.communityNodeType = vi.fn().mockReturnValue(undefined);
+		nodeTypesStore.communityNodesAndActions = { mergedNodes: [], actions: {} };
+		nodeTypesStore.fetchCommunityNodePreviews = vi.fn().mockResolvedValue(undefined);
+		isAdminOrOwnerMock.value = true;
+		installNodeMock.mockReset();
+		installNodeMock.mockResolvedValue({ success: true });
+
 		workflowsListStore.fetchAllWorkflows = vi.fn().mockResolvedValue([]);
 		// Default: no workflows returned from the fetch. Tests opt in by calling
 		// `seedWorkflows(...)`, which sets `searchWorkflows`'s return value
@@ -427,38 +555,6 @@ describe('AgentToolsModal', () => {
 
 	function seedWorkflows(workflows: IWorkflowDb[]) {
 		workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue(workflows);
-	}
-
-	function defaultProps(tools: AgentJsonToolRef[] = [], onConfirm = vi.fn()) {
-		return {
-			props: {
-				modalName: MODAL_NAME,
-				data: { tools, onConfirm },
-			},
-		};
-	}
-
-	function toolRef(
-		nodeType: string,
-		overrides: Partial<Extract<AgentJsonToolRef, { type: 'node' }>['node']> = {},
-	): Extract<AgentJsonToolRef, { type: 'node' }> {
-		return {
-			type: 'node',
-			name: nodeType,
-			node: {
-				nodeType,
-				nodeTypeVersion: 1,
-				credentials: { slackApi: { id: 'c', name: 'cred' } },
-				nodeParameters: {},
-				...overrides,
-			},
-		};
-	}
-
-	async function typeInSearch(container: Element, value: string) {
-		const input = container.querySelector('input') as HTMLInputElement | null;
-		expect(input).not.toBeNull();
-		await fireEvent.update(input!, value);
 	}
 
 	it('renders the modal header', () => {
@@ -1065,5 +1161,139 @@ describe('AgentToolsModal', () => {
 			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 			expect(showMessageMock).toHaveBeenCalledWith({ title: 'Tool added', type: 'success' });
 		});
+	});
+});
+
+describe('AgentToolsModal — community preview tools', () => {
+	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
+	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		uuidMockState.counter = 0;
+		createTestingPinia({ stubActions: false });
+
+		nodeTypesStore = mockedStore(useNodeTypesStore);
+		uiStore = mockedStore(useUIStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([]);
+
+		// Official preview is in the AiTool index; getNodeType returns null for it
+		// until install, so the modal must fall back to communityNodeType.
+		nodeTypesStore.getNodeType = vi.fn().mockImplementation((name: string) => {
+			if (name === SCRAPERAPI_INSTALLED_TOOL.name) return SCRAPERAPI_INSTALLED_TOOL;
+			return null;
+		});
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: [SCRAPERAPI_PREVIEW_TOOL.name],
+		};
+		nodeTypesStore.communityNodeType = vi.fn().mockReturnValue(undefined);
+		nodeTypesStore.communityNodesAndActions = { mergedNodes: [], actions: {} };
+		nodeTypesStore.fetchCommunityNodePreviews = vi.fn().mockResolvedValue(undefined);
+		isAdminOrOwnerMock.value = true;
+		installNodeMock.mockReset();
+		installNodeMock.mockResolvedValue({ success: true });
+
+		uiStore.openModal(MODAL_NAME);
+		uiStore.closeModal = vi.fn();
+		uiStore.openModalWithData = vi.fn();
+	});
+
+	it('surfaces an uninstalled official verified preview in the Available list with a Verified badge', () => {
+		seedCommunityPreviews([SCRAPERAPI_COMMUNITY]);
+
+		const { getByTestId, queryByTestId } = renderComponent(defaultProps());
+		const external = getByTestId('agent-tools-available-external-list');
+		expect(external.textContent).toContain('ScraperAPI Tool');
+		expect(queryByTestId('agent-tool-verified-badge')).not.toBeNull();
+		expect(queryByTestId('agent-tool-install-button')).not.toBeNull();
+	});
+
+	it('surfaces an unofficial verified preview in search results (not in browse)', async () => {
+		seedCommunityPreviews([UNOFFICIAL_COMMUNITY]);
+		const { getByTestId, queryByText, container } = renderComponent(defaultProps());
+		expect(queryByText('WeirdThing Tool')).toBeNull();
+
+		await typeInSearch(container, 'weird');
+
+		await waitFor(() => {
+			const external = getByTestId('agent-tools-available-external-list');
+			expect(external.textContent).toContain('WeirdThing Tool');
+		});
+	});
+
+	it('installs the community package then opens the config modal with the installed tool variant', async () => {
+		seedCommunityPreviews([SCRAPERAPI_COMMUNITY]);
+		const { getByTestId } = renderComponent(defaultProps());
+
+		const external = getByTestId('agent-tools-available-external-list');
+		const installButton = external.querySelector(
+			'[data-test-id="agent-tool-install-button"]',
+		) as HTMLButtonElement;
+		expect(installButton).not.toBeNull();
+		await fireEvent.click(installButton!);
+
+		await waitFor(() => {
+			expect(installNodeMock).toHaveBeenCalledTimes(1);
+		});
+		expect(installNodeMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'verified',
+				packageName: 'n8n-nodes-scraperapi',
+				nodeType: 'n8n-nodes-scraperapi.scraperApi-preview',
+			}),
+		);
+
+		await waitFor(() => {
+			expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
+		});
+		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
+		expect(payload.name).toBe('agentToolConfigModal');
+		expect(payload.data.toolRef).toMatchObject({
+			type: 'node',
+			node: { nodeType: SCRAPERAPI_INSTALLED_TOOL.name },
+		});
+	});
+
+	it('does not add the tool when the install fails', async () => {
+		seedCommunityPreviews([SCRAPERAPI_COMMUNITY]);
+		installNodeMock.mockResolvedValueOnce({ success: false });
+
+		const { getByTestId } = renderComponent(defaultProps());
+		const external = getByTestId('agent-tools-available-external-list');
+		const installButton = external.querySelector(
+			'[data-test-id="agent-tool-install-button"]',
+		) as HTMLButtonElement;
+		await fireEvent.click(installButton!);
+
+		await waitFor(() => {
+			expect(installNodeMock).toHaveBeenCalledTimes(1);
+		});
+		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+	});
+
+	it('shows a disabled Install button with contact-admin tooltip for non-admins', async () => {
+		isAdminOrOwnerMock.value = false;
+		seedCommunityPreviews([SCRAPERAPI_COMMUNITY]);
+
+		const { getByTestId } = renderComponent(defaultProps());
+		const external = getByTestId('agent-tools-available-external-list');
+		expect(external.textContent).toContain('ScraperAPI Tool');
+
+		const installButton = external.querySelector(
+			'[data-test-id="agent-tool-install-button"]',
+		) as HTMLButtonElement;
+		expect(installButton).not.toBeNull();
+		expect(installButton.disabled).toBe(true);
+
+		const tooltipHost = installButton.closest('[data-tooltip-content]');
+		// i18n test harness returns the key; canvas uses this same contact-admin string.
+		expect(tooltipHost?.getAttribute('data-tooltip-content')).toBe(
+			'communityNodeInfo.contact.admin',
+		);
+
+		await fireEvent.click(installButton);
+		expect(installNodeMock).not.toHaveBeenCalled();
 	});
 });
