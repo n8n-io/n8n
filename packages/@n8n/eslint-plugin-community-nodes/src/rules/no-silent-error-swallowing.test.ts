@@ -130,6 +130,29 @@ export class RegularClass {
 }`,
 		},
 		{
+			name: 'method reassigned after its declaration is not fixed',
+			code: `
+import type { INodeType, INodeTypeDescription, IHookFunctions } from 'n8n-workflow';
+
+async function removeWebhook(this: IHookFunctions): Promise<boolean> {
+	try {
+		return await this.helpers.httpRequest({ url: 'https://example.com' });
+	} catch (error) {}
+}
+
+removeWebhook = safeRemoveWebhook;
+
+export class TestTrigger implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Test Trigger', name: 'testTrigger', group: ['trigger'], version: 1,
+		description: 'A test trigger', defaults: { name: 'Test Trigger' }, inputs: [], outputs: ['main'],
+		webhooks: [{ name: 'default', httpMethod: 'POST', responseMode: 'onReceived', path: 'webhook' }],
+		properties: [],
+	};
+	webhookMethods = { default: { delete: removeWebhook } };
+}`,
+		},
+		{
 			name: 'method imported from another file is out of reach',
 			code: `
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';

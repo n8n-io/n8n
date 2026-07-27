@@ -134,6 +134,44 @@ export class TestTrigger implements INodeType {
 }`,
 		},
 		{
+			name: 'lifecycle group completed by member assignment is not fixed',
+			code: `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+const WEBHOOK_METHODS = { default: {} };
+WEBHOOK_METHODS.default.checkExists = async () => true;
+WEBHOOK_METHODS.default.create = async () => true;
+WEBHOOK_METHODS.default.delete = async () => true;
+
+export class TestTrigger implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Test Trigger', name: 'testTrigger', group: ['trigger'], version: 1,
+		description: 'A test trigger', defaults: { name: 'Test Trigger' }, inputs: [], outputs: ['main'],
+		webhooks: [{ name: 'default', httpMethod: 'POST', responseMode: 'onReceived', path: 'webhook' }],
+		properties: [],
+	};
+	webhookMethods = WEBHOOK_METHODS;
+}`,
+		},
+		{
+			name: 'lifecycle group handed to a call is not fixed',
+			code: `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+const WEBHOOK_METHODS = { default: {} };
+Object.assign(WEBHOOK_METHODS.default, sharedLifecycle);
+
+export class TestTrigger implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Test Trigger', name: 'testTrigger', group: ['trigger'], version: 1,
+		description: 'A test trigger', defaults: { name: 'Test Trigger' }, inputs: [], outputs: ['main'],
+		webhooks: [{ name: 'default', httpMethod: 'POST', responseMode: 'onReceived', path: 'webhook' }],
+		properties: [],
+	};
+	webhookMethods = WEBHOOK_METHODS;
+}`,
+		},
+		{
 			name: 'webhookMethods held in a let is not fixed',
 			code: `
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
