@@ -139,12 +139,12 @@ erDiagram
 }
 "public.agent_files" {
   varchar_36_ agentId FK
-  text binaryDataId
   timestamp_3__with_time_zone createdAt
   varchar_255_ fileName
   integer fileSizeBytes
   varchar_16_ id
   varchar_255_ mimeType
+  varchar_2_ storedAt
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_task_definition" {

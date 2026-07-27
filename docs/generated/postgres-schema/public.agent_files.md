@@ -5,27 +5,28 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | false |  | [public.agents](public.agents.md) | Agent that owns this uploaded file |
-| binaryDataId | text |  | false |  |  | Opaque BinaryDataService reference (mode-prefixed, e.g. "filesystem-v2:\<uuid\>"); not an FK to binary_data, which only has rows in DB storage mode |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | fileName | varchar(255) |  | false |  |  |  |
 | fileSizeBytes | integer |  | false |  |  | Uploaded file size in bytes |
 | id | varchar(16) |  | false |  |  | Application-generated n8n nano ID |
 | mimeType | varchar(255) |  | false |  |  |  |
+| storedAt | varchar(2) | 'fs'::character varying | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_agent_files_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
 | FK_aca4514cb500494b64356c2e164 | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
 | PK_692920e59217af7d124cd95106f | PRIMARY KEY | PRIMARY KEY (id) |
 | agent_files_agentId_not_null | n | NOT NULL "agentId" |
-| agent_files_binaryDataId_not_null | n | NOT NULL "binaryDataId" |
 | agent_files_createdAt_not_null | n | NOT NULL "createdAt" |
 | agent_files_fileName_not_null | n | NOT NULL "fileName" |
 | agent_files_fileSizeBytes_not_null | n | NOT NULL "fileSizeBytes" |
 | agent_files_id_not_null | n | NOT NULL id |
 | agent_files_mimeType_not_null | n | NOT NULL "mimeType" |
+| agent_files_storedAt_not_null | n | NOT NULL "storedAt" |
 | agent_files_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
@@ -33,7 +34,6 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_45dafc48fe2ce95eac30fc8ffd | CREATE INDEX "IDX_45dafc48fe2ce95eac30fc8ffd" ON public.agent_files USING btree ("agentId", "createdAt") |
-| IDX_agent_files_agentId_binaryDataId | CREATE UNIQUE INDEX "IDX_agent_files_agentId_binaryDataId" ON public.agent_files USING btree ("agentId", "binaryDataId") |
 | IDX_agent_files_agentId_fileName | CREATE UNIQUE INDEX "IDX_agent_files_agentId_fileName" ON public.agent_files USING btree ("agentId", "fileName") |
 | PK_692920e59217af7d124cd95106f | CREATE UNIQUE INDEX "PK_692920e59217af7d124cd95106f" ON public.agent_files USING btree (id) |
 
@@ -46,12 +46,12 @@ erDiagram
 
 "public.agent_files" {
   varchar_36_ agentId FK
-  text binaryDataId
   timestamp_3__with_time_zone createdAt
   varchar_255_ fileName
   integer fileSizeBytes
   varchar_16_ id
   varchar_255_ mimeType
+  varchar_2_ storedAt
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents" {

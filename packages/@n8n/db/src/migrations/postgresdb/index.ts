@@ -231,6 +231,7 @@ import { AddInstanceCredentials1784815940111 } from '../common/1784815940111-Add
 import { CreateAgentEvalTables1784815940112 } from '../common/1784815940112-CreateAgentEvalTables';
 import { AddAvailableInMcpToAgents1784897791636 } from '../common/1784897791636-AddAvailableInMcpToAgents';
 import type { Migration } from '../migration-types';
+import { ReplaceAgentFileBinaryDataIdWithStoredAt1784900752603 } from '../common/1784900752603-ReplaceAgentFileBinaryDataIdWithStoredAt';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -465,4 +466,5 @@ export const postgresMigrations: Migration[] = [
 	AddInstanceCredentials1784815940111,
 	CreateAgentEvalTables1784815940112,
 	AddAvailableInMcpToAgents1784897791636,
+	ReplaceAgentFileBinaryDataIdWithStoredAt1784900752603,
 ];
