@@ -9,7 +9,7 @@ import type { useUsersStore } from './users.store';
  * which accepts a promise that resolves to the value; starting the copy synchronously
  * inside the click handler keeps Safari's transient user-activation alive. Awaiting the
  * network request first drops it, and Safari (26.5 / 27.0) then silently copies an empty
- * string. See IAM-532.
+ * string.
  */
 export async function copyInviteLink(
 	clipboard: ReturnType<typeof useClipboard>,
