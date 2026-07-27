@@ -17,6 +17,7 @@ import {
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
 	type CanvasConnectionPort,
+	type CanvasNodeData,
 } from '../../../../canvas.types';
 import CanvasNodeDefault from './CanvasNodeDefault.vue';
 
@@ -338,6 +339,95 @@ describe('CanvasNodeDefault', () => {
 				},
 			});
 			expect(getByText('Test Node').closest('.node')).toHaveClass('running');
+		});
+	});
+
+	describe('sub-workflow progress arc', () => {
+		function renderWithProgress(
+			subworkflowProgress?: NonNullable<CanvasNodeData['execution']['subworkflowProgress']>,
+		) {
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: { execution: { running: true, subworkflowProgress } },
+						}),
+					},
+				},
+			});
+			return getByText('Test Node').closest('.node');
+		}
+
+		it('should set the arc fraction from the reported progress', () => {
+			const node = renderWithProgress({ currentNodeIndex: 1, totalNodes: 4 });
+
+			expect(node).toHaveClass('progress');
+			expect(node?.getAttribute('style')).toContain('--node--progress--fraction: 25.00%');
+		});
+
+		it('should stop short of a full turn so only completion closes the loop', () => {
+			const node = renderWithProgress({ currentNodeIndex: 3, totalNodes: 3 });
+
+			expect(node?.getAttribute('style')).toContain('--node--progress--fraction: 90.00%');
+		});
+
+		it('should not set an arc without progress', () => {
+			const node = renderWithProgress();
+
+			expect(node).not.toHaveClass('progress');
+			expect(node?.getAttribute('style')).not.toContain('--node--progress--fraction');
+		});
+
+		it('should not set an arc when the total is unknown', () => {
+			const node = renderWithProgress({ currentNodeIndex: 0, totalNodes: 0 });
+
+			expect(node?.getAttribute('style')).not.toContain('--node--progress--fraction');
+		});
+
+		it('should show the running child node in place of the subtitle', () => {
+			const { getByText, queryByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								execution: {
+									running: true,
+									subworkflowProgress: {
+										currentNodeName: 'Fetch Orders',
+										currentNodeIndex: 2,
+										totalNodes: 4,
+									},
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			expect(getByText('Running: Fetch Orders')).toBeVisible();
+			expect(queryByText('Test Node Subtitle')).not.toBeInTheDocument();
+		});
+
+		it('should fall back to the subtitle once no child node is reported', () => {
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								execution: {
+									running: true,
+									subworkflowProgress: { currentNodeIndex: 0, totalNodes: 4 },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			expect(getByText('Test Node Subtitle')).toBeVisible();
 		});
 	});
 

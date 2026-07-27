@@ -84,6 +84,10 @@
 	--node--color--background--executing-1: var(--color--primary--tint-3);
 	--node--border-color--pinned: var(--color--secondary);
 	--node--border-color--running: var(--color--primary);
+	// Determinate progress within a running node. Stays in the running colour
+	// family — it qualifies that state rather than being a new one — separating
+	// from it by lightness instead, per theme.
+	--node--border-color--progress: var(--color--orange-700);
 	--node--type-main--color: var(--color--neutral-500);
 
 	// Sticky
@@ -766,6 +770,9 @@
 	--node--color--background--executing: var(--color--neutral-700);
 	--node--color--background--executing-1: var(--color--neutral-700);
 	--node--border-color--pinned: var(--color--purple-500);
+	// Lighter than the running border here, where the darker light-mode value
+	// would disappear into the node background.
+	--node--border-color--progress: var(--color--orange-300);
 	--node--type-main--color: var(--color--neutral-400);
 
 	// Sticky

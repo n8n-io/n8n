@@ -54,21 +54,50 @@
 	--canvas-node--border-color: transparent;
 }
 
+$status-running-color: rgba(255, 109, 90, 1);
+
+$status-shimmer-gradient: conic-gradient(
+	from var(--node--gradient-angle),
+	$status-running-color,
+	$status-running-color 20%,
+	rgba(255, 109, 90, 0.2) 35%,
+	rgba(255, 109, 90, 0.2) 65%,
+	$status-running-color 90%,
+	$status-running-color
+);
+
 @mixin status-animated-after {
 	content: '';
 	position: absolute;
 	inset: -3px;
 	border-radius: 10px;
 	z-index: -1;
+	background: $status-shimmer-gradient;
+}
+
+// Determinate progress arc, from top-centre clockwise. Deliberately its own
+// layer rather than sharing the running halo's ring: compositing both there made
+// the shimmer's bright head vanish behind the solid arc, which read as a flicker.
+@mixin status-progress-arc {
+	content: '';
+	position: absolute;
+	inset: 0;
+	// Follows the node's shape, so per-variant radius overrides aren't repeated here.
+	border-radius: inherit;
+	padding: 2px; // arc thickness
 	background: conic-gradient(
-		from var(--node--gradient-angle),
-		rgba(255, 109, 90, 1),
-		rgba(255, 109, 90, 1) 20%,
-		rgba(255, 109, 90, 0.2) 35%,
-		rgba(255, 109, 90, 0.2) 65%,
-		rgba(255, 109, 90, 1) 90%,
-		rgba(255, 109, 90, 1)
+		from -90deg,
+		var(--node--border-color--progress) 0turn,
+		var(--node--border-color--progress) var(--node--progress--fraction),
+		transparent var(--node--progress--fraction)
 	);
+	// Ring-only fill: cover the whole box, then punch out the content box.
+	mask:
+		linear-gradient(#000 0 0) content-box,
+		linear-gradient(#000 0 0);
+	mask-composite: exclude;
+	-webkit-mask-composite: xor;
+	pointer-events: none;
 }
 
 @mixin status-running-animation {
@@ -87,6 +116,14 @@
 		syntax: '<angle>';
 		initial-value: 0deg;
 		inherits: false;
+	}
+
+	// Registered so the arc can transition instead of jumping; inherited so it can
+	// be set on the node while its pseudo-element paints the arc.
+	@property --node--progress--fraction {
+		syntax: '<percentage>';
+		initial-value: 0%;
+		inherits: true;
 	}
 
 	@keyframes border-rotate {

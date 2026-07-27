@@ -1879,6 +1879,44 @@ describe('Execution Lifecycle Hooks', () => {
 				);
 			}
 
+			/**
+			 * A child workflow entered through an Execute Sub-workflow Trigger named
+			 * "Trigger". `connections` is shorthand for main connections by source
+			 * node name; `extraConnections` is merged in verbatim for non-main ones.
+			 */
+			function buildChildWorkflow(opts: {
+				nodes: string[];
+				connections: Record<string, string[]>;
+				extraNodes?: INode[];
+				extraConnections?: IWorkflowBase['connections'];
+			}): IWorkflowBase {
+				const noOp = workflowData.nodes[0];
+				return {
+					...workflowData,
+					nodes: [
+						{
+							id: 'child-trigger',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.executeWorkflowTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						...opts.nodes.map((name) => ({ ...noOp, id: `node-${name}`, name })),
+						...(opts.extraNodes ?? []),
+					],
+					connections: {
+						...Object.fromEntries(
+							Object.entries(opts.connections).map(([source, targets]) => [
+								source,
+								{ main: [targets.map((node) => ({ node, type: 'main' as const, index: 0 }))] },
+							]),
+						),
+						...opts.extraConnections,
+					},
+				};
+			}
+
 			function stubActiveExecution(id: string, opts: { pushRef?: string; parentId?: string }) {
 				activeExecutions.has.mockImplementation((requested) => requested === id);
 				activeExecutions.getExecutionOrFail.mockImplementation((requested) => {
@@ -2082,7 +2120,12 @@ describe('Execution Lifecycle Hooks', () => {
 
 			it('counts unique nodes, not executions, so loops never exceed the total', async () => {
 				stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
-				const hooks = buildHooks();
+				const hooks = buildHooks(
+					buildChildWorkflow({
+						nodes: ['Node A', 'Node B'],
+						connections: { Trigger: ['Node A'], 'Node A': ['Node B'], 'Node B': ['Node A'] },
+					}),
+				);
 
 				// A loop revisits node A: A → B → A
 				await hooks.runHook('nodeExecuteBefore', ['Node A', taskStartedData]);
@@ -2096,7 +2139,127 @@ describe('Execution Lifecycle Hooks', () => {
 				const lastCall = push.send.mock.calls.at(-1)?.[0];
 				expect(lastCall).toMatchObject({
 					type: 'subworkflowNodeProgress',
-					data: { currentNodeName: 'Node A', currentNodeIndex: 2 },
+					data: { currentNodeName: 'Node A', currentNodeIndex: 2, totalNodes: 3 },
+				});
+			});
+
+			it('keeps counting past totalNodes when an unpredicted node reports', async () => {
+				stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+				const hooks = buildHooks(
+					buildChildWorkflow({ nodes: ['Node A'], connections: { Trigger: ['Node A'] } }),
+				);
+
+				await hooks.runHook('nodeExecuteBefore', ['Trigger', taskStartedData]);
+				await hooks.runHook('nodeExecuteBefore', ['Node A', taskStartedData]);
+				await hooks.runHook('nodeExecuteBefore', ['Surprise Node', taskStartedData]);
+				vi.advanceTimersByTime(150);
+
+				// The count reports what actually ran; `totalNodes` stays the estimate
+				// it always was. Clamping here would freeze the one truthful number.
+				const lastCall = push.send.mock.calls.at(-1)?.[0];
+				expect(lastCall).toMatchObject({
+					type: 'subworkflowNodeProgress',
+					data: { currentNodeName: 'Surprise Node', currentNodeIndex: 3, totalNodes: 2 },
+				});
+			});
+
+			describe('totalNodes reachability', () => {
+				it('excludes nodes only reachable from a different trigger', async () => {
+					stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+					// A leftover Manual Trigger branch never runs in a sub-execution, so
+					// its nodes must not inflate the denominator.
+					const hooks = buildHooks(
+						buildChildWorkflow({
+							nodes: ['Node A', 'Manual Only'],
+							extraNodes: [
+								{
+									id: 'manual-trigger',
+									name: 'Manual Trigger',
+									type: 'n8n-nodes-base.manualTrigger',
+									typeVersion: 1,
+									position: [0, 200],
+									parameters: {},
+								},
+							],
+							connections: { Trigger: ['Node A'], 'Manual Trigger': ['Manual Only'] },
+						}),
+					);
+
+					await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+					expect(push.send).toHaveBeenCalledWith(
+						expect.objectContaining({
+							type: 'subworkflowExecutionStarted',
+							data: expect.objectContaining({ totalNodes: 2 }),
+						}),
+						rootPushRef,
+					);
+				});
+
+				it('excludes disconnected islands', async () => {
+					stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+					const hooks = buildHooks(
+						buildChildWorkflow({
+							nodes: ['Node A', 'Orphan'],
+							connections: { Trigger: ['Node A'] },
+						}),
+					);
+
+					await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+					expect(push.send).toHaveBeenCalledWith(
+						expect.objectContaining({
+							type: 'subworkflowExecutionStarted',
+							data: expect.objectContaining({ totalNodes: 2 }),
+						}),
+						rootPushRef,
+					);
+				});
+
+				it('includes non-main sub-nodes attached to a reachable node', async () => {
+					stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+					// A chat model connects *into* its agent, so it is not a main
+					// descendant — but it executes and reports progress.
+					const hooks = buildHooks(
+						buildChildWorkflow({
+							nodes: ['Agent', 'Chat Model'],
+							connections: { Trigger: ['Agent'] },
+							extraConnections: {
+								'Chat Model': {
+									ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+								},
+							},
+						}),
+					);
+
+					await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+					expect(push.send).toHaveBeenCalledWith(
+						expect.objectContaining({
+							type: 'subworkflowExecutionStarted',
+							data: expect.objectContaining({ totalNodes: 3 }),
+						}),
+						rootPushRef,
+					);
+				});
+
+				it('falls back to every executable node when the child has no start node', async () => {
+					stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+					const activeNode = workflowData.nodes[0];
+					const hooks = buildHooks({
+						...workflowData,
+						nodes: [activeNode, { ...activeNode, id: 'orphan', name: 'Orphan' }],
+					});
+
+					await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+					expect(push.send).toHaveBeenCalledWith(
+						expect.objectContaining({
+							type: 'subworkflowExecutionStarted',
+							data: expect.objectContaining({ totalNodes: 2 }),
+						}),
+						rootPushRef,
+					);
 				});
 			});
 

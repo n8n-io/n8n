@@ -2031,7 +2031,7 @@
 	"node.customColor": "Custom color",
 	"node.disabled": "Deactivated",
 	"node.subworkflow.progress.running": "Running: {nodeName}",
-	"node.subworkflow.progress.count": "{current} / {total}",
+	"node.subworkflow.progress.step": "Step {current}",
 	"node.testStep": "Execute step",
 	"node.disable": "Deactivate",
 	"node.enable": "Activate",

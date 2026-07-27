@@ -270,11 +270,14 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		const progress = subworkflowProgressStore.getFor(activeExecutionId, node.name);
 		if (!progress) return undefined;
 
+		// `phase` is intentionally omitted — see CanvasNodeData. Without it,
+		// consecutive pushes for the same node produce a structurally equal
+		// value, so `structuralComputed` returns the cached reference and the
+		// canvas is not re-mapped.
 		return {
 			currentNodeName: progress.currentNodeName,
 			currentNodeIndex: progress.currentNodeIndex,
 			totalNodes: progress.totalNodes,
-			phase: progress.phase,
 		};
 	}
 

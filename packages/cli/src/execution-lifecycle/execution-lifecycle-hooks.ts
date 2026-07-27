@@ -24,6 +24,9 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	getChildNodes,
+	getParentNodes,
+	mapConnectionsByDestination,
 	runDataAttemptedDynamicCredentials,
 	runDataUsedDynamicCredentials,
 	STICKY_NODE_TYPE,
@@ -37,7 +40,7 @@ import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { isWorkflowIdValid } from '@/utils';
+import { findSubworkflowStartOrUndefined, isWorkflowIdValid } from '@/utils';
 import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
 import { getLastExecutedNodeData } from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
@@ -502,6 +505,41 @@ function findParentPushRef(parentExecutionId: string): string | undefined {
 }
 
 /**
+ * Upper bound on the distinct nodes a sub-workflow run can reach, used to scale
+ * the editor's progress arc. Counting every node would inflate it — a leftover
+ * Manual Trigger branch or a disconnected island never runs in a sub-execution.
+ *
+ * Only an upper bound: which side of an IF/Switch runs isn't knowable ahead of
+ * time. Computed once, since a total that shrinks mid-run reads as a bug.
+ */
+function countReachableNodes(workflowData: IWorkflowBase): number {
+	const executable = workflowData.nodes.filter(
+		// Sticky notes and disabled nodes never execute.
+		(node) => !node.disabled && node.type !== STICKY_NODE_TYPE,
+	);
+
+	const startNode = findSubworkflowStartOrUndefined(workflowData.nodes);
+	// No entry point: the run will fail anyway, so fall back rather than report 0.
+	if (!startNode) return executable.length;
+
+	const reachable = new Set([
+		startNode.name,
+		...getChildNodes(workflowData.connections, startNode.name),
+	]);
+
+	// Sub-nodes (AI models, memory, tools) connect *into* their parent, so they're
+	// not main descendants — but they execute and report progress.
+	const connectionsByDestination = mapConnectionsByDestination(workflowData.connections);
+	for (const nodeName of [...reachable]) {
+		for (const subNode of getParentNodes(connectionsByDestination, nodeName, 'ALL_NON_MAIN')) {
+			reachable.add(subNode);
+		}
+	}
+
+	return executable.filter((node) => reachable.has(node.name)).length;
+}
+
+/**
  * Push hooks for a sub-workflow execution. Forwards a lightweight progress
  * stream up to the root parent's pushRef so the editor can render a live
  * overlay on the parent's "Execute Sub-workflow" node.
@@ -515,11 +553,7 @@ function hookFunctionsPushSubExecution(
 	parentExecution: RelatedExecution,
 	parentNode: INode,
 ) {
-	// Sticky notes and disabled nodes never execute, so they must not count
-	// towards the "X / Y" indicator's denominator.
-	const totalNodes = workflowData.nodes.filter(
-		(node) => !node.disabled && node.type !== STICKY_NODE_TYPE,
-	).length;
+	const totalNodes = countReachableNodes(workflowData);
 
 	// Push + pushRef are resolved lazily on first emit. This keeps hook
 	// registration free of DI side effects (cli tests globally `jest.mock`
@@ -592,6 +626,9 @@ function hookFunctionsPushSubExecution(
 			parentNodeName: parentNode.name,
 			executionId: childId,
 			currentNodeName: nodeName,
+			// Deliberately unbounded. Nodes reached is knowable, `totalNodes` is only
+			// estimated, so clamping to it would spoil the one exact number here. The
+			// editor shows this as a plain count and clamps the arc separately.
 			currentNodeIndex: reachedNodeNames.size,
 			totalNodes,
 			phase,
