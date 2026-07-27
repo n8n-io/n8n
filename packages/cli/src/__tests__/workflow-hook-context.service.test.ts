@@ -15,18 +15,18 @@ describe('WorkflowHookContextService', () => {
 		nodeTypes.getByNameAndVersion.mockReset();
 	});
 
-	describe('isTriggerNodeType', () => {
+	describe('resolveIsTriggerNodeType', () => {
 		it('returns true when the resolved node type is a trigger', () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeTypeWithGroups(['trigger']));
 
-			expect(service.isTriggerNodeType('n8n-nodes-base.manualTrigger', 1)).toBe(true);
+			expect(service.resolveIsTriggerNodeType('n8n-nodes-base.manualTrigger', 1)).toBe(true);
 			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledWith('n8n-nodes-base.manualTrigger', 1);
 		});
 
 		it('returns false when the resolved node type is not a trigger', () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeTypeWithGroups(['transform']));
 
-			expect(service.isTriggerNodeType('n8n-nodes-base.set')).toBe(false);
+			expect(service.resolveIsTriggerNodeType('n8n-nodes-base.set')).toBe(false);
 		});
 
 		it('propagates the error when the node type is not registered', () => {
@@ -34,7 +34,7 @@ describe('WorkflowHookContextService', () => {
 				throw new Error('Unrecognized node type');
 			});
 
-			expect(() => service.isTriggerNodeType('n8n-nodes-base.unknown')).toThrow(
+			expect(() => service.resolveIsTriggerNodeType('n8n-nodes-base.unknown')).toThrow(
 				'Unrecognized node type',
 			);
 		});

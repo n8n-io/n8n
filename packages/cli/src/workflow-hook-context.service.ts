@@ -31,7 +31,7 @@ export class WorkflowHookContextService {
 	 * @returns `true` if the resolved node type is a trigger, `false` otherwise.
 	 * @throws If the node type is not registered on this instance.
 	 */
-	isTriggerNodeType(type: string, typeVersion?: number): boolean {
+	resolveIsTriggerNodeType(type: string, typeVersion?: number): boolean {
 		const { description } = this.nodeTypes.getByNameAndVersion(type, typeVersion);
 		return isTriggerNode(description);
 	}
