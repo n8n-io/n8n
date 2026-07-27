@@ -63,17 +63,22 @@ const reviewerOptions = computed<IUser[]>(() =>
 	})),
 );
 
+let loadReviewersSequence = 0;
+
 const loadEligibleReviewers = async () => {
+	const sequence = ++loadReviewersSequence;
 	isLoadingReviewers.value = true;
 	try {
 		const { data } = await fetchEligibleReviewers(rootStore.restApiContext, {
 			workflowId: props.workflowId,
 		});
+		if (sequence !== loadReviewersSequence) return;
 		eligibleReviewers.value = data;
 	} catch {
+		if (sequence !== loadReviewersSequence) return;
 		eligibleReviewers.value = [];
 	} finally {
-		isLoadingReviewers.value = false;
+		if (sequence === loadReviewersSequence) isLoadingReviewers.value = false;
 	}
 };
 
