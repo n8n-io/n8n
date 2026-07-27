@@ -18,6 +18,7 @@ import { NoDeadFilesRule } from './no-dead-files.js';
 import { NoDeprecatedWorkflowFunctionsRule } from './no-deprecated-workflow-functions.js';
 import { NoEmojiInOptionsRule } from './no-emoji-in-options.js';
 import { NoForbiddenLifecycleScriptsRule } from './no-forbidden-lifecycle-scripts.js';
+import { NoHardcodedSecretsRule } from './no-hardcoded-secrets.js';
 import { NoHttpRequestWithManualAuthRule } from './no-http-request-with-manual-auth.js';
 import { NoOverridesFieldRule } from './no-overrides-field.js';
 import { NoRestrictedGlobalsRule } from './no-restricted-globals.js';
@@ -57,6 +58,7 @@ export const rules = {
 	'no-dangerous-functions': NoDangerousFunctionsRule,
 	'no-dead-files': NoDeadFilesRule,
 	'no-forbidden-lifecycle-scripts': NoForbiddenLifecycleScriptsRule,
+	'no-hardcoded-secrets': NoHardcodedSecretsRule,
 	'no-http-request-with-manual-auth': NoHttpRequestWithManualAuthRule,
 	'no-overrides-field': NoOverridesFieldRule,
 	'no-runtime-dependencies': NoRuntimeDependenciesRule,
