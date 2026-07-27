@@ -61,6 +61,7 @@ export class WorkflowFinderService {
 			relations: { workflow: true },
 			select: {
 				workflowId: true,
+				projectId: true,
 				workflow: { id: true, versionId: true, updatedAt: true },
 			},
 		});
