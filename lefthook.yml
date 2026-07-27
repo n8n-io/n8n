@@ -32,6 +32,12 @@ pre-commit:
       skip:
         - merge
         - rebase
+    workspace_private_deps_check:
+      glob: '**/package.json'
+      run: node scripts/check-workspace-private-deps.mjs
+      skip:
+        - merge
+        - rebase
     zod_peer_deps_check:
       glob: 'packages/{@n8n/api-types,workflow,core,@n8n/agents}/package.json'
       run: node scripts/check-zod-peer-deps.mjs

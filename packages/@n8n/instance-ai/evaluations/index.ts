@@ -2,7 +2,8 @@
 // Public API for the instance-ai workflow evaluation framework
 //
 // This module exports the domain logic used by the CLI (evaluations/cli/)
-// and available for custom orchestration (e.g. LangSmith evaluate).
+// and available for custom orchestration. The run phases themselves live in
+// evaluations/run/ — see evaluations/ARCHITECTURE.md.
 // ---------------------------------------------------------------------------
 
 // -- Client & Auth --
@@ -22,11 +23,13 @@ export { seedMcpRegistry } from './mcp-registry/seeder';
 export type { McpRegistrySeedResult } from './mcp-registry/seeder';
 
 // -- Concurrency helper --
-export { runWithConcurrency } from './harness/runner';
+export { runWithConcurrency } from './harness/cleanup';
 
 // -- Runner (split API: build once, run scenarios independently) --
-export { buildWorkflow, executeScenario, cleanupBuild } from './harness/runner';
-export type { BuildResult, BuildWorkflowConfig } from './harness/runner';
+export { buildWorkflow } from './harness/build-workflow';
+export type { BuildResult, BuildWorkflowConfig } from './harness/build-workflow';
+export { executeScenario } from './harness/scenario-execution';
+export { cleanupBuild } from './harness/cleanup';
 
 // -- Workflow discovery --
 export { snapshotWorkflowIds } from './outcome/workflow-discovery';

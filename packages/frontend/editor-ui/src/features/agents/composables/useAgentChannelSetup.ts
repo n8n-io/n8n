@@ -189,7 +189,7 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 	async function waitForSlackAppSetupCompletion(popup: Window): Promise<boolean> {
 		return await new Promise((resolve) => {
 			const oauthChannel = new BroadcastChannel('oauth-callback');
-			let pollInFlight = false;
+			let activePoll: Promise<void> | null = null;
 			let settled = false;
 
 			const closePopup = () => {
@@ -209,20 +209,31 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 			};
 
 			const pollStatus = async () => {
-				if (pollInFlight || settled) return;
-				pollInFlight = true;
-				try {
-					await options.fetchStatus(['slack']);
-					if (options.isIntegrationConnected('slack')) settle(true);
-				} finally {
-					pollInFlight = false;
-				}
+				if (activePoll || settled) return;
+				activePoll = (async () => {
+					try {
+						await options.fetchStatus(['slack']);
+						if (options.isIntegrationConnected('slack')) settle(true);
+					} finally {
+						activePoll = null;
+					}
+				})();
+				await activePoll;
 			};
 
-			const pollInterval = window.setInterval(
-				() => void pollStatus(),
-				SLACK_APP_SETUP_POLL_INTERVAL_MS,
-			);
+			const pollInterval = window.setInterval(() => {
+				// User closed the popup — the OAuth flow can't complete anymore. Let any
+				// in-flight poll finish (it may confirm success), check status once more,
+				// then give up instead of blocking the UI until the full timeout.
+				if (popup.closed) {
+					void (activePoll ?? Promise.resolve())
+						.catch(() => {})
+						.then(pollStatus)
+						.finally(() => settle(false));
+					return;
+				}
+				void pollStatus();
+			}, SLACK_APP_SETUP_POLL_INTERVAL_MS);
 			const timeout = window.setTimeout(() => settle(false), SLACK_APP_SETUP_TIMEOUT_MS);
 
 			oauthChannel.addEventListener('message', (event: MessageEvent) => {

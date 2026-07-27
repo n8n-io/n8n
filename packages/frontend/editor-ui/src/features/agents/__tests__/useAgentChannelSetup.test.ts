@@ -19,6 +19,10 @@ const {
 	setCredentialsMock: vi.fn(),
 }));
 
+vi.mock('../composables/useAgentApi', () => ({
+	createSlackAgentApp: vi.fn().mockResolvedValue({ installUrl: 'https://slack.test/install' }),
+}));
+
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: {} }),
 }));
@@ -96,5 +100,56 @@ describe('useAgentChannelSetup', () => {
 
 		expect(fetchProjectMock).toHaveBeenCalledWith('artifact-project');
 		expect(credentialPermissions.value.create).toBe(true);
+	});
+
+	it('resolves setupSlackApp successfully when the popup closes while an in-flight poll is about to confirm the connection', async () => {
+		vi.useFakeTimers();
+
+		class FakeBroadcastChannel {
+			addEventListener() {}
+			close() {}
+			postMessage() {}
+		}
+		vi.stubGlobal('BroadcastChannel', FakeBroadcastChannel);
+
+		const fakePopup = { closed: false, close: vi.fn() };
+		vi.spyOn(window, 'open').mockReturnValue(fakePopup as unknown as Window);
+
+		let resolveFirstPoll!: () => void;
+		const firstPoll = new Promise<void>((resolve) => {
+			resolveFirstPoll = resolve;
+		});
+		let isConnected = false;
+		const fetchStatus = vi.fn().mockImplementation(async () => {
+			if (fetchStatus.mock.calls.length === 1) {
+				await firstPoll;
+			}
+		});
+
+		const onConnected = vi.fn();
+		const { setupSlackApp } = useAgentChannelSetup({
+			projectId: () => 'artifact-project',
+			agentId: () => 'agent-1',
+			currentIntegration: null,
+			connectedCredentials: {},
+			fetchStatus,
+			isIntegrationConnected: () => isConnected,
+		});
+
+		const setupPromise = setupSlackApp('token', onConnected);
+		await vi.advanceTimersByTimeAsync(0);
+
+		fakePopup.closed = true;
+		await vi.advanceTimersByTimeAsync(2000);
+
+		isConnected = true;
+		resolveFirstPoll();
+
+		await expect(setupPromise).resolves.toBe(true);
+		expect(onConnected).toHaveBeenCalled();
+
+		vi.useRealTimers();
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
 	});
 });

@@ -10,7 +10,10 @@ import type { User } from '@n8n/db';
 import { ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createMember, createOwner } from '@test-integration/db/users';
+import { saveCredential } from '@test-integration/db/credentials';
 
 import { PackageExportBlockedError } from '../entities/package-export.errors';
 import { N8nPackagesService } from '../n8n-packages.service';
@@ -18,6 +21,7 @@ import { FORMAT_VERSION } from '../spec/constants';
 import { readExport } from './utils/tar-support';
 import {
 	buildWorkflowCallingSubWorkflow,
+	buildWorkflowReferencingCredential,
 	buildWorkflowUsingErrorWorkflow,
 } from './utils/test-builders';
 
@@ -408,6 +412,159 @@ describe('workflow package export', () => {
 					},
 				],
 			});
+		});
+
+		it('treats fail policy like the default for missing static sub-workflows', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const child = await createWorkflow({ name: 'Child', nodes: [], connections: {} }, project);
+			const parent = await buildWorkflowCallingSubWorkflow({
+				name: 'Parent',
+				project,
+				subWorkflowId: child.id,
+			});
+
+			await expect(
+				service.exportPackage({
+					user: owner,
+					workflowIds: [parent.id],
+					missingWorkflowDependencyPolicy: 'fail',
+				}),
+			).rejects.toThrow(PackageExportBlockedError);
+		});
+
+		it('rejects reference-only static sub-workflow dependency policy', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const workflow = await createWorkflow(
+				{ name: 'Parent', nodes: [], connections: {} },
+				project,
+			);
+
+			await expect(
+				service.exportPackage({
+					user: owner,
+					workflowIds: [workflow.id],
+					missingWorkflowDependencyPolicy: 'reference-only',
+				}),
+			).rejects.toThrow('Reference-only static sub-workflow dependencies are not supported');
+		});
+
+		it('auto-includes transitive static sub-workflows and their requirements', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const credential = await saveCredential(
+				{ name: 'Linear API', type: 'httpHeaderAuth', data: { name: 'X-Auth', value: 'secret' } },
+				{ project, role: 'credential:owner' },
+			);
+			const workflowC = await buildWorkflowReferencingCredential({
+				name: 'Workflow C',
+				project,
+				credential,
+			});
+			const workflowB = await buildWorkflowCallingSubWorkflow({
+				name: 'Workflow B',
+				project,
+				subWorkflowId: workflowC.id,
+			});
+			const workflowA = await buildWorkflowCallingSubWorkflow({
+				name: 'Workflow A',
+				project,
+				subWorkflowId: workflowB.id,
+			});
+
+			const stream = await service.exportPackage({
+				user: owner,
+				workflowIds: [workflowA.id],
+				missingWorkflowDependencyPolicy: 'include-in-package',
+			});
+			const { manifest, entries } = await readExport(stream);
+
+			expect(manifest.workflows!.map(({ id }) => id).sort()).toEqual(
+				[workflowA.id, workflowB.id, workflowC.id].sort(),
+			);
+			for (const entry of manifest.workflows!) {
+				expect(entry.target).toMatch(/^workflows\//);
+				expect(entries.find((e) => e.name === `${entry.target}/workflow.json`)).toBeDefined();
+			}
+			expect(manifest.requirements?.credentials).toEqual([
+				{
+					id: credential.id,
+					name: credential.name,
+					type: 'httpHeaderAuth',
+					usedByWorkflows: [workflowC.id],
+				},
+			]);
+			expect(manifest.requirements?.workflows).toEqual([
+				{ id: workflowB.id, name: workflowB.name, usedByWorkflows: [workflowA.id] },
+				{ id: workflowC.id, name: workflowC.name, usedByWorkflows: [workflowB.id] },
+			]);
+		});
+
+		it('emits all exported workflow IDs when static sub-workflows are auto-included', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const child = await createWorkflow({ name: 'Child', nodes: [], connections: {} }, project);
+			const parent = await buildWorkflowCallingSubWorkflow({
+				name: 'Parent',
+				project,
+				subWorkflowId: child.id,
+			});
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+			try {
+				await service.exportPackage({
+					user: owner,
+					workflowIds: [parent.id],
+					missingWorkflowDependencyPolicy: 'include-in-package',
+				});
+
+				const exportedEvents = emitSpy.mock.calls.filter(
+					([name]) => name === 'n8n-package-exported',
+				);
+				expect(exportedEvents).toHaveLength(1);
+				const payload = exportedEvents[0][1] as RelayEventMap['n8n-package-exported'];
+				expect(payload.workflowIds?.sort()).toEqual([parent.id, child.id].sort());
+			} finally {
+				emitSpy.mockRestore();
+			}
+		});
+
+		it('auto-includes circular static sub-workflows once each', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const workflowA = await createWorkflow(
+				{ name: 'Workflow A', nodes: [], connections: {} },
+				project,
+			);
+			const workflowB = await buildWorkflowCallingSubWorkflow({
+				name: 'Workflow B',
+				project,
+				subWorkflowId: workflowA.id,
+			});
+			workflowA.nodes = [
+				{
+					id: 'execute-b',
+					name: 'Execute B',
+					type: 'n8n-nodes-base.executeWorkflow',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: { workflowId: { __rl: true, mode: 'list', value: workflowB.id } },
+				},
+			];
+			await Container.get(WorkflowRepository).save(workflowA);
+
+			const stream = await service.exportPackage({
+				user: owner,
+				workflowIds: [workflowA.id],
+				missingWorkflowDependencyPolicy: 'include-in-package',
+			});
+			const { manifest, entries } = await readExport(stream);
+
+			expect(manifest.workflows!.map(({ id }) => id).sort()).toEqual(
+				[workflowA.id, workflowB.id].sort(),
+			);
+			expect(entries.filter((e) => e.name.endsWith('/workflow.json'))).toHaveLength(2);
 		});
 
 		it('allows circular sub-workflow references when both workflows are selected', async () => {
