@@ -9,7 +9,6 @@ export async function listModels(this: ILoadOptionsFunctions): Promise<INodeProp
 	assertSupportedAwsRegion(region);
 	// Declares the SigV4 service+region; the credential's authenticate step swaps the
 	// host for the Bedrock Endpoint override (PrivateLink) when one is configured.
-	// getAwsDomain keeps China (amazonaws.com.cn) / GovCloud endpoints correct.
 	const baseURL = `https://bedrock.${region}.${getAwsDomain(region)}`;
 
 	const [foundationModels, inferenceProfiles] = await Promise.allSettled([
