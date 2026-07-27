@@ -13,8 +13,8 @@ const packageRoot = process.cwd();
 
 interface ImportFlags {
 	file: string;
-	project?: string;
-	folder?: string;
+	projectId?: string;
+	folderId?: string;
 	workflowConflictPolicy?: string;
 	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
@@ -59,8 +59,8 @@ describe('package import command', () => {
 	it('forwards workflowPublishingPolicy and all sibling options to the import API', async () => {
 		const { command, importPackage } = stubCommand({
 			file: '/tmp/export.n8np',
-			project: 'p-1',
-			folder: 'f-1',
+			projectId: 'p-1',
+			folderId: 'f-1',
 			workflowConflictPolicy: 'fail',
 			workflowPublishingPolicy: 'publish-all',
 			workflowIdPolicy: 'new',
@@ -150,6 +150,32 @@ describe('package import command', () => {
 			expect(importPackage).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({ workflowConflictPolicy: 'fail' }),
+			);
+		});
+
+		it('resolves --project-id/--folder-id and their -p short char', async () => {
+			const importPackage = await runWithArgv([
+				'--file=/tmp/export.n8np',
+				'-p=proj-1',
+				'--folder-id=fold-1',
+			]);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ projectId: 'proj-1', folderId: 'fold-1' }),
+			);
+		});
+
+		it('keeps the legacy --project/--folder aliases working', async () => {
+			const importPackage = await runWithArgv([
+				'--file=/tmp/export.n8np',
+				'--project=proj-1',
+				'--folder=fold-1',
+			]);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ projectId: 'proj-1', folderId: 'fold-1' }),
 			);
 		});
 
