@@ -53,6 +53,7 @@ CREATE TABLE "agent_execution_threads" ("id" varchar(128) PRIMARY KEY NOT NULL, 
 | ---- | ---------- |
 | IDX_0468a9dc35597314e641d4722a | CREATE INDEX "IDX_0468a9dc35597314e641d4722a" ON "agent_execution_threads" ("agentId")  |
 | IDX_0e2f8bf92a7a9c88b89670f701 | CREATE INDEX "IDX_0e2f8bf92a7a9c88b89670f701" ON "agent_execution_threads" ("projectId")  |
+| IDX_agent_execution_threads_agentId_createdByResourceId | CREATE INDEX "IDX_agent_execution_threads_agentId_createdByResourceId" ON "agent_execution_threads" ("agentId", "createdByResourceId")  |
 | IDX_agent_execution_threads_agentId_origin_originRef_externalKey | CREATE UNIQUE INDEX "IDX_agent_execution_threads_agentId_origin_originRef_externalKey" ON "agent_execution_threads" ("agentId", "origin", "originRef", "externalKey") WHERE "externalKey" IS NOT NULL |
 | IDX_agent_execution_threads_taskVersionId | CREATE INDEX "IDX_agent_execution_threads_taskVersionId" ON "agent_execution_threads" ("taskVersionId")  |
 | sqlite_autoindex_agent_execution_threads_1 | PRIMARY KEY (id) |

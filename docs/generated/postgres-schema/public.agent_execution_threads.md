@@ -53,6 +53,7 @@
 | ---- | ---------- |
 | IDX_0468a9dc35597314e641d4722a | CREATE INDEX "IDX_0468a9dc35597314e641d4722a" ON public.agent_execution_threads USING btree ("agentId") |
 | IDX_0e2f8bf92a7a9c88b89670f701 | CREATE INDEX "IDX_0e2f8bf92a7a9c88b89670f701" ON public.agent_execution_threads USING btree ("projectId") |
+| IDX_agent_execution_threads_agentId_createdByResourceId | CREATE INDEX "IDX_agent_execution_threads_agentId_createdByResourceId" ON public.agent_execution_threads USING btree ("agentId", "createdByResourceId") |
 | IDX_agent_execution_threads_agentId_origin_originRef_externalKe | CREATE UNIQUE INDEX "IDX_agent_execution_threads_agentId_origin_originRef_externalKe" ON public.agent_execution_threads USING btree ("agentId", origin, "originRef", "externalKey") WHERE ("externalKey" IS NOT NULL) |
 | IDX_agent_execution_threads_taskVersionId | CREATE INDEX "IDX_agent_execution_threads_taskVersionId" ON public.agent_execution_threads USING btree ("taskVersionId") |
 | PK_22373dbf6ba6929d8ac50093309 | CREATE UNIQUE INDEX "PK_22373dbf6ba6929d8ac50093309" ON public.agent_execution_threads USING btree (id) |

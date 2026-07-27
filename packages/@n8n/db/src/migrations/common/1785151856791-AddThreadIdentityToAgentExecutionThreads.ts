@@ -6,6 +6,9 @@ const NEW_COLUMNS = ['origin', 'originRef', 'externalKey', 'createdByResourceId'
 
 const NATURAL_KEY = ['agentId', 'origin', 'originRef', 'externalKey'];
 
+/** Serves "the sessions this caller had with this agent". */
+const CALLER_SCOPE = ['agentId', 'createdByResourceId'];
+
 const COLUMN_COMMENTS: Array<[column: string, comment: string]> = [
 	['origin', 'Surface that started the session: chat/integration/workflow/task/subagent/test'],
 	['originRef', 'Namespace of externalKey (workflowId for workflow threads); empty when unscoped'],
@@ -70,9 +73,12 @@ export class AddThreadIdentityToAgentExecutionThreads1785151856791 implements Re
 			undefined,
 			`${escape.columnName('externalKey')} IS NOT NULL`,
 		);
+
+		await createIndex(TABLE, CALLER_SCOPE);
 	}
 
 	async down({ escape, runQuery, schemaBuilder: { dropIndex } }: MigrationContext) {
+		await dropIndex(TABLE, CALLER_SCOPE, { skipIfMissing: true });
 		await dropIndex(TABLE, NATURAL_KEY, { skipIfMissing: true });
 
 		const table = escape.tableName(TABLE);

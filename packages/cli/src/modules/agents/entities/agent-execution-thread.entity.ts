@@ -25,6 +25,7 @@ export type AgentThreadOrigin = 'chat' | 'integration' | 'workflow' | 'task' | '
 	unique: true,
 	where: '"externalKey" IS NOT NULL',
 })
+@Index(['agentId', 'createdByResourceId'])
 @Entity({ name: 'agent_execution_threads' })
 export class AgentExecutionThread extends WithTimestampsAndStringId {
 	@ManyToOne(() => Agent, { onDelete: 'CASCADE' })
