@@ -43,6 +43,12 @@ const incompatibleWorkflowToolBodyNodeTypes = new Set<string>(
 	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
 );
 
+// DynamicModalLoader passes `open`/`active`/`mode`/`activeId` alongside the
+// props we declare. Without this they fall through onto ToolsConnectionModal,
+// and the inherited `open` (always true while mounted) wins over our own
+// binding via mergeProps — pinning the dialog open.
+defineOptions({ inheritAttrs: false });
+
 const props = defineProps<{
 	modalName: string;
 	data: {
@@ -124,15 +130,20 @@ const isConfigModalOpen = computed(
 	() => uiStore.modalsById[AGENT_TOOL_CONFIG_MODAL_KEY]?.open === true,
 );
 
-// Hide the shared dialog while the stacked config modal is open — a legacy
-// Modal does not render correctly on top of N8nDialog (same workaround as
-// Instance AI uses for the credential modal).
+// A legacy `Modal` (el-dialog, appended to #app-modals) cannot paint above
+// N8nDialog's body-level portal, so the shared dialog is hidden while the
+// config modal is up — same workaround Instance AI uses for the credential
+// modal.
 const isOpen = computed({
 	get: () => !isConfigModalOpen.value,
 	set: (value: boolean) => {
 		if (!value) uiStore.closeModal(props.modalName);
 	},
 });
+
+function openConfigModal(data: Record<string, unknown>) {
+	uiStore.openModalWithData({ name: AGENT_TOOL_CONFIG_MODAL_KEY, data });
+}
 
 onMounted(() => {
 	void loadWorkflows(props.data.projectId);
@@ -215,17 +226,14 @@ function addMcpServer(savedServer: AgentJsonMcpServerConfig) {
 }
 
 function openConfigForNewRef(newRef: AgentJsonToolRef) {
-	uiStore.openModalWithData({
-		name: AGENT_TOOL_CONFIG_MODAL_KEY,
-		data: {
-			toolRef: newRef,
-			projectId: props.data.projectId,
-			agentId: props.data.agentId,
-			supportsToolApproval: props.data.supportsToolApproval,
-			existingToolNames: getExistingToolNames(workingTools.value),
-			onConfirm: (savedRef: AgentJsonToolRef) => {
-				addToolRef(savedRef);
-			},
+	openConfigModal({
+		toolRef: newRef,
+		projectId: props.data.projectId,
+		agentId: props.data.agentId,
+		supportsToolApproval: props.data.supportsToolApproval,
+		existingToolNames: getExistingToolNames(workingTools.value),
+		onConfirm: (savedRef: AgentJsonToolRef) => {
+			addToolRef(savedRef);
 		},
 	});
 }
@@ -234,19 +242,16 @@ function openConfigForNewMcpServer(
 	server: AgentJsonMcpServerConfig,
 	nodeType: INodeTypeDescription,
 ) {
-	uiStore.openModalWithData({
-		name: AGENT_TOOL_CONFIG_MODAL_KEY,
-		data: {
-			kind: 'mcpServer',
-			mcpServer: server,
-			initialNode: mcpServerToNode(server, nodeType),
-			projectId: props.data.projectId,
-			agentId: props.data.agentId,
-			supportsToolApproval: props.data.supportsToolApproval,
-			existingToolNames: getExistingMcpServerNames(workingMcpServers.value),
-			onConfirm: (savedServer: AgentJsonMcpServerConfig) => {
-				addMcpServer(savedServer);
-			},
+	openConfigModal({
+		kind: 'mcpServer',
+		mcpServer: server,
+		initialNode: mcpServerToNode(server, nodeType),
+		projectId: props.data.projectId,
+		agentId: props.data.agentId,
+		supportsToolApproval: props.data.supportsToolApproval,
+		existingToolNames: getExistingMcpServerNames(workingMcpServers.value),
+		onConfirm: (savedServer: AgentJsonMcpServerConfig) => {
+			addMcpServer(savedServer);
 		},
 	});
 }
@@ -324,21 +329,18 @@ async function handleAddWorkflow(workflow: IWorkflowDb) {
 
 function openConfigForToolEntry(entry: WorkingToolEntry) {
 	const toolRef = entry.ref;
-	uiStore.openModalWithData({
-		name: AGENT_TOOL_CONFIG_MODAL_KEY,
-		data: {
-			toolRef,
-			projectId: props.data.projectId,
-			agentId: props.data.agentId,
-			supportsToolApproval: props.data.supportsToolApproval,
-			existingToolNames: getExistingToolNames(workingTools.value, toolRef),
-			onConfirm: (updatedRef: AgentJsonToolRef) => {
-				workingToolEntries.value = workingToolEntries.value.map((e) =>
-					e.localId === entry.localId ? { ...e, ref: updatedRef } : e,
-				);
-				toolTelemetry.trackEdited(updatedRef);
-				commit();
-			},
+	openConfigModal({
+		toolRef,
+		projectId: props.data.projectId,
+		agentId: props.data.agentId,
+		supportsToolApproval: props.data.supportsToolApproval,
+		existingToolNames: getExistingToolNames(workingTools.value, toolRef),
+		onConfirm: (updatedRef: AgentJsonToolRef) => {
+			workingToolEntries.value = workingToolEntries.value.map((e) =>
+				e.localId === entry.localId ? { ...e, ref: updatedRef } : e,
+			);
+			toolTelemetry.trackEdited(updatedRef);
+			commit();
 		},
 	});
 }
@@ -347,22 +349,19 @@ function openConfigForMcpEntry(entry: WorkingMcpServerEntry) {
 	const nodeType = resolveMcpNodeType(entry.server);
 	if (!nodeType) return;
 
-	uiStore.openModalWithData({
-		name: AGENT_TOOL_CONFIG_MODAL_KEY,
-		data: {
-			kind: 'mcpServer',
-			mcpServer: entry.server,
-			initialNode: mcpServerToNode(entry.server, nodeType),
-			projectId: props.data.projectId,
-			agentId: props.data.agentId,
-			supportsToolApproval: props.data.supportsToolApproval,
-			existingToolNames: getExistingMcpServerNames(workingMcpServers.value, entry.server),
-			onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
-				workingMcpServerEntries.value = workingMcpServerEntries.value.map((e) =>
-					e.localId === entry.localId ? { ...e, server: updatedServer } : e,
-				);
-				commit();
-			},
+	openConfigModal({
+		kind: 'mcpServer',
+		mcpServer: entry.server,
+		initialNode: mcpServerToNode(entry.server, nodeType),
+		projectId: props.data.projectId,
+		agentId: props.data.agentId,
+		supportsToolApproval: props.data.supportsToolApproval,
+		existingToolNames: getExistingMcpServerNames(workingMcpServers.value, entry.server),
+		onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
+			workingMcpServerEntries.value = workingMcpServerEntries.value.map((e) =>
+				e.localId === entry.localId ? { ...e, server: updatedServer } : e,
+			);
+			commit();
 		},
 	});
 }

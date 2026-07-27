@@ -152,6 +152,33 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		});
 	}
 
+	// DynamicModalLoader passes `open`/`active`/`mode`/`activeId` on top of the
+	// declared props. If those fall through onto ToolsConnectionModal the
+	// inherited `open` pins the dialog open and the config modal renders behind
+	// it, so mount the way the loader does.
+	it('hides the shared dialog while the config modal is open, ignoring inherited attrs', async () => {
+		renderComponent({
+			props: {
+				modalName: MODAL_NAME,
+				data: { tools: [], onConfirm: vi.fn() },
+				open: true,
+				active: true,
+				mode: '',
+				activeId: '',
+			},
+		});
+		await flushPromises();
+		expect(modalAttrs.open).toBe(true);
+
+		uiStore.modalsById.agentToolConfigModal.open = true;
+		await flushPromises();
+		expect(modalAttrs.open).toBe(false);
+
+		uiStore.modalsById.agentToolConfigModal.open = false;
+		await flushPromises();
+		expect(modalAttrs.open).toBe(true);
+	});
+
 	it('maps connected tools and keeps the same node type available for duplicates', async () => {
 		render([toolRef(SLACK.name)]);
 		await flushPromises();
