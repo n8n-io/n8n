@@ -106,7 +106,6 @@ export interface VariableImportPlan {
 
 export interface VariableApplyResult {
 	stubbed: string[];
-	/** Planned creations skipped because the exact destination was already occupied. */
 	skippedExisting: string[];
 	createdCount: number;
 }

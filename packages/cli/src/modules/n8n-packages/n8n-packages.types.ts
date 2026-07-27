@@ -96,16 +96,7 @@ export const VariableMissingMode = {
 } as const;
 
 export const VariableParentPolicy = {
-	/**
-	 * Creates missing variables at the import target project (the `projectId`
-	 * param, else the importing user's personal project). Ignored for project
-	 * packages (placement follows the package layout).
-	 */
 	Project: 'project',
-	/**
-	 * Creates missing variables at global scope (visible to all projects).
-	 * Requires the global `variable:create` scope. Ignored for project packages.
-	 */
 	Global: 'global',
 } as const;
 /* eslint-enable @typescript-eslint/naming-convention */
