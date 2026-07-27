@@ -853,7 +853,7 @@ The job is **non-blocking**. Results are posted as a PR comment and uploaded as 
 
 For model A/B experiments, dispatch **Instance AI Evals: Experiments** (`test-evals-instance-ai.yml`) and set the `model` input. Supported experiment models include `anthropic/claude-opus-5`, `anthropic/claude-sonnet-4-6`, `openai/gpt-5.6-sol`, `openai/gpt-5.6-terra`, `openai/gpt-5.6-luna`, `openrouter/moonshotai/kimi-k3`, `xai/grok-4.5`, `baseten/zai-org/GLM-5.2`, and `baseten/zai-org/GLM-5.2-Fast`. CI routes the matching provider key from repo secrets (`EVALS_*_KEY`; Baseten uses `EVALS_BASETEN_KEY`).
 
-`lanes` / `eval-concurrency` default to **10 / 32** (Anthropic-sized). For `baseten/*` models they auto-throttle to **1 / 2** (~0.5M TPM / ~12 RPM — fits [Baseten Basic verified](https://docs.baseten.co/inference/model-apis/rate-limits-and-budgets) 500k TPM / 120 RPM); override the inputs to raise them if your workspace has Pro/Enterprise headroom.
+`lanes` / `eval-concurrency` default to **10 / 32**.
 
 ## Architecture
 

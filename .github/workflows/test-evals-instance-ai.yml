@@ -64,12 +64,12 @@ on:
         type: string
         default: ''
       lanes:
-        description: 'Parallel n8n lane containers (1-11). Empty = 10, or 1 when model is baseten/* (fits Baseten Basic verified ~500k TPM).'
+        description: 'Parallel n8n lane containers (1-11). Empty = 10.'
         required: false
         type: string
         default: ''
       eval-concurrency:
-        description: 'Concurrent scenario executions. Empty = 32, or 2 when model is baseten/* (~0.5M TPM / ~12 RPM — fits Baseten Basic verified).'
+        description: 'Concurrent scenario executions. Empty = 32.'
         required: false
         type: string
         default: ''
@@ -108,11 +108,11 @@ on:
         required: false
         default: ''
       lanes:
-        description: 'Parallel n8n lane containers (1-11). Empty = 10, or 1 when model is baseten/* (fits Baseten Basic verified ~500k TPM).'
+        description: 'Parallel n8n lane containers (1-11). Empty = 10.'
         required: false
         default: ''
       eval-concurrency:
-        description: 'Concurrent scenarios. Empty = 32, or 2 when model is baseten/* (~0.5M TPM / ~12 RPM — fits Baseten Basic verified).'
+        description: 'Concurrent scenarios. Empty = 32.'
         required: false
         default: ''
 
@@ -122,19 +122,15 @@ jobs:
     # 8vcpu/32GB: full-suite N=10 baselines need ~150 min of eval time and
     # did not fit the 4vcpu tier at any timeout.
     runs-on: blacksmith-8vcpu-ubuntu-2204
-    # Long ceiling for high-N baselines (240) and for Baseten (600: auto
-    # 1 lane / c=2 is ~16× slower than the Anthropic default, so a ~18 min
-    # full suite becomes ~5 h; +2 h buffer for provider backoff). Plain
-    # comparison (not fromJSON): coerces the string input to a number;
-    # malformed NaN falls back to the 90-minute guard instead of erroring.
-    timeout-minutes: ${{ startsWith(inputs.model || '', 'baseten/') && 600 || ((inputs.iterations || '3') >= 5 && 240 || 90) }}
+    # Long ceiling for high-N baselines (240). Plain comparison (not fromJSON):
+    # coerces the string input to a number; malformed NaN falls back to the
+    # 90-minute guard instead of erroring.
+    timeout-minutes: ${{ (inputs.iterations || '3') >= 5 && 240 || 90 }}
     env:
       # Contiguous ports from 5678; 5678..5688 avoids Node fetch()'s blocked-
-      # port list (max 11 lanes). Defaults: 10 lanes / c=32 for Anthropic;
-      # baseten/* auto-throttles to 1 / 2 to stay under Baseten Basic verified
-      # (~500k TPM).
-      LANES: ${{ inputs.lanes != '' && inputs.lanes || (startsWith(inputs.model || '', 'baseten/') && '1' || '10') }}
-      EVAL_CONCURRENCY: ${{ inputs.eval-concurrency != '' && inputs.eval-concurrency || (startsWith(inputs.model || '', 'baseten/') && '2' || '32') }}
+      # port list (max 11 lanes). Defaults: 10 lanes / c=32.
+      LANES: ${{ inputs.lanes != '' && inputs.lanes || '10' }}
+      EVAL_CONCURRENCY: ${{ inputs.eval-concurrency != '' && inputs.eval-concurrency || '32' }}
     permissions:
       contents: read
       pull-requests: write
