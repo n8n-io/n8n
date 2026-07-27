@@ -21,11 +21,10 @@ copyInstanceAiExamplesData();
 if (publicApiEnabled) {
 	createPublicApiDirectory();
 	copySwaggerTheme();
-	// Must run before bundleOpenApiSpecs(): redocly resolves openapi.yml's $refs against the
-	// `src` tree, so any Zod-generated path fragments (API-39) need to already be on disk under
-	// `src` by the time bundling reads them. Once every hand-written path is replaced this way,
-	// this is still the right order — generation always has to precede bundling.
+
+	// Must run before bundleOpenApiSpecs(), any Zod-generated path fragments need to already be ready to bundle.
 	await generateOpenApiDocs();
+
 	bundleOpenApiSpecs();
 }
 
@@ -64,10 +63,9 @@ function copySwaggerTheme() {
 	shell.cp('-r', swaggerTheme.source, swaggerTheme.destination);
 }
 
-// API-39 spike: generates the subset of openapi.yml's paths that have opted into being produced
-// from @n8n/api-types Zod DTOs instead of hand-written YAML (see src/public-api/v1/openapi-gen).
-// Imports the already-compiled dist output rather than the .ts source — by the time build:data
-// runs, `tsc` has already emitted it (see the `build` script), and build.mjs has no TS loader.
+// Generates the subset of openapi.yml's paths that have opted into being produced from @n8n/api-types Zod DTOs
+// instead of hand-written YAML. Imports the already-compiled dist output rather than the .ts source — by the time
+// build:data runs, `tsc` has already emitted it and build.mjs has no TS loader.
 async function generateOpenApiDocs() {
 	const generatorPath = path.resolve(
 		ROOT_DIR,
@@ -84,6 +82,12 @@ async function generateOpenApiDocs() {
 	}
 
 	const { generateDocs } = await import(pathToFileURL(generatorPath).href);
+	if (typeof generateDocs !== 'function') {
+		throw new Error(
+			`OpenAPI doc generator at ${generatorPath} does not export a 'generateDocs' function — its export contract may have changed.`,
+		);
+	}
+
 	const v1Dir = path.resolve(ROOT_DIR, 'src', 'public-api', 'v1');
 	generateDocs(v1Dir);
 }

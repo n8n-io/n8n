@@ -53,7 +53,7 @@ export interface RouteMetadata {
 	accessScope?: AccessScope;
 	apiKeyScope?: ApiKeyScopeRequirement;
 	responseDto?: ResponseDtoClass;
-	/** Public-facing OpenAPI operation description, set via `@ApiDescription`. */
+	/** OpenAPI operation description. */
 	description?: string;
 	args: Arg[];
 	router?: Router;

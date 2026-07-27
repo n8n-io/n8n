@@ -63,7 +63,9 @@ export function resolveRouteArgs(
 	const resolved: ResolvedRouteArg[] = [];
 
 	args.forEach((arg, index) => {
-		if (!arg) return;
+		if (!arg) {
+			return;
+		}
 
 		if (arg.type === 'param') {
 			resolved.push(arg);
@@ -90,8 +92,14 @@ export function resolveRouteArgs(
  * new format, just matches the existing one.
  */
 export function scopeRequirementToString(requirement: ApiKeyScopeRequirement): string {
-	if (typeof requirement === 'string') return requirement;
-	if ('anyOf' in requirement) return requirement.anyOf.join(',');
+	if (typeof requirement === 'string') {
+		return requirement;
+	}
+
+	if ('anyOf' in requirement) {
+		return requirement.anyOf.join(',');
+	}
+
 	return requirement.allOf.join(',');
 }
 
@@ -108,7 +116,9 @@ export function resolvePublicApiRoutes(): ResolvedPublicApiRoute[] {
 
 	for (const controllerClass of metadata.controllerClasses) {
 		const controllerMetadata = metadata.getControllerMetadata(controllerClass);
-		if (!controllerMetadata.isPublicApi) continue;
+		if (!controllerMetadata.isPublicApi) {
+			continue;
+		}
 
 		const prefix = controllerMetadata.basePath.replace(/\/+/g, '/').replace(/\/$/, '');
 

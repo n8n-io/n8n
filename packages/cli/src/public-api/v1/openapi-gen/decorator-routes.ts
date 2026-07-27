@@ -1,10 +1,8 @@
-// Must run before importing any controller/DTO module — see zod-extend.ts for why this ordering
-// is load-bearing (it patches .describe()/.openapi() onto zod's shared prototype).
+// Must run before importing any controller/DTO module — see zod-extend.ts
 import './zod-extend';
 
 // Side-effect import: populates ControllerRegistryMetadata with every @PublicApiController before
-// resolvePublicApiRoutes() below walks it. Same barrel `public-api/index.ts` imports for the real
-// server, so a new decorated controller is discovered by both with one registration, not two.
+// resolvePublicApiRoutes()
 import '../controllers';
 
 import type { RouteConfig } from '@asteasolutions/zod-to-openapi';
@@ -18,10 +16,7 @@ import {
 
 /**
  * Query fields backed by shared, hand-written parameter files instead of being generated from the
- * DTO. Their `.transform()` chains (string -> parsed/clamped number) collapse to a bare
- * `{ type: 'string' }` under zod-to-openapi's introspection, with constraints like `maximum`/
- * `default` silently dropped. Every public API list endpoint reuses this exact pagination shape,
- * so this mapping is generic, not per-resource.
+ * DTO. Eventually we would want these to be generated via DTOs as well.
  */
 const SHARED_PAGINATION_PARAMS: Record<string, { $ref: string }> = {
 	limit: { $ref: '../../../../shared/spec/parameters/limit.yml' },
@@ -45,27 +40,9 @@ function capitalize(value: string): string {
 	return value.length ? value[0].toUpperCase() + value.slice(1) : value;
 }
 
-/**
- * `route.responseDto` is typed as `ResponseDtoClass` (`Pick<ZodClass, 'parse'>`) at the decorator
- * API boundary, so neither `.schema` nor `.name` is visible without narrowing — every real DTO
- * built via `Z.class` has both (the `.name` being the class name, our stable component key). This
- * just proves it at runtime. DTOs are classes, i.e. `typeof dto === 'function'`, not `'object'` —
- * easy to get wrong since every other DTO check in this codebase narrows an *instance*, not the
- * class itself.
- */
 function hasNamedSchema(dto: unknown): dto is { schema: z.ZodTypeAny; name: string } {
 	if (dto === null || (typeof dto !== 'object' && typeof dto !== 'function')) return false;
 	return 'schema' in dto && 'name' in dto && typeof dto.name === 'string';
-}
-
-/**
- * The OpenAPI component name a DTO class contributes when shared, e.g. `TagListPublicDto` ->
- * `TagListPublic`. The `Dto` suffix is a backend naming convention that shouldn't leak into the
- * published schema. Used as both the registry ref-id and (lower-cased) the generated schema
- * filename, so the two must be derived the same way on both the counting and the building pass.
- */
-export function schemaComponentName(dtoName: string): string {
-	return dtoName.endsWith('Dto') ? dtoName.slice(0, -'Dto'.length) : dtoName;
 }
 
 /**
@@ -79,27 +56,31 @@ export type SchemaResolver = (componentName: string, schema: z.ZodTypeAny) => z.
 const inlineResolver: SchemaResolver = (_componentName, schema) => schema;
 
 /**
- * Response DTOs referenced by more than one decorator route, keyed by component name. These are the
- * schemas worth hoisting into a shared, `$ref`d component instead of inlining at each use site —
- * a single-use schema stays inline (no indirection for something referenced once). Structural
- * identity isn't assumed: a schema is shared only when the *same DTO class* is reused, which is a
- * developer's deliberate act of extracting a reusable type, not a coincidental shape match.
+ * Response DTOs referenced by more than one decorator route are hoisted into a shared, `$ref`d component
+ * instead of inlining at each use site. A single-use schema stays inline. Structural identity isn't assumed: a
+ * schema is shared only when the *same DTO class* is reused, this is a deliberate act of extracting a reusable type,
+ * not a coincidental shape match.
  */
 export function getSharedResponseSchemas(): Map<string, z.ZodTypeAny> {
-	const seen = new Map<string, { schema: z.ZodTypeAny; count: number }>();
+	const seen = new Set<string>();
+	const shared = new Map<string, z.ZodTypeAny>();
 
 	for (const route of resolvePublicApiRoutes()) {
-		if (!route.responseDto || !hasNamedSchema(route.responseDto)) continue;
-		const name = schemaComponentName(route.responseDto.name);
-		const entry = seen.get(name);
-		if (entry) entry.count += 1;
-		else seen.set(name, { schema: route.responseDto.schema, count: 1 });
+		if (!route.responseDto || !hasNamedSchema(route.responseDto)) {
+			continue;
+		}
+
+		const { name, schema } = route.responseDto;
+
+		if (seen.has(name) && !shared.has(name)) {
+			// Second sighting: it's reused, so hoist it.
+			shared.set(name, schema);
+		} else {
+			// First sighting: remember the name.
+			seen.add(name);
+		}
 	}
 
-	const shared = new Map<string, z.ZodTypeAny>();
-	for (const [name, { schema, count }] of seen) {
-		if (count >= 2) shared.set(name, schema);
-	}
 	return shared;
 }
 
@@ -151,10 +132,7 @@ function buildResponses(
 				? {
 						content: {
 							'application/json': {
-								schema: resolveSchema(
-									schemaComponentName(route.responseDto.name),
-									route.responseDto.schema,
-								),
+								schema: resolveSchema(route.responseDto.name, route.responseDto.schema),
 							},
 						},
 					}
@@ -182,10 +160,9 @@ export interface GeneratedDecoratorOperation {
 }
 
 /**
- * Builds one `RouteConfig` per route discovered on a `@PublicApiController` class — no
- * per-resource registration needed. Adding a new `@PublicApiController` route makes it show up
- * here automatically; a legacy eov-routed endpoint (still hand-written YAML) is untouched until
- * it's migrated to the controller pattern.
+ * Builds one `RouteConfig` per route discovered on a `@PublicApiController` class.
+ * A new `@PublicApiController` shows up here automatically; a legacy eov-routed endpoint (still hand-written YAML)
+ * is untouched until it's migrated to the controller pattern.
  *
  * Output path convention: `handlers/<first-path-segment>/spec/paths/<handlerName>.generated.yml`
  * — handler (method) names are unique within a controller class, so this can't collide even
