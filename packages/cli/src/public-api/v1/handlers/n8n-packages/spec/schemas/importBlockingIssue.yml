@@ -217,6 +217,7 @@ oneOf:
       - limit
       - requested
       - names
+      - usedByWorkflows
     properties:
       type:
         type: string
@@ -233,3 +234,8 @@ oneOf:
         items:
           type: string
         description: The unique variable names the import would create.
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+        description: Package workflow ids that reference any of the listed variables.

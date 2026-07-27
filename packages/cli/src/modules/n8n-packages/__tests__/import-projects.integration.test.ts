@@ -991,6 +991,7 @@ describe('project shell import', () => {
 						limit: 1,
 						requested: 2,
 						names: ['VAR_A', 'VAR_B'],
+						usedByWorkflows: ['WFA', 'WFB'],
 					},
 				]);
 				expect(await findProject('P1')).toBeNull();

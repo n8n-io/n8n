@@ -1,18 +1,13 @@
 import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter } from '../entities/project/project-importer';
-import {
-	computeVariableLimitFailure,
-	dedupeCreationsByDestination,
-	isRequirementAGlobalVariable,
-} from '../entities/variable/variable.types';
+import { variableMissingModeCreates } from '../entities/variable/variable-missing-mode';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { PackageReader } from '../io/package-reader';
 import type {
@@ -25,6 +20,7 @@ import type {
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
 import { toImportBlockedError } from './import-blocked.error';
+import { deriveVariableScope } from './package-layout';
 import {
 	ImportOrchestrator,
 	type ImportOrchestrationInput,
@@ -34,6 +30,7 @@ import {
 	assertPackageImportApiKeyScopes,
 	buildImportResult,
 	identifyRequirements,
+	reconcileVariableSummary,
 	scopeCredentialBindingsToRequirements,
 	toImportedWorkflowSummaries,
 	toPackageSummary,
@@ -50,7 +47,6 @@ export class ProjectPackageImporter {
 		private readonly importOrchestrator: ImportOrchestrator,
 		private readonly eventService: EventService,
 		private readonly licenseState: LicenseState,
-		private readonly variablesService: VariablesService,
 	) {}
 
 	async import(
@@ -85,23 +81,10 @@ export class ProjectPackageImporter {
 			blockingIssues.push(...plan.blockingIssues);
 		}
 
-		// One instance-wide quota check across every scope. Per-scope checks are disabled
-		// (checkQuota: false) so each scope cannot pass while the package total exceeds the cap and
-		// so a single overrun is not reported N times. Planned creations are deduplicated by their
-		// exact destination — a global variable planned by several consuming scopes is one new row.
-		const plannedCreations = dedupeCreationsByDestination(
+		const quotaIssue = await this.importOrchestrator.variableQuotaIssue(
 			planned.flatMap(({ plan }) => plan.variablePlan.creations),
 		);
-		// Warm by now: every scope's plan already resolved variables through the same cache.
-		const existingVariableCount = (await this.variablesService.getAllCached()).length;
-		const aggregateLimitFailure = computeVariableLimitFailure(
-			plannedCreations,
-			existingVariableCount,
-			this.licenseState.getMaxVariables(),
-		);
-		if (aggregateLimitFailure) {
-			blockingIssues.push({ type: 'variable-limit-exceeded', ...aggregateLimitFailure });
-		}
+		if (quotaIssue) blockingIssues.push(quotaIssue);
 
 		if (blockingIssues.length > 0) {
 			throw toImportBlockedError(blockingIssues);
@@ -114,10 +97,10 @@ export class ProjectPackageImporter {
 		const scopedBindings: PackageImportBindings[] = [];
 		const matched: string[] = [];
 		const stubbed: string[] = [];
-		const variablesMatched = new Set<string>();
-		const variablesMissing = new Set<string>();
-		const variablesStubbed = new Set<string>();
-		const variablesSkipped = new Set<string>();
+		const variablesMatched: string[] = [];
+		const variablesMissing: string[] = [];
+		const variablesStubbed: string[] = [];
+		const variablesSkipped: string[] = [];
 		const scopes: PackageImportScope[] = [];
 
 		for (const { project, plan } of planned) {
@@ -127,10 +110,10 @@ export class ProjectPackageImporter {
 			scopedBindings.push(imported.bindings);
 			matched.push(...imported.credentialResult.matched);
 			stubbed.push(...imported.credentialResult.stubbed);
-			imported.variablePlan.matched.forEach((name) => variablesMatched.add(name));
-			imported.variablePlan.missing.forEach(({ name }) => variablesMissing.add(name));
-			imported.variableResult.stubbed.forEach((name) => variablesStubbed.add(name));
-			imported.variableResult.skippedExisting.forEach((name) => variablesSkipped.add(name));
+			variablesMatched.push(...imported.variablePlan.matched);
+			variablesMissing.push(...imported.variablePlan.missing.map(({ name }) => name));
+			variablesStubbed.push(...imported.variableResult.stubbed);
+			variablesSkipped.push(...imported.variableResult.skippedExisting);
 			scopes.push({
 				context: plan.input.context,
 				imported,
@@ -139,18 +122,6 @@ export class ProjectPackageImporter {
 				variableRequest: plan.input.variableRequest,
 			});
 		}
-
-		// A skip means apply found the variable's destination already occupied, so this scope created
-		// nothing even though the name now resolves. If no scope stubbed the name, the occupying row
-		// came from outside this import, so the name counts as matched. If a scope did stub it, the
-		// occupier was this import's own creation (e.g. an earlier scope's global stub); the name is
-		// already reported as stubbed, and also reporting it as matched would imply it pre-existed.
-		for (const name of variablesSkipped) {
-			if (!variablesStubbed.has(name)) variablesMatched.add(name);
-		}
-		const variablesMissingFinal = [...variablesMissing].filter(
-			(name) => !variablesStubbed.has(name) && !variablesSkipped.has(name),
-		);
 
 		emitPackageImportedEvent(this.eventService, { request, manifest, scopes });
 
@@ -161,11 +132,12 @@ export class ProjectPackageImporter {
 			projects: projectSummaries,
 			bindings: mergeBindings(...scopedBindings),
 			credentials: { matched, stubbed },
-			variables: {
-				matched: [...variablesMatched],
-				missing: variablesMissingFinal,
-				stubbed: [...variablesStubbed],
-			},
+			variables: reconcileVariableSummary({
+				matched: variablesMatched,
+				missing: variablesMissing,
+				stubbed: variablesStubbed,
+				skipped: variablesSkipped,
+			}),
 		});
 	}
 
@@ -205,11 +177,8 @@ export class ProjectPackageImporter {
 			requirements: identifyRequirements(manifest.requirements?.variables, workflows)?.map(
 				(requirement) => ({
 					...requirement,
-					globalPlacement: isRequirementAGlobalVariable(
-						manifest.variables,
-						project.target,
-						requirement.name,
-					),
+					globalPlacement:
+						deriveVariableScope(manifest.variables, basePrefix, requirement.name) === 'global',
 				}),
 			),
 			missingMode: request.variableMissingMode,
@@ -228,7 +197,6 @@ export class ProjectPackageImporter {
 			variableRequest,
 			options: request,
 			projectPendingCreation,
-			checkQuota: false,
 		};
 	}
 
@@ -255,8 +223,13 @@ export class ProjectPackageImporter {
 
 		if (
 			(manifest.requirements?.variables?.length ?? 0) > 0 &&
-			request.variableMissingMode === 'create-stub'
+			variableMissingModeCreates(request.variableMissingMode)
 		) {
+			if (!this.licenseState.isVariablesLicensed()) {
+				throw new ForbiddenError(
+					'Your license does not allow variables. Importing a package that creates variables requires a license that supports variables.',
+				);
+			}
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['variable:create']);
 		}
 	}

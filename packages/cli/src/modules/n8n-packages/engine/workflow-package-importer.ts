@@ -12,9 +12,12 @@ import { ProjectService } from '@/services/project.service.ee';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
+import { variableMissingModeCreates } from '../entities/variable/variable-missing-mode';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { PackageReader } from '../io/package-reader';
+import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ImportPackageRequest, ImportResult } from '../n8n-packages.types';
+import { toImportBlockedError } from './import-blocked.error';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
 	assertPackageImportApiKeyScopes,
@@ -85,11 +88,11 @@ export class WorkflowPackageImporter {
 		};
 
 		const variableRequirements = identifyRequirements(manifest.requirements?.variables, workflows);
-		if (variableRequirements?.length && request.variableMissingMode === 'create-stub') {
+		if (variableRequirements?.length && variableMissingModeCreates(request.variableMissingMode)) {
+			this.assertVariablesLicensed();
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['variable:create']);
 		}
-		// `project` places stubs in the import target project; `global` sends them to global scope.
-		const globalPlacement = request.variableParentPolicy === 'global';
+		const globalPlacement = request.variableParentPolicy === VariableParentPolicy.Global;
 		const variableRequest: VariableImportRequest = {
 			requirements: variableRequirements?.map((requirement) => ({
 				...requirement,
@@ -98,7 +101,7 @@ export class WorkflowPackageImporter {
 			missingMode: request.variableMissingMode,
 		};
 
-		const imported = await this.importOrchestrator.import({
+		const plan = await this.importOrchestrator.plan({
 			context,
 			folders,
 			workflows,
@@ -107,6 +110,17 @@ export class WorkflowPackageImporter {
 			variableRequest,
 			options: request,
 		});
+
+		const blockingIssues = [...plan.blockingIssues];
+		const quotaIssue = await this.importOrchestrator.variableQuotaIssue(
+			plan.variablePlan.creations,
+		);
+		if (quotaIssue) blockingIssues.push(quotaIssue);
+		if (blockingIssues.length > 0) {
+			throw toImportBlockedError(blockingIssues);
+		}
+
+		const imported = await this.importOrchestrator.apply(plan);
 
 		emitPackageImportedEvent(this.eventService, {
 			request,
@@ -132,6 +146,14 @@ export class WorkflowPackageImporter {
 		if (!this.licenseState.isLicensed('feat:folders')) {
 			throw new ForbiddenError(
 				'Your license does not allow folders. Importing a package with folders requires a license that supports folders.',
+			);
+		}
+	}
+
+	private assertVariablesLicensed(): void {
+		if (!this.licenseState.isVariablesLicensed()) {
+			throw new ForbiddenError(
+				'Your license does not allow variables. Importing a package that creates variables requires a license that supports variables.',
 			);
 		}
 	}

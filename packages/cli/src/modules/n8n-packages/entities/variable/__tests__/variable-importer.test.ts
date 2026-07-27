@@ -1,4 +1,3 @@
-import type { LicenseState } from '@n8n/backend-common';
 import type { Variables } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
@@ -47,11 +46,9 @@ function makeVariable(overrides: Partial<Variables> = {}): Variables {
 
 function makeImporter() {
 	const variablesService = mock<VariablesService>();
-	const licenseState = mock<LicenseState>();
-	licenseState.isVariablesLicensed.mockReturnValue(true);
-	licenseState.getMaxVariables.mockReturnValue(-1);
-	const importer = new VariableImporter(variablesService, licenseState);
-	return { importer, variablesService, licenseState };
+	variablesService.getRemainingVariableQuota.mockResolvedValue(null);
+	const importer = new VariableImporter(variablesService);
+	return { importer, variablesService };
 }
 
 beforeEach(() => {
@@ -292,19 +289,6 @@ describe('VariableImporter', () => {
 				).rejects.toThrow('You are not allowed to create global variables');
 			});
 
-			it('throws when variables are not licensed', async () => {
-				const { importer, variablesService, licenseState } = makeImporter();
-				variablesService.getAllCached.mockResolvedValue([]);
-				licenseState.isVariablesLicensed.mockReturnValue(false);
-
-				await expect(
-					importer.plan(context, {
-						requirements: [req('API_KEY', ['wf-1'])],
-						missingMode: 'create-stub',
-					}),
-				).rejects.toThrow('Your license does not allow variables');
-			});
-
 			it('skips the project permission check when the project is pending creation', async () => {
 				const { importer, variablesService } = makeImporter();
 				variablesService.getAllCached.mockResolvedValue([]);
@@ -326,17 +310,15 @@ describe('VariableImporter', () => {
 				expect(userHasScopes).not.toHaveBeenCalled();
 			});
 
-			it('reports a limit failure when creations would exceed the quota', async () => {
-				const { importer, variablesService, licenseState } = makeImporter();
+			it('leaves the quota alone: planning never reports a limit failure', async () => {
+				const { importer, variablesService } = makeImporter();
 				variablesService.getAllCached.mockResolvedValue([]);
-				licenseState.getMaxVariables.mockReturnValue(1);
 
 				const plan = await importer.plan(context, {
 					requirements: [req('API_KEY', ['wf-1']), req('API_TOKEN', ['wf-1'])],
 					missingMode: 'create-stub',
 				});
 
-				// The limit failure is reported alongside the plan; it does not erase the creations.
 				expect(plan).toEqual({
 					matched: [],
 					missing: [
@@ -347,36 +329,75 @@ describe('VariableImporter', () => {
 						{ name: 'API_KEY', projectId: 'proj-target', usedByWorkflows: ['wf-1'] },
 						{ name: 'API_TOKEN', projectId: 'proj-target', usedByWorkflows: ['wf-1'] },
 					],
-					limitFailure: { limit: 1, requested: 2, names: ['API_KEY', 'API_TOKEN'] },
 				});
+				expect(variablesService.getRemainingVariableQuota).not.toHaveBeenCalled();
 			});
+		});
+	});
 
-			it('skips the quota check when checkQuota is false', async () => {
-				const { importer, variablesService, licenseState } = makeImporter();
-				variablesService.getAllCached.mockResolvedValue([]);
-				licenseState.getMaxVariables.mockReturnValue(1);
+	describe('quotaFailure', () => {
+		const creation = (name: string, projectId?: string) => ({
+			name,
+			...(projectId ? { projectId } : {}),
+			usedByWorkflows: ['wf-1'],
+		});
 
-				const plan = await importer.plan(
-					context,
-					{
-						requirements: [req('API_KEY', ['wf-1']), req('API_TOKEN', ['wf-1'])],
-						missingMode: 'create-stub',
-					},
-					{ checkQuota: false },
-				);
+		it('returns nothing when the quota is unlimited', async () => {
+			const { importer, variablesService } = makeImporter();
+			variablesService.getRemainingVariableQuota.mockResolvedValue(null);
 
-				// No `limitFailure` key: the over-quota creations pass through unchecked.
-				expect(plan).toEqual({
-					matched: [],
-					missing: [
-						{ name: 'API_KEY', usedByWorkflows: ['wf-1'] },
-						{ name: 'API_TOKEN', usedByWorkflows: ['wf-1'] },
-					],
-					creations: [
-						{ name: 'API_KEY', projectId: 'proj-target', usedByWorkflows: ['wf-1'] },
-						{ name: 'API_TOKEN', projectId: 'proj-target', usedByWorkflows: ['wf-1'] },
-					],
-				});
+			await expect(
+				importer.quotaFailure([creation('API_KEY'), creation('API_TOKEN')]),
+			).resolves.toBeUndefined();
+		});
+
+		it('returns nothing when the creations fit the remaining quota', async () => {
+			const { importer, variablesService } = makeImporter();
+			variablesService.getRemainingVariableQuota.mockResolvedValue({ limit: 5, remaining: 2 });
+
+			await expect(
+				importer.quotaFailure([creation('API_KEY'), creation('API_TOKEN')]),
+			).resolves.toBeUndefined();
+		});
+
+		it('reports the overrun with the names and workflows behind it', async () => {
+			const { importer, variablesService } = makeImporter();
+			variablesService.getRemainingVariableQuota.mockResolvedValue({ limit: 5, remaining: 1 });
+
+			await expect(
+				importer.quotaFailure([
+					{ name: 'API_TOKEN', usedByWorkflows: ['wf-2'] },
+					{ name: 'API_KEY', usedByWorkflows: ['wf-1'] },
+				]),
+			).resolves.toEqual({
+				limit: 5,
+				requested: 2,
+				names: ['API_KEY', 'API_TOKEN'],
+				usedByWorkflows: ['wf-1', 'wf-2'],
+			});
+		});
+
+		it('counts a variable planned by several scopes as one new row', async () => {
+			const { importer, variablesService } = makeImporter();
+			variablesService.getRemainingVariableQuota.mockResolvedValue({ limit: 1, remaining: 1 });
+
+			// Two scopes both need the same global variable, but only one row would be created.
+			await expect(
+				importer.quotaFailure([creation('SHARED_URL'), creation('SHARED_URL')]),
+			).resolves.toBeUndefined();
+		});
+
+		it('counts the same name in two projects as two rows', async () => {
+			const { importer, variablesService } = makeImporter();
+			variablesService.getRemainingVariableQuota.mockResolvedValue({ limit: 1, remaining: 1 });
+
+			await expect(
+				importer.quotaFailure([creation('API_KEY', 'proj-a'), creation('API_KEY', 'proj-b')]),
+			).resolves.toEqual({
+				limit: 1,
+				requested: 2,
+				names: ['API_KEY'],
+				usedByWorkflows: ['wf-1'],
 			});
 		});
 	});

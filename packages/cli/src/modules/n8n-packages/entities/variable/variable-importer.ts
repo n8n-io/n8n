@@ -1,4 +1,3 @@
-import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { pickVariableForProject } from 'n8n-workflow';
@@ -8,36 +7,30 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-import { variableBlockingFailures } from './variable-missing-mode';
-import { computeVariableLimitFailure, createFailure } from './variable.types';
+import { variableBlockingFailures, variableMissingModeCreates } from './variable-missing-mode';
+import {
+	computeVariableLimitFailure,
+	createFailure,
+	dedupeCreationsByDestination,
+} from './variable.types';
 import type {
 	VariableApplyResult,
 	VariableCreation,
 	VariableImportPlan,
 	VariableImportRequest,
+	VariableLimitFailure,
 	VariableResolutionFailure,
 } from './variable.types';
-import { VariableMissingMode } from '../../n8n-packages.types';
 import type { ImportContext } from '../../n8n-packages.types';
 
 @Service()
 export class VariableImporter {
-	constructor(
-		private readonly variablesService: VariablesService,
-		private readonly licenseState: LicenseState,
-	) {}
+	constructor(private readonly variablesService: VariablesService) {}
 
-	/**
-	 * Resolves the package's variable requirements against the target project
-	 * (then global), mirroring runtime `$vars` precedence. Under `create-stub` it
-	 * additionally derives the stubs to create and preflights permission, license,
-	 * and (unless `checkQuota` is disabled) the instance variable quota — throwing
-	 * a `ForbiddenError` for permission/license failures before any writes.
-	 */
 	async plan(
 		context: ImportContext,
 		request: VariableImportRequest,
-		options: { projectPendingCreation?: boolean; checkQuota?: boolean } = {},
+		options: { projectPendingCreation?: boolean } = {},
 	): Promise<VariableImportPlan> {
 		const requirements = request.requirements ?? [];
 		if (requirements.length === 0) return { matched: [], missing: [], creations: [] };
@@ -53,7 +46,7 @@ export class VariableImporter {
 		const matched: string[] = [];
 		const missing: VariableResolutionFailure[] = [];
 		const creations: VariableCreation[] = [];
-		const createStub = request.missingMode === VariableMissingMode.CreateStub;
+		const createStub = variableMissingModeCreates(request.missingMode);
 
 		for (const requirement of requirements) {
 			const picked = pickVariableForProject(
@@ -79,19 +72,17 @@ export class VariableImporter {
 			await this.assertCanCreate(context, creations, options.projectPendingCreation ?? false);
 		}
 
-		const limitFailure =
-			(options.checkQuota ?? true)
-				? computeVariableLimitFailure(
-						creations,
-						allVariables.length,
-						this.licenseState.getMaxVariables(),
-					)
-				: undefined;
-
-		return { matched, missing, creations, ...(limitFailure ? { limitFailure } : {}) };
+		return { matched, missing, creations };
 	}
 
-	/** Classifies which unresolved requirements block the import under the chosen missing mode. */
+	/** Deduplicates by destination first: one global variable planned by several scopes is one new row. */
+	async quotaFailure(creations: VariableCreation[]): Promise<VariableLimitFailure | undefined> {
+		return computeVariableLimitFailure(
+			dedupeCreationsByDestination(creations),
+			await this.variablesService.getRemainingVariableQuota(),
+		);
+	}
+
 	blockingFailures(
 		request: VariableImportRequest,
 		plan: VariableImportPlan,
@@ -99,14 +90,6 @@ export class VariableImporter {
 		return variableBlockingFailures(request.missingMode, plan);
 	}
 
-	/**
-	 * Creates the planned stubs with empty values. Re-checks the exact destination
-	 * against a fresh cache before each create so a variable already created by an
-	 * earlier scope of the same import (or an external writer) is skipped rather
-	 * than duplicated. `VariablesService.create` re-enforces permission, license,
-	 * quota, and uniqueness and refreshes the cache, which is what makes the
-	 * cross-scope dedupe work.
-	 */
 	async apply(context: ImportContext, plan: VariableImportPlan): Promise<VariableApplyResult> {
 		const stubbed: string[] = [];
 		const skippedExisting: string[] = [];
@@ -128,11 +111,8 @@ export class VariableImporter {
 				stubbed.push(creation.name);
 				createdCount += 1;
 			} catch (error) {
-				// `VariablesService.create` throws the same `VariableCountLimitReachedError` for two
-				// unrelated failures: the key already exists at this destination, or the instance quota
-				// is full. Re-checking the destination tells them apart — a row there means a concurrent
-				// writer beat us to it and the variable now exists as needed (skip); no row means the
-				// quota preflight raced and the overrun is real (rethrow). Other errors propagate as-is.
+				// One error type covers both "key taken here" and "quota full" (LIGO-880), so re-check
+				// the destination: a row means a concurrent writer won the race, no row means a real overrun.
 				if (
 					error instanceof VariableCountLimitReachedError &&
 					(await this.variableExistsAtDestination(creation))
@@ -151,12 +131,6 @@ export class VariableImporter {
 		};
 	}
 
-	/**
-	 * Whether a row already exists at the creation's exact destination. Deliberately
-	 * not `pickVariableForProject`: runtime precedence would wrongly report a planned
-	 * project-scoped creation as occupied when a same-key global was just created by
-	 * an earlier scope of the same import.
-	 */
 	private async variableExistsAtDestination(creation: VariableCreation): Promise<boolean> {
 		const allVariables = await this.variablesService.getAllCached();
 		return allVariables.some((variable) => {
@@ -177,9 +151,8 @@ export class VariableImporter {
 			throw new ForbiddenError('You are not allowed to create global variables');
 		}
 
-		// A project being created by this same import does not exist yet, so the scope lookup would
-		// always fail. The importing user becomes its admin on creation and `VariablesService.create`
-		// re-checks at apply time.
+		// A project this import is about to create has no scopes to look up yet; the user becomes its
+		// admin on creation, and `VariablesService.create` re-checks at apply time.
 		if (needsProject && !projectPendingCreation) {
 			const allowed = await userHasScopes(context.user, ['projectVariable:create'], false, {
 				projectId: context.projectId,
@@ -187,12 +160,6 @@ export class VariableImporter {
 			if (!allowed) {
 				throw new ForbiddenError('You are not allowed to create variables in this project');
 			}
-		}
-
-		if (!this.licenseState.isVariablesLicensed()) {
-			throw new ForbiddenError(
-				'Your license does not allow variables. Importing a package that creates variables requires a license that supports variables.',
-			);
 		}
 	}
 }

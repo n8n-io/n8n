@@ -2,7 +2,6 @@ import { Service } from '@n8n/di';
 
 import { NodeTypes } from '@/node-types';
 
-import { toImportBlockedError } from './import-blocked.error';
 import { CredentialImporter } from '../entities/credential/credential-importer';
 import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
 import type {
@@ -25,9 +24,9 @@ import { FolderImporter } from '../entities/folder/folder-importer';
 import { VariableImporter } from '../entities/variable/variable-importer';
 import type {
 	VariableApplyResult,
+	VariableCreation,
 	VariableImportPlan,
 	VariableImportRequest,
-	VariableLimitFailure,
 } from '../entities/variable/variable.types';
 import {
 	collectMissingNodeTypes,
@@ -64,11 +63,6 @@ export interface ImportOrchestrationInput {
 	options: ImportWorkflowProperties & ImportFolderProperties;
 	/** The target project does not exist yet and will be created by this import (project packages). */
 	projectPendingCreation?: boolean;
-	/**
-	 * Whether the variable importer runs its per-scope quota preflight (default true).
-	 * Project packages disable it and run one aggregate check across every scope instead.
-	 */
-	checkQuota?: boolean;
 }
 
 export interface ImportOrchestrationResult {
@@ -109,12 +103,13 @@ export class ImportOrchestrator {
 		private readonly nodeTypes: NodeTypes,
 	) {}
 
-	async import(input: ImportOrchestrationInput): Promise<ImportOrchestrationResult> {
-		const plan = await this.plan(input);
-		if (plan.blockingIssues.length > 0) {
-			throw toImportBlockedError(plan.blockingIssues);
-		}
-		return await this.apply(plan);
+	/**
+	 * The variable quota is instance-wide, so it is checked once for the whole import rather
+	 * than per planned scope: a caller passes every scope's creations and gates on the result.
+	 */
+	async variableQuotaIssue(creations: VariableCreation[]): Promise<BlockingIssue | undefined> {
+		const failure = await this.variableImporter.quotaFailure(creations);
+		return failure ? { type: 'variable-limit-exceeded', ...failure } : undefined;
 	}
 
 	async plan(input: ImportOrchestrationInput): Promise<ImportPlan> {
@@ -139,7 +134,6 @@ export class ImportOrchestrator {
 		const dataTablePlan = await this.dataTableImporter.plan(context, dataTableRequest);
 		const variablePlan = await this.variableImporter.plan(context, variableRequest, {
 			projectPendingCreation: input.projectPendingCreation,
-			checkQuota: input.checkQuota,
 		});
 		const workflowPlan = await this.workflowImporter.plan(context, workflows, options);
 		const folderContext = { ...context, folderConflictPolicy: options.folderConflictPolicy };
@@ -274,7 +268,6 @@ export class ImportOrchestrator {
 			...this.variableImporter
 				.blockingFailures(variableRequest, variablePlan)
 				.map((failure): BlockingIssue => ({ type: 'variable-unresolved', ...failure })),
-			...(variablePlan.limitFailure ? [toVariableLimitIssue(variablePlan.limitFailure)] : []),
 			...missingNodeTypeBlockingFailures(missingNodeTypeMode, missingNodeTypes).map(
 				({ type, typeVersion, usedByWorkflows }): BlockingIssue => ({
 					type: 'missing-node-type',
@@ -285,10 +278,6 @@ export class ImportOrchestrator {
 			),
 		];
 	}
-}
-
-function toVariableLimitIssue(limitFailure: VariableLimitFailure): BlockingIssue {
-	return { type: 'variable-limit-exceeded', ...limitFailure };
 }
 
 function toCredentialBlockingIssue(failure: CredentialResolutionFailure): BlockingIssue {
