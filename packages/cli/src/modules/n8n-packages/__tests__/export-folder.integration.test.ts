@@ -61,7 +61,7 @@ describe('folder package export', () => {
 		const project = await createTeamProject('Project A', owner);
 		const folder = await createFolder(project, { name: 'to_production' });
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [folder.id],
@@ -119,7 +119,7 @@ describe('folder package export', () => {
 		const toProduction = await createFolder(project, { name: 'to_production' });
 		const inProgress = await createFolder(project, { name: 'in_progress' });
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [toProduction.id, inProgress.id],
@@ -178,7 +178,7 @@ describe('folder package export', () => {
 			subWorkflowId: dependency.id,
 		});
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			folderIds: [exportedFolder.id],
 			missingWorkflowDependencyPolicy: 'include-in-package',
@@ -235,7 +235,7 @@ describe('folder package export', () => {
 			subWorkflowId: externalChild.id,
 		});
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			folderIds: [folder.id],
 			workflowIds: [externalChild.id],
@@ -271,7 +271,7 @@ describe('folder package export', () => {
 			subWorkflowId: dependency.id,
 		});
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			folderIds: [exportedFolder.id],
 			workflowIds: [topLevelParent.id],
@@ -296,7 +296,7 @@ describe('folder package export', () => {
 		const child = await createFolder(project, { name: 'nested', parentFolder: parent });
 		const grandchild = await createFolder(project, { name: 'deep', parentFolder: child });
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [parent.id],
@@ -329,7 +329,7 @@ describe('folder package export', () => {
 			createdAt: new Date('2026-02-01T00:00:00.000Z'),
 		});
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [older.id, newer.id],
@@ -350,7 +350,7 @@ describe('folder package export', () => {
 		const child = await createFolder(project, { name: 'nested', parentFolder: parent });
 
 		// Request only the child; its real parent stays behind.
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [child.id],
@@ -401,7 +401,7 @@ describe('folder package export — with contained workflows', () => {
 		const folder = await createFolder(project, { name: 'in_progress' });
 		const workflow = await createWorkflow({ name: 'triage', parentFolder: folder }, project);
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [folder.id],
@@ -424,7 +424,7 @@ describe('folder package export — with contained workflows', () => {
 		const child = await createFolder(project, { name: 'nested', parentFolder: parent });
 		const workflow = await createWorkflow({ name: 'playground', parentFolder: child }, project);
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [parent.id],
@@ -453,7 +453,7 @@ describe('folder package export — with contained workflows', () => {
 			parentFolder: folder,
 		});
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [folder.id],
@@ -495,7 +495,7 @@ describe('folder package export — with contained workflows', () => {
 			parentFolder: folder,
 		});
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [folder.id],
@@ -550,7 +550,7 @@ describe('folder package export — with contained workflows', () => {
 		const folder = await createFolder(project, { name: 'in_progress' });
 		const workflow = await createWorkflow({ name: 'triage', parentFolder: folder }, project);
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [workflow.id],
 			folderIds: [folder.id],
@@ -574,7 +574,7 @@ describe('folder package export — with contained workflows', () => {
 		const project = await createTeamProject('Project A', owner);
 		const folder = await createFolder(project, { name: 'empty' });
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [folder.id],
@@ -594,7 +594,7 @@ describe('folder package export — with contained workflows', () => {
 		const workflow = await createWorkflow({ name: 'triage', parentFolder: parent }, project);
 		const subfolder = await createFolder(project, { name: 'workflows', parentFolder: parent });
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [],
 			folderIds: [parent.id],
