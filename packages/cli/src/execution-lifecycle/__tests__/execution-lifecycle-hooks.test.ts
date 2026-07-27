@@ -2011,7 +2011,7 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(push.send).not.toHaveBeenCalled();
 			});
 
-			it('does not emit when no ancestor in the chain has a pushRef', async () => {
+			it('does not emit when the parent has no pushRef', async () => {
 				stubActiveExecution(parentExecutionId, { pushRef: undefined });
 				const hooks = buildHooks();
 
@@ -2023,42 +2023,21 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(push.send).not.toHaveBeenCalled();
 			});
 
-			it('walks up nested sub-execution chains to the root pushRef', async () => {
-				const grandparentId = 'grandparent-execution-id';
-
-				activeExecutions.has.mockImplementation((id) =>
-					[parentExecutionId, grandparentId].includes(id),
-				);
-				activeExecutions.getExecutionOrFail.mockImplementation((id) => {
-					if (id === parentExecutionId) {
-						return {
-							executionData: {
-								pushRef: undefined,
-								executionData: {
-									parentExecution: { executionId: grandparentId, workflowId: 'wf' },
-								},
-							},
-						} as never;
-					}
-					if (id === grandparentId) {
-						return {
-							executionData: {
-								pushRef: rootPushRef,
-								executionData: undefined,
-							},
-						} as never;
-					}
-					throw new Error(`Unexpected lookup: ${id}`);
+			it('does not emit for nested sub-executions whose parent holds no pushRef', async () => {
+				// The immediate parent is itself a sub-execution (no pushRef of its
+				// own): the parent node isn't on the canvas, so the editor would
+				// discard the overlay. Only direct children of the editor session emit.
+				stubActiveExecution(parentExecutionId, {
+					pushRef: undefined,
+					parentId: 'grandparent-execution-id',
 				});
-
 				const hooks = buildHooks();
 
 				await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+				await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+				await hooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
-				expect(push.send).toHaveBeenCalledWith(
-					expect.objectContaining({ type: 'subworkflowExecutionStarted' }),
-					rootPushRef,
-				);
+				expect(push.send).not.toHaveBeenCalled();
 			});
 
 			it('retries pushRef resolution after a transient miss', async () => {
@@ -2111,6 +2090,8 @@ describe('Execution Lifecycle Hooks', () => {
 				await hooks.runHook('nodeExecuteBefore', ['Node B', taskStartedData]);
 				await hooks.runHook('nodeExecuteAfter', ['Node B', taskData, runExecutionData]);
 				await hooks.runHook('nodeExecuteBefore', ['Node A', taskStartedData]);
+				// Let the trailing emit deliver the latest coalesced state.
+				vi.advanceTimersByTime(150);
 
 				const lastCall = push.send.mock.calls.at(-1)?.[0];
 				expect(lastCall).toMatchObject({
@@ -2120,17 +2101,40 @@ describe('Execution Lifecycle Hooks', () => {
 			});
 
 			describe('throttling', () => {
-				it('suppresses same-node running repeats within the throttle window', async () => {
+				it('emits the first progress event immediately (leading edge)', async () => {
 					stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
 					const hooks = buildHooks();
 
-					await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
 					await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
 
 					expect(push.send).toHaveBeenCalledTimes(1);
 				});
 
-				it('emits same-node running repeats once the throttle window has elapsed', async () => {
+				it('coalesces a burst into a single trailing emit carrying the latest state', async () => {
+					stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+					const hooks = buildHooks();
+
+					// The engine emits a before/after pair per node execution. A
+					// looping child would otherwise push two messages per iteration.
+					const success = mock<ITaskData>({ error: undefined });
+					await hooks.runHook('nodeExecuteBefore', ['Node A', taskStartedData]);
+					await hooks.runHook('nodeExecuteAfter', ['Node A', success, runExecutionData]);
+					await hooks.runHook('nodeExecuteBefore', ['Node B', taskStartedData]);
+					await hooks.runHook('nodeExecuteAfter', ['Node B', success, runExecutionData]);
+
+					// Only the leading edge so far; the rest are coalesced.
+					expect(push.send).toHaveBeenCalledTimes(1);
+
+					vi.advanceTimersByTime(150);
+
+					expect(push.send).toHaveBeenCalledTimes(2);
+					expect(push.send.mock.calls.at(-1)?.[0]).toMatchObject({
+						type: 'subworkflowNodeProgress',
+						data: { currentNodeName: 'Node B', phase: 'success' },
+					});
+				});
+
+				it('emits again immediately once the window has elapsed', async () => {
 					stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
 					const hooks = buildHooks();
 
@@ -2141,34 +2145,40 @@ describe('Execution Lifecycle Hooks', () => {
 					expect(push.send).toHaveBeenCalledTimes(2);
 				});
 
-				it('always emits on node-name change regardless of the window', async () => {
+				it('caps push volume for a long-running looping child', async () => {
+					stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+					const hooks = buildHooks();
+
+					// 200 node executions (400 engine events) with no time passing:
+					// the whole burst collapses to the leading edge plus one trailing.
+					for (let i = 0; i < 200; i++) {
+						await hooks.runHook('nodeExecuteBefore', ['Node A', taskStartedData]);
+						await hooks.runHook('nodeExecuteAfter', ['Node A', taskData, runExecutionData]);
+					}
+					vi.advanceTimersByTime(150);
+
+					expect(push.send).toHaveBeenCalledTimes(2);
+				});
+
+				it('drops queued progress when the execution finishes', async () => {
 					stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
 					const hooks = buildHooks();
 
 					await hooks.runHook('nodeExecuteBefore', ['Node A', taskStartedData]);
-					await hooks.runHook('nodeExecuteBefore', ['Node B', taskStartedData]);
+					// Queued but not yet flushed.
+					await hooks.runHook('nodeExecuteAfter', ['Node A', taskData, runExecutionData]);
+					await hooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
+					// Leading progress + finished; the pending snapshot is discarded
+					// because `finished` clears the overlay outright.
 					expect(push.send).toHaveBeenCalledTimes(2);
 					expect(push.send.mock.calls.at(-1)?.[0]).toMatchObject({
-						data: { currentNodeName: 'Node B', phase: 'running' },
+						type: 'subworkflowExecutionFinished',
 					});
-				});
 
-				it('always emits on phase change regardless of the window', async () => {
-					stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
-					const hooks = buildHooks();
-
-					// before → after → before on the same node, all within the window:
-					// the after (phase success) and the second before (phase running)
-					// must both emit so the UI never shows a stale phase.
-					await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
-					await hooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
-					await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
-
-					expect(push.send).toHaveBeenCalledTimes(3);
-					expect(push.send.mock.calls.at(-1)?.[0]).toMatchObject({
-						data: { phase: 'running' },
-					});
+					// A late trailing flush must not resurrect the overlay.
+					vi.advanceTimersByTime(150);
+					expect(push.send).toHaveBeenCalledTimes(2);
 				});
 			});
 		});

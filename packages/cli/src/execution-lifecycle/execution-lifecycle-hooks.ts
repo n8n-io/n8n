@@ -1,3 +1,4 @@
+import type { PushPayload } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { ExecutionRepository, UserRepository } from '@n8n/db';
@@ -11,7 +12,6 @@ import {
 	FileLocation,
 	InstanceSettings,
 } from 'n8n-core';
-import { STICKY_NODE_TYPE } from 'n8n-workflow';
 import type {
 	ExecutionStatus,
 	INode,
@@ -23,7 +23,11 @@ import type {
 	RelatedExecution,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { runDataAttemptedDynamicCredentials, runDataUsedDynamicCredentials } from 'n8n-workflow';
+import {
+	runDataAttemptedDynamicCredentials,
+	runDataUsedDynamicCredentials,
+	STICKY_NODE_TYPE,
+} from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { EventService } from '@/events/event.service';
@@ -481,25 +485,20 @@ function hookFunctionsPush(
 }
 
 /**
- * Walks up the active-execution chain starting at `executionId` and returns
- * the pushRef of the root execution that owns the editor UI session. Returns
- * undefined if no ancestor in the chain has a pushRef (e.g. the root was a
- * trigger/webhook/API-initiated run, or the root execution has already left
- * the in-memory ActiveExecutions registry).
+ * Returns the pushRef of the parent execution when it directly owns an editor
+ * UI session. Only the workflow open on the canvas renders the overlay, so we
+ * forward progress solely for its direct children: a nested (grandchild+)
+ * sub-workflow runs inside a workflow that isn't on the canvas, so its parent
+ * node has no overlay to update and the editor would discard the message.
+ *
+ * Returns undefined when the parent holds no pushRef — e.g. the parent is a
+ * nested sub-execution, the root was a trigger/webhook/API-initiated run, or
+ * the parent has already left the in-memory ActiveExecutions registry.
  */
-function findRootPushRef(executionId: string): string | undefined {
+function findParentPushRef(parentExecutionId: string): string | undefined {
 	const activeExecutions = Container.get(ActiveExecutions);
-	const seen = new Set<string>();
-	let currentId: string | undefined = executionId;
-	while (currentId && !seen.has(currentId)) {
-		seen.add(currentId);
-		if (!activeExecutions.has(currentId)) return undefined;
-		const entry = activeExecutions.getExecutionOrFail(currentId);
-		const pushRef = entry.executionData.pushRef;
-		if (pushRef) return pushRef;
-		currentId = entry.executionData.executionData?.parentExecution?.executionId;
-	}
-	return undefined;
+	if (!activeExecutions.has(parentExecutionId)) return undefined;
+	return activeExecutions.getExecutionOrFail(parentExecutionId).executionData.pushRef;
 }
 
 /**
@@ -524,14 +523,14 @@ function hookFunctionsPushSubExecution(
 
 	// Push + pushRef are resolved lazily on first emit. This keeps hook
 	// registration free of DI side effects (cli tests globally `jest.mock`
-	// `@/push`, which strips its `@Service` metadata) and lets the freshest
-	// ancestor state determine the target pushRef. A failed resolution is
+	// `@/push`, which strips its `@Service` metadata) and defers the parent
+	// lookup until the parent execution is registered. A failed resolution is
 	// retried on the next emit rather than cached, so a transient miss
 	// doesn't silence the whole stream.
 	let cached: { pushInstance: Push; pushRef: string } | undefined;
 	const resolveTarget = (): typeof cached => {
 		if (cached) return cached;
-		const pushRef = findRootPushRef(parentExecution.executionId);
+		const pushRef = findParentPushRef(parentExecution.executionId);
 		if (!pushRef) return undefined;
 		try {
 			cached = { pushInstance: Container.get(Push), pushRef };
@@ -545,13 +544,70 @@ function hookFunctionsPushSubExecution(
 	// workflow the same node runs many times, and execution count would make
 	// the indicator exceed its denominator (e.g. "30 / 3").
 	const reachedNodeNames = new Set<string>();
-	// Coalesces high-frequency repeats on the same node. Any phase change
-	// or node-name change always emits, so the UI never lags behind which
-	// node is actually running.
+
+	// Trailing-edge throttle. The engine emits a before/after pair per node
+	// execution, so a looping child produces two events per iteration — each of
+	// which is a pubsub broadcast in scaling mode and a full canvas re-map in
+	// the editor. The overlay only renders "Running: X", "i / N" and a bar, so
+	// intermediate states are disposable: we coalesce to at most one message
+	// per window and always send the latest state, which caps push volume
+	// regardless of how fast or how long the child runs.
 	const throttleMs = totalNodes >= 50 ? 250 : 100;
 	let lastEmitAt = 0;
-	let lastEmittedNodeName: string | undefined;
-	let lastEmittedPhase: 'running' | 'success' | 'error' | undefined;
+	let pending: PushPayload<'subworkflowNodeProgress'> | undefined;
+	let timer: NodeJS.Timeout | undefined;
+
+	function cancelPending() {
+		if (timer) {
+			clearTimeout(timer);
+			timer = undefined;
+		}
+		pending = undefined;
+	}
+
+	function flush() {
+		if (timer) {
+			clearTimeout(timer);
+			timer = undefined;
+		}
+		if (!pending) return;
+		const target = resolveTarget();
+		// Target unresolved (parent not registered yet): drop this snapshot
+		// rather than holding it — the next node event queues a fresher one.
+		if (target) {
+			target.pushInstance.send({ type: 'subworkflowNodeProgress', data: pending }, target.pushRef);
+			lastEmitAt = Date.now();
+		}
+		pending = undefined;
+	}
+
+	function queueProgress(
+		nodeName: string,
+		phase: 'running' | 'success' | 'error',
+		childId: string,
+	) {
+		reachedNodeNames.add(nodeName);
+		pending = {
+			parentExecutionId: parentExecution.executionId,
+			parentNodeName: parentNode.name,
+			executionId: childId,
+			currentNodeName: nodeName,
+			currentNodeIndex: reachedNodeNames.size,
+			totalNodes,
+			phase,
+		};
+		const elapsed = Date.now() - lastEmitAt;
+		// Leading edge: the window has passed, so emit straight away.
+		if (elapsed >= throttleMs) {
+			flush();
+			return;
+		}
+		// Otherwise let the already-scheduled trailing emit pick up `pending`.
+		if (timer) return;
+		timer = setTimeout(flush, throttleMs - elapsed);
+		// Never hold the process open for a progress overlay.
+		timer.unref?.();
+	}
 
 	hooks.addHandler('workflowExecuteBefore', function () {
 		const target = resolveTarget();
@@ -571,60 +627,17 @@ function hookFunctionsPushSubExecution(
 	});
 
 	hooks.addHandler('nodeExecuteBefore', function (nodeName) {
-		const target = resolveTarget();
-		if (!target) return;
-		reachedNodeNames.add(nodeName);
-		const now = Date.now();
-		const isNewNode = nodeName !== lastEmittedNodeName;
-		const isPhaseChange = lastEmittedPhase !== 'running';
-		// Always emit when the displayed state would actually change.
-		if (!isNewNode && !isPhaseChange && now - lastEmitAt < throttleMs) return;
-		lastEmitAt = now;
-		lastEmittedNodeName = nodeName;
-		lastEmittedPhase = 'running';
-		target.pushInstance.send(
-			{
-				type: 'subworkflowNodeProgress',
-				data: {
-					parentExecutionId: parentExecution.executionId,
-					parentNodeName: parentNode.name,
-					executionId: this.executionId,
-					currentNodeName: nodeName,
-					currentNodeIndex: reachedNodeNames.size,
-					totalNodes,
-					phase: 'running',
-				},
-			},
-			target.pushRef,
-		);
+		queueProgress(nodeName, 'running', this.executionId);
 	});
 
 	hooks.addHandler('nodeExecuteAfter', function (nodeName, data) {
-		const target = resolveTarget();
-		if (!target) return;
-		reachedNodeNames.add(nodeName);
-		const phase: 'success' | 'error' = data?.error ? 'error' : 'success';
-		lastEmitAt = Date.now();
-		lastEmittedNodeName = nodeName;
-		lastEmittedPhase = phase;
-		target.pushInstance.send(
-			{
-				type: 'subworkflowNodeProgress',
-				data: {
-					parentExecutionId: parentExecution.executionId,
-					parentNodeName: parentNode.name,
-					executionId: this.executionId,
-					currentNodeName: nodeName,
-					currentNodeIndex: reachedNodeNames.size,
-					totalNodes,
-					phase,
-				},
-			},
-			target.pushRef,
-		);
+		queueProgress(nodeName, data?.error ? 'error' : 'success', this.executionId);
 	});
 
 	hooks.addHandler('workflowExecuteAfter', function (fullRunData) {
+		// Drop any queued progress: `finished` clears the overlay outright, so
+		// flushing a stale snapshot first would be a wasted message.
+		cancelPending();
 		const target = resolveTarget();
 		if (!target) return;
 		target.pushInstance.send(
