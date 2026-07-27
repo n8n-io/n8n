@@ -14,18 +14,21 @@ function jsonResponse(status: number, body: unknown): Response {
 	} as unknown as Response;
 }
 
-function binaryResponse(status: number, bytes: Uint8Array): Response {
-	return {
-		ok: status >= 200 && status < 300,
-		status,
-		statusText: '',
-		headers: new Headers([['content-type', 'application/gzip']]),
-		json: vi.fn().mockRejectedValue(new Error('not json')),
-		text: vi.fn().mockResolvedValue(''),
-		arrayBuffer: vi
-			.fn()
-			.mockResolvedValue(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)),
-	} as unknown as Response;
+const ZERO_COUNTS = {
+	workflows: 0,
+	folders: 0,
+	credentials: 0,
+	dataTables: 0,
+	variables: 0,
+	projects: 0,
+};
+
+/** Build the JSON export envelope the API now returns: base64 archive + counts. */
+function exportResponse(status: number, bytes: Uint8Array, counts = ZERO_COUNTS): Response {
+	return jsonResponse(status, {
+		package: Buffer.from(bytes).toString('base64'),
+		counts,
+	});
 }
 
 describe('N8nClient packages', () => {
@@ -43,26 +46,32 @@ describe('N8nClient packages', () => {
 	});
 
 	describe('exportPackage', () => {
-		it('posts the workflow IDs as JSON and returns the archive bytes', async () => {
-			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1, 2, 3])));
+		it('posts the workflow IDs as JSON and decodes the archive bytes', async () => {
+			fetchMock.mockResolvedValue(
+				exportResponse(200, new Uint8Array([1, 2, 3]), { ...ZERO_COUNTS, workflows: 2 }),
+			);
 
 			const result = await client.exportPackage({ workflowIds: ['a', 'b'] });
 
-			expect(Buffer.isBuffer(result)).toBe(true);
-			expect(result.equals(Buffer.from([1, 2, 3]))).toBe(true);
+			expect(Buffer.isBuffer(result.archive)).toBe(true);
+			expect(result.archive.equals(Buffer.from([1, 2, 3]))).toBe(true);
+			expect(result.counts.workflows).toBe(2);
 
 			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(url).toBe('https://n8n.example.com/api/v1/n8n-packages/export');
 			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a', 'b'] }));
 		});
 
-		it('posts the project IDs as JSON and returns the archive bytes', async () => {
-			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([4, 5, 6])));
+		it('posts the project IDs as JSON and decodes the archive bytes', async () => {
+			fetchMock.mockResolvedValue(
+				exportResponse(200, new Uint8Array([4, 5, 6]), { ...ZERO_COUNTS, projects: 2 }),
+			);
 
 			const result = await client.exportPackage({ projectIds: ['proj-1', 'proj-2'] });
 
-			expect(Buffer.isBuffer(result)).toBe(true);
-			expect(result.equals(Buffer.from([4, 5, 6]))).toBe(true);
+			expect(Buffer.isBuffer(result.archive)).toBe(true);
+			expect(result.archive.equals(Buffer.from([4, 5, 6]))).toBe(true);
+			expect(result.counts.projects).toBe(2);
 
 			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(url).toBe('https://n8n.example.com/api/v1/n8n-packages/export');
@@ -70,7 +79,7 @@ describe('N8nClient packages', () => {
 		});
 
 		it('includes folderIds in the body when provided', async () => {
-			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+			fetchMock.mockResolvedValue(exportResponse(200, new Uint8Array([1])));
 
 			await client.exportPackage({ workflowIds: ['a'], folderIds: ['f1'] });
 
@@ -79,7 +88,7 @@ describe('N8nClient packages', () => {
 		});
 
 		it('includes the missing workflow dependency policy when provided', async () => {
-			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+			fetchMock.mockResolvedValue(exportResponse(200, new Uint8Array([1])));
 
 			await client.exportPackage({
 				projectIds: ['proj-1'],
@@ -96,7 +105,7 @@ describe('N8nClient packages', () => {
 		});
 
 		it('omits an empty collection from the body', async () => {
-			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+			fetchMock.mockResolvedValue(exportResponse(200, new Uint8Array([1])));
 
 			await client.exportPackage({ workflowIds: [], folderIds: ['f1'] });
 
@@ -105,7 +114,7 @@ describe('N8nClient packages', () => {
 		});
 
 		it('includes includeVariableValues=false in the body when provided', async () => {
-			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+			fetchMock.mockResolvedValue(exportResponse(200, new Uint8Array([1])));
 
 			await client.exportPackage({ workflowIds: ['a'], includeVariableValues: false });
 
@@ -114,7 +123,7 @@ describe('N8nClient packages', () => {
 		});
 
 		it('includes includeVariableValues=true in the body when provided', async () => {
-			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+			fetchMock.mockResolvedValue(exportResponse(200, new Uint8Array([1])));
 
 			await client.exportPackage({ workflowIds: ['a'], includeVariableValues: true });
 
@@ -123,7 +132,7 @@ describe('N8nClient packages', () => {
 		});
 
 		it('omits includeVariableValues from the body when not provided', async () => {
-			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+			fetchMock.mockResolvedValue(exportResponse(200, new Uint8Array([1])));
 
 			await client.exportPackage({ workflowIds: ['a'] });
 

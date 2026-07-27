@@ -220,6 +220,7 @@ export type ExportPackageEventCounts = {
 	credentials: number;
 	dataTables: number;
 	variables: number;
+	projects: number;
 };
 
 export interface ImportedWorkflowSummary {

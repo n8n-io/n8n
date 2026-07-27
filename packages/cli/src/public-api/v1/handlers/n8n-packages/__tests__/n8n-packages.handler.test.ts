@@ -76,9 +76,28 @@ describe('n8n-packages handler', () => {
 	}
 
 	function makeResponse() {
-		const res = new PassThrough() as unknown as Response & PassThrough;
-		res.setHeader = vi.fn().mockReturnValue(res);
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+			setHeader: vi.fn().mockReturnThis(),
+		} as unknown as Response;
 		return res;
+	}
+
+	const ZERO_COUNTS = {
+		workflows: 0,
+		folders: 0,
+		credentials: 0,
+		dataTables: 0,
+		variables: 0,
+		projects: 0,
+	};
+
+	/** Build the `{ stream, counts }` the service now returns, with a stream that emits `bytes`. */
+	function exportServiceResult(bytes: Buffer, counts = ZERO_COUNTS) {
+		const stream = new PassThrough();
+		stream.end(bytes);
+		return { stream, counts };
 	}
 
 	async function run(req: AuthenticatedRequest, res: Response) {
@@ -224,12 +243,12 @@ describe('n8n-packages handler', () => {
 		});
 
 		it('does not reject upfront without variable:list scope; forwards canExportVariableValues=false for the service to enforce', async () => {
-			const stream = new PassThrough();
-			mockService.exportPackage.mockResolvedValue(stream);
+			mockService.exportPackage.mockResolvedValue(
+				exportServiceResult(Buffer.from('package-bytes')),
+			);
 			const res = makeResponse();
 
 			const resultPromise = run(makeRequest({ workflowIds: ['wf-1'] }, ['workflow:export']), res);
-			stream.end(Buffer.from('package-bytes'));
 			const caught = await resultPromise;
 
 			expect(caught).toBeUndefined();
@@ -245,15 +264,15 @@ describe('n8n-packages handler', () => {
 		});
 
 		it('allows value-less export without variable:list scope', async () => {
-			const stream = new PassThrough();
-			mockService.exportPackage.mockResolvedValue(stream);
+			mockService.exportPackage.mockResolvedValue(
+				exportServiceResult(Buffer.from('package-bytes')),
+			);
 			const res = makeResponse();
 
 			const resultPromise = run(
 				makeRequest({ workflowIds: ['wf-1'], includeVariableValues: false }, ['workflow:export']),
 				res,
 			);
-			stream.end(Buffer.from('package-bytes'));
 			const caught = await resultPromise;
 
 			expect(caught).toBeUndefined();
@@ -342,16 +361,17 @@ describe('n8n-packages handler', () => {
 			},
 		);
 
-		it('streams the export for a valid workflow request', async () => {
-			const stream = new PassThrough();
-			mockService.exportPackage.mockResolvedValue(stream);
+		it('responds with a JSON envelope of the base64 archive and counts for a valid workflow request', async () => {
+			const counts = { ...ZERO_COUNTS, workflows: 2 };
+			mockService.exportPackage.mockResolvedValue(
+				exportServiceResult(Buffer.from('package-bytes'), counts),
+			);
 			const res = makeResponse();
 
 			const resultPromise = run(
 				makeRequest({ workflowIds: ['wf-1', 'wf-2'] }, ['workflow:export', 'variable:list']),
 				res,
 			);
-			stream.end(Buffer.from('package-bytes'));
 			const caught = await resultPromise;
 
 			expect(caught).toBeUndefined();
@@ -364,17 +384,19 @@ describe('n8n-packages handler', () => {
 				canExportVariableValues: true,
 				missingWorkflowDependencyPolicy: 'fail',
 			});
-			expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/gzip');
-			expect(res.setHeader).toHaveBeenCalledWith(
-				'Content-Disposition',
-				'attachment; filename="export.n8np"',
-			);
+			expect(res.status).toHaveBeenCalledWith(200);
+			expect(res.json).toHaveBeenCalledWith({
+				package: Buffer.from('package-bytes').toString('base64'),
+				counts,
+			});
+			expect(res.setHeader).not.toHaveBeenCalled();
 			expect(mockEventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('forwards a non-default missing workflow dependency policy', async () => {
-			const stream = new PassThrough();
-			mockService.exportPackage.mockResolvedValue(stream);
+			mockService.exportPackage.mockResolvedValue(
+				exportServiceResult(Buffer.from('package-bytes')),
+			);
 			const res = makeResponse();
 
 			const resultPromise = run(
@@ -387,7 +409,6 @@ describe('n8n-packages handler', () => {
 				),
 				res,
 			);
-			stream.end(Buffer.from('package-bytes'));
 			const caught = await resultPromise;
 
 			expect(caught).toBeUndefined();
@@ -403,15 +424,15 @@ describe('n8n-packages handler', () => {
 		});
 
 		it('streams the export for a valid project request', async () => {
-			const stream = new PassThrough();
-			mockService.exportPackage.mockResolvedValue(stream);
+			mockService.exportPackage.mockResolvedValue(
+				exportServiceResult(Buffer.from('package-bytes')),
+			);
 			const res = makeResponse();
 
 			const resultPromise = run(
 				makeRequest({ projectIds: ['project-1'] }, ['project:export', 'variable:list']),
 				res,
 			);
-			stream.end(Buffer.from('package-bytes'));
 			const caught = await resultPromise;
 
 			expect(caught).toBeUndefined();
@@ -427,15 +448,15 @@ describe('n8n-packages handler', () => {
 		});
 
 		it('streams the export for a valid folder request', async () => {
-			const stream = new PassThrough();
-			mockService.exportPackage.mockResolvedValue(stream);
+			mockService.exportPackage.mockResolvedValue(
+				exportServiceResult(Buffer.from('package-bytes')),
+			);
 			const res = makeResponse();
 
 			const resultPromise = run(
 				makeRequest({ folderIds: ['fld-1'] }, ['workflow:export', 'variable:list']),
 				res,
 			);
-			stream.end(Buffer.from('package-bytes'));
 			const caught = await resultPromise;
 
 			expect(caught).toBeUndefined();
@@ -451,15 +472,15 @@ describe('n8n-packages handler', () => {
 		});
 
 		it('forwards includeVariableValues=false to the service', async () => {
-			const stream = new PassThrough();
-			mockService.exportPackage.mockResolvedValue(stream);
+			mockService.exportPackage.mockResolvedValue(
+				exportServiceResult(Buffer.from('package-bytes')),
+			);
 			const res = makeResponse();
 
 			const resultPromise = run(
 				makeRequest({ workflowIds: ['wf-1'], includeVariableValues: false }, ['workflow:export']),
 				res,
 			);
-			stream.end(Buffer.from('package-bytes'));
 			const caught = await resultPromise;
 
 			expect(caught).toBeUndefined();

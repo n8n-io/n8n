@@ -2309,6 +2309,7 @@ describe('TelemetryEventRelay', () => {
 					credentials: 2,
 					dataTables: 1,
 					variables: 4,
+					projects: 1,
 				},
 			};
 

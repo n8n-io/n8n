@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 
 import { toPackagesError } from './shared';
 import { BaseCommand } from '../../base-command';
+import type { ExportCounts, ExportPackageResult } from '../../client';
 
 export default class PackageExport extends BaseCommand {
 	static override description = 'Export workflows, folders, or projects as an n8n package (.n8np)';
@@ -76,9 +77,9 @@ export default class PackageExport extends BaseCommand {
 
 		await this.execute(async () => {
 			const client = this.getClient(flags);
-			let archive: Buffer;
+			let result: ExportPackageResult;
 			try {
-				archive = await client.exportPackage(
+				result = await client.exportPackage(
 					projectIds.length > 0
 						? { projectIds, includeVariableValues, missingWorkflowDependencyPolicy }
 						: { workflowIds, folderIds, includeVariableValues, missingWorkflowDependencyPolicy },
@@ -86,21 +87,33 @@ export default class PackageExport extends BaseCommand {
 			} catch (error) {
 				throw toPackagesError(error);
 			}
+			const { archive, counts } = result;
 			fs.writeFileSync(flags.output, archive);
 
-			if (projectIds.length > 0) {
-				this.succeed(`Exported ${projectIds.length} project(s) to ${flags.output}`, flags, {
-					output: flags.output,
-					projectIds,
-				});
-				return;
-			}
-
-			this.succeed(
-				`Exported ${workflowIds.length} workflow(s) and ${folderIds.length} folder(s) to ${flags.output}`,
-				flags,
-				{ output: flags.output, workflowIds, folderIds },
-			);
+			this.succeed(summarizeExport(counts, flags.output), flags, {
+				output: flags.output,
+				counts,
+			});
 		});
 	}
+}
+
+/** Category count → "N label(s)", in a stable order, omitting zero-count categories. */
+const EXPORT_COUNT_LABELS: Array<[keyof ExportCounts, string]> = [
+	['workflows', 'workflow(s)'],
+	['folders', 'folder(s)'],
+	['projects', 'project(s)'],
+	['credentials', 'credential(s)'],
+	['dataTables', 'data table(s)'],
+	['variables', 'variable(s)'],
+];
+
+function summarizeExport(counts: ExportCounts, output: string): string {
+	const parts = EXPORT_COUNT_LABELS.filter(([key]) => counts[key] > 0).map(
+		([key, label]) => `${counts[key]} ${label}`,
+	);
+	// Fall back to a bare "Exported" line if nothing was bundled (defensive; the API rejects empty exports).
+	return parts.length > 0
+		? `Exported ${parts.join(', ')} to ${output}`
+		: `Exported package to ${output}`;
 }

@@ -171,7 +171,7 @@ describe('POST /n8n-packages/export', () => {
 		});
 	});
 
-	test('streams a gzipped package when exporting a folder', async () => {
+	test('returns a JSON envelope with the base64 archive and real counts when exporting a folder', async () => {
 		const project = await createTeamProject('Export project', owner);
 		const folder = await createFolder(project, { name: 'to_production' });
 
@@ -180,7 +180,14 @@ describe('POST /n8n-packages/export', () => {
 			.send({ folderIds: [folder.id] });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.headers['content-type']).toContain('application/gzip');
-		expect(response.headers['content-disposition']).toContain('export.n8np');
+		expect(response.headers['content-type']).toContain('application/json');
+		expect(typeof response.body.package).toBe('string');
+		// The base64 payload decodes to a non-empty gzip archive (magic bytes 0x1f 0x8b).
+		const archive = Buffer.from(response.body.package, 'base64');
+		expect(archive.length).toBeGreaterThan(0);
+		expect(archive[0]).toBe(0x1f);
+		expect(archive[1]).toBe(0x8b);
+		// A folder-only export bundles the folder but no workflows.
+		expect(response.body.counts).toMatchObject({ folders: 1, workflows: 0 });
 	});
 });

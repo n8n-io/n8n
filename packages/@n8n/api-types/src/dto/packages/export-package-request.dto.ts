@@ -12,3 +12,20 @@ export class ExportPackageRequestDto extends Z.class({
 		.optional()
 		.default('fail'),
 }) {}
+
+/** Per-entity counts of what was actually bundled into an exported package. */
+export interface ExportCounts {
+	workflows: number;
+	folders: number;
+	credentials: number;
+	dataTables: number;
+	variables: number;
+	projects: number;
+}
+
+/** JSON envelope returned by the package export endpoint. */
+export interface ExportPackageResponse {
+	/** Base64-encoded gzipped tar archive (.n8np) of the exported package. */
+	package: string;
+	counts: ExportCounts;
+}

@@ -1,3 +1,4 @@
+import type { ExportCounts } from '@n8n/api-types';
 import { ExportPackageRequestDto, ImportPackageRequestDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -80,19 +81,22 @@ function assertPackageImportApiKeyScopes(req: AuthenticatedRequest) {
 	}
 }
 
-async function streamPackageExport(res: Response, stream: Readable): Promise<Response> {
-	res.setHeader('Content-Type', 'application/gzip');
-	res.setHeader('Content-Disposition', 'attachment; filename="export.n8np"');
-
-	return await new Promise<Response>((resolve, reject) => {
+async function bufferStream(stream: Readable): Promise<Buffer> {
+	const chunks: Buffer[] = [];
+	return await new Promise<Buffer>((resolve, reject) => {
+		stream.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
 		stream.on('error', reject);
-		res.on('finish', () => resolve(res));
-		res.on('close', () => {
-			if (!res.writableFinished) stream.destroy();
-			resolve(res);
-		});
-		stream.pipe(res);
+		stream.on('end', () => resolve(Buffer.concat(chunks)));
 	});
+}
+
+async function respondWithPackageExport(
+	res: Response,
+	stream: Readable,
+	counts: ExportCounts,
+): Promise<Response> {
+	const archive = await bufferStream(stream);
+	return res.status(200).json({ package: archive.toString('base64'), counts });
 }
 
 const n8nPackagesHandlers: N8nPackagesHandlers = {
@@ -131,7 +135,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					projectIds,
 				);
 
-				const stream = await Container.get(N8nPackagesService).exportPackage({
+				const { stream, counts } = await Container.get(N8nPackagesService).exportPackage({
 					user: req.user,
 					workflowIds,
 					folderIds,
@@ -141,7 +145,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					missingWorkflowDependencyPolicy: payload.data.missingWorkflowDependencyPolicy,
 				});
 
-				return await streamPackageExport(res, stream);
+				return await respondWithPackageExport(res, stream, counts);
 			} catch (error) {
 				Container.get(EventService).emit('n8n-package-export-failed', {
 					user: req.user,

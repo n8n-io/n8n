@@ -34,6 +34,21 @@ export interface ExportPackageFields {
 	missingWorkflowDependencyPolicy?: string;
 }
 
+/** Per-entity counts of what was actually bundled into an exported package. */
+export interface ExportCounts {
+	workflows: number;
+	folders: number;
+	credentials: number;
+	dataTables: number;
+	variables: number;
+	projects: number;
+}
+
+export interface ExportPackageResult {
+	archive: Buffer;
+	counts: ExportCounts;
+}
+
 export class ApiError extends Error {
 	constructor(
 		readonly statusCode: number,
@@ -437,7 +452,7 @@ export class N8nClient {
 
 	// ─── Packages (beta) ───────────────────────────────────────────
 
-	async exportPackage(fields: ExportPackageFields): Promise<Buffer> {
+	async exportPackage(fields: ExportPackageFields): Promise<ExportPackageResult> {
 		// Empty collections are dropped so the API's per-field "at least one" rule isn't tripped.
 		const body: {
 			workflowIds?: string[];
@@ -454,10 +469,12 @@ export class N8nClient {
 		if (fields.missingWorkflowDependencyPolicy)
 			body.missingWorkflowDependencyPolicy = fields.missingWorkflowDependencyPolicy;
 
-		return await this.request<Buffer>('POST', '/n8n-packages/export', {
-			body,
-			responseType: 'binary',
-		});
+		const res = await this.request<{ package: string; counts: ExportCounts }>(
+			'POST',
+			'/n8n-packages/export',
+			{ body, responseType: 'json' },
+		);
+		return { archive: Buffer.from(res.package, 'base64'), counts: res.counts };
 	}
 
 	async importPackage(

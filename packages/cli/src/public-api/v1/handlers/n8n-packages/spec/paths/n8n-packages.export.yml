@@ -13,8 +13,9 @@ post:
     groups. Each exported folder includes its nested folders. Empty projects
     export project metadata only. Statically referenced sub-workflows must also
     be included in the resulting package, otherwise the export is rejected. The
-    response is streamed as `application/gzip` with a `Content-Disposition`
-    attachment header. Requires the n8n Packages feature to be licensed.
+    response is a JSON envelope containing `package` (the base64-encoded gzipped
+    tar archive) and `counts` of what was actually bundled. Requires the n8n
+    Packages feature to be licensed.
 
     API key scopes: `workflow:export` is required when exporting workflows or folders, and `project:export` is required when exporting projects. When `includeVariableValues` is true (the default) and the exported workflows reference variables, `variable:list` is also required; exports that reference no variables never need it.
   requestBody:
@@ -26,12 +27,42 @@ post:
           $ref: '../schemas/exportPackageRequest.yml'
   responses:
     '200':
-      description: A gzipped tar archive containing the exported package contents.
+      description: A JSON envelope with the base64-encoded package archive and the counts of exported entities.
       content:
-        application/gzip:
+        application/json:
           schema:
-            type: string
-            format: binary
+            type: object
+            required:
+              - package
+              - counts
+            properties:
+              package:
+                type: string
+                format: byte
+                description: The base64-encoded gzipped tar archive (.n8np) of the exported package.
+              counts:
+                type: object
+                description: Per-entity counts of what was actually bundled into the package.
+                required:
+                  - workflows
+                  - folders
+                  - credentials
+                  - dataTables
+                  - variables
+                  - projects
+                properties:
+                  workflows:
+                    type: integer
+                  folders:
+                    type: integer
+                  credentials:
+                    type: integer
+                  dataTables:
+                    type: integer
+                  variables:
+                    type: integer
+                  projects:
+                    type: integer
     '400':
       $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':

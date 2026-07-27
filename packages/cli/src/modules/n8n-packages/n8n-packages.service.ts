@@ -1,3 +1,4 @@
+import type { ExportCounts } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { Readable } from 'node:stream';
@@ -64,7 +65,9 @@ export class N8nPackagesService {
 		private readonly autoIncludedWorkflowExporter: AutoIncludedWorkflowExporter,
 	) {}
 
-	async exportPackage(request: ExportPackageRequest): Promise<Readable> {
+	async exportPackage(
+		request: ExportPackageRequest,
+	): Promise<{ stream: Readable; counts: ExportCounts }> {
 		// TODO: remove this once reference-only is supported
 		const { missingWorkflowDependencyPolicy } = request;
 		if (missingWorkflowDependencyPolicy === MissingWorkflowDependencyPolicy.ReferenceOnly) {
@@ -249,6 +252,15 @@ export class N8nPackagesService {
 
 		const stream = writer.finalize();
 
+		const counts: ExportCounts = {
+			workflows: allWorkflowsInPackage.length,
+			folders: allFolders.length,
+			credentials: credentialExportResult.entries.length,
+			dataTables: dataTableExportResult.entries.length,
+			variables: variableExportResult.entries.length,
+			projects: allProjects.length,
+		};
+
 		this.eventService.emit('n8n-package-exported', {
 			user: request.user,
 			...(allWorkflowsInPackage.length
@@ -256,16 +268,10 @@ export class N8nPackagesService {
 				: {}),
 			...(allFolders.length ? { folderIds: allFolders.map(({ id }) => id) } : {}),
 			...(allProjects.length ? { projectIds: allProjects.map(({ id }) => id) } : {}),
-			counts: {
-				workflows: allWorkflowsInPackage.length,
-				folders: allFolders.length,
-				credentials: credentialExportResult.entries.length,
-				dataTables: dataTableExportResult.entries.length,
-				variables: variableExportResult.entries.length,
-			},
+			counts,
 		});
 
-		return stream;
+		return { stream, counts };
 	}
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {

@@ -2,12 +2,25 @@ import type { Config } from '@oclif/core';
 import * as fs from 'node:fs';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
-import type { N8nClient } from '../client';
+import type { ExportCounts, N8nClient } from '../client';
 import PackageExport from '../commands/package/export';
 
 vi.mock('node:fs');
 
 const mockedWriteFileSync = vi.mocked(fs.writeFileSync);
+
+const ZERO_COUNTS: ExportCounts = {
+	workflows: 0,
+	folders: 0,
+	credentials: 0,
+	dataTables: 0,
+	variables: 0,
+	projects: 0,
+};
+
+function exportResult(counts: Partial<ExportCounts> = {}) {
+	return { archive: Buffer.from([1, 2, 3]), counts: { ...ZERO_COUNTS, ...counts } };
+}
 
 interface ExportFlags {
 	workflowId?: string[];
@@ -22,26 +35,27 @@ interface ExportFlags {
 interface ExportInternals {
 	parse: () => Promise<{ flags: ExportFlags }>;
 	getClient: () => N8nClient;
-	succeed: () => void;
+	succeed: (message: string, flags: unknown, data?: Record<string, unknown>) => void;
 	error: (message: string) => never;
 }
 
 function stubCommand(
 	flags: ExportFlags,
-	exportPackage = vi.fn().mockResolvedValue(Buffer.from([1, 2, 3])),
+	exportPackage = vi.fn().mockResolvedValue(exportResult()),
 ) {
 	const command = new PackageExport([], {} as Config);
 	const internals = command as unknown as ExportInternals;
+	const succeed = vi.fn();
 	// Bypass oclif arg parsing, connection setup, and the success/exit path.
 	vi.spyOn(internals, 'parse').mockResolvedValue({
 		flags: { missingWorkflowDependencyPolicy: 'fail', ...flags },
 	});
 	vi.spyOn(internals, 'getClient').mockReturnValue({ exportPackage } as unknown as N8nClient);
-	vi.spyOn(internals, 'succeed').mockImplementation(() => {});
+	vi.spyOn(internals, 'succeed').mockImplementation(succeed);
 	vi.spyOn(internals, 'error').mockImplementation((message: string) => {
 		throw new Error(message);
 	});
-	return { command, internals, exportPackage };
+	return { command, internals, exportPackage, succeed };
 }
 
 describe('package export command', () => {
@@ -198,6 +212,52 @@ describe('package export command', () => {
 			includeVariableValues: true,
 			missingWorkflowDependencyPolicy: 'fail',
 		});
+	});
+
+	it('reports the real exported counts, omitting zero categories, in the success line', async () => {
+		const { command, succeed } = stubCommand(
+			{ folderId: ['fld-1'], output: '/tmp/folders.n8np' },
+			vi.fn().mockResolvedValue(exportResult({ folders: 2 })),
+		);
+
+		await command.run();
+
+		// A folder-only export must not mention "0 workflow(s)" and vice versa.
+		expect(succeed).toHaveBeenCalledWith(
+			'Exported 2 folder(s) to /tmp/folders.n8np',
+			expect.anything(),
+			expect.objectContaining({ counts: { ...ZERO_COUNTS, folders: 2 } }),
+		);
+	});
+
+	it('lists every non-zero category in a stable order', async () => {
+		const { command, succeed } = stubCommand(
+			{ workflowId: ['wf-1'], output: '/tmp/mixed.n8np' },
+			vi.fn().mockResolvedValue(exportResult({ workflows: 1, credentials: 3, variables: 2 })),
+		);
+
+		await command.run();
+
+		expect(succeed).toHaveBeenCalledWith(
+			'Exported 1 workflow(s), 3 credential(s), 2 variable(s) to /tmp/mixed.n8np',
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('reports the real project count for a project export', async () => {
+		const { command, succeed } = stubCommand(
+			{ projectId: ['proj-1', 'proj-2'], output: '/tmp/projects.n8np' },
+			vi.fn().mockResolvedValue(exportResult({ projects: 2, workflows: 5 })),
+		);
+
+		await command.run();
+
+		expect(succeed).toHaveBeenCalledWith(
+			'Exported 5 workflow(s), 2 project(s) to /tmp/projects.n8np',
+			expect.anything(),
+			expect.anything(),
+		);
 	});
 
 	it('rejects providing both workflow and project IDs', async () => {
