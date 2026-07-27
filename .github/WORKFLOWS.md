@@ -412,6 +412,7 @@ Push to master/1.x
 | Daily 00:00               | `release-chromatic.yml`       | Visual regression        |
 | Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
+| Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
 | Daily 04:00               | `test-e2e-vm-expressions-nightly.yml`| VM expression E2E     |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
 | Daily 06:00               | `util-sync-master-to-3x.yml`      | Sync master → 3.x (v3)   |

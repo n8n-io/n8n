@@ -19,7 +19,14 @@ E2E=0
 WORK="$(mktemp -d)"
 FAILED=0
 
+# Git Bash / MSYS (Windows CI) emulates POSIX but has no real file modes.
+case "$(uname -s)" in
+MINGW* | MSYS*) WINDOWS=1 ;;
+*) WINDOWS=0 ;;
+esac
+
 pass() { printf 'ok - %s\n' "$1"; }
+skip() { printf 'skip - %s\n' "$1"; }
 fail() {
 	printf 'FAIL - %s\n' "$1" >&2
 	FAILED=1
@@ -56,7 +63,11 @@ check_not "unknown flag fails" sh "$SCRIPT" --bogus
 check "--no-start install succeeds" env N8N_DIR="$WORK/a" sh "$SCRIPT" --no-start
 check "compose.yml created" test -f "$WORK/a/compose.yml"
 check ".env created" test -f "$WORK/a/.env"
-[ "$(find "$WORK/a/.env" -perm 0600)" = "$WORK/a/.env" ] && pass ".env is mode 600" || fail ".env is mode 600"
+if [ "$WINDOWS" -eq 1 ]; then
+	skip ".env is mode 600 (no POSIX file modes on Windows)"
+else
+	[ "$(find "$WORK/a/.env" -perm 0600)" = "$WORK/a/.env" ] && pass ".env is mode 600" || fail ".env is mode 600"
+fi
 check "compose.yml validates with generated .env" docker compose -f "$WORK/a/compose.yml" config -q
 
 api_key="$(env_value "$WORK/a" SANDBOX_API_KEYS)"

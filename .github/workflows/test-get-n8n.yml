@@ -3,6 +3,10 @@ name: 'Test get-n8n.sh installer'
 # Lints and end-to-end tests the get.n8n.io install script:
 # fresh install boots the full stack, re-runs are no-ops, --upgrade only
 # bumps N8N_VERSION, and all failure modes exit cleanly.
+#
+# Also runs nightly against master: the script pins n8n but pulls the
+# sandbox images at :latest, so an image-side change can break installs
+# without any change to the script itself.
 
 on:
   pull_request:
@@ -10,6 +14,8 @@ on:
       - 'docker/get-n8n.sh'
       - 'docker/test-get-n8n.sh'
       - '.github/workflows/test-get-n8n.yml'
+  schedule:
+    - cron: '0 2 * * *'
   workflow_dispatch:
 
 permissions:
@@ -38,3 +44,34 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Run test harness
         run: sh docker/test-get-n8n.sh --e2e
+
+  # GitHub-hosted Windows runners can't run Linux containers, so no e2e here.
+  # This covers the real Windows-adjacent user path (Git Bash + Docker Desktop):
+  # arg parsing, file generation, secrets, idempotency, compose validation.
+  fast-checks-windows:
+    name: 'Fast checks (Windows / Git Bash)'
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run test harness (no containers)
+        shell: bash
+        run: sh docker/test-get-n8n.sh
+
+  notify-on-failure:
+    name: Notify Slack on failure
+    runs-on: ubuntu-slim
+    needs: [lint, e2e, fast-checks-windows]
+    if: ${{ always() && github.event_name == 'schedule' && contains(needs.*.result, 'failure') }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-build' \
+            --text 'get-n8n.sh installer nightly failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
