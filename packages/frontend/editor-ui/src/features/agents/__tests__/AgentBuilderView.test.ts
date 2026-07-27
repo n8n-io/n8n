@@ -142,22 +142,24 @@ vi.mock('../composables/useAgentApi', () => ({
 	getAgentConfigValidation: getAgentConfigValidationMock,
 }));
 
+const builderTelemetryMock = vi.hoisted(() => ({
+	resetForAgentSwitch: vi.fn(),
+	captureToolsBaseline: vi.fn(),
+	captureSkillsBaseline: vi.fn(),
+	captureTasksBaseline: vi.fn(),
+	fetchInitialTriggersBaseline: vi.fn().mockResolvedValue(null),
+	recordConfigEdit: vi.fn(),
+	flushConfigEdits: vi.fn(),
+	trackToolsAdded: vi.fn(),
+	trackSkillsAdded: vi.fn(),
+	trackTasksChanged: vi.fn(),
+	trackOpenedToolFromList: vi.fn(),
+	trackOpenedSkillFromList: vi.fn(),
+	trackOpenedAddSkillModal: vi.fn(),
+}));
+
 vi.mock('../composables/useAgentBuilderTelemetry', () => ({
-	useAgentBuilderTelemetry: () => ({
-		resetForAgentSwitch: vi.fn(),
-		captureToolsBaseline: vi.fn(),
-		captureSkillsBaseline: vi.fn(),
-		captureTasksBaseline: vi.fn(),
-		fetchInitialTriggersBaseline: vi.fn().mockResolvedValue(null),
-		recordConfigEdit: vi.fn(),
-		flushConfigEdits: vi.fn(),
-		trackToolsAdded: vi.fn(),
-		trackSkillsAdded: vi.fn(),
-		trackTasksChanged: vi.fn(),
-		trackOpenedToolFromList: vi.fn(),
-		trackOpenedSkillFromList: vi.fn(),
-		trackOpenedAddSkillModal: vi.fn(),
-	}),
+	useAgentBuilderTelemetry: () => builderTelemetryMock,
 }));
 
 vi.mock('../composables/useAgentPermissions', () => ({
@@ -360,7 +362,6 @@ const commonStubs = {
 		name: 'AgentChatPanel',
 		template: `
 			<div data-testid="chat-panel-stub">
-				<div data-testid="stub-above-input"><slot name="above-input" /></div>
 				<div data-testid="stub-footer-start"><slot name="footer-start" /></div>
 			</div>
 		`,
@@ -533,6 +534,7 @@ function resetViewMocks() {
 	uploadAgentFilesMock.mockResolvedValue([]);
 	showErrorMock.mockReset();
 	fetchConfigMock.mockClear();
+	builderTelemetryMock.fetchInitialTriggersBaseline.mockResolvedValue(null);
 	favoritesStoreMock.isFavorite.mockReturnValue(false);
 	instanceAiAvailableRef.value = true;
 	startInstanceAiThread.mockReset();
@@ -727,15 +729,20 @@ describe('AgentBuilderView — preview routing', () => {
 		);
 	});
 
-	it('does not upload knowledge files for an unpublished agent', async () => {
+	it('uploads knowledge files for an unpublished agent', async () => {
+		// Default makeAgentResponse() has activeVersionId: null (unpublished).
 		const wrapper = await renderView({ knowledgeBaseEnabled: true });
 
-		wrapper
-			.findComponent({ name: 'AgentBuilderEditorColumn' })
-			.vm.$emit('upload-files', [new File(['x'], 'notes.txt', { type: 'text/plain' })]);
+		const file = new File(['x'], 'notes.txt', { type: 'text/plain' });
+		wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('upload-files', [file]);
 		await flushPromises();
 
-		expect(uploadAgentFilesMock).not.toHaveBeenCalled();
+		expect(uploadAgentFilesMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			[file],
+		);
 	});
 
 	it('always includes the Knowledge tab and keeps it selectable regardless of the knowledge base flag', async () => {
@@ -766,31 +773,7 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(listAgentFilesMock).not.toHaveBeenCalled();
 	});
 
-	it('marks the knowledge files panel unpublished for an unpublished agent', async () => {
-		routeQuery.section = 'knowledge';
-		const wrapper = await renderView({ knowledgeBaseEnabled: true });
-
-		expect(wrapper.findComponent({ name: 'AgentFilesPanel' }).props('isPublished')).toBe(false);
-	});
-
-	it('marks the knowledge files panel published for a published agent', async () => {
-		routeQuery.section = 'knowledge';
-		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
-
-		const wrapper = await renderView({ knowledgeBaseEnabled: true });
-
-		expect(wrapper.findComponent({ name: 'AgentFilesPanel' }).props('isPublished')).toBe(true);
-	});
-
-	it('does not warm the knowledge sandbox for an unpublished agent', async () => {
-		await renderView({ knowledgeBaseEnabled: true });
-
-		expect(warmAgentKnowledgeSandboxMock).not.toHaveBeenCalled();
-	});
-
-	it('warms the knowledge sandbox when a published agent page initializes', async () => {
-		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
-
+	it('warms the knowledge sandbox when the agent page initializes', async () => {
 		await renderView({ knowledgeBaseEnabled: true });
 
 		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledTimes(1);
@@ -799,6 +782,14 @@ describe('AgentBuilderView — preview routing', () => {
 			'p1',
 			'a1',
 		);
+	});
+
+	it('does not warm the knowledge sandbox when agent loading fails', async () => {
+		getAgentMock.mockRejectedValueOnce(new Error('load failed'));
+
+		await renderView({ knowledgeBaseEnabled: true });
+
+		expect(warmAgentKnowledgeSandboxMock).not.toHaveBeenCalled();
 	});
 
 	it('shows the manual editor for unbuilt agents', async () => {
@@ -1344,6 +1335,40 @@ describe('AgentBuilderView — three-column shell', () => {
 
 		expect(getAgentMock).not.toHaveBeenCalled();
 		expect(fetchConfigMock).not.toHaveBeenCalled();
+
+		wrapper.unmount();
+	});
+
+	it('re-baselines instead of tracking capability diffs on external refresh', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p-rebase',
+				artifactAgentId: 'a-rebase',
+			},
+		});
+		builderTelemetryMock.trackToolsAdded.mockClear();
+		builderTelemetryMock.trackSkillsAdded.mockClear();
+		builderTelemetryMock.trackTasksChanged.mockClear();
+		builderTelemetryMock.captureToolsBaseline.mockClear();
+		builderTelemetryMock.captureSkillsBaseline.mockClear();
+		builderTelemetryMock.captureTasksBaseline.mockClear();
+
+		vi.useFakeTimers();
+		try {
+			agentsEventBus.emit('agentUpdated', { agentId: 'a-rebase', source: 'instance-ai' });
+			await vi.advanceTimersByTimeAsync(400);
+		} finally {
+			vi.useRealTimers();
+		}
+		await flushPromises();
+
+		expect(builderTelemetryMock.trackToolsAdded).not.toHaveBeenCalled();
+		expect(builderTelemetryMock.trackSkillsAdded).not.toHaveBeenCalled();
+		expect(builderTelemetryMock.trackTasksChanged).not.toHaveBeenCalled();
+		expect(builderTelemetryMock.captureToolsBaseline).toHaveBeenCalled();
+		expect(builderTelemetryMock.captureSkillsBaseline).toHaveBeenCalled();
+		expect(builderTelemetryMock.captureTasksBaseline).toHaveBeenCalled();
 
 		wrapper.unmount();
 	});

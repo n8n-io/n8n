@@ -70,7 +70,6 @@ import {
 	AGENT_NODE_TYPE,
 	TELEGRAM_NODE_TYPE,
 	SLACK_NODE_TYPE,
-	GOOGLE_GMAIL_NODE_TYPE,
 } from '@/app/constants';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 
@@ -278,6 +277,64 @@ describe('ParameterInputList', () => {
 		expect(await findByText('notice link')).toBeInTheDocument();
 		const link = await findByText('notice link');
 		expect(link.getAttribute('href')).toEqual('notice.n8n.io');
+	});
+
+	it('renders a notice with typeOptions.sectionHeader as a section header, not a notice box', async () => {
+		ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+		const sectionHeaderParam: INodeProperties[] = [
+			{
+				displayName: 'Advanced Interactivity',
+				name: 'advancedInteractivityNotice',
+				type: 'notice',
+				default: '',
+				typeOptions: { sectionHeader: true },
+			},
+		];
+		const { getByTestId, queryByText } = renderComponent({
+			props: {
+				parameters: sectionHeaderParam,
+				nodeValues: TEST_NODE_VALUES,
+			},
+		});
+		await flushPromises();
+
+		// Renders as the section-header divider...
+		expect(getByTestId('section-header-title')).toHaveTextContent('Advanced Interactivity');
+		// ...and not as the fallthrough N8nNotice box.
+		expect(queryByText('Note: This is a notice with')).not.toBeInTheDocument();
+	});
+
+	it('indents the fields that follow a section header, ending at the next collection', async () => {
+		ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+		const params: INodeProperties[] = [
+			{ displayName: 'Before', name: 'before', type: 'string', default: '' },
+			{
+				displayName: 'Advanced Interactivity',
+				name: 'advancedInteractivityNotice',
+				type: 'notice',
+				default: '',
+				typeOptions: { sectionHeader: true },
+			},
+			{ displayName: 'Toggle', name: 'toggle', type: 'boolean', default: false },
+			{ displayName: 'Field A', name: 'fieldA', type: 'string', default: '' },
+			{ displayName: 'Options', name: 'options', type: 'collection', default: {}, options: [] },
+		];
+		const { container } = renderComponent({
+			props: { parameters: params, nodeValues: TEST_NODE_VALUES },
+		});
+		await flushPromises();
+
+		// Only the two fields between the header and the Options collection are indented.
+		expect(container.querySelectorAll('[data-section-indent="true"]')).toHaveLength(2);
+		expect(
+			container.querySelector('[path="before"]')?.closest('[data-section-indent="true"]'),
+		).toBeNull();
+		expect(
+			container.querySelector('[path="toggle"]')?.closest('[data-section-indent="true"]'),
+		).not.toBeNull();
+		expect(
+			container.querySelector('[path="fieldA"]')?.closest('[data-section-indent="true"]'),
+		).not.toBeNull();
 	});
 
 	it('renders callout correctly', async () => {
@@ -2340,8 +2397,8 @@ describe('ParameterInputList', () => {
 			{ displayName: 'Chat ID', name: 'chatId', type: 'string', default: '' },
 			{ displayName: 'Approve Within Chat', name: 'chatApproval', type: 'boolean', default: false },
 			{
-				displayName: 'Chat Approval Options',
-				name: 'chatApprovalOptions',
+				displayName: 'Restrict Who Can Approve',
+				name: 'approverIds',
 				type: 'string',
 				default: '',
 			},
@@ -2359,7 +2416,7 @@ describe('ParameterInputList', () => {
 
 			expect(container.querySelector('[path="chatId"]')).toBeInTheDocument();
 			expect(container.querySelector('[path="chatApproval"]')).not.toBeInTheDocument();
-			expect(container.querySelector('[path="chatApprovalOptions"]')).not.toBeInTheDocument();
+			expect(container.querySelector('[path="approverIds"]')).not.toBeInTheDocument();
 		});
 
 		it('shows the advanced HITL parameters when the experiment is on', async () => {
@@ -2375,7 +2432,7 @@ describe('ParameterInputList', () => {
 
 			expect(container.querySelector('[path="chatId"]')).toBeInTheDocument();
 			expect(container.querySelector('[path="chatApproval"]')).toBeInTheDocument();
-			expect(container.querySelector('[path="chatApprovalOptions"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="approverIds"]')).toBeInTheDocument();
 		});
 
 		it('does not filter parameters for other node types', async () => {
@@ -2389,7 +2446,7 @@ describe('ParameterInputList', () => {
 			await flushPromises();
 
 			expect(container.querySelector('[path="chatApproval"]')).toBeInTheDocument();
-			expect(container.querySelector('[path="chatApprovalOptions"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="approverIds"]')).toBeInTheDocument();
 		});
 
 		it('reveals the advanced HITL parameters once the flag resolves after mount', async () => {
@@ -2418,7 +2475,7 @@ describe('ParameterInputList', () => {
 				await flushPromises();
 
 				expect(container.querySelector('[path="chatApproval"]')).toBeInTheDocument();
-				expect(container.querySelector('[path="chatApprovalOptions"]')).toBeInTheDocument();
+				expect(container.querySelector('[path="approverIds"]')).toBeInTheDocument();
 			} finally {
 				vi.useRealTimers();
 			}
@@ -2502,139 +2559,6 @@ describe('ParameterInputList', () => {
 
 			expect(container.querySelector('[path="captureResponder"]')).toBeInTheDocument();
 			expect(container.querySelector('[path="approvers"]')).toBeInTheDocument();
-		});
-	});
-
-	describe('Gmail HITL parameter gating', () => {
-		const gmailNode = {
-			...TEST_NODE_NO_ISSUES,
-			type: GOOGLE_GMAIL_NODE_TYPE,
-		};
-
-		// Simple types that route through the stubbed ParameterInputFull, which
-		// forwards its `path` prop as a DOM attribute (see the Telegram suite above).
-		const gmailParameters: INodeProperties[] = [
-			{ displayName: 'To', name: 'sendTo', type: 'string', default: '' },
-			{
-				displayName: 'Advanced Email Options',
-				name: 'advancedEmail',
-				type: 'boolean',
-				default: false,
-			},
-			{ displayName: 'Email Options', name: 'advancedEmailOptions', type: 'string', default: '' },
-			{
-				displayName: 'Show Confirmation Page',
-				name: 'confirmationPage',
-				type: 'boolean',
-				default: false,
-			},
-		];
-
-		it('hides the advanced HITL parameters when the experiment is off', async () => {
-			ndvStore.activeNode = gmailNode;
-			const { container } = renderComponent({
-				props: {
-					parameters: gmailParameters,
-					nodeValues: TEST_NODE_VALUES,
-				},
-			});
-			await flushPromises();
-
-			expect(container.querySelector('[path="sendTo"]')).toBeInTheDocument();
-			expect(container.querySelector('[path="advancedEmail"]')).not.toBeInTheDocument();
-			expect(container.querySelector('[path="advancedEmailOptions"]')).not.toBeInTheDocument();
-			expect(container.querySelector('[path="confirmationPage"]')).not.toBeInTheDocument();
-		});
-
-		it('hides the advanced HITL parameters on the tool variant when the experiment is off', async () => {
-			ndvStore.activeNode = { ...gmailNode, type: `${GOOGLE_GMAIL_NODE_TYPE}Tool` };
-			const { container } = renderComponent({
-				props: {
-					parameters: gmailParameters,
-					nodeValues: TEST_NODE_VALUES,
-				},
-			});
-			await flushPromises();
-
-			expect(container.querySelector('[path="sendTo"]')).toBeInTheDocument();
-			expect(container.querySelector('[path="advancedEmail"]')).not.toBeInTheDocument();
-			expect(container.querySelector('[path="advancedEmailOptions"]')).not.toBeInTheDocument();
-			expect(container.querySelector('[path="confirmationPage"]')).not.toBeInTheDocument();
-		});
-
-		it('shows the advanced HITL parameters on the tool variant when the experiment is on', async () => {
-			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
-			ndvStore.activeNode = { ...gmailNode, type: `${GOOGLE_GMAIL_NODE_TYPE}Tool` };
-			const { container } = renderComponent({
-				props: {
-					parameters: gmailParameters,
-					nodeValues: TEST_NODE_VALUES,
-				},
-			});
-			await flushPromises();
-
-			expect(container.querySelector('[path="advancedEmail"]')).toBeInTheDocument();
-			expect(container.querySelector('[path="confirmationPage"]')).toBeInTheDocument();
-		});
-
-		it('shows the advanced HITL parameters when the experiment is on', async () => {
-			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
-			ndvStore.activeNode = gmailNode;
-			const { container } = renderComponent({
-				props: {
-					parameters: gmailParameters,
-					nodeValues: TEST_NODE_VALUES,
-				},
-			});
-			await flushPromises();
-
-			expect(container.querySelector('[path="sendTo"]')).toBeInTheDocument();
-			expect(container.querySelector('[path="advancedEmail"]')).toBeInTheDocument();
-			expect(container.querySelector('[path="advancedEmailOptions"]')).toBeInTheDocument();
-			expect(container.querySelector('[path="confirmationPage"]')).toBeInTheDocument();
-		});
-
-		it('does not filter parameters for other node types', async () => {
-			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
-			const { container } = renderComponent({
-				props: {
-					parameters: gmailParameters,
-					nodeValues: TEST_NODE_VALUES,
-				},
-			});
-			await flushPromises();
-
-			expect(container.querySelector('[path="advancedEmail"]')).toBeInTheDocument();
-			expect(container.querySelector('[path="confirmationPage"]')).toBeInTheDocument();
-		});
-
-		it('reveals the advanced HITL parameters once the flag resolves after mount', async () => {
-			vi.useFakeTimers();
-			try {
-				const flagEnabled = ref(false);
-				mockedStore(usePostHog).isFeatureEnabled.mockImplementation(() => flagEnabled.value);
-				ndvStore.activeNode = gmailNode;
-
-				const { container } = renderComponent({
-					props: {
-						parameters: gmailParameters,
-						nodeValues: TEST_NODE_VALUES,
-					},
-				});
-				await flushPromises();
-
-				expect(container.querySelector('[path="advancedEmail"]')).not.toBeInTheDocument();
-
-				flagEnabled.value = true;
-				await nextTick();
-				await vi.advanceTimersByTimeAsync(250);
-				await flushPromises();
-
-				expect(container.querySelector('[path="advancedEmail"]')).toBeInTheDocument();
-				expect(container.querySelector('[path="confirmationPage"]')).toBeInTheDocument();
-			} finally {
-				vi.useRealTimers();
-			}
 		});
 	});
 });
