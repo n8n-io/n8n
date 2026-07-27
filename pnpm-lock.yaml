@@ -5512,6 +5512,9 @@ importers:
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../../@n8n/api-types
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../../../@n8n/constants
       '@n8n/frontend-constants':
         specifier: workspace:*
         version: link:../frontend-constants

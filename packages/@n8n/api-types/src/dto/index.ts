@@ -267,6 +267,15 @@ export {
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';
+export {
+	WorkflowHistoryListItemDto,
+	workflowHistoryListItemSchema,
+} from './workflow-history/workflow-history-list-item.dto';
+export { ListWorkflowHistoryQueryDto } from './workflow-history/list-workflow-history-query.dto';
+export {
+	WorkflowVersionHistoryListPublicDto,
+	workflowVersionListItemPublicSchema,
+} from './workflow-history/workflow-version-history-public.dto';
 
 export { UpdateExternalSecretsSettingsDto } from './secrets-provider/update-external-secrets-settings.dto';
 export { CreateSecretsProviderConnectionDto } from './secrets-provider/create-secrets-provider-connection.dto';
