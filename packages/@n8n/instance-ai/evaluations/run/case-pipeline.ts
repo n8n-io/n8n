@@ -15,15 +15,14 @@ import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 import type { BuildOrchestrator } from './build-orchestrator';
 import { sentinelOutcomeFromVerdicts, type TargetOutput } from './reshape';
 import type { CliArgs } from '../cli/args';
+import { findAgentArtifactRef } from '../harness/agent-execution';
+import { cleanupBuild, effectiveTimeoutMs } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
 import {
-	cleanupBuild,
-	effectiveTimeoutMs,
-	findAgentArtifactRef,
 	scenariosRequireSerialSeeding,
 	warnAgentSeedDataTablesIgnored,
 	type ScenarioSeedContext,
-} from '../harness/runner';
+} from '../harness/seed-tables';
 import {
 	classifyScenarioExecutionError,
 	extractErrorMessage,
@@ -174,8 +173,15 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 			build,
 			lane: builtOnLane,
 			buildDurationMs,
+			buildSpend,
 		} = await getOrBuild(iteration, inputs.testCaseFile);
 		const cacheKey = `${String(iteration)}:${inputs.testCaseFile}`;
+		// `claude` spend for this case's build (--build-via-mcp only). Rides on
+		// every row of the case like buildDurationMs — dedupe per (iteration, case)
+		// when summing (persist takes the first defined value per iteration).
+		const buildSpendFields = buildSpend
+			? { buildCostUsd: buildSpend.costUsd, buildTurns: buildSpend.turns }
+			: {};
 
 		// Agent-anchored build: scenarios target the agent and a missing workflow is
 		// not a build failure (helper workflows are its tools) — mirrors the direct loop.
@@ -211,6 +217,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				...(outcome.incomplete ? { incomplete: true } : {}),
 				execErrors: [],
 				buildDurationMs,
+				...buildSpendFields,
 				execDurationMs: 0,
 				nodeCount: build.workflowJsons[0]?.nodes.length ?? 0,
 				threadId: build.threadId,
@@ -233,6 +240,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					build.seedingFailed || build.transportFailure ? 'framework_issue' : 'build_failure',
 				execErrors: build.error ? [build.error] : [],
 				buildDurationMs,
+				...buildSpendFields,
 				execDurationMs: 0,
 				nodeCount: 0,
 				threadId: build.threadId,
@@ -291,6 +299,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 						failureCategory: 'framework_issue',
 						execErrors: [errorMessage],
 						buildDurationMs,
+						...buildSpendFields,
 						execDurationMs: Date.now() - agentExecStart,
 						nodeCount: 0,
 						threadId: build.threadId,
@@ -315,6 +324,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				...(agentResult.incomplete ? { incomplete: true } : {}),
 				execErrors: agentResult.agentEvalResult?.errors ?? [],
 				buildDurationMs,
+				...buildSpendFields,
 				execDurationMs: Date.now() - agentExecStart,
 				nodeCount: 0,
 				threadId: build.threadId,
@@ -352,6 +362,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				failureCategory: 'framework_issue',
 				execErrors: [reason],
 				buildDurationMs,
+				...buildSpendFields,
 				execDurationMs: 0,
 				nodeCount: build.workflowJsons[0]?.nodes.length ?? 0,
 				threadId: build.threadId,
@@ -404,6 +415,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 						rootCause: classified.rootCause,
 						execErrors: [errorMessage],
 						buildDurationMs,
+						...buildSpendFields,
 						execDurationMs: Date.now() - execStart,
 						nodeCount,
 						threadId: build.threadId,
@@ -434,6 +446,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				execErrors: result.evalResult?.errors ?? [],
 				evalResult: result.evalResult,
 				buildDurationMs,
+				...buildSpendFields,
 				execDurationMs,
 				nodeCount,
 				threadId: build.threadId,

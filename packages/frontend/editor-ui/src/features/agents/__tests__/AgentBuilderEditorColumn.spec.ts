@@ -85,7 +85,7 @@ vi.mock('../components/AgentInfoPanel.vue', () => ({
 		name: 'AgentInfoPanel',
 		template:
 			'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
-		props: ['showModel', 'showInstructions', 'showInstructionsToolbar'],
+		props: ['showModel', 'showInstructions', 'showInstructionsToolbar', 'instructionsMaxHeight'],
 	},
 }));
 
@@ -93,7 +93,7 @@ vi.mock('../components/AgentFilesPanel.vue', () => ({
 	default: {
 		name: 'AgentFilesPanel',
 		template: '<div data-testid="agent-files-panel" />',
-		props: ['files', 'disabled', 'loading', 'uploading', 'deletingFileId', 'isPublished'],
+		props: ['files', 'disabled', 'loading', 'uploading', 'deletingFileId'],
 		emits: ['upload-files', 'delete-file'],
 	},
 }));
@@ -175,7 +175,12 @@ async function mountColumn(
 					name: 'AgentInfoPanel',
 					template:
 						'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
-					props: ['showModel', 'showInstructions', 'showInstructionsToolbar'],
+					props: [
+						'showModel',
+						'showInstructions',
+						'showInstructionsToolbar',
+						'instructionsMaxHeight',
+					],
 				},
 				AgentPanelHeader: true,
 				AgentAdvancedPanel: true,
@@ -325,28 +330,29 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.findComponent({ name: 'AgentAdvancedPanel' }).exists()).toBe(false);
 	});
 
-	it('orders the Agent tab as channels, model, instructions, then capabilities', async () => {
+	it('orders the Agent tab as channels, capabilities, model, then instructions', async () => {
 		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
 		await flushPromises();
 
 		const channels = wrapper.findComponent({ name: 'AgentChannelsSection' });
-		const model = wrapper.find('[data-testid="agent-model-panel"]');
 		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
+		const model = wrapper.find('[data-testid="agent-model-panel"]');
 		const instructions = wrapper.find('[data-testid="agent-instructions-panel"]');
 
 		expect(channels.exists()).toBe(true);
-		expect(model.exists()).toBe(true);
 		expect(capabilities.exists()).toBe(true);
+		expect(model.exists()).toBe(true);
 		expect(instructions.exists()).toBe(true);
 		expect(
-			channels.element.compareDocumentPosition(model.element) & Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBeTruthy();
-		expect(
-			model.element.compareDocumentPosition(instructions.element) &
+			channels.element.compareDocumentPosition(capabilities.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
 		expect(
-			instructions.element.compareDocumentPosition(capabilities.element) &
+			capabilities.element.compareDocumentPosition(model.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(
+			model.element.compareDocumentPosition(instructions.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
 	});
@@ -360,5 +366,6 @@ describe('AgentBuilderEditorColumn', () => {
 			.find((panel) => panel.props('showModel') === false);
 
 		expect(instructionsPanel?.props('showInstructionsToolbar')).toBe(true);
+		expect(instructionsPanel?.props('instructionsMaxHeight')).toBe('none');
 	});
 });

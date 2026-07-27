@@ -1,4 +1,5 @@
 import type { CredentialListItem, CredentialProvider } from '@n8n/agents';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
 import type { z } from 'zod';
 
@@ -30,9 +31,14 @@ const BASE_DEPS = {
 	projectId: 'project-1',
 	listChatIntegrationTypes: () => ['slack', 'telegram'],
 	getPublishBlockers: async () => [],
+	track: vi.fn(),
 };
 
 describe('finish_setup tool', () => {
+	afterEach(() => {
+		(BASE_DEPS.track as Mock).mockClear();
+	});
+
 	it('auto-resolves single-credential and channel-matching slots, excluding them from the credential phase', async () => {
 		const credentialProvider = makeProvider([
 			{ id: 'c1', name: 'My Airtable', type: 'airtableApi' },
@@ -125,6 +131,10 @@ describe('finish_setup tool', () => {
 			remainingPhases: [{ kind: 'credentials' }],
 			totalPhases: 2,
 		});
+		expect(BASE_DEPS.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_ASKED_QUESTIONS, {
+			question_count: 1,
+			question_types: ['single'],
+		});
 
 		const credentialsPayload = (await tool.handler!(
 			input,
@@ -140,6 +150,14 @@ describe('finish_setup tool', () => {
 			{ credentialType: 'airtableApi', reason: 'Airtable log', existingCredentials: [] },
 		]);
 		expect(credentialsPayload.message).toBe('Finish setup (2/2)');
+		expect(BASE_DEPS.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_ANSWERED_BUILDER_QUESTIONS,
+			{ outcome: 'answered', answered_count: 1, skipped_count: 0 },
+		);
+		expect(BASE_DEPS.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.BUILDER_REQUESTED_CREDENTIAL,
+			{ credential_type: 'airtableApi' },
+		);
 
 		const result = await tool.handler!(
 			input,
@@ -152,6 +170,10 @@ describe('finish_setup tool', () => {
 			completed: true,
 			answers: [{ questionId: 'model', selectedOptions: ['gpt'] }],
 			credentials: { airtableApi: { id: 'new-cred', name: 'new-cred' } },
+		});
+		expect(BASE_DEPS.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_PROVIDED_CREDENTIAL, {
+			credential_type: 'airtableApi',
+			outcome: 'provided',
 		});
 	});
 
@@ -177,6 +199,10 @@ describe('finish_setup tool', () => {
 		expect(result).toEqual({
 			completed: true,
 			credentials: { airtableApi: 'skipped' },
+		});
+		expect(BASE_DEPS.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_PROVIDED_CREDENTIAL, {
+			credential_type: 'airtableApi',
+			outcome: 'skipped',
 		});
 	});
 
@@ -252,6 +278,9 @@ describe('finish_setup tool', () => {
 			makeCtx({ resumeData: { approved: false }, suspendPayload: slackPayload }) as never,
 		)) as Record<string, unknown>;
 		expect(telegramPayload.message).toBe('Set up the telegram channel');
+		expect(BASE_DEPS.track).not.toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TRIGGER, {
+			trigger_type: 'slack',
+		});
 
 		const result = await tool.handler!(
 			input,
@@ -262,6 +291,9 @@ describe('finish_setup tool', () => {
 			answers: [{ questionId: 'model', selectedOptions: ['gpt'] }],
 			credentials: { airtableApi: { id: 'new-cred', name: 'new-cred' } },
 			channels: { slack: 'skipped', telegram: 'connected' },
+		});
+		expect(BASE_DEPS.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TRIGGER, {
+			trigger_type: 'telegram',
 		});
 	});
 

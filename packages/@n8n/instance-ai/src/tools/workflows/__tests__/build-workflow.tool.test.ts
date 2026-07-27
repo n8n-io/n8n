@@ -206,6 +206,15 @@ describe('createBuildWorkflowTool', () => {
 		vi.mocked(analyzeWorkflow).mockResolvedValue([]);
 	});
 
+	it('requires workflow-builder and data-table-manager skill loads in its description', () => {
+		const { context } = makeContext({ source: 'workflow source' });
+		const tool = createBuildWorkflowTool(context);
+
+		expect(tool.description).toContain('workflow-builder');
+		expect(tool.description).toContain('data-table-manager');
+		expect(tool.description).toContain('load_skill');
+	});
+
 	it('builds a new workflow from a workspace source file', async () => {
 		const source = 'workflow source from workspace';
 		const { context, filePath } = makeContext({ source });

@@ -34,8 +34,6 @@ import {
 	createLazyWorkspaceRuntimeSkillSource,
 	createScopedWorkspace,
 	getPromptWorkspaceRoot,
-	getPromptSandboxInstructions,
-	getPromptFilesystemInstructions,
 	getWorkspaceRoot,
 	loadInstanceAiRuntimeSkillSource,
 	disabledInstanceAiSkillIds,
@@ -698,13 +696,10 @@ export class InstanceAiService {
 		this._ssrfProtectionConfig = ssrfProtectionConfig;
 		this._ssrfProtectionService = ssrfProtectionService;
 
-		// When the admin changes MCP settings, tear down existing clients so the
-		// next agent run rebuilds them against the new config. In-flight tool
-		// calls on disconnected clients will fail — that's accepted: the
-		// alternative is leaking clients keyed by stale config until shutdown.
-		// We only listen for the MCP-changed flag so unrelated settings saves
-		// don't churn live MCP connections.
+		// Runtime clients capture provider settings at creation, so rebuild them
+		// after admin settings change. In-flight sandbox users retain their entry.
 		this.eventService.on('instance-ai-settings-updated', ({ mcpSettingsChanged }) => {
+			this.sandboxService.invalidateCachedWorkspaces();
 			if (!mcpSettingsChanged) return;
 			if (!this._mcpClientManager) return;
 			this._mcpClientManager.disconnect().catch((error: unknown) => {
@@ -2080,7 +2075,7 @@ export class InstanceAiService {
 			);
 		}
 
-		const adminSettings = this.settingsService.getAdminSettings();
+		const adminSettings = await this.settingsService.getAdminSettings();
 		const localGatewayDisabledGlobally = adminSettings.localGatewayDisabled;
 		const browserUseEnabledGlobally = adminSettings.browserUseEnabled;
 		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
@@ -2262,11 +2257,13 @@ export class InstanceAiService {
 				};
 
 				runtimeWorkspace = createLazyRuntimeWorkspace({
-					// Stable across resumes: keeps the sandbox/filesystem description out
-					// of the cache-busting path (the lazy handle isn't rehydrated per
-					// rebuild, so resolution-dependent text would shift the cached prefix).
-					sandboxInstructions: getPromptSandboxInstructions(sandboxConfig.provider),
-					filesystemInstructions: getPromptFilesystemInstructions(sandboxConfig.provider),
+					// Empty + stable across resumes: sandbox/filesystem guidance lives in
+					// the system prompt's `## Sandbox workspace` section. Passing '' here
+					// (instead of omitting) keeps the lazy workspace from falling back to
+					// resolution-dependent live `getInstructions()` text, which would
+					// shift the cached prompt prefix across rebuilds/resumes.
+					sandboxInstructions: '',
+					filesystemInstructions: '',
 					ensureWorkspace: async () =>
 						await scopeWorkspaceForAgent((await getSetupSandboxEntry())?.workspace),
 				});

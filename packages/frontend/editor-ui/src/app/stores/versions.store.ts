@@ -12,7 +12,7 @@ import { defineStore } from 'pinia';
 import type { NotificationHandle } from 'element-plus';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
-import type { ModalKey } from '@/Interface';
+import type { ModalOpeners } from '@/Interface';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -21,16 +21,6 @@ import { jsonParse } from 'n8n-workflow';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
 type SetVersionParams = { versions: Version[]; currentVersion: string };
-
-/**
- * Modal-open actions this store needs. The concrete implementation lives in
- * `ui.store`; it is registered at app bootstrap via {@link useVersionsStore.registerModalOpeners}
- * so the store carries no dependency on `ui.store`.
- */
-export interface VersionsModalOpeners {
-	openModal: (name: ModalKey) => void;
-	openModalWithData: (payload: { name: ModalKey; data: Record<string, unknown> }) => void;
-}
 
 /**
  * Semantic versioning 2.0.0, Regex from https://semver.org/
@@ -73,12 +63,12 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 			);
 		}
 	};
-	const modalOpeners = ref<VersionsModalOpeners>({
+	const modalOpeners = ref<ModalOpeners>({
 		openModal: (name) => warnModalOpenerMissing(`openModal(${String(name)})`),
 		openModalWithData: (payload) =>
 			warnModalOpenerMissing(`openModalWithData(${String(payload.name)})`),
 	});
-	const registerModalOpeners = (openers: VersionsModalOpeners) => {
+	const registerModalOpeners = (openers: ModalOpeners) => {
 		modalOpeners.value = openers;
 	};
 	const readWhatsNewArticlesStorage = useStorage(LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES);

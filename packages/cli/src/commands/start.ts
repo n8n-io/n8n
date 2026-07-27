@@ -37,6 +37,7 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
+import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
 import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -213,6 +214,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await super.init();
 
 		Container.get(DeprecationService).warn();
+
+		// Resolved lazily at activation time, so this only needs to run before the
+		// first workflow activation.
+		Container.get(PollJobProvider).init();
 
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 

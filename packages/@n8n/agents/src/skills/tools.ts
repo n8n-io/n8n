@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { Tool } from '../sdk/tool';
 import type { BuiltTool } from '../types';
 import {
-	LIST_SKILLS_TOOL_NAME,
 	RUNTIME_SKILL_FILE_NAME,
 	SKILL_LOAD_TOOL_NAME,
 	type RuntimeSkillLinkedFile,
@@ -25,11 +24,7 @@ const LINKED_FILE_GROUPS: Array<keyof RuntimeSkillLinkedFiles> = [
 	'other',
 ];
 
-export const RUNTIME_SKILL_TOOL_NAMES = new Set([LIST_SKILLS_TOOL_NAME, SKILL_LOAD_TOOL_NAME]);
-
-const skillsListInputSchema = z.object({
-	category: z.string().optional().describe('Optional exact category filter.'),
-});
+export const RUNTIME_SKILL_TOOL_NAMES = new Set([SKILL_LOAD_TOOL_NAME]);
 
 const linkedFileSchema: z.ZodType<RuntimeSkillLinkedFile> = z.object({
 	path: z.string(),
@@ -46,69 +41,10 @@ const linkedFilesSchema: z.ZodType<RuntimeSkillLinkedFiles> = z.object({
 	other: z.array(linkedFileSchema),
 });
 
-const skillInterfaceSchema = z
-	.object({
-		displayName: z.string().optional(),
-		shortDescription: z.string().optional(),
-		defaultPrompt: z.string().optional(),
-		icon: z.string().optional(),
-		brandColor: z.string().optional(),
-	})
-	.optional();
-
-const skillPolicySchema = z
-	.object({
-		allowImplicitInvocation: z.boolean().optional(),
-		product: z.string().optional(),
-	})
-	.optional();
-
-const skillDependenciesSchema = z
-	.object({
-		tools: z.array(z.string()).optional(),
-		secrets: z.array(z.string()).optional(),
-		mcpServers: z
-			.array(
-				z.object({
-					name: z.string(),
-					description: z.string().optional(),
-					transport: z.string().optional(),
-					url: z.string().optional(),
-					command: z.string().optional(),
-				}),
-			)
-			.optional(),
-	})
-	.optional();
-
-const compactSkillSchema = z.object({
-	name: z.string(),
-	description: z.string(),
-	category: z.string().optional(),
-	path: z.string().optional(),
-	directory: z.string().optional(),
-	hash: z.string(),
-	recommendedTools: z.array(z.string()).optional(),
-	allowedTools: z.array(z.string()).optional(),
-	interface: skillInterfaceSchema,
-	policy: skillPolicySchema,
-	dependencies: skillDependenciesSchema,
-	platforms: z.array(z.string()).optional(),
-});
-
-const skillsListOutputSchema = z.object({
-	success: z.boolean(),
-	registryHash: z.string(),
-	count: z.number(),
-	categories: z.array(z.string()),
-	skills: z.array(compactSkillSchema),
-});
-
 const skillLoadBaseInputSchema = z.object({
-	skillId: z.string().min(1).optional().describe('Skill id from list_skills.'),
-	name: z.string().min(1).optional().describe('Skill name from list_skills.'),
+	skillId: z.string().min(1).optional().describe('Skill id from the skill catalog.'),
+	name: z.string().min(1).optional().describe('Skill name from the skill catalog.'),
 });
-
 const skillLoadInputSchema = skillLoadBaseInputSchema.refine(
 	({ skillId, name }) => skillId !== undefined || name !== undefined,
 	{
@@ -162,31 +98,7 @@ type SkillLoadOutput = z.infer<typeof skillLoadOutputSchema>;
 type SkillLoadContentOutput = z.infer<typeof skillLoadContentOutputSchema>;
 
 export function createRuntimeSkillTools(source: RuntimeSkillSource): BuiltTool[] {
-	return [createListSkillsTool(source), createSkillLoadTool(source)];
-}
-
-export function createListSkillsTool(source: RuntimeSkillSource): BuiltTool {
-	return new Tool(LIST_SKILLS_TOOL_NAME)
-		.description(
-			'List installed skills from the registry. Use before loading a skill when you need to discover available domains.',
-		)
-		.input(skillsListInputSchema)
-		.output(skillsListOutputSchema)
-		.handler(async ({ category }) => {
-			await source.prepare?.();
-			const skills = source.registry.skills
-				.filter((skill) => !category || skill.category === category)
-				.map(compactSkill);
-
-			return await Promise.resolve({
-				success: true,
-				registryHash: source.registry.skillsHash,
-				count: skills.length,
-				categories: categoriesFor(source.registry),
-				skills,
-			});
-		})
-		.build();
+	return [createSkillLoadTool(source)];
 }
 
 export function createSkillLoadTool(source: RuntimeSkillSource): BuiltTool {
@@ -323,29 +235,6 @@ async function loadSkill(
 	};
 }
 
-function compactSkill(skill: RuntimeSkillRegistryEntry) {
-	return {
-		name: skill.name,
-		description: skill.description,
-		...(skill.category ? { category: skill.category } : {}),
-		...(skill.path ? { path: skill.path } : {}),
-		...(skill.directory ? { directory: skill.directory } : {}),
-		hash: skill.hash,
-		...(skill.recommendedTools ? { recommendedTools: skill.recommendedTools } : {}),
-		...(skill.allowedTools ? { allowedTools: skill.allowedTools } : {}),
-		...(skill.interface ? { interface: skill.interface } : {}),
-		...(skill.policy ? { policy: skill.policy } : {}),
-		...(skill.dependencies ? { dependencies: skill.dependencies } : {}),
-		...(skill.platforms ? { platforms: skill.platforms } : {}),
-	};
-}
-
-function categoriesFor(registry: RuntimeSkillRegistry): string[] {
-	return Array.from(
-		new Set(registry.skills.map((skill) => skill.category).filter(isPresentString)),
-	).sort();
-}
-
 function findSkillEntry(
 	registry: RuntimeSkillRegistry,
 	input: { skillId?: string; name?: string },
@@ -414,8 +303,4 @@ function redactSecrets(content: string): string {
 			/\b(api[_-]?key|token|password|passwd|secret|credential)(\s*[:=]\s*)(["']?)[^\s"',;]+(\3)/gi,
 			`$1$2$3${SECRET_REDACTION}$4`,
 		);
-}
-
-function isPresentString(value: string | undefined): value is string {
-	return typeof value === 'string' && value.length > 0;
 }
