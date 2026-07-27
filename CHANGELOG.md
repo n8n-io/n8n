@@ -1,3 +1,12 @@
+## [2.31.7](https://github.com/n8n-io/n8n/compare/n8n@2.31.6...n8n@2.31.7) (2026-07-27)
+
+
+### Bug Fixes
+
+* **core:** Avoid loading execution data during credentials security audit ([#34912](https://github.com/n8n-io/n8n/issues/34912)) ([0b61a96](https://github.com/n8n-io/n8n/commit/0b61a9681cd299f0b7586a6769dda2f77da408b7))
+* **core:** Sign S3 object paths with strict RFC 3986 encoding ([#34873](https://github.com/n8n-io/n8n/issues/34873)) ([75b0d34](https://github.com/n8n-io/n8n/commit/75b0d34078140890e7dcc803cd73e3e6b91ca76e))
+
+
 ## [2.31.6](https://github.com/n8n-io/n8n/compare/n8n@2.31.5...n8n@2.31.6) (2026-07-24)
 
 
