@@ -22,6 +22,7 @@ import {
 const SHARED_PAGINATION_PARAMS: Record<string, { $ref: string }> = {
 	limit: { $ref: '../../../../shared/spec/parameters/limit.yml' },
 	cursor: { $ref: '../../../../shared/spec/parameters/cursor.yml' },
+	offset: { $ref: '../../../../shared/spec/parameters/offset.yml' },
 };
 
 const UNAUTHORIZED_RESPONSE = { $ref: '../../../../shared/spec/responses/unauthorized.yml' };

@@ -3,13 +3,9 @@ tags:
   - Workflows
 x-required-scope: workflow:read
 parameters:
+  - $ref: ../../../../shared/spec/parameters/offset.yml
   - $ref: ../../../../shared/spec/parameters/limit.yml
   - $ref: ../../../../shared/spec/parameters/cursor.yml
-  - schema:
-      type: string
-    required: false
-    name: offset
-    in: query
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
