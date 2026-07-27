@@ -228,7 +228,11 @@ async function onSubmit() {
 			agentConfig: fingerprint,
 		});
 
-		await sendMessage(text, files.length > 0 ? files : undefined);
+		if (files.length > 0) {
+			await sendMessage(text, files);
+		} else {
+			await sendMessage(text);
+		}
 	} finally {
 		isPreparingToSend.value = false;
 	}

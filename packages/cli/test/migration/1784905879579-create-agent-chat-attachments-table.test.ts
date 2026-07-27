@@ -138,6 +138,18 @@ describe('CreateAgentChatAttachmentsTable Migration', () => {
 			await context.queryRunner.release();
 		});
 
+		it('adds a nullable attachments column to agent_execution', async () => {
+			const context = createTestMigrationContext(dataSource);
+			try {
+				const table = await context.queryRunner.getTable(`${context.tablePrefix}agent_execution`);
+				const column = table?.columns.find((c) => c.name === 'attachments');
+				expect(column).toBeDefined();
+				expect(column?.isNullable).toBe(true);
+			} finally {
+				await context.queryRunner.release();
+			}
+		});
+
 		it('extends the binary_data sourceType check with agent_chat_attachment', async () => {
 			const context = createTestMigrationContext(dataSource);
 			const table = context.escape.tableName('binary_data');
@@ -172,6 +184,11 @@ describe('CreateAgentChatAttachmentsTable Migration', () => {
 			const context = createTestMigrationContext(dataSource);
 			const tableName = `${context.tablePrefix}agent_chat_attachments`;
 			expect(await context.queryRunner.hasTable(tableName)).toBe(false);
+			const executionTable = await context.queryRunner.getTable(
+				`${context.tablePrefix}agent_execution`,
+			);
+			expect(executionTable?.columns.some((c) => c.name === 'attachments')).toBe(false);
+
 			await context.queryRunner.release();
 
 			// Round-trip: up() must run cleanly again after a full revert.

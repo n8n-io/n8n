@@ -53,9 +53,22 @@ export class CreateAgentChatAttachmentsTable1784905879579 implements ReversibleM
 			}).withTimestamps;
 
 		await this.replaceSourceTypeCheck(ctx, sourceTypesAfter);
+
+		await ctx.schemaBuilder.addColumns(
+			'agent_execution',
+			[
+				column('attachments').json.comment(
+					'Metadata of files attached to the user turn ({id, fileName, mimeType, sizeBytes}[]); bytes live in BinaryDataService',
+				),
+			],
+			{ recreatesOnSqlite: true },
+		);
 	}
 
 	async down(ctx: MigrationContext) {
+		await ctx.schemaBuilder.dropColumns('agent_execution', ['attachments'], {
+			recreatesOnSqlite: true,
+		});
 		await ctx.runQuery(
 			`DELETE FROM ${ctx.escape.tableName(binaryDataTableName)} WHERE ${ctx.escape.columnName(sourceTypeColumn)} = 'agent_chat_attachment'`,
 		);

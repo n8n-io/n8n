@@ -223,7 +223,6 @@ import { AddStoredAtToAgentExecution1784815940110 } from '../common/178481594011
 import { AddInstanceCredentials1784815940111 } from '../common/1784815940111-AddInstanceCredentials';
 import { CreateAgentEvalTables1784815940112 } from '../common/1784815940112-CreateAgentEvalTables';
 import { CreateAgentChatAttachmentsTable1784905879579 } from '../common/1784905879579-CreateAgentChatAttachmentsTable';
-import { AddAttachmentsToAgentExecution1784905879580 } from '../common/1784905879580-AddAttachmentsToAgentExecution';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -450,7 +449,6 @@ const sqliteMigrations: Migration[] = [
 	CreateAgentEvalTables1784815940112,
 	AddAvailableInMcpToAgents1784897791636,
 	CreateAgentChatAttachmentsTable1784905879579,
-	AddAttachmentsToAgentExecution1784905879580,
 ];
 
 export { sqliteMigrations };

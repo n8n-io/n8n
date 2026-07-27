@@ -231,7 +231,6 @@ import { AddInstanceCredentials1784815940111 } from '../common/1784815940111-Add
 import { CreateAgentEvalTables1784815940112 } from '../common/1784815940112-CreateAgentEvalTables';
 import { AddAvailableInMcpToAgents1784897791636 } from '../common/1784897791636-AddAvailableInMcpToAgents';
 import { CreateAgentChatAttachmentsTable1784905879579 } from '../common/1784905879579-CreateAgentChatAttachmentsTable';
-import { AddAttachmentsToAgentExecution1784905879580 } from '../common/1784905879580-AddAttachmentsToAgentExecution';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -468,5 +467,4 @@ export const postgresMigrations: Migration[] = [
 	CreateAgentEvalTables1784815940112,
 	AddAvailableInMcpToAgents1784897791636,
 	CreateAgentChatAttachmentsTable1784905879579,
-	AddAttachmentsToAgentExecution1784905879580,
 ];
