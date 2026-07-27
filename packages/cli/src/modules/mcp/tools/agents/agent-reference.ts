@@ -5,9 +5,7 @@ export const AGENT_BUILDER_REFERENCE_URI = 'n8n://agents/reference';
 
 // Integrations are a published runtime surface managed only through
 // update_agent_integration, so they are never part of the editable draft
-// config the model reads and writes. The base schema is used because
-// AgentJsonConfigSchema's superRefine checks can't be represented in JSON
-// schema anyway (and ZodEffects has no .omit).
+// config the model reads and writes.
 const EditableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.omit({ integrations: true });
 
 export const AGENT_CONFIG_JSON_SCHEMA = zodToJsonSchema(EditableAgentJsonConfigSchema, {
