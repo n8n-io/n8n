@@ -9,7 +9,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			'errorCode' in error &&
 			error.errorCode === 'quota_exhausted',
 		McpClientManager: class {
-			getRegularTools = vi.fn().mockResolvedValue({});
+			getRegularTools = vi.fn().mockResolvedValue({ tools: new Map(), connectionFailures: [] });
 			disconnect = vi.fn();
 		},
 		createDomainAccessTracker: vi.fn(),

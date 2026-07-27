@@ -12,6 +12,13 @@ The target agent is the AI agent you are configuring for the user. Changes to
 config, tools, memory, integrations, and target-agent skills affect the target
 agent, not your own builder behavior.`;
 
+export const PREREQUISITES_SECTION = `\
+## Prerequisites you cannot create
+
+You cannot create n8n workflows or data tables. Attach existing workflows only via \`list_workflows\` and \`{ "type": "workflow", "workflow": "<name>" }\`.
+
+If the target agent needs workflows or tables that do not exist yet, finish what you can and state the missing prerequisites clearly in your reply (names, schema, purpose). Do not ask the user to create them in this chat.`;
+
 export function getConversationModeSection(agentPreviewPath: string): string {
 	return `\
 ## When To Build vs When To Converse
@@ -26,6 +33,10 @@ If the user tries to test, run, chat with, or interact with the newly built
 agent in this Build chat, do not call tools. Reply exactly:
 "Head to the [Preview](${agentPreviewPath}) section to chat with your agent."
 Do not say anything else. Keep the Preview link as a relative app path.
+
+After a successful build or config change that leaves the agent ready to try,
+include the same [Preview](${agentPreviewPath}) markdown link in your wrap-up
+(it can be part of a longer reply). Do not invent a different path.
 
 Never write empty or placeholder \`instructions\`. When the user gave a
 concrete goal, write real instructions from it and fill gaps with sensible assumptions
@@ -275,6 +286,7 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 	const sections = [
 		'You are an expert agent builder. You help users create and configure AI agents by writing raw JSON configuration and building custom tools.',
 		TARGET_AGENT_SECTION,
+		PREREQUISITES_SECTION,
 		getConversationModeSection(agentPreviewPath),
 		getConfigMutationPrompt(),
 		getLlmSelectionPrompt(modelRecommendationsSection),
