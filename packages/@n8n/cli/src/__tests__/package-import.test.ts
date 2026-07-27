@@ -13,8 +13,8 @@ const packageRoot = process.cwd();
 
 interface ImportFlags {
 	file: string;
-	project?: string;
-	folder?: string;
+	projectId?: string;
+	folderId?: string;
 	workflowConflictPolicy?: string;
 	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
@@ -59,8 +59,8 @@ describe('package import command', () => {
 	it('forwards workflowPublishingPolicy and all sibling options to the import API', async () => {
 		const { command, importPackage } = stubCommand({
 			file: '/tmp/export.n8np',
-			project: 'p-1',
-			folder: 'f-1',
+			projectId: 'p-1',
+			folderId: 'f-1',
 			workflowConflictPolicy: 'fail',
 			workflowPublishingPolicy: 'publish-all',
 			workflowIdPolicy: 'new',
@@ -161,6 +161,44 @@ describe('package import command', () => {
 			);
 
 			await expect(command.run()).rejects.toThrow(/Nonexistent flag.*conflict-policy/i);
+		});
+
+		it('resolves the canonical --project-id/--folder-id flags', async () => {
+			const importPackage = await runWithArgv([
+				'--file=/tmp/export.n8np',
+				'--project-id=p-1',
+				'--folder-id=f-1',
+			]);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ projectId: 'p-1', folderId: 'f-1' }),
+			);
+		});
+
+		// `-p` resolves to projectId. `-f` matches export's folderId char but is
+		// shadowed by the inherited base `--format` (-f) flag on both commands, so
+		// folderId is reachable only via --folder-id/--folder here.
+		it('resolves the -p short char to projectId', async () => {
+			const importPackage = await runWithArgv(['--file=/tmp/export.n8np', '-p', 'p-1']);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ projectId: 'p-1' }),
+			);
+		});
+
+		it('still resolves the legacy --project/--folder aliases', async () => {
+			const importPackage = await runWithArgv([
+				'--file=/tmp/export.n8np',
+				'--project=p-1',
+				'--folder=f-1',
+			]);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ projectId: 'p-1', folderId: 'f-1' }),
+			);
 		});
 	});
 });
