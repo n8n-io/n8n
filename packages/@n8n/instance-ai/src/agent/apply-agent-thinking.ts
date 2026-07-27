@@ -63,6 +63,12 @@ function isGlm52Model(modelId: ModelConfig): boolean {
 	return id.includes('glm-5.2');
 }
 
+/** GPT-5.6 family via OpenAI (`openai/gpt-5.6-sol`, `openai/gpt-5.6-terra`, `openai/gpt-5.6-luna`). */
+function isGpt56Model(modelId: ModelConfig): boolean {
+	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
+	return id.includes('gpt-5.6');
+}
+
 export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	const provider = resolveModelProvider(modelId);
 
@@ -84,8 +90,12 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 			agent.thinking('openai', { reasoningEffort: 'high' });
 			return;
 		}
-		// Pin medium for GPT-5.6 family (sol/terra/luna) via AI SDK `reasoningEffort`.
-		agent.thinking('openai', { reasoningEffort: 'medium' });
+		if (isGpt56Model(modelId)) {
+			// Pin medium for GPT-5.6 family (sol/terra/luna) via AI SDK `reasoningEffort`.
+			agent.thinking('openai', { reasoningEffort: 'medium' });
+			return;
+		}
+		agent.thinking('openai', { reasoningEffort: 'high' });
 		return;
 	}
 

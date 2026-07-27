@@ -63,6 +63,14 @@ describe('applyAgentThinking', () => {
 		},
 	);
 
+	it('enables high OpenAI reasoning effort for non-GPT-5.6 models', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'openai/gpt-4.1');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
+			reasoningEffort: 'high',
+		});
+	});
+
 	it.each(['openai/zai-org/GLM-5.2', 'openai/zai-org/GLM-5.2-Fast'] as const)(
 		'maps medium effort to high reasoning effort for legacy OpenAI-compatible Baseten %s',
 		(modelId) => {
