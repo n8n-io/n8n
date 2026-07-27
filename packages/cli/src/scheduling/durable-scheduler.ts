@@ -4,11 +4,12 @@ import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { RunInTransaction, Scheduler, TaskHandler } from '@n8n/scheduler';
-import { createScheduler, executorLookaheadSeconds } from '@n8n/scheduler';
+import { createScheduler, pollLookaheadSeconds } from '@n8n/scheduler';
 import { InstanceSettings, Tracing } from 'n8n-core';
 
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
+import { PollTriggerTaskHandler } from './poll-trigger-node/poll-trigger-task-handler';
 import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
 import { createSchedulerTracer } from './scheduler-tracer';
 
@@ -31,6 +32,7 @@ export class DurableScheduler implements Scheduler {
 		globalConfig: GlobalConfig,
 		tracing: Tracing,
 		scheduleTriggerTaskHandler: ScheduleTriggerTaskHandler,
+		pollTriggerTaskHandler: PollTriggerTaskHandler,
 		metrics: PrometheusSchedulerMetricsService,
 	) {
 		const config = globalConfig.scheduler;
@@ -52,7 +54,7 @@ export class DurableScheduler implements Scheduler {
 						leaseSeconds: config.leaseDurationSeconds,
 						// Claim one executor tick ahead so a task due before the next tick still
 						// fires on time; the horizon must cover the widest gap between two ticks.
-						lookaheadSeconds: executorLookaheadSeconds(
+						lookaheadSeconds: pollLookaheadSeconds(
 							config.executorIntervalSeconds,
 							config.jitterRatio,
 						),
@@ -64,11 +66,11 @@ export class DurableScheduler implements Scheduler {
 						failedRetentionSeconds: config.failedRetentionSeconds,
 					},
 					lifecycle: {
-						materializerIntervalSeconds: config.sweepIntervalSeconds,
+						materializerIntervalSeconds: config.materializationIntervalSeconds,
 						executorIntervalSeconds: config.executorIntervalSeconds,
 						reaperIntervalSeconds: config.reaperIntervalSeconds,
 						retentionIntervalSeconds: config.retentionIntervalSeconds,
-						materializerTimeoutSeconds: config.sweepTimeoutSeconds,
+						materializerTimeoutSeconds: config.materializationTimeoutSeconds,
 						executorTimeoutSeconds: config.executorTimeoutSeconds,
 						reaperTimeoutSeconds: config.reaperTimeoutSeconds,
 						retentionTimeoutSeconds: config.retentionTimeoutSeconds,
@@ -77,11 +79,13 @@ export class DurableScheduler implements Scheduler {
 							globalConfig.database.type === 'postgresdb' ? 'concurrent' : 'sequential',
 						maxConcurrentPasses: config.maxConcurrentPasses,
 					},
+					now: async () => await tasks.readDbTime(),
 					onEvent: ({ level, message, context }) => logger[level](message, context),
 					tracer,
 				})
 			: undefined;
 		this.registerTaskHandler(scheduleTriggerTaskHandler.taskType, scheduleTriggerTaskHandler);
+		this.registerTaskHandler(pollTriggerTaskHandler.taskType, pollTriggerTaskHandler);
 	}
 
 	registerTaskHandler(taskType: string, handler: TaskHandler): void {
@@ -116,7 +120,8 @@ export function buildMaterializerTransaction(
 		await dataSource.transaction(
 			async (manager) =>
 				await work({
-					claimDueJobs: async (limit) => await jobs.claimDue(manager, limit),
+					claimDueJobs: async (limit, lookaheadMs) =>
+						await jobs.claimDue(manager, limit, lookaheadMs),
 					recordOccurrences: async (occurrences) =>
 						await tasks.insertIgnoringDuplicates(manager, occurrences),
 					advanceJobs: async (planned) => {

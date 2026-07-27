@@ -63,4 +63,26 @@ describe('N8NCheckpointStorage', () => {
 		);
 		await expect(service.claimForResume('run-1', suspendedState)).resolves.toBe(false);
 	});
+
+	it('expires a checkpoint by runId when no agentId is given', async () => {
+		const { service, repository } = makeService();
+
+		await service.delete('run-1');
+
+		expect(repository.update).toHaveBeenCalledWith(
+			{ runId: 'run-1' },
+			{ expired: true, state: null },
+		);
+	});
+
+	it('scopes the expiry to the given agentId', async () => {
+		const { service, repository } = makeService();
+
+		await service.delete('run-1', 'agent-1');
+
+		expect(repository.update).toHaveBeenCalledWith(
+			{ runId: 'run-1', agentId: 'agent-1' },
+			{ expired: true, state: null },
+		);
+	});
 });

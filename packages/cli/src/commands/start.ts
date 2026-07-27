@@ -37,6 +37,7 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
+import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
 import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -214,6 +215,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(DeprecationService).warn();
 
+		// Resolved lazily at activation time, so this only needs to run before the
+		// first workflow activation.
+		Container.get(PollJobProvider).init();
+
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
 		const isMultiMainEnabled =
@@ -284,7 +289,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
 		// Initialize auth handler registry after modules are loaded
-		const { AuthHandlerRegistry } = await import('@/auth/auth-handler.registry');
+		const { AuthHandlerRegistry } = await import('@/auth/auth-handler.registry.js');
 		await Container.get(AuthHandlerRegistry).init();
 
 		if (this.instanceSettings.isMultiMain) {
@@ -297,7 +302,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	private async initInstanceSettingsLoader(): Promise<void> {
 		const { InstanceSettingsLoaderService } = await import(
-			'@/instance-settings-loader/instance-settings-loader.service'
+			'@/instance-settings-loader/instance-settings-loader.service.js'
 		);
 		await Container.get(InstanceSettingsLoaderService).init();
 	}
@@ -411,18 +416,26 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// Start to get active workflows and run their triggers
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			const { PublishedWorkflowEnqueuer } = await import(
-				'@/workflows/publication/published-workflow-enqueuer'
+				'@/workflows/publication/published-workflow-enqueuer.js'
 			);
 			const { WorkflowPublicationOutboxConsumer } = await import(
-				'@/workflows/publication/workflow-publication-outbox-consumer'
+				'@/workflows/publication/workflow-publication-outbox-consumer.js'
 			);
 			const { WorkflowPublicationOutboxCleanupService } = await import(
-				'@/workflows/publication/workflow-publication-outbox-cleanup.service'
+				'@/workflows/publication/workflow-publication-outbox-cleanup.service.js'
+			);
+			const { WorkflowPublicationReconciler } = await import(
+				'@/workflows/publication/workflow-publication-reconciler.service.js'
 			);
 
 			// Import for its side effect: registering the trigger deactivator's
 			// @OnLeaderStepdown and @OnShutdown handlers. Nothing else loads this module.
-			await import('@/workflows/publication/published-workflow-trigger-deactivator');
+			await import('@/workflows/publication/published-workflow-trigger-deactivator.js');
+
+			// The modules above register @OnPubSubEvent handlers (e.g. the outbox
+			// wake-up) after the earlier PubSubRegistry.init() calls already wired
+			// listeners, so rewire to pick them up.
+			Container.get(PubSubRegistry).init();
 
 			// Enqueue needs to happen before outbox consumer init, so it can activate
 			// everything on the first drain
@@ -439,6 +452,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				});
 
 			Container.get(WorkflowPublicationOutboxCleanupService).init();
+			Container.get(WorkflowPublicationReconciler).init();
 		} else {
 			await this.activeWorkflowManager.init();
 		}

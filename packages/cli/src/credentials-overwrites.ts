@@ -77,7 +77,7 @@ export class CredentialsOverwrites {
 	}
 
 	private async broadcastReloadOverwriteCredentialsCommand(): Promise<void> {
-		const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+		const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 		await Container.get(Publisher).publishCommand({ command: 'reload-overwrite-credentials' });
 	}
 
@@ -133,7 +133,7 @@ export class CredentialsOverwrites {
 	private async reloadFrontendService() {
 		// FrontendService has CredentialOverwrites injected via the constructor
 		// to break the circular dependency we need to use the container to get the instance
-		const { FrontendService } = await import('./services/frontend.service');
+		const { FrontendService } = await import('./services/frontend.service.js');
 		await Container.get(FrontendService)?.generateTypes();
 	}
 

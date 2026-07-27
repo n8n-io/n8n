@@ -462,7 +462,7 @@ export async function executeWebhook(
 		additionalKeys,
 	);
 
-	let project: Project | undefined = undefined;
+	let project: Project;
 	try {
 		project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
 	} catch (error) {
@@ -778,7 +778,7 @@ export async function executeWebhook(
 			const mcpListToolsRelayValue =
 				firstItem && 'json' in firstItem ? firstItem.json?.mcpListToolsRelay : null;
 			if (isMcpListToolsRelay(mcpListToolsRelayValue)) {
-				const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+				const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 				const publisher = Container.get(Publisher);
 				await publisher.publishMcpRelay({
 					sessionId: mcpListToolsRelayValue.sessionId,
@@ -871,6 +871,8 @@ export async function executeWebhook(
 			workflowId: workflowData.id,
 			workflowName: workflowData.name,
 			executionId,
+			projectId: project.id,
+			projectName: project.name,
 			source: 'webhook',
 		});
 

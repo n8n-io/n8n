@@ -40,7 +40,6 @@ export const enum TemplateClickSource {
 	emptyWorkflowLink = 'empty_workflow_link',
 	emptyInstanceCard = 'empty_instance_card',
 	sidebarButton = 'sidebar_button',
-	emptyStateBuilderPrompt = 'empty_state_builder_prompt',
 	instanceAiSplitEmptyState = 'instance_ai_split_empty_state',
 }
 

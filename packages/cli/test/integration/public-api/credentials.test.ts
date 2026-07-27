@@ -1,6 +1,6 @@
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialPayload } from '@n8n/backend-test-utils';
-import { createTeamProject, randomName, testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, linkUserToProject, randomName, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -257,6 +257,21 @@ describe('POST /credentials', () => {
 
 		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
 		expect(credential.isResolvable).toBe(false);
+	});
+
+	test('should not allow a project editor to create an end-user credential via the public API', async () => {
+		const project = await createTeamProject();
+		await linkUserToProject(member, project, 'project:editor');
+
+		const response = await authMemberAgent.post('/credentials').send({
+			name: 'test end-user credential',
+			type: 'githubApi',
+			data: { accessToken: 'abcdefghijklmnopqrstuvwxyz', user: 'test', server: 'testServer' },
+			isResolvable: true,
+			projectId: project.id,
+		});
+
+		expect(response.statusCode).toBe(403);
 	});
 
 	test('should return 400 for external secret reference without projectId when permissions are missing', async () => {
@@ -906,6 +921,51 @@ describe('PATCH /credentials/:id', () => {
 		});
 
 		expect(updatedCredential.isResolvable).toBe(true);
+	});
+
+	test('should not allow a project editor to switch a credential to end-user via the public API', async () => {
+		const project = await createTeamProject();
+		await linkUserToProject(member, project, 'project:editor');
+		const credential = await saveCredential(dbCredential(), { project });
+
+		const response = await authMemberAgent
+			.patch(`/credentials/${credential.id}`)
+			.send({ isResolvable: true });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should allow the owner to switch a credential to end-user via the public API', async () => {
+		const credential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${credential.id}`)
+			.send({ isResolvable: true });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.isResolvable).toBe(true);
+	});
+
+	test('should not allow a project editor to switch an end-user credential to fixed via the public API', async () => {
+		const project = await createTeamProject();
+		await linkUserToProject(member, project, 'project:editor');
+		const credential = await saveCredential({ ...dbCredential(), isResolvable: true }, { project });
+
+		const response = await authMemberAgent
+			.patch(`/credentials/${credential.id}`)
+			.send({ isResolvable: false });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should not allow a project editor to delete an end-user credential via the public API', async () => {
+		const project = await createTeamProject();
+		await linkUserToProject(member, project, 'project:editor');
+		const credential = await saveCredential({ ...dbCredential(), isResolvable: true }, { project });
+
+		const response = await authMemberAgent.delete(`/credentials/${credential.id}`);
+
+		expect(response.statusCode).toBe(403);
 	});
 
 	test('should fail to update isGlobal when sharing is not licensed', async () => {

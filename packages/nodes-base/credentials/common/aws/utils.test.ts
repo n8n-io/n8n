@@ -1,6 +1,17 @@
-import { UserError } from 'n8n-workflow';
-import type { AWSRegion } from './regions';
+import { UserError, type IHttpRequestOptions } from 'n8n-workflow';
+
+import { regions, type AWSRegion } from './regions';
+import * as systemCredentialsUtils from './system-credentials-utils';
 import type { AwsAssumeRoleCredentialsType, AwsIamCredentialsType } from './types';
+import {
+	assertSupportedAwsRegion,
+	assumeRole,
+	AWS_REGION_SHAPE_PATTERN,
+	awsGetSignInOptionsAndUpdateRequest,
+	parseAwsUrl,
+	uriEncodeS3Pathname,
+	validateBedrockEndpointOverride,
+} from './utils';
 
 // Mock the SDK provider factory. Each call returns a function identity we can
 // inspect, mirroring nodes-langchain's resolveAwsCredentials.test.ts pattern.
@@ -39,9 +50,6 @@ vi.mock('@smithy/node-http-handler', () => ({
 vi.mock('aws4', () => ({
 	sign: vi.fn(),
 }));
-
-import { assertSupportedAwsRegion, assumeRole, awsGetSignInOptionsAndUpdateRequest } from './utils';
-import * as systemCredentialsUtils from './system-credentials-utils';
 
 type FromTemporaryCredentialsCallArg = {
 	params: { RoleArn: string; RoleSessionName: string; ExternalId: string };
@@ -608,6 +616,242 @@ describe('assertSupportedAwsRegion', () => {
 	);
 });
 
+describe('parseAwsUrl', () => {
+	it('parses a PrivateLink (vpce) Bedrock host', () => {
+		const url = new URL('https://vpce-0abc123.bedrock-runtime.us-east-1.vpce.amazonaws.com/model');
+		expect(parseAwsUrl(url)).toEqual({ service: 'bedrock-runtime', region: 'us-east-1' });
+	});
+
+	it('parses a PrivateLink (vpce) host for a non-Bedrock service', () => {
+		const url = new URL('https://vpce-0abc123.sqs.us-west-2.vpce.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'sqs', region: 'us-west-2' });
+	});
+
+	it('parses a PrivateLink (vpce) host whose vpce-id label includes an availability-zone suffix', () => {
+		const url = new URL('https://vpce-0abc123-usw2-az1.sqs.us-west-2.vpce.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'sqs', region: 'us-west-2' });
+	});
+
+	it('extracts a vpce region label verbatim even when unsupported (validation is a call-site concern)', () => {
+		const url = new URL('https://vpce-0abc.sqs.not-a-region.vpce.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'sqs', region: 'not-a-region' });
+	});
+
+	it('parses a PrivateLink (vpce) host in a GovCloud region', () => {
+		const url = new URL('https://vpce-0abc123.sqs.us-gov-west-1.vpce.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'sqs', region: 'us-gov-west-1' });
+	});
+
+	it('parses a PrivateLink (vpce) host on the China domain', () => {
+		const url = new URL('https://vpce-0abc123.sqs.cn-north-1.vpce.amazonaws.com.cn/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'sqs', region: 'cn-north-1' });
+	});
+
+	it('keeps the vpce branch positional even when the service label is region-like', () => {
+		const url = new URL('https://vpce-0abc123.us-east-1.us-west-2.vpce.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'us-east-1', region: 'us-west-2' });
+	});
+
+	it('parses a standard public hostname (regression)', () => {
+		const url = new URL('https://lambda.us-east-1.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'lambda', region: 'us-east-1' });
+	});
+
+	it('parses a China domain hostname (regression)', () => {
+		const url = new URL('https://lambda.cn-north-1.amazonaws.com.cn/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'lambda', region: 'cn-north-1' });
+	});
+
+	it('returns a null region for a global no-region service (regression)', () => {
+		const url = new URL('https://iam.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'iam', region: null });
+	});
+
+	it('parses a dual-stack hostname', () => {
+		const url = new URL('https://s3.dualstack.us-east-1.amazonaws.com/bucket/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'us-east-1' });
+	});
+
+	it('parses a dual-stack hostname on the China domain', () => {
+		const url = new URL('https://s3.dualstack.cn-north-1.amazonaws.com.cn/bucket/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'cn-north-1' });
+	});
+
+	it('parses a FIPS hostname, keeping the -fips service label verbatim (normalization is signing-side)', () => {
+		const url = new URL('https://s3-fips.us-east-1.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3-fips', region: 'us-east-1' });
+	});
+
+	it('parses a combined FIPS + dual-stack hostname', () => {
+		const url = new URL('https://s3-fips.dualstack.us-east-1.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3-fips', region: 'us-east-1' });
+	});
+
+	it('prefers the rightmost region-shaped label when a bucket label is itself named like a region', () => {
+		const url = new URL('https://us-east-2.s3.us-east-1.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'us-east-1' });
+	});
+
+	it('parses a legacy region-first SQS hostname', () => {
+		const url = new URL('https://us-east-2.queue.amazonaws.com/123456789012/my-queue');
+		expect(parseAwsUrl(url)).toEqual({ service: 'queue', region: 'us-east-2' });
+	});
+
+	it('parses a region-middle OpenSearch domain hostname (service right of the region)', () => {
+		const url = new URL('https://search-mydomain-abc123.us-east-1.es.amazonaws.com/_search');
+		expect(parseAwsUrl(url)).toEqual({ service: 'es', region: 'us-east-1' });
+	});
+
+	it('resolves the service left of the region for a bucket-qualified S3 interface endpoint', () => {
+		// Outside VPCE_HOSTNAME_PATTERN by design (extra bucket label before the vpce id);
+		// the trailing `vpce` label must not be mistaken for a region-middle service.
+		const url = new URL('https://mybucket.vpce-0abc123.s3.us-east-1.vpce.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'us-east-1' });
+	});
+
+	it('parses an S3 access-point hostname', () => {
+		const url = new URL('https://myap-123456789012.s3-accesspoint.us-west-2.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3-accesspoint', region: 'us-west-2' });
+	});
+
+	it('parses an API Gateway execute-api hostname', () => {
+		const url = new URL('https://myapi123.execute-api.us-west-2.amazonaws.com/prod/resource');
+		expect(parseAwsUrl(url)).toEqual({ service: 'execute-api', region: 'us-west-2' });
+	});
+
+	it('parses a virtual-hosted S3 bucket hostname', () => {
+		const url = new URL('https://bucket.s3.us-east-1.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'us-east-1' });
+	});
+
+	it('parses a legacy fips-prefixed hostname', () => {
+		const url = new URL('https://fips.sqs.us-east-1.amazonaws.com/123456789012/my-queue');
+		expect(parseAwsUrl(url)).toEqual({ service: 'sqs', region: 'us-east-1' });
+	});
+
+	it('resolves the service label even when the bucket is named exactly like the region', () => {
+		const url = new URL('https://us-east-1.s3.us-east-1.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'us-east-1' });
+	});
+
+	it('skips the dualstack qualifier when resolving the service at depth', () => {
+		const url = new URL('https://bucket.s3.dualstack.us-east-1.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'us-east-1' });
+	});
+
+	it('keeps dualstack as the service when it is the first label (no qualifier skip below index 0)', () => {
+		const url = new URL('https://dualstack.us-east-1.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'dualstack', region: 'us-east-1' });
+	});
+
+	it('does not let a supported bucket label shadow an unsupported region label in the region slot', () => {
+		const url = new URL('https://us-east-1.s3.eu-central-9.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'eu-central-9' });
+	});
+
+	it('surfaces a mistyped region label via the shape fallback', () => {
+		const url = new URL('https://lambda.us-esat-1.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'lambda', region: 'us-esat-1' });
+	});
+
+	it('surfaces a mistyped GovCloud-shaped region label (multi-word shape)', () => {
+		const url = new URL('https://lambda.us-gov-wast-1.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'lambda', region: 'us-gov-wast-1' });
+	});
+
+	it('surfaces a region-shaped label for a not-yet-supported region', () => {
+		const url = new URL('https://lambda.eu-central-9.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'lambda', region: 'eu-central-9' });
+	});
+
+	it('surfaces a region-shaped label with a four-letter partition prefix', () => {
+		const url = new URL('https://lambda.eusc-de-east-1.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'lambda', region: 'eusc-de-east-1' });
+	});
+
+	it('returns a null region when the label is not region-shaped (missing-hyphen typo)', () => {
+		const url = new URL('https://lambda.us-east1.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'lambda', region: null });
+	});
+
+	it('returns a null region for an AWS host with no region-shaped label', () => {
+		const url = new URL('https://foo.bar.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'foo', region: null });
+	});
+
+	it('does not shape-match the region-less legacy s3-external-1 host', () => {
+		const url = new URL('https://s3-external-1.amazonaws.com/bucket/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3-external-1', region: null });
+	});
+
+	it('does not shape-match the region-less legacy SQS queue host', () => {
+		const url = new URL('https://queue.amazonaws.com/123456789012/my-queue');
+		expect(parseAwsUrl(url)).toEqual({ service: 'queue', region: null });
+	});
+
+	it('parses a legacy region-less virtual-hosted S3 hostname', () => {
+		const url = new URL('https://mybucket.s3.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: null });
+	});
+
+	it('parses a legacy region-less S3 transfer-acceleration hostname', () => {
+		const url = new URL('https://mybucket.s3-accelerate.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3-accelerate', region: null });
+	});
+
+	it('parses a legacy region-less S3 accelerate dual-stack hostname', () => {
+		const url = new URL('https://mybucket.s3-accelerate.dualstack.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3-accelerate', region: null });
+	});
+
+	it('treats a region-shaped bucket label in front of s3 as a bucket, not the region', () => {
+		const url = new URL('https://my-bucket-1.s3.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: null });
+	});
+
+	it('treats a bucket named exactly like a region on the legacy global S3 endpoint as a bucket', () => {
+		const url = new URL('https://us-east-2.s3.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: null });
+	});
+
+	it('treats a region-shaped bucket label in front of s3-accelerate as a bucket', () => {
+		const url = new URL('https://my-bucket-1.s3-accelerate.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3-accelerate', region: null });
+	});
+
+	it('parses a legacy dash-region virtual-hosted S3 hostname', () => {
+		const url = new URL('https://mybucket.s3-us-west-2.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'us-west-2' });
+	});
+
+	it('parses a legacy dash-region path-style S3 hostname', () => {
+		const url = new URL('https://s3-eu-west-1.amazonaws.com/bucket/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'eu-west-1' });
+	});
+
+	it('prefers the dash-region label over a region-shaped bucket label', () => {
+		const url = new URL('https://my-logs-1.s3-us-west-2.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'us-west-2' });
+	});
+
+	it('returns a null region for a custom host without region-shaped labels', () => {
+		const url = new URL('https://myapi.example.com/x');
+		expect(parseAwsUrl(url)).toEqual({ service: 'myapi', region: null });
+	});
+});
+
+describe('AWS_REGION_SHAPE_PATTERN', () => {
+	it('matches every supported region name', () => {
+		// Invariant: the pattern must match every supported region, since the scan in
+		// parseAwsUrl only considers region-shaped labels. If AWS ships a region with
+		// a new prefix shape, widen the pattern alongside regions.ts.
+		const nonMatching = regions
+			.filter((r) => !AWS_REGION_SHAPE_PATTERN.test(r.name))
+			.map((r) => r.name);
+		expect(nonMatching).toEqual([]);
+	});
+});
+
 describe('awsGetSignInOptionsAndUpdateRequest', () => {
 	const baseCredentials: AwsIamCredentialsType = {
 		region: 'us-east-1',
@@ -723,5 +967,917 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 		const sentUrl = new URL(url);
 		expect(sentUrl.searchParams.get('Action')).toBe('GetCallerIdentity');
 		expect(sentUrl.searchParams.get('Version')).toBe('2011-06-15');
+	});
+
+	describe('Bedrock control-plane endpoint override', () => {
+		// The model-list loadOptions request arrives with the default control-plane
+		// host as baseURL and no explicit signing service (service is derived from
+		// the host). These exercise that exact shape.
+		const modelListRequest: IHttpRequestOptions = {
+			baseURL: 'https://bedrock.us-east-1.amazonaws.com',
+			url: '/foundation-models?byOutputModality=TEXT',
+			headers: {},
+		};
+
+		it('routes the request to the override host when set', () => {
+			const { url, signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				modelListRequest,
+				{
+					...baseCredentials,
+					bedrockEndpoint: 'https://vpce-abc.bedrock.us-east-1.vpce.amazonaws.com',
+				},
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			const sent = new URL(url);
+			expect(sent.host).toBe('vpce-abc.bedrock.us-east-1.vpce.amazonaws.com');
+			expect(sent.pathname).toBe('/foundation-models');
+			expect(sent.searchParams.get('byOutputModality')).toBe('TEXT');
+			// A custom host must never change the signing name or region.
+			expect(signOpts.service).toBe('bedrock');
+			expect(signOpts.region).toBe('us-east-1');
+			expect(signOpts.host).toBe('vpce-abc.bedrock.us-east-1.vpce.amazonaws.com');
+		});
+
+		it('substitutes the {region} placeholder in the override', () => {
+			const { url } = awsGetSignInOptionsAndUpdateRequest(
+				modelListRequest,
+				{ ...baseCredentials, bedrockEndpoint: 'https://bedrock.{region}.example.internal' },
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(new URL(url).host).toBe('bedrock.us-east-1.example.internal');
+		});
+
+		it('prepends any base path on the override endpoint', () => {
+			const { url } = awsGetSignInOptionsAndUpdateRequest(
+				modelListRequest,
+				{ ...baseCredentials, bedrockEndpoint: 'https://proxy.internal/bedrock/' },
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			const sent = new URL(url);
+			expect(sent.host).toBe('proxy.internal');
+			expect(sent.pathname).toBe('/bedrock/foundation-models');
+		});
+
+		it('hits the default control-plane host when no override is set', () => {
+			const { url, signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				modelListRequest,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(new URL(url).host).toBe('bedrock.us-east-1.amazonaws.com');
+			expect(signOpts.service).toBe('bedrock');
+			expect(signOpts.region).toBe('us-east-1');
+		});
+
+		it('rejects an override with a non-http scheme', () => {
+			expect(() =>
+				awsGetSignInOptionsAndUpdateRequest(
+					modelListRequest,
+					{ ...baseCredentials, bedrockEndpoint: 'ftp://bedrock.us-east-1.amazonaws.com' },
+					'',
+					'GET',
+					'',
+					'us-east-1',
+				),
+			).toThrow(UserError);
+		});
+	});
+
+	describe('PrivateLink (vpce) endpoints', () => {
+		it('normalizes a vpce Bedrock host to the bedrock signing service (uri branch)', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://vpce-0abc123.bedrock-runtime.us-east-1.vpce.amazonaws.com/foundation-models',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('bedrock');
+			expect(signOpts.region).toBe('us-east-1');
+		});
+
+		it('normalizes a vpce Bedrock host to the bedrock signing service (baseURL/url branch)', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					baseURL: 'https://vpce-0abc123.bedrock-runtime.us-east-1.vpce.amazonaws.com',
+					url: '/foundation-models',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('bedrock');
+			expect(signOpts.region).toBe('us-east-1');
+		});
+
+		it('signs a vpce host for a non-Bedrock service using its own service name', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					baseURL: 'https://vpce-0abc123.sqs.us-west-2.vpce.amazonaws.com',
+					url: '/',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-west-2',
+			);
+
+			expect(signOpts.service).toBe('sqs');
+			expect(signOpts.region).toBe('us-west-2');
+		});
+
+		it('throws when the vpce host has an unsupported region label', () => {
+			expect(() =>
+				awsGetSignInOptionsAndUpdateRequest(
+					{
+						baseURL: 'https://vpce-0abc123.sqs.not-a-region.vpce.amazonaws.com',
+						url: '/',
+						headers: {},
+					} as any,
+					baseCredentials,
+					'',
+					'GET',
+					'',
+					'us-east-1',
+				),
+			).toThrow('not-a-region');
+		});
+
+		it('does not overwrite an explicitly supplied service with the URL-derived one', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					baseURL: 'https://vpce-0abc123.sqs.us-west-2.vpce.amazonaws.com',
+					url: '/',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'custom-service',
+				'us-west-2',
+			);
+
+			expect(signOpts.service).toBe('custom-service');
+		});
+
+		it('always populates signOpts.service for a vpce host (protects the signOptions fallback invariant)', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					baseURL: 'https://vpce-0abc123.bedrock-runtime.us-east-1.vpce.amazonaws.com',
+					url: '/foundation-models',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			// signOptions falls back to splitting the raw hostname when service is
+			// nullish; asserting the resolved value proves that fallback never fires.
+			expect(signOpts.service).toBe('bedrock');
+		});
+	});
+
+	describe('Dual-stack and FIPS endpoints', () => {
+		it('signs a dual-stack S3 host with the host-derived region and the s3 service', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://s3.dualstack.us-west-2.amazonaws.com/bucket/key',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.region).toBe('us-west-2');
+			expect(signOpts.service).toBe('s3');
+		});
+
+		it('signs a FIPS S3 host under the base s3 service name', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://s3-fips.us-east-1.amazonaws.com/bucket/key',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'eu-central-1',
+			);
+
+			expect(signOpts.service).toBe('s3');
+			expect(signOpts.region).toBe('us-east-1');
+		});
+
+		it('strips the -fips suffix before the Bedrock signing-name mapping', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://bedrock-runtime-fips.us-east-1.amazonaws.com/model/x/invoke',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			// bedrock-runtime-fips → bedrock-runtime → bedrock; stripping after the
+			// mapping instead would sign with the unknown name bedrock-runtime-fips.
+			expect(signOpts.service).toBe('bedrock');
+		});
+
+		it('strips the -fips suffix for services without a signing-name mapping', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{ uri: 'https://lambda-fips.us-east-1.amazonaws.com/', headers: {} } as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('lambda');
+		});
+	});
+
+	describe('endpoints with qualifier labels left of the service', () => {
+		it('signs an API Gateway invoke URL with the execute-api service', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://myapi123.execute-api.us-west-2.amazonaws.com/prod/x',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('execute-api');
+			expect(signOpts.region).toBe('us-west-2');
+		});
+
+		it('signs an S3 access-point host under the s3 service name', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://myap-123456789012.s3-accesspoint.us-west-2.amazonaws.com/object',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('s3');
+			expect(signOpts.region).toBe('us-west-2');
+		});
+
+		it('signs an S3 Control host under the s3 service name', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://123456789012.s3-control.us-east-1.amazonaws.com/',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('s3');
+		});
+
+		it('signs a legacy region-less virtual-hosted S3 host as s3 with the credential region', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{ uri: 'https://mybucket.s3.amazonaws.com/key', headers: {} } as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('s3');
+			expect(signOpts.region).toBe('us-east-1');
+		});
+
+		it('signs an S3 transfer-acceleration host under the s3 service name', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{ uri: 'https://mybucket.s3-accelerate.amazonaws.com/key', headers: {} } as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('s3');
+		});
+
+		it('signs a region-less legacy SQS global host as sqs with the credential region', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{ uri: 'https://queue.amazonaws.com/123456789012/my-queue', headers: {} } as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('sqs');
+			expect(signOpts.region).toBe('us-east-1');
+		});
+
+		it('signs a region-middle OpenSearch domain host with the es service and its region', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://search-mydomain-abc123.us-west-2.es.amazonaws.com/_search',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('es');
+			expect(signOpts.region).toBe('us-west-2');
+		});
+
+		it('signs an S3 Control FIPS host under the s3 service name (strip composes with the family)', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://123456789012.s3-control-fips.us-east-1.amazonaws.com/',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('s3');
+		});
+
+		it('signs a legacy region-first SQS host with the sqs service and its own region', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://us-east-2.queue.amazonaws.com/123456789012/my-queue',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('sqs');
+			expect(signOpts.region).toBe('us-east-2');
+		});
+
+		it('signs a caller-supplied qualified S3 access-point service under the s3 service name', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{ headers: {} } as any,
+				baseCredentials,
+				'',
+				'GET',
+				'myap-123456789012.s3-accesspoint',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('s3');
+		});
+	});
+
+	describe('region labels that cannot be adopted on AWS endpoint hosts', () => {
+		it('signs a region-shaped bucket on the legacy global S3 endpoint with the credential region', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{ uri: 'https://test-logs-3.s3.amazonaws.com/key', headers: {} } as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('s3');
+			expect(signOpts.region).toBe('us-east-1');
+		});
+
+		it('signs a legacy dash-region S3 host with the embedded region', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{ uri: 'https://mybucket.s3-us-west-2.amazonaws.com/key', headers: {} } as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('s3');
+			expect(signOpts.region).toBe('us-west-2');
+		});
+
+		it('throws for a mistyped region embedded in a legacy dash-region S3 label', () => {
+			const call = () =>
+				awsGetSignInOptionsAndUpdateRequest(
+					{ uri: 'https://s3-us-esat-1.amazonaws.com/bucket/key', headers: {} } as any,
+					baseCredentials,
+					'',
+					'GET',
+					'',
+					'us-east-1',
+				);
+
+			expect(call).toThrow(UserError);
+			expect(call).toThrow('us-esat-1');
+		});
+
+		it('throws for a mistyped region label', () => {
+			const call = () =>
+				awsGetSignInOptionsAndUpdateRequest(
+					{ uri: 'https://lambda.us-esat-1.amazonaws.com/', headers: {} } as any,
+					baseCredentials,
+					'',
+					'GET',
+					'',
+					'us-east-1',
+				);
+
+			expect(call).toThrow(UserError);
+			expect(call).toThrow('us-esat-1');
+		});
+
+		it('throws for a region-shaped label the region list does not include yet', () => {
+			const call = () =>
+				awsGetSignInOptionsAndUpdateRequest(
+					{ uri: 'https://lambda.eu-central-9.amazonaws.com/', headers: {} } as any,
+					baseCredentials,
+					'',
+					'GET',
+					'',
+					'us-east-1',
+				);
+
+			expect(call).toThrow(UserError);
+			expect(call).toThrow('eu-central-9');
+		});
+
+		it('throws for an unsupported region slot even when a bucket label is a supported region', () => {
+			const call = () =>
+				awsGetSignInOptionsAndUpdateRequest(
+					{ uri: 'https://us-east-1.s3.eu-central-9.amazonaws.com/key', headers: {} } as any,
+					baseCredentials,
+					'',
+					'GET',
+					'',
+					'us-east-1',
+				);
+
+			expect(call).toThrow(UserError);
+			expect(call).toThrow('eu-central-9');
+		});
+
+		it('throws for a not-yet-supported region with a four-letter partition prefix', () => {
+			const call = () =>
+				awsGetSignInOptionsAndUpdateRequest(
+					{ uri: 'https://lambda.eusc-de-east-1.amazonaws.com/', headers: {} } as any,
+					baseCredentials,
+					'',
+					'GET',
+					'',
+					'us-east-1',
+				);
+
+			expect(call).toThrow(UserError);
+			expect(call).toThrow('eusc-de-east-1');
+		});
+
+		it.each(['https://lambda.us-east1.amazonaws.com/', 'https://foo.bar.amazonaws.com/'])(
+			'keeps the credential region without throwing when no label is region-shaped (%s)',
+			(uri) => {
+				const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+					{ uri, headers: {} } as any,
+					baseCredentials,
+					'',
+					'GET',
+					'',
+					'us-east-1',
+				);
+
+				expect(signOpts.region).toBe('us-east-1');
+			},
+		);
+	});
+
+	describe('custom (non-AWS) endpoint hosts', () => {
+		it('keeps the credential region when the host label is not a region (uri branch)', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://myapi.example.com/prod/resource',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'execute-api',
+				'us-east-1',
+			);
+
+			expect(signOpts.region).toBe('us-east-1');
+		});
+
+		it('keeps the credential region when the host label is not a region (baseURL/url branch)', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					baseURL: 'https://sqs.mycompany.dev',
+					url: '/queue',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'eu-central-1',
+			);
+
+			expect(signOpts.region).toBe('eu-central-1');
+			expect(signOpts.service).toBe('sqs');
+		});
+
+		it('adopts a recognized region label from a custom host', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://sqs.us-west-2.mycompany.dev/queue',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.region).toBe('us-west-2');
+		});
+
+		it('adopts a recognized region label from a deep custom-host label position', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://proxy.api.us-east-1.example.com/x',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'eu-central-1',
+			);
+
+			expect(signOpts.region).toBe('us-east-1');
+			// The service rule applies to custom hosts too: the label left of the region.
+			expect(signOpts.service).toBe('api');
+		});
+
+		it('keeps the credential region when a custom host label is region-shaped but unsupported', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://sqs.us-fake-1.mycompany.dev/queue',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.region).toBe('us-east-1');
+		});
+	});
+});
+
+describe('validateBedrockEndpointOverride', () => {
+	it('accepts an https URL and returns it without a trailing slash', () => {
+		expect(
+			validateBedrockEndpointOverride('https://bedrock.us-east-1.amazonaws.com', 'us-east-1'),
+		).toBe('https://bedrock.us-east-1.amazonaws.com');
+	});
+
+	it('accepts an http URL (for LocalStack / on-prem gateways)', () => {
+		expect(validateBedrockEndpointOverride('http://localhost:4566', 'us-east-1')).toBe(
+			'http://localhost:4566',
+		);
+	});
+
+	it('substitutes the {region} placeholder', () => {
+		expect(
+			validateBedrockEndpointOverride(
+				'https://bedrock-runtime.{region}.example.internal',
+				'eu-west-3',
+			),
+		).toBe('https://bedrock-runtime.eu-west-3.example.internal');
+	});
+
+	it('strips a trailing slash but preserves a meaningful base path', () => {
+		expect(validateBedrockEndpointOverride('https://proxy.internal/bedrock/', 'us-east-1')).toBe(
+			'https://proxy.internal/bedrock',
+		);
+	});
+
+	it.each(['ftp://bedrock.us-east-1.amazonaws.com', 'file:///etc/passwd', 'ws://host'])(
+		'rejects the non-http(s) scheme %s',
+		(endpoint) => {
+			expect(() => validateBedrockEndpointOverride(endpoint, 'us-east-1')).toThrow(UserError);
+		},
+	);
+
+	it('rejects a malformed URL', () => {
+		expect(() => validateBedrockEndpointOverride('not a url', 'us-east-1')).toThrow(UserError);
+	});
+
+	it('rejects an unsupported region before substitution', () => {
+		expect(() =>
+			validateBedrockEndpointOverride(
+				'https://bedrock.{region}.amazonaws.com',
+				'us-fake-1' as AWSRegion,
+			),
+		).toThrow(UserError);
+	});
+});
+
+describe('uriEncodeS3Pathname', () => {
+	// Characters WHATWG URL leaves raw in a pathname but S3's SigV4 canonicalization
+	// (AWS UriEncode) percent-encodes. Inputs are built through `new URL` so each
+	// case sees exactly what awsGetSignInOptionsAndUpdateRequest sees.
+	it.each([
+		['+', '%2B'],
+		['!', '%21'],
+		["'", '%27'],
+		['(', '%28'],
+		[')', '%29'],
+		['*', '%2A'],
+		['$', '%24'],
+		['&', '%26'],
+		[',', '%2C'],
+		[';', '%3B'],
+		['=', '%3D'],
+		[':', '%3A'],
+		['@', '%40'],
+		['[', '%5B'],
+		[']', '%5D'],
+		['|', '%7C'],
+	])('percent-encodes "%s" as "%s"', (char, encoded) => {
+		const { pathname } = new URL(`https://s3.us-east-1.amazonaws.com/bucket/file${char}name.pdf`);
+		expect(uriEncodeS3Pathname(pathname)).toBe(`/bucket/file${encoded}name.pdf`);
+	});
+
+	it('leaves unreserved characters and slash separators untouched', () => {
+		expect(uriEncodeS3Pathname('/bucket/Report_Final-1.2~ok/file.pdf')).toBe(
+			'/bucket/Report_Final-1.2~ok/file.pdf',
+		);
+	});
+
+	it('keeps sequences WHATWG already encoded stable (space stays %20)', () => {
+		const { pathname } = new URL('https://s3.us-east-1.amazonaws.com/bucket/my report.pdf');
+		expect(pathname).toBe('/bucket/my%20report.pdf');
+		expect(uriEncodeS3Pathname(pathname)).toBe('/bucket/my%20report.pdf');
+	});
+
+	it('is a no-op on WHATWG-encoded pathnames without S3-delta characters (no regression for working keys)', () => {
+		for (const key of ['plain.txt', 'my report.pdf', 'résumé 中文.pdf', 'nested/deep/key.json']) {
+			const { pathname } = new URL(`https://s3.us-east-1.amazonaws.com/bucket/${key}`);
+			expect(uriEncodeS3Pathname(pathname)).toBe(pathname);
+		}
+	});
+
+	it('percent-encodes raw non-ASCII input as UTF-8', () => {
+		expect(uriEncodeS3Pathname('/bucket/résumé.pdf')).toBe('/bucket/r%C3%A9sum%C3%A9.pdf');
+	});
+
+	it('collapses an encoded slash to / — S3 keys are flat, %2F and / address the same key', () => {
+		expect(uriEncodeS3Pathname('/bucket/a%2Fb.txt')).toBe('/bucket/a/b.txt');
+		// A double-encoded slash stays an encoded literal, exactly like aws4.
+		expect(uriEncodeS3Pathname('/bucket/a%252Fb.txt')).toBe('/bucket/a%252Fb.txt');
+	});
+
+	it('treats a stray % as literal text without poisoning valid escapes around it', () => {
+		expect(uriEncodeS3Pathname('/bucket/100%')).toBe('/bucket/100%25');
+		// '100% legit' after WHATWG: stray % stays raw, space became %20
+		expect(uriEncodeS3Pathname('/bucket/100%%20legit')).toBe('/bucket/100%25%20legit');
+	});
+
+	it('keeps a malformed UTF-8 escape run as literal text', () => {
+		expect(uriEncodeS3Pathname('/bucket/%C3.pdf')).toBe('/bucket/%25C3.pdf');
+	});
+
+	it('preserves empty segments (S3 paths are not normalized)', () => {
+		expect(uriEncodeS3Pathname('//bucket//key.txt')).toBe('//bucket//key.txt');
+		expect(uriEncodeS3Pathname('/')).toBe('/');
+	});
+
+	it('is idempotent over a corpus of hostile keys', () => {
+		const keys = [
+			'/bucket/report (1)+final&v=2!.pdf',
+			"/bucket/quart'ile*star.log",
+			'/bucket/at@10:30,x;y=[z]|w.bin',
+			'/bucket/café 中文.pdf',
+			'/bucket/100%%20legit',
+			'/bucket/a%2Fb%2520c.txt',
+		];
+		for (const key of keys) {
+			const once = uriEncodeS3Pathname(key);
+			expect(uriEncodeS3Pathname(once)).toBe(once);
+		}
+	});
+
+	it('matches the legacy aws4 canonical encoding, except + which is preserved as %2B', () => {
+		// aws4's S3 canonicalization: decode each segment (+ read as space), re-encode
+		// everything but unreserved characters, then collapse %2F back to /.
+		const aws4Canonical = (pathname: string) =>
+			pathname
+				.split('/')
+				.map((piece) =>
+					encodeURIComponent(decodeURIComponent(piece.replace(/\+/g, ' '))).replace(
+						/[!'()*]/g,
+						(c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+					),
+				)
+				.join('/')
+				.replace(/%2F/g, '/');
+		const plusFreeKeys = [
+			'/bucket/report (1)&v=2!.pdf',
+			"/bucket/quart'ile*star.log",
+			'/bucket/at@10:30,x;y=[z]|w.bin',
+			'/bucket/café 中文.pdf',
+			'/bucket/a%2Fb.txt',
+		];
+		for (const key of plusFreeKeys) {
+			const { pathname } = new URL(`https://s3.us-east-1.amazonaws.com${key}`);
+			expect(uriEncodeS3Pathname(pathname)).toBe(aws4Canonical(pathname));
+		}
+		// Deliberate divergence: aws4 read a path + as a space (key 'a+b' was stored
+		// as 'a b'); we keep the literal plus, matching the AWS SDK.
+		expect(uriEncodeS3Pathname('/bucket/a+b.pdf')).toBe('/bucket/a%2Bb.pdf');
+		expect(aws4Canonical('/bucket/a+b.pdf')).toBe('/bucket/a%20b.pdf');
+	});
+});
+
+describe('awsGetSignInOptionsAndUpdateRequest — S3 object-path canonicalization', () => {
+	const credentials: AwsIamCredentialsType = {
+		region: 'us-east-1',
+		customEndpoints: false,
+		accessKeyId: 'AKIA-test',
+		secretAccessKey: 'secret-test',
+		temporaryCredentials: false,
+	};
+
+	it('signs and sends the strictly encoded path for the default S3 endpoint', () => {
+		const { signOpts, url } = awsGetSignInOptionsAndUpdateRequest(
+			{ headers: {} } as any,
+			credentials,
+			'/bucket/report (1)+final&v=2!.pdf',
+			'PUT',
+			's3',
+			'us-east-1',
+		);
+
+		expect(signOpts.path).toBe('/bucket/report%20%281%29%2Bfinal%26v%3D2%21.pdf');
+		// The wire URL carries the exact bytes that were signed.
+		expect(url).toBe('https://s3.us-east-1.amazonaws.com' + signOpts.path);
+	});
+
+	it('canonicalizes virtual-hosted-style requests (bucket.s3 signs under s3)', () => {
+		const { signOpts, url } = awsGetSignInOptionsAndUpdateRequest(
+			{ headers: {} } as any,
+			credentials,
+			'/report:2026-07-22T10:00.pdf',
+			'PUT',
+			'mybucket.s3',
+			'eu-central-1',
+		);
+
+		expect(signOpts.service).toBe('s3');
+		expect(signOpts.path).toBe('/report%3A2026-07-22T10%3A00.pdf');
+		expect(url).toBe('https://mybucket.s3.eu-central-1.amazonaws.com' + signOpts.path);
+	});
+
+	it('encodes the path but leaves query parameters to the signer (multipart shapes)', () => {
+		const { signOpts, url } = awsGetSignInOptionsAndUpdateRequest(
+			{ headers: {}, qs: { query: { uploads: '' } } } as any,
+			credentials,
+			'/bucket/key (1).pdf',
+			'POST',
+			's3',
+			'us-east-1',
+		);
+
+		expect(signOpts.path).toBe('/bucket/key%20%281%29.pdf?uploads=');
+		expect(url).toBe('https://s3.us-east-1.amazonaws.com' + signOpts.path);
+	});
+
+	it('canonicalizes S3 requests arriving through the uri branch (HTTP Request node)', () => {
+		const { signOpts, url } = awsGetSignInOptionsAndUpdateRequest(
+			{
+				uri: 'https://mybucket.s3.eu-west-1.amazonaws.com/exports/a+b (copy).csv',
+				headers: {},
+			} as any,
+			credentials,
+			'',
+			'GET',
+			'',
+			'us-east-1',
+		);
+
+		expect(signOpts.service).toBe('s3');
+		expect(signOpts.path).toBe('/exports/a%2Bb%20%28copy%29.csv');
+		expect(url).toBe('https://mybucket.s3.eu-west-1.amazonaws.com' + signOpts.path);
+	});
+
+	it('canonicalizes paths for a custom s3Endpoint (S3-compatible providers)', () => {
+		const { signOpts, url } = awsGetSignInOptionsAndUpdateRequest(
+			{ headers: {} } as any,
+			{ ...credentials, s3Endpoint: 'https://minio.internal:9000' },
+			'/bucket/a(1).pdf',
+			'PUT',
+			's3',
+			'us-east-1',
+		);
+
+		expect(signOpts.path).toBe('/bucket/a%281%29.pdf');
+		expect(url).toBe('https://minio.internal:9000' + signOpts.path);
+	});
+
+	it('leaves non-S3 service paths untouched (Lambda ARN colons stay raw)', () => {
+		const path =
+			'/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:fn/invocations';
+		const { signOpts, url } = awsGetSignInOptionsAndUpdateRequest(
+			{ headers: {} } as any,
+			credentials,
+			path,
+			'POST',
+			'lambda',
+			'us-east-1',
+		);
+
+		expect(signOpts.path).toBe(path);
+		expect(url).toBe('https://lambda.us-east-1.amazonaws.com' + path);
+	});
+
+	it('does not change the signed path for keys that already worked (spaces, unicode)', () => {
+		const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+			{ headers: {} } as any,
+			credentials,
+			'/bucket/my réport 中.pdf',
+			'GET',
+			's3',
+			'us-east-1',
+		);
+
+		// Identical to the WHATWG pathname this function produced before the fix.
+		expect(signOpts.path).toBe(
+			new URL('https://s3.us-east-1.amazonaws.com/bucket/my réport 中.pdf').pathname,
+		);
 	});
 });

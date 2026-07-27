@@ -43,6 +43,7 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 		this,
 		'GET',
 		`/messages/${messageId}/attachments/${attachmentId}`,
+		index,
 		undefined,
 		{ $select: 'id,name,contentType' },
 	);
@@ -57,6 +58,7 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 		this,
 		'GET',
 		`/messages/${messageId}/attachments/${attachmentId}/$value`,
+		index,
 		undefined,
 		{},
 		undefined,

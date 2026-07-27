@@ -26,6 +26,7 @@ import {
 	shareCredentialWithProjects,
 } from '../shared/db/credentials';
 import { createAdmin, createMember } from '../shared/db/users';
+import * as utils from '../shared/utils';
 import { setupTestServer } from '../shared/utils';
 
 mockInstance(Telemetry);
@@ -48,6 +49,11 @@ let memberA: User;
 let memberB: User;
 let teamProject: Project;
 let storage: DynamicCredentialUserEntryStorage;
+
+beforeAll(async () => {
+	// Needed for the POST /credentials tests below, which exercise real credential-type validation.
+	await utils.initCredentialsTypes();
+});
 
 beforeEach(async () => {
 	await testDb.truncate([
@@ -547,5 +553,168 @@ describe('Sharing dynamic credentials', () => {
 
 		const sharings = await getCredentialSharings(resolvable);
 		expect(sharings.some((s) => s.role === 'credential:user')).toBe(false);
+	});
+});
+
+describe('POST /credentials — end-user credential creation is role-restricted', () => {
+	test('project editor cannot create an end-user credential in a team project', async () => {
+		await testServer
+			.authAgentFor(memberB)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isResolvable: true, projectId: teamProject.id })
+			.expect(403);
+	});
+
+	test('project editor can still create a fixed credential in a team project', async () => {
+		await testServer
+			.authAgentFor(memberB)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isResolvable: false, projectId: teamProject.id })
+			.expect(200);
+	});
+
+	test('project admin can create an end-user credential in a team project', async () => {
+		await testServer
+			.authAgentFor(memberA)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isResolvable: true, projectId: teamProject.id })
+			.expect(200);
+	});
+
+	test('instance admin can create an end-user credential in a team project without membership', async () => {
+		const admin = await createAdmin();
+		await testServer
+			.authAgentFor(admin)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isResolvable: true, projectId: teamProject.id })
+			.expect(200);
+	});
+
+	test('member can create an end-user credential in their personal project', async () => {
+		await testServer
+			.authAgentFor(memberB)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isResolvable: true })
+			.expect(200);
+	});
+});
+
+describe('PATCH /credentials/:id — switching to end-user is role-restricted', () => {
+	test('project editor cannot switch a team credential to end-user', async () => {
+		const staticCred = await saveStaticCredential();
+		await testServer
+			.authAgentFor(memberB)
+			.patch(`/credentials/${staticCred.id}`)
+			.send({ name: staticCred.name, type: staticCred.type, data: {}, isResolvable: true })
+			.expect(403);
+	});
+
+	test('project editor cannot switch an end-user credential back to fixed', async () => {
+		const resolvableCred = await saveResolvableCredential();
+		await testServer
+			.authAgentFor(memberB)
+			.patch(`/credentials/${resolvableCred.id}`)
+			.send({
+				name: resolvableCred.name,
+				type: resolvableCred.type,
+				data: {},
+				isResolvable: false,
+			})
+			.expect(403);
+	});
+
+	test('project admin can switch an end-user credential back to fixed', async () => {
+		const resolvableCred = await saveResolvableCredential();
+		await testServer
+			.authAgentFor(memberA)
+			.patch(`/credentials/${resolvableCred.id}`)
+			.send({
+				name: resolvableCred.name,
+				type: resolvableCred.type,
+				data: {},
+				isResolvable: false,
+			})
+			.expect(200);
+	});
+
+	test('project admin can switch a team credential to end-user', async () => {
+		const staticCred = await saveStaticCredential();
+		await testServer
+			.authAgentFor(memberA)
+			.patch(`/credentials/${staticCred.id}`)
+			.send({ name: staticCred.name, type: staticCred.type, data: {}, isResolvable: true })
+			.expect(200);
+	});
+
+	test('editor updates that do not change isResolvable remain allowed', async () => {
+		const resolvableCred = await saveResolvableCredential();
+		await testServer
+			.authAgentFor(memberB)
+			.patch(`/credentials/${resolvableCred.id}`)
+			.send({
+				name: 'renamed by editor',
+				type: resolvableCred.type,
+				data: {},
+				isResolvable: true,
+			})
+			.expect(200);
+	});
+});
+
+describe('PUT /credentials/:id/transfer — end-user credentials are role-restricted', () => {
+	test('editor cannot transfer their personal end-user credential into a team project', async () => {
+		const resolvable = await saveCredential(randomCredentialPayload({ isResolvable: true }), {
+			user: memberB,
+			role: 'credential:owner',
+		});
+
+		await testServer
+			.authAgentFor(memberB)
+			.put(`/credentials/${resolvable.id}/transfer`)
+			.send({ destinationProjectId: teamProject.id })
+			.expect(403);
+	});
+
+	test('project admin can transfer an end-user credential into their team project', async () => {
+		const resolvable = await saveCredential(randomCredentialPayload({ isResolvable: true }), {
+			user: memberA,
+			role: 'credential:owner',
+		});
+
+		await testServer
+			.authAgentFor(memberA)
+			.put(`/credentials/${resolvable.id}/transfer`)
+			.send({ destinationProjectId: teamProject.id })
+			.expect(200);
+	});
+
+	test('editor can still transfer a fixed credential into the team project', async () => {
+		const staticCred = await saveCredential(randomCredentialPayload(), {
+			user: memberB,
+			role: 'credential:owner',
+		});
+
+		await testServer
+			.authAgentFor(memberB)
+			.put(`/credentials/${staticCred.id}/transfer`)
+			.send({ destinationProjectId: teamProject.id })
+			.expect(200);
+	});
+});
+
+describe('DELETE /credentials/:id — end-user credentials are role-restricted', () => {
+	test('project editor cannot delete an end-user credential', async () => {
+		const resolvableCred = await saveResolvableCredential();
+		await testServer.authAgentFor(memberB).delete(`/credentials/${resolvableCred.id}`).expect(403);
+	});
+
+	test('project editor can still delete a fixed credential', async () => {
+		const staticCred = await saveStaticCredential();
+		await testServer.authAgentFor(memberB).delete(`/credentials/${staticCred.id}`).expect(200);
+	});
+
+	test('project admin can delete an end-user credential', async () => {
+		const resolvableCred = await saveResolvableCredential();
+		await testServer.authAgentFor(memberA).delete(`/credentials/${resolvableCred.id}`).expect(200);
 	});
 });

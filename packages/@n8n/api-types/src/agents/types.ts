@@ -3,7 +3,6 @@ import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
-	SCHEDULE_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
 import { z } from 'zod';
@@ -15,7 +14,6 @@ export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [
 	MANUAL_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
-	SCHEDULE_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 ] as const;
@@ -169,6 +167,11 @@ export interface AgentCapabilitySkill {
 	name: string;
 }
 
+/** MCP servers are named connections; the name is also the SDK tool-name prefix. */
+export interface AgentCapabilityMcpServer {
+	name: string;
+}
+
 export interface AgentCapabilityTask {
 	id: string;
 	name: string;
@@ -182,6 +185,7 @@ export interface AgentCapabilitySummary {
 	model: AgentCapabilityModel | null;
 	channels: AgentCapabilityChannel[];
 	tools: AgentCapabilityTool[];
+	mcpServers: AgentCapabilityMcpServer[];
 	skills: AgentCapabilitySkill[];
 	tasks: AgentCapabilityTask[];
 }
@@ -206,6 +210,8 @@ export interface AgentPersistedMessageDto {
 	id: string;
 	role: 'user' | 'assistant' | (string & {});
 	content: AgentPersistedMessageContentPart[];
+	/** Agent-execution turn id when this message was produced from an execution transcript. */
+	executionId?: string;
 }
 
 export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-6' as const;
@@ -226,7 +232,6 @@ export type AgentBuilderAdminSettings = z.infer<typeof agentBuilderAdminSettings
 
 export const agentBuilderAdminSettingsResponseSchema = z.object({
 	settings: agentBuilderAdminSettingsSchema,
-	isConfigured: z.boolean(),
 });
 export type AgentBuilderAdminSettingsResponse = z.infer<
 	typeof agentBuilderAdminSettingsResponseSchema
@@ -235,17 +240,13 @@ export type AgentBuilderAdminSettingsResponse = z.infer<
 export const AgentBuilderAdminSettingsUpdateDto = agentBuilderAdminSettingsSchema;
 export type AgentBuilderAdminSettingsUpdateRequest = AgentBuilderAdminSettings;
 
-export const agentBuilderStatusResponseSchema = z.object({
-	isConfigured: z.boolean(),
-});
-export type AgentBuilderStatusResponse = z.infer<typeof agentBuilderStatusResponseSchema>;
-
 export interface AgentBuilderOpenSuspension {
 	toolCallId: string;
 	runId: string;
 }
 
-export interface AgentBuilderMessagesResponse {
+/** Chat history envelope returned by the agent chat messages endpoints. */
+export interface AgentChatMessagesResponse {
 	messages: AgentPersistedMessageDto[];
 	openSuspensions: AgentBuilderOpenSuspension[];
 }
@@ -258,6 +259,3 @@ export const N8N_CHAT_INTEGRATION_TYPE = 'n8n_chat' as const;
 /** Fixed tool names for the implicit in-app chat integration (no credential suffixes). */
 export const N8N_CHAT_ACTION_TOOL_NAME = 'chat_action' as const;
 export const N8N_CHAT_CONTEXT_TOOL_NAME = 'chat_context' as const;
-
-/** Chat history envelope — same contract as {@link AgentBuilderMessagesResponse}. */
-export type AgentChatMessagesResponse = AgentBuilderMessagesResponse;

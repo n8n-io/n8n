@@ -235,7 +235,51 @@ describe('useWorkflowDocumentRenderData — fusion projections', () => {
 
 		const render = renderData.renderTypeByNodeId.get('ag')?.value;
 		expect(render?.type).toBe('n8n-nodes-base.messageAnAgent');
-		expect(render && 'options' in render ? render.options : undefined).toEqual({ agentId });
+		expect(render && 'options' in render ? render.options : undefined).toEqual({
+			agentId,
+			// No stored agentSource resolves to referenced (pre-switch nodes).
+			agentSource: 'referenced',
+			inlineSummary: undefined,
+		});
+	});
+
+	it('projects the inline definition into a capability summary for inline-mode v2 AI Agent nodes', () => {
+		const inlineAgent = {
+			config: {
+				name: 'Embedded',
+				model: 'openai/gpt-5',
+				instructions: 'Do things.',
+				tools: [{ type: 'workflow' as const, workflow: 'Lookup Orders' }],
+			},
+		};
+		const { docId } = setupWorkflow('wf-fusion-agent-inline', [
+			{
+				id: 'ag',
+				name: 'Agent',
+				type: 'n8n-nodes-base.messageAnAgent',
+				typeVersion: 2,
+				parameters: { agentSource: 'inline', inlineAgent },
+			},
+		]);
+		const { renderData } = createRenderData(docId);
+
+		const render = renderData.renderTypeByNodeId.get('ag')?.value;
+		expect(render && 'options' in render ? render.options : undefined).toEqual({
+			agentId: undefined,
+			agentSource: 'inline',
+			// The card renders only name/model/tools — the full config
+			// (instructions, tool parameters) stays out of the render options.
+			inlineSummary: {
+				id: 'inline:ag',
+				name: 'Embedded',
+				model: { provider: 'openai', model: 'gpt-5' },
+				channels: [],
+				tools: [{ type: 'workflow', name: 'Lookup Orders' }],
+				mcpServers: [],
+				skills: [],
+				tasks: [],
+			},
+		});
 	});
 
 	it('uses the default render type for v1 AI Agent nodes (legacy picker)', () => {

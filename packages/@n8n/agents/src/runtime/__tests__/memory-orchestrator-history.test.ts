@@ -4,6 +4,7 @@ import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { InMemoryMemory } from '../memory/memory-store';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus } from '../state/event-bus';
+import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 
 const THREAD_ID = 'thread-1';
 const RESOURCE_ID = 'user-1';
@@ -24,7 +25,12 @@ function buildOrchestrator(store: InMemoryMemory): MemoryOrchestrator {
 		memory: store,
 		observationalMemory: {},
 	} as unknown as AgentRuntimeConfig;
-	return new MemoryOrchestrator(config, new BackgroundTaskTracker(), new AgentEventBus());
+	return new MemoryOrchestrator(
+		config,
+		new BackgroundTaskTracker(),
+		new AgentEventBus(),
+		new RuntimeTelemetry(config),
+	);
 }
 
 describe('MemoryOrchestrator.loadHistoryMessages with observational memory', () => {

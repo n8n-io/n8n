@@ -263,6 +263,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	};
 
 	const upsertCredential = (credential: ICredentialsResponse) => {
+		if (credential.usageScope === 'instance') return;
 		if (credential.id) {
 			state.value.credentials = {
 				...state.value.credentials,
@@ -361,6 +362,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			uiContext,
 			isGlobal: data.isGlobal,
 			isResolvable: data.isResolvable,
+			usageScope: data.usageScope,
 		});
 
 		if (data?.homeProject && !credential.homeProject) {
@@ -410,6 +412,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		setConnectedByMe(id, false);
 	};
 
+	const disconnectOauthToken = async ({ id }: { id: string }) => {
+		await credentialsApi.disconnectOauthToken(rootStore.restApiContext, id);
+	};
+
 	const setConnectedByMe = (id: string, connectedByMe: boolean) => {
 		const existing = state.value.credentials[id];
 		if (existing) {
@@ -434,13 +440,22 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		if (data.id) {
 			credentialTestResults.value.set(data.id, 'pending');
 		}
-		const result = await credentialsApi.testCredential(rootStore.restApiContext, {
-			credentials: data,
-		});
-		if (data.id) {
-			credentialTestResults.value.set(data.id, result.status === 'OK' ? 'success' : 'error');
+		try {
+			const result = await credentialsApi.testCredential(rootStore.restApiContext, {
+				credentials: data,
+			});
+			if (data.id) {
+				credentialTestResults.value.set(data.id, result.status === 'OK' ? 'success' : 'error');
+			}
+			return result;
+		} catch (error) {
+			// A rejected request must not leave the credential stuck in 'pending' —
+			// consumers gate on reaching a definitive result.
+			if (data.id) {
+				credentialTestResults.value.set(data.id, 'error');
+			}
+			throw error;
 		}
-		return result;
 	};
 
 	const getNewCredentialName = async (params: {
@@ -526,6 +541,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		setCredentials,
 		deleteCredential,
 		disconnectMyConnection,
+		disconnectOauthToken,
 		setConnectedByMe,
 		upsertCredential,
 		fetchCredentialTypes,

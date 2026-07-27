@@ -8,6 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
+import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentTaskService } from '../agent-task.service';
 import type { AgentTestChatService } from '../agent-test-chat.service';
@@ -50,6 +51,7 @@ function makeService() {
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	const subAgentCleanupService = mock<SubAgentCleanupService>();
 	const eventService = mock<EventService>();
+	const agentExecutionService = mock<AgentExecutionService>();
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	agentTaskService.requestReconcile.mockResolvedValue();
@@ -69,6 +71,7 @@ function makeService() {
 		agentTaskRepository,
 		subAgentCleanupService,
 		eventService,
+		agentExecutionService,
 	);
 
 	return {
@@ -82,6 +85,7 @@ function makeService() {
 		chatIntegrationService,
 		subAgentCleanupService,
 		eventService,
+		agentExecutionService,
 	};
 }
 
@@ -226,6 +230,14 @@ describe('AgentsService', () => {
 						],
 						skills: [{ type: 'skill', id: 's1' }],
 						tasks: [{ type: 'task', id: 't1', enabled: true }],
+						mcpServers: [
+							{
+								name: 'notion-mcp',
+								url: 'https://mcp.example.com',
+								transport: 'streamableHttp',
+								authentication: 'none',
+							},
+						],
 					},
 					integrations: [
 						{ type: 'slack', credentialId: 'cred-1' },
@@ -256,6 +268,7 @@ describe('AgentsService', () => {
 						nodeTypeVersion: 1,
 					},
 				],
+				mcpServers: [{ name: 'notion-mcp' }],
 				skills: [{ id: 's1', name: 'Triage' }],
 				tasks: [{ id: 't1', name: 'Daily digest', enabled: true }],
 			});
@@ -275,6 +288,7 @@ describe('AgentsService', () => {
 				model: null,
 				channels: [],
 				tools: [],
+				mcpServers: [],
 				skills: [],
 				tasks: [],
 			});

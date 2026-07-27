@@ -104,6 +104,15 @@ export class InstanceAiPage extends BasePage {
 		return this.getAssistantMessages().getByText(text);
 	}
 
+	/** Tailored out-of-credits error callout shown when a run fails due to exhausted quota. */
+	getOutOfCreditsError(): Locator {
+		return this.container.getByTestId('instance-ai-out-of-credits');
+	}
+
+	getOutOfCreditsUpgradeButton(): Locator {
+		return this.container.getByTestId('instance-ai-out-of-credits-upgrade');
+	}
+
 	getStatusBar(): Locator {
 		return this.container.getByTestId('instance-ai-status-bar');
 	}

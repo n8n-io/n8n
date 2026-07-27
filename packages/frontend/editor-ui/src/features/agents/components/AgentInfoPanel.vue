@@ -9,7 +9,8 @@ import { useDebounceFn } from '@vueuse/core';
 import { N8nMarkdownEditor, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@/app/constants/durations';
 import { useToast } from '@/app/composables/useToast';
 import { useAgentProjectId } from '../composables/useAgentProjectId';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -42,14 +43,21 @@ const props = withDefaults(
 		showModel?: boolean;
 		showInstructions?: boolean;
 		showInstructionsToolbar?: boolean;
+		/**
+		 * Emit instructions edits per keystroke instead of debounced. For hosts
+		 * whose updates are cheap local writes (inline agent → node parameter);
+		 * autosaving hosts (builder) keep the debounce.
+		 */
+		immediateUpdates?: boolean;
 	}>(),
 	{
 		disabled: false,
 		embedded: false,
-		instructionsMaxHeight: 'none',
+		instructionsMaxHeight: '360px',
 		showModel: true,
 		showInstructions: true,
 		showInstructionsToolbar: false,
+		immediateUpdates: false,
 	},
 );
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
@@ -153,13 +161,17 @@ watch(
 	},
 );
 
-const emitInstructions = useDebounceFn(() => {
+const emitInstructionsDebounced = useDebounceFn(() => {
 	emit('update:config', { instructions: instructions.value });
 }, getDebounceTime(DEBOUNCE_TIME.API.HEAVY_OPERATION));
 
 function onInstructionsInput(value: string) {
 	instructions.value = value;
-	void emitInstructions();
+	if (props.immediateUpdates) {
+		emit('update:config', { instructions: value });
+		return;
+	}
+	void emitInstructionsDebounced();
 }
 </script>
 
@@ -230,9 +242,7 @@ function onInstructionsInput(value: string) {
 	opacity: 0.5;
 }
 
-/* Follow the editor's max-height: unbounded hosts (the builder, which passes
-   `instructions-max-height="none"`) grow naturally, while capped hosts (the
-   NDV's 240px) scroll within the cap instead of clipping. */
+/* Follow the editor's configured max-height and scroll within the cap. */
 .instructionsDocument :global(.n8n-markdown) {
 	max-height: var(--markdown-editor-max-height);
 	min-height: calc(var(--spacing--4xl) + var(--spacing--xl));

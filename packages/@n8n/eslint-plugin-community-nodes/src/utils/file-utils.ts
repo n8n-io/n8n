@@ -73,17 +73,38 @@ function isValidPackageJson(obj: unknown): obj is { n8n?: PackageJsonN8n } {
 	return typeof obj === 'object' && obj !== null;
 }
 
-function readPackageJsonN8n(packageJsonPath: string): PackageJsonN8n {
+function readPackageJsonRaw(packageJsonPath: string): Record<string, unknown> | null {
 	try {
 		const content = readFileSync(packageJsonPath, 'utf8');
 		const parsed: unknown = JSON.parse(content);
-		if (isValidPackageJson(parsed)) {
-			return parsed.n8n ?? {};
-		}
-		return {};
+		return isValidPackageJson(parsed) ? (parsed as Record<string, unknown>) : null;
 	} catch {
-		return {};
+		return null;
 	}
+}
+
+function readPackageJsonN8n(packageJsonPath: string): PackageJsonN8n {
+	const parsed = readPackageJsonRaw(packageJsonPath);
+	if (parsed) {
+		const n8n = parsed.n8n;
+		return typeof n8n === 'object' && n8n !== null ? (n8n as PackageJsonN8n) : {};
+	}
+	return {};
+}
+
+/**
+ * Returns the set of package names listed under `devDependencies` in the given
+ * package.json. Dev dependencies are never installed at runtime on n8n Cloud
+ * (only the built `dist/` is shipped), so importing them is not a runtime
+ * dependency concern and is permitted by `no-restricted-imports`.
+ */
+export function readPackageJsonDevDependencies(packageJsonPath: string | null): Set<string> {
+	if (!packageJsonPath) return new Set();
+	const parsed = readPackageJsonRaw(packageJsonPath);
+	if (!parsed) return new Set();
+	const devDeps = parsed.devDependencies;
+	if (typeof devDeps !== 'object' || devDeps === null) return new Set();
+	return new Set(Object.keys(devDeps as Record<string, unknown>));
 }
 
 function resolveN8nFilePaths(packageJsonPath: string, filePaths: string[]): string[] {

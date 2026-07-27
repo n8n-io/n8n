@@ -9,12 +9,8 @@ import {
 } from '@n8n/api-types';
 import type { UserAction } from '@n8n/design-system';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
-import {
-	DEBOUNCE_TIME,
-	EnterpriseEditionFeature,
-	getDebounceTime,
-	MODAL_CONFIRM,
-} from '@/app/constants';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME, EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { DELETE_USER_MODAL_KEY, INVITE_USER_MODAL_KEY } from '../users.constants';
 import type { InvitableRoleName } from '../users.types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
@@ -25,7 +21,7 @@ import { useRolesStore } from '@/app/stores/roles.store';
 import { useUsersStore } from '../users.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -34,7 +30,7 @@ import { I18nT } from 'vue-i18n';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
 import N8nAlert from '@n8n/design-system/components/N8nAlert/Alert.vue';
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
@@ -88,6 +84,11 @@ onMounted(async () => {
 
 	if (!showUMSetupWarning.value) {
 		await updateUsersTableData(usersTableState.value);
+	}
+
+	// Needed for the projects dialog to map project role slugs to display names.
+	if (!rolesStore.roles.project.length) {
+		void rolesStore.fetchRoles();
 	}
 
 	await userRoleProvisioningStore.getProvisioningConfig();
@@ -449,7 +450,7 @@ const onSearch = (value: string) => {
 			}}</N8nText>
 		</N8nHeading>
 		<div v-if="!usersStore.usersLimitNotReached" :class="$style.setupInfoContainer">
-			<N8nActionBox
+			<N8nEmptyState
 				:heading="
 					i18n.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.title)
 				"

@@ -55,7 +55,7 @@ export class ScalingService {
 
 	async setupQueue() {
 		const { default: BullQueue } = await import('bull');
-		const { RedisClientService } = await import('@/services/redis-client.service');
+		const { RedisClientService } = await import('@/services/redis-client.service.js');
 
 		if (this.queue) return;
 
@@ -79,7 +79,7 @@ export class ScalingService {
 		const { McpServer, QueuedExecutionStrategy, RedisSessionStore } = await import(
 			'@n8n/n8n-nodes-langchain/mcp/core'
 		);
-		const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+		const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 
 		const publisher = Container.get(Publisher);
 
@@ -471,7 +471,7 @@ export class ScalingService {
 					storedAt: executionData.storedAt,
 				};
 
-				const { McpService } = await import('@/modules/mcp/mcp.service');
+				const { McpService } = await import('@/modules/mcp/mcp.service.js');
 				const mcpService = Container.get(McpService);
 				mcpService.handleWorkerResponse(executionId, runData);
 			} else {

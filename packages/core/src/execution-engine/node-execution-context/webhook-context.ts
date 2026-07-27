@@ -157,6 +157,15 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return this.webhookData.webhookDescription.name;
 	}
 
+	logHitlResponse(payload: { approved: boolean; authorized: boolean }) {
+		this.additionalData.logHitlResponse?.({
+			...payload,
+			nodeType: this.node.type,
+			executionId: this.additionalData.executionId,
+			workflowId: this.workflow.id,
+		});
+	}
+
 	async validateCookieAuth(cookieValue: string): Promise<IUser> {
 		if (!this.additionalData.validateCookieAuth) {
 			throw new UnexpectedError('Cookie auth validation is not available');

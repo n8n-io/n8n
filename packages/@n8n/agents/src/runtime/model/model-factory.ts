@@ -82,6 +82,19 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			return creds.baseURL ? provider.chat(model) : provider(model);
 		},
 	},
+	custom: {
+		build: (creds, model, fetch) => {
+			const { createOpenAICompatible } =
+				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
+			return createOpenAICompatible({
+				name: 'custom',
+				baseURL: creds.baseURL,
+				apiKey: creds.apiKey,
+				headers: creds.headers,
+				fetch,
+			})(model);
+		},
+	},
 	anthropic: {
 		build: (creds, model, fetch) => {
 			const { createAnthropic } =

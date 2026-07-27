@@ -5,6 +5,7 @@ import multer from 'multer';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { AiService } from '@/services/ai.service';
 
 import { AgentKnowledgeController } from '../agent-knowledge.controller';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -21,19 +22,23 @@ function makeController({
 		sandboxProvider: 'daytona',
 	} as AgentsConfig,
 	runtimeCacheService = mock<AgentRuntimeCacheService>(),
+	aiService = mock<AiService>({ isProxyEnabled: () => false }),
 }: {
 	agentKnowledgeService?: Mocked<AgentKnowledgeService>;
 	agentsConfig?: AgentsConfig;
 	runtimeCacheService?: Mocked<AgentRuntimeCacheService>;
+	aiService?: Mocked<AiService>;
 } = {}) {
 	return {
 		controller: new AgentKnowledgeController(
 			agentKnowledgeService,
 			agentsConfig,
 			runtimeCacheService,
+			aiService,
 		),
 		agentKnowledgeService,
 		runtimeCacheService,
+		aiService,
 	};
 }
 

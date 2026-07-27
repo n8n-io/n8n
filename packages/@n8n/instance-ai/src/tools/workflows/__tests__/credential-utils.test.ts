@@ -37,7 +37,7 @@ describe('resolveCredentialForApply', () => {
 
 			expect(result).toEqual({
 				resolved: false,
-				error: 'Credential type "openAiApi" is not supported by AI Gateway',
+				error: 'Credential type "openAiApi" is not supported by n8n credits',
 			});
 		});
 

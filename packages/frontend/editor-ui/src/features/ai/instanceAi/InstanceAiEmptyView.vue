@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useResizeObserver } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
-import type { InstanceAiAttachment } from '@n8n/api-types';
+import type { InstanceAiAttachment, InstanceAiThreadSource } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -21,7 +21,12 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { INSTANCE_AI_THREAD_VIEW } from './constants';
+import {
+	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_PROJECT_ID_QUERY,
+	INSTANCE_AI_SOURCE_QUERY,
+	isInstanceAiThreadSource,
+} from './constants';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS } from './emptyStateSuggestions';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
@@ -97,11 +102,26 @@ const store = useInstanceAiStore();
 const appSettingsStore = useSettingsStore();
 const cloudPlanStore = useCloudPlanStore();
 const projectsStore = useProjectsStore();
-const selectedProject = ref(projectsStore.personalProject?.id);
+const route = useRoute();
+const router = useRouter();
+function resolveInitialProjectId(): string | undefined {
+	const queryProjectId = route.query[INSTANCE_AI_PROJECT_ID_QUERY];
+	if (typeof queryProjectId === 'string' && queryProjectId.length > 0) {
+		return queryProjectId;
+	}
+	return projectsStore.personalProject?.id;
+}
+
+/** Prefer a hand-off source from navigation; fall back for direct empty-state visits. */
+function resolveLaunchSource(): InstanceAiThreadSource {
+	const querySource = route.query[INSTANCE_AI_SOURCE_QUERY];
+	return isInstanceAiThreadSource(querySource) ? querySource : 'assistant_page';
+}
+
+const selectedProject = ref(resolveInitialProjectId());
 const settingsStore = useInstanceAiSettingsStore();
 const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
-const router = useRouter();
 const toast = useToast();
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -368,6 +388,16 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 const isStartingThread = ref(false);
 
+watch(
+	() => route.query[INSTANCE_AI_PROJECT_ID_QUERY],
+	() => {
+		// Re-resolve on every change, including when the query is cleared, so
+		// navigating away from a project-scoped entry falls back to the
+		// personal project instead of leaving the previous project selected.
+		selectedProject.value = resolveInitialProjectId();
+	},
+);
+
 // Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment
 const templatePreviewPrompt = ref<string | null>(null);
 
@@ -456,7 +486,10 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	// `/assistant/:threadId` for a thread the BE doesn't know about, and the
 	// follow-up `postMessage` would 404.
 	try {
-		await store.syncThread(threadId, selectedProject.value);
+		await store.syncThread(threadId, selectedProject.value, {
+			source: resolveLaunchSource(),
+			origin: 'internal',
+		});
 	} catch {
 		isStartingThread.value = false;
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
@@ -669,7 +702,8 @@ function handleShelfSuggestionInsert(payload: {
 	gap: var(--spacing--lg);
 	padding: var(--spacing--lg);
 	padding-top: 20vh;
-	overflow: hidden;
+	overflow-y: auto;
+	overflow-x: hidden;
 }
 
 .centeredInput {

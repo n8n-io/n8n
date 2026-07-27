@@ -66,6 +66,7 @@ if (BACKEND_URL && !SKIP_WEB_SERVER) {
 			N8N_METRICS: 'true',
 			N8N_RESTRICT_FILE_ACCESS_TO: '',
 			N8N_DYNAMIC_BANNERS_ENABLED: 'false',
+			N8N_EXPRESSION_ENGINE: 'vm',
 			...getTestEnv(),
 		},
 	});

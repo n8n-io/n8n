@@ -20,6 +20,9 @@ function wf(overrides: Partial<FoundWorkflow>): FoundWorkflow {
 }
 
 const manualTrigger = { type: 'n8n-nodes-base.manualTrigger' } as WorkflowEntity['nodes'][number];
+const scheduleTrigger = {
+	type: 'n8n-nodes-base.scheduleTrigger',
+} as WorkflowEntity['nodes'][number];
 const noTrigger = { type: 'n8n-nodes-base.set' } as WorkflowEntity['nodes'][number];
 
 function setup() {
@@ -49,6 +52,7 @@ describe('AttachableWorkflowsService', () => {
 		workflowFinderService.findAllWorkflowsForUser.mockResolvedValue([
 			wf({ id: 'a', name: 'Has trigger', active: true, nodes: [noTrigger, manualTrigger] }),
 			wf({ id: 'b', name: 'No trigger', nodes: [noTrigger] }),
+			wf({ id: 'c', name: 'Schedule only', nodes: [scheduleTrigger] }),
 		]);
 
 		const result = await service.list(user, 'project-1');

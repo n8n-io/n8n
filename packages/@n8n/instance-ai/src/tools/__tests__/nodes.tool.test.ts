@@ -130,7 +130,38 @@ describe('nodes tool', () => {
 				{} as never,
 			);
 
-			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({ query: 'http' });
+			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
+				query: 'http',
+				n8nConnectOnly: undefined,
+			});
+			expect(result).toEqual({ nodes });
+		});
+
+		it('should forward n8nConnectOnly to nodeService.listAvailable', async () => {
+			const nodes = [
+				{
+					name: 'n8n-nodes-base.openAi',
+					displayName: 'OpenAI',
+					description: 'Use OpenAI',
+					group: ['transform'],
+					version: 1,
+					aiGateway: { supported: true },
+				},
+			];
+			const context = createMockContext();
+			(context.nodeService.listAvailable as Mock).mockResolvedValue(nodes);
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'list', n8nConnectOnly: true } as never,
+				{} as never,
+			);
+
+			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
+				query: undefined,
+				n8nConnectOnly: true,
+			});
 			expect(result).toEqual({ nodes });
 		});
 	});

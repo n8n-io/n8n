@@ -1,11 +1,10 @@
-import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { MODAL_CONFIRM } from '@/app/constants';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
 import { useRouter } from 'vue-router';
+import { useRoleDeletion } from './useRoleDeletion';
 
 export interface RoleListViews {
 	/** Route name for read-only system-role detail page. */
@@ -31,12 +30,10 @@ export function useRolesListActions({
 }: UseRolesListActionsOptions) {
 	const { showError, showMessage } = useToast();
 	const rolesStore = useRolesStore();
-	const message = useMessage();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const router = useRouter();
-
-	const storeKey = roleType === 'project' ? 'project' : 'global';
+	const { reassignState, requestDelete, confirmReassignDelete, cancelReassign } = useRoleDeletion();
 
 	async function duplicateRole(item: Role): Promise<Role | undefined> {
 		try {
@@ -51,7 +48,7 @@ export function useRolesListActions({
 			});
 
 			// Optimistic update — background fetch reconciles with server state.
-			rolesStore.roles[storeKey].push(role);
+			rolesStore.roles[roleType].push(role);
 			void rolesStore.fetchRoles();
 
 			telemetry.track('User duplicated role', {
@@ -75,39 +72,7 @@ export function useRolesListActions({
 	}
 
 	async function deleteRole(item: Role): Promise<void> {
-		if (onBeforeDelete) {
-			const proceed = await onBeforeDelete(item);
-			if (!proceed) return;
-		}
-
-		const confirmed = await message.confirm(
-			i18n.baseText('roles.action.delete.text', {
-				interpolate: { roleName: item.displayName },
-			}),
-			i18n.baseText('roles.action.delete.title', {
-				interpolate: { roleName: item.displayName },
-			}),
-			{
-				type: 'warning',
-				confirmButtonText: i18n.baseText('roles.action.delete'),
-				cancelButtonText: i18n.baseText('roles.action.cancel'),
-			},
-		);
-
-		if (confirmed !== MODAL_CONFIRM) return;
-
-		try {
-			await rolesStore.deleteRole(item.slug);
-
-			const index = rolesStore.roles[storeKey].findIndex((r) => r.slug === item.slug);
-			if (index !== -1) {
-				rolesStore.roles[storeKey].splice(index, 1);
-			}
-
-			showMessage({ title: i18n.baseText('roles.action.delete.success'), type: 'success' });
-		} catch (error) {
-			showError(error, i18n.baseText('roles.action.delete.error'));
-		}
+		await requestDelete(item, { roleType, onBeforeDelete });
 	}
 
 	const actions = { duplicate: duplicateRole, delete: deleteRole } as const;
@@ -132,5 +97,15 @@ export function useRolesListActions({
 		});
 	}
 
-	return { duplicateRole, deleteRole, actions, rowActions, handleAction, handleRowClick };
+	return {
+		duplicateRole,
+		deleteRole,
+		actions,
+		rowActions,
+		handleAction,
+		handleRowClick,
+		reassignState,
+		confirmReassignDelete,
+		cancelReassign,
+	};
 }

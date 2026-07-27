@@ -8,7 +8,7 @@ All Instance AI configuration is done via environment variables.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-4-8` | LLM model in `provider/model` format. Must be set for the module to enable. |
+| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-4-8` | LLM model in `provider/model` format for built-in providers, or a bare model name when `N8N_INSTANCE_AI_MODEL_URL` is set. Must be set for the module to enable. |
 | `N8N_INSTANCE_AI_MODEL_URL` | string | `''` | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:1234/v1` for LM Studio). When set, model requests go to this URL instead of the built-in provider. |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | string | `''` | API key for the custom model endpoint. Optional — some local servers don't require one. |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
@@ -76,6 +76,7 @@ When no search provider is available, the `web-search` action is disabled. `fetc
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES` | number | `15` | Minutes an idle Daytona sandbox waits before being stopped. `0` disables auto-stop. |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES` | number | `60` (1 hour) | Minutes a stopped Daytona sandbox waits before being archived to cold storage. `0` uses Daytona's maximum interval. |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES` | number | `10080` (7 days) | Minutes a stopped Daytona sandbox waits before being deleted. Negative disables auto-delete; `0` deletes on stop. Ignored when `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` is true. |
+| `N8N_INSTANCE_AI_SANDBOX_LINK_SDK` | boolean | `false` | Local-dev only. When `1` or `true`, pack the workspace `n8n-workflow` and `@n8n/workflow-sdk` tarballs from the host monorepo into each sandbox after `npm install`, overriding the registry copies. Use when master is ahead of npm (e.g. unreleased exports such as `normalizeNodeShape`). Requires `pnpm build` in `packages/workflow` and `packages/@n8n/workflow-sdk`. Start a new AI thread after changing this — existing sandboxes keep their initialized `node_modules`. |
 
 When sandbox is enabled, Instance AI writes workflow source files in the runtime
 workspace and `build-workflow` runs TypeScript sources through the sandbox
@@ -166,7 +167,16 @@ The event bus transport is selected automatically:
 - **Single instance**: In-process `EventEmitter` — zero infrastructure
 - **Queue mode**: Redis Pub/Sub — uses n8n's existing Redis connection
 
-Event persistence always uses thread storage regardless of transport.
+Event persistence is controlled by `N8N_INSTANCE_AI_DURABLE_LOG` (default
+`true` since Gate A of the durable-log rollout; pre-existing runs are
+backfilled by migration). On, coalesced step-level facts (completed
+text/reasoning blocks, tool calls and results, run lifecycle) are appended to
+the `instance_ai_events` table and replay reads the database; token deltas
+are never persisted. Rows cascade-delete with their thread
+(`N8N_INSTANCE_AI_THREAD_TTL_DAYS`). Setting it to `false` is the rollback
+switch until the legacy paths sunset at Gate B: events then live only in a
+bounded in-memory buffer per thread (500 events / 2 MB, FIFO-evicted; ids
+reset on restart, so replay does not survive a restart).
 
 Runtime behavior:
 - One active run per thread. Additional `POST /instance-ai/chat/:threadId`
@@ -208,6 +218,7 @@ N8N_INSTANCE_AI_GATEWAY_API_KEY=my-secret-key
 # User runs: npx @n8n/computer-use
 
 # With custom OpenAI-compatible endpoint (e.g. LM Studio, Ollama)
+N8N_INSTANCE_AI_MODEL=your-tool-capable-model
 N8N_INSTANCE_AI_MODEL_URL=http://localhost:1234/v1
 
 # Output filtering — secrets + email only, with a custom placeholder

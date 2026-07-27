@@ -10,7 +10,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useToast } from '@/app/composables/useToast';
 import { waitFor } from '@testing-library/vue';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn(),

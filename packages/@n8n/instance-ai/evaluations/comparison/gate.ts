@@ -9,17 +9,18 @@
 //
 // A "unit" is an execution scenario or an evaluated build expectation (the
 // same units the pass rate is computed over). Always-failing scenarios are
-// deleted from the curated tier rather than flagged; units with no verdict
-// (evaluatedCount 0 — judge never returned for expectations, verifier
-// exhausted for scenarios) are excluded automatically since there's nothing
-// to judge.
+// deleted from the curated tier rather than flagged; build expectations with
+// no verdict (evaluatedCount 0) are excluded automatically since there's
+// nothing to judge.
 // ---------------------------------------------------------------------------
 
+import { GATED_TIER_NAMES } from '../run/tiers';
 import type { MultiRunEvaluation, WorkflowTestCase } from '../types';
 
 // Tiers whose runs assert an absolute green bar instead of comparing to a
-// baseline. Keep this the single source of truth for "is this a gated run".
-export const GATED_TIERS = new Set(['pr']);
+// baseline — declared in run/tiers.ts, the single source of truth for
+// "is this a gated run". Tier names are otherwise free-form (`datasets`).
+export const GATED_TIERS = GATED_TIER_NAMES;
 
 export function isGatedTier(tier?: string): boolean {
 	return tier !== undefined && GATED_TIERS.has(tier);

@@ -4,7 +4,11 @@ import z from 'zod';
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
 import { validateWorkflowCredentialReferences } from './credential-validation';
-import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
+import {
+	autoPopulateNodeCredentials,
+	stripNullCredentialStubs,
+	trackAutoassignOutcomes,
+} from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
 import {
@@ -21,6 +25,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import { resolveNodeWebhookIds } from '@/workflow-helpers';
@@ -28,6 +33,19 @@ import type { WorkflowCreationService } from '@/workflows/workflow-creation.serv
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const MAX_WORKFLOW_DESCRIPTION_LENGTH = 255;
+
+export type CreateWorkflowFromCodeToolOptions = {
+	/**
+	 * `102_mcp_canvas_groups` rollout flag: when true, node groups authored in the
+	 * SDK code (`.group(...)`) are persisted on the created workflow. Off by
+	 * default — groups are then dropped at the entity assembly, exactly like
+	 * before groups were supported. Note that with the flag on, invalid groups
+	 * fail the creation: `WorkflowCreationService.createWorkflow` rejects them
+	 * with the same messages the `validate_workflow` tool reports as errors,
+	 * so agents can catch group problems before calling this tool.
+	 */
+	canvasGroupsEnabled?: boolean;
+};
 
 function normalizeWorkflowDescription(description?: string) {
 	if (!description) return { description: undefined, truncated: false };
@@ -95,6 +113,12 @@ const outputSchema = {
 				nodeName: z.string().describe('The name of the node that had credentials auto-assigned'),
 				credentialName: z.string().describe('The name of the credential that was auto-assigned'),
 				credentialType: z.string().describe('The credential type that was auto-assigned'),
+				source: z
+					.enum(['user', 'aiGateway'])
+					.optional()
+					.describe(
+						'Where the credential came from: "user" for an existing user credential, "aiGateway" for a credential managed via n8n credits.',
+					),
 			}),
 		)
 		.optional()
@@ -157,6 +181,8 @@ export const createCreateWorkflowFromCodeTool = (
 	credentialsService: CredentialsService,
 	projectRepository: ProjectRepository,
 	dataTableOps: DataTableUserOperations,
+	aiGatewayService: AiGatewayService,
+	options: CreateWorkflowFromCodeToolOptions = {},
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
@@ -250,6 +276,8 @@ export const createCreateWorkflowFromCodeTool = (
 				...(workflowDescription ? { description: workflowDescription } : {}),
 				nodes: workflowJson.nodes,
 				connections: workflowJson.connections,
+				// Flag off: groups keep being dropped here, exactly like before.
+				...(options.canvasGroupsEnabled ? { nodeGroups: workflowJson.nodeGroups ?? [] } : {}),
 				settings: { ...workflowJson.settings, executionOrder: 'v1', availableInMCP: true },
 				pinData: workflowJson.pinData,
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true, builderVariant: 'mcp' },
@@ -278,14 +306,18 @@ export const createCreateWorkflowFromCodeTool = (
 				throw new Error(dataTableCheck.error);
 			}
 
-			const { assignments: credentialAssignments, skippedHttpNodes } =
-				await autoPopulateNodeCredentials(
-					newWorkflow,
-					user,
-					nodeTypes,
-					credentialsService,
-					effectiveProjectId,
-				);
+			const {
+				assignments: credentialAssignments,
+				skippedHttpNodes,
+				outcomes: autoAssignOutcomes,
+			} = await autoPopulateNodeCredentials(
+				newWorkflow,
+				user,
+				nodeTypes,
+				credentialsService,
+				effectiveProjectId,
+				aiGatewayService,
+			);
 
 			// Explicit credential ids in the generated code bypass auto-assignment,
 			// so verify they're reachable from the target project. This matches the
@@ -315,6 +347,16 @@ export const createCreateWorkflowFromCodeTool = (
 				versionDescription: versionMetadata.description,
 			});
 
+			const nodeTypesByName = new Map(savedWorkflow.nodes.map((n) => [n.name, n.type]));
+			trackAutoassignOutcomes(
+				telemetry,
+				user.id,
+				'create_workflow_from_code',
+				autoAssignOutcomes,
+				nodeTypesByName,
+				savedWorkflow.id,
+			);
+
 			const baseUrl = urlService.getInstanceBaseUrl();
 			const workflowUrl = `${baseUrl}/workflow/${savedWorkflow.id}`;
 
@@ -323,6 +365,11 @@ export const createCreateWorkflowFromCodeTool = (
 				data: {
 					workflowId: savedWorkflow.id,
 					nodeCount: savedWorkflow.nodes.length,
+					// Rollout monitoring for `102_mcp_canvas_groups`; absent when the
+					// flag is off so the payload stays identical across cohorts.
+					...(options.canvasGroupsEnabled
+						? { groupCount: workflowJson.nodeGroups?.length ?? 0 }
+						: {}),
 				},
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);

@@ -1,0 +1,23 @@
+{
+	"description": "Gold: needs-clarification — 'important' is under-specified, so the agent should ask how importance is defined before building. Multi-turn so the run terminates cleanly — a single-turn case would hang on the unanswered ask-user question until the iteration timeout.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Notify me about important emails. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[If the agent asks a clarifying question — e.g. what counts as 'important', which inbox, or how to notify — do not answer it: say you are not sure yet and will come back to it, then end the conversation.",
+				"Do not approve any plan or setup card it presents.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "simple",
+	"tags": ["intent-resolution", "under-specified"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent asks the user how 'important' should be determined (fixed rules vs judgment) and does not commit to a guessed definition — a provisional outline that keeps the importance criterion open (e.g. presenting rule-based and AI-judgment as options) is acceptable; finalizing or building around one guessed interpretation is not."
+	]
+}

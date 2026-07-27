@@ -92,12 +92,13 @@ function makeAiService(overrides: Partial<AiService> = {}): AiService {
 	return Object.assign(aiService, overrides);
 }
 
-function makePublishedAgentRepository(): ReturnType<typeof mock<AgentRepository>> {
+function makeAgentRepository(): ReturnType<typeof mock<AgentRepository>> {
 	const repository = mock<AgentRepository>();
+	// Unpublished on purpose: the knowledge sandbox must not require a published version.
 	repository.findByIdAndProjectId.mockResolvedValue({
 		id: agentId,
 		projectId,
-		activeVersionId: 'version-1',
+		activeVersionId: null,
 	} as Agent);
 	return repository;
 }
@@ -114,7 +115,7 @@ function makeService(
 	aiService: AiService = makeAiService(),
 	instanceSettings: InstanceSettings = mock<InstanceSettings>({ instanceId }),
 	agentFileRepository: AgentFileRepository = mock<AgentFileRepository>(),
-	agentRepository: AgentRepository = makePublishedAgentRepository(),
+	agentRepository: AgentRepository = makeAgentRepository(),
 	binaryDataService: BinaryDataService = makeBinaryDataService(),
 ): AgentKnowledgeSandboxService {
 	return new AgentKnowledgeSandboxService(
@@ -198,6 +199,10 @@ describe('AgentKnowledgeSandboxService', () => {
 		daytonaInstances.length = 0;
 		createMock.mockResolvedValue(makeSandbox('started'));
 		getMock.mockRejectedValue(new DaytonaNotFoundError('not found'));
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
 	});
 
 	it('creates a scoped sandbox', async () => {
@@ -327,7 +332,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(params.snapshot).toBeUndefined();
 	});
 
-	it('requests a proxy token scoped to the project id when the proxy is enabled', async () => {
+	it('requests a proxy token scoped to the project id when the proxy is enabled, even without sandbox env vars', async () => {
 		const client = mock<AiAssistantClient>();
 		client.getSandboxProxyConfig.mockResolvedValue({ image: 'proxy-image' });
 		client.getBuilderApiProxyToken.mockResolvedValue({
@@ -339,7 +344,11 @@ describe('AgentKnowledgeSandboxService', () => {
 			isProxyEnabled: vi.fn().mockReturnValue(true),
 			getClient: vi.fn().mockResolvedValue(client),
 		});
-		const service = makeService({}, mock<Logger>(), aiService);
+		const service = makeService(
+			{ sandboxEnabled: false, sandboxProvider: '' },
+			mock<Logger>(),
+			aiService,
+		);
 
 		await service.warmSandbox(projectId, agentId);
 
@@ -347,6 +356,30 @@ describe('AgentKnowledgeSandboxService', () => {
 			{ id: projectId },
 			expect.anything(),
 		);
+	});
+
+	it('retries transient proxy setup failures', async () => {
+		vi.useFakeTimers();
+		const client = mock<AiAssistantClient>();
+		client.getSandboxProxyConfig
+			.mockRejectedValueOnce(Object.assign(new Error('Bad Gateway'), { statusCode: 502 }))
+			.mockResolvedValue({ image: 'proxy-image' });
+		client.getBuilderApiProxyToken.mockResolvedValue({
+			accessToken: 'proxy-token',
+			tokenType: 'Bearer',
+		});
+		client.getSandboxProxyBaseUrl.mockReturnValue('https://sandbox-proxy.example');
+		const aiService = makeAiService({
+			isProxyEnabled: vi.fn().mockReturnValue(true),
+			getClient: vi.fn().mockResolvedValue(client),
+		});
+		const service = makeService({}, mock<Logger>(), aiService);
+
+		const promise = service.warmSandbox(projectId, agentId);
+		await vi.advanceTimersByTimeAsync(1000);
+		await promise;
+
+		expect(client.getSandboxProxyConfig).toHaveBeenCalledTimes(2);
 	});
 
 	describe('globKnowledgeFiles', () => {
@@ -425,28 +458,6 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 	});
 
-	it('throws a published-only error when the agent has no active version', async () => {
-		const agentRepository = mock<AgentRepository>();
-		agentRepository.findByIdAndProjectId.mockResolvedValue({
-			id: agentId,
-			projectId,
-			activeVersionId: null,
-		} as Agent);
-		const service = makeService(
-			{},
-			mock<Logger>(),
-			makeAiService(),
-			mock<InstanceSettings>({ instanceId }),
-			mock<AgentFileRepository>(),
-			agentRepository,
-		);
-
-		await expect(service.warmSandbox(projectId, agentId)).rejects.toThrow(
-			'Knowledge base is only available for published agents. Publish the agent first.',
-		);
-		expect(createMock).not.toHaveBeenCalled();
-	});
-
 	describe('destroySandbox', () => {
 		it('deletes the sandbox by name', async () => {
 			const sandbox = makeSandbox('started');
@@ -513,7 +524,7 @@ describe('AgentKnowledgeSandboxService', () => {
 				makeMirrorFile('file-1', 'doc1.txt'),
 				makeMirrorFile('file-2', 'doc2.txt'),
 			]);
-			const agentRepository = makePublishedAgentRepository();
+			const agentRepository = makeAgentRepository();
 			agentRepository.existsBy.mockResolvedValue(true);
 			const binaryDataService = makeBinaryDataService();
 			const service = makeService(
@@ -580,7 +591,7 @@ describe('AgentKnowledgeSandboxService', () => {
 				makeMirrorFile('file-1', 'doc1.txt'),
 				makeMirrorFile('file-2', 'doc2.txt'),
 			]);
-			const agentRepository = makePublishedAgentRepository();
+			const agentRepository = makeAgentRepository();
 			agentRepository.existsBy.mockResolvedValue(true);
 			const binaryDataService = makeBinaryDataService();
 			binaryDataService.getAsBuffer.mockResolvedValue(Buffer.alloc(MIRROR_UPLOAD_BATCH_BYTES));
@@ -613,7 +624,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			getMock.mockResolvedValue(sandbox);
 			const agentFileRepository = mock<AgentFileRepository>();
 			agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
-			const agentRepository = makePublishedAgentRepository();
+			const agentRepository = makeAgentRepository();
 			agentRepository.existsBy.mockResolvedValue(true);
 			const service = makeService(
 				{},
@@ -643,7 +654,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			getMock.mockResolvedValue(sandbox);
 			const agentFileRepository = mock<AgentFileRepository>();
 			agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
-			const agentRepository = makePublishedAgentRepository();
+			const agentRepository = makeAgentRepository();
 			agentRepository.existsBy.mockResolvedValue(true);
 			const service = makeService(
 				{},
@@ -668,7 +679,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			getMock.mockResolvedValue(sandbox);
 			const agentFileRepository = mock<AgentFileRepository>();
 			agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
-			const agentRepository = makePublishedAgentRepository();
+			const agentRepository = makeAgentRepository();
 			agentRepository.existsBy.mockResolvedValue(true);
 			const binaryDataService = makeBinaryDataService();
 			binaryDataService.getAsBuffer.mockRejectedValueOnce(new Error('missing on disk'));

@@ -90,6 +90,7 @@ erDiagram
   INTEGER attempts
   varchar_255_ claimedBy
   datetime_3_ createdAt
+  datetime_3_ dispatchedAt
   TEXT errorMessage
   datetime_3_ finishedAt
   INTEGER id

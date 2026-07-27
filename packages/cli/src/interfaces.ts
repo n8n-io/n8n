@@ -235,6 +235,8 @@ export interface IAgentTurnFinishedTrackProperties extends ITelemetryTrackProper
 	/** Internal aggregation key only. This must never be emitted to telemetry. */
 	thread_id: string;
 	run_type: AgentRunTelemetryType;
+	/** Absent for saved agents; 'inline' for node-embedded agent definitions. */
+	agent_type?: 'inline';
 	turn_status: AgentTurnTelemetryStatus;
 	configuration: IAgentConfigurationTelemetryProperties;
 	latency_ms: number;

@@ -1,4 +1,3 @@
-export { default as N8nActionBox } from './N8nActionBox';
 export { default as N8nAskAssistantButton } from './AskAssistantButton';
 export {
 	default as N8nAskAssistantChat,
@@ -40,6 +39,8 @@ export { default as N8nCircleLoader } from './N8nCircleLoader';
 export { default as N8nCollapsiblePanel } from './N8nCollapsiblePanel';
 export { default as N8nColorPicker } from './N8nColorPicker';
 export { default as N8nDatatable } from './N8nDatatable';
+export { default as N8nEmptyState } from './N8nEmptyState';
+export type { EmptyStateCardIcon, EmptyStateIconCards } from './N8nEmptyState';
 export { default as N8nExternalLink } from './N8nExternalLink';
 export { default as N8nFloatingWindow } from './N8nFloatingWindow';
 export { default as N8nFormBox } from './N8nFormBox';
@@ -142,5 +143,6 @@ export { default as N8nInlineTextEdit } from './N8nInlineTextEdit';
 export { default as N8nScrollArea } from './N8nScrollArea';
 export * from './DateRangePicker';
 export { default as N8nCommandBar } from './N8nCommandBar';
+export type { CommandBarItem } from './N8nCommandBar/types';
 export * from './N8nDialog';
 export * from './N8nAlertDialog';

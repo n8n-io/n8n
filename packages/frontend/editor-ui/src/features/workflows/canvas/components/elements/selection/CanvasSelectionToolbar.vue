@@ -9,6 +9,7 @@ import type { GraphNode } from '@vue-flow/core';
 import { useVueFlowTransformPaneTeleport } from '../../../composables/useVueFlowTransformPaneTeleport';
 import { useCanvasNodeGroupActions } from '../../../composables/useCanvasNodeGroupActions';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
+import type { BoundingBox } from '../../../canvas.types';
 
 const TOOLBAR_OFFSET_PX = 12;
 const GROUP_NODES_SHORTCUT = { metaKey: true, keys: ['G'] };
@@ -17,9 +18,16 @@ const EXTRACT_WORKFLOW_SHORTCUT = { altKey: true, keys: ['X'] };
 const props = withDefaults(
 	defineProps<{
 		selectedNodes: GraphNode[];
+		/**
+		 * Full visual bounds of the selection (group frames included). Keeps the
+		 * toolbar above the selection rectangle, which would otherwise cover it
+		 * and swallow its clicks.
+		 */
+		selectionBounds?: BoundingBox;
 		readOnly?: boolean;
 	}>(),
 	{
+		selectionBounds: undefined,
 		readOnly: false,
 	},
 );
@@ -47,11 +55,19 @@ const isToolbarVisible = computed(
 );
 
 const extractWorkflowLabel = computed(() =>
-	i18n.baseText('contextMenu.extract', { adjustToNumber: props.selectedNodes.length }),
+	i18n.baseText('contextMenu.extract', {
+		adjustToNumber: props.selectedNodes.length,
+		interpolate: {
+			subject: i18n.baseText('contextMenu.node', {
+				adjustToNumber: props.selectedNodes.length,
+				interpolate: { count: props.selectedNodes.length },
+			}),
+		},
+	}),
 );
 
 const position = computed(() => {
-	const rect = getRectOfNodes(props.selectedNodes);
+	const rect = props.selectionBounds ?? getRectOfNodes(props.selectedNodes);
 	return {
 		left: rect.x + rect.width / 2,
 		top: rect.y - TOOLBAR_OFFSET_PX,

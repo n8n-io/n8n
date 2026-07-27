@@ -80,7 +80,7 @@ export function joinedTeamsEndpoint(
 // path separators (`/` `\`), query/fragment starters (`?` `#`), and control chars
 // (0x00–0x1F). `:` and `@` are ALLOWED — they are structure-neutral inside a single
 // Teams id segment (real channel ids look like `19:...@thread.tacv2`), and the proven
-// OAuth2 URL shape interpolates them raw. Validating the shape (not encoding) is what
+// Graph URL shape interpolates them raw. Validating the shape (not encoding) is what
 // keeps a value safe to interpolate raw. Messages are static so a rejected id is
 // never echoed back.
 // eslint-disable-next-line no-control-regex
@@ -88,11 +88,11 @@ const TEAMS_ID_REJECT = /[\x00-\x1f\/\\?#]/;
 
 /**
  * Validates a user-supplied Graph id (already `extractValue`-resolved) before it is
- * interpolated RAW into a Graph path. Throws a `NodeOperationError` with a fully
- * static message (never echoing the id) on a bad shape. Reused for both path IDs and
- * `task:create` body IDs (the latter validate-only — see `buildTeamsPath`).
+ * interpolated RAW into a Graph path, and returns the coerced + trimmed value.
+ * Throws a `NodeOperationError` with a fully static message (never echoing the id)
+ * on a bad shape. Reused for both path IDs and `task:create` body IDs.
  */
-export function validateTeamsId(id: string, node: INode): void {
+export function validateTeamsId(id: string, node: INode): string {
 	const value = String(id ?? '').trim();
 	if (value === '') {
 		throw new NodeOperationError(node, 'A required ID is empty', {
@@ -109,6 +109,7 @@ export function validateTeamsId(id: string, node: INode): void {
 			description: 'Remove any slashes, backslashes, question marks or hashes and try again.',
 		});
 	}
+	return value;
 }
 
 type TeamsPathSegment = string | { id: string };
@@ -116,25 +117,21 @@ type TeamsPathSegment = string | { id: string };
 /**
  * Single, non-bypassable path builder for every Graph path that interpolates a
  * user-supplied id. `segments` is an ordered mix of literal strings and id parts
- * (`{ id: value }`). Under SP each `{ id }` is validated then interpolated RAW;
- * under OAuth2 it is passed through verbatim. See `validateTeamsId` /
- * `TEAMS_ID_REJECT` for why validation (not encoding) is the guard.
+ * (`{ id: value }`). Every `{ id }` is validated then interpolated RAW, under
+ * both credential types. See `validateTeamsId` / `TEAMS_ID_REJECT` for why
+ * validation (not encoding) is the guard.
  */
 export function buildTeamsPath(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	segments: TeamsPathSegment[],
 ): string {
-	const isServicePrincipal = getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH;
 	const node = this.getNode();
 	return segments
 		.map((segment) => {
 			if (typeof segment === 'string') return segment;
-			// `as string` at the call sites is compile-time only — an expression can resolve an
-			// id to a non-string (e.g. `={{ 123 }}` → number). OAuth2 passes through and is
-			// stringified by `join()`; the SP path must coerce before `.trim()` or it throws.
-			if (!isServicePrincipal) return segment.id;
-			validateTeamsId(segment.id, node);
-			return String(segment.id).trim();
+			// validateTeamsId coerces + trims — `as string` at the call sites is
+			// compile-time only, so an expression can resolve an id to a non-string.
+			return validateTeamsId(segment.id, node);
 		})
 		.join('');
 }
@@ -142,8 +139,8 @@ export function buildTeamsPath(
 /**
  * Shape-validates Planner body IDs (`planId`/`bucketId`) under SP for `task:create`
  * and `task:update`. These go into the JSON body (not a path), so this is
- * defense-in-depth — a malformed id is a bad request — NOT the path-injection fix
- * (that is `buildTeamsPath` on path-interpolated ids). No-op under OAuth2.
+ * defense-in-depth — a malformed id is a bad request; path-interpolated ids are
+ * guarded by `buildTeamsPath`. No-op under OAuth2.
  */
 export function validateTaskBodyIdsUnderSp(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
@@ -271,6 +268,7 @@ export async function microsoftApiRequestAllItems(
 	endpoint: string,
 	body: any = {},
 	query: IDataObject = {},
+	limit?: number,
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -278,12 +276,19 @@ export async function microsoftApiRequestAllItems(
 	let uri: string | undefined;
 
 	do {
-		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query, uri);
+		// `@odata.nextLink` already carries the query params; don't re-send them
+		responseData = await microsoftApiRequest.call(
+			this,
+			method,
+			endpoint,
+			body,
+			uri ? {} : query,
+			uri,
+		);
 		uri = responseData['@odata.nextLink'];
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-		const limit = query.limit as number | undefined;
-		if (limit && limit <= returnData.length) {
-			return returnData;
+		if (limit && returnData.length >= limit) {
+			return returnData.slice(0, limit);
 		}
 	} while (responseData['@odata.nextLink'] !== undefined);
 

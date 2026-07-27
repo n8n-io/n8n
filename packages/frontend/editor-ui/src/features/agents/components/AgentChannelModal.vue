@@ -11,6 +11,7 @@ import {
 } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { useI18n } from '@n8n/i18n';
+import { FocusScope } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
 import { useAgentChannelSetup } from '../composables/useAgentChannelSetup';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
@@ -36,16 +37,9 @@ interface Props {
 	view: ChannelView;
 	connectedChannels: string[];
 	isPublished: boolean;
-	/**
-	 * Force creating a new credential in the setup flow (hides the existing-credential
-	 * picker). Used by the AIA channel-setup HITL so a new agent gets its own credential.
-	 */
-	forceNewCredential?: boolean;
 }
 
-const props = withDefaults(defineProps<Props>(), {
-	forceNewCredential: false,
-});
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
@@ -213,9 +207,9 @@ async function setupSlackApp(appConfigurationToken: string): Promise<boolean> {
 }
 
 async function handleDisconnected(channelType: string) {
-	const credentialId = connectedCredentials.value[channelType];
-	if (!credentialId) return;
-
+	// Draft channels (configured but missing a credential) have no connected
+	// credential — send '' so the backend removes the draft entry by type.
+	const credentialId = connectedCredentials.value[channelType] ?? '';
 	await disconnect(channelType, credentialId);
 	emit('channel-disconnected', channelType);
 	emit('agent-changed');
@@ -252,6 +246,15 @@ watch(
 		@interact-outside="(e) => e.preventDefault()"
 		@update:open="$emit('update:open', $event)"
 	>
+		<FocusScope
+			v-if="credentialModalOpen"
+			as-child
+			@mount-auto-focus.prevent
+			@unmount-auto-focus.prevent
+		>
+			<span hidden aria-hidden="true" />
+		</FocusScope>
+
 		<N8nDialogHeader :class="$style.customHeader">
 			<Transition name="channel-header-fade" mode="out-in">
 				<div v-if="currentView === 'list'" key="list" :class="$style.headerContent">
@@ -284,7 +287,7 @@ watch(
 			</Transition>
 		</N8nDialogHeader>
 
-		<div :class="$style.container">
+		<div data-testid="agent-channel-modal" :class="$style.container">
 			<Transition name="channel-view-fade" mode="out-in">
 				<div v-if="currentView === 'list'" key="list" :class="$style.listView">
 					<ul :class="$style.channelList">
@@ -318,7 +321,6 @@ watch(
 						:loading="isLoading('slack')"
 						:error-message="hasError('slack') ? errorMessages.slack : ''"
 						:error-is-conflict="errorIsConflict.slack"
-						:force-new-credential="forceNewCredential"
 						@create="createCredential"
 						@edit="editCredential"
 						@connect="saveChannelConfig"
@@ -344,7 +346,6 @@ watch(
 						:agent-name="agentId"
 						:project-id="projectId"
 						:agent-id="agentId"
-						:force-new-credential="forceNewCredential"
 						@create="createCredential"
 						@edit="editCredential"
 						@connect="saveChannelConfig"
@@ -370,7 +371,6 @@ watch(
 						:agent-name="agentId"
 						:project-id="projectId"
 						:agent-id="agentId"
-						:force-new-credential="forceNewCredential"
 						@create="createCredential"
 						@edit="editCredential"
 						@connect="saveChannelConfig"
@@ -476,6 +476,13 @@ watch(
 		</Transition>
 	</N8nDialog>
 </template>
+
+<style lang="scss">
+body:has([data-testid='agent-channel-modal'])
+	.el-overlay:has([data-test-id='editCredential-modal']) {
+	pointer-events: auto;
+}
+</style>
 
 <style module lang="scss">
 @use '@n8n/design-system/css/mixins/motion';

@@ -4,7 +4,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import type { TestRunRecord } from '../../evaluation.api';
-import { isScoreShapedMetric } from '../../evaluation.utils';
+import { averageNormalizedScore } from '../../evaluation.utils';
 
 const STATUS_PILL_THEME: Record<string, 'success' | 'warning' | 'danger' | 'tertiary'> = {
 	completed: 'success',
@@ -35,16 +35,13 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
-// Average only score-shaped metrics (values in [0, 1]). Eval-config metrics
-// commonly co-exist with absolute counts (tokens, latency_ms) in the same
-// `metrics` map, and naively averaging across all of them produces nonsense
-// like `198431%` (mostly the token total).
+// Average the run's score metrics, each normalized to [0, 1] by its scale.
+// Eval-config metrics commonly co-exist with absolute counts (tokens,
+// latency_ms) in the same `metrics` map; those aren't scores and are dropped,
+// so a naive all-metric average can't produce nonsense like `198431%`.
 const score = computed<number | null>(() => {
-	const m = props.run.metrics;
-	if (!m) return null;
-	const values = Object.values(m).filter(isScoreShapedMetric);
-	if (values.length === 0) return null;
-	return Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 100);
+	const avg = averageNormalizedScore(props.run.metrics);
+	return avg === null ? null : Math.round(avg * 100);
 });
 
 const statusTheme = computed(() => STATUS_PILL_THEME[props.run.status] ?? 'tertiary');

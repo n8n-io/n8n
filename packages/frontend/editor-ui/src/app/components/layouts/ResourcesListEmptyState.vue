@@ -26,6 +26,13 @@ export const EMPTY_STATE_CONFIG = {
 		ctaKey: 'projects.header.create.credential',
 		disabledTooltipKey: 'credentials.empty.button.disabled.tooltip',
 	},
+	executions: {
+		icon: 'history',
+		headingKey: 'executions.empty.heading',
+		descriptionKey: 'executions.empty.description',
+		ctaKey: 'projects.header.create.workflow',
+		disabledTooltipKey: 'workflows.empty.button.disabled.tooltip',
+	},
 	variables: {
 		icon: 'variable',
 		headingKey: 'variables.empty.heading',
@@ -59,7 +66,7 @@ export function isEmptyStateResourceKey(key: string): key is EmptyStateResourceK
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nActionBox } from '@n8n/design-system';
+import { N8nEmptyState } from '@n8n/design-system';
 
 const props = withDefaults(
 	defineProps<{
@@ -81,7 +88,7 @@ const tooltipText = computed(
 </script>
 
 <template>
-	<N8nActionBox
+	<N8nEmptyState
 		data-test-id="empty-resources-list"
 		:icon="{ type: 'icon', value: config.icon }"
 		:heading="i18n.baseText(config.headingKey)"
@@ -92,5 +99,5 @@ const tooltipText = computed(
 		@click:button="emit('click:button', $event)"
 	>
 		<template #disabledButtonTooltip>{{ tooltipText }}</template>
-	</N8nActionBox>
+	</N8nEmptyState>
 </template>

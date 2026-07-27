@@ -48,7 +48,7 @@ function makeMessage(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMess
 
 function setup(
 	workflowNameLookup?: (id: string) => string | undefined,
-	agentBuilderTarget?: () => { agentId: string; projectId: string } | undefined,
+	agentBuilderTarget?: () => { agentId: string; projectId: string; name?: string } | undefined,
 ) {
 	const messages = ref<InstanceAiMessage[]>([]);
 	const { producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = useResourceRegistry(
@@ -223,6 +223,34 @@ describe('useResourceRegistry', () => {
 
 			expect(producedArtifacts.get('wf-a')?.id).toBe('wf-a');
 			expect(producedArtifacts.get('wf-b')?.id).toBe('wf-b');
+		});
+	});
+
+	describe('producedArtifacts — message attachments', () => {
+		test('registers agent attachment from a user message', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'agent',
+							id: 'agent-1',
+							name: 'Support Agent',
+							projectId: 'proj-1',
+						},
+					],
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Support Agent',
+				projectId: 'proj-1',
+			});
 		});
 	});
 
@@ -450,24 +478,18 @@ describe('useResourceRegistry', () => {
 	});
 
 	describe('producedArtifacts — agent registration', () => {
-		test('registers an agent from agent_builder create_agent result', async () => {
+		test('registers an agent from a targetResource on the agent tree', async () => {
 			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
 
 			messages.value = [
 				makeMessage({
 					agentTree: makeAgentNode({
-						toolCalls: [
-							makeToolCall({
-								toolName: 'agent_builder',
-								args: { action: 'create_agent', name: 'SEO Auditor' },
-								result: {
-									ok: true,
-									agentId: 'agent-1',
-									projectId: 'project-1',
-									name: 'SEO Auditor',
-								},
-							}),
-						],
+						targetResource: {
+							type: 'agent',
+							id: 'agent-1',
+							name: 'SEO Auditor',
+							projectId: 'project-1',
+						},
 					}),
 				}),
 			];
@@ -483,33 +505,6 @@ describe('useResourceRegistry', () => {
 			expect(linkableResourceNameIndex.get('seo auditor')?.id).toBe('agent-1');
 		});
 
-		test('does not promote list_agents results into produced artifacts', async () => {
-			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
-
-			messages.value = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						toolCalls: [
-							makeToolCall({
-								toolName: 'agent_builder',
-								args: { action: 'list_agents' },
-								result: {
-									agents: [
-										{ id: 'agent-existing', name: 'Existing Agent', projectId: 'project-1' },
-									],
-								},
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(producedArtifacts.size).toBe(0);
-			expect(resourceNameIndex.get('existing agent')?.id).toBe('agent-existing');
-			expect(linkableResourceNameIndex.get('existing agent')).toBeUndefined();
-		});
-
 		test('hydrates projectId from the persisted agent-builder target', async () => {
 			const { messages, producedArtifacts } = setup(undefined, () => ({
 				agentId: 'agent-1',
@@ -519,11 +514,30 @@ describe('useResourceRegistry', () => {
 			messages.value = [
 				makeMessage({
 					agentTree: makeAgentNode({
+						targetResource: { type: 'agent', id: 'agent-1', name: 'Legacy Agent' },
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Legacy Agent',
+				projectId: 'project-1',
+			});
+		});
+
+		test('registers an agent with agentName from a build-agent tool result', async () => {
+			const { messages, producedArtifacts, resourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'agent_builder',
-								args: { action: 'create_agent', name: 'Legacy Agent' },
-								result: { ok: true, agentId: 'agent-1', name: 'Legacy Agent' },
+								toolName: 'build-agent',
+								result: { ok: true, agentId: 'agent-1', agentName: 'Support Bot' },
 							}),
 						],
 					}),
@@ -534,7 +548,87 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifacts.get('agent-1')).toEqual({
 				type: 'agent',
 				id: 'agent-1',
-				name: 'Legacy Agent',
+				name: 'Support Bot',
+			});
+			expect(resourceNameIndex.get('support bot')?.id).toBe('agent-1');
+		});
+
+		test('a later build-agent result without agentName does not regress a known name', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-1',
+								toolName: 'build-agent',
+								result: { ok: true, agentId: 'agent-1', agentName: 'Support Bot' },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-2',
+								toolName: 'build-agent',
+								result: { ok: true, agentId: 'agent-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')?.name).toBe('Support Bot');
+		});
+
+		test('names an agent from persisted agent-builder target metadata when no event carried a name', async () => {
+			const { messages, producedArtifacts } = setup(undefined, () => ({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				name: 'Metadata Agent',
+			}));
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						targetResource: { type: 'agent', id: 'agent-1' },
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Metadata Agent',
+				projectId: 'project-1',
+			});
+		});
+
+		test('event-derived names win over metadata: unnamed spawn, then named tool result, then metadata enrichment', async () => {
+			const { messages, producedArtifacts } = setup(undefined, () => ({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				name: 'Stale Metadata Name',
+			}));
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								result: { ok: true, agentId: 'agent-1', agentName: 'Support Bot' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Support Bot',
 				projectId: 'project-1',
 			});
 		});

@@ -47,6 +47,25 @@ function makeService(
 		{ id: credentialId } as CredentialsEntity,
 	]);
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+	// `AgentsCredentialProvider.resolve()` intersects against this when a
+	// request user is set (it always is here), so the tested credential must
+	// be listed as user-accessible too, not just project-accessible.
+	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+		{
+			id: credentialId,
+			name: 'Store credential',
+			type: 'httpBasicAuth',
+			createdAt: '2024-01-01T00:00:00.000Z',
+			updatedAt: '2024-01-01T00:00:00.000Z',
+			scopes: [],
+			isManaged: false,
+			isGlobal: false,
+			isResolvable: true,
+			currentUserHasAccess: true,
+			homeProject: null,
+			sharedWithProjects: [],
+		},
+	]);
 	credentialsService.decrypt.mockResolvedValue(rawCredential);
 	return { service: new AgentVectorStoresService(credentialsService), credentialsService };
 }

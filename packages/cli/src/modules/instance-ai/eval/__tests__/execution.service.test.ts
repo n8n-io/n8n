@@ -14,6 +14,7 @@ import type {
 import { UserError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
 import type { WorkflowRunner } from '@/workflow-runner';
@@ -207,6 +208,7 @@ describe('EvalExecutionService', () => {
 	const executionsConfig = mock<ExecutionsConfig>({ mode: 'regular' });
 	const binaryDataService = mock<BinaryDataService>();
 	const workflowStaticDataService = mock<WorkflowStaticDataService>();
+	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 
 	// Captured configureAdditionalData closure so tests can re-invoke it on a
 	// stub additionalData without booting the real runner.
@@ -240,6 +242,7 @@ describe('EvalExecutionService', () => {
 			executionsConfig,
 			binaryDataService,
 			workflowStaticDataService,
+			loadNodesAndCredentials,
 		);
 		// Reset to safe default — tests that flip queue mode reassign in-test.
 		Object.assign(executionsConfig, { mode: 'regular' });
