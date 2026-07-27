@@ -411,6 +411,14 @@ export interface ApplyOperationsSuccess {
 	 * skipped instead of aborting the batch. Empty when none were skipped.
 	 */
 	skippedOperations: SkippedOperation[];
+	/**
+	 * Group id -> the type of operation that last created/touched it (such as
+	 * `removeNode` when it pruned the group's membership). Lets a caller doing its
+	 * own post-loop group validation (structural rules aren't checked here — see
+	 * `NON_FATAL_OPERATION_TYPES`'s doc comment) report the op type actually
+	 * responsible for a given group, instead of guessing.
+	 */
+	groupOperationTypes: Record<string, PartialUpdateOperation['type']>;
 }
 
 export interface ApplyOperationsFailure {
@@ -611,6 +619,12 @@ interface ApplyContext {
 	// "tag ops applied to an empty set" at return time.
 	tagSet: Set<string> | null;
 	nodeGroupsChanged: boolean;
+	/**
+	 * Group id -> the type of the group op that last created/touched it. Lets a
+	 * post-loop structural violation (which only knows the group, not an op index)
+	 * report the op type that's actually responsible, instead of guessing.
+	 */
+	groupOperationTypes: Map<string, PartialUpdateOperation['type']>;
 }
 
 /**
@@ -742,7 +756,12 @@ const handleRemoveNode: OpHandler<'removeNode'> = (op, ctx) => {
 			}
 			ctx.nodeGroupsChanged = true;
 			const remaining = group.nodeIds.filter((id) => id !== node.id);
-			if (remaining.length > 0) prunedGroups.push({ ...group, nodeIds: remaining });
+			if (remaining.length > 0) {
+				prunedGroups.push({ ...group, nodeIds: remaining });
+				ctx.groupOperationTypes.set(group.id, 'removeNode');
+			} else {
+				ctx.groupOperationTypes.delete(group.id);
+			}
 		}
 		ctx.workflow.nodeGroups = prunedGroups;
 	}
@@ -939,6 +958,8 @@ const handleSetNodeGroups: OpHandler<'setNodeGroups'> = (op, ctx) => {
 	}
 	ctx.workflow.nodeGroups = nodeGroups;
 	ctx.nodeGroupsChanged = true;
+	// Wholesale replace: every surviving group's tracked op type is this one.
+	ctx.groupOperationTypes = new Map(nodeGroups.map((group) => [group.id, 'setNodeGroups']));
 	return null;
 };
 
@@ -958,15 +979,17 @@ const handleAddNodeGroup: OpHandler<'addNodeGroup'> = (op, ctx) => {
 	}
 
 	const description = op.description?.trim();
-	groups.push({
+	const newGroup = {
 		id: op.id ?? uuid(),
 		name: op.name,
 		nodeIds: resolved.nodeIds,
 		...(description ? { description } : {}),
-	});
+	};
+	groups.push(newGroup);
 
 	ctx.workflow.nodeGroups = groups;
 	ctx.nodeGroupsChanged = true;
+	ctx.groupOperationTypes.set(newGroup.id, 'addNodeGroup');
 
 	return null;
 };
@@ -979,9 +1002,10 @@ const handleRemoveNodeGroup: OpHandler<'removeNodeGroup'> = (op, ctx) => {
 		return `node group '${op.groupName}' not found`;
 	}
 
-	groups.splice(index, 1);
+	const [removed] = groups.splice(index, 1);
 	ctx.workflow.nodeGroups = groups;
 	ctx.nodeGroupsChanged = true;
+	ctx.groupOperationTypes.delete(removed.id);
 
 	return null;
 };
@@ -1026,6 +1050,7 @@ const handleUpdateNodeGroup: OpHandler<'updateNodeGroup'> = (op, ctx) => {
 	}
 
 	ctx.nodeGroupsChanged = true;
+	ctx.groupOperationTypes.set(group.id, 'updateNodeGroup');
 
 	return null;
 };
@@ -1110,6 +1135,9 @@ export function applyOperations(
 		addedNodeNames: new Set<string>(),
 		tagSet: null,
 		nodeGroupsChanged: false,
+		groupOperationTypes: new Map(
+			(workflow.nodeGroups ?? []).map((group) => [group.id, 'setNodeGroups' as const]),
+		),
 	};
 
 	for (let i = 0; i < operations.length; i++) {
@@ -1140,6 +1168,7 @@ export function applyOperations(
 		tagNames: ctx.tagSet !== null ? [...ctx.tagSet] : undefined,
 		nodeGroupsChanged: ctx.nodeGroupsChanged,
 		skippedOperations,
+		groupOperationTypes: Object.fromEntries(ctx.groupOperationTypes),
 	};
 }
 

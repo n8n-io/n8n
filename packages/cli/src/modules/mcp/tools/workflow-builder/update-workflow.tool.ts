@@ -3,7 +3,7 @@ import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
+import { validateWorkflowGroups, Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -43,7 +43,7 @@ import type { TagService } from '@/services/tag.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
-import { resolveNodeWebhookIds } from '@/workflow-helpers';
+import { makeGetNodeTypeForGrouping, resolveNodeWebhookIds } from '@/workflow-helpers';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
@@ -328,6 +328,18 @@ const outputSchema = {
 			'Graph and JSON validation warnings on the resulting workflow. Warnings marked preExisting (also tagged [pre-existing] in the message) were already present before this update; only self-correct the rest on the next call.',
 		),
 	note: z.string().optional(),
+	skippedOperations: z
+		.array(
+			z.object({
+				opIndex: z.number().optional(),
+				type: z.string(),
+				reason: z.string(),
+			}),
+		)
+		.optional()
+		.describe(
+			'Group operations that were invalid and skipped instead of failing the whole update. The rest of the batch was still saved. Fix and retry these (e.g. via update_workflow).',
+		),
 	settings: z
 		.record(z.string(), z.unknown())
 		.optional()
@@ -611,6 +623,42 @@ export const createUpdateWorkflowTool = (
 				throw new Error(result.error);
 			}
 
+			// "applyOperations" only runs basic checks on group ops (name
+			// resolution, uniqueness). Structural rules — no triggers, a single
+			// connected subgraph, no non-main connection crossing the group boundary —
+			// need the batch's FINAL nodes/connections/groups to judge correctly (an
+			// op earlier in the batch can still be joined by a connection added later),
+			// so they're validated once here instead of per-operation. A violation
+			// drops only that group and is reported, rather than aborting the update.
+			const skippedOperations: Array<{ opIndex?: number; type: string; reason: string }> = [
+				...result.skippedOperations,
+			];
+
+			if (options.canvasGroupsEnabled && result.nodeGroupsChanged) {
+				const groupValidation = validateWorkflowGroups({
+					nodes: result.workflow.nodes,
+					connectionsBySourceNode: result.workflow.connections,
+					nodeGroups: result.workflow.nodeGroups,
+					getNodeType: makeGetNodeTypeForGrouping(nodeTypes),
+				});
+
+				if (!groupValidation.valid) {
+					const invalidGroupIds = new Set(groupValidation.violations.map((v) => v.groupId));
+					result.workflow.nodeGroups = (result.workflow.nodeGroups ?? []).filter(
+						(group) => !invalidGroupIds.has(group.id),
+					);
+
+					for (const violation of groupValidation.violations) {
+						const opType = result.groupOperationTypes[violation.groupId] ?? 'setNodeGroups';
+
+						skippedOperations.push({
+							type: opType,
+							reason: violation.message,
+						});
+					}
+				}
+			}
+
 			const credentialCheck = await validateCredentialReferences(
 				strictOperations,
 				existingWorkflow,
@@ -619,6 +667,7 @@ export const createUpdateWorkflowTool = (
 				nodeTypes,
 				{ workflowId: existingWorkflow.id },
 			);
+
 			if (!credentialCheck.ok) {
 				throw new Error(credentialCheck.error);
 			}
@@ -630,7 +679,10 @@ export const createUpdateWorkflowTool = (
 				telemetryPayload,
 				telemetry,
 			);
-			if (invalidToolSourceResponse) return invalidToolSourceResponse;
+
+			if (invalidToolSourceResponse) {
+				return invalidToolSourceResponse;
+			}
 
 			const { projectId: workflowProjectId } = await sharedWorkflowRepository.findOneOrFail({
 				where: { workflowId, role: 'workflow:owner' },
@@ -643,6 +695,7 @@ export const createUpdateWorkflowTool = (
 				workflowProjectId,
 				dataTableOps,
 			);
+
 			if (!dataTableCheck.ok) {
 				throw new Error(dataTableCheck.error);
 			}
@@ -653,6 +706,7 @@ export const createUpdateWorkflowTool = (
 			const setsErrorWorkflow = strictOperations.some(
 				(op) => op.type === 'setWorkflowSettings' && op.settings.errorWorkflow !== undefined,
 			);
+
 			if (setsErrorWorkflow) {
 				await assertErrorWorkflowIsUsable({
 					errorWorkflowId: result.workflow.settings?.errorWorkflow,
@@ -676,6 +730,7 @@ export const createUpdateWorkflowTool = (
 					op.type === 'setWorkflowSettings' &&
 					(op.settings.callerPolicy !== undefined || op.settings.callerIds !== undefined),
 			);
+
 			if (setsCallerConfig) {
 				assertCallerPolicyConsistent(result.workflow.settings);
 			}
@@ -683,6 +738,7 @@ export const createUpdateWorkflowTool = (
 			const setsExecutionTimeout = strictOperations.some(
 				(op) => op.type === 'setWorkflowSettings' && op.settings.executionTimeout !== undefined,
 			);
+
 			if (setsExecutionTimeout) {
 				assertExecutionTimeoutWithinMax(
 					result.workflow.settings?.executionTimeout,
@@ -714,6 +770,7 @@ export const createUpdateWorkflowTool = (
 				const canPublish = await workflowFinderService.findWorkflowHeadForUser(workflowId, user, [
 					'workflow:publish',
 				]);
+
 				if (!canPublish) {
 					throw new Error(
 						'Changing settings on a published workflow reactivates it, which requires publish permission. Your account can edit but not publish this workflow. Ask the owner for publish access, or unpublish the workflow first.',
@@ -888,6 +945,7 @@ export const createUpdateWorkflowTool = (
 				note: skippedHttpNodes.length
 					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
 					: undefined,
+				skippedOperations: skippedOperations.length > 0 ? skippedOperations : undefined,
 				settings: hasSettingsOperations ? (updatedWorkflow.settings ?? {}) : undefined,
 			};
 
