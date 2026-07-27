@@ -5,7 +5,6 @@ import {
 } from '@n8n/api-types';
 import { N8nPdfLoader } from '@n8n/ai-utilities';
 import { Logger } from '@n8n/backend-common';
-import type { StorageLocation } from '@n8n/blob-storage';
 import { Service } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -16,7 +15,10 @@ import type { Readable } from 'node:stream';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { AgentKnowledgeFileStore } from './agent-knowledge-file-store';
+import {
+	AgentKnowledgeFileStore,
+	type StoredAgentKnowledgeFile,
+} from './agent-knowledge-file-store';
 import { storageFileNameForOriginalFileName, toAgentFileDto } from './agent-knowledge-storage';
 import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
 import type { AgentFile } from './entities/agent-file.entity';
@@ -165,7 +167,7 @@ export class AgentKnowledgeService {
 		agentId: string,
 		fileId: string,
 		file: Express.Multer.File,
-		stored: { storedAt: StorageLocation; storageKey: string },
+		stored: StoredAgentKnowledgeFile,
 	): Promise<AgentFile> {
 		const agentFile = this.agentFileRepository.create({
 			id: fileId,

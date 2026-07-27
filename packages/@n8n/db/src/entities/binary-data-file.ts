@@ -3,9 +3,7 @@ import { z } from 'zod';
 
 import { BinaryColumn, WithTimestamps } from './abstract-entity';
 
-// The DB CHECK constraint still allows 'agent_file': agent knowledge files moved
-// to blob storage, but legacy rows from that era are kept, so it cannot be narrowed.
-export const SourceTypeSchema = z.enum(['execution', 'chat_message_attachment']);
+export const SourceTypeSchema = z.enum(['execution', 'chat_message_attachment', 'agent_file']);
 
 export type SourceType = z.infer<typeof SourceTypeSchema>;
 

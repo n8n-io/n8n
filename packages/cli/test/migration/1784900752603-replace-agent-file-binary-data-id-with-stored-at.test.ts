@@ -127,7 +127,7 @@ describe('ReplaceAgentFileBinaryDataIdWithStoredAt Migration', () => {
 		);
 	}
 
-	it('converts binaryDataId into storedAt plus storageKey, dropping database-mode files', async () => {
+	it('converts binaryDataId into storedAt plus storageKey, preserving database-mode files', async () => {
 		const seedContext = createTestMigrationContext(dataSource);
 		try {
 			await insertProject(seedContext, 'project-1');
@@ -139,6 +139,7 @@ describe('ReplaceAgentFileBinaryDataIdWithStoredAt Migration', () => {
 			});
 			await insertAgentFile(seedContext, { id: 'file-s3', binaryDataId: `s3:${S3_KEY}` });
 			await insertAgentFile(seedContext, { id: 'file-db', binaryDataId: `database:${DB_FILE_ID}` });
+			await insertAgentFile(seedContext, { id: 'file-bad', binaryDataId: 'garbage' });
 
 			await insertBinaryData(seedContext, {
 				fileId: DB_FILE_ID,
@@ -164,16 +165,18 @@ describe('ReplaceAgentFileBinaryDataIdWithStoredAt Migration', () => {
 			const files = await context.runQuery<
 				Array<{ id: string; storedAt: string; storageKey: string }>
 			>(`SELECT "id", "storedAt", "storageKey" FROM ${agentFiles} ORDER BY "id"`);
+			// `file-bad` carries an unrecognized reference and is dropped.
 			expect(files).toEqual([
+				{ id: 'file-db', storedAt: 'db', storageKey: DB_FILE_ID },
 				{ id: 'file-fs', storedAt: 'fs', storageKey: FS_KEY },
 				{ id: 'file-s3', storedAt: 's3', storageKey: S3_KEY },
 			]);
 
-			// The database-mode file's bytes go with it; unrelated binary data stays.
+			// The database-mode file keeps its bytes, addressed by storageKey.
 			const binaryRows = await context.runQuery<Array<{ fileId: string }>>(
 				`SELECT "fileId" FROM ${binaryData} ORDER BY "fileId"`,
 			);
-			expect(binaryRows).toEqual([{ fileId: EXECUTION_FILE_ID }]);
+			expect(binaryRows).toEqual([{ fileId: DB_FILE_ID }, { fileId: EXECUTION_FILE_ID }]);
 
 			const columns = await columnNames(context, 'agent_files');
 			expect(columns).not.toContain('binaryDataId');
@@ -195,6 +198,7 @@ describe('ReplaceAgentFileBinaryDataIdWithStoredAt Migration', () => {
 					`SELECT "id", "binaryDataId" FROM ${agentFiles} ORDER BY "id"`,
 				);
 				expect(files).toEqual([
+					{ id: 'file-db', binaryDataId: `database:${DB_FILE_ID}` },
 					{ id: 'file-fs', binaryDataId: `filesystem-v2:${FS_KEY}` },
 					{ id: 'file-s3', binaryDataId: `s3:${S3_KEY}` },
 				]);

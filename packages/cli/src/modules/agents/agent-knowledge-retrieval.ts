@@ -1,4 +1,4 @@
-import type { StorageLocation } from '@n8n/blob-storage';
+import type { ExecutionDataStorageLocation } from '@n8n/db';
 import { z } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -189,7 +189,7 @@ export interface AgentKnowledgeFileReference {
 	file: string;
 	fileId: string;
 	agentId: string;
-	storedAt: StorageLocation;
+	storedAt: ExecutionDataStorageLocation;
 	storageKey: string;
 	displayName: string;
 	mimeType: string;

@@ -11,14 +11,14 @@
 | id | varchar(16) |  | false |  |  | Application-generated n8n nano ID |
 | mimeType | varchar(255) |  | false |  |  |  |
 | storageKey | text |  | false |  |  |  |
-| storedAt | varchar(2) | 'fs'::character varying | false |  |  |  |
+| storedAt | varchar(2) | 'db'::character varying | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_agent_files_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
+| CHK_agent_files_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
 | FK_aca4514cb500494b64356c2e164 | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
 | PK_692920e59217af7d124cd95106f | PRIMARY KEY | PRIMARY KEY (id) |
 | agent_files_agentId_not_null | n | NOT NULL "agentId" |

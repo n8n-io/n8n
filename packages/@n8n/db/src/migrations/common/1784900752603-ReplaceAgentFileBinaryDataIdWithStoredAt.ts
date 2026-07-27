@@ -2,25 +2,23 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 type AgentFileRow = { id: string; agentId: string; binaryDataId: string };
 
-/** BinaryDataService mode prefix -> blob-storage location. */
+/** BinaryDataService mode prefix -> storage location. */
 const LOCATION_BY_MODE: Record<string, string> = {
 	filesystem: 'fs',
 	'filesystem-v2': 'fs',
 	s3: 's3',
 	azure: 'az',
+	database: 'db',
 };
 
 /**
- * Replaces BinaryDataService's opaque `binaryDataId` with the blob-storage
- * location (`storedAt`) plus the byte-store key (`storageKey`) that addresses
- * the bytes.
+ * Replaces BinaryDataService's opaque `binaryDataId` with the storage location
+ * (`storedAt`) plus the key (`storageKey`) that addresses the bytes.
  *
  * No bytes move: BinaryDataService wrote them through the same fs/s3/azure byte
  * stores the new agent knowledge file store uses, so stripping the mode prefix
- * off `binaryDataId` yields a key that resolves as-is.
- *
- * Rows stored in `database` mode have no byte-store equivalent and are dropped
- * along with their `binary_data` bytes.
+ * off `binaryDataId` yields a key that resolves as-is. For `db` rows the key is
+ * the `binary_data.fileId` holding the bytes.
  */
 export class ReplaceAgentFileBinaryDataIdWithStoredAt1784900752603 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
@@ -35,8 +33,8 @@ export class ReplaceAgentFileBinaryDataIdWithStoredAt1784900752603 implements Re
 		const storageKey = escape.columnName('storageKey');
 
 		await runQuery(
-			`ALTER TABLE ${agentFiles} ADD COLUMN ${storedAt} VARCHAR(2) NOT NULL DEFAULT 'fs' ` +
-				`CONSTRAINT "CHK_${tablePrefix}agent_files_storedAt" CHECK(${storedAt} IN ('fs', 's3', 'az'))`,
+			`ALTER TABLE ${agentFiles} ADD COLUMN ${storedAt} VARCHAR(2) NOT NULL DEFAULT 'db' ` +
+				`CONSTRAINT "CHK_${tablePrefix}agent_files_storedAt" CHECK(${storedAt} IN ('db', 'fs', 's3', 'az'))`,
 		);
 		await runQuery(`ALTER TABLE ${agentFiles} ADD COLUMN ${storageKey} TEXT`);
 
@@ -65,7 +63,8 @@ export class ReplaceAgentFileBinaryDataIdWithStoredAt1784900752603 implements Re
 		// BinaryDataService manager, so the reconstructed id stays readable.
 		await runQuery(
 			`UPDATE ${agentFiles} SET ${binaryDataId} = CASE ${storedAt} ` +
-				"WHEN 'fs' THEN 'filesystem-v2:' WHEN 's3' THEN 's3:' WHEN 'az' THEN 'azure:' END " +
+				"WHEN 'db' THEN 'database:' WHEN 'fs' THEN 'filesystem-v2:' " +
+				"WHEN 's3' THEN 's3:' WHEN 'az' THEN 'azure:' END " +
 				`|| ${storageKey}`,
 		);
 
@@ -80,8 +79,9 @@ export class ReplaceAgentFileBinaryDataIdWithStoredAt1784900752603 implements Re
 	}
 
 	/**
-	 * Splits each `binaryDataId` into its location and key. Rows whose mode has no
-	 * byte-store equivalent (`database`, `default`) are deleted, bytes included.
+	 * Splits each `binaryDataId` into its location and key. Rows carrying an
+	 * unrecognized reference cannot be addressed anymore and are deleted, bytes
+	 * included, rather than failing the migration.
 	 */
 	private async convertBinaryDataIds({
 		escape,
@@ -132,7 +132,7 @@ export class ReplaceAgentFileBinaryDataIdWithStoredAt1784900752603 implements Re
 		if (unconvertible.length === 0) return;
 
 		logger.warn(
-			`[${migrationName}] Deleting ${unconvertible.length} agent knowledge file(s) stored in the database, which has no blob-storage equivalent`,
+			`[${migrationName}] Deleting ${unconvertible.length} agent knowledge file(s) with an unrecognized storage reference`,
 			{ agentIds: [...new Set(unconvertible.map((row) => row.agentId))] },
 		);
 

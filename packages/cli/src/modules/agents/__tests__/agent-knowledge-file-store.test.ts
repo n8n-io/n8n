@@ -1,10 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
 import { FsByteStore } from '@n8n/blob-storage';
+import type { BinaryDataRepository } from '@n8n/db';
 import { UnexpectedError } from 'n8n-workflow';
 import type { StorageConfig } from 'n8n-core';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
@@ -15,6 +17,7 @@ vi.unmock('node:fs/promises');
 describe('AgentKnowledgeFileStore', () => {
 	let storagePath: string;
 	let storageConfig: StorageConfig;
+	let binaryDataRepository: ReturnType<typeof mock<BinaryDataRepository>>;
 	let logger: ReturnType<typeof mock<Logger>>;
 	let store: AgentKnowledgeFileStore;
 
@@ -26,35 +29,55 @@ describe('AgentKnowledgeFileStore', () => {
 		for (const entry of await (await import('node:fs/promises')).readdir(storagePath)) {
 			await rm(join(storagePath, entry), { recursive: true, force: true });
 		}
-		storageConfig = { storagePath, modeTag: 'db' } as StorageConfig;
+		storageConfig = { storagePath, modeTag: 'fs' } as StorageConfig;
+		binaryDataRepository = mock<BinaryDataRepository>();
 		logger = mock<Logger>();
 		const fsByteStore = new FsByteStore({
 			storagePath,
 			reportError: () => {},
 		});
-		store = new AgentKnowledgeFileStore(fsByteStore as never, storageConfig, logger);
+		store = new AgentKnowledgeFileStore(
+			fsByteStore as never,
+			storageConfig,
+			binaryDataRepository,
+			logger,
+		);
 	});
 
 	afterAll(async () => {
 		await rm(storagePath, { recursive: true, force: true });
 	});
 
-	it('falls back to fs when execution data storage mode is database and round-trips bytes', async () => {
+	it('writes to and reads from binary_data when modeTag is db', async () => {
+		storageConfig = { storagePath, modeTag: 'db' } as StorageConfig;
+		store = new AgentKnowledgeFileStore(
+			new FsByteStore({ storagePath, reportError: () => {} }) as never,
+			storageConfig,
+			binaryDataRepository,
+			logger,
+		);
 		const body = Buffer.from('knowledge-bytes', 'utf-8');
 
-		const stored = await store.write({ agentId: 'agent-1', fileId: 'file-1' }, body, {
-			fileName: 'notes.txt',
+		const stored = await store.write(
+			{ agentId: 'agent-1', fileId: 'file-1' },
+			Readable.from(body),
+			{ fileName: 'notes.txt', mimeType: 'text/plain' },
+		);
+
+		expect(stored.storedAt).toBe('db');
+		expect(binaryDataRepository.insert).toHaveBeenCalledWith({
+			fileId: stored.storageKey,
+			sourceType: 'agent_file',
+			sourceId: 'file-1',
+			data: body,
 			mimeType: 'text/plain',
+			fileName: 'notes.txt',
+			fileSize: body.length,
 		});
 
-		expect(stored).toEqual({
-			storedAt: 'fs',
-			storageKey: 'agents/agent-1/knowledge-files/file-1/content',
-		});
-		expect(logger.warn).toHaveBeenCalledWith(
-			"Execution data storage mode is 'database'; agent knowledge files will be stored on the local filesystem. In multi-main deployments this path must be on a shared filesystem.",
-		);
+		binaryDataRepository.findContentByFileId.mockResolvedValue(body);
 		await expect(store.readAsBuffer(stored)).resolves.toEqual(body);
+		expect(binaryDataRepository.findContentByFileId).toHaveBeenCalledWith(stored.storageKey);
 	});
 
 	it('reads a blob stored under the legacy BinaryDataService key', async () => {
@@ -72,7 +95,12 @@ describe('AgentKnowledgeFileStore', () => {
 	it('writes to a registered s3 location when modeTag is s3', async () => {
 		storageConfig = { storagePath, modeTag: 's3' } as StorageConfig;
 		const fsByteStore = new FsByteStore({ storagePath, reportError: () => {} });
-		store = new AgentKnowledgeFileStore(fsByteStore as never, storageConfig, logger);
+		store = new AgentKnowledgeFileStore(
+			fsByteStore as never,
+			storageConfig,
+			binaryDataRepository,
+			logger,
+		);
 
 		const s3Path = join(storagePath, 's3-root');
 		const s3Store = new FsByteStore({ storagePath: s3Path, reportError: () => {} });
@@ -110,11 +138,15 @@ describe('AgentKnowledgeFileStore', () => {
 		await expect(
 			store.delete([
 				kept,
+				{ storedAt: 'db', storageKey: '9c1f4b7a-2d3e-4f5a-8b6c-7d8e9f0a1b2c' },
 				{ storedAt: 's3', storageKey: 'agents/agent-1/knowledge-files/orphan/content' },
 			]),
 		).resolves.toBeUndefined();
 
 		await expect(store.readAsBuffer(kept)).resolves.toBeNull();
+		expect(binaryDataRepository.deleteByFileIds).toHaveBeenCalledWith([
+			'9c1f4b7a-2d3e-4f5a-8b6c-7d8e9f0a1b2c',
+		]);
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Skipped deleting agent knowledge files for unconfigured storage',
 			expect.objectContaining({ storedAt: 's3', count: 1 }),

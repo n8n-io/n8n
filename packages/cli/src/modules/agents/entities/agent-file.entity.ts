@@ -1,5 +1,4 @@
-import type { StorageLocation } from '@n8n/blob-storage';
-import { WithTimestampsAndStringId } from '@n8n/db';
+import { WithTimestampsAndStringId, type ExecutionDataStorageLocation } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
 import { Agent } from './agent.entity';
@@ -17,16 +16,17 @@ export class AgentFile extends WithTimestampsAndStringId {
 	agentId: string;
 
 	/**
-	 * Blob-storage location for the file bytes: 'fs', 's3', or 'az'. Never 'db'.
-	 * Bytes are resolved via AgentKnowledgeFileStore.
+	 * Where the file bytes live: 'db' (the `binary_data` table) or a blob-storage
+	 * backend ('fs', 's3', 'az'). Bytes are resolved via AgentKnowledgeFileStore.
 	 */
-	@Column({ type: 'varchar', length: 2, nullable: false, default: 'fs' })
-	storedAt: StorageLocation;
+	@Column({ type: 'varchar', length: 2, nullable: false, default: 'db' })
+	storedAt: ExecutionDataStorageLocation;
 
 	/**
-	 * Byte-store key addressing the bytes within `storedAt`. Persisted rather
-	 * than derived, so files written under the former BinaryDataService layout
-	 * keep resolving after the storage migration.
+	 * Key addressing the bytes within `storedAt`: a `binary_data.fileId` for
+	 * 'db', a byte-store key otherwise. Persisted rather than derived, so files
+	 * written under the former BinaryDataService layout keep resolving after the
+	 * storage migration.
 	 */
 	@Column({ type: 'text' })
 	storageKey: string;
