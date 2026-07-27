@@ -214,6 +214,16 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 			ctx.send({ type: 'error', message: errMsg });
 			return { suspended: false };
 		}
+		case 'warning': {
+			ctx.send({
+				type: 'warning',
+				message: chunk.message,
+				...(chunk.code !== undefined && { code: chunk.code }),
+				...(chunk.source !== undefined && { source: chunk.source }),
+				...(chunk.server !== undefined && { server: chunk.server }),
+			});
+			return { suspended: false };
+		}
 		default:
 			return { suspended: false };
 	}

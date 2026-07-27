@@ -87,7 +87,7 @@ const scrollRight = () => scroll(50);
 		<div v-if="canScrollRight" :class="$style.next" @click="scrollRight">
 			<N8nIcon :class="$style.positionIcon" icon="chevron-right" size="small" />
 		</div>
-		<div ref="tabs" :class="$style.tabs">
+		<div ref="tabs" role="tablist" :class="$style.tabs">
 			<div
 				v-for="option in options"
 				:id="option.value.toString()"
@@ -133,6 +133,9 @@ const scrollRight = () => scroll(50);
 					</RouterLink>
 					<div
 						v-else
+						role="tab"
+						tabindex="0"
+						:aria-selected="modelValue === option.value"
 						:class="{
 							[$style.tab]: true,
 							[$style.activeTab]: modelValue === option.value,
@@ -140,6 +143,8 @@ const scrollRight = () => scroll(50);
 							[$style.dangerTab]: option.variant === 'danger',
 						}"
 						@click="() => handleTabClick(option.value)"
+						@keydown.enter.prevent="() => handleTabClick(option.value)"
+						@keydown.space.prevent="() => handleTabClick(option.value)"
 					>
 						<N8nIcon
 							v-if="option.icon && option.iconPosition !== 'right'"
@@ -218,6 +223,13 @@ const scrollRight = () => scroll(50);
 		color: var(--color--primary);
 	}
 
+	/* Inset outline so the ring isn't clipped by the scroll container and adds no layout shift. */
+	&:focus-visible {
+		outline: var(--border-width) solid var(--focus--border-color);
+		outline-offset: calc(-1 * var(--border-width));
+		border-radius: var(--radius--3xs);
+	}
+
 	span + span {
 		margin-left: var(--spacing--4xs);
 	}
@@ -234,6 +246,14 @@ const scrollRight = () => scroll(50);
 
 	.small.modern & {
 		padding-inline: 0;
+	}
+
+	/**
+	 * A tag is taller than the label's line box, so it would sit flush against the
+	 * tab's top edge and collide with the inset focus ring.
+	 */
+	.tabs:has(:global(.n8n-tag)) & {
+		padding-top: var(--spacing--4xs);
 	}
 }
 

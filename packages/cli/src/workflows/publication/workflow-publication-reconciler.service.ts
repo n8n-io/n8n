@@ -36,6 +36,12 @@ import { WorkflowPublicationOutboxConsumer } from './workflow-publication-outbox
  * `webhook_entity` table and are reconciled by the applier when a workflow is
  * re-published. Recovery only enqueues through the outbox and wakes the consumer;
  * the applier does the actual re-registration, so this adds no activation logic.
+ *
+ * A third detection compares versions rather than trigger node ids: a
+ * `workflow_published_version` mapping that disagrees with the workflow's
+ * `activeVersionId` (a rolled-back or lost publication, or a missed unpublish)
+ * is invisible to the node-id diffs when the trigger set is unchanged, so it is
+ * detected in the database directly and healed through the same enqueue path.
  */
 @Service()
 export class WorkflowPublicationReconciler {
@@ -120,18 +126,27 @@ export class WorkflowPublicationReconciler {
 				const startedAt = Date.now();
 				try {
 					const surplus = await this.removeGhostTriggers(await this.findSurplusWorkflowIds());
-					const missing = await this.republishMissingWorkflows(
+					const missing = await this.republishWorkflows(
 						await this.findMissingActiveWorkflows(),
+						'Re-publishing workflows with missing in-memory triggers',
+					);
+					// After the missing-trigger drain, so workflows that pass already
+					// converged are not re-detected (and double-counted) as skewed.
+					const versionSkew = await this.republishWorkflows(
+						await this.outboxRepository.findVersionSkewedWorkflowIds(),
+						'Re-enqueuing workflows whose published version diverged from the active version',
 					);
 
 					span.setAttribute('n8n.publication.deficient_workflows', missing);
 					span.setAttribute('n8n.publication.surplus_workflows', surplus);
+					span.setAttribute('n8n.publication.version_skewed_workflows', versionSkew);
 
 					span.setStatus({ code: SpanStatus.ok });
 					this.eventService.emit('workflow-publication-reconciliation', {
 						result: 'success',
 						deficientCount: missing,
 						surplusCount: surplus,
+						versionSkewCount: versionSkew,
 						durationMs: Date.now() - startedAt,
 					});
 				} catch (error) {
@@ -141,6 +156,7 @@ export class WorkflowPublicationReconciler {
 						result: 'failure',
 						deficientCount: 0,
 						surplusCount: 0,
+						versionSkewCount: 0,
 						durationMs: Date.now() - startedAt,
 					});
 				}
@@ -197,11 +213,9 @@ export class WorkflowPublicationReconciler {
 		return missing;
 	}
 
-	private async republishMissingWorkflows(workflowIds: WorkflowId[]): Promise<number> {
+	private async republishWorkflows(workflowIds: WorkflowId[], logMessage: string): Promise<number> {
 		if (workflowIds.length > 0) {
-			this.logger.debug('Re-publishing workflows with missing in-memory triggers', {
-				workflowIds,
-			});
+			this.logger.debug(logMessage, { workflowIds });
 			await this.outboxRepository.enqueueByWorkflowIds(workflowIds);
 			// Drain directly rather than waiting for the next poll cycle. These are
 			// safe to call here, to recover more quickly.

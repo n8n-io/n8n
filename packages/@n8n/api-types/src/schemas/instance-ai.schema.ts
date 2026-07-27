@@ -949,9 +949,41 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
 	message: z.string().min(1),
 }) {}
 
-export const INSTANCE_AI_THREAD_SOURCES = ['website-template', 'template-view'] as const;
+/**
+ * Entry-point taxonomy for Instance AI thread creation. Every new entry point
+ * must register a value here — `InstanceAiEnsureThreadRequest.source` requires
+ * it, so missing values fail at the API boundary.
+ *
+ * - `website-template` — deep-link from n8n.io template pages (`/assistant/new?templateId=…`)
+ * - `template-view` — "Start with AI" from the in-app template preview
+ * - `canvas_action_button` — Instance AI button on the workflow canvas
+ * - `canvas_choice_prompt` — empty-canvas choice prompt that opens Instance AI
+ * - `node_error_view` — "Ask AI" from a node error / failed-execution view
+ * - `credential_edit` — credential setup help from the credential edit modal
+ * - `credentials_list` — credential setup help from the credentials list
+ * - `agent_builder_page` — Instance AI hand-off from the agent builder
+ * - `agent_preview` — send a preview chat session to Instance AI
+ * - `assistant_page` — first message typed on the Instance AI empty/home page
+ * - `evals` — Instance AI evaluation harness / offline eval runners
+ * - `playwright` — Playwright E2E helpers that create threads via the REST API
+ */
+export const INSTANCE_AI_THREAD_SOURCES = [
+	'website-template',
+	'template-view',
+	'canvas_action_button',
+	'canvas_choice_prompt',
+	'node_error_view',
+	'credential_edit',
+	'credentials_list',
+	'agent_builder_page',
+	'agent_preview',
+	'assistant_page',
+	'evals',
+	'playwright',
+] as const;
 export type InstanceAiThreadSource = (typeof INSTANCE_AI_THREAD_SOURCES)[number];
 
+/** Read-path fallback for threads created before source was required. */
 export const INSTANCE_AI_THREAD_SOURCE_FALLBACK = 'unknown';
 export type InstanceAiThreadSourcePersisted =
 	| InstanceAiThreadSource
@@ -959,19 +991,6 @@ export type InstanceAiThreadSourcePersisted =
 
 export const INSTANCE_AI_THREAD_ORIGINS = ['internal', 'external'] as const;
 export type InstanceAiThreadOrigin = (typeof INSTANCE_AI_THREAD_ORIGINS)[number];
-
-function isInstanceAiThreadSource(value: string): value is InstanceAiThreadSource {
-	return (INSTANCE_AI_THREAD_SOURCES as readonly string[]).includes(value);
-}
-
-/** Normalize an untrusted source string to a known value, falling back otherwise. */
-export function normalizeInstanceAiThreadSource(
-	value: string | undefined,
-): InstanceAiThreadSourcePersisted {
-	return value !== undefined && isInstanceAiThreadSource(value)
-		? value
-		: INSTANCE_AI_THREAD_SOURCE_FALLBACK;
-}
 
 const instanceAiSourceContextSchema = z
 	.record(z.string(), z.unknown())
@@ -982,7 +1001,7 @@ const instanceAiSourceContextSchema = z
 export class InstanceAiEnsureThreadRequest extends Z.class({
 	threadId: z.string().uuid().optional(),
 	projectId: z.string().min(1),
-	source: z.string().max(64).optional(),
+	source: z.enum(INSTANCE_AI_THREAD_SOURCES),
 	origin: z.enum(INSTANCE_AI_THREAD_ORIGINS).optional(),
 	sourceContext: instanceAiSourceContextSchema.optional(),
 }) {}
@@ -1392,21 +1411,47 @@ export function isInstanceAiSandboxProvider(value: unknown): value is InstanceAi
 	return instanceAiSandboxProviderSchema.safeParse(value).success;
 }
 
+export const INSTANCE_AI_MODEL_CREDENTIAL_TYPES = [
+	'openAiApi',
+	'anthropicApi',
+	'googlePalmApi',
+	'groqApi',
+	'deepSeekApi',
+	'mistralCloudApi',
+	'xAiApi',
+	'openRouterApi',
+	'cohereApi',
+] as const;
+
+export const INSTANCE_AI_SEARCH_CREDENTIAL_TYPES = ['braveSearchApi', 'searXngApi'] as const;
+
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
 	permissions: InstanceAiPermissions;
-	mcpServers: string;
 	mcpAccessEnabled: boolean;
 	sandboxEnabled: boolean;
 	sandboxProvider: InstanceAiSandboxProvider;
-	sandboxImage: string;
-	sandboxTimeout: number;
 	daytonaCredentialId: string | null;
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
+	modelCredentialId: string | null;
+	modelName: string | null;
+	modelEnvConfigured: boolean;
+	sandboxEnvConfigured: boolean;
+	searchEnvConfigured: boolean;
 	localGatewayDisabled: boolean;
 	browserUseEnabled: boolean;
 }
+
+/**
+ * Inline provider-connection payload: the credential type plus its field
+ * values. `null` clears the connection (and falls back to env config).
+ */
+export const instanceAiConnectionSchema = z.object({
+	type: z.string().min(1),
+	data: z.record(z.string(), z.unknown()),
+});
+export type InstanceAiConnectionUpdate = z.infer<typeof instanceAiConnectionSchema>;
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
@@ -1420,6 +1465,11 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	daytonaCredentialId: z.string().nullable().optional(),
 	n8nSandboxCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
+	modelCredentialId: z.string().nullable().optional(),
+	modelConnection: instanceAiConnectionSchema.nullable().optional(),
+	sandboxConnection: instanceAiConnectionSchema.nullable().optional(),
+	searchConnection: instanceAiConnectionSchema.nullable().optional(),
+	modelName: z.string().trim().min(1).nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
 	browserUseEnabled: z.boolean().optional(),
 }) {}
@@ -1442,11 +1492,10 @@ export class InstanceAiUserPreferencesUpdateRequest extends Z.class({
 	localGatewayDisabled: z.boolean().optional(),
 }) {}
 
-export interface InstanceAiModelCredential {
+export interface InstanceAiProviderConnection {
 	id: string;
 	name: string;
 	type: string;
-	provider: string;
 }
 
 // ---------------------------------------------------------------------------

@@ -172,6 +172,7 @@ export interface ICredentialsDecrypted<T extends object = ICredentialDataDecrypt
 	sharedWithProjects?: ProjectSharingData[];
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	usageScope?: 'project' | 'instance';
 }
 
 export interface ICredentialsEncrypted {
@@ -1779,6 +1780,7 @@ export interface INodePropertyTypeOptions {
 		inputFieldMaxLength?: number; // Supported if hasInputField is true
 	};
 	containerClass?: string; // Supported by: notice
+	sectionHeader?: boolean; // Supported by: notice — renders as a section-header divider instead of a notice box
 	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
 	editor?: EditorType; // Supported by: string
@@ -1842,6 +1844,9 @@ export interface ResourceMapperTypeOptionsBase {
 	// reconciled against the source on node open. A complete-but-drifted schema
 	// still shows the stale-data warning, leaving the refresh up to the user.
 	refreshIncompleteSchemaOnOpen?: boolean;
+	// When true, a complete-but-drifted cached schema is reconciled against the
+	// live source on node open / tab focus (e.g. subworkflow trigger inputs).
+	refreshStaleSchemaOnOpen?: boolean;
 }
 
 // Enforce at least one of resourceMapperMethod or localResourceMapperMethod
@@ -2201,6 +2206,8 @@ export interface ExecuteAgentWorkflowContext {
 	workflowName?: string;
 	/** Name of the node that invoked the agent */
 	callingNodeName: string;
+	/** ID of the node that invoked the agent */
+	callingNodeId?: string;
 	/** The calling node's input items, already scoped per {@link ExecuteAgentInfo.inputDataScope}. */
 	inputData?: INodeExecutionData[];
 	/** Which slice {@link inputData} represents. */

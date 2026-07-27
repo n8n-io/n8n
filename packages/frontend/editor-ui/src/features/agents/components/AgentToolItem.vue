@@ -5,7 +5,7 @@
  * Forked from Chat Hub's `ToolListItem` to match the Agents Figma spec:
  *   - Connected rows show "✓ Connected" (or "Add credentials" chip) + gear,
  *     not an enable/disable toggle.
- *   - Available rows use a "Connect" button.
+ *   - Available rows use a "Connect" button (or "Install" for community previews).
  *
  * Kept as a sibling component so Chat Hub's list item remains untouched.
  */
@@ -14,6 +14,7 @@ import { N8nButton, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-syste
 import { useI18n } from '@n8n/i18n';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { computed, useCssModule, useAttrs } from 'vue';
+import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
 
 import ToolConnectedBadge from './ToolConnectedBadge.vue';
 import ToolApprovalBadge from './ToolApprovalBadge.vue';
@@ -26,6 +27,11 @@ const props = defineProps<{
 	/** When true, surfaces an "Add credentials" warning chip instead of "✓ Connected". */
 	missingCredentials?: boolean;
 	requireApproval?: boolean;
+	/** Uninstalled verified community preview — show Install CTA + verified badge. */
+	communityPreview?: boolean;
+	installing?: boolean;
+	/** Non-admin cannot install; button is disabled with contact-admin tooltip. */
+	installDisabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -62,6 +68,16 @@ const displayName = computed(() => {
 	if (props.configuredNode) return props.configuredNode.name;
 	return props.nodeType.displayName;
 });
+
+const actionLabel = computed(() =>
+	props.communityPreview
+		? i18n.baseText('communityNodeDetails.install')
+		: i18n.baseText('agents.tools.connect'),
+);
+
+const actionDisabled = computed(
+	() => props.communityPreview && (props.installing || props.installDisabled),
+);
 </script>
 
 <template>
@@ -71,7 +87,16 @@ const displayName = computed(() => {
 		</div>
 
 		<div :class="$style.content">
-			<N8nText :class="$style.name" size="small" color="text-dark">{{ displayName }}</N8nText>
+			<div :class="$style.nameRow">
+				<N8nText :class="$style.name" size="small" color="text-dark">{{ displayName }}</N8nText>
+				<N8nTooltip
+					v-if="communityPreview"
+					:content="i18n.baseText('communityNodeInfo.approved')"
+					placement="top"
+				>
+					<ShieldIcon :class="$style.verifiedIcon" data-test-id="agent-tool-verified-badge" />
+				</N8nTooltip>
+			</div>
 			<N8nText :class="$style.description" size="small" color="text-light">
 				{{ description }}
 			</N8nText>
@@ -95,8 +120,35 @@ const displayName = computed(() => {
 			</template>
 
 			<template v-else>
-				<N8nButton variant="subtle" size="small" @click="emit('add')">
-					{{ i18n.baseText('agents.tools.connect') }}
+				<N8nTooltip
+					v-if="communityPreview && installDisabled && !installing"
+					:content="i18n.baseText('communityNodeInfo.contact.admin')"
+					placement="top"
+				>
+					<span>
+						<N8nButton
+							variant="subtle"
+							size="small"
+							:loading="installing"
+							:disabled="true"
+							data-test-id="agent-tool-install-button"
+						>
+							{{ actionLabel }}
+						</N8nButton>
+					</span>
+				</N8nTooltip>
+				<N8nButton
+					v-else
+					variant="subtle"
+					size="small"
+					:loading="installing"
+					:disabled="actionDisabled"
+					:data-test-id="
+						communityPreview ? 'agent-tool-install-button' : 'agent-tool-connect-button'
+					"
+					@click="emit('add')"
+				>
+					{{ actionLabel }}
 				</N8nButton>
 			</template>
 		</div>
@@ -124,6 +176,20 @@ const displayName = computed(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
+}
+
+.nameRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+}
+
+.verifiedIcon {
+	flex-shrink: 0;
+	width: 12px;
+	height: 12px;
+	color: var(--color--success);
 }
 
 .name {

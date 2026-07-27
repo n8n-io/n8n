@@ -171,9 +171,12 @@ async function main() {
 		throw new Error(`suite "${args.suite}" not found. Available: ${known || '(none)'}.`);
 	}
 
-	// Select disk cases: loader applies --filter/--exclude/--tier; then narrow to the
-	// exact slugs from positional args + --changed (if either was given).
-	const all = loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
+	// Select disk cases: loader applies --filter/--exclude, --tier narrows by the
+	// case's datasets (mirrors data/source.ts); then narrow to the exact slugs
+	// from positional args + --changed (if either was given).
+	const loaded = loadWorkflowTestCasesWithFiles(args.filter, args.exclude);
+	const tier = args.tier;
+	const all = tier ? loaded.filter((c) => c.testCase.datasets.includes(tier)) : loaded;
 	const exactSlugs = new Set([...args.slugs, ...(args.changed ? gitChangedSlugs() : [])]);
 	const selected = exactSlugs.size > 0 ? all.filter((c) => exactSlugs.has(c.fileSlug)) : all;
 

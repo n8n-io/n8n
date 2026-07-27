@@ -71,9 +71,11 @@ export type GatewayStatus = z.infer<typeof GatewayStatusSchema>;
 
 /** A node as returned by the n8n REST API — the fields eval code reads. */
 export interface WorkflowNodeResponse {
+	id?: string;
 	name: string;
 	type: string;
 	typeVersion?: number;
+	position?: [number, number];
 	parameters?: Record<string, unknown>;
 	executeOnce?: boolean;
 	onError?: 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
@@ -189,13 +191,18 @@ export class N8nClient {
 
 	/**
 	 * Ensure a conversation thread exists before sending chat messages.
-	 * POST /rest/instance-ai/threads body: { threadId, projectId }
+	 * POST /rest/instance-ai/threads body: { threadId, projectId, source }
 	 */
 	async ensureThread(threadId: string, projectId?: string): Promise<void> {
 		const resolvedProjectId = projectId ?? (await this.getPersonalProjectId());
 		await this.fetch('/rest/instance-ai/threads', {
 			method: 'POST',
-			body: { threadId, projectId: resolvedProjectId },
+			body: {
+				threadId,
+				projectId: resolvedProjectId,
+				source: 'evals',
+				origin: 'internal',
+			},
 		});
 	}
 
@@ -551,7 +558,9 @@ export class N8nClient {
 	/**
 	 * Seed the MCP registry with the test fixture (Notion + Linear mock servers)
 	 * and trigger a synthetic node-type reload. Requires the server to be running
-	 * with `E2E_TESTS=true` so the test controller is mounted.
+	 * with `E2E_TESTS=true` so the test controller is mounted, and an
+	 * authenticated session (`login()` first) — the endpoint rejects
+	 * unauthenticated calls.
 	 * POST /rest/mcp-registry/test/seed  body: none
 	 */
 	async seedMcpRegistry(): Promise<{ count: number }> {

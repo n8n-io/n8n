@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Repository } from '@n8n/typeorm';
+import { DataSource, IsNull, Not, Repository } from '@n8n/typeorm';
 
 import { AgentExecution } from '../entities/agent-execution.entity';
 
@@ -56,6 +56,19 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		});
 	}
 
+	/**
+	 * The most recently suspended execution in a thread — used to recover the
+	 * original run's `source` when resuming a HITL tool call. A resume request
+	 * carries no `source` of its own; it belongs to the suspended run being
+	 * resumed.
+	 */
+	async findLatestSuspendedByThreadId(threadId: string): Promise<AgentExecution | null> {
+		return await this.findOne({
+			where: { threadId, hitlStatus: 'suspended' },
+			order: { createdAt: 'DESC' },
+		});
+	}
+
 	/** Backfill model on a set of executions in a single statement. */
 	async backfillModel(executionIds: string[], model: string): Promise<void> {
 		if (executionIds.length === 0) return;
@@ -69,5 +82,25 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	/** Delete every run in a thread. Caller must verify ownership first. */
 	async deleteByThreadId(threadId: string): Promise<void> {
 		await this.delete({ threadId });
+	}
+
+	/** Blob-stored log refs for every run in a thread — for log cleanup on thread delete. */
+	async findBlobRefsByThreadId(
+		threadId: string,
+	): Promise<Array<Pick<AgentExecution, 'id' | 'storedAt'>>> {
+		return await this.find({
+			select: ['id', 'storedAt'],
+			where: { threadId, storedAt: Not('db') },
+		});
+	}
+
+	/** Blob-stored log refs across all of an agent's threads — for log cleanup on agent delete. */
+	async findBlobRefsByAgentId(
+		agentId: string,
+	): Promise<Array<Pick<AgentExecution, 'id' | 'threadId' | 'storedAt'>>> {
+		return await this.find({
+			select: ['id', 'threadId', 'storedAt'],
+			where: { thread: { agentId }, storedAt: Not('db') },
+		});
 	}
 }

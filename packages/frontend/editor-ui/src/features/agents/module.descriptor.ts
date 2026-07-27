@@ -15,6 +15,7 @@ import {
 	AGENT_VECTOR_STORES_MODAL_KEY,
 	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_MODEL_CREDENTIAL_MODAL_KEY,
+	NEW_AGENT_VIEW,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
@@ -27,6 +28,8 @@ const AgentView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentView.vue');
 const AgentBuilderView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentBuilderView.vue');
+const NewAgentView = async (): Promise<unknown> =>
+	await import('@/features/agents/views/NewAgentView.vue');
 const AgentSessionsListView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionsListView.vue');
 const AgentSessionTimelineView = async (): Promise<unknown> =>
@@ -152,6 +155,14 @@ export const AgentsModule: FrontendModuleDescription = {
 			component: AgentsListView,
 			meta: {
 				projectRoute: true,
+				middleware: ['authenticated', 'custom'],
+			},
+		},
+		{
+			name: NEW_AGENT_VIEW,
+			path: '/new-agent',
+			component: NewAgentView,
+			meta: {
 				middleware: ['authenticated', 'custom'],
 			},
 		},

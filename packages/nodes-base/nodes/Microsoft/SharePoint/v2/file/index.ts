@@ -1,7 +1,7 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { searchDriveItems } from '../helpers/driveItemSearch';
+import { searchDriveItems } from '../helpers/graphSearch';
 import { resolveSiteId } from '../site';
 
 // The whole file-selection piece lives here — the field and the search behind

@@ -15,6 +15,7 @@ import type { ToolOpenTarget } from './AgentCapabilitiesSection.types';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
+import AgentChannelsSection from './AgentChannelsSection.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
@@ -98,12 +99,25 @@ const i18n = useI18n();
 			</div>
 			<div :class="$style.panelAreaContainer">
 				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
+					<AgentChannelsSection
+						:key="`${projectId}:${agentId}`"
+						:connected-triggers="connectedTriggers"
+						:disabled="childrenDisabled"
+						:agent-id="agentId"
+						:project-id="projectId"
+						:is-published="Boolean(agent?.activeVersionId)"
+						:validation-issues="configValidationIssues ?? []"
+						:simple-channel-setup="artifactMode"
+						@update:connected-triggers="emit('update:connected-triggers', $event)"
+						@trigger-added="emit('trigger-added', $event)"
+						@agent-changed="emit('agent-changed')"
+					/>
+
 					<AgentCapabilitiesSection
 						:config="localConfig"
 						:tools="localConfig?.tools ?? []"
 						:custom-tools="agent?.tools ?? {}"
 						:skills="appliedSkills"
-						:connected-triggers="connectedTriggers"
 						:disabled="childrenDisabled"
 						:project-id="projectId"
 						:agent-id="agentId"
@@ -118,11 +132,8 @@ const i18n = useI18n();
 						@update:config="emit('update:config', $event)"
 						@remove-tool="emit('remove-tool', $event)"
 						@remove-skill="emit('remove-skill', $event)"
-						@update:connected-triggers="emit('update:connected-triggers', $event)"
-						@trigger-added="emit('trigger-added', $event)"
 						@toggle-task="emit('toggle-task', $event)"
 						@tasks-changed="emit('tasks-changed')"
-						@agent-changed="emit('agent-changed')"
 					/>
 
 					<AgentInfoPanel
@@ -139,6 +150,7 @@ const i18n = useI18n();
 						:project-id="projectId"
 						:show-model="false"
 						:show-instructions-toolbar="true"
+						instructions-max-height="none"
 						embedded
 						@update:config="emit('update:config', $event)"
 					/>
@@ -155,7 +167,6 @@ const i18n = useI18n();
 						:loading="agentFilesLoading"
 						:uploading="agentFilesUploading"
 						:deleting-file-id="deletingAgentFileId"
-						:is-published="Boolean(agent?.activeVersionId)"
 						data-testid="agent-files-card"
 						@upload-files="emit('upload-files', $event)"
 						@delete-file="emit('delete-file', $event)"
@@ -226,7 +237,7 @@ const i18n = useI18n();
 .editorColumn {
 	display: flex;
 	flex-direction: column;
-	background-color: var(--background--surface);
+	background-color: light-dark(var(--background--surface), var(--background));
 	min-height: 0;
 	min-width: var(--agent-builder-editor-min-width, 35rem);
 }
@@ -240,10 +251,6 @@ const i18n = useI18n();
 	min-height: 0;
 	display: flex;
 	flex-direction: column;
-	background-color: light-dark(
-		var(--color--background--light-1),
-		var(--color--background--light-2)
-	);
 	overflow: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
@@ -274,17 +281,13 @@ const i18n = useI18n();
 	--card--padding: var(--spacing--sm);
 
 	align-items: stretch;
-	background-color: transparent;
+	background-color: var(--background--surface);
 }
 
 .identityHeaderRow {
 	flex-shrink: 0;
 	display: flex;
 	width: 100%;
-	background-color: light-dark(
-		var(--color--background--light-1),
-		var(--color--background--light-2)
-	);
 }
 
 .identityHeader {
@@ -300,10 +303,6 @@ const i18n = useI18n();
 	display: flex;
 	align-items: center;
 	width: 100%;
-	background-color: light-dark(
-		var(--color--background--light-1),
-		var(--color--background--light-2)
-	);
 }
 
 .tabsRule {
@@ -316,7 +315,7 @@ const i18n = useI18n();
 
 .mainTabs {
 	width: 100%;
-	border-bottom: calc(var(--border-width, 1px) * 2) var(--border-style, solid) var(--border-color);
+	border-bottom: var(--border);
 
 	:global([data-test-id='tab-agent'] > *) {
 		padding-left: 0;
