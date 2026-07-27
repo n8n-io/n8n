@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import {
@@ -27,11 +29,18 @@ const DEFAULT_SANDBOX_TTL_MS = 15 * 60 * 1000;
 export type RuntimeSandboxEntry = {
 	sandbox: NonNullable<Awaited<ReturnType<typeof createSandbox>>>;
 	workspace: NonNullable<ReturnType<typeof createWorkspace>>;
+	configFingerprint: string;
 	setupComplete: boolean;
 	setupPromise: Promise<void> | undefined;
 	expiresAt: number;
 	cleanupTimer?: ReturnType<typeof setTimeout>;
 };
+
+type SandboxCacheState = { fingerprint: string; config?: SandboxConfig };
+
+function sandboxConfigFingerprint(config: object): string {
+	return createHash('sha256').update(JSON.stringify(config)).digest('hex');
+}
 
 function slugifySandboxName(value: string, maxLen: number): string {
 	const slug = value
@@ -107,8 +116,8 @@ export type InstanceAiSandboxBackgroundTasks = {
 
 /** Settings collaborator that resolves provider credentials from admin config. */
 export type InstanceAiSandboxSettings = {
-	resolveDaytonaConfig: (user: User) => Promise<{ apiUrl?: string; apiKey?: string }>;
-	resolveN8nSandboxConfig: (user: User) => Promise<{ serviceUrl?: string; apiKey?: string }>;
+	resolveDaytonaConfig: () => Promise<{ apiUrl?: string; apiKey?: string }>;
+	resolveN8nSandboxConfig: () => Promise<{ serviceUrl?: string; apiKey?: string }>;
 };
 
 /** Proxy collaborator that routes Daytona traffic through the AI assistant service. */
@@ -154,7 +163,12 @@ export class InstanceAiSandboxService {
 	private readonly sandboxes = new Map<string, RuntimeSandboxEntry>();
 
 	/** In-flight runtime workspace creations keyed by thread ID. */
-	private readonly sandboxCreations = new Map<string, Promise<RuntimeSandboxEntry | undefined>>();
+	private readonly sandboxCreations = new Map<
+		string,
+		{ fingerprint: string; promise: Promise<RuntimeSandboxEntry | undefined> }
+	>();
+
+	private cacheGeneration = 0;
 
 	constructor(private readonly options: InstanceAiSandboxServiceOptions) {}
 
@@ -184,7 +198,9 @@ export class InstanceAiSandboxService {
 			sandboxAutoDeleteMinutes,
 			daytonaTokenRefreshSkewMs,
 		} = this.instanceAiConfig;
-		const provider = normalizeSandboxProvider(sandboxProvider);
+		const provider = this.options.aiService.isProxyEnabled()
+			? 'daytona'
+			: normalizeSandboxProvider(sandboxProvider);
 		if (!sandboxEnabled) {
 			return {
 				enabled: false,
@@ -259,14 +275,14 @@ export class InstanceAiSandboxService {
 			}
 
 			// Direct mode: Daytona credentials from env vars or admin credential
-			const daytona = await this.options.settingsService.resolveDaytonaConfig(user);
+			const daytona = await this.options.settingsService.resolveDaytonaConfig();
 			return {
 				...base,
 				daytonaApiUrl: daytona.apiUrl ?? base.daytonaApiUrl,
 				daytonaApiKey: daytona.apiKey ?? base.daytonaApiKey,
 			};
 		}
-		const sandbox = await this.options.settingsService.resolveN8nSandboxConfig(user);
+		const sandbox = await this.options.settingsService.resolveN8nSandboxConfig();
 		return {
 			...base,
 			serviceUrl: sandbox.serviceUrl ?? base.serviceUrl,
@@ -278,9 +294,17 @@ export class InstanceAiSandboxService {
 		threadId: string,
 		user: User,
 	): Promise<RuntimeSandboxEntry | undefined> {
+		const cacheGeneration = this.cacheGeneration;
+		const cacheState = await this.resolveSandboxCacheState(user);
+		if (cacheGeneration !== this.cacheGeneration) {
+			return await this.getOrCreateWorkspaceEntry(threadId, user);
+		}
 		const existing = this.sandboxes.get(threadId);
 		if (existing) {
-			if (this.isSandboxEntryExpired(existing) && !this.isSandboxInUse(threadId)) {
+			if (
+				existing.configFingerprint !== cacheState.fingerprint ||
+				(this.isSandboxEntryExpired(existing) && !this.isSandboxInUse(threadId))
+			) {
 				this.evictSandboxEntry(threadId, existing);
 			} else {
 				this.touchSandboxEntry(threadId, existing);
@@ -289,14 +313,26 @@ export class InstanceAiSandboxService {
 		}
 
 		const pending = this.sandboxCreations.get(threadId);
-		if (pending) return await pending;
+		if (pending?.fingerprint === cacheState.fingerprint) return await pending.promise;
 
-		const creation = this.createWorkspaceEntry(threadId, user);
-		this.sandboxCreations.set(threadId, creation);
+		const creation = this.createWorkspaceEntry(threadId, user, cacheState);
+		const pendingCreation = { fingerprint: cacheState.fingerprint, promise: creation };
+		this.sandboxCreations.set(threadId, pendingCreation);
 		try {
-			return await creation;
+			const entry = await creation;
+			if (
+				entry &&
+				cacheGeneration === this.cacheGeneration &&
+				this.sandboxCreations.get(threadId) === pendingCreation
+			) {
+				this.sandboxes.set(threadId, entry);
+				this.scheduleSandboxExpiry(threadId, entry);
+			}
+			return entry;
 		} finally {
-			this.sandboxCreations.delete(threadId);
+			if (this.sandboxCreations.get(threadId) === pendingCreation) {
+				this.sandboxCreations.delete(threadId);
+			}
 		}
 	}
 
@@ -331,8 +367,12 @@ export class InstanceAiSandboxService {
 	private async createWorkspaceEntry(
 		threadId: string,
 		user: User,
+		cacheState: SandboxCacheState,
 	): Promise<RuntimeSandboxEntry | undefined> {
-		const config = withThreadScopedSandboxIdentity(await this.resolveSandboxConfig(user), threadId);
+		const config = withThreadScopedSandboxIdentity(
+			cacheState.config ?? (await this.resolveSandboxConfig(user)),
+			threadId,
+		);
 		if (!config.enabled) return undefined;
 
 		const sandbox = await createSandbox(config, {
@@ -356,13 +396,34 @@ export class InstanceAiSandboxService {
 		const entry: RuntimeSandboxEntry = {
 			sandbox,
 			workspace,
+			configFingerprint: cacheState.fingerprint,
 			setupComplete: false,
 			setupPromise: undefined,
 			expiresAt: this.nextSandboxExpiry(),
 		};
-		this.sandboxes.set(threadId, entry);
-		this.scheduleSandboxExpiry(threadId, entry);
 		return entry;
+	}
+
+	private async resolveSandboxCacheState(user: User): Promise<SandboxCacheState> {
+		if (this.options.aiService.isProxyEnabled()) {
+			return {
+				fingerprint: sandboxConfigFingerprint({
+					mode: 'proxy',
+					config: this.getSandboxConfigFromEnv(),
+				}),
+			};
+		}
+
+		const config = await this.resolveSandboxConfig(user);
+		return { config, fingerprint: sandboxConfigFingerprint(config) };
+	}
+
+	invalidateCachedWorkspaces(): void {
+		this.cacheGeneration++;
+		this.sandboxCreations.clear();
+		for (const [threadId, entry] of this.sandboxes) {
+			this.evictSandboxEntry(threadId, entry);
+		}
 	}
 
 	private evictSandboxEntry(threadId: string, entry: RuntimeSandboxEntry): void {
