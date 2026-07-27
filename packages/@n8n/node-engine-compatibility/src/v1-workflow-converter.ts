@@ -1,7 +1,7 @@
 import type { GraphNode, WorkflowGraph } from '@n8n/engine';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 
-import { UnsupportedWorkflowError } from './errors';
+import { UnsupportedTriggerError, UnsupportedWorkflowError } from './errors';
 import type { V1NodeStepConfig } from './types';
 
 const MANUAL_TRIGGER_TYPE = 'n8n-nodes-base.manualTrigger';
@@ -34,9 +34,7 @@ export class V1WorkflowConverter {
 		}
 
 		if (this.isTriggerNode(node)) {
-			throw new UnsupportedWorkflowError(
-				`Trigger node "${node.name}" (${node.type}) is not supported yet; only the Manual Trigger is currently supported.`,
-			);
+			throw new UnsupportedTriggerError(node.name, node.type);
 		}
 
 		if (node.onError === 'continueErrorOutput') {

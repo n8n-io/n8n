@@ -1,6 +1,7 @@
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { describe, expect, it } from 'vitest';
 
+import { UnsupportedTriggerError } from '../errors';
 import { V1WorkflowConverter } from '../v1-workflow-converter';
 
 const converter = new V1WorkflowConverter();
@@ -123,7 +124,7 @@ describe('V1WorkflowConverter', () => {
 						],
 					}),
 				),
-			).toThrowError(/Webhook.*not supported/i);
+			).toThrow(UnsupportedTriggerError);
 		});
 
 		it('rejects a schedule trigger (type ending in "Trigger")', () => {
@@ -142,7 +143,7 @@ describe('V1WorkflowConverter', () => {
 						],
 					}),
 				),
-			).toThrowError(/not supported/i);
+			).toThrow(UnsupportedTriggerError);
 		});
 	});
 });

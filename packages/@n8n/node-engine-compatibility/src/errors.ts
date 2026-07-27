@@ -6,6 +6,14 @@ import { UserError } from 'n8n-workflow';
  */
 export class UnsupportedWorkflowError extends UserError {}
 
+export class UnsupportedTriggerError extends UserError {
+	constructor(nodeName: string, nodeType: string) {
+		super(
+			`Trigger node "${nodeName}" (${nodeType}) is not supported yet; only the Manual Trigger is currently supported.`,
+		);
+	}
+}
+
 export class UnsupportedStepTypeError extends UserError {
 	constructor(stepType: string) {
 		super(`V1StepExecutor only handles 'v1-node' steps, got '${stepType}'`);
