@@ -1,4 +1,6 @@
 import type {
+	CreateWorkflowReviewRequestDto,
+	GetWorkflowReviewEligibleReviewersQueryDto,
 	GetWorkflowReviewInboxSummaryResponse,
 	ListWorkflowReviewInboxResponse,
 	WorkflowReviewEligibleReviewersList,
@@ -7,16 +9,6 @@ import type {
 	WorkflowReviewRequestSummary,
 } from '@n8n/api-types';
 import { makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
-
-export interface CreateWorkflowReviewRequestPayload {
-	title: string;
-	description?: string;
-	workflows: Array<{
-		workflowId: string;
-		workflowVersionId: string;
-	}>;
-	reviewerUserIds?: string[];
-}
 
 export type FetchWorkflowReviewInboxParams = {
 	state?: WorkflowReviewRequestState;
@@ -39,7 +31,7 @@ export async function fetchWorkflowReviewRequests(
 
 export async function fetchEligibleReviewers(
 	context: IRestApiContext,
-	query: { workflowId: string },
+	query: GetWorkflowReviewEligibleReviewersQueryDto,
 ): Promise<WorkflowReviewEligibleReviewersList> {
 	return await makeRestApiRequest<WorkflowReviewEligibleReviewersList>(
 		context,
@@ -51,7 +43,7 @@ export async function fetchEligibleReviewers(
 
 export async function createWorkflowReviewRequest(
 	context: IRestApiContext,
-	payload: CreateWorkflowReviewRequestPayload,
+	payload: CreateWorkflowReviewRequestDto,
 ): Promise<WorkflowReviewRequestSummary> {
 	return await makeRestApiRequest<WorkflowReviewRequestSummary>(
 		context,
