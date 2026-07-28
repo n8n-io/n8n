@@ -145,6 +145,26 @@ describe('ActiveExecutions', () => {
 		},
 	);
 
+	test('Should set startedAt when claiming an enqueued execution', async () => {
+		await activeExecutions.add(executionData, {
+			executionId: FAKE_SECOND_EXECUTION_ID,
+			expectedStatus: 'new',
+		});
+
+		expect(executionRepository.setRunning).toHaveBeenCalledExactlyOnceWith(
+			FAKE_SECOND_EXECUTION_ID,
+		);
+	});
+
+	test('Should preserve startedAt when resuming a waiting execution', async () => {
+		await activeExecutions.add(executionData, {
+			executionId: FAKE_SECOND_EXECUTION_ID,
+			expectedStatus: 'waiting',
+		});
+
+		expect(executionRepository.setRunning).not.toHaveBeenCalled();
+	});
+
 	test('Should forward deduplicationKey to executionPersistence.create', async () => {
 		const executionDataWithKey: IWorkflowExecutionDataProcess = {
 			...executionData,

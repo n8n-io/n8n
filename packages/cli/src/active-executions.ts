@@ -127,7 +127,6 @@ export class ActiveExecutions {
 					data: executionData.executionData!,
 					waitTill: null,
 					status: executionStatus,
-					// this is resuming, so keep `startedAt` as it was
 				};
 
 				const updateSucceeded = await this.executionPersistence.updateExistingExecution(
@@ -140,6 +139,12 @@ export class ActiveExecutions {
 				if (!updateSucceeded) {
 					// Another process is already resuming this execution
 					throw new ExecutionAlreadyResumingError(executionId);
+				}
+
+				// An enqueued execution has no `startedAt` yet, so stamp it now.
+				// A resuming execution keeps the `startedAt` it already had.
+				if (existingExecution.expectedStatus === 'new') {
+					await this.executionRepository.setRunning(executionId);
 				}
 			}
 		} catch (error) {
