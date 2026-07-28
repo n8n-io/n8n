@@ -229,6 +229,7 @@ import { CreateAgentEvalTables1784815940112 } from '../common/1784815940112-Crea
 import { AddAgentFileStorageColumns1785186578138 } from '../common/1785186578138-AddAgentFileStorageColumns';
 import { CrashStaleEnqueuedExecutions1785247194306 } from '../common/1785247194306-CrashStaleEnqueuedExecutions';
 import { CreateAgentChatAttachmentsTable1785255306000 } from '../common/1785255306000-CreateAgentChatAttachmentsTable';
+import { CreatePollerStateTable1785256245223 } from '../common/1785256245223-CreatePollerStateTable';
 import { AddAgentExecutionRuntimeState1785828155091 } from '../common/1785828155091-AddAgentExecutionRuntimeState';
 
 const sqliteMigrations: Migration[] = [
@@ -461,6 +462,7 @@ const sqliteMigrations: Migration[] = [
 	CrashStaleEnqueuedExecutions1785247194306,
 	AddMisfirePolicyToScheduler1785247194307,
 	CreateAgentChatAttachmentsTable1785255306000,
+	CreatePollerStateTable1785256245223,
 	AddSetupCompletedAtToAgents1785500832626,
 	AddAgentExecutionRuntimeState1785828155091,
 ];
