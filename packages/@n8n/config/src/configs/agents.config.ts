@@ -83,9 +83,12 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_AI_SANDBOX_IMAGE')
 	sandboxImage: string = 'daytonaio/sandbox:0.5.0';
 
-	/** Daytona snapshot name for agent knowledge sandboxes. Falls back to image when unavailable. */
+	/**
+	 * Daytona snapshot name for agent knowledge sandboxes. Falls back to image when unavailable,
+	 * except when Daytona is reached through the AI service proxy, which only accepts snapshots.
+	 */
 	@Env('N8N_AGENTS_AI_SANDBOX_SNAPSHOT')
-	sandboxSnapshot: string = '';
+	sandboxSnapshot: string = 'daytonaio/sandbox:0.8.0';
 
 	/** Default command timeout in the sandbox (milliseconds). */
 	@Env('N8N_AGENTS_AI_SANDBOX_TIMEOUT')

@@ -839,24 +839,27 @@ function getResolvedNodeOutputs() {
 function shouldHintBeDisplayed(hint: NodeHint): boolean {
 	const { location, whenToDisplay } = hint;
 
-	if (location) {
-		if (location === 'ndv' && !['input', 'output'].includes(props.paneType)) {
-			return false;
-		}
-		if (location === 'inputPane' && props.paneType !== 'input') {
-			return false;
-		}
+	// 'ndv' hints are node-level, so render them in a single pane only
+	// (the output pane, since trigger nodes have no input pane)
+	if (location === 'ndv' && props.paneType !== 'output') {
+		return false;
+	}
 
-		if (location === 'outputPane' && props.paneType !== 'output') {
-			return false;
-		}
+	if (location === 'inputPane' && props.paneType !== 'input') {
+		return false;
+	}
+
+	if (location === 'outputPane' && props.paneType !== 'output') {
+		return false;
 	}
 
 	if (whenToDisplay === 'afterExecution' && !hasNodeRun.value) {
 		return false;
 	}
 
-	if (whenToDisplay === 'beforeExecution' && hasNodeRun.value) {
+	// 'ndv' hints are configuration-time warnings, so a (possibly stale)
+	// previous run must not hide them permanently
+	if (whenToDisplay === 'beforeExecution' && hasNodeRun.value && location !== 'ndv') {
 		return false;
 	}
 
@@ -2273,6 +2276,10 @@ defineExpose({ enterEditMode });
 	margin-bottom: var(--ndv--spacing);
 	padding: var(--ndv--spacing) var(--spacing--3xs) 0 var(--ndv--spacing);
 	position: relative;
+	/* Scroll overflowing header controls within the header itself, so they stay
+	   reachable on narrow panels without dragging the whole panel's background along */
+	overflow-x: auto;
+	overflow-y: hidden;
 	min-height: calc(30px + var(--ndv--spacing));
 	scrollbar-width: thin;
 	container-type: inline-size;

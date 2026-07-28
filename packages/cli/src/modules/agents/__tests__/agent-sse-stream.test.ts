@@ -1,7 +1,8 @@
 import type { StreamChunk } from '@n8n/agents';
 import type { AgentSseEvent } from '@n8n/api-types';
+import { EventEmitter } from 'node:events';
 
-import { pumpChunks } from '../agent-sse-stream';
+import { initSseStream, pumpChunks, type FlushableResponse } from '../agent-sse-stream';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -18,6 +19,72 @@ async function collectEvents(chunks: StreamChunk[]): Promise<AgentSseEvent[]> {
 	await pumpChunks(toAsyncIterable(chunks), (e) => events.push(e));
 	return events;
 }
+
+function createResponse() {
+	const socket = {
+		setTimeout: vi.fn(),
+		setNoDelay: vi.fn(),
+		setKeepAlive: vi.fn(),
+	};
+	const res = Object.assign(new EventEmitter(), {
+		setHeader: vi.fn(),
+		flushHeaders: vi.fn(),
+		write: vi.fn(),
+		flush: vi.fn(),
+		socket,
+		writableEnded: false,
+		destroyed: false,
+	}) as unknown as FlushableResponse;
+
+	return { res, socket };
+}
+
+describe('agent-sse-stream — connection setup', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('configures the response to remain open through reverse proxies', () => {
+		const { res, socket } = createResponse();
+
+		initSseStream(res);
+
+		expect(socket.setTimeout).toHaveBeenCalledWith(0);
+		expect(socket.setNoDelay).toHaveBeenCalledWith(true);
+		expect(socket.setKeepAlive).toHaveBeenCalledWith(true);
+		expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-cache, no-transform');
+		expect(res.write).toHaveBeenCalledWith(':ok\n\n');
+		expect(res.flush).toHaveBeenCalled();
+		res.emit('close');
+	});
+
+	it('writes an SSE heartbeat after 30 seconds of inactivity', () => {
+		vi.useFakeTimers();
+		const { res } = createResponse();
+		initSseStream(res);
+		vi.mocked(res.write).mockClear();
+		vi.mocked(res.flush).mockClear();
+
+		vi.advanceTimersByTime(29_999);
+		expect(res.write).not.toHaveBeenCalled();
+
+		vi.advanceTimersByTime(1);
+		expect(res.write).toHaveBeenCalledWith(':ping\n\n');
+		expect(res.flush).toHaveBeenCalled();
+	});
+
+	it.each(['finish', 'close'])('stops the heartbeat after the response emits %s', (event) => {
+		vi.useFakeTimers();
+		const { res } = createResponse();
+		initSseStream(res);
+		vi.mocked(res.write).mockClear();
+
+		res.emit(event);
+		vi.advanceTimersByTime(30_000);
+
+		expect(res.write).not.toHaveBeenCalled();
+	});
+});
 
 // ---------------------------------------------------------------------------
 // stringifyError — tested through pumpChunks / emitChunkEvents
@@ -78,6 +145,80 @@ describe('agent-sse-stream — stream completion', () => {
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
 			{ type: 'text-end', id: 't-1' },
 		]);
+	});
+
+	it('drains every suspension chunk before reporting that the run paused', async () => {
+		const chunks: StreamChunk[] = [
+			{
+				type: 'tool-call-suspended',
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				toolName: 'ask_questions',
+				suspendPayload: { question: 'First question' },
+			},
+			{
+				type: 'tool-call-suspended',
+				runId: 'run-1',
+				toolCallId: 'tc-2',
+				toolName: 'ask_questions',
+				suspendPayload: { question: 'Second question' },
+			},
+			{ type: 'finish', finishReason: 'other' },
+		];
+		const events: AgentSseEvent[] = [];
+
+		const suspended = await pumpChunks(toAsyncIterable(chunks), (event) => events.push(event));
+
+		expect(suspended).toBe(true);
+		expect(events).toEqual([
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-1',
+					runId: 'run-1',
+					toolName: 'ask_questions',
+					input: { question: 'First question' },
+				},
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-2',
+					runId: 'run-1',
+					toolName: 'ask_questions',
+					input: { question: 'Second question' },
+				},
+			},
+		]);
+	});
+});
+
+describe('agent-sse-stream — warning chunks', () => {
+	it('forwards warning chunks as non-fatal warning SSE events', async () => {
+		const events = await collectEvents([
+			{
+				type: 'warning',
+				message: 'fetch failed',
+				code: 'mcp_connection_failed',
+				source: 'mcp',
+				server: 'dead',
+			},
+		]);
+
+		expect(events).toEqual([
+			{
+				type: 'warning',
+				message: 'fetch failed',
+				code: 'mcp_connection_failed',
+				source: 'mcp',
+				server: 'dead',
+			},
+		]);
+	});
+
+	it('omits optional warning fields when absent', async () => {
+		const events = await collectEvents([{ type: 'warning', message: 'something' }]);
+		expect(events).toEqual([{ type: 'warning', message: 'something' }]);
 	});
 });
 

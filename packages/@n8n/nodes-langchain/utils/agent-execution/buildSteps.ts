@@ -22,6 +22,8 @@ interface ProviderMetadata {
 	thinkingType?: 'thinking' | 'redacted_thinking';
 	/** Anthropic thinking signature */
 	thinkingSignature?: string;
+	/** DeepSeek reasoning content for thinking mode */
+	reasoningContent?: string;
 }
 
 /**
@@ -57,11 +59,18 @@ function extractProviderMetadata(metadata?: RequestResponseMetadata): ProviderMe
 			? metadata.anthropic.thinkingSignature
 			: undefined;
 
+	// Extract DeepSeek metadata
+	const reasoningContent =
+		typeof metadata.deepseek?.reasoningContent === 'string'
+			? metadata.deepseek.reasoningContent
+			: undefined;
+
 	return {
 		thoughtSignature,
 		thinkingContent,
 		thinkingType,
 		thinkingSignature,
+		reasoningContent,
 	};
 }
 
@@ -229,16 +238,23 @@ function buildIndividualAIMessage(
 
 	const content = buildMessageContent(providerMetadata, toolInput, toolId, toolName);
 
+	const additionalKwargs: Record<string, unknown> = providerMetadata.thoughtSignature
+		? buildGeminiAdditionalKwargs(
+				[{ id: toolId, name: toolName, args: toolInput }],
+				providerMetadata.thoughtSignature,
+			)
+		: {};
+	// DeepSeek's thinking mode requires reasoning_content to be echoed back on the
+	// assistant message that requested the tool call, or the next turn 400s.
+	if (providerMetadata.reasoningContent) {
+		additionalKwargs.reasoning_content = providerMetadata.reasoningContent;
+	}
+
 	return new AIMessage({
 		content: content ?? [],
 		// When content is an array (Anthropic thinking), LangChain ignores tool_calls
 		...(content === null && { tool_calls: [toolCall] }),
-		...(providerMetadata.thoughtSignature && {
-			additional_kwargs: buildGeminiAdditionalKwargs(
-				[{ id: toolId, name: toolName, args: toolInput }],
-				providerMetadata.thoughtSignature,
-			),
-		}),
+		...(Object.keys(additionalKwargs).length > 0 && { additional_kwargs: additionalKwargs }),
 	});
 }
 

@@ -20,6 +20,8 @@ export interface AgentExecutionThread {
 	createdAt: string;
 	updatedAt: string;
 	firstMessage?: string | null;
+	/** Earliest non-null execution source for the thread (e.g. slack, telegram). */
+	source?: string | null;
 }
 
 export type AgentExecutionStatus = 'success' | 'error';

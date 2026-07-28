@@ -54,11 +54,14 @@ describe('data-tables tool', () => {
 	// ── Tool construction ──────────────────────────────────────────────────
 
 	describe('tool construction', () => {
-		it('should have a concise description', () => {
+		it('should require loading data-table-manager before use', () => {
 			const context = createMockContext();
 			const tool = createDataTablesTool(context);
 
 			expect(tool.description).toContain('data tables');
+			expect(tool.description).toContain('data-table-manager');
+			expect(tool.description).toContain('load_skill');
+			expect(tool.description).toContain('what data tables do I have?');
 		});
 	});
 

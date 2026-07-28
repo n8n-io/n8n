@@ -253,6 +253,14 @@ export class SchedulerConfig {
 	triggerNodeMode: 'legacy' | 'new' = 'legacy';
 
 	/**
+	 * Whether nodes that poll on a schedule (e.g. checking an inbox or API on an
+	 * interval) are scheduled by the durable scheduler instead of n8n's
+	 * in-process timer. Off by default; requires {@link enabled} to also be on.
+	 */
+	@Env('N8N_SCHEDULER_POLL_TRIGGERS_ENABLED')
+	enabledForPollTriggers: boolean = false;
+
+	/**
 	 * Temporary escape hatch for the durable-scheduler rollout (preview to GA).
 	 * Off by default; intended to be removed once the durable scheduler is GA.
 	 *

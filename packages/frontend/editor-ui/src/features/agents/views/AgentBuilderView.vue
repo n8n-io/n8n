@@ -19,6 +19,7 @@ import {
 } from '@n8n/api-types';
 import type { AgentFileDto } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -46,6 +47,7 @@ import type {
 	AgentSkill,
 } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
+import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentConfigValidation } from '../composables/useAgentConfigValidation';
@@ -72,6 +74,7 @@ import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderPreviewHeader from '../components/AgentBuilderPreviewHeader.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
+import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
@@ -144,6 +147,11 @@ const effectiveCanEditAgent = computed(() => canEditAgent.value && !props.artifa
 
 const isVersionHistoryOpen = ref(false);
 
+// Whether the preview shows the session trace (true) instead of the chat
+// (false). Local toggle only — no URL sync; the standalone session route
+// covers shareable deep-links.
+const isPreviewTraceOpen = ref(false);
+
 async function onSendPreviewToAssistant(executionId?: string) {
 	const threadId = effectiveSessionId.value;
 	if (!threadId || !agentId.value || !projectId.value) return;
@@ -213,7 +221,6 @@ const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
 /** Bumped when the config changes outside the local editor (modal flows, version revert) so the Tasks panel reloads. */
 const tasksReloadKey = ref(0);
-const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
@@ -231,6 +238,7 @@ const builderTelemetry = useAgentBuilderTelemetry({
 	savedConfig: config,
 	connectedTriggers,
 });
+const toolTelemetry = useAgentToolTelemetry(agentId);
 
 /**
  * The backend owns runnable validation so the chat entry point either opens
@@ -332,7 +340,7 @@ async function fetchAgentFiles(
 }
 
 async function onUploadAgentFiles(files: File[]) {
-	if (files.length === 0 || !agent.value?.activeVersionId) return;
+	if (files.length === 0) return;
 	const oversizedFiles = files.filter((file) => file.size > MAX_AGENT_FILE_SIZE_BYTES);
 	if (oversizedFiles.length > 0) {
 		showError(
@@ -488,7 +496,7 @@ async function onOpenPreview() {
 		return;
 	}
 	await openPreview();
-	telemetry.track('User opened agent preview', { agent_id: agentId.value });
+	telemetry.track(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW, { agent_id: agentId.value });
 }
 
 function getBuilderQuery() {
@@ -506,18 +514,9 @@ function closePreview() {
 	});
 }
 
-function openMemorySettings() {
-	void router.push({
-		name: AGENT_BUILDER_VIEW,
-		params: { projectId: projectId.value, agentId: agentId.value },
-		query: { ...getBuilderQuery(), section: 'settings' },
-	});
-}
-
 function onPublished(updated: AgentResource) {
 	agent.value = updated;
 	void versionHistoryPanel.value?.refresh();
-	warmAgentKnowledgeSandboxForPage();
 }
 
 function onUnpublished(updated: AgentResource) {
@@ -566,7 +565,7 @@ function bindPreviewSession() {
 }
 
 function warmAgentKnowledgeSandboxForPage() {
-	if (!initialized.value || !isKnowledgeBaseEnabled.value || !agent.value?.activeVersionId) return;
+	if (!initialized.value || !isKnowledgeBaseEnabled.value || !agent.value) return;
 
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
@@ -669,7 +668,7 @@ const configAutosave = useAgentConfigAutosave<ConfigAutosaveSnapshot>({
 const skillAutosave = useAgentConfigAutosave<SkillAutosaveSnapshot>({
 	save: saveSkill,
 	onSaved: (snapshot) => {
-		telemetry.track('User saved agent skill', {
+		telemetry.track(TELEMETRY_EVENT.AGENTS.USER_SAVED_AGENT_SKILL, {
 			agent_id: snapshot.agentId,
 			skill_id: snapshot.skillId,
 		});
@@ -819,6 +818,8 @@ const caps = useAgentCapabilitiesActions({
 		trackOpenedAddSkillModal: builderTelemetry.trackOpenedAddSkillModal,
 		trackTriggerListChanged: builderTelemetry.trackTriggerListChanged,
 		trackTriggerAdded: builderTelemetry.trackTriggerAdded,
+		trackRemovedTool: toolTelemetry.trackRemoved,
+		trackRemovedMcpServer: toolTelemetry.trackRemovedMcpServer,
 	},
 });
 // Top-level alias so the template auto-unwraps the ref (nested `caps.appliedSkills`
@@ -848,7 +849,7 @@ function persistMissingPersonalisationGradient() {
 	replaceConfigAndScheduleSave(nextConfig, false);
 }
 
-async function onConfigUpdated() {
+async function onConfigUpdated(options?: { rebaselineOnly?: boolean }) {
 	// Modal flows (e.g. skill creation) write through their own API calls, not
 	// `saveConfig` — notify other surfaces (canvas agent cards) here too.
 	agentsEventBus.emit('agentUpdated', { agentId: agentId.value, source: 'agent-builder' });
@@ -864,14 +865,23 @@ async function onConfigUpdated() {
 	const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 	if (connected) connectedTriggers.value = connected;
 	tasksReloadKey.value += 1;
-	builderTelemetry.trackToolsAdded();
-	builderTelemetry.trackSkillsAdded();
-	builderTelemetry.trackTasksChanged();
+	if (options?.rebaselineOnly) {
+		// External (e.g. Instance AI builder) writes are tracked by the backend's
+		// "Builder added ..." twins — re-baseline so frontend diffs don't
+		// double-count them, and only frontend-initiated saves emit "User added ...".
+		builderTelemetry.captureToolsBaseline();
+		builderTelemetry.captureSkillsBaseline();
+		builderTelemetry.captureTasksBaseline();
+	} else {
+		builderTelemetry.trackToolsAdded();
+		builderTelemetry.trackSkillsAdded();
+		builderTelemetry.trackTasksChanged();
+	}
 }
 
 async function refreshArtifactShell() {
 	await settleAutosave();
-	await onConfigUpdated();
+	await onConfigUpdated({ rebaselineOnly: true });
 }
 
 function handleArtifactRefreshError(error: unknown) {
@@ -1163,7 +1173,15 @@ watch(
 watch(isPreviewMode, (preview) => {
 	if (preview) {
 		bindPreviewSession();
+	} else {
+		isPreviewTraceOpen.value = false;
 	}
+});
+
+// Leaving a session (switching sessions) should drop back to the chat rather
+// than carry the trace-open state across to a different session.
+watch(effectiveSessionId, () => {
+	isPreviewTraceOpen.value = false;
 });
 
 function exitContinueMode() {
@@ -1287,13 +1305,14 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 			v-if="isPreviewMode"
 			:breadcrumb-items="previewBreadcrumbItems"
 			:session-title="currentSessionTitle"
-			:session-id="effectiveSessionId"
 			:has-session="currentSessionHasMessages"
 			:session-options="sessionOptions"
+			:trace-open="isPreviewTraceOpen"
 			@breadcrumb-select="onPreviewBreadcrumbSelect"
 			@session-select="onSessionPick"
 			@new-chat="onNewChat"
 			@close-preview="closePreview"
+			@toggle-trace="isPreviewTraceOpen = !isPreviewTraceOpen"
 		/>
 		<AgentBuilderHeader
 			v-else
@@ -1350,7 +1369,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 			</div>
 			<template v-else>
 				<AgentPreviewChatPage
-					v-if="isPreviewMode"
+					v-if="isPreviewMode && !isPreviewTraceOpen"
 					:initialized="initialized"
 					:project-id="projectId"
 					:agent-id="agentId"
@@ -1361,7 +1380,13 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:can-send-to-assistant="canSendPreviewToInstanceAi"
 					@continue-loaded="onContinueLoaded"
 					@send-to-assistant="onSendPreviewToAssistant"
-					@open-memory-settings="openMemorySettings"
+				/>
+
+				<AgentSessionTimelinePanel
+					v-else-if="isPreviewMode && isPreviewTraceOpen && effectiveSessionId"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:thread-id="effectiveSessionId"
 				/>
 
 				<AgentBuilderEditorColumn
@@ -1400,7 +1425,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					@update:connected-triggers="caps.onConnectedTriggersUpdate"
 					@trigger-added="caps.onTriggerAdded"
 					@toggle-task="caps.onToggleTask"
-					@tasks-changed="onConfigUpdated"
+					@tasks-changed="() => onConfigUpdated()"
 					@agent-changed="refreshAgentAfterIntegrationChange"
 				/>
 

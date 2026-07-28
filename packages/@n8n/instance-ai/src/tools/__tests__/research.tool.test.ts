@@ -41,6 +41,15 @@ function createAgentCtx(opts: { resumeData?: unknown; suspend?: Mock } = {}) {
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe('research tool', () => {
+	it('prefers knowledge base and n8n-docs over web search for n8n-specific research', () => {
+		const tool = createResearchTool(createMockContext());
+
+		expect(tool.description).toContain('external (non-n8n) documentation');
+		expect(tool.description).toContain('knowledge base');
+		expect(tool.description).toContain('n8n-docs');
+		expect(tool.description).toContain('prefer');
+	});
+
 	// ── web-search ──────────────────────────────────────────────────────────
 
 	describe('web-search action', () => {
