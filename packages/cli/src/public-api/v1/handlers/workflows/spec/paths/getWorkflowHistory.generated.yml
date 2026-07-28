@@ -39,10 +39,8 @@ responses:
                     nullable: true
                   createdAt:
                     type: string
-                    nullable: true
                   updatedAt:
                     type: string
-                    nullable: true
                 required:
                   - versionId
                   - workflowId

@@ -97,8 +97,12 @@ export function buildArtifactsFromRegistry(
 	operations.forEach(({ outputPath, pathKey, method }) => {
 		const operation = document.paths?.[pathKey]?.[method];
 		rewriteComponentRefs(operation, (componentName) =>
-			path.relative(
-				path.dirname(outputPath),
+			// path.posix, not the platform-dependent `path` import: outputPath is always a POSIX-style
+			// virtual path (built with hardcoded '/' in decorator-routes.ts), and the result becomes a
+			// literal $ref string in the generated YAML - path.relative/dirname would emit backslashes
+			// on Windows, producing an invalid $ref and platform-dependent drift in the committed file.
+			path.posix.relative(
+				path.posix.dirname(outputPath),
 				`${SHARED_SCHEMA_DIR}/${schemaFileName(componentName)}`,
 			),
 		);
