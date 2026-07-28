@@ -209,7 +209,7 @@ describe('workflow package import — with tags', () => {
 
 	describe('rename drift (same id, different target name)', () => {
 		it('blocks under fail and writes nothing, leaving the drifted tag name alone', async () => {
-			const { tag, packageBuffer } = await taggedWorkflowPackage(owner, 'prod');
+			const { workflow, tag, packageBuffer } = await taggedWorkflowPackage(owner, 'prod');
 			await updateTag(tag, { name: 'production' });
 			const targetProject = await createTeamProject('Target', owner);
 			const workflowsBefore = await workflowRepository.count();
@@ -232,6 +232,7 @@ describe('workflow package import — with tags', () => {
 							sourceId: tag.id,
 							name: 'prod',
 							existingName: 'production',
+							usedByWorkflows: [workflow.id],
 						}),
 					],
 				},
@@ -351,6 +352,71 @@ describe('workflow package import — with tags', () => {
 			]);
 		});
 
+		it('treats a case-variant target name as free and creates without conflict', async () => {
+			const { tag, packageBuffer } = await taggedWorkflowPackage(owner, 'prod');
+			await tagRepository.delete(tag.id);
+			await createTag({ name: 'Prod' });
+			const targetProject = await createTeamProject('Target', owner);
+
+			const result = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer,
+				tagConflictPolicy: 'fail',
+			});
+
+			expect(result.tags).toEqual({ matched: [], created: ['prod'], renamed: [], skipped: [] });
+			expect(await tagIdsOf(result.workflows[0].localId)).toEqual([tag.id]);
+		});
+
+		it('blocks two package tags whose trimmed names collide, creating nothing', async () => {
+			const workflow = serializedWorkflow({
+				id: 'wf-0',
+				name: 'Workflow 0',
+				tagIds: ['tag-a', 'tag-b'],
+			});
+			const packageBuffer = await buildEntityPackageBuffer({
+				workflows: [{ target: 'workflows/wf-0', workflow }],
+				manifestExtras: {
+					requirements: {
+						tags: [
+							{ id: 'tag-a', name: 'prod', usedByWorkflows: ['wf-0'] },
+							{ id: 'tag-b', name: ' prod ', usedByWorkflows: ['wf-0'] },
+						],
+					},
+				},
+			});
+			const targetProject = await createTeamProject('Target', owner);
+
+			let caught: unknown;
+			await importPackage({ user: owner, projectId: targetProject.id, packageBuffer }).catch(
+				(error: unknown) => (caught = error),
+			);
+
+			expect(caught).toBeInstanceOf(ConflictError);
+			expect(caught).toMatchObject({
+				meta: {
+					issues: [
+						expect.objectContaining({
+							type: 'tag-unresolved',
+							kind: 'name-collision',
+							sourceId: 'tag-a',
+							name: 'prod',
+							usedByWorkflows: ['wf-0'],
+						}),
+						expect.objectContaining({
+							type: 'tag-unresolved',
+							kind: 'name-collision',
+							sourceId: 'tag-b',
+							name: 'prod',
+							usedByWorkflows: ['wf-0'],
+						}),
+					],
+				},
+			});
+			expect(await tagRepository.count()).toBe(0);
+		});
+
 		it('drops the tag under the default skip policy and imports the workflow without it', async () => {
 			const { tag, packageBuffer } = await taggedWorkflowPackage(owner, 'prod');
 			await tagRepository.delete(tag.id);
@@ -423,6 +489,38 @@ describe('workflow package import — with tags', () => {
 			});
 
 			expect(await tagIdsOf(imported.id)).toEqual([]);
+		});
+
+		it('attaches a tag listed twice in the package tagIds exactly once on the update path', async () => {
+			const workflow = serializedWorkflow({
+				id: 'wf-0',
+				name: 'Workflow 0',
+				tagIds: ['tag-1', 'tag-1'],
+			});
+			const packageBuffer = await buildEntityPackageBuffer({
+				workflows: [{ target: 'workflows/wf-0', workflow }],
+				manifestExtras: {
+					requirements: { tags: [{ id: 'tag-1', name: 'prod', usedByWorkflows: ['wf-0'] }] },
+				},
+			});
+			const targetProject = await createTeamProject('Target', owner);
+
+			const first = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer,
+				workflowConflictPolicy: 'new-version',
+			});
+			const second = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer,
+				workflowConflictPolicy: 'new-version',
+			});
+
+			expect(second.workflows[0].status).toBe('updated');
+			expect(second.workflows[0].localId).toBe(first.workflows[0].localId);
+			expect(await tagIdsOf(second.workflows[0].localId)).toEqual(['tag-1']);
 		});
 
 		it('leaves target taggings untouched when the package was exported without tags', async () => {
