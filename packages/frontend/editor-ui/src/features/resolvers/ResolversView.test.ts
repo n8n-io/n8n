@@ -167,6 +167,20 @@ describe('ResolversView', () => {
 			});
 		});
 
+		it('should badge only the resolvers whose config needs an update', async () => {
+			vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue([
+				{ ...mockResolvers[0], needsConfigurationUpdate: true },
+				{ ...mockResolvers[1], needsConfigurationUpdate: false },
+			]);
+
+			const { getAllByText, getByText } = renderComponent({ pinia });
+
+			await waitFor(() => {
+				expect(getByText('Test Resolver')).toBeInTheDocument();
+			});
+			expect(getAllByText('Update needed')).toHaveLength(1);
+		});
+
 		it('should display resolver type display name from types list', async () => {
 			vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue(mockResolvers);
 			vi.mocked(restApiClient.getCredentialResolverTypes).mockResolvedValue(mockResolverTypes);

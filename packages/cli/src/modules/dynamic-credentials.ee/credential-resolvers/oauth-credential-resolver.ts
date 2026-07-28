@@ -30,9 +30,10 @@ const OAuthCredentialResolverOptionsSchema = z.discriminatedUnion('validation', 
 type OAuthCredentialResolverOptions = z.infer<typeof OAuthCredentialResolverOptionsSchema>;
 
 /**
- * OAuth2 token introspection-based credential resolver.
- * Resolves user identity via OAuth2 token introspection and stores credentials
- * encrypted in the database, keyed by the introspected subject.
+ * OAuth2 credential resolver.
+ * Resolves a caller's identity from their access token — via token introspection or
+ * the UserInfo endpoint, per the configured validation method — and stores credentials
+ * encrypted in the database, keyed by the resolved subject.
  */
 @CredentialResolver()
 export class OAuthCredentialResolver implements ICredentialResolver {
@@ -107,6 +108,15 @@ export class OAuthCredentialResolver implements ICredentialResolver {
 						validation: ['oauth2-introspection'],
 					},
 				},
+			},
+			{
+				displayName: 'Expected Audience',
+				name: 'expectedAudience',
+				type: 'string' as const,
+				default: '',
+				placeholder: 'https://api.example.com',
+				description:
+					'Audience the access token must be issued for, matched against its aud, azp or client_id claim. Defaults to the Client ID when using token introspection; set it when your provider uses a separate resource identifier.',
 			},
 			{
 				displayName: 'Subject Claim',
@@ -202,6 +212,15 @@ export class OAuthCredentialResolver implements ICredentialResolver {
 	async validateOptions(options: CredentialResolverConfiguration): Promise<void> {
 		const [identifier, parsedOptions] = await this.getIdentifier(options);
 		await identifier.validateOptions(parsedOptions);
+	}
+
+	/**
+	 * UserInfo mode resolves an identity from the access token alone, so without an
+	 * expected audience there is nothing tying that token to this instance. Stored
+	 * resolvers keep working, but should be updated.
+	 */
+	needsConfigurationUpdate(config: CredentialResolverConfiguration): boolean {
+		return config.validation === 'oauth2-userinfo' && !config.expectedAudience;
 	}
 
 	private async getIdentifier(

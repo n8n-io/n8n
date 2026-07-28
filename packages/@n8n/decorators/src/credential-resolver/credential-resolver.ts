@@ -112,6 +112,16 @@ export interface ICredentialResolver {
 	): Promise<string | undefined>;
 
 	/**
+	 * Reports whether a stored configuration predates a requirement that
+	 * `validateOptions` now enforces. Such a configuration keeps working so upgrades
+	 * do not break running workflows, so the admin needs to be told it should be
+	 * updated. Surfaced as a badge on the resolver list.
+	 *
+	 * Optional - only resolvers whose requirements have changed implement it.
+	 */
+	needsConfigurationUpdate?(config: CredentialResolverConfiguration): boolean;
+
+	/**
 	 * Runs initialization logic for the resolver. This might be called multiple times!
 	 * Optional - not all resolvers require initialization.
 	 */

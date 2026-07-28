@@ -49,8 +49,17 @@ export class CredentialResolversController {
 			const rows = query.includeSystem
 				? await this.service.findAll()
 				: await this.service.findAllPublic();
+			// Flagged before stripping, since the check reads the decrypted config that
+			// the response deliberately withholds.
+			const flags = new Map(
+				rows.map((row) => [row.id, this.service.needsConfigurationUpdate(row)]),
+			);
 			const resolvers = credentialResolversSchema.parse(rows);
-			return resolvers.map(({ decryptedConfig: _, ...rest }) => ({ ...rest, config: '' }));
+			return resolvers.map(({ decryptedConfig: _, ...rest }) => ({
+				...rest,
+				config: '',
+				needsConfigurationUpdate: flags.get(rest.id) ?? false,
+			}));
 		} catch (e: unknown) {
 			if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);

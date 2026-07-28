@@ -311,6 +311,38 @@ describe('OAuthCredentialResolver', () => {
 			});
 		});
 
+		describe('needsConfigurationUpdate', () => {
+			it('flags a UserInfo resolver stored without an expected audience', () => {
+				expect(
+					resolver.needsConfigurationUpdate({
+						metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+						validation: 'oauth2-userinfo',
+					}),
+				).toBe(true);
+			});
+
+			it('does not flag a UserInfo resolver with an expected audience', () => {
+				expect(
+					resolver.needsConfigurationUpdate({
+						metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+						validation: 'oauth2-userinfo',
+						expectedAudience: 'n8n-client',
+					}),
+				).toBe(false);
+			});
+
+			it('does not flag an introspection resolver, which defaults to its client id', () => {
+				expect(
+					resolver.needsConfigurationUpdate({
+						metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+						validation: 'oauth2-introspection',
+						clientId: 'test-client',
+						clientSecret: 'test-secret',
+					}),
+				).toBe(false);
+			});
+		});
+
 		describe('identifier routing', () => {
 			it('should use introspection identifier when validation is oauth2-introspection', async () => {
 				const credentialId = 'cred-123';

@@ -114,6 +114,18 @@ export class DynamicCredentialResolverService {
 	}
 
 	/**
+	 * Whether a stored resolver predates a requirement its type now enforces, so the
+	 * admin should update it. Requires `decryptedConfig` to be populated.
+	 */
+	needsConfigurationUpdate(resolver: DynamicCredentialResolver): boolean {
+		const implementation = this.registry.getResolverByTypename(resolver.type);
+		if (!implementation?.needsConfigurationUpdate || !resolver.decryptedConfig) {
+			return false;
+		}
+		return implementation.needsConfigurationUpdate(resolver.decryptedConfig);
+	}
+
+	/**
 	 * Retrieves a credential resolver by ID.
 	 * Config is returned decrypted.
 	 * @throws {DynamicCredentialResolverNotFoundError} When resolver is not found

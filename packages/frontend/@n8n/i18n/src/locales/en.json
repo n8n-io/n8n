@@ -4451,6 +4451,8 @@
 	"credentialResolver.action.delete": "Delete",
 	"credentialResolver.item.updated": "Last updated",
 	"credentialResolver.item.created": "Created",
+	"credentialResolver.item.needsUpdate": "Update needed",
+	"credentialResolver.item.needsUpdate.tooltip": "Set an expected audience on this resolver so it only accepts access tokens issued for this n8n instance. It keeps working until you do.",
 	"credentialResolverEdit.icon": "Credential resolver",
 	"credentialResolverEdit.title.create": "Create Credential Resolver",
 	"credentialResolverEdit.title.edit": "Edit Credential Resolver",

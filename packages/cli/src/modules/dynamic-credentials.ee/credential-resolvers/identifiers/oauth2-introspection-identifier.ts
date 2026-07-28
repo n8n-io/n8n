@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
 import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client';
-import { OAuth2OptionsSchema, sha256 } from './oauth2-utils';
+import { assertAudience, OAuth2OptionsSchema, sha256 } from './oauth2-utils';
 
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -113,7 +113,10 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 
 		const hashedToken = sha256(context.identity);
 
-		const identifierCacheKey = `${CACHE_PREFIX}:subject:${metadata.issuer}:${hashedToken}`;
+		// Fold the options that decide the subject into the key, so a reconfigured
+		// resolver cannot keep serving subjects cached under its previous settings.
+		const optionsFingerprint = sha256(`${options.subjectClaim}:${this.expectedAudience(options)}`);
+		const identifierCacheKey = `${CACHE_PREFIX}:subject:${metadata.issuer}:${optionsFingerprint}:${hashedToken}`;
 		const cached = await this.cache.get<string>(identifierCacheKey);
 		if (cached) {
 			return cached;
@@ -134,6 +137,15 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 	}
 
 	// ------------------------ Private Methods ----------------------- //
+
+	/**
+	 * The audience a token issued to this instance is expected to carry. Defaults to
+	 * our own client id, which is what most IdPs put in `aud` or `azp`; the override
+	 * exists for IdPs that name a separate resource identifier there instead.
+	 */
+	private expectedAudience(options: OAuth2IntrospectionOptions): string {
+		return options.expectedAudience ?? options.clientId;
+	}
 
 	private parseOptions(options: Record<string, unknown>): OAuth2IntrospectionOptions {
 		try {
@@ -249,6 +261,10 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 			this.logger.error('Token is not active according to introspection response');
 			throw new IdentifierValidationError('Token is not active');
 		}
+
+		// Client authentication proves the IdP will answer us; `active` proves the token
+		// is live. Neither says it was minted for us, so bind it before trusting a subject.
+		assertAudience(introspectionData, this.expectedAudience(options));
 
 		const subject = introspectionData[options.subjectClaim];
 		if (!subject) {

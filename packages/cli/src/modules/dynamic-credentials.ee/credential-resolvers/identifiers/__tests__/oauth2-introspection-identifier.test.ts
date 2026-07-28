@@ -184,7 +184,11 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 		});
 
 		test('should throw IdentifierValidationError when subject claim is missing', async () => {
-			const responseWithoutSub = { active: true, exp: validIntrospectionResponse.exp };
+			const responseWithoutSub = {
+				active: true,
+				exp: validIntrospectionResponse.exp,
+				client_id: 'test-client',
+			};
 			stubFlow(validMetadata, responseWithoutSub);
 
 			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
@@ -193,6 +197,94 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
 				'missing subject claim',
 			);
+		});
+	});
+
+	describe('Audience', () => {
+		test('should accept a token whose client_id matches the configured clientId', async () => {
+			stubFlow(validMetadata, { ...validIntrospectionResponse, client_id: 'test-client' });
+
+			await expect(identifier.resolve(mockContext, validOptions)).resolves.toBe('user-123');
+		});
+
+		test('should accept a token whose aud matches the configured clientId', async () => {
+			const response = { active: true, sub: 'user-123', aud: 'test-client' };
+			stubFlow(validMetadata, response);
+
+			await expect(identifier.resolve(mockContext, validOptions)).resolves.toBe('user-123');
+		});
+
+		test('should accept a token whose aud array contains the configured clientId', async () => {
+			const response = { active: true, sub: 'user-123', aud: ['other-app', 'test-client'] };
+			stubFlow(validMetadata, response);
+
+			await expect(identifier.resolve(mockContext, validOptions)).resolves.toBe('user-123');
+		});
+
+		test('should accept a token whose azp matches when aud names a resource', async () => {
+			const response = {
+				active: true,
+				sub: 'user-123',
+				aud: 'https://api.example.com',
+				azp: 'test-client',
+			};
+			stubFlow(validMetadata, response);
+
+			await expect(identifier.resolve(mockContext, validOptions)).resolves.toBe('user-123');
+		});
+
+		test('should reject a token issued for a different party', async () => {
+			const response = { active: true, sub: 'user-123', aud: 'other-app', client_id: 'other-app' };
+			stubFlow(validMetadata, response);
+
+			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
+				IdentifierValidationError,
+			);
+			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
+				'Token was not issued for the expected audience',
+			);
+		});
+
+		test('should reject a token that declares no audience at all', async () => {
+			const response = { active: true, sub: 'user-123' };
+			stubFlow(validMetadata, response);
+
+			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
+				'Token declares no audience',
+			);
+		});
+
+		test('should match against expectedAudience instead of clientId when configured', async () => {
+			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
+			const response = { active: true, sub: 'user-123', aud: 'https://api.example.com' };
+			stubFlow(validMetadata, response);
+
+			await expect(identifier.resolve(mockContext, options)).resolves.toBe('user-123');
+		});
+
+		test('should reject a clientId-only audience once expectedAudience is configured', async () => {
+			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
+			stubFlow(validMetadata, validIntrospectionResponse);
+
+			await expect(identifier.resolve(mockContext, options)).rejects.toThrow(
+				'Token was not issued for the expected audience',
+			);
+		});
+
+		test('should not reuse a cached subject after expectedAudience changes', async () => {
+			stubFlow(validMetadata, validIntrospectionResponse);
+			await identifier.resolve(mockContext, validOptions);
+
+			const firstKey = cache.set.mock.calls.find((call) => call[0].includes(':subject:'))![0];
+			cache.set.mockClear();
+
+			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
+			const response = { active: true, sub: 'user-123', aud: 'https://api.example.com' };
+			stubFlow(validMetadata, response);
+			await identifier.resolve(mockContext, options);
+
+			const secondKey = cache.set.mock.calls.find((call) => call[0].includes(':subject:'))![0];
+			expect(secondKey).not.toBe(firstKey);
 		});
 	});
 

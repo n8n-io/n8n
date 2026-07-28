@@ -63,6 +63,25 @@ describe('CredentialResolversController', () => {
 			expect(result[0]).not.toHaveProperty('decryptedConfig');
 			expect(result[0].config).toBe('');
 		});
+
+		it('reports resolvers whose stored config needs an update', async () => {
+			service.findAllPublic.mockResolvedValue([baseRow]);
+			service.needsConfigurationUpdate.mockReturnValue(true);
+
+			const result = await controller.listResolvers(req, res, {});
+
+			expect(service.needsConfigurationUpdate).toHaveBeenCalledWith(baseRow);
+			expect(result[0].needsConfigurationUpdate).toBe(true);
+		});
+
+		it('reports resolvers whose stored config is current', async () => {
+			service.findAllPublic.mockResolvedValue([baseRow]);
+			service.needsConfigurationUpdate.mockReturnValue(false);
+
+			const result = await controller.listResolvers(req, res, {});
+
+			expect(result[0].needsConfigurationUpdate).toBe(false);
+		});
 	});
 
 	describe('createResolver', () => {
