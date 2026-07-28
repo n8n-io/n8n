@@ -158,6 +158,14 @@ describe('decideTag', () => {
 			});
 		});
 
+		it('accepts a ZWJ-joined emoji name', () => {
+			const family = '👨‍👩‍👧';
+			expect(decideTag({ id: 't', name: family }, undefined, undefined, 'create', 'fail')).toEqual({
+				action: 'create',
+				tag: { id: 't', name: family },
+			});
+		});
+
 		it('gates a whitespace-only name on create', () => {
 			expect(decideTag({ id: 't', name: '   ' }, undefined, undefined, 'create', 'fail')).toEqual({
 				action: 'fail',
