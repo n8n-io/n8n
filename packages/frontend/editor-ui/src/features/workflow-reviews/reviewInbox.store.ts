@@ -30,7 +30,7 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 	const closedCount = ref(0);
 	const items = ref<WorkflowReviewInboxItem[]>([]);
 	const selectedId = ref<string | null>(null);
-	const activeState = ref<WorkflowReviewRequestState>('open');
+	const activeTab = ref<WorkflowReviewRequestState>('open');
 	const nextCursor = ref<string | null>(null);
 	const hasMore = ref(false);
 	const loading = ref(false);
@@ -59,7 +59,7 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 
 	async function requestList(cursor?: string): Promise<ListWorkflowReviewInboxResponse> {
 		return await fetchWorkflowReviewInbox(rootStore.restApiContext, {
-			state: activeState.value,
+			state: activeTab.value,
 			limit: DEFAULT_LIMIT,
 			cursor,
 		});
@@ -157,15 +157,15 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		}
 	}
 
-	async function setActiveState(state: WorkflowReviewRequestState) {
-		if (activeState.value === state) return;
-		activeState.value = state;
+	async function setActiveTab(tab: WorkflowReviewRequestState) {
+		if (activeTab.value === tab) return;
+		activeTab.value = tab;
 		await fetchList({ reset: true });
 	}
 
 	/**
-	 * Submit a decision and patch the affected item in place. An approved item
-	 * stays in the open list (and selected) until the next fetch drops it.
+	 * Submit a decision and patch the affected item in place. Approving closes
+	 * the request; the closed tab refetches on activation and picks it up there.
 	 */
 	async function decideOnReview(id: string, decision: WorkflowReviewDecisionInput) {
 		const summary = await decideWorkflowReviewRequest(rootStore.restApiContext, id, { decision });
@@ -180,6 +180,14 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		if (summary.state === 'closed') {
 			openCount.value = Math.max(0, openCount.value - 1);
 			closedCount.value += 1;
+		}
+
+		// The list only shows items matching the active tab filter.
+		if (item && item.state !== activeTab.value) {
+			items.value = items.value.filter((candidate) => candidate.id !== item.id);
+			if (selectedId.value === item.id) {
+				selectedId.value = null;
+			}
 		}
 	}
 
@@ -200,7 +208,7 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		closedCount.value = 0;
 		items.value = [];
 		selectedId.value = null;
-		activeState.value = 'open';
+		activeTab.value = 'open';
 		nextCursor.value = null;
 		hasMore.value = false;
 		loading.value = false;
@@ -216,7 +224,7 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		items,
 		selectedId,
 		selectedItem,
-		activeState,
+		activeTab,
 		nextCursor,
 		hasMore,
 		loading,
@@ -227,7 +235,7 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		probeInbox,
 		fetchList,
 		loadMore,
-		setActiveState,
+		setActiveTab,
 		decideOnReview,
 		selectItem,
 		clearSelection,

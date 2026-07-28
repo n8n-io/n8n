@@ -18,7 +18,7 @@ const {
 	showSidebar,
 	selectedItem,
 	items,
-	activeState,
+	activeTab,
 	selectedId,
 	loading,
 	loadingMore,
@@ -41,9 +41,9 @@ function handleListError(error: unknown) {
 	showError(error, i18n.baseText('workflowReviews.error.load'));
 }
 
-async function onActiveStateChange(state: WorkflowReviewRequestState) {
+async function onActiveTabChange(tab: WorkflowReviewRequestState) {
 	try {
-		await store.setActiveState(state);
+		await store.setActiveTab(tab);
 	} catch (error) {
 		await handleListError(error);
 	}
@@ -98,7 +98,7 @@ onUnmounted(() => {
 			<WorkflowReviewRequestsSidebar
 				v-if="showSidebar"
 				:items="items"
-				:active-state="activeState"
+				:active-tab="activeTab"
 				:open-count="openCount"
 				:closed-count="closedCount"
 				:selected-id="selectedId"
@@ -108,7 +108,7 @@ onUnmounted(() => {
 				:is-empty="isEmpty"
 				@select="store.selectItem"
 				@clear="store.clearSelection"
-				@update:active-state="onActiveStateChange"
+				@update:active-tab="onActiveTabChange"
 				@load-more="onLoadMore"
 			/>
 
@@ -180,7 +180,7 @@ onUnmounted(() => {
 						size="medium"
 						data-test-id="workflow-reviews-empty-state"
 					>
-						{{ i18n.baseText(`workflowReviews.emptyState.body.${activeState}`) }}
+						{{ i18n.baseText(`workflowReviews.emptyState.body.${activeTab}`) }}
 					</N8nText>
 					<N8nText
 						v-else
