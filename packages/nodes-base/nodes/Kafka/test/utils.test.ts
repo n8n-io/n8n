@@ -10,7 +10,7 @@ import type {
 	NodeEgressFilter,
 } from 'n8n-workflow';
 import { sleep } from '@n8n/utils/sleep';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, OperationalError } from 'n8n-workflow';
 import http from 'node:http';
 import https from 'node:https';
 import type { LookupFunction } from 'node:net';
@@ -26,6 +26,7 @@ import {
 	getSchemaRegistryOptions,
 	resolveKafkaSsl,
 	setSchemaRegistry,
+	withTimeout,
 } from '../utils';
 
 vi.mock('@kafkajs/confluent-schema-registry');
@@ -672,6 +673,121 @@ describe('Kafka Utils', () => {
 
 				expect(ctx.emit).toHaveBeenCalledWith([testData], undefined, deferredPromise);
 			});
+		});
+
+		describe('close signal', () => {
+			it('should unblock a pending execution wait when the close signal aborts', async () => {
+				const deferredPromise = createDeferredPromise<IRun>();
+				const ctx = createMockContext(
+					{ resolveOffset: 'onCompletion' },
+					'trigger',
+					deferredPromise,
+				);
+				const closeController = new AbortController();
+
+				const emitter = configureDataEmitter(ctx, {}, 1.3, closeController.signal);
+				const resultPromise = emitter([{ json: { message: 'test' } }]);
+
+				closeController.abort();
+
+				const result = await resultPromise;
+
+				expect(result).toEqual({ success: false });
+				// Teardown must not be delayed by the error retry backoff
+				expect(mockedSleep).not.toHaveBeenCalled();
+			});
+
+			it('should not start an execution when the close signal is already aborted', async () => {
+				const deferredPromise = createDeferredPromise<IRun>();
+				const ctx = createMockContext(
+					{ resolveOffset: 'onCompletion' },
+					'trigger',
+					deferredPromise,
+				);
+				const closeController = new AbortController();
+				closeController.abort();
+
+				const emitter = configureDataEmitter(ctx, {}, 1.3, closeController.signal);
+				const result = await emitter([{ json: { message: 'test' } }]);
+
+				expect(result).toEqual({ success: false });
+				expect(ctx.emit).not.toHaveBeenCalled();
+			});
+
+			it('should not emit in immediate mode when the close signal is already aborted', async () => {
+				const ctx = createMockContext({ resolveOffset: 'immediately' }, 'trigger');
+				const closeController = new AbortController();
+				closeController.abort();
+
+				const emitter = configureDataEmitter(ctx, {}, 1.3, closeController.signal);
+				const result = await emitter([{ json: { message: 'test' } }]);
+
+				expect(result).toEqual({ success: false });
+				expect(ctx.emit).not.toHaveBeenCalled();
+			});
+
+			it('should cut the error retry backoff short when the close signal aborts mid-backoff', async () => {
+				const deferredPromise = createDeferredPromise<IRun>();
+				const ctx = createMockContext({ resolveOffset: 'onSuccess' }, 'trigger', deferredPromise);
+				const closeController = new AbortController();
+				// A backoff that never ends on its own: without the abort race the
+				// emitter (and with it consumer.stop()) would block indefinitely
+				mockedSleep.mockReturnValueOnce(new Promise<void>(() => {}));
+
+				const emitter = configureDataEmitter(ctx, {}, 1.3, closeController.signal);
+				const resultPromise = emitter([{ json: { message: 'test' } }]);
+
+				// A failed execution status sends the emitter into the retry backoff
+				deferredPromise.resolveWith({ status: 'error' } as unknown as IRun);
+				await vi.advanceTimersByTimeAsync(0);
+				expect(mockedSleep).toHaveBeenCalled();
+
+				closeController.abort();
+
+				const result = await resultPromise;
+				expect(result).toEqual({ success: false });
+			});
+
+			it('should remove the abort listener once the execution completes', async () => {
+				const deferredPromise = createDeferredPromise<IRun>();
+				const ctx = createMockContext(
+					{ resolveOffset: 'onCompletion' },
+					'trigger',
+					deferredPromise,
+				);
+				const closeController = new AbortController();
+				const removeListenerSpy = vi.spyOn(closeController.signal, 'removeEventListener');
+
+				const emitter = configureDataEmitter(ctx, {}, 1.3, closeController.signal);
+				const resultPromise = emitter([{ json: { message: 'test' } }]);
+
+				deferredPromise.resolveWith({ status: 'success' } as unknown as IRun);
+				await resultPromise;
+
+				expect(removeListenerSpy).toHaveBeenCalledWith('abort', expect.any(Function));
+			});
+		});
+	});
+
+	describe('withTimeout', () => {
+		it('should resolve with the value when the promise settles in time', async () => {
+			await expect(withTimeout(Promise.resolve('ok'), 1000, 'too slow')).resolves.toBe('ok');
+		});
+
+		it('should reject when the promise rejects in time', async () => {
+			await expect(
+				withTimeout(Promise.reject(new Error('boom')), 1000, 'too slow'),
+			).rejects.toThrow('boom');
+		});
+
+		it('should reject with an OperationalError when the promise does not settle in time', async () => {
+			const error = await withTimeout(new Promise<never>(() => {}), 20, 'too slow').then(
+				() => null,
+				(e: unknown) => e,
+			);
+
+			expect(error).toBeInstanceOf(OperationalError);
+			expect((error as Error).message).toBe('too slow');
 		});
 	});
 

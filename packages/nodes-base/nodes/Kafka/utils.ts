@@ -22,7 +22,7 @@ import type {
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
-import { jsonParse, NodeOperationError, UserError } from 'n8n-workflow';
+import { jsonParse, NodeOperationError, OperationalError, UserError } from 'n8n-workflow';
 import http from 'node:http';
 import https from 'node:https';
 import type { ConnectionOptions } from 'node:tls';
@@ -583,18 +583,24 @@ function getResolveOffsetMode(
  * @param ctx - The trigger function context
  * @param options - Kafka trigger options
  * @param nodeVersion - The version of the Kafka trigger node
+ * @param closeSignal - Aborted when the trigger is being closed; unblocks any wait
+ * on an in-flight execution so teardown is not delayed, leaving offsets unresolved
  * @returns Async function that emits data and waits for execution completion based on resolve mode
  */
 export function configureDataEmitter(
 	ctx: ITriggerFunctions,
 	options: KafkaTriggerOptions,
 	nodeVersion: number,
+	closeSignal?: AbortSignal,
 ) {
 	const resolveOffsetMode = getResolveOffsetMode(ctx, options, nodeVersion);
 
 	// For manual mode, always use immediate emit (no donePromise)
 	if (ctx.getMode() === 'manual' || resolveOffsetMode === 'immediately') {
 		return async (dataArray: INodeExecutionData[]) => {
+			// Never start an execution once the trigger is closing; success: false
+			// also skips the offset commit, so the message is redelivered.
+			if (closeSignal?.aborted) return { success: false };
 			ctx.emit([dataArray]);
 			return { success: true };
 		};
@@ -620,7 +626,25 @@ export function configureDataEmitter(
 	}
 
 	return async (dataArray: INodeExecutionData[]) => {
+		// Never start an execution once the trigger is closing.
+		if (closeSignal?.aborted) return { success: false };
+
 		let timeoutId: NodeJS.Timeout | undefined;
+		let onAbort: (() => void) | undefined;
+		// Rejects when the trigger closes. Raced against both the execution wait
+		// and the error backoff, and the first race subscribes immediately, so a
+		// late rejection can never become an unhandled rejection.
+		const abortPromise = closeSignal
+			? new Promise<never>((_, reject) => {
+					onAbort = () =>
+						reject(
+							new OperationalError(
+								'Trigger closed before the execution finished, offsets not resolved.',
+							),
+						);
+					closeSignal.addEventListener('abort', onAbort, { once: true });
+				})
+			: undefined;
 		try {
 			const responsePromise = ctx.helpers.createDeferredPromise<IRun>();
 			ctx.emit([dataArray], undefined, responsePromise);
@@ -636,7 +660,10 @@ export function configureDataEmitter(
 				}, executionTimeoutInSeconds * 1000);
 			});
 
-			const run = await Promise.race([responsePromise.promise, timeoutPromise]);
+			const racers = [responsePromise.promise, timeoutPromise];
+			if (abortPromise) racers.push(abortPromise);
+
+			const run = await Promise.race(racers);
 
 			if (resolveOffsetMode !== 'onCompletion' && !allowedStatuses.includes(run.status)) {
 				throw new NodeOperationError(
@@ -647,12 +674,19 @@ export function configureDataEmitter(
 
 			return { success: true };
 		} catch (e) {
-			await sleep(errorRetryDelay);
+			// Skip the retry backoff during teardown (and cut it short if close
+			// arrives mid-backoff) so deactivation is not delayed.
+			if (!closeSignal?.aborted) {
+				const backoffRacers: Array<Promise<void>> = [sleep(errorRetryDelay)];
+				if (abortPromise) backoffRacers.push(abortPromise.catch(() => undefined));
+				await Promise.race(backoffRacers);
+			}
 			const error = ensureError(e);
 			ctx.logger.error(error.message, { error });
 			return { success: false };
 		} finally {
 			if (timeoutId) clearTimeout(timeoutId);
+			if (onAbort) closeSignal?.removeEventListener('abort', onAbort);
 		}
 	};
 }
@@ -674,6 +708,29 @@ export function getAutoCommitSettings(options: KafkaTriggerOptions) {
 		autoCommitInterval,
 		autoCommitThreshold,
 	};
+}
+
+/**
+ * Bounds a promise with a timeout, rejecting with an `OperationalError` when it
+ * does not settle in time. A late rejection of the abandoned promise stays
+ * handled (`Promise.race` subscribes to every racer), so it cannot surface as
+ * an unhandled rejection.
+ * @param promise - The promise to bound
+ * @param ms - Timeout in milliseconds
+ * @param message - Error message used when the timeout wins
+ */
+export async function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+	let timer: NodeJS.Timeout | undefined;
+	try {
+		return await Promise.race([
+			promise,
+			new Promise<never>((_, reject) => {
+				timer = setTimeout(() => reject(new OperationalError(message)), ms);
+			}),
+		]);
+	} finally {
+		if (timer) clearTimeout(timer);
+	}
 }
 
 /**
