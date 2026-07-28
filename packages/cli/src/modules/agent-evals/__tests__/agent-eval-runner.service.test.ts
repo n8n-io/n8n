@@ -1,3 +1,4 @@
+import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type {
 	AgentEvalDataset,
@@ -92,6 +93,7 @@ describe('AgentEvalRunnerService', () => {
 
 	let globalConfig: GlobalConfig;
 	let instanceSettings: InstanceSettings;
+	let moduleRegistry: MockProxy<ModuleRegistry>;
 	let datasetRepository: MockProxy<AgentEvalDatasetRepository>;
 	let runRepository: MockProxy<AgentEvalRunRepository>;
 	let resultRepository: MockProxy<AgentEvalResultRepository>;
@@ -115,10 +117,12 @@ describe('AgentEvalRunnerService', () => {
 		vi.mocked(resolveEvaluationConcurrencyLimit).mockReturnValue(1); // serial by default
 
 		globalConfig = {
-			evaluation: { agentEvalsEnabled: true },
+			evaluation: { agentEvalsEnabled: true, agentEvalsRunTimeoutMinutes: 60 },
 			executions: { mode: 'regular' },
 		} as unknown as GlobalConfig;
 		instanceSettings = { hostId: 'main-1' } as unknown as InstanceSettings;
+		moduleRegistry = mock<ModuleRegistry>();
+		moduleRegistry.isActive.mockReturnValue(true);
 		datasetRepository = mock<AgentEvalDatasetRepository>();
 		runRepository = mock<AgentEvalRunRepository>();
 		resultRepository = mock<AgentEvalResultRepository>();
@@ -147,6 +151,7 @@ describe('AgentEvalRunnerService', () => {
 			mock(),
 			globalConfig,
 			instanceSettings,
+			moduleRegistry,
 			datasetRepository,
 			runRepository,
 			resultRepository,
@@ -182,6 +187,17 @@ describe('AgentEvalRunnerService', () => {
 		it('refuses in queue mode', async () => {
 			globalConfig.executions.mode = 'queue';
 			await expect(service.startRun('ds-1', 'proj-1', user)).rejects.toThrow('queue mode');
+			expect(runRepository.createRun).not.toHaveBeenCalled();
+		});
+
+		it('refuses when a module the run depends on is inactive', async () => {
+			// Entities are registered per module: without this guard the run reaches
+			// TypeORM with no `data_table` entity and dies there instead.
+			moduleRegistry.isActive.mockImplementation((name) => name !== 'data-table');
+
+			await expect(service.startRun('ds-1', 'proj-1', user)).rejects.toThrow(
+				'require these modules to be active: data-table',
+			);
 			expect(runRepository.createRun).not.toHaveBeenCalled();
 		});
 
@@ -424,6 +440,132 @@ describe('AgentEvalRunnerService', () => {
 			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledTimes(1);
 			expect(runRepository.markAsCancelled).toHaveBeenCalled();
 			expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('settling the run', () => {
+		it('tallies the run even when a cancellation write throws mid-pool', async () => {
+			seedFor(
+				[
+					{ id: 'row-1', question: 'Q1' },
+					{ id: 'row-2', question: 'Q2' },
+				],
+				{ cancelled: 1, new: 1 },
+			);
+			runRepository.isCancellationRequested.mockResolvedValue(true);
+			// This write sits outside `runCase`'s safety net: it used to reject the
+			// whole pool, leaving the run errored with no counts recorded.
+			resultRepository.markAsCancelled
+				.mockRejectedValueOnce(new Error('db down'))
+				.mockResolvedValue(undefined as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			// The surviving case is still processed rather than abandoned mid-flight.
+			expect(resultRepository.markAsCancelled).toHaveBeenCalledTimes(2);
+			expect(runRepository.markAsCancelled).toHaveBeenCalledWith(
+				'run-1',
+				expect.objectContaining({ total: 2, cancelled: 1, pending: 1 }),
+			);
+			expect(runRepository.markAsError).not.toHaveBeenCalled();
+		});
+
+		it('reports a dispatch failure with the counts rather than losing the tally', async () => {
+			seedFor(
+				[
+					{ id: 'row-1', question: 'Q1' },
+					{ id: 'row-2', question: 'Q2' },
+				],
+				{ success: 1, new: 1 },
+			);
+			// The first case's cancellation read blows up; the run itself is not
+			// cancelled, so the second case runs to completion.
+			runRepository.isCancellationRequested
+				.mockRejectedValueOnce(new Error('db down'))
+				.mockResolvedValue(false);
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledTimes(1);
+			expect(runRepository.markAsError).toHaveBeenCalledWith(
+				'run-1',
+				'case_dispatch_failed',
+				expect.objectContaining({ total: 2, success: 1, errors: ['db down'] }),
+			);
+			expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('run deadline', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('stops starting cases at the deadline and errors the run as timed out', async () => {
+			vi.useFakeTimers();
+			globalConfig.evaluation.agentEvalsRunTimeoutMinutes = 30;
+			seedFor(
+				[
+					{ id: 'row-1', question: 'Q1' },
+					{ id: 'row-2', question: 'Q2' },
+				],
+				{ cancelled: 2 },
+			);
+			// Never granted a slot: on a 1-concurrency plan this is the run that would
+			// otherwise sit here until the process restarts.
+			concurrencyControl.throttle.mockImplementation(async () => await new Promise<void>(() => {}));
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await vi.advanceTimersByTimeAsync(30 * 60_000);
+			await finished;
+
+			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
+			// The queued case is evicted so it stops holding a place in the queue.
+			expect(concurrencyControl.remove).toHaveBeenCalledWith(
+				expect.objectContaining({ mode: 'evaluation' }),
+			);
+			expect(resultRepository.markAsCancelled).toHaveBeenCalledTimes(2);
+			expect(runRepository.markAsError).toHaveBeenCalledWith(
+				'run-1',
+				'timeout',
+				expect.objectContaining({ total: 2, cancelled: 2 }),
+			);
+			// A deadline is a failure, not the user's Stop.
+			expect(runRepository.markAsCancelled).not.toHaveBeenCalled();
+			expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
+		});
+
+		it('reports a user Stop as cancelled even when the deadline also fired', async () => {
+			vi.useFakeTimers();
+			globalConfig.evaluation.agentEvalsRunTimeoutMinutes = 30;
+			seedFor([{ id: 'row-1', question: 'Q1' }], { cancelled: 1 });
+			concurrencyControl.throttle.mockImplementation(async () => await new Promise<void>(() => {}));
+			// Stop was requested; the case is parked, so only the post-pool re-read
+			// observes it.
+			runRepository.isCancellationRequested.mockResolvedValueOnce(false).mockResolvedValue(true);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await vi.advanceTimersByTimeAsync(30 * 60_000);
+			await finished;
+
+			expect(runRepository.markAsCancelled).toHaveBeenCalledWith('run-1', expect.anything());
+			expect(runRepository.markAsError).not.toHaveBeenCalled();
+		});
+
+		it('runs without a deadline when the timeout is disabled', async () => {
+			vi.useFakeTimers();
+			globalConfig.evaluation.agentEvalsRunTimeoutMinutes = 0;
+			seedFor([{ id: 'row-1', question: 'Q1' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(vi.getTimerCount()).toBe(0);
+			expect(runRepository.markAsCompleted).toHaveBeenCalled();
 		});
 	});
 

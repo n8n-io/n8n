@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { AgentEvalDataset, AgentEvalResult, AgentEvalRunStatus, User } from '@n8n/db';
 import {
@@ -69,6 +69,8 @@ export interface AgentEvalRunSummary {
  * queue (the same one the workflow eval uses), so a single run can't flood the
  * queue and concurrent runs can't collectively exceed the plan limit;
  * cross-main *cancellation* is honored via the run's `cancelRequested` flag.
+ * A run-level deadline bounds the wall clock, since a 1-slot plan otherwise
+ * lets a large dataset run until the process restarts.
  * Behind the `101_agent_evals` flag.
  */
 @Service()
@@ -77,6 +79,7 @@ export class AgentEvalRunnerService {
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly moduleRegistry: ModuleRegistry,
 		private readonly datasetRepository: AgentEvalDatasetRepository,
 		private readonly runRepository: AgentEvalRunRepository,
 		private readonly resultRepository: AgentEvalResultRepository,
@@ -109,6 +112,18 @@ export class AgentEvalRunnerService {
 
 		if (this.globalConfig.executions.mode === 'queue') {
 			throw new BadRequestError('Agent eval runs are not supported in queue mode.');
+		}
+
+		// A run reads agents and Data Tables directly. With either module off their
+		// entities are never registered, so without this the run dies inside TypeORM
+		// instead of saying what is actually missing.
+		const inactive = (['agents', 'data-table'] as const).filter(
+			(name) => !this.moduleRegistry.isActive(name),
+		);
+		if (inactive.length > 0) {
+			throw new BadRequestError(
+				`Agent eval runs require these modules to be active: ${inactive.join(', ')}.`,
+			);
 		}
 
 		// Authorize up front. `executeWithLlmMock` also checks `agent:execute`, but
@@ -233,35 +248,45 @@ export class AgentEvalRunnerService {
 					? Math.min(resolvedLimit, MAX_PER_RUN_CONCURRENCY)
 					: MAX_PER_RUN_CONCURRENCY,
 			);
-			// Cooperative cancellation: whichever case first observes the flag aborts,
-			// which evicts every case still waiting for a queue slot.
+			// Cooperative stop: whichever case first observes a cancel aborts, which
+			// evicts every case still waiting for a queue slot. The run deadline below
+			// trips the same signal.
 			const abort = new AbortController();
 			const totalUsage: CaseUsage = { inputTokens: 0, outputTokens: 0 };
 
-			const cancelCase = async (resultRow: AgentEvalResult) => {
+			// Set only when a case actually observed the cancellation flag, so the
+			// settle step can tell a user cancel apart from a deadline — both abort.
+			let cancelObserved = false;
+			const shouldStopCase = async (): Promise<boolean> => {
+				if (abort.signal.aborted) return true;
+				// One DB read per case at most: once the first observer aborts, the
+				// check above short-circuits for the rest.
+				if (!(await this.runRepository.isCancellationRequested(runId))) return false;
+				cancelObserved = true;
 				abort.abort();
-				await this.resultRepository.markAsCancelled(resultRow.id);
+				return true;
 			};
 
-			await Promise.all(
+			const deadline = this.startRunDeadline(abort);
+
+			// `runCase` has its own safety net, but the cancellation reads and the
+			// `markAsCancelled` writes around it do not. Rejecting the whole pool on
+			// one of those left the run errored with no final tally while the
+			// remaining cases kept writing results — so collect instead of throwing.
+			const settlements = await Promise.allSettled(
 				cases.map(
 					async (resolvedCase, index) =>
 						await limit(async () => {
 							const resultRow = seeded[index];
-							// Don't enqueue a case once the run is cancelled (the flag short-
-							// circuits after the first observer, so this is one DB read per
-							// case at most).
-							if (
-								abort.signal.aborted ||
-								(await this.runRepository.isCancellationRequested(runId))
-							) {
-								await cancelCase(resultRow);
+							// Don't enqueue a case once the run is stopping.
+							if (await shouldStopCase()) {
+								await this.resultRepository.markAsCancelled(resultRow.id);
 								return;
 							}
 
 							// Wait for a queue slot, bailing (and evicting the entry) if the run
-							// is cancelled while queued. The helper owns release/remove for the
-							// bail path; the finally owns release for the acquired path.
+							// stops while queued. The helper owns release/remove for the bail
+							// path; the finally owns release for the acquired path.
 							const executionId = `${runId}-case-${index}`;
 							if (!(await this.acquireEvaluationSlot(executionId, abort.signal))) {
 								await this.resultRepository.markAsCancelled(resultRow.id);
@@ -269,12 +294,9 @@ export class AgentEvalRunnerService {
 							}
 
 							try {
-								// A cancel may have landed while we waited for the slot.
-								if (
-									abort.signal.aborted ||
-									(await this.runRepository.isCancellationRequested(runId))
-								) {
-									await cancelCase(resultRow);
+								// A cancel or the deadline may have landed while we waited.
+								if (await shouldStopCase()) {
+									await this.resultRepository.markAsCancelled(resultRow.id);
 									return;
 								}
 								const usage = await this.runCase(resultRow, resolvedCase, ctx);
@@ -288,18 +310,47 @@ export class AgentEvalRunnerService {
 						}),
 				),
 			);
+			// `allSettled` never rejects, so the timer is always cleared here.
+			deadline.clear();
+
+			const dispatchFailures: string[] = [];
+			for (const settlement of settlements) {
+				if (settlement.status !== 'rejected') continue;
+				const reason: unknown = settlement.reason;
+				dispatchFailures.push(reason instanceof Error ? reason.message : String(reason));
+			}
+			if (dispatchFailures.length > 0) {
+				this.logger.error(
+					`[AgentEvalRunner] ${dispatchFailures.length} case(s) in run ${runId} failed outside execution`,
+					{ errors: dispatchFailures },
+				);
+			}
 
 			// Re-read once more: a cancel that arrived after every case had already
 			// settled is never observed above, so honor it rather than reporting the
 			// run completed with the flag still set.
 			const wasCancelled =
-				abort.signal.aborted || (await this.runRepository.isCancellationRequested(runId));
+				cancelObserved || (await this.runRepository.isCancellationRequested(runId));
 
 			const counts = await this.resultRepository.countByStatus(runId);
 			const metrics: IDataObject = { ...toSummaryCounts(counts), usage: { ...totalUsage } };
 
+			// The tally is recorded on every branch — an unsettled run with no counts
+			// is what callers polling `getRunSummary` can't recover from.
 			if (wasCancelled) {
+				// A user stop outranks the deadline: it's intent, not a failure.
 				await this.runRepository.markAsCancelled(runId, metrics);
+			} else if (deadline.hasExpired()) {
+				await this.runRepository.markAsError(runId, 'timeout', {
+					...metrics,
+					message: `Run exceeded its ${deadline.deadlineMinutes}-minute deadline; remaining cases were not started.`,
+				});
+			} else if (dispatchFailures.length > 0) {
+				await this.runRepository.markAsError(runId, 'case_dispatch_failed', {
+					...metrics,
+					message: `${dispatchFailures.length} case(s) failed outside execution.`,
+					errors: dispatchFailures,
+				});
 			} else {
 				await this.runRepository.markAsCompleted(runId, metrics);
 			}
@@ -307,6 +358,37 @@ export class AgentEvalRunnerService {
 			const message = error instanceof Error ? error.message : String(error);
 			await this.failRun(runId, message);
 		}
+	}
+
+	/**
+	 * Arm the run-level deadline. Cases share the license-tiered evaluation queue,
+	 * which is 1 slot on lower plans — so a large dataset runs serially and, with
+	 * no ceiling, only a restart ends it. Expiring trips the run's abort, which
+	 * evicts queued cases through the same path a cancel uses. `0` disables it.
+	 *
+	 * This bounds when the *last* case may start, not when the run ends: the
+	 * execution service takes no abort signal, so a case already running is only
+	 * bounded by its own per-case timeout.
+	 */
+	private startRunDeadline(abort: AbortController): {
+		hasExpired: () => boolean;
+		clear: () => void;
+		deadlineMinutes: number;
+	} {
+		const deadlineMinutes = this.globalConfig.evaluation.agentEvalsRunTimeoutMinutes;
+		if (deadlineMinutes <= 0) {
+			return { hasExpired: () => false, clear: () => undefined, deadlineMinutes };
+		}
+
+		let expired = false;
+		const timer = setTimeout(() => {
+			expired = true;
+			abort.abort();
+		}, deadlineMinutes * 60_000);
+		// Never hold the process open for a run that outlived its deadline.
+		timer.unref();
+
+		return { hasExpired: () => expired, clear: () => clearTimeout(timer), deadlineMinutes };
 	}
 
 	/**
