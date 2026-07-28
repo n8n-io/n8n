@@ -1,4 +1,4 @@
-// Push selected on-disk eval cases (data/workflows/*.json) UP into a
+// Push selected on-disk eval cases (data/workflows/ + data/agents/ *.json) UP into a
 // lang-tracer suite over the REST API, upserting: create missing, update changed,
 // leave unchanged, skip unsupported. The inverse of `--source langtracer` (which
 // pulls a suite down). Env: LANGTRACER_URL + LANGTRACER_API_KEY (repo-root .env.local).
@@ -10,6 +10,7 @@
 import { execFileSync } from 'node:child_process';
 import { basename } from 'node:path';
 
+import { loadAgentEvalTestCasesWithFiles } from '../data/agents';
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
 import { LangTracerClient } from '../langtracer/client';
 import { resolveLangTracerConfig } from '../langtracer/config';
@@ -35,7 +36,7 @@ Usage:
 
 Selectors (at least one required — no accidental push-all):
   <slugs...>            Exact file slugs to push (e.g. ai-quote-carousel)
-  --changed             New/untracked + staged + modified data/workflows/*.json
+  --changed             New/untracked + staged + modified data/{workflows,agents}/*.json
   --filter <csv>        Substring match on file slug
   --tier <name>         Cases whose datasets include <name>
   --exclude <csv>       Substring exclude (modifier, not a selector on its own)
@@ -134,7 +135,7 @@ function nextArg(argv: string[], i: number, flag: string): string {
 	return value;
 }
 
-/** New/untracked + staged + modified `data/workflows/*.json` slugs, from git. */
+/** New/untracked + staged + modified `data/{workflows,agents}/*.json` slugs, from git. */
 function gitChangedSlugs(): string[] {
 	const out = execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], {
 		encoding: 'utf-8',
@@ -144,7 +145,10 @@ function gitChangedSlugs(): string[] {
 		if (!line.trim()) continue;
 		const raw = line.slice(3).trim(); // strip the 2-char status + space
 		const path = raw.includes(' -> ') ? raw.split(' -> ')[1] : raw; // rename → new path
-		if (path.includes('evaluations/data/workflows/') && path.endsWith('.json')) {
+		if (
+			(path.includes('evaluations/data/workflows/') || path.includes('evaluations/data/agents/')) &&
+			path.endsWith('.json')
+		) {
 			slugs.push(basename(path, '.json'));
 		}
 	}
@@ -174,7 +178,16 @@ async function main() {
 	// Select disk cases: loader applies --filter/--exclude, --tier narrows by the
 	// case's datasets (mirrors data/source.ts); then narrow to the exact slugs
 	// from positional args + --changed (if either was given).
-	const loaded = loadWorkflowTestCasesWithFiles(args.filter, args.exclude);
+	const loaded = [
+		...loadWorkflowTestCasesWithFiles(args.filter, args.exclude),
+		...loadAgentEvalTestCasesWithFiles(args.filter, args.exclude),
+	];
+	const dupes = loaded.filter((c, i) => loaded.findIndex((o) => o.fileSlug === c.fileSlug) !== i);
+	if (dupes.length > 0) {
+		throw new Error(
+			`duplicate case slug(s) across data/workflows and data/agents: ${dupes.map((d) => d.fileSlug).join(', ')}`,
+		);
+	}
 	const tier = args.tier;
 	const all = tier ? loaded.filter((c) => c.testCase.datasets.includes(tier)) : loaded;
 	const exactSlugs = new Set([...args.slugs, ...(args.changed ? gitChangedSlugs() : [])]);
@@ -182,7 +195,7 @@ async function main() {
 
 	const missing = [...exactSlugs].filter((s) => !all.some((c) => c.fileSlug === s));
 	if (missing.length > 0) {
-		console.warn(`⚠ no data/workflows case file for: ${missing.join(', ')}`);
+		console.warn(`⚠ no data/workflows or data/agents case file for: ${missing.join(', ')}`);
 	}
 	if (selected.length === 0) {
 		console.log('No cases selected — nothing to push.');

@@ -2,10 +2,12 @@ import type { UpdateWorkflowReviewRequestVersionDto } from '@n8n/api-types';
 import type { LicenseState, Logger } from '@n8n/backend-common';
 import type {
 	DbLockService,
+	ProjectRelationRepository,
 	SharedWorkflowRepository,
 	User,
 	UserRepository,
 	WorkflowEntity,
+	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
@@ -43,11 +45,13 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+	const publishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const userRepository = mock<UserRepository>();
+	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const roleService = mock<RoleService>();
 	const projectService = mock<ProjectService>();
 	const licenseState = mock<LicenseState>();
@@ -62,11 +66,13 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		workflowFinderService,
 		workflowHistoryService,
 		sharedWorkflowRepository,
+		publishedVersionRepository,
 		requestRepository,
 		workflowRepository,
 		authorRepository,
 		reviewerRepository,
 		userRepository,
+		projectRelationRepository,
 		roleService,
 		projectService,
 		licenseState,

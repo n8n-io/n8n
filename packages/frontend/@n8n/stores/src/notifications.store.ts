@@ -1,39 +1,16 @@
+import type { NotificationOptions } from '@n8n/composables/types/notification';
 import type { VIEWS } from '@n8n/frontend-constants/views';
 import { defineStore } from 'pinia';
-import { ref, type Component, type Ref, type VNode } from 'vue';
+import { ref, type Ref } from 'vue';
 
 import { STORES } from './constants';
 
-type NotificationType = '' | 'success' | 'warning' | 'error' | 'info';
-type NotificationPosition = 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
-
 /**
- * Notification payload accepted by the toast layer.
- *
- * This mirrors Element Plus' notification options (the shape the toast layer
- * ultimately forwards to `ElNotification`) but is declared inline so this
- * package carries no dependency on `element-plus`. `message` is required; every
- * other field is optional, matching the original `Partial<...>`-based type.
- *
- * Relocated here from `editor-ui`'s `@/Interface` so it can travel with the
- * notifications store; `editor-ui` re-exports it for existing importers.
+ * `NotificationOptions` now lives in `@n8n/composables`, alongside the toast
+ * layer that owns the contract, since that package sits below this one
+ * (N8N-100). Re-exported here so existing importers stay unchanged.
  */
-export interface NotificationOptions {
-	message: string | VNode;
-	title?: string;
-	type?: NotificationType;
-	icon?: string | Component;
-	customClass?: string;
-	duration?: number;
-	position?: NotificationPosition;
-	showClose?: boolean;
-	dangerouslyUseHTMLString?: boolean;
-	offset?: number;
-	appendTo?: HTMLElement | string;
-	zIndex?: number;
-	onClick?: () => void;
-	onClose?: () => void;
-}
+export type { NotificationOptions } from '@n8n/composables/types/notification';
 
 /**
  * Public surface of the notifications store. Declared explicitly so the emitted

@@ -15,6 +15,7 @@ import { useExecutionsStore } from '@/features/execution/executions/executions.s
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { isPostMessageOriginAllowed } from '@/app/utils/postMessageUtils';
 import { buildExecutionResponseFromSchema } from '@/features/execution/executions/executions.utils';
 import type { ExecutionPreviewNodeSchema } from '@/features/execution/executions/executions.types';
 import type { IWorkflowDb } from '@/Interface';
@@ -233,7 +234,8 @@ export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMess
 		if (
 			!messageEvent ||
 			typeof messageEvent.data !== 'string' ||
-			!messageEvent.data?.includes?.('"command"')
+			!messageEvent.data?.includes?.('"command"') ||
+			!isPostMessageOriginAllowed(messageEvent.origin)
 		) {
 			return;
 		}

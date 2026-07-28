@@ -48,7 +48,9 @@ function splitDeferredTools(
 	return { coreTools, deferredTools };
 }
 
-export async function createInstanceAgent(options: CreateInstanceAgentOptions): Promise<Agent> {
+export async function createInstanceAgent(
+	options: CreateInstanceAgentOptions,
+): Promise<{ agent: Agent; mcpConnectionFailures: Array<{ server: string; error: string }> }> {
 	const {
 		modelId,
 		context,
@@ -67,13 +69,21 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const orchestratorDomainTools = createOrchestratorDomainTools(domainContext);
 
 	// Load MCP tools (cached by config hash inside the manager — only spawns
-	// processes / opens connections on first call or config change).
+	// processes / opens connections on first call or config change). The manager
+	// returns per-server connection failures alongside the tools so they travel
+	// with this call (not shared mutable state) — concurrent runs with different
+	// configs can't read each other's failures.
 	const requireMcpToolApproval = context.permissions?.executeMcpTool !== 'always_allow';
-	const mcpTools = await mcpManager.getRegularTools(
-		mcpServers,
-		context.logger,
-		requireMcpToolApproval,
-	);
+	const { tools: mcpTools, connectionFailures: managerMcpFailures } =
+		await mcpManager.getRegularTools(mcpServers, context.logger, requireMcpToolApproval);
+	// Map manager-reported connection failures to the generic SDK event type so
+	// the runtime can inject a model-facing note into the orchestrator's system
+	// message. The adapter owns the n8n-specific server config → plain SDK event
+	// translation; the SDK runtime does the rest.
+	const mcpConnectionFailures = managerMcpFailures.map((f) => ({
+		server: f.server.name,
+		error: f.error,
+	}));
 	const rawLocalMcpTools = context.localMcpServer
 		? createToolsFromLocalMcpServer(context.localMcpServer, context.logger)
 		: createToolRegistry();
@@ -176,6 +186,9 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		})
 		.tool(toolRegistryValues(runtimeTools))
 		.checkpoint(options.checkpointStore ?? 'memory');
+	if (mcpConnectionFailures.length > 0) {
+		agent.mcpConnectionFailures(mcpConnectionFailures);
+	}
 	if (options.thinkingEnabled !== false) {
 		applyAgentThinking(agent, modelId);
 	}
@@ -245,5 +258,5 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		}),
 	);
 
-	return agent;
+	return { agent, mcpConnectionFailures };
 }

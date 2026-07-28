@@ -79,6 +79,10 @@ export { UpdateSamlConfigurationDto } from './saml/saml-preferences.dto';
 export { SamlToggleDto } from './saml/saml-toggle.dto';
 export { type SamlConfigurationResponse } from './saml/saml-configuration-response.dto';
 
+export { UpdateLdapConfigurationDto } from './ldap/ldap-configuration.dto';
+export { type LdapConfigurationResponse } from './ldap/ldap-configuration-response.dto';
+export { LdapSyncDto } from './ldap/ldap-sync.dto';
+
 export { PasswordUpdateRequestDto } from './user/password-update-request.dto';
 export { RoleChangeRequestDto } from './user/role-change-request.dto';
 export { SettingsUpdateRequestDto } from './user/settings-update-request.dto';
@@ -204,7 +208,7 @@ export {
 	type RoleMembersResponse,
 } from './roles/role-members-response.dto';
 
-export { OidcConfigDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
+export { OidcConfigDto, UpdateOidcConfigurationDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
 export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
@@ -302,10 +306,12 @@ export {
 export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';
 
 export { CreateWorkflowReviewRequestDto } from './workflow-reviews/create-workflow-review-request.dto';
+export { DecideWorkflowReviewRequestDto } from './workflow-reviews/decide-workflow-review-request.dto';
 export { GetWorkflowReviewEligibleReviewersQueryDto } from './workflow-reviews/get-eligible-reviewers-query.dto';
 export { ListWorkflowReviewRequestsQueryDto } from './workflow-reviews/list-workflow-review-requests-query.dto';
 export { UpdateWorkflowReviewRequestVersionDto } from './workflow-reviews/update-workflow-review-request-version.dto';
 export * from './workflow-reviews/list-workflow-review-inbox.dto';
+export type * from './workflow-reviews/get-workflow-review-request-detail.dto';
 
 export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
