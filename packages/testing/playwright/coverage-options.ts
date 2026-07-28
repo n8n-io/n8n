@@ -84,6 +84,10 @@ export function resolveSourcePath(filePath: string, index: WorkspaceIndex): stri
 	// arrives as a package specifier (`@n8n/design-system/src/x.vue`) whose dir may
 	// sit under packages/frontend/, so `packages/` + name would mislabel it and its
 	// changes would match nothing in the impact map.
+	// Bundle chunks with no source map reach here URL-derived (`localhost-41401/
+	// assets/…`). sourceFilter never sees them — there are no sources to filter — so
+	// leave them as-is rather than prefixing them into a package that doesn't exist.
+	if (/^localhost[-:]\d+\//.test(norm)) return norm;
 	const asDir = `packages/${norm}`;
 	if (index.dirs.has(asDir.slice(0, asDir.lastIndexOf('/')))) return asDir;
 	const name = packageNameOf(norm);
@@ -111,10 +115,6 @@ export const coverageOptions: CoverageReportOptions = {
 	sourceFilter: (sourcePath) =>
 		!sourcePath.includes('node_modules') &&
 		!sourcePath.includes('/dist/') &&
-		// Chunks that never resolved through a source map, with no source behind them.
-		// Unanchored: this runs before sourcePath, so the value may still be the URL
-		// (`http://localhost:41401/assets/…`) rather than monocart's `localhost-41401/…`.
-		!/localhost[-:]\d+\//.test(sourcePath) &&
 		!sourcePath.endsWith('.d.ts') &&
 		!sourcePath.endsWith('.spec.ts') &&
 		!sourcePath.endsWith('.test.ts') &&

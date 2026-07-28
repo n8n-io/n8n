@@ -144,6 +144,12 @@ describe('resolveSourcePath', () => {
 		expect(resolveSourcePath('unknown-pkg/src/x.ts', index)).toBe('packages/unknown-pkg/src/x.ts');
 	});
 
+	test('leaves an unmapped bundle chunk alone', () => {
+		const out = resolveSourcePath('localhost-45061/assets/chunk-CC9Q.js', index);
+		expect(out).toBe('localhost-45061/assets/chunk-CC9Q.js');
+		expect(out.startsWith('packages/')).toBe(false);
+	});
+
 	test('normalises windows separators', () => {
 		expect(resolveSourcePath('packages\\cli\\src\\server.ts', index)).toBe(
 			'packages/cli/src/server.ts',
