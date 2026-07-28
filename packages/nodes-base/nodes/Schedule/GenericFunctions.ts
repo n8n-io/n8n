@@ -55,9 +55,11 @@ export function recurrenceCheck(
 
 	const momentTz = moment.tz(timezone);
 	if (typeInterval === 'minutes') {
-		const minute = momentTz.minute();
-		if (lastExecution === undefined || (minute - lastExecution + 60) % 60 >= intervalSize) {
-			recurrenceRules[index] = minute;
+		// Absolute minute count (like months, not the 0-59 wall-clock value) so a
+		// gap longer than the hour wrap can't delay the next fire by another interval.
+		const absoluteMinute = Math.floor(momentTz.valueOf() / 60_000);
+		if (lastExecution === undefined || absoluteMinute - lastExecution >= intervalSize) {
+			recurrenceRules[index] = absoluteMinute;
 			return true;
 		}
 	} else if (typeInterval === 'hours') {
@@ -264,7 +266,8 @@ function isRecurrenceValueValidForType(
 ): boolean {
 	switch (typeInterval) {
 		case 'minutes':
-			return value >= 0 && value <= 59;
+			// Absolute count, and the unit is new — no pre-signature value can be valid.
+			return false;
 		case 'hours':
 			return value >= 0 && value <= 23;
 		case 'days':

@@ -181,9 +181,18 @@ export class ScheduleTriggerJobRegistrar {
 							);
 							collected.push({ schedule, firstRunAt: null });
 						} else {
+							// A gated minutes rule is stored as an interval job even in legacy
+							// mode (see toSchedule), but the in-memory engine fires it ungated
+							// at its next cron tick — seed the first run from the cron so
+							// activation isn't delayed by a full interval.
+							const seedSchedule: Schedule =
+								this.triggerNodeMode === 'legacy' && schedule.kind === 'interval'
+									? { kind: 'cron', cronExpression: expression, timezone }
+									: schedule;
+
 							// Validates the expression/timezone and returns the first instant.
 							const computed = computeFirstRunAt(
-								withResolvedTimezone(schedule, this.defaultTimezone),
+								withResolvedTimezone(seedSchedule, this.defaultTimezone),
 								new Date(),
 							);
 

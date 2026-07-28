@@ -15,7 +15,7 @@ vi.mock('moment-timezone');
 const mockedMoment = vi.mocked(moment);
 
 function mockMomentTz(values: {
-	minute?: number;
+	epochMinute?: number;
 	hour?: number;
 	dayOfYear?: number;
 	week?: number;
@@ -23,7 +23,7 @@ function mockMomentTz(values: {
 	year?: number;
 }) {
 	const tzObj = {
-		minute: () => values.minute ?? 0,
+		valueOf: () => (values.epochMinute ?? 0) * 60_000,
 		hour: () => values.hour ?? 0,
 		dayOfYear: () => values.dayOfYear ?? 1,
 		week: () => values.week ?? 1,
@@ -338,20 +338,20 @@ describe('recurrenceCheck', () => {
 
 	describe('minutes', () => {
 		it('should trigger when exactly on time', () => {
-			mockMomentTz({ minute: 40 });
-			const recurrenceRules = [50]; // lastExecution = minute 50, interval = 50
+			mockMomentTz({ epochMinute: 1000 });
+			const recurrenceRules = [950]; // 50 minutes elapsed, interval = 50
 			const result = recurrenceCheck(
 				{ activated: true, index: 0, intervalSize: 50, typeInterval: 'minutes' },
 				recurrenceRules,
 				'UTC',
 			);
 			expect(result).toBe(true);
-			expect(recurrenceRules[0]).toBe(40);
+			expect(recurrenceRules[0]).toBe(1000);
 		});
 
 		it('should not trigger before interval has elapsed', () => {
-			mockMomentTz({ minute: 0 });
-			const recurrenceRules = [50]; // only 10 minutes elapsed, need 50
+			mockMomentTz({ epochMinute: 1000 });
+			const recurrenceRules = [960]; // only 40 minutes elapsed, need 50
 			const result = recurrenceCheck(
 				{ activated: true, index: 0, intervalSize: 50, typeInterval: 'minutes' },
 				recurrenceRules,
@@ -360,16 +360,18 @@ describe('recurrenceCheck', () => {
 			expect(result).toBe(false);
 		});
 
-		it('should recover after a missed execution', () => {
-			mockMomentTz({ minute: 45 });
-			const recurrenceRules = [50]; // missed minute 40, now at minute 45
+		it('should fire on the first tick after a gap longer than the hour wrap', () => {
+			mockMomentTz({ epochMinute: 1000 });
+			// 110 minutes elapsed: a wall-clock minute-of-hour gate would read this
+			// as 50 % 60 elapsed and wait again; the absolute count fires immediately.
+			const recurrenceRules = [890];
 			const result = recurrenceCheck(
 				{ activated: true, index: 0, intervalSize: 50, typeInterval: 'minutes' },
 				recurrenceRules,
 				'UTC',
 			);
 			expect(result).toBe(true);
-			expect(recurrenceRules[0]).toBe(45);
+			expect(recurrenceRules[0]).toBe(1000);
 		});
 	});
 

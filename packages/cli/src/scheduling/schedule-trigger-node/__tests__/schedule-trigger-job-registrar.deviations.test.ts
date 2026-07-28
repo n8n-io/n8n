@@ -278,8 +278,15 @@ describe('ScheduleTriggerJobRegistrar deviations', () => {
 				expect(row.intervalSeconds).toBe(50 * 60);
 			}
 
-			// steady cadence: every gap is exactly 50 minutes
-			expect(gaps(fires(scheduleOf(legacy), NOW, 4))).toEqual(Array(3).fill(50 * 60 * 1000));
+			// legacy seeds the first fire from the cron (the in-memory engine fires
+			// ungated at its next minute tick); new anchors to activation + 50 min
+			expect(legacy.nextRunAt).toEqual(new Date('2026-01-05T12:01:07.000Z'));
+			expect(fresh.nextRunAt).toEqual(new Date('2026-01-05T12:50:07.000Z'));
+
+			// steady cadence after the seed: every gap is exactly 50 minutes
+			expect(gaps([legacy.nextRunAt!, ...fires(scheduleOf(legacy), legacy.nextRunAt!, 3)])).toEqual(
+				Array(3).fill(50 * 60 * 1000),
+			);
 		});
 
 		it('a dividing minutes cadence stays a clock-aligned cron in `legacy` mode', async () => {
