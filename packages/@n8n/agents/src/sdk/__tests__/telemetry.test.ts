@@ -93,6 +93,126 @@ describe('Telemetry builder', () => {
 });
 
 describe('Telemetry — redaction wrapping', () => {
+	it('redacts hooks on frozen integrations', async () => {
+		const onStart = vi.fn();
+		const integration: AiSdkTelemetry = Object.freeze({ onStart });
+		const built = await new Telemetry()
+			.redact((data) => {
+				const filtered = { ...data };
+				delete filtered.secret;
+				return filtered;
+			})
+			.integration(integration)
+			.build();
+
+		built.integrations[0].onStart?.({ secret: 'hidden', safe: 'ok' } as never);
+
+		expect(onStart).toHaveBeenCalledWith({ safe: 'ok' });
+	});
+
+	it('accepts immutable redactor results', async () => {
+		const onStart = vi.fn();
+		const built = await new Telemetry()
+			.redact((data) => {
+				const filtered = { ...data };
+				delete filtered.secret;
+				return Object.freeze(filtered);
+			})
+			.integration({ onStart })
+			.build();
+
+		built.integrations[0].onStart?.({ secret: 'hidden', safe: 'ok' } as never);
+
+		expect(onStart).toHaveBeenCalledWith({ safe: 'ok' });
+	});
+
+	it('redacts future event hooks without requiring an explicit wrapper', async () => {
+		type FutureTelemetry = AiSdkTelemetry & {
+			onFutureEvent: (event: Record<string, unknown>) => void;
+			readonly receivedEvents: Array<Record<string, unknown>>;
+		};
+
+		class FutureIntegration {
+			readonly #receivedEvents: Array<Record<string, unknown>> = [];
+
+			onStart() {}
+
+			onFutureEvent(event: Record<string, unknown>) {
+				this.#receivedEvents.push(event);
+			}
+
+			get receivedEvents() {
+				return this.#receivedEvents;
+			}
+		}
+
+		const integration: FutureTelemetry = new FutureIntegration();
+		const built = await new Telemetry()
+			.redact((data) => {
+				const filtered = { ...data };
+				delete filtered.secret;
+				return filtered;
+			})
+			.integration(integration)
+			.build();
+
+		const wrapped = built.integrations[0] as FutureTelemetry;
+		wrapped.onFutureEvent({ secret: 'hidden', safe: 'ok' });
+
+		expect(integration.receivedEvents).toEqual([{ safe: 'ok' }]);
+	});
+
+	it('preserves executor control fields while redacting their event data', async () => {
+		let modelOptions: Record<string, unknown> | undefined;
+		let toolOptions: Record<string, unknown> | undefined;
+		const integration: AiSdkTelemetry = {
+			executeLanguageModelCall: (options) => {
+				modelOptions = options;
+				return options.execute();
+			},
+			executeTool: (options) => {
+				toolOptions = options;
+				return options.execute();
+			},
+		};
+		const built = await new Telemetry()
+			.redact((data) => {
+				const filtered = { ...data };
+				delete filtered.callId;
+				delete filtered.toolCallId;
+				delete filtered.execute;
+				delete filtered.secret;
+				return Object.freeze(filtered);
+			})
+			.integration(integration)
+			.build();
+
+		const modelExecute = vi.fn().mockResolvedValue('model-result');
+		await expect(
+			built.integrations[0].executeLanguageModelCall?.({
+				callId: 'model-call',
+				execute: modelExecute,
+				secret: 'hidden',
+			} as never),
+		).resolves.toBe('model-result');
+		expect(modelOptions).toEqual({ callId: 'model-call', execute: modelExecute });
+
+		const toolExecute = vi.fn().mockResolvedValue('tool-result');
+		await expect(
+			built.integrations[0].executeTool?.({
+				callId: 'model-call',
+				toolCallId: 'tool-call',
+				execute: toolExecute,
+				secret: 'hidden',
+			} as never),
+		).resolves.toBe('tool-result');
+		expect(toolOptions).toEqual({
+			callId: 'model-call',
+			toolCallId: 'tool-call',
+			execute: toolExecute,
+		});
+	});
+
 	it('preserves the receiver for stateful integration methods', async () => {
 		class StatefulIntegration {
 			readonly receivedEvents: unknown[] = [];

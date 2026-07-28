@@ -24,6 +24,7 @@ import type {
 } from '../../types/sdk/message';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
 
+// Used across all message roles; AssistantContent omits user images and tool approval responses.
 type AiContentPart = Exclude<ModelMessage['content'], string>[number];
 type AiAssistantContent = Exclude<Extract<ModelMessage, { role: 'assistant' }>['content'], string>;
 

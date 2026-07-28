@@ -1,6 +1,8 @@
-import type { Attributes, Context, Span, SpanOptions, Tracer } from '@opentelemetry/api';
+import { isRecord } from '@n8n/utils/is-record';
+import type { Tracer } from '@opentelemetry/api';
 import type { Telemetry as AiSdkTelemetry } from 'ai';
 
+import { createMetadataEnrichedTracer } from './metadata-enriched-tracer';
 import type {
 	AttributeValue,
 	BuiltTelemetry,
@@ -9,6 +11,16 @@ import type {
 } from '../types/telemetry';
 
 type RedactFn = (data: Record<string, unknown>) => Record<string, unknown>;
+type ExecuteHookKey = 'executeLanguageModelCall' | 'executeTool';
+// Future on* hooks are wrapped automatically; other SDK members must be classified explicitly.
+type RedactableTelemetry = AiSdkTelemetry &
+	Record<Exclude<keyof AiSdkTelemetry, `on${string}` | ExecuteHookKey>, never>;
+type UnknownMethod = (this: unknown, ...args: unknown[]) => unknown;
+
+const EXECUTION_CONTROL_FIELDS: Record<ExecuteHookKey, string[]> = {
+	executeLanguageModelCall: ['callId', 'execute'],
+	executeTool: ['callId', 'toolCallId', 'execute'],
+};
 
 /**
  * Recursively apply the redact function to plain objects found anywhere
@@ -23,7 +35,7 @@ function redactValue(value: unknown, redact: RedactFn): unknown {
 		value !== null &&
 		Object.getPrototypeOf(value) === Object.prototype
 	) {
-		const redacted = redact(value as Record<string, unknown>);
+		const redacted = { ...redact(value as Record<string, unknown>) };
 		// Recurse into the redacted result so deeply nested objects are also processed.
 		for (const key of Object.keys(redacted)) {
 			redacted[key] = redactValue(redacted[key], redact);
@@ -42,7 +54,7 @@ function redactValue(value: unknown, redact: RedactFn): unknown {
 function redactEvent<T extends object>(event: T, redact: RedactFn): T {
 	const cloned = { ...event };
 	// Redact the cloned event itself (it is a plain object).
-	const redacted = redact(cloned as unknown as Record<string, unknown>);
+	const redacted = { ...redact(cloned as unknown as Record<string, unknown>) };
 	// Then recurse into each value to handle arrays and nested objects.
 	for (const key of Object.keys(redacted)) {
 		const value = redacted[key];
@@ -51,105 +63,61 @@ function redactEvent<T extends object>(event: T, redact: RedactFn): T {
 	return redacted as T;
 }
 
+function isExecuteHookKey(property: PropertyKey): property is ExecuteHookKey {
+	return property === 'executeLanguageModelCall' || property === 'executeTool';
+}
+
+function isTelemetryHook(property: PropertyKey): boolean {
+	return (typeof property === 'string' && property.startsWith('on')) || isExecuteHookKey(property);
+}
+
+function isMethod(value: unknown): value is UnknownMethod {
+	return typeof value === 'function';
+}
+
+function redactHookArgument(property: PropertyKey, argument: unknown, redact: RedactFn): unknown {
+	if (property === 'onError' || !isRecord(argument)) return redactValue(argument, redact);
+
+	const redacted = redactEvent(argument, redact);
+	if (isExecuteHookKey(property)) {
+		const controlFields = Object.fromEntries(
+			EXECUTION_CONTROL_FIELDS[property].map((field) => [field, argument[field]]),
+		);
+		return { ...redacted, ...controlFields };
+	}
+	return redacted;
+}
+
 /**
  * Wrap an AI SDK telemetry integration so every hook passes event data through
  * the redact callback before forwarding to the original hook.
  */
 function wrapIntegrationWithRedaction(
-	integration: AiSdkTelemetry,
+	integration: RedactableTelemetry,
 	redact: RedactFn,
 ): AiSdkTelemetry {
-	const wrapped: AiSdkTelemetry = {};
+	const methodCache = new Map<PropertyKey, { original: UnknownMethod; wrapped: UnknownMethod }>();
+	const facade: AiSdkTelemetry = {};
 
-	if (integration.onStart) {
-		const orig = integration.onStart.bind(integration);
-		wrapped.onStart = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onStepStart) {
-		const orig = integration.onStepStart.bind(integration);
-		wrapped.onStepStart = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onLanguageModelCallStart) {
-		const orig = integration.onLanguageModelCallStart.bind(integration);
-		wrapped.onLanguageModelCallStart = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onLanguageModelCallEnd) {
-		const orig = integration.onLanguageModelCallEnd.bind(integration);
-		wrapped.onLanguageModelCallEnd = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onToolExecutionStart) {
-		const orig = integration.onToolExecutionStart.bind(integration);
-		wrapped.onToolExecutionStart = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onToolExecutionEnd) {
-		const orig = integration.onToolExecutionEnd.bind(integration);
-		wrapped.onToolExecutionEnd = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onStepEnd) {
-		const orig = integration.onStepEnd.bind(integration);
-		wrapped.onStepEnd = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onStepFinish) {
-		const orig = integration.onStepFinish.bind(integration);
-		wrapped.onStepFinish = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onObjectStepStart) {
-		const orig = integration.onObjectStepStart.bind(integration);
-		wrapped.onObjectStepStart = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onObjectStepEnd) {
-		const orig = integration.onObjectStepEnd.bind(integration);
-		wrapped.onObjectStepEnd = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onEmbedStart) {
-		const orig = integration.onEmbedStart.bind(integration);
-		wrapped.onEmbedStart = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onEmbedEnd) {
-		const orig = integration.onEmbedEnd.bind(integration);
-		wrapped.onEmbedEnd = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onRerankStart) {
-		const orig = integration.onRerankStart.bind(integration);
-		wrapped.onRerankStart = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onRerankEnd) {
-		const orig = integration.onRerankEnd.bind(integration);
-		wrapped.onRerankEnd = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onEnd) {
-		const orig = integration.onEnd.bind(integration);
-		wrapped.onEnd = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onAbort) {
-		const orig = integration.onAbort.bind(integration);
-		wrapped.onAbort = (event) => orig(redactEvent(event, redact));
-	}
-	if (integration.onError) {
-		const orig = integration.onError.bind(integration);
-		wrapped.onError = (error) => orig(redactValue(error, redact));
-	}
-	if (integration.executeLanguageModelCall) {
-		const orig = integration.executeLanguageModelCall.bind(integration);
-		wrapped.executeLanguageModelCall = (options) => {
-			const redacted = redactEvent(options, redact);
-			return orig({ ...redacted, callId: options.callId, execute: options.execute });
-		};
-	}
-	if (integration.executeTool) {
-		const orig = integration.executeTool.bind(integration);
-		wrapped.executeTool = (options) => {
-			const redacted = redactEvent(options, redact);
-			return orig({
-				...redacted,
-				callId: options.callId,
-				toolCallId: options.toolCallId,
-				execute: options.execute,
-			});
-		};
-	}
+	return new Proxy(facade, {
+		get(_target, property) {
+			const original: unknown = Reflect.get(integration, property, integration);
+			if (!isTelemetryHook(property) || !isMethod(original)) return original;
 
-	return wrapped;
+			const cached = methodCache.get(property);
+			if (cached?.original === original) return cached.wrapped;
+
+			const wrapped: UnknownMethod = function (...args) {
+				const [argument, ...rest] = args;
+				return Reflect.apply(original, integration, [
+					redactHookArgument(property, argument, redact),
+					...rest,
+				]);
+			};
+			methodCache.set(property, { original, wrapped });
+			return wrapped;
+		},
+	});
 }
 
 function isOpenTelemetryTracer(value: unknown): value is Tracer {
@@ -159,72 +127,6 @@ function isOpenTelemetryTracer(value: unknown): value is Tracer {
 		typeof Reflect.get(value, 'startSpan') === 'function' &&
 		typeof Reflect.get(value, 'startActiveSpan') === 'function'
 	);
-}
-
-class MetadataEnrichedTracer implements Tracer {
-	constructor(
-		private readonly delegate: Tracer,
-		private readonly attributes: Attributes,
-	) {}
-
-	startSpan(name: string, options?: SpanOptions, context?: Context): Span {
-		return this.delegate.startSpan(
-			name,
-			{
-				...options,
-				attributes: { ...this.attributes, ...options?.attributes },
-			},
-			context,
-		);
-	}
-
-	startActiveSpan<F extends (span: Span) => unknown>(name: string, fn: F): ReturnType<F>;
-	startActiveSpan<F extends (span: Span) => unknown>(
-		name: string,
-		options: SpanOptions,
-		fn: F,
-	): ReturnType<F>;
-	startActiveSpan<F extends (span: Span) => unknown>(
-		name: string,
-		options: SpanOptions,
-		context: Context,
-		fn: F,
-	): ReturnType<F>;
-	startActiveSpan<F extends (span: Span) => unknown>(
-		name: string,
-		optionsOrFn: SpanOptions | F,
-		contextOrFn?: Context | F,
-		fn?: F,
-	): ReturnType<F> {
-		if (typeof optionsOrFn === 'function') {
-			return this.delegate.startActiveSpan(name, optionsOrFn);
-		}
-
-		const options = {
-			...optionsOrFn,
-			attributes: { ...this.attributes, ...optionsOrFn.attributes },
-		};
-		if (typeof contextOrFn === 'function') {
-			return this.delegate.startActiveSpan(name, options, contextOrFn);
-		}
-		if (contextOrFn === undefined || fn === undefined) {
-			throw new Error('OpenTelemetry active span callback is required.');
-		}
-
-		return this.delegate.startActiveSpan(name, options, contextOrFn, fn);
-	}
-}
-
-function createMetadataEnrichedTracer(
-	tracer: Tracer,
-	metadata: Record<string, AttributeValue> | undefined,
-): Tracer {
-	if (!metadata || Object.keys(metadata).length === 0) return tracer;
-
-	const attributes = Object.fromEntries(
-		Object.entries(metadata).map(([key, value]) => [`ai.telemetry.metadata.${key}`, value]),
-	);
-	return new MetadataEnrichedTracer(tracer, attributes);
 }
 
 async function createAiSdkOpenTelemetryIntegrationFactory(
