@@ -477,6 +477,7 @@ function hookFunctionsExternalHooks(hooks: ExecutionLifecycleHooks) {
 			fullRunData,
 			this.workflowData,
 			this.executionId,
+			workflowContext,
 		]);
 	});
 }
