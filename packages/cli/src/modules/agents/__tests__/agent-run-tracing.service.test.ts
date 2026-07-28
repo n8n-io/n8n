@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import { AgentRunTracingService, modelIdFromSnapshot } from '../agent-run-tracing.service';
 
 vi.mock('@opentelemetry/api', () => ({
-	trace: { getTracer: vi.fn(() => ({ startActiveSpan: vi.fn() })) },
+	trace: { getTracer: vi.fn(() => ({ startSpan: vi.fn(), startActiveSpan: vi.fn() })) },
 }));
 
 describe('AgentRunTracingService', () => {
