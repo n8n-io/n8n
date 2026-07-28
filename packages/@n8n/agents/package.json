@@ -157,7 +157,7 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/api": "catalog:",
     "@opentelemetry/context-async-hooks": "^2.7.1",
     "@pinecone-database/pinecone": "catalog:",
     "@qdrant/js-client-rest": "catalog:",
