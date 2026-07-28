@@ -111,6 +111,12 @@ check only when preparing the final PR. When your changes affect type
 definitions, interfaces in `@n8n/api-types`, or cross-package dependencies,
 build the system before running lint and typecheck.
 
+Package-level `pnpm typecheck` resolves workspace dependencies from their
+built `dist` — in a fresh or recently-cleaned tree, `TS2307: Cannot find
+module '@n8n/...'` means unbuilt dependencies, not a real type error. Either
+build them first (`pnpm build --filter=<pkg>^...` from the root) or run
+`pnpm turbo typecheck --filter=<pkg>`, which builds dependencies for you.
+
 ## Architecture Overview
 
 **Monorepo Structure:** pnpm workspaces with Turbo build orchestration
