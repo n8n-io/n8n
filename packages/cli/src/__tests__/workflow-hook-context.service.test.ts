@@ -29,14 +29,12 @@ describe('WorkflowHookContextService', () => {
 			expect(service.resolveIsTriggerNodeType('n8n-nodes-base.set')).toBe(false);
 		});
 
-		it('propagates the error when the node type is not registered', () => {
+		it('returns false when the node type cannot be resolved', () => {
 			nodeTypes.getByNameAndVersion.mockImplementation(() => {
 				throw new Error('Unrecognized node type');
 			});
 
-			expect(() => service.resolveIsTriggerNodeType('n8n-nodes-base.unknown')).toThrow(
-				'Unrecognized node type',
-			);
+			expect(service.resolveIsTriggerNodeType('n8n-nodes-base.unknown')).toBe(false);
 		});
 	});
 });

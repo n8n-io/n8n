@@ -28,12 +28,16 @@ export class WorkflowHookContextService {
 	 *
 	 * @param type - Fully-qualified node type name (e.g. `n8n-nodes-base.manualTrigger`).
 	 * @param typeVersion - Node type version to resolve; defaults to the latest registered version.
-	 * @returns `true` if the resolved node type is a trigger, `false` otherwise.
-	 * @throws If the node type cannot be resolved, e.g. it is not registered on
-	 * this instance, or fails a synthetic-tool node type's invariant checks.
+	 * @returns `true` if the resolved node type is a trigger, `false` otherwise —
+	 * including when the node type cannot be resolved, e.g. it is not registered
+	 * on this instance.
 	 */
 	resolveIsTriggerNodeType(type: string, typeVersion?: number): boolean {
-		const { description } = this.nodeTypes.getByNameAndVersion(type, typeVersion);
-		return isTriggerNode(description);
+		try {
+			const { description } = this.nodeTypes.getByNameAndVersion(type, typeVersion);
+			return isTriggerNode(description);
+		} catch {
+			return false;
+		}
 	}
 }
