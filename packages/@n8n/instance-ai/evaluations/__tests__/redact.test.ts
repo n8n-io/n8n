@@ -120,6 +120,10 @@ describe('redactSecretsInText', () => {
 		expect(redactSecretsInText('posted with xoxb-1234567890-abcdefghijkl')).toBe(
 			'posted with [REDACTED]',
 		);
+		// Slack app-level tokens use the xapp- prefix, not xox?-
+		expect(redactSecretsInText('socket mode via xapp-1-A012-3456-abcdef')).toBe(
+			'socket mode via [REDACTED]',
+		);
 		// GitHub tokens (classic + fine-grained prefixes)
 		expect(redactSecretsInText('cloned using ghp_ABCdef123456789012345678901234567890')).toBe(
 			'cloned using [REDACTED]',

@@ -68,8 +68,8 @@ const SECRET_TEXT_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
 	// AKIA prefix mentioned in text) unmatched.
 	// OpenAI/Anthropic-style: sk-…, sk-ant-…, sk-proj-….
 	[/\bsk-(?:[a-z0-9]+-)*[A-Za-z0-9_-]{16,}\b/g, '[REDACTED]'],
-	// Slack tokens: xoxb-/xoxp-/xoxa-/xoxs-….
-	[/\bxox[a-z]-[A-Za-z0-9-]{8,}\b/gi, '[REDACTED]'],
+	// Slack tokens: xoxb-/xoxp-/xoxa-/xoxs-… plus app-level xapp-….
+	[/\b(?:xox[a-z]|xapp)-[A-Za-z0-9-]{8,}\b/gi, '[REDACTED]'],
 	// GitHub tokens: ghp_/gho_/ghu_/ghs_/ghr_ + fine-grained github_pat_.
 	[/\b(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]{20,}\b/g, '[REDACTED]'],
 	// AWS access key ids.
