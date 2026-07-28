@@ -37,6 +37,13 @@ import type {
 	V1StepExecutorDeps,
 } from './types';
 
+/**
+ * Runs `v1-node` steps by adapting them to the v1 node runtime.
+ *
+ * A step is executable when its type is `v1-node`, its config is a valid
+ * `V1NodeStepConfig`, and the config names a registered node type with an
+ * `execute` method.
+ */
 export class V1StepExecutor implements IStepExecutor {
 	constructor(private readonly deps: V1StepExecutorDeps) {}
 
@@ -136,6 +143,13 @@ export class V1StepExecutor implements IStepExecutor {
 		);
 	}
 
+	/**
+	 * Runs the node and settles its cleanup functions.
+	 *
+	 * Cleanup errors propagate only when the node itself succeeded. A node
+	 * failure with `continueOnFail` passes the input items through as output.
+	 * A null result yields no output.
+	 */
 	private async runNode({
 		nodeType,
 		nodeExecuteContext,
