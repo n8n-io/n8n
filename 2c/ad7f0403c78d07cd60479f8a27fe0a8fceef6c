@@ -1,0 +1,19 @@
+packages/workflow/src/trigger-identity.ts
+  s_ccec3de985997b::t_3d1a2987033ec9 70-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "2cad7f0403c78d07cd60479f8a27fe0a8fceef6c",
+  "prompts": {},
+  "sessions": {
+    "s_ccec3de985997b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "67cbb82e-3242-4be9-b169-60ee1ab577fd",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
