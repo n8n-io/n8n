@@ -49,7 +49,7 @@ export class ProvisioningInstanceSettingsLoader {
 			scopesProvisionInstanceRole:
 				mode === 'instance_role' || mode === 'instance_and_project_roles',
 			scopesProvisionProjectRoles: mode === 'instance_and_project_roles',
-			scopesUseExpressionMapping: false,
+			scopesUseExpressionMapping: provisioning.scopesUseExpressionMapping,
 			scopesName: provisioning.scopesName,
 			scopesInstanceRoleClaimName: provisioning.scopesInstanceRoleClaimName,
 			scopesProjectsRolesClaimName: provisioning.scopesProjectsRolesClaimName,

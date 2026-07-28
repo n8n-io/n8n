@@ -17,6 +17,7 @@ describe('ProvisioningInstanceSettingsLoader', () => {
 				scopesName: 'n8n',
 				scopesInstanceRoleClaimName: 'n8n_instance_role',
 				scopesProjectsRolesClaimName: 'n8n_projects',
+				scopesUseExpressionMapping: false,
 			},
 		},
 	} as GlobalConfig;
@@ -104,6 +105,36 @@ describe('ProvisioningInstanceSettingsLoader', () => {
 			},
 			{ conflictPaths: ['key'] },
 		);
+	});
+
+	it('should forward scopesUseExpressionMapping from config', async () => {
+		const configWithExpressionMapping = {
+			sso: {
+				provisioning: {
+					scopesName: 'n8n',
+					scopesInstanceRoleClaimName: 'n8n_instance_role',
+					scopesProjectsRolesClaimName: 'n8n_projects',
+					scopesUseExpressionMapping: true,
+				},
+			},
+		} as GlobalConfig;
+
+		const config = {
+			ssoUserRoleProvisioning: 'instance_and_project_roles',
+		} as InstanceSettingsLoaderConfig;
+
+		const loader = new ProvisioningInstanceSettingsLoader(
+			config,
+			configWithExpressionMapping,
+			settingsRepository,
+			logger,
+		);
+
+		await loader.apply();
+
+		const upsertCall = settingsRepository.upsert.mock.calls[0][0] as { value: string };
+		const persisted = jsonParse<Record<string, unknown>>(upsertCall.value);
+		expect(persisted.scopesUseExpressionMapping).toBe(true);
 	});
 
 	describe('persisted value is consumable by ProvisioningConfigDto', () => {
