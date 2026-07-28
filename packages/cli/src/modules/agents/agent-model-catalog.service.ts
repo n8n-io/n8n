@@ -74,7 +74,7 @@ export class AgentModelCatalogService {
 			return { provider, verified: false, models: Object.values(catalogModels) };
 		}
 
-		let liveModels: Awaited<ReturnType<BuilderModelLiveLookupService['list']>>;
+		let liveModels: Array<{ name: string; value: string }>;
 		try {
 			liveModels = await this.builderModelLiveLookupService.list(
 				user,
@@ -91,11 +91,9 @@ export class AgentModelCatalogService {
 			return { provider, verified: false, models: Object.values(catalogModels) };
 		}
 
-		const liveModelsById = new Map(
+		const liveModelIds = new Set(
 			liveModels.flatMap((live) =>
-				liveModelIdVariants(normalizeLiveModelValue(provider, live.value)).map(
-					(id) => [id, live] as const,
-				),
+				liveModelIdVariants(normalizeLiveModelValue(provider, live.value)),
 			),
 		);
 		const catalogList = Object.values(catalogModels);
@@ -108,12 +106,7 @@ export class AgentModelCatalogService {
 			return {
 				provider,
 				verified: true,
-				models: catalogList
-					.filter((model) => liveModelsById.has(model.id))
-					.map((model) => {
-						const capabilities = liveModelsById.get(model.id)?.capabilities;
-						return { ...model, ...(capabilities && { capabilities }) };
-					}),
+				models: catalogList.filter((model) => liveModelIds.has(model.id)),
 			};
 		}
 
@@ -130,7 +123,6 @@ export class AgentModelCatalogService {
 					name: normalizeLiveModelValue(provider, live.name) || id,
 					reasoning: false,
 					toolCall: true,
-					...(live.capabilities && { capabilities: live.capabilities }),
 				};
 			}),
 		};

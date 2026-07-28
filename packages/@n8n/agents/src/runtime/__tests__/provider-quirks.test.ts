@@ -29,58 +29,11 @@ describe('applyToolProviderOptionDefaults', () => {
 	});
 });
 
-describe('thinkingToProviderOptions', () => {
-	it('anthropic: enabled mode defaults budgetTokens to 10000', () => {
-		expect(getProviderQuirks('anthropic').thinkingToProviderOptions?.({})).toEqual({
-			anthropic: { thinking: { type: 'enabled', budgetTokens: 10000 } },
-		});
-	});
-
-	it('anthropic: adaptive mode defaults display to summarized and effort to medium', () => {
-		expect(
-			getProviderQuirks('anthropic').thinkingToProviderOptions?.({ mode: 'adaptive' }),
-		).toEqual({
-			anthropic: {
-				thinking: { type: 'adaptive', display: 'summarized' },
-				effort: 'medium',
-			},
-		});
-	});
-
-	it('anthropic: adaptive mode forwards explicit effort', () => {
-		expect(
-			getProviderQuirks('anthropic').thinkingToProviderOptions?.({
-				mode: 'adaptive',
-				effort: 'high',
-			}),
-		).toEqual({
-			anthropic: {
-				thinking: { type: 'adaptive', display: 'summarized' },
-				effort: 'high',
-			},
-		});
-	});
-
-	it('openai: requests an automatic reasoning summary', () => {
-		expect(getProviderQuirks('openai').thinkingToProviderOptions?.({})).toEqual({
-			openai: { reasoningEffort: 'medium', reasoningSummary: 'auto' },
-		});
-	});
-
-	it('google: forwards thinkingBudget and thinkingLevel when set', () => {
-		expect(
-			getProviderQuirks('google').thinkingToProviderOptions?.({
-				thinkingBudget: 2048,
-				thinkingLevel: 'high',
-			}),
-		).toEqual({
-			google: { thinkingConfig: { thinkingBudget: 2048, thinkingLevel: 'high' } },
-		});
-	});
-
-	it('xai: defaults reasoningEffort to high', () => {
-		expect(getProviderQuirks('xai').thinkingToProviderOptions?.({})).toEqual({
-			xai: { reasoningEffort: 'high' },
-		});
-	});
+describe('reasoning', () => {
+	it.each(['anthropic', 'openai', 'google', 'xai'])(
+		'%s has no provider-specific reasoning mapping',
+		(provider) => {
+			expect(getProviderQuirks(provider)).not.toHaveProperty('thinkingToProviderOptions');
+		},
+	);
 });

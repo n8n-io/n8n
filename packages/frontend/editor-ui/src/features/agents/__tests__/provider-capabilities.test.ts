@@ -1,23 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-	PROVIDER_CAPABILITIES,
-	REASONING_EFFORT_OPTIONS,
-	ANTHROPIC_CACHE_TTL_OPTIONS,
-} from '../provider-capabilities';
+import { PROVIDER_CAPABILITIES, ANTHROPIC_CACHE_TTL_OPTIONS } from '../provider-capabilities';
 
 describe('provider-capabilities', () => {
-	it('keeps the canonical reasoning-effort order', () => {
-		// AgentAdvancedPanel renders these as a select in this exact order; flipping
-		// the order would shift the default the user sees.
-		expect([...REASONING_EFFORT_OPTIONS]).toEqual(['low', 'medium', 'high']);
-	});
-
-	it('uses model-specific thinking for Anthropic and reasoning-effort for OpenAI', () => {
-		expect(PROVIDER_CAPABILITIES.anthropic.thinking).toBe('anthropic');
-		expect(PROVIDER_CAPABILITIES.openai.thinking).toBe('reasoningEffort');
-	});
-
 	it('keeps the canonical Anthropic cache-ttl order', () => {
 		// AgentAdvancedPanel renders this as a select in this exact order.
 		expect([...ANTHROPIC_CACHE_TTL_OPTIONS]).toEqual(['5m', '1h']);
@@ -44,26 +29,9 @@ describe('provider-capabilities', () => {
 		}
 	});
 
-	it('marks providers without thinking support as `false`', () => {
-		const noThinking = [
-			'google',
-			'xai',
-			'groq',
-			'deepseek',
-			'mistral',
-			'openrouter',
-			'cohere',
-			'ollama',
-		];
-		for (const provider of noThinking) {
-			expect(PROVIDER_CAPABILITIES[provider]?.thinking).toBe(false);
-		}
-	});
-
 	it('uses lowercase provider names', () => {
 		// The Advanced panel parses `model` strings of the form `<provider>/<name>`
-		// and indexes this map directly; any uppercase keys would silently fall
-		// back to the default-no-thinking branch.
+		// and indexes this map directly.
 		for (const key of Object.keys(PROVIDER_CAPABILITIES)) {
 			expect(key).toBe(key.toLowerCase());
 		}

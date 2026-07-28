@@ -573,15 +573,15 @@ onBeforeUnmount(() => {
 						</template>
 					</template>
 					<AiThinkingBlock
-						v-if="getMessageThinkingSegments(group.message).length"
-						:segments="getMessageThinkingSegments(group.message)"
+						v-if="group.thinkingSegments.length"
+						:segments="group.thinkingSegments"
 						:active="isThinkingActive(group.message)"
 						:awaiting-input="group.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER"
-						:duration-sec="getThinkingDurationSec(getMessageThinkingSegments(group.message))"
+						:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
 						test-id="agent-chat-thinking-block"
 					>
 						<AiReasoningBlock
-							v-for="segment in getMessageThinkingSegments(group.message)"
+							v-for="segment in group.thinkingSegments"
 							:key="segment.id"
 							:entry="segment"
 							:streaming="

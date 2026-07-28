@@ -60,12 +60,10 @@ import type {
 	GenerateResult,
 	MemoryConfig,
 	ModelConfig,
-	Provider,
 	PromptCachingConfig,
+	ReasoningLevel,
 	RunOptions,
 	StreamResult,
-	ThinkingConfig,
-	ThinkingConfigFor,
 	ResumeOptions,
 	McpConnectionFailedEvent,
 } from '../types';
@@ -118,8 +116,8 @@ export interface AgentSnapshot {
 	hasObservationalMemory: boolean;
 	/** True when episodic memory has been configured on the memory builder. */
 	hasEpisodicMemory: boolean;
-	/** The thinking config if set, otherwise null. */
-	thinking: ThinkingConfig | null;
+	/** The provider-agnostic reasoning level if set, otherwise null. */
+	reasoning: ReasoningLevel | null;
 	/** The prompt caching config if set via `.promptCaching()`, otherwise null. */
 	promptCaching: PromptCachingConfig | null;
 	/** Tool-call concurrency limit if set, otherwise null. */
@@ -179,7 +177,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private checkpointStore?: 'memory' | CheckpointStore;
 
-	private thinkingConfig?: ThinkingConfig;
+	private reasoningLevel?: ReasoningLevel;
 
 	private promptCachingConfig?: PromptCachingConfig;
 
@@ -227,7 +225,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 *
 	 * @example
 	 * ```typescript
-	 * // Typed form — enables provider-specific config on .thinking() etc.
+	 * // Provider and model as separate arguments
 	 * agent.model('anthropic', 'claude-sonnet-4-5')
 	 *
 	 * // Untyped form — backwards compatible
@@ -434,24 +432,17 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 
 	/**
-	 * Enable extended thinking / reasoning for the agent.
-	 * The config type is inferred from the provider set via `.model()`.
+	 * Enable provider-agnostic reasoning for the agent.
 	 *
 	 * @example
 	 * ```typescript
-	 * // Anthropic — budgetTokens
 	 * new Agent('thinker')
 	 *   .model('anthropic', 'claude-sonnet-4-5')
-	 *   .thinking('anthropic', { budgetTokens: 5000 })
-	 *
-	 * // OpenAI — reasoningEffort
-	 * new Agent('thinker')
-	 *   .model('openai', 'o3-mini')
-	 *   .thinking('openai', { reasoningEffort: 'high' })
+	 *   .reasoning('high')
 	 * ```
 	 */
-	thinking<P extends Provider>(_provider: P, config?: ThinkingConfigFor<P>): this {
-		this.thinkingConfig = config ?? {};
+	reasoning(level: ReasoningLevel = 'medium'): this {
+		this.reasoningLevel = level;
 		return this;
 	}
 
@@ -668,7 +659,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			hasMemory: this.memoryConfig !== undefined,
 			hasObservationalMemory: this.memoryConfig?.observationalMemory !== undefined,
 			hasEpisodicMemory: this.memoryConfig?.episodicMemory !== undefined,
-			thinking: this.thinkingConfig ?? null,
+			reasoning: this.reasoningLevel ?? null,
 			promptCaching: this.promptCachingConfig ?? null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
 		};
@@ -1069,7 +1060,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			episodicMemory: memoryConfig?.episodicMemory,
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
-			thinking: this.thinkingConfig,
+			reasoning: this.reasoningLevel,
 			promptCaching: this.promptCachingConfig,
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: memoryConfig?.titleGeneration,
@@ -1154,9 +1145,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 					)
 				: [];
 			const childModelId = modelConfigToId(childModelConfig);
-			const childThinkingConfig = shouldInheritThinking(options.modelConfig, childModelConfig)
-				? this.thinkingConfig
-				: undefined;
 			const telemetry = deriveSubAgentTelemetry(request.parentTelemetry) ?? options.telemetry;
 			const childRuntime = new AgentRuntime({
 				name: `${this.name}:${request.taskName}`,
@@ -1173,7 +1161,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				instructionProviderOptions: this.instructionProviderOpts,
 				promptCaching: this.promptCachingConfig,
 				checkpointStorage: this.checkpointStore,
-				...(childThinkingConfig !== undefined ? { thinking: childThinkingConfig } : {}),
+				...(this.reasoningLevel !== undefined ? { reasoning: this.reasoningLevel } : {}),
 				...(telemetry !== undefined ? { telemetry } : {}),
 				...(options.toolCallConcurrency !== undefined
 					? { toolCallConcurrency: options.toolCallConcurrency }
@@ -1265,22 +1253,6 @@ function modelConfigToId(modelConfig: ModelConfig): string | undefined {
 		return provider && modelId ? `${provider}/${modelId}` : undefined;
 	}
 	return undefined;
-}
-
-function modelConfigProvider(modelConfig: ModelConfig): string | undefined {
-	const modelId = modelConfigToId(modelConfig);
-	if (!modelId) return undefined;
-	const slashIndex = modelId.indexOf('/');
-	return slashIndex > 0 ? modelId.slice(0, slashIndex) : undefined;
-}
-
-function shouldInheritThinking(
-	parentModelConfig: ModelConfig,
-	childModelConfig: ModelConfig,
-): boolean {
-	const parentProvider = modelConfigProvider(parentModelConfig);
-	const childProvider = modelConfigProvider(childModelConfig);
-	return parentProvider !== undefined && parentProvider === childProvider;
 }
 
 export function buildInlineSubAgentBlockedToolNames(hostBlockedTools?: string[]): Set<string> {

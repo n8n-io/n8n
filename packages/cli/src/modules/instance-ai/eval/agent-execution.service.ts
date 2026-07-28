@@ -45,7 +45,7 @@ import {
 	type McpMockToolCall,
 } from './mcp-mock-fetch';
 import { createLlmMockHandler } from './mock-handler';
-import { truncateForLlm } from './request-sanitizer';
+import { redactSecretValuePatterns, truncateForLlm } from './request-sanitizer';
 import { createWebSearchMock } from './web-search-mock';
 
 // ---------------------------------------------------------------------------
@@ -65,6 +65,10 @@ import { createWebSearchMock } from './web-search-mock';
 // ---------------------------------------------------------------------------
 
 const DEFAULT_TIMEOUT_MS = 600_000;
+// Case input is used verbatim as the opening message, but as a prompt *signal*
+// for seed + mock generation it is bounded — matching the request schema's cap
+// on `scenarioHints` so a large Data Table cell can't blow up those prompts.
+const MAX_SCENARIO_HINT_CHARS = 2_000;
 const DEFAULT_MAX_ITERATIONS = 25;
 const MAX_ITERATIONS_CAP = 40;
 const MAX_AUTO_APPROVALS = 20;
@@ -101,6 +105,11 @@ export class EvalAgentExecutionService {
 		agentId: string,
 		user: User,
 		options: InstanceAiEvalAgentExecutionRequest,
+		// When set, the run uses this exact text as the opening message instead of
+		// a generated scenario. The seed is still generated (its shared context +
+		// per-tool hints keep the tool mocks coherent), but the message the agent
+		// receives is this input verbatim — how a fixed eval case is executed.
+		caseInput?: string,
 	): Promise<InstanceAiEvalAgentExecutionResult> {
 		// Workflow-tool sub-executions carry a configureAdditionalData closure
 		// that doesn't survive queue serialization — refuse upfront so tool
@@ -146,13 +155,25 @@ export class EvalAgentExecutionService {
 
 		const toolSummaries = summarizeTools(config, agentEntity.tools ?? {}, sanitizeToolName);
 
+		// The scenario signal steers seed + mock generation. A fixed case input
+		// doubles as that signal (bounded) so the generated context, per-tool
+		// hints, and mock responses all stay coherent with the message sent.
+		// Secret-value shapes pasted into a case are scrubbed before reaching these
+		// auxiliary LLM calls (which never need the real value); the opening
+		// message the agent actually runs stays verbatim.
+		const scenarioSignal =
+			options.scenarioHints ??
+			(caseInput !== undefined
+				? truncateForLlm(redactSecretValuePatterns(caseInput), MAX_SCENARIO_HINT_CHARS)
+				: undefined);
+
 		let seed: InstanceAiEvalAgentScenarioSeed;
 		try {
 			seed = await generateAgentScenarioSeed({
 				agentName: config.name,
 				instructions: config.instructions,
 				tools: toolSummaries,
-				scenarioHints: options.scenarioHints,
+				scenarioHints: scenarioSignal,
 			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -161,8 +182,15 @@ export class EvalAgentExecutionService {
 			);
 		}
 
+		// A fixed eval case overrides the generated opening message: keep the
+		// seed's context/hints (they steer the tool mocks) but send the case's
+		// input verbatim.
+		if (caseInput !== undefined) {
+			seed = { ...seed, openingMessage: caseInput };
+		}
+
 		const mockHandler = createLlmMockHandler({
-			scenarioHints: options.scenarioHints,
+			scenarioHints: scenarioSignal,
 			globalContext: seed.globalContext,
 			nodeHints: seed.toolHints,
 		});
@@ -188,7 +216,7 @@ export class EvalAgentExecutionService {
 				description: server.description,
 			})),
 			agentInstructions: config.instructions,
-			scenarioHints: options.scenarioHints,
+			scenarioHints: scenarioSignal,
 			globalContext: seed.globalContext,
 			serverHints: seed.toolHints,
 			knownToolsByServer,
@@ -228,7 +256,7 @@ export class EvalAgentExecutionService {
 		// search); with native search the tool is never built and this goes unused.
 		const webSearchMock = createWebSearchMock({
 			agentInstructions: config.instructions,
-			scenarioHints: options.scenarioHints,
+			scenarioHints: scenarioSignal,
 			globalContext: seed.globalContext,
 			searchHint: seed.toolHints?.web_search,
 			logger: this.logger,

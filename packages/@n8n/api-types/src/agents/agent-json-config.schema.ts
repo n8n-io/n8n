@@ -2,6 +2,7 @@ import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+import { AGENT_REASONING_LEVELS } from './reasoning';
 /**
  * Regex for valid custom tool ids. Shared with the backend service layer
  * so validation stays in sync with the JSON config schema.
@@ -69,14 +70,6 @@ const MemoryConfigSchema = z.object({
 	storage: z.enum(['n8n']),
 	observationalMemory: ObservationalMemoryConfigSchema.optional(),
 	episodicMemory: EpisodicMemoryConfigSchema.optional(),
-});
-
-const ThinkingConfigSchema = z.object({
-	provider: z.enum(['anthropic', 'openai']),
-	mode: z.enum(['adaptive', 'enabled']).optional(),
-	budgetTokens: z.number().int().optional(),
-	effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).optional(),
-	reasoningEffort: z.string().optional(),
 });
 
 // Mandatory for supporting providers (the user cannot disable it). Anthropic
@@ -485,7 +478,7 @@ export const AgentJsonConfigBaseSchema = z.object({
 		.optional(),
 	config: z
 		.object({
-			thinking: ThinkingConfigSchema.optional(),
+			reasoning: z.enum(AGENT_REASONING_LEVELS).optional(),
 			promptCaching: PromptCachingConfigSchema.optional(),
 			webSearch: WebSearchConfigSchema.optional(),
 			toolCallConcurrency: z.number().int().min(1).max(100).optional(),

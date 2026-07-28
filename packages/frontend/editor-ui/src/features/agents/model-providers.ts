@@ -1,8 +1,4 @@
-import type {
-	AgentModelEffortCapabilities,
-	AgentModelProvider,
-	AgentModelThinkingCapabilities,
-} from '@n8n/api-types';
+import type { AgentModelProvider } from '@n8n/api-types';
 
 export {
 	AGENT_MODEL_PROVIDERS,
@@ -19,8 +15,6 @@ export interface AgentModelOption {
 	metadata: {
 		functionCalling: boolean;
 		available: boolean;
-		effort?: AgentModelEffortCapabilities;
-		thinking?: AgentModelThinkingCapabilities;
 	};
 }
 

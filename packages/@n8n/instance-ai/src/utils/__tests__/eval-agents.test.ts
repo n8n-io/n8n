@@ -3,7 +3,7 @@ import type { Mock } from 'vitest';
 type MockAgentInstance = {
 	model: Mock;
 	instructions: Mock;
-	thinking: Mock;
+	reasoning: Mock;
 };
 
 const mockAgentInstances: MockAgentInstance[] = [];
@@ -12,7 +12,7 @@ vi.mock('@n8n/agents', () => ({
 	Agent: vi.fn().mockImplementation(function Agent(this: MockAgentInstance) {
 		this.model = vi.fn().mockReturnThis();
 		this.instructions = vi.fn().mockReturnThis();
-		this.thinking = vi.fn().mockReturnThis();
+		this.reasoning = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 	Tool: vi.fn(),
@@ -69,7 +69,7 @@ describe('eval agent model config', () => {
 		expect(config.apiKey).toBe('generic-key');
 	});
 
-	it('enables thinking for supported eval models', () => {
+	it('enables generic reasoning for eval models', () => {
 		process.env.OPENAI_API_KEY = 'openai-key';
 
 		createEvalAgent('test-agent', {
@@ -77,9 +77,7 @@ describe('eval agent model config', () => {
 			instructions: 'Do the task.',
 		});
 
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
-			reasoningEffort: 'high',
-		});
+		expect(mockAgentInstances[0]?.reasoning).toHaveBeenCalledWith('medium');
 	});
 
 	it('throws without env keys or a fallback model config', () => {
@@ -101,10 +99,7 @@ describe('eval agent model config', () => {
 		});
 
 		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith(fallbackModelConfig);
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
-			mode: 'adaptive',
-			effort: 'medium',
-		});
+		expect(mockAgentInstances[0]?.reasoning).toHaveBeenCalledWith('medium');
 	});
 
 	it('prefers env-based model resolution over the fallback', () => {

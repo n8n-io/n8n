@@ -24,9 +24,10 @@ import type { IUser } from '@n8n/design-system';
 import {
 	N8nEmptyState,
 	N8nButton,
-	N8nHeading,
 	N8nIcon,
 	N8nInput,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
 	N8nTabs,
 	N8nText,
 } from '@n8n/design-system';
@@ -291,118 +292,122 @@ function onOpenScopes(apiKey: ApiKey) {
 </script>
 
 <template>
-	<div :class="$style.container">
-		<div :class="$style.heading">
-			<N8nHeading size="2xlarge">
-				{{ i18n.baseText('settings.api') }}
-			</N8nHeading>
-		</div>
+	<N8nSettingsLayout full-width :class="$style.layout">
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('settings.api')"
+			:show-docs-link="false"
+			data-test-id="api-keys-header"
+		>
+			<template #description>
+				<N8nText size="medium" color="text-base">
+					<I18nT keypath="settings.api.view.info" tag="span" scope="global">
+						<template #apiPlayground>
+							<a
+								:class="$style.docLink"
+								data-test-id="api-playground-link"
+								:href="apiDocsURL"
+								target="_blank"
+								v-text="i18n.baseText('settings.api.view.info.apiPlayground')"
+							/>
+						</template>
+						<template #webhook>
+							<a
+								:class="$style.docLink"
+								data-test-id="webhook-docs-link"
+								href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+								target="_blank"
+								v-text="i18n.baseText('settings.api.view.info.webhook')"
+							/>
+						</template>
+						<template #documentation>
+							<a
+								:class="$style.docLink"
+								data-test-id="api-docs-link"
+								href="https://docs.n8n.io/api"
+								target="_blank"
+								v-text="i18n.baseText('settings.api.view.info.documentation')"
+							/>
+						</template>
+					</I18nT>
+				</N8nText>
+			</template>
+		</N8nSettingsPageHeader>
 
-		<p v-if="isPublicApiEnabled && hasAnyKeys" :class="$style.description">
-			<I18nT keypath="settings.api.view.info" tag="span" scope="global">
-				<template #apiPlayground>
-					<a
-						:class="$style.docLink"
-						data-test-id="api-playground-link"
-						:href="apiDocsURL"
-						target="_blank"
-						v-text="i18n.baseText('settings.api.view.info.apiPlayground')"
-					/>
-				</template>
-				<template #webhook>
-					<a
-						:class="$style.docLink"
-						data-test-id="webhook-docs-link"
-						href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
-						target="_blank"
-						v-text="i18n.baseText('settings.api.view.info.webhook')"
-					/>
-				</template>
-				<template #documentation>
-					<a
-						:class="$style.docLink"
-						data-test-id="api-docs-link"
-						href="https://docs.n8n.io/api"
-						target="_blank"
-						v-text="i18n.baseText('settings.api.view.info.documentation')"
-					/>
-				</template>
-			</I18nT>
-		</p>
-
-		<div v-if="isPublicApiEnabled && hasAnyKeys" :class="$style.toolbar">
-			<div :class="$style.filters">
-				<N8nInput
-					:model-value="searchQuery"
-					:placeholder="i18n.baseText('settings.api.search.placeholder')"
-					:class="$style.search"
-					size="medium"
-					clearable
-					data-test-id="api-keys-search"
-					@update:model-value="onSearchInput"
-				>
-					<template #prefix>
-						<N8nIcon icon="search" />
-					</template>
-				</N8nInput>
-				<div v-if="canManageAllKeys && ownership === 'all'" :class="$style.ownerFilter">
-					<ApiKeyOwnerFilter
-						:model-value="selectedOwnerIds"
-						:users="ownerOptions"
-						:counts="ownerKeyCounts"
-						:total-count="totalAllCount"
-						:current-user-id="usersStore.currentUser?.id"
-						data-test-id="api-keys-owner-filter"
-						@update:model-value="onOwnerFilterChange"
-					/>
+		<div v-if="isPublicApiEnabled && hasAnyKeys" :class="$style.tableArea">
+			<div :class="$style.toolbar">
+				<N8nTabs
+					v-if="canManageAllKeys"
+					:model-value="ownership"
+					:options="tabOptions"
+					data-test-id="api-keys-tabs"
+					:class="$style.tabs"
+					@update:model-value="onTabChange"
+				/>
+				<div :class="$style.controls">
+					<N8nInput
+						:model-value="searchQuery"
+						:placeholder="i18n.baseText('settings.api.search.placeholder')"
+						:class="$style.search"
+						size="medium"
+						clearable
+						data-test-id="api-keys-search"
+						@update:model-value="onSearchInput"
+					>
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+					</N8nInput>
+					<div v-if="canManageAllKeys && ownership === 'all'" :class="$style.ownerFilter">
+						<ApiKeyOwnerFilter
+							:model-value="selectedOwnerIds"
+							:users="ownerOptions"
+							:counts="ownerKeyCounts"
+							:total-count="totalAllCount"
+							:current-user-id="usersStore.currentUser?.id"
+							data-test-id="api-keys-owner-filter"
+							@update:model-value="onOwnerFilterChange"
+						/>
+					</div>
+					<N8nButton size="medium" @click="onCreateApiKey">
+						{{ i18n.baseText('settings.api.create.button') }}
+					</N8nButton>
 				</div>
 			</div>
-			<N8nButton size="medium" @click="onCreateApiKey">
-				{{ i18n.baseText('settings.api.create.button') }}
-			</N8nButton>
+
+			<ApiKeyTable
+				v-if="totalCountForOwnership > 0 && apiKeysCount > 0"
+				v-model:table-options="tableOptions"
+				:api-keys="apiKeys"
+				:items-length="apiKeysCount"
+				:loading="loading"
+				:current-user-id="usersStore.currentUser?.id"
+				:show-owner="canManageAllKeys && ownership === 'all'"
+				:class="$style.table"
+				@edit="onEdit"
+				@revoke="onRevokeRequest"
+				@rotate="onRotateRequest"
+				@open-scopes="onOpenScopes"
+				@update:options="onTableUpdate"
+			/>
+
+			<N8nText
+				v-else-if="labelFilter.trim()"
+				color="text-light"
+				:class="$style.noResults"
+				data-test-id="api-keys-no-results"
+			>
+				{{ i18n.baseText('settings.api.search.noResults') }}
+			</N8nText>
+
+			<N8nText
+				v-else-if="ownership === 'mine'"
+				color="text-light"
+				:class="$style.noResults"
+				data-test-id="api-keys-empty-mine"
+			>
+				{{ i18n.baseText('settings.api.empty.mine') }}
+			</N8nText>
 		</div>
-
-		<N8nTabs
-			v-if="isPublicApiEnabled && canManageAllKeys && hasAnyKeys"
-			:model-value="ownership"
-			:options="tabOptions"
-			data-test-id="api-keys-tabs"
-			:class="$style.tabs"
-			@update:model-value="onTabChange"
-		/>
-
-		<ApiKeyTable
-			v-if="isPublicApiEnabled && hasAnyKeys && totalCountForOwnership > 0 && apiKeysCount > 0"
-			v-model:table-options="tableOptions"
-			:api-keys="apiKeys"
-			:items-length="apiKeysCount"
-			:loading="loading"
-			:current-user-id="usersStore.currentUser?.id"
-			:class="$style.table"
-			@edit="onEdit"
-			@revoke="onRevokeRequest"
-			@rotate="onRotateRequest"
-			@open-scopes="onOpenScopes"
-			@update:options="onTableUpdate"
-		/>
-
-		<N8nText
-			v-else-if="isPublicApiEnabled && hasAnyKeys && labelFilter.trim()"
-			color="text-light"
-			:class="$style.noResults"
-			data-test-id="api-keys-no-results"
-		>
-			{{ i18n.baseText('settings.api.search.noResults') }}
-		</N8nText>
-
-		<N8nText
-			v-else-if="isPublicApiEnabled && hasAnyKeys && ownership === 'mine'"
-			color="text-light"
-			:class="$style.noResults"
-			data-test-id="api-keys-empty-mine"
-		>
-			{{ i18n.baseText('settings.api.empty.mine') }}
-		</N8nText>
 
 		<N8nEmptyState
 			v-if="!isPublicApiEnabled && cloudPlanStore.userIsTrialing"
@@ -448,50 +453,59 @@ function onOpenScopes(apiKey: ApiKey) {
 			@cancel="rotateConfirmApiKey = null"
 			@update:open="rotateConfirmApiKey = null"
 		/>
-	</div>
+	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module>
-.heading {
-	margin-bottom: var(--spacing--2xs);
-}
-
-.description {
-	font-size: var(--font-size--sm);
-	color: var(--color--text--tint-1);
-	line-height: var(--line-height--xl);
-	margin: 0 0 var(--spacing--lg);
+/* Collapse the layout's own top inset; the settings shell already pads the page top. */
+.layout {
+	padding-top: 0;
 }
 
 .docLink {
-	color: var(--color--text);
+	color: var(--text-color--subtle);
 	text-decoration: underline;
 
 	&::after {
 		content: '↗';
 		margin-left: 2px;
+		text-decoration: none;
+		display: inline-block;
 	}
 }
 
+.tableArea {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+}
+
+/*
+ * Tabs sit flush-left against the table with the filter/create controls on the
+ * right; the underline of the active tab aligns with the bottom of the controls.
+ */
 .toolbar {
 	display: flex;
-	align-items: center;
-	justify-content: space-between;
+	align-items: flex-end;
 	gap: var(--spacing--sm);
 	margin-bottom: var(--spacing--sm);
 }
 
-.filters {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--sm);
+.tabs {
 	flex: 1 1 auto;
 	min-width: 0;
 }
 
+.controls {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+	flex: 0 0 auto;
+	margin-left: auto;
+}
+
 .search {
-	max-width: 320px;
-	flex: 1 1 auto;
+	width: 260px;
 }
 
 .ownerFilter {
@@ -499,22 +513,13 @@ function onOpenScopes(apiKey: ApiKey) {
 	flex: 0 0 auto;
 }
 
-.container {
-	display: flex;
-	flex-direction: column;
-}
-
 .table {
-	margin-bottom: var(--spacing--lg);
+	width: 100%;
 }
 
 .noResults {
 	display: block;
 	padding: var(--spacing--lg) 0;
 	text-align: center;
-}
-
-.tabs {
-	margin-bottom: var(--spacing--sm);
 }
 </style>

@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AgentModelCapabilities } from '@n8n/api-types';
 import type { AgentModelOption } from '../model-providers';
 
 const mocks = vi.hoisted(() => ({
@@ -18,13 +17,12 @@ vi.mock('../composables/useAgentApi', () => ({
 	getProviderModels: mocks.getProviderModels,
 }));
 
-function model(id: string, name = id, capabilities?: AgentModelCapabilities) {
+function model(id: string, name = id) {
 	return {
 		id,
 		name,
 		reasoning: false,
 		toolCall: true,
-		...(capabilities && { capabilities }),
 	};
 }
 
@@ -113,12 +111,7 @@ describe('useModelCatalog', () => {
 		mocks.getProviderModels.mockResolvedValue({
 			provider: 'anthropic',
 			verified: true,
-			models: [
-				model('claude-sonnet-4-6', 'Claude Sonnet 4.6', {
-					effort: { low: true, medium: true, high: true, xhigh: false, max: false },
-					thinking: { adaptive: true, enabled: true },
-				}),
-			],
+			models: [model('claude-sonnet-4-6', 'Claude Sonnet 4.6')],
 		});
 
 		const { useModelCatalog } = await import('../composables/useModelCatalog');
@@ -134,17 +127,6 @@ describe('useModelCatalog', () => {
 		expect(modelIds(getModelsForPicker(credentials).anthropic?.models ?? [])).toEqual([
 			'claude-sonnet-4-6',
 		]);
-		expect(getModelsForPicker(credentials).anthropic?.models[0]?.metadata.thinking).toEqual({
-			adaptive: true,
-			enabled: true,
-		});
-		expect(getModelsForPicker(credentials).anthropic?.models[0]?.metadata.effort).toEqual({
-			low: true,
-			medium: true,
-			high: true,
-			xhigh: false,
-			max: false,
-		});
 		expect(mocks.getProviderModels).toHaveBeenCalledWith(
 			{},
 			'project-1',

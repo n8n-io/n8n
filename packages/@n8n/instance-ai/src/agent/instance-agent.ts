@@ -5,7 +5,6 @@ import {
 	Memory,
 } from '@n8n/agents';
 
-import { applyAgentThinking } from './apply-agent-thinking';
 import {
 	addSafeMcpTools,
 	createClaimedToolNames,
@@ -190,7 +189,7 @@ export async function createInstanceAgent(
 		agent.mcpConnectionFailures(mcpConnectionFailures);
 	}
 	if (options.thinkingEnabled !== false) {
-		applyAgentThinking(agent, modelId);
+		agent.reasoning('medium');
 	}
 	if (hasDeferrableTools) {
 		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });

@@ -10,22 +10,28 @@ const minimalConfig = {
 	instructions: 'Help the user.',
 };
 
-describe('AgentJsonConfigSchema — thinking', () => {
-	it('preserves an explicit Anthropic adaptive mode and effort', () => {
+describe('AgentJsonConfigSchema — reasoning', () => {
+	it.each(['low', 'medium', 'high'] as const)(
+		'preserves generic %s reasoning effort',
+		(reasoning) => {
+			const result = AgentJsonConfigSchema.safeParse({
+				...minimalConfig,
+				config: { reasoning },
+			});
+
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.data.config?.reasoning).toBe(reasoning);
+		},
+	);
+
+	it('rejects reasoning levels outside the agent config options', () => {
 		const result = AgentJsonConfigSchema.safeParse({
 			...minimalConfig,
-			config: {
-				thinking: { provider: 'anthropic', mode: 'adaptive', effort: 'medium' },
-			},
+			config: { reasoning: 'max' },
 		});
 
-		expect(result.success).toBe(true);
-		if (!result.success) return;
-		expect(result.data.config?.thinking).toEqual({
-			provider: 'anthropic',
-			mode: 'adaptive',
-			effort: 'medium',
-		});
+		expect(result.success).toBe(false);
 	});
 });
 

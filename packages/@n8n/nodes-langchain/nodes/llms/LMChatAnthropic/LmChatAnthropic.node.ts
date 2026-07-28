@@ -93,14 +93,12 @@ type AnthropicThinkingMode = 'disabled' | 'adaptive' | 'manual';
 function resolveThinkingMode(
 	requested: AnthropicThinkingMode,
 	model: ProviderModel | undefined,
-	preferAdaptive: boolean,
 ): AnthropicThinkingMode {
 	const thinking = model?.capabilities?.thinking;
 	if (requested === 'disabled' || !thinking) return requested;
 
 	const supported = resolveAnthropicThinkingMode(model);
 	if (!supported) return requested;
-	if (preferAdaptive) return supported === 'adaptive' ? 'adaptive' : 'manual';
 	if (requested === 'adaptive' && thinking.adaptive) return requested;
 	if (requested === 'manual' && thinking.enabled) return requested;
 	return supported === 'adaptive' ? 'adaptive' : 'manual';
@@ -548,7 +546,7 @@ export class LmChatAnthropic implements INodeType {
 		const supportedThinkingMode = discoveredModel
 			? resolveAnthropicThinkingMode(discoveredModel)
 			: undefined;
-		const thinkingMode = resolveThinkingMode(requestedThinkingMode, discoveredModel, version < 1.5);
+		const thinkingMode = resolveThinkingMode(requestedThinkingMode, discoveredModel);
 
 		if (
 			requestedThinkingMode !== 'disabled' &&

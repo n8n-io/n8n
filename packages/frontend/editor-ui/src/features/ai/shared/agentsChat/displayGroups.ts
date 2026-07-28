@@ -16,7 +16,12 @@ import type { AgentsChatMessage, InteractivePayload, ThinkingSegment, ToolCall }
  * cards beside the step list.
  */
 export type DisplayGroup =
-	| { kind: 'message'; id: string; message: AgentsChatMessage }
+	| {
+			kind: 'message';
+			id: string;
+			message: AgentsChatMessage;
+			thinkingSegments: ThinkingSegment[];
+	  }
 	| {
 			kind: 'toolRun';
 			id: string;
@@ -45,6 +50,48 @@ export function isGroupable(message: AgentsChatMessage): boolean {
 }
 
 type ToolRunGroup = Extract<DisplayGroup, { kind: 'toolRun' }>;
+
+function isAssistantGroup(group: DisplayGroup): boolean {
+	return group.kind === 'toolRun' || group.message.role === 'assistant';
+}
+
+function executionIdForGroup(group: DisplayGroup): string | undefined {
+	return group.kind === 'toolRun' ? group.executionId : group.message.executionId;
+}
+
+/** Keep one reasoning block at the tail of each assistant run, below its final output. */
+function moveThinkingToRunTail(groups: DisplayGroup[]): void {
+	let run: DisplayGroup[] = [];
+	let executionId: string | undefined;
+
+	const flush = () => {
+		if (run.length === 0) return;
+		const segments = run.flatMap((group) => group.thinkingSegments);
+		for (const group of run) group.thinkingSegments = [];
+		run[run.length - 1].thinkingSegments = segments;
+		run = [];
+		executionId = undefined;
+	};
+
+	for (const group of groups) {
+		if (!isAssistantGroup(group)) {
+			flush();
+			continue;
+		}
+
+		const groupExecutionId = executionIdForGroup(group);
+		if (
+			executionId !== undefined &&
+			groupExecutionId !== undefined &&
+			executionId !== groupExecutionId
+		) {
+			flush();
+		}
+		run.push(group);
+		executionId ??= groupExecutionId;
+	}
+	flush();
+}
 
 /**
  * Whether `message` may join an open toolRun. Same-turn live streams often
@@ -175,7 +222,13 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 			}
 		}
 
-		groups.push({ kind: 'message', id: message.id, message });
+		groups.push({
+			kind: 'message',
+			id: message.id,
+			message,
+			thinkingSegments: message.role === 'assistant' ? getMessageThinkingSegments(message) : [],
+		});
 	}
+	moveThinkingToRunTail(groups);
 	return groups;
 }

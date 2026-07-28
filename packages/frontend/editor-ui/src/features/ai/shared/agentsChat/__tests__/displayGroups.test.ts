@@ -94,6 +94,7 @@ describe('shared agents chat display groups', () => {
 				role: 'assistant',
 				content: '',
 				executionId: 'exec-1',
+				thinkingSegments: [{ id: 'r1', content: 'Plan the first execution.' }],
 				toolCalls: [
 					{ tool: 'search', toolCallId: 'tc1', state: 'done' },
 					{ tool: 'approval', toolCallId: 'tc-hitl', state: 'done' },
@@ -104,6 +105,7 @@ describe('shared agents chat display groups', () => {
 				role: 'assistant',
 				content: '',
 				executionId: 'exec-2',
+				thinkingSegments: [{ id: 'r2', content: 'Plan the resumed execution.' }],
 				toolCalls: [{ tool: 'write_file', toolCallId: 'tc2', state: 'error' }],
 			},
 			{
@@ -111,6 +113,7 @@ describe('shared agents chat display groups', () => {
 				role: 'assistant',
 				content: 'failed to write',
 				executionId: 'exec-2',
+				thinkingSegments: [{ id: 'r3', content: 'Explain the failure.' }],
 			},
 		];
 
@@ -123,9 +126,11 @@ describe('shared agents chat display groups', () => {
 		if (groups[1].kind === 'toolRun' && groups[2].kind === 'toolRun') {
 			expect(groups[1].executionId).toBe('exec-1');
 			expect(groups[1].toolCalls.map((tc) => tc.toolCallId)).toEqual(['tc1', 'tc-hitl']);
+			expect(groups[1].thinkingSegments.map((segment) => segment.id)).toEqual(['r1']);
 			expect(groups[1].finalMessage).toBeUndefined();
 			expect(groups[2].executionId).toBe('exec-2');
 			expect(groups[2].toolCalls.map((tc) => tc.toolCallId)).toEqual(['tc2']);
+			expect(groups[2].thinkingSegments.map((segment) => segment.id)).toEqual(['r2', 'r3']);
 			expect(groups[2].finalMessage?.id).toBe('exec-2:final');
 		}
 	});
@@ -161,6 +166,44 @@ describe('shared agents chat display groups', () => {
 			expect(groups[1].toolCalls.map((tc) => tc.toolCallId)).toEqual(['tc1', 'tc-hitl', 'tc2']);
 			expect(groups[1].finalMessage?.id).toBe('a3');
 		}
+	});
+
+	it('moves reasoning from narrated tool steps to the final assistant group', () => {
+		const messages: AgentsChatMessage[] = [
+			{ id: 'u1', role: 'user', content: 'research this', executionId: 'exec-1' },
+			{
+				id: 'a1',
+				role: 'assistant',
+				content: 'I will search first.',
+				executionId: 'exec-1',
+				thinkingSegments: [{ id: 'r1', content: 'Choose the search query.' }],
+				toolCalls: [{ tool: 'search', toolCallId: 'tc1', state: 'done' }],
+			},
+			{
+				id: 'a2',
+				role: 'assistant',
+				content: '',
+				executionId: 'exec-1',
+				thinkingSegments: [{ id: 'r2', content: 'Review the result.' }],
+				toolCalls: [{ tool: 'fetch', toolCallId: 'tc2', state: 'done' }],
+			},
+			{
+				id: 'a3',
+				role: 'assistant',
+				content: 'Here is the answer.',
+				executionId: 'exec-1',
+				thinkingSegments: [{ id: 'r3', content: 'Compose the answer.' }],
+			},
+		];
+
+		const groups = buildDisplayGroups(messages);
+
+		expect(groups).toHaveLength(3);
+		expect(groups[1].kind).toBe('message');
+		expect(groups[2].kind).toBe('toolRun');
+		if (groups[1].kind !== 'message' || groups[2].kind !== 'toolRun') return;
+		expect(groups[1].thinkingSegments).toEqual([]);
+		expect(groups[2].thinkingSegments.map((segment) => segment.id)).toEqual(['r1', 'r2', 'r3']);
 	});
 
 	it('does not group assistant messages with visible text as tool-only messages', () => {

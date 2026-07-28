@@ -17,11 +17,7 @@ import { loadAi } from '../model/lazy-ai';
 import type { AgentMessageList } from '../model/message-list';
 import { createModel } from '../model/model-factory';
 import { buildCallPromptCacheOptions, mergeProviderOptions } from '../model/prompt-cache';
-import {
-	getProviderQuirks,
-	PROVIDER_QUIRKS,
-	providerIdFromModelId,
-} from '../model/provider-quirks';
+import { PROVIDER_QUIRKS } from '../model/provider-quirks';
 import type { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
 
@@ -49,13 +45,14 @@ export function getModelIdString(model: ModelConfig): string {
 export interface StaticLoopContext {
 	model: LanguageModel;
 	aiProviderTools: ReturnType<typeof toAiSdkProviderTools>;
+	reasoning: AgentRuntimeConfig['reasoning'];
 	providerOptions?: Record<string, JSONObject>;
 	outputSpec?: ReturnType<typeof Output.object>;
 }
 
 /**
  * Builds the per-run and per-iteration dependencies the agentic loop hands to
- * the LLM call: the model instance, provider/thinking options, structured
+ * the LLM call: the model instance, reasoning, provider options, structured
  * output spec, and the effective tool surface (base + deferred + recall tools,
  * mapped to AI SDK shapes). Keeps tool/model assembly out of the loop body.
  */
@@ -97,6 +94,7 @@ export class RuntimeContextBuilder {
 		return {
 			model,
 			aiProviderTools,
+			reasoning: this.config.reasoning,
 			providerOptions: providerOptions as Record<string, JSONObject> | undefined,
 			outputSpec,
 		};
@@ -263,28 +261,18 @@ export class RuntimeContextBuilder {
 		};
 	}
 
-	/** Build the providerOptions object for thinking/reasoning config. */
-	private buildThinkingProviderOptions(): Record<string, Record<string, unknown>> | undefined {
-		if (!this.config.thinking) return undefined;
-
-		const provider = providerIdFromModelId(this.modelId);
-		return getProviderQuirks(provider).thinkingToProviderOptions?.(this.config.thinking);
-	}
-
 	/**
-	 * Merge thinking providerOptions, generated OpenAI cache options, and
-	 * caller-supplied providerOptions. Per-provider keys are merged shallowly
-	 * (later wins) so `.thinking()` + prompt caching + caller overrides coexist.
+	 * Merge generated OpenAI cache options and caller-supplied providerOptions.
+	 * Per-provider keys are merged shallowly, with caller values winning.
 	 */
 	private buildCallProviderOptions(
 		runProviderOptions?: ProviderOptions,
 	): Record<string, Record<string, unknown>> | undefined {
-		const thinkingOpts = this.buildThinkingProviderOptions() as ProviderOptions | undefined;
 		const cacheOpts = buildCallPromptCacheOptions(this.config.promptCaching, this.modelId, {
 			agentName: this.config.name,
 			instructions: this.config.instructions,
 		});
-		return mergeProviderOptions(thinkingOpts, cacheOpts, runProviderOptions) as
+		return mergeProviderOptions(cacheOpts, runProviderOptions) as
 			| Record<string, Record<string, unknown>>
 			| undefined;
 	}

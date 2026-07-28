@@ -255,10 +255,8 @@ describe('inline sub-agent tool filtering', () => {
 		expect(runtimeConfigs[0]?.providerTools).toBeUndefined();
 	});
 
-	it('does not inherit parent thinking when difficulty selects a different provider', async () => {
-		const agent = new Agent('parent').model('openai', 'gpt-4o-mini').thinking('openai', {
-			reasoningEffort: 'high',
-		});
+	it('inherits generic reasoning when difficulty selects a different provider', async () => {
+		const agent = new Agent('parent').model('openai', 'gpt-4o-mini').reasoning('high');
 		const runner = (agent as unknown as AgentWithInlineRunner).createInlineSubAgentRunner({
 			deferredTools: [],
 			modelConfig: 'openai/gpt-4o-mini',
@@ -277,12 +275,11 @@ describe('inline sub-agent tool filtering', () => {
 
 		expect(runtimeConfigs).toHaveLength(1);
 		expect(runtimeConfigs[0]?.model).toBe('anthropic/claude-sonnet-4-5');
-		expect(runtimeConfigs[0]?.thinking).toBeUndefined();
+		expect(runtimeConfigs[0]?.reasoning).toBe('high');
 	});
 
-	it('keeps parent thinking when difficulty keeps the same provider', async () => {
-		const thinking = { reasoningEffort: 'high' as const };
-		const agent = new Agent('parent').model('openai', 'gpt-4o-mini').thinking('openai', thinking);
+	it('keeps parent reasoning when difficulty keeps the same provider', async () => {
+		const agent = new Agent('parent').model('openai', 'gpt-4o-mini').reasoning('low');
 		const runner = (agent as unknown as AgentWithInlineRunner).createInlineSubAgentRunner({
 			deferredTools: [],
 			modelConfig: 'openai/gpt-4o-mini',
@@ -301,7 +298,7 @@ describe('inline sub-agent tool filtering', () => {
 
 		expect(runtimeConfigs).toHaveLength(1);
 		expect(runtimeConfigs[0]?.model).toBe('openai/o3-mini');
-		expect(runtimeConfigs[0]?.thinking).toEqual(thinking);
+		expect(runtimeConfigs[0]?.reasoning).toBe('low');
 	});
 
 	it('includes selected child model in failed inline child output when runtime result omits it', async () => {

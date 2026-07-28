@@ -13,11 +13,11 @@ import { Agent } from '../../index';
 
 const describeAnthropic = describeIf('anthropic');
 
-describeAnthropic('thinking stream (Anthropic)', () => {
-	it('emits reasoning-delta chunks when thinking is enabled', async () => {
+describeAnthropic('reasoning stream (Anthropic)', () => {
+	it('emits reasoning-delta chunks when reasoning is enabled', async () => {
 		const agent = new Agent('thinking-test')
 			.model('anthropic', 'claude-sonnet-4-5')
-			.thinking('anthropic', { budgetTokens: 5000 })
+			.reasoning('medium')
 			.instructions('You are a helpful assistant. Think carefully before answering.');
 
 		const { stream: fullStream } = await agent.stream('What is 17 * 23?');
@@ -42,11 +42,11 @@ describeAnthropic('thinking stream (Anthropic)', () => {
 
 const describeOpenAI = describeIf('openai');
 
-describeOpenAI('thinking stream (OpenAI)', () => {
-	it('works with reasoning model and .thinking() enabled', async () => {
+describeOpenAI('reasoning stream (OpenAI)', () => {
+	it('works with a reasoning model when reasoning is enabled', async () => {
 		const agent = new Agent('openai-thinking-test')
 			.model('openai', 'gpt-5-mini')
-			.thinking('openai', { reasoningEffort: 'medium' })
+			.reasoning('medium')
 			.instructions('You are a helpful assistant. Think carefully before answering.');
 
 		const { stream: fullStream } = await agent.stream(

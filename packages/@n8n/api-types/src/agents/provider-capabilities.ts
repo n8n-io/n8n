@@ -1,7 +1,6 @@
 import type { z } from 'zod';
 
 import type { PromptCachingConfigSchema } from './agent-json-config.schema';
-import { AGENT_MODEL_EFFORT_LEVELS, type AgentModelEffort } from './model-providers';
 
 /**
  * Static capability map for LLM providers the agent runtime can target.
@@ -49,7 +48,6 @@ export const NATIVE_WEB_SEARCH_DEFAULTS_BY_PROVIDER = {
 >;
 
 export interface ProviderCapabilities {
-	thinking: false | 'anthropic' | 'reasoningEffort';
 	/** false = unsupported; 'ttl' = Anthropic (renders TTL select); true = mandatory, no sub-control (OpenAI). */
 	promptCaching: false | 'ttl' | true;
 	webSearch: false | NativeWebSearchCanonicalTool;
@@ -58,37 +56,28 @@ export interface ProviderCapabilities {
 
 export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	anthropic: {
-		thinking: 'anthropic',
 		promptCaching: 'ttl',
 		webSearch: 'anthropic.web_search',
 		providerTools: ['anthropic.web_search'],
 	},
 	openai: {
-		thinking: 'reasoningEffort',
 		promptCaching: true,
 		webSearch: 'openai.web_search',
 		providerTools: ['openai.web_search', 'openai.image_generation'],
 	},
 	google: {
-		thinking: false,
 		promptCaching: false,
 		webSearch: false,
 		providerTools: [],
 	},
-	xai: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
-	groq: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
-	deepseek: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
-	mistral: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
-	openrouter: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
-	cohere: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
-	ollama: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
+	xai: { promptCaching: false, webSearch: false, providerTools: [] },
+	groq: { promptCaching: false, webSearch: false, providerTools: [] },
+	deepseek: { promptCaching: false, webSearch: false, providerTools: [] },
+	mistral: { promptCaching: false, webSearch: false, providerTools: [] },
+	openrouter: { promptCaching: false, webSearch: false, providerTools: [] },
+	cohere: { promptCaching: false, webSearch: false, providerTools: [] },
+	ollama: { promptCaching: false, webSearch: false, providerTools: [] },
 };
-
-export const REASONING_EFFORT_OPTIONS = ['low', 'medium', 'high'] as const;
-export type ReasoningEffort = (typeof REASONING_EFFORT_OPTIONS)[number];
-
-export const ANTHROPIC_EFFORT_OPTIONS = AGENT_MODEL_EFFORT_LEVELS;
-export type AnthropicEffort = AgentModelEffort;
 
 export const ANTHROPIC_CACHE_TTL_OPTIONS = ['5m', '1h'] as const;
 export type AnthropicCacheTtl = (typeof ANTHROPIC_CACHE_TTL_OPTIONS)[number];

@@ -2,8 +2,6 @@
 
 import { Agent, Tool, type GenerateResult, type ModelConfig } from '@n8n/agents';
 
-import { applyAgentThinking } from '../agent/apply-agent-thinking';
-
 export { Tool };
 
 // ---------------------------------------------------------------------------
@@ -135,7 +133,7 @@ export function createEvalAgent(
 		agent.instructions(options.instructions);
 	}
 
-	applyAgentThinking(agent, model);
+	agent.reasoning('medium');
 
 	return agent;
 }

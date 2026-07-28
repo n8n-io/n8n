@@ -998,10 +998,40 @@ describe('LmChatAnthropic', () => {
 			);
 		});
 
+		it('should preserve the saved thinking budget on v1.4 models that support both modes', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.4 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'options')
+					return { thinking: true, thinkingBudget: 1500, maxTokensToSample: 4096 };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					invocationKwargs: {
+						thinking: { type: 'enabled', budget_tokens: 1500 },
+						max_tokens: 4096,
+						top_k: undefined,
+						top_p: undefined,
+						temperature: undefined,
+					},
+				}),
+			);
+		});
+
 		it.each(['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-5', 'claude-fable-5'])(
 			'should use adaptive thinking for %s when thinking=true on v1.4',
 			async (modelName) => {
 				const mockContext = setupMockContext({ typeVersion: 1.4 });
+				modelDiscoveryMocks.getAnthropicModel.mockResolvedValue({
+					id: modelName,
+					name: modelName,
+					capabilities: { thinking: { adaptive: true, enabled: false } },
+				});
 
 				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 					if (paramName === 'model.value') return modelName;

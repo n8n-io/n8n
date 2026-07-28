@@ -222,7 +222,6 @@ const i18n = useI18n();
 							<AgentAdvancedPanel
 								:config="localConfig"
 								:disabled="childrenDisabled"
-								:project-id="projectId"
 								collapsible
 								@update:config="emit('update:config', $event)"
 							/>

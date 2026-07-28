@@ -188,6 +188,39 @@ describe('AgentChatMessageList', () => {
 		expect(renderOrder).toEqual(['markdown-chunk', 'shared-thinking-block']);
 	});
 
+	it('moves narrated tool-step reasoning below the later final output', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-narration',
+						role: 'assistant',
+						content: 'I will search first.',
+						thinkingSegments: [{ id: 'reasoning-1', content: 'Choose a query.' }],
+						toolCalls: [{ tool: 'search', toolCallId: 'tool-1', state: 'done' }],
+						status: 'success',
+					} satisfies ChatMessage,
+					{
+						id: 'assistant-final',
+						role: 'assistant',
+						content: 'Final answer',
+						thinkingSegments: [{ id: 'reasoning-2', content: 'Compose the answer.' }],
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+
+		const renderOrder = wrapper
+			.findAll('[data-testid="markdown-chunk"], [data-test-id="shared-thinking-block"]')
+			.map((element) => element.attributes('data-testid') ?? element.attributes('data-test-id'));
+		expect(renderOrder).toEqual(['markdown-chunk', 'markdown-chunk', 'shared-thinking-block']);
+		expect(
+			wrapper.findAll('[data-test-id="shared-reasoning-block"]').map((element) => element.text()),
+		).toEqual(['Choose a query.', 'Compose the answer.']);
+	});
+
 	it('passes persisted reasoning duration to the shared thinking block', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {

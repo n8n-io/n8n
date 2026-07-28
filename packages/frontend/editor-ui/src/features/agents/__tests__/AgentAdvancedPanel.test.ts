@@ -1,5 +1,5 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern */
-import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import type * as VueUse from '@vueuse/core';
@@ -11,15 +11,6 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (k: string) => k }),
 }));
 
-const modelCatalogMocks = vi.hoisted(() => ({
-	ensureLoaded: vi.fn(),
-	getModelsForPicker: vi.fn(),
-}));
-
-vi.mock('../composables/useModelCatalog', () => ({
-	useModelCatalog: () => modelCatalogMocks,
-}));
-
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		allCredentials: [
@@ -29,7 +20,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	}),
 }));
 
-// Numeric/thinking sub-controls debounce — execute synchronously in the test.
+// Numeric/reasoning sub-controls debounce — execute synchronously in the test.
 vi.mock('@vueuse/core', async (importOriginal) => {
 	const actual = await importOriginal<typeof VueUse>();
 	return {
@@ -41,7 +32,6 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 const globalStubs = {
 	N8nIcon: { template: '<span v-bind="$attrs" />', props: ['icon', 'size'] },
 	N8nText: { template: '<span><slot /></span>' },
-	N8nTooltip: { template: '<div><slot /></div>' },
 	N8nInputNumber2: {
 		props: ['modelValue', 'disabled', 'min', 'max', 'precision', 'placeholder'],
 		emits: ['update:modelValue'],
@@ -110,12 +100,6 @@ function getWebSearchConfig(changes: Partial<AgentJsonConfig>): WebSearchConfig 
 }
 
 describe('AgentAdvancedPanel', () => {
-	beforeEach(() => {
-		modelCatalogMocks.ensureLoaded.mockReset();
-		modelCatalogMocks.getModelsForPicker.mockReset();
-		modelCatalogMocks.getModelsForPicker.mockReturnValue({});
-	});
-
 	it('renders the collapsible heading and toggles the advanced content', async () => {
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config: makeConfig(), collapsible: true },
@@ -311,180 +295,71 @@ describe('AgentAdvancedPanel', () => {
 		expect(last.providerTools).toEqual({ 'openai.image_generation': {} });
 	});
 
-	it('shows the budget-tokens sub-control for Anthropic when thinking is on', async () => {
+	it('shows generic reasoning effort for any provider when reasoning is enabled', async () => {
 		const config = makeConfig({
-			config: { thinking: { provider: 'anthropic', budgetTokens: 1024 } },
+			model: 'google/gemini-pro',
+			config: { reasoning: 'high' },
 		} as Partial<AgentJsonConfig>);
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
 			global: { stubs: globalStubs },
 		});
 		await nextTick();
-		expect(wrapper.find('[data-testid="agent-budget-tokens-input"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-reasoning-effort-select"]').exists()).toBe(false);
-	});
-
-	it('shows the reasoning-effort sub-control for OpenAI when thinking is on', async () => {
-		const config = makeConfig({
-			model: 'openai/gpt-4o',
-			config: { thinking: { provider: 'openai', reasoningEffort: 'high' } },
-		} as Partial<AgentJsonConfig>);
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
-			global: { stubs: globalStubs },
-		});
-		await nextTick();
-		expect(wrapper.find('[data-testid="agent-reasoning-effort-select"]').exists()).toBe(true);
+		const effort = findStubComponent(wrapper, 'agent-reasoning-effort-select');
+		expect(effort.exists()).toBe(true);
+		expect(effort.props('modelValue')).toBe('high');
 		expect(wrapper.find('[data-testid="agent-budget-tokens-input"]').exists()).toBe(false);
 	});
 
-	it('disables the thinking toggle for providers that do not support it', () => {
+	it('keeps the reasoning toggle available for every provider', () => {
 		const config = makeConfig({ model: 'google/gemini-pro' });
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
 			global: { stubs: globalStubs },
 		});
-		const toggle = wrapper.find('[data-testid="agent-thinking-toggle"]');
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
 		expect(toggle.exists()).toBe(true);
-		expect(toggle.attributes('disabled')).toBeDefined();
+		expect(toggle.attributes('disabled')).toBeUndefined();
 	});
 
-	it('emits update:config with the thinking subtree when the toggle flips on', async () => {
-		const config = makeConfig();
+	it('enables generic medium reasoning when the toggle flips on', async () => {
+		const config = makeConfig({ model: 'google/gemini-pro' });
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
 			global: { stubs: globalStubs },
 		});
-		await wrapper.find('[data-testid="agent-thinking-toggle"]').trigger('click');
+		await wrapper.find('[data-testid="agent-reasoning-toggle"]').trigger('click');
 		const events = wrapper.emitted('update:config') ?? [];
 		expect(events.length).toBeGreaterThan(0);
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect(last.config?.thinking).toEqual({
-			provider: 'anthropic',
-			mode: 'enabled',
-			budgetTokens: 1024,
-		});
+		expect(last.config?.reasoning).toBe('medium');
 	});
 
-	it('saves adaptive mode and shows effort when the selected Anthropic model supports it', async () => {
-		modelCatalogMocks.getModelsForPicker.mockReturnValue({
-			anthropic: {
-				models: [
-					{
-						provider: 'anthropic',
-						model: 'claude-fable-5',
-						name: 'Claude Fable 5',
-						metadata: {
-							available: true,
-							functionCalling: true,
-							effort: { low: true, medium: true, high: true, xhigh: true, max: true },
-							thinking: { adaptive: true, enabled: false },
-						},
-					},
-				],
-			},
-		});
+	it('updates the generic reasoning effort', async () => {
 		const wrapper = mount(AgentAdvancedPanel, {
-			props: {
-				config: makeConfig({ model: 'anthropic/claude-fable-5' }),
-				projectId: 'project-1',
-			},
+			props: { config: makeConfig({ config: { reasoning: 'medium' } }) },
 			global: { stubs: { ...globalStubs, Select: globalStubs.N8nSelect } },
 		});
 
-		await wrapper.find('[data-testid="agent-thinking-toggle"]').trigger('click');
+		emitSelectValue(wrapper, 'agent-reasoning-effort-select', 'low');
 		await nextTick();
 
 		const events = wrapper.emitted('update:config') ?? [];
 		const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
-		expect(last.config?.thinking).toEqual({
-			provider: 'anthropic',
-			mode: 'adaptive',
-			effort: 'medium',
-		});
-		expect(wrapper.find('[data-testid="agent-reasoning-effort-select"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-budget-tokens-input"]').exists()).toBe(false);
-		expect(
-			wrapper
-				.find('[data-testid="agent-reasoning-effort-select"]')
-				.findAll('option')
-				.map((option) => option.attributes('value')),
-		).toEqual(['low', 'medium', 'high', 'xhigh', 'max']);
+		expect(last.config?.reasoning).toBe('low');
 	});
 
-	it('saves enabled mode for a manual-only Anthropic model', async () => {
-		modelCatalogMocks.getModelsForPicker.mockReturnValue({
-			anthropic: {
-				models: [
-					{
-						provider: 'anthropic',
-						model: 'claude-haiku-4-5',
-						name: 'Claude Haiku 4.5',
-						metadata: {
-							available: true,
-							functionCalling: true,
-							thinking: { adaptive: false, enabled: true },
-						},
-					},
-				],
-			},
-		});
+	it('removes reasoning when the toggle flips off', async () => {
 		const wrapper = mount(AgentAdvancedPanel, {
-			props: {
-				config: makeConfig({ model: 'anthropic/claude-haiku-4-5' }),
-				projectId: 'project-1',
-			},
+			props: { config: makeConfig({ config: { reasoning: 'medium' } }) },
 			global: { stubs: globalStubs },
 		});
 
-		await wrapper.find('[data-testid="agent-thinking-toggle"]').trigger('click');
+		await wrapper.find('[data-testid="agent-reasoning-toggle"]').trigger('click');
 
 		const events = wrapper.emitted('update:config') ?? [];
 		const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
-		expect(last.config?.thinking).toEqual({
-			provider: 'anthropic',
-			mode: 'enabled',
-			budgetTokens: 1024,
-		});
-	});
-
-	it('allows stale thinking config to be switched off on an unsupported Anthropic model', async () => {
-		modelCatalogMocks.getModelsForPicker.mockReturnValue({
-			anthropic: {
-				models: [
-					{
-						provider: 'anthropic',
-						model: 'claude-no-thinking',
-						name: 'Claude No Thinking',
-						metadata: {
-							available: true,
-							functionCalling: true,
-							thinking: { adaptive: false, enabled: false },
-						},
-					},
-				],
-			},
-		});
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: {
-				config: makeConfig({
-					model: 'anthropic/claude-no-thinking',
-					config: {
-						thinking: { provider: 'anthropic', mode: 'enabled', budgetTokens: 1024 },
-					},
-				}),
-				projectId: 'project-1',
-			},
-			global: { stubs: globalStubs },
-		});
-
-		const toggle = wrapper.find('[data-testid="agent-thinking-toggle"]');
-		expect(toggle.attributes('disabled')).toBeUndefined();
-		await toggle.trigger('click');
-
-		const events = wrapper.emitted('update:config') ?? [];
-		const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
-		expect(last.config?.thinking).toBeUndefined();
+		expect(last.config?.reasoning).toBeUndefined();
 	});
 
 	it('shows the Anthropic ttl dropdown, defaulting to 1h, with no on/off toggle', async () => {
@@ -542,7 +417,7 @@ describe('AgentAdvancedPanel', () => {
 		const webSearchMethod = findStubComponent(wrapper, 'agent-web-search-method');
 		expect(webSearchMethod.props('disabled')).toBe(true);
 		expect(
-			wrapper.find('[data-testid="agent-thinking-toggle"]').attributes('disabled'),
+			wrapper.find('[data-testid="agent-reasoning-toggle"]').attributes('disabled'),
 		).toBeDefined();
 		expect(
 			wrapper.find('[data-testid="agent-concurrency-input"]').attributes('disabled'),

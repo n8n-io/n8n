@@ -30,7 +30,6 @@ import type {
 	AgentJsonSkillConfig,
 } from '@n8n/api-types';
 import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'crypto';
 import { z } from 'zod';
 
@@ -224,16 +223,8 @@ export async function buildFromJson(
 
 	// Config options
 	if (config.config) {
-		if (config.config.thinking) {
-			const { provider, ...rest } = config.config.thinking;
-			const thinkingOptions = await resolveThinkingOptions(
-				provider,
-				rest,
-				config.model,
-				resolvedModelConfig,
-				options.modelFetch,
-			);
-			if (thinkingOptions) agent.thinking(provider, thinkingOptions);
+		if (config.config.reasoning) {
+			agent.reasoning(config.config.reasoning);
 		}
 		if (config.config.promptCaching) {
 			agent.promptCaching(config.config.promptCaching);
@@ -247,68 +238,6 @@ export async function buildFromJson(
 	}
 
 	return agent;
-}
-
-function getModelConfigString(modelConfig: unknown, key: 'apiKey' | 'baseURL') {
-	if (!isRecord(modelConfig)) return undefined;
-	const value = modelConfig[key];
-	return typeof value === 'string' && value !== '' ? value : undefined;
-}
-
-async function resolveThinkingOptions(
-	provider: 'anthropic' | 'openai',
-	options: Record<string, unknown>,
-	modelId: string,
-	resolvedModelConfig: ModelConfig,
-	modelFetch?: FetchFn,
-): Promise<Record<string, unknown> | undefined> {
-	if (provider !== 'anthropic') return options;
-
-	const requestedEffort =
-		options.effort === 'low' ||
-		options.effort === 'medium' ||
-		options.effort === 'high' ||
-		options.effort === 'xhigh' ||
-		options.effort === 'max'
-			? options.effort
-			: 'medium';
-	const adaptiveOptions = (effort: typeof requestedEffort) => ({ mode: 'adaptive', effort });
-	const enabledOptions = {
-		mode: 'enabled',
-		...(typeof options.budgetTokens === 'number' && { budgetTokens: options.budgetTokens }),
-	};
-	const fallback = options.mode === 'adaptive' ? adaptiveOptions(requestedEffort) : enabledOptions;
-	if (!modelFetch || !modelId.startsWith('anthropic/')) return fallback;
-
-	const apiKey = getModelConfigString(resolvedModelConfig, 'apiKey');
-	if (!apiKey) return fallback;
-
-	try {
-		const { getAnthropicModel, resolveAnthropicEffort, resolveAnthropicThinkingMode } =
-			await import('@n8n/ai-utilities/model-discovery');
-		const model = await getAnthropicModel(modelId.slice('anthropic/'.length), {
-			apiKey,
-			baseURL: getModelConfigString(resolvedModelConfig, 'baseURL'),
-			fetch: modelFetch,
-		});
-		const thinking = model.capabilities?.thinking;
-		if (!thinking) return fallback;
-		const mode =
-			(options.mode === 'adaptive' && thinking.adaptive) ||
-			(options.mode === 'enabled' && thinking.enabled)
-				? options.mode
-				: resolveAnthropicThinkingMode(model);
-		if (mode === 'adaptive') {
-			const effort = resolveAnthropicEffort(model, requestedEffort);
-			return effort ? adaptiveOptions(effort) : undefined;
-		}
-		if (mode === 'enabled') return enabledOptions;
-		return undefined;
-	} catch {
-		// Gateways may omit the Models API or its capability metadata.
-	}
-
-	return fallback;
 }
 
 function modelConfigToModelId(modelConfig: ModelConfig): string | undefined {
