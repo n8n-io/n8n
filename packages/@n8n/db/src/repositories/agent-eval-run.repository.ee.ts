@@ -81,6 +81,25 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 	}
 
 	/**
+	 * Ownership-scoped read: resolves the run only if its dataset belongs to
+	 * `agentId`. A run carries no agent column of its own — the agent under test
+	 * is the dataset's — so the check has to walk the relation. The REST layer
+	 * authorizes an agent, so every run lookup behind it filters on that agent
+	 * rather than trusting a bare run id.
+	 */
+	async findByIdAndAgentId(id: string, agentId: string): Promise<AgentEvalRun | null> {
+		return await this.findOne({ where: { id, dataset: { agentId } } });
+	}
+
+	/** Runs of a dataset, scoped to the agent that dataset must belong to. */
+	async findByDatasetIdAndAgentId(datasetId: string, agentId: string): Promise<AgentEvalRun[]> {
+		return await this.find({
+			where: { datasetId, dataset: { agentId } },
+			order: { createdAt: 'DESC' },
+		});
+	}
+
+	/**
 	 * Mark every run still in an incomplete state as errored. Called on startup:
 	 * the runner has no resume mechanism, so a run interrupted by a process
 	 * restart can never continue and would otherwise poll as `running` forever.

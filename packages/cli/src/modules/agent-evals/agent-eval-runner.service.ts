@@ -29,6 +29,8 @@ import { DataTableService } from '@/modules/data-table/data-table.service';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
+
 const ROW_PAGE_SIZE = 100;
 // Per-run in-flight cap layered on the shared evaluation queue: keeps one run
 // from flooding the queue (and bounds fan-out when the queue is unlimited).
@@ -85,6 +87,7 @@ export class AgentEvalRunnerService {
 		private readonly evalAgentExecutionService: EvalAgentExecutionService,
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly license: License,
+		private readonly flagGate: AgentEvalsFlagGate,
 	) {}
 
 	/**
@@ -98,14 +101,10 @@ export class AgentEvalRunnerService {
 		user: User,
 		options: { timeoutMs?: number } = {},
 	): Promise<{ runId: string; finished: Promise<void> }> {
-		// Behind 101_agent_evals. `agentEvalsEnabled` is a force-enable-only operator
-		// override, so this treats it as the sole gate for now. When the REST layer
-		// lands it must instead resolve the flag per-user via PostHog (which is the
-		// source of truth for cohort rollout) — a rolled-out user shouldn't need the
-		// env var. Until then this stays hard-gated on the override.
-		if (!this.globalConfig.evaluation.agentEvalsEnabled) {
-			throw new BadRequestError('Agent evals are not enabled on this instance.');
-		}
+		// Resolved per user: PostHog owns cohort rollout, and the operator env
+		// override is layered on top of it, so a rolled-out user needs no env var.
+		// The REST layer gates too — this is the backstop for any other caller.
+		await this.flagGate.assertEnabled(user);
 
 		if (this.globalConfig.executions.mode === 'queue') {
 			throw new BadRequestError('Agent eval runs are not supported in queue mode.');
@@ -187,9 +186,17 @@ export class AgentEvalRunnerService {
 		return { runId: run.id, finished };
 	}
 
-	/** Run + per-case status counts, for polling a run's progress. */
-	async getRunSummary(runId: string): Promise<AgentEvalRunSummary> {
-		const run = await this.runRepository.findById(runId);
+	/**
+	 * Run + per-case status counts, for polling a run's progress.
+	 *
+	 * Scoped to the agent under test: the REST layer authorizes an agent, so a
+	 * bare run id must not be enough to read a run's progress. Resolving through
+	 * the agent means a run belonging to a different agent — in a project the
+	 * caller has no access to — reads as "not found" here too, rather than relying
+	 * on the caller having checked.
+	 */
+	async getRunSummary(runId: string, agentId: string): Promise<AgentEvalRunSummary> {
+		const run = await this.runRepository.findByIdAndAgentId(runId, agentId);
 		if (!run) throw new NotFoundError(`Agent eval run ${runId} not found.`);
 		// Count in the DB — this is polled by the UI, so never load the full
 		// per-case rows (input/output/toolCalls JSON) just to tally statuses.

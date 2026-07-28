@@ -87,4 +87,81 @@ describe('AgentEvalDatasetRepository', () => {
 			expect(entityManager.findOneBy.mock.calls[0]?.[1]).toEqual({ id: 'ds-1' });
 		});
 	});
+
+	describe('findByIdAndAgentId', () => {
+		it('filters on the agent as well as the id', async () => {
+			entityManager.findOneBy.mockResolvedValueOnce(null);
+
+			await repo.findByIdAndAgentId('ds-1', 'agent-1');
+
+			expect(entityManager.findOneBy.mock.calls[0]?.[1]).toEqual({
+				id: 'ds-1',
+				agentId: 'agent-1',
+			});
+		});
+	});
+
+	describe('updateDataset', () => {
+		const existing = () =>
+			({
+				id: 'ds-1',
+				agentId: 'agent-1',
+				name: 'old',
+				description: 'old desc',
+				columnMapping: { input: 'q' },
+			}) as AgentEvalDataset;
+
+		it('applies only the provided fields', async () => {
+			entityManager.findOneBy.mockResolvedValueOnce(existing());
+			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
+
+			await repo.updateDataset('ds-1', 'agent-1', { name: 'new' });
+
+			expect(entityManager.save.mock.calls[0]?.[1]).toMatchObject({
+				name: 'new',
+				// untouched by an absent key
+				description: 'old desc',
+				columnMapping: { input: 'q' },
+			});
+		});
+
+		it('clears a field when explicitly passed null', async () => {
+			entityManager.findOneBy.mockResolvedValueOnce(existing());
+			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
+
+			await repo.updateDataset('ds-1', 'agent-1', { description: null, columnMapping: null });
+
+			expect(entityManager.save.mock.calls[0]?.[1]).toMatchObject({
+				description: null,
+				columnMapping: null,
+			});
+		});
+
+		it('returns null without writing when the dataset is not this agent’s', async () => {
+			entityManager.findOneBy.mockResolvedValueOnce(null);
+
+			await expect(repo.updateDataset('ds-1', 'other-agent', { name: 'new' })).resolves.toBeNull();
+
+			expect(entityManager.save).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('deleteDataset', () => {
+		it('scopes the delete to the agent and reports a removal', async () => {
+			entityManager.delete.mockResolvedValueOnce({ affected: 1, raw: [] });
+
+			await expect(repo.deleteDataset('ds-1', 'agent-1')).resolves.toBe(true);
+
+			expect(entityManager.delete.mock.calls[0]?.[1]).toEqual({
+				id: 'ds-1',
+				agentId: 'agent-1',
+			});
+		});
+
+		it('reports no removal when nothing matched', async () => {
+			entityManager.delete.mockResolvedValueOnce({ affected: 0, raw: [] });
+
+			await expect(repo.deleteDataset('ds-1', 'other-agent')).resolves.toBe(false);
+		});
+	});
 });
