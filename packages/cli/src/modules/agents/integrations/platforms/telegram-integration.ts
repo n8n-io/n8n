@@ -57,11 +57,13 @@ export class TelegramIntegration extends AgentChatIntegration {
 		capabilities: [
 			'Receive Telegram messages as agent triggers.',
 			'Respond in Telegram conversations and send direct Telegram messages.',
+			'Edit existing messages in the current Telegram conversation.',
 			'Render Telegram-compatible cards with buttons.',
 		],
 		useIntegrationWhen: [
 			'The agent should be chatted with from Telegram or act as a Telegram bot.',
 			'The agent needs to reply to Telegram users in the same conversation context.',
+			'The agent needs to update a Telegram message in the current conversation.',
 			'The agent should send Telegram messages as the connected Telegram bot.',
 		],
 		useNodeToolWhen: [
@@ -77,7 +79,16 @@ export class TelegramIntegration extends AgentChatIntegration {
 		'fields',
 	];
 
-	readonly actionToolDefinitions = resolveIntegrationActionDefinitions(['respond', 'send_dm']);
+	readonly actionToolDefinitions = resolveIntegrationActionDefinitions([
+		'respond',
+		'send_dm',
+		'edit_message',
+	]);
+
+	readonly actionToolGuidance = [
+		'For edit_message, pass the messageId returned by a previous Telegram action or get_current_message_context. The current Telegram conversation is selected automatically.',
+		'After a Telegram callback, edit the source message promptly so stale buttons are removed.',
+	];
 
 	readonly needsShortCallbackData = true;
 
