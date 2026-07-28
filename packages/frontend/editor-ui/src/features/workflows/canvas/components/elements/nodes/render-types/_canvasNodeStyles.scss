@@ -75,7 +75,7 @@ $status-shimmer-gradient: conic-gradient(
 	background: $status-shimmer-gradient;
 }
 
-// Determinate progress arc, from top-centre clockwise. Deliberately its own
+// Determinate progress arc, growing clockwise from the top. Deliberately its own
 // layer rather than sharing the running halo's ring: compositing both there made
 // the shimmer's bright head vanish behind the solid arc, which read as a flicker.
 @mixin status-progress-arc {
@@ -85,8 +85,9 @@ $status-shimmer-gradient: conic-gradient(
 	// Follows the node's shape, so per-variant radius overrides aren't repeated here.
 	border-radius: inherit;
 	padding: 2px; // arc thickness
+	// A conic gradient's 0deg is already at 12 o'clock and advances clockwise, so
+	// no `from` offset — adding one would start the arc off the top edge.
 	background: conic-gradient(
-		from -90deg,
 		var(--node--border-color--progress) 0turn,
 		var(--node--border-color--progress) var(--node--progress--fraction),
 		transparent var(--node--progress--fraction)
