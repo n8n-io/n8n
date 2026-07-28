@@ -559,7 +559,9 @@ export function getActiveCredentialTypes(
 			// a previous selection must not be reported as active just because it's
 			// non-empty. Node types that don't declare the property at all (e.g. tests)
 			// keep the previous, unconditional behaviour.
-			const paramDescription = nodeTypeDescription.properties.find((p) => p.name === paramName);
+			const paramDescription = (nodeTypeDescription.properties ?? []).find(
+				(p) => p.name === paramName,
+			);
 			if (
 				paramDescription &&
 				!displayParameter(node.parameters, paramDescription, node, nodeTypeDescription)
