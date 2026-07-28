@@ -1,3 +1,4 @@
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { LicenseState, type Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -79,6 +80,7 @@ describe('McpService', () => {
 	let instanceSettings: InstanceSettings;
 	let logger: Logger;
 	let eventService: EventService;
+	let globalConfig: GlobalConfig;
 
 	beforeEach(() => {
 		eventService = mockInstance(EventService);
@@ -91,6 +93,13 @@ describe('McpService', () => {
 			instanceId: 'test-instance-id',
 		});
 		logger = mockLogger();
+		globalConfig = mockInstance(GlobalConfig, {
+			endpoints: {
+				webhook: '/webhook',
+				webhookTest: '/webhook-test',
+				mcpLogStreamingEventsEnabled: true,
+			},
+		});
 
 		mcpService = new McpService(
 			logger,
@@ -101,9 +110,7 @@ describe('McpService', () => {
 			mockInstance(UrlService),
 			mockInstance(CredentialsService),
 			activeExecutions,
-			mockInstance(GlobalConfig, {
-				endpoints: { webhook: '/webhook', webhookTest: '/webhook-test' },
-			}),
+			globalConfig,
 			mockInstance(Telemetry),
 			mockInstance(WorkflowRunner),
 			mockInstance(RoleService),
@@ -543,28 +550,34 @@ describe('McpService', () => {
 				role: { slug: 'global:member' },
 			});
 
+		const registerAndInvoke = async (
+			server: McpServer,
+			name: string,
+			impl: () => Promise<unknown>,
+			args: Record<string, unknown> = {},
+		) => {
+			const registered = server.registerTool(name, { description: 'test' }, impl as never);
+			const invokeTool = registered.handler as (args: unknown, extra: unknown) => Promise<unknown>;
+			return await invokeTool(args, {});
+		};
+
 		it('should emit `mcp-tool-called` with the target workflow on tool success', async () => {
 			const user = mcpUser();
 			const server = await mcpService.getServer(user, mcpFeatureFlags());
 
-			const registered = server.registerTool('my_tool', { description: 'test' }, async () => ({
-				content: [{ type: 'text', text: 'ok' }],
-			}));
-			const invokeTool = registered.handler as (args: unknown, extra: unknown) => Promise<unknown>;
-
-			await invokeTool({ workflowId: 'wf-42' }, {});
+			await registerAndInvoke(
+				server,
+				'my_tool',
+				async () => ({ content: [{ type: 'text', text: 'ok' }] }),
+				{ workflowId: 'wf-42' },
+			);
 
 			expect(eventService.emit).toHaveBeenCalledWith('mcp-tool-called', {
-				user: {
-					id: 'user-1',
-					email: 'u@n8n.io',
-					firstName: 'U',
-					lastName: 'One',
-					role: { slug: 'global:member' },
-				},
+				user,
 				toolName: 'my_tool',
 				workflowId: 'wf-42',
 				status: 'success',
+				errorMessage: undefined,
 				clientName: undefined,
 			});
 		});
@@ -573,21 +586,14 @@ describe('McpService', () => {
 			const user = mcpUser();
 			const server = await mcpService.getServer(user, mcpFeatureFlags());
 
-			const registered = server.registerTool('err_tool', { description: 'test' }, async () => {
-				throw new Error('boom');
-			});
-			const invokeTool = registered.handler as (args: unknown, extra: unknown) => Promise<unknown>;
-
-			await expect(invokeTool({}, {})).rejects.toThrow('boom');
+			await expect(
+				registerAndInvoke(server, 'err_tool', async () => {
+					throw new Error('boom');
+				}),
+			).rejects.toThrow('boom');
 
 			expect(eventService.emit).toHaveBeenCalledWith('mcp-tool-called', {
-				user: {
-					id: 'user-1',
-					email: 'u@n8n.io',
-					firstName: 'U',
-					lastName: 'One',
-					role: { slug: 'global:member' },
-				},
+				user,
 				toolName: 'err_tool',
 				workflowId: undefined,
 				status: 'error',
@@ -597,18 +603,14 @@ describe('McpService', () => {
 		});
 
 		it('should emit error status and message when a tool returns `isError: true`', async () => {
-			const user = mcpUser();
-			const server = await mcpService.getServer(user, mcpFeatureFlags());
+			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
 
 			const output = { data: [], count: 0, error: 'not allowed' };
-			const registered = server.registerTool('handled_tool', { description: 'test' }, async () => ({
+			await registerAndInvoke(server, 'handled_tool', async () => ({
 				content: [{ type: 'text', text: JSON.stringify(output) }],
 				structuredContent: output,
 				isError: true,
 			}));
-			const invokeTool = registered.handler as (args: unknown, extra: unknown) => Promise<unknown>;
-
-			await invokeTool({}, {});
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'mcp-tool-called',
@@ -623,21 +625,18 @@ describe('McpService', () => {
 		it('should emit error status when a tool reports failure via `structuredContent.status`', async () => {
 			// `execute_workflow` returns handled failures as `status: 'error'` in its
 			// structured output without setting `isError`.
-			const user = mcpUser();
-			const server = await mcpService.getServer(user, mcpFeatureFlags());
+			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
 
 			const output = { executionId: null, status: 'error', error: 'no published version' };
-			const registered = server.registerTool(
+			await registerAndInvoke(
+				server,
 				'status_err_tool',
-				{ description: 'test' },
 				async () => ({
 					content: [{ type: 'text', text: JSON.stringify(output) }],
 					structuredContent: output,
 				}),
+				{ workflowId: 'wf-42' },
 			);
-			const invokeTool = registered.handler as (args: unknown, extra: unknown) => Promise<unknown>;
-
-			await invokeTool({ workflowId: 'wf-42' }, {});
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'mcp-tool-called',
@@ -651,20 +650,12 @@ describe('McpService', () => {
 		});
 
 		it('should fall back to text content for the error message when structured output has none', async () => {
-			const user = mcpUser();
-			const server = await mcpService.getServer(user, mcpFeatureFlags());
+			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
 
-			const registered = server.registerTool(
-				'text_err_tool',
-				{ description: 'test' },
-				async () => ({
-					content: [{ type: 'text', text: 'plain failure' }],
-					isError: true,
-				}),
-			);
-			const invokeTool = registered.handler as (args: unknown, extra: unknown) => Promise<unknown>;
-
-			await invokeTool({}, {});
+			await registerAndInvoke(server, 'text_err_tool', async () => ({
+				content: [{ type: 'text', text: 'plain failure' }],
+				isError: true,
+			}));
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'mcp-tool-called',
@@ -674,6 +665,17 @@ describe('McpService', () => {
 					errorMessage: 'plain failure',
 				}),
 			);
+		});
+
+		it('should not instrument tool calls when the env flag is disabled', async () => {
+			globalConfig.endpoints.mcpLogStreamingEventsEnabled = false;
+			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
+
+			await registerAndInvoke(server, 'untracked_tool', async () => ({
+				content: [{ type: 'text', text: 'ok' }],
+			}));
+
+			expect(eventService.emit).not.toHaveBeenCalledWith('mcp-tool-called', expect.anything());
 		});
 
 		it('should not register builder tools when mcpBuilderEnabled is false', async () => {

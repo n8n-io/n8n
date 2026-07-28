@@ -36,16 +36,7 @@ export class McpSettingsController {
 		}
 		const enabled = dto.mcpAccessEnabled;
 		await this.mcpSettingsService.setEnabled(enabled);
-		this.eventService.emit('mcp-access-updated', {
-			user: {
-				id: req.user.id,
-				email: req.user.email,
-				firstName: req.user.firstName,
-				lastName: req.user.lastName,
-				role: req.user.role ? { slug: req.user.role.slug } : undefined,
-			},
-			enabled,
-		});
+		this.eventService.emit('mcp-access-updated', { user: req.user, enabled });
 		try {
 			await this.moduleRegistry.refreshModuleSettings('mcp');
 		} catch (error) {

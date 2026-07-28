@@ -54,8 +54,7 @@ function groupLabelInfo(t: string): string | undefined {
 
 function eventLabelName(event: { name: string; label: string }): string {
 	const key = `settings.log-streaming.eventName.${event.name}`;
-	const text = i18n.baseText(key as BaseTextKey);
-	return text === key ? event.label : text;
+	return i18n.exists(key) ? i18n.baseText(key as BaseTextKey) : event.label;
 }
 </script>
 

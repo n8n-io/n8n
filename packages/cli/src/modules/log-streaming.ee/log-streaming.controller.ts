@@ -12,7 +12,7 @@ import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { eventNamesAll, eventNamesMcp } from '@/eventbus/event-message-classes';
+import { getExposedEventNames } from '@/eventbus/event-message-classes';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
 import { createMessageEventBusDestination } from './create-message-event-bus-destination';
@@ -38,11 +38,7 @@ export class EventBusController {
 
 	@Get('/eventnames')
 	async getEventNames(): Promise<string[]> {
-		// MCP events are opt-in via N8N_MCP_LOG_STREAMING_EVENTS_ENABLED while
-		// the feature is validated; hiding the names also hides the UI group.
-		if (this.globalConfig.endpoints.mcpLogStreamingEventsEnabled) return eventNamesAll;
-		const mcpEventNames: ReadonlySet<string> = new Set(eventNamesMcp);
-		return eventNamesAll.filter((name) => !mcpEventNames.has(name));
+		return getExposedEventNames(this.globalConfig.endpoints.mcpLogStreamingEventsEnabled);
 	}
 
 	@Licensed('feat:logStreaming')

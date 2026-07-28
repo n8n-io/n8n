@@ -144,19 +144,17 @@ export class LogStreamingEventRelay extends EventRelay {
 			'role-mapping-rule-updated': (event) => this.roleMappingRuleUpdated(event),
 			'role-mapping-rule-deleted': (event) => this.roleMappingRuleDeleted(event),
 			'role-mapping-rules-bulk-deleted': (event) => this.roleMappingRulesBulkDeleted(event),
-			// MCP events are opt-in via N8N_MCP_LOG_STREAMING_EVENTS_ENABLED while
-			// the feature is validated; the flag will be removed afterwards.
-			...(this.globalConfig.endpoints.mcpLogStreamingEventsEnabled
-				? {
-						'mcp-oauth-completed': (event: RelayEventMap['mcp-oauth-completed']) =>
-							this.mcpOauthCompleted(event),
-						'mcp-tool-called': (event: RelayEventMap['mcp-tool-called']) =>
-							this.mcpToolCalled(event),
-						'mcp-access-updated': (event: RelayEventMap['mcp-access-updated']) =>
-							this.mcpAccessUpdated(event),
-					}
-				: {}),
 		});
+
+		// MCP events are opt-in via N8N_MCP_LOG_STREAMING_EVENTS_ENABLED while
+		// the feature is validated; the flag will be removed afterwards.
+		if (this.globalConfig.endpoints.mcpLogStreamingEventsEnabled) {
+			this.setupListeners({
+				'mcp-oauth-completed': (event) => this.mcpOauthCompleted(event),
+				'mcp-tool-called': (event) => this.mcpToolCalled(event),
+				'mcp-access-updated': (event) => this.mcpAccessUpdated(event),
+			});
+		}
 	}
 
 	// #region Workflow
@@ -1312,25 +1310,18 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private mcpToolCalled({
-		user,
-		toolName,
-		workflowId,
-		status,
-		errorMessage,
-		clientName,
-	}: RelayEventMap['mcp-tool-called']) {
+	private mcpToolCalled({ user, ...rest }: RelayEventMap['mcp-tool-called']) {
 		void this.eventBus.sendMcpEvent({
 			eventName: 'n8n.mcp.tool.called',
-			payload: { ...user, toolName, workflowId, status, errorMessage, clientName },
+			payload: { ...user, ...rest },
 		});
 	}
 
 	@Redactable()
-	private mcpAccessUpdated({ user, enabled }: RelayEventMap['mcp-access-updated']) {
+	private mcpAccessUpdated({ user, ...rest }: RelayEventMap['mcp-access-updated']) {
 		void this.eventBus.sendMcpEvent({
 			eventName: 'n8n.mcp.access.updated',
-			payload: { ...user, enabled },
+			payload: { ...user, ...rest },
 		});
 	}
 

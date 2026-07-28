@@ -29,7 +29,7 @@ export interface EventPayloadMcp extends AbstractEventPayload {
 export interface EventMessageMcpOptions extends AbstractEventMessageOptions {
 	eventName: EventNamesMcpType;
 
-	payload?: EventPayloadMcp | undefined;
+	payload?: EventPayloadMcp;
 }
 
 export class EventMessageMcp extends AbstractEventMessage {

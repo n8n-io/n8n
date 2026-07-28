@@ -107,7 +107,8 @@ describe('McpSettingsController', () => {
 
 	describe('updateSettings', () => {
 		test('disables MCP access correctly', async () => {
-			const req = createReq({ mcpAccessEnabled: false }, { user: createUser() });
+			const user = createUser();
+			const req = createReq({ mcpAccessEnabled: false }, { user });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: false });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
 			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
@@ -118,20 +119,15 @@ describe('McpSettingsController', () => {
 			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(false);
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
 			expect(eventService.emit).toHaveBeenCalledWith('mcp-access-updated', {
-				user: {
-					id: 'user-1',
-					email: 'user@example.com',
-					firstName: 'Test',
-					lastName: 'User',
-					role: { slug: 'member' },
-				},
+				user,
 				enabled: false,
 			});
 			expect(result).toEqual({ mcpAccessEnabled: false });
 		});
 
 		test('enables MCP access correctly', async () => {
-			const req = createReq({ mcpAccessEnabled: true }, { user: createUser() });
+			const user = createUser();
+			const req = createReq({ mcpAccessEnabled: true }, { user });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
 			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
@@ -142,13 +138,7 @@ describe('McpSettingsController', () => {
 			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(true);
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
 			expect(eventService.emit).toHaveBeenCalledWith('mcp-access-updated', {
-				user: {
-					id: 'user-1',
-					email: 'user@example.com',
-					firstName: 'Test',
-					lastName: 'User',
-					role: { slug: 'member' },
-				},
+				user,
 				enabled: true,
 			});
 			expect(result).toEqual({ mcpAccessEnabled: true });

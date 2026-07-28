@@ -7,7 +7,7 @@ import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { eventNamesAll, eventNamesMcp } from '@/eventbus/event-message-classes';
+import { getExposedEventNames } from '@/eventbus/event-message-classes';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { createMessageEventBusDestination } from '@/modules/log-streaming.ee/create-message-event-bus-destination';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
@@ -51,13 +51,11 @@ const logStreamingHandlers: LogStreamingHandlers = {
 		isLicensed('feat:logStreaming'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'eventBusDestination:list' }),
 		async (_req, res) => {
-			// MCP events are opt-in via N8N_MCP_LOG_STREAMING_EVENTS_ENABLED while
-			// the feature is validated.
-			if (Container.get(GlobalConfig).endpoints.mcpLogStreamingEventsEnabled) {
-				return res.json({ data: eventNamesAll });
-			}
-			const mcpEventNames: ReadonlySet<string> = new Set(eventNamesMcp);
-			return res.json({ data: eventNamesAll.filter((name) => !mcpEventNames.has(name)) });
+			return res.json({
+				data: getExposedEventNames(
+					Container.get(GlobalConfig).endpoints.mcpLogStreamingEventsEnabled,
+				),
+			});
 		},
 	],
 

@@ -1,4 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
@@ -120,34 +121,27 @@ type McpAppTelemetryResolution = {
 	instanceOrigin?: string;
 };
 
-/** Subset of a tool-call result relevant to usage instrumentation. */
-type InstrumentedToolResult = {
-	isError?: boolean;
-	structuredContent?: Record<string, unknown>;
-	content?: Array<Record<string, unknown>>;
-};
-
 /**
  * Tools report handled failures two ways: MCP's `isError` flag (most tools) or
  * a `status: 'error'` field in the structured output (`execute_workflow`).
  * The error message lives in `structuredContent.error`, with the first text
  * content item as fallback.
  */
-function getToolCallOutcome(result: InstrumentedToolResult | undefined): {
+function getToolCallOutcome(result: CallToolResult | undefined): {
 	status: 'success' | 'error';
 	errorMessage?: string;
 } {
-	const structured = result?.structuredContent;
-	if (result?.isError !== true && structured?.status !== 'error') return { status: 'success' };
-
-	if (typeof structured?.error === 'string') {
-		return { status: 'error', errorMessage: structured.error };
+	if (!result) return { status: 'success' };
+	if (result.isError !== true && result.structuredContent?.status !== 'error') {
+		return { status: 'success' };
 	}
 
-	for (const item of result?.content ?? []) {
-		if (item.type === 'text' && typeof item.text === 'string') {
-			return { status: 'error', errorMessage: item.text };
-		}
+	if (typeof result.structuredContent?.error === 'string') {
+		return { status: 'error', errorMessage: result.structuredContent.error };
+	}
+
+	for (const item of result.content ?? []) {
+		if (item.type === 'text') return { status: 'error', errorMessage: item.text };
 	}
 
 	return { status: 'error' };
@@ -278,21 +272,16 @@ export class McpService {
 	 * registered, so it covers every tool including builder and data-table tools.
 	 */
 	private instrumentToolUsage(server: McpServer, user: User, clientInfo?: McpClientInfo) {
-		const { eventService } = this;
-		const userLike = {
-			id: user.id,
-			email: user.email,
-			firstName: user.firstName,
-			lastName: user.lastName,
-			role: user.role ? { slug: user.role.slug } : undefined,
-		};
+		// Usage events are opt-in via N8N_MCP_LOG_STREAMING_EVENTS_ENABLED while
+		// the feature is validated; skip the wrapping entirely when disabled.
+		if (!this.globalConfig.endpoints.mcpLogStreamingEventsEnabled) return;
 
 		const originalRegisterTool: typeof server.registerTool = server.registerTool.bind(server);
 
 		server.registerTool = (name, config, handler) => {
 			// `ToolCallback` is a union of 1- and 2-arity signatures, so we invoke it
 			// through a generic callable and narrow the result back to a tool result.
-			const invoke = handler as (...handlerArgs: unknown[]) => Promise<InstrumentedToolResult>;
+			const invoke = handler as (...handlerArgs: unknown[]) => Promise<CallToolResult>;
 
 			const instrumentedHandler = async (...handlerArgs: unknown[]) => {
 				const toolArgs = handlerArgs[0];
@@ -304,8 +293,8 @@ export class McpService {
 				try {
 					const result = await invoke(...handlerArgs);
 					const { status, errorMessage } = getToolCallOutcome(result);
-					eventService.emit('mcp-tool-called', {
-						user: userLike,
+					this.eventService.emit('mcp-tool-called', {
+						user,
 						toolName: name,
 						workflowId,
 						status,
@@ -314,8 +303,8 @@ export class McpService {
 					});
 					return result;
 				} catch (error) {
-					eventService.emit('mcp-tool-called', {
-						user: userLike,
+					this.eventService.emit('mcp-tool-called', {
+						user,
 						toolName: name,
 						workflowId,
 						status: 'error',
