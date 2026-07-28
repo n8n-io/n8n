@@ -155,7 +155,7 @@ export type N8nOAuth2ValidationResult =
 	| { valid: false; reason: OAuth2FailureReason };
 
 export type N8nOAuth2FlowResult =
-	| { valid: true; token: string; user: IUser }
+	| { valid: true; token: string; user: IUser; metadata?: Record<string, string> }
 	| { valid: false; reason: string };
 
 export type ProjectSharingData = {
@@ -1483,8 +1483,12 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 * first-party trigger client) and redirects back to the trigger URL with a code.
 	 * Used on the initial GET of a browser-facing trigger. Pair with
 	 * `completeN8nOAuth2Flow`.
+	 *
+	 * Optional `metadata` is stashed server-side against this flow's one-time `state`
+	 * (never sent to the browser) and returned by `completeN8nOAuth2Flow` on success —
+	 * a per-flow slot for carrying data (e.g. the original request query) across the bounce.
 	 */
-	beginN8nOAuth2Flow(resourceUrl: string): Promise<string>;
+	beginN8nOAuth2Flow(resourceUrl: string, metadata?: Record<string, string>): Promise<string>;
 	/**
 	 * Completes the flow started by `beginN8nOAuth2Flow` once the AS redirects back to
 	 * the trigger URL with `?code&state`. Consumes the one-time `state`, verifies PKCE,
@@ -3604,7 +3608,7 @@ export interface IWorkflowExecuteAdditionalData {
 	 * wired in by the CLI webhook layer when the OAuth server is available; the
 	 * context methods throw if a node reaches them while unset.
 	 */
-	beginN8nOAuth2Flow?: (resourceUrl: string) => Promise<string>;
+	beginN8nOAuth2Flow?: (resourceUrl: string, metadata?: Record<string, string>) => Promise<string>;
 	completeN8nOAuth2Flow?: (code: string, state: string) => Promise<N8nOAuth2FlowResult>;
 	validateN8nOAuth2Token?: (
 		token: string,

@@ -536,8 +536,10 @@ export async function executeWebhook(
 		}
 	};
 
-	additionalData.beginN8nOAuth2Flow = async (resourceUrl: string) =>
-		await Container.get(OAuth2FlowProxy).begin(resourceUrl);
+	additionalData.beginN8nOAuth2Flow = async (
+		resourceUrl: string,
+		metadata?: Record<string, string>,
+	) => await Container.get(OAuth2FlowProxy).begin(resourceUrl, metadata);
 
 	additionalData.completeN8nOAuth2Flow = async (code: string, state: string) =>
 		await Container.get(OAuth2FlowProxy).complete(code, state);

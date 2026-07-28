@@ -16,7 +16,7 @@ import { OAuthServerService } from './oauth-server.service';
 const FLOW_STATE_PREFIX = 'oauth-flow:';
 const FLOW_STATE_TTL = 5 * Time.minutes.toMilliseconds;
 
-type FlowState = { codeVerifier: string; resourceUrl: string };
+type FlowState = { codeVerifier: string; resourceUrl: string; metadata?: Record<string, string> };
 
 @Service()
 export class OAuth2FlowService implements N8nOAuth2Flow {
@@ -33,8 +33,11 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 	 * first-party, stash the PKCE verifier under an unguessable single-use `state`,
 	 * and return the `/oauth/authorize` URL to redirect the browser to. For form
 	 * triggers client_id = redirect_uri = resource = the trigger URL.
+	 *
+	 * Optional `metadata` is stashed against the `state` (server-side, never sent to the
+	 * browser) and handed back by `complete` on success.
 	 */
-	async begin(resourceUrl: string): Promise<string> {
+	async begin(resourceUrl: string, metadata?: Record<string, string>): Promise<string> {
 		const resource = await this.resourceRegistry.getByResourceUrl(resourceUrl);
 		if (!resource?.isFirstParty) {
 			throw new UserError(`Not a first-party protected resource: ${resourceUrl}`);
@@ -44,7 +47,7 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 		const state = randomBytes(32).toString('hex');
 		await this.cacheService.set(
 			FLOW_STATE_PREFIX + state,
-			{ codeVerifier: code_verifier, resourceUrl } satisfies FlowState,
+			{ codeVerifier: code_verifier, resourceUrl, metadata } satisfies FlowState,
 			FLOW_STATE_TTL,
 		);
 
@@ -71,7 +74,7 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 		if (!flow) return { valid: false, reason: 'invalid_state' };
 		await this.cacheService.delete(cacheKey); // consume-once
 
-		const { codeVerifier, resourceUrl } = flow;
+		const { codeVerifier, resourceUrl, metadata } = flow;
 
 		const client = await this.oauthServerService.clientsStore.getClient(resourceUrl);
 		if (!client) return { valid: false, reason: 'invalid_client' };
@@ -106,6 +109,7 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 					firstName: result.user.firstName,
 					lastName: result.user.lastName,
 				},
+				metadata,
 			};
 		} catch (error) {
 			// A concurrent completion (double-submitted callback) loses the atomic

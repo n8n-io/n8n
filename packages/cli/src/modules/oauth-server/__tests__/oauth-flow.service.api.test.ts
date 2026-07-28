@@ -67,8 +67,12 @@ const createProtectedFormWorkflow = async (ownedBy = owner) => {
  * row, and mint the authorization code the AS would issue after consent. Returns
  * the code + state to hand to `complete`.
  */
-const authorizeAndMintCode = async (resourceUrl: string, userId: string) => {
-	const url = new URL(await flow.begin(resourceUrl));
+const authorizeAndMintCode = async (
+	resourceUrl: string,
+	userId: string,
+	metadata?: Record<string, string>,
+) => {
+	const url = new URL(await flow.begin(resourceUrl, metadata));
 	const state = url.searchParams.get('state')!;
 	const codeChallenge = url.searchParams.get('code_challenge')!;
 
@@ -149,6 +153,19 @@ describe('complete', () => {
 			expect(decodeJwtPayload(result.token).sub).toBe(owner.id);
 			expect(decodeJwtPayload(result.token).aud).toBe(resourceUrl);
 		}
+	});
+
+	test('returns metadata stashed at begin, and undefined when none was stashed', async () => {
+		const resourceUrl = await createProtectedFormWorkflow();
+
+		const withMeta = await authorizeAndMintCode(resourceUrl, owner.id, { query: 'foo=bar' });
+		const result = await flow.complete(withMeta.code, withMeta.state);
+		expect(result).toMatchObject({ valid: true, metadata: { query: 'foo=bar' } });
+
+		const withoutMeta = await authorizeAndMintCode(resourceUrl, owner.id);
+		const bareResult = await flow.complete(withoutMeta.code, withoutMeta.state);
+		expect(bareResult.valid).toBe(true);
+		if (bareResult.valid) expect(bareResult.metadata).toBeUndefined();
 	});
 
 	test('rejects an unknown state', async () => {

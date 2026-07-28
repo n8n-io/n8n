@@ -750,29 +750,6 @@ function clearFormOAuthToken(res: Response, req: Request, resourceUrl: string): 
 	res.clearCookie(FORM_OAUTH_COOKIE_NAME, formOAuthCookieOptions(req, resourceUrl));
 }
 
-// Carries the original request query params across the OAuth2 bounce. The first
-// redirect to the provider drops them (redirect_uri is the clean resource URL,
-// strict exact-match, so no query can ride on it). We stash them on the fresh GET
-// and re-append them to the clean-URL redirect after the callback, so the form
-// still gets field prefill and `formQueryParameters`.
-const FORM_QUERY_COOKIE_NAME = 'n8n-form-query';
-
-function setFormQuery(res: Response, req: Request, resourceUrl: string, query: string): void {
-	res.cookie(FORM_QUERY_COOKIE_NAME, query, {
-		...formOAuthCookieOptions(req, resourceUrl),
-		maxAge: 5 * 60_000, // spans the whole flow (matches the AS flow-state TTL)
-	});
-}
-
-function readFormQuery(req: Request): string | null {
-	const match = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-form-query=([^;]+)/);
-	return match ? decodeURIComponent(match[1].trim()) : null;
-}
-
-function clearFormQuery(res: Response, req: Request, resourceUrl: string): void {
-	res.clearCookie(FORM_QUERY_COOKIE_NAME, formOAuthCookieOptions(req, resourceUrl));
-}
-
 /**
  * Authenticate an `n8nUserAuth` request via:
  * 1. the `n8n-auth` cookie (sent on top-level GET when the user is logged in), or
@@ -823,10 +800,9 @@ async function authenticateFormUserOrRespond(
 						// (below) picks up the cookie and renders the form.
 						setFormOAuthToken(res, req, resourceUrl, authorizationResult.token);
 						// Re-append the original query params (dropped by the first provider
-						// redirect, stashed on the fresh GET) so the follow-up GET restores
-						// field prefill and `formQueryParameters`.
-						const preservedQuery = readFormQuery(req);
-						if (preservedQuery) clearFormQuery(res, req, resourceUrl);
+						// redirect, stashed against this flow's `state` on the fresh GET) so the
+						// follow-up GET restores field prefill and `formQueryParameters`.
+						const preservedQuery = authorizationResult.metadata?.query;
 						res.writeHead(302, {
 							Location: preservedQuery ? `${resourceUrl}?${preservedQuery}` : resourceUrl,
 						});
@@ -857,17 +833,20 @@ async function authenticateFormUserOrRespond(
 				}
 			}
 
-			// Stash the original query params so we can restore them after the bounce.
-			// Only on a genuine fresh GET — a callback fall-through (invalid completion)
-			// carries `code`/`state`, which we must not preserve as the form's query.
-			if (typeof code !== 'string' && typeof state !== 'string') {
-				const originalQuery = req.originalUrl.split('?').slice(1).join('?');
-				if (originalQuery) setFormQuery(res, req, resourceUrl, originalQuery);
-			}
+			// Stash the original query params against this flow's OAuth `state` so we can
+			// restore them after the bounce. Only on a genuine fresh GET — a callback
+			// fall-through (invalid completion) carries `code`/`state`, which we must not
+			// preserve as the form's query, and whose original query was consumed with the
+			// now-invalid state, so a restart begins clean.
+			const isCallback = typeof code === 'string' && typeof state === 'string';
+			const originalQuery = isCallback ? '' : req.originalUrl.split('?').slice(1).join('?');
 
 			try {
 				// start authentication flow by redirecting to the OAuth2 provider's authorization URL
-				const authorizationUrl = await context.beginN8nOAuth2Flow(resourceUrl);
+				const authorizationUrl = await context.beginN8nOAuth2Flow(
+					resourceUrl,
+					originalQuery ? { query: originalQuery } : undefined,
+				);
 				res.writeHead(302, {
 					Location: authorizationUrl,
 				});

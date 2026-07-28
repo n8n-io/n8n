@@ -175,11 +175,14 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return await this.additionalData.validateCookieAuth(cookieValue);
 	}
 
-	async beginN8nOAuth2Flow(resourceUrl: string): Promise<string> {
+	async beginN8nOAuth2Flow(
+		resourceUrl: string,
+		metadata?: Record<string, string>,
+	): Promise<string> {
 		if (!this.additionalData.beginN8nOAuth2Flow) {
 			throw new UnexpectedError('OAuth2 flow is not available');
 		}
-		return await this.additionalData.beginN8nOAuth2Flow(resourceUrl);
+		return await this.additionalData.beginN8nOAuth2Flow(resourceUrl, metadata);
 	}
 
 	async completeN8nOAuth2Flow(code: string, state: string): Promise<N8nOAuth2FlowResult> {

@@ -1110,7 +1110,7 @@ describe('FormTrigger, formWebhook', () => {
 
 			const result = await formWebhook(ctx);
 
-			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl);
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, undefined);
 			expect(writeHead).toHaveBeenCalledWith(302, {
 				Location: 'http://localhost:5678/oauth/authorize?state=abc',
 			});
@@ -1145,7 +1145,7 @@ describe('FormTrigger, formWebhook', () => {
 			const result = await formWebhook(ctx);
 
 			expect(ctx.completeN8nOAuth2Flow).toHaveBeenCalledWith('the-code', 'the-state');
-			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl);
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, undefined);
 			expect(writeHead).toHaveBeenCalledWith(302, {
 				Location: 'http://localhost:5678/oauth/authorize?state=fresh',
 			});
@@ -1180,9 +1180,9 @@ describe('FormTrigger, formWebhook', () => {
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
-		it('stashes the original query params on a fresh GET before redirecting', async () => {
+		it('stashes the original query params as flow metadata on a fresh GET before redirecting', async () => {
 			const ctx = mock<IWebhookFunctions>();
-			const { cookie, writeHead } = setupContext(ctx, {
+			const { writeHead } = setupContext(ctx, {
 				method: 'GET',
 				originalUrl: '/form/test?foo=bar',
 			});
@@ -1190,40 +1190,52 @@ describe('FormTrigger, formWebhook', () => {
 
 			const result = await formWebhook(ctx);
 
-			expect(cookie).toHaveBeenCalledWith(
-				'n8n-form-query',
-				'foo=bar',
-				expect.objectContaining({ httpOnly: true, sameSite: 'lax' }),
-			);
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, { query: 'foo=bar' });
 			expect(writeHead).toHaveBeenCalledWith(302, {
 				Location: 'http://localhost:5678/oauth/authorize?state=abc',
 			});
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
-		it('re-appends the preserved query and clears its cookie on a valid callback', async () => {
+		it('preserves a lone code query param as flow metadata on a fresh GET', async () => {
+			// A form field literally named `code` (or `state`) is not a provider callback
+			// (which needs both), so it is a genuine fresh GET and must be preserved.
 			const ctx = mock<IWebhookFunctions>();
-			const { writeHead, clearCookie } = setupContext(ctx, {
+			setupContext(ctx, {
+				method: 'GET',
+				query: { foo: 'bar', code: 'x' },
+				originalUrl: '/form/test?foo=bar&code=x',
+			});
+			ctx.beginN8nOAuth2Flow.mockResolvedValue('http://localhost:5678/oauth/authorize?state=abc');
+
+			await formWebhook(ctx);
+
+			expect(ctx.completeN8nOAuth2Flow).not.toHaveBeenCalled();
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, { query: 'foo=bar&code=x' });
+		});
+
+		it('re-appends the query stashed as flow metadata on a valid callback', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { writeHead } = setupContext(ctx, {
 				method: 'GET',
 				query: { code: 'the-code', state: 'the-state' },
-				headers: { cookie: 'n8n-form-query=foo%3Dbar' },
 			});
 			ctx.completeN8nOAuth2Flow.mockResolvedValue({
 				valid: true,
 				token: 'as-token',
 				user: authedUser,
+				metadata: { query: 'foo=bar' },
 			});
 
 			const result = await formWebhook(ctx);
 
 			expect(writeHead).toHaveBeenCalledWith(302, { Location: `${resourceUrl}?foo=bar` });
-			expect(clearCookie).toHaveBeenCalledWith('n8n-form-query', expect.any(Object));
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
-		it('does not stash code/state as the preserved query on a callback fall-through', async () => {
+		it('does not stash code/state as flow metadata on a callback fall-through', async () => {
 			const ctx = mock<IWebhookFunctions>();
-			const { cookie } = setupContext(ctx, {
+			setupContext(ctx, {
 				method: 'GET',
 				query: { code: 'the-code', state: 'the-state' },
 				originalUrl: '/form/test?code=the-code&state=the-state',
@@ -1233,12 +1245,7 @@ describe('FormTrigger, formWebhook', () => {
 
 			await formWebhook(ctx);
 
-			expect(cookie).not.toHaveBeenCalledWith(
-				'n8n-form-query',
-				expect.anything(),
-				expect.anything(),
-			);
-			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl);
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, undefined);
 		});
 
 		it('renders the form on the clean GET carrying the oauth cookie', async () => {
@@ -1273,7 +1280,7 @@ describe('FormTrigger, formWebhook', () => {
 			const result = await formWebhook(ctx);
 
 			expect(ctx.validateN8nOAuth2Token).toHaveBeenCalledWith('stale-token', resourceUrl);
-			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl);
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, undefined);
 			expect(writeHead).toHaveBeenCalledWith(302, {
 				Location: 'http://localhost:5678/oauth/authorize?state=fresh',
 			});

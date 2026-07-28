@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 import { UnexpectedError, type N8nOAuth2FlowResult } from 'n8n-workflow';
 
 export interface N8nOAuth2Flow {
-	begin(resourceUrl: string): Promise<string>;
+	begin(resourceUrl: string, metadata?: Record<string, string>): Promise<string>;
 	complete(code: string, state: string): Promise<N8nOAuth2FlowResult>;
 }
 
@@ -14,9 +14,9 @@ export class OAuth2FlowProxy implements N8nOAuth2Flow {
 		this.provider = provider;
 	}
 
-	async begin(resourceUrl: string): Promise<string> {
+	async begin(resourceUrl: string, metadata?: Record<string, string>): Promise<string> {
 		if (!this.provider) throw new UnexpectedError('OAuth2 form flow is not available');
-		return await this.provider.begin(resourceUrl);
+		return await this.provider.begin(resourceUrl, metadata);
 	}
 
 	async complete(code: string, state: string): Promise<N8nOAuth2FlowResult> {
