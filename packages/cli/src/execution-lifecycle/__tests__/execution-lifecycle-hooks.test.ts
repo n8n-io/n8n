@@ -2094,6 +2094,33 @@ describe('Execution Lifecycle Hooks', () => {
 				);
 			});
 
+			it('counts nodes that ran before an editor session attached', async () => {
+				// Progress work is skipped while nothing is watching, but the tally must
+				// not be: an editor attaching mid-run should see a truthful count.
+				activeExecutions.has.mockReturnValue(false);
+				const hooks = buildHooks(
+					buildChildWorkflow({
+						nodes: ['Node A', 'Node B'],
+						connections: { Trigger: ['Node A'], 'Node A': ['Node B'] },
+					}),
+				);
+
+				await hooks.runHook('nodeExecuteBefore', ['Trigger', taskStartedData]);
+				await hooks.runHook('nodeExecuteBefore', ['Node A', taskStartedData]);
+				expect(push.send).not.toHaveBeenCalled();
+
+				stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+				await hooks.runHook('nodeExecuteBefore', ['Node B', taskStartedData]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'subworkflowNodeProgress',
+						data: expect.objectContaining({ currentNodeName: 'Node B', currentNodeIndex: 3 }),
+					}),
+					rootPushRef,
+				);
+			});
+
 			it('excludes disabled nodes and sticky notes from totalNodes', async () => {
 				stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
 				const activeNode = workflowData.nodes[0];

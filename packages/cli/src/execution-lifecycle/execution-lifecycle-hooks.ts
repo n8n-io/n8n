@@ -553,7 +553,11 @@ function hookFunctionsPushSubExecution(
 	parentExecution: RelatedExecution,
 	parentNode: INode,
 ) {
-	const totalNodes = countReachableNodes(workflowData);
+	// Deferred until something is actually watching. Most executions have no
+	// editor session, and a parent loop can spawn hundreds of sub-executions, so
+	// the graph traversal must not run just because hooks were registered.
+	let cachedTotalNodes: number | undefined;
+	const getTotalNodes = (): number => (cachedTotalNodes ??= countReachableNodes(workflowData));
 
 	// Push + pushRef are resolved lazily on first emit. This keeps hook
 	// registration free of DI side effects (cli tests globally `jest.mock`
@@ -581,12 +585,11 @@ function hookFunctionsPushSubExecution(
 
 	// Trailing-edge throttle. The engine emits a before/after pair per node
 	// execution, so a looping child produces two events per iteration — each of
-	// which is a pubsub broadcast in scaling mode and a full canvas re-map in
-	// the editor. The overlay only renders "Running: X", "i / N" and a bar, so
-	// intermediate states are disposable: we coalesce to at most one message
-	// per window and always send the latest state, which caps push volume
-	// regardless of how fast or how long the child runs.
-	const throttleMs = totalNodes >= 50 ? 250 : 100;
+	// which is a pubsub broadcast in scaling mode and a canvas re-map in the
+	// editor. Only the latest state is ever rendered, so intermediate ones are
+	// disposable: we coalesce to at most one message per window, which caps push
+	// volume regardless of how fast or how long the child runs.
+	const getThrottleMs = () => (getTotalNodes() >= 50 ? 250 : 100);
 	let lastEmitAt = 0;
 	let pending: PushPayload<'subworkflowNodeProgress'> | undefined;
 	let timer: NodeJS.Timeout | undefined;
@@ -620,7 +623,15 @@ function hookFunctionsPushSubExecution(
 		phase: 'running' | 'success' | 'error',
 		childId: string,
 	) {
+		// Counted before the bail-out, so the tally stays correct if an editor
+		// session shows up partway through the run.
 		reachedNodeNames.add(nodeName);
+
+		// Nothing is watching (production run, or the parent isn't registered yet).
+		// Resolution is retried on the next event, so this doesn't silence the
+		// stream — it just keeps the whole overlay off the hot path.
+		if (!resolveTarget()) return;
+
 		pending = {
 			parentExecutionId: parentExecution.executionId,
 			parentNodeName: parentNode.name,
@@ -630,9 +641,10 @@ function hookFunctionsPushSubExecution(
 			// estimated, so clamping to it would spoil the one exact number here. The
 			// editor shows this as a plain count and clamps the arc separately.
 			currentNodeIndex: reachedNodeNames.size,
-			totalNodes,
+			totalNodes: getTotalNodes(),
 			phase,
 		};
+		const throttleMs = getThrottleMs();
 		const elapsed = Date.now() - lastEmitAt;
 		// Leading edge: the window has passed, so emit straight away.
 		if (elapsed >= throttleMs) {
@@ -656,7 +668,7 @@ function hookFunctionsPushSubExecution(
 					parentExecutionId: parentExecution.executionId,
 					parentNodeName: parentNode.name,
 					executionId: this.executionId,
-					totalNodes,
+					totalNodes: getTotalNodes(),
 				},
 			},
 			target.pushRef,
