@@ -7,7 +7,6 @@ import type { CanvasNodeDefaultRender } from '../../../../canvas.types';
 import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import { useCanvas } from '../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
-import { useSubworkflowProgressArc } from '../../../../composables/useSubworkflowProgressArc';
 import CanvasNodeSettingsIcons from './parts/CanvasNodeSettingsIcons.vue';
 import { useNodePrivateCredential } from '@/features/resolvers/composables/useNodePrivateCredential';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -139,14 +138,18 @@ const displaySubtitle = computed(() => {
 	});
 });
 
-const { fraction: subworkflowProgressFraction } = useSubworkflowProgressArc(subworkflowProgress);
+/** The total is only an upper bound, so a full turn is reserved for completion. */
+const MAX_PROGRESS_FRACTION = 0.9;
 
 const subworkflowProgressStyle = computed(() => {
-	if (subworkflowProgressFraction.value <= 0) return {};
+	const progress = subworkflowProgress.value;
+	if (!progress || progress.totalNodes <= 0) return {};
 
-	return {
-		'--node--progress--fraction': `${(subworkflowProgressFraction.value * 100).toFixed(2)}%`,
-	};
+	const fraction = Math.min(
+		Math.max(progress.currentNodeIndex / progress.totalNodes, 0),
+		MAX_PROGRESS_FRACTION,
+	);
+	return { '--node--progress--fraction': `${(fraction * 100).toFixed(2)}%` };
 });
 
 const styles = computed(() => ({
