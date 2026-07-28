@@ -30,7 +30,7 @@ export interface NotificationHandle {
  *
  * Returning `undefined` means the app declined to show this notification — today
  * that is notification suppression, which lives at the registration site rather
- * than here (ADR-004). `showMessage` treats it as "dropped": no sticky-queue
+ * than here. `showMessage` treats it as "dropped": no sticky-queue
  * entry, no error telemetry, and a no-op handle to the caller.
  */
 type NotifyFn = (options: Record<string, unknown>) => NotificationHandle | undefined;

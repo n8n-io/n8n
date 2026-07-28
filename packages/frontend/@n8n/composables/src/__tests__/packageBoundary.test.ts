@@ -4,18 +4,7 @@ import { join } from 'node:path';
 
 /**
  * This package must stay **below** `@n8n/stores`: stores depends on it, so an
- * import in the other direction closes a build-fatal cycle (`build` is
- * topological via `dependsOn: ["^build"]` — turbo hard-stops). That is the whole
- * point of N8N-100, and nothing but this test stops a future import from quietly
- * undoing it — the repo has no import-boundary lint rule between frontend
- * packages, only `import-x/no-extraneous-dependencies`, which a re-added
- * `package.json` entry would satisfy.
- *
- * `useToast` is the module that used to force the cycle; it now receives its
- * notification state via `registerNotificationState` instead.
- *
- * Replaces the dual-instance singleton guard from PR #35026, whose premise (a
- * relocated copy plus a re-export in a second package) no longer exists.
+ * import in the other direction closes a build-fatal cycle.
  */
 describe('package boundary', () => {
 	// `process.cwd()` rather than `import.meta.url`: the jsdom environment does

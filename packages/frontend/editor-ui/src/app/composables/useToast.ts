@@ -7,7 +7,7 @@ import { useNotificationsStore } from '@n8n/stores/notifications.store';
 // element-plus nor `@n8n/stores`. Runs on first import; `editor-ui` imports this
 // module during bootstrap, before any consumer runs.
 //
-// Suppression lives here rather than in the package (ADR-004): returning
+// Suppression lives here rather than in the package: returning
 // `undefined` tells `showMessage` the app declined to show this notification, and
 // it drops it without a sticky-queue entry or error telemetry.
 //

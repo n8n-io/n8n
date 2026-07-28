@@ -12,7 +12,7 @@ vi.mock('@n8n/composables/useToast', () => ({
 }));
 
 /**
- * Relocated from `@n8n/composables/useToast` (ADR-004). Behaviour must be
+ * Relocated from `@n8n/composables/useToast`. Behaviour must be
  * unchanged from the package version, so these assert the same things its package
  * tests did.
  */

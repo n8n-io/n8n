@@ -7,7 +7,7 @@ import { useToast } from '@/app/composables/useToast';
 /**
  * This module is bootstrap wiring, not just a re-export: importing it registers
  * the notifier that package-side `useToast` depends on, and that notifier is
- * where notification suppression lives (ADR-004) — `@n8n/composables` sits below
+ * where notification suppression lives — `@n8n/composables` sits below
  * the stores tier and cannot read the store itself.
  *
  * So this is the only place the suppression matrix can be verified end to end.

@@ -6,7 +6,7 @@ import { useNotificationsStore } from '@n8n/stores/notifications.store';
 /**
  * Displays the notifications a view queued before it mounted.
  *
- * Relocated here from `@n8n/composables/useToast` (ADR-004): it is the only part
+ * Relocated here from `@n8n/composables/useToast`: it is the only part
  * of the toast layer that needs the notification *queue*, and depending on a
  * store is legitimate in app code but not in a package below the stores tier.
  * Behaviour is unchanged from the package version.

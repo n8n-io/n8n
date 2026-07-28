@@ -241,7 +241,7 @@ describe('useToast', () => {
 
 	// A notifier returning `undefined` means the app declined to show the toast —
 	// in production that is notification suppression, which now lives at the
-	// registration site (ADR-004). The package's side of that contract is that a
+	// registration site. The package's side of that contract is that a
 	// dropped toast leaves no trace, matching the in-package suppression branch it
 	// replaced: no render, no error telemetry, no sticky-queue entry, and still a
 	// closable handle for the caller.
