@@ -24,7 +24,9 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import { createRunExecutionData, TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import {
 	createTestNode,
 	createTestWorkflow,
@@ -111,6 +113,18 @@ function executionFinishedEvent(executionId: string): ExecutionFinished {
 		type: 'executionFinished',
 		data: { executionId, workflowId: WORKFLOW_ID, status: 'success' },
 	};
+}
+
+/** What the REST API returns for the root run when its finish is processed. */
+function rootExecutionResponse() {
+	return createTestWorkflowExecutionResponse({
+		id: ROOT_EXECUTION_ID,
+		status: 'success',
+		workflowData: createTestWorkflow({
+			id: WORKFLOW_ID,
+			nodes: [CALLER_NODE, SUB_TRIGGER_NODE, SUB_STEP_NODE],
+		}),
+	});
 }
 
 /** Runs the sub-workflow branch to completion under `executionId`. */
@@ -332,6 +346,109 @@ describe('live sub-executions', () => {
 			await executionFinished(executionFinishedEvent(ROOT_EXECUTION_ID), options);
 
 			expect(executionStateStore.subExecutingNode.executingNode).toEqual([]);
+		});
+	});
+
+	describe('backfilling item payloads', () => {
+		/** Real run data as the REST API would return it for a sub-execution. */
+		function fetchedSubExecution(value: string) {
+			return createTestWorkflowExecutionResponse({
+				id: 'exec-sub',
+				status: 'success',
+				data: createRunExecutionData({
+					resultData: {
+						runData: {
+							[SUB_STEP_NODE.name]: [
+								{
+									startTime: 0,
+									executionIndex: 0,
+									executionTime: 1,
+									executionStatus: 'success',
+									source: [],
+									data: { main: [[{ json: { value } }]] },
+								},
+							],
+						},
+					},
+				}),
+			});
+		}
+
+		it('replaces the placeholders once the tracked run finishes', async () => {
+			const fetchSpy = vi
+				.spyOn(useWorkflowsStore(), 'fetchExecutionDataById')
+				.mockImplementation(async (id) =>
+					id === 'exec-sub' ? fetchedSubExecution('real') : rootExecutionResponse(),
+				);
+
+			await executionStarted(subExecutionStartedEvent('exec-sub'), options);
+			await runSubWorkflowBranch('exec-sub');
+			await executionFinished(executionFinishedEvent('exec-sub'), options);
+
+			// Live pushes carry counts only, so the payload is a trimmed placeholder.
+			const subStore = useExecutionDataStore(createExecutionDataId('exec-sub'));
+			expect(
+				subStore.execution?.data?.resultData.runData[SUB_STEP_NODE.name][0].data?.main[0]?.[0].json,
+			).toHaveProperty(TRIMMED_TASK_DATA_CONNECTIONS_KEY);
+
+			await executionFinished(executionFinishedEvent(ROOT_EXECUTION_ID), options);
+
+			expect(fetchSpy).toHaveBeenCalledWith('exec-sub');
+			expect(
+				subStore.execution?.data?.resultData.runData[SUB_STEP_NODE.name][0].data?.main[0]?.[0].json,
+			).toEqual({ value: 'real' });
+		});
+
+		it('costs one request per calling node, not per loop iteration', async () => {
+			const fetchSpy = vi
+				.spyOn(useWorkflowsStore(), 'fetchExecutionDataById')
+				.mockImplementation(async (id) =>
+					id === ROOT_EXECUTION_ID ? rootExecutionResponse() : fetchedSubExecution('real'),
+				);
+
+			// A loop over the same node: each iteration supersedes the previous one.
+			for (const id of ['exec-sub-1', 'exec-sub-2', 'exec-sub-3']) {
+				await executionStarted(subExecutionStartedEvent(id), options);
+				await runSubWorkflowBranch(id);
+				await executionFinished(executionFinishedEvent(id), options);
+			}
+			await executionFinished(executionFinishedEvent(ROOT_EXECUTION_ID), options);
+
+			const subFetches = fetchSpy.mock.calls.filter(([id]) => id !== ROOT_EXECUTION_ID);
+			expect(subFetches).toEqual([['exec-sub-3']]);
+		});
+
+		it('skips a sub-execution that has not finished yet', async () => {
+			const fetchSpy = vi
+				.spyOn(useWorkflowsStore(), 'fetchExecutionDataById')
+				.mockResolvedValue(rootExecutionResponse());
+
+			// "Wait for sub-workflow" off: the parent ends while the child runs on, so
+			// fetching now would capture incomplete data.
+			await executionStarted(subExecutionStartedEvent('exec-sub'), options);
+			await executionFinished(executionFinishedEvent(ROOT_EXECUTION_ID), options);
+
+			expect(fetchSpy.mock.calls.filter(([id]) => id === 'exec-sub')).toEqual([]);
+		});
+
+		it('backfills on the child finish when the parent run already ended', async () => {
+			const fetchSpy = vi
+				.spyOn(useWorkflowsStore(), 'fetchExecutionDataById')
+				.mockImplementation(async (id) =>
+					id === 'exec-sub' ? fetchedSubExecution('late') : rootExecutionResponse(),
+				);
+
+			await executionStarted(subExecutionStartedEvent('exec-sub'), options);
+			await runSubWorkflowBranch('exec-sub');
+			await executionFinished(executionFinishedEvent(ROOT_EXECUTION_ID), options);
+			expect(fetchSpy.mock.calls.filter(([id]) => id === 'exec-sub')).toEqual([]);
+
+			await executionFinished(executionFinishedEvent('exec-sub'), options);
+
+			const subStore = useExecutionDataStore(createExecutionDataId('exec-sub'));
+			expect(
+				subStore.execution?.data?.resultData.runData[SUB_STEP_NODE.name][0].data?.main[0]?.[0].json,
+			).toEqual({ value: 'late' });
 		});
 	});
 
