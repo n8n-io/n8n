@@ -454,16 +454,13 @@ export class InstanceAiSettingsService {
 		} else if (this.aiService.isProxyEnabled()) {
 			this.rejectManagedFields(
 				update,
-				[
-					'modelCredentialId',
-					'daytonaCredentialId',
-					'searchCredentialId',
-					'modelConnection',
-					'searchConnection',
-				],
+				['modelCredentialId', 'searchCredentialId', 'modelConnection', 'searchConnection'],
 				this.deploymentLabel(),
 			);
 			this.rejectManagedFields(update, ['modelName'], this.deploymentLabel());
+			if (update.daytonaCredentialId !== null) {
+				this.rejectManagedFields(update, ['daytonaCredentialId'], this.deploymentLabel());
+			}
 			if (update.sandboxConnection?.type === 'daytonaApi') {
 				this.rejectManagedFields(update, ['sandboxConnection'], this.deploymentLabel());
 			}

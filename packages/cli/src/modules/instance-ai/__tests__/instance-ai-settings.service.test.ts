@@ -797,6 +797,7 @@ describe('InstanceAiSettingsService', () => {
 						modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } },
 						modelName: 'gpt-5',
 					},
+					{ daytonaCredentialId: 'daytona-cred' },
 					{
 						sandboxConnection: {
 							type: 'daytonaApi',
@@ -810,6 +811,31 @@ describe('InstanceAiSettingsService', () => {
 					);
 				}
 				expect(credentialsService.runInstanceCredentialHooks).not.toHaveBeenCalled();
+			});
+
+			it('should clear the inactive Daytona slot when selecting n8n Sandbox behind the proxy', async () => {
+				aiService.isProxyEnabled.mockReturnValue(true);
+
+				await expect(
+					service.updateAdminSettings({
+						daytonaCredentialId: null,
+						n8nSandboxCredentialId: 'sandbox-cred',
+						sandboxProvider: 'n8n-sandbox',
+					}),
+				).resolves.toMatchObject({
+					daytonaCredentialId: null,
+					n8nSandboxCredentialId: 'sandbox-cred',
+					sandboxProvider: 'n8n-sandbox',
+				});
+				expect(instanceCredentialBroker.clearForUse).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'instance-ai:sandbox:daytona' }),
+					operationContext,
+				);
+				expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'instance-ai:sandbox:n8n' }),
+					'sandbox-cred',
+					operationContext,
+				);
 			});
 
 			it('should accept n8n Sandbox connections on proxy deployments', async () => {
