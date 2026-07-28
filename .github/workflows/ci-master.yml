@@ -24,6 +24,9 @@ jobs:
           # The default is build without typechecking, we want both
           build-command: pnpm build
 
+      - name: Report build critical path
+        run: node scripts/turbo-critical-path.mjs >> "$GITHUB_STEP_SUMMARY"
+
   unit-test:
     name: Unit tests
     uses: ./.github/workflows/test-unit-reusable.yml
