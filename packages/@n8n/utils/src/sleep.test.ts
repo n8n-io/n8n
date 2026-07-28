@@ -11,20 +11,22 @@ describe('sleep', () => {
 
 	it('should resolve after the specified time when no abort signal is given', async () => {
 		const onResolve = vi.fn();
-		sleep(100).then(onResolve);
+		const sleepPromise = sleep(100).then(onResolve);
 
 		await vi.advanceTimersByTimeAsync(99);
 		expect(onResolve).not.toHaveBeenCalled();
 
 		await vi.advanceTimersByTimeAsync(1);
+		await sleepPromise;
 		expect(onResolve).toHaveBeenCalled();
 	});
 
 	it('should work without abort signal', async () => {
 		const onResolve = vi.fn();
-		sleep(100, undefined).then(onResolve);
+		const sleepPromise = sleep(100, undefined).then(onResolve);
 
 		await vi.advanceTimersByTimeAsync(100);
+		await sleepPromise;
 		expect(onResolve).toHaveBeenCalled();
 	});
 

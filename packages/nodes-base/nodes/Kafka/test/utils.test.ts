@@ -1,7 +1,6 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createResultError, createResultOk } from '@n8n/utils/result';
-import type * as _importType0 from 'n8n-workflow';
 import type {
 	ITriggerFunctions,
 	IRun,
