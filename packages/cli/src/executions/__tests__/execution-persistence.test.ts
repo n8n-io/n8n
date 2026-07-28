@@ -587,6 +587,29 @@ describe('ExecutionPersistence', () => {
 				expect(result).toBe(true);
 				expect(executionRepository.update).not.toHaveBeenCalled();
 			});
+
+			// CAT-3862: an execution enqueued as `new` is inserted without a `startedAt`,
+			// so whoever claims it must be able to stamp one.
+			it('should write startedAt', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValue({
+					affected: 1,
+					generatedMaps: [],
+					raw: {},
+				});
+				const startedAt = new Date();
+
+				const result = await executionPersistence.updateExistingExecution(executionId, {
+					status: 'running',
+					startedAt,
+				});
+
+				expect(result).toBe(true);
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId },
+					{ status: 'running', startedAt },
+				);
+			});
 		});
 
 		describe('data updates on db-mode executions', () => {
@@ -1105,21 +1128,24 @@ describe('ExecutionPersistence', () => {
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
+				const startedAt = new Date();
+
 				await executionPersistence.updateExistingExecution(executionId, {
 					id: executionId,
 					data: runData,
 					workflowId: 'other-wf',
 					workflowVersionId: 'v-new',
 					createdAt: new Date(),
-					startedAt: new Date(),
+					startedAt,
 					customData: { foo: 'bar' },
 					status: 'success',
 				});
 
+				// `startedAt` is mutable: an execution claimed from `new` has none yet
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: executionId },
-					{ status: 'success' },
+					{ status: 'success', startedAt },
 				);
 			});
 		});

@@ -151,8 +151,10 @@ describe('ActiveExecutions', () => {
 			expectedStatus: 'new',
 		});
 
-		expect(executionRepository.setRunning).toHaveBeenCalledExactlyOnceWith(
+		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 			FAKE_SECOND_EXECUTION_ID,
+			expect.objectContaining({ startedAt: expect.any(Date) }),
+			expect.anything(),
 		);
 	});
 
@@ -162,7 +164,12 @@ describe('ActiveExecutions', () => {
 			expectedStatus: 'waiting',
 		});
 
-		expect(executionRepository.setRunning).not.toHaveBeenCalled();
+		// `undefined` leaves the column untouched, keeping the original `startedAt`
+		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+			FAKE_SECOND_EXECUTION_ID,
+			expect.objectContaining({ startedAt: undefined }),
+			expect.anything(),
+		);
 	});
 
 	test('Should forward deduplicationKey to executionPersistence.create', async () => {
