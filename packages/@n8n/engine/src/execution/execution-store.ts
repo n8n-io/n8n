@@ -29,9 +29,7 @@ export class ExecutionNotFoundError extends Error {
 	}
 }
 
-/**
- * Persistence port for executions.
- */
+/** Persistence interface for executions. */
 export interface ExecutionStore {
 	/** Persist a new execution record; returns its generated id. */
 	createExecution(record: NewExecutionRecord): Promise<{ id: string }>;

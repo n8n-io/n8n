@@ -3,7 +3,7 @@
  *
  * Two logical queues are used so a flood of step events can't starve
  * orchestration (or vice versa): an **orchestration queue** (execution/step
- * lifecycle planning) and a **step queue** (steps ready to execute). The port
+ * lifecycle planning) and a **step queue** (steps ready to execute). `WorkQueue`
  * is generic over its message type; adapters implement it per queue.
  */
 
