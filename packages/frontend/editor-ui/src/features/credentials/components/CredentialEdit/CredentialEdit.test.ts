@@ -955,6 +955,135 @@ describe('CredentialEdit', () => {
 		);
 	});
 
+	test('should use the requested credential type when the node has multiple auth options', async () => {
+		const alphaCredType: ICredentialType = {
+			name: 'alphaApi',
+			displayName: 'Alpha API',
+			properties: [
+				{
+					displayName: 'Alpha Key',
+					name: 'alphaKey',
+					type: 'string',
+					default: '',
+				},
+			],
+		};
+
+		const betaCredType: ICredentialType = {
+			name: 'betaApi',
+			displayName: 'Beta API',
+			properties: [
+				{
+					displayName: 'Beta Token',
+					name: 'betaToken',
+					type: 'string',
+					default: '',
+				},
+			],
+		};
+
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalsById: {
+						[CREDENTIAL_EDIT_MODAL_KEY]: {
+							open: true,
+							showAuthSelector: true,
+						},
+					},
+				},
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							sharing: true,
+							externalSecrets: false,
+						},
+						templates: {
+							host: '',
+						},
+					},
+				},
+				[STORES.PROJECTS]: {
+					personalProject: {
+						id: 'personal-project',
+						type: 'personal',
+						scopes: ['credential:create', 'credential:read'],
+					},
+				},
+			},
+		});
+
+		const credStore = mockedStore(useCredentialsStore);
+		credStore.state.credentialTypes = {
+			alphaApi: alphaCredType,
+			betaApi: betaCredType,
+		};
+		credStore.getNewCredentialName.mockResolvedValue('Beta API');
+
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflowId = 'test-workflow-id';
+		const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
+		ndvStore.activeNode = {
+			name: 'DualAuthTest',
+			type: 'n8n-nodes-base.dualAuthTest',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		} as INode;
+
+		const nodeTypesStore = mockedStore(useNodeTypesStore);
+		const mockNodeType = {
+			displayName: 'Dual Auth Test',
+			name: 'n8n-nodes-base.dualAuthTest',
+			group: ['transform'],
+			version: 1,
+			description: 'Test node',
+			defaults: { name: 'Dual Auth Test' },
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [
+				{
+					name: 'alphaApi',
+					required: true,
+					displayOptions: { show: { authentication: ['alpha'] } },
+				},
+				{
+					name: 'betaApi',
+					required: true,
+					displayOptions: { show: { authentication: ['beta'] } },
+				},
+			],
+			properties: [
+				{
+					displayName: 'Authentication',
+					name: 'authentication',
+					type: 'options',
+					options: [
+						{ name: 'Alpha', value: 'alpha' },
+						{ name: 'Beta', value: 'beta' },
+					],
+					default: 'alpha',
+				},
+			],
+		} as unknown as INodeTypeDescription;
+		nodeTypesStore.getNodeType = () => mockNodeType;
+
+		renderComponent({
+			props: {
+				activeId: 'betaApi',
+				modalName: CREDENTIAL_EDIT_MODAL_KEY,
+				mode: 'new',
+			},
+			pinia,
+		});
+
+		await retry(() =>
+			expect(credStore.getNewCredentialName).toHaveBeenCalledWith({
+				credentialTypeName: 'betaApi',
+			}),
+		);
+	});
+
 	describe('saving credentials', () => {
 		const createPiniaForSaveTest = (credentialModalState: Partial<NewCredentialsModal> = {}) =>
 			createTestingPinia({
