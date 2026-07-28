@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.stories.ts
+  s_9ea611e2855b07::t_a7cba87dd9d3c8 248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "8334114bc7217a655e0b1e0c94f1430488a3c20c",
+  "prompts": {},
+  "sessions": {
+    "s_9ea611e2855b07": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "87e98005-1f4c-4586-95cc-5b2fc70e8bef",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
