@@ -26,17 +26,20 @@ n8n-cli package export -w abc --include-variable-values=false -o export.n8np
 | `-p, --project-id` | Project ID to include. Repeat the flag to export several. |
 | `-o, --output` | File to write the package to. Defaults to `export.n8np`. |
 | `--include-variable-values` | `true` (default) or `false`. Whether values of variables referenced by the exported workflows are bundled into the package. When `false`, variables still travel as name/type files (and in the package requirements), just without their values. |
-| `--missing-workflow-dependency-policy` | Policy for missing static sub-workflow dependencies: `fail` aborts when any dependency is missing, `include-in-package` automatically adds missing static sub-workflows, and `reference-only` is reserved for a future export mode. |
+| `--missing-workflow-dependency-policy` | Policy for missing static sub-workflow dependencies: `fail` aborts when any dependency is missing, `include-in-package` automatically adds missing static sub-workflows, and `reference-only` keeps them out of the package, listing them in the package requirements as workflows expected to already exist on the target. |
 
 Provide at least one `--workflow-id`, `--folder-id`, or `--project-id`. Requires
 the API key to hold `workflow:export` when exporting workflows or folders, or
 `project:export` when exporting projects.
 
-Statically referenced sub-workflows must also be included in the resulting
-package. How missing ones are handled depends on
+Statically referenced sub-workflows are dependencies of the package. How
+missing ones are handled depends on
 `--missing-workflow-dependency-policy`. With the default `fail` policy you include them yourself. With `include-in-package`, n8n resolves the static dependency graph and adds any
 missing sub-workflows to the package automatically, so you don't need to list
-them explicitly.
+them explicitly. With `reference-only`, missing sub-workflows stay out of the
+package and are only listed in the package requirements (by id, with a
+best-effort name), on the assumption that they and their own dependencies
+already exist on the target instance.
 
 ## `package import`
 
