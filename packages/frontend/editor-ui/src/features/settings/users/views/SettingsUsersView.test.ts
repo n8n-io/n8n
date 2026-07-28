@@ -135,6 +135,12 @@ describe('SettingsUsersView', () => {
 		mockIsVariantEnabled.mockReset();
 		mockIsVariantEnabled.mockReturnValue(false);
 
+		// Mimic useClipboard.copy resolving a promise-returning value, so a
+		// rejected invite-link fetch surfaces to the handler's try/catch.
+		mockClipboard.copy.mockImplementation(async (value: string | (() => Promise<string>)) => {
+			if (typeof value === 'function') await value();
+		});
+
 		renderComponent = createComponentRenderer(SettingsUsersView, {
 			pinia: createTestingPinia(),
 		});
@@ -555,10 +561,10 @@ describe('SettingsUsersView', () => {
 			emitters.settingsUsersTable.emit('action', { action: 'generateInviteLink', userId: '3' });
 
 			expect(usersStore.generateInviteLink).toHaveBeenCalledWith({ id: '3' });
-			await waitFor(() => {
-				expect(mockClipboard.copy).toHaveBeenCalledWith(
-					'https://example.com/signup?token=generated-token',
-				);
+			await waitFor(async () => {
+				expect(mockClipboard.copy).toHaveBeenCalledWith(expect.any(Function));
+				const getLink = mockClipboard.copy.mock.calls.at(-1)![0];
+				await expect(getLink()).resolves.toBe('https://example.com/signup?token=generated-token');
 				expect(mockToast.showToast).toHaveBeenCalledWith({
 					type: 'success',
 					title: expect.any(String),

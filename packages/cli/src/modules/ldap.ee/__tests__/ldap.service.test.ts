@@ -40,7 +40,9 @@ vi.mock('ldapts', async () => {
 	ClientMock.prototype.startTLS = vi.fn();
 	ClientMock.prototype.search = vi.fn();
 
-	return { Client: ClientMock };
+	class ResultCodeError extends Error {}
+
+	return { Client: ClientMock, ResultCodeError };
 });
 
 vi.mock('../helpers.ee', async () => ({
@@ -318,6 +320,16 @@ describe('LdapService', () => {
 
 			await expect(ldapService.updateConfig(ldapConfig)).rejects.toThrowError(
 				'Cannot switch ldap login enabled state when an authentication method other than email or ldap is active (current: saml)',
+			);
+		});
+
+		it('should throw the same error if login is enabled and the current authentication method is neither saml/oidc nor email/ldap', async () => {
+			config.set('userManagement.authenticationMethod', 'token-exchange');
+
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			await expect(ldapService.updateConfig(ldapConfig)).rejects.toThrowError(
+				'Cannot switch ldap login enabled state when an authentication method other than email or ldap is active (current: token-exchange)',
 			);
 		});
 

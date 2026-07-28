@@ -95,6 +95,7 @@ export const API_KEY_RESOURCES = {
 	saml: ['manage'] as const,
 	oidc: ['manage'] as const,
 	otel: ['manage'] as const,
+	ldap: ['manage', 'sync'] as const,
 	project: ['create', 'update', 'delete', 'list', 'export'] as const,
 	user: ['read', 'list', 'create', 'changeRole', 'delete'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'stop'] as const,

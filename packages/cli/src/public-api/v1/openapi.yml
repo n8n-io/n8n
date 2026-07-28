@@ -49,6 +49,8 @@ tags:
     description: Operations about projects
   - name: SecurityPolicy
     description: Operations about the instance security policy settings
+  - name: SettingsLdap
+    description: Operations about LDAP settings
   - name: SettingsOtel
     description: Operations about OpenTelemetry settings
   - name: SettingsSsoOidc
@@ -69,6 +71,10 @@ tags:
 paths:
   /audit:
     $ref: './handlers/audit/spec/paths/audit.yml'
+  /settings/ldap:
+    $ref: './handlers/ldap/spec/paths/settings.ldap.yml'
+  /settings/ldap/sync:
+    $ref: './handlers/ldap/spec/paths/settings.ldap.sync.yml'
   /settings/security-policy:
     $ref: './handlers/security-policy/spec/paths/security-policy.yml'
   /settings/otel:
@@ -109,6 +115,8 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.yml'
   /workflows/{id}:
     $ref: './handlers/workflows/spec/paths/workflows.id.yml'
+  /workflows/{id}/history:
+    $ref: './handlers/workflows/spec/paths/workflows.id.history.yml'
   /workflows/{id}/{versionId}:
     $ref: './handlers/workflows/spec/paths/workflows.id.versionId.yml'
   /workflows/{id}/activate:

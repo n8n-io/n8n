@@ -79,6 +79,10 @@ export { UpdateSamlConfigurationDto } from './saml/saml-preferences.dto';
 export { SamlToggleDto } from './saml/saml-toggle.dto';
 export { type SamlConfigurationResponse } from './saml/saml-configuration-response.dto';
 
+export { UpdateLdapConfigurationDto } from './ldap/ldap-configuration.dto';
+export { type LdapConfigurationResponse } from './ldap/ldap-configuration-response.dto';
+export { LdapSyncDto } from './ldap/ldap-sync.dto';
+
 export { PasswordUpdateRequestDto } from './user/password-update-request.dto';
 export { RoleChangeRequestDto } from './user/role-change-request.dto';
 export { SettingsUpdateRequestDto } from './user/settings-update-request.dto';
@@ -267,6 +271,15 @@ export {
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';
+export {
+	WorkflowHistoryListItemDto,
+	workflowHistoryListItemSchema,
+} from './workflow-history/workflow-history-list-item.dto';
+export { ListWorkflowHistoryQueryDto } from './workflow-history/list-workflow-history-query.dto';
+export {
+	WorkflowVersionHistoryListPublicDto,
+	workflowVersionListItemPublicSchema,
+} from './workflow-history/workflow-version-history-public.dto';
 
 export { UpdateExternalSecretsSettingsDto } from './secrets-provider/update-external-secrets-settings.dto';
 export { CreateSecretsProviderConnectionDto } from './secrets-provider/create-secrets-provider-connection.dto';
