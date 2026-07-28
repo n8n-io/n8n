@@ -71,10 +71,6 @@ export function emitPackageImportedEvent(
 		stubbed: scopes.flatMap(({ imported }) => imported.variableResult.stubbed),
 		skipped: scopes.flatMap(({ imported }) => imported.variableResult.skippedExisting),
 	});
-	const variablesCreated = scopes.reduce(
-		(total, { imported }) => total + imported.variableResult.createdCount,
-		0,
-	);
 
 	const folderId = scopes.length === 1 ? scopes[0].context.folderId : null;
 
@@ -123,7 +119,8 @@ export function emitPackageImportedEvent(
 			variables: {
 				matched: variableSummary.matched.length,
 				missing: variableSummary.missing.length,
-				created: variablesCreated,
+				created: variableSummary.created.length,
+				stubbed: variableSummary.stubbed.length,
 				requirements: variableRequirements,
 			},
 		},

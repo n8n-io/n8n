@@ -501,7 +501,7 @@ describe('VariableImporter', () => {
 				creations: [],
 			});
 
-			expect(result).toEqual({ created: [], stubbed: [], skippedExisting: [], createdCount: 0 });
+			expect(result).toEqual({ created: [], stubbed: [], skippedExisting: [] });
 			expect(variablesService.create).not.toHaveBeenCalled();
 		});
 
@@ -521,7 +521,6 @@ describe('VariableImporter', () => {
 				created: [],
 				stubbed: ['API_KEY'],
 				skippedExisting: [],
-				createdCount: 1,
 			});
 		});
 
@@ -547,7 +546,6 @@ describe('VariableImporter', () => {
 				created: ['API_KEY'],
 				stubbed: [],
 				skippedExisting: [],
-				createdCount: 1,
 			});
 		});
 
@@ -570,7 +568,6 @@ describe('VariableImporter', () => {
 				created: [],
 				stubbed: ['API_KEY'],
 				skippedExisting: [],
-				createdCount: 1,
 			});
 		});
 
@@ -591,7 +588,6 @@ describe('VariableImporter', () => {
 				created: [],
 				stubbed: [],
 				skippedExisting: ['API_KEY'],
-				createdCount: 0,
 			});
 		});
 
@@ -630,7 +626,6 @@ describe('VariableImporter', () => {
 				created: [],
 				stubbed: ['API_KEY', 'GLOBAL_KEY'],
 				skippedExisting: [],
-				createdCount: 2,
 			});
 		});
 
@@ -663,7 +658,6 @@ describe('VariableImporter', () => {
 				created: [],
 				stubbed: [],
 				skippedExisting: ['API_KEY'],
-				createdCount: 0,
 			});
 		});
 

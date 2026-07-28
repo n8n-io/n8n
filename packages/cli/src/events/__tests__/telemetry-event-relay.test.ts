@@ -2266,6 +2266,7 @@ describe('TelemetryEventRelay', () => {
 						matched: 1,
 						missing: 1,
 						created: 3,
+						stubbed: 2,
 						requirements: 2,
 					},
 				},
@@ -2298,6 +2299,7 @@ describe('TelemetryEventRelay', () => {
 				variables_matched: 1,
 				variables_missing: 1,
 				variables_created: 3,
+				variables_stubbed: 2,
 				variables_required: 2,
 			});
 		});

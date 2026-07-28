@@ -82,7 +82,6 @@ describe('toVariableSummary', () => {
 		created: [],
 		stubbed: [],
 		skippedExisting: [],
-		createdCount: 0,
 		...overrides,
 	});
 

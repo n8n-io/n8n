@@ -1075,6 +1075,7 @@ export class TelemetryEventRelay extends EventRelay {
 			variables_matched: counts.variables.matched,
 			variables_missing: counts.variables.missing,
 			variables_created: counts.variables.created,
+			variables_stubbed: counts.variables.stubbed,
 			variables_required: counts.variables.requirements,
 		});
 	}

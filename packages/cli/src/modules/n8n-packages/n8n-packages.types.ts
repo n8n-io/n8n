@@ -222,10 +222,14 @@ export type ImportPackageEventCounts = {
 		created: number;
 		requirements: number;
 	};
+	/** Distinct names, reconciled across every scope, mirroring the API response's variable summary. */
 	variables: {
 		matched: number;
 		missing: number;
+		/** Created carrying the package's value. */
 		created: number;
+		/** Created with an empty value. */
+		stubbed: number;
 		requirements: number;
 	};
 };

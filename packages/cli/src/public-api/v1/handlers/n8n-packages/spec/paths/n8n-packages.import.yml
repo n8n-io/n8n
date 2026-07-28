@@ -478,7 +478,7 @@ post:
                     description: >
                       Variable names created with a package value under
                       `variableMissingMode=create-with-value`. Empty stubs are listed
-                      under `stubbed`. Telemetry's variables-created count includes both.
+                      under `stubbed`.
                   stubbed:
                     type: array
                     items:

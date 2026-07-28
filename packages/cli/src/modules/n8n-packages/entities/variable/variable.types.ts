@@ -116,6 +116,4 @@ export interface VariableApplyResult {
 	/** Names created without a package value. */
 	stubbed: string[];
 	skippedExisting: string[];
-	/** All rows actually created, valued and stubbed (skips excluded) — feeds telemetry. */
-	createdCount: number;
 }

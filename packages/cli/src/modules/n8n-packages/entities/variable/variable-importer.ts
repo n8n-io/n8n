@@ -122,7 +122,6 @@ export class VariableImporter {
 		const created: string[] = [];
 		const stubbed: string[] = [];
 		const skippedExisting: string[] = [];
-		let createdCount = 0;
 
 		for (const creation of plan.creations) {
 			if (await this.variableExistsAtDestination(creation)) {
@@ -142,7 +141,6 @@ export class VariableImporter {
 				} else {
 					created.push(creation.name);
 				}
-				createdCount += 1;
 			} catch (error) {
 				// One error type covers both "key taken here" and "quota full" (LIGO-880), so re-check
 				// the destination: a row means a concurrent writer won the race, no row means a real overrun.
@@ -161,7 +159,6 @@ export class VariableImporter {
 			created: [...new Set(created)],
 			stubbed: [...new Set(stubbed)],
 			skippedExisting: [...new Set(skippedExisting)],
-			createdCount,
 		};
 	}
 
