@@ -318,6 +318,10 @@ export const setupTestServer = ({
 						await import('@/modules/provisioning.ee/role-mapping-rule.controller.ee.js');
 						break;
 
+					case 'provisioning':
+						await import('@/modules/provisioning.ee/provisioning.controller.ee.js');
+						break;
+
 					case 'dynamic-node-parameters':
 						await import('@/controllers/dynamic-node-parameters.controller.js');
 						break;
