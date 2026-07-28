@@ -21,14 +21,13 @@ import { inspect } from 'util';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { buildOidcClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
 import {
+	assertAuthenticationMethodCanBeEnabled,
 	getCurrentAuthenticationMethod,
-	isEmailCurrentAuthenticationMethod,
 	isOidcCurrentAuthenticationMethod,
 	reloadAuthenticationMethod,
 	setCurrentAuthenticationMethod,
@@ -628,14 +627,8 @@ export class OidcService {
 	}
 
 	async updateConfig(newConfig: OidcConfigDto) {
-		const isEnablingOidcWhileOtherSsoProtocolIsAlreadyEnabled =
-			newConfig.loginEnabled &&
-			!isEmailCurrentAuthenticationMethod() &&
-			!isOidcCurrentAuthenticationMethod();
-		if (isEnablingOidcWhileOtherSsoProtocolIsAlreadyEnabled) {
-			throw new InternalServerError(
-				`Cannot switch OIDC login enabled state when an authentication method other than email or OIDC is active (current: ${getCurrentAuthenticationMethod()})`,
-			);
+		if (newConfig.loginEnabled) {
+			assertAuthenticationMethodCanBeEnabled('oidc');
 		}
 
 		let discoveryEndpoint: URL;
@@ -692,12 +685,8 @@ export class OidcService {
 	private async setOidcLoginEnabled(enabled: boolean): Promise<void> {
 		const currentAuthenticationMethod = getCurrentAuthenticationMethod();
 
-		const isEnablingOidcWhileOtherSsoProtocolIsAlreadyEnabled =
-			enabled && !isEmailCurrentAuthenticationMethod() && !isOidcCurrentAuthenticationMethod();
-		if (isEnablingOidcWhileOtherSsoProtocolIsAlreadyEnabled) {
-			throw new InternalServerError(
-				`Cannot switch OIDC login enabled state when an authentication method other than email or OIDC is active (current: ${currentAuthenticationMethod})`,
-			);
+		if (enabled) {
+			assertAuthenticationMethodCanBeEnabled('oidc');
 		}
 
 		const targetAuthenticationMethod =
