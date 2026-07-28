@@ -1,5 +1,10 @@
 import type { WorkflowSettings } from '../src/interfaces';
-import { channelsToPolicy, policyToChannels } from '../src/redaction-channels';
+import {
+	channelsToPolicy,
+	policyToChannels,
+	redactionSettingToChannels,
+	shouldRedactConsoleOutput,
+} from '../src/redaction-channels';
 
 describe('redaction-channels', () => {
 	describe('policyToChannels', () => {
