@@ -32,6 +32,43 @@ describe('shared agents chat display groups', () => {
 		}
 	});
 
+	it('clears awaiting input when a later folded message resolves the interactive', () => {
+		const messages: AgentsChatMessage[] = [
+			{
+				id: 'a1',
+				role: 'assistant',
+				content: '',
+				status: 'awaitingUser',
+				toolCalls: [{ tool: 'approval', toolCallId: 'tc1', state: 'suspended' }],
+				interactive: {
+					toolName: 'approval',
+					toolCallId: 'tc1',
+					input: { type: 'approval', toolName: 'publish', args: {} },
+				},
+			},
+			{
+				id: 'a2',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				toolCalls: [{ tool: 'approval', toolCallId: 'tc1', state: 'done' }],
+				interactive: {
+					toolName: 'approval',
+					toolCallId: 'tc1',
+					input: { type: 'approval', toolName: 'publish', args: {} },
+					resolvedAt: 1,
+					resolvedValue: { approved: true },
+				},
+			},
+		];
+
+		const [group] = buildDisplayGroups(messages);
+		expect(group.kind).toBe('toolRun');
+		if (group.kind !== 'toolRun') return;
+		expect(group.awaitingInput).toBe(false);
+		expect(group.interactives[0].resolvedAt).toBe(1);
+	});
+
 	it('keeps reasoning segments in order when folding a tool run', () => {
 		const messages: AgentsChatMessage[] = [
 			{

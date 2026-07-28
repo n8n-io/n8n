@@ -182,11 +182,11 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 				last.toolCalls = appendToolCalls(last.toolCalls, message.toolCalls ?? []);
 				last.thinkingSegments.push(...getMessageThinkingSegments(message));
 				last.active ||= message.status === 'streaming';
-				last.awaitingInput ||= message.status === 'awaitingUser';
 				last.interactives = appendInteractivePayloads(
 					last.interactives,
 					getMessageInteractives(message),
 				);
+				last.awaitingInput = last.interactives.some((payload) => payload.resolvedAt === undefined);
 				last.executionId ??= message.executionId;
 				continue;
 			}
@@ -210,7 +210,6 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 				last.executionId ??= message.executionId;
 				last.thinkingSegments.push(...getMessageThinkingSegments(message));
 				last.active ||= message.status === 'streaming';
-				last.awaitingInput ||= message.status === 'awaitingUser';
 				if (message.toolCalls?.length) {
 					last.toolCalls = appendToolCalls(last.toolCalls, message.toolCalls);
 				}
@@ -218,6 +217,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 					last.interactives,
 					getMessageInteractives(message),
 				);
+				last.awaitingInput = last.interactives.some((payload) => payload.resolvedAt === undefined);
 				continue;
 			}
 		}
