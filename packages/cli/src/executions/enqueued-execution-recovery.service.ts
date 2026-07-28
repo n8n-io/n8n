@@ -7,6 +7,7 @@ import { ErrorReporter } from 'n8n-core';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -102,6 +103,11 @@ export class EnqueuedExecutionRecoveryService {
 
 	/** An enqueued execution we cannot start would otherwise stay at `new` indefinitely. */
 	private async crashUnstartableExecution(executionId: string, error: unknown) {
+		if (error instanceof ExecutionAlreadyResumingError) {
+			this.logger.debug('Execution was already claimed, skipping recovery', { executionId });
+			return;
+		}
+
 		// `shouldBeLogged: false` - the log line below carries the same error with more context
 		this.errorReporter.error(error, { executionId, shouldBeLogged: false });
 		this.logger.error('Failed to run enqueued execution', { executionId, error });

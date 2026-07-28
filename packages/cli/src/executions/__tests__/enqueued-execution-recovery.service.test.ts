@@ -5,6 +5,7 @@ import type { ExecutionRepository, IExecutionResponse, Project } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import type { EventService } from '@/events/event.service';
 import {
 	EnqueuedExecutionRecoveryService,
@@ -113,6 +114,17 @@ describe('EnqueuedExecutionRecoveryService', () => {
 		expect(executionRepository.markAsCrashed).toHaveBeenCalledExactlyOnceWith('1');
 		expect(errorReporter.error).toHaveBeenCalledTimes(1);
 		expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+	});
+
+	test('does not crash an execution claimed by another runner', async () => {
+		executionService.findAllEnqueuedExecutions.mockResolvedValue([enqueuedExecution('1')]);
+		workflowRunner.run.mockRejectedValueOnce(new ExecutionAlreadyResumingError('1'));
+
+		await createService().recoverEnqueuedExecutions();
+		await new Promise(setImmediate); // `run` is not awaited, let the rejection settle
+
+		expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
+		expect(errorReporter.error).not.toHaveBeenCalled();
 	});
 
 	// A throw used to abort the whole loop, leaving every remaining execution at `new`.
