@@ -95,6 +95,7 @@ function toNodeSearchResult(node: SearchableNodeType, score: number): NodeSearch
 		score,
 		...(builderHintMessage && { builderHintMessage }),
 		...(subnodeRequirements.length > 0 && { subnodeRequirements }),
+		...(node.aiGateway && { aiGateway: node.aiGateway }),
 	};
 }
 
@@ -351,6 +352,16 @@ export class NodeSearchEngine {
 			`			<node_inputs>${typeof result.inputs === 'object' ? JSON.stringify(result.inputs) : result.inputs}</node_inputs>`,
 			`			<node_outputs>${typeof result.outputs === 'object' ? JSON.stringify(result.outputs) : result.outputs}</node_outputs>`,
 		];
+
+		// Flag n8n Connect coverage so the model can prefer it over comparable
+		// alternatives when the user has not named a specific tool.
+		if (result.aiGateway) {
+			const minVersion =
+				result.aiGateway.minVersion !== undefined
+					? ` min_version="${result.aiGateway.minVersion}"`
+					: '';
+			parts.push(`			<n8n_credits supported="true"${minVersion} />`);
+		}
 
 		// Add builder hint message if present
 		if (result.builderHintMessage) {

@@ -107,7 +107,7 @@ interface ToolStepDisplay {
 }
 
 function getToolDisplayName(toolName: string): string {
-	return resolveToolNameForDisplay(toolName, i18n.baseText);
+	return resolveToolNameForDisplay(toolName, i18n);
 }
 
 function toolStepLabel(tc: ToolCall): string {

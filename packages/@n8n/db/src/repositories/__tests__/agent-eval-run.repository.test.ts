@@ -114,4 +114,77 @@ describe('AgentEvalRunRepository', () => {
 			expect(callArgs?.[1]).toEqual({ where: { datasetId: 'ds-1' }, order: { createdAt: 'DESC' } });
 		});
 	});
+
+	describe('markAsCancelled', () => {
+		it('marks cancelled, persists partial metrics, and clears the running instance', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.markAsCancelled('run-1', { total: 3, usage: { inputTokens: 5 } });
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[1]).toBe('run-1');
+			expect(callArgs?.[2]).toMatchObject({
+				status: 'cancelled',
+				metrics: { total: 3, usage: { inputTokens: 5 } },
+				runningInstanceId: null,
+			});
+		});
+
+		it('defaults metrics to null when none are given', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.markAsCancelled('run-1');
+
+			expect(entityManager.update.mock.calls[0]?.[2]).toMatchObject({
+				status: 'cancelled',
+				metrics: null,
+			});
+		});
+	});
+
+	describe('findById', () => {
+		it('looks up a run by id', async () => {
+			entityManager.findOneBy.mockResolvedValueOnce(null);
+
+			await repo.findById('run-1');
+
+			expect(entityManager.findOneBy.mock.calls[0]?.[1]).toEqual({ id: 'run-1' });
+		});
+	});
+
+	describe('isCancellationRequested', () => {
+		it('reads only the cancel flag and returns it', async () => {
+			entityManager.findOne.mockResolvedValueOnce({ id: 'run-1', cancelRequested: true });
+
+			const result = await repo.isCancellationRequested('run-1');
+
+			expect(result).toBe(true);
+			expect(entityManager.findOne.mock.calls[0]?.[1]).toEqual({
+				where: { id: 'run-1' },
+				select: ['id', 'cancelRequested'],
+			});
+		});
+
+		it('returns false when the run no longer exists', async () => {
+			entityManager.findOne.mockResolvedValueOnce(null);
+
+			expect(await repo.isCancellationRequested('run-x')).toBe(false);
+		});
+	});
+
+	describe('markAllIncompleteAsError', () => {
+		it('flips new/running runs to error and clears the running instance', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 3, generatedMaps: [], raw: [] });
+
+			await repo.markAllIncompleteAsError();
+
+			const callArgs = entityManager.update.mock.calls[0];
+			// [1] is the status criteria, [2] the patch applied to matching rows.
+			expect(callArgs?.[2]).toMatchObject({
+				status: 'error',
+				errorCode: 'interrupted',
+				runningInstanceId: null,
+			});
+		});
+	});
 });

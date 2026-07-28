@@ -112,6 +112,10 @@ function getDefaultActiveIndex(search: string = ''): number {
 
 function applySearch(value: string) {
 	if (!activeViewStack.value.uuid) return;
+	// Re-applying an identical term (e.g. a trailing space, trimmed on emit) would
+	// regenerate item uuids without the memoized list DOM picking them up,
+	// breaking Enter selection.
+	if (activeViewStack.value.search === value) return;
 	updateCurrentViewStack({ search: value });
 	void setActiveItemIndex(getDefaultActiveIndex(value));
 	if (value.length) {

@@ -1,5 +1,6 @@
 import type {
 	CreateWorkflowReviewRequestDto,
+	DecideWorkflowReviewRequestDto,
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	ListWorkflowReviewRequestsQueryDto,
 	UpdateWorkflowReviewRequestVersionDto,
@@ -10,11 +11,13 @@ import type {
 	ListWorkflowReviewInboxResponse,
 	GetWorkflowReviewInboxSummaryResponse,
 	WorkflowReviewInboxItem,
+	WorkflowReviewEligibleReviewer,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
 	DbLock,
 	DbLockService,
+	ProjectRelationRepository,
 	SharedWorkflowRepository,
 	UserRepository,
 	WorkflowReviewRequestAuthorRepository,
@@ -25,9 +28,15 @@ import {
 	type User,
 	type WorkflowReviewRequest,
 	type WorkflowReviewRequestLinkedWorkflow,
+	type WorkflowReviewRequestReviewer,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
+import {
+	GLOBAL_ADMIN_ROLE_SLUG,
+	GLOBAL_OWNER_ROLE_SLUG,
+	PROJECT_ADMIN_ROLE_SLUG,
+	hasGlobalScope,
+} from '@n8n/permissions';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
@@ -54,6 +63,7 @@ export class WorkflowReviewRequestService {
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 		private readonly userRepository: UserRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
 		private readonly projectService: ProjectService,
 		private readonly licenseState: LicenseState,
@@ -138,12 +148,17 @@ export class WorkflowReviewRequestService {
 		// No pagination: the set is bounded by the project's members plus instance admins
 		return {
 			count: reviewers.length,
-			data: reviewers.map((reviewer) => ({
-				id: reviewer.id,
-				email: reviewer.email,
-				firstName: reviewer.firstName ?? null,
-				lastName: reviewer.lastName ?? null,
-			})),
+			data: reviewers.map((reviewer) => this.toEligibleReviewer(reviewer)),
+		};
+	}
+
+	/** Project a user onto the boundary shape the review endpoints are allowed to expose. */
+	private toEligibleReviewer(user: User): WorkflowReviewEligibleReviewer {
+		return {
+			id: user.id,
+			email: user.email,
+			firstName: user.firstName ?? null,
+			lastName: user.lastName ?? null,
 		};
 	}
 
@@ -373,6 +388,138 @@ export class WorkflowReviewRequestService {
 	}
 
 	/**
+	 * Decide an open review request: approve (terminal, closes the request) or
+	 * request changes (the request stays open awaiting a new version).
+	 */
+	async decide(
+		user: User,
+		workflowReviewRequestId: string,
+		dto: DecideWorkflowReviewRequestDto,
+	): Promise<WorkflowReviewRequestSummary> {
+		const policy = await this.workflowReviewPolicyService.get();
+		if (!policy.enabled) {
+			throw new ForbiddenError('Workflow reviews are not enabled for this instance');
+		}
+
+		const request = await this.workflowReviewRequestRepository.findById(workflowReviewRequestId);
+		if (!request) {
+			throw new NotFoundError('Could not find review request');
+		}
+
+		const workflowRows =
+			await this.workflowReviewRequestWorkflowRepository.findByRequestId(workflowReviewRequestId);
+		const workflowRow = workflowRows[0];
+		if (!workflowRow) {
+			throw new NotFoundError('Could not find review request');
+		}
+
+		// 404 (not 403) so callers without access can't probe which requests exist
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowRow.workflowId,
+			user,
+			['workflow:publish'],
+		);
+		if (!workflow) {
+			throw new NotFoundError('Could not find workflow');
+		}
+
+		this.assertRequestUpdatable(request);
+
+		// Resolved before the lock: this query must not run inside the lock
+		// transaction, where it would need a second pooled connection while the
+		// transaction holds one — a deadlock on a single-connection pool.
+		const hasAdminOverride = await this.hasDecisionAdminOverride(user, request.projectId);
+
+		// Fast path: reject a known author before queueing on the lock.
+		const isAuthor = await this.workflowReviewRequestAuthorRepository.isAuthor({
+			workflowReviewRequestId,
+			userId: user.id,
+		});
+		this.assertDecisionAllowed(isAuthor, hasAdminOverride);
+
+		const { request: saved, pinnedVersionId } = await this.dbLockService.withLock(
+			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+			async (tx) => {
+				// Re-check under the lock so a decision can't race a concurrent
+				// version sync (which resets the decision to pending) or another decision.
+				const current = await this.workflowReviewRequestRepository.findById(
+					workflowReviewRequestId,
+					tx,
+				);
+				if (!current) {
+					throw new NotFoundError('Could not find review request');
+				}
+				this.assertRequestUpdatable(current);
+
+				// Re-check authorship here — a sync that won the lock first has
+				// added its syncer to the author set since the pre-lock check, and that
+				// syncer must not be able to decide.
+				const isAuthorNow = await this.workflowReviewRequestAuthorRepository.isAuthor(
+					{ workflowReviewRequestId, userId: user.id },
+					tx,
+				);
+				this.assertDecisionAllowed(isAuthorNow, hasAdminOverride);
+
+				// Re-read the pinned row too: a concurrent sync that won the lock may
+				// have re-pinned, and the summary must reflect the version being decided on.
+				const currentRows = await this.workflowReviewRequestWorkflowRepository.findByRequestId(
+					workflowReviewRequestId,
+					tx,
+				);
+				const currentRow = currentRows.find((row) => row.workflowId === workflowRow.workflowId);
+				if (!currentRow) {
+					throw new NotFoundError('Could not find review request');
+				}
+
+				current.decision = dto.decision;
+				current.updatedById = user.id;
+				if (dto.decision === 'approved') {
+					current.state = 'closed';
+					current.closedById = user.id;
+					current.approvedAt = new Date();
+				}
+
+				// save (not update) so @BeforeUpdate bumps updatedAt
+				const savedRequest = await tx.save(current);
+				return { request: savedRequest, pinnedVersionId: currentRow.workflowVersionId };
+			},
+		);
+
+		this.broadcastReviewStateChanged(workflowRow.workflowId);
+
+		return this.toSummary(saved, pinnedVersionId);
+	}
+
+	/**
+	 * Authors cannot decide their own review request, unless an admin override
+	 * applies. Called before and again inside the decision lock, since the author
+	 * set can change while the caller waits for the lock. The override is resolved
+	 * once, pre-lock: the lock guards the author set, not role membership — like
+	 * every other authorization check in `decide`, roles are evaluated up front.
+	 */
+	private assertDecisionAllowed(isAuthor: boolean, hasAdminOverride: boolean): void {
+		if (isAuthor && !hasAdminOverride) {
+			throw new ForbiddenError('Authors cannot decide on their own review request');
+		}
+	}
+
+	/**
+	 * Admins may decide reviews they authored. Limitation: only the built-in
+	 * global/project admin roles qualify — custom roles never grant the override.
+	 */
+	private async hasDecisionAdminOverride(user: User, projectId: string): Promise<boolean> {
+		if (user.role.slug === GLOBAL_ADMIN_ROLE_SLUG || user.role.slug === GLOBAL_OWNER_ROLE_SLUG) {
+			return true;
+		}
+
+		const adminProjectIds = await this.projectRelationRepository.getAccessibleProjectsByRoles(
+			user.id,
+			[PROJECT_ADMIN_ROLE_SLUG],
+		);
+		return adminProjectIds.includes(projectId);
+	}
+
+	/**
 	 * Fire-and-forget: the transaction has committed, a failed broadcast
 	 * must not fail the request. Viewers heal via focus/reconnect refetch.
 	 */
@@ -384,7 +531,11 @@ export class WorkflowReviewRequestService {
 			);
 	}
 
-	/** A closed or already-approved request can no longer be re-pinned to a new version. */
+	/**
+	 * A closed or already-approved request can no longer be re-pinned to a new
+	 * version, nor decided again — this is what makes approval terminal, so don't
+	 * relax it for the re-pin case alone.
+	 */
 	private assertRequestUpdatable(request: WorkflowReviewRequest): void {
 		if (request.state === 'closed' || request.decision === 'approved') {
 			throw new ConflictError('The review request is no longer open');
@@ -431,16 +582,78 @@ export class WorkflowReviewRequestService {
 		const data = rows.slice(0, limit);
 		const lastRow = data.at(-1);
 		const nextCursor = hasMore && lastRow ? this.encodeInboxCursor(lastRow) : null;
-		const linkedWorkflowByRequestId =
-			await this.workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds(
-				data.map((row) => row.id),
-			);
+		const requestIds = data.map((row) => row.id);
+		const [linkedWorkflowByRequestId, reviewerRows] = await Promise.all([
+			this.workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds(requestIds),
+			this.workflowReviewRequestReviewerRepository.findByRequestIds(requestIds),
+		]);
+
+		const participantsByRequestId = await this.hydrateParticipants(data, reviewerRows);
 
 		return {
-			data: data.map((row) => this.toInboxItem(row, linkedWorkflowByRequestId.get(row.id) ?? null)),
+			data: data.map((row) => {
+				const { requester, reviewers } = participantsByRequestId.get(row.id) ?? {
+					requester: null,
+					reviewers: [],
+				};
+				return this.toInboxItem(
+					row,
+					linkedWorkflowByRequestId.get(row.id) ?? null,
+					requester,
+					reviewers,
+				);
+			}),
 			nextCursor,
 			hasMore,
 		};
+	}
+
+	/**
+	 * Batch-resolve the requester and requested reviewers for each request row,
+	 * keyed by request id. Deleted users simply drop out of the result.
+	 */
+	private async hydrateParticipants(
+		rows: WorkflowReviewRequest[],
+		reviewerRows: WorkflowReviewRequestReviewer[],
+	): Promise<
+		Map<
+			string,
+			{
+				requester: WorkflowReviewEligibleReviewer | null;
+				reviewers: WorkflowReviewEligibleReviewer[];
+			}
+		>
+	> {
+		const reviewerIdsByRequestId = new Map<string, string[]>();
+		for (const { workflowReviewRequestId, userId } of reviewerRows) {
+			const ids = reviewerIdsByRequestId.get(workflowReviewRequestId) ?? [];
+			ids.push(userId);
+			reviewerIdsByRequestId.set(workflowReviewRequestId, ids);
+		}
+
+		const userIds = new Set([
+			...rows.map((row) => row.createdById).filter((id) => id !== null),
+			...reviewerRows.map((row) => row.userId),
+		]);
+
+		const usersById = new Map<string, WorkflowReviewEligibleReviewer>();
+		if (userIds.size > 0) {
+			for (const user of await this.userRepository.findManyByIds([...userIds])) {
+				usersById.set(user.id, this.toEligibleReviewer(user));
+			}
+		}
+
+		return new Map(
+			rows.map((row) => [
+				row.id,
+				{
+					requester: row.createdById ? (usersById.get(row.createdById) ?? null) : null,
+					reviewers: (reviewerIdsByRequestId.get(row.id) ?? [])
+						.map((userId) => usersById.get(userId))
+						.filter((reviewer) => reviewer !== undefined),
+				},
+			]),
+		);
 	}
 
 	async getInboxSummaryForUser(user: User): Promise<GetWorkflowReviewInboxSummaryResponse> {
@@ -506,6 +719,8 @@ export class WorkflowReviewRequestService {
 	private toInboxItem(
 		entity: WorkflowReviewRequest,
 		linkedWorkflow: WorkflowReviewRequestLinkedWorkflow | null,
+		requester: WorkflowReviewEligibleReviewer | null,
+		reviewers: WorkflowReviewEligibleReviewer[],
 	): WorkflowReviewInboxItem {
 		return {
 			id: entity.id,
@@ -517,6 +732,8 @@ export class WorkflowReviewRequestService {
 			state: entity.state,
 			createdAt: entity.createdAt.toISOString(),
 			updatedAt: entity.updatedAt.toISOString(),
+			requester,
+			reviewers,
 		};
 	}
 }
