@@ -4,6 +4,7 @@ import type {
 	SharedWorkflowRepository,
 	User,
 	UserRepository,
+	WorkflowEntity,
 	WorkflowHistory,
 	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequest,
@@ -109,6 +110,8 @@ describe('WorkflowReviewRequestService.getDetail', () => {
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		requestRepository.findById.mockResolvedValue(reviewRequest());
+		// By default the caller can still read every workflow the review covers
+		workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 		workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
 		reviewerRepository.findByRequestIds.mockResolvedValue([]);
 		userRepository.findManyByIds.mockResolvedValue([]);
@@ -181,6 +184,26 @@ describe('WorkflowReviewRequestService.getDetail', () => {
 
 			expect(detail.id).toBe(requestId);
 			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
+		});
+
+		it('leaves out a workflow the person who asked for the review can no longer read', async () => {
+			mockChildRow('ver-pinned');
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+			const detail = await service.getDetail(requester, requestId);
+
+			// They keep their own review, but none of the workflow content
+			expect(detail.id).toBe(requestId);
+			expect(detail.workflows).toEqual([]);
+			expect(workflowHistoryService.findVersion).not.toHaveBeenCalled();
+		});
+
+		it('hides the review when someone else can read none of the workflows it covers', async () => {
+			projectService.getProjectIdsWithScope.mockResolvedValue(['proj-1']);
+			mockChildRow('ver-pinned');
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(service.getDetail(member, requestId)).rejects.toThrow(NotFoundError);
 		});
 	});
 

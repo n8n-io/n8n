@@ -550,9 +550,12 @@ export class WorkflowReviewRequestService {
 			this.workflowReviewRequestReviewerRepository.findByRequestIds([request.id]),
 		]);
 
-		// A stale `projectId` must not expose a transferred workflow's content
-		const readableRows = await this.filterReadableWorkflowRows(user, request, workflowRows);
-		if (workflowRows.length > 0 && readableRows.length === 0) {
+		const readableRows = await this.filterReadableWorkflowRows(user, workflowRows);
+		// Someone who reaches this review through its project has no reason to learn it
+		// exists once they can read none of the workflows it covers. The requester already
+		// knows, and their inbox still lists it, so they keep the record — narrowed to the
+		// workflows they can currently read.
+		if (request.createdById !== user.id && workflowRows.length > 0 && readableRows.length === 0) {
 			throw new NotFoundError('Could not find review request');
 		}
 
@@ -584,20 +587,20 @@ export class WorkflowReviewRequestService {
 	}
 
 	/**
-	 * The review's `projectId` is fixed at creation, so it goes stale once a
-	 * workflow is transferred to another project — nothing closes open reviews on
-	 * transfer. Re-check every row against the workflow's *current* owner before
-	 * returning its content, so an old-project publisher cannot keep reading it.
+	 * A review's `projectId` is fixed at creation and nothing closes open reviews when a
+	 * workflow is transferred, so the stored project does not prove the caller may still
+	 * read a covered workflow. Re-check every row against the workflow's *current* owner
+	 * before returning its content.
+	 *
+	 * This applies to the requester too. They held publish rights when they opened the
+	 * review, but may have lost them since — and because the baseline is resolved at read
+	 * time, an exemption would leave them reading versions published after they lost
+	 * access.
 	 */
 	private async filterReadableWorkflowRows(
 		user: User,
-		request: WorkflowReviewRequest,
 		rows: WorkflowReviewRequestWorkflowDetailRow[],
 	): Promise<WorkflowReviewRequestWorkflowDetailRow[]> {
-		if (request.createdById === user.id) {
-			return rows;
-		}
-
 		const readable = await Promise.all(
 			rows.map(async (row) =>
 				(await this.workflowFinderService.findWorkflowForUser(row.workflowId, user, [

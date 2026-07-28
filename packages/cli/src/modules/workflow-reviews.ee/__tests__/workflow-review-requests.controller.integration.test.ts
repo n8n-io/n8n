@@ -1436,6 +1436,22 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		await memberAgent.get(`/workflow-review-requests/${request.id}`).expect(404);
 	});
 
+	test('leaves out a workflow the requester can no longer see, but still opens the review', async () => {
+		// Viewer asked for the review while the workflow was reachable; it has since moved
+		// to a project they have no access to, so the content must not come back with it
+		const destinationProject = await createTeamProject('Moved Away', owner);
+		const workflow = await createWorkflow({}, destinationProject);
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
+		const request = await seedRequest(workflow.id, 'version-pinned', viewer, teamProject.id);
+
+		const response = await viewerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+		expect(response.body.data.id).toBe(request.id);
+		expect(response.body.data.workflows).toEqual([]);
+		expect(response.body.data.workflowName).toBeNull();
+		expect(response.body.data.workflowVersionId).toBeNull();
+	});
+
 	test('always shows people the review they asked for themselves', async () => {
 		const workflow = await createWorkflow({}, teamProject);
 		const request = await seedRequest(workflow.id, null, viewer);
