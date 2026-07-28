@@ -219,10 +219,10 @@ post:
                 the import unless every referenced variable already resolves.
                 `create-stub` creates each missing variable with an empty value at
                 the placement scope (see `variableParentPolicy`) and lists the
-                created names under `variables.stubbed`. The creating modes require
-                an API key carrying `variable:create` whenever variable requirements
-                exist, even if all references already resolve. Use `do-nothing` to
-                retain the previous non-creating behavior without that scope.
+                created names under `variables.stubbed`. An import that actually
+                creates a variable requires a license that permits variables and, for
+                API key callers, the `variable:create` scope; a package whose
+                variables all already resolve creates nothing and needs neither.
             variableParentPolicy:
               type: string
               enum:
@@ -233,8 +233,8 @@ post:
                 for workflow/folder packages. `project` — also the behaviour when the
                 field is omitted — creates them in the import target project
                 (`projectId`, else the caller's personal project). `global` creates
-                them at the global scope. The `variable:create` API key scope
-                requirement described under `variableMissingMode` applies to both
+                them at the global scope. The license and `variable:create`
+                requirements described under `variableMissingMode` apply to both
                 placements. Must be omitted for project packages, which reject it
                 with a 400: their placement follows the package layout, where a
                 variable bundled under a project is created in that project and one

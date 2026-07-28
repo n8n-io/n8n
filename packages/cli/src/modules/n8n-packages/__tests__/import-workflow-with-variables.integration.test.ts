@@ -575,9 +575,6 @@ describe('workflow package import — with variables', () => {
 			const sourceProject = await createTeamProject('Source', owner);
 			const targetProject = await createTeamProject('Target', owner);
 			await createProjectVariable('API_URL', 'https://source.example.com', sourceProject);
-			// The variable already resolves in the target: the gate is requirement-based and
-			// applies regardless, mirroring the dataTable:create gate.
-			await createProjectVariable('API_URL', 'https://target.example.com', targetProject);
 			const workflow = await buildWorkflowReferencingVariables({
 				name: 'Workflow with vars',
 				project: sourceProject,
@@ -764,18 +761,22 @@ describe('workflow package import — with variables', () => {
 			return await exportWorkflowPackage(owner, workflow.id);
 		}
 
-		it('rejects a create-stub import when variables are not licensed', async () => {
-			const owner = await createOwner();
+		/** The same package, but with the name unresolvable in the target, so a creating mode creates. */
+		async function unresolvablePackage(owner: User) {
 			const sourceProject = await createTeamProject('Source', owner);
-			const targetProject = await createTeamProject('Target', owner);
 			await createProjectVariable('API_URL', 'https://source.example.com', sourceProject);
 			const workflow = await buildWorkflowReferencingVariables({
 				name: 'Workflow with vars',
 				project: sourceProject,
 				variableNames: ['API_URL'],
 			});
+			return await exportWorkflowPackage(owner, workflow.id);
+		}
 
-			const packageBuffer = await exportWorkflowPackage(owner, workflow.id);
+		it('rejects a create-stub import when variables are not licensed', async () => {
+			const owner = await createOwner();
+			const targetProject = await createTeamProject('Target', owner);
+			const packageBuffer = await unresolvablePackage(owner);
 			const workflowsBefore = await workflowRepository.count();
 			licenseMocker.disable('feat:variables');
 
@@ -792,8 +793,8 @@ describe('workflow package import — with variables', () => {
 			expect(await variablesInProject(targetProject.id)).toEqual([]);
 		});
 
-		it.each(['do-nothing', 'must-preexist'] as const)(
-			'imports under %s without a variables licence, since neither mode creates anything',
+		it.each(['do-nothing', 'must-preexist', 'create-stub', 'create-with-value'] as const)(
+			'imports under %s without a variables licence when nothing needs creating',
 			async (variableMissingMode) => {
 				const owner = await createOwner();
 				const targetProject = await createTeamProject('Target', owner);
@@ -844,7 +845,7 @@ describe('workflow package import — with variables', () => {
 		it('names the licence, not the API key scope, when an unlicensed key also lacks variable:create', async () => {
 			const owner = await createOwner();
 			const targetProject = await createTeamProject('Target', owner);
-			const packageBuffer = await resolvablePackage(owner, targetProject);
+			const packageBuffer = await unresolvablePackage(owner);
 			licenseMocker.disable('feat:variables');
 
 			await expect(
@@ -1014,12 +1015,11 @@ describe('workflow package import — with variables', () => {
 			);
 		});
 
-		it('requires variable:create from an API key even when every variable resolves', async () => {
+		it('rejects the import when the API key lacks variable:create and a variable must be created', async () => {
 			const owner = await createOwner();
 			const sourceProject = await createTeamProject('Source', owner);
 			const targetProject = await createTeamProject('Target', owner);
 			await createProjectVariable('API_URL', 'source', sourceProject);
-			await createProjectVariable('API_URL', 'target', targetProject);
 			const workflow = await buildWorkflowReferencingVariables({
 				name: 'Workflow with vars',
 				project: sourceProject,
@@ -1035,6 +1035,29 @@ describe('workflow package import — with variables', () => {
 					variableMissingMode: 'create-with-value',
 				}),
 			).rejects.toBeInstanceOf(ForbiddenError);
+		});
+
+		it('does not require variable:create when every variable already resolves', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Source', owner);
+			const targetProject = await createTeamProject('Target', owner);
+			await createProjectVariable('API_URL', 'source', sourceProject);
+			await createProjectVariable('API_URL', 'target', targetProject);
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow with vars',
+				project: sourceProject,
+				variableNames: ['API_URL'],
+			});
+
+			const result = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer: await exportWorkflowPackage(owner, workflow.id),
+				apiKeyScopes: ['workflow:import'],
+				variableMissingMode: 'create-with-value',
+			});
+
+			expect(result.variables).toMatchObject({ matched: ['API_URL'], created: [] });
 		});
 
 		it('does not require variable:create when the package has no variable requirements', async () => {

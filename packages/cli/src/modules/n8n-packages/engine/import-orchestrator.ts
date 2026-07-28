@@ -1,3 +1,4 @@
+import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { NodeTypes } from '@/node-types';
@@ -52,6 +53,7 @@ import type {
 	PackageImportBindings,
 } from '../n8n-packages.types';
 import { toImportBlockedError } from './import-blocked.error';
+import { assertVariableCreationAllowed } from './import-gates';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
@@ -101,14 +103,29 @@ export class ImportOrchestrator {
 		private readonly workflowImporter: WorkflowImporter,
 		private readonly workflowPublisher: WorkflowPublisher,
 		private readonly nodeTypes: NodeTypes,
+		private readonly licenseState: LicenseState,
 	) {}
 
-	async assertNotBlocked(plans: ImportPlan[]): Promise<void> {
+	/**
+	 * Applies the gates that depend on the aggregate set of planned creations, across every scope
+	 * of the import. The licence goes first: an unlicensed instance also reports a zero variable
+	 * quota, which would otherwise surface as a limit issue instead of the real cause.
+	 */
+	async assertNotBlocked(
+		plans: ImportPlan[],
+		options: { apiKeyScopes: string[] | undefined },
+	): Promise<void> {
+		const creations = plans.flatMap((plan) => plan.variablePlan.creations);
+
+		assertVariableCreationAllowed({
+			licenseState: this.licenseState,
+			apiKeyScopes: options.apiKeyScopes,
+			hasCreations: creations.length > 0,
+		});
+
 		const issues = plans.flatMap((plan) => plan.blockingIssues);
 
-		const quotaFailure = await this.variableImporter.quotaFailure(
-			plans.flatMap((plan) => plan.variablePlan.creations),
-		);
+		const quotaFailure = await this.variableImporter.quotaFailure(creations);
 		if (quotaFailure) issues.push({ type: 'variable-limit-exceeded', ...quotaFailure });
 
 		if (issues.length > 0) throw toImportBlockedError(issues);

@@ -1022,9 +1022,6 @@ describe('project shell import', () => {
 			});
 
 			it('rejects the import when the API key lacks the variable:create scope', async () => {
-				// The gate is requirement-based: it applies even though the variable already matches.
-				await createVariable('GLOBAL_VAR', 'https://global.example.com');
-
 				await expect(
 					importProjects(
 						owner,

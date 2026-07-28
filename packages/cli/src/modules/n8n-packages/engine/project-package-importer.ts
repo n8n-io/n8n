@@ -18,7 +18,7 @@ import type {
 	PackageImportBindings,
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
-import { assertPackageImportApiKeyScopes, assertVariableCreationAllowed } from './import-gates';
+import { assertPackageImportApiKeyScopes } from './import-gates';
 import { placeVariableRequirements } from './package-layout';
 import {
 	ImportOrchestrator,
@@ -84,7 +84,10 @@ export class ProjectPackageImporter {
 			planned.push({ project, plan });
 		}
 
-		await this.importOrchestrator.assertNotBlocked(planned.map(({ plan }) => plan));
+		await this.importOrchestrator.assertNotBlocked(
+			planned.map(({ plan }) => plan),
+			{ apiKeyScopes: request.apiKeyScopes },
+		);
 
 		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan);
 
@@ -220,12 +223,5 @@ export class ProjectPackageImporter {
 		if ((manifest.workflows?.length ?? 0) > 0) {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:import']);
 		}
-
-		assertVariableCreationAllowed({
-			licenseState: this.licenseState,
-			apiKeyScopes: request.apiKeyScopes,
-			missingMode: request.variableMissingMode,
-			hasRequirements: (manifest.requirements?.variables?.length ?? 0) > 0,
-		});
 	}
 }

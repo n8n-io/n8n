@@ -17,7 +17,7 @@ import type { VariableImportRequest } from '../entities/variable/variable.types'
 import type { PackageReader } from '../io/package-reader';
 import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ImportPackageRequest, ImportResult } from '../n8n-packages.types';
-import { assertPackageImportApiKeyScopes, assertVariableCreationAllowed } from './import-gates';
+import { assertPackageImportApiKeyScopes } from './import-gates';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
 	buildImportResult,
@@ -76,6 +76,8 @@ export class WorkflowPackageImporter {
 			manifest.requirements?.dataTables,
 			workflows,
 		);
+		// Requirement-based, unlike the variable gate: this rejects even when every table
+		// already resolves and nothing would be created. Aligning it needs its own ticket.
 		if (dataTableRequirements?.length && request.dataTableMissingMode === 'create') {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['dataTable:create']);
 		}
@@ -88,12 +90,6 @@ export class WorkflowPackageImporter {
 		};
 
 		const variableRequirements = identifyRequirements(manifest.requirements?.variables, workflows);
-		assertVariableCreationAllowed({
-			licenseState: this.licenseState,
-			apiKeyScopes: request.apiKeyScopes,
-			missingMode: request.variableMissingMode,
-			hasRequirements: (variableRequirements?.length ?? 0) > 0,
-		});
 		const bundledVariables =
 			variableRequirements?.length &&
 			variableMissingModeUsesPackageValue(request.variableMissingMode)
@@ -120,7 +116,7 @@ export class WorkflowPackageImporter {
 			options: request,
 		});
 
-		await this.importOrchestrator.assertNotBlocked([plan]);
+		await this.importOrchestrator.assertNotBlocked([plan], { apiKeyScopes: request.apiKeyScopes });
 
 		const imported = await this.importOrchestrator.apply(plan);
 

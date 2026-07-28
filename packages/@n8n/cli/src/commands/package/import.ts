@@ -85,13 +85,13 @@ export default class PackageImport extends BaseCommand {
 		}),
 		variableMissingMode: Flags.string({
 			description:
-				'What to do when a referenced variable is absent from the target project and global scope (default: create-with-value). create-with-value uses the package value or an empty stub when values were excluded; create-stub always creates an empty value; do-nothing reports unresolved names; must-preexist rejects the import. Creating modes use variable-parent-policy and require variable:create when requirements exist',
+				'What to do when a referenced variable is absent from the target project and global scope (default: create-with-value). create-with-value uses the package value or an empty stub when values were excluded; create-stub always creates an empty value; do-nothing reports unresolved names; must-preexist rejects the import. Creating modes use variable-parent-policy, and an import that creates a variable needs a variables-enabled license plus variable:create',
 			options: ['do-nothing', 'must-preexist', 'create-stub', 'create-with-value'],
 			aliases: ['variable-missing-mode'],
 		}),
 		variableParentPolicy: Flags.string({
 			description:
-				'Where creating variable modes place missing variables for workflow/folder packages: project (the behaviour when omitted) uses the target project; global uses global scope. Both placements require variable:create when requirements exist. Must be omitted for project packages, which reject it with a 400 — their placement follows the package layout',
+				'Where creating variable modes place missing variables for workflow/folder packages: project (the behaviour when omitted) uses the target project; global uses global scope. Must be omitted for project packages, which reject it with a 400 — their placement follows the package layout',
 			options: ['project', 'global'],
 			aliases: ['variable-parent-policy'],
 		}),

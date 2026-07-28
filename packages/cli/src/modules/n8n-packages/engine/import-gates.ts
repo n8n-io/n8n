@@ -2,9 +2,6 @@ import type { LicenseState } from '@n8n/backend-common';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
-import { variableMissingModeCreates } from '../entities/variable/variable-missing-mode';
-import type { VariableMissingMode } from '../n8n-packages.types';
-
 export function assertPackageImportApiKeyScopes(
 	apiKeyScopes: string[] | undefined,
 	required: string[],
@@ -18,18 +15,17 @@ export function assertPackageImportApiKeyScopes(
 }
 
 /**
- * Callers decide `hasRequirements`, because each package shape looks at a different set: the
- * workflow path narrows the manifest's requirement list to the workflows it is importing, while a
- * project package takes that list whole, since it imports every project the package holds.
+ * Gated on what the import will actually create, not on what the package requires: a package
+ * whose variables all resolve on this instance creates nothing, so it needs neither the licence
+ * nor the scope. Mirrors the variables UI, which only blocks creation.
  */
 export function assertVariableCreationAllowed(options: {
 	licenseState: LicenseState;
 	apiKeyScopes: string[] | undefined;
-	missingMode: VariableMissingMode;
-	hasRequirements: boolean;
+	hasCreations: boolean;
 }): void {
-	const { licenseState, apiKeyScopes, missingMode, hasRequirements } = options;
-	if (!hasRequirements || !variableMissingModeCreates(missingMode)) return;
+	const { licenseState, apiKeyScopes, hasCreations } = options;
+	if (!hasCreations) return;
 
 	if (!licenseState.isVariablesLicensed()) {
 		throw new ForbiddenError(
