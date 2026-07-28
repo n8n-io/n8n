@@ -1071,14 +1071,29 @@ export class WorkflowService {
 	 * does not emit `workflow-deactivated`; publish history records a null user.
 	 */
 	async deactivateWorkflowAsSystem(workflowId: string): Promise<void> {
-		const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
+		const workflow = await this.workflowRepository.findOne({
+			where: { id: workflowId },
+			relations: { activeVersion: true },
+		});
 		if (!workflow) return;
 
 		const deactivatedVersionId = workflow.activeVersionId;
 		if (deactivatedVersionId === null) return;
 
+		// `active` is still true here: the hook sees the pre-deactivation state.
+		const deactivatedWorkflow = this.workflowRepository.create({
+			...workflow,
+			versionId: deactivatedVersionId,
+			activeVersion: null,
+			nodes: workflow.activeVersion?.nodes ?? workflow.nodes,
+			connections: workflow.activeVersion?.connections ?? workflow.connections,
+		});
+
 		try {
-			await this.externalHooks.run('workflow.deactivate', [workflow]);
+			await this.externalHooks.run('workflow.deactivate', [
+				deactivatedWorkflow,
+				this.workflowHookContextService,
+			]);
 		} catch (error) {
 			// A failing hook must not leave a crash-looping workflow published
 			this.logger.warn('workflow.deactivate hook failed during system deactivation, proceeding', {

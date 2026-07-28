@@ -571,6 +571,7 @@ describe('ExecutionRecoveryService', () => {
 
 				expect(externalHooks.run).toHaveBeenCalledWith('workflow.deactivate', [
 					expect.objectContaining({ id: workflow.id }),
+					expect.anything(), // workflow hook context service
 				]);
 			});
 
