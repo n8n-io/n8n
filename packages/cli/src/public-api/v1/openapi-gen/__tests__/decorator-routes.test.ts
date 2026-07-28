@@ -1,15 +1,23 @@
+import { Z } from '@n8n/api-types';
 import {
 	ApiErrorResponse,
 	ApiSummary,
 	ApiTags,
+	Body,
 	ControllerRegistryMetadata,
 	Get,
+	Post,
+	Query,
 } from '@n8n/decorators';
 import type { Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { getDecoratorGeneratedOperations } from '../decorator-routes';
+
+class WidgetBodyDto extends Z.class({ name: z.string() }) {}
+class WidgetQueryDto extends Z.class({ q: z.string().optional() }) {}
 
 /**
  * Marks `controllerClass` as a public API controller the same way `@PublicApiController` does,
@@ -128,5 +136,58 @@ describe('getDecoratorGeneratedOperations', () => {
 
 		expect(() => getDecoratorGeneratedOperations()).toThrow(UnexpectedError);
 		expect(() => getDecoratorGeneratedOperations()).toThrow(/ApiErrorResponse\(418\)/);
+	});
+
+	it('includes the request body when @Body is present', () => {
+		class WidgetsPublicController {
+			@Post('/')
+			@ApiTags(['Widgets'])
+			method(@Body _body: WidgetBodyDto) {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.request?.body).toEqual({
+			content: {
+				'application/json': {
+					schema: WidgetBodyDto.schema,
+				},
+			},
+		});
+	});
+
+	it('omits the request body when @Body is absent', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiTags(['Widgets'])
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.request).toBeUndefined();
+	});
+
+	it('includes both the request body and query when a route declares both', () => {
+		class WidgetsPublicController {
+			@Post('/')
+			@ApiTags(['Widgets'])
+			method(@Body _body: WidgetBodyDto, @Query _query: WidgetQueryDto) {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.request?.body).toEqual({
+			content: {
+				'application/json': {
+					schema: WidgetBodyDto.schema,
+				},
+			},
+		});
+		// A prior version of this merge overwrote one with the other - assert both survive.
+		expect(operation.config.request?.query).toBeDefined();
 	});
 });

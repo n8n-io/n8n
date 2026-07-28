@@ -55,6 +55,10 @@ describe('shared schema registry', () => {
 		expect(op2).toContain(relRef);
 		expect(op1).not.toContain('#/components/schemas');
 		expect(op1).not.toContain('label:');
+		// $ref must stay POSIX-style regardless of host OS - a backslash here (e.g. from the
+		// platform-dependent path.relative/dirname on Windows) would be an invalid $ref and would
+		// make the committed generated file differ depending on which OS regenerated it.
+		expect(op1).not.toContain('\\');
 	});
 
 	it('inlines a schema referenced by only one operation', () => {

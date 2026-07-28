@@ -150,6 +150,21 @@ function buildQueryConfig(route: ResolvedPublicApiRoute): {
 	};
 }
 
+/** A route's request body, straight from its `@Body` DTO - no field-splitting needed like query has. */
+function buildRequestBody(
+	route: ResolvedPublicApiRoute,
+): NonNullable<RouteConfig['request']>['body'] {
+	if (!route.requestBodyDto) return undefined;
+
+	return {
+		content: {
+			'application/json': {
+				schema: route.requestBodyDto.schema,
+			},
+		},
+	};
+}
+
 /**
  * Response set is derived from what `PublicApiControllerRegistry` actually does at runtime, not
  * invented: auth always 401s, `@ApiKeyScope` always 403s on mismatch, and a body/query DTO always
@@ -228,6 +243,7 @@ export function getDecoratorGeneratedOperations(
 	return publicApiRoutes.map((route) => {
 		const pathKey = toOpenApiPath(route.path);
 		const { parameters, requestQuery } = buildQueryConfig(route);
+		const requestBody = buildRequestBody(route);
 		const resource = resourceSegment(route.path);
 
 		const config: RouteConfig = {
@@ -241,7 +257,14 @@ export function getDecoratorGeneratedOperations(
 				? { 'x-required-scope': scopeRequirementToString(route.apiKeyScope) }
 				: {}),
 			...(parameters ? { parameters } : {}),
-			...(requestQuery ? { request: { query: requestQuery } } : {}),
+			...((requestQuery ?? requestBody)
+				? {
+						request: {
+							...(requestQuery ? { query: requestQuery } : {}),
+							...(requestBody ? { body: requestBody } : {}),
+						},
+					}
+				: {}),
 			responses: buildResponses(route, resolveSchema),
 			// Satisfies express-openapi-validator's operation-handler installer, which requires
 			// every operation in the spec to resolve to *something* — see decorator-routed.handler.ts

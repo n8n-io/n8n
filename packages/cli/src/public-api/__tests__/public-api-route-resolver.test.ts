@@ -110,9 +110,9 @@ describe('public-api-route-resolver', () => {
 			]);
 		});
 
-		it('skips an undecorated parameter slot', () => {
+		it('skips undecorated leading parameters (e.g. req, res) before the first decorated one', () => {
 			class TestController {
-				method(@Param('id') _id: string, _undecorated: number, @Body _body: WidgetBodyDto) {}
+				method(_req: unknown, _res: unknown, @Query _query: WidgetQueryDto) {}
 			}
 			const { args } = Container.get(ControllerRegistryMetadata).getRouteMetadata(
 				TestController as Controller,
@@ -121,10 +121,27 @@ describe('public-api-route-resolver', () => {
 
 			const resolved = resolveRouteArgs(TestController as Controller, 'method', args);
 
-			expect(resolved).toEqual([
-				{ type: 'param', key: 'id' },
-				{ type: 'body', dto: WidgetBodyDto },
-			]);
+			expect(resolved).toEqual([{ type: 'query', dto: WidgetQueryDto }]);
+		});
+
+		it('throws when an undecorated parameter follows an already-decorated one', () => {
+			// PublicApiControllerRegistry invokes the handler with a compacted, gap-free argument
+			// list - an undecorated parameter here would silently receive the next decorated arg's
+			// value instead of its own, so this must fail loudly rather than skip the gap.
+			class TestController {
+				method(@Param('id') _id: string, _undecorated: number, @Body _body: WidgetBodyDto) {}
+			}
+			const { args } = Container.get(ControllerRegistryMetadata).getRouteMetadata(
+				TestController as Controller,
+				'method',
+			);
+
+			expect(() => resolveRouteArgs(TestController as Controller, 'method', args)).toThrow(
+				UnexpectedError,
+			);
+			expect(() => resolveRouteArgs(TestController as Controller, 'method', args)).toThrow(
+				'Public API route TestController.method has an undecorated parameter at index 1',
+			);
 		});
 
 		it('throws when a @Body arg has no resolvable Zod DTO', () => {

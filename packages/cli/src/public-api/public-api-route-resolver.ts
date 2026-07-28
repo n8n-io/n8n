@@ -51,6 +51,15 @@ export interface ResolvedPublicApiRoute {
  * no resolvable Zod DTO — a controller like this errors on every request already, so surfacing it
  * at resolution time (route registration, or doc generation) catches the bug earlier than the
  * first live request would.
+ *
+ * Also throws if an undecorated parameter follows an already-decorated one. `PublicApiControllerRegistry`
+ * invokes the handler as `controller[handlerName](req, res, ...resolvedArgsInOrder)` - a compacted,
+ * gap-free list. A handler like `(req, res, @Param('id') id, extra, @Body body)` would silently bind
+ * `body`'s parsed value to `extra`'s position instead, with `body` itself receiving `undefined`. Since
+ * there's no legitimate reason for an undecorated parameter after the first `@Param`/`@Body`/`@Query`
+ * (`req`/`res` are the only parameters this pattern ever leaves undecorated, and they're always first),
+ * rejecting the signature is safer than trying to preserve and thread the gap through both this
+ * function and the registry's call-building loop.
  */
 export function resolveRouteArgs(
 	controllerClass: Controller,
@@ -64,15 +73,31 @@ export function resolveRouteArgs(
 	) as unknown[] | undefined;
 
 	const resolved: ResolvedRouteArg[] = [];
+	let sawDecoratedArg = false;
 
-	args.forEach((arg, index) => {
+	// A plain indexed loop, not .forEach() - route.args is a sparse array (each @Param/@Body/@Query
+	// assigns only its own parameter index), and .forEach() silently skips holes, which would hide
+	// exactly the gap this function needs to detect.
+	for (let index = 0; index < args.length; index++) {
+		const arg = args[index];
+
 		if (!arg) {
-			return;
+			if (sawDecoratedArg) {
+				throw new UnexpectedError(
+					`Public API route ${controllerClass.name}.${handlerName} has an undecorated parameter ` +
+						`at index ${index}, after an already-decorated one. Every parameter after the first ` +
+						'@Param/@Body/@Query must also be decorated, or a later argument would silently bind ' +
+						'to the wrong parameter.',
+				);
+			}
+			continue;
 		}
+
+		sawDecoratedArg = true;
 
 		if (arg.type === 'param') {
 			resolved.push(arg);
-			return;
+			continue;
 		}
 
 		const paramType = argTypes?.[index] as ZodClass | undefined;
@@ -83,7 +108,7 @@ export function resolveRouteArgs(
 		}
 
 		resolved.push({ type: arg.type, dto: paramType });
-	});
+	}
 
 	return resolved;
 }
