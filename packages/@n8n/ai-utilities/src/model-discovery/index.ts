@@ -51,13 +51,7 @@ export async function listModelsForProvider(
 	return await listModels(options);
 }
 
-export {
-	getAnthropicModel,
-	getSupportedAnthropicEfforts,
-	listAnthropicModels,
-	resolveAnthropicEffort,
-	resolveAnthropicThinkingMode,
-} from './providers/anthropic';
+export { listAnthropicModels } from './providers/anthropic';
 export { listCohereModels } from './providers/cohere';
 export { listDeepSeekModels } from './providers/deepseek';
 export { listGoogleModels } from './providers/google';
@@ -68,11 +62,4 @@ export { listOpenAiModels, shouldIncludeOpenAiModel } from './providers/openai';
 export { listOpenRouterModels } from './providers/openrouter';
 export { listVercelModels } from './providers/vercel';
 export { listXaiModels } from './providers/xai';
-export {
-	MODEL_EFFORT_LEVELS,
-	type ListModelsFn,
-	type ListModelsOptions,
-	type ModelEffort,
-	type ModelEffortCapabilities,
-	type ProviderModel,
-} from './types';
+export type { ListModelsFn, ListModelsOptions, ProviderModel } from './types';
