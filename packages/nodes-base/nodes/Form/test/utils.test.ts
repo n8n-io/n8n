@@ -1045,6 +1045,7 @@ describe('FormTrigger, formWebhook', () => {
 				method: 'GET' | 'POST';
 				query?: IDataObject;
 				headers?: Record<string, string>;
+				originalUrl?: string;
 			} = { method: 'GET' },
 		) => {
 			const send = vi.fn();
@@ -1057,7 +1058,7 @@ describe('FormTrigger, formWebhook', () => {
 			const clearCookie = vi.fn();
 			const request = {
 				method: overrides.method,
-				originalUrl: '/form/test',
+				originalUrl: overrides.originalUrl ?? '/form/test',
 				query: overrides.query ?? {},
 				headers: { host: 'localhost:5678', ...(overrides.headers ?? {}) },
 				protocol: 'http',
@@ -1177,6 +1178,67 @@ describe('FormTrigger, formWebhook', () => {
 				expect.objectContaining({ httpOnly: true, sameSite: 'lax' }),
 			);
 			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('stashes the original query params on a fresh GET before redirecting', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { cookie, writeHead } = setupContext(ctx, {
+				method: 'GET',
+				originalUrl: '/form/test?foo=bar',
+			});
+			ctx.beginN8nOAuth2Flow.mockResolvedValue('http://localhost:5678/oauth/authorize?state=abc');
+
+			const result = await formWebhook(ctx);
+
+			expect(cookie).toHaveBeenCalledWith(
+				'n8n-form-query',
+				'foo=bar',
+				expect.objectContaining({ httpOnly: true, sameSite: 'lax' }),
+			);
+			expect(writeHead).toHaveBeenCalledWith(302, {
+				Location: 'http://localhost:5678/oauth/authorize?state=abc',
+			});
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('re-appends the preserved query and clears its cookie on a valid callback', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { writeHead, clearCookie } = setupContext(ctx, {
+				method: 'GET',
+				query: { code: 'the-code', state: 'the-state' },
+				headers: { cookie: 'n8n-form-query=foo%3Dbar' },
+			});
+			ctx.completeN8nOAuth2Flow.mockResolvedValue({
+				valid: true,
+				token: 'as-token',
+				user: authedUser,
+			});
+
+			const result = await formWebhook(ctx);
+
+			expect(writeHead).toHaveBeenCalledWith(302, { Location: `${resourceUrl}?foo=bar` });
+			expect(clearCookie).toHaveBeenCalledWith('n8n-form-query', expect.any(Object));
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('does not stash code/state as the preserved query on a callback fall-through', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { cookie } = setupContext(ctx, {
+				method: 'GET',
+				query: { code: 'the-code', state: 'the-state' },
+				originalUrl: '/form/test?code=the-code&state=the-state',
+			});
+			ctx.completeN8nOAuth2Flow.mockResolvedValue({ valid: false, reason: 'invalid_state' });
+			ctx.beginN8nOAuth2Flow.mockResolvedValue('http://localhost:5678/oauth/authorize?state=fresh');
+
+			await formWebhook(ctx);
+
+			expect(cookie).not.toHaveBeenCalledWith(
+				'n8n-form-query',
+				expect.anything(),
+				expect.anything(),
+			);
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl);
 		});
 
 		it('renders the form on the clean GET carrying the oauth cookie', async () => {
