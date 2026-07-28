@@ -45,14 +45,18 @@ export default mergeConfig(
 				compiler: 'vue3',
 				autoInstall: true,
 			}),
+			// Declarations are emitted through this plugin rather than a bare `vue-tsc`
+			// invocation, and that is load-bearing: `vue-tsc` alone cannot name
+			// vue-router's global `ComponentCustomProperties` augmentation through
+			// pnpm's hashed paths and silently skips 54 components' declarations,
+			// exiting 0 while writing nothing (TS2883).
+			//
+			// Keep `rollupTypes` off. Flattening was tried and is worse here:
+			// api-extractor does not follow `.vue` module specifiers, so it leaves
+			// them as unresolvable imports in the bundle — `N8nSelect` degrades to
+			// `any`. Per-file declarations also keep types on deep paths.
 			dts({
 				tsconfigPath: resolve(__dirname, 'tsconfig.build.json'),
-				// One flattened .d.ts per entry. Per-file declarations are not an
-				// option here: vue-tsc cannot name vue-router's global
-				// `ComponentCustomProperties` augmentation or `@vue/shared`'s
-				// `LooseRequired` through pnpm's hashed paths, and silently skips the
-				// declaration for every component whose template context touches them
-				// (TS2883). Rolling up hoists those types into the bundle instead.
 				rollupTypes: false,
 				entryRoot: resolve(__dirname, 'src'),
 			}),
@@ -79,12 +83,16 @@ export default mergeConfig(
 			// UMD is dropped: with ~40 externals a UMD bundle would need a `globals`
 			// entry per dependency, and every consumer of a Vue SFC library uses a
 			// bundler anyway. ESM only, matching `"type": "module"`.
-			// A single entry, so the rolled-up declarations have a single root. The
-			// lucide loader is re-exported from `src/index.ts` rather than being its
-			// own entry: that keeps the 16 icon buckets baked into dist as lazy
-			// chunks (they are dynamic imports) without a second types bundle.
 			lib: {
-				entry: { index: resolve(__dirname, 'src', 'index.ts') },
+				entry: {
+					index: resolve(__dirname, 'src', 'index.ts'),
+					// A separate entry, deliberately not re-exported from the root barrel.
+					// `src/icons/lucide/index.ts` statically imports `virtual:lucide-icons`,
+					// which only exists where `lucideIconsPlugin()` is registered. Putting it
+					// in the barrel would make that plugin mandatory for every build that
+					// aliases this package to source and imports any component from it.
+					'icons/lucide/index': resolve(__dirname, 'src', 'icons', 'lucide', 'index.ts'),
+				},
 				formats: ['es'],
 			},
 			rollupOptions: {
