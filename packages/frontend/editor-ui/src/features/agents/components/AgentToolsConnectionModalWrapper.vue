@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES } from '@n8n/api-types';
+import { NodeConnectionTypes, isCommunityPackageName } from 'n8n-workflow';
 import type { INode, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 
 import { getWorkflow } from '@/app/api/workflows';
@@ -13,7 +14,9 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { stripToolSuffix } from '@/app/stores/aiGateway.store';
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import {
+	filterAndSearchNodes,
 	isNodePreviewKey,
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
@@ -21,7 +24,7 @@ import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import type {
 	NodeConnectionItem,
-	SectionKey,
+	ToolCategoryKey,
 	ToolConnectionItem,
 	ToolCredentialRef,
 	WorkflowConnectionItem,
@@ -34,7 +37,11 @@ import {
 	toolRefToNode,
 	workflowToNewToolRef,
 } from '../composables/useAgentToolRefAdapter';
-import { useAgentToolCatalog } from '../composables/useAgentToolCatalog';
+import {
+	hasInputs,
+	toolCategoryForNodeType,
+	useAgentToolCatalog,
+} from '../composables/useAgentToolCatalog';
 import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
 import {
 	isMcpRelatedNodeType,
@@ -44,7 +51,15 @@ import {
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
 import { toToolIconSource } from '../utils/toolIconSource';
 
-const SECTIONS: SectionKey[] = ['connected', 'nodes', 'workflows'];
+const CATEGORIES: ToolCategoryKey[] = [
+	'connected',
+	'mcp',
+	'ai',
+	'n8n',
+	'app-action',
+	'community',
+	'workflows',
+];
 const incompatibleWorkflowToolBodyNodeTypes = new Set<string>(
 	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
 );
@@ -76,8 +91,13 @@ const uiStore = useUIStore();
 const rootStore = useRootStore();
 const toast = useToast();
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
-const { availableToolTypes, availableWorkflows, loadWorkflows } = useAgentToolCatalog();
+const { availableToolTypes, availableWorkflows, loadWorkflows, resolveToolNodeType } =
+	useAgentToolCatalog();
 const { installNode: installCommunityNode } = useInstallNode();
+const usersStore = useUsersStore();
+
+const searchQuery = ref('');
+const installingToolName = ref<string | null>(null);
 
 interface WorkingToolEntry {
 	localId: string;
@@ -137,12 +157,14 @@ const isConfigModalOpen = computed(
 	() => uiStore.modalsById[AGENT_TOOL_CONFIG_MODAL_KEY]?.open === true,
 );
 
-// A legacy `Modal` (el-dialog, appended to #app-modals) cannot paint above
-// N8nDialog's body-level portal, so the shared dialog is hidden while the
-// config modal is up — same workaround Instance AI uses for the credential
-// modal.
+/**
+ * The two dialogs are sequential rather than stacked: connecting a tool hands
+ * over to the config modal, and this one steps aside. It stays open in the
+ * store rather than closing, so cancelling the config brings the list back with
+ * its search and scroll position intact.
+ */
 const isOpen = computed({
-	get: () => !isConfigModalOpen.value,
+	get: () => uiStore.modalsById[props.modalName]?.open === true && !isConfigModalOpen.value,
 	set: (value: boolean) => {
 		if (!value) uiStore.closeModal(props.modalName);
 	},
@@ -280,6 +302,14 @@ function isCommunityPreviewTool(nodeType: INodeTypeDescription): boolean {
 	return !!nodeTypesStore.communityNodeType(stripToolSuffix(nodeType.name));
 }
 
+/** Reviewed and approved by n8n, whether or not it is installed yet. */
+function isVerifiedCommunityTool(nodeType: INodeTypeDescription): boolean {
+	return (
+		isCommunityPackageName(nodeType.name) &&
+		!!nodeTypesStore.communityNodeType(stripToolSuffix(nodeType.name))?.isOfficialNode
+	);
+}
+
 function communityPackageNameFor(nodeType: INodeTypeDescription): string {
 	const baseName = stripToolSuffix(nodeType.name);
 	return (
@@ -289,16 +319,21 @@ function communityPackageNameFor(nodeType: INodeTypeDescription): string {
 }
 
 async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
-	const result = await installCommunityNode({
-		type: 'verified',
-		packageName: communityPackageNameFor(nodeType),
-		nodeType: stripToolSuffix(nodeType.name),
-		telemetry: { source: 'agent builder tools', hasQuickConnect: false },
-	});
-	if (!result.success) return;
+	installingToolName.value = nodeType.name;
+	try {
+		const result = await installCommunityNode({
+			type: 'verified',
+			packageName: communityPackageNameFor(nodeType),
+			nodeType: stripToolSuffix(nodeType.name),
+			telemetry: { source: 'agent builder tools', hasQuickConnect: false },
+		});
+		if (!result.success) return;
 
-	const installedName = removePreviewToken(nodeType.name);
-	addNodeTool(nodeTypesStore.getNodeType(installedName) ?? nodeType);
+		const installedName = removePreviewToken(nodeType.name);
+		addNodeTool(nodeTypesStore.getNodeType(installedName) ?? nodeType);
+	} finally {
+		installingToolName.value = null;
+	}
 }
 
 async function handleAddTool(nodeType: INodeTypeDescription) {
@@ -386,6 +421,13 @@ function openConfigForToolEntry(entry: WorkingToolEntry) {
 			toolTelemetry.trackEdited(updatedRef);
 			commit();
 		},
+		onRemove: () => {
+			workingToolEntries.value = workingToolEntries.value.filter(
+				(e) => e.localId !== entry.localId,
+			);
+			toolTelemetry.trackRemoved(toolRef);
+			commit();
+		},
 	});
 }
 
@@ -405,6 +447,13 @@ function openConfigForMcpEntry(entry: WorkingMcpServerEntry) {
 			workingMcpServerEntries.value = workingMcpServerEntries.value.map((e) =>
 				e.localId === entry.localId ? { ...e, server: updatedServer } : e,
 			);
+			commit();
+		},
+		onRemove: () => {
+			workingMcpServerEntries.value = workingMcpServerEntries.value.filter(
+				(e) => e.localId !== entry.localId,
+			);
+			toolTelemetry.trackRemovedMcpServer(entry.server);
 			commit();
 		},
 	});
@@ -429,6 +478,7 @@ function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 		const item: WorkflowConnectionItem = {
 			id: `tool:${localId}`,
 			kind: 'workflow',
+			category: 'workflows',
 			workflowId: workflowRef.workflow,
 			title: workflowRef.name ?? workflowRef.workflow,
 			description: workflowRef.description,
@@ -448,6 +498,7 @@ function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 	const item: NodeConnectionItem = {
 		id: `tool:${localId}`,
 		kind: 'node',
+		category: toolCategoryForNodeType(nodeType),
 		nodeTypeName: nodeType.name,
 		title: node.name,
 		description: credentialSubtitle(node) ?? nodeType.description,
@@ -455,6 +506,7 @@ function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 		isConnected: true,
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
+		verified: isVerifiedCommunityTool(nodeType),
 	};
 	return item;
 }
@@ -466,6 +518,7 @@ function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | nu
 	const item: NodeConnectionItem = {
 		id: `mcp:${entry.localId}`,
 		kind: 'node',
+		category: 'mcp',
 		nodeTypeName: nodeType.name,
 		title: entry.server.name,
 		description: credentialSubtitle(node) ?? nodeType.description,
@@ -478,9 +531,11 @@ function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | nu
 }
 
 function availableNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
+	const communityPreview = isCommunityPreviewTool(nodeType);
 	return {
 		id: `nodeType:${nodeType.name}`,
 		kind: 'node',
+		category: toolCategoryForNodeType(nodeType),
 		nodeTypeName: nodeType.name,
 		title: nodeType.displayName.replace(/ Tool$/, ''),
 		description: nodeType.description,
@@ -488,6 +543,10 @@ function availableNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
 		isConnected: false,
 		iconSource: toToolIconSource(nodeType),
 		credentials: [],
+		verified: isVerifiedCommunityTool(nodeType),
+		communityPreview,
+		installing: installingToolName.value === nodeType.name,
+		installDisabled: communityPreview && !usersStore.isAdminOrOwner,
 	};
 }
 
@@ -495,6 +554,7 @@ function availableWorkflowItem(workflow: IWorkflowDb): WorkflowConnectionItem {
 	return {
 		id: `workflow:${workflow.id}`,
 		kind: 'workflow',
+		category: 'workflows',
 		workflowId: workflow.id,
 		title: workflow.name,
 		description: workflow.description ?? undefined,
@@ -502,6 +562,33 @@ function availableWorkflowItem(workflow: IWorkflowDb): WorkflowConnectionItem {
 		credentials: [],
 	};
 }
+
+/**
+ * Canvas parity: unofficial verified community tools are not in the AiTool name
+ * index, so they surface only while searching, via the same path NodesMode uses
+ * for "More from community".
+ */
+const communitySearchToolTypes = computed<INodeTypeDescription[]>(() => {
+	if (!searchQuery.value) return [];
+
+	const hits = filterAndSearchNodes(
+		nodeTypesStore.communityNodesAndActions.mergedNodes,
+		searchQuery.value,
+		{ isAiSubcategory: true, aiConnectionType: NodeConnectionTypes.AiTool },
+	);
+
+	const seen = new Set(availableToolTypes.value.map((nodeType) => nodeType.name));
+	const previews: INodeTypeDescription[] = [];
+	for (const hit of hits) {
+		if (hit.type !== 'node') continue;
+		// Some hits only resolve by their properties name, not their key.
+		const resolved = resolveToolNodeType(hit.key) ?? resolveToolNodeType(hit.properties.name);
+		if (!resolved || seen.has(resolved.name) || resolved.hidden || hasInputs(resolved)) continue;
+		seen.add(resolved.name);
+		previews.push(resolved);
+	}
+	return previews;
+});
 
 const items = computed<ToolConnectionItem[]>(() => {
 	const out: ToolConnectionItem[] = [];
@@ -515,6 +602,9 @@ const items = computed<ToolConnectionItem[]>(() => {
 		if (item) out.push(item);
 	}
 	for (const nodeType of availableToolTypes.value) {
+		out.push(availableNodeItem(nodeType));
+	}
+	for (const nodeType of communitySearchToolTypes.value) {
 		out.push(availableNodeItem(nodeType));
 	}
 	for (const workflow of availableWorkflows.value) {
@@ -549,7 +639,9 @@ function handleRowActivate(item: ToolConnectionItem) {
 
 	if (item.kind === 'node' && item.id.startsWith('nodeType:')) {
 		const nodeTypeName = item.id.slice('nodeType:'.length);
-		const nodeType = availableToolTypes.value.find((nt) => nt.name === nodeTypeName);
+		const nodeType = [...availableToolTypes.value, ...communitySearchToolTypes.value].find(
+			(nt) => nt.name === nodeTypeName,
+		);
 		if (nodeType) void handleAddTool(nodeType);
 	}
 }
@@ -559,8 +651,9 @@ function handleRowActivate(item: ToolConnectionItem) {
 	<ToolsConnectionModal
 		v-model:open="isOpen"
 		:items="items"
-		:sections="SECTIONS"
+		:categories="CATEGORIES"
 		:detail-item="null"
+		@update:search-query="searchQuery = $event"
 		@connect="handleRowActivate"
 		@open-detail="handleRowActivate"
 	/>

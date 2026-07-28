@@ -7,7 +7,11 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { IWorkflowDb } from '@/Interface';
 
-import { isWorkflowCompatibleWithAgentTools, useAgentToolCatalog } from './useAgentToolCatalog';
+import {
+	isWorkflowCompatibleWithAgentTools,
+	toolCategoryForNodeType,
+	useAgentToolCatalog,
+} from './useAgentToolCatalog';
 
 vi.mock('virtual:node-popularity-data', () => ({
 	default: [
@@ -144,6 +148,61 @@ describe('useAgentToolCatalog', () => {
 		expect(names.indexOf(OPENAI.name)).toBeLessThan(names.indexOf(CODE_TOOL.name));
 		expect(names.indexOf(CALCULATOR.name)).toBeLessThan(names.indexOf(CODE_TOOL.name));
 		expect(names.indexOf(CODE_TOOL.name)).toBeLessThan(names.indexOf(SLACK.name));
+	});
+
+	it('categorizes community packages by provenance, ignoring a self-declared n8n subcategory', () => {
+		const community = makeNodeType({
+			name: 'n8n-nodes-firecrawl.firecrawlTool',
+			displayName: 'Firecrawl',
+			codex: {
+				categories: ['AI'],
+				subcategories: { AI: ['Tools'], Tools: ['Recommended Tools'] },
+			},
+		});
+
+		expect(toolCategoryForNodeType(community)).toBe('community');
+		expect(toolCategoryForNodeType(SLACK)).toBe('app-action');
+		expect(toolCategoryForNodeType(MCP)).toBe('mcp');
+		expect(toolCategoryForNodeType(CALCULATOR)).toBe('ai');
+		expect(toolCategoryForNodeType(CODE_TOOL)).toBe('n8n');
+	});
+
+	it('sorts community tools last rather than first', () => {
+		const community = makeNodeType({
+			name: 'n8n-nodes-firecrawl.firecrawlTool',
+			displayName: 'Firecrawl',
+		});
+		const types = [...allTypes, community];
+		nodeTypesStore.getNodeType = vi
+			.fn()
+			.mockImplementation((name: string) => types.find((nt) => nt.name === name) ?? null);
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: types.map((nt) => nt.name),
+		};
+
+		const { availableToolTypes } = useAgentToolCatalog();
+		const names = availableToolTypes.value.map((nt) => nt.name);
+
+		expect(names.indexOf(SLACK.name)).toBeLessThan(names.indexOf(community.name));
+	});
+
+	it('keeps uninstalled verified community tools that getNodeType cannot resolve', () => {
+		const preview = makeNodeType({
+			name: 'n8n-nodes-firecrawl.firecrawlTool',
+			displayName: 'Firecrawl',
+		});
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: [SLACK.name, preview.name],
+		};
+		nodeTypesStore.communityNodeType = vi
+			.fn()
+			.mockImplementation((name: string) =>
+				name === preview.name ? { nodeDescription: preview } : undefined,
+			);
+
+		const { availableToolTypes } = useAgentToolCatalog();
+
+		expect(availableToolTypes.value.map((nt) => nt.name)).toContain(preview.name);
 	});
 
 	it('loads and filters project workflows for agent-tool compatibility', async () => {

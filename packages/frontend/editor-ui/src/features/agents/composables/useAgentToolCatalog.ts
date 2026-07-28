@@ -1,5 +1,10 @@
 import { computed, ref } from 'vue';
-import { AI_VENDOR_NODE_TYPES, NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
+import {
+	AI_VENDOR_NODE_TYPES,
+	NodeConnectionTypes,
+	isCommunityPackageName,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 import {
 	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
 	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
@@ -11,6 +16,7 @@ import nodePopularity from 'virtual:node-popularity-data';
 import { AI_SECTION_RECOMMENDED_TOOLS } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import type { ToolCategoryKey } from '@/features/shared/toolsConnection/types';
 import type { IWorkflowDb } from '@/Interface';
 import { isMcpRelatedNodeType } from './useMcpServerAdapter';
 
@@ -27,7 +33,7 @@ const availableAiUtilityToolNodeTypes = new Set<string>(
 	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
 );
 
-function hasInputs(nodeType: INodeTypeDescription): boolean {
+export function hasInputs(nodeType: INodeTypeDescription): boolean {
 	const { inputs } = nodeType;
 	if (Array.isArray(inputs)) return inputs.length > 0;
 	return true;
@@ -65,20 +71,36 @@ export function isWorkflowCompatibleWithAgentTools(workflow: IWorkflowDb): boole
 }
 
 /**
- * Category rank used to order the single "nodes" section: MCP → AI → n8n → rest.
- * Lower comes first.
+ * Tab a node type belongs to in the tools connection modal.
+ *
+ * Community packages are matched first, by provenance rather than install
+ * state. That also stops a third-party package claiming the n8n tab through a
+ * self-declared "Recommended Tools" codex subcategory. Nothing is taken from
+ * the MCP tab, which only matches first-party names.
  */
+export function toolCategoryForNodeType(nodeType: INodeTypeDescription): ToolCategoryKey {
+	if (isCommunityPackageName(nodeType.name)) return 'community';
+	if (isMcpRelatedNodeType(nodeType.name)) return 'mcp';
+	if (isAvailableAiToolType(nodeType)) return 'ai';
+	if (isAvailableN8nToolType(nodeType)) return 'n8n';
+	return 'app-action';
+}
+
+/**
+ * Ordering within a tab, derived from the category so there is one source of
+ * truth. Every category `toolCategoryForNodeType` can return must appear here:
+ * `indexOf` returns -1 for a missing one, which would sort it ahead of the rest.
+ */
+const NODE_CATEGORY_ORDER: ToolCategoryKey[] = ['mcp', 'ai', 'n8n', 'app-action', 'community'];
+
 function nodeTypeOrderRank(nodeType: INodeTypeDescription): number {
-	if (isMcpRelatedNodeType(nodeType.name)) return 0;
-	if (isAvailableAiToolType(nodeType)) return 1;
-	if (isAvailableN8nToolType(nodeType)) return 2;
-	return 3;
+	return NODE_CATEGORY_ORDER.indexOf(toolCategoryForNodeType(nodeType));
 }
 
 /**
  * Catalog of node types and project workflows eligible as agent tools.
- * Ordering within the nodes section preserves the old category priority now
- * that those categories are collapsed into one shared "Connect to a service" list.
+ * Node types are sorted by category first, then popularity, so each category
+ * tab lists its most-used tools first.
  */
 export function useAgentToolCatalog() {
 	const nodeTypesStore = useNodeTypesStore();
@@ -150,5 +172,6 @@ export function useAgentToolCatalog() {
 		availableToolTypes,
 		availableWorkflows,
 		loadWorkflows,
+		resolveToolNodeType,
 	};
 }

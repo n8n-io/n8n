@@ -1,5 +1,5 @@
 <script lang="ts" setup generic="Value extends string | number">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import type { TabOptions } from '../../types';
@@ -15,7 +15,7 @@ interface TabsProps {
 	variant?: 'modern' | 'legacy';
 }
 
-withDefaults(defineProps<TabsProps>(), {
+const props = withDefaults(defineProps<TabsProps>(), {
 	modelValue: undefined,
 	options: () => [],
 	size: 'medium',
@@ -27,32 +27,42 @@ const canScrollRight = ref(false);
 const tabs = ref<Element | undefined>(undefined);
 let resizeObserver: ResizeObserver | null = null;
 
+const updateScrollState = () => {
+	const container = tabs.value;
+	if (!container) return;
+
+	scrollPosition.value = container.scrollLeft;
+	canScrollRight.value = container.scrollWidth - container.clientWidth > container.scrollLeft;
+};
+
 onMounted(() => {
-	const container = tabs.value as Element;
-	if (container) {
-		container.addEventListener('scroll', (event: Event) => {
-			const width = container.clientWidth;
-			const scrollWidth = container.scrollWidth;
-			scrollPosition.value = (event.target as Element).scrollLeft;
-			canScrollRight.value = scrollWidth - width > scrollPosition.value;
-		});
+	const container = tabs.value;
+	if (!container) return;
 
-		resizeObserver = new ResizeObserver(() => {
-			const width = container.clientWidth;
-			const scrollWidth = container.scrollWidth;
-			canScrollRight.value = scrollWidth - width > scrollPosition.value;
-		});
-		resizeObserver.observe(container);
-
-		const width = container.clientWidth;
-		const scrollWidth = container.scrollWidth;
-		canScrollRight.value = scrollWidth - width > scrollPosition.value;
-	}
+	container.addEventListener('scroll', updateScrollState);
+	resizeObserver = new ResizeObserver(updateScrollState);
+	resizeObserver.observe(container);
+	updateScrollState();
 });
 
 onUnmounted(() => {
+	tabs.value?.removeEventListener('scroll', updateScrollState);
 	resizeObserver?.disconnect();
 });
+
+/**
+ * The observer only fires when the container itself resizes. Options that
+ * arrive or change label after mount grow scrollWidth without touching it, so
+ * the arrows would otherwise stay hidden until the next mount.
+ */
+watch(
+	() => props.options,
+	async () => {
+		await nextTick();
+		updateScrollState();
+	},
+	{ deep: true },
+);
 
 const emit = defineEmits<{
 	tooltipClick: [tab: Value, e: MouseEvent];

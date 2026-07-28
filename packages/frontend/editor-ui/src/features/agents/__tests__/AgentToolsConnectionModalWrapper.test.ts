@@ -41,6 +41,38 @@ vi.mock('@/app/utils/nodeIcon', () => ({
 const uuidMockState = vi.hoisted(() => ({ counter: 0 }));
 vi.mock('uuid', () => ({ v4: () => `mock-uuid-${++uuidMockState.counter}` }));
 
+const installNodeMock = vi.hoisted(() => vi.fn());
+vi.mock('@/features/settings/communityNodes/composables/useInstallNode', () => ({
+	useInstallNode: () => ({ installNode: installNodeMock, loading: { value: false } }),
+}));
+
+const filterAndSearchNodesMock = vi.hoisted(() => vi.fn(() => [] as unknown[]));
+vi.mock('@/features/shared/nodeCreator/nodeCreator.utils', async () => {
+	const actual = await vi.importActual<
+		typeof import('@/features/shared/nodeCreator/nodeCreator.utils')
+	>('@/features/shared/nodeCreator/nodeCreator.utils');
+	return { ...actual, filterAndSearchNodes: filterAndSearchNodesMock };
+});
+
+/** Uninstalled verified community node, as the previews catalog exposes it. */
+const COMMUNITY_PREVIEW: INodeTypeDescription = {
+	displayName: 'Firecrawl',
+	name: 'n8n-nodes-firecrawl-preview.firecrawlTool',
+	group: ['output'],
+	version: 1,
+	description: 'Scrape sites into markdown',
+	defaults: { name: 'Firecrawl' },
+	inputs: [],
+	outputs: [{ type: NodeConnectionTypes.AiTool }],
+	properties: [],
+	credentials: [],
+};
+
+const COMMUNITY_INSTALLED: INodeTypeDescription = {
+	...COMMUNITY_PREVIEW,
+	name: 'n8n-nodes-firecrawl.firecrawlTool',
+};
+
 const SLACK: INodeTypeDescription = {
 	displayName: 'Slack',
 	name: 'n8n-nodes-base.slack',
@@ -86,6 +118,12 @@ function emitConnect(item: ToolConnectionItem) {
 	(listener as (item: ToolConnectionItem) => void)(item);
 }
 
+function emitSearch(query: string) {
+	const listener = modalAttrs['onUpdate:searchQuery'] ?? modalAttrs['onUpdate:search-query'];
+	if (typeof listener !== 'function') throw new Error('Missing onUpdate:searchQuery');
+	(listener as (value: string) => void)(query);
+}
+
 const MODAL_NAME = 'agentToolsModal';
 
 const renderComponent = createComponentRenderer(AgentToolsConnectionModalWrapper, {
@@ -128,6 +166,8 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		uiStore.closeModal = vi.fn();
 		uiStore.openModalWithData = vi.fn();
 		showMessageMock.mockReset();
+		installNodeMock.mockReset().mockResolvedValue({ success: true });
+		filterAndSearchNodesMock.mockReset().mockReturnValue([]);
 	});
 
 	function toolRef(nodeType: string): Extract<AgentJsonToolRef, { type: 'node' }> {
@@ -154,9 +194,9 @@ describe('AgentToolsConnectionModalWrapper', () => {
 
 	// DynamicModalLoader passes `open`/`active`/`mode`/`activeId` on top of the
 	// declared props. If those fall through onto ToolsConnectionModal the
-	// inherited `open` pins the dialog open and the config modal renders behind
-	// it, so mount the way the loader does.
-	it('hides the shared dialog while the config modal is open, ignoring inherited attrs', async () => {
+	// inherited `open` is always true while mounted and would pin the dialog
+	// open, so mount the way the loader does and drive it from the store.
+	it('drives the dialog from the store, not the inherited loader attrs', async () => {
 		renderComponent({
 			props: {
 				modalName: MODAL_NAME,
@@ -167,6 +207,19 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		await flushPromises();
 		expect(modalAttrs.open).toBe(true);
 
+		uiStore.modalsById[MODAL_NAME].open = false;
+		await flushPromises();
+		expect(modalAttrs.open).toBe(false);
+	});
+
+	// The two dialogs are sequential, not stacked: this one steps aside for the
+	// config modal, then comes back when it closes, so cancelling returns to the
+	// list rather than dead-ending.
+	it('steps aside while the tool config modal is up, then returns', async () => {
+		render();
+		await flushPromises();
+		expect(modalAttrs.open).toBe(true);
+
 		uiStore.modalsById.agentToolConfigModal.open = true;
 		await flushPromises();
 		expect(modalAttrs.open).toBe(false);
@@ -174,6 +227,124 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		uiStore.modalsById.agentToolConfigModal.open = false;
 		await flushPromises();
 		expect(modalAttrs.open).toBe(true);
+	});
+
+	it('assigns each available item the category tab it belongs to', async () => {
+		const calculator: INodeTypeDescription = {
+			...WIKIPEDIA,
+			displayName: 'Calculator',
+			name: 'toolCalculator',
+		};
+		const recommended: INodeTypeDescription = {
+			...WIKIPEDIA,
+			displayName: 'Gmail',
+			name: 'n8n-nodes-base.gmail',
+			codex: { subcategories: { Tools: ['Recommended Tools'] } },
+		};
+		nodeTypesStore.getNodeType = vi.fn().mockImplementation((name: string) => {
+			if (name === SLACK.name) return SLACK;
+			if (name === calculator.name) return calculator;
+			if (name === recommended.name) return recommended;
+			return null;
+		});
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: [SLACK.name, calculator.name, recommended.name],
+		};
+
+		render();
+		await flushPromises();
+
+		const categoryById = new Map(getItems().map((item) => [item.id, item.category]));
+
+		expect(categoryById.get(`nodeType:${SLACK.name}`)).toBe('app-action');
+		expect(categoryById.get('nodeType:toolCalculator')).toBe('ai');
+		expect(categoryById.get('nodeType:n8n-nodes-base.gmail')).toBe('n8n');
+	});
+
+	it('assigns workflows to the workflows category', async () => {
+		workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([
+			{
+				id: 'wf-1',
+				name: 'Onboarding',
+				isArchived: false,
+				nodes: [{ type: 'n8n-nodes-base.executeWorkflowTrigger', name: 'When called' }],
+			},
+		]);
+
+		render();
+		await flushPromises();
+
+		const workflow = getItems().find((item) => item.id === 'workflow:wf-1');
+		expect(workflow?.category).toBe('workflows');
+	});
+
+	it('installs an uninstalled community tool before adding it, and adds the installed type', async () => {
+		nodeTypesStore.getNodeType = vi.fn().mockImplementation((name: string) => {
+			if (name === COMMUNITY_INSTALLED.name) return COMMUNITY_INSTALLED;
+			return null;
+		});
+		nodeTypesStore.communityNodeType = vi.fn().mockReturnValue({
+			nodeDescription: COMMUNITY_PREVIEW,
+			packageName: 'n8n-nodes-firecrawl',
+			isOfficialNode: true,
+		});
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: [COMMUNITY_PREVIEW.name],
+		};
+
+		const onConfirm = vi.fn();
+		render([], onConfirm);
+		await flushPromises();
+
+		const preview = getItems().find((item) => item.id === `nodeType:${COMMUNITY_PREVIEW.name}`);
+		expect(preview).toMatchObject({
+			category: 'community',
+			communityPreview: true,
+			verified: true,
+		});
+
+		emitConnect(preview!);
+		await flushPromises();
+
+		expect(installNodeMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'verified',
+				packageName: 'n8n-nodes-firecrawl',
+				nodeType: 'n8n-nodes-firecrawl-preview.firecrawl',
+			}),
+		);
+
+		// The tool that gets added is the installed type, not the preview.
+		const [{ tools }] = onConfirm.mock.calls[0];
+		expect(tools[0].node.nodeType).toBe(COMMUNITY_INSTALLED.name);
+	});
+
+	it('surfaces searched community tools that only resolve by their properties name', async () => {
+		// The real store normalizes the tool suffix, so match on the package prefix.
+		nodeTypesStore.communityNodeType = vi
+			.fn()
+			.mockImplementation((name: string) =>
+				name.startsWith('n8n-nodes-firecrawl')
+					? { nodeDescription: COMMUNITY_PREVIEW, isOfficialNode: true }
+					: undefined,
+			);
+		// `key` resolves to nothing; only `properties.name` does.
+		filterAndSearchNodesMock.mockReturnValue([
+			{ type: 'node', key: 'unresolvable-key', properties: { name: COMMUNITY_PREVIEW.name } },
+		]);
+
+		render();
+		await flushPromises();
+
+		expect(
+			getItems().find((item) => item.id === `nodeType:${COMMUNITY_PREVIEW.name}`),
+		).toBeUndefined();
+
+		emitSearch('firecrawl');
+		await flushPromises();
+
+		const hit = getItems().find((item) => item.id === `nodeType:${COMMUNITY_PREVIEW.name}`);
+		expect(hit).toMatchObject({ category: 'community', verified: true });
 	});
 
 	it('maps connected tools and keeps the same node type available for duplicates', async () => {
@@ -238,6 +409,20 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			}),
 		]);
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
+	it('removes a connected tool when the config modal asks to', async () => {
+		const onConfirm = vi.fn();
+		render([toolRef(SLACK.name)], onConfirm);
+		await flushPromises();
+
+		const connected = getItems().find((item) => item.isConnected);
+		emitConnect(connected!);
+
+		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
+		payload.data.onRemove();
+
+		expect(onConfirm).toHaveBeenCalledWith({ tools: [], mcpServers: [] });
 	});
 
 	it('appends a configured tool once the config modal saves', async () => {
