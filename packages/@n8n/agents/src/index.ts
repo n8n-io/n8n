@@ -207,10 +207,12 @@ export { verify } from './sdk/verify';
 export type { VerifyResult } from './sdk/verify';
 export type {
 	ContentCitation,
+	ContentCustom,
 	ContentFile,
 	ContentFileRef,
 	ContentMetadata,
 	ContentReasoning,
+	ContentReasoningFile,
 	ContentText,
 	ContentToolCall,
 	Message,

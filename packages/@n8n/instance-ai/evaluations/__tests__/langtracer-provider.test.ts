@@ -29,6 +29,37 @@ describe('casesFromExportedFiles', () => {
 		expect(cases[0].testCase.outcomeExpectations).toEqual(['has a trigger']);
 	});
 
+	it('keeps an inline conversationSeed on a suite-sourced case', () => {
+		const cases = casesFromExportedFiles(
+			{
+				'repair-it.json': validCase({
+					conversationSeed: {
+						messages: [
+							{
+								id: 'm1',
+								type: 'llm',
+								role: 'user',
+								content: [{ type: 'text', text: 'build it' }],
+							},
+						],
+						workflows: [{ id: 'wKk3RmT9xQ2bVn7L', name: 'Batch loop', nodes: [], connections: {} }],
+					},
+				}),
+			},
+			{ suite: 'demo' },
+		);
+		expect(cases[0].testCase.conversationSeed?.workflows[0].id).toBe('wKk3RmT9xQ2bVn7L');
+	});
+
+	it('refuses a suite-sourced case that points at a seed FILE', () => {
+		expect(() =>
+			casesFromExportedFiles(
+				{ 'repair-it.json': validCase({ seedFile: 'repair-it.seed' }) },
+				{ suite: 'demo' },
+			),
+		).toThrow(/seedFile/);
+	});
+
 	it('aggregates validation errors and names the offending file', () => {
 		expect(() =>
 			casesFromExportedFiles(

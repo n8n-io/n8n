@@ -9,8 +9,10 @@ export type MessageContent =
 	| ContentToolCall
 	| ContentInvalidToolCall
 	| ContentReasoning
+	| ContentReasoningFile
 	| ContentFile
 	| ContentCitation
+	| ContentCustom
 	| ContentProvider;
 
 export interface ContentMetadata {
@@ -98,6 +100,17 @@ export type ContentFile = ContentMetadata & {
 
 	/** External-store reference for the file bytes. At least one of `data` / `fileRef` must be set. */
 	fileRef?: ContentFileRef;
+};
+
+export type ContentReasoningFile = ContentMetadata & {
+	type: 'reasoning-file';
+	data: ContentFile['data'];
+	mediaType: string;
+};
+
+export type ContentCustom = ContentMetadata & {
+	type: 'custom';
+	kind: `${string}.${string}`;
 };
 
 export type ContentToolCall = ContentMetadata & {
