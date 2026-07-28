@@ -27,8 +27,12 @@ vi.mock('@n8n/design-system', async () => {
 	const N8nRecycleScroller = {
 		name: 'N8nRecycleScroller',
 		props: ['items', 'itemSize', 'itemKey'],
-		computed: {
-			scrollTop: () => scrollTopValue.current,
+		// A computed would cache the first read; `scrollTopValue` is not
+		// reactive, so it would never re-evaluate afterwards.
+		created() {
+			Object.defineProperty(this, 'scrollTop', {
+				get: () => scrollTopValue.current,
+			});
 		},
 		methods: {
 			scrollToKey: scrollToKeyMock,

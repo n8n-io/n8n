@@ -152,22 +152,22 @@ function onUpdateItemSize(item: { [key: string]: string }) {
 	void nextTick(() => {
 		const itemId = item[props.itemKey];
 		const itemRef = itemRefs.value[itemId] as HTMLElement;
-		const previousSize = itemSizeCache.value[itemId];
+		// The virtual layout positions an unmeasured row as if it were
+		// `itemSize` tall, so that is the height to compensate against — using
+		// the raw cache miss here would scroll by NaN and reset to the top.
+		const previousSize = itemSizeCache.value[itemId] ?? props.itemSize;
 		const size = itemRef ? itemRef.offsetHeight : props.itemSize;
+		const difference = size - previousSize;
 
 		itemSizeCache.value = {
 			...itemSizeCache.value,
 			[item[props.itemKey]]: size,
 		};
 
-		// A key measured for the first time has no previous size to compensate
-		// for; adjusting here would scroll by NaN and reset the list to the top.
-		if (previousSize === undefined || !wrapperRef.value || !scrollTop.value) {
-			return;
+		if (wrapperRef.value && scrollTop.value) {
+			wrapperRef.value.scrollTop = wrapperRef.value.scrollTop + difference;
+			scrollTop.value = wrapperRef.value.scrollTop;
 		}
-
-		wrapperRef.value.scrollTop = wrapperRef.value.scrollTop + (size - previousSize);
-		scrollTop.value = wrapperRef.value.scrollTop;
 	});
 }
 

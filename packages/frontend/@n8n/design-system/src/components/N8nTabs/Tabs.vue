@@ -298,10 +298,18 @@ const scrollRight = () => scroll(50);
 		min-width: 0;
 	}
 
+	// `overflow: hidden` ellipsises a long label but would also clip the
+	// notification dot, which overhangs the box. Reserve its width as padding
+	// and pull it back inside so both survive.
 	.notificationContainer {
 		display: block;
 		overflow: hidden;
 		text-overflow: ellipsis;
+		padding-right: 0.5em;
+	}
+
+	.notification {
+		right: 0;
 	}
 }
 
