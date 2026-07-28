@@ -5006,9 +5006,6 @@ importers:
       '@n8n/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@n8n/stores':
-        specifier: workspace:*
-        version: link:../stores
       '@vueuse/core':
         specifier: catalog:frontend
         version: 14.3.0(vue@3.5.26(typescript@6.0.2))
@@ -5540,6 +5537,9 @@ importers:
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../../@n8n/api-types
+      '@n8n/composables':
+        specifier: workspace:*
+        version: link:../composables
       '@n8n/constants':
         specifier: workspace:*
         version: link:../../../@n8n/constants

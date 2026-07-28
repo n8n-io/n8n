@@ -1,4 +1,5 @@
 import { nextTick } from 'vue';
+
 import { useStorage } from './useStorage';
 
 describe('useStorage', () => {
