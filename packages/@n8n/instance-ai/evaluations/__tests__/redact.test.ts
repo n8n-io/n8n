@@ -110,6 +110,34 @@ describe('redactSecretsInText', () => {
 		expect(redactSecretsInText('password: hunter2')).toBe('password: [REDACTED]');
 	});
 
+	it('masks bare well-known credential formats with no surrounding key', () => {
+		// OpenAI/Anthropic-style
+		expect(redactSecretsInText('the run used sk-abc123DEF456ghi789jkl012 for calls')).toBe(
+			'the run used [REDACTED] for calls',
+		);
+		expect(redactSecretsInText('key sk-ant-api03-Zm9vYmFyYmF6cXV4 set')).toBe('key [REDACTED] set');
+		// Slack bot/user/app tokens
+		expect(redactSecretsInText('posted with xoxb-1234567890-abcdefghijkl')).toBe(
+			'posted with [REDACTED]',
+		);
+		// GitHub tokens (classic + fine-grained prefixes)
+		expect(redactSecretsInText('cloned using ghp_ABCdef123456789012345678901234567890')).toBe(
+			'cloned using [REDACTED]',
+		);
+		// AWS access key id
+		expect(redactSecretsInText('signed as AKIAIOSFODNN7EXAMPLE today')).toBe(
+			'signed as [REDACTED] today',
+		);
+	});
+
+	it('leaves lookalike prose untouched (short or non-token shapes)', () => {
+		expect(redactSecretsInText('we use sk-learn for clustering')).toBe(
+			'we use sk-learn for clustering',
+		);
+		expect(redactSecretsInText('the xoxo sign-off stays')).toBe('the xoxo sign-off stays');
+		expect(redactSecretsInText('AKIA is an AWS prefix')).toBe('AKIA is an AWS prefix');
+	});
+
 	it('leaves secret words used as prose untouched (no separator → no match)', () => {
 		expect(redactSecretsInText('Invalid token format in the request')).toBe(
 			'Invalid token format in the request',

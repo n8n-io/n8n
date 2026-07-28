@@ -120,6 +120,24 @@ describe('buildTranscriptFromEvents', () => {
 			expect(turns[0].userMessage).toContain('for the request');
 		});
 
+		it('scrubs an inline token in fallback (no-marker) opening and follow-up messages', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [
+					RUN_START,
+					evt('text-delta', { text: 'first' }),
+					RUN_START,
+					evt('text-delta', { text: 'second' }),
+				],
+				openingMessage: 'use token=abc-open-111 to authenticate',
+				followUpMessages: ['and api_key=abc-follow-222 for the sync'],
+			});
+			expect(turns).toHaveLength(2);
+			expect(turns[0].userMessage).not.toContain('abc-open-111');
+			expect(turns[0].userMessage).toContain('token=[REDACTED]');
+			expect(turns[1].userMessage).not.toContain('abc-follow-222');
+			expect(turns[1].userMessage).toContain('api_key=[REDACTED]');
+		});
+
 		it('scrubs an inline token inside a string value of tool-call args', () => {
 			const turns = buildTranscriptFromEvents({
 				events: [

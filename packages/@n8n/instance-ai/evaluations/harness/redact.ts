@@ -63,6 +63,17 @@ const SECRET_TEXT_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
 		/\b(api[-_]?key|access[-_]?key|x-api-key|access[-_]?token|refresh[-_]?token|client[-_]?secret|private[-_]?key|secret|token|password|passwd|cookie|set-cookie|session[-_]?id)("?\s*[:=]\s*"?)[^\s"',&}]+/gi,
 		'$1$2[REDACTED]',
 	],
+	// Bare well-known credential formats — recognizable with no key or scheme
+	// around them. Length floors keep prose lookalikes (sk-learn, xoxo, the
+	// AKIA prefix mentioned in text) unmatched.
+	// OpenAI/Anthropic-style: sk-…, sk-ant-…, sk-proj-….
+	[/\bsk-(?:[a-z0-9]+-)*[A-Za-z0-9_-]{16,}\b/g, '[REDACTED]'],
+	// Slack tokens: xoxb-/xoxp-/xoxa-/xoxs-….
+	[/\bxox[a-z]-[A-Za-z0-9-]{8,}\b/gi, '[REDACTED]'],
+	// GitHub tokens: ghp_/gho_/ghu_/ghs_/ghr_ + fine-grained github_pat_.
+	[/\b(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]{20,}\b/g, '[REDACTED]'],
+	// AWS access key ids.
+	[/\bAKIA[0-9A-Z]{16}\b/g, '[REDACTED]'],
 ];
 
 /** Mask secrets embedded inline in free text (e.g. a token in a tool-error string). */

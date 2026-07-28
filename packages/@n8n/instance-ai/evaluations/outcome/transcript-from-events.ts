@@ -87,10 +87,9 @@ function splitEventsByUserTurn(
 
 function extractUserTurnText(event: CapturedEvent): string | undefined {
 	const payload = getRecord(event.data, 'payload');
-	const text = payload ? getString(payload, 'text') : undefined;
-	// The transcript leaves the machine via eval-results.json — content-scrub
-	// user messages the same as every other free-text step.
-	return text === undefined ? undefined : redactSecretsInText(text);
+	// Raw here — buildTurn content-scrubs every user message at the shared
+	// boundary, covering this path and the legacy fallback alike.
+	return payload ? getString(payload, 'text') : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -149,7 +148,14 @@ function buildTurn(
 	}
 
 	flushText();
-	return { userMessage, steps };
+	// The transcript leaves the machine via eval-results.json — content-scrub
+	// the user message HERE, the boundary both capture paths share (the
+	// marker path's extracted turn text AND the legacy fallback's raw
+	// opening/follow-up messages).
+	return {
+		userMessage: userMessage === undefined ? undefined : redactSecretsInText(userMessage),
+		steps,
+	};
 }
 
 interface ToolOutcome {
