@@ -7,6 +7,7 @@ import { EventService } from '@/events/event.service';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter } from '../entities/project/project-importer';
+import type { TagImportRequest } from '../entities/tag/tag.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import { collectPlannedWorkflowBindings } from '../entities/workflow/workflow-importer';
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
@@ -17,6 +18,7 @@ import type {
 	ImportedWorkflowSummary,
 	ImportPackageRequest,
 	ImportResult,
+	ImportTagSummary,
 	PackageImportBindings,
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
@@ -35,6 +37,8 @@ import {
 	scopeCredentialBindingsToRequirements,
 	toImportedWorkflowSummaries,
 	toPackageSummary,
+	toTagSummary,
+	unionTagSummaries,
 } from './import-result';
 import { emitPackageImportedEvent, type PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
@@ -125,6 +129,7 @@ export class ProjectPackageImporter {
 		const variablesMissing: string[] = [];
 		const variablesStubbed: string[] = [];
 		const variablesSkipped: string[] = [];
+		const tagSummaries: ImportTagSummary[] = [];
 		const scopes: PackageImportScope[] = [];
 
 		for (const { project, plan, content } of applied) {
@@ -139,12 +144,14 @@ export class ProjectPackageImporter {
 			variablesMissing.push(...content.variablePlan.missing.map(({ name }) => name));
 			variablesStubbed.push(...content.variableResult.stubbed);
 			variablesSkipped.push(...content.variableResult.skippedExisting);
+			tagSummaries.push(toTagSummary(content.tagPlan));
 			scopes.push({
 				context: plan.input.context,
 				imported: content,
 				credentialRequest: plan.input.credentialRequest,
 				dataTableRequest: plan.input.dataTableRequest,
 				variableRequest: plan.input.variableRequest,
+				tagRequest: plan.input.tagRequest,
 			});
 		}
 
@@ -163,6 +170,7 @@ export class ProjectPackageImporter {
 				stubbed: variablesStubbed,
 				skipped: variablesSkipped,
 			}),
+			tags: unionTagSummaries(tagSummaries),
 		});
 	}
 
@@ -209,6 +217,14 @@ export class ProjectPackageImporter {
 			missingMode: request.variableMissingMode,
 		};
 
+		// Untrimmed on purpose: the tag importer scopes by this project's workflows' own
+		// `tagIds`, so another project's requirements are simply never referenced here.
+		const tagRequest: TagImportRequest = {
+			requirements: manifest.requirements?.tags,
+			missingMode: request.tagMissingMode,
+			conflictPolicy: request.tagConflictPolicy,
+		};
+
 		return {
 			context: {
 				user: request.user,
@@ -220,6 +236,7 @@ export class ProjectPackageImporter {
 			credentialRequest,
 			dataTableRequest,
 			variableRequest,
+			tagRequest,
 			options: request,
 			projectPendingCreation,
 		};
@@ -252,5 +269,14 @@ export class ProjectPackageImporter {
 			missingMode: request.variableMissingMode,
 			hasRequirements: (manifest.requirements?.variables?.length ?? 0) > 0,
 		});
+
+		if ((manifest.requirements?.tags?.length ?? 0) > 0) {
+			if (request.tagMissingMode === 'create') {
+				assertPackageImportApiKeyScopes(request.apiKeyScopes, ['tag:create']);
+			}
+			if (request.tagConflictPolicy === 'rename') {
+				assertPackageImportApiKeyScopes(request.apiKeyScopes, ['tag:update']);
+			}
+		}
 	}
 }
