@@ -368,8 +368,8 @@ describe('v2/components/Pagination', () => {
 					disabled: true,
 				},
 				slots: {
-					prev: `<template #prev="{ disabled }"><button data-test-id="custom-prev" :disabled="disabled">Prev</button></template>`,
-					next: `<template #next="{ disabled }"><button data-test-id="custom-next" :disabled="disabled">Next</button></template>`,
+					prev: '<template #prev="{ disabled }"><button data-test-id="custom-prev" :disabled="disabled">Prev</button></template>',
+					next: '<template #next="{ disabled }"><button data-test-id="custom-next" :disabled="disabled">Next</button></template>',
 				},
 			});
 
@@ -385,8 +385,8 @@ describe('v2/components/Pagination', () => {
 					itemsPerPage: 10,
 				},
 				slots: {
-					prev: `<template #prev="{ disabled }"><button data-test-id="custom-prev" :disabled="disabled">Prev</button></template>`,
-					next: `<template #next="{ disabled }"><button data-test-id="custom-next" :disabled="disabled">Next</button></template>`,
+					prev: '<template #prev="{ disabled }"><button data-test-id="custom-prev" :disabled="disabled">Prev</button></template>',
+					next: '<template #next="{ disabled }"><button data-test-id="custom-next" :disabled="disabled">Next</button></template>',
 				},
 			});
 
@@ -401,8 +401,8 @@ describe('v2/components/Pagination', () => {
 					itemsPerPage: 10,
 				},
 				slots: {
-					prev: `<template #prev="{ disabled }"><button data-test-id="custom-prev" :disabled="disabled">Prev</button></template>`,
-					next: `<template #next="{ disabled }"><button data-test-id="custom-next" :disabled="disabled">Next</button></template>`,
+					prev: '<template #prev="{ disabled }"><button data-test-id="custom-prev" :disabled="disabled">Prev</button></template>',
+					next: '<template #next="{ disabled }"><button data-test-id="custom-next" :disabled="disabled">Next</button></template>',
 				},
 			});
 

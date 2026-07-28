@@ -380,7 +380,6 @@ function handlePagerKeydown(event: KeyboardEvent) {
 .jumper {
 	display: inline-flex;
 	align-items: center;
-	// Tighter than the container gap — sit closer to the page-size select
 	margin-inline-start: calc(var(--spacing--2xs) - var(--spacing--xs));
 	min-height: var(--jumper-height, var(--height--md));
 	border-radius: var(--jumper-radius, var(--radius--3xs));
