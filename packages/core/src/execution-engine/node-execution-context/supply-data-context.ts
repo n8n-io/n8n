@@ -20,7 +20,7 @@ import type {
 	ISourceData,
 	NodeExecutionHint,
 } from 'n8n-workflow';
-import { jsonParse, NodeConnectionTypes, CONSOLE_OUTPUT_REDACTED_MESSAGE } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes } from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -429,10 +429,9 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		}
 
 		if (process.env.CODE_ENABLE_STDOUT === 'true') {
-			const emittedArgs = this.isConsoleOutputRedacted() ? [CONSOLE_OUTPUT_REDACTED_MESSAGE] : args;
 			console.log(
 				`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`,
-				...emittedArgs,
+				...this.redactedConsoleArgs(args),
 			);
 		}
 	}

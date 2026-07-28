@@ -316,6 +316,15 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		}
 	}
 
+	/**
+	 * `args` unchanged, or just the redaction marker when console output is
+	 * redacted for this run. Shared by the stdout branch of `logNodeOutput` in
+	 * `ExecuteContext` and `SupplyDataContext`.
+	 */
+	protected redactedConsoleArgs(args: unknown[]): unknown[] {
+		return this.isConsoleOutputRedacted() ? [CONSOLE_OUTPUT_REDACTED_MESSAGE] : args;
+	}
+
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	sendMessageToUI(...args: any[]): void {
 		if (this.mode !== 'manual') {
