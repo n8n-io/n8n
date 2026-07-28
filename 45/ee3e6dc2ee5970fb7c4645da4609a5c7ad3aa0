@@ -1,0 +1,36 @@
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_181b9e3693008d::t_a619c515eeabae 3,429-430,432,435
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_181b9e3693008d::t_cf0e2d5670efa8 17,57-63,196,201,279,289-290
+  s_181b9e3693008d::t_75a617ed838396 291,300,303
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_181b9e3693008d::t_ff4517d41d2669 375-376
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_181b9e3693008d::t_864867ca5045c2 1111-1118
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_181b9e3693008d::t_109014f55ca70f 328
+packages/cli/src/modules/agents/__tests__/agents.module.test.ts
+  s_181b9e3693008d::t_0196ae533830bc 32,49,66
+packages/cli/src/modules/agents/agents.module.ts
+  s_181b9e3693008d::t_ff4517d41d2669 101,105-106
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryPanel.test.ts
+  s_181b9e3693008d::t_ae8df7e48bcb50 44-50,97-103,108,110-116,120,126-127,147-148,152,155-249
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_181b9e3693008d::t_cf0e2d5670efa8 7093-7094
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "45ee3e6dc2ee5970fb7c4645da4609a5c7ad3aa0",
+  "prompts": {},
+  "sessions": {
+    "s_181b9e3693008d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7f2c-4745-7b31-8408-353b51f1200a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,53 @@
+docs/generated/postgres-schema/public.workflow_review_request_reviewers.md
+  s_1ce27f65a72f7e::t_777104847eff56 16,24-25
+docs/generated/sqlite-schema/workflow_review_request_authors.md
+  s_1ce27f65a72f7e::t_777104847eff56 9,27-29,35,42-43,46-47
+packages/@n8n/db/src/entities/workflow-review-request-author.ee.ts
+  s_1ce27f65a72f7e::t_777104847eff56 1,4-5,8
+docs/generated/sqlite-schema/README.md
+  s_1ce27f65a72f7e::t_777104847eff56 123-124,295-298,1403-1404,1407-1408
+docs/generated/postgres-schema/public.workflow_review_request_authors.md
+  s_1ce27f65a72f7e::t_777104847eff56 16,24
+packages/frontend/editor-ui/src/app/stores/settings.store.ts
+  s_1ce27f65a72f7e::t_4ec4da3c5df3cd 1-6
+docs/generated/sqlite-schema/user.md
+  s_1ce27f65a72f7e::t_777104847eff56 79-80,313-314,317-318
+docs/generated/sqlite-schema/workflow_review_request.md
+  s_1ce27f65a72f7e::t_777104847eff56 48,58-59,96-97,100-101
+packages/@n8n/db/src/entities/workflow-review-request.ee.ts
+  s_1ce27f65a72f7e::t_777104847eff56 1,27
+packages/@n8n/db/src/repositories/workflow-review-request-author.repository.ts
+  s_1ce27f65a72f7e::t_5f2e9424832fe9 32,43
+docs/generated/sqlite-schema/workflow_review_request_reviewers.md
+  s_1ce27f65a72f7e::t_777104847eff56 9,27-29,35-36,43-44,47-48
+packages/@n8n/db/src/repositories/workflow-review-request-reviewer.repository.ts
+  s_1ce27f65a72f7e::t_0a09066c434661 41,52
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request-author.repository.test.ts
+  s_1ce27f65a72f7e::t_e46f7563abf63a 26
+packages/frontend/@n8n/stores/src/settings.store.ts
+  s_1ce27f65a72f7e::t_11a656f52a0ce2 504
+  s_1ce27f65a72f7e::t_8a7d3d707e6b90 303-306
+  s_1ce27f65a72f7e::t_f79b430d34bdd0 6
+docs/generated/postgres-schema/public.workflow_review_request.md
+  s_1ce27f65a72f7e::t_777104847eff56 43
+packages/@n8n/db/src/entities/workflow-review-request-reviewer.ee.ts
+  s_1ce27f65a72f7e::t_777104847eff56 1,4-6,9
+docs/generated/postgres-schema/README.md
+  s_1ce27f65a72f7e::t_777104847eff56 123-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "001ce79c28f7b7e4e229bbb8804216423e053fab",
+  "prompts": {},
+  "sessions": {
+    "s_1ce27f65a72f7e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fe4de028-d4e6-481b-94d5-62353f11d7f2",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

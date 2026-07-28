@@ -1,19 +1,31 @@
 packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
-  s_574de801a499a2::t_c6a910917b4af8 210-217
+  s_574de801a499a2::t_6449bd018ce334 210-217
 packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
-  s_574de801a499a2::t_c6a910917b4af8 4-9,13,21,25,28-33,44,55-68,81,209,212-215,218-236,238-239,242-271,274-279,286-350
+  s_574de801a499a2::t_6b9bd61ba184ed 4-9,13,21,25,28-33,44,55-66
+  s_574de801a499a2::t_dc524ee31fb56f 81
+  s_574de801a499a2::t_2dd45f491cf32e 209,218-236,238-239,242-271,274-279,286-350
+  ai_agent 212-215
 packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
-  s_574de801a499a2::t_c6a910917b4af8 26,80-86,90,165,179-231
+  s_574de801a499a2::t_41913c575433b8 26
+  s_574de801a499a2::t_505ad701ed3087 80-86,90
+  s_574de801a499a2::t_40845dc55dfa48 165,179-231
 packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
-  s_574de801a499a2::t_32558734987fad 1,4-7,10-19,23,27-28,31-35,41-43,51,57-71,74-75,77-78,81-139
+  s_574de801a499a2::t_3a5eb0e5be25c7 1,4-7,10-19,23,27,31-35,41-43,51,57-71,74-75,77-78,81-139
+  h_6ef4cecfee65a2 9
+  s_574de801a499a2::t_263e1f5aaf7bae 28
 packages/cli/src/modules/n8n-packages/engine/import-result.ts
-  s_574de801a499a2::t_c6a910917b4af8 9,24-44,47,55
+  s_574de801a499a2::t_940cf5b6ad6dda 9,24-44,47,55
 ---
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.5.2",
   "base_commit_sha": "620070c6ad0c304693ff9d22279a75b462d18bc8",
   "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  },
   "sessions": {
     "s_574de801a499a2": {
       "agent_id": {

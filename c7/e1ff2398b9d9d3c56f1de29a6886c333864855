@@ -1,0 +1,71 @@
+packages/frontend/editor-ui/src/__tests__/utils.ts
+  s_37fc81d6159b70::t_e7f6f6fe8cb615 4
+  s_37fc81d6159b70::t_a8eb4b9a3fa8e0 48
+packages/frontend/editor-ui/src/features/settings/sso/sso.test.ts
+  s_37fc81d6159b70::t_7cb86b2956af62 1
+  s_37fc81d6159b70::t_0e3a53bf8fa2ee 26,47,58,82,106,130,152,214
+packages/frontend/@n8n/stores/src/settings.store.ts
+  s_37fc81d6159b70::t_0dd4d311bf0f03 198
+  s_37fc81d6159b70::t_2b421a15702f82 179
+  s_37fc81d6159b70::t_6f4c8af4eb368b 366
+  s_37fc81d6159b70::t_1d363a6d9e2ac2 151,399-401
+  s_37fc81d6159b70::t_9e5519ce42993c 148-150
+  s_37fc81d6159b70::t_a0d8723478eafe 152-154,176-178
+  s_37fc81d6159b70::t_7abba716cc3279 180-182,195-197
+  s_37fc81d6159b70::t_9fdac45e455b7a 199-201,363-365
+  s_37fc81d6159b70::t_4eb735d4faeff3 367-369,396-398
+  s_37fc81d6159b70::t_c672c6b384a877 402-404
+  s_f884cab3034245::t_41e71231190362 1-147,155-175,183-194,202-362,370-395,405-515
+packages/frontend/editor-ui/src/app/stores/settings.store.ts
+  s_37fc81d6159b70::t_8d3b7c95d07600 1-6
+packages/frontend/@n8n/stores/package.json
+  s_37fc81d6159b70::t_6c953e6968cdbc 63
+  s_37fc81d6159b70::t_019089c182eb87 41,44
+packages/frontend/editor-ui/src/features/settings/sso/sso.store.ts
+  s_37fc81d6159b70::t_d7bf3cf907893f 1
+  s_37fc81d6159b70::t_57b45790abafc6 21,39,99,160
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.test.ts
+  s_37fc81d6159b70::t_0dd21e19360d48 9
+  s_37fc81d6159b70::t_6ca5cc385a4b74 56
+packages/frontend/editor-ui/src/app/stores/roles.store.ts
+  s_37fc81d6159b70::t_8c95c9962e96ec 1-6
+packages/frontend/editor-ui/src/app/init.ts
+  s_37fc81d6159b70::t_011357d85fc35c 250
+  s_37fc81d6159b70::t_75fef16921149f 9
+  s_f884cab3034245::t_9f364e8dc7a087 76
+packages/frontend/editor-ui/src/app/init.test.ts
+  s_37fc81d6159b70::t_4782556ee9c6c3 4
+  s_37fc81d6159b70::t_3ae3f1b15176b7 147,161,177,184
+packages/frontend/@n8n/stores/src/roles.store.test.ts
+  s_f884cab3034245::t_1cb3297a9c6702 4-6
+packages/frontend/@n8n/stores/src/roles.store.ts
+  s_f884cab3034245::t_51c1608dc9c93e 1-143
+packages/frontend/@n8n/stores/src/settings.store.test.ts
+  s_f884cab3034245::t_643cf7be076fd3 4,49
+pnpm-lock.yaml
+  s_37fc81d6159b70::t_e93b6790648fa4 5316-5318,5322-5324,5374-5376
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c7e1ff2398b9d9d3c56f1de29a6886c333864855",
+  "prompts": {},
+  "sessions": {
+    "s_37fc81d6159b70": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6af33cda-2329-4d36-bdef-2724caa4c15d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    },
+    "s_f884cab3034245": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "058072dd-dfcc-4d3b-9d45-13f8082f5021",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+docs/generated/postgres-schema/README.md
+  s_5e51067f93bb24::t_9def3f7de8c313 13,348
+docs/generated/postgres-schema/public.agent_execution.md
+  s_5e51067f93bb24::t_e88addca38ef9f 20,33,40,72
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_5e51067f93bb24::t_f2db1c4c1f7dfc 110
+docs/generated/sqlite-schema/README.md
+  s_5e51067f93bb24::t_b27b7098cdaccb 13,335
+docs/generated/sqlite-schema/agent_execution.md
+  s_5e51067f93bb24::t_4fdfbc8c23609b 9,31,42,77
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_5e51067f93bb24::t_a89ec4d1b88a82 111
+packages/@n8n/db/src/migrations/common/1784815940110-AddStoredAtToAgentExecution.ts
+  s_5e51067f93bb24::t_05315dcf618517 1-20
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_5e51067f93bb24::t_3e5fd0f2fa20be 229,461
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_5e51067f93bb24::t_6e0280bb8d7562 221,443
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "4161c31a61cc4dbb93d28ffc366953d479909503",
+  "prompts": {},
+  "sessions": {
+    "s_5e51067f93bb24": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "aaef45e4-2911-44bf-b165-b73f59041b70",
+        "model": "grok-4.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

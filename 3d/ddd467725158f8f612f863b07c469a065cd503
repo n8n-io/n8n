@@ -1,0 +1,37 @@
+packages/@n8n/db/src/migrations/common/1784000000046-CreateInstanceAiEventsTable.ts
+  s_44a98ba2784a12::t_ce0caa502ea993 1-36
+docs/generated/postgres-schema/README.md
+  s_44a98ba2784a12::t_e7de892e1b7d06 231,830-836
+docs/generated/sqlite-schema/README.md
+  s_44a98ba2784a12::t_e7de892e1b7d06 214,817-823
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_44a98ba2784a12::t_e7de892e1b7d06 19,49,87-93
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_44a98ba2784a12::t_591d9ac7718227 222,222
+  s_44a98ba2784a12::t_0e1b7d2554975c 452,452
+docs/generated/sqlite-schema/instance_ai_events.md
+  s_44a98ba2784a12::t_e7de892e1b7d06 1-71
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_44a98ba2784a12::t_40ef558442421f 214,214
+  s_44a98ba2784a12::t_e003fa0ab06b5c 434,434
+docs/generated/postgres-schema/public.instance_ai_events.md
+  s_44a98ba2784a12::t_e7de892e1b7d06 1-65
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_44a98ba2784a12::t_e7de892e1b7d06 8,43,81-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3dddd467725158f8f612f863b07c469a065cd503",
+  "prompts": {},
+  "sessions": {
+    "s_44a98ba2784a12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "83e316a4-3906-40bf-bce2-efffe91f33e5",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

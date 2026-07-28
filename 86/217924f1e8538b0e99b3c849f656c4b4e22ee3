@@ -1,0 +1,53 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_fb07803f5d8913::t_2da44962b2ffb0 715-744,749-751,753-754
+  s_fb07803f5d8913::t_03bf058a558505 745-748,752
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_fb07803f5d8913::t_6fad91dd4cefbf 603-605
+  s_fb07803f5d8913::t_4746d060612023 695-701,705-714
+  s_fb07803f5d8913::t_59aac23f7b47f3 625
+  s_fb07803f5d8913::t_6010371785e7c4 715
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_fb07803f5d8913::t_18d6e2ee3d37d8 197-198
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_fb07803f5d8913::t_05ef0c6385c819 1235-1262
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-prompts.test.ts
+  s_fb07803f5d8913::t_8ca77d2871b4f8 262-279
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_fb07803f5d8913::t_3d45df0ded24d5 626
+packages/frontend/editor-ui/src/features/ai/instanceAi/canvasPreview.utils.ts
+  s_fb07803f5d8913::t_50b96127b11f20 526,529-540,542
+  s_fb07803f5d8913::t_3f42c98987ded8 421-422,426-428,433-440,443-447,453,458-460,464-465,471-489,494
+  s_fb07803f5d8913::t_7710b65834eef2 1
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_fb07803f5d8913::t_88eb2526b994b3 878-883,885,892,907-930,933,946,949
+  s_fb07803f5d8913::t_078164e520839c 984-999,1001-1004
+  s_fb07803f5d8913::t_d4eb8734cb5850 947-948
+  s_fb07803f5d8913::t_5d79296e70a310 1000
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/canvasPreview.utils.test.ts
+  s_fb07803f5d8913::t_d5a7824fb0ddfc 491-515
+packages/cli/src/modules/agents/builder/skills/mcp.skill.ts
+  s_fb07803f5d8913::t_2f95ffd96bfe77 98-103
+  s_fb07803f5d8913::t_e9aa4da1406c64 76-79
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_fb07803f5d8913::t_2e10718a7f99e3 18
+  s_fb07803f5d8913::t_05c0414733a819 403
+  s_fb07803f5d8913::t_62eb4f9d1f25f8 136-145
+  s_fb07803f5d8913::t_c5fc72e466945c 285
+  s_fb07803f5d8913::t_f98ff5036e11ab 135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "86217924f1e8538b0e99b3c849f656c4b4e22ee3",
+  "prompts": {},
+  "sessions": {
+    "s_fb07803f5d8913": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "23225446-7be4-4f9f-9297-1e7f56f78405",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
