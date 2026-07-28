@@ -26,6 +26,13 @@ import { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { STARTING_NODES } from '@/constants';
+import { ExecutionService } from '@/executions/execution.service';
+import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { Telemetry } from '@/telemetry';
+
 import { saveCredential } from '../shared/db/credentials';
 import { createFolder } from '../shared/db/folders';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
@@ -42,13 +49,6 @@ import {
 } from '../shared/db/workflow-history';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
-
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { STARTING_NODES } from '@/constants';
-import { ExecutionService } from '@/executions/execution.service';
-import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
-import { ProjectService } from '@/services/project.service.ee';
-import { Telemetry } from '@/telemetry';
 
 mockInstance(Telemetry);
 
@@ -2094,6 +2094,8 @@ describe('POST /workflows redaction floor enforcement', () => {
 		expect(response.body.message).toBe(
 			'Workflow redaction policy cannot be weaker than the instance floor.',
 		);
+
+		await expect(workflowRepository.countBy({ name: 'redaction-floor' })).resolves.toBe(0);
 	});
 
 	test('seeds the floor policy when the redaction policy is omitted', async () => {

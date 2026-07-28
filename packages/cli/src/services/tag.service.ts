@@ -112,6 +112,10 @@ export class TagService {
 		return await this.tagRepository.findManyByName(names);
 	}
 
+	async getAllByWorkflowId(workflowId: string): Promise<TagEntity[]> {
+		return await this.tagRepository.findBy({ workflows: { id: workflowId } });
+	}
+
 	/**
 	 * Paginated tags with non-archived usage counts plus the total count, both
 	 * via DB-level queries. Runs the data query and `count` in parallel.

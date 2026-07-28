@@ -19,6 +19,7 @@ import {
 	RoleRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
@@ -32,7 +33,6 @@ import { EntityNotFoundError } from '@n8n/typeorm';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
 import { createFolder } from '@test-integration/db/folders';
 
 import {
@@ -1214,12 +1214,16 @@ describe('DELETE /project/:projectId', () => {
 		//
 
 		// Make sure the project and owned workflow and credential where deleted.
-		await expect(getWorkflowById(ownedWorkflow.id)).resolves.toBeNull();
+		await expect(
+			Container.get(WorkflowRepository).findOneBy({ id: ownedWorkflow.id }),
+		).resolves.toBeNull();
 		await expect(getCredentialById(ownedCredential.id)).resolves.toBeNull();
 		await expect(findProject(projectToBeDeleted.id)).rejects.toThrowError(EntityNotFoundError);
 
 		// Make sure the shared workflow and credential were not deleted
-		await expect(getWorkflowById(sharedWorkflow1.id)).resolves.not.toBeNull();
+		await expect(
+			Container.get(WorkflowRepository).findOneBy({ id: sharedWorkflow1.id }),
+		).resolves.not.toBeNull();
 		await expect(getCredentialById(sharedCredential.id)).resolves.not.toBeNull();
 
 		// Make sure the sharings for them have been deleted
@@ -1271,8 +1275,12 @@ describe('DELETE /project/:projectId', () => {
 		//
 
 		// Make sure the project and owned workflow and credential where deleted.
-		await expect(getWorkflowById(ownedWorkflow1.id)).resolves.toBeNull();
-		await expect(getWorkflowById(ownedWorkflow2.id)).resolves.toBeNull();
+		await expect(
+			Container.get(WorkflowRepository).findOneBy({ id: ownedWorkflow1.id }),
+		).resolves.toBeNull();
+		await expect(
+			Container.get(WorkflowRepository).findOneBy({ id: ownedWorkflow2.id }),
+		).resolves.toBeNull();
 		await expect(getCredentialById(ownedCredential.id)).resolves.toBeNull();
 		await expect(findProject(projectToBeDeleted.id)).rejects.toThrowError(EntityNotFoundError);
 
@@ -1424,7 +1432,9 @@ describe('DELETE /project/:projectId', () => {
 		await expect(findProject(projectToBeDeleted.id)).rejects.toThrowError(EntityNotFoundError);
 
 		// ownedWorkflow has not been deleted
-		await expect(getWorkflowById(ownedWorkflow.id)).resolves.toBeDefined();
+		await expect(
+			Container.get(WorkflowRepository).findOneBy({ id: ownedWorkflow.id }),
+		).resolves.toBeDefined();
 
 		// ownedCredential has not been deleted
 		await expect(getCredentialById(ownedCredential.id)).resolves.toBeDefined();

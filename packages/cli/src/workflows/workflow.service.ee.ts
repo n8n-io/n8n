@@ -478,11 +478,10 @@ export class EnterpriseWorkflowService {
 	async getFolderUsedCredentials(user: User, folderId: string, projectId: string) {
 		await this.folderService.findFolderInProjectOrFail(folderId, projectId);
 
-		const workflows = await this.workflowFinderService.findAllWorkflowsForUser(
+		const { workflows } = await this.workflowFinderService.findWorkflowsForUser(
 			user,
 			['workflow:read'],
-			folderId,
-			projectId,
+			{ filters: { folderId, projectId } },
 		);
 
 		const usedCredentials = new Map<string, CredentialUsedByWorkflow>();
