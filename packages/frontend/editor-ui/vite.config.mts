@@ -14,17 +14,11 @@ import legacy from '@vitejs/plugin-legacy';
 import browserslist from 'browserslist';
 import { isLocaleFile, sendLocaleUpdate } from './vite/i18n-locales-hmr-helpers';
 import { nodePopularityPlugin } from './vite/vite-plugin-node-popularity.mjs';
+import { resolveDevBackendOrigin } from './vite/dev-backend-origin';
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
-// Under the Vite dev server the `/{{BASE_PATH}}/static/*` tags in index.html are
-// served by the backend, not by Vite. Derive that origin from the same variable
-// the app already uses to find the backend, so a non-default N8N_PORT (isolated
-// worktrees, two branches side by side) still resolves. Falls back to the
-// historical default when unset.
-const devBackendOrigin = process.env.VUE_APP_URL_BASE_API
-	? process.env.VUE_APP_URL_BASE_API.replace(/\/+$/, '')
-	: '//localhost:5678';
+const devBackendOrigin = resolveDevBackendOrigin(process.env.VUE_APP_URL_BASE_API);
 
 const { NODE_ENV } = process.env;
 
