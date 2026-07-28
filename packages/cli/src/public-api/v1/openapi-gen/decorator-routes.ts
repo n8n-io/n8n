@@ -53,23 +53,6 @@ function resourceSegment(path: string): string {
 	return path.split('/').find(Boolean) ?? 'root';
 }
 
-/**
- * OpenAPI tags are declared explicitly via `@ApiTags`, never guessed from the URL - a route's
- * resource segment doesn't reliably match the project's established tag names (e.g. `/workflows`
- * groups under the singular `Workflow`, not a pluralized `Workflows`). Throws rather than falling
- * back to a guess, so a missing `@ApiTags` fails generation instead of silently fragmenting the
- * doc's tag groups.
- */
-function resolveTags(route: ResolvedPublicApiRoute): string[] {
-	if (!route.tags?.length) {
-		throw new UnexpectedError(
-			`Public API route ${route.controllerName}.${route.handlerName} has no @ApiTags declared - ` +
-				'add one so the generated operation groups under an explicit, correct tag.',
-		);
-	}
-	return route.tags;
-}
-
 /** A `ResponseDtoClass` narrowed to the two fields the generator actually reads off it. */
 export type NamedResponseDto = ResponseDtoClass & { schema: z.ZodTypeAny; name: string };
 
@@ -82,9 +65,7 @@ function hasNamedSchema(dto: unknown): dto is NamedResponseDto {
 
 /**
  * Lets the generator swap a DTO's inline schema for a registry-registered one, so a schema shared
- * across operations is emitted once and `$ref`d rather than duplicated inline. Called with the DTO
- * class and its raw schema; returns the schema to actually embed in the operation. The default
- * (identity) keeps every schema inline — the pre-registry behaviour.
+ * across operations is emitted once and `$ref`d rather than duplicated inline.
  */
 export type SchemaResolver = (dto: NamedResponseDto, schema: z.ZodTypeAny) => z.ZodTypeAny;
 
@@ -232,8 +213,6 @@ export interface GeneratedDecoratorOperation {
  * is untouched until it's migrated to the controller pattern.
  *
  * Output path convention: `handlers/<first-path-segment>/spec/paths/<handlerName>.generated.yml`
- * — handler (method) names are unique within a controller class, so this can't collide even
- * before a resource's `spec/` folder exists for a brand-new (not-yet-legacy) resource.
  */
 export function getDecoratorGeneratedOperations(
 	resolveSchema: SchemaResolver = inlineResolver,
@@ -250,7 +229,7 @@ export function getDecoratorGeneratedOperations(
 			method: route.method,
 			path: pathKey,
 			operationId: route.handlerName,
-			tags: resolveTags(route),
+			...(route.tags?.length ? { tags: route.tags } : {}),
 			...(route.summary ? { summary: route.summary } : {}),
 			...(route.description ? { description: route.description } : {}),
 			...(route.apiKeyScope

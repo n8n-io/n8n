@@ -51,16 +51,6 @@ export interface ResolvedPublicApiRoute {
  * no resolvable Zod DTO — a controller like this errors on every request already, so surfacing it
  * at resolution time (route registration, or doc generation) catches the bug earlier than the
  * first live request would.
- *
- * Also throws if an undecorated parameter follows an already-decorated one - whether it's sandwiched
- * between two decorated params (`(@Param('id') id, extra, @Body body)`) or trailing after the last one
- * (`(@Query() query, extra)`). `PublicApiControllerRegistry` invokes the handler as
- * `controller[handlerName](req, res, ...resolvedArgsInOrder)` - a compacted, gap-free list, so either
- * shape would silently bind a later decorated arg's value to the wrong parameter (or, in the trailing
- * case, just never notice `extra` exists). Since there's no legitimate reason for an undecorated
- * parameter after the first `@Param`/`@Body`/`@Query` (`req`/`res` are the only parameters this pattern
- * ever leaves undecorated, and they're always first), rejecting the signature is safer than trying to
- * preserve and thread the gap through both this function and the registry's call-building loop.
  */
 export function resolveRouteArgs(
 	controllerClass: Controller,
@@ -76,12 +66,6 @@ export function resolveRouteArgs(
 	const resolved: ResolvedRouteArg[] = [];
 	let sawDecoratedArg = false;
 
-	// A plain indexed loop, not .forEach() - route.args is a sparse array (each @Param/@Body/@Query
-	// assigns only its own parameter index), and .forEach() silently skips holes, which would hide
-	// exactly the gap this function needs to detect. Bounded by the greater of args.length and
-	// argTypes.length, not just args.length: a *trailing* undecorated parameter (e.g. `(@Query()
-	// query, extra)`) never gets an index assigned at all, so it never extends the sparse array -
-	// argTypes (one entry per actual declared parameter, decorated or not) is what catches it.
 	const paramCount = Math.max(args.length, argTypes?.length ?? 0);
 	for (let index = 0; index < paramCount; index++) {
 		const arg = args[index];
