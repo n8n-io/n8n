@@ -24,6 +24,7 @@ export interface ImportPackageFields {
 	dataTableMissingMode?: string;
 	dataTableSchemaConflictPolicy?: string;
 	variableMissingMode?: string;
+	variableParentPolicy?: string;
 }
 
 export interface ExportPackageFields {

@@ -185,7 +185,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		};
 	};
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		uiStore = mockedStore(useUIStore);
 		collaborationStore = mockedStore(useCollaborationStore);
@@ -205,8 +205,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		localStorage.removeItem(LOCAL_STORAGE_WORKFLOW_REVIEW_PUBLISH_CHOICE_HIDDEN('user-1'));
 		localStorage.removeItem(LOCAL_STORAGE_WORKFLOW_REVIEW_SUBMITTED_DIALOG_HIDDEN('user-1'));
 		useReviewRequiredStore().setReviewRequired(defaultWorkflowProps.id, false);
-		useWorkflowReviewStatusStore().clearStatus(defaultWorkflowProps.id);
+		// The testing pinia is shared across this file, so reset the review status to
+		// "fetched, no open review" between tests.
 		vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({ count: 0, data: [] });
+		await useWorkflowReviewStatusStore().fetchStatus(defaultWorkflowProps.id);
 
 		const nodeTypesStore = useNodeTypesStore();
 		nodeTypesStore.setNodeTypes([

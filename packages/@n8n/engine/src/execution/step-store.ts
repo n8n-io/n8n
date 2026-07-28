@@ -7,9 +7,7 @@ export interface NewStepRecord {
 	status: StepStatus;
 }
 
-/**
- * Persistence port for step records.
- */
+/** Persistence interface for step records. */
 export interface StepStore {
 	/** Persist a new step record; returns its generated id. */
 	createStep(record: NewStepRecord): Promise<{ id: string }>;

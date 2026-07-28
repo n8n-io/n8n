@@ -231,7 +231,9 @@ import { AddStoredAtToAgentExecution1784815940110 } from '../common/178481594011
 import { AddInstanceCredentials1784815940111 } from '../common/1784815940111-AddInstanceCredentials';
 import { CreateAgentEvalTables1784815940112 } from '../common/1784815940112-CreateAgentEvalTables';
 import { AddAvailableInMcpToAgents1784897791636 } from '../common/1784897791636-AddAvailableInMcpToAgents';
-import { CreateAgentChatAttachmentsTable1785168204000 } from '../common/1785168204000-CreateAgentChatAttachmentsTable';
+import { CreateAgentChatAttachmentsTable1785255306000 } from '../common/1785255306000-CreateAgentChatAttachmentsTable';
+import { AddIsFirstPartyToOAuthClients1785162364001 } from '../common/1785162364001-AddIsFirstPartyToOAuthClients';
+import { AddAgentFileStorageColumns1785186578138 } from '../common/1785186578138-AddAgentFileStorageColumns';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -468,5 +470,7 @@ export const postgresMigrations: Migration[] = [
 	CreateAgentEvalTables1784815940112,
 	AddAvailableInMcpToAgents1784897791636,
 	ChangeInstalledNodeVersionType1785162364000,
-	CreateAgentChatAttachmentsTable1785168204000,
+	AddIsFirstPartyToOAuthClients1785162364001,
+	AddAgentFileStorageColumns1785186578138,
+	CreateAgentChatAttachmentsTable1785255306000,
 ];

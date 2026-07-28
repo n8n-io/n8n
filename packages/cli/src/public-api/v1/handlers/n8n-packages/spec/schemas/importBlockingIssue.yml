@@ -207,3 +207,41 @@ oneOf:
         type: array
         items:
           type: string
+  - type: object
+    description: >
+      Creating the package's variable stubs under `variableMissingMode=create-stub`
+      would exceed the instance variable quota (`quota:maxVariables`). Reported once
+      for the whole import; nothing is created.
+    required:
+      - type
+      - limit
+      - remaining
+      - requested
+      - names
+      - usedByWorkflows
+    properties:
+      type:
+        type: string
+        enum:
+          - variable-limit-exceeded
+      limit:
+        type: integer
+        description: The instance variable quota.
+      remaining:
+        type: integer
+        description: >-
+          Variable rows still available under the quota. The import is blocked because `requested`
+          exceeds this, not because it exceeds `limit`.
+      requested:
+        type: integer
+        description: Number of new variable rows the import would create (destination-deduplicated).
+      names:
+        type: array
+        items:
+          type: string
+        description: The unique variable names the import would create.
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+        description: Package workflow ids that reference any of the listed variables.
