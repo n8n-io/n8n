@@ -18,6 +18,7 @@ import { z } from 'zod';
  *   - Position is a 2-number tuple
  *   - Connection entries have valid node/type/index
  *   - No duplicate node names
+ *   - No duplicate node ids, where present
  *   - Connection source/target keys reference existing nodes
  *
  * Does NOT validate:
@@ -66,6 +67,7 @@ type WorkflowStructureData = z.infer<typeof workflowStructureSchema>;
 
 type WorkflowStructureGraphIssueCode =
 	| 'duplicate_node_name'
+	| 'duplicate_node_id'
 	| 'unknown_connection_source'
 	| 'unknown_connection_target';
 
@@ -129,18 +131,33 @@ export function safeParseWorkflowStructure(input: unknown): WorkflowStructureVal
 	const { nodes, connections } = parsed.data;
 	const issues: WorkflowStructureIssue[] = [];
 	const nodeNames = new Set<string>();
+	const nodeIds = new Set<string>();
+
+	const rejectDuplicate = (
+		seen: Set<string>,
+		value: string,
+		issue: WorkflowStructureGraphIssue,
+	) => {
+		if (seen.has(value)) issues.push(issue);
+		else seen.add(value);
+	};
 
 	for (const [index, node] of nodes.entries()) {
-		if (nodeNames.has(node.name)) {
-			issues.push({
-				path: ['nodes', index, 'name'],
-				message: `Duplicate node name "${node.name}"`,
-				code: 'duplicate_node_name',
+		// Ids are optional here because they're filled in on save. A supplied id must be
+		// unique because it identifies the node on its own, wherever a name cannot.
+		if (node.id !== undefined) {
+			rejectDuplicate(nodeIds, node.id, {
+				path: ['nodes', index, 'id'],
+				message: `Duplicate node id "${node.id}"`,
+				code: 'duplicate_node_id',
 			});
-			continue;
 		}
 
-		nodeNames.add(node.name);
+		rejectDuplicate(nodeNames, node.name, {
+			path: ['nodes', index, 'name'],
+			message: `Duplicate node name "${node.name}"`,
+			code: 'duplicate_node_name',
+		});
 	}
 
 	for (const sourceNodeName of Object.keys(connections)) {

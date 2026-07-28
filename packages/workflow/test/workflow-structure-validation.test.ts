@@ -179,6 +179,38 @@ describe('workflow-structure-validation', () => {
 		);
 	});
 
+	test('rejects duplicate node ids', () => {
+		const result = safeParseWorkflowStructure({
+			...validWorkflow,
+			nodes: [
+				validWorkflow.nodes[0],
+				{
+					...validWorkflow.nodes[1],
+					id: 'node-1',
+				},
+			],
+		});
+
+		expect(result.success).toBe(false);
+		if (result.success) return;
+
+		expect(result.issues).toContainEqual(
+			expect.objectContaining({
+				code: 'duplicate_node_id',
+				path: ['nodes', 1, 'id'],
+			}),
+		);
+	});
+
+	test('accepts several nodes without ids', () => {
+		const result = safeParseWorkflowStructure({
+			...validWorkflow,
+			nodes: validWorkflow.nodes.map(({ id: _id, ...node }) => node),
+		});
+
+		expect(result.success).toBe(true);
+	});
+
 	test('rejects unknown connection sources', () => {
 		const result = safeParseWorkflowStructure({
 			...validWorkflow,
