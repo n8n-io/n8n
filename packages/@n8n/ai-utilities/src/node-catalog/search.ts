@@ -414,14 +414,66 @@ export interface CodeBuilderSearchToolOptions {
 	nodeFilter?: (nodeId: string) => boolean;
 }
 
+export interface StructuredNodeSearchItem {
+	queryIndex: number;
+	query: string;
+	nodeType: string;
+	displayName?: string;
+	description?: string;
+	package?: string;
+	versions?: number[];
+	groups?: string[];
+	isTrigger?: boolean;
+	relation: 'primary' | 'related';
+}
+
+interface StructuredNodeSearchItemSource {
+	queryIndex: number;
+	query: string;
+	nodeType: string;
+	displayName?: string;
+	description?: string;
+	version?: number | number[];
+	groups?: string[];
+	isTrigger?: boolean;
+	relation: StructuredNodeSearchItem['relation'];
+}
+
+function deriveNodePackage(nodeType: string): string | undefined {
+	const separatorIndex = nodeType.lastIndexOf('.');
+	return separatorIndex > 0 ? nodeType.slice(0, separatorIndex) : undefined;
+}
+
+export function createStructuredNodeSearchItem(
+	source: StructuredNodeSearchItemSource,
+): StructuredNodeSearchItem {
+	const packageName = deriveNodePackage(source.nodeType);
+	return {
+		queryIndex: source.queryIndex,
+		query: source.query,
+		nodeType: source.nodeType,
+		...(source.displayName !== undefined ? { displayName: source.displayName } : {}),
+		...(source.description !== undefined ? { description: source.description } : {}),
+		...(packageName !== undefined ? { package: packageName } : {}),
+		...(source.version !== undefined
+			? { versions: Array.isArray(source.version) ? [...source.version] : [source.version] }
+			: {}),
+		...(source.groups !== undefined ? { groups: [...source.groups] } : {}),
+		...(source.isTrigger !== undefined ? { isTrigger: source.isTrigger } : {}),
+		relation: source.relation,
+	};
+}
+
 export interface CodeBuilderSearchResult {
 	results: string;
+	items: StructuredNodeSearchItem[];
 	queriesWithNoResults: string[];
 }
 
 interface SearchForQueryResult {
 	result: string;
 	hasResults: boolean;
+	items: StructuredNodeSearchItem[];
 }
 
 /**
@@ -431,6 +483,7 @@ interface SearchForQueryResult {
 function searchForQuery(
 	nodeTypeParser: NodeTypeParser,
 	query: string,
+	queryIndex: number,
 	nodeFilter?: (nodeId: string) => boolean,
 ): SearchForQueryResult {
 	const results = nodeTypeParser.searchNodeTypes(query, 5, nodeFilter);
@@ -439,6 +492,7 @@ function searchForQuery(
 		return {
 			result: `## "${query}"\nNo nodes found. Try a different search term.`,
 			hasResults: false,
+			items: [],
 		};
 	}
 
@@ -446,9 +500,25 @@ function searchForQuery(
 	const shownNodeIds = new Set<string>(results.map((node: ParsedNodeType) => node.id));
 
 	const allNodeLines: string[] = [];
+	const items: StructuredNodeSearchItem[] = [];
 	let totalRelatedCount = 0;
 
 	for (const node of results) {
+		const leanNodeType = nodeTypeParser.getLeanNodeType(node.id, node.version);
+		items.push(
+			createStructuredNodeSearchItem({
+				queryIndex,
+				query,
+				nodeType: node.id,
+				displayName: node.displayName,
+				description: node.description,
+				version: leanNodeType?.version ?? node.version,
+				groups: leanNodeType?.group,
+				isTrigger: node.isTrigger,
+				relation: 'primary',
+			}),
+		);
+
 		// Format the search result node
 		const triggerTag = node.isTrigger ? ' [TRIGGER]' : '';
 		const basicInfo = `- ${node.id}${triggerTag}\n  Display Name: ${node.displayName}\n  Version: ${node.version}\n  Description: ${node.description}`;
@@ -473,6 +543,25 @@ function searchForQuery(
 
 		// If using new format with hints, display @relatedNodes section instead of expanding
 		if (relatedNodesWithHints && relatedNodesWithHints.length > 0) {
+			for (const relatedNode of relatedNodesWithHints) {
+				const relatedNodeType = nodeTypeParser.getLeanNodeType(relatedNode.nodeType);
+				items.push(
+					createStructuredNodeSearchItem({
+						queryIndex,
+						query,
+						nodeType: relatedNode.nodeType,
+						displayName: relatedNodeType?.displayName,
+						description: relatedNodeType?.description,
+						version: relatedNodeType?.version,
+						groups: relatedNodeType?.group,
+						isTrigger: relatedNodeType
+							? relatedNodeType.group.includes('trigger') || isTriggerNodeType(relatedNode.nodeType)
+							: undefined,
+						relation: 'related',
+					}),
+				);
+			}
+
 			const relatedNodesStr = formatRelatedNodesWithHints(relatedNodesWithHints);
 			if (relatedNodesStr) parts.push(relatedNodesStr);
 		} else {
@@ -492,6 +581,20 @@ function searchForQuery(
 
 				const nodeType = nodeTypeParser.getLeanNodeType(relatedId);
 				if (nodeType) {
+					items.push(
+						createStructuredNodeSearchItem({
+							queryIndex,
+							query,
+							nodeType: relatedId,
+							displayName: nodeType.displayName,
+							description: nodeType.description,
+							version: nodeType.version,
+							groups: nodeType.group,
+							isTrigger: nodeType.group.includes('trigger') || isTriggerNodeType(relatedId),
+							relation: 'related',
+						}),
+					);
+
 					const version = Array.isArray(nodeType.version)
 						? nodeType.version[nodeType.version.length - 1]
 						: nodeType.version;
@@ -527,6 +630,7 @@ function searchForQuery(
 	return {
 		result: `## "${query}"\nFound ${results.length} nodes${countSuffix}:\n\n${allNodeLines.join('\n\n')}`,
 		hasResults: true,
+		items,
 	};
 }
 
@@ -536,13 +640,14 @@ export function searchCodeBuilderNodes(
 	options?: CodeBuilderSearchToolOptions,
 ): CodeBuilderSearchResult {
 	const { nodeFilter } = options ?? {};
-	const searchResults = queries.map((query) => ({
+	const searchResults = queries.map((query, queryIndex) => ({
 		query,
-		...searchForQuery(nodeTypeParser, query, nodeFilter),
+		...searchForQuery(nodeTypeParser, query, queryIndex, nodeFilter),
 	}));
 
 	return {
 		results: searchResults.map(({ result }) => result).join('\n\n---\n\n'),
+		items: searchResults.flatMap(({ items }) => items),
 		queriesWithNoResults: searchResults
 			.filter(({ hasResults }) => !hasResults)
 			.map(({ query }) => query),

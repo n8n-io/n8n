@@ -47,6 +47,7 @@ describe('NodeCatalogService', () => {
 		vi.clearAllMocks();
 		mockSearchCodeBuilderNodes.mockReturnValue({
 			results: 'search-result',
+			items: [],
 			queriesWithNoResults: [],
 		});
 		mockGetNodeTypes.mockReturnValue('get-result');
@@ -180,6 +181,7 @@ describe('NodeCatalogService', () => {
 		test('returns queriesWithNoResults metadata', async () => {
 			mockSearchCodeBuilderNodes.mockReturnValueOnce({
 				results: 'search-result',
+				items: [],
 				queriesWithNoResults: ['missing-node'],
 			});
 			await service.initialize();
@@ -188,17 +190,26 @@ describe('NodeCatalogService', () => {
 
 			expect(result).toEqual({
 				results: 'search-result',
+				items: [],
 				queriesWithNoResults: ['missing-node'],
 			});
 		});
 
-		test('returns cached result regardless of query order', async () => {
+		test('uses separate cache entries when query order differs', async () => {
 			await service.initialize();
 
 			await service.searchNodes(['gmail', 'slack']);
 			await service.searchNodes(['slack', 'gmail']);
 
-			expect(mockSearchCodeBuilderNodes).toHaveBeenCalledTimes(1);
+			expect(mockSearchCodeBuilderNodes).toHaveBeenCalledTimes(2);
+			expect(mockSearchCodeBuilderNodes).toHaveBeenNthCalledWith(1, expect.anything(), [
+				'gmail',
+				'slack',
+			]);
+			expect(mockSearchCodeBuilderNodes).toHaveBeenNthCalledWith(2, expect.anything(), [
+				'slack',
+				'gmail',
+			]);
 		});
 
 		test('calls search for different queries', async () => {

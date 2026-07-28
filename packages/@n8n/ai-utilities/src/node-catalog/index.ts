@@ -17,6 +17,7 @@ export { searchCodeBuilderNodes, formatNodeResult } from './search';
 export type {
 	CodeBuilderSearchResult,
 	CodeBuilderSearchToolOptions,
+	StructuredNodeSearchItem,
 } from './search';
 
 export {
