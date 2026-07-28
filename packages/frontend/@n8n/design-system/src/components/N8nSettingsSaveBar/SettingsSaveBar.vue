@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useEventListener } from '@vueuse/core';
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useEventListener, useResizeObserver } from '@vueuse/core';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
@@ -64,7 +64,6 @@ const barElement = ref<HTMLElement | null>(null);
  * (sticky preserves the element's space in flow, so the parent's height is state-independent).
  */
 const stuck = ref(false);
-let layoutObserver: ResizeObserver | null = null;
 
 function measureStuck() {
 	const bar = barElement.value;
@@ -84,26 +83,24 @@ function measureStuck() {
 	stuck.value = bar.getBoundingClientRect().bottom < flowBottom - 1;
 }
 
-function observeLayout() {
-	layoutObserver?.disconnect();
-	layoutObserver = null;
+watch([() => props.visible, () => props.floating], measureStuck, { flush: 'post' });
+onMounted(measureStuck);
+
+// Page length can change without a scroll (rows expanding, content loading).
+useResizeObserver(
+	computed(() => (props.floating ? barElement.value?.parentElement : undefined)),
+	measureStuck,
+);
+
+// Capture phase so scrolls of any ancestor scroller are seen, not just the window. A scroller
+// that doesn't contain the bar can't move it relative to its parent, so those bail before any
+// layout reads.
+function onScroll(event: Event) {
+	const target = event.target;
+	if (target instanceof Node && target !== document && !target.contains(barElement.value)) return;
 	measureStuck();
-	const parent = barElement.value?.parentElement;
-	if (!props.floating || !parent || typeof ResizeObserver === 'undefined') return;
-	// Page length can change without a scroll (rows expanding, content loading).
-	layoutObserver = new ResizeObserver(measureStuck);
-	layoutObserver.observe(parent);
 }
-
-watch([() => props.visible, () => props.floating], async () => {
-	await nextTick();
-	observeLayout();
-});
-onMounted(observeLayout);
-onBeforeUnmount(() => layoutObserver?.disconnect());
-
-// Capture phase so scrolls of any ancestor scroller are seen, not just the window.
-useEventListener(window, 'scroll', measureStuck, { capture: true, passive: true });
+useEventListener(window, 'scroll', onScroll, { capture: true, passive: true });
 useEventListener(window, 'resize', measureStuck, { passive: true });
 
 // Cmd/Ctrl+S submits the same way the Save button does. Guarded so it never fires while
@@ -164,6 +161,8 @@ useEventListener(window, 'keydown', onKeydown);
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/utils';
+
 /*
  * Reuse the expandable settings row's reveal motion (no DS token equals 350ms and the curve
  * has no token either, so they live here as local constants, mirroring N8nSettingsRow).
@@ -297,9 +296,7 @@ $slide-easing: cubic-bezier(0.32, 0.72, 0, 1);
 
 /* The bar is always one line tall: the status message never wraps, it truncates. */
 .statusMessage {
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
+	@include utils.utils-ellipsis;
 }
 
 /* Slide-up + fade-in on appear, slide-down + fade-out on disappear. */

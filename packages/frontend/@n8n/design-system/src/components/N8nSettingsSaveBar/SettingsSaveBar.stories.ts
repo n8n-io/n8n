@@ -9,6 +9,20 @@ import N8nSettingsRowGroup from '../N8nSettingsRowGroup';
 import N8nSettingsSection from '../N8nSettingsSection';
 import N8nSwitch from '../N8nSwitch';
 
+// Shared scaffolding for the scrolling-panel stories: a fixed-height scroll panel hosting the
+// width-capped settings column the bar is the last child of.
+const scrollPanelStyle =
+	'height: 22rem; overflow-y: auto; padding: var(--spacing--lg) var(--spacing--lg) 0; box-sizing: border-box; background: var(--background--subtle); border-radius: var(--radius--md);';
+const settingsColumnStyle =
+	'max-width: 45rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--spacing--lg); padding-block-end: var(--spacing--2xl);';
+const storyComponents = {
+	N8nSettingsSaveBar,
+	N8nSettingsSection,
+	N8nSettingsRowGroup,
+	N8nSettingsRow,
+	N8nInput,
+};
+
 const meta = {
 	title: 'Instance Settings/Settings Save Bar',
 	component: N8nSettingsSaveBar,
@@ -30,20 +44,14 @@ type Story = StoryObj<typeof meta>;
 
 export const Docked: Story = {
 	render: () => ({
-		components: {
-			N8nSettingsSaveBar,
-			N8nSettingsSection,
-			N8nSettingsRowGroup,
-			N8nSettingsRow,
-			N8nInput,
-		},
+		components: storyComponents,
 		setup() {
 			const value = ref('');
 			return { value };
 		},
 		template: `
-			<div style="height: 22rem; overflow-y: auto; padding: var(--spacing--lg) var(--spacing--lg) 0; box-sizing: border-box; background: var(--background--subtle); border-radius: var(--radius--md);">
-				<div style="max-width: 45rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--spacing--lg); padding-block-end: var(--spacing--2xl);">
+			<div style="${scrollPanelStyle}">
+				<div style="${settingsColumnStyle}">
 					<N8nSettingsSection title="Webhook" description="One row; the page never scrolls.">
 						<N8nSettingsRowGroup>
 							<N8nSettingsRow title="Endpoint" description="A high-impact instance setting that requires an explicit save." :action-fill="true">
@@ -51,7 +59,7 @@ export const Docked: Story = {
 							</N8nSettingsRow>
 						</N8nSettingsRowGroup>
 					</N8nSettingsSection>
-					<N8nSettingsSaveBar floating :visible="true" @save="() => {}" @discard="() => {}" />
+					<N8nSettingsSaveBar floating />
 				</div>
 			</div>
 		`,
@@ -68,20 +76,14 @@ export const Docked: Story = {
 
 export const Floating: Story = {
 	render: () => ({
-		components: {
-			N8nSettingsSaveBar,
-			N8nSettingsSection,
-			N8nSettingsRowGroup,
-			N8nSettingsRow,
-			N8nInput,
-		},
+		components: storyComponents,
 		setup() {
 			const value = ref('');
 			return { value };
 		},
 		template: `
-			<div style="height: 22rem; overflow-y: auto; padding: var(--spacing--lg) var(--spacing--lg) 0; box-sizing: border-box; background: var(--background--subtle); border-radius: var(--radius--md);">
-				<div style="max-width: 45rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--spacing--lg); padding-block-end: var(--spacing--2xl);">
+			<div style="${scrollPanelStyle}">
+				<div style="${settingsColumnStyle}">
 					<N8nSettingsSection title="Webhook" description="Scroll the panel — the save bar floats above the bottom, then docks after the last row at the end.">
 						<N8nSettingsRowGroup>
 							<N8nSettingsRow v-for="n in 6" :key="n" :title="'Setting ' + n" description="A high-impact instance setting that requires an explicit save." :action-fill="true">
@@ -89,7 +91,7 @@ export const Floating: Story = {
 							</N8nSettingsRow>
 						</N8nSettingsRowGroup>
 					</N8nSettingsSection>
-					<N8nSettingsSaveBar floating :visible="true" @save="() => {}" @discard="() => {}" />
+					<N8nSettingsSaveBar floating />
 				</div>
 			</div>
 		`,
@@ -106,13 +108,7 @@ export const Floating: Story = {
 
 export const AppearsOnEdit: Story = {
 	render: () => ({
-		components: {
-			N8nSettingsSaveBar,
-			N8nSettingsSection,
-			N8nSettingsRowGroup,
-			N8nSettingsRow,
-			N8nInput,
-		},
+		components: storyComponents,
 		setup() {
 			const saved = ref(Array.from({ length: 6 }, () => 'https://collector.internal'));
 			const draft = ref([...saved.value]);
@@ -137,8 +133,8 @@ export const AppearsOnEdit: Story = {
 			return { draft, dirty, saving, panel, onDiscard, onSave };
 		},
 		template: `
-			<div ref="panel" style="height: 22rem; overflow-y: auto; padding: var(--spacing--lg) var(--spacing--lg) 0; box-sizing: border-box; background: var(--background--subtle); border-radius: var(--radius--md);">
-				<div style="max-width: 45rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--spacing--lg); padding-block-end: var(--spacing--2xl);">
+			<div ref="panel" style="${scrollPanelStyle}">
+				<div style="${settingsColumnStyle}">
 					<N8nSettingsSection title="Webhook" description="You start scrolled to the end of the page. Edit any field to reveal the bar; Discard reverts, Save shows its loading state and confirms.">
 						<N8nSettingsRowGroup>
 							<N8nSettingsRow v-for="n in 6" :key="n" :title="'Setting ' + n" description="A high-impact instance setting that requires an explicit save." :action-fill="true">
@@ -166,7 +162,7 @@ export const Saving: Story = {
 		components: { N8nSettingsSaveBar },
 		template: `
 			<div style="max-width: 48rem; padding: var(--spacing--lg);">
-				<N8nSettingsSaveBar :visible="true" :saving="true" @save="() => {}" @discard="() => {}" />
+				<N8nSettingsSaveBar :saving="true" />
 			</div>
 		`,
 	}),
@@ -182,14 +178,7 @@ export const Saving: Story = {
 
 export const SettingsFlow: Story = {
 	render: () => ({
-		components: {
-			N8nSettingsSaveBar,
-			N8nSettingsSection,
-			N8nSettingsRowGroup,
-			N8nSettingsRow,
-			N8nInput,
-			N8nSwitch,
-		},
+		components: { ...storyComponents, N8nSwitch },
 		setup() {
 			// Explicit-save (high-impact) fields.
 			const saved = ref({ name: 'Acme Production', timezone: 'Europe/Warsaw' });
