@@ -120,6 +120,7 @@ type ExternalHooksMap = {
 		actor?: WorkflowLifecycleHookActor,
 	];
 	'workflow.deactivate': [
+		/** Pre-deactivation state (`active` is still `true`), carrying the version about to be deactivated. */
 		deactivatedWorkflow: IWorkflowBase,
 		workflowContext: WorkflowHookContextService,
 		actor?: WorkflowLifecycleHookActor,

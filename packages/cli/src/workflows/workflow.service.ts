@@ -1007,13 +1007,18 @@ export class WorkflowService {
 			await this._detectConflicts(workflow, options.expectedChecksum);
 		}
 
+		// `active` is still true here: the hook sees the pre-deactivation state so it can veto.
+		const deactivatedWorkflow = this.workflowRepository.create({
+			...workflow,
+			versionId: deactivatedVersionId,
+			activeVersion: null,
+			nodes: workflow.activeVersion?.nodes ?? workflow.nodes,
+			connections: workflow.activeVersion?.connections ?? workflow.connections,
+		});
+
 		try {
 			await this.externalHooks.run('workflow.deactivate', [
-				{
-					...workflow,
-					nodes: workflow.activeVersion?.nodes ?? workflow.nodes,
-					connections: workflow.activeVersion?.connections ?? workflow.connections,
-				},
+				deactivatedWorkflow,
 				this.workflowHookContextService,
 				toWorkflowLifecycleHookActor(user),
 			]);

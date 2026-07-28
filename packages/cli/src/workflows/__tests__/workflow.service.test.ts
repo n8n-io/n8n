@@ -1373,6 +1373,8 @@ describe('WorkflowService', () => {
 			expect(hookName).toBe('workflow.deactivate');
 			const [candidate, context, actor] = hookArgs;
 			expect(candidate.activeVersionId).toBe(PREVIOUS_VERSION_ID);
+			expect(candidate.versionId).toBe(PREVIOUS_VERSION_ID);
+			expect(candidate.activeVersion).toBeNull();
 			expect(candidate.nodes).toBe(activeVersion.nodes);
 			expect(candidate.connections).toBe(activeVersion.connections);
 			expect(actor).toEqual({
