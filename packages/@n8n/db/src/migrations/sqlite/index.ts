@@ -225,6 +225,7 @@ import { AddStoredAtToAgentExecution1784815940110 } from '../common/178481594011
 import { AddInstanceCredentials1784815940111 } from '../common/1784815940111-AddInstanceCredentials';
 import { CreateAgentEvalTables1784815940112 } from '../common/1784815940112-CreateAgentEvalTables';
 import { AddAgentFileStorageColumns1785186578138 } from '../common/1785186578138-AddAgentFileStorageColumns';
+import { CreatePollerStateTable1785256245223 } from '../common/1785256245223-CreatePollerStateTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -453,6 +454,7 @@ const sqliteMigrations: Migration[] = [
 	ChangeInstalledNodeVersionType1785162364000,
 	AddIsFirstPartyToOAuthClients1785162364001,
 	AddAgentFileStorageColumns1785186578138,
+	CreatePollerStateTable1785256245223,
 ];
 
 export { sqliteMigrations };
