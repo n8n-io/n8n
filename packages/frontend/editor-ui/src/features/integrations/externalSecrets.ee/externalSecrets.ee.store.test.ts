@@ -58,7 +58,7 @@ const mockRBACStore = {
 	hasScope: vi.fn(() => true), // Default: has permission
 };
 
-vi.mock('@/app/stores/rbac.store', () => ({
+vi.mock('@n8n/stores/rbac.store', () => ({
 	useRBACStore: vi.fn(() => mockRBACStore),
 }));
 

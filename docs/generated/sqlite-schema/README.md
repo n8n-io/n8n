@@ -10,14 +10,18 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | ---- | ------- | ------- | ---- |
 | [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
 | [agent_checkpoints](agent_checkpoints.md) | 6 |  | table |
-| [agent_execution](agent_execution.md) | 18 |  | table |
+| [agent_eval_dataset](agent_eval_dataset.md) | 10 |  | table |
+| [agent_eval_rating](agent_eval_rating.md) | 8 |  | table |
+| [agent_eval_result](agent_eval_result.md) | 15 |  | table |
+| [agent_eval_run](agent_eval_run.md) | 14 |  | table |
+| [agent_execution](agent_execution.md) | 19 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
-| [agent_files](agent_files.md) | 8 |  | table |
+| [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 7 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
 | [agent_task_snapshot](agent_task_snapshot.md) | 8 |  | table |
-| [agents](agents.md) | 11 |  | table |
+| [agents](agents.md) | 12 |  | table |
 | [agents_memory_entries](agents_memory_entries.md) | 13 |  | table |
 | [agents_memory_entry_cursors](agents_memory_entry_cursors.md) | 6 |  | table |
 | [agents_memory_entry_locks](agents_memory_entry_locks.md) | 6 |  | table |
@@ -40,7 +44,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [chat_hub_sessions](chat_hub_sessions.md) | 13 |  | table |
 | [chat_hub_tools](chat_hub_tools.md) | 9 |  | table |
 | [credential_dependency](credential_dependency.md) | 5 |  | table |
-| [credentials_entity](credentials_entity.md) | 11 |  | table |
+| [credentials_entity](credentials_entity.md) | 12 |  | table |
 | [data_table](data_table.md) | 5 |  | table |
 | [data_table_column](data_table_column.md) | 7 |  | table |
 | [deployment_key](deployment_key.md) | 7 |  | table |
@@ -77,12 +81,13 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_ai_thread_grants](instance_ai_thread_grants.md) | 5 |  | table |
 | [instance_ai_threads](instance_ai_threads.md) | 7 |  | table |
 | [instance_ai_workflow_snapshots](instance_ai_workflow_snapshots.md) | 7 |  | table |
+| [instance_credential_assignment](instance_credential_assignment.md) | 4 |  | table |
 | [instance_version_history](instance_version_history.md) | 5 |  | table |
 | [invalid_auth_token](invalid_auth_token.md) | 2 |  | table |
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
 | [oauth_access_tokens](oauth_access_tokens.md) | 3 |  | table |
 | [oauth_authorization_codes](oauth_authorization_codes.md) | 13 |  | table |
-| [oauth_clients](oauth_clients.md) | 9 |  | table |
+| [oauth_clients](oauth_clients.md) | 10 |  | table |
 | [oauth_refresh_tokens](oauth_refresh_tokens.md) | 7 |  | table |
 | [oauth_user_consents](oauth_user_consents.md) | 5 |  | table |
 | [processed_data](processed_data.md) | 5 |  | table |
@@ -119,6 +124,10 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_publication_trigger_status](workflow_publication_trigger_status.md) | 8 |  | table |
 | [workflow_publish_history](workflow_publish_history.md) | 6 |  | table |
 | [workflow_published_version](workflow_published_version.md) | 4 |  | table |
+| [workflow_review_request](workflow_review_request.md) | 12 |  | table |
+| [workflow_review_request_authors](workflow_review_request_authors.md) | 2 |  | table |
+| [workflow_review_request_reviewers](workflow_review_request_reviewers.md) | 2 |  | table |
+| [workflow_review_request_workflow](workflow_review_request_workflow.md) | 4 |  | table |
 | [workflow_statistics](workflow_statistics.md) | 7 |  | table |
 | [workflows_tags](workflows_tags.md) | 2 |  | table |
 
@@ -129,6 +138,13 @@ erDiagram
 
 "agent_chat_subscriptions" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_checkpoints" }o--o| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_eval_dataset" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_eval_dataset" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_eval_rating" }o--o| "user" : "FOREIGN KEY (ratedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_eval_rating" }o--|| "agent_eval_result" : "FOREIGN KEY (resultId) REFERENCES agent_eval_result (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_eval_result" }o--|| "agent_eval_run" : "FOREIGN KEY (runId) REFERENCES agent_eval_run (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_eval_run" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_eval_run" }o--|| "agent_eval_dataset" : "FOREIGN KEY (datasetId) REFERENCES agent_eval_dataset (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution_threads" }o--o| "agent_history" : "FOREIGN KEY (taskVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_execution_threads" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -139,8 +155,8 @@ erDiagram
 "agent_task_definition" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_run_lock" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_snapshot" |o--|| "agent_history" : "FOREIGN KEY (versionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agents" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents" }o--o| "agent_history" : "FOREIGN KEY (activeVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agents" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_memory_entries" }o--o| "agents_memory_entries" : "FOREIGN KEY (supersededBy) REFERENCES agents_memory_entries (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "agents_memory_entries" }o--|| "agents_resources" : "FOREIGN KEY (resourceId) REFERENCES agents_resources (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_memory_entries" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -230,6 +246,7 @@ erDiagram
 "instance_ai_thread_grants" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_thread_grants" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_credential_assignment" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "oauth_access_tokens" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_access_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_authorization_codes" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -284,6 +301,17 @@ erDiagram
 "workflow_published_version" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "workflow_published_version" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_published_version" }o--|| "workflow_history" : "FOREIGN KEY (publishedVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request" }o--o| "user" : "FOREIGN KEY (closedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"workflow_review_request" }o--o| "user" : "FOREIGN KEY (updatedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"workflow_review_request" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"workflow_review_request" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_authors" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_authors" |o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_reviewers" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_reviewers" |o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_workflow" }o--o| "workflow_history" : "FOREIGN KEY (workflowVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"workflow_review_request_workflow" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_workflow" }o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflows_tags" |o--|| "tag_entity" : "FOREIGN KEY (tagId) REFERENCES tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflows_tags" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
@@ -303,6 +331,61 @@ erDiagram
   TEXT state
   datetime_3_ updatedAt
 }
+"agent_eval_dataset" {
+  varchar_36_ agentId FK
+  TEXT columnMapping
+  datetime_3_ createdAt
+  varchar createdById FK
+  TEXT datasetRef
+  varchar_32_ datasetSource
+  TEXT description
+  varchar_36_ id PK
+  varchar_128_ name
+  datetime_3_ updatedAt
+}
+"agent_eval_rating" {
+  TEXT comment
+  TEXT correction
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  varchar ratedById FK
+  varchar_36_ resultId FK
+  datetime_3_ updatedAt
+  varchar_8_ vote
+}
+"agent_eval_result" {
+  datetime_3_ completedAt
+  datetime_3_ createdAt
+  varchar_255_ errorCode
+  TEXT errorDetails
+  varchar_36_ id PK
+  TEXT input
+  TEXT metrics
+  TEXT output
+  datetime_3_ runAt
+  varchar_36_ runId FK
+  INTEGER runIndex
+  varchar_255_ sourceRowId
+  varchar status
+  TEXT toolCalls
+  datetime_3_ updatedAt
+}
+"agent_eval_run" {
+  varchar_36_ agentVersionId
+  boolean cancelRequested
+  datetime_3_ completedAt
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_36_ datasetId FK
+  varchar_255_ errorCode
+  TEXT errorDetails
+  varchar_36_ id PK
+  TEXT metrics
+  datetime_3_ runAt
+  varchar_255_ runningInstanceId
+  varchar status
+  datetime_3_ updatedAt
+}
 "agent_execution" {
   INTEGER completionTokens
   REAL cost
@@ -317,6 +400,7 @@ erDiagram
   datetime_3_ startedAt
   varchar_16_ status
   datetime_3_ stoppedAt
+  VARCHAR_2_ storedAt
   varchar_128_ threadId FK
   TEXT timeline
   INTEGER totalTokens
@@ -350,6 +434,8 @@ erDiagram
   INTEGER fileSizeBytes
   varchar_16_ id PK
   varchar_255_ mimeType
+  TEXT storageKey
+  varchar_2_ storedAt
   datetime_3_ updatedAt
 }
 "agent_history" {
@@ -392,6 +478,7 @@ erDiagram
 }
 "agents" {
   varchar_36_ activeVersionId FK
+  boolean availableInMCP
   datetime_3_ createdAt
   varchar_36_ id PK
   TEXT integrations
@@ -629,6 +716,7 @@ erDiagram
   varchar_16_ resolverId FK
   varchar_32_ type
   datetime_3_ updatedAt
+  VARCHAR_16_ usageScope
 }
 "data_table" {
   datetime_3_ createdAt
@@ -790,7 +878,7 @@ erDiagram
   bigint value
 }
 "installed_nodes" {
-  INTEGER latestVersion
+  REAL latestVersion
   char_200_ name PK
   char_214_ package FK
   char_200_ type
@@ -970,6 +1058,12 @@ erDiagram
   datetime_3_ updatedAt
   varchar_255_ workflowName PK
 }
+"instance_credential_assignment" {
+  datetime_3_ createdAt
+  varchar_36_ credentialId FK
+  varchar_128_ credentialUseId PK
+  datetime_3_ updatedAt
+}
 "instance_version_history" {
   datetime_3_ createdAt
   INTEGER id
@@ -1016,6 +1110,7 @@ erDiagram
   datetime_3_ createdAt
   TEXT grantTypes
   varchar id PK
+  boolean isFirstParty
   varchar_255_ name
   TEXT redirectUris
   varchar_255_ tokenEndpointAuthMethod
@@ -1369,6 +1464,34 @@ erDiagram
   varchar_36_ publishedVersionId FK
   datetime_3_ updatedAt
   varchar_36_ workflowId PK
+}
+"workflow_review_request" {
+  datetime_3_ approvedAt
+  varchar closedById FK
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_50_ decision
+  TEXT description
+  varchar_36_ id PK
+  varchar_36_ projectId FK
+  varchar_16_ state
+  varchar_255_ title
+  datetime_3_ updatedAt
+  varchar updatedById FK
+}
+"workflow_review_request_authors" {
+  varchar userId PK
+  varchar_36_ workflowReviewRequestId PK
+}
+"workflow_review_request_reviewers" {
+  varchar userId PK
+  varchar_36_ workflowReviewRequestId PK
+}
+"workflow_review_request_workflow" {
+  varchar_36_ id PK
+  varchar_36_ workflowId FK
+  varchar_36_ workflowReviewRequestId FK
+  varchar_36_ workflowVersionId FK
 }
 "workflow_statistics" {
   INTEGER count

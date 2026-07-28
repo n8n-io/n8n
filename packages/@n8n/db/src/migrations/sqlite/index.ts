@@ -58,6 +58,9 @@ import { AddProjectIdToInstanceAiThread1784000000028 } from './1784000000028-Add
 import { AllowAzureStoredAt1784000000034 } from './1784000000034-AllowAzureStoredAt';
 import { DropAgentDescriptionFromAgents1784000000037 } from './1784000000037-DropAgentDescriptionFromAgents';
 import { AddRecurringCronScheduleKind1784000000045 } from './1784000000045-AddRecurringCronScheduleKind';
+import { AddAvailableInMcpToAgents1784897791636 } from './1784897791636-AddAvailableInMcpToAgents';
+import { ChangeInstalledNodeVersionType1785162364000 } from './1785162364000-ChangeInstalledNodeVersionType';
+import { AddIsFirstPartyToOAuthClients1785162364001 } from './1785162364001-AddIsFirstPartyToOAuthClients';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -216,6 +219,12 @@ import { BackfillPreScopingOAuthGrantScopes1784000000047 } from '../common/17840
 import { AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048 } from '../common/1784000000048-AddTriggerKindToWorkflowPublicationTriggerStatus';
 import { AddScheduledTaskDispatchedAt1784000000049 } from '../common/1784000000049-AddScheduledTaskDispatchedAt';
 import { AddHostRunIdToInstanceAiCheckpoints1784000000050 } from '../common/1784000000050-AddHostRunIdToInstanceAiCheckpoints';
+import { BackfillInstanceAiEventLog1784000000051 } from '../common/1784000000051-BackfillInstanceAiEventLog';
+import { CreateWorkflowReviewRequestTables1784000000052 } from '../common/1784000000052-CreateWorkflowReviewRequestTables';
+import { AddStoredAtToAgentExecution1784815940110 } from '../common/1784815940110-AddStoredAtToAgentExecution';
+import { AddInstanceCredentials1784815940111 } from '../common/1784815940111-AddInstanceCredentials';
+import { CreateAgentEvalTables1784815940112 } from '../common/1784815940112-CreateAgentEvalTables';
+import { AddAgentFileStorageColumns1785186578138 } from '../common/1785186578138-AddAgentFileStorageColumns';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -435,6 +444,15 @@ const sqliteMigrations: Migration[] = [
 	AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048,
 	AddScheduledTaskDispatchedAt1784000000049,
 	AddHostRunIdToInstanceAiCheckpoints1784000000050,
+	BackfillInstanceAiEventLog1784000000051,
+	CreateWorkflowReviewRequestTables1784000000052,
+	AddStoredAtToAgentExecution1784815940110,
+	AddInstanceCredentials1784815940111,
+	CreateAgentEvalTables1784815940112,
+	AddAvailableInMcpToAgents1784897791636,
+	ChangeInstalledNodeVersionType1785162364000,
+	AddIsFirstPartyToOAuthClients1785162364001,
+	AddAgentFileStorageColumns1785186578138,
 ];
 
 export { sqliteMigrations };

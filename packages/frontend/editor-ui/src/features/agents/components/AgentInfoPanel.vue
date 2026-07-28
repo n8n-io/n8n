@@ -9,7 +9,8 @@ import { useDebounceFn } from '@vueuse/core';
 import { N8nMarkdownEditor, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@/app/constants/durations';
 import { useToast } from '@/app/composables/useToast';
 import { useAgentProjectId } from '../composables/useAgentProjectId';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -52,7 +53,7 @@ const props = withDefaults(
 	{
 		disabled: false,
 		embedded: false,
-		instructionsMaxHeight: 'none',
+		instructionsMaxHeight: '360px',
 		showModel: true,
 		showInstructions: true,
 		showInstructionsToolbar: false,
@@ -241,9 +242,7 @@ function onInstructionsInput(value: string) {
 	opacity: 0.5;
 }
 
-/* Follow the editor's max-height: unbounded hosts (the builder, which passes
-   `instructions-max-height="none"`) grow naturally, while capped hosts (the
-   NDV's 240px) scroll within the cap instead of clipping. */
+/* Follow the editor's configured max-height and scroll within the cap. */
 .instructionsDocument :global(.n8n-markdown) {
 	max-height: var(--markdown-editor-max-height);
 	min-height: calc(var(--spacing--4xl) + var(--spacing--xl));

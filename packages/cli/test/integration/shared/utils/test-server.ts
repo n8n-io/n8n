@@ -255,6 +255,20 @@ export const setupTestServer = ({
 						break;
 					}
 
+					case 'oidc': {
+						const { OidcService } = await import('@/modules/sso-oidc/oidc.service.ee.js');
+						await Container.get(OidcService).init();
+						await import('@/modules/sso-oidc/oidc.controller.ee.js');
+						break;
+					}
+
+					case 'otel': {
+						const { OtelService } = await import('@/modules/otel/otel.service.js');
+						await Container.get(OtelService).init();
+						await import('@/modules/otel/otel-settings.controller.js');
+						break;
+					}
+
 					case 'sourceControl':
 						await import('@/modules/source-control.ee/source-control.controller.ee.js');
 						break;
@@ -311,6 +325,10 @@ export const setupTestServer = ({
 						await import('@/modules/provisioning.ee/role-mapping-rule.controller.ee.js');
 						break;
 
+					case 'provisioning':
+						await import('@/modules/provisioning.ee/provisioning.controller.ee.js');
+						break;
+
 					case 'dynamic-node-parameters':
 						await import('@/controllers/dynamic-node-parameters.controller.js');
 						break;
@@ -340,6 +358,10 @@ export const setupTestServer = ({
 
 					case 'data-table':
 						await import('@/modules/data-table/data-table.module.js');
+						break;
+
+					case 'workflow-reviews':
+						await import('@/modules/workflow-reviews.ee/workflow-reviews.module.js');
 						break;
 
 					case 'mcp':

@@ -58,6 +58,11 @@
 			"name": "InsightsMetadata",
 			"path": "packages/cli/src/modules/insights/database/entities/insights-metadata.ts",
 			"reason": "Denormalized analytics snapshot; historical insights keep the original project reference by design."
+		},
+		{
+			"name": "WorkflowReviewRequest",
+			"path": "packages/@n8n/db/src/entities/workflow-review-request.ee.ts",
+			"reason": "Not transferred with the project. Open reviews should be closed when their workflows move to another project; that close-on-move behaviour is deferred."
 		}
 	]
 }

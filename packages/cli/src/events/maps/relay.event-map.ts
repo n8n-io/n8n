@@ -94,7 +94,7 @@ export type RelayEventMap = {
 
 	'n8n-package-imported': {
 		user: UserLike;
-		projectId: string;
+		projectIds: string[];
 		folderId: string | null;
 		workflowIds: string[];
 		options: ImportPackageEventOptions;

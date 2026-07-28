@@ -148,7 +148,7 @@ describe('ExecutionPersistence', () => {
 				);
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'execution-data-write',
-					expect.objectContaining({ jsonSizeBytes: 4321 }),
+					expect.objectContaining({ jsonSizeBytes: 4321, workflowId: 'workflow-123' }),
 				);
 			});
 
@@ -1143,7 +1143,7 @@ describe('ExecutionPersistence', () => {
 				);
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'execution-data-write',
-					expect.objectContaining({ jsonSizeBytes: 2048 }),
+					expect.objectContaining({ jsonSizeBytes: 2048, workflowId: 'wf-1' }),
 				);
 			});
 
@@ -1168,7 +1168,7 @@ describe('ExecutionPersistence', () => {
 				);
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'execution-data-write',
-					expect.objectContaining({ jsonSizeBytes: 1536 }),
+					expect.objectContaining({ jsonSizeBytes: 1536, workflowId: 'wf-1' }),
 				);
 			});
 
@@ -2031,7 +2031,12 @@ describe('ExecutionPersistence', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'execution-data-write',
-				expect.objectContaining({ mode: 'db', success: true, durationMs: expect.any(Number) }),
+				expect.objectContaining({
+					mode: 'db',
+					workflowId: 'workflow-123',
+					success: true,
+					durationMs: expect.any(Number),
+				}),
 			);
 		});
 
@@ -2044,7 +2049,7 @@ describe('ExecutionPersistence', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'execution-data-write',
-				expect.objectContaining({ mode: 'db', success: false }),
+				expect.objectContaining({ mode: 'db', workflowId: 'workflow-123', success: false }),
 			);
 		});
 

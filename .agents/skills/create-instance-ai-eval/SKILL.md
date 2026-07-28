@@ -23,8 +23,8 @@ exhaustive field reference; this skill is the opinionated *how*.
 > approach.** Author the file locally (uncommitted), calibrate it against a real
 > build, then **push it to a lang-tracer suite** with `eval:langtracer-push`
 > (see [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)) —
-> `--suite n8n-workflows` for the corpus n8n CI runs, or a capability suite
-> like `workflow-building` that runs on LangTracer's own automation.
+> `--suite baseline` for the consolidated corpus n8n CI runs, or a dedicated
+> capability suite like `agents`.
 > The suite is the home for the case; the eval CLI reads it back via
 > `--source langtracer`. You still write the JSON file — it's just the input to
 > the push, not a committed artifact.
@@ -208,7 +208,9 @@ calibration you hand the driver the thread link + login to review the real build
    (or delete it once it's in the suite). Committing new case JSONs into the repo
    is no longer the approach. (Exception: seeded cases can't be pushed — a
    `seedFile`/`priorConversation` case stays committed JSON, a `seedThread` case is
-   a local throwaway; see [`case-shapes.md`](case-shapes.md).)
+   a local throwaway; see [`case-shapes.md`](case-shapes.md).) For a sourced case,
+   finish by **linking it to its source thread/finding** over the MCP — see
+   [Link the pushed case to its source](#link-the-pushed-case-to-its-source-provenance-step--always-do-this).
 
 `--iterations N` is available to measure flakiness (pass@k / pass^k) — reach for
 it when you suspect a case is non-deterministic or before promoting it to a
@@ -381,7 +383,7 @@ What each piece is doing:
   misses the label filter. Keep the whole script in one turn and encode ordering
   inside it (don't fabricate assistant "done" turns to sequence steps — see
   [`case-shapes.md`](case-shapes.md)). `applies-each-change-when-asked` (in the
-  `n8n-workflows` LangTracer suite) is a good real example.
+  `baseline` LangTracer suite) is a good real example.
 - **`dataSetup` describes only what external services return.** That's the layer
   the harness controls (below).
 
@@ -630,9 +632,9 @@ drifted, leaves the rest unchanged, and never prunes. It's the inverse of
 ```bash
 cd packages/@n8n/instance-ai
 # preview first — no writes (use `npx dotenvx`; the bare `dotenvx` binary is usually not on PATH):
-npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --dry-run --changed
+npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --dry-run --changed
 # then push (drop --dry-run):
-npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --changed
+npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --changed
 ```
 
 - **Selectors** (at least one required — no accidental push-all): positional
@@ -665,6 +667,35 @@ npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-build
   durable synthetic case as the artifact instead. A `seedFile`/`priorConversation`
   case isn't transient and has no suite home, so it's the one exception to
   "don't commit the JSON" — it lives as a committed artifact.
+
+### Link the pushed case to its source (provenance step — always do this)
+
+A sourced case that isn't linked back to the conversation/finding it encodes is
+an orphan: six months later nobody can tell what real failure it guards. The
+push CLI doesn't carry provenance, so after pushing, link the case over the
+lang-tracer MCP with one **`update_test_case`** call on the new case id (the
+push prints it):
+
+1. **`sourceThreadId`** — the source conversation's thread id (plus
+   **`sourceRunId`** when the case anchors to one specific run/step within it).
+   This is the DB-level link every by-version rollup, conversation float, and
+   `?sourceThreadId=` query joins on — the tags/description below are the
+   human-readable layer on top, not a substitute. The thread must already be
+   imported into lang-tracer (running `get_conversation_analysis` on it, as the
+   sourcing flow does, is enough); `source_kind` is derived server-side, and
+   the link is only editable on authored cases — promotion-recorded provenance
+   is immutable.
+2. **`expectedBehavior`** — the rule the case enforces, one paragraph — and
+   **`failurePattern`** — what actually happened in the source thread, with
+   turn references. Copy/adapt these from the analysis's `extractedCases`
+   entry when the case came from `get_conversation_analysis`.
+
+Then **`add_case_tags`** (additive; targets the LT-side `tags` array, not
+`evalTags`, so nothing round-trips into eval runs): add a capability tag (e.g.
+`instruction-persistence`). Tag normalization is aggressive (lowercase, kebab);
+colon-form tags get silently dropped. And keep the thread id + turn refs in
+the case `description` too (the drafter's habit of "Sourced from thread <id>"
+is the convention) — the description is the only field shown everywhere.
 
 ## Running
 

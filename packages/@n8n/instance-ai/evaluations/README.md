@@ -1,11 +1,13 @@
 # Workflow evaluation framework
 
+> Module layout, extension points and external contracts: [ARCHITECTURE.md](./ARCHITECTURE.md).
+
 Tests whether workflows built by Instance AI actually work by executing them with LLM-generated mock HTTP responses. No real credentials or external services are involved.
 
 Five harnesses live here:
 
 - **`eval:instance-ai`** — end-to-end build + mocked execution + LLM verification (drives a running n8n instance)
-- **`eval:agents`** — intent-resolution cases (plain build requests graded on enacted routing behavior) from `data/agents/`
+- **`eval:agents`** — intent-resolution cases (plain build requests graded on enacted routing behavior) from the LangTracer `agents` suite (author new ones in `data/agents/`)
 - **`eval:subagent`** — legacy command name for the workflow-build compatibility corpus; it drives the live orchestrator/skill build path, scored by binary checks
 - **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — live orchestrator workflow builds, scored by an LLM judge panel against do/don't lists. Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
@@ -177,9 +179,9 @@ A case can belong to multiple groupings — e.g. PR-tier cases declare `"dataset
 
 ### Sourcing test cases from LangTracer
 
-**LangTracer is the source of truth for the workflow-eval corpus** — the `n8n-workflows` suite holds the cases, and CI pulls it on every run (see `.github/workflows/test-evals-instance-ai.yml`). The two `--source` modes split the work:
+**LangTracer is the source of truth for the workflow-eval corpus** — the `baseline` suite holds the cases, and CI pulls it on every run (see `.github/workflows/test-evals-instance-ai.yml`). The two `--source` modes split the work:
 
-- **`disk` (the default) — the preferred mode for local development.** Reads `data/workflows/` and `data/agents/`. Use it while authoring and calibrating a case: drop the JSON in, `--filter` it, iterate. It is also the only home of the `agents` tier and the seeded carve-out cases. Since the corpus migration the directory holds only those, so disk mode is about the case in front of you, not the full suite.
+- **`disk` (the default) — the preferred mode for local development.** Reads `data/workflows/` and `data/agents/`. Use it while authoring and calibrating a case: drop the JSON in, `--filter` it, iterate. It is also the only home of the seeded carve-out cases (the case-write API can't represent them yet). Everything else — including the agents-team cases (suite `agents`: agent-artifact + intent-resolution) — lives in LangTracer, so disk mode is about the case in front of you, not the full suite.
 - **`langtracer` — for bigger runs, already-pushed cases, and CI.** Pulls a suite from [LangTracer](https://github.com/n8n-io/lang-tracer)'s REST API (`GET /api/v1/suites/:id/export`), validated through the same `EvalTestCaseSchema`. Reach for it locally when you want the real corpus (a full or tier run) or to re-run a specific case that already lives in the suite; CI always runs this way.
 
 Set these in `.env.local`:
@@ -191,7 +193,7 @@ Set these in `.env.local`:
 
 ```
 dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
-  --source langtracer --suite n8n-workflows --base-url http://localhost:5678
+  --source langtracer --suite baseline --base-url http://localhost:5678
 ```
 
 In langtracer mode, `--dataset` / `--baseline-prefix` default to a suite-scoped, eval-tagged name (`instance-ai-langtracer-<suite>`) so runs don't touch the shared `instance-ai-workflow-evals` cohort and re-runs of a suite upsert one stable dataset. `--filter` / `--exclude` / `--tier` still narrow within the suite. The MCP manifest builder (`eval:build-mcp-manifest`) accepts the same `--source langtracer --suite` flags.
@@ -336,7 +338,7 @@ There is no auto-refresh — refresh explicitly when you want a new reference po
 # The --dataset/--baseline-prefix pins mirror CI: langtracer mode otherwise
 # derives suite-scoped names, and later runs would never find this baseline.
 LANGSMITH_API_KEY=... dotenvx run -f ../../../.env.local -- \
-  pnpm eval:instance-ai --source langtracer --suite n8n-workflows \
+  pnpm eval:instance-ai --source langtracer --suite baseline \
   --dataset instance-ai-workflow-evals --baseline-prefix instance-ai-baseline- \
   --experiment-name instance-ai-baseline --iterations 10
 ```
@@ -439,6 +441,15 @@ How it differs from the manifest flow:
   `--keep-workflows`. Known limitation: cleanup keys off the `WORKFLOW_ID` trailer
   `claude` prints, so a build that times out or never emits the trailer can leave
   its workflow behind on the lane even though cleanup is on.
+- **Per-case spend reporting.** Each build's `claude` cost/turns (summed across
+  attempts — failed attempts cost money too) land as `build_cost_usd` /
+  `build_turns` row feedback in LangSmith and as `buildCostUsdPerRun` /
+  `buildTurnsPerRun` per case in `eval-results.json`, alongside the run-level
+  `summary.mcpBuild` totals. For builder cost comparisons across any runs
+  (MCP vs AIA, builder-model A/Bs), the un-wired helper
+  `evaluations/cli/build-cost-report.ts` (run via `pnpm tsx`, one `--results`
+  per arm) auto-detects each arm's cost source — these persisted fields, or
+  the backend build threads priced in LangSmith.
 
 **Prerequisites**: `LANGSMITH_API_KEY` set — MCP builds only run on the
 LangSmith path, whose lane allocator caps builds at 4 per lane globally (the
@@ -661,7 +672,7 @@ To record an isolated cohort without touching the shared dataset or baseline —
 
 ## Adding test cases
 
-The corpus lives in **LangTracer** — suite `n8n-workflows` is what CI runs. Author a case as a local JSON file in `evaluations/data/workflows/` (disk mode picks it up, no registration step), calibrate it against a real build, then push it to the suite with `pnpm eval:langtracer-push --suite n8n-workflows <slug>` and delete the local file rather than committing it. Seeded cases (`priorConversation`/`seedFile`) are the exception — the case-write API can't represent them yet, so they stay as committed JSON. Every case is validated against `harness/schema.ts`.
+The corpus lives in **LangTracer** — suite `baseline` is what CI runs. Author a case as a local JSON file in `evaluations/data/workflows/` (disk mode picks it up, no registration step), calibrate it against a real build, then push it to the suite with `pnpm eval:langtracer-push --suite baseline <slug>` and delete the local file rather than committing it. Seeded cases (`priorConversation`/`seedFile`) are the exception — the case-write API can't represent them yet, so they stay as committed JSON. Every case is validated against `harness/schema.ts`.
 
 > The essentials are below. For the full authoring guide — picking a case archetype, sizing assertions so a wrong build fails, multi-turn director scripts, seeding vs synthetic, and calibrating against a real build — follow the [`create-instance-ai-eval` skill](../../../../.agents/skills/create-instance-ai-eval/SKILL.md) (with [`case-shapes.md`](../../../../.agents/skills/create-instance-ai-eval/case-shapes.md) and [`running-evals.md`](../../../../.agents/skills/create-instance-ai-eval/running-evals.md)).
 
@@ -835,7 +846,7 @@ Suite pass rates typically sit between 40–65%; most failures are `builder_issu
 
 ## CI
 
-Evals run automatically on PRs that change Instance AI code (path-filtered). The workflow boots a set of n8n lane containers, pulls the test-case suite from LangTracer (`--source langtracer --suite n8n-workflows`), and runs the CLI against the lanes. See `.github/workflows/test-evals-instance-ai.yml`.
+Evals run automatically on PRs that change Instance AI code (path-filtered). The workflow boots a set of n8n lane containers, pulls the test-case suite from LangTracer (`--source langtracer --suite baseline`), and runs the CLI against the lanes. See `.github/workflows/test-evals-instance-ai.yml`.
 
 The job is **non-blocking**. Results are posted as a PR comment and uploaded as artifacts. When `LANGSMITH_API_KEY` is set via the `EVALS_LANGSMITH_API_KEY` secret, runs also land as LangSmith experiments tagged with commit SHA + branch, so you can compare against master side-by-side.
 
@@ -848,7 +859,7 @@ evaluations/
 ├── clients/              # n8n REST + SSE clients
 ├── checklist/            # LLM verification with retry
 ├── credentials/          # Test credential seeding
-├── data/agents/          # user-intent / agent-building eval case JSON files
+├── data/agents/          # authoring dir for intent-resolution cases (the corpus lives in LangTracer suite `agents`)
 ├── data/workflows/       # seeded carve-out case JSONs + seeds/ (the corpus lives in LangTracer)
 ├── data/subagent/        # workflow-build compatibility fixture JSON files
 ├── data/pairwise/        # Local pairwise fixture (small smoke set)

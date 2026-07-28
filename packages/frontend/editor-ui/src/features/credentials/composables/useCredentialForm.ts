@@ -4,6 +4,7 @@ import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
 import type {
 	CredentialInformation,
+	DeploymentCondition,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialType,
@@ -309,6 +310,15 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		if (
 			MANAGED_CREDENTIAL_HIDDEN_PROPERTIES.has(parameter.name) &&
 			(isEditingManagedCredential.value || isManagedOAuthMode.value)
+		) {
+			return false;
+		}
+
+		const deployment: DeploymentCondition = settingsStore.isCloudDeployment ? 'cloud' : 'hosted';
+
+		if (
+			parameter.displayOptions?.showOnDeployment &&
+			parameter.displayOptions.showOnDeployment !== deployment
 		) {
 			return false;
 		}

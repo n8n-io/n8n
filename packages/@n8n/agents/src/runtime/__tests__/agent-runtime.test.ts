@@ -5716,17 +5716,20 @@ describe('AgentRuntime — telemetry propagation', () => {
 		expect(tracer.startActiveSpan).toHaveBeenCalledWith(
 			'test-agent.generate',
 			{
+				root: true,
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				attributes: expect.objectContaining<Record<string, string>>({
-					'langsmith.traceable': 'true',
-					'langsmith.trace.name': 'test-agent.generate',
-					'langsmith.span.kind': 'chain',
-					'langsmith.metadata.agent_name': 'telemetry-root-test',
-					'langsmith.metadata.env': 'test',
+					'gen_ai.operation.name': 'invoke_agent',
+					'gen_ai.agent.name': 'telemetry-root-test',
 				}),
 			},
 			expect.any(Function),
 		);
+		// A plain (non-LangSmith) tracer must not get langsmith.* attributes —
+		// they'd be noise on a generic OTLP backend.
+		const [, options] = tracer.startActiveSpan.mock.calls[0];
+		const attributes = (options as { attributes: Record<string, unknown> }).attributes;
+		expect(Object.keys(attributes).some((key) => key.startsWith('langsmith.'))).toBe(false);
 		expect(span.end).toHaveBeenCalledTimes(1);
 	});
 
@@ -5786,6 +5789,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 				langsmith_trace_id: 'trace-1',
 				langsmith_actor_run_id: 'actor-run-1',
 			},
+			isLangSmith: true,
 			tracer,
 		};
 		const tool = new ToolBuilder('lookup')
@@ -6017,7 +6021,9 @@ describe('AgentRuntime — telemetry propagation', () => {
 
 		await runtime.generate('test');
 
-		const toolCallSpan = tracer.startActiveSpan.mock.calls.find(([name]) => name === 'ai.toolCall');
+		const toolCallSpan = tracer.startActiveSpan.mock.calls.find(
+			([name]) => name === 'execute_tool spy',
+		);
 		expect(toolCallSpan).toBeDefined();
 		expect(toolCallSpan?.[1]).toEqual({
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -6027,14 +6033,20 @@ describe('AgentRuntime — telemetry propagation', () => {
 				'ai.operationId': 'ai.toolCall',
 				'ai.telemetry.functionId': 'test-agent',
 				'ai.telemetry.metadata.env': 'test',
+				'gen_ai.operation.name': 'execute_tool',
+				'gen_ai.tool.name': 'spy',
+				'gen_ai.tool.call.id': 'tc1',
+				'gen_ai.agent.name': 'tool-telemetry-test',
+				'gen_ai.tool.call.arguments': '{"x":"test"}',
 				'ai.toolCall.name': 'spy',
 				'ai.toolCall.id': 'tc1',
 				'ai.toolCall.args': '{"x":"test"}',
 			}),
 		});
-		const toolSpan = spans.find((span) => span.name === 'ai.toolCall')?.span;
+		const toolSpan = spans.find((span) => span.name === 'execute_tool spy')?.span;
 		expect(toolSpan?.setAttributes).toHaveBeenCalledWith({
 			'ai.toolCall.result': '{"ok":true}',
+			'gen_ai.tool.call.result': '{"ok":true}',
 		});
 		expect(toolSpan?.end).toHaveBeenCalledTimes(1);
 	});
@@ -6623,5 +6635,99 @@ describe('AgentRuntime — empty model responses', () => {
 
 		expect(result.finishReason).toBe('error');
 		expect(String((result.error as Error).message)).toContain('no output');
+	});
+});
+
+describe('AgentRuntime — MCP connection failure warnings', () => {
+	it('emits a warning chunk per recorded MCP failure before the LLM loop, then completes', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('Hello'));
+
+		const bus = new AgentEventBus();
+		const runtime = new AgentRuntime({
+			name: 'mcp-warn',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			eventBus: bus,
+			mcpConnectionFailures: [
+				{ server: 'dead', error: 'fetch failed' },
+				{ server: 'also_dead', error: 'boom' },
+			],
+		});
+
+		const { stream: readableStream } = await runtime.stream('hello');
+		const chunks = await collectChunks(readableStream);
+
+		const warnings = chunks.filter((c) => c.type === 'warning') as Array<
+			StreamChunk & { type: 'warning'; message: string; server?: string; source?: string }
+		>;
+		expect(warnings).toHaveLength(2);
+		expect(warnings[0]).toMatchObject({
+			type: 'warning',
+			message: 'fetch failed',
+			source: 'mcp',
+			server: 'dead',
+			code: 'mcp_connection_failed',
+		});
+		expect(warnings[1]).toMatchObject({ type: 'warning', server: 'also_dead', message: 'boom' });
+
+		// The run still completes normally — warnings are non-fatal.
+		const finishChunk = chunks.find((c) => c.type === 'finish') as
+			| (StreamChunk & { type: 'finish'; finishReason: string })
+			| undefined;
+		expect(finishChunk).toBeDefined();
+		expect(finishChunk!.finishReason).not.toBe('error');
+	});
+
+	it('emits no warning chunks when there are no MCP connection failures', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('Hello'));
+
+		const { runtime } = createRuntime();
+		const { stream: readableStream } = await runtime.stream('hello');
+		const chunks = await collectChunks(readableStream);
+
+		expect(chunks.filter((c) => c.type === 'warning')).toEqual([]);
+	});
+
+	it('injects a model-facing mcp-connection-status note into the system message when failures are set', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('Hello'));
+
+		const bus = new AgentEventBus();
+		const runtime = new AgentRuntime({
+			name: 'mcp-note',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			eventBus: bus,
+			mcpConnectionFailures: [{ server: 'dead', error: 'fetch failed' }],
+		});
+
+		const { stream: readableStream } = await runtime.stream('hello');
+		await collectChunks(readableStream);
+
+		const callArgs = streamText.mock.calls.at(-1)![0] as Record<string, unknown>;
+		const system = callArgs.system;
+		const systemText = Array.isArray(system)
+			? system.map((e) => String((e as { content: string }).content)).join('')
+			: String((system as { content: string }).content);
+
+		expect(systemText).toContain('<mcp-connection-status>');
+		expect(systemText).toContain('dead');
+		expect(systemText).toContain('fetch failed');
+		expect(systemText).toMatch(/If this affects the user's request/i);
+	});
+
+	it('omits the mcp-connection-status note from the system message when there are no failures', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('Hello'));
+
+		const { runtime } = createRuntime();
+		const { stream: readableStream } = await runtime.stream('hello');
+		await collectChunks(readableStream);
+
+		const callArgs = streamText.mock.calls.at(-1)![0] as Record<string, unknown>;
+		const system = callArgs.system;
+		const systemText = Array.isArray(system)
+			? system.map((e) => String((e as { content: string }).content)).join('')
+			: String((system as { content: string }).content);
+
+		expect(systemText).not.toContain('<mcp-connection-status>');
 	});
 });

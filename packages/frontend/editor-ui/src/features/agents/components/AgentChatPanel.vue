@@ -23,6 +23,7 @@ const props = withDefaults(
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
 		canEditAgent?: boolean;
+		canSendToAssistant?: boolean;
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
 	}>(),
@@ -31,6 +32,7 @@ const props = withDefaults(
 		mode: 'panel',
 		continueSessionId: undefined,
 		canEditAgent: true,
+		canSendToAssistant: false,
 		beforeSend: undefined,
 		inputDraft: undefined,
 	},
@@ -40,6 +42,10 @@ const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
 	'continue-loaded': [count: number];
+	'initial-consumed': [];
+	back: [];
+	'open-build': [];
+	'send-to-assistant': [executionId?: string];
 }>();
 
 const locale = useI18n();
@@ -63,12 +69,14 @@ const {
 	isStreaming,
 	messagingState,
 	fatalError,
+	warnings,
 	loadHistory,
 	sendMessage,
 	stopGenerating,
 	resume,
 	cancelAndSteer,
 	dismissFatalError,
+	dismissWarning,
 } = useAgentChatStream({
 	projectId: toRef(props, 'projectId'),
 	agentId: toRef(props, 'agentId'),
@@ -78,15 +86,29 @@ const {
 	},
 });
 
+const RUNTIME_ISSUE_PATH_PREFIXES = [
+	{ prefix: 'tools.', key: 'agents.chat.misconfigured.missing.tools' },
+	{ prefix: 'mcpServers.', key: 'agents.chat.misconfigured.missing.mcpServers' },
+	{ prefix: 'subAgents.agents.', key: 'agents.chat.misconfigured.missing.subAgents.agents' },
+] as const;
+
 function humaniseMissingField(field: string): string {
 	if (field.startsWith('skill:')) {
 		return locale.baseText('agents.chat.misconfigured.missing.skill', {
 			interpolate: { id: field.slice('skill:'.length) },
 		});
 	}
-	const key = `agents.chat.misconfigured.missing.${field}`;
-	const translated = locale.baseText(key as never);
-	return translated === key ? field : translated;
+	const exactKey = `agents.chat.misconfigured.missing.${field}`;
+	const exactTranslation = locale.baseText(exactKey as never);
+	if (exactTranslation !== exactKey) {
+		return exactTranslation;
+	}
+	for (const { prefix, key } of RUNTIME_ISSUE_PATH_PREFIXES) {
+		if (field.startsWith(prefix)) {
+			return locale.baseText(key);
+		}
+	}
+	return field;
 }
 
 const missingFields = computed(() => {
@@ -99,9 +121,6 @@ const hasOpenInteraction = computed(() => openInteractive.value !== undefined);
 const hasOpenApproval = computed(() => openInteractive.value?.toolName === APPROVAL_TOOL_NAME);
 const hasOpenInteractiveQuestion = computed(
 	() => hasOpenInteraction.value && !hasOpenApproval.value,
-);
-const areConfigurationActionsDisabled = computed(
-	() => isStreaming.value || isPreparingToSend.value || hasOpenInteraction.value,
 );
 
 const chatPlaceholder = computed(() =>
@@ -176,7 +195,7 @@ onBeforeUnmount(() => {
 					{{ locale.baseText('agents.chat.misconfigured.title') }}
 				</span>
 				<span v-if="missingFields" :class="$style.errorBannerDetail">
-					{{ locale.baseText('agents.chat.misconfigured.missingPrefix') }} {{ missingFields }}
+					{{ locale.baseText('agents.chat.misconfigured.issuesPrefix') }} {{ missingFields }}
 				</span>
 			</div>
 			<template #trailingContent>
@@ -191,17 +210,51 @@ onBeforeUnmount(() => {
 			</template>
 		</N8nCallout>
 
+		<div
+			v-for="(warning, index) in warnings"
+			:key="`${warning.code ?? 'mcp'}-${index}`"
+			:class="$style.warningBanner"
+		>
+			<N8nCallout theme="warning" slim :data-test-id="`agent-chat-warning-${index}`">
+				<div :class="$style.warningBannerBody">
+					<span :class="$style.warningBannerTitle">
+						{{ locale.baseText('agents.chat.warning.mcp.title') }}
+					</span>
+					<span :class="$style.warningBannerDetail">{{
+						warning.server
+							? locale.baseText('agents.chat.warning.mcp.detail', {
+									interpolate: { server: warning.server, error: warning.message },
+								})
+							: warning.message
+					}}</span>
+				</div>
+				<template #trailingContent>
+					<N8nIconButton
+						icon="x"
+						variant="ghost"
+						size="xsmall"
+						:aria-label="locale.baseText('agents.chat.warning.dismiss')"
+						:title="locale.baseText('agents.chat.warning.dismiss')"
+						@click="dismissWarning(index)"
+					/>
+				</template>
+			</N8nCallout>
+		</div>
+
 		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" />
 		<AgentChatMessageList
 			v-else
 			:messages="messages"
 			:messaging-state="messagingState"
 			:project-id="projectId"
+			:agent-id="agentId"
+			:session-id="continueSessionId"
+			:can-send-to-assistant="canSendToAssistant"
 			@resume="resume"
+			@send-to-assistant="emit('send-to-assistant', $event)"
 		/>
 
 		<div :class="$style.inputArea">
-			<slot name="above-input" :disabled="areConfigurationActionsDisabled" />
 			<ChatInputBase
 				v-model="inputText"
 				:placeholder="chatPlaceholder"
@@ -270,5 +323,28 @@ onBeforeUnmount(() => {
 .errorBannerDetail {
 	font-size: var(--font-size--2xs);
 	color: var(--text-color--subtle);
+}
+
+.warningBanner {
+	margin: var(--spacing--sm);
+	flex-shrink: 0;
+}
+
+.warningBannerBody {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	flex: 1;
+	min-width: 0;
+}
+
+.warningBannerTitle {
+	font-weight: var(--font-weight--bold);
+}
+
+.warningBannerDetail {
+	font-size: var(--font-size--2xs);
+	color: var(--text-color--subtle);
+	word-break: break-word;
 }
 </style>

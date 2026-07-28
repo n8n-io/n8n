@@ -192,6 +192,11 @@ export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver
 export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export { saveAgentBuilderTarget } from './tools/orchestration/agent-target-binding';
+export {
+	resolveAgentPreviewSession,
+	saveAgentPreviewSession,
+} from './tools/orchestration/agent-preview-session-binding';
+
 export type {
 	AgentDbMessage,
 	AgentMessage,
@@ -426,10 +431,6 @@ export const getWorkspaceRoot: typeof SharedSandboxMod.getWorkspaceRoot = lazyFu
 export const getPromptWorkspaceRoot: typeof SharedSandboxMod.getPromptWorkspaceRoot = lazyFunction(
 	() => loadSharedSandbox().getPromptWorkspaceRoot,
 );
-export const getPromptSandboxInstructions: typeof SharedSandboxMod.getPromptSandboxInstructions =
-	lazyFunction(() => loadSharedSandbox().getPromptSandboxInstructions);
-export const getPromptFilesystemInstructions: typeof SharedSandboxMod.getPromptFilesystemInstructions =
-	lazyFunction(() => loadSharedSandbox().getPromptFilesystemInstructions);
 export const setupSandboxWorkspace: typeof SandboxSetupMod.setupSandboxWorkspace = lazyFunction(
 	() => loadSandboxSetup().setupSandboxWorkspace,
 );
@@ -592,6 +593,7 @@ export type {
 	DataTableFilterInput,
 	InstanceAiEvaluationConfigService,
 	EvaluationConfigSummary,
+	EvaluationConfigDetail,
 	EvaluationConfigMetricInput,
 	EvaluationConfigMetricPreset,
 	UpsertEvaluationConfigInput,

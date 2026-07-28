@@ -1,3 +1,4 @@
+import { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
 import type { IPinData, IConnections, IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -98,6 +99,12 @@ const workflowGroupSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
 	nodeIds: z.array(z.string().min(1)),
+	description: z
+		.string()
+		.max(GROUP_DESCRIPTION_MAX_LENGTH, {
+			message: `Group description must be ${GROUP_DESCRIPTION_MAX_LENGTH} characters or less`,
+		})
+		.optional(),
 });
 
 export const workflowNodeGroupsSchema = z.array(workflowGroupSchema);

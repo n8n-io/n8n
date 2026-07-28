@@ -14,7 +14,7 @@ import type {
 } from '@n8n/api-types';
 
 export interface InstanceAiThreadLaunchInput {
-	source?: InstanceAiThreadSource;
+	source: InstanceAiThreadSource;
 	origin?: InstanceAiThreadOrigin;
 	sourceContext?: Record<string, unknown>;
 }
@@ -50,13 +50,13 @@ export async function ensureThread(
 	context: IRestApiContext,
 	threadId: string,
 	projectId: string,
-	launch?: InstanceAiThreadLaunchInput,
+	launch: InstanceAiThreadLaunchInput,
 ): Promise<InstanceAiEnsureThreadResponse> {
 	return await makeRestApiRequest<InstanceAiEnsureThreadResponse>(
 		context,
 		'POST',
 		'/instance-ai/threads',
-		{ threadId, projectId, ...(launch ?? {}) },
+		{ threadId, projectId, ...launch },
 	);
 }
 

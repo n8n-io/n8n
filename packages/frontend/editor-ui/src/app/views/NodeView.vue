@@ -88,6 +88,7 @@ import type {
 	IWorkflowGroup,
 } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
+import { useNotificationForViews } from '@/app/composables/useNotificationForViews';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { historyBus } from '@/app/models/history';
@@ -110,7 +111,7 @@ import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/compon
 import CanvasStopWaitingForWebhookButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/app/components/NodeViewUnfinishedWorkflowMessage.vue';
@@ -174,6 +175,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
 const toast = useToast();
+const { showNotificationForViews } = useNotificationForViews();
 const message = useMessage();
 const documentTitle = useDocumentTitle();
 const workflowSaving = useWorkflowSaving({
@@ -1047,9 +1049,9 @@ function onCreateSticky() {
 
 function onClickConnectionAdd(connection: Connection) {
 	const { type, mode } = parseCanvasConnectionHandleString(connection.sourceHandle);
-	const isAddBetwenTool =
+	const isAddBetweenTool =
 		type === NodeConnectionTypes.AiTool && mode === CanvasConnectionMode.Output;
-	if (isAddBetwenTool) {
+	if (isAddBetweenTool) {
 		nodeCreatorStore.openNodeCreatorForConnectingNode({
 			workflowId: workflowId.value,
 			connection,
@@ -1942,7 +1944,7 @@ onMounted(async () => {
 
 		// Once view is initialized, pick up all toast notifications
 		// waiting in the store and display them
-		toast.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
+		showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
 
 		if (route.query.settings) {
 			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);

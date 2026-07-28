@@ -29,7 +29,15 @@ export interface ITelemetrySettings {
 	config?: ITelemetryClientConfig;
 }
 
-export type AuthenticationMethod = 'email' | 'ldap' | 'saml' | 'oidc' | 'token-exchange';
+export const AuthenticationMethod = {
+	Email: 'email',
+	Ldap: 'ldap',
+	Saml: 'saml',
+	Oidc: 'oidc',
+	TokenExchange: 'token-exchange',
+} as const;
+
+export type AuthenticationMethod = (typeof AuthenticationMethod)[keyof typeof AuthenticationMethod];
 
 export interface IUserManagementSettings {
 	quota: number;
@@ -250,6 +258,11 @@ export interface FrontendSettings {
 	};
 	security: {
 		blockFileAccessToN8nFiles: boolean;
+		/**
+		 * Origins allowed to exchange `postMessage` commands with the editor iframe.
+		 * Empty means no restriction (any origin is accepted).
+		 */
+		postMessageAllowedOrigins: string[];
 	};
 	chatTrigger?: {
 		disablePublicChat: boolean;
@@ -257,6 +270,27 @@ export interface FrontendSettings {
 	easyAIWorkflowOnboarded: boolean;
 	evaluation: {
 		quota: number;
+		/**
+		 * Operator override (`N8N_EVAL_COLLECTIONS_ENABLED`) that force-enables the
+		 * eval-collections surface. Surfaced here so the frontend gate works even
+		 * when the in-browser PostHog client is disabled (telemetry off), where the
+		 * `084_eval_collections` flag would otherwise never resolve.
+		 */
+		collectionsEnabled: boolean;
+		/**
+		 * Operator override (`N8N_CONFIG_EVALS_ENABLED`) that force-enables the
+		 * config-based evals surface. Surfaced here so the in-editor gate works
+		 * even when the browser PostHog client is disabled (telemetry off), where
+		 * the `088_config_evaluations` flag would otherwise never resolve.
+		 */
+		configEvalsEnabled: boolean;
+		/**
+		 * Operator override (`N8N_AGENT_EVALS_ENABLED`) that force-enables the
+		 * agent-evals surface. Surfaced here so the frontend gate works even when
+		 * the in-browser PostHog client is disabled (telemetry off), where the
+		 * `101_agent_evals` flag would otherwise never resolve.
+		 */
+		agentEvalsEnabled: boolean;
 	};
 
 	/** Backend modules that were initialized during startup. */
@@ -365,6 +399,8 @@ export type FrontendModuleSettings = {
 		 * proxy is available.
 		 */
 		knowledgeBaseEnabled: boolean;
+		/** Whether the AI Assistant proxy is available to the agents module. */
+		proxyEnabled: boolean;
 	};
 };
 

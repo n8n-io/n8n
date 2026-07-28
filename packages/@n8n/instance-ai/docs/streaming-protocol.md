@@ -412,12 +412,13 @@ simultaneously persisted to thread storage and delivered to connected SSE client
 | Single instance | In-process `EventEmitter` | Zero infrastructure |
 | Queue mode | Redis Pub/Sub | n8n already uses Redis |
 
-Replay storage depends on `N8N_INSTANCE_AI_DURABLE_LOG`. Off (default),
-replay serves from a bounded in-memory buffer per thread (500 events / 2 MB,
-FIFO-evicted; ids reset on restart). On, the durable event log
-(`instance_ai_events`) is the replay source: coalesced step-level facts are
-appended with a per-thread `seq` assigned by the writer's drain, so cursors
-stay valid across restarts and across mains sharing one database.
+Replay storage depends on `N8N_INSTANCE_AI_DURABLE_LOG`. On (the default),
+the durable event log (`instance_ai_events`) is the replay source: coalesced
+step-level facts are appended with a per-thread `seq` assigned by the
+writer's drain, so cursors stay valid across restarts and across mains
+sharing one database. Off (the rollback switch until Gate B), replay serves
+from a bounded in-memory buffer per thread (500 events / 2 MB, FIFO-evicted;
+ids reset on restart).
 
 ### Reconnection & Replay (Canonical Rule)
 
@@ -468,6 +469,15 @@ The frontend can abort a running agent by sending:
 - **Behavior**: Stops orchestrator and active background agents, then emits final
   `run-finish` with `payload.status = "cancelled"`.
 - **Race behavior**: If the run already completed, cancel is a no-op.
+
+### In-flight tool calls
+
+Cancel aborts the run `AbortSignal` that is passed to every tool as
+`ctx.abortSignal`. Instance AI wraps tool handlers so Stop unblocks the
+executor promptly (handlers race the signal). Long-running I/O tools should
+also forward `ctx.abortSignal` into fetches and child work so the underlying
+request stops, not only the handler promise. Aborted tool calls are settled as
+cancelled tool results (no dangling `tool_call` entries).
 
 ## Frontend Rendering
 

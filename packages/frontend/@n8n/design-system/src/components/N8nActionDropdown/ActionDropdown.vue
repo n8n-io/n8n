@@ -28,6 +28,7 @@ interface ActionDropdownProps {
 	disabled?: boolean;
 	extraPopperClass?: string;
 	maxHeight?: string | number;
+	width?: string;
 	modal?: boolean;
 }
 
@@ -98,6 +99,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 	return {
 		[$style.itemContainer]: true,
 		[$style.disabled]: !!item.disabled,
+		[$style.destructive]: item.variant === 'destructive',
 		[$style.hasCustomStyling]: item.customClass !== undefined,
 		...(item.customClass !== undefined ? { [item.customClass]: true } : {}),
 	};
@@ -122,6 +124,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 			:modal="modal"
 			:extra-popper-class="`${extraPopperClass ?? ''}`"
 			:max-height="maxHeight"
+			:width="width"
 			@select="onSelect"
 			@update:model-value="onOpenChange"
 		>
@@ -177,6 +180,9 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 					/>
 				</span>
 			</template>
+			<template v-if="$slots.footer" #footer>
+				<slot name="footer" />
+			</template>
 		</N8nDropdownMenu>
 	</div>
 </template>
@@ -195,7 +201,9 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 .itemContainer {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--sm);
+	/* Matches the base N8nDropdownMenu item gap so icon-to-label spacing is
+	 * consistent across every menu in the app. */
+	gap: var(--spacing--2xs);
 	justify-content: space-between;
 	font-size: var(--font-size--2xs);
 	line-height: 18px;
@@ -209,6 +217,19 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 
 	:global([data-disabled]) & {
 		color: inherit;
+	}
+}
+
+/* Destructive items (delete, revoke, ...) turn danger-red on hover or keyboard
+ * highlight: the icon and label both inherit the item color, so one rule
+ * covers them, and the token adapts to light/dark themes on its own. */
+.destructive {
+	&:not([data-disabled]) {
+		&:hover,
+		&[data-highlighted],
+		&[aria-selected='true'] {
+			color: var(--color--danger);
+		}
 	}
 }
 

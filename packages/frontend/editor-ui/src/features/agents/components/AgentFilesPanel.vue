@@ -21,7 +21,6 @@ const props = withDefaults(
 		loading?: boolean;
 		uploading?: boolean;
 		deletingFileId?: string | null;
-		isPublished: boolean;
 	}>(),
 	{
 		disabled: false,
@@ -41,13 +40,8 @@ type FileAction = 'delete';
 const i18n = useI18n();
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput');
 const isMutating = computed(() => props.uploading || props.deletingFileId !== null);
-const isUploadDisabled = computed(
-	() => props.disabled || props.loading || isMutating.value || !props.isPublished,
-);
-const uploadLabel = computed(() => i18n.baseText('agents.builder.files.addFile' as BaseTextKey));
-const uploadTooltip = computed(() =>
-	props.isPublished ? uploadLabel.value : i18n.baseText('agents.builder.files.publishRequired'),
-);
+const isUploadDisabled = computed(() => props.disabled || props.loading || isMutating.value);
+const uploadTooltip = computed(() => i18n.baseText('agents.builder.files.addFile' as BaseTextKey));
 
 const acceptAttr = ALLOWED_AGENT_FILE_EXTENSIONS.join(',');
 
@@ -222,11 +216,7 @@ function onFilesSelected(event: Event) {
 					<tr v-if="!props.loading && props.files.length === 0" :class="$style.lastRow">
 						<td :colspan="6">
 							<span :class="$style.emptyMessage" data-testid="agent-files-empty">
-								{{
-									props.isPublished
-										? i18n.baseText('agents.builder.files.empty')
-										: i18n.baseText('agents.builder.files.publishRequired')
-								}}
+								{{ i18n.baseText('agents.builder.files.empty') }}
 							</span>
 						</td>
 					</tr>
