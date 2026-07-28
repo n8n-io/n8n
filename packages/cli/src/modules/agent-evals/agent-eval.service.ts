@@ -2,6 +2,7 @@ import type {
 	AgentEvalDatasetRecord,
 	AgentEvalRunDetail,
 	AgentEvalRunRecord,
+	AgentEvalRunSummary,
 	CreateAgentEvalDatasetDto,
 	CreateAgentEvalRunPayload,
 	GenerateDraftCasesOptions,
@@ -22,7 +23,6 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 
 import { AgentEvalCaseGenerationService } from './agent-eval-case-generation.service';
 import { toDatasetRecord, toResultRecord, toRunRecord } from './agent-eval-record-mappers';
-import type { AgentEvalRunSummary } from './agent-eval-runner.service';
 import { AgentEvalRunnerService } from './agent-eval-runner.service';
 
 /** Statuses a run can still be asked to stop from. */

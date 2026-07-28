@@ -346,6 +346,22 @@ describe('AgentEvalService', () => {
 			});
 		});
 
+		// The source column is authoritative, so a ref that doesn't match it means a
+		// corrupt row. Failing loudly beats reporting a wrong-but-well-typed
+		// `datasetSource` the client would then narrow on.
+		it('refuses to map a dataset whose source and ref disagree', async () => {
+			datasetRepository.findByIdAndAgentId.mockResolvedValue(
+				makeDataset({
+					datasetSource: 'google_sheets',
+					datasetRef: { dataTableId: 'dt-1' },
+				}),
+			);
+
+			await expect(service.getDataset(AGENT_ID, PROJECT_ID, 'ds-1')).rejects.toThrow(
+				/does not match that shape/,
+			);
+		});
+
 		it('includes every per-case result in a run detail', async () => {
 			resultRepository.findByRunId.mockResolvedValue([
 				mock<AgentEvalResult>({

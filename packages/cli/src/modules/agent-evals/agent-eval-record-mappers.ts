@@ -4,8 +4,10 @@ import type {
 	AgentEvalRunRecord,
 	DataTableDatasetRef,
 	DatasetRef,
+	GoogleSheetsDatasetRef,
 } from '@n8n/api-types';
 import type { AgentEvalDataset, AgentEvalResult, AgentEvalRun } from '@n8n/db';
+import { UnexpectedError } from 'n8n-workflow';
 
 /**
  * Entity → wire-record mappers for the agent-eval REST responses.
@@ -20,25 +22,41 @@ import type { AgentEvalDataset, AgentEvalResult, AgentEvalRun } from '@n8n/db';
 
 const toIso = (date: Date | null): string | null => date?.toISOString() ?? null;
 
-/**
- * The two ref shapes are disjoint, so which one a dataset holds is decidable
- * from the value itself.
- */
+// The two ref shapes are disjoint, so each is recognizable from the value alone.
+// Used to re-narrow the ref, never to decide which source a dataset is.
 const isDataTableRef = (ref: DatasetRef['datasetRef']): ref is DataTableDatasetRef =>
 	'dataTableId' in ref;
+
+const isGoogleSheetsRef = (ref: DatasetRef['datasetRef']): ref is GoogleSheetsDatasetRef =>
+	'spreadsheetId' in ref;
 
 /**
  * Rebuild the `datasetSource` + `datasetRef` discriminated union from the
  * entity, which stores the two halves as independent columns and so has lost
- * their correlation. Derived from the ref rather than read off the
- * `datasetSource` column: that keeps the pair narrowable on the client without a
- * cast, and the two can only ever disagree if a row was written outside
- * `createDataset`, which always persists them together from a validated union.
+ * their correlation.
+ *
+ * Switches on the persisted `datasetSource` — the authoritative discriminator —
+ * and uses the predicates only to re-narrow the ref. Inferring the source from
+ * the ref's shape instead would silently relabel any future third source as one
+ * of these two, reporting a wrong-but-well-typed `datasetSource` to the client.
+ * A source/ref disagreement is unreachable through `createDataset` (which
+ * persists the pair from an already-validated union) and barred by the column's
+ * CHECK constraint, so it can only mean a corrupt row — hence the loud failure
+ * rather than a guess.
  */
 function toDatasetRefPair(dataset: AgentEvalDataset): DatasetRef {
-	return isDataTableRef(dataset.datasetRef)
-		? { datasetSource: 'data_table', datasetRef: dataset.datasetRef }
-		: { datasetSource: 'google_sheets', datasetRef: dataset.datasetRef };
+	const { datasetSource, datasetRef } = dataset;
+
+	if (datasetSource === 'data_table' && isDataTableRef(datasetRef)) {
+		return { datasetSource, datasetRef };
+	}
+	if (datasetSource === 'google_sheets' && isGoogleSheetsRef(datasetRef)) {
+		return { datasetSource, datasetRef };
+	}
+
+	throw new UnexpectedError(
+		`Agent eval dataset ${dataset.id} has a '${datasetSource}' source whose ref does not match that shape.`,
+	);
 }
 
 export function toDatasetRecord(dataset: AgentEvalDataset): AgentEvalDatasetRecord {

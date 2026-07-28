@@ -6,6 +6,7 @@ import {
 	type AgentEvalDatasetRecord,
 	type AgentEvalRunDetail,
 	type AgentEvalRunRecord,
+	type AgentEvalRunSummary,
 	type GenerateDraftCasesResult,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -13,7 +14,6 @@ import { Body, Delete, Get, Patch, Post, ProjectScope, RestController } from '@n
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import type { AgentEvalRunSummary } from './agent-eval-runner.service';
 import { AgentEvalService } from './agent-eval.service';
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 

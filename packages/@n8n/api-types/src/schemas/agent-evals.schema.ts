@@ -76,6 +76,10 @@ export type AgentEvalVote = z.infer<typeof agentEvalVoteSchema>;
 // which `Z.class` (flat shape only) cannot express.
 // ---------------------------------------------------------------------------
 
+// `agentId` is also a path param on the create route, which resolves the agent
+// against the project. The two must agree — the API rejects a mismatch rather
+// than picking a winner, since disagreement means the client is confused about
+// which agent it is configuring.
 export const createAgentEvalDatasetSchema = z
 	.object({
 		name: z.string().min(1).max(128),
@@ -99,6 +103,11 @@ export class UpdateAgentEvalDatasetDto extends Z.class(updateAgentEvalDatasetSha
 
 // Kicks off a run of the path dataset. `agentVersionId` optionally pins a
 // published version of the dataset's own agent; omitted runs the current one.
+//
+// The runner has no snapshot-execution path yet, so the API currently *rejects*
+// a pinned version rather than silently running the live agent and misreporting
+// what was measured. Keep the field: the shape is the target contract, and the
+// rejection lifts once version-pinned execution lands.
 const createAgentEvalRunShape = {
 	agentVersionId: z.string().min(1).optional(),
 };
@@ -182,6 +191,21 @@ export type AgentEvalRatingRecord = {
 // A run with its per-case results — the "open a run" view.
 export type AgentEvalRunDetail = AgentEvalRunRecord & {
 	results: AgentEvalResultRecord[];
+};
+
+/**
+ * Run status plus per-case status tallies — the progress-polling shape, kept
+ * deliberately free of the per-case rows so polling it stays cheap.
+ *
+ * `pending` folds `new` + `running`: a caller watching progress only needs "not
+ * settled yet", and collapsing them here means the UI doesn't have to know the
+ * result lifecycle. `total` is the sum of every per-status count, so it also
+ * reflects cases added by a re-seed rather than a value captured at run start.
+ */
+export type AgentEvalRunSummary = {
+	runId: string;
+	status: AgentEvalRunStatus;
+	counts: { total: number; success: number; error: number; cancelled: number; pending: number };
 };
 
 // ---------------------------------------------------------------------------
