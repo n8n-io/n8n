@@ -1,0 +1,21 @@
+packages/cli/src/workflows/publication/__tests__/published-workflow-trigger-deactivator.test.ts
+  s_72c806d61e12d2::t_87f7baa56f2258 4,10-11,21-23,25-28,36,42,50-54,135-290
+packages/cli/src/workflows/publication/published-workflow-trigger-deactivator.ts
+  s_72c806d61e12d2::t_5196454e2b1e8a 4,6,25-27,35,71-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "bb7171b53172ec775929b0df8a0152365f74b4e8",
+  "prompts": {},
+  "sessions": {
+    "s_72c806d61e12d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3454581-e439-4779-af65-52bc313bbe43",
+        "model": "unknown"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

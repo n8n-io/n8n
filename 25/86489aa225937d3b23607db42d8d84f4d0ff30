@@ -1,0 +1,46 @@
+packages/cli/src/executions/__tests__/executions.controller.test.ts
+  s_a05fa44f4b22c6::t_998dbf96cc8746 34-63
+packages/cli/src/active-executions.ts
+  s_a05fa44f4b22c6::t_e25712c07598be 154-157
+  s_a05fa44f4b22c6::t_e47fc1277ec1dc 319-363
+packages/cli/src/__tests__/active-executions.test.ts
+  s_a05fa44f4b22c6::t_cdc0187397263d 546-619
+packages/@n8n/api-types/src/dto/executions/execution-live-status-response.dto.ts
+  s_a05fa44f4b22c6::t_73295f3f4a428a 1-52
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_a05fa44f4b22c6::t_4303296b0e5d33 4
+  s_a05fa44f4b22c6::t_16f4805320065c 860-915
+packages/cli/src/executions/execution.types.ts
+  s_a05fa44f4b22c6::t_136a325caa1447 48-49
+packages/@n8n/api-types/src/dto/index.ts
+  s_a05fa44f4b22c6::t_d775a543211948 283
+packages/cli/src/interfaces.ts
+  s_a05fa44f4b22c6::t_5d8463afb7ccbc 145-156
+packages/cli/src/executions/execution.service.ts
+  s_a05fa44f4b22c6::t_a315282c1b9810 205-247
+  s_a05fa44f4b22c6::t_85c5f07e0e56ce 1
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  s_a05fa44f4b22c6::t_d8a389705a4cb2 329,336,344-345
+  s_a05fa44f4b22c6::t_72b6177575e3af 26
+  s_a05fa44f4b22c6::t_e51f7117872b80 271
+  s_a05fa44f4b22c6::t_2a0e54533e5913 304,308,312-315
+  s_a05fa44f4b22c6::t_be954421d66eca 346
+packages/cli/src/executions/executions.controller.ts
+  s_a05fa44f4b22c6::t_15bd55a97c66a4 100-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "2586489aa225937d3b23607db42d8d84f4d0ff30",
+  "prompts": {},
+  "sessions": {
+    "s_a05fa44f4b22c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a25a9ce4-dde5-4856-9e92-1adbf5267b8d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

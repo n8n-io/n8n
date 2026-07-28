@@ -1,0 +1,18 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/references/sub-workflow-node.reference.ts
+  h_6ef4cecfee65a2 12-14,16-36
+packages/cli/src/modules/n8n-packages/entities/workflow/references/caller-ids.reference.ts
+  h_6ef4cecfee65a2 5,7
+packages/cli/src/modules/n8n-packages/entities/workflow/references/error-workflow.reference.ts
+  h_6ef4cecfee65a2 7,20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ccd0f4dc282b150239c8d42b48232f844569129b",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
