@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { WorkflowGraph } from '../../graph';
-import { InMemoryWorkQueue, type StepMessage } from '../../queue';
+import type { StepMessage, WorkQueue } from '../../queue';
 import { ExecutionStartHandler } from '../execution-start-handler';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import type { StepStore } from '../step-store';
@@ -13,6 +13,10 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		...overrides,
 	};
+}
+
+function makeStepQueue(): WorkQueue<StepMessage> {
+	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
 }
 
 function record(graph: WorkflowGraph): ExecutionRecord {
@@ -48,7 +52,7 @@ describe('ExecutionStartHandler', () => {
 			.mockResolvedValueOnce({ id: 'step-a' })
 			.mockResolvedValueOnce({ id: 'step-b' });
 		const stepStore: StepStore = { createStep };
-		const stepQueue = new InMemoryWorkQueue<StepMessage>();
+		const stepQueue = makeStepQueue();
 		const handler = new ExecutionStartHandler(executionStore, stepStore, stepQueue);
 
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
@@ -71,10 +75,16 @@ describe('ExecutionStartHandler', () => {
 			status: 'queued',
 		});
 		// step:ready references the queued step-record ids
-		expect(stepQueue.messages).toEqual([
-			{ type: 'step:ready', executionId: 'exec-1', stepId: 'step-a' },
-			{ type: 'step:ready', executionId: 'exec-1', stepId: 'step-b' },
-		]);
+		expect(stepQueue.publish).toHaveBeenNthCalledWith(1, {
+			type: 'step:ready',
+			executionId: 'exec-1',
+			stepId: 'step-a',
+		});
+		expect(stepQueue.publish).toHaveBeenNthCalledWith(2, {
+			type: 'step:ready',
+			executionId: 'exec-1',
+			stepId: 'step-b',
+		});
 	});
 
 	it('is a no-op when the execution cannot be claimed (duplicate delivery)', async () => {
@@ -82,14 +92,14 @@ describe('ExecutionStartHandler', () => {
 			transitionStatus: vi.fn().mockResolvedValue(false),
 		});
 		const stepStore: StepStore = { createStep: vi.fn() };
-		const stepQueue = new InMemoryWorkQueue<StepMessage>();
+		const stepQueue = makeStepQueue();
 		const handler = new ExecutionStartHandler(executionStore, stepStore, stepQueue);
 
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
 		expect(executionStore.loadExecution).not.toHaveBeenCalled();
 		expect(stepStore.createStep).not.toHaveBeenCalled();
-		expect(stepQueue.messages).toHaveLength(0);
+		expect(stepQueue.publish).not.toHaveBeenCalled();
 	});
 
 	it('fails the execution when the graph has no trigger node', async () => {
@@ -98,14 +108,14 @@ describe('ExecutionStartHandler', () => {
 			loadExecution: vi.fn().mockResolvedValue(record(graph)),
 		});
 		const stepStore: StepStore = { createStep: vi.fn() };
-		const stepQueue = new InMemoryWorkQueue<StepMessage>();
+		const stepQueue = makeStepQueue();
 		const handler = new ExecutionStartHandler(executionStore, stepStore, stepQueue);
 
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
 		expect(executionStore.transitionStatus).toHaveBeenCalledWith('exec-1', 'running', 'failed');
 		expect(stepStore.createStep).not.toHaveBeenCalled();
-		expect(stepQueue.messages).toHaveLength(0);
+		expect(stepQueue.publish).not.toHaveBeenCalled();
 	});
 
 	it('records the trigger but enqueues nothing for a trigger with no successors', async () => {
@@ -118,7 +128,7 @@ describe('ExecutionStartHandler', () => {
 		});
 		const createStep = vi.fn().mockResolvedValue({ id: 'step-trigger' });
 		const stepStore: StepStore = { createStep };
-		const stepQueue = new InMemoryWorkQueue<StepMessage>();
+		const stepQueue = makeStepQueue();
 		const handler = new ExecutionStartHandler(executionStore, stepStore, stepQueue);
 
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
@@ -132,6 +142,6 @@ describe('ExecutionStartHandler', () => {
 			nodeId: 'trigger',
 			status: 'completed',
 		});
-		expect(stepQueue.messages).toHaveLength(0);
+		expect(stepQueue.publish).not.toHaveBeenCalled();
 	});
 });

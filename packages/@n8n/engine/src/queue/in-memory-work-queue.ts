@@ -5,9 +5,6 @@ import type { WorkQueue } from './work-queue.types';
  * sequentially on a microtask.
  */
 export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
-	/** Everything ever published, retained so tests can assert on it. */
-	readonly messages: TMessage[] = [];
-
 	private pending: TMessage[] = [];
 
 	private handler: ((message: TMessage) => Promise<void>) | undefined;
@@ -18,7 +15,6 @@ export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
 
 	// eslint-disable-next-line @typescript-eslint/require-await -- satisfies async interface; dispatch is scheduled, not awaited
 	async publish(message: TMessage): Promise<void> {
-		this.messages.push(message);
 		this.pending.push(message);
 		this.ensureDispatching();
 	}
@@ -30,14 +26,8 @@ export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
 
 	async stop(): Promise<void> {
 		this.handler = undefined;
-		await this.drain();
-	}
-
-	/**
-	 * Resolves once in-flight dispatch settles. Messages with no consumer to
-	 * dispatch them stay pending rather than blocking the caller forever.
-	 */
-	async drain(): Promise<void> {
+		// Only in-flight work is awaited; anything still queued has no consumer to
+		// dispatch it, so waiting on it would never return.
 		if (!this.dispatching) return;
 		await new Promise<void>((resolve) => this.idleWaiters.push(resolve));
 	}

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { AdmittanceRejectedError, type AdmittanceService } from '../../admittance';
 import type { WorkflowGraph } from '../../graph';
-import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
+import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import type { ExecutionStore } from '../execution-store';
 import { StartExecutionService } from '../start-execution.service';
 
@@ -10,6 +10,10 @@ const sampleGraph: WorkflowGraph = {
 	nodes: [{ id: 'trigger', name: 'Manual Trigger', type: 'trigger', config: {} }],
 	edges: [],
 };
+
+function makeQueue(): WorkQueue<OrchestrationMessage> {
+	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+}
 
 function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 	return {
@@ -26,7 +30,7 @@ describe('StartExecutionService', () => {
 			evaluate: vi.fn().mockResolvedValue({ accept: true }),
 		};
 		const store = makeStore();
-		const queue = new InMemoryWorkQueue<OrchestrationMessage>();
+		const queue = makeQueue();
 		const service = new StartExecutionService(admittance, store, queue);
 
 		const result = await service.start({
@@ -44,7 +48,10 @@ describe('StartExecutionService', () => {
 			graph: sampleGraph,
 			triggerPayload: { hello: 'world' },
 		});
-		expect(queue.messages).toEqual([{ type: 'execution:enqueued', executionId: 'exec-id-1' }]);
+		expect(queue.publish).toHaveBeenCalledWith({
+			type: 'execution:enqueued',
+			executionId: 'exec-id-1',
+		});
 	});
 
 	it('defaults mode to production and triggerPayload to null', async () => {
@@ -52,7 +59,7 @@ describe('StartExecutionService', () => {
 			evaluate: vi.fn().mockResolvedValue({ accept: true }),
 		};
 		const store = makeStore();
-		const queue = new InMemoryWorkQueue<OrchestrationMessage>();
+		const queue = makeQueue();
 		const service = new StartExecutionService(admittance, store, queue);
 
 		await service.start({ workflowId: 'wf-1', graph: sampleGraph });
@@ -67,7 +74,7 @@ describe('StartExecutionService', () => {
 			evaluate: vi.fn().mockResolvedValue({ accept: false, reason: 'queue-full' }),
 		};
 		const store = makeStore();
-		const queue = new InMemoryWorkQueue<OrchestrationMessage>();
+		const queue = makeQueue();
 		const service = new StartExecutionService(admittance, store, queue);
 
 		await expect(service.start({ workflowId: 'wf-1', graph: sampleGraph })).rejects.toBeInstanceOf(
@@ -75,6 +82,6 @@ describe('StartExecutionService', () => {
 		);
 
 		expect(store.createExecution).not.toHaveBeenCalled();
-		expect(queue.messages).toHaveLength(0);
+		expect(queue.publish).not.toHaveBeenCalled();
 	});
 });

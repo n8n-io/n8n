@@ -30,6 +30,8 @@ async function main(): Promise<void> {
 	}
 
 	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
+	// Published to but not yet consumed — the step worker is CAT-2870. Queued
+	// messages dispatch as soon as it registers.
 	const stepQueue = new InMemoryWorkQueue<StepMessage>();
 
 	let worker: OrchestrationWorker | undefined;
