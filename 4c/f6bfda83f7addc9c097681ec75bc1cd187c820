@@ -1,0 +1,52 @@
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_601386f61562ab::t_b12f5d6fe744bb 151-160
+  s_601386f61562ab::t_3f8ae1e6d37fa3 362-372,377-393,397-399
+  s_601386f61562ab::t_5a3bfeb79b0d04 517-518
+  s_601386f61562ab::t_961a8b868d211e 109,111
+  s_601386f61562ab::t_e51daa7b0e5d70 62-65,67-70
+  s_601386f61562ab::t_4a6acc5085295a 457-463
+  s_601386f61562ab::t_f70c816df17435 406,409,423-434
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_601386f61562ab::t_243ddc53984a80 335
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_601386f61562ab::t_2e76994868efd5 119
+  s_601386f61562ab::t_c6af195787e899 275
+  s_601386f61562ab::t_5f031373b32212 225
+  s_601386f61562ab::t_114b1202bb11d9 133,137-140,142-144,151,160-164,167,171
+  s_601386f61562ab::t_dc15e9d5da7618 361-363,365-366,376,382-383
+  s_601386f61562ab::t_cb4a8055a66e15 251-252
+  s_601386f61562ab::t_804f79763f9414 28,34
+  s_601386f61562ab::t_1a5b4f7a4b2d79 205-206,208,210-212,215-216
+  s_601386f61562ab::t_5ce1ed6c35054b 101-103
+  s_601386f61562ab::t_c978bdb29837e7 188
+  s_601386f61562ab::t_dce6bdbc997a10 73-76
+  ai_agent 93,221-222,359,373-375
+  h_32d8cd6a0d6aad 29-33,58,94-96,134,141,182,191,360
+  s_601386f61562ab::t_176c8fddabc36b 370-371,384-385
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  s_601386f61562ab::t_e6fc22aa6ac476 37-39,45-52
+  s_601386f61562ab::t_911c0e39a34aea 573,575-576,603-634
+  s_601386f61562ab::t_c5383fa49fb471 35
+  s_601386f61562ab::t_833f7375595abd 33-34,36,40-44,53-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4cf6bfda83f7addc9c097681ec75bc1cd187c820",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_601386f61562ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e77ca6f-9f18-4274-b1fe-9d4733d3ed88",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
