@@ -622,7 +622,7 @@ describe('update-workflow MCP tool', () => {
 			});
 
 			test('a non-group operation that disconnects an existing group is caught: the group is dropped and reported, the rest of the update still saves', async () => {
-				// codeconv P1: a removeConnection never touches nodeGroups directly, so
+				// A removeConnection never touches nodeGroups directly, so
 				// nodeGroupsChanged alone would miss this — the structural check must
 				// run whenever the workflow HAS groups, not only when a group op ran.
 				findWorkflowMock.mockResolvedValue(
