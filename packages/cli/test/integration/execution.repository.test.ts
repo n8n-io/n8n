@@ -332,9 +332,9 @@ describe('UserRepository', () => {
 				workflow,
 			);
 
-			const affected = await executionRepository.markStaleEnqueuedAsCrashed(new Date());
+			const executionIds = await executionRepository.markStaleEnqueuedAsCrashed(new Date());
 
-			expect(affected).toBe(1);
+			expect(executionIds).toEqual([execution.id]);
 			const row = await executionRepository.findOneBy({ id: execution.id });
 			expect(row?.status).toBe('crashed');
 			expect(row?.stoppedAt).toBeInstanceOf(Date);
@@ -344,9 +344,9 @@ describe('UserRepository', () => {
 			const workflow = await createWorkflow({}, owner);
 			const execution = await createExecution({ status: 'new', startedAt: null }, workflow);
 
-			const affected = await executionRepository.markStaleEnqueuedAsCrashed(eightDaysAgo);
+			const executionIds = await executionRepository.markStaleEnqueuedAsCrashed(eightDaysAgo);
 
-			expect(affected).toBe(0);
+			expect(executionIds).toEqual([]);
 			const row = await executionRepository.findOneBy({ id: execution.id });
 			expect(row?.status).toBe('new');
 		});
@@ -357,9 +357,9 @@ describe('UserRepository', () => {
 				const workflow = await createWorkflow({}, owner);
 				const execution = await createExecution({ status, createdAt: eightDaysAgo }, workflow);
 
-				const affected = await executionRepository.markStaleEnqueuedAsCrashed(new Date());
+				const executionIds = await executionRepository.markStaleEnqueuedAsCrashed(new Date());
 
-				expect(affected).toBe(0);
+				expect(executionIds).toEqual([]);
 				const row = await executionRepository.findOneBy({ id: execution.id });
 				expect(row?.status).toBe(status);
 			},

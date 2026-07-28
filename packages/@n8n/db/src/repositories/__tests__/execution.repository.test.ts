@@ -2,7 +2,7 @@
 import { GlobalConfig } from '@n8n/config';
 import type { SqliteConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import type { SelectQueryBuilder } from '@n8n/typeorm';
+import type { SelectQueryBuilder, UpdateQueryBuilder } from '@n8n/typeorm';
 import { In, LessThan, LessThanOrEqual, And, Not } from '@n8n/typeorm';
 import { BinaryDataService } from 'n8n-core';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
@@ -186,6 +186,30 @@ describe('ExecutionRepository', () => {
 				{ id: In(executionIds), status: In(['new', 'running', 'unknown']) },
 				expect.objectContaining({ status: 'crashed', waitTill: null }),
 			);
+		});
+	});
+
+	describe('markStaleEnqueuedAsCrashed', () => {
+		test('returns the updated execution IDs from Postgres', async () => {
+			globalConfig.database.type = 'postgresdb';
+			const queryBuilder = mock<UpdateQueryBuilder<ExecutionEntity>>();
+			queryBuilder.update.mockReturnThis();
+			queryBuilder.set.mockReturnThis();
+			queryBuilder.where.mockReturnThis();
+			queryBuilder.returning.mockReturnThis();
+			queryBuilder.execute.mockResolvedValue({
+				affected: 2,
+				generatedMaps: [],
+				raw: [{ id: '1' }, { id: '2' }],
+			});
+			vi.spyOn(executionRepository, 'createQueryBuilder').mockReturnValue(
+				queryBuilder as unknown as SelectQueryBuilder<ExecutionEntity>,
+			);
+
+			const executionIds = await executionRepository.markStaleEnqueuedAsCrashed(new Date());
+
+			expect(queryBuilder.returning).toHaveBeenCalledExactlyOnceWith('id');
+			expect(executionIds).toEqual(['1', '2']);
 		});
 	});
 

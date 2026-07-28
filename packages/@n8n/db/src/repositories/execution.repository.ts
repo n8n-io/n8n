@@ -382,13 +382,48 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 * enqueued before a long outage is surfaced as failed instead of replayed late.
 	 * Filters on `createdAt` because `startedAt` is null while an execution is enqueued.
 	 */
-	async markStaleEnqueuedAsCrashed(before: Date): Promise<number> {
-		const result = await this.update(
-			{ status: 'new', createdAt: LessThan(before) },
-			crashedExecutionCondition(),
-		);
+	async markStaleEnqueuedAsCrashed(before: Date): Promise<string[]> {
+		const where: FindOptionsWhere<ExecutionEntity> = {
+			status: 'new',
+			createdAt: LessThan(before),
+		};
 
-		return result.affected ?? 0;
+		return this.globalConfig.database.type === 'postgresdb'
+			? await this.crashStaleEnqueuedWithPostgres(where)
+			: await this.crashStaleEnqueuedWithSqlite(where);
+	}
+
+	private async crashStaleEnqueuedWithPostgres(
+		where: FindOptionsWhere<ExecutionEntity>,
+	): Promise<string[]> {
+		const result = await this.createQueryBuilder()
+			.update(ExecutionEntity)
+			.set(crashedExecutionCondition())
+			.where(where)
+			.returning('id')
+			.execute();
+
+		return (result.raw as Array<{ id: string }>).map(({ id }) => id);
+	}
+
+	private async crashStaleEnqueuedWithSqlite(
+		where: FindOptionsWhere<ExecutionEntity>,
+	): Promise<string[]> {
+		// TypeORM's SQLite driver does not surface rows from UPDATE ... RETURNING,
+		// so collect the IDs in the same transaction before updating them.
+		return await this.manager.transaction(async (trx) => {
+			const executions = await trx.find(ExecutionEntity, {
+				select: { id: true },
+				where,
+			});
+			const executionIds = executions.map(({ id }) => id);
+
+			if (executionIds.length === 0) return [];
+
+			await trx.update(ExecutionEntity, where, crashedExecutionCondition());
+
+			return executionIds;
+		});
 	}
 
 	async setRunning(executionId: string) {

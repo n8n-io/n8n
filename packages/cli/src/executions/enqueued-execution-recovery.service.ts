@@ -94,10 +94,10 @@ export class EnqueuedExecutionRecoveryService {
 	/** Sweep before fetching, so we never load the data of an execution we are about to crash. */
 	private async crashStaleEnqueuedExecutions() {
 		const before = new Date(Date.now() - MAX_ENQUEUED_EXECUTION_AGE);
-		const count = await this.executionRepository.markStaleEnqueuedAsCrashed(before);
+		const executionIds = await this.executionRepository.markStaleEnqueuedAsCrashed(before);
 
-		if (count > 0) {
-			this.logger.warn('Marked stale enqueued executions as crashed', { count, before });
+		if (executionIds.length > 0) {
+			this.logger.warn('Marked stale enqueued executions as crashed', { executionIds, before });
 		}
 	}
 

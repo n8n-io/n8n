@@ -21,6 +21,8 @@ const enqueuedExecution = (id: string) =>
 	mock<IExecutionResponse>({ id, mode: 'webhook', workflowId: `workflow-for-${id}` });
 
 describe('EnqueuedExecutionRecoveryService', () => {
+	const logger = mockLogger();
+	vi.mocked(logger.scoped).mockReturnValue(logger);
 	const errorReporter = mock<ErrorReporter>();
 	const executionService = mock<ExecutionService>();
 	const executionRepository = mock<ExecutionRepository>();
@@ -30,7 +32,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 
 	const createService = (mode: 'regular' | 'queue' = 'regular') =>
 		new EnqueuedExecutionRecoveryService(
-			mockLogger(),
+			logger,
 			errorReporter,
 			mock<ExecutionsConfig>({ mode }),
 			executionService,
@@ -42,7 +44,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		executionRepository.markStaleEnqueuedAsCrashed.mockResolvedValue(0);
+		executionRepository.markStaleEnqueuedAsCrashed.mockResolvedValue([]);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
 		workflowRunner.run.mockResolvedValue('1');
 	});
@@ -81,6 +83,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 
 	test('crashes executions enqueued over 7 days ago before loading the rest', async () => {
 		executionService.findAllEnqueuedExecutions.mockResolvedValue([]);
+		executionRepository.markStaleEnqueuedAsCrashed.mockResolvedValue(['1', '2']);
 		vi.useFakeTimers({ now: new Date('2026-01-08T00:00:00.000Z'), toFake: ['Date'] });
 
 		try {
@@ -93,6 +96,13 @@ describe('EnqueuedExecutionRecoveryService', () => {
 			new Date('2026-01-01T00:00:00.000Z'),
 		);
 		expect(MAX_ENQUEUED_EXECUTION_AGE).toBe(7 * Time.days.toMilliseconds);
+		expect(logger.warn).toHaveBeenCalledExactlyOnceWith(
+			'Marked stale enqueued executions as crashed',
+			{
+				executionIds: ['1', '2'],
+				before: new Date('2026-01-01T00:00:00.000Z'),
+			},
+		);
 
 		// the sweep must land before we load execution data we would only throw away
 		expect(executionRepository.markStaleEnqueuedAsCrashed).toHaveBeenCalledBefore(
