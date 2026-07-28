@@ -165,6 +165,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			[NodeConnectionTypes.AiTool]: [SLACK.name, WIKIPEDIA.name],
 		};
 		workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([]);
+		mockedStore(useUsersStore).isAdminOrOwner = true;
 
 		uiStore.modalsById = {
 			[MODAL_NAME]: { open: true, data: {} },
