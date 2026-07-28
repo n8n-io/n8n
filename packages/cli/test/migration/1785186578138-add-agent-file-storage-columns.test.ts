@@ -9,31 +9,35 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'ReplaceAgentFileBinaryDataIdWithStoredAt1785186578138';
+const MIGRATION_NAME = 'AddAgentFileStorageColumns1785186578138';
 
 const FS_KEY =
 	'agents/agent-1/knowledge-files/file-fs/binary_data/11111111-1111-1111-1111-111111111111';
+const LEGACY_FS_KEY =
+	'agents/agent-1/knowledge-files/file-fs-v1/binary_data/55555555-5555-5555-5555-555555555555';
 const S3_KEY =
 	'agents/agent-1/knowledge-files/file-s3/binary_data/22222222-2222-2222-2222-222222222222';
 const DB_FILE_ID = '33333333-3333-3333-3333-333333333333';
 const EXECUTION_FILE_ID = '44444444-4444-4444-4444-444444444444';
+const NEW_ROW_KEY = 'agents/agent-1/knowledge-files/file-new/content';
 
-async function columnNames(context: TestMigrationContext, table: string): Promise<string[]> {
+type ColumnInfo = { name: string; nullable: boolean };
+
+async function columnInfo(context: TestMigrationContext, table: string): Promise<ColumnInfo[]> {
 	if (context.isSqlite) {
-		const rows = await context.runQuery<Array<{ name: string }>>(
+		const rows = await context.runQuery<Array<{ name: string; notnull: number }>>(
 			`PRAGMA table_info(${context.escape.tableName(table)})`,
 		);
-		return rows.map((row) => row.name);
+		return rows.map((row) => ({ name: row.name, nullable: Number(row.notnull) === 0 }));
 	}
-	const fullName = `${context.tablePrefix}${table}`;
-	const rows = await context.runQuery<Array<{ column_name: string }>>(
-		'SELECT column_name FROM information_schema.columns WHERE table_name = :name',
-		{ name: fullName },
+	const rows = await context.runQuery<Array<{ column_name: string; is_nullable: string }>>(
+		'SELECT column_name, is_nullable FROM information_schema.columns WHERE table_name = :name',
+		{ name: `${context.tablePrefix}${table}` },
 	);
-	return rows.map((row) => row.column_name);
+	return rows.map((row) => ({ name: row.column_name, nullable: row.is_nullable === 'YES' }));
 }
 
-describe('ReplaceAgentFileBinaryDataIdWithStoredAt Migration', () => {
+describe('AddAgentFileStorageColumns Migration', () => {
 	let dataSource: DataSource;
 
 	beforeAll(async () => {
@@ -105,6 +109,29 @@ describe('ReplaceAgentFileBinaryDataIdWithStoredAt Migration', () => {
 		);
 	}
 
+	/** Inserts the way the post-migration code does: storage columns, no `binaryDataId`. */
+	async function insertMigratedAgentFile(
+		context: TestMigrationContext,
+		data: { id: string; storedAt: string; storageKey: string },
+	): Promise<void> {
+		const table = context.escape.tableName('agent_files');
+		const now = new Date();
+		await context.runQuery(
+			`INSERT INTO ${table} ("id", "agentId", "storedAt", "storageKey", "fileName", "mimeType", "fileSizeBytes", "createdAt", "updatedAt") VALUES (:id, :agentId, :storedAt, :storageKey, :fileName, :mimeType, :fileSizeBytes, :createdAt, :updatedAt)`,
+			{
+				id: data.id,
+				agentId: 'agent-1',
+				storedAt: data.storedAt,
+				storageKey: data.storageKey,
+				fileName: `${data.id}.txt`,
+				mimeType: 'text/plain',
+				fileSizeBytes: 11,
+				createdAt: now,
+				updatedAt: now,
+			},
+		);
+	}
+
 	async function insertBinaryData(
 		context: TestMigrationContext,
 		data: { fileId: string; sourceType: string; sourceId: string },
@@ -127,7 +154,7 @@ describe('ReplaceAgentFileBinaryDataIdWithStoredAt Migration', () => {
 		);
 	}
 
-	it('converts binaryDataId into storedAt plus storageKey, preserving database-mode files', async () => {
+	it('backfills storedAt plus storageKey from every binaryDataId prefix', async () => {
 		const seedContext = createTestMigrationContext(dataSource);
 		try {
 			await insertProject(seedContext, 'project-1');
@@ -136,6 +163,10 @@ describe('ReplaceAgentFileBinaryDataIdWithStoredAt Migration', () => {
 			await insertAgentFile(seedContext, {
 				id: 'file-fs',
 				binaryDataId: `filesystem-v2:${FS_KEY}`,
+			});
+			await insertAgentFile(seedContext, {
+				id: 'file-fs-v1',
+				binaryDataId: `filesystem:${LEGACY_FS_KEY}`,
 			});
 			await insertAgentFile(seedContext, { id: 'file-s3', binaryDataId: `s3:${S3_KEY}` });
 			await insertAgentFile(seedContext, { id: 'file-db', binaryDataId: `database:${DB_FILE_ID}` });
@@ -167,9 +198,10 @@ describe('ReplaceAgentFileBinaryDataIdWithStoredAt Migration', () => {
 			>(`SELECT "id", "storedAt", "storageKey" FROM ${agentFiles} ORDER BY "id"`);
 			// `file-bad` carries an unrecognized reference: kept whole rather than dropped.
 			expect(files).toEqual([
-				{ id: 'file-bad', storedAt: 'db', storageKey: 'garbage' },
+				{ id: 'file-bad', storedAt: 'fs', storageKey: 'garbage' },
 				{ id: 'file-db', storedAt: 'db', storageKey: DB_FILE_ID },
 				{ id: 'file-fs', storedAt: 'fs', storageKey: FS_KEY },
+				{ id: 'file-fs-v1', storedAt: 'fs', storageKey: LEGACY_FS_KEY },
 				{ id: 'file-s3', storedAt: 's3', storageKey: S3_KEY },
 			]);
 
@@ -178,17 +210,50 @@ describe('ReplaceAgentFileBinaryDataIdWithStoredAt Migration', () => {
 				`SELECT "fileId" FROM ${binaryData} ORDER BY "fileId"`,
 			);
 			expect(binaryRows).toEqual([{ fileId: DB_FILE_ID }, { fileId: EXECUTION_FILE_ID }]);
-
-			const columns = await columnNames(context, 'agent_files');
-			expect(columns).not.toContain('binaryDataId');
 		} finally {
 			await context.queryRunner.release();
 		}
 	});
 
-	// Declared last: the revert undoes the schema the test above asserts on.
+	it('leaves binaryDataId in place as nullable so the previous release keeps reading it', async () => {
+		const context = createTestMigrationContext(dataSource);
+		try {
+			const agentFiles = context.escape.tableName('agent_files');
+
+			expect(await columnInfo(context, 'agent_files')).toContainEqual({
+				name: 'binaryDataId',
+				nullable: true,
+			});
+
+			const files = await context.runQuery<Array<{ id: string; binaryDataId: string }>>(
+				`SELECT "id", "binaryDataId" FROM ${agentFiles} ORDER BY "id"`,
+			);
+			expect(files).toEqual([
+				{ id: 'file-bad', binaryDataId: 'garbage' },
+				{ id: 'file-db', binaryDataId: `database:${DB_FILE_ID}` },
+				{ id: 'file-fs', binaryDataId: `filesystem-v2:${FS_KEY}` },
+				{ id: 'file-fs-v1', binaryDataId: `filesystem:${LEGACY_FS_KEY}` },
+				{ id: 'file-s3', binaryDataId: `s3:${S3_KEY}` },
+			]);
+		} finally {
+			await context.queryRunner.release();
+		}
+	});
+
+	// Declared last: the revert undoes the schema the tests above assert on.
 	describe('down', () => {
-		it('rebuilds binaryDataId from storedAt and storageKey', async () => {
+		it('rebuilds binaryDataId only for rows written after the migration', async () => {
+			const seedContext = createTestMigrationContext(dataSource);
+			try {
+				await insertMigratedAgentFile(seedContext, {
+					id: 'file-new',
+					storedAt: 'fs',
+					storageKey: NEW_ROW_KEY,
+				});
+			} finally {
+				await seedContext.queryRunner.release();
+			}
+
 			await undoLastSingleMigration();
 
 			const context = createTestMigrationContext(dataSource);
@@ -198,14 +263,18 @@ describe('ReplaceAgentFileBinaryDataIdWithStoredAt Migration', () => {
 				const files = await context.runQuery<Array<{ id: string; binaryDataId: string }>>(
 					`SELECT "id", "binaryDataId" FROM ${agentFiles} ORDER BY "id"`,
 				);
+				// Pre-existing rows kept their original opaque reference — including the
+				// unrecognized one — so the revert is lossless for them.
 				expect(files).toEqual([
-					{ id: 'file-bad', binaryDataId: 'database:garbage' },
+					{ id: 'file-bad', binaryDataId: 'garbage' },
 					{ id: 'file-db', binaryDataId: `database:${DB_FILE_ID}` },
 					{ id: 'file-fs', binaryDataId: `filesystem-v2:${FS_KEY}` },
+					{ id: 'file-fs-v1', binaryDataId: `filesystem:${LEGACY_FS_KEY}` },
+					{ id: 'file-new', binaryDataId: `filesystem-v2:${NEW_ROW_KEY}` },
 					{ id: 'file-s3', binaryDataId: `s3:${S3_KEY}` },
 				]);
 
-				const columns = await columnNames(context, 'agent_files');
+				const columns = (await columnInfo(context, 'agent_files')).map((column) => column.name);
 				expect(columns).not.toContain('storedAt');
 				expect(columns).not.toContain('storageKey');
 			} finally {

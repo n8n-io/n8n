@@ -16,7 +16,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_eval_run](public.agent_eval_run.md) | 14 |  | BASE TABLE |
 | [public.agent_execution](public.agent_execution.md) | 19 |  | BASE TABLE |
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 17 |  | BASE TABLE |
-| [public.agent_files](public.agent_files.md) | 9 |  | BASE TABLE |
+| [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 7 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
@@ -441,6 +441,7 @@ erDiagram
 }
 "public.agent_files" {
   varchar_36_ agentId FK
+  text binaryDataId
   timestamp_3__with_time_zone createdAt
   varchar_255_ fileName
   integer fileSizeBytes

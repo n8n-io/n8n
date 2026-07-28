@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_files" ("id" varchar(16) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "fileName" varchar(255) NOT NULL, "mimeType" varchar(255) NOT NULL, "fileSizeBytes" integer NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "storedAt" varchar(2) NOT NULL DEFAULT ('db'), "storageKey" text NOT NULL, CONSTRAINT "CHK_agent_files_storedAt" CHECK (("storedAt" IN ('db', 'fs', 's3', 'az'))), CONSTRAINT "FK_aca4514cb500494b64356c2e164" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "agent_files" ("id" varchar(16) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "binaryDataId" text, "fileName" varchar(255) NOT NULL, "mimeType" varchar(255) NOT NULL, "fileSizeBytes" integer NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "storedAt" varchar(2) NOT NULL DEFAULT ('db'), "storageKey" text NOT NULL, CONSTRAINT "CHK_agent_files_storedAt" CHECK ((("storedAt" IN ('db', 'fs', 's3', 'az')))), CONSTRAINT "FK_aca4514cb500494b64356c2e164" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -16,6 +16,7 @@ CREATE TABLE "agent_files" ("id" varchar(16) PRIMARY KEY NOT NULL, "agentId" var
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | false |  | [agents](agents.md) |  |
+| binaryDataId | TEXT |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | fileName | varchar(255) |  | false |  |  |  |
 | fileSizeBytes | INTEGER |  | false |  |  |  |
@@ -29,7 +30,7 @@ CREATE TABLE "agent_files" ("id" varchar(16) PRIMARY KEY NOT NULL, "agentId" var
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK (("storedAt" IN ('db', 'fs', 's3', 'az'))) |
+| - | CHECK | CHECK ((("storedAt" IN ('db', 'fs', 's3', 'az')))) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_agent_files_1 | PRIMARY KEY | PRIMARY KEY (id) |
@@ -39,8 +40,8 @@ CREATE TABLE "agent_files" ("id" varchar(16) PRIMARY KEY NOT NULL, "agentId" var
 | Name | Definition |
 | ---- | ---------- |
 | IDX_45dafc48fe2ce95eac30fc8ffd | CREATE INDEX "IDX_45dafc48fe2ce95eac30fc8ffd" ON "agent_files" ("agentId", "createdAt")  |
+| IDX_agent_files_agentId_binaryDataId | CREATE UNIQUE INDEX "IDX_agent_files_agentId_binaryDataId" ON "agent_files" ("agentId", "binaryDataId")  |
 | IDX_agent_files_agentId_fileName | CREATE UNIQUE INDEX "IDX_agent_files_agentId_fileName" ON "agent_files" ("agentId", "fileName")  |
-| IDX_agent_files_agentId_storageKey | CREATE UNIQUE INDEX "IDX_agent_files_agentId_storageKey" ON "agent_files" ("agentId", "storageKey")  |
 | sqlite_autoindex_agent_files_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -52,6 +53,7 @@ erDiagram
 
 "agent_files" {
   varchar_36_ agentId FK
+  TEXT binaryDataId
   datetime_3_ createdAt
   varchar_255_ fileName
   INTEGER fileSizeBytes

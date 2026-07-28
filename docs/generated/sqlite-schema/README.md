@@ -16,7 +16,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_eval_run](agent_eval_run.md) | 14 |  | table |
 | [agent_execution](agent_execution.md) | 19 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
-| [agent_files](agent_files.md) | 9 |  | table |
+| [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 7 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
@@ -428,6 +428,7 @@ erDiagram
 }
 "agent_files" {
   varchar_36_ agentId FK
+  TEXT binaryDataId
   datetime_3_ createdAt
   varchar_255_ fileName
   INTEGER fileSizeBytes

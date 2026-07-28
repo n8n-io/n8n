@@ -3,10 +3,15 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8
 
 import { Agent } from './agent.entity';
 
+/**
+ * The table still carries a nullable `binaryDataId` and its unique index, left
+ * behind by `AddAgentFileStorageColumns` so the previous release can read the
+ * rows it wrote. It is deliberately absent here — new rows leave it null — and
+ * a follow-up migration drops it.
+ */
 @Entity({ name: 'agent_files' })
 @Index(['agentId', 'createdAt'])
 @Index(['agentId', 'fileName'], { unique: true })
-@Index(['agentId', 'storageKey'], { unique: true })
 export class AgentFile extends WithTimestampsAndStringId {
 	@ManyToOne(() => Agent, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'agentId' })

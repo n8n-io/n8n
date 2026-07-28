@@ -139,6 +139,7 @@ erDiagram
 }
 "public.agent_files" {
   varchar_36_ agentId FK
+  text binaryDataId
   timestamp_3__with_time_zone createdAt
   varchar_255_ fileName
   integer fileSizeBytes

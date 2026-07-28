@@ -142,6 +142,7 @@ erDiagram
 }
 "agent_files" {
   varchar_36_ agentId FK
+  TEXT binaryDataId
   datetime_3_ createdAt
   varchar_255_ fileName
   INTEGER fileSizeBytes

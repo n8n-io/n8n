@@ -1,7 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { binaryToBuffer } from '@n8n/backend-network';
 import {
+	ByteStoreRegistry,
 	FsByteStore,
+	SkippedEntryDeletionError,
 	type ByteStore,
 	type PreWriteBlobMetadata,
 	type StorageLocation,
@@ -9,7 +11,6 @@ import {
 import { BinaryDataRepository, type ExecutionDataStorageLocation } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 import { v4 as uuid } from 'uuid';
 
@@ -18,6 +19,12 @@ export type StoredAgentKnowledgeFile = {
 	storedAt: ExecutionDataStorageLocation;
 	storageKey: string;
 };
+
+/**
+ * Marks a key written by the former BinaryDataService layout. On `fs` those
+ * carry a companion `<key>.metadata` entry, which has to go with the content.
+ */
+const LEGACY_KEY_SEGMENT = '/binary_data/';
 
 @Service()
 export class AgentKnowledgeFileFsByteStore extends FsByteStore {
@@ -40,19 +47,20 @@ export class AgentKnowledgeFileFsByteStore extends FsByteStore {
  */
 @Service()
 export class AgentKnowledgeFileStore {
-	private readonly byteStores = new Map<StorageLocation, ByteStore>();
+	private readonly byteStores: ByteStoreRegistry;
 
 	constructor(
 		fsByteStore: AgentKnowledgeFileFsByteStore,
 		private readonly storageConfig: StorageConfig,
 		private readonly binaryDataRepository: BinaryDataRepository,
+		private readonly errorReporter: ErrorReporter,
 		private readonly logger: Logger,
 	) {
-		this.byteStores.set('fs', fsByteStore);
+		this.byteStores = new ByteStoreRegistry({ fs: fsByteStore });
 	}
 
 	registerByteStore(loc: StorageLocation, store: ByteStore) {
-		this.byteStores.set(loc, store);
+		this.byteStores.register(loc, store);
 	}
 
 	async write(
@@ -60,7 +68,7 @@ export class AgentKnowledgeFileStore {
 		body: Buffer | Readable,
 		metadata: PreWriteBlobMetadata,
 	): Promise<StoredAgentKnowledgeFile> {
-		const storedAt = this.storageConfig.modeTag;
+		const storedAt = this.resolveWriteLocation();
 
 		if (storedAt === 'db') {
 			const buffer = await binaryToBuffer(body);
@@ -78,7 +86,7 @@ export class AgentKnowledgeFileStore {
 		}
 
 		const storageKey = this.newKeyFor(ref);
-		await this.getByteStore(storedAt).write(storageKey, body, metadata);
+		await this.byteStores.get(storedAt).write(storageKey, body, metadata);
 		return { storedAt, storageKey };
 	}
 
@@ -87,7 +95,7 @@ export class AgentKnowledgeFileStore {
 			return await this.binaryDataRepository.findContentByFileId(file.storageKey);
 		}
 
-		return await this.getByteStore(file.storedAt).read(file.storageKey);
+		return await this.byteStores.get(file.storedAt).read(file.storageKey);
 	}
 
 	async delete(files: StoredAgentKnowledgeFile[]): Promise<void> {
@@ -102,23 +110,54 @@ export class AgentKnowledgeFileStore {
 
 		await Promise.all(
 			[...groups].map(async ([loc, group]) => {
-				const keys = group.map((file) => file.storageKey);
-
 				if (loc === 'db') {
-					await this.binaryDataRepository.deleteAgentFilesByFileIds(keys);
+					await this.binaryDataRepository.deleteAgentFilesByFileIds(
+						group.map((file) => file.storageKey),
+					);
 					return;
 				}
 
-				const store = this.byteStores.get(loc);
+				const store = this.byteStores.find(loc);
 				if (!store) {
-					this.logger.warn('Skipped deleting agent knowledge files for unconfigured storage', {
-						storedAt: loc,
-						count: group.length,
-					});
+					this.errorReporter.error(new SkippedEntryDeletionError(loc, group.length));
 					return;
 				}
-				await store.delete(keys);
+				await store.delete(this.keysToDelete(loc, group));
 			}),
+		);
+	}
+
+	/**
+	 * The configured location, or `fs` when its byte store never registered
+	 * because the client failed to initialize. Uploads are user-initiated, so
+	 * degrading to the always-available local store beats rejecting the request;
+	 * `storedAt` records where the bytes actually landed either way.
+	 *
+	 * On multi-main the fallback is per-instance: only the main that took the
+	 * upload can read those bytes back, so the warning is the signal to fix the
+	 * backend rather than something to leave running.
+	 */
+	private resolveWriteLocation(): ExecutionDataStorageLocation {
+		const configured = this.storageConfig.modeTag;
+
+		if (configured === 'db' || this.byteStores.has(configured)) return configured;
+
+		this.logger.warn(
+			'Agent knowledge file storage is not configured, falling back to the filesystem',
+			{ storedAt: configured },
+		);
+
+		return 'fs';
+	}
+
+	private keysToDelete(loc: StorageLocation, files: StoredAgentKnowledgeFile[]): string[] {
+		// s3 and az keep metadata on the object itself, so only fs has a companion.
+		if (loc !== 'fs') return files.map((file) => file.storageKey);
+
+		return files.flatMap((file) =>
+			file.storageKey.includes(LEGACY_KEY_SEGMENT)
+				? [file.storageKey, `${file.storageKey}.metadata`]
+				: [file.storageKey],
 		);
 	}
 
@@ -130,13 +169,5 @@ export class AgentKnowledgeFileStore {
 			encodeURIComponent(ref.fileId),
 			'content',
 		].join('/');
-	}
-
-	private getByteStore(loc: StorageLocation): ByteStore {
-		const store = this.byteStores.get(loc);
-		if (!store) {
-			throw new UnexpectedError(`Knowledge file store for location "${loc}" is not configured.`);
-		}
-		return store;
 	}
 }

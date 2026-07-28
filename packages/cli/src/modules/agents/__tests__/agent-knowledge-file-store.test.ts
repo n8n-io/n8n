@@ -1,9 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
-import { FsByteStore } from '@n8n/blob-storage';
+import { FsByteStore, SkippedEntryDeletionError } from '@n8n/blob-storage';
 import type { BinaryDataRepository } from '@n8n/db';
+import type { ErrorReporter, StorageConfig } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
-import type { StorageConfig } from 'n8n-core';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
@@ -14,34 +14,40 @@ import { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
 vi.unmock('node:fs');
 vi.unmock('node:fs/promises');
 
+const LEGACY_KEY =
+	'agents/agent-1/knowledge-files/file-1/binary_data/2f1b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
+
 describe('AgentKnowledgeFileStore', () => {
 	let storagePath: string;
-	let storageConfig: StorageConfig;
 	let binaryDataRepository: ReturnType<typeof mock<BinaryDataRepository>>;
+	let errorReporter: ReturnType<typeof mock<ErrorReporter>>;
 	let logger: ReturnType<typeof mock<Logger>>;
+	let fsByteStore: FsByteStore;
 	let store: AgentKnowledgeFileStore;
+
+	function makeStore(modeTag: 'db' | 'fs' | 's3' | 'az'): AgentKnowledgeFileStore {
+		return new AgentKnowledgeFileStore(
+			fsByteStore as never,
+			{ storagePath, modeTag } as StorageConfig,
+			binaryDataRepository,
+			errorReporter,
+			logger,
+		);
+	}
 
 	beforeAll(async () => {
 		storagePath = await mkdtemp(join(tmpdir(), 'n8n-agent-knowledge-file-store-'));
 	});
 
 	beforeEach(async () => {
-		for (const entry of await (await import('node:fs/promises')).readdir(storagePath)) {
+		for (const entry of await readdir(storagePath)) {
 			await rm(join(storagePath, entry), { recursive: true, force: true });
 		}
-		storageConfig = { storagePath, modeTag: 'fs' } as StorageConfig;
 		binaryDataRepository = mock<BinaryDataRepository>();
+		errorReporter = mock<ErrorReporter>();
 		logger = mock<Logger>();
-		const fsByteStore = new FsByteStore({
-			storagePath,
-			reportError: () => {},
-		});
-		store = new AgentKnowledgeFileStore(
-			fsByteStore as never,
-			storageConfig,
-			binaryDataRepository,
-			logger,
-		);
+		fsByteStore = new FsByteStore({ storagePath, reportError: () => {} });
+		store = makeStore('fs');
 	});
 
 	afterAll(async () => {
@@ -49,13 +55,7 @@ describe('AgentKnowledgeFileStore', () => {
 	});
 
 	it('writes to and reads from binary_data when modeTag is db', async () => {
-		storageConfig = { storagePath, modeTag: 'db' } as StorageConfig;
-		store = new AgentKnowledgeFileStore(
-			new FsByteStore({ storagePath, reportError: () => {} }) as never,
-			storageConfig,
-			binaryDataRepository,
-			logger,
-		);
+		store = makeStore('db');
 		const body = Buffer.from('knowledge-bytes', 'utf-8');
 
 		const stored = await store.write(
@@ -82,28 +82,19 @@ describe('AgentKnowledgeFileStore', () => {
 
 	it('reads a blob stored under the legacy BinaryDataService key', async () => {
 		const body = Buffer.from('legacy-bytes', 'utf-8');
-		const legacyKey =
-			'agents/agent-1/knowledge-files/file-1/binary_data/2f1b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
-		const fsByteStore = new FsByteStore({ storagePath, reportError: () => {} });
-		await fsByteStore.write(legacyKey, body);
+		await fsByteStore.write(LEGACY_KEY, body);
 
-		await expect(store.readAsBuffer({ storedAt: 'fs', storageKey: legacyKey })).resolves.toEqual(
+		await expect(store.readAsBuffer({ storedAt: 'fs', storageKey: LEGACY_KEY })).resolves.toEqual(
 			body,
 		);
 	});
 
 	it('writes to a registered s3 location when modeTag is s3', async () => {
-		storageConfig = { storagePath, modeTag: 's3' } as StorageConfig;
-		const fsByteStore = new FsByteStore({ storagePath, reportError: () => {} });
-		store = new AgentKnowledgeFileStore(
-			fsByteStore as never,
-			storageConfig,
-			binaryDataRepository,
-			logger,
-		);
-
-		const s3Path = join(storagePath, 's3-root');
-		const s3Store = new FsByteStore({ storagePath: s3Path, reportError: () => {} });
+		store = makeStore('s3');
+		const s3Store = new FsByteStore({
+			storagePath: join(storagePath, 's3-root'),
+			reportError: () => {},
+		});
 		store.registerByteStore('s3', s3Store);
 
 		const body = Buffer.from('s3-bytes', 'utf-8');
@@ -116,20 +107,34 @@ describe('AgentKnowledgeFileStore', () => {
 		await expect(store.readAsBuffer(stored)).resolves.toEqual(body);
 	});
 
-	it('returns null for a missing blob and throws for an unregistered storedAt', async () => {
+	it('writes to the filesystem when the configured location has no byte store', async () => {
+		store = makeStore('s3');
+		const body = Buffer.from('fallback-bytes', 'utf-8');
+
+		const stored = await store.write({ agentId: 'agent-1', fileId: 'file-3' }, body, {
+			mimeType: 'text/plain',
+		});
+
+		expect(stored.storedAt).toBe('fs');
+		await expect(store.readAsBuffer(stored)).resolves.toEqual(body);
+	});
+
+	it('returns null for a missing blob', async () => {
 		await expect(
 			store.readAsBuffer({
 				storedAt: 'fs',
 				storageKey: 'agents/a/knowledge-files/missing/content',
 			}),
 		).resolves.toBeNull();
+	});
 
+	it('throws when reading from a location that has no byte store', async () => {
 		await expect(
 			store.readAsBuffer({ storedAt: 's3', storageKey: 'agents/a/knowledge-files/f/content' }),
 		).rejects.toThrow(UnexpectedError);
 	});
 
-	it('deletes registered blobs and skips unregistered locations without throwing', async () => {
+	it('deletes registered blobs and reports unregistered locations without throwing', async () => {
 		const body = Buffer.from('delete-me', 'utf-8');
 		const kept = await store.write({ agentId: 'agent-1', fileId: 'keep' }, body, {
 			mimeType: 'text/plain',
@@ -147,9 +152,19 @@ describe('AgentKnowledgeFileStore', () => {
 		expect(binaryDataRepository.deleteAgentFilesByFileIds).toHaveBeenCalledWith([
 			'9c1f4b7a-2d3e-4f5a-8b6c-7d8e9f0a1b2c',
 		]);
-		expect(logger.warn).toHaveBeenCalledWith(
-			'Skipped deleting agent knowledge files for unconfigured storage',
-			expect.objectContaining({ storedAt: 's3', count: 1 }),
+		expect(errorReporter.error).toHaveBeenCalledWith(expect.any(SkippedEntryDeletionError));
+	});
+
+	it('deletes the companion metadata entry of a legacy filesystem key', async () => {
+		await fsByteStore.write(LEGACY_KEY, Buffer.from('legacy-bytes', 'utf-8'));
+		await fsByteStore.write(
+			`${LEGACY_KEY}.metadata`,
+			Buffer.from('{"fileName":"notes.txt"}', 'utf-8'),
 		);
+
+		await store.delete([{ storedAt: 'fs', storageKey: LEGACY_KEY }]);
+
+		await expect(fsByteStore.read(LEGACY_KEY)).resolves.toBeNull();
+		await expect(fsByteStore.read(`${LEGACY_KEY}.metadata`)).resolves.toBeNull();
 	});
 });
