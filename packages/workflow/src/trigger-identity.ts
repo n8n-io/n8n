@@ -67,7 +67,13 @@ export function classifyTriggerIdentity(
 	// only inconsistency is the narrow dynamic-credentials + form + flag-off combination.
 	const isFormTrigger =
 		nodeType === FORM_TRIGGER_NODE_TYPE && parameters?.authentication === 'n8nUserAuth';
-	if (isSubWorkflowTrigger || isChatHubTrigger || isMcpTrigger || isFormTrigger || isOAuth2Webhook) {
+	if (
+		isSubWorkflowTrigger ||
+		isChatHubTrigger ||
+		isMcpTrigger ||
+		isFormTrigger ||
+		isOAuth2Webhook
+	) {
 		return { providesN8nIdentity: true, providesExternalIdentity: true };
 	}
 
