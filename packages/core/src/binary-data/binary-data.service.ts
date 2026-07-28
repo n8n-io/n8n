@@ -42,11 +42,7 @@ export class BinaryDataService {
 			storagePath: config.localStoragePath,
 			reportError: (error) => this.errorReporter.error(error),
 		});
-		this.managers.filesystem = new BinaryDataBlobManager(
-			fsByteStore,
-			this.errorReporter,
-			this.logger,
-		);
+		this.managers.filesystem = new BinaryDataBlobManager(fsByteStore, this.errorReporter);
 		this.managers['filesystem-v2'] = this.managers.filesystem;
 		await this.managers.filesystem.init();
 
