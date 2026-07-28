@@ -1,51 +1,45 @@
 import type { PaginationRootEmits, PaginationRootProps } from 'reka-ui';
 
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-
 export type PaginationSizes = 'small' | 'medium';
 
 export type PaginationProps = Omit<
 	PaginationRootProps,
 	'dir' | 'asChild' | 'as' | 'itemsPerPage'
 > & {
-	// Backward compatibility props (Element+ aliases)
-	currentPage?: number; // Alias for page
-	pageSize?: number; // Alias for itemsPerPage
-	pageCount?: number; // Total number of pages (alternative to total)
-	itemsPerPage?: number; // Optional, can be inferred from pageSize
-	pagerCount?: number; // Alias for siblingCount (Element+ shows odd number, e.g., 7 means 3 siblings)
-	layout?: string; // Controls which elements to show: 'prev, pager, next, sizes, jumper, total'
-	pageSizes?: number[]; // For page size selector dropdown
-	hideOnSinglePage?: boolean; // Hide when total pages === 1
-	prevText?: string; // Custom text for prev button
-	nextText?: string; // Custom text for next button
-	prevIcon?: IconName; // Custom icon for prev button
-	nextIcon?: IconName; // Custom icon for next button
-	popperClass?: string; // Custom class for page sizes dropdown
-	teleported?: boolean; // Whether to teleport dropdown (not used in Reka UI)
-	defaultPageSize?: number; // Default page size for uncontrolled mode
-	defaultCurrentPage?: number; // Default current page for uncontrolled mode
-
-	// UI props
+	/** Alias for `page` (Element+ compatibility). Supports `v-model:current-page`. */
+	currentPage?: number;
+	/** Alias for `itemsPerPage`. */
+	pageSize?: number;
+	/** Total number of pages. Takes precedence over `total` when set. */
+	pageCount?: number;
+	/** Alias for `pageSize` (Reka prop name). */
+	itemsPerPage?: number;
+	/** Odd number of page buttons to show (Element+). Mapped to Reka `siblingCount`. */
+	pagerCount?: number;
+	/** Hide the component when there is only one page. */
+	hideOnSinglePage?: boolean;
+	/** Custom text for the previous button (chevron icon used when omitted). */
+	prevText?: string;
+	/** Custom text for the next button (chevron icon used when omitted). */
+	nextText?: string;
+	/** Initial page size in uncontrolled mode. */
+	defaultPageSize?: number;
+	/** Initial page in uncontrolled mode (alias for Reka `defaultPage`). */
+	defaultCurrentPage?: number;
+	/** Size variant. */
 	size?: PaginationSizes;
-
-	// Override to make total optional (Element+ allows omitting it)
+	/** Total number of items. Optional so `pageCount` can be used alone. */
 	total?: number;
 };
 
 export type PaginationEmits = PaginationRootEmits & {
 	'update:currentPage': [value: number];
-	'update:pageSize': [value: number];
-	'size-change': [value: number]; // Legacy Element+ event
-	'current-change': [value: number]; // Legacy Element+ event
-	'prev-click': [value: number]; // Element+ event
-	'next-click': [value: number]; // Element+ event
+	'current-change': [value: number];
+	'prev-click': [value: number];
+	'next-click': [value: number];
 };
 
 export type PaginationSlots = {
-	default?: (props?: Record<string, never>) => unknown;
 	prev?: (props?: { disabled?: boolean }) => unknown;
 	next?: (props?: { disabled?: boolean }) => unknown;
-	first?: (props?: { disabled?: boolean }) => unknown;
-	last?: (props?: { disabled?: boolean }) => unknown;
 };

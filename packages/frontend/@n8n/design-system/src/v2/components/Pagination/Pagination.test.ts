@@ -1,10 +1,7 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
 
-import type { PaginationSizes } from './Pagination.types';
 import Pagination from './Pagination.vue';
-
-const sizeCases: PaginationSizes[] = ['medium', 'small'];
 
 describe('v2/components/Pagination', () => {
 	describe('rendering', () => {
@@ -28,13 +25,23 @@ describe('v2/components/Pagination', () => {
 			expect(container?.className).toContain('medium');
 		});
 
+		it('should apply small size class', () => {
+			const wrapper = render(Pagination, {
+				props: {
+					total: 100,
+					size: 'small',
+				},
+			});
+			const container = wrapper.container.firstChild as HTMLElement;
+			expect(container?.className).toContain('small');
+		});
+
 		it('should render disabled state', () => {
 			const wrapper = render(Pagination, {
 				props: {
 					total: 100,
 					pageSize: 10,
 					disabled: true,
-					layout: 'prev, pager, next, jumper',
 				},
 			});
 
@@ -43,9 +50,6 @@ describe('v2/components/Pagination', () => {
 			buttons.forEach((button) => {
 				expect(button).toBeDisabled();
 			});
-
-			const jumper = wrapper.container.querySelector('[data-test-id="pagination-jumper-input"]');
-			expect(jumper).toBeDisabled();
 		});
 
 		it('should not emit page changes when disabled', async () => {
@@ -58,8 +62,7 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			const page2Button = wrapper.getByText('2');
-			await userEvent.click(page2Button);
+			await userEvent.click(wrapper.getByText('2'));
 
 			expect(wrapper.emitted('update:currentPage')).toBeFalsy();
 		});
@@ -87,66 +90,6 @@ describe('v2/components/Pagination', () => {
 		});
 	});
 
-	describe('sizes', () => {
-		test.each(sizeCases)('size %s should apply class', (size) => {
-			const wrapper = render(Pagination, {
-				props: {
-					total: 100,
-					size,
-				},
-			});
-			const container = wrapper.container.firstChild as HTMLElement;
-			expect(container?.className).toContain(size);
-		});
-	});
-
-	describe('layout', () => {
-		it('should render only prev and next when layout is "prev, next"', () => {
-			const wrapper = render(Pagination, {
-				props: {
-					total: 100,
-					layout: 'prev, next',
-				},
-			});
-			const pageButtons = wrapper.container.querySelectorAll('[data-index]');
-			expect(pageButtons.length).toBe(0);
-		});
-
-		it('should render total count when layout includes "total"', () => {
-			const wrapper = render(Pagination, {
-				props: {
-					total: 100,
-					layout: 'total, prev, pager, next',
-				},
-			});
-			expect(wrapper.getByText('Total 100')).toBeInTheDocument();
-		});
-
-		it('should render page size selector when layout includes "sizes"', () => {
-			const wrapper = render(Pagination, {
-				props: {
-					total: 100,
-					layout: 'sizes, prev, pager, next',
-				},
-			});
-			const select = wrapper.container.querySelector('[role="combobox"]');
-			expect(select).toBeInTheDocument();
-		});
-
-		it('should render jumper when layout includes "jumper"', () => {
-			const wrapper = render(Pagination, {
-				props: {
-					total: 100,
-					layout: 'prev, pager, next, jumper',
-				},
-			});
-			expect(wrapper.getByText('Go to')).toBeInTheDocument();
-			const input = wrapper.getByTestId('pagination-jumper-input');
-			expect(input).toBeInTheDocument();
-			expect(input).toHaveValue(1);
-		});
-	});
-
 	describe('v-model:currentPage', () => {
 		it('should update currentPage on page click', async () => {
 			const wrapper = render(Pagination, {
@@ -157,8 +100,7 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			const page2Button = wrapper.getByText('2');
-			await userEvent.click(page2Button);
+			await userEvent.click(wrapper.getByText('2'));
 
 			await waitFor(() => {
 				expect(wrapper.emitted('update:currentPage')?.[0]).toEqual([2]);
@@ -176,8 +118,7 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			const page3Button = wrapper.getByText('3');
-			expect(page3Button).toHaveAttribute('data-selected');
+			expect(wrapper.getByText('3')).toHaveAttribute('data-selected');
 		});
 
 		it('should handle prev button click', async () => {
@@ -189,11 +130,7 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			const buttons = wrapper.container.querySelectorAll('button');
-			const prevButton = buttons[0];
-			expect(prevButton).toBeInTheDocument();
-
-			await userEvent.click(prevButton);
+			await userEvent.click(wrapper.getByTestId('pagination-prev'));
 
 			await waitFor(() => {
 				expect(wrapper.emitted('update:currentPage')?.[0]).toEqual([2]);
@@ -210,11 +147,7 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			const buttons = wrapper.container.querySelectorAll('button');
-			const nextButton = buttons[buttons.length - 1];
-			expect(nextButton).toBeInTheDocument();
-
-			await userEvent.click(nextButton);
+			await userEvent.click(wrapper.getByTestId('pagination-next'));
 
 			await waitFor(() => {
 				expect(wrapper.emitted('update:currentPage')?.[0]).toEqual([3]);
@@ -223,61 +156,8 @@ describe('v2/components/Pagination', () => {
 		});
 	});
 
-	describe('v-model:pageSize', () => {
-		it('should emit update:pageSize when page size changes', async () => {
-			const wrapper = render(Pagination, {
-				props: {
-					currentPage: 1,
-					pageSize: 10,
-					total: 100,
-					layout: 'sizes, prev, pager, next',
-				},
-			});
-
-			const select = wrapper.container.querySelector('[role="combobox"]');
-			expect(select).toBeInTheDocument();
-
-			await userEvent.click(select!);
-
-			await waitFor(async () => {
-				const option20 = wrapper.getByRole('option', { name: '20' });
-				await userEvent.click(option20);
-			});
-
-			await waitFor(() => {
-				expect(wrapper.emitted('update:pageSize')?.[0]).toEqual([20]);
-				expect(wrapper.emitted('size-change')?.[0]).toEqual([20]);
-			});
-		});
-
-		it('should reset to page 1 when page size changes', async () => {
-			const wrapper = render(Pagination, {
-				props: {
-					currentPage: 3,
-					pageSize: 10,
-					total: 100,
-					layout: 'sizes, prev, pager, next',
-				},
-			});
-
-			const select = wrapper.container.querySelector('[role="combobox"]');
-			expect(select).toBeInTheDocument();
-
-			await userEvent.click(select!);
-
-			await waitFor(async () => {
-				const option20 = wrapper.getByRole('option', { name: '20' });
-				await userEvent.click(option20);
-			});
-
-			await waitFor(() => {
-				expect(wrapper.emitted('update:currentPage')?.[0]).toEqual([1]);
-			});
-		});
-	});
-
 	describe('backward compatibility', () => {
-		it('should support page prop', () => {
+		it('should support page prop as an alias for currentPage', () => {
 			const wrapper = render(Pagination, {
 				props: {
 					page: 2,
@@ -285,23 +165,10 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			const page2Button = wrapper.getByText('2');
-			expect(page2Button).toHaveAttribute('data-selected');
+			expect(wrapper.getByText('2')).toHaveAttribute('data-selected');
 		});
 
-		it('should support pageSize prop', () => {
-			const wrapper = render(Pagination, {
-				props: {
-					pageSize: 20,
-					total: 100,
-					showEdges: true,
-				},
-			});
-
-			expect(wrapper.getByText('5')).toBeInTheDocument();
-		});
-
-		it('should support itemsPerPage prop', () => {
+		it('should support itemsPerPage prop as an alias for pageSize', () => {
 			const wrapper = render(Pagination, {
 				props: {
 					itemsPerPage: 20,
@@ -313,16 +180,31 @@ describe('v2/components/Pagination', () => {
 			expect(wrapper.getByText('5')).toBeInTheDocument();
 		});
 
-		it('should support pagerCount prop', () => {
-			const wrapper = render(Pagination, {
+		it('should limit visible page buttons with pagerCount', () => {
+			const withFew = render(Pagination, {
 				props: {
-					pagerCount: 5,
+					pagerCount: 3,
 					total: 200,
+					pageSize: 10,
 					currentPage: 10,
+					showEdges: true,
 				},
 			});
+			const fewCount = withFew.queryAllByTestId('pagination-item').length;
+			withFew.unmount();
 
-			expect(wrapper.container.querySelector('.n8n-pagination')).toBeInTheDocument();
+			const withMany = render(Pagination, {
+				props: {
+					pagerCount: 7,
+					total: 200,
+					pageSize: 10,
+					currentPage: 10,
+					showEdges: true,
+				},
+			});
+			const manyCount = withMany.queryAllByTestId('pagination-item').length;
+
+			expect(fewCount).toBeLessThan(manyCount);
 		});
 	});
 
@@ -334,7 +216,7 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			expect(wrapper.container.querySelector('.n8n-pagination')).toBeInTheDocument();
+			expect(wrapper.getByTestId('pagination')).toBeInTheDocument();
 		});
 
 		it('should calculate pages from pageCount prop', () => {
@@ -360,48 +242,6 @@ describe('v2/components/Pagination', () => {
 
 			expect(wrapper.getByText('Previous')).toBeInTheDocument();
 			expect(wrapper.getByText('Next')).toBeInTheDocument();
-		});
-
-		it('should handle page jumper input', async () => {
-			const wrapper = render(Pagination, {
-				props: {
-					currentPage: 1,
-					total: 100,
-					layout: 'prev, pager, next, jumper',
-				},
-			});
-
-			const input = wrapper.getByTestId('pagination-jumper-input');
-
-			await userEvent.clear(input);
-			await userEvent.type(input, '5');
-			await userEvent.keyboard('{Enter}');
-
-			await waitFor(() => {
-				expect(wrapper.emitted('update:currentPage')?.[0]).toEqual([5]);
-			});
-		});
-
-		it('should clamp jumper input to the nearest valid page', async () => {
-			const wrapper = render(Pagination, {
-				props: {
-					currentPage: 1,
-					total: 100,
-					pageSize: 10,
-					layout: 'prev, pager, next, jumper',
-				},
-			});
-
-			const input = wrapper.getByTestId('pagination-jumper-input');
-
-			await userEvent.clear(input);
-			await userEvent.type(input, '999');
-			await userEvent.keyboard('{Enter}');
-
-			await waitFor(() => {
-				expect(wrapper.emitted('update:currentPage')?.[0]).toEqual([10]);
-			});
-			expect(input).toHaveValue(10);
 		});
 	});
 
