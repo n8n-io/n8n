@@ -82,6 +82,25 @@ describe('AgentEvalRunRepository', () => {
 			});
 		});
 
+		it('stores metrics alongside the error so a partial run keeps its tally', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.markAsError(
+				'run-1',
+				'timeout',
+				{ message: 'deadline exceeded' },
+				{ total: 5, success: 3, usage: { inputTokens: 20, outputTokens: 40 } },
+			);
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[2]).toMatchObject({
+				status: 'error',
+				errorCode: 'timeout',
+				errorDetails: { message: 'deadline exceeded' },
+				metrics: { total: 5, success: 3, usage: { inputTokens: 20, outputTokens: 40 } },
+			});
+		});
+
 		it('clears the running instance so finished runs leave no stale pointer', async () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
 

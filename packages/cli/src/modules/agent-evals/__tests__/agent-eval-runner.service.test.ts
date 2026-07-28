@@ -493,7 +493,8 @@ describe('AgentEvalRunnerService', () => {
 			expect(runRepository.markAsError).toHaveBeenCalledWith(
 				'run-1',
 				'case_dispatch_failed',
-				expect.objectContaining({ total: 2, success: 1, errors: ['db down'] }),
+				expect.objectContaining({ errors: ['db down'] }),
+				expect.objectContaining({ total: 2, success: 1 }),
 			);
 			expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
 		});
@@ -531,6 +532,10 @@ describe('AgentEvalRunnerService', () => {
 			expect(runRepository.markAsError).toHaveBeenCalledWith(
 				'run-1',
 				'timeout',
+				expect.objectContaining({
+					message: expect.stringContaining('2 case(s) were not started'),
+				}),
+				// counts land under `metrics`, same as every other terminal status
 				expect.objectContaining({ total: 2, cancelled: 2 }),
 			);
 			// A deadline is a failure, not the user's Stop.
@@ -552,6 +557,38 @@ describe('AgentEvalRunnerService', () => {
 			await finished;
 
 			expect(runRepository.markAsCancelled).toHaveBeenCalledWith('run-1', expect.anything());
+			expect(runRepository.markAsError).not.toHaveBeenCalled();
+		});
+
+		it('completes a run whose last case finished just past the deadline', async () => {
+			vi.useFakeTimers();
+			globalConfig.evaluation.agentEvalsRunTimeoutMinutes = 30;
+			seedFor([{ id: 'row-1', question: 'Q1' }], { success: 1 });
+			// The only case is still executing when the deadline fires, so the abort
+			// has nothing left to skip. Expiry alone must not fail a run that finished.
+			let caseStarted: (() => void) | undefined;
+			const started = new Promise<void>((resolve) => {
+				caseStarted = resolve;
+			});
+			let finishCase: (() => void) | undefined;
+			evalAgentExecutionService.executeWithLlmMock.mockImplementation(async () => {
+				caseStarted?.();
+				await new Promise<void>((resolve) => {
+					finishCase = resolve;
+				});
+				return successExec() as never;
+			});
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await started;
+			await vi.advanceTimersByTimeAsync(30 * 60_000);
+			finishCase?.();
+			await finished;
+
+			expect(runRepository.markAsCompleted).toHaveBeenCalledWith(
+				'run-1',
+				expect.objectContaining({ total: 1, success: 1 }),
+			);
 			expect(runRepository.markAsError).not.toHaveBeenCalled();
 		});
 
