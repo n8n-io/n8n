@@ -2,7 +2,7 @@ import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, In, Repository } from '@n8n/typeorm';
 
-import { BinaryDataFile, type SourceType } from '../entities';
+import { BinaryDataFile } from '../entities';
 import { dbType } from '../entities/abstract-entity';
 
 @Service()
@@ -21,11 +21,10 @@ export class BinaryDataRepository extends Repository<BinaryDataFile> {
 		return file?.data ?? null;
 	}
 
-	/** Scoped to one source type so a stale key can never delete another consumer's data. */
-	async deleteByFileIds(sourceType: SourceType, fileIds: string[]): Promise<void> {
+	async deleteByFileIds(fileIds: string[]): Promise<void> {
 		if (fileIds.length === 0) return;
 
-		await this.delete({ sourceType, fileId: In(fileIds) });
+		await this.delete({ fileId: In(fileIds) });
 	}
 
 	async copyStoredFile(

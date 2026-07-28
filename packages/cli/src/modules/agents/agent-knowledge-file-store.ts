@@ -98,10 +98,7 @@ export class AgentKnowledgeFileStore {
 		await Promise.all(
 			[...groups].map(async ([loc, group]) => {
 				if (loc === 'db') {
-					await this.binaryDataRepository.deleteByFileIds(
-						'agent_file',
-						group.map((file) => file.storageKey),
-					);
+					await this.binaryDataRepository.deleteByFileIds(group.map((file) => file.storageKey));
 					return;
 				}
 

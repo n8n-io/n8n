@@ -337,26 +337,3 @@ it('should throw FileTooLargeError when copying oversized file by path', async (
 		await rm(tempDir, { recursive: true, force: true });
 	}
 });
-
-it('should leave other source types alone when deleting by file id', async () => {
-	const { fileId: agentFileId } = await dbManager.store(
-		{
-			type: 'custom',
-			pathSegments: ['agents', 'agent-1', 'knowledge-files', 'file-1'],
-			sourceType: 'agent_file',
-			sourceId: 'file-1',
-		},
-		buffer,
-		{ mimeType: 'text/plain', fileName: 'notes.txt' },
-	);
-	const { fileId: executionFileId } = await dbManager.store(
-		{ type: 'execution', workflowId, executionId },
-		buffer,
-		{ mimeType: 'text/plain', fileName: 'run.txt' },
-	);
-
-	await repository.deleteByFileIds('agent_file', [agentFileId, executionFileId]);
-
-	await expect(repository.existsBy({ fileId: agentFileId })).resolves.toBe(false);
-	await expect(repository.existsBy({ fileId: executionFileId })).resolves.toBe(true);
-});

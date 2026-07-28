@@ -143,7 +143,7 @@ describe('AgentKnowledgeFileStore', () => {
 		).resolves.toBeUndefined();
 
 		await expect(store.readAsBuffer(kept)).resolves.toBeNull();
-		expect(binaryDataRepository.deleteByFileIds).toHaveBeenCalledWith('agent_file', [
+		expect(binaryDataRepository.deleteByFileIds).toHaveBeenCalledWith([
 			'9c1f4b7a-2d3e-4f5a-8b6c-7d8e9f0a1b2c',
 		]);
 		expect(errorReporter.error).toHaveBeenCalledWith(expect.any(SkippedEntryDeletionError));
