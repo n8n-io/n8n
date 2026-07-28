@@ -1,7 +1,11 @@
 import type { User } from '@n8n/db';
+import type { Readable } from 'node:stream';
 
 import type { DataTableResolutionFailure } from './entities/data-table/data-table.types';
-import type { VariableResolutionFailure } from './entities/variable/variable.types';
+import type {
+	VariableLimitFailure,
+	VariableResolutionFailure,
+} from './entities/variable/variable.types';
 import type { WorkflowIdConflict } from './entities/workflow/workflow-import-match.service';
 import type {
 	WorkflowConflict,
@@ -87,6 +91,13 @@ export const VariableMissingMode = {
 	DoNothing: 'do-nothing',
 	/** Blocks the import unless every referenced variable already resolves in the target project or global scope. */
 	MustPreexist: 'must-preexist',
+	/** Creates each unresolved variable with an empty value at the placement scope; the response lists the created names under `stubbed`. */
+	CreateStub: 'create-stub',
+} as const;
+
+export const VariableParentPolicy = {
+	Project: 'project',
+	Global: 'global',
 } as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -111,6 +122,8 @@ export type DataTableSchemaConflictPolicy =
 	(typeof DataTableSchemaConflictPolicy)[keyof typeof DataTableSchemaConflictPolicy];
 
 export type VariableMissingMode = (typeof VariableMissingMode)[keyof typeof VariableMissingMode];
+
+export type VariableParentPolicy = (typeof VariableParentPolicy)[keyof typeof VariableParentPolicy];
 
 export interface ExportPackageRequest {
 	user: User;
@@ -159,6 +172,7 @@ export type ImportDataTableProperties = {
 
 export type ImportVariableProperties = {
 	variableMissingMode: VariableMissingMode;
+	variableParentPolicy?: VariableParentPolicy;
 };
 
 /**
@@ -209,6 +223,7 @@ export type ImportPackageEventCounts = {
 	variables: {
 		matched: number;
 		missing: number;
+		created: number;
 		requirements: number;
 	};
 };
@@ -221,6 +236,16 @@ export type ExportPackageEventCounts = {
 	dataTables: number;
 	variables: number;
 };
+
+/**
+ * Result of an export: the archive stream plus the true per-entity counts of
+ * what actually ended up in the package (after folder bundling and
+ * auto-inclusion). Consumers surface these instead of the requested id counts.
+ */
+export interface ExportPackageResult {
+	stream: Readable;
+	counts: ExportPackageEventCounts;
+}
 
 export interface ImportedWorkflowSummary {
 	sourceWorkflowId: string;
@@ -271,6 +296,7 @@ export type BlockingIssue =
 	| ({ type: 'folder-conflict' } & FolderConflict)
 	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
 	| ({ type: 'variable-unresolved' } & VariableResolutionFailure)
+	| ({ type: 'variable-limit-exceeded' } & VariableLimitFailure)
 	| {
 			type: 'missing-node-type';
 			/** Node type this instance cannot resolve (at least not at `typeVersion`). */
@@ -341,6 +367,7 @@ export interface ImportCredentialSummary {
 export interface ImportVariableSummary {
 	matched: string[];
 	missing: string[];
+	stubbed: string[];
 }
 
 export interface ImportResult {

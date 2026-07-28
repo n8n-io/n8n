@@ -77,9 +77,8 @@ const dirtyEndpoint = async (getByTestId: ReturnType<typeof render>['getByTestId
 	await userEvent.type(input, 'x');
 };
 
-/** N8nInputNumber renders ElInputNumber which wraps a native <input>. */
-const typeIntoNumberInput = async (wrapper: HTMLElement, value: string) => {
-	const input = wrapper.querySelector('input') ?? wrapper;
+/** Unit inputs (timeout, sample rate) format on blur, so type then tab away to commit. */
+const typeIntoUnitInput = async (input: HTMLElement, value: string) => {
 	await userEvent.clear(input);
 	await userEvent.type(input, value);
 	await userEvent.tab();
@@ -121,12 +120,12 @@ describe('SettingsOpenTelemetryView', () => {
 		expect(getByTestId('otel-production-only')).toBeInTheDocument();
 	});
 
-	it('disables save/discard buttons when settings are unchanged', async () => {
-		const { getByTestId } = render();
+	it('hides the save bar when settings are unchanged', async () => {
+		const { queryByTestId } = render();
 
 		await waitFor(() => {
-			expect(getByTestId('otel-save-button')).toBeDisabled();
-			expect(getByTestId('otel-discard-button')).toBeDisabled();
+			expect(getOtelSettingsMock).toHaveBeenCalled();
+			expect(queryByTestId('settings-save-bar')).not.toBeInTheDocument();
 		});
 	});
 
@@ -139,21 +138,68 @@ describe('SettingsOpenTelemetryView', () => {
 		await dirtyEndpoint(getByTestId);
 
 		await waitFor(() => {
-			expect(getByTestId('otel-save-button')).not.toBeDisabled();
-			expect(getByTestId('otel-discard-button')).not.toBeDisabled();
+			expect(getByTestId('settings-save-bar-save')).not.toBeDisabled();
+			expect(getByTestId('settings-save-bar-discard')).not.toBeDisabled();
 		});
 	});
 
-	it('shows save button after changing the enabled/disabled select', async () => {
-		const { getByTestId, getByText } = render();
+	// ── status control (instant enable/disable) ───────────────────────────────
+
+	it('enables OpenTelemetry immediately when clicking Enable, without the save bar', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
+		updateOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: true }));
+
+		const { getByTestId, queryByTestId } = render();
 		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toBeInTheDocument());
 
-		// N8nSelect (ElSelect): click wrapper to open dropdown, then click the option
 		await userEvent.click(getByTestId('otel-enabled-toggle'));
-		await waitFor(() => expect(getByText('Enabled')).toBeInTheDocument());
-		await userEvent.click(getByText('Enabled'));
 
-		await waitFor(() => expect(getByTestId('otel-save-button')).toBeInTheDocument());
+		await waitFor(() => {
+			expect(updateOtelSettingsMock).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ enabled: true }),
+			);
+			expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		});
+		expect(queryByTestId('settings-save-bar')).not.toBeInTheDocument();
+	});
+
+	it('commits pending form edits when enabling', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
+		updateOtelSettingsMock.mockResolvedValue(
+			makeSettings({ enabled: true, exporterEndpoint: 'http://localhost:4318x' }),
+		);
+
+		const { getByTestId, queryByTestId } = render();
+		await waitFor(() => expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument());
+
+		await dirtyEndpoint(getByTestId);
+		await waitFor(() => expect(getByTestId('settings-save-bar')).toBeInTheDocument());
+
+		await userEvent.click(getByTestId('otel-enabled-toggle'));
+
+		await waitFor(() => {
+			expect(updateOtelSettingsMock).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ enabled: true, exporterEndpoint: 'http://localhost:4318x' }),
+			);
+			expect(queryByTestId('settings-save-bar')).not.toBeInTheDocument();
+		});
+	});
+
+	it('rolls the status back when enabling fails', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
+		updateOtelSettingsMock.mockRejectedValue(new Error('network error'));
+
+		const { getByTestId, store } = render();
+		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toBeInTheDocument());
+
+		await userEvent.click(getByTestId('otel-enabled-toggle'));
+
+		await waitFor(() => {
+			expect(showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+			expect(store.settings!.enabled).toBe(false);
+		});
 	});
 
 	it('shows save button after toggling includeNodeSpans checkbox', async () => {
@@ -162,7 +208,7 @@ describe('SettingsOpenTelemetryView', () => {
 
 		await userEvent.click(getByTestId('otel-include-node-spans'));
 
-		await waitFor(() => expect(getByTestId('otel-save-button')).toBeInTheDocument());
+		await waitFor(() => expect(getByTestId('settings-save-bar-save')).toBeInTheDocument());
 	});
 
 	it('shows save button after toggling injectOutbound checkbox', async () => {
@@ -171,7 +217,7 @@ describe('SettingsOpenTelemetryView', () => {
 
 		await userEvent.click(getByTestId('otel-inject-outbound'));
 
-		await waitFor(() => expect(getByTestId('otel-save-button')).toBeInTheDocument());
+		await waitFor(() => expect(getByTestId('settings-save-bar-save')).toBeInTheDocument());
 	});
 
 	it('shows save button after toggling productionExecutionsOnly checkbox', async () => {
@@ -180,7 +226,7 @@ describe('SettingsOpenTelemetryView', () => {
 
 		await userEvent.click(getByTestId('otel-production-only'));
 
-		await waitFor(() => expect(getByTestId('otel-save-button')).toBeInTheDocument());
+		await waitFor(() => expect(getByTestId('settings-save-bar-save')).toBeInTheDocument());
 	});
 
 	// ── save ──────────────────────────────────────────────────────────────────
@@ -192,8 +238,8 @@ describe('SettingsOpenTelemetryView', () => {
 		await waitFor(() => expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument());
 
 		await dirtyEndpoint(getByTestId);
-		await waitFor(() => expect(getByTestId('otel-save-button')).toBeInTheDocument());
-		await userEvent.click(getByTestId('otel-save-button'));
+		await waitFor(() => expect(getByTestId('settings-save-bar-save')).toBeInTheDocument());
+		await userEvent.click(getByTestId('settings-save-bar-save'));
 
 		await waitFor(() => {
 			expect(updateOtelSettingsMock).toHaveBeenCalled();
@@ -207,15 +253,10 @@ describe('SettingsOpenTelemetryView', () => {
 			makeSettings({ enabled: true, tracesSampleRate: 0.5 }),
 		);
 
-		const { getByTestId, getByText } = render();
+		const { getByTestId } = render();
 		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toBeInTheDocument());
 
 		await userEvent.click(getByTestId('otel-enabled-toggle'));
-		await waitFor(() => expect(getByText('Enabled')).toBeInTheDocument());
-		await userEvent.click(getByText('Enabled'));
-
-		await waitFor(() => expect(getByTestId('otel-save-button')).toBeInTheDocument());
-		await userEvent.click(getByTestId('otel-save-button'));
 
 		await waitFor(() => {
 			expect(telemetryTrack).toHaveBeenCalledWith(
@@ -233,11 +274,8 @@ describe('SettingsOpenTelemetryView', () => {
 		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toBeInTheDocument());
 
 		await userEvent.click(getByTestId('otel-enabled-toggle'));
-		await waitFor(() => expect(getByText('Disabled')).toBeInTheDocument());
-		await userEvent.click(getByText('Disabled'));
-
-		await waitFor(() => expect(getByTestId('otel-save-button')).toBeInTheDocument());
-		await userEvent.click(getByTestId('otel-save-button'));
+		await waitFor(() => expect(getByText('Disable')).toBeInTheDocument());
+		await userEvent.click(getByText('Disable'));
 
 		await waitFor(() => {
 			expect(telemetryTrack).toHaveBeenCalledWith('Disabled otel via UI');
@@ -255,8 +293,8 @@ describe('SettingsOpenTelemetryView', () => {
 		await waitFor(() => expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument());
 
 		await dirtyEndpoint(getByTestId);
-		await waitFor(() => expect(getByTestId('otel-save-button')).toBeInTheDocument());
-		await userEvent.click(getByTestId('otel-save-button'));
+		await waitFor(() => expect(getByTestId('settings-save-bar-save')).toBeInTheDocument());
+		await userEvent.click(getByTestId('settings-save-bar-save'));
 
 		await waitFor(() => {
 			expect(telemetryTrack).toHaveBeenCalledWith(
@@ -275,8 +313,8 @@ describe('SettingsOpenTelemetryView', () => {
 		await waitFor(() => expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument());
 
 		await dirtyEndpoint(getByTestId);
-		await waitFor(() => expect(getByTestId('otel-save-button')).toBeInTheDocument());
-		await userEvent.click(getByTestId('otel-save-button'));
+		await waitFor(() => expect(getByTestId('settings-save-bar-save')).toBeInTheDocument());
+		await userEvent.click(getByTestId('settings-save-bar-save'));
 
 		await waitFor(() => {
 			expect(showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
@@ -286,16 +324,15 @@ describe('SettingsOpenTelemetryView', () => {
 	// ── discard ───────────────────────────────────────────────────────────────
 
 	it('discards changes and disables save/discard buttons when clicking Discard', async () => {
-		const { getByTestId } = render();
+		const { getByTestId, queryByTestId } = render();
 		await waitFor(() => expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument());
 
 		await dirtyEndpoint(getByTestId);
-		await waitFor(() => expect(getByTestId('otel-save-button')).not.toBeDisabled());
-		await userEvent.click(getByTestId('otel-discard-button'));
+		await waitFor(() => expect(getByTestId('settings-save-bar-save')).not.toBeDisabled());
+		await userEvent.click(getByTestId('settings-save-bar-discard'));
 
 		await waitFor(() => {
-			expect(getByTestId('otel-save-button')).toBeDisabled();
-			expect(getByTestId('otel-discard-button')).toBeDisabled();
+			expect(queryByTestId('settings-save-bar')).not.toBeInTheDocument();
 		});
 		expect(updateOtelSettingsMock).not.toHaveBeenCalled();
 	});
@@ -373,10 +410,10 @@ describe('SettingsOpenTelemetryView', () => {
 		await userEvent.type(getByTestId('otel-tracing-path'), '/custom/traces');
 
 		// Connectivity timeout
-		await typeIntoNumberInput(getByTestId('otel-connectivity-timeout'), '5000');
+		await typeIntoUnitInput(getByTestId('otel-connectivity-timeout'), '5000');
 
 		// Sample rate
-		await typeIntoNumberInput(getByTestId('otel-sample-rate'), '0.5');
+		await typeIntoUnitInput(getByTestId('otel-sample-rate'), '0.5');
 
 		// Add a header
 		await userEvent.click(getByTestId('otel-header-add'));
@@ -394,8 +431,8 @@ describe('SettingsOpenTelemetryView', () => {
 		await userEvent.click(getByTestId('otel-production-only'));
 
 		// Save
-		await waitFor(() => expect(getByTestId('otel-save-button')).toBeInTheDocument());
-		await userEvent.click(getByTestId('otel-save-button'));
+		await waitFor(() => expect(getByTestId('settings-save-bar-save')).toBeInTheDocument());
+		await userEvent.click(getByTestId('settings-save-bar-save'));
 
 		await waitFor(() => {
 			expect(updateOtelSettingsMock).toHaveBeenCalledWith(
@@ -460,6 +497,7 @@ describe('SettingsOpenTelemetryView', () => {
 
 		await waitFor(() => {
 			expect(getByText(/401 Unauthorized/)).toBeInTheDocument();
+			expect(getByTestId('otel-settings-row-error')).toHaveTextContent('401 Unauthorized');
 		});
 	});
 
@@ -494,7 +532,7 @@ describe('SettingsOpenTelemetryView', () => {
 		await userEvent.click(getByTestId('otel-test-trace-button'));
 		await waitFor(() => expect(getByText(/span sent to collector at/)).toBeInTheDocument());
 
-		await typeIntoNumberInput(getByTestId('otel-connectivity-timeout'), '5000');
+		await typeIntoUnitInput(getByTestId('otel-connectivity-timeout'), '5000');
 
 		await waitFor(() => {
 			expect(queryByText(/span sent to collector at/)).not.toBeInTheDocument();

@@ -33,6 +33,7 @@ import {
 	NodeHelpers,
 	Workflow,
 	UnexpectedError,
+	UserError,
 	isExpression,
 } from 'n8n-workflow';
 
@@ -140,12 +141,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 								node,
 							);
 
-							// @ts-ignore
+							// @ts-expect-error dynamic key on request options
 							if (!requestOptions[outerKey]) {
-								// @ts-ignore
+								// @ts-expect-error dynamic key on request options
 								requestOptions[outerKey] = {};
 							}
-							// @ts-ignore
+							// @ts-expect-error dynamic key on request options
 							requestOptions[outerKey][keyResolved] = valueResolved;
 						});
 					});
@@ -198,11 +199,21 @@ export class CredentialsHelper extends ICredentialsHelper {
 					}
 
 					if (node.credentials) {
-						await this.updateCredentials(
-							node.credentials[credentialType.name],
-							credentialType.name,
-							Object.assign(credentials, output),
-						);
+						const nodeCredentials = node.credentials[credentialType.name];
+						// Cache the freshly-fetched token onto the raw stored credentials, but
+						// never overwrite a field the user stored as an expression with the value
+						// it resolved to this run — otherwise later runs reuse a stale static value.
+						const storedData = await (
+							await this.getCredentials(nodeCredentials, credentialType.name)
+						).getData();
+						const dataToPersist: ICredentialDataDecryptedObject = { ...storedData };
+						for (const [key, value] of Object.entries(output as ICredentialDataDecryptedObject)) {
+							if (key === expirableProperty.name || !isExpression(storedData[key])) {
+								dataToPersist[key] = value;
+							}
+						}
+
+						await this.updateCredentials(nodeCredentials, credentialType.name, dataToPersist);
 						return Object.assign(credentials, output);
 					}
 				}
@@ -306,6 +317,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 			}
 
 			throw error;
+		}
+
+		// Keep non-project credentials blocked even if an earlier access check is bypassed.
+		if (credential.usageScope !== 'project') {
+			throw new UserError('This credential cannot be used in workflows');
 		}
 
 		return credential;

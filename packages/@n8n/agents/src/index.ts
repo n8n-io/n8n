@@ -66,6 +66,7 @@ export type {
 	ResumeOptions,
 	McpServerConfig,
 	McpToolCallSettledEvent,
+	McpConnectionFailedEvent,
 	McpVerifyResult,
 	ModelConfig,
 	ExecutionOptions,
@@ -153,7 +154,6 @@ export { Agent } from './sdk/agent';
 export type { AgentSnapshot } from './sdk/agent';
 export {
 	appendSkillCatalogToInstructions,
-	createListSkillsTool,
 	createRuntimeSkillRegistry,
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
@@ -170,7 +170,6 @@ export {
 	RUNTIME_SKILL_LINKED_FILE_GROUPS,
 	RUNTIME_SKILL_NAME_PATTERN,
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
-	LIST_SKILLS_TOOL_NAME,
 	SKILL_LOAD_TOOL_NAME,
 	validateRuntimeSkill,
 } from './skills';
