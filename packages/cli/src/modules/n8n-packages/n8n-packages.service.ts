@@ -117,9 +117,13 @@ export class N8nPackagesService {
 			...(projectExportResult?.workflowEntries ?? []),
 		];
 
+		// Reference-only keeps missing dependencies out of the package, so only the
+		// direct references of packaged workflows matter — a referenced workflow's
+		// own dependency closure is assumed to exist on the target alongside it.
 		const workflowRequirements = await this.workflowDependencyResolver.resolve({
 			user: request.user,
 			workflowIds: allWorkflowsBeforeAutoInclude.map(({ id }) => id),
+			traversal: isReferenceOnly ? 'direct' : 'transitive',
 		});
 
 		let autoIncludedExportResult: AutoIncludedWorkflowExportResult | undefined;
@@ -203,7 +207,8 @@ export class N8nPackagesService {
 			projectTargetsById,
 		});
 
-		const workflowRequirementExportResult = this.workflowRequirementExporter.export({
+		const workflowRequirementExportResult = await this.workflowRequirementExporter.export({
+			user: request.user,
 			requirements: workflowRequirements,
 			workflows: allWorkflowsInPackage,
 		});
