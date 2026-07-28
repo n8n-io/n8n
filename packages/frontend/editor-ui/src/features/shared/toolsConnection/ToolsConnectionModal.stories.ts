@@ -245,7 +245,7 @@ export const LargeList: Story = {
 	render: renderWithTrigger(),
 	args: {
 		items: makeLargeMcpList(300),
-		categories: ['app-action'],
+		categories: ['mcp'],
 	},
 };
 
