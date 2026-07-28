@@ -93,7 +93,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return 'receiving';
 	});
 
-	async function refreshHistory(): Promise<boolean> {
+	async function refreshHistory({
+		clearOnNotFound = false,
+	}: { clearOnNotFound?: boolean } = {}): Promise<boolean> {
 		const continueId = params.continueSessionId?.value;
 		try {
 			let dbMessages: AgentPersistedMessageDto[];
@@ -119,13 +121,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
 			return true;
 		} catch (error) {
-			// Treat 404 as "no thread yet" rather than surfacing an error —
-			// covers stale continue URLs and any lingering race where the
-			// thread hasn't been persisted on the backend.
 			const status = (error as { httpStatusCode?: number } | null)?.httpStatusCode;
 			if (status === 404) {
-				messages.value = [];
-				return true;
+				if (clearOnNotFound) messages.value = [];
+				return clearOnNotFound;
 			} else {
 				showError(error, locale.baseText('agents.chat.loadHistory.error'));
 			}
@@ -135,7 +134,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	async function loadHistory(): Promise<void> {
 		if (historyLoaded.value) return;
-		await refreshHistory();
+		await refreshHistory({ clearOnNotFound: true });
 		historyLoaded.value = true;
 		params.onHistoryLoaded?.(messages.value.length);
 	}

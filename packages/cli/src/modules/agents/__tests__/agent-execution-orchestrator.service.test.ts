@@ -488,6 +488,44 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	it('persists an aborted chat stream as cancelled without discarding partial output', async () => {
+		const { service, executionService } = makeService();
+		const abortController = new AbortController();
+		const runtime = makeRuntime([
+			{ type: 'text-start', id: 'text-1' },
+			{ type: 'text-delta', id: 'text-1', delta: 'partial answer' },
+			{ type: 'error', error: new Error('This operation was aborted') },
+			{ type: 'finish', finishReason: 'error' },
+		]);
+		const stream = service.streamChatResponse({
+			agentInstance: runtime.agent,
+			toolRegistry: runtime.toolRegistry,
+			agentId,
+			message: 'hello',
+			memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+			projectId,
+			abortSignal: abortController.signal,
+			onExecutionRecorded: vi.fn(),
+		});
+
+		await stream.next();
+		await stream.next();
+		abortController.abort();
+		await collect(stream);
+
+		expect(executionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userMessage: 'hello',
+				record: expect.objectContaining({
+					assistantResponse: 'partial answer',
+					finishReason: 'cancelled',
+					error: null,
+					timeline: [expect.objectContaining({ type: 'text', content: 'partial answer' })],
+				}),
+			}),
+		);
+	});
+
 	it('maps persisted execution history to chat DTOs', async () => {
 		const { service, executionService } = makeService();
 		executionService.getThreadDetail.mockResolvedValue({
@@ -576,6 +614,49 @@ describe('AgentExecutionOrchestratorService', () => {
 					runType: 'production',
 					configuration: runtime.telemetryConfiguration,
 				},
+			}),
+		);
+	});
+
+	it('persists an aborted resumed stream as cancelled without discarding partial output', async () => {
+		const { service, checkpointStorage, runtimeCacheService, executionService } = makeService();
+		const abortController = new AbortController();
+		const runtime = makeRuntime([
+			{ type: 'text-start', id: 'text-1' },
+			{ type: 'text-delta', id: 'text-1', delta: 'partial resumed answer' },
+			{ type: 'error', error: new Error('This operation was aborted') },
+			{ type: 'finish', finishReason: 'error' },
+		]);
+		checkpointStorage.getStatus.mockResolvedValue({
+			status: 'active',
+			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+		} as never);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const stream = service.resumeForChat({
+			agentId,
+			projectId,
+			runId: 'run-1',
+			toolCallId: 'tc-1',
+			resumeData: { value: 'yes' },
+			abortSignal: abortController.signal,
+			onExecutionRecorded: vi.fn(),
+		});
+
+		await stream.next();
+		await stream.next();
+		abortController.abort();
+		await collect(stream);
+
+		expect(executionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userMessage: null,
+				hitlStatus: 'resumed',
+				record: expect.objectContaining({
+					assistantResponse: 'partial resumed answer',
+					finishReason: 'cancelled',
+					error: null,
+					timeline: [expect.objectContaining({ type: 'text', content: 'partial resumed answer' })],
+				}),
 			}),
 		);
 	});

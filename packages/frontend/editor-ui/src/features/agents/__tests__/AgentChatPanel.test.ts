@@ -33,6 +33,12 @@ vi.mock('@n8n/design-system', () => ({
 	N8nButton: { template: '<button><slot /></button>' },
 	N8nCallout: { template: '<div><slot /><slot name="trailingContent" /></div>' },
 	N8nIconButton: { template: '<button />' },
+	N8nSendStopButton: {
+		name: 'N8nSendStopButton',
+		props: ['streaming', 'stopButtonTestId'],
+		emits: ['stop'],
+		template: '<button :data-test-id="stopButtonTestId" @click="$emit(\'stop\')" />',
+	},
 }));
 
 vi.mock('@/features/ai/shared/components/ChatInputBase.vue', () => ({
@@ -250,14 +256,16 @@ describe('AgentChatPanel', () => {
 		expect(chatInput.props('disabled')).toBe(false);
 	});
 
-	it('keeps the stop control available while an interactive card is unresolved', async () => {
+	it('shows send and stop controls while an interactive question is unresolved', async () => {
 		messagesMock.value = [openInteractiveMessage()];
 
 		const wrapper = mountPanel();
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
-		expect(chatInput.props('isStreaming')).toBe(true);
-		chatInput.vm.$emit('stop');
+		expect(chatInput.props('isStreaming')).toBe(false);
+		const stopButton = wrapper.find('[data-test-id="agent-chat-suspended-stop-button"]');
+		expect(stopButton.exists()).toBe(true);
+		await stopButton.trigger('click');
 		await flushPromises();
 		expect(stopGeneratingMock).toHaveBeenCalledTimes(1);
 	});

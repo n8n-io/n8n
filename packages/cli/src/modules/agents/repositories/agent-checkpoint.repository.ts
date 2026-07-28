@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, Equal, IsNull, Or, Repository } from '@n8n/typeorm';
 
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 
@@ -24,7 +24,12 @@ export class AgentCheckpointRepository extends Repository<AgentCheckpoint> {
 
 	async cancelSuspended(runId: string, agentId: string, suspendedState: string): Promise<boolean> {
 		const result = await this.update(
-			{ runId, agentId, expired: false, state: suspendedState },
+			{
+				runId,
+				agentId: Or(Equal(agentId), IsNull()),
+				expired: false,
+				state: suspendedState,
+			},
 			{ expired: true, state: null },
 		);
 

@@ -835,6 +835,56 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.toolCalls?.[0].state).toBe('cancelled');
 	});
 
+	it('keeps the suspended card open when failed resume reconciliation returns 404', async () => {
+		const approvalInput = {
+			type: 'approval' as const,
+			toolName: 'calculator',
+			args: { input: '2 + 2' },
+		};
+		globalThis.fetch = vi
+			.fn()
+			.mockResolvedValueOnce(
+				makeSseResponse([
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-approval',
+						toolName: 'calculator',
+						input: { input: '2 + 2' },
+					},
+					{
+						type: 'tool-call-suspended',
+						payload: {
+							toolCallId: 'tc-approval',
+							runId: 'run-approval',
+							toolName: 'calculator',
+							input: approvalInput,
+						},
+					},
+				]),
+			)
+			.mockResolvedValueOnce(
+				makeSseResponse([{ type: 'error', message: 'Resume failed' }]),
+			) as unknown as typeof fetch;
+		getTestChatMessagesMock.mockRejectedValue(
+			Object.assign(new Error('thread not found'), { httpStatusCode: 404 }),
+		);
+
+		const hook = buildHook();
+		await hook.sendMessage('calculate 2 + 2');
+		await hook.resume({
+			runId: 'run-approval',
+			toolCallId: 'tc-approval',
+			resumeData: { approved: false },
+		});
+
+		expect(getTestChatMessagesMock).toHaveBeenCalled();
+		expect(hook.messages.value[0].content).toBe('calculate 2 + 2');
+		const assistant = hook.messages.value[1];
+		expect(assistant.status).toBe('awaitingUser');
+		expect(assistant.toolCalls?.[0].state).toBe('suspended');
+		expect(assistant.interactive?.resolvedAt).toBeUndefined();
+	});
+
 	it('breaks out of the consume loop on `done` so isStreaming flips back to false', async () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },

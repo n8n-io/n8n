@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, toRef, watch, onMounted, onBeforeUnmount } from 'vue';
-import { N8nCallout, N8nIconButton } from '@n8n/design-system';
+import { N8nCallout, N8nIconButton, N8nSendStopButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { APPROVAL_TOOL_NAME } from '@n8n/api-types';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
@@ -130,6 +130,16 @@ const hasOpenSuspension = computed(() =>
 			(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
 		),
 	),
+);
+const showSuspensionStopAlongsideSend = computed(
+	() => hasOpenInteractiveQuestion.value && !isStreaming.value && !isCancelling.value,
+);
+const showStopAsPrimaryAction = computed(
+	() =>
+		isStreaming.value ||
+		isCancelling.value ||
+		hasOpenApproval.value ||
+		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
 );
 
 const chatPlaceholder = computed(() =>
@@ -275,7 +285,7 @@ onBeforeUnmount(() => {
 			<ChatInputBase
 				v-model="inputText"
 				:placeholder="chatPlaceholder"
-				:is-streaming="isStreaming || isCancelling || hasOpenInteraction || hasOpenSuspension"
+				:is-streaming="showStopAsPrimaryAction"
 				:can-submit="
 					!hasOpenApproval &&
 					!isStreaming &&
@@ -295,6 +305,12 @@ onBeforeUnmount(() => {
 			>
 				<template #footer-start>
 					<slot name="footer-start" />
+					<N8nSendStopButton
+						v-if="showSuspensionStopAlongsideSend"
+						streaming
+						stop-button-test-id="agent-chat-suspended-stop-button"
+						@stop="stopGenerating"
+					/>
 				</template>
 			</ChatInputBase>
 		</div>

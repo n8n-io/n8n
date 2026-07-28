@@ -13,7 +13,7 @@ import { Telemetry } from '@/telemetry';
 import { AgentExecutionService, type RecordMessageParams } from './agent-execution.service';
 import { AgentRunTracingService, modelIdFromSnapshot } from './agent-run-tracing.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
-import { ExecutionRecorder } from './execution-recorder';
+import { ExecutionRecorder, type MessageRecord } from './execution-recorder';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import type { ToolRegistry } from './tool-registry';
@@ -151,6 +151,14 @@ function getMaxIterationsChunks(): StreamChunk[] {
 		},
 		{ type: 'text-end', id },
 	];
+}
+
+function normalizeAbortedMessageRecord(
+	record: MessageRecord,
+	abortSignal?: AbortSignal,
+): MessageRecord {
+	if (!abortSignal?.aborted) return record;
+	return { ...record, finishReason: 'cancelled', error: null };
 }
 
 /**
@@ -309,7 +317,7 @@ export class AgentExecutionOrchestratorService {
 			// Always record resumed executions — even if they suspend again (chained HITL)
 			// or fail while streaming. Don't repeat the original user message — the
 			// pre-suspension execution already has it.
-			const messageRecord = recorder.getMessageRecord();
+			const messageRecord = normalizeAbortedMessageRecord(recorder.getMessageRecord(), abortSignal);
 			await this.persistRecordedExecution({
 				onExecutionRecorded,
 				failureMessage: 'Failed to record resumed agent execution',
@@ -540,7 +548,7 @@ export class AgentExecutionOrchestratorService {
 		} finally {
 			// Always record — even if suspended or failed, the pre-suspension/error
 			// response text and tool calls are valuable.
-			const messageRecord = recorder.getMessageRecord();
+			const messageRecord = normalizeAbortedMessageRecord(recorder.getMessageRecord(), abortSignal);
 			await this.persistRecordedExecution({
 				onExecutionRecorded,
 				failureMessage: 'Failed to record agent execution',
