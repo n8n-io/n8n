@@ -30,6 +30,27 @@ vi.mock('bull', () => ({
 	}),
 }));
 
+const { mcpServer } = vi.hoisted(() => ({
+	mcpServer: {
+		hasSession: vi.fn(),
+		hasPendingResponse: vi.fn(),
+		handleWorkerResponse: vi.fn(),
+		setSessionStore: vi.fn(),
+		setExecutionStrategy: vi.fn(),
+		getPendingCallsManager: vi.fn(),
+	},
+}));
+
+vi.mock('@n8n/n8n-nodes-langchain/mcp/core', () => ({
+	McpServer: { instance: () => mcpServer },
+	RedisSessionStore: vi.fn(function () {
+		return {};
+	}),
+	QueuedExecutionStrategy: vi.fn(function () {
+		return {};
+	}),
+}));
+
 describe('ScalingService', () => {
 	const Bull = vi.mocked(BullModule.default);
 
@@ -593,8 +614,46 @@ describe('ScalingService', () => {
 			expect(() => messageHandler('job-trigger', mcpTriggerResponseMessage)).not.toThrow();
 		});
 
+		it('should restore an offloaded body without reclaiming it on the session-owning main', async () => {
+			await scalingService.setupQueue();
+			mcpServer.hasSession.mockReturnValue(true);
+			webhookResponseRelay.restoreOffloadedBody.mockImplementation(async (response) => response);
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+			const response = {
+				body: { binaryData: { id: 'database:abc' } },
+				headers: {},
+				statusCode: 200,
+			};
+
+			messageHandler('job-trigger', {
+				kind: 'mcp-response',
+				executionId: 'exec-456',
+				mcpType: 'trigger',
+				sessionId: 'session-trigger',
+				messageId: 'msg-trigger',
+				response,
+				workerId: 'worker-xyz',
+			});
+
+			await vi.waitFor(() =>
+				expect(webhookResponseRelay.restoreOffloadedBody).toHaveBeenCalledWith(response, {
+					reclaim: false,
+				}),
+			);
+			expect(mcpServer.handleWorkerResponse).toHaveBeenCalledWith(
+				'session-trigger',
+				'msg-trigger',
+				response,
+			);
+		});
+
 		it('should decode a Buffer body the worker base64-encoded to relay it', async () => {
 			await scalingService.setupQueue();
+			mcpServer.hasSession.mockReturnValue(true);
 			webhookResponseRelay.restoreOffloadedBody.mockImplementation(async (response) => response);
 
 			const messageHandler = queue.on.mock.calls.find(
@@ -623,8 +682,40 @@ describe('ScalingService', () => {
 			);
 		});
 
-		it('should restore an offloaded body without reclaiming it, since every main reads it', async () => {
+		it('should not restore an offloaded body on a main that does not hold the session', async () => {
 			await scalingService.setupQueue();
+			mcpServer.hasSession.mockReturnValue(false);
+			mcpServer.hasPendingResponse.mockReturnValue(false);
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+			messageHandler('job-trigger', {
+				kind: 'mcp-response',
+				executionId: 'exec-456',
+				mcpType: 'trigger',
+				sessionId: 'session-trigger',
+				messageId: 'msg-trigger',
+				response: {
+					body: { binaryData: { id: 'database:abc' } },
+					headers: {},
+					statusCode: 200,
+				},
+				workerId: 'worker-xyz',
+			});
+
+			await vi.waitFor(() => expect(mcpServer.hasSession).toHaveBeenCalledWith('session-trigger'));
+			expect(mcpServer.hasPendingResponse).toHaveBeenCalledWith('session-trigger', 'msg-trigger');
+			expect(webhookResponseRelay.restoreOffloadedBody).not.toHaveBeenCalled();
+			expect(mcpServer.handleWorkerResponse).not.toHaveBeenCalled();
+		});
+
+		it('should deliver a response a pending call awaits when the transport is gone', async () => {
+			await scalingService.setupQueue();
+			mcpServer.hasSession.mockReturnValue(false);
+			mcpServer.hasPendingResponse.mockReturnValue(true);
+			webhookResponseRelay.restoreOffloadedBody.mockImplementation(async (response) => response);
 
 			const messageHandler = queue.on.mock.calls.find(
 				([event]) => (event as string) === 'global:progress',
@@ -647,10 +738,15 @@ describe('ScalingService', () => {
 			});
 
 			await vi.waitFor(() =>
-				expect(webhookResponseRelay.restoreOffloadedBody).toHaveBeenCalledWith(response, {
-					reclaim: false,
-				}),
+				expect(mcpServer.handleWorkerResponse).toHaveBeenCalledWith(
+					'session-trigger',
+					'msg-trigger',
+					response,
+				),
 			);
+			expect(webhookResponseRelay.restoreOffloadedBody).toHaveBeenCalledWith(response, {
+				reclaim: false,
+			});
 		});
 	});
 });
