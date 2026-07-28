@@ -461,12 +461,17 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 
 	@include focus.focus-within-ring;
 
-	&:hover:not(:focus-within) {
+	&:hover:not(:focus-within):not(:has(:disabled)) {
 		box-shadow: inset 0 0 0 1px var(--border-color--strong);
 	}
 
 	&:focus-within {
 		box-shadow: inset 0 0 0 1px var(--focus--border-color);
+	}
+
+	&:has(:disabled) {
+		cursor: not-allowed;
+		opacity: 0.6;
 	}
 }
 
@@ -486,7 +491,7 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 
 	&:disabled {
 		cursor: not-allowed;
-		opacity: 0.5;
+		color: var(--color--text--tint-1);
 	}
 
 	&::-webkit-outer-spin-button,

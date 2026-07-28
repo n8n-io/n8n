@@ -77,6 +77,7 @@ export const Default: Story = {
 };
 
 export const OnePage: Story = {
+	name: 'One Page',
 	render: Template,
 	args: {
 		total: 8,
@@ -86,6 +87,7 @@ export const OnePage: Story = {
 };
 
 export const FullLayout: Story = {
+	name: 'Full Layout',
 	render: Template,
 	args: {
 		total: 500,
@@ -96,6 +98,7 @@ export const FullLayout: Story = {
 };
 
 export const WithJumper: Story = {
+	name: 'With Jumper',
 	render: Template,
 	args: {
 		total: 300,
@@ -147,7 +150,7 @@ export const Disabled: Story = {
 };
 
 export const CustomButtons: Story = {
-	name: 'Custom navigation buttons',
+	name: 'Custom Navigation Buttons',
 	render: Template,
 	args: {
 		total: 100,
@@ -158,6 +161,7 @@ export const CustomButtons: Story = {
 };
 
 export const ManyPages: Story = {
+	name: 'Many Pages',
 	render: Template,
 	args: {
 		total: 1000,
@@ -170,7 +174,7 @@ export const ManyPages: Story = {
 };
 
 export const PagerCount: Story = {
-	name: 'Pager count (ellipsis)',
+	name: 'Pager Count (Ellipsis)',
 	render: (args) => ({
 		components: { Pagination },
 		setup() {
@@ -185,9 +189,6 @@ export const PagerCount: Story = {
 				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
 					pagerCount: 3
 				</h3>
-				<p style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-					Narrow — fewer page buttons before ellipsis.
-				</p>
 				<Pagination
 					v-bind="args"
 					:pager-count="3"
@@ -198,9 +199,6 @@ export const PagerCount: Story = {
 				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
 					pagerCount: 5
 				</h3>
-				<p style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-					Medium — more neighbors around the current page.
-				</p>
 				<Pagination
 					v-bind="args"
 					:pager-count="5"
@@ -211,9 +209,6 @@ export const PagerCount: Story = {
 				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
 					pagerCount: 7
 				</h3>
-				<p style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-					Wide — default Element+ style (most page buttons before ellipsis).
-				</p>
 				<Pagination
 					v-bind="args"
 					:pager-count="7"
@@ -291,6 +286,7 @@ export const ControlledUncontrolled: Story = {
 };
 
 export const ClientSidePagination: Story = {
+	name: 'Client Side Pagination',
 	render: () => ({
 		components: { Pagination },
 		setup() {
