@@ -45,6 +45,7 @@ const EXPORT_COUNTS = {
 	credentials: 0,
 	dataTables: 0,
 	variables: 0,
+	tags: 0,
 };
 
 describe('n8n-packages handler', () => {
@@ -500,7 +501,7 @@ describe('n8n-packages handler', () => {
 
 		it('forwards includeTags=false to the service', async () => {
 			const stream = new PassThrough();
-			mockService.exportPackage.mockResolvedValue(stream);
+			mockService.exportPackage.mockResolvedValue({ stream, counts: EXPORT_COUNTS });
 			const res = makeResponse();
 
 			const resultPromise = run(

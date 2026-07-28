@@ -70,7 +70,7 @@ describe('workflow package export — with tags', () => {
 
 		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 		try {
-			const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+			const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 			const { manifest, entries } = await readExport(stream);
 
 			expect(manifest.tags).toEqual([
@@ -110,7 +110,7 @@ describe('workflow package export — with tags', () => {
 		await assignTagToWorkflow(tag, wfA);
 		await assignTagToWorkflow(tag, wfB);
 
-		const stream = await service.exportPackage({ user: owner, workflowIds: [wfA.id, wfB.id] });
+		const { stream } = await service.exportPackage({ user: owner, workflowIds: [wfA.id, wfB.id] });
 		const { manifest, entries } = await readExport(stream);
 
 		expect(manifest.tags).toEqual([{ id: tag.id, name: 'shared', target: 'tags/shared' }]);
@@ -129,7 +129,7 @@ describe('workflow package export — with tags', () => {
 		const project = await createTeamProject('Project A', owner);
 		const workflow = await createWorkflow({ name: 'Untagged workflow' }, project);
 
-		const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+		const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 		const { manifest, entries } = await readExport(stream);
 
 		expect(workflowJson(entries, manifest.workflows![0].target)).not.toHaveProperty('tagIds');
@@ -145,7 +145,7 @@ describe('workflow package export — with tags', () => {
 		const workflow = await createWorkflow({ name: 'In folder', parentFolder: folder }, project);
 		await createTag({ name: 'prod' }, workflow);
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			folderIds: [folder.id],
 			includeTags: false,
@@ -165,7 +165,7 @@ describe('workflow package export — with tags', () => {
 		const workflow = await createWorkflow({ name: 'Deep workflow', parentFolder: folder }, project);
 		const tag = await createTag({ name: 'prod' }, workflow);
 
-		const stream = await service.exportPackage({ user: owner, projectIds: [project.id] });
+		const { stream } = await service.exportPackage({ user: owner, projectIds: [project.id] });
 		const { manifest, entries } = await readExport(stream);
 
 		expect(manifest.tags).toEqual([{ id: tag.id, name: 'prod', target: 'tags/prod' }]);
@@ -187,7 +187,7 @@ describe('workflow package export — with tags', () => {
 			subWorkflowId: sub.id,
 		});
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [parent.id],
 			missingWorkflowDependencyPolicy: 'include-in-package',
@@ -212,7 +212,7 @@ describe('workflow package export — with tags', () => {
 		const globalConfig = Container.get(GlobalConfig);
 		globalConfig.tags.disabled = true;
 		try {
-			const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+			const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 			const { manifest, entries } = await readExport(stream);
 
 			expect(workflowJson(entries, manifest.workflows![0].target)).not.toHaveProperty('tagIds');
@@ -230,7 +230,7 @@ describe('workflow package export — with tags', () => {
 		const workflow = await createWorkflow({ name: 'Tagged workflow' }, source);
 		await createTag({ name: 'prod' }, workflow);
 		const packageBuffer = await streamToBuffer(
-			await service.exportPackage({ user: owner, workflowIds: [workflow.id] }),
+			(await service.exportPackage({ user: owner, workflowIds: [workflow.id] })).stream,
 		);
 
 		const target = await createTeamProject('Target project', owner);
