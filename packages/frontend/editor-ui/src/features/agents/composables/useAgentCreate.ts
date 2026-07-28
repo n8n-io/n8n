@@ -2,6 +2,7 @@ import { ref, toValue, type MaybeRefOrGetter } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -54,7 +55,7 @@ export function useAgentCreate(options: {
 		options.setReference(agent);
 		options.onCreated?.(agent);
 
-		telemetry.track('User created agent', {
+		telemetry.track(TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, {
 			agent_id: agent.id,
 			source: options.telemetrySource,
 		});

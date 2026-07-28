@@ -93,25 +93,14 @@ describe('viewsData', () => {
 	});
 
 	describe('AIView', () => {
-		test('should return ai view with ai transform node', () => {
-			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(true);
-
+		test('should return the AI view', () => {
 			expect(AIView([])).toMatchSnapshot();
 		});
 
-		test('should return ai view without ai transform node if ask ai is not enabled', () => {
-			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
+		test('should not include the deprecated AI Transform node', () => {
+			const result = AIView([]);
 
-			expect(AIView([])).toMatchSnapshot();
-		});
-
-		test('should return ai view without ai transform node if ask ai is not enabled and node is not in the list', () => {
-			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
-
-			expect(AIView([])).toMatchSnapshot();
+			expect(result.items.some((item) => item.key === AI_TRANSFORM_NODE_TYPE)).toBe(false);
 		});
 
 		test('should include Message an Agent node before the agent node when agents module is active', () => {
@@ -141,6 +130,24 @@ describe('viewsData', () => {
 			const messageAgentItem = result.items.find((item) => item.key === MESSAGE_AN_AGENT_NODE_TYPE);
 
 			expect(messageAgentItem).toBeUndefined();
+		});
+
+		test('should not mutate the shared template repository parameters', () => {
+			const templatesStore = useTemplatesStore();
+			const sharedParams = new URLSearchParams({ test: 'value' });
+			vi.spyOn(templatesStore, 'websiteTemplateRepositoryParameters', 'get').mockReturnValue(
+				sharedParams,
+			);
+
+			AIView([]);
+			AIView([]);
+
+			expect(sharedParams.has('utm_user_role')).toBe(false);
+
+			const [lastCallParams] = vi
+				.mocked(templatesStore.constructTemplateRepositoryURL)
+				.mock.calls.at(-1)!;
+			expect(lastCallParams.toString()).toBe('test=value&utm_user_role=AdvancedAI');
 		});
 	});
 

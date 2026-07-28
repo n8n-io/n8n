@@ -4,7 +4,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'yaml';
 
-import type { ScopeTaggedMiddleware } from '../shared/middlewares/global.middleware';
+import {
+	extractScopeFromEovHandlerChain,
+	loadPublicControllerScopeMap,
+	publicApiRouteKey,
+	resolvePublicApiImplementedScope,
+} from '../shared/public-api-scope-lookup';
+
+import '../controllers';
 
 vi.unmock('node:fs');
 
@@ -19,11 +26,12 @@ type Operation = {
 	pathStr: string;
 	method: Method;
 	operationId: string;
-	handlerPath: string;
+	handlerPath: string | null;
 	requiredScope: string | null;
 };
 
 type RawOperation = {
+	operationId?: string;
 	'x-eov-operation-id'?: string;
 	'x-eov-operation-handler'?: string;
 	'x-required-scope'?: string;
@@ -36,12 +44,18 @@ async function loadOperations(): Promise<Operation[]> {
 	for (const [pathStr, methods] of Object.entries(paths)) {
 		for (const method of HTTP_METHODS) {
 			const op = methods[method];
-			if (!op?.['x-eov-operation-id'] || !op?.['x-eov-operation-handler']) continue;
+			if (!op) continue;
+			const operationId = op['x-eov-operation-id'] ?? op.operationId;
+			if (!operationId) {
+				throw new Error(
+					`Missing operationId / x-eov-operation-id for ${method.toUpperCase()} ${pathStr}`,
+				);
+			}
 			ops.push({
 				pathStr,
 				method,
-				operationId: op['x-eov-operation-id'],
-				handlerPath: op['x-eov-operation-handler'],
+				operationId,
+				handlerPath: op['x-eov-operation-handler'] ?? null,
 				requiredScope: op['x-required-scope'] ?? null,
 			});
 		}
@@ -49,7 +63,7 @@ async function loadOperations(): Promise<Operation[]> {
 	return ops;
 }
 
-async function loadHandlerScope(
+async function loadEovHandlerScope(
 	handlerPath: string,
 	operationId: string,
 ): Promise<ApiKeyScope | undefined> {
@@ -62,19 +76,27 @@ async function loadHandlerScope(
 	const mod = imported.default ?? imported;
 	const middlewares = mod[operationId];
 	if (!Array.isArray(middlewares)) return undefined;
-	for (const mw of middlewares) {
-		if (typeof mw !== 'function') continue;
-		const scope = (mw as Partial<ScopeTaggedMiddleware>).__apiKeyScope;
-		if (scope) return scope;
-	}
-	return undefined;
+	return extractScopeFromEovHandlerChain(middlewares);
+}
+
+/** Compare scopes as an unordered set so `a,b`, `b,a`, and `a, b` all match. */
+function normalizeScopeSet(scope: string | undefined): string {
+	if (!scope) return '';
+	return scope
+		.split(',')
+		.map((s) => s.trim())
+		.filter(Boolean)
+		.sort()
+		.join(',');
 }
 
 describe('Public API scope parity', () => {
 	let ops: Operation[];
+	let controllerScopes: Map<string, string | undefined>;
 
 	beforeAll(async () => {
 		ops = await loadOperations();
+		controllerScopes = loadPublicControllerScopeMap();
 	});
 
 	test('openapi.yml tags are sorted alphabetically by name', () => {
@@ -91,16 +113,40 @@ describe('Public API scope parity', () => {
 		expect(missing.map((m) => `${m.method.toUpperCase()} ${m.pathStr}`)).toEqual([]);
 	});
 
-	test('every x-required-scope matches the handler middleware __apiKeyScope', async () => {
+	test('every x-required-scope matches eov handler or @PublicApiController @ApiKeyScope', async () => {
 		const mismatches: string[] = [];
 		for (const op of ops) {
 			if (op.requiredScope === null) continue;
-			const handlerScope = await loadHandlerScope(op.handlerPath, op.operationId);
+
+			// A route must be defined by the eov handler XOR a @PublicApiController,
+			// never both — otherwise the enforced scope is ambiguous.
+			if (
+				op.handlerPath !== null &&
+				controllerScopes.has(publicApiRouteKey(op.method, op.pathStr))
+			) {
+				throw new Error(
+					`${op.method.toUpperCase()} ${op.pathStr} is defined by both an eov handler and a @PublicApiController. ` +
+						'Remove the eov handler (its `x-eov-operation-handler` in the OpenAPI spec and the handler middleware) and keep the @PublicApiController.',
+				);
+			}
+
+			const eovHandlerScope =
+				op.handlerPath !== null
+					? await loadEovHandlerScope(op.handlerPath, op.operationId)
+					: undefined;
+
+			const implemented = resolvePublicApiImplementedScope(
+				controllerScopes,
+				op.method,
+				op.pathStr,
+				eovHandlerScope,
+			);
+
 			const expected = op.requiredScope === 'none' ? undefined : op.requiredScope;
-			if (handlerScope !== expected) {
+			if (normalizeScopeSet(implemented) !== normalizeScopeSet(expected)) {
 				mismatches.push(
-					`${op.method.toUpperCase()} ${op.pathStr}: YAML says "${op.requiredScope}", handler tag is "${
-						handlerScope ?? 'none'
+					`${op.method.toUpperCase()} ${op.pathStr}: YAML says "${op.requiredScope}", implemented scope is "${
+						implemented ?? 'none'
 					}"`,
 				);
 			}

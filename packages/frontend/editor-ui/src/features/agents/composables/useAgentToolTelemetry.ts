@@ -1,5 +1,6 @@
+import { toValue, type MaybeRefOrGetter } from 'vue';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import type { GenericValue } from 'n8n-workflow';
 
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 
@@ -17,7 +18,11 @@ import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 type ToolType = AgentJsonToolRef['type'];
 
 /** Identifier payload — node_type for node tools, workflow name for workflow tools. */
-function identityProps(ref: AgentJsonToolRef): Record<string, GenericValue> {
+function identityProps(ref: AgentJsonToolRef): {
+	node_type?: string;
+	workflow?: string;
+	custom_id?: string;
+} {
 	if (ref.type === 'node') {
 		return { node_type: ref.node?.nodeType };
 	}
@@ -27,61 +32,77 @@ function identityProps(ref: AgentJsonToolRef): Record<string, GenericValue> {
 	return { custom_id: ref.id };
 }
 
-export function useAgentToolTelemetry(agentId?: string) {
+export function useAgentToolTelemetry(agentId?: MaybeRefOrGetter<string | undefined>) {
 	const telemetry = useTelemetry();
 
-	function withAgent(props: Record<string, GenericValue>): Record<string, GenericValue> {
-		return agentId ? { ...props, agent_id: agentId } : props;
+	function agentProps(): { agent_id?: string } {
+		const resolvedAgentId = toValue(agentId);
+		return resolvedAgentId ? { agent_id: resolvedAgentId } : {};
 	}
 
 	/** Fired when the user clicks Connect on an Available row — a new-ref flow begins. */
 	function trackAddStarted(toolType: ToolType) {
-		telemetry.track(
-			'User started adding agent tool',
-			withAgent({ tool_type: toolType, source: 'manual' }),
-		);
+		telemetry.track(TELEMETRY_EVENT.AGENTS.USER_STARTED_ADDING_AGENT_TOOL, {
+			tool_type: toolType,
+			source: 'manual',
+			...agentProps(),
+		});
 	}
 
 	/** Fired when a new tool ref is saved for the first time. */
 	function trackAdded(ref: AgentJsonToolRef) {
-		telemetry.track(
-			'User added agent tool',
-			withAgent({
-				tool_type: ref.type,
-				has_approval: ref.requireApproval ?? false,
-				...identityProps(ref),
-			}),
-		);
+		telemetry.track(TELEMETRY_EVENT.AGENTS.USER_ADDED_AGENT_TOOL, {
+			tool_type: ref.type,
+			has_approval: ref.requireApproval ?? false,
+			...identityProps(ref),
+			...agentProps(),
+		});
 	}
 
 	/** Fired when a new MCP server is saved for the first time. */
 	function trackAddedMcpServer(server: AgentJsonMcpServerConfig) {
-		telemetry.track(
-			'User added agent tool',
-			withAgent({
-				tool_type: 'mcpServer',
-				has_approval: false,
-				server_name: server.name,
-				authentication: server.authentication,
-			}),
-		);
+		telemetry.track(TELEMETRY_EVENT.AGENTS.USER_ADDED_AGENT_TOOL, {
+			tool_type: 'mcpServer',
+			has_approval: false,
+			server_name: server.name,
+			authentication: server.authentication,
+			...agentProps(),
+		});
 	}
 
 	/** Fired when an existing tool's config is saved. */
 	function trackEdited(ref: AgentJsonToolRef) {
-		telemetry.track(
-			'User edited agent tool',
-			withAgent({ tool_type: ref.type, ...identityProps(ref) }),
-		);
+		telemetry.track(TELEMETRY_EVENT.AGENTS.USER_EDITED_AGENT_TOOL, {
+			tool_type: ref.type,
+			...identityProps(ref),
+			...agentProps(),
+		});
 	}
 
 	/** Fired when the user confirms removing a tool (from modal or sidebar). */
 	function trackRemoved(ref: AgentJsonToolRef) {
-		telemetry.track(
-			'User removed agent tool',
-			withAgent({ tool_type: ref.type, ...identityProps(ref) }),
-		);
+		telemetry.track(TELEMETRY_EVENT.AGENTS.USER_REMOVED_AGENT_TOOL, {
+			tool_type: ref.type,
+			...identityProps(ref),
+			...agentProps(),
+		});
 	}
 
-	return { trackAddStarted, trackAdded, trackAddedMcpServer, trackEdited, trackRemoved };
+	/** Fired when the user confirms removing an MCP server from the config modal. */
+	function trackRemovedMcpServer(server: AgentJsonMcpServerConfig) {
+		telemetry.track(TELEMETRY_EVENT.AGENTS.USER_REMOVED_AGENT_TOOL, {
+			tool_type: 'mcpServer',
+			server_name: server.name,
+			...agentProps(),
+		});
+	}
+
+	return {
+		trackAddStarted,
+		trackAdded,
+		trackAddedMcpServer,
+		trackEdited,
+		trackRemoved,
+		trackRemovedMcpServer,
+	};
 }

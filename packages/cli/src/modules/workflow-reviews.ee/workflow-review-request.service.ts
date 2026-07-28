@@ -2,6 +2,7 @@ import type {
 	CreateWorkflowReviewRequestDto,
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	ListWorkflowReviewRequestsQueryDto,
+	UpdateWorkflowReviewRequestVersionDto,
 	WorkflowReviewEligibleReviewersList,
 	WorkflowReviewRequestList,
 	WorkflowReviewRequestSummary,
@@ -9,6 +10,7 @@ import type {
 	ListWorkflowReviewInboxResponse,
 	GetWorkflowReviewInboxSummaryResponse,
 	WorkflowReviewInboxItem,
+	WorkflowReviewEligibleReviewer,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
@@ -23,6 +25,8 @@ import {
 	type InboxCursor,
 	type User,
 	type WorkflowReviewRequest,
+	type WorkflowReviewRequestLinkedWorkflow,
+	type WorkflowReviewRequestReviewer,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -103,6 +107,7 @@ export class WorkflowReviewRequestService {
 				id: request.id,
 				state: request.state,
 				decision: request.decision,
+				workflowVersionId: request.workflowVersionId,
 				createdAt: request.createdAt.toISOString(),
 				updatedAt: request.updatedAt.toISOString(),
 			})),
@@ -135,12 +140,17 @@ export class WorkflowReviewRequestService {
 		// No pagination: the set is bounded by the project's members plus instance admins
 		return {
 			count: reviewers.length,
-			data: reviewers.map((reviewer) => ({
-				id: reviewer.id,
-				email: reviewer.email,
-				firstName: reviewer.firstName ?? null,
-				lastName: reviewer.lastName ?? null,
-			})),
+			data: reviewers.map((reviewer) => this.toEligibleReviewer(reviewer)),
+		};
+	}
+
+	/** Project a user onto the boundary shape the review endpoints are allowed to expose. */
+	private toEligibleReviewer(user: User): WorkflowReviewEligibleReviewer {
+		return {
+			id: user.id,
+			email: user.email,
+			firstName: user.firstName ?? null,
+			lastName: user.lastName ?? null,
 		};
 	}
 
@@ -208,7 +218,7 @@ export class WorkflowReviewRequestService {
 				if (existing) {
 					throw new ConflictError(
 						'An open review request already exists for this workflow',
-						'Sync the existing review request instead of creating a new one',
+						'Update the existing review request instead of creating a new one',
 						{ workflowReviewRequestId: existing.id },
 					);
 				}
@@ -248,18 +258,155 @@ export class WorkflowReviewRequestService {
 			},
 		);
 
-		// Fire-and-forget: the transaction has committed, a failed broadcast
-		// must not fail the request. Viewers heal via focus/reconnect refetch.
+		this.broadcastReviewStateChanged(workflowId);
+
+		return this.toSummary(request, workflowVersionId);
+	}
+
+	/**
+	 * Re-pin an open review request to another version of the workflow it covers,
+	 * preserving its discussion and metadata.
+	 */
+	async updateVersion(
+		user: User,
+		workflowReviewRequestId: string,
+		dto: UpdateWorkflowReviewRequestVersionDto,
+	): Promise<WorkflowReviewRequestSummary> {
+		const policy = await this.workflowReviewPolicyService.get();
+		if (!policy.enabled) {
+			throw new ForbiddenError('Workflow reviews are not enabled for this instance');
+		}
+
+		const request = await this.workflowReviewRequestRepository.findById(workflowReviewRequestId);
+		if (!request) {
+			throw new NotFoundError('Could not find review request');
+		}
+
+		const workflowRows =
+			await this.workflowReviewRequestWorkflowRepository.findByRequestId(workflowReviewRequestId);
+		const workflowRow = workflowRows.find((row) => row.workflowId === dto.workflowId);
+		if (!workflowRow) {
+			throw new NotFoundError('Could not find review request');
+		}
+
+		const workflow = await this.workflowFinderService.findWorkflowForUser(dto.workflowId, user, [
+			'workflow:publish',
+		]);
+		if (!workflow) {
+			throw new NotFoundError('Could not find workflow');
+		}
+
+		if (workflow.isArchived) {
+			throw new BadRequestError(
+				`The workflow '${dto.workflowId}' is archived and its review cannot be updated`,
+			);
+		}
+
+		this.assertRequestUpdatable(request);
+
+		const version = await this.workflowHistoryService.findVersion(
+			dto.workflowId,
+			dto.workflowVersionId,
+		);
+		if (!version) {
+			throw new BadRequestError(
+				`Version '${dto.workflowVersionId}' does not exist for workflow '${dto.workflowId}'`,
+			);
+		}
+
+		// Nothing new to review: skip the lock, write nothing, broadcast nothing.
+		// Once decisions exist (LIGO-786) this also means an unchanged version does
+		// NOT reset `changes_requested` back to `pending` — which is correct.
+		if (workflowRow.workflowVersionId === dto.workflowVersionId) {
+			return this.toSummary(request, workflowRow.workflowVersionId);
+		}
+
+		const { request: updated, changed } = await this.dbLockService.withLock(
+			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+			async (tx) => {
+				// Re-check under the lock so update can't race a concurrent close/approve.
+				const current = await this.workflowReviewRequestRepository.findById(
+					workflowReviewRequestId,
+					tx,
+				);
+				if (!current) {
+					throw new NotFoundError('Could not find review request');
+				}
+				this.assertRequestUpdatable(current);
+
+				// Re-check the pinned version too: a concurrent identical sync that won
+				// the lock already re-pinned — repeating the writes would bump updatedAt,
+				// reset the decision, and broadcast for a no-op.
+				const currentRows = await this.workflowReviewRequestWorkflowRepository.findByRequestId(
+					workflowReviewRequestId,
+					tx,
+				);
+				const currentRow = currentRows.find((row) => row.workflowId === dto.workflowId);
+				if (!currentRow) {
+					throw new NotFoundError('Could not find review request');
+				}
+				if (currentRow.workflowVersionId === dto.workflowVersionId) {
+					return { request: current, changed: false };
+				}
+
+				await this.workflowReviewRequestWorkflowRepository.updateWorkflowVersion(
+					{
+						workflowReviewRequestId,
+						workflowId: dto.workflowId,
+						workflowVersionId: dto.workflowVersionId,
+					},
+					tx,
+				);
+
+				current.decision = 'pending';
+				current.updatedById = user.id;
+				// save (not update) so @BeforeUpdate bumps updatedAt
+				const saved = await tx.save(current);
+
+				await this.workflowReviewRequestAuthorRepository.addAuthorIfMissing(
+					{ workflowReviewRequestId, userId: user.id },
+					tx,
+				);
+
+				return { request: saved, changed: true };
+			},
+		);
+
+		if (changed) {
+			this.broadcastReviewStateChanged(dto.workflowId);
+		}
+
+		return this.toSummary(updated, dto.workflowVersionId);
+	}
+
+	/**
+	 * Fire-and-forget: the transaction has committed, a failed broadcast
+	 * must not fail the request. Viewers heal via focus/reconnect refetch.
+	 */
+	private broadcastReviewStateChanged(workflowId: string): void {
 		this.collaborationService
 			.broadcastWorkflowReviewStateChanged(workflowId)
 			.catch((error) =>
 				this.logger.warn('Failed to broadcast review state change', { workflowId, error }),
 			);
+	}
 
+	/** A closed or already-approved request can no longer be re-pinned to a new version. */
+	private assertRequestUpdatable(request: WorkflowReviewRequest): void {
+		if (request.state === 'closed' || request.decision === 'approved') {
+			throw new ConflictError('The review request is no longer open');
+		}
+	}
+
+	private toSummary(
+		request: WorkflowReviewRequest,
+		workflowVersionId: string | null,
+	): WorkflowReviewRequestSummary {
 		return {
 			id: request.id,
 			state: request.state,
 			decision: request.decision,
+			workflowVersionId,
 			createdAt: request.createdAt.toISOString(),
 			updatedAt: request.updatedAt.toISOString(),
 		};
@@ -291,29 +438,88 @@ export class WorkflowReviewRequestService {
 		const data = rows.slice(0, limit);
 		const lastRow = data.at(-1);
 		const nextCursor = hasMore && lastRow ? this.encodeInboxCursor(lastRow) : null;
-		const workflowNamesByRequestId =
-			await this.workflowReviewRequestWorkflowRepository.findWorkflowNamesByRequestIds(
-				data.map((row) => row.id),
-			);
+		const requestIds = data.map((row) => row.id);
+		const [linkedWorkflowByRequestId, reviewerRows] = await Promise.all([
+			this.workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds(requestIds),
+			this.workflowReviewRequestReviewerRepository.findByRequestIds(requestIds),
+		]);
+
+		const participantsByRequestId = await this.hydrateParticipants(data, reviewerRows);
 
 		return {
-			data: data.map((row) => this.toInboxItem(row, workflowNamesByRequestId.get(row.id) ?? null)),
+			data: data.map((row) => {
+				const { requester, reviewers } = participantsByRequestId.get(row.id) ?? {
+					requester: null,
+					reviewers: [],
+				};
+				return this.toInboxItem(
+					row,
+					linkedWorkflowByRequestId.get(row.id) ?? null,
+					requester,
+					reviewers,
+				);
+			}),
 			nextCursor,
 			hasMore,
 		};
+	}
+
+	/**
+	 * Batch-resolve the requester and requested reviewers for each request row,
+	 * keyed by request id. Deleted users simply drop out of the result.
+	 */
+	private async hydrateParticipants(
+		rows: WorkflowReviewRequest[],
+		reviewerRows: WorkflowReviewRequestReviewer[],
+	): Promise<
+		Map<
+			string,
+			{
+				requester: WorkflowReviewEligibleReviewer | null;
+				reviewers: WorkflowReviewEligibleReviewer[];
+			}
+		>
+	> {
+		const reviewerIdsByRequestId = new Map<string, string[]>();
+		for (const { workflowReviewRequestId, userId } of reviewerRows) {
+			const ids = reviewerIdsByRequestId.get(workflowReviewRequestId) ?? [];
+			ids.push(userId);
+			reviewerIdsByRequestId.set(workflowReviewRequestId, ids);
+		}
+
+		const userIds = new Set([
+			...rows.map((row) => row.createdById).filter((id) => id !== null),
+			...reviewerRows.map((row) => row.userId),
+		]);
+
+		const usersById = new Map<string, WorkflowReviewEligibleReviewer>();
+		if (userIds.size > 0) {
+			for (const user of await this.userRepository.findManyByIds([...userIds])) {
+				usersById.set(user.id, this.toEligibleReviewer(user));
+			}
+		}
+
+		return new Map(
+			rows.map((row) => [
+				row.id,
+				{
+					requester: row.createdById ? (usersById.get(row.createdById) ?? null) : null,
+					reviewers: (reviewerIdsByRequestId.get(row.id) ?? [])
+						.map((userId) => usersById.get(userId))
+						.filter((reviewer) => reviewer !== undefined),
+				},
+			]),
+		);
 	}
 
 	async getInboxSummaryForUser(user: User): Promise<GetWorkflowReviewInboxSummaryResponse> {
 		await this.assertFeatureAvailable();
 
 		const projectIds = await this.resolveAccessibleProjectIds(user);
-		// Any state — sidebar must appear so users can open the Closed tab.
-		const hasAny = await this.workflowReviewRequestRepository.existsAnyForInbox({
+		return await this.workflowReviewRequestRepository.countByStateForInbox({
 			projectIds,
 			requesterId: user.id,
 		});
-
-		return { hasAny };
 	}
 
 	private async assertFeatureAvailable(): Promise<void> {
@@ -368,17 +574,22 @@ export class WorkflowReviewRequestService {
 
 	private toInboxItem(
 		entity: WorkflowReviewRequest,
-		workflowName: string | null,
+		linkedWorkflow: WorkflowReviewRequestLinkedWorkflow | null,
+		requester: WorkflowReviewEligibleReviewer | null,
+		reviewers: WorkflowReviewEligibleReviewer[],
 	): WorkflowReviewInboxItem {
 		return {
 			id: entity.id,
 			projectId: entity.projectId,
 			title: entity.title,
-			workflowName,
+			workflowName: linkedWorkflow?.workflowName ?? null,
+			workflowVersionId: linkedWorkflow?.workflowVersionId ?? null,
 			decision: entity.decision,
 			state: entity.state,
 			createdAt: entity.createdAt.toISOString(),
 			updatedAt: entity.updatedAt.toISOString(),
+			requester,
+			reviewers,
 		};
 	}
 }

@@ -4,7 +4,6 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	N8nButton,
-	N8nCallout,
 	N8nDialog,
 	N8nDialogFooter,
 	N8nIcon,
@@ -36,6 +35,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:open': [value: boolean];
 	submitted: [];
+	conflict: [];
 }>();
 
 const i18n = useI18n();
@@ -47,8 +47,6 @@ const reviewStatusStore = useWorkflowReviewStatusStore();
 const reviewTitle = ref('');
 const description = ref('');
 const isSubmitting = ref(false);
-const hasConflict = ref(false);
-const existingReviewRequestId = ref<string>();
 const selectedReviewerId = ref('');
 const eligibleReviewers = ref<WorkflowReviewEligibleReviewer[]>([]);
 const isLoadingReviewers = ref(false);
@@ -86,8 +84,6 @@ watch(
 
 		reviewTitle.value = '';
 		description.value = '';
-		hasConflict.value = false;
-		existingReviewRequestId.value = undefined;
 		selectedReviewerId.value = '';
 		eligibleReviewers.value = [];
 		void loadEligibleReviewers();
@@ -108,8 +104,6 @@ const submit = async () => {
 	if (isSubmitDisabled.value) return;
 
 	isSubmitting.value = true;
-	hasConflict.value = false;
-	existingReviewRequestId.value = undefined;
 
 	try {
 		const workflowVersionId = await props.flushSave();
@@ -135,13 +129,11 @@ const submit = async () => {
 		emit('submitted');
 	} catch (error) {
 		if (error instanceof ResponseError && error.httpStatusCode === 409) {
-			// The conflict proves an open review this client didn't know about — lock immediately.
+			// The conflict proves an open review this client didn't know about — lock
+			// immediately and hand off to the update-review dialog.
 			void reviewStatusStore.fetchStatus(props.workflowId);
-			hasConflict.value = true;
-			const workflowReviewRequestId = error.meta?.workflowReviewRequestId;
-			existingReviewRequestId.value =
-				typeof workflowReviewRequestId === 'string' ? workflowReviewRequestId : undefined;
-			// TODO(LIGO-806): link to the existing review and offer updating it to the current version
+			emit('update:open', false);
+			emit('conflict');
 			return;
 		}
 
@@ -212,10 +204,6 @@ const submit = async () => {
 					</template>
 				</N8nUserSelect>
 			</N8nInputLabel>
-			<N8nCallout v-if="hasConflict" theme="danger" data-test-id="workflow-review-conflict-error">
-				{{ i18n.baseText('workflowReviews.submitForReview.error.conflict') }}
-			</N8nCallout>
-
 			<N8nDialogFooter>
 				<N8nButton
 					type="button"

@@ -1,7 +1,7 @@
 import type { ProviderCatalog } from '@n8n/agents';
 
 import { buildModelRecommendationsSection } from '../agents-builder-model-recommendations';
-import { buildBuilderPrompt } from '../agents-builder-prompts';
+import { PREREQUISITES_SECTION, buildBuilderPrompt } from '../agents-builder-prompts';
 import { getBuilderRuntimeSkills } from '../skills';
 
 const catalog: ProviderCatalog = {
@@ -110,6 +110,12 @@ describe('builder model recommendations', () => {
 		const prompt = buildPrompt(null);
 
 		expect(prompt).toContain('## Config Mutation Guidance');
+		expect(prompt).toContain('## Prerequisites you cannot create');
+		expect(PREREQUISITES_SECTION).toContain('cannot create n8n workflows or data tables');
+		expect(PREREQUISITES_SECTION).toContain('Do not ask the user to create them in this chat');
+		expect(prompt.indexOf('## Prerequisites you cannot create')).toBeLessThan(
+			prompt.indexOf('## When To Build vs When To Converse'),
+		);
 		expect(prompt).toContain('## LLM Selection Guidance');
 		expect(prompt).toContain('## Memory Guidance');
 		expect(prompt).toContain('## Tool Guidance');

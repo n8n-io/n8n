@@ -65,6 +65,7 @@ erDiagram
   varchar_16_ resolverId FK
   varchar_32_ type
   datetime_3_ updatedAt
+  VARCHAR_16_ usageScope
 }
 "dynamic_credential_entry" {
   datetime_3_ createdAt

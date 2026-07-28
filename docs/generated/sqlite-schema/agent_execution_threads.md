@@ -83,6 +83,7 @@ erDiagram
 }
 "agents" {
   varchar_36_ activeVersionId FK
+  boolean availableInMCP
   datetime_3_ createdAt
   varchar_36_ id PK
   TEXT integrations
@@ -108,6 +109,7 @@ erDiagram
   datetime_3_ startedAt
   varchar_16_ status
   datetime_3_ stoppedAt
+  VARCHAR_2_ storedAt
   varchar_128_ threadId FK
   TEXT timeline
   INTEGER totalTokens

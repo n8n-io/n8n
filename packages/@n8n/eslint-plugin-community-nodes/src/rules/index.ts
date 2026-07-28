@@ -6,6 +6,7 @@ import { CredClassOAuth2NamingRule } from './cred-class-oauth2-naming.js';
 import { CredentialDocumentationUrlRule } from './credential-documentation-url.js';
 import { CredentialPasswordFieldRule } from './credential-password-field.js';
 import { CredentialTestRequiredRule } from './credential-test-required.js';
+import { CredentialUnnecessaryPasswordRule } from './credential-unnecessary-password.js';
 import { IconPreferThemedVariantsRule } from './icon-prefer-themed-variants.js';
 import { IconValidationRule } from './icon-validation.js';
 import { MissingPairedItemRule } from './missing-paired-item.js';
@@ -13,20 +14,25 @@ import { N8nObjectValidationRule } from './n8n-object-validation.js';
 import { NoBuilderHintLeakageRule } from './no-builder-hint-leakage.js';
 import { NoCredentialReuseRule } from './no-credential-reuse.js';
 import { NoDangerousFunctionsRule } from './no-dangerous-functions.js';
+import { NoDeadFilesRule } from './no-dead-files.js';
 import { NoDeprecatedWorkflowFunctionsRule } from './no-deprecated-workflow-functions.js';
 import { NoEmojiInOptionsRule } from './no-emoji-in-options.js';
 import { NoForbiddenLifecycleScriptsRule } from './no-forbidden-lifecycle-scripts.js';
+import { NoHardcodedSecretsRule } from './no-hardcoded-secrets.js';
 import { NoHttpRequestWithManualAuthRule } from './no-http-request-with-manual-auth.js';
 import { NoOverridesFieldRule } from './no-overrides-field.js';
 import { NoRestrictedGlobalsRule } from './no-restricted-globals.js';
 import { NoRestrictedImportsRule } from './no-restricted-imports.js';
 import { NoRuntimeDependenciesRule } from './no-runtime-dependencies.js';
+import { NoSilentErrorSwallowingRule } from './no-silent-error-swallowing.js';
 import { NoTemplatePlaceholdersRule } from './no-template-placeholders.js';
 import { NodeClassDescriptionIconMissingRule } from './node-class-description-icon-missing.js';
 import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js';
 import { NodeRegistrationCompleteRule } from './node-registration-complete.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 import { PackageNameConventionRule } from './package-name-convention.js';
+import { RequireFilesArrayRule } from './require-files-array.js';
+import { RequireHomepageRule } from './require-homepage.js';
 import { RequireNodeApiErrorRule } from './require-node-api-error.js';
 import { RequireNodeDescriptionFieldsRule } from './require-node-description-fields.js';
 import { RequireVersionRule } from './require-version.js';
@@ -48,12 +54,16 @@ export const rules = {
 	'node-usable-as-tool': NodeUsableAsToolRule,
 	'package-name-convention': PackageNameConventionRule,
 	'credential-test-required': CredentialTestRequiredRule,
+	'credential-unnecessary-password': CredentialUnnecessaryPasswordRule,
 	'no-credential-reuse': NoCredentialReuseRule,
 	'no-dangerous-functions': NoDangerousFunctionsRule,
+	'no-dead-files': NoDeadFilesRule,
 	'no-forbidden-lifecycle-scripts': NoForbiddenLifecycleScriptsRule,
+	'no-hardcoded-secrets': NoHardcodedSecretsRule,
 	'no-http-request-with-manual-auth': NoHttpRequestWithManualAuthRule,
 	'no-overrides-field': NoOverridesFieldRule,
 	'no-runtime-dependencies': NoRuntimeDependenciesRule,
+	'no-silent-error-swallowing': NoSilentErrorSwallowingRule,
 	'no-template-placeholders': NoTemplatePlaceholdersRule,
 	'icon-validation': IconValidationRule,
 	'icon-prefer-themed-variants': IconPreferThemedVariantsRule,
@@ -68,6 +78,8 @@ export const rules = {
 	'missing-paired-item': MissingPairedItemRule,
 	'no-builder-hint-leakage': NoBuilderHintLeakageRule,
 	'n8n-object-validation': N8nObjectValidationRule,
+	'require-files-array': RequireFilesArrayRule,
+	'require-homepage': RequireHomepageRule,
 	'require-node-api-error': RequireNodeApiErrorRule,
 	'require-node-description-fields': RequireNodeDescriptionFieldsRule,
 	'require-version': RequireVersionRule,

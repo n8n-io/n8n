@@ -198,16 +198,14 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
 	const messageAnAgentNode = getMessageAnAgentNode(nodeTypesStore, settingsStore);
 
-	const websiteCategoryURLParams = templatesStore.websiteTemplateRepositoryParameters;
-	websiteCategoryURLParams.append('utm_user_role', 'AdvancedAI');
+	const websiteCategoryURLParams = new URLSearchParams(
+		templatesStore.websiteTemplateRepositoryParameters,
+	);
+	websiteCategoryURLParams.set('utm_user_role', 'AdvancedAI');
 	const aiTemplatesURL = templatesStore.constructTemplateRepositoryURL(
 		websiteCategoryURLParams,
 		TEMPLATE_CATEGORY_AI,
 	);
-
-	const askAiEnabled = settingsStore.isAskAiEnabled;
-	const aiTransformNode = nodeTypesStore.getNodeType(AI_TRANSFORM_NODE_TYPE);
-	const transformNode = askAiEnabled && aiTransformNode ? [getNodeView(aiTransformNode)] : [];
 
 	const callouts: NodeViewItem[] = [getAiTemplatesCallout(aiTemplatesURL)];
 
@@ -222,7 +220,6 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 			...messageAnAgentNode,
 			...agentNodes,
 			...chainNodes,
-			...transformNode,
 			...evaluationNode,
 			{
 				key: AI_OTHERS_NODE_CREATOR_VIEW,

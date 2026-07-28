@@ -45,6 +45,7 @@ import {
 	AI_GATEWAY_TOP_UP_MODAL_KEY,
 	AGENT_CONFIRMATION_MODAL_KEY,
 	ADD_EXECUTION_TO_DATASET_MODAL_KEY,
+	MIGRATE_WORKFLOW_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -177,6 +178,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 				AI_GATEWAY_TOP_UP_MODAL_KEY,
 				AGENT_CONFIRMATION_MODAL_KEY,
+				MIGRATE_WORKFLOW_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -562,6 +564,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			appendToBody?: boolean;
 			closeOnSave?: boolean;
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
+			usageScope?: NewCredentialsModal['usageScope'];
 		} = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
@@ -577,6 +580,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			hideAskAssistant: options.hideAskAssistant,
 			appendToBody: options.appendToBody,
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
+			usageScope: options.usageScope,
 		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);

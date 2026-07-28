@@ -9,7 +9,6 @@ import type { IUpdateInformation } from '@/Interface';
 import type { RudderStack } from './telemetry.types';
 import {
 	APPEND_ATTRIBUTION_DEFAULT_PATH,
-	GOOGLE_GMAIL_NODE_TYPE,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	SLACK_NODE_TYPE,
 	TELEGRAM_NODE_TYPE,
@@ -229,12 +228,11 @@ export class TelemetryService implements Telemetry {
 			}
 
 			// Advanced HITL (one-tap approval) opt-in toggles, tracked per node.
-			const advancedHitlPathMap: { [key: string]: string[] } = {
-				[SLACK_NODE_TYPE]: ['parameters.captureResponder'],
-				[TELEGRAM_NODE_TYPE]: ['parameters.chatApproval'],
-				[GOOGLE_GMAIL_NODE_TYPE]: ['parameters.advancedEmail', 'parameters.confirmationPage'],
+			const advancedHitlPathMap: { [key: string]: string } = {
+				[SLACK_NODE_TYPE]: 'parameters.captureResponder',
+				[TELEGRAM_NODE_TYPE]: 'parameters.chatApproval',
 			};
-			if (advancedHitlPathMap[nodeType]?.includes(change.name) && change.value === true) {
+			if (change.name === advancedHitlPathMap[nodeType] && change.value === true) {
 				this.track('User enabled advanced HITL', { node_type: nodeType });
 			}
 		}

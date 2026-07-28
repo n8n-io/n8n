@@ -1,6 +1,7 @@
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPES,
 	MCP_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
@@ -60,7 +61,13 @@ export function classifyTriggerIdentity(
 	// n8n identity the same way the MCP trigger does — sharing the `n8nOAuth2` value.
 	const isOAuth2Webhook =
 		nodeType === WEBHOOK_NODE_TYPE && parameters?.authentication === 'n8nOAuth2';
-	if (isSubWorkflowTrigger || isChatHubTrigger || isMcpTrigger || isOAuth2Webhook) {
+	// Not gated by N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2: this shared classification describes the
+	// trigger's capability when the OAuth feature is enabled, and reading the env flag here
+	// would mean threading it through both callers of a low-level FE/BE-shared function. The
+	// only inconsistency is the narrow dynamic-credentials + form + flag-off combination.
+	const isFormTrigger =
+		nodeType === FORM_TRIGGER_NODE_TYPE && parameters?.authentication === 'n8nUserAuth';
+	if (isSubWorkflowTrigger || isChatHubTrigger || isMcpTrigger || isFormTrigger || isOAuth2Webhook) {
 		return { providesN8nIdentity: true, providesExternalIdentity: true };
 	}
 
