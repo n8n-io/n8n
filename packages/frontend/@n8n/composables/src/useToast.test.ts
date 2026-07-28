@@ -6,7 +6,7 @@ import { ElNotification } from 'element-plus';
 import { vi } from 'vitest';
 import { h, defineComponent } from 'vue';
 
-import type { NotificationOptions } from './notificationTypes';
+import type { NotificationOptions } from './types/notification';
 import { useTelemetry } from './useTelemetry';
 import { useToast, registerNotificationState, setNotify } from './useToast';
 

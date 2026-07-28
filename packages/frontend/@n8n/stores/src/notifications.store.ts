@@ -1,4 +1,4 @@
-import type { NotificationOptions } from '@n8n/composables/notificationTypes';
+import type { NotificationOptions } from '@n8n/composables/types/notification';
 import type { VIEWS } from '@n8n/frontend-constants/views';
 import { defineStore } from 'pinia';
 import { ref, type Ref } from 'vue';
@@ -10,7 +10,7 @@ import { STORES } from './constants';
  * layer that owns the contract, since that package sits below this one
  * (N8N-100). Re-exported here so existing importers stay unchanged.
  */
-export type { NotificationOptions } from '@n8n/composables/notificationTypes';
+export type { NotificationOptions } from '@n8n/composables/types/notification';
 
 /**
  * Public surface of the notifications store. Declared explicitly so the emitted

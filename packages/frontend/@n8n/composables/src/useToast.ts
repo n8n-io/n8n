@@ -9,7 +9,7 @@ import type {
 	NotificationOptions,
 	NotificationType,
 	ToastNotificationState,
-} from './notificationTypes';
+} from './types/notification';
 import { useExternalHooks } from './useExternalHooks';
 import { useTelemetry } from './useTelemetry';
 
@@ -18,7 +18,7 @@ export type {
 	NotificationPosition,
 	NotificationType,
 	ToastNotificationState,
-} from './notificationTypes';
+} from './types/notification';
 
 /**
  * Handle returned by the notification function. Declared locally so the DTS
