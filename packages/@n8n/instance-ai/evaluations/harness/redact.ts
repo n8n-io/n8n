@@ -74,6 +74,28 @@ export function redactSecretsInText(text: string): string {
 }
 
 /**
+ * Content-based pass over a value tree: applies `redactSecretsInText` to every
+ * string leaf. Complements the key-based `redactSecrets` for payloads where a
+ * token sits inline in a value under a non-secret-shaped key. Same walk rules
+ * as `redactSecrets`: plain objects and arrays only, depth-capped.
+ */
+export function redactSecretsInTextDeep(value: unknown, depth = 0): unknown {
+	if (depth > 10 || value === null || value === undefined) return value;
+	if (typeof value === 'string') return redactSecretsInText(value);
+	if (Array.isArray(value)) {
+		return value.map((entry) => redactSecretsInTextDeep(entry, depth + 1));
+	}
+	if (typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+		const out: Record<string, unknown> = {};
+		for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+			out[k] = redactSecretsInTextDeep(v, depth + 1);
+		}
+		return out;
+	}
+	return value;
+}
+
+/**
  * Truncates serializable values to a max stringified length, redacting
  * secrets first. Returns the redacted value when it fits, the truncated
  * string otherwise, or `'<unserializable>'` if `JSON.stringify` returns

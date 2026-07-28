@@ -9,7 +9,7 @@
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
-import { redactSecrets, redactSecretsInText } from '../harness/redact';
+import { redactSecrets, redactSecretsInText, redactSecretsInTextDeep } from '../harness/redact';
 import type {
 	AskUserAnswer,
 	AskUserQuestion,
@@ -87,7 +87,10 @@ function splitEventsByUserTurn(
 
 function extractUserTurnText(event: CapturedEvent): string | undefined {
 	const payload = getRecord(event.data, 'payload');
-	return payload ? getString(payload, 'text') : undefined;
+	const text = payload ? getString(payload, 'text') : undefined;
+	// The transcript leaves the machine via eval-results.json — content-scrub
+	// user messages the same as every other free-text step.
+	return text === undefined ? undefined : redactSecretsInText(text);
 }
 
 // ---------------------------------------------------------------------------
@@ -111,7 +114,9 @@ function buildTurn(
 
 	const flushText = () => {
 		if (textBuffer.length > 0) {
-			steps.push({ kind: 'agent-text', text: textBuffer });
+			// Agent narration can echo a token verbatim (e.g. from a tool result) —
+			// content-scrub before the text lands in the persisted transcript.
+			steps.push({ kind: 'agent-text', text: redactSecretsInText(textBuffer) });
 			textBuffer = '';
 		}
 	};
@@ -164,8 +169,9 @@ function collectToolOutcomes(events: CapturedEvent[]): Map<string, ToolOutcome> 
 			// Flat string, so content-scrub (key-based redaction can't reach an inline token).
 			map.set(callId, { error: redactSecretsInText(getString(payload, 'error') ?? 'tool error') });
 		} else {
-			// Redact secret-shaped keys before the result reaches the report/judge.
-			map.set(callId, { result: redactSecrets(payload.result) });
+			// Redact secret-shaped keys, then content-scrub string leaves — a token
+			// inlined in a value under a benign key survives the key-based pass.
+			map.set(callId, { result: redactSecretsInTextDeep(redactSecrets(payload.result)) });
 		}
 	}
 	return map;
@@ -200,7 +206,10 @@ function interpretToolCall(
 		toolName,
 		toolCallId: callId,
 		args:
-			Object.keys(args).length > 0 ? (redactSecrets(args) as Record<string, unknown>) : undefined,
+			Object.keys(args).length > 0
+				? // Key-based pass, then a content pass over string leaves (see collectToolOutcomes).
+					(redactSecretsInTextDeep(redactSecrets(args)) as Record<string, unknown>)
+				: undefined,
 		result,
 		error: outcome?.error,
 	};

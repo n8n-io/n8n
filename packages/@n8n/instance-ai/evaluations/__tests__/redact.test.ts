@@ -1,4 +1,10 @@
-import { redactSecrets, redactSecretsInText, stringifyError, truncate } from '../harness/redact';
+import {
+	redactSecrets,
+	redactSecretsInText,
+	redactSecretsInTextDeep,
+	stringifyError,
+	truncate,
+} from '../harness/redact';
 
 describe('redactSecrets', () => {
 	it('redacts values under secret-shaped keys', () => {
@@ -111,6 +117,57 @@ describe('redactSecretsInText', () => {
 		expect(redactSecretsInText('the secret sauce was missing')).toBe(
 			'the secret sauce was missing',
 		);
+	});
+});
+
+describe('redactSecretsInTextDeep', () => {
+	it('scrubs inline tokens in string leaves of nested objects and arrays', () => {
+		const input = {
+			log: 'Request failed: Authorization: Bearer sk-abc.def (401)',
+			nested: { note: 'retry with api_key=sk-inline-1' },
+			list: ['header was Bearer eyJ0eXAi.payload', 'plain entry'],
+		};
+
+		expect(redactSecretsInTextDeep(input)).toEqual({
+			log: 'Request failed: Authorization: Bearer [REDACTED] (401)',
+			nested: { note: 'retry with api_key=[REDACTED]' },
+			list: ['header was Bearer [REDACTED]', 'plain entry'],
+		});
+	});
+
+	it('passes non-string primitives, null, and undefined through unchanged', () => {
+		expect(redactSecretsInTextDeep(42)).toBe(42);
+		expect(redactSecretsInTextDeep(true)).toBe(true);
+		expect(redactSecretsInTextDeep(null)).toBeNull();
+		expect(redactSecretsInTextDeep(undefined)).toBeUndefined();
+	});
+
+	it('leaves benign strings untouched', () => {
+		expect(redactSecretsInTextDeep({ msg: 'Invalid token format in the request' })).toEqual({
+			msg: 'Invalid token format in the request',
+		});
+	});
+
+	it('does not mutate the original object', () => {
+		const original = { note: 'api_key=sk-real' };
+		redactSecretsInTextDeep(original);
+		expect(original.note).toBe('api_key=sk-real');
+	});
+
+	it('caps recursion depth so deeply nested input cannot blow the stack', () => {
+		let nested: unknown = { note: 'api_key=sk-leaf' };
+		for (let i = 0; i < 12; i += 1) {
+			nested = { wrap: nested };
+		}
+		expect(() => redactSecretsInTextDeep(nested)).not.toThrow();
+	});
+
+	it('leaves class instances untouched (only walks plain objects)', () => {
+		class WithText {
+			constructor(public note: string) {}
+		}
+		const instance = new WithText('api_key=sk-keep');
+		expect(redactSecretsInTextDeep(instance)).toBe(instance);
 	});
 });
 
