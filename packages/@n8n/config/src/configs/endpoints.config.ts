@@ -202,6 +202,14 @@ export class EndpointsConfig {
 	@Env('N8N_MCP_MAX_REGISTERED_CLIENTS')
 	mcpMaxRegisteredClients: number = 5000;
 
+	/**
+	 * Whether to emit MCP server usage events (`n8n.mcp.*`) to log streaming.
+	 * Temporary opt-in while the feature is validated; once confirmed, the flag
+	 * will be removed and the events enabled unconditionally.
+	 */
+	@Env('N8N_MCP_LOG_STREAMING_EVENTS_ENABLED')
+	mcpLogStreamingEventsEnabled: boolean = false;
+
 	/** Whether to disable n8n's UI (frontend). */
 	@Env('N8N_DISABLE_UI')
 	disableUi: boolean = false;

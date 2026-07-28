@@ -1,3 +1,4 @@
+import type { GlobalConfig } from '@n8n/config';
 import { GLOBAL_OWNER_ROLE, type IWorkflowDb } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
@@ -13,7 +14,10 @@ describe('LogStreamingEventRelay', () => {
 	const eventService = new EventService();
 	const hostId = 'host-xyz';
 	const instanceSettings = mock<InstanceSettings>({ hostId });
-	new LogStreamingEventRelay(eventService, eventBus, instanceSettings).init();
+	const globalConfig = mock<GlobalConfig>({
+		endpoints: { mcpLogStreamingEventsEnabled: true },
+	});
+	new LogStreamingEventRelay(eventService, eventBus, instanceSettings, globalConfig).init();
 
 	afterEach(() => {
 		vi.clearAllMocks();
@@ -3132,6 +3136,34 @@ describe('LogStreamingEventRelay', () => {
 					enabled: false,
 				},
 			});
+		});
+
+		it('should not relay MCP events when the env flag is disabled', () => {
+			const gatedEventService = new EventService();
+			const gatedEventBus = mock<MessageEventBus>();
+			new LogStreamingEventRelay(
+				gatedEventService,
+				gatedEventBus,
+				instanceSettings,
+				mock<GlobalConfig>({ endpoints: { mcpLogStreamingEventsEnabled: false } }),
+			).init();
+
+			gatedEventService.emit('mcp-oauth-completed', {
+				userId: 'user-mcp-1',
+				clientId: 'client-abc',
+				clientName: 'Claude',
+			});
+			gatedEventService.emit('mcp-tool-called', {
+				user: { id: 'user-mcp-2', role: { slug: 'global:member' } },
+				toolName: 'execute_workflow',
+				status: 'success',
+			});
+			gatedEventService.emit('mcp-access-updated', {
+				user: { id: 'user-mcp-4', role: { slug: 'global:owner' } },
+				enabled: false,
+			});
+
+			expect(gatedEventBus.sendMcpEvent).not.toHaveBeenCalled();
 		});
 	});
 });

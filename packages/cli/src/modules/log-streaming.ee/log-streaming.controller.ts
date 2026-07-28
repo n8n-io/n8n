@@ -5,14 +5,14 @@ import {
 	TestDestinationQueryDto,
 } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
-import { InstanceSettingsLoaderConfig } from '@n8n/config';
+import { GlobalConfig, InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, GlobalScope, Licensed, Post, Query, RestController } from '@n8n/decorators';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { eventNamesAll } from '@/eventbus/event-message-classes';
+import { eventNamesAll, eventNamesMcp } from '@/eventbus/event-message-classes';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
 import { createMessageEventBusDestination } from './create-message-event-bus-destination';
@@ -25,6 +25,7 @@ export class EventBusController {
 		private readonly destinationService: LogStreamingDestinationService,
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	private assertNotManagedByEnv() {
@@ -37,7 +38,11 @@ export class EventBusController {
 
 	@Get('/eventnames')
 	async getEventNames(): Promise<string[]> {
-		return eventNamesAll;
+		// MCP events are opt-in via N8N_MCP_LOG_STREAMING_EVENTS_ENABLED while
+		// the feature is validated; hiding the names also hides the UI group.
+		if (this.globalConfig.endpoints.mcpLogStreamingEventsEnabled) return eventNamesAll;
+		const mcpEventNames: ReadonlySet<string> = new Set(eventNamesMcp);
+		return eventNamesAll.filter((name) => !mcpEventNames.has(name));
 	}
 
 	@Licensed('feat:logStreaming')
