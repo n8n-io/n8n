@@ -222,31 +222,12 @@ export class TelemetryEventRelay extends EventRelay {
 		nodeType,
 		approved,
 		authorized,
-		response_mode,
-		advanced_email,
 	}: RelayEventMap['hitl-response-actioned']) {
-		const props: {
-			node_type: string;
-			is_approved: boolean;
-			is_authorized?: boolean;
-			response_mode?: string;
-			is_advanced_email?: boolean;
-		} = {
+		this.telemetry.track('Advanced HITL response actioned', {
 			node_type: nodeType,
 			is_approved: approved,
-		};
-		// Email nodes cannot identify the responder, so they omit `authorized`.
-		if (authorized !== undefined) {
-			props.is_authorized = authorized;
-		}
-		// The following two are only set by email nodes; chat nodes omit them.
-		if (response_mode !== undefined) {
-			props.response_mode = response_mode;
-		}
-		if (advanced_email !== undefined) {
-			props.is_advanced_email = advanced_email;
-		}
-		this.telemetry.track('Advanced HITL response actioned', props);
+			is_authorized: authorized,
+		});
 	}
 
 	// #endregion
@@ -1081,6 +1062,7 @@ export class TelemetryEventRelay extends EventRelay {
 			data_table_missing_mode: options.dataTableMissingMode,
 			data_table_schema_conflict_policy: options.dataTableSchemaConflictPolicy,
 			variable_missing_mode: options.variableMissingMode,
+			variable_parent_policy: options.variableParentPolicy,
 			workflows_created: counts.workflows.created,
 			workflows_updated: counts.workflows.updated,
 			workflows_skipped: counts.workflows.skipped,
@@ -1092,6 +1074,7 @@ export class TelemetryEventRelay extends EventRelay {
 			data_tables_required: counts.dataTables.requirements,
 			variables_matched: counts.variables.matched,
 			variables_missing: counts.variables.missing,
+			variables_created: counts.variables.created,
 			variables_required: counts.variables.requirements,
 		});
 	}

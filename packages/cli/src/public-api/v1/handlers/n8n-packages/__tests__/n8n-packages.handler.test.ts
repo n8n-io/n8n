@@ -39,6 +39,14 @@ beforeAll(async () => {
 	importPackage = handler.importPackage[1];
 });
 
+const EXPORT_COUNTS = {
+	workflows: 2,
+	folders: 1,
+	credentials: 0,
+	dataTables: 0,
+	variables: 0,
+};
+
 describe('n8n-packages handler', () => {
 	let mockService: Mocked<N8nPackagesService>;
 	let mockEventService: Mocked<EventService>;
@@ -225,7 +233,7 @@ describe('n8n-packages handler', () => {
 
 		it('does not reject upfront without variable:list scope; forwards canExportVariableValues=false for the service to enforce', async () => {
 			const stream = new PassThrough();
-			mockService.exportPackage.mockResolvedValue(stream);
+			mockService.exportPackage.mockResolvedValue({ stream, counts: EXPORT_COUNTS });
 			const res = makeResponse();
 
 			const resultPromise = run(makeRequest({ workflowIds: ['wf-1'] }, ['workflow:export']), res);
@@ -246,7 +254,7 @@ describe('n8n-packages handler', () => {
 
 		it('allows value-less export without variable:list scope', async () => {
 			const stream = new PassThrough();
-			mockService.exportPackage.mockResolvedValue(stream);
+			mockService.exportPackage.mockResolvedValue({ stream, counts: EXPORT_COUNTS });
 			const res = makeResponse();
 
 			const resultPromise = run(
@@ -344,7 +352,7 @@ describe('n8n-packages handler', () => {
 
 		it('streams the export for a valid workflow request', async () => {
 			const stream = new PassThrough();
-			mockService.exportPackage.mockResolvedValue(stream);
+			mockService.exportPackage.mockResolvedValue({ stream, counts: EXPORT_COUNTS });
 			const res = makeResponse();
 
 			const resultPromise = run(
@@ -369,12 +377,20 @@ describe('n8n-packages handler', () => {
 				'Content-Disposition',
 				'attachment; filename="export.n8np"',
 			);
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'X-N8n-Export-Counts',
+				JSON.stringify(EXPORT_COUNTS),
+			);
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Access-Control-Expose-Headers',
+				'X-N8n-Export-Counts',
+			);
 			expect(mockEventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('forwards a non-default missing workflow dependency policy', async () => {
 			const stream = new PassThrough();
-			mockService.exportPackage.mockResolvedValue(stream);
+			mockService.exportPackage.mockResolvedValue({ stream, counts: EXPORT_COUNTS });
 			const res = makeResponse();
 
 			const resultPromise = run(
@@ -404,7 +420,7 @@ describe('n8n-packages handler', () => {
 
 		it('streams the export for a valid project request', async () => {
 			const stream = new PassThrough();
-			mockService.exportPackage.mockResolvedValue(stream);
+			mockService.exportPackage.mockResolvedValue({ stream, counts: EXPORT_COUNTS });
 			const res = makeResponse();
 
 			const resultPromise = run(
@@ -428,7 +444,7 @@ describe('n8n-packages handler', () => {
 
 		it('streams the export for a valid folder request', async () => {
 			const stream = new PassThrough();
-			mockService.exportPackage.mockResolvedValue(stream);
+			mockService.exportPackage.mockResolvedValue({ stream, counts: EXPORT_COUNTS });
 			const res = makeResponse();
 
 			const resultPromise = run(
@@ -452,7 +468,7 @@ describe('n8n-packages handler', () => {
 
 		it('forwards includeVariableValues=false to the service', async () => {
 			const stream = new PassThrough();
-			mockService.exportPackage.mockResolvedValue(stream);
+			mockService.exportPackage.mockResolvedValue({ stream, counts: EXPORT_COUNTS });
 			const res = makeResponse();
 
 			const resultPromise = run(
@@ -594,6 +610,7 @@ describe('n8n-packages handler', () => {
 					projectId: 'proj-brie',
 					workflowConflictPolicy: 'fail',
 					variableMissingMode: 'do-nothing',
+					variableParentPolicy: undefined,
 				}),
 			);
 			expect(mockEventService.emit).not.toHaveBeenCalled();
@@ -605,7 +622,7 @@ describe('n8n-packages handler', () => {
 			const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Response;
 
 			const caught = await runImport(
-				makeImportRequest({ projectId: 'proj-brie', variableMissingMode: 'do-nothing' }, [
+				makeImportRequest({ projectId: 'proj-brie', variableMissingMode: 'create-stub' }, [
 					'workflow:import',
 				]),
 				res,
@@ -613,7 +630,25 @@ describe('n8n-packages handler', () => {
 
 			expect(caught).toBeUndefined();
 			expect(mockService.importPackage).toHaveBeenCalledWith(
-				expect.objectContaining({ variableMissingMode: 'do-nothing' }),
+				expect.objectContaining({ variableMissingMode: 'create-stub' }),
+			);
+		});
+
+		it('forwards variableParentPolicy when provided', async () => {
+			const result = { package: {}, workflows: [], bindings: {}, credentials: {} };
+			mockService.importPackage.mockResolvedValue(result as never);
+			const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Response;
+
+			const caught = await runImport(
+				makeImportRequest({ projectId: 'proj-brie', variableParentPolicy: 'global' }, [
+					'workflow:import',
+				]),
+				res,
+			);
+
+			expect(caught).toBeUndefined();
+			expect(mockService.importPackage).toHaveBeenCalledWith(
+				expect.objectContaining({ variableParentPolicy: 'global' }),
 			);
 		});
 	});

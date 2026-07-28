@@ -10,7 +10,6 @@ import { ProjectImporter } from '../entities/project/project-importer';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { PackageReader } from '../io/package-reader';
 import type {
-	BlockingIssue,
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
 	ImportPackageRequest,
@@ -18,16 +17,17 @@ import type {
 	PackageImportBindings,
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
-import { toImportBlockedError } from './import-blocked.error';
+import { assertPackageImportApiKeyScopes, assertVariableCreationAllowed } from './import-gates';
+import { deriveVariableScope } from './package-layout';
 import {
 	ImportOrchestrator,
 	type ImportOrchestrationInput,
 	type ImportPlan,
 } from './import-orchestrator';
 import {
-	assertPackageImportApiKeyScopes,
 	buildImportResult,
 	identifyRequirements,
+	reconcileVariableSummary,
 	scopeCredentialBindingsToRequirements,
 	toImportedWorkflowSummaries,
 	toPackageSummary,
@@ -64,7 +64,6 @@ export class ProjectPackageImporter {
 		// Plan and validate every project's contents before writing anything, so a blocking issue in
 		// any project leaves nothing behind — not folders, workflows, nor the project shells.
 		const planned: Array<{ project: ManifestEntry; plan: ImportPlan }> = [];
-		const blockingIssues: BlockingIssue[] = [];
 		for (const project of manifest.projects ?? []) {
 			const input = await this.buildImportContextForProject(
 				request,
@@ -75,11 +74,9 @@ export class ProjectPackageImporter {
 			);
 			const plan = await this.importOrchestrator.plan(input);
 			planned.push({ project, plan });
-			blockingIssues.push(...plan.blockingIssues);
 		}
-		if (blockingIssues.length > 0) {
-			throw toImportBlockedError(blockingIssues);
-		}
+
+		await this.importOrchestrator.assertNotBlocked(planned.map(({ plan }) => plan));
 
 		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan);
 
@@ -88,8 +85,10 @@ export class ProjectPackageImporter {
 		const scopedBindings: PackageImportBindings[] = [];
 		const matched: string[] = [];
 		const stubbed: string[] = [];
-		const variablesMatched = new Set<string>();
-		const variablesMissing = new Set<string>();
+		const variablesMatched: string[] = [];
+		const variablesMissing: string[] = [];
+		const variablesStubbed: string[] = [];
+		const variablesSkipped: string[] = [];
 		const scopes: PackageImportScope[] = [];
 
 		for (const { project, plan } of planned) {
@@ -99,8 +98,10 @@ export class ProjectPackageImporter {
 			scopedBindings.push(imported.bindings);
 			matched.push(...imported.credentialResult.matched);
 			stubbed.push(...imported.credentialResult.stubbed);
-			imported.variablePlan.matched.forEach((name) => variablesMatched.add(name));
-			imported.variablePlan.missing.forEach(({ name }) => variablesMissing.add(name));
+			variablesMatched.push(...imported.variablePlan.matched);
+			variablesMissing.push(...imported.variablePlan.missing.map(({ name }) => name));
+			variablesStubbed.push(...imported.variableResult.stubbed);
+			variablesSkipped.push(...imported.variableResult.skippedExisting);
 			scopes.push({
 				context: plan.input.context,
 				imported,
@@ -119,7 +120,12 @@ export class ProjectPackageImporter {
 			projects: projectSummaries,
 			bindings: mergeBindings(...scopedBindings),
 			credentials: { matched, stubbed },
-			variables: { matched: [...variablesMatched], missing: [...variablesMissing] },
+			variables: reconcileVariableSummary({
+				matched: variablesMatched,
+				missing: variablesMissing,
+				stubbed: variablesStubbed,
+				skipped: variablesSkipped,
+			}),
 		});
 	}
 
@@ -156,7 +162,13 @@ export class ProjectPackageImporter {
 		};
 
 		const variableRequest: VariableImportRequest = {
-			requirements: identifyRequirements(manifest.requirements?.variables, workflows),
+			requirements: identifyRequirements(manifest.requirements?.variables, workflows)?.map(
+				(requirement) => ({
+					...requirement,
+					globalPlacement:
+						deriveVariableScope(manifest.variables, basePrefix, requirement.name) === 'global',
+				}),
+			),
 			missingMode: request.variableMissingMode,
 		};
 
@@ -196,5 +208,12 @@ export class ProjectPackageImporter {
 		if ((manifest.workflows?.length ?? 0) > 0) {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:import']);
 		}
+
+		assertVariableCreationAllowed({
+			licenseState: this.licenseState,
+			apiKeyScopes: request.apiKeyScopes,
+			missingMode: request.variableMissingMode,
+			hasRequirements: (manifest.requirements?.variables?.length ?? 0) > 0,
+		});
 	}
 }

@@ -149,16 +149,15 @@ describe('observation-log observer defaults', () => {
 		await observe({ ...baseInput, telemetry: { ...telemetry, enabled: false } });
 
 		expect(mockGenerateText.mock.calls[0][0]).toMatchObject({
-			experimental_telemetry: {
+			telemetry: {
 				isEnabled: true,
 				functionId: 'my-agent.memory-observer',
-				metadata: { thread_id: 't1' },
 				recordInputs: true,
 				recordOutputs: false,
 			},
 		});
-		expect(mockGenerateText.mock.calls[1][0].experimental_telemetry).toBeUndefined();
-		expect(mockGenerateText.mock.calls[2][0].experimental_telemetry).toBeUndefined();
+		expect(mockGenerateText.mock.calls[1][0].telemetry).toBeUndefined();
+		expect(mockGenerateText.mock.calls[2][0].telemetry).toBeUndefined();
 	});
 
 	it('reports normalized, cache-aware usage through an async onUsage before the observer promise settles', async () => {

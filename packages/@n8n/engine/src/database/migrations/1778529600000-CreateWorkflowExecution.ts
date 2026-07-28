@@ -9,7 +9,7 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 			new Table({
 				name: TABLE,
 				columns: [
-					{ name: 'id', type: 'varchar', isPrimary: true },
+					{ name: 'id', type: 'uuid', isPrimary: true },
 					{ name: 'workflow_id', type: 'varchar' },
 					{ name: 'status', type: 'varchar', length: '32' },
 					{ name: 'mode', type: 'varchar', length: '32' },
@@ -28,6 +28,12 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 						default: 'CURRENT_TIMESTAMP(3)',
 					},
 					{ name: 'finished_at', type: 'timestamptz', precision: 3, isNullable: true },
+				],
+				checks: [
+					{
+						name: 'chk_workflow_execution_status',
+						expression: "status IN ('queued', 'running', 'completed', 'failed', 'cancelled')",
+					},
 				],
 			}),
 		);

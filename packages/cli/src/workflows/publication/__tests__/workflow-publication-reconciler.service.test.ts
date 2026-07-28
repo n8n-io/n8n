@@ -61,6 +61,7 @@ beforeEach(() => {
 	triggerStatusRepository.findActivatedInMemoryTriggers.mockResolvedValue([]);
 	outboxRepository.enqueueByWorkflowIds.mockResolvedValue();
 	outboxRepository.findInFlightByWorkflowId.mockResolvedValue(null);
+	outboxRepository.findVersionSkewedWorkflowIds.mockResolvedValue([]);
 	outboxConsumer.drainPending.mockResolvedValue(0);
 	setRegistered({});
 	activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue([]);
@@ -176,6 +177,19 @@ describe('WorkflowPublicationReconciler', () => {
 			await service.reconcile();
 
 			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-2']);
+		});
+
+		it('re-enqueues a workflow whose published version diverged from the active version', async () => {
+			outboxRepository.findVersionSkewedWorkflowIds.mockResolvedValue(['wf-skew']);
+
+			await service.reconcile();
+
+			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-skew']);
+			expect(outboxConsumer.drainPending).toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-publication-reconciliation',
+				expect.objectContaining({ result: 'success', versionSkewCount: 1, deficientCount: 0 }),
+			);
 		});
 
 		it('catches and reports errors without throwing', async () => {

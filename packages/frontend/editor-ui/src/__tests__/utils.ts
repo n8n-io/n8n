@@ -95,6 +95,8 @@ export const getSelectedDropdownValue = async (items: NodeListOf<Element>) => {
 	return selectedItem?.querySelector('p')?.textContent?.trim();
 };
 
+type Mutable<T> = { -readonly [P in keyof T]: T[P] };
+
 /**
  * Typescript helper for mocking pinia store actions return value
  *
@@ -104,18 +106,20 @@ export const mockedStore = <TStoreDef extends (...args: never[]) => unknown>(
 	useStore: TStoreDef,
 	...args: Parameters<TStoreDef>
 ): TStoreDef extends StoreDefinition<infer Id, infer State, infer Getters, infer Actions>
-	? Store<
-			Id,
-			State,
-			Record<string, never>,
-			{
-				[K in keyof Actions]: Actions[K] extends (...args: infer Args) => infer ReturnT
-					? Mock<(...args: Args) => ReturnT>
-					: Actions[K];
+	? Mutable<
+			Store<
+				Id,
+				State,
+				Record<string, never>,
+				{
+					[K in keyof Actions]: Actions[K] extends (...args: infer Args) => infer ReturnT
+						? Mock<(...args: Args) => ReturnT>
+						: Actions[K];
+				}
+			> & {
+				[K in keyof Getters]: Getters[K] extends ComputedRef<infer T> ? T : never;
 			}
-		> & {
-			[K in keyof Getters]: Getters[K] extends ComputedRef<infer T> ? T : never;
-		}
+		>
 	: ReturnType<TStoreDef> => {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	return useStore(...args) as any;

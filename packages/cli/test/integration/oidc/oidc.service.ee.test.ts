@@ -618,7 +618,7 @@ describe('OIDC service', () => {
 				email: 'user2@example.com',
 			});
 
-			const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+			const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('user2@example.com');
 
@@ -664,7 +664,7 @@ describe('OIDC service', () => {
 				email: 'user2@example.com',
 			});
 
-			const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+			const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('user2@example.com');
 			expect(user.id).toEqual(createdUser.id);
@@ -703,7 +703,7 @@ describe('OIDC service', () => {
 				email: 'user1@example.com',
 			});
 
-			const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+			const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('user1@example.com');
 		});
@@ -741,7 +741,7 @@ describe('OIDC service', () => {
 				email: 'user3@example.com',
 			});
 
-			const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+			const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('user3@example.com');
 		});
@@ -1021,7 +1021,7 @@ describe('OIDC service', () => {
 					email: 'new-instance-role-user@example.com',
 				});
 
-				const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+				const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 				expect(user).toBeDefined();
 				expect(user.email).toEqual('new-instance-role-user@example.com');
 
@@ -1059,7 +1059,7 @@ describe('OIDC service', () => {
 					email: 'new-project-role-user@example.com',
 				});
 
-				const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+				const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 				expect(user).toBeDefined();
 				expect(user.email).toEqual('new-project-role-user@example.com');
 
@@ -1096,7 +1096,7 @@ describe('OIDC service', () => {
 					email: 'new-both-provisioning-user@example.com',
 				});
 
-				const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+				const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 				expect(user).toBeDefined();
 				expect(user.email).toEqual('new-both-provisioning-user@example.com');
 
@@ -1156,7 +1156,7 @@ describe('OIDC service', () => {
 						email: 'oidc-expr-instance-role@example.com',
 					});
 
-					const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+					const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 					expect(user).toBeDefined();
 
 					const userFromDB = await userRepository.findOne({
@@ -1209,7 +1209,7 @@ describe('OIDC service', () => {
 						email: 'oidc-expr-custom-role@example.com',
 					});
 
-					const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+					const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 					expect(user).toBeDefined();
 
 					const userFromDB = await userRepository.findOne({
@@ -1256,7 +1256,7 @@ describe('OIDC service', () => {
 						email: 'oidc-expr-project-role@example.com',
 					});
 
-					const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+					const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 					expect(user).toBeDefined();
 
 					const projectRole = await getProjectRoleForUser(project.id, user.id);

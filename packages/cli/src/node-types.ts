@@ -113,9 +113,12 @@ export class NodeTypes implements INodeTypes {
 
 		if (!isSyntheticTool) return versionedNodeType;
 
+		// Cache key must include the version: a base node can be usable as a tool
+		// at several versions (e.g. Notion v2 vs v3), and they must not collide.
+		const cacheKey = `${origType}?version=${version ?? 'default'}`;
 		const { loadedNodes } = this.loadNodesAndCredentials;
-		if (origType in loadedNodes) {
-			return loadedNodes[origType].type as INodeType;
+		if (cacheKey in loadedNodes) {
+			return loadedNodes[cacheKey].type as INodeType;
 		}
 
 		const isHitlTool = isHitlToolType(origType);
@@ -138,7 +141,7 @@ export class NodeTypes implements INodeTypes {
 		// For HITL tools, use convertNodeToHitlTool; for regular AI tools, use convertNodeToAiTool
 		const tool = isHitlTool ? convertNodeToHitlTool(clonedNode) : convertNodeToAiTool(clonedNode);
 
-		loadedNodes[origType] = { sourcePath: '', type: tool };
+		loadedNodes[cacheKey] = { sourcePath: '', type: tool };
 		return tool;
 	}
 

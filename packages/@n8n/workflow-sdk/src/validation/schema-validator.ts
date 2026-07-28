@@ -421,7 +421,7 @@ function extractUnionErrorSummary(unionErrors: Array<{ issues: ZodIssue[] }>): s
 
 					const expectedStr = expectedValues.map((v) => `"${String(v)}"`).join(', ');
 					if (receivedValue === undefined) {
-						return `Missing discriminator "${path}". Expected one of: ${expectedStr}. Make sure "${field}" is inside "parameters".`;
+						return `Missing discriminator "${path}". Expected one of: ${expectedStr}. When "${field}" is omitted, n8n falls back to the node default at runtime (the editor strips default values on save), so this can be intentional. If you set it, make sure "${field}" is inside "parameters".`;
 					}
 					let receivedStr: string;
 					if (typeof receivedValue === 'object') {

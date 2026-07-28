@@ -116,6 +116,7 @@ export async function initializeAuthenticatedFeatures(
 	const rootStore = useRootStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const cloudPlanStore = useCloudPlanStore();
+	cloudPlanStore.setIsInstanceOwner(() => hasPermission(['instanceOwner']));
 	const projectsStore = useProjectsStore();
 	const rolesStore = useRolesStore();
 	const bannersStore = useBannersStore();
@@ -132,6 +133,12 @@ export async function initializeAuthenticatedFeatures(
 	};
 	usersStore.registerModalOpeners(modalOpeners);
 	versionsStore.registerModalOpeners(modalOpeners);
+
+	// Provide the app-side capability `users.store` no longer imports directly
+	// after moving into `@n8n/stores` (RBAC check).
+	usersStore.setPermissionsResolvers({
+		listUsers: () => hasPermission(['rbac'], { rbac: { scope: 'user:list' } }),
+	});
 
 	if (!settingsStore.isPreviewMode) {
 		usersStore.setUserQuota(settingsStore.userManagement.quota);

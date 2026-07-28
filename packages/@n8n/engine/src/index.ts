@@ -11,6 +11,14 @@ export type {
 	WorkflowGraph,
 } from './graph';
 
+export type {
+	ExternalDependencies,
+	IStepExecutor,
+	StepExecutionContext,
+	StepExecutionRequest,
+	StepExecutionResult,
+} from './dependencies';
+
 export { AllowAllAdmittance, AdmittanceRejectedError } from './admittance';
 export type {
 	AdmittanceDecision,
@@ -21,15 +29,22 @@ export type {
 export { InMemoryWorkQueue } from './queue';
 export type {
 	ExecutionEnqueuedEvent,
+	OrchestrationMessage,
+	StepMessage,
+	StepReadyEvent,
 	WorkQueue,
-	WorkQueueMessage,
 } from './queue';
 
+export { ExecutionNotFoundError, ExecutionStartHandler, OrchestrationWorker } from './execution';
 export type {
 	ExecutionMode,
+	ExecutionRecord,
 	ExecutionStatus,
 	ExecutionStore,
 	NewExecutionRecord,
+	NewStepRecord,
+	StepStatus,
+	StepStore,
 } from './execution';
 
-export { createDataSource, TypeOrmExecutionStore } from './database';
+export { createDataSource, TypeOrmExecutionStore, TypeOrmStepStore } from './database';

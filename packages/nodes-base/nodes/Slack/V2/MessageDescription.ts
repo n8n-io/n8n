@@ -192,6 +192,23 @@ export const userRLC: INodeProperties = {
 	],
 };
 
+export const advancedInteractivityNotice: INodeProperties = {
+	displayName: 'Advanced Interactivity',
+	name: 'advancedInteractivityNotice',
+	type: 'notice',
+	default: '',
+	// Renders as a section-header divider (like "Options"), not a notice box.
+	typeOptions: {
+		sectionHeader: true,
+	},
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+		},
+	},
+};
+
 export const captureResponderField: INodeProperties = {
 	displayName: 'Capture Who Responded',
 	name: 'captureResponder',
@@ -210,7 +227,7 @@ export const captureResponderField: INodeProperties = {
 };
 
 export const approversField: INodeProperties = {
-	displayName: 'Approver Names or IDs',
+	displayName: 'Restrict Who Can Approve',
 	name: 'approvers',
 	type: 'multiOptions',
 	typeOptions: {
@@ -227,6 +244,43 @@ export const approversField: INodeProperties = {
 	},
 	description:
 		'Restrict who can approve or decline: a click from anyone not listed is ignored and they get a private notice. Leave empty to let anyone respond. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+};
+
+export const unauthorizedReplyField: INodeProperties = {
+	displayName: 'Unauthorized Reply',
+	name: 'unauthorizedReplyText',
+	type: 'string',
+	default: 'You are not authorized to respond to this request.',
+	// Same gating as the approver list — only the interactive-button flow can reject a click.
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+			captureResponder: [true],
+		},
+	},
+	description:
+		'Private (ephemeral) message shown to someone who clicks a button but is not in the approver list',
+};
+
+export const postDecisionBehaviorField: INodeProperties = {
+	displayName: 'After Decision',
+	name: 'postDecisionBehavior',
+	type: 'options',
+	default: 'showOutcome',
+	options: [
+		{ name: 'Show Outcome and Remove Buttons', value: 'showOutcome' },
+		{ name: 'Remove Buttons Only', value: 'removeButtons' },
+		{ name: 'Keep Message Unchanged', value: 'keepMessage' },
+	],
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+			captureResponder: [true],
+		},
+	},
+	description: 'What happens to the original message once someone approves or declines',
 };
 
 export const replyToMessageField: INodeProperties = {

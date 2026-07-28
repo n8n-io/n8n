@@ -1,6 +1,24 @@
-import type { INodeProperties, INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
+import type {
+	INodeProperties,
+	INodePropertyOptions,
+	INodeTypeDescription,
+	IWebhookDescription,
+} from 'n8n-workflow';
 
 import { getResponseCode, getResponseData } from './utils';
+
+// The Webhook node's opt-in "n8n User Auth (OAuth2)" mode. Seeds the triggering
+// user's identity into the execution so the workflow can use that user's private
+// credentials. Shares the `n8nOAuth2` value with the MCP trigger's equivalent mode.
+// Hidden in the editor until N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS is enabled,
+// and only offered by nodes that pass `includeN8nOAuth2` (not Wait).
+const n8nOAuth2AuthOption: INodePropertyOptions = {
+	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+	name: 'n8n User Auth (OAuth2)',
+	value: 'n8nOAuth2',
+	description: 'Require user to give consent to use their n8n account',
+	envFeatureFlag: 'WEBHOOK_PRIVATE_CREDENTIALS',
+};
 
 export const defaultWebhookDescription: IWebhookDescription = {
 	name: 'default',
@@ -53,7 +71,13 @@ export const inboundTriggerAuthenticationBuilderHint = {
 		"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
 };
 
-export const authenticationProperty = (propertyName = 'authentication'): INodeProperties => ({
+export const authenticationProperty = (
+	propertyName = 'authentication',
+	// The "n8n User Auth (OAuth2)" mode seeds the triggering user's identity into
+	// the execution, which only the Webhook node's `webhook()` flow supports. It is
+	// opt-in so it isn't exposed on nodes that reuse this property (e.g. Wait).
+	includeN8nOAuth2 = false,
+): INodeProperties => ({
 	displayName: 'Authentication',
 	name: propertyName,
 	type: 'options',
@@ -70,12 +94,19 @@ export const authenticationProperty = (propertyName = 'authentication'): INodePr
 			name: 'JWT Auth',
 			value: 'jwtAuth',
 		},
+		...(includeN8nOAuth2 ? [n8nOAuth2AuthOption] : []),
 		{
 			name: 'None',
 			value: 'none',
 		},
 	],
 	default: 'none',
+	// The auth method is a mode selector, never a runtime value. Disallowing
+	// expressions keeps the stored parameter equal to the resolved one, so the
+	// webhook execution layer (which reads the raw parameter to decide whether to
+	// pre-initialize execution data for the n8n Identity flow) can't diverge from
+	// what the node resolves at runtime.
+	noDataExpression: true,
 	description: 'The way to authenticate',
 });
 
