@@ -3,7 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 const OAUTH_CLIENTS_TABLE = 'oauth_clients';
 const OAUTH_IS_FIRST_PARTY_COLUMN = 'isFirstParty';
 
-export class AddIsFirstPartyToOAuthClients1784912016000 implements ReversibleMigration {
+export class AddIsFirstPartyToOAuthClients1785162364001 implements ReversibleMigration {
 	// oauth_clients has inbound ON DELETE CASCADE FKs (access/refresh tokens,
 	// authorization codes, user consents). Recreating the table on SQLite would
 	// fire those cascades and wipe the referencing rows, so disable FKs.

@@ -11,7 +11,7 @@ import { DataSource } from '@n8n/typeorm';
 import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AddIsFirstPartyToOAuthClients1784912016000';
+const MIGRATION_NAME = 'AddIsFirstPartyToOAuthClients1785162364001';
 
 interface SqliteColumnInfo {
 	name: string;
