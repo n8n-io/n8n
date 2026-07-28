@@ -11,8 +11,8 @@ post:
     Imports a gzip-compressed tar package (`.n8np`) into the target project. Send the
     archive as the multipart field `package`. Optional routing uses form fields
     `projectId` and `folderId` (omit or send empty for defaults). Every optional
-    mode/policy field (credential, workflow, folder, data table, and variable) takes
-    its default when omitted. The required
+    mode/policy field (credential, workflow, folder, data table, variable, and tag)
+    takes its default when omitted. The required
     `workflowConflictPolicy` field controls what happens when a package workflow
     matches an existing workflow by source id in the target project. Maximum upload
     size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
