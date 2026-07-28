@@ -32,6 +32,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
+import { toEligibleReviewer } from './workflow-review.mapper';
 
 /**
  * The reviewer-facing read side of workflow reviews: the cross-project inbox, its
@@ -287,7 +288,7 @@ export class WorkflowReviewInboxService {
 		const usersById = new Map<string, WorkflowReviewEligibleReviewer>();
 		if (userIds.size > 0) {
 			for (const user of await this.userRepository.findManyByIds([...userIds])) {
-				usersById.set(user.id, this.toEligibleReviewer(user));
+				usersById.set(user.id, toEligibleReviewer(user));
 			}
 		}
 
@@ -302,19 +303,6 @@ export class WorkflowReviewInboxService {
 				},
 			]),
 		);
-	}
-
-	/**
-	 * Project a user onto the boundary shape the review endpoints are allowed to expose.
-	 * Duplicated in `WorkflowReviewRequestService`, consider shared home if we add more callers.
-	 */
-	private toEligibleReviewer(user: User): WorkflowReviewEligibleReviewer {
-		return {
-			id: user.id,
-			email: user.email,
-			firstName: user.firstName ?? null,
-			lastName: user.lastName ?? null,
-		};
 	}
 
 	/**

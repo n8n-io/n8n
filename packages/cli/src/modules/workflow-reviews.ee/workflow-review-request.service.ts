@@ -7,7 +7,6 @@ import type {
 	WorkflowReviewEligibleReviewersList,
 	WorkflowReviewRequestList,
 	WorkflowReviewRequestSummary,
-	WorkflowReviewEligibleReviewer,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -40,6 +39,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
+import { toEligibleReviewer } from './workflow-review.mapper';
 
 /**
  * The workflow-scoped review request lifecycle: listing a workflow's reviews,
@@ -137,17 +137,7 @@ export class WorkflowReviewRequestService {
 		// No pagination: the set is bounded by the project's members plus instance admins
 		return {
 			count: reviewers.length,
-			data: reviewers.map((reviewer) => this.toEligibleReviewer(reviewer)),
-		};
-	}
-
-	/** Project a user onto the boundary shape the review endpoints are allowed to expose. */
-	private toEligibleReviewer(user: User): WorkflowReviewEligibleReviewer {
-		return {
-			id: user.id,
-			email: user.email,
-			firstName: user.firstName ?? null,
-			lastName: user.lastName ?? null,
+			data: reviewers.map(toEligibleReviewer),
 		};
 	}
 
