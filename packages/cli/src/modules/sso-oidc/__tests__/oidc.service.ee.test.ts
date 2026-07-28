@@ -557,7 +557,7 @@ describe('OidcService', () => {
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
 
-			const user = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
+			const { user } = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('john.doe@test.com');
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
@@ -595,7 +595,7 @@ describe('OidcService', () => {
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
 
-			const user = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
+			const { user } = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('john.doe@test.com');
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
@@ -635,7 +635,7 @@ describe('OidcService', () => {
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
 
-			const user = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
+			const { user } = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('john.doe@test.com');
 		});

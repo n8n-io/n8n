@@ -8,6 +8,7 @@ import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
 import {
 	type InstanceSettings,
+	type Credentials,
 	Cipher,
 	CipherAes256GCM,
 	CipherAes256CBC,
@@ -1806,6 +1807,7 @@ describe('CredentialsHelper', () => {
 
 		const helpers = mock<IHttpRequestHelper>();
 		let updateSpy: MockInstance;
+		let getSpy: MockInstance;
 		let credentials: ICredentialDataDecryptedObject;
 
 		beforeEach(() => {
@@ -1825,6 +1827,19 @@ describe('CredentialsHelper', () => {
 			// what the request helper merges back into the in-memory credentials for the
 			// next request (see httpRequestWithAuthentication).
 			updateSpy = vi.spyOn(credentialsHelper, 'updateCredentials').mockResolvedValue();
+			// preAuthentication reads the raw stored credential before caching the token.
+			getSpy = vi.spyOn(credentialsHelper, 'getCredentials').mockResolvedValue(
+				mock<Credentials>({
+					getData: vi.fn().mockResolvedValue({
+						accessToken: '',
+						instanceUrl: '',
+						clientId: 'connected-app-client-id',
+						username: 'user@example.com',
+						privateKey,
+						environment: 'production',
+					}),
+				}),
+			);
 
 			credentials = {
 				accessToken: '',
@@ -1836,7 +1851,10 @@ describe('CredentialsHelper', () => {
 			};
 		});
 
-		afterEach(() => updateSpy.mockRestore());
+		afterEach(() => {
+			updateSpy.mockRestore();
+			getSpy.mockRestore();
+		});
 
 		test('logs in once and reuses the cached token across requests', async () => {
 			// Request 1: no cached token → exactly one login.
@@ -1910,6 +1928,105 @@ describe('CredentialsHelper', () => {
 
 			expect(mockTokenRequest).toHaveBeenCalledTimes(2);
 			expect(refreshed).toMatchObject({ accessToken: 'TOKEN_2' });
+		});
+	});
+
+	describe('preAuthentication expression preservation', () => {
+		// A credential field holding an expression must survive a manual/test run.
+		// preAuthentication resolves the expression to a static value for the run and
+		// caches the fetched token; it must persist only the token, leaving the raw
+		// expression in the stored credential so later runs stay dynamic.
+		const expressionText = "={{ $('Webhook').item.json.body.installation.id }}";
+
+		// Mimics a credential whose preAuthentication spreads the resolved credentials
+		// back into its output (the GitHub App shape) — the strictest case, since the
+		// resolved value is present in `output` itself.
+		class SpreadingExpirableApi implements ICredentialType {
+			name = 'spreadingExpirableApi';
+
+			displayName = 'Spreading Expirable API';
+
+			properties: INodeProperties[] = [
+				{ displayName: 'Installation ID', name: 'installationId', type: 'string', default: '' },
+				{
+					displayName: 'Access Token',
+					name: 'accessToken',
+					type: 'hidden',
+					typeOptions: { expirable: true },
+					default: '',
+				},
+			];
+
+			// eslint-disable-next-line @typescript-eslint/require-await
+			async preAuthentication(
+				this: IHttpRequestHelper,
+				credentials: ICredentialDataDecryptedObject,
+			): Promise<ICredentialDataDecryptedObject> {
+				return { ...credentials, accessToken: 'NEW_TOKEN' };
+			}
+
+			authenticate: IAuthenticateGeneric = { type: 'generic', properties: {} };
+		}
+
+		const spreadingCred = new SpreadingExpirableApi();
+
+		const node: INode = {
+			id: 'uuid-spread',
+			name: 'Node',
+			type: 'n8n-nodes-base.noOp',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: { spreadingExpirableApi: { id: 'cred-1', name: 'Cred' } },
+		};
+
+		const helpers = mock<IHttpRequestHelper>();
+		let updateSpy: MockInstance;
+		let getSpy: MockInstance;
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			mockNodesAndCredentials.getCredential
+				.calledWith('spreadingExpirableApi')
+				.mockReturnValue({ type: spreadingCred, sourcePath: '' });
+
+			updateSpy = vi.spyOn(credentialsHelper, 'updateCredentials').mockResolvedValue();
+			// The raw stored credential keeps the expression; getData() returns it verbatim.
+			getSpy = vi.spyOn(credentialsHelper, 'getCredentials').mockResolvedValue(
+				mock<Credentials>({
+					getData: vi.fn().mockResolvedValue({ installationId: expressionText, accessToken: '' }),
+				}),
+			);
+		});
+
+		afterEach(() => {
+			updateSpy.mockRestore();
+			getSpy.mockRestore();
+		});
+
+		test('persists only the fetched token and keeps the stored expression intact', async () => {
+			// The credentials the helper receives are already expression-resolved for
+			// this run: installationId is the static value the expression evaluated to.
+			const resolved: ICredentialDataDecryptedObject = {
+				installationId: '12345',
+				accessToken: '',
+			};
+
+			const result = await credentialsHelper.preAuthentication(
+				helpers,
+				resolved,
+				'spreadingExpirableApi',
+				node,
+				false,
+			);
+
+			expect(updateSpy).toHaveBeenCalledTimes(1);
+			expect(updateSpy).toHaveBeenCalledWith(
+				node.credentials!.spreadingExpirableApi,
+				'spreadingExpirableApi',
+				{ installationId: expressionText, accessToken: 'NEW_TOKEN' },
+			);
+			expect(result).toMatchObject({ accessToken: 'NEW_TOKEN' });
 		});
 	});
 });

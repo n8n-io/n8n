@@ -1,3 +1,4 @@
+import type { ValidationWarning } from '@n8n/ai-workflow-builder';
 import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -314,11 +315,17 @@ const outputSchema = {
 				code: z.string(),
 				message: z.string(),
 				nodeName: z.string().optional(),
+				preExisting: z
+					.boolean()
+					.optional()
+					.describe(
+						'True when the same warning already existed before this update — it was not caused by these operations.',
+					),
 			}),
 		)
 		.optional()
 		.describe(
-			'Graph and JSON validation warnings on the resulting workflow. Use these to self-correct on the next call.',
+			'Graph and JSON validation warnings on the resulting workflow. Warnings marked preExisting (also tagged [pre-existing] in the message) were already present before this update; only self-correct the rest on the next call.',
 		),
 	note: z.string().optional(),
 	settings: z
@@ -765,16 +772,45 @@ export const createUpdateWorkflowTool = (
 				autoAssignOutcomes = autoAssign.outcomes;
 			}
 
-			const { ParseValidateHandler } = await import('@n8n/ai-workflow-builder');
+			const { ParseValidateHandler, getWarningKey } = await import('@n8n/ai-workflow-builder');
 			const validator = new ParseValidateHandler({
 				generatePinData: false,
 				nodeTypesProvider: nodeTypes,
 			});
-			const validationWarnings = validator.validateJSON({
+			const postUpdateWarnings = validator.validateJSON({
 				name: workflowUpdateData.name,
 				nodes: workflowUpdateData.nodes,
 				connections: workflowUpdateData.connections,
 			} as unknown as WorkflowJSON);
+
+			// Validation covers the whole resulting workflow, so warnings on nodes
+			// this batch never touched (e.g. discriminators the editor strips when
+			// they equal node defaults) would otherwise read as caused by these
+			// operations. Diff against the pre-update state and annotate the
+			// carried-over ones so the agent only self-corrects what its edit broke.
+			// getWarningKey matches by location, not message, so reworded messages
+			// still match; a renamed node intentionally misses — the rename touched
+			// it, so its warnings count as new.
+			let validationWarnings: Array<ValidationWarning & { preExisting?: boolean }> =
+				postUpdateWarnings;
+			if (postUpdateWarnings.length > 0) {
+				// A pre-update state broken enough to not even validate (which this
+				// batch may be fixing) must not fail the update — skip the annotation.
+				let preUpdateWarnings: ValidationWarning[] = [];
+				try {
+					preUpdateWarnings = validator.validateJSON({
+						name: existingWorkflow.name,
+						nodes: existingWorkflow.nodes,
+						connections: existingWorkflow.connections,
+					} as unknown as WorkflowJSON);
+				} catch {}
+				const preUpdateKeys = new Set(preUpdateWarnings.map(getWarningKey));
+				validationWarnings = postUpdateWarnings.map((warning) =>
+					preUpdateKeys.has(getWarningKey(warning))
+						? { ...warning, message: `[pre-existing] ${warning.message}`, preExisting: true }
+						: warning,
+				);
+			}
 
 			let tagIds: string[] | undefined;
 			if (result.tagNames !== undefined) {
