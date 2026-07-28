@@ -91,6 +91,9 @@ exports[`GmailTrigger > should handle duplicates and different date fields 1`] =
         "threadId": "testThreadId",
       },
     },
+    {
+      "json": {},
+    },
   ],
 ]
 `;
