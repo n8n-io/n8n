@@ -362,15 +362,16 @@ export function setupResponseNodePromise(
 }
 
 /**
- * Whether the start node establishes a triggering-user identity from within its
- * `webhook()` method (via `context.establishTriggerIdentity`). Such nodes need
- * their `runExecutionData` created before the webhook runs, and the webhook
- * output merged into the seeded execution stack afterwards.
+ * Predicate (not an action): checks whether the start node will establish a
+ * triggering-user identity from within its `webhook()` method (via
+ * `context.establishTriggerIdentity`). Such nodes need their `runExecutionData`
+ * created before the webhook runs, and the webhook output merged into the seeded
+ * execution stack afterwards.
  *
  * The Webhook node does this only when its opt-in "n8n User Auth (OAuth2)" mode
  * (`n8nOAuth2`) is selected; the MCP / chat / Agent365 triggers always do.
  */
-function establishesTriggerIdentity(workflowStartNode: INode): boolean {
+function shouldEstablishTriggerIdentity(workflowStartNode: INode): boolean {
 	return (
 		workflowStartNode.type === WEBHOOK_NODE_TYPE &&
 		workflowStartNode.parameters?.authentication === 'n8nOAuth2'
@@ -402,7 +403,7 @@ function reconcileSeededExecutionStack(
 		[MICROSOFT_AGENT365_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(workflowStartNode.type)
 	) {
 		merge(executionData.nodeExecutionStack, nodeExecutionStack);
-	} else if (establishesTriggerIdentity(workflowStartNode)) {
+	} else if (shouldEstablishTriggerIdentity(workflowStartNode)) {
 		executionData.nodeExecutionStack = nodeExecutionStack;
 	}
 }
@@ -660,7 +661,7 @@ export async function executeWebhook(
 				MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 				CHAT_TRIGGER_NODE_TYPE,
 			].includes(workflowStartNode.type) ||
-			establishesTriggerIdentity(workflowStartNode)
+			shouldEstablishTriggerIdentity(workflowStartNode)
 		) {
 			// Initialize the data of the webhook node
 			const nodeExecutionStack: IExecuteData[] = [];
