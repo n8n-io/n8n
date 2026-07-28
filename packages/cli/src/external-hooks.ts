@@ -26,6 +26,42 @@ type Repositories = {
 	Workflow: WorkflowRepository;
 };
 
+/**
+ * Identity of the user performing a workflow lifecycle operation.
+ *
+ * `email`, `firstName` and `lastName` are nullable to match the underlying user
+ * columns: a user (e.g. one invited but not yet set up) may have no name or email.
+ */
+export type WorkflowLifecycleHookActor = {
+	id: string;
+	email: string | null;
+	firstName: string | null;
+	lastName: string | null;
+	role?: string;
+};
+
+/**
+ * Projects the acting user onto the identity passed to workflow lifecycle hooks.
+ *
+ * @param user The user performing the lifecycle operation, if any.
+ * @returns The actor identity, or `undefined` when there is no acting user.
+ * @remarks An acting user is almost always present in practice, but the actor is kept
+ * optional to keep the hook contract future-proof across its various callers.
+ */
+export function toWorkflowLifecycleHookActor(user?: User): WorkflowLifecycleHookActor | undefined {
+	if (!user) {
+		return undefined;
+	}
+
+	return {
+		id: user.id,
+		email: user.email,
+		firstName: user.firstName,
+		lastName: user.lastName,
+		role: user.role?.slug,
+	};
+}
+
 type ExternalHooksMap = {
 	'n8n.ready': [server: AbstractServer, config: Config];
 	'n8n.stop': never;
@@ -68,15 +104,41 @@ type ExternalHooksMap = {
 	'user.password.update': [updatedEmail: string, updatedPassword: string | null];
 	'user.invited': [emails: string[]];
 
-	'workflow.create': [createdWorkflow: IWorkflowBase];
-	'workflow.afterCreate': [createdWorkflow: IWorkflowBase];
-	'workflow.activate': [updatedWorkflow: IWorkflowBase];
-	'workflow.update': [updatedWorkflow: IWorkflowBase];
-	'workflow.afterUpdate': [updatedWorkflow: IWorkflowBase];
-	'workflow.delete': [workflowId: string];
-	'workflow.afterDelete': [workflowId: string];
-	'workflow.afterArchive': [workflowId: string];
-	'workflow.afterUnarchive': [workflowId: string];
+	'workflow.create': [
+		createdWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+		actor?: WorkflowLifecycleHookActor,
+	];
+	'workflow.afterCreate': [
+		createdWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+		actor?: WorkflowLifecycleHookActor,
+	];
+	'workflow.activate': [
+		updatedWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+		actor?: WorkflowLifecycleHookActor,
+	];
+	'workflow.deactivate': [
+		/** Pre-deactivation state (`active` is still `true`), carrying the version about to be deactivated. */
+		deactivatedWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+		actor?: WorkflowLifecycleHookActor,
+	];
+	'workflow.update': [
+		updatedWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+		actor?: WorkflowLifecycleHookActor,
+	];
+	'workflow.afterUpdate': [
+		updatedWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+		actor?: WorkflowLifecycleHookActor,
+	];
+	'workflow.delete': [workflowId: string, actor?: WorkflowLifecycleHookActor];
+	'workflow.afterDelete': [workflowId: string, actor?: WorkflowLifecycleHookActor];
+	'workflow.afterArchive': [workflowId: string, actor?: WorkflowLifecycleHookActor];
+	'workflow.afterUnarchive': [workflowId: string, actor?: WorkflowLifecycleHookActor];
 
 	'workflow.preExecute': [
 		workflow: Workflow,
@@ -87,6 +149,7 @@ type ExternalHooksMap = {
 		fullRunData: IRun | undefined,
 		workflowData: IWorkflowBase,
 		executionId: string,
+		workflowContext: WorkflowHookContextService,
 	];
 };
 type HookNames = keyof ExternalHooksMap;

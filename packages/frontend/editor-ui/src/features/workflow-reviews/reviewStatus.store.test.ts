@@ -15,6 +15,7 @@ const openReview: WorkflowReviewRequestSummary = {
 	id: 'req-1',
 	state: 'open',
 	decision: 'pending',
+	workflowVersionId: 'ver-1',
 	createdAt: '2026-07-20T10:00:00.000Z',
 	updatedAt: '2026-07-20T10:00:00.000Z',
 };
@@ -163,14 +164,15 @@ describe('reviewStatus.store', () => {
 		expect(store.hasOpenReview('workflow-2')).toBe(false);
 	});
 
-	it('clearStatus removes the stored entry', async () => {
+	it('a later fetch with no open review clears a previously stored entry', async () => {
 		const store = useWorkflowReviewStatusStore();
 		fetchMock.mockResolvedValueOnce(listOf(openReview));
 		await store.fetchStatus('workflow-1');
 
-		store.clearStatus('workflow-1');
+		fetchMock.mockResolvedValueOnce(listOf());
+		await store.fetchStatus('workflow-1');
 
 		expect(store.hasOpenReview('workflow-1')).toBe(false);
-		expect(store.openReviewByWorkflowId).not.toHaveProperty('workflow-1');
+		expect(store.openReviewByWorkflowId).toHaveProperty('workflow-1', null);
 	});
 });

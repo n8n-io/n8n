@@ -266,17 +266,17 @@ describe('AugmentObject', () => {
 			expect(originalObject.a.b.cc).toEqual('3');
 			expect(augmentedObject.a.b.cc).toEqual('93');
 
-			// @ts-ignore
+			// @ts-expect-error ccc is not on the source type
 			augmentedObject.a.b.ccc = {
 				d: '4',
 			};
 
-			// @ts-ignore
+			// @ts-expect-error ccc is not on the source type
 			expect(augmentedObject.a.b.ccc).toEqual({ d: '4' });
 
-			// @ts-ignore
+			// @ts-expect-error ccc is not on the source type
 			augmentedObject.a.b.ccc.d = '94';
-			// @ts-ignore
+			// @ts-expect-error ccc is not on the source type
 			expect(augmentedObject.a.b.ccc.d).toEqual('94');
 
 			expect(originalObject).toEqual(copyOriginal);

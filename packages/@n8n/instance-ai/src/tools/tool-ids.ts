@@ -14,7 +14,6 @@ export const DOMAIN_TOOL_IDS = {
 	ASK_USER: 'ask-user',
 	BUILD_WORKFLOW: 'build-workflow',
 	PARSE_FILE: 'parse-file',
-	TEMPLATES: 'templates',
 	AGENTS: 'agents',
 } as const;
 
@@ -60,7 +59,6 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.NODES,
 	ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 	DOMAIN_TOOL_IDS.RESEARCH,
-	DOMAIN_TOOL_IDS.TEMPLATES,
 	DOMAIN_TOOL_IDS.AGENTS,
 	'web-search',
 	'fetch-url',

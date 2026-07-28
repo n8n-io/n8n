@@ -1,5 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
-import { testDb, testModules } from '@n8n/backend-test-utils';
+import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import {
 	FolderRepository,
@@ -16,7 +16,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { createOwner } from '@test-integration/db/users';
+import { createMember, createOwner } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
 import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
@@ -31,6 +31,7 @@ import {
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
 } from './fixtures/package-fixtures';
+import { streamToBuffer } from './utils/tar-support';
 
 async function importProjects(
 	user: User,
@@ -537,99 +538,22 @@ describe('project shell import', () => {
 			}
 		});
 
-		it('reports variable resolution across projects, deduplicating shared names', async () => {
-			await createVariable('GLOBAL_URL', 'https://global.example.com');
-			const packageBuffer = await buildEntityPackageBuffer({
-				projects: [
-					{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
-					{
-						target: 'projects/stilton',
-						project: serializedProject({ id: 'P2', name: 'stilton' }),
-					},
-				],
-				workflows: [
-					{
-						target: 'projects/brie/workflows/wfa',
-						workflow: serializedWorkflow({ id: 'WFA', name: 'wfa' }),
-					},
-					{
-						target: 'projects/stilton/workflows/wfb',
-						workflow: serializedWorkflow({ id: 'WFB', name: 'wfb' }),
-					},
-				],
-				manifestExtras: {
-					requirements: {
-						variables: [
-							{ name: 'GLOBAL_URL', usedByWorkflows: ['WFA', 'WFB'] },
-							{ name: 'ABSENT_VAR', usedByWorkflows: ['WFA', 'WFB'] },
-						],
-					},
-				},
-			});
-
-			const result = await importProjects(owner, packageBuffer);
-
-			expect(result.variables).toEqual({ matched: ['GLOBAL_URL'], missing: ['ABSENT_VAR'] });
-			// do-nothing mode does not create variables
-			expect(await Container.get(VariablesRepository).count()).toBe(1);
-		});
-
-		it('blocks the import under must-preexist when a referenced variable is unresolved', async () => {
-			await createVariable('GLOBAL_URL', 'https://global.example.com');
-			const packageBuffer = await buildEntityPackageBuffer({
-				projects: [
-					{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
-					{
-						target: 'projects/stilton',
-						project: serializedProject({ id: 'P2', name: 'stilton' }),
-					},
-				],
-				workflows: [
-					{
-						target: 'projects/brie/workflows/wfa',
-						workflow: serializedWorkflow({ id: 'WFA', name: 'wfa' }),
-					},
-					{
-						target: 'projects/stilton/workflows/wfb',
-						workflow: serializedWorkflow({ id: 'WFB', name: 'wfb' }),
-					},
-				],
-				manifestExtras: {
-					requirements: {
-						variables: [
-							{ name: 'GLOBAL_URL', usedByWorkflows: ['WFA', 'WFB'] },
-							{ name: 'ABSENT_VAR', usedByWorkflows: ['WFA', 'WFB'] },
-						],
-					},
-				},
-			});
-
-			const error = await importProjects(owner, packageBuffer, undefined, {
-				variableMissingMode: 'must-preexist',
-			}).catch((e: unknown) => e);
-
-			expect(error).toBeInstanceOf(UnprocessableRequestError);
-			expect((error as UnprocessableRequestError).message).toMatch(/Import blocked/);
-			expect((error as UnprocessableRequestError).meta?.issues).toEqual([
-				{ type: 'variable-unresolved', name: 'ABSENT_VAR', usedByWorkflows: ['WFA'] },
-				{ type: 'variable-unresolved', name: 'ABSENT_VAR', usedByWorkflows: ['WFB'] },
-			]);
-
-			expect(await findProject('P1')).toBeNull();
-			expect(await findProject('P2')).toBeNull();
-			// must-preexist never creates variables; only the seeded global remains.
-			expect(await Container.get(VariablesRepository).count()).toBe(1);
-		});
-
-		/** Two projects whose workflows both reference `API_URL`. */
-		const twoProjectPackageReferencingApiUrl = async () =>
+		/**
+		 * Two team projects — brie (P1, workflow WFA) and stilton (P2, workflow WFB) — with an
+		 * optional bundled variable `catalog` and the variable `requirements` its workflows declare.
+		 * A catalog entry's `target` encodes scope: `variables/x` is global, `projects/<name>/variables/x`
+		 * is that project's. Requirements are what the workflows reference (by `usedByWorkflows`).
+		 */
+		const twoProjectPackage = async (
+			opts: {
+				catalog?: Array<{ id: string; name: string; target: string }>;
+				requirements?: Array<{ name: string; usedByWorkflows: string[] }>;
+			} = {},
+		) =>
 			await buildEntityPackageBuffer({
 				projects: [
 					{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
-					{
-						target: 'projects/stilton',
-						project: serializedProject({ id: 'P2', name: 'stilton' }),
-					},
+					{ target: 'projects/stilton', project: serializedProject({ id: 'P2', name: 'stilton' }) },
 				],
 				workflows: [
 					{
@@ -642,42 +566,480 @@ describe('project shell import', () => {
 					},
 				],
 				manifestExtras: {
+					...(opts.catalog ? { variables: opts.catalog } : {}),
+					...(opts.requirements ? { requirements: { variables: opts.requirements } } : {}),
+				},
+			});
+
+		/** Both projects' workflows reference `API_URL` as a name-only requirement (nothing bundled). */
+		const apiUrlPackage = async () =>
+			await twoProjectPackage({
+				requirements: [{ name: 'API_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+			});
+
+		/** Single team project brie (P1, workflow WFA) whose workflow needs a top-level (global) variable. */
+		const packageWithGlobalVariable = async () =>
+			await buildEntityPackageBuffer({
+				projects: [
+					{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+				],
+				workflows: [
+					{
+						target: 'projects/brie/workflows/wfa',
+						workflow: serializedWorkflow({ id: 'WFA', name: 'wfa' }),
+					},
+				],
+				manifestExtras: {
+					variables: [{ id: 'v1', name: 'GLOBAL_VAR', target: 'variables/global_var' }],
 					requirements: {
-						variables: [{ name: 'API_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+						variables: [{ name: 'GLOBAL_VAR', usedByWorkflows: ['WFA'] }],
 					},
 				},
 			});
 
-		it('lists a name under both matched and missing when it resolves in only some projects', async () => {
-			const packageBuffer = await twoProjectPackageReferencingApiUrl();
-			await importProjects(owner, packageBuffer);
-			await createProjectVariable('API_URL', 'https://p1.example.com', (await findProject('P1'))!);
+		describe('do-nothing missing mode', () => {
+			it('reports resolution across projects and deduplicates shared names', async () => {
+				await createVariable('GLOBAL_URL', 'https://global.example.com');
+				const packageBuffer = await twoProjectPackage({
+					requirements: [
+						{ name: 'GLOBAL_URL', usedByWorkflows: ['WFA', 'WFB'] },
+						{ name: 'ABSENT_VAR', usedByWorkflows: ['WFA', 'WFB'] },
+					],
+				});
 
-			const result = await importProjects(owner, packageBuffer);
+				const result = await importProjects(owner, packageBuffer);
 
-			expect(result.variables).toEqual({ matched: ['API_URL'], missing: ['API_URL'] });
+				expect(result.variables).toEqual({
+					matched: ['GLOBAL_URL'],
+					missing: ['ABSENT_VAR'],
+					stubbed: [],
+				});
+				// do-nothing mode does not create variables.
+				expect(await Container.get(VariablesRepository).count()).toBe(1);
+			});
+
+			it('lists a name under both matched and missing when it resolves in only some projects', async () => {
+				const packageBuffer = await apiUrlPackage();
+				await importProjects(owner, packageBuffer);
+				await createProjectVariable(
+					'API_URL',
+					'https://p1.example.com',
+					(await findProject('P1'))!,
+				);
+
+				const result = await importProjects(owner, packageBuffer);
+
+				expect(result.variables).toEqual({
+					matched: ['API_URL'],
+					missing: ['API_URL'],
+					stubbed: [],
+				});
+			});
 		});
 
-		it('blocks only on the projects where the variable is unresolved under must-preexist', async () => {
-			const workflowStates = async () =>
-				await Container.get(WorkflowRepository).find({
-					select: ['id', 'versionId', 'updatedAt'],
-					order: { id: 'ASC' },
+		describe('must-preexist missing mode', () => {
+			it('blocks the import when a referenced variable is unresolved', async () => {
+				await createVariable('GLOBAL_URL', 'https://global.example.com');
+				const packageBuffer = await twoProjectPackage({
+					requirements: [
+						{ name: 'GLOBAL_URL', usedByWorkflows: ['WFA', 'WFB'] },
+						{ name: 'ABSENT_VAR', usedByWorkflows: ['WFA', 'WFB'] },
+					],
 				});
-			const packageBuffer = await twoProjectPackageReferencingApiUrl();
-			await importProjects(owner, packageBuffer);
-			await createProjectVariable('API_URL', 'https://p1.example.com', (await findProject('P1'))!);
-			const workflowsBefore = await workflowStates();
 
-			const error = await importProjects(owner, packageBuffer, undefined, {
-				variableMissingMode: 'must-preexist',
-			}).catch((e: unknown) => e);
+				const error = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'must-preexist',
+				}).catch((e: unknown) => e);
 
-			expect(error).toBeInstanceOf(UnprocessableRequestError);
-			expect((error as UnprocessableRequestError).meta?.issues).toEqual([
-				{ type: 'variable-unresolved', name: 'API_URL', usedByWorkflows: ['WFB'] },
-			]);
-			expect(await workflowStates()).toEqual(workflowsBefore);
+				expect(error).toBeInstanceOf(UnprocessableRequestError);
+				expect((error as UnprocessableRequestError).message).toMatch(/Import blocked/);
+				// One issue per consuming workflow of the unresolved name.
+				expect((error as UnprocessableRequestError).meta?.issues).toEqual([
+					{ type: 'variable-unresolved', name: 'ABSENT_VAR', usedByWorkflows: ['WFA'] },
+					{ type: 'variable-unresolved', name: 'ABSENT_VAR', usedByWorkflows: ['WFB'] },
+				]);
+
+				expect(await findProject('P1')).toBeNull();
+				expect(await findProject('P2')).toBeNull();
+				// must-preexist never creates variables; only the seeded global remains.
+				expect(await Container.get(VariablesRepository).count()).toBe(1);
+			});
+
+			it('blocks only on the projects where the variable is unresolved', async () => {
+				const workflowStates = async () =>
+					await Container.get(WorkflowRepository).find({
+						select: ['id', 'versionId', 'updatedAt'],
+						order: { id: 'ASC' },
+					});
+				const packageBuffer = await apiUrlPackage();
+				await importProjects(owner, packageBuffer);
+				await createProjectVariable(
+					'API_URL',
+					'https://p1.example.com',
+					(await findProject('P1'))!,
+				);
+				const workflowsBefore = await workflowStates();
+
+				const error = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'must-preexist',
+				}).catch((e: unknown) => e);
+
+				expect(error).toBeInstanceOf(UnprocessableRequestError);
+				// API_URL resolves in P1 (seeded above) but not P2, so only WFB blocks.
+				expect((error as UnprocessableRequestError).meta?.issues).toEqual([
+					{ type: 'variable-unresolved', name: 'API_URL', usedByWorkflows: ['WFB'] },
+				]);
+				expect(await workflowStates()).toEqual(workflowsBefore);
+			});
+		});
+
+		describe('create-stub missing mode', () => {
+			beforeEach(() => {
+				licenseMocker.enable('feat:variables');
+			});
+
+			it('creates each missing variable at its package-driven scope', async () => {
+				// PROJECT_VAR is bundled under the brie project; GLOBAL_VAR at the package top level.
+				const packageBuffer = await twoProjectPackage({
+					catalog: [
+						{ id: 'v1', name: 'PROJECT_VAR', target: 'projects/brie/variables/project_var' },
+						{ id: 'v2', name: 'GLOBAL_VAR', target: 'variables/global_var' },
+					],
+					requirements: [
+						{ name: 'PROJECT_VAR', usedByWorkflows: ['WFA'] },
+						{ name: 'GLOBAL_VAR', usedByWorkflows: ['WFB'] },
+					],
+				});
+
+				const result = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'create-stub',
+				});
+
+				expect(result.variables).toEqual({
+					matched: [],
+					missing: [],
+					stubbed: expect.arrayContaining(['GLOBAL_VAR', 'PROJECT_VAR']),
+				});
+				expect(result.variables.stubbed).toHaveLength(2);
+
+				// Each stub is created empty, at the scope its catalog entry declared.
+				const created = await Container.get(VariablesRepository).find({
+					relations: { project: true },
+				});
+				const layout = created.map((v) => ({
+					key: v.key,
+					scope: v.project?.id ?? 'global',
+					value: v.value,
+				}));
+				expect(layout).toEqual(
+					expect.arrayContaining([
+						{ key: 'PROJECT_VAR', scope: 'P1', value: '' },
+						{ key: 'GLOBAL_VAR', scope: 'global', value: '' },
+					]),
+				);
+				expect(layout).toHaveLength(2);
+			});
+
+			it('places a top-level variable globally when no policy is given', async () => {
+				const result = await importProjects(owner, await packageWithGlobalVariable(), undefined, {
+					variableMissingMode: 'create-stub',
+				});
+
+				expect(result.variables).toEqual({ matched: [], missing: [], stubbed: ['GLOBAL_VAR'] });
+				const created = await Container.get(VariablesRepository).find({
+					relations: { project: true },
+				});
+				const layout = created.map((v) => ({ key: v.key, scope: v.project?.id ?? 'global' }));
+				expect(layout).toEqual([{ key: 'GLOBAL_VAR', scope: 'global' }]);
+			});
+
+			it.each(['project', 'global'] as const)(
+				'rejects variableParentPolicy=%s, which a project package cannot honour',
+				async (variableParentPolicy) => {
+					await expect(
+						importProjects(owner, await packageWithGlobalVariable(), undefined, {
+							variableMissingMode: 'create-stub',
+							variableParentPolicy,
+						}),
+					).rejects.toThrow(/variableParentPolicy is not supported for project packages/);
+
+					expect(await Container.get(VariablesRepository).count()).toBe(0);
+				},
+			);
+
+			it('creates one row per consuming project for a name-only requirement', async () => {
+				const packageBuffer = await apiUrlPackage();
+
+				const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+				const result = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'create-stub',
+				});
+
+				// A name-only requirement (no bundled entry) falls back to each consuming project.
+				expect(result.variables).toEqual({ matched: [], missing: [], stubbed: ['API_URL'] });
+				const created = await Container.get(VariablesRepository).find({
+					relations: { project: true },
+				});
+				const layout = created.map((v) => ({ key: v.key, scope: v.project?.id ?? 'global' }));
+				expect(layout).toEqual(
+					expect.arrayContaining([
+						{ key: 'API_URL', scope: 'P1' },
+						{ key: 'API_URL', scope: 'P2' },
+					]),
+				);
+				expect(layout).toHaveLength(2);
+
+				// The name is stubbed once in the summary but is two rows, so telemetry counts 2.
+				const importedEvents = emitSpy.mock.calls.filter(
+					([name]) => name === 'n8n-package-imported',
+				);
+				expect(importedEvents).toHaveLength(1);
+				const payload = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];
+				expect(payload.counts.variables.created).toBe(2);
+			});
+
+			it('creates one row per project when both bundle the same name', async () => {
+				const packageBuffer = await twoProjectPackage({
+					catalog: [
+						{ id: 'v1', name: 'API_URL', target: 'projects/brie/variables/api_url' },
+						{ id: 'v2', name: 'API_URL', target: 'projects/stilton/variables/api_url' },
+					],
+					requirements: [{ name: 'API_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+				});
+
+				const result = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'create-stub',
+				});
+
+				// Each project's own entry wins for its own scope, so neither borrows the other's.
+				expect(result.variables).toEqual({ matched: [], missing: [], stubbed: ['API_URL'] });
+				const created = await Container.get(VariablesRepository).find({
+					relations: { project: true },
+				});
+				const layout = created.map((v) => ({ key: v.key, scope: v.project?.id ?? 'global' }));
+				expect(layout).toEqual(
+					expect.arrayContaining([
+						{ key: 'API_URL', scope: 'P1' },
+						{ key: 'API_URL', scope: 'P2' },
+					]),
+				);
+				expect(layout).toHaveLength(2);
+			});
+
+			it('stubs for the consuming project when a hand-made package bundles the name elsewhere', async () => {
+				// Malformed input: an export resolves each requirement against the consuming workflow's
+				// own project, so no export bundles THEIRS under workflow-less brie. The stub belongs
+				// with the consumer, since a brie row would leave WFB just as broken.
+				const packageBuffer = await buildEntityPackageBuffer({
+					projects: [
+						{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+						{
+							target: 'projects/stilton',
+							project: serializedProject({ id: 'P2', name: 'stilton' }),
+						},
+					],
+					workflows: [
+						{
+							target: 'projects/stilton/workflows/wfb',
+							workflow: serializedWorkflow({ id: 'WFB', name: 'wfb' }),
+						},
+					],
+					manifestExtras: {
+						variables: [{ id: 'v1', name: 'THEIRS', target: 'projects/brie/variables/theirs' }],
+						requirements: {
+							variables: [{ name: 'THEIRS', usedByWorkflows: ['WFB'] }],
+						},
+					},
+				});
+
+				const result = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'create-stub',
+				});
+
+				expect(result.variables).toEqual({ matched: [], missing: [], stubbed: ['THEIRS'] });
+				const created = await Container.get(VariablesRepository).find({
+					relations: { project: true },
+				});
+				const layout = created.map((v) => ({ key: v.key, scope: v.project?.id ?? 'global' }));
+				expect(layout).toEqual([{ key: 'THEIRS', scope: 'P2' }]);
+			});
+
+			it('creates a shared global variable once and a same-key project variable at its own destination', async () => {
+				const packageBuffer = await twoProjectPackage({
+					catalog: [
+						// SHARED_URL is global and used by both projects: one row, stubbed once.
+						{ id: 'v1', name: 'SHARED_URL', target: 'variables/shared_url' },
+						// API_URL exists both at the top level and inside stilton: brie's scope sees the
+						// global entry while stilton's own entry wins for its scope — two distinct rows.
+						{ id: 'v2', name: 'API_URL', target: 'variables/api_url' },
+						{ id: 'v3', name: 'API_URL', target: 'projects/stilton/variables/api_url' },
+					],
+					requirements: [
+						{ name: 'SHARED_URL', usedByWorkflows: ['WFA', 'WFB'] },
+						{ name: 'API_URL', usedByWorkflows: ['WFA', 'WFB'] },
+					],
+				});
+
+				const result = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'create-stub',
+				});
+
+				// Each name is stubbed once in the summary, regardless of how many rows it maps to.
+				expect(result.variables).toEqual({
+					matched: [],
+					missing: [],
+					stubbed: expect.arrayContaining(['API_URL', 'SHARED_URL']),
+				});
+				expect(result.variables.stubbed).toHaveLength(2);
+
+				// SHARED_URL lands once (global); API_URL lands twice — global for brie, project-scoped
+				// for stilton — proving the fresh global row doesn't cancel stilton's project creation.
+				const created = await Container.get(VariablesRepository).find({
+					relations: { project: true },
+				});
+				const layout = created.map((v) => ({ key: v.key, scope: v.project?.id ?? 'global' }));
+				expect(layout).toEqual(
+					expect.arrayContaining([
+						{ key: 'SHARED_URL', scope: 'global' },
+						{ key: 'API_URL', scope: 'global' },
+						{ key: 'API_URL', scope: 'P2' },
+					]),
+				);
+				expect(layout).toHaveLength(3);
+			});
+
+			it('imports two projects needing one global variable under a quota of one', async () => {
+				// Both projects plan the same global row, so the preflight must weigh one creation
+				// against the free slot; counting per project would report 2 and block the import.
+				licenseMocker.setQuota('quota:maxVariables', 1);
+				const packageBuffer = await twoProjectPackage({
+					catalog: [{ id: 'v1', name: 'SHARED_URL', target: 'variables/shared_url' }],
+					requirements: [{ name: 'SHARED_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+				});
+
+				const result = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'create-stub',
+				});
+
+				expect(result.variables).toEqual({
+					matched: [],
+					missing: [],
+					stubbed: ['SHARED_URL'],
+				});
+				const created = await Container.get(VariablesRepository).find({
+					relations: { project: true },
+				});
+				expect(
+					created.map((variable) => ({ key: variable.key, project: variable.project })),
+				).toEqual([{ key: 'SHARED_URL', project: null }]);
+			});
+
+			it('lists a name under both matched and stubbed when it pre-exists in only some projects', async () => {
+				const packageBuffer = await apiUrlPackage();
+				await importProjects(owner, packageBuffer);
+				await createProjectVariable(
+					'API_URL',
+					'https://p1.example.com',
+					(await findProject('P1'))!,
+				);
+
+				const result = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'create-stub',
+				});
+
+				expect(result.variables).toEqual({
+					matched: ['API_URL'],
+					missing: [],
+					stubbed: ['API_URL'],
+				});
+				const rows = await Container.get(VariablesRepository).find({
+					relations: { project: true },
+				});
+				const layout = rows.map((v) => ({
+					key: v.key,
+					scope: v.project?.id ?? 'global',
+					value: v.value,
+				}));
+				expect(layout).toEqual(
+					expect.arrayContaining([
+						// The stub (empty value) lands only in P2, where the name did not resolve.
+						{ key: 'API_URL', scope: 'P2', value: '' },
+						// P1 keeps just its pre-seeded row — the import must not add a stub beside it.
+						{ key: 'API_URL', scope: 'P1', value: 'https://p1.example.com' },
+					]),
+				);
+				expect(layout).toHaveLength(2);
+			});
+
+			it('rejects a global variable stub for a caller without the global variable:create scope', async () => {
+				// A member who is admin of the existing target project may update it (and import
+				// workflows into it), but lacks the global variable:create scope.
+				const member = await createMember();
+				const projectRepository = Container.get(ProjectRepository);
+				await projectRepository.save(
+					projectRepository.create({ id: 'P1', name: 'brie', type: 'team' }),
+				);
+				await linkUserToProject(member, (await findProject('P1'))!, 'project:admin');
+
+				await expect(
+					importProjects(member, await packageWithGlobalVariable(), undefined, {
+						variableMissingMode: 'create-stub',
+					}),
+				).rejects.toThrow('You are not allowed to create global variables');
+
+				expect(await Container.get(VariablesRepository).count()).toBe(0);
+			});
+
+			it('rejects the import when the API key lacks the variable:create scope', async () => {
+				// The gate is requirement-based: it applies even though the variable already matches.
+				await createVariable('GLOBAL_VAR', 'https://global.example.com');
+
+				await expect(
+					importProjects(
+						owner,
+						await packageWithGlobalVariable(),
+						['project:create', 'project:update', 'workflow:import'],
+						{ variableMissingMode: 'create-stub' },
+					),
+				).rejects.toBeInstanceOf(ForbiddenError);
+
+				expect(await findProject('P1')).toBeNull();
+			});
+
+			it('blocks up front with a single limit issue when the package exceeds the variable quota', async () => {
+				licenseMocker.setQuota('quota:maxVariables', 1);
+				const packageBuffer = await twoProjectPackage({
+					catalog: [
+						{ id: 'v1', name: 'VAR_A', target: 'projects/brie/variables/var_a' },
+						{ id: 'v2', name: 'VAR_B', target: 'projects/stilton/variables/var_b' },
+					],
+					requirements: [
+						{ name: 'VAR_A', usedByWorkflows: ['WFA'] },
+						{ name: 'VAR_B', usedByWorkflows: ['WFB'] },
+					],
+				});
+
+				const error = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'create-stub',
+				}).catch((e: unknown) => e);
+
+				expect(error).toBeInstanceOf(UnprocessableRequestError);
+				// The aggregate preflight reports the overrun exactly once, not per project scope.
+				expect((error as UnprocessableRequestError).meta?.issues).toEqual([
+					{
+						type: 'variable-limit-exceeded',
+						limit: 1,
+						remaining: 1,
+						requested: 2,
+						names: ['VAR_A', 'VAR_B'],
+						usedByWorkflows: ['WFA', 'WFB'],
+					},
+				]);
+				expect(await findProject('P1')).toBeNull();
+				expect(await findProject('P2')).toBeNull();
+				expect(await Container.get(VariablesRepository).count()).toBe(0);
+			});
 		});
 	});
 
@@ -714,5 +1076,79 @@ describe('project shell import', () => {
 		} finally {
 			emitSpy.mockRestore();
 		}
+	});
+});
+
+describe('project custom span attributes (LIGO-862)', () => {
+	let owner: User;
+
+	const tags = [
+		{ key: 'team', value: 'ligo' },
+		{ key: 'env', value: 'prod' },
+	];
+
+	beforeEach(async () => {
+		owner = await createOwner();
+	});
+
+	it('persists customTelemetryTags on a newly created project', async () => {
+		const packageBuffer = await buildEntityPackageBuffer({
+			projects: [
+				{
+					target: 'projects/brie',
+					project: serializedProject({ id: 'P1', name: 'brie', customTelemetryTags: tags }),
+				},
+			],
+		});
+
+		await importProjects(owner, packageBuffer);
+
+		expect((await findProject('P1'))?.customTelemetryTags).toEqual(tags);
+	});
+
+	it('round-trips customTelemetryTags through a real export and import', async () => {
+		const service = Container.get(N8nPackagesService);
+		const project = await createTeamProject('telemetry', owner);
+		await Container.get(ProjectRepository).update(project.id, { customTelemetryTags: tags });
+
+		const { stream } = await service.exportPackage({ user: owner, projectIds: [project.id] });
+		const packageBuffer = await streamToBuffer(stream);
+
+		// Wipe the instance so the re-import takes the create path with a clean slate.
+		await testDb.truncate([
+			'Folder',
+			'Project',
+			'ProjectRelation',
+			'SharedWorkflow',
+			'WorkflowEntity',
+		]);
+		const importer = await createOwner();
+
+		await importProjects(importer, packageBuffer);
+
+		expect((await findProject(project.id))?.customTelemetryTags).toEqual(tags);
+	});
+
+	it('does not wipe existing tags when re-importing an older package without the field', async () => {
+		const project = await createTeamProject('keep-tags', owner);
+		await Container.get(ProjectRepository).update(project.id, { customTelemetryTags: tags });
+
+		// A package exported before the field existed: project.json carries no customTelemetryTags.
+		const packageBuffer = await buildEntityPackageBuffer({
+			projects: [
+				{
+					target: 'projects/keep-tags',
+					project: serializedProject({ id: project.id, name: project.name }),
+				},
+			],
+		});
+
+		const result = await importProjects(owner, packageBuffer);
+
+		expect(result.projects).toEqual([
+			{ sourceProjectId: project.id, localId: project.id, name: project.name, status: 'updated' },
+		]);
+		// The update path leaves the column untouched when the incoming value is undefined.
+		expect((await findProject(project.id))?.customTelemetryTags).toEqual(tags);
 	});
 });

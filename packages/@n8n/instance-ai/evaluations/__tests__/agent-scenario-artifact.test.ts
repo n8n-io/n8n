@@ -1,7 +1,7 @@
 import type { InstanceAiEvalAgentExecutionResult } from '@n8n/api-types';
 import { describe, expect, it } from 'vitest';
 
-import { buildAgentVerificationArtifact } from '../harness/runner';
+import { buildAgentVerificationArtifact } from '../harness/agent-execution';
 
 // Structurally an ExecutionScenario; the schema-inferred type is error-typed
 // under type-aware lint (deep ZodEffects instantiation — see harness/schema.ts).

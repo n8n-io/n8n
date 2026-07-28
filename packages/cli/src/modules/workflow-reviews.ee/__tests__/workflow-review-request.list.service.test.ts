@@ -2,9 +2,11 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { LicenseState, type Logger } from '@n8n/backend-common';
 import type {
 	DbLockService,
+	ProjectRelationRepository,
 	SharedWorkflowRepository,
 	User,
 	UserRepository,
+	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestReviewerRepository,
 } from '@n8n/db';
@@ -30,6 +32,7 @@ describe('WorkflowReviewRequestService list', () => {
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+	const publishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const workflowReviewRequestRepository = mockInstance(WorkflowReviewRequestRepository);
 	const workflowReviewRequestWorkflowRepository = mockInstance(
 		WorkflowReviewRequestWorkflowRepository,
@@ -37,6 +40,7 @@ describe('WorkflowReviewRequestService list', () => {
 	const workflowReviewRequestAuthorRepository = mockInstance(WorkflowReviewRequestAuthorRepository);
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const userRepository = mock<UserRepository>();
+	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const roleService = mock<RoleService>();
 	const projectService = mockInstance(ProjectService);
 	const licenseState = mockInstance(LicenseState);
@@ -52,6 +56,8 @@ describe('WorkflowReviewRequestService list', () => {
 		process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
+		reviewerRepository.findByRequestIds.mockResolvedValue([]);
+		userRepository.findManyByIds.mockResolvedValue([]);
 
 		service = new WorkflowReviewRequestService(
 			logger,
@@ -59,11 +65,13 @@ describe('WorkflowReviewRequestService list', () => {
 			workflowFinderService,
 			workflowHistoryService,
 			sharedWorkflowRepository,
+			publishedVersionRepository,
 			workflowReviewRequestRepository,
 			workflowReviewRequestWorkflowRepository,
 			workflowReviewRequestAuthorRepository,
 			reviewerRepository,
 			userRepository,
+			projectRelationRepository,
 			roleService,
 			projectService,
 			licenseState,
@@ -100,8 +108,8 @@ describe('WorkflowReviewRequestService list', () => {
 				}),
 			];
 			workflowReviewRequestRepository.findManyForInbox.mockResolvedValue(rows);
-			workflowReviewRequestWorkflowRepository.findWorkflowNamesByRequestIds.mockResolvedValue(
-				new Map([['req-2', 'Linked workflow']]),
+			workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds.mockResolvedValue(
+				new Map([['req-2', { workflowName: 'Linked workflow', workflowVersionId: 'ver-2' }]]),
 			);
 
 			const result = await service.listForInbox(user, { limit: 1 });
@@ -115,6 +123,7 @@ describe('WorkflowReviewRequestService list', () => {
 			});
 			expect(result.data).toHaveLength(1);
 			expect(result.data[0]?.workflowName).toBe('Linked workflow');
+			expect(result.data[0]?.workflowVersionId).toBe('ver-2');
 			expect(result.hasMore).toBe(true);
 			// nextCursor encodes the last row's keyset boundary (createdAt + id).
 			const expectedCursor = Buffer.from('2024-01-02T00:00:00.000Z|req-2', 'utf8').toString(
@@ -126,7 +135,7 @@ describe('WorkflowReviewRequestService list', () => {
 		it('decodes the incoming cursor into a keyset boundary', async () => {
 			mockAccessibleProjects();
 			workflowReviewRequestRepository.findManyForInbox.mockResolvedValue([]);
-			workflowReviewRequestWorkflowRepository.findWorkflowNamesByRequestIds.mockResolvedValue(
+			workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds.mockResolvedValue(
 				new Map(),
 			);
 			const cursor = Buffer.from('2024-01-02T00:00:00.000Z|req-2', 'utf8').toString('base64url');
@@ -149,7 +158,6 @@ describe('WorkflowReviewRequestService list', () => {
 			);
 		});
 	});
-
 	describe('resolveAccessibleProjectIds', () => {
 		it('returns the publish-scoped project ids for members', async () => {
 			projectService.getProjectIdsWithScope.mockResolvedValueOnce(['publish-proj']);

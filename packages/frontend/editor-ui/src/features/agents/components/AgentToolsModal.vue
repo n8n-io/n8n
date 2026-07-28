@@ -49,6 +49,14 @@ import {
 	nodeTypeToNewMcpServer,
 } from '../composables/useMcpServerAdapter';
 import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
+import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import {
+	filterAndSearchNodes,
+	isNodePreviewKey,
+	removePreviewToken,
+} from '@/features/shared/nodeCreator/nodeCreator.utils';
+import { stripToolSuffix } from '@/app/stores/aiGateway.store';
 
 const props = defineProps<{
 	modalName: string;
@@ -76,6 +84,9 @@ const workflowsListStore = useWorkflowsListStore();
 const rootStore = useRootStore();
 const toast = useToast();
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
+const usersStore = useUsersStore();
+const { installNode: installCommunityNode } = useInstallNode();
+const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
 
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
 const supportedWorkflowToolTriggerTypes = new Set<string>(SUPPORTED_WORKFLOW_TOOL_TRIGGERS);
@@ -140,6 +151,7 @@ const workingMcpServers = computed(() => workingMcpServerEntries.value.map(({ se
 
 const searchQuery = ref('');
 const debouncedSearchQuery = ref('');
+const installingToolName = ref<string | null>(null);
 const isConnectedSectionExpanded = ref(true);
 const isAvailableMcpToolsSectionExpanded = ref(true);
 const isAvailableWorkflowsSectionExpanded = ref(true);
@@ -220,12 +232,38 @@ function isAvailableN8nToolType(nodeType: INodeTypeDescription): boolean {
 	return hasToolsSubcategory(nodeType, AI_SECTION_RECOMMENDED_TOOLS);
 }
 
+function resolveToolNodeType(name: string): INodeTypeDescription | null {
+	return (
+		nodeTypesStore.getNodeType(name) ??
+		nodeTypesStore.communityNodeType(name)?.nodeDescription ??
+		null
+	);
+}
+
+function isCommunityPreviewTool(nodeType: INodeTypeDescription): boolean {
+	if (!isNodePreviewKey(nodeType.name)) return false;
+	const baseName = stripToolSuffix(nodeType.name);
+	return !!nodeTypesStore.communityNodeType(baseName);
+}
+
+function communityPackageNameFor(nodeType: INodeTypeDescription): string {
+	const baseName = stripToolSuffix(nodeType.name);
+	return (
+		nodeTypesStore.communityNodeType(baseName)?.packageName ??
+		removePreviewToken(nodeType.name.split('.')[0] ?? nodeType.name)
+	);
+}
+
 /**
  * Node types eligible to appear in "Available tools": anything the node types
  * store exposes as outputting an AI Tool connection, plus provider nodes the
  * agent builder/runtime can execute directly. Nodes that also take inputs are
  * excluded (subagents — not simple tools), except for provider nodes whose
  * dynamic inputs are optional runtime affordances.
+ *
+ * Resolves via getNodeType with a community-preview fallback so official
+ * uninstalled verified tools (already in the AiTool name index via
+ * visibleNodeTypes) are not dropped — same catalog the canvas Tools picker uses.
  */
 const availableToolTypes = computed<INodeTypeDescription[]>(() => {
 	const names = new Set([
@@ -235,7 +273,7 @@ const availableToolTypes = computed<INodeTypeDescription[]>(() => {
 	]);
 
 	return [...names]
-		.map((name) => nodeTypesStore.getNodeType(name))
+		.map((name) => resolveToolNodeType(name))
 		.filter(
 			(nt): nt is INodeTypeDescription =>
 				nt !== null &&
@@ -292,6 +330,8 @@ const availableExternalToolTypes = computed(() =>
 const projectWorkflows = ref<IWorkflowDb[]>([]);
 
 onMounted(async () => {
+	// Same catalog load the canvas uses for verified community previews.
+	void nodeTypesStore.fetchCommunityNodePreviews();
 	// Fetch on open so the Available list populates with project-scoped workflows.
 	// Pre-filter by supported trigger types so users can't pick a workflow that
 	// would fail backend compatibility validation on save. Request `nodes` so
@@ -486,9 +526,30 @@ const filteredAvailableN8nTools = computed(() =>
 	filterAvailableToolTypes(availableN8nToolTypes.value),
 );
 
-const filteredAvailableExternalTools = computed(() =>
-	filterAvailableToolTypes(availableExternalToolTypes.value),
-);
+const filteredAvailableExternalTools = computed(() => {
+	const base = filterAvailableToolTypes(availableExternalToolTypes.value);
+	if (!debouncedSearchQuery.value) return base;
+
+	// Canvas parity: unofficial verified community tools only appear on search
+	// via the same filterAndSearchNodes path as NodesMode "More from community".
+	const communitySearchHits = filterAndSearchNodes(
+		nodeTypesStore.communityNodesAndActions.mergedNodes,
+		debouncedSearchQuery.value,
+		{ isAiSubcategory: true, aiConnectionType: NodeConnectionTypes.AiTool },
+	);
+	const seen = new Set(base.map((nt) => nt.name));
+	const previews: INodeTypeDescription[] = [];
+	for (const hit of communitySearchHits) {
+		if (hit.type !== 'node') continue;
+		const resolved = resolveToolNodeType(hit.key) ?? resolveToolNodeType(hit.properties.name);
+		if (!resolved || seen.has(resolved.name) || resolved.hidden || hasInputs(resolved)) {
+			continue;
+		}
+		seen.add(resolved.name);
+		previews.push(resolved);
+	}
+	return [...base, ...previews];
+});
 
 const filteredAvailableWorkflows = computed(() => {
 	if (!debouncedSearchQuery.value) return availableWorkflows.value;
@@ -582,12 +643,7 @@ function handleAddMcpServer(nodeType: INodeTypeDescription) {
 	openConfigForNewMcpServer(newServer, nodeType);
 }
 
-function handleAddTool(nodeType: INodeTypeDescription) {
-	if (isMcpRelatedNodeType(nodeType.name)) {
-		handleAddMcpServer(nodeType);
-		return;
-	}
-
+function addNodeTool(nodeType: INodeTypeDescription) {
 	toolTelemetry.trackAddStarted('node');
 	const newRef = nodeTypeToNewToolRef(nodeType);
 
@@ -609,6 +665,41 @@ function handleAddTool(nodeType: INodeTypeDescription) {
 			...newRef,
 		});
 	}
+}
+
+async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
+	const packageName = communityPackageNameFor(nodeType);
+	const baseName = stripToolSuffix(nodeType.name);
+	installingToolName.value = nodeType.name;
+	try {
+		const result = await installCommunityNode({
+			type: 'verified',
+			packageName,
+			nodeType: baseName,
+			telemetry: { source: 'agent builder tools', hasQuickConnect: false },
+		});
+		if (!result.success) return;
+
+		const installedName = removePreviewToken(nodeType.name);
+		const installed = nodeTypesStore.getNodeType(installedName) ?? nodeType;
+		addNodeTool(installed);
+	} finally {
+		installingToolName.value = null;
+	}
+}
+
+async function handleAddTool(nodeType: INodeTypeDescription) {
+	if (isMcpRelatedNodeType(nodeType.name)) {
+		handleAddMcpServer(nodeType);
+		return;
+	}
+
+	if (isCommunityPreviewTool(nodeType)) {
+		await installAndAddCommunityPreview(nodeType);
+		return;
+	}
+
+	addNodeTool(nodeType);
 }
 
 async function handleAddWorkflow(workflow: IWorkflowDb) {
@@ -791,6 +882,9 @@ function commit() {
 						v-for="nodeType in filteredAvailableMcpTools"
 						:key="nodeType.name"
 						:node-type="nodeType"
+						:community-preview="isCommunityPreviewTool(nodeType)"
+						:installing="installingToolName === nodeType.name"
+						:install-disabled="!isAdminOrOwner"
 						mode="available"
 						:class="$style.toolsListItem"
 						@add="handleAddTool(nodeType)"
@@ -811,6 +905,9 @@ function commit() {
 						v-for="nodeType in filteredAvailableAiTools"
 						:key="nodeType.name"
 						:node-type="nodeType"
+						:community-preview="isCommunityPreviewTool(nodeType)"
+						:installing="installingToolName === nodeType.name"
+						:install-disabled="!isAdminOrOwner"
 						mode="available"
 						:class="$style.toolsListItem"
 						@add="handleAddTool(nodeType)"
@@ -831,6 +928,9 @@ function commit() {
 						v-for="nodeType in filteredAvailableN8nTools"
 						:key="nodeType.name"
 						:node-type="nodeType"
+						:community-preview="isCommunityPreviewTool(nodeType)"
+						:installing="installingToolName === nodeType.name"
+						:install-disabled="!isAdminOrOwner"
 						mode="available"
 						:class="$style.toolsListItem"
 						@add="handleAddTool(nodeType)"
@@ -851,6 +951,9 @@ function commit() {
 						v-for="nodeType in filteredAvailableExternalTools"
 						:key="nodeType.name"
 						:node-type="nodeType"
+						:community-preview="isCommunityPreviewTool(nodeType)"
+						:installing="installingToolName === nodeType.name"
+						:install-disabled="!isAdminOrOwner"
 						mode="available"
 						:class="$style.toolsListItem"
 						@add="handleAddTool(nodeType)"

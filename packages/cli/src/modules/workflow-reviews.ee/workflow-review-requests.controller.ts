@@ -1,13 +1,16 @@
 import {
 	CreateWorkflowReviewRequestDto,
+	DecideWorkflowReviewRequestDto,
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	ListWorkflowReviewRequestsQueryDto,
+	UpdateWorkflowReviewRequestVersionDto,
 	type GetWorkflowReviewInboxSummaryResponse,
 	type ListWorkflowReviewInboxResponse,
 	ListWorkflowReviewInboxQueryDto,
+	type WorkflowReviewRequestDetail,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Licensed, Post, Query, RestController } from '@n8n/decorators';
+import { Body, Get, Licensed, Param, Post, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { WorkflowReviewRequestService } from './workflow-review-request.service';
@@ -50,6 +53,32 @@ export class WorkflowReviewRequestsController {
 		return request;
 	}
 
+	@Post('/:workflowReviewRequestId/update-version')
+	@Licensed('feat:workflowReviews')
+	async updateVersion(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowReviewRequestId') workflowReviewRequestId: string,
+		@Body dto: UpdateWorkflowReviewRequestVersionDto,
+	) {
+		return await this.workflowReviewRequestService.updateVersion(
+			req.user,
+			workflowReviewRequestId,
+			dto,
+		);
+	}
+
+	@Post('/:workflowReviewRequestId/decision')
+	@Licensed('feat:workflowReviews')
+	async decide(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowReviewRequestId') workflowReviewRequestId: string,
+		@Body dto: DecideWorkflowReviewRequestDto,
+	) {
+		return await this.workflowReviewRequestService.decide(req.user, workflowReviewRequestId, dto);
+	}
+
 	/**
 	 * Cross-project inbox. Lives under `/inbox` so `GET /` stays free for the
 	 * workflow-scoped list used by review-required toggle sync (LIGO-838).
@@ -71,5 +100,22 @@ export class WorkflowReviewRequestsController {
 		_res: Response,
 	): Promise<GetWorkflowReviewInboxSummaryResponse> {
 		return await this.workflowReviewRequestService.getInboxSummaryForUser(req.user);
+	}
+
+	/**
+	 * Review detail, including the diff inputs per covered workflow.
+	 *
+	 * Keep this last: routes register in declaration order, so a `/:id` pattern
+	 * declared earlier would swallow the literal paths above. Authorization lives
+	 * in the service — `@ProjectScope` cannot resolve a project from a review id.
+	 */
+	@Get('/:workflowReviewRequestId')
+	@Licensed('feat:workflowReviews')
+	async getDetail(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowReviewRequestId') workflowReviewRequestId: string,
+	): Promise<WorkflowReviewRequestDetail> {
+		return await this.workflowReviewRequestService.getDetail(req.user, workflowReviewRequestId);
 	}
 }
