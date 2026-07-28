@@ -19,6 +19,20 @@ import N8nOption from '../N8nOption/Option.vue';
  * function-ref one. A behavioural difference between the two shows up as a
  * failure here rather than as a runtime break in editor-ui.
  */
+
+/**
+ * Every wrapper here is attached to the document, and an attached wrapper left
+ * mounted outlives the test environment — it surfaces as an unhandled
+ * `document is not defined` blamed on an unrelated file, while every per-file
+ * result still reads green. Tracked teardown rather than unmounting inline, so an
+ * assertion failing mid-test cannot leak one.
+ */
+const mounted: Array<{ unmount: () => void }> = [];
+
+afterEach(() => {
+	while (mounted.length) mounted.pop()?.unmount();
+});
+
 const mountHost = () => {
 	const Host = defineComponent({
 		components: { N8nSelect, N8nOption },
@@ -36,7 +50,9 @@ const mountHost = () => {
 		`,
 	});
 
-	return mount(Host, { attachTo: document.body });
+	const wrapper = mount(Host, { attachTo: document.body });
+	mounted.push(wrapper);
+	return wrapper;
 };
 
 const exposedOf = (wrapper: ReturnType<typeof mountHost>) =>
@@ -55,8 +71,6 @@ describe('N8nSelect exposed template ref', () => {
 		expect(typeof inner?.handleClose).toBe('function');
 		expect(typeof inner?.focus).toBe('function');
 		expect(inner?.$refs).toBeTypeOf('object');
-
-		wrapper.unmount();
 	});
 
 	it('exposes focus, blur and focusOnInput as callable functions', async () => {
@@ -74,8 +88,35 @@ describe('N8nSelect exposed template ref', () => {
 		expect(() => exposed.blur()).not.toThrow();
 		expect(() => exposed.focus()).not.toThrow();
 		expect(() => exposed.focusOnInput()).not.toThrow();
+	});
 
-		wrapper.unmount();
+	it('delegates focus and blur to the wrapped instance', async () => {
+		const wrapper = mountHost();
+		await nextTick();
+
+		const exposed = exposedOf(wrapper);
+		const inner = exposed.innerSelect!;
+		const focusSpy = vi.spyOn(inner, 'focus');
+		const blurSpy = vi.spyOn(inner, 'blur');
+
+		// Not just "does not throw": the proxies have to reach the instance the
+		// function ref captured, which is what a mis-assigned ref would break.
+		exposed.focus();
+		expect(focusSpy).toHaveBeenCalledTimes(1);
+
+		exposed.blur();
+		expect(blurSpy).toHaveBeenCalledTimes(1);
+	});
+
+	it('focuses the inner input via focusOnInput', async () => {
+		const wrapper = mountHost();
+		await nextTick();
+
+		exposedOf(wrapper).focusOnInput();
+
+		// Reaches the input through `innerSelect.$refs.selectWrapper`, so this fails
+		// if the exposed instance is null or not the real ElSelect.
+		expect(wrapper.find('input').element).toBe(document.activeElement);
 	});
 
 	it('keeps the same innerSelect instance across a parent re-render', async () => {
@@ -97,8 +138,6 @@ describe('N8nSelect exposed template ref', () => {
 
 		expect(after).not.toBeNull();
 		expect(after).toBe(before);
-
-		wrapper.unmount();
 	});
 
 	it('survives being read repeatedly without re-wrapping', async () => {
@@ -110,8 +149,6 @@ describe('N8nSelect exposed template ref', () => {
 		// Reading through the expose proxy must yield the raw instance, not a Ref.
 		expect(exposed.innerSelect).toBe(exposed.innerSelect);
 		expect(exposed.innerSelect).not.toHaveProperty('value');
-
-		wrapper.unmount();
 	});
 
 	it('clears innerSelect on unmount', async () => {
@@ -145,6 +182,7 @@ describe('N8nSelect exposed template ref', () => {
 		});
 
 		const wrapper = mount(Host, { attachTo: document.body });
+		mounted.push(wrapper);
 		await nextTick();
 
 		// `prepend` is rendered by N8nSelect itself, `prefix` is forwarded to a real
@@ -158,7 +196,5 @@ describe('N8nSelect exposed template ref', () => {
 		// future element-plus adds the slot this flips, and that should be a
 		// conscious change rather than a surprise.
 		expect(wrapper.find('.slot-suffix').exists()).toBe(false);
-
-		wrapper.unmount();
 	});
 });

@@ -127,10 +127,5 @@
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend"
   },
-  "peerDependenciesMeta": {
-    "vue-router": {
-      "optional": true
-    }
-  },
   "license": "LicenseRef-n8n-sustainable-use"
 }
