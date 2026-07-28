@@ -48,6 +48,7 @@ export const NATIVE_WEB_SEARCH_DEFAULTS_BY_PROVIDER = {
 >;
 
 export interface ProviderCapabilities {
+	thinking: false | 'budgetTokens' | 'reasoningEffort';
 	/** false = unsupported; 'ttl' = Anthropic (renders TTL select); true = mandatory, no sub-control (OpenAI). */
 	promptCaching: false | 'ttl' | true;
 	webSearch: false | NativeWebSearchCanonicalTool;
@@ -56,28 +57,34 @@ export interface ProviderCapabilities {
 
 export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	anthropic: {
+		thinking: 'budgetTokens',
 		promptCaching: 'ttl',
 		webSearch: 'anthropic.web_search',
 		providerTools: ['anthropic.web_search'],
 	},
 	openai: {
+		thinking: 'reasoningEffort',
 		promptCaching: true,
 		webSearch: 'openai.web_search',
 		providerTools: ['openai.web_search', 'openai.image_generation'],
 	},
 	google: {
+		thinking: false,
 		promptCaching: false,
 		webSearch: false,
 		providerTools: [],
 	},
-	xai: { promptCaching: false, webSearch: false, providerTools: [] },
-	groq: { promptCaching: false, webSearch: false, providerTools: [] },
-	deepseek: { promptCaching: false, webSearch: false, providerTools: [] },
-	mistral: { promptCaching: false, webSearch: false, providerTools: [] },
-	openrouter: { promptCaching: false, webSearch: false, providerTools: [] },
-	cohere: { promptCaching: false, webSearch: false, providerTools: [] },
-	ollama: { promptCaching: false, webSearch: false, providerTools: [] },
+	xai: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
+	groq: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
+	deepseek: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
+	mistral: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
+	openrouter: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
+	cohere: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
+	ollama: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
 };
+
+export const REASONING_EFFORT_OPTIONS = ['low', 'medium', 'high'] as const;
+export type ReasoningEffort = (typeof REASONING_EFFORT_OPTIONS)[number];
 
 export const ANTHROPIC_CACHE_TTL_OPTIONS = ['5m', '1h'] as const;
 export type AnthropicCacheTtl = (typeof ANTHROPIC_CACHE_TTL_OPTIONS)[number];

@@ -11,7 +11,7 @@ const mockAgentInstances: Array<{
 	memory: Mock;
 	telemetry: Mock;
 	workspace: Mock;
-	reasoning: Mock;
+	thinking: Mock;
 	mcpConnectionFailures: Mock;
 }> = [];
 
@@ -34,7 +34,7 @@ vi.mock('@n8n/agents', () => ({
 		this.memory = vi.fn().mockReturnThis();
 		this.telemetry = vi.fn().mockReturnThis();
 		this.workspace = vi.fn().mockReturnThis();
-		this.reasoning = vi.fn().mockReturnThis();
+		this.thinking = vi.fn().mockReturnThis();
 		this.mcpConnectionFailures = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
@@ -622,9 +622,9 @@ describe('createInstanceAgent', () => {
 		expect(mockAgentInstances[0]?.memory).toHaveBeenCalledWith(mockMemoryBuilder);
 	});
 
-	it('enables generic reasoning by default', async () => {
+	it('enables adaptive thinking by default for Anthropic models', async () => {
 		await createInstanceAgent({
-			modelId: 'google/gemini-2.5-pro',
+			modelId: 'anthropic/claude-opus-4-8',
 			context: {
 				runLabel: 'thinking-test',
 				localGatewayStatus: undefined,
@@ -638,10 +638,13 @@ describe('createInstanceAgent', () => {
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
-		expect(mockAgentInstances[0]?.reasoning).toHaveBeenCalledWith('medium');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
+			mode: 'adaptive',
+			effort: 'medium',
+		});
 	});
 
-	it('skips reasoning when thinking is explicitly disabled', async () => {
+	it('skips thinking when explicitly disabled', async () => {
 		await createInstanceAgent({
 			modelId: 'anthropic/claude-opus-4-8',
 			context: {
@@ -658,7 +661,7 @@ describe('createInstanceAgent', () => {
 			thinkingEnabled: false,
 		} as never);
 
-		expect(mockAgentInstances[0]?.reasoning).not.toHaveBeenCalled();
+		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
 	});
 
 	it('reports MCP connection failures to the SDK agent so the runtime can inject a model note', async () => {
