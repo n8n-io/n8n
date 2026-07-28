@@ -339,8 +339,11 @@ describe('getNodeAuthOptions', () => {
 			'microsoftOAuth2Api',
 			'microsoftEntraServicePrincipalApi',
 		]);
-		expect(options[0].name.endsWith('(recommended)')).toBe(true);
-		expect(options[1].name.endsWith('(recommended)')).toBe(true);
+		expect(options.map((o) => o.name)).toEqual([
+			'Outlook OAuth2 (recommended)',
+			'Microsoft OAuth2 (Graph) (recommended)',
+			'Entra Service Principal',
+		]);
 	});
 
 	it('floats a single recommended option above non-recommended ones', () => {

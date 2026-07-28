@@ -845,33 +845,35 @@ describe('CredentialEdit', () => {
 		});
 	});
 
-	test('should use the requested credential type when node has multiple credential types', async () => {
-		const alphaCredType: ICredentialType = {
-			name: 'alphaApi',
-			displayName: 'Alpha API',
-			properties: [
-				{
-					displayName: 'Alpha Key',
-					name: 'alphaKey',
-					type: 'string',
-					default: '',
-				},
-			],
-		};
+	const alphaCredType: ICredentialType = {
+		name: 'alphaApi',
+		displayName: 'Alpha API',
+		properties: [
+			{
+				displayName: 'Alpha Key',
+				name: 'alphaKey',
+				type: 'string',
+				default: '',
+			},
+		],
+	};
 
-		const betaCredType: ICredentialType = {
-			name: 'betaApi',
-			displayName: 'Beta API',
-			properties: [
-				{
-					displayName: 'Beta Token',
-					name: 'betaToken',
-					type: 'string',
-					default: '',
-				},
-			],
-		};
+	const betaCredType: ICredentialType = {
+		name: 'betaApi',
+		displayName: 'Beta API',
+		properties: [
+			{
+				displayName: 'Beta Token',
+				name: 'betaToken',
+				type: 'string',
+				default: '',
+			},
+		],
+	};
 
+	// Renders the new-credential modal (auth selector on) requesting the beta type
+	// of an alpha/beta node; returns the credentials store for assertions.
+	const renderDualCredModal = (mockNodeType: INodeTypeDescription) => {
 		const pinia = createTestingPinia({
 			initialState: {
 				[STORES.UI]: {
@@ -914,15 +916,30 @@ describe('CredentialEdit', () => {
 		workflowsStore.workflowId = 'test-workflow-id';
 		const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
 		ndvStore.activeNode = {
-			name: 'DualCredTest',
-			type: 'n8n-nodes-base.dualCredTest',
+			name: mockNodeType.displayName,
+			type: mockNodeType.name,
 			typeVersion: 1,
 			position: [0, 0],
 			parameters: {},
 		} as INode;
 
 		const nodeTypesStore = mockedStore(useNodeTypesStore);
-		const mockNodeType = {
+		nodeTypesStore.getNodeType = () => mockNodeType;
+
+		renderComponent({
+			props: {
+				activeId: 'betaApi',
+				modalName: CREDENTIAL_EDIT_MODAL_KEY,
+				mode: 'new',
+			},
+			pinia,
+		});
+
+		return credStore;
+	};
+
+	test('should use the requested credential type when node has multiple credential types', async () => {
+		const credStore = renderDualCredModal({
 			displayName: 'Dual Credential Test',
 			name: 'n8n-nodes-base.dualCredTest',
 			group: ['transform'],
@@ -936,17 +953,7 @@ describe('CredentialEdit', () => {
 				{ name: 'betaApi', required: true },
 			],
 			properties: [],
-		} as unknown as INodeTypeDescription;
-		nodeTypesStore.getNodeType = () => mockNodeType;
-
-		renderComponent({
-			props: {
-				activeId: 'betaApi',
-				modalName: CREDENTIAL_EDIT_MODAL_KEY,
-				mode: 'new',
-			},
-			pinia,
-		});
+		} as unknown as INodeTypeDescription);
 
 		await retry(() =>
 			expect(credStore.getNewCredentialName).toHaveBeenCalledWith({
@@ -956,83 +963,7 @@ describe('CredentialEdit', () => {
 	});
 
 	test('should use the requested credential type when the node has multiple auth options', async () => {
-		const alphaCredType: ICredentialType = {
-			name: 'alphaApi',
-			displayName: 'Alpha API',
-			properties: [
-				{
-					displayName: 'Alpha Key',
-					name: 'alphaKey',
-					type: 'string',
-					default: '',
-				},
-			],
-		};
-
-		const betaCredType: ICredentialType = {
-			name: 'betaApi',
-			displayName: 'Beta API',
-			properties: [
-				{
-					displayName: 'Beta Token',
-					name: 'betaToken',
-					type: 'string',
-					default: '',
-				},
-			],
-		};
-
-		const pinia = createTestingPinia({
-			initialState: {
-				[STORES.UI]: {
-					modalsById: {
-						[CREDENTIAL_EDIT_MODAL_KEY]: {
-							open: true,
-							showAuthSelector: true,
-						},
-					},
-				},
-				[STORES.SETTINGS]: {
-					settings: {
-						enterprise: {
-							sharing: true,
-							externalSecrets: false,
-						},
-						templates: {
-							host: '',
-						},
-					},
-				},
-				[STORES.PROJECTS]: {
-					personalProject: {
-						id: 'personal-project',
-						type: 'personal',
-						scopes: ['credential:create', 'credential:read'],
-					},
-				},
-			},
-		});
-
-		const credStore = mockedStore(useCredentialsStore);
-		credStore.state.credentialTypes = {
-			alphaApi: alphaCredType,
-			betaApi: betaCredType,
-		};
-		credStore.getNewCredentialName.mockResolvedValue('Beta API');
-
-		const workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.workflowId = 'test-workflow-id';
-		const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
-		ndvStore.activeNode = {
-			name: 'DualAuthTest',
-			type: 'n8n-nodes-base.dualAuthTest',
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-		} as INode;
-
-		const nodeTypesStore = mockedStore(useNodeTypesStore);
-		const mockNodeType = {
+		const credStore = renderDualCredModal({
 			displayName: 'Dual Auth Test',
 			name: 'n8n-nodes-base.dualAuthTest',
 			group: ['transform'],
@@ -1065,17 +996,7 @@ describe('CredentialEdit', () => {
 					default: 'alpha',
 				},
 			],
-		} as unknown as INodeTypeDescription;
-		nodeTypesStore.getNodeType = () => mockNodeType;
-
-		renderComponent({
-			props: {
-				activeId: 'betaApi',
-				modalName: CREDENTIAL_EDIT_MODAL_KEY,
-				mode: 'new',
-			},
-			pinia,
-		});
+		} as unknown as INodeTypeDescription);
 
 		await retry(() =>
 			expect(credStore.getNewCredentialName).toHaveBeenCalledWith({

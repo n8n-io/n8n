@@ -493,7 +493,7 @@ describe('CredentialModeSelector', () => {
 			});
 			mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id')).activeNode = null;
 
-			renderComponent({
+			const { emitted } = renderComponent({
 				pinia,
 				props: {
 					credentialType: dropboxOAuth2ApiType,
@@ -513,6 +513,12 @@ describe('CredentialModeSelector', () => {
 			});
 
 			expect(document.querySelectorAll('[role="menuitem"] [data-icon="check"]')).toHaveLength(1);
+
+			await userEvent.click(screen.getByRole('menuitem', { name: 'Custom OAuth2' }));
+
+			await waitFor(() => {
+				expect(emitted('update:authType')[0]).toEqual([{ type: 'oAuth2', customOauth: true }]);
+			});
 		});
 	});
 

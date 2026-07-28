@@ -57,9 +57,9 @@ const selectedAuthType = computed(() => {
 	return getAuthTypeForNodeCredential(activeNodeType.value, selectedCredentialDescription);
 });
 
-// Auth-type value managed pair options carry when the node has no auth options; isSelected
-// must compare against the same value. Assumes an unlinked managed-OAuth credential has no
-// real node shape (accepted trade-off).
+// The auth-type value that managed pair options carry when the node has no auth options;
+// isSelected must compare against the same fallback. Assumes an unlinked managed-OAuth
+// credential has no real node shape (accepted trade-off).
 const managedFallbackType = computed(() => selectedAuthType.value?.value ?? 'oAuth2');
 
 const isOAuthCredential = computed(() => isOAuthCredentialType(props.credentialType.name));
