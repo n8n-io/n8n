@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
 
 import {
+	ANTHROPIC_PROXY_MAX_OUTPUT_TOKENS,
+	FIREWORKS_ANTHROPIC_THINKING_BUDGET_TOKENS,
 	GLM_52_DEFAULT_MAX_OUTPUT_TOKENS,
+	KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS,
 	applyToolProviderOptionDefaults,
 	buildCallProviderOptionDefaults,
 	getProviderQuirks,
@@ -99,6 +102,34 @@ describe('thinkingToProviderOptions', () => {
 		});
 	});
 
+	it('anthropic: enabled mode with effort keeps default budgetTokens', () => {
+		expect(
+			getProviderQuirks('anthropic').thinkingToProviderOptions?.(
+				{ mode: 'enabled', effort: 'medium' },
+				'anthropic/claude-sonnet-4-5',
+			),
+		).toEqual({
+			anthropic: {
+				thinking: { type: 'enabled', budgetTokens: 10000 },
+				effort: 'medium',
+			},
+		});
+	});
+
+	it('anthropic: enabled mode with effort forwards explicit budgetTokens', () => {
+		expect(
+			getProviderQuirks('anthropic').thinkingToProviderOptions?.(
+				{ mode: 'enabled', effort: 'medium', budgetTokens: 5000 },
+				'anthropic/claude-sonnet-4-5',
+			),
+		).toEqual({
+			anthropic: {
+				thinking: { type: 'enabled', budgetTokens: 5000 },
+				effort: 'medium',
+			},
+		});
+	});
+
 	it('openai: defaults reasoningEffort to medium', () => {
 		expect(getProviderQuirks('openai').thinkingToProviderOptions?.({}, 'openai/gpt-5')).toEqual({
 			openai: { reasoningEffort: 'medium', reasoningSummary: null },
@@ -178,6 +209,22 @@ describe('thinkingToProviderOptions', () => {
 			service_tier: 'priority',
 		});
 	});
+
+	it('fireworks: defaults reasoning effort to medium', () => {
+		expect(getProviderQuirks('fireworks').thinkingToProviderOptions?.({})).toEqual({
+			fireworks: { reasoningEffort: 'medium' },
+		});
+	});
+
+	it('fireworks: maps reasoningEffort to providerOptions.fireworks', () => {
+		expect(
+			getProviderQuirks('fireworks').thinkingToProviderOptions?.({
+				reasoningEffort: 'high',
+			}),
+		).toEqual({
+			fireworks: { reasoningEffort: 'high' },
+		});
+	});
 });
 
 describe('buildCallProviderOptionDefaults', () => {
@@ -200,6 +247,23 @@ describe('resolveDefaultMaxOutputTokens', () => {
 		'openai/zai-org/GLM-5.2-Fast',
 	] as const)('raises the output cap for GLM 5.2 models (%s)', (modelId) => {
 		expect(resolveDefaultMaxOutputTokens(modelId)).toBe(GLM_52_DEFAULT_MAX_OUTPUT_TOKENS);
+	});
+
+	it.each([
+		'fireworks/accounts/fireworks/models/kimi-k3',
+		'fireworks/accounts/fireworks/routers/kimi-k3-fast',
+		'openrouter/moonshotai/kimi-k3',
+	] as const)('raises the output cap to the Kimi K3 default for %s', (modelId) => {
+		expect(resolveDefaultMaxOutputTokens(modelId)).toBe(KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS);
+	});
+
+	it.each([
+		'anthropic/accounts/fireworks/models/kimi-k3',
+		'anthropic/accounts/fireworks/routers/kimi-k3-fast',
+	] as const)('leaves room for thinking budget under the Anthropic proxy cap for %s', (modelId) => {
+		expect(resolveDefaultMaxOutputTokens(modelId)).toBe(
+			ANTHROPIC_PROXY_MAX_OUTPUT_TOKENS - FIREWORKS_ANTHROPIC_THINKING_BUDGET_TOKENS,
+		);
 	});
 
 	it('leaves unrelated models unset', () => {

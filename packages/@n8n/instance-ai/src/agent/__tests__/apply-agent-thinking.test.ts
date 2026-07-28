@@ -52,6 +52,26 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
+	it('uses enabled thinking with a medium budget for Fireworks models via Anthropic proxy', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, {
+			modelId: 'accounts/fireworks/models/kimi-k3',
+			config: { provider: 'anthropic.messages' },
+		} as unknown as Parameters<typeof applyAgentThinking>[1]);
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
+			mode: 'enabled',
+			budgetTokens: 8192,
+		});
+	});
+
+	it('enables medium reasoning effort for Fireworks provider models', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'fireworks/accounts/fireworks/models/kimi-k3');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('fireworks', {
+			reasoningEffort: 'medium',
+		});
+	});
+
 	it.each(['openai/gpt-5.6-sol', 'openai/gpt-5.6-terra', 'openai/gpt-5.6-luna'] as const)(
 		'enables medium OpenAI reasoning effort for %s',
 		(modelId) => {
