@@ -1,4 +1,5 @@
 import { type Project, type ProjectRepository, type User, WorkflowEntity } from '@n8n/db';
+import { validateWorkflowGroups } from 'n8n-workflow';
 import z from 'zod';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
@@ -28,7 +29,7 @@ import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
-import { resolveNodeWebhookIds } from '@/workflow-helpers';
+import { makeGetNodeTypeForGrouping, resolveNodeWebhookIds } from '@/workflow-helpers';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -39,10 +40,11 @@ export type CreateWorkflowFromCodeToolOptions = {
 	 * `102_mcp_canvas_groups` rollout flag: when true, node groups authored in the
 	 * SDK code (`.group(...)`) are persisted on the created workflow. Off by
 	 * default — groups are then dropped at the entity assembly, exactly like
-	 * before groups were supported. Note that with the flag on, invalid groups
-	 * fail the creation: `WorkflowCreationService.createWorkflow` rejects them
-	 * with the same messages the `validate_workflow` tool reports as errors,
-	 * so agents can catch group problems before calling this tool.
+	 * before groups were supported. With the flag on, an invalid group does not
+	 * fail the creation: it is dropped and reported in `skippedGroups` instead,
+	 * while the rest of the workflow is still created. This tool pre-validates
+	 * with the same rules `WorkflowCreationService.createWorkflow` enforces, so
+	 * that shared service's own (fatal) group check never actually triggers here.
 	 */
 	canvasGroupsEnabled?: boolean;
 };
@@ -138,6 +140,17 @@ const outputSchema = {
 		.optional()
 		.describe(
 			'Additional notes about the workflow creation, such as any nodes that were skipped during credential auto-assignment.',
+		),
+	skippedGroups: z
+		.array(
+			z.object({
+				groupName: z.string(),
+				reason: z.string(),
+			}),
+		)
+		.optional()
+		.describe(
+			'Node groups that were invalid and skipped instead of failing the whole creation. The rest of the workflow was still created. Fix and retry these (e.g. via update_workflow).',
 		),
 	hint: z
 		.string()
@@ -244,6 +257,7 @@ export const createCreateWorkflowFromCodeTool = (
 
 		let newWorkflow: WorkflowEntity | undefined;
 		let landingProject: Project | null = null;
+		let skippedGroups: Array<{ groupName: string; reason: string }> = [];
 
 		try {
 			const { ParseValidateHandler, stripImportStatements } = await import(
@@ -286,6 +300,32 @@ export const createCreateWorkflowFromCodeTool = (
 			resolveNodeWebhookIds(newWorkflow, nodeTypes);
 
 			stripNullCredentialStubs(newWorkflow.nodes);
+
+			// Structural group rules (no triggers, single connected subgraph, no
+			// non-main connection crossing the group boundary) aren't checked by the
+			// parser above. Validate them here, before the shared persistence layer's
+			// own (fatal) check, so an invalid group is dropped and reported instead
+			// of aborting the whole creation.
+			if (options.canvasGroupsEnabled && newWorkflow.nodeGroups?.length) {
+				const groupValidation = validateWorkflowGroups({
+					nodes: newWorkflow.nodes,
+					connectionsBySourceNode: newWorkflow.connections,
+					nodeGroups: newWorkflow.nodeGroups,
+					getNodeType: makeGetNodeTypeForGrouping(nodeTypes),
+				});
+
+				if (!groupValidation.valid) {
+					const invalidGroupIds = new Set(groupValidation.violations.map((v) => v.groupId));
+					newWorkflow.nodeGroups = newWorkflow.nodeGroups.filter(
+						(group) => !invalidGroupIds.has(group.id),
+					);
+
+					skippedGroups = groupValidation.violations.map((violation) => ({
+						groupName: violation.groupName,
+						reason: violation.message,
+					}));
+				}
+			}
 
 			landingProject = projectId
 				? await projectRepository.findOneBy({ id: projectId })
@@ -395,6 +435,7 @@ export const createCreateWorkflowFromCodeTool = (
 					type: landingProject.type,
 				},
 				note: notes.length ? notes.join(' ') : undefined,
+				skippedGroups: skippedGroups.length > 0 ? skippedGroups : undefined,
 			};
 			const output =
 				result.warnings.length > 0 ? { ...baseOutput, warnings: result.warnings } : baseOutput;
