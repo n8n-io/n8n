@@ -38,7 +38,13 @@ const scope = (input: {
 	credentialResult: CredentialApplyResult;
 	requirements?: PackageCredentialRequirement[];
 	dataTable?: { matched: number; created: number; requirements: number };
-	variables?: { matched: number; missing: number; requirements: number };
+	variables?: {
+		matched: number;
+		missing: number;
+		requirements: number;
+		created?: number;
+		existing?: number;
+	};
 }): PackageImportScope => {
 	const context: ImportContext = {
 		user: mock(),
@@ -46,7 +52,14 @@ const scope = (input: {
 		folderId: input.folderId ?? null,
 	};
 	const dt = input.dataTable ?? { matched: 0, created: 0, requirements: 0 };
-	const vars = input.variables ?? { matched: 0, missing: 0, requirements: 0 };
+	const vars = input.variables ?? { matched: 0, missing: 0, requirements: 0, created: 0 };
+	const createdVariableCount = vars.created ?? 0;
+	const missingVariableNames = Array.from({ length: vars.missing }, (_, i) => `missing-var-${i}`);
+	const stubbedVariableNames = missingVariableNames.slice(0, createdVariableCount);
+	const existingVariableNames = missingVariableNames.slice(
+		createdVariableCount,
+		createdVariableCount + (vars.existing ?? 0),
+	);
 	const imported: ImportOrchestrationResult = {
 		workflowOutcomes: input.outcomes,
 		folderSummaries: [],
@@ -55,10 +68,16 @@ const scope = (input: {
 		dataTablePlan: { creations: new Array(dt.created), failures: [], matchedCount: dt.matched },
 		variablePlan: {
 			matched: Array.from({ length: vars.matched }, (_, i) => `matched-var-${i}`),
-			missing: Array.from({ length: vars.missing }, (_, i) => ({
-				name: `missing-var-${i}`,
+			missing: missingVariableNames.map((name) => ({ name, usedByWorkflows: [] })),
+			creations: [...stubbedVariableNames, ...existingVariableNames].map((name) => ({
+				name,
 				usedByWorkflows: [],
 			})),
+		},
+		variableResult: {
+			stubbed: stubbedVariableNames,
+			skippedExisting: existingVariableNames,
+			createdCount: createdVariableCount,
 		},
 	};
 	return {
@@ -87,6 +106,8 @@ const request = mock<ImportPackageRequest>({
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'create-stub',
 	workflowPublishingPolicy: 'preserve-published-state',
+	variableMissingMode: 'create-stub',
+	variableParentPolicy: 'global',
 	missingNodeTypeMode: 'fail',
 });
 
@@ -132,7 +153,7 @@ describe('emitPackageImportedEvent', () => {
 					},
 					requirements: [requirement('credB')],
 					dataTable: { matched: 0, created: 2, requirements: 2 },
-					variables: { matched: 0, missing: 2, requirements: 2 },
+					variables: { matched: 0, missing: 2, requirements: 2, created: 2 },
 				}),
 			],
 		});
@@ -153,9 +174,71 @@ describe('emitPackageImportedEvent', () => {
 			workflows: { created: 1, updated: 1, skipped: 1 },
 			credentials: { matched: 1, created: 1, requirements: 2 },
 			dataTables: { matched: 1, created: 2, requirements: 3 },
-			variables: { matched: 1, missing: 2, requirements: 3 },
+			// scope 2's two missing requirements were created, so post-apply missing is 0.
+			variables: { matched: 1, missing: 0, created: 2, requirements: 3 },
 		});
 		expect(payload.packageSourceId).toBe('src-1');
+		expect(payload.options.variableMissingMode).toBe('create-stub');
+		expect(payload.options.variableParentPolicy).toBe('global');
+	});
+
+	it('still counts a missing requirement the import left unfilled', () => {
+		const eventService = mock<EventService>();
+
+		emitPackageImportedEvent(eventService, {
+			request,
+			manifest,
+			scopes: [
+				scope({
+					projectId: 'P1',
+					outcomes: [outcome('wf1', 'WF1', 'created')],
+					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
+					// Of three missing requirements, one was stubbed and one already existed.
+					variables: { matched: 0, missing: 3, requirements: 3, created: 1, existing: 1 },
+				}),
+			],
+		});
+
+		// The one that already existed is reported as matched, like the API summary does, so all
+		// three requirements are accounted for.
+		expect(lastImportedPayload(eventService).counts.variables).toEqual({
+			matched: 1,
+			missing: 1,
+			created: 1,
+			requirements: 3,
+		});
+	});
+
+	it('reconciles the names of every scope together before counting them', () => {
+		const eventService = mock<EventService>();
+
+		emitPackageImportedEvent(eventService, {
+			request,
+			manifest,
+			scopes: [
+				// Both scopes need the same name: the first creates it, so the second finds the
+				// destination occupied and skips. Only one row exists, and nothing pre-existed.
+				scope({
+					projectId: 'P1',
+					outcomes: [outcome('wf1', 'WF1', 'created')],
+					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
+					variables: { matched: 0, missing: 1, requirements: 1, created: 1 },
+				}),
+				scope({
+					projectId: 'P2',
+					outcomes: [outcome('wf2', 'WF2', 'created')],
+					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
+					variables: { matched: 0, missing: 1, requirements: 1, created: 0, existing: 1 },
+				}),
+			],
+		});
+
+		expect(lastImportedPayload(eventService).counts.variables).toEqual({
+			matched: 0,
+			missing: 0,
+			created: 1,
+			requirements: 2,
+		});
 	});
 
 	it('preserves the folder id for a single-scope import', () => {

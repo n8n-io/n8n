@@ -9,7 +9,7 @@ import { ensureHostsBypassProxy } from '@n8n/backend-network/proxy';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { DataTableColumnInfo, WorkflowJSON } from '@n8n/workflow-sdk';
 import { normalizePinData } from '@n8n/workflow-sdk';
 import {
 	BinaryDataService,
@@ -41,8 +41,10 @@ import { randomUUID } from 'node:crypto';
 
 import { ActiveExecutions } from '@/active-executions';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { DataTableService } from '@/modules/data-table/data-table.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -61,6 +63,7 @@ import { generatePinData } from './pin-data-generator';
 import {
 	buildVendorLlmRouting,
 	detectBinaryDependencies,
+	emitsDataTableRows,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
@@ -97,6 +100,8 @@ export class EvalExecutionService {
 		private readonly binaryDataService: BinaryDataService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly ownershipService: OwnershipService,
+		private readonly dataTableService: DataTableService,
 	) {}
 
 	async executeWithLlmMock(
@@ -283,6 +288,8 @@ export class EvalExecutionService {
 		if (bypassNodeNames.length === 0) return {};
 
 		try {
+			const dataTableColumns = await this.resolveDataTableColumns(workflowEntity, bypassNodeNames);
+
 			// Keep the scenario separate from the general context: the pin generator
 			// treats "Test Scenario" as authoritative, and merging them into one blob
 			// lets invented context override scenario-specified stored state.
@@ -298,6 +305,7 @@ export class EvalExecutionService {
 								? { dataDescription: globalContext, testScenario: scenarioHints }
 								: undefined,
 						outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup(),
+						dataTableColumns,
 					}),
 			);
 
@@ -324,6 +332,73 @@ export class EvalExecutionService {
 			this.logger.error(`[EvalMock] Phase 1.5 pin data generation failed: ${errorMsg}`);
 			throw new Error(`FRAMEWORK ISSUE: Phase 1.5 pin data generation failed: ${errorMsg}`);
 		}
+	}
+
+	/**
+	 * Real column names for each pinned dataTable-read node, read from the
+	 * builder-created table itself. They are the authoritative row shape —
+	 * without them the pin generator invents plausible-but-wrong column names
+	 * (`email` where the table says `contact_email`) and correctly-built
+	 * downstream expressions resolve undefined. Best-effort: a missing table or
+	 * unresolved id degrades that node to prompt-only generation.
+	 *
+	 * Only row-emitting reads qualify — `rowExists`/`rowNotExists` pass the input
+	 * item through, so enforcing table columns on them would demand a fixture the
+	 * real node never emits.
+	 */
+	private async resolveDataTableColumns(
+		workflowEntity: IWorkflowBase,
+		bypassNodeNames: string[],
+	): Promise<Record<string, DataTableColumnInfo[]> | undefined> {
+		const bypassSet = new Set(bypassNodeNames);
+		const readNodes = workflowEntity.nodes.filter(
+			(node) => bypassSet.has(node.name) && emitsDataTableRows(node),
+		);
+		if (readNodes.length === 0) return undefined;
+
+		const columnsByNode: Record<string, DataTableColumnInfo[]> = {};
+		let projectId: string | undefined;
+		for (const node of readNodes) {
+			try {
+				const locator = node.parameters?.dataTableId as
+					| { mode?: unknown; value?: unknown }
+					| string
+					| undefined;
+				const locatorValue = typeof locator === 'string' ? locator : locator?.value;
+				if (typeof locatorValue !== 'string' || locatorValue.length === 0) continue;
+
+				projectId ??= (await this.ownershipService.getWorkflowProjectCached(workflowEntity.id)).id;
+
+				// `name` mode carries a table name, not an id (the node runtime resolves
+				// it via `resolveDataTableId`) — passing it straight to an id lookup
+				// dropped named tables to prompt-only generation. Exact name match only;
+				// a near-miss still degrades gracefully below.
+				let tableId = locatorValue;
+				if ((typeof locator === 'string' ? 'id' : locator?.mode) === 'name') {
+					const matches = await this.dataTableService.findDataTablesByNamesInProject(projectId, [
+						locatorValue,
+					]);
+					const resolved = matches.at(0)?.id;
+					if (!resolved) {
+						this.logger.warn(
+							`[EvalMock] No Data Table named "${locatorValue}" for node "${node.name}" — pinned rows fall back to prompt-only generation`,
+						);
+						continue;
+					}
+					tableId = resolved;
+				}
+
+				const columns = await this.dataTableService.getColumns(tableId, projectId);
+				columnsByNode[node.name] = columns.map(({ name, type }) => ({ name, type }));
+			} catch (error) {
+				this.logger.warn(
+					`[EvalMock] Could not resolve Data Table columns for node "${node.name}" — pinned rows fall back to prompt-only generation`,
+					{ error: error instanceof Error ? error.message : String(error) },
+				);
+			}
+		}
+
+		return Object.keys(columnsByNode).length > 0 ? columnsByNode : undefined;
 	}
 
 	// ── Phase 2: Mock execution ────────────────────────────────────────────

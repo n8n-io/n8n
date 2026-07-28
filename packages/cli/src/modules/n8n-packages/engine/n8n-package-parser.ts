@@ -203,6 +203,9 @@ export class N8nPackageParser {
 			name: project.name,
 			...(project.description !== undefined ? { description: project.description } : {}),
 			...(project.icon !== undefined ? { icon: project.icon } : {}),
+			...(project.customTelemetryTags !== undefined
+				? { customTelemetryTags: project.customTelemetryTags }
+				: {}),
 		};
 	}
 
