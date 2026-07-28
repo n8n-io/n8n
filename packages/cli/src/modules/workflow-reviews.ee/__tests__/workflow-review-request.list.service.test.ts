@@ -6,6 +6,7 @@ import type {
 	SharedWorkflowRepository,
 	User,
 	UserRepository,
+	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestReviewerRepository,
 } from '@n8n/db';
@@ -31,6 +32,7 @@ describe('WorkflowReviewRequestService list', () => {
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+	const publishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const workflowReviewRequestRepository = mockInstance(WorkflowReviewRequestRepository);
 	const workflowReviewRequestWorkflowRepository = mockInstance(
 		WorkflowReviewRequestWorkflowRepository,
@@ -63,6 +65,7 @@ describe('WorkflowReviewRequestService list', () => {
 			workflowFinderService,
 			workflowHistoryService,
 			sharedWorkflowRepository,
+			publishedVersionRepository,
 			workflowReviewRequestRepository,
 			workflowReviewRequestWorkflowRepository,
 			workflowReviewRequestAuthorRepository,

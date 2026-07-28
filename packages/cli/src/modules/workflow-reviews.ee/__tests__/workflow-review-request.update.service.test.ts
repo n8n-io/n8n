@@ -7,6 +7,7 @@ import type {
 	User,
 	UserRepository,
 	WorkflowEntity,
+	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
@@ -44,6 +45,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+	const publishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
@@ -64,6 +66,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		workflowFinderService,
 		workflowHistoryService,
 		sharedWorkflowRepository,
+		publishedVersionRepository,
 		requestRepository,
 		workflowRepository,
 		authorRepository,
