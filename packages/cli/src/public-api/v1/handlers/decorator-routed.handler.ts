@@ -6,13 +6,9 @@ import type { RequestHandler } from 'express';
  * The stub is required so express-openapi-validator's operation-handler installer doesn't error on them.
  * Example in `packages/cli/src/public-api/v1/handlers/tags/spec/paths/getTags.generated.yml`.
  */
-const unreachable: RequestHandler = (_req, res) => {
+export const unreachable: RequestHandler = (_req, res) => {
 	res.status(500).json({
 		message:
 			'Unexpected: this operation should have been handled by PublicApiControllerRegistry before reaching express-openapi-validator',
 	});
 };
-
-const handlers: Record<string, RequestHandler> = { unreachable };
-
-export = handlers;
