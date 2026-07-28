@@ -6,20 +6,21 @@ const srcDir = resolve(__dirname, 'src');
 const distDir = resolve(__dirname, 'dist');
 
 /**
- * Ship the SCSS sources next to the compiled CSS so consumers can `@use` our
- * mixins and token maps in their own stylesheets (`./scss/*` in exports).
+ * Ship the SCSS sources so consumers can `@use` our mixins and token maps in
+ * their own stylesheets (`./css/*` in exports).
  *
- * The copy lands in `dist/scss/` — the same depth below the package root as
- * `src/css/`, which is what keeps the `../../assets/fonts/*` URLs inside
- * `fonts.scss` resolving without rewriting them.
+ * The copy keeps the `css/` folder name on purpose: internal code already writes
+ * `@n8n/design-system/css/mixins/motion` (48 call sites, resolved through an
+ * alias to `src/css/`), so publishing under the same subpath means those imports
+ * read identically inside and outside the monorepo.
  */
 function copyScssSources(): Plugin {
 	return {
 		name: 'n8n:copy-scss-sources',
 		closeBundle() {
 			mkdirSync(distDir, { recursive: true });
-			cpSync(resolve(srcDir, 'css'), resolve(distDir, 'scss'), { recursive: true });
-			cpSync(resolve(srcDir, 'utils.scss'), resolve(distDir, 'scss', 'utils.scss'));
+			cpSync(resolve(srcDir, 'css'), resolve(distDir, 'css'), { recursive: true });
+			cpSync(resolve(srcDir, 'utils.scss'), resolve(distDir, 'css', 'utils.scss'));
 		},
 	};
 }

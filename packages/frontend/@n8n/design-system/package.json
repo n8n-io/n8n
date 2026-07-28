@@ -14,9 +14,13 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./icons/lucide": {
+      "types": "./dist/icons/lucide/index.d.ts",
+      "import": "./dist/icons/lucide/index.js"
+    },
     "./theme.css": "./dist/theme.css",
     "./style.css": "./dist/style.css",
-    "./scss/*": "./dist/scss/*",
+    "./css/*": "./dist/css/*",
     "./package.json": "./package.json"
   },
   "files": [

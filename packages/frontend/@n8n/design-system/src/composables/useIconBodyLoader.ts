@@ -11,7 +11,7 @@ const noopLoader: IconBodyLoader = async () => {
 		warnedMissingLoader = true;
 		console.warn(
 			'[n8n-design-system] No IconBodyLoader provided — icons outside the bundled set will render empty. ' +
-				'Provide one via app.provide(IconBodyLoaderKey, loader), e.g. loadLucideIconBody from @n8n/design-system.',
+				'Provide one via app.provide(IconBodyLoaderKey, loader), e.g. loadLucideIconBody from @n8n/design-system/icons/lucide.',
 		);
 	}
 	return null;
