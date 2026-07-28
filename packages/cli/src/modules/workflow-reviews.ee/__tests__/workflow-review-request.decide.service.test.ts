@@ -7,7 +7,6 @@ import type {
 	User,
 	UserRepository,
 	WorkflowEntity,
-	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
@@ -23,12 +22,12 @@ import type { CollaborationService } from '@/collaboration/collaboration.service
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { ProjectService } from '@/services/project.service.ee';
 import type { RoleService } from '@/services/role.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
+import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
 
 const memberUser = (id = 'user-1') => mock<User>({ id, role: { slug: 'global:member' } });
@@ -43,7 +42,6 @@ describe('WorkflowReviewRequestService.decide', () => {
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
-	const publishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
@@ -51,7 +49,6 @@ describe('WorkflowReviewRequestService.decide', () => {
 	const userRepository = mock<UserRepository>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const roleService = mock<RoleService>();
-	const projectService = mock<ProjectService>();
 	const licenseState = mock<LicenseState>();
 	const dbLockService = mock<DbLockService>();
 	const collaborationService = mock<CollaborationService>();
@@ -60,11 +57,10 @@ describe('WorkflowReviewRequestService.decide', () => {
 
 	const service = new WorkflowReviewRequestService(
 		logger,
-		workflowReviewPolicyService,
+		new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
 		workflowFinderService,
 		workflowHistoryService,
 		sharedWorkflowRepository,
-		publishedVersionRepository,
 		requestRepository,
 		workflowRepository,
 		authorRepository,
@@ -72,8 +68,6 @@ describe('WorkflowReviewRequestService.decide', () => {
 		userRepository,
 		projectRelationRepository,
 		roleService,
-		projectService,
-		licenseState,
 		dbLockService,
 		collaborationService,
 	);
