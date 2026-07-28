@@ -68,9 +68,13 @@ jobs:
       - name: Test Unit (backend, except cli and nodes-base)
         run: pnpm turbo test:unit --continue --concurrency=2 --filter='!./packages/frontend/**' --filter='!n8n' --filter='!n8n-nodes-base' --summarize
 
+      # This step runs the cli suite alone, so it may use every core instead
+      # of the in-CI 50% cap meant for concurrent suites (see @n8n/vitest-config/node).
       - name: Test Unit (cli, scoped)
         if: ${{ !cancelled() }}
         run: pnpm turbo test:unit:changed --filter=n8n --summarize
+        env:
+          N8N_VITEST_MAX_WORKERS: '100%'
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -174,8 +178,12 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
 
+      # nodes-base is the only suite on this runner, so it may use every core instead
+      # of the in-CI 50% cap meant for concurrent suites (see @n8n/vitest-config/node).
       - name: Test Nodes
         run: pnpm turbo test:changed --filter=n8n-nodes-base --summarize
+        env:
+          N8N_VITEST_MAX_WORKERS: '100%'
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}

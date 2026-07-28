@@ -42,8 +42,11 @@ export const cjsPinAliases = (deps: string[], from: string = process.cwd()): Ali
  */
 export const forkPoolOptions = (): InlineConfig => {
 	if (process.env.CI !== 'true') return {};
-	// Vitest accepts a percentage for `maxWorkers` (half of availableParallelism).
-	return { pool: 'forks', maxWorkers: '50%' };
+	// Vitest accepts a worker count ("4") or percentage ("100%") for `maxWorkers`.
+	// Solo-suite CI jobs (one suite owning the whole runner, no concurrent turbo
+	// siblings) lift the cap via N8N_VITEST_MAX_WORKERS. Not named VITEST_MAX_WORKERS:
+	// vitest reads that env itself with parseInt, which would turn "100%" into 100 workers.
+	return { pool: 'forks', maxWorkers: process.env.N8N_VITEST_MAX_WORKERS || '50%' };
 };
 
 /**

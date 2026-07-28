@@ -6,6 +6,10 @@ import type { DataSourceOptions } from '@n8n/typeorm';
 import { DataSource as Connection } from '@n8n/typeorm';
 import assert from 'assert';
 import { randomString } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
+import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 export const testDbPrefix = 'n8n_test_';
 let isInitialized = false;
@@ -28,12 +32,84 @@ export const getBootstrapDBOptions = (): DataSourceOptions => {
 	};
 };
 
+type SqliteTemplate = { dbPath: string; templatePath: string };
+
+/**
+ * SQLite fast path: the first suite to migrate on this machine snapshots its DB
+ * file into a machine-wide template dir; later suites (any process, any run)
+ * copy the snapshot instead of replaying every migration. The template lives in
+ * `os.tmpdir()` — like the per-suite test dirs — so it is shared across
+ * worktrees and the OS eventually cleans it up. Keyed by table prefix plus each
+ * migration's name and compiled source, so adding, removing, or editing a
+ * migration invalidates the template naturally. Set
+ * `N8N_TEST_SQLITE_TEMPLATE=false` to bypass for debugging.
+ */
+function getSqliteTemplate(options: DataSourceOptions): SqliteTemplate | undefined {
+	if (options.type !== 'sqlite-pooled') return undefined;
+	if (process.env.N8N_TEST_SQLITE_TEMPLATE === 'false') return undefined;
+	if (!Array.isArray(options.migrations) || options.migrations.length === 0) return undefined;
+
+	const hash = createHash('sha256').update(options.entityPrefix ?? '');
+	for (const migration of options.migrations) {
+		hash.update(
+			typeof migration === 'string' ? migration : `${migration.name}\n${String(migration)}`,
+		);
+	}
+
+	return {
+		dbPath: options.database,
+		templatePath: path.join(
+			tmpdir(),
+			'n8n-test-db-templates',
+			`${hash.digest('hex').slice(0, 24)}.sqlite`,
+		),
+	};
+}
+
+/** Seed the per-process DB file from the template. Returns false if there is no usable template. */
+function restoreSqliteTemplate({ dbPath, templatePath }: SqliteTemplate): boolean {
+	if (!existsSync(templatePath)) return false;
+	try {
+		mkdirSync(path.dirname(dbPath), { recursive: true });
+		// A leftover WAL/SHM pair from a previous connection to this path must not
+		// be replayed on top of the freshly copied file.
+		rmSync(`${dbPath}-wal`, { force: true });
+		rmSync(`${dbPath}-shm`, { force: true });
+		copyFileSync(templatePath, dbPath);
+		return true;
+	} catch (error) {
+		console.warn('Failed to restore sqlite test DB from template:', error);
+		rmSync(dbPath, { force: true });
+		return false;
+	}
+}
+
+async function saveSqliteTemplate({ templatePath }: SqliteTemplate): Promise<void> {
+	try {
+		mkdirSync(path.dirname(templatePath), { recursive: true });
+		// Stage in a temp path and rename() into place so racing cold processes
+		// never observe a half-written template; race losers overwrite it with
+		// identical content. VACUUM INTO writes a compact, self-contained snapshot
+		// while the pooled connection stays open — copying the live DB file would
+		// miss whatever still sits in the WAL (the pooled driver keeps the -wal
+		// file around even across close()).
+		const stagingPath = `${templatePath}.${process.pid}-${randomString(8)}.tmp`;
+		await Container.get(Connection).query(`VACUUM INTO '${stagingPath}'`);
+		renameSync(stagingPath, templatePath);
+	} catch (error) {
+		console.warn('Failed to save sqlite test DB template:', error);
+	}
+}
+
 /**
  * Initialize one test DB per suite run, with bootstrap connection if needed.
  *
  * When `N8N_TEST_TEMPLATE_DB` is set (Postgres only), the new test DB is created
  * via `CREATE DATABASE ... TEMPLATE <name>`, which clones the schema as a file
  * copy and skips the multi-second migration replay per file.
+ *
+ * On SQLite, the same idea runs automatically via a machine-wide template file:
+ * see {@link getSqliteTemplate}.
  */
 export async function init() {
 	if (isInitialized) return;
@@ -58,14 +134,25 @@ export async function init() {
 	}
 
 	const dbConnection = Container.get(DbConnection);
+	const sqliteTemplate = dbType === 'sqlite' ? getSqliteTemplate(dbConnection.options) : undefined;
+	const restoredFromTemplate =
+		sqliteTemplate !== undefined && restoreSqliteTemplate(sqliteTemplate);
+
 	await dbConnection.init();
 
 	if (templateDb) {
 		// Template already carries migrations + seeded roles — just mark state.
 		dbConnection.connectionState.migrated = true;
 	} else {
+		// After a sqlite template restore both calls are fast no-ops: the copied
+		// migrations table satisfies the executor's by-name pending check, and the
+		// roles sync finds everything in place (healing any drift in role/scope
+		// definitions, which change without a migration).
 		await dbConnection.migrate();
 		await Container.get(AuthRolesService).init();
+		if (sqliteTemplate && !restoredFromTemplate) {
+			await saveSqliteTemplate(sqliteTemplate);
+		}
 	}
 
 	isInitialized = true;
