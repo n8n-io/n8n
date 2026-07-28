@@ -2,6 +2,7 @@ import type { UpdateWorkflowReviewRequestVersionDto } from '@n8n/api-types';
 import type { LicenseState, Logger } from '@n8n/backend-common';
 import type {
 	DbLockService,
+	ProjectRelationRepository,
 	SharedWorkflowRepository,
 	User,
 	UserRepository,
@@ -48,6 +49,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const userRepository = mock<UserRepository>();
+	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const roleService = mock<RoleService>();
 	const projectService = mock<ProjectService>();
 	const licenseState = mock<LicenseState>();
@@ -67,6 +69,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		authorRepository,
 		reviewerRepository,
 		userRepository,
+		projectRelationRepository,
 		roleService,
 		projectService,
 		licenseState,

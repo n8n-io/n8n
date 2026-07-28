@@ -44,6 +44,7 @@ const renderDialog = async (flushSave = vi.fn().mockResolvedValue('version-1')) 
 		...result,
 		flushSave,
 		reviewRequiredStore,
+		reviewStatusStore,
 		fetchStatusSpy,
 	};
 };
@@ -85,7 +86,7 @@ describe('WorkflowSubmitForReviewDialog', () => {
 	});
 
 	it('submits the flushed version and resets review required after success', async () => {
-		const { getByTestId, flushSave, reviewRequiredStore, fetchStatusSpy, emitted } =
+		const { getByTestId, flushSave, reviewRequiredStore, reviewStatusStore, emitted } =
 			await renderDialog();
 
 		await userEvent.type(getByTestId('workflow-review-title-input'), '  Review payments  ');
@@ -101,7 +102,8 @@ describe('WorkflowSubmitForReviewDialog', () => {
 		});
 		expect(flushSave).toHaveBeenCalledOnce();
 		expect(reviewRequiredStore.isReviewRequired('workflow-1')).toBe(false);
-		expect(fetchStatusSpy).toHaveBeenCalledWith('workflow-1');
+		expect(reviewStatusStore.hasOpenReview('workflow-1')).toBe(true);
+		expect(reviewStatusStore.openReviewRequest('workflow-1')?.id).toBe('review-1');
 		expect(emitted('submitted')).toHaveLength(1);
 		expect(emitted('update:open')).toContainEqual([false]);
 	});
@@ -174,6 +176,60 @@ describe('WorkflowSubmitForReviewDialog', () => {
 		expect(fetchStatusSpy).toHaveBeenCalledWith('workflow-1');
 		expect(reviewRequiredStore.isReviewRequired('workflow-1')).toBe(true);
 		expect(emitted('submitted')).toBeUndefined();
+		expect(mockShowError).not.toHaveBeenCalled();
+	});
+
+	it('discards the flushed version when the user navigates away during the save', async () => {
+		let resolveSave!: (versionId: string | undefined) => void;
+		const flushSave = vi.fn().mockReturnValue(
+			new Promise<string | undefined>((resolve) => {
+				resolveSave = resolve;
+			}),
+		);
+		const { getByTestId, rerender, emitted } = await renderDialog(flushSave);
+
+		await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
+		await userEvent.click(getByTestId('workflow-review-submit-button'));
+		await waitFor(() => expect(flushSave).toHaveBeenCalledOnce());
+
+		// Navigating swaps the prop in place; the save then resolves with the newly
+		// opened workflow's version, which must not be submitted for the pinned one.
+		await rerender({ open: true, workflowId: 'workflow-2', flushSave });
+		resolveSave('version-2');
+
+		await waitFor(() => expect(getByTestId('workflow-review-submit-button')).toBeEnabled());
+		expect(createWorkflowReviewRequest).not.toHaveBeenCalled();
+		expect(mockShowError).not.toHaveBeenCalled();
+		expect(emitted('submitted')).toBeUndefined();
+	});
+
+	it('ignores a stale conflict after navigating to another workflow', async () => {
+		let rejectCreate!: (error: unknown) => void;
+		vi.mocked(createWorkflowReviewRequest).mockImplementation(
+			async () =>
+				await new Promise((_resolve, reject) => {
+					rejectCreate = reject;
+				}),
+		);
+		const flushSave = vi.fn().mockResolvedValue('version-1');
+		const { getByTestId, rerender, fetchStatusSpy, emitted } = await renderDialog(flushSave);
+
+		await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
+		await userEvent.click(getByTestId('workflow-review-submit-button'));
+		await waitFor(() => expect(createWorkflowReviewRequest).toHaveBeenCalledOnce());
+
+		await rerender({ open: true, workflowId: 'workflow-2', flushSave });
+		rejectCreate(
+			new ResponseError('Conflict', {
+				httpStatusCode: 409,
+				meta: { workflowReviewRequestId: 'existing-review' },
+			}),
+		);
+
+		// The conflict is still real info about the pinned workflow, so its status is
+		// refetched — but the update-review dialog must not open for the current one.
+		await waitFor(() => expect(fetchStatusSpy).toHaveBeenCalledWith('workflow-1'));
+		expect(emitted('conflict')).toBeUndefined();
 		expect(mockShowError).not.toHaveBeenCalled();
 	});
 
