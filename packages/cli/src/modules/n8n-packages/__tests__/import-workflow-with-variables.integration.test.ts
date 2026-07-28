@@ -6,12 +6,13 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { VariablesRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
 import { LicenseMocker } from '@test-integration/license';
@@ -549,8 +550,7 @@ describe('workflow package import — with variables', () => {
 			expect(await workflowRepository.count()).toBe(workflowsBefore);
 		});
 
-		it('rejects the import when variables are not licensed', async () => {
-			licenseMocker.disable('feat:variables');
+		it('creates the stub for an API key carrying variable:create', async () => {
 			const owner = await createOwner();
 			const sourceProject = await createTeamProject('Source', owner);
 			const targetProject = await createTeamProject('Target', owner);
@@ -562,19 +562,17 @@ describe('workflow package import — with variables', () => {
 			});
 
 			const packageBuffer = await exportWorkflowPackage(owner, workflow.id);
-			const workflowsBefore = await workflowRepository.count();
 
-			await expect(
-				importPackage({
-					user: owner,
-					projectId: targetProject.id,
-					packageBuffer,
-					variableMissingMode: 'create-stub',
-				}),
-			).rejects.toThrow(/license does not allow variables/);
+			const result = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer,
+				apiKeyScopes: ['workflow:import', 'variable:create'],
+				variableMissingMode: 'create-stub',
+			});
 
-			expect(await workflowRepository.count()).toBe(workflowsBefore);
-			expect(await variablesInProject(targetProject.id)).toEqual([]);
+			expect(result.variables).toEqual({ matched: [], missing: [], stubbed: ['API_URL'] });
+			expect(await variablesInProject(targetProject.id)).toHaveLength(1);
 		});
 
 		it('does not create a stub when the variable already resolves in the target project', async () => {
@@ -652,6 +650,147 @@ describe('workflow package import — with variables', () => {
 
 			expect(await workflowRepository.count()).toBe(workflowsBefore);
 			expect(await variablesInProject(targetProject.id)).toEqual([]);
+		});
+
+		it('writes no workflow when the stub fails a quota the preflight had cleared', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Source', owner);
+			const targetProject = await createTeamProject('Target', owner);
+			await createProjectVariable('API_URL', 'https://source.example.com', sourceProject);
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow with vars',
+				project: sourceProject,
+				variableNames: ['API_URL'],
+			});
+
+			const packageBuffer = await exportWorkflowPackage(owner, workflow.id);
+			const workflowsBefore = await workflowRepository.count();
+			// Stands in for a concurrent writer taking the last slot after the preflight passed:
+			// variables are applied first precisely so this leaves nothing half-imported.
+			vi.spyOn(variablesService, 'create').mockRejectedValueOnce(
+				new VariableCountLimitReachedError('Variables limit reached'),
+			);
+
+			await expect(
+				importPackage({
+					user: owner,
+					projectId: targetProject.id,
+					packageBuffer,
+					variableMissingMode: 'create-stub',
+				}),
+			).rejects.toThrow('Variables limit reached');
+
+			expect(await workflowRepository.count()).toBe(workflowsBefore);
+			expect(await variablesInProject(targetProject.id)).toEqual([]);
+		});
+	});
+
+	describe('variables licence gate', () => {
+		beforeEach(() => {
+			licenseMocker.reset();
+			licenseMocker.enable('feat:variables');
+		});
+
+		/** A workflow referencing API_URL, packaged, with the name resolvable in the target. */
+		async function resolvablePackage(owner: User, targetProject: Project) {
+			const sourceProject = await createTeamProject('Source', owner);
+			await createProjectVariable('API_URL', 'https://source.example.com', sourceProject);
+			await createProjectVariable('API_URL', 'https://target.example.com', targetProject);
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow with vars',
+				project: sourceProject,
+				variableNames: ['API_URL'],
+			});
+			return await exportWorkflowPackage(owner, workflow.id);
+		}
+
+		it('rejects a create-stub import when variables are not licensed', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Source', owner);
+			const targetProject = await createTeamProject('Target', owner);
+			await createProjectVariable('API_URL', 'https://source.example.com', sourceProject);
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow with vars',
+				project: sourceProject,
+				variableNames: ['API_URL'],
+			});
+
+			const packageBuffer = await exportWorkflowPackage(owner, workflow.id);
+			const workflowsBefore = await workflowRepository.count();
+			licenseMocker.disable('feat:variables');
+
+			await expect(
+				importPackage({
+					user: owner,
+					projectId: targetProject.id,
+					packageBuffer,
+					variableMissingMode: 'create-stub',
+				}),
+			).rejects.toThrow(/license does not allow variables/);
+
+			expect(await workflowRepository.count()).toBe(workflowsBefore);
+			expect(await variablesInProject(targetProject.id)).toEqual([]);
+		});
+
+		it.each(['do-nothing', 'must-preexist'] as const)(
+			'imports under %s without a variables licence, since neither mode creates anything',
+			async (variableMissingMode) => {
+				const owner = await createOwner();
+				const targetProject = await createTeamProject('Target', owner);
+				const packageBuffer = await resolvablePackage(owner, targetProject);
+				licenseMocker.disable('feat:variables');
+
+				const result = await importPackage({
+					user: owner,
+					projectId: targetProject.id,
+					packageBuffer,
+					variableMissingMode,
+				});
+
+				expect(result.workflows[0].status).toBe('created');
+				expect(result.variables).toEqual({ matched: ['API_URL'], missing: [], stubbed: [] });
+			},
+		);
+
+		it('imports a variable-free package under create-stub without a variables licence', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Source', owner);
+			const targetProject = await createTeamProject('Target', owner);
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow without vars',
+				project: sourceProject,
+				variableNames: [],
+			});
+
+			const packageBuffer = await exportWorkflowPackage(owner, workflow.id);
+			licenseMocker.disable('feat:variables');
+
+			const result = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer,
+				variableMissingMode: 'create-stub',
+			});
+
+			expect(result.workflows[0].status).toBe('created');
+			expect(result.variables).toEqual({ matched: [], missing: [], stubbed: [] });
+		});
+
+		it('names the licence, not the API key scope, when an unlicensed key also lacks variable:create', async () => {
+			const owner = await createOwner();
+			const targetProject = await createTeamProject('Target', owner);
+			const packageBuffer = await resolvablePackage(owner, targetProject);
+			licenseMocker.disable('feat:variables');
+
+			await expect(
+				importPackage({
+					user: owner,
+					projectId: targetProject.id,
+					packageBuffer,
+					apiKeyScopes: ['workflow:import'],
+					variableMissingMode: 'create-stub',
+				}),
+			).rejects.toThrow(/license does not allow variables/);
 		});
 	});
 });
