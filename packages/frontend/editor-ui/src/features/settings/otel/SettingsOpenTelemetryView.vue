@@ -22,6 +22,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useOtelStore, headersStringToPairs, headersPairsToString } from './otel.store';
 import { OTEL_FIELD_ENV_VARS, OTEL_TEST_SPAN_NAME } from './otel.constants';
+import { createSampleRateFormat } from './otel.utils';
 import OtelSettingsRow from './OtelSettingsRow.vue';
 import OtelStatusControl from './OtelStatusControl.vue';
 
@@ -206,30 +207,21 @@ const canTestTrace = computed(
  * could never be guaranteed to match. Formatting both the input display and the
  * copy through the same Intl formatter makes them consistent by construction.
  */
-const rateFormatter = new Intl.NumberFormat(undefined, {
-	minimumFractionDigits: 2,
-	maximumFractionDigits: 4,
-});
-const sampleRateMax = rateFormatter.format(1);
+const sampleRateFormat = createSampleRateFormat();
+const sampleRateMax = sampleRateFormat.format(1);
 
 const sampleRateInput = ref('');
 const connectivityTimeoutInput = ref('');
 
 function syncSampleRateInput() {
-	sampleRateInput.value = rateFormatter.format(otelStore.settings.tracesSampleRate);
+	sampleRateInput.value = sampleRateFormat.format(otelStore.settings.tracesSampleRate);
 }
 
 function syncConnectivityTimeoutInput() {
 	connectivityTimeoutInput.value = String(otelStore.settings.startupConnectivityTimeoutMs);
 }
 
-/** Parse a rate accepting both decimal separators; null when not a number (incl. empty). */
-function parseSampleRate(text: string): number | null {
-	const trimmed = text.trim();
-	if (!trimmed) return null;
-	const parsed = Number(trimmed.replace(',', '.'));
-	return Number.isFinite(parsed) ? Math.min(1, Math.max(0, parsed)) : null;
-}
+const parseSampleRate = sampleRateFormat.parse;
 
 function parseConnectivityTimeout(text: string): number | null {
 	const trimmed = text.trim();
