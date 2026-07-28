@@ -14,6 +14,17 @@ export class McpModule implements ModuleInterface {
 	async init() {
 		await import('./mcp.controller.js');
 		await import('./mcp.settings.controller.js');
+		if (process.env.NODE_ENV !== 'production' && process.env.N8N_NODE_MCP_POC_ENABLED === 'true') {
+			await import('../node-mcp-poc/node-mcp-poc.controller.js');
+			const { NodeMcpPocRegistry } = await import(
+				'../node-mcp-poc/json-schema/node-mcp-poc.registry.js'
+			);
+			Container.get(NodeMcpPocRegistry).initialize();
+			const { VisibleActionCatalogRegistry } = await import(
+				'../node-mcp-poc/action-lookup/visible-action-catalog.js'
+			);
+			Container.get(VisibleActionCatalogRegistry).initialize();
+		}
 
 		// Register the instance MCP server as a protected resource of the shared
 		// OAuth server, so its tokens are minted and verified with the right

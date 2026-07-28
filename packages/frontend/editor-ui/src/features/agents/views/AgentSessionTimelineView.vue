@@ -371,6 +371,35 @@ function onSessionSelect(nextThreadId: string) {
 		params: { projectId: projectId.value, agentId: agentId.value, threadId: nextThreadId },
 	});
 }
+
+function downloadSessionJson() {
+	if (!thread.value) return;
+
+	const blob = new Blob(
+		[
+			`${JSON.stringify(
+				{
+					thread: thread.value,
+					executions: executions.value,
+				},
+				null,
+				2,
+			)}\n`,
+		],
+		{ type: 'application/json' },
+	);
+	const url = URL.createObjectURL(blob);
+	const name =
+		sessionTitle.value.trim().replace(/[\\/:*?"<>|]+/g, '-') || `session-${threadId.value}`;
+	const link = Object.assign(document.createElement('a'), {
+		href: url,
+		download: `${name}.json`,
+	});
+	document.body.appendChild(link);
+	link.click();
+	link.remove();
+	URL.revokeObjectURL(url);
+}
 </script>
 
 <template>
@@ -388,6 +417,7 @@ function onSessionSelect(nextThreadId: string) {
 			:duration-label="durationLabel"
 			@breadcrumb-select="onBreadcrumbSelect"
 			@session-select="onSessionSelect"
+			@download="downloadSessionJson"
 			@close="closeTimeline"
 		/>
 

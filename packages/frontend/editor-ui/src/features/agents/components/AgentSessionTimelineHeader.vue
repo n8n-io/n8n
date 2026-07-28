@@ -25,6 +25,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'breadcrumb-select': [item: PathItem];
 	'session-select': [sessionId: string];
+	download: [];
 	close: [];
 }>();
 
@@ -88,6 +89,15 @@ const i18n = useI18n();
 				<N8nIcon icon="clock" :size="12" />
 				<span>{{ props.durationLabel }}</span>
 			</span>
+			<N8nButton
+				variant="ghost"
+				size="small"
+				data-testid="agent-session-timeline-download"
+				@click="emit('download')"
+			>
+				<N8nIcon icon="download" :size="14" />
+				{{ i18n.baseText('agentSessions.timeline.downloadJson') }}
+			</N8nButton>
 			<N8nButton
 				variant="ghost"
 				icon-only
