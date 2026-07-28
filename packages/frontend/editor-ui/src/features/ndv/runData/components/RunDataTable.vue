@@ -2,7 +2,7 @@
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { INodeUi, IRunDataDisplayMode, ITableData } from '@/Interface';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { getMappedExpression } from '@/app/utils/mappingUtils';
 import { getPairedItemId } from '@/app/utils/pairedItemUtils';
@@ -76,7 +76,7 @@ const draggableRef = ref<DraggableRef>();
 const fixedColumnWidths = ref<number[] | undefined>();
 
 const ndvStore = injectNDVStore();
-const workflowsStore = useWorkflowsStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const i18n = useI18n();
@@ -90,7 +90,9 @@ const highlight = computed(() => ndvStore.value.highlightDraggables);
 
 const canDraggableDrop = computed(() => ndvStore.value.canDraggableDrop);
 const draggableStickyPosition = computed(() => ndvStore.value.draggableStickyPos);
-const pairedItemMappings = computed(() => workflowsStore.workflowExecutionPairedItemMappings);
+const pairedItemMappings = computed(
+	() => workflowExecutionStateStore.value.activeExecutionPairedItemMappings,
+);
 const tableData = computed(() => convertToTable(props.inputData));
 const collapsingColumnIndex = computed(() => {
 	if (!props.collapsingColumnName) {

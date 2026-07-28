@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -13,8 +13,15 @@ import type { PersistedWorkflowPlanItem } from './workflow-import.types';
 import { decideWorkflowPublishingAction } from './workflow-publishing-policy';
 import {
 	WorkflowPublishingPolicy,
+	type WorkflowPublishingBlockedReason,
 	type WorkflowPublishingContext,
+	type WorkflowPublishingOutcome,
 } from './workflow-publishing-policy.types';
+
+export interface WorkflowPublishingResult {
+	workflow: WorkflowEntity;
+	publishing: WorkflowPublishingOutcome;
+}
 
 /**
  * Owns the publish lifecycle of imported workflows: an upfront permission check for
@@ -34,13 +41,22 @@ export class WorkflowPublisher {
 	 * Fail the import before any writes when {@link WorkflowPublishingPolicy.PublishAll}
 	 * is selected and the actor lacks `workflow:publish`. Other policies skip this check;
 	 * publish permission is checked per workflow in workflowService
+	 *
+	 * `projectPendingCreation` lets this run before the target project exists: a project the
+	 * user is importing as new will be created with them as admin, so they can always publish
+	 * in it and there is nothing to look up yet.
 	 */
 	async assertCanPublish(
 		user: User,
 		projectId: string,
 		policy: WorkflowPublishingPolicy,
+		projectPendingCreation = false,
 	): Promise<void> {
 		if (policy !== WorkflowPublishingPolicy.PublishAll) {
+			return;
+		}
+
+		if (projectPendingCreation) {
 			return;
 		}
 
@@ -66,34 +82,62 @@ export class WorkflowPublisher {
 		item: PersistedWorkflowPlanItem,
 		workflow: WorkflowEntity,
 		policy: WorkflowPublishingPolicy,
-	): Promise<WorkflowEntity> {
+		publishBlocked: ReadonlyMap<string, WorkflowPublishingBlockedReason>,
+	): Promise<WorkflowPublishingResult> {
 		const action = decideWorkflowPublishingAction(policy, toPublishingContext(item, workflow));
 
 		if (action === 'noop') {
-			return workflow;
+			return { workflow, publishing: { state: 'unchanged' } };
+		}
+
+		const blockedReason = publishBlocked.get(item.sourceWorkflowId);
+		if (action === 'publish' && blockedReason) {
+			// A prior published version may still be active after an update; report
+			// that the live publish state is unchanged rather than "blocked".
+			if (workflow.activeVersionId) {
+				return {
+					workflow,
+					publishing: {
+						state: 'unchanged',
+						skippedPublishReason: blockedReason,
+					},
+				};
+			}
+
+			return {
+				workflow,
+				publishing: { state: 'blocked', blockedReason },
+			};
 		}
 
 		try {
 			if (action === 'publish') {
-				return await this.workflowService.activateWorkflow(user, workflow.id, {
-					versionId: workflow.versionId,
-					source: 'import',
-				});
+				return {
+					workflow: await this.workflowService.activateWorkflow(user, workflow.id, {
+						versionId: workflow.versionId,
+						source: 'import',
+					}),
+					publishing: { state: 'published' },
+				};
 			}
 
-			return await this.workflowService.deactivateWorkflow(user, workflow.id, {
-				source: 'import',
-			});
+			return {
+				workflow: await this.workflowService.deactivateWorkflow(user, workflow.id, {
+					source: 'import',
+				}),
+				publishing: { state: 'unpublished' },
+			};
 		} catch (error) {
 			// Content import already succeeded; a publish/unpublish failure (e.g. a
 			// triggerless workflow under `publish-all`) must not fail the import.
 			// Keep the post-save state and surface the reason for diagnostics.
+			const message = ensureError(error).message;
 			this.logger.warn('Failed to apply publishing policy to imported workflow', {
 				workflowId: workflow.id,
 				action,
-				error: ensureError(error).message,
+				error: message,
 			});
-			return workflow;
+			return { workflow, publishing: { state: 'failed', error: message } };
 		}
 	}
 }

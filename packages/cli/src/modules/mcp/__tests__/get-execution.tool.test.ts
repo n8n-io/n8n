@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionRepository, User } from '@n8n/db';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Telemetry } from '@/telemetry';
@@ -28,7 +29,7 @@ describe('get-execution MCP tool', () => {
 		executionPersistence = mockInstance(ExecutionPersistence);
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		telemetry = mockInstance(Telemetry, {
-			track: jest.fn(),
+			track: vi.fn(),
 		});
 	});
 
@@ -61,8 +62,8 @@ describe('get-execution MCP tool', () => {
 					telemetry,
 				);
 
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findIfAccessible as jest.Mock).mockResolvedValue(null);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+				(executionRepository.findIfAccessible as Mock).mockResolvedValue(null);
 
 				const result = await tool.handler(
 					{
@@ -105,8 +106,8 @@ describe('get-execution MCP tool', () => {
 					waitTill: null,
 				};
 
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findIfAccessible as jest.Mock).mockResolvedValue(mockExecution);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+				(executionRepository.findIfAccessible as Mock).mockResolvedValue(mockExecution);
 
 				const result = await tool.handler(
 					{
@@ -153,10 +154,8 @@ describe('get-execution MCP tool', () => {
 					data: mockExecutionData,
 				};
 
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionPersistence.findWithUnflattenedData as jest.Mock).mockResolvedValue(
-					mockExecution,
-				);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+				(executionPersistence.findWithUnflattenedData as Mock).mockResolvedValue(mockExecution);
 
 				const result = await tool.handler(
 					{
@@ -257,10 +256,8 @@ describe('get-execution MCP tool', () => {
 					data: mockExecutionData,
 				};
 
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionPersistence.findWithUnflattenedData as jest.Mock).mockResolvedValue(
-					mockExecution,
-				);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+				(executionPersistence.findWithUnflattenedData as Mock).mockResolvedValue(mockExecution);
 
 				const result = await tool.handler(
 					{
@@ -314,10 +311,8 @@ describe('get-execution MCP tool', () => {
 					data: mockExecutionData,
 				};
 
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionPersistence.findWithUnflattenedData as jest.Mock).mockResolvedValue(
-					mockExecution,
-				);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+				(executionPersistence.findWithUnflattenedData as Mock).mockResolvedValue(mockExecution);
 
 				const result = await tool.handler(
 					{
@@ -331,7 +326,7 @@ describe('get-execution MCP tool', () => {
 				);
 
 				const data = (result.structuredContent as Record<string, unknown>).data as {
-					resultData: { runData: Record<string, { data: { main: unknown[][] } }[]> };
+					resultData: { runData: Record<string, Array<{ data: { main: unknown[][] } }>> };
 				};
 				expect(data.resultData.runData.Node1[0].data.main[0]).toHaveLength(2);
 			});
@@ -380,10 +375,8 @@ describe('get-execution MCP tool', () => {
 					data: mockExecutionData,
 				};
 
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionPersistence.findWithUnflattenedData as jest.Mock).mockResolvedValue(
-					mockExecution,
-				);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+				(executionPersistence.findWithUnflattenedData as Mock).mockResolvedValue(mockExecution);
 
 				const result = await tool.handler(
 					{
@@ -397,7 +390,7 @@ describe('get-execution MCP tool', () => {
 				);
 
 				const data = (result.structuredContent as Record<string, unknown>).data as {
-					resultData: { runData: Record<string, { data: { main: unknown[][] } }[]> };
+					resultData: { runData: Record<string, Array<{ data: { main: unknown[][] } }>> };
 				};
 				expect(Object.keys(data.resultData.runData)).toEqual(['Node1']);
 				expect(data.resultData.runData.Node1[0].data.main[0]).toHaveLength(2);
@@ -437,10 +430,8 @@ describe('get-execution MCP tool', () => {
 					data: mockExecutionData,
 				};
 
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionPersistence.findWithUnflattenedData as jest.Mock).mockResolvedValue(
-					mockExecution,
-				);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+				(executionPersistence.findWithUnflattenedData as Mock).mockResolvedValue(mockExecution);
 
 				const result = await tool.handler(
 					{
@@ -496,10 +487,8 @@ describe('get-execution MCP tool', () => {
 					data: mockExecutionData,
 				};
 
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionPersistence.findWithUnflattenedData as jest.Mock).mockResolvedValue(
-					mockExecution,
-				);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+				(executionPersistence.findWithUnflattenedData as Mock).mockResolvedValue(mockExecution);
 
 				const result = await tool.handler(
 					{
@@ -566,10 +555,8 @@ describe('get-execution MCP tool', () => {
 					data: mockExecutionData,
 				};
 
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionPersistence.findWithUnflattenedData as jest.Mock).mockResolvedValue(
-					mockExecution,
-				);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+				(executionPersistence.findWithUnflattenedData as Mock).mockResolvedValue(mockExecution);
 
 				const result = await tool.handler(
 					{
@@ -610,10 +597,8 @@ describe('get-execution MCP tool', () => {
 					data: null,
 				};
 
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionPersistence.findWithUnflattenedData as jest.Mock).mockResolvedValue(
-					mockExecution,
-				);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+				(executionPersistence.findWithUnflattenedData as Mock).mockResolvedValue(mockExecution);
 
 				const result = await tool.handler(
 					{
@@ -652,8 +637,8 @@ describe('get-execution MCP tool', () => {
 					waitTill: null,
 				};
 
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findIfAccessible as jest.Mock).mockResolvedValue(mockExecution);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+				(executionRepository.findIfAccessible as Mock).mockResolvedValue(mockExecution);
 
 				const result = await tool.handler(
 					{
@@ -692,8 +677,8 @@ describe('get-execution MCP tool', () => {
 					waitTill: null,
 				};
 
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findIfAccessible as jest.Mock).mockResolvedValue(mockExecution);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+				(executionRepository.findIfAccessible as Mock).mockResolvedValue(mockExecution);
 
 				const result = await tool.handler(
 					{
@@ -753,10 +738,8 @@ describe('get-execution MCP tool', () => {
 					data: mockExecutionData,
 				};
 
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionPersistence.findWithUnflattenedData as jest.Mock).mockResolvedValue(
-					mockExecution,
-				);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+				(executionPersistence.findWithUnflattenedData as Mock).mockResolvedValue(mockExecution);
 
 				const result = await tool.handler(
 					{
@@ -800,8 +783,8 @@ describe('get-execution MCP tool', () => {
 					waitTill: waitTillDate,
 				};
 
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findIfAccessible as jest.Mock).mockResolvedValue(mockExecution);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+				(executionRepository.findIfAccessible as Mock).mockResolvedValue(mockExecution);
 
 				const result = await tool.handler(
 					{

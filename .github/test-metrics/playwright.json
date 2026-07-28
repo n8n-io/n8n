@@ -1,7 +1,7 @@
 {
   "updatedAt": "2026-05-30T21:09:56.531Z",
   "source": "currents",
-  "projectId": "LRxcNt",
+  "projectId": "nHHLA5",
   "specs": {
     "tests/e2e/workflows/editor/canvas/actions.spec.ts": {
       "avgDuration": 147589,

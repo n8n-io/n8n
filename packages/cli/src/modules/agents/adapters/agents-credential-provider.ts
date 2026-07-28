@@ -28,7 +28,9 @@ export class AgentsCredentialProvider implements CredentialProvider {
 	/**
 	 * Resolve a credential by ID, then decrypt and return the raw data.
 	 *
-	 * Only credentials visible to this provider's scope are considered.
+	 * Only credentials visible to this provider's scope are considered — the
+	 * same user-scoped intersection as `list()` when a request user is set, so
+	 * a user can never decrypt a credential they wouldn't see listed.
 	 */
 	async resolve(credentialId: string): Promise<ResolvedCredential> {
 		const credential = await this.findCredentialEntity(credentialId);
@@ -46,15 +48,7 @@ export class AgentsCredentialProvider implements CredentialProvider {
 	 */
 	async list(): Promise<CredentialListItem[]> {
 		if (this.user) {
-			// this fetches intersection of project and global credentials the user has access to
-			// credentials available to project but not user are not listed
-			// used to limit available credentials to the user's access when calling agent builder
-			const accessible = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
-				this.user,
-				{
-					projectId: this.projectId,
-				},
-			);
+			const accessible = await this.getUserAccessibleCredentials();
 
 			return accessible.map((c) => ({
 				id: c.id,
@@ -74,8 +68,25 @@ export class AgentsCredentialProvider implements CredentialProvider {
 	}
 
 	private async findCredentialEntity(credentialId: string): Promise<CredentialsEntity | null> {
+		if (this.user) {
+			// Same user-scoped intersection as list() — a credential the project
+			// or global scope allows but this user can't see must not resolve.
+			const userAccessible = await this.getUserAccessibleCredentials();
+			if (!userAccessible.some((c) => c.id === credentialId)) return null;
+		}
+
 		const accessible = await this.getAllProjectAndGlobalCredentials();
 		return accessible.find((c) => c.id === credentialId) ?? null;
+	}
+
+	private async getUserAccessibleCredentials() {
+		if (!this.user) return [];
+		// this fetches intersection of project and global credentials the user has access to
+		// credentials available to project but not user are not listed
+		// used to limit available credentials to the user's access when calling agent builder
+		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(this.user, {
+			projectId: this.projectId,
+		});
 	}
 
 	private async getAllProjectAndGlobalCredentials(): Promise<CredentialsEntity[]> {

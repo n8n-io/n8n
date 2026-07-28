@@ -880,3 +880,48 @@ describe('RelayConnection', () => {
 		});
 	});
 });
+
+describe('RelayConnection keepalive', () => {
+	let ws: MockWebSocket;
+	let relay: RelayConnection;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.useFakeTimers();
+		ws = new MockWebSocket();
+		relay = new RelayConnection(ws as unknown as WebSocket);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('sends keepalive frames on an interval while the socket is open', () => {
+		expect(ws.sent).toHaveLength(0);
+
+		vi.advanceTimersByTime(15_000);
+		expect(ws.sent).toHaveLength(1);
+		expect(parseSent(ws)).toEqual({ method: 'keepalive' });
+
+		vi.advanceTimersByTime(15_000);
+		expect(ws.sent).toHaveLength(2);
+	});
+
+	it('stops sending keepalive frames after the connection closes', () => {
+		vi.advanceTimersByTime(15_000);
+		expect(ws.sent).toHaveLength(1);
+
+		relay.close('done');
+		ws.sent.length = 0;
+
+		vi.advanceTimersByTime(45_000);
+		expect(ws.sent).toHaveLength(0);
+	});
+
+	it('does not send keepalive frames while the socket is not open', () => {
+		ws.readyState = MockWebSocket.CLOSED;
+
+		vi.advanceTimersByTime(15_000);
+		expect(ws.sent).toHaveLength(0);
+	});
+});

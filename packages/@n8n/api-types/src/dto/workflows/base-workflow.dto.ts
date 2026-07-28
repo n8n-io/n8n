@@ -1,3 +1,4 @@
+import { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
 import type { IPinData, IConnections, IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -98,6 +99,12 @@ const workflowGroupSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
 	nodeIds: z.array(z.string().min(1)),
+	description: z
+		.string()
+		.max(GROUP_DESCRIPTION_MAX_LENGTH, {
+			message: `Group description must be ${GROUP_DESCRIPTION_MAX_LENGTH} characters or less`,
+		})
+		.optional(),
 });
 
 export const workflowNodeGroupsSchema = z.array(workflowGroupSchema);
@@ -120,9 +127,12 @@ export const baseWorkflowShape = {
 	nodeGroups: workflowNodeGroupsSchema.optional(),
 	hash: z.string().optional(),
 
-	// Folder organization
+	// Folder organization.
+	// `parentFolder` (the relation object) is intentionally NOT accepted as input: workflow
+	// placement is controlled solely via `parentFolderId`, which is validated against the target
+	// project. Any `parentFolder` a client sends is stripped by this schema and never
+	// mass-assigned — the workflow entity is built from an allowlist (workflow-entity-mapper.ts).
 	parentFolderId: z.string().optional(),
-	parentFolder: z.object({ id: z.string(), name: z.string() }).nullable().optional(),
 
 	// Tags
 	tags: z

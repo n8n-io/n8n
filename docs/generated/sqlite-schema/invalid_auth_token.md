@@ -15,15 +15,15 @@ CREATE TABLE "invalid_auth_token" ("token" varchar(512) PRIMARY KEY NOT NULL, "e
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| token | varchar(512) |  | false |  |  |  |
 | expiresAt | datetime(3) |  | false |  |  |  |
+| token | varchar(512) |  | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| token | PRIMARY KEY | PRIMARY KEY (token) |
 | sqlite_autoindex_invalid_auth_token_1 | PRIMARY KEY | PRIMARY KEY (token) |
+| token | PRIMARY KEY | PRIMARY KEY (token) |
 
 ## Indexes
 
@@ -38,8 +38,8 @@ erDiagram
 
 
 "invalid_auth_token" {
-  varchar_512_ token PK
   datetime_3_ expiresAt
+  varchar_512_ token PK
 }
 ```
 

@@ -1,5 +1,5 @@
-import { mock } from 'jest-mock-extended';
-import type { MockProxy } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 import type { IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
 import { NodeOperationError, NodeApiError } from 'n8n-workflow';
 
@@ -16,26 +16,27 @@ import {
 } from '../../helpers/utils';
 import { searchUsers } from '../../methods/listSearch';
 import { awsApiRequest, awsApiRequestAllItems } from '../../transport/index';
+import type { Mock } from 'vitest';
 
-jest.mock('../../transport/index', () => ({
-	awsApiRequest: jest.fn(),
-	awsApiRequestAllItems: jest.fn(),
+vi.mock('../../transport/index', () => ({
+	awsApiRequest: vi.fn(),
+	awsApiRequestAllItems: vi.fn(),
 }));
 
-jest.mock('../../methods/listSearch', () => ({
-	searchUsers: jest.fn(),
+vi.mock('../../methods/listSearch', () => ({
+	searchUsers: vi.fn(),
 }));
 
 describe('AWS Cognito - Helpers functions', () => {
 	let loadOptionsFunctions: MockProxy<IExecuteSingleFunctions>;
-	let mockRequestWithAuthentication: jest.Mock;
-	let mockReturnJsonArray: jest.Mock;
+	let mockRequestWithAuthentication: Mock;
+	let mockReturnJsonArray: Mock;
 	let requestOptions: IHttpRequestOptions;
 
 	beforeEach(() => {
 		loadOptionsFunctions = mock<IExecuteSingleFunctions>();
-		mockRequestWithAuthentication = jest.fn();
-		mockReturnJsonArray = jest.fn();
+		mockRequestWithAuthentication = vi.fn();
+		mockReturnJsonArray = vi.fn();
 		loadOptionsFunctions.helpers.httpRequestWithAuthentication = mockRequestWithAuthentication;
 		loadOptionsFunctions.helpers.returnJsonArray = mockReturnJsonArray;
 		loadOptionsFunctions.getCredentials.mockResolvedValue({
@@ -46,7 +47,7 @@ describe('AWS Cognito - Helpers functions', () => {
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('getUserPool', () => {
@@ -60,7 +61,7 @@ describe('AWS Cognito - Helpers functions', () => {
 				},
 			};
 
-			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
+			(awsApiRequest as Mock).mockResolvedValue(mockResponse);
 
 			const userPool = await getUserPool.call(loadOptionsFunctions, userPoolId);
 
@@ -76,7 +77,7 @@ describe('AWS Cognito - Helpers functions', () => {
 		it('should throw an error if user pool is not found', async () => {
 			const userPoolId = 'invalid-user-pool-id';
 
-			(awsApiRequest as jest.Mock).mockResolvedValue({});
+			(awsApiRequest as Mock).mockResolvedValue({});
 
 			await expect(getUserPool.call(loadOptionsFunctions, userPoolId)).rejects.toThrowError(
 				NodeOperationError,
@@ -94,8 +95,8 @@ describe('AWS Cognito - Helpers functions', () => {
 		});
 
 		it('should return an empty list if no users are found', async () => {
-			(loadOptionsFunctions.getNodeParameter as jest.Mock).mockReturnValue('userPoolId');
-			(awsApiRequestAllItems as jest.Mock).mockResolvedValue([]);
+			(loadOptionsFunctions.getNodeParameter as Mock).mockReturnValue('userPoolId');
+			(awsApiRequestAllItems as Mock).mockResolvedValue([]);
 
 			const result = await getUsersInGroup.call(loadOptionsFunctions, 'groupName', 'userPoolId');
 			expect(result).toEqual([]);
@@ -115,7 +116,7 @@ describe('AWS Cognito - Helpers functions', () => {
 				},
 			];
 
-			(awsApiRequestAllItems as jest.Mock).mockResolvedValue(mockUsers);
+			(awsApiRequestAllItems as Mock).mockResolvedValue(mockUsers);
 
 			const result = await getUsersInGroup.call(loadOptionsFunctions, 'groupName', 'userPoolId');
 			expect(result).toEqual([
@@ -151,7 +152,7 @@ describe('AWS Cognito - Helpers functions', () => {
 				},
 			];
 
-			(awsApiRequestAllItems as jest.Mock).mockResolvedValue(mockUsers);
+			(awsApiRequestAllItems as Mock).mockResolvedValue(mockUsers);
 
 			const result = await getUsersInGroup.call(loadOptionsFunctions, 'groupName', 'userPoolId');
 			expect(result).toEqual([
@@ -315,7 +316,7 @@ describe('AWS Cognito - Helpers functions', () => {
 				Users: [{ Username: 'existing-user' }],
 			};
 
-			(awsApiRequest as jest.Mock).mockResolvedValue(mockApiResponse);
+			(awsApiRequest as Mock).mockResolvedValue(mockApiResponse);
 
 			const result = await getUserNameFromExistingUsers.call(
 				loadOptionsFunctions,
@@ -333,7 +334,7 @@ describe('AWS Cognito - Helpers functions', () => {
 				Users: [],
 			};
 
-			(awsApiRequest as jest.Mock).mockResolvedValue(mockApiResponse);
+			(awsApiRequest as Mock).mockResolvedValue(mockApiResponse);
 
 			const result = await getUserNameFromExistingUsers.call(
 				loadOptionsFunctions,
@@ -364,7 +365,7 @@ describe('AWS Cognito - Helpers functions', () => {
 				headers: {},
 			};
 
-			(awsApiRequest as jest.Mock).mockResolvedValue({
+			(awsApiRequest as Mock).mockResolvedValue({
 				UserPool: { UsernameAttributes: ['email'] },
 			});
 
@@ -393,11 +394,11 @@ describe('AWS Cognito - Helpers functions', () => {
 				return undefined;
 			});
 
-			(awsApiRequest as jest.Mock).mockResolvedValue({
+			(awsApiRequest as Mock).mockResolvedValue({
 				UserPool: { UsernameAttributes: ['email'] },
 			});
 
-			(searchUsers as jest.Mock).mockResolvedValue({
+			(searchUsers as Mock).mockResolvedValue({
 				results: [{ name: 'existing-user', value: 'existing-user' }],
 			});
 
@@ -425,11 +426,11 @@ describe('AWS Cognito - Helpers functions', () => {
 				return undefined;
 			});
 
-			(awsApiRequest as jest.Mock).mockResolvedValue({
+			(awsApiRequest as Mock).mockResolvedValue({
 				UserPool: { UsernameAttributes: ['email'] },
 			});
 
-			(searchUsers as jest.Mock).mockResolvedValue({
+			(searchUsers as Mock).mockResolvedValue({
 				results: [],
 			});
 

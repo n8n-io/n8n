@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
+import { positiveIntSchema } from '../schemas';
 
 /** Schema for sample rates (0.0 to 1.0). */
 export const sampleRateSchema = z.number({ coerce: true }).min(0).max(1);
@@ -36,6 +37,26 @@ export class SentryConfig {
 	profilesSampleRate: number = 0;
 
 	/**
+	 * Spans (`db`, `http.client`) shorter than this and not errored are dropped
+	 * before being sent to Sentry, to cut auto-instrumentation trace volume
+	 * while keeping slow/failed operations. In milliseconds.
+	 *
+	 * @default 1000
+	 */
+	@Env('N8N_SENTRY_TRACES_SLOW_SPAN_THRESHOLD_MS', z.number({ coerce: true }).int().positive())
+	tracesSlowSpanThresholdMs: number = 1000;
+
+	/**
+	 * Sample rate (0.0 to 1.0) for successful production webhook transaction
+	 * traces. These are by far the highest-volume route, so they are sampled
+	 * below the base rate. Errored webhook transactions are always kept.
+	 *
+	 * @default 0.05
+	 */
+	@Env('N8N_SENTRY_WEBHOOK_TRACES_SAMPLE_RATE', sampleRateSchema)
+	webhookTracesSampleRate: number = 0.05;
+
+	/**
 	 * Whether Sentry's native event-loop-block detection is enabled. When on, a
 	 * native watchdog (`@sentry/node-native`) captures the main thread's stack
 	 * whenever the event loop is blocked beyond the threshold below.
@@ -52,14 +73,11 @@ export class SentryConfig {
 	 *
 	 * @default 500
 	 */
-	@Env('N8N_SENTRY_EVENT_LOOP_BLOCK_THRESHOLD', z.number({ coerce: true }).int().positive())
+	@Env('N8N_SENTRY_EVENT_LOOP_BLOCK_THRESHOLD', positiveIntSchema)
 	eventLoopBlockThreshold: number = 500;
 
 	/** Leaky-bucket cap on event loop block events reported per hour per instance. @default 5 */
-	@Env(
-		'N8N_SENTRY_EVENT_LOOP_BLOCK_MAX_EVENTS_PER_HOUR',
-		z.number({ coerce: true }).int().positive(),
-	)
+	@Env('N8N_SENTRY_EVENT_LOOP_BLOCK_MAX_EVENTS_PER_HOUR', positiveIntSchema)
 	eventLoopBlockMaxEventsPerHour: number = 5;
 
 	/**

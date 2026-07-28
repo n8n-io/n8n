@@ -27,7 +27,12 @@ import {
 import { cssVariables } from './cssVariables';
 import { renderFormCompletion } from './utils/formCompletionUtils';
 import { getFormTriggerNode, renderFormNode } from './utils/formNodeUtils';
-import { parseFormFields, prepareFormReturnItem, validateFormPageAuth } from './utils/utils';
+import {
+	getNodeReference,
+	parseFormFields,
+	prepareFormReturnItem,
+	validateFormPageAuth,
+} from './utils/utils';
 
 const waitTimeProperties: INodeProperties[] = [
 	{
@@ -230,7 +235,7 @@ const completionProperties = updateDisplayOptions(
 			description: 'The text to display on the page. Use HTML to show a customized web page.',
 		},
 		{
-			displayName: 'Input Data Field Name',
+			displayName: 'Input Data Field Name(s)',
 			name: 'inputDataFieldName',
 			type: 'string',
 			displayOptions: {
@@ -241,8 +246,8 @@ const completionProperties = updateDisplayOptions(
 			default: 'data',
 			placeholder: 'e.g. data',
 			description:
-				'Find the name of input field containing the binary data to return in the Input panel on the left, in the Binary tab',
-			hint: 'The name of the input field containing the binary file data to be returned',
+				'Find the name of input field containing the binary data to return in the Input panel on the left, in the Binary tab. You can provide multiple comma-separated field names.',
+			hint: 'The name of the input field containing the binary file data to be returned. You can provide multiple comma-separated field names.',
 		},
 		...waitTimeProperties,
 		{
@@ -358,11 +363,7 @@ export class Form extends Node {
 
 		const trigger = getFormTriggerNode(context);
 
-		// JSON.stringify produces a properly-escaped JS string literal, so an
-		// adversarial trigger node name containing `'`, `\`, or `${}` can't
-		// break out of the expression. Critical for the auth gate below; safer
-		// than `'${trigger.name}'` even though n8n constrains node names.
-		const triggerRef = `$(${JSON.stringify(trigger.name)})`;
+		const triggerRef = getNodeReference(trigger.name);
 
 		const triggerAuth =
 			(context.evaluateExpression(`{{ ${triggerRef}.params.authentication }}`) as string) ?? 'none';
@@ -375,7 +376,7 @@ export class Form extends Node {
 		) as boolean | undefined;
 		const userForOutput = triggerIncludeUser === false ? undefined : authResult.authedUser;
 
-		const mode = context.evaluateExpression(`{{ $('${trigger.name}').first().json.formMode }}`) as
+		const mode = context.evaluateExpression(`{{ ${triggerRef}.first().json.formMode }}`) as
 			| 'test'
 			| 'production';
 
@@ -413,7 +414,7 @@ export class Form extends Node {
 		}
 
 		let useWorkflowTimezone = context.evaluateExpression(
-			`{{ $('${trigger.name}').params.options?.useWorkflowTimezone }}`,
+			`{{ ${triggerRef}.params.options?.useWorkflowTimezone }}`,
 		) as boolean;
 
 		if (useWorkflowTimezone === undefined && trigger?.typeVersion > 2) {

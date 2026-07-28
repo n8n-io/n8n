@@ -42,6 +42,6 @@ export class SecuritySettingsPage extends BasePage {
 
 	async selectScope(scope: RedactionScope): Promise<void> {
 		await this.getEnforcementScopeSelect().click();
-		await this.page.getByRole('option', { name: SCOPE_OPTION_LABEL[scope] }).click();
+		await this.getVisiblePopoverOption(SCOPE_OPTION_LABEL[scope]).click();
 	}
 }

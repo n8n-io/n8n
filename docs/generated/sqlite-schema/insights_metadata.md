@@ -15,19 +15,19 @@ CREATE TABLE "insights_metadata" ("metaId" integer PRIMARY KEY NOT NULL, "workfl
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| metaId | INTEGER |  | false | [insights_raw](insights_raw.md) [insights_by_period](insights_by_period.md) |  |  |
-| workflowId | varchar(16) |  | true |  | [workflow_entity](workflow_entity.md) |  |
+| metaId | INTEGER |  | false | [insights_by_period](insights_by_period.md) [insights_raw](insights_raw.md) |  |  |
 | projectId | varchar(36) |  | true |  | [project](project.md) |  |
-| workflowName | varchar(128) |  | false |  |  |  |
 | projectName | varchar(255) |  | false |  |  |  |
+| workflowId | varchar(16) |  | true |  | [workflow_entity](workflow_entity.md) |  |
+| workflowName | varchar(128) |  | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| metaId | PRIMARY KEY | PRIMARY KEY (metaId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
+| metaId | PRIMARY KEY | PRIMARY KEY (metaId) |
 
 ## Indexes
 
@@ -40,65 +40,65 @@ CREATE TABLE "insights_metadata" ("metaId" integer PRIMARY KEY NOT NULL, "workfl
 ```mermaid
 erDiagram
 
-"insights_raw" }o--|| "insights_metadata" : "FOREIGN KEY (metaId) REFERENCES insights_metadata (metaId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "insights_by_period" }o--|| "insights_metadata" : "FOREIGN KEY (metaId) REFERENCES insights_metadata (metaId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"insights_metadata" }o--o| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"insights_raw" }o--|| "insights_metadata" : "FOREIGN KEY (metaId) REFERENCES insights_metadata (metaId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "insights_metadata" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"insights_metadata" }o--o| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
 "insights_metadata" {
   INTEGER metaId
-  varchar_16_ workflowId FK
   varchar_36_ projectId FK
-  varchar_128_ workflowName
   varchar_255_ projectName
-}
-"insights_raw" {
-  INTEGER id
-  INTEGER metaId FK
-  INTEGER type
-  bigint value
-  datetime_0_ timestamp
+  varchar_16_ workflowId FK
+  varchar_128_ workflowName
 }
 "insights_by_period" {
   INTEGER id
   INTEGER metaId FK
+  datetime_0_ periodStart
+  INTEGER periodUnit
   INTEGER type
   bigint value
-  INTEGER periodUnit
-  datetime_0_ periodStart
 }
-"workflow_entity" {
-  varchar_36_ id PK
-  varchar_128_ name
-  boolean active
-  TEXT nodes
-  TEXT connections
-  TEXT settings
-  TEXT staticData
-  TEXT pinData
-  varchar_36_ versionId
-  INTEGER triggerCount
-  TEXT meta
-  varchar_36_ parentFolderId FK
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  boolean isArchived
-  INTEGER versionCounter
-  TEXT description
-  varchar_36_ activeVersionId FK
-  TEXT nodeGroups
-  varchar sourceWorkflowId
+"insights_raw" {
+  INTEGER id
+  INTEGER metaId FK
+  datetime_0_ timestamp
+  INTEGER type
+  bigint value
 }
 "project" {
+  datetime_3_ createdAt
+  varchar creatorId FK
+  TEXT customTelemetryTags
+  varchar_512_ description
+  TEXT icon
   varchar_36_ id PK
   varchar_255_ name
   varchar_36_ type
-  datetime_3_ createdAt
   datetime_3_ updatedAt
-  TEXT icon
-  varchar_512_ description
-  varchar creatorId FK
-  TEXT customTelemetryTags
+}
+"workflow_entity" {
+  boolean active
+  varchar_36_ activeVersionId FK
+  TEXT connections
+  datetime_3_ createdAt
+  TEXT description
+  varchar_36_ id PK
+  boolean isArchived
+  TEXT meta
+  varchar_128_ name
+  TEXT nodeGroups
+  TEXT nodes
+  varchar_36_ parentFolderId FK
+  TEXT pinData
+  TEXT settings
+  varchar sourceWorkflowId
+  TEXT staticData
+  INTEGER triggerCount
+  datetime_3_ updatedAt
+  INTEGER versionCounter
+  varchar_36_ versionId
 }
 ```
 

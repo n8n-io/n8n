@@ -38,11 +38,14 @@ const props = withDefaults(
 		loading?: boolean;
 		errorMessage?: string;
 		errorIsConflict?: boolean;
+		forceNewCredential?: boolean;
+		setupMode?: 'simple' | 'advanced';
 	}>(),
 	{
 		connected: false,
 		disabled: false,
 		mode: 'setup',
+		setupMode: 'advanced',
 		isPublished: true,
 		setupSlackApp: undefined,
 		disconnectSlackApp: undefined,
@@ -56,6 +59,7 @@ const props = withDefaults(
 		loading: false,
 		errorMessage: '',
 		errorIsConflict: false,
+		forceNewCredential: false,
 	},
 );
 
@@ -188,7 +192,7 @@ async function onDisconnectSlackApp() {
 watch(
 	() => [props.projectId, props.agentId, props.connected, props.mode] as const,
 	() => {
-		if (!props.connected && props.mode === 'setup') {
+		if (!props.connected && props.mode === 'setup' && props.setupMode === 'advanced') {
 			void loadSlackAppManifest();
 		}
 	},
@@ -322,7 +326,7 @@ defineExpose({ credentialId, validationError: null });
 		</N8nStepper>
 
 		<N8nCollapsiblePanel
-			v-if="mode === 'setup' && !connected"
+			v-if="mode === 'setup' && setupMode === 'advanced' && !connected"
 			v-model="manualConfigurationOpen"
 			:class="$style.manualPanel"
 			:title="i18n.baseText('agents.channels.slack.manualSetup.title')"
@@ -403,6 +407,7 @@ defineExpose({ credentialId, validationError: null });
 					:loading="loading"
 					:error-message="!connected ? errorMessage : ''"
 					:error-is-conflict="errorIsConflict"
+					:force-new-credential="forceNewCredential"
 					@create="emit('create')"
 					@edit="emit('edit')"
 					@connect="emit('connect')"
@@ -425,6 +430,7 @@ defineExpose({ credentialId, validationError: null });
 	align-items: flex-start;
 	gap: var(--spacing--2xs);
 	padding-top: var(--spacing--xs);
+	min-width: 0;
 }
 
 .setupDescriptionContainer {
@@ -463,6 +469,8 @@ defineExpose({ credentialId, validationError: null });
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+	width: 100%;
+	min-width: 0;
 }
 
 .manualPanel {

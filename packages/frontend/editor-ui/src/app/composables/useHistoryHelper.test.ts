@@ -3,7 +3,7 @@ import { MAIN_HEADER_TABS } from '@/app/constants';
 import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { useHistoryHelper } from './useHistoryHelper';
-import { defineComponent, type PropType } from 'vue';
+import { defineComponent, ref, type PropType } from 'vue';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
 import { mock } from 'vitest-mock-extended';
 import { Command, BulkCommand } from '@/app/models/history';
@@ -69,7 +69,10 @@ const TestComponent = defineComponent({
 		},
 	},
 	setup(props) {
-		useHistoryHelper(props.route);
+		useHistoryHelper(
+			props.route,
+			ref('wf@latest') as unknown as Parameters<typeof useHistoryHelper>[1],
+		);
 		return {};
 	},
 	template: '<div />',

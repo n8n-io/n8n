@@ -6,7 +6,15 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
+import type { McpConfig } from '@/modules/mcp/mcp.config';
+import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import type { UrlService } from '@/services/url.service';
+import { UserManagementMailer } from '@/user-management/email';
 
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
@@ -16,18 +24,22 @@ import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.servi
 import { OAuthServerService } from '../oauth-server.service';
 import { OAuthSessionService } from '../oauth-session.service';
 import { OAuthTokenService } from '../oauth-token.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
 const TEST_RESOURCE_URL = 'https://n8n.example.com/mcp-server/http';
 
-let logger: jest.Mocked<Logger>;
-let oauthSessionService: jest.Mocked<OAuthSessionService>;
-let oauthClientRepository: jest.Mocked<OAuthClientRepository>;
-let tokenService: jest.Mocked<OAuthTokenService>;
-let authorizationCodeService: jest.Mocked<OAuthAuthorizationCodeService>;
+let logger: Mocked<Logger>;
+let oauthSessionService: Mocked<OAuthSessionService>;
+let oauthClientRepository: Mocked<OAuthClientRepository>;
+let tokenService: Mocked<OAuthTokenService>;
+let authorizationCodeService: Mocked<OAuthAuthorizationCodeService>;
 let service: OAuthServerService;
-let userConsentRepository: jest.Mocked<UserConsentRepository>;
+let userConsentRepository: Mocked<UserConsentRepository>;
+let mailer: Mocked<UserManagementMailer>;
+let getAllowedRedirectUris: Mock<() => Promise<string[]>>;
+
+// Shared, immutable across tests: the base URLs gate the first-party client_id guard.
+const urlServiceMock = mock<UrlService>();
 
 describe('OAuthServerService', () => {
 	beforeAll(() => {
@@ -37,14 +49,20 @@ describe('OAuthServerService', () => {
 		tokenService = mockInstance(OAuthTokenService);
 		authorizationCodeService = mockInstance(OAuthAuthorizationCodeService);
 		userConsentRepository = mockInstance(UserConsentRepository);
+		mailer = mockInstance(UserManagementMailer);
+		urlServiceMock.getWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
+		urlServiceMock.getTestWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
+		getAllowedRedirectUris = vi.fn<(...args: []) => Promise<string[]>>().mockResolvedValue([]);
 
-		const resourceRegistry = new ProtectedResourceRegistry();
+		const resourceRegistry = new ProtectedResourceRegistry(mock<Logger>());
 		resourceRegistry.register({
 			id: 'instance-mcp',
 			getResourceUrl: () => TEST_RESOURCE_URL,
 			getAudiences: () => [TEST_RESOURCE_URL, 'mcp-server-api'],
 			scopes: SUPPORTED_SCOPES,
 			isDefault: true,
+			getAllowedRedirectUris,
+			authorize: async () => true,
 		});
 
 		service = new OAuthServerService(
@@ -56,11 +74,14 @@ describe('OAuthServerService', () => {
 			authorizationCodeService,
 			userConsentRepository,
 			resourceRegistry,
+			mailer,
+			urlServiceMock,
 		);
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+		getAllowedRedirectUris.mockResolvedValue([]);
 	});
 
 	describe('clientsStore', () => {
@@ -87,7 +108,7 @@ describe('OAuthServerService', () => {
 					grant_types: ['authorization_code', 'refresh_token'],
 					token_endpoint_auth_method: 'none',
 					response_types: ['code'],
-					scope: SUPPORTED_SCOPES.join(' '),
+					...(SUPPORTED_SCOPES.length > 0 && { scope: SUPPORTED_SCOPES.join(' ') }),
 					logo_uri: undefined,
 					tos_uri: undefined,
 				});
@@ -123,6 +144,138 @@ describe('OAuthServerService', () => {
 			});
 		});
 
+		describe('getClient — virtual first-party client', () => {
+			const FIRST_PARTY_URL = 'https://n8n.example.com/form/abc';
+			const NON_FIRST_PARTY_URL = 'https://n8n.example.com/mcp-server/http';
+			let firstPartyService: OAuthServerService;
+
+			beforeAll(() => {
+				const registry = new ProtectedResourceRegistry(mock<Logger>());
+				registry.register({
+					id: 'form-abc',
+					isFirstParty: true,
+					displayName: 'My Form',
+					getResourceUrl: () => FIRST_PARTY_URL,
+					getAudiences: () => [FIRST_PARTY_URL],
+					getAllowedRedirectUris: async () => [FIRST_PARTY_URL],
+					scopes: [],
+					authorize: async () => true,
+				});
+				// A resource that exists but is not first-party (mirror of an MCP resource).
+				registry.register({
+					id: 'mcp-x',
+					getResourceUrl: () => NON_FIRST_PARTY_URL,
+					getAudiences: () => [NON_FIRST_PARTY_URL],
+					scopes: [],
+					authorize: async () => true,
+				});
+				firstPartyService = new OAuthServerService(
+					logger,
+					mockInstance(GlobalConfig),
+					oauthSessionService,
+					oauthClientRepository,
+					tokenService,
+					authorizationCodeService,
+					userConsentRepository,
+					registry,
+					mailer,
+					urlServiceMock,
+				);
+			});
+
+			it('lazily upserts and returns a virtual client on a DB miss for a first-party resource', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue(null);
+
+				const result = await firstPartyService.clientsStore.getClient(FIRST_PARTY_URL);
+
+				expect(oauthClientRepository.upsert).toHaveBeenCalledWith(
+					{
+						id: FIRST_PARTY_URL,
+						name: 'My Form',
+						redirectUris: [FIRST_PARTY_URL],
+						grantTypes: ['authorization_code'],
+						tokenEndpointAuthMethod: 'none',
+						clientSecret: null,
+						clientSecretExpiresAt: null,
+						isFirstParty: true,
+					},
+					['id'],
+				);
+				expect(result).toEqual({
+					client_id: FIRST_PARTY_URL,
+					client_name: 'My Form',
+					redirect_uris: [FIRST_PARTY_URL],
+					grant_types: ['authorization_code'],
+					token_endpoint_auth_method: 'none',
+					response_types: ['code'],
+					logo_uri: undefined,
+					tos_uri: undefined,
+				});
+			});
+
+			it('returns undefined and does not upsert when the resolved resource is not first-party', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue(null);
+
+				const result = await firstPartyService.clientsStore.getClient(NON_FIRST_PARTY_URL);
+
+				expect(result).toBeUndefined();
+				expect(oauthClientRepository.upsert).not.toHaveBeenCalled();
+			});
+
+			it('returns undefined and does not upsert when no resource resolves', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue(null);
+
+				const result = await firstPartyService.clientsStore.getClient(
+					'https://n8n.example.com/form/unknown',
+				);
+
+				expect(result).toBeUndefined();
+				expect(oauthClientRepository.upsert).not.toHaveBeenCalled();
+			});
+
+			it('short-circuits without consulting the resolver registry for a non-webhook client_id', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue(null);
+				const registry = new ProtectedResourceRegistry(mock<Logger>());
+				const getByResourceUrl = vi.spyOn(registry, 'getByResourceUrl');
+				const svc = new OAuthServerService(
+					logger,
+					mockInstance(GlobalConfig),
+					oauthSessionService,
+					oauthClientRepository,
+					tokenService,
+					authorizationCodeService,
+					userConsentRepository,
+					registry,
+					mailer,
+					urlServiceMock,
+				);
+
+				const result = await svc.clientsStore.getClient('https://evil.example.com/form/abc');
+
+				expect(result).toBeUndefined();
+				expect(getByResourceUrl).not.toHaveBeenCalled();
+				expect(oauthClientRepository.upsert).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('registered-client cap excludes first-party clients', () => {
+			it('counts only non-first-party clients for the limit check', async () => {
+				oauthClientRepository.countBy.mockResolvedValue(0);
+
+				await service.isClientLimitReached();
+
+				expect(oauthClientRepository.countBy).toHaveBeenCalledWith({ isFirstParty: false });
+			});
+
+			it('counts only non-first-party clients for the instance stats', async () => {
+				oauthClientRepository.countBy.mockResolvedValue(0);
+
+				await service.getInstanceClientStats();
+
+				expect(oauthClientRepository.countBy).toHaveBeenCalledWith({ isFirstParty: false });
+			});
+		});
+
 		describe('registerClient', () => {
 			it('should save client with all required fields', async () => {
 				const clientInfo = {
@@ -149,6 +302,7 @@ describe('OAuthServerService', () => {
 					clientSecret: null,
 					clientSecretExpiresAt: null,
 					tokenEndpointAuthMethod: 'none',
+					isFirstParty: false,
 				});
 				expect(result).toEqual(clientInfo);
 			});
@@ -180,6 +334,7 @@ describe('OAuthServerService', () => {
 					clientSecret: 'secret-123',
 					clientSecretExpiresAt: 1234567890,
 					tokenEndpointAuthMethod: 'client_secret_post',
+					isFirstParty: false,
 				});
 			});
 
@@ -229,6 +384,8 @@ describe('OAuthServerService', () => {
 
 			const res = mock<Response>();
 
+			getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
+
 			await service.authorize(client, params, res);
 
 			expect(oauthSessionService.createSession).toHaveBeenCalledWith(res, {
@@ -261,6 +418,8 @@ describe('OAuthServerService', () => {
 
 			const res = mock<Response>();
 
+			getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
+
 			await service.authorize(client, params, res);
 
 			expect(oauthSessionService.createSession).toHaveBeenCalledWith(res, {
@@ -270,6 +429,175 @@ describe('OAuthServerService', () => {
 				state: null,
 				resource: undefined,
 			});
+		});
+
+		it('should reject invalid redirect URI', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const params = {
+				redirectUri: 'https://attacker.com/callback',
+				codeChallenge: 'challenge-123',
+			};
+
+			const res = mock<Response>();
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+
+			getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
+
+			await service.authorize(client, params, res);
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'MCP OAuth authorization rejected: requested redirect URI is not in the configured allowlist',
+				{
+					clientId: 'client-123',
+					attemptedUri: 'https://attacker.com/callback',
+				},
+			);
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(res.json).toHaveBeenCalledWith({
+				error: 'invalid_request',
+				error_description: 'Redirect URI not in allowed list',
+			});
+			expect(oauthSessionService.createSession).not.toHaveBeenCalled();
+		});
+
+		it('should allow a loopback redirect URI on a different port than the allowlist entry', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['http://localhost:3118/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const params = {
+				redirectUri: 'http://localhost:52680/callback',
+				codeChallenge: 'challenge-123',
+				state: 'state-xyz',
+			};
+
+			const res = mock<Response>();
+
+			getAllowedRedirectUris.mockResolvedValue(['http://localhost:3118/callback']);
+
+			await service.authorize(client, params, res);
+
+			expect(oauthSessionService.createSession).toHaveBeenCalledWith(
+				res,
+				expect.objectContaining({ redirectUri: 'http://localhost:52680/callback' }),
+			);
+			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+		});
+
+		it('should reject a loopback redirect URI whose path differs from the allowlist entry', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['http://localhost:3118/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const params = {
+				redirectUri: 'http://localhost:52680/evil',
+				codeChallenge: 'challenge-123',
+			};
+
+			const res = mock<Response>();
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+
+			getAllowedRedirectUris.mockResolvedValue(['http://localhost:3118/callback']);
+
+			await service.authorize(client, params, res);
+
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(oauthSessionService.createSession).not.toHaveBeenCalled();
+		});
+
+		it('should still require an exact match for non-loopback redirect URIs on a different port', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const params = {
+				redirectUri: 'https://example.com:8443/callback',
+				codeChallenge: 'challenge-123',
+			};
+
+			const res = mock<Response>();
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+
+			getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
+
+			await service.authorize(client, params, res);
+
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(oauthSessionService.createSession).not.toHaveBeenCalled();
+		});
+
+		it('should allow any redirect URI when whitelist is empty', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const params = {
+				redirectUri: 'https://any-domain.com/callback',
+				codeChallenge: 'challenge-123',
+				state: 'state-xyz',
+			};
+
+			const res = mock<Response>();
+
+			getAllowedRedirectUris.mockResolvedValue([]);
+
+			await service.authorize(client, params, res);
+
+			expect(oauthSessionService.createSession).toHaveBeenCalledWith(res, {
+				clientId: 'client-123',
+				redirectUri: 'https://any-domain.com/callback',
+				codeChallenge: 'challenge-123',
+				state: 'state-xyz',
+				resource: undefined,
+			});
+			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
 		it('should reject invalid resource indicators', async () => {
@@ -363,6 +691,8 @@ describe('OAuthServerService', () => {
 			res.status.mockReturnThis();
 			res.json.mockReturnThis();
 
+			getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
+
 			const error = new Error('Session creation failed');
 			oauthSessionService.createSession.mockImplementation(() => {
 				throw error;
@@ -427,6 +757,7 @@ describe('OAuthServerService', () => {
 				userId: 'user-456',
 				clientId: 'client-123',
 				resource: 'https://n8n.example.com/mcp-server/http',
+				scope: ['workflow:read'],
 			} as AuthorizationCode;
 
 			authorizationCodeService.findAuthorizationCode.mockResolvedValue(authRecord);
@@ -456,18 +787,21 @@ describe('OAuthServerService', () => {
 				'user-456',
 				'client-123',
 				'https://n8n.example.com/mcp-server/http',
+				['workflow:read'],
 			);
 			expect(tokenService.saveTokenPair).toHaveBeenCalledWith(
 				'access-token-123',
 				'refresh-token-456',
 				'client-123',
 				'user-456',
+				['workflow:read'],
 			);
 			expect(result).toEqual({
 				access_token: 'access-token-123',
 				token_type: 'Bearer',
 				expires_in: 3600,
 				refresh_token: 'refresh-token-456',
+				scope: 'workflow:read',
 			});
 		});
 
@@ -488,6 +822,7 @@ describe('OAuthServerService', () => {
 				userId: 'user-456',
 				clientId: 'client-123',
 				resource: null,
+				scope: ['workflow:read'],
 			} as AuthorizationCode;
 
 			authorizationCodeService.findAuthorizationCode.mockResolvedValue(authRecord);
@@ -510,6 +845,7 @@ describe('OAuthServerService', () => {
 				'user-456',
 				'client-123',
 				undefined,
+				['workflow:read'],
 			);
 		});
 
@@ -693,22 +1029,114 @@ describe('OAuthServerService', () => {
 	});
 
 	describe('deleteClient', () => {
-		it('should delete client when user has consent', async () => {
+		// The GC step deletes the client through a single conditional query
+		// (`DELETE ... WHERE id = :clientId AND NOT EXISTS (<remaining consents>)`),
+		// so both repositories are driven via query builders rather than the
+		// repository `delete()` shortcut. `affected` decides whether the client
+		// row was actually removed.
+		const mockGarbageCollect = (affected: number) => {
+			(userConsentRepository as any).metadata = { tableName: 'oauth_user_consents' };
+			const execute = vi.fn().mockResolvedValue({ affected });
+			(oauthClientRepository.createQueryBuilder as unknown as Mock).mockReturnValue({
+				delete: () => ({ from: () => ({ where: () => ({ execute }) }) }),
+			});
+			return execute;
+		};
+
+		it("should revoke only the user's grant and keep the client while other consents remain", async () => {
 			const client = {
 				id: 'client-123',
 				name: 'Test Client',
 			} as OAuthClient;
 
 			oauthClientRepository.findOne.mockResolvedValue(client);
-			userConsentRepository.findOneBy.mockResolvedValue({
+			userConsentRepository.findOne.mockResolvedValue({
 				userId: 'user-456',
 				clientId: 'client-123',
+				user: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
 			} as any);
-			oauthClientRepository.delete.mockResolvedValue({} as any);
+			const execute = mockGarbageCollect(0);
 
 			await service.deleteClient('client-123', 'user-456');
 
-			expect(oauthClientRepository.delete).toHaveBeenCalledWith({ id: 'client-123' });
+			expect(tokenService.revokeAllTokensForGrant).toHaveBeenCalledWith('client-123', 'user-456');
+			expect(authorizationCodeService.deleteForGrant).toHaveBeenCalledWith(
+				'client-123',
+				'user-456',
+			);
+			expect(userConsentRepository.delete).toHaveBeenCalledWith({
+				clientId: 'client-123',
+				userId: 'user-456',
+			});
+			expect(execute).toHaveBeenCalled();
+		});
+
+		it('should garbage-collect the client when the last consent is revoked', async () => {
+			const client = {
+				id: 'client-123',
+				name: 'Test Client',
+			} as OAuthClient;
+
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			userConsentRepository.findOne.mockResolvedValue({
+				userId: 'user-456',
+				clientId: 'client-123',
+				user: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
+			} as any);
+			const execute = mockGarbageCollect(1);
+
+			await service.deleteClient('client-123', 'user-456');
+
+			expect(userConsentRepository.delete).toHaveBeenCalledWith({
+				clientId: 'client-123',
+				userId: 'user-456',
+			});
+			expect(execute).toHaveBeenCalled();
+		});
+
+		it('should notify the grant owner by email when someone else revokes their client', async () => {
+			const client = {
+				id: 'client-123',
+				name: 'Test Client',
+			} as OAuthClient;
+
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			userConsentRepository.findOne.mockResolvedValue({
+				userId: 'user-456',
+				clientId: 'client-123',
+				user: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
+			} as any);
+			userConsentRepository.countBy.mockResolvedValue(1);
+			mailer.notifyMcpClientRevoked.mockResolvedValue({ emailSent: true });
+
+			const revoker = { id: 'admin-1', email: 'admin@n8n.io' } as any;
+			await service.deleteClient('client-123', 'user-456', revoker);
+
+			expect(mailer.notifyMcpClientRevoked).toHaveBeenCalledWith({
+				clientName: 'Test Client',
+				owner: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
+				revoker,
+			});
+		});
+
+		it('should not send an email when users revoke their own client', async () => {
+			const client = {
+				id: 'client-123',
+				name: 'Test Client',
+			} as OAuthClient;
+
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			userConsentRepository.findOne.mockResolvedValue({
+				userId: 'user-456',
+				clientId: 'client-123',
+				user: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
+			} as any);
+			userConsentRepository.countBy.mockResolvedValue(1);
+
+			const revoker = { id: 'user-456', email: 'owner@n8n.io' } as any;
+			await service.deleteClient('client-123', 'user-456', revoker);
+
+			expect(mailer.notifyMcpClientRevoked).not.toHaveBeenCalled();
 		});
 
 		it('should throw when client does not exist', async () => {
@@ -728,7 +1156,7 @@ describe('OAuthServerService', () => {
 			} as OAuthClient;
 
 			oauthClientRepository.findOne.mockResolvedValue(client);
-			userConsentRepository.findOneBy.mockResolvedValue(null);
+			userConsentRepository.findOne.mockResolvedValue(null);
 
 			await expect(service.deleteClient('client-123', 'other-user')).rejects.toThrow(
 				'OAuth client with ID client-123 not found',
@@ -862,13 +1290,14 @@ describe('OAuthServerService', () => {
 
 	describe('resource indicator validation across multiple resources', () => {
 		it('should accept any registered resource and reject unregistered ones', async () => {
-			const multiRegistry = new ProtectedResourceRegistry();
+			const multiRegistry = new ProtectedResourceRegistry(mock<Logger>());
 			multiRegistry.register({
 				id: 'instance-mcp',
 				getResourceUrl: () => TEST_RESOURCE_URL,
 				getAudiences: () => [TEST_RESOURCE_URL, 'mcp-server-api'],
 				scopes: SUPPORTED_SCOPES,
 				isDefault: true,
+				authorize: async () => true,
 			});
 			const secondResourceUrl = 'https://n8n.example.com/webhook/wf-1/mcp';
 			multiRegistry.register({
@@ -876,6 +1305,7 @@ describe('OAuthServerService', () => {
 				getResourceUrl: () => secondResourceUrl,
 				getAudiences: () => [secondResourceUrl],
 				scopes: [],
+				authorize: async () => true,
 			});
 
 			const multiResourceService = new OAuthServerService(
@@ -887,6 +1317,8 @@ describe('OAuthServerService', () => {
 				authorizationCodeService,
 				userConsentRepository,
 				multiRegistry,
+				mailer,
+				urlServiceMock,
 			);
 
 			expect(
@@ -898,6 +1330,67 @@ describe('OAuthServerService', () => {
 			await expect(
 				(multiResourceService as any).resolveAndValidateResourceIndicator(
 					'https://n8n.example.com/webhook/wf-2/mcp',
+				),
+			).rejects.toThrow(InvalidTargetError);
+		});
+	});
+
+	// Chain test with the real MCP protected resource: the resource generated
+	// from the configured MCP base URL must pass indicator validation.
+	describe('resource indicator validation with a configured MCP base URL', () => {
+		const makeConfiguredService = () => {
+			const urlService = mock<UrlService>();
+			urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
+			const mcpConfig = mock<McpConfig>();
+			mcpConfig.baseUrl = 'https://n8n-mcp.example.com';
+			const mcpResource = new McpProtectedResource(
+				urlService,
+				mock<McpSettingsService>(),
+				mcpConfig,
+				mock<GlobalConfig>(),
+			);
+			expect(mcpResource.getResourceUrl()).toBe('https://n8n-mcp.example.com/mcp-server/http');
+
+			const configuredRegistry = new ProtectedResourceRegistry(mock<Logger>());
+			configuredRegistry.register(mcpResource);
+
+			return new OAuthServerService(
+				logger,
+				mockInstance(GlobalConfig),
+				oauthSessionService,
+				oauthClientRepository,
+				tokenService,
+				authorizationCodeService,
+				userConsentRepository,
+				configuredRegistry,
+				mailer,
+				urlService,
+			);
+		};
+
+		it('should accept the resource generated from the configured base URL', async () => {
+			const configuredService = makeConfiguredService();
+			expect(
+				await (configuredService as any).resolveAndValidateResourceIndicator(
+					'https://n8n-mcp.example.com/mcp-server/http',
+				),
+			).toBe('https://n8n-mcp.example.com/mcp-server/http');
+		});
+
+		it('should keep accepting the instance-base-URL-derived resource', async () => {
+			const configuredService = makeConfiguredService();
+			expect(
+				await (configuredService as any).resolveAndValidateResourceIndicator(
+					'https://n8n.example.com/mcp-server/http',
+				),
+			).toBe('https://n8n.example.com/mcp-server/http');
+		});
+
+		it('should reject resources on hosts that are not configured', async () => {
+			const configuredService = makeConfiguredService();
+			await expect(
+				(configuredService as any).resolveAndValidateResourceIndicator(
+					'https://other.example.com/mcp-server/http',
 				),
 			).rejects.toThrow(InvalidTargetError);
 		});

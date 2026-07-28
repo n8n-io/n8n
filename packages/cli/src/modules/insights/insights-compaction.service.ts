@@ -23,7 +23,12 @@ type CompactionStopReason = 'max-batches' | 'max-runtime';
 export class InsightsCompactionService {
 	private compactInsightsTimer: NodeJS.Timeout | undefined;
 
-	private isCompactionRunning = false;
+	/** Tracks the in-flight compaction run so stopping the timer can await it. */
+	private compactionPromise: Promise<void> | undefined;
+
+	private get isCompactionRunning() {
+		return this.compactionPromise !== undefined;
+	}
 
 	constructor(
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
@@ -35,7 +40,7 @@ export class InsightsCompactionService {
 	}
 
 	startCompactionTimer() {
-		this.stopCompactionTimer();
+		void this.stopCompactionTimer();
 		this.compactInsightsTimer = setInterval(
 			async () => await this.compactInsights(),
 			this.insightsConfig.compactionIntervalMinutes * Time.minutes.toMilliseconds,
@@ -43,12 +48,15 @@ export class InsightsCompactionService {
 		this.logger.debug('Started compaction timer');
 	}
 
-	stopCompactionTimer() {
+	async stopCompactionTimer() {
 		if (this.compactInsightsTimer !== undefined) {
 			clearInterval(this.compactInsightsTimer);
 			this.compactInsightsTimer = undefined;
 			this.logger.debug('Stopped compaction timer');
 		}
+		// Wait for an in-flight run to finish so its transaction isn't left running
+		// against a connection that may be closed right after stopping.
+		await this.compactionPromise?.catch(() => {});
 	}
 
 	async compactInsights() {
@@ -57,46 +65,52 @@ export class InsightsCompactionService {
 			return;
 		}
 
-		this.isCompactionRunning = true;
+		const compactionPromise = this.runCompaction();
+		const trackedCompactionPromise = compactionPromise.finally(() => {
+			if (this.compactionPromise === trackedCompactionPromise) {
+				this.compactionPromise = undefined;
+			}
+		});
+		this.compactionPromise = trackedCompactionPromise;
 
-		try {
-			const runState: CompactionRunState = {
-				startedAt: Date.now(),
-				batchesProcessed: 0,
-				rowsCompacted: 0,
-			};
+		await this.compactionPromise;
+	}
 
-			const stoppedAfterRawToHour = await this.compactStage({
-				stageName: 'raw-to-hour',
-				beforeBatchMessage: 'Compacting raw data to hourly aggregates',
-				afterBatchMessage: (rowsCompacted) =>
-					`Compacted ${rowsCompacted} raw data to hourly aggregates`,
-				compactBatch: this.compactRawToHour.bind(this),
-				runState,
-			});
-			if (stoppedAfterRawToHour) return;
+	private async runCompaction() {
+		const runState: CompactionRunState = {
+			startedAt: Date.now(),
+			batchesProcessed: 0,
+			rowsCompacted: 0,
+		};
 
-			const stoppedAfterHourToDay = await this.compactStage({
-				stageName: 'hour-to-day',
-				beforeBatchMessage: 'Compacting hourly data to daily aggregates',
-				afterBatchMessage: (rowsCompacted) =>
-					`Compacted ${rowsCompacted} hourly data to daily aggregates`,
-				compactBatch: this.compactHourToDay.bind(this),
-				runState,
-			});
-			if (stoppedAfterHourToDay) return;
+		const stoppedAfterRawToHour = await this.compactStage({
+			stageName: 'raw-to-hour',
+			beforeBatchMessage: 'Compacting raw data to hourly aggregates',
+			afterBatchMessage: (rowsCompacted) =>
+				`Compacted ${rowsCompacted} raw data to hourly aggregates`,
+			compactBatch: this.compactRawToHour.bind(this),
+			runState,
+		});
+		if (stoppedAfterRawToHour) return;
 
-			await this.compactStage({
-				stageName: 'day-to-week',
-				beforeBatchMessage: 'Compacting daily data to weekly aggregates',
-				afterBatchMessage: (rowsCompacted) =>
-					`Compacted ${rowsCompacted} daily data to weekly aggregates`,
-				compactBatch: this.compactDayToWeek.bind(this),
-				runState,
-			});
-		} finally {
-			this.isCompactionRunning = false;
-		}
+		const stoppedAfterHourToDay = await this.compactStage({
+			stageName: 'hour-to-day',
+			beforeBatchMessage: 'Compacting hourly data to daily aggregates',
+			afterBatchMessage: (rowsCompacted) =>
+				`Compacted ${rowsCompacted} hourly data to daily aggregates`,
+			compactBatch: this.compactHourToDay.bind(this),
+			runState,
+		});
+		if (stoppedAfterHourToDay) return;
+
+		await this.compactStage({
+			stageName: 'day-to-week',
+			beforeBatchMessage: 'Compacting daily data to weekly aggregates',
+			afterBatchMessage: (rowsCompacted) =>
+				`Compacted ${rowsCompacted} daily data to weekly aggregates`,
+			compactBatch: this.compactDayToWeek.bind(this),
+			runState,
+		});
 	}
 
 	private async compactStage({

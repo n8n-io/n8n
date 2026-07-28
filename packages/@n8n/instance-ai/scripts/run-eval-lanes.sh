@@ -11,7 +11,9 @@
 #   - docker
 #   - dotenvx (pnpm exec dotenvx works)
 #   - n8nio/n8n:local image (build with: INCLUDE_TEST_CONTROLLER=true pnpm build:docker)
-#   - .env.local at repo root with N8N_INSTANCE_AI_MODEL_API_KEY (+ optional N8N_EVAL_*)
+#   - .env.local at repo root with N8N_INSTANCE_AI_MODEL_API_KEY (+ optional N8N_EVAL_*).
+#     All KEY=VALUE entries from that file are passed into each lane container via
+#     docker --env-file; lane-specific -e flags below override on conflict.
 #
 set -euo pipefail
 
@@ -93,6 +95,39 @@ is_node_fetch_blocked_port() {
 	esac
 }
 
+# Force-remove any docker container holding the given host port (e.g. a lane
+# left over from a previous --keep-containers run). Returns non-zero when the
+# port is held by something that isn't a docker container.
+remove_container_on_port() {
+	local port="$1"
+	local expected_name="n8n-eval-${port}"
+	local ids
+	ids="$(docker ps -q --filter "publish=${port}")"
+	if [[ -z "$ids" ]]; then
+		return 1
+	fi
+	local id
+	for id in $ids; do
+		local name
+		name="$(docker inspect --format '{{.Name}}' "$id")"
+		name="${name#/}"
+		if [[ "$name" != "$expected_name" ]]; then
+			local names
+			names="$(docker ps --filter "publish=${port}" --format '{{.Names}}' | tr '\n' ' ')"
+			die "port ${port} is held by non-eval container(s): ${names}"
+		fi
+	done
+	log "removing existing eval container on port ${port}: ${expected_name}"
+	# shellcheck disable=SC2086 # ids is a newline-separated list of container IDs
+	docker rm -f $ids >/dev/null 2>&1 || true
+	# Wait for the kernel to release the port after the container dies.
+	for _ in $(seq 1 20); do
+		port_in_use "$port" || return 0
+		sleep 0.5
+	done
+	return 1
+}
+
 allocate_lane_ports() {
 	local count="$1"
 	local start="$2"
@@ -107,7 +142,11 @@ allocate_lane_ports() {
 		if is_node_fetch_blocked_port "$port"; then
 			log "skipping port ${port} (blocked by Node fetch)"
 		elif port_in_use "$port"; then
-			die "port ${port} is already in use — stop the existing process or pick --start-port"
+			if remove_container_on_port "$port"; then
+				PORTS+=("$port")
+			else
+				die "port ${port} is in use by a non-docker process — stop it or pick --start-port"
+			fi
 		else
 			PORTS+=("$port")
 		fi
@@ -242,6 +281,18 @@ ENV_FILE_PATH="${REPO_ROOT}/${ENV_FILE}"
 EVAL_PKG_DIR="${REPO_ROOT}/packages/@n8n/instance-ai"
 RESET_PAYLOAD='{"owner":{"email":"nathan@n8n.io","password":"PlaywrightTest123","firstName":"Eval","lastName":"Owner"},"admin":{"email":"admin@n8n.io","password":"PlaywrightTest123","firstName":"Admin","lastName":"User"},"members":[],"chat":{"email":"chat@n8n.io","password":"PlaywrightTest123","firstName":"Chat","lastName":"User"}}'
 
+# ---------------------------------------------------------------------------
+# Preflight
+# ---------------------------------------------------------------------------
+require_cmd docker
+require_cmd curl
+require_cmd lsof
+require_cmd pnpm
+
+cd "$REPO_ROOT"
+
+# Port allocation may docker-rm stale lane containers, so it must run after
+# the docker preflight check.
 PORTS=()
 BASE_URLS=()
 
@@ -253,15 +304,7 @@ done
 
 BASE_URL_CSV="$(IFS=,; printf '%s' "${BASE_URLS[*]}")"
 
-# ---------------------------------------------------------------------------
-# Preflight
-# ---------------------------------------------------------------------------
-require_cmd docker
-require_cmd curl
-require_cmd lsof
-require_cmd pnpm
-
-cd "$REPO_ROOT"
+[[ -f "$ENV_FILE_PATH" ]] || die "Env file not found: $ENV_FILE_PATH"
 
 API_KEY="$(load_env_var N8N_INSTANCE_AI_MODEL_API_KEY "$ENV_FILE_PATH")"
 [[ -n "$API_KEY" ]] || die "N8N_INSTANCE_AI_MODEL_API_KEY is empty"
@@ -279,17 +322,31 @@ trap cleanup EXIT
 # Start lanes
 # ---------------------------------------------------------------------------
 log "starting ${INSTANCE_COUNT} lane(s) on ports: ${PORTS[*]}"
+log "lane env file: ${ENV_FILE_PATH}"
 
 for port in "${PORTS[@]}"; do
 	name="n8n-eval-${port}"
 	CONTAINER_NAMES+=("$name")
 
+	# A stopped leftover container doesn't hold the port (so allocation passes)
+	# but would still collide on the name.
+	if docker container inspect "$name" >/dev/null 2>&1; then
+		log "removing stale container ${name}"
+		docker rm -f "$name" >/dev/null 2>&1 || true
+	fi
+
+	# Same bounds as CI (test-evals-instance-ai.yml): capped + restartable
+	# lanes, pruned executions.
 	docker run -d --name "$name" \
+		--env-file "$ENV_FILE_PATH" \
+		--memory 2.5g --memory-swap 2.5g \
+		--restart on-failure \
+		--log-opt max-size=50m --log-opt max-file=2 \
+		-e NODE_OPTIONS=--max-old-space-size=2048 \
+		-e EXECUTIONS_DATA_PRUNE=true \
+		-e EXECUTIONS_DATA_MAX_AGE=1 \
 		-e E2E_TESTS=true \
-		-e N8N_ENABLED_MODULES=instance-ai \
-		-e N8N_AI_ENABLED=true \
-		-e N8N_INSTANCE_AI_MODEL_API_KEY="$API_KEY" \
-		-e N8N_AI_ASSISTANT_BASE_URL="" \
+		-e N8N_USER_FOLDER=/home/node/.n8n \
 		-p "${port}:5678" \
 		"$IMAGE" >/dev/null
 

@@ -13,12 +13,16 @@ export const OTEL_ENV_VARS = {
 	productionExecutionsOnly: 'N8N_OTEL_TRACES_PRODUCTION_ONLY',
 } as const;
 
+export const OTEL_TEST_SPAN_NAME = 'n8n.test_trace';
+
 export const ATTR = {
 	OTEL_SERVICE_NAME: ATTR_SERVICE_NAME,
 	OTEL_SERVICE_VERSION: ATTR_SERVICE_VERSION,
 
 	INSTANCE_ID: 'n8n.instance.id',
 	INSTANCE_ROLE: 'n8n.instance.role',
+
+	IS_TEST_TRACE: 'n8n.test',
 
 	PROJECT_ID: 'n8n.project.id',
 

@@ -135,8 +135,10 @@ defineExpose({ forceFocus, forceCancel });
 			/>
 			<!-- Stop propagation for space key to prevent VueFlow from intercepting it -->
 			<!-- when modifier keys (like Shift) are pressed. See: https://github.com/bcakmakoglu/vue-flow/issues/1999 -->
+			<!-- size=1 stops the input's default intrinsic width from inflating fit-content sizing -->
 			<EditableInput
 				ref="input"
+				:size="1"
 				:class="$style.inlineRenameInput"
 				data-test-id="inline-edit-input"
 				:style="computedContentStyles"

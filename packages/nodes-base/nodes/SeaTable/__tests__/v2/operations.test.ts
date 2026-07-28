@@ -1,29 +1,31 @@
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 
-jest.mock('../../v2/GenericFunctions', () => {
-	const actual = jest.requireActual('../../v2/GenericFunctions');
+vi.mock('../../v2/GenericFunctions', async () => {
+	const actual = await vi.importActual<typeof _importType0>('../../v2/GenericFunctions');
 	return {
 		...actual,
-		seaTableApiRequest: jest.fn(),
-		getBaseCollaborators: jest.fn(),
+		seaTableApiRequest: vi.fn(),
+		getBaseCollaborators: vi.fn(),
 	};
 });
 
 import * as GenericFunctions from '../../v2/GenericFunctions';
 import { execute as executeGet } from '../../v2/actions/row/get.operation';
 import { execute as executeSearch } from '../../v2/actions/row/search.operation';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../../v2/GenericFunctions';
 
-const mockedApiRequest = GenericFunctions.seaTableApiRequest as jest.Mock;
-const mockedGetCollaborators = GenericFunctions.getBaseCollaborators as jest.Mock;
+const mockedApiRequest = GenericFunctions.seaTableApiRequest as Mock;
+const mockedGetCollaborators = GenericFunctions.getBaseCollaborators as Mock;
 
 const buildMockContext = (params: Record<string, unknown>): IExecuteFunctions => {
 	return {
-		getNodeParameter: jest.fn().mockImplementation((...args: unknown[]) => {
+		getNodeParameter: vi.fn().mockImplementation((...args: unknown[]) => {
 			const name = args[0] as string;
 			return params[name] ?? {};
 		}),
 		helpers: {
-			returnJsonArray: jest.fn().mockReturnValue([]),
+			returnJsonArray: vi.fn().mockReturnValue([]),
 		},
 	} as unknown as IExecuteFunctions;
 };
@@ -35,7 +37,7 @@ const getCapturedSql = (): string => {
 
 describe('SeaTable > v2 > row operations', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockedApiRequest.mockResolvedValue({ results: [], metadata: [] });
 		mockedGetCollaborators.mockResolvedValue([]);
 	});

@@ -5,7 +5,7 @@ import Close from 'virtual:icons/mdi/close';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -17,7 +17,7 @@ import ExpressionOutput from '@/features/shared/editors/components/InlineExpress
 import VirtualSchema from '@/features/ndv/runData/components/VirtualSchema.vue';
 import OutputItemSelect from '@/features/shared/editors/components/InlineExpressionEditor/OutputItemSelect.vue';
 import { useI18n } from '@n8n/i18n';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import { dropInExpressionEditor } from '@/features/shared/editors/plugins/codemirror/dragAndDrop';
 
@@ -58,8 +58,12 @@ const emit = defineEmits<{
 }>();
 
 const ndvStore = injectNDVStore();
-const workflowsStore = useWorkflowsStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+
+const lastSuccessfulExecution = computed(
+	() => workflowExecutionStateStore.value.lastSuccessfulExecution,
+);
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -193,7 +197,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 						:nodes="parentNodes.length > 0 ? parentNodes : rootNodesParents"
 						:mapping-enabled="!isReadOnly"
 						:connection-type="NodeConnectionTypes.Main"
-						:preview-execution="workflowsStore.lastSuccessfulExecution"
+						:preview-execution="lastSuccessfulExecution"
 						pane-type="input"
 					/>
 				</div>

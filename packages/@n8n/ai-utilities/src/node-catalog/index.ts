@@ -20,6 +20,7 @@ export type {
 } from './search';
 
 export {
+	getNodeTypeDefinition,
 	getNodeTypes,
 	isValidPathComponent,
 	validatePathWithinBase,
@@ -58,5 +59,24 @@ export type {
 	ResourceOperationInfo,
 	ExtractOptions,
 } from './resource-operation-extractor';
+
+export {
+	collectDynamicNodeParameterPaths,
+	detectAuthenticationParameterValue,
+	findNodeParameterProperty,
+	formatResourceLocatorOptionsForLLM,
+	getDynamicNodeParameterLookup,
+	getRequiredNodeCredentialSlots,
+	hasNodeCredentials,
+	normalizeParameterPath,
+	toDynamicParameterPath,
+	toLoadedOptionParameterValue,
+	toResourceLocatorParameterValue,
+} from './dynamic-node-parameters';
+export type {
+	DynamicNodeParameterLookup,
+	DynamicNodeParameterPath,
+	RequiredNodeCredentialSlot,
+} from './dynamic-node-parameters';
 
 export type { SubnodeRequirement, CodeBuilderNodeSearchResult } from './types';

@@ -1,18 +1,19 @@
 import { DateTime } from 'luxon';
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IPollFunctions, INodeExecutionData, IDataObject } from 'n8n-workflow';
 
 import { MicrosoftOutlookTrigger } from '../../MicrosoftOutlookTrigger.node';
 
-jest.mock('../../trigger/GenericFunctions', () => ({
-	getPollResponse: jest.fn(),
+vi.mock('../../trigger/GenericFunctions', () => ({
+	getPollResponse: vi.fn(),
 }));
 
 import { getPollResponse } from '../../trigger/GenericFunctions';
+import type { Mock, Mocked } from 'vitest';
 
 describe('MicrosoftOutlookTrigger', () => {
 	let trigger: MicrosoftOutlookTrigger;
-	let mockPollFunctions: jest.Mocked<IPollFunctions>;
+	let mockPollFunctions: Mocked<IPollFunctions>;
 	let staticData: IDataObject;
 
 	beforeEach(() => {
@@ -20,7 +21,7 @@ describe('MicrosoftOutlookTrigger', () => {
 		mockPollFunctions = mockDeep<IPollFunctions>();
 		staticData = {};
 		mockPollFunctions.getWorkflowStaticData.mockReturnValue(staticData);
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('poll', () => {
@@ -29,7 +30,7 @@ describe('MicrosoftOutlookTrigger', () => {
 			staticData.lastTimeChecked = previousTimestamp;
 
 			mockPollFunctions.getMode.mockReturnValue('trigger');
-			(getPollResponse as jest.Mock).mockRejectedValue(new Error('API request failed'));
+			(getPollResponse as Mock).mockRejectedValue(new Error('API request failed'));
 			mockPollFunctions.getWorkflow.mockReturnValue({ id: 'test-workflow' } as never);
 			mockPollFunctions.getNode.mockReturnValue({
 				id: 'test-node',
@@ -48,7 +49,7 @@ describe('MicrosoftOutlookTrigger', () => {
 
 		it('should rethrow error when API call fails and lastTimeChecked is not set', async () => {
 			mockPollFunctions.getMode.mockReturnValue('trigger');
-			(getPollResponse as jest.Mock).mockRejectedValue(new Error('API request failed'));
+			(getPollResponse as Mock).mockRejectedValue(new Error('API request failed'));
 
 			await expect(trigger.poll.call(mockPollFunctions)).rejects.toThrow('API request failed');
 		});
@@ -56,7 +57,7 @@ describe('MicrosoftOutlookTrigger', () => {
 		it('should rethrow error in manual mode', async () => {
 			staticData.lastTimeChecked = '2023-01-01T00:00:00.000Z';
 			mockPollFunctions.getMode.mockReturnValue('manual');
-			(getPollResponse as jest.Mock).mockRejectedValue(new Error('API request failed'));
+			(getPollResponse as Mock).mockRejectedValue(new Error('API request failed'));
 
 			await expect(trigger.poll.call(mockPollFunctions)).rejects.toThrow('API request failed');
 		});
@@ -66,10 +67,10 @@ describe('MicrosoftOutlookTrigger', () => {
 			staticData.lastTimeChecked = previousTimestamp;
 
 			const fakeNow = DateTime.fromISO('2023-01-02T00:00:00.000Z');
-			jest.spyOn(DateTime, 'now').mockReturnValue(fakeNow);
+			vi.spyOn(DateTime, 'now').mockReturnValue(fakeNow);
 
 			const mockResults: INodeExecutionData[] = [{ json: { id: 'msg1', subject: 'Test' } }];
-			(getPollResponse as jest.Mock).mockResolvedValue(mockResults);
+			(getPollResponse as Mock).mockResolvedValue(mockResults);
 
 			const result = await trigger.poll.call(mockPollFunctions);
 
@@ -82,9 +83,9 @@ describe('MicrosoftOutlookTrigger', () => {
 			staticData.lastTimeChecked = previousTimestamp;
 
 			const fakeNow = DateTime.fromISO('2023-01-02T00:00:00.000Z');
-			jest.spyOn(DateTime, 'now').mockReturnValue(fakeNow);
+			vi.spyOn(DateTime, 'now').mockReturnValue(fakeNow);
 
-			(getPollResponse as jest.Mock).mockResolvedValue([]);
+			(getPollResponse as Mock).mockResolvedValue([]);
 
 			const result = await trigger.poll.call(mockPollFunctions);
 

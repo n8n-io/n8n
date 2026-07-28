@@ -7,6 +7,7 @@ import promClient from 'prom-client';
 import { CacheService } from '@/services/cache/cache.service';
 
 import type { PrometheusMetricsCollector } from './base';
+import { CachedMetricQuery } from './cached-metric-query';
 
 /**
  * Tracks the active workflow count via a Gauge, queried lazily on each scrape.
@@ -26,26 +27,19 @@ export class PrometheusActiveWorkflowMetricsService implements PrometheusMetrics
 	}
 
 	init() {
-		const workflowRepository = this.workflowRepository;
-		const cacheService = this.cacheService;
-		const cacheKey = 'metrics:active-workflow-count';
 		const cacheTtl = this.config.activeWorkflowCountInterval * Time.seconds.toMilliseconds;
+		const query = new CachedMetricQuery<number>({
+			cacheService: this.cacheService,
+			cacheKey: 'metrics:active-workflow-count:v2',
+			ttlMs: cacheTtl,
+			query: async () => await this.workflowRepository.getActiveCount(),
+		});
 
 		new promClient.Gauge({
 			name: `${this.config.prefix}active_workflow_count`,
 			help: 'Total number of active workflows.',
 			async collect() {
-				const value = await cacheService.get<string>(cacheKey);
-				const numericValue = value !== undefined ? parseInt(value, 10) : undefined;
-
-				if (numericValue !== undefined && Number.isFinite(numericValue)) {
-					this.set(numericValue);
-				} else {
-					const activeWorkflowCount = await workflowRepository.getActiveCount();
-					await cacheService.set(cacheKey, activeWorkflowCount.toString(), cacheTtl);
-
-					this.set(activeWorkflowCount);
-				}
+				this.set(await query.get());
 			},
 		});
 	}

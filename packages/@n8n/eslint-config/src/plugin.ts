@@ -26,6 +26,8 @@ export const localRulesPlugin = {
 				'n8n-local-rules/no-useless-catch-throw': 'error',
 				'n8n-local-rules/no-internal-package-import': 'error',
 				'n8n-local-rules/no-type-only-import-in-di': 'error',
+				'n8n-local-rules/no-aws-credential-discovery-imports': 'error',
+				'n8n-local-rules/no-application-error': 'error',
 			},
 		},
 	},

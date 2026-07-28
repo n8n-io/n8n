@@ -4,18 +4,21 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(16) |  | false | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) |  |  |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | expression | text |  | false |  |  |  |
+| id | varchar(16) |  | false | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) |  |  |
+| order | integer |  | false |  |  |  |
 | role | varchar(128) |  | false |  | [public.role](public.role.md) |  |
 | type | varchar(64) |  | false |  |  | Expected values: 'instance' (maps to a global role) or 'project' (maps to a project role; projects linked via role_mapping_rule_project). |
-| order | integer |  | false |  |  |  |
-| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_bb66e404c35996b0d6946177501 | FOREIGN KEY | FOREIGN KEY (role) REFERENCES role(slug) ON UPDATE CASCADE ON DELETE CASCADE |
+| PK_d772c8ec1a89b52d31c882bc560 | PRIMARY KEY | PRIMARY KEY (id) |
+| UQ_b33ac896ad3099fc8de36fdc1c4 | UNIQUE | UNIQUE (type, "order") |
 | role_mapping_rule_createdAt_not_null | n | NOT NULL "createdAt" |
 | role_mapping_rule_expression_not_null | n | NOT NULL expression |
 | role_mapping_rule_id_not_null | n | NOT NULL id |
@@ -23,17 +26,14 @@
 | role_mapping_rule_role_not_null | n | NOT NULL role |
 | role_mapping_rule_type_not_null | n | NOT NULL type |
 | role_mapping_rule_updatedAt_not_null | n | NOT NULL "updatedAt" |
-| FK_bb66e404c35996b0d6946177501 | FOREIGN KEY | FOREIGN KEY (role) REFERENCES role(slug) ON UPDATE CASCADE ON DELETE CASCADE |
-| PK_d772c8ec1a89b52d31c882bc560 | PRIMARY KEY | PRIMARY KEY (id) |
-| UQ_b33ac896ad3099fc8de36fdc1c4 | UNIQUE | UNIQUE (type, "order") |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_bb66e404c35996b0d694617750 | CREATE INDEX "IDX_bb66e404c35996b0d694617750" ON public.role_mapping_rule USING btree (role) |
 | PK_d772c8ec1a89b52d31c882bc560 | CREATE UNIQUE INDEX "PK_d772c8ec1a89b52d31c882bc560" ON public.role_mapping_rule USING btree (id) |
 | UQ_b33ac896ad3099fc8de36fdc1c4 | CREATE UNIQUE INDEX "UQ_b33ac896ad3099fc8de36fdc1c4" ON public.role_mapping_rule USING btree (type, "order") |
-| IDX_bb66e404c35996b0d694617750 | CREATE INDEX "IDX_bb66e404c35996b0d694617750" ON public.role_mapping_rule USING btree (role) |
 
 ## Relations
 
@@ -44,25 +44,25 @@ erDiagram
 "public.role_mapping_rule" }o--|| "public.role" : "FOREIGN KEY (role) REFERENCES role(slug) ON UPDATE CASCADE ON DELETE CASCADE"
 
 "public.role_mapping_rule" {
-  varchar_16_ id
+  timestamp_3__with_time_zone createdAt
   text expression
+  varchar_16_ id
+  integer order
   varchar_128_ role FK
   varchar_64_ type
-  integer order
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
 }
 "public.role_mapping_rule_project" {
-  varchar_16_ roleMappingRuleId FK
   varchar_36_ projectId FK
+  varchar_16_ roleMappingRuleId FK
 }
 "public.role" {
-  varchar_128_ slug
-  text displayName
-  text description
-  text roleType
-  boolean systemRole
   timestamp_3__with_time_zone createdAt
+  text description
+  text displayName
+  text roleType
+  varchar_128_ slug
+  boolean systemRole
   timestamp_3__with_time_zone updatedAt
 }
 ```

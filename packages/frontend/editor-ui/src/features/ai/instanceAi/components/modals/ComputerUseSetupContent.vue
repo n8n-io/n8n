@@ -9,6 +9,15 @@ import MacOsIcon from '../../assets/os-icons/macos-icon.svg';
 import WindowsIcon from '../../assets/os-icons/windows-icon.svg';
 import LinuxIcon from '../../assets/os-icons/linux-icon.svg';
 
+const props = withDefaults(
+	defineProps<{
+		embedded?: boolean;
+	}>(),
+	{
+		embedded: false,
+	},
+);
+
 const CATEGORY_META: Record<string, { icon: IconName; labelKey: BaseTextKey }> = {
 	filesystem: { icon: 'folder-open', labelKey: 'instanceAi.filesystem.category.filesystem' },
 	browser: { icon: 'globe', labelKey: 'instanceAi.filesystem.category.browser' },
@@ -147,13 +156,21 @@ async function copyCommand() {
 	}
 }
 
+async function prepareSetupCommand() {
+	if (!store.isLocalGatewayDisabledByAdmin && store.isLocalGatewayDisabled) {
+		await store.persistLocalGatewayPreference(false);
+	}
+
+	await store.fetchSetupCommand();
+}
+
 // Fetch the paste-ready setup command from the server. No daemon calls here —
-// the local daemon is only contacted when the user clicks Connect.
+// the local daemon is only contacted when the user runs the local command.
 onMounted(() => {
 	telemetry.track('User opened computer use connection modal', {
 		is_connected: store.isGatewayConnected,
 	});
-	void store.fetchSetupCommand();
+	void prepareSetupCommand();
 });
 
 watch(
@@ -179,8 +196,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div :class="$style.body">
-		<div :class="$style.header">
+	<div :class="[$style.body, props.embedded && $style.bodyEmbedded]">
+		<div v-if="!props.embedded" :class="$style.header">
 			<N8nHeading tag="h2" size="large" :class="$style.title">
 				{{ i18n.baseText('instanceAi.welcomeModal.gateway.title') }}
 			</N8nHeading>
@@ -281,6 +298,10 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: var(--spacing--md);
+}
+
+.bodyEmbedded {
+	padding: 0;
 }
 
 .header {

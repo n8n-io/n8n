@@ -17,25 +17,25 @@ CREATE TABLE "variables" ("id" varchar(36) PRIMARY KEY NOT NULL, "key" text NOT 
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | id | varchar(36) |  | false |  |  |  |
 | key | TEXT |  | false |  |  |  |
+| projectId | varchar(36) |  | true |  | [project](project.md) |  |
 | type | TEXT | 'string' | false |  |  |  |
 | value | TEXT |  | true |  |  |  |
-| projectId | varchar(36) |  | true |  | [project](project.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_variables_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
+| sqlite_autoindex_variables_1 | PRIMARY KEY (id) |
 | variables_global_key_unique | CREATE UNIQUE INDEX "variables_global_key_unique"<br />			 ON "variables" ("key")<br />			 WHERE projectId IS NULL |
 | variables_project_key_unique | CREATE UNIQUE INDEX "variables_project_key_unique" ON "variables" ("projectId", "key")  |
-| sqlite_autoindex_variables_1 | PRIMARY KEY (id) |
 
 ## Relations
 
@@ -47,20 +47,20 @@ erDiagram
 "variables" {
   varchar_36_ id PK
   TEXT key
+  varchar_36_ projectId FK
   TEXT type
   TEXT value
-  varchar_36_ projectId FK
 }
 "project" {
+  datetime_3_ createdAt
+  varchar creatorId FK
+  TEXT customTelemetryTags
+  varchar_512_ description
+  TEXT icon
   varchar_36_ id PK
   varchar_255_ name
   varchar_36_ type
-  datetime_3_ createdAt
   datetime_3_ updatedAt
-  TEXT icon
-  varchar_512_ description
-  varchar creatorId FK
-  TEXT customTelemetryTags
 }
 ```
 

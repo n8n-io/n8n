@@ -15,25 +15,25 @@ CREATE TABLE "workflows_tags" ("workflowId" varchar(36) NOT NULL, "tagId" intege
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
 | tagId | INTEGER |  | false |  | [tag_entity](tag_entity.md) |  |
+| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| workflowId | PRIMARY KEY | PRIMARY KEY (workflowId) |
-| tagId | PRIMARY KEY | PRIMARY KEY (tagId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (tagId) REFERENCES tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | sqlite_autoindex_workflows_tags_1 | PRIMARY KEY | PRIMARY KEY (workflowId, tagId) |
+| tagId | PRIMARY KEY | PRIMARY KEY (tagId) |
+| workflowId | PRIMARY KEY | PRIMARY KEY (workflowId) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| idx_workflows_tags_workflow_id | CREATE INDEX "idx_workflows_tags_workflow_id" ON "workflows_tags" ("workflowId") |
 | idx_workflows_tags_tag_id | CREATE INDEX "idx_workflows_tags_tag_id" ON "workflows_tags" ("tagId") |
+| idx_workflows_tags_workflow_id | CREATE INDEX "idx_workflows_tags_workflow_id" ON "workflows_tags" ("workflowId") |
 | sqlite_autoindex_workflows_tags_1 | PRIMARY KEY (workflowId, tagId) |
 
 ## Relations
@@ -41,40 +41,40 @@ CREATE TABLE "workflows_tags" ("workflowId" varchar(36) NOT NULL, "tagId" intege
 ```mermaid
 erDiagram
 
-"workflows_tags" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflows_tags" |o--|| "tag_entity" : "FOREIGN KEY (tagId) REFERENCES tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflows_tags" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "workflows_tags" {
-  varchar_36_ workflowId PK
   INTEGER tagId PK
-}
-"workflow_entity" {
-  varchar_36_ id PK
-  varchar_128_ name
-  boolean active
-  TEXT nodes
-  TEXT connections
-  TEXT settings
-  TEXT staticData
-  TEXT pinData
-  varchar_36_ versionId
-  INTEGER triggerCount
-  TEXT meta
-  varchar_36_ parentFolderId FK
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  boolean isArchived
-  INTEGER versionCounter
-  TEXT description
-  varchar_36_ activeVersionId FK
-  TEXT nodeGroups
-  varchar sourceWorkflowId
+  varchar_36_ workflowId PK
 }
 "tag_entity" {
+  datetime_3_ createdAt
   varchar_36_ id PK
   varchar_24_ name
-  datetime_3_ createdAt
   datetime_3_ updatedAt
+}
+"workflow_entity" {
+  boolean active
+  varchar_36_ activeVersionId FK
+  TEXT connections
+  datetime_3_ createdAt
+  TEXT description
+  varchar_36_ id PK
+  boolean isArchived
+  TEXT meta
+  varchar_128_ name
+  TEXT nodeGroups
+  TEXT nodes
+  varchar_36_ parentFolderId FK
+  TEXT pinData
+  TEXT settings
+  varchar sourceWorkflowId
+  TEXT staticData
+  INTEGER triggerCount
+  datetime_3_ updatedAt
+  INTEGER versionCounter
+  varchar_36_ versionId
 }
 ```
 

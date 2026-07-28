@@ -15,31 +15,31 @@ CREATE TABLE "workflow_dependency" ("id" integer PRIMARY KEY NOT NULL, "workflow
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | INTEGER |  | false |  |  |  |
-| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
-| workflowVersionId | INTEGER |  | false |  |  |  |
-| dependencyType | varchar(32) |  | false |  |  |  |
-| dependencyKey | varchar(255) |  | false |  |  |  |
-| indexVersionId | smallint | 1 | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | dependencyInfo | TEXT |  | true |  |  |  |
+| dependencyKey | varchar(255) |  | false |  |  |  |
+| dependencyType | varchar(32) |  | false |  |  |  |
+| id | INTEGER |  | false |  |  |  |
+| indexVersionId | smallint | 1 | false |  |  |  |
 | publishedVersionId | varchar(36) |  | true |  |  |  |
+| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
+| workflowVersionId | INTEGER |  | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_workflow_dependency_publishedVersionId | CREATE INDEX "IDX_workflow_dependency_publishedVersionId" ON "workflow_dependency" ("publishedVersionId")  |
 | IDX_a4ff2d9b9628ea988fa9e7d0bf | CREATE INDEX "IDX_a4ff2d9b9628ea988fa9e7d0bf" ON "workflow_dependency" ("workflowId")  |
-| IDX_e7fe1cfda990c14a445937d0b9 | CREATE INDEX "IDX_e7fe1cfda990c14a445937d0b9" ON "workflow_dependency" ("dependencyType")  |
 | IDX_e48a201071ab85d9d09119d640 | CREATE INDEX "IDX_e48a201071ab85d9d09119d640" ON "workflow_dependency" ("dependencyKey")  |
+| IDX_e7fe1cfda990c14a445937d0b9 | CREATE INDEX "IDX_e7fe1cfda990c14a445937d0b9" ON "workflow_dependency" ("dependencyType")  |
+| IDX_workflow_dependency_publishedVersionId | CREATE INDEX "IDX_workflow_dependency_publishedVersionId" ON "workflow_dependency" ("publishedVersionId")  |
 
 ## Relations
 
@@ -49,37 +49,37 @@ erDiagram
 "workflow_dependency" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "workflow_dependency" {
-  INTEGER id
-  varchar_36_ workflowId FK
-  INTEGER workflowVersionId
-  varchar_32_ dependencyType
-  varchar_255_ dependencyKey
-  smallint indexVersionId
   datetime_3_ createdAt
   TEXT dependencyInfo
+  varchar_255_ dependencyKey
+  varchar_32_ dependencyType
+  INTEGER id
+  smallint indexVersionId
   varchar_36_ publishedVersionId
+  varchar_36_ workflowId FK
+  INTEGER workflowVersionId
 }
 "workflow_entity" {
-  varchar_36_ id PK
-  varchar_128_ name
   boolean active
-  TEXT nodes
-  TEXT connections
-  TEXT settings
-  TEXT staticData
-  TEXT pinData
-  varchar_36_ versionId
-  INTEGER triggerCount
-  TEXT meta
-  varchar_36_ parentFolderId FK
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  boolean isArchived
-  INTEGER versionCounter
-  TEXT description
   varchar_36_ activeVersionId FK
+  TEXT connections
+  datetime_3_ createdAt
+  TEXT description
+  varchar_36_ id PK
+  boolean isArchived
+  TEXT meta
+  varchar_128_ name
   TEXT nodeGroups
+  TEXT nodes
+  varchar_36_ parentFolderId FK
+  TEXT pinData
+  TEXT settings
   varchar sourceWorkflowId
+  TEXT staticData
+  INTEGER triggerCount
+  datetime_3_ updatedAt
+  INTEGER versionCounter
+  varchar_36_ versionId
 }
 ```
 

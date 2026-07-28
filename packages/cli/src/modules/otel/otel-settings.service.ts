@@ -11,6 +11,15 @@ export type OtelSettingsResponse = OtelConfig & {
 	envManagedFields: Array<keyof OtelConfig>;
 };
 
+export type OtelConnectionParams = Pick<
+	OtelConfig,
+	| 'exporterEndpoint'
+	| 'exporterTracingPath'
+	| 'exporterServiceName'
+	| 'exporterHeaders'
+	| 'startupConnectivityTimeoutMs'
+>;
+
 @Service()
 export class OtelSettingsService {
 	private currentSettings: OtelConfig | null = null;
@@ -68,6 +77,18 @@ export class OtelSettingsService {
 				{ transaction: false },
 			);
 		}
+	}
+
+	resolveTestConnection(incoming: OtelConnectionParams): OtelConnectionParams {
+		const pick = <K extends keyof OtelConnectionParams>(key: K): OtelConnectionParams[K] =>
+			this.isEnvManaged(key) ? this.config[key] : incoming[key];
+		return {
+			exporterEndpoint: pick('exporterEndpoint'),
+			exporterTracingPath: pick('exporterTracingPath'),
+			exporterServiceName: pick('exporterServiceName'),
+			exporterHeaders: pick('exporterHeaders'),
+			startupConnectivityTimeoutMs: pick('startupConnectivityTimeoutMs'),
+		};
 	}
 
 	private isEnvManaged(key: keyof OtelConfig): boolean {

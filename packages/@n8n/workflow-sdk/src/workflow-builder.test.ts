@@ -8,6 +8,7 @@ import {
 	tool,
 	outputParser,
 } from './workflow-builder/node-builders/subnode-builders';
+import { generateDeterministicGroupId } from './workflow-builder/string-utils';
 
 describe('Workflow Builder', () => {
 	describe('workflow()', () => {
@@ -882,6 +883,16 @@ describe('Workflow Builder', () => {
 			expect(json.settings?.timezone).toBe('America/New_York');
 			expect(json.settings?.executionTimeout).toBe(3600);
 		});
+
+		it('should serialize workflow-level error workflow settings', () => {
+			const wf = workflow('test-id', 'Test Workflow').settings({
+				errorWorkflow: 'error-handler-123',
+			});
+
+			const json = wf.toJSON();
+
+			expect(json.settings?.errorWorkflow).toBe('error-handler-123');
+		});
 	});
 
 	describe('.getNode()', () => {
@@ -948,6 +959,109 @@ describe('Workflow Builder', () => {
 			expect(json.nodes[1].position).toBeDefined();
 			// Second node should be to the right of the first
 			expect(json.nodes[1].position[0]).toBeGreaterThan(json.nodes[0].position[0]);
+		});
+	});
+
+	describe('node groups', () => {
+		it('emits a group authored via .group() with members resolved to node ids', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const fetch = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Fetch' },
+			});
+			const transform = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Transform' },
+			});
+
+			const json = workflow('wf-1', 'Test')
+				.add(t)
+				.to(fetch)
+				.to(transform)
+				.group('Ingestion', [fetch, transform])
+				.toJSON();
+
+			const idByName = new Map(json.nodes.map((n) => [n.name, n.id]));
+			expect(json.nodeGroups).toEqual([
+				{
+					id: generateDeterministicGroupId('wf-1', 'Ingestion'),
+					name: 'Ingestion',
+					nodeIds: [idByName.get('Fetch'), idByName.get('Transform')],
+				},
+			]);
+		});
+
+		it('omits nodeGroups when no group was declared', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+
+			expect(workflow('wf-1', 'Test').add(t).toJSON().nodeGroups).toBeUndefined();
+		});
+
+		it('preserves a group id imported via fromJSON across a round-trip', () => {
+			const source: WorkflowJSON = {
+				id: 'wf-1',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'id-a',
+						name: 'A',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'id-b',
+						name: 'B',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [10, 0],
+						parameters: {},
+					},
+				],
+				connections: { A: { main: [[{ node: 'B', type: 'main', index: 0 }]] } },
+				nodeGroups: [{ id: 'ui-random-id', name: 'G', nodeIds: ['id-a', 'id-b'] }],
+			};
+
+			const json = workflow.fromJSON(source).toJSON();
+
+			expect(json.nodeGroups).toEqual([
+				{ id: 'ui-random-id', name: 'G', nodeIds: ['id-a', 'id-b'] },
+			]);
+		});
+
+		it('keeps an imported group after the builder is modified', () => {
+			const source: WorkflowJSON = {
+				id: 'wf-1',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'id-a',
+						name: 'A',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				nodeGroups: [{ id: 'ui-random-id', name: 'G', nodeIds: ['id-a'] }],
+			};
+
+			const added = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'B' } });
+			const json = workflow.fromJSON(source).to(added).toJSON();
+
+			expect(json.nodeGroups).toEqual([{ id: 'ui-random-id', name: 'G', nodeIds: ['id-a'] }]);
 		});
 	});
 

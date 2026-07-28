@@ -64,7 +64,7 @@ export class SettingsStore {
 			logLevel: s.logLevel,
 			allowedOrigins: origins,
 			filesystem: { dir: s.filesystemDir },
-			computer: { shell: { timeout: 30_000 } },
+			computer: { shell: { timeout: 30_000, dangerouslyDisableSandbox: false } },
 			browser: {
 				defaultBrowser: 'chrome',
 			},

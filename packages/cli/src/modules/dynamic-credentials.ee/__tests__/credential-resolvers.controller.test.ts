@@ -1,7 +1,7 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import { CredentialResolverValidationError } from '@n8n/decorators';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -23,7 +23,7 @@ describe('CredentialResolversController', () => {
 	const res = mock<Response>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('listResolvers', () => {

@@ -1,15 +1,19 @@
 import { JSDOM, VirtualConsole } from 'jsdom';
 
 import {
+	getAssociatedLabelText,
 	COPY_BUTTON_PATTERN,
 	elementLabel,
 	elementText,
 	hasButtonMatching,
 	highEntropyCandidates,
 	isSensitiveInput,
+	getLabelTextByControlIdMap,
 	REVEAL_BUTTON_PATTERN,
 	REVEAL_PHRASE_PATTERNS,
+	sensitiveInputValues,
 	SENSITIVE_ARIA_LABEL_PATTERN,
+	SENSITIVE_FIELD_LABEL_PATTERN,
 	SENSITIVE_TESTID_PATTERN,
 	getTestId,
 } from './dom-matchers';
@@ -45,12 +49,19 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 	const bodyText = document.documentElement.textContent ?? '';
 	for (const hit of findRegexSecretHits(bodyText)) addHit(hits, hit);
 
-	// Password-shaped inputs expose their values as attributes in the collected
-	// HTML. These do not need entropy to be considered sensitive.
-	for (const input of Array.from(document.querySelectorAll('input'))) {
-		if (!isSensitiveInput(input)) continue;
-		const value = input.getAttribute('value') ?? '';
-		if (value) addHit(hits, { type: 'password', value });
+	// Inputs/textareas that are password-shaped or whose label reads as a secret
+	// expose their values in the collected HTML; no entropy needed to flag them.
+	const labelsByControlIdMap = getLabelTextByControlIdMap(document);
+	for (const field of Array.from(document.querySelectorAll('input, textarea'))) {
+		const sensitive =
+			isSensitiveInput(field) ||
+			SENSITIVE_FIELD_LABEL_PATTERN.test(
+				getAssociatedLabelText(field, document, labelsByControlIdMap),
+			);
+		if (!sensitive) continue;
+		for (const value of sensitiveInputValues(field)) {
+			addHit(hits, { type: 'password', value });
+		}
 	}
 
 	// Reveal dialogs are the high-risk flow: newly created credentials are often

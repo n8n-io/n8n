@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import Redis from 'ioredis';
+import type { Mock } from 'vitest';
 
 import { RedisClientService } from '@/services/redis-client.service';
 
@@ -15,12 +16,14 @@ const enableExitOnRedisUnreachable = (service: RedisClientService) => {
 	(service as unknown as { exitOnRedisUnreachable: boolean }).exitOnRedisUnreachable = true;
 };
 
-jest.mock('ioredis', () => {
-	return jest.fn().mockImplementation(() => {
-		return {
-			on: jest.fn(),
-		};
-	});
+vi.mock('ioredis', () => {
+	return {
+		default: vi.fn().mockImplementation(function () {
+			return {
+				on: vi.fn(),
+			};
+		}),
+	};
 });
 
 describe('RedisClientService', () => {
@@ -42,11 +45,10 @@ describe('RedisClientService', () => {
 		},
 	});
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- ioRedis constructor overloads prevent jest.mocked() from typing calls correctly
-	const mockedRedis = Redis as unknown as jest.Mock;
+	const mockedRedis = Redis as unknown as Mock;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should create client with basic options', () => {
@@ -65,6 +67,51 @@ describe('RedisClientService', () => {
 
 		const callArgs = mockedRedis.mock.calls[0][0];
 		expect(callArgs).not.toHaveProperty('keepAlive');
+	});
+
+	it('should set tls options with servername when tls and serverName are configured', () => {
+		globalConfig.queue.bull.redis.tls = true;
+		globalConfig.queue.bull.redis.tlsConfig = {
+			serverName: 'my-redis.example.com',
+			rejectUnauthorized: true,
+		};
+
+		const service = new RedisClientService(logger, globalConfig);
+		service.createClient({ type: 'client(bull)' });
+
+		expect(Redis).toHaveBeenCalledWith(
+			expect.objectContaining({
+				tls: { servername: 'my-redis.example.com', rejectUnauthorized: true },
+			}),
+		);
+	});
+
+	it('should set tls options without servername when serverName is empty', () => {
+		globalConfig.queue.bull.redis.tls = true;
+		globalConfig.queue.bull.redis.tlsConfig = { serverName: '', rejectUnauthorized: true };
+
+		const service = new RedisClientService(logger, globalConfig);
+		service.createClient({ type: 'client(bull)' });
+
+		const callArgs = mockedRedis.mock.calls[0][0] as {
+			tls: { servername: unknown; rejectUnauthorized: boolean };
+		};
+		expect(callArgs.tls.servername).toBeUndefined();
+		expect(callArgs.tls.rejectUnauthorized).toBe(true);
+	});
+
+	it('should pass rejectUnauthorized false when cert validation is disabled', () => {
+		globalConfig.queue.bull.redis.tls = true;
+		globalConfig.queue.bull.redis.tlsConfig = { serverName: '', rejectUnauthorized: false };
+
+		const service = new RedisClientService(logger, globalConfig);
+		service.createClient({ type: 'client(bull)' });
+
+		expect(Redis).toHaveBeenCalledWith(
+			expect.objectContaining({
+				tls: expect.objectContaining({ rejectUnauthorized: false }),
+			}),
+		);
 	});
 
 	it('should add keepAlive options when configured', () => {
@@ -117,7 +164,7 @@ describe('RedisClientService', () => {
 
 			const mockClient = mockedRedis.mock.results[0].value;
 			const handlers = new Map<string, EventHandler>();
-			jest.mocked(mockClient.on).mock.calls.forEach(([event, handler]: [string, EventHandler]) => {
+			vi.mocked(mockClient.on).mock.calls.forEach(([event, handler]: [string, EventHandler]) => {
 				handlers.set(event, handler);
 			});
 
@@ -133,8 +180,8 @@ describe('RedisClientService', () => {
 
 		it("should not reset another client's retry state when one client recovers", () => {
 			const T0 = 1_700_000_000_000;
-			const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(T0);
-			const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+			const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(T0);
+			const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
 			const service = new RedisClientService(logger, globalConfig);
 			enableExitOnRedisUnreachable(service);
@@ -145,7 +192,7 @@ describe('RedisClientService', () => {
 
 			const mockClientB = mockedRedis.mock.results[1].value;
 			const handlersB = new Map<string, EventHandler>();
-			jest.mocked(mockClientB.on).mock.calls.forEach(([event, handler]: [string, EventHandler]) => {
+			vi.mocked(mockClientB.on).mock.calls.forEach(([event, handler]: [string, EventHandler]) => {
 				handlersB.set(event, handler);
 			});
 
@@ -173,8 +220,8 @@ describe('RedisClientService', () => {
 
 		it("should reset each client's retry state on its own ready, regardless of aggregate state", () => {
 			const T0 = 1_700_000_000_000;
-			const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(T0);
-			const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+			const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(T0);
+			const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
 			const service = new RedisClientService(logger, globalConfig);
 			enableExitOnRedisUnreachable(service);
@@ -185,17 +232,17 @@ describe('RedisClientService', () => {
 			const retryB = mockedRedis.mock.calls[1][0].retryStrategy as () => number;
 
 			const handlersA = new Map<string, EventHandler>();
-			jest
-				.mocked(mockedRedis.mock.results[0].value.on)
-				.mock.calls.forEach(([event, handler]: [string, EventHandler]) => {
+			vi.mocked(mockedRedis.mock.results[0].value.on).mock.calls.forEach(
+				([event, handler]: [string, EventHandler]) => {
 					handlersA.set(event, handler);
-				});
+				},
+			);
 			const handlersB = new Map<string, EventHandler>();
-			jest
-				.mocked(mockedRedis.mock.results[1].value.on)
-				.mock.calls.forEach(([event, handler]: [string, EventHandler]) => {
+			vi.mocked(mockedRedis.mock.results[1].value.on).mock.calls.forEach(
+				([event, handler]: [string, EventHandler]) => {
 					handlersB.set(event, handler);
-				});
+				},
+			);
 
 			// Both clients enter retry. B accumulates state.
 			dateNowSpy.mockReturnValue(T0 + 1_000);
@@ -225,8 +272,8 @@ describe('RedisClientService', () => {
 
 		it('should not exit when a new disconnect occurs after recovery within the reset window', () => {
 			const T0 = 1_700_000_000_000;
-			const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(T0);
-			const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+			const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(T0);
+			const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
 			const service = new RedisClientService(logger, globalConfig);
 			enableExitOnRedisUnreachable(service);
@@ -234,7 +281,7 @@ describe('RedisClientService', () => {
 
 			const mockClient = mockedRedis.mock.results[0].value;
 			const handlers = new Map<string, EventHandler>();
-			jest.mocked(mockClient.on).mock.calls.forEach(([event, handler]: [string, EventHandler]) => {
+			vi.mocked(mockClient.on).mock.calls.forEach(([event, handler]: [string, EventHandler]) => {
 				handlers.set(event, handler);
 			});
 
@@ -261,8 +308,8 @@ describe('RedisClientService', () => {
 
 		it('should not exit the process under test even when the timeout is exceeded', () => {
 			const T0 = 1_700_000_000_000;
-			const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(T0);
-			const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+			const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(T0);
+			const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
 			// No enableExitOnRedisUnreachable() — exercise the default test behaviour.
 			const service = new RedisClientService(logger, globalConfig);

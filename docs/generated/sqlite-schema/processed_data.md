@@ -15,20 +15,20 @@ CREATE TABLE "processed_data" ("workflowId" varchar(36) NOT NULL, "context" varc
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
 | context | varchar(255) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | value | TEXT |  | false |  |  |  |
+| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| workflowId | PRIMARY KEY | PRIMARY KEY (workflowId) |
-| context | PRIMARY KEY | PRIMARY KEY (context) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| context | PRIMARY KEY | PRIMARY KEY (context) |
 | sqlite_autoindex_processed_data_1 | PRIMARY KEY | PRIMARY KEY (workflowId, context) |
+| workflowId | PRIMARY KEY | PRIMARY KEY (workflowId) |
 
 ## Indexes
 
@@ -44,33 +44,33 @@ erDiagram
 "processed_data" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "processed_data" {
-  varchar_36_ workflowId PK
   varchar_255_ context PK
   datetime_3_ createdAt
   datetime_3_ updatedAt
   TEXT value
+  varchar_36_ workflowId PK
 }
 "workflow_entity" {
-  varchar_36_ id PK
-  varchar_128_ name
   boolean active
-  TEXT nodes
-  TEXT connections
-  TEXT settings
-  TEXT staticData
-  TEXT pinData
-  varchar_36_ versionId
-  INTEGER triggerCount
-  TEXT meta
-  varchar_36_ parentFolderId FK
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  boolean isArchived
-  INTEGER versionCounter
-  TEXT description
   varchar_36_ activeVersionId FK
+  TEXT connections
+  datetime_3_ createdAt
+  TEXT description
+  varchar_36_ id PK
+  boolean isArchived
+  TEXT meta
+  varchar_128_ name
   TEXT nodeGroups
+  TEXT nodes
+  varchar_36_ parentFolderId FK
+  TEXT pinData
+  TEXT settings
   varchar sourceWorkflowId
+  TEXT staticData
+  INTEGER triggerCount
+  datetime_3_ updatedAt
+  INTEGER versionCounter
+  varchar_36_ versionId
 }
 ```
 

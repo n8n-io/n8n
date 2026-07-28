@@ -6,6 +6,7 @@ import type { ExecutionOutputMap } from '@/app/types/executionData';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { NodeDiffStatus, type IConnections } from 'n8n-workflow';
 import { useCanvasMapping } from '@/features/workflows/canvas/composables/useCanvasMapping';
+import { createNodeExecutionSnapshot } from '@/features/workflows/canvas/__tests__/utils';
 import { disposeWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { disposeWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
@@ -172,6 +173,7 @@ describe('useWorkflowDiff', () => {
 			nodeDisplaySizeById: computed(
 				() => ({}) as Record<string, { width: number; height: number }>,
 			),
+			getNodeExecutionSnapshot: () => createNodeExecutionSnapshot(),
 			nodes: computed(() => nodes as CanvasNode[]),
 			connections: computed(() => connections as CanvasConnection[]),
 		});

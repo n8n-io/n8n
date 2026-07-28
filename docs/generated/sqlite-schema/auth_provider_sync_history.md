@@ -27,17 +27,17 @@ CREATE TABLE "auth_provider_sync_history" (
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| created | INTEGER |  | false |  |  |  |
+| disabled | INTEGER |  | false |  |  |  |
+| endedAt | DATETIME |  | false |  |  |  |
+| error | TEXT |  | true |  |  |  |
 | id | INTEGER |  | true |  |  |  |
 | providerType | VARCHAR(32) |  | false |  |  |  |
 | runMode | TEXT |  | false |  |  |  |
-| status | TEXT |  | false |  |  |  |
-| startedAt | DATETIME |  | false |  |  |  |
-| endedAt | DATETIME |  | false |  |  |  |
 | scanned | INTEGER |  | false |  |  |  |
-| created | INTEGER |  | false |  |  |  |
+| startedAt | DATETIME |  | false |  |  |  |
+| status | TEXT |  | false |  |  |  |
 | updated | INTEGER |  | false |  |  |  |
-| disabled | INTEGER |  | false |  |  |  |
-| error | TEXT |  | true |  |  |  |
 
 ## Constraints
 
@@ -52,17 +52,17 @@ erDiagram
 
 
 "auth_provider_sync_history" {
+  INTEGER created
+  INTEGER disabled
+  DATETIME endedAt
+  TEXT error
   INTEGER id
   VARCHAR_32_ providerType
   TEXT runMode
-  TEXT status
-  DATETIME startedAt
-  DATETIME endedAt
   INTEGER scanned
-  INTEGER created
+  DATETIME startedAt
+  TEXT status
   INTEGER updated
-  INTEGER disabled
-  TEXT error
 }
 ```
 

@@ -15,90 +15,90 @@ CREATE TABLE "workflow_builder_session" ("id" varchar PRIMARY KEY NOT NULL, "wor
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| activeVersionCardId | varchar(255) |  | true |  |  |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | id | varchar |  | false |  |  |  |
-| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
-| userId | varchar |  | false |  | [user](user.md) |  |
 | messages | TEXT | '[]' | false |  |  |  |
 | previousSummary | TEXT |  | true |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| activeVersionCardId | varchar(255) |  | true |  |  |  |
 | resumeAfterRestoreMessageId | varchar(255) |  | true |  |  |  |
+| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| userId | varchar |  | false |  | [user](user.md) |  |
+| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| sqlite_autoindex_workflow_builder_session_2 | UNIQUE | UNIQUE (workflowId, userId) |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_workflow_builder_session_1 | PRIMARY KEY | PRIMARY KEY (id) |
+| sqlite_autoindex_workflow_builder_session_2 | UNIQUE | UNIQUE (workflowId, userId) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| sqlite_autoindex_workflow_builder_session_2 | UNIQUE (workflowId, userId) |
 | sqlite_autoindex_workflow_builder_session_1 | PRIMARY KEY (id) |
+| sqlite_autoindex_workflow_builder_session_2 | UNIQUE (workflowId, userId) |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-"workflow_builder_session" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_builder_session" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_builder_session" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "workflow_builder_session" {
+  varchar_255_ activeVersionCardId
+  datetime_3_ createdAt
   varchar id PK
-  varchar_36_ workflowId FK
-  varchar userId FK
   TEXT messages
   TEXT previousSummary
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  varchar_255_ activeVersionCardId
   varchar_255_ resumeAfterRestoreMessageId
-}
-"workflow_entity" {
-  varchar_36_ id PK
-  varchar_128_ name
-  boolean active
-  TEXT nodes
-  TEXT connections
-  TEXT settings
-  TEXT staticData
-  TEXT pinData
-  varchar_36_ versionId
-  INTEGER triggerCount
-  TEXT meta
-  varchar_36_ parentFolderId FK
-  datetime_3_ createdAt
   datetime_3_ updatedAt
-  boolean isArchived
-  INTEGER versionCounter
-  TEXT description
-  varchar_36_ activeVersionId FK
-  TEXT nodeGroups
-  varchar sourceWorkflowId
+  varchar userId FK
+  varchar_36_ workflowId FK
 }
 "user" {
-  varchar id PK
+  datetime_3_ createdAt
+  boolean disabled
   varchar_255_ email
   varchar_32_ firstName
+  varchar id PK
+  date lastActiveAt
   varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
   varchar password
   TEXT personalizationAnswers
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT settings
-  boolean disabled
-  boolean mfaEnabled
-  TEXT mfaSecret
-  TEXT mfaRecoveryCodes
-  date lastActiveAt
   varchar_128_ roleSlug FK
+  TEXT settings
+  datetime_3_ updatedAt
+}
+"workflow_entity" {
+  boolean active
+  varchar_36_ activeVersionId FK
+  TEXT connections
+  datetime_3_ createdAt
+  TEXT description
+  varchar_36_ id PK
+  boolean isArchived
+  TEXT meta
+  varchar_128_ name
+  TEXT nodeGroups
+  TEXT nodes
+  varchar_36_ parentFolderId FK
+  TEXT pinData
+  TEXT settings
+  varchar sourceWorkflowId
+  TEXT staticData
+  INTEGER triggerCount
+  datetime_3_ updatedAt
+  INTEGER versionCounter
+  varchar_36_ versionId
 }
 ```
 

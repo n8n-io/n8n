@@ -7,13 +7,13 @@ describe('NocoDB Transport API', () => {
 
 	beforeEach(() => {
 		mockThis = {
-			getNodeParameter: jest.fn(),
-			getCredentials: jest.fn(),
+			getNodeParameter: vi.fn(),
+			getCredentials: vi.fn(),
 			helpers: {
-				httpRequestWithAuthentication: jest.fn(),
-				prepareBinaryData: jest.fn(),
+				httpRequestWithAuthentication: vi.fn(),
+				prepareBinaryData: vi.fn(),
 			},
-			getNode: jest.fn(() => ({ id: 'node1' })),
+			getNode: vi.fn(() => ({ id: 'node1' })),
 		};
 	});
 

@@ -6,7 +6,7 @@
  * replaced with local types so the package stays decoupled.
  */
 
-import { sublimeSearch } from '@n8n/utils';
+import { sublimeSearch } from '@n8n/utils/search/sublime-search';
 
 import type {
 	BuilderHintInputs,
@@ -73,6 +73,30 @@ function extractSubnodeRequirements(inputs?: BuilderHintInputs): SubnodeRequirem
 			required: config.required,
 			...(config.displayOptions && { displayOptions: config.displayOptions }),
 		}));
+}
+
+function getBuilderHintMessage(
+	builderHint?: SearchableNodeType['builderHint'],
+): string | undefined {
+	return builderHint?.message ?? builderHint?.searchHint;
+}
+
+function toNodeSearchResult(node: SearchableNodeType, score: number): NodeSearchResult {
+	const subnodeRequirements = extractSubnodeRequirements(node.builderHint?.inputs);
+	const builderHintMessage = getBuilderHintMessage(node.builderHint);
+
+	return {
+		name: node.name,
+		displayName: node.displayName,
+		description: node.description ?? 'No description available',
+		version: getLatestVersion(node.version),
+		inputs: node.inputs,
+		outputs: node.outputs,
+		score,
+		...(builderHintMessage && { builderHintMessage }),
+		...(subnodeRequirements.length > 0 && { subnodeRequirements }),
+		...(node.aiGateway && { aiGateway: node.aiGateway }),
+	};
 }
 
 function dedupeNodes(nodes: SearchableNodeType[]): SearchableNodeType[] {
@@ -256,20 +280,7 @@ export class NodeSearchEngine {
 
 		const results = this.fuzzySearchNodes(query, this.nodeTypes, limit)
 			.slice(0, limit)
-			.map(({ item, score }): NodeSearchResult => {
-				const subnodeRequirements = extractSubnodeRequirements(item.builderHint?.inputs);
-				return {
-					name: item.name,
-					displayName: item.displayName,
-					description: item.description ?? 'No description available',
-					version: getLatestVersion(item.version),
-					inputs: item.inputs,
-					outputs: item.outputs,
-					score,
-					...(item.builderHint?.message && { builderHintMessage: item.builderHint.message }),
-					...(subnodeRequirements.length > 0 && { subnodeRequirements }),
-				};
-			});
+			.map(({ item, score }) => toNodeSearchResult(item, score));
 		this.nameSearchCache.set(cacheKey, results);
 		return cloneSearchResults(results);
 	}
@@ -306,22 +317,7 @@ export class NodeSearchEngine {
 			const results = nodesWithConnectionType
 				.sort((a, b) => b.connectionScore - a.connectionScore)
 				.slice(0, limit)
-				.map(({ nodeType, connectionScore }) => {
-					const subnodeRequirements = extractSubnodeRequirements(nodeType.builderHint?.inputs);
-					return {
-						name: nodeType.name,
-						displayName: nodeType.displayName,
-						version: getLatestVersion(nodeType.version),
-						description: nodeType.description ?? 'No description available',
-						inputs: nodeType.inputs,
-						outputs: nodeType.outputs,
-						score: connectionScore,
-						...(nodeType.builderHint?.message && {
-							builderHintMessage: nodeType.builderHint.message,
-						}),
-						...(subnodeRequirements.length > 0 && { subnodeRequirements }),
-					};
-				});
+				.map(({ nodeType, connectionScore }) => toNodeSearchResult(nodeType, connectionScore));
 			this.connectionSearchCache.set(cacheKey, results);
 			return cloneSearchResults(results);
 		}
@@ -336,19 +332,7 @@ export class NodeSearchEngine {
 				(result) => result.nodeType.name === item.name,
 			);
 			const connectionScore = connectionResult?.connectionScore ?? 0;
-			const subnodeRequirements = extractSubnodeRequirements(item.builderHint?.inputs);
-
-			return {
-				name: item.name,
-				version: getLatestVersion(item.version),
-				displayName: item.displayName,
-				description: item.description ?? 'No description available',
-				inputs: item.inputs,
-				outputs: item.outputs,
-				score: connectionScore + nameScore,
-				...(item.builderHint?.message && { builderHintMessage: item.builderHint.message }),
-				...(subnodeRequirements.length > 0 && { subnodeRequirements }),
-			};
+			return toNodeSearchResult(item, connectionScore + nameScore);
 		});
 		this.connectionSearchCache.set(cacheKey, results);
 		return cloneSearchResults(results);
@@ -368,6 +352,16 @@ export class NodeSearchEngine {
 			`			<node_inputs>${typeof result.inputs === 'object' ? JSON.stringify(result.inputs) : result.inputs}</node_inputs>`,
 			`			<node_outputs>${typeof result.outputs === 'object' ? JSON.stringify(result.outputs) : result.outputs}</node_outputs>`,
 		];
+
+		// Flag n8n Connect coverage so the model can prefer it over comparable
+		// alternatives when the user has not named a specific tool.
+		if (result.aiGateway) {
+			const minVersion =
+				result.aiGateway.minVersion !== undefined
+					? ` min_version="${result.aiGateway.minVersion}"`
+					: '';
+			parts.push(`			<n8n_credits supported="true"${minVersion} />`);
+		}
 
 		// Add builder hint message if present
 		if (result.builderHintMessage) {

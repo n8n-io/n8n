@@ -28,10 +28,13 @@ jobs:
     name: Assign reviewers
     # Skipped for:
     #  - PRs from forks (no token to assign with)
-    #  - Bot-authored PRs (Dependabot, Renovate, etc.)
+    #  - Bot-authored PRs (Dependabot, Renovate, etc.), except cat-bot which
+    #    opts in explicitly so a human-applied label can route its PRs to the
+    #    owning team
     if: |
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.user.type != 'Bot'
+      (github.event.pull_request.user.type != 'Bot' ||
+       github.event.pull_request.user.login == 'n8n-cat-bot[bot]')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

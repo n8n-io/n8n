@@ -15,6 +15,8 @@ import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
+import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
@@ -92,7 +94,7 @@ const shared = computed<IMenuItem>(() => ({
 const getProjectMenuItem = (project: ProjectListItem): IMenuItem => ({
 	id: project.id,
 	label: project.name ?? '',
-	icon: (project.icon as IMenuItem['icon']) ?? DEFAULT_PROJECT_ICON,
+	icon: (project.icon ?? DEFAULT_PROJECT_ICON) as IMenuItem['icon'],
 	route: {
 		to: {
 			name: VIEWS.PROJECTS_WORKFLOWS,
@@ -123,6 +125,15 @@ const instanceAi = computed<IMenuItem>(() => ({
 	preview: true,
 }));
 
+const { isWorkflowReviewsEnabled: isWorkflowReviewsNavVisible } = useWorkflowReviewsFeature();
+
+const workflowReviews = computed<IMenuItem>(() => ({
+	id: 'workflow-reviews',
+	icon: 'message-square-text',
+	label: locale.baseText('workflowReviews.menu.title'),
+	route: { to: { name: WORKFLOW_REVIEW_REQUESTS_VIEW } },
+	preview: true,
+}));
 const chat = computed<IMenuItem>(() => ({
 	id: 'chat',
 	icon: 'message-circle',
@@ -151,6 +162,13 @@ onBeforeUnmount(() => {
 	<div :class="$style.projects">
 		<div :class="[$style.home, props.collapsed ? $style.collapsed : '']">
 			<N8nMenuItem
+				v-if="isInstanceAiNavVisible"
+				:item="instanceAi"
+				:compact="props.collapsed"
+				:active="activeTabId === 'instance-ai'"
+				data-test-id="project-instance-ai-menu-item"
+			/>
+			<N8nMenuItem
 				:item="home"
 				:compact="props.collapsed"
 				:active="activeTabId === 'home'"
@@ -174,11 +192,11 @@ onBeforeUnmount(() => {
 				data-test-id="project-shared-menu-item"
 			/>
 			<N8nMenuItem
-				v-if="isInstanceAiNavVisible"
-				:item="instanceAi"
+				v-if="isWorkflowReviewsNavVisible"
+				:item="workflowReviews"
 				:compact="props.collapsed"
-				:active="activeTabId === 'instance-ai'"
-				data-test-id="project-instance-ai-menu-item"
+				:active="activeTabId === 'workflow-reviews'"
+				data-test-id="project-workflow-reviews-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="isChatLinkAvailable"

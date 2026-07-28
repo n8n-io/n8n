@@ -88,13 +88,13 @@ describe('ExternalSecretsModule', () => {
 		});
 
 		it('should load enabled providers on init', async () => {
-			const initSpy = jest.spyOn(DummyProvider.prototype, 'init');
-			const connectSpy = jest.spyOn(DummyProvider.prototype, 'connect');
-			const updateSpy = jest.spyOn(DummyProvider.prototype, 'update');
+			const initSpy = vi.spyOn(DummyProvider.prototype, 'init');
+			const connectSpy = vi.spyOn(DummyProvider.prototype, 'connect');
+			const updateSpy = vi.spyOn(DummyProvider.prototype, 'update');
 
-			const initDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'init');
-			const connectDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'connect');
-			const updateDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'update');
+			const initDisabledSpy = vi.spyOn(AnotherDummyProvider.prototype, 'init');
+			const connectDisabledSpy = vi.spyOn(AnotherDummyProvider.prototype, 'connect');
+			const updateDisabledSpy = vi.spyOn(AnotherDummyProvider.prototype, 'update');
 
 			await module.init();
 
@@ -118,7 +118,7 @@ describe('ExternalSecretsModule', () => {
 		it('should disconnect providers after shutdown', async () => {
 			await module.init();
 
-			const disconnectSpy = jest.spyOn(DummyProvider.prototype, 'disconnect');
+			const disconnectSpy = vi.spyOn(DummyProvider.prototype, 'disconnect');
 			await module.shutdown();
 
 			expect(disconnectSpy).toHaveBeenCalled();
@@ -166,13 +166,13 @@ describe('ExternalSecretsModule', () => {
 		});
 
 		it('should load and connect all providers on init', async () => {
-			const initSpy = jest.spyOn(DummyProvider.prototype, 'init');
-			const connectSpy = jest.spyOn(DummyProvider.prototype, 'connect');
-			const updateSpy = jest.spyOn(DummyProvider.prototype, 'update');
+			const initSpy = vi.spyOn(DummyProvider.prototype, 'init');
+			const connectSpy = vi.spyOn(DummyProvider.prototype, 'connect');
+			const updateSpy = vi.spyOn(DummyProvider.prototype, 'update');
 
-			const initAnotherSpy = jest.spyOn(AnotherDummyProvider.prototype, 'init');
-			const connectAnotherSpy = jest.spyOn(AnotherDummyProvider.prototype, 'connect');
-			const updateAnotherSpy = jest.spyOn(AnotherDummyProvider.prototype, 'update');
+			const initAnotherSpy = vi.spyOn(AnotherDummyProvider.prototype, 'init');
+			const connectAnotherSpy = vi.spyOn(AnotherDummyProvider.prototype, 'connect');
+			const updateAnotherSpy = vi.spyOn(AnotherDummyProvider.prototype, 'update');
 
 			await module.init();
 
@@ -195,7 +195,7 @@ describe('ExternalSecretsModule', () => {
 
 		it('should disconnect providers after shutdown', async () => {
 			await module.init();
-			const disconnectSpy = jest.spyOn(DummyProvider.prototype, 'disconnect');
+			const disconnectSpy = vi.spyOn(DummyProvider.prototype, 'disconnect');
 
 			await module.shutdown();
 

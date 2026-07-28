@@ -5,7 +5,7 @@ import type {
 	WorkflowExecuteAfterContext,
 	WorkflowExecuteBeforeContext,
 } from '@n8n/decorators';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { Workflow } from 'n8n-workflow';
 import type { INodeTypes, IRun, IRunExecutionData } from 'n8n-workflow';
 
@@ -97,7 +97,7 @@ describe('OtelLifecycleHandler', () => {
 		};
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			otelSettingsService = makeOtelSettingsService({ productionExecutionsOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
@@ -413,7 +413,7 @@ describe('OtelLifecycleHandler', () => {
 		};
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			otelSettingsService = makeOtelSettingsService({ productionExecutionsOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
@@ -567,7 +567,7 @@ describe('OtelLifecycleHandler', () => {
 		let handler: OtelLifecycleHandler;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			otelSettingsService = makeOtelSettingsService({ productionExecutionsOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
@@ -675,7 +675,7 @@ describe('OtelLifecycleHandler', () => {
 			}) as unknown as NodeExecuteAfterContext;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			otelSettingsService = makeOtelSettingsService({
 				productionExecutionsOnly: false,
 				includeNodeSpans: true,
@@ -861,7 +861,7 @@ describe('productionExecutionsOnly filter', () => {
 		}) as unknown as NodeExecuteAfterContext;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		otelSettingsService = makeOtelSettingsService({
 			productionExecutionsOnly: true,
 			includeNodeSpans: true,
@@ -952,7 +952,7 @@ describe('onReloadOtelConfig', () => {
 	}
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('restarts the OTel SDK and refreshes the tracer', async () => {

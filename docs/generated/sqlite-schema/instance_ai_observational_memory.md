@@ -15,53 +15,53 @@ CREATE TABLE "instance_ai_observational_memory" ("id" varchar(36) PRIMARY KEY NO
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false |  |  |  |
-| lookupKey | varchar(255) |  | false |  |  |  |
-| scope | varchar(16) |  | false |  |  |  |
-| threadId | varchar |  | true |  | [instance_ai_threads](instance_ai_threads.md) |  |
-| resourceId | varchar(255) |  | false |  |  |  |
 | activeObservations | TEXT | '' | false |  |  |  |
-| originType | varchar(32) |  | false |  |  |  |
-| config | TEXT |  | false |  |  |  |
-| generationCount | INTEGER | 0 | false |  |  |  |
-| lastObservedAt | datetime(3) |  | true |  |  |  |
-| pendingMessageTokens | INTEGER | 0 | false |  |  |  |
-| totalTokensObserved | INTEGER | 0 | false |  |  |  |
-| observationTokenCount | INTEGER | 0 | false |  |  |  |
-| isObserving | boolean | false | false |  |  |  |
-| isReflecting | boolean | false | false |  |  |  |
-| observedMessageIds | TEXT |  | true |  |  |  |
-| observedTimezone | varchar |  | true |  |  |  |
-| bufferedObservations | TEXT |  | true |  |  |  |
-| bufferedObservationTokens | INTEGER |  | true |  |  |  |
 | bufferedMessageIds | TEXT |  | true |  |  |  |
-| bufferedReflection | TEXT |  | true |  |  |  |
-| bufferedReflectionTokens | INTEGER |  | true |  |  |  |
-| bufferedReflectionInputTokens | INTEGER |  | true |  |  |  |
-| reflectedObservationLineCount | INTEGER |  | true |  |  |  |
 | bufferedObservationChunks | TEXT |  | true |  |  |  |
+| bufferedObservationTokens | INTEGER |  | true |  |  |  |
+| bufferedObservations | TEXT |  | true |  |  |  |
+| bufferedReflection | TEXT |  | true |  |  |  |
+| bufferedReflectionInputTokens | INTEGER |  | true |  |  |  |
+| bufferedReflectionTokens | INTEGER |  | true |  |  |  |
+| config | TEXT |  | false |  |  |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| generationCount | INTEGER | 0 | false |  |  |  |
+| id | varchar(36) |  | false |  |  |  |
 | isBufferingObservation | boolean | false | false |  |  |  |
 | isBufferingReflection | boolean | false | false |  |  |  |
-| lastBufferedAtTokens | INTEGER | 0 | false |  |  |  |
+| isObserving | boolean | false | false |  |  |  |
+| isReflecting | boolean | false | false |  |  |  |
 | lastBufferedAtTime | datetime(3) |  | true |  |  |  |
+| lastBufferedAtTokens | INTEGER | 0 | false |  |  |  |
+| lastObservedAt | datetime(3) |  | true |  |  |  |
+| lookupKey | varchar(255) |  | false |  |  |  |
 | metadata | TEXT |  | true |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| observationTokenCount | INTEGER | 0 | false |  |  |  |
+| observedMessageIds | TEXT |  | true |  |  |  |
+| observedTimezone | varchar |  | true |  |  |  |
+| originType | varchar(32) |  | false |  |  |  |
+| pendingMessageTokens | INTEGER | 0 | false |  |  |  |
+| reflectedObservationLineCount | INTEGER |  | true |  |  |  |
+| resourceId | varchar(255) |  | false |  |  |  |
+| scope | varchar(16) |  | false |  |  |  |
+| threadId | varchar |  | true |  | [instance_ai_threads](instance_ai_threads.md) |  |
+| totalTokensObserved | INTEGER | 0 | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_instance_ai_observational_memory_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_a680ac96aae02dc887bbaac512 | CREATE UNIQUE INDEX "IDX_a680ac96aae02dc887bbaac512" ON "instance_ai_observational_memory" ("scope", "threadId", "resourceId")  |
 | IDX_92f13cb6bc694227e069447f7b | CREATE INDEX "IDX_92f13cb6bc694227e069447f7b" ON "instance_ai_observational_memory" ("lookupKey")  |
+| IDX_a680ac96aae02dc887bbaac512 | CREATE UNIQUE INDEX "IDX_a680ac96aae02dc887bbaac512" ON "instance_ai_observational_memory" ("scope", "threadId", "resourceId")  |
 | sqlite_autoindex_instance_ai_observational_memory_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -72,46 +72,46 @@ erDiagram
 "instance_ai_observational_memory" }o--o| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
 "instance_ai_observational_memory" {
-  varchar_36_ id PK
-  varchar_255_ lookupKey
-  varchar_16_ scope
-  varchar threadId FK
-  varchar_255_ resourceId
   TEXT activeObservations
-  varchar_32_ originType
-  TEXT config
-  INTEGER generationCount
-  datetime_3_ lastObservedAt
-  INTEGER pendingMessageTokens
-  INTEGER totalTokensObserved
-  INTEGER observationTokenCount
-  boolean isObserving
-  boolean isReflecting
-  TEXT observedMessageIds
-  varchar observedTimezone
-  TEXT bufferedObservations
-  INTEGER bufferedObservationTokens
   TEXT bufferedMessageIds
-  TEXT bufferedReflection
-  INTEGER bufferedReflectionTokens
-  INTEGER bufferedReflectionInputTokens
-  INTEGER reflectedObservationLineCount
   TEXT bufferedObservationChunks
+  INTEGER bufferedObservationTokens
+  TEXT bufferedObservations
+  TEXT bufferedReflection
+  INTEGER bufferedReflectionInputTokens
+  INTEGER bufferedReflectionTokens
+  TEXT config
+  datetime_3_ createdAt
+  INTEGER generationCount
+  varchar_36_ id PK
   boolean isBufferingObservation
   boolean isBufferingReflection
-  INTEGER lastBufferedAtTokens
+  boolean isObserving
+  boolean isReflecting
   datetime_3_ lastBufferedAtTime
+  INTEGER lastBufferedAtTokens
+  datetime_3_ lastObservedAt
+  varchar_255_ lookupKey
   TEXT metadata
-  datetime_3_ createdAt
+  INTEGER observationTokenCount
+  TEXT observedMessageIds
+  varchar observedTimezone
+  varchar_32_ originType
+  INTEGER pendingMessageTokens
+  INTEGER reflectedObservationLineCount
+  varchar_255_ resourceId
+  varchar_16_ scope
+  varchar threadId FK
+  INTEGER totalTokensObserved
   datetime_3_ updatedAt
 }
 "instance_ai_threads" {
-  varchar id PK
-  varchar_255_ resourceId
-  varchar_36_ projectId FK
-  TEXT title
-  TEXT metadata
   datetime_3_ createdAt
+  varchar id PK
+  TEXT metadata
+  varchar_36_ projectId FK
+  varchar_255_ resourceId
+  TEXT title
   datetime_3_ updatedAt
 }
 ```

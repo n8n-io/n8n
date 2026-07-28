@@ -35,7 +35,7 @@ type DebugInfo = {
 		error: WorkflowSettings.SaveDataExecution;
 		progress: boolean;
 		manual: boolean;
-		binaryMode: 'memory' | 'filesystem' | 's3' | 'database';
+		binaryMode: 'memory' | 'filesystem' | 's3' | 'azure' | 'database';
 	};
 	pruning:
 		| {

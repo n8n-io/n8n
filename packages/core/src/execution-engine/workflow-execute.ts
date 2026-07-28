@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+import { isAxiosError } from '@n8n/backend-network';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import * as assert from 'assert/strict';
@@ -57,6 +58,7 @@ import {
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
 	createRunExecutionData,
+	applyDynamicCredentialsUsage,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -249,21 +251,34 @@ export class WorkflowExecute {
 			const parentNodes = workflow.getParentNodes(destinationNode.nodeName);
 
 			for (const nodeName of parentNodes) {
-				if (runData[nodeName]) {
-					startNode = workflow.getNode(nodeName);
+				const parentNode = workflow.getNode(nodeName);
+				// Skip disabled nodes: they are removed from the execution subgraph, so a
+				// disabled node can never serve as a start node.
+				if (parentNode && !parentNode.disabled && runData[nodeName]) {
+					startNode = parentNode;
 					break;
 				}
 			}
 
 			if (!startNode) {
-				throw new UserError('Connect a trigger to run this node');
+				throw new UserError("Connect a trigger and make sure it's enabled to run this node");
 			}
 
 			trigger = startNode;
 		}
 
 		// 2. Find the Subgraph
-		graph = findSubgraph({ graph: filterDisabledNodes(graph), destination, trigger });
+		const filteredGraph = filterDisabledNodes(graph);
+
+		// A disabled destination is removed by filterDisabledNodes, which would make the
+		// subgraph search below fail an internal membership assertion. Raise a clear user
+		// error instead. The trigger is always enabled here (both findTriggerForPartialExecution
+		// and the fallback above skip disabled nodes), so only the destination needs checking.
+		if (destination.disabled) {
+			throw new UserError('Cannot execute a disabled node');
+		}
+
+		graph = findSubgraph({ graph: filteredGraph, destination, trigger });
 		const filteredNodes = graph.getNodes();
 
 		// 3. Find the Start Nodes
@@ -1668,6 +1683,17 @@ export class WorkflowExecute {
 					this.additionalData.currentNodeUsedDynamicCredentials = false;
 					this.additionalData.currentNodeAttemptedDynamicCredentials = false;
 
+					// A sub-execution that finished while this execution was waiting reported its
+					// private-credential usage on the resumed stack entry (the node re-runs disabled,
+					// so `executeWorkflow` never reports again) — restore it so the new task and
+					// `runtimeData.executedByUserId` still inherit the flags. The stash is
+					// transport-only, so consume it to keep it out of the persisted task metadata.
+					const reportedUsage = executionData.metadata?.dynamicCredentialsUsage;
+					if (reportedUsage) {
+						applyDynamicCredentialsUsage(this.additionalData, reportedUsage);
+						delete executionData.metadata?.dynamicCredentialsUsage;
+					}
+
 					const taskStartedData: ITaskStartedData = {
 						startTime: Date.now(),
 						executionIndex: this.additionalData.currentNodeExecutionIndex++,
@@ -1951,7 +1977,9 @@ export class WorkflowExecute {
 								// BaseError subclasses specify shouldReport and level
 								// so always report and let beforeSend decide
 								toReport = error;
-							} else if (error instanceof Error) {
+							} else if (error instanceof Error && !isAxiosError(error)) {
+								// Axios errors are suppressed in ErrorReporter's beforeSend via the
+								// `isAxiosError` brand, which sanitizing below would strip - so skip them here
 								// Non-BaseError errors only report their class and call frames
 								// The full error is still stored in the execution resultData
 								// Stack frames are in the format `<name>: <message>\n<call frames>`

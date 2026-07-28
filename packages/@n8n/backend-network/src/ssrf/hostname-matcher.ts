@@ -12,8 +12,9 @@ type ParsedPattern = WildcardPattern | ExactPattern;
 /**
  * Case-insensitive hostname matcher supporting wildcard patterns.
  *
- * Patterns like `*.n8n.internal` match any subdomain
- * (e.g. `api.n8n.internal`, `deep.sub.n8n.internal`), but not the bare domain.
+ * Patterns like `*.bitcoin-miner.com` match any subdomain
+ * (e.g. `pool.bitcoin-miner.com`, `deep.sub.bitcoin-miner.com`),
+ * but not the bare domain.
  */
 export class HostnameMatcher {
 	private readonly parsed: ParsedPattern[];
@@ -60,6 +61,7 @@ export class HostnameMatcher {
 	}
 
 	private normalizeHostname(hostname: string): string {
-		return hostname.trim().toLowerCase();
+		const trimmed = hostname.trim().toLowerCase();
+		return trimmed.endsWith('.') ? trimmed.slice(0, -1) : trimmed;
 	}
 }

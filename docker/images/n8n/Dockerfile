@@ -1,11 +1,11 @@
-ARG NODE_VERSION=24.16.0
+ARG NODE_VERSION=24.18.0
 ARG N8N_VERSION=snapshot
 
 # Builder stage exists because the runtime base image has no toolchain.
 # Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
 # Bump the digest together with the tag when updating the base image.
-# Digest pins to node:24.16.0-alpine3.22 (Node 24.16.0, Alpine 3.22).
-FROM node:24.16.0-alpine3.22@sha256:191c9f0080fcbbc6547a85dc0ff7988072214a355aabdc1d2ec55a7dae5eea8a AS builder
+# Digest pins to node:24.18.0-alpine3.24 (Node 24.18.0, Alpine 3.24).
+FROM node:24.18.0-alpine3.24@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd AS builder
 COPY ./compiled /usr/local/lib/node_modules/n8n
 RUN apk add --no-cache python3 make g++ && \
     cd /usr/local/lib/node_modules/n8n && \
@@ -28,8 +28,8 @@ RUN apk add --no-cache python3 make g++ && \
 # base change, so a base rebuild does not reach this image until the digest is
 # manually re-pinned here. Bump the digest together with the tag whenever the base
 # image is intentionally updated.
-# Digest pins to n8nio/base:24.16.0 (Node 24.16.0, Alpine 3.22).
-FROM n8nio/base:24.16.0@sha256:a1aa4005e4faebd6da3ba51ec28180a3fb421243d921fa0efbba2d21395012f0
+# Digest pins to n8nio/base:24.18.0 (Node 24.18.0, Alpine 3.24).
+FROM n8nio/base:24.18.0@sha256:29d9c11f55f02442276512592b439ebb2a1d1043c1339ad5cea4e56862520d22
 
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
@@ -42,7 +42,9 @@ WORKDIR /home/node
 COPY --from=builder /usr/local/lib/node_modules/n8n /usr/local/lib/node_modules/n8n
 COPY docker/images/n8n/docker-entrypoint.sh /
 
-RUN ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
+# The Alpine 3.24 base has no /usr/local/bin (node lives in /usr/bin); create it for the symlink.
+RUN mkdir -p /usr/local/bin && \
+    ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
     mkdir -p /home/node/.n8n && \
     chown -R node:node /home/node && \
     rm -rf /root/.npm /tmp/*

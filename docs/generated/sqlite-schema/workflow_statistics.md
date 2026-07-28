@@ -23,13 +23,13 @@ CREATE TABLE "workflow_statistics" (
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | INTEGER |  | true |  |  |  |
 | count | INTEGER | 0 | true |  |  |  |
+| id | INTEGER |  | true |  |  |  |
 | latestEvent | DATETIME |  | true |  |  |  |
 | name | VARCHAR(128) |  | false |  |  |  |
+| rootCount | INTEGER | 0 | true |  |  |  |
 | workflowId | VARCHAR(36) |  | false |  |  |  |
 | workflowName | VARCHAR(128) |  | true |  |  |  |
-| rootCount | INTEGER | 0 | true |  |  |  |
 
 ## Constraints
 
@@ -50,13 +50,13 @@ erDiagram
 
 
 "workflow_statistics" {
-  INTEGER id
   INTEGER count
+  INTEGER id
   DATETIME latestEvent
   VARCHAR_128_ name
+  INTEGER rootCount
   VARCHAR_36_ workflowId
   VARCHAR_128_ workflowName
-  INTEGER rootCount
 }
 ```
 

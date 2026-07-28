@@ -12,4 +12,4 @@ test.use({
 	},
 });
 
-runMemoryBaseline({ name: 'instance-ai', owner: 'Instance AI' });
+runMemoryBaseline({ name: 'instance-ai', owner: 'instanceAI' });

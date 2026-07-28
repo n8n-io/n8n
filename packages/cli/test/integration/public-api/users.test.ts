@@ -490,6 +490,7 @@ describe('Users in Public API', () => {
 			 * Arrange
 			 */
 			testServer.license.enable('feat:advancedPermissions');
+			testServer.license.enable('feat:customRoles');
 			const owner = await createOwnerWithApiKey();
 			const member = await createMember();
 			const customRole = 'custom:role';

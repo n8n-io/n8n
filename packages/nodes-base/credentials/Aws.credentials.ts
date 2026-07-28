@@ -5,7 +5,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import type { AwsIamCredentialsType, AWSRegion } from './common/aws/types';
+import type { AWSRegion } from './common/aws/regions';
+import type { AwsIamCredentialsType } from './common/aws/types';
 import {
 	awsCredentialsTest,
 	awsGetSignInOptionsAndUpdateRequest,
@@ -95,7 +96,7 @@ export class Aws implements ICredentialType {
 				: undefined,
 		};
 
-		return signOptions(requestOptions, signOpts, securityHeaders, url, method);
+		return await signOptions(requestOptions, signOpts, securityHeaders, url, method);
 	}
 
 	test = awsCredentialsTest;

@@ -52,6 +52,9 @@ import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './17670185160
 import { ExpandVariablesValueColumnToText1777420800000 } from './1777420800000-ExpandVariablesValueColumnToText';
 import { LimitWorkflowVersionTriggerToContent1784000000003 } from './1784000000003-LimitWorkflowVersionTriggerToContent';
 import { AddProjectIdToInstanceAiThread1784000000028 } from './1784000000028-AddProjectIdToInstanceAiThread';
+import { AddExecutionEntityWorkflowStatusIndex1784000000031 } from './1784000000031-AddExecutionEntityWorkflowStatusIndex';
+import { CreateWorkflowStatisticsDeltaTable1784000000043 } from './1784000000043-CreateWorkflowStatisticsDeltaTable';
+import { ChangeInstalledNodeVersionType1785162364000 } from './1785162364000-ChangeInstalledNodeVersionType';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -205,6 +208,30 @@ import { AddScopeColumnToOAuthTables1784000000026 } from '../common/178400000002
 import { CreateWorkflowPublicationOutboxTable1784000000027 } from '../common/1784000000027-CreateWorkflowPublicationOutboxTable';
 import { AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029 } from '../common/1784000000029-AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity';
 import { CreateAgentChatSubscriptions1784000000030 } from '../common/1784000000030-CreateAgentChatSubscriptions';
+import { AddBinaryDataSizeBytesToExecutionEntity1784000000033 } from '../common/1784000000033-AddBinaryDataSizeBytesToExecutionEntity';
+import { AllowAzureStoredAt1784000000034 } from '../common/1784000000034-AllowAzureStoredAt';
+import { AddUniqueAgentFileNames1784000000035 } from '../common/1784000000035-AddUniqueAgentFileNames';
+import { CreateInstanceAiThreadGrantTable1784000000036 } from '../common/1784000000036-CreateInstanceAiThreadGrantTable';
+import { DropAgentDescriptionFromAgents1784000000037 } from '../common/1784000000037-DropAgentDescriptionFromAgents';
+import { SetChatHubEnabledFromUsage1784000000038 } from '../common/1784000000038-SetChatHubEnabledFromUsage';
+import { DropAgentExecutionFallbackColumns1784000000039 } from '../common/1784000000039-DropAgentExecutionFallbackColumns';
+import { CreateWorkflowPublicationTriggerStatusTable1784000000040 } from '../common/1784000000040-CreateWorkflowPublicationTriggerStatusTable';
+import { AddUsedPrivateCredentialsToExecutionEntity1784000000041 } from '../common/1784000000041-AddUsedPrivateCredentialsToExecutionEntity';
+import { CreateSchedulerTables1784000000042 } from '../common/1784000000042-CreateSchedulerTables';
+import { AddPartialIndexForGlobalCredentials1784000000044 } from '../common/1784000000044-AddPartialIndexForGlobalCredentials';
+import { AddRecurringCronScheduleKind1784000000045 } from '../common/1784000000045-AddRecurringCronScheduleKind';
+import { CreateInstanceAiEventsTable1784000000046 } from '../common/1784000000046-CreateInstanceAiEventsTable';
+import { BackfillPreScopingOAuthGrantScopes1784000000047 } from '../common/1784000000047-BackfillPreScopingOAuthGrantScopes';
+import { AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048 } from '../common/1784000000048-AddTriggerKindToWorkflowPublicationTriggerStatus';
+import { AddScheduledTaskDispatchedAt1784000000049 } from '../common/1784000000049-AddScheduledTaskDispatchedAt';
+import { AddHostRunIdToInstanceAiCheckpoints1784000000050 } from '../common/1784000000050-AddHostRunIdToInstanceAiCheckpoints';
+import { BackfillInstanceAiEventLog1784000000051 } from '../common/1784000000051-BackfillInstanceAiEventLog';
+import { CreateWorkflowReviewRequestTables1784000000052 } from '../common/1784000000052-CreateWorkflowReviewRequestTables';
+import { AddStoredAtToAgentExecution1784815940110 } from '../common/1784815940110-AddStoredAtToAgentExecution';
+import { AddInstanceCredentials1784815940111 } from '../common/1784815940111-AddInstanceCredentials';
+import { CreateAgentEvalTables1784815940112 } from '../common/1784815940112-CreateAgentEvalTables';
+import { AddAvailableInMcpToAgents1784897791636 } from '../common/1784897791636-AddAvailableInMcpToAgents';
+import { AddIsFirstPartyToOAuthClients1785162364001 } from '../common/1785162364001-AddIsFirstPartyToOAuthClients';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -415,4 +442,31 @@ export const postgresMigrations: Migration[] = [
 	AddProjectIdToInstanceAiThread1784000000028,
 	AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029,
 	CreateAgentChatSubscriptions1784000000030,
+	AddExecutionEntityWorkflowStatusIndex1784000000031,
+	AddBinaryDataSizeBytesToExecutionEntity1784000000033,
+	AllowAzureStoredAt1784000000034,
+	AddUniqueAgentFileNames1784000000035,
+	CreateInstanceAiThreadGrantTable1784000000036,
+	DropAgentDescriptionFromAgents1784000000037,
+	SetChatHubEnabledFromUsage1784000000038,
+	DropAgentExecutionFallbackColumns1784000000039,
+	CreateWorkflowPublicationTriggerStatusTable1784000000040,
+	AddUsedPrivateCredentialsToExecutionEntity1784000000041,
+	CreateSchedulerTables1784000000042,
+	CreateWorkflowStatisticsDeltaTable1784000000043,
+	AddPartialIndexForGlobalCredentials1784000000044,
+	AddRecurringCronScheduleKind1784000000045,
+	CreateInstanceAiEventsTable1784000000046,
+	BackfillPreScopingOAuthGrantScopes1784000000047,
+	AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048,
+	AddScheduledTaskDispatchedAt1784000000049,
+	AddHostRunIdToInstanceAiCheckpoints1784000000050,
+	BackfillInstanceAiEventLog1784000000051,
+	CreateWorkflowReviewRequestTables1784000000052,
+	AddStoredAtToAgentExecution1784815940110,
+	AddInstanceCredentials1784815940111,
+	CreateAgentEvalTables1784815940112,
+	AddAvailableInMcpToAgents1784897791636,
+	ChangeInstalledNodeVersionType1785162364000,
+	AddIsFirstPartyToOAuthClients1785162364001,
 ];

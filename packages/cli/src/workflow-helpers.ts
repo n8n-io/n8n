@@ -4,10 +4,18 @@ import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	formatWorkflowStructureIssuePath,
+	GROUP_DESCRIPTION_MAX_LENGTH,
+	isSafeObjectProperty,
+	normalizeGroupDescription,
 	resolveNodeWebhookId,
+	resolveVariables,
 	safeParseWorkflowStructure,
+	summarizeDynamicCredentialsUsage,
+	validateWorkflowGroups,
 	type IDataObject,
+	type INode,
 	type INodeCredentialsDetails,
+	type INodeTypeDescription,
 	type INodeTypes,
 	type IRun,
 	type ITaskData,
@@ -138,49 +146,96 @@ export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeT
 }
 
 /**
- * Validates nodeGroups: unique group names, all referenced node IDs exist,
- * and each node belongs to at most one group.
+ * Resolves a node to its type description, or `null` for unknown node types.
+ * Used by the grouping validator to detect trigger nodes.
+ */
+type GetNodeTypeForGrouping = (node: INode) => INodeTypeDescription | null;
+
+/**
+ * Builds the `getNodeType` callback that the grouping validator needs to resolve
+ * a node to its type description (used to detect trigger nodes). Returns `null`
+ * for unknown node types so validation degrades gracefully rather than throwing.
+ */
+export function makeGetNodeTypeForGrouping(nodeTypes: INodeTypes): GetNodeTypeForGrouping {
+	return (node: INode) => {
+		try {
+			return nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+		} catch {
+			return null;
+		}
+	};
+}
+
+/**
+ * Validates nodeGroups on the save path, rejecting with a `BadRequestError`.
+ *
+ * The rules and messages live in `validateWorkflowGroups` (n8n-workflow), the
+ * single source of truth shared with validate-time surfaces; this wrapper throws
+ * the first violation, preserving the historical throw-on-first behavior. See
+ * that function for the basic-vs-full checks contract (`getNodeType: null` runs
+ * basic checks only, e.g. a git import, so legacy-invalid groups don't block
+ * the import).
+ *
  * Note for frontend: Must be called after `addNodeIds` since nodes created via the API
  * may not have IDs until that step assigns them.
  */
-export function validateWorkflowNodeGroups(workflow: Pick<IWorkflowBase, 'nodes' | 'nodeGroups'>) {
-	const { nodeGroups, nodes } = workflow;
-	if (!nodeGroups || nodeGroups.length === 0) return;
+export function validateWorkflowNodeGroups(
+	workflow: Pick<IWorkflowBase, 'nodes' | 'nodeGroups'> & {
+		connections?: IWorkflowBase['connections'];
+	},
+	getNodeType: GetNodeTypeForGrouping | null,
+) {
+	const result = validateWorkflowGroups({
+		nodes: workflow.nodes,
+		connectionsBySourceNode: workflow.connections,
+		nodeGroups: workflow.nodeGroups,
+		getNodeType,
+	});
+	if (!result.valid) {
+		throw new BadRequestError(result.violations[0].message);
+	}
+}
 
-	const nodeIds = new Set(nodes.map((n) => n.id).filter(Boolean));
-	const seenGroupNames = new Set<string>();
-	const nodeToGroup = new Map<string, string>();
+/**
+ * Normalizes group descriptions on import, mutating in place.
+ *
+ * Authoring paths (internal REST + public API) reject invalid or over-cap
+ * descriptions via their DTOs. Import paths accept arbitrary JSON, so instead of
+ * rejecting they drop non-string descriptions and truncate over-long ones —
+ * keeping the import lenient while honouring the plain-text, capped contract.
+ * Returns a warning per adjusted group so callers can surface it.
+ */
+export function sanitizeNodeGroupDescriptions(
+	workflow: Pick<IWorkflowBase, 'nodeGroups'>,
+): string[] {
+	const warnings: string[] = [];
+	for (const group of workflow.nodeGroups ?? []) {
+		// Imported JSON is untyped at runtime despite the `string` contract.
+		const original: unknown = group.description;
+		if (original === undefined) continue;
 
-	for (const group of nodeGroups) {
-		// Unique group names
-		if (seenGroupNames.has(group.name)) {
-			throw new BadRequestError(`Duplicate node group name "${group.name}".`);
-		}
-		seenGroupNames.add(group.name);
+		const normalized = normalizeGroupDescription(original);
+		if (normalized === original) continue;
 
-		for (const nodeId of group.nodeIds) {
-			// All referenced nodes must exist
-			if (!nodeIds.has(nodeId)) {
-				throw new BadRequestError(
-					`Group "${group.name}" references node ID "${nodeId}" that does not exist in the workflow.`,
-				);
+		if (normalized === undefined) {
+			delete group.description;
+			if (typeof original !== 'string') {
+				warnings.push(`Group "${group.name}" description was not plain text and was removed.`);
 			}
-			// A node can only belong to one group
-			const existingGroup = nodeToGroup.get(nodeId);
-			if (existingGroup) {
-				throw new BadRequestError(
-					`Node "${nodeId}" belongs to multiple groups: "${existingGroup}" and "${group.name}".`,
-				);
-			}
-			nodeToGroup.set(nodeId, group.name);
+		} else {
+			group.description = normalized;
+			warnings.push(
+				`Group "${group.name}" description exceeded ${GROUP_DESCRIPTION_MAX_LENGTH} characters and was truncated.`,
+			);
 		}
 	}
+	return warnings;
 }
 
 /**
  * BadRequestError thrown by validateWorkflowStructure when a workflow fails
  * structural Zod / graph validation. Carries the original WorkflowStructureIssue[]
- * so downstream consumers (e.g. the Instance AI submit-workflow tool) can build
+ * so downstream consumers (e.g. Instance AI workflow build tooling) can build
  * rich diagnostics — node JSON at the offending path, value at the path, and a
  * full nodes[] name map — without reparsing the flattened message string.
  *
@@ -282,6 +337,11 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 		// extract credentials types
 		const allNodeCredentials = Object.entries(node.credentials);
 		for (const [nodeCredentialType, nodeCredentials] of allNodeCredentials) {
+			// Reject credential types that resolve to object internals,
+			// so the dynamic lookups and writes below cannot reach the prototype chain.
+			if (!isSafeObjectProperty(nodeCredentialType)) {
+				continue;
+			}
 			// Skip undefined/null credentials (e.g. from SDK's newCredential() which serializes to undefined)
 			if (nodeCredentials === null || nodeCredentials === undefined) {
 				continue;
@@ -391,18 +451,7 @@ export async function getVariables(workflowId?: string, projectId?: string): Pro
 	// Either projectId passed or use project from workflow
 	const projectIdToUse = projectId ?? project?.id;
 
-	return Object.freeze(
-		variables.reduce((acc, curr) => {
-			if (!curr.project) {
-				// always set globals
-				acc[curr.key] = curr.value;
-			} else if (projectIdToUse && curr.project.id === projectIdToUse) {
-				// project variables override globals
-				acc[curr.key] = curr.value;
-			}
-			return acc;
-		}, {} as IDataObject),
-	);
+	return Object.freeze(resolveVariables(variables, projectIdToUse));
 }
 
 /**
@@ -462,6 +511,46 @@ export async function updateParentExecutionWithChildResults(
 	const nodeExecutionStack = parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack;
 	if (!nodeExecutionStack || nodeExecutionStack?.length === 0) {
 		return;
+	}
+
+	// On resume the parent's flagged 'waiting' task is popped and the node re-runs disabled
+	// (never calling `executeWorkflow` again), so the child's private-credential usage must
+	// ride on the stack entry to reach the freshly stamped task (see `WorkflowExecute`).
+	const dynamicCredentialsUsage = summarizeDynamicCredentialsUsage(subworkflowResults.data);
+	if (Object.keys(dynamicCredentialsUsage).length > 0) {
+		// Union with a sibling child's earlier report ("run once for each item" spawns several
+		// children per wait) — flags only ever accumulate, like every other flag writer.
+		nodeExecutionStack[0].metadata = {
+			...nodeExecutionStack[0].metadata,
+			dynamicCredentialsUsage: {
+				...nodeExecutionStack[0].metadata?.dynamicCredentialsUsage,
+				...dynamicCredentialsUsage,
+			},
+		};
+
+		// Also stamp the parent's waiting task and runtime data right away: the parent may sit
+		// in 'waiting' for a long time with the child's output already embedded in its data,
+		// and redaction scans runData task flags. The resume pops this task; the stash above
+		// restores the flags onto its replacement.
+		const waitingTasks =
+			parentWithSubWorkflowResults.data.resultData?.runData?.[nodeExecutionStack[0].node.name];
+		const waitingTask = waitingTasks?.[waitingTasks.length - 1];
+		if (waitingTask) {
+			if (dynamicCredentialsUsage.usedDynamicCredentials) {
+				waitingTask.usedDynamicCredentials = true;
+			}
+			if (dynamicCredentialsUsage.attemptedDynamicCredentials) {
+				waitingTask.attemptedDynamicCredentials = true;
+			}
+		}
+		const { runtimeData } = parentWithSubWorkflowResults.data.executionData ?? {};
+		if (
+			dynamicCredentialsUsage.usedDynamicCredentials &&
+			dynamicCredentialsUsage.dynamicCredentialsResolvedUserId &&
+			runtimeData
+		) {
+			runtimeData.executedByUserId = dynamicCredentialsUsage.dynamicCredentialsResolvedUserId;
+		}
 	}
 
 	if (subworkflowError) {

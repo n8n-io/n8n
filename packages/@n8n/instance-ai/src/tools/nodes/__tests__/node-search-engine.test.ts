@@ -59,6 +59,15 @@ const agentNode = makeNode({
 	},
 });
 
+const openAiNode = makeNode({
+	name: '@n8n/n8n-nodes-langchain.openAi',
+	displayName: 'OpenAI',
+	description: 'OpenAI node for chat, assistants, and legacy operations',
+	builderHint: {
+		searchHint: 'For text generation, reasoning and tools, use AI Agent with OpenAI Chat Model',
+	},
+});
+
 const openAiLmNode = makeNode({
 	name: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
 	displayName: 'OpenAI Chat Model',
@@ -107,6 +116,14 @@ const googleCalendarNode = makeNode({
 	description: 'Consume Google Calendar API',
 });
 
+// Node covered by n8n Connect (the gateway config annotates it with `aiGateway`).
+const firecrawlNode = makeNode({
+	name: 'n8n-nodes-base.firecrawl',
+	displayName: 'Firecrawl',
+	description: 'Scrape and crawl the web',
+	aiGateway: { supported: true, minVersion: 1 },
+});
+
 const googleCalendarToolNode = makeNode({
 	name: 'n8n-nodes-base.googleCalendarTool',
 	displayName: 'Google Calendar Tool',
@@ -126,6 +143,7 @@ const allNodes = [
 	setNode,
 	slackNode,
 	agentNode,
+	openAiNode,
 	openAiLmNode,
 	memoryNode,
 	embeddingNode,
@@ -135,6 +153,7 @@ const allNodes = [
 	googleCalendarNode,
 	googleCalendarToolNode,
 	slackToolNode,
+	firecrawlNode,
 ];
 
 // ---------------------------------------------------------------------------
@@ -194,6 +213,18 @@ describe('NodeSearchEngine', () => {
 			expect(agentResult?.builderHintMessage).toBe('Use an AI Agent for autonomous task execution');
 		});
 
+		it('should include builder search hint when present', () => {
+			const results = engine.searchByName('OpenAI');
+			const openAiResult = results.find((r) => r.name === '@n8n/n8n-nodes-langchain.openAi');
+			expect(openAiResult).toBeDefined();
+			expect(openAiResult?.builderHintMessage).toBe(
+				'For text generation, reasoning and tools, use AI Agent with OpenAI Chat Model',
+			);
+			expect(engine.formatResult(openAiResult!)).toContain(
+				'<builder_hint>For text generation, reasoning and tools, use AI Agent with OpenAI Chat Model</builder_hint>',
+			);
+		});
+
 		it('should NOT surface builderHint.extraTypeDefContent in search results', () => {
 			const results = engine.searchByName('AI Agent');
 			const agentResult = results.find((r) => r.name === '@n8n/n8n-nodes-langchain.agent');
@@ -221,6 +252,19 @@ describe('NodeSearchEngine', () => {
 					}),
 				]),
 			);
+		});
+
+		it('should surface aiGateway meta for nodes covered by n8n Connect', () => {
+			const results = engine.searchByName('Firecrawl');
+			const firecrawlResult = results.find((r) => r.name === 'n8n-nodes-base.firecrawl');
+			expect(firecrawlResult?.aiGateway).toEqual({ supported: true, minVersion: 1 });
+		});
+
+		it('should omit aiGateway for nodes not covered by n8n Connect', () => {
+			const results = engine.searchByName('HTTP');
+			const httpResult = results.find((r) => r.name === 'n8n-nodes-base.httpRequest');
+			expect(httpResult).toBeDefined();
+			expect(httpResult).not.toHaveProperty('aiGateway');
 		});
 
 		it('should match by exact type name even when fuzzy search misses', () => {
@@ -399,6 +443,36 @@ describe('NodeSearchEngine', () => {
 			expect(xml).toContain('type="ai_languageModel" status="required"');
 			expect(xml).toContain('type="ai_tool" status="optional"');
 			expect(xml).toContain('<display_options>');
+		});
+
+		it('should include n8n_credits marker when aiGateway is present', () => {
+			const result = {
+				name: 'n8n-nodes-base.firecrawl',
+				displayName: 'Firecrawl',
+				description: 'Scrape the web',
+				version: 1,
+				score: 0,
+				inputs: ['main'],
+				outputs: ['main'],
+				aiGateway: { supported: true as const, minVersion: 2 },
+			};
+
+			const xml = engine.formatResult(result);
+			expect(xml).toContain('<n8n_credits supported="true" min_version="2" />');
+		});
+
+		it('should omit n8n_credits marker when aiGateway is absent', () => {
+			const result = {
+				name: 'test.node',
+				displayName: 'Test',
+				description: 'test',
+				version: 1,
+				score: 0,
+				inputs: ['main'],
+				outputs: ['main'],
+			};
+
+			expect(engine.formatResult(result)).not.toContain('n8n_credits');
 		});
 
 		it('should handle string inputs/outputs', () => {

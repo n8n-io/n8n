@@ -2,7 +2,7 @@
 import LogsOverviewRows from '@/features/execution/logs/components/LogsOverviewRows.vue';
 import { useLogsExecutionData } from '@/features/execution/logs/composables/useLogsExecutionData';
 import { useLogsTreeExpand } from '@/features/execution/logs/composables/useLogsTreeExpand';
-import type { LogEntry, LogTreeFilter } from '@/features/execution/logs/logs.types';
+import { type LogEntry, type LogTreeFilter, isNodeLog } from '@/features/execution/logs/logs.types';
 import { findLogEntryById } from '@/features/execution/logs/logs.utils';
 import type { INodeUi } from '@/Interface';
 import { N8nText } from '@n8n/design-system';
@@ -28,9 +28,12 @@ const { entries, execution, latestNodeNameById, loadSubExecution } = useLogsExec
 });
 const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries, loadSubExecution);
 const selected = shallowRef<LogEntry>();
+const selectedNodeEntry = computed(() =>
+	selected.value && isNodeLog(selected.value) ? selected.value : undefined,
+);
 
 function select(entry: LogEntry | undefined) {
-	selected.value = entry?.node.id === node.id ? undefined : entry;
+	selected.value = entry && isNodeLog(entry) && entry.node.id === node.id ? undefined : entry;
 }
 
 watch(
@@ -61,7 +64,7 @@ watch(
 				@select="select"
 			/>
 			<div :class="$style.runData">
-				<RunDataAiContent v-if="selected" :input-data="selected" />
+				<RunDataAiContent v-if="selectedNodeEntry" :input-data="selectedNodeEntry" />
 				<div v-else :class="$style.empty">
 					<N8nText size="large">
 						{{ i18n.baseText('ndv.output.ai.empty', { interpolate: { node: node.name } }) }}

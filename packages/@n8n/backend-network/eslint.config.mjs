@@ -1,32 +1,37 @@
 import { defineConfig } from 'eslint/config';
 import { baseConfig } from '@n8n/eslint-config/base';
 
-// TODO will be cleaned up after the http unification. See CAT-3390
-export default defineConfig(
-	baseConfig,
-	{
-		rules: {
-			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
-		},
+export default defineConfig(baseConfig, {
+	rules: {
+		'unicorn/filename-case': ['error', { case: 'kebabCase' }],
+
+		/**
+		 * This package is full of HTTP header maps (`Content-Type`, `Authorization`, `X-Custom-Header`)
+		 * and charset identifiers (`iso-8859-15`, `windows-1252`).
+		 */
+		'@typescript-eslint/naming-convention': [
+			'error',
+			{ selector: 'default', format: ['camelCase'] },
+			{ selector: 'import', format: ['camelCase', 'PascalCase'] },
+			{
+				selector: 'variable',
+				format: ['camelCase', 'snake_case', 'UPPER_CASE', 'PascalCase'],
+				leadingUnderscore: 'allowSingleOrDouble',
+				trailingUnderscore: 'allowSingleOrDouble',
+			},
+			{
+				selector: 'property',
+				format: ['camelCase', 'snake_case', 'UPPER_CASE'],
+				leadingUnderscore: 'allowSingleOrDouble',
+				trailingUnderscore: 'allowSingleOrDouble',
+			},
+			{ selector: 'typeLike', format: ['PascalCase'] },
+			{
+				selector: ['method', 'function', 'parameter'],
+				format: ['camelCase'],
+				leadingUnderscore: 'allowSingleOrDouble',
+			},
+			{ selector: ['objectLiteralProperty', 'typeProperty'], format: null },
+		],
 	},
-	{
-		files: ['src/http/**/*.ts'],
-		rules: {
-			'no-prototype-builtins': 'warn',
-			'@typescript-eslint/naming-convention': 'warn',
-			'@typescript-eslint/prefer-nullish-coalescing': 'warn',
-			'@typescript-eslint/no-unsafe-member-access': 'warn',
-			'@typescript-eslint/require-await': 'warn',
-		},
-	},
-	{
-		files: ['**/*.test.ts'],
-		rules: {
-			'n8n-local-rules/no-uncaught-json-parse': 'warn',
-			'@typescript-eslint/no-unsafe-return': 'warn',
-			'@typescript-eslint/no-unsafe-assignment': 'warn',
-			'@typescript-eslint/no-unsafe-argument': 'warn',
-			'@typescript-eslint/unbound-method': 'warn',
-		},
-	},
-);
+});

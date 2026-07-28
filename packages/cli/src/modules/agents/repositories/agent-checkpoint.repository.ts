@@ -9,6 +9,19 @@ export class AgentCheckpointRepository extends Repository<AgentCheckpoint> {
 		super(AgentCheckpoint, dataSource.manager);
 	}
 
+	async claimForResume(
+		runId: string,
+		suspendedState: string,
+		runningState: string,
+	): Promise<boolean> {
+		const result = await this.update(
+			{ runId, expired: false, state: suspendedState },
+			{ state: runningState },
+		);
+
+		return (result.affected ?? 0) > 0;
+	}
+
 	async markExpired(olderThan: Date): Promise<number> {
 		const result = await this.createQueryBuilder()
 			.update()

@@ -3,6 +3,8 @@ import type {
 	InstanceMcpClientStatsResponseDto,
 	ListOAuthClientsResponseDto,
 	DeleteOAuthClientResponseDto,
+	McpClientConnectedPeriod,
+	McpClientTypeFilter,
 } from '@n8n/api-types';
 import type { WorkflowListItem } from '@/Interface';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -15,7 +17,8 @@ export type McpSettingsResponse = {
 export type ToggleWorkflowsMcpAccessTarget =
 	| { workflowIds: string[] }
 	| { projectId: string }
-	| { folderId: string };
+	| { folderId: string }
+	| { allWorkflows: true };
 
 export type ToggleWorkflowsMcpAccessResponse = {
 	updatedCount: number;
@@ -47,9 +50,23 @@ export async function rotateApiKey(context: IRestApiContext): Promise<ApiKey> {
 	return await makeRestApiRequest(context, 'POST', '/mcp/api-key/rotate');
 }
 
+export async function getAllowedRedirectUris(
+	context: IRestApiContext,
+): Promise<{ uris: string[] }> {
+	return await makeRestApiRequest(context, 'GET', '/mcp/oauth/allowed-redirect-uris');
+}
+
+export async function updateAllowedRedirectUris(
+	context: IRestApiContext,
+	uris: string[],
+): Promise<{ success: boolean }> {
+	return await makeRestApiRequest(context, 'PATCH', '/mcp/oauth/allowed-redirect-uris', { uris });
+}
+
 /**
  * Bulk-toggles MCP availability for a set of workflows scoped by either an
- * explicit id list, a project, or a folder (+ its descendants).
+ * explicit id list, a project, a folder (+ its descendants), or all
+ * workflows the user can update.
  */
 export async function toggleWorkflowsMcpAccessApi(
 	context: IRestApiContext,
@@ -62,10 +79,29 @@ export async function toggleWorkflowsMcpAccessApi(
 	});
 }
 
+export type FetchOAuthClientsOptions = {
+	ownership?: 'mine' | 'all';
+	skip?: number;
+	take?: number;
+	name?: string;
+	ownerId?: string;
+	type?: McpClientTypeFilter;
+	connected?: McpClientConnectedPeriod;
+};
+
 export async function fetchOAuthClients(
 	context: IRestApiContext,
+	options: FetchOAuthClientsOptions = {},
 ): Promise<ListOAuthClientsResponseDto> {
-	return await makeRestApiRequest(context, 'GET', '/mcp/oauth-clients');
+	const params = Object.fromEntries(
+		Object.entries(options).filter(([, value]) => value !== undefined),
+	);
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		'/mcp/oauth-clients',
+		Object.keys(params).length > 0 ? params : undefined,
+	);
 }
 
 export async function fetchInstanceMcpClientStats(
@@ -77,11 +113,13 @@ export async function fetchInstanceMcpClientStats(
 export async function deleteOAuthClient(
 	context: IRestApiContext,
 	clientId: string,
+	userId?: string,
 ): Promise<DeleteOAuthClientResponseDto> {
 	return await makeRestApiRequest(
 		context,
 		'DELETE',
 		`/mcp/oauth-clients/${encodeURIComponent(clientId)}`,
+		userId ? { userId } : undefined,
 	);
 }
 

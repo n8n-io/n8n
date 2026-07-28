@@ -15,7 +15,7 @@ import type { IExecutionResponse } from '@/features/execution/executions/executi
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import { useEvaluationStore } from '../../evaluation.store';
 import {
-	extractAnswerText,
+	extractCaseAnswer,
 	formatMetricAverage,
 	formatMetricLabel,
 	formatMetricPercent,
@@ -33,6 +33,7 @@ import {
 	type CannedMetricKey,
 } from '../../evaluation.constants';
 import { useSliceInputs } from '../../composables/useSliceInputs';
+import { useUserExecutions } from '../../composables/useUserExecutions';
 import { useAiRootNodes } from '../../composables/useAiRootNodes';
 import { useRunEvalWorkflow } from '../../composables/useRunEvalWorkflow';
 import { useDefaultJudgeSelection } from '../../composables/useDefaultJudgeSelection';
@@ -53,6 +54,7 @@ const telemetry = useTelemetry();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
+const { fetchLatestUserExecution } = useUserExecutions();
 const evaluationStore = useEvaluationStore();
 
 const {
@@ -65,6 +67,7 @@ const {
 	endNodeName,
 	inputs,
 	expectedValues,
+	datasetExpectedByRow,
 	customChecks,
 } = storeToRefs(wizardStore);
 
@@ -84,8 +87,23 @@ const moreCheckMetrics = computed(() =>
 	CANNED_METRICS.filter((m) => BUILTIN_MORE_CHECK_KEYS.includes(m.key)),
 );
 const visibleCheckMetrics = computed(() => {
-	const primary = primaryCheckMetric.value ? [primaryCheckMetric.value] : [];
-	return showMoreChecks.value ? [...primary, ...moreCheckMetrics.value] : primary;
+	// Order-preserving, de-duped by key.
+	const shown = new Map<CannedMetricKey, (typeof CANNED_METRICS)[number]>();
+	if (primaryCheckMetric.value) shown.set(primaryCheckMetric.value.key, primaryCheckMetric.value);
+	if (showMoreChecks.value) {
+		for (const m of moreCheckMetrics.value) shown.set(m.key, m);
+	}
+	// Any selected canned metric must be visible even when it is outside the
+	// curated primary/more lists — e.g. a `helpfulness` or `stringSimilarity`
+	// config created by the agent/API or hydrated from a saved eval. Without
+	// this the selection lives in the store but has no card, so the step looks
+	// unconfigured.
+	for (const key of selectedMetricKeys.value) {
+		if (shown.has(key)) continue;
+		const metric = CANNED_METRICS.find((m) => m.key === key);
+		if (metric) shown.set(key, metric);
+	}
+	return [...shown.values()];
 });
 watch(
 	[selectedMetricKeys, customChecks],
@@ -116,6 +134,11 @@ watch(
 // Gate (ticket "Step 0"): the wizard is blocked until the workflow has had at
 // least one successful, non-evaluation execution. `probeComplete` guards against
 // flashing the gate before the execution lookup resolves.
+// Declared before the probe watcher (which runs immediately): the probe writes
+// to `fallbackUserExecution` during setup, so it must exist by then.
+const fallbackUserExecution = ref<IExecutionResponse | null>(null);
+const sliceInputs = useSliceInputs({ fallbackExecution: fallbackUserExecution });
+
 const probeComplete = ref(false);
 
 async function runExecutionProbe() {
@@ -159,27 +182,13 @@ const showProbeLoading = computed(
 // Skip evaluation runs — after a few wizard sessions, lastSuccessfulExecution
 // would always be the compiled eval workflow, not the user's graph.
 async function loadFallbackUserExecution() {
-	const workflowId = workflowDocumentStore.value?.workflowId;
-	if (!workflowId) return;
 	try {
-		const list = await executionsStore.fetchExecutions({
-			status: ['success'],
-			workflowId,
-		});
-		const candidate = list.results.find((e) => e.mode !== 'evaluation' && typeof e.id === 'string');
-		if (!candidate?.id) {
-			fallbackUserExecution.value = null;
-			return;
-		}
-		const full = await executionsStore.fetchExecution(candidate.id);
-		fallbackUserExecution.value = full ?? null;
+		fallbackUserExecution.value = await fetchLatestUserExecution();
 	} catch {
 		fallbackUserExecution.value = null;
 	}
 }
 
-const fallbackUserExecution = ref<IExecutionResponse | null>(null);
-const sliceInputs = useSliceInputs({ fallbackExecution: fallbackUserExecution });
 const expectedFields = computed(() => getExpectedFieldsForMetrics(selectedMetricKeys.value));
 
 watch(
@@ -270,9 +279,15 @@ const resultChecks = computed<ResultCheck[]>(() => {
 	});
 });
 
-const sliceEndNodeName = computed(
-	() => (wizardStore.isSliceMode ? wizardStore.endNodeName : wizardStore.aiNodeName) || '',
-);
+const sliceEndNodeName = computed(() => wizardStore.answerNodeName);
+
+// The expected-output values for a case, taken from the dataset row at the
+// case's `runIndex` (rows are seeded one-per-row in order). Falls back to the
+// Step-2 first-row values when the per-row data isn't hydrated.
+function caseExpectedValues(testCase: TestCaseExecutionRecord): Record<string, string> {
+	const index = testCase.runIndex ?? 0;
+	return datasetExpectedByRow.value[index] ?? expectedValues.value;
+}
 
 const executionsByCaseId = ref<Record<string, IExecutionResponse | null>>({});
 
@@ -280,14 +295,11 @@ const executionsByCaseId = ref<Record<string, IExecutionResponse | null>>({});
 // stripped of its JSON envelope (output > text > response > …). Falls back to
 // the case's persisted `outputs` only when the execution isn't loaded.
 function caseAnswer(testCase: TestCaseExecutionRecord): string {
-	const execution = executionsByCaseId.value[testCase.id];
-	const endName = sliceEndNodeName.value;
-	if (execution && endName) {
-		const firstItem =
-			execution.data?.resultData?.runData?.[endName]?.[0]?.data?.main?.[0]?.[0]?.json;
-		if (firstItem !== undefined) return extractAnswerText(firstItem);
-	}
-	return extractAnswerText(testCase.outputs);
+	return extractCaseAnswer(
+		executionsByCaseId.value[testCase.id],
+		sliceEndNodeName.value,
+		testCase.outputs,
+	);
 }
 
 async function loadExecutionForCase(caseId: string, executionId: string) {
@@ -356,6 +368,51 @@ watch(
 	{ immediate: true },
 );
 
+// Per-step metadata, indexed by activeStep (0-3); WizardStep is constrained to those values.
+const STEP_META = [
+	{
+		telemetryName: 'choose_system',
+		title: 'evaluations.wizardSidepanel.step.chooseSystem.title',
+		description: 'evaluations.wizardSidepanel.step.chooseSystem.description',
+	},
+	{
+		telemetryName: 'setup_scorers',
+		title: 'evaluations.wizardSidepanel.step.setupChecks.title',
+		description: 'evaluations.wizardSidepanel.step.setupChecks.description',
+	},
+	{
+		telemetryName: 'add_test_cases',
+		title: 'evaluations.wizardSidepanel.step.addTestCases.title',
+		description: 'evaluations.wizardSidepanel.step.addTestCases.description',
+	},
+	{
+		telemetryName: 'results',
+		title: 'evaluations.wizardSidepanel.step.results.title',
+		description: 'evaluations.wizardSidepanel.step.results.description',
+	},
+] as const;
+
+// Emit a view event when a step's content is shown (not while gated/loading).
+// Deduped per step, reset on close, so revisiting a step doesn't re-fire.
+const trackedSteps = new Set<number>();
+watch(
+	[() => wizardStore.isOpen, activeStep, showGate, showProbeLoading],
+	([isOpen, step, gated, loading]) => {
+		if (!isOpen) {
+			trackedSteps.clear();
+			return;
+		}
+		if (gated || loading || trackedSteps.has(step)) return;
+		trackedSteps.add(step);
+		telemetry.track('User viewed evaluation config wizard step', {
+			workflow_id: workflowDocumentStore.value?.workflowId,
+			step_name: STEP_META[step].telemetryName,
+			step_index: step + 1,
+		});
+	},
+	{ immediate: true },
+);
+
 // step0Complete: system chosen (node or slice)
 const step0Complete = computed(() => {
 	if (isSliceMode.value) {
@@ -392,28 +449,8 @@ function isLlmJudgeMetric(key: CannedMetricKey): boolean {
 	return LLM_JUDGE_METRIC_KEYS.has(key);
 }
 
-// Indexed by activeStep (0-3); WizardStep is constrained to those values.
-const STEP_I18N = [
-	{
-		title: 'evaluations.wizardSidepanel.step.chooseSystem.title',
-		description: 'evaluations.wizardSidepanel.step.chooseSystem.description',
-	},
-	{
-		title: 'evaluations.wizardSidepanel.step.setupChecks.title',
-		description: 'evaluations.wizardSidepanel.step.setupChecks.description',
-	},
-	{
-		title: 'evaluations.wizardSidepanel.step.addTestCases.title',
-		description: 'evaluations.wizardSidepanel.step.addTestCases.description',
-	},
-	{
-		title: 'evaluations.wizardSidepanel.step.results.title',
-		description: 'evaluations.wizardSidepanel.step.results.description',
-	},
-] as const;
-
-const titleKey = computed(() => STEP_I18N[activeStep.value].title);
-const descriptionKey = computed(() => STEP_I18N[activeStep.value].description);
+const titleKey = computed(() => STEP_META[activeStep.value].title);
+const descriptionKey = computed(() => STEP_META[activeStep.value].description);
 
 async function handleNext() {
 	const current = activeStep.value;
@@ -668,7 +705,7 @@ function handleViewResults() {
 							:test-case="testCase"
 							:checks="resultChecks"
 							:expected-fields="expectedFields"
-							:expected-values="expectedValues"
+							:expected-values="caseExpectedValues(testCase)"
 							:ai-answer="caseAnswer(testCase)"
 							:run-metrics="latestRun.metrics"
 						/>

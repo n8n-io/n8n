@@ -284,6 +284,34 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		});
 	});
 
+	describe('Date marshaling from workflow data', () => {
+		it('should read a top-level Date in $json as a Date, not {}', () => {
+			const data = { $json: { d: new Date('2026-06-30T20:34:04.498Z') } };
+
+			const result = evaluator.evaluate('{{ $json.d }}', data, caller);
+
+			expect(result).not.toEqual({});
+			expect(result).toBeInstanceOf(Date);
+			expect((result as Date).toISOString()).toBe('2026-06-30T20:34:04.498Z');
+		});
+
+		it('should read a nested Date in $json (e.g. Data Table createdAt)', () => {
+			const data = { $json: { row: { createdAt: new Date('2026-06-30T20:34:04.498Z') } } };
+
+			const result = evaluator.evaluate('{{ $json.row.createdAt }}', data, caller);
+
+			expect(result).toBeInstanceOf(Date);
+		});
+
+		it('should read a Date array element in $json', () => {
+			const data = { $json: { dates: [new Date('2026-06-30T20:34:04.498Z')] } };
+
+			const result = evaluator.evaluate('{{ $json.dates[0] }}', data, caller);
+
+			expect(result).toBeInstanceOf(Date);
+		});
+	});
+
 	it('should throw on invalid timezone', async () => {
 		const data = { $json: { x: 1 } };
 
@@ -347,6 +375,72 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		const result = evaluator.evaluate('{{ Object.keys($json).join(",") }}', data, caller);
 
 		expect(result).toBe('name,age,city');
+	});
+
+	it('should not leak host references through non-index array access', () => {
+		// Reading a non-index key like $json.a.constructor must return undefined,
+		// so a guest can't walk from an array to the host Object prototype.
+		const data = { $json: { a: [1337] } };
+		const expression = `{{
+  (function() {
+    const hostLookupParams = (() => eval)()(\`(args, res) => {
+      const _copy = {copy: true};
+      const _reference = {reference: true};
+      const params = {};
+      params.arguments = args === 'copy' ? _copy : _reference;
+      params.result = res === 'copy' ? _copy : _reference;
+      return params;
+    }\`);
+    const refs = (() => eval)()(\`
+(function () { return arguments.callee.caller.caller.caller.arguments })()
+\`);
+    const getArrayElement = refs[1];
+
+    var log = [];
+
+    function t(label, fn) {
+      try {
+        const result = fn();
+        log.push(label + '=' + result);
+        return result;
+      } catch (e) {
+        log.push(label + ':ERR ' + String(e && e.message ? e.message : e));
+      }
+    }
+
+    const hostArrayPath = ['$json', 'a'];
+    const HostArray = t('host array', function() {
+      return getArrayElement.applySync(null, [hostArrayPath, 'constructor'], hostLookupParams('copy', 'reference'));
+    });
+    const HostLookupGetter = t('host lookup getter', function() {
+      return getArrayElement.applySync(null, [hostArrayPath, '__lookupGetter__'], hostLookupParams('copy', 'reference'));
+    });
+    const hostArrayInstance = t('host array instance', function() {
+      return HostArray.applySync(null, [1], hostLookupParams('copy', 'reference'));
+    });
+    const HostProtoGetter = t('host __proto__ getter', function() {
+      return HostLookupGetter.applySync(hostArrayInstance.derefInto(), ['__proto__'], hostLookupParams('copy', 'reference'));
+    });
+    const arrProto = t('host Array prototype', function() {
+      return HostProtoGetter.applySync(hostArrayInstance.derefInto(), [], hostLookupParams('copy', 'reference'));
+    });
+    const objProto = t('host Object prototype', function() {
+      return HostProtoGetter.applySync(arrProto.derefInto(), [], hostLookupParams('copy', 'reference'));
+    });
+
+    objProto.setSync('win', 1337);
+    return log;
+  })();
+}}`;
+
+		try {
+			// The bridge swallows the TypeError; what matters is the host Object
+			// prototype was never mutated.
+			evaluator.evaluate(expression, data, caller);
+			expect((Object.prototype as Record<string, unknown>).win).toBeUndefined();
+		} finally {
+			delete (Object.prototype as Record<string, unknown>).win;
+		}
 	});
 
 	it('should preserve error name, message, and custom properties across isolate boundary', () => {

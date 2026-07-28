@@ -18,7 +18,6 @@ import {
 import { Container } from '@n8n/di';
 
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner, createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
@@ -455,6 +454,44 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 		expect(await readAvailableInMCP(workflowInRoot.id)).toBe(true);
 		expect(await readAvailableInMCP(workflowInChild.id)).toBe(true);
 		expect(await readAvailableInMCP(workflowOutsideFolder.id)).toBeUndefined();
+	});
+
+	test('scopes updates to all accessible workflows when allWorkflows is set', async () => {
+		const memberWf = await createWorkflow({ name: 'member-wf', settings: {} }, toggleMember);
+		const ownerWf = await createWorkflow({ name: 'owner-wf', settings: {} }, toggleOwner);
+
+		// The member lacks global workflow:update scope, so only their own
+		// workflows are reached.
+		const memberResponse = await testServer
+			.authAgentFor(toggleMember)
+			.patch('/mcp/workflows/toggle-access')
+			.send({ availableInMCP: true, allWorkflows: true });
+
+		expect(memberResponse.statusCode).toBe(200);
+		expect(memberResponse.body.data).toEqual({
+			updatedCount: 1,
+			unchangedCount: 0,
+			skippedCount: 0,
+			failedCount: 0,
+		});
+		expect(await readAvailableInMCP(memberWf.id)).toBe(true);
+		expect(await readAvailableInMCP(ownerWf.id)).toBeUndefined();
+
+		// The owner has global workflow:update scope and reaches every workflow,
+		// including the member's already-exposed one (reported as unchanged).
+		const ownerResponse = await testServer
+			.authAgentFor(toggleOwner)
+			.patch('/mcp/workflows/toggle-access')
+			.send({ availableInMCP: true, allWorkflows: true });
+
+		expect(ownerResponse.statusCode).toBe(200);
+		expect(ownerResponse.body.data).toEqual({
+			updatedCount: 1,
+			unchangedCount: 1,
+			skippedCount: 0,
+			failedCount: 0,
+		});
+		expect(await readAvailableInMCP(ownerWf.id)).toBe(true);
 	});
 
 	test('counts a shared workflow exactly once regardless of its sharings', async () => {

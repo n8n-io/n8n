@@ -50,13 +50,18 @@ export namespace PubSub {
 		export type CommunityPackageUninstall = ToCommand<'community-package-uninstall'>;
 		export type GetWorkerId = ToCommand<'get-worker-id'>;
 		export type GetWorkerStatus = ToCommand<'get-worker-status'>;
+		export type StopExecution = ToCommand<'stop-execution'>;
 		export type AddWebhooksTriggersAndPollers = ToCommand<'add-webhooks-triggers-and-pollers'>;
 		export type RemoveTriggersAndPollers = ToCommand<'remove-triggers-and-pollers'>;
 		export type DisplayWorkflowActivation = ToCommand<'display-workflow-activation'>;
 		export type DisplayWorkflowDeactivation = ToCommand<'display-workflow-deactivation'>;
 		export type DisplayWorkflowActivationError = ToCommand<'display-workflow-activation-error'>;
+		export type DisplayWorkflowPublicationStatus = ToCommand<'display-workflow-publication-status'>;
+		export type WorkflowPublishWakeUp = ToCommand<'workflow-publish-wake-up'>;
 		export type RelayExecutionLifecycleEvent = ToCommand<'relay-execution-lifecycle-event'>;
 		export type RelayChatStreamEvent = ToCommand<'relay-chat-stream-event'>;
+		export type RelayInstanceAiEvent = ToCommand<'relay-instance-ai-event'>;
+		export type RelayInstanceAiTaskControl = ToCommand<'relay-instance-ai-task-control'>;
 		export type RelayChatHumanMessage = ToCommand<'relay-chat-human-message'>;
 		export type RelayChatMessageEdit = ToCommand<'relay-chat-message-edit'>;
 		export type ClearTestWebhooks = ToCommand<'clear-test-webhooks'>;
@@ -65,6 +70,7 @@ export namespace PubSub {
 		export type ReloadSourceControlConfiguration = ToCommand<'reload-source-control-config'>;
 		export type ReloadMcpRegistry = ToCommand<'reload-mcp-registry'>;
 		export type ReloadOtelConfig = ToCommand<'reload-otel-config'>;
+		export type ReloadInstanceAiSettings = ToCommand<'reload-instance-ai-settings'>;
 		export type CancelTestRun = ToCommand<'cancel-test-run'>;
 		export type CancelCollection = ToCommand<'cancel-collection'>;
 		export type AgentChatIntegrationChanged = ToCommand<'agent-chat-integration-changed'>;
@@ -84,13 +90,18 @@ export namespace PubSub {
 		| Commands.CommunityPackageUninstall
 		| Commands.GetWorkerId
 		| Commands.GetWorkerStatus
+		| Commands.StopExecution
 		| Commands.AddWebhooksTriggersAndPollers
 		| Commands.RemoveTriggersAndPollers
 		| Commands.DisplayWorkflowActivation
 		| Commands.DisplayWorkflowDeactivation
 		| Commands.DisplayWorkflowActivationError
+		| Commands.DisplayWorkflowPublicationStatus
+		| Commands.WorkflowPublishWakeUp
 		| Commands.RelayExecutionLifecycleEvent
 		| Commands.RelayChatStreamEvent
+		| Commands.RelayInstanceAiEvent
+		| Commands.RelayInstanceAiTaskControl
 		| Commands.RelayChatHumanMessage
 		| Commands.RelayChatMessageEdit
 		| Commands.ClearTestWebhooks
@@ -101,6 +112,7 @@ export namespace PubSub {
 		| Commands.ReloadSourceControlConfiguration
 		| Commands.ReloadMcpRegistry
 		| Commands.ReloadOtelConfig
+		| Commands.ReloadInstanceAiSettings
 		| Commands.CancelTestRun
 		| Commands.CancelCollection
 		| Commands.AgentChatIntegrationChanged

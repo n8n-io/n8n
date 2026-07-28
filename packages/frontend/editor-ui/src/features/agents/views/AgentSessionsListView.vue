@@ -1,20 +1,41 @@
 <script lang="ts" setup>
-import { truncate } from '@n8n/utils';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
-import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
+import {
+	AGENT_PREVIEW_VIEW,
+	AGENT_SESSION_DETAIL_VIEW,
+	CONTINUE_SESSION_ID_PARAM,
+	EXECUTIONS_SECTION_KEY,
+} from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import type { AgentExecutionThread } from '@/features/agents/composables/useAgentThreadsApi';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nActionDropdown, N8nButton, N8nTableBase } from '@n8n/design-system';
+import {
+	N8nActionDropdown,
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nTableBase,
+	N8nTooltip,
+} from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
+
+const props = withDefaults(
+	defineProps<{
+		embedded?: boolean;
+		projectId?: string;
+		agentId?: string;
+		openSessionInNewTab?: boolean;
+	}>(),
+	{ embedded: false, projectId: undefined, agentId: undefined, openSessionInNewTab: false },
+);
 
 const i18n = useI18n();
 const threadTitleOf = useThreadTitle();
@@ -24,8 +45,8 @@ const toast = useToast();
 const message = useMessage();
 const sessionsStore = useAgentSessionsStore();
 
-const projectId = computed(() => route.params.projectId as string);
-const agentId = computed(() => route.params.agentId as string);
+const projectId = computed(() => props.projectId ?? (route.params.projectId as string));
+const agentId = computed(() => props.agentId ?? (route.params.agentId as string));
 
 function onVisibilityChange() {
 	// Refresh as soon as the user returns to the tab — auto-refresh is
@@ -59,19 +80,46 @@ function formatDate(fullDate: string) {
 	return `${date} ${time}`;
 }
 
-function formatTokens(count: number): string {
-	return count.toLocaleString();
-}
-
 function formatDuration(ms: number): string {
 	if (ms < 1000) return `${ms}ms`;
-	return `${(ms / 1000).toFixed(1)}s`;
+	const seconds = ms / 1000;
+	return Number.isInteger(seconds) ? `${seconds}s` : `${seconds.toFixed(1)}s`;
 }
 
 function originLabel(thread: AgentExecutionThread): string {
 	if (thread.parentThreadId) return i18n.baseText('agentSessions.origin.subAgent');
 	if (thread.taskId) return i18n.baseText('agentSessions.origin.task');
+	const source = thread.source?.trim();
+	if (
+		source &&
+		source !== 'chat' &&
+		source !== 'task' &&
+		source !== 'subagent' &&
+		source !== 'workflow'
+	) {
+		return source.charAt(0).toUpperCase() + source.slice(1);
+	}
 	return i18n.baseText('agentSessions.origin.agent');
+}
+
+function originIcon(thread: AgentExecutionThread): string {
+	const source = thread.source?.trim();
+	switch (source) {
+		case 'chat':
+			return 'zap';
+		case 'task':
+			return 'clock';
+		case 'workflow':
+			return 'workflow';
+		case 'slack':
+			return 'slack';
+		case 'telegram':
+			return 'telegram';
+		case 'linear':
+			return 'linear';
+		default:
+			return 'zap';
+	}
 }
 
 function rowActions(thread: AgentExecutionThread): Array<ActionDropdownItem<string>> {
@@ -95,11 +143,32 @@ function rowActions(thread: AgentExecutionThread): Array<ActionDropdownItem<stri
 	return actions;
 }
 
-function onRowClick(threadId: string) {
-	void router.push({
+function openConversation(threadId: string) {
+	const target = {
+		name: AGENT_PREVIEW_VIEW,
+		params: { projectId: projectId.value, agentId: agentId.value },
+		query: {
+			[CONTINUE_SESSION_ID_PARAM]: threadId,
+			section: EXECUTIONS_SECTION_KEY,
+		},
+	};
+	if (props.openSessionInNewTab) {
+		window.open(router.resolve(target).href, '_blank');
+		return;
+	}
+	void router.push(target);
+}
+
+function onViewTrace(threadId: string) {
+	const target = {
 		name: AGENT_SESSION_DETAIL_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value, threadId },
-	});
+	};
+	if (props.openSessionInNewTab) {
+		window.open(router.resolve(target).href, '_blank');
+		return;
+	}
+	void router.push(target);
 }
 
 async function onAction(actionId: string, thread: AgentExecutionThread) {
@@ -131,7 +200,7 @@ async function onAction(actionId: string, thread: AgentExecutionThread) {
 	if (confirmed !== MODAL_CONFIRM) return;
 
 	try {
-		await sessionsStore.deleteThread(projectId.value, thread.id);
+		await sessionsStore.deleteThread(projectId.value, agentId.value, thread.id);
 		toast.showMessage({
 			title: i18n.baseText('agentSessions.showMessage.deleted'),
 			type: 'success',
@@ -151,46 +220,63 @@ async function loadMore() {
 </script>
 
 <template>
-	<div :class="$style.wrapper">
+	<div :class="[$style.wrapper, { [$style.embedded]: props.embedded }]">
 		<div :class="$style.tableContainer">
 			<N8nTableBase>
-				<thead>
-					<tr>
-						<th>{{ i18n.baseText('agentSessions.sessionName') }}</th>
-						<th>{{ i18n.baseText('agentSessions.lastMessage') }}</th>
-						<th>{{ i18n.baseText('agentSessions.duration') }}</th>
-						<th>{{ i18n.baseText('agentSessions.tokenUsage') }}</th>
-						<th>{{ i18n.baseText('agentSessions.sessionId') }}</th>
-						<th>{{ i18n.baseText('agentSessions.origin') }}</th>
-						<th style="width: 50px"></th>
-					</tr>
-				</thead>
 				<tbody>
 					<tr
 						v-for="thread in sessionsStore.threads"
 						:key="thread.id"
 						:class="$style.clickableRow"
 						data-test-id="agent-session-list-item"
-						@click="onRowClick(thread.id)"
+						@click="openConversation(thread.id)"
 					>
-						<td>{{ truncate(threadTitleOf(thread), 24) }}</td>
-						<td>{{ formatDate(thread.updatedAt) }}</td>
-						<td>{{ formatDuration(thread.totalDuration) }}</td>
-						<td>{{ formatTokens(thread.totalPromptTokens + thread.totalCompletionTokens) }}</td>
-						<td>{{ thread.sessionNumber }}</td>
-						<td data-test-id="agent-session-origin">{{ originLabel(thread) }}</td>
-						<td @click.stop>
-							<N8nActionDropdown
-								:items="rowActions(thread)"
-								activator-icon="ellipsis"
-								data-test-id="agent-session-actions"
-								@select="onAction($event, thread)"
-							/>
+						<td :class="$style.titleCell">
+							<span :class="$style.sessionTitle" data-test-id="agent-session-title">
+								{{ threadTitleOf(thread) }}
+							</span>
+						</td>
+						<td :class="$style.originCell" data-test-id="agent-session-origin">
+							<span :class="$style.originPill" data-test-id="agent-session-origin-pill">
+								<N8nIcon :icon="originIcon(thread)" size="large" />
+								<span>{{ originLabel(thread) }}</span>
+							</span>
+						</td>
+						<td :class="$style.dateCell" data-test-id="agent-session-updated-at">
+							{{ formatDate(thread.updatedAt) }}
+						</td>
+						<td :class="$style.tokenCell" data-test-id="agent-session-token-usage">
+							{{ (thread.totalPromptTokens + thread.totalCompletionTokens).toLocaleString() }}t
+						</td>
+						<td :class="$style.durationCell" data-test-id="agent-session-duration">
+							{{ formatDuration(thread.totalDuration) }}
+						</td>
+						<td :class="$style.actionCell" @click.stop>
+							<div :class="$style.actionGroup">
+								<N8nTooltip :content="i18n.baseText('agentSessions.viewTrace')">
+									<N8nIconButton
+										icon="list-tree"
+										icon-size="medium"
+										size="xsmall"
+										variant="ghost"
+										:aria-label="i18n.baseText('agentSessions.viewTrace')"
+										:title="i18n.baseText('agentSessions.viewTrace')"
+										data-test-id="agent-session-view-trace"
+										@click="onViewTrace(thread.id)"
+									/>
+								</N8nTooltip>
+								<N8nActionDropdown
+									:items="rowActions(thread)"
+									activator-icon="ellipsis"
+									data-test-id="agent-session-actions"
+									@select="onAction($event, thread)"
+								/>
+							</div>
 						</td>
 					</tr>
 					<template v-if="sessionsStore.loading && !sessionsStore.threads.length">
 						<tr v-for="item in 5" :key="item">
-							<td v-for="col in 7" :key="col">
+							<td v-for="col in 6" :key="col">
 								<ElSkeletonItem />
 							</td>
 						</tr>
@@ -199,7 +285,7 @@ async function loadMore() {
 						v-if="!sessionsStore.loading && !sessionsStore.threads.length"
 						:class="$style.lastRow"
 					>
-						<td :colspan="7" style="text-align: center; padding: var(--spacing--lg)">
+						<td :colspan="6" style="text-align: center; padding: var(--spacing--lg)">
 							<template v-if="!sessionsStore.threads.length && !sessionsStore.loading">
 								<span data-test-id="agent-sessions-empty">
 									{{ i18n.baseText('agentSessions.empty') }}
@@ -208,7 +294,7 @@ async function loadMore() {
 						</td>
 					</tr>
 					<tr :class="$style.lastRow" v-if="sessionsStore.nextCursor">
-						<td colspan="7">
+						<td :colspan="6">
 							<N8nButton
 								icon="refresh-cw"
 								variant="ghost"
@@ -239,6 +325,12 @@ async function loadMore() {
 	scrollbar-color: var(--border-color) transparent;
 }
 
+.embedded {
+	height: auto;
+	padding: 0;
+	overflow-y: visible;
+}
+
 .tableContainer {
 	width: 100%;
 	overflow-x: auto;
@@ -246,8 +338,75 @@ async function loadMore() {
 	scrollbar-color: var(--border-color) transparent;
 }
 
+.titleCell {
+	width: 46%;
+}
+
+.sessionTitle {
+	display: block;
+	max-width: 100%;
+	overflow: hidden;
+	color: var(--text-color);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.originCell,
+.dateCell,
+.tokenCell,
+.durationCell {
+	width: 1%;
+	white-space: nowrap;
+}
+
+.originPill {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--5xs) var(--spacing--xs);
+	border: var(--border);
+	border-radius: var(--radius--xl);
+	color: var(--text-color);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--sm);
+	white-space: nowrap;
+}
+
+.dateCell,
+.tokenCell,
+.durationCell {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+}
+
+.actionCell {
+	width: 1%;
+	min-width: var(--spacing--2xl);
+	color: var(--text-color--subtler);
+	white-space: nowrap;
+}
+
+.actionGroup {
+	display: inline-flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--spacing--4xs);
+}
+
 .clickableRow {
 	cursor: pointer;
+
+	td {
+		color: var(--text-color--subtler);
+	}
+
+	.actionCell {
+		text-align: right;
+	}
 
 	&:hover {
 		background-color: var(--background--hover);

@@ -29,8 +29,6 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
-import { createFolder } from '@test-integration/db/folders';
 import { DateTime } from 'luxon';
 import {
 	PROJECT_ROOT,
@@ -41,19 +39,27 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { saveCredential } from '../shared/db/credentials';
-import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
-import { assignTagToWorkflow, createTag } from '../shared/db/tags';
-import { createChatUser, createManyUsers, createMember, createOwner } from '../shared/db/users';
-import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
-import type { SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils/';
-import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
-
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { EventService } from '@/events/event.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
+import { createFolder } from '@test-integration/db/folders';
+
+import { saveCredential } from '../shared/db/credentials';
+import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
+import { assignTagToWorkflow, createTag } from '../shared/db/tags';
+import {
+	createChatUser,
+	createManyUsers,
+	createMember,
+	createOwner,
+	createUser,
+} from '../shared/db/users';
+import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
+import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
 let owner: User;
 let member: User;
@@ -69,7 +75,15 @@ const testServer = utils.setupTestServer({
 	},
 });
 
-const { objectContaining, arrayContaining, any } = expect;
+// Vitest's asymmetric matchers are chai-based and rely on their `this` context, so they
+// can't be destructured or bound off `expect` (a bare `const { objectContaining } = expect`
+// throws "Cannot read properties of undefined (reading '__flags')"). Wrap them in thin
+// functions that call `expect.*` inline to keep the existing call sites unchanged.
+const objectContaining = (...args: Parameters<typeof expect.objectContaining>) =>
+	expect.objectContaining(...args);
+const arrayContaining = (...args: Parameters<typeof expect.arrayContaining>) =>
+	expect.arrayContaining(...args);
+const any = (...args: Parameters<typeof expect.any>) => expect.any(...args);
 
 const activeWorkflowManagerLike = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
@@ -124,7 +138,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 });
 
 describe('POST /workflows', () => {
@@ -694,11 +708,70 @@ describe('POST /workflows', () => {
 		expect(response.body.data.shared).toBeUndefined();
 	});
 
-	test('create workflow without parent is provided folder does not exist in the project', async () => {
+	test('rejects workflow creation when parent folder does not exist in the project', async () => {
 		//
 		// ARRANGE
 		//
-		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		const workflow = makeWorkflow();
+
+		//
+		// ACT
+		//
+		await authOwnerAgent
+			.post('/workflows')
+			.send({ ...workflow, parentFolderId: 'non-existing-folder-id' })
+			.expect(404);
+
+		const workflowsInDb = await workflowRepository.findBy({ name: workflow.name });
+		expect(workflowsInDb).toHaveLength(0);
+	});
+
+	test('ignores parentFolder object when creating workflow', async () => {
+		//
+		// ARRANGE
+		//
+		const sourceProject = await projectRepository.getPersonalProjectForUserOrFail(member.id);
+		const targetProject = await createTeamProject('Target Project', owner);
+		await Container.get(ProjectService).addUser(targetProject.id, {
+			userId: member.id,
+			role: 'project:viewer',
+		});
+		const targetFolder = await createFolder(targetProject, { name: 'Target Folder' });
+		const workflow = makeWorkflow();
+
+		//
+		// ACT
+		//
+		const response = await authMemberAgent
+			.post('/workflows')
+			.send({
+				...workflow,
+				projectId: sourceProject.id,
+				parentFolder: { id: targetFolder.id, name: targetFolder.name },
+			})
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		// The supplied cross-project `parentFolder` must be ignored: the workflow is created at
+		// the root of the source project, never attached to the target project's folder.
+		expect(response.body.data.homeProject.id).toBe(sourceProject.id);
+		expect(response.body.data.parentFolder).toBeNull();
+
+		const createdWorkflow = await workflowRepository.findOne({
+			where: { id: response.body.data.id },
+			relations: ['parentFolder'],
+		});
+		expect(createdWorkflow?.parentFolder).toBeNull();
+	});
+
+	test('ignores parentFolder null when creating workflow', async () => {
+		//
+		// ARRANGE
+		//
+		// Mirrors the duplicate-from-card flow, which echoes the source workflow back —
+		// including `parentFolder: null` for a workflow that lives in the project root.
 		const workflow = makeWorkflow();
 
 		//
@@ -706,28 +779,38 @@ describe('POST /workflows', () => {
 		//
 		const response = await authOwnerAgent
 			.post('/workflows')
-			.send({ ...workflow, parentFolderId: 'non-existing-folder-id' })
+			.send({ ...workflow, parentFolder: null })
 			.expect(200);
 
 		//
 		// ASSERT
 		//
+		expect(response.body.data.parentFolder).toBeNull();
+	});
 
-		expect(response.body.data).toMatchObject({
-			active: false,
-			activeVersionId: null,
-			id: expect.any(String),
-			name: workflow.name,
-			sharedWithProjects: [],
-			usedCredentials: [],
-			homeProject: {
-				id: personalProject.id,
-				name: personalProject.name,
-				type: personalProject.type,
-			},
-			parentFolder: null,
+	test('rejects parentFolderId from another project when creating workflow', async () => {
+		//
+		// ARRANGE
+		//
+		const sourceProject = await projectRepository.getPersonalProjectForUserOrFail(member.id);
+		const targetProject = await createTeamProject('Target Project', owner);
+		await Container.get(ProjectService).addUser(targetProject.id, {
+			userId: member.id,
+			role: 'project:viewer',
 		});
-		expect(response.body.data.shared).toBeUndefined();
+		const targetFolder = await createFolder(targetProject, { name: 'Target Folder' });
+		const workflow = makeWorkflow();
+
+		//
+		// ACT & ASSERT
+		//
+		await authMemberAgent
+			.post('/workflows')
+			.send({ ...workflow, projectId: sourceProject.id, parentFolderId: targetFolder.id })
+			.expect(404);
+
+		const workflowsInDb = await workflowRepository.findBy({ name: workflow.name });
+		expect(workflowsInDb).toHaveLength(0);
 	});
 
 	describe('Security: Mass Assignment Protection', () => {
@@ -1705,6 +1788,187 @@ describe('GET /workflows', () => {
 				.expect(200);
 
 			expect(response.body.data).toHaveLength(1); // Should return all workflows when nodeTypes is empty
+		});
+
+		describe('includeCallableSubworkflows', () => {
+			const executeWorkflowTriggerNode = (id = uuid()) => ({
+				id,
+				name: 'When Executed by Another Workflow',
+				type: 'n8n-nodes-base.executeWorkflowTrigger',
+				parameters: {},
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+			});
+
+			test('should include workflows callable by the parent workflow based on callerPolicy', async () => {
+				const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
+
+				// callerPolicy: 'any' — callable by everyone
+				const anyPolicyWorkflow = await createWorkflow(
+					{
+						name: 'Any Policy',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: { callerPolicy: 'any' },
+					},
+					owner,
+				);
+
+				// callerPolicy: 'workflowsFromAList' — parentWorkflow is explicitly listed
+				const fromListWorkflow = await createWorkflow(
+					{
+						name: 'From List Policy',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: {
+							callerPolicy: 'workflowsFromAList',
+							callerIds: parentWorkflow.id,
+						},
+					},
+					owner,
+				);
+
+				// callerPolicy: 'none' — callable by nobody
+				await createWorkflow(
+					{
+						name: 'None Policy',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: { callerPolicy: 'none' },
+					},
+					owner,
+				);
+
+				const filter = JSON.stringify({
+					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+					includeCallableSubworkflows: true,
+					parentWorkflowId: parentWorkflow.id,
+				});
+
+				const response = await authMemberAgent
+					.get('/workflows')
+					.query(`filter=${filter}`)
+					.expect(200);
+
+				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
+				expect(returnedIds).toContain(anyPolicyWorkflow.id);
+				expect(returnedIds).toContain(fromListWorkflow.id);
+				expect(returnedIds).not.toContain(
+					(
+						await createWorkflow(
+							{
+								name: 'None Policy Check',
+								nodes: [executeWorkflowTriggerNode()],
+								settings: { callerPolicy: 'none' },
+							},
+							owner,
+						)
+					).id,
+				);
+			});
+
+			test('should not include callable workflows when includeCallableSubworkflows is false', async () => {
+				const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
+
+				const anyPolicyWorkflow = await createWorkflow(
+					{
+						name: 'Any Policy',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: { callerPolicy: 'any' },
+					},
+					owner,
+				);
+
+				const filter = JSON.stringify({
+					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+					includeCallableSubworkflows: false,
+					parentWorkflowId: parentWorkflow.id,
+				});
+
+				const response = await authMemberAgent
+					.get('/workflows')
+					.query(`filter=${filter}`)
+					.expect(200);
+
+				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
+				// member doesn't own anyPolicyWorkflow, so without expansion it should not be visible
+				expect(returnedIds).not.toContain(anyPolicyWorkflow.id);
+			});
+
+			test('should not expand the list when the requester cannot read the parent workflow', async () => {
+				// Parent workflow owned by `owner`, inaccessible to `member`.
+				const parentWorkflow = await createWorkflow({ name: 'Owner Parent' }, owner);
+
+				// Subworkflow owned by the same owner, callable by same-owner workflows.
+				const sameOwnerSubworkflow = await createWorkflow(
+					{
+						name: 'Same Owner Sub',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: { callerPolicy: 'workflowsFromSameOwner' },
+					},
+					owner,
+				);
+
+				// Subworkflow that explicitly allowlists the inaccessible parent id.
+				const fromListSubworkflow = await createWorkflow(
+					{
+						name: 'From List Sub',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: {
+							callerPolicy: 'workflowsFromAList',
+							callerIds: parentWorkflow.id,
+						},
+					},
+					owner,
+				);
+
+				const filter = JSON.stringify({
+					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+					includeCallableSubworkflows: true,
+					parentWorkflowId: parentWorkflow.id,
+				});
+
+				const response = await authMemberAgent
+					.get('/workflows')
+					.query(`filter=${filter}`)
+					.expect(200);
+
+				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
+				// member cannot read the supplied parent workflow, so callable
+				// subworkflows must not be exposed regardless of caller policy.
+				expect(returnedIds).not.toContain(sameOwnerSubworkflow.id);
+				expect(returnedIds).not.toContain(fromListSubworkflow.id);
+			});
+
+			test('should match callerIds by whole id, not by substring', async () => {
+				const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
+
+				// Allowlist contains the parent id only as a substring of a longer id.
+				const substringSubworkflow = await createWorkflow(
+					{
+						name: 'Substring Allowlist',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: {
+							callerPolicy: 'workflowsFromAList',
+							callerIds: `${parentWorkflow.id}-extra-suffix`,
+						},
+					},
+					owner,
+				);
+
+				const filter = JSON.stringify({
+					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+					includeCallableSubworkflows: true,
+					parentWorkflowId: parentWorkflow.id,
+				});
+
+				const response = await authMemberAgent
+					.get('/workflows')
+					.query(`filter=${filter}`)
+					.expect(200);
+
+				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
+				// parentWorkflow.id is only a substring of the allowlisted id, so it must
+				// not be treated as an allowed caller.
+				expect(returnedIds).not.toContain(substringSubworkflow.id);
+			});
 		});
 	});
 
@@ -3235,7 +3499,7 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should update workflow without updating its active version', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createActiveWorkflow({}, owner);
 		await setActiveVersion(workflow.id, workflow.versionId);
 
@@ -3371,7 +3635,7 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should not deactivate workflow when updating with active: false', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createActiveWorkflow({}, owner);
 		await setActiveVersion(workflow.id, workflow.versionId);
 
@@ -3784,7 +4048,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 describe('POST /workflows/:workflowId/activate', () => {
 	test('should activate workflow with provided versionId', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createWorkflowWithHistory({}, owner);
 		const newVersionId = uuid();
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
@@ -3817,7 +4081,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 	test('should send activated event', async () => {
 		const workflow = await createWorkflowWithHistory({}, owner);
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 		await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
 			.send({ versionId: workflow.versionId });
@@ -4059,7 +4323,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		const newVersionId = uuid();
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		activeWorkflowManagerLike.add.mockRejectedValueOnce(new Error('Activation failed'));
 
@@ -4103,7 +4367,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 	});
 
 	test('should call active workflow manager with activate mode if workflow is not active', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createWorkflowWithHistory({}, owner);
 
 		await authOwnerAgent
@@ -4122,7 +4386,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 
 	test('should emit only activation event when activating inactive workflow', async () => {
 		const workflow = await createWorkflowWithHistory({}, owner);
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
@@ -4147,7 +4411,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		const newVersionId = uuid();
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
@@ -4189,11 +4453,11 @@ describe('POST /workflows/:workflowId/activate', () => {
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
 
 		// Mock activeWorkflowManager.add to fail
-		const addSpy = jest
-			.spyOn(activeWorkflowManagerLike, 'add')
-			.mockRejectedValueOnce(new Error('Failed to add workflow'));
+		const addSpy = activeWorkflowManagerLike.add.mockRejectedValueOnce(
+			new Error('Failed to add workflow'),
+		);
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
@@ -4227,11 +4491,11 @@ describe('POST /workflows/:workflowId/activate', () => {
 		const workflow = await createWorkflowWithHistory({}, owner);
 
 		// Mock activeWorkflowManager.add to fail
-		const addSpy = jest
-			.spyOn(activeWorkflowManagerLike, 'add')
-			.mockRejectedValueOnce(new Error('Failed to add workflow'));
+		const addSpy = activeWorkflowManagerLike.add.mockRejectedValueOnce(
+			new Error('Failed to add workflow'),
+		);
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
@@ -4271,9 +4535,82 @@ describe('POST /workflows/:workflowId/activate', () => {
 	});
 });
 
+describe('workflow conflict detection when a version is activated mid-edit (INS-859)', () => {
+	// `activeVersionId` is one of WORKFLOW_CHECKSUM_FIELDS, so activating a workflow shifts its
+	// server-side checksum even though no editable content changed. An editor that captured its
+	// checksum before the activation push therefore autosaves with a stale checksum and gets a
+	// (correct) 409 — the false "changed by someone else" conflict from INS-859. These tests pin
+	// that backend contract: a 409 on the pre-activation checksum, a clean save on the refreshed
+	// one. The frontend fix (refresh the checksum on the `workflowActivated` push) relies on it.
+
+	test('changes the workflow checksum when a version is activated', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const beforeActivation = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+		expect(beforeActivation.body.data.activeVersionId).toBeNull();
+		const checksumBeforeActivation = beforeActivation.body.data.checksum;
+
+		const activated = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId })
+			.expect(200);
+
+		// Only activeVersionId changed, yet the checksum moves — the root cause of the conflict.
+		expect(activated.body.data.activeVersionId).toBe(workflow.versionId);
+		expect(activated.body.data.checksum).not.toBe(checksumBeforeActivation);
+	});
+
+	test('rejects an autosave whose checksum was captured before activation', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		// The editor loads the workflow and holds its checksum while the user keeps editing.
+		const loaded = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+		const checksumHeldByEditor = loaded.body.data.checksum;
+
+		// A server-side activation lands while the canvas is still dirty.
+		await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId })
+			.expect(200);
+
+		// The debounced autosave ships with the now-stale pre-activation checksum (the edit here
+		// stands in for the node drag in the original report — the conflict is checksum-driven,
+		// not content-driven).
+		const autosave = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			name: 'Edited while activation landed',
+			expectedChecksum: checksumHeldByEditor,
+		});
+
+		expect(autosave.statusCode).toBe(409);
+		expect(autosave.body.code).toBe(409);
+	});
+
+	test('accepts the autosave once the checksum is refreshed after activation, preserving the edit', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const activated = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId })
+			.expect(200);
+
+		// The fix: on the `workflowActivated` push the editor refreshes its checksum to the
+		// post-activation value before the autosave fires.
+		const refreshedChecksum = activated.body.data.checksum;
+
+		const autosave = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ name: 'Edited while activation landed', expectedChecksum: refreshedChecksum })
+			.expect(200);
+
+		// The in-progress edit is persisted and the activation state is preserved.
+		expect(autosave.body.data.name).toBe('Edited while activation landed');
+		expect(autosave.body.data.activeVersionId).toBe(workflow.versionId);
+	});
+});
+
 describe('POST /workflows/:workflowId/deactivate', () => {
 	test('should deactivate active workflow', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createActiveWorkflow({}, owner);
 
 		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
@@ -4296,7 +4633,7 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 	test('should send deactivated event', async () => {
 		const workflow = await createActiveWorkflow({}, owner);
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 		await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
 
 		expect(emitSpy).toHaveBeenCalledWith('workflow-deactivated', expect.anything());
@@ -4314,7 +4651,7 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 	});
 
 	test('should handle deactivating already inactive workflow', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createWorkflow({}, owner);
 
 		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
@@ -4463,7 +4800,7 @@ describe('POST /workflows/:workflowId/run', () => {
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${dbWorkflow.id}/run`)
-			.send({ workflowData: tamperedWorkflowData });
+			.send({ triggerToStartFrom: { name: 'Start' }, workflowData: tamperedWorkflowData });
 
 		// The endpoint should accept the request (the DB workflow exists)
 		// It should NOT use the tampered workflowData
@@ -4476,9 +4813,22 @@ describe('POST /workflows/:workflowId/run', () => {
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${nonExistentId}/run`)
-			.send({ workflowData: fakeWorkflow });
+			.send({ triggerToStartFrom: { name: 'Start' }, workflowData: fakeWorkflow });
 
 		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 400 when neither a trigger nor a destination node is provided', async () => {
+		const dbWorkflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${dbWorkflow.id}/run`)
+			.send({ startNodes: [] });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			'To run the workflow manually, specify either a trigger to start from or a destination node.',
+		);
 	});
 });
 
@@ -4915,7 +5265,7 @@ describe('GET /workflows/:workflowId/executions/last-successful', () => {
 	test('should return the last successful execution', async () => {
 		const workflow = await createWorkflow({}, owner);
 
-		const { createSuccessfulExecution } = await import('../shared/db/executions');
+		const { createSuccessfulExecution } = await import('../shared/db/executions.js');
 
 		// Create multiple executions with different statuses
 		await createSuccessfulExecution(workflow);
@@ -4939,5 +5289,67 @@ describe('GET /workflows/:workflowId/executions/last-successful', () => {
 			.expect(200);
 
 		expect(response.body.data).toBeNull();
+	});
+});
+
+describe('POST /workflows/with-node-types', () => {
+	const NODE_TYPE = 'n8n-nodes-base.set';
+
+	const createWorkflowWithNode = async (user: User) =>
+		await createWorkflow(
+			{
+				nodes: [
+					{
+						id: uuid(),
+						name: 'Set',
+						type: NODE_TYPE,
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+					},
+				],
+			},
+			user,
+		);
+
+	test('should return matching workflows for owner (has workflow:read)', async () => {
+		await createWorkflowWithNode(owner);
+
+		const response = await authOwnerAgent
+			.post('/workflows/with-node-types')
+			.send({ nodeTypes: [NODE_TYPE] });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.count).toBe(1);
+		expect(response.body.data).toHaveLength(1);
+	});
+
+	test('should return empty for member lacking workflow:read', async () => {
+		await createWorkflowWithNode(owner);
+
+		const response = await authMemberAgent
+			.post('/workflows/with-node-types')
+			.send({ nodeTypes: [NODE_TYPE] });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({ data: [], count: 0 });
+	});
+
+	test('should return matching workflows for custom global role with workflow:read', async () => {
+		await createWorkflowWithNode(owner);
+
+		const role = await createCustomRoleWithScopeSlugs(['workflow:read'], {
+			roleType: 'global',
+			displayName: 'Global Workflow Reader',
+		});
+		const customUser = await createUser({ role });
+		const customAgent = testServer.authAgentFor(customUser);
+
+		const response = await customAgent
+			.post('/workflows/with-node-types')
+			.send({ nodeTypes: [NODE_TYPE] });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.count).toBe(1);
 	});
 });

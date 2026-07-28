@@ -1,7 +1,7 @@
 import type { RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { EntityManager, Project, User } from '@n8n/db';
+import type { EntityManager, User, Project, Folder } from '@n8n/db';
 import {
 	ProjectRepository,
 	SharedWorkflow,
@@ -10,6 +10,7 @@ import {
 	WorkflowEntity,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -20,7 +21,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
-import { ExternalHooks } from '@/external-hooks';
+import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { policyForFloor, policyMeetsFloor } from '@/modules/redaction/redaction-policy';
@@ -30,6 +31,7 @@ import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 import { dropRedactionPolicy } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -58,6 +60,7 @@ export class WorkflowCreationService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
+		private readonly workflowHookContextService: WorkflowHookContextService,
 	) {}
 
 	async createWorkflow(
@@ -72,6 +75,8 @@ export class WorkflowCreationService {
 			uiContext?: string;
 			publicApi?: boolean;
 			source?: WorkflowActionSource;
+			versionName?: string;
+			versionDescription?: string;
 		} = {},
 	): Promise<WorkflowEntity> {
 		const {
@@ -83,11 +88,14 @@ export class WorkflowCreationService {
 			uiContext,
 			publicApi = false,
 			source = 'ui',
+			versionName,
+			versionDescription,
 		} = options;
 
 		// Ensure workflow is created as inactive
 		newWorkflow.active = false;
 		newWorkflow.versionId = uuid();
+		newWorkflow.parentFolder = null;
 
 		newWorkflow.sourceWorkflowId = sourceWorkflowId ?? null;
 
@@ -122,7 +130,14 @@ export class WorkflowCreationService {
 		WorkflowHelpers.addNodeIds(newWorkflow);
 		WorkflowHelpers.resolveNodeWebhookIds(newWorkflow, this.nodeTypes);
 		WorkflowHelpers.validateWorkflowStructure(newWorkflow);
-		WorkflowHelpers.validateWorkflowNodeGroups(newWorkflow);
+		WorkflowHelpers.validateWorkflowNodeGroups(
+			newWorkflow,
+			WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
+		);
+
+		if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
+			await this.findParentFolderInProjectOrFail(parentFolderId, effectiveProjectId);
+		}
 
 		if ('pinData' in newWorkflow) {
 			WorkflowHelpers.validatePinDataSize(newWorkflow);
@@ -159,7 +174,11 @@ export class WorkflowCreationService {
 		}
 
 		// Run external hook after all validation has passed, right before persisting
-		await this.externalHooks.run('workflow.create', [newWorkflow]);
+		await this.externalHooks.run('workflow.create', [
+			newWorkflow,
+			this.workflowHookContextService,
+			toWorkflowLifecycleHookActor(user),
+		]);
 
 		const floor = await this.readActiveRedactionFloor();
 
@@ -189,18 +208,15 @@ export class WorkflowCreationService {
 				floor,
 			);
 
-			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
-
-			if (parentFolderId) {
-				try {
-					const parentFolder = await this.folderService.findFolderInProjectOrFail(
-						parentFolderId,
-						project.id,
-						transactionManager,
-					);
-					await transactionManager.update(WorkflowEntity, { id: workflow.id }, { parentFolder });
-				} catch {}
+			if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
+				newWorkflow.parentFolder = await this.findParentFolderInProjectOrFail(
+					parentFolderId,
+					project.id,
+					transactionManager,
+				);
 			}
+
+			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
 			const newSharedWorkflow = this.sharedWorkflowRepository.create({
 				role: 'workflow:owner',
@@ -215,7 +231,11 @@ export class WorkflowCreationService {
 				workflow,
 				workflow.id,
 				autosaved,
+				source,
 				transactionManager,
+				versionName || versionDescription
+					? { name: versionName, description: versionDescription }
+					: undefined,
 			);
 
 			return await this.workflowFinderService.findWorkflowForUser(
@@ -242,7 +262,11 @@ export class WorkflowCreationService {
 			});
 		}
 
-		await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
+		await this.externalHooks.run('workflow.afterCreate', [
+			savedWorkflow,
+			this.workflowHookContextService,
+			toWorkflowLifecycleHookActor(user),
+		]);
 		this.eventService.emit('workflow-created', {
 			user,
 			workflow: newWorkflow,
@@ -254,6 +278,18 @@ export class WorkflowCreationService {
 		});
 
 		return savedWorkflow;
+	}
+
+	private async findParentFolderInProjectOrFail(
+		parentFolderId: string,
+		projectId: string,
+		em?: EntityManager,
+	): Promise<Folder> {
+		try {
+			return await this.folderService.findFolderInProjectOrFail(parentFolderId, projectId, em);
+		} catch {
+			throw new NotFoundError(`Could not find the folder: ${parentFolderId}`);
+		}
 	}
 
 	private async readActiveRedactionFloor(): Promise<RedactionFloor> {

@@ -10,6 +10,7 @@ from src.constants import (
     DEFAULT_TASK_TIMEOUT,
     DEFAULT_AUTO_SHUTDOWN_TIMEOUT,
     DEFAULT_SHUTDOWN_TIMEOUT,
+    ENV_ALLOW_TRANSITIVE_IMPORTS,
     ENV_BLOCK_RUNNER_ENV_ACCESS,
     ENV_BUILTINS_DENY,
     ENV_EXTERNAL_ALLOW,
@@ -57,6 +58,7 @@ class TaskRunnerConfig:
     external_allow: set[str]
     builtins_deny: set[str]
     env_deny: bool
+    allow_transitive_imports: bool
 
     @property
     def is_auto_shutdown_enabled(self) -> bool:
@@ -119,4 +121,5 @@ class TaskRunnerConfig:
                 ).split(",")
             ),
             env_deny=read_bool_env(ENV_BLOCK_RUNNER_ENV_ACCESS, True),
+            allow_transitive_imports=read_bool_env(ENV_ALLOW_TRANSITIVE_IMPORTS, False),
         )

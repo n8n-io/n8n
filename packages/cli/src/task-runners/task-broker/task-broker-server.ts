@@ -135,7 +135,8 @@ export class TaskBrokerServer {
 				this.logger.info(
 					`n8n Task Broker's port ${port} is already in use. Do you have another instance of n8n running already?`,
 				);
-				process.exit(1);
+				// Skip in tests, where exiting would kill the vi worker.
+				if (!inTest) process.exit(1);
 			}
 		});
 

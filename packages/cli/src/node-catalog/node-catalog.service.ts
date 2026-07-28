@@ -4,16 +4,47 @@ import type {
 	NodeTypeParser,
 } from '@n8n/ai-utilities/node-catalog';
 import { Logger } from '@n8n/backend-common';
+import { BUILTIN_NODES_PACKAGES } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import * as fs from 'fs/promises';
+import { LRUCache } from 'lru-cache';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import * as path from 'path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
-import { synthesizeMcpRegistryTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
+import { synthesizeNodeTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
 
 export type NodeFilter = (nodeId: string) => boolean;
+
+/**
+ * Built-in node IDs resolve through the richer, discriminator-aware on-disk
+ * lookup; everything else (MCP registry, custom and community nodes) is
+ * synthesized from its in-memory description.
+ */
+const isBuiltinNodeId = (nodeId: string): boolean =>
+	BUILTIN_NODES_PACKAGES.some((pkg) => nodeId.startsWith(`${pkg}.`));
+
+const nodeVersionNumbers = (description: INodeTypeDescription): number[] => {
+	if (Array.isArray(description.version)) return description.version;
+	if (typeof description.version === 'number') return [description.version];
+	return [];
+};
+
+const maxNodeVersion = (description: INodeTypeDescription): number =>
+	Math.max(0, ...nodeVersionNumbers(description));
+
+const parseRequestedVersion = (version: string): number => {
+	const normalized = version.replace(/^v/i, '');
+	if (/^\d+$/.test(normalized) && normalized.length === 2) {
+		return Number(`${normalized[0]}.${normalized[1]}`);
+	}
+	return Number.parseFloat(normalized);
+};
+
+const versionLabel = (description: INodeTypeDescription): string | undefined => {
+	const version = maxNodeVersion(description);
+	return version > 0 ? String(version) : undefined;
+};
 
 export interface SearchNodesOptions {
 	/**
@@ -24,12 +55,41 @@ export interface SearchNodesOptions {
 	nodeFilter?: NodeFilter;
 }
 
+export interface NodeTypeDefinitionRequest {
+	nodeId: string;
+	version?: string;
+	resource?: string;
+	operation?: string;
+	mode?: string;
+}
+
+export interface NodeTypeDefinitionResult {
+	content: string;
+	version?: string;
+	error?: string;
+	builderHint?: string;
+}
+
 interface SearchState {
 	search?: (queries: string[]) => CodeBuilderSearchResult;
 	cache: Map<string, CodeBuilderSearchResult>;
 }
 
 const UNFILTERED: unique symbol = Symbol('unfiltered');
+
+const MAX_TYPE_DEFINITION_CACHE_BYTES = 16 * 1024 * 1024;
+
+const stringBytes = (value?: string): number => (value ? Buffer.byteLength(value, 'utf8') : 0);
+
+// lru-cache rejects non-positive sizes, so clamp to 1 even for empty results
+const definitionResultBytes = (item: NodeTypeDefinitionResult): number =>
+	Math.max(
+		1,
+		stringBytes(item.content) +
+			stringBytes(item.version) +
+			stringBytes(item.error) +
+			stringBytes(item.builderHint),
+	);
 
 /**
  * Shared node catalog for features that need to search, describe or suggest n8n nodes
@@ -46,11 +106,15 @@ export class NodeCatalogService {
 	private nodeDefinitionDirs: string[] = [];
 
 	/**
-	 * Synthetic MCP registry node descriptions indexed by their prefixed name
-	 * (e.g. `@n8n/mcp-registry.notion`). Used by `getNodeTypes` to synthesise
-	 * type-def content for registry slugs, which have no on-disk artifact.
+	 * All loaded node descriptions indexed by their type name (e.g.
+	 * `n8n-nodes-base.set`, `@n8n/mcp-registry.notion`, `n8n-nodes-resend.resend`).
+	 * Used by `getNodeTypes` to synthesise type-def content for non-built-in
+	 * nodes (registry, custom and community), which have no on-disk artifact.
+	 *
+	 * Versioned nodes contribute one description per version under the same name,
+	 * so values are arrays; `selectDescription` picks the requested or latest one.
 	 */
-	private mcpRegistryDescriptions = new Map<string, INodeTypeDescription>();
+	private descriptionsById = new Map<string, INodeTypeDescription[]>();
 
 	private initPromise: Promise<void> | undefined;
 
@@ -61,6 +125,17 @@ export class NodeCatalogService {
 	private readonly searchStates = new Map<NodeFilter | typeof UNFILTERED, SearchState>();
 
 	private readonly getCache = new Map<string, string>();
+
+	/**
+	 * Definition results can be large and this cache is only fully invalidated on
+	 * node-type reloads, so bound it by total byte size: least recently used
+	 * entries are evicted once the budget is exceeded, and single entries over
+	 * the budget are silently not stored (maxEntrySize defaults to maxSize).
+	 */
+	private readonly getDefinitionCache = new LRUCache<string, NodeTypeDefinitionResult>({
+		maxSize: MAX_TYPE_DEFINITION_CACHE_BYTES,
+		sizeCalculation: definitionResultBytes,
+	});
 
 	private readonly suggestCache = new Map<string, string>();
 
@@ -136,24 +211,30 @@ export class NodeCatalogService {
 		const cached = this.getCache.get(cacheKey);
 		if (cached) return cached;
 
-		const registryIds: NodeRequest[] = [];
+		// Built-in nodes resolve through the on-disk type defs (richer,
+		// discriminator-aware). Everything else (MCP registry, custom and
+		// community nodes) has no on-disk artifact, so synthesize from the
+		// in-memory description collected from the loaders.
 		const onDiskIds: NodeRequest[] = [];
+		const synthesizeIds: NodeRequest[] = [];
 		for (const id of nodeIds) {
 			const nodeId = typeof id === 'string' ? id : id.nodeId;
-			if (nodeId.startsWith(`${MCP_REGISTRY_PACKAGE_NAME}.`)) {
-				registryIds.push(id);
-			} else {
+			if (isBuiltinNodeId(nodeId)) {
 				onDiskIds.push(id);
+			} else {
+				synthesizeIds.push(id);
 			}
 		}
 
 		const parts: string[] = [];
+		const errors: string[] = [];
 
-		for (const id of registryIds) {
-			const nodeId = typeof id === 'string' ? id : id.nodeId;
-			const description = this.mcpRegistryDescriptions.get(nodeId);
-			if (description) {
-				parts.push(synthesizeMcpRegistryTypeDef(description));
+		for (const id of synthesizeIds) {
+			const result = await this.getNodeTypeDefinition(this.toDefinitionRequest(id));
+			if (result.error) {
+				errors.push(result.error);
+			} else {
+				parts.push(result.content);
 			}
 		}
 
@@ -162,8 +243,30 @@ export class NodeCatalogService {
 			parts.push(getNodeTypes(onDiskIds, { nodeDefinitionDirs: this.nodeDefinitionDirs }));
 		}
 
+		if (errors.length > 0) {
+			parts.push(`# Errors\n\n${errors.join('\n')}`);
+		}
+
 		const result = parts.join('\n\n');
 		this.getCache.set(cacheKey, result);
+		return result;
+	}
+
+	/** Get a structured TypeScript type definition for one node. */
+	async getNodeTypeDefinition(
+		request: NodeTypeDefinitionRequest,
+	): Promise<NodeTypeDefinitionResult> {
+		const cacheKey = JSON.stringify(request);
+		const cached = this.getDefinitionCache.get(cacheKey);
+		if (cached) return cached;
+
+		const result = isBuiltinNodeId(request.nodeId)
+			? await this.getBuiltinNodeTypeDefinition(request)
+			: this.getSynthesizedNodeTypeDefinition(request);
+
+		if (!result.error) {
+			this.getDefinitionCache.set(cacheKey, result);
+		}
 		return result;
 	}
 
@@ -187,7 +290,7 @@ export class NodeCatalogService {
 		const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
 
 		this.nodeTypeParser = new NodeTypeParserClass(nodeTypeDescriptions);
-		this.indexMcpRegistryDescriptions(nodeTypeDescriptions);
+		this.indexDescriptions(nodeTypeDescriptions);
 		this.nodeDefinitionDirs = await this.resolveBuiltinNodeDefinitionDirs();
 
 		setSchemaBaseDirs(this.nodeDefinitionDirs);
@@ -204,11 +307,12 @@ export class NodeCatalogService {
 		const { NodeTypeParser: NodeTypeParserClass } = await import('@n8n/ai-utilities/node-catalog');
 		const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
 		this.nodeTypeParser = new NodeTypeParserClass(nodeTypeDescriptions);
-		this.indexMcpRegistryDescriptions(nodeTypeDescriptions);
+		this.indexDescriptions(nodeTypeDescriptions);
 
 		this.searchStates.clear();
 
 		this.getCache.clear();
+		this.getDefinitionCache.clear();
 		this.suggestCache.clear();
 
 		this.logger.debug('NodeCatalogService refreshed node types', {
@@ -216,19 +320,133 @@ export class NodeCatalogService {
 		});
 	}
 
-	private indexMcpRegistryDescriptions(descriptions: INodeTypeDescription[]): void {
-		this.mcpRegistryDescriptions.clear();
-		const prefix = `${MCP_REGISTRY_PACKAGE_NAME}.`;
+	private indexDescriptions(descriptions: INodeTypeDescription[]): void {
+		this.descriptionsById.clear();
 		for (const description of descriptions) {
-			if (description.name.startsWith(prefix)) {
-				this.mcpRegistryDescriptions.set(description.name, description);
+			const existing = this.descriptionsById.get(description.name);
+			if (existing) {
+				existing.push(description);
+			} else {
+				this.descriptionsById.set(description.name, [description]);
 			}
 		}
 	}
 
+	private toDefinitionRequest(nodeRequest: NodeRequest): NodeTypeDefinitionRequest {
+		if (typeof nodeRequest === 'string') return { nodeId: nodeRequest };
+
+		return {
+			nodeId: nodeRequest.nodeId,
+			...(nodeRequest.version ? { version: nodeRequest.version } : {}),
+			...(nodeRequest.resource ? { resource: nodeRequest.resource } : {}),
+			...(nodeRequest.operation ? { operation: nodeRequest.operation } : {}),
+			...(nodeRequest.mode ? { mode: nodeRequest.mode } : {}),
+		};
+	}
+
+	private async getBuiltinNodeTypeDefinition(
+		request: NodeTypeDefinitionRequest,
+	): Promise<NodeTypeDefinitionResult> {
+		const { getNodeTypeDefinition } = await import('@n8n/ai-utilities/node-catalog');
+		const result = getNodeTypeDefinition(request.nodeId, request.version, this.nodeDefinitionDirs, {
+			resource: request.resource,
+			operation: request.operation,
+			mode: request.mode,
+		});
+
+		const candidates = this.descriptionsById.get(request.nodeId);
+		const description = candidates
+			? this.selectDescription(candidates, result.version ?? request.version)
+			: undefined;
+		const builderHint = description?.builderHint?.searchHint;
+
+		if (result.error) {
+			return {
+				content: '',
+				error: result.error,
+				...(builderHint ? { builderHint } : {}),
+			};
+		}
+
+		return {
+			content: result.content,
+			...(result.version ? { version: result.version } : {}),
+			...(builderHint ? { builderHint } : {}),
+		};
+	}
+
+	private getSynthesizedNodeTypeDefinition(
+		request: NodeTypeDefinitionRequest,
+	): NodeTypeDefinitionResult {
+		const candidates = this.descriptionsById.get(request.nodeId);
+		if (!candidates?.length) {
+			return {
+				content: '',
+				error: `Node type '${request.nodeId}' not found. Use search_nodes to find the correct node ID.`,
+			};
+		}
+
+		const description = this.selectDescription(candidates, request.version);
+		if (!description) {
+			return {
+				content: '',
+				error: this.versionNotFoundError(request.nodeId, request.version, candidates),
+			};
+		}
+
+		try {
+			const version = versionLabel(description);
+			return {
+				content: synthesizeNodeTypeDef(description),
+				...(version ? { version } : {}),
+				...(description.builderHint?.searchHint
+					? { builderHint: description.builderHint.searchHint }
+					: {}),
+			};
+		} catch (error) {
+			this.logger.debug('Could not synthesize node type definition', {
+				nodeId: request.nodeId,
+				error,
+			});
+			return {
+				content: '',
+				error: `Type definition for '${request.nodeId}' could not be generated from the node's description.`,
+			};
+		}
+	}
+
+	/**
+	 * Pick the description to synthesize from a node's versions. Honour an
+	 * explicitly requested version (returning undefined when none matches, so
+	 * the caller can report it), otherwise default to the latest (mirroring the
+	 * on-disk lookup's default).
+	 */
+	private selectDescription(
+		candidates: INodeTypeDescription[],
+		requestedVersion?: string,
+	): INodeTypeDescription | undefined {
+		if (requestedVersion !== undefined) {
+			const wanted = parseRequestedVersion(requestedVersion);
+			return candidates.find((d) => nodeVersionNumbers(d).includes(wanted));
+		}
+
+		return candidates.reduce((latest, d) =>
+			maxNodeVersion(d) > maxNodeVersion(latest) ? d : latest,
+		);
+	}
+
+	private versionNotFoundError(
+		nodeId: string,
+		requestedVersion: string | undefined,
+		candidates: INodeTypeDescription[],
+	): string {
+		const available = [...new Set(candidates.flatMap(nodeVersionNumbers))].sort((a, b) => a - b);
+		return `Version '${requestedVersion}' not found for node '${nodeId}'. Available versions: ${available.join(', ')}.`;
+	}
+
 	private async resolveBuiltinNodeDefinitionDirs(): Promise<string[]> {
 		const dirs: string[] = [];
-		for (const packageId of ['n8n-nodes-base', '@n8n/n8n-nodes-langchain']) {
+		for (const packageId of BUILTIN_NODES_PACKAGES) {
 			try {
 				const packageJsonPath = require.resolve(`${packageId}/package.json`);
 				const distDir = path.dirname(packageJsonPath);

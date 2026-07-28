@@ -1,146 +1,10 @@
 import http from 'http';
-import { HttpProxyAgent } from 'http-proxy-agent';
 import https from 'https';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 import { LoggerProxy } from 'n8n-workflow';
-import { getProxyForUrl } from 'proxy-from-env';
 
-type ProxyRequestParameters = Parameters<HttpProxyAgent<string>['addRequest']>;
-type ProxyClientRequest = ProxyRequestParameters[0];
-type ProxyRequestOptions = ProxyRequestParameters[1];
-
-function buildTargetUrl(hostname: string, port: number, protocol: 'http' | 'https'): string {
-	const defaultPort = protocol === 'https' ? 443 : 80;
-	const portSuffix = port === defaultPort ? '' : `:${port}`;
-	return `${protocol}://${hostname}${portSuffix}`;
-}
-
-function extractHostInfo(
-	options: http.RequestOptions,
-	defaultPort: number,
-): { hostname: string; port: number } {
-	const hostname = options.hostname ?? options.host ?? 'localhost';
-	const port =
-		typeof options.port === 'string' ? parseInt(options.port, 10) : (options.port ?? defaultPort);
-	return { hostname: String(hostname), port: Number(port) };
-}
-
-function getOrCreateProxyAgent<T extends HttpProxyAgent<string> | HttpsProxyAgent<string>>(
-	cache: Map<string, T>,
-	proxyUrl: string,
-	createAgent: (url: string) => T,
-): T {
-	let proxyAgent = cache.get(proxyUrl);
-	if (!proxyAgent) {
-		proxyAgent = createAgent(proxyUrl);
-		cache.set(proxyUrl, proxyAgent);
-	}
-	return proxyAgent;
-}
-
-function createFallbackAgent<T extends http.Agent | https.Agent>(agentClass: new () => T): T {
-	return new agentClass();
-}
-
-/**
- * Node.js is working on native HTTP proxy support (as of Node.js 24)
- * When it is stable we can use it and remove this implementation
- *
- * https://nodejs.org/api/http.html#built-in-proxy-support
- */
-class HttpProxyManager extends http.Agent {
-	private readonly proxyAgentCache = new Map<string, HttpProxyAgent<string>>();
-	private readonly fallbackAgent = createFallbackAgent(http.Agent);
-
-	addRequest(req: http.ClientRequest, options: http.RequestOptions) {
-		const { hostname, port } = extractHostInfo(options, 80);
-		const targetUrl = buildTargetUrl(hostname, port, 'http');
-		const proxyUrl = getProxyForUrl(targetUrl);
-
-		if (proxyUrl) {
-			const proxyAgent = getOrCreateProxyAgent(
-				this.proxyAgentCache,
-				proxyUrl,
-				(url) => new HttpProxyAgent(url),
-			);
-			return proxyAgent.addRequest(req as ProxyClientRequest, options as ProxyRequestOptions);
-		}
-
-		return this.fallbackAgent.addRequest(req, options);
-	}
-}
-
-class HttpsProxyManager extends https.Agent {
-	private readonly proxyAgentCache = new Map<string, HttpsProxyAgent<string>>();
-	private readonly fallbackAgent = createFallbackAgent(https.Agent);
-
-	addRequest(req: http.ClientRequest, options: https.RequestOptions) {
-		const { hostname, port } = extractHostInfo(options, 443);
-		const targetUrl = buildTargetUrl(hostname, port, 'https');
-		const proxyUrl = getProxyForUrl(targetUrl);
-
-		if (proxyUrl) {
-			const proxyAgent = getOrCreateProxyAgent(
-				this.proxyAgentCache,
-				proxyUrl,
-				(url) => new HttpsProxyAgent(url),
-			);
-			return proxyAgent.addRequest(req, options);
-		}
-
-		return this.fallbackAgent.addRequest(req, options);
-	}
-}
-
-/**
- * Resolves the proxy URL configured via environment variables
- * (HTTP_PROXY, HTTPS_PROXY, NO_PROXY, etc.) for a given target URL.
- *
- * @param targetUrl - The target URL the request will be sent to.
- * @returns The proxy URL to use, or undefined if no proxy applies.
- */
-export function resolveProxyUrl(targetUrl: string): string | undefined {
-	return getProxyForUrl(targetUrl) || undefined;
-}
-
-export function createHttpProxyAgent(
-	customProxyUrl: string | null = null,
-	targetUrl: string,
-	options?: http.AgentOptions,
-): http.Agent {
-	const proxyUrl = customProxyUrl ?? getProxyForUrl(targetUrl);
-
-	if (proxyUrl) {
-		return new HttpProxyAgent(proxyUrl, options);
-	}
-
-	return new http.Agent(options);
-}
-
-export function createHttpsProxyAgent(
-	customProxyUrl: string | null = null,
-	targetUrl: string,
-	options?: https.AgentOptions,
-): https.Agent {
-	const proxyUrl = customProxyUrl ?? getProxyForUrl(targetUrl);
-
-	if (proxyUrl) {
-		return new HttpsProxyAgent(proxyUrl, options);
-	}
-
-	return new https.Agent(options);
-}
-
-function hasProxyEnvironmentVariables(): boolean {
-	return Boolean(
-		process.env.HTTP_PROXY ??
-			process.env.http_proxy ??
-			process.env.HTTPS_PROXY ??
-			process.env.https_proxy ??
-			process.env.ALL_PROXY ??
-			process.env.all_proxy,
-	);
-}
+import { EnvProxyHttpAgent } from './env-proxy-http-agent';
+import { EnvProxyHttpsAgent } from './env-proxy-https-agent';
+import { hasProxyEnvironmentVariables } from '../proxy/proxy-resolution';
 
 export function installGlobalProxyAgent(): void {
 	if (hasProxyEnvironmentVariables()) {
@@ -151,8 +15,10 @@ export function installGlobalProxyAgent(): void {
 			ALL_PROXY: process.env.ALL_PROXY ?? process.env.all_proxy,
 		});
 
-		http.globalAgent = new HttpProxyManager();
-		https.globalAgent = new HttpsProxyManager();
+		// Reuse the factory's env-proxy agents (no SSRF lookup at the global level;
+		// per-request SSRF enforcement is applied by the outbound HTTP client).
+		http.globalAgent = new EnvProxyHttpAgent();
+		https.globalAgent = new EnvProxyHttpsAgent();
 	}
 }
 

@@ -15,35 +15,35 @@ CREATE TABLE "evaluation_config" ("id" varchar(36) PRIMARY KEY NOT NULL, "workfl
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false | [evaluation_collection](evaluation_collection.md) [test_run](test_run.md) |  |  |
-| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
-| name | varchar(128) |  | false |  |  |  |
-| status | varchar(16) | 'valid' | false |  |  |  |
-| invalidReason | varchar(64) |  | true |  |  |  |
-| datasetSource | varchar(32) |  | false |  |  |  |
-| datasetRef | TEXT |  | false |  |  |  |
-| startNodeName | varchar(255) |  | false |  |  |  |
-| endNodeName | varchar(255) |  | false |  |  |  |
-| metrics | TEXT |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| datasetRef | TEXT |  | false |  |  |  |
+| datasetSource | varchar(32) |  | false |  |  |  |
+| endNodeName | varchar(255) |  | false |  |  |  |
+| id | varchar(36) |  | false | [evaluation_collection](evaluation_collection.md) [test_run](test_run.md) |  |  |
+| invalidReason | varchar(64) |  | true |  |  |  |
+| metrics | TEXT |  | false |  |  |  |
+| name | varchar(128) |  | false |  |  |  |
+| startNodeName | varchar(255) |  | false |  |  |  |
+| status | varchar(16) | 'valid' | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| sqlite_autoindex_evaluation_config_2 | UNIQUE | UNIQUE (workflowId, name) |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_evaluation_config_1 | PRIMARY KEY | PRIMARY KEY (id) |
+| sqlite_autoindex_evaluation_config_2 | UNIQUE | UNIQUE (workflowId, name) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | IDX_fd7542bb123074760285dc1bbf | CREATE INDEX "IDX_fd7542bb123074760285dc1bbf" ON "evaluation_config" ("workflowId")  |
-| sqlite_autoindex_evaluation_config_2 | UNIQUE (workflowId, name) |
 | sqlite_autoindex_evaluation_config_1 | PRIMARY KEY (id) |
+| sqlite_autoindex_evaluation_config_2 | UNIQUE (workflowId, name) |
 
 ## Relations
 
@@ -55,69 +55,69 @@ erDiagram
 "evaluation_config" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "evaluation_config" {
-  varchar_36_ id PK
-  varchar_36_ workflowId FK
-  varchar_128_ name
-  varchar_16_ status
-  varchar_64_ invalidReason
-  varchar_32_ datasetSource
-  TEXT datasetRef
-  varchar_255_ startNodeName
-  varchar_255_ endNodeName
-  TEXT metrics
   datetime_3_ createdAt
+  TEXT datasetRef
+  varchar_32_ datasetSource
+  varchar_255_ endNodeName
+  varchar_36_ id PK
+  varchar_64_ invalidReason
+  TEXT metrics
+  varchar_128_ name
+  varchar_255_ startNodeName
+  varchar_16_ status
   datetime_3_ updatedAt
+  varchar_36_ workflowId FK
 }
 "evaluation_collection" {
-  varchar_36_ id PK
-  varchar_128_ name
-  TEXT description
-  varchar_36_ workflowId FK
-  varchar_36_ evaluationConfigId FK
-  varchar createdById FK
-  TEXT insightsCache
   datetime_3_ createdAt
+  varchar createdById FK
+  TEXT description
+  varchar_36_ evaluationConfigId FK
+  varchar_36_ id PK
+  TEXT insightsCache
+  varchar_128_ name
   datetime_3_ updatedAt
+  varchar_36_ workflowId FK
 }
 "test_run" {
-  varchar_36_ id PK
-  varchar_36_ workflowId FK
-  varchar status
+  boolean cancelRequested
+  varchar_36_ collectionId FK
+  datetime_3_ completedAt
+  datetime_3_ createdAt
   varchar errorCode
   TEXT errorDetails
-  datetime_3_ runAt
-  datetime_3_ completedAt
-  TEXT metrics
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  varchar_255_ runningInstanceId
-  boolean cancelRequested
-  varchar_36_ workflowVersionId
   varchar_36_ evaluationConfigId FK
   TEXT evaluationConfigSnapshot
-  varchar_36_ collectionId FK
+  varchar_36_ id PK
+  TEXT metrics
+  datetime_3_ runAt
+  varchar_255_ runningInstanceId
+  varchar status
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
+  varchar_36_ workflowVersionId
 }
 "workflow_entity" {
-  varchar_36_ id PK
-  varchar_128_ name
   boolean active
-  TEXT nodes
-  TEXT connections
-  TEXT settings
-  TEXT staticData
-  TEXT pinData
-  varchar_36_ versionId
-  INTEGER triggerCount
-  TEXT meta
-  varchar_36_ parentFolderId FK
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  boolean isArchived
-  INTEGER versionCounter
-  TEXT description
   varchar_36_ activeVersionId FK
+  TEXT connections
+  datetime_3_ createdAt
+  TEXT description
+  varchar_36_ id PK
+  boolean isArchived
+  TEXT meta
+  varchar_128_ name
   TEXT nodeGroups
+  TEXT nodes
+  varchar_36_ parentFolderId FK
+  TEXT pinData
+  TEXT settings
   varchar sourceWorkflowId
+  TEXT staticData
+  INTEGER triggerCount
+  datetime_3_ updatedAt
+  INTEGER versionCounter
+  varchar_36_ versionId
 }
 ```
 

@@ -11,7 +11,7 @@
 		"incremental": false,
 		"allowSyntheticDefaultImports": true,
 		"resolveJsonModule": true,
-		"types": ["vitest/globals"],
+		"types": ["vitest/globals", "vitest/browser", "@testing-library/vue"],
 		"paths": {
 			"@n8n/chat/*": ["./src/*"],
 			"@n8n/design-system*": ["../design-system/src*"]

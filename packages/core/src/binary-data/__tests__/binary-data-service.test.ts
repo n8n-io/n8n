@@ -7,6 +7,7 @@ import type { ErrorReporter } from '@/errors';
 
 import type { BinaryDataConfig } from '../binary-data.config';
 import { BinaryDataService } from '../binary-data.service';
+import type { BinaryData } from '../types';
 
 const now = new Date('2025-01-01T01:23:45.678Z');
 vi.useFakeTimers({ now });
@@ -56,6 +57,21 @@ describe('BinaryDataService', () => {
 		it('should return binary-data id on valid tokens', () => {
 			const result = service.validateSignedToken(validToken);
 			expect(result).toBe(binaryData.id);
+		});
+	});
+
+	describe('manager dispatch', () => {
+		it('should route an azure-mode binary id to the registered azure manager', async () => {
+			const fileId = 'workflows/w/executions/e/binary_data/uuid';
+			const buffer = Buffer.from('blob');
+			const azureManager = mock<BinaryData.Manager>();
+			azureManager.getAsBuffer.mockResolvedValue(buffer);
+			service.setManager('azure', azureManager);
+
+			const result = await service.getAsBuffer(mock<IBinaryData>({ id: `azure:${fileId}` }));
+
+			expect(result).toBe(buffer);
+			expect(azureManager.getAsBuffer).toHaveBeenCalledWith(fileId);
 		});
 	});
 });

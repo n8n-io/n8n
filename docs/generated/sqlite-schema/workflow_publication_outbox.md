@@ -15,20 +15,20 @@ CREATE TABLE "workflow_publication_outbox" ("id" integer PRIMARY KEY NOT NULL, "
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| errorMessage | TEXT |  | true |  |  |  |
 | id | INTEGER |  | false |  |  |  |
-| workflowId | varchar(36) |  | false |  |  |  |
 | publishedVersionId | varchar(36) |  | false |  |  |  |
 | status | varchar(20) |  | false |  |  |  |
-| errorMessage | TEXT |  | true |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| workflowId | varchar(36) |  | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - | CHECK | CHECK ("status" IN ('pending', 'in_progress', 'completed', 'partial_success', 'failed')) |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
@@ -43,13 +43,13 @@ erDiagram
 
 
 "workflow_publication_outbox" {
+  datetime_3_ createdAt
+  TEXT errorMessage
   INTEGER id
-  varchar_36_ workflowId
   varchar_36_ publishedVersionId
   varchar_20_ status
-  TEXT errorMessage
-  datetime_3_ createdAt
   datetime_3_ updatedAt
+  varchar_36_ workflowId
 }
 ```
 

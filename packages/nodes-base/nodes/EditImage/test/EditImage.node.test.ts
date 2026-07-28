@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 import { EditImage } from '../EditImage.node';
 
@@ -12,89 +12,89 @@ const createTestBuffer = () =>
 	]);
 
 const mockGmInstance: any = {
-	background: jest.fn(function (this: any) {
+	background: vi.fn(function (this: any) {
 		return this;
 	}),
-	blur: jest.fn(function (this: any) {
+	blur: vi.fn(function (this: any) {
 		return this;
 	}),
-	borderColor: jest.fn(function (this: any) {
+	borderColor: vi.fn(function (this: any) {
 		return this;
 	}),
-	border: jest.fn(function (this: any) {
+	border: vi.fn(function (this: any) {
 		return this;
 	}),
-	compose: jest.fn(function (this: any) {
+	compose: vi.fn(function (this: any) {
 		return this;
 	}),
-	geometry: jest.fn(function (this: any) {
+	geometry: vi.fn(function (this: any) {
 		return this;
 	}),
-	composite: jest.fn(function (this: any) {
+	composite: vi.fn(function (this: any) {
 		return this;
 	}),
-	crop: jest.fn(function (this: any) {
+	crop: vi.fn(function (this: any) {
 		return this;
 	}),
-	drawCircle: jest.fn(function (this: any) {
+	drawCircle: vi.fn(function (this: any) {
 		return this;
 	}),
-	drawLine: jest.fn(function (this: any) {
+	drawLine: vi.fn(function (this: any) {
 		return this;
 	}),
-	drawRectangle: jest.fn(function (this: any) {
+	drawRectangle: vi.fn(function (this: any) {
 		return this;
 	}),
-	fill: jest.fn(function (this: any) {
+	fill: vi.fn(function (this: any) {
 		return this;
 	}),
-	font: jest.fn(function (this: any) {
+	font: vi.fn(function (this: any) {
 		return this;
 	}),
-	fontSize: jest.fn(function (this: any) {
+	fontSize: vi.fn(function (this: any) {
 		return this;
 	}),
-	drawText: jest.fn(function (this: any) {
+	drawText: vi.fn(function (this: any) {
 		return this;
 	}),
-	identify: jest.fn(function (this: any, callback: any) {
+	identify: vi.fn(function (this: any, callback: any) {
 		callback(null, { width: 100, height: 100, format: 'PNG' });
 		return this;
 	}),
-	quality: jest.fn(function (this: any) {
+	quality: vi.fn(function (this: any) {
 		return this;
 	}),
-	resize: jest.fn(function (this: any) {
+	resize: vi.fn(function (this: any) {
 		return this;
 	}),
-	rotate: jest.fn(function (this: any) {
+	rotate: vi.fn(function (this: any) {
 		return this;
 	}),
-	setFormat: jest.fn(function (this: any) {
+	setFormat: vi.fn(function (this: any) {
 		return this;
 	}),
-	shear: jest.fn(function (this: any) {
+	shear: vi.fn(function (this: any) {
 		return this;
 	}),
-	stream: jest.fn(function (this: any) {
+	stream: vi.fn(function (this: any) {
 		return this;
 	}),
-	transparent: jest.fn(function (this: any) {
+	transparent: vi.fn(function (this: any) {
 		return this;
 	}),
-	toBuffer: jest.fn(function (this: any, callback: any) {
+	toBuffer: vi.fn(function (this: any, callback: any) {
 		callback(null, createTestBuffer());
 		return this;
 	}),
-	autoOrient: jest.fn(function (this: any) {
+	autoOrient: vi.fn(function (this: any) {
 		return this;
 	}),
-	out: jest.fn(function (this: any) {
+	out: vi.fn(function (this: any) {
 		return this;
 	}),
 };
 
-jest.mock('gm', () => jest.fn(() => mockGmInstance));
+vi.mock('gm', () => ({ default: vi.fn(() => mockGmInstance) }));
 
 describe('EditImage Node', () => {
 	let editImageNode: EditImage;
@@ -102,7 +102,7 @@ describe('EditImage Node', () => {
 	let mockNode: INode;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		editImageNode = new EditImage();
 		mockNode = {
 			id: 'test-node-id',
@@ -613,6 +613,41 @@ describe('EditImage Node', () => {
 			expect(result[0]).toHaveLength(1);
 			expect(result[0][0].binary?.data?.mimeType).toBe('image/jpeg');
 			expect(result[0][0].binary?.data?.fileExtension).toBe('jpeg');
+		});
+
+		it.each([
+			['unsupported string', 'pdf'],
+			['non-string value', 123],
+		])('should reject an %s format', async (_, format) => {
+			const testBuffer = createTestBuffer();
+			const items: INodeExecutionData[] = [
+				{
+					json: {},
+					binary: {
+						data: {
+							data: testBuffer.toString('base64'),
+							mimeType: 'image/png',
+							fileExtension: 'png',
+							fileName: 'test.png',
+						},
+					},
+				},
+			];
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'blur';
+				if (paramName === 'dataPropertyName') return 'data';
+				if (paramName === 'blur') return 5;
+				if (paramName === 'sigma') return 2;
+				if (paramName === 'options') return { format };
+				return {};
+			});
+			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockResolvedValue(testBuffer);
+
+			await expect(editImageNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				`Invalid image format: ${format}`,
+			);
+			expect(mockGmInstance.setFormat).not.toHaveBeenCalled();
 		});
 
 		it('should apply custom fileName option', async () => {

@@ -90,6 +90,9 @@ export const UNKNOWN_FAILURE_REASON = 'Unknown failure reason';
 export const WORKFLOW_REACTIVATE_INITIAL_TIMEOUT = 1000; // 1 second
 export const WORKFLOW_REACTIVATE_MAX_TIMEOUT = 24 * 60 * 60 * 1000; // 1 day
 
+/** Max in-process attempts to activate a single trigger node before recording it as failed. */
+export const TRIGGER_ACTIVATION_MAX_ATTEMPTS = 5;
+
 export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 
 export const UM_FIX_INSTRUCTION =
@@ -112,6 +115,30 @@ export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'wordpressOAuth2Api',
 	'figmaOAuth2Api',
 	'gumroadOAuth2Api',
+	'googleCloudStorageOAuth2Api',
+	'googleCalendarOAuth2Api',
+	'googleSheetsOAuth2Api',
+	'googleBigQueryOAuth2Api',
+	'zendeskOAuth2Api',
+	'gmailOAuth2',
+	'gSuiteAdminOAuth2Api',
+	'googleAdsOAuth2Api',
+	'googleAnalyticsOAuth2',
+	'googleBooksOAuth2Api',
+	'googleBusinessProfileOAuth2Api',
+	'googleChatOAuth2Api',
+	'googleCloudNaturalLanguageOAuth2Api',
+	'googleContactsOAuth2Api',
+	'googleDocsOAuth2Api',
+	'googleDriveOAuth2Api',
+	'googleFirebaseCloudFirestoreOAuth2Api',
+	'googleFirebaseRealtimeDatabaseOAuth2Api',
+	'googlePerspectiveOAuth2Api',
+	'googleSheetsTriggerOAuth2Api',
+	'googleSlidesOAuth2Api',
+	'googleTasksOAuth2Api',
+	'googleTranslateOAuth2Api',
+	'youTubeOAuth2Api',
 ];
 
 export const ARTIFICIAL_TASK_DATA = {

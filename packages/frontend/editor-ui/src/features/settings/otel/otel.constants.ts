@@ -1,5 +1,8 @@
 export const OTEL_STORE = 'otel';
 
+/** Name of the span emitted by the "Send test trace" button — shown in the result copy. */
+export const OTEL_TEST_SPAN_NAME = 'n8n.test_trace';
+
 /** Maps each settings field to its env-var name — shown in per-field tooltips. */
 export const OTEL_FIELD_ENV_VARS = {
 	enabled: 'N8N_OTEL_ENABLED',

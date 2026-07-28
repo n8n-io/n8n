@@ -1,9 +1,11 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { getOtelSettings, updateOtelSettings } from './otel.api';
+import { getOtelSettings, updateOtelSettings, sendOtelTestTrace } from './otel.api';
 import type { OtelSettings, OtelSettingsResponse } from './otel.api';
 import { OTEL_STORE } from './otel.constants';
+
+export type OtelTestState = 'idle' | 'sending' | 'sent' | 'error';
 
 export function headersStringToPairs(str: string): Array<{ key: string; value: string }> {
 	if (!str.trim()) return [];
@@ -51,6 +53,10 @@ export const useOtelStore = defineStore(OTEL_STORE, () => {
 	const loading = ref(true);
 	const saving = ref(false);
 
+	const testState = ref<OtelTestState>('idle');
+	const testError = ref('');
+	const testTimestamp = ref('');
+
 	const isDirty = computed(
 		() => JSON.stringify(settings.value) !== JSON.stringify(savedSettings.value),
 	);
@@ -83,6 +89,42 @@ export const useOtelStore = defineStore(OTEL_STORE, () => {
 		settings.value = { ...savedSettings.value };
 	}
 
+	let currentTestRun = 0;
+
+	function resetTestState(): void {
+		currentTestRun++;
+		testState.value = 'idle';
+		testError.value = '';
+		testTimestamp.value = '';
+	}
+
+	async function sendTestTrace(): Promise<void> {
+		const runId = ++currentTestRun;
+		testState.value = 'sending';
+		testError.value = '';
+		try {
+			const result = await sendOtelTestTrace(rootStore.restApiContext, {
+				exporterEndpoint: settings.value.exporterEndpoint,
+				exporterTracingPath: settings.value.exporterTracingPath,
+				exporterServiceName: settings.value.exporterServiceName,
+				exporterHeaders: settings.value.exporterHeaders,
+				startupConnectivityTimeoutMs: settings.value.startupConnectivityTimeoutMs,
+			});
+			if (runId !== currentTestRun) return;
+			if (result.success) {
+				testTimestamp.value = new Date().toLocaleTimeString();
+				testState.value = 'sent';
+			} else {
+				testError.value = result.error;
+				testState.value = 'error';
+			}
+		} catch (error) {
+			if (runId !== currentTestRun) return;
+			testError.value = error instanceof Error ? error.message : String(error);
+			testState.value = 'error';
+		}
+	}
+
 	return {
 		settings,
 		savedSettings,
@@ -90,8 +132,13 @@ export const useOtelStore = defineStore(OTEL_STORE, () => {
 		loading,
 		saving,
 		isDirty,
+		testState,
+		testError,
+		testTimestamp,
 		fetchSettings,
 		saveSettings,
 		discardChanges,
+		sendTestTrace,
+		resetTestState,
 	};
 });

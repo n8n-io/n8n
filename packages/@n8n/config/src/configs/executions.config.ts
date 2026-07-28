@@ -155,7 +155,12 @@ export class ExecutionsConfig {
 	@Env('EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS')
 	saveDataManualExecutions: boolean = true;
 
-	/** Whether scheduled executions receive a deduplication key enforced by a unique DB index. */
-	@Env('N8N_SCHEDULED_EXECUTION_DEDUPLICATION_ENABLED')
-	scheduledExecutionDeduplicationEnabled: boolean = false;
+	/**
+	 * Max byte size of execution run data to load for display.
+	 * Executions whose data exceeds this are returned without their run data.
+	 * Does not affect operational reads (retry, resume, crash recovery).
+	 * `0` disables.
+	 */
+	@Env('EXECUTIONS_DATA_MAX_DISPLAY_SIZE')
+	maxDisplaySize: number = 100 * 1024 * 1024; // 100 MB
 }

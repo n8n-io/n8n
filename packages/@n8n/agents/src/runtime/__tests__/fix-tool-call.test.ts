@@ -2,7 +2,7 @@ import type { InvalidToolInputError, NoSuchToolError } from 'ai';
 import { z } from 'zod';
 
 import type { BuiltTool } from '../../types';
-import { fixToolCall } from '../fix-tool-call';
+import { fixToolCall } from '../tools/fix-tool-call';
 
 function makeTool(overrides: Partial<BuiltTool> = {}): BuiltTool {
 	return {

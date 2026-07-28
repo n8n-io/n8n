@@ -201,7 +201,7 @@ async function onDropdownToggle(open: boolean) {
 </script>
 
 <template>
-	<N8nTooltip :content="tooltipText" placement="bottom" :show-after="300">
+	<N8nTooltip :content="tooltipText" placement="top" :show-after="300">
 		<N8nDropdownMenu
 			:items="menuItems"
 			placement="bottom-end"

@@ -17,17 +17,17 @@ CREATE TABLE "insights_by_period" ("id" integer PRIMARY KEY NOT NULL, "metaId" i
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | id | INTEGER |  | false |  |  |  |
 | metaId | INTEGER |  | false |  | [insights_metadata](insights_metadata.md) |  |
+| periodStart | datetime(0) | CURRENT_TIMESTAMP | true |  |  |  |
+| periodUnit | INTEGER |  | false |  |  |  |
 | type | INTEGER |  | false |  |  |  |
 | value | bigint |  | false |  |  |  |
-| periodUnit | INTEGER |  | false |  |  |  |
-| periodStart | datetime(0) | CURRENT_TIMESTAMP | true |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (metaId) REFERENCES insights_metadata (metaId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
@@ -45,17 +45,17 @@ erDiagram
 "insights_by_period" {
   INTEGER id
   INTEGER metaId FK
+  datetime_0_ periodStart
+  INTEGER periodUnit
   INTEGER type
   bigint value
-  INTEGER periodUnit
-  datetime_0_ periodStart
 }
 "insights_metadata" {
   INTEGER metaId
-  varchar_16_ workflowId FK
   varchar_36_ projectId FK
-  varchar_128_ workflowName
   varchar_255_ projectName
+  varchar_16_ workflowId FK
+  varchar_128_ workflowName
 }
 ```
 

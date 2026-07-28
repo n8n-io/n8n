@@ -1,12 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
+
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository, SecretsProviderConnectionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { EntityNotFoundError } from '@n8n/typeorm';
 import { Credentials, getAdditionalKeys } from 'n8n-core';
 import type {
@@ -35,18 +33,19 @@ import {
 	NodeHelpers,
 	Workflow,
 	UnexpectedError,
+	UserError,
 	isExpression,
 } from 'n8n-workflow';
-
-import { RESPONSE_ERROR_MESSAGES } from './constants';
-import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
-import { CredentialMissingIdError } from './errors/credential-missing-id.error';
-import { CredentialNotFoundError } from './errors/credential-not-found.error';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+
+import { RESPONSE_ERROR_MESSAGES } from './constants';
+import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
+import { CredentialMissingIdError } from './errors/credential-missing-id.error';
+import { CredentialNotFoundError } from './errors/credential-not-found.error';
 
 const mockNode = {
 	name: '',
@@ -142,12 +141,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 								node,
 							);
 
-							// @ts-ignore
+							// @ts-expect-error dynamic key on request options
 							if (!requestOptions[outerKey]) {
-								// @ts-ignore
+								// @ts-expect-error dynamic key on request options
 								requestOptions[outerKey] = {};
 							}
-							// @ts-ignore
+							// @ts-expect-error dynamic key on request options
 							requestOptions[outerKey][keyResolved] = valueResolved;
 						});
 					});
@@ -200,11 +199,21 @@ export class CredentialsHelper extends ICredentialsHelper {
 					}
 
 					if (node.credentials) {
-						await this.updateCredentials(
-							node.credentials[credentialType.name],
-							credentialType.name,
-							Object.assign(credentials, output),
-						);
+						const nodeCredentials = node.credentials[credentialType.name];
+						// Cache the freshly-fetched token onto the raw stored credentials, but
+						// never overwrite a field the user stored as an expression with the value
+						// it resolved to this run — otherwise later runs reuse a stale static value.
+						const storedData = await (
+							await this.getCredentials(nodeCredentials, credentialType.name)
+						).getData();
+						const dataToPersist: ICredentialDataDecryptedObject = { ...storedData };
+						for (const [key, value] of Object.entries(output as ICredentialDataDecryptedObject)) {
+							if (key === expirableProperty.name || !isExpression(storedData[key])) {
+								dataToPersist[key] = value;
+							}
+						}
+
+						await this.updateCredentials(nodeCredentials, credentialType.name, dataToPersist);
 						return Object.assign(credentials, output);
 					}
 				}
@@ -310,6 +319,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 			throw error;
 		}
 
+		// Keep non-project credentials blocked even if an earlier access check is bypassed.
+		if (credential.usageScope !== 'project') {
+			throw new UserError('This credential cannot be used in workflows');
+		}
+
 		return credential;
 	}
 
@@ -368,6 +382,78 @@ export class CredentialsHelper extends ICredentialsHelper {
 		NodeHelpers.mergeNodeProperties(combineProperties, credentialTypeData.properties);
 
 		return combineProperties;
+	}
+
+	private resolveCredentialExpressions(
+		workflow: Workflow,
+		credentialsProperties: INodeProperties[],
+		decryptedData: ICredentialDataDecryptedObject,
+		mode: WorkflowExecuteMode,
+		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+	): ICredentialDataDecryptedObject {
+		try {
+			return workflow.expression.getComplexParameterValue(
+				mockNode,
+				decryptedData as INodeParameters,
+				mode,
+				additionalKeys,
+				undefined,
+				undefined,
+				decryptedData,
+			) as ICredentialDataDecryptedObject;
+		} catch (error) {
+			// Non-execution contexts may not have runtime data for optional credential fields.
+			// Resolve per field so opted-in fields can be omitted without losing required data.
+			return this.resolveCredentialExpressionsByProperty(
+				workflow,
+				credentialsProperties,
+				decryptedData,
+				mode,
+				additionalKeys,
+				error,
+			);
+		}
+	}
+
+	private resolveCredentialExpressionsByProperty(
+		workflow: Workflow,
+		credentialsProperties: INodeProperties[],
+		decryptedData: ICredentialDataDecryptedObject,
+		mode: WorkflowExecuteMode,
+		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		originalError: unknown,
+	): ICredentialDataDecryptedObject {
+		const propertiesByName = new Map(
+			credentialsProperties.map((property) => [property.name, property]),
+		);
+		const resolvedData: ICredentialDataDecryptedObject = {};
+
+		for (const [propertyName, propertyValue] of Object.entries(decryptedData)) {
+			try {
+				const resolvedProperty = workflow.expression.getComplexParameterValue(
+					mockNode,
+					{ [propertyName]: propertyValue } as INodeParameters,
+					mode,
+					additionalKeys,
+					undefined,
+					undefined,
+					decryptedData,
+				) as ICredentialDataDecryptedObject;
+
+				if (Object.prototype.hasOwnProperty.call(resolvedProperty, propertyName)) {
+					resolvedData[propertyName] = resolvedProperty[propertyName];
+				}
+			} catch {
+				const credentialProperty = propertiesByName.get(propertyName);
+				if (credentialProperty?.typeOptions?.ignoreCredentialExpressionResolveError === true) {
+					continue;
+				}
+
+				throw originalError;
+			}
+		}
+
+		return resolvedData;
 	}
 
 	/**
@@ -517,8 +603,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.allowedDomains = decryptedDataOriginal.allowedDomains;
 		}
 
-		// When using dynamic client registration, fields
-		// for client ID, secret, auth URL, access token URL, grant type and authentication
+		// When using dynamic client registration, OAuth fields negotiated at runtime
 		// are not shown in the UI, so we need to copy them from the original data.
 		if (decryptedData.useDynamicClientRegistration) {
 			decryptedData.clientId = decryptedDataOriginal.clientId;
@@ -527,9 +612,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.accessTokenUrl = decryptedDataOriginal.accessTokenUrl;
 			decryptedData.grantType = decryptedDataOriginal.grantType;
 			decryptedData.authentication = decryptedDataOriginal.authentication;
+			decryptedData.usePkce = decryptedDataOriginal.usePkce;
 		}
 
-		const additionalKeys = getAdditionalKeys(additionalData, mode, null);
+		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {
+			isCredential: true,
+		});
 
 		if (expressionResolveValues) {
 			try {
@@ -561,15 +649,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 			// Resolve expressions if any are set
 			await workflow.expression.acquireIsolate();
 			try {
-				decryptedData = workflow.expression.getComplexParameterValue(
-					mockNode,
-					decryptedData as INodeParameters,
+				decryptedData = this.resolveCredentialExpressions(
+					workflow,
+					credentialsProperties,
+					decryptedData,
 					mode,
 					additionalKeys,
-					undefined,
-					undefined,
-					decryptedData,
-				) as ICredentialDataDecryptedObject;
+				);
 			} finally {
 				await workflow.expression.releaseIsolate();
 			}

@@ -5,8 +5,9 @@ import type { AuthenticatedRequest, User, PublicUser, AuthIdentity } from '@n8n/
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import { mock, anyObject } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
+import type { Mock } from 'vitest';
+import { mock, anyObject } from 'vitest-mock-extended';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { MeController } from '@/controllers/me.controller';
@@ -22,12 +23,12 @@ import { UserService } from '@/services/user.service';
 import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { badPasswords } from '@test/test-data';
 
-jest.mock('@/sso.ee/sso-helpers', () => ({
-	...jest.requireActual('@/sso.ee/sso-helpers'),
-	getCurrentAuthenticationMethod: jest.fn(),
+vi.mock('@/sso.ee/sso-helpers', async () => ({
+	...(await vi.importActual<typeof import('@/sso.ee/sso-helpers')>('@/sso.ee/sso-helpers')),
+	getCurrentAuthenticationMethod: vi.fn(),
 }));
 
-const getCurrentAuthenticationMethodMock = getCurrentAuthenticationMethod as jest.Mock;
+const getCurrentAuthenticationMethodMock = getCurrentAuthenticationMethod as Mock;
 
 const browserId = 'test-browser-id';
 
@@ -65,7 +66,7 @@ describe('MeController', () => {
 			const res = mock<Response>();
 			userRepository.findOneByOrFail.mockResolvedValue(user);
 			userService.findUserWithAuthIdentities.mockResolvedValue(user);
-			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
+			vi.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
 			await controller.updateCurrentUser(req, res, payload);
@@ -212,7 +213,7 @@ describe('MeController', () => {
 
 				userRepository.findOneByOrFail.mockResolvedValue(user);
 				userService.findUserWithAuthIdentities.mockResolvedValue(user);
-				jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
+				vi.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
 				await controller.updateCurrentUser(req, res, payload);
@@ -262,7 +263,7 @@ describe('MeController', () => {
 			const setUpdateMocks = (user: User) => {
 				userRepository.findOneByOrFail.mockResolvedValue(user);
 				userService.findUserWithAuthIdentities.mockResolvedValue(user);
-				jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
+				vi.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 			};
 
@@ -562,7 +563,7 @@ describe('MeController', () => {
 				const res = mock<Response>();
 				userRepository.findOneByOrFail.mockResolvedValue(user);
 				userService.findUserWithAuthIdentities.mockResolvedValue(user);
-				jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
+				vi.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 				mockMfaService.validateMfa.mockResolvedValue(true);
 
@@ -664,7 +665,7 @@ describe('MeController', () => {
 				const res = mock<Response>();
 				userRepository.findOneByOrFail.mockResolvedValue(user);
 				userService.findUserWithAuthIdentities.mockResolvedValue(user);
-				jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
+				vi.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
 				const result = await controller.updateCurrentUser(
@@ -693,7 +694,7 @@ describe('MeController', () => {
 				const res = mock<Response>();
 				userRepository.findOneByOrFail.mockResolvedValue(user);
 				userService.findUserWithAuthIdentities.mockResolvedValue(user);
-				jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
+				vi.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
 				const result = await controller.updateCurrentUser(
@@ -779,7 +780,7 @@ describe('MeController', () => {
 			const res = mock<Response>();
 			userRepository.findOneByOrFail.mockResolvedValue(user);
 			userService.findUserWithAuthIdentities.mockResolvedValue(user);
-			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
+			vi.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
 			await controller.updateCurrentUser(
@@ -852,7 +853,7 @@ describe('MeController', () => {
 			} as unknown as AuthenticatedRequest;
 			const res = mock<Response>();
 			userRepository.save.calledWith(req.user).mockResolvedValue(req.user);
-			jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
+			vi.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 
 			await controller.updatePassword(
 				req,
@@ -926,7 +927,7 @@ describe('MeController', () => {
 				} as unknown as AuthenticatedRequest;
 				const res = mock<Response>();
 				userRepository.save.calledWith(req.user).mockResolvedValue(req.user);
-				jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
+				vi.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 				mockMfaService.validateMfa.mockResolvedValue(true);
 
 				const result = await controller.updatePassword(

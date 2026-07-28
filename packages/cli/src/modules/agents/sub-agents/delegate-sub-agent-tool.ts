@@ -18,7 +18,7 @@ import type {
 export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentForegroundRunContext {
 	runner: SubAgentForegroundRunner;
 	sourcesById: Record<string, SubAgentSource>;
-	availableSubAgents?: Array<{ id: string; name: string; description?: string }>;
+	availableSubAgents?: Array<{ id: string; name: string; useWhen?: string }>;
 	policy?: SubAgentRunPolicy;
 	inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
 	resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;
@@ -83,6 +83,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 					...(request.parentAbortSignal !== undefined
 						? { abortSignal: request.parentAbortSignal }
 						: {}),
+					...(request.parentTelemetry !== undefined ? { telemetry: request.parentTelemetry } : {}),
 				},
 			);
 

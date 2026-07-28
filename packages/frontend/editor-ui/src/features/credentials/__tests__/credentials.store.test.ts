@@ -40,6 +40,19 @@ describe('credentials.store', () => {
 		setActivePinia(createPinia());
 	});
 
+	describe('testCredential', () => {
+		it('marks the credential test as failed when the test request rejects', async () => {
+			const store = useCredentialsStore();
+			vi.mocked(credentialsApi.testCredential).mockRejectedValue(new Error('network error'));
+
+			await expect(
+				store.testCredential({ id: 'cred-1', name: 'My credential', type: 'slackApi' }),
+			).rejects.toThrow('network error');
+
+			expect(store.credentialTestResults.get('cred-1')).toBe('error');
+		});
+	});
+
 	describe('fetchAllCredentials', () => {
 		it('should pass includeGlobal parameter to API when provided', async () => {
 			const store = useCredentialsStore();

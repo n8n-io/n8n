@@ -1,5 +1,6 @@
 post:
   x-eov-operation-id: createVariable
+  x-required-scope: variable:create
   x-eov-operation-handler: v1/handlers/variables/variables.handler
   tags:
     - Variables
@@ -21,6 +22,7 @@ post:
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
 get:
   x-eov-operation-id: getVariables
+  x-required-scope: variable:list
   x-eov-operation-handler: v1/handlers/variables/variables.handler
   tags:
     - Variables

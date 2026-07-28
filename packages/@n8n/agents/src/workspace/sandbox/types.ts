@@ -1,4 +1,4 @@
-import type { CreateSandboxFromImageParams } from '@daytonaio/sdk';
+import type { CreateSandboxFromImageParams } from '@daytona/sdk';
 
 import type { BaseFilesystemOptions } from '../filesystem/base-filesystem';
 import type {

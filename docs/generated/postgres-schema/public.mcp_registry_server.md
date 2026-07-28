@@ -4,19 +4,20 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| data | json | '{}'::json | false |  |  | JSON object containing server metadata (icons, remotes, tools, etc.) |
+| registryUpdatedAt | timestamp(3) without time zone |  | false |  |  |  |
 | slug | varchar(255) |  | false | [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) |  |  |
 | status | varchar(50) |  | false |  |  | Server status in the MCP registry. Deprecated servers are not surfaced to users. |
-| version | varchar(50) |  | false |  |  |  |
-| registryUpdatedAt | timestamp(3) without time zone |  | false |  |  |  |
-| data | json | '{}'::json | false |  |  | JSON object containing server metadata (icons, remotes, tools, etc.) |
-| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| version | varchar(50) |  | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_tmp_mcp_registry_server_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'deprecated'::character varying])::text[]))) |
+| PK_12fd89a1fb8489513b0a91f5d31 | PRIMARY KEY | PRIMARY KEY (slug) |
 | tmp_mcp_registry_server_createdAt_not_null | n | NOT NULL "createdAt" |
 | tmp_mcp_registry_server_data_not_null | n | NOT NULL data |
 | tmp_mcp_registry_server_registryUpdatedAt_not_null | n | NOT NULL "registryUpdatedAt" |
@@ -24,7 +25,6 @@
 | tmp_mcp_registry_server_status_not_null | n | NOT NULL status |
 | tmp_mcp_registry_server_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | tmp_mcp_registry_server_version_not_null | n | NOT NULL version |
-| PK_12fd89a1fb8489513b0a91f5d31 | PRIMARY KEY | PRIMARY KEY (slug) |
 
 ## Indexes
 
@@ -40,22 +40,22 @@ erDiagram
 "public.instance_ai_mcp_registry_connections" }o--|| "public.mcp_registry_server" : "FOREIGN KEY (#quot;serverSlug#quot;) REFERENCES mcp_registry_server(slug) ON DELETE CASCADE"
 
 "public.mcp_registry_server" {
+  timestamp_3__with_time_zone createdAt
+  json data
+  timestamp_3__without_time_zone registryUpdatedAt
   varchar_255_ slug
   varchar_50_ status
-  varchar_50_ version
-  timestamp_3__without_time_zone registryUpdatedAt
-  json data
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
+  varchar_50_ version
 }
 "public.instance_ai_mcp_registry_connections" {
-  uuid id
+  timestamp_3__with_time_zone createdAt
   varchar_36_ credentialId FK
+  uuid id
   varchar_255_ serverSlug FK
   json toolFilter
-  uuid userId FK
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
+  uuid userId FK
 }
 ```
 

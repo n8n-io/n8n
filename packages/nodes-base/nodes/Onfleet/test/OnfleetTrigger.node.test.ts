@@ -2,6 +2,7 @@ import { createHmac } from 'crypto';
 import type { IWebhookFunctions } from 'n8n-workflow';
 
 import { OnfleetTrigger } from '../OnfleetTrigger.node';
+import type { Mock } from 'vitest';
 
 describe('Onfleet Trigger Node', () => {
 	let node: OnfleetTrigger;
@@ -19,13 +20,13 @@ describe('Onfleet Trigger Node', () => {
 	beforeEach(() => {
 		node = new OnfleetTrigger();
 		mockWebhookFunctions = {
-			getWebhookName: jest.fn(),
-			getRequestObject: jest.fn(),
-			getResponseObject: jest.fn(),
-			getBodyData: jest.fn(),
-			getCredentials: jest.fn(),
+			getWebhookName: vi.fn(),
+			getRequestObject: vi.fn(),
+			getResponseObject: vi.fn(),
+			getBodyData: vi.fn(),
+			getCredentials: vi.fn(),
 			helpers: {
-				returnJsonArray: jest.fn().mockImplementation((data) => [{ json: data }]),
+				returnJsonArray: vi.fn().mockImplementation((data) => [{ json: data }]),
 			},
 		} as unknown as IWebhookFunctions;
 	});
@@ -40,14 +41,14 @@ describe('Onfleet Trigger Node', () => {
 				};
 
 				const mockResponse = {
-					status: jest.fn().mockReturnThis(),
-					type: jest.fn().mockReturnThis(),
-					send: jest.fn().mockReturnThis(),
+					status: vi.fn().mockReturnThis(),
+					type: vi.fn().mockReturnThis(),
+					send: vi.fn().mockReturnThis(),
 				};
 
-				(mockWebhookFunctions.getWebhookName as jest.Mock).mockReturnValue('setup');
-				(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue(mockRequest);
-				(mockWebhookFunctions.getResponseObject as jest.Mock).mockReturnValue(mockResponse);
+				(mockWebhookFunctions.getWebhookName as Mock).mockReturnValue('setup');
+				(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue(mockRequest);
+				(mockWebhookFunctions.getResponseObject as Mock).mockReturnValue(mockResponse);
 
 				const result = await node.webhook.call(mockWebhookFunctions);
 
@@ -68,16 +69,16 @@ describe('Onfleet Trigger Node', () => {
 			it('should process the request when no signing secret is configured (backward compatibility)', async () => {
 				const mockRequest = {
 					query: {},
-					header: jest.fn().mockReturnValue(undefined),
+					header: vi.fn().mockReturnValue(undefined),
 					rawBody: Buffer.from(testBody),
 				};
 
-				(mockWebhookFunctions.getWebhookName as jest.Mock).mockReturnValue('default');
-				(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue(mockRequest);
-				(mockWebhookFunctions.getCredentials as jest.Mock).mockResolvedValue({
+				(mockWebhookFunctions.getWebhookName as Mock).mockReturnValue('default');
+				(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue(mockRequest);
+				(mockWebhookFunctions.getCredentials as Mock).mockResolvedValue({
 					apiKey: 'test-api-key',
 				});
-				(mockWebhookFunctions.getBodyData as jest.Mock).mockReturnValue(mockRequestData);
+				(mockWebhookFunctions.getBodyData as Mock).mockReturnValue(mockRequestData);
 
 				const result = await node.webhook.call(mockWebhookFunctions);
 
@@ -90,20 +91,20 @@ describe('Onfleet Trigger Node', () => {
 				const validSignature = computeSignature(testSecretHex, testBody);
 				const mockRequest = {
 					query: {},
-					header: jest.fn().mockImplementation((header: string) => {
+					header: vi.fn().mockImplementation((header: string) => {
 						if (header === 'x-onfleet-signature') return validSignature;
 						return undefined;
 					}),
 					rawBody: Buffer.from(testBody),
 				};
 
-				(mockWebhookFunctions.getWebhookName as jest.Mock).mockReturnValue('default');
-				(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue(mockRequest);
-				(mockWebhookFunctions.getCredentials as jest.Mock).mockResolvedValue({
+				(mockWebhookFunctions.getWebhookName as Mock).mockReturnValue('default');
+				(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue(mockRequest);
+				(mockWebhookFunctions.getCredentials as Mock).mockResolvedValue({
 					apiKey: 'test-api-key',
 					signingSecret: testSecretHex,
 				});
-				(mockWebhookFunctions.getBodyData as jest.Mock).mockReturnValue(mockRequestData);
+				(mockWebhookFunctions.getBodyData as Mock).mockReturnValue(mockRequestData);
 
 				const result = await node.webhook.call(mockWebhookFunctions);
 
@@ -115,7 +116,7 @@ describe('Onfleet Trigger Node', () => {
 			it('should respond with 401 and not trigger the workflow when the signature is invalid', async () => {
 				const mockRequest = {
 					query: {},
-					header: jest.fn().mockImplementation((header: string) => {
+					header: vi.fn().mockImplementation((header: string) => {
 						if (header === 'x-onfleet-signature') return 'f'.repeat(128);
 						return undefined;
 					}),
@@ -123,15 +124,15 @@ describe('Onfleet Trigger Node', () => {
 				};
 
 				const mockResponse = {
-					status: jest.fn().mockReturnThis(),
-					send: jest.fn().mockReturnThis(),
-					end: jest.fn().mockReturnThis(),
+					status: vi.fn().mockReturnThis(),
+					send: vi.fn().mockReturnThis(),
+					end: vi.fn().mockReturnThis(),
 				};
 
-				(mockWebhookFunctions.getWebhookName as jest.Mock).mockReturnValue('default');
-				(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue(mockRequest);
-				(mockWebhookFunctions.getResponseObject as jest.Mock).mockReturnValue(mockResponse);
-				(mockWebhookFunctions.getCredentials as jest.Mock).mockResolvedValue({
+				(mockWebhookFunctions.getWebhookName as Mock).mockReturnValue('default');
+				(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue(mockRequest);
+				(mockWebhookFunctions.getResponseObject as Mock).mockReturnValue(mockResponse);
+				(mockWebhookFunctions.getCredentials as Mock).mockResolvedValue({
 					apiKey: 'test-api-key',
 					signingSecret: testSecretHex,
 				});

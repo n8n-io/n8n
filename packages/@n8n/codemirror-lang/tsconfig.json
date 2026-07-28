@@ -1,8 +1,8 @@
 {
-	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"extends": "@n8n/typescript-config/tsconfig.common.go.json",
 	"compilerOptions": {
 		"rootDir": ".",
-		"types": ["node", "jest"]
+		"types": ["node", "vitest/globals", "vite/client"]
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"]
 }

@@ -17,6 +17,10 @@ describe('resolveOutputRedaction', () => {
 		expect(resolveOutputRedaction(config({ outputRedactionEnabled: false }))).toBe(false);
 	});
 
+	it('returns false when the durable log is on, even with redaction enabled (raw-at-rest)', () => {
+		expect(resolveOutputRedaction(config({ durableLog: true }))).toBe(false);
+	});
+
 	it('maps secrets, PII categories, and placeholder from config', () => {
 		expect(resolveOutputRedaction(config())).toEqual({
 			secrets: true,
@@ -35,10 +39,10 @@ describe('resolveOutputRedaction', () => {
 		);
 	});
 
-	it('drops not-yet-implemented categories (phone, address)', () => {
+	it('drops unsupported categories (e.g. address, which has no detector)', () => {
 		expect(
 			resolveOutputRedaction(config({ outputRedactionPii: 'email,phone,address,ssn-us' })),
-		).toMatchObject({ detect: ['email', 'ssn-us'] });
+		).toMatchObject({ detect: ['email', 'phone', 'ssn-us'] });
 	});
 
 	it('honors the secrets toggle and an empty PII list', () => {

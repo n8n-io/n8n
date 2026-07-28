@@ -1,8 +1,8 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { User } from '@n8n/db';
-
-import { createWorkflow } from './mock.utils';
-import { getWorkflowDetails, createWorkflowDetailsTool } from '../tools/get-workflow-details.tool';
+import { User, type WorkflowEntity } from '@n8n/db';
+import type { INodeTypes } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -10,30 +10,32 @@ import { RoleService } from '@/services/role.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { v4 as uuid } from 'uuid';
+import { createWorkflow } from './mock.utils';
+import { getWorkflowDetails, createWorkflowDetailsTool } from '../tools/get-workflow-details.tool';
 
-jest.mock('../tools/webhook-utils', () => ({
-	getTriggerDetails: jest.fn().mockResolvedValue('MOCK_TRIGGER_DETAILS'),
+vi.mock('../tools/webhook-utils', () => ({
+	getTriggerDetails: vi.fn().mockResolvedValue('MOCK_TRIGGER_DETAILS'),
 }));
 
 describe('get-workflow-details MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	const baseWebhookUrl = 'https://example.test';
+	const nodeTypes = mock<INodeTypes>();
 
 	describe('smoke tests', () => {
 		test('it creates tool correctly', () => {
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn(),
+				findWorkflowForUser: vi.fn(),
 			});
 			const credentialsService = mockInstance(CredentialsService, {});
 			const telemetry = mockInstance(Telemetry, {
-				track: jest.fn(),
+				track: vi.fn(),
 			});
 			const roleService = mockInstance(RoleService, {
-				addScopes: jest.fn((wf) => ({ ...wf, scopes: [] })) as unknown as RoleService['addScopes'],
+				addScopes: vi.fn((wf) => ({ ...wf, scopes: [] })) as unknown as RoleService['addScopes'],
 			});
 			const projectService = mockInstance(ProjectService, {
-				getProjectRelationsForUser: jest.fn().mockResolvedValue([]),
+				getProjectRelationsForUser: vi.fn().mockResolvedValue([]),
 			});
 			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
 
@@ -42,6 +44,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				nodeTypes,
 				endpoints,
 				telemetry,
 				roleService,
@@ -58,19 +61,19 @@ describe('get-workflow-details MCP tool', () => {
 
 	describe('handler tests', () => {
 		const roleService = mockInstance(RoleService, {
-			addScopes: jest.fn((wf) => ({
+			addScopes: vi.fn((wf) => ({
 				...wf,
 				scopes: ['workflow:read', 'workflow:execute'],
 			})) as unknown as RoleService['addScopes'],
 		});
 		const projectService = mockInstance(ProjectService, {
-			getProjectRelationsForUser: jest.fn().mockResolvedValue([]),
+			getProjectRelationsForUser: vi.fn().mockResolvedValue([]),
 		});
 
 		test('returns sanitized workflow and trigger info (active)', async () => {
 			const workflow = createWorkflow({ activeVersionId: uuid() });
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
 			});
 			const credentialsService = mockInstance(CredentialsService, {});
 			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
@@ -80,6 +83,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				nodeTypes,
 				endpoints,
 				roleService,
 				projectService,
@@ -97,12 +101,74 @@ describe('get-workflow-details MCP tool', () => {
 			expect(payload.workflow.canExecute).toBe(true);
 		});
 
+		test('presents node groups by member node names, dropping stale ids', async () => {
+			const workflow = createWorkflow({
+				nodeGroups: [{ id: 'group-1', name: 'Intake', nodeIds: ['node-1', 'stale-id'] }],
+			});
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1' },
+			);
+
+			// Read path presents groups by member node names; persisted ids stay internal.
+			expect(payload.workflow.nodeGroups).toEqual([
+				{ id: 'group-1', name: 'Intake', nodeNames: ['Webhook'] },
+			]);
+		});
+
+		test('requests and returns workflow tags', async () => {
+			const tags = [
+				{ id: 'tag-1', name: 'production' },
+				{ id: 'tag-2', name: 'billing' },
+			];
+			const workflow = createWorkflow({ tags } as Partial<WorkflowEntity>);
+			const findWorkflowForUser = vi.fn().mockResolvedValue(workflow);
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser,
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1' },
+			);
+
+			expect(findWorkflowForUser).toHaveBeenCalledWith(
+				'wf-1',
+				user,
+				['workflow:read'],
+				expect.objectContaining({ includeTags: true }),
+			);
+			expect(payload.workflow.tags).toEqual(tags);
+		});
+
 		test('propagates errors from workflow validation', async () => {
 			const credentialsService = mockInstance(CredentialsService, {});
 			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
 
 			const wfFinder = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(null),
+				findWorkflowForUser: vi.fn().mockResolvedValue(null),
 			});
 
 			await expect(
@@ -111,6 +177,7 @@ describe('get-workflow-details MCP tool', () => {
 					baseWebhookUrl,
 					wfFinder,
 					credentialsService,
+					nodeTypes,
 					endpoints,
 					roleService,
 					projectService,
@@ -122,7 +189,7 @@ describe('get-workflow-details MCP tool', () => {
 		test('returns null activeVersion for unpublished workflows', async () => {
 			const unpublished = createWorkflow({ activeVersionId: null });
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(unpublished),
+				findWorkflowForUser: vi.fn().mockResolvedValue(unpublished),
 			});
 			const credentialsService = mockInstance(CredentialsService, {});
 			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
@@ -132,6 +199,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				nodeTypes,
 				endpoints,
 				roleService,
 				projectService,

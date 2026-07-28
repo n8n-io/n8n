@@ -3,13 +3,13 @@ import { N8nTooltip } from '@n8n/design-system';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { truncate } from '@n8n/utils';
+import { truncate } from '@n8n/utils/string/truncate';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import type { TimelineItem } from '../session-timeline.types';
-import { builtinToolLabelKey, isSubAgentTimelineItem } from '../session-timeline.utils';
+import { isSubAgentTimelineItem } from '../session-timeline.utils';
 import { delegateLabel } from '../utils/delegate-tool';
-import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';
 
 const props = defineProps<{
@@ -45,9 +45,9 @@ const infoText = computed((): string => {
 		case 'agent':
 			return truncate(it.content ?? '', 500);
 		case 'tool': {
+			if (it.isUserFeedback) return i18n.baseText('agentSessions.timeline.userFeedback');
 			if (isSubAgent.value) return delegateLabel(i18n, it.subAgentName ?? '');
-			const key = builtinToolLabelKey(it.toolName, it.toolOutput);
-			return key ? i18n.baseText(key) : formatToolNameForDisplay(it.toolName);
+			return resolveToolNameForDisplay(it.toolName, i18n);
 		}
 		case 'workflow':
 			return it.workflowName ?? formatToolNameForDisplay(it.toolName);

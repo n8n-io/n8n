@@ -32,6 +32,12 @@ export interface TimelineItem {
 	 */
 	subAgentName?: string;
 	resumed?: boolean;
+	/**
+	 * True for the tool-call entry a resumed execution records when the user
+	 * answers an interactive suspension: it carries the user's feedback as its
+	 * output and is labelled "User feedback received" instead of a tool call.
+	 */
+	isUserFeedback?: boolean;
 }
 
 export interface IdleRange {

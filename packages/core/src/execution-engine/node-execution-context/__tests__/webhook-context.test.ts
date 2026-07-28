@@ -5,6 +5,7 @@ import type {
 	INode,
 	INodeType,
 	INodeTypes,
+	IRunExecutionData,
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
@@ -79,6 +80,51 @@ describe('WebhookContext', () => {
 		vi.clearAllMocks();
 	});
 
+	describe('connectionInputData', () => {
+		it('should expose the HTTP request as input data when there is no execution stack', () => {
+			const context = new WebhookContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				webhookData,
+				[],
+				null,
+			);
+
+			expect(context.connectionInputData).toEqual([
+				{
+					json: {
+						body: { test: 'body' },
+						headers: { test: 'header' },
+						params: { test: 'param' },
+						query: { test: 'query' },
+					},
+				},
+			]);
+		});
+
+		it('should not throw and should leave input empty when the seeded execution stack has no main data', () => {
+			const runExecutionDataWithEmptyStack = {
+				executionData: {
+					nodeExecutionStack: [{ node, data: { main: [] }, source: null }],
+				},
+			} as unknown as IRunExecutionData;
+
+			const context = new WebhookContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				webhookData,
+				[],
+				runExecutionDataWithEmptyStack,
+			);
+
+			expect(context.connectionInputData).toEqual([]);
+		});
+	});
+
 	describe('getCredentials', () => {
 		it('should get decrypted credentials', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
@@ -138,6 +184,56 @@ describe('WebhookContext', () => {
 		it('should return the name of the webhook', () => {
 			const webhookName = webhookContext.getWebhookName();
 			expect(webhookName).toBe('default');
+		});
+	});
+
+	describe('getNodeWebhookUrl', () => {
+		const buildUrlContext = (webhookNodeType: 'form' | 'mcp' | undefined, isTest: boolean) => {
+			const urlNodeType = mock<INodeType>({
+				description: {
+					webhooks: [
+						{ name: 'default', nodeType: webhookNodeType, path: 'my-path', isFullPath: false },
+					],
+				},
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(urlNodeType);
+			expression.getSimpleParameterValue.mockImplementation((_node, value) => value);
+
+			const urlAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				formBaseUrl: 'http://localhost/prod-webhook',
+				formTestBaseUrl: 'http://localhost/test-webhook',
+				webhookBaseUrl: 'http://localhost/prod-webhook',
+				webhookTestBaseUrl: 'http://localhost/test-webhook',
+			});
+			const urlWebhookData = mock<IWebhookData>({
+				webhookDescription: { name: 'default', nodeType: webhookNodeType },
+				isTest,
+			});
+
+			return new WebhookContext(
+				workflow,
+				node,
+				urlAdditionalData,
+				mode,
+				urlWebhookData,
+				[],
+				runExecutionData,
+			);
+		};
+
+		it('should use the test base URL for a form webhook running as a test', () => {
+			const context = buildUrlContext('form', true);
+			expect(context.getNodeWebhookUrl('default')).toContain('test-webhook');
+		});
+
+		it('should use the production base URL for a form webhook running in production', () => {
+			const context = buildUrlContext('form', false);
+			expect(context.getNodeWebhookUrl('default')).toContain('prod-webhook');
+		});
+
+		it('should ignore isTest for non-form/non-mcp webhooks (production base)', () => {
+			const context = buildUrlContext(undefined, true);
+			expect(context.getNodeWebhookUrl('default')).toContain('prod-webhook');
 		});
 	});
 

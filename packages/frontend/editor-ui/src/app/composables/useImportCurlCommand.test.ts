@@ -478,6 +478,19 @@ describe('useImportCurlCommand', () => {
 			]);
 		});
 
+		test('Should parse cURL command with repeated query parameter names', () => {
+			const curl = "curl 'https://example.com/api?type[]=foo&type[]=bar&type[]=baz&page=0'";
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.url).toBe('https://example.com/api');
+			expect(parameters.sendQuery).toBe(true);
+			expect(parameters.queryParameters?.parameters).toEqual([
+				{ name: 'type[]', value: 'foo' },
+				{ name: 'type[]', value: 'bar' },
+				{ name: 'type[]', value: 'baz' },
+				{ name: 'page', value: '0' },
+			]);
+		});
+
 		test('Should parse cURL command with a comma in query parameter value', () => {
 			const curl = 'curl "https://example.com?bla=blu,bli"';
 			const parameters = toHttpNodeParameters(curl);

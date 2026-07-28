@@ -15,22 +15,22 @@ CREATE TABLE "project_secrets_provider_access" ("secretsProviderConnectionId" in
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| secretsProviderConnectionId | INTEGER |  | false |  | [secrets_provider_connection](secrets_provider_connection.md) |  |
-| projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | role | varchar(128) | 'secretsProviderConnection:user' | false |  |  |  |
+| secretsProviderConnectionId | INTEGER |  | false |  | [secrets_provider_connection](secrets_provider_connection.md) |  |
+| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| secretsProviderConnectionId | PRIMARY KEY | PRIMARY KEY (secretsProviderConnectionId) |
-| projectId | PRIMARY KEY | PRIMARY KEY (projectId) |
+| - | CHECK | CHECK ("role" IN ('secretsProviderConnection:owner', 'secretsProviderConnection:user')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (secretsProviderConnectionId) REFERENCES secrets_provider_connection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| projectId | PRIMARY KEY | PRIMARY KEY (projectId) |
+| secretsProviderConnectionId | PRIMARY KEY | PRIMARY KEY (secretsProviderConnectionId) |
 | sqlite_autoindex_project_secrets_provider_access_1 | PRIMARY KEY | PRIMARY KEY (secretsProviderConnectionId, projectId) |
-| - | CHECK | CHECK ("role" IN ('secretsProviderConnection:owner', 'secretsProviderConnection:user')) |
 
 ## Indexes
 
@@ -43,35 +43,35 @@ CREATE TABLE "project_secrets_provider_access" ("secretsProviderConnectionId" in
 ```mermaid
 erDiagram
 
-"project_secrets_provider_access" |o--|| "secrets_provider_connection" : "FOREIGN KEY (secretsProviderConnectionId) REFERENCES secrets_provider_connection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project_secrets_provider_access" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"project_secrets_provider_access" |o--|| "secrets_provider_connection" : "FOREIGN KEY (secretsProviderConnectionId) REFERENCES secrets_provider_connection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "project_secrets_provider_access" {
-  INTEGER secretsProviderConnectionId PK
+  datetime_3_ createdAt
   varchar_36_ projectId PK
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
   varchar_128_ role
-}
-"secrets_provider_connection" {
-  INTEGER id
-  varchar_128_ providerKey
-  varchar_36_ type
-  TEXT encryptedSettings
-  boolean isEnabled
-  datetime_3_ createdAt
+  INTEGER secretsProviderConnectionId PK
   datetime_3_ updatedAt
 }
 "project" {
+  datetime_3_ createdAt
+  varchar creatorId FK
+  TEXT customTelemetryTags
+  varchar_512_ description
+  TEXT icon
   varchar_36_ id PK
   varchar_255_ name
   varchar_36_ type
-  datetime_3_ createdAt
   datetime_3_ updatedAt
-  TEXT icon
-  varchar_512_ description
-  varchar creatorId FK
-  TEXT customTelemetryTags
+}
+"secrets_provider_connection" {
+  datetime_3_ createdAt
+  TEXT encryptedSettings
+  INTEGER id
+  boolean isEnabled
+  varchar_128_ providerKey
+  varchar_36_ type
+  datetime_3_ updatedAt
 }
 ```
 

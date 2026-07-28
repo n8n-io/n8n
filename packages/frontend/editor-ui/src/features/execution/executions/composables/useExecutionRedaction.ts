@@ -1,5 +1,8 @@
 import { computed, h } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -9,12 +12,16 @@ import RevealDataWarning from '../components/RevealDataWarning.vue';
 
 export function useExecutionRedaction() {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const message = useMessage();
 	const telemetry = useTelemetry();
 	const { showError } = useToast();
 	const i18n = useI18n();
 
-	const redactionInfo = computed(() => workflowsStore.getWorkflowExecution?.data?.redactionInfo);
+	const redactionInfo = computed(
+		() => workflowExecutionStateStore.value.activeExecution?.data?.redactionInfo,
+	);
 
 	const isRedacted = computed(() => redactionInfo.value?.isRedacted === true);
 
@@ -26,8 +33,8 @@ export function useExecutionRedaction() {
 
 	async function revealData() {
 		telemetry.track('User clicked reveal data', {
-			workflow_id: workflowsStore.workflowId,
-			execution_id: workflowsStore.getWorkflowExecution?.id,
+			workflow_id: workflowDocumentStore.value.workflowId,
+			execution_id: workflowExecutionStateStore.value.activeExecution?.id,
 		});
 
 		const warningContent = h(RevealDataWarning, {
@@ -49,7 +56,7 @@ export function useExecutionRedaction() {
 
 		if (confirmed !== MODAL_CONFIRM) return;
 
-		const executionId = workflowsStore.getWorkflowExecution?.id;
+		const executionId = workflowExecutionStateStore.value.activeExecution?.id;
 		if (!executionId) return;
 
 		try {
@@ -57,7 +64,12 @@ export function useExecutionRedaction() {
 				redactExecutionData: false,
 			});
 			if (revealed?.data) {
-				workflowsStore.setWorkflowExecutionRunData(revealed.data);
+				// Write to the per-execution data store directly (keyed by the
+				// revealed execution's id) so the update lands on the execution we
+				// revealed regardless of which document scope we run under.
+				useExecutionDataStore(createExecutionDataId(executionId)).setExecutionRunData(
+					revealed.data,
+				);
 			}
 		} catch (error) {
 			showError(error, i18n.baseText('ndv.redacted.revealError'));

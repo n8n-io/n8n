@@ -161,6 +161,55 @@ describe('NodeToolSettingsContent', () => {
 		projectsStore.fetchAndSetProject = vi.fn().mockResolvedValue(undefined);
 	});
 
+	it('should hide operations listed in hiddenOperations from the parameters form', () => {
+		const nodeTypeWithWaitingOperation: INodeTypeDescription = {
+			...MOCK_NODE_TYPE,
+			properties: [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [
+						{ name: 'Create', value: 'create' },
+						{ name: 'Send and Wait', value: 'sendAndWait' },
+					],
+					default: 'sendAndWait',
+					noDataExpression: true,
+				},
+			],
+		};
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeWithWaitingOperation);
+
+		const renderWithParameterCapture = createComponentRenderer(NodeToolSettingsContent, {
+			global: {
+				stubs: {
+					ParameterInputList: {
+						template:
+							'<div data-test-id="parameter-input-list">{{ JSON.stringify(parameters) }}</div>',
+						props: ['parameters', 'nodeValues', 'isReadOnly', 'hideDelete', 'node', 'path'],
+					},
+					NodeCredentials: {
+						template: '<div data-test-id="node-credentials" />',
+						props: ['node', 'readonly', 'showAll', 'hideIssues'],
+					},
+				},
+			},
+		});
+
+		const { getAllByTestId } = renderWithParameterCapture({
+			props: {
+				initialNode: createMockNode({ parameters: {} }),
+				hiddenOperations: ['sendAndWait'],
+			},
+		});
+
+		const renderedParameters = getAllByTestId('parameter-input-list')
+			.map((element) => element.textContent ?? '')
+			.join('');
+		expect(renderedParameters).toContain('create');
+		expect(renderedParameters).not.toContain('sendAndWait');
+	});
+
 	it('should hide settings tab when there are no settings', () => {
 		const { queryByText } = renderComponent({
 			props: { initialNode: createMockNode() },
@@ -278,6 +327,38 @@ describe('NodeToolSettingsContent', () => {
 		});
 	});
 
+	it('falls back to the personal project when the provided project id is empty', async () => {
+		// useAgentScopeProjectId resolves to '' before project state has loaded on
+		// first open; the empty string must not suppress the credential fetch.
+		renderComponent({
+			props: { initialNode: createMockNode(), projectId: '' },
+		});
+
+		await waitFor(() => {
+			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+				projectId: 'personal-project',
+			});
+		});
+	});
+
+	it('loads the personal project when the id is empty and it is not yet available', async () => {
+		projectsStore.personalProject = null as never;
+		projectsStore.getPersonalProject = vi.fn().mockImplementation(() => {
+			projectsStore.personalProject = { id: 'personal-project', name: 'Personal' } as never;
+		});
+
+		renderComponent({
+			props: { initialNode: createMockNode(), projectId: '' },
+		});
+
+		await waitFor(() => {
+			expect(projectsStore.getPersonalProject).toHaveBeenCalled();
+			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+				projectId: 'personal-project',
+			});
+		});
+	});
+
 	it('reloads personal project credentials when the shared store is already populated', async () => {
 		credentialsStore.allCredentials = [
 			{
@@ -296,11 +377,13 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		await waitFor(() => {
-			expect(credentialsStore.setCredentials).toHaveBeenCalledWith([]);
 			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
 				projectId: 'personal-project',
 			});
 		});
+		// The refetch REPLACES the store on resolve; clearing it up front would
+		// blank every credential-driven control still visible behind the modal.
+		expect(credentialsStore.setCredentials).not.toHaveBeenCalledWith([]);
 	});
 
 	it('fetches workflow-scoped credentials for the provided project even when the shared store is already populated', async () => {
@@ -321,11 +404,11 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		await waitFor(() => {
-			expect(credentialsStore.setCredentials).toHaveBeenCalledWith([]);
 			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
 				projectId: 'team-project',
 			});
 		});
+		expect(credentialsStore.setCredentials).not.toHaveBeenCalledWith([]);
 	});
 
 	describe('makeUniqueName', () => {
