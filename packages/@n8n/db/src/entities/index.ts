@@ -38,7 +38,6 @@ import {
 	ScheduledJobKind,
 	ScheduledJobKindList,
 	ScheduledJobMisfirePolicy,
-	ScheduledJobMisfirePolicyList,
 } from './scheduled-job';
 import {
 	ScheduledTask,
@@ -124,7 +123,6 @@ export {
 	ScheduledJobKind,
 	ScheduledJobKindList,
 	ScheduledJobMisfirePolicy,
-	ScheduledJobMisfirePolicyList,
 	ScheduledTask,
 	ScheduledTaskStatus,
 	ScheduledTaskStatusList,

@@ -162,7 +162,7 @@ export class DurableJobProvisioner {
 				// seeded before the transaction commits (see `seedInitialOccurrences`).
 				const seededJobIds = new Set<number>();
 				// Stored jobs whose policy or grace no longer matches, reconciled below.
-				const outdatedPolicyJobIds = new Set<number>();
+				const outdatedPolicyJobIds: number[] = [];
 				const result = await work({
 					findExisting: async () => {
 						const rows = await this.jobs.findManyByWorkflowNode(manager, workflowId, nodeId);
@@ -171,7 +171,7 @@ export class DurableJobProvisioner {
 								row.misfirePolicy !== misfirePolicy ||
 								row.misfireGraceSeconds !== misfireGraceSeconds
 							) {
-								outdatedPolicyJobIds.add(row.id);
+								outdatedPolicyJobIds.push(row.id);
 							}
 						}
 						return rows.map(
@@ -219,7 +219,7 @@ export class DurableJobProvisioner {
 				// this a job keeps the policy and grace it was inserted with: a poll trigger
 				// provisioned before the policy existed would coalesce its backlog instead of
 				// skipping it. Only the two columns are written, so queued tasks stay put.
-				await this.jobs.updateMisfirePolicy(manager, [...outdatedPolicyJobIds], {
+				await this.jobs.updateMisfirePolicy(manager, outdatedPolicyJobIds, {
 					misfirePolicy,
 					misfireGraceSeconds,
 				});

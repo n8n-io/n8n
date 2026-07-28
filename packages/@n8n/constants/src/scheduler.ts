@@ -67,9 +67,6 @@ export const ScheduledJobMisfirePolicy = {
 export type ScheduledJobMisfirePolicy =
 	(typeof ScheduledJobMisfirePolicy)[keyof typeof ScheduledJobMisfirePolicy];
 
-/** All misfire policies as a runtime list. */
-export const ScheduledJobMisfirePolicyList = Object.values(ScheduledJobMisfirePolicy);
-
 /**
  * Where a scheduled task is in its lifecycle, from waiting to run to a final outcome.
  */

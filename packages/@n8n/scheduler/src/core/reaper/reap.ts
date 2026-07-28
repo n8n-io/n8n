@@ -106,27 +106,39 @@ export interface ReaperHooks {
  * Cancellation (`signal`, aborted when the driving loop times the pass out or
  * shuts down) is task-granular.
  */
+/**
+ * Retire the stale `pending` rows of one sweep, reporting a failure rather than
+ * raising it: the rest of the sweep recovers work an instance is waiting on, and
+ * must still run when retiring fails.
+ *
+ * @returns how many rows were retired; 0 when the sweep was already cancelled.
+ */
+async function retireStale(
+	store: ReaperTaskStore,
+	options: ReaperOptions,
+	hooks: ReaperHooks,
+	signal?: AbortSignal,
+): Promise<number> {
+	if (signal?.aborted === true) return 0;
+	try {
+		return await store.retireMissedPending(options.batchSize);
+	} catch (error) {
+		try {
+			hooks.onRetireError?.(error);
+		} catch {
+			// A broken reporter must not cost the sweep its stranded rows.
+		}
+		return 0;
+	}
+}
+
 export async function reap(
 	store: ReaperTaskStore,
 	options: ReaperOptions = DEFAULT_REAPER_OPTIONS,
 	hooks: ReaperHooks = {},
 	signal?: AbortSignal,
 ): Promise<ReapResult> {
-	// A sweep with no stranded rows still has stale `pending` rows to retire. Isolated
-	// from the rest of the sweep, which recovers work an instance is waiting on and must
-	// still run when retiring fails.
-	let missed = 0;
-	if (signal?.aborted !== true) {
-		try {
-			missed = await store.retireMissedPending(options.batchSize);
-		} catch (error) {
-			try {
-				hooks.onRetireError?.(error);
-			} catch {
-				// The stranded rows below still need recovering.
-			}
-		}
-	}
+	const missed = await retireStale(store, options, hooks, signal);
 
 	const expired = await store.findExpiredLeases(options.batchSize);
 	// Stryker disable next-line ConditionalExpression: pure early-return optimisation;

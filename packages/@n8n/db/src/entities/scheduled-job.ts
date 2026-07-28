@@ -5,7 +5,7 @@ import { Column, Entity, Index, PrimaryGeneratedColumn } from '@n8n/typeorm';
 import { DateTimeColumn, JsonColumn, WithTimestamps } from './abstract-entity';
 
 export { ScheduledJobKind, ScheduledJobKindList } from '@n8n/constants';
-export { ScheduledJobMisfirePolicy, ScheduledJobMisfirePolicyList } from '@n8n/constants';
+export { ScheduledJobMisfirePolicy } from '@n8n/constants';
 
 /**
  * A scheduled job: the rule for when something should run,

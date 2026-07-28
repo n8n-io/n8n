@@ -70,6 +70,7 @@ export interface NewOccurrence {
 	/**
 	 * When the occurrence stops being worth running. Optional like the column is
 	 * nullable: an occurrence recorded without one is claimable however late it is.
+	 * The materializer always sets it; only rows predating the column have none.
 	 */
 	missedAfter?: Date | null;
 }
@@ -242,9 +243,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * token). Due-ness uses the DB clock, and reaches `lookaheadMs` into the future
 	 * so the executor can fire each task precisely at its `runAt`.
 	 *
-	 * A row past its `missedAfter` is left alone, unless it has no deadline at all, or
-	 * has already been attempted: a retry's backoff pushes it past its deadline by
-	 * design, and the attempt count decides its fate from then on.
+	 * Rows past their deadline are left alone (see {@link claimableSql}).
 	 *
 	 * Concurrent claimers never take the same row: Postgres skips locked rows
 	 * (`FOR UPDATE SKIP LOCKED`); SQLite serialises via the sqlite-pooled driver's
@@ -253,6 +252,20 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	async claimDueTasks(opts: ClaimDueTasksOptions): Promise<ScheduledTask[]> {
 		if (opts.taskTypes.length === 0) return [];
 		return this.isPostgres ? await this.claimWithPostgres(opts) : await this.claimWithSqlite(opts);
+	}
+
+	/**
+	 * Whether a pending row is still worth claiming, as a SQL fragment for the given
+	 * table alias. A row past its `missedAfter` is left alone, unless it has no
+	 * deadline at all, or has already been attempted: a retry's backoff pushes it past
+	 * its deadline by design, and the attempt count decides its fate from then on.
+	 *
+	 * Shared by both dialects' claims and by the metric snapshot, so what the snapshot
+	 * calls due cannot drift from what the claim would take.
+	 */
+	private claimableSql(alias = ''): string {
+		const deadline = `${alias}"missedAfter"`;
+		return `(${deadline} IS NULL OR ${deadline} > ${dbNowLiteral(this.isPostgres)} OR ${alias}"attempts" > 0)`;
 	}
 
 	private async claimWithPostgres(opts: ClaimDueTasksOptions): Promise<ScheduledTask[]> {
@@ -268,7 +281,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			    WHERE t."status" = '${ScheduledTaskStatus.Pending}'
 			      AND t."taskType" = ANY($3)
 			      AND t."runAt" <= now() + ($4 || ' milliseconds')::interval
-			      AND (t."missedAfter" IS NULL OR t."missedAfter" > now() OR t."attempts" > 0)
+			      AND ${this.claimableSql('t.')}
 			    ORDER BY t."runAt"
 			    LIMIT $5
 			    FOR UPDATE SKIP LOCKED)
@@ -295,9 +308,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 				.andWhere("t.runAt <= STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', :lookahead)", {
 					lookahead: `+${opts.lookaheadMs / 1000} seconds`,
 				})
-				.andWhere(
-					"(t.missedAfter IS NULL OR t.missedAfter > STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') OR t.attempts > 0)",
-				)
+				.andWhere(this.claimableSql('t.'))
 				.orderBy('t.runAt', 'ASC')
 				.limit(opts.batchSize)
 				.getMany();
@@ -468,7 +479,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 */
 	async getMetricSnapshot(): Promise<ScheduledTaskMetricSnapshot> {
 		const now = dbNowLiteral(this.isPostgres);
-		const claimable = `("missedAfter" IS NULL OR "missedAfter" > ${now} OR "attempts" > 0)`;
+		const claimable = this.claimableSql();
 		// "running" is computed through a subquery (and not a FILTER) to prevent
 		// the WHERE to use 'IN', which does not take the partial index into account
 		const [row]: [
