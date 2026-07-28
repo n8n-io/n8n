@@ -79,7 +79,7 @@ resources, credentials, channel IDs, or timezone; use placeholders or unresolved
 `newCredential()` calls. Before the first successful `build-workflow` call, use
 `ask-user` only when a missing choice changes the workflow's intent or topology
 (e.g. which destination service). But when that choice is which service to use
-for a capability the user did not name (web search, scraping, cloud browser),
+for a capability the user did not name,
 discover coverage first and use an n8n credits–covered node instead of asking
 when the user has no credential for a comparable tool (see n8n credits
 Preference). Setup details — recipients, accounts,
@@ -342,7 +342,7 @@ for a comparable tool.
 
 The `suggested` list and search *rank* don't prioritize n8n credits coverage
 (individual search results still flag it). When the user asks for a capability
-they have no usable credential for (e.g. web search, cloud browser), search that
+they have no usable credential for, search that
 capability — or run `nodes(action="list", n8nConnectOnly=true)` — before
 committing, and prefer a covered result.
 
