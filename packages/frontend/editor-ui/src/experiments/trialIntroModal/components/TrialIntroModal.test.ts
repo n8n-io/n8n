@@ -14,6 +14,11 @@ import TrialIntroModal from './TrialIntroModal.vue';
 
 const mockCloseDialog = vi.fn();
 
+const mockShowError = vi.fn();
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({ showError: mockShowError }),
+}));
+
 let mockCountdownText: string | undefined;
 vi.mock('@/experiments/trialIntroModal/useTrialCountdown', async () => {
 	const { computed } = await import('vue');
@@ -79,6 +84,7 @@ describe('TrialIntroModal', () => {
 
 	beforeEach(() => {
 		mockCloseDialog.mockClear();
+		mockShowError.mockClear();
 		mockCountdownText = '13d 2h 5m';
 
 		pinia = createTestingPinia();
@@ -206,7 +212,22 @@ describe('TrialIntroModal', () => {
 
 		expect(queryByTestId('trial-intro-price-annual')).not.toBeInTheDocument();
 		expect(queryByTestId('trial-intro-price-monthly')).not.toBeInTheDocument();
-		expect(getByTestId('trial-intro-save-badge')).toHaveTextContent('Save 25%');
+		expect(getByTestId('trial-intro-save-badge')).toHaveTextContent('Save with annual');
+	});
+
+	it('hides quota stats that report unlimited via negative values', () => {
+		const cloudPlanStore = mockedStore(useCloudPlanStore);
+		cloudPlanStore.currentPlanData = {
+			...trialPlan,
+			monthlyExecutionsLimit: -1,
+			licenseFeatures: { 'quota:instanceAiCredits': -1 },
+		};
+
+		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+
+		expect(queryByTestId('trial-intro-stat-ai-credits')).not.toBeInTheDocument();
+		expect(queryByTestId('trial-intro-stat-executions')).not.toBeInTheDocument();
+		expect(getByTestId('trial-intro-stat-days')).toBeInTheDocument();
 	});
 
 	it('formats prices after the amount for suffix currencies', async () => {
@@ -254,6 +275,22 @@ describe('TrialIntroModal', () => {
 			redirectionPath: '/return/annual',
 		});
 		await waitFor(() => expect(window.location.href).toBe(loginLink));
+	});
+
+	it('shows an error toast when generating the dashboard link fails', async () => {
+		const cloudPlanStore = mockedStore(useCloudPlanStore);
+		const failure = new Error('network down');
+		cloudPlanStore.generateCloudDashboardAutoLoginLink.mockRejectedValue(failure);
+
+		const { getByTestId } = renderComponent({ pinia });
+		await goToStepTwo(getByTestId);
+
+		await userEvent.click(getByTestId('trial-intro-upgrade-cta'));
+
+		await waitFor(() =>
+			expect(mockShowError).toHaveBeenCalledWith(failure, 'Could not open the upgrade page'),
+		);
+		expect(window.location.href).toBe('https://test.app.n8n.cloud/home/workflows');
 	});
 
 	it('passes the selected period to the upgrade return path', async () => {

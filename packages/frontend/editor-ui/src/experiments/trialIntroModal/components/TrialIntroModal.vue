@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
+import { useToast } from '@/app/composables/useToast';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { TRIAL_INTRO_MODAL_KEY } from '@/experiments/trialIntroModal/constants';
@@ -24,6 +25,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const uiStore = useUIStore();
 const cloudPlanStore = useCloudPlanStore();
 const trialIntroModalStore = useTrialIntroModalStore();
@@ -60,10 +62,16 @@ onBeforeUnmount(() => {
 	trialIntroModalStore.completeModalPresentation();
 });
 
-const aiCredits = computed(
-	() => cloudPlanStore.currentPlanData?.licenseFeatures?.['quota:instanceAiCredits'],
+// Negative quotas mean "unlimited" (UNLIMITED_LICENSE_QUOTA) and must not render as numbers
+const asDisplayableQuota = (value: number | undefined) =>
+	value !== undefined && value >= 0 ? value : undefined;
+
+const aiCredits = computed(() =>
+	asDisplayableQuota(cloudPlanStore.currentPlanData?.licenseFeatures?.['quota:instanceAiCredits']),
 );
-const executionsLimit = computed(() => cloudPlanStore.currentPlanData?.monthlyExecutionsLimit);
+const executionsLimit = computed(() =>
+	asDisplayableQuota(cloudPlanStore.currentPlanData?.monthlyExecutionsLimit),
+);
 const trialDays = computed(() => cloudPlanStore.currentPlanData?.metadata?.trial?.length);
 const starterOffer = computed(() => trialIntroModalStore.starterOffer);
 const starterPrices = computed(() => starterOffer.value?.prices);
@@ -115,10 +123,14 @@ function onSelectPeriod(value: 'annual' | 'monthly') {
 
 async function onUpgradeClick() {
 	trialIntroModalStore.trackUpgradeCtaClicked(period.value);
-	const link = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
-		redirectionPath: trialIntroModalStore.buildUpgradeReturnPath(period.value),
-	});
-	location.href = link;
+	try {
+		const link = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
+			redirectionPath: trialIntroModalStore.buildUpgradeReturnPath(period.value),
+		});
+		location.href = link;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('experiments.trialIntroModal.step2.upgradeError'));
+	}
 }
 </script>
 
