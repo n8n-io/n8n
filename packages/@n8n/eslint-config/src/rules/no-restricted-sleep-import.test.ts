@@ -13,6 +13,10 @@ ruleTester.run('no-restricted-sleep-import', NoRestrictedSleepImportRule, {
 			code: 'const sleepWithAbort = () => {};',
 			filename: '/repo/packages/@n8n/utils/src/sleep.ts',
 		},
+		{
+			code: 'function sleep(ms: number) {}',
+			filename: '/repo/packages/@n8n/typeorm/test/utils/test-utils.ts',
+		},
 	],
 
 	invalid: [

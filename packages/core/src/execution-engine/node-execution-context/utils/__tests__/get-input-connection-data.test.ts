@@ -43,10 +43,10 @@ vi.mock('../create-node-as-tool', async (importActual) => ({
 // ESM module namespace exports are read-only, so `vi.spyOn` can't reassign
 // `sleep` directly. Replace it via `Object.defineProperty` so both source
 // code (via its `import`) and tests see the mock.
-const sleep = vi.fn();
+const sleepMock = vi.fn();
 Object.defineProperty(n8nUtilsSleep, 'sleep', {
 	configurable: true,
-	get: () => sleep,
+	get: () => sleepMock,
 });
 
 describe('getInputConnectionData', () => {
@@ -878,7 +878,7 @@ describe('makeHandleToolInvocation', () => {
 		});
 
 		it('should respect waitBetweenTries limits (0-5000ms)', async () => {
-			const sleepSpy = (sleep as Mock).mockResolvedValue(undefined);
+			const sleepSpy = (sleepMock as Mock).mockResolvedValue(undefined);
 
 			const connectedNode = mock<INode>({
 				name: 'Test Tool',
@@ -953,7 +953,7 @@ describe('makeHandleToolInvocation', () => {
 		});
 
 		it('should handle abort signal during retry wait', async () => {
-			const sleepSpy = (sleep as Mock).mockRejectedValue(new Error('Execution was cancelled'));
+			const sleepSpy = (sleepMock as Mock).mockRejectedValue(new Error('Execution was cancelled'));
 
 			const connectedNode = mock<INode>({
 				name: 'Test Tool',
@@ -1026,7 +1026,7 @@ describe('makeHandleToolInvocation', () => {
 					.mockResolvedValueOnce([[{ json: { result: 'success' } }]]),
 			});
 
-			const sleepSpy = (sleep as Mock).mockResolvedValue(undefined);
+			const sleepSpy = (sleepMock as Mock).mockResolvedValue(undefined);
 
 			handleToolInvocation = makeHandleToolInvocation(
 				contextFactory,
@@ -1066,7 +1066,7 @@ describe('makeHandleToolInvocation', () => {
 					.mockResolvedValueOnce([[{ json: { result: 'success' } }]]),
 			});
 
-			const sleepSpy = (sleep as Mock).mockResolvedValue(undefined);
+			const sleepSpy = (sleepMock as Mock).mockResolvedValue(undefined);
 
 			handleToolInvocation = makeHandleToolInvocation(
 				contextFactory,

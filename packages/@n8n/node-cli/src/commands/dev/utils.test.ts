@@ -1,11 +1,11 @@
 import { execSync } from 'node:child_process';
 
-import { createSpinner, openUrl, sleep } from './utils';
+import { createSpinner, openUrl, wait } from './utils';
 
 vi.mock('node:child_process');
 
 describe('dev utils', () => {
-	describe('sleep', () => {
+	describe('wait', () => {
 		beforeEach(() => {
 			vi.useFakeTimers();
 		});
@@ -15,7 +15,7 @@ describe('dev utils', () => {
 		});
 
 		it('should resolve after specified milliseconds', async () => {
-			const promise = sleep(100);
+			const promise = wait(100);
 			let resolved = false;
 
 			void promise.then(() => {

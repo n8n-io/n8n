@@ -2,7 +2,7 @@ import { expectScheduleTriggerFires } from './schedule-trigger-helpers';
 import { makeScheduleTriggerWorkflow } from './schedule-trigger-workflow';
 import { test, expect } from '../../../fixtures/base';
 
-const sleep = async (ms: number) => await new Promise((resolve) => setTimeout(resolve, ms));
+const wait = async (ms: number) => await new Promise((resolve) => setTimeout(resolve, ms));
 
 // Durable scheduler under a multi-main cluster. The scheduler has no leader: the
 // sweep, executor and reaper loops run on every main, and correctness comes from
@@ -50,7 +50,7 @@ test.describe(
 			// the absolute total) keeps ticks accrued during the up-to-60s detection
 			// in expectScheduleTriggerFires out of the window's budget.
 			const countBefore = (await api.workflows.getExecutions(workflowId, 100)).length;
-			await sleep(10_000);
+			await wait(10_000);
 			const countAfter = (await api.workflows.getExecutions(workflowId, 100)).length;
 			const fired = countAfter - countBefore;
 
