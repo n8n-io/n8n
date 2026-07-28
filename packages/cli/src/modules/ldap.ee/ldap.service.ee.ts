@@ -3,7 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { LdapConfig } from '@n8n/constants';
 import { LDAP_FEATURE_NAME } from '@n8n/constants';
 import { isValidEmail, SettingsRepository, User } from '@n8n/db';
-import type { RunningMode, SyncStatus } from '@n8n/db';
+import type { AuthProviderSyncHistory, RunningMode, SyncStatus } from '@n8n/db';
 import type { IPasswordAuthHandler } from '@n8n/decorators';
 import { AuthHandler } from '@n8n/decorators';
 import { Constructable, Container } from '@n8n/di';
@@ -46,6 +46,22 @@ import {
 	validateLdapConfigurationSchema,
 	getUserByLdapId,
 } from './helpers.ee';
+import { LdapConnectionError, LdapRejectionError } from './ldap.errors';
+
+const LDAP_CONNECTION_ERROR_CODES = new Set([
+	'ECONNREFUSED',
+	'ETIMEDOUT',
+	'ENOTFOUND',
+	'EHOSTUNREACH',
+	'ECONNRESET',
+	'DEPTH_ZERO_SELF_SIGNED_CERT',
+	'SELF_SIGNED_CERT_IN_CHAIN',
+	'CERT_HAS_EXPIRED',
+	'CERT_NOT_YET_VALID',
+	'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+	'UNABLE_TO_GET_ISSUER_CERT',
+	'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+]);
 
 @AuthHandler()
 export class LdapService implements IPasswordAuthHandler<User> {
@@ -104,11 +120,17 @@ export class LdapService implements IPasswordAuthHandler<User> {
 		const { valid, message } = validateLdapConfigurationSchema(ldapConfig);
 
 		if (!valid) {
-			throw new UnexpectedError(message);
+			throw new BadRequestError(message);
 		}
 
-		if (ldapConfig.loginEnabled && ['saml', 'oidc'].includes(getCurrentAuthenticationMethod())) {
-			throw new BadRequestError('LDAP cannot be enabled if SSO in enabled');
+		if (
+			ldapConfig.loginEnabled &&
+			!isEmailCurrentAuthenticationMethod() &&
+			!isLdapCurrentAuthenticationMethod()
+		) {
+			throw new BadRequestError(
+				`LDAP cannot be enabled while another authentication method is active (current: ${getCurrentAuthenticationMethod()})`,
+			);
 		}
 
 		this.setConfig({ ...ldapConfig });
@@ -361,7 +383,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 	 * Run the synchronization job.
 	 * If the job runs in "live" mode, changes to LDAP users are persisted in the database, else the users are not modified
 	 */
-	async runSync(mode: RunningMode): Promise<void> {
+	async runSync(mode: RunningMode): Promise<AuthProviderSyncHistory> {
 		this.logger.debug(`LDAP - Starting a synchronization run in ${mode} mode`);
 
 		let adUsers: LdapUser[] = [];
@@ -379,6 +401,15 @@ export class LdapService implements IPasswordAuthHandler<User> {
 		} catch (e) {
 			if (e instanceof Error) {
 				this.logger.error(`LDAP - ${e.message}`);
+				if (this.ldapts && e instanceof this.ldapts.ResultCodeError) {
+					throw new LdapRejectionError(e.message);
+				}
+				if (
+					'code' in e &&
+					LDAP_CONNECTION_ERROR_CODES.has((e as NodeJS.ErrnoException).code ?? '')
+				) {
+					throw new LdapConnectionError(e.message);
+				}
 				throw e;
 			}
 		}
@@ -431,7 +462,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 			errorMessage = error instanceof Error ? error.message : String(error);
 		}
 
-		await saveLdapSynchronization({
+		const syncHistory = await saveLdapSynchronization({
 			startedAt,
 			endedAt,
 			created: filteredUsersToCreate.length,
@@ -456,6 +487,8 @@ export class LdapService implements IPasswordAuthHandler<User> {
 		} else {
 			this.logger.error('LDAP - Synchronization finished with errors', { error: errorMessage });
 		}
+
+		return syncHistory;
 	}
 
 	/** Stop the current job scheduled, if any */

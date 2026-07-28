@@ -191,21 +191,30 @@ interface ProcessedToolResponse {
  * The structure matches what @langchain/google-common expects:
  * - `__gemini_function_call_thought_signatures__`: maps the first tool call ID to the signature
  * - `tool_calls`: array of tool call descriptors
- * - `signatures`: array aligned to parts [textPart, functionCall_1, ...], with the signature
- *   only on the first function call (per Google's docs)
+ * - `signatures`: array positionally aligned to the Gemini request parts, with the signature
+ *   only on the first function call (per Google's docs). @langchain/google-common applies it
+ *   only when `signatures.length` equals the part count, so the array must account for whether
+ *   the message content produces a leading text part.
  *
  * @param toolCalls - Tool calls to include
  * @param thoughtSignature - The Gemini thought signature
+ * @param hasLeadingTextPart - Whether the message content serializes to a text part before the
+ *   function-call parts
  * @returns additional_kwargs object for AIMessage
  */
 function buildGeminiAdditionalKwargs(
 	toolCalls: Array<{ id: string; name: string; args: IDataObject }>,
 	thoughtSignature: string,
+	hasLeadingTextPart: boolean,
 ): Record<string, unknown> {
-	const signatures: string[] = ['', thoughtSignature];
-	for (let i = 2; i <= toolCalls.length; i++) {
-		signatures.push('');
-	}
+	const signatures = [
+		// Reserve the first position for the leading text part, which has no signature
+		...(hasLeadingTextPart ? [''] : []),
+		// Gemini attaches the thought signature only to the first function call
+		thoughtSignature,
+		// Reserve positions for the remaining unsigned function calls
+		...toolCalls.slice(1).map(() => ''),
+	];
 
 	return {
 		__gemini_function_call_thought_signatures__: {
@@ -242,6 +251,8 @@ function buildIndividualAIMessage(
 		? buildGeminiAdditionalKwargs(
 				[{ id: toolId, name: toolName, args: toolInput }],
 				providerMetadata.thoughtSignature,
+				// Empty content produces no text part, so the function call is the first part
+				content !== null && content.length > 0,
 			)
 		: {};
 	// DeepSeek's thinking mode requires reasoning_content to be echoed back on the
@@ -289,7 +300,8 @@ function buildSharedGeminiAIMessage(
 	return new AIMessage({
 		content: `Calling tools: ${toolNames}`,
 		tool_calls: allToolCalls,
-		additional_kwargs: buildGeminiAdditionalKwargs(allToolCalls, thoughtSignature),
+		// String content serializes to a text part preceding the function-call parts
+		additional_kwargs: buildGeminiAdditionalKwargs(allToolCalls, thoughtSignature, true),
 	});
 }
 
