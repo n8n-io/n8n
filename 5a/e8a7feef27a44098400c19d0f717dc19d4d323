@@ -1,0 +1,23 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-dependency-resolver.test.ts
+  s_1da5aca4f31b39::t_9f6d2751e71e7f 132-133,139,148,151,153,157,159,165,167
+  s_1da5aca4f31b39::t_b0a6068fefe642 130-131,134-138,140-147,149-150,152,154-156,158,160-164,166,168-169
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-dependency-resolver.ts
+  s_1da5aca4f31b39::t_842f8f15871e70 12,16-17,30
+  s_1da5aca4f31b39::t_f4fbf80f640847 13-15,55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5ae8a7feef27a44098400c19d0f717dc19d4d323",
+  "prompts": {},
+  "sessions": {
+    "s_1da5aca4f31b39": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3452aa4-968e-4380-aaf8-be8227ce8dbf",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
