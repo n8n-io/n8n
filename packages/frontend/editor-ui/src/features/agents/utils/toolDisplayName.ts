@@ -1,4 +1,4 @@
-import type { BaseTextKey } from '@n8n/i18n';
+import type { BaseTextKey, I18nClass } from '@n8n/i18n';
 
 export const WEB_SEARCH_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.webSearch';
 export const FIND_FILE_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.findFile';
@@ -52,12 +52,12 @@ export function getToolNameTranslationKey(toolName: string | undefined): BaseTex
 
 export function resolveToolNameForDisplay(
 	toolName: string | undefined,
-	baseText: (key: BaseTextKey) => string,
+	i18n: Pick<I18nClass, 'baseText'>,
 ): string {
 	const translationKey = getToolNameTranslationKey(toolName);
 	if (!translationKey) return formatToolNameForDisplay(toolName);
 
-	const translated = baseText(translationKey);
+	const translated = i18n.baseText(translationKey);
 	return translated === translationKey ? formatToolNameForDisplay(toolName) : translated;
 }
 

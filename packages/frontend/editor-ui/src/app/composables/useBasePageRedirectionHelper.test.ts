@@ -1,7 +1,7 @@
 import { ROLE } from '@n8n/api-types';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import merge from 'lodash/merge';
-import { usePageRedirectionHelper } from './usePageRedirectionHelper.core';
+import { useBasePageRedirectionHelper } from './useBasePageRedirectionHelper';
 import { defaultSettings } from '@/__tests__/defaults';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { createPinia, setActivePinia } from 'pinia';
@@ -22,7 +22,7 @@ vi.mock('@/app/composables/useWorkflowId', async () => {
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let usersStore: ReturnType<typeof useUsersStore>;
 let versionStore: ReturnType<typeof useVersionsStore>;
-let pageRedirectionHelper: ReturnType<typeof usePageRedirectionHelper>;
+let pageRedirectionHelper: ReturnType<typeof useBasePageRedirectionHelper>;
 
 vi.mock('@/app/composables/useTelemetry', () => {
 	const track = vi.fn();
@@ -35,7 +35,7 @@ vi.mock('@/app/composables/useTelemetry', () => {
 	};
 });
 
-describe('usePageRedirectionHelper', () => {
+describe('useBasePageRedirectionHelper', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
@@ -46,7 +46,7 @@ describe('usePageRedirectionHelper', () => {
 		usersStore = useUsersStore();
 		versionStore = useVersionsStore();
 
-		pageRedirectionHelper = usePageRedirectionHelper({ guard: async () => true });
+		pageRedirectionHelper = useBasePageRedirectionHelper({ guard: async () => true });
 
 		vi.spyOn(cloudPlanApi, 'getAdminPanelLoginCode').mockResolvedValue({
 			code: '123',
@@ -259,7 +259,7 @@ describe('usePageRedirectionHelper', () => {
 		test('aborts the redirect and skips telemetry when the guard resolves false', async () => {
 			const telemetry = useTelemetry();
 			const initialHref = location.href;
-			const helper = usePageRedirectionHelper({ guard: async () => false });
+			const helper = useBasePageRedirectionHelper({ guard: async () => false });
 
 			await helper.goToUpgrade('advanced-permissions', 'upgrade-api', 'redirect');
 
@@ -269,7 +269,7 @@ describe('usePageRedirectionHelper', () => {
 
 		test('proceeds with the redirect when the guard resolves true', async () => {
 			const telemetry = useTelemetry();
-			const helper = usePageRedirectionHelper({ guard: async () => true });
+			const helper = useBasePageRedirectionHelper({ guard: async () => true });
 
 			await helper.goToUpgrade('advanced-permissions', 'upgrade-api', 'redirect');
 

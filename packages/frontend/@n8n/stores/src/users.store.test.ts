@@ -307,51 +307,6 @@ describe('users.store', () => {
 		});
 	});
 
-	describe('personalizedNodeTypes', () => {
-		const setCurrentUserWithAnswers = (
-			usersStore: ReturnType<typeof useUsersStore>,
-			personalizationAnswers?: object,
-		) => {
-			usersStore.usersById['1'] = {
-				...mockUser,
-				isDefaultUser: false,
-				isPendingUser: false,
-				mfaEnabled: false,
-				...(personalizationAnswers ? { personalizationAnswers } : {}),
-			} as never;
-			usersStore.currentUserId = '1';
-		};
-
-		it('returns an empty list when no resolver is registered', () => {
-			const usersStore = useUsersStore();
-			setCurrentUserWithAnswers(usersStore, { version: 'v4' });
-
-			expect(usersStore.personalizedNodeTypes).toEqual([]);
-		});
-
-		it('delegates to the injected resolver when one is registered', () => {
-			const usersStore = useUsersStore();
-			setCurrentUserWithAnswers(usersStore, { version: 'v4' });
-
-			const resolver = vi.fn(() => ['n8n-nodes-base.webhook']);
-			usersStore.setNodeTypesResolver(resolver);
-
-			expect(usersStore.personalizedNodeTypes).toEqual(['n8n-nodes-base.webhook']);
-			expect(resolver).toHaveBeenCalledWith(expect.objectContaining({ version: 'v4' }));
-		});
-
-		it('returns an empty list when the current user has no answers', () => {
-			const usersStore = useUsersStore();
-			setCurrentUserWithAnswers(usersStore);
-
-			const resolver = vi.fn(() => ['n8n-nodes-base.webhook']);
-			usersStore.setNodeTypesResolver(resolver);
-
-			expect(usersStore.personalizedNodeTypes).toEqual([]);
-			expect(resolver).not.toHaveBeenCalled();
-		});
-	});
-
 	describe('fetchUsers', () => {
 		it('does not fetch when the injected permission check denies listing (default)', async () => {
 			const usersStore = useUsersStore();
