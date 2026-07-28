@@ -10,8 +10,8 @@
 | fileSizeBytes | integer |  | false |  |  | Uploaded file size in bytes |
 | id | varchar(16) |  | false |  |  | Application-generated n8n nano ID |
 | mimeType | varchar(255) |  | false |  |  |  |
-| storageKey | text |  | false |  |  |  |
-| storedAt | varchar(2) | 'db'::character varying | false |  |  |  |
+| storageKey | text |  | false |  |  | Key addressing the bytes within storedAt: a binary_data.fileId for db, a byte-store key otherwise. Not a foreign key |
+| storedAt | varchar(2) | 'db'::character varying | false |  |  | Where the file bytes live: 'db' (binary_data table), or a blob-storage backend ('fs', 's3', 'az') |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints

@@ -647,7 +647,6 @@ export class AgentKnowledgeSandboxService {
 		return files.map((file) => ({
 			file: storageFileNameForOriginalFileName(file.fileName),
 			fileId: file.id,
-			agentId: file.agentId,
 			storedAt: file.storedAt,
 			storageKey: file.storageKey,
 			displayName: file.fileName,

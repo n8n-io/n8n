@@ -15,28 +15,39 @@ const LOCATION_BY_MODE: Record<string, string> = {
  * Replaces BinaryDataService's opaque `binaryDataId` with the storage location
  * (`storedAt`) plus the key (`storageKey`) that addresses the bytes.
  *
- * No bytes move: BinaryDataService wrote them through the same fs/s3/azure byte
+ * No bytes move: BinaryDataService wrote them through the same s3/azure byte
  * stores the new agent knowledge file store uses, so stripping the mode prefix
  * off `binaryDataId` yields a key that resolves as-is. For `db` rows the key is
  * the `binary_data.fileId` holding the bytes.
+ *
+ * `fs` rows resolve only when `N8N_BINARY_DATA_STORAGE_PATH` was left unset:
+ * the new store roots keys at `N8N_STORAGE_PATH` (`~/.n8n/storage`), which is
+ * also BinaryDataService's fs root unless that deprecated var pointed it
+ * elsewhere. Where the two diverge, the bytes stay where they are and the file
+ * reads as missing.
  */
 export class ReplaceAgentFileBinaryDataIdWithStoredAt1785186578138 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
 		const {
-			escape,
-			runQuery,
-			tablePrefix,
-			schemaBuilder: { addNotNull, createIndex, dropIndex, dropColumns },
+			schemaBuilder: { addColumns, addNotNull, column, createIndex, dropIndex, dropColumns },
 		} = ctx;
-		const agentFiles = escape.tableName('agent_files');
-		const storedAt = escape.columnName('storedAt');
-		const storageKey = escape.columnName('storageKey');
 
-		await runQuery(
-			`ALTER TABLE ${agentFiles} ADD COLUMN ${storedAt} VARCHAR(2) NOT NULL DEFAULT 'db' ` +
-				`CONSTRAINT "CHK_${tablePrefix}agent_files_storedAt" CHECK(${storedAt} IN ('db', 'fs', 's3', 'az'))`,
+		await addColumns(
+			'agent_files',
+			[
+				column('storedAt')
+					.varchar(2)
+					.notNull.default("'db'")
+					.withEnumCheck(['db', 'fs', 's3', 'az'])
+					.comment(
+						"Where the file bytes live: 'db' (binary_data table), or a blob-storage backend ('fs', 's3', 'az')",
+					),
+				column('storageKey').text.comment(
+					'Key addressing the bytes within storedAt: a binary_data.fileId for db, a byte-store key otherwise. Not a foreign key',
+				),
+			],
+			{ recreatesOnSqlite: true },
 		);
-		await runQuery(`ALTER TABLE ${agentFiles} ADD COLUMN ${storageKey} TEXT`);
 
 		await this.convertBinaryDataIds(ctx);
 

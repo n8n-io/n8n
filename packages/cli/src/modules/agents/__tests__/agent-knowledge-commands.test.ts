@@ -18,7 +18,6 @@ import {
 const mobyDickFile: AgentKnowledgeFileReference = {
 	file: 'moby-dick.txt',
 	fileId: 'file-1',
-	agentId: 'agent-1',
 	storedAt: 'fs',
 	storageKey: 'agents/agent-1/knowledge-files/file-1/content',
 	displayName: 'moby-dick.txt',
