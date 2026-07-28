@@ -188,12 +188,18 @@ const commitJumperValue = () => {
 
 	const parsed = parseInt(jumperValue.value, 10);
 	if (isNaN(parsed)) {
-		jumperValue.value = String(prevPage.value);
+		const fallback = String(prevPage.value);
+		if (jumperValue.value !== fallback) {
+			jumperValue.value = fallback;
+		}
 		return;
 	}
 
 	const targetPage = Math.min(Math.max(parsed, 1), pageCount.value);
-	jumperValue.value = String(targetPage);
+	const nextValue = String(targetPage);
+	if (jumperValue.value !== nextValue) {
+		jumperValue.value = nextValue;
+	}
 
 	if (targetPage !== prevPage.value) {
 		handlePageUpdate(targetPage);
@@ -400,7 +406,7 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 	}
 
 	.total {
-		font-size: var(--font-size--2xs);
+		font-size: var(--font-size--sm);
 	}
 
 	.jumper {
@@ -422,7 +428,7 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 	}
 
 	.total {
-		font-size: var(--font-size--3xs);
+		font-size: var(--font-size--xs);
 	}
 
 	.jumper {
@@ -476,6 +482,7 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 	background: transparent;
 	field-sizing: content;
 	outline: none;
+	appearance: textfield;
 
 	&:disabled {
 		cursor: not-allowed;
@@ -484,9 +491,12 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 
 	&::-webkit-outer-spin-button,
 	&::-webkit-inner-spin-button {
+		display: none;
 		appearance: none;
-		-webkit-appearance: none;
 		margin: 0;
+		pointer-events: none;
+		height: 0;
+		width: 0;
 	}
 
 	@supports (field-sizing: content) {

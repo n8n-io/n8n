@@ -44,7 +44,7 @@ describe('v2/components/Pagination', () => {
 				expect(button).toBeDisabled();
 			});
 
-			const jumper = wrapper.container.querySelector('input[type="number"]');
+			const jumper = wrapper.container.querySelector('[data-test-id="pagination-jumper-input"]');
 			expect(jumper).toBeDisabled();
 		});
 
@@ -141,7 +141,7 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 			expect(wrapper.getByText('Go to')).toBeInTheDocument();
-			const input = wrapper.container.querySelector('input[type="number"]');
+			const input = wrapper.getByTestId('pagination-jumper-input');
 			expect(input).toBeInTheDocument();
 			expect(input).toHaveValue(1);
 		});
@@ -371,10 +371,10 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			const input = wrapper.container.querySelector('input[type="number"]');
-			expect(input).toBeInTheDocument();
+			const input = wrapper.getByTestId('pagination-jumper-input');
 
-			await userEvent.type(input!, '5');
+			await userEvent.clear(input);
+			await userEvent.type(input, '5');
 			await userEvent.keyboard('{Enter}');
 
 			await waitFor(() => {
@@ -392,10 +392,10 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			const input = wrapper.container.querySelector('input[type="number"]');
-			expect(input).toBeInTheDocument();
+			const input = wrapper.getByTestId('pagination-jumper-input');
 
-			await userEvent.type(input!, '999');
+			await userEvent.clear(input);
+			await userEvent.type(input, '999');
 			await userEvent.keyboard('{Enter}');
 
 			await waitFor(() => {

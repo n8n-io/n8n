@@ -23,7 +23,17 @@ export default {
 		},
 		pagerCount: {
 			control: 'number',
-			description: 'Maximum number of page buttons to display',
+			description:
+				'Odd number of page buttons around the current page before ellipsis (e.g. 5 or 7). Alias for siblingCount.',
+		},
+		siblingCount: {
+			control: 'number',
+			description:
+				'Pages to show on each side of the current page before ellipsis. Prefer pagerCount for Element+ compatibility.',
+		},
+		showEdges: {
+			control: 'boolean',
+			description: 'Always show first and last page buttons (with ellipsis when needed)',
 		},
 		layout: {
 			control: 'text',
@@ -80,7 +90,7 @@ export const FullLayout: Story = {
 	args: {
 		total: 500,
 		pageSize: 20,
-		layout: 'total, prev, pager, next, sizes',
+		layout: 'total, prev, pager, next, sizes, jumper',
 		pageSizes: [10, 20, 50, 100],
 	},
 };
@@ -118,7 +128,7 @@ export const Sizes: Story = {
 	args: {
 		total: 1000,
 		pageSize: 10,
-		layout: 'prev, pager, next, jumper',
+		layout: 'total, prev, pager, next, jumper',
 		showEdges: true,
 		currentPage: 50,
 	},
@@ -156,6 +166,69 @@ export const ManyPages: Story = {
 		showEdges: true,
 		currentPage: 50,
 		layout: 'prev, pager, next, jumper',
+	},
+};
+
+export const PagerCount: Story = {
+	name: 'Pager count (ellipsis)',
+	render: (args) => ({
+		components: { Pagination },
+		setup() {
+			const pageNarrow = ref(args.currentPage ?? 50);
+			const pageDefault = ref(args.currentPage ?? 50);
+			const pageWide = ref(args.currentPage ?? 50);
+			return { args, pageNarrow, pageDefault, pageWide };
+		},
+		template: `
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--xl); padding: var(--spacing--md);">
+			<section>
+				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					pagerCount: 3
+				</h3>
+				<p style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+					Narrow — fewer page buttons before ellipsis.
+				</p>
+				<Pagination
+					v-bind="args"
+					:pager-count="3"
+					v-model:current-page="pageNarrow"
+				/>
+			</section>
+			<section>
+				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					pagerCount: 5
+				</h3>
+				<p style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+					Medium — more neighbors around the current page.
+				</p>
+				<Pagination
+					v-bind="args"
+					:pager-count="5"
+					v-model:current-page="pageDefault"
+				/>
+			</section>
+			<section>
+				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					pagerCount: 7
+				</h3>
+				<p style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+					Wide — default Element+ style (most page buttons before ellipsis).
+				</p>
+				<Pagination
+					v-bind="args"
+					:pager-count="7"
+					v-model:current-page="pageWide"
+				/>
+			</section>
+		</div>
+		`,
+	}),
+	args: {
+		total: 1000,
+		pageSize: 10,
+		showEdges: true,
+		currentPage: 50,
+		layout: 'prev, pager, next',
 	},
 };
 
