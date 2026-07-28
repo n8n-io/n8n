@@ -1,0 +1,25 @@
+docs/adrs/0002-per-file-declarations-for-design-system.md
+  s_b85fc8ae2b10a1::t_f1e19e0c84b149 184,186-200
+  s_b85fc8ae2b10a1::t_a68aa67f238594 1-183,185
+docs/adrs/0001-design-system-ships-as-a-compiled-package.md
+  s_b85fc8ae2b10a1::t_8ad416a25b34f2 1-127
+docs/adrs/README.md
+  s_b85fc8ae2b10a1::t_824a5edec336dd 1-8,13-40
+  s_b85fc8ae2b10a1::t_4874a448d72f52 9-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "caf7b9e09133e2b3d7f888c20b48c9c507d46cd1",
+  "prompts": {},
+  "sessions": {
+    "s_b85fc8ae2b10a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2ea952e-c313-42dd-80d8-e7b60ebea4ad",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
