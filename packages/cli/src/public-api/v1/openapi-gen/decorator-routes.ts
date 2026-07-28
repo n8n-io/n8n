@@ -177,6 +177,9 @@ function buildResponses(
 		},
 	};
 
+	// If the route has a request body or query, we add an HTTP 400 as a possible response
+	// Every @PublicApiController decorated route has an HTTP 401 response for missing or invalid API key
+	// If the route has an @ApiKeyScope decorator, we add an HTTP 403 as a possible response
 	if (route.requestBodyDto ?? route.requestQueryDto) {
 		responses[400] = BAD_REQUEST_RESPONSE;
 	}
