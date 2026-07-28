@@ -29,12 +29,18 @@ function findRepoRoot(): string {
 	return dir;
 }
 
-/** Package name → repo-relative dir, e.g. `@n8n/design-system` →
- * `packages/frontend/@n8n/design-system`. Read off the filesystem so a package
- * that moves can't drift out of the map. */
-export function buildPackageDirIndex(repoRoot: string): Map<string, string> {
-	const index = new Map<string, string>();
+export interface WorkspaceIndex {
+	/** Package name → repo-relative dir, e.g. `@n8n/design-system` → `packages/frontend/@n8n/design-system`. */
+	names: ReadonlyMap<string, string>;
+	/** Every repo-relative dir under `packages/`, used to tell a dir-relative path from a package specifier. */
+	dirs: ReadonlySet<string>;
+}
+
+export function buildWorkspaceIndex(repoRoot: string): WorkspaceIndex {
+	const names = new Map<string, string>();
+	const dirs = new Set<string>();
 	const walk = (absDir: string, relDir: string) => {
+		dirs.add(relDir);
 		for (const entry of readdirSync(absDir, { withFileTypes: true })) {
 			if (!entry.isDirectory() || entry.name === 'node_modules') continue;
 			const abs = join(absDir, entry.name);
@@ -42,48 +48,47 @@ export function buildPackageDirIndex(repoRoot: string): Map<string, string> {
 			const manifest = join(abs, 'package.json');
 			if (existsSync(manifest)) {
 				const { name } = JSON.parse(readFileSync(manifest, 'utf8')) as { name?: string };
-				if (name) index.set(name, rel);
+				if (name) names.set(name, rel);
 			}
 			walk(abs, rel); // packages nest (packages/frontend/@n8n/*)
 		}
 	};
 	walk(join(repoRoot, 'packages'), 'packages');
-	return index;
+	return { names, dirs };
 }
 
-let packageDirsCache: ReadonlyMap<string, string> | undefined;
+const EMPTY_INDEX: WorkspaceIndex = { names: new Map(), dirs: new Set() };
+let workspaceIndexCache: WorkspaceIndex | undefined;
 
-function packageDirs(): ReadonlyMap<string, string> {
-	if (!packageDirsCache) {
+function workspaceIndex(): WorkspaceIndex {
+	if (!workspaceIndexCache) {
 		try {
-			packageDirsCache = buildPackageDirIndex(findRepoRoot());
+			workspaceIndexCache = buildWorkspaceIndex(findRepoRoot());
 		} catch (error) {
-			console.warn(`⚠ coverage: workspace package index unavailable (${(error as Error).message})`);
-			packageDirsCache = new Map();
+			console.warn(`⚠ coverage: workspace index unavailable (${(error as Error).message})`);
+			workspaceIndexCache = EMPTY_INDEX;
 		}
 	}
-	return packageDirsCache;
+	return workspaceIndexCache;
 }
 
 /** Normalise a post-source-map path to the repo-relative form Codecov and the
  * impact map key on. Takes the index as an argument to stay pure/testable. */
-export function resolveSourcePath(
-	filePath: string,
-	packageDirsIndex: ReadonlyMap<string, string>,
-): string {
+export function resolveSourcePath(filePath: string, index: WorkspaceIndex): string {
 	const norm = filePath.replace(/\\/g, '/');
 	if (norm.startsWith('packages/')) return norm;
 	const i = norm.lastIndexOf('packages/');
 	if (i >= 0) return norm.slice(i);
 	if (norm.startsWith('src/')) return `packages/frontend/editor-ui/${norm}`;
-	// Bare workspace specifier (`@n8n/design-system/src/x.vue`). Resolve the name
-	// to its real dir — prefixing `packages/` assumes every package sits directly
-	// under it, which mislabels those under `packages/frontend/` so their changes
-	// match nothing in the impact map and get declared uncovered.
+	// Backend sources arrive dir-relative (`cli/src/x.ts`); the frontend bundle
+	// arrives as a package specifier (`@n8n/design-system/src/x.vue`) whose dir may
+	// sit under packages/frontend/, so `packages/` + name would mislabel it and its
+	// changes would match nothing in the impact map.
+	const asDir = `packages/${norm}`;
+	if (index.dirs.has(asDir.slice(0, asDir.lastIndexOf('/')))) return asDir;
 	const name = packageNameOf(norm);
-	const dir = packageDirsIndex.get(name);
-	if (dir) return `${dir}${norm.slice(name.length)}`;
-	return norm;
+	const dir = index.names.get(name);
+	return dir ? `${dir}${norm.slice(name.length)}` : asDir;
 }
 
 /**
@@ -106,15 +111,16 @@ export const coverageOptions: CoverageReportOptions = {
 	sourceFilter: (sourcePath) =>
 		!sourcePath.includes('node_modules') &&
 		!sourcePath.includes('/dist/') &&
-		// Chunks that never resolved through a source map arrive URL-derived
-		// (`localhost-45789/assets/chunk-*.js`) with no source behind them.
-		!/^localhost[-:]\d+\//.test(sourcePath) &&
+		// Chunks that never resolved through a source map, with no source behind them.
+		// Unanchored: this runs before sourcePath, so the value may still be the URL
+		// (`http://localhost:41401/assets/…`) rather than monocart's `localhost-41401/…`.
+		!/localhost[-:]\d+\//.test(sourcePath) &&
 		!sourcePath.endsWith('.d.ts') &&
 		!sourcePath.endsWith('.spec.ts') &&
 		!sourcePath.endsWith('.test.ts') &&
 		!sourcePath.includes('/__tests__/') &&
 		!sourcePath.includes('/__mocks__/'),
-	sourcePath: (filePath) => resolveSourcePath(filePath, packageDirs()),
+	sourcePath: (filePath) => resolveSourcePath(filePath, workspaceIndex()),
 };
 
 /**
