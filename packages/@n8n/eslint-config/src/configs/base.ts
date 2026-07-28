@@ -417,6 +417,24 @@ export const baseConfig = tseslint.config(
 				},
 			],
 
+			/**
+			 * `n8n-workflow` only re-exports `sleep` as a backwards-compat layer for
+			 * community nodes — internal code must use the canonical implementation.
+			 * https://eslint.org/docs/rules/no-restricted-imports
+			 */
+			'no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						{
+							name: 'n8n-workflow',
+							importNames: ['sleep'],
+							message: 'Import `sleep` from `@n8n/utils/sleep` instead.',
+						},
+					],
+				},
+			],
+
 			// ----------------------------------
 			//         no-unused-imports
 			// ----------------------------------

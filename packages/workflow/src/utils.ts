@@ -241,8 +241,9 @@ export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}):
 	return JSON.stringify(options?.replaceCircularRefs ? replaceCircularReferences(obj) : obj);
 };
 
-// Kept only as a backwards-compat layer for community nodes. Internal code
-// should import `sleep` from `@n8n/utils/sleep`.
+// Kept only as a backwards-compat layer for community nodes — internal code
+// must import `sleep` from `@n8n/utils/sleep` (enforced by the
+// `no-restricted-imports` entry in @n8n/eslint-config).
 export { sleep } from '@n8n/utils/sleep';
 
 export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
