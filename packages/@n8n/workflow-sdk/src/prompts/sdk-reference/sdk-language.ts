@@ -101,8 +101,10 @@ export default workflow('id', 'My workflow')
 When editing an existing workflow, **keep the \`.group(...)\` calls intact** unless
 the change is specifically about grouping.
 
-an invalid group is rejected on save, so these following rules MUST be followed when
-creating or editing groups.
+An invalid group is rejected on save, so these following rules MUST be followed when
+creating or editing groups. (Via the \`create_workflow_from_code\` and \`update_workflow\`
+MCP tools specifically, an invalid group is skipped and reported instead of failing the
+whole call — but still follow the rules below, or the group is silently dropped.)
 
 Rules:
 ${renderRulesLines()}

@@ -99,6 +99,12 @@ describe('NODE_GROUPS_REFERENCE', () => {
 		expect(SDK_LANGUAGE_REFERENCE).toContain(NODE_GROUPS_REFERENCE);
 	});
 
+	it('notes that the MCP create/update tools skip an invalid group instead of failing outright', () => {
+		expect(NODE_GROUPS_REFERENCE).toMatch(/create_workflow_from_code/);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/update_workflow/);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/skipped and reported instead of failing/i);
+	});
+
 	describe('rules for valid groups', () => {
 		it('states the no-trigger rule', () => {
 			// reason: 'trigger-selected'

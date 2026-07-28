@@ -53,6 +53,7 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 		displayTitle: 'Create Workflow from Code',
 	},
 	MCP_ARCHIVE_WORKFLOW_TOOL: { toolName: 'archive_workflow', displayTitle: 'Archive Workflow' },
+	MCP_UPDATE_WORKFLOW_TOOL: { toolName: 'update_workflow', displayTitle: 'Update Workflow' },
 	CODE_BUILDER_SEARCH_NODES_TOOL: { toolName: 'search', displayTitle: 'Search' },
 	CODE_BUILDER_GET_NODE_TYPES_TOOL: { toolName: 'get', displayTitle: 'Get' },
 	CODE_BUILDER_GET_SUGGESTED_NODES_TOOL: { toolName: 'suggest', displayTitle: 'Suggest' },
@@ -232,6 +233,20 @@ describe('create-workflow-from-code MCP tool', () => {
 				}),
 			);
 			expect(typeof tool.handler).toBe('function');
+		});
+	});
+
+	describe('tool description mentions skippedGroups only when canvasGroupsEnabled', () => {
+		test('flag off: does not mention skippedGroups', () => {
+			expect(createTool().config.description).not.toContain('skippedGroups');
+		});
+
+		test('flag on: mentions skippedGroups as the non-fatal group exception', () => {
+			const description = createTool({ canvasGroupsEnabled: true }).config.description;
+			expect(description).toContain(
+				'An invalid node group does not fail the creation: it is skipped and reported in skippedGroups',
+			);
+			expect(description).toContain("Fix and add it afterwards via update_workflow's addNodeGroup");
 		});
 	});
 
