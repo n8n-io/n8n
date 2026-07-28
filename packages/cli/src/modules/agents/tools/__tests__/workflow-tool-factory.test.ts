@@ -1,9 +1,16 @@
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { INode, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import type {
+	IExecuteResponsePromiseData,
+	INode,
+	IWorkflowExecutionDataProcess,
+} from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import { executeWorkflow, type WorkflowToolContext } from '../workflow-tool-factory';
@@ -95,5 +102,58 @@ describe('executeWorkflow → eval instrumentation', () => {
 
 		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
 		expect(runData.configureAdditionalData).toBeUndefined();
+	});
+});
+
+describe('executeWorkflow → webhook response', () => {
+	const relay = mock<WebhookResponseRelay>();
+
+	const runnerResolving = (response: IExecuteResponsePromiseData) =>
+		vi.fn(
+			(
+				_runData: IWorkflowExecutionDataProcess,
+				_loadStaticData?: boolean,
+				_realtime?: boolean,
+				_restartExecutionId?: string,
+				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+			) => {
+				responsePromise?.resolve(response);
+				return 'exec-1';
+			},
+		);
+
+	beforeEach(() => {
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi
+				.fn()
+				.mockResolvedValue({ status: 'success', data: { resultData: { runData: {} } } }),
+		} as unknown as ExecutionPersistence);
+		Container.set(WebhookResponseRelay, relay);
+	});
+
+	afterEach(() => {
+		Container.reset();
+	});
+
+	it('embeds the restored body rather than the store reference it arrived as', async () => {
+		const relayed = {
+			body: { binaryData: { id: 'database:abc' } },
+			headers: {},
+			statusCode: 200,
+		} as IExecuteResponsePromiseData;
+		const restored = { body: { hello: 'world' }, headers: {}, statusCode: 200 };
+		relay.restoreOffloadedBody.mockResolvedValue(restored);
+
+		const result = await executeWorkflow(
+			workflow,
+			triggerNode,
+			'manual',
+			{},
+			buildContext(runnerResolving(relayed)),
+			false,
+		);
+
+		expect(relay.restoreOffloadedBody).toHaveBeenCalledWith(relayed, { reclaim: true });
+		expect(result.data?.response).toEqual(restored);
 	});
 });

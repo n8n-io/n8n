@@ -15,6 +15,7 @@ import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
 import type { JobProcessor } from '../job-processor';
 import { ScalingService } from '../scaling.service';
 import type { Job, JobData, JobId, JobQueue } from '../scaling.types';
+import { ENCODED_BUFFER_KEY, type WebhookResponseRelay } from '../webhook-response-relay';
 
 const queue = mock<JobQueue>({
 	client: { ping: vi.fn() },
@@ -67,6 +68,7 @@ describe('ScalingService', () => {
 	const jobProcessor = mock<JobProcessor>();
 	const executionRepository = mock<ExecutionRepository>();
 	const executionPersistence = mock<ExecutionPersistence>();
+	const webhookResponseRelay = mock<WebhookResponseRelay>();
 
 	let scalingService: ScalingService;
 
@@ -102,6 +104,7 @@ describe('ScalingService', () => {
 			executionPersistence,
 			instanceSettings,
 			mock(),
+			webhookResponseRelay,
 		);
 
 		getRunningJobsCountSpy = vi.spyOn(scalingService, 'getRunningJobsCount');
@@ -370,6 +373,7 @@ describe('ScalingService', () => {
 				mock(),
 				instanceSettings,
 				mock(),
+				webhookResponseRelay,
 			);
 
 			await scalingService.setupQueue();
@@ -407,6 +411,7 @@ describe('ScalingService', () => {
 				mock(),
 				instanceSettings,
 				mock(),
+				webhookResponseRelay,
 			);
 
 			await scalingService.setupQueue();
@@ -439,6 +444,7 @@ describe('ScalingService', () => {
 				mock(),
 				instanceSettings,
 				mock(),
+				webhookResponseRelay,
 			);
 
 			await scalingService.setupQueue();
@@ -474,6 +480,7 @@ describe('ScalingService', () => {
 				mock(),
 				instanceSettings,
 				mock(),
+				webhookResponseRelay,
 			);
 
 			await scalingService.setupQueue();
@@ -584,6 +591,66 @@ describe('ScalingService', () => {
 
 			// Should not throw for trigger type either
 			expect(() => messageHandler('job-trigger', mcpTriggerResponseMessage)).not.toThrow();
+		});
+
+		it('should decode a Buffer body the worker base64-encoded to relay it', async () => {
+			await scalingService.setupQueue();
+			webhookResponseRelay.restoreOffloadedBody.mockImplementation(async (response) => response);
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+			messageHandler('job-trigger', {
+				kind: 'mcp-response',
+				executionId: 'exec-456',
+				mcpType: 'trigger',
+				sessionId: 'session-trigger',
+				messageId: 'msg-trigger',
+				response: {
+					body: { [ENCODED_BUFFER_KEY]: Buffer.from('tool output').toString('base64') },
+					headers: {},
+					statusCode: 200,
+				},
+				workerId: 'worker-xyz',
+			});
+
+			await vi.waitFor(() =>
+				expect(webhookResponseRelay.restoreOffloadedBody).toHaveBeenCalledWith(
+					expect.objectContaining({ body: Buffer.from('tool output') }),
+					{ reclaim: false },
+				),
+			);
+		});
+
+		it('should restore an offloaded body without reclaiming it, since every main reads it', async () => {
+			await scalingService.setupQueue();
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+			const response = {
+				body: { binaryData: { id: 'database:abc' } },
+				headers: {},
+				statusCode: 200,
+			};
+
+			messageHandler('job-trigger', {
+				kind: 'mcp-response',
+				executionId: 'exec-456',
+				mcpType: 'trigger',
+				sessionId: 'session-trigger',
+				messageId: 'msg-trigger',
+				response,
+				workerId: 'worker-xyz',
+			});
+
+			await vi.waitFor(() =>
+				expect(webhookResponseRelay.restoreOffloadedBody).toHaveBeenCalledWith(response, {
+					reclaim: false,
+				}),
+			);
 		});
 	});
 });

@@ -30,6 +30,7 @@ import { z } from 'zod';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
@@ -381,9 +382,13 @@ export async function executeWorkflow(
 
 	const result = await extractResult(executionId, allOutputs);
 	if (isWorkflowToolResponse(webhookResponse)) {
+		const response = await Container.get(WebhookResponseRelay).restoreOffloadedBody(
+			webhookResponse,
+			{ reclaim: true },
+		);
 		result.data = {
 			...(result.data ?? {}),
-			response: truncateResultData({ response: webhookResponse }).response,
+			response: truncateResultData({ response }).response,
 		};
 	}
 	return result;

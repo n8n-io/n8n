@@ -31,7 +31,7 @@ import type {
 	JobMessage,
 	JobFailedMessage,
 } from './scaling.types';
-import { decodeRelayedWebhookResponse } from './webhook-response-relay';
+import { decodeRelayedWebhookResponse, WebhookResponseRelay } from './webhook-response-relay';
 
 @Service()
 export class ScalingService {
@@ -49,6 +49,7 @@ export class ScalingService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
+		private readonly webhookResponseRelay: WebhookResponseRelay,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -482,9 +483,17 @@ export class ScalingService {
 				const mcpService = Container.get(McpService);
 				mcpService.handleWorkerResponse(executionId, runData);
 			} else {
+				// Every main receives this message, so the stored body is left in place
+				// rather than reclaimed on read: deleting it here would strand the main
+				// that owns the session. Execution pruning reclaims it instead.
+				const decoded = decodeRelayedWebhookResponse(response);
+				const toolResult = await this.webhookResponseRelay.restoreOffloadedBody(decoded, {
+					reclaim: false,
+				});
+
 				const { McpServer } = await import('@n8n/n8n-nodes-langchain/mcp/core');
 				const mcpServer = McpServer.instance(this.logger);
-				mcpServer.handleWorkerResponse(sessionId, messageId, response);
+				mcpServer.handleWorkerResponse(sessionId, messageId, toolResult);
 			}
 		} catch (error) {
 			this.logger.error('Failed to handle MCP response', {
