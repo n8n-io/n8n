@@ -958,6 +958,206 @@ describe('createEngineRequests', () => {
 		});
 	});
 
+	describe('Tool argument collision handling', () => {
+		it('stashes user `tool` argument before injecting routing key', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: 'user-value', extra: 123 },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				extra: 123,
+				_n8nOriginalToolArg: 'user-value',
+			});
+		});
+
+		it('does not stash when user `tool` is absent', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { extra: 123 },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				extra: 123,
+			});
+			expect('_n8nOriginalToolArg' in (result[0].input as Record<string, unknown>)).toBe(false);
+		});
+
+		it('does not overwrite existing stash key (defensive guard)', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: 'user', _n8nOriginalToolArg: 'existing', extra: 1 },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				_n8nOriginalToolArg: 'existing',
+				extra: 1,
+			});
+		});
+
+		it.each([
+			{ label: 'empty string', value: '' },
+			{ label: 'null', value: null },
+		])('stashes tool when value is $label', ({ value }) => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: value },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				_n8nOriginalToolArg: value,
+			});
+		});
+
+		it('non-MCP tools remain unchanged (no stash)', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: false,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: 'user-value', extra: 1 },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'user-value',
+				extra: 1,
+			});
+			expect('_n8nOriginalToolArg' in (result[0].input as Record<string, unknown>)).toBe(false);
+		});
+
+		it('stashes non-primitive tool values exactly', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: { nested: 'value' }, extra: 1 },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				extra: 1,
+				_n8nOriginalToolArg: { nested: 'value' },
+			});
+		});
+
+		it('stashes only for colliding tool calls in a batch', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+				}),
+				createMockTool('MCP_Client_other', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: 'a', extra: 'one' },
+					toolCallId: 'call_1',
+				},
+				{
+					tool: 'MCP_Client_other',
+					toolInput: { extra: 'two' },
+					toolCallId: 'call_2',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				extra: 'one',
+				_n8nOriginalToolArg: 'a',
+			});
+			expect(result[1].input).toEqual({
+				tool: 'MCP_Client_other',
+				extra: 'two',
+			});
+			expect('_n8nOriginalToolArg' in (result[1].input as Record<string, unknown>)).toBe(false);
+		});
+	});
+
 	describe('Parallel tool calls signature sharing', () => {
 		it('should share messageLog from first tool call to subsequent calls', async () => {
 			const tools = [
