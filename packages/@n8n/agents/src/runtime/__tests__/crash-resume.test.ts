@@ -65,7 +65,7 @@ function* makeChunkStream(
 
 function makeStreamSuccess(text = 'Hello') {
 	return {
-		fullStream: makeChunkStream([{ type: 'text-delta', textDelta: text }]),
+		stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text }]),
 		finishReason: Promise.resolve('stop'),
 		usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 		response: Promise.resolve({
@@ -77,7 +77,7 @@ function makeStreamSuccess(text = 'Hello') {
 
 function makeStreamWithToolCall(toolCallId: string, args: Record<string, unknown>) {
 	return {
-		fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'working...' }]),
+		stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'working...' }]),
 		finishReason: Promise.resolve('tool-calls'),
 		usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 		response: Promise.resolve({
@@ -251,7 +251,7 @@ describe('step checkpoints + crash resume (durable-log RFC)', () => {
 		const runtime2 = createRuntime(store, [lookupTool, approveTool]);
 		streamText.mockReset();
 		streamText.mockReturnValueOnce({
-			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'asking...' }]),
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'asking...' }]),
 			finishReason: Promise.resolve('tool-calls'),
 			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 			response: Promise.resolve({

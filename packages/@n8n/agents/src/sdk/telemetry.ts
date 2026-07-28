@@ -1,4 +1,5 @@
-import type { TelemetryIntegration } from 'ai';
+import type { Attributes, Context, Span, SpanOptions, Tracer } from '@opentelemetry/api';
+import type { Telemetry as AiSdkTelemetry } from 'ai';
 
 import type {
 	AttributeValue,
@@ -51,41 +52,191 @@ function redactEvent<T extends object>(event: T, redact: RedactFn): T {
 }
 
 /**
- * Wrap a TelemetryIntegration so every hook passes event data through
+ * Wrap an AI SDK telemetry integration so every hook passes event data through
  * the redact callback before forwarding to the original hook.
  */
 function wrapIntegrationWithRedaction(
-	integration: TelemetryIntegration,
+	integration: AiSdkTelemetry,
 	redact: RedactFn,
-): TelemetryIntegration {
-	const wrapped: TelemetryIntegration = {};
+): AiSdkTelemetry {
+	const wrapped: AiSdkTelemetry = {};
 
 	if (integration.onStart) {
-		const orig = integration.onStart;
+		const orig = integration.onStart.bind(integration);
 		wrapped.onStart = (event) => orig(redactEvent(event, redact));
 	}
 	if (integration.onStepStart) {
-		const orig = integration.onStepStart;
+		const orig = integration.onStepStart.bind(integration);
 		wrapped.onStepStart = (event) => orig(redactEvent(event, redact));
 	}
-	if (integration.onToolCallStart) {
-		const orig = integration.onToolCallStart;
-		wrapped.onToolCallStart = (event) => orig(redactEvent(event, redact));
+	if (integration.onLanguageModelCallStart) {
+		const orig = integration.onLanguageModelCallStart.bind(integration);
+		wrapped.onLanguageModelCallStart = (event) => orig(redactEvent(event, redact));
 	}
-	if (integration.onToolCallFinish) {
-		const orig = integration.onToolCallFinish;
-		wrapped.onToolCallFinish = (event) => orig(redactEvent(event, redact));
+	if (integration.onLanguageModelCallEnd) {
+		const orig = integration.onLanguageModelCallEnd.bind(integration);
+		wrapped.onLanguageModelCallEnd = (event) => orig(redactEvent(event, redact));
+	}
+	if (integration.onToolExecutionStart) {
+		const orig = integration.onToolExecutionStart.bind(integration);
+		wrapped.onToolExecutionStart = (event) => orig(redactEvent(event, redact));
+	}
+	if (integration.onToolExecutionEnd) {
+		const orig = integration.onToolExecutionEnd.bind(integration);
+		wrapped.onToolExecutionEnd = (event) => orig(redactEvent(event, redact));
+	}
+	if (integration.onStepEnd) {
+		const orig = integration.onStepEnd.bind(integration);
+		wrapped.onStepEnd = (event) => orig(redactEvent(event, redact));
 	}
 	if (integration.onStepFinish) {
-		const orig = integration.onStepFinish;
+		const orig = integration.onStepFinish.bind(integration);
 		wrapped.onStepFinish = (event) => orig(redactEvent(event, redact));
 	}
-	if (integration.onFinish) {
-		const orig = integration.onFinish;
-		wrapped.onFinish = (event) => orig(redactEvent(event, redact));
+	if (integration.onObjectStepStart) {
+		const orig = integration.onObjectStepStart.bind(integration);
+		wrapped.onObjectStepStart = (event) => orig(redactEvent(event, redact));
+	}
+	if (integration.onObjectStepEnd) {
+		const orig = integration.onObjectStepEnd.bind(integration);
+		wrapped.onObjectStepEnd = (event) => orig(redactEvent(event, redact));
+	}
+	if (integration.onEmbedStart) {
+		const orig = integration.onEmbedStart.bind(integration);
+		wrapped.onEmbedStart = (event) => orig(redactEvent(event, redact));
+	}
+	if (integration.onEmbedEnd) {
+		const orig = integration.onEmbedEnd.bind(integration);
+		wrapped.onEmbedEnd = (event) => orig(redactEvent(event, redact));
+	}
+	if (integration.onRerankStart) {
+		const orig = integration.onRerankStart.bind(integration);
+		wrapped.onRerankStart = (event) => orig(redactEvent(event, redact));
+	}
+	if (integration.onRerankEnd) {
+		const orig = integration.onRerankEnd.bind(integration);
+		wrapped.onRerankEnd = (event) => orig(redactEvent(event, redact));
+	}
+	if (integration.onEnd) {
+		const orig = integration.onEnd.bind(integration);
+		wrapped.onEnd = (event) => orig(redactEvent(event, redact));
+	}
+	if (integration.onAbort) {
+		const orig = integration.onAbort.bind(integration);
+		wrapped.onAbort = (event) => orig(redactEvent(event, redact));
+	}
+	if (integration.onError) {
+		const orig = integration.onError.bind(integration);
+		wrapped.onError = (error) => orig(redactValue(error, redact));
+	}
+	if (integration.executeLanguageModelCall) {
+		const orig = integration.executeLanguageModelCall.bind(integration);
+		wrapped.executeLanguageModelCall = (options) => {
+			const redacted = redactEvent(options, redact);
+			return orig({ ...redacted, callId: options.callId, execute: options.execute });
+		};
+	}
+	if (integration.executeTool) {
+		const orig = integration.executeTool.bind(integration);
+		wrapped.executeTool = (options) => {
+			const redacted = redactEvent(options, redact);
+			return orig({
+				...redacted,
+				callId: options.callId,
+				toolCallId: options.toolCallId,
+				execute: options.execute,
+			});
+		};
 	}
 
 	return wrapped;
+}
+
+function isOpenTelemetryTracer(value: unknown): value is Tracer {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		typeof Reflect.get(value, 'startSpan') === 'function' &&
+		typeof Reflect.get(value, 'startActiveSpan') === 'function'
+	);
+}
+
+class MetadataEnrichedTracer implements Tracer {
+	constructor(
+		private readonly delegate: Tracer,
+		private readonly attributes: Attributes,
+	) {}
+
+	startSpan(name: string, options?: SpanOptions, context?: Context): Span {
+		return this.delegate.startSpan(
+			name,
+			{
+				...options,
+				attributes: { ...this.attributes, ...options?.attributes },
+			},
+			context,
+		);
+	}
+
+	startActiveSpan<F extends (span: Span) => unknown>(name: string, fn: F): ReturnType<F>;
+	startActiveSpan<F extends (span: Span) => unknown>(
+		name: string,
+		options: SpanOptions,
+		fn: F,
+	): ReturnType<F>;
+	startActiveSpan<F extends (span: Span) => unknown>(
+		name: string,
+		options: SpanOptions,
+		context: Context,
+		fn: F,
+	): ReturnType<F>;
+	startActiveSpan<F extends (span: Span) => unknown>(
+		name: string,
+		optionsOrFn: SpanOptions | F,
+		contextOrFn?: Context | F,
+		fn?: F,
+	): ReturnType<F> {
+		if (typeof optionsOrFn === 'function') {
+			return this.delegate.startActiveSpan(name, optionsOrFn);
+		}
+
+		const options = {
+			...optionsOrFn,
+			attributes: { ...this.attributes, ...optionsOrFn.attributes },
+		};
+		if (typeof contextOrFn === 'function') {
+			return this.delegate.startActiveSpan(name, options, contextOrFn);
+		}
+		if (contextOrFn === undefined || fn === undefined) {
+			throw new Error('OpenTelemetry active span callback is required.');
+		}
+
+		return this.delegate.startActiveSpan(name, options, contextOrFn, fn);
+	}
+}
+
+function createMetadataEnrichedTracer(
+	tracer: Tracer,
+	metadata: Record<string, AttributeValue> | undefined,
+): Tracer {
+	if (!metadata || Object.keys(metadata).length === 0) return tracer;
+
+	const attributes = Object.fromEntries(
+		Object.entries(metadata).map(([key, value]) => [`ai.telemetry.metadata.${key}`, value]),
+	);
+	return new MetadataEnrichedTracer(tracer, attributes);
+}
+
+async function createAiSdkOpenTelemetryIntegrationFactory(
+	tracer: OpaqueTracer,
+): Promise<(metadata: Record<string, AttributeValue> | undefined) => AiSdkTelemetry> {
+	if (!isOpenTelemetryTracer(tracer)) {
+		throw new Error('Telemetry tracer must implement startSpan() and startActiveSpan().');
+	}
+
+	const { LegacyOpenTelemetry } = await import('@ai-sdk/otel');
+	return (metadata) =>
+		new LegacyOpenTelemetry({ tracer: createMetadataEnrichedTracer(tracer, metadata) });
 }
 
 /**
@@ -128,7 +279,7 @@ async function createOtlpTracer(endpoint: string): Promise<{
  *
  * Use `.tracer()` with a pre-built integration (e.g. `LangSmithTelemetry`,
  * `integrations.langsmith()`) or `.otlpEndpoint()` for a generic OTLP
- * collector. Add AI SDK `TelemetryIntegration` hooks via `.integration()`.
+ * collector. Add AI SDK `Telemetry` hooks via `.integration()`.
  *
  * @example
  * ```typescript
@@ -157,7 +308,7 @@ export class Telemetry {
 
 	protected redactFn?: RedactFn;
 
-	protected integrationsList: TelemetryIntegration[] = [];
+	protected integrationsList: AiSdkTelemetry[] = [];
 
 	protected tracerValue?: OpaqueTracer;
 
@@ -242,7 +393,7 @@ export class Telemetry {
 	}
 
 	/** Add a telemetry integration (e.g. for observability platforms). */
-	integration(value: TelemetryIntegration): this {
+	integration(value: AiSdkTelemetry): this {
 		this.integrationsList.push(value);
 		return this;
 	}
@@ -285,9 +436,26 @@ export class Telemetry {
 			provider = otlp.provider;
 		}
 
-		const integrations = this.redactFn
-			? this.integrationsList.map((i) => wrapIntegrationWithRedaction(i, this.redactFn!))
+		const redactFn = this.redactFn;
+		const customIntegrations = redactFn
+			? this.integrationsList.map((integration) =>
+					wrapIntegrationWithRedaction(integration, redactFn),
+				)
 			: [...this.integrationsList];
+		let resolveIntegrations: BuiltTelemetry['resolveIntegrations'];
+		let integrations = customIntegrations;
+		if (tracer !== undefined) {
+			const createOpenTelemetryIntegration =
+				await createAiSdkOpenTelemetryIntegrationFactory(tracer);
+			resolveIntegrations = (metadata) => {
+				const integration = createOpenTelemetryIntegration(metadata);
+				return [
+					redactFn ? wrapIntegrationWithRedaction(integration, redactFn) : integration,
+					...customIntegrations,
+				];
+			};
+			integrations = resolveIntegrations(this.metadataValue);
+		}
 
 		return {
 			enabled: this.enabledValue,
@@ -297,6 +465,7 @@ export class Telemetry {
 			recordOutputs: this.recordOutputsValue,
 			runtimeRootSpanEnabled: this.runtimeRootSpanEnabledValue,
 			integrations,
+			...(resolveIntegrations && { resolveIntegrations }),
 			tracer,
 			provider,
 			credentialName: this.credentialNameValue,

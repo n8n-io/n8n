@@ -1,4 +1,4 @@
-import type { TelemetryIntegration } from 'ai';
+import type { Telemetry as AiSdkTelemetry } from 'ai';
 
 import { Telemetry } from '../telemetry';
 
@@ -35,9 +35,47 @@ describe('Telemetry builder', () => {
 	});
 
 	it('accepts a pre-built tracer', async () => {
-		const fakeTracer = { startSpan: vi.fn() };
+		const fakeTracer = { startSpan: vi.fn(), startActiveSpan: vi.fn() };
 		const built = await new Telemetry().tracer(fakeTracer).build();
 		expect(built.tracer).toBe(fakeTracer);
+		expect(built.integrations).toHaveLength(1);
+		expect(built.integrations[0]).toEqual(
+			expect.objectContaining({
+				onStart: expect.any(Function),
+				executeLanguageModelCall: expect.any(Function),
+			}),
+		);
+	});
+
+	it('preserves metadata on AI SDK 7 OpenTelemetry spans', async () => {
+		const fakeTracer = {
+			startSpan: vi.fn(() => ({ end: vi.fn() })),
+			startActiveSpan: vi.fn(),
+		};
+		const built = await new Telemetry().metadata({ team: 'platform' }).tracer(fakeTracer).build();
+
+		built.integrations[0].onStart?.({
+			operationId: 'ai.generateText',
+			callId: 'call-1',
+			provider: 'openai.responses',
+			modelId: 'gpt-5',
+			instructions: 'test',
+			messages: [],
+			maxRetries: 2,
+			functionId: 'agent',
+			recordInputs: true,
+			recordOutputs: true,
+		} as never);
+
+		expect(fakeTracer.startSpan).toHaveBeenCalledWith(
+			'ai.generateText',
+			expect.objectContaining({
+				attributes: expect.objectContaining({
+					'ai.telemetry.metadata.team': 'platform',
+				}),
+			}),
+			undefined,
+		);
 	});
 
 	it('throws when both .tracer() and .otlpEndpoint() are set', async () => {
@@ -47,21 +85,41 @@ describe('Telemetry builder', () => {
 	});
 
 	it('collects multiple integrations', async () => {
-		const int1: TelemetryIntegration = { onStart: vi.fn() };
-		const int2: TelemetryIntegration = { onFinish: vi.fn() };
+		const int1: AiSdkTelemetry = { onStart: vi.fn() };
+		const int2: AiSdkTelemetry = { onEnd: vi.fn() };
 		const built = await new Telemetry().integration(int1).integration(int2).build();
 		expect(built.integrations).toHaveLength(2);
 	});
 });
 
 describe('Telemetry — redaction wrapping', () => {
+	it('preserves the receiver for stateful integration methods', async () => {
+		class StatefulIntegration {
+			readonly receivedEvents: unknown[] = [];
+
+			onStart(event: Parameters<NonNullable<AiSdkTelemetry['onStart']>>[0]) {
+				this.receivedEvents.push(event);
+			}
+		}
+
+		const integration = new StatefulIntegration();
+		const built = await new Telemetry()
+			.redact((data) => data)
+			.integration(integration)
+			.build();
+
+		built.integrations[0].onStart!({ operationId: 'ai.generateText' } as never);
+
+		expect(integration.receivedEvents).toHaveLength(1);
+	});
+
 	it('wraps integrations with redaction when .redact() is set', async () => {
 		const receivedEvents: unknown[] = [];
-		const integration: TelemetryIntegration = {
+		const integration: AiSdkTelemetry = {
 			onStart: (event) => {
 				receivedEvents.push(event);
 			},
-			onFinish: (event) => {
+			onEnd: (event) => {
 				receivedEvents.push(event);
 			},
 		};
@@ -86,7 +144,7 @@ describe('Telemetry — redaction wrapping', () => {
 	});
 
 	it('does not wrap integrations when .redact() is not set', async () => {
-		const integration: TelemetryIntegration = { onStart: vi.fn() };
+		const integration: AiSdkTelemetry = { onStart: vi.fn() };
 		const built = await new Telemetry().integration(integration).build();
 		// The integration should be a copy (not the same reference due to spread) but functionally identical
 		expect(built.integrations[0].onStart).toBe(integration.onStart);
@@ -94,7 +152,7 @@ describe('Telemetry — redaction wrapping', () => {
 
 	it('redacts top-level scalar fields via the redact callback', async () => {
 		const receivedEvents: unknown[] = [];
-		const integration: TelemetryIntegration = {
+		const integration: AiSdkTelemetry = {
 			onStart: (event) => {
 				receivedEvents.push(event);
 			},
@@ -118,7 +176,7 @@ describe('Telemetry — redaction wrapping', () => {
 
 	it('redacts objects inside arrays', async () => {
 		const receivedEvents: unknown[] = [];
-		const integration: TelemetryIntegration = {
+		const integration: AiSdkTelemetry = {
 			onStart: (event) => {
 				receivedEvents.push(event);
 			},
