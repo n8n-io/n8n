@@ -30,9 +30,7 @@ class WidgetResponseDto extends Z.class({ id: z.string() }) {}
 
 /**
  * Marks `controllerClass` as a public API controller the same way `@PublicApiController` does,
- * without using the literal decorator - `public-api-controllers.test.ts` asserts every
- * `@PublicApiController` usage lives under `controllers/*.public.controller.ts`, which these
- * inline test fixtures deliberately don't.
+ * without using the literal decorator.
  */
 function markPublicApiController(controllerClass: Controller, basePath: `/${string}`) {
 	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(controllerClass);
@@ -146,8 +144,8 @@ describe('public-api-route-resolver', () => {
 
 		it('throws when an undecorated parameter trails after the last decorated one', () => {
 			// Unlike a mid-sequence gap, a trailing undecorated parameter never gets a `route.args`
-			// index assigned at all - it's not a hole in the sparse array, it's past its end. Only
-			// `design:paramtypes` (which has one entry per actual declared parameter) can reveal it.
+			// index assigned at all `design:paramtypes` (which has one entry per actual declared
+			// parameter) can reveal it.
 			class TestController {
 				method(@Query _query: WidgetQueryDto, _extra: number) {}
 			}
@@ -166,7 +164,6 @@ describe('public-api-route-resolver', () => {
 
 		it('throws when a @Body arg has no resolvable Zod DTO', () => {
 			class TestController {
-				// Typed as a plain builtin, not a Zod DTO - simulates a developer forgetting one.
 				method(@Body _body: object) {}
 			}
 			const { args } = Container.get(ControllerRegistryMetadata).getRouteMetadata(

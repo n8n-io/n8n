@@ -113,14 +113,6 @@ export function buildArtifactsFromRegistry(
 }
 
 /**
- * The single source of truth for every generated fragment: its `outputPath` (relative to the
- * `v1` directory) and freshly-rendered `content`. Both the build (`generateDocs`, which writes
- * these to disk) and the drift guard (`__tests__/generated-spec-drift.test.ts`, which asserts the
- * committed files still match) iterate this. Decorator-routed operations are discovered by scanning
- * `@PublicApiController` classes, so a newly decorated route (and any schema it newly shares)
- * extends this automatically.
- */
-/**
  * Registers every shared response DTO as a named component on `registry`, keyed by DTO class
  * identity (see `getSharedResponseSchemas`) so a schema is only ever "the same" as another when
  * it's the exact same class. The registry and the generated file name still need a plain string

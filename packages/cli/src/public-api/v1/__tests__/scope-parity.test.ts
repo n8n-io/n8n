@@ -48,7 +48,7 @@ async function loadOperations(): Promise<Operation[]> {
 			if (!op) continue;
 
 			const isDecoratorRouted = op['x-decorator-routed'] === true;
-			// A decorator-routed operation carries its real operationId as a plain `operationId`,
+			// A decorator-routed operation carries its real operationId as a plain `operationId`
 			// plus a stub `x-eov-operation-id: unreachable` that exists only to satisfy eov - prefer
 			// the real one for these instead of the usual eov-first fallback.
 			const operationId = isDecoratorRouted

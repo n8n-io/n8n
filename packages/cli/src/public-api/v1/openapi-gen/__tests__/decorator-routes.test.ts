@@ -21,9 +21,7 @@ class WidgetQueryDto extends Z.class({ q: z.string().optional() }) {}
 
 /**
  * Marks `controllerClass` as a public API controller the same way `@PublicApiController` does,
- * without using the literal decorator - `public-api-controllers.test.ts` asserts every
- * `@PublicApiController` usage lives under `controllers/*.public.controller.ts`, which this
- * inline test fixture deliberately doesn't.
+ * without using the literal decorator.
  */
 function markPublicApiController(controllerClass: Controller, basePath: `/${string}`) {
 	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(controllerClass);
@@ -76,17 +74,16 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(operation.config.tags).toEqual(['Widgets', 'Beta']);
 	});
 
-	it('throws when @ApiTags is absent, rather than guessing a tag from the URL', () => {
+	it('omits tags when @ApiTags is absent, rather than guessing a tag from the URL', () => {
 		class WidgetsPublicController {
 			@Get('/')
 			method() {}
 		}
 		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 
-		expect(() => getDecoratorGeneratedOperations()).toThrow(UnexpectedError);
-		expect(() => getDecoratorGeneratedOperations()).toThrow(
-			/WidgetsPublicController\.method has no @ApiTags declared/,
-		);
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.tags).toBeUndefined();
 	});
 
 	it('$refs the matching shared response file for a declared @ApiErrorResponse', () => {

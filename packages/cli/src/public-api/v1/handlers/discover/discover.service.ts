@@ -101,8 +101,7 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 			const eovHandlerPath = operation['x-eov-operation-handler'];
 
 			// Decorator-routed operations (@PublicApiController) carry x-eov-* fields
-			// but they point at an unreachable stub, not a real handler, `x-decorator-routed`
-			// is the actual signal to tell them apart.
+			// but they point at an unreachable stub, `x-decorator-routed` is the signal to tell them apart.
 			const hasEovHandler =
 				operation['x-decorator-routed'] !== true &&
 				typeof eovOperationId === 'string' &&
