@@ -1,14 +1,14 @@
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { APP_Z_INDEXES } from '@n8n/frontend-constants/z-indexes';
 import { createTestingPinia } from '@pinia/testing';
-import { screen, waitFor, within } from '@testing-library/vue';
+import { render, screen, waitFor, within } from '@testing-library/vue';
 import { ElNotification } from 'element-plus';
 import { vi } from 'vitest';
 import { h, defineComponent } from 'vue';
 
-import type { NotificationOptions } from './types/notification';
+import type { NotificationOptions, ToastNotificationState } from './types/notification';
 import { useTelemetry } from './useTelemetry';
-import { useToast, registerNotificationState, setNotify } from './useToast';
+import { useToast, NotificationStateKey, registerNotificationState, setNotify } from './useToast';
 
 vi.mock('./useTelemetry');
 
@@ -32,6 +32,20 @@ function suppressNotifications({ allowErrors }: { allowErrors: boolean }) {
 	notificationState.areNotificationsSuppressed = true;
 	notificationState.allowErrorNotificationsWhenSuppressed = allowErrors;
 }
+
+/** Typed so the spy satisfies the package's `NotifyFn` contract. */
+const createNotifySpy = () => vi.fn((_options: Record<string, unknown>) => ({ close: vi.fn() }));
+
+/**
+ * A state that suppresses everything — the observable marker used to tell which
+ * resolution rung won, since suppression is what stops `notify` being called.
+ */
+const suppressedState = (): ToastNotificationState => ({
+	areNotificationsSuppressed: true,
+	allowErrorNotificationsWhenSuppressed: false,
+	pendingNotificationsForViews: {},
+	setNotificationsForView: vi.fn(),
+});
 
 const route = vi.hoisted(() => ({
 	name: '' as string | symbol,
@@ -457,6 +471,19 @@ describe('useToast', () => {
 			expect(lateNotify).toHaveBeenCalledTimes(1);
 		});
 
+		it('resolves through the singleton when there is no injection context', () => {
+			// `useToast()` called outside any component — `app/init.ts` and
+			// store-invoked composables do this, which is why injection alone cannot
+			// carry the channel.
+			const notifySpy = createNotifySpy();
+			setNotify(notifySpy);
+			registerNotificationState(() => suppressedState());
+
+			useToast().showMessage({ message: 'Suppressed via singleton' });
+
+			expect(notifySpy).not.toHaveBeenCalled();
+		});
+
 		it('picks up notification state registered after the composable was created', () => {
 			// The notifier is registered *before* the composable exists, so it is
 			// identical whether resolution is per-call or once-bound. That isolates the
@@ -478,6 +505,50 @@ describe('useToast', () => {
 			earlyToast.showMessage({ message: 'Should be suppressed' });
 
 			expect(notifySpy).not.toHaveBeenCalled();
+		});
+	});
+
+	// `InjectionKey` -> singleton -> warned noop, matching `useTelemetry` in this
+	// package. The injected value is read while `useToast()` runs in setup, since
+	// `inject` has no context inside the event-time functions; a naive per-call
+	// `inject` would leave this rung permanently dead while every other test still
+	// passed, so these assert the rung is actually reachable.
+	describe('injection', () => {
+		afterEach(() => {
+			setNotify(ElNotification);
+			registerNotificationState(() => notificationState);
+		});
+
+		function renderConsumer(provide?: Record<symbol, ToastNotificationState>) {
+			const Consumer = defineComponent({
+				setup() {
+					useToast().showMessage({ message: 'From a component' });
+					return () => h('div');
+				},
+			});
+			render(Consumer, provide ? { global: { provide } } : undefined);
+		}
+
+		it('prefers a subtree-provided state over the registered singleton', () => {
+			const notifySpy = createNotifySpy();
+			setNotify(notifySpy);
+			// Singleton is NOT suppressed, provided state IS — so a call proves the
+			// singleton won and no call proves injection won.
+			registerNotificationState(() => notificationState);
+
+			renderConsumer({ [NotificationStateKey as symbol]: suppressedState() });
+
+			expect(notifySpy).not.toHaveBeenCalled();
+		});
+
+		it('falls back to the singleton when the subtree provides nothing', () => {
+			const notifySpy = createNotifySpy();
+			setNotify(notifySpy);
+			registerNotificationState(() => notificationState);
+
+			renderConsumer();
+
+			expect(notifySpy).toHaveBeenCalledTimes(1);
 		});
 	});
 });

@@ -2,7 +2,7 @@ import { VIEWS } from '@n8n/frontend-constants/views';
 import { APP_Z_INDEXES } from '@n8n/frontend-constants/z-indexes';
 import { sanitizeHtml } from '@n8n/frontend-utils/htmlUtils';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, hasInjectionContext, inject, type InjectionKey } from 'vue';
 import { useRoute } from 'vue-router';
 
 import type {
@@ -66,6 +66,14 @@ function resolveNotify(): NotifyFn {
 	return noopNotify;
 }
 
+/**
+ * Injection key for the notification state. A component subtree may provide its
+ * own (e.g. a pop-out window with its own store); `useToast` reads it when
+ * called inside an injection context. Mirrors {@link TelemetryKey}.
+ */
+export const NotificationStateKey: InjectionKey<ToastNotificationState> =
+	Symbol('ToastNotificationState');
+
 let registeredNotificationState: (() => ToastNotificationState) | undefined;
 
 /**
@@ -94,8 +102,24 @@ const noopNotificationState: ToastNotificationState = {
 
 let warnedAboutMissingNotificationState = false;
 
-function resolveNotificationState(): ToastNotificationState {
-	if (registeredNotificationState) return registeredNotificationState();
+/**
+ * Resolution order, matching {@link useTelemetry}: a subtree-provided instance
+ * (via {@link NotificationStateKey}), then the app-registered singleton (via
+ * {@link registerNotificationState}), then a warned no-op.
+ *
+ * `injected` is passed in rather than read here because `inject` needs an
+ * injection context: one exists while `useToast()` runs during setup, but not
+ * inside the event-time functions that call this per call. Reading it here would
+ * leave the injection rung permanently dead.
+ *
+ * The singleton rung holds a provider, not a value, where `useTelemetry` holds a
+ * value — bootstrap registers during module evaluation, which is strictly before
+ * `app.use(pinia)` in `main.ts`, so resolving the store eagerly throws
+ * `getActivePinia()`. That is the one deliberate divergence from the idiom.
+ */
+function resolveNotificationState(injected: ToastNotificationState | null): ToastNotificationState {
+	const state = injected ?? registeredNotificationState?.();
+	if (state) return state;
 
 	// Falling back means bootstrap never registered. Suppression would then be
 	// ignored rather than honoured — a silent behaviour change — so warn once in
@@ -123,6 +147,14 @@ export function useToast() {
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
 
+	// Read here, not per call: `inject` requires an injection context, which
+	// exists while this composable runs during setup but not inside the event-time
+	// functions below. `useToast` is also called outside any component
+	// (`app/init.ts`, store-invoked composables), hence the guard.
+	const injectedNotificationState = hasInjectionContext()
+		? inject(NotificationStateKey, null)
+		: null;
+
 	function causedByCredential(message: string | undefined) {
 		if (!message || typeof message !== 'string') return false;
 
@@ -134,7 +166,7 @@ export function useToast() {
 		// bootstrap registers would otherwise stay bound to the no-ops for its whole
 		// lifetime, silently dropping toasts and ignoring suppression.
 		const notify = resolveNotify();
-		const notificationState = resolveNotificationState();
+		const notificationState = resolveNotificationState(injectedNotificationState);
 
 		const suppressed = notificationState.areNotificationsSuppressed;
 		const allowErrors = notificationState.allowErrorNotificationsWhenSuppressed;
@@ -311,7 +343,7 @@ export function useToast() {
 
 	// Pick up and display notifications for the given list of views
 	function showNotificationForViews(views: VIEWS[]) {
-		const notificationState = resolveNotificationState();
+		const notificationState = resolveNotificationState(injectedNotificationState);
 
 		const notifications: NotificationOptions[] = [];
 		views.forEach((view) => {
