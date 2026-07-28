@@ -1,0 +1,82 @@
+{
+  "slug": "flower-shop",
+  "name": "Flower Shop",
+  "version": "1.0.0",
+  "identity": {
+    "customer_term": "customer",
+    "staff_term": "florist",
+    "visit_term": "order"
+  },
+  "prompts": {
+    "tone": "elegant, empathetic, occasion-aware",
+    "vocabulary": ["arrangement", "bouquet", "centerpiece", "boutonniere", "corsage", "sympathy spray", "seasonal stems"],
+    "greeting_style": "graceful and attentive; mirror the emotional register of the occasion",
+    "upsell_rules": [
+      "Offer vase upgrade and card message on every order",
+      "For weddings, offer consultation booking instead of quoting in chat",
+      "For sympathy orders, be gentle — no upsells beyond delivery options"
+    ],
+    "never_say": ["celebrate", "congratulations (when occasion is funeral/sympathy)"]
+  },
+  "booking": {
+    "enabled": true,
+    "slot_minutes": 30,
+    "buffer_minutes": 0,
+    "deposit_required": true,
+    "staff_assignment": "any",
+    "cancellation_window_hours": 48,
+    "services": [
+      { "key": "wedding_consultation", "default_minutes": 60 },
+      { "key": "event_consultation", "default_minutes": 45 },
+      { "key": "pickup_order", "default_minutes": 15 }
+    ]
+  },
+  "modules": {
+    "missed_call_recovery": true,
+    "rebooking": false,
+    "occasion_detection": true,
+    "delivery": true,
+    "holiday_calendar": true,
+    "wedding": true,
+    "funeral": true,
+    "birthday": true,
+    "anniversary": true,
+    "product_recommendation": true,
+    "review_requests": true
+  },
+  "intents": {
+    "place_order": { "route": "ordering", "priority": 1 },
+    "delivery_status": { "route": "delivery", "priority": 1 },
+    "occasion_inquiry": { "route": "occasion_detection", "priority": 1 },
+    "wedding_inquiry": { "route": "booking", "priority": 1 },
+    "sympathy_inquiry": { "route": "ordering", "priority": 0 },
+    "pricing_question": { "route": "knowledge", "priority": 2 },
+    "hours_location": { "route": "knowledge", "priority": 2 },
+    "complaint": { "route": "human_handoff", "priority": 0 },
+    "other": { "route": "knowledge", "priority": 3 }
+  },
+  "kpis": ["todays_leads", "revenue", "orders", "missed_calls", "conversion_rate", "repeat_customers", "average_ticket", "delivery_on_time_rate", "reply_rate", "ai_usage"],
+  "calendars": {
+    "seasonal_peaks": ["valentines_day", "mothers_day", "easter", "administrative_professionals_day", "thanksgiving", "christmas"],
+    "capacity_rules": { "peak_day_order_cap_enabled": true, "peak_lead_time_hours": 48 }
+  },
+  "compliance": {
+    "quiet_hours": { "start": "20:00", "end": "08:00" },
+    "consent_language_required": false,
+    "notes": "Sympathy/funeral conversations flag ai_summary.sensitivity=high; tone rules above apply."
+  },
+  "delivery": {
+    "zones_configurable": true,
+    "same_day_cutoff_local_time": "13:00",
+    "fee_model": "per_zone"
+  },
+  "occasions": {
+    "detect": ["wedding", "funeral", "birthday", "anniversary", "get_well", "new_baby", "just_because"],
+    "route_map": {
+      "wedding": "wedding_module",
+      "funeral": "funeral_module",
+      "birthday": "birthday_module",
+      "anniversary": "anniversary_module"
+    }
+  }
+}

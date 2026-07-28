@@ -1,0 +1,71 @@
+{
+  "slug": "nail-salon",
+  "name": "Nail Salon",
+  "version": "1.0.0",
+  "identity": {
+    "customer_term": "guest",
+    "staff_term": "technician",
+    "visit_term": "appointment"
+  },
+  "prompts": {
+    "tone": "warm, upbeat, welcoming",
+    "vocabulary": ["gel-x", "dip powder", "acrylic full set", "fill", "pedicure", "nail art", "french tip", "chrome", "cat eye"],
+    "greeting_style": "friendly, first-name, emoji-light",
+    "upsell_rules": [
+      "If booking a pedicure, offer to add a manicure combo",
+      "If booking a fill, mention nail art add-ons",
+      "Mention gift cards near major holidays"
+    ],
+    "never_say": ["cheap", "discount unless a campaign is active"]
+  },
+  "booking": {
+    "enabled": true,
+    "slot_minutes": 45,
+    "buffer_minutes": 10,
+    "deposit_required": false,
+    "staff_assignment": "preferred_technician_first",
+    "cancellation_window_hours": 4,
+    "services": [
+      { "key": "manicure", "default_minutes": 30 },
+      { "key": "pedicure", "default_minutes": 45 },
+      { "key": "full_set", "default_minutes": 75 },
+      { "key": "fill", "default_minutes": 60 },
+      { "key": "nail_art", "default_minutes": 20, "addon": true }
+    ]
+  },
+  "modules": {
+    "missed_call_recovery": true,
+    "rebooking": true,
+    "occasion_detection": false,
+    "delivery": false,
+    "holiday_calendar": true,
+    "wedding": false,
+    "funeral": false,
+    "birthday": false,
+    "anniversary": false,
+    "product_recommendation": false,
+    "review_requests": true
+  },
+  "intents": {
+    "book_appointment": { "route": "booking", "priority": 1 },
+    "pricing_question": { "route": "knowledge", "priority": 2 },
+    "hours_location": { "route": "knowledge", "priority": 2 },
+    "reschedule_cancel": { "route": "booking", "priority": 1 },
+    "group_booking": { "route": "booking", "priority": 1 },
+    "complaint": { "route": "human_handoff", "priority": 0 },
+    "other": { "route": "knowledge", "priority": 3 }
+  },
+  "kpis": ["todays_leads", "revenue", "bookings", "missed_calls", "conversion_rate", "repeat_customers", "average_ticket", "rebooking_rate", "reply_rate", "ai_usage"],
+  "calendars": {
+    "seasonal_peaks": ["valentines_day", "prom_season", "mothers_day", "wedding_season", "christmas", "new_year"]
+  },
+  "compliance": {
+    "quiet_hours": { "start": "20:00", "end": "09:00" },
+    "consent_language_required": false,
+    "notes": "SMS marketing requires prior opt-in (TCPA US / CASL CA / Spam Act AU) — enforced platform-wide."
+  },
+  "rebooking": {
+    "cadence_days_by_service": { "fill": 21, "pedicure": 28, "full_set": 21 },
+    "reminder_channel_order": ["sms", "email"]
+  }
+}

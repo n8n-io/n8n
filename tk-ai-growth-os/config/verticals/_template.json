@@ -1,0 +1,55 @@
+{
+  "$comment": "Vertical config template. Copy, rename to <slug>.json, fill in. This JSON is loaded into vertical_configs.config and merged under tenant overrides by TK-CORE-001. Workflows branch on capability flags (modules.*), NEVER on the slug.",
+  "slug": "_template",
+  "name": "Template Vertical",
+  "version": "1.0.0",
+  "identity": {
+    "customer_term": "client",
+    "staff_term": "team member",
+    "visit_term": "appointment"
+  },
+  "prompts": {
+    "tone": "warm, professional, concise",
+    "vocabulary": [],
+    "greeting_style": "friendly first-name basis",
+    "upsell_rules": [],
+    "never_say": []
+  },
+  "booking": {
+    "enabled": true,
+    "slot_minutes": 30,
+    "buffer_minutes": 0,
+    "deposit_required": false,
+    "staff_assignment": "any",
+    "cancellation_window_hours": 24,
+    "services": []
+  },
+  "modules": {
+    "missed_call_recovery": true,
+    "rebooking": false,
+    "occasion_detection": false,
+    "delivery": false,
+    "holiday_calendar": false,
+    "wedding": false,
+    "funeral": false,
+    "birthday": false,
+    "anniversary": false,
+    "product_recommendation": false,
+    "review_requests": true
+  },
+  "intents": {
+    "book_appointment": { "route": "booking", "priority": 1 },
+    "pricing_question": { "route": "knowledge", "priority": 2 },
+    "hours_location": { "route": "knowledge", "priority": 2 },
+    "reschedule_cancel": { "route": "booking", "priority": 1 },
+    "complaint": { "route": "human_handoff", "priority": 0 },
+    "other": { "route": "knowledge", "priority": 3 }
+  },
+  "kpis": ["todays_leads", "revenue", "bookings", "missed_calls", "conversion_rate", "repeat_customers", "average_ticket", "open_rate", "reply_rate", "ai_usage"],
+  "calendars": { "seasonal_peaks": [] },
+  "compliance": {
+    "quiet_hours": null,
+    "consent_language_required": false,
+    "notes": ""
+  }
+}

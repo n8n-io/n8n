@@ -1,0 +1,78 @@
+{
+  "name": "TK-CORE-002 | Error Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## TK-CORE-002 Error Handler v1.0.0\n**Purpose:** Global error workflow for ALL TK workflows — logs the failure to workflow_logs and alerts operators.\n**Input:** n8n Error Trigger payload.\n**Output:** none (terminal).\n**Config:** TK_SUPABASE_URL, TK_ALERT_WEBHOOK_URL envs + Supabase credential.\n**Failure modes:** if logging itself fails, the alert webhook still fires (parallel branches)."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-100, -260],
+      "name": "Docs"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [-100, 0],
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize the n8n error payload into a structured log row.\nconst e = $json;\nconst run = e.execution ?? {};\nconst wf = e.workflow ?? {};\nconst lastNodeExecuted = run.lastNodeExecuted ?? 'unknown';\nconst errMessage = run.error?.message ?? 'unknown error';\n\n// request_id / company_id travel in the failed execution's input data when available.\nconst firstItem = run.error?.context?.itemIndex !== undefined ? run.error.context : {};\n\nreturn [{ json: {\n  company_id: firstItem.company_id ?? null,\n  request_id: firstItem.request_id ?? run.id ?? null,\n  workflow: wf.name ?? 'unknown',\n  level: 'error',\n  event: 'workflow_failed',\n  detail: {\n    execution_id: run.id,\n    execution_url: run.url,\n    node: lastNodeExecuted,\n    message: errMessage,\n    stack: run.error?.stack ?? null,\n  },\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, 0],
+      "name": "Normalize Error"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TK_SUPABASE_URL }}/rest/v1/workflow_logs",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [340, -100],
+      "name": "Log to Supabase",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TK_ALERT_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: `🚨 [${$json.workflow}] failed at node ${$json.detail.node}: ${$json.detail.message}`, execution_url: $json.detail.execution_url, company_id: $json.company_id, request_id: $json.request_id }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [340, 100],
+      "name": "Alert Operators",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Error Trigger": { "main": [[{ "node": "Normalize Error", "type": "main", "index": 0 }]] },
+    "Normalize Error": { "main": [[
+      { "node": "Log to Supabase", "type": "main", "index": 0 },
+      { "node": "Alert Operators", "type": "main", "index": 0 }
+    ]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": ["tk", "core"]
+}

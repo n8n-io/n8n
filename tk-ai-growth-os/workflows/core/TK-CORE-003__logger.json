@@ -1,0 +1,111 @@
+{
+  "name": "TK-CORE-003 | Logger",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## TK-CORE-003 Logger v1.0.0\n**Purpose:** Structured execution logging service — the only writer to workflow_logs (besides the error handler).\n**Input:** { company_id, request_id, workflow, level, event, detail?, duration_ms? }\n**Output:** { ok, request_id, data: { logged: true }, error, meta }\n**Config:** TK_SUPABASE_URL env + Supabase credential.\n**Failure modes:** validation error → ok:false (never throws — logging must not break callers)."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-100, -260],
+      "name": "Docs"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            { "name": "company_id", "type": "string" },
+            { "name": "request_id", "type": "string" },
+            { "name": "workflow", "type": "string" },
+            { "name": "level", "type": "string" },
+            { "name": "event", "type": "string" },
+            { "name": "detail", "type": "object" },
+            { "name": "duration_ms", "type": "number" }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [-100, 0],
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { company_id, request_id, workflow, level, event, detail, duration_ms } = $json;\nconst LEVELS = ['debug', 'info', 'warn', 'error'];\nif (!request_id || !workflow || !event) {\n  return [{ json: { _invalid: true, ok: false, request_id: request_id ?? null, data: null, error: { code: 'invalid_log', message: 'request_id, workflow and event are required', retryable: false }, meta: { workflow: 'TK-CORE-003', version: '1.0.0' } } }];\n}\nreturn [{ json: {\n  company_id: company_id ?? null,\n  request_id,\n  workflow,\n  level: LEVELS.includes(level) ? level : 'info',\n  event,\n  detail: detail ?? {},\n  duration_ms: duration_ms ?? null,\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, 0],
+      "name": "Validate & Shape"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "leftValue": "={{ $json._invalid }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "notEquals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [340, 0],
+      "name": "Is Valid?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TK_SUPABASE_URL }}/rest/v1/workflow_logs",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, -80],
+      "name": "Insert Log Row",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "ok", "name": "ok", "value": true, "type": "boolean" },
+            { "id": "rid", "name": "request_id", "value": "={{ $('Validate & Shape').first().json.request_id }}", "type": "string" },
+            { "id": "data", "name": "data", "value": "={{ { logged: true } }}", "type": "object" },
+            { "id": "meta", "name": "meta", "value": "={{ { workflow: 'TK-CORE-003', version: '1.0.0' } }}", "type": "object" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [780, -80],
+      "name": "Success Envelope"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": { "main": [[{ "node": "Validate & Shape", "type": "main", "index": 0 }]] },
+    "Validate & Shape": { "main": [[{ "node": "Is Valid?", "type": "main", "index": 0 }]] },
+    "Is Valid?": { "main": [
+      [{ "node": "Insert Log Row", "type": "main", "index": 0 }],
+      []
+    ] },
+    "Insert Log Row": { "main": [[{ "node": "Success Envelope", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": ["tk", "core"]
+}

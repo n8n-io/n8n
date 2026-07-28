@@ -1,0 +1,112 @@
+{
+  "name": "TK-CRM-001 | Contact Upsert",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## TK-CRM-001 Contact Upsert v1.0.0\n**Purpose:** Idempotent contact create/update — the ONLY writer to the contacts table.\n**Input:** { company_id, request_id, payload: { phone?, email?, first_name?, last_name?, channels?, source?, tags?, custom_fields?, lead_score_delta?, lead_status? } }\n**Output:** { ok, request_id, data: { contact }, error, meta }\n**Config:** TK_SUPABASE_URL env + Supabase credential.\n**Failure modes:** neither phone nor email → error missing_identifier. Upsert keys on (company_id, phone) or (company_id, email) → safe to retry."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-100, -280],
+      "name": "Docs"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            { "name": "company_id", "type": "string" },
+            { "name": "request_id", "type": "string" },
+            { "name": "payload", "type": "object" }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [-100, 0],
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { company_id, request_id, payload } = $json;\nconst p = payload ?? {};\n\nif (!company_id || !request_id) {\n  return [{ json: { _error: { code: 'invalid_input', message: 'company_id and request_id are required', retryable: false }, request_id } }];\n}\nif (!p.phone && !p.email) {\n  return [{ json: { _error: { code: 'missing_identifier', message: 'phone or email is required to upsert a contact', retryable: false }, request_id } }];\n}\n\n// Normalize identifiers so idempotency keys are stable.\nconst phone = p.phone ? String(p.phone).replace(/[^+\\d]/g, '') : null;\nconst email = p.email ? String(p.email).trim().toLowerCase() : null;\n\nreturn [{ json: {\n  request_id,\n  on_conflict: phone ? 'company_id,phone' : 'company_id,email',\n  row: {\n    company_id,\n    ...(phone ? { phone } : {}),\n    ...(email ? { email } : {}),\n    ...(p.first_name ? { first_name: p.first_name } : {}),\n    ...(p.last_name ? { last_name: p.last_name } : {}),\n    ...(p.channels ? { channels: p.channels } : {}),\n    ...(p.source ? { source: p.source } : {}),\n    ...(p.tags ? { tags: p.tags } : {}),\n    ...(p.custom_fields ? { custom_fields: p.custom_fields } : {}),\n    ...(p.lead_status ? { lead_status: p.lead_status } : {}),\n    updated_at: new Date().toISOString(),\n  },\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, 0],
+      "name": "Validate & Normalize"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose", "version": 2 },
+          "conditions": [
+            { "leftValue": "={{ $json._error }}", "rightValue": "", "operator": { "type": "object", "operation": "notExists", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [340, 0],
+      "name": "Is Valid?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TK_SUPABASE_URL }}/rest/v1/contacts?on_conflict={{ $json.on_conflict }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.row) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, -80],
+      "name": "Upsert Contact",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "const contact = Array.isArray($json) ? $json[0] : $json;\nconst request_id = $('Validate & Normalize').first().json.request_id;\nreturn [{ json: { ok: true, request_id, data: { contact }, error: null, meta: { workflow: 'TK-CRM-001', version: '1.0.0' } } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [780, -80],
+      "name": "Success Envelope"
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = $json;\nreturn [{ json: { ok: false, request_id: j.request_id ?? null, data: null, error: j._error, meta: { workflow: 'TK-CRM-001', version: '1.0.0' } } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 120],
+      "name": "Error Envelope"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": { "main": [[{ "node": "Validate & Normalize", "type": "main", "index": 0 }]] },
+    "Validate & Normalize": { "main": [[{ "node": "Is Valid?", "type": "main", "index": 0 }]] },
+    "Is Valid?": { "main": [
+      [{ "node": "Upsert Contact", "type": "main", "index": 0 }],
+      [{ "node": "Error Envelope", "type": "main", "index": 0 }]
+    ] },
+    "Upsert Contact": { "main": [[{ "node": "Success Envelope", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "TK-CORE-002__error-handler"
+  },
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": ["tk", "crm"]
+}

@@ -1,0 +1,157 @@
+{
+  "name": "TK-RCP-001 | Omnichannel Inbound Router",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## TK-RCP-001 Omnichannel Inbound Router v1.0.0\n**Purpose:** Single entry point for every inbound message on every channel. Loads config, runs the Receptionist Agent, executes its actions, updates CRM, replies.\n**Input (webhook POST tk/v1/receptionist/inbound):** { company_id, request_id?, channel, payload: { from, text, contact_hint? } } — channel connectors normalize provider formats before calling this.\n**Output:** standard envelope with { reply, intent, handoff }.\n**Config:** everything from TK-CORE-001 ctx; model from TK_AI_DEFAULT_MODEL env; Anthropic credential on the model node.\n**Failure modes:** invalid input → 400 envelope; agent/tool failure → error envelope + TK-CORE-002 alert; handoff=true → human alert action."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-120, -320],
+      "name": "Docs"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tk/v1/receptionist/inbound",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-120, 0],
+      "name": "Inbound Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate + stamp trace id. Auth already resolved company_id at the edge (header key → company mapping).\nconst b = $json.body ?? {};\nconst CHANNELS = ['voice','sms','facebook','instagram','google_business','email','web_chat','whatsapp'];\n\nif (!b.company_id || !b.channel || !b.payload?.text || !b.payload?.from) {\n  return [{ json: { _error: { code: 'invalid_input', message: 'company_id, channel, payload.from and payload.text are required', retryable: false } } }];\n}\nif (!CHANNELS.includes(b.channel)) {\n  return [{ json: { _error: { code: 'unknown_channel', message: `channel must be one of ${CHANNELS.join(', ')}`, retryable: false } } }];\n}\n\nreturn [{ json: {\n  company_id: b.company_id,\n  request_id: b.request_id ?? crypto.randomUUID(),\n  source: 'webhook',\n  channel: b.channel,\n  payload: { from: String(b.payload.from), text: String(b.payload.text), contact_hint: b.payload.contact_hint ?? null },\n  started_at: Date.now(),\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [100, 0],
+      "name": "Validate & Normalize"
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "mode": "list", "value": "TK-CORE-001__config-loader", "cachedResultName": "TK-CORE-001 | Config Loader" },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "company_id": "={{ $json.company_id }}",
+            "request_id": "={{ $json.request_id }}"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [320, 0],
+      "name": "Load Config (TK-CORE-001)"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Validate & Normalize').first().json.payload.text }}",
+        "options": {
+          "systemMessage": "={{ $json.data.ctx.receptionist_system_prompt ?? 'You are the AI receptionist for ' + $json.data.ctx.company.name + '. Follow the vertical rules in the provided context. Respond ONLY with JSON: {\"reply\": string, \"intent\": string, \"actions\": [], \"handoff\": boolean, \"lead\": {\"score_delta\": number, \"status_suggestion\": string}}.\\n\\nContext (merged tenant+vertical config):\\n' + JSON.stringify($json.data.ctx) + '\\n\\nChannel: ' + $('Validate & Normalize').first().json.channel }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [540, 0],
+      "name": "Receptionist Agent",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "model": { "__rl": true, "mode": "id", "value": "={{ $env.TK_AI_DEFAULT_MODEL }}" },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [540, 220],
+      "name": "Chat Model"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the agent's JSON contract; degrade gracefully to handoff on parse failure.\nconst base = $('Validate & Normalize').first().json;\nlet out;\ntry {\n  const raw = $json.output ?? $json.text ?? '';\n  out = typeof raw === 'string' ? JSON.parse(raw.replace(/^```json?\\n?|```$/g, '').trim()) : raw;\n} catch (e) {\n  out = { reply: null, intent: 'other', actions: [], handoff: true, lead: { score_delta: 0, status_suggestion: null } };\n}\nreturn [{ json: { ...base, agent: out } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 0],
+      "name": "Parse Agent Output"
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "mode": "list", "value": "TK-CRM-001__contact-upsert", "cachedResultName": "TK-CRM-001 | Contact Upsert" },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "company_id": "={{ $json.company_id }}",
+            "request_id": "={{ $json.request_id }}",
+            "payload": "={{ { phone: $json.channel === 'sms' || $json.channel === 'voice' || $json.channel === 'whatsapp' ? $json.payload.from : null, email: $json.channel === 'email' ? $json.payload.from : null, channels: $json.channel !== 'sms' && $json.channel !== 'voice' && $json.channel !== 'email' ? { [$json.channel]: $json.payload.from } : {}, source: $json.channel, lead_status: $json.agent.lead?.status_suggestion ?? undefined } }}"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [980, 0],
+      "name": "CRM Update (TK-CRM-001)",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "mode": "list", "value": "TK-CORE-003__logger", "cachedResultName": "TK-CORE-003 | Logger" },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "company_id": "={{ $('Parse Agent Output').first().json.company_id }}",
+            "request_id": "={{ $('Parse Agent Output').first().json.request_id }}",
+            "workflow": "TK-RCP-001",
+            "level": "info",
+            "event": "inbound_handled",
+            "detail": "={{ { channel: $('Parse Agent Output').first().json.channel, intent: $('Parse Agent Output').first().json.agent.intent, handoff: $('Parse Agent Output').first().json.agent.handoff } }}",
+            "duration_ms": "={{ Date.now() - $('Validate & Normalize').first().json.started_at }}"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [1200, 0],
+      "name": "Log (TK-CORE-003)",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, request_id: $('Parse Agent Output').first().json.request_id, data: { reply: $('Parse Agent Output').first().json.agent.reply, intent: $('Parse Agent Output').first().json.agent.intent, handoff: $('Parse Agent Output').first().json.agent.handoff }, error: null, meta: { workflow: 'TK-RCP-001', version: '1.0.0' } }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1420, 0],
+      "name": "Respond"
+    }
+  ],
+  "connections": {
+    "Inbound Webhook": { "main": [[{ "node": "Validate & Normalize", "type": "main", "index": 0 }]] },
+    "Validate & Normalize": { "main": [[{ "node": "Load Config (TK-CORE-001)", "type": "main", "index": 0 }]] },
+    "Load Config (TK-CORE-001)": { "main": [[{ "node": "Receptionist Agent", "type": "main", "index": 0 }]] },
+    "Chat Model": { "ai_languageModel": [[{ "node": "Receptionist Agent", "type": "ai_languageModel", "index": 0 }]] },
+    "Receptionist Agent": { "main": [[{ "node": "Parse Agent Output", "type": "main", "index": 0 }]] },
+    "Parse Agent Output": { "main": [[{ "node": "CRM Update (TK-CRM-001)", "type": "main", "index": 0 }]] },
+    "CRM Update (TK-CRM-001)": { "main": [[{ "node": "Log (TK-CORE-003)", "type": "main", "index": 0 }]] },
+    "Log (TK-CORE-003)": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "TK-CORE-002__error-handler"
+  },
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": ["tk", "receptionist"]
+}

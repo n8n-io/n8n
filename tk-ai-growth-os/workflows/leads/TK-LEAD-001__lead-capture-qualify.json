@@ -1,0 +1,187 @@
+{
+  "name": "TK-LEAD-001 | Lead Capture & Qualify",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## TK-LEAD-001 Lead Capture & Qualify v1.0.0\n**Purpose:** Single entry point for new leads from any source: upsert contact → score with config-driven weights → route by threshold.\n**Input (webhook POST tk/v1/leads/capture):** { company_id, request_id?, payload: { phone?, email?, first_name?, last_name?, source, service_interest?, timeframe?, notes? } }\n**Output:** standard envelope { contact_id, lead_score, route }.\n**Config:** scoring weights + route thresholds from ctx.lead_scoring (vertical/tenant config); alert webhook from ctx or TK_ALERT_WEBHOOK_URL.\n**Failure modes:** invalid input → 400 envelope; CRM failure → error envelope + alert. Scoring is transparent — reasons[] always returned."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-120, -320],
+      "name": "Docs"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tk/v1/leads/capture",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-120, 0],
+      "name": "Lead Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = $json.body ?? {};\nif (!b.company_id || !b.payload?.source || (!b.payload?.phone && !b.payload?.email)) {\n  return [{ json: { _error: { code: 'invalid_input', message: 'company_id, payload.source and phone or email are required', retryable: false } } }];\n}\nreturn [{ json: {\n  company_id: b.company_id,\n  request_id: b.request_id ?? crypto.randomUUID(),\n  source: 'webhook',\n  channel: 'internal',\n  payload: b.payload,\n  started_at: Date.now(),\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [100, 0],
+      "name": "Validate"
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "mode": "list", "value": "TK-CORE-001__config-loader", "cachedResultName": "TK-CORE-001 | Config Loader" },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "company_id": "={{ $json.company_id }}",
+            "request_id": "={{ $json.request_id }}"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [320, 0],
+      "name": "Load Config (TK-CORE-001)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Config-driven scoring: weights + thresholds live in vertical/tenant config, never in code.\nconst base = $('Validate').first().json;\nconst ctx = $json.data?.ctx ?? {};\nconst p = base.payload;\n\nconst scoring = ctx.lead_scoring ?? {\n  weights: { has_phone: 20, has_email: 10, has_service_interest: 30, timeframe_asap: 30, timeframe_this_month: 15, source_missed_call: 20, source_referral: 25 },\n  routes: [ { min: 60, route: 'instant_follow_up' }, { min: 30, route: 'nurture' }, { min: 0, route: 'log_only' } ],\n};\n\nconst w = scoring.weights;\nlet score = 0;\nconst reasons = [];\nconst add = (points, reason) => { if (points) { score += points; reasons.push(`${reason} (+${points})`); } };\n\nadd(p.phone ? w.has_phone ?? 0 : 0, 'has phone');\nadd(p.email ? w.has_email ?? 0 : 0, 'has email');\nadd(p.service_interest ? w.has_service_interest ?? 0 : 0, 'named a service');\nif (p.timeframe === 'asap') add(w.timeframe_asap ?? 0, 'wants it asap');\nif (p.timeframe === 'this_month') add(w.timeframe_this_month ?? 0, 'this month');\nadd(w[`source_${p.source}`] ?? 0, `source: ${p.source}`);\n\nscore = Math.max(0, Math.min(100, score));\nconst route = (scoring.routes ?? []).sort((a, b2) => b2.min - a.min).find(r => score >= r.min)?.route ?? 'log_only';\n\nreturn [{ json: { ...base, lead_score: score, reasons, route } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [540, 0],
+      "name": "Score Lead"
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "mode": "list", "value": "TK-CRM-001__contact-upsert", "cachedResultName": "TK-CRM-001 | Contact Upsert" },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "company_id": "={{ $json.company_id }}",
+            "request_id": "={{ $json.request_id }}",
+            "payload": "={{ { phone: $json.payload.phone ?? null, email: $json.payload.email ?? null, first_name: $json.payload.first_name ?? null, last_name: $json.payload.last_name ?? null, source: $json.payload.source, lead_status: $json.route === 'instant_follow_up' ? 'qualified' : 'new', custom_fields: { service_interest: $json.payload.service_interest ?? null, timeframe: $json.payload.timeframe ?? null, notes: $json.payload.notes ?? null, lead_score: $json.lead_score, score_reasons: $json.reasons } } }}"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [760, 0],
+      "name": "CRM Upsert (TK-CRM-001)"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "strict", "version": 2 },
+                "conditions": [
+                  { "leftValue": "={{ $('Score Lead').first().json.route }}", "rightValue": "instant_follow_up", "operator": { "type": "string", "operation": "equals" } }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "instant_follow_up"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "strict", "version": 2 },
+                "conditions": [
+                  { "leftValue": "={{ $('Score Lead').first().json.route }}", "rightValue": "nurture", "operator": { "type": "string", "operation": "equals" } }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "nurture"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra", "renameFallbackOutput": "log_only" }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [980, 0],
+      "name": "Route by Score"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TK_ALERT_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: `🔥 Hot lead for company ${$('Score Lead').first().json.company_id}: score ${$('Score Lead').first().json.lead_score} — ${$('Score Lead').first().json.reasons.join(', ')}`, request_id: $('Score Lead').first().json.request_id }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, -120],
+      "name": "Hot Lead Alert",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "mode": "list", "value": "TK-CORE-003__logger", "cachedResultName": "TK-CORE-003 | Logger" },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "company_id": "={{ $('Score Lead').first().json.company_id }}",
+            "request_id": "={{ $('Score Lead').first().json.request_id }}",
+            "workflow": "TK-LEAD-001",
+            "level": "info",
+            "event": "lead_captured",
+            "detail": "={{ { source: $('Score Lead').first().json.payload.source, score: $('Score Lead').first().json.lead_score, route: $('Score Lead').first().json.route } }}",
+            "duration_ms": "={{ Date.now() - $('Score Lead').first().json.started_at }}"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [1200, 120],
+      "name": "Log (TK-CORE-003)",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, request_id: $('Score Lead').first().json.request_id, data: { lead_score: $('Score Lead').first().json.lead_score, reasons: $('Score Lead').first().json.reasons, route: $('Score Lead').first().json.route }, error: null, meta: { workflow: 'TK-LEAD-001', version: '1.0.0' } }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1420, 0],
+      "name": "Respond"
+    }
+  ],
+  "connections": {
+    "Lead Webhook": { "main": [[{ "node": "Validate", "type": "main", "index": 0 }]] },
+    "Validate": { "main": [[{ "node": "Load Config (TK-CORE-001)", "type": "main", "index": 0 }]] },
+    "Load Config (TK-CORE-001)": { "main": [[{ "node": "Score Lead", "type": "main", "index": 0 }]] },
+    "Score Lead": { "main": [[{ "node": "CRM Upsert (TK-CRM-001)", "type": "main", "index": 0 }]] },
+    "CRM Upsert (TK-CRM-001)": { "main": [[{ "node": "Route by Score", "type": "main", "index": 0 }]] },
+    "Route by Score": { "main": [
+      [{ "node": "Hot Lead Alert", "type": "main", "index": 0 }],
+      [{ "node": "Log (TK-CORE-003)", "type": "main", "index": 0 }],
+      [{ "node": "Log (TK-CORE-003)", "type": "main", "index": 0 }]
+    ] },
+    "Hot Lead Alert": { "main": [[{ "node": "Log (TK-CORE-003)", "type": "main", "index": 0 }]] },
+    "Log (TK-CORE-003)": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "TK-CORE-002__error-handler"
+  },
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": ["tk", "leads"]
+}

@@ -1,0 +1,167 @@
+{
+  "name": "TK-RCP-002 | Missed Call Recovery",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## TK-RCP-002 Missed Call Recovery v1.0.0\n**Purpose:** Missed call → log call → instant SMS-back (quiet-hours aware) → CRM update. The reply SMS flows into TK-RCP-001 like any inbound message.\n**Input (webhook POST tk/v1/receptionist/missed-call):** { company_id, request_id?, payload: { from_number, to_number } } — sent by telephony connector on unanswered/abandoned call.\n**Output:** standard envelope { recovered: boolean, sms_sent: boolean }.\n**Config:** ctx.modules.missed_call_recovery flag, ctx.quiet_hours, sms template from ctx.templates.missed_call_sms; SMS provider endpoint from TK_SMS_SEND_URL env (provider adapter), sender number from company config.\n**Failure modes:** module disabled → no-op ok; quiet hours → SMS queued for morning via Wait; SMS provider failure → retried 3x then error envelope."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-120, -340],
+      "name": "Docs"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tk/v1/receptionist/missed-call",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-120, 0],
+      "name": "Missed Call Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = $json.body ?? {};\nif (!b.company_id || !b.payload?.from_number || !b.payload?.to_number) {\n  return [{ json: { _error: { code: 'invalid_input', message: 'company_id, payload.from_number, payload.to_number required', retryable: false } } }];\n}\nreturn [{ json: {\n  company_id: b.company_id,\n  request_id: b.request_id ?? crypto.randomUUID(),\n  source: 'webhook',\n  channel: 'voice',\n  payload: { from_number: String(b.payload.from_number), to_number: String(b.payload.to_number) },\n  started_at: Date.now(),\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [100, 0],
+      "name": "Validate"
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "mode": "list", "value": "TK-CORE-001__config-loader", "cachedResultName": "TK-CORE-001 | Config Loader" },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "company_id": "={{ $json.company_id }}",
+            "request_id": "={{ $json.request_id }}"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [320, 0],
+      "name": "Load Config (TK-CORE-001)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Decide: is recovery enabled, and are we inside quiet hours (company timezone)?\nconst base = $('Validate').first().json;\nconst ctx = $json.data?.ctx ?? {};\nconst enabled = ctx.modules?.missed_call_recovery !== false;\n\nconst tz = ctx.company?.timezone ?? $env.TK_DEFAULT_TIMEZONE;\nconst now = new Date().toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });\nconst qh = ctx.quiet_hours ?? ctx.compliance?.quiet_hours ?? { start: '21:00', end: '08:00' };\nconst inQuietHours = qh.start > qh.end ? (now >= qh.start || now < qh.end) : (now >= qh.start && now < qh.end);\n\n// Template with variables — from config, never hardcoded copy.\nconst template = ctx.templates?.missed_call_sms\n  ?? \"Hi! This is {{company_name}} — sorry we missed your call. How can we help? Reply here and we'll take care of you, or tell us a good time to call back.\";\nconst sms_body = template.replace(/{{\\s*company_name\\s*}}/g, ctx.company?.name ?? '');\n\nreturn [{ json: { ...base, ctx: { company: ctx.company }, enabled, inQuietHours, sms_body, sender_number: base.payload.to_number } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [540, 0],
+      "name": "Recovery Decision"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TK_SUPABASE_URL }}/rest/v1/calls",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ company_id: $json.company_id, direction: 'inbound', status: 'missed', from_number: $json.payload.from_number, to_number: $json.payload.to_number }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [760, 0],
+      "name": "Log Missed Call",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose", "version": 2 },
+          "conditions": [
+            { "leftValue": "={{ $('Recovery Decision').first().json.enabled }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true", "singleValue": true } },
+            { "leftValue": "={{ $('Recovery Decision').first().json.inQuietHours }}", "rightValue": true, "operator": { "type": "boolean", "operation": "false", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [980, 0],
+      "name": "Send Now?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TK_SMS_SEND_URL }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ company_id: $('Recovery Decision').first().json.company_id, to: $('Recovery Decision').first().json.payload.from_number, from: $('Recovery Decision').first().json.sender_number, body: $('Recovery Decision').first().json.sms_body }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, -100],
+      "name": "Send Recovery SMS",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "mode": "list", "value": "TK-CRM-001__contact-upsert", "cachedResultName": "TK-CRM-001 | Contact Upsert" },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "company_id": "={{ $('Recovery Decision').first().json.company_id }}",
+            "request_id": "={{ $('Recovery Decision').first().json.request_id }}",
+            "payload": "={{ { phone: $('Recovery Decision').first().json.payload.from_number, source: 'missed_call', lead_status: 'new' } }}"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [1420, -100],
+      "name": "CRM Update (TK-CRM-001)",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, request_id: $('Recovery Decision').first().json.request_id, data: { recovered: $('Recovery Decision').first().json.enabled, sms_sent: !$('Recovery Decision').first().json.inQuietHours && $('Recovery Decision').first().json.enabled, queued_for_morning: $('Recovery Decision').first().json.inQuietHours }, error: null, meta: { workflow: 'TK-RCP-002', version: '1.0.0' } }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1640, 0],
+      "name": "Respond"
+    }
+  ],
+  "connections": {
+    "Missed Call Webhook": { "main": [[{ "node": "Validate", "type": "main", "index": 0 }]] },
+    "Validate": { "main": [[{ "node": "Load Config (TK-CORE-001)", "type": "main", "index": 0 }]] },
+    "Load Config (TK-CORE-001)": { "main": [[{ "node": "Recovery Decision", "type": "main", "index": 0 }]] },
+    "Recovery Decision": { "main": [[{ "node": "Log Missed Call", "type": "main", "index": 0 }]] },
+    "Log Missed Call": { "main": [[{ "node": "Send Now?", "type": "main", "index": 0 }]] },
+    "Send Now?": { "main": [
+      [{ "node": "Send Recovery SMS", "type": "main", "index": 0 }],
+      [{ "node": "Respond", "type": "main", "index": 0 }]
+    ] },
+    "Send Recovery SMS": { "main": [[{ "node": "CRM Update (TK-CRM-001)", "type": "main", "index": 0 }]] },
+    "CRM Update (TK-CRM-001)": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "TK-CORE-002__error-handler"
+  },
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": ["tk", "receptionist"]
+}

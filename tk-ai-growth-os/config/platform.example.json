@@ -1,0 +1,38 @@
+{
+  "$comment": "Platform-level defaults. Deploy-time values come from environment variables; this file documents shape and safe defaults only. NEVER put secrets here.",
+  "platform": {
+    "name": "TK AI Growth OS",
+    "company": "TK AI Solutions",
+    "supported_countries": ["US", "CA", "AU"],
+    "default_timezone": "America/Chicago",
+    "default_locale": "en-US"
+  },
+  "branding_defaults": {
+    "primary": "#2DC2C4",
+    "accent": "#FF9501",
+    "background": "#0B2354",
+    "modes": ["dark", "light"],
+    "white_label": {
+      "overridable": ["logo_url", "primary", "accent", "background", "platform_name", "sender_domain", "sms_sender_id"]
+    }
+  },
+  "ai": {
+    "default_provider": "anthropic",
+    "default_model_env": "TK_AI_DEFAULT_MODEL",
+    "embedding_dimensions": 1536,
+    "max_conversation_context_messages": 20,
+    "usage_metering": true
+  },
+  "retry": {
+    "max_tries": 3,
+    "wait_between_tries_ms": 2000,
+    "backoff": "exponential"
+  },
+  "rate_limits": {
+    "starter": { "api_rpm": 60, "ai_messages_per_day": 500 },
+    "growth": { "api_rpm": 300, "ai_messages_per_day": 5000 },
+    "agency": { "api_rpm": 1000, "ai_messages_per_day": 50000 }
+  },
+  "quiet_hours_default": { "start": "21:00", "end": "08:00" },
+  "logging": { "level": "info", "retention_days": 90 }
+}

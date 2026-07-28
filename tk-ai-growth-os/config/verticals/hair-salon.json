@@ -1,0 +1,73 @@
+{
+  "slug": "hair-salon",
+  "name": "Hair Salon",
+  "version": "1.0.0",
+  "identity": {
+    "customer_term": "guest",
+    "staff_term": "stylist",
+    "visit_term": "appointment"
+  },
+  "prompts": {
+    "tone": "stylish, confident, personable",
+    "vocabulary": ["balayage", "highlights", "root touch-up", "keratin treatment", "blowout", "toner", "olaplex", "trim", "layers"],
+    "greeting_style": "friendly and fashion-forward",
+    "upsell_rules": [
+      "If booking color, offer a conditioning treatment add-on",
+      "Recommend retail products used in the service at checkout",
+      "Suggest rebooking before the guest leaves the conversation"
+    ],
+    "never_say": ["guarantee exact color results without a consultation"]
+  },
+  "booking": {
+    "enabled": true,
+    "slot_minutes": 60,
+    "buffer_minutes": 15,
+    "deposit_required": false,
+    "staff_assignment": "preferred_stylist_first",
+    "cancellation_window_hours": 24,
+    "consultation_required_services": ["color_correction", "major_color_change"],
+    "services": [
+      { "key": "haircut", "default_minutes": 45 },
+      { "key": "color", "default_minutes": 120 },
+      { "key": "balayage", "default_minutes": 180 },
+      { "key": "treatment", "default_minutes": 45 },
+      { "key": "blowout", "default_minutes": 30 }
+    ]
+  },
+  "modules": {
+    "missed_call_recovery": true,
+    "rebooking": true,
+    "occasion_detection": false,
+    "delivery": false,
+    "holiday_calendar": true,
+    "wedding": true,
+    "funeral": false,
+    "birthday": false,
+    "anniversary": false,
+    "product_recommendation": true,
+    "review_requests": true
+  },
+  "intents": {
+    "book_appointment": { "route": "booking", "priority": 1 },
+    "color_consultation": { "route": "booking", "priority": 1 },
+    "pricing_question": { "route": "knowledge", "priority": 2 },
+    "hours_location": { "route": "knowledge", "priority": 2 },
+    "reschedule_cancel": { "route": "booking", "priority": 1 },
+    "product_question": { "route": "product_recommendation", "priority": 2 },
+    "complaint": { "route": "human_handoff", "priority": 0 },
+    "other": { "route": "knowledge", "priority": 3 }
+  },
+  "kpis": ["todays_leads", "revenue", "bookings", "missed_calls", "conversion_rate", "repeat_customers", "average_ticket", "rebooking_rate", "retail_attach_rate", "ai_usage"],
+  "calendars": {
+    "seasonal_peaks": ["prom_season", "wedding_season", "back_to_school", "holiday_party_season"]
+  },
+  "compliance": {
+    "quiet_hours": { "start": "20:00", "end": "09:00" },
+    "consent_language_required": false,
+    "notes": ""
+  },
+  "rebooking": {
+    "cadence_days_by_service": { "haircut": 42, "color": 42, "root_touch_up": 28, "blowout": 7 },
+    "reminder_channel_order": ["sms", "email"]
+  }
+}

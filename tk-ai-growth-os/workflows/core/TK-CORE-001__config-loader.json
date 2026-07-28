@@ -1,0 +1,95 @@
+{
+  "name": "TK-CORE-001 | Config Loader",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## TK-CORE-001 Config Loader v1.0.0\n**Purpose:** Resolve merged runtime config (platform defaults ⊕ vertical config ⊕ tenant overrides) for a company.\n**Input:** { company_id, request_id }\n**Output:** { ok, request_id, data: { ctx }, error, meta }\n**Config:** TK_SUPABASE_URL env + Supabase credential.\n**Failure modes:** unknown company_id → error company_not_found; Supabase down → retried 3x then error upstream_unavailable."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-100, -260],
+      "name": "Docs"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            { "name": "company_id", "type": "string" },
+            { "name": "request_id", "type": "string" }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [-100, 0],
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.TK_SUPABASE_URL }}/rest/v1/companies",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.company_id }}" },
+            { "name": "select", "value": "id,name,vertical_slug,country,timezone,plan,branding,settings,status" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [120, 0],
+      "name": "Get Company",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.TK_SUPABASE_URL }}/rest/v1/vertical_configs",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "slug", "value": "=eq.{{ $json.vertical_slug }}" },
+            { "name": "is_active", "value": "eq.true" },
+            { "name": "select", "value": "slug,name,version,config" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [340, 0],
+      "name": "Get Vertical Config",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge precedence (low → high): platform defaults → vertical config → tenant settings.\nconst input = $('When Executed by Another Workflow').first().json;\nconst company = $('Get Company').first().json;\nconst vertical = $('Get Vertical Config').first().json;\n\nif (!company || !company.id) {\n  return [{ json: { ok: false, request_id: input.request_id, data: null, error: { code: 'company_not_found', message: 'No active company for company_id', retryable: false }, meta: { workflow: 'TK-CORE-001', version: '1.0.0' } } }];\n}\n\nconst platformDefaults = {\n  retry: { max_tries: 3, wait_between_tries_ms: 2000 },\n  quiet_hours: { start: '21:00', end: '08:00' },\n  ai: { max_conversation_context_messages: 20 },\n  timezone: $env.TK_DEFAULT_TIMEZONE,\n};\n\nfunction deepMerge(base, override) {\n  const out = { ...base };\n  for (const [k, v] of Object.entries(override ?? {})) {\n    out[k] = v && typeof v === 'object' && !Array.isArray(v) && base?.[k] && typeof base[k] === 'object' && !Array.isArray(base[k])\n      ? deepMerge(base[k], v)\n      : v;\n  }\n  return out;\n}\n\nconst ctx = deepMerge(deepMerge(platformDefaults, vertical?.config ?? {}), company.settings ?? {});\nctx.company = { id: company.id, name: company.name, country: company.country, timezone: company.timezone, plan: company.plan, branding: company.branding, status: company.status };\nctx.vertical_slug = company.vertical_slug;\nctx.vertical_version = vertical?.version ?? null;\n\nreturn [{ json: { ok: true, request_id: input.request_id, data: { ctx }, error: null, meta: { workflow: 'TK-CORE-001', version: '1.0.0' } } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 0],
+      "name": "Merge Config"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": { "main": [[{ "node": "Get Company", "type": "main", "index": 0 }]] },
+    "Get Company": { "main": [[{ "node": "Get Vertical Config", "type": "main", "index": 0 }]] },
+    "Get Vertical Config": { "main": [[{ "node": "Merge Config", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "TK-CORE-002__error-handler"
+  },
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": ["tk", "core"]
+}
