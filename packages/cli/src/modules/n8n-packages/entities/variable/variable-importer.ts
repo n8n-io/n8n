@@ -7,7 +7,11 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-import { variableBlockingFailures, variableMissingModeCreates } from './variable-missing-mode';
+import {
+	variableBlockingFailures,
+	variableMissingModeCreates,
+	variableMissingModeUsesPackageValue,
+} from './variable-missing-mode';
 import {
 	computeVariableLimitFailure,
 	createFailure,
@@ -22,7 +26,6 @@ import type {
 	VariableLimitFailure,
 	VariableResolutionFailure,
 } from './variable.types';
-import { VariableMissingMode } from '../../n8n-packages.types';
 import type { ImportContext } from '../../n8n-packages.types';
 
 @Service()
@@ -55,6 +58,7 @@ export class VariableImporter {
 		const missing: VariableResolutionFailure[] = [];
 		const creations: VariableCreation[] = [];
 		const createsMissing = variableMissingModeCreates(request.missingMode);
+		const usesPackageValue = variableMissingModeUsesPackageValue(request.missingMode);
 
 		for (const requirement of requirements) {
 			const picked = pickVariableForProject(
@@ -68,13 +72,15 @@ export class VariableImporter {
 			}
 			missing.push(createFailure(requirement));
 			if (createsMissing) {
+				// The bundled variable file is the authority on the value; the manifest
+				// requirement carries it only as a fallback for hand-made packages.
+				const value = usesPackageValue
+					? (requirement.packageValue ?? requirement.value)
+					: undefined;
 				creations.push({
 					name: requirement.name,
 					...(requirement.globalPlacement ? {} : { projectId: context.projectId }),
-					...(request.missingMode === VariableMissingMode.CreateWithValue &&
-					requirement.value !== undefined
-						? { value: requirement.value }
-						: {}),
+					...(value !== undefined ? { value } : {}),
 					usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
 				});
 			}

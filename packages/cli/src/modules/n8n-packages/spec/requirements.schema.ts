@@ -1,3 +1,4 @@
+import { variableValueSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
 export const packageCredentialRequirementSchema = z.object({
@@ -35,7 +36,7 @@ export const packageNodeTypeRequirementSchema = z.object({
 // can travel with it.
 export const packageVariableRequirementSchema = z.object({
 	name: z.string().min(1),
-	value: z.string().optional(),
+	value: variableValueSchema.optional(),
 	usedByWorkflows: z.array(z.string().min(1)).min(1),
 });
 

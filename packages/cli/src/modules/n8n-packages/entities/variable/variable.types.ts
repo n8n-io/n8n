@@ -1,6 +1,4 @@
-import { variableValueSchema } from '@n8n/api-types';
 import type { User } from '@n8n/db';
-import { UserError } from 'n8n-workflow';
 
 import type { PackageWriter } from '../../io/package-writer';
 import type { VariableMissingMode } from '../../n8n-packages.types';
@@ -28,45 +26,9 @@ export interface VariableExportResult {
 export type PlacedVariableRequirement = PackageVariableRequirement & {
 	/** When true a created variable lands at global scope; otherwise in the context's project. */
 	globalPlacement: boolean;
+	/** Value of the variable file the package bundles for this scope; beats the requirement's own value. */
+	packageValue?: string;
 };
-
-/**
- * Chooses the manifest entry for one scope from the package layout written by
- * `VariableExporter`: the scope's own entry wins, then a top-level entry.
- * Multiple entries at the winning tier are ambiguous and reject the import.
- */
-export function pickManifestVariableEntry(
-	manifestVariables: ManifestEntry[] | undefined,
-	projectTarget: string | undefined,
-	name: string,
-): ManifestEntry | undefined {
-	const entries = (manifestVariables ?? []).filter((entry) => entry.name === name);
-	const projectEntries = projectTarget
-		? entries.filter((entry) => entry.target.startsWith(`${projectTarget}/variables/`))
-		: [];
-	const topLevelEntries = entries.filter((entry) => entry.target.startsWith('variables/'));
-	const winningEntries = projectEntries.length > 0 ? projectEntries : topLevelEntries;
-
-	if (winningEntries.length > 1) {
-		throw new UserError(`Package contains ambiguous variable entries for "${name}".`);
-	}
-
-	return winningEntries[0];
-}
-
-export function validateVariableRequirementValue(
-	value: string | undefined,
-	name: string,
-): string | undefined {
-	if (value === undefined) return undefined;
-	const result = variableValueSchema.safeParse(value);
-	if (!result.success) {
-		throw new UserError(`Package variable requirement "${name}" has an invalid value.`, {
-			cause: result.error,
-		});
-	}
-	return result.data;
-}
 
 export interface VariableImportRequest {
 	requirements: PlacedVariableRequirement[] | undefined;

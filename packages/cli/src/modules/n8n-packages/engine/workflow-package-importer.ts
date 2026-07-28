@@ -12,10 +12,7 @@ import { ProjectService } from '@/services/project.service.ee';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
-import {
-	pickManifestVariableEntry,
-	validateVariableRequirementValue,
-} from '../entities/variable/variable.types';
+import { variableMissingModeUsesPackageValue } from '../entities/variable/variable-missing-mode';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { PackageReader } from '../io/package-reader';
 import { VariableParentPolicy } from '../n8n-packages.types';
@@ -31,6 +28,7 @@ import {
 } from './import-result';
 import { emitPackageImportedEvent } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
+import { placeVariableRequirements } from './package-layout';
 import type { PackageManifest } from '../spec/manifest.schema';
 
 /**
@@ -96,29 +94,18 @@ export class WorkflowPackageImporter {
 			missingMode: request.variableMissingMode,
 			hasRequirements: (variableRequirements?.length ?? 0) > 0,
 		});
-		const packageVariables =
-			variableRequirements?.length && request.variableMissingMode === 'create-with-value'
+		const bundledVariables =
+			variableRequirements?.length &&
+			variableMissingModeUsesPackageValue(request.variableMissingMode)
 				? await this.packageParser.getVariables(reader)
 				: undefined;
-		const globalPlacement = request.variableParentPolicy === VariableParentPolicy.Global;
 		const variableRequest: VariableImportRequest = {
-			requirements: variableRequirements?.map((requirement) => {
-				if (request.variableMissingMode !== 'create-with-value') {
-					return { ...requirement, globalPlacement };
-				}
-				const entry = pickManifestVariableEntry(manifest.variables, undefined, requirement.name);
-				const requirementValue = validateVariableRequirementValue(
-					requirement.value,
-					requirement.name,
-				);
-				const value = entry
-					? (packageVariables?.get(entry.target)?.value ?? requirementValue)
-					: requirementValue;
-				return {
-					...requirement,
-					...(value !== undefined ? { value } : {}),
-					globalPlacement,
-				};
+			requirements: placeVariableRequirements({
+				requirements: variableRequirements,
+				manifestVariables: manifest.variables,
+				basePrefix: '',
+				placement: request.variableParentPolicy ?? VariableParentPolicy.Project,
+				bundledVariables,
 			}),
 			missingMode: request.variableMissingMode,
 		};

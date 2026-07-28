@@ -7,10 +7,7 @@ import { EventService } from '@/events/event.service';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter } from '../entities/project/project-importer';
-import {
-	pickManifestVariableEntry,
-	validateVariableRequirementValue,
-} from '../entities/variable/variable.types';
+import { variableMissingModeUsesPackageValue } from '../entities/variable/variable-missing-mode';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { PackageReader } from '../io/package-reader';
 import type {
@@ -22,7 +19,7 @@ import type {
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
 import { assertPackageImportApiKeyScopes, assertVariableCreationAllowed } from './import-gates';
-import { deriveVariableScope } from './package-layout';
+import { placeVariableRequirements } from './package-layout';
 import {
 	ImportOrchestrator,
 	type ImportOrchestrationInput,
@@ -60,9 +57,9 @@ export class ProjectPackageImporter {
 
 		const projects = await this.packageParser.getProjects(reader);
 		const projectPlan = await this.projectImporter.plan(request.user, projects);
-		const packageVariables =
+		const bundledVariables =
 			(manifest.requirements?.variables?.length ?? 0) > 0 &&
-			request.variableMissingMode === 'create-with-value'
+			variableMissingModeUsesPackageValue(request.variableMissingMode)
 				? await this.packageParser.getVariables(reader)
 				: undefined;
 		// Projects the user is creating (vs matching an existing one). They will be admin of these,
@@ -81,7 +78,7 @@ export class ProjectPackageImporter {
 				manifest,
 				project,
 				pendingCreateIds.has(project.id),
-				packageVariables,
+				bundledVariables,
 			);
 			const plan = await this.importOrchestrator.plan(input);
 			planned.push({ project, plan });
@@ -149,7 +146,7 @@ export class ProjectPackageImporter {
 		manifest: PackageManifest,
 		project: ManifestEntry,
 		projectPendingCreation: boolean,
-		packageVariables: Map<string, ImportedVariable> | undefined,
+		bundledVariables: Map<string, ImportedVariable> | undefined,
 	): Promise<ImportOrchestrationInput> {
 		const basePrefix = `${project.target}/`;
 		const folders = await this.packageParser.getFolders(reader, basePrefix);
@@ -177,33 +174,13 @@ export class ProjectPackageImporter {
 		};
 
 		const variableRequest: VariableImportRequest = {
-			requirements: identifyRequirements(manifest.requirements?.variables, workflows)?.map(
-				(requirement) => {
-					const globalPlacement =
-						deriveVariableScope(manifest.variables, basePrefix, requirement.name) === 'global';
-					if (request.variableMissingMode !== 'create-with-value') {
-						return { ...requirement, globalPlacement };
-					}
-					const entry = pickManifestVariableEntry(
-						manifest.variables,
-						project.target,
-						requirement.name,
-					);
-					const requirementValue = validateVariableRequirementValue(
-						requirement.value,
-						requirement.name,
-					);
-					const value = entry
-						? (packageVariables?.get(entry.target)?.value ?? requirementValue)
-						: requirementValue;
-					return {
-						...requirement,
-						...(value !== undefined ? { value } : {}),
-						globalPlacement,
-					};
-				},
-
-			),
+			requirements: placeVariableRequirements({
+				requirements: identifyRequirements(manifest.requirements?.variables, workflows),
+				manifestVariables: manifest.variables,
+				basePrefix,
+				placement: 'from-layout',
+				bundledVariables,
+			}),
 			missingMode: request.variableMissingMode,
 		};
 

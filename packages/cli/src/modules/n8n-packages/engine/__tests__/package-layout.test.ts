@@ -1,8 +1,11 @@
+import { VariableParentPolicy } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
+import type { PackageVariableRequirement } from '../../spec/requirements.schema';
+import type { ImportedVariable } from '../../spec/serialized/variable.schema';
 import {
 	deriveParentFolderId,
-	deriveVariableScope,
 	foldersInScope,
+	placeVariableRequirements,
 	workflowsInScope,
 } from '../package-layout';
 
@@ -56,17 +59,39 @@ describe('package-layout', () => {
 		});
 	});
 
-	describe('deriveVariableScope', () => {
+	describe('placeVariableRequirements', () => {
 		const named = (name: string, target: string): ManifestEntry => ({ id: name, name, target });
+		const requirement = (name: string, value?: string): PackageVariableRequirement => ({
+			name,
+			usedByWorkflows: ['wf-1'],
+			...(value !== undefined ? { value } : {}),
+		});
+		const place = (
+			params: Partial<Parameters<typeof placeVariableRequirements>[0]> & {
+				manifestVariables: ManifestEntry[];
+				basePrefix: string;
+			},
+		) =>
+			placeVariableRequirements({
+				requirements: [requirement('API_URL')],
+				placement: 'from-layout',
+				...params,
+			})![0];
+
+		/** Project packages derive placement from the layout; read it back in the exporter's terms. */
+		const scopeOf = (manifestVariables: ManifestEntry[], basePrefix: string, name = 'API_URL') =>
+			place({ requirements: [requirement(name)], manifestVariables, basePrefix }).globalPlacement
+				? 'global'
+				: 'project';
 
 		it('reads a top-level entry as global', () => {
 			const entries = [named('SHARED_URL', 'variables/shared_url')];
-			expect(deriveVariableScope(entries, 'projects/x/', 'SHARED_URL')).toBe('global');
+			expect(scopeOf(entries, 'projects/x/', 'SHARED_URL')).toBe('global');
 		});
 
 		it('reads an entry bundled under the scope as project-scoped', () => {
 			const entries = [named('API_URL', 'projects/x/variables/api_url')];
-			expect(deriveVariableScope(entries, 'projects/x/', 'API_URL')).toBe('project');
+			expect(scopeOf(entries, 'projects/x/')).toBe('project');
 		});
 
 		it("prefers the scope's own entry over a top-level one of the same name", () => {
@@ -74,19 +99,88 @@ describe('package-layout', () => {
 				named('API_URL', 'variables/api_url'),
 				named('API_URL', 'projects/x/variables/api_url'),
 			];
-			expect(deriveVariableScope(entries, 'projects/x/', 'API_URL')).toBe('project');
+			expect(scopeOf(entries, 'projects/x/')).toBe('project');
 			// The other project sees only the top-level entry.
-			expect(deriveVariableScope(entries, 'projects/y/', 'API_URL')).toBe('global');
+			expect(scopeOf(entries, 'projects/y/')).toBe('global');
 		});
 
 		it('falls back to the consuming project when the name is bundled under another project only', () => {
 			const entries = [named('API_URL', 'projects/y/variables/api_url')];
-			expect(deriveVariableScope(entries, 'projects/x/', 'API_URL')).toBe('project');
+			expect(scopeOf(entries, 'projects/x/')).toBe('project');
 		});
 
 		it('does not let one project prefix match another that shares its start', () => {
 			const entries = [named('API_URL', 'projects/xy/variables/api_url')];
-			expect(deriveVariableScope(entries, 'projects/x/', 'API_URL')).toBe('project');
+			expect(scopeOf(entries, 'projects/x/')).toBe('project');
+		});
+
+		it('rejects a package bundling the same name twice at the winning tier', () => {
+			const entries = [
+				named('API_URL', 'variables/api_url'),
+				named('API_URL', 'variables/api_url_2'),
+			];
+			expect(() => scopeOf(entries, 'projects/x/')).toThrow(/ambiguous variable entries/);
+		});
+
+		it.each([
+			[VariableParentPolicy.Project, false],
+			[VariableParentPolicy.Global, true],
+		])('follows the %s request policy instead of the layout', (placement, globalPlacement) => {
+			// A top-level bundle would read as global from the layout; the policy overrides it.
+			const entries = [named('API_URL', 'variables/api_url')];
+			expect(place({ manifestVariables: entries, basePrefix: '', placement })).toMatchObject({
+				globalPlacement,
+			});
+		});
+
+		it("attaches the bundled variable's value for the winning entry", () => {
+			const entries = [
+				named('API_URL', 'variables/api_url'),
+				named('API_URL', 'projects/x/variables/api_url'),
+			];
+			const bundledVariables = new Map<string, ImportedVariable>([
+				['variables/api_url', { name: 'API_URL', type: 'string', value: 'global-value' }],
+				[
+					'projects/x/variables/api_url',
+					{ name: 'API_URL', type: 'string', value: 'project-value' },
+				],
+			]);
+
+			expect(
+				place({ manifestVariables: entries, basePrefix: 'projects/x/', bundledVariables }),
+			).toMatchObject({ packageValue: 'project-value' });
+		});
+
+		it('omits the value when the package bundles no file for the name', () => {
+			const bundledVariables = new Map<string, ImportedVariable>([
+				['variables/other', { name: 'OTHER', type: 'string', value: 'v' }],
+			]);
+
+			expect(
+				place({ manifestVariables: [], basePrefix: 'projects/x/', bundledVariables }),
+			).not.toHaveProperty('packageValue');
+		});
+
+		it('omits the value when the exported file carries none', () => {
+			const entries = [named('API_URL', 'variables/api_url')];
+			const bundledVariables = new Map<string, ImportedVariable>([
+				['variables/api_url', { name: 'API_URL', type: 'string' }],
+			]);
+
+			expect(
+				place({ manifestVariables: entries, basePrefix: 'projects/x/', bundledVariables }),
+			).not.toHaveProperty('packageValue');
+		});
+
+		it('returns undefined when the package declares no variable requirements', () => {
+			expect(
+				placeVariableRequirements({
+					requirements: undefined,
+					manifestVariables: [],
+					basePrefix: '',
+					placement: 'from-layout',
+				}),
+			).toBeUndefined();
 		});
 	});
 

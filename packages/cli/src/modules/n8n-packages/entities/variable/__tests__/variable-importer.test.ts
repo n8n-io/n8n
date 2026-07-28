@@ -8,7 +8,11 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { ImportContext } from '../../../n8n-packages.types';
 import { VariableImporter } from '../variable-importer';
-import type { PlacedVariableRequirement, VariableImportPlan } from '../variable.types';
+import type {
+	PlacedVariableRequirement,
+	VariableImportPlan,
+	VariableImportRequest,
+} from '../variable.types';
 
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/permissions')>()),
@@ -29,9 +33,9 @@ function req(
 	name: string,
 	usedByWorkflows: string[],
 	globalPlacement = false,
-	value?: string,
+	values: Partial<Pick<PlacedVariableRequirement, 'value' | 'packageValue'>> = {},
 ): PlacedVariableRequirement {
-	return { name, usedByWorkflows, globalPlacement, ...(value !== undefined ? { value } : {}) };
+	return { name, usedByWorkflows, globalPlacement, ...values };
 }
 
 function makeVariable(overrides: Partial<Variables> = {}): Variables {
@@ -334,6 +338,57 @@ describe('VariableImporter', () => {
 				expect(variablesService.getRemainingVariableQuota).not.toHaveBeenCalled();
 			});
 		});
+
+		describe('create-with-value', () => {
+			async function planCreation(
+				requirement: PlacedVariableRequirement,
+				missingMode: VariableImportRequest['missingMode'],
+			) {
+				const { importer, variablesService } = makeImporter();
+				variablesService.getAllCached.mockResolvedValue([]);
+
+				const plan = await importer.plan(context, { requirements: [requirement], missingMode });
+
+				return plan.creations[0];
+			}
+
+			it("takes the bundled file's value over the requirement's own", async () => {
+				const requirement = req('API_KEY', ['wf-1'], false, {
+					value: 'from-requirement',
+					packageValue: 'from-bundle',
+				});
+
+				await expect(planCreation(requirement, 'create-with-value')).resolves.toEqual({
+					name: 'API_KEY',
+					projectId: 'proj-target',
+					value: 'from-bundle',
+					usedByWorkflows: ['wf-1'],
+				});
+			});
+
+			it("falls back to the requirement's value when the package bundles no file", async () => {
+				const requirement = req('API_KEY', ['wf-1'], false, { value: 'from-requirement' });
+
+				await expect(planCreation(requirement, 'create-with-value')).resolves.toMatchObject({
+					value: 'from-requirement',
+				});
+			});
+
+			it('plans an empty stub when neither source carries a value', async () => {
+				await expect(
+					planCreation(req('API_KEY', ['wf-1']), 'create-with-value'),
+				).resolves.not.toHaveProperty('value');
+			});
+
+			it('ignores both values under create-stub', async () => {
+				const requirement = req('API_KEY', ['wf-1'], false, {
+					value: 'from-requirement',
+					packageValue: 'from-bundle',
+				});
+
+				await expect(planCreation(requirement, 'create-stub')).resolves.not.toHaveProperty('value');
+			});
+		});
 	});
 
 	describe('quotaFailure', () => {
@@ -426,45 +481,6 @@ describe('VariableImporter', () => {
 				requested: 2,
 				names: ['API_KEY'],
 				usedByWorkflows: ['wf-1'],
-			});
-		});
-
-		describe('create-with-value', () => {
-			it('carries the package value into the creation plan', async () => {
-				const { importer, variablesService } = makeImporter();
-				variablesService.getAllCached.mockResolvedValue([]);
-
-				const plan = await importer.plan(context, {
-					requirements: [req('API_KEY', ['wf-1'], false, 'secret')],
-					missingMode: 'create-with-value',
-				});
-
-				expect(plan).toEqual({
-					matched: [],
-					missing: [{ name: 'API_KEY', usedByWorkflows: ['wf-1'] }],
-					creations: [
-						{
-							name: 'API_KEY',
-							projectId: 'proj-target',
-							value: 'secret',
-							usedByWorkflows: ['wf-1'],
-						},
-					],
-				});
-			});
-
-			it('plans an empty stub when no package value is available', async () => {
-				const { importer, variablesService } = makeImporter();
-				variablesService.getAllCached.mockResolvedValue([]);
-
-				const plan = await importer.plan(context, {
-					requirements: [req('API_KEY', ['wf-1'])],
-					missingMode: 'create-with-value',
-				});
-
-				expect(plan.creations).toEqual([
-					{ name: 'API_KEY', projectId: 'proj-target', usedByWorkflows: ['wf-1'] },
-				]);
 			});
 		});
 	});

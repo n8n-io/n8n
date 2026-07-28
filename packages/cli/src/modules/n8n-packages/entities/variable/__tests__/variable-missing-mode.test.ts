@@ -1,4 +1,8 @@
-import { variableBlockingFailures, variableMissingModeCreates } from '../variable-missing-mode';
+import {
+	variableBlockingFailures,
+	variableMissingModeCreates,
+	variableMissingModeUsesPackageValue,
+} from '../variable-missing-mode';
 import type { VariableImportPlan } from '../variable.types';
 
 const plan: VariableImportPlan = {
@@ -8,10 +12,24 @@ const plan: VariableImportPlan = {
 };
 
 describe('variableMissingModeCreates', () => {
-	it('creates only under create-stub', () => {
-		expect(variableMissingModeCreates('create-stub')).toBe(true);
-		expect(variableMissingModeCreates('do-nothing')).toBe(false);
-		expect(variableMissingModeCreates('must-preexist')).toBe(false);
+	it.each([
+		['do-nothing', false],
+		['must-preexist', false],
+		['create-stub', true],
+		['create-with-value', true],
+	] as const)('reports %s as creates=%s', (mode, creates) => {
+		expect(variableMissingModeCreates(mode)).toBe(creates);
+	});
+});
+
+describe('variableMissingModeUsesPackageValue', () => {
+	it.each([
+		['do-nothing', false],
+		['must-preexist', false],
+		['create-stub', false],
+		['create-with-value', true],
+	] as const)('reports %s as usesPackageValue=%s', (mode, usesPackageValue) => {
+		expect(variableMissingModeUsesPackageValue(mode)).toBe(usesPackageValue);
 	});
 });
 
@@ -20,13 +38,12 @@ describe('variableBlockingFailures', () => {
 		expect(variableBlockingFailures('must-preexist', plan)).toEqual(plan.missing);
 	});
 
-	it('never blocks under do-nothing', () => {
-		expect(variableBlockingFailures('do-nothing', plan)).toEqual([]);
-	});
-
-	it('never blocks under create-stub, since the stub resolves the requirement', () => {
-		expect(variableBlockingFailures('create-stub', plan)).toEqual([]);
-	});
+	it.each(['do-nothing', 'create-stub', 'create-with-value'] as const)(
+		'never blocks under %s',
+		(mode) => {
+			expect(variableBlockingFailures(mode, plan)).toEqual([]);
+		},
+	);
 
 	it('reports nothing when every requirement resolved', () => {
 		expect(
