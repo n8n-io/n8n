@@ -58,17 +58,18 @@ export const useWorkflowReviewStatusStore = defineStore('workflowReviewStatus', 
 		}
 	};
 
-	const clearStatus = (workflowId: string): void => {
-		delete openReviewByWorkflowId.value[workflowId];
+	const setOpenReview = (workflowId: string, review: WorkflowReviewRequestSummary): void => {
+		latestSequenceByWorkflowId[workflowId] = (latestSequenceByWorkflowId[workflowId] ?? 0) + 1;
+		openReviewByWorkflowId.value[workflowId] = review;
 	};
 
 	return {
-		// all writes must go through fetchStatus/clearStatus so the
-		// sequence protocol stays the only write path.
+		// all writes must go through fetchStatus/setOpenReview so the sequence
+		// protocol stays the only write path.
 		openReviewByWorkflowId: readonly(openReviewByWorkflowId),
 		openReviewRequest,
 		hasOpenReview,
 		fetchStatus,
-		clearStatus,
+		setOpenReview,
 	};
 });

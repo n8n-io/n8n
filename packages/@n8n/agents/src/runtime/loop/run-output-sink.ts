@@ -3,7 +3,7 @@ import type {
 	ModelMessage,
 	Output,
 	SystemModelMessage,
-	TelemetrySettings,
+	TelemetryOptions,
 	ToolCallRepairFunction,
 	ToolSet,
 } from 'ai';
@@ -69,8 +69,8 @@ export interface ModelCallContext {
 	outputSpec?: ReturnType<typeof Output.object>;
 	maxOutputTokens?: number;
 	aiSdkOptions: {
-		experimental_telemetry?: TelemetrySettings;
-		experimental_repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
+		telemetry?: TelemetryOptions;
+		repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
 	};
 }
 

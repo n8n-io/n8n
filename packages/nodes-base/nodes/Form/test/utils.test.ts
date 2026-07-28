@@ -1026,6 +1026,296 @@ describe('FormTrigger, formWebhook', () => {
 			expect(json.user).toBeUndefined();
 		});
 	});
+
+	describe('n8nUserAuth with OAuth2 flow (N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2)', () => {
+		const authedUser = {
+			id: 'user-1',
+			email: 'user@example.com',
+			firstName: 'Test',
+			lastName: 'User',
+		};
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+		];
+		const resourceUrl = 'http://localhost:5678/form/test';
+
+		const setupContext = (
+			ctx: ReturnType<typeof mock<IWebhookFunctions>>,
+			overrides: {
+				method: 'GET' | 'POST';
+				query?: IDataObject;
+				headers?: Record<string, string>;
+				originalUrl?: string;
+			} = { method: 'GET' },
+		) => {
+			const send = vi.fn();
+			const status = vi.fn(() => ({ send })) as any;
+			const writeHead = vi.fn();
+			const end = vi.fn();
+			const setHeader = vi.fn();
+			const render = vi.fn();
+			const cookie = vi.fn();
+			const clearCookie = vi.fn();
+			const request = {
+				method: overrides.method,
+				originalUrl: overrides.originalUrl ?? '/form/test',
+				query: overrides.query ?? {},
+				headers: { host: 'localhost:5678', ...(overrides.headers ?? {}) },
+				protocol: 'http',
+				contentType: overrides.method === 'POST' ? 'multipart/form-data' : undefined,
+			};
+
+			ctx.getNode.mockReturnValue({ typeVersion: 2.6 } as INode);
+			ctx.getNodeParameter.calledWith('options').mockReturnValue({});
+			ctx.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
+			ctx.getNodeParameter.calledWith('formDescription').mockReturnValue('Test Description');
+			ctx.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+			ctx.getNodeParameter.calledWith('authentication', 'none').mockReturnValue('n8nUserAuth');
+			ctx.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+			ctx.getNodeWebhookUrl.mockReturnValue(resourceUrl);
+			ctx.getRequestObject.mockReturnValue(request as any);
+			ctx.getHeaderData.mockReturnValue(request.headers);
+			ctx.getResponseObject.mockReturnValue({
+				status,
+				writeHead,
+				end,
+				setHeader,
+				render,
+				cookie,
+				clearCookie,
+			} as any);
+			ctx.getMode.mockReturnValue('manual');
+			ctx.getInstanceId.mockReturnValue('instanceId');
+			ctx.getBodyData.mockReturnValue({ data: { 'field-0': 'John' }, files: {} });
+			ctx.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
+			ctx.getChildNodes.mockReturnValue([]);
+			(ctx as any).logger = { warn: vi.fn(), error: vi.fn(), debug: vi.fn(), info: vi.fn() };
+
+			return { status, send, writeHead, end, setHeader, render, cookie, clearCookie };
+		};
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			vi.stubEnv('N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2', 'true');
+		});
+
+		afterEach(() => {
+			vi.unstubAllEnvs();
+		});
+
+		it('redirects to the authorization URL on GET without a code', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { writeHead, end } = setupContext(ctx, { method: 'GET' });
+			ctx.beginN8nOAuth2Flow.mockResolvedValue('http://localhost:5678/oauth/authorize?state=abc');
+
+			const result = await formWebhook(ctx);
+
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, undefined);
+			expect(writeHead).toHaveBeenCalledWith(302, {
+				Location: 'http://localhost:5678/oauth/authorize?state=abc',
+			});
+			expect(end).toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('responds 403 without restarting the flow when consent is denied', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { status, send } = setupContext(ctx, {
+				method: 'GET',
+				query: { error: 'access_denied', error_description: 'User denied', state: 'the-state' },
+			});
+
+			const result = await formWebhook(ctx);
+
+			expect(status).toHaveBeenCalledWith(403);
+			expect(send).toHaveBeenCalled();
+			expect(ctx.beginN8nOAuth2Flow).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('restarts the flow when the callback fails validation', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { writeHead } = setupContext(ctx, {
+				method: 'GET',
+				query: { code: 'the-code', state: 'the-state' },
+			});
+			ctx.completeN8nOAuth2Flow.mockResolvedValue({ valid: false, reason: 'invalid_state' });
+			ctx.beginN8nOAuth2Flow.mockResolvedValue('http://localhost:5678/oauth/authorize?state=fresh');
+
+			const result = await formWebhook(ctx);
+
+			expect(ctx.completeN8nOAuth2Flow).toHaveBeenCalledWith('the-code', 'the-state');
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, undefined);
+			expect(writeHead).toHaveBeenCalledWith(302, {
+				Location: 'http://localhost:5678/oauth/authorize?state=fresh',
+			});
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('redirects to a clean URL with the token in a cookie on a valid callback', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { render, writeHead, cookie } = setupContext(ctx, {
+				method: 'GET',
+				query: { code: 'the-code', state: 'the-state' },
+			});
+			ctx.completeN8nOAuth2Flow.mockResolvedValue({
+				valid: true,
+				token: 'as-token',
+				user: authedUser,
+			});
+
+			const result = await formWebhook(ctx);
+
+			expect(ctx.completeN8nOAuth2Flow).toHaveBeenCalledWith('the-code', 'the-state');
+			expect(ctx.beginN8nOAuth2Flow).not.toHaveBeenCalled();
+			// The code/state must not reach the sandboxed form page: redirect to the
+			// clean resource URL instead of rendering here.
+			expect(render).not.toHaveBeenCalled();
+			expect(writeHead).toHaveBeenCalledWith(302, { Location: resourceUrl });
+			expect(cookie).toHaveBeenCalledWith(
+				'n8n-form-oauth',
+				'as-token',
+				expect.objectContaining({ httpOnly: true, sameSite: 'lax' }),
+			);
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('stashes the original query params as flow metadata on a fresh GET before redirecting', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { writeHead } = setupContext(ctx, {
+				method: 'GET',
+				originalUrl: '/form/test?foo=bar',
+			});
+			ctx.beginN8nOAuth2Flow.mockResolvedValue('http://localhost:5678/oauth/authorize?state=abc');
+
+			const result = await formWebhook(ctx);
+
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, { query: 'foo=bar' });
+			expect(writeHead).toHaveBeenCalledWith(302, {
+				Location: 'http://localhost:5678/oauth/authorize?state=abc',
+			});
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('preserves a lone code query param as flow metadata on a fresh GET', async () => {
+			// A form field literally named `code` (or `state`) is not a provider callback
+			// (which needs both), so it is a genuine fresh GET and must be preserved.
+			const ctx = mock<IWebhookFunctions>();
+			setupContext(ctx, {
+				method: 'GET',
+				query: { foo: 'bar', code: 'x' },
+				originalUrl: '/form/test?foo=bar&code=x',
+			});
+			ctx.beginN8nOAuth2Flow.mockResolvedValue('http://localhost:5678/oauth/authorize?state=abc');
+
+			await formWebhook(ctx);
+
+			expect(ctx.completeN8nOAuth2Flow).not.toHaveBeenCalled();
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, { query: 'foo=bar&code=x' });
+		});
+
+		it('re-appends the query stashed as flow metadata on a valid callback', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { writeHead } = setupContext(ctx, {
+				method: 'GET',
+				query: { code: 'the-code', state: 'the-state' },
+			});
+			ctx.completeN8nOAuth2Flow.mockResolvedValue({
+				valid: true,
+				token: 'as-token',
+				user: authedUser,
+				metadata: { query: 'foo=bar' },
+			});
+
+			const result = await formWebhook(ctx);
+
+			expect(writeHead).toHaveBeenCalledWith(302, { Location: `${resourceUrl}?foo=bar` });
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('does not stash code/state as flow metadata on a callback fall-through', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			setupContext(ctx, {
+				method: 'GET',
+				query: { code: 'the-code', state: 'the-state' },
+				originalUrl: '/form/test?code=the-code&state=the-state',
+			});
+			ctx.completeN8nOAuth2Flow.mockResolvedValue({ valid: false, reason: 'invalid_state' });
+			ctx.beginN8nOAuth2Flow.mockResolvedValue('http://localhost:5678/oauth/authorize?state=fresh');
+
+			await formWebhook(ctx);
+
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, undefined);
+		});
+
+		it('renders the form on the clean GET carrying the oauth cookie', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { render, clearCookie } = setupContext(ctx, {
+				method: 'GET',
+				headers: { cookie: 'n8n-form-oauth=as-token' },
+			});
+			ctx.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: authedUser });
+
+			const result = await formWebhook(ctx);
+
+			expect(ctx.validateN8nOAuth2Token).toHaveBeenCalledWith('as-token', resourceUrl);
+			expect(ctx.beginN8nOAuth2Flow).not.toHaveBeenCalled();
+			expect(clearCookie).toHaveBeenCalledWith('n8n-form-oauth', expect.any(Object));
+			expect(render).toHaveBeenCalledWith(
+				'form-trigger',
+				expect.objectContaining({ authToken: 'as-token' }),
+			);
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('restarts the flow when the cookie token is invalid', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { writeHead, render } = setupContext(ctx, {
+				method: 'GET',
+				headers: { cookie: 'n8n-form-oauth=stale-token' },
+			});
+			ctx.validateN8nOAuth2Token.mockResolvedValue({ valid: false, reason: 'invalid_token' });
+			ctx.beginN8nOAuth2Flow.mockResolvedValue('http://localhost:5678/oauth/authorize?state=fresh');
+
+			const result = await formWebhook(ctx);
+
+			expect(ctx.validateN8nOAuth2Token).toHaveBeenCalledWith('stale-token', resourceUrl);
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, undefined);
+			expect(writeHead).toHaveBeenCalledWith(302, {
+				Location: 'http://localhost:5678/oauth/authorize?state=fresh',
+			});
+			expect(render).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('establishes the submitter identity on POST with a valid token', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			setupContext(ctx, { method: 'POST', headers: { 'x-auth-token': 'as-token' } });
+			ctx.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: authedUser });
+
+			const result = await formWebhook(ctx);
+
+			expect(ctx.validateN8nOAuth2Token).toHaveBeenCalledWith('as-token', resourceUrl);
+			expect(ctx.establishTriggerIdentity).toHaveBeenCalledWith('as-token', resourceUrl);
+			expect(result).toMatchObject({ webhookResponse: { status: 200 } });
+		});
+
+		it('returns 401 on POST with an invalid token', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { status, send } = setupContext(ctx, {
+				method: 'POST',
+				headers: { 'x-auth-token': 'bad-token' },
+			});
+			ctx.validateN8nOAuth2Token.mockResolvedValue({ valid: false, reason: 'invalid_token' });
+
+			const result = await formWebhook(ctx);
+
+			expect(ctx.establishTriggerIdentity).not.toHaveBeenCalled();
+			expect(status).toHaveBeenCalledWith(401);
+			expect(send).toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+	});
 });
 
 describe('FormTrigger, prepareFormData', () => {

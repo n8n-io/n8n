@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.32.0",
+  "version": "2.33.0",
   "private": true,
   "engines": {
     "node": ">=22.22",
@@ -117,7 +117,7 @@
       "@lezer/common": "^1.2.0",
       "@mistralai/mistralai": "^1.10.0",
       "@n8n/typeorm>@sentry/node": "catalog:sentry",
-      "@opentelemetry/api": "1.9.0",
+      "@opentelemetry/api": "catalog:",
       "@opentelemetry/core": "2.8.0",
       "@types/node": "^20.17.50",
       "chokidar": "4.0.3",
@@ -141,7 +141,7 @@
       "tmp": "0.2.7",
       "nodemailer": "8.0.10",
       "validator": "13.15.26",
-      "zod": "3.25.67",
+      "zod": "3.25.76",
       "js-yaml": "4.3.0",
       "body-parser": "2.3.0",
       "glob@10": "10.5.0",
@@ -223,7 +223,8 @@
       "vuedraggable@4.1.0": "patches/vuedraggable@4.1.0.patch",
       "assert@2.1.0": "patches/assert@2.1.0.patch",
       "lodash@4.18.1": "patches/lodash@4.18.1.patch",
-      "@langchain/openai@1.4.4": "patches/@langchain__openai@1.4.4.patch"
+      "@langchain/openai@1.4.4": "patches/@langchain__openai@1.4.4.patch",
+      "@langchain/google-common@2.1.24": "patches/@langchain__google-common@2.1.24.patch"
     }
   }
 }

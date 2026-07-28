@@ -140,7 +140,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						conversation: buildArgs.conversation,
 						messageBudget: buildArgs.messageBudget,
 						credentials: buildArgs.credentials,
-						seedFile: buildArgs.seedFile,
+						conversationSeed: buildArgs.conversationSeed,
 						priorConversation: buildArgs.priorConversation,
 						seedThread: buildArgs.seedThread,
 						executionScenarios: buildArgs.executionScenarios,

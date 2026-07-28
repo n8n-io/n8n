@@ -31,8 +31,9 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 		const { generateText } = loadAi();
 		const result = await generateText({
 			model: ctx.model,
-			system: ctx.system,
+			instructions: ctx.system,
 			messages: ctx.messages,
+			allowSystemInMessages: true,
 			abortSignal: ctx.abortSignal,
 			...(ctx.hasTools ? { tools: ctx.aiTools } : {}),
 			...(ctx.providerOptions ? { providerOptions: ctx.providerOptions } : {}),

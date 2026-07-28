@@ -53,8 +53,10 @@ describe('InstanceAiService run debug gating', () => {
 		);
 
 		expect(streamOptions.onStepStart).toBeUndefined();
+		expect(streamOptions.onStepEnd).toBeUndefined();
 		expect(streamOptions.onStepFinish).toBeUndefined();
 		expect(resumeOptions.onStepStart).toBeUndefined();
+		expect(resumeOptions.onStepEnd).toBeUndefined();
 		expect(resumeOptions.onStepFinish).toBeUndefined();
 		expect(service.getRunDebug(runId)).toBeUndefined();
 		// Both terminal paths opt into raw-usage recovery so stopped/errored runs bill.
@@ -85,8 +87,10 @@ describe('InstanceAiService run debug gating', () => {
 		);
 
 		expect(typeof streamOptions.onStepStart).toBe('function');
+		expect(typeof streamOptions.onStepEnd).toBe('function');
 		expect(typeof streamOptions.onStepFinish).toBe('function');
 		expect(typeof resumeOptions.onStepStart).toBe('function');
+		expect(typeof resumeOptions.onStepEnd).toBe('function');
 		expect(typeof resumeOptions.onStepFinish).toBe('function');
 		expect(service.getRunDebug(runId)).toEqual(
 			expect.objectContaining({

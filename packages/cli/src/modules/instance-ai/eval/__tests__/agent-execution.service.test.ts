@@ -190,6 +190,23 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		expect(reconstructFromAgentEntity).not.toHaveBeenCalled();
 	});
 
+	it('scrubs secret values from the case scenario signal but runs the case input verbatim', async () => {
+		const generate = vi.fn().mockResolvedValue(makeGenerateResult());
+		const close = vi.fn().mockResolvedValue(undefined);
+		reconstructFromAgentEntity.mockResolvedValue({ agent: { generate, close }, toolRegistry: {} });
+
+		const secret = 'sk-ABCDEF1234567890ABCDEF1234567890';
+		const caseInput = `Refund order #123 with key ${secret}`;
+		await buildService().executeWithLlmMock('agent-1', user, request, caseInput);
+
+		// The signal fed to the seed/mock LLM calls has the secret scrubbed...
+		const seedArgs = vi.mocked(generateAgentScenarioSeed).mock.calls[0]?.[0];
+		expect(seedArgs?.scenarioHints).not.toContain(secret);
+		expect(seedArgs?.scenarioHints).toContain('Refund order #123');
+		// ...but the agent still receives the verbatim case input.
+		expect(generate).toHaveBeenCalledWith(caseInput, expect.anything());
+	});
+
 	it('runs the happy path: real-model turn, mocked tool HTTP, mapped result', async () => {
 		const innerCredentialsHelper = { getDecrypted: vi.fn() };
 		const close = vi.fn().mockResolvedValue(undefined);

@@ -60,6 +60,20 @@ describe('classifyTriggerIdentity', () => {
 		});
 	});
 
+	describe('Webhook node', () => {
+		it('provides both identities when authentication is n8nOAuth2', () => {
+			expect(
+				classifyTriggerIdentity('n8n-nodes-base.webhook', { authentication: 'n8nOAuth2' }),
+			).toEqual({ providesN8nIdentity: true, providesExternalIdentity: true });
+		});
+
+		it('provides no identity for other authentication modes', () => {
+			expect(classifyTriggerIdentity('n8n-nodes-base.webhook', { authentication: 'none' })).toEqual(
+				{ providesN8nIdentity: false, providesExternalIdentity: false },
+			);
+		});
+	});
+
 	describe('other triggers', () => {
 		it('provides the external identity only when a context establishment hook is configured', () => {
 			expect(classifyTriggerIdentity('n8n-nodes-base.webhook', hooksParameters)).toEqual({
