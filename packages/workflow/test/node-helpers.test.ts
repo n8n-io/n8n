@@ -5573,6 +5573,38 @@ describe('NodeHelpers', () => {
 			expect(getActiveCredentialTypes(node, nodeType)).toEqual(new Set(['httpBasicAuth']));
 		});
 
+		it('should ignore a stale genericAuthType value left over after switching to predefinedCredentialType', () => {
+			const nodeType: INodeTypeDescription = {
+				...makeNodeType([]),
+				properties: [
+					{
+						displayName: 'Credential Type',
+						name: 'nodeCredentialType',
+						type: 'credentialsSelect',
+						default: '',
+						credentialTypes: ['extends:oAuth2Api'],
+						displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
+					},
+					{
+						displayName: 'Generic Auth Type',
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+						default: '',
+						credentialTypes: ['has:genericAuth'],
+						displayOptions: { show: { authentication: ['genericCredentialType'] } },
+					},
+				],
+			};
+			// User switched authentication from generic to predefined; genericAuthType's
+			// previous value is still stored on the node even though it's now hidden.
+			const node = makeNode({
+				authentication: 'predefinedCredentialType',
+				nodeCredentialType: 'slackApi',
+				genericAuthType: 'httpBasicAuth',
+			});
+			expect(getActiveCredentialTypes(node, nodeType)).toEqual(new Set(['slackApi']));
+		});
+
 		it('should union declared and parameter-referenced credential types', () => {
 			const nodeType = makeNodeType([
 				{ name: 'httpSslAuth', displayOptions: { show: { provideSslCertificates: [true] } } },

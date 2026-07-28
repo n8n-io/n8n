@@ -35,6 +35,32 @@ const httpRequestNodeType: INodeTypeDescription = {
 	],
 };
 
+// Mirrors the real HTTP Request node's property declarations for the auth-type
+// selector parameters (see packages/nodes-base/nodes/HttpRequest/V3/Description.ts):
+// nodeCredentialType and genericAuthType are only displayed for one `authentication`
+// value each, but their stored value isn't cleared when they become hidden.
+const httpRequestNodeTypeWithAuthProperties: INodeTypeDescription = {
+	...httpRequestNodeType,
+	properties: [
+		{
+			displayName: 'Credential Type',
+			name: 'nodeCredentialType',
+			type: 'credentialsSelect',
+			default: '',
+			credentialTypes: ['extends:oAuth2Api'],
+			displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
+		},
+		{
+			displayName: 'Generic Auth Type',
+			name: 'genericAuthType',
+			type: 'credentialsSelect',
+			default: '',
+			credentialTypes: ['has:genericAuth'],
+			displayOptions: { show: { authentication: ['genericCredentialType'] } },
+		},
+	],
+};
+
 const declaredCredentialsNodeType: INodeTypeDescription = {
 	...nodeTypeDefaults,
 	displayName: 'Test Node',
@@ -182,6 +208,27 @@ describe('nodeTypesUtils', () => {
 			});
 
 			expect(getInactiveCredentials(node, httpRequestNodeType)).toEqual([]);
+		});
+
+		it('should mark a stale generic auth credential inactive after switching to a predefined credential type, even though genericAuthType still holds its old value', () => {
+			const node = makeNode({
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'slackApi',
+					// Left over from before the user switched authentication away from
+					// 'genericCredentialType'; no longer displayed, but still stored.
+					genericAuthType: 'httpBasicAuth',
+				},
+				credentials: {
+					slackApi: { id: '123', name: 'Slack' },
+					httpBasicAuth: { id: '456', name: 'Stale Basic Auth' },
+				},
+			});
+
+			expect(getInactiveCredentials(node, httpRequestNodeTypeWithAuthProperties)).toEqual([
+				'httpBasicAuth',
+			]);
 		});
 
 		it('should keep all credentials when nodeCredentialType is an expression', () => {

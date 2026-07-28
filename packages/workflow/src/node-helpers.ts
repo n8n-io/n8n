@@ -544,13 +544,30 @@ export function getActiveCredentialTypes(
 		}
 
 		const { nodeCredentialType, genericAuthType } = node.parameters;
-		for (const paramValue of [nodeCredentialType, genericAuthType]) {
+		for (const paramName of ['nodeCredentialType', 'genericAuthType'] as const) {
+			const paramValue = paramName === 'nodeCredentialType' ? nodeCredentialType : genericAuthType;
 			if (isExpression(paramValue)) {
 				return null;
 			}
-			if (typeof paramValue === 'string' && paramValue) {
-				activeTypes.add(paramValue);
+			if (typeof paramValue !== 'string' || !paramValue) {
+				continue;
 			}
+
+			// These parameters select the credential type dynamically, so their own
+			// displayOptions (e.g. shown only for a given `authentication` value) decide
+			// whether the value they hold is actually in use. A stale value left over from
+			// a previous selection must not be reported as active just because it's
+			// non-empty. Node types that don't declare the property at all (e.g. tests)
+			// keep the previous, unconditional behaviour.
+			const paramDescription = nodeTypeDescription.properties.find((p) => p.name === paramName);
+			if (
+				paramDescription &&
+				!displayParameter(node.parameters, paramDescription, node, nodeTypeDescription)
+			) {
+				continue;
+			}
+
+			activeTypes.add(paramValue);
 		}
 
 		return activeTypes;
