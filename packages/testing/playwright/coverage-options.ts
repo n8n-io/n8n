@@ -13,7 +13,6 @@ import { dirname, join, relative } from 'node:path';
  */
 export const COVERAGE_ENABLED = process.env.COVERAGE_ENABLED === 'true';
 
-/** `@scope/name/rest` → `@scope/name`; `name/rest` → `name`. */
 function packageNameOf(specifier: string): string {
 	const segs = specifier.split('/');
 	return specifier.startsWith('@') ? segs.slice(0, 2).join('/') : segs[0];
@@ -30,9 +29,9 @@ function findRepoRoot(): string {
 }
 
 export interface WorkspaceIndex {
-	/** Package name → repo-relative dir, e.g. `@n8n/design-system` → `packages/frontend/@n8n/design-system`. */
+	/** e.g. `@n8n/design-system` → `packages/frontend/@n8n/design-system`. */
 	names: ReadonlyMap<string, string>;
-	/** Every repo-relative dir under `packages/`, used to tell a dir-relative path from a package specifier. */
+	/** Every dir under `packages/` — tells a dir-relative path from a package specifier. */
 	dirs: ReadonlySet<string>;
 }
 
@@ -73,21 +72,19 @@ function workspaceIndex(): WorkspaceIndex {
 }
 
 /** Normalise a post-source-map path to the repo-relative form Codecov and the
- * impact map key on. Takes the index as an argument to stay pure/testable. */
+ * impact map key on. Index passed in to keep this pure. */
 export function resolveSourcePath(filePath: string, index: WorkspaceIndex): string {
 	const norm = filePath.replace(/\\/g, '/');
 	if (norm.startsWith('packages/')) return norm;
 	const i = norm.lastIndexOf('packages/');
 	if (i >= 0) return norm.slice(i);
 	if (norm.startsWith('src/')) return `packages/frontend/editor-ui/${norm}`;
-	// Backend sources arrive dir-relative (`cli/src/x.ts`); the frontend bundle
-	// arrives as a package specifier (`@n8n/design-system/src/x.vue`) whose dir may
-	// sit under packages/frontend/, so `packages/` + name would mislabel it and its
-	// changes would match nothing in the impact map.
-	// Bundle chunks with no source map reach here URL-derived (`localhost-41401/
-	// assets/…`). sourceFilter never sees them — there are no sources to filter — so
-	// leave them as-is rather than prefixing them into a package that doesn't exist.
+	// Chunks with no source map arrive URL-derived; sourceFilter never sees them
+	// (no sources to filter), so keep them out of the packages/ namespace here.
 	if (/^localhost[-:]\d+\//.test(norm)) return norm;
+	// Backend sources are dir-relative (`cli/src/x.ts`); the frontend bundle is a
+	// package specifier whose dir sits under packages/frontend/, so `packages/` +
+	// name would mislabel it and its changes would match nothing in the map.
 	const asDir = `packages/${norm}`;
 	if (index.dirs.has(asDir.slice(0, asDir.lastIndexOf('/')))) return asDir;
 	const name = packageNameOf(norm);

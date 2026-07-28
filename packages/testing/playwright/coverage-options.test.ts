@@ -74,9 +74,8 @@ describe('mergeV8CoverageByUrl', () => {
 });
 
 describe('resolveSourcePath', () => {
-	// Mirrors the real layout: some packages sit directly under `packages/`, the
-	// frontend ones a level deeper. `@n8n/nodes-langchain` is the case where the dir
-	// name and the package name disagree.
+	// Mirrors the real layout: frontend packages sit a level deeper, and
+	// `@n8n/nodes-langchain` is dir-only (its package name differs).
 	const index = {
 		names: new Map([
 			['@n8n/design-system', 'packages/frontend/@n8n/design-system'],
@@ -123,8 +122,7 @@ describe('resolveSourcePath', () => {
 		);
 	});
 
-	// The regression this guards: `packages/` + name mislabels packages that live
-	// under packages/frontend/, so their changes match nothing in the impact map.
+	// The regression this guards.
 	test('resolves a scoped specifier whose dir is nested', () => {
 		expect(
 			resolveSourcePath(

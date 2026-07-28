@@ -273,13 +273,11 @@ jobs:
   # shards passing (complete map) + aggregate having built it — a partial shard
   # set yields a degraded map, worse than a stale one.
   #
-  # `!cancelled()` is load-bearing: without it a failure in the unit-coverage legs
-  # (which feed the combined lcov, not the impact map) transitively skips this job
-  # even when e2e + aggregate both passed, freezing selection input indefinitely.
-  # The result checks below stay the real gate.
-  #
-  # Default-branch-only: on a workflow_dispatch from a feature branch this would
-  # cut the refresh branch from that branch's HEAD and automerge it into master.
+  # `!cancelled()` is load-bearing: a failing unit-coverage leg (which feeds the
+  # combined lcov, not the impact map) would otherwise transitively skip this job
+  # even with e2e + aggregate green. The result checks stay the real gate.
+  # Default-branch-only: a dispatch from a feature branch would cut the refresh
+  # branch from that branch's HEAD and automerge it.
   commit-impact-map:
     name: Commit refreshed impact map
     needs: [e2e, aggregate]
@@ -370,8 +368,8 @@ jobs:
 
   approve-and-automerge:
     needs: [commit-impact-map]
-    # Same `!cancelled()` reasoning as commit-impact-map: a red unit-coverage leg
-    # upstream would otherwise skip this and leave the refresh PR open forever.
+    # `!cancelled()` for the same reason as commit-impact-map, or the refresh PR
+    # opens and never merges.
     if: ${{ !cancelled() && needs.commit-impact-map.outputs.pull-request-number != '' }}
     uses: ./.github/workflows/util-approve-and-set-automerge.yml
     secrets: inherit
