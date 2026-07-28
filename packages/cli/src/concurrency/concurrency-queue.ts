@@ -1,5 +1,6 @@
 import { TypedEmitter } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { ManualExecutionCancelledError } from 'n8n-workflow';
 
 type ConcurrencyEvents = {
 	'execution-throttled': { executionId: string };
@@ -12,6 +13,7 @@ export class ConcurrencyQueue extends TypedEmitter<ConcurrencyEvents> {
 	private readonly queue: Array<{
 		executionId: string;
 		resolve: () => void;
+		reject: (err: Error) => void;
 	}> = [];
 
 	constructor(private capacity: number) {
@@ -27,7 +29,9 @@ export class ConcurrencyQueue extends TypedEmitter<ConcurrencyEvents> {
 			this.emit('execution-throttled', { executionId });
 
 			// eslint-disable-next-line @typescript-eslint/return-await
-			return new Promise<void>((resolve) => this.queue.push({ executionId, resolve }));
+			return new Promise<void>((resolve, reject) =>
+				this.queue.push({ executionId, resolve, reject }),
+			);
 		}
 	}
 
@@ -45,11 +49,12 @@ export class ConcurrencyQueue extends TypedEmitter<ConcurrencyEvents> {
 		const index = this.queue.findIndex((item) => item.executionId === executionId);
 
 		if (index > -1) {
+			const item = this.queue[index];
 			this.queue.splice(index, 1);
 
 			this.capacity++;
 
-			this.resolveNext();
+			item.reject(new ManualExecutionCancelledError(executionId));
 		}
 	}
 

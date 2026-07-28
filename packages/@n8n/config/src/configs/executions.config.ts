@@ -155,6 +155,16 @@ export class ExecutionsConfig {
 	@Env('EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS')
 	saveDataManualExecutions: boolean = true;
 
+	/** Whether scheduled executions receive a deduplication key enforced by a unique DB index. */
+	@Env('N8N_SCHEDULED_EXECUTION_DEDUPLICATION_ENABLED')
+	scheduledExecutionDeduplicationEnabled: boolean = false;
+
+	/**
+	 * Max number of pending onReceived webhook executions allowed in the queue.
+	 * When reached, new onReceived executions are rejected with AdmissionLimitError.
+	 */
+	@Env('N8N_ON_RECEIVED_WEBHOOK_QUEUE_LIMIT')
+	onReceivedWebhookQueueLimit: number = 10000;
 	/**
 	 * Max byte size of execution run data to load for display.
 	 * Executions whose data exceeds this are returned without their run data.
