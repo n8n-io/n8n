@@ -56,7 +56,6 @@ export interface CliOptions {
 	impact: boolean;
 	// Affected-packages / scope options
 	changedFiles?: string;
-	affectedPackages?: string;
 	packageDir?: string;
 	/** Anything after `--` — forwarded to the test runner by `test-scoped`. */
 	passthroughArgs: string[];
@@ -190,9 +189,6 @@ const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) =
 	'--changed-files=': (opts, value) => {
 		opts.changedFiles = value;
 	},
-	'--affected-packages=': (opts, value) => {
-		opts.affectedPackages = value;
-	},
 	'--package-dir=': (opts, value) => {
 		opts.packageDir = value;
 	},
@@ -246,7 +242,6 @@ function createDefaultOptions(): CliOptions {
 		shardIndex: undefined,
 		impact: false,
 		changedFiles: undefined,
-		affectedPackages: undefined,
 		packageDir: undefined,
 		passthroughArgs: [],
 		url: undefined,
