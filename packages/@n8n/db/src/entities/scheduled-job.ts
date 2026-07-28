@@ -1,9 +1,11 @@
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { ScheduledJobKind, RecurringCronUnit } from '@n8n/constants';
 import { Column, Entity, Index, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
 import { DateTimeColumn, JsonColumn, WithTimestamps } from './abstract-entity';
 
 export { ScheduledJobKind, ScheduledJobKindList } from '@n8n/constants';
+export { ScheduledJobMisfirePolicy, ScheduledJobMisfirePolicyList } from '@n8n/constants';
 
 /**
  * A scheduled job: the rule for when something should run,
@@ -131,8 +133,8 @@ export class ScheduledJob extends WithTimestamps {
 	nextRunAt: Date | null;
 
 	/**
-	 * Last time an occurrence was materialized,
-	 * used to recompute {@link nextRunAt}.
+	 * Last instant this job's clock has moved past. A misfire policy advances it past
+	 * discarded occurrences too, so it is not proof that a run happened.
 	 */
 	@DateTimeColumn({ nullable: true })
 	lastFiredAt: Date | null;
@@ -142,4 +144,18 @@ export class ScheduledJob extends WithTimestamps {
 	 */
 	@Column({ type: 'int', default: 1 })
 	maxAttempts: number;
+
+	/**
+	 * What happens to occurrences that came due while nothing was there to run them,
+	 * once they are older than {@link misfireGraceSeconds}.
+	 */
+	@Column({ type: 'varchar', length: 16, default: ScheduledJobMisfirePolicy.Coalesce })
+	misfirePolicy: ScheduledJobMisfirePolicy;
+
+	/**
+	 * How late an occurrence may still be and count as on time, so that an ordinary
+	 * restart or a slow pass never reaches {@link misfirePolicy}.
+	 */
+	@Column({ type: 'int', default: 60 })
+	misfireGraceSeconds: number;
 }

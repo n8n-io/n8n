@@ -84,6 +84,27 @@ export class DurableScheduler implements Scheduler {
 					tracer,
 				})
 			: undefined;
+		if (enabled && config.misfireGraceSeconds <= config.executorIntervalSeconds) {
+			logger.warn(
+				'Scheduler misfire grace is at or below the executor interval; late runs may expire before they can be claimed',
+				{
+					misfireGraceSeconds: config.misfireGraceSeconds,
+					executorIntervalSeconds: config.executorIntervalSeconds,
+				},
+			);
+		}
+		// Occurrences are recorded a window ahead. A downtime past the grace but short of
+		// the window expires them while the schedule's next run is still ahead, so they are
+		// dropped and nothing is planned until that run comes due.
+		if (enabled && config.misfireGraceSeconds < config.materializationWindowSeconds) {
+			logger.warn(
+				'Scheduler misfire grace is below the materialization window; runs missed during a short outage are dropped rather than caught up',
+				{
+					misfireGraceSeconds: config.misfireGraceSeconds,
+					materializationWindowSeconds: config.materializationWindowSeconds,
+				},
+			);
+		}
 		this.registerTaskHandler(scheduleTriggerTaskHandler.taskType, scheduleTriggerTaskHandler);
 		this.registerTaskHandler(pollTriggerTaskHandler.taskType, pollTriggerTaskHandler);
 	}
@@ -124,6 +145,7 @@ export function buildMaterializerTransaction(
 						await jobs.claimDue(manager, limit, lookaheadMs),
 					recordOccurrences: async (occurrences) =>
 						await tasks.insertIgnoringDuplicates(manager, occurrences),
+					retireSuperseded: async (superseded) => await tasks.retireSuperseded(manager, superseded),
 					advanceJobs: async (planned) => {
 						await jobs.advanceMany(
 							manager,

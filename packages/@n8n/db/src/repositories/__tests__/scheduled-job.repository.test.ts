@@ -27,6 +27,8 @@ const newJob = (name: string): NewScheduledJob => ({
 	fireAt: null,
 	nextRunAt: CLOCK,
 	maxAttempts: 5,
+	misfirePolicy: 'coalesce',
+	misfireGraceSeconds: 60,
 });
 
 /** A chainable insert query-builder mock; `execute` is set per test. */
@@ -259,6 +261,8 @@ describe('ScheduledJobRepository', () => {
 				intervalSeconds: null,
 				fireAt: null,
 				nextRunAt: CLOCK,
+				misfirePolicy: 'skip',
+				misfireGraceSeconds: 120,
 			};
 
 			await repository.updateDefinition(entityManager, 10, update);

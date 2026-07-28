@@ -268,7 +268,7 @@ describe('PrometheusSchedulerMetricsService', () => {
 		});
 
 		it('increments reclaimed and dead-lettered into their own counters', () => {
-			service.recordReaped(3, 1);
+			service.recordReaped(3, 1, 0);
 
 			const reclaimed = counterIncFor('n8n_scheduler_tasks_reclaimed_total');
 			const deadLettered = counterIncFor('n8n_scheduler_tasks_dead_lettered_total');
@@ -276,6 +276,16 @@ describe('PrometheusSchedulerMetricsService', () => {
 			expect(reclaimed).toHaveBeenCalledTimes(1);
 			expect(deadLettered).toHaveBeenCalledWith(1);
 			expect(deadLettered).toHaveBeenCalledTimes(1);
+		});
+
+		it('labels each misfire disposition on one counter', () => {
+			service.recordMisfired(4, 2);
+			service.recordReaped(0, 0, 6);
+
+			const misfired = counterIncFor('n8n_scheduler_occurrences_misfired_total');
+			expect(misfired).toHaveBeenCalledWith({ disposition: 'discarded' }, 4);
+			expect(misfired).toHaveBeenCalledWith({ disposition: 'retired' }, 2);
+			expect(misfired).toHaveBeenCalledWith({ disposition: 'buried' }, 6);
 		});
 
 		it('increments the dead-lettered counter by one on the executor terminal-failure path', () => {
@@ -303,7 +313,8 @@ describe('PrometheusSchedulerMetricsService', () => {
 			service.recordRetry('workflow');
 			service.observeDispatchLagSeconds('workflow', 1);
 			service.recordMaterialized(1, 1);
-			service.recordReaped(1, 1);
+			service.recordMisfired(1, 1);
+			service.recordReaped(1, 1, 1);
 			service.recordDeadLettered();
 			service.recordPruned(1);
 

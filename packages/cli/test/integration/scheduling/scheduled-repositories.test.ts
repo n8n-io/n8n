@@ -1,3 +1,4 @@
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import { testDb } from '@n8n/backend-test-utils';
 import type {
 	NewScheduledJob,
@@ -85,6 +86,8 @@ describe('scheduled repositories', () => {
 	/** A minimal interval job row; bookkeeping columns take their defaults. */
 	const newJobRow = (name: string, overrides: Partial<NewScheduledJob> = {}): NewScheduledJob => ({
 		name,
+		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+		misfireGraceSeconds: 60,
 		workflowId: null,
 		nodeId: null,
 		taskType: 'scheduleTrigger',

@@ -32,6 +32,8 @@ export type NewScheduledJob = Pick<
 	| 'fireAt'
 	| 'nextRunAt'
 	| 'maxAttempts'
+	| 'misfirePolicy'
+	| 'misfireGraceSeconds'
 >;
 
 /** A changed schedule definition, plus the fresh clock it restarts from. */
@@ -45,6 +47,8 @@ export type ScheduledJobDefinitionUpdate = Pick<
 	| 'intervalSeconds'
 	| 'fireAt'
 	| 'nextRunAt'
+	| 'misfirePolicy'
+	| 'misfireGraceSeconds'
 >;
 
 @Service()

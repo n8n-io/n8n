@@ -33,6 +33,7 @@ export class PrometheusSchedulerMetricsService
 	private taskRetries!: promClient.Counter<'task_type'>;
 	private occurrencesMaterialized!: promClient.Counter;
 	private jobsDeferred!: promClient.Counter;
+	private occurrencesMisfired!: promClient.Counter;
 	private tasksReclaimed!: promClient.Counter;
 	private tasksDeadLettered!: promClient.Counter;
 	private tasksPruned!: promClient.Counter;
@@ -86,6 +87,12 @@ export class PrometheusSchedulerMetricsService
 			help: 'Total number of jobs deferred for retry during materialization.',
 		});
 
+		this.occurrencesMisfired = new promClient.Counter({
+			name: `${prefix}scheduler_occurrences_misfired_total`,
+			help: "Total number of occurrences a schedule's misfire policy took out of circulation, by disposition: discarded before being recorded, retired after a catch-up run superseded them, or buried by the reaper once they went stale unclaimed.",
+			labelNames: ['disposition'],
+		});
+
 		this.tasksReclaimed = new promClient.Counter({
 			name: `${prefix}scheduler_tasks_reclaimed_total`,
 			help: 'Total number of expired scheduler tasks reclaimed by the reaper.',
@@ -112,6 +119,9 @@ export class PrometheusSchedulerMetricsService
 		// series are created lazily as task types are discovered at runtime.
 		this.occurrencesMaterialized.inc(0);
 		this.jobsDeferred.inc(0);
+		for (const disposition of ['discarded', 'retired', 'buried']) {
+			this.occurrencesMisfired.inc({ disposition }, 0);
+		}
 		this.tasksReclaimed.inc(0);
 		this.tasksDeadLettered.inc(0);
 		this.tasksPruned.inc(0);
@@ -208,10 +218,18 @@ export class PrometheusSchedulerMetricsService
 		}
 	}
 
-	recordReaped(reclaimed: number, deadLettered: number) {
+	recordMisfired(discarded: number, retired: number) {
+		if (this.initialized) {
+			this.occurrencesMisfired.inc({ disposition: 'discarded' }, discarded);
+			this.occurrencesMisfired.inc({ disposition: 'retired' }, retired);
+		}
+	}
+
+	recordReaped(reclaimed: number, deadLettered: number, missed: number) {
 		if (this.initialized) {
 			this.tasksReclaimed.inc(reclaimed);
 			this.tasksDeadLettered.inc(deadLettered);
+			this.occurrencesMisfired.inc({ disposition: 'buried' }, missed);
 		}
 	}
 

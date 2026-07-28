@@ -1,6 +1,6 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, type EntityManager, In, IsNull, Repository } from '@n8n/typeorm';
+import { DataSource, type EntityManager, In, IsNull, LessThan, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -67,6 +67,11 @@ export interface NewOccurrence {
 	scheduledFor: Date;
 	runAt: Date;
 	maxAttempts: number;
+	/**
+	 * When the occurrence stops being worth running. Optional like the column is
+	 * nullable: an occurrence recorded without one is claimable however late it is.
+	 */
+	missedAfter?: Date | null;
 }
 
 /** Identity of a row {@link ScheduledTaskRepository.insertIgnoringDuplicates} just created. */
@@ -198,14 +203,48 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	/**
+	 * Retire, as `missed`, the occurrences of each job still `pending` at an instant
+	 * strictly older than the catch-up run that replaces them. Rows already attempted
+	 * are left alone, matching {@link ScheduledTaskRepository.claimDueTasks}: their
+	 * retry is already scheduled, and retiring one would record a row that did run as
+	 * though it never had.
+	 *
+	 * Each job gets its own statement: one `OR`-ed predicate over all of them pairs a
+	 * different `before` with each `jobId`, which no index can serve, so it degrades to
+	 * a scan of the table's largest partition.
+	 *
+	 * @returns how many occurrences were retired
+	 */
+	async retireSuperseded(
+		manager: EntityManager,
+		superseded: Array<{ jobId: number; before: Date }>,
+	): Promise<number> {
+		let retired = 0;
+		for (const { jobId, before } of superseded) {
+			const result = await manager.update(
+				ScheduledTask,
+				{
+					jobId,
+					status: ScheduledTaskStatus.Pending,
+					scheduledFor: LessThan(before),
+					attempts: 0,
+				},
+				{ status: ScheduledTaskStatus.Missed, finishedAt: () => dbNowLiteral(this.isPostgres) },
+			);
+			retired += result.affected ?? 0;
+		}
+		return retired;
+	}
+
+	/**
 	 * Claim up to `batchSize` due `pending` tasks for this instance: set them
 	 * `running`, set `claimedBy`/`leaseExpiresAt` and bump `leaseEpoch` (the fencing
 	 * token). Due-ness uses the DB clock, and reaches `lookaheadMs` into the future
 	 * so the executor can fire each task precisely at its `runAt`.
 	 *
-	 * Supersede (skipping a stale occurrence when a newer one exists) is deferred: it
-	 * needs the misfire grace window and per-schedule policy (coalesce/skip vs
-	 * fire-all), which land with the reaper.
+	 * A row past its `missedAfter` is left alone, unless it has no deadline at all, or
+	 * has already been attempted: a retry's backoff pushes it past its deadline by
+	 * design, and the attempt count decides its fate from then on.
 	 *
 	 * Concurrent claimers never take the same row: Postgres skips locked rows
 	 * (`FOR UPDATE SKIP LOCKED`); SQLite serialises via the sqlite-pooled driver's
@@ -229,6 +268,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			    WHERE t."status" = '${ScheduledTaskStatus.Pending}'
 			      AND t."taskType" = ANY($3)
 			      AND t."runAt" <= now() + ($4 || ' milliseconds')::interval
+			      AND (t."missedAfter" IS NULL OR t."missedAfter" > now() OR t."attempts" > 0)
 			    ORDER BY t."runAt"
 			    LIMIT $5
 			    FOR UPDATE SKIP LOCKED)
@@ -255,6 +295,9 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 				.andWhere("t.runAt <= STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', :lookahead)", {
 					lookahead: `+${opts.lookaheadMs / 1000} seconds`,
 				})
+				.andWhere(
+					"(t.missedAfter IS NULL OR t.missedAfter > STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') OR t.attempts > 0)",
+				)
 				.orderBy('t.runAt', 'ASC')
 				.limit(opts.batchSize)
 				.getMany();
@@ -379,7 +422,9 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * claim and lease. Used when the instance can't run the task after claiming it
 	 * (e.g. no handler is registered for its type at fire time), so another instance
 	 * or a later tick picks it up rather than the occurrence being lost. Guarded by
-	 * the `claim`; 0 rows affected is a benign no-op.
+	 * the `claim`; 0 rows affected is a benign no-op. The deadline is left as it is: it
+	 * is an absolute instant, and holding a row briefly does not make it worth running
+	 * any later than it already was.
 	 */
 	async releaseClaim(claim: HostedClaimedRef): Promise<number> {
 		return await this.runGuardedUpdate(claim, {
@@ -415,10 +460,15 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * (`oldestPendingAgeMs`). Everything reads the DB clock, so `due`-ness and the
 	 * oldest-age reference are consistent regardless of any instance clock skew.
 	 *
+	 * `due` and the oldest age count only what the claim would actually take, so a
+	 * backlog the reaper has yet to retire doesn't read as work the scheduler is behind
+	 * on. `pending` stays the whole backlog, retirable rows included.
+	 *
 	 * The caller runs this behind a short scrape cache.
 	 */
 	async getMetricSnapshot(): Promise<ScheduledTaskMetricSnapshot> {
 		const now = dbNowLiteral(this.isPostgres);
+		const claimable = `("missedAfter" IS NULL OR "missedAfter" > ${now} OR "attempts" > 0)`;
 		// "running" is computed through a subquery (and not a FILTER) to prevent
 		// the WHERE to use 'IN', which does not take the partial index into account
 		const [row]: [
@@ -432,8 +482,8 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		] = await this.query(
 			`SELECT
 			   COUNT(*) AS "pending",
-			   COUNT(*) FILTER (WHERE "runAt" <= ${now}) AS "due",
-			   MIN("runAt") FILTER (WHERE "runAt" <= ${now}) AS "oldestDueRunAt",
+			   COUNT(*) FILTER (WHERE "runAt" <= ${now} AND ${claimable}) AS "due",
+			   MIN("runAt") FILTER (WHERE "runAt" <= ${now} AND ${claimable}) AS "oldestDueRunAt",
 			   (SELECT COUNT(*) FROM ${this.tableName} WHERE "status" = '${ScheduledTaskStatus.Running}') AS "running",
 			   ${now} AS "dbNow"
 			 FROM ${this.tableName}
@@ -655,6 +705,63 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 					 ORDER BY "finishedAt"
 					 LIMIT :limit)`,
 				{ statuses: options.statuses, limit: options.limit },
+			)
+			.execute();
+		return result.affected ?? 0;
+	}
+
+	/**
+	 * Retire, as `missed`, up to `limit` `pending` occurrences past their
+	 * `missedAfter`, oldest deadline first. Rows already attempted are left alone,
+	 * matching {@link ScheduledTaskRepository.claimDueTasks}.
+	 */
+	async retireMissedPending(limit: number): Promise<number> {
+		// A non-integer bound to LIMIT errors on SQLite (datatype mismatch), and NaN
+		// binds as NULL, which on Postgres means LIMIT ALL.
+		if (!Number.isSafeInteger(limit)) {
+			throw new UnexpectedError(`retireMissedPending needs an integer limit, got: ${limit}`);
+		}
+		if (limit <= 0) return 0;
+		return this.isPostgres
+			? await this.retireMissedPendingWithPostgres(limit)
+			: await this.retireMissedPendingWithSqlite(limit);
+	}
+
+	private async retireMissedPendingWithPostgres(limit: number): Promise<number> {
+		const [, affected] = await this.manager.query<[unknown[], number]>(
+			`UPDATE ${this.tableName}
+			    SET "status" = $1, "finishedAt" = ${dbNowLiteral(true)}
+			  WHERE "id" IN (
+			    SELECT t."id" FROM ${this.tableName} t
+			     WHERE t."status" = $2
+			       AND t."missedAfter" IS NOT NULL
+			       AND t."missedAfter" <= ${dbNowLiteral(true)}
+			       AND t."attempts" = 0
+			     ORDER BY t."missedAfter"
+			     LIMIT $3
+			     FOR UPDATE SKIP LOCKED)`,
+			[ScheduledTaskStatus.Missed, ScheduledTaskStatus.Pending, limit],
+		);
+		return affected;
+	}
+
+	private async retireMissedPendingWithSqlite(limit: number): Promise<number> {
+		const result = await this.createQueryBuilder()
+			.update()
+			.set({
+				status: ScheduledTaskStatus.Missed,
+				finishedAt: () => dbNowLiteral(false),
+			})
+			.where(
+				`id IN (
+					SELECT "id" FROM ${this.tableName}
+					 WHERE "status" = :pending
+					   AND "missedAfter" IS NOT NULL
+					   AND "missedAfter" <= ${dbNowLiteral(false)}
+					   AND "attempts" = 0
+					 ORDER BY "missedAfter"
+					 LIMIT :limit)`,
+				{ pending: ScheduledTaskStatus.Pending, limit },
 			)
 			.execute();
 		return result.affected ?? 0;

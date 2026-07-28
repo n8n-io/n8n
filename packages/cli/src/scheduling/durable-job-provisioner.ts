@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import type { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { EntityManager, NewScheduledJob, ScheduledJob } from '@n8n/db';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -26,6 +27,12 @@ interface ProvisionScope {
 	nodeId: string;
 	taskType: string;
 	payload: Record<string, unknown>;
+	/**
+	 * What the inserted jobs do with occurrences missed during downtime. The caller
+	 * decides rather than the column default, since it depends on what the task type
+	 * does when it runs.
+	 */
+	misfirePolicy: ScheduledJobMisfirePolicy;
 }
 
 /** Identifies jobs for deletion: one node's jobs, or one workflow's jobs of a task type. */
@@ -104,8 +111,12 @@ export class DurableJobProvisioner {
 		taskType: string,
 		payload: Record<string, unknown>,
 		desired: DesiredJob[],
+		misfirePolicy: ScheduledJobMisfirePolicy,
 	): Promise<ProvisionSummary> {
-		return await this.provisioner.provision({ workflowId, nodeId, taskType, payload }, desired);
+		return await this.provisioner.provision(
+			{ workflowId, nodeId, taskType, payload, misfirePolicy },
+			desired,
+		);
 	}
 
 	/** Delete all of a node's jobs; their queued tasks cascade away. */
@@ -142,6 +153,7 @@ export class DurableJobProvisioner {
 		nodeId,
 		taskType,
 		payload,
+		misfirePolicy,
 	}: ProvisionScope): RunInProvisionTransaction {
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
@@ -171,6 +183,8 @@ export class DurableJobProvisioner {
 								...scheduleColumns(job.schedule),
 								nextRunAt: job.firstRunAt,
 								maxAttempts: this.globalConfig.scheduler.maxAttempts,
+								misfirePolicy,
+								misfireGraceSeconds: this.globalConfig.scheduler.misfireGraceSeconds,
 							}),
 						);
 						const ids = await this.jobs.insertMany(manager, rows);
@@ -181,6 +195,10 @@ export class DurableJobProvisioner {
 						await this.jobs.updateDefinition(manager, jobId, {
 							...scheduleColumns(schedule),
 							nextRunAt,
+							// Otherwise insert-time snapshots: only a schedule change rewrites a job,
+							// so a changed policy or grace reaches existing jobs no sooner than that.
+							misfirePolicy,
+							misfireGraceSeconds: this.globalConfig.scheduler.misfireGraceSeconds,
 						});
 						seededJobIds.add(jobId);
 					},
@@ -229,6 +247,8 @@ export class DurableJobProvisioner {
 				},
 				recordOccurrences: async (occurrences) =>
 					await this.tasks.insertIgnoringDuplicates(manager, occurrences),
+				retireSuperseded: async (superseded) =>
+					await this.tasks.retireSuperseded(manager, superseded),
 				advanceJobs: async (planned) =>
 					await this.jobs.advanceMany(
 						manager,

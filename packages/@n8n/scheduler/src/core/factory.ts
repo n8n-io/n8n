@@ -334,7 +334,10 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					signal,
 				);
 				await traceCreatedTasks(tracer, summary.created);
-				recordMetric(() => metrics.recordMaterialized(summary.occurrences, summary.deferredJobs));
+				recordMetric(() => {
+					metrics.recordMaterialized(summary.occurrences, summary.deferredJobs);
+					metrics.recordMisfired(summary.skippedOccurrences, summary.retiredOccurrences);
+				});
 				return summary;
 			} catch (error) {
 				// `throwIfAborted` always throws `signal.reason` itself, so this only
@@ -345,7 +348,14 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					signal.reason !== PASS_TIMED_OUT &&
 					error === signal.reason
 				) {
-					return { claimedJobs: 0, occurrences: 0, created: [], deferredJobs: 0 };
+					return {
+						claimedJobs: 0,
+						occurrences: 0,
+						created: [],
+						deferredJobs: 0,
+						skippedOccurrences: 0,
+						retiredOccurrences: 0,
+					};
 				}
 				throw error;
 			}
@@ -354,6 +364,8 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 			[SCHEDULER_ATTRIBUTES.claimedJobs]: summary.claimedJobs,
 			[SCHEDULER_ATTRIBUTES.occurrences]: summary.occurrences,
 			[SCHEDULER_ATTRIBUTES.deferredJobs]: summary.deferredJobs,
+			[SCHEDULER_ATTRIBUTES.skippedOccurrences]: summary.skippedOccurrences,
+			[SCHEDULER_ATTRIBUTES.retiredOccurrences]: summary.retiredOccurrences,
 		}),
 	);
 
@@ -386,6 +398,11 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 							},
 						);
 					},
+					onRetireError: (error) => {
+						emit('error', 'Scheduler could not retire stale pending occurrences', {
+							error: described(error),
+						});
+					},
 					onDeadLetter: (task) => {
 						emit('warn', 'Scheduler dead-lettered a task; its last attempt lost its lease', {
 							...task,
@@ -401,12 +418,15 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 				},
 				signal,
 			);
-			recordMetric(() => metrics.recordReaped(result.reclaimed, result.deadLettered));
+			recordMetric(() =>
+				metrics.recordReaped(result.reclaimed, result.deadLettered, result.missed),
+			);
 			return result;
 		},
 		(result) => ({
 			[SCHEDULER_ATTRIBUTES.reclaimed]: result.reclaimed,
 			[SCHEDULER_ATTRIBUTES.deadLettered]: result.deadLettered,
+			[SCHEDULER_ATTRIBUTES.missed]: result.missed,
 		}),
 	);
 

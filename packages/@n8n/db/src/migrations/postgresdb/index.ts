@@ -230,6 +230,7 @@ import { AddStoredAtToAgentExecution1784815940110 } from '../common/178481594011
 import { AddInstanceCredentials1784815940111 } from '../common/1784815940111-AddInstanceCredentials';
 import { CreateAgentEvalTables1784815940112 } from '../common/1784815940112-CreateAgentEvalTables';
 import { AddAvailableInMcpToAgents1784897791636 } from '../common/1784897791636-AddAvailableInMcpToAgents';
+import { AddMisfirePolicyToScheduler1785159600000 } from '../common/1785159600000-AddMisfirePolicyToScheduler';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -465,4 +466,5 @@ export const postgresMigrations: Migration[] = [
 	AddInstanceCredentials1784815940111,
 	CreateAgentEvalTables1784815940112,
 	AddAvailableInMcpToAgents1784897791636,
+	AddMisfirePolicyToScheduler1785159600000,
 ];

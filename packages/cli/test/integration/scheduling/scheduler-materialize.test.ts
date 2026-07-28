@@ -33,6 +33,14 @@ describe('scheduler materialization', () => {
 	let seq = 0;
 	const secondsFromNow = (seconds: number) => new Date(Date.now() + seconds * 1000);
 
+	const claimOpts = () => ({
+		host: 'materialize-test',
+		taskTypes: ['test'],
+		lookaheadMs: 0,
+		leaseMs: 60_000,
+		batchSize: 10,
+	});
+
 	const createJob = async (overrides: Partial<ScheduledJob> = {}) =>
 		await jobRepo.save(
 			jobRepo.create({
@@ -91,8 +99,58 @@ describe('scheduler materialization', () => {
 		expect(advanced.nextRunAt!.getTime() - advanced.lastFiredAt!.getTime()).toBe(3600 * 1000);
 	});
 
-	it('drains a backlog in maxPerJob-sized batches across successive passes', async () => {
-		// A job far behind (interval 10s, ~100s of backlog) so more than maxPerJob fires are due.
+	it('stops offering a coalesce occurrence once it is past its deadline', async () => {
+		// A queued run that outlived an outage must not fire alongside the catch-up run a
+		// later pass plans for the same backlog.
+		await createJob({ misfirePolicy: 'coalesce', misfireGraceSeconds: 60 });
+
+		await runMaterialization(0);
+
+		const [task] = await taskRepo.find();
+		// Recorded a day ago, so both instants are a day old.
+		await taskRepo.update(
+			{ id: task.id },
+			{ runAt: secondsFromNow(-86_400), missedAfter: secondsFromNow(-86_340) },
+		);
+
+		expect(await taskRepo.claimDueTasks(claimOpts())).toHaveLength(0);
+		expect(await taskRepo.retireMissedPending(10)).toBe(1);
+		expect((await taskRepo.findOneByOrFail({ id: task.id })).status).toBe('missed');
+	});
+
+	it.each(['skip', 'coalesce'] as const)(
+		'gives a %s occurrence a deadline the claim can refuse it by',
+		async (misfirePolicy) => {
+			await createJob({ misfirePolicy, misfireGraceSeconds: 60 });
+
+			await runMaterialization(0);
+
+			const [task] = await taskRepo.find();
+			expect(task.missedAfter).not.toBeNull();
+			expect(task.missedAfter!.getTime()).toBeGreaterThan(task.runAt.getTime());
+		},
+	);
+
+	it('retires the queued occurrences a later catch-up run supersedes', async () => {
+		// The already-queued row is part of the backlog the second pass coalesces, so it
+		// is retired rather than left to run alongside the catch-up.
+		const job = await createJob({ intervalSeconds: 10, misfireGraceSeconds: 30 });
+
+		await runMaterialization(0);
+		const [queued] = await taskRepo.find();
+		expect(queued.status).toBe('pending');
+
+		await jobRepo.update({ id: job.id }, { nextRunAt: secondsFromNow(-300) });
+		const summary = await runMaterialization(0);
+
+		expect(summary.retiredOccurrences).toBe(1);
+		expect((await taskRepo.findOneByOrFail({ id: queued.id })).status).toBe('missed');
+		expect(await taskRepo.countBy({ status: 'pending' })).toBe(1);
+	});
+
+	it('drops a capped backlog rather than firing a stale run per pass', async () => {
+		// A job far behind (interval 10s, ~100s of backlog) so more than maxPerJob fires
+		// are due, forcing the walk to stop at the cap.
 		await createJob({ intervalSeconds: 10, nextRunAt: secondsFromNow(-100) });
 		const drainScheduler = composeScheduler({
 			windowSeconds: 0,
@@ -102,28 +160,30 @@ describe('scheduler materialization', () => {
 			defaultTimezone: 'UTC',
 		});
 
-		// The first pass records exactly maxPerJob, capping the batch rather than draining it all.
+		// The capped pass records nothing and advances the clock, rather than firing a
+		// run that is stale by construction.
 		const first = await drainScheduler.materialize();
-		expect(first.occurrences).toBe(5);
-		expect(await taskRepo.count()).toBe(5);
+		expect(first.occurrences).toBe(0);
+		expect(first.skippedOccurrences).toBe(5);
+		expect(await taskRepo.count()).toBe(0);
 
-		// Successive passes continue draining, each recording at most maxPerJob, until the
-		// backlog is exhausted. The claim reaches a poll interval ahead of due, so with
-		// windowSeconds: 0 the job keeps being claimed for its near-future fire even once
-		// drained; exhaustion shows as a pass that records nothing new, not an unclaimed job.
-		for (let i = 0; i < 10; i++) {
+		// Draining stops being a misfire once the remaining instants are inside their
+		// grace window, so a capped backlog costs at most a grace window of fires.
+		let passes = 0;
+		while (passes < 10) {
 			const summary = await drainScheduler.materialize();
-			expect(summary.occurrences).toBeLessThanOrEqual(5);
-			if (summary.occurrences === 0) break;
+			passes += 1;
+			if (summary.occurrences === 0 && summary.skippedOccurrences === 0) break;
 		}
 
-		// Drained: the backlog is fully recorded, every occurrence distinct (no duplicate from batching).
-		const drained = await drainScheduler.materialize();
-		expect(drained.occurrences).toBe(0);
 		const tasks = await taskRepo.find();
 		const distinctInstants = new Set(tasks.map((t) => t.scheduledFor.getTime()));
 		expect(distinctInstants.size).toBe(tasks.length);
-		expect(tasks.length).toBeGreaterThanOrEqual(10);
+		// The ~40s beyond the grace window are gone; only the recent tail was recorded.
+		expect(tasks.length).toBeLessThan(10);
+		for (const task of tasks) {
+			expect(task.scheduledFor.getTime()).toBeGreaterThan(Date.now() - 70_000);
+		}
 	});
 
 	it('records the upcoming occurrences within the window, ahead of time', async () => {

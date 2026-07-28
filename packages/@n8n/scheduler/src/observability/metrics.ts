@@ -16,8 +16,10 @@ export interface SchedulerMetrics {
 
 	/** Outcome of one materialization pass. */
 	recordMaterialized(occurrences: number, deferredJobs: number): void;
+	/** Occurrences a misfire policy discarded before recording, or retired afterwards. */
+	recordMisfired(discarded: number, retired: number): void;
 	/** Outcome of one reaper sweep. */
-	recordReaped(reclaimed: number, deadLettered: number): void;
+	recordReaped(reclaimed: number, deadLettered: number, missed: number): void;
 	/**
 	 * A task became a dead-letter on the executor's terminal-failure path (attempts
 	 * exhausted). Complements the reaper's `recordReaped`, which counts the ones it
@@ -35,6 +37,7 @@ export const noopMetrics: SchedulerMetrics = {
 	recordRetry() {},
 	observeDispatchLagSeconds() {},
 	recordMaterialized() {},
+	recordMisfired() {},
 	recordReaped() {},
 	recordDeadLettered() {},
 	recordPruned() {},
