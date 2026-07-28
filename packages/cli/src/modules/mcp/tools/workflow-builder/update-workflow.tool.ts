@@ -26,6 +26,7 @@ import {
 } from './version-metadata';
 import {
 	applyOperations,
+	NON_FATAL_OPERATION_TYPES,
 	partialUpdateOperationSchema,
 	toWorkflowSlice,
 	workflowSettingsObjectSchema,
@@ -267,11 +268,13 @@ function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, 
 // The concrete return type (not a widened z.ZodRawShape) keeps the tool's
 // generic coupled to the real schema shape, so the handler's argument
 // annotation is compile-checked against it via ToolCallback's parameter types.
+const NON_FATAL_OPERATION_TYPES_LIST = [...NON_FATAL_OPERATION_TYPES].join(', ');
+
 const buildToolDescription = (canvasGroupsEnabled: boolean) => {
 	const base =
 		'Atomically update an existing workflow with operation objects. Edits nodes/connections and also workflow-level settings via setWorkflowSettings — including the error workflow that runs automatically on failure to send alerts (e.g. when a user asks to "add error handling" or "notify me if this breaks"). Pass skillsUsed if n8n skills were used.';
 	return canvasGroupsEnabled
-		? `${base} Node-group operations (setNodeGroups, addNodeGroup, removeNodeGroup, updateNodeGroup) are the one exception to "atomically": an invalid one is skipped and reported in skippedOperations instead of aborting the whole update.`
+		? `${base} Node-group operations (${NON_FATAL_OPERATION_TYPES_LIST}) are the one exception to "atomically": an invalid one is skipped and reported in skippedOperations instead of aborting the whole update.`
 		: base;
 };
 
@@ -285,7 +288,7 @@ const buildInputSchema = (canvasGroupsEnabled: boolean) =>
 			.max(MAX_OPERATIONS_PER_CALL)
 			.describe(
 				canvasGroupsEnabled
-					? `Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved — except node-group operations (setNodeGroups, addNodeGroup, removeNodeGroup, updateNodeGroup): an invalid one is skipped and reported in skippedOperations, while the rest of the batch still saves.`
+					? `Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved — except node-group operations (${NON_FATAL_OPERATION_TYPES_LIST}): an invalid one is skipped and reported in skippedOperations, while the rest of the batch still saves.`
 					: `Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved.`,
 			),
 		versionName: versionNameInputSchema.describe(

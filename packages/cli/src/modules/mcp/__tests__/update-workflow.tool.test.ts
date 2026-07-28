@@ -26,6 +26,7 @@ import { WorkflowPublishedDataService } from '@/workflows/workflow-published-dat
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
+import { NON_FATAL_OPERATION_TYPES } from '../tools/workflow-builder/workflow-operations';
 
 const mockAutoPopulateNodeCredentials = vi.fn();
 const mockTrackAutoassignOutcomes = vi.fn();
@@ -250,25 +251,25 @@ describe('update-workflow MCP tool', () => {
 		});
 	});
 
-	describe('docs describe the non-fatal group behavior only when the flag is on', () => {
-		describe('canvasGroupsEnabled off', () => {
-			test('tool and operations descriptions do not mention skippedOperations', () => {
-				const tool = createTool();
-				expect(tool.config.description).not.toContain('skippedOperations');
-				expect((tool.config.inputSchema!.operations as z.ZodTypeAny).description).not.toContain(
-					'skippedOperations',
-				);
-			});
+	describe('docs mention the non-fatal group exception only when canvasGroupsEnabled', () => {
+		const operationsDescription = (tool: ReturnType<typeof createTool>) =>
+			(tool.config.inputSchema!.operations as z.ZodTypeAny).description;
+
+		test('flag off: neither the tool description nor the operations field mention the exception', () => {
+			const tool = createTool();
+			expect(tool.config.description).not.toContain('one exception to "atomically"');
+			expect(operationsDescription(tool)).not.toContain('except node-group operations');
 		});
 
-		describe('canvasGroupsEnabled on', () => {
-			test('tool and operations descriptions mention skippedOperations', () => {
-				const tool = createTool({ canvasGroupsEnabled: true });
-				expect(tool.config.description).toContain('skippedOperations');
-				expect((tool.config.inputSchema!.operations as z.ZodTypeAny).description).toContain(
-					'skippedOperations',
-				);
-			});
+		test('flag on: both the tool description and the operations field name the non-fatal operation types', () => {
+			const tool = createTool({ canvasGroupsEnabled: true });
+			const nonFatalTypesList = [...NON_FATAL_OPERATION_TYPES].join(', ');
+			expect(tool.config.description).toContain(
+				`Node-group operations (${nonFatalTypesList}) are the one exception to "atomically"`,
+			);
+			expect(operationsDescription(tool)).toContain(
+				`except node-group operations (${nonFatalTypesList})`,
+			);
 		});
 	});
 

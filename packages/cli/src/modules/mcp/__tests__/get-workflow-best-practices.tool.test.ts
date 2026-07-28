@@ -120,7 +120,7 @@ describe('get-workflow-best-practices MCP tool', () => {
 				expect(text).toContain('## Grouping');
 				expect(text).toMatch(/sub-workflow/i); // groups vs sub-workflows
 				expect(text).toMatch(/collapsed/i); // created collapsed by default
-				expect(text).toContain('skippedOperations'); // invalid groups are non-fatal
+				expect(text).toContain('skippedOperations');
 			});
 		});
 

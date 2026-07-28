@@ -55,6 +55,7 @@ describe('getMcpInstructions', () => {
 					canvasGroupsEnabled: true,
 				});
 
+				expect(instructions).toContain('does not fail the whole update');
 				expect(instructions).toContain('skippedOperations');
 			});
 
@@ -79,6 +80,7 @@ describe('getMcpInstructions', () => {
 				});
 
 				expect(instructions).not.toContain('"groups"');
+				expect(instructions).not.toContain('does not fail the whole update');
 				expect(instructions).not.toContain('skippedOperations');
 			});
 
