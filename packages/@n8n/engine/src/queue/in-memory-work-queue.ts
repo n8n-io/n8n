@@ -16,12 +16,12 @@ export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
 	// eslint-disable-next-line @typescript-eslint/require-await -- satisfies async interface; dispatch is scheduled, not awaited
 	async publish(message: TMessage): Promise<void> {
 		this.pending.push(message);
-		this.ensureDispatching();
+		this.startDispatchLoop();
 	}
 
 	start(handler: (message: TMessage) => Promise<void>): void {
 		this.handler = handler;
-		this.ensureDispatching();
+		this.startDispatchLoop();
 	}
 
 	async stop(): Promise<void> {
