@@ -27,7 +27,9 @@
 			"env": ["RELEASE"]
 		},
 		"typecheck": {
-			"dependsOn": ["^typecheck", "^build"]
+			// Typechecks are all --noEmit and read upstream types from dist (^build) or source
+			// (tsconfig paths) — depending on ^typecheck would only serialize the pipeline.
+			"dependsOn": ["^build"]
 		},
 		"format": {},
 		"format:check": {},
