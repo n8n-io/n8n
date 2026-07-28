@@ -6786,6 +6786,9 @@ importers:
       '@n8n/test-impact':
         specifier: workspace:*
         version: link:../test-impact
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../@n8n/utils
       '@n8n/workflow-sdk':
         specifier: workspace:*
         version: link:../../@n8n/workflow-sdk

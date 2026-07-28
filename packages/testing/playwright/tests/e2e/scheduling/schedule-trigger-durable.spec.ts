@@ -1,11 +1,11 @@
+import { sleep } from '@n8n/utils/sleep';
+
 import { expectScheduleTriggerFires } from './schedule-trigger-helpers';
 import {
 	makeScheduleTriggerWorkflow,
 	makeCronScheduleTriggerWorkflow,
 } from './schedule-trigger-workflow';
 import { test, expect } from '../../../fixtures/base';
-
-const wait = async (ms: number) => await new Promise((resolve) => setTimeout(resolve, ms));
 
 // Durable scheduler path. Both flags are required: with only
 // `N8N_SCHEDULER_ENABLED` the job registrar early-returns and activation falls
@@ -50,7 +50,7 @@ test.describe(
 			// expectScheduleTriggerFires already polled for up to 60s, so ticks
 			// accrued during detection must not count against the window's budget.
 			const countBefore = (await api.workflows.getExecutions(workflowId, 100)).length;
-			await wait(10_000);
+			await sleep(10_000);
 			const countAfter = (await api.workflows.getExecutions(workflowId, 100)).length;
 			const fired = countAfter - countBefore;
 
@@ -68,10 +68,10 @@ test.describe(
 			// Let any in-flight tick settle, then snapshot and hold across several
 			// intervals. Deactivation removes the scheduled job (no read path exists,
 			// so this is proven indirectly by the count staying flat).
-			await wait(2_000);
+			await sleep(2_000);
 			const countAfterDeactivate = (await api.workflows.getExecutions(workflowId, 50)).length;
 
-			await wait(6_000);
+			await sleep(6_000);
 			const countAtEnd = (await api.workflows.getExecutions(workflowId, 50)).length;
 
 			expect(countAtEnd).toBe(countAfterDeactivate);

@@ -3,7 +3,7 @@ import { ESLintUtils, TSESTree } from '@typescript-eslint/utils';
 const ALLOWED_SOURCE = '@n8n/utils/sleep';
 const RESTRICTED_NAMES = new Set(['sleep', 'sleepWithAbort']);
 const CANONICAL_FILE = /\/@n8n\/utils\/src\/sleep\.ts$/;
-const EXEMPT_PACKAGE = /\/@n8n\/typeorm\//;
+const EXEMPT_PACKAGES = [/\/@n8n\/typeorm\//, /\/@n8n\/node-cli\//];
 
 export const NoRestrictedSleepImportRule = ESLintUtils.RuleCreator.withoutDocs({
 	meta: {
@@ -22,7 +22,7 @@ export const NoRestrictedSleepImportRule = ESLintUtils.RuleCreator.withoutDocs({
 	defaultOptions: [],
 	create(context) {
 		const filename = context.filename.replace(/\\/g, '/');
-		if (CANONICAL_FILE.test(filename) || EXEMPT_PACKAGE.test(filename)) {
+		if (CANONICAL_FILE.test(filename) || EXEMPT_PACKAGES.some((re) => re.test(filename))) {
 			return {};
 		}
 

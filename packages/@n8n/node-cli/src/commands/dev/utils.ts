@@ -137,7 +137,7 @@ function processStreamData(data: Buffer, outputLines: string[]): void {
 	}
 }
 
-export async function wait(ms: number): Promise<void> {
+export async function sleep(ms: number): Promise<void> {
 	await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
@@ -373,7 +373,7 @@ async function killProcess(proc: ChildProcess, graceful: boolean): Promise<void>
 	sendKillSignal(proc, pid, graceful ? 'SIGTERM' : 'SIGKILL');
 
 	if (!graceful) {
-		await wait(CONFIG.PROCESS_KILL_DELAY_MS);
+		await sleep(CONFIG.PROCESS_KILL_DELAY_MS);
 		return;
 	}
 
@@ -386,12 +386,12 @@ async function killProcess(proc: ChildProcess, graceful: boolean): Promise<void>
 	while (Date.now() < deadline) {
 		const groupDrained = isWindows || !isProcessGroupAlive(pid);
 		if (hasExited() && groupDrained) return;
-		await wait(CONFIG.GROUP_POLL_INTERVAL_MS);
+		await sleep(CONFIG.GROUP_POLL_INTERVAL_MS);
 	}
 
 	// Graceful window elapsed — force-kill anything still alive in the group.
 	sendKillSignal(proc, pid, 'SIGKILL');
-	await wait(CONFIG.PROCESS_KILL_DELAY_MS);
+	await sleep(CONFIG.PROCESS_KILL_DELAY_MS);
 }
 
 export function runCommands(config: CommandsConfig): void {

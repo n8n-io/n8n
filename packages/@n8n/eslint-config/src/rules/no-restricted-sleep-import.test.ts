@@ -17,6 +17,10 @@ ruleTester.run('no-restricted-sleep-import', NoRestrictedSleepImportRule, {
 			code: 'function sleep(ms: number) {}',
 			filename: '/repo/packages/@n8n/typeorm/test/utils/test-utils.ts',
 		},
+		{
+			code: 'export async function sleep(ms: number) {}',
+			filename: '/repo/packages/@n8n/node-cli/src/commands/dev/utils.ts',
+		},
 	],
 
 	invalid: [
