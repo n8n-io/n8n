@@ -8,6 +8,7 @@ import type {
 	AuthIdentity,
 	DbLockService,
 	Project,
+	ProjectRelationRepository,
 	SharedWorkflowRepository,
 	UserRepository,
 	WorkflowEntity,
@@ -59,6 +60,7 @@ describe('WorkflowReviewRequestService', () => {
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const userRepository = mock<UserRepository>();
+	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const roleService = mock<RoleService>();
 	const projectService = mock<ProjectService>();
 	const licenseState = mock<LicenseState>();
@@ -78,6 +80,7 @@ describe('WorkflowReviewRequestService', () => {
 		authorRepository,
 		reviewerRepository,
 		userRepository,
+		projectRelationRepository,
 		roleService,
 		projectService,
 		licenseState,
