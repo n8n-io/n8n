@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| agentId | varchar(36) |  | true |  | [public.agents](public.agents.md) | Agent the attachment was sent to, when persisted |
+| agentId | varchar(36) |  | true |  | [public.agents](public.agents.md) | Agent the attachment was sent to, when persisted (null for inline agents) |
 | binaryDataId | text |  | false |  |  | Opaque BinaryDataService reference (mode-prefixed, e.g. "filesystem-v2:\<uuid\>"); not an FK to binary_data, which only has rows in DB storage mode |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | fileName | varchar(255) |  | false |  |  |  |
