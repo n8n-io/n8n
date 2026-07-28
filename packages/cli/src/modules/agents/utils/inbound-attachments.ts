@@ -1,4 +1,5 @@
 import type { AgentMessage, Message } from '@n8n/agents';
+import { MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH } from '@n8n/api-types';
 
 import type { StoredAttachmentRef } from '../agent-chat-attachment.service';
 
@@ -22,6 +23,11 @@ export async function resolveInboundMimeType(
 	declared: string | undefined,
 	data: Buffer,
 ): Promise<string> {
+	// An overlong declaration is garbage and would overflow the mimeType
+	// column; sniffed values below are always short IANA types.
+	if (declared && declared.length > MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH) {
+		return 'application/octet-stream';
+	}
 	const declaredFamily = declared ? modelEligibleFamily(declared) : null;
 	if (declared && !declaredFamily) return declared;
 

@@ -1,5 +1,6 @@
 import type { Mock } from 'vitest';
 import type { StreamChunk } from '@n8n/agents';
+import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import { type Logger } from 'n8n-workflow';
@@ -706,6 +707,32 @@ describe('AgentChatBridge — consumeStream', () => {
 					attachments: [
 						{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 },
 					],
+				}),
+			);
+		});
+
+		it('truncates a platform file name to the fileName column width', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+			const thread = makeThread();
+
+			await handlers.mention!(thread, {
+				text: 'look at this',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						name: `${'a'.repeat(MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH + 10)}.png`,
+						mimeType: 'image/png',
+						fetchData: vi.fn().mockResolvedValue(pngBytes),
+					},
+				],
+			});
+
+			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+				expect.objectContaining({
+					fileName: 'a'.repeat(MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH),
 				}),
 			);
 		});

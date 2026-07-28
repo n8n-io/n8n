@@ -1,5 +1,6 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import {
+	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
@@ -382,7 +383,12 @@ export class AgentChatBridge {
 		}
 
 		for (const attachment of inboundAttachments.slice(0, MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE)) {
-			const name = attachment.name ?? 'attachment';
+			// Platform attachments bypass DTO validation, so cap the name to the
+			// fileName column width here.
+			const name = (attachment.name ?? 'attachment').slice(
+				0,
+				MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
+			);
 			try {
 				if (
 					attachment.size !== undefined &&

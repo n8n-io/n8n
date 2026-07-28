@@ -1,4 +1,5 @@
 import type { Message } from '@n8n/agents';
+import { MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH } from '@n8n/api-types';
 
 import { buildInboundUserMessage, resolveInboundMimeType } from '../inbound-attachments';
 
@@ -60,5 +61,10 @@ describe('resolveInboundMimeType', () => {
 	it('sniffs the type when no declaration is provided', async () => {
 		expect(await resolveInboundMimeType(undefined, PNG_BYTES)).toBe('image/png');
 		expect(await resolveInboundMimeType(undefined, TEXT_BYTES)).toBe('application/octet-stream');
+	});
+
+	it('normalizes a declaration longer than the mimeType column to octet-stream', async () => {
+		const overlong = `text/${'x'.repeat(MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH)}`;
+		expect(await resolveInboundMimeType(overlong, TEXT_BYTES)).toBe('application/octet-stream');
 	});
 });

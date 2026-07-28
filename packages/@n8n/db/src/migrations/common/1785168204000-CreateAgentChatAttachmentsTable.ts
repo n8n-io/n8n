@@ -15,7 +15,7 @@ export class CreateAgentChatAttachmentsTable1785168204000 implements ReversibleM
 				// varchar(36) mirrors the referenced agents.id primary key.
 				column('agentId')
 					.varchar(36)
-					.comment('Agent the attachment was sent to, when persisted'),
+					.comment('Agent the attachment was sent to, when persisted (null for inline agents)'),
 				column('projectId')
 					.varchar(36)
 					.notNull.comment('Project owning the conversation; authorization scope for downloads'),
