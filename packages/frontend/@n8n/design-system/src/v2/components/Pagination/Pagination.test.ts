@@ -192,6 +192,28 @@ describe('v2/components/Pagination', () => {
 				expect(wrapper.getByText('3')).toHaveAttribute('data-selected');
 			});
 		});
+
+		it('should navigate via jumper in uncontrolled mode', async () => {
+			const wrapper = render(Pagination, {
+				props: {
+					defaultPage: 3,
+					total: 100,
+					itemsPerPage: 10,
+				},
+			});
+
+			expect(wrapper.getByText('3')).toHaveAttribute('data-selected');
+
+			const input = wrapper.getByTestId('pagination-jumper-input');
+			await userEvent.clear(input);
+			await userEvent.type(input, '5');
+			await userEvent.tab();
+
+			await waitFor(() => {
+				expect(wrapper.getByText('5')).toHaveAttribute('data-selected');
+				expect(wrapper.emitted('update:page')?.[0]).toEqual([5]);
+			});
+		});
 	});
 
 	describe('v-model:itemsPerPage', () => {

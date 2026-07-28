@@ -44,12 +44,11 @@ defineSlots<PaginationSlots>();
 
 const { t } = useI18n();
 
-const rootProps = useForwardProps(
-	reactivePick(props, 'page', 'defaultPage', 'disabled', 'showEdges', 'siblingCount'),
-);
+const rootProps = useForwardProps(reactivePick(props, 'disabled', 'showEdges', 'siblingCount'));
 
-const jumperValue = ref(String(props.page ?? props.defaultPage ?? 1));
+// Always drive PaginationRoot from this model so jumper/sizes work in uncontrolled mode too
 const currentPageRef = ref(props.page ?? props.defaultPage ?? 1);
+const jumperValue = ref(String(currentPageRef.value));
 
 watch(
 	() => props.page,
@@ -197,6 +196,7 @@ function handlePagerKeydown(event: KeyboardEvent) {
 		<PaginationRoot
 			v-slot="{ page: currentPage, pageCount }"
 			v-bind="rootProps"
+			:page="currentPageRef"
 			:items-per-page="itemsPerPage"
 			:total="resolvedTotalItems()"
 			@update:page="handlePageUpdate"
