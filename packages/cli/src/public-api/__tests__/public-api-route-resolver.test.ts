@@ -144,6 +144,26 @@ describe('public-api-route-resolver', () => {
 			);
 		});
 
+		it('throws when an undecorated parameter trails after the last decorated one', () => {
+			// Unlike a mid-sequence gap, a trailing undecorated parameter never gets a `route.args`
+			// index assigned at all - it's not a hole in the sparse array, it's past its end. Only
+			// `design:paramtypes` (which has one entry per actual declared parameter) can reveal it.
+			class TestController {
+				method(@Query _query: WidgetQueryDto, _extra: number) {}
+			}
+			const { args } = Container.get(ControllerRegistryMetadata).getRouteMetadata(
+				TestController as Controller,
+				'method',
+			);
+
+			expect(() => resolveRouteArgs(TestController as Controller, 'method', args)).toThrow(
+				UnexpectedError,
+			);
+			expect(() => resolveRouteArgs(TestController as Controller, 'method', args)).toThrow(
+				'Public API route TestController.method has an undecorated parameter at index 1',
+			);
+		});
+
 		it('throws when a @Body arg has no resolvable Zod DTO', () => {
 			class TestController {
 				// Typed as a plain builtin, not a Zod DTO - simulates a developer forgetting one.
