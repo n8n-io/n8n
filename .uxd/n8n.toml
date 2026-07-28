@@ -46,8 +46,19 @@ run = "pnpm agent:setup install && pnpm agent:setup build"
 
 # The `dev` command below serves the *built* backend, so a stale build is a
 # broken workspace. Re-run setup whenever any dependency surface moves: the
-# lockfile, the pnpm catalog, any workspace manifest, or a patch.
-cache_key = ["pnpm-lock.yaml", "pnpm-workspace.yaml", "**/package.json", "patches/**"]
+# lockfile, the pnpm catalog, or a patch.
+#
+# Every pattern here must match ONLY git-tracked files. uxd hashes whatever a
+# pattern matches, excluding just node_modules/ and .git/ — so a glob that can
+# reach build output puts build output in the setup key, and setup then re-runs
+# on every single invocation. `**/package.json` did exactly that: the build
+# writes gitignored manifests into dist/ (json-schema-to-zod/postcjs.cjs,
+# postesm.cjs, node-cli's copy-templates.mjs), so the hash moved every build.
+#
+# Dropping it loses nothing: pnpm-lock.yaml carries an `importers:` section with
+# an entry per workspace, so any manifest's dependency set moving moves the
+# lockfile too.
+cache_key = ["pnpm-lock.yaml", "pnpm-workspace.yaml", "patches/**"]
 
 # Copied from <config-dir>/seeds/n8n/.env.local — license key, AI keys, anything
 # you don't want to retype per workspace. It is gitignored in the repo and n8n
