@@ -207,21 +207,19 @@ const canTestTrace = computed(
  * could never be guaranteed to match. Formatting both the input display and the
  * copy through the same Intl formatter makes them consistent by construction.
  */
-const sampleRateFormat = createSampleRateFormat();
-const sampleRateMax = sampleRateFormat.format(1);
+const { format: formatSampleRate, parse: parseSampleRate } = createSampleRateFormat();
+const sampleRateMax = formatSampleRate(1);
 
 const sampleRateInput = ref('');
 const connectivityTimeoutInput = ref('');
 
 function syncSampleRateInput() {
-	sampleRateInput.value = sampleRateFormat.format(otelStore.settings.tracesSampleRate);
+	sampleRateInput.value = formatSampleRate(otelStore.settings.tracesSampleRate);
 }
 
 function syncConnectivityTimeoutInput() {
 	connectivityTimeoutInput.value = String(otelStore.settings.startupConnectivityTimeoutMs);
 }
-
-const parseSampleRate = sampleRateFormat.parse;
 
 function parseConnectivityTimeout(text: string): number | null {
 	const trimmed = text.trim();

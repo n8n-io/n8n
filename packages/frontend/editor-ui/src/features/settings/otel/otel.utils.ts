@@ -12,10 +12,7 @@ export function createSampleRateFormat(locale?: string) {
 	});
 	const decimalSeparator =
 		formatter.formatToParts(1.1).find((part) => part.type === 'decimal')?.value ?? '.';
-	const digitFormatter = new Intl.NumberFormat(locale, {
-		useGrouping: false,
-		maximumFractionDigits: 0,
-	});
+	const digitFormatter = new Intl.NumberFormat(locale);
 	const asciiDigits = new Map(
 		Array.from({ length: 10 }, (_, digit) => [digitFormatter.format(digit), String(digit)]),
 	);
