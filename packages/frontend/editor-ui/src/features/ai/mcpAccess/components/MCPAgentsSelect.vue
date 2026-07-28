@@ -6,6 +6,7 @@ import { computed, onMounted, ref } from 'vue';
 import type { Agent } from '@/features/agents/agent.types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
+import { sleep } from 'n8n-workflow';
 
 defineProps<{
 	placeholder?: string;
@@ -56,18 +57,10 @@ async function searchAgents(query?: string) {
 	} catch (e) {
 		toast.showError(e, i18n.baseText('settings.mcp.connectAgents.error'));
 	} finally {
-		await waitFor(LOADING_INDICATOR_TIMEOUT);
+		await sleep(LOADING_INDICATOR_TIMEOUT);
 		isLoading.value = false;
 		hasFetched.value = true;
 	}
-}
-
-async function waitFor(timeout: number) {
-	await new Promise<void>((resolve) => {
-		setTimeout(() => {
-			resolve();
-		}, timeout);
-	});
 }
 
 function focusOnInput() {

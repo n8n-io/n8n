@@ -39,13 +39,17 @@ export class AgentMcpAccessService {
 		options: ListAgentsQueryDto,
 	): Promise<{ count: number; data: Agent[] }> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:update']);
-		return await this.agentRepository.findByProjectIdsPaginated(projectIds, {
-			...options,
-			filter: {
-				...options.filter,
-				availableInMCP: options.filter?.availableInMCP ?? false,
+		return await this.agentRepository.findByProjectIdsPaginated(
+			projectIds,
+			{
+				...options,
+				filter: {
+					...options.filter,
+					availableInMCP: options.filter?.availableInMCP ?? false,
+				},
 			},
-		});
+			{ withProject: true },
+		);
 	}
 
 	async bulkSetAvailableInMCP(
@@ -71,7 +75,6 @@ export class AgentMcpAccessService {
 				? candidates
 				: candidates.filter((agent) => allowedProjectIds.has(agent.projectId));
 
-		const unchanged = accessible.filter((agent) => agent.availableInMCP === dto.availableInMCP);
 		const toUpdate = accessible.filter((agent) => agent.availableInMCP !== dto.availableInMCP);
 
 		const agentIds = toUpdate.map((agent) => agent.id);
@@ -84,10 +87,14 @@ export class AgentMcpAccessService {
 
 		return {
 			updatedCount: toUpdate.length,
+			// Per-id breakdown only for explicit `agentIds` requests; the caller
+			// uses it to confirm each requested agent landed in a known state.
 			...(dto.agentIds
 				? {
-						updatedIds: toUpdate.map((agent) => agent.id),
-						unchangedIds: unchanged.map((agent) => agent.id),
+						updatedIds: agentIds,
+						unchangedIds: accessible
+							.filter((agent) => agent.availableInMCP === dto.availableInMCP)
+							.map((agent) => agent.id),
 					}
 				: {}),
 		};

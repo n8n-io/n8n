@@ -34,6 +34,7 @@ describe('AgentMcpAccessService', () => {
 			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
 				['project-1'],
 				expect.objectContaining({ filter: { availableInMCP: false } }),
+				{ withProject: true },
 			);
 		});
 
@@ -46,6 +47,7 @@ describe('AgentMcpAccessService', () => {
 			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
 				null,
 				expect.objectContaining({ filter: { availableInMCP: false } }),
+				{ withProject: true },
 			);
 		});
 
@@ -62,6 +64,7 @@ describe('AgentMcpAccessService', () => {
 			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
 				['project-1'],
 				expect.objectContaining({ filter: { availableInMCP: true } }),
+				{ withProject: true },
 			);
 		});
 
@@ -78,6 +81,7 @@ describe('AgentMcpAccessService', () => {
 			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
 				null,
 				expect.objectContaining({ filter: { availableInMCP: true } }),
+				{ withProject: true },
 			);
 		});
 	});

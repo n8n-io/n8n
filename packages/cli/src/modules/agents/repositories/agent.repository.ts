@@ -74,14 +74,20 @@ export class AgentRepository extends Repository<Agent> {
 	async findByProjectIdsPaginated(
 		projectIds: string[] | null,
 		options: ListAgentsQueryDto,
+		{ withProject = false }: { withProject?: boolean } = {},
 	): Promise<{ count: number; data: Agent[] }> {
 		if (projectIds?.length === 0) return { count: 0, data: [] };
 
-		const query = this.createQueryBuilder('agent')
-			.leftJoinAndSelect('agent.activeVersion', 'activeVersion')
-			// The home project rides along so cross-project lists (overview page,
-			// MCP settings) can label each agent without extra lookups.
-			.leftJoinAndSelect('agent.project', 'project');
+		const query = this.createQueryBuilder('agent').leftJoinAndSelect(
+			'agent.activeVersion',
+			'activeVersion',
+		);
+
+		// Only cross-project consumers (MCP settings) label each agent by its home
+		// project; the overview lists don't read it, so they skip the extra join.
+		if (withProject) {
+			query.leftJoinAndSelect('agent.project', 'project');
+		}
 
 		if (projectIds !== null) {
 			query.where('agent.projectId IN (:...projectIds)', { projectIds });
@@ -187,7 +193,7 @@ export class AgentRepository extends Repository<Agent> {
 
 		return await this.find({
 			select: ['id', 'projectId', 'availableInMCP'],
-			...(criteria ? { where: criteria } : {}),
+			where: criteria,
 		});
 	}
 
