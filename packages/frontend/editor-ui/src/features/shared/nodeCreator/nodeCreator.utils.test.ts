@@ -916,12 +916,12 @@ describe('NodeCreator - utils', () => {
 			},
 		);
 
-		it('should show Early preview badge on the AI Agent V1 node', () => {
+		it('should show Preview badge on the AI Agent V1 node', () => {
 			mockSettingsStore(true);
 			const [result] = finalizeItems([
 				makeAgentNode(MESSAGE_AN_AGENT_NODE_TYPE),
 			]) as NodeCreateElement[];
-			expect(result.properties.tag).toEqual({ preview: true, text: 'Early preview' });
+			expect(result.properties.tag).toEqual({ preview: true, text: 'Preview' });
 		});
 
 		it('should keep a pre-set tag', () => {

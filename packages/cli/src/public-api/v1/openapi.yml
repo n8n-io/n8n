@@ -53,6 +53,8 @@ tags:
     description: Operations about LDAP settings
   - name: SettingsOtel
     description: Operations about OpenTelemetry settings
+  - name: SettingsSsoOidc
+    description: Operations about OIDC SSO settings
   - name: SettingsSsoSaml
     description: Operations about SAML SSO settings
   - name: SourceControl
@@ -79,6 +81,8 @@ paths:
     $ref: './handlers/otel/spec/paths/settings.otel.yml'
   /settings/otel/test-trace:
     $ref: './handlers/otel/spec/paths/settings.otel.test-trace.yml'
+  /settings/sso/oidc:
+    $ref: './handlers/sso-oidc/spec/paths/settings.sso.oidc.yml'
   /settings/sso/saml:
     $ref: './handlers/sso-saml/spec/paths/settings.sso.saml.yml'
   /credentials:

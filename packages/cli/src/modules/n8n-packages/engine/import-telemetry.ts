@@ -4,8 +4,10 @@ import type { CredentialBindingRequest } from '../entities/credential/credential
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { WorkflowImportOutcome } from '../entities/workflow/workflow-import.types';
+import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ImportPackageRequest } from '../n8n-packages.types';
 import type { ImportOrchestrationResult } from './import-orchestrator';
+import { reconcileVariableSummary } from './import-result';
 import type { PackageManifest } from '../spec/manifest.schema';
 
 export interface PackageImportScope {
@@ -54,13 +56,24 @@ export function emitPackageImportedEvent(
 		0,
 	);
 
-	const variablePlans = scopes.map(({ imported }) => imported.variablePlan);
 	const variableRequirements = scopes.reduce(
 		(total, { variableRequest }) => total + (variableRequest.requirements?.length ?? 0),
 		0,
 	);
-	const variablesMatched = variablePlans.reduce((total, plan) => total + plan.matched.length, 0);
-	const variablesMissing = variablePlans.reduce((total, plan) => total + plan.missing.length, 0);
+	// Reconciled once across every scope, by the same helper the API response uses, so a name one
+	// scope stubbed and another found occupied is not also reported as pre-existing.
+	const variableSummary = reconcileVariableSummary({
+		matched: scopes.flatMap(({ imported }) => imported.variablePlan.matched),
+		missing: scopes.flatMap(({ imported }) =>
+			imported.variablePlan.missing.map(({ name }) => name),
+		),
+		stubbed: scopes.flatMap(({ imported }) => imported.variableResult.stubbed),
+		skipped: scopes.flatMap(({ imported }) => imported.variableResult.skippedExisting),
+	});
+	const variablesCreated = scopes.reduce(
+		(total, { imported }) => total + imported.variableResult.createdCount,
+		0,
+	);
 
 	const folderId = scopes.length === 1 ? scopes[0].context.folderId : null;
 
@@ -80,6 +93,8 @@ export function emitPackageImportedEvent(
 			dataTableMissingMode: request.dataTableMissingMode,
 			dataTableSchemaConflictPolicy: request.dataTableSchemaConflictPolicy,
 			variableMissingMode: request.variableMissingMode,
+			// An omitted policy places variables in the project, so report what the import did.
+			variableParentPolicy: request.variableParentPolicy ?? VariableParentPolicy.Project,
 		},
 		packageSourceId: manifest.sourceId,
 		packageVersion: manifest.packageFormatVersion,
@@ -105,8 +120,9 @@ export function emitPackageImportedEvent(
 				requirements: dataTableRequirements,
 			},
 			variables: {
-				matched: variablesMatched,
-				missing: variablesMissing,
+				matched: variableSummary.matched.length,
+				missing: variableSummary.missing.length,
+				created: variablesCreated,
 				requirements: variableRequirements,
 			},
 		},

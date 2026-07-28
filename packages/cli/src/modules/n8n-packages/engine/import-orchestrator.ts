@@ -2,7 +2,6 @@ import { Service } from '@n8n/di';
 
 import { NodeTypes } from '@/node-types';
 
-import { toImportBlockedError } from './import-blocked.error';
 import { CredentialImporter } from '../entities/credential/credential-importer';
 import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
 import type {
@@ -24,6 +23,7 @@ import type {
 import { FolderImporter } from '../entities/folder/folder-importer';
 import { VariableImporter } from '../entities/variable/variable-importer';
 import type {
+	VariableApplyResult,
 	VariableImportPlan,
 	VariableImportRequest,
 } from '../entities/variable/variable.types';
@@ -51,6 +51,7 @@ import type {
 	MissingNodeTypeMode,
 	PackageImportBindings,
 } from '../n8n-packages.types';
+import { toImportBlockedError } from './import-blocked.error';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
@@ -71,6 +72,7 @@ export interface ImportOrchestrationResult {
 	credentialResult: CredentialApplyResult;
 	dataTablePlan: DataTableImportPlan;
 	variablePlan: VariableImportPlan;
+	variableResult: VariableApplyResult;
 }
 
 export interface ImportPlan {
@@ -101,12 +103,15 @@ export class ImportOrchestrator {
 		private readonly nodeTypes: NodeTypes,
 	) {}
 
-	async import(input: ImportOrchestrationInput): Promise<ImportOrchestrationResult> {
-		const plan = await this.plan(input);
-		if (plan.blockingIssues.length > 0) {
-			throw toImportBlockedError(plan.blockingIssues);
-		}
-		return await this.apply(plan);
+	async assertNotBlocked(plans: ImportPlan[]): Promise<void> {
+		const issues = plans.flatMap((plan) => plan.blockingIssues);
+
+		const quotaFailure = await this.variableImporter.quotaFailure(
+			plans.flatMap((plan) => plan.variablePlan.creations),
+		);
+		if (quotaFailure) issues.push({ type: 'variable-limit-exceeded', ...quotaFailure });
+
+		if (issues.length > 0) throw toImportBlockedError(issues);
 	}
 
 	async plan(input: ImportOrchestrationInput): Promise<ImportPlan> {
@@ -129,7 +134,9 @@ export class ImportOrchestrator {
 
 		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
 		const dataTablePlan = await this.dataTableImporter.plan(context, dataTableRequest);
-		const variablePlan = await this.variableImporter.plan(context, variableRequest);
+		const variablePlan = await this.variableImporter.plan(context, variableRequest, {
+			projectPendingCreation: input.projectPendingCreation,
+		});
 		const workflowPlan = await this.workflowImporter.plan(context, workflows, options);
 		const folderContext = { ...context, folderConflictPolicy: options.folderConflictPolicy };
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
@@ -177,6 +184,11 @@ export class ImportOrchestrator {
 		} = plan;
 		const { context, credentialRequest, options } = input;
 
+		// Variables go first: stub creation is the only apply step that can still fail after the
+		// blocking-issue gate (a near-quota race), and it depends on nothing below — applying it
+		// before any other write keeps a quota-raced workflow-package import from persisting anything.
+		const variableResult = await this.variableImporter.apply(context, variablePlan);
+
 		const folderSummaries = await this.folderImporter.apply(folderContext, folderPlan);
 
 		const credentialResult = await this.credentialImporter.apply(
@@ -215,6 +227,7 @@ export class ImportOrchestrator {
 			credentialResult,
 			dataTablePlan,
 			variablePlan,
+			variableResult,
 		};
 	}
 
