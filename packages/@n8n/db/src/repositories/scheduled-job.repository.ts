@@ -214,6 +214,19 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		await manager.update(ScheduledJob, { id }, update);
 	}
 
+	/**
+	 * Point jobs at a misfire policy and grace, leaving their schedule and clock
+	 * alone, so a policy change reaches jobs whose definition never changes.
+	 */
+	async updateMisfirePolicy(
+		manager: EntityManager,
+		ids: number[],
+		update: Pick<ScheduledJob, 'misfirePolicy' | 'misfireGraceSeconds'>,
+	): Promise<void> {
+		if (ids.length === 0) return;
+		await manager.update(ScheduledJob, ids, update);
+	}
+
 	async deleteManyByIds(manager: EntityManager, ids: number[]): Promise<void> {
 		if (ids.length > 0) {
 			await manager.delete(ScheduledJob, ids);

@@ -65,7 +65,7 @@ describe('materialize', () => {
 			occurrences: 0,
 			created: [],
 			deferredJobs: 0,
-			skippedOccurrences: 0,
+			misfires: [],
 			retiredOccurrences: 0,
 		});
 		expect(tx.recordOccurrences).not.toHaveBeenCalled();
@@ -86,7 +86,7 @@ describe('materialize', () => {
 			occurrences: 2,
 			created: [],
 			deferredJobs: 0,
-			skippedOccurrences: 0,
+			misfires: [],
 			retiredOccurrences: 0,
 		});
 
@@ -119,7 +119,7 @@ describe('materialize', () => {
 		]);
 	});
 
-	it('reports the discarded backlog summed across the batch', async () => {
+	it('groups the discarded backlog by task type and policy', async () => {
 		const tx = makeTx();
 		// Two jobs two minutes behind: 13 due instants each, of which coalesce records
 		// one and discards twelve.
@@ -133,7 +133,35 @@ describe('materialize', () => {
 		const summary = await materialize(runnerWith(tx), options);
 
 		expect(summary.occurrences).toBe(2);
-		expect(summary.skippedOccurrences).toBe(24);
+		expect(summary.misfires).toEqual([
+			{ taskType: 'test', policy: ScheduledJobMisfirePolicy.Coalesce, discarded: 24 },
+		]);
+	});
+
+	it('keeps a separate count per task type and per policy', async () => {
+		const tx = makeTx();
+		const backlogged = (id: number, overrides: Partial<ScheduledJob>): ScheduledJob => ({
+			...makeJob(id),
+			nextRunAt: new Date('2025-12-31T23:58:00.000Z'),
+			...overrides,
+		});
+		tx.claimDueJobs.mockResolvedValue({
+			now: NOW,
+			jobs: [
+				backlogged(1, {}),
+				backlogged(2, { taskType: 'poll' }),
+				backlogged(3, { misfirePolicy: ScheduledJobMisfirePolicy.Skip }),
+			],
+		});
+		tx.recordOccurrences.mockResolvedValue({ recorded: 2, created: [] });
+
+		const summary = await materialize(runnerWith(tx), options);
+
+		expect(summary.misfires).toEqual([
+			{ taskType: 'test', policy: ScheduledJobMisfirePolicy.Coalesce, discarded: 12 },
+			{ taskType: 'poll', policy: ScheduledJobMisfirePolicy.Coalesce, discarded: 12 },
+			{ taskType: 'test', policy: ScheduledJobMisfirePolicy.Skip, discarded: 13 },
+		]);
 	});
 
 	it('makes a catch-up run visible now, keeping the instant it was due for', async () => {
@@ -282,7 +310,7 @@ describe('materialize', () => {
 			occurrences: 1,
 			created: [],
 			deferredJobs: 0,
-			skippedOccurrences: 0,
+			misfires: [],
 			retiredOccurrences: 0,
 		});
 		expect(tx.advanceJobs).toHaveBeenCalledTimes(1);
@@ -320,7 +348,7 @@ describe('materialize', () => {
 			occurrences: 1,
 			created: [],
 			deferredJobs: 1,
-			skippedOccurrences: 0,
+			misfires: [],
 			retiredOccurrences: 0,
 		});
 		expect(onPlanError).toHaveBeenCalledTimes(1);
@@ -408,7 +436,7 @@ describe('materialize', () => {
 			occurrences: 1,
 			created: [],
 			deferredJobs: 1,
-			skippedOccurrences: 0,
+			misfires: [],
 			retiredOccurrences: 0,
 		});
 		expect(tx.recordOccurrences).toHaveBeenCalledTimes(1);

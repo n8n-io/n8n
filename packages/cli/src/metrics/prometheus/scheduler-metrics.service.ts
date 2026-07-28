@@ -2,7 +2,7 @@ import { PrometheusMetricsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ScheduledTaskRepository, type ScheduledTaskMetricSnapshot } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { SchedulerMetrics } from '@n8n/scheduler';
+import type { MisfireCount, SchedulerMetrics } from '@n8n/scheduler';
 import { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
@@ -33,7 +33,9 @@ export class PrometheusSchedulerMetricsService
 	private taskRetries!: promClient.Counter<'task_type'>;
 	private occurrencesMaterialized!: promClient.Counter;
 	private jobsDeferred!: promClient.Counter;
-	private occurrencesMisfired!: promClient.Counter;
+	private occurrencesMisfired!: promClient.Counter<'task_type' | 'policy'>;
+	private occurrencesRetired!: promClient.Counter;
+	private occurrencesMissed!: promClient.Counter;
 	private tasksReclaimed!: promClient.Counter;
 	private tasksDeadLettered!: promClient.Counter;
 	private tasksPruned!: promClient.Counter;
@@ -89,8 +91,18 @@ export class PrometheusSchedulerMetricsService
 
 		this.occurrencesMisfired = new promClient.Counter({
 			name: `${prefix}scheduler_occurrences_misfired_total`,
-			help: "Total number of occurrences a schedule's misfire policy took out of circulation, by disposition: discarded before being recorded, retired after a catch-up run superseded them, or buried by the reaper once they went stale unclaimed.",
-			labelNames: ['disposition'],
+			help: "Total number of due occurrences a schedule's misfire policy discarded rather than record, by task type and policy.",
+			labelNames: ['task_type', 'policy'],
+		});
+
+		this.occurrencesRetired = new promClient.Counter({
+			name: `${prefix}scheduler_occurrences_retired_total`,
+			help: 'Total number of already-recorded occurrences retired because a catch-up run superseded them.',
+		});
+
+		this.occurrencesMissed = new promClient.Counter({
+			name: `${prefix}scheduler_occurrences_missed_total`,
+			help: 'Total number of pending occurrences the reaper marked missed after they went past their deadline unclaimed.',
 		});
 
 		this.tasksReclaimed = new promClient.Counter({
@@ -119,9 +131,8 @@ export class PrometheusSchedulerMetricsService
 		// series are created lazily as task types are discovered at runtime.
 		this.occurrencesMaterialized.inc(0);
 		this.jobsDeferred.inc(0);
-		for (const disposition of ['discarded', 'retired', 'buried']) {
-			this.occurrencesMisfired.inc({ disposition }, 0);
-		}
+		this.occurrencesRetired.inc(0);
+		this.occurrencesMissed.inc(0);
 		this.tasksReclaimed.inc(0);
 		this.tasksDeadLettered.inc(0);
 		this.tasksPruned.inc(0);
@@ -218,10 +229,20 @@ export class PrometheusSchedulerMetricsService
 		}
 	}
 
-	recordMisfired(discarded: number, retired: number) {
+	recordMisfired(discarded: MisfireCount[]) {
 		if (this.initialized) {
-			this.occurrencesMisfired.inc({ disposition: 'discarded' }, discarded);
-			this.occurrencesMisfired.inc({ disposition: 'retired' }, retired);
+			for (const group of discarded) {
+				this.occurrencesMisfired.inc(
+					{ task_type: group.taskType, policy: group.policy },
+					group.discarded,
+				);
+			}
+		}
+	}
+
+	recordRetired(retired: number) {
+		if (this.initialized) {
+			this.occurrencesRetired.inc(retired);
 		}
 	}
 
@@ -229,7 +250,7 @@ export class PrometheusSchedulerMetricsService
 		if (this.initialized) {
 			this.tasksReclaimed.inc(reclaimed);
 			this.tasksDeadLettered.inc(deadLettered);
-			this.occurrencesMisfired.inc({ disposition: 'buried' }, missed);
+			this.occurrencesMissed.inc(missed);
 		}
 	}
 

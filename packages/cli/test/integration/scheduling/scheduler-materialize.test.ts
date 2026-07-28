@@ -6,7 +6,7 @@ import {
 	ScheduledTaskRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { createScheduler } from '@n8n/scheduler';
+import { createScheduler, totalDiscarded } from '@n8n/scheduler';
 import type { SchedulerDeps } from '@n8n/scheduler';
 
 import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
@@ -164,7 +164,7 @@ describe('scheduler materialization', () => {
 		// run that is stale by construction.
 		const first = await drainScheduler.materialize();
 		expect(first.occurrences).toBe(0);
-		expect(first.skippedOccurrences).toBe(5);
+		expect(totalDiscarded(first.misfires)).toBe(5);
 		expect(await taskRepo.count()).toBe(0);
 
 		// Draining stops being a misfire once the remaining instants are inside their
@@ -173,7 +173,7 @@ describe('scheduler materialization', () => {
 		while (passes < 10) {
 			const summary = await drainScheduler.materialize();
 			passes += 1;
-			if (summary.occurrences === 0 && summary.skippedOccurrences === 0) break;
+			if (summary.occurrences === 0 && totalDiscarded(summary.misfires) === 0) break;
 		}
 
 		const tasks = await taskRepo.find();

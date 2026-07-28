@@ -155,14 +155,25 @@ export class DurableJobProvisioner {
 		payload,
 		misfirePolicy,
 	}: ProvisionScope): RunInProvisionTransaction {
+		const misfireGraceSeconds = this.globalConfig.scheduler.misfireGraceSeconds;
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
 				// Jobs freshly inserted or redefined this pass; their first window is
 				// seeded before the transaction commits (see `seedInitialOccurrences`).
 				const seededJobIds = new Set<number>();
+				// Stored jobs whose policy or grace no longer matches, reconciled below.
+				const outdatedPolicyJobIds = new Set<number>();
 				const result = await work({
 					findExisting: async () => {
 						const rows = await this.jobs.findManyByWorkflowNode(manager, workflowId, nodeId);
+						for (const row of rows) {
+							if (
+								row.misfirePolicy !== misfirePolicy ||
+								row.misfireGraceSeconds !== misfireGraceSeconds
+							) {
+								outdatedPolicyJobIds.add(row.id);
+							}
+						}
 						return rows.map(
 							(row): ExistingJob => ({
 								id: row.id,
@@ -184,7 +195,7 @@ export class DurableJobProvisioner {
 								nextRunAt: job.firstRunAt,
 								maxAttempts: this.globalConfig.scheduler.maxAttempts,
 								misfirePolicy,
-								misfireGraceSeconds: this.globalConfig.scheduler.misfireGraceSeconds,
+								misfireGraceSeconds,
 							}),
 						);
 						const ids = await this.jobs.insertMany(manager, rows);
@@ -195,16 +206,22 @@ export class DurableJobProvisioner {
 						await this.jobs.updateDefinition(manager, jobId, {
 							...scheduleColumns(schedule),
 							nextRunAt,
-							// Otherwise insert-time snapshots: only a schedule change rewrites a job,
-							// so a changed policy or grace reaches existing jobs no sooner than that.
 							misfirePolicy,
-							misfireGraceSeconds: this.globalConfig.scheduler.misfireGraceSeconds,
+							misfireGraceSeconds,
 						});
 						seededJobIds.add(jobId);
 					},
 					withdrawPendingTasks: async (jobIds) =>
 						await this.tasks.deletePendingByJobIds(manager, jobIds),
 					deleteJobs: async (jobIds) => await this.jobs.deleteManyByIds(manager, jobIds),
+				});
+				// A schedule that never changes never routes through `redefine`, so without
+				// this a job keeps the policy and grace it was inserted with: a poll trigger
+				// provisioned before the policy existed would coalesce its backlog instead of
+				// skipping it. Only the two columns are written, so queued tasks stay put.
+				await this.jobs.updateMisfirePolicy(manager, [...outdatedPolicyJobIds], {
+					misfirePolicy,
+					misfireGraceSeconds,
 				});
 				// After all of provisioning's own writes (including withdrawing a
 				// redefined job's stale tasks) so the seeded occurrences are the last word.

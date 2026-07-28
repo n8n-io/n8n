@@ -43,7 +43,7 @@ const jobRow = (over: Partial<ScheduledJob> = {}): ScheduledJob =>
 		fireAt: null,
 		nextRunAt: CLOCK,
 		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
-		misfireGraceSeconds: 60,
+		misfireGraceSeconds: 90,
 		...over,
 	});
 
@@ -140,7 +140,48 @@ describe('DurableJobProvisioner', () => {
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, []);
 			expect(jobs.updateDefinition).not.toHaveBeenCalled();
 			expect(tasks.deletePendingByJobIds).toHaveBeenCalledWith(manager, []);
+			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [], expect.anything());
 			expect(summary.unchanged).toEqual([{ id: 10, name: 'wf:node:0' }]);
+		});
+
+		it('reconciles the policy of a job whose schedule is unchanged', async () => {
+			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow()]);
+
+			const summary = await provisioner.provision(
+				'wf',
+				'node',
+				'poll-trigger',
+				{},
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Skip,
+			);
+
+			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+				misfireGraceSeconds: 90,
+			});
+			// The schedule is untouched, so the job keeps its queued tasks.
+			expect(jobs.updateDefinition).not.toHaveBeenCalled();
+			expect(tasks.deletePendingByJobIds).toHaveBeenCalledWith(manager, []);
+			expect(summary.unchanged).toEqual([{ id: 10, name: 'wf:node:0' }]);
+		});
+
+		it('reconciles the grace of a job whose schedule is unchanged', async () => {
+			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow({ misfireGraceSeconds: 30 })]);
+
+			await provisioner.provision(
+				'wf',
+				'node',
+				'schedule-trigger',
+				{},
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: 90,
+			});
 		});
 
 		it('rewrites a changed job in place and withdraws its pending tasks', async () => {
@@ -170,7 +211,6 @@ describe('DurableJobProvisioner', () => {
 				intervalSeconds: null,
 				fireAt: null,
 				nextRunAt: CLOCK,
-				// A rewrite is also where a job picks up a changed misfire policy.
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 90,
 			});

@@ -366,7 +366,7 @@ describe('createScheduler materialize', () => {
 			occurrences: 0,
 			created: [],
 			deferredJobs: 1,
-			skippedOccurrences: 0,
+			misfires: [],
 			retiredOccurrences: 0,
 		});
 		expect(onEvent).toHaveBeenCalledWith({
@@ -1067,7 +1067,7 @@ describe('createScheduler tracing', () => {
 			occurrences: 2,
 			created: [],
 			deferredJobs: 0,
-			skippedOccurrences: 0,
+			misfires: [],
 			retiredOccurrences: 0,
 		});
 		expect(tracer.startSpan).toHaveBeenCalledWith(
@@ -1326,7 +1326,7 @@ describe('createScheduler tracing', () => {
 			occurrences: 0,
 			created: [],
 			deferredJobs: 0,
-			skippedOccurrences: 0,
+			misfires: [],
 			retiredOccurrences: 0,
 		});
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
