@@ -36,7 +36,7 @@ export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
 	 * Starts dispatching unless it is already running, there is no consumer, or
 	 * there is nothing queued. Safe to call on every publish.
 	 */
-	private ensureDispatching(): void {
+	private startDispatchLoop(): void {
 		if (this.dispatching || !this.handler || this.pending.length === 0) return;
 		this.dispatching = true;
 		this.dispatchPending().catch((error: unknown) => {
