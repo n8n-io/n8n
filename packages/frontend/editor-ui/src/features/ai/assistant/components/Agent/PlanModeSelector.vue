@@ -62,7 +62,7 @@ function onSelect(value: SelectValue | undefined) {
 			:model-value="props.modelValue"
 			:icon="currentMode.icon"
 			variant="ghost"
-			size="small"
+			size="medium"
 			position="popper"
 			side="top"
 			:content-class="$style.content"

@@ -41,7 +41,7 @@ const markdownContent = computed(() => ({
 				<N8nSelect2
 					:key="selectedArtifact?.title ?? '' /* workaround to keep title up-to-date */"
 					:model-value="selectedIndex"
-					size="medium"
+					size="xlarge"
 					variant="ghost"
 					:items="options"
 					:class="$style.title"

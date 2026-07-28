@@ -1,7 +1,7 @@
 # Component specification
 
 Allows users to choose one or more options from a predefined list. It supports both single and multiple selection modes via the multiple prop.
-The Select is ideal when there are less than 10 items to choose from, for bigger datasets or search capabilities, use [ComboBox](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2631-7139&m=dev) (to be done)
+Built-in search (`searchable`) filters the dropdown by item label. For larger datasets that need typeahead in the trigger itself, use [ComboBox](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2631-7139&m=dev) (to be done).
 
 - **Component Name:** N8nSelect
 - **Figma Component:** [Figma](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2121-630&m=dev)
@@ -26,17 +26,23 @@ The Select is ideal when there are less than 10 items to choose from, for bigger
 - `defaultOpen?: boolean` The open state of the select when it is initially rendered. Use when you do not need to control its open state.
 - `disabled?: boolean` When `true`, prevents the user from interacting with Select.
 - `icon?: IconName` Icon to be displayed in the trigger.
+- `clearable?: boolean` When `true`, shows a clear button when a value is selected.
+- `searchable?: boolean` When `true`, shows a search field in the dropdown and filters items by label.
+- `searchPlaceholder?: string` Placeholder for the search field.
+- `searchQuery?: string` Controlled search query (`v-model:searchQuery`).
 
 
 **UI Props**
 
-- `size?`: `'xsmall' | 'small' | 'medium'` | `default: 'small'`
-- `variant?`: `'default' | 'ghost'` | `default: 'default'`
+- `size?`: `'mini' | 'default' | 'medium' | 'large' | 'xlarge'` | `default: 'default'` (shared input size tokens; `default` → small)
+- `variant?`: `'default' | 'ghost' | 'flush'` | `default: 'default'` (`flush` strips padding for dense layouts like table cells)
 
 **Events**
 
-- `update:modelValue(value: GetModelValue<T, VK, M>)`
+- `update:modelValue(value: GetModelValue<T, VK, M> | undefined)`
 - `update:open(value: boolean)`
+- `update:searchQuery(value: string)`
+- `clear()`
 
 **Slots**
 
@@ -45,6 +51,9 @@ The Select is ideal when there are less than 10 items to choose from, for bigger
 - `item-leading`: `{ item: T; ui: object }`
 - `item-label`: `{ item: T; }`
 - `item-trailing`: `{ item: T; ui: object }`
+- `header?: ()`
+- `footer?: ()`
+- `empty?: ()` — shown when there are no selectable items (e.g. search with no matches)
 
 
 ### Template usage example

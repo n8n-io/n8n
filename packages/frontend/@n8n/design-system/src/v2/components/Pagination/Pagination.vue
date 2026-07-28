@@ -149,7 +149,11 @@ const handlePageUpdate = (newPage: number) => {
 };
 
 // Handle page size updates
-const handlePageSizeUpdate = (newSize: number | string) => {
+const handlePageSizeUpdate = (newSize: number | string | undefined) => {
+	if (newSize === undefined) {
+		return;
+	}
+
 	const size = typeof newSize === 'string' ? parseInt(newSize, 10) : newSize;
 	internalPageSize.value = size;
 	emit('update:pageSize', size);
@@ -215,7 +219,7 @@ const handleJumperSubmit = () => {
 				v-else-if="part === 'sizes'"
 				:model-value="String(internalPageSize)"
 				:items="pageSizeItems"
-				:size="props.size === 'small' ? 'xsmall' : 'small'"
+				:size="props.size === 'small' ? 'mini' : 'default'"
 				:variant="props.variant === 'ghost' ? 'ghost' : 'default'"
 				:disabled="disabled"
 				:class="$style.pageSizeSelect"

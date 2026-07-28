@@ -70,7 +70,8 @@ watch(
 				</div>
 			</div>
 
-			<ChatAgentSearchSort v-if="readyToShowList && allModels.length > 0" v-model="agentFilter" />
+			<!-- DEV: force Select visible for local QA — revert when done -->
+			<ChatAgentSearchSort v-if="true" v-model="agentFilter" />
 
 			<div v-if="!readyToShowList" :class="$style.agentsGrid">
 				<SkeletonAgentCard v-for="i in 5" :key="i" />

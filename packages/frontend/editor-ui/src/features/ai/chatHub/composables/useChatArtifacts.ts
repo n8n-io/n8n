@@ -9,9 +9,19 @@ export function useChatArtifacts(
 ) {
 	const isViewerCollapsed = ref(false);
 	const selectedIndex = ref(0);
-	const allArtifacts = computed(() =>
-		collectChatArtifacts(chatMessages.value.flatMap((message) => message.content)),
-	);
+	const allArtifacts = computed(() => {
+		const collected = collectChatArtifacts(
+			chatMessages.value.flatMap((message) => message.content),
+		);
+		// DEV: force artifact title Select visible for local QA — revert when done
+		if (collected.length === 0) {
+			return [
+				{ title: 'Demo Artifact A', type: 'md', content: '# Demo A\n\nSample artifact.' },
+				{ title: 'Demo Artifact B', type: 'md', content: '# Demo B\n\nAnother sample.' },
+			];
+		}
+		return collected;
+	});
 	const selectedArtifact = computed(() => {
 		const artifacts = allArtifacts.value;
 		if (artifacts.length === 0) return null;

@@ -5528,6 +5528,7 @@
 	"projects.settings.role.selector.section.system": "System roles",
 	"projects.settings.role.selector.section.custom": "Custom roles",
 	"projects.settings.role.selector.addCustomRole": "Add custom role",
+	"projects.settings.role.selector.noResults": "No results found",
 	"projects.settings.role.selector.permissionCount": "{count}/{total} permissions",
 	"projects.settings.role.popover.viewAndEdit": "View and edit role",
 	"projects.settings.role.popover.viewDetails": "View role",

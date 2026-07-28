@@ -2,7 +2,6 @@
 import {
 	N8nBadge,
 	N8nIcon,
-	N8nInput,
 	N8nSelect2,
 	N8nSelect2Item,
 	N8nText,
@@ -67,11 +66,9 @@ const telemetry = useTelemetry();
 const dropdownOpen = ref(false);
 const contactAdminModalVisible = ref(false);
 const upgradeModalVisible = ref(false);
-const searchQuery = ref('');
 
 watch(dropdownOpen, (open) => {
 	if (!open) {
-		searchQuery.value = '';
 		// Delay blur to run after Reka UI's internal focus management restores trigger focus
 		setTimeout(() => {
 			if (document.activeElement instanceof HTMLElement) {
@@ -89,27 +86,15 @@ const selectedRole = computed(() =>
 	[...props.systemRoles, ...props.customRoles].find((role) => role.slug === props.currentRole),
 );
 
-const filteredSystemRoles = computed(() => {
-	const query = searchQuery.value.toLowerCase().trim();
-	if (!query) return props.systemRoles;
-	return props.systemRoles.filter((role) => role.displayName.toLowerCase().includes(query));
-});
-
-const filteredCustomRoles = computed(() => {
-	const query = searchQuery.value.toLowerCase().trim();
-	if (!query) return props.customRoles;
-	return props.customRoles.filter((role) => role.displayName.toLowerCase().includes(query));
-});
-
 const roleItems = computed<RoleSelectItem[]>(() => {
 	const items: RoleSelectItem[] = [];
 
-	if (filteredSystemRoles.value.length > 0) {
+	if (props.systemRoles.length > 0) {
 		items.push({
 			type: 'label',
 			label: i18n.baseText('projects.settings.role.selector.section.system'),
 		});
-		filteredSystemRoles.value.forEach((role) => {
+		props.systemRoles.forEach((role) => {
 			items.push({
 				value: role.slug,
 				label: role.displayName,
@@ -119,15 +104,12 @@ const roleItems = computed<RoleSelectItem[]>(() => {
 		});
 	}
 
-	if (
-		filteredCustomRoles.value.length > 0 ||
-		(!searchQuery.value && !props.hasCustomRolesLicense)
-	) {
+	if (props.customRoles.length > 0 || !props.hasCustomRolesLicense) {
 		items.push({
 			type: 'label',
 			label: i18n.baseText('projects.settings.role.selector.section.custom'),
 		});
-		filteredCustomRoles.value.forEach((role) => {
+		props.customRoles.forEach((role) => {
 			items.push({
 				value: role.slug,
 				label: role.displayName,
@@ -176,9 +158,11 @@ const isUnavailableRoleItem = (item: SelectItemProps) => item.requiresUpgrade ==
 			v-model:open="dropdownOpen"
 			:items="roleItems"
 			:model-value="currentRole"
-			size="small"
-			variant="ghost"
+			size="default"
+			variant="flush"
 			position="popper"
+			searchable
+			:search-placeholder="i18n.baseText('generic.search')"
 			:disabled="loading"
 			:content-class="$style.roleSelectContent"
 			:class="$style.roleSelect"
@@ -199,17 +183,8 @@ const isUnavailableRoleItem = (item: SelectItemProps) => item.requiresUpgrade ==
 				</N8nTooltip>
 			</template>
 
-			<template #header>
-				<div :class="$style.searchContainer">
-					<N8nInput
-						v-model="searchQuery"
-						:placeholder="i18n.baseText('generic.search')"
-						size="medium"
-						:class="$style.searchInput"
-						@click.stop
-						@keydown.stop
-					/>
-				</div>
+			<template #empty>
+				{{ i18n.baseText('projects.settings.role.selector.noResults') }}
 			</template>
 
 			<template #item="{ item }">
@@ -299,28 +274,9 @@ const isUnavailableRoleItem = (item: SelectItemProps) => item.requiresUpgrade ==
 	overflow: hidden;
 }
 
-.searchContainer {
-	border-bottom: var(--border);
-}
-
-.searchInput {
-	width: 100%;
-	--input--radius--bottom-right: 0;
-	--input--radius--bottom-left: 0;
-	--input--border-color: transparent;
-	--input--border-color--hover: transparent;
-}
-
 .roleSelect {
-	padding: 0;
-	background-color: transparent;
-	min-height: auto;
 	max-width: 200px;
 	overflow: hidden;
-
-	&:not([data-disabled]):hover {
-		background-color: transparent;
-	}
 }
 
 .triggerContent {
@@ -377,9 +333,9 @@ const isUnavailableRoleItem = (item: SelectItemProps) => item.requiresUpgrade ==
 	align-items: center;
 	gap: var(--spacing--3xs);
 	width: 100%;
-	padding: var(--spacing--xs);
+	min-height: var(--height--xl);
+	padding: 0 var(--spacing--xs);
 	border: none;
-	border-top: var(--border);
 	background: transparent;
 	cursor: pointer;
 	color: var(--color--primary);

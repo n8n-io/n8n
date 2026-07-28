@@ -1,38 +1,48 @@
 <script setup lang="ts">
-import { SelectItem, SelectItemIndicator, SelectItemText, type AcceptableValue } from 'reka-ui';
-import { computed, useCssModule } from 'vue';
+import { SelectItem, SelectItemIndicator, SelectItemText } from 'reka-ui';
+import { useCssModule } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
-import type { SelectItemProps, SelectValue } from './Select.types';
+import { isRekaAcceptableValue, type SelectItemProps } from './Select.types';
 
 defineOptions({ inheritAttrs: false });
 const props = defineProps<SelectItemProps>();
 const $style = useCssModule();
 
-function isAcceptable(value?: SelectValue) {
-	return value as AcceptableValue;
+function resolveValue() {
+	if (isRekaAcceptableValue(props.value)) {
+		return props.value;
+	}
+
+	return '';
 }
 
-const leadingProps = computed(() => ({
-	class: $style.itemLeading,
-	strokeWidth: props.strokeWidth,
-}));
-const trailingProps = computed(() => ({
-	class: $style.itemTrailing,
-	strokeWidth: props.strokeWidth,
-}));
+function leadingUi() {
+	return {
+		class: $style.itemLeading,
+		strokeWidth: props.strokeWidth,
+	};
+}
+
+function trailingUi() {
+	return {
+		class: $style.itemTrailing,
+		strokeWidth: props.strokeWidth,
+	};
+}
 </script>
 
 <template>
 	<SelectItem
+		data-test-id="select-item"
 		:disabled="props.disabled"
-		:value="isAcceptable(props.value)"
+		:value="resolveValue()"
 		:class="props.class"
 		@select="props.onSelect?.($event)"
 	>
-		<slot name="item-leading" :item="props" :ui="leadingProps">
-			<Icon v-if="props.icon" :icon="props.icon" v-bind="leadingProps" />
+		<slot name="item-leading" :item="props" :ui="leadingUi()">
+			<Icon v-if="props.icon" :icon="props.icon" color="text-base" v-bind="leadingUi()" />
 		</slot>
 
 		<SelectItemText :class="$style.itemText">
@@ -41,9 +51,9 @@ const trailingProps = computed(() => ({
 			</slot>
 		</SelectItemText>
 
-		<slot name="item-trailing" :item="props" :ui="trailingProps" />
+		<slot name="item-trailing" :item="props" :ui="trailingUi()" />
 		<SelectItemIndicator as-child>
-			<Icon icon="check" :class="$style.itemIndicator" />
+			<Icon icon="check" color="text-light" :class="$style.itemIndicator" />
 		</SelectItemIndicator>
 	</SelectItem>
 </template>
@@ -55,6 +65,10 @@ const trailingProps = computed(() => ({
 
 .itemText {
 	flex-grow: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	line-height: var(--line-height--md);
 }
 
 .itemIndicator,
