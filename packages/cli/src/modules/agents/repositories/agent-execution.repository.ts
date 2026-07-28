@@ -46,6 +46,33 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	}
 
 	/**
+	 * The earliest non-null `source` for each of the given threads. Used by the
+	 * sessions list to show channel origin (e.g. slack, telegram) on each row.
+	 *
+	 * Returns one row per thread from that thread's earliest matching run.
+	 */
+	async findFirstSourceByThreadIds(threadIds: string[]): Promise<Map<string, string>> {
+		if (threadIds.length === 0) return new Map();
+
+		// Correlated subquery: for each thread, pick the row with the smallest
+		// createdAt that has a non-null source. Identifiers are double-quoted
+		// so Postgres preserves their camelCase (it lowercases unquoted names),
+		// and the table name is read from metadata so DB_TABLE_PREFIX is respected.
+		const tableName = this.metadata.tablePath;
+		const rows = await this.createQueryBuilder('e')
+			.select(['e."threadId" AS "threadId"', 'e."source" AS "source"'])
+			.where('e."threadId" IN (:...threadIds)', { threadIds })
+			.andWhere('e."source" IS NOT NULL')
+			.andWhere(
+				`e."createdAt" = (SELECT MIN(e2."createdAt") FROM ${tableName} e2 ` +
+					'WHERE e2."threadId" = e."threadId" AND e2."source" IS NOT NULL)',
+			)
+			.getRawMany<{ threadId: string; source: string }>();
+
+		return new Map(rows.map((r) => [r.threadId, r.source]));
+	}
+
+	/**
 	 * Suspended runs in a thread that don't yet have a `model` recorded.
 	 * Used by the resume-completion path to backfill model info, which only
 	 * arrives once the resumed run finishes.

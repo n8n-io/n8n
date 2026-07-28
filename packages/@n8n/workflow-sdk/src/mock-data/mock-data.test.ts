@@ -172,6 +172,26 @@ describe('parsePinDataResponse', () => {
 		expect(parsePinDataResponse('sorry', ['Get Rows'])).toEqual({});
 		expect(parsePinDataResponse(JSON.stringify({ Other: [{}] }), ['Get Rows'])).toEqual({});
 	});
+
+	it('drops phantom empty items so a zero-item premise pins as []', () => {
+		expect(parsePinDataResponse(JSON.stringify({ 'Get Rows': [{}] }), ['Get Rows'])).toEqual({
+			'Get Rows': [],
+		});
+		expect(
+			parsePinDataResponse(JSON.stringify({ 'Get Rows': [{ json: {} }] }), ['Get Rows']),
+		).toEqual({ 'Get Rows': [] });
+	});
+
+	it('keeps real items when dropping empty ones, and items with non-json payloads', () => {
+		expect(
+			parsePinDataResponse(JSON.stringify({ 'Get Rows': [{}, { id: 1 }] }), ['Get Rows']),
+		).toEqual({ 'Get Rows': [{ json: { id: 1 } }] });
+		expect(
+			parsePinDataResponse(JSON.stringify({ 'Get Rows': [{ json: {}, binary: { data: {} } }] }), [
+				'Get Rows',
+			]),
+		).toEqual({ 'Get Rows': [{ json: {}, binary: { data: {} } }] });
+	});
 });
 
 describe('repairStructuredOutput', () => {

@@ -100,6 +100,15 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		});
 	}
 
+	async getWorkflowInfo({
+		activeOnly,
+	}: { activeOnly: boolean }): Promise<Array<{ id: string; name: string }>> {
+		return await this.find({
+			select: ['id', 'name'],
+			...(activeOnly ? { where: { activeVersionId: Not(IsNull()) } } : {}),
+		});
+	}
+
 	async getPublishedCount() {
 		return await this.count({
 			where: { activeVersionId: Not(IsNull()), isArchived: false },

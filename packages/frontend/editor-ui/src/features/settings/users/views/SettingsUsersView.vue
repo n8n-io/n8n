@@ -19,6 +19,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { useUsersStore } from '../users.store';
+import { copyInviteLink } from '../invite-link.utils';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useClipboard } from '@n8n/composables/useClipboard';
@@ -255,8 +256,7 @@ async function onGenerateInviteLink(userId: string) {
 	try {
 		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 		if (user) {
-			const url = await usersStore.generateInviteLink({ id: userId });
-			void clipboard.copy(url.link);
+			await copyInviteLink(clipboard, usersStore, userId);
 
 			showToast({
 				type: 'success',
