@@ -54,7 +54,6 @@ async function importProjects(
 		dataTableMissingMode: 'create',
 		dataTableSchemaConflictPolicy: 'keep-existing',
 		variableMissingMode: 'do-nothing',
-		variableParentPolicy: 'project',
 		...overrides,
 	};
 	return await Container.get(N8nPackagesService).importPackage(request);
@@ -741,20 +740,32 @@ describe('project shell import', () => {
 				expect(layout).toHaveLength(2);
 			});
 
-			it('ignores variableParentPolicy; placement stays package-driven', async () => {
+			it('places a top-level variable globally when no policy is given', async () => {
 				const result = await importProjects(owner, await packageWithGlobalVariable(), undefined, {
 					variableMissingMode: 'create-stub',
-					variableParentPolicy: 'project',
 				});
 
 				expect(result.variables).toEqual({ matched: [], missing: [], stubbed: ['GLOBAL_VAR'] });
-				// Despite the caller asking for project placement, the top-level entry keeps it global.
 				const created = await Container.get(VariablesRepository).find({
 					relations: { project: true },
 				});
 				const layout = created.map((v) => ({ key: v.key, scope: v.project?.id ?? 'global' }));
 				expect(layout).toEqual([{ key: 'GLOBAL_VAR', scope: 'global' }]);
 			});
+
+			it.each(['project', 'global'] as const)(
+				'rejects variableParentPolicy=%s, which a project package cannot honour',
+				async (variableParentPolicy) => {
+					await expect(
+						importProjects(owner, await packageWithGlobalVariable(), undefined, {
+							variableMissingMode: 'create-stub',
+							variableParentPolicy,
+						}),
+					).rejects.toThrow(/variableParentPolicy is not supported for project packages/);
+
+					expect(await Container.get(VariablesRepository).count()).toBe(0);
+				},
+			);
 
 			it('creates one row per consuming project for a name-only requirement', async () => {
 				const packageBuffer = await apiUrlPackage();
@@ -788,8 +799,38 @@ describe('project shell import', () => {
 				expect(payload.counts.variables.created).toBe(2);
 			});
 
-			it("does not let another project's bundled entry control this scope's placement", async () => {
-				// Only stilton (P2) has a workflow; THEIRS is bundled under brie but consumed by WFB.
+			it('creates one row per project when both bundle the same name', async () => {
+				const packageBuffer = await twoProjectPackage({
+					catalog: [
+						{ id: 'v1', name: 'API_URL', target: 'projects/brie/variables/api_url' },
+						{ id: 'v2', name: 'API_URL', target: 'projects/stilton/variables/api_url' },
+					],
+					requirements: [{ name: 'API_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+				});
+
+				const result = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'create-stub',
+				});
+
+				// Each project's own entry wins for its own scope, so neither borrows the other's.
+				expect(result.variables).toEqual({ matched: [], missing: [], stubbed: ['API_URL'] });
+				const created = await Container.get(VariablesRepository).find({
+					relations: { project: true },
+				});
+				const layout = created.map((v) => ({ key: v.key, scope: v.project?.id ?? 'global' }));
+				expect(layout).toEqual(
+					expect.arrayContaining([
+						{ key: 'API_URL', scope: 'P1' },
+						{ key: 'API_URL', scope: 'P2' },
+					]),
+				);
+				expect(layout).toHaveLength(2);
+			});
+
+			it('stubs for the consuming project when a hand-made package bundles the name elsewhere', async () => {
+				// Malformed input: an export resolves each requirement against the consuming workflow's
+				// own project, so no export bundles THEIRS under workflow-less brie. The stub belongs
+				// with the consumer, since a brie row would leave WFB just as broken.
 				const packageBuffer = await buildEntityPackageBuffer({
 					projects: [
 						{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
@@ -805,9 +846,6 @@ describe('project shell import', () => {
 						},
 					],
 					manifestExtras: {
-						// The catalog places THEIRS in brie, but brie has no workflow that uses it. Since
-						// the bundled scope belongs to a different project than the consumer, it's ignored:
-						// the stub is created in the consuming project (stilton), not brie or global.
 						variables: [{ id: 'v1', name: 'THEIRS', target: 'projects/brie/variables/theirs' }],
 						requirements: {
 							variables: [{ name: 'THEIRS', usedByWorkflows: ['WFB'] }],
@@ -871,7 +909,9 @@ describe('project shell import', () => {
 				expect(layout).toHaveLength(3);
 			});
 
-			it('counts a shared global variable once during aggregate quota preflight', async () => {
+			it('imports two projects needing one global variable under a quota of one', async () => {
+				// Both projects plan the same global row, so the preflight must weigh one creation
+				// against the free slot; counting per project would report 2 and block the import.
 				licenseMocker.setQuota('quota:maxVariables', 1);
 				const packageBuffer = await twoProjectPackage({
 					catalog: [{ id: 'v1', name: 'SHARED_URL', target: 'variables/shared_url' }],

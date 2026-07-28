@@ -610,7 +610,7 @@ describe('n8n-packages handler', () => {
 					projectId: 'proj-brie',
 					workflowConflictPolicy: 'fail',
 					variableMissingMode: 'do-nothing',
-					variableParentPolicy: 'project',
+					variableParentPolicy: undefined,
 				}),
 			);
 			expect(mockEventService.emit).not.toHaveBeenCalled();

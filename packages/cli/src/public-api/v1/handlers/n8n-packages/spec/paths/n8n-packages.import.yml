@@ -225,17 +225,17 @@ post:
               enum:
                 - project
                 - global
-              default: project
               description: >
                 Where `create-stub` creates missing variables for workflow/folder
-                packages. `project` (default) creates them in the import target
-                project (`projectId`, else the caller's personal project). `global`
-                creates them at the global scope. The `variable:create` API key
-                scope requirement described under `variableMissingMode` applies to
-                both placements. Ignored for project packages, where placement
-                follows the package layout (a variable bundled under a project is
-                created in that project; one bundled at the top level is created
-                globally).
+                packages. `project` — also the behaviour when the field is omitted —
+                creates them in the import target project (`projectId`, else the
+                caller's personal project). `global` creates them at the global
+                scope. The `variable:create` API key scope requirement described
+                under `variableMissingMode` applies to both placements. Must be
+                omitted for project packages, which reject it with a 400: their
+                placement follows the package layout, where a variable bundled
+                under a project is created in that project and one bundled at the
+                top level is created globally.
   responses:
     '200':
       description: Import succeeded; the listed workflows were written to the target project.

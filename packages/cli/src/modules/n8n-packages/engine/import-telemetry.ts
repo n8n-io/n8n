@@ -4,6 +4,7 @@ import type { CredentialBindingRequest } from '../entities/credential/credential
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { WorkflowImportOutcome } from '../entities/workflow/workflow-import.types';
+import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ImportPackageRequest } from '../n8n-packages.types';
 import type { ImportOrchestrationResult } from './import-orchestrator';
 import { reconcileVariableSummary } from './import-result';
@@ -92,7 +93,8 @@ export function emitPackageImportedEvent(
 			dataTableMissingMode: request.dataTableMissingMode,
 			dataTableSchemaConflictPolicy: request.dataTableSchemaConflictPolicy,
 			variableMissingMode: request.variableMissingMode,
-			variableParentPolicy: request.variableParentPolicy,
+			// An omitted policy places variables in the project, so report what the import did.
+			variableParentPolicy: request.variableParentPolicy ?? VariableParentPolicy.Project,
 		},
 		packageSourceId: manifest.sourceId,
 		packageVersion: manifest.packageFormatVersion,

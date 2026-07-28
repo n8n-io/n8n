@@ -21,7 +21,6 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
 				variableMissingMode: 'do-nothing',
-				variableParentPolicy: 'project',
 			});
 		}
 	});
@@ -47,7 +46,6 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
 				variableMissingMode: 'do-nothing',
-				variableParentPolicy: 'project',
 			});
 		}
 	});
@@ -75,7 +73,6 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
 				variableMissingMode: 'do-nothing',
-				variableParentPolicy: 'project',
 			});
 		}
 	});
@@ -102,7 +99,6 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
 				variableMissingMode: 'do-nothing',
-				variableParentPolicy: 'project',
 			});
 		}
 	});
@@ -446,11 +442,14 @@ describe('ImportPackageRequestDto', () => {
 	});
 
 	describe('variableParentPolicy', () => {
-		it('defaults variableParentPolicy to project when omitted', () => {
-			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+		it.each([
+			{ workflowConflictPolicy: 'fail' },
+			{ workflowConflictPolicy: 'fail', variableParentPolicy: '  ' },
+		])('leaves variableParentPolicy undefined rather than defaulting it: %o', (input) => {
+			const result = ImportPackageRequestDto.safeParse(input);
 			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.data.variableParentPolicy).toBe('project');
+				expect(result.data.variableParentPolicy).toBeUndefined();
 			}
 		});
 

@@ -172,7 +172,7 @@ export type ImportDataTableProperties = {
 
 export type ImportVariableProperties = {
 	variableMissingMode: VariableMissingMode;
-	variableParentPolicy: VariableParentPolicy;
+	variableParentPolicy?: VariableParentPolicy;
 };
 
 /**

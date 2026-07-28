@@ -42,6 +42,16 @@ const optionalEnum = <const T extends [string, ...string[]]>(values: T, defaultV
 		z.enum(values).optional().default(defaultValue),
 	);
 
+/**
+ * Like {@link optionalEnum} but without a default, so an omitted field arrives as `undefined`
+ * and stays tellable from an explicit value — for fields only some requests may carry.
+ */
+const optionalEnumNoDefault = <const T extends [string, ...string[]]>(values: T) =>
+	z.preprocess(
+		(value) => (typeof value === 'string' && value.trim().length === 0 ? undefined : value),
+		z.enum(values).optional(),
+	);
+
 const BINDINGS_ERROR_MESSAGE =
 	'bindings must be a JSON object, e.g. {"credentials":{"<sourceId>":"<targetId>"}}';
 
@@ -93,5 +103,5 @@ export class ImportPackageRequestDto extends Z.class({
 	dataTableMissingMode: optionalEnum(['create', 'must-preexist', 'do-nothing'], 'create'),
 	dataTableSchemaConflictPolicy: optionalEnum(['keep-existing', 'fail'], 'keep-existing'),
 	variableMissingMode: optionalEnum(['do-nothing', 'must-preexist', 'create-stub'], 'do-nothing'),
-	variableParentPolicy: optionalEnum(['project', 'global'], 'project'),
+	variableParentPolicy: optionalEnumNoDefault(['project', 'global']),
 }) {}
