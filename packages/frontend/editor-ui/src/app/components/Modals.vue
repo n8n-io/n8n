@@ -33,6 +33,7 @@ import {
 	BINARY_DATA_VIEW_MODAL_KEY,
 	STOP_MANY_EXECUTIONS_MODAL_KEY,
 	ADD_EXECUTION_TO_DATASET_MODAL_KEY,
+	MIGRATE_WORKFLOW_MODAL_KEY,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
@@ -135,6 +136,7 @@ import StopManyExecutionsModal from './StopManyExecutionsModal.vue';
 import AddExecutionToDatasetModal from '@/features/ai/evaluation.ee/components/AddExecutionToDataset/AddExecutionToDatasetModal.vue';
 import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.vue';
 import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
+import MigrateWorkflowModal from '@/features/settings/migrationReport/MigrateWorkflowModal.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
 import CredentialResolverEditModal from '@/app/components/CredentialResolverEditModal.vue';
 import AIBuilderDiffModal from '@/features/ai/assistant/components/Agent/AIBuilderDiffModal.vue';
@@ -513,6 +515,12 @@ import InstanceAiToolsConnectionModalWrapper from '@/features/ai/instanceAi/comp
 		<ModalRoot :name="WORKFLOW_PUBLISH_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<WorkflowPublishModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="MIGRATE_WORKFLOW_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<MigrateWorkflowModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

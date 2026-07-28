@@ -9,6 +9,7 @@ import {
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import {
+	UserRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
@@ -41,6 +42,7 @@ let requestRepository: WorkflowReviewRequestRepository;
 let workflowRepository: WorkflowReviewRequestWorkflowRepository;
 let authorRepository: WorkflowReviewRequestAuthorRepository;
 let reviewerRepository: WorkflowReviewRequestReviewerRepository;
+let userRepository: UserRepository;
 let policyService: WorkflowReviewPolicyService;
 
 beforeAll(() => {
@@ -48,6 +50,7 @@ beforeAll(() => {
 	workflowRepository = Container.get(WorkflowReviewRequestWorkflowRepository);
 	authorRepository = Container.get(WorkflowReviewRequestAuthorRepository);
 	reviewerRepository = Container.get(WorkflowReviewRequestReviewerRepository);
+	userRepository = Container.get(UserRepository);
 	policyService = Container.get(WorkflowReviewPolicyService);
 });
 
@@ -1177,5 +1180,103 @@ describe('GET /workflow-review-requests/inbox', () => {
 
 		expect(secondPage.body.data.data).toHaveLength(1);
 		expect(secondPage.body.data.data[0].id).not.toBe(firstId);
+	});
+
+	test('hydrates the requester and requested reviewers on list items', async () => {
+		const reviewer = await createUser();
+		const request = await requestRepository.createRequest({
+			projectId: teamProject.id,
+			title: 'Needs review',
+			createdById: owner.id,
+			state: 'open',
+		});
+		await reviewerRepository.addReviewers({
+			workflowReviewRequestId: request.id,
+			userIds: [reviewer.id],
+		});
+
+		const response = await ownerAgent
+			.get('/workflow-review-requests/inbox')
+			.query({ state: 'open', limit: 15 })
+			.expect(200);
+
+		const item = response.body.data.data.find((row: { id: string }) => row.id === request.id);
+		expect(item.requester).toEqual({
+			id: owner.id,
+			email: owner.email,
+			firstName: owner.firstName,
+			lastName: owner.lastName,
+		});
+		expect(item.reviewers).toEqual([
+			{
+				id: reviewer.id,
+				email: reviewer.email,
+				firstName: reviewer.firstName,
+				lastName: reviewer.lastName,
+			},
+		]);
+	});
+
+	test('sets the requester to null when the request has no creator', async () => {
+		const request = await requestRepository.createRequest({
+			projectId: teamProject.id,
+			title: 'Authorless',
+			createdById: null,
+			state: 'open',
+		});
+
+		const response = await ownerAgent
+			.get('/workflow-review-requests/inbox')
+			.query({ state: 'open', limit: 15 })
+			.expect(200);
+
+		const item = response.body.data.data.find((row: { id: string }) => row.id === request.id);
+		expect(item.requester).toBeNull();
+		expect(item.reviewers).toEqual([]);
+	});
+
+	test('drops a requester and reviewers whose accounts were deleted', async () => {
+		// No FK on these rows, so a deleted user leaves a dangling id that must resolve to null.
+		const departedCreator = await createUser();
+		const survivingReviewer = await createUser();
+		const departedReviewer = await createUser();
+		const request = await requestRepository.createRequest({
+			projectId: teamProject.id,
+			title: 'With departed users',
+			createdById: departedCreator.id,
+			state: 'open',
+		});
+		await reviewerRepository.addReviewers({
+			workflowReviewRequestId: request.id,
+			userIds: [survivingReviewer.id, departedReviewer.id],
+		});
+
+		await userRepository.delete({ id: departedCreator.id });
+		await userRepository.delete({ id: departedReviewer.id });
+
+		const response = await ownerAgent
+			.get('/workflow-review-requests/inbox')
+			.query({ state: 'open', limit: 15 })
+			.expect(200);
+
+		const item = response.body.data.data.find((row: { id: string }) => row.id === request.id);
+		expect(item.requester).toBeNull();
+		expect(item.reviewers).toEqual([
+			{
+				id: survivingReviewer.id,
+				email: survivingReviewer.email,
+				firstName: survivingReviewer.firstName,
+				lastName: survivingReviewer.lastName,
+			},
+		]);
+	});
+
+	test('returns 400 for a malformed cursor', async () => {
+		const cursor = Buffer.from('not-a-valid-cursor', 'utf8').toString('base64url');
+
+		await ownerAgent
+			.get('/workflow-review-requests/inbox')
+			.query({ state: 'open', limit: 15, cursor })
+			.expect(400);
 	});
 });

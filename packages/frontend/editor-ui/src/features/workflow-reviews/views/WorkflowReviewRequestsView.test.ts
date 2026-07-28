@@ -93,6 +93,8 @@ describe('WorkflowReviewRequestsView', () => {
 			title: 'Needs review',
 			workflowName: 'My workflow',
 			workflowVersionId: null,
+			requester: null,
+			reviewers: [],
 			decision: 'pending',
 			state: 'open',
 			createdAt: '2024-01-01T00:00:00.000Z',
