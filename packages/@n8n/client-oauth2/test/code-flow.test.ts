@@ -202,6 +202,61 @@ describe('CodeFlow', () => {
 			});
 		});
 
+		describe('with authentication: body', () => {
+			const bodyAuthClient = new ClientOAuth2({
+				clientId: config.clientId,
+				clientSecret: config.clientSecret,
+				accessTokenUri: config.accessTokenUri,
+				authorizationUri: config.authorizationUri,
+				authorizationGrants: ['code'],
+				redirectUri: config.redirectUri,
+				authentication: 'body',
+			});
+
+			const captureTokenCall = async () => {
+				const nockScope = nock(config.baseUrl)
+					.post('/login/oauth/access_token')
+					.once()
+					.reply(200, { access_token: config.accessToken, refresh_token: config.refreshToken });
+				return await new Promise<{ headers: Headers; body: URLSearchParams }>((resolve) => {
+					nockScope.once('request', (req) => {
+						const rawBody = (req.requestBodyBuffers as Buffer).toString('utf-8');
+						resolve({ headers: req.headers, body: new URLSearchParams(rawBody) });
+					});
+				});
+			};
+
+			it('sends client_id and client_secret in the body instead of a Basic auth header', async () => {
+				const requestPromise = captureTokenCall();
+				const token = await bodyAuthClient.code.getToken(uri, { state: config.state });
+
+				const { headers, body } = await requestPromise;
+				expect(body.get('grant_type')).toBe('authorization_code');
+				expect(body.get('client_id')).toBe(config.clientId);
+				expect(body.get('client_secret')).toBe(config.clientSecret);
+				expect(headers.authorization).toBeUndefined();
+				expect(token).toBeInstanceOf(ClientOAuth2Token);
+				expect(token.accessToken).toBe(config.accessToken);
+			});
+
+			it('sends client_id and client_secret in the body on refresh too', async () => {
+				const token = bodyAuthClient.createToken({
+					access_token: config.accessToken,
+					refresh_token: config.refreshToken,
+				});
+
+				const requestPromise = captureTokenCall();
+				const refreshed = await token.refresh();
+
+				const { headers, body } = await requestPromise;
+				expect(body.get('grant_type')).toBe('refresh_token');
+				expect(body.get('client_id')).toBe(config.clientId);
+				expect(body.get('client_secret')).toBe(config.clientSecret);
+				expect(headers.authorization).toBeUndefined();
+				expect(refreshed).toBeInstanceOf(ClientOAuth2Token);
+			});
+		});
+
 		describe('with certificate (private_key_jwt) client authentication', () => {
 			const certAuth = new ClientOAuth2({
 				clientId: config.clientId,

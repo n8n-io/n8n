@@ -11,6 +11,7 @@ interface CodeFlowBody {
 	grant_type: 'authorization_code';
 	redirect_uri?: string;
 	client_id?: string;
+	client_secret?: string;
 	resource?: string;
 	client_assertion_type?: string;
 	client_assertion?: string;
@@ -113,7 +114,13 @@ export class CodeFlow {
 				...options.clientCertificate,
 			});
 		} else if (options.clientSecret) {
-			headers.Authorization = auth(options.clientId, options.clientSecret);
+			// Confidential client (traditional OAuth2 or PKCE with client secret)
+			if (options.authentication === 'body') {
+				body.client_id = options.clientId;
+				body.client_secret = options.clientSecret;
+			} else {
+				headers.Authorization = auth(options.clientId, options.clientSecret);
+			}
 		} else {
 			// `client_id`: REQUIRED if the client is not authenticating with the
 			// authorization server. Reference: https://tools.ietf.org/html/rfc6749#section-3.2.1
