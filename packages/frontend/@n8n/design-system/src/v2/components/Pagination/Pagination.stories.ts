@@ -91,7 +91,6 @@ export const Default: Story = {
 };
 
 export const WithTotal: Story = {
-	name: 'With Total',
 	render: Template,
 	args: {
 		total: 100,
@@ -102,8 +101,7 @@ export const WithTotal: Story = {
 	},
 };
 
-export const WithSizes: Story = {
-	name: 'With Page Sizes',
+export const WithPageSizes: Story = {
 	render: Template,
 	args: {
 		total: 500,
@@ -116,7 +114,6 @@ export const WithSizes: Story = {
 };
 
 export const WithJumper: Story = {
-	name: 'With Jumper',
 	render: Template,
 	args: {
 		total: 300,
@@ -128,7 +125,6 @@ export const WithJumper: Story = {
 };
 
 export const OnePage: Story = {
-	name: 'One Page',
 	render: Template,
 	args: {
 		total: 8,
@@ -137,7 +133,6 @@ export const OnePage: Story = {
 };
 
 export const HideOnSinglePage: Story = {
-	name: 'Hide On Single Page',
 	render: () => ({
 		components: { Pagination },
 		template: `
@@ -171,22 +166,10 @@ export const HideOnSinglePage: Story = {
 };
 
 export const PageCount: Story = {
-	name: 'Page Count (no total)',
 	render: Template,
 	args: {
 		pageCount: 12,
 		itemsPerPage: 10,
-	},
-};
-
-export const CustomPageSizes: Story = {
-	name: 'Custom Page Sizes',
-	render: Template,
-	args: {
-		total: 500,
-		itemsPerPage: 20,
-		pageSizes: [10, 20, 50, 100],
-		showSizes: true,
 	},
 };
 
@@ -260,7 +243,6 @@ export const CustomSlots: Story = {
 };
 
 export const ManyPages: Story = {
-	name: 'Many Pages',
 	render: Template,
 	args: {
 		total: 1000,
@@ -271,7 +253,6 @@ export const ManyPages: Story = {
 };
 
 export const SiblingCount: Story = {
-	name: 'Sibling Count',
 	render: (args) => ({
 		components: { Pagination },
 		setup() {
@@ -323,7 +304,6 @@ export const SiblingCount: Story = {
 };
 
 export const ShowEdges: Story = {
-	name: 'Show Edges',
 	render: (args) => ({
 		components: { Pagination },
 		setup() {
@@ -419,7 +399,6 @@ export const ControlledUncontrolled: Story = {
 };
 
 export const ClientSidePagination: Story = {
-	name: 'Client Side Pagination',
 	render: () => ({
 		components: { Pagination },
 		setup() {
