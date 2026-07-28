@@ -3667,6 +3667,8 @@
 	"settings.api.view.modal.form.label": "Label",
 	"settings.api.view.modal.form.expiration": "Expiration",
 	"settings.api.view.modal.form.expirationText": "The API key will expire on {expirationDate}",
+	"settings.api.view.modal.form.expirationText.never": "The API key will never expire. It will remain active until it is revoked manually.",
+	"settings.api.view.modal.form.expirationText.expired": "The API key expired on {expirationDate}",
 	"settings.api.view.modal.form.label.placeholder": "e.g Internal Project",
 	"settings.api.view.modal.form.expiration.custom": "Custom",
 	"settings.api.view.modal.form.expiration.days": "{numberOfDays} days",
