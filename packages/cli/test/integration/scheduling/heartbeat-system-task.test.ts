@@ -7,26 +7,22 @@ import type { Scheduler, SchedulerPasses } from '@n8n/scheduler';
 import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import {
-	POC_HEARTBEAT_TASK_TYPE,
-	PocHeartbeatTaskHandler,
-} from '@/scheduling/system-tasks/poc-heartbeat-task-handler';
+	HEARTBEAT_TASK_TYPE,
+	HeartbeatTaskHandler,
+} from '@/scheduling/system-tasks/heartbeat-task-handler';
 
 import { retryUntil } from '../shared/retry-until';
 
 /**
- * PoC for the system-tasks migration design: proves a job with no owning
- * workflow can be provisioned through the generalised
- * `DurableJobProvisioner.provisionSystemJob`, materialized, claimed, and
- * dispatched by the real engine, the same way the schedule-trigger node's
- * workflow-scoped jobs already are (see `scheduler-trigger-handler.test.ts`
- * for that path). See
- * `notes/builder/durable-scheduler/distributed-scheduler-system-tasks-batch1-spec.md`.
+ * A job with no owning workflow, provisioned through
+ * `DurableJobProvisioner.provisionSystemJob`, materialised, claimed, and
+ * dispatched by the real engine.
  */
-describe('system job with no owning workflow, provisioned and run end to end', () => {
+describe('system job with no owning workflow, provisioned and run', () => {
 	let jobRepo: ScheduledJobRepository;
 	let taskRepo: ScheduledTaskRepository;
 	let provisioner: DurableJobProvisioner;
-	let handler: PocHeartbeatTaskHandler;
+	let handler: HeartbeatTaskHandler;
 	let scheduler: Scheduler & SchedulerPasses;
 
 	beforeAll(async () => {
@@ -35,10 +31,10 @@ describe('system job with no owning workflow, provisioned and run end to end', (
 		jobRepo = Container.get(ScheduledJobRepository);
 		taskRepo = Container.get(ScheduledTaskRepository);
 		provisioner = Container.get(DurableJobProvisioner);
-		handler = Container.get(PocHeartbeatTaskHandler);
+		handler = Container.get(HeartbeatTaskHandler);
 
 		scheduler = createScheduler({
-			hostId: 'main-poc-system-task',
+			hostId: 'main-heartbeat-system-task',
 			materializerTransaction: buildMaterializerTransaction(
 				Container.get(DataSource),
 				jobRepo,
@@ -46,7 +42,7 @@ describe('system job with no owning workflow, provisioned and run end to end', (
 			),
 			taskStore: taskRepo,
 		});
-		scheduler.registerTaskHandler(POC_HEARTBEAT_TASK_TYPE, handler);
+		scheduler.registerTaskHandler(HEARTBEAT_TASK_TYPE, handler);
 	});
 
 	afterAll(async () => {
@@ -57,9 +53,9 @@ describe('system job with no owning workflow, provisioned and run end to end', (
 	it('provisions a system job by taskType, no workflowId/nodeId, and runs it', async () => {
 		const firstRunAt = new Date(Date.now() - 1000);
 
-		const summary = await provisioner.provisionSystemJob(POC_HEARTBEAT_TASK_TYPE, {}, [
+		const summary = await provisioner.provisionSystemJob(HEARTBEAT_TASK_TYPE, {}, [
 			{
-				name: POC_HEARTBEAT_TASK_TYPE,
+				name: HEARTBEAT_TASK_TYPE,
 				schedule: { kind: 'interval', intervalSeconds: 30 },
 				firstRunAt,
 			},
@@ -71,7 +67,7 @@ describe('system job with no owning workflow, provisioned and run end to end', (
 		const row = await jobRepo.findOneByOrFail({ id: jobId });
 		expect(row.workflowId).toBeNull();
 		expect(row.nodeId).toBeNull();
-		expect(row.taskType).toBe(POC_HEARTBEAT_TASK_TYPE);
+		expect(row.taskType).toBe(HEARTBEAT_TASK_TYPE);
 
 		const fireCountBefore = handler.getFireCount();
 
@@ -90,25 +86,24 @@ describe('system job with no owning workflow, provisioned and run end to end', (
 	}, 30_000);
 
 	it('re-provisioning with the same definition leaves the job unchanged', async () => {
-		// Self-contained (doesn't depend on the previous test's row): truncate
-		// first so this test's own first call is a genuine insert.
+		// Truncate first so this test's insert doesn't depend on the previous test's row.
 		await testDb.truncate(['ScheduledTask', 'ScheduledJob']);
 
 		const desired = [
 			{
-				name: POC_HEARTBEAT_TASK_TYPE,
+				name: HEARTBEAT_TASK_TYPE,
 				schedule: { kind: 'interval' as const, intervalSeconds: 30 },
 				firstRunAt: new Date(Date.now() - 1000),
 			},
 		];
 
-		const first = await provisioner.provisionSystemJob(POC_HEARTBEAT_TASK_TYPE, {}, desired);
+		const first = await provisioner.provisionSystemJob(HEARTBEAT_TASK_TYPE, {}, desired);
 		expect(first.inserted).toHaveLength(1);
 		const jobId = first.inserted[0].id;
 
-		const second = await provisioner.provisionSystemJob(POC_HEARTBEAT_TASK_TYPE, {}, desired);
+		const second = await provisioner.provisionSystemJob(HEARTBEAT_TASK_TYPE, {}, desired);
 
-		expect(second.unchanged).toEqual([{ id: jobId, name: POC_HEARTBEAT_TASK_TYPE }]);
+		expect(second.unchanged).toEqual([{ id: jobId, name: HEARTBEAT_TASK_TYPE }]);
 		expect(second.inserted).toEqual([]);
 		expect(second.redefined).toEqual([]);
 	});

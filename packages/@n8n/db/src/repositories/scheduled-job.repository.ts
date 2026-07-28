@@ -125,10 +125,7 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		return await manager.findBy(ScheduledJob, { workflowId, nodeId });
 	}
 
-	/**
-	 * System jobs of one task type: jobs with no owning workflow (PoC for the
-	 * system-tasks migration; see `DurableJobProvisioner.provisionSystemJob`).
-	 */
+	/** The system jobs (no owning workflow) of one task type. */
 	async findManyByTaskType(manager: EntityManager, taskType: string): Promise<ScheduledJob[]> {
 		return await manager.findBy(ScheduledJob, { taskType, workflowId: IsNull() });
 	}

@@ -193,18 +193,18 @@ describe('DurableJobProvisioner', () => {
 		it('inserts a new system job with no owning workflow', async () => {
 			jobs.insertMany.mockResolvedValue([200]);
 
-			const summary = await provisioner.provisionSystemJob('system:poc-heartbeat', {}, [
-				desiredJob('system:poc-heartbeat', { kind: 'interval', intervalSeconds: 30 }),
+			const summary = await provisioner.provisionSystemJob('system:heartbeat', {}, [
+				desiredJob('system:heartbeat', { kind: 'interval', intervalSeconds: 30 }),
 			]);
 
-			expect(jobs.findManyByTaskType).toHaveBeenCalledWith(manager, 'system:poc-heartbeat');
+			expect(jobs.findManyByTaskType).toHaveBeenCalledWith(manager, 'system:heartbeat');
 			expect(jobs.findManyByWorkflowNode).not.toHaveBeenCalled();
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
 				{
-					name: 'system:poc-heartbeat',
+					name: 'system:heartbeat',
 					workflowId: null,
 					nodeId: null,
-					taskType: 'system:poc-heartbeat',
+					taskType: 'system:heartbeat',
 					payload: {},
 					kind: 'interval',
 					cronExpression: null,
@@ -217,14 +217,14 @@ describe('DurableJobProvisioner', () => {
 					maxAttempts: 5,
 				},
 			]);
-			expect(summary.inserted).toEqual([{ id: 200, name: 'system:poc-heartbeat' }]);
+			expect(summary.inserted).toEqual([{ id: 200, name: 'system:heartbeat' }]);
 		});
 
 		it('leaves an unchanged system job untouched, keeping its id', async () => {
 			jobs.findManyByTaskType.mockResolvedValue([
 				jobRow({
 					id: 20,
-					name: 'system:poc-heartbeat',
+					name: 'system:heartbeat',
 					kind: 'interval',
 					cronExpression: null,
 					timezone: null,
@@ -233,13 +233,13 @@ describe('DurableJobProvisioner', () => {
 				}),
 			]);
 
-			const summary = await provisioner.provisionSystemJob('system:poc-heartbeat', {}, [
-				desiredJob('system:poc-heartbeat', { kind: 'interval', intervalSeconds: 30 }),
+			const summary = await provisioner.provisionSystemJob('system:heartbeat', {}, [
+				desiredJob('system:heartbeat', { kind: 'interval', intervalSeconds: 30 }),
 			]);
 
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, []);
 			expect(jobs.updateDefinition).not.toHaveBeenCalled();
-			expect(summary.unchanged).toEqual([{ id: 20, name: 'system:poc-heartbeat' }]);
+			expect(summary.unchanged).toEqual([{ id: 20, name: 'system:heartbeat' }]);
 		});
 	});
 

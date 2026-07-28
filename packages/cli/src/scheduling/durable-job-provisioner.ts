@@ -31,10 +31,9 @@ interface WorkflowJobScope {
 
 /**
  * Identifies a system task's jobs: no owning workflow, matched by `taskType`
- * instead of `(workflowId, nodeId)`. PoC for the system-tasks migration (see
- * `notes/builder/durable-scheduler/distributed-scheduler-system-tasks-batch1-spec.md`
- * §2): reuses the same provision/diff/seed logic as the workflow scope, since
- * `JobProvisioner<PScope, DScope>` never inspects the scope's shape.
+ * instead of `(workflowId, nodeId)`. Reuses the same provision/diff/seed logic
+ * as the workflow scope, since `JobProvisioner<PScope, DScope>` never inspects
+ * the scope's shape.
  */
 interface SystemJobScope {
 	kind: 'system';
@@ -129,9 +128,7 @@ export class DurableJobProvisioner {
 
 	/**
 	 * Provision a system task's jobs (no owning workflow) so the stored set
-	 * matches `desired`, matched by name, same as {@link provision}. PoC for the
-	 * system-tasks migration: proves the existing provisioning path generalises
-	 * without changes to `@n8n/scheduler` or the diff/seed logic.
+	 * matches `desired`, matched by name, same as {@link provision}.
 	 */
 	async provisionSystemJob(
 		taskType: string,
