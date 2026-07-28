@@ -1,0 +1,11 @@
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable-importer.test.ts
+  ai_agent 345-351
+packages/cli/src/modules/n8n-packages/entities/variable/variable-importer.ts
+  ai_agent 81-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "78ed6efe33b778eada29df726673490f84338813",
+  "prompts": {}
+}
