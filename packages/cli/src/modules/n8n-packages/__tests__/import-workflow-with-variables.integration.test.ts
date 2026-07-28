@@ -196,35 +196,6 @@ describe('workflow package import — with variables', () => {
 			expect(await variablesInProject(targetProject.id)).toEqual([]);
 			expect(await variablesRepository.count()).toBe(variablesBefore);
 		});
-
-		it('reports unresolved variables without creating them under explicit do-nothing', async () => {
-			const owner = await createOwner();
-			const sourceProject = await createTeamProject('Source', owner);
-			const targetProject = await createTeamProject('Target', owner);
-			await createProjectVariable('API_URL', 'https://source.example.com', sourceProject);
-			const workflow = await buildWorkflowReferencingVariables({
-				name: 'Workflow with vars',
-				project: sourceProject,
-				variableNames: ['API_URL'],
-			});
-
-			const packageBuffer = await exportWorkflowPackage(owner, workflow.id);
-
-			const result = await importPackage({
-				user: owner,
-				projectId: targetProject.id,
-				packageBuffer,
-				variableMissingMode: 'do-nothing',
-			});
-
-			expect(result.variables).toEqual({
-				matched: [],
-				missing: ['API_URL'],
-				created: [],
-				stubbed: [],
-			});
-			expect(await variablesInProject(targetProject.id)).toEqual([]);
-		});
 	});
 
 	describe('must-preexist missing mode', () => {

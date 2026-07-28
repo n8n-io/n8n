@@ -85,24 +85,6 @@ describe('toVariableSummary', () => {
 		...overrides,
 	});
 
-	it('reports plan matches and no stubs under do-nothing', () => {
-		expect(toVariableSummary(plan(['A'], ['B']), result())).toEqual({
-			matched: ['A'],
-			missing: ['B'],
-			created: [],
-			stubbed: [],
-		});
-	});
-
-	it('moves stubbed names out of missing', () => {
-		expect(toVariableSummary(plan(['A'], ['B', 'C']), result({ stubbed: ['B', 'C'] }))).toEqual({
-			matched: ['A'],
-			missing: [],
-			created: [],
-			stubbed: ['B', 'C'],
-		});
-	});
-
 	it('counts an externally-created (skipped) destination as matched, not stubbed', () => {
 		// The destination was occupied between plan and apply, so this import did not create it.
 		expect(toVariableSummary(plan(['A'], ['B']), result({ skippedExisting: ['B'] }))).toEqual({

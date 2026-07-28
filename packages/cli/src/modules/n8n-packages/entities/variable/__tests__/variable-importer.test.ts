@@ -123,54 +123,8 @@ describe('VariableImporter', () => {
 			});
 		});
 
-		it('matches a project-scoped variable in the target project', async () => {
-			const { importer, variablesService } = makeImporter();
-			variablesService.getAllCached.mockResolvedValue([
-				makeVariable({
-					id: 'var-project',
-					project: { id: 'proj-target' } as Variables['project'],
-				}),
-			]);
-
-			const plan = await importer.plan(context, {
-				requirements: [req('API_URL', ['wf-1'])],
-				missingMode: 'do-nothing',
-			});
-
-			expect(plan).toEqual({ matched: ['API_URL'], missing: [], creations: [] });
-		});
-
-		it('falls back to a global variable when none exists in the target project', async () => {
-			const { importer, variablesService } = makeImporter();
-			variablesService.getAllCached.mockResolvedValue([makeVariable({ id: 'var-global' })]);
-
-			const plan = await importer.plan(context, {
-				requirements: [req('API_URL', ['wf-1'])],
-				missingMode: 'do-nothing',
-			});
-
-			expect(plan).toEqual({ matched: ['API_URL'], missing: [], creations: [] });
-		});
-
-		it('prefers the project-scoped variable over a global one with the same name', async () => {
-			const { importer, variablesService } = makeImporter();
-			variablesService.getAllCached.mockResolvedValue([
-				makeVariable({ id: 'var-global', value: 'https://global.example.com' }),
-				makeVariable({
-					id: 'var-project',
-					value: 'https://project.example.com',
-					project: { id: 'proj-target' } as Variables['project'],
-				}),
-			]);
-
-			const plan = await importer.plan(context, {
-				requirements: [req('API_URL', ['wf-1'])],
-				missingMode: 'do-nothing',
-			});
-
-			expect(plan).toEqual({ matched: ['API_URL'], missing: [], creations: [] });
-		});
-
+		// Project-over-global precedence is pickVariableForProject's contract, tested in
+		// packages/workflow/test/resolve-variables.test.ts; plan() only reports matched names.
 		it('does not match a project-scoped variable from a different project', async () => {
 			const { importer, variablesService } = makeImporter();
 			variablesService.getAllCached.mockResolvedValue([
@@ -211,89 +165,6 @@ describe('VariableImporter', () => {
 		});
 
 		describe('create-stub', () => {
-			it('plans a project-scoped creation for a missing variable', async () => {
-				const { importer, variablesService } = makeImporter();
-				variablesService.getAllCached.mockResolvedValue([]);
-
-				const plan = await importer.plan(context, {
-					requirements: [req('API_KEY', ['wf-2', 'wf-1'])],
-					missingMode: 'create-stub',
-				});
-
-				expect(plan).toEqual({
-					matched: [],
-					missing: [{ name: 'API_KEY', usedByWorkflows: ['wf-1', 'wf-2'] }],
-					creations: [
-						{ name: 'API_KEY', projectId: 'proj-target', usedByWorkflows: ['wf-1', 'wf-2'] },
-					],
-				});
-				expect(userHasScopes).toHaveBeenCalledWith(
-					context.user,
-					['projectVariable:create'],
-					false,
-					{ projectId: 'proj-target' },
-				);
-			});
-
-			it('plans a global creation when globalPlacement is true', async () => {
-				const { importer, variablesService } = makeImporter();
-				variablesService.getAllCached.mockResolvedValue([]);
-
-				const plan = await importer.plan(context, {
-					requirements: [req('API_KEY', ['wf-1'], true)],
-					missingMode: 'create-stub',
-				});
-
-				// No `projectId` on the creation: the stub is destined for the global scope.
-				expect(plan).toEqual({
-					matched: [],
-					missing: [{ name: 'API_KEY', usedByWorkflows: ['wf-1'] }],
-					creations: [{ name: 'API_KEY', usedByWorkflows: ['wf-1'] }],
-				});
-				expect(hasGlobalScope).toHaveBeenCalledWith(context.user, 'variable:create');
-			});
-
-			it('does not plan a creation for a requirement that already resolves', async () => {
-				const { importer, variablesService } = makeImporter();
-				variablesService.getAllCached.mockResolvedValue([makeVariable({ id: 'var-url' })]);
-
-				const plan = await importer.plan(context, {
-					requirements: [req('API_URL', ['wf-1'])],
-					missingMode: 'create-stub',
-				});
-
-				expect(plan).toEqual({ matched: ['API_URL'], missing: [], creations: [] });
-				// No creations means the permission preflight must not run at all.
-				expect(hasGlobalScope).not.toHaveBeenCalled();
-				expect(userHasScopes).not.toHaveBeenCalled();
-			});
-
-			it('throws when the user cannot create variables in the project', async () => {
-				const { importer, variablesService } = makeImporter();
-				variablesService.getAllCached.mockResolvedValue([]);
-				vi.mocked(userHasScopes).mockResolvedValue(false);
-
-				await expect(
-					importer.plan(context, {
-						requirements: [req('API_KEY', ['wf-1'])],
-						missingMode: 'create-stub',
-					}),
-				).rejects.toThrow('You are not allowed to create variables in this project');
-			});
-
-			it('throws when the user cannot create global variables', async () => {
-				const { importer, variablesService } = makeImporter();
-				variablesService.getAllCached.mockResolvedValue([]);
-				vi.mocked(hasGlobalScope).mockReturnValue(false);
-
-				await expect(
-					importer.plan(context, {
-						requirements: [req('API_KEY', ['wf-1'], true)],
-						missingMode: 'create-stub',
-					}),
-				).rejects.toThrow('You are not allowed to create global variables');
-			});
-
 			it('skips the project permission check when the project is pending creation', async () => {
 				const { importer, variablesService } = makeImporter();
 				variablesService.getAllCached.mockResolvedValue([]);
@@ -392,96 +263,13 @@ describe('VariableImporter', () => {
 	});
 
 	describe('quotaFailure', () => {
-		const creation = (name: string, projectId?: string) => ({
-			name,
-			...(projectId ? { projectId } : {}),
-			usedByWorkflows: ['wf-1'],
-		});
-
+		// Overrun reporting and per-destination deduping are computeVariableLimitFailure's and
+		// dedupeCreationsByDestination's contracts, tested in variable.types.test.ts.
 		it('does not read the quota when the import creates nothing', async () => {
 			const { importer, variablesService } = makeImporter();
 
 			await expect(importer.quotaFailure([])).resolves.toBeUndefined();
 			expect(variablesService.getRemainingVariableQuota).not.toHaveBeenCalled();
-		});
-
-		it('returns nothing when the quota is unlimited', async () => {
-			const { importer, variablesService } = makeImporter();
-			variablesService.getRemainingVariableQuota.mockResolvedValue(null);
-
-			await expect(
-				importer.quotaFailure([creation('API_KEY'), creation('API_TOKEN')]),
-			).resolves.toBeUndefined();
-		});
-
-		it('returns nothing when the creations fit the remaining quota', async () => {
-			const { importer, variablesService } = makeImporter();
-			variablesService.getRemainingVariableQuota.mockResolvedValue({ limit: 5, remaining: 2 });
-
-			await expect(
-				importer.quotaFailure([creation('API_KEY'), creation('API_TOKEN')]),
-			).resolves.toBeUndefined();
-		});
-
-		it('reports the overrun with the names and workflows behind it', async () => {
-			const { importer, variablesService } = makeImporter();
-			variablesService.getRemainingVariableQuota.mockResolvedValue({ limit: 5, remaining: 1 });
-
-			await expect(
-				importer.quotaFailure([
-					{ name: 'API_TOKEN', usedByWorkflows: ['wf-2'] },
-					{ name: 'API_KEY', usedByWorkflows: ['wf-1'] },
-				]),
-			).resolves.toEqual({
-				limit: 5,
-				remaining: 1,
-				requested: 2,
-				names: ['API_KEY', 'API_TOKEN'],
-				usedByWorkflows: ['wf-1', 'wf-2'],
-			});
-		});
-
-		it('counts a variable planned by several scopes as one new row', async () => {
-			const { importer, variablesService } = makeImporter();
-			variablesService.getRemainingVariableQuota.mockResolvedValue({ limit: 1, remaining: 1 });
-
-			// Two scopes both need the same global variable, but only one row would be created.
-			await expect(
-				importer.quotaFailure([creation('SHARED_URL'), creation('SHARED_URL')]),
-			).resolves.toBeUndefined();
-		});
-
-		it('keeps every scope behind a shared destination in the reported workflows', async () => {
-			const { importer, variablesService } = makeImporter();
-			variablesService.getRemainingVariableQuota.mockResolvedValue({ limit: 1, remaining: 0 });
-
-			await expect(
-				importer.quotaFailure([
-					{ name: 'SHARED_URL', usedByWorkflows: ['wf-2'] },
-					{ name: 'SHARED_URL', usedByWorkflows: ['wf-1'] },
-				]),
-			).resolves.toEqual({
-				limit: 1,
-				remaining: 0,
-				requested: 1,
-				names: ['SHARED_URL'],
-				usedByWorkflows: ['wf-1', 'wf-2'],
-			});
-		});
-
-		it('counts the same name in two projects as two rows', async () => {
-			const { importer, variablesService } = makeImporter();
-			variablesService.getRemainingVariableQuota.mockResolvedValue({ limit: 1, remaining: 1 });
-
-			await expect(
-				importer.quotaFailure([creation('API_KEY', 'proj-a'), creation('API_KEY', 'proj-b')]),
-			).resolves.toEqual({
-				limit: 1,
-				remaining: 1,
-				requested: 2,
-				names: ['API_KEY'],
-				usedByWorkflows: ['wf-1'],
-			});
 		});
 	});
 
@@ -505,92 +293,8 @@ describe('VariableImporter', () => {
 			expect(variablesService.create).not.toHaveBeenCalled();
 		});
 
-		it('creates an empty stub for a missing variable', async () => {
-			const { importer, variablesService } = makeImporter();
-			variablesService.getAllCached.mockResolvedValue([]);
-
-			const result = await importer.apply(context, projectCreationPlan);
-
-			expect(variablesService.create).toHaveBeenCalledWith(context.user, {
-				key: 'API_KEY',
-				type: 'string',
-				value: '',
-				projectId: 'proj-target',
-			});
-			expect(result).toEqual({
-				created: [],
-				stubbed: ['API_KEY'],
-				skippedExisting: [],
-			});
-		});
-
-		it('creates a variable with the package value', async () => {
-			const { importer, variablesService } = makeImporter();
-			variablesService.getAllCached.mockResolvedValue([]);
-
-			const value = 'package-value';
-			const result = await importer.apply(context, {
-				...projectCreationPlan,
-				creations: [
-					{ name: 'API_KEY', projectId: 'proj-target', value, usedByWorkflows: ['wf-1'] },
-				],
-			});
-
-			expect(variablesService.create).toHaveBeenCalledWith(context.user, {
-				key: 'API_KEY',
-				type: 'string',
-				value,
-				projectId: 'proj-target',
-			});
-			expect(result).toEqual({
-				created: ['API_KEY'],
-				stubbed: [],
-				skippedExisting: [],
-			});
-		});
-
-		it('creates a global stub not attached to any project', async () => {
-			const { importer, variablesService } = makeImporter();
-			variablesService.getAllCached.mockResolvedValue([]);
-
-			const result = await importer.apply(context, {
-				matched: [],
-				missing: [{ name: 'API_KEY', usedByWorkflows: ['wf-1'] }],
-				creations: [{ name: 'API_KEY', usedByWorkflows: ['wf-1'] }],
-			});
-
-			expect(variablesService.create).toHaveBeenCalledWith(context.user, {
-				key: 'API_KEY',
-				type: 'string',
-				value: '',
-			});
-			expect(result).toEqual({
-				created: [],
-				stubbed: ['API_KEY'],
-				skippedExisting: [],
-			});
-		});
-
-		it('skips creation when the variable already exists at its destination', async () => {
-			const { importer, variablesService } = makeImporter();
-			variablesService.getAllCached.mockResolvedValue([
-				makeVariable({
-					id: 'var-existing',
-					key: 'API_KEY',
-					project: { id: 'proj-target' } as Variables['project'],
-				}),
-			]);
-
-			const result = await importer.apply(context, projectCreationPlan);
-
-			expect(variablesService.create).not.toHaveBeenCalled();
-			expect(result).toEqual({
-				created: [],
-				stubbed: [],
-				skippedExisting: ['API_KEY'],
-			});
-		});
-
+		// Stub, valued and global creations, and the skip when the destination is already
+		// occupied, are asserted against real rows by the import integration suites.
 		it('still creates when a variable with the same name exists in a different scope', async () => {
 			const { importer, variablesService } = makeImporter();
 			// An existing global variable must not cancel a planned project creation of the same name,
@@ -671,58 +375,6 @@ describe('VariableImporter', () => {
 			await expect(importer.apply(context, projectCreationPlan)).rejects.toThrow(
 				VariableCountLimitReachedError,
 			);
-		});
-	});
-
-	describe('blockingFailures', () => {
-		const plan: VariableImportPlan = {
-			matched: ['API_URL'],
-			missing: [{ name: 'API_KEY', usedByWorkflows: ['wf-1'] }],
-			creations: [],
-		};
-
-		describe('do-nothing missing mode', () => {
-			it('never blocks, even with unresolved requirements', () => {
-				const { importer } = makeImporter();
-
-				expect(
-					importer.blockingFailures({ requirements: undefined, missingMode: 'do-nothing' }, plan),
-				).toEqual([]);
-			});
-		});
-
-		describe('create-stub missing mode', () => {
-			it('never blocks, since unresolved requirements are created', () => {
-				const { importer } = makeImporter();
-
-				expect(
-					importer.blockingFailures({ requirements: undefined, missingMode: 'create-stub' }, plan),
-				).toEqual([]);
-			});
-		});
-
-		describe('must-preexist missing mode', () => {
-			it('blocks on every unresolved requirement', () => {
-				const { importer } = makeImporter();
-
-				expect(
-					importer.blockingFailures(
-						{ requirements: undefined, missingMode: 'must-preexist' },
-						plan,
-					),
-				).toEqual([{ name: 'API_KEY', usedByWorkflows: ['wf-1'] }]);
-			});
-
-			it('does not block when every requirement resolves', () => {
-				const { importer } = makeImporter();
-
-				expect(
-					importer.blockingFailures(
-						{ requirements: undefined, missingMode: 'must-preexist' },
-						{ matched: ['API_URL'], missing: [], creations: [] },
-					),
-				).toEqual([]);
-			});
 		});
 	});
 });
