@@ -565,6 +565,47 @@ describe('ToolHttpRequest', () => {
 			expect(res).not.toContain('eyJhbGciOiJIUzI1NiJ9');
 		});
 
+		it('should redact compound credential keys and unprefixed authorization values', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Unauthorized'), {
+					response: {
+						status: 401,
+						data: {
+							message: 'Token exchange failed',
+							client_secret: 'cs-live-abcdef',
+							Authorization: 'abcdef-bare-key',
+							token_type: 'Bearer',
+						},
+					},
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('Token exchange failed');
+			expect(res).toContain('client_secret');
+			expect(res).not.toContain('cs-live-abcdef');
+			expect(res).not.toContain('abcdef-bare-key');
+			// Keys that merely read like credentials keep their value.
+			expect(res).toContain('"token_type": "Bearer"');
+		});
+
+		it('should redact a credential the client folded into the error message', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('401 - {"client_secret":"cs-live-abcdef"}'), {
+					response: { status: 401, data: '{"client_secret":"cs-live-abcdef"}' },
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 401');
+			expect(res).toContain('client_secret');
+			expect(res).not.toContain('cs-live-abcdef');
+			// Both sides are redacted, so the body is still recognised as a repeat of the message.
+			expect(res).not.toContain('Response body');
+		});
+
 		it('should include the response body when a predefined credential wraps the failure', async () => {
 			// A tool authenticated with a stored credential goes through
 			// `httpRequestWithAuthentication`, which rejects with a real `NodeApiError` rather than
@@ -590,16 +631,21 @@ describe('ToolHttpRequest', () => {
 				},
 			);
 
+			// `NodeApiError` recognises an axios rejection by `constructor.name`, so the fixture
+			// carries that name to take the same branch production does.
+			class AxiosError extends Error {
+				isAxiosError = true;
+
+				response = {
+					status: 403,
+					data: { error: 'insufficient_scope', required: 'read:users' },
+				};
+			}
+
 			helpers.httpRequestWithAuthentication.mockRejectedValue(
 				new NodeApiError(
 					executeFunctions.getNode(),
-					Object.assign(new Error('Request failed with status code 403'), {
-						isAxiosError: true,
-						response: {
-							status: 403,
-							data: { error: 'insufficient_scope', required: 'read:users' },
-						},
-					}) as unknown as JsonObject,
+					new AxiosError('Request failed with status code 403') as unknown as JsonObject,
 				),
 			);
 

@@ -154,15 +154,23 @@ const SECRET_REDACTION = '[redacted]';
  * Masks credential-shaped values that an API echoed back in its error payload, so they do not
  * reach the model or the stored execution data. The key is kept, so `invalid api_key: <secret>`
  * still tells the model which credential the API rejected.
+ *
+ * A sibling of the redaction applied to skill tool output in
+ * `packages/@n8n/agents/src/skills/tools.ts`; kept separate because `@n8n/agents` is not a
+ * dependency here. Keep the two in mind when changing either.
+ *
+ * The leading `[\w-]*` matters: `\b` alone never fires inside a compound key such as
+ * `client_secret`, where every character before `secret` is a word character. The auth scheme is
+ * optional so an `Authorization` header holding a bare key is masked too.
  */
 const redactSecrets = (content: string): string =>
 	content
 		.replace(
-			/\b(authorization)(["']?\s*[:=]\s*["']?\s*(?:bearer|basic)\s+)[^\s"',;]+/gi,
+			/\b(authorization)(["']?\s*[:=]\s*["']?\s*(?:(?:bearer|basic)\s+)?)[^\s"',;}]+/gi,
 			`$1$2${SECRET_REDACTION}`,
 		)
 		.replace(
-			/\b(api[_-]?key|access[_-]?token|refresh[_-]?token|token|password|passwd|secret|credential)(["']?\s*[:=]\s*)(["']?)[^\s"',;}]+\3/gi,
+			/([\w-]*(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|password|passwd|secret|credential|private[_-]?key))(["']?\s*[:=]\s*)(["']?)[^\s"',;}]+\3/gi,
 			`$1$2$3${SECRET_REDACTION}$3`,
 		);
 
@@ -826,12 +834,15 @@ export const configureToolFunction = (
 			} catch (error) {
 				const { status, body } = getFailedRequest(error);
 				const httpCode = (error as NodeApiError).httpCode ?? status;
-				response = `${httpCode ? `HTTP ${httpCode} ` : ''}There was an error: "${error.message}"`;
+				// Some clients fold the response body into the message, so it needs the same masking
+				// as the body itself — and the dedupe check below only holds if both sides are redacted.
+				const message = redactSecrets(error.message);
+				response = `${httpCode ? `HTTP ${httpCode} ` : ''}There was an error: "${message}"`;
 
 				// The API's own error payload is what tells the model why the call was rejected. Without
 				// it the model only sees a status code and tends to invent a reason for the failure.
 				const errorBody = serializeErrorBody(body);
-				if (errorBody !== undefined && !error.message.includes(errorBody)) {
+				if (errorBody !== undefined && !message.includes(errorBody)) {
 					response += `\nResponse body: ${errorBody.slice(0, MAX_ERROR_BODY_LENGTH)}${
 						errorBody.length > MAX_ERROR_BODY_LENGTH ? '... [truncated]' : ''
 					}`;
