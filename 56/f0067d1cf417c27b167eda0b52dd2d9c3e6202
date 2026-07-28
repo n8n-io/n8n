@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/io/unique-filename-allocator.ts
+  s_f1fd9f5ebf594e::t_e70a1314e80fb8 1-2,18-24,26
+packages/cli/src/modules/n8n-packages/io/__tests__/unique-filename-allocator.test.ts
+  s_f1fd9f5ebf594e::t_e70a1314e80fb8 57-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "56f0067d1cf417c27b167eda0b52dd2d9c3e6202",
+  "prompts": {},
+  "sessions": {
+    "s_f1fd9f5ebf594e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aaa80172-7d75-4f55-87bd-ff8903dbe69c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

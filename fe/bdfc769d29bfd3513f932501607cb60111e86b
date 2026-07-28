@@ -1,0 +1,19 @@
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_c25e263a78aa6f::t_f49e82a2bd4b06 223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "febdfc769d29bfd3513f932501607cb60111e86b",
+  "prompts": {},
+  "sessions": {
+    "s_c25e263a78aa6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11f89fa8-3346-4caa-8d30-20b60220d8dc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

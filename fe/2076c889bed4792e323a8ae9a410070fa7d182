@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/workflowReviews/views/WorkflowReviewRequestsView.vue
+  s_a2967ec392b10a::t_8470c38415ddc6 61
+packages/frontend/editor-ui/src/features/workflowReviews/components/WorkflowReviewRequestsSidebar.vue
+  s_a2967ec392b10a::t_8470c38415ddc6 3,7,17-18,32,54-59,85-90,112,125,144-173,231-233,237,243-248,255,261-268,270-271,278-323
+packages/frontend/editor-ui/src/features/workflowReviews/components/WorkflowReviewRequestStatusIndicator.vue
+  s_a2967ec392b10a::t_8470c38415ddc6 1-70
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a2967ec392b10a::t_8470c38415ddc6 5023-5025
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fe2076c889bed4792e323a8ae9a410070fa7d182",
+  "prompts": {},
+  "sessions": {
+    "s_a2967ec392b10a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2c04c3e1-d5a9-42bf-81c9-c49a5c1432d1",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

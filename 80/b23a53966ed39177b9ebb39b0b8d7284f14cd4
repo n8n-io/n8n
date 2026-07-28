@@ -1,0 +1,33 @@
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_70fb4223a7d1db::t_ef9f036a322e0c 1-79
+packages/cli/src/modules/agents/__tests__/agent-model-catalog.service.test.ts
+  s_70fb4223a7d1db::t_774ed76411093c 69,95,108,119,128,152,166,179
+  s_70fb4223a7d1db::t_1aa6a62e637608 80
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_70fb4223a7d1db::t_a3aeb1fb69c460 61
+  s_70fb4223a7d1db::t_b9b3fb9e4e81e5 76
+packages/cli/src/modules/agents/__tests__/agents-catalog.controller.test.ts
+  s_70fb4223a7d1db::t_bbe653a4bbc042 42,45,57
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_70fb4223a7d1db::t_9556716ac56fb1 677-683
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_70fb4223a7d1db::t_6b722d87998593 5,31,39-42,46,51,53,55,66
+packages/cli/src/modules/agents/agents-catalog.controller.ts
+  s_70fb4223a7d1db::t_fade28d2454c8e 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "80b23a53966ed39177b9ebb39b0b8d7284f14cd4",
+  "prompts": {},
+  "sessions": {
+    "s_70fb4223a7d1db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf21fcf-13a0-4245-8181-bb4439b4ca9f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

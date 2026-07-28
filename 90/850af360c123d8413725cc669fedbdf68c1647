@@ -1,0 +1,24 @@
+packages/frontend/@n8n/composables/src/htmlUtils.ts
+  s_88fa5ba1d64bde::t_e07de27b7cf9bf 4
+packages/frontend/@n8n/composables/src/htmlUtils.test.ts
+  s_88fa5ba1d64bde::t_a6a1edab170c8c 1
+packages/frontend/editor-ui/src/app/constants/sanitization.ts
+  s_88fa5ba1d64bde::t_a6835302ea7a3c 2,8
+  s_88fa5ba1d64bde::t_a7d2ed9f071d76 9-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "90850af360c123d8413725cc669fedbdf68c1647",
+  "prompts": {},
+  "sessions": {
+    "s_88fa5ba1d64bde": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd918bd6-747b-499a-a6d5-29e76dc58cd8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

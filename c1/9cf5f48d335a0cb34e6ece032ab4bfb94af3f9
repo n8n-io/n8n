@@ -1,0 +1,31 @@
+packages/@n8n/instance-ai/src/tools/agent-builder/configure-channel.tool.ts
+  s_81a7b3dfd1f412::t_180e7611c74b26 10
+  s_81a7b3dfd1f412::t_3980f72e4319a9 45-48
+packages/@n8n/instance-ai/skills/agent-builder/references/integrations.md
+  s_81a7b3dfd1f412::t_8ec88b8ed49157 15,17-19,22-23,27-29,31-43,47-50
+packages/@n8n/instance-ai/src/tools/agent-builder/creation-tools.ts
+  s_81a7b3dfd1f412::t_3213e5211058f7 85
+  s_81a7b3dfd1f412::t_c56972f74c4457 157-161
+  s_81a7b3dfd1f412::t_b715210aa75e02 51-53,90-92
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/router.test.ts
+  s_81a7b3dfd1f412::t_768e7e3a048398 100-101
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_81a7b3dfd1f412::t_d671a25a793f90 37
+  s_81a7b3dfd1f412::t_6d84d9229d762e 50-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c19cf5f48d335a0cb34e6ece032ab4bfb94af3f9",
+  "prompts": {},
+  "sessions": {
+    "s_81a7b3dfd1f412": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f423b-0e52-7c21-be92-8fde7fd2b611",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

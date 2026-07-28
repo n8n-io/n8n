@@ -1,0 +1,19 @@
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_ed347837cfb055::t_d9f2803955b813 171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e20469309a67277ca75f2932f387e4a3d9193c86",
+  "prompts": {},
+  "sessions": {
+    "s_ed347837cfb055": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4aa8-90a6-7d63-958d-82d989ccdc51",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

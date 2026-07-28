@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/eslint.config.mjs
+  s_7a87d748dca0a4::t_03796302a1dbcb 193-194
+  s_7a87d748dca0a4::t_d5da1abb641c88 204,209,216,221
+  s_7a87d748dca0a4::t_85026edbc7e0d7 5-10
+  s_7a87d748dca0a4::t_38eda0c11a5b2f 195-203,205-208,210-215,217-220,222-224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "5660ffaf9dbf6fcb8fc40083f3ad9b45b66b4205",
+  "prompts": {},
+  "sessions": {
+    "s_7a87d748dca0a4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "760507e5-27dc-45e2-8806-fe454105390b",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

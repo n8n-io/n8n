@@ -1,0 +1,40 @@
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_2518c7e469bbd2::t_38452d49a30ac3 22-24
+  s_2518c7e469bbd2::t_e3fc67c27f6454 1-2
+  s_2518c7e469bbd2::t_acd0dfc10b3f9a 126-129
+  s_2518c7e469bbd2::t_1b32ff744f2684 93-94
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.yml
+  s_2518c7e469bbd2::t_b09e213adf973b 1-93
+packages/cli/src/public-api/v1/handlers/data-tables/spec/schemas/createDataTableRequest.yml
+  s_2518c7e469bbd2::t_b09e213adf973b 1-31
+packages/@n8n/api-types/src/schemas/data-table.schema.ts
+  s_2518c7e469bbd2::t_b09e213adf973b 7,24-25
+packages/@n8n/api-types/src/dto/data-table/public-api-create-data-table.dto.ts
+  s_2518c7e469bbd2::t_b09e213adf973b 9,12
+packages/cli/src/public-api/v1/openapi.yml
+  s_2518c7e469bbd2::t_b09e213adf973b 137
+packages/cli/test/integration/public-api/data-tables.test.ts
+  s_2518c7e469bbd2::t_b09e213adf973b 188
+packages/@n8n/api-types/src/dto/data-table/list-data-table-query.dto.ts
+  s_2518c7e469bbd2::t_b09e213adf973b 64
+packages/cli/src/public-api/v1/openapi-gen/generate.ts
+  s_2518c7e469bbd2::t_89395bfdeef34b 14-20,36-39,47-49,52-55,59-61
+.agents/skills/public-api/SKILL.md
+  s_2518c7e469bbd2::t_09d52f80e3cafe 123-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "f01f8f08abbf94dd3cb40e9e13905d8a1c159964",
+  "prompts": {},
+  "sessions": {
+    "s_2518c7e469bbd2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "30e73753-7124-4cb8-b799-467a0f9d476d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

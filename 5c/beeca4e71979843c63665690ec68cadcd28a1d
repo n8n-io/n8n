@@ -1,0 +1,37 @@
+packages/frontend/@n8n/composables/src/PopOutWindowKey.ts
+  s_03dfb80e635af0::t_ad8ca254a0897c 1-8
+packages/frontend/editor-ui/src/app/constants/injectionKeys.ts
+  s_03dfb80e635af0::t_9b711c866d6817 19-25
+packages/frontend/@n8n/composables/src/useClipboard.test.ts
+  s_03dfb80e635af0::t_3ced203b102f85 5
+  s_03dfb80e635af0::t_4c50bb132e5997 2-4
+packages/frontend/@n8n/composables/src/useClipboard.ts
+  s_03dfb80e635af0::t_c87f2c339ebeb8 2-3
+  s_03dfb80e635af0::t_49e2c149fc5af0 4
+  s_03dfb80e635af0::t_6046f039f404ea 31-33,61
+  s_03dfb80e635af0::t_ec352159458b1a 1
+  s_03dfb80e635af0::t_7bf1e08e0c415c 5-7,28-30
+  s_03dfb80e635af0::t_d64b15f63523a2 34-36,58-60
+  s_03dfb80e635af0::t_24df262dfe398c 62-64
+  s_03dfb80e635af0::t_0739df04b63ef5 8-27,37-57,65-102
+packages/frontend/@n8n/composables/eslint.config.mjs
+  s_03dfb80e635af0::t_a4823079504fdc 6-11
+packages/frontend/editor-ui/src/app/composables/useClipboard.ts
+  s_03dfb80e635af0::t_6741919bb707a5 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5cbeeca4e71979843c63665690ec68cadcd28a1d",
+  "prompts": {},
+  "sessions": {
+    "s_03dfb80e635af0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "662cd214-b617-4fb8-ad43-813e190ba458",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

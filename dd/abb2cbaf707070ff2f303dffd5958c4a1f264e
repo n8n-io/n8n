@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_de7c4c81db18ab::t_080192f63b5c2f 749-752
+  h_5d40c27a8fdfd1 760-761
+  s_de7c4c81db18ab::t_001519f49b2229 747-748,753-759,762
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ddabb2cbaf707070ff2f303dffd5958c4a1f264e",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_de7c4c81db18ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82b018ac-f927-4720-b8f9-8aeaeef1b296",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

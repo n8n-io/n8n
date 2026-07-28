@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/skills/intent-recognition/SKILL.md
+  s_dd8f226d4368c9::t_3af0b89ee2be29 25-26
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_dd8f226d4368c9::t_481bc1af765e77 146
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.test.ts
+  s_dd8f226d4368c9::t_0dae95448b71e0 203,206-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b8fbee5d4374293e5323aedb01e383ebfe0081dd",
+  "prompts": {},
+  "sessions": {
+    "s_dd8f226d4368c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f76700ff-f605-49d5-95e7-0bdc353261f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

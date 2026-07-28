@@ -1,0 +1,42 @@
+packages/cli/src/modules/agents/agent-knowledge-file-store.ts
+  s_1359802a9ac02a::t_ac735880f55184 42
+  s_1359802a9ac02a::t_bf1a40583dcb34 12
+packages/core/src/storage-fs-byte-store.ts
+  s_1359802a9ac02a::t_4c73a706bf8bf6 1-20
+packages/cli/src/modules/agents/execution-log/agent-execution-log-store.ts
+  s_1359802a9ac02a::t_c6564c633ff940 1,3
+  s_1359802a9ac02a::t_9379b684e75401 23
+packages/cli/src/executions/execution-data/execution-data-json-store.ts
+  s_1359802a9ac02a::t_2ed8fc8f3c6f48 16
+  s_1359802a9ac02a::t_c751427443e5cf 1,3
+packages/cli/src/modules/agents/__tests__/agent-knowledge-file-store.test.ts
+  s_1359802a9ac02a::t_63c718a9f2935a 30
+packages/core/src/index.ts
+  s_1359802a9ac02a::t_b53ab4978f30f4 6
+packages/cli/src/modules/agents/execution-log/__tests__/agent-execution-log-store.test.ts
+  s_1359802a9ac02a::t_100acebed555ce 1,4,8
+packages/cli/src/executions/execution-data/__tests__/execution-data-json-store.test.ts
+  s_1359802a9ac02a::t_96c0a6416fd4b3 4
+  s_1359802a9ac02a::t_a4e50f556b5b53 13,18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ae537c570b97655b3aee8e220e0676321ec8eb21",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1359802a9ac02a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7141adee-2030-4e92-a8ca-d8a4ed67fe12",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

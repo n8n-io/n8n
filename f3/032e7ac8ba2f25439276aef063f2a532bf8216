@@ -1,0 +1,22 @@
+packages/@n8n/agents/src/runtime/model/prompt-cache.ts
+  s_5f24625491de60::t_27601812fe2e0c 64-68,76,78,80
+packages/@n8n/agents/src/runtime/model/__tests__/prompt-cache.test.ts
+  s_5f24625491de60::t_da5ed2179d2894 142
+  s_5f24625491de60::t_f475c245203102 118,121,127,131,135-141,143-148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f3032e7ac8ba2f25439276aef063f2a532bf8216",
+  "prompts": {},
+  "sessions": {
+    "s_5f24625491de60": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4e4a3cd9-d72c-4ece-aaf1-7bb176752697",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

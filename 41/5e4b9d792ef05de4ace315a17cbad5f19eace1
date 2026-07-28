@@ -1,0 +1,77 @@
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_b3c886953457ff::t_0be38b710ce22f 304,312
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_b3c886953457ff::t_831e368bb80131 189-192
+  s_b3c886953457ff::t_11a81e1268cdd3 1-178,182-188,193-219,226-353
+  s_b3c886953457ff::t_00154c88822e5a 220-225
+  s_b3c886953457ff::t_e41e6325e401c3 179-181
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-model-recommendations.test.ts
+  s_b3c886953457ff::t_a5abc9417b58e6 122,128-129,131
+  s_b3c886953457ff::t_021f6d87935bea 189
+  s_b3c886953457ff::t_8fc3455ddb9c07 216,225-226,229-230
+  s_b3c886953457ff::t_a3c5305b2bb373 239-240,243-244
+packages/cli/src/modules/agents/builder/skills/__tests__/index.test.ts
+  s_b3c886953457ff::t_9097d97f879d47 4,7
+packages/cli/src/modules/agents/builder/skills/index.ts
+  s_b3c886953457ff::t_fd54946a5cad3e 4
+  s_b3c886953457ff::t_1c0e5e73d12d8e 14
+packages/cli/src/modules/agents/builder/prompts/tools.prompt.ts
+  s_b3c886953457ff::t_2c259c82c9dbfc 27,29-30
+  s_b3c886953457ff::t_4ea662f52e3c13 52-55,59-60
+  s_b3c886953457ff::t_4b439dcfbab6dd 15-17
+packages/cli/src/modules/agents/builder/verify-mcp-server.tool.ts
+  s_b3c886953457ff::t_2d285f974bebb5 140-165,168
+  s_b3c886953457ff::t_5ebaff17dd45cc 13,18-23
+  s_b3c886953457ff::t_735e2142b289ce 118-121
+packages/cli/src/modules/agents/builder/resolve-integration.tool.ts
+  s_b3c886953457ff::t_b1e00eb66ca4d9 25
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_b3c886953457ff::t_0534fa4a226ca9 67-70
+  s_b3c886953457ff::t_aaef64dc0e41f4 1-2
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_b3c886953457ff::t_8a617945ebbdaa 230
+  s_b3c886953457ff::t_7e7db7e3ee7573 247-248
+  s_b3c886953457ff::t_306ca1b76c2c19 255-258
+  s_b3c886953457ff::t_ffd3cd70c6a350 226-228
+  s_b3c886953457ff::t_15101cb0160fe8 174
+  s_b3c886953457ff::t_e2d3a0c345e977 202
+  s_b3c886953457ff::t_1098d4e2e84142 210
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_b3c886953457ff::t_1c3df12018b1b6 48
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_b3c886953457ff::t_f633e5dc9182b7 555-593
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_b3c886953457ff::t_05ffc85afa12a1 934-936,949-954
+  s_b3c886953457ff::t_7657085b265904 926-933,937-948,955-968
+  s_b3c886953457ff::t_ca55f56c91ee75 687,696-697
+packages/cli/src/modules/agents/builder/__tests__/verify-mcp-server.tool.test.ts
+  s_b3c886953457ff::t_32ac14c83b4cea 25,31
+  s_b3c886953457ff::t_96bb65ecb11aa8 260-391
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_b3c886953457ff::t_c2adf88992c328 169-174
+  s_b3c886953457ff::t_d4399c23e6502a 669-670,684-685
+  s_b3c886953457ff::t_f2340fb598be16 733-735
+  s_b3c886953457ff::t_9fa03340c0001f 627-649
+  s_b3c886953457ff::t_d0ed8aa1c0deda 732
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "415e4b9d792ef05de4ace315a17cbad5f19eace1",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b3c886953457ff": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3f7661c9-7c9e-449c-830c-72fd46b41859",
+        "model": "composer-2.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

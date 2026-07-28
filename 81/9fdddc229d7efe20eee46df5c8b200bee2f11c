@@ -1,0 +1,35 @@
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-blocked.error.test.ts
+  s_a2f2604c6a0758::t_c90be0953969d4 40-44
+  s_a2f2604c6a0758::t_be0be1214d7d5c 23-28
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_a2f2604c6a0758::t_49b34abb08d9cf 404-405
+  s_a2f2604c6a0758::t_5da1b002c85436 415-416,422
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_a2f2604c6a0758::t_b2ecf9394da53b 555-556
+  s_a2f2604c6a0758::t_b1e51af722df2d 603-607,611,621
+  s_a2f2604c6a0758::t_b67db9459a17c4 548-554,557
+  s_a2f2604c6a0758::t_a8bb632a364c91 517-547,558-563
+  s_a2f2604c6a0758::t_f533f007a824b5 20
+  s_a2f2604c6a0758::t_aa676acd246e96 564-602,608-610,612-620,622
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "819fdddc229d7efe20eee46df5c8b200bee2f11c",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a2f2604c6a0758": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2eebeab3-c2f8-45bc-a543-37d531da2598",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

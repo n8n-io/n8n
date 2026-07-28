@@ -1,0 +1,71 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectExternalSecrets.vue
+  s_8fe80219111af5::t_5fd31ca79ebb3e 25
+packages/frontend/editor-ui/src/app/utils/rbac/checks/hasScope.ts
+  s_8fe80219111af5::t_5fd31ca79ebb3e 1
+packages/frontend/editor-ui/src/features/integrations/externalSecrets.ee/externalSecrets.ee.store.test.ts
+  s_8fe80219111af5::t_8951e5f7e94d04 61
+packages/frontend/editor-ui/src/features/integrations/secretsProviders.ee/views/SettingsSecretsProviders.test.ts
+  s_8fe80219111af5::t_5fd31ca79ebb3e 11
+packages/frontend/editor-ui/src/features/settings/usage/views/SettingsUsageAndPlan.test.ts
+  s_8fe80219111af5::t_5fd31ca79ebb3e 13
+packages/frontend/editor-ui/src/app/init.ts
+  s_8fe80219111af5::t_5fd31ca79ebb3e 21
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.test.ts
+  s_8fe80219111af5::t_5fd31ca79ebb3e 17
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.vue
+  s_8fe80219111af5::t_5fd31ca79ebb3e 11
+packages/frontend/editor-ui/src/app/components/MainSidebarSourceControl.test.ts
+  s_8fe80219111af5::t_5fd31ca79ebb3e 11
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectExternalSecrets.test.ts
+  s_8fe80219111af5::t_5fd31ca79ebb3e 13
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.test.ts
+  s_8fe80219111af5::t_5fd31ca79ebb3e 22
+packages/frontend/editor-ui/src/features/integrations/secretsProviders.ee/composables/useSecretsProvidersList.ee.test.ts
+  s_8fe80219111af5::t_5fd31ca79ebb3e 5
+packages/frontend/editor-ui/src/app/components/WorkflowSettings/WorkflowSettings.test.ts
+  s_8fe80219111af5::t_5fd31ca79ebb3e 12
+packages/frontend/editor-ui/src/features/integrations/secretsProviders.ee/composables/useSecretsProvidersList.ee.ts
+  s_8fe80219111af5::t_5fd31ca79ebb3e 6
+packages/frontend/editor-ui/src/features/integrations/secretsProviders.ee/composables/useConnectionModal.ee.ts
+  s_8fe80219111af5::t_5fd31ca79ebb3e 10
+packages/frontend/editor-ui/src/features/integrations/secretsProviders.ee/components/SecretsProviderConnectionCard.ee.vue
+  s_8fe80219111af5::t_5fd31ca79ebb3e 16
+packages/frontend/editor-ui/src/features/settings/sso/provisioning/components/RoleMappingRuleEditor.vue
+  s_8fe80219111af5::t_5fd31ca79ebb3e 5
+packages/frontend/editor-ui/src/app/utils/rbac/middleware/rbac.test.ts
+  s_8fe80219111af5::t_5fd31ca79ebb3e 1
+  s_8fe80219111af5::t_8951e5f7e94d04 12
+packages/frontend/editor-ui/src/app/router.test.ts
+  s_8fe80219111af5::t_5fd31ca79ebb3e 10
+packages/frontend/editor-ui/src/app/utils/rbac/checks/hasScope.test.ts
+  s_8fe80219111af5::t_8951e5f7e94d04 5
+  s_8fe80219111af5::t_5fd31ca79ebb3e 1
+packages/frontend/editor-ui/src/features/integrations/secretsProviders.ee/components/SecretsProviderConnectionCard.test.ts
+  s_8fe80219111af5::t_5fd31ca79ebb3e 8
+packages/frontend/editor-ui/src/features/roles/RolesView.vue
+  s_8fe80219111af5::t_5fd31ca79ebb3e 15
+packages/frontend/editor-ui/src/features/integrations/secretsProviders.ee/composables/useConnectionModal.ee.test.ts
+  s_8fe80219111af5::t_8951e5f7e94d04 29
+packages/frontend/editor-ui/src/features/settings/sso/provisioning/components/UserRoleProvisioningDropdown.vue
+  s_8fe80219111af5::t_5fd31ca79ebb3e 6
+packages/frontend/editor-ui/src/features/roles/RolesView.test.ts
+  s_8fe80219111af5::t_5fd31ca79ebb3e 3
+packages/frontend/editor-ui/src/features/integrations/externalSecrets.ee/externalSecrets.ee.store.ts
+  s_8fe80219111af5::t_5fd31ca79ebb3e 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ce4941579507dd4b5ca4147a5001c1550217acec",
+  "prompts": {},
+  "sessions": {
+    "s_8fe80219111af5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70f33628-2c15-489d-ac33-5b045f27cdaa",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

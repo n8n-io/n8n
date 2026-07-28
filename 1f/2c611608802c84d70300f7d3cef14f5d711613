@@ -1,0 +1,34 @@
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_0bfa717282718a::t_916b7dcfe6a59f 294,304,328,350,369
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_0bfa717282718a::t_9c88b6b901460a 45-53,63-65,71
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_0bfa717282718a::t_f799fac77941a6 129
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/exportPackageRequest.yml
+  s_0bfa717282718a::t_8863ffd78ee26e 43-45
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_0bfa717282718a::t_5bba87f81830f2 22-26
+  h_9b272a633435fb 54
+  s_0bfa717282718a::t_a1430dec2c998e 14,55-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1f2c611608802c84d70300f7d3cef14f5d711613",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0bfa717282718a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6108-e2e5-7fb3-b57c-0dfffb602e8c",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

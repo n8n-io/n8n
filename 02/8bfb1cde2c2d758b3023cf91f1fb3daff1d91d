@@ -1,0 +1,21 @@
+packages/testing/playwright/tests/e2e/ai/eval-collections-compare.spec.ts
+  s_5d6be4e6bc70a6::t_5fbf3d156cc03a 170,204
+packages/testing/playwright/pages/EvaluationComparePage.ts
+  s_5d6be4e6bc70a6::t_7026cfa420b43d 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "028bfb1cde2c2d758b3023cf91f1fb3daff1d91d",
+  "prompts": {},
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+.agents/specs/instance-ai-agent-source-authoring.md
+  s_a24089c0a79aa9::t_33da789bf5e920 258,262-265
+  s_a24089c0a79aa9::t_ce1ce28e8c9a5e 106-110,272-293,295-300,343-345,511-522,572
+  s_a24089c0a79aa9::t_f9b3d52a04afa9 3-4
+  s_a24089c0a79aa9::t_23f6e8850357d5 29-30
+  s_a24089c0a79aa9::t_25e67b7cfb5a59 1-2,5-13,19-27,31-51,54-96,98-105,111-158,160-166,168-197,201-214,216-246,252-257,259-261,266-271,301-342,346-510,523-571,573,575-646,648-710,712-747,749-759
+  s_a24089c0a79aa9::t_e4dc0f7b0fdb01 14-18,28,52-53,97,159,167,198-200,215,247-251,294,574,647,711,748
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "8c519913aab456f4d937aa4b03510933c72964db",
+  "prompts": {},
+  "sessions": {
+    "s_a24089c0a79aa9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4b74-0f58-75c2-9c9f-caa3589948ee",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

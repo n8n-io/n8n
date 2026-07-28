@@ -1,0 +1,108 @@
+packages/frontend/editor-ui/src/features/execution/executions/views/ExecutionsView.vue
+  s_794a1be4bba94d::t_ac431b669380ae 136,139
+  s_794a1be4bba94d::t_dc7f7f2835372b 137-138,156
+  s_794a1be4bba94d::t_5954a7227cbc77 144-153
+  s_794a1be4bba94d::t_bc6c9ea99c81af 21
+  s_794a1be4bba94d::t_7dc014d9724f4b 140-143,154
+  s_794a1be4bba94d::t_a0bb1d74a4b1c4 48-50
+  s_794a1be4bba94d::t_789e1afd40cff9 103
+  s_794a1be4bba94d::t_9781379ff4a085 51-52,58-61,63-67,72,77-81
+  s_794a1be4bba94d::t_7bdc23c01391d4 19
+  s_794a1be4bba94d::t_03a1a58facc547 17,20,22-23,26
+  s_794a1be4bba94d::t_d83f12bf5f8e78 16
+  s_794a1be4bba94d::t_672f64b833f9b6 38,53,55-57,62,68-71,73-75
+  s_794a1be4bba94d::t_6d838f9a213ee9 54
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLoadingState.vue
+  s_794a1be4bba94d::t_f9cfbd571f8b5b 1-22
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeChoicePrompt.vue
+  s_794a1be4bba94d::t_d6a6a83625b7ac 134,143
+packages/frontend/editor-ui/src/app/views/WorkflowsView.test.ts
+  s_794a1be4bba94d::t_18f1ebb95bd4af 742-753
+  s_794a1be4bba94d::t_40449fb5b491f4 761-774
+  s_794a1be4bba94d::t_5dc7fc7a138520 1
+  s_794a1be4bba94d::t_ec9fbaf4ddaeb2 754-757
+  s_794a1be4bba94d::t_f794ac6dd46d31 723
+  s_794a1be4bba94d::t_d6ef18a5054096 152-156,159-161
+  s_794a1be4bba94d::t_5b1a67bac8028c 674-676
+packages/testing/playwright/pages/VariablesPage.ts
+  s_794a1be4bba94d::t_5a59843e324169 23
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListEmptyState.test.ts
+  s_794a1be4bba94d::t_8999f4ef4c9d36 15
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_794a1be4bba94d::t_00896a245f45fc 12
+  s_794a1be4bba94d::t_d4a0431158982d 211-212,215
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.vue
+  s_794a1be4bba94d::t_2d5924e926bb07 113-116
+  s_794a1be4bba94d::t_e45311bc23f6f4 44
+packages/testing/playwright/pages/DataTableView.ts
+  s_794a1be4bba94d::t_d175aa218c910a 16
+packages/frontend/editor-ui/src/features/workflows/readyToRun/composables/useEmptyStateDetection.ts
+  s_794a1be4bba94d::t_bf5e1141a78f3b 77
+  s_794a1be4bba94d::t_e658357dcf179f 1
+  s_794a1be4bba94d::t_c9d4322f2fa3ef 22-33
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.vue
+  s_794a1be4bba94d::t_d2614e7d07311c 165-177
+  s_794a1be4bba94d::t_56b73b5b17b125 608
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeChoicePrompt.test.ts
+  s_794a1be4bba94d::t_09326ecde49b1a 75-81,83-84
+  s_794a1be4bba94d::t_cd478060cf417c 82
+packages/testing/playwright/pages/CredentialsPage.ts
+  s_794a1be4bba94d::t_4a92e7ee7c6b1d 16
+packages/frontend/editor-ui/src/app/stores/workflowsList.store.ts
+  s_794a1be4bba94d::t_8bb334753bfeca 286
+  s_794a1be4bba94d::t_12ddd6bba68955 32-34
+  s_794a1be4bba94d::t_20dec1178d3960 212
+packages/testing/playwright/pages/BasePage.ts
+  s_794a1be4bba94d::t_196ca84a440938 22-29
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_794a1be4bba94d::t_5eff3089f0476a 645-648
+  s_794a1be4bba94d::t_087cc9d090e929 2185-2188
+  s_794a1be4bba94d::t_0754b4fd0f1325 181,187-188
+  s_794a1be4bba94d::t_3a344e9c17de5c 836-839
+  s_794a1be4bba94d::t_6b2195ea22442a 2560-2568
+  s_794a1be4bba94d::t_f2cbd30f710251 820-821
+  s_794a1be4bba94d::t_8603b7eb4fc7c6 807
+  s_794a1be4bba94d::t_35a63eaf58608e 54
+  s_794a1be4bba94d::t_997e75dde114a9 643-644
+  s_794a1be4bba94d::t_04c106e8bbddf1 11
+  s_794a1be4bba94d::t_d3c59bea83c124 184-186
+  s_794a1be4bba94d::t_d8638586496f19 792-797
+  s_794a1be4bba94d::t_a788aef56e808c 773
+  s_794a1be4bba94d::t_f7f5951f8defa2 742-743
+  s_794a1be4bba94d::t_6a3372bf33b4b2 805-806
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.test.ts
+  s_794a1be4bba94d::t_eff4f9b8ba10df 113-135
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_794a1be4bba94d::t_b14c720bd0204c 6638
+  s_794a1be4bba94d::t_47f740ed9a0f63 6639
+  s_794a1be4bba94d::t_e3bb0860265e7d 4564
+  s_794a1be4bba94d::t_b48df5a42b850f 4640
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.test.ts
+  s_794a1be4bba94d::t_3adfa42a05854d 37,44-46,50,56-66
+packages/frontend/editor-ui/src/features/execution/executions/views/ExecutionsView.test.ts
+  s_794a1be4bba94d::t_626bf0cf58d581 89
+  s_794a1be4bba94d::t_8847143c4b7aad 11
+  s_794a1be4bba94d::t_47b93d69deddda 90
+  s_794a1be4bba94d::t_4d8e3b4ec4e180 1-10,12-50,52-61,64-77,88,91-98
+  s_794a1be4bba94d::t_3fe6ac8df64897 51,62-63
+  s_794a1be4bba94d::t_cc943d9d27cd16 78-87
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListEmptyState.vue
+  s_794a1be4bba94d::t_5c14827010092f 9
+  s_794a1be4bba94d::t_fc9825717d198b 43-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "eb65c88d63eeeb8eb1fdb3ea4079949fb0b48c18",
+  "prompts": {},
+  "sessions": {
+    "s_794a1be4bba94d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1140a42c-88bd-49d1-8bf3-fc6f97744b2f",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,39 @@
+packages/cli/test/integration/scheduling/scheduled-repositories.test.ts
+  s_07e6e9dae07dde::t_cd7563265f88f7 387-411
+  s_07e6e9dae07dde::t_0c6dd0a3640db9 512
+  s_07e6e9dae07dde::t_5d9502dd3ac5b0 85-102
+  s_07e6e9dae07dde::t_f9b51e854f6430 504-511,513-524
+  s_07e6e9dae07dde::t_8cc762dd30ec9f 362-386
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_07e6e9dae07dde::t_b52f6f18c1fbc9 109-122,124-138
+  s_07e6e9dae07dde::t_378bf44c883336 123
+  s_07e6e9dae07dde::t_57c9a04422c72c 139-160
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_07e6e9dae07dde::t_7603645a6e3916 227,229-231
+  s_07e6e9dae07dde::t_6877ccd797a0cf 53-59,63-69
+  s_07e6e9dae07dde::t_0aabbecd07afb7 139-141,143,155-158,160-162,165,172
+  s_07e6e9dae07dde::t_5fa955ef1d930e 142,150,153-154,166,168
+  s_07e6e9dae07dde::t_2c5a15707ccfc2 159
+  s_07e6e9dae07dde::t_4b64d2ec2ef9ad 164,167,169-171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "022b2e2d5ee12c9bc68399d16bc27e593c3c0b1a",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_07e6e9dae07dde": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f1ef3290-bd35-49a5-9d95-749d9af799b4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

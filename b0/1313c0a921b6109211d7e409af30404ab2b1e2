@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/reconcileOnReconnect.test.ts
+  s_f939a8b93c40dc::t_1acf12746fdce2 1-176
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.ts
+  s_f939a8b93c40dc::t_8bc17ffe42308c 29-32
+  s_f939a8b93c40dc::t_6780b6e0b21eb0 48-73,79-94,101-102,109
+  s_f939a8b93c40dc::t_096dac8169a633 1,7
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/reconcileOnReconnect.ts
+  s_f939a8b93c40dc::t_d15a3c6cc3c30b 1-67
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/index.ts
+  s_f939a8b93c40dc::t_b9a74e07005220 9
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/executionRecovered.ts
+  s_f939a8b93c40dc::t_9c88124bc3095b 14-25,31,60-74
+  s_f939a8b93c40dc::t_c20a644a4a9d4f 75
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.test.ts
+  s_f939a8b93c40dc::t_619e3d5f30dcfd 5,12,17,22-24
+  s_f939a8b93c40dc::t_72768baad702b7 75-81,199
+  s_f939a8b93c40dc::t_5e2f71ab76014e 67
+  s_f939a8b93c40dc::t_25c7972f692949 196-198
+  s_f939a8b93c40dc::t_33f3e5625e417d 45,146-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b01313c0a921b6109211d7e409af30404ab2b1e2",
+  "prompts": {},
+  "sessions": {
+    "s_f939a8b93c40dc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7704da18-8851-4e22-933b-1a8d3e74fe7b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "palette <palette@nightshift.local>"
+    }
+  }
+}
