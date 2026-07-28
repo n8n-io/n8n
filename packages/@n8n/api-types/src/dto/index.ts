@@ -208,7 +208,7 @@ export {
 	type RoleMembersResponse,
 } from './roles/role-members-response.dto';
 
-export { OidcConfigDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
+export { OidcConfigDto, UpdateOidcConfigurationDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
 export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
@@ -306,6 +306,7 @@ export {
 export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';
 
 export { CreateWorkflowReviewRequestDto } from './workflow-reviews/create-workflow-review-request.dto';
+export { DecideWorkflowReviewRequestDto } from './workflow-reviews/decide-workflow-review-request.dto';
 export { GetWorkflowReviewEligibleReviewersQueryDto } from './workflow-reviews/get-eligible-reviewers-query.dto';
 export { ListWorkflowReviewRequestsQueryDto } from './workflow-reviews/list-workflow-review-requests-query.dto';
 export { UpdateWorkflowReviewRequestVersionDto } from './workflow-reviews/update-workflow-review-request-version.dto';

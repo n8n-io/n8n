@@ -14,14 +14,16 @@ import type { CredentialBindingRequest } from '../entities/credential/credential
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { PackageReader } from '../io/package-reader';
+import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ImportPackageRequest, ImportResult } from '../n8n-packages.types';
+import { assertPackageImportApiKeyScopes, assertVariableCreationAllowed } from './import-gates';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
-	assertPackageImportApiKeyScopes,
 	buildImportResult,
 	identifyRequirements,
 	toImportedWorkflowSummaries,
 	toPackageSummary,
+	toVariableSummary,
 } from './import-result';
 import { emitPackageImportedEvent } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
@@ -83,12 +85,23 @@ export class WorkflowPackageImporter {
 			schemaConflictPolicy: request.dataTableSchemaConflictPolicy,
 		};
 
+		const variableRequirements = identifyRequirements(manifest.requirements?.variables, workflows);
+		assertVariableCreationAllowed({
+			licenseState: this.licenseState,
+			apiKeyScopes: request.apiKeyScopes,
+			missingMode: request.variableMissingMode,
+			hasRequirements: (variableRequirements?.length ?? 0) > 0,
+		});
+		const globalPlacement = request.variableParentPolicy === VariableParentPolicy.Global;
 		const variableRequest: VariableImportRequest = {
-			requirements: identifyRequirements(manifest.requirements?.variables, workflows),
+			requirements: variableRequirements?.map((requirement) => ({
+				...requirement,
+				globalPlacement,
+			})),
 			missingMode: request.variableMissingMode,
 		};
 
-		const imported = await this.importOrchestrator.import({
+		const plan = await this.importOrchestrator.plan({
 			context,
 			folders,
 			workflows,
@@ -97,6 +110,10 @@ export class WorkflowPackageImporter {
 			variableRequest,
 			options: request,
 		});
+
+		await this.importOrchestrator.assertNotBlocked([plan]);
+
+		const imported = await this.importOrchestrator.apply(plan);
 
 		emitPackageImportedEvent(this.eventService, {
 			request,
@@ -114,10 +131,7 @@ export class WorkflowPackageImporter {
 				matched: imported.credentialResult.matched,
 				stubbed: imported.credentialResult.stubbed,
 			},
-			variables: {
-				matched: imported.variablePlan.matched,
-				missing: imported.variablePlan.missing.map(({ name }) => name),
-			},
+			variables: toVariableSummary(imported.variablePlan, imported.variableResult),
 		});
 	}
 

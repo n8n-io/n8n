@@ -1,5 +1,6 @@
 import {
 	CreateWorkflowReviewRequestDto,
+	DecideWorkflowReviewRequestDto,
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	ListWorkflowReviewRequestsQueryDto,
 	UpdateWorkflowReviewRequestVersionDto,
@@ -65,6 +66,17 @@ export class WorkflowReviewRequestsController {
 			workflowReviewRequestId,
 			dto,
 		);
+	}
+
+	@Post('/:workflowReviewRequestId/decision')
+	@Licensed('feat:workflowReviews')
+	async decide(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowReviewRequestId') workflowReviewRequestId: string,
+		@Body dto: DecideWorkflowReviewRequestDto,
+	) {
+		return await this.workflowReviewRequestService.decide(req.user, workflowReviewRequestId, dto);
 	}
 
 	/**

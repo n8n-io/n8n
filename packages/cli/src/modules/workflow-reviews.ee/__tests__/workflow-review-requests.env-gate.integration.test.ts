@@ -39,6 +39,13 @@ describe('workflow-review-requests (env flag off)', () => {
 			.expect(404);
 	});
 
+	test('POST decision is unreachable (404) even though the license is present', async () => {
+		await ownerAgent
+			.post('/workflow-review-requests/some-request/decision')
+			.send({ decision: 'approved' })
+			.expect(404);
+	});
+
 	test('GET inbox is unreachable (404)', async () => {
 		await ownerAgent.get('/workflow-review-requests/inbox').expect(404);
 	});

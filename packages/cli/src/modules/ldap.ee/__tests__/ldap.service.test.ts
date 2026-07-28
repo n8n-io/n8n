@@ -319,7 +319,7 @@ describe('LdapService', () => {
 			const ldapService = createDefaultLdapService(ldapConfig);
 
 			await expect(ldapService.updateConfig(ldapConfig)).rejects.toThrowError(
-				'LDAP cannot be enabled while another authentication method is active',
+				'Cannot switch ldap login enabled state when an authentication method other than email or ldap is active (current: saml)',
 			);
 		});
 
@@ -329,7 +329,7 @@ describe('LdapService', () => {
 			const ldapService = createDefaultLdapService(ldapConfig);
 
 			await expect(ldapService.updateConfig(ldapConfig)).rejects.toThrowError(
-				'LDAP cannot be enabled while another authentication method is active',
+				'Cannot switch ldap login enabled state when an authentication method other than email or ldap is active (current: token-exchange)',
 			);
 		});
 

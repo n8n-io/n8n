@@ -689,6 +689,293 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 	});
 });
 
+describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () => {
+	/** Seed a review request on a team-project workflow, authored by `author`. */
+	async function seedRequest(
+		author: User,
+		overrides: {
+			state?: 'open' | 'closed';
+			decision?: 'pending' | 'changes_requested' | 'approved';
+		} = {},
+	) {
+		const workflow = await createWorkflow({}, teamProject);
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-1' });
+		const request = await requestRepository.createRequest({
+			projectId: teamProject.id,
+			title: 'Review me',
+			createdById: author.id,
+			...overrides,
+		});
+		await workflowRepository.createWorkflowRow({
+			workflowReviewRequestId: request.id,
+			workflowId: workflow.id,
+			workflowVersionId: 'version-1',
+		});
+		await authorRepository.addAuthor({ workflowReviewRequestId: request.id, userId: author.id });
+		return { request, workflow };
+	}
+
+	test('approves: closes the request and stamps decision fields', async () => {
+		const { request } = await seedRequest(owner);
+		const seededUpdatedAt = request.updatedAt.getTime();
+
+		const response = await memberAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		expect(response.body.data).toEqual({
+			id: request.id,
+			state: 'closed',
+			decision: 'approved',
+			workflowVersionId: 'version-1',
+			createdAt: expect.any(String),
+			updatedAt: expect.any(String),
+		});
+
+		// the service relies on `save` (not `update`) so @BeforeUpdate bumps
+		// updatedAt — assert the timestamp actually moves.
+		expect(new Date(response.body.data.updatedAt).getTime()).toBeGreaterThan(seededUpdatedAt);
+
+		const updated = await requestRepository.findById(request.id);
+		expect(updated).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+			updatedById: member.id,
+			closedById: member.id,
+		});
+		expect(updated?.approvedAt).toBeInstanceOf(Date);
+	});
+
+	test('requests changes: the review stays open and unstamped', async () => {
+		const { request } = await seedRequest(owner);
+
+		const response = await memberAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'changes_requested' })
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({
+			state: 'open',
+			decision: 'changes_requested',
+		});
+
+		const updated = await requestRepository.findById(request.id);
+		expect(updated).toMatchObject({
+			state: 'open',
+			decision: 'changes_requested',
+			updatedById: member.id,
+			closedById: null,
+			approvedAt: null,
+		});
+	});
+
+	test('allows approving a changes_requested review', async () => {
+		const { request } = await seedRequest(owner, { decision: 'changes_requested' });
+
+		await memberAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		expect(await requestRepository.findById(request.id)).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+		});
+	});
+
+	test('allows repeating changes_requested', async () => {
+		const { request } = await seedRequest(owner, { decision: 'changes_requested' });
+
+		await memberAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'changes_requested' })
+			.expect(200);
+
+		expect(await requestRepository.findById(request.id)).toMatchObject({
+			state: 'open',
+			decision: 'changes_requested',
+			updatedById: member.id,
+		});
+	});
+
+	test('returns 403 for the requesting author without admin override', async () => {
+		const { request } = await seedRequest(member);
+
+		await memberAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(403);
+
+		expect(await requestRepository.findById(request.id)).toMatchObject({
+			state: 'open',
+			decision: 'pending',
+		});
+	});
+
+	test('returns 403 for a user who became an author via update-version', async () => {
+		const { request, workflow } = await seedRequest(owner);
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-2' });
+
+		await memberAgent
+			.post(`/workflow-review-requests/${request.id}/update-version`)
+			.send({ workflowId: workflow.id, workflowVersionId: 'version-2' })
+			.expect(200);
+
+		await memberAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(403);
+	});
+
+	test('allows the instance owner to decide their own review (admin override)', async () => {
+		const { request } = await seedRequest(owner);
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+	});
+
+	test('allows a global admin to decide their own review (admin override)', async () => {
+		const admin = await createAdmin();
+		const { request } = await seedRequest(admin);
+
+		await testServer
+			.authAgentFor(admin)
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+	});
+
+	test('allows a project admin to decide their own review in that project (admin override)', async () => {
+		const projectAdmin = await createUser();
+		await linkUserToProject(projectAdmin, teamProject, 'project:admin');
+		const { request } = await seedRequest(projectAdmin);
+
+		await testServer
+			.authAgentFor(projectAdmin)
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+	});
+
+	test('returns 404 for a project:viewer (lacks workflow:publish)', async () => {
+		const { request } = await seedRequest(owner);
+
+		await viewerAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(404);
+	});
+
+	test('returns 404 for an unknown review request id', async () => {
+		await memberAgent
+			.post('/workflow-review-requests/unknown-request/decision')
+			.send({ decision: 'approved' })
+			.expect(404);
+	});
+
+	test('returns 409 for a closed review request', async () => {
+		const { request } = await seedRequest(owner, { state: 'closed' });
+
+		await memberAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(409);
+	});
+
+	test('returns 409 for an already approved review request', async () => {
+		const { request } = await seedRequest(owner, { decision: 'approved' });
+
+		await memberAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'changes_requested' })
+			.expect(409);
+	});
+
+	test('returns 400 for a pending decision', async () => {
+		const { request } = await seedRequest(owner);
+
+		await memberAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'pending' })
+			.expect(400);
+	});
+
+	test('returns 400 for an unknown decision', async () => {
+		const { request } = await seedRequest(owner);
+
+		await memberAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'rejected' })
+			.expect(400);
+	});
+
+	test('returns 403 when the instance policy is disabled', async () => {
+		const { request } = await seedRequest(owner);
+		await policyService.set(false);
+
+		await memberAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(403);
+	});
+
+	test('returns 403 when the license lacks feat:workflowReviews', async () => {
+		testServer.license.disable('feat:workflowReviews');
+
+		await memberAgent
+			.post('/workflow-review-requests/some-request/decision')
+			.send({ decision: 'approved' })
+			.expect(403);
+
+		testServer.license.enable('feat:workflowReviews');
+	});
+
+	test('serializes concurrent approvals: exactly one 200 and one 409', async () => {
+		const { request } = await seedRequest(owner);
+
+		const [first, second] = await Promise.all([
+			memberAgent
+				.post(`/workflow-review-requests/${request.id}/decision`)
+				.send({ decision: 'approved' }),
+			memberAgent
+				.post(`/workflow-review-requests/${request.id}/decision`)
+				.send({ decision: 'approved' }),
+		]);
+
+		expect([first.status, second.status].sort()).toEqual([200, 409]);
+		expect(await requestRepository.findById(request.id)).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+		});
+	});
+
+	test('never produces a closed request with a pending decision when racing update-version', async () => {
+		const { request, workflow } = await seedRequest(owner);
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-2' });
+
+		const [decide, sync] = await Promise.all([
+			memberAgent
+				.post(`/workflow-review-requests/${request.id}/decision`)
+				.send({ decision: 'approved' }),
+			ownerAgent
+				.post(`/workflow-review-requests/${request.id}/update-version`)
+				.send({ workflowId: workflow.id, workflowVersionId: 'version-2' }),
+		]);
+
+		// Whichever wins the lock, the loser must observe the winner's write:
+		// either the sync lands first (both 200) or it conflicts on the closed request.
+		expect(decide.status).toBe(200);
+		expect([200, 409]).toContain(sync.status);
+
+		const final = await requestRepository.findById(request.id);
+		expect(final?.state === 'closed' && final?.decision === 'pending').toBe(false);
+		expect(final).toMatchObject({ state: 'closed', decision: 'approved' });
+	});
+});
+
 describe('GET /workflow-review-requests/eligible-reviewers', () => {
 	test('returns publish-capable project and instance users, excluding everyone else', async () => {
 		const project = await createTeamProject('team', owner);
