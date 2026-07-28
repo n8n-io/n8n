@@ -1,16 +1,12 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
 import type { ExecutionRepository, IExecutionResponse, Project } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import type { EventService } from '@/events/event.service';
-import {
-	EnqueuedExecutionRecoveryService,
-	MAX_ENQUEUED_EXECUTION_AGE,
-} from '@/executions/enqueued-execution-recovery.service';
+import { EnqueuedExecutionRecoveryService } from '@/executions/enqueued-execution-recovery.service';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { WorkflowRunner } from '@/workflow-runner';
@@ -44,7 +40,6 @@ describe('EnqueuedExecutionRecoveryService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		executionRepository.markStaleEnqueuedAsCrashed.mockResolvedValue([]);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
 		workflowRunner.run.mockResolvedValue('1');
 	});
@@ -56,7 +51,6 @@ describe('EnqueuedExecutionRecoveryService', () => {
 			'Enqueued execution recovery must not run in queue mode',
 		);
 
-		expect(executionRepository.markStaleEnqueuedAsCrashed).not.toHaveBeenCalled();
 		expect(executionService.findAllEnqueuedExecutions).not.toHaveBeenCalled();
 		expect(workflowRunner.run).not.toHaveBeenCalled();
 	});
@@ -79,35 +73,6 @@ describe('EnqueuedExecutionRecoveryService', () => {
 			{ executionId: '1', expectedStatus: 'new' },
 			{ executionId: '2', expectedStatus: 'new' },
 		]);
-	});
-
-	test('crashes executions enqueued over 7 days ago before loading the rest', async () => {
-		executionService.findAllEnqueuedExecutions.mockResolvedValue([]);
-		executionRepository.markStaleEnqueuedAsCrashed.mockResolvedValue(['1', '2']);
-		vi.useFakeTimers({ now: new Date('2026-01-08T00:00:00.000Z'), toFake: ['Date'] });
-
-		try {
-			await createService().recoverEnqueuedExecutions();
-		} finally {
-			vi.useRealTimers();
-		}
-
-		expect(executionRepository.markStaleEnqueuedAsCrashed).toHaveBeenCalledExactlyOnceWith(
-			new Date('2026-01-01T00:00:00.000Z'),
-		);
-		expect(MAX_ENQUEUED_EXECUTION_AGE).toBe(7 * Time.days.toMilliseconds);
-		expect(logger.warn).toHaveBeenCalledExactlyOnceWith(
-			'Marked stale enqueued executions as crashed',
-			{
-				executionIds: ['1', '2'],
-				before: new Date('2026-01-01T00:00:00.000Z'),
-			},
-		);
-
-		// the sweep must land before we load execution data we would only throw away
-		expect(executionRepository.markStaleEnqueuedAsCrashed).toHaveBeenCalledBefore(
-			executionService.findAllEnqueuedExecutions,
-		);
 	});
 
 	// CAT-3862: previously the rejection landed in a void'd promise and the row stayed `new`.

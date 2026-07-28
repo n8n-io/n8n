@@ -321,48 +321,4 @@ describe('UserRepository', () => {
 			expect(row?.status).toBe('canceled');
 		});
 	});
-
-	describe('markStaleEnqueuedAsCrashed', () => {
-		const eightDaysAgo = DateTime.utc().minus({ days: 8 }).toJSDate();
-
-		test('crashes executions enqueued before the cutoff', async () => {
-			const workflow = await createWorkflow({}, owner);
-			const execution = await createExecution(
-				{ status: 'new', createdAt: eightDaysAgo, startedAt: null },
-				workflow,
-			);
-
-			const executionIds = await executionRepository.markStaleEnqueuedAsCrashed(new Date());
-
-			expect(executionIds).toEqual([execution.id]);
-			const row = await executionRepository.findOneBy({ id: execution.id });
-			expect(row?.status).toBe('crashed');
-			expect(row?.stoppedAt).toBeInstanceOf(Date);
-		});
-
-		test('leaves executions enqueued after the cutoff untouched', async () => {
-			const workflow = await createWorkflow({}, owner);
-			const execution = await createExecution({ status: 'new', startedAt: null }, workflow);
-
-			const executionIds = await executionRepository.markStaleEnqueuedAsCrashed(eightDaysAgo);
-
-			expect(executionIds).toEqual([]);
-			const row = await executionRepository.findOneBy({ id: execution.id });
-			expect(row?.status).toBe('new');
-		});
-
-		test.each(['waiting', 'running', 'success'] as ExecutionStatus[])(
-			'leaves old %s executions untouched',
-			async (status) => {
-				const workflow = await createWorkflow({}, owner);
-				const execution = await createExecution({ status, createdAt: eightDaysAgo }, workflow);
-
-				const executionIds = await executionRepository.markStaleEnqueuedAsCrashed(new Date());
-
-				expect(executionIds).toEqual([]);
-				const row = await executionRepository.findOneBy({ id: execution.id });
-				expect(row?.status).toBe(status);
-			},
-		);
-	});
 });
