@@ -11,6 +11,7 @@ const loadHistoryMock = vi.fn();
 const cancelAndSteerMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
 const isStreamingMock = ref(false);
+const isCancellingMock = ref(false);
 
 const fatalErrorMock = ref<{ missing: string[] } | null>(null);
 
@@ -56,6 +57,7 @@ vi.mock('../composables/useAgentChatStream', () => ({
 	useAgentChatStream: () => ({
 		messages: messagesMock,
 		isStreaming: isStreamingMock,
+		isCancelling: isCancellingMock,
 		messagingState: computed(() => (isStreamingMock.value ? 'receiving' : 'idle')),
 		fatalError: fatalErrorMock,
 		loadHistory: loadHistoryMock,
@@ -88,6 +90,7 @@ describe('AgentChatPanel', () => {
 		vi.clearAllMocks();
 		messagesMock.value = [];
 		isStreamingMock.value = false;
+		isCancellingMock.value = false;
 		fatalErrorMock.value = null;
 	});
 
@@ -173,6 +176,21 @@ describe('AgentChatPanel', () => {
 
 		expect(sendMessageMock).toHaveBeenCalledWith('update config');
 		expect(events).toEqual(['beforeSend', 'sendMessage']);
+	});
+
+	it('keeps the draft while suspended-run cancellation is pending', async () => {
+		isCancellingMock.value = true;
+		const wrapper = mountPanel();
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('keep this draft');
+		await flushPromises();
+
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		expect(chatInput.props('modelValue')).toBe('keep this draft');
+		expect(chatInput.props('disabled')).toBe(true);
+		expect(sendMessageMock).not.toHaveBeenCalled();
 	});
 
 	it('enables chat input and shows answer-question placeholder while an interactive question is unresolved', () => {

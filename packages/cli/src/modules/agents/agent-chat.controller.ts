@@ -54,42 +54,40 @@ export class AgentChatController {
 		);
 
 		const { send } = initSseStream(res);
-
-		// If the client supplied a sessionId and a thread already exists under that id,
-		// the thread must belong to this (project, agent). Otherwise a caller could
-		// append messages to another user's thread. A non-existent id is fine -
-		// executeForChat will create the thread on first persisted message.
-		if (sessionId) {
-			const existing = await this.agentExecutionService.findThreadById(sessionId);
-			if (existing && !threadBelongsTo(existing, projectId, agentId)) {
-				send({ type: 'error', message: 'Session not found' });
-				res.end();
-				return;
-			}
-		}
-
-		const threadId = sessionId ?? randomUUID();
-
-		const { missing } = await this.agentValidationService.validateAgentIsRunnable(
-			agentId,
-			projectId,
-			credentialProvider,
-		);
-		if (missing.length > 0) {
-			send({
-				type: 'error',
-				message: 'This agent is not ready to run yet.',
-				errorCode: 'agent_misconfigured',
-				missing,
-			});
-			res.end();
-			return;
-		}
-
 		const abortController = new AbortController();
 		const abortOnClose = () => abortController.abort();
 		res.once('close', abortOnClose);
 		try {
+			// If the client supplied a sessionId and a thread already exists under that id,
+			// the thread must belong to this (project, agent). Otherwise a caller could
+			// append messages to another user's thread. A non-existent id is fine -
+			// executeForChat will create the thread on first persisted message.
+			if (sessionId) {
+				const existing = await this.agentExecutionService.findThreadById(sessionId);
+				if (abortController.signal.aborted) return;
+				if (existing && !threadBelongsTo(existing, projectId, agentId)) {
+					send({ type: 'error', message: 'Session not found' });
+					return;
+				}
+			}
+
+			const threadId = sessionId ?? randomUUID();
+			const { missing } = await this.agentValidationService.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider,
+			);
+			if (abortController.signal.aborted) return;
+			if (missing.length > 0) {
+				send({
+					type: 'error',
+					message: 'This agent is not ready to run yet.',
+					errorCode: 'agent_misconfigured',
+					missing,
+				});
+				return;
+			}
+
 			let executionId: string | undefined;
 			const suspended = await pumpChunks(
 				this.agentExecutionOrchestratorService.executeForChat({

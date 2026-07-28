@@ -151,6 +151,71 @@ describe('AgentChatController chat message history', () => {
 });
 
 describe('AgentChatController SSE done payload', () => {
+	it('does not start a chat after the response closes during session lookup', async () => {
+		const {
+			controller,
+			agentExecutionOrchestratorService,
+			agentExecutionService,
+			agentValidationService,
+		} = makeController();
+		let resolveLookup = (_value: null) => {};
+		agentExecutionService.findThreadById.mockReturnValue(
+			new Promise((resolve) => {
+				resolveLookup = resolve;
+			}),
+		);
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
+			yield* [];
+		});
+
+		const res = makeSseResponse([]);
+		const request = controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			res,
+			'agent-1',
+			{ message: 'hi', sessionId: 'thread-1' } as never,
+		);
+		await vi.waitFor(() => expect(agentExecutionService.findThreadById).toHaveBeenCalled());
+
+		(res as unknown as EventEmitter).emit('close');
+		resolveLookup(null);
+		await request;
+
+		expect(agentValidationService.validateAgentIsRunnable).not.toHaveBeenCalled();
+		expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
+	});
+
+	it('does not start a chat after the response closes during validation', async () => {
+		const { controller, agentExecutionOrchestratorService, agentValidationService } =
+			makeController();
+		let resolveValidation = (_value: { missing: string[] }) => {};
+		agentValidationService.validateAgentIsRunnable.mockReturnValue(
+			new Promise((resolve) => {
+				resolveValidation = resolve;
+			}),
+		);
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
+			yield* [];
+		});
+
+		const res = makeSseResponse([]);
+		const request = controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			res,
+			'agent-1',
+			{ message: 'hi' } as never,
+		);
+		await vi.waitFor(() =>
+			expect(agentValidationService.validateAgentIsRunnable).toHaveBeenCalled(),
+		);
+
+		(res as unknown as EventEmitter).emit('close');
+		resolveValidation({ missing: [] });
+		await request;
+
+		expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
+	});
+
 	it('includes executionId on done when recorded', async () => {
 		const { controller, agentExecutionOrchestratorService, agentExecutionService } =
 			makeController();

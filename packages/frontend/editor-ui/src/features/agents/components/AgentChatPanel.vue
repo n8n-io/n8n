@@ -68,6 +68,7 @@ const isPreparingToSend = ref(false);
 const {
 	messages,
 	isStreaming,
+	isCancelling,
 	messagingState,
 	fatalError,
 	warnings,
@@ -143,7 +144,15 @@ watch(isStreaming, (v) => emit('update:streaming', v));
 
 async function onSubmit() {
 	const text = inputText.value.trim();
-	if (!text || isStreaming.value || isPreparingToSend.value || hasOpenApproval.value) return;
+	if (
+		!text ||
+		isStreaming.value ||
+		isCancelling.value ||
+		isPreparingToSend.value ||
+		hasOpenApproval.value
+	) {
+		return;
+	}
 
 	if (hasOpenInteractiveQuestion.value) {
 		inputText.value = '';
@@ -266,12 +275,19 @@ onBeforeUnmount(() => {
 			<ChatInputBase
 				v-model="inputText"
 				:placeholder="chatPlaceholder"
-				:is-streaming="isStreaming || hasOpenInteraction || hasOpenSuspension"
+				:is-streaming="isStreaming || isCancelling || hasOpenInteraction || hasOpenSuspension"
 				:can-submit="
-					!hasOpenApproval && !isStreaming && !isPreparingToSend && inputText.trim().length > 0
+					!hasOpenApproval &&
+					!isStreaming &&
+					!isCancelling &&
+					!isPreparingToSend &&
+					inputText.trim().length > 0
 				"
 				:disabled="
-					hasOpenApproval || isPreparingToSend || (isStreaming && messagingState !== 'receiving')
+					hasOpenApproval ||
+					isCancelling ||
+					isPreparingToSend ||
+					(isStreaming && messagingState !== 'receiving')
 				"
 				data-testid="chat-input"
 				@submit="onSubmit"
