@@ -1,5 +1,5 @@
-import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import type { INode, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
+import { NodeApiError, jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { N8nTool } from '@utils/N8nTool';
@@ -563,6 +563,51 @@ describe('ToolHttpRequest', () => {
 			expect(res).toContain('Rejected request');
 			expect(res).not.toContain('sk-live-abcdef123456');
 			expect(res).not.toContain('eyJhbGciOiJIUzI1NiJ9');
+		});
+
+		it('should include the response body when a predefined credential wraps the failure', async () => {
+			// A tool authenticated with a stored credential goes through
+			// `httpRequestWithAuthentication`, which rejects with a real `NodeApiError` rather than
+			// the client's own error. That wrapper keeps the payload somewhere else entirely.
+			executeFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, _: any, fallback: any) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return 'https://httpbin.org/status';
+						case 'authentication':
+							return 'predefinedCredentialType';
+						case 'nodeCredentialType':
+							return 'slackApi';
+						case 'options':
+							return {};
+						case 'placeholderDefinitions.values':
+							return [];
+						default:
+							return fallback;
+					}
+				},
+			);
+
+			helpers.httpRequestWithAuthentication.mockRejectedValue(
+				new NodeApiError(
+					executeFunctions.getNode(),
+					Object.assign(new Error('Request failed with status code 403'), {
+						isAxiosError: true,
+						response: {
+							status: 403,
+							data: { error: 'insufficient_scope', required: 'read:users' },
+						},
+					}) as unknown as JsonObject,
+				),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 403');
+			expect(res).toContain('insufficient_scope');
+			expect(res).toContain('read:users');
 		});
 
 		it('should leave successful responses untouched', async () => {

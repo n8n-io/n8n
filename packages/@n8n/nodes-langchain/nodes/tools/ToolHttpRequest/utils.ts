@@ -169,17 +169,21 @@ const redactSecrets = (content: string): string =>
 type FailedRequest = {
 	error?: unknown;
 	response?: { status?: number; data?: unknown };
+	// A tool using a predefined credential goes through `httpRequestWithAuthentication`, which
+	// rejects with a `NodeApiError`. That has no `response`, and its `cause` is not retained, but
+	// it copies an object payload onto `context.data`.
+	context?: { data?: unknown };
 };
 
 /**
  * Reads the status and payload a failed request came back with. The error is either the one the
- * HTTP client rejected with, or a `NodeApiError` wrapping it, which keeps the original as its
- * cause. The current client reports the payload as `response.data`, the legacy one as `error`.
+ * HTTP client rejected with, or a `NodeApiError` wrapping it. The current client reports the
+ * payload as `response.data`, the legacy one as `error`.
  */
 const getFailedRequest = (error: unknown): { status?: number; body?: unknown } => {
 	for (const candidate of [error, (error as { cause?: unknown })?.cause]) {
 		const failed = candidate as FailedRequest | undefined;
-		const body = failed?.response?.data ?? failed?.error;
+		const body = failed?.response?.data ?? failed?.error ?? failed?.context?.data;
 		const status = failed?.response?.status;
 
 		if (body !== undefined || status !== undefined) {
