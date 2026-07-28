@@ -1,0 +1,25 @@
+packages/core/src/binary-data/__tests__/blob.manager.fs.integration.test.ts
+  s_1d360ad69afd30::t_c78e49c88eef26 229,240-251
+packages/core/src/binary-data/blob.manager.ts
+  s_1d360ad69afd30::t_a3c9b9028abb3d 21-23
+  s_1d360ad69afd30::t_dcfa395d5c0a18 81,83,85,88-89
+  s_1d360ad69afd30::t_99d48bf034585c 92-94
+packages/core/src/binary-data/__tests__/blob.manager.test.ts
+  s_1d360ad69afd30::t_cfeb971876004c 119-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3f7dc5c6d49c19522b2cb994abf94803479484e1",
+  "prompts": {},
+  "sessions": {
+    "s_1d360ad69afd30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1531b3c8-1d44-4f7e-b0f1-10273a00014d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
