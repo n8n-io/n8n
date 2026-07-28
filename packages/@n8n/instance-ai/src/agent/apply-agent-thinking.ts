@@ -45,10 +45,38 @@ function resolveModelIdString(modelId: ModelConfig): string | undefined {
 	return provider && model ? `${provider}/${model}` : undefined;
 }
 
+/** Bare model resource name from a string id or AI SDK LanguageModel (`modelId`). */
+function resolveBareModelName(modelId: ModelConfig): string | undefined {
+	if (typeof modelId === 'string') {
+		const slashIndex = modelId.indexOf('/');
+		return slashIndex > 0 ? modelId.slice(slashIndex + 1) : modelId;
+	}
+	if (!isRecord(modelId)) return undefined;
+	return getStringProperty(modelId, 'modelId') ?? getStringProperty(modelId, 'id');
+}
+
 /** Moonshot Kimi K3 via OpenRouter (`openrouter/moonshotai/kimi-k3`, dated slugs, etc.). */
 function isKimiK3Model(modelId: ModelConfig): boolean {
 	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
-	return id.includes('kimi-k3');
+	const bare = resolveBareModelName(modelId)?.toLowerCase() ?? '';
+	return id.includes('kimi-k3') || bare.includes('kimi-k3');
+}
+
+/**
+ * Fireworks model ids — string form (`fireworks/accounts/fireworks/models/...`) or
+ * Anthropic LanguageModel objects whose `modelId` is a Fireworks resource name
+ * (AI service proxy always mounts `@ai-sdk/anthropic`).
+ */
+function isFireworksModel(modelId: ModelConfig): boolean {
+	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
+	const bare = resolveBareModelName(modelId)?.toLowerCase() ?? '';
+	return (
+		id.startsWith('fireworks/') ||
+		id.includes('accounts/fireworks/') ||
+		id.includes('/fireworks/') ||
+		bare.startsWith('accounts/fireworks/') ||
+		bare.includes('/fireworks/')
+	);
 }
 
 /** Grok 4.5 via xAI (`xai/grok-4.5`) or OpenRouter (`openrouter/x-ai/grok-4.5`). */
@@ -100,7 +128,20 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	}
 
 	if (provider === 'anthropic') {
+		// Fireworks Anthropic-compat rejects `adaptive` and `output_config.effort`
+		// (proxy: "Extra inputs are not permitted"). Control depth via budget_tokens.
+		// Budget must match FIREWORKS_ANTHROPIC_THINKING_BUDGET_TOKENS in @n8n/agents
+		// provider-quirks (AI SDK adds it into max_tokens; proxy caps at 64k).
+		if (isFireworksModel(modelId)) {
+			agent.thinking('anthropic', { mode: 'enabled', budgetTokens: 8192 });
+			return;
+		}
 		agent.thinking('anthropic', { mode: 'adaptive', effort: 'medium' });
+		return;
+	}
+
+	if (provider === 'fireworks') {
+		agent.thinking('fireworks', { reasoningEffort: 'medium' });
 		return;
 	}
 

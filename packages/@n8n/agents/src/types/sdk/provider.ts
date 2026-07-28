@@ -47,8 +47,13 @@ export type AnthropicThinkingConfig =
 	  }
 	| {
 			mode?: 'enabled';
-			/** Token budget for extended thinking. Defaults to 10000. */
+			/** Token budget for extended thinking. Defaults to 10000 when `effort` is omitted. */
 			budgetTokens?: number;
+			/**
+			 * Maps to Anthropic `output_config.effort`. Used with `type: 'enabled'` for
+			 * Anthropic-compatible gateways (e.g. Fireworks) that reject `adaptive`.
+			 */
+			effort?: AnthropicThinkingEffort;
 	  };
 
 /**

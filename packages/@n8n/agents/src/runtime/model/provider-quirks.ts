@@ -53,6 +53,7 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 			return {
 				anthropic: {
 					thinking: { type: 'enabled', budgetTokens: cfg.budgetTokens ?? 10000 },
+					...(cfg.effort !== undefined ? { effort: cfg.effort } : {}),
 				},
 			};
 		},
@@ -129,6 +130,11 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 	fireworks: {
 		// Fireworks Serverless priority tier: stronger admission during congestion.
 		callProviderOptionDefaults: { service_tier: 'priority' },
+		// OpenAI-compatible chat schema; reasoning maps to top-level `reasoning_effort`.
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as OpenAIThinkingConfig;
+			return { fireworks: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
+		},
 	},
 };
 
@@ -153,20 +159,48 @@ export function providerIdFromModelId(modelId: string): string {
 /** GLM 5.2 default output cap on Baseten/Z.AI (131072 max; 65536 is the API default). */
 export const GLM_52_DEFAULT_MAX_OUTPUT_TOKENS = 65_536;
 
+/** Kimi K3 default completion tokens on direct/OpenAI-compatible routes. */
+export const KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS = 131_072;
+
+/**
+ * Thinking budget for Fireworks models on the Anthropic Messages path.
+ * Keep in sync with `applyAgentThinking` in `@n8n/instance-ai`.
+ */
+export const FIREWORKS_ANTHROPIC_THINKING_BUDGET_TOKENS = 8_192;
+
+/**
+ * n8n AI Anthropic proxy validates `max_tokens` against Claude Sonnet's 64k cap,
+ * even when the upstream model is Fireworks Kimi. The AI SDK adds the thinking
+ * budget into `max_tokens`, so the caller's maxOutputTokens must leave room.
+ */
+export const ANTHROPIC_PROXY_MAX_OUTPUT_TOKENS = 64_000;
+
 function isGlm52Model(modelId: string): boolean {
 	const modelName = modelId.includes('/') ? modelId.split('/').slice(1).join('/') : modelId;
 	return modelName.toLowerCase().includes('glm-5.2');
 }
 
+function isKimiK3Model(modelId: string): boolean {
+	return modelId.toLowerCase().includes('kimi-k3');
+}
+
 /**
- * Provider/model-specific default for AI SDK `maxOutputTokens`. Baseten GLM 5.2
- * otherwise falls back to a 4096 cap that reasoning-heavy agent turns can exhaust
+ * Provider/model-specific default for AI SDK `maxOutputTokens`. Unknown models
+ * otherwise fall back to a 4096 cap that reasoning-heavy agent turns can exhaust
  * before emitting text or tool calls.
  */
 export function resolveDefaultMaxOutputTokens(modelId: string): number | undefined {
 	const provider = providerIdFromModelId(modelId);
 	if ((provider === 'baseten' || provider === 'openai') && isGlm52Model(modelId)) {
 		return GLM_52_DEFAULT_MAX_OUTPUT_TOKENS;
+	}
+	// Covers direct Fireworks/OpenRouter ids and Anthropic-proxy LanguageModels
+	// (`anthropic/accounts/fireworks/models/kimi-k3`).
+	if (isKimiK3Model(modelId)) {
+		if (provider === 'anthropic') {
+			return ANTHROPIC_PROXY_MAX_OUTPUT_TOKENS - FIREWORKS_ANTHROPIC_THINKING_BUDGET_TOKENS;
+		}
+		return KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS;
 	}
 	return undefined;
 }
