@@ -1,5 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
-import { testDb, testModules } from '@n8n/backend-test-utils';
+import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import {
 	FolderRepository,
@@ -31,6 +31,7 @@ import {
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
 } from './fixtures/package-fixtures';
+import { streamToBuffer } from './utils/tar-support';
 
 async function importProjects(
 	user: User,
@@ -714,5 +715,79 @@ describe('project shell import', () => {
 		} finally {
 			emitSpy.mockRestore();
 		}
+	});
+});
+
+describe('project custom span attributes (LIGO-862)', () => {
+	let owner: User;
+
+	const tags = [
+		{ key: 'team', value: 'ligo' },
+		{ key: 'env', value: 'prod' },
+	];
+
+	beforeEach(async () => {
+		owner = await createOwner();
+	});
+
+	it('persists customTelemetryTags on a newly created project', async () => {
+		const packageBuffer = await buildEntityPackageBuffer({
+			projects: [
+				{
+					target: 'projects/brie',
+					project: serializedProject({ id: 'P1', name: 'brie', customTelemetryTags: tags }),
+				},
+			],
+		});
+
+		await importProjects(owner, packageBuffer);
+
+		expect((await findProject('P1'))?.customTelemetryTags).toEqual(tags);
+	});
+
+	it('round-trips customTelemetryTags through a real export and import', async () => {
+		const service = Container.get(N8nPackagesService);
+		const project = await createTeamProject('telemetry', owner);
+		await Container.get(ProjectRepository).update(project.id, { customTelemetryTags: tags });
+
+		const { stream } = await service.exportPackage({ user: owner, projectIds: [project.id] });
+		const packageBuffer = await streamToBuffer(stream);
+
+		// Wipe the instance so the re-import takes the create path with a clean slate.
+		await testDb.truncate([
+			'Folder',
+			'Project',
+			'ProjectRelation',
+			'SharedWorkflow',
+			'WorkflowEntity',
+		]);
+		const importer = await createOwner();
+
+		await importProjects(importer, packageBuffer);
+
+		expect((await findProject(project.id))?.customTelemetryTags).toEqual(tags);
+	});
+
+	it('does not wipe existing tags when re-importing an older package without the field', async () => {
+		const project = await createTeamProject('keep-tags', owner);
+		await Container.get(ProjectRepository).update(project.id, { customTelemetryTags: tags });
+
+		// A package exported before the field existed: project.json carries no customTelemetryTags.
+		const packageBuffer = await buildEntityPackageBuffer({
+			projects: [
+				{
+					target: 'projects/keep-tags',
+					project: serializedProject({ id: project.id, name: project.name }),
+				},
+			],
+		});
+
+		const result = await importProjects(owner, packageBuffer);
+
+		expect(result.projects).toEqual([
+			{ sourceProjectId: project.id, localId: project.id, name: project.name, status: 'updated' },
+		]);
+		// The update path leaves the column untouched when the incoming value is undefined.
+		expect((await findProject(project.id))?.customTelemetryTags).toEqual(tags);
 	});
 });
