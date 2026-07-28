@@ -316,32 +316,30 @@ export class AgentEvalRunnerService {
 	 * doesn't hold a place other evaluation work could use.
 	 */
 	private async acquireEvaluationSlot(executionId: string, signal: AbortSignal): Promise<boolean> {
-		if (signal.aborted) {
-			this.concurrencyControl.remove({ mode: 'evaluation', executionId });
-			return false;
-		}
+		// Not enqueued yet, so nothing to release/remove.
+		if (signal.aborted) return false;
 
-		let acquired = false;
 		let onAbort: (() => void) | undefined;
 		const aborted = new Promise<'aborted'>((resolve) => {
 			onAbort = () => resolve('aborted');
 			signal.addEventListener('abort', onAbort, { once: true });
 		});
-		const acquire = this.concurrencyControl
-			.throttle({ mode: 'evaluation', executionId })
-			.then(() => {
-				acquired = true;
-				return 'acquired' as const;
-			});
-
-		const outcome = await Promise.race([acquire, aborted]);
+		// Keep the raw throttle promise: the aborted branch reacts to it rather
+		// than to a flag, which a grant racing the abort could leave stale.
+		const acquire = this.concurrencyControl.throttle({ mode: 'evaluation', executionId });
+		const outcome = await Promise.race([acquire.then(() => 'acquired' as const), aborted]);
 		if (onAbort) signal.removeEventListener('abort', onAbort);
 
 		if (outcome === 'aborted') {
-			// If microtask ordering let the slot resolve first, hand it back;
-			// otherwise evict the still-queued entry.
-			if (acquired) this.concurrencyControl.release({ mode: 'evaluation' });
-			else this.concurrencyControl.remove({ mode: 'evaluation', executionId });
+			// Every enqueue must be balanced exactly once. The queue array is the
+			// single source of truth: `remove` evicts the entry if it is still
+			// queued (a no-op otherwise); the `.then` releases if the slot was — or
+			// gets — granted, which happens when a concurrent `release` dequeues us
+			// at the same tick the abort fires. The two are mutually exclusive: a
+			// removed entry's throttle promise never resolves, so the `.then` never
+			// runs for it — no double release, and no leaked slot.
+			this.concurrencyControl.remove({ mode: 'evaluation', executionId });
+			void acquire.then(() => this.concurrencyControl.release({ mode: 'evaluation' }));
 			return false;
 		}
 		return true;

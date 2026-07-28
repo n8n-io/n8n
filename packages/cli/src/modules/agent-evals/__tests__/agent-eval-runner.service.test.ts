@@ -482,6 +482,43 @@ describe('AgentEvalRunnerService', () => {
 			expect(runRepository.markAsCancelled).toHaveBeenCalledWith('run-1', expect.anything());
 			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
 		});
+
+		it('releases a slot granted at the same moment the run is cancelled (no leak)', async () => {
+			vi.mocked(resolveEvaluationConcurrencyLimit).mockReturnValue(2); // admit both at once
+			seedFor(
+				[
+					{ id: 'row-1', question: 'Q0' },
+					{ id: 'row-2', question: 'Q1' },
+				],
+				{ cancelled: 2 },
+			);
+			// case-0 acquires immediately; case-1 stays parked until granted below.
+			let grantParkedCase: (() => void) | undefined;
+			concurrencyControl.throttle.mockImplementation(async ({ executionId }) => {
+				if (executionId.endsWith('-case-1')) {
+					await new Promise<void>((resolve) => {
+						grantParkedCase = resolve;
+					});
+				}
+			});
+			// case-0 runs, then its post-acquire check sees the cancel and aborts.
+			runRepository.isCancellationRequested
+				.mockResolvedValueOnce(false)
+				.mockResolvedValueOnce(false)
+				.mockResolvedValue(true);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			// case-1 was aborted while parked, so only case-0's slot is released so far.
+			expect(concurrencyControl.release).toHaveBeenCalledTimes(1);
+
+			// The queue grants case-1 late (racing the abort) — its slot must be
+			// released, not silently dropped (which would leak a slot forever).
+			grantParkedCase?.();
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(concurrencyControl.release).toHaveBeenCalledTimes(2);
+		});
 	});
 
 	describe('getRunSummary', () => {
