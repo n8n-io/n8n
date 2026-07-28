@@ -277,3 +277,13 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
+  # Frontend typecheck runs vue-tsc on tsgo via these per-package `<pkg>>typescript`
+  # overrides in package.json. typescript-native-bridge is a tsgo-backed drop-in for
+  # the TS6 JS API that Volar/vue-tsc still needs; swap these overrides back to stock
+  # `typescript` once TypeScript 7 ships a stable programmatic API (then vue-tsc runs
+  # native like the backend's `tsc`). Its platform binaries publish under the scope.
+  # Do not pin below bridge.7 — earlier builds mis-resolve cross-package `.vue`
+  # imports. The exclude is only needed until the pinned version ages past
+  # minimumReleaseAge; drop it (or bump to an already-aged version) once it has.
+  - 'typescript-native-bridge'
+  - '@typescript-native-bridge/*'
