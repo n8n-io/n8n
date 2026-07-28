@@ -6,7 +6,6 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -25,13 +24,12 @@ import {
 	configureDataEmitter,
 	getAutoCommitSettings,
 	runWithHeartbeat,
+	stopAndDisconnectConsumer,
 	toUserFacingConsumerError,
-	withTimeout,
 	type ConsumerErrorHandler,
 } from './utils';
 
-// Upper bound for each teardown call so a hung broker request cannot block
-// workflow deactivation indefinitely.
+// Bounds each teardown call so a hung broker request cannot block deactivation.
 const CLOSE_TIMEOUT_MS = 30_000;
 
 export class KafkaTrigger implements INodeType {
@@ -410,19 +408,14 @@ export class KafkaTrigger implements INodeType {
 
 		const consumerConfig = createConsumerConfig(this, options, nodeVersion);
 
-		let closeGotCalled = false;
 		const closeController = new AbortController();
+		const closeSignal = closeController.signal;
 
-		// On retriable crashes kafkajs schedules an unconditional consumer restart,
-		// which can outlive (and even race) closeFunction, leaving an untracked
-		// consumer running with a stale workflow snapshot. restartOnFailure is
-		// consulted on every crash and vetoes the restart once close was requested.
-		// The callback must never throw: kafkajs treats a throwing callback as
-		// consent to restart. Consumer-level retry is merged over the kafkajs
-		// defaults, so pre-close retry behavior is unchanged.
+		// Vetoes kafkajs's automatic crash-restart once close was requested; the
+		// callback must never throw (kafkajs treats a throw as consent to restart).
 		const consumer = kafka.consumer({
 			...consumerConfig,
-			retry: { restartOnFailure: async () => !closeGotCalled },
+			retry: { restartOnFailure: async () => !closeSignal.aborted },
 		});
 
 		const processMessage = configureMessageParser(
@@ -436,7 +429,7 @@ export class KafkaTrigger implements INodeType {
 		const batchSize = options.batchSize ?? 1;
 		const partitionsConsumedConcurrently = options.partitionsConsumedConcurrently || undefined;
 
-		const dataEmitter = configureDataEmitter(this, options, nodeVersion, closeController.signal);
+		const dataEmitter = configureDataEmitter(this, options, nodeVersion, closeSignal);
 
 		const startConsumer = async () => {
 			try {
@@ -455,12 +448,9 @@ export class KafkaTrigger implements INodeType {
 						isRunning,
 						commitOffsetsIfNecessary,
 					}: EachBatchPayload) => {
-						// A batch after close means a consumer survived teardown (a kafkajs
-						// crash-restart raced closeFunction): crash it non-retriably so it can
-						// never execute the workflow with a stale snapshot. Below this guard,
-						// avoid throwing in the callback, as it leads to consumer stop,
-						// disconnect and crash.
-						if (closeGotCalled) {
+						// A batch after close means a consumer survived teardown: crash it
+						// non-retriably. Below this guard, never throw in the callback.
+						if (closeSignal.aborted) {
 							throw Object.assign(
 								new UnexpectedError('Kafka trigger consumer received messages after close'),
 								{ retriable: false },
@@ -472,7 +462,7 @@ export class KafkaTrigger implements INodeType {
 
 						for (let i = 0; i < messages.length; i += batchSize) {
 							// stop if consumer stopped, close requested, or partition revoked
-							if (closeGotCalled || !isRunning() || isStale()) {
+							if (closeSignal.aborted || !isRunning() || isStale()) {
 								this.logger.debug('Batch processing interrupted due to rebalance or consumer stop');
 								break;
 							}
@@ -520,59 +510,22 @@ export class KafkaTrigger implements INodeType {
 
 		const handleConsumerError: ConsumerErrorHandler = (error) => {
 			// Don't surface errors that are a side effect of our own teardown.
-			if (!closeGotCalled) {
+			if (!closeSignal.aborted) {
 				this.emitError(toUserFacingConsumerError(this.getNode(), error));
 			}
 		};
 		const listeners = connectEventListeners(consumer, this.logger, handleConsumerError);
 
 		const closeFunction = async () => {
-			closeGotCalled = true;
-			// Unblock any eachBatch waiting on an in-flight execution, so stop() does
-			// not block deactivation for up to the workflow execution timeout.
+			// Unblock any eachBatch waiting on an in-flight execution.
 			closeController.abort();
 			disconnectEventListeners(listeners);
 
-			let teardownError: Error | undefined;
-			let stopSettled = false;
-			// Promise.resolve keeps the kafkajs promise unchanged while tolerating
-			// non-promise mocks. The settle tracker is subscribed before the race
-			// below, so the flag is set by the time the race outcome is observed.
-			const stopPromise = Promise.resolve(consumer.stop());
-			void stopPromise.then(
-				() => (stopSettled = true),
-				() => (stopSettled = true),
+			const teardownError = await stopAndDisconnectConsumer(
+				consumer,
+				this.logger,
+				CLOSE_TIMEOUT_MS,
 			);
-			try {
-				await withTimeout(stopPromise, CLOSE_TIMEOUT_MS, 'Kafka consumer did not stop in time');
-			} catch (error) {
-				teardownError = ensureError(error);
-			}
-
-			if (stopSettled) {
-				// Always attempt to disconnect: a failed stop() must not leave the
-				// broker connection open.
-				try {
-					await withTimeout(
-						consumer.disconnect(),
-						CLOSE_TIMEOUT_MS,
-						'Kafka consumer did not disconnect in time',
-					);
-				} catch (error) {
-					teardownError ??= ensureError(error);
-				}
-			} else {
-				// stop() timed out and is still pending. kafkajs disconnect() awaits
-				// the same shared stop promise, so a serial attempt here could never
-				// reach the broker; disconnect in the background once stop settles.
-				void stopPromise
-					.catch(() => undefined)
-					.then(async () => await consumer.disconnect())
-					.catch((error: unknown) => {
-						this.logger.warn('Kafka consumer disconnect after delayed stop failed', { error });
-					});
-			}
-
 			if (teardownError) {
 				throw new TriggerCloseError(this.getNode(), {
 					cause: teardownError,

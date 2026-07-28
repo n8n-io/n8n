@@ -10,6 +10,7 @@ import {
 	type IHeaders,
 	type KafkaMessage,
 	type RecordBatchEntry,
+	type RetryOptions,
 } from 'kafkajs';
 import { NodeOperationError, TriggerCloseError, UnexpectedError, type IRun } from 'n8n-workflow';
 
@@ -25,9 +26,9 @@ vi.mock('@n8n/utils/sleep', () => ({
 }));
 
 describe('KafkaTrigger Node', () => {
-	// Every consumer config carries the crash-restart kill switch; typed so the
-	// `any` from expect.any does not trip no-unsafe-assignment at each call site.
-	const expectedRetryConfig = { restartOnFailure: expect.any(Function) as unknown };
+	const expectedRetryConfig = {
+		restartOnFailure: expect.any(Function) as RetryOptions['restartOnFailure'],
+	};
 
 	let mockKafka: Mocked<Kafka>;
 	let mockRegistry: Mocked<SchemaRegistry>;
@@ -35,6 +36,7 @@ describe('KafkaTrigger Node', () => {
 	let mockConsumerSubscribe: Mock;
 	let mockConsumerRun: Mock;
 	let mockConsumerDisconnect: Mock;
+	let mockConsumerStop: Mock;
 	let mockConsumerCreate: Mock;
 	let mockRegistryDecode: Mock;
 	let publishMessage: (message: Partial<KafkaMessage>) => Promise<void>;
@@ -61,12 +63,14 @@ describe('KafkaTrigger Node', () => {
 			}
 		});
 		mockConsumerDisconnect = vi.fn();
+		mockConsumerStop = vi.fn(async () => {});
 		mockConsumerCreate = vi.fn(() =>
 			mock<Consumer>({
 				connect: mockConsumerConnect,
 				subscribe: mockConsumerSubscribe,
 				run: mockConsumerRun,
 				disconnect: mockConsumerDisconnect,
+				stop: mockConsumerStop,
 				on: vi.fn((event: string, handler: (event: unknown) => unknown) => {
 					consumerEventHandlers[event] = handler;
 					return vi.fn();
@@ -1201,8 +1205,6 @@ describe('KafkaTrigger Node', () => {
 			.mockReturnValueOnce(mockRemoveListener8)
 			.mockReturnValueOnce(mockRemoveListener9);
 
-		const mockConsumerStop = vi.fn();
-
 		mockConsumerCreate.mockReturnValueOnce(
 			mock<Consumer>({
 				connect: mockConsumerConnect,
@@ -1262,18 +1264,7 @@ describe('KafkaTrigger Node', () => {
 
 	it('should still disconnect and reject with TriggerCloseError when consumer.stop() fails on close', async () => {
 		const teardownError = new Error('The group is rebalancing, so a rejoin is needed');
-		const mockConsumerStop = vi.fn().mockRejectedValue(teardownError);
-
-		mockConsumerCreate.mockReturnValueOnce(
-			mock<Consumer>({
-				connect: mockConsumerConnect,
-				subscribe: mockConsumerSubscribe,
-				run: mockConsumerRun,
-				disconnect: mockConsumerDisconnect,
-				stop: mockConsumerStop,
-				on: vi.fn(() => vi.fn()),
-			}),
-		);
+		mockConsumerStop.mockRejectedValueOnce(teardownError);
 
 		const { close } = await testTriggerNode(KafkaTrigger, {
 			mode: 'trigger',
@@ -1353,7 +1344,6 @@ describe('KafkaTrigger Node', () => {
 			},
 		});
 
-		// The consumer config keeps its base settings and gains the kill switch
 		expect(mockConsumerCreate).toHaveBeenCalledWith(
 			expect.objectContaining({
 				groupId: 'test-group',
@@ -1361,15 +1351,13 @@ describe('KafkaTrigger Node', () => {
 			}),
 		);
 		const { retry } = mockConsumerCreate.mock.calls[0][0] as {
-			retry: { restartOnFailure: (error: Error) => Promise<boolean> };
+			retry: { restartOnFailure: NonNullable<RetryOptions['restartOnFailure']> };
 		};
 
-		// Before close, retriable crashes may restart the consumer as usual
 		await expect(retry.restartOnFailure(new Error('retriable crash'))).resolves.toBe(true);
 
 		await close();
 
-		// After close, a crash-restart that raced teardown must not resurrect the consumer
 		await expect(retry.restartOnFailure(new Error('retriable crash'))).resolves.toBe(false);
 	});
 
@@ -1429,10 +1417,8 @@ describe('KafkaTrigger Node', () => {
 		const publishPromise = publishMessage({ value: Buffer.from('in-flight') });
 		await new Promise((resolve) => setImmediate(resolve));
 
-		// The batch handler is now waiting on the execution's deferred promise
 		expect(emit).toHaveBeenCalled();
 
-		// Close must resolve the batch without the execution ever completing
 		await close();
 		await publishPromise;
 	});
@@ -1441,21 +1427,11 @@ describe('KafkaTrigger Node', () => {
 		vi.useFakeTimers();
 		try {
 			let resolveStop!: () => void;
-			const mockConsumerStop = vi.fn(
+			mockConsumerStop.mockImplementationOnce(
 				async () =>
 					await new Promise<void>((resolve) => {
 						resolveStop = resolve;
 					}),
-			);
-			mockConsumerCreate.mockReturnValueOnce(
-				mock<Consumer>({
-					connect: mockConsumerConnect,
-					subscribe: mockConsumerSubscribe,
-					run: mockConsumerRun,
-					disconnect: mockConsumerDisconnect,
-					stop: mockConsumerStop,
-					on: vi.fn(() => vi.fn()),
-				}),
 			);
 
 			const { close } = await testTriggerNode(KafkaTrigger, {
@@ -1487,11 +1463,9 @@ describe('KafkaTrigger Node', () => {
 			expect((error as TriggerCloseError).cause).toMatchObject({
 				message: 'Kafka consumer did not stop in time',
 			});
-			// A still-pending stop() means kafkajs disconnect() would only join the
-			// same shared promise — it must not be awaited serially
+			// A still-pending stop() means disconnect() would join the same shared promise
 			expect(mockConsumerDisconnect).not.toHaveBeenCalled();
 
-			// Once stop settles, the connection is closed in the background
 			resolveStop();
 			await vi.advanceTimersByTimeAsync(0);
 			expect(mockConsumerDisconnect).toHaveBeenCalled();

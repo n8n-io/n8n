@@ -591,16 +591,15 @@ export function configureDataEmitter(
 	ctx: ITriggerFunctions,
 	options: KafkaTriggerOptions,
 	nodeVersion: number,
-	closeSignal?: AbortSignal,
+	closeSignal: AbortSignal,
 ) {
 	const resolveOffsetMode = getResolveOffsetMode(ctx, options, nodeVersion);
 
 	// For manual mode, always use immediate emit (no donePromise)
 	if (ctx.getMode() === 'manual' || resolveOffsetMode === 'immediately') {
 		return async (dataArray: INodeExecutionData[]) => {
-			// Never start an execution once the trigger is closing; success: false
-			// also skips the offset commit, so the message is redelivered.
-			if (closeSignal?.aborted) return { success: false };
+			// Never start an execution once the trigger is closing.
+			if (closeSignal.aborted) return { success: false };
 			ctx.emit([dataArray]);
 			return { success: true };
 		};
@@ -625,26 +624,26 @@ export function configureDataEmitter(
 		}
 	}
 
+	// Rejects on close; kept handled so it can never become an unhandled rejection.
+	const abortPromise = new Promise<never>((_, reject) => {
+		closeSignal.addEventListener(
+			'abort',
+			() =>
+				reject(
+					new OperationalError(
+						'Trigger closed before the execution finished, offsets not resolved.',
+					),
+				),
+			{ once: true },
+		);
+	});
+	void abortPromise.catch(() => undefined);
+
 	return async (dataArray: INodeExecutionData[]) => {
 		// Never start an execution once the trigger is closing.
-		if (closeSignal?.aborted) return { success: false };
+		if (closeSignal.aborted) return { success: false };
 
 		let timeoutId: NodeJS.Timeout | undefined;
-		let onAbort: (() => void) | undefined;
-		// Rejects when the trigger closes. Raced against both the execution wait
-		// and the error backoff, and the first race subscribes immediately, so a
-		// late rejection can never become an unhandled rejection.
-		const abortPromise = closeSignal
-			? new Promise<never>((_, reject) => {
-					onAbort = () =>
-						reject(
-							new OperationalError(
-								'Trigger closed before the execution finished, offsets not resolved.',
-							),
-						);
-					closeSignal.addEventListener('abort', onAbort, { once: true });
-				})
-			: undefined;
 		try {
 			const responsePromise = ctx.helpers.createDeferredPromise<IRun>();
 			ctx.emit([dataArray], undefined, responsePromise);
@@ -660,10 +659,7 @@ export function configureDataEmitter(
 				}, executionTimeoutInSeconds * 1000);
 			});
 
-			const racers = [responsePromise.promise, timeoutPromise];
-			if (abortPromise) racers.push(abortPromise);
-
-			const run = await Promise.race(racers);
+			const run = await Promise.race([responsePromise.promise, timeoutPromise, abortPromise]);
 
 			if (resolveOffsetMode !== 'onCompletion' && !allowedStatuses.includes(run.status)) {
 				throw new NodeOperationError(
@@ -674,19 +670,15 @@ export function configureDataEmitter(
 
 			return { success: true };
 		} catch (e) {
-			// Skip the retry backoff during teardown (and cut it short if close
-			// arrives mid-backoff) so deactivation is not delayed.
-			if (!closeSignal?.aborted) {
-				const backoffRacers: Array<Promise<void>> = [sleep(errorRetryDelay)];
-				if (abortPromise) backoffRacers.push(abortPromise.catch(() => undefined));
-				await Promise.race(backoffRacers);
+			// The retry backoff must not delay teardown.
+			if (!closeSignal.aborted) {
+				await Promise.race([sleep(errorRetryDelay), abortPromise.catch(() => undefined)]);
 			}
 			const error = ensureError(e);
 			ctx.logger.error(error.message, { error });
 			return { success: false };
 		} finally {
 			if (timeoutId) clearTimeout(timeoutId);
-			if (onAbort) closeSignal?.removeEventListener('abort', onAbort);
 		}
 	};
 }
@@ -713,8 +705,7 @@ export function getAutoCommitSettings(options: KafkaTriggerOptions) {
 /**
  * Bounds a promise with a timeout, rejecting with an `OperationalError` when it
  * does not settle in time. A late rejection of the abandoned promise stays
- * handled (`Promise.race` subscribes to every racer), so it cannot surface as
- * an unhandled rejection.
+ * handled, so it cannot surface as an unhandled rejection.
  * @param promise - The promise to bound
  * @param ms - Timeout in milliseconds
  * @param message - Error message used when the timeout wins
@@ -731,6 +722,60 @@ export async function withTimeout<T>(promise: Promise<T>, ms: number, message: s
 	} finally {
 		if (timer) clearTimeout(timer);
 	}
+}
+
+/**
+ * Stops and disconnects a Kafka consumer, bounding each call so a hung broker
+ * request cannot block teardown. Assumes close was already signaled by the
+ * caller. When stop() times out while still pending, kafkajs disconnect() would
+ * join the same shared stop promise, so the disconnect is instead chained in
+ * the background for whenever stop settles.
+ * @param consumer - The Kafka consumer instance
+ * @param logger - Logger instance
+ * @param timeoutMs - Upper bound for each teardown call
+ * @returns The first teardown error, or undefined when teardown succeeded
+ */
+export async function stopAndDisconnectConsumer(
+	consumer: Consumer,
+	logger: Logger,
+	timeoutMs: number,
+): Promise<Error | undefined> {
+	let teardownError: Error | undefined;
+	let stopSettled = false;
+	// Tracker is subscribed before the race so stopSettled is accurate when the
+	// race settles.
+	const stopPromise = consumer.stop();
+	void stopPromise.then(
+		() => (stopSettled = true),
+		() => (stopSettled = true),
+	);
+	try {
+		await withTimeout(stopPromise, timeoutMs, 'Kafka consumer did not stop in time');
+	} catch (error) {
+		teardownError = ensureError(error);
+	}
+
+	if (!stopSettled) {
+		void stopPromise
+			.catch(() => undefined)
+			.then(async () => await consumer.disconnect())
+			.catch((error: unknown) => {
+				logger.warn('Kafka consumer disconnect after delayed stop failed', { error });
+			});
+		return teardownError;
+	}
+
+	// A failed stop() must not leave the broker connection open.
+	try {
+		await withTimeout(
+			consumer.disconnect(),
+			timeoutMs,
+			'Kafka consumer did not disconnect in time',
+		);
+	} catch (error) {
+		teardownError ??= ensureError(error);
+	}
+	return teardownError;
 }
 
 /**
