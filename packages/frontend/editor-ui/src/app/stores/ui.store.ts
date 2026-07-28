@@ -563,6 +563,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			closeOnSave?: boolean;
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
 			usageScope?: NewCredentialsModal['usageScope'];
+			credentialSetupHint?: NewCredentialsModal['credentialSetupHint'];
 		} = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
@@ -579,6 +580,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			appendToBody: options.appendToBody,
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
 			usageScope: options.usageScope,
+			credentialSetupHint: options.credentialSetupHint,
 		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);

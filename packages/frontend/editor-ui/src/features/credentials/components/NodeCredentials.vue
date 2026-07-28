@@ -44,7 +44,7 @@ import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
-import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
+import { SYSTEM_RESOLVER_ID, type InstanceAiCredentialSetupHint } from '@n8n/api-types';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
@@ -79,10 +79,10 @@ type Props = {
 	/** Hide the "Ask n8n AI" assistant button inside the credential editor.
 	 *  Used by surfaces (e.g. agents) where the assistant flow isn't wired up. */
 	hideAskAssistant?: boolean;
-	/** Surface CREATE as an event instead of opening the credential modal, so
-	 *  the host can render a guided inline form (Instance AI Templated Custom
-	 *  Auth recipes). Editing always opens the credential modal. */
-	inlineCredentialActions?: boolean;
+	/** Agent-supplied Templated Custom Auth recipe (Instance AI setup surfaces) —
+	 *  passed to the credential modal so a CREATE opens pre-filled on the guided
+	 *  simple view. */
+	credentialSetupHint?: InstanceAiCredentialSetupHint;
 	/** Replaces the type-derived field label ("Credential for X"). Only
 	 *  meaningful with `overrideCredType` (a single credential row). */
 	credentialsFieldLabel?: string;
@@ -101,7 +101,6 @@ const props = withDefaults(defineProps<Props>(), {
 	hideIssues: false,
 	skipAutoSelect: false,
 	standalone: false,
-	inlineCredentialActions: false,
 	skipCredentialsFetch: false,
 });
 
@@ -109,7 +108,6 @@ const emit = defineEmits<{
 	credentialSelected: [credential: INodeUpdatePropertiesInformation];
 	valueChanged: [value: { name: string; value: string }];
 	blur: [source: string];
-	createRequested: [credentialType: string];
 }>();
 
 const telemetry = useTelemetry();
@@ -516,11 +514,6 @@ function createNewCredential(
 	showAuthOptions = false,
 	forceManualMode = false,
 ) {
-	if (props.inlineCredentialActions) {
-		emit('createRequested', credentialType);
-		return;
-	}
-
 	if (listenForAuthChange) {
 		// If new credential dialog is open, start listening for auth type change which should happen in the modal
 		// this will be handled in this component's watcher which will set subscribed credential accordingly
@@ -540,6 +533,7 @@ function createNewCredential(
 			hideAskAssistant: hideAskAssistant.value,
 			closeOnSave: true,
 			instanceAiCredentialHelp: instanceAiCredentialHelp(),
+			credentialSetupHint: props.credentialSetupHint,
 		},
 	);
 	telemetry.track('User opened Credential modal', {

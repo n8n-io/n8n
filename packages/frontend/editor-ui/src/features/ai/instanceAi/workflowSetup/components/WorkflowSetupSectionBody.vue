@@ -5,12 +5,10 @@ import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { deriveServiceName } from '@/features/credentials/templatedAuth.utils';
-import InstanceAiCredentialForm from '../../components/InstanceAiCredentialForm.vue';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useAiGateway } from '@/app/composables/useAiGateway';
 import { ExpressionLocalResolveContextSymbol, WorkflowDocumentStoreKey } from '@/app/constants';
 import {
 	createWorkflowDocumentId,
@@ -35,7 +33,6 @@ const ctx = useWorkflowSetupContext();
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
-const aiGateway = useAiGateway();
 
 const credentialType = computed(() => props.section.credentialType);
 
@@ -59,38 +56,6 @@ const selectedCredentials = computed<INodeUi['credentials']>(() => {
 
 	return cred ? { [type]: { id: cred.id, name: cred.name } } : {};
 });
-
-// Gate on the same store source NodeCredentials builds its dropdown from. With no
-// usable credential of this type it would render an empty-state "set up" button
-// (which opens the modal) — render the inline form instead.
-const hasUsableCredentials = computed(() => {
-	const type = credentialType.value;
-	if (!type) return false;
-	return (credentialsStore.getUsableCredentialByType(type)?.length ?? 0) > 0;
-});
-
-// The AI-gateway "use n8n managed" option is offered by NodeCredentials even
-// with no existing credential — mirror NodeCredentials' showAiGatewaySelector so
-// the gate below doesn't hide it.
-const supportsAiGatewayManaged = computed(() => {
-	const type = credentialType.value;
-	if (!type || !aiGateway.isEnabled.value) return false;
-	return (
-		aiGateway.isNodeTypeVersionSupported(props.section.node.type, props.section.node.typeVersion) &&
-		aiGateway.isCredentialTypeSupported(type)
-	);
-});
-
-// Show the NodeCredentials selector when there's something to select — an
-// existing usable credential or the AI-gateway managed option. Otherwise the
-// inline form handles creating/connecting a new credential.
-const shouldRenderSelector = computed(
-	() => hasUsableCredentials.value || supportsAiGatewayManaged.value,
-);
-
-/** Guided Templated Custom Auth form for this section's recipe — the only
- *  credential form rendered inline; everything else uses the credential modal. */
-const inlineForm = ref<{ showBack: boolean } | null>(null);
 
 const hasTemplatedHint = computed(
 	() => credentialType.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE && !!props.section.setupHint,
@@ -155,25 +120,7 @@ watch(
 	() => props.section.id,
 	() => {
 		revealedIssues.value = new Set(props.section.parameterNames);
-		inlineForm.value = null;
 	},
-);
-
-// The default inline form must be held as STATE, not derived from the selector
-// gate: saving a credential mid-submit makes the store report usable
-// credentials, which would otherwise swap this form for the (auto-selecting)
-// selector before the save/auth-probe completes — discarding a probe rejection.
-// The form auto-opens only for a Templated Custom Auth recipe with nothing to
-// select, and closes only via its own saved/back events (or the section-change
-// reset above, which runs first).
-watch(
-	[() => props.section.id, hasTemplatedHint, shouldRenderSelector],
-	([, templatedHint, selectorVisible]) => {
-		if (templatedHint && !selectorVisible && !inlineForm.value) {
-			inlineForm.value = { showBack: false };
-		}
-	},
-	{ immediate: true },
 );
 
 const hiddenIssuesInputs = computed(() =>
@@ -250,15 +197,6 @@ function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 	ctx.setCredential(props.section, credId);
 }
 
-function openInlineCreate() {
-	inlineForm.value = { showBack: true };
-}
-
-function onInlineFormSaved(credentialId: string) {
-	ctx.setCredential(props.section, credentialId);
-	inlineForm.value = null;
-}
-
 function onParameterValueChanged(update: IUpdateInformation) {
 	const parameterName = update.name.replace(/^parameters\./, '');
 	ctx.setParameterValue(props.section, parameterName, update.value);
@@ -274,27 +212,17 @@ function onParameterValueChanged(update: IUpdateInformation) {
 			telemetry-source="instanceAiWorkflowSetup"
 		/>
 
-		<InstanceAiCredentialForm
-			v-if="inlineForm && section.setupHint"
-			:key="section.id"
-			:setup-hint="section.setupHint"
-			:project-id="ctx.projectId.value"
-			:show-back="inlineForm.showBack"
-			@saved="onInlineFormSaved"
-			@back="inlineForm = null"
-		/>
 		<NodeCredentials
-			v-else-if="credentialType"
+			v-if="credentialType"
 			:node="displayNode"
 			:override-cred-type="credentialType"
 			:project-id="ctx.projectId.value"
 			standalone
 			hide-issues
 			hide-ask-assistant
-			:inline-credential-actions="hasTemplatedHint"
+			:credential-setup-hint="section.setupHint"
 			:credentials-field-label="credentialsFieldLabel"
 			@credential-selected="onCredentialSelected"
-			@create-requested="openInlineCreate"
 		>
 			<template v-if="section.credentialTargetNodes.length > 1" #label-postfix>
 				<N8nTooltip placement="top">

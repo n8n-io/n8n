@@ -17,8 +17,6 @@ const workflowSetupContext = vi.hoisted(() => ({
 
 const credentialsStore = vi.hoisted(() => ({
 	getCredentialById: vi.fn(),
-	// Non-empty so the inline-form gate resolves to the NodeCredentials selector.
-	getUsableCredentialByType: vi.fn(() => [{ id: 'cred-1', name: 'Existing' }]),
 }));
 
 const nodeTypesStore = vi.hoisted(() => ({
@@ -34,6 +32,7 @@ const nodeCredentialsMock = vi.hoisted(() => ({
 	emitCredentialSelected: null as ((update: unknown) => void) | null,
 	lastNodeProp: null as unknown,
 	lastFieldLabel: undefined as string | undefined,
+	lastSetupHint: undefined as unknown,
 }));
 const parameterListMock = vi.hoisted(() => ({
 	lastHiddenIssuesInputs: undefined as string[] | undefined,
@@ -63,12 +62,13 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', async () => {
 	const { defineComponent, h } = await import('vue');
 	return {
 		default: defineComponent({
-			props: ['node', 'credentialsFieldLabel'],
+			props: ['node', 'credentialsFieldLabel', 'credentialSetupHint'],
 			emits: ['credentialSelected'],
 			setup(props, { emit, slots }) {
 				nodeCredentialsMock.emitCredentialSelected = (update) => emit('credentialSelected', update);
 				nodeCredentialsMock.lastNodeProp = props.node;
 				nodeCredentialsMock.lastFieldLabel = props.credentialsFieldLabel as string | undefined;
+				nodeCredentialsMock.lastSetupHint = props.credentialSetupHint;
 				return () => h('div', { 'data-test-id': 'node-credentials' }, slots['label-postfix']?.());
 			},
 		}),
@@ -166,6 +166,7 @@ describe('WorkflowSetupSectionBody', () => {
 		nodeCredentialsMock.emitCredentialSelected = null;
 		nodeCredentialsMock.lastNodeProp = null;
 		nodeCredentialsMock.lastFieldLabel = undefined;
+		nodeCredentialsMock.lastSetupHint = undefined;
 		parameterListMock.lastHiddenIssuesInputs = undefined;
 		credentialsStore.getCredentialById.mockReturnValue({ id: 'cred-1', name: 'Typeform account' });
 		nodeTypesStore.getNodeType.mockReturnValue({
@@ -251,6 +252,9 @@ describe('WorkflowSetupSectionBody', () => {
 		await nextTick();
 
 		expect(nodeCredentialsMock.lastFieldLabel).toBe('fal.ai API Key credentials');
+		// The recipe rides into NodeCredentials so a CREATE opens the credential
+		// modal pre-filled on the guided simple view.
+		expect(nodeCredentialsMock.lastSetupHint).toEqual(section.setupHint);
 	});
 
 	it('stores the AI Gateway-managed tag when selected in NodeCredentials', async () => {

@@ -28,7 +28,6 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useThread } from '../instanceAi.store';
 import ConfirmationFooter from './ConfirmationFooter.vue';
-import InstanceAiCredentialForm from './InstanceAiCredentialForm.vue';
 
 type CredentialSetupChoice = 'ai' | 'manual';
 
@@ -76,10 +75,6 @@ const isDeferred = ref(false);
 const selections = ref<Record<string, string | null>>({});
 /** Credential types the user explicitly skipped via "Later" on their step, distinct from never-visited types. */
 const skippedTypes = ref<Set<string>>(new Set());
-
-/** Guided Templated Custom Auth form for the current request's recipe —
- *  the only credential form rendered inline; everything else uses the modal. */
-const inlineForm = ref<{ showBack: boolean } | null>(null);
 
 // ---------------------------------------------------------------------------
 // Auto-select from existing credentials
@@ -323,7 +318,9 @@ watch(currentStepIndex, () => {
 	iconFailed.value = false;
 });
 
-function openNewCredentialModal() {
+/** Create flow: the regular credential modal, pre-filled from the recipe when
+ *  the request carries a Templated Custom Auth setup hint. */
+function openCreateCredential() {
 	const req = currentRequest.value;
 	if (!req) return;
 	uiStore.openNewCredential(
@@ -336,47 +333,10 @@ function openNewCredentialModal() {
 		undefined,
 		{
 			closeOnSave: true,
+			credentialSetupHint: req.setupHint,
 		},
 	);
 }
-
-/** Create flow: guided inline form for a Templated Custom Auth recipe, the
- *  regular credential modal for everything else. */
-function openCreateCredential() {
-	if (hasTemplatedHint.value) {
-		inlineForm.value = { showBack: true };
-		return;
-	}
-	openNewCredentialModal();
-}
-
-function onInlineFormSaved(credentialId: string) {
-	const credentialType = currentRequest.value?.credentialType;
-	if (credentialType) selections.value[credentialType] = credentialId;
-	inlineForm.value = null;
-}
-
-// Reset any open inline form when navigating between credential steps.
-watch(currentStepIndex, () => {
-	inlineForm.value = null;
-});
-
-// The default inline form must be held as STATE, not derived from the
-// credential gates: saving a credential mid-submit makes the store report
-// usable credentials, which would otherwise swap this form for the
-// (auto-selecting) selector before the save/auth-probe completes — discarding
-// a probe rejection. The form auto-opens only for a Templated Custom Auth
-// recipe with nothing to select (and no browser-use choice), and closes only
-// via its own saved/back events or step navigation.
-watch(
-	[currentStepIndex, hasTemplatedHint, hasExistingCredentials, showSetupChoice],
-	([, templatedHint, hasExisting, choiceShown]) => {
-		if (templatedHint && !hasExisting && !choiceShown && !inlineForm.value) {
-			inlineForm.value = { showBack: false };
-		}
-	},
-	{ immediate: true },
-);
 
 /** Build a minimal synthetic INodeUi so NodeCredentials can render in standalone mode. */
 function syntheticNodeUi(req: InstanceAiCredentialRequest): INodeUi {
@@ -649,18 +609,8 @@ async function handleSetupAutomatically() {
 					</N8nText>
 
 					<div :class="$style.credentialContainer">
-						<InstanceAiCredentialForm
-							v-if="inlineForm && currentRequest.setupHint"
-							:key="currentRequest.credentialType"
-							:setup-hint="currentRequest.setupHint"
-							:suggested-name="currentRequest.suggestedName"
-							:project-id="projectId"
-							:show-back="inlineForm.showBack"
-							@saved="onInlineFormSaved"
-							@back="inlineForm = null"
-						/>
 						<NodeCredentials
-							v-else-if="hasExistingCredentials"
+							v-if="hasExistingCredentials"
 							:node="syntheticNodeUi(currentRequest)"
 							:override-cred-type="currentRequest.credentialType"
 							:project-id="projectId"
@@ -668,10 +618,9 @@ async function handleSetupAutomatically() {
 							standalone
 							hide-issues
 							hide-ask-assistant
-							:inline-credential-actions="hasTemplatedHint"
+							:credential-setup-hint="currentRequest.setupHint"
 							:credentials-field-label="credentialsFieldLabel"
 							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"
-							@create-requested="openCreateCredential"
 						/>
 						<N8nActionDropdown
 							v-else-if="showSetupChoice"

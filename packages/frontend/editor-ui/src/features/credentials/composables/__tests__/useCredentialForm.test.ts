@@ -5,15 +5,22 @@ import type { ICredentialType } from 'n8n-workflow';
 
 import { mockedStore } from '@/__tests__/utils';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useCredentialsStore } from '../../credentials.store';
 import type { ICredentialsDecryptedResponse } from '../../credentials.types';
 import { useCredentialForm } from '../useCredentialForm';
+import { probeCredential } from '../../credentials.api';
 
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 vi.mock('@/app/composables/useNodeHelpers', () => ({
 	useNodeHelpers: () => ({ displayParameter: () => true }),
+}));
+vi.mock('@/features/credentials/credentials.api', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	probeCredential: vi.fn(),
 }));
 
 const httpBasicAuth: ICredentialType = {
@@ -66,11 +73,34 @@ const skipManagedOAuth: ICredentialType = {
 	],
 };
 
+// The recipe-driven generic type: the modal seeds its template fields from an
+// agent-supplied setup hint.
+const templatedCustomAuth: ICredentialType = {
+	name: 'httpTemplatedCustomAuth',
+	displayName: 'Simplified Custom Auth',
+	properties: [
+		{ displayName: 'Template', name: 'template', type: 'json', required: true, default: '' },
+		{ displayName: 'Placeholders', name: 'placeholderDefs', type: 'json', default: '' },
+		{ displayName: 'Placeholder Values', name: 'placeholderValues', type: 'json', default: '' },
+		{ displayName: 'Test URL', name: 'testUrl', type: 'string', default: '' },
+		{ displayName: 'Documentation URL', name: 'docsUrl', type: 'string', default: '' },
+	],
+};
+
 const typesByName: Record<string, ICredentialType> = {
 	httpBasicAuth,
 	acmeOAuth2Api: managedOAuth,
 	privateOAuth2Api: privateOAuth,
 	skipOAuth2Api: skipManagedOAuth,
+	httpTemplatedCustomAuth: templatedCustomAuth,
+};
+
+const falSetupHint = {
+	template: { headers: { Authorization: 'Key {{api_key}}' } },
+	placeholders: [{ name: 'api_key', title: 'fal.ai API key' }],
+	suggestedName: 'fal.ai API Key',
+	testUrl: 'https://fal.run/v1/models',
+	docsUrl: 'https://fal.ai/dashboard/keys',
 };
 
 describe('useCredentialForm', () => {
@@ -88,6 +118,7 @@ describe('useCredentialForm', () => {
 			get: () => (name: string) => typesByName[name],
 		});
 		credentialsStore.getNewCredentialName.mockResolvedValue('HTTP Basic Auth account');
+		credentialsStore.getDedupedCredentialName.mockImplementation(async (name: string) => name);
 	});
 
 	describe('displayCredentialParameter', () => {
@@ -155,6 +186,28 @@ describe('useCredentialForm', () => {
 			expect(form.credentialData.value.user).toBe('alice');
 		});
 
+		it('seeds template fields and a creator-suffixed name from a setup hint', async () => {
+			const usersStore = mockedStore(useUsersStore);
+			usersStore.currentUser = { firstName: 'Jan', lastName: 'Doe' } as IUser;
+			const form = useCredentialForm({
+				mode: 'new',
+				activeId: 'httpTemplatedCustomAuth',
+				setupHint: falSetupHint,
+			});
+
+			await form.initialize();
+
+			expect(form.credentialName.value).toBe('fal.ai API Key (Jan D)');
+			expect(form.credentialData.value).toMatchObject({
+				template: JSON.stringify(falSetupHint.template, null, 2),
+				placeholderDefs: JSON.stringify(falSetupHint.placeholders, null, 2),
+				testUrl: falSetupHint.testUrl,
+				docsUrl: falSetupHint.docsUrl,
+			});
+			// A filled template + persisted test URL makes the credential probeable.
+			expect(form.isCredentialTestable.value).toBe(true);
+		});
+
 		it('flags custom OAuth when editing a credential with overridden client fields', async () => {
 			credentialsStore.getCredentialData.mockResolvedValue({
 				id: 'cred-2',
@@ -167,6 +220,29 @@ describe('useCredentialForm', () => {
 			await form.initialize();
 
 			expect(form.useCustomOAuth.value).toBe(true);
+		});
+	});
+
+	describe('testCredential', () => {
+		it('routes a saved Templated Custom Auth credential through the auth probe', async () => {
+			vi.mocked(probeCredential).mockResolvedValue({ status: 'Error', message: 'Received 401' });
+			const form = useCredentialForm({
+				mode: 'new',
+				activeId: 'httpTemplatedCustomAuth',
+				setupHint: falSetupHint,
+			});
+			await form.initialize();
+
+			await form.testCredential({
+				id: 'cred-9',
+				name: 'fal.ai API Key',
+				type: 'httpTemplatedCustomAuth',
+				data: form.credentialData.value as never,
+			});
+
+			expect(probeCredential).toHaveBeenCalledWith(expect.anything(), 'cred-9');
+			expect(credentialsStore.testCredential).not.toHaveBeenCalled();
+			expect(form.authError.value).toBe('Received 401');
 		});
 	});
 

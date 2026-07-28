@@ -111,21 +111,6 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 	},
 }));
 
-vi.mock('../components/InstanceAiCredentialForm.vue', () => ({
-	default: {
-		props: [
-			'credentialType',
-			'mode',
-			'credentialId',
-			'suggestedName',
-			'projectId',
-			'providerUrl',
-			'showBack',
-		],
-		template: '<div data-test-id="instance-ai-credential-form" />',
-	},
-}));
-
 const renderComponent = createThreadComponentRenderer(InstanceAiCredentialSetup);
 
 // getUsableCredentialByType is a computed returning a function — vi.spyOn's accessor
@@ -246,27 +231,27 @@ describe('InstanceAiCredentialSetup', () => {
 			});
 
 			expect(getByTestId('instance-ai-credential-setup-button')).toBeTruthy();
-			expect(queryByTestId('instance-ai-credential-form')).toBeNull();
 			expect(queryByTestId('credential-picker')).toBeNull();
 		});
 
-		it('renders the guided inline form for a Templated Custom Auth recipe', () => {
+		it('opens the credential modal pre-filled with the recipe for a Templated Custom Auth request', async () => {
 			const credentialsStore = useCredentialsStore();
 			stubUsableCredentials(credentialsStore, () => []);
 
+			const setupHint = {
+				template: { headers: { Authorization: 'Key {{api_key}}' } },
+				placeholders: [{ name: 'api_key', title: 'fal.ai API key' }],
+				suggestedName: 'fal.ai API Key',
+			};
 			const requests: InstanceAiCredentialRequest[] = [
 				{
 					credentialType: 'httpTemplatedCustomAuth',
 					reason: 'For calling the fal.ai API',
 					existingCredentials: [],
-					setupHint: {
-						template: { headers: { Authorization: 'Key {{api_key}}' } },
-						placeholders: [{ name: 'api_key', title: 'fal.ai API key' }],
-						suggestedName: 'fal.ai API Key',
-					},
+					setupHint,
 				},
 			];
-			const { getByTestId, queryByTestId } = renderComponent({
+			const { getByTestId } = renderComponent({
 				props: {
 					requestId: 'req-1',
 					credentialRequests: requests,
@@ -274,9 +259,18 @@ describe('InstanceAiCredentialSetup', () => {
 				},
 			});
 
-			expect(getByTestId('instance-ai-credential-form')).toBeTruthy();
-			expect(queryByTestId('instance-ai-credential-setup-button')).toBeNull();
-			expect(queryByTestId('credential-picker')).toBeNull();
+			await userEvent.click(getByTestId('instance-ai-credential-setup-button'));
+
+			expect(useUIStore().openNewCredential).toHaveBeenCalledWith(
+				'httpTemplatedCustomAuth',
+				false,
+				false,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				{ closeOnSave: true, credentialSetupHint: setupHint },
+			);
 		});
 
 		it('renders a single credential with picker when existing credentials', () => {
@@ -618,12 +612,10 @@ describe('InstanceAiCredentialSetup', () => {
 		it('tracks and opens the credential modal on manual choice', async () => {
 			experiment.enabled = true;
 
-			const { getByTestId, queryByTestId } = renderCard(makeCredentialRequests(1));
-			expect(queryByTestId('instance-ai-credential-form')).toBeNull();
+			const { getByTestId } = renderCard(makeCredentialRequests(1));
 
 			await userEvent.click(getByTestId('setup-choice-manual'));
 
-			expect(queryByTestId('instance-ai-credential-form')).toBeNull();
 			expect(useUIStore().openNewCredential).toHaveBeenCalledWith(
 				'type1',
 				false,
