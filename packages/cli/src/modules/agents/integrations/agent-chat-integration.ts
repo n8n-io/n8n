@@ -180,6 +180,9 @@ export abstract class AgentChatIntegration {
 	 */
 	readonly needsShortCallbackData: boolean = false;
 
+	/** Whether action messages are deleted before the agent resumes. */
+	readonly deleteActionMessageBeforeResume: boolean = true;
+
 	/**
 	 * True if the bridge should buffer streaming output and post it as a single
 	 * message instead of streaming text deltas via post-and-edit.

@@ -112,6 +112,8 @@ export class AgentChatBridge {
 			agentService,
 			logger,
 			callbackStore: this.callbackStore,
+			deleteActionMessageBeforeResume:
+				this.integrationImpl?.deleteActionMessageBeforeResume ?? true,
 			resolvePlatformThreadId: this.resolvePlatformThreadId.bind(this),
 			toAgentThreadId: this.toAgentThreadId.bind(this),
 			getPlatformAgentContext: this.getPlatformAgentContext.bind(this),

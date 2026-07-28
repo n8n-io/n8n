@@ -92,6 +92,8 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	readonly needsShortCallbackData = true;
 
+	readonly deleteActionMessageBeforeResume = false;
+
 	readonly disableStreaming = true;
 
 	readonly formatThreadId = {

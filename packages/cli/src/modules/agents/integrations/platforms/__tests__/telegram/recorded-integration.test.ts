@@ -170,7 +170,7 @@ describe('Telegram recorded integration replay', () => {
 		}
 	});
 
-	it('uses short callback data for Telegram rich cards and resumes the agent from callback queries', async () => {
+	it('preserves Telegram callback messages and edits them in place', async () => {
 		const ctx = await createTelegramReplayContext(telegramFixtures, {
 			stream: [
 				{
@@ -195,11 +195,11 @@ describe('Telegram recorded integration replay', () => {
 			const callbackData = getTelegramInlineCallbackData(cardMessage);
 			expect(callbackData).toBeDefined();
 			expect(Buffer.byteLength(callbackData ?? '', 'utf8')).toBeLessThanOrEqual(64);
+			const sendMessageCountBeforeCallback = ctx.apiCalls.filter(
+				(call) => call.method === 'sendMessage',
+			).length;
 
-			ctx.nextStream([
-				{ type: 'text-delta', id: 'resume-text', delta: 'Approved' },
-				{ type: 'finish', finishReason: 'stop' },
-			]);
+			ctx.nextStream([{ type: 'finish', finishReason: 'stop' }]);
 			await ctx.sendTelegramWebhook(
 				callbackPayloadWithData(telegramFixtures.callbackBase, callbackData ?? '', 1000),
 			);
@@ -212,17 +212,41 @@ describe('Telegram recorded integration replay', () => {
 					integrationType: 'telegram',
 				}),
 			);
-			expect(ctx.lastApiCall('deleteMessage')?.body).toMatchObject({
-				chat_id: '123456',
-				message_id: 1000,
+			expect(ctx.latestContext()).toMatchObject({
+				platform: 'telegram',
+				messageId: '123456:1000',
+				target: { threadId: 'telegram:123456' },
 			});
+
+			const result = await ctx.actionExecutor.execute({
+				descriptor: ctx.descriptor,
+				action: 'edit_message',
+				input: { messageId: '123456:1000', message: { text: 'Approved' } },
+				awaitResponse: false,
+				currentMessageContext: ctx.latestContext(),
+			});
+
+			expect(result).toMatchObject({
+				ok: true,
+				messageContext: {
+					platform: 'telegram',
+					messageId: '123456:1000',
+					target: { threadId: 'telegram:123456' },
+				},
+			});
+			expect(ctx.lastApiCall('deleteMessage')).toBeUndefined();
 			expect(ctx.lastApiCall('answerCallbackQuery')?.body).toMatchObject({
 				callback_query_id: 'callback-1',
 			});
-			expect(ctx.lastApiCall('sendMessage')?.body).toMatchObject({
+			expect(ctx.lastApiCall('editMessageText')?.body).toMatchObject({
 				chat_id: '123456',
+				message_id: 1000,
 				text: 'Approved',
+				reply_markup: { inline_keyboard: [] },
 			});
+			expect(ctx.apiCalls.filter((call) => call.method === 'sendMessage')).toHaveLength(
+				sendMessageCountBeforeCallback,
+			);
 		} finally {
 			await ctx.shutdown();
 		}

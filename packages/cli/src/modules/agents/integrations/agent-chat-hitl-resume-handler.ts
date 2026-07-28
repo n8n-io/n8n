@@ -28,6 +28,7 @@ interface AgentChatHitlResumeHandlerOptions {
 	agentService: ResumeExecutor;
 	logger: Logger;
 	callbackStore?: CallbackStore;
+	deleteActionMessageBeforeResume: boolean;
 	resolvePlatformThreadId: (thread: Thread<unknown, unknown>) => string;
 	toAgentThreadId: (platformThreadId: string) => InternalThread;
 	getPlatformAgentContext: () => PlatformAgentContext;
@@ -138,11 +139,10 @@ export class AgentChatHitlResumeHandler {
 		return { actionId: resolved.actionId, value: resolved.value };
 	}
 
-	/**
-	 * Delete the card message and apply platform-specific workarounds before
-	 * resuming the agent.
-	 */
+	/** Clean up the action message according to integration policy before resuming. */
 	private async cleanUpBeforeResume(event: ActionEvent): Promise<void> {
+		if (!this.options.deleteActionMessageBeforeResume) return;
+
 		try {
 			await event.adapter.deleteMessage(event.threadId, event.messageId);
 		} catch (deleteError) {

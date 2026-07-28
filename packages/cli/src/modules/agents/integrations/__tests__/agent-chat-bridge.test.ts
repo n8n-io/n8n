@@ -1078,6 +1078,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		it('sets a thinking status and buffers the response when resuming a Slack action', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
+			const deleteMessage = vi.fn().mockResolvedValue(undefined);
 			const agentExecutor = {
 				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 				resumeForChat: vi.fn(() =>
@@ -1106,9 +1107,10 @@ describe('AgentChatBridge — consumeStream', () => {
 				thread,
 				threadId: 'thread-1',
 				user: { userId: 'u2', userName: 'user2' },
-				adapter: { deleteMessage: vi.fn().mockResolvedValue(undefined) },
+				adapter: { deleteMessage },
 			});
 
+			expect(deleteMessage).toHaveBeenCalledWith('thread-1', 'card-message-1');
 			expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
 			expect(thread.startTyping.mock.invocationCallOrder[0]).toBeLessThan(
 				thread.post.mock.invocationCallOrder[0],
