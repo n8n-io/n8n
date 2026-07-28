@@ -2,7 +2,6 @@ import { Logger } from '@n8n/backend-common';
 import { binaryToBuffer } from '@n8n/backend-network';
 import {
 	ByteStoreRegistry,
-	FsByteStore,
 	SkippedEntryDeletionError,
 	type ByteStore,
 	type PreWriteBlobMetadata,
@@ -10,7 +9,7 @@ import {
 } from '@n8n/blob-storage';
 import { BinaryDataRepository, type ExecutionDataStorageLocation } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ErrorReporter, StorageConfig } from 'n8n-core';
+import { ErrorReporter, StorageConfig, StorageFsByteStore } from 'n8n-core';
 import type { Readable } from 'node:stream';
 import { v4 as uuid } from 'uuid';
 
@@ -26,16 +25,6 @@ export type StoredAgentKnowledgeFile = {
  */
 const LEGACY_KEY_SEGMENT = '/binary_data/';
 
-@Service()
-export class AgentKnowledgeFileFsByteStore extends FsByteStore {
-	constructor(storageConfig: StorageConfig, errorReporter: ErrorReporter) {
-		super({
-			storagePath: storageConfig.storagePath,
-			reportError: (error) => errorReporter.error(error),
-		});
-	}
-}
-
 /**
  * Stores agent knowledge file bytes wherever the execution data storage mode
  * points: in `db` mode the bytes go into the `binary_data` table keyed by a
@@ -50,7 +39,7 @@ export class AgentKnowledgeFileStore {
 	private readonly byteStores: ByteStoreRegistry;
 
 	constructor(
-		fsByteStore: AgentKnowledgeFileFsByteStore,
+		fsByteStore: StorageFsByteStore,
 		private readonly storageConfig: StorageConfig,
 		private readonly binaryDataRepository: BinaryDataRepository,
 		private readonly errorReporter: ErrorReporter,

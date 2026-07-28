@@ -27,7 +27,7 @@ describe('AgentKnowledgeFileStore', () => {
 
 	function makeStore(modeTag: 'db' | 'fs' | 's3' | 'az'): AgentKnowledgeFileStore {
 		return new AgentKnowledgeFileStore(
-			fsByteStore as never,
+			fsByteStore,
 			{ storagePath, modeTag } as StorageConfig,
 			binaryDataRepository,
 			errorReporter,
