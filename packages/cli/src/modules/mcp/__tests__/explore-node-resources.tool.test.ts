@@ -12,7 +12,6 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 	CODE_BUILDER_SEARCH_NODES_TOOL: { toolName: 'search_nodes', displayTitle: 'Search' },
 	CODE_BUILDER_GET_NODE_TYPES_TOOL: { toolName: 'get_node_types', displayTitle: 'Get' },
 	CODE_BUILDER_GET_SUGGESTED_NODES_TOOL: { toolName: 'get_suggested', displayTitle: 'Suggest' },
-	CODE_BUILDER_VALIDATE_TOOL: { toolName: 'validate_workflow_code', displayTitle: 'Validate' },
 	MCP_GET_SDK_REFERENCE_TOOL: { toolName: 'sdk_ref', displayTitle: 'SDK Ref' },
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL: { toolName: 'create_workflow', displayTitle: 'Create' },
 	MCP_ARCHIVE_WORKFLOW_TOOL: { toolName: 'archive_workflow', displayTitle: 'Archive' },

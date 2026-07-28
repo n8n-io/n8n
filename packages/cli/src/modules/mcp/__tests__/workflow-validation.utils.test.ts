@@ -9,7 +9,6 @@ import { getMcpWorkflow, getSdkReferenceHint } from '../tools/workflow-validatio
 
 vi.mock('@n8n/ai-workflow-builder', () => ({
 	MCP_GET_SDK_REFERENCE_TOOL: { toolName: 'get_sdk_reference', displayTitle: 'SDK Ref' },
-	CODE_BUILDER_VALIDATE_TOOL: { toolName: 'validate_workflow', displayTitle: 'Validate' },
 }));
 
 describe('getSdkReferenceHint', () => {
@@ -21,7 +20,7 @@ describe('getSdkReferenceHint', () => {
 
 		expect(hint).toContain('get_sdk_reference');
 		expect(hint).toContain('Workflow SDK reference');
-		expect(hint).toContain('validate_workflow');
+		expect(hint).toContain('retry the create or update call');
 	});
 
 	test('returns hint for SyntaxError', () => {

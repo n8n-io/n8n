@@ -56,6 +56,15 @@ interface ValidationIssue {
 	nodeName?: string;
 }
 
+/** Normalize a validator issue to the plain warning shape shared across results. */
+function toValidationWarning(issue: ValidationIssue): ValidationWarning {
+	return {
+		code: issue.code,
+		message: issue.message,
+		nodeName: issue.nodeName,
+	};
+}
+
 export class ParseValidateHandler {
 	private logger?: Logger;
 	private generatePinData: boolean;
@@ -217,6 +226,11 @@ export class ParseValidateHandler {
 
 			// Run graph + JSON validation
 			const allWarnings: ValidationWarning[] = [];
+			// Fatal issues (the validators' `errors` arrays) stay folded into
+			// `allWarnings` for agent self-correction, and are also tracked
+			// separately so consumers that must hard-block on them (e.g. the MCP
+			// create tool) can reject before persisting anything.
+			const allErrors: ValidationWarning[] = [];
 
 			// Validate the graph structure BEFORE converting to JSON
 			const graphValidation = builder.validate();
@@ -228,6 +242,7 @@ export class ParseValidateHandler {
 				'GRAPH VALIDATION ERRORS',
 				'warn',
 			);
+			allErrors.push(...graphValidation.errors.map(toValidationWarning));
 
 			// Collect graph validation warnings
 			this.collectValidationIssues(
@@ -257,6 +272,7 @@ export class ParseValidateHandler {
 				'JSON VALIDATION ERRORS',
 				'warn',
 			);
+			allErrors.push(...validationResult.errors.map(toValidationWarning));
 
 			// Collect JSON validation warnings
 			this.collectValidationIssues(
@@ -287,7 +303,7 @@ export class ParseValidateHandler {
 			});
 
 			// Return both workflow and warnings for agent self-correction
-			return { workflow: workflowJson, warnings: allWarnings };
+			return { workflow: workflowJson, warnings: allWarnings, errors: allErrors };
 		} catch (error) {
 			this.logger?.error('Failed to parse WorkflowCode', {
 				error: error instanceof Error ? error.message : String(error),

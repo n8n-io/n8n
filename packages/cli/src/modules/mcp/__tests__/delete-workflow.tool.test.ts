@@ -11,7 +11,6 @@ import { createArchiveWorkflowTool } from '../tools/workflow-builder/delete-work
 
 vi.mock('@n8n/ai-workflow-builder', () => ({
 	MCP_ARCHIVE_WORKFLOW_TOOL: { toolName: 'archive_workflow', displayTitle: 'Archive Workflow' },
-	CODE_BUILDER_VALIDATE_TOOL: { toolName: 'validate_workflow_code', displayTitle: 'Validate' },
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL: {
 		toolName: 'create_workflow_from_code',
 		displayTitle: 'Create',
