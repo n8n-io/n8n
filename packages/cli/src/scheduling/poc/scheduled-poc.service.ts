@@ -23,8 +23,7 @@ export class ScheduledPocService {
 	}
 
 	@Scheduled({ type: POC_TASK_TYPE, instanceTypes: ['main'] })
-	// eslint-disable-next-line @typescript-eslint/require-await -- async by TaskHandler contract
-	async execute(task: ClaimedTask, report: DispatchReporter): Promise<DispatchDecision> {
+	execute(task: ClaimedTask, report: DispatchReporter): DispatchDecision {
 		this.logger.info('POC heartbeat fired', { taskId: task.id, scheduledFor: task.scheduledFor });
 		return report.dispatched();
 	}
