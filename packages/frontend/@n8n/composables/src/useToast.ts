@@ -50,6 +50,22 @@ export function setNotify(fn: NotifyFn): void {
 const noopHandle: NotificationHandle = { close() {} };
 const noopNotify: NotifyFn = () => noopHandle;
 
+let warnedAboutMissingNotify = false;
+
+function resolveNotify(): NotifyFn {
+	if (registeredNotify) return registeredNotify;
+
+	// Falling back means bootstrap never registered. The toast is dropped rather
+	// than shown, so warn once in dev instead of failing silent.
+	if (import.meta.env.DEV && !warnedAboutMissingNotify) {
+		warnedAboutMissingNotify = true;
+		console.warn(
+			'[useToast] No notification function registered; toasts will not render. Call setNotify() at app bootstrap.',
+		);
+	}
+	return noopNotify;
+}
+
 let registeredNotificationState: (() => ToastNotificationState) | undefined;
 
 /**
@@ -97,7 +113,6 @@ function resolveNotificationState(): ToastNotificationState {
 const stickyNotificationQueue: NotificationHandle[] = [];
 
 export function useToast() {
-	const notify = registeredNotify ?? noopNotify;
 	const telemetry = useTelemetry();
 	const route = useRoute();
 	const workflowId = computed(() => {
@@ -105,7 +120,6 @@ export function useToast() {
 		const id = route?.params?.workflowId;
 		return (Array.isArray(id) ? id[0] : id) ?? '';
 	});
-	const notificationState = resolveNotificationState();
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
 
@@ -116,6 +130,12 @@ export function useToast() {
 	}
 
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
+		// Resolved per call, not once per `useToast()`: a composable captured before
+		// bootstrap registers would otherwise stay bound to the no-ops for its whole
+		// lifetime, silently dropping toasts and ignoring suppression.
+		const notify = resolveNotify();
+		const notificationState = resolveNotificationState();
+
 		const suppressed = notificationState.areNotificationsSuppressed;
 		const allowErrors = notificationState.allowErrorNotificationsWhenSuppressed;
 		if (suppressed && !(allowErrors && messageData.type === 'error')) {
@@ -291,6 +311,8 @@ export function useToast() {
 
 	// Pick up and display notifications for the given list of views
 	function showNotificationForViews(views: VIEWS[]) {
+		const notificationState = resolveNotificationState();
+
 		const notifications: NotificationOptions[] = [];
 		views.forEach((view) => {
 			notifications.push(...(notificationState.pendingNotificationsForViews[view] ?? []));

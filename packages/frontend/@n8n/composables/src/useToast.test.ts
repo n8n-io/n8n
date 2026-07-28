@@ -434,4 +434,50 @@ describe('useToast', () => {
 			expect(notificationState.setNotificationsForView).not.toHaveBeenCalled();
 		});
 	});
+
+	// Both dependencies are resolved per call rather than once per `useToast()`.
+	// Probing with a *later registration* is what distinguishes the two: a
+	// once-bound composable captures whatever was registered at creation time and
+	// never sees the update, which is how an early `useToast()` would stay
+	// permanently no-op once bootstrap registration moves (N8N-104).
+	describe('per-call resolution', () => {
+		afterEach(() => {
+			// Restore the module-scope registrations for the rest of the suite.
+			setNotify(ElNotification);
+			registerNotificationState(() => notificationState);
+		});
+
+		it('picks up a notifier registered after the composable was created', () => {
+			const earlyToast = useToast();
+			const lateNotify = vi.fn((_options: Record<string, unknown>) => ({ close: vi.fn() }));
+
+			setNotify(lateNotify);
+			earlyToast.showMessage({ message: 'Late notifier' });
+
+			expect(lateNotify).toHaveBeenCalledTimes(1);
+		});
+
+		it('picks up notification state registered after the composable was created', () => {
+			// The notifier is registered *before* the composable exists, so it is
+			// identical whether resolution is per-call or once-bound. That isolates the
+			// state provider as the only variable — otherwise this passes for the wrong
+			// reason, a once-bound notifier simply never being called either.
+			const notifySpy = vi.fn((_options: Record<string, unknown>) => ({ close: vi.fn() }));
+			setNotify(notifySpy);
+
+			const earlyToast = useToast();
+
+			// A different provider, not a mutation of the existing object — only a
+			// per-call resolve observes the swap.
+			registerNotificationState(() => ({
+				areNotificationsSuppressed: true,
+				allowErrorNotificationsWhenSuppressed: false,
+				pendingNotificationsForViews: {},
+				setNotificationsForView: vi.fn(),
+			}));
+			earlyToast.showMessage({ message: 'Should be suppressed' });
+
+			expect(notifySpy).not.toHaveBeenCalled();
+		});
+	});
 });
