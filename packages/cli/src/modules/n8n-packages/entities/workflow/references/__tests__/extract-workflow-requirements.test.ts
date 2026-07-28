@@ -1,7 +1,7 @@
 import type { WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
-import { WorkflowRequirementsExtractor } from '../workflow-requirements.extractor';
+import { extractWorkflowRequirements } from '../index';
 
 function makeWorkflow(nodes: INode[]): WorkflowEntity {
 	return {
@@ -33,15 +33,13 @@ function executeWorkflowNode(
 	};
 }
 
-describe('WorkflowRequirementsExtractor', () => {
-	const extractor = new WorkflowRequirementsExtractor();
-
+describe('extractWorkflowRequirements', () => {
 	it('extracts static Execute Workflow references', () => {
 		const workflow = makeWorkflow([
 			executeWorkflowNode({ __rl: true, mode: 'list', value: 'wf-child' }),
 		]);
 
-		expect(extractor.extract(workflow)).toEqual([
+		expect(extractWorkflowRequirements(workflow)).toEqual([
 			{ workflowId: 'wf-parent', referencedWorkflowId: 'wf-child' },
 		]);
 	});
@@ -58,7 +56,7 @@ describe('WorkflowRequirementsExtractor', () => {
 			),
 		]);
 
-		expect(extractor.extract(workflow)).toEqual([
+		expect(extractWorkflowRequirements(workflow)).toEqual([
 			{ workflowId: 'wf-parent', referencedWorkflowId: 'wf-child' },
 		]);
 	});
@@ -69,7 +67,7 @@ describe('WorkflowRequirementsExtractor', () => {
 			executeWorkflowNode({ __rl: true, mode: 'list', value: 'wf-child' }, { id: 'node-2' }),
 		]);
 
-		expect(extractor.extract(workflow)).toEqual([
+		expect(extractWorkflowRequirements(workflow)).toEqual([
 			{ workflowId: 'wf-parent', referencedWorkflowId: 'wf-child' },
 		]);
 	});
@@ -77,7 +75,7 @@ describe('WorkflowRequirementsExtractor', () => {
 	it('extracts legacy plain-string Execute Workflow references', () => {
 		const workflow = makeWorkflow([executeWorkflowNode('wf-child')]);
 
-		expect(extractor.extract(workflow)).toEqual([
+		expect(extractWorkflowRequirements(workflow)).toEqual([
 			{ workflowId: 'wf-parent', referencedWorkflowId: 'wf-child' },
 		]);
 	});
@@ -85,22 +83,26 @@ describe('WorkflowRequirementsExtractor', () => {
 	it('extracts error workflow references', () => {
 		const workflow = makeWorkflowWithSettings({ errorWorkflow: 'wf-error-handler' });
 
-		expect(extractor.extract(workflow)).toEqual([
+		expect(extractWorkflowRequirements(workflow)).toEqual([
 			{ workflowId: 'wf-parent', referencedWorkflowId: 'wf-error-handler' },
 		]);
 	});
 
 	it('ignores default and empty error workflow settings', () => {
-		expect(extractor.extract(makeWorkflowWithSettings({ errorWorkflow: 'DEFAULT' }))).toEqual([]);
-		expect(extractor.extract(makeWorkflowWithSettings({ errorWorkflow: '' }))).toEqual([]);
-		expect(extractor.extract(makeWorkflowWithSettings({}))).toEqual([]);
+		expect(
+			extractWorkflowRequirements(makeWorkflowWithSettings({ errorWorkflow: 'DEFAULT' })),
+		).toEqual([]);
+		expect(extractWorkflowRequirements(makeWorkflowWithSettings({ errorWorkflow: '' }))).toEqual(
+			[],
+		);
+		expect(extractWorkflowRequirements(makeWorkflowWithSettings({}))).toEqual([]);
 	});
 
 	it('ignores expression-based error workflow settings', () => {
-		// An expression resolves at runtime (often via a variable) so it is not a
-		// concrete workflow dependency; the variable extractor owns that case.
+		// An expression resolves at runtime (often via a variable) so it is not a concrete
+		// workflow dependency; the variable extractor owns that case.
 		expect(
-			extractor.extract(
+			extractWorkflowRequirements(
 				makeWorkflowWithSettings({ errorWorkflow: '={{ $vars.ERROR_WORKFLOW_ID }}' }),
 			),
 		).toEqual([]);
@@ -114,7 +116,7 @@ describe('WorkflowRequirementsExtractor', () => {
 			settings: { errorWorkflow: 'wf-child' },
 		} as WorkflowEntity;
 
-		expect(extractor.extract(workflow)).toEqual([
+		expect(extractWorkflowRequirements(workflow)).toEqual([
 			{ workflowId: 'wf-parent', referencedWorkflowId: 'wf-child' },
 		]);
 	});
@@ -122,7 +124,7 @@ describe('WorkflowRequirementsExtractor', () => {
 	it('ignores dynamic workflow selectors', () => {
 		const workflow = makeWorkflow([executeWorkflowNode('={{ $json.workflowId }}')]);
 
-		expect(extractor.extract(workflow)).toEqual([]);
+		expect(extractWorkflowRequirements(workflow)).toEqual([]);
 	});
 
 	it('ignores a resource-locator in expression mode', () => {
@@ -130,7 +132,7 @@ describe('WorkflowRequirementsExtractor', () => {
 			executeWorkflowNode({ __rl: true, mode: 'id', value: '={{ $json.workflowId }}' }),
 		]);
 
-		expect(extractor.extract(workflow)).toEqual([]);
+		expect(extractWorkflowRequirements(workflow)).toEqual([]);
 	});
 
 	it('ignores non Execute Workflow nodes', () => {
@@ -141,6 +143,6 @@ describe('WorkflowRequirementsExtractor', () => {
 			),
 		]);
 
-		expect(extractor.extract(workflow)).toEqual([]);
+		expect(extractWorkflowRequirements(workflow)).toEqual([]);
 	});
 });
