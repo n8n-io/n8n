@@ -16,6 +16,7 @@ packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPub
   h_9c8f56e3400786 53,87
   s_b3f23ab76a494c::t_77508911ec9f79 685
   s_b3f23ab76a494c::t_db71fb05e80031 702
+  s_b34abcbd386402::t_f65d763798858f 88
 packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequiredToggle.test.ts
   s_b3f23ab76a494c::t_12d480d8764f49 3-4,11-19,22-23,38,49,52-54,56,90,92
   s_b3f23ab76a494c::t_54c3edd2d2746f 29,31,39-41
@@ -93,6 +94,10 @@ docs/generated/sqlite-schema/user.md
   s_44a98ba2784a12::t_c7a37a3d8a1ed7 236
 packages/@n8n/db/src/migrations/common/1784000000047-BackfillPreScopingOAuthGrantScopes.ts
   s_44a98ba2784a12::t_2b023adf499a11 1-100
+packages/cli/src/modules/agents/builder/skills/mcp.skill.ts
+  s_770a4f5233186c::t_8ad2b3903b74bc 98
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_770a4f5233186c::t_a7cff99b8f3cd2 143
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -105,9 +110,28 @@ packages/@n8n/db/src/migrations/common/1784000000047-BackfillPreScopingOAuthGran
     },
     "h_9c8f56e3400786": {
       "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
     }
   },
   "sessions": {
+    "s_1ef72897374beb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1e495e5d-7657-49d3-9e14-471f81cd06f2",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_2a235a6e9347be": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6650-1132-7ff1-ab94-090605cfc9f7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
     "s_44a98ba2784a12": {
       "agent_id": {
         "tool": "cursor",
@@ -116,11 +140,115 @@ packages/@n8n/db/src/migrations/common/1784000000047-BackfillPreScopingOAuthGran
       },
       "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
     },
+    "s_60c9025b151770": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53a03a0f-53be-4095-a000-6d094159abd5",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_63922c16247082": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6b337778-08d5-4266-bf43-54422800dd01",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_6638f09b589e97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5e3f01e-f690-4590-9a30-a5e2bd26c393",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_70e4a16a672757": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f79e6-9f5d-7b91-b07b-a2c76974c292",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_770a4f5233186c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "af98002c-f09b-4489-8374-ebc72894c73f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_813e262a61f3c4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2b40806b-1b79-457f-8546-5d2b9b1d3ad1",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_9006126844c8d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5b699ae-12d0-405b-9a78-fb4840686602",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_91f67565918eee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36f4874d-45bc-43d2-bd2d-9c16d23d9c95",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_94fa4ed7d7b038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d271a69-d48a-40c6-b6a3-5630b148db23",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_b34abcbd386402": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dc6fdb7-ff5f-45a8-98bf-0345038d38d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
     "s_b3f23ab76a494c": {
       "agent_id": {
         "tool": "codex",
         "id": "019f6fd0-bfb4-7092-a515-f61e09438476",
         "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    },
+    "s_b6381fbb8ddc64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7dd02182-97ab-4180-9c8a-8d5054fdd2f7",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_d8236b8b5400e8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "500e2669-64fc-46e2-9484-cf22ebf66e89",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_e0d6b46d5a1cd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9bef762-10a3-4006-8b74-acefd3594aab",
+        "model": "claude-fable-5"
       },
       "human_author": null
     }

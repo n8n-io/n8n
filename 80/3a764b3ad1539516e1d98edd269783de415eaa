@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_c345592441274b::t_cf52ab205a7bb4 22-23
+  s_c345592441274b::t_fb769c84748d7c 21
+  s_c345592441274b::t_0d374660cc9ed8 20,24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "803a764b3ad1539516e1d98edd269783de415eaa",
+  "prompts": {},
+  "sessions": {
+    "s_c345592441274b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "44d4b7e1-ff47-45f4-90e1-e74bbf6568a4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}
