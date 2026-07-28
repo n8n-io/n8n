@@ -27,18 +27,31 @@ export function parsePinDataResponse(responseText: string, expectedNodes: string
 		// Keep empty arrays — a valid "no stored data" pin; dropping one falls back to real execution.
 		if (!Array.isArray(nodeData)) continue;
 
-		pinData[nodeName] = nodeData.map((item: unknown) => {
-			// The execution engine expects { json: IDataObject } format.
-			// The LLM may return items with or without the json wrapper.
-			if (typeof item === 'object' && item !== null && 'json' in item) {
-				return item as Record<string, unknown>;
-			}
-			// Wrap raw objects in { json: ... } for the execution engine
-			return { json: item ?? {} };
-		});
+		pinData[nodeName] = nodeData
+			.map((item: unknown) => {
+				// The execution engine expects { json: IDataObject } format.
+				// The LLM may return items with or without the json wrapper.
+				if (typeof item === 'object' && item !== null && 'json' in item) {
+					return item as Record<string, unknown>;
+				}
+				// Wrap raw objects in { json: ... } for the execution engine
+				return { json: item ?? {} };
+			})
+			// A fieldless item is never a meaningful fixture — it's the model's way
+			// of saying "no data" while obeying "generate items" (a zero-item premise
+			// must pin as [], not [{}]: the phantom item corrupts downstream nodes).
+			.filter((item) => !isEmptyFixtureItem(item));
 	}
 
 	return pinData;
+}
+
+/** True for `{}` / `{ json: {} }` items with no other payload (e.g. binary). */
+function isEmptyFixtureItem(item: Record<string, unknown>): boolean {
+	const json = item.json;
+	if (typeof json !== 'object' || json === null) return false;
+	if (Object.keys(json).length > 0) return false;
+	return !Object.keys(item).some((key) => key !== 'json' && key !== 'pairedItem');
 }
 
 /** Parse a string as a JSON object/array; undefined when it isn't one. */

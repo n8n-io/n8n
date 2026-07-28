@@ -157,8 +157,9 @@ function stableInt(seed: string, label: string, min: number, max: number): numbe
 /**
  * Build a 6-field cron for a poll time. Generated cadences get a node-seeded
  * (not random) seconds field so the job identity is stable; a custom cron is
- * used as-is, widened from 5 to 6 fields when it omits seconds (the legacy cron
- * lib accepted 5-field, but the durable scheduler's validator requires 6).
+ * used as-is, widened from 5 to 6 fields when it omits seconds. The scheduler
+ * accepts 5-field crons directly, but normalizing to 6 keeps every stored
+ * expression one shape, so the job's fingerprint identity stays stable.
  */
 function seededCron(item: TriggerTime, seed: string): CronExpression {
 	if (item.mode === 'custom') {

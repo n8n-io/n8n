@@ -303,19 +303,18 @@ export class EvalExecutionService {
 
 			const normalized = normalizePinData(result as unknown as IPinData);
 
-			// generatePinData swallows internal failures (LLM timeout, parse error)
-			// and returns {} or a partial map instead of throwing, so the catch
-			// fallback below never fires for those. An unpinned bypass node
-			// EXECUTES for real — for AI roots the vendor SDK then makes real
-			// network calls (observed in CI: un-mocked Anthropic request →
-			// "Authorization failed"). Guarantee every bypass node is pinned,
-			// even if only with an empty item.
+			// A MISSING bypass entry would let the node execute for real — for AI
+			// roots the vendor SDK then makes real network calls (observed in CI:
+			// un-mocked Anthropic request → "Authorization failed"). An EMPTY array
+			// is different: the execution engine honors it as "pinned, zero items"
+			// (presence check, not length), and zero-item scenario premises depend
+			// on it — never replace [] with a phantom item (TRUST-343).
 			for (const nodeName of bypassNodeNames) {
-				if (!normalized[nodeName] || normalized[nodeName].length === 0) {
+				if (!normalized[nodeName]) {
 					this.logger.warn(
-						`[EvalMock] Phase 1.5 produced no pin data for bypass node "${nodeName}" — pinning an empty item to prevent real execution`,
+						`[EvalMock] Phase 1.5 produced no pin data for bypass node "${nodeName}" — pinning empty to prevent real execution`,
 					);
-					normalized[nodeName] = [{ json: {} }];
+					normalized[nodeName] = [];
 				}
 			}
 

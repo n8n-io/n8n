@@ -48,6 +48,8 @@ export interface ThreadDetail {
 
 export interface ThreadListItem extends Omit<AgentExecutionThread, 'generateId' | 'setUpdateDate'> {
 	firstMessage: string | null;
+	/** Earliest non-null execution source for the thread (e.g. slack, telegram). */
+	source: string | null;
 }
 
 @Service()
@@ -307,7 +309,8 @@ export class AgentExecutionService {
 
 	/**
 	 * Get paginated execution threads for an agent.
-	 * Each thread is annotated with the first non-empty user message for preview.
+	 * Each thread is annotated with the first non-empty user message for preview
+	 * and the earliest non-null execution source for channel origin.
 	 */
 	async getThreads(
 		projectId: string,
@@ -326,15 +329,18 @@ export class AgentExecutionService {
 			return { threads: [], nextCursor: page.nextCursor };
 		}
 
-		const messageMap = await this.agentExecutionRepository.findFirstUserMessageByThreadIds(
-			page.threads.map((t) => t.id),
-		);
+		const threadIds = page.threads.map((t) => t.id);
+		const [messageMap, sourceMap] = await Promise.all([
+			this.agentExecutionRepository.findFirstUserMessageByThreadIds(threadIds),
+			this.agentExecutionRepository.findFirstSourceByThreadIds(threadIds),
+		]);
 
 		return {
 			...page,
 			threads: page.threads.map((t) => ({
 				...t,
 				firstMessage: messageMap.get(t.id) ?? null,
+				source: sourceMap.get(t.id) ?? null,
 			})),
 		};
 	}

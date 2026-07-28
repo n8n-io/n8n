@@ -46,6 +46,27 @@ function makeSseResponse(events: AgentSseEvent[]): Response {
 	});
 }
 
+function makeInterruptedSseResponse(events: AgentSseEvent[]): Response {
+	const encoder = new TextEncoder();
+	let eventsSent = false;
+	const stream = new ReadableStream<Uint8Array>({
+		pull(controller) {
+			if (!eventsSent) {
+				eventsSent = true;
+				controller.enqueue(
+					encoder.encode(events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join('')),
+				);
+				return;
+			}
+			controller.error(new Error('connection lost'));
+		},
+	});
+	return new Response(stream, {
+		status: 200,
+		headers: { 'Content-Type': 'text/event-stream' },
+	});
+}
+
 function buildHook(continueSessionId?: string) {
 	return useAgentChatStream({
 		projectId: ref('p1'),
@@ -111,6 +132,40 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			toolName: 'calculator',
 			args: { input: '2 + 2' },
 		});
+	});
+
+	it('treats a suspension as a valid ending when the stream closes without done', async () => {
+		const events: AgentSseEvent[] = [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-approval',
+				toolName: 'calculator',
+				input: { input: '2 + 2' },
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-approval',
+					runId: 'run-approval',
+					toolName: 'calculator',
+					input: {
+						type: 'approval',
+						toolName: 'calculator',
+						args: { input: '2 + 2' },
+					},
+				},
+			},
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('calculate 2 + 2');
+		await nextTick();
+
+		const assistantMessages = hook.messages.value.filter((message) => message.role === 'assistant');
+		expect(assistantMessages).toHaveLength(1);
+		expect(assistantMessages[0].status).toBe('awaitingUser');
+		expect(assistantMessages[0].toolCalls?.[0].state).toBe('suspended');
 	});
 
 	it('posts approval resumes to the chat resume endpoint in preview chat mode', async () => {
@@ -191,6 +246,92 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		await nextTick();
 
 		expect(hook.isStreaming.value).toBe(false);
+	});
+
+	it('marks active messages and tool calls as failed when the stream closes prematurely', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-1',
+				toolName: 'lookup',
+				input: { query: 'n8n' },
+			},
+			{ type: 'finish-step' },
+			{
+				type: 'tool-execution-start',
+				toolCallId: 'tc-1',
+				toolName: 'lookup',
+				startTime: 1_000,
+			},
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('look this up');
+		await nextTick();
+
+		const assistantMessages = hook.messages.value.filter((message) => message.role === 'assistant');
+		expect(assistantMessages).toHaveLength(2);
+		expect(assistantMessages[0].status).toBe('error');
+		expect(assistantMessages[0].toolCalls?.[0].state).toBe('error');
+		expect(assistantMessages[1]).toMatchObject({
+			content: 'agents.chat.streamInterrupted',
+			status: 'error',
+		});
+		expect(hook.isStreaming.value).toBe(false);
+	});
+
+	it('marks active messages and tool calls as failed when reading the stream throws', async () => {
+		const events: AgentSseEvent[] = [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-1',
+				toolName: 'lookup',
+				input: { query: 'n8n' },
+			},
+			{
+				type: 'tool-execution-start',
+				toolCallId: 'tc-1',
+				toolName: 'lookup',
+				startTime: 1_000,
+			},
+		];
+		globalThis.fetch = vi.fn(async () => makeInterruptedSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('look this up');
+		await nextTick();
+
+		const assistantMessages = hook.messages.value.filter((message) => message.role === 'assistant');
+		expect(assistantMessages).toHaveLength(2);
+		expect(assistantMessages[0].status).toBe('error');
+		expect(assistantMessages[0].toolCalls?.[0].state).toBe('error');
+		expect(assistantMessages[1]).toMatchObject({
+			content: 'agents.chat.streamInterrupted',
+			status: 'error',
+		});
+		expect(hook.isStreaming.value).toBe(false);
+	});
+
+	it('preserves partial reasoning when the stream closes prematurely', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'reasoning-start', id: 'r-1' },
+			{ type: 'reasoning-delta', id: 'r-1', delta: 'Checking the workflow' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('inspect this');
+		await nextTick();
+
+		const assistantMessages = hook.messages.value.filter((message) => message.role === 'assistant');
+		expect(assistantMessages).toHaveLength(2);
+		expect(assistantMessages[0]).toMatchObject({
+			thinking: 'Checking the workflow',
+			status: 'error',
+		});
+		expect(assistantMessages[1].content).toBe('agents.chat.streamInterrupted');
 	});
 
 	it('opens a fresh ChatMessage after finish-step / start-step iteration boundary', async () => {
@@ -305,6 +446,67 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(errMsg.content).toBe('Tool execution failed');
 	});
 
+	it('collects non-fatal warning events without aborting the run', async () => {
+		const events: AgentSseEvent[] = [
+			{
+				type: 'warning',
+				message: 'fetch failed',
+				code: 'mcp_connection_failed',
+				source: 'mcp',
+				server: 'dead',
+			},
+			{ type: 'text-delta', id: 't-1', delta: 'hello' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await nextTick();
+
+		expect(hook.warnings.value).toEqual([
+			{ message: 'fetch failed', code: 'mcp_connection_failed', server: 'dead' },
+		]);
+		// The run still produced its assistant text — warnings are non-fatal.
+		expect(hook.messages.value[1].content).toBe('hello');
+	});
+
+	it('clears prior warnings on the next send', async () => {
+		const withWarning: AgentSseEvent[] = [
+			{ type: 'warning', message: 'boom', source: 'mcp', server: 'dead' },
+			{ type: 'done' },
+		];
+		const withoutWarning: AgentSseEvent[] = [{ type: 'done' }];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(withWarning)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await nextTick();
+		expect(hook.warnings.value).toHaveLength(1);
+
+		globalThis.fetch = vi.fn(async () => makeSseResponse(withoutWarning)) as typeof fetch;
+		await hook.sendMessage('run again');
+		await nextTick();
+		expect(hook.warnings.value).toHaveLength(0);
+	});
+
+	it('dismissWarning removes a single warning by index', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'warning', message: 'a', source: 'mcp', server: 's1' },
+			{ type: 'warning', message: 'b', source: 'mcp', server: 's2' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await nextTick();
+		expect(hook.warnings.value).toHaveLength(2);
+
+		hook.dismissWarning(0);
+		expect(hook.warnings.value.map((w) => w.server)).toEqual(['s2']);
+	});
+
 	it('sets fatalError (not a message bubble) for agent_misconfigured errors', async () => {
 		const events: AgentSseEvent[] = [
 			{
@@ -385,6 +587,29 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistantMsgs).toHaveLength(2);
 		expect(assistantMsgs[0].toolCalls).toHaveLength(1);
 		expect(assistantMsgs[1].status).toBe('error');
+	});
+
+	it('marks in-flight messages and tool calls as failed when an error event arrives', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', input: {} },
+			{
+				type: 'tool-execution-start',
+				toolCallId: 'tc-1',
+				toolName: 'lookup',
+				startTime: 1_000,
+			},
+			{ type: 'error', message: 'Tool failed', errorCode: 'runtime_error' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('search');
+		await nextTick();
+
+		const assistantMsgs = hook.messages.value.filter((message) => message.role === 'assistant');
+		expect(assistantMsgs[0].status).toBe('error');
+		expect(assistantMsgs[0].toolCalls?.[0].state).toBe('error');
+		expect(assistantMsgs[1]).toMatchObject({ content: 'Tool failed', status: 'error' });
 	});
 
 	it('flips a ToolCall from pending → running on tool-execution-start, then to done on tool-result', async () => {
