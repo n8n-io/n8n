@@ -5,15 +5,7 @@ import type { Controller } from './types';
 
 /**
  * Declares an additional non-2xx status code a route can return, beyond the ones already inferred
- * from other decorators (401 always, 403 from `@ApiKeyScope`, 400 from a `@Body`/`@Query` DTO).
- * Stack multiple `@ApiErrorResponse` calls to declare more than one.
- *
- * @example
- * ```ts
- * @Get('/:id')
- * @ApiErrorResponse(404)
- * async getWidget() { ... }
- * ```
+ * from other decorators. Stack multiple `@ApiErrorResponse` calls to declare more than one.
  */
 export const ApiErrorResponse =
 	(status: number): MethodDecorator =>
