@@ -642,11 +642,20 @@ export const createUpdateWorkflowTool = (
 			// op earlier in the batch can still be joined by a connection added later),
 			// so they're validated once here instead of per-operation. A violation
 			// drops only that group and is reported, rather than aborting the update.
+			//
+			// This must run whenever the final workflow has ANY groups — not just when
+			// this batch's operations directly touched them. A non-group op (e.g.
+			// removeConnection) can still invalidate an untouched, pre-existing group by
+			// disconnecting it; validateWorkflowGroups is cheap and a no-op when there
+			// are no groups, so checking unconditionally is safe and mirrors the broader
+			// `saveNewVersion` condition WorkflowService.update itself uses to decide
+			// whether to re-validate groups.
 			const skippedOperations: Array<{ opIndex?: number; type: string; reason: string }> = [
 				...result.skippedOperations,
 			];
+			let nodeGroupsNeedPersisting = result.nodeGroupsChanged;
 
-			if (options.canvasGroupsEnabled && result.nodeGroupsChanged) {
+			if (options.canvasGroupsEnabled && result.workflow.nodeGroups?.length) {
 				const groupValidation = validateWorkflowGroups({
 					nodes: result.workflow.nodes,
 					connectionsBySourceNode: result.workflow.connections,
@@ -656,9 +665,14 @@ export const createUpdateWorkflowTool = (
 
 				if (!groupValidation.valid) {
 					const invalidGroupIds = new Set(groupValidation.violations.map((v) => v.groupId));
-					result.workflow.nodeGroups = (result.workflow.nodeGroups ?? []).filter(
+					result.workflow.nodeGroups = result.workflow.nodeGroups.filter(
 						(group) => !invalidGroupIds.has(group.id),
 					);
+					// A violation found here always changes what must be persisted, even if
+					// no group op ran this batch — otherwise the omitted `nodeGroups` key
+					// falls back to preserve-on-omit and the still-invalid stored groups get
+					// re-validated (and rejected) by WorkflowService.update right after.
+					nodeGroupsNeedPersisting = true;
 
 					for (const violation of groupValidation.violations) {
 						const opType = result.groupOperationTypes[violation.groupId] ?? 'setNodeGroups';
@@ -801,10 +815,11 @@ export const createUpdateWorkflowTool = (
 				// Only attach settings when a settings op ran, so node-only edits
 				// don't re-save (and re-clean) the existing settings object.
 				...(hasSettingsOperations ? { settings: result.workflow.settings } : {}),
-				// Only persist nodeGroups when the batch touched them (a group op ran
-				// or removing a node pruned a group); otherwise omit the key so
+				// Only persist nodeGroups when they actually need to change (a group op
+				// ran, removing a node pruned a group, or the structural check above
+				// dropped a group some other op invalidated); otherwise omit the key so
 				// WorkflowService preserves the existing groups (preserve-on-omit).
-				...(result.nodeGroupsChanged ? { nodeGroups: result.workflow.nodeGroups } : {}),
+				...(nodeGroupsNeedPersisting ? { nodeGroups: result.workflow.nodeGroups } : {}),
 				meta: hasNonTagOperations
 					? {
 							...(existingWorkflow.meta ?? {}),

@@ -555,6 +555,32 @@ describe('update-workflow MCP tool', () => {
 				const response = parseResult(result);
 				expect(response.error).toContain('cannot contain trigger nodes');
 			});
+
+			test('a non-group operation that disconnects an existing group is not pre-checked either', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing',
+						settings: { availableInMCP: true },
+						nodes: [makeNode({ id: 'a', name: 'A' }), makeNode({ id: 'b', name: 'B' })],
+						connections: {
+							A: { main: [[{ node: 'B', type: 'main', index: 0 }]] },
+						} as IConnections,
+						nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }],
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'removeConnection', source: 'A', target: 'B' }],
+				});
+
+				expect(result.isError).toBeUndefined();
+				// nodeGroups isn't touched or re-checked with the flag off — omitted from
+				// the persisted payload exactly as before this fix (preserve-on-omit).
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				expect('nodeGroups' in saved).toBe(false);
+			});
 		});
 
 		describe('canvasGroupsEnabled on', () => {
@@ -590,6 +616,49 @@ describe('update-workflow MCP tool', () => {
 					expect.arrayContaining([
 						expect.objectContaining({
 							reason: expect.stringContaining('cannot contain trigger nodes') as string,
+						}),
+					]),
+				);
+			});
+
+			test('a non-group operation that disconnects an existing group is caught: the group is dropped and reported, the rest of the update still saves', async () => {
+				// codeconv P1: a removeConnection never touches nodeGroups directly, so
+				// nodeGroupsChanged alone would miss this — the structural check must
+				// run whenever the workflow HAS groups, not only when a group op ran.
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing',
+						settings: { availableInMCP: true },
+						nodes: [makeNode({ id: 'a', name: 'A' }), makeNode({ id: 'b', name: 'B' })],
+						connections: {
+							A: { main: [[{ node: 'B', type: 'main', index: 0 }]] },
+						} as IConnections,
+						nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }],
+					}),
+				);
+
+				const result = await callHandler(
+					{
+						workflowId: 'wf-1',
+						operations: [{ type: 'removeConnection', source: 'A', target: 'B' }],
+					},
+					createOnTool(),
+				);
+
+				expect(result.isError).toBeUndefined();
+
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				// The connection removal itself still applied...
+				expect(saved.connections.A?.main?.[0] ?? []).toEqual([]);
+				// ...and the now-disconnected group was dropped, not silently re-sent as-is.
+				expect(saved.nodeGroups).toEqual([]);
+
+				const response = parseResult(result);
+				expect(response.skippedOperations).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({
+							reason: expect.stringContaining('single connected subgraph') as string,
 						}),
 					]),
 				);
