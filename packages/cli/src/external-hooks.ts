@@ -68,6 +68,7 @@ type ExternalHooksMap = {
 	'user.password.update': [updatedEmail: string, updatedPassword: string | null];
 	'user.invited': [emails: string[]];
 
+<<<<<<< HEAD
 	'workflow.create': [createdWorkflow: IWorkflowBase];
 	'workflow.afterCreate': [createdWorkflow: IWorkflowBase];
 	'workflow.activate': [updatedWorkflow: IWorkflowBase];
@@ -77,6 +78,43 @@ type ExternalHooksMap = {
 	'workflow.afterDelete': [workflowId: string];
 	'workflow.afterArchive': [workflowId: string];
 	'workflow.afterUnarchive': [workflowId: string];
+=======
+	'workflow.create': [
+		createdWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+		actor?: WorkflowLifecycleHookActor,
+	];
+	'workflow.afterCreate': [
+		createdWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+		actor?: WorkflowLifecycleHookActor,
+	];
+	'workflow.activate': [
+		updatedWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+		actor?: WorkflowLifecycleHookActor,
+	];
+	'workflow.deactivate': [
+		/** Pre-deactivation state (`active` is still `true`), carrying the version about to be deactivated. */
+		deactivatedWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+		actor?: WorkflowLifecycleHookActor,
+	];
+	'workflow.update': [
+		updatedWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+		actor?: WorkflowLifecycleHookActor,
+	];
+	'workflow.afterUpdate': [
+		updatedWorkflow: IWorkflowBase,
+		workflowContext: WorkflowHookContextService,
+		actor?: WorkflowLifecycleHookActor,
+	];
+	'workflow.delete': [workflowId: string, actor?: WorkflowLifecycleHookActor];
+	'workflow.afterDelete': [workflowId: string, actor?: WorkflowLifecycleHookActor];
+	'workflow.afterArchive': [workflowId: string, actor?: WorkflowLifecycleHookActor];
+	'workflow.afterUnarchive': [workflowId: string, actor?: WorkflowLifecycleHookActor];
+>>>>>>> 5a59466e (feat(core): Expose workflow hook context to lifecycle external hooks (#34738))
 
 	'workflow.preExecute': [
 		workflow: Workflow,
@@ -87,6 +125,7 @@ type ExternalHooksMap = {
 		fullRunData: IRun | undefined,
 		workflowData: IWorkflowBase,
 		executionId: string,
+		workflowContext: WorkflowHookContextService,
 	];
 };
 type HookNames = keyof ExternalHooksMap;

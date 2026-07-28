@@ -31,6 +31,7 @@ import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 import { dropRedactionPolicy } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -59,6 +60,7 @@ export class WorkflowCreationService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
+		private readonly workflowHookContextService: WorkflowHookContextService,
 	) {}
 
 	async createWorkflow(
@@ -172,7 +174,15 @@ export class WorkflowCreationService {
 		}
 
 		// Run external hook after all validation has passed, right before persisting
+<<<<<<< HEAD
 		await this.externalHooks.run('workflow.create', [newWorkflow]);
+=======
+		await this.externalHooks.run('workflow.create', [
+			newWorkflow,
+			this.workflowHookContextService,
+			toWorkflowLifecycleHookActor(user),
+		]);
+>>>>>>> 5a59466e (feat(core): Expose workflow hook context to lifecycle external hooks (#34738))
 
 		const floor = await this.readActiveRedactionFloor();
 
@@ -256,7 +266,15 @@ export class WorkflowCreationService {
 			});
 		}
 
+<<<<<<< HEAD
 		await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
+=======
+		await this.externalHooks.run('workflow.afterCreate', [
+			savedWorkflow,
+			this.workflowHookContextService,
+			toWorkflowLifecycleHookActor(user),
+		]);
+>>>>>>> 5a59466e (feat(core): Expose workflow hook context to lifecycle external hooks (#34738))
 		this.eventService.emit('workflow-created', {
 			user,
 			workflow: newWorkflow,
