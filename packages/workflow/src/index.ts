@@ -53,7 +53,6 @@ export {
 	jsonStringify,
 	replaceCircularReferences,
 	sleep,
-	sleepWithAbort,
 	fileTypeFromMimeType,
 	assert,
 	removeCircularRefs,

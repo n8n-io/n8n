@@ -4,8 +4,8 @@ import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { sleep } from '@n8n/utils/sleep';
 import {
-	sleep,
 	UnexpectedError,
 	UserError,
 	type IRun,
