@@ -4,6 +4,8 @@ import { useI18n } from '@n8n/i18n';
 import type { ApiKeyOwner } from '@n8n/api-types';
 import { N8nAvatar, N8nText } from '@n8n/design-system';
 
+import { getApiKeyOwnerDisplayName } from '../apiKeys.utils';
+
 const props = defineProps<{
 	owner: ApiKeyOwner;
 	isCurrentUser?: boolean;
@@ -11,10 +13,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
-const displayName = computed(() => {
-	const name = [props.owner.firstName, props.owner.lastName].filter(Boolean).join(' ').trim();
-	return name || props.owner.email || '';
-});
+const displayName = computed(() => getApiKeyOwnerDisplayName(props.owner));
 </script>
 
 <template>

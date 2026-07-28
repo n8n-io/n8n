@@ -487,7 +487,6 @@ function onOpenScopes(apiKey: ApiKey) {
 .toolbar {
 	display: flex;
 	align-items: flex-end;
-	justify-content: space-between;
 	gap: var(--spacing--sm);
 	margin-bottom: var(--spacing--sm);
 }

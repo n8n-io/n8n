@@ -5,6 +5,8 @@ import { useI18n } from '@n8n/i18n';
 import type { IUser } from '@n8n/design-system';
 import { N8nAvatar, N8nCheckbox, N8nIcon, N8nPopover, N8nTag, N8nText } from '@n8n/design-system';
 
+import { getApiKeyOwnerDisplayName } from '../apiKeys.utils';
+
 interface ApiKeyOwnerFilterProps {
 	/** Selected owner ids. Empty means "all" (no narrowing). */
 	modelValue?: string[];
@@ -45,10 +47,7 @@ const someSelected = computed(
 // trigger and summary (and reverts to all when the panel closes).
 const effectiveAll = computed(() => allSelected.value || props.modelValue.length === 0);
 
-const displayName = (user: IUser) => {
-	const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
-	return name || user.email || '';
-};
+const displayName = (user: IUser) => getApiKeyOwnerDisplayName(user);
 
 const filteredUsers = computed(() => {
 	const needle = filter.value.trim().toLowerCase();
@@ -162,9 +161,7 @@ watch(open, (isOpen, wasOpen) => {
 					<!-- Same tag component the tabs use for their counts. -->
 					<N8nTag :text="String(pillCount)" :clickable="false" :class="$style.triggerTag" />
 				</span>
-				<span :class="$style.triggerRight">
-					<N8nIcon icon="chevron-down" :class="$style.chevron" />
-				</span>
+				<N8nIcon icon="chevron-down" :class="$style.chevron" />
 			</button>
 		</template>
 
@@ -271,7 +268,7 @@ watch(open, (isOpen, wasOpen) => {
 </template>
 
 <style lang="scss" module>
-// A subtle coral wash for selected rows / the count pill. Mixed into whatever
+// A subtle coral wash for selected rows. Mixed into whatever
 // surface sits behind it, so it stays light on the light panel and becomes a
 // muted dark coral on the dark panel — unlike --color--primary--tint-3, which
 // the design system never re-themes for dark mode. Declared on both .trigger
@@ -335,14 +332,8 @@ watch(open, (isOpen, wasOpen) => {
 	flex-shrink: 0;
 }
 
-.triggerRight {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	flex-shrink: 0;
-}
-
 .chevron {
+	flex-shrink: 0;
 	color: var(--color--text--tint-2);
 	font-size: var(--font-size--sm);
 }

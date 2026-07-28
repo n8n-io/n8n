@@ -3,6 +3,7 @@ import ApiKeyScopes from './ApiKeyScopes.vue';
 import RevokeApiKeyConfirmModal from './RevokeApiKeyConfirmModal.vue';
 import Modal from '@/app/components/Modal.vue';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
+import { isApiKeyExpired } from '../apiKeys.utils';
 import { computed, onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -37,6 +38,8 @@ const EXPIRATION_OPTIONS = {
 	CUSTOM: 1,
 	NO_EXPIRATION: 0,
 };
+
+const API_KEY_DATE_FORMAT = 'ccc, MMM d yyyy';
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -88,7 +91,7 @@ const getExpirationOptionLabel = (value: number) => {
 };
 
 const expirationDate = ref(
-	calculateExpirationDate(expirationDaysFromNow.value).toFormat('ccc, MMM d yyyy'),
+	calculateExpirationDate(expirationDaysFromNow.value).toFormat(API_KEY_DATE_FORMAT),
 );
 
 const inputRef = ref<HTMLTextAreaElement | null>(null);
@@ -130,18 +133,22 @@ const isReadOnly = computed(() => {
 	return apiKey.owner.id !== currentUser.value.id;
 });
 
+// Copy for "expires on X" / "expired on X" / "never expires", shared by the
+// create-form hint and the read-only edit view so the two can't drift.
+const expirationCopy = (expirationDate: string, expired = false) =>
+	i18n.baseText(
+		expired
+			? 'settings.api.view.modal.form.expirationText.expired'
+			: 'settings.api.view.modal.form.expirationText',
+		{ interpolate: { expirationDate } },
+	);
+const neverExpiresCopy = i18n.baseText('settings.api.view.modal.form.expirationText.never');
+
 // Helper copy under the expiration select. Always present so "Never" explains
 // itself (the key stays active until revoked) instead of silently clearing.
 const expirationHint = computed(() => {
-	if (expirationDaysFromNow.value === EXPIRATION_OPTIONS.NO_EXPIRATION) {
-		return i18n.baseText('settings.api.view.modal.form.expirationText.never');
-	}
-	if (expirationDate.value) {
-		return i18n.baseText('settings.api.view.modal.form.expirationText', {
-			interpolate: { expirationDate: expirationDate.value },
-		});
-	}
-	return '';
+	if (expirationDaysFromNow.value === EXPIRATION_OPTIONS.NO_EXPIRATION) return neverExpiresCopy;
+	return expirationDate.value ? expirationCopy(expirationDate.value) : '';
 });
 
 // Expiration can't be changed after creation, so edit/view modes surface it as
@@ -149,16 +156,10 @@ const expirationHint = computed(() => {
 const editExpirationText = computed(() => {
 	const apiKey = currentApiKey.value;
 	if (!apiKey) return '';
-	if (!apiKey.expiresAt) {
-		return i18n.baseText('settings.api.view.modal.form.expirationText.never');
-	}
-	const date = DateTime.fromSeconds(apiKey.expiresAt).toFormat('ccc, MMM d yyyy');
-	const isExpired = apiKey.expiresAt <= Math.floor(Date.now() / 1000);
-	return i18n.baseText(
-		isExpired
-			? 'settings.api.view.modal.form.expirationText.expired'
-			: 'settings.api.view.modal.form.expirationText',
-		{ interpolate: { expirationDate: date } },
+	if (!apiKey.expiresAt) return neverExpiresCopy;
+	return expirationCopy(
+		DateTime.fromSeconds(apiKey.expiresAt).toFormat(API_KEY_DATE_FORMAT),
+		isApiKeyExpired(apiKey),
 	);
 });
 
@@ -196,7 +197,7 @@ function onScopeSelectionChanged(scopes: ApiKeyScope[]) {
 }
 
 const getApiKeyCreationTime = (apiKey: ApiKey): string => {
-	const time = DateTime.fromMillis(Date.parse(apiKey.createdAt)).toFormat('ccc, MMM d yyyy');
+	const time = DateTime.fromMillis(Date.parse(apiKey.createdAt)).toFormat(API_KEY_DATE_FORMAT);
 	return i18n.baseText('settings.api.creationTime', { interpolate: { time } });
 };
 
@@ -257,23 +258,13 @@ const onSave = async () => {
 
 const API_KEY_VISIBLE_CHARS_PER_SIDE = 30;
 
-const isApiKeyTruncated = computed(
-	() => rawApiKey.value.length > API_KEY_VISIBLE_CHARS_PER_SIDE * 2,
-);
-const apiKeyStart = computed(() =>
-	isApiKeyTruncated.value
-		? rawApiKey.value.slice(0, API_KEY_VISIBLE_CHARS_PER_SIDE)
-		: rawApiKey.value,
-);
-const apiKeyEnd = computed(() =>
-	isApiKeyTruncated.value ? rawApiKey.value.slice(-API_KEY_VISIBLE_CHARS_PER_SIDE) : '',
-);
-
 // Middle-truncated display value: the key's start and end stay visible so the
 // user can eyeball what they copied, while the input never holds the full key.
-const apiKeyDisplay = computed(() =>
-	isApiKeyTruncated.value ? `${apiKeyStart.value}...${apiKeyEnd.value}` : rawApiKey.value,
-);
+const apiKeyDisplay = computed(() => {
+	const raw = rawApiKey.value;
+	const visible = API_KEY_VISIBLE_CHARS_PER_SIDE;
+	return raw.length > visible * 2 ? `${raw.slice(0, visible)}...${raw.slice(-visible)}` : raw;
+});
 
 function onApiKeyCopied() {
 	showMessage({
@@ -326,7 +317,7 @@ const onSelect = (value: number) => {
 	}
 
 	if (value !== EXPIRATION_OPTIONS.NO_EXPIRATION) {
-		expirationDate.value = calculateExpirationDate(value).toFormat('ccc, MMM d yyyy');
+		expirationDate.value = calculateExpirationDate(value).toFormat(API_KEY_DATE_FORMAT);
 		showExpirationDateSelector.value = false;
 		return;
 	}

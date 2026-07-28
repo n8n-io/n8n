@@ -10,6 +10,7 @@ import type { ActionDropdownItem } from '@n8n/design-system';
 import ApiKeyLabelCell from './ApiKeyLabelCell.vue';
 import ApiKeyOwnerCell from './ApiKeyOwnerCell.vue';
 import ApiKeyScopesCell from './ApiKeyScopesCell.vue';
+import { isApiKeyExpired } from '../apiKeys.utils';
 
 const props = withDefaults(
 	defineProps<{
@@ -56,11 +57,6 @@ function isOwn(apiKey: ApiKey): boolean {
 	return apiKey.owner?.id === props.currentUserId;
 }
 
-// Rotation preserves the original expiry, so an already-expired key can't be rotated.
-function isExpired(apiKey: ApiKey): boolean {
-	return apiKey.expiresAt !== null && apiKey.expiresAt <= Math.floor(Date.now() / 1000);
-}
-
 function onRowClick(_event: MouseEvent, payload: { item: ApiKey }) {
 	emit('edit', payload.item);
 }
@@ -76,7 +72,8 @@ function getRowActions(apiKey: ApiKey): Array<ActionDropdownItem<ApiKeyAction>> 
 			icon: 'square-pen',
 			testId: 'api-key-edit-action',
 		});
-		if (!isExpired(apiKey)) {
+		// Rotation preserves the original expiry, so an already-expired key can't be rotated.
+		if (!isApiKeyExpired(apiKey)) {
 			actions.push({
 				id: 'rotate',
 				label: i18n.baseText('settings.api.actions.rotate'),
