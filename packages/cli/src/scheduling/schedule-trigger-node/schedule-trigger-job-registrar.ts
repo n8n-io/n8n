@@ -181,10 +181,8 @@ export class ScheduleTriggerJobRegistrar {
 							);
 							collected.push({ schedule, firstRunAt: null });
 						} else {
-							// A gated minutes rule is stored as an interval job even in legacy
-							// mode (see toSchedule), but the in-memory engine fires it ungated
-							// at its next cron tick — seed the first run from the cron so
-							// activation isn't delayed by a full interval.
+							// Legacy interval jobs (gated minutes) first fire at their next
+							// cron tick, not activation + interval — seed from the cron.
 							const seedSchedule: Schedule =
 								this.triggerNodeMode === 'legacy' && schedule.kind === 'interval'
 									? { kind: 'cron', cronExpression: expression, timezone }
@@ -260,8 +258,6 @@ export class ScheduleTriggerJobRegistrar {
 		// engine rejects a recurrenceSize of 1 to keep one representation per
 		// rule). N = 0/NaN never fires (see isDegenerateRecurrence) and a negative
 		// N fires on every instant in the legacy engine; both are plain crons here.
-		// `typeInterval` can't be 'minutes' here — the interval branch above takes
-		// every activated minutes rule — but the type system can't see that.
 		if (
 			recurrence?.activated &&
 			recurrence.typeInterval !== 'minutes' &&

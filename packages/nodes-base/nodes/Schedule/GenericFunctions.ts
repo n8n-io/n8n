@@ -55,8 +55,8 @@ export function recurrenceCheck(
 
 	const momentTz = moment.tz(timezone);
 	if (typeInterval === 'minutes') {
-		// Absolute minute count (like months, not the 0-59 wall-clock value) so a
-		// gap longer than the hour wrap can't delay the next fire by another interval.
+		// Absolute minute count (not the 0-59 wall-clock value) so a gap longer
+		// than the hour wrap can't delay the next fire by another interval.
 		const absoluteMinute = Math.floor(momentTz.valueOf() / 60_000);
 		if (lastExecution === undefined || absoluteMinute - lastExecution >= intervalSize) {
 			recurrenceRules[index] = absoluteMinute;
@@ -191,7 +191,6 @@ export function intervalToRecurrence(interval: ScheduleInterval, index: number) 
 
 	if (interval.field === 'minutes') {
 		const { minutesInterval } = interval;
-		// Only non-dividing intervals need the elapsed-time gate; dividing ones use exact `*/n` cron.
 		if (60 % minutesInterval !== 0) {
 			recurrence = {
 				activated: true,
@@ -266,7 +265,8 @@ function isRecurrenceValueValidForType(
 ): boolean {
 	switch (typeInterval) {
 		case 'minutes':
-			// Absolute count, and the unit is new — no pre-signature value can be valid.
+			// Minutes recurrence is newer than signatures, so a signature-less value
+			// was never written by a minutes rule — it belongs to some earlier config.
 			return false;
 		case 'hours':
 			return value >= 0 && value <= 23;
