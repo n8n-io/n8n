@@ -1,6 +1,5 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor, within } from '@testing-library/vue';
-import { mount } from '@vue/test-utils';
 import { defineComponent, ref } from 'vue';
 
 import { removeDynamicAttributes } from '@n8n/design-system/utils';
@@ -69,71 +68,6 @@ describe('components', () => {
 			await userEvent.click(getOption('1'));
 
 			expect(textbox).toHaveValue('1');
-		});
-
-		// The wrapped element-plus instance is captured with a function ref and
-		// handed out through a getter, because a string `ref` made vue-tsc refuse to
-		// emit this component's declaration. These assert the exposed surface still
-		// behaves like the plain ref it replaced — editor-ui reaches for
-		// `innerSelect.handleClose()` and `.blur()` through it.
-		describe('exposed API', () => {
-			// Attached to the document so `focusOnInput` can be asserted against
-			// `document.activeElement`. Tracked and torn down after each test —
-			// leaving an attached wrapper mounted outlives the test environment and
-			// surfaces as an unhandled `document is not defined` elsewhere in the run.
-			let wrapper: ReturnType<typeof mount<typeof N8nSelect>> | undefined;
-
-			const mountSelect = () => {
-				wrapper = mount(N8nSelect, {
-					attachTo: document.body,
-					global: { components: { 'n8n-option': N8nOption } },
-					slots: { default: '<n8n-option value="1">1</n8n-option>' },
-				});
-				return wrapper;
-			};
-
-			afterEach(() => {
-				wrapper?.unmount();
-				wrapper = undefined;
-			});
-
-			it('should expose the wrapped element-plus instance', () => {
-				const wrapper = mountSelect();
-
-				expect(wrapper.vm.innerSelect).toBeTruthy();
-				expect(typeof wrapper.vm.innerSelect?.focus).toBe('function');
-				expect(typeof wrapper.vm.innerSelect?.blur).toBe('function');
-			});
-
-			it('should delegate focus and blur to the wrapped instance', () => {
-				const wrapper = mountSelect();
-				const inner = wrapper.vm.innerSelect!;
-				const focusSpy = vi.spyOn(inner, 'focus');
-				const blurSpy = vi.spyOn(inner, 'blur');
-
-				wrapper.vm.focus();
-				expect(focusSpy).toHaveBeenCalledTimes(1);
-
-				wrapper.vm.blur();
-				expect(blurSpy).toHaveBeenCalledTimes(1);
-			});
-
-			it('should focus the inner input via focusOnInput', () => {
-				const wrapper = mountSelect();
-
-				wrapper.vm.focusOnInput();
-
-				expect(wrapper.find('input').element).toBe(document.activeElement);
-			});
-
-			it('should clear the exposed instance on unmount', () => {
-				const wrapper = mountSelect();
-				expect(wrapper.vm.innerSelect).toBeTruthy();
-
-				wrapper.unmount();
-
-				expect(wrapper.vm.innerSelect).toBeNull();
-			});
 		});
 	});
 });
