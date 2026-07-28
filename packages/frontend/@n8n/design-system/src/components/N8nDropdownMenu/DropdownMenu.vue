@@ -7,9 +7,6 @@ import {
 } from 'reka-ui';
 import { computed, nextTick, onBeforeUnmount, provide, ref, useCssModule, watch } from 'vue';
 
-import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-
 import { isAlign, isSide } from './DropdownMenu.typeguards';
 import {
 	DropdownMenuPortalTargetKey,
@@ -19,6 +16,8 @@ import {
 } from './DropdownMenu.types';
 import DropdownMenuItems from './DropdownMenuItems.vue';
 import DropdownMenuSearchableContent from './DropdownMenuSearchableContent.vue';
+import N8nButton from '../N8nButton/Button.vue';
+import type { IconName } from '../N8nIcon/icons';
 
 defineOptions({ inheritAttrs: false });
 
@@ -253,8 +252,8 @@ defineExpose({ open, close });
 		>
 			<DropdownMenuContent
 				v-bind="id ? { id } : {}"
-				:data-test-id="contentTestId"
 				ref="contentRef"
+				:data-test-id="contentTestId"
 				:class="[$style.content, searchable && $style.searchable, extraPopperClass]"
 				data-menu-content
 				:side="placementParts.side"

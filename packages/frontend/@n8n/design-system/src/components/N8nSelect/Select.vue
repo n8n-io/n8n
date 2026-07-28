@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { ElSelect } from 'element-plus';
-import type { PropType } from 'vue';
+import type { PropType, Ref } from 'vue';
 import { computed, ref, useAttrs } from 'vue';
 
+import type { InnerSelectRef, N8nSelectExposed } from './Select.types';
 import type { SelectSize } from '../../types';
 import { isEventBindingElementAttribute } from '../../utils';
-
-type InnerSelectRef = InstanceType<typeof ElSelect>;
 
 const props = defineProps({
 	...ElSelect.props,
@@ -58,7 +57,7 @@ const props = defineProps({
 });
 
 const attrs = useAttrs();
-const innerSelect = ref<InnerSelectRef | null>(null);
+const innerSelect: Ref<InnerSelectRef | null> = ref(null);
 
 const listeners = computed(() => {
 	return Object.entries(attrs).reduce<Record<string, unknown>>((acc, [key, value]) => {
@@ -104,11 +103,16 @@ const focusOnInput = () => {
 	else inputRef?.focus();
 };
 
-defineExpose({
+defineExpose<N8nSelectExposed>({
 	focus,
 	blur,
 	focusOnInput,
-	innerSelect,
+	// A getter, not the ref itself: exposing the ref makes vue-tsc unwrap it
+	// through `ShallowUnwrapRef`, which loses the `InnerSelectRef` name and
+	// expands element-plus' instance type past what it will serialize (TS7056).
+	get innerSelect() {
+		return innerSelect.value;
+	},
 });
 </script>
 

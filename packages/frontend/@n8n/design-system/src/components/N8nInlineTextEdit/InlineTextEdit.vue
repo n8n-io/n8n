@@ -25,8 +25,10 @@ const emit = defineEmits<{
 	'update:model-value': [value: string];
 }>();
 
-const editableRoot = useTemplateRef('editableRoot');
-const measureSpan = useTemplateRef('measureSpan');
+// Typed explicitly rather than inferred from the template: the published
+// declaration build skips template codegen, so `__VLS_TemplateRefs` is empty.
+const editableRoot = useTemplateRef<InstanceType<typeof EditableRoot>>('editableRoot');
+const measureSpan = useTemplateRef<HTMLSpanElement>('measureSpan');
 
 // Internal editing value
 const editingValue = ref(props.modelValue);

@@ -11,7 +11,6 @@ import {
 	type FocusOutsideEvent,
 } from 'reka-ui';
 import { watch } from 'vue';
-import type { CSSProperties } from 'vue';
 
 defineOptions({ name: 'N8nPopover' });
 
@@ -55,8 +54,12 @@ interface Props
 	width?: string;
 	/**
 	 * z-index of popover content
+	 *
+	 * Spelled out rather than reusing `CSSProperties['zIndex']`: that resolves to
+	 * a type in csstype, which is a transitive dependency we cannot name portably
+	 * in the published declarations (TS2883).
 	 */
-	zIndex?: number | CSSProperties['zIndex'];
+	zIndex?: number | string;
 	/**
 	 * Popover max height
 	 */

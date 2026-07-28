@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { DialogRoot, DialogPortal } from 'reka-ui';
 
-import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
-import N8nDialogContent from '@n8n/design-system/components/N8nDialog/DialogContent.vue';
-import N8nDialogDescription from '@n8n/design-system/components/N8nDialog/DialogDescription.vue';
-import N8nDialogFooter from '@n8n/design-system/components/N8nDialog/DialogFooter.vue';
-import N8nDialogHeader from '@n8n/design-system/components/N8nDialog/DialogHeader.vue';
-import N8nDialogOverlay from '@n8n/design-system/components/N8nDialog/DialogOverlay.vue';
-import N8nDialogTitle from '@n8n/design-system/components/N8nDialog/DialogTitle.vue';
+import N8nButton from '../N8nButton/Button.vue';
+import N8nDialogContent from '../N8nDialog/DialogContent.vue';
+import N8nDialogDescription from '../N8nDialog/DialogDescription.vue';
+import N8nDialogFooter from '../N8nDialog/DialogFooter.vue';
+import N8nDialogHeader from '../N8nDialog/DialogHeader.vue';
+import N8nDialogOverlay from '../N8nDialog/DialogOverlay.vue';
+import N8nDialogTitle from '../N8nDialog/DialogTitle.vue';
 
 export type AlertDialogActionVariant = 'solid' | 'destructive';
 export type AlertDialogSize = 'small' | 'medium';

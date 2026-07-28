@@ -1,4 +1,3 @@
-/* eslint-disable n8n-local-rules/no-interpolation-in-regular-string */
 import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
 import { mount } from '@vue/test-utils';

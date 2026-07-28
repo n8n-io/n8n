@@ -2,37 +2,20 @@
 import { computed, getCurrentInstance, ref, useAttrs, useCssModule } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
-import type { ActionDropdownItem, IconSize, ButtonSize } from '../../types';
+import type { ActionDropdownItem } from '../../types';
 import N8nBadge from '../N8nBadge';
 import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
 import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIcon from '../N8nIcon';
-import { type IconName } from '../N8nIcon/icons';
 import N8nIconButton from '../N8nIconButton';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
+import type { ActionDropdownProps } from './ActionDropdown.types';
 
 const { t } = useI18n();
 
-const TRIGGER = ['click', 'hover'] as const;
-
 defineOptions({ inheritAttrs: false });
 
-interface ActionDropdownProps {
-	items: Array<ActionDropdownItem<T>>;
-	placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end';
-	activatorIcon?: IconName;
-	activatorSize?: ButtonSize;
-	iconSize?: IconSize;
-	trigger?: (typeof TRIGGER)[number];
-	teleported?: boolean;
-	disabled?: boolean;
-	extraPopperClass?: string;
-	maxHeight?: string | number;
-	width?: string;
-	modal?: boolean;
-}
-
-const props = withDefaults(defineProps<ActionDropdownProps>(), {
+const props = withDefaults(defineProps<ActionDropdownProps<T>>(), {
 	placement: 'bottom',
 	activatorIcon: 'ellipsis',
 	activatorSize: 'medium',

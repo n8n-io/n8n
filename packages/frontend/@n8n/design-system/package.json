@@ -2,12 +2,36 @@
   "type": "module",
   "name": "@n8n/design-system",
   "version": "2.32.0",
-  "main": "src/index.ts",
-  "import": "src/index.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": [
+    "**/*.css",
+    "**/*.scss"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./icons/lucide": {
+      "types": "./dist/icons/lucide/index.d.ts",
+      "import": "./dist/icons/lucide/index.js"
+    },
+    "./theme.css": "./dist/theme.css",
+    "./style.css": "./dist/style.css",
+    "./scss/*": "./dist/scss/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "dev": "pnpm run --dir=../storybook dev",
     "clean": "rimraf dist .turbo",
-    "build": "vite build",
+    "build": "vite build && pnpm build:types && vite build --config vite.config.styles.mts",
+    "build:types": "vue-tsc -p tsconfig.build.json",
     "build:unchecked": "pnpm run build",
     "typecheck": "vue-tsc --noEmit",
     "typecheck:watch": "vue-tsc --watch --noEmit",
@@ -36,9 +60,7 @@
     "@testing-library/user-event": "catalog:frontend",
     "@testing-library/vue": "catalog:frontend",
     "@types/lodash": "catalog:",
-    "@types/markdown-it": "catalog:",
     "@types/markdown-it-emoji": "^2.0.2",
-    "@types/markdown-it-link-attributes": "catalog:",
     "@types/sanitize-html": "catalog:",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vitest/coverage-v8": "catalog:",
@@ -46,6 +68,7 @@
     "autoprefixer": "^10.4.19",
     "emojibase-data": "^17.0.0",
     "eslint-plugin-storybook": "catalog:storybook",
+    "pinia": "catalog:frontend",
     "postcss": "^8.4.38",
     "sass": "^1.71.1",
     "storybook": "catalog:storybook",
@@ -58,6 +81,8 @@
     "vite-svg-loader": "catalog:frontend",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
+    "vue": "catalog:frontend",
+    "vue-router": "catalog:frontend",
     "vue-tsc": "catalog:frontend"
   },
   "dependencies": {
@@ -79,6 +104,8 @@
     "@tiptap/markdown": "catalog:",
     "@tiptap/starter-kit": "catalog:",
     "@tiptap/vue-3": "catalog:",
+    "@types/markdown-it": "catalog:",
+    "@types/markdown-it-link-attributes": "catalog:",
     "@vueuse/core": "catalog:frontend",
     "clsx": "^2.1.1",
     "element-plus": "catalog:frontend",
@@ -90,13 +117,19 @@
     "markdown-it-link-attributes": "catalog:",
     "markdown-it-task-lists": "^2.1.1",
     "parse-diff": "^0.11.1",
-    "pinia": "catalog:frontend",
     "reka-ui": "^2.5.0",
     "sanitize-html": "catalog:",
-    "vue": "catalog:frontend",
     "vue-boring-avatars": "^1.3.0",
-    "vue-router": "catalog:frontend",
     "xss": "catalog:"
+  },
+  "peerDependencies": {
+    "vue": "catalog:frontend",
+    "vue-router": "catalog:frontend"
+  },
+  "peerDependenciesMeta": {
+    "vue-router": {
+      "optional": true
+    }
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

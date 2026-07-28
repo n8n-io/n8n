@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { DialogClose } from 'reka-ui';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import Icon from '../N8nIcon/Icon.vue';
 
 export interface DialogCloseProps {
 	/**

@@ -10,16 +10,15 @@ import {
 } from 'reka-ui';
 import { computed, inject, nextTick, onBeforeUnmount, ref, useCssModule, watch } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-import N8nLoading from '@n8n/design-system/components/N8nLoading';
-import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
-
+import Icon from '../N8nIcon/Icon.vue';
+import N8nLoading from '../N8nLoading';
 import {
 	DropdownMenuPortalTargetKey,
 	type DropdownMenuItemProps,
 	type DropdownMenuItemSlots,
 } from './DropdownMenu.types';
 import DropdownMenuSearchableContent from './DropdownMenuSearchableContent.vue';
+import N8nText from '../N8nText/Text.vue';
 
 defineOptions({ name: 'N8nDropdownMenuItem', inheritAttrs: false });
 
@@ -193,10 +192,10 @@ onBeforeUnmount(() => {
 			<DropdownMenuSubTrigger
 				:id="htmlId"
 				:aria-selected="highlighted || undefined"
-				@pointermove.capture="handlePointerMove"
 				:disabled="disabled"
 				:data-test-id="testId"
 				:class="[$style.item, $style['sub-trigger'], props.class, { 'is-disabled': !!disabled }]"
+				@pointermove.capture="handlePointerMove"
 			>
 				<slot name="item-leading" :item="props" :ui="leadingProps">
 					<Icon
@@ -337,10 +336,10 @@ onBeforeUnmount(() => {
 			:id="htmlId"
 			:model-value="checked"
 			:aria-selected="highlighted || undefined"
-			@pointermove.capture="handlePointerMove"
 			:disabled="disabled"
 			:data-test-id="testId"
 			:class="[$style.item, props.class, { 'is-disabled': !!disabled }]"
+			@pointermove.capture="handlePointerMove"
 			@select="handleItemSelect"
 		>
 			<slot name="item-leading" :item="props" :ui="leadingProps">
@@ -373,10 +372,10 @@ onBeforeUnmount(() => {
 			v-else
 			:id="htmlId"
 			:aria-selected="highlighted || undefined"
-			@pointermove.capture="handlePointerMove"
 			:disabled="disabled"
 			:data-test-id="testId"
 			:class="[$style.item, props.class, { 'is-disabled': !!disabled }]"
+			@pointermove.capture="handlePointerMove"
 			@select="handleItemSelect"
 		>
 			<slot name="item-leading" :item="props" :ui="leadingProps">
