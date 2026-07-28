@@ -43,6 +43,8 @@ export interface ExportPackageCounts {
 	credentials: number;
 	dataTables: number;
 	variables: number;
+	/** Absent when the server predates tag export. */
+	tags?: number;
 }
 
 export interface ExportPackageResult {

@@ -345,4 +345,20 @@ describe('package export command', () => {
 		const message = vi.mocked(internals.succeed).mock.calls[0][0];
 		expect(message).toBe('Exported 3 workflow(s), 1 folder(s) to /tmp/folders.n8np');
 	});
+
+	it('includes a non-zero tag count in the export message', async () => {
+		const exportPackage = vi.fn().mockResolvedValue({
+			archive: Buffer.from([1, 2, 3]),
+			counts: { workflows: 2, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 2 },
+		});
+		const { command, internals } = stubCommand(
+			{ workflowId: ['wf-1', 'wf-2'], output: '/tmp/team.n8np' },
+			exportPackage,
+		);
+
+		await command.run();
+
+		const message = vi.mocked(internals.succeed).mock.calls[0][0];
+		expect(message).toBe('Exported 2 workflow(s), 2 tag(s) to /tmp/team.n8np');
+	});
 });

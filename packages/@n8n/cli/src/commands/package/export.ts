@@ -19,6 +19,7 @@ function describeExport(counts: ExportPackageCounts & { projects?: number }): st
 	if (counts.credentials) parts.push(`${counts.credentials} credential(s)`);
 	if (counts.dataTables) parts.push(`${counts.dataTables} data table(s)`);
 	if (counts.variables) parts.push(`${counts.variables} variable(s)`);
+	if (counts.tags) parts.push(`${counts.tags} tag(s)`);
 	return parts.length > 0 ? parts.join(', ') : 'nothing';
 }
 
