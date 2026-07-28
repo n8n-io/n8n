@@ -1,25 +1,31 @@
 import { sleep } from './sleep';
 
 describe('sleep', () => {
-	it('should resolve after the specified time when no abort signal is given', async () => {
-		const start = Date.now();
-		await sleep(100);
-		const end = Date.now();
-		const elapsed = end - start;
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
 
-		// Allow some tolerance for timing
-		expect(elapsed).toBeGreaterThanOrEqual(90);
-		expect(elapsed).toBeLessThan(200);
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('should resolve after the specified time when no abort signal is given', async () => {
+		const onResolve = vi.fn();
+		sleep(100).then(onResolve);
+
+		await vi.advanceTimersByTimeAsync(99);
+		expect(onResolve).not.toHaveBeenCalled();
+
+		await vi.advanceTimersByTimeAsync(1);
+		expect(onResolve).toHaveBeenCalled();
 	});
 
 	it('should work without abort signal', async () => {
-		const start = Date.now();
-		await sleep(100, undefined);
-		const end = Date.now();
-		const elapsed = end - start;
+		const onResolve = vi.fn();
+		sleep(100, undefined).then(onResolve);
 
-		expect(elapsed).toBeGreaterThanOrEqual(90);
-		expect(elapsed).toBeLessThan(200);
+		await vi.advanceTimersByTimeAsync(100);
+		expect(onResolve).toHaveBeenCalled();
 	});
 
 	it('should reject immediately if abort signal is already aborted', async () => {
@@ -31,30 +37,28 @@ describe('sleep', () => {
 
 	it('should reject when abort signal is triggered during sleep', async () => {
 		const abortController = new AbortController();
+		const onSettled = vi.fn();
 
-		// Start the sleep and abort after 50ms
-		setTimeout(() => abortController.abort(), 50);
+		const promise = sleep(1000, abortController.signal).catch(onSettled);
 
-		const start = Date.now();
-		await expect(sleep(1000, abortController.signal)).rejects.toThrow('Aborted');
-		const end = Date.now();
-		const elapsed = end - start;
+		await vi.advanceTimersByTimeAsync(50);
+		abortController.abort();
+		await promise;
 
-		// Should have been aborted after ~50ms, not the full 1000ms
-		expect(elapsed).toBeLessThan(200);
+		expect(onSettled).toHaveBeenCalledWith(expect.objectContaining({ message: 'Aborted' }));
 	});
 
 	it('should clean up timeout when aborted during sleep', async () => {
 		const abortController = new AbortController();
 		const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
 
-		// Start the sleep and abort after 50ms
 		const sleepPromise = sleep(1000, abortController.signal);
-		setTimeout(() => abortController.abort(), 50);
+
+		await vi.advanceTimersByTimeAsync(50);
+		abortController.abort();
 
 		await expect(sleepPromise).rejects.toThrow('Aborted');
 
-		// clearTimeout should have been called to clean up
 		expect(clearTimeoutSpy).toHaveBeenCalled();
 
 		clearTimeoutSpy.mockRestore();
