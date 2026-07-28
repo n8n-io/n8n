@@ -97,15 +97,23 @@ describe('components', () => {
 					iconTooltip: 'Useful explanation',
 				},
 				global: {
-					stubs: ['N8nIcon', 'N8nText', 'N8nTooltip'],
+					stubs: {
+						N8nIcon: true,
+						N8nText: true,
+						N8nTooltip: {
+							template: '<div data-test-id="icon-tooltip" :data-content="content"><slot /></div>',
+							props: ['content'],
+						},
+					},
 				},
 				slots: {
 					default: '<n8n-text size="small">This is a callout with an icon tooltip.</n8n-text>',
 				},
 			});
-			const tooltip = wrapper.container.querySelector('n8n-tooltip-stub');
+			const tooltip = wrapper.container.querySelector('[data-test-id="icon-tooltip"]');
 			expect(tooltip).toBeTruthy();
-			expect(tooltip?.getAttribute('content')).toBe('Useful explanation');
+			expect(tooltip?.getAttribute('data-content')).toBe('Useful explanation');
+			expect(tooltip?.querySelector('n8n-icon-stub')).toBeTruthy();
 		});
 		it('should not render a tooltip when iconTooltip is not provided', () => {
 			const wrapper = render(N8nCallout, {
