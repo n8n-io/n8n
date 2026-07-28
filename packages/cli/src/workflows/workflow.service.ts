@@ -1029,7 +1029,7 @@ export class WorkflowService {
 		}
 
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			await this._unpublishViaOutbox(user, workflowId, deactivatedVersionId, workflow.updatedAt);
+			await this._unpublishViaOutbox(user.id, workflowId, deactivatedVersionId, workflow.updatedAt);
 		} else {
 			await this.activeWorkflowManager.remove(workflowId);
 
@@ -1063,6 +1063,49 @@ export class WorkflowService {
 		});
 
 		return workflow;
+	}
+
+	/**
+	 * Deactivates a workflow without a user context (system-initiated, e.g.
+	 * crash-loop auto-deactivation). Skips permission and checksum checks and
+	 * does not emit `workflow-deactivated`; publish history records a null user.
+	 */
+	async deactivateWorkflowAsSystem(workflowId: string): Promise<void> {
+		const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
+		if (!workflow) return;
+
+		const deactivatedVersionId = workflow.activeVersionId;
+		if (deactivatedVersionId === null) return;
+
+		try {
+			await this.externalHooks.run('workflow.deactivate', [workflow]);
+		} catch (error) {
+			// A failing hook must not leave a crash-looping workflow published
+			this.logger.warn('workflow.deactivate hook failed during system deactivation, proceeding', {
+				workflowId,
+				error: ensureError(error).message,
+			});
+		}
+
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			await this._unpublishViaOutbox(null, workflowId, deactivatedVersionId, workflow.updatedAt);
+		} else {
+			await this.activeWorkflowManager.remove(workflowId);
+
+			await this.workflowRepository.update(workflowId, {
+				active: false,
+				activeVersionId: null,
+				// workflow content did not change, so we keep updatedAt as is
+				updatedAt: workflow.updatedAt,
+			});
+
+			await this.workflowPublishHistoryRepository.addRecord({
+				workflowId,
+				versionId: deactivatedVersionId,
+				event: 'deactivated',
+				userId: null,
+			});
+		}
 	}
 
 	/**
@@ -1159,7 +1202,7 @@ export class WorkflowService {
 		const activeVersionId = workflow.activeVersionId;
 		if (activeVersionId !== null) {
 			if (this.globalConfig.workflows.useWorkflowPublicationService) {
-				await this._unpublishViaOutbox(user, workflowId, activeVersionId, workflow.updatedAt);
+				await this._unpublishViaOutbox(user.id, workflowId, activeVersionId, workflow.updatedAt);
 			} else {
 				await this.activeWorkflowManager.remove(workflowId);
 
@@ -1517,7 +1560,7 @@ export class WorkflowService {
 	 * the record while the workflow still looks active and handle it as a publish.
 	 */
 	private async _unpublishViaOutbox(
-		user: User,
+		userId: string | null,
 		workflowId: string,
 		deactivatedVersionId: string,
 		updatedAt: Date,
@@ -1539,7 +1582,7 @@ export class WorkflowService {
 					workflowId,
 					versionId: deactivatedVersionId,
 					event: 'deactivated',
-					userId: user.id,
+					userId,
 				},
 				trx,
 			);
