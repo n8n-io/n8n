@@ -20,6 +20,7 @@ import {
 	type IfElseTarget,
 	type SwitchCaseTarget,
 } from '../../types/base';
+import { estimateStickyHeightForContent, STICKY_AUTO_MIN_WIDTH } from '../sticky-text-sizing';
 import { extractHint, isPlaceholderValue } from '../string-utils';
 import {
 	isSwitchCaseComposite,
@@ -1040,17 +1041,14 @@ const DEFAULT_NODE_HEIGHT = 100;
 const STICKY_PADDING = 50;
 
 /**
- * Calculate bounding box around a set of nodes
+ * Normalize wrapped-node arguments into their underlying NodeInstances.
+ * Mirrors the unwrapping logic used by calculateNodesBoundingBox so the
+ * sticky tracks the same nodes the bounding box was computed against.
  */
-function calculateNodesBoundingBox(nodes: Array<NodeInstance<string, string, unknown>>): {
-	position: [number, number];
-	width: number;
-	height: number;
-} | null {
-	if (nodes.length === 0) return null;
-
-	// Normalize builder objects to their underlying NodeInstance
-	const normalizedNodes = nodes
+function normalizeWrappedNodes(
+	nodes: Array<NodeInstance<string, string, unknown>>,
+): Array<NodeInstance<string, string, unknown>> {
+	return nodes
 		.map((item): NodeInstance<string, string, unknown> | null => {
 			if (isSplitInBatchesBuilder(item)) {
 				return extractSplitInBatchesBuilder(item).sibNode;
@@ -1067,7 +1065,23 @@ function calculateNodesBoundingBox(nodes: Array<NodeInstance<string, string, unk
 			return null;
 		})
 		.filter((n): n is NodeInstance<string, string, unknown> => n !== null);
+}
 
+function collectWrappedNodeNames(nodes: Array<NodeInstance<string, string, unknown>>): string[] {
+	return normalizeWrappedNodes(nodes).map((n) => n.name);
+}
+
+/**
+ * Calculate bounding box around a set of nodes
+ */
+function calculateNodesBoundingBox(nodes: Array<NodeInstance<string, string, unknown>>): {
+	position: [number, number];
+	width: number;
+	height: number;
+} | null {
+	if (nodes.length === 0) return null;
+
+	const normalizedNodes = normalizeWrappedNodes(nodes);
 	if (normalizedNodes.length === 0) return null;
 
 	let minX = Infinity;
@@ -1116,19 +1130,50 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 		// If nodes are provided, calculate bounding box to wrap around them
 		const boundingBox = nodes.length > 0 ? calculateNodesBoundingBox(nodes) : null;
 
+		// Track wrapped node names so the layout pass can re-anchor and re-size
+		// the sticky around those exact nodes after dagre has assigned them
+		// positions. Names survive regenerateNodeIds (which the AI builder runs
+		// on every parse) — instance ids do not.
+		const wrappedNodeNames = collectWrappedNodeNames(nodes);
+
+		// Record which layout fields the caller pinned, so the layout pass can
+		// preserve those fields and only auto-compute the rest (e.g. caller
+		// gave width only — height still auto-sizes to fit the content).
+		const explicitFields: Record<string, true> = {};
+		if (stickyConfig.position !== undefined) explicitFields.position = true;
+		if (stickyConfig.width !== undefined) explicitFields.width = true;
+		if (stickyConfig.height !== undefined) explicitFields.height = true;
+
+		// Auto-fill a missing dimension from content when the caller gave the
+		// other one. This handles the standalone-sticky case (no wrapped nodes,
+		// no layout pass available) where the caller did `sticky('text', {
+		// position, width: N })` and would otherwise inherit n8n's default
+		// 160px height — which clips multi-line content.
+		const explicitWidth = stickyConfig.width ?? boundingBox?.width;
+		const explicitHeight = stickyConfig.height ?? boundingBox?.height;
+		let resolvedWidth = explicitWidth;
+		let resolvedHeight = explicitHeight;
+		if (resolvedWidth !== undefined && resolvedHeight === undefined) {
+			resolvedHeight = estimateStickyHeightForContent(content, resolvedWidth);
+		} else if (resolvedHeight !== undefined && resolvedWidth === undefined) {
+			resolvedWidth = STICKY_AUTO_MIN_WIDTH;
+		}
+
 		this.config = {
 			name: this.name,
 			position: stickyConfig.position ?? boundingBox?.position,
 			parameters: {
 				content,
 				...(stickyConfig.color !== undefined && { color: stickyConfig.color }),
-				...((stickyConfig.width ?? boundingBox?.width) !== undefined && {
-					width: stickyConfig.width ?? boundingBox?.width,
-				}),
-				...((stickyConfig.height ?? boundingBox?.height) !== undefined && {
-					height: stickyConfig.height ?? boundingBox?.height,
-				}),
+				...(resolvedWidth !== undefined && { width: resolvedWidth }),
+				...(resolvedHeight !== undefined && { height: resolvedHeight }),
 			},
+			...(wrappedNodeNames.length > 0 && {
+				_wrappedNodeNames: wrappedNodeNames,
+			}),
+			...(Object.keys(explicitFields).length > 0 && {
+				_userExplicitStickyFields: explicitFields,
+			}),
 		};
 	}
 

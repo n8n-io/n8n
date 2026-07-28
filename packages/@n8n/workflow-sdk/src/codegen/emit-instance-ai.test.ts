@@ -254,6 +254,7 @@ describe('emit-instance-ai', () => {
 			'validateWorkflow',
 			'getSchemaBaseDirs',
 			'setSchemaBaseDirs',
+			'detectStickyLayoutWarnings',
 			// Pin-data + schema discovery
 			'discoverOutputSchemaForNode',
 			'discoverSchemasForNode',

@@ -24,6 +24,7 @@ import { MAX_VALIDATE_ATTEMPTS } from '../constants';
 vi.mock('@n8n/workflow-sdk', () => ({
 	parseWorkflowCodeToBuilder: vi.fn(),
 	validateWorkflow: vi.fn(),
+	detectStickyLayoutWarnings: vi.fn(() => []),
 	generateWorkflowCode: vi.fn().mockReturnValue('// generated code'),
 	setSchemaBaseDirs: vi.fn(),
 }));
