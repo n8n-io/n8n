@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ElSelect } from 'element-plus';
-import type { PropType, Ref } from 'vue';
+import type { ComponentPublicInstance, PropType, Ref } from 'vue';
 import { computed, ref, useAttrs } from 'vue';
 
 import type { InnerSelectRef, N8nSelectExposed } from './Select.types';
@@ -59,6 +59,16 @@ const props = defineProps({
 const attrs = useAttrs();
 const innerSelect: Ref<InnerSelectRef | null> = ref(null);
 
+/**
+ * Assigned via a function ref rather than `ref="innerSelect"`. A string ref
+ * registers in vue-tsc's `__VLS_TemplateRefs`, which materialises element-plus'
+ * full ElSelect instance type — too large for the compiler to serialize, so the
+ * declaration for this component was silently skipped (TS7056).
+ */
+const setInnerSelect = (el: Element | ComponentPublicInstance | null) => {
+	innerSelect.value = (el as InnerSelectRef | null) ?? null;
+};
+
 const listeners = computed(() => {
 	return Object.entries(attrs).reduce<Record<string, unknown>>((acc, [key, value]) => {
 		if (isEventBindingElementAttribute(value, key)) {
@@ -103,6 +113,18 @@ const focusOnInput = () => {
 	else inputRef?.focus();
 };
 
+// Declared rather than inferred from the template: inferring them drags
+// element-plus' ElSelect types into `__VLS_template`, which the compiler will
+// not serialize (TS7056), and the declaration for this component is then skipped.
+defineSlots<{
+	default?: () => unknown;
+	prepend?: () => unknown;
+	prefix?: () => unknown;
+	suffix?: () => unknown;
+	footer?: () => unknown;
+	empty?: () => unknown;
+}>();
+
 defineExpose<N8nSelectExposed>({
 	focus,
 	blur,
@@ -129,7 +151,7 @@ defineExpose<N8nSelectExposed>({
 		</div>
 		<ElSelect
 			v-bind="{ ...$props, ...listeners }"
-			ref="innerSelect"
+			:ref="setInnerSelect"
 			:multiple-limit="props.multipleLimit"
 			:model-value="props.modelValue ?? undefined"
 			:size="computedSize"

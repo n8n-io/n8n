@@ -5242,6 +5242,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
+      '@vue/shared':
+        specifier: ^3.5.13
+        version: 3.5.26
       '@vue/test-utils':
         specifier: catalog:frontend
         version: 2.4.6
@@ -5284,6 +5287,9 @@ importers:
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite-plugin-dts:
+        specifier: 'catalog:'
+        version: 4.5.4(@types/node@20.19.41)(rollup@4.52.4)(typescript@6.0.2)(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vite-svg-loader:
         specifier: catalog:frontend
         version: 5.1.0(vue@3.5.26(typescript@6.0.2))
@@ -26415,7 +26421,7 @@ snapshots:
     dependencies:
       call-me-maybe: 1.0.1
       cross-spawn: 7.0.6
-      string-argv: 0.3.1
+      string-argv: 0.3.2
       type-detect: 4.1.0
 
   '@jsdevtools/ono@7.1.3': {}

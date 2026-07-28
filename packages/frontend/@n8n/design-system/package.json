@@ -14,10 +14,6 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./icons/lucide": {
-      "types": "./dist/icons/lucide/index.d.ts",
-      "import": "./dist/icons/lucide/index.js"
-    },
     "./theme.css": "./dist/theme.css",
     "./style.css": "./dist/style.css",
     "./scss/*": "./dist/scss/*",
@@ -30,8 +26,7 @@
   "scripts": {
     "dev": "pnpm run --dir=../storybook dev",
     "clean": "rimraf dist .turbo",
-    "build": "vite build && pnpm build:types && vite build --config vite.config.styles.mts",
-    "build:types": "vue-tsc -p tsconfig.build.json",
+    "build": "vite build && vite build --config vite.config.styles.mts",
     "build:unchecked": "pnpm run build",
     "typecheck": "vue-tsc --noEmit",
     "typecheck:watch": "vue-tsc --watch --noEmit",
@@ -64,6 +59,7 @@
     "@types/sanitize-html": "catalog:",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vitest/coverage-v8": "catalog:",
+    "@vue/shared": "^3.5.13",
     "@vue/test-utils": "catalog:frontend",
     "autoprefixer": "^10.4.19",
     "emojibase-data": "^17.0.0",
@@ -78,6 +74,7 @@
     "typescript": "catalog:",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
+    "vite-plugin-dts": "catalog:",
     "vite-svg-loader": "catalog:frontend",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",

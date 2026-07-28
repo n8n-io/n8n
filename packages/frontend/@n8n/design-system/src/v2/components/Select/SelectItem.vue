@@ -2,11 +2,21 @@
 import { SelectItem, SelectItemIndicator, SelectItemText, type AcceptableValue } from 'reka-ui';
 import { computed, useCssModule } from 'vue';
 
-import type { SelectItemProps, SelectValue } from './Select.types';
+import type { SelectItemProps, SelectItemSlotProps, SelectValue } from './Select.types';
 import Icon from '../../../components/N8nIcon/Icon.vue';
 
 defineOptions({ inheritAttrs: false });
 const props = defineProps<SelectItemProps>();
+
+// Declared rather than inferred from the template: inferring slot props wraps
+// them in `LooseRequired` from @vue/shared, which is a transitive dependency the
+// compiler cannot name portably (TS2883), so this component's declaration is
+// otherwise skipped.
+defineSlots<{
+	'item-leading'?: SelectItemSlotProps;
+	'item-label'?: (props: { item: SelectItemProps }) => unknown;
+	'item-trailing'?: SelectItemSlotProps;
+}>();
 const $style = useCssModule();
 
 function isAcceptable(value?: SelectValue) {

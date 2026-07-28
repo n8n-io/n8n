@@ -21,6 +21,7 @@
 		"src/**/*.stories.*",
 		"src/**/__tests__/**",
 		"src/styleguide/**",
-		"src/icons/lucide/vite.ts"
+		"src/icons/lucide/vite.ts",
+		"src/components/N8nBreadcrumbs/AsyncLoadingCacheDemo.vue"
 	]
 }

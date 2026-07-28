@@ -2,6 +2,7 @@ import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import icons from 'unplugin-icons/vite';
+import dts from 'vite-plugin-dts';
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import svgLoader from 'vite-svg-loader';
 import { lucideIconsPlugin } from './src/icons/lucide/vite';
@@ -44,6 +45,17 @@ export default mergeConfig(
 				compiler: 'vue3',
 				autoInstall: true,
 			}),
+			dts({
+				tsconfigPath: resolve(__dirname, 'tsconfig.build.json'),
+				// One flattened .d.ts per entry. Per-file declarations are not an
+				// option here: vue-tsc cannot name vue-router's global
+				// `ComponentCustomProperties` augmentation or `@vue/shared`'s
+				// `LooseRequired` through pnpm's hashed paths, and silently skips the
+				// declaration for every component whose template context touches them
+				// (TS2883). Rolling up hoists those types into the bundle instead.
+				rollupTypes: false,
+				entryRoot: resolve(__dirname, 'src'),
+			}),
 		],
 		resolve: {
 			alias: {
@@ -67,15 +79,12 @@ export default mergeConfig(
 			// UMD is dropped: with ~40 externals a UMD bundle would need a `globals`
 			// entry per dependency, and every consumer of a Vue SFC library uses a
 			// bundler anyway. ESM only, matching `"type": "module"`.
+			// A single entry, so the rolled-up declarations have a single root. The
+			// lucide loader is re-exported from `src/index.ts` rather than being its
+			// own entry: that keeps the 16 icon buckets baked into dist as lazy
+			// chunks (they are dynamic imports) without a second types bundle.
 			lib: {
-				entry: {
-					index: resolve(__dirname, 'src', 'index.ts'),
-					// Second entry so the lucide plugin actually runs during the library
-					// build and its 16 bucket chunks are baked into dist. Without this
-					// the module is unreachable from the root entry and consumers would
-					// need our Vite plugin plus @iconify/json to render an icon.
-					'icons/lucide/index': resolve(__dirname, 'src', 'icons', 'lucide', 'index.ts'),
-				},
+				entry: { index: resolve(__dirname, 'src', 'index.ts') },
 				formats: ['es'],
 			},
 			rollupOptions: {

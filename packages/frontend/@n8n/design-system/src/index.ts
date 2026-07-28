@@ -37,6 +37,7 @@ export {
 export type * from './v2/components/TagsInput/TagsInput.types';
 export { default as N8nSwitch2 } from './components/N8nSwitch/Switch.vue';
 export type * from './components/N8nSwitch/Switch.types';
+export { loadLucideIconBody } from './icons/lucide';
 export { createPasswordRules } from './components/N8nFormInput/validators';
 export { default as N8nMarkdownEditor } from './components/N8nMarkdownEditor/MarkdownEditor.vue';
 export type * from './components/N8nMarkdownEditor/MarkdownEditor.types';
