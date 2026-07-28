@@ -25,6 +25,9 @@ import { NoApplicationErrorRule } from './no-application-error.js';
 import { ProjectOwnedEntityTransferRule } from './project-owned-entity-transfer.js';
 import { NoRestrictedSleepDefinitionRule } from './no-restricted-sleep-definition.js';
 import { NoRestrictedSleepImportRule } from './no-restricted-sleep-import.js';
+import { NoRepositoryInPublicApiHandlerRule } from './no-repository-in-public-api-handler.js';
+import { RequirePublicApiControllerRule } from './require-public-api-controller.js';
+import { NoPublicApiGuardrailDisableRule } from './no-public-api-guardrail-disable.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -53,4 +56,7 @@ export const rules = {
 	'project-owned-entity-transfer': ProjectOwnedEntityTransferRule,
 	'no-restricted-sleep-definition': NoRestrictedSleepDefinitionRule,
 	'no-restricted-sleep-import': NoRestrictedSleepImportRule,
+	'no-repository-in-public-api-handler': NoRepositoryInPublicApiHandlerRule,
+	'require-public-api-controller': RequirePublicApiControllerRule,
+	'no-public-api-guardrail-disable': NoPublicApiGuardrailDisableRule,
 } satisfies Record<string, AnyRuleModule>;

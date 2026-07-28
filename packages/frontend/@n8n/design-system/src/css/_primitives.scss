@@ -297,6 +297,8 @@
 	--easing--ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
 	--easing--ease-in: cubic-bezier(0.55, 0.055, 0.675, 0.19);
 	--easing--ease-in-out: cubic-bezier(0.645, 0.045, 0.355, 1);
+	/* Single-overshoot spring (~10%): for small positional settles, not color/opacity fades. */
+	--easing--spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
 	--shadow-color: var(--color--black-alpha-100);
 

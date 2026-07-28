@@ -258,6 +258,9 @@ export function getProjects(): Project[] {
 			fullyParallel: true,
 			use: {
 				containerConfig: {},
+				// workers:1 + V8 collection makes cold boot slow enough to blow the 10s
+				// global; a retry gets a fresh container, so one slow boot burns all 3.
+				navigationTimeout: 30_000,
 				// Capture only on failure (global default is `on`). The shard artifact
 				// is downloaded and aggregated each run, so keep it to coverage data
 				// plus failure diagnostics, not full traces/videos for every test.
