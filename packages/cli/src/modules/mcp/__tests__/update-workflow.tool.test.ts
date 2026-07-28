@@ -957,6 +957,68 @@ describe('update-workflow MCP tool', () => {
 		});
 	});
 
+	describe('appliedOperations count', () => {
+		test('excludes an operation skipped for a basic validation failure (Part A)', async () => {
+			const result = await callHandler(
+				{
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+						{ type: 'addNodeGroup', name: 'Group', nodeNames: ['Missing'] },
+					],
+				},
+				createTool({ canvasGroupsEnabled: true }),
+			);
+
+			expect(result.isError).toBeUndefined();
+			const response = parseResult(result);
+			expect(response.skippedOperations).toHaveLength(1);
+			expect(response.appliedOperations).toBe(1);
+		});
+
+		test('does not exclude a submitted operation whose unrelated side effect broke a group (Part B)', async () => {
+			// The removeConnection operation itself ran successfully — only the
+			// pre-existing, untouched group it indirectly broke gets dropped.
+			findWorkflowMock.mockResolvedValue(
+				Object.assign(new WorkflowEntity(), {
+					id: 'wf-1',
+					name: 'Existing',
+					settings: { availableInMCP: true },
+					nodes: [makeNode({ id: 'a', name: 'A' }), makeNode({ id: 'b', name: 'B' })],
+					connections: {
+						A: { main: [[{ node: 'B', type: 'main', index: 0 }]] },
+					} as IConnections,
+					nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }],
+				}),
+			);
+
+			const result = await callHandler(
+				{
+					workflowId: 'wf-1',
+					operations: [{ type: 'removeConnection', source: 'A', target: 'B' }],
+				},
+				createTool({ canvasGroupsEnabled: true }),
+			);
+
+			expect(result.isError).toBeUndefined();
+			const response = parseResult(result);
+			expect(response.skippedOperations).toHaveLength(1);
+			expect(response.appliedOperations).toBe(1);
+		});
+
+		test('counts all operations when nothing is skipped', async () => {
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+					{ type: 'setNodePosition', nodeName: 'A', position: [50, 50] },
+				],
+			});
+
+			expect(parseResult(result).appliedOperations).toBe(2);
+		});
+	});
+
 	describe('handler', () => {
 		test('applies updateNodeParameters and saves the workflow', async () => {
 			const result = await callHandler({

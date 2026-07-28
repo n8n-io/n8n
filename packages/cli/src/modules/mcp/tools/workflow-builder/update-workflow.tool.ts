@@ -310,7 +310,12 @@ const outputSchema = {
 	name: z.string().optional(),
 	nodeCount: z.number().optional(),
 	url: z.string().optional(),
-	appliedOperations: z.number().optional().describe('Number of operations applied.'),
+	appliedOperations: z
+		.number()
+		.optional()
+		.describe(
+			'Number of submitted operations that were applied. Excludes operations skipped for failing basic validation (see skippedOperations); does not exclude a submitted operation whose resulting group was later dropped by the structural check, since that operation itself still ran.',
+		),
 	autoAssignedCredentials: z
 		.array(
 			z.object({
@@ -961,12 +966,19 @@ export const createUpdateWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			// Only count skips tied to a specific submitted operation (Part A, has an
+			// opIndex) against the total — those operations genuinely didn't apply.
+			// A Part B (structural) skip has no opIndex because it isn't attributable
+			// to one submitted operation: it can drop a group an *unrelated* op (e.g.
+			// removeConnection) indirectly invalidated, and that op itself still ran.
+			const notAppliedCount = skippedOperations.filter((op) => op.opIndex !== undefined).length;
+
 			const output = {
 				workflowId: updatedWorkflow.id,
 				name: updatedWorkflow.name,
 				nodeCount: updatedWorkflow.nodes.length,
 				url: workflowUrl,
-				appliedOperations: strictOperations.length,
+				appliedOperations: strictOperations.length - notAppliedCount,
 				autoAssignedCredentials: credentialAssignments,
 				validationWarnings,
 				note: skippedHttpNodes.length
