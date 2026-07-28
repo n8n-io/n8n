@@ -776,6 +776,18 @@ async function authenticateFormUserOrRespond(
 		if (req.method === 'GET') {
 			const { code, state } = req.query;
 
+			if (typeof req.query.error === 'string') {
+				// The provider returned an error (e.g. the user denied consent). Restarting the
+				// flow here would loop straight back to the same denial, so stop and report.
+				context.logger.warn('Form OAuth2 authorization was denied or failed', {
+					error: req.query.error,
+					error_description: req.query.error_description,
+				});
+				res.status(403).send('Access denied');
+				res.end();
+				return null;
+			}
+
 			// handle OAuth2 callback from the provider (code + state query params)
 			if (typeof code === 'string' && typeof state === 'string') {
 				try {

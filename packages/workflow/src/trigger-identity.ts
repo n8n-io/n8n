@@ -56,6 +56,10 @@ export function classifyTriggerIdentity(
 		nodeType === CHAT_TRIGGER_NODE_TYPE && parameters?.availableInChat === true;
 	const isMcpTrigger =
 		nodeType === MCP_TRIGGER_NODE_TYPE && parameters?.authentication === 'n8nOAuth2';
+	// Not gated by N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2: this shared classification describes the
+	// trigger's capability when the OAuth feature is enabled, and reading the env flag here
+	// would mean threading it through both callers of a low-level FE/BE-shared function. The
+	// only inconsistency is the narrow dynamic-credentials + form + flag-off combination.
 	const isFormTrigger =
 		nodeType === FORM_TRIGGER_NODE_TYPE && parameters?.authentication === 'n8nUserAuth';
 	if (isSubWorkflowTrigger || isChatHubTrigger || isMcpTrigger || isFormTrigger) {

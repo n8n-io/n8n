@@ -59,6 +59,7 @@ import { AllowAzureStoredAt1784000000034 } from './1784000000034-AllowAzureStore
 import { DropAgentDescriptionFromAgents1784000000037 } from './1784000000037-DropAgentDescriptionFromAgents';
 import { AddRecurringCronScheduleKind1784000000045 } from './1784000000045-AddRecurringCronScheduleKind';
 import { AddAvailableInMcpToAgents1784897791636 } from './1784897791636-AddAvailableInMcpToAgents';
+import { AddIsFirstPartyToOAuthClients1784912016000 } from './1784912016000-AddIsFirstPartyToOAuthClients';
 import { ChangeInstalledNodeVersionType1785162364000 } from './1785162364000-ChangeInstalledNodeVersionType';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
@@ -223,7 +224,6 @@ import { CreateWorkflowReviewRequestTables1784000000052 } from '../common/178400
 import { AddStoredAtToAgentExecution1784815940110 } from '../common/1784815940110-AddStoredAtToAgentExecution';
 import { AddInstanceCredentials1784815940111 } from '../common/1784815940111-AddInstanceCredentials';
 import { CreateAgentEvalTables1784815940112 } from '../common/1784815940112-CreateAgentEvalTables';
-import { AddIsFirstPartyToOAuthClients1784912016000 } from '../common/1784912016000-AddIsFirstPartyToOAuthClients';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,

@@ -1117,6 +1117,21 @@ describe('FormTrigger, formWebhook', () => {
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
+		it('responds 403 without restarting the flow when consent is denied', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { status, send } = setupContext(ctx, {
+				method: 'GET',
+				query: { error: 'access_denied', error_description: 'User denied', state: 'the-state' },
+			});
+
+			const result = await formWebhook(ctx);
+
+			expect(status).toHaveBeenCalledWith(403);
+			expect(send).toHaveBeenCalled();
+			expect(ctx.beginN8nOAuth2Flow).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
 		it('restarts the flow when the callback fails validation', async () => {
 			const ctx = mock<IWebhookFunctions>();
 			const { writeHead } = setupContext(ctx, {
