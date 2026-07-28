@@ -630,6 +630,10 @@ function handleRowActivate(item: ToolConnectionItem) {
 		return;
 	}
 
+	// The row body activates the same action as the Install button, so a disabled
+	// (non-admin) or in-flight install must not be reachable through it.
+	if (item.installDisabled || item.installing) return;
+
 	if (item.kind === 'workflow' && item.id.startsWith('workflow:')) {
 		const workflowId = item.id.slice('workflow:'.length);
 		const workflow = availableWorkflows.value.find((wf) => wf.id === workflowId);

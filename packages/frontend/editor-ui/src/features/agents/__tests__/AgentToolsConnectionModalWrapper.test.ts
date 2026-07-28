@@ -9,6 +9,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import type { ToolConnectionItem } from '@/features/shared/toolsConnection/types';
 
 import AgentToolsConnectionModalWrapper from '../components/AgentToolsConnectionModalWrapper.vue';
@@ -115,6 +116,12 @@ function getItems(): ToolConnectionItem[] {
 function emitConnect(item: ToolConnectionItem) {
 	const listener = modalAttrs.onConnect;
 	if (typeof listener !== 'function') throw new Error('Missing onConnect');
+	(listener as (item: ToolConnectionItem) => void)(item);
+}
+
+function emitOpenDetail(item: ToolConnectionItem) {
+	const listener = modalAttrs.onOpenDetail;
+	if (typeof listener !== 'function') throw new Error('Missing onOpenDetail');
 	(listener as (item: ToolConnectionItem) => void)(item);
 }
 
@@ -317,6 +324,29 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		// The tool that gets added is the installed type, not the preview.
 		const [{ tools }] = onConfirm.mock.calls[0];
 		expect(tools[0].node.nodeType).toBe(COMMUNITY_INSTALLED.name);
+	});
+
+	it('does not install a community tool via the row body when the user cannot install', async () => {
+		nodeTypesStore.communityNodeType = vi.fn().mockReturnValue({
+			nodeDescription: COMMUNITY_PREVIEW,
+			packageName: 'n8n-nodes-firecrawl',
+			isOfficialNode: true,
+		});
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: [COMMUNITY_PREVIEW.name],
+		};
+		mockedStore(useUsersStore).isAdminOrOwner = false;
+
+		render();
+		await flushPromises();
+
+		const preview = getItems().find((item) => item.id === `nodeType:${COMMUNITY_PREVIEW.name}`);
+		expect(preview?.installDisabled).toBe(true);
+
+		emitOpenDetail(preview!);
+		await flushPromises();
+
+		expect(installNodeMock).not.toHaveBeenCalled();
 	});
 
 	it('surfaces searched community tools that only resolve by their properties name', async () => {
