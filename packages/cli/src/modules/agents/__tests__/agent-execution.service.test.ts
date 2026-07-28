@@ -63,6 +63,7 @@ describe('AgentExecutionService', () => {
 	let agentExecutionLogStore: Mocked<AgentExecutionLogStore>;
 	let storageConfig: Mocked<StorageConfig>;
 	let errorReporter: Mocked<ErrorReporter>;
+	let agentChatAttachmentService: Mocked<AgentChatAttachmentService>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -76,6 +77,7 @@ describe('AgentExecutionService', () => {
 		agentExecutionLogStore = mock<AgentExecutionLogStore>();
 		storageConfig = mock<StorageConfig>({ modeTag: 'db' });
 		errorReporter = mock<ErrorReporter>();
+		agentChatAttachmentService = mock<AgentChatAttachmentService>();
 
 		service = new AgentExecutionService(
 			mockLogger(),
@@ -83,7 +85,7 @@ describe('AgentExecutionService', () => {
 			agentExecutionThreadRepository,
 			n8nMemory,
 			telemetry,
-			mock<AgentChatAttachmentService>(),
+			agentChatAttachmentService,
 			agentExecutionLogStore,
 			storageConfig,
 			errorReporter,
@@ -638,6 +640,7 @@ describe('AgentExecutionService', () => {
 			});
 			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-1');
 			expect(memoryBackend.deleteThread).toHaveBeenCalledWith('thread-1');
+			expect(agentChatAttachmentService.deleteByThread).toHaveBeenCalledWith('thread-1');
 			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
 		});
 
