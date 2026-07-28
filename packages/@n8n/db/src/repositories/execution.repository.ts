@@ -21,7 +21,6 @@ import {
 	Repository,
 	And,
 } from '@n8n/typeorm';
-import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { stringify } from 'flatted';
 import pick from 'lodash/pick';
@@ -150,13 +149,6 @@ const moreThanOrEqual = (date: string): unknown => {
 // This is the max number of elements in an IN-clause.
 // It's a conservative value, as some databases indicate limits around 1000.
 const MAX_UPDATE_BATCH_SIZE = 900;
-
-/** The single definition of what it means for an execution to have crashed. */
-const crashedExecutionCondition = (): QueryDeepPartialEntity<ExecutionEntity> => ({
-	status: 'crashed',
-	stoppedAt: new Date(),
-	waitTill: null,
-});
 
 @Service()
 export class ExecutionRepository extends Repository<ExecutionEntity> {
@@ -370,7 +362,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				// terminal status: recovery can race a `running` -> `waiting` transition and flag a
 				// healthy execution as dangling, but only genuinely in-progress rows should be crashed
 				{ id: In(batch), status: In(CRASHABLE_EXECUTION_STATUSES) },
-				crashedExecutionCondition(),
+				{ status: 'crashed', stoppedAt: new Date(), waitTill: null },
 			);
 			this.logger.info('Marked executions as `crashed`', { executionIds });
 			processed += batch.length;
