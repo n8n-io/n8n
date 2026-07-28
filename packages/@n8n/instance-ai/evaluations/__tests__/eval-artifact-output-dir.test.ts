@@ -2,19 +2,23 @@ import { existsSync, mkdtempSync, readdirSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
 
+import type { EvalLogger } from '../harness/logger';
+import { writeScenarioVerificationSnapshot } from '../harness/scenario-execution';
 import { writeRunDebugReport } from '../report/run-debug-report';
 import { writeWorkflowReport } from '../report/workflow-report';
-import type { WorkflowTestCase, WorkflowTestCaseResult } from '../types';
+import type { ChecklistResult, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
 
 // Pins artifact PLACEMENT for the lang-tracer dispatcher (lang-tracer
 // `packages/dispatcher/src/lib/runner.ts`): it runs several concurrent eval
 // children against ONE n8n checkout in one container — each child gets its own
 // `--output-dir`, and relies on that flag covering EVERY artifact the run
-// writes, not just `eval-results.json`. The HTML reports use stable filenames
-// (`workflow-eval-report.html`, `workflow-eval-llm-debug.html`), so a writer
-// that ignores `--output-dir` and falls back to the package-level `.data`
-// directory silently lets concurrent runs clobber each other's reports.
-// The no-arg default must stay `.data` for local dev.
+// writes, not just `eval-results.json`. All three writers that used to hardcode
+// the package-level `.data` directory are covered here. The HTML reports are
+// the sharpest case: their filenames are stable
+// (`workflow-eval-report.html`, `workflow-eval-llm-debug.html`), so ignoring
+// `--output-dir` silently lets concurrent runs clobber each other's reports.
+// The no-arg default must stay `.data` for local dev and for n8n's own eval CI,
+// which uploads that path as a build artifact without passing `--output-dir`.
 
 const DEFAULT_REPORT_DIR = path.join(__dirname, '..', '..', '.data');
 
@@ -93,6 +97,74 @@ describe('eval report artifacts — --output-dir contract', () => {
 
 			expect(path.dirname(reportPath)).toBe(DEFAULT_REPORT_DIR);
 			expect(existsSync(path.join(DEFAULT_REPORT_DIR, 'workflow-eval-llm-debug.html'))).toBe(true);
+		});
+	});
+
+	describe('writeScenarioVerificationSnapshot', () => {
+		const CHECKLIST_RESULT: ChecklistResult = {
+			id: 1,
+			pass: true,
+			reasoning: 'digest arrived',
+			strategy: 'llm',
+		};
+
+		/** Collects warnings so a swallowed write error reads differently from a
+		 *  snapshot correctly written somewhere else. */
+		function collectingLogger(): { logger: EvalLogger; warnings: string[] } {
+			const warnings: string[] = [];
+			const logger: EvalLogger = {
+				info: () => {},
+				verbose: () => {},
+				success: () => {},
+				warn: (msg: string) => warnings.push(msg),
+				error: (msg: string) => warnings.push(msg),
+				isVerbose: false,
+			};
+			return { logger, warnings };
+		}
+
+		async function writeSnapshot(testCaseName: string, outputDir?: string): Promise<string[]> {
+			const { logger, warnings } = collectingLogger();
+			await writeScenarioVerificationSnapshot({
+				testCaseName,
+				scenarioName: 'happy path',
+				workflowId: 'wf-1',
+				passed: true,
+				result: CHECKLIST_RESULT,
+				verificationResults: [CHECKLIST_RESULT],
+				verifierAttempts: [],
+				logger,
+				outputDir,
+			});
+			expect(warnings).toEqual([]);
+			return warnings;
+		}
+
+		it('writes the snapshot into the given outputDir', async () => {
+			const outputDir = freshOutputDir();
+
+			await writeSnapshot('daily digest', outputDir);
+
+			const names = readdirSync(outputDir);
+			expect(names).toHaveLength(1);
+			expect(names[0]).toMatch(/^daily-digest_happy-path_.*\.json$/);
+		});
+
+		it('creates the outputDir when it does not exist yet', async () => {
+			const outputDir = path.join(freshOutputDir(), 'nested', 'run-3');
+
+			await writeSnapshot('daily digest', outputDir);
+
+			expect(readdirSync(outputDir)).toHaveLength(1);
+		});
+
+		it('falls back to the package .data directory when no outputDir is given', async () => {
+			const caseName = `fallback case ${String(Date.now())}`;
+
+			await writeSnapshot(caseName);
+
+			const slug = caseName.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+			expect(readdirSync(DEFAULT_REPORT_DIR).some((n) => n.startsWith(`${slug}_`))).toBe(true);
 		});
 	});
 
