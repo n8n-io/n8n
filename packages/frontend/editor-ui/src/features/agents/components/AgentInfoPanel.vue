@@ -83,8 +83,26 @@ watch(
 	{ immediate: true },
 );
 
+const configProvider = computed<AgentModelProvider | null>(() => {
+	const parsed = parseModelString(modelToString(props.config?.model));
+	return parsed && isAgentModelProvider(parsed.provider) ? parsed.provider : null;
+});
+
+// The agent's persisted `config.credential` is the source of truth for the selected
+// model's provider. `credentialsByProvider` only tracks manual (localStorage) selections,
+// so a builder-created agent — which writes `config` but not localStorage — would fall
+// back to the managed default and read as "credentials missing". Overlay the config value.
+const effectiveCredentials = computed(() => {
+	const base = credentialsByProvider.value;
+	if (!base) return base;
+	const provider = configProvider.value;
+	const credential = props.config?.credential;
+	if (!provider || !credential) return base;
+	return { ...base, [provider]: credential };
+});
+
 const filteredAgents = computed<AgentModelsByProvider>(() =>
-	getModelsForPicker(credentialsByProvider.value),
+	getModelsForPicker(effectiveCredentials.value),
 );
 
 const selectedAgent = computed<AgentModelOption | null>(() => {
@@ -124,7 +142,7 @@ const instructionsToolbarMode = computed(() =>
 );
 
 function onModelChange(selection: AgentModelSelection) {
-	const credentialId = credentialsByProvider.value?.[selection.provider];
+	const credentialId = effectiveCredentials.value?.[selection.provider];
 	if (!credentialId) {
 		showError(new Error(i18n.baseText('credentials.noResults')), i18n.baseText('error'));
 		return;
@@ -195,7 +213,7 @@ function onInstructionsInput(value: string) {
 			<AgentModelSelector
 				:disabled="props.disabled"
 				:selected-model="selectedAgent"
-				:credentials="credentialsByProvider"
+				:credentials="effectiveCredentials"
 				:models-by-provider="filteredAgents"
 				:is-loading="isLoading"
 				:project-id="projectId"
