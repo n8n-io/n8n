@@ -73,6 +73,12 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	// and running indicator settle here.
 	if (workflowExecutionStateStore.isTrackedSubExecution(data.executionId)) {
 		markSubExecutionFinished(data, documentId);
+		// With "wait for sub-workflow" off the parent run ends first, so no parent
+		// finish is coming to backfill this one's item payloads. Superseded
+		// iterations are already unregistered, so this is the surviving one.
+		if (workflowExecutionStateStore.activeExecutionId === undefined) {
+			await backfillSubExecutionRunData(documentId);
+		}
 		return;
 	}
 
@@ -204,7 +210,43 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 
 	setRunExecutionData(execution, runExecutionData, documentId);
 
+	await backfillSubExecutionRunData(documentId);
+
 	continueEvaluationLoop(execution, options);
+}
+
+/**
+ * Sub-executions stream node metadata but not item payloads, so their run data
+ * holds trimmed placeholders while the run is live. This replaces those with the
+ * real data for the sub-executions still on display.
+ *
+ * Costs one request per calling node rather than one per loop iteration:
+ * superseded iterations are already out of the registry, and iterations that have
+ * not finished are skipped — with "wait for sub-workflow" off the parent can
+ * finish while a child is still going, and its data would be incomplete.
+ */
+async function backfillSubExecutionRunData(documentId: WorkflowDocumentId) {
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+	const workflowsStore = useWorkflowsStore();
+	const links = [...workflowExecutionStateStore.subExecutionLinks];
+
+	await Promise.all(
+		links.map(async (link) => {
+			const executionDataStore = useExecutionDataStore(createExecutionDataId(link.executionId));
+			const status = executionDataStore.execution?.status;
+			if (status === undefined || status === 'running' || status === 'waiting') return;
+
+			try {
+				const fetched = await workflowsStore.fetchExecutionDataById(link.executionId);
+				if (!fetched?.data) return;
+				// `setExecutionRunData` keeps `workflowData` — for a workflow calling
+				// itself that is the canvas snapshot the overlay reads from.
+				executionDataStore.setExecutionRunData(fetched.data);
+			} catch {
+				// Placeholders stay; the log view still fetches on expand.
+			}
+		}),
+	);
 }
 
 /**
@@ -252,8 +294,9 @@ export function continueEvaluationLoop(execution: SimplifiedExecution, opts: Pus
 
 /**
  * Settles a finished sub-execution: records its terminal status and clears the
- * running indicator. Its live-pushed run data is kept — it is what the canvas and
- * log view show, and there is no re-fetch to replace it with.
+ * running indicator. Its live-pushed run data is kept as-is here — item payloads
+ * are not streamed for sub-executions, so the placeholders stand until
+ * {@link backfillSubExecutionRunData} replaces them when the parent run ends.
  */
 function markSubExecutionFinished(data: ExecutionFinished['data'], documentId: WorkflowDocumentId) {
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);

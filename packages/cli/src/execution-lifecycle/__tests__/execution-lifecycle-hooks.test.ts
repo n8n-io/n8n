@@ -1786,6 +1786,9 @@ describe('Execution Lifecycle Hooks', () => {
 					mode: 'manual',
 					executionId,
 					workflowData,
+					// Resolvable, so skipping the payload push is the gate's doing and not
+					// the fail-closed redaction path.
+					userId,
 					pushRef,
 					subExecutionParent,
 				});
@@ -1816,6 +1819,31 @@ describe('Execution Lifecycle Hooks', () => {
 					}),
 					pushRef,
 				);
+			});
+
+			it('pushes node metadata but not item payloads', async () => {
+				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
+
+				// Item counts still ride along, so the editor can build placeholders.
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'nodeExecuteAfter',
+						data: expect.objectContaining({ executionId, nodeName }),
+					}),
+					pushRef,
+				);
+
+				expect(push.send).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteAfterData' }),
+					pushRef,
+					true,
+				);
+			});
+
+			it('does not resolve the user for redaction, having no payload to redact', async () => {
+				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
+
+				expect(userRepository.findOne).not.toHaveBeenCalled();
 			});
 		});
 

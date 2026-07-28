@@ -347,6 +347,14 @@ function hookFunctionsPush(
 			pushRef,
 		);
 
+		// A sub-execution streams to the parent's session only so the canvas and log
+		// tree can follow it live, and the metadata push above already covers that:
+		// the editor builds placeholder run data from `itemCountByConnectionType`.
+		// Item payloads are ~90% of a sub-execution's wire traffic and a loop keeps
+		// only its last iteration, so they are not streamed; the editor backfills
+		// the sub-executions still on display over REST once the parent run ends.
+		if (subExecutionParent) return;
+
 		// Fail-closed redaction: if user cannot be resolved, skip the data push
 		// entirely rather than sending unredacted data to the client.
 		const user = await getUser();
