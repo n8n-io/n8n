@@ -75,7 +75,8 @@ const outputSchema = {
  * MCP tool that validates individual node configurations against their
  * generated Zod schema. Schema-level only — does not check workflow-level
  * concerns (connections, triggers, disconnected nodes, credential existence).
- * For those, use `validate_workflow` on full workflow code.
+ * Those are validated by `create_workflow_from_code` / `update_workflow`
+ * before anything is saved.
  */
 export const createValidateNodeTool = (
 	user: User,
@@ -84,7 +85,7 @@ export const createValidateNodeTool = (
 	name: CODE_BUILDER_VALIDATE_NODE_TOOL.toolName,
 	config: {
 		description:
-			"Validate a node's config the moment you write it — before assembling create_workflow_from_code or calling update_workflow. Read-only and needs no existing workflow, so use it freely while composing. Unlike the write tools (which validate only as they mutate), this returns isolated per-node, per-parameter errors with no graph noise, and can check several candidate configs in one call so you wire only the one that passes. For langchain tool subnodes (nodes wired via ai_tool), set isToolNode: true so the schema evaluates the correct displayOptions branch. Schema-level only — for connections, required inputs, triggers, and credentials use validate_workflow.",
+			"Validate a node's config the moment you write it — before assembling create_workflow_from_code or calling update_workflow. Read-only and needs no existing workflow, so use it freely while composing. Unlike the write tools (which validate the full workflow as they run), this returns isolated per-node, per-parameter errors with no graph noise, and can check several candidate configs in one call so you wire only the one that passes. For langchain tool subnodes (nodes wired via ai_tool), set isToolNode: true so the schema evaluates the correct displayOptions branch. Schema-level only — connections, required inputs, triggers, and credentials are validated when the workflow is created or updated.",
 		inputSchema,
 		outputSchema,
 		annotations: {

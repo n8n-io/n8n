@@ -6,7 +6,7 @@ import { test, expect } from '../../../fixtures/base';
  * E2E tests for the Internal MCP Service (/mcp-server/http).
  *
  * This tests the built-in MCP server that exposes n8n workflows to external
- * MCP clients (like Claude AI). It provides 6 core tools and 7 builder tools:
+ * MCP clients (like Claude AI). It provides 6 core tools and 6 builder tools:
  *
  * Core tools:
  * - search_workflows: Search for workflows available in MCP
@@ -20,8 +20,7 @@ import { test, expect } from '../../../fixtures/base';
  * - search_nodes: Search for n8n nodes by service name/trigger type
  * - get_node_types: Get TypeScript type definitions for nodes
  * - get_workflow_best_practices: Get best-practices guidance for a workflow technique
- * - validate_workflow: Validate n8n Workflow SDK code
- * - create_workflow_from_code: Create a workflow from validated SDK code
+ * - create_workflow_from_code: Create a workflow from SDK code (validates before saving)
  * - archive_workflow: Archive a workflow by ID
  * - update_workflow: Update a workflow with new SDK code
  *

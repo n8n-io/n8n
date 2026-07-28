@@ -21,7 +21,6 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'get_node_types',
 		'get_workflow_best_practices',
 		'get_workflow_sdk_reference',
-		'validate_workflow',
 		'validate_node_config',
 	],
 	'workflow:write': [
@@ -36,7 +35,6 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'get_node_types',
 		'get_workflow_best_practices',
 		'get_workflow_sdk_reference',
-		'validate_workflow',
 		'validate_node_config',
 	],
 	'workflow:execute': ['execute_workflow', 'test_workflow', 'prepare_workflow_pin_data'],
@@ -96,7 +94,6 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'get_node_types',
 	'get_workflow_best_practices',
 	'get_workflow_sdk_reference',
-	'validate_workflow',
 	'validate_node_config',
 	'create_workflow_from_code',
 	'update_workflow',

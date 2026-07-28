@@ -47,7 +47,6 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 		return { parseAndValidate: mockParseAndValidate };
 	}),
 	stripImportStatements: (code: string) => mockStripImportStatements(code),
-	CODE_BUILDER_VALIDATE_TOOL: { toolName: 'validate_workflow_code', displayTitle: 'Validate' },
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL: {
 		toolName: 'create_workflow_from_code',
 		displayTitle: 'Create Workflow from Code',
@@ -282,6 +281,65 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(response).not.toHaveProperty('warnings');
 		});
 
+		test('blocks creation when validation reports fatal errors, listing all of them', async () => {
+			const errors = [
+				{
+					code: 'MISSING_REQUIRED_INPUT',
+					message: "'Agent' requires a model subnode connected to its ai_languageModel input.",
+					nodeName: 'Agent',
+				},
+				{
+					code: 'HARDCODED_CREDENTIALS',
+					message: 'Node "Fetch" has a hardcoded API key in its parameters.',
+					nodeName: 'Fetch',
+				},
+			];
+			// The handler folds fatal errors into warnings too; the tool must block
+			// on `errors` and not surface them a second time as warnings.
+			mockParseAndValidate.mockResolvedValue({
+				workflow: mockWorkflowJson,
+				warnings: errors,
+				errors,
+			});
+
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			expect(result.isError).toBe(true);
+			expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
+			const response = parseResult(result);
+			expect(response.error).toContain('Workflow validation failed');
+			expect(response.error).toContain(errors[0].message);
+			expect(response.error).toContain(errors[1].message);
+			expect(response).not.toHaveProperty('warnings');
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User called mcp tool',
+				expect.objectContaining({
+					results: expect.objectContaining({
+						success: false,
+						data: {
+							validationErrorCount: 2,
+							validationErrorCodes: ['MISSING_REQUIRED_INPUT', 'HARDCODED_CREDENTIALS'],
+						},
+					}),
+				}),
+			);
+		});
+
+		test('does not block creation on warnings alone', async () => {
+			const warning = { code: 'MISSING_TRIGGER', message: 'Workflow has no trigger node.' };
+			mockParseAndValidate.mockResolvedValue({
+				workflow: mockWorkflowJson,
+				warnings: [warning],
+				errors: [],
+			});
+
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			expect(result.isError).toBeUndefined();
+			expect(workflowCreationService.createWorkflow).toHaveBeenCalled();
+			expect(parseResult(result).warnings).toEqual([warning]);
+		});
+
 		test('sets correct workflow entity defaults', async () => {
 			await callHandler({ code: 'const wf = ...' });
 
@@ -481,7 +539,6 @@ describe('create-workflow-from-code MCP tool', () => {
 			const response = parseResult(result);
 			expect(response.hint).toContain('sdk_ref');
 			expect(response.hint).toContain('Workflow SDK reference');
-			expect(response.hint).toContain('validate_workflow_code until it returns valid=true');
 			expect(response.hint).toContain('create_workflow_from_code again');
 		});
 

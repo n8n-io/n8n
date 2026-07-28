@@ -78,6 +78,13 @@ export interface ValidationWarning {
 export interface ParseAndValidateResult {
 	workflow: WorkflowJSON;
 	warnings: ValidationWarning[];
+	/**
+	 * Fatal validation issues (the `errors` arrays of the graph and JSON
+	 * validation passes). For backward compatibility these are also folded
+	 * into `warnings`; consumers that must hard-block on fatal issues (e.g.
+	 * the MCP create/update tools) should check this field.
+	 */
+	errors?: ValidationWarning[];
 }
 
 /**
