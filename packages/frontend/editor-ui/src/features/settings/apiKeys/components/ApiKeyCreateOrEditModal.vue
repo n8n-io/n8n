@@ -142,12 +142,12 @@ const expirationCopy = (expirationDate: string, expired = false) =>
 			: 'settings.api.view.modal.form.expirationText',
 		{ interpolate: { expirationDate } },
 	);
-const neverExpiresCopy = i18n.baseText('settings.api.view.modal.form.expirationText.never');
+const neverExpiresCopy = () => i18n.baseText('settings.api.view.modal.form.expirationText.never');
 
 // Helper copy under the expiration select. Always present so "Never" explains
 // itself (the key stays active until revoked) instead of silently clearing.
 const expirationHint = computed(() => {
-	if (expirationDaysFromNow.value === EXPIRATION_OPTIONS.NO_EXPIRATION) return neverExpiresCopy;
+	if (expirationDaysFromNow.value === EXPIRATION_OPTIONS.NO_EXPIRATION) return neverExpiresCopy();
 	return expirationDate.value ? expirationCopy(expirationDate.value) : '';
 });
 
@@ -156,7 +156,7 @@ const expirationHint = computed(() => {
 const editExpirationText = computed(() => {
 	const apiKey = currentApiKey.value;
 	if (!apiKey) return '';
-	if (!apiKey.expiresAt) return neverExpiresCopy;
+	if (!apiKey.expiresAt) return neverExpiresCopy();
 	return expirationCopy(
 		DateTime.fromSeconds(apiKey.expiresAt).toFormat(API_KEY_DATE_FORMAT),
 		isApiKeyExpired(apiKey),
