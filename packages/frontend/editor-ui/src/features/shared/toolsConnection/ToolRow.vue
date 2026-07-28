@@ -69,6 +69,16 @@ const installBlocked = computed(
 	() => Boolean(props.item.communityPreview) && Boolean(props.item.installDisabled),
 );
 
+/**
+ * For most rows the button only repeated what clicking the row already does.
+ * What survives is the pair that goes somewhere the row body cannot: installing
+ * a community package, and connecting an MCP server without a detour through
+ * its detail view.
+ */
+const hasDirectAction = computed(
+	() => Boolean(props.item.communityPreview) || props.item.kind === 'mcp-server',
+);
+
 function handleRowClick() {
 	emit('open-detail', props.item);
 }
@@ -122,6 +132,8 @@ function handleConnect() {
 						>
 							<ShieldIcon
 								:class="$style.verifiedIcon"
+								role="img"
+								:aria-label="i18n.baseText('communityNodeInfo.approved')"
 								data-test-id="tools-connection-row-verified-badge"
 							/>
 						</N8nTooltip>
@@ -161,10 +173,10 @@ function handleConnect() {
 				<span :class="$style.statusDot" aria-hidden="true" />
 				{{ i18n.baseText('tools.connection.action.connected') }}
 			</span>
-			<template v-else>
+			<template v-else-if="hasDirectAction">
 				<N8nTooltip
 					v-if="installBlocked && !item.installing"
-					:content="i18n.baseText('communityNodeInfo.contact.admin')"
+					:content="i18n.baseText('tools.connection.install.contactAdmin')"
 					placement="top"
 				>
 					<span>

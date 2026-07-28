@@ -38,14 +38,12 @@ const PlaceholderSettingsBody = {
 	`,
 };
 
-const INSTANCE_AI_CATEGORIES: ToolCategoryKey[] = ['connected', 'built-in', 'mcp'];
+const INSTANCE_AI_CATEGORIES: ToolCategoryKey[] = ['all', 'built-in', 'mcp'];
 const AGENT_BUILDER_CATEGORIES: ToolCategoryKey[] = [
-	'connected',
+	'all',
 	'mcp',
-	'ai',
 	'n8n',
 	'app-action',
-	'community',
 	'workflows',
 ];
 
@@ -190,18 +188,6 @@ export const InstanceAi: Story = {
 	args: {
 		items: realisticItems,
 		categories: INSTANCE_AI_CATEGORIES,
-	},
-};
-
-/**
- * Demonstrates all five section keys side by side — connected items at the top,
- * then services, agents, data stores, and workflows.
- */
-export const AllSections: Story = {
-	render: renderWithTrigger(),
-	args: {
-		items: realisticItems,
-		categories: AGENT_BUILDER_CATEGORIES,
 	},
 };
 

@@ -492,7 +492,7 @@ async function handleConnect(item: ToolConnectionItem) {
 	<ToolsConnectionModal
 		v-model:open="isOpen"
 		:items="items"
-		:categories="['connected', 'built-in', 'mcp']"
+		:categories="['all', 'built-in', 'mcp']"
 		:detail-item="detailItem"
 		:detail-mode="detailMode"
 		:hide-back-button="shouldHideBackButton"

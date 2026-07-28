@@ -51,15 +51,7 @@ import {
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
 import { toToolIconSource } from '../utils/toolIconSource';
 
-const CATEGORIES: ToolCategoryKey[] = [
-	'connected',
-	'mcp',
-	'ai',
-	'n8n',
-	'app-action',
-	'community',
-	'workflows',
-];
+const CATEGORIES: ToolCategoryKey[] = ['all', 'mcp', 'n8n', 'app-action', 'workflows'];
 const incompatibleWorkflowToolBodyNodeTypes = new Set<string>(
 	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
 );
@@ -330,7 +322,15 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 		if (!result.success) return;
 
 		const installedName = removePreviewToken(nodeType.name);
-		addNodeTool(nodeTypesStore.getNodeType(installedName) ?? nodeType);
+		const installed = nodeTypesStore.getNodeType(installedName);
+		if (!installed) {
+			toast.showError(
+				new Error(i18n.baseText('agents.tools.install.unresolved.message')),
+				i18n.baseText('agents.tools.install.unresolved.title'),
+			);
+			return;
+		}
+		addNodeTool(installed);
 	} finally {
 		installingToolName.value = null;
 	}
@@ -420,6 +420,7 @@ function openConfigForToolEntry(entry: WorkingToolEntry) {
 			);
 			toolTelemetry.trackEdited(updatedRef);
 			commit();
+			uiStore.closeModal(props.modalName);
 		},
 		onRemove: () => {
 			workingToolEntries.value = workingToolEntries.value.filter(
@@ -448,6 +449,7 @@ function openConfigForMcpEntry(entry: WorkingMcpServerEntry) {
 				e.localId === entry.localId ? { ...e, server: updatedServer } : e,
 			);
 			commit();
+			uiStore.closeModal(props.modalName);
 		},
 		onRemove: () => {
 			workingMcpServerEntries.value = workingMcpServerEntries.value.filter(

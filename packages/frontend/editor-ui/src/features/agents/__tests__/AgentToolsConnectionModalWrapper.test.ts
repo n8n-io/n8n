@@ -6,19 +6,23 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
+import { getWorkflow } from '@/app/api/workflows';
+import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import type { ToolConnectionItem } from '@/features/shared/toolsConnection/types';
+import type { IWorkflowDb } from '@/Interface';
 
 import AgentToolsConnectionModalWrapper from '../components/AgentToolsConnectionModalWrapper.vue';
-import type { AgentJsonToolRef } from '../types';
+import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 
 const showMessageMock = vi.fn();
+const showErrorMock = vi.fn();
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
-		showError: vi.fn(),
+		showError: showErrorMock,
 		showMessage: showMessageMock,
 		showToast: vi.fn(),
 	}),
@@ -27,6 +31,8 @@ vi.mock('@/app/composables/useToast', () => ({
 vi.mock('@/app/api/workflows', () => ({
 	getWorkflow: vi.fn(),
 }));
+
+const getWorkflowMock = vi.mocked(getWorkflow);
 
 vi.mock('virtual:node-popularity-data', () => ({
 	default: [
@@ -94,6 +100,15 @@ const WIKIPEDIA: INodeTypeDescription = {
 	description: 'Search Wikipedia',
 	defaults: { name: 'Wikipedia' },
 	properties: [{ displayName: 'Notice', name: 'notice', type: 'notice', default: '' }],
+	credentials: [],
+};
+
+const MCP_TOOL: INodeTypeDescription = {
+	...SLACK,
+	displayName: 'GitHub MCP',
+	name: AI_MCP_TOOL_NODE_TYPE,
+	description: 'Connect to an MCP server',
+	defaults: { name: 'GitHub MCP' },
 	credentials: [],
 };
 
@@ -191,11 +206,15 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		};
 	}
 
-	function render(tools: AgentJsonToolRef[] = [], onConfirm = vi.fn()) {
+	function render(
+		tools: AgentJsonToolRef[] = [],
+		onConfirm = vi.fn(),
+		mcpServers: AgentJsonMcpServerConfig[] = [],
+	) {
 		return renderComponent({
 			props: {
 				modalName: MODAL_NAME,
-				data: { tools, onConfirm },
+				data: { tools, mcpServers, onConfirm },
 			},
 		});
 	}
@@ -238,11 +257,6 @@ describe('AgentToolsConnectionModalWrapper', () => {
 	});
 
 	it('assigns each available item the category tab it belongs to', async () => {
-		const calculator: INodeTypeDescription = {
-			...WIKIPEDIA,
-			displayName: 'Calculator',
-			name: 'toolCalculator',
-		};
 		const recommended: INodeTypeDescription = {
 			...WIKIPEDIA,
 			displayName: 'Gmail',
@@ -251,12 +265,11 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		};
 		nodeTypesStore.getNodeType = vi.fn().mockImplementation((name: string) => {
 			if (name === SLACK.name) return SLACK;
-			if (name === calculator.name) return calculator;
 			if (name === recommended.name) return recommended;
 			return null;
 		});
 		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
-			[NodeConnectionTypes.AiTool]: [SLACK.name, calculator.name, recommended.name],
+			[NodeConnectionTypes.AiTool]: [SLACK.name, recommended.name],
 		};
 
 		render();
@@ -265,7 +278,6 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		const categoryById = new Map(getItems().map((item) => [item.id, item.category]));
 
 		expect(categoryById.get(`nodeType:${SLACK.name}`)).toBe('app-action');
-		expect(categoryById.get('nodeType:toolCalculator')).toBe('ai');
 		expect(categoryById.get('nodeType:n8n-nodes-base.gmail')).toBe('n8n');
 	});
 
@@ -306,7 +318,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 
 		const preview = getItems().find((item) => item.id === `nodeType:${COMMUNITY_PREVIEW.name}`);
 		expect(preview).toMatchObject({
-			category: 'community',
+			category: 'app-action',
 			communityPreview: true,
 			verified: true,
 		});
@@ -375,7 +387,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		await flushPromises();
 
 		const hit = getItems().find((item) => item.id === `nodeType:${COMMUNITY_PREVIEW.name}`);
-		expect(hit).toMatchObject({ category: 'community', verified: true });
+		expect(hit).toMatchObject({ category: 'app-action', verified: true });
 	});
 
 	it('maps connected tools and keeps the same node type available for duplicates', async () => {
@@ -442,6 +454,21 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
+	it('closes the tools modal once an edit to a connected tool is saved', async () => {
+		const onConfirm = vi.fn();
+		render([toolRef(SLACK.name)], onConfirm);
+		await flushPromises();
+
+		const connected = getItems().find((item) => item.isConnected);
+		emitConnect(connected!);
+
+		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
+		payload.data.onConfirm({ ...toolRef(SLACK.name), name: 'Renamed Slack' });
+
+		expect(onConfirm).toHaveBeenCalledTimes(1);
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
 	it('removes a connected tool when the config modal asks to', async () => {
 		const onConfirm = vi.fn();
 		render([toolRef(SLACK.name)], onConfirm);
@@ -482,5 +509,176 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			mcpServers: [],
 		});
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
+	it('uniquifies the name when the same setup-less tool is added twice', async () => {
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: [WIKIPEDIA.name],
+		};
+		const existing: AgentJsonToolRef = {
+			type: 'node',
+			name: 'Wikipedia',
+			node: { nodeType: WIKIPEDIA.name, nodeTypeVersion: 1, nodeParameters: {} },
+		};
+		const onConfirm = vi.fn();
+		render([existing], onConfirm);
+		await flushPromises();
+
+		emitConnect(getItems().find((item) => item.id === `nodeType:${WIKIPEDIA.name}`)!);
+
+		const [{ tools }] = onConfirm.mock.calls[0];
+		expect(tools.map((tool: Extract<AgentJsonToolRef, { type: 'node' }>) => tool.name)).toEqual([
+			'Wikipedia',
+			'Wikipedia (1)',
+		]);
+	});
+
+	describe('workflow tools', () => {
+		const WORKFLOW = {
+			id: 'wf-1',
+			name: 'Daily sales digest',
+			isArchived: false,
+			nodes: [{ type: 'n8n-nodes-base.executeWorkflowTrigger', name: 'When called' }],
+		};
+
+		async function renderWithWorkflow(onConfirm = vi.fn()) {
+			workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([WORKFLOW]);
+			render([], onConfirm);
+			await flushPromises();
+			return getItems().find((item) => item.id === `workflow:${WORKFLOW.id}`)!;
+		}
+
+		it('refuses a workflow whose body contains an incompatible node', async () => {
+			const onConfirm = vi.fn();
+			const workflow = await renderWithWorkflow(onConfirm);
+			getWorkflowMock.mockResolvedValueOnce({
+				...WORKFLOW,
+				nodes: [
+					{ type: 'n8n-nodes-base.executeWorkflowTrigger', name: 'When called' },
+					{ type: 'n8n-nodes-base.wait', name: 'Wait a bit' },
+				],
+			} as unknown as IWorkflowDb);
+
+			emitConnect(workflow);
+			await flushPromises();
+
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+			expect(onConfirm).not.toHaveBeenCalled();
+			expect(showErrorMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('adds nothing when the compatibility pre-check fetch fails', async () => {
+			const onConfirm = vi.fn();
+			const workflow = await renderWithWorkflow(onConfirm);
+			getWorkflowMock.mockRejectedValueOnce(new Error('network down'));
+
+			emitConnect(workflow);
+			await flushPromises();
+
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+			expect(onConfirm).not.toHaveBeenCalled();
+			expect(showErrorMock).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	it('does not add a community tool when the install fails', async () => {
+		nodeTypesStore.getNodeType = vi.fn().mockImplementation((name: string) => {
+			if (name === COMMUNITY_INSTALLED.name) return COMMUNITY_INSTALLED;
+			return null;
+		});
+		nodeTypesStore.communityNodeType = vi.fn().mockReturnValue({
+			nodeDescription: COMMUNITY_PREVIEW,
+			packageName: 'n8n-nodes-firecrawl',
+			isOfficialNode: true,
+		});
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: [COMMUNITY_PREVIEW.name],
+		};
+		installNodeMock.mockResolvedValue({ success: false });
+
+		const onConfirm = vi.fn();
+		render([], onConfirm);
+		await flushPromises();
+
+		emitConnect(getItems().find((item) => item.id === `nodeType:${COMMUNITY_PREVIEW.name}`)!);
+		await flushPromises();
+
+		expect(installNodeMock).toHaveBeenCalledTimes(1);
+		expect(onConfirm).not.toHaveBeenCalled();
+		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+	});
+
+	it('does not add a community tool when the installed node type cannot be resolved', async () => {
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
+		nodeTypesStore.communityNodeType = vi.fn().mockReturnValue({
+			nodeDescription: COMMUNITY_PREVIEW,
+			packageName: 'n8n-nodes-firecrawl',
+			isOfficialNode: true,
+		});
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: [COMMUNITY_PREVIEW.name],
+		};
+
+		const onConfirm = vi.fn();
+		render([], onConfirm);
+		await flushPromises();
+
+		emitConnect(getItems().find((item) => item.id === `nodeType:${COMMUNITY_PREVIEW.name}`)!);
+		await flushPromises();
+
+		expect(installNodeMock).toHaveBeenCalledTimes(1);
+		expect(onConfirm).not.toHaveBeenCalled();
+		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		expect(showErrorMock).toHaveBeenCalledTimes(1);
+	});
+
+	describe('MCP servers', () => {
+		const SERVER: AgentJsonMcpServerConfig = {
+			name: 'github',
+			url: 'https://mcp.example.com',
+			transport: 'streamableHttp',
+			authentication: 'none',
+		};
+
+		beforeEach(() => {
+			nodeTypesStore.getNodeType = vi
+				.fn()
+				.mockImplementation((name: string) => (name === MCP_TOOL.name ? MCP_TOOL : null));
+			nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+				[NodeConnectionTypes.AiTool]: [MCP_TOOL.name],
+			};
+		});
+
+		it('commits an added MCP server to the host once its config modal saves', async () => {
+			const onConfirm = vi.fn();
+			render([], onConfirm);
+			await flushPromises();
+
+			emitConnect(getItems().find((item) => item.id === `nodeType:${MCP_TOOL.name}`)!);
+
+			expect(onConfirm).not.toHaveBeenCalled();
+			const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
+			expect(payload.data.kind).toBe('mcpServer');
+
+			payload.data.onConfirm(SERVER);
+
+			expect(onConfirm).toHaveBeenCalledWith({ tools: [], mcpServers: [SERVER] });
+			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		});
+
+		it('removes a connected MCP server when its config modal asks to', async () => {
+			const onConfirm = vi.fn();
+			render([], onConfirm, [SERVER]);
+			await flushPromises();
+
+			const connected = getItems().find((item) => item.id.startsWith('mcp:'));
+			expect(connected?.title).toBe(SERVER.name);
+
+			emitConnect(connected!);
+			const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
+			payload.data.onRemove();
+
+			expect(onConfirm).toHaveBeenCalledWith({ tools: [], mcpServers: [] });
+		});
 	});
 });

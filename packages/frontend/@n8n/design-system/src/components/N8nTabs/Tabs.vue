@@ -13,6 +13,11 @@ interface TabsProps {
 	options?: Array<TabOptions<Value>>;
 	size?: 'small' | 'medium';
 	variant?: 'modern' | 'legacy';
+	/**
+	 * Spread the tabs over the full width in equal slots. Keeps every tab in
+	 * place when a label changes width, at the cost of truncating long ones.
+	 */
+	justified?: boolean;
 }
 
 const props = withDefaults(defineProps<TabsProps>(), {
@@ -20,6 +25,7 @@ const props = withDefaults(defineProps<TabsProps>(), {
 	options: () => [],
 	size: 'medium',
 	variant: 'legacy',
+	justified: false,
 });
 
 const scrollPosition = ref(0);
@@ -89,6 +95,7 @@ const scrollRight = () => scroll(50);
 			$style.container,
 			size === 'small' ? $style.small : '',
 			variant === 'modern' ? $style.modern : '',
+			justified ? $style.justified : '',
 		]"
 	>
 		<div v-if="scrollPosition > 0" :class="$style.back" @click="scrollLeft">
@@ -274,6 +281,27 @@ const scrollRight = () => scroll(50);
 
 	.modern & {
 		padding-bottom: var(--spacing--xs);
+	}
+}
+
+// Equal slots rather than natural widths: a tab's own label can then grow or
+// shrink — a count going from (0) to (99+) — without nudging its neighbours.
+// Slots always add up to the container, so the scroll arrows never engage.
+.justified {
+	.tabs > div {
+		flex: 1 1 0;
+		min-width: 0;
+	}
+
+	.tab {
+		justify-content: center;
+		min-width: 0;
+	}
+
+	.notificationContainer {
+		display: block;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 }
 

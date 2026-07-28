@@ -33,7 +33,9 @@ const itemPositionCache = computed(() => {
 			const key = item[props.itemKey];
 			const prevItem = props.items[index - 1];
 			const prevItemPosition = prevItem ? acc[prevItem[props.itemKey]] : 0;
-			const prevItemSize = prevItem ? itemSizeCache.value[prevItem[props.itemKey]] : 0;
+			const prevItemSize = prevItem
+				? (itemSizeCache.value[prevItem[props.itemKey]] ?? props.itemSize)
+				: 0;
 
 			acc[key] = prevItemPosition + prevItemSize;
 
@@ -60,7 +62,7 @@ const startIndex = computed(() => {
 const endIndex = computed(() => {
 	const foundIndex = props.items.findIndex((item) => {
 		const itemPosition = itemPositionCache.value[item[props.itemKey]];
-		const itemSize = itemSizeCache.value[item[props.itemKey]];
+		const itemSize = itemSizeCache.value[item[props.itemKey]] ?? props.itemSize;
 
 		return itemPosition + itemSize >= scrollTop.value + wrapperHeight.value;
 	});
@@ -94,7 +96,9 @@ watch(
 const scrollerHeight = computed(() => {
 	const lastItem = props.items[props.items.length - 1];
 	const lastItemPosition = lastItem ? itemPositionCache.value[lastItem[props.itemKey]] : 0;
-	const lastItemSize = lastItem ? itemSizeCache.value[lastItem[props.itemKey]] : props.itemSize;
+	const lastItemSize = lastItem
+		? (itemSizeCache.value[lastItem[props.itemKey]] ?? props.itemSize)
+		: props.itemSize;
 
 	return lastItemPosition + lastItemSize;
 });
@@ -150,17 +154,20 @@ function onUpdateItemSize(item: { [key: string]: string }) {
 		const itemRef = itemRefs.value[itemId] as HTMLElement;
 		const previousSize = itemSizeCache.value[itemId];
 		const size = itemRef ? itemRef.offsetHeight : props.itemSize;
-		const difference = size - previousSize;
 
 		itemSizeCache.value = {
 			...itemSizeCache.value,
 			[item[props.itemKey]]: size,
 		};
 
-		if (wrapperRef.value && scrollTop.value) {
-			wrapperRef.value.scrollTop = wrapperRef.value.scrollTop + difference;
-			scrollTop.value = wrapperRef.value.scrollTop;
+		// A key measured for the first time has no previous size to compensate
+		// for; adjusting here would scroll by NaN and reset the list to the top.
+		if (previousSize === undefined || !wrapperRef.value || !scrollTop.value) {
+			return;
 		}
+
+		wrapperRef.value.scrollTop = wrapperRef.value.scrollTop + (size - previousSize);
+		scrollTop.value = wrapperRef.value.scrollTop;
 	});
 }
 
@@ -183,21 +190,25 @@ function onScroll() {
 	scrollTop.value = wrapperRef.value.scrollTop;
 }
 
-function scrollToKey(key: Item[Key]) {
+function scrollTo(position: number) {
 	if (!wrapperRef.value) {
 		return;
 	}
 
+	wrapperRef.value.scrollTop = position;
+	scrollTop.value = wrapperRef.value.scrollTop;
+}
+
+function scrollToKey(key: Item[Key]) {
 	const position = itemPositionCache.value[key];
 	if (position === undefined) {
 		return;
 	}
 
-	wrapperRef.value.scrollTop = position;
-	scrollTop.value = position;
+	scrollTo(position);
 }
 
-defineExpose({ scrollToKey });
+defineExpose({ scrollToKey, scrollTo, scrollTop });
 </script>
 
 <template>

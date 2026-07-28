@@ -81,15 +81,24 @@ function focusSearchInput() {
 	});
 }
 
+/**
+ * Search text and active tab live as long as this component, which a consumer
+ * mounts for exactly one modal session — so stepping aside for a follow-up
+ * dialog leaves them intact. The scroll offset does not survive on its own:
+ * the dialog content unmounts while hidden, so carry it across by hand.
+ */
+const savedScrollTop = ref(0);
+
 watch(
 	() => props.open,
-	(isOpen) => {
-		if (isOpen) {
-			searchQuery.value = '';
-			debouncedSearchQuery.value = '';
-			activeCategory.value = props.categories[0] ?? 'connected';
-			focusSearchInput();
+	async (isOpen) => {
+		if (!isOpen) {
+			savedScrollTop.value = scrollerRef.value?.scrollTop ?? 0;
+			return;
 		}
+		focusSearchInput();
+		await nextTick();
+		scrollerRef.value?.scrollTo(savedScrollTop.value);
 	},
 );
 
@@ -117,6 +126,7 @@ function categoryOf(item: ToolConnectionItem): ToolCategoryKey {
 }
 
 function itemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
+	if (category === 'all') return props.items;
 	if (category === 'connected') return props.items.filter((item) => item.isConnected);
 	return props.items.filter(
 		(item) => categoryOf(item) === category && (hasConnectedTab.value ? !item.isConnected : true),
@@ -147,7 +157,7 @@ function tabCount(category: ToolCategoryKey): string {
 const flattenedRows = computed<FlattenedRow[]>(() =>
 	itemsForCategory(activeCategory.value)
 		.filter(matchesQuery)
-		.map((item) => ({ key: `item:${activeCategory.value}:${item.id}`, item })),
+		.map((item) => ({ key: `item:${item.id}`, item })),
 );
 
 /** Categories only worth a tab once they hold something. */
@@ -176,6 +186,7 @@ async function selectCategory(category: ToolCategoryKey) {
 }
 
 const CATEGORY_I18N: Record<ToolCategoryKey, BaseTextKey> = {
+	all: 'tools.connection.categories.all',
 	connected: 'tools.connection.categories.connected',
 	'built-in': 'tools.connection.categories.builtIn',
 	mcp: 'tools.connection.categories.mcp',
@@ -307,6 +318,7 @@ function handleOpenChange(value: boolean) {
 					:options="tabOptions"
 					size="small"
 					variant="modern"
+					justified
 					:class="$style.tabs"
 					data-test-id="tools-connection-tabs"
 					@update:model-value="selectCategory"
@@ -348,7 +360,6 @@ function handleOpenChange(value: boolean) {
 .body {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
 	height: 70vh;
 	max-height: 640px;
 	min-height: 0;
@@ -357,24 +368,25 @@ function handleOpenChange(value: boolean) {
 .searchInput {
 	width: 100%;
 	flex-shrink: 0;
-	margin-top: var(--spacing--sm);
+	margin-block: var(--spacing--sm);
 }
 
-// N8nTabs owns the tab styling and its own overflow handling (chevrons once the
-// tabs outrun the width); this only supplies the divider and stops it shrinking.
+// N8nTabs owns the tab styling, and the justified strip gives every tab an equal
+// slot, so it cannot overflow at this tab count; this only supplies the divider
+// and stops the strip shrinking.
 .tabs {
 	border-bottom: 1px solid var(--border-color);
 	flex-shrink: 0;
-	// The scroll arrows sit on an opaque block so tabs slide under them. Its
-	// default is a legacy token that lands on near-black in dark mode, well off
-	// the dialog surface, so match the dialog instead.
-	--tabs--arrow-buttons--color: light-dark(var(--color--neutral-white), var(--color--neutral-800));
 }
 
+// Runs past the dialog's own bottom padding so the list ends at the dialog
+// edge instead of floating above it; rows stay inside the horizontal padding,
+// clear of the rounded corners.
 .listWrapper {
 	flex: 1 1 0;
 	min-height: 0;
 	overflow: hidden;
+	margin-bottom: calc(-1 * var(--spacing--lg));
 }
 
 .scroller {

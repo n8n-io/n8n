@@ -57,7 +57,7 @@ const CODE_TOOL = makeNodeType({
 const OPENAI = makeNodeType({
 	name: '@n8n/n8n-nodes-langchain.openAi',
 	displayName: 'OpenAI',
-	inputs: ['main'],
+	inputs: [],
 });
 
 const MCP = makeNodeType({
@@ -127,26 +127,34 @@ describe('useAgentToolCatalog', () => {
 		workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([]);
 	});
 
-	it('includes AiTool node types and vendor providers, excluding input-taking and hidden types', () => {
+	it('includes AiTool node types, excluding input-taking and hidden types', () => {
 		const { availableToolTypes } = useAgentToolCatalog();
 		const names = availableToolTypes.value.map((nt) => nt.name);
 
 		expect(names).toContain(SLACK.name);
 		expect(names).toContain(CODE_TOOL.name);
-		expect(names).toContain(OPENAI.name);
 		expect(names).toContain(MCP.name);
-		expect(names).toContain(CALCULATOR.name);
 		expect(names).not.toContain(SUBAGENT.name);
 		expect(names).not.toContain(HIDDEN_CHAT_TOOL.name);
 	});
 
-	it('orders MCP, then AI tools, then n8n tools, then the rest by popularity', () => {
+	it('drops the reasoning helpers, which an agent has no use for', () => {
+		const { availableToolTypes } = useAgentToolCatalog();
+
+		expect(availableToolTypes.value.map((nt) => nt.name)).not.toContain(CALCULATOR.name);
+	});
+
+	it('drops model providers', () => {
+		const { availableToolTypes } = useAgentToolCatalog();
+
+		expect(availableToolTypes.value.map((nt) => nt.name)).not.toContain(OPENAI.name);
+	});
+
+	it('orders MCP, then n8n tools, then the rest by popularity', () => {
 		const { availableToolTypes } = useAgentToolCatalog();
 		const names = availableToolTypes.value.map((nt) => nt.name);
 
-		expect(names.indexOf(MCP.name)).toBeLessThan(names.indexOf(OPENAI.name));
-		expect(names.indexOf(OPENAI.name)).toBeLessThan(names.indexOf(CODE_TOOL.name));
-		expect(names.indexOf(CALCULATOR.name)).toBeLessThan(names.indexOf(CODE_TOOL.name));
+		expect(names.indexOf(MCP.name)).toBeLessThan(names.indexOf(CODE_TOOL.name));
 		expect(names.indexOf(CODE_TOOL.name)).toBeLessThan(names.indexOf(SLACK.name));
 	});
 
@@ -160,30 +168,10 @@ describe('useAgentToolCatalog', () => {
 			},
 		});
 
-		expect(toolCategoryForNodeType(community)).toBe('community');
+		expect(toolCategoryForNodeType(community)).toBe('app-action');
 		expect(toolCategoryForNodeType(SLACK)).toBe('app-action');
 		expect(toolCategoryForNodeType(MCP)).toBe('mcp');
-		expect(toolCategoryForNodeType(CALCULATOR)).toBe('ai');
 		expect(toolCategoryForNodeType(CODE_TOOL)).toBe('n8n');
-	});
-
-	it('sorts community tools last rather than first', () => {
-		const community = makeNodeType({
-			name: 'n8n-nodes-firecrawl.firecrawlTool',
-			displayName: 'Firecrawl',
-		});
-		const types = [...allTypes, community];
-		nodeTypesStore.getNodeType = vi
-			.fn()
-			.mockImplementation((name: string) => types.find((nt) => nt.name === name) ?? null);
-		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
-			[NodeConnectionTypes.AiTool]: types.map((nt) => nt.name),
-		};
-
-		const { availableToolTypes } = useAgentToolCatalog();
-		const names = availableToolTypes.value.map((nt) => nt.name);
-
-		expect(names.indexOf(SLACK.name)).toBeLessThan(names.indexOf(community.name));
 	});
 
 	it('keeps uninstalled verified community tools that getNodeType cannot resolve', () => {

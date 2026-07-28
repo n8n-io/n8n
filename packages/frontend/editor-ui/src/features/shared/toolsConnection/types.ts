@@ -108,6 +108,7 @@ export type ToolConnectionItem =
  * vector-store pickers in later.
  */
 export type ToolCategoryKey =
+	| 'all'
 	| 'connected'
 	| 'built-in'
 	| 'mcp'

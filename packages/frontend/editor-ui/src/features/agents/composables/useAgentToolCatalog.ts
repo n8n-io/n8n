@@ -1,12 +1,10 @@
 import { computed, ref } from 'vue';
 import {
-	AI_VENDOR_NODE_TYPES,
 	NodeConnectionTypes,
 	isCommunityPackageName,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 import {
-	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
 	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
 	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
 	SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
@@ -25,12 +23,8 @@ const supportedWorkflowToolTriggerTypes = new Set<string>(SUPPORTED_WORKFLOW_TOO
 const incompatibleWorkflowToolBodyNodeTypes = new Set<string>(
 	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
 );
-const agentProviderNodeTypes = new Set<string>(AI_VENDOR_NODE_TYPES);
 const hiddenAvailableToolNodeTypes = new Set<string>(
 	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
-);
-const availableAiUtilityToolNodeTypes = new Set<string>(
-	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
 );
 
 export function hasInputs(nodeType: INodeTypeDescription): boolean {
@@ -39,20 +33,12 @@ export function hasInputs(nodeType: INodeTypeDescription): boolean {
 	return true;
 }
 
-function isAgentProviderNodeType(nodeType: INodeTypeDescription): boolean {
-	return agentProviderNodeTypes.has(nodeType.name);
-}
-
 function isHiddenAvailableToolType(nodeType: INodeTypeDescription): boolean {
 	return hiddenAvailableToolNodeTypes.has(nodeType.name);
 }
 
 function hasToolsSubcategory(nodeType: INodeTypeDescription, subcategory: string): boolean {
 	return nodeType.codex?.subcategories?.Tools?.includes(subcategory) ?? false;
-}
-
-export function isAvailableAiToolType(nodeType: INodeTypeDescription): boolean {
-	return isAgentProviderNodeType(nodeType) || availableAiUtilityToolNodeTypes.has(nodeType.name);
 }
 
 export function isAvailableN8nToolType(nodeType: INodeTypeDescription): boolean {
@@ -73,15 +59,15 @@ export function isWorkflowCompatibleWithAgentTools(workflow: IWorkflowDb): boole
 /**
  * Tab a node type belongs to in the tools connection modal.
  *
- * Community packages are matched first, by provenance rather than install
- * state. That also stops a third-party package claiming the n8n tab through a
- * self-declared "Recommended Tools" codex subcategory. Nothing is taken from
- * the MCP tab, which only matches first-party names.
+ * Community packages list alongside first-party ones in the app-action tab, but
+ * are still matched first, by provenance rather than install state: that stops a
+ * third-party package claiming the n8n tab through a self-declared "Recommended
+ * Tools" codex subcategory. Nothing is taken from the MCP tab, which only
+ * matches first-party names.
  */
 export function toolCategoryForNodeType(nodeType: INodeTypeDescription): ToolCategoryKey {
-	if (isCommunityPackageName(nodeType.name)) return 'community';
+	if (isCommunityPackageName(nodeType.name)) return 'app-action';
 	if (isMcpRelatedNodeType(nodeType.name)) return 'mcp';
-	if (isAvailableAiToolType(nodeType)) return 'ai';
 	if (isAvailableN8nToolType(nodeType)) return 'n8n';
 	return 'app-action';
 }
@@ -91,7 +77,7 @@ export function toolCategoryForNodeType(nodeType: INodeTypeDescription): ToolCat
  * truth. Every category `toolCategoryForNodeType` can return must appear here:
  * `indexOf` returns -1 for a missing one, which would sort it ahead of the rest.
  */
-const NODE_CATEGORY_ORDER: ToolCategoryKey[] = ['mcp', 'ai', 'n8n', 'app-action', 'community'];
+const NODE_CATEGORY_ORDER: ToolCategoryKey[] = ['mcp', 'n8n', 'app-action'];
 
 function nodeTypeOrderRank(nodeType: INodeTypeDescription): number {
 	return NODE_CATEGORY_ORDER.indexOf(toolCategoryForNodeType(nodeType));
@@ -126,20 +112,14 @@ export function useAgentToolCatalog() {
 	}
 
 	const availableToolTypes = computed<INodeTypeDescription[]>(() => {
-		const names = new Set([
-			...(nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames[NodeConnectionTypes.AiTool] ??
-				[]),
-			...AI_VENDOR_NODE_TYPES,
-		]);
+		const names =
+			nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames[NodeConnectionTypes.AiTool] ?? [];
 
-		return [...names]
+		return [...new Set(names)]
 			.map((name) => resolveToolNodeType(name))
 			.filter(
 				(nt): nt is INodeTypeDescription =>
-					nt !== null &&
-					!nt.hidden &&
-					!isHiddenAvailableToolType(nt) &&
-					(isAgentProviderNodeType(nt) || !hasInputs(nt)),
+					nt !== null && !nt.hidden && !isHiddenAvailableToolType(nt) && !hasInputs(nt),
 			)
 			.sort((a, b) => {
 				const rankDiff = nodeTypeOrderRank(a) - nodeTypeOrderRank(b);

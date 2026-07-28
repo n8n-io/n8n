@@ -94,20 +94,14 @@ describe('ToolRow', () => {
 		expect(emitted().connect?.[0]).toEqual([item]);
 	});
 
-	it('shows a Connect button for an available node and emits connect on click', async () => {
-		const { getByTestId, emitted } = render(baseNode);
+	it.each([
+		['node', baseNode],
+		['workflow', baseWorkflow],
+	])('leaves a %s row to the row click, with no button repeating it', (_kind, item) => {
+		const { queryByTestId } = render(item);
 
-		const connect = getByTestId('tools-connection-row-connect');
-		expect(connect.textContent).toContain('Connect');
-
-		await fireEvent.click(connect);
-		expect(emitted().connect?.[0]).toEqual([baseNode]);
-		expect(emitted()['open-detail']).toBeUndefined();
-	});
-
-	it('shows a Connect button for an available workflow', () => {
-		const { getByTestId } = render(baseWorkflow);
-		expect(getByTestId('tools-connection-row-connect')).toBeTruthy();
+		expect(queryByTestId('tools-connection-row-connect')).toBeNull();
+		expect(queryByTestId('tools-connection-row-install')).toBeNull();
 	});
 
 	it('shows the credential picker for a connected item when an adapter is provided', () => {
@@ -212,13 +206,12 @@ describe('ToolRow', () => {
 		expect(emitted().connect?.[0]).toEqual([item]);
 	});
 
-	it('keeps the verified badge on an installed community node, with a normal Connect action', () => {
+	it('keeps the verified badge on an installed community node', () => {
 		const item: NodeConnectionItem = { ...baseNode, verified: true };
 		const { getByTestId, queryByTestId } = render(item);
 
 		// The badge tracks "reviewed by n8n", not install state.
 		expect(getByTestId('tools-connection-row-verified-badge')).toBeTruthy();
-		expect(getByTestId('tools-connection-row-connect').textContent).toContain('Connect');
 		expect(queryByTestId('tools-connection-row-install')).toBeNull();
 	});
 
@@ -236,12 +229,5 @@ describe('ToolRow', () => {
 
 		await fireEvent.click(install);
 		expect(emitted().connect).toBeUndefined();
-	});
-
-	it('keeps the regular Connect action for non-community items', () => {
-		const { getByTestId, queryByTestId } = render(baseNode);
-
-		expect(getByTestId('tools-connection-row-connect').textContent).toContain('Connect');
-		expect(queryByTestId('tools-connection-row-verified-badge')).toBeNull();
 	});
 });

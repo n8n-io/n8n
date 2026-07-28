@@ -4,6 +4,9 @@ import { createComponentRenderer, renderComponent } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 
 const scrollToKeyMock = vi.hoisted(() => vi.fn());
+const scrollToMock = vi.hoisted(() => vi.fn());
+// Lets a test hand the modal a non-zero offset to read off the scroller stub.
+const scrollTopValue = vi.hoisted(() => ({ current: 0 }));
 
 // N8nDialog teleports out of the tree (Reka UI's DialogPortal) and
 // N8nRecycleScroller virtualises by offsetHeight which is 0 in jsdom. Replace
@@ -24,8 +27,12 @@ vi.mock('@n8n/design-system', async () => {
 	const N8nRecycleScroller = {
 		name: 'N8nRecycleScroller',
 		props: ['items', 'itemSize', 'itemKey'],
+		computed: {
+			scrollTop: () => scrollTopValue.current,
+		},
 		methods: {
 			scrollToKey: scrollToKeyMock,
+			scrollTo: scrollToMock,
 		},
 		template: `
 			<div>
@@ -70,6 +77,8 @@ const ALL_CATEGORIES: ToolCategoryKey[] = ['connected', 'mcp', 'ai', 'app-action
 
 beforeEach(() => {
 	scrollToKeyMock.mockClear();
+	scrollToMock.mockClear();
+	scrollTopValue.current = 0;
 });
 
 function renderWith(
@@ -132,6 +141,18 @@ describe('ToolsConnectionModal', () => {
 		expect(queryByText('GitHub')).toBeNull();
 		expect(queryByText('OpenAI')).toBeNull();
 		expect(queryByText('Notion onboarding flow')).toBeNull();
+	});
+
+	it('gathers every item under the all tab, connected ones included', () => {
+		const { getByTestId, queryByText } = renderWith({
+			categories: ['all', ...ALL_CATEGORIES],
+		});
+
+		expect(getByTestId('tab-all').textContent).toContain(`(${realisticItems.length})`);
+		expect(queryByText('Notion')).toBeTruthy();
+		expect(queryByText('GitHub')).toBeTruthy();
+		expect(queryByText('OpenAI')).toBeTruthy();
+		expect(queryByText('Notion onboarding flow')).toBeTruthy();
 	});
 
 	it('keeps connected items in their own category when the connected tab is omitted', () => {
@@ -308,6 +329,29 @@ describe('ToolsConnectionModal', () => {
 		const inputEl = getByPlaceholderText('Search all tools...') as HTMLInputElement;
 		await waitFor(() => {
 			expect(document.activeElement).toBe(inputEl);
+		});
+	});
+
+	it('restores the tab, search text and scroll offset after stepping aside for another dialog', async () => {
+		const { getByTestId, getByPlaceholderText, rerender } = renderWith({
+			categories: ALL_CATEGORIES,
+		});
+
+		await fireEvent.click(getByTestId('tab-ai'));
+		await fireEvent.update(getByPlaceholderText('Search all tools...'), 'openai');
+		await waitFor(() => {
+			expect(getByTestId('tab-ai').textContent).toContain('(1)');
+		});
+
+		scrollTopValue.current = 240;
+		await rerender({ open: false });
+		await rerender({ open: true });
+
+		const inputEl = getByPlaceholderText('Search all tools...') as HTMLInputElement;
+		expect(inputEl.value).toBe('openai');
+		expect(getByTestId('tab-ai').getAttribute('aria-selected')).toBe('true');
+		await waitFor(() => {
+			expect(scrollToMock).toHaveBeenCalledWith(240);
 		});
 	});
 
