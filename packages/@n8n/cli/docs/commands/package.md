@@ -68,13 +68,17 @@ n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --bind
 | `--data-table-schema-conflict-policy` | How strictly a matched data table's schema is compared. Every package column must exist on the matched target table with the same name and type — a missing column or a type mismatch always rejects. `keep-existing` (instance default) ignores additional columns the target table has of its own; `fail` is the strict drift-detection choice and rejects those too. Neither policy alters the matched target table — package columns are never added to it. |
 | `--variable-missing-mode` | What to do when a variable referenced by the package's workflows is absent from both the target project and the global scope (lookup order: project, then global): `do-nothing` (instance default) imports the workflows anyway and lists the unresolved variable names in the result, without creating anything; `must-preexist` rejects the import unless every referenced variable already resolves; `create-stub` creates each missing variable with an empty value at the placement scope (see `--variable-parent-policy`) and lists the created names under `variables.stubbed`. Matched variables are always used as-is — the import never overwrites variables. |
 | `--variable-parent-policy` | Where `create-stub` creates missing variables for workflow/folder packages (default `project`): `project` creates them in the target project; `global` creates them at global scope. Ignored for project packages, where placement follows the package layout (a variable bundled under a project is created in that project; one bundled at the top level is created globally). |
+| `--tag-missing-mode` | What to do when a tag referenced by the package's workflows is absent on the target instance — tags are matched by source id, never by name. `create` (instance default) creates the tag globally with its source id and name; `do-nothing` imports the workflows without the missing tags and lists them under `tags.skipped`. |
+| `--tag-conflict-policy` | What to do when a referenced tag conflicts on the target instance — the same-id target tag carries a different name (rename drift), or the tag's name is held by a different tag (name collision). `skip` (instance default) imports the workflows without the conflicted tags and lists them under `tags.skipped`; `fail` rejects the import; `rename` renames a drifted target tag to the package name — name collisions still reject the import. |
 | `--bindings` | Explicit source→target id bindings as a JSON object keyed by entity type, e.g. `{"credentials":{"<sourceId>":"<targetId>"}}`. Only `credentials` is honoured today; these bindings are applied before `--credential-matching-mode` resolution runs. |
 
 Requires the API key to hold:
 
 - `workflow:import` — always
 - `dataTable:create` — when the package references data tables and `--data-table-missing-mode` is `create`
-- `variable:create` — when the package references variables and `--variable-missing-mode` is `create-stub`.
+- `variable:create` — when the package references variables and `--variable-missing-mode` is `create-stub`
+- `tag:create` — when the package references tags and `--tag-missing-mode` is `create` (the instance default)
+- `tag:update` — when the package references tags and `--tag-conflict-policy` is `rename`.
 
 When the import is blocked, the command exits non-zero and lists the blocking
 issues. Examples:
