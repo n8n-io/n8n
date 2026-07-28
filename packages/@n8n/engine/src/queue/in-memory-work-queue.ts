@@ -12,7 +12,7 @@ export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
 
 	private handler: ((message: TMessage) => Promise<void>) | undefined;
 
-	private processing = false;
+	private dispatching = false;
 
 	private idleWaiters: Array<() => void> = [];
 
@@ -20,12 +20,12 @@ export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
 	async publish(message: TMessage): Promise<void> {
 		this.messages.push(message);
 		this.pending.push(message);
-		this.pump();
+		this.ensureDispatching();
 	}
 
 	start(handler: (message: TMessage) => Promise<void>): void {
 		this.handler = handler;
-		this.pump();
+		this.ensureDispatching();
 	}
 
 	async stop(): Promise<void> {
@@ -33,29 +33,40 @@ export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
 		await this.drain();
 	}
 
-	/** Resolves once all currently-queued messages have been processed. */
+	/**
+	 * Resolves once in-flight dispatch settles. Messages with no consumer to
+	 * dispatch them stay pending rather than blocking the caller forever.
+	 */
 	async drain(): Promise<void> {
-		if (!this.processing && this.pending.length === 0) return;
+		if (!this.dispatching) return;
 		await new Promise<void>((resolve) => this.idleWaiters.push(resolve));
 	}
 
-	private pump(): void {
-		if (this.processing || !this.handler || this.pending.length === 0) return;
-		this.processing = true;
-		this.loop().catch((error: unknown) => {
-			console.error('engine: work queue handler failed', error);
+	/**
+	 * Starts dispatching unless it is already running, there is no consumer, or
+	 * there is nothing queued. Safe to call on every publish.
+	 */
+	private ensureDispatching(): void {
+		if (this.dispatching || !this.handler || this.pending.length === 0) return;
+		this.dispatching = true;
+		this.dispatchPending().catch((error: unknown) => {
+			console.error('engine: work queue dispatch failed', error);
 		});
 	}
 
-	private async loop(): Promise<void> {
+	private async dispatchPending(): Promise<void> {
 		try {
 			while (this.handler && this.pending.length > 0) {
-				const message = this.pending.shift();
-				if (message === undefined) break;
-				await this.handler(message);
+				const [message] = this.pending.splice(0, 1);
+				try {
+					await this.handler(message);
+				} catch (error) {
+					// Contained per message: a failed one must not strand those behind it.
+					console.error('engine: work queue handler failed', error);
+				}
 			}
 		} finally {
-			this.processing = false;
+			this.dispatching = false;
 			const waiters = this.idleWaiters;
 			this.idleWaiters = [];
 			for (const resolve of waiters) resolve();

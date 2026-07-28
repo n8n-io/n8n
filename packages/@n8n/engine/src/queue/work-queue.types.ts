@@ -28,6 +28,9 @@ export interface WorkQueue<TMessage> {
 	publish(message: TMessage): Promise<void>;
 	/** Register the single consumer; dispatch begins for queued and future messages. */
 	start(handler: (message: TMessage) => Promise<void>): void;
-	/** Stop consuming; awaits any in-flight handler. */
+	/**
+	 * Stop consuming; awaits any in-flight handler and leaves queued messages
+	 * unconsumed. Never blocks on work no longer being dispatched.
+	 */
 	stop(): Promise<void>;
 }

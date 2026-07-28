@@ -54,4 +54,27 @@ describe('InMemoryWorkQueue', () => {
 		await queue.stop();
 		expect(seen).toEqual([1]);
 	});
+
+	it('keeps draining after a handler throws', async () => {
+		const queue = new InMemoryWorkQueue<Msg>();
+		const seen: number[] = [];
+		queue.start(async (m) => {
+			seen.push(m.n);
+			await Promise.resolve();
+			if (m.n === 1) throw new Error('boom');
+		});
+
+		await queue.publish({ type: 'x', n: 1 });
+		await queue.publish({ type: 'x', n: 2 });
+		await queue.drain();
+
+		expect(seen).toEqual([1, 2]);
+	});
+
+	it('stop resolves when messages were published without a consumer', async () => {
+		const queue = new InMemoryWorkQueue<Msg>();
+		await queue.publish({ type: 'x', n: 1 });
+
+		await expect(queue.stop()).resolves.toBeUndefined();
+	});
 });

@@ -60,6 +60,19 @@ a deployable engine worker) without touching core logic.
   `@n8n/scheduler` does) to enforce the allowlist. Until then, this doc is the
   intent.
 
+## Crash recovery: reconciliation, not transactions
+
+Handlers advance an execution through several separate writes — claim the
+execution, insert step rows, publish the next message — and we deliberately do
+**not** make that sequence atomic. Crashing partway through can leave partial
+state, such as an execution stuck `running` with no queued step.
+
+The intended answer is a reconciliation layer that detects crashed or stalled
+executions and drives recovery (CAT-2938), not transactions spanning stores and
+queues. So when you find a partial-write window: make the resulting state
+legible to reconciliation, and don't reach for a cross-store transaction. It's a
+recurring review question — this is the standing answer.
+
 ## Known deviations — the seams to clean up on decomposition
 
 - `DataSource` construction currently lives in `database/`; it is really a
