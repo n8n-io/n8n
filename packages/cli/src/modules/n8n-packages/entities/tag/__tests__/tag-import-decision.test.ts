@@ -133,6 +133,31 @@ describe('decideTag', () => {
 			);
 		});
 
+		it('counts code points, not UTF-16 units: 24 emoji create, 25 gate', () => {
+			const ok = '😀'.repeat(24);
+			const tooLong = '😀'.repeat(25);
+			expect(decideTag({ id: 't', name: ok }, undefined, undefined, 'create', 'fail')).toEqual({
+				action: 'create',
+				tag: { id: 't', name: ok },
+			});
+			expect(decideTag({ id: 't', name: tooLong }, undefined, undefined, 'create', 'fail')).toEqual(
+				{
+					action: 'fail',
+					failure: { kind: 'invalid-name', sourceId: 't', name: tooLong },
+				},
+			);
+		});
+
+		it('gates a name containing a lone UTF-16 surrogate', () => {
+			const loneSurrogate = 'pr\ud800od';
+			expect(
+				decideTag({ id: 't', name: loneSurrogate }, undefined, undefined, 'create', 'fail'),
+			).toEqual({
+				action: 'fail',
+				failure: { kind: 'invalid-name', sourceId: 't', name: loneSurrogate },
+			});
+		});
+
 		it('gates a whitespace-only name on create', () => {
 			expect(decideTag({ id: 't', name: '   ' }, undefined, undefined, 'create', 'fail')).toEqual({
 				action: 'fail',
@@ -167,9 +192,9 @@ describe('decideTag', () => {
 	});
 
 	describe('id validation (creations only)', () => {
-		it('creates a 64-character id but gates a 65-character one', () => {
-			const ok = 'i'.repeat(64);
-			const tooLong = 'i'.repeat(65);
+		it('creates a 36-character id but gates a 37-character one', () => {
+			const ok = 'i'.repeat(36);
+			const tooLong = 'i'.repeat(37);
 			expect(decideTag({ id: ok, name: 'prod' }, undefined, undefined, 'create', 'fail')).toEqual({
 				action: 'create',
 				tag: { id: ok, name: 'prod' },

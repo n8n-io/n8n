@@ -221,6 +221,12 @@ oneOf:
       name:
         type: string
         description: The (trimmed) package tag name. Absent for `permission-denied`.
+      missingScope:
+        type: string
+        enum:
+          - 'tag:create'
+          - 'tag:update'
+        description: 'For `permission-denied`: the global scope the importing user lacks.'
       existingTagId:
         type: string
         description: >

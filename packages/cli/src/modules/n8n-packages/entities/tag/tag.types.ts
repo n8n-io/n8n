@@ -36,6 +36,8 @@ export type TagResolutionFailure = {
 	sourceId?: string;
 	/** The (trimmed) package tag name. */
 	name?: string;
+	/** For `permission-denied`: the global scope the importing user lacks. */
+	missingScope?: 'tag:create' | 'tag:update';
 	/** The other tag involved in the conflict: the holder of the wanted name. */
 	existingTagId?: string;
 	/** For `rename-drift`: the current name of the same-id target tag. */

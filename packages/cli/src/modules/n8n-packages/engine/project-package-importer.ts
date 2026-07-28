@@ -22,7 +22,11 @@ import type {
 	PackageImportBindings,
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
-import { assertPackageImportApiKeyScopes, assertVariableCreationAllowed } from './import-gates';
+import {
+	assertPackageImportApiKeyScopes,
+	assertTagWritesAllowed,
+	assertVariableCreationAllowed,
+} from './import-gates';
 import { deriveVariableScope } from './package-layout';
 import {
 	ImportOrchestrator,
@@ -270,13 +274,11 @@ export class ProjectPackageImporter {
 			hasRequirements: (manifest.requirements?.variables?.length ?? 0) > 0,
 		});
 
-		if ((manifest.requirements?.tags?.length ?? 0) > 0) {
-			if (request.tagMissingMode === 'create') {
-				assertPackageImportApiKeyScopes(request.apiKeyScopes, ['tag:create']);
-			}
-			if (request.tagConflictPolicy === 'rename') {
-				assertPackageImportApiKeyScopes(request.apiKeyScopes, ['tag:update']);
-			}
-		}
+		assertTagWritesAllowed({
+			apiKeyScopes: request.apiKeyScopes,
+			missingMode: request.tagMissingMode,
+			conflictPolicy: request.tagConflictPolicy,
+			hasRequirements: (manifest.requirements?.tags?.length ?? 0) > 0,
+		});
 	}
 }

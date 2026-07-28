@@ -18,7 +18,11 @@ import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { PackageReader } from '../io/package-reader';
 import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ImportPackageRequest, ImportResult } from '../n8n-packages.types';
-import { assertPackageImportApiKeyScopes, assertVariableCreationAllowed } from './import-gates';
+import {
+	assertPackageImportApiKeyScopes,
+	assertTagWritesAllowed,
+	assertVariableCreationAllowed,
+} from './import-gates';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
 	buildImportResult,
@@ -106,12 +110,12 @@ export class WorkflowPackageImporter {
 		};
 
 		const tagRequirements = manifest.requirements?.tags;
-		if (tagRequirements?.length && request.tagMissingMode === 'create') {
-			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['tag:create']);
-		}
-		if (tagRequirements?.length && request.tagConflictPolicy === 'rename') {
-			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['tag:update']);
-		}
+		assertTagWritesAllowed({
+			apiKeyScopes: request.apiKeyScopes,
+			missingMode: request.tagMissingMode,
+			conflictPolicy: request.tagConflictPolicy,
+			hasRequirements: (tagRequirements?.length ?? 0) > 0,
+		});
 		const tagRequest: TagImportRequest = {
 			requirements: tagRequirements,
 			missingMode: request.tagMissingMode,

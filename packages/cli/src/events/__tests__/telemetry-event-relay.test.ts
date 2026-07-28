@@ -2271,11 +2271,11 @@ describe('TelemetryEventRelay', () => {
 						requirements: 2,
 					},
 					tags: {
-						matched: 1,
-						created: 2,
-						renamed: 1,
-						skipped: 1,
-						requirements: 5,
+						matched: 6,
+						created: 7,
+						renamed: 8,
+						skipped: 9,
+						requirements: 10,
 					},
 				},
 			};
@@ -2310,11 +2310,11 @@ describe('TelemetryEventRelay', () => {
 				variables_missing: 1,
 				variables_created: 3,
 				variables_required: 2,
-				tags_matched: 1,
-				tags_created: 2,
-				tags_renamed: 1,
-				tags_skipped: 1,
-				tags_requirements: 5,
+				tags_matched: 6,
+				tags_created: 7,
+				tags_renamed: 8,
+				tags_skipped: 9,
+				tags_required: 10,
 			});
 		});
 

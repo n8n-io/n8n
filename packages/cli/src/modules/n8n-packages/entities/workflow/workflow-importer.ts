@@ -183,7 +183,8 @@ export class WorkflowImporter {
 		item: PersistedWorkflowPlanItem,
 		bindings: PackageImportBindings,
 	): Promise<WorkflowEntity> {
-		const tagIds = item.tagIds?.filter((id) => !context.droppedTagIds.has(id));
+		const tagIds =
+			item.tagIds && [...new Set(item.tagIds)].filter((id) => !context.droppedTagIds.has(id));
 
 		if (item.action === 'create') {
 			const entity = prepareEntityForPersist(item.entity, bindings, item.decidedId);

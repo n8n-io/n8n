@@ -83,7 +83,7 @@ export class TagImporter {
 			else decisionFailures.push(effect.failure);
 		}
 
-		decisionFailures.push(...extractDuplicateWrittenNames(plan));
+		decisionFailures.push(...duplicateWrittenNameFailures(plan));
 
 		const workflowsReferencing = (tagId: string) =>
 			appliedWorkflows
@@ -92,7 +92,7 @@ export class TagImporter {
 
 		plan.failures = decisionFailures.map((failure) => ({
 			...failure,
-			usedByWorkflows: sortedUnique(failure.sourceId ? workflowsReferencing(failure.sourceId) : []),
+			usedByWorkflows: sortedUnique(workflowsReferencing(failure.sourceId)),
 		}));
 
 		// Tags are global entities, so gate on the user's global scopes: project-level
@@ -100,6 +100,7 @@ export class TagImporter {
 		if (plan.creations.length > 0 && !hasGlobalScope(context.user, 'tag:create')) {
 			plan.failures.push(
 				permissionFailure(
+					'tag:create',
 					plan.creations.map(({ id }) => id),
 					workflowsReferencing,
 				),
@@ -108,6 +109,7 @@ export class TagImporter {
 		if (plan.renames.length > 0 && !hasGlobalScope(context.user, 'tag:update')) {
 			plan.failures.push(
 				permissionFailure(
+					'tag:update',
 					plan.renames.map(({ id }) => id),
 					workflowsReferencing,
 				),
@@ -169,9 +171,9 @@ function sortedUnique(values: string[]): string[] {
 /**
  * Two planned writes landing on one name (two creations, or a creation plus a
  * rename) would hit the tag name's unique index at apply, after the gate —
- * so they gate as name collisions instead. Affected entries leave the plan.
+ * so they gate as name collisions instead.
  */
-function extractDuplicateWrittenNames(plan: TagImportPlan): TagDecisionFailure[] {
+function duplicateWrittenNameFailures(plan: TagImportPlan): TagDecisionFailure[] {
 	const nameCounts = new Map<string, number>();
 	const writtenNames = [
 		...plan.creations.map(({ name }) => name),
@@ -180,7 +182,7 @@ function extractDuplicateWrittenNames(plan: TagImportPlan): TagDecisionFailure[]
 	for (const name of writtenNames) nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
 
 	const duplicated = (name: string) => (nameCounts.get(name) ?? 0) > 1;
-	const failures: TagDecisionFailure[] = [
+	return [
 		...plan.creations
 			.filter(({ name }) => duplicated(name))
 			.map(({ id, name }): TagDecisionFailure => ({ kind: 'name-collision', sourceId: id, name })),
@@ -190,17 +192,16 @@ function extractDuplicateWrittenNames(plan: TagImportPlan): TagDecisionFailure[]
 				({ id, to }): TagDecisionFailure => ({ kind: 'name-collision', sourceId: id, name: to }),
 			),
 	];
-	plan.creations = plan.creations.filter(({ name }) => !duplicated(name));
-	plan.renames = plan.renames.filter(({ to }) => !duplicated(to));
-	return failures;
 }
 
 function permissionFailure(
+	missingScope: 'tag:create' | 'tag:update',
 	tagIds: string[],
 	workflowsReferencing: (tagId: string) => string[],
 ): TagResolutionFailure {
 	return {
 		kind: 'permission-denied',
+		missingScope,
 		usedByWorkflows: sortedUnique(tagIds.flatMap(workflowsReferencing)),
 	};
 }

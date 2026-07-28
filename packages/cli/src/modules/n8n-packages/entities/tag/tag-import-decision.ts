@@ -1,8 +1,20 @@
-import type { TagRef, TagRename, TagResolutionFailure } from './tag.types';
+import type {
+	TagRef,
+	TagRename,
+	TagResolutionFailure,
+	TagResolutionFailureKind,
+} from './tag.types';
 import { TagConflictPolicy, TagMissingMode } from '../../n8n-packages.types';
 
 /** A per-requirement failure; `TagImporter.plan` fills in `usedByWorkflows`. */
-export type TagDecisionFailure = Omit<TagResolutionFailure, 'usedByWorkflows'>;
+export type TagDecisionFailure = Omit<
+	TagResolutionFailure,
+	'kind' | 'sourceId' | 'name' | 'usedByWorkflows'
+> & {
+	kind: Exclude<TagResolutionFailureKind, 'permission-denied'>;
+	sourceId: string;
+	name: string;
+};
 
 export type TagEffect =
 	| { action: 'attach'; target: TagRef }
@@ -15,11 +27,12 @@ export type TagEffect =
 // plan time instead of failing entity validation halfway through apply.
 const TAG_NAME_MAX_LENGTH = 24;
 
-// Tag ids become an unbounded varchar primary key, so cap package-supplied ids
-// here — an oversized id would otherwise only fail at insert, after the gate.
-const TAG_ID_MAX_LENGTH = 64;
+// tag_entity.id is varchar(36) on Postgres — a longer id would otherwise only
+// fail at insert, after the gate.
+const TAG_ID_MAX_LENGTH = 36;
 
-const CONTROL_OR_FORMAT_CHARS = /[\p{Cc}\p{Cf}]/u;
+// \p{Cs}: a lone UTF-16 surrogate would collapse to U+FFFD in the database.
+const FORBIDDEN_NAME_CHARS = /[\p{Cc}\p{Cf}\p{Cs}]/u;
 
 /**
  * Decides the fate of one package tag reference. Matching is by id;
@@ -89,8 +102,12 @@ export function decideTag(
 }
 
 function invalidName(name: string, sourceId: string): TagEffect | undefined {
-	if (name.length >= 1 && name.length <= TAG_NAME_MAX_LENGTH && !CONTROL_OR_FORMAT_CHARS.test(name))
-		return undefined;
+	if (FORBIDDEN_NAME_CHARS.test(name)) {
+		return { action: 'fail', failure: { kind: 'invalid-name', sourceId, name } };
+	}
+	// Code points, not UTF-16 units: both @Length (validator.js) and varchar(24) count code points.
+	const length = [...name].length;
+	if (length >= 1 && length <= TAG_NAME_MAX_LENGTH) return undefined;
 	return { action: 'fail', failure: { kind: 'invalid-name', sourceId, name } };
 }
 

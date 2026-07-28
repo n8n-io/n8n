@@ -223,5 +223,4 @@ describe('workflow package export — with tags', () => {
 			globalConfig.tags.disabled = false;
 		}
 	});
-
 });

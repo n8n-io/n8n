@@ -3,6 +3,7 @@ import type { LicenseState } from '@n8n/backend-common';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { variableMissingModeCreates } from '../entities/variable/variable-missing-mode';
+import { TagConflictPolicy, TagMissingMode } from '../n8n-packages.types';
 import type { VariableMissingMode } from '../n8n-packages.types';
 
 export function assertPackageImportApiKeyScopes(
@@ -37,4 +38,21 @@ export function assertVariableCreationAllowed(options: {
 		);
 	}
 	assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:create']);
+}
+
+export function assertTagWritesAllowed(options: {
+	apiKeyScopes: string[] | undefined;
+	missingMode: TagMissingMode;
+	conflictPolicy: TagConflictPolicy;
+	hasRequirements: boolean;
+}): void {
+	const { apiKeyScopes, missingMode, conflictPolicy, hasRequirements } = options;
+	if (!hasRequirements) return;
+
+	if (missingMode === TagMissingMode.Create) {
+		assertPackageImportApiKeyScopes(apiKeyScopes, ['tag:create']);
+	}
+	if (conflictPolicy === TagConflictPolicy.Rename) {
+		assertPackageImportApiKeyScopes(apiKeyScopes, ['tag:update']);
+	}
 }
