@@ -502,6 +502,7 @@ describe('GlobalConfig', () => {
 			awsSystemCredentialsSdkSources: 'all',
 			enableGitNodeHooks: false,
 			enableGitNodeAllConfigKeys: false,
+			postMessageAllowedOrigins: '',
 		},
 		executions: {
 			mode: 'regular',

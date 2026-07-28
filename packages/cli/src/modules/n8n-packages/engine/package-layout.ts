@@ -20,6 +20,18 @@ export function workflowsInScope(
 	);
 }
 
+/** A scope's own variables/ entry beats a top-level one; an unbundled name defaults to project. */
+export function deriveVariableScope(
+	entries: ManifestEntry[] | undefined,
+	basePrefix: string,
+	name: string,
+): 'global' | 'project' {
+	const named = (entries ?? []).filter((entry) => entry.name === name);
+	if (named.some((entry) => entry.target.startsWith(`${basePrefix}variables/`))) return 'project';
+	if (named.some((entry) => entry.target.startsWith('variables/'))) return 'global';
+	return 'project';
+}
+
 export function deriveParentFolderId(
 	workflowTarget: string,
 	folderTargetToId: Map<string, string>,

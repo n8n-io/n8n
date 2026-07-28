@@ -1,5 +1,4 @@
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-
+import type { VariableApplyResult, VariableImportPlan } from '../entities/variable/variable.types';
 import type {
 	PreparedWorkflow,
 	WorkflowImportOutcome,
@@ -63,20 +62,39 @@ export function buildImportResult(input: {
 	};
 }
 
-/**
- * Asserts the caller's API key carries the scopes the package's contents require (public API only).
- * Internal callers omit `apiKeyScopes` and are authorized by user RBAC alone.
- */
-export function assertPackageImportApiKeyScopes(
-	apiKeyScopes: string[] | undefined,
-	required: string[],
-): void {
-	if (apiKeyScopes === undefined) return;
-	for (const scope of required) {
-		if (!apiKeyScopes.includes(scope)) {
-			throw new ForbiddenError('Forbidden');
-		}
+export function reconcileVariableSummary(input: {
+	matched: Iterable<string>;
+	missing: Iterable<string>;
+	stubbed: Iterable<string>;
+	skipped: Iterable<string>;
+}): ImportVariableSummary {
+	const matched = new Set(input.matched);
+	const stubbed = new Set(input.stubbed);
+	const skipped = new Set(input.skipped);
+
+	// A skipped creation means the name already existed. If this import stubbed it, we created it,
+	// so it stays in `stubbed`; otherwise it genuinely pre-existed and counts as `matched`.
+	for (const name of skipped) {
+		if (!stubbed.has(name)) matched.add(name);
 	}
+
+	return {
+		matched: [...matched],
+		stubbed: [...stubbed],
+		missing: [...new Set(input.missing)].filter((name) => !stubbed.has(name) && !skipped.has(name)),
+	};
+}
+
+export function toVariableSummary(
+	plan: VariableImportPlan,
+	result: VariableApplyResult,
+): ImportVariableSummary {
+	return reconcileVariableSummary({
+		matched: plan.matched,
+		missing: plan.missing.map(({ name }) => name),
+		stubbed: result.stubbed,
+		skipped: result.skippedExisting,
+	});
 }
 
 /**
