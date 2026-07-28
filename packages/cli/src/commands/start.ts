@@ -38,7 +38,7 @@ import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
-import { HEARTBEAT_TASK_TYPE } from '@/scheduling/system-tasks/heartbeat-task-handler';
+import { EXAMPLE_SYSTEM_TASK_TYPE } from '@/scheduling/system-tasks/example-system-task-handler';
 import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -413,9 +413,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// even with the scheduler disabled. No-op on repeat boots once the row
 		// exists (upsert by name).
 		if (this.globalConfig.scheduler.enabled) {
-			await Container.get(DurableJobProvisioner).provisionSystemJob(HEARTBEAT_TASK_TYPE, {}, [
+			await Container.get(DurableJobProvisioner).provisionSystemJob(EXAMPLE_SYSTEM_TASK_TYPE, {}, [
 				{
-					name: HEARTBEAT_TASK_TYPE,
+					name: EXAMPLE_SYSTEM_TASK_TYPE,
 					schedule: { kind: 'interval', intervalSeconds: 30 },
 					firstRunAt: new Date(),
 				},

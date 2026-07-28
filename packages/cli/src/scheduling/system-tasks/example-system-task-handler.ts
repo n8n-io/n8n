@@ -3,15 +3,15 @@ import { Service } from '@n8n/di';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
 
 /**
- * A system task with no owning workflow, firing on a fixed interval.
- * Idempotent by construction: re-running it only bumps an in-memory counter,
- * so it needs no fencing and always reports `dispatched()`.
+ * Not a real system task: a stand-in that exercises `provisionSystemJob` end
+ * to end, fires on a fixed interval, and is idempotent by construction, so it
+ * needs no fencing and always reports `dispatched()`.
  */
-export const HEARTBEAT_TASK_TYPE = 'system:heartbeat';
+export const EXAMPLE_SYSTEM_TASK_TYPE = 'system:example';
 
 @Service()
-export class HeartbeatTaskHandler implements TaskHandler {
-	readonly taskType = HEARTBEAT_TASK_TYPE;
+export class ExampleSystemTaskHandler implements TaskHandler {
+	readonly taskType = EXAMPLE_SYSTEM_TASK_TYPE;
 
 	private fireCount = 0;
 
@@ -21,7 +21,7 @@ export class HeartbeatTaskHandler implements TaskHandler {
 
 	async execute(task: ClaimedTask, report: DispatchReporter): Promise<DispatchDecision> {
 		this.fireCount++;
-		this.logger.debug('System-task heartbeat fired', {
+		this.logger.debug('Example system task fired', {
 			taskId: task.id,
 			jobId: task.jobId,
 			scheduledFor: task.scheduledFor.toISOString(),

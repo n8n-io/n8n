@@ -11,7 +11,7 @@ import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/schedule
 
 import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
 import { createSchedulerTracer } from './scheduler-tracer';
-import { HeartbeatTaskHandler } from './system-tasks/heartbeat-task-handler';
+import { ExampleSystemTaskHandler } from './system-tasks/example-system-task-handler';
 
 /**
  * The database-backed {@link Scheduler} and its process lifecycle (the run side).
@@ -33,7 +33,7 @@ export class DurableScheduler implements Scheduler {
 		tracing: Tracing,
 		scheduleTriggerTaskHandler: ScheduleTriggerTaskHandler,
 		metrics: PrometheusSchedulerMetricsService,
-		heartbeatTaskHandler: HeartbeatTaskHandler,
+		exampleSystemTaskHandler: ExampleSystemTaskHandler,
 	) {
 		const config = globalConfig.scheduler;
 		const enabled = config.enabled && instanceSettings.instanceType === 'main';
@@ -85,7 +85,7 @@ export class DurableScheduler implements Scheduler {
 				})
 			: undefined;
 		this.registerTaskHandler(scheduleTriggerTaskHandler.taskType, scheduleTriggerTaskHandler);
-		this.registerTaskHandler(heartbeatTaskHandler.taskType, heartbeatTaskHandler);
+		this.registerTaskHandler(exampleSystemTaskHandler.taskType, exampleSystemTaskHandler);
 	}
 
 	registerTaskHandler(taskType: string, handler: TaskHandler): void {

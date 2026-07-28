@@ -7,9 +7,9 @@ import type { Scheduler, SchedulerPasses } from '@n8n/scheduler';
 import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import {
-	HEARTBEAT_TASK_TYPE,
-	HeartbeatTaskHandler,
-} from '@/scheduling/system-tasks/heartbeat-task-handler';
+	EXAMPLE_SYSTEM_TASK_TYPE,
+	ExampleSystemTaskHandler,
+} from '@/scheduling/system-tasks/example-system-task-handler';
 
 import { retryUntil } from '../shared/retry-until';
 
@@ -22,7 +22,7 @@ describe('system job with no owning workflow, provisioned and run', () => {
 	let jobRepo: ScheduledJobRepository;
 	let taskRepo: ScheduledTaskRepository;
 	let provisioner: DurableJobProvisioner;
-	let handler: HeartbeatTaskHandler;
+	let handler: ExampleSystemTaskHandler;
 	let scheduler: Scheduler & SchedulerPasses;
 
 	beforeAll(async () => {
@@ -31,10 +31,10 @@ describe('system job with no owning workflow, provisioned and run', () => {
 		jobRepo = Container.get(ScheduledJobRepository);
 		taskRepo = Container.get(ScheduledTaskRepository);
 		provisioner = Container.get(DurableJobProvisioner);
-		handler = Container.get(HeartbeatTaskHandler);
+		handler = Container.get(ExampleSystemTaskHandler);
 
 		scheduler = createScheduler({
-			hostId: 'main-heartbeat-system-task',
+			hostId: 'main-example-system-task',
 			materializerTransaction: buildMaterializerTransaction(
 				Container.get(DataSource),
 				jobRepo,
@@ -42,7 +42,7 @@ describe('system job with no owning workflow, provisioned and run', () => {
 			),
 			taskStore: taskRepo,
 		});
-		scheduler.registerTaskHandler(HEARTBEAT_TASK_TYPE, handler);
+		scheduler.registerTaskHandler(EXAMPLE_SYSTEM_TASK_TYPE, handler);
 	});
 
 	afterAll(async () => {
@@ -53,9 +53,9 @@ describe('system job with no owning workflow, provisioned and run', () => {
 	it('provisions a system job by taskType, no workflowId/nodeId, and runs it', async () => {
 		const firstRunAt = new Date(Date.now() - 1000);
 
-		const summary = await provisioner.provisionSystemJob(HEARTBEAT_TASK_TYPE, {}, [
+		const summary = await provisioner.provisionSystemJob(EXAMPLE_SYSTEM_TASK_TYPE, {}, [
 			{
-				name: HEARTBEAT_TASK_TYPE,
+				name: EXAMPLE_SYSTEM_TASK_TYPE,
 				schedule: { kind: 'interval', intervalSeconds: 30 },
 				firstRunAt,
 			},
@@ -67,7 +67,7 @@ describe('system job with no owning workflow, provisioned and run', () => {
 		const row = await jobRepo.findOneByOrFail({ id: jobId });
 		expect(row.workflowId).toBeNull();
 		expect(row.nodeId).toBeNull();
-		expect(row.taskType).toBe(HEARTBEAT_TASK_TYPE);
+		expect(row.taskType).toBe(EXAMPLE_SYSTEM_TASK_TYPE);
 
 		const fireCountBefore = handler.getFireCount();
 
@@ -91,19 +91,19 @@ describe('system job with no owning workflow, provisioned and run', () => {
 
 		const desired = [
 			{
-				name: HEARTBEAT_TASK_TYPE,
+				name: EXAMPLE_SYSTEM_TASK_TYPE,
 				schedule: { kind: 'interval' as const, intervalSeconds: 30 },
 				firstRunAt: new Date(Date.now() - 1000),
 			},
 		];
 
-		const first = await provisioner.provisionSystemJob(HEARTBEAT_TASK_TYPE, {}, desired);
+		const first = await provisioner.provisionSystemJob(EXAMPLE_SYSTEM_TASK_TYPE, {}, desired);
 		expect(first.inserted).toHaveLength(1);
 		const jobId = first.inserted[0].id;
 
-		const second = await provisioner.provisionSystemJob(HEARTBEAT_TASK_TYPE, {}, desired);
+		const second = await provisioner.provisionSystemJob(EXAMPLE_SYSTEM_TASK_TYPE, {}, desired);
 
-		expect(second.unchanged).toEqual([{ id: jobId, name: HEARTBEAT_TASK_TYPE }]);
+		expect(second.unchanged).toEqual([{ id: jobId, name: EXAMPLE_SYSTEM_TASK_TYPE }]);
 		expect(second.inserted).toEqual([]);
 		expect(second.redefined).toEqual([]);
 	});

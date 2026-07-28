@@ -193,18 +193,18 @@ describe('DurableJobProvisioner', () => {
 		it('inserts a new system job with no owning workflow', async () => {
 			jobs.insertMany.mockResolvedValue([200]);
 
-			const summary = await provisioner.provisionSystemJob('system:heartbeat', {}, [
-				desiredJob('system:heartbeat', { kind: 'interval', intervalSeconds: 30 }),
+			const summary = await provisioner.provisionSystemJob('system:example', {}, [
+				desiredJob('system:example', { kind: 'interval', intervalSeconds: 30 }),
 			]);
 
-			expect(jobs.findManyByTaskType).toHaveBeenCalledWith(manager, 'system:heartbeat');
+			expect(jobs.findManyByTaskType).toHaveBeenCalledWith(manager, 'system:example');
 			expect(jobs.findManyByWorkflowNode).not.toHaveBeenCalled();
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
 				{
-					name: 'system:heartbeat',
+					name: 'system:example',
 					workflowId: null,
 					nodeId: null,
-					taskType: 'system:heartbeat',
+					taskType: 'system:example',
 					payload: {},
 					kind: 'interval',
 					cronExpression: null,
@@ -217,14 +217,14 @@ describe('DurableJobProvisioner', () => {
 					maxAttempts: 5,
 				},
 			]);
-			expect(summary.inserted).toEqual([{ id: 200, name: 'system:heartbeat' }]);
+			expect(summary.inserted).toEqual([{ id: 200, name: 'system:example' }]);
 		});
 
 		it('leaves an unchanged system job untouched, keeping its id', async () => {
 			jobs.findManyByTaskType.mockResolvedValue([
 				jobRow({
 					id: 20,
-					name: 'system:heartbeat',
+					name: 'system:example',
 					kind: 'interval',
 					cronExpression: null,
 					timezone: null,
@@ -233,13 +233,13 @@ describe('DurableJobProvisioner', () => {
 				}),
 			]);
 
-			const summary = await provisioner.provisionSystemJob('system:heartbeat', {}, [
-				desiredJob('system:heartbeat', { kind: 'interval', intervalSeconds: 30 }),
+			const summary = await provisioner.provisionSystemJob('system:example', {}, [
+				desiredJob('system:example', { kind: 'interval', intervalSeconds: 30 }),
 			]);
 
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, []);
 			expect(jobs.updateDefinition).not.toHaveBeenCalled();
-			expect(summary.unchanged).toEqual([{ id: 20, name: 'system:heartbeat' }]);
+			expect(summary.unchanged).toEqual([{ id: 20, name: 'system:example' }]);
 		});
 	});
 

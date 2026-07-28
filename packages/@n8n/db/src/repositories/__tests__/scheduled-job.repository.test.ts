@@ -73,10 +73,10 @@ describe('ScheduledJobRepository', () => {
 			const rows = [mock<ScheduledJob>({ id: 1 })];
 			entityManager.findBy.mockResolvedValueOnce(rows);
 
-			const result = await repository.findManyByTaskType(entityManager, 'system:heartbeat');
+			const result = await repository.findManyByTaskType(entityManager, 'system:example');
 
 			expect(entityManager.findBy).toHaveBeenCalledWith(ScheduledJob, {
-				taskType: 'system:heartbeat',
+				taskType: 'system:example',
 				workflowId: IsNull(),
 			});
 			expect(result).toBe(rows);
