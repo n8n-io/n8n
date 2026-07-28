@@ -24,6 +24,7 @@ import { NoUncentralizedHttpRule } from './no-uncentralized-http.js';
 import { NoApplicationErrorRule } from './no-application-error.js';
 import { ProjectOwnedEntityTransferRule } from './project-owned-entity-transfer.js';
 import { NoRestrictedSleepDefinitionRule } from './no-restricted-sleep-definition.js';
+import { NoRestrictedSleepImportRule } from './no-restricted-sleep-import.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -51,4 +52,5 @@ export const rules = {
 	'no-application-error': NoApplicationErrorRule,
 	'project-owned-entity-transfer': ProjectOwnedEntityTransferRule,
 	'no-restricted-sleep-definition': NoRestrictedSleepDefinitionRule,
+	'no-restricted-sleep-import': NoRestrictedSleepImportRule,
 } satisfies Record<string, AnyRuleModule>;

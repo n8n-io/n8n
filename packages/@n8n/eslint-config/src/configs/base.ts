@@ -415,16 +415,6 @@ export const baseConfig = tseslint.config(
 					message:
 						'Do not declare raw enums as it leads to runtime overhead. Use const enum instead. See https://www.typescriptlang.org/docs/handbook/enums.html#const-enums',
 				},
-				// `n8n-workflow` only re-exports `sleep` as a backwards-compat layer for
-				// community nodes — internal code must use the canonical implementation.
-				// Matching the specifier rather than using `no-restricted-imports` keeps
-				// `import * as x from 'n8n-workflow'` legal, which that rule always
-				// rejects once `importNames` is set.
-				{
-					selector:
-						"ImportDeclaration[source.value='n8n-workflow'] > ImportSpecifier[imported.name='sleep']",
-					message: 'Import `sleep` from `@n8n/utils/sleep` instead.',
-				},
 			],
 
 			// ----------------------------------

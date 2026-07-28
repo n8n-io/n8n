@@ -242,8 +242,8 @@ export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}):
 };
 
 // Kept only as a backwards-compat layer for community nodes — internal code
-// must import `sleep` from `@n8n/utils/sleep` (enforced by the
-// `no-restricted-imports` entry in @n8n/eslint-config).
+// must import `sleep` from `@n8n/utils/sleep` (enforced by eslint rule
+// no-restricted-sleep-import).
 export { sleep } from '@n8n/utils/sleep';
 
 export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
