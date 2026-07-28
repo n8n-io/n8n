@@ -1,0 +1,137 @@
+# uxd project file for n8n — tuned for frontend development.
+#
+# Install:  cp .uxd/n8n.toml "$(uxd config path)/n8n.toml"
+# Verify:   uxd config validate n8n
+# Use:      uxd n8n 12345        # a PR number, a branch, or `-` for the last ref
+#
+# One command materializes a worktree, installs, builds, and boots the backend
+# plus a Vite dev server on ports that belong to that workspace alone.
+#
+# Every workspace gets its own port block AND its own database, so two PRs can
+# run side by side without fighting over :5678 or over ~/.n8n.
+#
+# Ports (5 per workspace, striding from 5700 — deliberately clear of a vanilla
+# checkout's 8080/5678/5679, so a uxd workspace never collides with your main
+# clone):
+#
+#   {port}    Vite dev server (editor-ui)   — the URL you open
+#   {port+1}  n8n backend                   — N8N_PORT
+#   {port+2}  task-runner broker            — N8N_RUNNERS_BROKER_PORT
+#   {port+3}  Storybook (design system)     — passed as `-p`, not env
+#   {port+4}  engine HTTP server            — N8N_ENGINE_PORT
+#
+# So the first workspace is frontend :5700 → API :5701.
+
+repo = "git@github.com:n8n-io/n8n.git"
+
+# uxd needs `repo_path` to be a BARE mirror that it owns and clones itself — it
+# is not your working clone. Kept under a dedicated `uxd/` root so an existing
+# ~/Workspace/n8n checkout and any hand-made worktrees stay untouched.
+repo_path = "~/Workspace/uxd/n8n/repo"
+worktrees_path = "~/Workspace/uxd/n8n/trees"
+
+default_branch = "master"
+editor = "zed"
+default_command = "dev"
+
+ports = 5
+base_port = 5700
+
+[setup]
+# `agent:setup` is the repo's own install→build path (scripts/agent-setup.mjs).
+# Preferred over a bare `pnpm install && pnpm build` because it caps V8 old-space
+# at 6144MB and turbo concurrency at 4 so a full monorepo build doesn't OOM, and
+# streams to .agent-setup/<step>.log instead of ~40k lines of stdout.
+run = "pnpm agent:setup install && pnpm agent:setup build"
+
+# The `dev` command below serves the *built* backend, so a stale build is a
+# broken workspace. Re-run setup whenever any dependency surface moves: the
+# lockfile, the pnpm catalog, any workspace manifest, or a patch.
+cache_key = ["pnpm-lock.yaml", "pnpm-workspace.yaml", "**/package.json", "patches/**"]
+
+# Copied from <config-dir>/seeds/n8n/.env.local — license key, AI keys, anything
+# you don't want to retype per workspace. It is gitignored in the repo and n8n
+# does NOT auto-load it; see the note under [commands.dev] to opt in.
+seed_files = [".env.local"]
+
+[env]
+# --- Backend listeners, each moved off its shared default ---
+N8N_PORT = "{port+1}"                    # default 5678
+N8N_RUNNERS_BROKER_PORT = "{port+2}"     # default 5679; the internal task runner binds this
+N8N_ENGINE_PORT = "{port+4}"             # default 3000; {port+3} belongs to Storybook
+
+# --- Per-workspace state ---
+# Without this, every worktree resolves its data dir to ~/.n8n
+# (packages/@n8n/config/src/utils/utils.ts) — one SQLite file, one encryption
+# key, one set of credentials, shared by all of them. {data_dir} lives outside
+# the git tree and is deleted with the workspace.
+N8N_USER_FOLDER = "{data_dir}"
+
+# --- Frontend → backend wiring ---
+# Read through import.meta.env (vite `envPrefix: ['VUE', ...]`) in
+# packages/frontend/@n8n/stores/src/useRootStore.ts. The trailing slash matters.
+VUE_APP_URL_BASE_API = "http://localhost:{port+1}/"
+
+# Backend-generated editor links (invites, "open workflow") should point at the
+# Vite dev server, not at the API port.
+N8N_EDITOR_BASE_URL = "http://localhost:{port}/"
+
+[hooks]
+post_checkout = "printf '\\n  frontend   http://localhost:%s\\n  API        http://localhost:%s\\n  data dir   %s\\n\\n' '{port}' '{port+1}' '{data_dir}'"
+
+# After `uxd n8n <ref> sync` the worktree moved but dist/ and the turbo cache
+# did not. `pnpm reset` (lightweight) cleans build outputs, reconciles deps and
+# force-rebuilds while keeping node_modules — the recovery path CONTRIBUTING and
+# AGENTS.md both point at for exactly this case.
+post_sync = "pnpm reset"
+
+# The whole frontend loop in one process group: built backend on {port+1},
+# Vite HMR on {port}.
+#
+# Deliberately NOT `pnpm dev:fe`. That path runs editor-ui's `serve` script,
+# which hardcodes `--port 8080` and `cross-env VUE_APP_URL_BASE_API=
+# http://localhost:5678/` — cross-env sets those as real process env, so it
+# silently overrides everything in [env] and breaks isolation. Vite is invoked
+# directly instead.
+#
+# `pnpm start` runs the built backend rather than watchers, which is the cheap
+# choice for frontend work: no nodemon, no tsc-watch across ~40 packages. Use
+# `uxd n8n <ref> run be` in a second terminal when you need backend hot reload.
+#
+# To load the seeded .env.local (license, AI keys), prefix the `pnpm start` line
+# with `pnpm exec dotenvx run -f .env.local --`.
+[commands.dev]
+# NOTE: no trailing newline before the closing '''. uxd appends ` "$@"` to every
+# `run` so `-- <args>` can pass through; a trailing newline would drop it onto a
+# line of its own and `uxd n8n <ref> run dev -- --open` would never reach Vite.
+run = '''
+set -euo pipefail
+pnpm start &
+backend=$!
+trap 'kill "$backend" 2>/dev/null || true' EXIT INT TERM
+pnpm --filter n8n-editor-ui exec vite dev --host 0.0.0.0 --port {port} --strictPort'''
+
+# Vite only — for when a backend is already up on {port+1}.
+[commands.fe]
+run = "pnpm --filter n8n-editor-ui exec vite dev --host 0.0.0.0 --port {port} --strictPort"
+
+# Backend watchers only (nodemon + tsc-watch, everything except editor-ui).
+[commands.be]
+run = "pnpm dev:be"
+
+# `-p` has to be passed on the command line; Storybook has no port env var.
+[commands.storybook]
+run = "pnpm --filter @n8n/storybook exec storybook dev -p {port+3}"
+
+[commands.build]
+run = "pnpm agent:setup build"
+
+# editor-ui's own typecheck script already caps old-space at 8192MB.
+[commands.typecheck]
+run = "pnpm --filter n8n-editor-ui typecheck"
+
+[commands.test]
+run = "pnpm test:ci:frontend"
+
+[commands.lint]
+run = "pnpm --filter n8n-editor-ui lint"

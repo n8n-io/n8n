@@ -284,6 +284,24 @@ Running all packages in development mode can be resource-intensive. For better p
   ```
   Runs only essential packages for AI node development
 
+#### Isolated Workspaces Per Branch
+
+`pnpm dev` binds fixed ports (frontend 8080, backend 5678, task-runner broker
+5679) and stores its data in `~/.n8n`, so two branches cannot run at the same
+time — the second one fails to bind, or silently shares the first one's SQLite
+database and encryption key.
+
+If you review a lot of PRs, [`uxd`](https://uxd.uxfront.com/docs/uxd/getting-started/introduction)
+materializes any ref into its own worktree with its own port block and its own
+data directory. A ready-made project file lives at [.uxd/n8n.toml](.uxd/n8n.toml);
+it is a reference copy, since uxd reads project files from its own config dir:
+
+```bash
+cp .uxd/n8n.toml "$(uxd config path)/n8n.toml"
+uxd config validate n8n
+uxd n8n 12345          # a PR number, a branch, or `-` for the last ref
+```
+
 #### Custom Selective Development
 
 For even more focused development, you can run packages individually:
