@@ -250,6 +250,28 @@ describe('update-workflow MCP tool', () => {
 		});
 	});
 
+	describe('docs describe the non-fatal group behavior only when the flag is on', () => {
+		describe('canvasGroupsEnabled off', () => {
+			test('tool and operations descriptions do not mention skippedOperations', () => {
+				const tool = createTool();
+				expect(tool.config.description).not.toContain('skippedOperations');
+				expect((tool.config.inputSchema!.operations as z.ZodTypeAny).description).not.toContain(
+					'skippedOperations',
+				);
+			});
+		});
+
+		describe('canvasGroupsEnabled on', () => {
+			test('tool and operations descriptions mention skippedOperations', () => {
+				const tool = createTool({ canvasGroupsEnabled: true });
+				expect(tool.config.description).toContain('skippedOperations');
+				expect((tool.config.inputSchema!.operations as z.ZodTypeAny).description).toContain(
+					'skippedOperations',
+				);
+			});
+		});
+	});
+
 	describe('output schema conformance', () => {
 		// Regression for ADO-5448 / GH #32503: the error path returned
 		// `structuredContent: { error }`, which failed validation against the

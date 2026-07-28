@@ -28,6 +28,7 @@ Organise larger workflows into named node groups — visual frames drawn on the 
 - **Groups vs sub-workflows:** a group is cosmetic organisation *inside* one workflow; a sub-workflow is a separately-executed, reusable unit. Group to make one canvas readable; extract a sub-workflow to reuse logic or isolate execution.
 - **Naming:** short, outcome-first titles ("Fetch new recordings", not "HTTP + Drive").
 - Groups are created collapsed by default, so the name is what the user sees first — make it descriptive.
+- **If a group is invalid:** update_workflow does not fail the whole call for it — the group is skipped and the reason reported in skippedOperations, while the rest of the update still saves. Fix and retry just that group.
 
 Fetch the "groups" section of the SDK reference for the exact rules before creating groups.`;
 

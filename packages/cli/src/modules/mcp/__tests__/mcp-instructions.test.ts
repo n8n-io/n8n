@@ -48,6 +48,16 @@ describe('getMcpInstructions', () => {
 				expect(instructions).toContain('"groups"');
 			});
 
+			test('mentions that an invalid group is skipped and reported, not fatal', () => {
+				const instructions = getMcpInstructions({
+					isBuilderEnabled: true,
+					isN8nConnectAvailable: true,
+					canvasGroupsEnabled: true,
+				});
+
+				expect(instructions).toContain('skippedOperations');
+			});
+
 			test('stays intro-only when the builder is disabled', () => {
 				const instructions = getMcpInstructions({
 					isBuilderEnabled: false,
@@ -69,6 +79,7 @@ describe('getMcpInstructions', () => {
 				});
 
 				expect(instructions).not.toContain('"groups"');
+				expect(instructions).not.toContain('skippedOperations');
 			});
 
 			test('omits the groups pointer by default', () => {
