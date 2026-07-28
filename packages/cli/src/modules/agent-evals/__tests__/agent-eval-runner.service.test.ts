@@ -11,6 +11,8 @@ import type { InstanceSettings } from 'n8n-core';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
+import type { License } from '@/license';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
@@ -23,6 +25,11 @@ import { AgentEvalRunnerService } from '../agent-eval-runner.service';
 // test doesn't pull in the real agents / data-table / instance-ai module graph.
 vi.mock('@/concurrency/concurrency-control.service', () => ({
 	ConcurrencyControlService: class ConcurrencyControlService {},
+}));
+vi.mock('@/license', () => ({ License: class License {} }));
+vi.mock('@/evaluation.ee/evaluation-concurrency.helper', () => ({
+	// Fixed per-run limit keeps the pool deterministic (serial) in unit tests.
+	resolveEvaluationConcurrencyLimit: vi.fn().mockReturnValue(1),
 }));
 vi.mock('@/modules/agents/repositories/agent.repository', () => ({
 	AgentRepository: class AgentRepository {},
@@ -92,6 +99,7 @@ describe('AgentEvalRunnerService', () => {
 	let dataTableService: MockProxy<DataTableService>;
 	let evalAgentExecutionService: MockProxy<EvalAgentExecutionService>;
 	let concurrencyControl: MockProxy<ConcurrencyControlService>;
+	let license: MockProxy<License>;
 	let service: AgentEvalRunnerService;
 
 	const dataset = mock<AgentEvalDataset>({
@@ -104,6 +112,8 @@ describe('AgentEvalRunnerService', () => {
 
 	beforeEach(() => {
 		vi.mocked(userHasScopes).mockResolvedValue(true);
+		vi.mocked(resolveEvaluationConcurrencyLimit).mockReturnValue(1); // serial by default
+
 		globalConfig = {
 			evaluation: { agentEvalsEnabled: true },
 			executions: { mode: 'regular' },
@@ -116,6 +126,7 @@ describe('AgentEvalRunnerService', () => {
 		dataTableService = mock<DataTableService>();
 		evalAgentExecutionService = mock<EvalAgentExecutionService>();
 		concurrencyControl = mock<ConcurrencyControlService>();
+		license = mock<License>();
 
 		datasetRepository.findById.mockResolvedValue(dataset);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
@@ -123,6 +134,7 @@ describe('AgentEvalRunnerService', () => {
 		);
 		runRepository.createRun.mockResolvedValue(mock({ id: 'run-1' }));
 		runRepository.isCancellationRequested.mockResolvedValue(false);
+		concurrencyControl.throttle.mockResolvedValue(undefined); // slot acquired
 		dataTableService.getProjectIdForDataTable.mockResolvedValue('proj-table');
 		// Columns backing the dataset's mapping (input/expectedOutput/criteria).
 		dataTableService.getColumns.mockResolvedValue([
@@ -142,6 +154,7 @@ describe('AgentEvalRunnerService', () => {
 			dataTableService,
 			evalAgentExecutionService,
 			concurrencyControl,
+			license,
 		);
 	});
 
@@ -395,10 +408,14 @@ describe('AgentEvalRunnerService', () => {
 			expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
 		});
 
-		it('cancels the run when Stop arrives after every case has already started', async () => {
+		it('cancels the run when Stop arrives after every case has already run', async () => {
 			seedFor([{ id: 'row-1', question: 'Q' }], { success: 1 });
-			// false while the case runs, true at the post-pool re-check
-			runRepository.isCancellationRequested.mockResolvedValueOnce(false).mockResolvedValue(true);
+			// The case's pre-throttle and post-acquire checks see no cancel (so it
+			// runs); the cancel only lands by the final post-pool re-check.
+			runRepository.isCancellationRequested
+				.mockResolvedValueOnce(false)
+				.mockResolvedValueOnce(false)
+				.mockResolvedValue(true);
 			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
 
 			const { finished } = await service.startRun('ds-1', 'proj-1', user);
@@ -430,6 +447,40 @@ describe('AgentEvalRunnerService', () => {
 			);
 			expect(concurrencyControl.release).toHaveBeenCalledTimes(2);
 			expect(concurrencyControl.release).toHaveBeenCalledWith({ mode: 'evaluation' });
+		});
+
+		it('evicts a still-queued case from the shared queue when the run is cancelled', async () => {
+			vi.mocked(resolveEvaluationConcurrencyLimit).mockReturnValue(2); // admit both at once
+			seedFor(
+				[
+					{ id: 'row-1', question: 'Q0' },
+					{ id: 'row-2', question: 'Q1' },
+				],
+				{ cancelled: 2 },
+			);
+			// case-0 acquires immediately; case-1 stays parked in the queue.
+			concurrencyControl.throttle.mockImplementation(async ({ executionId }) => {
+				if (executionId.endsWith('-case-1')) return await new Promise<void>(() => {}); // parked
+				return undefined;
+			});
+			// Both pass the pre-throttle check; case-0's post-acquire check then sees
+			// the cancel and aborts, which must evict the parked case-1.
+			runRepository.isCancellationRequested
+				.mockResolvedValueOnce(false)
+				.mockResolvedValueOnce(false)
+				.mockResolvedValue(true);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(concurrencyControl.remove).toHaveBeenCalledWith(
+				expect.objectContaining({
+					mode: 'evaluation',
+					executionId: expect.stringContaining('-case-1'),
+				}),
+			);
+			expect(runRepository.markAsCancelled).toHaveBeenCalledWith('run-1', expect.anything());
+			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
 		});
 	});
 

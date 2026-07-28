@@ -13,6 +13,7 @@ import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { License } from '@/license';
 import { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -52,6 +53,7 @@ const buildRunner = () =>
 		Container.get(DataTableService),
 		evalAgentExecutionService,
 		concurrencyControl,
+		Container.get(License),
 	);
 
 /** Insert a minimal real agent row so `agent_eval_dataset.agentId`'s FK holds. */
@@ -69,6 +71,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	vi.clearAllMocks();
+	concurrencyControl.throttle.mockResolvedValue(undefined); // no-op queue: slot always granted
 	// Not truncating `Agent`/`Project`: each test creates its own in a fresh
 	// project and the agent is resolved via a mock, so leftovers are invisible
 	// (and `Agent` is a module entity absent from testDb's EntityName union).

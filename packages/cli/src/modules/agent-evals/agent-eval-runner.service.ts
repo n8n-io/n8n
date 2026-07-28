@@ -16,17 +16,23 @@ import type {
 	JsonValue,
 } from 'n8n-workflow';
 import { jsonParse, jsonStringify } from 'n8n-workflow';
+import pLimit from 'p-limit';
 
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
+import { License } from '@/license';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 const ROW_PAGE_SIZE = 100;
+// Per-run in-flight cap layered on the shared evaluation queue: keeps one run
+// from flooding the queue (and bounds fan-out when the queue is unlimited).
+const MAX_PER_RUN_CONCURRENCY = 10;
 // Each case is a real agent execution, so a run is capped rather than letting a
 // large table launch thousands of model calls. Raise deliberately if needed.
 const MAX_CASES = 500;
@@ -58,11 +64,12 @@ export interface AgentEvalRunSummary {
  *
  * Runs on the main process only: the tool-mock substrate reused from the
  * instance-ai eval path carries a closure that cannot cross a queue boundary
- * (see {@link EvalAgentExecutionService}). Cases are throttled through the
- * shared, license-tiered instance-wide evaluation concurrency queue (the same
- * one the workflow eval uses), so concurrent runs can't collectively exceed the
- * plan's limit; cross-main *cancellation* is honored via the run's
- * `cancelRequested` flag. Behind the `101_agent_evals` flag.
+ * (see {@link EvalAgentExecutionService}). A per-run pool caps in-flight cases
+ * and layers on the shared, license-tiered instance-wide evaluation concurrency
+ * queue (the same one the workflow eval uses), so a single run can't flood the
+ * queue and concurrent runs can't collectively exceed the plan limit;
+ * cross-main *cancellation* is honored via the run's `cancelRequested` flag.
+ * Behind the `101_agent_evals` flag.
  */
 @Service()
 export class AgentEvalRunnerService {
@@ -77,6 +84,7 @@ export class AgentEvalRunnerService {
 		private readonly dataTableService: DataTableService,
 		private readonly evalAgentExecutionService: EvalAgentExecutionService,
 		private readonly concurrencyControl: ConcurrencyControlService,
+		private readonly license: License,
 	) {}
 
 	/**
@@ -211,45 +219,81 @@ export class AgentEvalRunnerService {
 			return;
 		}
 		try {
-			let cancelled = false;
+			// Per-run cap layered on the shared instance-wide evaluation queue: a
+			// single run parks at most this many cases in the queue, so it can't
+			// starve a concurrent eval run, and fan-out stays bounded even when the
+			// queue itself is unlimited. Uses the same license-tiered limit as the
+			// queue, clamped by the per-run backstop.
+			const resolvedLimit = resolveEvaluationConcurrencyLimit(
+				this.globalConfig.executions,
+				this.license,
+			);
+			const limit = pLimit(
+				resolvedLimit > 0
+					? Math.min(resolvedLimit, MAX_PER_RUN_CONCURRENCY)
+					: MAX_PER_RUN_CONCURRENCY,
+			);
+			// Cooperative cancellation: whichever case first observes the flag aborts,
+			// which evicts every case still waiting for a queue slot.
+			const abort = new AbortController();
 			const totalUsage: CaseUsage = { inputTokens: 0, outputTokens: 0 };
 
+			const cancelCase = async (resultRow: AgentEvalResult) => {
+				abort.abort();
+				await this.resultRepository.markAsCancelled(resultRow.id);
+			};
+
 			await Promise.all(
-				cases.map(async (resolvedCase, index) => {
-					const resultRow = seeded[index];
-					// Wait for a slot in the shared, license-tiered evaluation queue —
-					// instance-wide, so concurrent runs (agent or workflow) share one
-					// budget; a no-op when the plan is unlimited. The cancel check runs
-					// after the gate so only slot-holders touch the DB, and the slot is
-					// released on every exit path.
-					await this.concurrencyControl.throttle({
-						mode: 'evaluation',
-						executionId: `${runId}-case-${index}`,
-					});
-					try {
-						// Cooperative cancellation: skip once a cancel is requested (a case
-						// already past the gate finishes). Re-read the flag so a cancel from
-						// another main is seen.
-						if (cancelled || (await this.runRepository.isCancellationRequested(runId))) {
-							cancelled = true;
-							await this.resultRepository.markAsCancelled(resultRow.id);
-							return;
-						}
-						const usage = await this.runCase(resultRow, resolvedCase, ctx);
-						if (usage) {
-							totalUsage.inputTokens += usage.inputTokens;
-							totalUsage.outputTokens += usage.outputTokens;
-						}
-					} finally {
-						this.concurrencyControl.release({ mode: 'evaluation' });
-					}
-				}),
+				cases.map(
+					async (resolvedCase, index) =>
+						await limit(async () => {
+							const resultRow = seeded[index];
+							// Don't enqueue a case once the run is cancelled (the flag short-
+							// circuits after the first observer, so this is one DB read per
+							// case at most).
+							if (
+								abort.signal.aborted ||
+								(await this.runRepository.isCancellationRequested(runId))
+							) {
+								await cancelCase(resultRow);
+								return;
+							}
+
+							// Wait for a queue slot, bailing (and evicting the entry) if the run
+							// is cancelled while queued. The helper owns release/remove for the
+							// bail path; the finally owns release for the acquired path.
+							const executionId = `${runId}-case-${index}`;
+							if (!(await this.acquireEvaluationSlot(executionId, abort.signal))) {
+								await this.resultRepository.markAsCancelled(resultRow.id);
+								return;
+							}
+
+							try {
+								// A cancel may have landed while we waited for the slot.
+								if (
+									abort.signal.aborted ||
+									(await this.runRepository.isCancellationRequested(runId))
+								) {
+									await cancelCase(resultRow);
+									return;
+								}
+								const usage = await this.runCase(resultRow, resolvedCase, ctx);
+								if (usage) {
+									totalUsage.inputTokens += usage.inputTokens;
+									totalUsage.outputTokens += usage.outputTokens;
+								}
+							} finally {
+								this.concurrencyControl.release({ mode: 'evaluation' });
+							}
+						}),
+				),
 			);
 
-			// Re-read the flag once more: a Stop that arrived after every case had
-			// already started is never observed in the loop above, so honor it here
-			// rather than reporting the run as completed with the flag still set.
-			const wasCancelled = cancelled || (await this.runRepository.isCancellationRequested(runId));
+			// Re-read once more: a cancel that arrived after every case had already
+			// settled is never observed above, so honor it rather than reporting the
+			// run completed with the flag still set.
+			const wasCancelled =
+				abort.signal.aborted || (await this.runRepository.isCancellationRequested(runId));
 
 			const counts = await this.resultRepository.countByStatus(runId);
 			const metrics: IDataObject = { ...toSummaryCounts(counts), usage: { ...totalUsage } };
@@ -263,6 +307,44 @@ export class AgentEvalRunnerService {
 			const message = error instanceof Error ? error.message : String(error);
 			await this.failRun(runId, message);
 		}
+	}
+
+	/**
+	 * Acquire a slot in the shared evaluation queue, abort-aware. Resolves `true`
+	 * with the slot held (the caller must `release`); resolves `false` if the run
+	 * was cancelled while this entry was still queued — having evicted it so it
+	 * doesn't hold a place other evaluation work could use.
+	 */
+	private async acquireEvaluationSlot(executionId: string, signal: AbortSignal): Promise<boolean> {
+		if (signal.aborted) {
+			this.concurrencyControl.remove({ mode: 'evaluation', executionId });
+			return false;
+		}
+
+		let acquired = false;
+		let onAbort: (() => void) | undefined;
+		const aborted = new Promise<'aborted'>((resolve) => {
+			onAbort = () => resolve('aborted');
+			signal.addEventListener('abort', onAbort, { once: true });
+		});
+		const acquire = this.concurrencyControl
+			.throttle({ mode: 'evaluation', executionId })
+			.then(() => {
+				acquired = true;
+				return 'acquired' as const;
+			});
+
+		const outcome = await Promise.race([acquire, aborted]);
+		if (onAbort) signal.removeEventListener('abort', onAbort);
+
+		if (outcome === 'aborted') {
+			// If microtask ordering let the slot resolve first, hand it back;
+			// otherwise evict the still-queued entry.
+			if (acquired) this.concurrencyControl.release({ mode: 'evaluation' });
+			else this.concurrencyControl.remove({ mode: 'evaluation', executionId });
+			return false;
+		}
+		return true;
 	}
 
 	/**
