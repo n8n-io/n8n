@@ -1,4 +1,3 @@
-import { setNotify } from '@n8n/composables/useToast';
 import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -7,53 +6,62 @@ import { useToast } from '@/app/composables/useToast';
 
 /**
  * This module is bootstrap wiring, not just a re-export: importing it registers
- * the notifier (`setNotify`) and the notification state
- * (`registerNotificationState`) that package-side `useToast` depends on, because
- * `@n8n/composables` sits below the stores tier and imports neither element-plus
- * nor `@n8n/stores` (N8N-100).
+ * the notifier that package-side `useToast` depends on, and that notifier is
+ * where notification suppression lives (ADR-004) — `@n8n/composables` sits below
+ * the stores tier and cannot read the store itself.
  *
- * `setNotify` is already covered indirectly by component tests that assert on
- * rendered toasts. `registerNotificationState` was not covered by anything: the
- * suppression flags could stop being honoured — a silent behaviour change — with
- * the whole editor-ui suite still green. This pins it, so stage 6 cannot delete
- * the registration along with the re-export without CI saying so.
+ * So this is the only place the suppression matrix can be verified end to end.
+ * Deleting the registration, or the suppression check inside it, must fail here;
+ * both are mutation-verified.
  */
-// Typed parameter so the spy satisfies the package's `NotifyFn` contract.
-const createNotifySpy = () => vi.fn((_options: Record<string, unknown>) => ({ close: vi.fn() }));
-
 describe('useToast bootstrap wiring', () => {
-	let notifySpy: ReturnType<typeof createNotifySpy>;
-
 	beforeEach(() => {
 		// `stubActions: false` so `setNotificationsSuppressed` really mutates state,
 		// matching `usePostMessageHandler.test.ts`.
 		setActivePinia(createTestingPinia({ stubActions: false }));
 
-		notifySpy = createNotifySpy();
-		setNotify(notifySpy);
+		const appEl = document.createElement('div');
+		appEl.id = 'n8n-app';
+		document.body.appendChild(appEl);
 	});
 
-	it('honours suppression from the notifications store', () => {
-		useNotificationsStore().setNotificationsSuppressed(true);
+	afterEach(() => {
+		document.getElementById('n8n-app')?.remove();
+	});
+
+	function suppress(options?: { allowErrors: boolean }) {
+		useNotificationsStore().setNotificationsSuppressed(true, {
+			allowErrors: options?.allowErrors ?? false,
+		});
+	}
+
+	it('shows notifications when suppression is off', () => {
+		useToast().showMessage({ message: 'Shown' });
+
+		expect(document.querySelector('.el-notification')).not.toBeNull();
+	});
+
+	it('drops a non-error notification when suppressed', () => {
+		suppress({ allowErrors: true });
 
 		useToast().showMessage({ message: 'Suppressed' });
 
-		expect(notifySpy).not.toHaveBeenCalled();
+		expect(document.querySelector('.el-notification')).toBeNull();
 	});
 
-	it('shows notifications when suppression is off', () => {
-		useNotificationsStore().setNotificationsSuppressed(false);
+	it('drops an error notification when suppressed and errors are not allowed', () => {
+		suppress({ allowErrors: false });
 
-		useToast().showMessage({ message: 'Shown' });
+		useToast().showMessage({ message: 'Suppressed error', type: 'error' });
 
-		expect(notifySpy).toHaveBeenCalledTimes(1);
+		expect(document.querySelector('.el-notification')).toBeNull();
 	});
 
-	it('still shows errors when suppressed but errors are allowed', () => {
-		useNotificationsStore().setNotificationsSuppressed(true, { allowErrors: true });
+	it('still shows an error notification when suppressed and errors are allowed', () => {
+		suppress({ allowErrors: true });
 
 		useToast().showMessage({ message: 'Allowed error', type: 'error' });
 
-		expect(notifySpy).toHaveBeenCalledTimes(1);
+		expect(document.querySelector('.el-notification')).not.toBeNull();
 	});
 });

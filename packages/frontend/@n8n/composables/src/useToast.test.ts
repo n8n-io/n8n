@@ -6,32 +6,16 @@ import { ElNotification } from 'element-plus';
 import { vi } from 'vitest';
 import { h, defineComponent } from 'vue';
 
-import type { NotificationOptions } from './types/notification';
 import { useTelemetry } from './useTelemetry';
-import { useToast, registerNotificationState, setNotify } from './useToast';
+import { useToast, setNotify } from './useToast';
 
 vi.mock('./useTelemetry');
 
 // Register the real element-plus notification function for integration tests.
 setNotify(ElNotification);
 
-/**
- * Stands in for the notifications store, which this package no longer imports
- * (N8N-100). Mutable so tests can flip suppression; `useToast` reads the fields
- * per call, so mutating after `useToast()` takes effect without re-creating it.
- */
-const notificationState = {
-	areNotificationsSuppressed: false,
-	allowErrorNotificationsWhenSuppressed: false,
-	pendingNotificationsForViews: {} as Partial<Record<VIEWS, NotificationOptions[]>>,
-	setNotificationsForView: vi.fn(),
-};
-registerNotificationState(() => notificationState);
-
-function suppressNotifications({ allowErrors }: { allowErrors: boolean }) {
-	notificationState.areNotificationsSuppressed = true;
-	notificationState.allowErrorNotificationsWhenSuppressed = allowErrors;
-}
+/** Typed so the spy satisfies the package's `NotifyFn` contract. */
+const createNotifySpy = () => vi.fn((_options: Record<string, unknown>) => ({ close: vi.fn() }));
 
 const route = vi.hoisted(() => ({
 	name: '' as string | symbol,
@@ -56,11 +40,6 @@ describe('useToast', () => {
 		document.body.appendChild(appEl);
 
 		createTestingPinia();
-
-		notificationState.areNotificationsSuppressed = false;
-		notificationState.allowErrorNotificationsWhenSuppressed = false;
-		notificationState.pendingNotificationsForViews = {};
-		notificationState.setNotificationsForView.mockClear();
 
 		telemetryTrackSpy = vi.fn();
 		vi.mocked(useTelemetry).mockReturnValue({
@@ -260,14 +239,25 @@ describe('useToast', () => {
 		});
 	});
 
-	describe('notification suppression', () => {
-		it('should not render non-error notification when notifications are suppressed', async () => {
-			suppressNotifications({ allowErrors: true });
+	// A notifier returning `undefined` means the app declined to show the toast —
+	// in production that is notification suppression, which now lives at the
+	// registration site (ADR-004). The package's side of that contract is that a
+	// dropped toast leaves no trace, matching the in-package suppression branch it
+	// replaced: no render, no error telemetry, no sticky-queue entry, and still a
+	// closable handle for the caller.
+	describe('a notifier that drops the notification', () => {
+		const dropAll = () => undefined;
 
-			toast.showMessage({ message: 'Should not appear', title: 'Suppressed' });
+		afterEach(() => {
+			setNotify(ElNotification);
+		});
 
-			// If the notification was rendered, waitFor would find it within its timeout.
-			// Since it should be suppressed, we verify it never appears.
+		it('renders nothing', async () => {
+			setNotify(dropAll);
+
+			toast.showMessage({ message: 'Should not appear', title: 'Dropped' });
+
+			// If it had rendered, waitFor would find it within the timeout.
 			await expect(
 				waitFor(
 					() => {
@@ -278,61 +268,40 @@ describe('useToast', () => {
 			).rejects.toThrow();
 		});
 
-		it('should not render error notification when notifications are suppressed and errors are not allowed', async () => {
-			suppressNotifications({ allowErrors: false });
+		it('emits no error telemetry', () => {
+			setNotify(dropAll);
 
-			toast.showMessage({
-				message: 'Error should not appear',
-				title: 'Suppressed error',
-				type: 'error',
-			});
+			toast.showMessage({ message: 'Dropped error', title: 'Dropped', type: 'error' });
 
-			await expect(
-				waitFor(
-					() => {
-						expect(screen.getByRole('alert')).toBeVisible();
-					},
-					{ timeout: 200 },
-				),
-			).rejects.toThrow();
 			expect(telemetryTrackSpy).not.toHaveBeenCalled();
 		});
 
-		it('should render error notification when notifications are suppressed and errors are allowed', async () => {
-			suppressNotifications({ allowErrors: true });
+		it('leaves the sticky queue usable, closing only real notifications', () => {
+			setNotify(dropAll);
+			// `duration: 0` is what makes a toast sticky.
+			toast.showMessage({ message: 'Dropped sticky', duration: 0 });
 
-			toast.showMessage({
-				message: 'Error should appear',
-				title: 'Allowed error',
-				type: 'error',
-			});
+			const notifySpy = createNotifySpy();
+			setNotify(notifySpy);
+			const real = toast.showMessage({ message: 'Real sticky', duration: 0 });
+			toast.clearAllStickyNotifications();
 
-			await waitFor(() => {
-				expect(screen.getByRole('alert')).toBeVisible();
-				expect(
-					within(screen.getByRole('alert')).getByRole('heading', { level: 2 }),
-				).toHaveTextContent('Allowed error');
-				expect(screen.getByRole('alert')).toContainHTML('<p>Error should appear</p>');
-			});
+			expect(real.close).toHaveBeenCalledTimes(1);
+
+			// NB: this does *not* guard the enqueue itself. Removing the nullable-return
+			// check pushes `undefined` onto the queue, and `clearAllStickyNotifications`
+			// already skips falsy entries, so no runtime assertion can see the
+			// difference. That delta is caught by typecheck instead — the push raises
+			// TS2345 (`NotificationHandle | undefined` not assignable to
+			// `NotificationHandle`), verified by mutation.
 		});
 
-		it('should track telemetry for allowed suppressed error notification', async () => {
-			suppressNotifications({ allowErrors: true });
+		it('still returns a closable handle', () => {
+			setNotify(dropAll);
 
-			toast.showMessage({
-				message: 'Allowed error tracked',
-				title: 'Allowed error',
-				type: 'error',
-			});
+			const handle = toast.showMessage({ message: 'Dropped' });
 
-			await waitFor(() => {
-				expect(telemetryTrackSpy).toHaveBeenCalledWith('Instance FE emitted error', {
-					error_title: 'Allowed error',
-					error_message: 'Allowed error tracked',
-					caused_by_credential: false,
-					workflow_id: 'test-workflow-id',
-				});
-			});
+			expect(() => handle.close()).not.toThrow();
 		});
 	});
 
@@ -407,49 +376,20 @@ describe('useToast', () => {
 	// The only path that reads `pendingNotificationsForViews` and calls
 	// `setNotificationsForView`, so it is what proves the injected notification
 	// state is wired end to end. Previously untested.
-	describe('showNotificationForViews', () => {
-		it('renders the queued notifications for a view and clears the queue', async () => {
-			notificationState.pendingNotificationsForViews = {
-				[VIEWS.WORKFLOW]: [{ message: 'Queued message', title: 'Queued title' }],
-			};
-
-			toast.showNotificationForViews([VIEWS.WORKFLOW]);
-
-			await waitFor(() => {
-				expect(screen.getByRole('alert')).toBeVisible();
-				expect(
-					within(screen.getByRole('alert')).getByRole('heading', { level: 2 }),
-				).toHaveTextContent('Queued title');
-			});
-			// Asserts CURRENT behaviour, not correct behaviour: the implementation
-			// clears `VIEWS.WORKFLOW` regardless of the `views` argument, so a caller
-			// passing e.g. `[WORKFLOW, NEW_WORKFLOW]` (`NodeView.vue`) leaves the other
-			// view's queue populated. Pre-existing — unchanged from before this PR.
-			expect(notificationState.setNotificationsForView).toHaveBeenCalledWith(VIEWS.WORKFLOW, []);
-		});
-
-		it('does nothing when the view has no queued notifications', () => {
-			toast.showNotificationForViews([VIEWS.WORKFLOW]);
-
-			expect(notificationState.setNotificationsForView).not.toHaveBeenCalled();
-		});
-	});
-
-	// Both dependencies are resolved per call rather than once per `useToast()`.
-	// Probing with a *later registration* is what distinguishes the two: a
-	// once-bound composable captures whatever was registered at creation time and
-	// never sees the update, which is how an early `useToast()` would stay
-	// permanently no-op once bootstrap registration moves (N8N-104).
+	// The notifier is resolved per call rather than once per `useToast()`. Probing
+	// with a *later registration* is what distinguishes the two: a once-bound
+	// composable captures whatever was registered at creation time and never sees
+	// the update, which is how an early `useToast()` would stay permanently no-op
+	// once bootstrap registration moves (N8N-104).
 	describe('per-call resolution', () => {
 		afterEach(() => {
-			// Restore the module-scope registrations for the rest of the suite.
+			// Restore the module-scope registration for the rest of the suite.
 			setNotify(ElNotification);
-			registerNotificationState(() => notificationState);
 		});
 
 		it('picks up a notifier registered after the composable was created', () => {
 			const earlyToast = useToast();
-			const lateNotify = vi.fn((_options: Record<string, unknown>) => ({ close: vi.fn() }));
+			const lateNotify = createNotifySpy();
 
 			setNotify(lateNotify);
 			earlyToast.showMessage({ message: 'Late notifier' });
@@ -457,27 +397,18 @@ describe('useToast', () => {
 			expect(lateNotify).toHaveBeenCalledTimes(1);
 		});
 
-		it('picks up notification state registered after the composable was created', () => {
-			// The notifier is registered *before* the composable exists, so it is
-			// identical whether resolution is per-call or once-bound. That isolates the
-			// state provider as the only variable — otherwise this passes for the wrong
-			// reason, a once-bound notifier simply never being called either.
-			const notifySpy = vi.fn((_options: Record<string, unknown>) => ({ close: vi.fn() }));
-			setNotify(notifySpy);
-
+		it('picks up a later notifier that drops the notification', () => {
+			// The suppression path specifically: an early composable must observe a
+			// dropping notifier registered afterwards, not the earlier rendering one.
+			const rendering = createNotifySpy();
+			setNotify(rendering);
 			const earlyToast = useToast();
 
-			// A different provider, not a mutation of the existing object — only a
-			// per-call resolve observes the swap.
-			registerNotificationState(() => ({
-				areNotificationsSuppressed: true,
-				allowErrorNotificationsWhenSuppressed: false,
-				pendingNotificationsForViews: {},
-				setNotificationsForView: vi.fn(),
-			}));
-			earlyToast.showMessage({ message: 'Should be suppressed' });
+			setNotify(() => undefined);
+			earlyToast.showMessage({ message: 'Dropped by the later notifier', type: 'error' });
 
-			expect(notifySpy).not.toHaveBeenCalled();
+			expect(rendering).not.toHaveBeenCalled();
+			expect(telemetryTrackSpy).not.toHaveBeenCalled();
 		});
 	});
 });

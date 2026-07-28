@@ -1,19 +1,32 @@
 import { ElNotification } from 'element-plus';
-import { registerNotificationState, setNotify } from '@n8n/composables/useToast';
+import { setNotify } from '@n8n/composables/useToast';
 import { useNotificationsStore } from '@n8n/stores/notifications.store';
 
-// Bootstrap wiring for the package-side `useToast` (`@n8n/composables`), which
-// sits below the stores tier and so imports neither element-plus nor
-// `@n8n/stores`. Runs on first import; `editor-ui` imports this module during
-// bootstrap, before any consumer runs.
+// The single bootstrap registration for the package-side `useToast`
+// (`@n8n/composables`), which sits below the stores tier and so imports neither
+// element-plus nor `@n8n/stores`. Runs on first import; `editor-ui` imports this
+// module during bootstrap, before any consumer runs.
 //
-// NOTE: when this shim is retired (stage 6), both registrations must be
-// relocated to a bootstrap entry point, not deleted with the file — dropping
-// them degrades toasts to a no-op notifier and ignores suppression.
-setNotify(ElNotification);
-// A thunk, not a value: the store can only be resolved once Pinia is installed,
-// which happens after this module is first imported.
-registerNotificationState(() => useNotificationsStore());
+// Suppression lives here rather than in the package (ADR-004): returning
+// `undefined` tells `showMessage` the app declined to show this notification, and
+// it drops it without a sticky-queue entry or error telemetry.
+//
+// The store resolves inside the closure, not at module scope — this module is
+// evaluated via `main.ts` -> `router.ts` -> `init.ts`, which is before
+// `app.use(pinia)`, so resolving it eagerly would throw `getActivePinia()`.
+//
+// NOTE: when this shim is retired (stage 6), this registration must be relocated
+// to a bootstrap entry point, not deleted with the file — dropping it degrades
+// toasts to a no-op notifier.
+setNotify((options) => {
+	const notifications = useNotificationsStore();
+	const suppressed = notifications.areNotificationsSuppressed;
+	const allowErrors = notifications.allowErrorNotificationsWhenSuppressed;
+
+	if (suppressed && !(allowErrors && options.type === 'error')) return undefined;
+
+	return ElNotification(options);
+});
 
 /**
  * @deprecated Import from `@n8n/composables/useToast` instead. This re-export

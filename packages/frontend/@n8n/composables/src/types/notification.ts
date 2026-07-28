@@ -1,4 +1,3 @@
-import type { VIEWS } from '@n8n/frontend-constants/views';
 import type { Component, VNode } from 'vue';
 
 export type NotificationType = '' | 'success' | 'warning' | 'error' | 'info';
@@ -31,21 +30,4 @@ export interface NotificationOptions {
 	zIndex?: number;
 	onClick?: () => void;
 	onClose?: () => void;
-}
-
-/**
- * The notification state `useToast` needs, injected instead of imported so this
- * package carries no dependency on `@n8n/stores`. `editor-ui` registers the
- * notifications store at bootstrap via `registerNotificationState`.
- *
- * Declared from the consumer's point of view — plain values, not `Ref`s — so a
- * Pinia store instance (whose refs are unwrapped for consumers) satisfies it
- * structurally with no cast at the registration site. Reads happen per call, so
- * reactivity is preserved.
- */
-export interface ToastNotificationState {
-	readonly areNotificationsSuppressed: boolean;
-	readonly allowErrorNotificationsWhenSuppressed: boolean;
-	readonly pendingNotificationsForViews: Partial<Record<VIEWS, NotificationOptions[]>>;
-	setNotificationsForView(view: VIEWS, notifications: NotificationOptions[]): void;
 }
