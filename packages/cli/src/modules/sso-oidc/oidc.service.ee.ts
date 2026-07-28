@@ -21,14 +21,13 @@ import { inspect } from 'util';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { buildOidcClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
 import {
+	assertAuthenticationMethodCanBeEnabled,
 	getCurrentAuthenticationMethod,
-	isEmailCurrentAuthenticationMethod,
 	isOidcCurrentAuthenticationMethod,
 	reloadAuthenticationMethod,
 	setCurrentAuthenticationMethod,
@@ -305,6 +304,11 @@ export class OidcService {
 			throw new BadRequestError('Invalid email format');
 		}
 
+		await this.assertProvisioningLoginAllowed(
+			claims as Record<string, unknown>,
+			userInfo as Record<string, unknown>,
+		);
+
 		const openidUser = await this.authIdentityRepository.findOne({
 			where: { providerId: claims.sub, providerType: 'oidc' },
 			relations: {
@@ -516,12 +520,26 @@ export class OidcService {
 		const provisioningConfig = await this.provisioningService.getConfig();
 		const projectRoleMapping = claims[provisioningConfig.scopesProjectsRolesClaimName];
 		const instanceRole = claims[provisioningConfig.scopesInstanceRoleClaimName];
-		if (instanceRole) {
-			await this.provisioningService.provisionInstanceRoleForUser(user, instanceRole);
-		}
+		// Called even when the claim is missing so the configured default condition applies
+		await this.provisioningService.provisionInstanceRoleForUser(user, instanceRole);
 		if (projectRoleMapping) {
 			await this.provisioningService.provisionProjectRolesForUser(user.id, projectRoleMapping);
 		}
+	}
+
+	/**
+	 * Denies the login (before any account is created or session issued) when
+	 * role mapping resolves to Block access.
+	 */
+	private async assertProvisioningLoginAllowed(
+		claims: Record<string, unknown>,
+		userInfo: Record<string, unknown>,
+	) {
+		const provisioningConfig = await this.provisioningService.getConfig();
+		await this.provisioningService.assertSsoLoginAllowed(
+			buildOidcClaimsContext(claims, userInfo),
+			claims[provisioningConfig.scopesInstanceRoleClaimName],
+		);
 	}
 
 	private async broadcastReloadOIDCConfigurationCommand(): Promise<void> {
@@ -609,14 +627,8 @@ export class OidcService {
 	}
 
 	async updateConfig(newConfig: OidcConfigDto) {
-		const isEnablingOidcWhileOtherSsoProtocolIsAlreadyEnabled =
-			newConfig.loginEnabled &&
-			!isEmailCurrentAuthenticationMethod() &&
-			!isOidcCurrentAuthenticationMethod();
-		if (isEnablingOidcWhileOtherSsoProtocolIsAlreadyEnabled) {
-			throw new InternalServerError(
-				`Cannot switch OIDC login enabled state when an authentication method other than email or OIDC is active (current: ${getCurrentAuthenticationMethod()})`,
-			);
+		if (newConfig.loginEnabled) {
+			assertAuthenticationMethodCanBeEnabled('oidc');
 		}
 
 		let discoveryEndpoint: URL;
@@ -673,12 +685,8 @@ export class OidcService {
 	private async setOidcLoginEnabled(enabled: boolean): Promise<void> {
 		const currentAuthenticationMethod = getCurrentAuthenticationMethod();
 
-		const isEnablingOidcWhileOtherSsoProtocolIsAlreadyEnabled =
-			enabled && !isEmailCurrentAuthenticationMethod() && !isOidcCurrentAuthenticationMethod();
-		if (isEnablingOidcWhileOtherSsoProtocolIsAlreadyEnabled) {
-			throw new InternalServerError(
-				`Cannot switch OIDC login enabled state when an authentication method other than email or OIDC is active (current: ${currentAuthenticationMethod})`,
-			);
+		if (enabled) {
+			assertAuthenticationMethodCanBeEnabled('oidc');
 		}
 
 		const targetAuthenticationMethod =

@@ -10,6 +10,7 @@ import type {
 	ListWorkflowReviewInboxResponse,
 	GetWorkflowReviewInboxSummaryResponse,
 	WorkflowReviewInboxItem,
+	WorkflowReviewEligibleReviewer,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
@@ -25,6 +26,7 @@ import {
 	type User,
 	type WorkflowReviewRequest,
 	type WorkflowReviewRequestLinkedWorkflow,
+	type WorkflowReviewRequestReviewer,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -138,12 +140,17 @@ export class WorkflowReviewRequestService {
 		// No pagination: the set is bounded by the project's members plus instance admins
 		return {
 			count: reviewers.length,
-			data: reviewers.map((reviewer) => ({
-				id: reviewer.id,
-				email: reviewer.email,
-				firstName: reviewer.firstName ?? null,
-				lastName: reviewer.lastName ?? null,
-			})),
+			data: reviewers.map((reviewer) => this.toEligibleReviewer(reviewer)),
+		};
+	}
+
+	/** Project a user onto the boundary shape the review endpoints are allowed to expose. */
+	private toEligibleReviewer(user: User): WorkflowReviewEligibleReviewer {
+		return {
+			id: user.id,
+			email: user.email,
+			firstName: user.firstName ?? null,
+			lastName: user.lastName ?? null,
 		};
 	}
 
@@ -431,16 +438,78 @@ export class WorkflowReviewRequestService {
 		const data = rows.slice(0, limit);
 		const lastRow = data.at(-1);
 		const nextCursor = hasMore && lastRow ? this.encodeInboxCursor(lastRow) : null;
-		const linkedWorkflowByRequestId =
-			await this.workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds(
-				data.map((row) => row.id),
-			);
+		const requestIds = data.map((row) => row.id);
+		const [linkedWorkflowByRequestId, reviewerRows] = await Promise.all([
+			this.workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds(requestIds),
+			this.workflowReviewRequestReviewerRepository.findByRequestIds(requestIds),
+		]);
+
+		const participantsByRequestId = await this.hydrateParticipants(data, reviewerRows);
 
 		return {
-			data: data.map((row) => this.toInboxItem(row, linkedWorkflowByRequestId.get(row.id) ?? null)),
+			data: data.map((row) => {
+				const { requester, reviewers } = participantsByRequestId.get(row.id) ?? {
+					requester: null,
+					reviewers: [],
+				};
+				return this.toInboxItem(
+					row,
+					linkedWorkflowByRequestId.get(row.id) ?? null,
+					requester,
+					reviewers,
+				);
+			}),
 			nextCursor,
 			hasMore,
 		};
+	}
+
+	/**
+	 * Batch-resolve the requester and requested reviewers for each request row,
+	 * keyed by request id. Deleted users simply drop out of the result.
+	 */
+	private async hydrateParticipants(
+		rows: WorkflowReviewRequest[],
+		reviewerRows: WorkflowReviewRequestReviewer[],
+	): Promise<
+		Map<
+			string,
+			{
+				requester: WorkflowReviewEligibleReviewer | null;
+				reviewers: WorkflowReviewEligibleReviewer[];
+			}
+		>
+	> {
+		const reviewerIdsByRequestId = new Map<string, string[]>();
+		for (const { workflowReviewRequestId, userId } of reviewerRows) {
+			const ids = reviewerIdsByRequestId.get(workflowReviewRequestId) ?? [];
+			ids.push(userId);
+			reviewerIdsByRequestId.set(workflowReviewRequestId, ids);
+		}
+
+		const userIds = new Set([
+			...rows.map((row) => row.createdById).filter((id) => id !== null),
+			...reviewerRows.map((row) => row.userId),
+		]);
+
+		const usersById = new Map<string, WorkflowReviewEligibleReviewer>();
+		if (userIds.size > 0) {
+			for (const user of await this.userRepository.findManyByIds([...userIds])) {
+				usersById.set(user.id, this.toEligibleReviewer(user));
+			}
+		}
+
+		return new Map(
+			rows.map((row) => [
+				row.id,
+				{
+					requester: row.createdById ? (usersById.get(row.createdById) ?? null) : null,
+					reviewers: (reviewerIdsByRequestId.get(row.id) ?? [])
+						.map((userId) => usersById.get(userId))
+						.filter((reviewer) => reviewer !== undefined),
+				},
+			]),
+		);
 	}
 
 	async getInboxSummaryForUser(user: User): Promise<GetWorkflowReviewInboxSummaryResponse> {
@@ -506,6 +575,8 @@ export class WorkflowReviewRequestService {
 	private toInboxItem(
 		entity: WorkflowReviewRequest,
 		linkedWorkflow: WorkflowReviewRequestLinkedWorkflow | null,
+		requester: WorkflowReviewEligibleReviewer | null,
+		reviewers: WorkflowReviewEligibleReviewer[],
 	): WorkflowReviewInboxItem {
 		return {
 			id: entity.id,
@@ -517,6 +588,8 @@ export class WorkflowReviewRequestService {
 			state: entity.state,
 			createdAt: entity.createdAt.toISOString(),
 			updatedAt: entity.updatedAt.toISOString(),
+			requester,
+			reviewers,
 		};
 	}
 }

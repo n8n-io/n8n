@@ -60,6 +60,7 @@ import { DropAgentDescriptionFromAgents1784000000037 } from './1784000000037-Dro
 import { AddRecurringCronScheduleKind1784000000045 } from './1784000000045-AddRecurringCronScheduleKind';
 import { AddAvailableInMcpToAgents1784897791636 } from './1784897791636-AddAvailableInMcpToAgents';
 import { AddMisfirePolicyToScheduler1785159600000 } from './1785159600000-AddMisfirePolicyToScheduler';
+import { ChangeInstalledNodeVersionType1785162364000 } from './1785162364000-ChangeInstalledNodeVersionType';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -449,6 +450,7 @@ const sqliteMigrations: Migration[] = [
 	CreateAgentEvalTables1784815940112,
 	AddAvailableInMcpToAgents1784897791636,
 	AddMisfirePolicyToScheduler1785159600000,
+	ChangeInstalledNodeVersionType1785162364000,
 ];
 
 export { sqliteMigrations };
