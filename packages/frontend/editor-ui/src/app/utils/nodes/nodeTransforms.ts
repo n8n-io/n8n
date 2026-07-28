@@ -187,14 +187,14 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 		'status',
 	];
 
-	// @ts-ignore
+	// @ts-expect-error populated field-by-field below
 	const nodeData: INodeUi = {
 		parameters: {},
 	};
 
 	for (const key in node) {
 		if (key.charAt(0) !== '_' && skipKeys.indexOf(key) === -1) {
-			// @ts-ignore
+			// @ts-expect-error dynamic key copy
 			nodeData[key] = node[key];
 		}
 	}

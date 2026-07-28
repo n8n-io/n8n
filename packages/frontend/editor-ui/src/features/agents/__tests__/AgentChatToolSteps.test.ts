@@ -55,9 +55,24 @@ vi.mock('@n8n/design-system', () => ({
 	N8nTooltip: { template: '<div><slot /></div>', props: ['content', 'placement'] },
 }));
 
-vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({
-		baseText: (key: string, opts?: { interpolate?: { name?: string; count?: string } }) => {
+vi.mock('@n8n/i18n', () => {
+	const i18n = {
+		translations: {
+			'agents.chat.toolNames.webSearch': 'Web search',
+			'instanceAi.tools.search_nodes': 'Search nodes',
+			'agents.chat.difficulty.low': 'Low',
+			'agents.chat.difficulty.medium': 'Medium',
+			'agents.chat.difficulty.high': 'High',
+			'agents.chat.writeTodos.status.inProgress': 'In progress',
+			'agents.chat.writeTodos.status.pending': 'Pending',
+			'agents.chat.writeTodos.status.completed': 'Completed',
+			'agents.chat.writeTodos.status.blocked': 'Blocked',
+			'agents.chat.writeTodos.status.cancelled': 'Cancelled',
+			'agents.chat.writeTodos.hint.difficulty': 'Difficulty',
+			'agents.chat.writeTodos.hint.subAgent': 'Sub-agent',
+			'agents.chat.writeTodos.hint.expectedOutput': 'Expected output',
+		} as Record<string, string>,
+		baseText(key: string, opts?: { interpolate?: { name?: string; count?: string } }) {
 			if (key === 'agents.chat.delegate.label' && opts?.interpolate?.name) {
 				return `Sub-agent · ${opts.interpolate.name}`;
 			}
@@ -70,23 +85,12 @@ vi.mock('@n8n/i18n', () => ({
 				return `${opts.interpolate.count} tasks`;
 			}
 			if (key === 'agents.chat.writeTodos.summary.done') return 'done';
-			const statusLabels: Record<string, string> = {
-				'agents.chat.difficulty.low': 'Low',
-				'agents.chat.difficulty.medium': 'Medium',
-				'agents.chat.difficulty.high': 'High',
-				'agents.chat.writeTodos.status.inProgress': 'In progress',
-				'agents.chat.writeTodos.status.pending': 'Pending',
-				'agents.chat.writeTodos.status.completed': 'Completed',
-				'agents.chat.writeTodos.status.blocked': 'Blocked',
-				'agents.chat.writeTodos.status.cancelled': 'Cancelled',
-				'agents.chat.writeTodos.hint.difficulty': 'Difficulty',
-				'agents.chat.writeTodos.hint.subAgent': 'Sub-agent',
-				'agents.chat.writeTodos.hint.expectedOutput': 'Expected output',
-			};
-			return statusLabels[key] ?? key;
+			return this.translations[key] ?? key;
 		},
-	}),
-}));
+	};
+
+	return { useI18n: () => i18n };
+});
 
 vi.mock('../composables/useSubAgentNames', () => ({
 	useSubAgentNames: () => ({ subAgentNameById: { value: new Map() } }),
@@ -102,6 +106,25 @@ function mountSteps(
 }
 
 describe('AgentChatToolSteps', () => {
+	it('renders native web search tool calls as expandable', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'openai.web_search',
+				toolCallId: 'tc-web-search',
+				state: TOOL_CALL_STATE.DONE,
+				input: { query: 'n8n agents' },
+				output: { results: [{ title: 'Agents documentation' }] },
+			},
+		]);
+
+		expect(wrapper.text()).toContain('Web search');
+		expect(wrapper.find('button').exists()).toBe(true);
+
+		await wrapper.find('button').trigger('click');
+		expect(wrapper.text()).toContain('n8n agents');
+		expect(wrapper.text()).toContain('Agents documentation');
+	});
+
 	it('makes generic tool steps with output data expandable', async () => {
 		const wrapper = mountSteps([
 			{
