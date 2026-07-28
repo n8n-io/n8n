@@ -314,7 +314,7 @@ const outputSchema = {
 		.number()
 		.optional()
 		.describe(
-			'Number of submitted operations that were applied. Excludes operations skipped for failing basic validation (see skippedOperations); does not exclude a submitted operation whose resulting group was later dropped by the structural check, since that operation itself still ran.',
+			'Number of submitted operations that were applied. See skippedOperations for any that were not.',
 		),
 	autoAssignedCredentials: z
 		.array(
