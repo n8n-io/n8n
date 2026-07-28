@@ -134,7 +134,9 @@ widening entirely**, so element-plus' prop and emit precision survives across
   call sites.
 - Three components gained explicitly typed slots, which consumers can now use.
 - `node10` came green for free — a side effect of collapsing to a single entry
-  point, not of anything type-related.
+  point, not of anything type-related. That collapse is not free elsewhere; see
+  the entry-collapse cost recorded in
+  [ADR-0001](0001-design-system-ships-as-a-compiled-package.md).
 - From a packed tarball outside the monorepo: 387 declaration files, consumer
   typecheck and build clean, with a typed `#prepend` slot rendering a lucide icon
   from a pre-built chunk.

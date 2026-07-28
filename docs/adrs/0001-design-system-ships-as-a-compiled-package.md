@@ -104,7 +104,20 @@ limitation, not a failure — see [ADR-0002](0002-per-file-declarations-for-desi
 - Publishing a *working* package converts several deferred questions into real
   obligations the moment anyone adopts: changelog and versioning policy, a
   consumption doc, and the licence call for consumers outside n8n. None exist
-  yet.
+  yet. Note that `package.json` already declares
+  `LicenseRef-n8n-sustainable-use`, so shipping a resolvable artifact makes that
+  the de facto answer for external adopters whether or not anyone decides it.
+- **The single-entry collapse has a cost inside the monorepo.** Dropping the
+  `./icons/lucide` subpath moved `loadLucideIconBody` onto the root barrel
+  (`src/index.ts:40`), and that barrel is what internal packages resolve through
+  their `→ src` alias. Any internal build that aliases to `src` *without*
+  registering `lucideIconsPlugin` can no longer import anything from the barrel,
+  because the re-export drags in the unresolvable `virtual:lucide-icons`
+  specifier. Observed as a red `Install & Build` on #35108 via `@n8n/mcp-apps`,
+  with `mcp-browser-extension` carrying the same latent shape. **Unresolved at
+  filing** — a fix that restores the subpath would change the decision recorded
+  here, so a later reader finding a `./icons/lucide` export should expect a
+  superseding record and treat its absence as a gap.
 
 **Neutral**
 
@@ -125,3 +138,11 @@ limitation, not a failure — see [ADR-0002](0002-per-file-declarations-for-desi
 - A second frontend package is found shipping the same husk shape
   (`@n8n/frontend-module-sdk`, N8N-118) → fix the publish pipeline as a class
   rather than per package.
+- **The `./icons/lucide` subpath is restored, or the root barrel stops
+  re-exporting `loadLucideIconBody`** → the single-entry decision above no longer
+  holds; supersede this record rather than editing it. Note that
+  [ADR-0002](0002-per-file-declarations-for-design-system.md) credits the same
+  entry collapse for `attw node10` going green, so the two move together.
+- Any internal package needs to import from the design-system barrel without
+  registering our vite plugins → the barrel's build-time virtual specifiers are a
+  contract nobody wrote down. Write it down.
