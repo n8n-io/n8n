@@ -1,4 +1,4 @@
-import type { PaginationRootEmits, PaginationRootProps } from 'reka-ui';
+import type { PaginationRootEmits, PaginationRootProps } from './reka-ui';
 
 export type PaginationSizes = 'small' | 'medium';
 
@@ -6,40 +6,32 @@ export type PaginationProps = Omit<
 	PaginationRootProps,
 	'dir' | 'asChild' | 'as' | 'itemsPerPage'
 > & {
-	/** Alias for `page` (Element+ compatibility). Supports `v-model:current-page`. */
-	currentPage?: number;
-	/** Alias for `itemsPerPage`. */
-	pageSize?: number;
+	/** Number of items per page. Supports `v-model:items-per-page`. Default: `10`. */
+	itemsPerPage?: number;
+	/** Options for the page size selector. Default: `[10, 20, 30, 40, 50, 100]`. */
+	pageSizes?: number[];
 	/** Total number of pages. Takes precedence over `total` when set. */
 	pageCount?: number;
-	/** Alias for `pageSize` (Reka prop name). */
-	itemsPerPage?: number;
-	/** Odd number of page buttons to show (Element+). Mapped to Reka `siblingCount`. */
-	pagerCount?: number;
+	/** Show the total item count. Default: `true`. */
+	showTotal?: boolean;
+	/** Show the page size selector. Default: `true`. */
+	showSizes?: boolean;
+	/** Show the go-to-page jumper. Default: `true`. */
+	showJumper?: boolean;
 	/** Hide the component when there is only one page. */
 	hideOnSinglePage?: boolean;
-	/** Custom text for the previous button (chevron icon used when omitted). */
-	prevText?: string;
-	/** Custom text for the next button (chevron icon used when omitted). */
-	nextText?: string;
-	/** Initial page size in uncontrolled mode. */
-	defaultPageSize?: number;
-	/** Initial page in uncontrolled mode (alias for Reka `defaultPage`). */
-	defaultCurrentPage?: number;
-	/** Size variant. */
+	/**
+	 * Size variant.
+	 * @defaultValue 'medium'
+	 */
 	size?: PaginationSizes;
-	/** Total number of items. Optional so `pageCount` can be used alone. */
-	total?: number;
 };
 
 export type PaginationEmits = PaginationRootEmits & {
-	'update:currentPage': [value: number];
-	'current-change': [value: number];
-	'prev-click': [value: number];
-	'next-click': [value: number];
+	'update:itemsPerPage': [value: number];
 };
 
 export type PaginationSlots = {
-	prev?: (props?: { disabled?: boolean }) => unknown;
-	next?: (props?: { disabled?: boolean }) => unknown;
+	prev?: (props: { disabled: boolean }) => unknown;
+	next?: (props: { disabled: boolean }) => unknown;
 };

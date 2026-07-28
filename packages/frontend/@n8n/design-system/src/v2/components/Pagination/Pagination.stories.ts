@@ -9,21 +9,33 @@ export default {
 	component: Pagination,
 	tags: ['autodocs'],
 	argTypes: {
-		currentPage: {
-			control: 'number',
-			description: 'Current active page number (1-indexed). Alias for `page`.',
-		},
 		page: {
 			control: 'number',
-			description: 'Current page (Reka prop). Prefer `currentPage` for Element+ compatibility.',
+			description: 'Controlled current page (1-indexed). Supports v-model:page.',
 		},
-		pageSize: {
+		defaultPage: {
 			control: 'number',
-			description: 'Number of items per page. Alias for `itemsPerPage`.',
+			description: 'Initial page in uncontrolled mode',
 		},
 		itemsPerPage: {
 			control: 'number',
-			description: 'Items per page (Reka prop). Prefer `pageSize` for Element+ compatibility.',
+			description: 'Number of items per page. Supports v-model:items-per-page.',
+		},
+		pageSizes: {
+			control: 'object',
+			description: 'Options for the page size selector',
+		},
+		showTotal: {
+			control: 'boolean',
+			description: 'Show the total item count',
+		},
+		showSizes: {
+			control: 'boolean',
+			description: 'Show the page size selector',
+		},
+		showJumper: {
+			control: 'boolean',
+			description: 'Show the go-to-page jumper',
 		},
 		total: {
 			control: 'number',
@@ -33,15 +45,9 @@ export default {
 			control: 'number',
 			description: 'Total number of pages. Takes precedence over `total`.',
 		},
-		pagerCount: {
-			control: 'number',
-			description:
-				'Odd number of page buttons around the current page before ellipsis (e.g. 5 or 7). Alias for siblingCount.',
-		},
 		siblingCount: {
 			control: 'number',
-			description:
-				'Pages to show on each side of the current page before ellipsis. Prefer pagerCount for Element+ compatibility.',
+			description: 'Pages to show on each side of the current page before ellipsis.',
 		},
 		showEdges: {
 			control: 'boolean',
@@ -60,26 +66,6 @@ export default {
 			control: 'boolean',
 			description: 'Hide when there is only one page',
 		},
-		prevText: {
-			control: 'text',
-			description: 'Custom text for the previous button',
-		},
-		nextText: {
-			control: 'text',
-			description: 'Custom text for the next button',
-		},
-		defaultCurrentPage: {
-			control: 'number',
-			description: 'Initial page in uncontrolled mode',
-		},
-		defaultPageSize: {
-			control: 'number',
-			description: 'Initial page size in uncontrolled mode',
-		},
-		defaultPage: {
-			control: 'number',
-			description: 'Initial page in uncontrolled mode (Reka prop). Prefer `defaultCurrentPage`.',
-		},
 	},
 } satisfies Meta<typeof Pagination>;
 
@@ -88,18 +74,57 @@ type Story = StoryObj<typeof Pagination>;
 const Template: NonNullable<Story['render']> = (args) => ({
 	components: { Pagination },
 	setup() {
-		const currentPage = ref(args.currentPage ?? args.page ?? 1);
-		return { args, currentPage };
+		const page = ref(args.page ?? 1);
+		const itemsPerPage = ref(args.itemsPerPage ?? 10);
+		return { args, page, itemsPerPage };
 	},
-	template: '<Pagination v-bind="args" v-model:current-page="currentPage" />',
+	template:
+		'<Pagination v-bind="args" v-model:page="page" v-model:items-per-page="itemsPerPage" />',
 });
 
 export const Default: Story = {
 	args: {
 		total: 100,
-		pageSize: 10,
+		itemsPerPage: 10,
 	},
 	render: Template,
+};
+
+export const WithTotal: Story = {
+	name: 'With Total',
+	render: Template,
+	args: {
+		total: 100,
+		itemsPerPage: 10,
+		showTotal: true,
+		showSizes: false,
+		showJumper: false,
+	},
+};
+
+export const WithSizes: Story = {
+	name: 'With Page Sizes',
+	render: Template,
+	args: {
+		total: 500,
+		itemsPerPage: 20,
+		pageSizes: [10, 20, 50, 100],
+		showTotal: false,
+		showSizes: true,
+		showJumper: false,
+	},
+};
+
+export const WithJumper: Story = {
+	name: 'With Jumper',
+	render: Template,
+	args: {
+		total: 300,
+		itemsPerPage: 30,
+		showTotal: false,
+		showSizes: false,
+		showJumper: true,
+	},
 };
 
 export const OnePage: Story = {
@@ -107,7 +132,7 @@ export const OnePage: Story = {
 	render: Template,
 	args: {
 		total: 8,
-		pageSize: 10,
+		itemsPerPage: 10,
 	},
 };
 
@@ -123,7 +148,7 @@ export const HideOnSinglePage: Story = {
 				</h3>
 				<Pagination
 					:total="8"
-					:page-size="10"
+					:items-per-page="10"
 					hide-on-single-page
 				/>
 				<p style="margin: var(--spacing--sm) 0 0; font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
@@ -136,7 +161,7 @@ export const HideOnSinglePage: Story = {
 				</h3>
 				<Pagination
 					:total="100"
-					:page-size="10"
+					:items-per-page="10"
 					hide-on-single-page
 				/>
 			</section>
@@ -150,7 +175,18 @@ export const PageCount: Story = {
 	render: Template,
 	args: {
 		pageCount: 12,
-		pageSize: 10,
+		itemsPerPage: 10,
+	},
+};
+
+export const CustomPageSizes: Story = {
+	name: 'Custom Page Sizes',
+	render: Template,
+	args: {
+		total: 500,
+		itemsPerPage: 20,
+		pageSizes: [10, 20, 50, 100],
+		showSizes: true,
 	},
 };
 
@@ -158,27 +194,27 @@ export const Sizes: Story = {
 	render: (args) => ({
 		components: { Pagination },
 		setup() {
-			const mediumPage = ref(args.currentPage ?? 1);
-			const smallPage = ref(args.currentPage ?? 1);
+			const mediumPage = ref(args.page ?? 1);
+			const smallPage = ref(args.page ?? 1);
 			return { args, mediumPage, smallPage };
 		},
 		template: `
-		<div style="display: flex; flex-direction: column; gap: 24px; padding: 16px;">
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--lg); padding: var(--spacing--md);">
 			<div>
-				<h3 style="margin: 0 0 8px;">Medium</h3>
-				<Pagination v-bind="args" size="medium" v-model:current-page="mediumPage" />
+				<h3 style="margin: 0 0 var(--spacing--xs);">Medium</h3>
+				<Pagination v-bind="args" size="medium" v-model:page="mediumPage" />
 			</div>
 			<div>
-				<h3 style="margin: 0 0 8px;">Small</h3>
-				<Pagination v-bind="args" size="small" v-model:current-page="smallPage" />
+				<h3 style="margin: 0 0 var(--spacing--xs);">Small</h3>
+				<Pagination v-bind="args" size="small" v-model:page="smallPage" />
 			</div>
 		</div>
 		`,
 	}),
 	args: {
 		total: 1000,
-		pageSize: 10,
-		currentPage: 50,
+		itemsPerPage: 10,
+		page: 50,
 	},
 };
 
@@ -186,20 +222,10 @@ export const Disabled: Story = {
 	render: Template,
 	args: {
 		total: 100,
-		pageSize: 10,
-		currentPage: 3,
+		itemsPerPage: 10,
+		page: 3,
 		disabled: true,
-	},
-};
-
-export const CustomButtons: Story = {
-	name: 'Custom Navigation Text',
-	render: Template,
-	args: {
-		total: 100,
-		pageSize: 10,
-		prevText: 'Previous',
-		nextText: 'Next',
+		pageSizes: [10, 20, 50],
 	},
 };
 
@@ -208,24 +234,28 @@ export const CustomSlots: Story = {
 	render: (args) => ({
 		components: { Pagination },
 		setup() {
-			const currentPage = ref(args.currentPage ?? 2);
-			return { args, currentPage };
+			const page = ref(args.page ?? 2);
+			return { args, page };
 		},
 		template: `
-		<Pagination v-bind="args" v-model:current-page="currentPage">
+		<Pagination v-bind="args" v-model:page="page">
 			<template #prev="{ disabled }">
-				<button type="button" :disabled="disabled" style="padding: 4px 8px;">← Prev</button>
+				<button type="button" :disabled="disabled" data-test-id="story-prev" style="padding: var(--spacing--3xs) var(--spacing--xs);">
+					Previous
+				</button>
 			</template>
 			<template #next="{ disabled }">
-				<button type="button" :disabled="disabled" style="padding: 4px 8px;">Next →</button>
+				<button type="button" :disabled="disabled" data-test-id="story-next" style="padding: var(--spacing--3xs) var(--spacing--xs);">
+					Next
+				</button>
 			</template>
 		</Pagination>
 		`,
 	}),
 	args: {
 		total: 100,
-		pageSize: 10,
-		currentPage: 2,
+		itemsPerPage: 10,
+		page: 2,
 	},
 };
 
@@ -234,63 +264,52 @@ export const ManyPages: Story = {
 	render: Template,
 	args: {
 		total: 1000,
-		pageSize: 10,
-		pagerCount: 7,
-		currentPage: 50,
+		itemsPerPage: 10,
+		siblingCount: 3,
+		page: 50,
 	},
 };
 
-export const PagerCount: Story = {
-	name: 'Pager Count / Sibling Count',
+export const SiblingCount: Story = {
+	name: 'Sibling Count',
 	render: (args) => ({
 		components: { Pagination },
 		setup() {
-			const pageNarrow = ref(args.currentPage ?? 50);
-			const pageDefault = ref(args.currentPage ?? 50);
-			const pageWide = ref(args.currentPage ?? 50);
-			const pageSibling = ref(args.currentPage ?? 50);
-			return { args, pageNarrow, pageDefault, pageWide, pageSibling };
+			const pageNarrow = ref(args.page ?? 50);
+			const pageDefault = ref(args.page ?? 50);
+			const pageWide = ref(args.page ?? 50);
+			return { args, pageNarrow, pageDefault, pageWide };
 		},
 		template: `
 		<div style="display: flex; flex-direction: column; gap: var(--spacing--xl); padding: var(--spacing--md);">
 			<section>
 				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
-					pagerCount: 3
+					siblingCount: 1
 				</h3>
 				<Pagination
 					v-bind="args"
-					:pager-count="3"
-					v-model:current-page="pageNarrow"
+					:sibling-count="1"
+					v-model:page="pageNarrow"
 				/>
 			</section>
 			<section>
 				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
-					pagerCount: 5
-				</h3>
-				<Pagination
-					v-bind="args"
-					:pager-count="5"
-					v-model:current-page="pageDefault"
-				/>
-			</section>
-			<section>
-				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
-					pagerCount: 7
-				</h3>
-				<Pagination
-					v-bind="args"
-					:pager-count="7"
-					v-model:current-page="pageWide"
-				/>
-			</section>
-			<section>
-				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
-					siblingCount: 2 (Reka prop)
+					siblingCount: 2
 				</h3>
 				<Pagination
 					v-bind="args"
 					:sibling-count="2"
-					v-model:current-page="pageSibling"
+					v-model:page="pageDefault"
+				/>
+			</section>
+			<section>
+				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					siblingCount: 3
+				</h3>
+				<Pagination
+					v-bind="args"
+					:sibling-count="3"
+					v-model:page="pageWide"
 				/>
 			</section>
 		</div>
@@ -298,8 +317,8 @@ export const PagerCount: Story = {
 	}),
 	args: {
 		total: 1000,
-		pageSize: 10,
-		currentPage: 50,
+		itemsPerPage: 10,
+		page: 50,
 	},
 };
 
@@ -308,8 +327,8 @@ export const ShowEdges: Story = {
 	render: (args) => ({
 		components: { Pagination },
 		setup() {
-			const withEdges = ref(args.currentPage ?? 50);
-			const withoutEdges = ref(args.currentPage ?? 50);
+			const withEdges = ref(args.page ?? 50);
+			const withoutEdges = ref(args.page ?? 50);
 			return { args, withEdges, withoutEdges };
 		},
 		template: `
@@ -321,7 +340,7 @@ export const ShowEdges: Story = {
 				<Pagination
 					v-bind="args"
 					:show-edges="true"
-					v-model:current-page="withEdges"
+					v-model:page="withEdges"
 				/>
 			</section>
 			<section>
@@ -331,7 +350,7 @@ export const ShowEdges: Story = {
 				<Pagination
 					v-bind="args"
 					:show-edges="false"
-					v-model:current-page="withoutEdges"
+					v-model:page="withoutEdges"
 				/>
 			</section>
 		</div>
@@ -339,39 +358,9 @@ export const ShowEdges: Story = {
 	}),
 	args: {
 		total: 1000,
-		pageSize: 10,
-		currentPage: 50,
-		pagerCount: 5,
-	},
-};
-
-export const PropAliases: Story = {
-	name: 'Prop Aliases (page / itemsPerPage)',
-	render: (args) => ({
-		components: { Pagination },
-		setup() {
-			const page = ref(args.page ?? 2);
-			return { args, page };
-		},
-		template: `
-		<div style="display: flex; flex-direction: column; gap: var(--spacing--md); padding: var(--spacing--md);">
-			<p style="margin: 0; font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-				Uses Reka names <code>page</code> and <code>items-per-page</code> instead of <code>current-page</code> / <code>page-size</code>.
-			</p>
-			<Pagination
-				v-bind="args"
-				v-model:page="page"
-				:items-per-page="20"
-				:total="100"
-			/>
-			<p style="margin: 0; font-size: var(--font-size--sm);">
-				Page: <strong>{{ page }}</strong>
-			</p>
-		</div>
-		`,
-	}),
-	args: {
-		page: 2,
+		itemsPerPage: 10,
+		page: 50,
+		siblingCount: 2,
 	},
 };
 
@@ -380,8 +369,9 @@ export const ControlledUncontrolled: Story = {
 	render: () => ({
 		components: { Pagination },
 		setup() {
-			const currentPage = ref(3);
-			return { currentPage };
+			const page = ref(3);
+			const itemsPerPage = ref(10);
+			return { page, itemsPerPage };
 		},
 		template: `
 		<div style="display: flex; flex-direction: column; gap: var(--spacing--xl); padding: var(--spacing--md);">
@@ -390,20 +380,22 @@ export const ControlledUncontrolled: Story = {
 					Controlled
 				</h3>
 				<p style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-					Parent owns state via <code>v-model:current-page</code>.
+					Parent owns state via <code>v-model:page</code> and <code>v-model:items-per-page</code>.
 				</p>
 				<Pagination
 					key="controlled"
-					v-model:current-page="currentPage"
-					:page-size="10"
+					v-model:page="page"
+					v-model:items-per-page="itemsPerPage"
 					:total="100"
+					:page-sizes="[10, 20, 50]"
 				/>
 				<div style="display: flex; gap: var(--spacing--2xs); margin-top: var(--spacing--sm); flex-wrap: wrap;">
-					<button type="button" @click="currentPage = 1">Go to page 1</button>
-					<button type="button" @click="currentPage = 5">Go to page 5</button>
+					<button type="button" @click="page = 1">Go to page 1</button>
+					<button type="button" @click="page = 5">Go to page 5</button>
+					<button type="button" @click="itemsPerPage = 20">Set page size 20</button>
 				</div>
 				<p style="margin-top: var(--spacing--sm); font-size: var(--font-size--sm);">
-					Page: <strong>{{ currentPage }}</strong>
+					Page: <strong>{{ page }}</strong> · Size: <strong>{{ itemsPerPage }}</strong>
 				</p>
 			</section>
 			<section>
@@ -411,13 +403,14 @@ export const ControlledUncontrolled: Story = {
 					Uncontrolled
 				</h3>
 				<p style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-					Initial state via <code>default-current-page</code>. The component manages its own state after mount.
+					Initial page via <code>default-page</code>. Reka manages page state after mount.
 				</p>
 				<Pagination
 					key="uncontrolled"
-					:default-current-page="3"
-					:page-size="10"
+					:default-page="3"
+					:items-per-page="10"
 					:total="100"
+					:page-sizes="[10, 20, 50]"
 				/>
 			</section>
 		</div>
@@ -436,26 +429,27 @@ export const ClientSidePagination: Story = {
 					name: `Item ${i + 1}`,
 				})),
 			);
-			const currentPage = ref(1);
-			const pageSize = 20;
+			const page = ref(1);
+			const itemsPerPage = ref(20);
 			const paginatedItems = computed(() => {
-				const start = (currentPage.value - 1) * pageSize;
-				return allItems.value.slice(start, start + pageSize);
+				const start = (page.value - 1) * itemsPerPage.value;
+				return allItems.value.slice(start, start + itemsPerPage.value);
 			});
 
-			return { allItems, currentPage, pageSize, paginatedItems };
+			return { allItems, page, itemsPerPage, paginatedItems };
 		},
 		template: `
-		<div style="padding: 16px;">
-			<div style="margin-bottom: 16px;">
-				<div v-for="item in paginatedItems" :key="item.id" style="padding: 8px; border-bottom: 1px solid #eee;">
+		<div style="padding: var(--spacing--md);">
+			<div style="margin-bottom: var(--spacing--md);">
+				<div v-for="item in paginatedItems" :key="item.id" style="padding: var(--spacing--xs); border-bottom: 1px solid var(--border-color);">
 					{{ item.name }}
 				</div>
 			</div>
 			<Pagination
-				v-model:current-page="currentPage"
-				:page-size="pageSize"
+				v-model:page="page"
+				v-model:items-per-page="itemsPerPage"
 				:total="allItems.length"
+				:page-sizes="[10, 20, 50]"
 			/>
 		</div>
 		`,

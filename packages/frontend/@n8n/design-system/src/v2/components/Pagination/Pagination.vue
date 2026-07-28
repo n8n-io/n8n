@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { reactivePick } from '@vueuse/core';
+import { reactiveOmit, reactivePick } from '@vueuse/core';
+import { computed, ref, useAttrs, useCssModule, watch } from 'vue';
+
+import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
+import { useI18n } from '@n8n/design-system/composables/useI18n';
+import N8nSelect from '@n8n/design-system/v2/components/Select/Select.vue';
+
+import type { PaginationEmits, PaginationProps, PaginationSlots } from './Pagination.types';
 import {
 	PaginationRoot,
 	PaginationList,
@@ -7,26 +14,24 @@ import {
 	PaginationPrev,
 	PaginationNext,
 	PaginationEllipsis,
-	useForwardPropsEmits,
-} from 'reka-ui';
-import { computed, useCssModule, ref, watch } from 'vue';
-
-import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
-import { useI18n } from '@n8n/design-system/composables/useI18n';
-
-import type {
-	PaginationEmits,
-	PaginationProps,
-	PaginationSlots,
-	PaginationSizes,
-} from './Pagination.types';
+	useForwardProps,
+} from './reka-ui';
 
 defineOptions({ inheritAttrs: false });
+
+const attrs = useAttrs();
+const rootClass = computed(() => attrs.class);
+const rootAttrs = computed(() => reactiveOmit(attrs, ['class']));
 
 const $style = useCssModule();
 
 const props = withDefaults(defineProps<PaginationProps>(), {
 	size: 'medium',
+	itemsPerPage: 10,
+	pageSizes: () => [10, 20, 30, 40, 50, 100],
+	showTotal: true,
+	showSizes: true,
+	showJumper: true,
 	hideOnSinglePage: false,
 	defaultPage: 1,
 	disabled: false,
@@ -39,99 +44,114 @@ defineSlots<PaginationSlots>();
 
 const { t } = useI18n();
 
-const internalPage = ref(
-	props.currentPage ?? props.page ?? props.defaultCurrentPage ?? props.defaultPage ?? 1,
+const rootProps = useForwardProps(
+	reactivePick(props, 'page', 'defaultPage', 'disabled', 'showEdges', 'siblingCount'),
 );
-const itemsPerPage = ref(props.pageSize ?? props.itemsPerPage ?? props.defaultPageSize ?? 10);
 
-const page = computed(() => props.currentPage ?? props.page ?? internalPage.value);
+const jumperValue = ref(String(props.page ?? props.defaultPage ?? 1));
+const currentPageRef = ref(props.page ?? props.defaultPage ?? 1);
 
 watch(
-	() => props.currentPage ?? props.page,
-	(controlledPage: number | undefined) => {
-		if (controlledPage !== undefined) {
-			internalPage.value = controlledPage;
-		}
+	() => props.page,
+	(newPage) => {
+		if (newPage === undefined) return;
+		currentPageRef.value = newPage;
+		jumperValue.value = String(newPage);
 	},
 );
 
-watch(
-	() => props.pageSize ?? props.itemsPerPage,
-	(newSize: number | undefined) => {
-		if (newSize !== undefined && newSize !== itemsPerPage.value) {
-			itemsPerPage.value = newSize;
-		}
-	},
-);
-
-// pagerCount is an odd number in Element+ (e.g. 7 page buttons).
-// siblingCount in Reka is pages on each side of the current page.
-const siblingCount = computed(() => {
-	if (props.pagerCount !== undefined) {
-		return Math.floor((props.pagerCount - 1) / 2);
-	}
-	return props.siblingCount ?? 1;
-});
-
-const pageCount = computed(() => {
+function resolvedPageCount() {
 	if (props.pageCount !== undefined) return props.pageCount;
-	if (!props.total || !itemsPerPage.value) return 1;
-	return Math.ceil(props.total / itemsPerPage.value);
-});
+	if (!props.total || !props.itemsPerPage) return 1;
+	return Math.ceil(props.total / props.itemsPerPage);
+}
 
 // pageCount takes precedence over total per DS-323
-const totalItems = computed(() => {
+function resolvedTotalItems() {
 	if (props.pageCount !== undefined) {
-		return props.pageCount * itemsPerPage.value;
+		return props.pageCount * props.itemsPerPage;
 	}
 	if (props.total !== undefined) return props.total;
 	return 0;
-});
+}
 
-const shouldHide = computed(() => props.hideOnSinglePage && pageCount.value <= 1);
+function shouldHide() {
+	return props.hideOnSinglePage && resolvedPageCount() <= 1;
+}
 
-const rootProps = useForwardPropsEmits(reactivePick(props, 'disabled', 'showEdges'), emit);
+function isPrevDisabled(page: number) {
+	return props.disabled || page <= 1;
+}
 
-const prevPage = ref(page.value);
+function isNextDisabled(page: number, pageCount: number) {
+	return props.disabled || page >= pageCount;
+}
 
-watch(
-	() => page.value,
-	(newPage) => {
-		if (newPage === undefined) return;
-		prevPage.value = newPage;
-	},
-);
+function pageSizeItems() {
+	return props.pageSizes.map((s) => ({
+		value: String(s),
+		label: String(s),
+	}));
+}
 
-const handlePageUpdate = (newPage: number) => {
+function handlePageUpdate(newPage: number) {
+	if (props.disabled) return;
+	currentPageRef.value = newPage;
+	jumperValue.value = String(newPage);
+	emit('update:page', newPage);
+}
+
+function handleItemsPerPageUpdate(newSize: number | string) {
 	if (props.disabled) return;
 
-	if (newPage < prevPage.value) {
-		emit('prev-click', newPage);
-	} else if (newPage > prevPage.value) {
-		emit('next-click', newPage);
+	const size = typeof newSize === 'string' ? parseInt(newSize, 10) : newSize;
+	emit('update:itemsPerPage', size);
+	handlePageUpdate(1);
+}
+
+function commitJumperValue() {
+	if (props.disabled) return;
+
+	const parsed = parseInt(jumperValue.value, 10);
+	if (Number.isNaN(parsed)) {
+		jumperValue.value = String(currentPageRef.value);
+		return;
 	}
 
-	if (props.currentPage === undefined && props.page === undefined) {
-		internalPage.value = newPage;
+	const targetPage = Math.min(Math.max(parsed, 1), resolvedPageCount());
+	jumperValue.value = String(targetPage);
+
+	if (targetPage !== currentPageRef.value) {
+		handlePageUpdate(targetPage);
 	}
+}
 
-	prevPage.value = newPage;
+function onJumperKeydown(event: KeyboardEvent) {
+	if (event.key !== 'Enter') return;
+	if (!(event.target instanceof HTMLInputElement)) return;
+	event.target.blur();
+}
 
-	emit('update:page', newPage);
-	emit('update:currentPage', newPage);
-	emit('current-change', newPage);
-};
+function onJumperFocus(event: FocusEvent) {
+	if (!(event.target instanceof HTMLInputElement)) return;
+	const input = event.target;
+	input.select();
 
-const sizes: Record<PaginationSizes, string> = {
-	medium: $style.medium,
-	small: $style.small,
-};
-const sizeClass = computed(() => sizes[props.size]);
+	// Click-focus: mouseup after focus collapses select() to a caret. Block the next one.
+	const onMouseUp = (mouseEvent: MouseEvent) => {
+		mouseEvent.preventDefault();
+		input.select();
+		cleanup();
+	};
+	const cleanup = () => {
+		input.removeEventListener('mouseup', onMouseUp);
+		input.removeEventListener('blur', cleanup);
+	};
+	input.addEventListener('mouseup', onMouseUp);
+	input.addEventListener('blur', cleanup);
+}
 
-const isPrevDisabled = computed(() => props.disabled || (page.value ?? 1) <= 1);
-const isNextDisabled = computed(() => props.disabled || (page.value ?? 1) >= pageCount.value);
-
-const handlePagerKeydown = (event: KeyboardEvent) => {
+function handlePagerKeydown(event: KeyboardEvent) {
 	if (props.disabled) return;
 	if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
 
@@ -154,24 +174,31 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 
 	event.preventDefault();
 	buttons[nextIndex]?.focus();
-};
+}
 </script>
 
 <template>
 	<div
-		v-if="!shouldHide"
-		:class="['n8n-pagination', $style.paginationContainer, sizeClass]"
+		v-if="!shouldHide()"
+		:class="[
+			'n8n-pagination',
+			$style.paginationContainer,
+			$style[size],
+			{ [$style.isDisabled]: disabled },
+			rootClass,
+		]"
 		data-test-id="pagination"
-		v-bind="$attrs"
+		v-bind="rootAttrs"
 	>
+		<div v-if="showTotal" :class="$style.total" data-test-id="pagination-total">
+			{{ total === undefined ? '' : t('pagination.total', { total }) }}
+		</div>
+
 		<PaginationRoot
+			v-slot="{ page: currentPage, pageCount }"
 			v-bind="rootProps"
-			:page="page"
 			:items-per-page="itemsPerPage"
-			:total="totalItems"
-			:sibling-count="siblingCount"
-			:show-edges="showEdges"
-			:disabled="disabled"
+			:total="resolvedTotalItems()"
 			@update:page="handlePageUpdate"
 		>
 			<PaginationList
@@ -181,24 +208,13 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 				@keydown="handlePagerKeydown"
 			>
 				<PaginationPrev as-child>
-					<slot name="prev" :disabled="isPrevDisabled">
+					<slot name="prev" :disabled="isPrevDisabled(currentPage)">
 						<N8nButton
-							v-if="prevText"
-							variant="ghost"
-							:size="size"
-							:disabled="isPrevDisabled"
-							:aria-label="t('pagination.previousPage')"
-							data-test-id="pagination-prev"
-						>
-							{{ prevText }}
-						</N8nButton>
-						<N8nButton
-							v-else
 							variant="ghost"
 							icon-only
 							icon="chevron-left"
 							:size="size"
-							:disabled="isPrevDisabled"
+							:disabled="isPrevDisabled(currentPage)"
 							:aria-label="t('pagination.previousPage')"
 							data-test-id="pagination-prev"
 						/>
@@ -228,24 +244,13 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 				</template>
 
 				<PaginationNext as-child>
-					<slot name="next" :disabled="isNextDisabled">
+					<slot name="next" :disabled="isNextDisabled(currentPage, pageCount)">
 						<N8nButton
-							v-if="nextText"
-							variant="ghost"
-							:size="size"
-							:disabled="isNextDisabled"
-							:aria-label="t('pagination.nextPage')"
-							data-test-id="pagination-next"
-						>
-							{{ nextText }}
-						</N8nButton>
-						<N8nButton
-							v-else
 							variant="ghost"
 							icon-only
 							icon="chevron-right"
 							:size="size"
-							:disabled="isNextDisabled"
+							:disabled="isNextDisabled(currentPage, pageCount)"
 							:aria-label="t('pagination.nextPage')"
 							data-test-id="pagination-next"
 						/>
@@ -253,6 +258,41 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 				</PaginationNext>
 			</PaginationList>
 		</PaginationRoot>
+
+		<N8nSelect
+			v-if="showSizes"
+			:class="$style.pageSizes"
+			:model-value="String(itemsPerPage)"
+			:items="pageSizeItems()"
+			:size="size"
+			:disabled="disabled"
+			:aria-label="t('pagination.pageSize')"
+			data-test-id="pagination-sizes"
+			@update:model-value="handleItemsPerPageUpdate"
+		/>
+
+		<div
+			v-if="showJumper"
+			:class="$style.jumper"
+			:style="{ '--jumper-digits': Math.max(String(jumperValue).length, 1) }"
+			data-test-id="pagination-jumper"
+		>
+			<span :class="$style.jumperPrefix">{{ t('pagination.goTo') }}</span>
+			<input
+				v-model="jumperValue"
+				type="number"
+				:min="1"
+				:max="resolvedPageCount()"
+				step="1"
+				:class="$style.jumperInput"
+				:disabled="disabled"
+				:aria-label="t('pagination.goToPage')"
+				data-test-id="pagination-jumper-input"
+				@focus="onJumperFocus"
+				@blur="commitJumperValue"
+				@keydown="onJumperKeydown"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -271,6 +311,23 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 		height: var(--height--md);
 		min-width: var(--height--md);
 	}
+
+	.total {
+		font-size: var(--font-size--sm);
+	}
+
+	.jumper {
+		--jumper-height: var(--height--md);
+		--jumper-inset: var(--spacing--xs);
+		--jumper-font-size: var(--font-size--sm);
+		--jumper-radius: var(--radius--3xs);
+	}
+
+	// Temporary: Select medium is 36px; match jumper / --height--md (32px)
+	.pageSizes {
+		height: var(--height--md);
+		min-height: var(--height--md);
+	}
 }
 
 .small {
@@ -282,12 +339,104 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 		min-width: var(--height--sm);
 		font-size: var(--font-size--2xs);
 	}
+
+	.total {
+		font-size: var(--font-size--xs);
+	}
+
+	.jumper {
+		--jumper-height: var(--height--sm);
+		--jumper-inset: var(--spacing--2xs);
+		--jumper-font-size: var(--font-size--xs);
+		--jumper-radius: var(--radius--3xs);
+	}
+
+	// Temporary: match jumper / --height--sm until Select size tokens align
+	.pageSizes {
+		height: var(--height--sm);
+		min-height: var(--height--sm);
+	}
+}
+
+.isDisabled {
+	pointer-events: none;
+
+	.paginationEllipsis {
+		opacity: 0.5;
+	}
+}
+
+.total {
+	color: var(--text-color--subtler);
+	white-space: nowrap;
 }
 
 .paginationList {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.jumper {
+	display: inline-flex;
+	align-items: center;
+	// Tighter than the container gap — sit closer to the page-size select
+	margin-inline-start: calc(var(--spacing--2xs) - var(--spacing--xs));
+	min-height: var(--jumper-height, var(--height--md));
+	border-radius: var(--jumper-radius, var(--radius--3xs));
+	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
+	box-shadow: inset 0 0 0 1px var(--border-color);
+	font-size: var(--jumper-font-size, var(--font-size--sm));
+
+	@include focus.focus-within-ring;
+
+	&:hover:not(:focus-within):not(:has(:disabled)) {
+		box-shadow: inset 0 0 0 1px var(--border-color--strong);
+	}
+
+	&:focus-within {
+		box-shadow: inset 0 0 0 1px var(--focus--border-color);
+	}
+
+	&:has(:disabled) {
+		cursor: not-allowed;
+		opacity: 0.6;
+	}
+}
+
+.jumperPrefix {
+	padding-inline-start: var(--jumper-inset, var(--spacing--xs));
+	color: var(--text-color--subtler);
+}
+
+.jumperInput {
+	min-height: var(--jumper-height, var(--height--md));
+	padding-inline: var(--jumper-inset, var(--spacing--xs));
+	border: none;
+	background: transparent;
+	field-sizing: content;
+	outline: none;
+	appearance: textfield;
+	-moz-appearance: textfield;
+
+	&:disabled {
+		cursor: not-allowed;
+		color: var(--color--text--tint-1);
+	}
+
+	&::-webkit-outer-spin-button,
+	&::-webkit-inner-spin-button {
+		display: none;
+		appearance: none;
+		margin: 0;
+		pointer-events: none;
+		height: 0;
+		width: 0;
+	}
+
+	@supports (field-sizing: content) {
+		width: auto;
+	}
 }
 
 .paginationItem,
