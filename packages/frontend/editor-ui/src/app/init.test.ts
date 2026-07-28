@@ -35,6 +35,7 @@ vi.mock('@/features/settings/users/users.store', () => ({
 		registerLoginHook: vi.fn(),
 		registerLogoutHook: vi.fn(),
 		registerModalOpeners: vi.fn(),
+		setPermissionsResolvers: vi.fn(),
 		setUserQuota: vi.fn(),
 	}),
 }));
