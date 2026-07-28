@@ -3,6 +3,13 @@ import { describe, expect, it } from 'vitest';
 
 import { filterSlackHitlParameters } from './slackHitlParameters';
 
+const advancedInteractivityNotice: INodeProperties = {
+	displayName: 'Advanced Interactivity',
+	name: 'advancedInteractivityNotice',
+	type: 'notice',
+	default: '',
+};
+
 const captureResponder: INodeProperties = {
 	displayName: 'Capture Who Responded',
 	name: 'captureResponder',
@@ -11,10 +18,24 @@ const captureResponder: INodeProperties = {
 };
 
 const approvers: INodeProperties = {
-	displayName: 'Approvers',
+	displayName: 'Restrict Who Can Approve',
 	name: 'approvers',
 	type: 'multiOptions',
 	default: [],
+};
+
+const unauthorizedReplyText: INodeProperties = {
+	displayName: 'Unauthorized Reply',
+	name: 'unauthorizedReplyText',
+	type: 'string',
+	default: '',
+};
+
+const postDecisionBehavior: INodeProperties = {
+	displayName: 'After Decision',
+	name: 'postDecisionBehavior',
+	type: 'options',
+	default: 'showOutcome',
 };
 
 const channelId: INodeProperties = {
@@ -25,8 +46,15 @@ const channelId: INodeProperties = {
 };
 
 describe('filterSlackHitlParameters', () => {
-	it('removes captureResponder and approvers', () => {
-		const result = filterSlackHitlParameters([captureResponder, approvers, channelId]);
+	it('removes the advanced interactivity notice and all advanced approval fields', () => {
+		const result = filterSlackHitlParameters([
+			advancedInteractivityNotice,
+			captureResponder,
+			approvers,
+			unauthorizedReplyText,
+			postDecisionBehavior,
+			channelId,
+		]);
 
 		expect(result).toEqual([channelId]);
 	});

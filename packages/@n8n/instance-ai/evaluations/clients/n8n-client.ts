@@ -558,7 +558,9 @@ export class N8nClient {
 	/**
 	 * Seed the MCP registry with the test fixture (Notion + Linear mock servers)
 	 * and trigger a synthetic node-type reload. Requires the server to be running
-	 * with `E2E_TESTS=true` so the test controller is mounted.
+	 * with `E2E_TESTS=true` so the test controller is mounted, and an
+	 * authenticated session (`login()` first) — the endpoint rejects
+	 * unauthenticated calls.
 	 * POST /rest/mcp-registry/test/seed  body: none
 	 */
 	async seedMcpRegistry(): Promise<{ count: number }> {

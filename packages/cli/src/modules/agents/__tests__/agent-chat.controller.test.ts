@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -9,8 +10,8 @@ import type { AgentExecutionOrchestratorService } from '../agent-execution-orche
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentTestChatService } from '../agent-test-chat.service';
-import type { AgentsService } from '../agents.service';
 import type { AgentValidationService } from '../agent-validation.service';
+import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import {
 	expectProjectScopedAgentRoutes,
@@ -49,6 +50,31 @@ function makeController() {
 				Pick<AgentExecutionOrchestratorService, 'getConversationHistory'>
 		>,
 	};
+}
+
+function makeSseResponse(writes: string[]): FlushableResponse {
+	const emitter = new EventEmitter();
+	const res = Object.assign(emitter, {
+		socket: {
+			setTimeout: vi.fn(),
+			setNoDelay: vi.fn(),
+			setKeepAlive: vi.fn(),
+		},
+		setHeader: vi.fn(),
+		flushHeaders: vi.fn(),
+		write: vi.fn((chunk: string) => {
+			writes.push(String(chunk));
+			return true;
+		}),
+		flush: vi.fn(),
+		end: vi.fn(() => {
+			emitter.emit('finish');
+		}),
+		writableEnded: false,
+		destroyed: false,
+	});
+
+	return res as unknown as FlushableResponse;
 }
 
 describe('AgentChatController route access scopes', () => {
@@ -134,11 +160,7 @@ describe('AgentChatController SSE done payload', () => {
 		});
 
 		const writes: string[] = [];
-		const res = mock<FlushableResponse>();
-		res.write.mockImplementation((chunk: string) => {
-			writes.push(String(chunk));
-			return true;
-		});
+		const res = makeSseResponse(writes);
 
 		await controller.chat(
 			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
@@ -166,11 +188,7 @@ describe('AgentChatController SSE done payload', () => {
 		});
 
 		const writes: string[] = [];
-		const res = mock<FlushableResponse>();
-		res.write.mockImplementation((chunk: string) => {
-			writes.push(String(chunk));
-			return true;
-		});
+		const res = makeSseResponse(writes);
 
 		await controller.chatResume(
 			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,

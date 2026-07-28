@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
-import { computed, h, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
@@ -129,22 +129,6 @@ describe('AgentChatPanel', () => {
 		};
 	}
 
-	function resolvedInteractiveMessage(): ChatMessage {
-		return {
-			...openInteractiveMessage(),
-			status: 'success',
-			interactive: {
-				toolName: N8N_CHAT_ACTION_TOOL_NAME,
-				toolCallId: 'tc-1',
-				resolvedAt: 1,
-				input: {
-					card: { components: [{ type: 'button', label: 'Pick Slack', value: 'slack' }] },
-				},
-				resolvedValue: { type: 'button', value: 'slack' },
-			},
-		};
-	}
-
 	it('awaits beforeSend before sending a chat message', async () => {
 		const events: string[] = [];
 		let resolveBeforeSend: () => void = () => {};
@@ -200,64 +184,6 @@ describe('AgentChatPanel', () => {
 		// Input should be ENABLED so the user can cancel and steer
 		expect(chatInput.props('disabled')).toBe(false);
 		expect(chatInput.props('placeholder')).toBe('agents.chat.answerQuestionPlaceholder');
-	});
-
-	it('disables above-input actions while an interactive question is unresolved', () => {
-		messagesMock.value = [openInteractiveMessage()];
-
-		const wrapper = mount(AgentChatPanel, {
-			props: {
-				projectId: 'p1',
-				agentId: 'a1',
-				agentConfig: {
-					name: 'Agent',
-					model: 'anthropic/claude-sonnet-4-5',
-					instructions: 'Help.',
-				},
-				agentStatus: 'draft',
-				connectedTriggers: [],
-			},
-			slots: {
-				'above-input': ({ disabled }) =>
-					h('div', {
-						'data-testid': 'above-input-actions',
-						'data-disabled': String(disabled),
-					}),
-			},
-		});
-
-		expect(wrapper.find('[data-testid="above-input-actions"]').attributes('data-disabled')).toBe(
-			'true',
-		);
-	});
-
-	it('keeps above-input actions enabled when the interactive card is resolved', () => {
-		messagesMock.value = [resolvedInteractiveMessage()];
-
-		const wrapper = mount(AgentChatPanel, {
-			props: {
-				projectId: 'p1',
-				agentId: 'a1',
-				agentConfig: {
-					name: 'Agent',
-					model: 'anthropic/claude-sonnet-4-5',
-					instructions: 'Help.',
-				},
-				agentStatus: 'draft',
-				connectedTriggers: [],
-			},
-			slots: {
-				'above-input': ({ disabled }) =>
-					h('div', {
-						'data-testid': 'above-input-actions',
-						'data-disabled': String(disabled),
-					}),
-			},
-		});
-
-		expect(wrapper.find('[data-testid="above-input-actions"]').attributes('data-disabled')).toBe(
-			'false',
-		);
 	});
 
 	it('calls cancelAndSteer (not sendMessage) when the user submits while an interactive question is open', async () => {

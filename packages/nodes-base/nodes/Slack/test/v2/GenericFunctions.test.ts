@@ -153,6 +153,31 @@ describe('Slack V2 > GenericFunctions', () => {
 			}
 		});
 
+		it('should surface transport/auth failures as NodeOperationError', async () => {
+			// A network/HTTP failure rejects before the ok:false handling; it must be surfaced with a
+			// readable message instead of a raw object the options UI renders as "[object Object]".
+			const transportError = new Error('fetch failed');
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
+				.fn()
+				.mockRejectedValue(transportError);
+
+			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow(
+				NodeOperationError,
+			);
+			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow(
+				'fetch failed',
+			);
+		});
+
+		it('should not re-wrap an error that is already a NodeOperationError', async () => {
+			const opError = new NodeOperationError(mockExecuteFunctions.getNode(), 'boom');
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi.fn().mockRejectedValue(opError);
+
+			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toBe(
+				opError,
+			);
+		});
+
 		it('should add message_timestamp and remove ts when response contains ts', async () => {
 			const mockResponse = {
 				ok: true,

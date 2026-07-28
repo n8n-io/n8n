@@ -90,6 +90,19 @@ export function useAgentToolCatalog() {
 	 */
 	const projectWorkflows = ref<IWorkflowDb[]>([]);
 
+	/**
+	 * Falls back to the community preview description so uninstalled verified
+	 * community tools (already in the AiTool name index via visibleNodeTypes)
+	 * are not dropped — same catalog the canvas Tools picker uses.
+	 */
+	function resolveToolNodeType(name: string): INodeTypeDescription | null {
+		return (
+			nodeTypesStore.getNodeType(name) ??
+			nodeTypesStore.communityNodeType(name)?.nodeDescription ??
+			null
+		);
+	}
+
 	const availableToolTypes = computed<INodeTypeDescription[]>(() => {
 		const names = new Set([
 			...(nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames[NodeConnectionTypes.AiTool] ??
@@ -98,7 +111,7 @@ export function useAgentToolCatalog() {
 		]);
 
 		return [...names]
-			.map((name) => nodeTypesStore.getNodeType(name))
+			.map((name) => resolveToolNodeType(name))
 			.filter(
 				(nt): nt is INodeTypeDescription =>
 					nt !== null &&

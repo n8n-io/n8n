@@ -11,6 +11,12 @@ import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@/app/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { stripToolSuffix } from '@/app/stores/aiGateway.store';
+import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
+import {
+	isNodePreviewKey,
+	removePreviewToken,
+} from '@/features/shared/nodeCreator/nodeCreator.utils';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import type {
@@ -71,6 +77,7 @@ const rootStore = useRootStore();
 const toast = useToast();
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
 const { availableToolTypes, availableWorkflows, loadWorkflows } = useAgentToolCatalog();
+const { installNode: installCommunityNode } = useInstallNode();
 
 interface WorkingToolEntry {
 	localId: string;
@@ -147,6 +154,8 @@ function openConfigModal(data: Record<string, unknown>) {
 
 onMounted(() => {
 	void loadWorkflows(props.data.projectId);
+	// Same catalog load the canvas uses for verified community previews.
+	void nodeTypesStore.fetchCommunityNodePreviews();
 });
 
 function hasRequiredCredentials(nodeType: INodeTypeDescription): boolean {
@@ -266,12 +275,47 @@ function handleAddMcpServer(nodeType: INodeTypeDescription) {
 	openConfigForNewMcpServer(newServer, nodeType);
 }
 
-function handleAddTool(nodeType: INodeTypeDescription) {
+function isCommunityPreviewTool(nodeType: INodeTypeDescription): boolean {
+	if (!isNodePreviewKey(nodeType.name)) return false;
+	return !!nodeTypesStore.communityNodeType(stripToolSuffix(nodeType.name));
+}
+
+function communityPackageNameFor(nodeType: INodeTypeDescription): string {
+	const baseName = stripToolSuffix(nodeType.name);
+	return (
+		nodeTypesStore.communityNodeType(baseName)?.packageName ??
+		removePreviewToken(nodeType.name.split('.')[0] ?? nodeType.name)
+	);
+}
+
+async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
+	const result = await installCommunityNode({
+		type: 'verified',
+		packageName: communityPackageNameFor(nodeType),
+		nodeType: stripToolSuffix(nodeType.name),
+		telemetry: { source: 'agent builder tools', hasQuickConnect: false },
+	});
+	if (!result.success) return;
+
+	const installedName = removePreviewToken(nodeType.name);
+	addNodeTool(nodeTypesStore.getNodeType(installedName) ?? nodeType);
+}
+
+async function handleAddTool(nodeType: INodeTypeDescription) {
 	if (isMcpRelatedNodeType(nodeType.name)) {
 		handleAddMcpServer(nodeType);
 		return;
 	}
 
+	if (isCommunityPreviewTool(nodeType)) {
+		await installAndAddCommunityPreview(nodeType);
+		return;
+	}
+
+	addNodeTool(nodeType);
+}
+
+function addNodeTool(nodeType: INodeTypeDescription) {
 	toolTelemetry.trackAddStarted('node');
 	const newRef = nodeTypeToNewToolRef(nodeType);
 
@@ -453,7 +497,7 @@ function availableWorkflowItem(workflow: IWorkflowDb): WorkflowConnectionItem {
 		kind: 'workflow',
 		workflowId: workflow.id,
 		title: workflow.name,
-		description: workflow.description,
+		description: workflow.description ?? undefined,
 		isConnected: false,
 		credentials: [],
 	};
@@ -506,7 +550,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 	if (item.kind === 'node' && item.id.startsWith('nodeType:')) {
 		const nodeTypeName = item.id.slice('nodeType:'.length);
 		const nodeType = availableToolTypes.value.find((nt) => nt.name === nodeTypeName);
-		if (nodeType) handleAddTool(nodeType);
+		if (nodeType) void handleAddTool(nodeType);
 	}
 }
 </script>

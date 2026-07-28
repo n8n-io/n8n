@@ -24,6 +24,13 @@ const mockToast = {
 
 const mockDeleteDataTable = vi.fn();
 
+const mockDataTablePermissions = {
+	delete: true,
+	update: true,
+	readRow: true,
+	writeRow: true,
+};
+
 vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => mockMessage,
 }));
@@ -36,10 +43,7 @@ vi.mock('@/features/core/dataTable/dataTable.store', () => ({
 	useDataTableStore: () => ({
 		deleteDataTable: mockDeleteDataTable,
 		projectPermissions: {
-			dataTable: {
-				delete: true,
-				update: true,
-			},
+			dataTable: mockDataTablePermissions,
 		},
 	}),
 }));
@@ -96,6 +100,10 @@ describe('DataTableActions', () => {
 		uiStore = mockedStore(useUIStore);
 		dataTableStore.deleteDataTable.mockResolvedValue(true);
 		mockMessage.confirm.mockResolvedValue(MODAL_CONFIRM);
+		mockDataTablePermissions.delete = true;
+		mockDataTablePermissions.update = true;
+		mockDataTablePermissions.readRow = true;
+		mockDataTablePermissions.writeRow = true;
 	});
 
 	it('should render N8nActionToggle with correct props', () => {
@@ -232,6 +240,23 @@ describe('DataTableActions', () => {
 			expect(uiStore.openModal).toHaveBeenCalledWith(
 				`${DOWNLOAD_DATA_TABLE_MODAL_KEY}-${mockDataTable.id}`,
 			);
+		});
+
+		it('should not open modal when user lacks dataTable:readRow permission', async () => {
+			mockDataTablePermissions.readRow = false;
+
+			const { getByTestId } = renderComponent({
+				props: {
+					dataTable: mockDataTable,
+					isReadOnly: false,
+					location: 'card',
+				},
+			});
+
+			await openActionsDropdown(getByTestId);
+			await userEvent.click(getByTestId(`action-${DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV}`));
+
+			expect(uiStore.openModal).not.toHaveBeenCalled();
 		});
 
 		it('should use different modal keys for different data tables', async () => {

@@ -141,12 +141,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 								node,
 							);
 
-							// @ts-ignore
+							// @ts-expect-error dynamic key on request options
 							if (!requestOptions[outerKey]) {
-								// @ts-ignore
+								// @ts-expect-error dynamic key on request options
 								requestOptions[outerKey] = {};
 							}
-							// @ts-ignore
+							// @ts-expect-error dynamic key on request options
 							requestOptions[outerKey][keyResolved] = valueResolved;
 						});
 					});

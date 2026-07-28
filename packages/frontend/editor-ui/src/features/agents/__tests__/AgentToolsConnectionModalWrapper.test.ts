@@ -161,11 +161,8 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			props: {
 				modalName: MODAL_NAME,
 				data: { tools: [], onConfirm: vi.fn() },
-				open: true,
-				active: true,
-				mode: '',
-				activeId: '',
 			},
+			attrs: { open: true, active: true, mode: '', activeId: '' },
 		});
 		await flushPromises();
 		expect(modalAttrs.open).toBe(true);
