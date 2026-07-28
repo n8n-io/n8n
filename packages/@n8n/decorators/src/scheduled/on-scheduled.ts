@@ -5,25 +5,8 @@ import type { ScheduledHandlerClass, ScheduledOptions } from './scheduled-metada
 import { NonMethodError } from '../errors';
 
 /**
- * Registers a method as the handler for a durable-scheduler task type. The
- * scheduler discovers it at boot and invokes it when a task of that type is due;
- * adding a handler needs no change to the scheduler wiring.
- *
- * NOTE: Requires also `@Service()` on the class, so the container can resolve
- * the instance the method is called on. The class must be imported before the
- * boot-time scan runs, or the decorator never fires.
- *
- * @example
- * ```ts
- * @Service()
- * class MyHandler {
- *   @Scheduled({ type: 'schedule-trigger' })
- *   async handle(task: ClaimedTask, report: DispatchReporter) {
- *     // ...do the work...
- *     return report.dispatched();
- *   }
- * }
- * ```
+ * Registers a method as the handler for a durable-scheduler task type, found by
+ * the boot-time scan. Also needs `@Service()` on the class.
  */
 export const Scheduled =
 	(opts: ScheduledOptions): MethodDecorator =>

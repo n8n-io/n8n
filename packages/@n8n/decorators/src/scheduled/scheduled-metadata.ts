@@ -8,10 +8,6 @@ export interface ScheduledOptions {
 	instanceTypes?: InstanceType[];
 }
 
-/**
- * Structural (any method shape): this package sits below `@n8n/scheduler` and
- * can't import its task types, so the bridge does the typed binding.
- */
 export type ScheduledHandlerClass = Constructable;
 
 export interface ScheduledHandler {
@@ -21,10 +17,7 @@ export interface ScheduledHandler {
 	instanceTypes?: InstanceType[];
 }
 
-/**
- * Collects methods decorated with {@link Scheduled} at import time; read once at
- * boot by the bridge. Mirrors `PubSubMetadata` / `ShutdownMetadata`.
- */
+/** Collects methods decorated with {@link Scheduled} at import time. */
 @Service()
 export class ScheduledMetadata {
 	private readonly handlers: ScheduledHandler[] = [];

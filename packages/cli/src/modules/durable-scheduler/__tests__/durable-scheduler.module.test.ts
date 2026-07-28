@@ -18,7 +18,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { DurableSchedulerModule } from '../durable-scheduler.module';
 
-/** A registry fronted as a `Scheduler` so the module's real target is exercised. */
 function schedulerBackedBy(registry: TaskHandlerRegistry): Scheduler {
 	return {
 		registerTaskHandler: (taskType: string, handler: TaskHandler) =>
@@ -62,7 +61,6 @@ describe('DurableSchedulerModule.registerScheduledHandlers', () => {
 				return report.dispatched();
 			}
 		}
-		// Reference so the class isn't tree-shaken; import-before-scan is the contract.
 		expect(ToyHandler).toBeDefined();
 
 		const registry = new TaskHandlerRegistry();
@@ -81,7 +79,6 @@ describe('DurableSchedulerModule.registerScheduledHandlers', () => {
 			claimBatch = batch;
 			return [claimedTask('poc-toy')];
 		});
-		// Never-firing timer: we assert the claim, not the later dispatch.
 		const timer = new PrecisionTimer({
 			now: () => 0,
 			setTimer: () => 0 as never,

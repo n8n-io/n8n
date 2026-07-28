@@ -10,19 +10,12 @@ import type {
 	TaskHandler,
 } from '@n8n/scheduler';
 
-/** The signature a `@Scheduled` method must have to satisfy {@link TaskHandler}. */
 type ScheduledMethod = (task: ClaimedTask, report: DispatchReporter) => Promise<DispatchDecision>;
 
 /**
- * Discovers `@Scheduled` handlers for the durable scheduler and registers them
- * with the {@link DurableScheduler}, which then claims only the registered types.
- *
- * `instanceTypes: ['main']` is the coarse lever (the loops run on mains); each
- * `@Scheduled({ instanceTypes })` is the fine lever within that.
- *
- * `init()` does discovery/registration only; starting and stopping the loops
- * stays with the existing `DurableScheduler` wiring (`start.ts` + its
- * `@OnShutdown`).
+ * Registers `@Scheduled` handlers with the {@link DurableScheduler} at boot, so
+ * it claims only the registered task types. Starting and stopping the loops
+ * stays with `DurableScheduler`.
  */
 @BackendModule({ name: 'durable-scheduler', instanceTypes: ['main'] })
 export class DurableSchedulerModule implements ModuleInterface {
@@ -31,21 +24,23 @@ export class DurableSchedulerModule implements ModuleInterface {
 		if (!Container.get(GlobalConfig).scheduler.enabled) return;
 
 		const { InstanceSettings } = await import('n8n-core');
-		const { DurableScheduler } = await import('./durable-scheduler.js');
+		const { DurableScheduler } = await import('@/scheduling/durable-scheduler.js');
 		// Import handler classes so their `@Scheduled` decorators fire before the scan.
-		await import('./schedule-trigger-node/schedule-trigger-task-handler.js');
+		await import('@/scheduling/schedule-trigger-node/schedule-trigger-task-handler.js');
 
-		this.registerScheduledHandlers(
-			Container.get(DurableScheduler),
-			Container.get(InstanceSettings).instanceType,
-		);
+		// Import before the scan so the POC handler's `@Scheduled` decorator fires.
+		const poc =
+			process.env.N8N_SCHEDULER_POC_ENABLED === 'true'
+				? await import('@/scheduling/poc/scheduled-poc.service.js')
+				: undefined;
+
+		const instanceType = Container.get(InstanceSettings).instanceType;
+		this.registerScheduledHandlers(Container.get(DurableScheduler), instanceType);
+
+		if (poc) await Container.get(poc.ScheduledPocService).provisionJob();
 	}
 
-	/**
-	 * Registers each `@Scheduled` handler eligible for `instanceType` with
-	 * `scheduler`, resolving its `@Service` from the container. Returns the task
-	 * types registered.
-	 */
+	/** Registers each `@Scheduled` handler eligible for `instanceType`, returning the task types registered. */
 	registerScheduledHandlers(
 		scheduler: Scheduler,
 		instanceType: InstanceType,

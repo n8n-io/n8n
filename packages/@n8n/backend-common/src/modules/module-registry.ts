@@ -72,6 +72,7 @@ export class ModuleRegistry {
 		'runtime-credentials',
 		'mcp-registry',
 		'workflow-reviews',
+		'durable-scheduler',
 	];
 
 	private readonly activeModules: string[] = [];
