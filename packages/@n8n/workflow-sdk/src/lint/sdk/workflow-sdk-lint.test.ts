@@ -176,7 +176,7 @@ export default workflow('id', 'name').add(start);
 	});
 
 	it('reports 1-based column for as const', () => {
-		const source = `const mode = 'list' as const;\nexport default workflow('id', 'name');\n`;
+		const source = "const mode = 'list' as const;\nexport default workflow('id', 'name');\n";
 		const issue = lintWorkflowSdkSource(source).find((i) => i.code === 'SDK_AS_CONST');
 		// prepareSourceForLint records 0-based column 20; issues expose 1-based 21.
 		expect(issue).toMatchObject({ line: 1, column: 21 });
