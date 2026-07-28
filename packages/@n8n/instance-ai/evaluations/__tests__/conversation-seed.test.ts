@@ -1,9 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-
 import {
-	loadConversationSeed,
 	remapSeedWorkflowIds,
 	seedFromProse,
 	transcriptPrefixFromSeed,
@@ -45,39 +40,6 @@ function makeSeed(): ConversationSeed {
 		dataTables: [],
 	};
 }
-
-describe('loadConversationSeed', () => {
-	const dir = mkdtempSync(join(tmpdir(), 'conversation-seed-'));
-
-	it('loads and validates a seed file', () => {
-		const path = join(dir, 'valid.seed.json');
-		writeFileSync(path, JSON.stringify(makeSeed()));
-
-		const seed = loadConversationSeed(path);
-		expect(seed.messages).toHaveLength(2);
-		expect(seed.workflows[0].id).toBe(WF_ID);
-	});
-
-	it('defaults workflows to an empty array', () => {
-		const path = join(dir, 'no-workflows.seed.json');
-		writeFileSync(path, JSON.stringify({ messages: [{ id: 'm1' }] }));
-
-		expect(loadConversationSeed(path).workflows).toEqual([]);
-	});
-
-	it('rejects a seed without messages, naming the file', () => {
-		const path = join(dir, 'empty.seed.json');
-		writeFileSync(path, JSON.stringify({ messages: [] }));
-
-		expect(() => loadConversationSeed(path)).toThrow(/Invalid conversation seed .*empty\.seed/);
-	});
-
-	it('rejects a missing file with a readable error', () => {
-		expect(() => loadConversationSeed(join(dir, 'nope.seed.json'))).toThrow(
-			/Failed to read conversation seed/,
-		);
-	});
-});
 
 describe('seedFromProse', () => {
 	it('converts turns to llm text messages with ascending past timestamps', () => {

@@ -135,7 +135,18 @@ describe('unsupportedMcpBuildSetupFields', () => {
 
 	it.each<[string, Partial<WorkflowTestCase>]>([
 		['credentials', { credentials: [{ type: 'slackApi' }] }],
-		['seedFile', { seedFile: 'seeds/some-thread.seed.json' }],
+		[
+			'conversationSeed',
+			{
+				conversationSeed: {
+					messages: [
+						{ id: 'm1', type: 'llm', role: 'user', content: [{ type: 'text', text: 'build it' }] },
+					],
+					workflows: [],
+					dataTables: [],
+				},
+			},
+		],
 		['priorConversation', { priorConversation: [user('We already agreed on #alerts')] }],
 		['seedThread', { seedThread: { threadId: 't1' } }],
 	])('flags %s', (field, overrides) => {
