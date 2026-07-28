@@ -1,5 +1,3 @@
-import { anthropicModelRequiresAdaptiveThinking } from '@n8n/ai-utilities/model-capabilities';
-
 import type { ProviderId } from './provider-credentials';
 import type {
 	AnthropicThinkingConfig,
@@ -18,10 +16,7 @@ export interface ProviderQuirks {
 	/** Provider defaults to strict JSON Schema validation for structured output; relax for raw user schemas. */
 	relaxStrictJsonSchemaForRawOutput?: boolean;
 	/** Translate the agent's thinking config into this provider's providerOptions namespace. */
-	thinkingToProviderOptions?: (
-		thinking: ThinkingConfig,
-		modelId?: string,
-	) => Record<string, Record<string, unknown>>;
+	thinkingToProviderOptions?: (thinking: ThinkingConfig) => Record<string, Record<string, unknown>>;
 }
 
 /**
@@ -43,7 +38,7 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// validates tool arguments before emitting them; tools can still
 		// explicitly re-enable it via their own providerOptions.
 		toolProviderOptionDefaults: { eagerInputStreaming: false },
-		thinkingToProviderOptions: (thinking, modelId) => {
+		thinkingToProviderOptions: (thinking) => {
 			const cfg = thinking as AnthropicThinkingConfig;
 			if (cfg.mode === 'adaptive') {
 				return {
@@ -53,18 +48,6 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 							display: cfg.display ?? 'summarized',
 						},
 						effort: cfg.effort ?? 'medium',
-					},
-				};
-			}
-			if (
-				cfg.mode === undefined &&
-				modelId !== undefined &&
-				anthropicModelRequiresAdaptiveThinking(modelId)
-			) {
-				return {
-					anthropic: {
-						thinking: { type: 'adaptive', display: 'summarized' },
-						effort: 'medium',
 					},
 				};
 			}

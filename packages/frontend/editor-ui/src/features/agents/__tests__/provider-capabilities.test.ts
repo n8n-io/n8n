@@ -13,8 +13,8 @@ describe('provider-capabilities', () => {
 		expect([...REASONING_EFFORT_OPTIONS]).toEqual(['low', 'medium', 'high']);
 	});
 
-	it('uses budget-tokens for Anthropic and reasoning-effort for OpenAI', () => {
-		expect(PROVIDER_CAPABILITIES.anthropic.thinking).toBe('budgetTokens');
+	it('uses model-specific thinking for Anthropic and reasoning-effort for OpenAI', () => {
+		expect(PROVIDER_CAPABILITIES.anthropic.thinking).toBe('anthropic');
 		expect(PROVIDER_CAPABILITIES.openai.thinking).toBe('reasoningEffort');
 	});
 

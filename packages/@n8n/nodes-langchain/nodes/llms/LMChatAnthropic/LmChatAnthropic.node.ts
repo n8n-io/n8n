@@ -6,7 +6,13 @@ import {
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
-import { anthropicModelRequiresAdaptiveThinking } from '@n8n/ai-utilities/model-capabilities';
+import {
+	getAnthropicModel,
+	getSupportedAnthropicEfforts,
+	resolveAnthropicEffort,
+	resolveAnthropicThinkingMode,
+	type ProviderModel,
+} from '@n8n/ai-utilities/model-discovery';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -18,13 +24,13 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getCustomCredentialHeader } from '@utils/helpers';
+import { getCustomCredentialHeader, mergeCustomHeaders } from '@utils/helpers';
 
 import { searchModels } from './methods/searchModels';
 
 const ANTHROPIC_MODEL_BUILDER_HINT = {
 	propertyHint:
-		'Default to claude-sonnet-4-6 (latest Sonnet); use claude-opus-4-7 when the user needs the most capable model. Never use Claude Sonnet 4.5, Claude 3.x, Claude 2, or LEGACY options — those are superseded and are not valid choices. When extended thinking is needed on Opus 4.7+, set Thinking Mode to Adaptive and choose an Effort level. The legacy Manual thinking mode is rejected by Opus 4.7.',
+		'Default to claude-sonnet-4-6 (latest Sonnet); use claude-opus-4-7 when the user needs the most capable model. Never use Claude Sonnet 4.5, Claude 3.x, Claude 2, or LEGACY options — those are superseded and are not valid choices. When extended thinking is needed, use Adaptive when the model supports it. Manual thinking is only available on models that support fixed token budgets.',
 };
 
 const modelField: INodeProperties = {
@@ -82,6 +88,23 @@ const modelField: INodeProperties = {
 
 const MIN_THINKING_BUDGET = 1024;
 const DEFAULT_MAX_TOKENS = 4096;
+type AnthropicThinkingMode = 'disabled' | 'adaptive' | 'manual';
+
+function resolveThinkingMode(
+	requested: AnthropicThinkingMode,
+	model: ProviderModel | undefined,
+	preferAdaptive: boolean,
+): AnthropicThinkingMode {
+	const thinking = model?.capabilities?.thinking;
+	if (requested === 'disabled' || !thinking) return requested;
+
+	const supported = resolveAnthropicThinkingMode(model);
+	if (!supported) return requested;
+	if (preferAdaptive) return supported === 'adaptive' ? 'adaptive' : 'manual';
+	if (requested === 'adaptive' && thinking.adaptive) return requested;
+	if (requested === 'manual' && thinking.enabled) return requested;
+	return supported === 'adaptive' ? 'adaptive' : 'manual';
+}
 
 /**
  * Anthropic is dropping temperature/top_p/top_k from every new model generation (Opus 4.7+,
@@ -407,7 +430,7 @@ export class LmChatAnthropic implements INodeType {
 							{
 								name: 'Manual (Deprecated)',
 								value: 'manual',
-								description: 'Legacy fixed-budget mode; rejected by Opus 4.7+',
+								description: 'Legacy fixed-budget mode; unavailable on adaptive-only models',
 							},
 						],
 						displayOptions: {
@@ -434,26 +457,6 @@ export class LmChatAnthropic implements INodeType {
 							show: {
 								'@version': [{ _cnd: { gte: 1.5 } }],
 								thinkingMode: ['adaptive'],
-								'/model.value': [{ _cnd: { includes: 'opus' } }],
-							},
-						},
-					},
-					{
-						displayName: 'Effort',
-						name: 'effort',
-						type: 'options',
-						default: 'medium',
-						description: 'Effort level for adaptive thinking',
-						options: [
-							{ name: 'Low', value: 'low' },
-							{ name: 'Medium', value: 'medium' },
-							{ name: 'High', value: 'high' },
-						],
-						displayOptions: {
-							show: {
-								'@version': [{ _cnd: { gte: 1.5 } }],
-								thinkingMode: ['adaptive'],
-								'/model.value': [{ _cnd: { regex: '^(?!.*opus).*' } }],
 							},
 						},
 					},
@@ -462,7 +465,8 @@ export class LmChatAnthropic implements INodeType {
 						name: 'thinkingBudget',
 						type: 'number',
 						default: MIN_THINKING_BUDGET,
-						description: 'Maximum tokens used for thinking. Manual mode is rejected by Opus 4.7+.',
+						description:
+							'Maximum tokens used for thinking. Manual mode is unavailable on adaptive-only models.',
 						displayOptions: {
 							show: {
 								'@version': [{ _cnd: { gte: 1.5 } }],
@@ -516,20 +520,59 @@ export class LmChatAnthropic implements INodeType {
 			streaming?: boolean;
 		};
 
-		const requiresAdaptiveThinking = anthropicModelRequiresAdaptiveThinking(modelName);
-		const thinkingMode: 'disabled' | 'adaptive' | 'manual' =
+		const requestedThinkingMode: AnthropicThinkingMode =
 			version >= 1.5
 				? (options.thinkingMode ?? 'disabled')
 				: options.thinking
-					? requiresAdaptiveThinking
-						? 'adaptive'
-						: 'manual'
+					? 'manual'
 					: 'disabled';
+		let discoveredModel: Awaited<ReturnType<typeof getAnthropicModel>> | undefined;
+		if (requestedThinkingMode !== 'disabled') {
+			try {
+				discoveredModel = await getAnthropicModel(modelName, {
+					apiKey: credentials.apiKey ?? '',
+					baseURL,
+					headers: mergeCustomHeaders(credentials, {}),
+					fetch: async (url, init) =>
+						await fetch(url, {
+							...init,
+							dispatcher: getProxyAgent(baseURL),
+						} as RequestInit),
+				});
+			} catch {
+				// Anthropic-compatible gateways may not expose model capability metadata.
+			}
+		}
 
-		if (thinkingMode === 'manual' && requiresAdaptiveThinking) {
+		const thinkingCapabilities = discoveredModel?.capabilities?.thinking;
+		const supportedThinkingMode = discoveredModel
+			? resolveAnthropicThinkingMode(discoveredModel)
+			: undefined;
+		const thinkingMode = resolveThinkingMode(requestedThinkingMode, discoveredModel, version < 1.5);
+
+		if (
+			requestedThinkingMode !== 'disabled' &&
+			thinkingCapabilities &&
+			supportedThinkingMode === undefined
+		) {
 			throw new NodeOperationError(
 				this.getNode(),
-				`Manual thinking mode is not supported on "${modelName}". Use Thinking Mode = Adaptive (with Effort) instead.`,
+				`Thinking mode is not supported on "${modelName}".`,
+				{ itemIndex },
+			);
+		}
+
+		const supportedEfforts = discoveredModel
+			? getSupportedAnthropicEfforts(discoveredModel)
+			: undefined;
+		const effort =
+			options.effort ??
+			(discoveredModel ? resolveAnthropicEffort(discoveredModel) : undefined) ??
+			'medium';
+		if (thinkingMode === 'adaptive' && supportedEfforts && !supportedEfforts.includes(effort)) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Effort "${effort}" is not supported on "${modelName}". Supported effort levels: ${supportedEfforts.join(', ')}.`,
 				{ itemIndex },
 			);
 		}
@@ -538,7 +581,7 @@ export class LmChatAnthropic implements INodeType {
 		if (thinkingMode === 'adaptive') {
 			invocationKwargs = {
 				thinking: { type: 'adaptive' },
-				output_config: { effort: options.effort ?? 'medium' },
+				output_config: { effort },
 				max_tokens: options.maxTokensToSample ?? DEFAULT_MAX_TOKENS,
 				top_k: undefined,
 				top_p: undefined,

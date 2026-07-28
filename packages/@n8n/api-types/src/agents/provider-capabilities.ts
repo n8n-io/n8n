@@ -1,6 +1,7 @@
 import type { z } from 'zod';
 
 import type { PromptCachingConfigSchema } from './agent-json-config.schema';
+import { AGENT_MODEL_EFFORT_LEVELS, type AgentModelEffort } from './model-providers';
 
 /**
  * Static capability map for LLM providers the agent runtime can target.
@@ -48,7 +49,7 @@ export const NATIVE_WEB_SEARCH_DEFAULTS_BY_PROVIDER = {
 >;
 
 export interface ProviderCapabilities {
-	thinking: false | 'budgetTokens' | 'reasoningEffort';
+	thinking: false | 'anthropic' | 'reasoningEffort';
 	/** false = unsupported; 'ttl' = Anthropic (renders TTL select); true = mandatory, no sub-control (OpenAI). */
 	promptCaching: false | 'ttl' | true;
 	webSearch: false | NativeWebSearchCanonicalTool;
@@ -57,7 +58,7 @@ export interface ProviderCapabilities {
 
 export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	anthropic: {
-		thinking: 'budgetTokens',
+		thinking: 'anthropic',
 		promptCaching: 'ttl',
 		webSearch: 'anthropic.web_search',
 		providerTools: ['anthropic.web_search'],
@@ -85,6 +86,9 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 
 export const REASONING_EFFORT_OPTIONS = ['low', 'medium', 'high'] as const;
 export type ReasoningEffort = (typeof REASONING_EFFORT_OPTIONS)[number];
+
+export const ANTHROPIC_EFFORT_OPTIONS = AGENT_MODEL_EFFORT_LEVELS;
+export type AnthropicEffort = AgentModelEffort;
 
 export const ANTHROPIC_CACHE_TTL_OPTIONS = ['5m', '1h'] as const;
 export type AnthropicCacheTtl = (typeof ANTHROPIC_CACHE_TTL_OPTIONS)[number];

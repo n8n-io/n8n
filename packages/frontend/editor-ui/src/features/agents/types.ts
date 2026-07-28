@@ -107,7 +107,9 @@ export interface TelemetrySchema {
 
 export interface ThinkingSchema {
 	provider: 'anthropic' | 'openai';
+	mode?: 'adaptive' | 'enabled';
 	budgetTokens?: number;
+	effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 	reasoningEffort?: string;
 }
 

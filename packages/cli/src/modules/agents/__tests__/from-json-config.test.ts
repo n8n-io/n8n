@@ -584,6 +584,235 @@ describe('buildFromJson()', () => {
 		expect(snap.thinking).toMatchObject({ budgetTokens: 5000 });
 	});
 
+	it('resolves legacy Anthropic thinking to adaptive mode from model capabilities', async () => {
+		const config = makeConfig({
+			model: 'anthropic/claude-fable-5',
+			config: { thinking: { provider: 'anthropic', budgetTokens: 5000 } },
+		});
+		const modelFetch = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					id: 'claude-fable-5',
+					capabilities: {
+						thinking: {
+							types: {
+								adaptive: { supported: true },
+								enabled: { supported: false },
+							},
+						},
+					},
+				}),
+				{ status: 200 },
+			),
+		);
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				modelFetch,
+			},
+		);
+
+		expect(agent.snapshot.thinking).toEqual({ mode: 'adaptive', effort: 'medium' });
+		expect(modelFetch).toHaveBeenCalledWith(
+			'https://api.anthropic.com/v1/models/claude-fable-5',
+			expect.objectContaining({ method: 'GET' }),
+		);
+	});
+
+	it('corrects a saved Anthropic thinking mode that the selected model does not support', async () => {
+		const config = makeConfig({
+			model: 'anthropic/claude-fable-5',
+			config: {
+				thinking: { provider: 'anthropic', mode: 'enabled', budgetTokens: 5000 },
+			},
+		});
+		const modelFetch = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					id: 'claude-fable-5',
+					capabilities: {
+						thinking: {
+							types: {
+								adaptive: { supported: true },
+								enabled: { supported: false },
+							},
+						},
+					},
+				}),
+				{ status: 200 },
+			),
+		);
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				modelFetch,
+			},
+		);
+
+		expect(agent.snapshot.thinking).toEqual({ mode: 'adaptive', effort: 'medium' });
+	});
+
+	it('resolves legacy Anthropic thinking to enabled mode for manual-only models', async () => {
+		const config = makeConfig({
+			model: 'anthropic/claude-haiku-4-5',
+			config: { thinking: { provider: 'anthropic', budgetTokens: 5000 } },
+		});
+		const modelFetch = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					id: 'claude-haiku-4-5',
+					capabilities: {
+						thinking: {
+							types: {
+								adaptive: { supported: false },
+								enabled: { supported: true },
+							},
+						},
+					},
+				}),
+				{ status: 200 },
+			),
+		);
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				modelFetch,
+			},
+		);
+
+		expect(agent.snapshot.thinking).toEqual({ mode: 'enabled', budgetTokens: 5000 });
+	});
+
+	it('corrects adaptive Anthropic thinking to enabled mode for manual-only models', async () => {
+		const config = makeConfig({
+			model: 'anthropic/claude-haiku-4-5',
+			config: { thinking: { provider: 'anthropic', mode: 'adaptive', effort: 'high' } },
+		});
+		const modelFetch = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					id: 'claude-haiku-4-5',
+					capabilities: {
+						thinking: {
+							types: {
+								adaptive: { supported: false },
+								enabled: { supported: true },
+							},
+						},
+					},
+				}),
+				{ status: 200 },
+			),
+		);
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				modelFetch,
+			},
+		);
+
+		expect(agent.snapshot.thinking).toEqual({ mode: 'enabled' });
+	});
+
+	it('omits Anthropic thinking when the selected model supports neither mode', async () => {
+		const config = makeConfig({
+			model: 'anthropic/claude-no-thinking',
+			config: { thinking: { provider: 'anthropic', mode: 'enabled', budgetTokens: 5000 } },
+		});
+		const modelFetch = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					id: 'claude-no-thinking',
+					capabilities: {
+						thinking: {
+							types: {
+								adaptive: { supported: false },
+								enabled: { supported: false },
+							},
+						},
+					},
+				}),
+				{ status: 200 },
+			),
+		);
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				modelFetch,
+			},
+		);
+
+		expect(agent.snapshot.thinking).toBeNull();
+	});
+
+	it('uses a supported Anthropic effort when a saved effort is stale', async () => {
+		const config = makeConfig({
+			model: 'anthropic/claude-fable-5',
+			config: { thinking: { provider: 'anthropic', mode: 'adaptive', effort: 'max' } },
+		});
+		const modelFetch = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					id: 'claude-fable-5',
+					capabilities: {
+						effort: {
+							low: { supported: true },
+							medium: { supported: true },
+							high: { supported: true },
+							xhigh: { supported: false },
+							max: { supported: false },
+						},
+						thinking: {
+							types: {
+								adaptive: { supported: true },
+								enabled: { supported: false },
+							},
+						},
+					},
+				}),
+				{ status: 200 },
+			),
+		);
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				modelFetch,
+			},
+		);
+
+		expect(agent.snapshot.thinking).toEqual({ mode: 'adaptive', effort: 'medium' });
+	});
+
 	it('sets prompt caching config with an Anthropic ttl', async () => {
 		const config = makeConfig({
 			config: { promptCaching: { enabled: true, anthropic: { ttl: '1h' } } },

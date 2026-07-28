@@ -1,4 +1,9 @@
-import { listModelsForProvider, MODEL_DISCOVERY_PROVIDERS } from '../index';
+import {
+	getAnthropicModel,
+	listModelsForProvider,
+	MODEL_DISCOVERY_PROVIDERS,
+	resolveAnthropicThinkingMode,
+} from '../index';
 
 function mockFetch(body: unknown, ok = true, status = 200) {
 	return vi.fn().mockResolvedValue({
@@ -22,11 +27,42 @@ function calledHeaders(fetchFn: unknown): Record<string, string> {
 
 describe('model-discovery', () => {
 	describe('anthropic', () => {
-		it('lists models from /v1/models with x-api-key auth, newest first', async () => {
+		it('lists models with thinking capabilities from /v1/models, newest first', async () => {
 			const fetch = mockFetch({
 				data: [
-					{ id: 'claude-old', display_name: 'Claude Old', created_at: '2024-01-01T00:00:00Z' },
-					{ id: 'claude-new', display_name: 'Claude New', created_at: '2026-01-01T00:00:00Z' },
+					{
+						id: 'claude-old',
+						display_name: 'Claude Old',
+						created_at: '2024-01-01T00:00:00Z',
+						capabilities: {
+							thinking: {
+								types: {
+									adaptive: { supported: false },
+									enabled: { supported: true },
+								},
+							},
+						},
+					},
+					{
+						id: 'claude-new',
+						display_name: 'Claude New',
+						created_at: '2026-01-01T00:00:00Z',
+						capabilities: {
+							effort: {
+								low: { supported: true },
+								medium: { supported: true },
+								high: { supported: true },
+								xhigh: { supported: true },
+								max: { supported: false },
+							},
+							thinking: {
+								types: {
+									adaptive: { supported: true },
+									enabled: { supported: false },
+								},
+							},
+						},
+					},
 				],
 			});
 
@@ -36,8 +72,19 @@ describe('model-discovery', () => {
 			expect(calledHeaders(fetch)['x-api-key']).toBe('key');
 			expect(calledHeaders(fetch)['anthropic-version']).toBe('2023-06-01');
 			expect(models).toEqual([
-				{ id: 'claude-new', name: 'Claude New' },
-				{ id: 'claude-old', name: 'Claude Old' },
+				{
+					id: 'claude-new',
+					name: 'Claude New',
+					capabilities: {
+						effort: { low: true, medium: true, high: true, xhigh: true, max: false },
+						thinking: { adaptive: true, enabled: false },
+					},
+				},
+				{
+					id: 'claude-old',
+					name: 'Claude Old',
+					capabilities: { thinking: { adaptive: false, enabled: true } },
+				},
 			]);
 		});
 
@@ -49,6 +96,65 @@ describe('model-discovery', () => {
 				fetch,
 			});
 			expect(calledUrl(fetch)).toBe('https://proxy.example.com/v1/models');
+		});
+
+		it('gets one model with its thinking capabilities', async () => {
+			const fetch = mockFetch({
+				id: 'claude-fable-5',
+				display_name: 'Claude Fable 5',
+				capabilities: {
+					effort: {
+						low: { supported: true },
+						medium: { supported: true },
+						high: { supported: true },
+						xhigh: { supported: true },
+						max: { supported: true },
+					},
+					thinking: {
+						types: {
+							adaptive: { supported: true },
+							enabled: { supported: false },
+						},
+					},
+				},
+			});
+
+			const model = await getAnthropicModel('claude-fable-5', { apiKey: 'key', fetch });
+
+			expect(calledUrl(fetch)).toBe('https://api.anthropic.com/v1/models/claude-fable-5');
+			expect(model).toEqual({
+				id: 'claude-fable-5',
+				name: 'Claude Fable 5',
+				capabilities: {
+					effort: { low: true, medium: true, high: true, xhigh: true, max: true },
+					thinking: { adaptive: true, enabled: false },
+				},
+			});
+		});
+
+		it('prefers adaptive thinking when supported and otherwise uses enabled mode', () => {
+			expect(
+				resolveAnthropicThinkingMode({
+					id: 'both',
+					name: 'Both',
+					capabilities: { thinking: { adaptive: true, enabled: true } },
+				}),
+			).toBe('adaptive');
+			expect(
+				resolveAnthropicThinkingMode({
+					id: 'manual',
+					name: 'Manual',
+					capabilities: { thinking: { adaptive: false, enabled: true } },
+				}),
+			).toBe('enabled');
+			expect(
+				resolveAnthropicThinkingMode({
+					id: 'unsupported',
+					name: 'Unsupported',
+					capabilities: { thinking: { adaptive: false, enabled: false } },
+				}),
+			).toBeUndefined();
+			expect(resolveAnthropicThinkingMode({ id: 'unknown', name: 'Unknown' })).toBeUndefined();
 		});
 	});
 

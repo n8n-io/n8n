@@ -61,20 +61,6 @@ describe('thinkingToProviderOptions', () => {
 		});
 	});
 
-	it('anthropic: defaults Opus 5 to adaptive thinking', () => {
-		expect(
-			getProviderQuirks('anthropic').thinkingToProviderOptions?.(
-				{ budgetTokens: 10000 },
-				'anthropic/claude-opus-5',
-			),
-		).toEqual({
-			anthropic: {
-				thinking: { type: 'adaptive', display: 'summarized' },
-				effort: 'medium',
-			},
-		});
-	});
-
 	it('openai: requests an automatic reasoning summary', () => {
 		expect(getProviderQuirks('openai').thinkingToProviderOptions?.({})).toEqual({
 			openai: { reasoningEffort: 'medium', reasoningSummary: 'auto' },

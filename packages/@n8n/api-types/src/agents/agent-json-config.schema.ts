@@ -73,7 +73,9 @@ const MemoryConfigSchema = z.object({
 
 const ThinkingConfigSchema = z.object({
 	provider: z.enum(['anthropic', 'openai']),
+	mode: z.enum(['adaptive', 'enabled']).optional(),
 	budgetTokens: z.number().int().optional(),
+	effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).optional(),
 	reasoningEffort: z.string().optional(),
 });
 

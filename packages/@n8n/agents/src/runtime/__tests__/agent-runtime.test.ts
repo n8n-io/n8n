@@ -4673,29 +4673,6 @@ describe('provider options merging', () => {
 			},
 		);
 	});
-
-	it('should use adaptive thinking for Anthropic Opus 5', async () => {
-		generateText.mockResolvedValue(makeGenerateSuccess());
-
-		const runtime = new AgentRuntime({
-			name: 'test',
-			model: 'anthropic/claude-opus-5',
-			instructions: 'You are a test assistant.',
-			thinking: { budgetTokens: 10000 },
-		});
-
-		await runtime.generate('hello', {
-			persistence: { resourceId: 'user1', threadId: 'thread1' },
-		});
-
-		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		expect((callArgs.providerOptions as Record<string, Record<string, unknown>>).anthropic).toEqual(
-			{
-				thinking: { type: 'adaptive', display: 'summarized' },
-				effort: 'medium',
-			},
-		);
-	});
 });
 
 // ---------------------------------------------------------------------------

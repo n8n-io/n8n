@@ -5,9 +5,8 @@
  * and tool-call concurrency.
  *
  * Thinking is always visible as a toggle but disabled (with a tooltip) when
- * the selected provider doesn't support it. The sub-control differs by
- * provider: Anthropic takes a `budgetTokens` number, OpenAI takes a
- * `reasoningEffort` low/medium/high select.
+ * the selected provider doesn't support it. Model-specific Anthropic modes
+ * and effort levels come from the provider model catalog.
  */
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
@@ -24,14 +23,18 @@ import { useI18n } from '@n8n/i18n';
 
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { AgentJsonConfig } from '../types';
+import { useModelCatalog } from '../composables/useModelCatalog';
+import { isAgentModelProvider } from '../model-providers';
 import {
 	PROVIDER_CAPABILITIES,
+	ANTHROPIC_EFFORT_OPTIONS,
 	REASONING_EFFORT_OPTIONS,
 	ANTHROPIC_CACHE_TTL_OPTIONS,
+	type AnthropicEffort,
 	type ReasoningEffort,
 	type AnthropicCacheTtl,
 } from '../provider-capabilities';
-import { parseProvider } from '../utils/model-string';
+import { modelToString, parseModelString, parseProvider } from '../utils/model-string';
 import {
 	getNativeWebSearchArgs,
 	getWebSearchMethod,
@@ -55,8 +58,21 @@ const SEARCH_CONTEXT_SIZE_OPTIONS = ['low', 'medium', 'high'] as const;
 type SearchContextSize = (typeof SEARCH_CONTEXT_SIZE_OPTIONS)[number];
 type WebSearchSelectValue = 'off' | WebSearchMethod;
 
+function normalizeThinkingEffort(value: unknown): AnthropicEffort {
+	return ANTHROPIC_EFFORT_OPTIONS.find((effort) => effort === value) ?? 'medium';
+}
+
+function isReasoningEffort(value: AnthropicEffort): value is ReasoningEffort {
+	return value === 'low' || value === 'medium' || value === 'high';
+}
+
 const props = withDefaults(
-	defineProps<{ config: AgentJsonConfig | null; disabled?: boolean; collapsible?: boolean }>(),
+	defineProps<{
+		config: AgentJsonConfig | null;
+		disabled?: boolean;
+		collapsible?: boolean;
+		projectId?: string;
+	}>(),
 	{
 		disabled: false,
 		collapsible: false,
@@ -65,10 +81,31 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const isExpanded = ref(!props.collapsible);
+const { ensureLoaded, getModelsForPicker } = useModelCatalog();
 
 const provider = computed(() => parseProvider(props.config?.model));
 const capabilities = computed(() => PROVIDER_CAPABILITIES[provider.value] ?? DEFAULT_CAPABILITIES);
 const hasNativeWebSearch = computed(() => Boolean(capabilities.value.webSearch));
+
+watch(
+	() => props.projectId,
+	(projectId) => {
+		if (projectId) void ensureLoaded(projectId);
+	},
+	{ immediate: true },
+);
+
+const selectedModelMetadata = computed(() => {
+	if (!props.projectId || !props.config?.credential) return undefined;
+	const parsed = parseModelString(modelToString(props.config.model));
+	if (!parsed || !isAgentModelProvider(parsed.provider)) return undefined;
+
+	const models = getModelsForPicker({ [parsed.provider]: props.config.credential });
+	return models[parsed.provider]?.models.find((model) => model.model === parsed.name)?.metadata;
+});
+
+const modelThinkingCapabilities = computed(() => selectedModelMetadata.value?.thinking);
+const modelEffortCapabilities = computed(() => selectedModelMetadata.value?.effort);
 
 // ---------------------------------------------------------------------------
 // Generic helper for numeric config fields
@@ -195,8 +232,57 @@ const fallbackWebSearchCredential = ref(props.config?.config?.webSearch?.credent
 const thinkingCfg = computed(() => props.config?.config?.thinking ?? null);
 const thinkingEnabled = ref(thinkingCfg.value !== null);
 const budgetTokens = ref(thinkingCfg.value?.budgetTokens ?? BUDGET_TOKENS_DEFAULT);
-const reasoningEffort = ref<ReasoningEffort>(
-	(thinkingCfg.value?.reasoningEffort as ReasoningEffort) ?? 'medium',
+const reasoningEffort = ref<AnthropicEffort>(
+	normalizeThinkingEffort(thinkingCfg.value?.effort ?? thinkingCfg.value?.reasoningEffort),
+);
+
+const anthropicThinkingMode = computed<'adaptive' | 'enabled'>(() => {
+	const explicitMode = thinkingCfg.value?.mode;
+	const supported = modelThinkingCapabilities.value;
+	if (!supported) return explicitMode ?? 'enabled';
+	if (explicitMode === 'adaptive' && supported.adaptive) return explicitMode;
+	if (explicitMode === 'enabled' && supported.enabled) return explicitMode;
+	if (supported.adaptive) return 'adaptive';
+	return 'enabled';
+});
+
+const thinkingSupported = computed(() => {
+	if (!capabilities.value.thinking) return false;
+	if (capabilities.value.thinking !== 'anthropic') return true;
+	const supported = modelThinkingCapabilities.value;
+	return supported === undefined || supported.adaptive || supported.enabled;
+});
+
+const anthropicEffortOptions = computed<readonly AnthropicEffort[]>(() => {
+	const supported = modelEffortCapabilities.value;
+	if (!supported) return REASONING_EFFORT_OPTIONS;
+	return ANTHROPIC_EFFORT_OPTIONS.filter((effort) => supported[effort]);
+});
+
+const selectedAnthropicEffort = computed<AnthropicEffort>(() => {
+	if (anthropicEffortOptions.value.includes(reasoningEffort.value)) return reasoningEffort.value;
+	if (anthropicEffortOptions.value.includes('medium')) return 'medium';
+	return anthropicEffortOptions.value[0] ?? 'medium';
+});
+
+const selectedOpenAiEffort = computed<ReasoningEffort>(() =>
+	isReasoningEffort(reasoningEffort.value) ? reasoningEffort.value : 'medium',
+);
+
+const thinkingEffortOptions = computed<readonly AnthropicEffort[]>(() =>
+	capabilities.value.thinking === 'anthropic'
+		? anthropicEffortOptions.value
+		: REASONING_EFFORT_OPTIONS,
+);
+
+const selectedThinkingEffort = computed(() =>
+	capabilities.value.thinking === 'anthropic'
+		? selectedAnthropicEffort.value
+		: selectedOpenAiEffort.value,
+);
+
+const thinkingToggleDisabled = computed(
+	() => props.disabled || (!thinkingSupported.value && !thinkingEnabled.value),
 );
 
 function anthropicTtlFrom(cfg: AgentJsonConfig | null): AnthropicCacheTtl {
@@ -229,7 +315,7 @@ watch(
 		const t = cfg.config?.thinking ?? null;
 		thinkingEnabled.value = t !== null;
 		budgetTokens.value = t?.budgetTokens ?? BUDGET_TOKENS_DEFAULT;
-		reasoningEffort.value = (t?.reasoningEffort as ReasoningEffort) ?? 'medium';
+		reasoningEffort.value = normalizeThinkingEffort(t?.effort ?? t?.reasoningEffort);
 		anthropicTtl.value = anthropicTtlFrom(cfg);
 		syncConcurrency(cfg);
 		syncMaxIterations(cfg);
@@ -338,14 +424,24 @@ function emitThinking() {
 	const cap = capabilities.value.thinking;
 	if (!cap) return;
 	const thinking =
-		cap === 'budgetTokens'
-			? { provider: 'anthropic' as const, budgetTokens: budgetTokens.value }
-			: { provider: 'openai' as const, reasoningEffort: reasoningEffort.value };
+		cap === 'anthropic'
+			? anthropicThinkingMode.value === 'adaptive'
+				? {
+						provider: 'anthropic' as const,
+						mode: 'adaptive' as const,
+						effort: selectedAnthropicEffort.value,
+					}
+				: {
+						provider: 'anthropic' as const,
+						mode: 'enabled' as const,
+						budgetTokens: budgetTokens.value,
+					}
+			: { provider: 'openai' as const, reasoningEffort: selectedOpenAiEffort.value };
 	emit('update:config', { config: { ...props.config?.config, thinking } });
 }
 
 function onThinkingToggle(value: boolean) {
-	if (!capabilities.value.thinking) return;
+	if (value && !thinkingSupported.value) return;
 	thinkingEnabled.value = value;
 	if (!value) {
 		const rest = { ...(props.config?.config ?? {}) };
@@ -363,13 +459,13 @@ function onBudgetChange(n: number) {
 	void emitBudget();
 }
 
-function onReasoningEffortChange(value: ReasoningEffort) {
+function onReasoningEffortChange(value: AnthropicEffort) {
 	reasoningEffort.value = value;
 	emitThinking();
 }
 
 const thinkingDisabledReason = computed(() =>
-	capabilities.value.thinking
+	thinkingSupported.value
 		? ''
 		: i18n.baseText('agents.builder.advanced.thinking.unsupportedTooltip', {
 				interpolate: {
@@ -583,12 +679,12 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 					</div>
 					<N8nTooltip
 						:content="thinkingDisabledReason"
-						:disabled="!!capabilities.thinking"
+						:disabled="thinkingSupported"
 						placement="top"
 					>
 						<N8nSwitch2
 							:model-value="thinkingEnabled"
-							:disabled="!capabilities.thinking || props.disabled"
+							:disabled="thinkingToggleDisabled"
 							:class="$style.switchControl"
 							data-testid="agent-thinking-toggle"
 							@update:model-value="(v) => onThinkingToggle(Boolean(v))"
@@ -597,11 +693,14 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 				</div>
 
 				<div
-					v-if="thinkingEnabled && capabilities.thinking"
+					v-if="thinkingEnabled && thinkingSupported && capabilities.thinking"
 					:class="$style.subSettings"
 					data-testid="agent-thinking-settings"
 				>
-					<div v-if="capabilities.thinking === 'budgetTokens'" :class="$style.row">
+					<div
+						v-if="capabilities.thinking === 'anthropic' && anthropicThinkingMode === 'enabled'"
+						:class="$style.row"
+					>
 						<div :class="$style.rowLabel">
 							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 								i18n.baseText('agents.builder.advanced.budgetTokens.label')
@@ -621,12 +720,18 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						/>
 					</div>
 
-					<div v-if="capabilities.thinking === 'reasoningEffort'" :class="$style.row">
+					<div
+						v-if="
+							capabilities.thinking === 'reasoningEffort' ||
+							(capabilities.thinking === 'anthropic' && anthropicThinkingMode === 'adaptive')
+						"
+						:class="$style.row"
+					>
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.reasoningEffort.label')
 						}}</N8nText>
 						<N8nSelect
-							:model-value="reasoningEffort"
+							:model-value="selectedThinkingEffort"
 							size="small"
 							:disabled="props.disabled"
 							:class="$style.shortInput"
@@ -634,7 +739,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 							@update:model-value="onReasoningEffortChange"
 						>
 							<N8nOption
-								v-for="opt in REASONING_EFFORT_OPTIONS"
+								v-for="opt in thinkingEffortOptions"
 								:key="opt"
 								:value="opt"
 								:label="opt"

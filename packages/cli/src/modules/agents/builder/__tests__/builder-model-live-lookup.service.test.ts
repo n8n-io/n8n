@@ -50,12 +50,28 @@ describe('BuilderModelLiveLookupService', () => {
 		credentialsFinderService.findCredentialById.mockResolvedValue(mock<CredentialsEntity>());
 		credentialsService.decrypt.mockResolvedValue({ apiKey: 'sk-key', url: 'https://proxy.local' });
 		listModelsForProvider.mockResolvedValue([
-			{ id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6' },
+			{
+				id: 'claude-sonnet-4-6',
+				name: 'Claude Sonnet 4.6',
+				capabilities: {
+					effort: { low: true, medium: true, high: true, xhigh: false, max: false },
+					thinking: { adaptive: true, enabled: true },
+				},
+			},
 		]);
 
 		const result = await service.list(user, projectId, 'cred-1', 'anthropicApi', 'anthropic');
 
-		expect(result).toEqual([{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' }]);
+		expect(result).toEqual([
+			{
+				name: 'Claude Sonnet 4.6',
+				value: 'claude-sonnet-4-6',
+				capabilities: {
+					effort: { low: true, medium: true, high: true, xhigh: false, max: false },
+					thinking: { adaptive: true, enabled: true },
+				},
+			},
+		]);
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId,
 		});

@@ -1,12 +1,19 @@
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { ProviderModel } from '@n8n/ai-utilities/model-discovery';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { mapCredentialForProvider } from '../json-config/credential-field-mapping';
+
+export interface BuilderLiveModel {
+	name: string;
+	value: string;
+	capabilities?: ProviderModel['capabilities'];
+}
 
 /**
  * Fetches a provider's live chat-model list for a credential, via the shared
@@ -37,7 +44,7 @@ export class BuilderModelLiveLookupService {
 		credentialId: string,
 		credentialType: string,
 		provider: string,
-	): Promise<Array<{ name: string; value: string }>> {
+	): Promise<BuilderLiveModel[]> {
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			user,
 			{ projectId },
@@ -73,6 +80,10 @@ export class BuilderModelLiveLookupService {
 			throw new Error(`Provider ${provider} returned no models`);
 		}
 
-		return models.map((model) => ({ name: model.name, value: model.id }));
+		return models.map((model) => ({
+			name: model.name,
+			value: model.id,
+			...(model.capabilities && { capabilities: model.capabilities }),
+		}));
 	}
 }

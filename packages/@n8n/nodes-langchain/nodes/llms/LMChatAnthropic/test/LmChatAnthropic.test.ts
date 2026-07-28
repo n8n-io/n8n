@@ -22,6 +22,15 @@ vi.mock('@n8n/ai-utilities', () => ({
 	getProxyAgent: vi.fn(),
 }));
 
+const modelDiscoveryMocks = vi.hoisted(() => ({
+	getAnthropicModel: vi.fn(),
+}));
+
+vi.mock('@n8n/ai-utilities/model-discovery', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/ai-utilities/model-discovery')>()),
+	getAnthropicModel: modelDiscoveryMocks.getAnthropicModel,
+}));
+
 const MockedChatAnthropic = vi.mocked(ChatAnthropic);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
@@ -72,6 +81,11 @@ describe('LmChatAnthropic', () => {
 	beforeEach(() => {
 		lmChatAnthropic = new LmChatAnthropic();
 		vi.clearAllMocks();
+		modelDiscoveryMocks.getAnthropicModel.mockResolvedValue({
+			id: 'thinking-model',
+			name: 'Thinking Model',
+			capabilities: { thinking: { adaptive: true, enabled: true } },
+		});
 	});
 
 	afterEach(() => {
@@ -344,6 +358,11 @@ describe('LmChatAnthropic', () => {
 
 		it('should configure thinking mode correctly when enabled', async () => {
 			const mockContext = setupMockContext();
+			modelDiscoveryMocks.getAnthropicModel.mockResolvedValue({
+				id: 'claude-sonnet-4-20250514',
+				name: 'Claude Sonnet 4',
+				capabilities: { thinking: { adaptive: false, enabled: true } },
+			});
 			const options = {
 				thinking: true,
 				thinkingBudget: 2048,
@@ -379,6 +398,11 @@ describe('LmChatAnthropic', () => {
 
 		it('should use default thinking budget when not specified', async () => {
 			const mockContext = setupMockContext();
+			modelDiscoveryMocks.getAnthropicModel.mockResolvedValue({
+				id: 'claude-sonnet-4-20250514',
+				name: 'Claude Sonnet 4',
+				capabilities: { thinking: { adaptive: false, enabled: true } },
+			});
 			const options = {
 				thinking: true,
 			};
@@ -409,6 +433,11 @@ describe('LmChatAnthropic', () => {
 
 		it('should unset sampling parameters when thinking mode is enabled', async () => {
 			const mockContext = setupMockContext();
+			modelDiscoveryMocks.getAnthropicModel.mockResolvedValue({
+				id: 'claude-sonnet-4-20250514',
+				name: 'Claude Sonnet 4',
+				capabilities: { thinking: { adaptive: false, enabled: true } },
+			});
 			const options = {
 				thinking: true,
 				thinkingBudget: 2048,
@@ -764,6 +793,11 @@ describe('LmChatAnthropic', () => {
 
 		it('should keep legacy enabled+budget payload for manual thinkingMode on Sonnet 4.6', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.5 });
+			modelDiscoveryMocks.getAnthropicModel.mockResolvedValue({
+				id: 'claude-sonnet-4-6',
+				name: 'Claude Sonnet 4.6',
+				capabilities: { thinking: { adaptive: true, enabled: true } },
+			});
 
 			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-6';
@@ -807,29 +841,143 @@ describe('LmChatAnthropic', () => {
 			expect(callArgs).not.toHaveProperty('topP');
 		});
 
-		it.each(['claude-opus-4-7-20251101', 'claude-opus-4-8', 'claude-opus-5'])(
-			'should throw NodeOperationError when manual mode is selected on %s',
-			async (modelName) => {
-				const mockContext = setupMockContext({ typeVersion: 1.5 });
+		it.each([
+			'claude-opus-4-7-20251101',
+			'claude-opus-5',
+			'claude-sonnet-5',
+			'claude-haiku-5',
+			'claude-fable-5',
+			'claude-mythos-5',
+		])('should correct saved manual mode to adaptive mode on %s', async (modelName) => {
+			const mockContext = setupMockContext({ typeVersion: 1.5 });
+			modelDiscoveryMocks.getAnthropicModel.mockResolvedValue({
+				id: modelName,
+				name: modelName,
+				capabilities: { thinking: { adaptive: true, enabled: false } },
+			});
 
-				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
-					if (paramName === 'model.value') return modelName;
-					if (paramName === 'options') return { thinkingMode: 'manual', thinkingBudget: 2048 };
-					return undefined;
-				});
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return modelName;
+				if (paramName === 'options') return { thinkingMode: 'manual', thinkingBudget: 2048 };
+				return undefined;
+			});
 
-				await expect(lmChatAnthropic.supplyData.call(mockContext, 0)).rejects.toThrow(
-					NodeOperationError,
-				);
-				expect(MockedChatAnthropic).not.toHaveBeenCalled();
-			},
-		);
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					invocationKwargs: expect.objectContaining({
+						thinking: { type: 'adaptive' },
+						output_config: { effort: 'medium' },
+					}),
+				}),
+			);
+		});
+
+		it('should correct saved adaptive mode to manual mode on an enabled-only model', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.5 });
+			modelDiscoveryMocks.getAnthropicModel.mockResolvedValue({
+				id: 'claude-haiku-4-5',
+				name: 'Claude Haiku 4.5',
+				capabilities: { thinking: { adaptive: false, enabled: true } },
+			});
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-haiku-4-5';
+				if (paramName === 'options') return { thinkingMode: 'adaptive', thinkingBudget: 2048 };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					invocationKwargs: expect.objectContaining({
+						thinking: { type: 'enabled', budget_tokens: 2048 },
+					}),
+				}),
+			);
+		});
+
+		it('should reject thinking when the model supports neither mode', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.5 });
+			modelDiscoveryMocks.getAnthropicModel.mockResolvedValue({
+				id: 'claude-no-thinking',
+				name: 'Claude No Thinking',
+				capabilities: { thinking: { adaptive: false, enabled: false } },
+			});
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-no-thinking';
+				if (paramName === 'options') return { thinkingMode: 'adaptive' };
+				return undefined;
+			});
+
+			await expect(lmChatAnthropic.supplyData.call(mockContext, 0)).rejects.toThrow(
+				/Thinking mode is not supported/,
+			);
+		});
+
+		it('should allow max effort on a non-Opus model when capabilities support it', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.5 });
+			modelDiscoveryMocks.getAnthropicModel.mockResolvedValue({
+				id: 'claude-fable-5',
+				name: 'Claude Fable 5',
+				capabilities: {
+					effort: { low: true, medium: true, high: true, xhigh: true, max: true },
+					thinking: { adaptive: true, enabled: false },
+				},
+			});
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-fable-5';
+				if (paramName === 'options') return { thinkingMode: 'adaptive', effort: 'max' };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					invocationKwargs: expect.objectContaining({
+						output_config: { effort: 'max' },
+					}),
+				}),
+			);
+		});
+
+		it('should reject an effort level the selected model does not support', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.5 });
+			modelDiscoveryMocks.getAnthropicModel.mockResolvedValue({
+				id: 'claude-fable-5',
+				name: 'Claude Fable 5',
+				capabilities: {
+					effort: { low: true, medium: true, high: true, xhigh: false, max: false },
+					thinking: { adaptive: true, enabled: false },
+				},
+			});
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-fable-5';
+				if (paramName === 'options') return { thinkingMode: 'adaptive', effort: 'max' };
+				return undefined;
+			});
+
+			await expect(lmChatAnthropic.supplyData.call(mockContext, 0)).rejects.toThrow(
+				/Supported effort levels: low, medium, high/,
+			);
+		});
 
 		it('should still emit legacy thinking payload when thinking=true on v1.4', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.4 });
+			modelDiscoveryMocks.getAnthropicModel.mockResolvedValue({
+				id: 'claude-haiku-4-5',
+				name: 'Claude Haiku 4.5',
+				capabilities: { thinking: { adaptive: false, enabled: true } },
+			});
 
 			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'model.value') return 'claude-haiku-4-5';
 				if (paramName === 'options')
 					return { thinking: true, thinkingBudget: 1500, maxTokensToSample: 4096 };
 				return undefined;
@@ -850,7 +998,7 @@ describe('LmChatAnthropic', () => {
 			);
 		});
 
-		it.each(['claude-opus-4-8', 'claude-opus-5'])(
+		it.each(['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-5', 'claude-fable-5'])(
 			'should use adaptive thinking for %s when thinking=true on v1.4',
 			async (modelName) => {
 				const mockContext = setupMockContext({ typeVersion: 1.4 });
@@ -878,6 +1026,29 @@ describe('LmChatAnthropic', () => {
 				);
 			},
 		);
+
+		it('should fall back to legacy enabled thinking when model capabilities are unavailable', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.4 });
+			modelDiscoveryMocks.getAnthropicModel.mockRejectedValue(new Error('Models API unavailable'));
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gateway-model';
+				if (paramName === 'options')
+					return { thinking: true, thinkingBudget: 1500, maxTokensToSample: 4096 };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(modelDiscoveryMocks.getAnthropicModel).toHaveBeenCalled();
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					invocationKwargs: expect.objectContaining({
+						thinking: { type: 'enabled', budget_tokens: 1500 },
+					}),
+				}),
+			);
+		});
 
 		it('should emit empty invocationKwargs when thinking=false on v1.4', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.4 });
@@ -926,33 +1097,13 @@ describe('LmChatAnthropic', () => {
 			expect(modeValues).toEqual(['disabled', 'adaptive', 'manual']);
 
 			const effortFields = innerOptions.filter((o) => o.name === 'effort');
-			expect(effortFields).toHaveLength(2);
+			expect(effortFields).toHaveLength(1);
 
-			const opusEffort = effortFields.find((f) => {
-				const cnd = (
-					f.displayOptions?.show?.['/model.value']?.[0] as {
-						_cnd?: { includes?: string };
-					}
-				)?._cnd;
-				return cnd?.includes === 'opus';
-			});
-			expect(opusEffort).toBeDefined();
-			expect(
-				(opusEffort as { options: Array<{ value: string }> }).options.map((o) => o.value),
-			).toEqual(['low', 'medium', 'high', 'xhigh', 'max']);
-
-			const nonOpusEffort = effortFields.find((f) => {
-				const cnd = (
-					f.displayOptions?.show?.['/model.value']?.[0] as {
-						_cnd?: { regex?: string };
-					}
-				)?._cnd;
-				return typeof cnd?.regex === 'string';
-			});
-			expect(nonOpusEffort).toBeDefined();
-			expect(
-				(nonOpusEffort as { options: Array<{ value: string }> }).options.map((o) => o.value),
-			).toEqual(['low', 'medium', 'high']);
+			const effort = effortFields[0];
+			expect(effort.displayOptions?.show?.['/model.value']).toBeUndefined();
+			expect((effort as { options: Array<{ value: string }> }).options.map((o) => o.value)).toEqual(
+				['low', 'medium', 'high', 'xhigh', 'max'],
+			);
 		});
 	});
 

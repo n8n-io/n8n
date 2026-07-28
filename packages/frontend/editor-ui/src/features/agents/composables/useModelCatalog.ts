@@ -48,6 +48,8 @@ function toAgentModel(provider: AgentModelProvider, model: ModelInfo): AgentMode
 		metadata: {
 			functionCalling: model.toolCall,
 			available: true,
+			...(model.capabilities?.effort && { effort: model.capabilities.effort }),
+			...(model.capabilities?.thinking && { thinking: model.capabilities.thinking }),
 		},
 	};
 }

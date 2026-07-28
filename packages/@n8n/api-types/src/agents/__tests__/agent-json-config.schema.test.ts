@@ -10,6 +10,25 @@ const minimalConfig = {
 	instructions: 'Help the user.',
 };
 
+describe('AgentJsonConfigSchema — thinking', () => {
+	it('preserves an explicit Anthropic adaptive mode and effort', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: {
+				thinking: { provider: 'anthropic', mode: 'adaptive', effort: 'medium' },
+			},
+		});
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		expect(result.data.config?.thinking).toEqual({
+			provider: 'anthropic',
+			mode: 'adaptive',
+			effort: 'medium',
+		});
+	});
+});
+
 describe('AgentJsonConfigSchema — tools', () => {
 	describe('custom tool id field', () => {
 		it('accepts a valid alphanumeric id', () => {

@@ -63,7 +63,14 @@ describe('AgentModelCatalogService', () => {
 		const { service, lookupService } = makeService();
 		// Provider reports Sonnet but not Opus — Opus (retired) must be pruned.
 		lookupService.list.mockResolvedValue([
-			{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
+			{
+				name: 'Claude Sonnet 4.6',
+				value: 'claude-sonnet-4-6',
+				capabilities: {
+					effort: { low: true, medium: true, high: true, xhigh: false, max: false },
+					thinking: { adaptive: true, enabled: true },
+				},
+			},
 		]);
 
 		const result = await service.getProviderModels(user, 'project-1', 'anthropic', credentialId);
@@ -74,6 +81,10 @@ describe('AgentModelCatalogService', () => {
 			id: 'claude-sonnet-4-6',
 			name: 'Claude Sonnet 4.6',
 			cost: { input: 3, output: 15 },
+			capabilities: {
+				effort: { low: true, medium: true, high: true, xhigh: false, max: false },
+				thinking: { adaptive: true, enabled: true },
+			},
 		});
 		expect(lookupService.list).toHaveBeenCalledWith(
 			user,

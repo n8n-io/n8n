@@ -1,5 +1,5 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern */
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import type * as VueUse from '@vueuse/core';
@@ -9,6 +9,15 @@ import type { AgentJsonConfig } from '../types';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (k: string) => k }),
+}));
+
+const modelCatalogMocks = vi.hoisted(() => ({
+	ensureLoaded: vi.fn(),
+	getModelsForPicker: vi.fn(),
+}));
+
+vi.mock('../composables/useModelCatalog', () => ({
+	useModelCatalog: () => modelCatalogMocks,
 }));
 
 vi.mock('@/features/credentials/credentials.store', () => ({
@@ -45,7 +54,15 @@ const globalStubs = {
 		template:
 			'<select v-bind="$attrs" :value="modelValue" :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
 	},
-	N8nOption: { props: ['value', 'label'], template: '<option :value="value">{{ label }}</option>' },
+	N8nOption: {
+		name: 'N8nOption',
+		props: ['value', 'label'],
+		template: '<option :value="value">{{ label }}</option>',
+	},
+	Option: {
+		props: ['value', 'label'],
+		template: '<option :value="value">{{ label }}</option>',
+	},
 	N8nSwitch2: {
 		props: ['modelValue', 'disabled'],
 		emits: ['update:modelValue'],
@@ -93,6 +110,12 @@ function getWebSearchConfig(changes: Partial<AgentJsonConfig>): WebSearchConfig 
 }
 
 describe('AgentAdvancedPanel', () => {
+	beforeEach(() => {
+		modelCatalogMocks.ensureLoaded.mockReset();
+		modelCatalogMocks.getModelsForPicker.mockReset();
+		modelCatalogMocks.getModelsForPicker.mockReturnValue({});
+	});
+
 	it('renders the collapsible heading and toggles the advanced content', async () => {
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config: makeConfig(), collapsible: true },
@@ -336,7 +359,132 @@ describe('AgentAdvancedPanel', () => {
 		const events = wrapper.emitted('update:config') ?? [];
 		expect(events.length).toBeGreaterThan(0);
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect((last.config as { thinking: { provider: string } }).thinking.provider).toBe('anthropic');
+		expect(last.config?.thinking).toEqual({
+			provider: 'anthropic',
+			mode: 'enabled',
+			budgetTokens: 1024,
+		});
+	});
+
+	it('saves adaptive mode and shows effort when the selected Anthropic model supports it', async () => {
+		modelCatalogMocks.getModelsForPicker.mockReturnValue({
+			anthropic: {
+				models: [
+					{
+						provider: 'anthropic',
+						model: 'claude-fable-5',
+						name: 'Claude Fable 5',
+						metadata: {
+							available: true,
+							functionCalling: true,
+							effort: { low: true, medium: true, high: true, xhigh: true, max: true },
+							thinking: { adaptive: true, enabled: false },
+						},
+					},
+				],
+			},
+		});
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({ model: 'anthropic/claude-fable-5' }),
+				projectId: 'project-1',
+			},
+			global: { stubs: { ...globalStubs, Select: globalStubs.N8nSelect } },
+		});
+
+		await wrapper.find('[data-testid="agent-thinking-toggle"]').trigger('click');
+		await nextTick();
+
+		const events = wrapper.emitted('update:config') ?? [];
+		const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(last.config?.thinking).toEqual({
+			provider: 'anthropic',
+			mode: 'adaptive',
+			effort: 'medium',
+		});
+		expect(wrapper.find('[data-testid="agent-reasoning-effort-select"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-budget-tokens-input"]').exists()).toBe(false);
+		expect(
+			wrapper
+				.find('[data-testid="agent-reasoning-effort-select"]')
+				.findAll('option')
+				.map((option) => option.attributes('value')),
+		).toEqual(['low', 'medium', 'high', 'xhigh', 'max']);
+	});
+
+	it('saves enabled mode for a manual-only Anthropic model', async () => {
+		modelCatalogMocks.getModelsForPicker.mockReturnValue({
+			anthropic: {
+				models: [
+					{
+						provider: 'anthropic',
+						model: 'claude-haiku-4-5',
+						name: 'Claude Haiku 4.5',
+						metadata: {
+							available: true,
+							functionCalling: true,
+							thinking: { adaptive: false, enabled: true },
+						},
+					},
+				],
+			},
+		});
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({ model: 'anthropic/claude-haiku-4-5' }),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+
+		await wrapper.find('[data-testid="agent-thinking-toggle"]').trigger('click');
+
+		const events = wrapper.emitted('update:config') ?? [];
+		const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(last.config?.thinking).toEqual({
+			provider: 'anthropic',
+			mode: 'enabled',
+			budgetTokens: 1024,
+		});
+	});
+
+	it('allows stale thinking config to be switched off on an unsupported Anthropic model', async () => {
+		modelCatalogMocks.getModelsForPicker.mockReturnValue({
+			anthropic: {
+				models: [
+					{
+						provider: 'anthropic',
+						model: 'claude-no-thinking',
+						name: 'Claude No Thinking',
+						metadata: {
+							available: true,
+							functionCalling: true,
+							thinking: { adaptive: false, enabled: false },
+						},
+					},
+				],
+			},
+		});
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({
+					model: 'anthropic/claude-no-thinking',
+					config: {
+						thinking: { provider: 'anthropic', mode: 'enabled', budgetTokens: 1024 },
+					},
+				}),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+
+		const toggle = wrapper.find('[data-testid="agent-thinking-toggle"]');
+		expect(toggle.attributes('disabled')).toBeUndefined();
+		await toggle.trigger('click');
+
+		const events = wrapper.emitted('update:config') ?? [];
+		const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(last.config?.thinking).toBeUndefined();
 	});
 
 	it('shows the Anthropic ttl dropdown, defaulting to 1h, with no on/off toggle', async () => {

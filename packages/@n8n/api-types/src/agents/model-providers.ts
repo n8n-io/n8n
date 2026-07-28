@@ -16,10 +16,24 @@ export const AGENT_MODEL_PROVIDERS = [
 
 export type AgentModelProvider = (typeof AGENT_MODEL_PROVIDERS)[number];
 
+export const AGENT_MODEL_EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
+export type AgentModelEffort = (typeof AGENT_MODEL_EFFORT_LEVELS)[number];
+export type AgentModelEffortCapabilities = Record<AgentModelEffort, boolean>;
+
 const AGENT_MODEL_PROVIDER_SET = new Set<string>(AGENT_MODEL_PROVIDERS);
 
 export function isAgentModelProvider(provider: string): provider is AgentModelProvider {
 	return AGENT_MODEL_PROVIDER_SET.has(provider);
+}
+
+export interface AgentModelThinkingCapabilities {
+	adaptive: boolean;
+	enabled: boolean;
+}
+
+export interface AgentModelCapabilities {
+	effort?: AgentModelEffortCapabilities;
+	thinking?: AgentModelThinkingCapabilities;
 }
 
 /** A model offered in the agent model picker. Mirrors the catalog's `ModelInfo` shape. */
@@ -29,6 +43,7 @@ export interface AgentCatalogModel {
 	releaseDate?: string;
 	reasoning: boolean;
 	toolCall: boolean;
+	capabilities?: AgentModelCapabilities;
 	cost?: { input: number; output: number; cacheRead?: number; cacheWrite?: number };
 	limits?: { context?: number; output?: number };
 }
