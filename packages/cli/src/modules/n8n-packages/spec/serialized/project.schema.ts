@@ -15,8 +15,6 @@ export const serializedProjectSchema = z.object({
 	name: z.string().min(1),
 	description: z.string().optional(),
 	icon: projectIconSchema.optional(),
-	// OTEL custom span attributes. Optional for back-compat with packages
-	// exported before this field existed.
 	customTelemetryTags: z.array(customTelemetryTagSchema).optional(),
 });
 
