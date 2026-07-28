@@ -46,6 +46,10 @@ describe('workflow-review-requests (env flag off)', () => {
 	test('GET summary is unreachable (404)', async () => {
 		await ownerAgent.get('/workflow-review-requests/summary').expect(404);
 	});
+
+	test('GET detail is unreachable (404)', async () => {
+		await ownerAgent.get('/workflow-review-requests/some-id').expect(404);
+	});
 });
 
 describe('GET /workflow-review-requests (env flag off)', () => {

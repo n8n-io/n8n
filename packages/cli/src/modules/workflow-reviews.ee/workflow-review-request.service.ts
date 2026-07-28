@@ -11,6 +11,9 @@ import type {
 	GetWorkflowReviewInboxSummaryResponse,
 	WorkflowReviewInboxItem,
 	WorkflowReviewEligibleReviewer,
+	WorkflowReviewRequestDetail,
+	WorkflowReviewRequestWorkflowDetail,
+	WorkflowReviewVersionSnapshot,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
@@ -18,15 +21,18 @@ import {
 	DbLockService,
 	SharedWorkflowRepository,
 	UserRepository,
+	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 	type InboxCursor,
 	type User,
+	type WorkflowHistory,
 	type WorkflowReviewRequest,
 	type WorkflowReviewRequestLinkedWorkflow,
 	type WorkflowReviewRequestReviewer,
+	type WorkflowReviewRequestWorkflowDetailRow,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -51,6 +57,7 @@ export class WorkflowReviewRequestService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
@@ -520,6 +527,136 @@ export class WorkflowReviewRequestService {
 			projectIds,
 			requesterId: user.id,
 		});
+	}
+
+	/**
+	 * Visibility starts from the inbox rule (requester OR `workflow:publish` in the
+	 * review's project OR globally), then narrows per workflow to what the caller can
+	 * currently read — see {@link filterReadableWorkflowRows}.
+	 */
+	async getDetail(
+		user: User,
+		workflowReviewRequestId: string,
+	): Promise<WorkflowReviewRequestDetail> {
+		await this.assertFeatureAvailable();
+
+		const request = await this.workflowReviewRequestRepository.findById(workflowReviewRequestId);
+		if (!request || !(await this.canAccessRequest(user, request))) {
+			throw new NotFoundError('Could not find review request');
+		}
+
+		const [workflowRows, reviewerRows] = await Promise.all([
+			this.workflowReviewRequestWorkflowRepository.findLinkedWorkflowDetailsByRequestId(request.id),
+			this.workflowReviewRequestReviewerRepository.findByRequestIds([request.id]),
+		]);
+
+		// A stale `projectId` must not expose a transferred workflow's content
+		const readableRows = await this.filterReadableWorkflowRows(user, request, workflowRows);
+		if (workflowRows.length > 0 && readableRows.length === 0) {
+			throw new NotFoundError('Could not find review request');
+		}
+
+		const [workflows, participantsByRequestId] = await Promise.all([
+			Promise.all(readableRows.map(async (row) => await this.toWorkflowDetail(row))),
+			this.hydrateParticipants([request], reviewerRows),
+		]);
+
+		const { requester, reviewers } = participantsByRequestId.get(request.id) ?? {
+			requester: null,
+			reviewers: [],
+		};
+		return {
+			// One workflow per review for now, so the summary fields mirror the first row
+			...this.toInboxItem(request, workflows.at(0) ?? null, requester, reviewers),
+			description: request.description,
+			workflows,
+		};
+	}
+
+	/** Inbox visibility rule: requester, or `workflow:publish` in the review's project. */
+	private async canAccessRequest(user: User, request: WorkflowReviewRequest): Promise<boolean> {
+		if (request.createdById === user.id) {
+			return true;
+		}
+
+		const projectIds = await this.resolveAccessibleProjectIds(user);
+		return projectIds === null || projectIds.includes(request.projectId);
+	}
+
+	/**
+	 * The review's `projectId` is fixed at creation, so it goes stale once a
+	 * workflow is transferred to another project — nothing closes open reviews on
+	 * transfer. Re-check every row against the workflow's *current* owner before
+	 * returning its content, so an old-project publisher cannot keep reading it.
+	 */
+	private async filterReadableWorkflowRows(
+		user: User,
+		request: WorkflowReviewRequest,
+		rows: WorkflowReviewRequestWorkflowDetailRow[],
+	): Promise<WorkflowReviewRequestWorkflowDetailRow[]> {
+		if (request.createdById === user.id) {
+			return rows;
+		}
+
+		const readable = await Promise.all(
+			rows.map(async (row) =>
+				(await this.workflowFinderService.findWorkflowForUser(row.workflowId, user, [
+					'workflow:read',
+				]))
+					? row
+					: null,
+			),
+		);
+
+		return readable.filter((row): row is WorkflowReviewRequestWorkflowDetailRow => row !== null);
+	}
+
+	/**
+	 * Both diff sides for one child row. The baseline is resolved at read time, so
+	 * a publish during an open review moves what reviewers are diffing against.
+	 */
+	private async toWorkflowDetail(
+		row: WorkflowReviewRequestWorkflowDetailRow,
+	): Promise<WorkflowReviewRequestWorkflowDetail> {
+		const publishedVersionId = await this.workflowPublishedVersionRepository.getPublishedVersionId(
+			row.workflowId,
+		);
+
+		const [pinnedVersion, baselineVersion] = await Promise.all([
+			this.findVersionSnapshot(row.workflowId, row.workflowVersionId),
+			this.findVersionSnapshot(row.workflowId, publishedVersionId),
+		]);
+
+		return {
+			workflowId: row.workflowId,
+			workflowName: row.workflowName,
+			workflowVersionId: row.workflowVersionId,
+			pinnedVersion,
+			baselineVersion,
+		};
+	}
+
+	/** `null` version id, or a version whose history row was pruned, both mean "no content". */
+	private async findVersionSnapshot(
+		workflowId: string,
+		versionId: string | null,
+	): Promise<WorkflowReviewVersionSnapshot | null> {
+		if (!versionId) {
+			return null;
+		}
+
+		const version = await this.workflowHistoryService.findVersion(workflowId, versionId);
+		return version ? this.toVersionSnapshot(version) : null;
+	}
+
+	private toVersionSnapshot(version: WorkflowHistory): WorkflowReviewVersionSnapshot {
+		return {
+			versionId: version.versionId,
+			nodes: version.nodes,
+			connections: version.connections,
+			nodeGroups: version.nodeGroups,
+			createdAt: version.createdAt.toISOString(),
+		};
 	}
 
 	private async assertFeatureAvailable(): Promise<void> {

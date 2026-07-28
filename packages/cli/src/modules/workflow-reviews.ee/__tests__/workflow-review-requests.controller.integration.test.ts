@@ -10,6 +10,8 @@ import {
 import type { Project, User } from '@n8n/db';
 import {
 	UserRepository,
+	WorkflowPublishedVersionRepository,
+	WorkflowRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
@@ -43,6 +45,8 @@ let workflowRepository: WorkflowReviewRequestWorkflowRepository;
 let authorRepository: WorkflowReviewRequestAuthorRepository;
 let reviewerRepository: WorkflowReviewRequestReviewerRepository;
 let userRepository: UserRepository;
+let publishedVersionRepository: WorkflowPublishedVersionRepository;
+let workflowEntityRepository: WorkflowRepository;
 let policyService: WorkflowReviewPolicyService;
 
 beforeAll(() => {
@@ -51,6 +55,8 @@ beforeAll(() => {
 	authorRepository = Container.get(WorkflowReviewRequestAuthorRepository);
 	reviewerRepository = Container.get(WorkflowReviewRequestReviewerRepository);
 	userRepository = Container.get(UserRepository);
+	publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
+	workflowEntityRepository = Container.get(WorkflowRepository);
 	policyService = Container.get(WorkflowReviewPolicyService);
 });
 
@@ -64,6 +70,8 @@ beforeEach(async () => {
 		'WorkflowReviewRequestWorkflow',
 		'WorkflowReviewRequest',
 		'SharedWorkflow',
+		// Before WorkflowHistory: the published pointer FKs onto it with onDelete RESTRICT
+		'WorkflowPublishedVersion',
 		'WorkflowHistory',
 		'WorkflowEntity',
 		'ProjectRelation',
@@ -1278,5 +1286,192 @@ describe('GET /workflow-review-requests/inbox', () => {
 			.get('/workflow-review-requests/inbox')
 			.query({ state: 'open', limit: 15, cursor })
 			.expect(400);
+	});
+});
+
+describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
+	/** Seed a review request in `projectId` pinned to `versionId`, authored by `author`. */
+	async function seedRequest(
+		workflowId: string,
+		versionId: string | null,
+		author: User,
+		projectId = teamProject.id,
+	) {
+		const request = await requestRepository.createRequest({
+			projectId,
+			title: 'Please review',
+			description: 'Some context',
+			createdById: author.id,
+		});
+		await workflowRepository.createWorkflowRow({
+			workflowReviewRequestId: request.id,
+			workflowId,
+			workflowVersionId: versionId,
+		});
+		await authorRepository.addAuthor({ workflowReviewRequestId: request.id, userId: author.id });
+		return request;
+	}
+
+	test('returns the record, its child rows, and both diff sides', async () => {
+		const workflow = await createWorkflow({ name: 'Reviewed workflow' }, teamProject);
+		const baseline = await createWorkflowHistoryItem(workflow.id, {
+			versionId: 'version-published',
+		});
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
+		await publishedVersionRepository.setPublishedVersion(workflow.id, baseline.versionId);
+		const reviewer = await createAdmin();
+		const request = await seedRequest(workflow.id, 'version-pinned', owner);
+		await reviewerRepository.addReviewers({
+			workflowReviewRequestId: request.id,
+			userIds: [reviewer.id],
+		});
+
+		const response = await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+		expect(response.body.data).toMatchObject({
+			id: request.id,
+			projectId: teamProject.id,
+			state: 'open',
+			decision: 'pending',
+			title: 'Please review',
+			description: 'Some context',
+			workflowName: 'Reviewed workflow',
+			workflowVersionId: 'version-pinned',
+			requester: { id: owner.id, email: owner.email },
+			reviewers: [{ id: reviewer.id, email: reviewer.email }],
+		});
+
+		expect(response.body.data.workflows).toHaveLength(1);
+		const [child] = response.body.data.workflows;
+		expect(child).toMatchObject({
+			workflowId: workflow.id,
+			workflowName: 'Reviewed workflow',
+			workflowVersionId: 'version-pinned',
+		});
+		expect(child.pinnedVersion).toMatchObject({
+			versionId: 'version-pinned',
+			connections: {},
+			nodeGroups: [],
+		});
+		expect(child.pinnedVersion.nodes).toHaveLength(1);
+		expect(child.pinnedVersion.nodes[0]).toMatchObject({ name: 'Start' });
+		expect(child.pinnedVersion).not.toHaveProperty('authors');
+		expect(child.baselineVersion).toMatchObject({ versionId: 'version-published' });
+	});
+
+	test('returns a null baseline for a workflow that was never published', async () => {
+		const workflow = await createWorkflow({}, teamProject);
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
+		const request = await seedRequest(workflow.id, 'version-pinned', owner);
+
+		const response = await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+		expect(response.body.data.workflows[0].pinnedVersion).toMatchObject({
+			versionId: 'version-pinned',
+		});
+		expect(response.body.data.workflows[0].baselineVersion).toBeNull();
+	});
+
+	test('returns a null pinned version when the child row pins nothing', async () => {
+		const workflow = await createWorkflow({}, teamProject);
+		const request = await seedRequest(workflow.id, null, owner);
+
+		const response = await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+		expect(response.body.data.workflows[0]).toMatchObject({
+			workflowVersionId: null,
+			pinnedVersion: null,
+			baselineVersion: null,
+		});
+	});
+
+	test('still serves the review after its workflow was deleted', async () => {
+		const workflow = await createWorkflow({}, teamProject);
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
+		const request = await seedRequest(workflow.id, 'version-pinned', owner);
+
+		// The child row FKs onto workflow_entity with ON DELETE CASCADE, so it goes too
+		await workflowEntityRepository.delete({ id: workflow.id });
+
+		const response = await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+		expect(response.body.data.id).toBe(request.id);
+		expect(response.body.data.workflows).toEqual([]);
+		expect(response.body.data.workflowName).toBeNull();
+		expect(response.body.data.workflowVersionId).toBeNull();
+	});
+
+	test('allows a project:editor holding workflow:publish in the review project', async () => {
+		const workflow = await createWorkflow({}, teamProject);
+		const request = await seedRequest(workflow.id, null, owner);
+
+		const response = await memberAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+		expect(response.body.data.id).toBe(request.id);
+	});
+
+	test('returns 404 for a project:viewer without workflow:publish', async () => {
+		const workflow = await createWorkflow({}, teamProject);
+		const request = await seedRequest(workflow.id, null, owner);
+
+		await viewerAgent.get(`/workflow-review-requests/${request.id}`).expect(404);
+	});
+
+	test('returns 404 for a member of an unrelated project', async () => {
+		const otherProject = await createTeamProject('Unrelated Project', owner);
+		const workflow = await createWorkflow({}, otherProject);
+		const request = await seedRequest(workflow.id, null, owner, otherProject.id);
+
+		await memberAgent.get(`/workflow-review-requests/${request.id}`).expect(404);
+	});
+
+	test('returns 404 when the reviewed workflow moved to a project the caller cannot read', async () => {
+		// Reproduces a post-transfer review — the row still points at `teamProject`,
+		// where member holds workflow:publish, while the workflow itself moved away
+		const destinationProject = await createTeamProject('Destination Project', owner);
+		const workflow = await createWorkflow({}, destinationProject);
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
+		const request = await seedRequest(workflow.id, 'version-pinned', owner, teamProject.id);
+
+		await memberAgent.get(`/workflow-review-requests/${request.id}`).expect(404);
+	});
+
+	test('shows requesters their own review even without publish scope in the project', async () => {
+		const workflow = await createWorkflow({}, teamProject);
+		const request = await seedRequest(workflow.id, null, viewer);
+
+		const response = await viewerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+		expect(response.body.data.id).toBe(request.id);
+	});
+
+	test('returns 404 for an unknown review request id', async () => {
+		await ownerAgent.get('/workflow-review-requests/unknown-request').expect(404);
+	});
+
+	test('does not capture the literal inbox, summary, and eligible-reviewers routes', async () => {
+		const workflow = await createWorkflow({}, teamProject);
+		await seedRequest(workflow.id, null, owner);
+
+		await ownerAgent.get('/workflow-review-requests/inbox').expect(200);
+		await ownerAgent.get('/workflow-review-requests/summary').expect(200);
+		// 400 (missing workflowId), not 404 — proves it is still the query-validated route
+		await ownerAgent.get('/workflow-review-requests/eligible-reviewers').expect(400);
+	});
+
+	test('returns 403 when the instance policy is disabled', async () => {
+		const workflow = await createWorkflow({}, teamProject);
+		const request = await seedRequest(workflow.id, null, owner);
+		await policyService.set(false);
+
+		await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(403);
+	});
+
+	test('returns 403 when the license lacks feat:workflowReviews', async () => {
+		testServer.license.disable('feat:workflowReviews');
+
+		await ownerAgent.get('/workflow-review-requests/some-request').expect(403);
+
+		testServer.license.enable('feat:workflowReviews');
 	});
 });
