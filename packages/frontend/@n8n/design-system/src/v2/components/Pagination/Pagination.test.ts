@@ -14,8 +14,8 @@ describe('v2/components/Pagination', () => {
 					total: 100,
 				},
 			});
-			const buttons = wrapper.container.querySelectorAll('button');
-			expect(buttons.length).toBeGreaterThan(0);
+			expect(wrapper.getByTestId('pagination-prev')).toBeInTheDocument();
+			expect(wrapper.getByTestId('pagination-next')).toBeInTheDocument();
 		});
 
 		it('should default to medium size', () => {
@@ -88,7 +88,7 @@ describe('v2/components/Pagination', () => {
 	});
 
 	describe('sizes', () => {
-		test.each(sizeCases)('size %s should apply %s class', (size) => {
+		test.each(sizeCases)('size %s should apply class', (size) => {
 			const wrapper = render(Pagination, {
 				props: {
 					total: 100,

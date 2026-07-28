@@ -488,6 +488,7 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 	field-sizing: content;
 	outline: none;
 	appearance: textfield;
+	-moz-appearance: textfield;
 
 	&:disabled {
 		cursor: not-allowed;
