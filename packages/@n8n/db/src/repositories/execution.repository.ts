@@ -21,6 +21,7 @@ import {
 	Repository,
 	And,
 } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { stringify } from 'flatted';
 import pick from 'lodash/pick';
@@ -149,6 +150,13 @@ const moreThanOrEqual = (date: string): unknown => {
 // This is the max number of elements in an IN-clause.
 // It's a conservative value, as some databases indicate limits around 1000.
 const MAX_UPDATE_BATCH_SIZE = 900;
+
+/** The single definition of what it means for an execution to have crashed. */
+const crashedExecutionCondition = (): QueryDeepPartialEntity<ExecutionEntity> => ({
+	status: 'crashed',
+	stoppedAt: new Date(),
+	waitTill: null,
+});
 
 @Service()
 export class ExecutionRepository extends Repository<ExecutionEntity> {
@@ -362,15 +370,25 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				// terminal status: recovery can race a `running` -> `waiting` transition and flag a
 				// healthy execution as dangling, but only genuinely in-progress rows should be crashed
 				{ id: In(batch), status: In(CRASHABLE_EXECUTION_STATUSES) },
-				{
-					status: 'crashed',
-					stoppedAt: new Date(),
-					waitTill: null,
-				},
+				crashedExecutionCondition(),
 			);
 			this.logger.info('Marked executions as `crashed`', { executionIds });
 			processed += batch.length;
 		}
+	}
+
+	/**
+	 * Mark executions enqueued before `before` as `crashed`. Used at startup so work
+	 * enqueued before a long outage is surfaced as failed instead of replayed late.
+	 * Filters on `createdAt` because `startedAt` is null while an execution is enqueued.
+	 */
+	async markStaleEnqueuedAsCrashed(before: Date): Promise<number> {
+		const result = await this.update(
+			{ status: 'new', createdAt: LessThan(before) },
+			crashedExecutionCondition(),
+		);
+
+		return result.affected ?? 0;
 	}
 
 	async setRunning(executionId: string) {

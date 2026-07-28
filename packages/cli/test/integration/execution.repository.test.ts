@@ -144,6 +144,19 @@ describe('UserRepository', () => {
 				conditions: undefined,
 				updateExpected: true,
 			},
+			// CAT-3862: executions enqueued before a restart are claimed while still `new`
+			{
+				statusInDB: 'new' as ExecutionStatus,
+				statusUpdate: 'running' as ExecutionStatus,
+				conditions: { requireStatus: 'new' as ExecutionStatus },
+				updateExpected: true,
+			},
+			{
+				statusInDB: 'new' as ExecutionStatus,
+				statusUpdate: 'running' as ExecutionStatus,
+				conditions: { requireStatus: 'waiting' as ExecutionStatus },
+				updateExpected: false,
+			},
 		])(
 			'should return $updateExpected with status before: "$statusInDB", status after: "$statusUpdate" and conditions: $conditions',
 			async ({ statusInDB, statusUpdate, conditions, updateExpected }) => {
@@ -307,5 +320,49 @@ describe('UserRepository', () => {
 			const row = await executionRepository.findOne({ where: { id: execution.id } });
 			expect(row?.status).toBe('canceled');
 		});
+	});
+
+	describe('markStaleEnqueuedAsCrashed', () => {
+		const eightDaysAgo = DateTime.utc().minus({ days: 8 }).toJSDate();
+
+		test('crashes executions enqueued before the cutoff', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution(
+				{ status: 'new', createdAt: eightDaysAgo, startedAt: null },
+				workflow,
+			);
+
+			const affected = await executionRepository.markStaleEnqueuedAsCrashed(new Date());
+
+			expect(affected).toBe(1);
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.status).toBe('crashed');
+			expect(row?.stoppedAt).toBeInstanceOf(Date);
+		});
+
+		test('leaves executions enqueued after the cutoff untouched', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ status: 'new', startedAt: null }, workflow);
+
+			const affected = await executionRepository.markStaleEnqueuedAsCrashed(eightDaysAgo);
+
+			expect(affected).toBe(0);
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.status).toBe('new');
+		});
+
+		test.each(['waiting', 'running', 'success'] as ExecutionStatus[])(
+			'leaves old %s executions untouched',
+			async (status) => {
+				const workflow = await createWorkflow({}, owner);
+				const execution = await createExecution({ status, createdAt: eightDaysAgo }, workflow);
+
+				const affected = await executionRepository.markStaleEnqueuedAsCrashed(new Date());
+
+				expect(affected).toBe(0);
+				const row = await executionRepository.findOneBy({ id: execution.id });
+				expect(row?.status).toBe(status);
+			},
+		);
 	});
 });

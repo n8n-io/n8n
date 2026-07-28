@@ -132,6 +132,17 @@ export interface IExecutionsCurrentSummary {
 	status: ExecutionStatus;
 }
 
+/**
+ * An already-persisted execution a process wants to take over, plus the status it must
+ * still be in for the claim to succeed. The status travels with the id so the takeover
+ * is a compare-and-swap: if the row moved on, another process already claimed it.
+ */
+export interface ResumableExecution {
+	executionId: string;
+	/** `waiting` for a row being resumed, `new` for one enqueued before a restart. */
+	expectedStatus: Extract<ExecutionStatus, 'new' | 'waiting'>;
+}
+
 export interface IExecutingWorkflowData {
 	executionData: IWorkflowExecutionDataProcess;
 	startedAt: Date;

@@ -116,13 +116,34 @@ describe('ActiveExecutions', () => {
 	});
 
 	test('Should update execution if add is called with execution ID', async () => {
-		const executionId = await activeExecutions.add(executionData, FAKE_SECOND_EXECUTION_ID);
+		const executionId = await activeExecutions.add(executionData, {
+			executionId: FAKE_SECOND_EXECUTION_ID,
+			expectedStatus: 'waiting',
+		});
 
 		expect(executionId).toBe(FAKE_SECOND_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
 		expect(executionPersistence.create).toHaveBeenCalledTimes(0);
 		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
 	});
+
+	// CAT-3862: the claim used to be hardcoded to `waiting`, so an execution
+	// enqueued before a restart (status `new`) could never be claimed.
+	test.each(['waiting', 'new'] as const)(
+		'Should only claim an existing execution while it is still in status %s',
+		async (expectedStatus) => {
+			await activeExecutions.add(executionData, {
+				executionId: FAKE_SECOND_EXECUTION_ID,
+				expectedStatus,
+			});
+
+			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+				FAKE_SECOND_EXECUTION_ID,
+				expect.objectContaining({ id: FAKE_SECOND_EXECUTION_ID, status: 'running' }),
+				{ requireStatus: expectedStatus },
+			);
+		},
+	);
 
 	test('Should forward deduplicationKey to executionPersistence.create', async () => {
 		const executionDataWithKey: IWorkflowExecutionDataProcess = {
@@ -143,9 +164,12 @@ describe('ActiveExecutions', () => {
 		// Mock updateExistingExecution to return false (status check failed)
 		executionPersistence.updateExistingExecution.mockResolvedValue(false);
 
-		await expect(activeExecutions.add(executionData, FAKE_SECOND_EXECUTION_ID)).rejects.toThrow(
-			'Execution is already being resumed by another process',
-		);
+		await expect(
+			activeExecutions.add(executionData, {
+				executionId: FAKE_SECOND_EXECUTION_ID,
+				expectedStatus: 'waiting',
+			}),
+		).rejects.toThrow('Execution is already being resumed by another process');
 
 		// Verify execution was NOT added to active executions
 		expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
@@ -156,9 +180,12 @@ describe('ActiveExecutions', () => {
 			// Mock updateExistingExecution to return false (another process is resuming)
 			executionPersistence.updateExistingExecution.mockResolvedValue(false);
 
-			await expect(activeExecutions.add(executionData, FAKE_SECOND_EXECUTION_ID)).rejects.toThrow(
-				'Execution is already being resumed by another process',
-			);
+			await expect(
+				activeExecutions.add(executionData, {
+					executionId: FAKE_SECOND_EXECUTION_ID,
+					expectedStatus: 'waiting',
+				}),
+			).rejects.toThrow('Execution is already being resumed by another process');
 
 			// Verify capacity was reserved and then released
 			expect(concurrencyControl.throttle).toHaveBeenCalledWith({
@@ -281,7 +308,10 @@ describe('ActiveExecutions', () => {
 		});
 
 		test('Should successfully attach execution to valid executionId', async () => {
-			await activeExecutions.add(executionData, FAKE_EXECUTION_ID);
+			await activeExecutions.add(executionData, {
+				executionId: FAKE_EXECUTION_ID,
+				expectedStatus: 'waiting',
+			});
 
 			expect(() =>
 				activeExecutions.attachWorkflowExecution(FAKE_EXECUTION_ID, workflowExecution),
@@ -290,7 +320,10 @@ describe('ActiveExecutions', () => {
 	});
 
 	test('Should attach and resolve response promise to existing execution', async () => {
-		await activeExecutions.add(executionData, FAKE_EXECUTION_ID);
+		await activeExecutions.add(executionData, {
+			executionId: FAKE_EXECUTION_ID,
+			expectedStatus: 'waiting',
+		});
 		activeExecutions.attachResponsePromise(FAKE_EXECUTION_ID, responsePromise);
 		const fakeResponse = { data: { resultData: { runData: {} } } };
 		activeExecutions.resolveResponsePromise(FAKE_EXECUTION_ID, fakeResponse);
@@ -307,7 +340,7 @@ describe('ActiveExecutions', () => {
 		expect(waitingExecution.responsePromise).toBeDefined();
 
 		// Resume the execution
-		await activeExecutions.add(executionData, executionId);
+		await activeExecutions.add(executionData, { executionId, expectedStatus: 'waiting' });
 
 		const resumedExecution = activeExecutions.getExecutionOrFail(executionId);
 		expect(resumedExecution.startedAt).toBe(waitingExecution.startedAt);
