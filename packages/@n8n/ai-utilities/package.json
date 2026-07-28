@@ -30,6 +30,9 @@
       ],
       "model-discovery": [
         "dist/esm/model-discovery/index.d.ts"
+      ],
+      "model-capabilities": [
+        "dist/esm/model-capabilities/index.d.ts"
       ]
     }
   },
@@ -78,6 +81,11 @@
       "types": "./dist/esm/model-discovery/index.d.ts",
       "import": "./dist/esm/model-discovery/index.js",
       "require": "./dist/cjs/model-discovery/index.js"
+    },
+    "./model-capabilities": {
+      "types": "./dist/esm/model-capabilities/index.d.ts",
+      "import": "./dist/esm/model-capabilities/index.js",
+      "require": "./dist/cjs/model-capabilities/index.js"
     },
     "./*": "./*"
   },

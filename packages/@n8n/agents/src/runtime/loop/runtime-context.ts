@@ -268,7 +268,10 @@ export class RuntimeContextBuilder {
 		if (!this.config.thinking) return undefined;
 
 		const provider = providerIdFromModelId(this.modelId);
-		return getProviderQuirks(provider).thinkingToProviderOptions?.(this.config.thinking);
+		return getProviderQuirks(provider).thinkingToProviderOptions?.(
+			this.config.thinking,
+			this.modelId,
+		);
 	}
 
 	/**

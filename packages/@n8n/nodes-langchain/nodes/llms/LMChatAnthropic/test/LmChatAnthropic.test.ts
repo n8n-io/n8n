@@ -807,7 +807,7 @@ describe('LmChatAnthropic', () => {
 			expect(callArgs).not.toHaveProperty('topP');
 		});
 
-		it.each(['claude-opus-4-7-20251101', 'claude-opus-4-8'])(
+		it.each(['claude-opus-4-7-20251101', 'claude-opus-4-8', 'claude-opus-5'])(
 			'should throw NodeOperationError when manual mode is selected on %s',
 			async (modelName) => {
 				const mockContext = setupMockContext({ typeVersion: 1.5 });
@@ -850,31 +850,34 @@ describe('LmChatAnthropic', () => {
 			);
 		});
 
-		it('should use adaptive thinking for Opus 4.8 when thinking=true on v1.4', async () => {
-			const mockContext = setupMockContext({ typeVersion: 1.4 });
+		it.each(['claude-opus-4-8', 'claude-opus-5'])(
+			'should use adaptive thinking for %s when thinking=true on v1.4',
+			async (modelName) => {
+				const mockContext = setupMockContext({ typeVersion: 1.4 });
 
-			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'model.value') return 'claude-opus-4-8';
-				if (paramName === 'options')
-					return { thinking: true, thinkingBudget: 1500, maxTokensToSample: 4096 };
-				return undefined;
-			});
+				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model.value') return modelName;
+					if (paramName === 'options')
+						return { thinking: true, thinkingBudget: 1500, maxTokensToSample: 4096 };
+					return undefined;
+				});
 
-			await lmChatAnthropic.supplyData.call(mockContext, 0);
+				await lmChatAnthropic.supplyData.call(mockContext, 0);
 
-			expect(MockedChatAnthropic).toHaveBeenCalledWith(
-				expect.objectContaining({
-					invocationKwargs: {
-						thinking: { type: 'adaptive' },
-						output_config: { effort: 'medium' },
-						max_tokens: 4096,
-						top_k: undefined,
-						top_p: undefined,
-						temperature: undefined,
-					},
-				}),
-			);
-		});
+				expect(MockedChatAnthropic).toHaveBeenCalledWith(
+					expect.objectContaining({
+						invocationKwargs: {
+							thinking: { type: 'adaptive' },
+							output_config: { effort: 'medium' },
+							max_tokens: 4096,
+							top_k: undefined,
+							top_p: undefined,
+							temperature: undefined,
+						},
+					}),
+				);
+			},
+		);
 
 		it('should emit empty invocationKwargs when thinking=false on v1.4', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.4 });

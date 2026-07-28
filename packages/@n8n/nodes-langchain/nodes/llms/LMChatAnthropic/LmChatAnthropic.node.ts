@@ -6,6 +6,7 @@ import {
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
+import { anthropicModelRequiresAdaptiveThinking } from '@n8n/ai-utilities/model-capabilities';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -112,11 +113,6 @@ function modelSupportsSamplingParams(modelName: string): boolean {
 	}
 
 	return false;
-}
-
-function modelRequiresAdaptiveThinking(modelName: string): boolean {
-	const minorVersion = modelName.match(/^claude-opus-4-(\d+)(?:-\d{8})?$/)?.[1];
-	return minorVersion !== undefined && Number(minorVersion) >= 7;
 }
 
 export class LmChatAnthropic implements INodeType {
@@ -520,7 +516,7 @@ export class LmChatAnthropic implements INodeType {
 			streaming?: boolean;
 		};
 
-		const requiresAdaptiveThinking = modelRequiresAdaptiveThinking(modelName);
+		const requiresAdaptiveThinking = anthropicModelRequiresAdaptiveThinking(modelName);
 		const thinkingMode: 'disabled' | 'adaptive' | 'manual' =
 			version >= 1.5
 				? (options.thinkingMode ?? 'disabled')
