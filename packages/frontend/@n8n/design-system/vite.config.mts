@@ -47,12 +47,16 @@ export default mergeConfig(
 			}),
 			dts({
 				tsconfigPath: resolve(__dirname, 'tsconfig.build.json'),
-				// One flattened .d.ts per entry. Per-file declarations are not an
-				// option here: vue-tsc cannot name vue-router's global
-				// `ComponentCustomProperties` augmentation or `@vue/shared`'s
-				// `LooseRequired` through pnpm's hashed paths, and silently skips the
-				// declaration for every component whose template context touches them
-				// (TS2883). Rolling up hoists those types into the bundle instead.
+				// Per-file declarations, deliberately. Driving the emit through this
+				// plugin instead of a bare `vue-tsc` is what fixes the TS2883 silent
+				// skips (vue-router's global `ComponentCustomProperties` augmentation
+				// and `@vue/shared`'s `LooseRequired` not being nameable through
+				// pnpm's hashed paths) — the flattening does not.
+				//
+				// Flattening was tried and rejected: api-extractor cannot follow `.vue`
+				// module specifiers, so it leaves dangling relative imports such as
+				// `from './Select.vue'` and degrades those components to `any`. Keeping
+				// per-file declarations also preserves types on deep paths.
 				rollupTypes: false,
 				entryRoot: resolve(__dirname, 'src'),
 			}),
@@ -79,10 +83,11 @@ export default mergeConfig(
 			// UMD is dropped: with ~40 externals a UMD bundle would need a `globals`
 			// entry per dependency, and every consumer of a Vue SFC library uses a
 			// bundler anyway. ESM only, matching `"type": "module"`.
-			// A single entry, so the rolled-up declarations have a single root. The
-			// lucide loader is re-exported from `src/index.ts` rather than being its
-			// own entry: that keeps the 16 icon buckets baked into dist as lazy
-			// chunks (they are dynamic imports) without a second types bundle.
+			// A single entry, so the declarations have a single root and the `exports`
+			// allowlist stays small. The lucide loader is re-exported from
+			// `src/index.ts` rather than being its own entry: that keeps the 16 icon
+			// buckets baked into dist as lazy chunks (they are dynamic imports)
+			// without a second entry point to service.
 			lib: {
 				entry: { index: resolve(__dirname, 'src', 'index.ts') },
 				formats: ['es'],

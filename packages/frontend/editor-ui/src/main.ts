@@ -18,8 +18,7 @@ import '@/app/dev/i18nHmr';
 import App from '@/app/App.vue';
 import router from '@/app/router';
 
-import { IconBodyLoaderKey } from '@n8n/design-system';
-import { loadLucideIconBody } from '@n8n/design-system';
+import { IconBodyLoaderKey, loadLucideIconBody } from '@n8n/design-system';
 import { i18nInstance } from '@n8n/i18n';
 
 import { TelemetryPlugin } from '@/app/plugins/telemetry';
