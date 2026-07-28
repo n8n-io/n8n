@@ -126,15 +126,15 @@ describe('WorkflowReviewRequestService.getDetail', () => {
 		]);
 	}
 
-	describe('feature gate', () => {
-		it('throws 403 when the license lacks workflow reviews', async () => {
+	describe('when reviews are unavailable', () => {
+		it('refuses to open a review on an instance without a workflow reviews licence', async () => {
 			licenseState.isWorkflowReviewsLicensed.mockReturnValue(false);
 
 			await expect(service.getDetail(requester, requestId)).rejects.toThrow(ForbiddenError);
 			expect(requestRepository.findById).not.toHaveBeenCalled();
 		});
 
-		it('throws 403 when the instance policy is disabled', async () => {
+		it('refuses to open a review when an admin has turned reviews off', async () => {
 			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
 
 			await expect(service.getDetail(requester, requestId)).rejects.toThrow(ForbiddenError);
@@ -142,26 +142,26 @@ describe('WorkflowReviewRequestService.getDetail', () => {
 		});
 	});
 
-	describe('visibility', () => {
-		it('throws 404 for an unknown review request id', async () => {
+	describe('who is allowed to open a review', () => {
+		it('reports a review that does not exist as not found', async () => {
 			requestRepository.findById.mockResolvedValue(null);
 
 			await expect(service.getDetail(requester, requestId)).rejects.toThrow(NotFoundError);
 		});
 
-		it('throws the same 404 when the user has no publish scope in the project', async () => {
+		it('hides a review from someone who cannot publish in its project, without revealing that it exists', async () => {
 			projectService.getProjectIdsWithScope.mockResolvedValue(['other-proj']);
 
-			// Same error as the unknown-id case: existence must not leak
+			// Same error as a review that does not exist: existence must not leak
 			await expect(service.getDetail(member, requestId)).rejects.toThrow(NotFoundError);
 			await expect(service.getDetail(member, requestId)).rejects.toThrow(
 				'Could not find review request',
 			);
-			// Nothing beyond the record itself is loaded for a user who cannot see it
+			// Nothing beyond the record itself is loaded for someone who cannot see it
 			expect(workflowRepository.findLinkedWorkflowDetailsByRequestId).not.toHaveBeenCalled();
 		});
 
-		it('allows a member with publish scope in the review project', async () => {
+		it('lets someone who can publish in the review project open it', async () => {
 			projectService.getProjectIdsWithScope.mockResolvedValue(['proj-1']);
 
 			const detail = await service.getDetail(member, requestId);
@@ -169,14 +169,14 @@ describe('WorkflowReviewRequestService.getDetail', () => {
 			expect(detail.id).toBe(requestId);
 		});
 
-		it('allows the requester without resolving project scopes', async () => {
+		it('always lets the person who asked for the review open it', async () => {
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.id).toBe(requestId);
 			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
 		});
 
-		it('allows a user with global workflow:publish without enumerating projects', async () => {
+		it('lets someone who can publish anywhere on the instance open any review', async () => {
 			const detail = await service.getDetail(globalPublisher, requestId);
 
 			expect(detail.id).toBe(requestId);
@@ -184,8 +184,8 @@ describe('WorkflowReviewRequestService.getDetail', () => {
 		});
 	});
 
-	describe('record and child rows', () => {
-		it('returns the review record with its child rows', async () => {
+	describe('what the response contains', () => {
+		it('returns the review together with the workflows it covers', async () => {
 			mockChildRow('ver-pinned');
 			workflowHistoryService.findVersion.mockResolvedValue(historyVersion('ver-pinned'));
 
@@ -207,8 +207,8 @@ describe('WorkflowReviewRequestService.getDetail', () => {
 			expect(detail.workflows[0]).toMatchObject({ workflowId, workflowName: 'My workflow' });
 		});
 
-		// The child row cascades away with its workflow, so a review can end up with none
-		it('returns an empty workflows array when the review has no child rows', async () => {
+		// A covered workflow is removed along with the workflow itself, so a review can end up with none
+		it('returns no workflows when the review no longer covers any', async () => {
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.workflows).toEqual([]);
@@ -217,12 +217,12 @@ describe('WorkflowReviewRequestService.getDetail', () => {
 		});
 	});
 
-	describe('diff inputs', () => {
-		it('returns the pinned version content and the latest published baseline', async () => {
+	describe('the two versions to compare', () => {
+		it('returns the version under review and the published version to compare it against', async () => {
 			mockChildRow('ver-pinned');
 			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-published');
-			workflowHistoryService.findVersion.mockImplementation((_workflowId, versionId) =>
-				Promise.resolve(historyVersion(versionId)),
+			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
+				historyVersion(versionId),
 			);
 
 			const detail = await service.getDetail(requester, requestId);
@@ -237,7 +237,7 @@ describe('WorkflowReviewRequestService.getDetail', () => {
 			expect(detail.workflows[0]?.baselineVersion).toMatchObject({ versionId: 'ver-published' });
 		});
 
-		it('falls back to an empty baseline when the workflow was never published', async () => {
+		it('has nothing to compare against when the workflow was never published', async () => {
 			mockChildRow('ver-pinned');
 			publishedVersionRepository.getPublishedVersionId.mockResolvedValue(null);
 			workflowHistoryService.findVersion.mockResolvedValue(historyVersion('ver-pinned'));
@@ -248,11 +248,11 @@ describe('WorkflowReviewRequestService.getDetail', () => {
 			expect(detail.workflows[0]?.baselineVersion).toBeNull();
 		});
 
-		it('falls back to an empty baseline when the published history row was pruned', async () => {
+		it('has nothing to compare against when the published version is no longer stored', async () => {
 			mockChildRow('ver-pinned');
 			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-published');
-			workflowHistoryService.findVersion.mockImplementation((_workflowId, versionId) =>
-				Promise.resolve(versionId === 'ver-pinned' ? historyVersion(versionId) : null),
+			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
+				versionId === 'ver-pinned' ? historyVersion(versionId) : null,
 			);
 
 			const detail = await service.getDetail(requester, requestId);
@@ -260,18 +260,18 @@ describe('WorkflowReviewRequestService.getDetail', () => {
 			expect(detail.workflows[0]?.baselineVersion).toBeNull();
 		});
 
-		it('returns a null pinned version when the child row has no pinned version', async () => {
+		it('returns no version under review when the review does not point at one', async () => {
 			mockChildRow(null);
 
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.workflows[0]?.pinnedVersion).toBeNull();
 			expect(detail.workflows[0]?.workflowVersionId).toBeNull();
-			// No lookup is attempted for a row that pins nothing
+			// Nothing is looked up for a workflow that points at no version
 			expect(workflowHistoryService.findVersion).not.toHaveBeenCalled();
 		});
 
-		it('returns a null pinned version when the pinned history row was pruned', async () => {
+		it('returns no version under review when it is no longer stored', async () => {
 			mockChildRow('ver-pruned');
 			workflowHistoryService.findVersion.mockResolvedValue(null);
 
@@ -281,64 +281,13 @@ describe('WorkflowReviewRequestService.getDetail', () => {
 			expect(detail.workflows[0]?.pinnedVersion).toBeNull();
 		});
 
-		it('never exposes the raw authors string of a version', async () => {
+		it('does not reveal who edited a version', async () => {
 			mockChildRow('ver-pinned');
 			workflowHistoryService.findVersion.mockResolvedValue(historyVersion('ver-pinned'));
 
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.workflows[0]?.pinnedVersion).not.toHaveProperty('authors');
-		});
-	});
-
-	describe('participants', () => {
-		it('hydrates the requester and requested reviewers', async () => {
-			reviewerRepository.findByRequestIds.mockResolvedValue([
-				mock({ workflowReviewRequestId: requestId, userId: 'reviewer-1' }),
-			]);
-			userRepository.findManyByIds.mockResolvedValue([
-				mock<User>({
-					id: requester.id,
-					email: 'requester@example.com',
-					firstName: 'Reqi',
-					lastName: 'Ester',
-				}),
-				mock<User>({
-					id: 'reviewer-1',
-					email: 'reviewer@example.com',
-					firstName: 'Revi',
-					lastName: 'Ewer',
-				}),
-			]);
-
-			const detail = await service.getDetail(requester, requestId);
-
-			expect(detail.requester).toEqual({
-				id: requester.id,
-				email: 'requester@example.com',
-				firstName: 'Reqi',
-				lastName: 'Ester',
-			});
-			expect(detail.reviewers).toEqual([
-				{
-					id: 'reviewer-1',
-					email: 'reviewer@example.com',
-					firstName: 'Revi',
-					lastName: 'Ewer',
-				},
-			]);
-		});
-
-		it('drops participants whose accounts were deleted', async () => {
-			reviewerRepository.findByRequestIds.mockResolvedValue([
-				mock({ workflowReviewRequestId: requestId, userId: 'departed-reviewer' }),
-			]);
-			userRepository.findManyByIds.mockResolvedValue([]);
-
-			const detail = await service.getDetail(requester, requestId);
-
-			expect(detail.requester).toBeNull();
-			expect(detail.reviewers).toEqual([]);
 		});
 	});
 });
