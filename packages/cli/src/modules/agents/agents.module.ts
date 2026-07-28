@@ -37,9 +37,9 @@ export class AgentsModule implements ModuleInterface {
 		// Register blob backends for agent execution logs and knowledge files.
 		// The fs backend is always available; s3/az reuse the clients base-command
 		// already initialized (initBinaryDataService runs before module init in
-		// all commands) and are only registered when that init succeeded —
-		// mirroring ExecutionDataJsonStore, so a configured-but-unreachable
-		// backend degrades instead of throwing.
+		// all commands), which exits the process when the configured execution
+		// data backend cannot be reached — so a live process in s3/az mode always
+		// has that location registered here.
 		const { AgentExecutionLogStore } = await import('./execution-log/agent-execution-log-store.js');
 		const { AgentKnowledgeFileStore } = await import('./agent-knowledge-file-store.js');
 		const { ExecutionDataJsonStore } = await import(

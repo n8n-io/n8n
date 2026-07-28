@@ -338,7 +338,7 @@ it('should throw FileTooLargeError when copying oversized file by path', async (
 	}
 });
 
-it('should leave other source types alone when deleting agent files by file id', async () => {
+it('should leave other source types alone when deleting by file id', async () => {
 	const { fileId: agentFileId } = await dbManager.store(
 		{
 			type: 'custom',
@@ -355,7 +355,7 @@ it('should leave other source types alone when deleting agent files by file id',
 		{ mimeType: 'text/plain', fileName: 'run.txt' },
 	);
 
-	await repository.deleteAgentFilesByFileIds([agentFileId, executionFileId]);
+	await repository.deleteByFileIds('agent_file', [agentFileId, executionFileId]);
 
 	await expect(repository.existsBy({ fileId: agentFileId })).resolves.toBe(false);
 	await expect(repository.existsBy({ fileId: executionFileId })).resolves.toBe(true);

@@ -10,7 +10,7 @@ import { StorageConfig } from '@/storage.config';
  * carries no DI decorators, so injecting one requires a registered subclass.
  */
 @Service()
-export class StorageFsByteStore extends FsByteStore {
+export class FsByteStoreService extends FsByteStore {
 	constructor(storageConfig: StorageConfig, errorReporter: ErrorReporter) {
 		super({
 			storagePath: storageConfig.storagePath,

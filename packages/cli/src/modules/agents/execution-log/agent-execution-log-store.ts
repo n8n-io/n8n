@@ -1,6 +1,6 @@
 import { JsonStore } from '@n8n/blob-storage';
 import { Service } from '@n8n/di';
-import { ErrorReporter, StorageFsByteStore } from 'n8n-core';
+import { ErrorReporter, FsByteStoreService } from 'n8n-core';
 
 import { AgentExecutionLogWriteError } from './agent-execution-log-write.error';
 import { CorruptedAgentExecutionLogError } from './corrupted-agent-execution-log.error';
@@ -20,7 +20,7 @@ export class AgentExecutionLogStore extends JsonStore<
 	AgentExecutionLogRef,
 	AgentExecutionLogPayload
 > {
-	constructor(fsByteStore: StorageFsByteStore, errorReporter: ErrorReporter) {
+	constructor(fsByteStore: FsByteStoreService, errorReporter: ErrorReporter) {
 		super({
 			byteStores: { fs: fsByteStore },
 			version: AGENT_EXECUTION_LOG_VERSION,

@@ -1,4 +1,3 @@
-import { Logger } from '@n8n/backend-common';
 import { binaryToBuffer } from '@n8n/backend-network';
 import {
 	ByteStoreRegistry,
@@ -9,7 +8,7 @@ import {
 } from '@n8n/blob-storage';
 import { BinaryDataRepository, type ExecutionDataStorageLocation } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ErrorReporter, StorageConfig, StorageFsByteStore } from 'n8n-core';
+import { ErrorReporter, FsByteStoreService, StorageConfig } from 'n8n-core';
 import type { Readable } from 'node:stream';
 import { v4 as uuid } from 'uuid';
 
@@ -39,11 +38,10 @@ export class AgentKnowledgeFileStore {
 	private readonly byteStores: ByteStoreRegistry;
 
 	constructor(
-		fsByteStore: StorageFsByteStore,
+		fsByteStore: FsByteStoreService,
 		private readonly storageConfig: StorageConfig,
 		private readonly binaryDataRepository: BinaryDataRepository,
 		private readonly errorReporter: ErrorReporter,
-		private readonly logger: Logger,
 	) {
 		this.byteStores = new ByteStoreRegistry({ fs: fsByteStore });
 	}
@@ -57,7 +55,7 @@ export class AgentKnowledgeFileStore {
 		body: Buffer | Readable,
 		metadata: PreWriteBlobMetadata,
 	): Promise<StoredAgentKnowledgeFile> {
-		const storedAt = this.resolveWriteLocation();
+		const storedAt = this.storageConfig.modeTag;
 
 		if (storedAt === 'db') {
 			const buffer = await binaryToBuffer(body);
@@ -100,7 +98,8 @@ export class AgentKnowledgeFileStore {
 		await Promise.all(
 			[...groups].map(async ([loc, group]) => {
 				if (loc === 'db') {
-					await this.binaryDataRepository.deleteAgentFilesByFileIds(
+					await this.binaryDataRepository.deleteByFileIds(
+						'agent_file',
 						group.map((file) => file.storageKey),
 					);
 					return;
@@ -114,29 +113,6 @@ export class AgentKnowledgeFileStore {
 				await store.delete(this.keysToDelete(loc, group));
 			}),
 		);
-	}
-
-	/**
-	 * The configured location, or `fs` when its byte store never registered
-	 * because the client failed to initialize. Uploads are user-initiated, so
-	 * degrading to the always-available local store beats rejecting the request;
-	 * `storedAt` records where the bytes actually landed either way.
-	 *
-	 * On multi-main the fallback is per-instance: only the main that took the
-	 * upload can read those bytes back, so the warning is the signal to fix the
-	 * backend rather than something to leave running.
-	 */
-	private resolveWriteLocation(): ExecutionDataStorageLocation {
-		const configured = this.storageConfig.modeTag;
-
-		if (configured === 'db' || this.byteStores.has(configured)) return configured;
-
-		this.logger.warn(
-			'Agent knowledge file storage is not configured, falling back to the filesystem',
-			{ storedAt: configured },
-		);
-
-		return 'fs';
 	}
 
 	private keysToDelete(loc: StorageLocation, files: StoredAgentKnowledgeFile[]): string[] {

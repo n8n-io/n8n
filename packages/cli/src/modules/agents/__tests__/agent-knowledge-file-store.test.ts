@@ -1,4 +1,3 @@
-import type { Logger } from '@n8n/backend-common';
 import { FsByteStore, SkippedEntryDeletionError } from '@n8n/blob-storage';
 import type { BinaryDataRepository } from '@n8n/db';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
@@ -21,7 +20,6 @@ describe('AgentKnowledgeFileStore', () => {
 	let storagePath: string;
 	let binaryDataRepository: ReturnType<typeof mock<BinaryDataRepository>>;
 	let errorReporter: ReturnType<typeof mock<ErrorReporter>>;
-	let logger: ReturnType<typeof mock<Logger>>;
 	let fsByteStore: FsByteStore;
 	let store: AgentKnowledgeFileStore;
 
@@ -31,7 +29,6 @@ describe('AgentKnowledgeFileStore', () => {
 			{ storagePath, modeTag } as StorageConfig,
 			binaryDataRepository,
 			errorReporter,
-			logger,
 		);
 	}
 
@@ -45,7 +42,6 @@ describe('AgentKnowledgeFileStore', () => {
 		}
 		binaryDataRepository = mock<BinaryDataRepository>();
 		errorReporter = mock<ErrorReporter>();
-		logger = mock<Logger>();
 		fsByteStore = new FsByteStore({ storagePath, reportError: () => {} });
 		store = makeStore('fs');
 	});
@@ -107,16 +103,14 @@ describe('AgentKnowledgeFileStore', () => {
 		await expect(store.readAsBuffer(stored)).resolves.toEqual(body);
 	});
 
-	it('writes to the filesystem when the configured location has no byte store', async () => {
+	it('throws when writing to a location that has no byte store', async () => {
 		store = makeStore('s3');
-		const body = Buffer.from('fallback-bytes', 'utf-8');
 
-		const stored = await store.write({ agentId: 'agent-1', fileId: 'file-3' }, body, {
-			mimeType: 'text/plain',
-		});
-
-		expect(stored.storedAt).toBe('fs');
-		await expect(store.readAsBuffer(stored)).resolves.toEqual(body);
+		await expect(
+			store.write({ agentId: 'agent-1', fileId: 'file-3' }, Buffer.from('bytes', 'utf-8'), {
+				mimeType: 'text/plain',
+			}),
+		).rejects.toThrow(UnexpectedError);
 	});
 
 	it('returns null for a missing blob', async () => {
@@ -149,7 +143,7 @@ describe('AgentKnowledgeFileStore', () => {
 		).resolves.toBeUndefined();
 
 		await expect(store.readAsBuffer(kept)).resolves.toBeNull();
-		expect(binaryDataRepository.deleteAgentFilesByFileIds).toHaveBeenCalledWith([
+		expect(binaryDataRepository.deleteByFileIds).toHaveBeenCalledWith('agent_file', [
 			'9c1f4b7a-2d3e-4f5a-8b6c-7d8e9f0a1b2c',
 		]);
 		expect(errorReporter.error).toHaveBeenCalledWith(expect.any(SkippedEntryDeletionError));

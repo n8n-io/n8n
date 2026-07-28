@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable n8n-local-rules/no-uncaught-json-parse */
 
-import type { ErrorReporter, StorageFsByteStore } from 'n8n-core';
+import type { ErrorReporter, FsByteStoreService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { CorruptedExecutionDataError } from '../corrupted-execution-data.error';
@@ -10,12 +10,12 @@ import { ExecutionDataWriteError } from '../execution-data-write.error';
 import { createExecutionRef } from '../types';
 import { executionId, payload, ref, workflowId } from './mocks';
 
-let fsByteStore: ReturnType<typeof mock<StorageFsByteStore>>;
+let fsByteStore: ReturnType<typeof mock<FsByteStoreService>>;
 let errorReporter: ReturnType<typeof mock<ErrorReporter>>;
 let store: ExecutionDataJsonStore;
 
 beforeEach(() => {
-	fsByteStore = mock<StorageFsByteStore>();
+	fsByteStore = mock<FsByteStoreService>();
 	errorReporter = mock<ErrorReporter>();
 	store = new ExecutionDataJsonStore(fsByteStore, errorReporter);
 });
