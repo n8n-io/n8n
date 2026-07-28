@@ -203,6 +203,16 @@ export function isThinkingBlock(block: unknown): block is ThinkingContentBlock {
 }
 
 /**
+ * Internal key used to stash the original user-supplied `tool` argument on the
+ * engine request input before the routing key is injected. The MCP Client Tool
+ * reads it back in `runToolCall` and restores the user's value after stripping
+ * internal metadata but before schema filtering, so a schema parameter that
+ * happens to be named `tool` still receives the value the LLM originally
+ * supplied.
+ */
+export const INTERNAL_TOOL_ARG_STASH_KEY = '_n8nOriginalToolArg';
+
+/**
  * Type guard to check if a block is a redacted thinking content block
  */
 export function isRedactedThinkingBlock(block: unknown): block is RedactedThinkingContentBlock {
