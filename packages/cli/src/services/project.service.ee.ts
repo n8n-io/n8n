@@ -65,6 +65,7 @@ class ProjectNotFoundError extends NotFoundError {
 export interface ProjectCreateOverrides {
 	id?: string;
 	description?: string | null;
+	customTelemetryTags?: Array<{ key: string; value: string }>;
 }
 
 @Service()

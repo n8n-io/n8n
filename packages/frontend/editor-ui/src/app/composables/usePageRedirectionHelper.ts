@@ -1,7 +1,7 @@
 import { confirmIfBuilderStreaming } from '@/features/ai/assistant/composables/useBuilderStreamingGuard';
-import { usePageRedirectionHelper as useBasePageRedirectionHelper } from './usePageRedirectionHelper.core';
+import { useBasePageRedirectionHelper } from './useBasePageRedirectionHelper';
 
-export type { UpgradeRedirectGuard } from './usePageRedirectionHelper.core';
+export type { UpgradeRedirectGuard } from './useBasePageRedirectionHelper';
 
 /**
  * App-facing `usePageRedirectionHelper`, pre-bound with the AI builder streaming
