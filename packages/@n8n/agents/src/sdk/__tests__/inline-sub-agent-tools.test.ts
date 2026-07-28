@@ -255,6 +255,55 @@ describe('inline sub-agent tool filtering', () => {
 		expect(runtimeConfigs[0]?.providerTools).toBeUndefined();
 	});
 
+	it('does not inherit parent thinking when difficulty selects a different provider', async () => {
+		const agent = new Agent('parent').model('openai', 'gpt-4o-mini').thinking('openai', {
+			reasoningEffort: 'high',
+		});
+		const runner = (agent as unknown as AgentWithInlineRunner).createInlineSubAgentRunner({
+			deferredTools: [],
+			modelConfig: 'openai/gpt-4o-mini',
+			tools: [makeTool('lookup')],
+			inlineSubAgentModelsByDifficulty: { high: 'anthropic/claude-sonnet-4-5' },
+		});
+
+		await runner({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: '/root/research',
+			childCount: 0,
+			difficulty: 'high',
+		});
+
+		expect(runtimeConfigs).toHaveLength(1);
+		expect(runtimeConfigs[0]?.model).toBe('anthropic/claude-sonnet-4-5');
+		expect(runtimeConfigs[0]?.thinking).toBeUndefined();
+	});
+
+	it('keeps parent thinking when difficulty keeps the same provider', async () => {
+		const thinking = { reasoningEffort: 'high' as const };
+		const agent = new Agent('parent').model('openai', 'gpt-4o-mini').thinking('openai', thinking);
+		const runner = (agent as unknown as AgentWithInlineRunner).createInlineSubAgentRunner({
+			deferredTools: [],
+			modelConfig: 'openai/gpt-4o-mini',
+			tools: [makeTool('lookup')],
+			inlineSubAgentModelsByDifficulty: { high: 'openai/o3-mini' },
+		});
+
+		await runner({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: '/root/research',
+			childCount: 0,
+			difficulty: 'high',
+		});
+
+		expect(runtimeConfigs).toHaveLength(1);
+		expect(runtimeConfigs[0]?.model).toBe('openai/o3-mini');
+		expect(runtimeConfigs[0]?.thinking).toEqual(thinking);
+	});
+
 	it('inherits generic reasoning when difficulty selects a different provider', async () => {
 		const agent = new Agent('parent').model('openai', 'gpt-4o-mini').reasoning('high');
 		const runner = (agent as unknown as AgentWithInlineRunner).createInlineSubAgentRunner({

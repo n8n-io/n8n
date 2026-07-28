@@ -23,6 +23,7 @@ export interface AgentBuilder {
 	deferredTool(t: BuiltTool | BuiltTool[], options?: { search?: { topK?: number } }): this;
 	skills(sourceOrSkills: RuntimeSkillSource | RuntimeSkill[]): this;
 	providerTool(t: BuiltProviderTool): this;
+	thinking(provider: string, config?: Record<string, unknown>): this;
 	reasoning(level?: ReasoningLevel): this;
 	toolCallConcurrency(n: number): this;
 	memory(m: unknown): this;

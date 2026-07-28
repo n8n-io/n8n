@@ -17,7 +17,11 @@ import { loadAi } from '../model/lazy-ai';
 import type { AgentMessageList } from '../model/message-list';
 import { createModel } from '../model/model-factory';
 import { buildCallPromptCacheOptions, mergeProviderOptions } from '../model/prompt-cache';
-import { PROVIDER_QUIRKS } from '../model/provider-quirks';
+import {
+	getProviderQuirks,
+	PROVIDER_QUIRKS,
+	providerIdFromModelId,
+} from '../model/provider-quirks';
 import type { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
 
@@ -261,18 +265,28 @@ export class RuntimeContextBuilder {
 		};
 	}
 
+	/** Build the providerOptions object for thinking/reasoning config. */
+	private buildThinkingProviderOptions(): Record<string, Record<string, unknown>> | undefined {
+		if (!this.config.thinking) return undefined;
+
+		const provider = providerIdFromModelId(this.modelId);
+		return getProviderQuirks(provider).thinkingToProviderOptions?.(this.config.thinking);
+	}
+
 	/**
-	 * Merge generated OpenAI cache options and caller-supplied providerOptions.
-	 * Per-provider keys are merged shallowly, with caller values winning.
+	 * Merge thinking providerOptions, generated OpenAI cache options, and
+	 * caller-supplied providerOptions. Per-provider keys are merged shallowly
+	 * (later wins) so `.thinking()` + prompt caching + caller overrides coexist.
 	 */
 	private buildCallProviderOptions(
 		runProviderOptions?: ProviderOptions,
 	): Record<string, Record<string, unknown>> | undefined {
+		const thinkingOpts = this.buildThinkingProviderOptions() as ProviderOptions | undefined;
 		const cacheOpts = buildCallPromptCacheOptions(this.config.promptCaching, this.modelId, {
 			agentName: this.config.name,
 			instructions: this.config.instructions,
 		});
-		return mergeProviderOptions(cacheOpts, runProviderOptions) as
+		return mergeProviderOptions(thinkingOpts, cacheOpts, runProviderOptions) as
 			| Record<string, Record<string, unknown>>
 			| undefined;
 	}

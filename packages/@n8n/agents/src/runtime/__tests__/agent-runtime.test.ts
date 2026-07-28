@@ -4711,6 +4711,31 @@ describe('reasoning', () => {
 	});
 });
 
+describe('provider-specific thinking', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('maps a fixed Anthropic thinking budget into providerOptions', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are a test assistant.',
+			thinking: { budgetTokens: 4096 },
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		expect(callArgs.reasoning).toBeUndefined();
+		expect(callArgs.providerOptions).toEqual({
+			anthropic: { thinking: { type: 'enabled', budgetTokens: 4096 } },
+		});
+	});
+});
+
 // ---------------------------------------------------------------------------
 // Instruction providerOptions
 // ---------------------------------------------------------------------------

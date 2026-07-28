@@ -35,6 +35,7 @@ import type {
 	SerializableAgentState,
 	StreamChunk,
 	StreamResult,
+	ThinkingConfig,
 	TitleGenerationConfig,
 	TokenUsage,
 } from '../../types';
@@ -95,6 +96,7 @@ export interface AgentRuntimeConfig {
 	episodicMemory?: EpisodicMemoryConfig;
 	structuredOutput?: z.ZodType | JSONSchema7;
 	checkpointStorage?: 'memory' | CheckpointStore;
+	thinking?: ThinkingConfig;
 	reasoning?: ReasoningLevel;
 	promptCaching?: PromptCachingConfig;
 	eventBus?: AgentEventBus;

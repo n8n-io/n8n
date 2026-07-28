@@ -20,6 +20,15 @@ export type {
 	AgentDbMessage,
 } from './sdk/message';
 
+export type {
+	Provider,
+	AnthropicThinkingConfig,
+	OpenAIThinkingConfig,
+	GoogleThinkingConfig,
+	XaiThinkingConfig,
+	ThinkingConfigFor,
+	ThinkingConfig,
+} from './sdk/provider';
 export type { ReasoningLevel } from './sdk/reasoning';
 
 export type {

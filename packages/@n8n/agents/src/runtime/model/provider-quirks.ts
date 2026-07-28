@@ -1,5 +1,12 @@
 import type { ProviderId } from './provider-credentials';
-import type { JSONObject } from '../../types';
+import type {
+	AnthropicThinkingConfig,
+	GoogleThinkingConfig,
+	JSONObject,
+	OpenAIThinkingConfig,
+	ThinkingConfig,
+	XaiThinkingConfig,
+} from '../../types';
 
 export interface ProviderQuirks {
 	/** providerMetadata keys on reasoning parts that must be copied to providerOptions and survive replay. */
@@ -8,6 +15,8 @@ export interface ProviderQuirks {
 	toolProviderOptionDefaults?: JSONObject;
 	/** Provider defaults to strict JSON Schema validation for structured output; relax for raw user schemas. */
 	relaxStrictJsonSchemaForRawOutput?: boolean;
+	/** Translate the agent's thinking config into this provider's providerOptions namespace. */
+	thinkingToProviderOptions?: (thinking: ThinkingConfig) => Record<string, Record<string, unknown>>;
 }
 
 /**
@@ -29,6 +38,22 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// validates tool arguments before emitting them; tools can still
 		// explicitly re-enable it via their own providerOptions.
 		toolProviderOptionDefaults: { eagerInputStreaming: false },
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as AnthropicThinkingConfig;
+			if (cfg.mode === 'adaptive') {
+				return {
+					anthropic: {
+						thinking: { type: 'adaptive', display: cfg.display ?? 'summarized' },
+						effort: cfg.effort ?? 'medium',
+					},
+				};
+			}
+			return {
+				anthropic: {
+					thinking: { type: 'enabled', budgetTokens: cfg.budgetTokens ?? 10000 },
+				},
+			};
+		},
 	},
 	openai: {
 		// QUIRK(openai): the Responses API pairs each function_call item with a
@@ -41,6 +66,15 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// keywords it doesn't allow. See relaxStrictJsonSchemaIfNeeded's docstring
 		// in runtime-context.ts for the full rationale.
 		relaxStrictJsonSchemaForRawOutput: true,
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as OpenAIThinkingConfig;
+			return {
+				openai: {
+					reasoningEffort: cfg.reasoningEffort ?? 'medium',
+					reasoningSummary: null,
+				},
+			};
+		},
 	},
 	groq: {
 		// QUIRK(groq): same strict-schema default as OpenAI (Groq's API follows
@@ -48,9 +82,28 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// docstring in runtime-context.ts for the full rationale.
 		relaxStrictJsonSchemaForRawOutput: true,
 	},
-	// Gemini's `thoughtSignature` on tool-call parts is preserved generically
-	// by toAiContent's providerMetadata passthrough (messages.ts).
-	google: {},
+	google: {
+		// Gemini's `thoughtSignature` on tool-call parts is preserved generically
+		// by toAiContent's providerMetadata passthrough (messages.ts) — no
+		// reasoningReplayKeys entry needed here.
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as GoogleThinkingConfig;
+			return {
+				google: {
+					thinkingConfig: {
+						...(cfg.thinkingBudget !== undefined && { thinkingBudget: cfg.thinkingBudget }),
+						...(cfg.thinkingLevel !== undefined && { thinkingLevel: cfg.thinkingLevel }),
+					},
+				},
+			};
+		},
+	},
+	xai: {
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as XaiThinkingConfig;
+			return { xai: { reasoningEffort: cfg.reasoningEffort ?? 'high' } };
+		},
+	},
 };
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {
