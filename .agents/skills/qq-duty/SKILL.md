@@ -1,8 +1,8 @@
 ---
 name: n8n:qq-duty
 description: >-
-  Runs an n8n Quality Queue (QQ) duty session, defaulting to active AI bugs with
-  SLA status, ranks the queue, investigates the first issue, and continues
+  Runs an n8n Quality Queue (QQ) duty session, defaulting to active AI issues
+  with SLA status, ranks the queue, investigates the first issue, and continues
   issue by issue with a durable checkpoint. Use when the user says “I want to
   do QQ”, “start QQ duty”, “work the QQ queue”, “let's get started with QQ”, or
   asks what to investigate next. Requires Linear access; an explicit board or
@@ -22,12 +22,18 @@ Select the queue in this order:
 2. The active QQ session's saved scope for follow-ups such as “next.”
 3. The default AI QQ queue:
    - Team is `AI`.
-   - Labels include `bug`, including descendant labels under `bug`.
    - SLA status is not empty.
+
+Do not add a `bug` label filter to the default. Issues routinely accrue SLA
+while their suggested labels were never applied, so filtering on `bug` silently
+hides SLA-bearing work — an unlabelled High with days left is invisible while a
+labelled Medium with months left is not. Treat `bug` as a ranking and
+disposition signal instead: include unlabelled SLA-bearing issues, and
+recommend the missing label as part of their disposition.
 
 The default is a logical filter definition, not a dependency on a saved-view
 URL. A user can therefore say “start QQ” in a new task without supplying a
-link. Record the default scope as `AI bugs with SLA status` in checkpoints.
+link. Record the default scope as `AI issues with SLA status` in checkpoints.
 
 If the user explicitly requests a different queue but does not provide enough
 information to identify or reconstruct it, ask exactly one question and stop:
@@ -63,21 +69,21 @@ Use this acquisition ladder:
 Do not merely announce a switch to the browser: perform it in the same turn.
 Do not silently substitute a broader team query.
 
-For hierarchical labels such as “bug including child labels,” resolve the label
-tree first or query the team-wide superset and filter returned labels against
-the parent plus descendants. Do not assume a connector's parent-label filter
-includes children. For “SLA status is not empty,” use the returned SLA status
-field when available; otherwise use the presence of `slaStartedAt`/risk/breach
-timestamps as the inclusion marker and disclose that mapping.
+When a label filter is explicitly requested, resolve hierarchical labels such as
+“bug including child labels” by resolving the label tree first, or by querying
+the team-wide superset and filtering returned labels against the parent plus
+descendants. Do not assume a connector's parent-label filter includes children.
+For “SLA status is not empty,” use the returned SLA status field when available;
+otherwise use the presence of `slaStartedAt`/risk/breach timestamps as the
+inclusion marker and disclose that mapping.
 
 Examples:
 
-- Bare “start QQ” uses the default `AI` team + `bug` label tree + SLA status
-  present scope; it does not ask for a board link.
+- Bare “start QQ” uses the default `AI` team + SLA status present scope; it does
+  not ask for a board link and does not filter by label.
 - Explicit “AI team Triage” can be queried as `team = AI, state = Triage`.
-- “AI team + bug label tree + SLA status present” can be acquired from the
-  narrowest supported AI/bug query, then filtered by bug descendants and
-  non-null SLA metadata.
+- “AI team + SLA status present” can be acquired from the narrowest supported AI
+  query per active state type, then filtered on non-null SLA metadata.
 - A saved-view URL alone does not establish any filters.
 
 A board snapshot succeeds only when it returns issue identifiers or a verified
@@ -102,7 +108,7 @@ identifier and neutral status outside their authorized context.
 ## Scan and rank the queue
 
 Inspect active Triage items first. If Triage is empty, rank the board's active
-bugs by least SLA time remaining.
+issues by least SLA time remaining.
 
 Use this order:
 
@@ -112,6 +118,10 @@ Use this order:
    that can remove incorrect SLA pressure;
 4. tickets waiting on reporter information;
 5. remaining issues by impact, age, and confidence.
+
+SLA urgency and priority outrank labelling. An SLA-bearing issue missing its
+`bug` label still ranks by steps 1–2; do not demote it for being unlabelled, and
+report which queue items lack the label so the gap gets fixed at the source.
 
 Treat Flaky's priority, estimate, and ownership as hypotheses to verify. Note
 new or changed items since the previous session checkpoint.
