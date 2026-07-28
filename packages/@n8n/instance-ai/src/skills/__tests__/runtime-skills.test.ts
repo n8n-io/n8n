@@ -185,6 +185,18 @@ describe('Instance AI runtime skills', () => {
 		).toHaveLength(1);
 	});
 
+	it('requires agent prerequisites before build-agent and retries when the builder reports missing assets', () => {
+		const skill = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'intent-recognition', 'SKILL.md'),
+			'utf-8',
+		);
+
+		expect(skill).toContain('Before the first `build-agent` call, create every prerequisite');
+		expect(skill).toContain('builder cannot create tables');
+		expect(skill).toContain('If a `builderReply` lists missing workflows or tables');
+		expect(skill).toContain('never ask the user to create them manually');
+	});
+
 	it('loads the bundled Computer Use credential setup skill', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const skill = source.registry.skills.find(

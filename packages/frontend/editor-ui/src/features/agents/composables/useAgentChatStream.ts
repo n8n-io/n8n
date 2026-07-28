@@ -71,6 +71,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 * next send so users can fix the config and retry without a manual dismiss.
 	 */
 	const fatalError = ref<FatalAgentError | null>(null);
+	/**
+	 * Non-fatal warnings emitted during a run (e.g. an MCP server that failed to
+	 * connect, so its tools were skipped). The run continues; these are shown to
+	 * the user as a warning callout. Cleared on the next send.
+	 */
+	const warnings = ref<Array<{ message: string; server?: string; code?: string }>>([]);
 
 	const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
 		if (!isStreaming.value) return 'idle';
@@ -146,6 +152,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		 * that was applied before the round-trip.
 		 */
 		errorEmitted: boolean;
+		/** Set when the stream reaches a valid terminal event. */
+		terminalEventReceived: boolean;
 		/**
 		 * Cursor pointing at the ChatMessage currently being filled by
 		 * text/reasoning/tool-input events. `start-step` / `finish-step`
@@ -203,11 +211,42 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	function dropOrphanMintedBubbles(session: StreamSession): void {
 		for (const msg of session.minted) {
-			if (!msg.content && (msg.toolCalls?.length ?? 0) === 0) {
+			if (!msg.content && !msg.thinking && (msg.toolCalls?.length ?? 0) === 0) {
 				messages.value = messages.value.filter((m) => m !== msg);
 				session.minted.delete(msg);
 			}
 		}
+	}
+
+	function markInFlightStateFailed(session: StreamSession): void {
+		for (const msg of session.minted) {
+			if (msg.status === CHAT_MESSAGE_STATUS.STREAMING) {
+				msg.status = CHAT_MESSAGE_STATUS.ERROR;
+			}
+			for (const toolCall of msg.toolCalls ?? []) {
+				if (
+					toolCall.state === TOOL_CALL_STATE.PENDING ||
+					toolCall.state === TOOL_CALL_STATE.RUNNING
+				) {
+					toolCall.state = TOOL_CALL_STATE.ERROR;
+				}
+			}
+		}
+	}
+
+	function markStreamInterrupted(session: StreamSession): void {
+		dropOrphanMintedBubbles(session);
+		markInFlightStateFailed(session);
+		messages.value.push(
+			reactive<ChatMessage>({
+				id: crypto.randomUUID(),
+				role: 'assistant',
+				content: locale.baseText('agents.chat.streamInterrupted'),
+				thinking: '',
+				toolCalls: [],
+				status: CHAT_MESSAGE_STATUS.ERROR,
+			}),
+		);
 	}
 
 	function handleEvent(
@@ -384,15 +423,27 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					upsertMessageInteractive(msg, interactive);
 					msg.status = CHAT_MESSAGE_STATUS.AWAITING_USER;
 				}
+				session.terminalEventReceived = true;
 				break;
 			}
 			case 'message':
 				// Custom (sub-agent / app-defined) message envelope. Reserved
 				// for future use; nothing renders today.
 				break;
+			case 'warning': {
+				// Non-fatal run warning (e.g. an MCP server was unavailable, so its
+				// tools were skipped). The run continues; surfaced as a callout.
+				warnings.value.push({
+					message: event.message,
+					...(event.server !== undefined && { server: event.server }),
+					...(event.code !== undefined && { code: event.code }),
+				});
+				break;
+			}
 			case 'error': {
 				session.errorEmitted = true;
 				dropOrphanMintedBubbles(session);
+				markInFlightStateFailed(session);
 				if (event.errorCode === 'agent_misconfigured') {
 					fatalError.value = { message: event.message, missing: event.missing ?? [] };
 				} else {
@@ -407,6 +458,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						}),
 					);
 				}
+				session.terminalEventReceived = true;
 				break;
 			}
 			case 'done':
@@ -415,6 +467,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						msg.executionId = event.executionId;
 					}
 				}
+				session.terminalEventReceived = true;
 				return { done: true };
 			default:
 				break;
@@ -468,6 +521,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	): Promise<{ ok: boolean }> {
 		const session: StreamSession = {
 			errorEmitted: false,
+			terminalEventReceived: false,
 			minted: new Set(),
 		};
 
@@ -499,23 +553,26 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 
 			await consumeStream(response, session);
+			if (!session.terminalEventReceived) {
+				transportFailed = true;
+				markStreamInterrupted(session);
+				return { ok: false };
+			}
 			finalizeStream(session);
-		} catch (e) {
-			if (e instanceof DOMException && e.name === 'AbortError') {
+		} catch (error) {
+			if (error instanceof DOMException && error.name === 'AbortError') {
 				finalizeStream(session);
 				// User-initiated abort — surface as a failure so optimistic
 				// callers (resume) restore their pre-flight state instead of
 				// leaving the UI half-committed.
 				return { ok: false };
 			}
-			transportFailed = true;
-			const text = `Error: ${e instanceof Error ? e.message : 'Unknown error'}`;
-			messages.value.push({
-				id: crypto.randomUUID(),
-				role: 'assistant',
-				content: text,
-				status: 'error',
-			});
+			if (session.terminalEventReceived) {
+				finalizeStream(session);
+			} else {
+				transportFailed = true;
+				markStreamInterrupted(session);
+			}
 		} finally {
 			abortController.value = null;
 			isStreaming.value = false;
@@ -652,6 +709,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		if (!trimmed || isStreaming.value) return;
 		// Any new send invalidates a prior misconfig banner — the user is retrying.
 		fatalError.value = null;
+		warnings.value = [];
 		messages.value.push({
 			id: crypto.randomUUID(),
 			role: 'user',
@@ -665,6 +723,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		fatalError.value = null;
 	}
 
+	function dismissWarning(index: number): void {
+		warnings.value = warnings.value.filter((_, i) => i !== index);
+	}
+
 	function stopGenerating(): void {
 		abortController.value?.abort();
 	}
@@ -674,6 +736,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		isStreaming,
 		messagingState,
 		fatalError,
+		warnings,
 		loadHistory,
 		clearHistory,
 		sendMessage,
@@ -681,5 +744,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		resume,
 		cancelAndSteer,
 		dismissFatalError,
+		dismissWarning,
 	};
 }

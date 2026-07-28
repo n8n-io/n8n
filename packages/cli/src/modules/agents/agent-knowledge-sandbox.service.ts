@@ -709,11 +709,6 @@ export class AgentKnowledgeSandboxService {
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
-		if (agent.activeVersionId === null) {
-			throw new OperationalError(
-				'Knowledge base is only available for published agents. Publish the agent first.',
-			);
-		}
 
 		const { Daytona } = loadDaytona();
 		const connection = await this.resolveDaytonaConnection(projectId);
@@ -749,6 +744,9 @@ export class AgentKnowledgeSandboxService {
 			autoStopInterval: AUTO_STOP_INTERVAL_MINUTES,
 		};
 
+		// Only the snapshot path works through the proxy: the Daytona SDK derives `buildInfo` from
+		// any string image, and the proxy rejects create requests carrying it. Attempting the image
+		// path there fails with an error about a field we never set, masking the real cause.
 		let sandbox: Sandbox;
 		if (connection.snapshot) {
 			try {
@@ -757,6 +755,7 @@ export class AgentKnowledgeSandboxService {
 					{ timeout: timeoutSeconds },
 				);
 			} catch (error) {
+				if (connection.mode === 'proxy') throw error;
 				this.logger.warn(
 					'Agent knowledge sandbox create from snapshot failed; falling back to image',
 					{
@@ -769,6 +768,11 @@ export class AgentKnowledgeSandboxService {
 				sandbox = await daytona.create({ ...baseCreateParams, image }, { timeout: timeoutSeconds });
 			}
 		} else {
+			if (connection.mode === 'proxy') {
+				throw new OperationalError(
+					'Agent knowledge sandbox requires a snapshot when Daytona is reached through the AI service proxy. Set N8N_AGENTS_AI_SANDBOX_SNAPSHOT to a snapshot available to the instance.',
+				);
+			}
 			sandbox = await daytona.create({ ...baseCreateParams, image }, { timeout: timeoutSeconds });
 		}
 

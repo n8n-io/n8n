@@ -283,6 +283,16 @@ jobs:
           CONCURRENCY="${EVAL_CONCURRENCY:-$((LANES * 2))}"
           echo "Lanes: $LANES | eval concurrency: $CONCURRENCY"
 
+          # Spawn the `claude` build subprocess from an empty directory outside
+          # the checkout. Inheriting the repo cwd would load the repo's Claude
+          # config into the builder (CLAUDE.md/AGENTS.md, .claude/settings.json
+          # with the n8n plugin's skills and hooks) and allow permissionless
+          # reads of repo files — including the eval harness and case corpus.
+          # The MCP config is unaffected: it is staged per lane and pinned with
+          # --strict-mcp-config either way.
+          BUILD_CWD="$RUNNER_TEMP/mcp-build-cwd"
+          mkdir -p "$BUILD_CWD"
+
           # --dataset + --baseline-prefix keep the MCP cohort isolated from the
           # Instance AI dataset/baseline in LangSmith (both halves required).
           # --timeout-ms 25min: MCP-tier multi-agent cases with large mocked
@@ -299,6 +309,7 @@ jobs:
             --timeout-ms 1500000
             --dataset mcp-workflow-evals
             --baseline-prefix mcp-baseline-
+            --build-cwd "$BUILD_CWD"
             --verbose
           )
           # LangTracer is the only CI case source (no disk fallback by design).

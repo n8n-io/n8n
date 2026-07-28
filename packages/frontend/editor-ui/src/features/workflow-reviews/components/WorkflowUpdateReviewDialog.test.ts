@@ -108,6 +108,29 @@ describe('WorkflowUpdateReviewDialog', () => {
 		expect(emitted('update:open')).toBeUndefined();
 	});
 
+	it('discards the flushed version when the user navigates away during the save', async () => {
+		let resolveSave!: (versionId: string | undefined) => void;
+		const flushSave = vi.fn().mockReturnValue(
+			new Promise<string | undefined>((resolve) => {
+				resolveSave = resolve;
+			}),
+		);
+		const { getByTestId, rerender, emitted } = await renderDialog({ flushSave });
+
+		await userEvent.click(getByTestId('workflow-update-review-submit-button'));
+		await waitFor(() => expect(flushSave).toHaveBeenCalledOnce());
+
+		// Navigating swaps the prop in place; the save then resolves with the newly
+		// opened workflow's version, which must not be pinned to the old review.
+		await rerender({ open: true, workflowId: 'workflow-2', flushSave });
+		resolveSave('version-2');
+
+		await waitFor(() => expect(getByTestId('workflow-update-review-submit-button')).toBeEnabled());
+		expect(updateWorkflowReviewRequestVersion).not.toHaveBeenCalled();
+		expect(mockShowError).not.toHaveBeenCalled();
+		expect(emitted('updated')).toBeUndefined();
+	});
+
 	it('shows an error and closes when no open review is found after a refetch', async () => {
 		const { getByTestId, fetchStatusSpy, emitted } = await renderDialog({
 			seedOpenReview: false,

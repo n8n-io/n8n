@@ -46,12 +46,14 @@ import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
+import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
 import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 import { WorkflowValidationService } from './workflow-validation.service';
 
@@ -91,7 +93,9 @@ export class WorkflowService {
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 		private readonly workflowPublicationNotifier: WorkflowPublicationNotifier,
 		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
+		private readonly pollTriggerJobRegistrar: PollTriggerJobRegistrar,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
+		private readonly workflowHookContextService: WorkflowHookContextService,
 	) {}
 
 	async getMany(
@@ -521,6 +525,7 @@ export class WorkflowService {
 		// Run external hook after all validation has passed, right before persisting
 		await this.externalHooks.run('workflow.update', [
 			workflowUpdateData,
+			this.workflowHookContextService,
 			toWorkflowLifecycleHookActor(user),
 		]);
 
@@ -608,6 +613,7 @@ export class WorkflowService {
 		}
 		await this.externalHooks.run('workflow.afterUpdate', [
 			updatedWorkflow,
+			this.workflowHookContextService,
 			toWorkflowLifecycleHookActor(user),
 		]);
 
@@ -830,11 +836,14 @@ export class WorkflowService {
 			active: true,
 			activeVersionId: versionIdToActivate,
 			activeVersion: versionToActivate,
+			nodes: versionToActivate.nodes,
+			connections: versionToActivate.connections,
 		});
 
 		try {
 			await this.externalHooks.run('workflow.activate', [
 				candidateWorkflow,
+				this.workflowHookContextService,
 				toWorkflowLifecycleHookActor(user),
 			]);
 		} catch (error) {
@@ -972,9 +981,12 @@ export class WorkflowService {
 	): Promise<WorkflowEntity> {
 		const source = options?.source ?? 'ui';
 		const publicApi = source === 'api';
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-			'workflow:unpublish',
-		]);
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowId,
+			user,
+			['workflow:unpublish'],
+			{ includeActiveVersion: true },
+		);
 
 		if (!workflow) {
 			this.logger.warn('User attempted to deactivate a workflow without permissions', {
@@ -995,9 +1007,19 @@ export class WorkflowService {
 			await this._detectConflicts(workflow, options.expectedChecksum);
 		}
 
+		// `active` is still true here: the hook sees the pre-deactivation state so it can veto.
+		const deactivatedWorkflow = this.workflowRepository.create({
+			...workflow,
+			versionId: deactivatedVersionId,
+			activeVersion: null,
+			nodes: workflow.activeVersion?.nodes ?? workflow.nodes,
+			connections: workflow.activeVersion?.connections ?? workflow.connections,
+		});
+
 		try {
 			await this.externalHooks.run('workflow.deactivate', [
-				workflow,
+				deactivatedWorkflow,
+				this.workflowHookContextService,
 				toWorkflowLifecycleHookActor(user),
 			]);
 		} catch (error) {
@@ -1528,6 +1550,7 @@ export class WorkflowService {
 			// waiting on the leader's outbox handler: a lost hand-off would otherwise
 			// leave them firing a workflow already marked inactive.
 			await this.scheduleTriggerJobRegistrar.removeWorkflowInTransaction(trx, workflowId);
+			await this.pollTriggerJobRegistrar.removeWorkflowInTransaction(trx, workflowId);
 		});
 
 		// Wake the leader now that the record is committed, so it drains without
