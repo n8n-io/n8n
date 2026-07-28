@@ -1,0 +1,37 @@
+packages/cli/src/public-api/v1/openapi-gen/__tests__/schema-registry.test.ts
+  s_64390ec65834a0::t_cc0e0d385a6f5a 84-87,90-101,104-114
+  s_64390ec65834a0::t_16a374b4f1eb36 88-89,102-103
+  s_64390ec65834a0::t_aa76386dd6fffa 7-8,11
+  s_64390ec65834a0::t_78f9f5b202deba 2,9-10
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_64390ec65834a0::t_02666efd8b3788 9
+  s_64390ec65834a0::t_aed217e36f6026 44-47,54-56,58,60,64-66,68-70,77,79,81,83-84
+  s_64390ec65834a0::t_6678e2ed691928 139
+packages/cli/src/public-api/v1/openapi-gen/generate.ts
+  s_64390ec65834a0::t_f617487470bb97 3
+  s_64390ec65834a0::t_e021514581b037 12
+  s_64390ec65834a0::t_2a8584ef37f809 119-131,148-153
+  s_64390ec65834a0::t_5a6560397f23f2 132-143,145,155
+  s_64390ec65834a0::t_ab9c9c80f466ae 154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "c697d6c14cd63125a67840ec52aa386019ba2b62",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_64390ec65834a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71bcfd0e-672d-481c-a393-54c80e6b7558",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

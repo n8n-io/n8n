@@ -1,0 +1,45 @@
+packages/core/src/execution-engine/node-execution-context/__tests__/webhook-context.test.ts
+  s_250fb8270fd5f0::t_ae7b64b90b10cd 190-239
+packages/nodes-base/nodes/Form/test/utils.test.ts
+  s_250fb8270fd5f0::t_87610e6fefe190 1120-1134
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_a8cce783463d5e::t_6a929295c026d2 62
+packages/workflow/src/trigger-identity.ts
+  s_250fb8270fd5f0::t_112c343f947efc 59-62
+packages/nodes-base/nodes/Form/v2/FormTriggerV2.node.ts
+  s_250fb8270fd5f0::t_c173e259b46759 146-157
+packages/@n8n/db/src/migrations/sqlite/1784912016000-AddIsFirstPartyToOAuthClients.ts
+  s_a8cce783463d5e::t_a06b15f9884b24 7-11
+  s_a8cce783463d5e::t_8840990411f0d7 1-6,12-27
+packages/nodes-base/nodes/Form/utils/utils.ts
+  s_250fb8270fd5f0::t_bd3a7961c2e584 779-790
+packages/cli/test/migration/1784912016000-add-is-first-party-to-oauth-clients.test.ts
+  s_a8cce783463d5e::t_87a46073556c0a 1-173
+packages/core/src/execution-engine/node-execution-context/webhook-context.ts
+  s_250fb8270fd5f0::t_a2a3e7623875d2 140-144
+  s_250fb8270fd5f0::t_03179fab5a042b 145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3fb55d1d28513db08acf5cf55fdabae3619778c9",
+  "prompts": {},
+  "sessions": {
+    "s_250fb8270fd5f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "632009f9-e880-4101-b470-e42e7f055ec3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_a8cce783463d5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "234ab6f3-2954-486e-a8a8-660d3ab8c703",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
