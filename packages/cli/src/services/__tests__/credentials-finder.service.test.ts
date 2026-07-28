@@ -40,7 +40,7 @@ describe('CredentialsFinderService', () => {
 
 		// Setup manager mock for global credentials fetching
 
-		// @ts-ignore
+		// @ts-expect-error override readonly manager for test
 		credentialsRepository.manager = {
 			find: vi.fn().mockResolvedValue([]),
 		} as any;

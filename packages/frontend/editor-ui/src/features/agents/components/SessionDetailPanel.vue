@@ -136,7 +136,7 @@ function highlightJson(value: unknown, indent = 0): string {
 const toolDisplayName = computed((): string => {
 	if (!props.item || (props.item.kind !== 'tool' && props.item.kind !== 'suspension')) return '';
 	if (props.item.isUserFeedback) return i18n.baseText('agentSessions.timeline.userFeedback');
-	return resolveToolNameForDisplay(props.item.toolName, i18n.baseText);
+	return resolveToolNameForDisplay(props.item.toolName, i18n);
 });
 
 const isSubAgent = computed((): boolean =>

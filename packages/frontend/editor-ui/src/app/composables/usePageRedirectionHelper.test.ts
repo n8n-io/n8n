@@ -1,9 +1,9 @@
 import { usePageRedirectionHelper } from './usePageRedirectionHelper';
-import { usePageRedirectionHelper as useBasePageRedirectionHelper } from './usePageRedirectionHelper.core';
+import { useBasePageRedirectionHelper } from './useBasePageRedirectionHelper';
 import { confirmIfBuilderStreaming } from '@/features/ai/assistant/composables/useBuilderStreamingGuard';
 
-vi.mock('./usePageRedirectionHelper.core', () => ({
-	usePageRedirectionHelper: vi.fn(() => ({
+vi.mock('./useBasePageRedirectionHelper', () => ({
+	useBasePageRedirectionHelper: vi.fn(() => ({
 		goToDashboard: vi.fn(),
 		goToVersions: vi.fn(),
 		goToUpgrade: vi.fn(),

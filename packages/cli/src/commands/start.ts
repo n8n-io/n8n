@@ -72,6 +72,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsTaskRunner = true;
 
+	override seedsInstanceIdentity = true;
+
 	private getEditorUrl = () => Container.get(UrlService).getInstanceBaseUrl();
 
 	/**
@@ -239,7 +241,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await this.initOrchestration();
 		}
 
-		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(JwtService).initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(BinaryDataConfig).initialize(Container.get(DeploymentKeyRepository));
 
