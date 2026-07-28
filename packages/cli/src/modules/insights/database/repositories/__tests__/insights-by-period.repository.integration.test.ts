@@ -1,4 +1,5 @@
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
@@ -6,6 +7,8 @@ import { InsightsConfig } from '@/modules/insights/insights.config';
 
 import { createCompactedInsightsEvent, createMetadata } from '../../entities/__tests__/db-utils';
 import { InsightsByPeriodRepository } from '../insights-by-period.repository';
+
+const isPostgres = Container.get(GlobalConfig).database.type === 'postgresdb';
 
 describe('InsightsByPeriodRepository', () => {
 	beforeAll(async () => {
@@ -154,6 +157,55 @@ describe('InsightsByPeriodRepository', () => {
 				utcDayStart.toUTC().toISO(),
 			);
 		});
+
+		// Postgres ships the IANA timezone database, so it can truncate each row using the offset
+		// that actually applied on that row's date. SQLite has no such database and falls back to a
+		// single offset anchored on the range start, so this DST-straddle exactness is Postgres-only.
+		test.runIf(isPostgres)(
+			'buckets a caller-local day into a single bucket when the range crosses a DST transition',
+			async () => {
+				// ARRANGE
+				const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+				const project = await createTeamProject();
+				const workflow = await createWorkflow({ nodes: [] }, project);
+				await createMetadata(workflow);
+
+				// Europe/Berlin ended summer time on 2023-10-29 (CEST/UTC+2 -> CET/UTC+1). A range
+				// starting before and ending after the transition spans two different offsets. The
+				// three rows below all fall on the same local day 2023-10-30 (CET), whose local
+				// midnight is 2023-10-29 23:00 UTC. The first and last sit either side of the
+				// +120min boundary the range start would imply, so an anchored-offset bucketing
+				// wrongly splits this single local day into two chart bars.
+				const startDate = DateTime.fromISO('2023-10-25T00:00:00', { zone: 'Europe/Berlin' });
+				const endDate = DateTime.fromISO('2023-10-31T23:59:59', { zone: 'Europe/Berlin' });
+				const localDay = DateTime.fromISO('2023-10-30T00:00:00', { zone: 'Europe/Berlin' });
+
+				for (const localMinutes of [30, 12 * 60, 23 * 60 + 30]) {
+					await createCompactedInsightsEvent(workflow, {
+						type: 'success',
+						value: 1,
+						periodUnit: 'hour',
+						periodStart: localDay.plus({ minutes: localMinutes }),
+					});
+				}
+
+				// ACT
+				const result = await insightsByPeriodRepository.getInsightsByTime({
+					periodUnit: 'day',
+					insightTypes: ['success'],
+					startDate: startDate.toJSDate(),
+					endDate: endDate.toJSDate(),
+					timeZone: 'Europe/Berlin',
+				});
+
+				// ASSERT
+				expect(result).toHaveLength(1);
+				expect(result[0]?.succeeded).toBe(3);
+				expect(DateTime.fromISO(result[0].periodStart).toUTC().toISO()).toBe(
+					localDay.toUTC().toISO(),
+				);
+			},
+		);
 	});
 
 	describe('Avoid deadlock error', () => {
